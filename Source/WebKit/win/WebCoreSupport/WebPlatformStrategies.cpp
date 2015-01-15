@@ -26,11 +26,11 @@
 #include "WebPlatformStrategies.h"
 
 #include "FrameLoader.h"
+#include "PluginDatabase.h"
 #include "WebFrameNetworkingContext.h"
 #include <WebCore/Page.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/PlatformCookieJar.h>
-#include <WebCore/PluginDatabase.h>
 #if USE(CFNETWORK)
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #endif
@@ -52,11 +52,6 @@ CookiesStrategy* WebPlatformStrategies::createCookiesStrategy()
     return this;
 }
 
-DatabaseStrategy* WebPlatformStrategies::createDatabaseStrategy()
-{
-    return this;
-}
-
 LoaderStrategy* WebPlatformStrategies::createLoaderStrategy()
 {
     return this;
@@ -68,11 +63,6 @@ PasteboardStrategy* WebPlatformStrategies::createPasteboardStrategy()
 }
 
 PluginStrategy* WebPlatformStrategies::createPluginStrategy()
-{
-    return this;
-}
-
-SharedWorkerStrategy* WebPlatformStrategies::createSharedWorkerStrategy()
 {
     return this;
 }

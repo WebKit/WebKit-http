@@ -15,6 +15,11 @@ $db = new Database;
 if (!$db->connect())
     exit_with_error('DatabaseConnectionFailure');
 
+// FIXME: We should support revalication as well as caching results in the server side.
+$maxage = config('jsonCacheMaxAge');
+header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $maxage) . ' GMT');
+header("Cache-Control: maxage=$maxage");
+
 $platform_id = intval($parts[0]);
 $metric_id = intval($parts[1]);
 $config_rows = $db->query_and_fetch_all('SELECT config_id, config_type, config_platform, config_metric
@@ -34,7 +39,7 @@ function fetch_runs_for_config($db, $config) {
             FROM builds
                 LEFT OUTER JOIN build_commits ON commit_build = build_id
                 LEFT OUTER JOIN commits ON build_commit = commit_id, test_runs
-            WHERE run_build = build_id AND run_config = $1
+            WHERE run_build = build_id AND run_config = $1 AND NOT EXISTS (SELECT * FROM build_requests WHERE request_build = build_id)
             GROUP BY build_id, run_id', array($config['config_id']));
 
     $formatted_runs = array();
@@ -47,7 +52,6 @@ function fetch_runs_for_config($db, $config) {
     return $formatted_runs;
 }
 
-date_default_timezone_set('UTC');
 function parse_revisions_array($postgres_array) {
     global $repository_id_to_name;
 

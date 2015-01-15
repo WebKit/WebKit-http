@@ -90,11 +90,6 @@ CookiesStrategy* WebPlatformStrategies::createCookiesStrategy()
     return this;
 }
 
-DatabaseStrategy* WebPlatformStrategies::createDatabaseStrategy()
-{
-    return this;
-}
-
 LoaderStrategy* WebPlatformStrategies::createLoaderStrategy()
 {
     return this;
@@ -106,11 +101,6 @@ PasteboardStrategy* WebPlatformStrategies::createPasteboardStrategy()
 }
 
 PluginStrategy* WebPlatformStrategies::createPluginStrategy()
-{
-    return this;
-}
-
-SharedWorkerStrategy* WebPlatformStrategies::createSharedWorkerStrategy()
 {
     return this;
 }
@@ -196,15 +186,6 @@ void WebPlatformStrategies::deleteCookie(const NetworkStorageSession& session, c
     WebCore::deleteCookie(session, url, cookieName);
 }
 
-// DatabaseStrategy
-
-#if ENABLE(SQL_DATABASE)
-AbstractDatabaseServer* WebPlatformStrategies::getDatabaseServer()
-{
-    return DatabaseStrategy::getDatabaseServer();
-}
-#endif // ENABLE(SQL_DATABASE)
-
 // LoaderStrategy
 
 #if ENABLE(NETWORK_PROCESS)
@@ -289,14 +270,6 @@ void WebPlatformStrategies::getPluginInfo(const WebCore::Page* page, Vector<WebC
     UNUSED_PARAM(page);
     UNUSED_PARAM(plugins);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
-}
-
-// SharedWorkerStrategy
-
-bool WebPlatformStrategies::isAvailable() const
-{
-    // Shared workers do not work across multiple processes, and using network process is tied to multiple secondary process model. 
-    return !WebProcess::shared().usesNetworkProcess();
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

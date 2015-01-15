@@ -34,7 +34,7 @@
 #import "AccessibilityTableCell.h"
 #import "Chrome.h"
 #import "ChromeClient.h"
-#import "Font.h"
+#import "FontCascade.h"
 #import "Frame.h"
 #import "FrameSelection.h"
 #import "FrameView.h"
@@ -780,8 +780,8 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
 
     // iOS doesn't distinguish between a title and description field,
     // so concatentation will yield the best result.
-    NSString *axTitle = [self accessibilityTitle];
-    NSString *axDescription = [self accessibilityDescription];
+    NSString *axTitle = [self baseAccessibilityTitle];
+    NSString *axDescription = [self baseAccessibilityDescription];
     NSString *landmarkDescription = [self ariaLandmarkRoleDescription];
     
     NSMutableString *result = [NSMutableString string];
@@ -1011,7 +1011,7 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     if (![self _prepareAccessibilityCall])
         return nil;
 
-    return [self accessibilityHelpText];
+    return [self baseAccessibilityHelpText];
 }
 
 - (NSURL *)accessibilityURL
@@ -1758,7 +1758,7 @@ static void AXAttributeStringSetStyle(NSMutableAttributedString* attrString, Ren
     RenderStyle& style = renderer->style();
     
     // set basic font info
-    AXAttributeStringSetFont(attrString, style.font().primaryFontData().getCTFont(), range);
+    AXAttributeStringSetFont(attrString, style.fontCascade().primaryFontData().getCTFont(), range);
                 
     int decor = style.textDecorationsInEffect();
     if ((decor & (TextDecorationUnderline | TextDecorationLineThrough)) != 0) {

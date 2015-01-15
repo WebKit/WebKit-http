@@ -22,7 +22,6 @@
 #include "config.h"
 #include "FontCache.h"
 
-#include "Font.h"
 #include "OwnPtrCairo.h"
 #include "RefPtrCairo.h"
 #include "SimpleFontData.h"
@@ -165,6 +164,8 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
     // says that we must find an exact match for font family, slant (italic or oblique can be used)
     // and font weight (we only match bold/non-bold here).
     RefPtr<FcPattern> pattern = adoptRef(FcPatternCreate());
+    // Never choose unscalable fonts, as they pixelate when displayed at different sizes.
+    FcPatternAddBool(pattern.get(), FC_SCALABLE, FcTrue);
     String familyNameString(getFamilyNameStringFromFamily(family));
     if (!FcPatternAddString(pattern.get(), FC_FAMILY, reinterpret_cast<const FcChar8*>(familyNameString.utf8().data())))
         return nullptr;

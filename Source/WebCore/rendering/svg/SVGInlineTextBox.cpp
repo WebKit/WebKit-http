@@ -22,7 +22,6 @@
 #include "config.h"
 #include "SVGInlineTextBox.h"
 
-#include "FontCache.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
@@ -114,12 +113,10 @@ FloatRect SVGInlineTextBox::selectionRectForTextFragment(const SVGTextFragment& 
     ASSERT_WITH_SECURITY_IMPLICATION(startPosition < endPosition);
     ASSERT(style);
 
-    FontCachePurgePreventer fontCachePurgePreventer;
-
     float scalingFactor = renderer().scalingFactor();
     ASSERT(scalingFactor);
 
-    const Font& scaledFont = renderer().scaledFont();
+    const FontCascade& scaledFont = renderer().scaledFont();
     const FontMetrics& scaledFontMetrics = scaledFont.fontMetrics();
     FloatPoint textOrigin(fragment.x, fragment.y);
     if (scalingFactor != 1)
@@ -175,7 +172,7 @@ LayoutRect SVGInlineTextBox::localSelectionRect(int startPosition, int endPositi
 
 static inline bool textShouldBePainted(const RenderSVGInlineText& textRenderer)
 {
-    // Font::pixelSize(), returns FontDescription::computedPixelSize(), which returns "int(x + 0.5)".
+    // FontCascade::pixelSize(), returns FontDescription::computedPixelSize(), which returns "int(x + 0.5)".
     // If the absolute font size on screen is below x=0.5, don't render anything.
     return textRenderer.scaledFont().pixelSize();
 }
@@ -422,7 +419,7 @@ TextRun SVGInlineTextBox::constructTextRun(RenderStyle* style, const SVGTextFrag
                 , direction()
                 , dirOverride() || style->rtlOrdering() == VisualOrder /* directionalOverride */);
 
-    if (style->font().primaryFontData().isSVGFont())
+    if (style->fontCascade().primaryFontData().isSVGFont())
         run.setRenderingContext(SVGTextRunRenderingContext::create(renderer()));
 
     run.disableRoundingHacks();
@@ -478,7 +475,7 @@ static inline float positionOffsetForDecoration(TextDecoration decoration, const
     return 0.0f;
 }
 
-static inline float thicknessForDecoration(TextDecoration, const Font& font)
+static inline float thicknessForDecoration(TextDecoration, const FontCascade& font)
 {
     // FIXME: For SVG Fonts we need to use the attributes defined in the <font-face> if specified.
     // Compatible with Batik/Opera
@@ -538,7 +535,7 @@ void SVGInlineTextBox::paintDecorationWithStyle(GraphicsContext* context, TextDe
     RenderStyle& decorationStyle = decorationRenderer.style();
 
     float scalingFactor = 1;
-    Font scaledFont;
+    FontCascade scaledFont;
     RenderSVGInlineText::computeNewScaledFontForStyle(decorationRenderer, decorationStyle, scalingFactor, scaledFont);
     ASSERT(scalingFactor);
 
@@ -573,7 +570,7 @@ void SVGInlineTextBox::paintTextWithShadows(GraphicsContext* context, RenderStyl
     float scalingFactor = renderer().scalingFactor();
     ASSERT(scalingFactor);
 
-    const Font& scaledFont = renderer().scaledFont();
+    const FontCascade& scaledFont = renderer().scaledFont();
     const ShadowData* shadow = style->textShadow();
 
     FloatPoint textOrigin(fragment.x, fragment.y);

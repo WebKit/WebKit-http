@@ -1,3 +1,310 @@
+2015-01-14  Matthew Mirman  <mmirman@apple.com>
+
+        Removed accidental commit of "invalid_array.js" 
+        http://trac.webkit.org/changeset/178439
+
+        * tests/stress/invalid_array.js: Removed.
+
+2015-01-14  Matthew Mirman  <mmirman@apple.com>
+
+        Fixes operationPutByIdOptimizes such that they check that the put didn't
+        change the structure of the object who's property access is being
+        cached.  Also removes uses of the new base value from the cache generation code.
+        https://bugs.webkit.org/show_bug.cgi?id=139500
+
+        Reviewed by Filip Pizlo.
+
+        * jit/JITOperations.cpp:
+        (JSC::operationPutByIdStrictOptimize): saved the structure before the put.
+        (JSC::operationPutByIdNonStrictOptimize): ditto.
+        (JSC::operationPutByIdDirectStrictOptimize): ditto.
+        (JSC::operationPutByIdDirectNonStrictOptimize): ditto.
+        * jit/Repatch.cpp:
+        (JSC::generateByIdStub):
+        (JSC::tryCacheGetByID):
+        (JSC::tryBuildGetByIDList):
+        (JSC::emitPutReplaceStub):
+        (JSC::emitPutTransitionStubAndGetOldStructure): Added.
+        (JSC::tryCachePutByID):
+        (JSC::repatchPutByID):
+        (JSC::tryBuildPutByIdList):
+        (JSC::tryRepatchIn):
+        (JSC::emitPutTransitionStub): Deleted.
+        * jit/Repatch.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/JSPropertyNameEnumerator.h:
+        (JSC::genericPropertyNameEnumerator):
+        * runtime/Operations.h:
+        (JSC::normalizePrototypeChainForChainAccess): restructured to not use the base value.
+        (JSC::normalizePrototypeChain): restructured to not use the base value.
+        * tests/mozilla/mozilla-tests.yaml:
+        * tests/stress/proto-setter.js: Added.
+        * tests/stress/put-by-id-build-list-order-recurse.js: Added.
+        Added test that fails without this patch.
+
+2015-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused ResizeImage and DecodeImageData timeline events
+        https://bugs.webkit.org/show_bug.cgi?id=140404
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Timeline.json:
+
+2015-01-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        DFG can call PutByValDirect for generic arrays
+        https://bugs.webkit.org/show_bug.cgi?id=140389
+
+        Reviewed by Geoffrey Garen.
+
+        Computed properties in object initializers (ES6) use the put_by_val_direct operation.
+        However, current DFG asserts that put_by_val_direct is not used for the generic array,
+        the assertion failure is raised.
+        This patch allow DFG to use put_by_val_direct to generic arrays.
+
+        And fix the DFG put_by_val_direct implementation for string properties.
+        At first, put_by_val_direct is inteded to be used for spread elements.
+        So the property keys were limited to numbers (indexes).
+        But now, it's also used for computed properties in object initializers.
+
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::operationPutByValInternal):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2015-01-13  Geoffrey Garen  <ggaren@apple.com>
+
+        Out of bounds access in BytecodeGenerator::emitGetById under DotAccessorNode::emitBytecode
+        https://bugs.webkit.org/show_bug.cgi?id=140397
+
+        Reviewed by Geoffrey Garen.
+
+        Patch by Alexey Proskuryakov.
+
+        Reviewed, performance tested, and ChangeLogged by Geoffrey Garen.
+
+        No performance change.
+
+        No test, since this is a small past-the-end read, which is very
+        difficult to turn into a reproducible failing test -- and existing tests
+        crash reliably using ASan.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BracketAccessorNode::emitBytecode):
+        (JSC::DotAccessorNode::emitBytecode):
+        (JSC::FunctionCallBracketNode::emitBytecode):
+        (JSC::PostfixNode::emitResolve):
+        (JSC::DeleteBracketNode::emitBytecode):
+        (JSC::DeleteDotNode::emitBytecode):
+        (JSC::PrefixNode::emitResolve):
+        (JSC::UnaryOpNode::emitBytecode):
+        (JSC::BitwiseNotNode::emitBytecode):
+        (JSC::BinaryOpNode::emitBytecode):
+        (JSC::EqualNode::emitBytecode):
+        (JSC::StrictEqualNode::emitBytecode):
+        (JSC::ThrowableBinaryOpNode::emitBytecode):
+        (JSC::AssignDotNode::emitBytecode):
+        (JSC::AssignBracketNode::emitBytecode): Use RefPtr in more places. Any
+        register used across a call to a function that might allocate a new
+        temporary register must be held in a RefPtr.
+
+2015-01-12  Michael Saboff  <msaboff@apple.com>
+
+        Local JSArray* "keys" in objectConstructorKeys() is not marked during garbage collection
+        https://bugs.webkit.org/show_bug.cgi?id=140348
+
+        Reviewed by Mark Lam.
+
+        We used to read registers in MachineThreads::gatherFromCurrentThread(), but that is too late
+        because those registers may have been spilled on the stack and replaced with other values by
+        the time we call down to gatherFromCurrentThread().
+
+        Now we get the register contents at the same place that we demarcate the current top of
+        stack using the address of a local variable, in Heap::markRoots().  The register contents
+        buffer is passed along with the demarcation pointer.  These need to be done at this level 
+        in the call tree and no lower, as markRoots() calls various functions that visit object
+        pointers that may be latter proven dead.  Any of those pointers that are left on the
+        stack or in registers could be incorrectly marked as live if we scan the stack contents
+        from a called function or one of its callees.  The stack demarcation pointer and register
+        saving need to be done in the same function so that we have a consistent stack, active
+        and spilled registers.
+
+        Because we don't want to make unnecessary calls to get the register contents, we use
+        a macro to allocated, and possibly align, the register structure and get the actual
+        register contents.
+
+
+        * heap/Heap.cpp:
+        (JSC::Heap::markRoots):
+        (JSC::Heap::gatherStackRoots):
+        * heap/Heap.h:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::gatherFromCurrentThread):
+        (JSC::MachineThreads::gatherConservativeRoots):
+        * heap/MachineStackMarker.h:
+
+2015-01-12  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add basic pattern matching support to the url filters
+        https://bugs.webkit.org/show_bug.cgi?id=140283
+
+        Reviewed by Andreas Kling.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Make YarrParser.h private in order to use it from WebCore.
+
+2015-01-12  Geoffrey Garen  <ggaren@apple.com>
+
+        Out of bounds read in IdentifierArena::makeIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=140376
+
+        Patch by Alexey Proskuryakov.
+
+        Reviewed and ChangeLogged by Geoffrey Garen.
+
+        No test, since this is a small past-the-end read, which is very
+        difficult to turn into a reproducible failing test -- and existing tests
+        crash reliably using ASan.
+
+        * parser/ParserArena.h:
+        (JSC::IdentifierArena::makeIdentifier):
+        (JSC::IdentifierArena::makeIdentifierLCharFromUChar): Check for a
+        zero-length string input, like we do in the literal parser, since it is
+        not valid to dereference characters in a zero-length string.
+
+        A zero-length string is allowed in JavaScript -- for example, "".
+
+2015-01-11  Sam Weinig  <sam@webkit.org>
+
+        Remove support for SharedWorkers
+        https://bugs.webkit.org/show_bug.cgi?id=140344
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-01-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Allow targetting the SVG->OTF font converter with ENABLE(SVG_OTF_CONVERTER)
+        https://bugs.webkit.org/show_bug.cgi?id=136769
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-01-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178266.
+        https://bugs.webkit.org/show_bug.cgi?id=140363
+
+        Broke a JSC test (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Local JSArray* "keys" in objectConstructorKeys() is not
+        marked during garbage collection"
+        https://bugs.webkit.org/show_bug.cgi?id=140348
+        http://trac.webkit.org/changeset/178266
+
+2015-01-12  Michael Saboff  <msaboff@apple.com>
+
+        Local JSArray* "keys" in objectConstructorKeys() is not marked during garbage collection
+        https://bugs.webkit.org/show_bug.cgi?id=140348
+
+        Reviewed by Mark Lam.
+
+        Move the address of the local variable that is used to demarcate the top of the stack for 
+        conservative roots down to MachineThreads::gatherFromCurrentThread() since it also gets
+        the register values using setjmp().  That way we don't lose any callee save register
+        contents between Heap::markRoots(), where it was set, and gatherFromCurrentThread().
+        If we lose any JSObject* that are only in callee save registers, they will be GC'ed
+        erroneously.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::markRoots):
+        (JSC::Heap::gatherStackRoots):
+        * heap/Heap.h:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::gatherFromCurrentThread):
+        (JSC::MachineThreads::gatherConservativeRoots):
+        * heap/MachineStackMarker.h:
+
+2015-01-11  Eric Carlson  <eric.carlson@apple.com>
+
+        Fix typo in testate.c error messages
+        https://bugs.webkit.org/show_bug.cgi?id=140305
+
+        Reviewed by Geoffrey Garen.
+
+        * API/tests/testapi.c:
+        (main): "... script did not timed out ..." -> "... script did not time out ..."
+
+2015-01-09  Michael Saboff  <msaboff@apple.com>
+
+        Breakpoint doesn't fire in this HTML5 game
+        https://bugs.webkit.org/show_bug.cgi?id=140269
+
+        Reviewed by Mark Lam.
+
+        When parsing a single line cached function, use the lineStartOffset of the
+        location where we found the cached function instead of the cached lineStartOffset.
+        The cache location's lineStartOffset has not been adjusted for any possible
+        containing functions.
+
+        This change is not needed for multi-line cached functions.  Consider the
+        single line source:
+
+        function outer(){function inner1(){doStuff();}; (function inner2() {doMoreStuff()})()}
+
+        The first parser pass, we parse and cache inner1() and inner2() with a lineStartOffset
+        of 0.  Later when we parse outer() and find inner1() in the cache, SourceCode start
+        character is at outer()'s outermost open brace.  That is what we should use for
+        lineStartOffset for inner1().  When done parsing inner1() we set the parsing token
+        to the saved location for inner1(), including the lineStartOffset of 0.  We need
+        to use the value of lineStartOffset before we started parsing inner1().  That is
+        what the fix does.  When we parse inner2() the lineStartOffset will be correct.
+
+        For a multi-line function, the close brace is guaranteed to be on a different line
+        than the open brace.  Hence, its lineStartOffset will not change with the change of
+        the SourceCode start character
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+
+2015-01-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exception in ProbeManager deleting breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=140279
+        rdar://problem/19422299
+
+        Reviewed by Oliver Hunt.
+
+        * runtime/MapData.cpp:
+        (JSC::MapData::replaceAndPackBackingStore):
+        The cell table also needs to have its values fixed.
+
+2015-01-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove or use TimelineAgent Resource related event types
+        https://bugs.webkit.org/show_bug.cgi?id=140155
+
+        Reviewed by Timothy Hatcher.
+
+        Remove unused / stale Timeline event types.
+
+        * inspector/protocol/Timeline.json:
+
+2015-01-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r177925): It broke the !ENABLE(INSPECTOR) build
+        https://bugs.webkit.org/show_bug.cgi?id=140098
+
+        Reviewed by Brian Burg.
+
+        * inspector/InspectorBackendDispatcher.h: Missing ENABLE(INSPECTOR) guard added.
+
 2015-01-08  Mark Lam  <mark.lam@apple.com>
 
         Argument object created by "Function dot arguments" should use a clone of the argument values.

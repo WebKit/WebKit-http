@@ -31,7 +31,6 @@
 #include "WebPreferences.h"
 
 #include <WebCore/Font.h>
-#include <WebCore/FontCache.h>
 #include <WebCore/FontDescription.h>
 #include <WebCore/FontSelector.h>
 #include <WebCore/GraphicsContext.h>
@@ -57,7 +56,7 @@ static Font makeFont(const WebFontDescription& description)
     f.setOneFamily(fontFamilyString);
     f.setSpecifiedSize(description.size);
     f.setComputedSize(description.size);
-    f.setItalic(description.italic);
+    f.setIsItalic(description.italic);
     f.setWeight(description.bold ? FontWeightBold : FontWeightNormal);
     f.setIsAbsoluteSize(true);
 
@@ -114,8 +113,6 @@ unsigned CenterTruncateStringToWidth(LPCTSTR text, int length, const WebFontDesc
 {
     ASSERT(buffer);
 
-    FontCachePurgePreventer fontCachePurgePreventer;
-
     String result = StringTruncator::centerTruncate(String(text, length), width, makeFont(description), StringTruncator::EnableRoundingHacks);
     StringView(result).getCharactersWithUpconvert(buffer);
     buffer[result.length()] = '\0';
@@ -125,8 +122,6 @@ unsigned CenterTruncateStringToWidth(LPCTSTR text, int length, const WebFontDesc
 unsigned RightTruncateStringToWidth(LPCTSTR text, int length, const WebFontDescription& description, float width, WCHAR* buffer)
 {
     ASSERT(buffer);
-
-    FontCachePurgePreventer fontCachePurgePreventer;
 
     String result = StringTruncator::rightTruncate(String(text, length), width, makeFont(description), StringTruncator::EnableRoundingHacks);
     StringView(result).getCharactersWithUpconvert(buffer);

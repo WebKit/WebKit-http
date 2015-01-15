@@ -28,6 +28,7 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
+#include "ContentExtensionsDebugging.h"
 #include "NFANode.h"
 #include <limits>
 #include <wtf/Vector.h>
@@ -50,7 +51,10 @@ public:
     void addEpsilonTransition(unsigned from, unsigned to);
     void setFinal(unsigned node);
 
-#ifndef NDEBUG
+    unsigned graphSize() const;
+    void restoreToGraphSize(unsigned);
+
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
     void debugPrintDot() const;
 #endif
 

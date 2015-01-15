@@ -121,6 +121,7 @@ enum PageOverlayType {
     [RaisesException] unsigned long locationFromRange(Element scope, Range range);
     [RaisesException] unsigned long lengthFromRange(Element scope, Range range);
     [RaisesException] DOMString rangeAsText(Range range);
+    [RaisesException] Range subrange(Range range, long rangeLocation, long rangeLength);
 
     [RaisesException] void setDelegatesScrolling(boolean enabled);
 
@@ -256,6 +257,8 @@ enum PageOverlayType {
 
     [RaisesException] DOMString markerTextForListItem(Element element);
 
+    [RaisesException] DOMString toolTipFromElement(Element element);
+
     SerializedScriptValue deserializeBuffer(ArrayBuffer buffer);
     ArrayBuffer serializeObject(SerializedScriptValue obj);
 
@@ -304,6 +307,7 @@ enum PageOverlayType {
     
     [Conditional=VIDEO] void simulateSystemSleep();
     [Conditional=VIDEO] void simulateSystemWake();
+    [Conditional=VIDEO] boolean elementIsBlockingDisplaySleep(Element element);
 
     [RaisesException] void installMockPageOverlay(PageOverlayType type);
     [RaisesException] DOMString pageOverlayLayerTreeAsText();

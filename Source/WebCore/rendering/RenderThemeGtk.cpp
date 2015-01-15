@@ -108,7 +108,7 @@ void RenderThemeGtk::systemFont(CSSValueID, FontDescription& fontDescription) co
     fontDescription.setSpecifiedSize(size);
     fontDescription.setIsAbsoluteSize(true);
     fontDescription.setWeight(FontWeightNormal);
-    fontDescription.setItalic(false);
+    fontDescription.setItalic(FontItalicOff);
     pango_font_description_free(pangoDescription);
 }
 
@@ -1643,7 +1643,7 @@ IntRect RenderThemeGtk::calculateProgressRect(const RenderObject& renderObject, 
     return progressRect;
 }
 
-String RenderThemeGtk::fileListNameForWidth(const FileList* fileList, const Font& font, int width, bool multipleFilesAllowed) const
+String RenderThemeGtk::fileListNameForWidth(const FileList* fileList, const FontCascade& font, int width, bool multipleFilesAllowed) const
 {
     if (width <= 0)
         return String();

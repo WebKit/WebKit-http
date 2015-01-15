@@ -50,27 +50,13 @@ class SQLTransactionCoordinator;
 
 class DatabaseBackend : public DatabaseBackendBase {
 public:
-    DatabaseBackend(PassRefPtr<DatabaseBackendContext>, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize);
-
-    virtual bool openAndVerifyVersion(bool setVersionInNewDatabase, DatabaseError&, String& errorMessage);
-    void close();
-
-    PassRefPtr<SQLTransactionBackend> runTransaction(PassRefPtr<SQLTransaction>, bool readOnly, const ChangeVersionData*);
-    void scheduleTransactionStep(SQLTransactionBackend*);
-    void inProgressTransactionCompleted();
-
-    SQLTransactionClient* transactionClient() const;
-    SQLTransactionCoordinator* transactionCoordinator() const;
+    DatabaseBackend(PassRefPtr<DatabaseContext>, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize);
 
 private:
     class DatabaseOpenTask;
     class DatabaseCloseTask;
     class DatabaseTransactionTask;
     class DatabaseTableNamesTask;
-
-    virtual bool performOpenAndVerify(bool setVersionInNewDatabase, DatabaseError&, String& errorMessage);
-
-    void scheduleTransaction();
 
     Deque<RefPtr<SQLTransactionBackend>> m_transactionQueue;
     Mutex m_transactionInProgressMutex;

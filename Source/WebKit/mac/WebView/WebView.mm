@@ -1490,7 +1490,7 @@ static NSMutableSet *knownPluginMIMETypes()
 
 + (void)_setAlwaysUsesComplexTextCodePath:(BOOL)f
 {
-    Font::setCodePath(f ? Font::Complex : Font::Auto);
+    FontCascade::setCodePath(f ? FontCascade::Complex : FontCascade::Auto);
 }
 
 + (void)_setAllowsRoundingHacks:(BOOL)allowsRoundingHacks
@@ -3168,12 +3168,12 @@ static inline IMP getMethod(id o, SEL s)
 
 + (void)_setShouldUseFontSmoothing:(BOOL)f
 {
-    Font::setShouldUseSmoothing(f);
+    FontCascade::setShouldUseSmoothing(f);
 }
 
 + (BOOL)_shouldUseFontSmoothing
 {
-    return Font::shouldUseSmoothing();
+    return FontCascade::shouldUseSmoothing();
 }
 
 #if !PLATFORM(IOS)
@@ -4710,7 +4710,7 @@ static Vector<String> toStringVector(NSArray* patterns)
     grammarCheckingEnabled = [defaults boolForKey:WebGrammarCheckingEnabled];
 #endif
 
-    Font::setDefaultTypesettingFeatures([defaults boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey] ? Kerning | Ligatures : 0);
+    FontCascade::setDefaultTypesettingFeatures([defaults boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey] ? Kerning | Ligatures : 0);
 
 #if !PLATFORM(IOS)
     automaticQuoteSubstitutionEnabled = [self _shouldAutomaticQuoteSubstitutionBeEnabled];
@@ -8653,8 +8653,9 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
     if (!_private->textIndicatorWindow)
         _private->textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
-    NSRect contentRect = [self.window convertRectToScreen:textIndicator->textBoundingRectInWindowCoordinates()];
-    _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(contentRect), fadeOut);
+    NSRect textBoundingRectInWindowCoordinates = [self convertRect:[self _convertRectFromRootView:textIndicator->textBoundingRectInRootViewCoordinates()] toView:nil];
+    NSRect textBoundingRectInScreenCoordinates = [self.window convertRectToScreen:textBoundingRectInWindowCoordinates];
+    _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(textBoundingRectInScreenCoordinates), fadeOut);
 }
 
 - (void)_clearTextIndicator

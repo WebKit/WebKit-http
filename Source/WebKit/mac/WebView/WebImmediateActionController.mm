@@ -51,6 +51,7 @@
 #import <WebCore/Page.h>
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicator.h>
 #import <objc/objc-class.h>
@@ -220,10 +221,11 @@ using namespace WebCore;
     id customClientAnimationController = nil;
     if ([[_webView UIDelegate] respondsToSelector:@selector(_webView:immediateActionAnimationControllerForHitTestResult:withType:)]) {
         RetainPtr<WebElementDictionary> webHitTestResult = adoptNS([[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult]);
-        customClientAnimationController = [[_webView UIDelegate] _webView:_webView immediateActionAnimationControllerForHitTestResult:webHitTestResult.get() withType:_type];
+        customClientAnimationController = [(id)[_webView UIDelegate] _webView:_webView immediateActionAnimationControllerForHitTestResult:webHitTestResult.get() withType:_type];
     }
 
-    if (customClientAnimationController == [NSNull null]) {
+    // FIXME: We should not permanently disable this for iTunes. rdar://problem/19461358
+    if (customClientAnimationController == [NSNull null] || applicationIsITunes()) {
         [self _cancelImmediateAction];
         return;
     }
@@ -312,7 +314,7 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
         RetainPtr<WebElementDictionary> hitTestDictionary = adoptNS([[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult]);
 
         DOMRange *customDataDetectorsRange;
-        actionContext = [[_webView UIDelegate] _webView:_webView actionContextForHitTestResult:hitTestDictionary.get() range:&customDataDetectorsRange];
+        actionContext = [(id)[_webView UIDelegate] _webView:_webView actionContextForHitTestResult:hitTestDictionary.get() range:&customDataDetectorsRange];
 
         if (actionContext && customDataDetectorsRange)
             detectedDataRange = core(customDataDetectorsRange);

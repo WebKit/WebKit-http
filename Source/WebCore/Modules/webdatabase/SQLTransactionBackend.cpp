@@ -34,7 +34,7 @@
 #include "Database.h" // FIXME: Should only be used in the frontend.
 #include "DatabaseAuthorizer.h"
 #include "DatabaseBackend.h"
-#include "DatabaseBackendContext.h"
+#include "DatabaseContext.h"
 #include "DatabaseThread.h"
 #include "DatabaseTracker.h"
 #include "ExceptionCode.h"
@@ -346,12 +346,12 @@
 
 namespace WebCore {
 
-PassRefPtr<SQLTransactionBackend> SQLTransactionBackend::create(DatabaseBackend* db, PassRefPtr<SQLTransaction> frontend, PassRefPtr<SQLTransactionWrapper> wrapper, bool readOnly)
+PassRefPtr<SQLTransactionBackend> SQLTransactionBackend::create(Database* db, PassRefPtr<SQLTransaction> frontend, PassRefPtr<SQLTransactionWrapper> wrapper, bool readOnly)
 {
     return adoptRef(new SQLTransactionBackend(db, frontend, wrapper, readOnly));
 }
 
-SQLTransactionBackend::SQLTransactionBackend(DatabaseBackend* db, PassRefPtr<SQLTransaction> frontend, PassRefPtr<SQLTransactionWrapper> wrapper, bool readOnly)
+SQLTransactionBackend::SQLTransactionBackend(Database* db, PassRefPtr<SQLTransaction> frontend, PassRefPtr<SQLTransactionWrapper> wrapper, bool readOnly)
     : m_frontend(frontend)
     , m_database(db)
     , m_wrapper(wrapper)

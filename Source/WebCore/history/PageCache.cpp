@@ -48,7 +48,6 @@
 #include "MemoryPressureHandler.h"
 #include "Page.h"
 #include "Settings.h"
-#include "SharedWorkerRepository.h"
 #include "SubframeLoader.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/TemporaryChange.h>
@@ -84,7 +83,7 @@ enum ReasonFrameCannotBeInPageCache {
     HasPlugins,
     IsHttpsAndCacheControlled,
     HasDatabaseHandles,
-    HasSharedWorkers,
+    HasSharedWorkers, // FIXME: Remove.
     NoHistoryItem,
     QuickRedirectComing,
     IsLoadingInAPISense,
@@ -135,7 +134,7 @@ static unsigned logCanCacheFrameDecision(Frame* frame, int indentLevel)
         FEATURE_COUNTER_INCREMENT_KEY(frame->page(), FeatureCounterPageCacheFailureHasPlugins);
         rejectReasons |= 1 << HasPlugins;
     }
-    if (frame->document()->url().protocolIs("https") && frame->loader().documentLoader()->response().cacheControlContainsNoStore()) {
+    if (frame->isMainFrame() && frame->document()->url().protocolIs("https") && frame->loader().documentLoader()->response().cacheControlContainsNoStore()) {
         PCLOG("   -Frame is HTTPS, and cache control prohibits storing");
         FEATURE_COUNTER_INCREMENT_KEY(frame->page(), FeatureCounterPageCacheFailureHTTPSNoStoreKey);
         rejectReasons |= 1 << IsHttpsAndCacheControlled;
@@ -145,13 +144,6 @@ static unsigned logCanCacheFrameDecision(Frame* frame, int indentLevel)
         PCLOG("   -Frame has open database handles");
         FEATURE_COUNTER_INCREMENT_KEY(frame->page(), FeatureCounterPageCacheFailureHasOpenDatabasesKey);
         rejectReasons |= 1 << HasDatabaseHandles;
-    }
-#endif
-#if ENABLE(SHARED_WORKERS)
-    if (SharedWorkerRepository::hasSharedWorkers(frame->document())) {
-        PCLOG("   -Frame has associated SharedWorkers");
-        FEATURE_COUNTER_INCREMENT_KEY(frame->page(), FeatureCounterPageCacheFailureHasSharedWorkersKey);
-        rejectReasons |= 1 << HasSharedWorkers;
     }
 #endif
     if (!frame->loader().history().currentItem()) {
@@ -174,8 +166,14 @@ static unsigned logCanCacheFrameDecision(Frame* frame, int indentLevel)
         FEATURE_COUNTER_INCREMENT_KEY(frame->page(), FeatureCounterPageCacheFailureDocumentLoaderStoppingKey);
         rejectReasons |= 1 << IsStopping;
     }
-    if (!frame->document()->canSuspendActiveDOMObjects()) {
+
+    Vector<ActiveDOMObject*> unsuspendableObjects;
+    if (!frame->document()->canSuspendActiveDOMObjects(&unsuspendableObjects)) {
         PCLOG("   -The document cannot suspend its active DOM Objects");
+        for (auto* activeDOMObject : unsuspendableObjects) {
+            PCLOG("    - Unsuspendable: ", activeDOMObject->activeDOMObjectName());
+            UNUSED_PARAM(activeDOMObject);
+        }
         FEATURE_COUNTER_INCREMENT_KEY(frame->page(), FeatureCounterPageCacheFailureCannotSuspendActiveDOMObjectsKey);
         rejectReasons |= 1 << CannotSuspendActiveDOMObjects;
     }
@@ -315,12 +313,9 @@ bool PageCache::canCachePageContainingThisFrame(Frame* frame)
         // Do not cache error pages (these can be recognized as pages with substitute data or unreachable URLs).
         && !(documentLoader->substituteData().isValid() && !documentLoader->substituteData().failingURL().isEmpty())
         && (!frameLoader.subframeLoader().containsPlugins() || frame->page()->settings().pageCacheSupportsPlugins())
-        && !(document->url().protocolIs("https") && documentLoader->response().cacheControlContainsNoStore())
+        && !(frame->isMainFrame() && document->url().protocolIs("https") && documentLoader->response().cacheControlContainsNoStore())
 #if ENABLE(SQL_DATABASE)
         && !DatabaseManager::manager().hasOpenDatabases(document)
-#endif
-#if ENABLE(SHARED_WORKERS)
-        && !SharedWorkerRepository::hasSharedWorkers(document)
 #endif
         && frameLoader.history().currentItem()
         && !frameLoader.quickRedirectComing()

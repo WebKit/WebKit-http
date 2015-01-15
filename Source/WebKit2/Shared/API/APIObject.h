@@ -81,6 +81,7 @@ public:
         URLRequest,
         URLResponse,
         UserContentURLPattern,
+        UserScript,
         WebArchive,
         WebArchiveResource,
 
@@ -134,6 +135,7 @@ public:
         Preferences,
         Session,
         TextChecker,
+        UserContentController,
         UserMediaPermissionRequest,
         Vibration,
         ViewportAttributes,

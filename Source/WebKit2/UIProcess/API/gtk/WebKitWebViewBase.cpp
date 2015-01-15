@@ -311,23 +311,23 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
 
 static void webkitWebViewBaseRealize(GtkWidget* widget)
 {
+    WebKitWebViewBase* webView = WEBKIT_WEB_VIEW_BASE(widget);
+    WebKitWebViewBasePrivate* priv = webView->priv;
+
 #if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
     GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());
     if (GDK_IS_X11_DISPLAY(display)) {
-        WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
-        GdkWindow* parentWindow = gtk_widget_get_parent_window(widget);
         priv->redirectedWindow = RedirectedXCompositeWindow::create(
-            GDK_DISPLAY_XDISPLAY(display),
-            parentWindow ? GDK_WINDOW_XID(parentWindow) : 0,
-            IntSize(1, 1),
-            [widget] {
-                gtk_widget_queue_draw(widget);
+            gtk_widget_get_parent_window(widget),
+            [webView] {
+                DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(webView->priv->pageProxy->drawingArea());
+                if (drawingArea && drawingArea->isInAcceleratedCompositingMode())
+                    gtk_widget_queue_draw(GTK_WIDGET(webView));
             });
         if (priv->redirectedWindow) {
             DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
             drawingArea->setNativeSurfaceHandleForCompositing(priv->redirectedWindow->windowID());
         }
-        webkitWebViewBaseUpdatePreferences(WEBKIT_WEB_VIEW_BASE(widget));
     }
 #endif
 
@@ -367,8 +367,7 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
 
     gtk_style_context_set_background(gtk_widget_get_style_context(widget), window);
 
-    WebKitWebViewBase* webView = WEBKIT_WEB_VIEW_BASE(widget);
-    gtk_im_context_set_client_window(webView->priv->inputMethodFilter.context(), window);
+    gtk_im_context_set_client_window(priv->inputMethodFilter.context(), window);
 
     GtkWidget* toplevel = gtk_widget_get_toplevel(widget);
     if (widgetIsOnscreenToplevelWindow(toplevel))
@@ -509,6 +508,8 @@ static void webkitWebViewBaseConstructed(GObject* object)
 #if USE(TEXTURE_MAPPER_GL)
 static bool webkitWebViewRenderAcceleratedCompositingResults(WebKitWebViewBase* webViewBase, DrawingAreaProxyImpl* drawingArea, cairo_t* cr, GdkRectangle* clipRect)
 {
+    ASSERT(drawingArea);
+
     if (!drawingArea->isInAcceleratedCompositingMode())
         return false;
 
@@ -518,6 +519,8 @@ static bool webkitWebViewRenderAcceleratedCompositingResults(WebKitWebViewBase* 
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
     if (!priv->redirectedWindow)
         return false;
+
+    priv->redirectedWindow->resize(drawingArea->size());
 
     if (cairo_surface_t* surface = priv->redirectedWindow->surface()) {
         cairo_rectangle(cr, clipRect->x, clipRect->y, clipRect->width, clipRect->height);
@@ -621,13 +624,15 @@ static void resizeWebKitWebViewBaseFromAllocation(WebKitWebViewBase* webViewBase
         gtk_widget_size_allocate(priv->authenticationDialog, &childAllocation);
     }
 
+    DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
+
 #if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
-    if (sizeChanged && webViewBase->priv->redirectedWindow)
-        webViewBase->priv->redirectedWindow->resize(viewRect.size());
+    if (sizeChanged && priv->redirectedWindow && drawingArea && drawingArea->isInAcceleratedCompositingMode())
+        priv->redirectedWindow->resize(viewRect.size());
 #endif
 
-    if (priv->pageProxy->drawingArea())
-        priv->pageProxy->drawingArea()->setSize(viewRect.size(), IntSize(), IntSize());
+    if (drawingArea)
+        drawingArea->setSize(viewRect.size(), IntSize(), IntSize());
 
 #if !GTK_CHECK_VERSION(3, 13, 4)
     webkitWebViewBaseNotifyResizerSize(webViewBase);
@@ -1099,19 +1104,6 @@ WebPageProxy* webkitWebViewBaseGetPage(WebKitWebViewBase* webkitWebViewBase)
     return webkitWebViewBase->priv->pageProxy.get();
 }
 
-void webkitWebViewBaseUpdatePreferences(WebKitWebViewBase* webkitWebViewBase)
-{
-    WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
-
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
-    bool acceleratedCompositingEnabled = priv->redirectedWindow ? true : false;
-#else
-    bool acceleratedCompositingEnabled = false;
-#endif
-
-    priv->pageProxy->preferences().setAcceleratedCompositingEnabled(acceleratedCompositingEnabled);
-}
-
 #if HAVE(GTK_SCALE_FACTOR)
 static void deviceScaleFactorChanged(WebKitWebViewBase* webkitWebViewBase)
 {
@@ -1138,8 +1130,6 @@ void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebPro
     priv->pageProxy->setIntrinsicDeviceScaleFactor(gtk_widget_get_scale_factor(GTK_WIDGET(webkitWebViewBase)));
     g_signal_connect(webkitWebViewBase, "notify::scale-factor", G_CALLBACK(deviceScaleFactorChanged), nullptr);
 #endif
-
-    webkitWebViewBaseUpdatePreferences(webkitWebViewBase);
 }
 
 void webkitWebViewBaseSetTooltipText(WebKitWebViewBase* webViewBase, const char* tooltip)

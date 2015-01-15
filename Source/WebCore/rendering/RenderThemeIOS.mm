@@ -34,8 +34,8 @@
 #import "DateComponents.h"
 #import "Document.h"
 #import "FloatRoundedRect.h"
-#import "Font.h"
 #import "FontCache.h"
+#import "FontCascade.h"
 #import "Frame.h"
 #import "FrameView.h"
 #import "Gradient.h"
@@ -545,7 +545,7 @@ static void adjustSelectListButtonStyle(RenderStyle& style, Element& element)
     
 class RenderThemeMeasureTextClient : public MeasureTextClient {
 public:
-    RenderThemeMeasureTextClient(const Font& font, RenderObject& renderObject, const RenderStyle& style)
+    RenderThemeMeasureTextClient(const FontCascade& font, RenderObject& renderObject, const RenderStyle& style)
         : m_font(font)
         , m_renderObject(renderObject)
         , m_style(style)
@@ -557,7 +557,7 @@ public:
         return m_font.width(run);
     }
 private:
-    const Font& m_font;
+    const FontCascade& m_font;
     RenderObject& m_renderObject;
     const RenderStyle& m_style;
 };
@@ -577,13 +577,12 @@ static void adjustInputElementButtonStyle(RenderStyle& style, HTMLInputElement& 
         return;
 
     // Enforce the width and set the box-sizing to content-box to not conflict with the padding.
-    Font font = style.font();
+    FontCascade font = style.fontCascade();
     
     RenderObject* renderer = inputElement.renderer();
     if (font.primaryFontData().isSVGFont() && !renderer)
         return;
     
-    FontCachePurgePreventer fontCachePurgePreventer;
     float maximumWidth = localizedDateCache().maximumWidthForDateType(dateType, font, RenderThemeMeasureTextClient(font, *renderer, style));
 
     ASSERT(maximumWidth >= 0);
@@ -1119,6 +1118,11 @@ void RenderThemeIOS::systemFont(CSSValueID valueID, FontDescription& fontDescrip
     static NeverDestroyed<FontDescription> shortFootnoteFont;
     static NeverDestroyed<FontDescription> shortCaption1Font;
     static NeverDestroyed<FontDescription> tallBodyFont;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED > 80200
+    static NeverDestroyed<FontDescription> title1Font;
+    static NeverDestroyed<FontDescription> title2Font;
+    static NeverDestroyed<FontDescription> title3Font;
+#endif
 
     static CFStringRef userTextSize = contentSizeCategory();
 
@@ -1155,6 +1159,26 @@ void RenderThemeIOS::systemFont(CSSValueID valueID, FontDescription& fontDescrip
         if (!bodyFont.get().isAbsoluteSize())
             fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, userTextSize, 0));
         break;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED > 80200
+    case CSSValueAppleSystemTitle1:
+        cachedDesc = &title1Font.get();
+        textStyle = kCTUIFontTextStyleTitle1;
+        if (!title1Font.get().isAbsoluteSize())
+            fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, userTextSize, 0));
+        break;
+    case CSSValueAppleSystemTitle2:
+        cachedDesc = &title2Font.get();
+        textStyle = kCTUIFontTextStyleTitle2;
+        if (!title2Font.get().isAbsoluteSize())
+            fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, userTextSize, 0));
+        break;
+    case CSSValueAppleSystemTitle3:
+        cachedDesc = &title3Font.get();
+        textStyle = kCTUIFontTextStyleTitle3;
+        if (!title3Font.get().isAbsoluteSize())
+            fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(textStyle, userTextSize, 0));
+        break;
+#endif
     case CSSValueAppleSystemSubheadline:
         cachedDesc = &subheadlineFont.get();
         textStyle = kCTUIFontTextStyleSubhead;
@@ -1233,7 +1257,7 @@ void RenderThemeIOS::systemFont(CSSValueID valueID, FontDescription& fontDescrip
         cachedDesc->setOneFamily(textStyle);
         cachedDesc->setSpecifiedSize(CTFontGetSize(font.get()));
         cachedDesc->setWeight(fromCTFontWeight(FontCache::weightOfCTFont(font.get())));
-        cachedDesc->setItalic(0);
+        cachedDesc->setItalic(FontItalicOff);
     }
     fontDescription = *cachedDesc;
 }

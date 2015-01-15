@@ -32,7 +32,7 @@
 #import "ScrollView.h"
 #import "WebCoreSystemInterface.h"
 #import <Carbon/Carbon.h>
-#include <wtf/StdLibExtras.h>
+#import <wtf/StdLibExtras.h>
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 @interface NSButtonCell(Details)
@@ -149,7 +149,7 @@ Theme* platformTheme()
 
 // Helper functions used by a bunch of different control parts.
 
-static NSControlSize controlSizeForFont(const Font& font)
+static NSControlSize controlSizeForFont(const FontCascade& font)
 {
     int fontSize = font.pixelSize();
     if (fontSize >= 16)
@@ -172,7 +172,7 @@ static LengthSize sizeFromNSControlSize(NSControlSize nsControlSize, const Lengt
     return result;
 }
 
-static LengthSize sizeFromFont(const Font& font, const LengthSize& zoomedSize, float zoomFactor, const std::array<IntSize, 3>& sizes)
+static LengthSize sizeFromFont(const FontCascade& font, const LengthSize& zoomedSize, float zoomFactor, const std::array<IntSize, 3>& sizes)
 {
     return sizeFromNSControlSize(controlSizeForFont(font), zoomedSize, zoomFactor, sizes);
 }
@@ -293,7 +293,7 @@ static const int* checkboxMargins(NSControlSize controlSize)
     return margins[controlSize];
 }
 
-static LengthSize checkboxSize(const Font& font, const LengthSize& zoomedSize, float zoomFactor)
+static LengthSize checkboxSize(const FontCascade& font, const LengthSize& zoomedSize, float zoomFactor)
 {
     // If the width and height are both specified, then we have nothing to do.
     if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
@@ -323,7 +323,7 @@ static const int* radioMargins(NSControlSize controlSize)
     return margins[controlSize];
 }
 
-static LengthSize radioSize(const Font& font, const LengthSize& zoomedSize, float zoomFactor)
+static LengthSize radioSize(const FontCascade& font, const LengthSize& zoomedSize, float zoomFactor)
 {
     // If the width and height are both specified, then we have nothing to do.
     if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
@@ -342,9 +342,9 @@ static void configureToggleButton(NSCell* cell, ControlPart buttonType, const Co
     updateStates(cell, states, isStateChange);
 }
     
-static NSButtonCell *createToggleButtonCell(ControlPart buttonType)
+static RetainPtr<NSButtonCell> createToggleButtonCell(ControlPart buttonType)
 {
-    NSButtonCell *toggleButtonCell = [[NSButtonCell alloc] init];
+    RetainPtr<NSButtonCell> toggleButtonCell = adoptNS([[NSButtonCell alloc] init]);
     
     if (buttonType == CheckboxPart) {
         [toggleButtonCell setButtonType:NSSwitchButton];
@@ -361,9 +361,7 @@ static NSButtonCell *createToggleButtonCell(ControlPart buttonType)
     
 static NSButtonCell *sharedRadioCell(const ControlStates* states, const IntSize& zoomedSize, float zoomFactor)
 {
-    static NSButtonCell *radioCell;
-    if (!radioCell)
-        radioCell = createToggleButtonCell(RadioPart);
+    static NSButtonCell *radioCell = createToggleButtonCell(RadioPart).leakRef();
 
     configureToggleButton(radioCell, RadioPart, states, zoomedSize, zoomFactor, false);
     return radioCell;
@@ -371,9 +369,7 @@ static NSButtonCell *sharedRadioCell(const ControlStates* states, const IntSize&
     
 static NSButtonCell *sharedCheckboxCell(const ControlStates* states, const IntSize& zoomedSize, float zoomFactor)
 {
-    static NSButtonCell *checkboxCell;
-    if (!checkboxCell)
-        checkboxCell = createToggleButtonCell(CheckboxPart);
+    static NSButtonCell *checkboxCell = createToggleButtonCell(CheckboxPart).leakRef();
 
     configureToggleButton(checkboxCell, CheckboxPart, states, zoomedSize, zoomFactor, false);
     return checkboxCell;
@@ -389,13 +385,13 @@ static void paintToggleButton(ControlPart buttonType, ControlStates* controlStat
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
 
-    NSButtonCell *toggleButtonCell = static_cast<NSButtonCell*>(controlStates->platformControl());
+    RetainPtr<NSButtonCell> toggleButtonCell = static_cast<NSButtonCell *>(controlStates->platformControl());
     IntSize zoomedRectSize = IntSize(zoomedRect.size());
 
     if (controlStates->isDirty()) {
         if (!toggleButtonCell)
             toggleButtonCell = createToggleButtonCell(buttonType);
-        configureToggleButton(toggleButtonCell, buttonType, controlStates, zoomedRectSize, zoomFactor, true);
+        configureToggleButton(toggleButtonCell.get(), buttonType, controlStates, zoomedRectSize, zoomFactor, true);
     } else {
         if (!toggleButtonCell) {
             if (buttonType == CheckboxPart)
@@ -405,7 +401,7 @@ static void paintToggleButton(ControlPart buttonType, ControlStates* controlStat
                 toggleButtonCell = sharedRadioCell(controlStates, zoomedRectSize, zoomFactor);
             }
         }
-        configureToggleButton(toggleButtonCell, buttonType, controlStates, zoomedRectSize, zoomFactor, false);
+        configureToggleButton(toggleButtonCell.get(), buttonType, controlStates, zoomedRectSize, zoomFactor, false);
     }
     controlStates->setDirty(false);
 
@@ -449,7 +445,7 @@ static void paintToggleButton(ControlPart buttonType, ControlStates* controlStat
 #endif
 
     if (!isAnimating && (controlStates->states() & ControlStates::FocusState))
-        needsRepaint = drawCellFocusRing(toggleButtonCell, inflatedRect, view);
+        needsRepaint = drawCellFocusRing(toggleButtonCell.get(), inflatedRect, view);
     [toggleButtonCell setControlView:nil];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
@@ -457,7 +453,7 @@ static void paintToggleButton(ControlPart buttonType, ControlStates* controlStat
 #endif
     controlStates->setNeedsRepaint(needsRepaint);
     if (needsRepaint)
-        controlStates->setPlatformControl(toggleButtonCell);
+        controlStates->setPlatformControl(toggleButtonCell.get());
 
     END_BLOCK_OBJC_EXCEPTIONS
 }
@@ -597,7 +593,7 @@ static const std::array<IntSize, 3>& stepperSizes()
 
 // We don't use controlSizeForFont() for steppers because the stepper height
 // should be equal to or less than the corresponding text field height,
-static NSControlSize stepperControlSizeForFont(const Font& font)
+static NSControlSize stepperControlSizeForFont(const FontCascade& font)
 {
     int fontSize = font.pixelSize();
     if (fontSize >= 18)
@@ -677,7 +673,7 @@ int ThemeMac::baselinePositionAdjustment(ControlPart part) const
     return Theme::baselinePositionAdjustment(part);
 }
 
-FontDescription ThemeMac::controlFont(ControlPart part, const Font& font, float zoomFactor) const
+FontDescription ThemeMac::controlFont(ControlPart part, const FontCascade& font, float zoomFactor) const
 {
     switch (part) {
         case PushButtonPart: {
@@ -695,7 +691,7 @@ FontDescription ThemeMac::controlFont(ControlPart part, const Font& font, float 
     }
 }
 
-LengthSize ThemeMac::controlSize(ControlPart part, const Font& font, const LengthSize& zoomedSize, float zoomFactor) const
+LengthSize ThemeMac::controlSize(ControlPart part, const FontCascade& font, const LengthSize& zoomedSize, float zoomFactor) const
 {
     switch (part) {
         case CheckboxPart:
@@ -714,7 +710,7 @@ LengthSize ThemeMac::controlSize(ControlPart part, const Font& font, const Lengt
     }
 }
 
-LengthSize ThemeMac::minimumControlSize(ControlPart part, const Font& font, float zoomFactor) const
+LengthSize ThemeMac::minimumControlSize(ControlPart part, const FontCascade& font, float zoomFactor) const
 {
     switch (part) {
         case SquareButtonPart:
@@ -731,7 +727,7 @@ LengthSize ThemeMac::minimumControlSize(ControlPart part, const Font& font, floa
     }
 }
 
-LengthBox ThemeMac::controlBorder(ControlPart part, const Font& font, const LengthBox& zoomedBox, float zoomFactor) const
+LengthBox ThemeMac::controlBorder(ControlPart part, const FontCascade& font, const LengthBox& zoomedBox, float zoomFactor) const
 {
     switch (part) {
         case SquareButtonPart:
@@ -743,7 +739,7 @@ LengthBox ThemeMac::controlBorder(ControlPart part, const Font& font, const Leng
     }
 }
 
-LengthBox ThemeMac::controlPadding(ControlPart part, const Font& font, const LengthBox& zoomedBox, float zoomFactor) const
+LengthBox ThemeMac::controlPadding(ControlPart part, const FontCascade& font, const LengthBox& zoomedBox, float zoomFactor) const
 {
     switch (part) {
         case PushButtonPart: {

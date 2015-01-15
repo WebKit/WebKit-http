@@ -79,21 +79,7 @@ namespace WebCore {
 
         static Ref<Inspector::InspectorObject> createTimeStampData(const String&);
 
-        static Ref<Inspector::InspectorObject> createResourceSendRequestData(const String& requestId, const ResourceRequest&);
-
-        static Ref<Inspector::InspectorObject> createScheduleResourceRequestData(const String&);
-
-        static Ref<Inspector::InspectorObject> createResourceReceiveResponseData(const String& requestId, const ResourceResponse&);
-
-        static Ref<Inspector::InspectorObject> createReceiveResourceData(const String& requestId, int length);
-
-        static Ref<Inspector::InspectorObject> createResourceFinishData(const String& requestId, bool didFail, double finishTime);
-
         static Ref<Inspector::InspectorObject> createLayoutData(unsigned dirtyObjects, unsigned totalObjects, bool partialLayout);
-
-        static Ref<Inspector::InspectorObject> createDecodeImageData(const String& imageType);
-
-        static Ref<Inspector::InspectorObject> createResizeImageData(bool shouldCache);
 
         static Ref<Inspector::InspectorObject> createMarkData(bool isMainFrame);
 
