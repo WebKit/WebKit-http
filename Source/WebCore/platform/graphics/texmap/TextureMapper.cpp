@@ -137,8 +137,8 @@ TextureMapper::TextureMapper(AccelerationMode accelerationMode)
     : m_context(nullptr)
     , m_texturePool(std::make_unique<BitmapTexturePool>())
     , m_accelerationMode(accelerationMode)
-    , m_isMaskMode(false)
     , m_wrapMode(StretchWrap)
+    , m_isMaskMode(false)
 { }
 
 TextureMapper::~TextureMapper()
