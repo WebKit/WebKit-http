@@ -545,11 +545,17 @@ text-emphasis-style = -webkit-text-emphasis-style
 -webkit-text-stroke [Inherited, LegacyStyleBuilder]
 -webkit-text-stroke-color [Inherited, VisitedLinkColorSupport, Initial=invalidColor]
 -webkit-text-stroke-width [Inherited, Converter=TextStrokeWidth]
+transform = -webkit-transform
 -webkit-transform [Converter=Transform]
+transform-origin = -webkit-transform-origin
 -webkit-transform-origin [LegacyStyleBuilder]
+transform-origin-x = -webkit-transform-origin-x
 -webkit-transform-origin-x [Converter=Length]
+transform-origin-y = -webkit-transform-origin-y
 -webkit-transform-origin-y [Converter=Length]
+transform-origin-z = -webkit-transform-origin-z
 -webkit-transform-origin-z [Converter=ComputedLength<float>]
+transform-style = -webkit-transform-style
 -webkit-transform-style [TypeName=ETransformStyle3D, NameForMethods=TransformStyle3D]
 -webkit-transition [LegacyStyleBuilder]
 -webkit-transition-delay [AnimationProperty, TypeName=double, NameForMethods=Delay]
