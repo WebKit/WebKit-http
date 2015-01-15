@@ -37,13 +37,6 @@ public:
     TransformationMatrix& transform;
     IntSize offset;
     TextureMapper* textureMapper;
-    TextureMapperPaintOptions(RefPtr<BitmapTexture> surface, float opacity, 
-        TransformationMatrix& transform, IntSize offset, TextureMapper* textureMapper)
-    : surface(surface)
-    , opacity(opacity)
-    , transform(transform)
-    , offset(offset)
-    , textureMapper(textureMapper) {};
 };
 
 void TextureMapperLayer::computeTransformsRecursive()
