@@ -30,20 +30,16 @@
 namespace WebCore {
 
 class TextureMapperPaintOptions {
-    WTF_MAKE_NONCOPYABLE(TextureMapperPaintOptions);
 public:
     RefPtr<BitmapTexture> surface;
     float opacity;
-    TransformationMatrix& transform;
+    TransformationMatrix transform;
     IntSize offset;
     TextureMapper* textureMapper;
-    TextureMapperPaintOptions(RefPtr<BitmapTexture> surface, float opacity, 
-        TransformationMatrix& transform, IntSize offset, TextureMapper* textureMapper)
-    : surface(surface)
-    , opacity(opacity)
-    , transform(transform)
-    , offset(offset)
-    , textureMapper(textureMapper) {};
+    TextureMapperPaintOptions()
+        : opacity(1)
+        , textureMapper(0)
+    { }
 };
 
 void TextureMapperLayer::computeTransformsRecursive()
@@ -80,9 +76,9 @@ void TextureMapperLayer::paint()
 {
     computeTransformsRecursive();
 
-    TransformationMatrix baseTransform;
-    TextureMapperPaintOptions options = { nullptr, 1.0, baseTransform, IntSize(), m_textureMapper };
-    options.textureMapper->bindSurface(nullptr);
+    TextureMapperPaintOptions options;
+    options.textureMapper = m_textureMapper;
+    options.textureMapper->bindSurface(0);
     paintRecursive(options);
 }
 
@@ -211,11 +207,10 @@ bool TextureMapperLayer::isVisible() const
 void TextureMapperLayer::paintSelfAndChildrenWithReplica(const TextureMapperPaintOptions& options)
 {
     if (m_state.replicaLayer) {
-        TransformationMatrix replicaTransform(options.transform);
-        replicaTransform
+        TextureMapperPaintOptions replicaOptions(options);
+        replicaOptions.transform
             .multiply(m_state.replicaLayer->m_currentTransform.combined())
             .multiply(m_currentTransform.combined().inverse());
-        TextureMapperPaintOptions replicaOptions = { options.surface, options.opacity, replicaTransform, options.offset, options.textureMapper };
         paintSelfAndChildren(replicaOptions);
     }
 
@@ -373,13 +368,10 @@ void TextureMapperLayer::applyMask(const TextureMapperPaintOptions& options)
 PassRefPtr<BitmapTexture> TextureMapperLayer::paintIntoSurface(const TextureMapperPaintOptions& options, const IntSize& size)
 {
     RefPtr<BitmapTexture> surface = options.textureMapper->acquireTextureFromPool(size);
-
-    {
-        TextureMapperPaintOptions scopedOptions = { surface, options.opacity, options.transform, options.offset, options.textureMapper };
-        scopedOptions.textureMapper->bindSurface(surface.get());
-        paintSelfAndChildren(scopedOptions);
-    }
-
+    TextureMapperPaintOptions paintOptions(options);
+    paintOptions.surface = surface;
+    options.textureMapper->bindSurface(surface.get());
+    paintSelfAndChildren(paintOptions);
     if (m_state.maskLayer)
         m_state.maskLayer->applyMask(options);
     surface = surface->applyFilters(options.textureMapper, m_currentFilters);
@@ -396,20 +388,20 @@ static void commitSurface(const TextureMapperPaintOptions& options, PassRefPtr<B
     options.textureMapper->drawTexture(*surface.get(), rect, targetTransform, opacity);
 }
 
-void TextureMapperLayer::paintWithIntermediateSurface(const TextureMapperPaintOptions& baseOptions, const IntRect& rect)
+void TextureMapperLayer::paintWithIntermediateSurface(const TextureMapperPaintOptions& options, const IntRect& rect)
 {
     RefPtr<BitmapTexture> replicaSurface;
     RefPtr<BitmapTexture> mainSurface;
-
-    TransformationMatrix baseTransform;
-    TextureMapperPaintOptions options = { baseOptions.surface, 1.0, baseTransform, -IntSize(rect.x(), rect.y()), baseOptions.textureMapper };
-
+    TextureMapperPaintOptions paintOptions(options);
+    paintOptions.offset = -IntSize(rect.x(), rect.y());
+    paintOptions.opacity = 1;
+    paintOptions.transform = TransformationMatrix();
     if (m_state.replicaLayer) {
-        TransformationMatrix replicaTransform = this->replicaTransform();
-        TextureMapperPaintOptions replicaOptions = { options.surface, options.opacity, replicaTransform, options.offset, options.textureMapper };
-        replicaSurface = paintIntoSurface(replicaOptions, rect.size());
+        paintOptions.transform = replicaTransform();
+        replicaSurface = paintIntoSurface(paintOptions, rect.size());
+        paintOptions.transform = TransformationMatrix();
         if (m_state.replicaLayer->m_state.maskLayer)
-            m_state.replicaLayer->m_state.maskLayer->applyMask(replicaOptions);
+            m_state.replicaLayer->m_state.maskLayer->applyMask(paintOptions);
     }
 
     if (replicaSurface && options.opacity == 1) {
@@ -417,7 +409,7 @@ void TextureMapperLayer::paintWithIntermediateSurface(const TextureMapperPaintOp
         replicaSurface.clear();
     }
 
-    mainSurface = paintIntoSurface(options, rect.size());
+    mainSurface = paintIntoSurface(paintOptions, rect.size());
     if (replicaSurface) {
         options.textureMapper->bindSurface(replicaSurface.get());
         options.textureMapper->drawTexture(*mainSurface.get(), FloatRect(FloatPoint::zero(), rect.size()));
@@ -427,19 +419,20 @@ void TextureMapperLayer::paintWithIntermediateSurface(const TextureMapperPaintOp
     commitSurface(options, mainSurface, rect, options.opacity);
 }
 
-void TextureMapperLayer::paintRecursive(const TextureMapperPaintOptions& baseOptions)
+void TextureMapperLayer::paintRecursive(const TextureMapperPaintOptions& options)
 {
     if (!isVisible())
         return;
 
-    TextureMapperPaintOptions options = { baseOptions.surface, baseOptions.opacity * m_currentOpacity, baseOptions.transform, baseOptions.offset, baseOptions.textureMapper };
+    TextureMapperPaintOptions paintOptions(options);
+    paintOptions.opacity *= m_currentOpacity;
 
     if (!shouldBlend()) {
-        paintSelfAndChildrenWithReplica(options);
+        paintSelfAndChildrenWithReplica(paintOptions);
         return;
     }
 
-    paintUsingOverlapRegions(options);
+    paintUsingOverlapRegions(paintOptions);
 }
 
 TextureMapperLayer::~TextureMapperLayer()
@@ -625,7 +618,7 @@ void TextureMapperLayer::setContentsLayer(TextureMapperPlatformLayer* platformLa
     m_contentsLayer = platformLayer;
 }
 
-void TextureMapperLayer::setAnimations(const GraphicsLayerAnimations& animations)
+void TextureMapperLayer::setAnimations(const TextureMapperAnimations& animations)
 {
     m_animations = animations;
 }

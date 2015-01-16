@@ -38,11 +38,9 @@ public:
 private:
     // WebCore::PlatformStrategies
     virtual WebCore::CookiesStrategy* createCookiesStrategy() override;
-    virtual WebCore::DatabaseStrategy* createDatabaseStrategy() override;
     virtual WebCore::LoaderStrategy* createLoaderStrategy() override;
     virtual WebCore::PasteboardStrategy* createPasteboardStrategy() override;
     virtual WebCore::PluginStrategy* createPluginStrategy() override;
-    virtual WebCore::SharedWorkerStrategy* createSharedWorkerStrategy() override;
 
     // WebCore::LoaderStrategy
     virtual WebCore::ResourceLoadScheduler* resourceLoadScheduler() override;

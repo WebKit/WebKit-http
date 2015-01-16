@@ -33,7 +33,6 @@
 #include "CachedImage.h"
 #include "Chrome.h"
 #include "FilterEffectRenderer.h"
-#include "FontCache.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
@@ -142,12 +141,12 @@ RenderLayerBacking::RenderLayerBacking(RenderLayer& layer)
 RenderLayerBacking::~RenderLayerBacking()
 {
     updateAncestorClippingLayer(false);
+    updateChildClippingStrategy(false);
     updateDescendantClippingLayer(false);
     updateOverflowControlsLayers(false, false, false);
     updateForegroundLayer(false);
     updateBackgroundLayer(false);
     updateMaskLayer(false);
-    updateChildClippingStrategy(false);
     updateScrollingLayers(false);
     detachFromScrollingCoordinator();
     destroyGraphicsLayers();
@@ -1433,7 +1432,7 @@ void RenderLayerBacking::updateMaskLayer(bool needsMaskLayer)
 void RenderLayerBacking::updateChildClippingStrategy(bool needsDescendentsClippingLayer)
 {
     if (hasClippingLayer() && needsDescendentsClippingLayer) {
-        if (is<RenderBox>(renderer())) {
+        if (is<RenderBox>(renderer()) && (renderer().style().clipPath() || renderer().style().hasBorderRadius())) {
             LayoutRect boxRect(LayoutPoint(), downcast<RenderBox>(renderer()).size());
             FloatRoundedRect contentsClippingRect = renderer().style().getRoundedInnerBorderFor(boxRect).pixelSnappedRoundedRectForPainting(deviceScaleFactor());
             contentsClippingRect.move(contentOffsetInCompostingLayer());
@@ -1442,13 +1441,13 @@ void RenderLayerBacking::updateChildClippingStrategy(bool needsDescendentsClippi
                     m_childClippingMaskLayer = nullptr;
                 return;
             }
-        }
 
-        if (!m_childClippingMaskLayer) {
-            m_childClippingMaskLayer = createGraphicsLayer("Child Clipping Mask Layer");
-            m_childClippingMaskLayer->setDrawsContent(true);
-            m_childClippingMaskLayer->setPaintingPhase(GraphicsLayerPaintChildClippingMask);
-            clippingLayer()->setMaskLayer(m_childClippingMaskLayer.get());
+            if (!m_childClippingMaskLayer) {
+                m_childClippingMaskLayer = createGraphicsLayer("Child Clipping Mask Layer");
+                m_childClippingMaskLayer->setDrawsContent(true);
+                m_childClippingMaskLayer->setPaintingPhase(GraphicsLayerPaintChildClippingMask);
+                clippingLayer()->setMaskLayer(m_childClippingMaskLayer.get());
+            }
         }
     } else {
         if (m_childClippingMaskLayer) {
@@ -2185,8 +2184,6 @@ void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, Grap
         return;
     }
 
-    FontCachePurgePreventer fontCachePurgePreventer;
-    
     RenderLayer::PaintLayerFlags paintFlags = 0;
     if (paintingPhase & GraphicsLayerPaintBackground)
         paintFlags |= RenderLayer::PaintLayerPaintingCompositingBackgroundPhase;

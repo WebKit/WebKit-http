@@ -28,6 +28,7 @@
 
 #include "MessageReceiver.h"
 #include "VisitedLinkTable.h"
+#include "WebProcessLifetimeObserver.h"
 #include <WebCore/LinkHash.h>
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
@@ -39,15 +40,12 @@ namespace WebKit {
 class WebPageProxy;
 class WebProcessProxy;
     
-class VisitedLinkProvider : public RefCounted<VisitedLinkProvider>, private IPC::MessageReceiver {
+class VisitedLinkProvider : public RefCounted<VisitedLinkProvider>, private IPC::MessageReceiver, public WebProcessLifetimeObserver {
 public:
     static PassRefPtr<VisitedLinkProvider> create();
     ~VisitedLinkProvider();
 
     uint64_t identifier() const { return m_identifier; }
-
-    void addProcess(WebProcessProxy&);
-    void removeProcess(WebProcessProxy&);
 
     void addVisitedLinkHash(WebCore::LinkHash);
     void removeAll();
@@ -58,6 +56,10 @@ private:
     // IPC::MessageReceiver
     virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
+    // WebProcessLifetimeObserver
+    virtual void webProcessWillOpenConnection(WebProcessProxy&, IPC::Connection&) override;
+    virtual void webProcessDidCloseConnection(WebProcessProxy&, IPC::Connection&) override;
+
     void addVisitedLinkHashFromPage(uint64_t pageID, WebCore::LinkHash);
 
     void pendingVisitedLinksTimerFired();
@@ -65,9 +67,7 @@ private:
     void resizeTable(unsigned newTableSize);
     void sendTable(WebProcessProxy&);
 
-    HashSet<WebProcessProxy*> m_processes;
-
-    uint64_t m_identifier;
+    const uint64_t m_identifier;
 
     unsigned m_keyCount;
     unsigned m_tableSize;

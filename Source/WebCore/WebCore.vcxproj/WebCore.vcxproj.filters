@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="DerivedSources">
@@ -247,9 +247,6 @@
     <Filter Include="plugins">
       <UniqueIdentifier>{d4cb7e8c-e901-4797-94cd-f6b1b9dfe2aa}</UniqueIdentifier>
     </Filter>
-    <Filter Include="plugins\win">
-      <UniqueIdentifier>{baf9b8fe-d8aa-40fc-a4eb-ab038b66959d}</UniqueIdentifier>
-    </Filter>
     <Filter Include="rendering\svg\animation">
       <UniqueIdentifier>{8fe48833-bab8-4dd8-9a63-635b7a413b29}</UniqueIdentifier>
     </Filter>
@@ -474,15 +471,6 @@
     <ClCompile Include="..\Modules\webdatabase\DatabaseBackendBase.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\DatabaseBackendContext.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\DatabaseBackendSync.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\DatabaseBase.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\DatabaseContext.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
@@ -490,9 +478,6 @@
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\DatabaseServer.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\DatabaseSync.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\DatabaseTask.cpp">
@@ -525,16 +510,10 @@
     <ClCompile Include="..\Modules\webdatabase\SQLStatementBackend.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\SQLStatementSync.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLTransaction.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionBackend.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\SQLTransactionBackendSync.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionClient.cpp">
@@ -544,12 +523,6 @@
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionStateMachine.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\SQLTransactionSync.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\WorkerGlobalScopeWebDatabase.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\websockets\ThreadableWebSocketChannel.cpp">
@@ -1086,9 +1059,6 @@
     <ClCompile Include="..\platform\Cursor.cpp">
       <Filter>platform</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\DatabaseStrategy.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\DateComponents.cpp">
       <Filter>platform</Filter>
     </ClCompile>
@@ -1345,9 +1315,6 @@
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\FloatQuad.cpp">
-      <Filter>platform\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\graphics\GlyphPageTreeNode.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\Gradient.cpp">
@@ -2329,9 +2296,6 @@
       <Filter>css</Filter>
     </ClCompile>
     <ClCompile Include="..\css\SVGCSSParser.cpp">
-      <Filter>css</Filter>
-    </ClCompile>
-    <ClCompile Include="..\css\SVGCSSStyleSelector.cpp">
       <Filter>css</Filter>
     </ClCompile>
     <ClCompile Include="..\css\TransformFunctions.cpp">
@@ -3438,18 +3402,6 @@
     <ClCompile Include="..\workers\DedicatedWorkerThread.cpp">
       <Filter>workers</Filter>
     </ClCompile>
-    <ClCompile Include="..\workers\DefaultSharedWorkerRepository.cpp">
-      <Filter>workers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\workers\SharedWorker.cpp">
-      <Filter>workers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\workers\SharedWorkerGlobalScope.cpp">
-      <Filter>workers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\workers\SharedWorkerThread.cpp">
-      <Filter>workers</Filter>
-    </ClCompile>
     <ClCompile Include="..\workers\Worker.cpp">
       <Filter>workers</Filter>
     </ClCompile>
@@ -4458,16 +4410,10 @@
     <ClCompile Include="..\bindings\js\JSRequestAnimationFrameCallbackCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSSharedWorkerCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSSQLResultSetRowListCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSSQLTransactionCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSSQLTransactionSyncCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSRTCIceCandidateCustom.cpp">
@@ -4563,41 +4509,11 @@
     <ClCompile Include="..\plugins\DOMPluginArray.cpp">
       <Filter>plugins</Filter>
     </ClCompile>
-    <ClCompile Include="..\plugins\npapi.cpp">
-      <Filter>plugins</Filter>
-    </ClCompile>
     <ClCompile Include="..\plugins\PluginData.cpp">
-      <Filter>plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\plugins\PluginDatabase.cpp">
-      <Filter>plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\plugins\PluginDebug.cpp">
       <Filter>plugins</Filter>
     </ClCompile>
     <ClCompile Include="..\plugins\PluginMainThreadScheduler.cpp">
       <Filter>plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\plugins\PluginPackage.cpp">
-      <Filter>plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\plugins\PluginStream.cpp">
-      <Filter>plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\plugins\PluginView.cpp">
-      <Filter>plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="..\plugins\win\PluginDatabaseWin.cpp">
-      <Filter>plugins\win</Filter>
-    </ClCompile>
-    <ClCompile Include="..\plugins\win\PluginMessageThrottlerWin.cpp">
-      <Filter>plugins\win</Filter>
-    </ClCompile>
-    <ClCompile Include="..\plugins\win\PluginPackageWin.cpp">
-      <Filter>plugins\win</Filter>
-    </ClCompile>
-    <ClCompile Include="..\plugins\win\PluginViewWin.cpp">
-      <Filter>plugins\win</Filter>
     </ClCompile>
     <ClCompile Include="..\svg\SVGAllInOne.cpp">
       <Filter>rendering\svg</Filter>
@@ -5116,9 +5032,6 @@
     <ClCompile Include="..\Modules\quota\StorageErrorCallback.cpp">
       <Filter>Modules\quota</Filter>
     </ClCompile>
-    <ClCompile Include="..\workers\SharedWorkerRepository.cpp">
-      <Filter>workers</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\graphics\ca\win\PlatformCAFiltersWin.cpp">
       <Filter>platform\graphics\ca\win</Filter>
     </ClCompile>
@@ -5291,9 +5204,6 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDatabase.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDatabaseSync.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataTransfer.cpp">
@@ -5818,12 +5728,6 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSScreen.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSharedWorker.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSharedWorkerGlobalScope.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSQLError.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -5834,9 +5738,6 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSQLTransaction.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSQLTransactionSync.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSStorage.cpp">
@@ -6766,6 +6667,9 @@
     <ClCompile Include="..\rendering\FloatingObjects.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
+    <ClCompile Include="..\rendering\ClipRect.cpp">
+      <Filter>rendering</Filter>
+    </ClCompile>
     <ClCompile Include="..\rendering\RenderBlockFlow.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
@@ -6809,6 +6713,9 @@
       <Filter>platform\graphics\texmap</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\texmap\TextureMapper.cpp">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\texmap\TextureMapperAnimation.cpp">
       <Filter>platform\graphics\texmap</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\texmap\TextureMapperBackingStore.cpp">
@@ -6867,9 +6774,6 @@
     </ClCompile>
     <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingStateScrollingNodeCoordinatedGraphics.cpp">
       <Filter>page\scrolling\coordinatedgraphics</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\graphics\GraphicsLayerAnimation.cpp">
-      <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\GraphicsLayerTransform.cpp">
       <Filter>platform\graphics</Filter>
@@ -7425,15 +7329,6 @@
     <ClInclude Include="..\Modules\webdatabase\DatabaseBackendBase.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\DatabaseBackendContext.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\DatabaseBackendSync.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\DatabaseBase.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\DatabaseBasicTypes.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
@@ -7450,9 +7345,6 @@
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\DatabaseServer.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\DatabaseSync.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\DatabaseTask.h">
@@ -7497,16 +7389,10 @@
     <ClInclude Include="..\Modules\webdatabase\SQLStatementErrorCallback.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\SQLStatementSync.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLTransaction.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionBackend.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\SQLTransactionBackendSync.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionCallback.h">
@@ -7525,15 +7411,6 @@
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionStateMachine.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\SQLTransactionSync.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\SQLTransactionSyncCallback.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\WorkerGlobalScopeWebDatabase.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\websockets\CloseEvent.h">
@@ -8133,9 +8010,6 @@
     <ClInclude Include="..\platform\Cursor.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\DatabaseStrategy.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\DateComponents.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -8449,9 +8323,6 @@
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\GlyphPage.h">
-      <Filter>platform\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\GlyphPageTreeNode.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\Gradient.h">
@@ -10551,24 +10422,6 @@
     <ClInclude Include="..\workers\DedicatedWorkerThread.h">
       <Filter>workers</Filter>
     </ClInclude>
-    <ClInclude Include="..\workers\DefaultSharedWorkerRepository.h">
-      <Filter>workers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\workers\SharedWorker.h">
-      <Filter>workers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\workers\SharedWorkerGlobalScope.h">
-      <Filter>workers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\workers\SharedWorkerRepository.h">
-      <Filter>workers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\workers\SharedWorkerStrategy.h">
-      <Filter>workers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\workers\SharedWorkerThread.h">
-      <Filter>workers</Filter>
-    </ClInclude>
     <ClInclude Include="..\workers\Worker.h">
       <Filter>workers</Filter>
     </ClInclude>
@@ -11598,32 +11451,8 @@
     <ClInclude Include="..\plugins\PluginData.h">
       <Filter>plugins</Filter>
     </ClInclude>
-    <ClInclude Include="..\plugins\PluginDatabase.h">
-      <Filter>plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\plugins\PluginDebug.h">
-      <Filter>plugins</Filter>
-    </ClInclude>
     <ClInclude Include="..\plugins\PluginMainThreadScheduler.h">
       <Filter>plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\plugins\PluginPackage.h">
-      <Filter>plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\plugins\PluginQuirkSet.h">
-      <Filter>plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\plugins\PluginStrategy.h">
-      <Filter>plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\plugins\PluginStream.h">
-      <Filter>plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\plugins\PluginView.h">
-      <Filter>plugins</Filter>
-    </ClInclude>
-    <ClInclude Include="..\plugins\win\PluginMessageThrottlerWin.h">
-      <Filter>plugins\win</Filter>
     </ClInclude>
     <ClInclude Include="..\svg\ColorDistance.h">
       <Filter>rendering\svg</Filter>
@@ -13031,9 +12860,6 @@
     <ClInclude Include="..\html\parser\HTMLResourcePreloader.h">
       <Filter>html\parser</Filter>
     </ClInclude>
-    <ClInclude Include="..\svg\graphics\SVGImageForContainer.h">
-      <Filter>rendering\svg\graphics</Filter>
-    </ClInclude>
     <ClInclude Include="..\rendering\HitTestLocation.h">
       <Filter>rendering</Filter>
     </ClInclude>
@@ -13215,9 +13041,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDatabase.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDatabaseSync.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataTransfer.h">
@@ -13736,12 +13559,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSScreen.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSharedWorker.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSharedWorkerGlobalScope.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSQLError.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -13752,9 +13569,6 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSQLTransaction.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSQLTransactionSync.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSStorage.h">
@@ -14747,6 +14561,9 @@
     <ClInclude Include="..\platform\graphics\texmap\TextureMapper.h">
       <Filter>platform\graphics\texmap</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\graphics\texmap\TextureMapperAnimation.h">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\graphics\texmap\TextureMapperBackingStore.h">
       <Filter>platform\graphics\texmap</Filter>
     </ClInclude>
@@ -14806,9 +14623,6 @@
     </ClInclude>
     <ClInclude Include="..\page\scrolling\coordinatedgraphics\ScrollingCoordinatorCoordinatedGraphics.h">
       <Filter>page\scrolling\coordinatedgraphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\GraphicsLayerAnimation.h">
-      <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\GraphicsLayerFactory.h">
       <Filter>platform\graphics</Filter>
@@ -15239,6 +15053,9 @@
     <ClInclude Include="..\html\canvas\EXTBlendMinMax.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\DatabaseBackendSync.h" />
+    <ClInclude Include="..\Modules\webdatabase\SQLStatementSync.h" />
+    <ClInclude Include="..\Modules\webdatabase\SQLTransactionBackendSync.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\css\CSSGrammar.y.in">
@@ -15445,9 +15262,6 @@
     </CustomBuildStep>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="..\plugins\win\PaintHooks.asm">
-      <Filter>plugins\win</Filter>
-    </MASM>
     <MASM Include="..\platform\win\makesafeseh.asm">
       <Filter>platform\win</Filter>
     </MASM>

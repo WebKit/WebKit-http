@@ -119,6 +119,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -294,6 +295,16 @@
     <ClCompile Include="..\..\Storage\WebDatabaseProvider.cpp" />
     <ClCompile Include="..\..\Storage\WebStorageNamespaceProvider.cpp" />
     <ClCompile Include="..\..\cf\WebCoreSupport\WebInspectorClientCF.cpp" />
+    <ClCompile Include="..\..\win\Plugins\npapi.cpp" />
+    <ClCompile Include="..\..\win\Plugins\PluginDatabase.cpp" />
+    <ClCompile Include="..\..\win\Plugins\PluginDebug.cpp" />
+    <ClCompile Include="..\..\win\Plugins\PluginPackage.cpp" />
+    <ClCompile Include="..\..\win\Plugins\PluginStream.cpp" />
+    <ClCompile Include="..\..\win\Plugins\PluginView.cpp" />
+    <ClCompile Include="..\..\win\Plugins\PluginDatabaseWin.cpp" />
+    <ClCompile Include="..\..\win\Plugins\PluginMessageThrottlerWin.cpp" />
+    <ClCompile Include="..\..\win\Plugins\PluginPackageWin.cpp" />
+    <ClCompile Include="..\..\win\Plugins\PluginViewWin.cpp" />
     <ClCompile Include="..\..\win\AccessibleBase.cpp" />
     <ClCompile Include="..\..\win\AccessibleDocument.cpp" />
     <ClCompile Include="..\..\win\AccessibleImage.cpp" />
@@ -436,6 +447,14 @@
     <ClInclude Include="..\..\Storage\StorageTrackerClient.h" />
     <ClInclude Include="..\..\Storage\WebDatabaseProvider.h" />
     <ClInclude Include="..\..\Storage\WebStorageNamespaceProvider.h" />
+    <ClInclude Include="..\..\win\Plugins\PluginDatabase.h" />
+    <ClInclude Include="..\..\win\Plugins\PluginDebug.h" />
+    <ClInclude Include="..\..\win\Plugins\PluginPackage.h" />
+    <ClInclude Include="..\..\win\Plugins\PluginQuirkSet.h" />
+    <ClInclude Include="..\..\win\Plugins\PluginStrategy.h" />
+    <ClInclude Include="..\..\win\Plugins\PluginStream.h" />
+    <ClInclude Include="..\..\win\Plugins\PluginView.h" />
+    <ClInclude Include="..\..\win\Plugins\PluginMessageThrottlerWin.h" />
     <ClInclude Include="..\..\win\AccessibleBase.h" />
     <ClInclude Include="..\..\win\AccessibleDocument.h" />
     <ClInclude Include="..\..\win\AccessibleImage.h" />
@@ -589,7 +608,18 @@
   <ItemGroup>
     <ResourceCompile Include="..\..\win\WebKit.resources\WebKit.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\..\win\Plugins\PaintHooks.asm">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+    </MASM>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

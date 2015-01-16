@@ -1876,8 +1876,6 @@ webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
 # Leaking state into the next test.
 webkit.org/b/85522 http/tests/security/sandboxed-iframe-form-top.html [ Skip ]
 
-webkit.org/b/106316 accessibility/render-counter-text.html [ Failure ]
-
 webkit.org/b/128420 accessibility/roles-computedRoleString.html [ Skip ]
 
 webkit.org/b/103927 http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_cross_origin_resource_request.html [ Failure ]
@@ -1990,8 +1988,6 @@ webkit.org/b/120839 animations/cross-fade-background-image.html [ ImageOnlyFailu
 
 webkit.org/b/120842 fast/regions/overflow/overflow-in-uniform-regions-dynamic.html [ ImageOnlyFailure ]
 webkit.org/b/120842 fast/regions/overflow/overflow-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure ]
-
-webkit.org/b/121593 accessibility/radio-button-title-label.html  [ Failure ]
 
 webkit.org/b/121905 fast/images/exif-orientation.html [ Failure ]
 
@@ -2182,8 +2178,6 @@ webkit.org/b/132234 fast/regions/scrolling/wheel-scrollable-single-region.html [
 webkit.org/b/132235 fast/shapes/shape-outside-floats/shape-outside-floats-shape-margin-percent.html [ ImageOnlyFailure ]
 
 webkit.org/b/132253 media/volume-bar-empty-when-muted.html [ Failure ]
-
-webkit.org/b/132909 accessibility/table-with-footer-section-above-body.html [ Failure ]
 
 webkit.org/b/132910 editing/pasteboard/drag-drop-paragraph-crasher.html [ Failure ]
 

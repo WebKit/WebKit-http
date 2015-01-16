@@ -32,7 +32,6 @@
 #if ENABLE(SQL_DATABASE)
 
 #include "DatabaseBackend.h"
-#include "DatabaseBase.h"
 #include "DatabaseBasicTypes.h"
 #include "DatabaseError.h"
 #include <wtf/text/WTFString.h>
@@ -42,6 +41,7 @@ namespace WebCore {
 class ChangeVersionData;
 class DatabaseCallback;
 class DatabaseContext;
+class ScriptExecutionContext;
 class SecurityOrigin;
 class SQLTransaction;
 class SQLTransactionBackend;
@@ -49,9 +49,19 @@ class SQLTransactionCallback;
 class SQLTransactionErrorCallback;
 class VoidCallback;
 
-class Database : public DatabaseBase, public DatabaseBackend {
+class Database final : public DatabaseBackend {
 public:
     virtual ~Database();
+
+    virtual bool openAndVerifyVersion(bool setVersionInNewDatabase, DatabaseError&, String& errorMessage);
+    void close();
+
+    PassRefPtr<SQLTransactionBackend> runTransaction(PassRefPtr<SQLTransaction>, bool readOnly, const ChangeVersionData*);
+    void scheduleTransactionStep(SQLTransactionBackend*);
+    void inProgressTransactionCompleted();
+
+    SQLTransactionClient* transactionClient() const;
+    SQLTransactionCoordinator* transactionCoordinator() const;
 
     // Direct support for the DOM API
     virtual String version() const;
@@ -63,6 +73,9 @@ public:
     // Internal engine support
     static Database* from(DatabaseBackend*);
     DatabaseContext* databaseContext() const { return m_databaseContext.get(); }
+
+    ScriptExecutionContext* scriptExecutionContext() { return m_scriptExecutionContext.get(); }
+    void logErrorMessage(const String& message);
 
     Vector<String> tableNames();
 
@@ -76,15 +89,20 @@ public:
     void scheduleTransactionCallback(SQLTransaction*);
 
 private:
-    Database(PassRefPtr<DatabaseBackendContext>, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize);
+    Database(PassRefPtr<DatabaseContext>, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize);
 
     PassRefPtr<DatabaseBackend> backend();
     static PassRefPtr<Database> create(ScriptExecutionContext*, PassRefPtr<DatabaseBackendBase>);
+
+    virtual bool performOpenAndVerify(bool setVersionInNewDatabase, DatabaseError&, String& errorMessage);
+
+    void scheduleTransaction();
 
     void runTransaction(RefPtr<SQLTransactionCallback>&&, RefPtr<SQLTransactionErrorCallback>&&, RefPtr<VoidCallback>&& successCallback, bool readOnly, const ChangeVersionData* = nullptr);
 
     Vector<String> performGetTableNames();
 
+    RefPtr<ScriptExecutionContext> m_scriptExecutionContext;
     RefPtr<SecurityOrigin> m_databaseThreadSecurityOrigin;
     RefPtr<DatabaseContext> m_databaseContext;
 

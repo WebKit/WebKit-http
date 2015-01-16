@@ -28,8 +28,8 @@
 
 #if ENABLE(DRAG_SUPPORT)
 #import "BitmapImage.h"
-#import "Font.h"
-#import "FontCache.h"
+#import "CoreGraphicsSPI.h"
+#import "FontCascade.h"
 #import "FontDescription.h"
 #import "FontSelector.h"
 #import "GraphicsContext.h"
@@ -157,10 +157,10 @@ const float DragLinkUrlFontSize = 10;
 
 // FIXME - we should move all the functionality of NSString extras to WebCore
     
-static Font& fontFromNSFont(NSFont *font)
+static FontCascade& fontFromNSFont(NSFont *font)
 {
     static NSFont *currentFont;
-    DEPRECATED_DEFINE_STATIC_LOCAL(Font, currentRenderer, ());
+    DEPRECATED_DEFINE_STATIC_LOCAL(FontCascade, currentRenderer, ());
     
     if ([font isEqual:currentFont])
         return currentRenderer;
@@ -169,7 +169,7 @@ static Font& fontFromNSFont(NSFont *font)
     currentFont = font;
     CFRetain(currentFont);
     FontPlatformData f(font, [font pointSize]);
-    currentRenderer = Font(f, ![[NSGraphicsContext currentContext] isDrawingToScreen]);
+    currentRenderer = FontCascade(f, ![[NSGraphicsContext currentContext] isDrawingToScreen]);
     return currentRenderer;
 }
 
@@ -192,22 +192,13 @@ static float widthWithFont(NSString *string, NSFont *font)
     [string getCharacters:buffer.data()];
     
     if (canUseFastRenderer(buffer.data(), length)) {
-        FontCachePurgePreventer fontCachePurgePreventer;
-
-        Font webCoreFont(FontPlatformData(font, [font pointSize]), ![[NSGraphicsContext currentContext] isDrawingToScreen]);
+        FontCascade webCoreFont(FontPlatformData(font, [font pointSize]), ![[NSGraphicsContext currentContext] isDrawingToScreen]);
         TextRun run(buffer.data(), length);
         run.disableRoundingHacks();
         return webCoreFont.width(run);
     }
     
     return [string sizeWithAttributes:[NSDictionary dictionaryWithObjectsAndKeys:font, NSFontAttributeName, nil]].width;
-}
-
-static inline CGFloat webkit_CGCeiling(CGFloat value)
-{
-    if (sizeof(value) == sizeof(float))
-        return ceilf(value);
-    return static_cast<CGFloat>(ceil(value));
 }
     
 static void drawAtPoint(NSString *string, NSPoint point, NSFont *font, NSColor *textColor)
@@ -218,13 +209,11 @@ static void drawAtPoint(NSString *string, NSPoint point, NSFont *font, NSColor *
     [string getCharacters:buffer.data()];
     
     if (canUseFastRenderer(buffer.data(), length)) {
-        FontCachePurgePreventer fontCachePurgePreventer;
-
         // The following is a half-assed attempt to match AppKit's rounding rules for drawAtPoint.
         // It's probably incorrect for high DPI.
         // If you change this, be sure to test all the text drawn this way in Safari, including
         // the status bar, bookmarks bar, tab bar, and activity window.
-        point.y = webkit_CGCeiling(point.y);
+        point.y = CGCeiling(point.y);
         
         NSGraphicsContext *nsContext = [NSGraphicsContext currentContext];
         CGContextRef cgContext = static_cast<CGContextRef>([nsContext graphicsPort]);
@@ -235,7 +224,7 @@ static void drawAtPoint(NSString *string, NSPoint point, NSFont *font, NSColor *
         if (!flipped)
             CGContextScaleCTM(cgContext, 1, -1);
             
-        Font webCoreFont(FontPlatformData(font, [font pointSize]), ![nsContext isDrawingToScreen], Antialiased);
+        FontCascade webCoreFont(FontPlatformData(font, [font pointSize]), ![nsContext isDrawingToScreen], Antialiased);
         TextRun run(buffer.data(), length);
         run.disableRoundingHacks();
 
@@ -272,8 +261,6 @@ static void drawDoubledAtPoint(NSString *string, NSPoint textPoint, NSColor *top
 
 DragImageRef createDragImageForLink(URL& url, const String& title, FontRenderingMode)
 {
-    FontCachePurgePreventer fontCachePurgePreventer;
-
     NSString *label = nsStringNilIfEmpty(title);
     NSURL *cocoaURL = url;
     NSString *urlString = [cocoaURL absoluteString];

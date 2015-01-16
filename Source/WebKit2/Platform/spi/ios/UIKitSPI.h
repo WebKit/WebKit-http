@@ -80,6 +80,7 @@
 @interface UIApplication (Details)
 - (UIInterfaceOrientation)interfaceOrientation;
 - (void)_cancelAllTouches;
+- (CGFloat)statusBarHeight;
 @end
 
 typedef NS_ENUM(NSInteger, UIDatePickerPrivateMode)  {
@@ -619,15 +620,39 @@ typedef NS_ENUM(NSInteger, _UIBackdropViewStylePrivate) {
 @interface UIWebTiledView : UIView
 @end
 
+@class WAKWindow;
+
+@interface UIWebTiledView (Details)
+- (void)setWAKWindow:(WAKWindow *)window;
+@end
+
 @interface UIWebDocumentView : UIWebTiledView
+@end
+
+typedef enum {
+    UIEveryDocumentMask = 0xFFFFFF,
+} UIDocumentMask;
+
+@interface UIWebDocumentView (Details)
+- (void)setDelegate:(id)delegate;
+- (void)setAutoresizes:(BOOL)flag;
+- (void)setMinimumSize:(CGSize)aSize;
+- (void)setInitialScale:(float)aScale forDocumentTypes:(UIDocumentMask)aDocumentMask;
+- (void)setViewportSize:(CGSize)aSize forDocumentTypes:(UIDocumentMask)aDocumentMask;
+- (void)setMinimumScale:(float)aScale forDocumentTypes:(UIDocumentMask)aDocumentMask;
+- (void)setMaximumScale:(float)aScale forDocumentTypes:(UIDocumentMask)aDocumentMask;
 @end
 
 @interface UIWebBrowserView : UIWebDocumentView
 @end
 
+@class WebView;
+
 @interface UIWebBrowserView (Details)
 - (WebView *)webView;
+- (void)setPaused:(BOOL)paused;
 - (void)sendScrollEventIfNecessaryWasUserScroll:(BOOL)userScroll;
+@property (nonatomic) BOOL inputViewObeysDOMFocus;
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)
@@ -653,9 +678,13 @@ extern NSString * const UIWindowNewScreenUserInfoKey;
 extern NSString * const UIWindowWillRotateNotification;
 
 extern UIApplication *UIApp;
-
+void _UIApplicationLoadWebKit(void);
 BOOL _UIApplicationUsesLegacyUI(void);
 
 void UIImageDataWriteToSavedPhotosAlbum(NSData *imageData, id completionTarget, SEL completionSelector, void *contextInfo);
+
+extern const float UIWebViewGrowsAndShrinksToFitHeight;
+extern const float UIWebViewScalesToFitScale;
+extern const float UIWebViewStandardViewportWidth;
 
 WTF_EXTERN_C_END

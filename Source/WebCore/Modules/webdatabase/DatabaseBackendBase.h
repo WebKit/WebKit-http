@@ -43,9 +43,9 @@
 
 namespace WebCore {
 
+class Database;
 class DatabaseAuthorizer;
-class DatabaseBackendContext;
-class DatabaseBase;
+class DatabaseContext;
 class SecurityOrigin;
 
 class DatabaseBackendBase : public ThreadSafeRefCounted<DatabaseBackendBase> {
@@ -56,7 +56,6 @@ public:
 
     bool opened() const { return m_opened; }
     bool isNew() const { return m_new; }
-    bool isSyncDatabase() const { return m_isSyncDatabase; }
 
     virtual SecurityOrigin* securityOrigin() const;
     virtual String stringIdentifier() const;
@@ -80,11 +79,8 @@ public:
     bool hadDeletes();
     void resetAuthorizer();
 
-    virtual void markAsDeletedAndClose() = 0;
-    virtual void closeImmediately() = 0;
-
-    DatabaseBackendContext* databaseContext() const { return m_databaseContext.get(); }
-    void setFrontend(DatabaseBase* frontend) { m_frontend = frontend; }
+    DatabaseContext* databaseContext() const { return m_databaseContext.get(); }
+    void setFrontend(Database* frontend) { m_frontend = frontend; }
 
 protected:
     friend class ChangeVersionWrapper;
@@ -93,12 +89,10 @@ protected:
     friend class SQLTransactionBackend;
     friend class SQLTransactionBackendSync;
 
-    DatabaseBackendBase(PassRefPtr<DatabaseBackendContext>, const String& name, const String& expectedVersion,
-        const String& displayName, unsigned long estimatedSize, DatabaseType);
+    DatabaseBackendBase(PassRefPtr<DatabaseContext>, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize);
 
     void closeDatabase();
 
-    virtual bool openAndVerifyVersion(bool setVersionInNewDatabase, DatabaseError&, String& errorMessage) = 0;
     virtual bool performOpenAndVerify(bool shouldSetVersionInNewDatabase, DatabaseError&, String& errorMessage);
 
     bool getVersionFromDatabase(String& version, bool shouldCacheVersion = true);
@@ -116,7 +110,7 @@ protected:
 #endif
 
     RefPtr<SecurityOrigin> m_contextThreadSecurityOrigin;
-    RefPtr<DatabaseBackendContext> m_databaseContext; // Associated with m_scriptExecutionContext.
+    RefPtr<DatabaseContext> m_databaseContext; // Associated with m_scriptExecutionContext.
 
     String m_name;
     String m_expectedVersion;
@@ -124,13 +118,12 @@ protected:
     unsigned long m_estimatedSize;
     String m_filename;
 
-    DatabaseBase* m_frontend;
+    Database* m_frontend;
 
 private:
     DatabaseGuid m_guid;
     bool m_opened;
     bool m_new;
-    const bool m_isSyncDatabase;
 
     SQLiteDatabase m_sqliteDatabase;
 

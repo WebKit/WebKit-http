@@ -105,7 +105,7 @@ class ContentData;
 class CounterContent;
 class CursorList;
 class FilterOperations;
-class Font;
+class FontCascade;
 class FontMetrics;
 class IntRect;
 class MaskImageOperation;
@@ -128,6 +128,7 @@ class RenderStyle: public RefCounted<RenderStyle> {
     friend class PropertyWrapperMaybeInvalidColor; // Used by CSS animations. We can't allow them to animate based off visited colors.
     friend class RenderSVGResource; // FIXME: Needs to alter the visited state by hand. Should clean the SVG code up and move it into RenderStyle perhaps.
     friend class RenderTreeAsText; // FIXME: Only needed so the render tree can keep lying and dump the wrong colors.  Rebaselining would allow this to be yanked.
+    friend class StyleBuilderConverter; // Sets members directly.
     friend class StyleBuilderCustom; // Sets members directly.
     friend class StyleBuilderFunctions; // Sets members directly.
     friend class StyleResolver; // Sets members directly.
@@ -688,7 +689,7 @@ public:
     EClear clear() const { return noninherited_flags.clear(); }
     ETableLayout tableLayout() const { return noninherited_flags.tableLayout(); }
 
-    WEBCORE_EXPORT const Font& font() const;
+    WEBCORE_EXPORT const FontCascade& fontCascade() const;
     WEBCORE_EXPORT const FontMetrics& fontMetrics() const;
     WEBCORE_EXPORT const FontDescription& fontDescription() const;
     float specifiedFontSize() const;

@@ -1400,6 +1400,8 @@ static bool isCandidateForOpaquenessTest(const RenderBox& childBox)
             return false;
         if (childLayer->hasTransform() || childLayer->isTransparent() || childLayer->hasFilter())
             return false;
+        if (!childBox.scrolledContentOffset().isZero())
+            return false;
     }
     return true;
 }
@@ -1840,6 +1842,8 @@ LayoutUnit RenderBox::containingBlockLogicalWidthForContent() const
 #endif
 
     RenderBlock* cb = containingBlock();
+    if (!cb)
+        return LayoutUnit();
     return cb->availableLogicalWidth();
 }
 
@@ -1851,6 +1855,8 @@ LayoutUnit RenderBox::containingBlockLogicalHeightForContent(AvailableLogicalHei
 #endif
 
     RenderBlock* cb = containingBlock();
+    if (!cb)
+        return LayoutUnit();
     return cb->availableLogicalHeight(heightType);
 }
 

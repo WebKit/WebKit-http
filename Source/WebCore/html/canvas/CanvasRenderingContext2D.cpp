@@ -42,7 +42,6 @@
 #include "DOMPath.h"
 #include "ExceptionCodePlaceholder.h"
 #include "FloatQuad.h"
-#include "FontCache.h"
 #include "GraphicsContext.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
@@ -2106,7 +2105,7 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
         newStyle->setFontDescription(defaultFontDescription);
     }
 
-    newStyle->font().update(newStyle->font().fontSelector());
+    newStyle->fontCascade().update(newStyle->fontCascade().fontSelector());
 
     // Now map the font property longhands into the style.
     StyleResolver& styleResolver = canvas()->document().ensureStyleResolver();
@@ -2123,7 +2122,7 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
     styleResolver.updateFont();
     styleResolver.applyPropertyToCurrentStyle(CSSPropertyLineHeight, parsedStyle->getPropertyCSSValue(CSSPropertyLineHeight).get());
 
-    modifiableState().m_font = newStyle->font();
+    modifiableState().m_font = newStyle->fontCascade();
     modifiableState().m_font.update(styleResolver.fontSelector());
     modifiableState().m_realizedFont = true;
     styleResolver.fontSelector()->registerForInvalidationCallbacks(&modifiableState());
@@ -2257,8 +2256,6 @@ static void normalizeSpaces(String& text)
 
 PassRefPtr<TextMetrics> CanvasRenderingContext2D::measureText(const String& text)
 {
-    FontCachePurgePreventer fontCachePurgePreventer;
-
     RefPtr<TextMetrics> metrics = TextMetrics::create();
 
     String normalizedText = text;
@@ -2290,9 +2287,7 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
     if (fill && gradient && gradient->isZeroSize())
         return;
 
-    FontCachePurgePreventer fontCachePurgePreventer;
-
-    const Font& font = accessFont();
+    const FontCascade& font = accessFont();
     const FontMetrics& fontMetrics = font.fontMetrics();
 
     String normalizedText = text;
@@ -2377,10 +2372,10 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
             maskImageContext->translate(location.x() - maskRect.x(), location.y() - maskRect.y());
             // We draw when fontWidth is 0 so compositing operations (eg, a "copy" op) still work.
             maskImageContext->scale(FloatSize((fontWidth > 0 ? (width / fontWidth) : 0), 1));
-            maskImageContext->drawBidiText(font, textRun, FloatPoint(0, 0), Font::UseFallbackIfFontNotReady);
+            maskImageContext->drawBidiText(font, textRun, FloatPoint(0, 0), FontCascade::UseFallbackIfFontNotReady);
         } else {
             maskImageContext->translate(-maskRect.x(), -maskRect.y());
-            maskImageContext->drawBidiText(font, textRun, location, Font::UseFallbackIfFontNotReady);
+            maskImageContext->drawBidiText(font, textRun, location, FontCascade::UseFallbackIfFontNotReady);
         }
 
         GraphicsContextStateSaver stateSaver(*c);
@@ -2403,15 +2398,15 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
 
     if (isFullCanvasCompositeMode(state().m_globalComposite)) {
         beginCompositeLayer();
-        c->drawBidiText(font, textRun, location, Font::UseFallbackIfFontNotReady);
+        c->drawBidiText(font, textRun, location, FontCascade::UseFallbackIfFontNotReady);
         endCompositeLayer();
         didDrawEntireCanvas();
     } else if (state().m_globalComposite == CompositeCopy) {
         clearCanvas();
-        c->drawBidiText(font, textRun, location, Font::UseFallbackIfFontNotReady);
+        c->drawBidiText(font, textRun, location, FontCascade::UseFallbackIfFontNotReady);
         didDrawEntireCanvas();
     } else {
-        c->drawBidiText(font, textRun, location, Font::UseFallbackIfFontNotReady);
+        c->drawBidiText(font, textRun, location, FontCascade::UseFallbackIfFontNotReady);
         didDraw(textRect);
     }
 }
@@ -2431,7 +2426,7 @@ void CanvasRenderingContext2D::inflateStrokeRect(FloatRect& rect) const
     rect.inflate(delta);
 }
 
-const Font& CanvasRenderingContext2D::accessFont()
+const FontCascade& CanvasRenderingContext2D::accessFont()
 {
     canvas()->document().updateStyleIfNeeded();
 

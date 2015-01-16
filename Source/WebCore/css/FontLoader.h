@@ -45,7 +45,7 @@ class CSSFontFaceSource;
 class Dictionary;
 class Document;
 class Event;
-class Font;
+class FontCascade;
 class LoadFontCallback;
 class ScriptExecutionContext;
 
@@ -95,10 +95,12 @@ private:
     virtual EventTargetData* eventTargetData() override;
     virtual EventTargetData& ensureEventTargetData() override;
 
+    virtual const char* activeDOMObjectName() const override { return "FontLoader"; }
+
     void pendingEventsTimerFired() { firePendingEvents(); }
     void scheduleEvent(PassRefPtr<Event>);
     void firePendingEvents();
-    bool resolveFontStyle(const String&, Font&);
+    bool resolveFontStyle(const String&, FontCascade&);
 
     Document* m_document;
     EventTargetData m_eventTargetData;

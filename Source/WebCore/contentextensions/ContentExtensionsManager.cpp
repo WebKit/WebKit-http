@@ -30,12 +30,14 @@
 
 #include "ContentExtensionRule.h"
 #include "ContentExtensionsBackend.h"
+#include "ContentExtensionsDebugging.h"
 #include <JavaScriptCore/IdentifierInlines.h>
 #include <JavaScriptCore/JSCJSValueInlines.h>
 #include <JavaScriptCore/JSGlobalObject.h>
 #include <JavaScriptCore/JSONObject.h>
 #include <JavaScriptCore/StructureInlines.h>
 #include <JavaScriptCore/VM.h>
+#include <wtf/CurrentTime.h>
 #include <wtf/text/WTFString.h>
 
 using namespace JSC;
@@ -108,47 +110,62 @@ static void loadRule(ExecState& exec, JSObject& ruleObject, Vector<ContentExtens
     ruleList.append(ContentExtensionRule(trigger, action));
 }
 
+static Vector<ContentExtensionRule> loadEncodedRules(ExecState& exec, const String& rules)
+{
+    JSValue decodedRules = JSONParse(&exec, rules);
+
+    if (exec.hadException() || !decodedRules) {
+        WTFLogAlways("Failed to parse the JSON string.");
+        return Vector<ContentExtensionRule>();
+    }
+
+    if (decodedRules.isObject()) {
+        JSObject* topLevelObject = decodedRules.toObject(&exec);
+        if (!topLevelObject || exec.hadException()) {
+            WTFLogAlways("Invalid input, the top level structure is not an object.");
+            return Vector<ContentExtensionRule>();
+        }
+
+        if (!isJSArray(topLevelObject)) {
+            WTFLogAlways("Invalid input, the top level object is not an array.");
+            return Vector<ContentExtensionRule>();
+        }
+
+        Vector<ContentExtensionRule> ruleList;
+        JSArray* topLevelArray = jsCast<JSArray*>(topLevelObject);
+
+        unsigned length = topLevelArray->length();
+        for (unsigned i = 0; i < length; ++i) {
+            JSValue value = topLevelArray->getIndex(&exec, i);
+            if (exec.hadException() || !value) {
+                WTFLogAlways("Invalid object in the array.");
+                continue;
+            }
+
+            JSObject* ruleObject = value.toObject(&exec);
+            if (!ruleObject || exec.hadException()) {
+                WTFLogAlways("Invalid rule");
+                continue;
+            }
+            loadRule(exec, *ruleObject, ruleList);
+        }
+        return ruleList;
+    }
+    return Vector<ContentExtensionRule>();
+}
+
 void loadExtension(const String& identifier, const String& rules)
 {
-    Vector<ContentExtensionRule> ruleList;
-
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double loadExtensionStartTime = monotonicallyIncreasingTime();
+#endif
     RefPtr<VM> vm = VM::create();
 
     JSLockHolder locker(vm.get());
     JSGlobalObject* globalObject = JSGlobalObject::create(*vm, JSGlobalObject::createStructure(*vm, jsNull()));
 
     ExecState* exec = globalObject->globalExec();
-    JSValue decodedRules = JSONParse(exec, rules);
-    if (decodedRules.isObject()) {
-        JSObject* topLevelObject = decodedRules.toObject(exec);
-        if (!topLevelObject || exec->hadException()) {
-            WTFLogAlways("Invalid input, the top level structure is not an object.");
-            return;
-        }
-
-        if (!isJSArray(topLevelObject)) {
-            WTFLogAlways("Invalid input, the top level object is not an array.");
-            return;
-        }
-
-        JSArray* topLevelArray = jsCast<JSArray*>(topLevelObject);
-
-        unsigned length = topLevelArray->length();
-        for (unsigned i = 0; i < length; ++i) {
-            JSValue value = topLevelArray->getIndex(exec, i);
-            if (exec->hadException() || !value) {
-                WTFLogAlways("Invalid object in the array.");
-                continue;
-            }
-
-            JSObject* ruleObject = value.toObject(exec);
-            if (!ruleObject || exec->hadException()) {
-                WTFLogAlways("Invalid rule");
-                continue;
-            }
-            loadRule(*exec, *ruleObject, ruleList);
-        }
-    }
+    Vector<ContentExtensionRule> ruleList = loadEncodedRules(*exec, rules);
 
     vm.clear();
 
@@ -156,6 +173,11 @@ void loadExtension(const String& identifier, const String& rules)
         WTFLogAlways("Empty extension.");
         return;
     }
+
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double loadExtensionEndTime = monotonicallyIncreasingTime();
+    dataLogF("Time spent loading extension %s: %f\n", identifier.utf8().data(), (loadExtensionEndTime - loadExtensionStartTime));
+#endif
 
     ContentExtensionsBackend::sharedInstance().setRuleList(identifier, ruleList);
 }

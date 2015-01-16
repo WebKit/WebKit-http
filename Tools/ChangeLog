@@ -1,3 +1,210 @@
+2015-01-14  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Create iOS-EWS server queue
+        https://bugs.webkit.org/show_bug.cgi?id=140473
+
+        Reviewed by Benjamin Poulain.
+
+        * QueueStatusServer/app.yaml: Updates the SVN version number.
+        * QueueStatusServer/config/queues.py: Add ios-ews queue.
+        * QueueStatusServer/model/queues.py:         
+        (Queue.display_name): Makes sure the display name is pretty!
+
+2015-01-14  Daniel Bates  <dabates@apple.com>
+
+        [iOS] run-webkit-tests --ios hangs trying to launch iOS Simulator with unavailable runtime
+        https://bugs.webkit.org/show_bug.cgi?id=140301
+        <rdar://problem/19389266>
+
+        Reviewed by Jon Honeycutt.
+
+        Fixes an issue where run-webkit-tests --ios will hang when trying to launch iOS Simulator
+        with an unavailable runtime.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (_set_up_derived_options): Modified to access property Simulator.latest_available_runtime,
+        which was formerly called Simulator.latest_runtime. Additionally, raise an exception if the
+        specified runtime cannot be used because it is unavailable.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.testing_device): Modified to call Simulator.lookup_or_create_device(),
+        which was formerly named testing_device.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Device.create): Modified to lookup created device by the UDID returned by simctl, which is
+        more robust than looking up the simulator device by name and runtime. This approach also
+        avoids returning the wrong device due to <rdar://problem/19444383> (simctl list shows
+        unavailable runtimes under the same iOS heading it would use to show it as available).
+        (Simulator.find_device_by_udid): Added.
+        (Simulator.device): Added optional parameter should_ignore_unavailable_devices (defaults
+        to False) to ignore devices that are unavailable (say, because their runtime is unavailable).
+        (Simulator.available_runtimes): Added.
+        (Simulator.latest_available_runtime): Renamed; formerly named latest_runtime. Take advantage
+        of the reverse=True argument to sorted() to sort the list of available runtimes such that the
+        first element of the sorted list is the runtime with the highest version number.
+        (Simulator.lookup_or_create_device): Renamed; formerly named testing_device.
+
+2015-01-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove WK2 Windows cruft
+        https://bugs.webkit.org/show_bug.cgi?id=140440
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/InjectedBundle/win/ActivateFonts.cpp: Removed.
+        * WebKitTestRunner/InjectedBundle/win/InjectedBundleWin.cpp: Removed.
+        * WebKitTestRunner/InjectedBundle/win/TestRunnerWin.cpp: Removed.
+
+2015-01-13  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Fix TestWTF failed in TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=140333
+
+        Reviewed by Sam Weinig.
+
+        Clear the std::ostringstream before starting test.
+
+        * TestWebKitAPI/Tests/WTF/RefLogger.h:
+        (TestWebKitAPI::DerivedRefLogger::DerivedRefLogger):
+
+2015-01-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        TestWebKitWebContext depends on British English spellcheck dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=140403
+
+        Reviewed by Martin Robinson.
+
+        Install all English hunspell dictionaries on Fedora and Arch.
+
+        * gtk/install-dependencies:
+
+2015-01-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] install-dependencies should grok dnf
+        https://bugs.webkit.org/show_bug.cgi?id=140396
+
+        Reviewed by Martin Robinson.
+
+        Fedora: install dependencies with dnf if yum is not installed.
+
+        * gtk/install-dependencies:
+
+2015-01-12  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL][GTK] Fix build after r178309  
+        https://bugs.webkit.org/show_bug.cgi?id=140381
+
+        Reviewed by Gyuyoung Kim.
+
+        * TestWebKitAPI/CMakeLists.txt: Added the API directory
+
+2015-01-11  Sam Weinig  <sam@webkit.org>
+
+        Remove support for SharedWorkers
+        https://bugs.webkit.org/show_bug.cgi?id=140344
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-01-12  Anders Carlsson  <andersca@apple.com>
+
+        Make delegates conform to formal delegate protocols
+        https://bugs.webkit.org/show_bug.cgi?id=140370
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::numberOfPendingGeolocationPermissionRequests):
+        (TestRunner::setGeolocationPermission):
+
+2015-01-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        build-webkit: silence output of 'which'
+        https://bugs.webkit.org/show_bug.cgi?id=140278
+
+        Reviewed by Daniel Bates.
+
+        Use a more elegent test for the existance of ninja and eclipse.
+
+        * Scripts/webkitdirs.pm:
+        (commandExists): Don't assume the command supports --version
+        (canUseNinja): Use commandExists()
+        (canUseEclipse): Use commandExists()
+
+2015-01-09  Sam Weinig  <sam@webkit.org>
+
+        Update the output format for run-api-tests
+        https://bugs.webkit.org/show_bug.cgi?id=140332
+
+        Reviewed by Dan Bernstein.
+
+        Changes the output format for run-api-tests be a bit simpler (no longer 
+        indented based on suite, as we were not really using suite very well) but
+        also include details in the case of failure.
+
+        Changes verbose mode to no longer spew out the gtest default printer output,
+        as the custom printer now includes the failure information.
+
+        * Scripts/run-api-tests:
+        (runTestsBySuite):
+        (runTest):
+        Augment the custom gtest printer by replacing the tokens "**PASS**" and "**FAIL**"
+        with colorized variants and strip out leaks spew (the leaks can be added back using
+        the new --show-leaks argument).
+
+        * TestWebKitAPI/TestsController.cpp:
+        (TestWebKitAPI::Printer::OnTestPartResult):
+        (TestWebKitAPI::Printer::OnTestEnd):
+        (TestWebKitAPI::TestsController::run):
+        Implement a custom result printer that just prints out the information we want.
+
+2015-01-09  Sam Weinig  <sam@webkit.org>
+
+        TestWebKitAPI should print out the lists that fail at the end
+        https://bugs.webkit.org/show_bug.cgi?id=140329
+
+        Reviewed by Tim Horton.
+
+        * Scripts/run-api-tests:
+        (runTestsBySuite):
+        Print out failures and timeouts in all modes, not just verbose.
+
+2015-01-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Make bmalloc work with ASan
+        https://bugs.webkit.org/show_bug.cgi?id=140194
+
+        Reviewed by Mark Lam.
+
+        * asan/asan.xcconfig: No need to disable FastMalloc; bmalloc supports
+        ASan automatically (by forwarding to system malloc at runtime).
+
+2015-01-09  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make DumpRenderTree build with public SDK
+        https://bugs.webkit.org/show_bug.cgi?id=140311
+
+        Reviewed by Sam Weinig.
+
+        Use CGRound() instead of the obsolete macro function _ROUNDF_ (defined in
+        header UIKit/UIMath.h), and std::max() instead of the macro function MAX.
+        Additionally, remove unused header CoreGraphics/CGFontDB.h.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (-[ScrollViewResizerDelegate view:didSetFrame:oldFrame:asResultOfZoom:]):
+
+2015-01-09  Alexey Proskuryakov  <ap@apple.com>
+
+        platform/mac-wk2/tiled-drawing/tiled-drawing-scroll-position-page-cache-restoration.html fails on Retina machines
+        https://bugs.webkit.org/show_bug.cgi?id=140300
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::updateWindowScaleForTest):
+        (WTR::TestController::configureViewForTest):
+        * WebKitTestRunner/TestController.h:
+
 2015-01-09  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
 
         Unreviewed. Moving myself to the committer section.

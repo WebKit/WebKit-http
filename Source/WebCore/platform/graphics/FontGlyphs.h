@@ -21,6 +21,7 @@
 #ifndef FontGlyphs_h
 #define FontGlyphs_h
 
+#include "FontRanges.h"
 #include "FontSelector.h"
 #include "GlyphPage.h"
 #include "SimpleFontData.h"
@@ -40,8 +41,6 @@ class FontDescription;
 class FontPlatformData;
 class FontSelector;
 
-const int cAllFamiliesScanned = -1;
-
 class FontGlyphs : public RefCounted<FontGlyphs> {
     WTF_MAKE_NONCOPYABLE(FontGlyphs);
 public:
@@ -57,7 +56,7 @@ public:
     bool isFixedPitch(const FontDescription&);
     void determinePitch(const FontDescription&);
 
-    bool loadingCustomFonts() const { return m_loadingCustomFonts; }
+    bool isLoadingCustomFonts() const;
 
     FontSelector* fontSelector() { return m_fontSelector.get(); }
     // FIXME: It should be possible to combine fontSelectorVersion and generation.
@@ -68,7 +67,7 @@ public:
     const WidthCache& widthCache() const { return m_widthCache; }
 
     const SimpleFontData& primarySimpleFontData(const FontDescription&);
-    WEBCORE_EXPORT const FontData* realizeFontDataAt(const FontDescription&, unsigned index);
+    WEBCORE_EXPORT const FontRanges& realizeFallbackRangesAt(const FontDescription&, unsigned fallbackIndex);
 
 private:
     FontGlyphs(PassRefPtr<FontSelector>);
@@ -76,9 +75,10 @@ private:
 
     GlyphData glyphDataForSystemFallback(UChar32, const FontDescription&, FontDataVariant);
     GlyphData glyphDataForNormalVariant(UChar32, const FontDescription&);
-    GlyphData glyphDataForVariant(UChar32, const FontDescription&, FontDataVariant, unsigned fallbackLevel);
-    
-    Vector<RefPtr<FontData>, 1> m_realizedFontData;
+    GlyphData glyphDataForVariant(UChar32, const FontDescription&, FontDataVariant, unsigned fallbackIndex);
+
+    Vector<FontRanges, 1> m_realizedFallbackRanges;
+    unsigned m_lastRealizedFallbackIndex { 0 };
 
     RefPtr<GlyphPage> m_cachedPageZero;
     HashMap<int, RefPtr<GlyphPage>> m_cachedPages;
@@ -87,13 +87,13 @@ private:
 
     const SimpleFontData* m_cachedPrimarySimpleFontData;
     RefPtr<FontSelector> m_fontSelector;
+
     WidthCache m_widthCache;
+
     unsigned m_fontSelectorVersion;
-    int m_familyIndex;
     unsigned short m_generation;
-    unsigned m_pitch : 3; // Pitch
-    unsigned m_loadingCustomFonts : 1;
-    unsigned m_isForPlatformFont : 1;
+    Pitch m_pitch { UnknownPitch };
+    bool m_isForPlatformFont { false };
 };
 
 inline bool FontGlyphs::isFixedPitch(const FontDescription& description)
@@ -107,10 +107,10 @@ inline const SimpleFontData& FontGlyphs::primarySimpleFontData(const FontDescrip
 {
     ASSERT(isMainThread());
     if (!m_cachedPrimarySimpleFontData) {
-        auto& fontData = *realizeFontDataAt(description, 0);
-        m_cachedPrimarySimpleFontData = fontData.simpleFontDataForCharacter(' ');
+        auto& primaryRanges = realizeFallbackRangesAt(description, 0);
+        m_cachedPrimarySimpleFontData = primaryRanges.fontDataForCharacter(' ');
         if (!m_cachedPrimarySimpleFontData)
-            m_cachedPrimarySimpleFontData = &fontData.simpleFontDataForFirstRange();
+            m_cachedPrimarySimpleFontData = &primaryRanges.fontDataForFirstRange();
     }
     return *m_cachedPrimarySimpleFontData;
 }

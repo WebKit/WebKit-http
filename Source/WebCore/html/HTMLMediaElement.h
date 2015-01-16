@@ -465,6 +465,8 @@ public:
 
     MediaControlsHost* mediaControlsHost() { return m_mediaControlsHost.get(); }
 
+    bool isDisablingSleep() const { return m_sleepDisabler.get(); }
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool);
     virtual ~HTMLMediaElement();
@@ -516,6 +518,7 @@ private:
     virtual void willStopBeingFullscreenElement() override;
 
     // ActiveDOMObject functions.
+    virtual const char* activeDOMObjectName() const override { return "HTMLMediaElement"; }
     virtual bool canSuspend() const override;
     virtual void suspend(ReasonForSuspension) override;
     virtual void resume() override;
@@ -531,6 +534,7 @@ private:
     void setNetworkState(MediaPlayer::NetworkState);
 
     double effectivePlaybackRate() const;
+    double requestedPlaybackRate() const;
 
     virtual void mediaPlayerNetworkStateChanged(MediaPlayer*) override;
     virtual void mediaPlayerReadyStateChanged(MediaPlayer*) override;
@@ -604,6 +608,8 @@ private:
 
     virtual bool mediaPlayerIsInMediaDocument() const override final;
     virtual void mediaPlayerEngineFailedToLoad() const override final;
+
+    virtual double mediaPlayerRequestedPlaybackRate() const override final;
 
     void loadTimerFired();
     void progressEventTimerFired();
@@ -744,7 +750,8 @@ private:
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
-    double m_playbackRate;
+    double m_requestedPlaybackRate;
+    double m_reportedPlaybackRate;
     double m_defaultPlaybackRate;
     bool m_webkitPreservesPitch;
     NetworkState m_networkState;

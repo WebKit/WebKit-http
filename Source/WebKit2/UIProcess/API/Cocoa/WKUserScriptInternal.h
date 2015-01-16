@@ -27,15 +27,51 @@
 
 #if WK_API_ENABLED
 
+#import "APIUserScript.h"
 #import <wtf/RetainPtr.h>
 
-@interface WKUserScript () {
-@package
-    RetainPtr<NSString> _source;
-    WKUserScriptInjectionTime _injectionTime;
-    BOOL _forMainFrameOnly;
+namespace API {
+
+inline WKUserScript *wrapper(UserScript& userScript)
+{
+    ASSERT([userScript.wrapper() isKindOfClass:[WKUserScript class]]);
+    return (WKUserScript *)userScript.wrapper();
 }
 
+inline WebCore::UserScriptInjectionTime toWebCoreUserScriptInjectionTime(WKUserScriptInjectionTime injectionTime)
+{
+    switch (injectionTime) {
+    case WKUserScriptInjectionTimeAtDocumentStart:
+        return WebCore::InjectAtDocumentStart;
+
+    case WKUserScriptInjectionTimeAtDocumentEnd:
+        return WebCore::InjectAtDocumentEnd;
+    }
+
+    ASSERT_NOT_REACHED();
+    return WebCore::InjectAtDocumentEnd;
+}
+
+inline WKUserScriptInjectionTime toWKUserScriptInjectionTime(WebCore::UserScriptInjectionTime injectionTime)
+{
+    switch (injectionTime) {
+    case WebCore::InjectAtDocumentStart:
+        return WKUserScriptInjectionTimeAtDocumentStart;
+
+    case WebCore::InjectAtDocumentEnd:
+        return WKUserScriptInjectionTimeAtDocumentEnd;
+    }
+
+    ASSERT_NOT_REACHED();
+    return WKUserScriptInjectionTimeAtDocumentEnd;
+}
+
+}
+
+@interface WKUserScript () <WKObject> {
+@package
+    API::ObjectStorage<API::UserScript> _userScript;
+}
 @end
 
 #endif

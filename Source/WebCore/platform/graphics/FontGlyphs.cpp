@@ -29,10 +29,9 @@
 #include "config.h"
 #include "FontGlyphs.h"
 
-#include "Font.h"
 #include "FontCache.h"
+#include "FontCascade.h"
 #include "GlyphPage.h"
-#include "SegmentedFontData.h"
 
 namespace WebCore {
 
@@ -41,11 +40,7 @@ FontGlyphs::FontGlyphs(PassRefPtr<FontSelector> fontSelector)
     : m_cachedPrimarySimpleFontData(0)
     , m_fontSelector(fontSelector)
     , m_fontSelectorVersion(m_fontSelector ? m_fontSelector->version() : 0)
-    , m_familyIndex(0)
     , m_generation(fontCache().generation())
-    , m_pitch(UnknownPitch)
-    , m_loadingCustomFonts(false)
-    , m_isForPlatformFont(false)
 {
 }
 
@@ -53,13 +48,10 @@ FontGlyphs::FontGlyphs(const FontPlatformData& platformData)
     : m_cachedPrimarySimpleFontData(0)
     , m_fontSelector(0)
     , m_fontSelectorVersion(0)
-    , m_familyIndex(cAllFamiliesScanned)
     , m_generation(fontCache().generation())
-    , m_pitch(UnknownPitch)
-    , m_loadingCustomFonts(false)
     , m_isForPlatformFont(true)
 {
-    m_realizedFontData.append(fontCache().fontForPlatformData(platformData));
+    m_realizedFallbackRanges.append(FontRanges(fontCache().fontForPlatformData(platformData)));
 }
 
 FontGlyphs::~FontGlyphs()
@@ -68,54 +60,79 @@ FontGlyphs::~FontGlyphs()
 
 void FontGlyphs::determinePitch(const FontDescription& description)
 {
-    const FontData& fontData = *realizeFontDataAt(description, 0);
-    if (is<SimpleFontData>(fontData))
-        m_pitch = downcast<SimpleFontData>(fontData).pitch();
-    else {
-        const SegmentedFontData& segmentedFontData = downcast<SegmentedFontData>(fontData);
-        unsigned numRanges = segmentedFontData.numRanges();
-        if (numRanges == 1)
-            m_pitch = segmentedFontData.rangeAt(0).fontData()->pitch();
-        else
-            m_pitch = VariablePitch;
-    }
+    auto& primaryRanges = realizeFallbackRangesAt(description, 0);
+    unsigned numRanges = primaryRanges.size();
+    if (numRanges == 1)
+        m_pitch = primaryRanges.rangeAt(0).fontData().pitch();
+    else
+        m_pitch = VariablePitch;
 }
 
-const FontData* FontGlyphs::realizeFontDataAt(const FontDescription& description, unsigned realizedFontIndex)
+bool FontGlyphs::isLoadingCustomFonts() const
 {
-    if (realizedFontIndex < m_realizedFontData.size())
-        return m_realizedFontData[realizedFontIndex].get(); // This fallback font is already in our list.
-
-    // Make sure we're not passing in some crazy value here.
-    ASSERT(realizedFontIndex == m_realizedFontData.size());
-
-    if (m_familyIndex <= cAllFamiliesScanned) {
-        if (!m_fontSelector)
-            return 0;
-
-        size_t index = cAllFamiliesScanned - m_familyIndex;
-        if (index == m_fontSelector->fallbackFontDataCount())
-            return 0;
-
-        m_familyIndex--;
-        RefPtr<FontData> fallback = m_fontSelector->getFallbackFontData(description, index);
-        if (fallback)
-            m_realizedFontData.append(fallback);
-        return fallback.get();
+    for (auto& fontRanges : m_realizedFallbackRanges) {
+        if (fontRanges.isLoading())
+            return true;
     }
+    return false;
+}
 
-    // Ask the font cache for the font data.
-    // We are obtaining this font for the first time. We keep track of the families we've looked at before
-    // in |m_familyIndex|, so that we never scan the same spot in the list twice. fontForFamilyAtIndex will adjust our
-    // |m_familyIndex| as it scans for the right font to make.
+static FontRanges realizeNextFallback(const FontDescription& description, unsigned& index, FontSelector* fontSelector)
+{
+    ASSERT(index < description.familyCount());
+
+    while (index < description.familyCount()) {
+        const AtomicString& family = description.familyAt(index++);
+        if (family.isEmpty())
+            continue;
+        if (fontSelector) {
+            auto ranges = fontSelector->fontRangesForFamily(description, family);
+            if (!ranges.isNull())
+                return ranges;
+        }
+        if (auto font = fontCache().fontForFamily(description, family))
+            return FontRanges(WTF::move(font));
+    }
+    // We didn't find a font. Try to find a similar font using our own specific knowledge about our platform.
+    // For example on OS X, we know to map any families containing the words Arabic, Pashto, or Urdu to the
+    // Geeza Pro font.
+    return FontRanges(fontCache().similarFontPlatformData(description));
+}
+
+const FontRanges& FontGlyphs::realizeFallbackRangesAt(const FontDescription& description, unsigned index)
+{
+    if (index < m_realizedFallbackRanges.size())
+        return m_realizedFallbackRanges[index];
+
+    ASSERT(index == m_realizedFallbackRanges.size());
     ASSERT(fontCache().generation() == m_generation);
-    RefPtr<FontData> result = fontCache().fontForFamilyAtIndex(description, m_familyIndex, m_fontSelector.get());
-    if (result) {
-        m_realizedFontData.append(result);
-        if (result->isLoading())
-            m_loadingCustomFonts = true;
+
+    m_realizedFallbackRanges.append(FontRanges());
+    auto& fontRanges = m_realizedFallbackRanges.last();
+
+    if (!index) {
+        fontRanges = realizeNextFallback(description, m_lastRealizedFallbackIndex, m_fontSelector.get());
+        if (fontRanges.isNull() && m_fontSelector)
+            fontRanges = m_fontSelector->fontRangesForFamily(description, standardFamily);
+        if (fontRanges.isNull())
+            fontRanges = FontRanges(fontCache().lastResortFallbackFont(description));
+        return fontRanges;
     }
-    return result.get();
+
+    if (m_lastRealizedFallbackIndex < description.familyCount())
+        fontRanges = realizeNextFallback(description, m_lastRealizedFallbackIndex, m_fontSelector.get());
+
+    if (fontRanges.isNull() && m_fontSelector) {
+        ASSERT(m_lastRealizedFallbackIndex >= description.familyCount());
+
+        unsigned fontSelectorFallbackIndex = m_lastRealizedFallbackIndex - description.familyCount();
+        if (fontSelectorFallbackIndex == m_fontSelector->fallbackFontDataCount())
+            return fontRanges;
+        ++m_lastRealizedFallbackIndex;
+        fontRanges = FontRanges(m_fontSelector->fallbackFontDataAt(description, fontSelectorFallbackIndex));
+    }
+
+    return fontRanges;
 }
 
 static inline bool isInRange(UChar32 character, UChar32 lowerBound, UChar32 upperBound)
@@ -238,16 +255,16 @@ static GlyphData glyphDataForNonCJKCharacterWithGlyphOrientation(UChar32 charact
 GlyphData FontGlyphs::glyphDataForSystemFallback(UChar32 c, const FontDescription& description, FontDataVariant variant)
 {
     // System fallback is character-dependent.
-    auto& primaryFontData = *realizeFontDataAt(description, 0);
-    auto* originalFontData = primaryFontData.simpleFontDataForCharacter(c);
+    auto& primaryRanges = realizeFallbackRangesAt(description, 0);
+    auto* originalFontData = primaryRanges.fontDataForCharacter(c);
     if (!originalFontData)
-        originalFontData = &primaryFontData.simpleFontDataForFirstRange();
+        originalFontData = &primaryRanges.fontDataForFirstRange();
 
     RefPtr<SimpleFontData> systemFallbackFontData = originalFontData->systemFallbackFontDataForCharacter(c, description, m_isForPlatformFont);
     if (!systemFallbackFontData)
         return GlyphData();
 
-    if (systemFallbackFontData->platformData().orientation() == Vertical && !systemFallbackFontData->hasVerticalGlyphs() && Font::isCJKIdeographOrSymbol(c))
+    if (systemFallbackFontData->platformData().orientation() == Vertical && !systemFallbackFontData->hasVerticalGlyphs() && FontCascade::isCJKIdeographOrSymbol(c))
         variant = BrokenIdeographVariant;
 
     GlyphData fallbackGlyphData;
@@ -257,7 +274,7 @@ GlyphData FontGlyphs::glyphDataForSystemFallback(UChar32 c, const FontDescriptio
         fallbackGlyphData = systemFallbackFontData->variantFontData(description, variant)->glyphDataForCharacter(c);
 
     if (variant == NormalVariant && fallbackGlyphData.fontData) {
-        if (!Font::isCJKIdeographOrSymbol(c) && fallbackGlyphData.fontData->platformData().orientation() == Vertical && !fallbackGlyphData.fontData->isTextOrientationFallback())
+        if (!FontCascade::isCJKIdeographOrSymbol(c) && fallbackGlyphData.fontData->platformData().orientation() == Vertical && !fallbackGlyphData.fontData->isTextOrientationFallback())
             fallbackGlyphData = glyphDataForNonCJKCharacterWithGlyphOrientation(c, description.nonCJKGlyphOrientation(), fallbackGlyphData);
     }
 
@@ -268,15 +285,14 @@ GlyphData FontGlyphs::glyphDataForSystemFallback(UChar32 c, const FontDescriptio
     return fallbackGlyphData;
 }
 
-GlyphData FontGlyphs::glyphDataForVariant(UChar32 c, const FontDescription& description, FontDataVariant variant, unsigned fallbackLevel)
+GlyphData FontGlyphs::glyphDataForVariant(UChar32 c, const FontDescription& description, FontDataVariant variant, unsigned fallbackIndex)
 {
-    for (; fallbackLevel <= description.familyCount(); ++fallbackLevel) {
-        auto* fontData = realizeFontDataAt(description, fallbackLevel);
-        if (!fontData)
+    while (true) {
+        auto& fontRanges = realizeFallbackRangesAt(description, fallbackIndex++);
+        if (fontRanges.isNull())
             break;
-
-        auto* simpleFontData = fontData->simpleFontDataForCharacter(c);
-        GlyphData data = simpleFontData ? simpleFontData->glyphDataForCharacter(c) : GlyphData();
+        auto* fontData = fontRanges.fontDataForCharacter(c);
+        GlyphData data = fontData ? fontData->glyphDataForCharacter(c) : GlyphData();
         if (data.fontData) {
             // The variantFontData function should not normally return 0.
             // But if it does, we will just render the capital letter big.
@@ -295,24 +311,24 @@ GlyphData FontGlyphs::glyphDataForNormalVariant(UChar32 c, const FontDescription
 {
     const unsigned pageNumber = c / GlyphPage::size;
 
-    for (unsigned fallbackLevel = 0; fallbackLevel <= description.familyCount(); ++fallbackLevel) {
-        auto* fontData = realizeFontDataAt(description, fallbackLevel);
-        if (!fontData)
+    for (unsigned fallbackIndex = 0; true; ++fallbackIndex) {
+        auto& fontRanges = realizeFallbackRangesAt(description, fallbackIndex);
+        if (fontRanges.isNull())
             break;
-        auto* simpleFontData = fontData->simpleFontDataForCharacter(c);
+        auto* simpleFontData = fontRanges.fontDataForCharacter(c);
         auto* page = simpleFontData ? simpleFontData->glyphPage(pageNumber) : nullptr;
         if (!page)
             continue;
         GlyphData data = page->glyphDataForCharacter(c);
         if (data.fontData) {
             if (data.fontData->platformData().orientation() == Vertical && !data.fontData->isTextOrientationFallback()) {
-                if (!Font::isCJKIdeographOrSymbol(c))
+                if (!FontCascade::isCJKIdeographOrSymbol(c))
                     return glyphDataForNonCJKCharacterWithGlyphOrientation(c, description.nonCJKGlyphOrientation(), data);
 
                 if (!data.fontData->hasVerticalGlyphs()) {
                     // Use the broken ideograph font data. The broken ideograph font will use the horizontal width of glyphs
                     // to make sure you get a square (even for broken glyphs like symbols used for punctuation).
-                    return glyphDataForVariant(c, description, BrokenIdeographVariant, fallbackLevel);
+                    return glyphDataForVariant(c, description, BrokenIdeographVariant, fallbackIndex);
                 }
 #if PLATFORM(COCOA)
                 if (data.fontData->platformData().syntheticOblique())
@@ -327,25 +343,21 @@ GlyphData FontGlyphs::glyphDataForNormalVariant(UChar32 c, const FontDescription
     return glyphDataForSystemFallback(c, description, NormalVariant);
 }
 
-static RefPtr<GlyphPage> glyphPageFromFontData(unsigned pageNumber, const FontData& fontData)
+static RefPtr<GlyphPage> glyphPageFromFontRanges(unsigned pageNumber, const FontRanges& fontRanges)
 {
     const SimpleFontData* simpleFontData = nullptr;
-    if (fontData.isSegmented()) {
-        UChar32 pageRangeFrom = pageNumber * GlyphPage::size;
-        UChar32 pageRangeTo = pageRangeFrom + GlyphPage::size - 1;
-        auto& segmentedFontData = downcast<SegmentedFontData>(fontData);
-        for (unsigned i = 0; i < segmentedFontData.numRanges(); ++i) {
-            auto& range = segmentedFontData.rangeAt(i);
-            if (range.to()) {
-                if (range.from() <= pageRangeFrom && pageRangeTo <= range.to())
-                    simpleFontData = range.fontData().get();
-                break;
-            }
+    UChar32 pageRangeFrom = pageNumber * GlyphPage::size;
+    UChar32 pageRangeTo = pageRangeFrom + GlyphPage::size - 1;
+    for (unsigned i = 0; i < fontRanges.size(); ++i) {
+        auto& range = fontRanges.rangeAt(i);
+        if (range.to()) {
+            if (range.from() <= pageRangeFrom && pageRangeTo <= range.to())
+                simpleFontData = &range.fontData();
+            break;
         }
-        if (!simpleFontData)
-            return nullptr;
-    } else
-        simpleFontData = &downcast<SimpleFontData>(fontData);
+    }
+    if (!simpleFontData)
+        return nullptr;
 
     if (simpleFontData->platformData().orientation() == Vertical)
         return nullptr;
@@ -365,7 +377,7 @@ GlyphData FontGlyphs::glyphDataForCharacter(UChar32 c, const FontDescription& de
 
     RefPtr<GlyphPage>& cachedPage = pageNumber ? m_cachedPages.add(pageNumber, nullptr).iterator->value : m_cachedPageZero;
     if (!cachedPage)
-        cachedPage = glyphPageFromFontData(pageNumber, *realizeFontDataAt(description, 0));
+        cachedPage = glyphPageFromFontRanges(pageNumber, realizeFallbackRangesAt(description, 0));
 
     GlyphData glyphData = cachedPage ? cachedPage->glyphDataForCharacter(c) : GlyphData();
     if (!glyphData.glyph) {

@@ -29,22 +29,21 @@
 #import "WebStringTruncator.h"
 
 #import "WebSystemInterface.h"
-#import <WebCore/Font.h>
-#import <WebCore/FontCache.h>
+#import <WebCore/FontCascade.h>
 #import <WebCore/FontPlatformData.h>
 #import <WebCore/StringTruncator.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
-static WebCore::Font& fontFromNSFont(NSFont *font)
+static WebCore::FontCascade& fontFromNSFont(NSFont *font)
 {
     static NeverDestroyed<RetainPtr<NSFont>> currentNSFont;
-    static NeverDestroyed<WebCore::Font> currentFont;
+    static NeverDestroyed<WebCore::FontCascade> currentFont;
     if ([font isEqual:currentNSFont.get().get()])
         return currentFont;
     currentNSFont.get() = font;
-    currentFont.get() = WebCore::Font(WebCore::FontPlatformData(font, [font pointSize]), ![[NSGraphicsContext currentContext] isDrawingToScreen]);
+    currentFont.get() = WebCore::FontCascade(WebCore::FontPlatformData(font, [font pointSize]), ![[NSGraphicsContext currentContext] isDrawingToScreen]);
     return currentFont;
 }
 
@@ -60,25 +59,21 @@ static WebCore::Font& fontFromNSFont(NSFont *font)
 + (NSString *)centerTruncateString:(NSString *)string toWidth:(float)maxWidth
 {
     static NeverDestroyed<RetainPtr<NSFont>> menuFont = [NSFont menuFontOfSize:0];
-    WebCore::FontCachePurgePreventer fontCachePurgePreventer;
     return WebCore::StringTruncator::centerTruncate(string, maxWidth, fontFromNSFont(menuFont.get().get()));
 }
 
 + (NSString *)centerTruncateString:(NSString *)string toWidth:(float)maxWidth withFont:(NSFont *)font
 {
-    WebCore::FontCachePurgePreventer fontCachePurgePreventer;
     return WebCore::StringTruncator::centerTruncate(string, maxWidth, fontFromNSFont(font));
 }
 
 + (NSString *)rightTruncateString:(NSString *)string toWidth:(float)maxWidth withFont:(NSFont *)font
 {
-    WebCore::FontCachePurgePreventer fontCachePurgePreventer;
     return WebCore::StringTruncator::rightTruncate(string, maxWidth, fontFromNSFont(font));
 }
 
 + (float)widthOfString:(NSString *)string font:(NSFont *)font
 {
-    WebCore::FontCachePurgePreventer fontCachePurgePreventer;
     return WebCore::StringTruncator::width(string, fontFromNSFont(font));
 }
 
