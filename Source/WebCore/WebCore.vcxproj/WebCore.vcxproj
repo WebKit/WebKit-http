@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
@@ -1366,20 +1366,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDatabase.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDatabaseSync.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
@@ -3941,34 +3927,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSharedWorker.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSharedWorkerGlobalScope.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSQLError.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -4012,20 +3970,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSQLTransaction.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSQLTransactionSync.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
@@ -6799,13 +6743,9 @@
     <ClCompile Include="..\Modules\webdatabase\DatabaseAuthorizer.cpp" />
     <ClCompile Include="..\Modules\webdatabase\DatabaseBackend.cpp" />
     <ClCompile Include="..\Modules\webdatabase\DatabaseBackendBase.cpp" />
-    <ClCompile Include="..\Modules\webdatabase\DatabaseBackendContext.cpp" />
-    <ClCompile Include="..\Modules\webdatabase\DatabaseBackendSync.cpp" />
-    <ClCompile Include="..\Modules\webdatabase\DatabaseBase.cpp" />
     <ClCompile Include="..\Modules\webdatabase\DatabaseContext.cpp" />
     <ClCompile Include="..\Modules\webdatabase\DatabaseManager.cpp" />
     <ClCompile Include="..\Modules\webdatabase\DatabaseServer.cpp" />
-    <ClCompile Include="..\Modules\webdatabase\DatabaseSync.cpp" />
     <ClCompile Include="..\Modules\webdatabase\DatabaseTask.cpp" />
     <ClCompile Include="..\Modules\webdatabase\DatabaseThread.cpp" />
     <ClCompile Include="..\Modules\webdatabase\DatabaseTracker.cpp" />
@@ -6816,15 +6756,11 @@
     <ClCompile Include="..\Modules\webdatabase\SQLResultSetRowList.cpp" />
     <ClCompile Include="..\Modules\webdatabase\SQLStatement.cpp" />
     <ClCompile Include="..\Modules\webdatabase\SQLStatementBackend.cpp" />
-    <ClCompile Include="..\Modules\webdatabase\SQLStatementSync.cpp" />
     <ClCompile Include="..\Modules\webdatabase\SQLTransaction.cpp" />
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionBackend.cpp" />
-    <ClCompile Include="..\Modules\webdatabase\SQLTransactionBackendSync.cpp" />
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionClient.cpp" />
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionCoordinator.cpp" />
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionStateMachine.cpp" />
-    <ClCompile Include="..\Modules\webdatabase\SQLTransactionSync.cpp" />
-    <ClCompile Include="..\Modules\webdatabase\WorkerGlobalScopeWebDatabase.cpp" />
     <ClCompile Include="..\Modules\websockets\ThreadableWebSocketChannel.cpp" />
     <ClCompile Include="..\Modules\websockets\ThreadableWebSocketChannelClientWrapper.cpp" />
     <ClCompile Include="..\Modules\websockets\WebSocket.cpp" />
@@ -7395,7 +7331,6 @@
     <ClCompile Include="..\platform\ContextMenuItem.cpp" />
     <ClCompile Include="..\platform\CrossThreadCopier.cpp" />
     <ClCompile Include="..\platform\Cursor.cpp" />
-    <ClCompile Include="..\platform\DatabaseStrategy.cpp" />
     <ClCompile Include="..\platform\DateComponents.cpp" />
     <ClCompile Include="..\platform\Decimal.cpp" />
     <ClCompile Include="..\platform\DisplaySleepDisabler.cpp" />
@@ -7481,7 +7416,6 @@
     <ClCompile Include="..\platform\graphics\gpu\TilingData.cpp" />
     <ClCompile Include="..\platform\graphics\FormatConverter.cpp" />
     <ClCompile Include="..\platform\graphics\GraphicsContext3D.cpp" />
-    <ClCompile Include="..\platform\graphics\GraphicsLayerAnimation.cpp" />
     <ClCompile Include="..\platform\graphics\GraphicsLayerTransform.cpp" />
     <ClCompile Include="..\platform\graphics\gstreamer\AudioTrackPrivateGStreamer.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -7632,6 +7566,7 @@
     <ClCompile Include="..\platform\graphics\texmap\coordinated\UpdateAtlas.cpp" />
     <ClCompile Include="..\platform\graphics\texmap\GraphicsLayerTextureMapper.cpp" />
     <ClCompile Include="..\platform\graphics\texmap\TextureMapper.cpp" />
+    <ClCompile Include="..\platform\graphics\texmap\TextureMapperAnimation.cpp" />
     <ClCompile Include="..\platform\graphics\texmap\TextureMapperBackingStore.cpp" />
     <ClCompile Include="..\platform\graphics\texmap\TextureMapperFPSCounter.cpp" />
     <ClCompile Include="..\platform\graphics\texmap\TextureMapperGL.cpp" />
@@ -8045,13 +7980,13 @@
     <ClCompile Include="..\platform\graphics\FloatSize.cpp" />
     <ClCompile Include="..\platform\graphics\Font.cpp" />
     <ClCompile Include="..\platform\graphics\FontCache.cpp" />
-    <ClCompile Include="..\platform\graphics\FontData.cpp" />
     <ClCompile Include="..\platform\graphics\FontDescription.cpp" />
     <ClCompile Include="..\platform\graphics\FontGenericFamilies.cpp" />
     <ClCompile Include="..\platform\graphics\FontGlyphs.cpp" />
     <ClCompile Include="..\platform\graphics\FontFastPath.cpp" />
     <ClCompile Include="..\platform\graphics\FontFeatureSettings.cpp" />
     <ClCompile Include="..\platform\graphics\FontPlatformData.cpp" />
+    <ClCompile Include="..\platform\graphics\FontRanges.cpp" />
     <ClCompile Include="..\platform\graphics\GeometryUtilities.cpp" />
     <ClCompile Include="..\platform\graphics\GeneratedImage.cpp" />
     <ClCompile Include="..\platform\graphics\Gradient.cpp" />
@@ -8085,7 +8020,6 @@
     <ClCompile Include="..\platform\graphics\PlatformTimeRanges.cpp" />
     <ClCompile Include="..\platform\graphics\Region.cpp" />
     <ClCompile Include="..\platform\graphics\RoundedRect.cpp" />
-    <ClCompile Include="..\platform\graphics\SegmentedFontData.cpp" />
     <ClCompile Include="..\platform\graphics\ShadowBlur.cpp" />
     <ClCompile Include="..\platform\graphics\SimpleFontData.cpp" />
     <ClCompile Include="..\platform\graphics\TextRun.cpp" />
@@ -9914,7 +9848,6 @@
     <ClCompile Include="..\css\StyleSheetList.cpp" />
     <ClCompile Include="..\css\SVGCSSComputedStyleDeclaration.cpp" />
     <ClCompile Include="..\css\SVGCSSParser.cpp" />
-    <ClCompile Include="..\css\SVGCSSStyleSelector.cpp" />
     <ClCompile Include="..\css\TransformFunctions.cpp" />
     <ClCompile Include="..\css\ViewportStyleResolver.cpp" />
     <ClCompile Include="..\css\WebKitCSSFilterValue.cpp" />
@@ -12400,7 +12333,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\replay\UserInputBridge.cpp" />
-    <ClCompile Include="..\workers\SharedWorkerRepository.cpp" />
     <ClCompile Include="..\xml\DOMParser.cpp" />
     <ClCompile Include="..\xml\NativeXPathNSResolver.cpp" />
     <ClCompile Include="..\xml\XMLErrors.cpp" />
@@ -14178,10 +14110,6 @@
     <ClCompile Include="..\workers\AbstractWorker.cpp" />
     <ClCompile Include="..\workers\DedicatedWorkerGlobalScope.cpp" />
     <ClCompile Include="..\workers\DedicatedWorkerThread.cpp" />
-    <ClCompile Include="..\workers\DefaultSharedWorkerRepository.cpp" />
-    <ClCompile Include="..\workers\SharedWorker.cpp" />
-    <ClCompile Include="..\workers\SharedWorkerGlobalScope.cpp" />
-    <ClCompile Include="..\workers\SharedWorkerThread.cpp" />
     <ClCompile Include="..\workers\Worker.cpp" />
     <ClCompile Include="..\workers\WorkerGlobalScope.cpp" />
     <ClCompile Include="..\workers\WorkerEventQueue.cpp" />
@@ -17313,20 +17241,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSSharedWorkerCustom.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSSQLResultSetRowListCustom.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -17342,20 +17256,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSSQLTransactionCustom.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSSQLTransactionSyncCustom.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
@@ -17752,18 +17652,8 @@
     <ClCompile Include="..\plugins\DOMMimeTypeArray.cpp" />
     <ClCompile Include="..\plugins\DOMPlugin.cpp" />
     <ClCompile Include="..\plugins\DOMPluginArray.cpp" />
-    <ClCompile Include="..\plugins\npapi.cpp" />
     <ClCompile Include="..\plugins\PluginData.cpp" />
-    <ClCompile Include="..\plugins\PluginDatabase.cpp" />
-    <ClCompile Include="..\plugins\PluginDebug.cpp" />
     <ClCompile Include="..\plugins\PluginMainThreadScheduler.cpp" />
-    <ClCompile Include="..\plugins\PluginPackage.cpp" />
-    <ClCompile Include="..\plugins\PluginStream.cpp" />
-    <ClCompile Include="..\plugins\PluginView.cpp" />
-    <ClCompile Include="..\plugins\win\PluginDatabaseWin.cpp" />
-    <ClCompile Include="..\plugins\win\PluginMessageThrottlerWin.cpp" />
-    <ClCompile Include="..\plugins\win\PluginPackageWin.cpp" />
-    <ClCompile Include="..\plugins\win\PluginViewWin.cpp" />
     <ClCompile Include="..\svg\SVGAllInOne.cpp" />
     <ClCompile Include="..\svg\SVGFontFaceElement.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -18378,7 +18268,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCSSValueList.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCustomEvent.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDatabase.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDatabaseSync.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataTransfer.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataTransferItem.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataTransferItemList.h" />
@@ -18573,13 +18462,10 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRequestAnimationFrameCallback.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRGBColor.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSScreen.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSharedWorker.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSharedWorkerGlobalScope.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSQLError.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSQLResultSet.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSQLResultSetRowList.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSQLTransaction.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSSQLTransactionSync.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSStorage.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSStorageEvent.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSStorageInfo.h" />
@@ -19076,24 +18962,19 @@
     <ClInclude Include="..\Modules\notifications\WorkerGlobalScopeNotifications.h" />
     <ClInclude Include="..\Modules\plugins\PluginReplacement.h" />
     <ClInclude Include="..\Modules\webdatabase\AbstractDatabaseServer.h" />
-    <ClInclude Include="..\Modules\webdatabase\AbstractSQLStatement.h" />
-    <ClInclude Include="..\Modules\webdatabase\AbstractSQLStatementBackend.h" />
     <ClInclude Include="..\Modules\webdatabase\ChangeVersionData.h" />
     <ClInclude Include="..\Modules\webdatabase\ChangeVersionWrapper.h" />
     <ClInclude Include="..\Modules\webdatabase\Database.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseAuthorizer.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseBackend.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseBackendBase.h" />
-    <ClInclude Include="..\Modules\webdatabase\DatabaseBackendContext.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseBackendSync.h" />
-    <ClInclude Include="..\Modules\webdatabase\DatabaseBase.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseBasicTypes.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseCallback.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseContext.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseError.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseManager.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseServer.h" />
-    <ClInclude Include="..\Modules\webdatabase\DatabaseSync.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseTask.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseThread.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseTracker.h" />
@@ -19118,9 +18999,6 @@
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionErrorCallback.h" />
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionState.h" />
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionStateMachine.h" />
-    <ClInclude Include="..\Modules\webdatabase\SQLTransactionSync.h" />
-    <ClInclude Include="..\Modules\webdatabase\SQLTransactionSyncCallback.h" />
-    <ClInclude Include="..\Modules\webdatabase\WorkerGlobalScopeWebDatabase.h" />
     <ClInclude Include="..\Modules\websockets\CloseEvent.h" />
     <ClInclude Include="..\Modules\websockets\ThreadableWebSocketChannel.h" />
     <ClInclude Include="..\Modules\websockets\ThreadableWebSocketChannelClientWrapper.h" />
@@ -19368,7 +19246,6 @@
     <ClInclude Include="..\platform\CookiesStrategy.h" />
     <ClInclude Include="..\platform\CrossThreadCopier.h" />
     <ClInclude Include="..\platform\Cursor.h" />
-    <ClInclude Include="..\platform\DatabaseStrategy.h" />
     <ClInclude Include="..\platform\DateComponents.h" />
     <ClInclude Include="..\platform\Decimal.h" />
     <ClInclude Include="..\platform\DisplaySleepDisabler.h" />
@@ -19420,7 +19297,6 @@
     <ClInclude Include="..\platform\graphics\gpu\TilingData.h" />
     <ClInclude Include="..\platform\graphics\FormatConverter.h" />
     <ClInclude Include="..\platform\graphics\GraphicsContext3D.h" />
-    <ClInclude Include="..\platform\graphics\GraphicsLayerAnimation.h" />
     <ClInclude Include="..\platform\graphics\GraphicsLayerFactory.h" />
     <ClInclude Include="..\platform\graphics\GraphicsLayerTransform.h" />
     <ClInclude Include="..\platform\graphics\gstreamer\AudioTrackPrivateGStreamer.h" />
@@ -19457,6 +19333,7 @@
     <ClInclude Include="..\platform\graphics\texmap\coordinated\UpdateAtlas.h" />
     <ClInclude Include="..\platform\graphics\texmap\GraphicsLayerTextureMapper.h" />
     <ClInclude Include="..\platform\graphics\texmap\TextureMapper.h" />
+    <ClInclude Include="..\platform\graphics\texmap\TextureMapperAnimation.h" />
     <ClInclude Include="..\platform\graphics\texmap\TextureMapperBackingStore.h" />
     <ClInclude Include="..\platform\graphics\texmap\TextureMapperFPSCounter.h" />
     <ClInclude Include="..\platform\graphics\texmap\TextureMapperGL.h" />
@@ -19591,13 +19468,13 @@
     <ClInclude Include="..\platform\graphics\FloatSizeHash.h" />
     <ClInclude Include="..\platform\graphics\Font.h" />
     <ClInclude Include="..\platform\graphics\FontCache.h" />
-    <ClInclude Include="..\platform\graphics\FontData.h" />
     <ClInclude Include="..\platform\graphics\FontDescription.h" />
     <ClInclude Include="..\platform\graphics\FontGenericFamilies.h" />
     <ClInclude Include="..\platform\graphics\FontGlyphs.h" />
     <ClInclude Include="..\platform\graphics\FontFeatureSettings.h" />
     <ClInclude Include="..\platform\graphics\FontMetrics.h" />
     <ClInclude Include="..\platform\graphics\FontPlatformData.h" />
+    <ClInclude Include="..\platform\graphics\FontRanges.h" />
     <ClInclude Include="..\platform\graphics\FontRenderingMode.h" />
     <ClInclude Include="..\platform\graphics\FontSelector.h" />
     <ClInclude Include="..\platform\graphics\FontSmoothingMode.h" />
@@ -19640,7 +19517,6 @@
     <ClInclude Include="..\platform\graphics\PlatformTimeRanges.h" />
     <ClInclude Include="..\platform\graphics\Region.h" />
     <ClInclude Include="..\platform\graphics\RoundedRect.h" />
-    <ClInclude Include="..\platform\graphics\SegmentedFontData.h" />
     <ClInclude Include="..\platform\graphics\ShadowBlur.h" />
     <ClInclude Include="..\platform\graphics\SimpleFontData.h" />
     <ClInclude Include="..\platform\graphics\TextRun.h" />
@@ -20665,12 +20541,6 @@
     <ClInclude Include="..\workers\AbstractWorker.h" />
     <ClInclude Include="..\workers\DedicatedWorkerGlobalScope.h" />
     <ClInclude Include="..\workers\DedicatedWorkerThread.h" />
-    <ClInclude Include="..\workers\DefaultSharedWorkerRepository.h" />
-    <ClInclude Include="..\workers\SharedWorker.h" />
-    <ClInclude Include="..\workers\SharedWorkerGlobalScope.h" />
-    <ClInclude Include="..\workers\SharedWorkerRepository.h" />
-    <ClInclude Include="..\workers\SharedWorkerStrategy.h" />
-    <ClInclude Include="..\workers\SharedWorkerThread.h" />
     <ClInclude Include="..\workers\Worker.h" />
     <ClInclude Include="..\workers\WorkerGlobalScope.h" />
     <ClInclude Include="..\workers\WorkerGlobalScopeProxy.h" />
@@ -21028,15 +20898,7 @@
     <ClInclude Include="..\plugins\npfunctions.h" />
     <ClInclude Include="..\plugins\npruntime.h" />
     <ClInclude Include="..\plugins\PluginData.h" />
-    <ClInclude Include="..\plugins\PluginDatabase.h" />
-    <ClInclude Include="..\plugins\PluginDebug.h" />
     <ClInclude Include="..\plugins\PluginMainThreadScheduler.h" />
-    <ClInclude Include="..\plugins\PluginPackage.h" />
-    <ClInclude Include="..\plugins\PluginQuirkSet.h" />
-    <ClInclude Include="..\plugins\PluginStrategy.h" />
-    <ClInclude Include="..\plugins\PluginStream.h" />
-    <ClInclude Include="..\plugins\PluginView.h" />
-    <ClInclude Include="..\plugins\win\PluginMessageThrottlerWin.h" />
     <ClInclude Include="..\svg\ColorDistance.h" />
     <ClInclude Include="..\svg\SVGAElement.h" />
     <ClInclude Include="..\svg\SVGAltGlyphDefElement.h" />
@@ -21406,14 +21268,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </MASM>
-    <MASM Include="..\plugins\win\PaintHooks.asm">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
     </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

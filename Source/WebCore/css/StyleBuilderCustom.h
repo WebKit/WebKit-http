@@ -29,17 +29,21 @@
 
 #include "CSSAspectRatioValue.h"
 #include "CSSCursorImageValue.h"
+#include "CSSFontValue.h"
 #include "CSSGradientValue.h"
 #include "CSSShadowValue.h"
 #include "Counter.h"
 #include "CounterContent.h"
 #include "CursorList.h"
+#include "DashboardRegion.h"
 #include "ElementAncestorIterator.h"
 #include "Frame.h"
 #include "HTMLElement.h"
 #include "LocaleToScriptMapping.h"
 #include "Rect.h"
+#include "RenderTheme.h"
 #include "SVGElement.h"
+#include "SVGRenderStyle.h"
 #include "StyleBuilderConverter.h"
 #include "StyleFontSizeFunctions.h"
 #include "StyleGeneratedImage.h"
@@ -67,6 +71,8 @@ public:
     DECLARE_PROPERTY_CUSTOM_HANDLERS(CounterIncrement);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(CounterReset);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Cursor);
+    DECLARE_PROPERTY_CUSTOM_HANDLERS(Fill);
+    DECLARE_PROPERTY_CUSTOM_HANDLERS(Font);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(FontFamily);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(FontSize);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(FontWeight);
@@ -78,6 +84,7 @@ public:
 #endif
     DECLARE_PROPERTY_CUSTOM_HANDLERS(OutlineStyle);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Size);
+    DECLARE_PROPERTY_CUSTOM_HANDLERS(Stroke);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(TextIndent);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(TextShadow);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitAspectRatio);
@@ -92,23 +99,30 @@ public:
     DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitMaskBoxImageRepeat);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitMaskBoxImageSlice);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitMaskBoxImageWidth);
+    DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitSvgShadow);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitTextEmphasisStyle);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Zoom);
 
     // Custom handling of initial + inherit value setting only.
     static void applyInitialWebkitMaskImage(StyleResolver&) { }
     static void applyInheritWebkitMaskImage(StyleResolver&) { }
+    static void applyInitialWebkitFontFeatureSettings(StyleResolver&) { }
+    static void applyInheritWebkitFontFeatureSettings(StyleResolver&) { }
 
     // Custom handling of inherit + value setting only.
     static void applyInheritDisplay(StyleResolver&);
     static void applyValueDisplay(StyleResolver&, CSSValue&);
 
     // Custom handling of value setting only.
+    static void applyValueBaselineShift(StyleResolver&, CSSValue&);
     static void applyValueDirection(StyleResolver&, CSSValue&);
 #if !ENABLE(IOS_TEXT_AUTOSIZING)
     static void applyValueLineHeight(StyleResolver&, CSSValue&);
 #endif
     static void applyValueVerticalAlign(StyleResolver&, CSSValue&);
+#if ENABLE(DASHBOARD_SUPPORT)
+    static void applyValueWebkitDashboardRegion(StyleResolver&, CSSValue&);
+#endif
     static void applyValueWebkitJustifySelf(StyleResolver&, CSSValue&);
     static void applyValueWebkitLocale(StyleResolver&, CSSValue&);
     static void applyValueWebkitTextOrientation(StyleResolver&, CSSValue&);
@@ -285,6 +299,51 @@ inline void StyleBuilderCustom::applyValueVerticalAlign(StyleResolver& styleReso
         styleResolver.style()->setVerticalAlignLength(primitiveValue.convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(styleResolver.state().cssToLengthConversionData()));
 }
 
+#if ENABLE(DASHBOARD_SUPPORT)
+static Length convertToIntLength(const CSSPrimitiveValue* primitiveValue, const CSSToLengthConversionData& conversionData)
+{
+    return primitiveValue ? primitiveValue->convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(conversionData) : Length(Undefined);
+}
+
+inline void StyleBuilderCustom::applyValueWebkitDashboardRegion(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueNone) {
+        styleResolver.style()->setDashboardRegions(RenderStyle::noneDashboardRegions());
+        return;
+    }
+
+    DashboardRegion* region = primitiveValue.getDashboardRegionValue();
+    if (!region)
+        return;
+
+    DashboardRegion* first = region;
+    while (region) {
+        Length top = convertToIntLength(region->top(), styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
+        Length right = convertToIntLength(region->right(), styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
+        Length bottom = convertToIntLength(region->bottom(), styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
+        Length left = convertToIntLength(region->left(), styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
+
+        if (top.isUndefined())
+            top = Length();
+        if (right.isUndefined())
+            right = Length();
+        if (bottom.isUndefined())
+            bottom = Length();
+        if (left.isUndefined())
+            left = Length();
+
+        if (region->m_isCircle)
+            styleResolver.style()->setDashboardRegion(StyleDashboardRegion::Circle, region->m_label, top, right, bottom, left, region == first ? false : true);
+        else if (region->m_isRectangle)
+            styleResolver.style()->setDashboardRegion(StyleDashboardRegion::Rectangle, region->m_label, top, right, bottom, left, region == first ? false : true);
+        region = region->m_next.get();
+    }
+
+    styleResolver.document().setHasAnnotatedRegions(true);
+}
+#endif // ENABLE(DASHBOARD_SUPPORT)
+
 #if ENABLE(CSS_IMAGE_RESOLUTION)
 inline void StyleBuilderCustom::applyInheritImageResolution(StyleResolver& styleResolver)
 {
@@ -433,7 +492,9 @@ inline void StyleBuilderCustom::applyValueTextIndent(StyleResolver& styleResolve
 #endif
     }
 
-    ASSERT(!lengthOrPercentageValue.isUndefined());
+    if (lengthOrPercentageValue.isUndefined())
+        return;
+
     styleResolver.style()->setTextIndent(lengthOrPercentageValue);
 #if ENABLE(CSS3_TEXT)
     styleResolver.style()->setTextIndentLine(textIndentLineValue);
@@ -740,7 +801,7 @@ inline void StyleBuilderCustom::applyTextOrBoxShadowValue(StyleResolver& styleRe
         ShadowStyle shadowStyle = shadowValue.style && shadowValue.style->getValueID() == CSSValueInset ? Inset : Normal;
         Color color;
         if (shadowValue.color)
-            color = styleResolver.colorFromPrimitiveValue(shadowValue.color.get());
+            color = styleResolver.colorFromPrimitiveValue(*shadowValue.color);
         else
             color = styleResolver.style()->color();
         auto shadowData = std::make_unique<ShadowData>(IntPoint(x, y), blur, spread, shadowStyle, id == CSSPropertyWebkitBoxShadow, color.isValid() ? color : Color::transparent);
@@ -913,6 +974,30 @@ inline void StyleBuilderCustom::applyValueDisplay(StyleResolver& styleResolver, 
     EDisplay display = downcast<CSSPrimitiveValue>(value);
     if (isValidDisplayValue(styleResolver, display))
         styleResolver.style()->setDisplay(display);
+}
+
+inline void StyleBuilderCustom::applyValueBaselineShift(StyleResolver& styleResolver, CSSValue& value)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.isValueID()) {
+        switch (primitiveValue.getValueID()) {
+        case CSSValueBaseline:
+            svgStyle.setBaselineShift(BS_BASELINE);
+            break;
+        case CSSValueSub:
+            svgStyle.setBaselineShift(BS_SUB);
+            break;
+        case CSSValueSuper:
+            svgStyle.setBaselineShift(BS_SUPER);
+            break;
+        default:
+            break;
+        }
+    } else {
+        svgStyle.setBaselineShift(BS_LENGTH);
+        svgStyle.setBaselineShiftValue(SVGLength::fromCSSPrimitiveValue(primitiveValue));
+    }
 }
 
 inline void StyleBuilderCustom::applyInitialWebkitAspectRatio(StyleResolver& styleResolver)
@@ -1111,6 +1196,84 @@ inline void StyleBuilderCustom::applyValueCursor(StyleResolver& styleResolver, C
     }
 }
 
+inline void StyleBuilderCustom::applyInitialFill(StyleResolver& styleResolver)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    svgStyle.setFillPaint(SVGRenderStyle::initialFillPaintType(), SVGRenderStyle::initialFillPaintColor(), SVGRenderStyle::initialFillPaintUri(), styleResolver.applyPropertyToRegularStyle(), styleResolver.applyPropertyToVisitedLinkStyle());
+}
+
+inline void StyleBuilderCustom::applyInheritFill(StyleResolver& styleResolver)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    const SVGRenderStyle& svgParentStyle = styleResolver.parentStyle()->svgStyle();
+    svgStyle.setFillPaint(svgParentStyle.fillPaintType(), svgParentStyle.fillPaintColor(), svgParentStyle.fillPaintUri(), styleResolver.applyPropertyToRegularStyle(), styleResolver.applyPropertyToVisitedLinkStyle());
+
+}
+
+inline void StyleBuilderCustom::applyValueFill(StyleResolver& styleResolver, CSSValue& value)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    SVGPaint& svgPaint = downcast<SVGPaint>(value);
+    svgStyle.setFillPaint(svgPaint.paintType(), StyleBuilderConverter::convertSVGColor(styleResolver, svgPaint), svgPaint.uri(), styleResolver.applyPropertyToRegularStyle(), styleResolver.applyPropertyToVisitedLinkStyle());
+}
+
+inline void StyleBuilderCustom::applyInitialStroke(StyleResolver& styleResolver)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    svgStyle.setStrokePaint(SVGRenderStyle::initialStrokePaintType(), SVGRenderStyle::initialStrokePaintColor(), SVGRenderStyle::initialStrokePaintUri(), styleResolver.applyPropertyToRegularStyle(), styleResolver.applyPropertyToVisitedLinkStyle());
+}
+
+inline void StyleBuilderCustom::applyInheritStroke(StyleResolver& styleResolver)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    const SVGRenderStyle& svgParentStyle = styleResolver.parentStyle()->svgStyle();
+    svgStyle.setStrokePaint(svgParentStyle.strokePaintType(), svgParentStyle.strokePaintColor(), svgParentStyle.strokePaintUri(), styleResolver.applyPropertyToRegularStyle(), styleResolver.applyPropertyToVisitedLinkStyle());
+}
+
+inline void StyleBuilderCustom::applyValueStroke(StyleResolver& styleResolver, CSSValue& value)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    SVGPaint& svgPaint = downcast<SVGPaint>(value);
+    svgStyle.setStrokePaint(svgPaint.paintType(), StyleBuilderConverter::convertSVGColor(styleResolver, svgPaint), svgPaint.uri(), styleResolver.applyPropertyToRegularStyle(), styleResolver.applyPropertyToVisitedLinkStyle());
+}
+
+inline void StyleBuilderCustom::applyInitialWebkitSvgShadow(StyleResolver& styleResolver)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    svgStyle.setShadow(nullptr);
+}
+
+inline void StyleBuilderCustom::applyInheritWebkitSvgShadow(StyleResolver& styleResolver)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    const SVGRenderStyle& svgParentStyle = styleResolver.parentStyle()->svgStyle();
+    svgStyle.setShadow(svgParentStyle.shadow() ? std::make_unique<ShadowData>(*svgParentStyle.shadow()) : nullptr);
+}
+
+inline void StyleBuilderCustom::applyValueWebkitSvgShadow(StyleResolver& styleResolver, CSSValue& value)
+{
+    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone);
+        svgStyle.setShadow(nullptr);
+        return;
+    }
+
+    auto& shadowValue = downcast<CSSShadowValue>(*downcast<CSSValueList>(value).itemWithoutBoundsCheck(0));
+    IntPoint location(shadowValue.x->computeLength<int>(styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f)),
+        shadowValue.y->computeLength<int>(styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f)));
+    int blur = shadowValue.blur ? shadowValue.blur->computeLength<int>(styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f)) : 0;
+    Color color;
+    if (shadowValue.color)
+        color = styleResolver.colorFromPrimitiveValue(*shadowValue.color);
+
+    // -webkit-svg-shadow does should not have a spread or style
+    ASSERT(!shadowValue.spread);
+    ASSERT(!shadowValue.style);
+
+    svgStyle.setShadow(std::make_unique<ShadowData>(location, blur, 0, Normal, false, color.isValid() ? color : Color::transparent));
+}
+
 inline void StyleBuilderCustom::applyInitialFontWeight(StyleResolver& styleResolver)
 {
     FontDescription fontDescription = styleResolver.fontDescription();
@@ -1166,6 +1329,48 @@ inline void StyleBuilderCustom::applyValueColumnGap(StyleResolver& styleResolver
         styleResolver.style()->setHasNormalColumnGap();
     else
         styleResolver.style()->setColumnGap(StyleBuilderConverter::convertComputedLength<float>(styleResolver, value));
+}
+
+inline void StyleBuilderCustom::applyInitialFont(StyleResolver& styleResolver)
+{
+    Settings* settings = styleResolver.documentSettings();
+    ASSERT(settings); // If we're doing style resolution, this document should always be in a frame and thus have settings
+    styleResolver.initializeFontStyle(settings);
+}
+
+inline void StyleBuilderCustom::applyInheritFont(StyleResolver& styleResolver)
+{
+    FontDescription fontDescription = styleResolver.parentStyle()->fontDescription();
+    styleResolver.style()->setLineHeight(styleResolver.parentStyle()->specifiedLineHeight());
+    styleResolver.state().setLineHeightValue(0);
+    styleResolver.setFontDescription(fontDescription);
+}
+
+inline void StyleBuilderCustom::applyValueFont(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        styleResolver.style()->setLineHeight(RenderStyle::initialLineHeight());
+        styleResolver.state().setLineHeightValue(0);
+
+        FontDescription fontDescription;
+        RenderTheme::defaultTheme()->systemFont(downcast<CSSPrimitiveValue>(value).getValueID(), fontDescription);
+
+        // Double-check and see if the theme did anything. If not, don't bother updating the font.
+        if (fontDescription.isAbsoluteSize()) {
+            // Make sure the rendering mode and printer font settings are updated.
+            Settings* settings = styleResolver.documentSettings();
+            ASSERT(settings); // If we're doing style resolution, this document should always be in a frame and thus have settings
+            fontDescription.setRenderingMode(settings->fontRenderingMode());
+            fontDescription.setUsePrinterFont(styleResolver.document().printing() || !settings->screenFontSubstitutionEnabled());
+
+            // Handle the zoom factor.
+            fontDescription.setComputedSize(Style::computedFontSizeFromSpecifiedSize(fontDescription.specifiedSize(), fontDescription.isAbsoluteSize(), styleResolver.useSVGZoomRules(), styleResolver.style(), styleResolver.document()));
+            styleResolver.setFontDescription(fontDescription);
+        }
+        return;
+    }
+    if (is<CSSFontValue>(value))
+        styleResolver.applyFont(downcast<CSSFontValue>(value));
 }
 
 inline void StyleBuilderCustom::applyInitialContent(StyleResolver& styleResolver)

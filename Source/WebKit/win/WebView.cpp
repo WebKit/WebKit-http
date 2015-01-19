@@ -32,6 +32,8 @@
 #include "DOMCoreClasses.h"
 #include "FullscreenVideoController.h"
 #include "MarshallingHelpers.h"
+#include "PluginDatabase.h"
+#include "PluginView.h"
 #include "ResourceLoadScheduler.h"
 #include "SoftLinking.h"
 #include "SubframeLoader.h"
@@ -127,8 +129,6 @@
 #include <WebCore/PlatformMouseEvent.h>
 #include <WebCore/PlatformWheelEvent.h>
 #include <WebCore/PluginData.h>
-#include <WebCore/PluginDatabase.h>
-#include <WebCore/PluginView.h>
 #include <WebCore/PopupMenu.h>
 #include <WebCore/PopupMenuWin.h>
 #include <WebCore/ProgressTracker.h>
@@ -1291,7 +1291,9 @@ WindowCloseTimer* WindowCloseTimer::create(WebView* webView)
     if (!document)
         return nullptr;
 
-    return new WindowCloseTimer(*document, webView);
+    auto closeTimer = new WindowCloseTimer(*document, webView);
+    closeTimer->suspendIfNeeded();
+    return closeTimer;
 }
 
 WindowCloseTimer::WindowCloseTimer(ScriptExecutionContext& context, WebView* webView)
@@ -4948,11 +4950,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
             return hr;
         settings.setAuthorAndUserStylesEnabled(enabled);
     }
-
-    hr = prefsPrivate->inApplicationChromeMode(&enabled);
-    if (FAILED(hr))
-        return hr;
-    settings.setApplicationChromeMode(enabled);
 
     hr = prefsPrivate->offlineWebApplicationCacheEnabled(&enabled);
     if (FAILED(hr))

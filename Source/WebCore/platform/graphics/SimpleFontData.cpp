@@ -154,20 +154,7 @@ void SimpleFontData::platformGlyphInit()
 
 SimpleFontData::~SimpleFontData()
 {
-    if (!isSVGFont())
-        platformDestroy();
-
     removeFromSystemFallbackCache();
-}
-
-const SimpleFontData* SimpleFontData::simpleFontDataForCharacter(UChar32) const
-{
-    return this;
-}
-
-const SimpleFontData& SimpleFontData::simpleFontDataForFirstRange() const
-{
-    return *this;
 }
 
 static bool fillGlyphPage(GlyphPage& pageToFill, unsigned offset, unsigned length, UChar* buffer, unsigned bufferLength, const SimpleFontData* fontData)
@@ -291,11 +278,6 @@ GlyphData SimpleFontData::glyphDataForCharacter(UChar32 character) const
     return page->glyphDataForCharacter(character);
 }
 
-bool SimpleFontData::isSegmented() const
-{
-    return false;
-}
-
 PassRefPtr<SimpleFontData> SimpleFontData::verticalRightOrientationFontData() const
 {
     if (!m_derivedFontData)
@@ -388,21 +370,6 @@ const OpenTypeMathData* SimpleFontData::mathData() const
 
 SimpleFontData::DerivedFontData::~DerivedFontData()
 {
-#if PLATFORM(COCOA)
-    if (compositeFontReferences) {
-        // FIXME: Why don't we use WebKit types here?
-        CFDictionaryRef dictionary = CFDictionaryRef(compositeFontReferences.get());
-        CFIndex count = CFDictionaryGetCount(dictionary);
-        if (count > 0) {
-            Vector<SimpleFontData*, 2> stash(count);
-            SimpleFontData** fonts = stash.data();
-            CFDictionaryGetKeysAndValues(dictionary, 0, (const void **)fonts);
-            // This deletes the fonts.
-            while (count-- > 0 && *fonts)
-                adoptRef(*fonts++);
-        }
-    }
-#endif
 }
 
 PassRefPtr<SimpleFontData> SimpleFontData::createScaledFontData(const FontDescription& fontDescription, float scaleFactor) const

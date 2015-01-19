@@ -1204,6 +1204,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
+    pageConfiguration.databaseProvider = &WebDatabaseProvider::shared();
     pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
     pageConfiguration.userContentController = &_private->group->userContentController();
     pageConfiguration.visitedLinkStore = &_private->group->visitedLinkStore();
@@ -2264,7 +2265,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setDeveloperExtrasEnabled([preferences developerExtrasEnabled]);
     settings.setJavaScriptExperimentsEnabled([preferences javaScriptExperimentsEnabled]);
     settings.setAuthorAndUserStylesEnabled([preferences authorAndUserStylesEnabled]);
-    settings.setApplicationChromeMode([preferences applicationChromeModeEnabled]);
 
     settings.setNeedsSiteSpecificQuirks(_private->useSiteSpecificSpoofing);
     settings.setDOMTimersThrottlingEnabled([preferences domTimersThrottlingEnabled]);
@@ -8653,8 +8653,9 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
     if (!_private->textIndicatorWindow)
         _private->textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
-    NSRect contentRect = [self.window convertRectToScreen:textIndicator->textBoundingRectInWindowCoordinates()];
-    _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(contentRect), fadeOut);
+    NSRect textBoundingRectInWindowCoordinates = [self convertRect:[self _convertRectFromRootView:textIndicator->textBoundingRectInRootViewCoordinates()] toView:nil];
+    NSRect textBoundingRectInScreenCoordinates = [self.window convertRectToScreen:textBoundingRectInWindowCoordinates];
+    _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(textBoundingRectInScreenCoordinates), fadeOut);
 }
 
 - (void)_clearTextIndicator

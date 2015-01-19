@@ -306,7 +306,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webdatabase/DOMWindowWebDatabase.idl
     Modules/webdatabase/Database.idl
     Modules/webdatabase/DatabaseCallback.idl
-    Modules/webdatabase/DatabaseSync.idl
     Modules/webdatabase/SQLError.idl
     Modules/webdatabase/SQLException.idl
     Modules/webdatabase/SQLResultSet.idl
@@ -316,8 +315,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webdatabase/SQLTransaction.idl
     Modules/webdatabase/SQLTransactionCallback.idl
     Modules/webdatabase/SQLTransactionErrorCallback.idl
-    Modules/webdatabase/SQLTransactionSync.idl
-    Modules/webdatabase/SQLTransactionSyncCallback.idl
 
     Modules/websockets/CloseEvent.idl
     Modules/websockets/WebSocket.idl
@@ -613,8 +610,6 @@ set(WebCore_NON_SVG_IDL_FILES
 
     workers/AbstractWorker.idl
     workers/DedicatedWorkerGlobalScope.idl
-    workers/SharedWorker.idl
-    workers/SharedWorkerGlobalScope.idl
     workers/Worker.idl
     workers/WorkerGlobalScope.idl
     workers/WorkerLocation.idl
@@ -957,13 +952,9 @@ set(WebCore_SOURCES
     Modules/webdatabase/DatabaseAuthorizer.cpp
     Modules/webdatabase/DatabaseBackend.cpp
     Modules/webdatabase/DatabaseBackendBase.cpp
-    Modules/webdatabase/DatabaseBackendContext.cpp
-    Modules/webdatabase/DatabaseBackendSync.cpp
-    Modules/webdatabase/DatabaseBase.cpp
     Modules/webdatabase/DatabaseContext.cpp
     Modules/webdatabase/DatabaseManager.cpp
     Modules/webdatabase/DatabaseServer.cpp
-    Modules/webdatabase/DatabaseSync.cpp
     Modules/webdatabase/DatabaseTask.cpp
     Modules/webdatabase/DatabaseThread.cpp
     Modules/webdatabase/DatabaseTracker.cpp
@@ -973,14 +964,11 @@ set(WebCore_SOURCES
     Modules/webdatabase/SQLResultSetRowList.cpp
     Modules/webdatabase/SQLStatement.cpp
     Modules/webdatabase/SQLStatementBackend.cpp
-    Modules/webdatabase/SQLStatementSync.cpp
     Modules/webdatabase/SQLTransaction.cpp
     Modules/webdatabase/SQLTransactionBackend.cpp
-    Modules/webdatabase/SQLTransactionBackendSync.cpp
     Modules/webdatabase/SQLTransactionClient.cpp
     Modules/webdatabase/SQLTransactionCoordinator.cpp
     Modules/webdatabase/SQLTransactionStateMachine.cpp
-    Modules/webdatabase/SQLTransactionSync.cpp
 
     Modules/websockets/ThreadableWebSocketChannel.cpp
     Modules/websockets/ThreadableWebSocketChannelClientWrapper.cpp
@@ -1140,11 +1128,9 @@ set(WebCore_SOURCES
     bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
     bindings/js/JSSQLTransactionCustom.cpp
-    bindings/js/JSSQLTransactionSyncCustom.cpp
     bindings/js/JSSVGElementInstanceCustom.cpp
     bindings/js/JSSVGLengthCustom.cpp
     bindings/js/JSSVGPathSegCustom.cpp
-    bindings/js/JSSharedWorkerCustom.cpp
     bindings/js/JSStorageCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSStyleSheetListCustom.cpp
@@ -1275,7 +1261,6 @@ set(WebCore_SOURCES
     css/RuleSet.cpp
     css/SVGCSSComputedStyleDeclaration.cpp
     css/SVGCSSParser.cpp
-    css/SVGCSSStyleSelector.cpp
     css/SelectorChecker.cpp
     css/SelectorFilter.cpp
     css/SourceSizeList.cpp
@@ -1974,7 +1959,6 @@ set(WebCore_SOURCES
     platform/ContextMenu.cpp
     platform/ContextMenuItem.cpp
     platform/CrossThreadCopier.cpp
-    platform/DatabaseStrategy.cpp
     platform/DateComponents.cpp
     platform/Decimal.cpp
     platform/DisplaySleepDisabler.cpp
@@ -2071,19 +2055,18 @@ set(WebCore_SOURCES
     platform/graphics/FloatSize.cpp
     platform/graphics/Font.cpp
     platform/graphics/FontCache.cpp
-    platform/graphics/FontData.cpp
     platform/graphics/FontDescription.cpp
     platform/graphics/FontFastPath.cpp
     platform/graphics/FontFeatureSettings.cpp
     platform/graphics/FontGenericFamilies.cpp
     platform/graphics/FontGlyphs.cpp
+    platform/graphics/FontRanges.cpp
     platform/graphics/GeneratedImage.cpp
     platform/graphics/GeometryUtilities.cpp
     platform/graphics/Gradient.cpp
     platform/graphics/GradientImage.cpp
     platform/graphics/GraphicsContext.cpp
     platform/graphics/GraphicsLayer.cpp
-    platform/graphics/GraphicsLayerAnimation.cpp
     platform/graphics/GraphicsLayerTransform.cpp
     platform/graphics/GraphicsLayerUpdater.cpp
     platform/graphics/GraphicsTypes.cpp
@@ -2105,7 +2088,6 @@ set(WebCore_SOURCES
     platform/graphics/Region.cpp
     platform/graphics/RoundedRect.cpp
     platform/graphics/SVGGlyph.cpp
-    platform/graphics/SegmentedFontData.cpp
     platform/graphics/ShadowBlur.cpp
     platform/graphics/SimpleFontData.cpp
     platform/graphics/StringTruncator.cpp
@@ -2145,6 +2127,7 @@ set(WebCore_SOURCES
     platform/graphics/opentype/OpenTypeMathData.cpp
 
     platform/graphics/texmap/TextureMapper.cpp
+    platform/graphics/texmap/TextureMapperAnimation.cpp
     platform/graphics/texmap/TextureMapperBackingStore.cpp
     platform/graphics/texmap/TextureMapperFPSCounter.cpp
     platform/graphics/texmap/TextureMapperImageBuffer.cpp
@@ -2244,9 +2227,7 @@ set(WebCore_SOURCES
     plugins/DOMPlugin.cpp
     plugins/DOMPluginArray.cpp
     plugins/PluginData.cpp
-    plugins/PluginDebug.cpp
     plugins/PluginMainThreadScheduler.cpp
-    plugins/PluginStream.cpp
 
     rendering/AutoTableLayout.cpp
     rendering/BidiRun.cpp
@@ -2668,11 +2649,6 @@ set(WebCore_SOURCES
     workers/AbstractWorker.cpp
     workers/DedicatedWorkerGlobalScope.cpp
     workers/DedicatedWorkerThread.cpp
-    workers/DefaultSharedWorkerRepository.cpp
-    workers/SharedWorker.cpp
-    workers/SharedWorkerGlobalScope.cpp
-    workers/SharedWorkerRepository.cpp
-    workers/SharedWorkerThread.cpp
     workers/Worker.cpp
     workers/WorkerEventQueue.cpp
     workers/WorkerGlobalScope.cpp
@@ -2766,19 +2742,6 @@ if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
     )
 endif ()
 
-if (ENABLE_SQL_DATABASE)
-    list(APPEND WebCore_SOURCES
-        Modules/webdatabase/WorkerGlobalScopeWebDatabase.cpp
-    )
-
-    list(APPEND WebCore_IDL_FILES
-        Modules/webdatabase/WorkerGlobalScopeWebDatabase.idl
-    )
-endif ()
-
-list(APPEND WebCore_CSS_PROPERTY_NAMES
-    ${WEBCORE_DIR}/css/SVGCSSPropertyNames.in
-)
 list(APPEND WebCore_CSS_VALUE_KEYWORDS
     ${WEBCORE_DIR}/css/SVGCSSValueKeywords.in
 )
@@ -2956,12 +2919,8 @@ list(APPEND WebCore_LIBRARIES
 )
 
 if (WTF_USE_3D_GRAPHICS)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${THIRDPARTY_DIR}/ANGLE/src"
-        "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-        "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
-        "${WEBCORE_DIR}/platform/graphics/gpu"
-    )
+    # For platforms that want to use system-provided OpenGL (ES) headers,
+    # these include directories need to be added before the ANGLE directories.
     if (OPENGL_FOUND)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${OPENGL_INCLUDE_DIR}
@@ -2977,6 +2936,14 @@ if (WTF_USE_3D_GRAPHICS)
             ${OPENGLES2_LIBRARIES}
         )
     endif ()
+
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${THIRDPARTY_DIR}/ANGLE/src"
+        "${THIRDPARTY_DIR}/ANGLE/include/"
+        "${THIRDPARTY_DIR}/ANGLE/include/KHR"
+        "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
+        "${WEBCORE_DIR}/platform/graphics/gpu"
+    )
 
     list(APPEND ANGLESupport_SOURCES
         ${THIRDPARTY_DIR}/ANGLE/src/common/blocklayout.cpp
@@ -3185,7 +3152,6 @@ set(IDL_FILES_TMP ${DERIVED_SOURCES_WEBCORE_DIR}/idl_files.tmp)
 set(SUPPLEMENTAL_DEPENDENCY_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/supplemental_dependency.tmp)
 set(WINDOW_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DOMWindowConstructors.idl)
 set(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/WorkerGlobalScopeConstructors.idl)
-set(SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/SharedWorkerGlobalScopeConstructors.idl)
 set(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DedicatedWorkerGlobalScopeConstructors.idl)
 set(IDL_ATTRIBUTES_FILE ${WEBCORE_DIR}/bindings/scripts/IDLAttributes.txt)
 
@@ -3375,16 +3341,15 @@ list(APPEND WebCoreTestSupport_IDL_FILES ${DERIVED_SOURCES_WEBCORE_DIR}/Internal
 file(WRITE ${IDL_FILES_TMP} ${IDL_FILES_LIST})
 
 add_custom_command(
-    OUTPUT ${SUPPLEMENTAL_DEPENDENCY_FILE} ${WINDOW_CONSTRUCTORS_FILE} ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE} ${SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE} ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+    OUTPUT ${SUPPLEMENTAL_DEPENDENCY_FILE} ${WINDOW_CONSTRUCTORS_FILE} ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE} ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
     DEPENDS ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl ${SCRIPTS_PREPROCESS_IDLS} ${WebCore_IDL_FILES} ${WebCoreTestSupport_IDL_FILES}
     COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl --defines "${FEATURE_DEFINES_JAVASCRIPT}" --idlFilesList ${IDL_FILES_TMP} --supplementalDependencyFile ${SUPPLEMENTAL_DEPENDENCY_FILE} --windowConstructorsFile ${WINDOW_CONSTRUCTORS_FILE} --workerGlobalScopeConstructorsFile ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
---sharedWorkerGlobalScopeConstructorsFile ${SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE} --dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+--dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
     VERBATIM)
 
 set(ADDITIONAL_BINDINGS_DEPENDENCIES
     ${WINDOW_CONSTRUCTORS_FILE}
     ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-    ${SHAREDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
     ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
 )
 

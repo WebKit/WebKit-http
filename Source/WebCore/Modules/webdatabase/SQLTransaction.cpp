@@ -31,7 +31,6 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "AbstractSQLTransactionBackend.h"
 #include "Database.h"
 #include "DatabaseAuthorizer.h"
 #include "DatabaseContext.h"
@@ -40,6 +39,7 @@
 #include "SQLError.h"
 #include "SQLStatementCallback.h"
 #include "SQLStatementErrorCallback.h"
+#include "SQLTransactionBackend.h"
 #include "SQLTransactionCallback.h"
 #include "SQLTransactionClient.h" // FIXME: Should be used in the backend only.
 #include "SQLTransactionErrorCallback.h"
@@ -64,6 +64,10 @@ SQLTransaction::SQLTransaction(Ref<Database>&& database, RefPtr<SQLTransactionCa
 {
 }
 
+SQLTransaction::~SQLTransaction()
+{
+}
+
 bool SQLTransaction::hasCallback() const
 {
     return m_callbackWrapper.hasCallback();
@@ -79,7 +83,7 @@ bool SQLTransaction::hasErrorCallback() const
     return m_errorCallbackWrapper.hasCallback();
 }
 
-void SQLTransaction::setBackend(AbstractSQLTransactionBackend* backend)
+void SQLTransaction::setBackend(SQLTransactionBackend* backend)
 {
     ASSERT(!m_backend);
     m_backend = backend;
@@ -182,8 +186,7 @@ SQLTransactionState SQLTransaction::deliverStatementCallback()
     // Otherwise, continue to loop through the statement queue
     m_executeSqlAllowed = true;
 
-    AbstractSQLStatement* currentAbstractStatement = m_backend->currentStatement();
-    SQLStatement* currentStatement = static_cast<SQLStatement*>(currentAbstractStatement);
+    SQLStatement* currentStatement = m_backend->currentStatement();
     ASSERT(currentStatement);
 
     bool result = currentStatement->performCallback(this);

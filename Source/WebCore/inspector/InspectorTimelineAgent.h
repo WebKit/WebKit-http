@@ -74,7 +74,6 @@ enum class TimelineRecordType {
     Layout,
     Paint,
     ScrollLayer,
-    ResizeImage,
 
     ParseHTML,
 
@@ -90,12 +89,6 @@ enum class TimelineRecordType {
     TimeStamp,
     Time,
     TimeEnd,
-
-    ScheduleResourceRequest,
-    ResourceSendRequest,
-    ResourceReceiveResponse,
-    ResourceReceivedData,
-    ResourceFinish,
 
     XHRReadyStateChange,
     XHRLoad,
@@ -143,7 +136,6 @@ public:
     PassRefPtr<JSC::Profile> stopFromConsole(JSC::ExecState*, const String& title);
 
     // InspectorInstrumentation callbacks.
-    void didScheduleResourceRequest(const String& url, Frame*);
     void didInstallTimer(int timerId, int timeout, bool singleShot, Frame*);
     void didRemoveTimer(int timerId, Frame*);
     void willFireTimer(int timerId, Frame*);
@@ -173,12 +165,6 @@ public:
     void didTimeStamp(Frame&, const String&);
     void didMarkDOMContentEvent(Frame&);
     void didMarkLoadEvent(Frame&);
-    void willSendResourceRequest(unsigned long, const ResourceRequest&, Frame*);
-    void willReceiveResourceResponse(unsigned long, const ResourceResponse&, Frame*);
-    void didReceiveResourceResponse();
-    void didFinishLoadingResource(unsigned long, bool didFail, double finishTime, Frame*);
-    void willReceiveResourceData(unsigned long identifier, Frame*, int length);
-    void didReceiveResourceData();
     void didRequestAnimationFrame(int callbackId, Frame*);
     void didCancelAnimationFrame(int callbackId, Frame*);
     void willFireAnimationFrame(int callbackId, Frame*);
@@ -224,19 +210,19 @@ private:
     void internalStop();
     double timestamp();
 
-    void sendEvent(PassRefPtr<Inspector::InspectorObject>);
-    void appendRecord(PassRefPtr<Inspector::InspectorObject> data, TimelineRecordType, bool captureCallStack, Frame*);
-    void pushCurrentRecord(PassRefPtr<Inspector::InspectorObject>, TimelineRecordType, bool captureCallStack, Frame*);
+    void sendEvent(RefPtr<Inspector::InspectorObject>&&);
+    void appendRecord(RefPtr<Inspector::InspectorObject>&& data, TimelineRecordType, bool captureCallStack, Frame*);
+    void pushCurrentRecord(RefPtr<Inspector::InspectorObject>&&, TimelineRecordType, bool captureCallStack, Frame*);
     void pushCurrentRecord(const TimelineRecordEntry& record) { m_recordStack.append(record); }
 
-    TimelineRecordEntry createRecordEntry(PassRefPtr<Inspector::InspectorObject> data, TimelineRecordType, bool captureCallStack, Frame*);
+    TimelineRecordEntry createRecordEntry(RefPtr<Inspector::InspectorObject>&& data, TimelineRecordType, bool captureCallStack, Frame*);
 
     void setFrameIdentifier(Inspector::InspectorObject* record, Frame*);
 
     void didCompleteRecordEntry(const TimelineRecordEntry&);
     void didCompleteCurrentRecord(TimelineRecordType);
 
-    void addRecordToTimeline(PassRefPtr<Inspector::InspectorObject>, TimelineRecordType);
+    void addRecordToTimeline(RefPtr<Inspector::InspectorObject>&&, TimelineRecordType);
     void clearRecordStack();
 
     void localToPageQuad(const RenderObject&, const LayoutRect&, FloatQuad*);

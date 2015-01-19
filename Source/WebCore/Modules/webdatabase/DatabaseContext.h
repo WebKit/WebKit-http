@@ -42,15 +42,14 @@ namespace WebCore {
 
 class Database;
 class DatabaseDetails;
-class DatabaseBackendContext;
 class DatabaseTaskSynchronizer;
 class DatabaseThread;
+class SecurityOrigin;
 
-class DatabaseContext : public ThreadSafeRefCounted<DatabaseContext>, private ActiveDOMObject {
+class DatabaseContext final : public ThreadSafeRefCounted<DatabaseContext>, private ActiveDOMObject {
 public:
     virtual ~DatabaseContext();
 
-    PassRefPtr<DatabaseBackendContext> backend();
     DatabaseThread* databaseThread();
 
 #if PLATFORM(IOS)
@@ -66,6 +65,11 @@ public:
     bool allowDatabaseAccess() const;
     void databaseExceededQuota(const String& name, DatabaseDetails);
 
+    ScriptExecutionContext* scriptExecutionContext() const { return m_scriptExecutionContext; }
+    SecurityOrigin* securityOrigin() const;
+
+    bool isContextThread() const;
+
 private:
     explicit DatabaseContext(ScriptExecutionContext*);
 
@@ -73,13 +77,13 @@ private:
 
     virtual void contextDestroyed() override final;
     virtual void stop() override final;
+    virtual const char* activeDOMObjectName() const override { return "DatabaseContext"; }
 
     RefPtr<DatabaseThread> m_databaseThread;
     bool m_hasOpenDatabases; // This never changes back to false, even after the database thread is closed.
     bool m_isRegistered;
     bool m_hasRequestedTermination;
 
-    friend class DatabaseBackendContext;
     friend class DatabaseManager;
 
 #if PLATFORM(IOS)

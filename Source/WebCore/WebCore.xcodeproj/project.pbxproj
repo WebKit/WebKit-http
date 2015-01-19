@@ -640,7 +640,6 @@
 		14993BE50B2F2B1C0050497F /* FocusController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14993BE30B2F2B1C0050497F /* FocusController.cpp */; };
 		14993BE60B2F2B1C0050497F /* FocusController.h in Headers */ = {isa = PBXBuildFile; fileRef = 14993BE40B2F2B1C0050497F /* FocusController.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		14C9A5EA0B3D105F005A0232 /* Settings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14C9A5E90B3D105F005A0232 /* Settings.cpp */; };
-		14CD8D82106B529000A46D23 /* JSSharedWorkerCustom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14CD8D81106B529000A46D23 /* JSSharedWorkerCustom.cpp */; };
 		14CF78A409F58CBF00EB3665 /* JSCSSValue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14CF78A309F58CBF00EB3665 /* JSCSSValue.cpp */; };
 		14CF78A609F58CD800EB3665 /* JSCSSValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 14CF78A509F58CD800EB3665 /* JSCSSValue.h */; };
 		14CF7B3309F6ECD700EB3665 /* JSCSSRule.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14CF7B3109F6ECD700EB3665 /* JSCSSRule.cpp */; };
@@ -1023,7 +1022,18 @@
 		265541521489B233000DFC5D /* CursorIOS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2655414B1489AA2B000DFC5D /* CursorIOS.cpp */; };
 		26601EBF14B3B9AD0012C0FE /* PlatformEventFactoryIOS.h in Headers */ = {isa = PBXBuildFile; fileRef = 26601EBD14B3B9AD0012C0FE /* PlatformEventFactoryIOS.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		26601EC014B3B9AD0012C0FE /* PlatformEventFactoryIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = 26601EBE14B3B9AD0012C0FE /* PlatformEventFactoryIOS.mm */; };
+		267725FC1A5B3AD9003C24DD /* DFA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 267725F61A5B3AD9003C24DD /* DFA.cpp */; };
+		267725FD1A5B3AD9003C24DD /* DFA.h in Headers */ = {isa = PBXBuildFile; fileRef = 267725F71A5B3AD9003C24DD /* DFA.h */; };
+		267725FF1A5B3AD9003C24DD /* DFANode.h in Headers */ = {isa = PBXBuildFile; fileRef = 267725F91A5B3AD9003C24DD /* DFANode.h */; };
+		267726001A5B3AD9003C24DD /* NFAToDFA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 267725FA1A5B3AD9003C24DD /* NFAToDFA.cpp */; };
+		267726011A5B3AD9003C24DD /* NFAToDFA.h in Headers */ = {isa = PBXBuildFile; fileRef = 267725FB1A5B3AD9003C24DD /* NFAToDFA.h */; };
+		267726041A5DF6F2003C24DD /* URLFilterParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 267726021A5DF6F2003C24DD /* URLFilterParser.cpp */; };
+		267726051A5DF6F2003C24DD /* URLFilterParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 267726031A5DF6F2003C24DD /* URLFilterParser.h */; };
 		269239961505E1AA009E57FC /* JSIDBVersionChangeEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 269239921505E1AA009E57FC /* JSIDBVersionChangeEvent.h */; };
+		269397211A4A412F00E8349D /* NFANode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2693971F1A4A412F00E8349D /* NFANode.cpp */; };
+		269397221A4A412F00E8349D /* NFANode.h in Headers */ = {isa = PBXBuildFile; fileRef = 269397201A4A412F00E8349D /* NFANode.h */; };
+		269397241A4A5B6400E8349D /* NFA.h in Headers */ = {isa = PBXBuildFile; fileRef = 269397231A4A5B6400E8349D /* NFA.h */; };
+		269397261A4A5FBD00E8349D /* NFA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 269397251A4A5FBD00E8349D /* NFA.cpp */; };
 		26AA0F9E18D2A18B00419381 /* SelectorPseudoElementTypeMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26AA0F9D18D2A18B00419381 /* SelectorPseudoElementTypeMap.cpp */; };
 		26B9998F1803AE7200D01121 /* RegisterAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = 26B9998E1803AE7200D01121 /* RegisterAllocator.h */; };
 		26B999911803B3C900D01121 /* StackAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = 26B999901803B3C900D01121 /* StackAllocator.h */; };
@@ -1035,6 +1045,14 @@
 		26C17A3E1491D2D400D12BA2 /* FileSystemIOS.h in Headers */ = {isa = PBXBuildFile; fileRef = 26C17A3C1491D2D400D12BA2 /* FileSystemIOS.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		26C17A3F1491D2D400D12BA2 /* FileSystemIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = 26C17A3D1491D2D400D12BA2 /* FileSystemIOS.mm */; };
 		26E98A10130A9FCA008EB7B2 /* TextCodecASCIIFastPath.h in Headers */ = {isa = PBXBuildFile; fileRef = 26E98A0F130A9FCA008EB7B2 /* TextCodecASCIIFastPath.h */; };
+		26F0C8921A2D79CB002794F8 /* ContentExtensionsInterface.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F0C8911A2D79CB002794F8 /* ContentExtensionsInterface.h */; };
+		26F0C8941A2D7A76002794F8 /* ContentExtensionsInterface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26F0C8931A2D7A76002794F8 /* ContentExtensionsInterface.cpp */; };
+		26F0C8971A2E724B002794F8 /* ContentExtensionsManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26F0C8951A2E724B002794F8 /* ContentExtensionsManager.cpp */; };
+		26F0C8981A2E724B002794F8 /* ContentExtensionsManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F0C8961A2E724B002794F8 /* ContentExtensionsManager.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		26F0C89B1A2EC110002794F8 /* ContentExtensionRule.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26F0C8991A2EC110002794F8 /* ContentExtensionRule.cpp */; };
+		26F0C89C1A2EC110002794F8 /* ContentExtensionRule.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F0C89A1A2EC110002794F8 /* ContentExtensionRule.h */; };
+		26F0C89F1A2EC3BE002794F8 /* ContentExtensionsBackend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26F0C89D1A2EC3BE002794F8 /* ContentExtensionsBackend.cpp */; };
+		26F0C8A01A2EC3BE002794F8 /* ContentExtensionsBackend.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F0C89E1A2EC3BE002794F8 /* ContentExtensionsBackend.h */; };
 		26F40D4A14904A6300CA67C4 /* EventLoopIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = 26F40D4914904A6300CA67C4 /* EventLoopIOS.mm */; };
 		26F9A83818A046AC00AEB88A /* ViewportConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26F9A83618A046AC00AEB88A /* ViewportConfiguration.cpp */; };
 		26F9A83918A046AC00AEB88A /* ViewportConfiguration.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F9A83718A046AC00AEB88A /* ViewportConfiguration.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1334,10 +1352,8 @@
 		371A67CB11C6C7DB00047B8B /* HyphenationCF.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 371A67CA11C6C7DB00047B8B /* HyphenationCF.cpp */; };
 		371E65CC13661EDC00BEEDB0 /* PageSerializer.h in Headers */ = {isa = PBXBuildFile; fileRef = 371E65CB13661EDC00BEEDB0 /* PageSerializer.h */; };
 		371E65CE13661EED00BEEDB0 /* PageSerializer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 371E65CD13661EED00BEEDB0 /* PageSerializer.cpp */; };
-		371F4F400D25B9AF00ECE0D5 /* FontData.h in Headers */ = {isa = PBXBuildFile; fileRef = 371F4F3E0D25B9AF00ECE0D5 /* FontData.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		371F4F410D25B9AF00ECE0D5 /* FontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 371F4F3F0D25B9AF00ECE0D5 /* FontData.cpp */; };
-		371F4FFC0D25E7F300ECE0D5 /* SegmentedFontData.h in Headers */ = {isa = PBXBuildFile; fileRef = 371F4FFA0D25E7F300ECE0D5 /* SegmentedFontData.h */; };
-		371F4FFD0D25E7F300ECE0D5 /* SegmentedFontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 371F4FFB0D25E7F300ECE0D5 /* SegmentedFontData.cpp */; };
+		371F4FFC0D25E7F300ECE0D5 /* FontRanges.h in Headers */ = {isa = PBXBuildFile; fileRef = 371F4FFA0D25E7F300ECE0D5 /* FontRanges.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		371F4FFD0D25E7F300ECE0D5 /* FontRanges.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 371F4FFB0D25E7F300ECE0D5 /* FontRanges.cpp */; };
 		371F51A10D262FA000ECE0D5 /* CSSSegmentedFontFace.h in Headers */ = {isa = PBXBuildFile; fileRef = 371F519F0D262FA000ECE0D5 /* CSSSegmentedFontFace.h */; };
 		371F51A20D262FA000ECE0D5 /* CSSSegmentedFontFace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 371F51A00D262FA000ECE0D5 /* CSSSegmentedFontFace.cpp */; };
 		371F53E90D2704F900ECE0D5 /* CSSUnicodeRangeValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 371F53E70D2704F900ECE0D5 /* CSSUnicodeRangeValue.h */; };
@@ -1456,8 +1472,6 @@
 		4162A454101145E300DFF3ED /* JSDedicatedWorkerGlobalScopeCustom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4162A453101145E300DFF3ED /* JSDedicatedWorkerGlobalScopeCustom.cpp */; };
 		4162A4571011464700DFF3ED /* JSDedicatedWorkerGlobalScope.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4162A4551011464700DFF3ED /* JSDedicatedWorkerGlobalScope.cpp */; };
 		4162A4581011464700DFF3ED /* JSDedicatedWorkerGlobalScope.h in Headers */ = {isa = PBXBuildFile; fileRef = 4162A4561011464700DFF3ED /* JSDedicatedWorkerGlobalScope.h */; };
-		4167EBF5102962BA003D252A /* DefaultSharedWorkerRepository.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4167EBF3102962BA003D252A /* DefaultSharedWorkerRepository.cpp */; };
-		4167EBF6102962BA003D252A /* DefaultSharedWorkerRepository.h in Headers */ = {isa = PBXBuildFile; fileRef = 4167EBF4102962BA003D252A /* DefaultSharedWorkerRepository.h */; };
 		416E29A6102FA962007FC14E /* WorkerReportingProxy.h in Headers */ = {isa = PBXBuildFile; fileRef = 416E29A5102FA962007FC14E /* WorkerReportingProxy.h */; };
 		417253AA1354BBBC00360F2A /* MediaControlElements.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 417253A81354BBBC00360F2A /* MediaControlElements.cpp */; };
 		417253AB1354BBBC00360F2A /* MediaControlElements.h in Headers */ = {isa = PBXBuildFile; fileRef = 417253A91354BBBC00360F2A /* MediaControlElements.h */; };
@@ -1483,19 +1497,8 @@
 		41C760B10EDE03D300C1655F /* ScriptState.h in Headers */ = {isa = PBXBuildFile; fileRef = 41C760B00EDE03D300C1655F /* ScriptState.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		41D015CA0F4B5C71004A662F /* ContentType.h in Headers */ = {isa = PBXBuildFile; fileRef = 41D015C80F4B5C71004A662F /* ContentType.h */; };
 		41D015CB0F4B5C71004A662F /* ContentType.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 41D015C90F4B5C71004A662F /* ContentType.cpp */; };
-		41D07A7E0FF935CA0095EDCE /* JSSharedWorker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 41D07A7C0FF935CA0095EDCE /* JSSharedWorker.cpp */; };
-		41D07A7F0FF935CA0095EDCE /* JSSharedWorker.h in Headers */ = {isa = PBXBuildFile; fileRef = 41D07A7D0FF935CA0095EDCE /* JSSharedWorker.h */; };
-		41D168E710226E89009BC827 /* SharedWorkerGlobalScope.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 41D168DF10226E89009BC827 /* SharedWorkerGlobalScope.cpp */; };
-		41D168E810226E89009BC827 /* SharedWorkerGlobalScope.h in Headers */ = {isa = PBXBuildFile; fileRef = 41D168E010226E89009BC827 /* SharedWorkerGlobalScope.h */; };
-		41D168EA10226E89009BC827 /* SharedWorkerRepository.h in Headers */ = {isa = PBXBuildFile; fileRef = 41D168E210226E89009BC827 /* SharedWorkerRepository.h */; };
-		41D168ED10226E89009BC827 /* SharedWorkerThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 41D168E510226E89009BC827 /* SharedWorkerThread.cpp */; };
-		41D168EE10226E89009BC827 /* SharedWorkerThread.h in Headers */ = {isa = PBXBuildFile; fileRef = 41D168E610226E89009BC827 /* SharedWorkerThread.h */; };
-		41D1690510238B66009BC827 /* JSSharedWorkerGlobalScope.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 41D1690310238B66009BC827 /* JSSharedWorkerGlobalScope.cpp */; };
-		41D1690610238B66009BC827 /* JSSharedWorkerGlobalScope.h in Headers */ = {isa = PBXBuildFile; fileRef = 41D1690410238B66009BC827 /* JSSharedWorkerGlobalScope.h */; };
 		41E1B1D00FF5986900576B3B /* AbstractWorker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 41E1B1CA0FF5986900576B3B /* AbstractWorker.cpp */; };
 		41E1B1D10FF5986900576B3B /* AbstractWorker.h in Headers */ = {isa = PBXBuildFile; fileRef = 41E1B1CB0FF5986900576B3B /* AbstractWorker.h */; };
-		41E1B1D30FF5986900576B3B /* SharedWorker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 41E1B1CD0FF5986900576B3B /* SharedWorker.cpp */; };
-		41E1B1D40FF5986900576B3B /* SharedWorker.h in Headers */ = {isa = PBXBuildFile; fileRef = 41E1B1CE0FF5986900576B3B /* SharedWorker.h */; };
 		41F062140F5F192600A07EAC /* InspectorDatabaseResource.h in Headers */ = {isa = PBXBuildFile; fileRef = 41F062120F5F192600A07EAC /* InspectorDatabaseResource.h */; };
 		41F062150F5F192600A07EAC /* InspectorDatabaseResource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 41F062130F5F192600A07EAC /* InspectorDatabaseResource.cpp */; };
 		41F066E40F64BCF600A07EAC /* ScriptGlobalObject.h in Headers */ = {isa = PBXBuildFile; fileRef = 41F066E20F64BCF600A07EAC /* ScriptGlobalObject.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -3589,8 +3592,6 @@
 		97BC6A271505F081001B74AC /* DatabaseContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 97BC69E51505F081001B74AC /* DatabaseContext.cpp */; };
 		97BC6A281505F081001B74AC /* DatabaseContext.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC69E61505F081001B74AC /* DatabaseContext.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		97BC6A291505F081001B74AC /* DatabaseDetails.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC69E71505F081001B74AC /* DatabaseDetails.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		97BC6A2A1505F081001B74AC /* DatabaseSync.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 97BC69E81505F081001B74AC /* DatabaseSync.cpp */; };
-		97BC6A2B1505F081001B74AC /* DatabaseSync.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC69E91505F081001B74AC /* DatabaseSync.h */; };
 		97BC6A2D1505F081001B74AC /* DatabaseTask.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 97BC69EB1505F081001B74AC /* DatabaseTask.cpp */; };
 		97BC6A2E1505F081001B74AC /* DatabaseTask.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC69EC1505F081001B74AC /* DatabaseTask.h */; };
 		97BC6A2F1505F081001B74AC /* DatabaseThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 97BC69ED1505F081001B74AC /* DatabaseThread.cpp */; };
@@ -3610,8 +3611,6 @@
 		97BC6A481505F081001B74AC /* SQLStatement.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A061505F081001B74AC /* SQLStatement.h */; };
 		97BC6A491505F081001B74AC /* SQLStatementCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A071505F081001B74AC /* SQLStatementCallback.h */; };
 		97BC6A4B1505F081001B74AC /* SQLStatementErrorCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A091505F081001B74AC /* SQLStatementErrorCallback.h */; };
-		97BC6A4D1505F081001B74AC /* SQLStatementSync.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 97BC6A0B1505F081001B74AC /* SQLStatementSync.cpp */; };
-		97BC6A4E1505F081001B74AC /* SQLStatementSync.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A0C1505F081001B74AC /* SQLStatementSync.h */; };
 		97BC6A4F1505F081001B74AC /* SQLTransaction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 97BC6A0D1505F081001B74AC /* SQLTransaction.cpp */; };
 		97BC6A501505F081001B74AC /* SQLTransaction.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A0E1505F081001B74AC /* SQLTransaction.h */; };
 		97BC6A521505F081001B74AC /* SQLTransactionCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A101505F081001B74AC /* SQLTransactionCallback.h */; };
@@ -3620,9 +3619,6 @@
 		97BC6A561505F081001B74AC /* SQLTransactionCoordinator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 97BC6A141505F081001B74AC /* SQLTransactionCoordinator.cpp */; };
 		97BC6A571505F081001B74AC /* SQLTransactionCoordinator.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A151505F081001B74AC /* SQLTransactionCoordinator.h */; };
 		97BC6A581505F081001B74AC /* SQLTransactionErrorCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A161505F081001B74AC /* SQLTransactionErrorCallback.h */; };
-		97BC6A5A1505F081001B74AC /* SQLTransactionSync.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 97BC6A181505F081001B74AC /* SQLTransactionSync.cpp */; };
-		97BC6A5B1505F081001B74AC /* SQLTransactionSync.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A191505F081001B74AC /* SQLTransactionSync.h */; };
-		97BC6A5D1505F081001B74AC /* SQLTransactionSyncCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC6A1B1505F081001B74AC /* SQLTransactionSyncCallback.h */; };
 		97BC84831236FD93000C6161 /* TextDocumentParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 97BC84811236FD93000C6161 /* TextDocumentParser.cpp */; };
 		97BC84841236FD93000C6161 /* TextDocumentParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC84821236FD93000C6161 /* TextDocumentParser.h */; };
 		97BC849B12370A4B000C6161 /* HTMLInputStream.h in Headers */ = {isa = PBXBuildFile; fileRef = 97BC849A12370A4B000C6161 /* HTMLInputStream.h */; };
@@ -3763,7 +3759,6 @@
 		A14832CD187F682E00DA63A6 /* WebCoreThreadSafe.h in Headers */ = {isa = PBXBuildFile; fileRef = A148329F187F508700DA63A6 /* WebCoreThreadSafe.h */; };
 		A14832CE187F683400DA63A6 /* WebCoreThreadSystemInterface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A14832A0187F508700DA63A6 /* WebCoreThreadSystemInterface.cpp */; };
 		A14832CF187F684700DA63A6 /* WebCoreThreadSystemInterface.h in Headers */ = {isa = PBXBuildFile; fileRef = A14832A1187F508700DA63A6 /* WebCoreThreadSystemInterface.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		A172182619DE183F00464D17 /* _UIHighlightViewSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = A172182519DE183F00464D17 /* _UIHighlightViewSPI.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		A17C81220F2A5CF7005DAAEB /* HTMLElementFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A17C81200F2A5CF7005DAAEB /* HTMLElementFactory.cpp */; };
 		A17C81230F2A5CF7005DAAEB /* HTMLElementFactory.h in Headers */ = {isa = PBXBuildFile; fileRef = A17C81210F2A5CF7005DAAEB /* HTMLElementFactory.h */; };
 		A1C797181883DD82000F5E1F /* DOMGestureEvent.h in Copy Generated Headers */ = {isa = PBXBuildFile; fileRef = 0F54DCDD1880F901003EEDBB /* DOMGestureEvent.h */; };
@@ -4153,8 +4148,6 @@
 		A8CB413E0E8633FD0032C4F0 /* DashArray.h in Headers */ = {isa = PBXBuildFile; fileRef = A8CB41020E85B8A50032C4F0 /* DashArray.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		A8CCBB48151F831600AB7CE9 /* DOMWindowWebDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8CCBB46151F831600AB7CE9 /* DOMWindowWebDatabase.cpp */; };
 		A8CCBB49151F831600AB7CE9 /* DOMWindowWebDatabase.h in Headers */ = {isa = PBXBuildFile; fileRef = A8CCBB47151F831600AB7CE9 /* DOMWindowWebDatabase.h */; };
-		A8CCBB4C151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8CCBB4A151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.cpp */; };
-		A8CCBB4D151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.h in Headers */ = {isa = PBXBuildFile; fileRef = A8CCBB4B151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.h */; };
 		A8CFF04D0A154F09000A4234 /* FixedTableLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8CFF0480A154F09000A4234 /* FixedTableLayout.cpp */; };
 		A8CFF04E0A154F09000A4234 /* AutoTableLayout.h in Headers */ = {isa = PBXBuildFile; fileRef = A8CFF0490A154F09000A4234 /* AutoTableLayout.h */; };
 		A8CFF04F0A154F09000A4234 /* FixedTableLayout.h in Headers */ = {isa = PBXBuildFile; fileRef = A8CFF04A0A154F09000A4234 /* FixedTableLayout.h */; };
@@ -4589,7 +4582,6 @@
 		B2227AF60D00BF220071B782 /* SVGZoomAndPan.h in Headers */ = {isa = PBXBuildFile; fileRef = B22279600D00BF210071B782 /* SVGZoomAndPan.h */; };
 		B2227B050D00BFF10071B782 /* SVGCSSComputedStyleDeclaration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B2227B000D00BFF10071B782 /* SVGCSSComputedStyleDeclaration.cpp */; };
 		B2227B060D00BFF10071B782 /* SVGCSSParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B2227B010D00BFF10071B782 /* SVGCSSParser.cpp */; };
-		B2227B080D00BFF10071B782 /* SVGCSSStyleSelector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B2227B030D00BFF10071B782 /* SVGCSSStyleSelector.cpp */; };
 		B222F6980AB771950022EFAD /* JSSVGAngle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B222F6960AB771950022EFAD /* JSSVGAngle.cpp */; };
 		B222F6990AB771950022EFAD /* JSSVGAngle.h in Headers */ = {isa = PBXBuildFile; fileRef = B222F6970AB771950022EFAD /* JSSVGAngle.h */; };
 		B222F69C0AB771B80022EFAD /* JSSVGElement.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B222F69A0AB771B80022EFAD /* JSSVGElement.cpp */; };
@@ -4968,19 +4960,12 @@
 		B5320D6B122A24E9002D1440 /* FontPlatformData.h in Headers */ = {isa = PBXBuildFile; fileRef = B5320D69122A24E9002D1440 /* FontPlatformData.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		B5320D6C122A24E9002D1440 /* FontPlatformDataCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = B5320D6A122A24E9002D1440 /* FontPlatformDataCocoa.mm */; };
 		B543B85717EB758F003BE93A /* SVGPropertyInfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B543B85617EB758F003BE93A /* SVGPropertyInfo.cpp */; };
-		B55D5AA4119131FC00BCC315 /* JSSQLTransactionSyncCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = B55D5AA2119131FC00BCC315 /* JSSQLTransactionSyncCallback.h */; };
-		B55D5AA5119131FC00BCC315 /* JSSQLTransactionSyncCallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55D5AA3119131FC00BCC315 /* JSSQLTransactionSyncCallback.cpp */; };
-		B55D5AA91191325000BCC315 /* JSSQLTransactionSyncCustom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55D5AA71191325000BCC315 /* JSSQLTransactionSyncCustom.cpp */; };
 		B562DB6017D3CD630010AF96 /* HTMLElementTypeHelpers.h in Headers */ = {isa = PBXBuildFile; fileRef = B562DB5E17D3CD560010AF96 /* HTMLElementTypeHelpers.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		B562DB6117D3CD660010AF96 /* SVGElementTypeHelpers.h in Headers */ = {isa = PBXBuildFile; fileRef = B562DB5F17D3CD560010AF96 /* SVGElementTypeHelpers.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		B56576E817DA94E200A56BDC /* DOMConstructorWithDocument.h in Headers */ = {isa = PBXBuildFile; fileRef = B56576E717DA94E200A56BDC /* DOMConstructorWithDocument.h */; };
 		B56579B51824D12A00E79F23 /* RenderChildIterator.h in Headers */ = {isa = PBXBuildFile; fileRef = B56579B41824D12A00E79F23 /* RenderChildIterator.h */; };
 		B57CB52D182A3EED0079A647 /* InlineElementBox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B57CB52C182A3EED0079A647 /* InlineElementBox.cpp */; };
 		B57CB52E182A3EFC0079A647 /* InlineElementBox.h in Headers */ = {isa = PBXBuildFile; fileRef = B57CB52B182A37F60079A647 /* InlineElementBox.h */; };
-		B58CEB6911913607002A6790 /* JSDatabaseSync.h in Headers */ = {isa = PBXBuildFile; fileRef = B58CEB6711913607002A6790 /* JSDatabaseSync.h */; };
-		B58CEB6A11913607002A6790 /* JSDatabaseSync.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B58CEB6811913607002A6790 /* JSDatabaseSync.cpp */; };
-		B58CEB6D1191361C002A6790 /* JSSQLTransactionSync.h in Headers */ = {isa = PBXBuildFile; fileRef = B58CEB6B1191361C002A6790 /* JSSQLTransactionSync.h */; };
-		B58CEB6E1191361C002A6790 /* JSSQLTransactionSync.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B58CEB6C1191361C002A6790 /* JSSQLTransactionSync.cpp */; };
 		B595FF471824CEE300FF51CD /* RenderIterator.h in Headers */ = {isa = PBXBuildFile; fileRef = B595FF461824CEE300FF51CD /* RenderIterator.h */; };
 		B59DD699119029E5007E9684 /* JSDatabaseCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = B59DD697119029E5007E9684 /* JSDatabaseCallback.h */; };
 		B59DD69A119029E5007E9684 /* JSDatabaseCallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B59DD698119029E5007E9684 /* JSDatabaseCallback.cpp */; };
@@ -5798,6 +5783,8 @@
 		CE7B2DB61586ABAD0098B3FA /* TextAlternativeWithRange.mm in Sources */ = {isa = PBXBuildFile; fileRef = CE7B2DB21586ABAD0098B3FA /* TextAlternativeWithRange.mm */; };
 		CE8245F019B671BA00AC0122 /* CFNetworkConnectionCacheSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CE8245EF19B671BA00AC0122 /* CFNetworkConnectionCacheSPI.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		CE95208A1811B475007A5392 /* WebSafeIncrementalSweeperIOS.h in Headers */ = {isa = PBXBuildFile; fileRef = C2C4CB1D161A131200D214DA /* WebSafeIncrementalSweeperIOS.h */; };
+		CEC337AD1A46071F009B8523 /* ServersSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CEC337AC1A46071F009B8523 /* ServersSPI.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		CEC337AF1A46086D009B8523 /* GraphicsServicesSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CEC337AE1A46086D009B8523 /* GraphicsServicesSPI.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		CECADFC6153778FF00E37068 /* DictationAlternative.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CECADFC2153778FF00E37068 /* DictationAlternative.cpp */; };
 		CECADFC7153778FF00E37068 /* DictationAlternative.h in Headers */ = {isa = PBXBuildFile; fileRef = CECADFC3153778FF00E37068 /* DictationAlternative.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		CECADFC8153778FF00E37068 /* DictationCommand.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CECADFC4153778FF00E37068 /* DictationCommand.cpp */; };
@@ -6046,8 +6033,6 @@
 		E1B4CD2510B322E200BFFD7E /* CredentialStorageMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = E1B4CD2410B322E200BFFD7E /* CredentialStorageMac.mm */; };
 		E1B533471717D0A100F205F9 /* CachedSVGDocumentReference.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E1B533461717D0A000F205F9 /* CachedSVGDocumentReference.cpp */; };
 		E1B533491717DEE300F205F9 /* CachedRawResourceClient.h in Headers */ = {isa = PBXBuildFile; fileRef = E1B533481717DEE300F205F9 /* CachedRawResourceClient.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		E1B7839C163740A70007B692 /* SharedWorkerStrategy.h in Headers */ = {isa = PBXBuildFile; fileRef = E1B7839B163740A70007B692 /* SharedWorkerStrategy.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		E1B784201639CBBE0007B692 /* SharedWorkerRepository.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E1B7841F1639CBBE0007B692 /* SharedWorkerRepository.cpp */; };
 		E1BA003116FB92AC00BA7A35 /* ResourceHandleClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E1BA003016FB92AC00BA7A35 /* ResourceHandleClient.cpp */; };
 		E1BA66F11742BD8600C20251 /* DynamicLinkerInterposing.h in Headers */ = {isa = PBXBuildFile; fileRef = E1BA66F01742BD8600C20251 /* DynamicLinkerInterposing.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		E1BA671A1742BEF400C20251 /* WebCoreTestShimLibrary.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E1BA67191742BEF400C20251 /* WebCoreTestShimLibrary.cpp */; };
@@ -6657,8 +6642,6 @@
 		FE115FAB167988CD00249134 /* AbstractDatabaseServer.h in Headers */ = {isa = PBXBuildFile; fileRef = FE115FA9167988CD00249134 /* AbstractDatabaseServer.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE16CFD3169D1DED00D3A0C7 /* DatabaseBackend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE16CFCF169D1DEC00D3A0C7 /* DatabaseBackend.cpp */; };
 		FE16CFD4169D1DED00D3A0C7 /* DatabaseBackend.h in Headers */ = {isa = PBXBuildFile; fileRef = FE16CFD0169D1DEC00D3A0C7 /* DatabaseBackend.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		FE16CFD5169D1DED00D3A0C7 /* DatabaseBackendSync.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE16CFD1169D1DEC00D3A0C7 /* DatabaseBackendSync.cpp */; };
-		FE16CFD6169D1DED00D3A0C7 /* DatabaseBackendSync.h in Headers */ = {isa = PBXBuildFile; fileRef = FE16CFD2169D1DEC00D3A0C7 /* DatabaseBackendSync.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE3371A2167C11D400EDB752 /* DatabaseBasicTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = FE3371A0167C11D400EDB752 /* DatabaseBasicTypes.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE36FD1516C7826500F887C1 /* ChangeVersionData.h in Headers */ = {isa = PBXBuildFile; fileRef = FE36FD1116C7826400F887C1 /* ChangeVersionData.h */; };
 		FE36FD1616C7826500F887C1 /* SQLTransactionStateMachine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE36FD1216C7826400F887C1 /* SQLTransactionStateMachine.cpp */; };
@@ -6666,13 +6649,9 @@
 		FE36FD1816C7826500F887C1 /* SQLTransactionState.h in Headers */ = {isa = PBXBuildFile; fileRef = FE36FD1416C7826400F887C1 /* SQLTransactionState.h */; };
 		FE456F181677D74E005EDDF9 /* DatabaseManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE456F161677D74E005EDDF9 /* DatabaseManager.cpp */; };
 		FE456F191677D74E005EDDF9 /* DatabaseManager.h in Headers */ = {isa = PBXBuildFile; fileRef = FE456F171677D74E005EDDF9 /* DatabaseManager.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		FE4AADEE16D2C37400026FFC /* AbstractSQLStatement.h in Headers */ = {isa = PBXBuildFile; fileRef = FE4AADEC16D2C37400026FFC /* AbstractSQLStatement.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		FE4AADEF16D2C37400026FFC /* AbstractSQLStatementBackend.h in Headers */ = {isa = PBXBuildFile; fileRef = FE4AADED16D2C37400026FFC /* AbstractSQLStatementBackend.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE6938B61045D67E008EABB6 /* EventHandlerIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = FE6938B51045D67E008EABB6 /* EventHandlerIOS.mm */; };
 		FE699871192087E7006936BD /* FloatingPointEnvironment.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE69986F192087E7006936BD /* FloatingPointEnvironment.cpp */; };
 		FE699872192087E7006936BD /* FloatingPointEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = FE699870192087E7006936BD /* FloatingPointEnvironment.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		FE6F6AAF169E057500FC30A2 /* DatabaseBackendContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE6F6AAD169E057500FC30A2 /* DatabaseBackendContext.cpp */; };
-		FE6F6AB0169E057500FC30A2 /* DatabaseBackendContext.h in Headers */ = {isa = PBXBuildFile; fileRef = FE6F6AAE169E057500FC30A2 /* DatabaseBackendContext.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE6FD48D0F676E9300092873 /* JSCoordinates.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE6FD48B0F676E9300092873 /* JSCoordinates.cpp */; };
 		FE6FD48E0F676E9300092873 /* JSCoordinates.h in Headers */ = {isa = PBXBuildFile; fileRef = FE6FD48C0F676E9300092873 /* JSCoordinates.h */; };
 		FE80D7AB0E9C1ED2000D6F75 /* JSGeolocationCustom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE80D7A60E9C1ED2000D6F75 /* JSGeolocationCustom.cpp */; };
@@ -6686,12 +6665,8 @@
 		FE8A674816CDD19E00930BF8 /* SQLStatementBackend.h in Headers */ = {isa = PBXBuildFile; fileRef = FE8A674616CDD19E00930BF8 /* SQLStatementBackend.h */; };
 		FE9E89FB16E2DC0500A908F8 /* OriginLock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE9E89F916E2DC0400A908F8 /* OriginLock.cpp */; };
 		FE9E89FC16E2DC0500A908F8 /* OriginLock.h in Headers */ = {isa = PBXBuildFile; fileRef = FE9E89FA16E2DC0400A908F8 /* OriginLock.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		FEAD7D8716C339EE00D4670B /* SQLTransactionBackendSync.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEAD7D8516C339EE00D4670B /* SQLTransactionBackendSync.cpp */; };
-		FEAD7D8816C339EE00D4670B /* SQLTransactionBackendSync.h in Headers */ = {isa = PBXBuildFile; fileRef = FEAD7D8616C339EE00D4670B /* SQLTransactionBackendSync.h */; };
 		FEAF6654167970320062D0C5 /* DatabaseServer.h in Headers */ = {isa = PBXBuildFile; fileRef = FEAF6653167970070062D0C5 /* DatabaseServer.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FEB26D28167A8F2A00FDD26B /* DatabaseServer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEB26D27167A8F2A00FDD26B /* DatabaseServer.cpp */; };
-		FEBC5F3116BD0CC300659BD3 /* DatabaseBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEBC5F2F16BD0CC300659BD3 /* DatabaseBase.cpp */; };
-		FEBC5F3216BD0CC300659BD3 /* DatabaseBase.h in Headers */ = {isa = PBXBuildFile; fileRef = FEBC5F3016BD0CC300659BD3 /* DatabaseBase.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FED13D2A0CEA91DF00D89466 /* DOMUIKitExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = FED13D260CEA91DF00D89466 /* DOMUIKitExtensions.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FED13D2B0CEA91DF00D89466 /* DOMUIKitExtensions.mm in Sources */ = {isa = PBXBuildFile; fileRef = FED13D270CEA91DF00D89466 /* DOMUIKitExtensions.mm */; };
 		FED13D3A0CEA934600D89466 /* EditorIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = FED13D390CEA934600D89466 /* EditorIOS.mm */; };
@@ -6699,8 +6674,6 @@
 		FED13D400CEA939400D89466 /* IconIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = FED13D3F0CEA939400D89466 /* IconIOS.mm */; };
 		FED13D520CEA949700D89466 /* RenderThemeIOS.h in Headers */ = {isa = PBXBuildFile; fileRef = FED13D500CEA949700D89466 /* RenderThemeIOS.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FED48390CED66C3255F72C59 /* MathMLSelectElement.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F75A059AF170D8FAA5B8CABE /* MathMLSelectElement.cpp */; };
-		FEDEF84116797108000E444A /* DatabaseStrategy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEDEF83F16797108000E444A /* DatabaseStrategy.cpp */; };
-		FEDEF84216797108000E444A /* DatabaseStrategy.h in Headers */ = {isa = PBXBuildFile; fileRef = FEDEF84016797108000E444A /* DatabaseStrategy.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FEE1811316C319E800084849 /* SQLTransactionBackend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEE1811116C319E800084849 /* SQLTransactionBackend.cpp */; };
 		FEE1811416C319E800084849 /* SQLTransactionBackend.h in Headers */ = {isa = PBXBuildFile; fileRef = FEE1811216C319E800084849 /* SQLTransactionBackend.h */; };
 		FF945ECB161F7F3600971BC8 /* PseudoElement.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FF945EC9161F7F3600971BC8 /* PseudoElement.cpp */; };
@@ -7628,7 +7601,6 @@
 		14A98E05136386A200C9FED2 /* Blob.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Blob.idl; path = fileapi/Blob.idl; sourceTree = SOURCE_ROOT; };
 		14BDF59A1365399100148393 /* FileReader.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = FileReader.idl; path = fileapi/FileReader.idl; sourceTree = SOURCE_ROOT; };
 		14C9A5E90B3D105F005A0232 /* Settings.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Settings.cpp; sourceTree = "<group>"; };
-		14CD8D81106B529000A46D23 /* JSSharedWorkerCustom.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSSharedWorkerCustom.cpp; sourceTree = "<group>"; };
 		14CF787109F587CA00EB3665 /* CSSValue.idl */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = CSSValue.idl; sourceTree = "<group>"; };
 		14CF78A309F58CBF00EB3665 /* JSCSSValue.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = JSCSSValue.cpp; sourceTree = "<group>"; };
 		14CF78A509F58CD800EB3665 /* JSCSSValue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = JSCSSValue.h; sourceTree = "<group>"; };
@@ -8046,8 +8018,19 @@
 		2655414B1489AA2B000DFC5D /* CursorIOS.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CursorIOS.cpp; path = ios/CursorIOS.cpp; sourceTree = "<group>"; };
 		26601EBD14B3B9AD0012C0FE /* PlatformEventFactoryIOS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PlatformEventFactoryIOS.h; path = ios/PlatformEventFactoryIOS.h; sourceTree = "<group>"; };
 		26601EBE14B3B9AD0012C0FE /* PlatformEventFactoryIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = PlatformEventFactoryIOS.mm; path = ios/PlatformEventFactoryIOS.mm; sourceTree = "<group>"; };
+		267725F61A5B3AD9003C24DD /* DFA.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DFA.cpp; sourceTree = "<group>"; };
+		267725F71A5B3AD9003C24DD /* DFA.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DFA.h; sourceTree = "<group>"; };
+		267725F91A5B3AD9003C24DD /* DFANode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DFANode.h; sourceTree = "<group>"; };
+		267725FA1A5B3AD9003C24DD /* NFAToDFA.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NFAToDFA.cpp; sourceTree = "<group>"; };
+		267725FB1A5B3AD9003C24DD /* NFAToDFA.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NFAToDFA.h; sourceTree = "<group>"; };
+		267726021A5DF6F2003C24DD /* URLFilterParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = URLFilterParser.cpp; sourceTree = "<group>"; };
+		267726031A5DF6F2003C24DD /* URLFilterParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = URLFilterParser.h; sourceTree = "<group>"; };
 		269239911505E1AA009E57FC /* JSIDBVersionChangeEvent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSIDBVersionChangeEvent.cpp; sourceTree = "<group>"; };
 		269239921505E1AA009E57FC /* JSIDBVersionChangeEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSIDBVersionChangeEvent.h; sourceTree = "<group>"; };
+		2693971F1A4A412F00E8349D /* NFANode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NFANode.cpp; sourceTree = "<group>"; };
+		269397201A4A412F00E8349D /* NFANode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NFANode.h; sourceTree = "<group>"; };
+		269397231A4A5B6400E8349D /* NFA.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NFA.h; sourceTree = "<group>"; };
+		269397251A4A5FBD00E8349D /* NFA.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NFA.cpp; sourceTree = "<group>"; };
 		26AA0F9918D2973D00419381 /* makeSelectorPseudoElementsMap.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = makeSelectorPseudoElementsMap.py; sourceTree = "<group>"; };
 		26AA0F9A18D2973D00419381 /* SelectorPseudoElementTypeMap.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = SelectorPseudoElementTypeMap.in; sourceTree = "<group>"; };
 		26AA0F9D18D2A18B00419381 /* SelectorPseudoElementTypeMap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SelectorPseudoElementTypeMap.cpp; sourceTree = "<group>"; };
@@ -8062,6 +8045,14 @@
 		26C17A3C1491D2D400D12BA2 /* FileSystemIOS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FileSystemIOS.h; path = ios/FileSystemIOS.h; sourceTree = "<group>"; };
 		26C17A3D1491D2D400D12BA2 /* FileSystemIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = FileSystemIOS.mm; path = ios/FileSystemIOS.mm; sourceTree = "<group>"; };
 		26E98A0F130A9FCA008EB7B2 /* TextCodecASCIIFastPath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextCodecASCIIFastPath.h; sourceTree = "<group>"; };
+		26F0C8911A2D79CB002794F8 /* ContentExtensionsInterface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ContentExtensionsInterface.h; sourceTree = "<group>"; };
+		26F0C8931A2D7A76002794F8 /* ContentExtensionsInterface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ContentExtensionsInterface.cpp; sourceTree = "<group>"; };
+		26F0C8951A2E724B002794F8 /* ContentExtensionsManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ContentExtensionsManager.cpp; sourceTree = "<group>"; };
+		26F0C8961A2E724B002794F8 /* ContentExtensionsManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ContentExtensionsManager.h; sourceTree = "<group>"; };
+		26F0C8991A2EC110002794F8 /* ContentExtensionRule.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ContentExtensionRule.cpp; sourceTree = "<group>"; };
+		26F0C89A1A2EC110002794F8 /* ContentExtensionRule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ContentExtensionRule.h; sourceTree = "<group>"; };
+		26F0C89D1A2EC3BE002794F8 /* ContentExtensionsBackend.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ContentExtensionsBackend.cpp; sourceTree = "<group>"; };
+		26F0C89E1A2EC3BE002794F8 /* ContentExtensionsBackend.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ContentExtensionsBackend.h; sourceTree = "<group>"; };
 		26F40D4914904A6300CA67C4 /* EventLoopIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = EventLoopIOS.mm; path = ios/EventLoopIOS.mm; sourceTree = "<group>"; };
 		26F9A83618A046AC00AEB88A /* ViewportConfiguration.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ViewportConfiguration.cpp; sourceTree = "<group>"; };
 		26F9A83718A046AC00AEB88A /* ViewportConfiguration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ViewportConfiguration.h; sourceTree = "<group>"; };
@@ -8397,10 +8388,8 @@
 		371A67CA11C6C7DB00047B8B /* HyphenationCF.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HyphenationCF.cpp; sourceTree = "<group>"; };
 		371E65CB13661EDC00BEEDB0 /* PageSerializer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PageSerializer.h; sourceTree = "<group>"; };
 		371E65CD13661EED00BEEDB0 /* PageSerializer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PageSerializer.cpp; sourceTree = "<group>"; };
-		371F4F3E0D25B9AF00ECE0D5 /* FontData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FontData.h; sourceTree = "<group>"; };
-		371F4F3F0D25B9AF00ECE0D5 /* FontData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FontData.cpp; sourceTree = "<group>"; };
-		371F4FFA0D25E7F300ECE0D5 /* SegmentedFontData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SegmentedFontData.h; sourceTree = "<group>"; };
-		371F4FFB0D25E7F300ECE0D5 /* SegmentedFontData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SegmentedFontData.cpp; sourceTree = "<group>"; };
+		371F4FFA0D25E7F300ECE0D5 /* FontRanges.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FontRanges.h; sourceTree = "<group>"; };
+		371F4FFB0D25E7F300ECE0D5 /* FontRanges.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FontRanges.cpp; sourceTree = "<group>"; };
 		371F519F0D262FA000ECE0D5 /* CSSSegmentedFontFace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CSSSegmentedFontFace.h; sourceTree = "<group>"; };
 		371F51A00D262FA000ECE0D5 /* CSSSegmentedFontFace.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CSSSegmentedFontFace.cpp; sourceTree = "<group>"; };
 		371F53E70D2704F900ECE0D5 /* CSSUnicodeRangeValue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CSSUnicodeRangeValue.h; sourceTree = "<group>"; };
@@ -8502,8 +8491,6 @@
 		4162A453101145E300DFF3ED /* JSDedicatedWorkerGlobalScopeCustom.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSDedicatedWorkerGlobalScopeCustom.cpp; sourceTree = "<group>"; };
 		4162A4551011464700DFF3ED /* JSDedicatedWorkerGlobalScope.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSDedicatedWorkerGlobalScope.cpp; sourceTree = "<group>"; };
 		4162A4561011464700DFF3ED /* JSDedicatedWorkerGlobalScope.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSDedicatedWorkerGlobalScope.h; sourceTree = "<group>"; };
-		4167EBF3102962BA003D252A /* DefaultSharedWorkerRepository.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DefaultSharedWorkerRepository.cpp; path = workers/DefaultSharedWorkerRepository.cpp; sourceTree = "<group>"; };
-		4167EBF4102962BA003D252A /* DefaultSharedWorkerRepository.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DefaultSharedWorkerRepository.h; path = workers/DefaultSharedWorkerRepository.h; sourceTree = "<group>"; };
 		416E29A5102FA962007FC14E /* WorkerReportingProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WorkerReportingProxy.h; path = workers/WorkerReportingProxy.h; sourceTree = "<group>"; };
 		417253A81354BBBC00360F2A /* MediaControlElements.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MediaControlElements.cpp; sourceTree = "<group>"; };
 		417253A91354BBBC00360F2A /* MediaControlElements.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MediaControlElements.h; sourceTree = "<group>"; };
@@ -8532,22 +8519,9 @@
 		41C760B00EDE03D300C1655F /* ScriptState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScriptState.h; sourceTree = "<group>"; };
 		41D015C80F4B5C71004A662F /* ContentType.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ContentType.h; sourceTree = "<group>"; };
 		41D015C90F4B5C71004A662F /* ContentType.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ContentType.cpp; sourceTree = "<group>"; };
-		41D07A7C0FF935CA0095EDCE /* JSSharedWorker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSSharedWorker.cpp; sourceTree = "<group>"; };
-		41D07A7D0FF935CA0095EDCE /* JSSharedWorker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSSharedWorker.h; sourceTree = "<group>"; };
-		41D168DF10226E89009BC827 /* SharedWorkerGlobalScope.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SharedWorkerGlobalScope.cpp; path = workers/SharedWorkerGlobalScope.cpp; sourceTree = "<group>"; };
-		41D168E010226E89009BC827 /* SharedWorkerGlobalScope.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SharedWorkerGlobalScope.h; path = workers/SharedWorkerGlobalScope.h; sourceTree = "<group>"; };
-		41D168E110226E89009BC827 /* SharedWorkerGlobalScope.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = SharedWorkerGlobalScope.idl; path = workers/SharedWorkerGlobalScope.idl; sourceTree = "<group>"; };
-		41D168E210226E89009BC827 /* SharedWorkerRepository.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SharedWorkerRepository.h; path = workers/SharedWorkerRepository.h; sourceTree = "<group>"; };
-		41D168E510226E89009BC827 /* SharedWorkerThread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SharedWorkerThread.cpp; path = workers/SharedWorkerThread.cpp; sourceTree = "<group>"; };
-		41D168E610226E89009BC827 /* SharedWorkerThread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SharedWorkerThread.h; path = workers/SharedWorkerThread.h; sourceTree = "<group>"; };
-		41D1690310238B66009BC827 /* JSSharedWorkerGlobalScope.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSSharedWorkerGlobalScope.cpp; sourceTree = "<group>"; };
-		41D1690410238B66009BC827 /* JSSharedWorkerGlobalScope.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSSharedWorkerGlobalScope.h; sourceTree = "<group>"; };
 		41E1B1CA0FF5986900576B3B /* AbstractWorker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AbstractWorker.cpp; path = workers/AbstractWorker.cpp; sourceTree = "<group>"; };
 		41E1B1CB0FF5986900576B3B /* AbstractWorker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AbstractWorker.h; path = workers/AbstractWorker.h; sourceTree = "<group>"; };
 		41E1B1CC0FF5986900576B3B /* AbstractWorker.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = AbstractWorker.idl; path = workers/AbstractWorker.idl; sourceTree = "<group>"; };
-		41E1B1CD0FF5986900576B3B /* SharedWorker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SharedWorker.cpp; path = workers/SharedWorker.cpp; sourceTree = "<group>"; };
-		41E1B1CE0FF5986900576B3B /* SharedWorker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SharedWorker.h; path = workers/SharedWorker.h; sourceTree = "<group>"; };
-		41E1B1CF0FF5986900576B3B /* SharedWorker.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = SharedWorker.idl; path = workers/SharedWorker.idl; sourceTree = "<group>"; };
 		41F062120F5F192600A07EAC /* InspectorDatabaseResource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorDatabaseResource.h; sourceTree = "<group>"; };
 		41F062130F5F192600A07EAC /* InspectorDatabaseResource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InspectorDatabaseResource.cpp; sourceTree = "<group>"; };
 		41F066E20F64BCF600A07EAC /* ScriptGlobalObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScriptGlobalObject.h; sourceTree = "<group>"; };
@@ -10767,9 +10741,6 @@
 		97BC69E51505F081001B74AC /* DatabaseContext.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseContext.cpp; sourceTree = "<group>"; };
 		97BC69E61505F081001B74AC /* DatabaseContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseContext.h; sourceTree = "<group>"; };
 		97BC69E71505F081001B74AC /* DatabaseDetails.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseDetails.h; sourceTree = "<group>"; };
-		97BC69E81505F081001B74AC /* DatabaseSync.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseSync.cpp; sourceTree = "<group>"; };
-		97BC69E91505F081001B74AC /* DatabaseSync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseSync.h; sourceTree = "<group>"; };
-		97BC69EA1505F081001B74AC /* DatabaseSync.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = DatabaseSync.idl; sourceTree = "<group>"; };
 		97BC69EB1505F081001B74AC /* DatabaseTask.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseTask.cpp; sourceTree = "<group>"; };
 		97BC69EC1505F081001B74AC /* DatabaseTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseTask.h; sourceTree = "<group>"; };
 		97BC69ED1505F081001B74AC /* DatabaseThread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseThread.cpp; sourceTree = "<group>"; };
@@ -10795,8 +10766,6 @@
 		97BC6A081505F081001B74AC /* SQLStatementCallback.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SQLStatementCallback.idl; sourceTree = "<group>"; };
 		97BC6A091505F081001B74AC /* SQLStatementErrorCallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLStatementErrorCallback.h; sourceTree = "<group>"; };
 		97BC6A0A1505F081001B74AC /* SQLStatementErrorCallback.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SQLStatementErrorCallback.idl; sourceTree = "<group>"; };
-		97BC6A0B1505F081001B74AC /* SQLStatementSync.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SQLStatementSync.cpp; sourceTree = "<group>"; };
-		97BC6A0C1505F081001B74AC /* SQLStatementSync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLStatementSync.h; sourceTree = "<group>"; };
 		97BC6A0D1505F081001B74AC /* SQLTransaction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SQLTransaction.cpp; sourceTree = "<group>"; };
 		97BC6A0E1505F081001B74AC /* SQLTransaction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLTransaction.h; sourceTree = "<group>"; };
 		97BC6A0F1505F081001B74AC /* SQLTransaction.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SQLTransaction.idl; sourceTree = "<group>"; };
@@ -10808,11 +10777,6 @@
 		97BC6A151505F081001B74AC /* SQLTransactionCoordinator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLTransactionCoordinator.h; sourceTree = "<group>"; };
 		97BC6A161505F081001B74AC /* SQLTransactionErrorCallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLTransactionErrorCallback.h; sourceTree = "<group>"; };
 		97BC6A171505F081001B74AC /* SQLTransactionErrorCallback.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SQLTransactionErrorCallback.idl; sourceTree = "<group>"; };
-		97BC6A181505F081001B74AC /* SQLTransactionSync.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SQLTransactionSync.cpp; sourceTree = "<group>"; };
-		97BC6A191505F081001B74AC /* SQLTransactionSync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLTransactionSync.h; sourceTree = "<group>"; };
-		97BC6A1A1505F081001B74AC /* SQLTransactionSync.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SQLTransactionSync.idl; sourceTree = "<group>"; };
-		97BC6A1B1505F081001B74AC /* SQLTransactionSyncCallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLTransactionSyncCallback.h; sourceTree = "<group>"; };
-		97BC6A1C1505F081001B74AC /* SQLTransactionSyncCallback.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = SQLTransactionSyncCallback.idl; sourceTree = "<group>"; };
 		97BC84811236FD93000C6161 /* TextDocumentParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TextDocumentParser.cpp; path = parser/TextDocumentParser.cpp; sourceTree = "<group>"; };
 		97BC84821236FD93000C6161 /* TextDocumentParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TextDocumentParser.h; path = parser/TextDocumentParser.h; sourceTree = "<group>"; };
 		97BC849A12370A4B000C6161 /* HTMLInputStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HTMLInputStream.h; path = parser/HTMLInputStream.h; sourceTree = "<group>"; };
@@ -10968,7 +10932,6 @@
 		A14832A9187F508700DA63A6 /* WKView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WKView.h; path = ios/wak/WKView.h; sourceTree = "<group>"; };
 		A14832AA187F508700DA63A6 /* WKView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = WKView.mm; path = ios/wak/WKView.mm; sourceTree = "<group>"; };
 		A14832AB187F508700DA63A6 /* WKViewPrivate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WKViewPrivate.h; path = ios/wak/WKViewPrivate.h; sourceTree = "<group>"; };
-		A172182519DE183F00464D17 /* _UIHighlightViewSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = _UIHighlightViewSPI.h; path = ios/_UIHighlightViewSPI.h; sourceTree = "<group>"; };
 		A17C81200F2A5CF7005DAAEB /* HTMLElementFactory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HTMLElementFactory.cpp; sourceTree = "<group>"; };
 		A17C81210F2A5CF7005DAAEB /* HTMLElementFactory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HTMLElementFactory.h; sourceTree = "<group>"; };
 		A1C7971C1883E51F000F5E1F /* DOMHTMLTextAreaElementPrivate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DOMHTMLTextAreaElementPrivate.h; sourceTree = "<group>"; };
@@ -11392,10 +11355,7 @@
 		A8CB41020E85B8A50032C4F0 /* DashArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DashArray.h; sourceTree = "<group>"; };
 		A8CCBB46151F831600AB7CE9 /* DOMWindowWebDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DOMWindowWebDatabase.cpp; sourceTree = "<group>"; };
 		A8CCBB47151F831600AB7CE9 /* DOMWindowWebDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DOMWindowWebDatabase.h; sourceTree = "<group>"; };
-		A8CCBB4A151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WorkerGlobalScopeWebDatabase.cpp; sourceTree = "<group>"; };
-		A8CCBB4B151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WorkerGlobalScopeWebDatabase.h; sourceTree = "<group>"; };
 		A8CCBB4E151F835A00AB7CE9 /* DOMWindowWebDatabase.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = DOMWindowWebDatabase.idl; sourceTree = "<group>"; };
-		A8CCBB4F151F837500AB7CE9 /* WorkerGlobalScopeWebDatabase.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = WorkerGlobalScopeWebDatabase.idl; sourceTree = "<group>"; };
 		A8CFF0480A154F09000A4234 /* FixedTableLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = FixedTableLayout.cpp; sourceTree = "<group>"; };
 		A8CFF0490A154F09000A4234 /* AutoTableLayout.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = AutoTableLayout.h; sourceTree = "<group>"; };
 		A8CFF04A0A154F09000A4234 /* FixedTableLayout.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = FixedTableLayout.h; sourceTree = "<group>"; };
@@ -11987,8 +11947,6 @@
 		B22279610D00BF210071B782 /* SVGZoomAndPan.idl */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = SVGZoomAndPan.idl; sourceTree = "<group>"; };
 		B2227B000D00BFF10071B782 /* SVGCSSComputedStyleDeclaration.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = SVGCSSComputedStyleDeclaration.cpp; sourceTree = "<group>"; };
 		B2227B010D00BFF10071B782 /* SVGCSSParser.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = SVGCSSParser.cpp; sourceTree = "<group>"; };
-		B2227B020D00BFF10071B782 /* SVGCSSPropertyNames.in */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = SVGCSSPropertyNames.in; sourceTree = "<group>"; };
-		B2227B030D00BFF10071B782 /* SVGCSSStyleSelector.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = SVGCSSStyleSelector.cpp; sourceTree = "<group>"; };
 		B2227B040D00BFF10071B782 /* SVGCSSValueKeywords.in */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = SVGCSSValueKeywords.in; sourceTree = "<group>"; };
 		B222F6960AB771950022EFAD /* JSSVGAngle.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = JSSVGAngle.cpp; sourceTree = "<group>"; };
 		B222F6970AB771950022EFAD /* JSSVGAngle.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = JSSVGAngle.h; sourceTree = "<group>"; };
@@ -12376,9 +12334,6 @@
 		B5320D69122A24E9002D1440 /* FontPlatformData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FontPlatformData.h; sourceTree = "<group>"; };
 		B5320D6A122A24E9002D1440 /* FontPlatformDataCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FontPlatformDataCocoa.mm; sourceTree = "<group>"; };
 		B543B85617EB758F003BE93A /* SVGPropertyInfo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SVGPropertyInfo.cpp; sourceTree = "<group>"; };
-		B55D5AA2119131FC00BCC315 /* JSSQLTransactionSyncCallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSSQLTransactionSyncCallback.h; sourceTree = "<group>"; };
-		B55D5AA3119131FC00BCC315 /* JSSQLTransactionSyncCallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSSQLTransactionSyncCallback.cpp; sourceTree = "<group>"; };
-		B55D5AA71191325000BCC315 /* JSSQLTransactionSyncCustom.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSSQLTransactionSyncCustom.cpp; sourceTree = "<group>"; };
 		B562DB5E17D3CD560010AF96 /* HTMLElementTypeHelpers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HTMLElementTypeHelpers.h; sourceTree = "<group>"; };
 		B562DB5F17D3CD560010AF96 /* SVGElementTypeHelpers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SVGElementTypeHelpers.h; sourceTree = "<group>"; };
 		B56576E417DA599F00A56BDC /* JSMainThreadExecStateInstrumentation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSMainThreadExecStateInstrumentation.h; sourceTree = "<group>"; };
@@ -12386,10 +12341,6 @@
 		B56579B41824D12A00E79F23 /* RenderChildIterator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RenderChildIterator.h; sourceTree = "<group>"; };
 		B57CB52B182A37F60079A647 /* InlineElementBox.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InlineElementBox.h; sourceTree = "<group>"; };
 		B57CB52C182A3EED0079A647 /* InlineElementBox.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InlineElementBox.cpp; sourceTree = "<group>"; };
-		B58CEB6711913607002A6790 /* JSDatabaseSync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSDatabaseSync.h; sourceTree = "<group>"; };
-		B58CEB6811913607002A6790 /* JSDatabaseSync.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSDatabaseSync.cpp; sourceTree = "<group>"; };
-		B58CEB6B1191361C002A6790 /* JSSQLTransactionSync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSSQLTransactionSync.h; sourceTree = "<group>"; };
-		B58CEB6C1191361C002A6790 /* JSSQLTransactionSync.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSSQLTransactionSync.cpp; sourceTree = "<group>"; };
 		B595FF461824CEE300FF51CD /* RenderIterator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RenderIterator.h; sourceTree = "<group>"; };
 		B59DD697119029E5007E9684 /* JSDatabaseCallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSDatabaseCallback.h; sourceTree = "<group>"; };
 		B59DD698119029E5007E9684 /* JSDatabaseCallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSDatabaseCallback.cpp; sourceTree = "<group>"; };
@@ -13307,6 +13258,8 @@
 		CE7B2DB11586ABAD0098B3FA /* TextAlternativeWithRange.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextAlternativeWithRange.h; sourceTree = "<group>"; };
 		CE7B2DB21586ABAD0098B3FA /* TextAlternativeWithRange.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = TextAlternativeWithRange.mm; sourceTree = "<group>"; };
 		CE8245EF19B671BA00AC0122 /* CFNetworkConnectionCacheSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CFNetworkConnectionCacheSPI.h; sourceTree = "<group>"; };
+		CEC337AC1A46071F009B8523 /* ServersSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ServersSPI.h; sourceTree = "<group>"; };
+		CEC337AE1A46086D009B8523 /* GraphicsServicesSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GraphicsServicesSPI.h; path = ios/GraphicsServicesSPI.h; sourceTree = "<group>"; };
 		CECADFC2153778FF00E37068 /* DictationAlternative.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DictationAlternative.cpp; sourceTree = "<group>"; };
 		CECADFC3153778FF00E37068 /* DictationAlternative.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DictationAlternative.h; sourceTree = "<group>"; };
 		CECADFC4153778FF00E37068 /* DictationCommand.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DictationCommand.cpp; sourceTree = "<group>"; };
@@ -13577,8 +13530,6 @@
 		E1B4CD2410B322E200BFFD7E /* CredentialStorageMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CredentialStorageMac.mm; sourceTree = "<group>"; };
 		E1B533461717D0A000F205F9 /* CachedSVGDocumentReference.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CachedSVGDocumentReference.cpp; sourceTree = "<group>"; };
 		E1B533481717DEE300F205F9 /* CachedRawResourceClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CachedRawResourceClient.h; sourceTree = "<group>"; };
-		E1B7839B163740A70007B692 /* SharedWorkerStrategy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SharedWorkerStrategy.h; path = workers/SharedWorkerStrategy.h; sourceTree = "<group>"; };
-		E1B7841F1639CBBE0007B692 /* SharedWorkerRepository.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SharedWorkerRepository.cpp; path = workers/SharedWorkerRepository.cpp; sourceTree = "<group>"; };
 		E1BA003016FB92AC00BA7A35 /* ResourceHandleClient.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ResourceHandleClient.cpp; sourceTree = "<group>"; };
 		E1BA66F01742BD8600C20251 /* DynamicLinkerInterposing.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DynamicLinkerInterposing.h; sourceTree = "<group>"; };
 		E1BA66F21742BDCC00C20251 /* WebCoreTestShim.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = WebCoreTestShim.xcconfig; sourceTree = "<group>"; };
@@ -14258,8 +14209,6 @@
 		FE115FA9167988CD00249134 /* AbstractDatabaseServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AbstractDatabaseServer.h; sourceTree = "<group>"; };
 		FE16CFCF169D1DEC00D3A0C7 /* DatabaseBackend.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseBackend.cpp; sourceTree = "<group>"; };
 		FE16CFD0169D1DEC00D3A0C7 /* DatabaseBackend.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseBackend.h; sourceTree = "<group>"; };
-		FE16CFD1169D1DEC00D3A0C7 /* DatabaseBackendSync.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseBackendSync.cpp; sourceTree = "<group>"; };
-		FE16CFD2169D1DEC00D3A0C7 /* DatabaseBackendSync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseBackendSync.h; sourceTree = "<group>"; };
 		FE3371A0167C11D400EDB752 /* DatabaseBasicTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseBasicTypes.h; sourceTree = "<group>"; };
 		FE36FD1116C7826400F887C1 /* ChangeVersionData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ChangeVersionData.h; sourceTree = "<group>"; };
 		FE36FD1216C7826400F887C1 /* SQLTransactionStateMachine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SQLTransactionStateMachine.cpp; sourceTree = "<group>"; };
@@ -14267,13 +14216,9 @@
 		FE36FD1416C7826400F887C1 /* SQLTransactionState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLTransactionState.h; sourceTree = "<group>"; };
 		FE456F161677D74E005EDDF9 /* DatabaseManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseManager.cpp; sourceTree = "<group>"; };
 		FE456F171677D74E005EDDF9 /* DatabaseManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseManager.h; sourceTree = "<group>"; };
-		FE4AADEC16D2C37400026FFC /* AbstractSQLStatement.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AbstractSQLStatement.h; sourceTree = "<group>"; };
-		FE4AADED16D2C37400026FFC /* AbstractSQLStatementBackend.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AbstractSQLStatementBackend.h; sourceTree = "<group>"; };
 		FE6938B51045D67E008EABB6 /* EventHandlerIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventHandlerIOS.mm; sourceTree = "<group>"; };
 		FE69986F192087E7006936BD /* FloatingPointEnvironment.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FloatingPointEnvironment.cpp; path = ios/wak/FloatingPointEnvironment.cpp; sourceTree = "<group>"; };
 		FE699870192087E7006936BD /* FloatingPointEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FloatingPointEnvironment.h; path = ios/wak/FloatingPointEnvironment.h; sourceTree = "<group>"; };
-		FE6F6AAD169E057500FC30A2 /* DatabaseBackendContext.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseBackendContext.cpp; sourceTree = "<group>"; };
-		FE6F6AAE169E057500FC30A2 /* DatabaseBackendContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseBackendContext.h; sourceTree = "<group>"; };
 		FE6FD48B0F676E9300092873 /* JSCoordinates.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSCoordinates.cpp; sourceTree = "<group>"; };
 		FE6FD48C0F676E9300092873 /* JSCoordinates.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSCoordinates.h; sourceTree = "<group>"; };
 		FE80D7A60E9C1ED2000D6F75 /* JSGeolocationCustom.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSGeolocationCustom.cpp; sourceTree = "<group>"; };
@@ -14287,20 +14232,14 @@
 		FE8A674616CDD19E00930BF8 /* SQLStatementBackend.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLStatementBackend.h; sourceTree = "<group>"; };
 		FE9E89F916E2DC0400A908F8 /* OriginLock.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OriginLock.cpp; sourceTree = "<group>"; };
 		FE9E89FA16E2DC0400A908F8 /* OriginLock.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OriginLock.h; sourceTree = "<group>"; };
-		FEAD7D8516C339EE00D4670B /* SQLTransactionBackendSync.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SQLTransactionBackendSync.cpp; sourceTree = "<group>"; };
-		FEAD7D8616C339EE00D4670B /* SQLTransactionBackendSync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLTransactionBackendSync.h; sourceTree = "<group>"; };
 		FEAF6653167970070062D0C5 /* DatabaseServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseServer.h; sourceTree = "<group>"; };
 		FEB26D27167A8F2A00FDD26B /* DatabaseServer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseServer.cpp; sourceTree = "<group>"; };
-		FEBC5F2F16BD0CC300659BD3 /* DatabaseBase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseBase.cpp; sourceTree = "<group>"; };
-		FEBC5F3016BD0CC300659BD3 /* DatabaseBase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseBase.h; sourceTree = "<group>"; };
 		FED13D260CEA91DF00D89466 /* DOMUIKitExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DOMUIKitExtensions.h; sourceTree = "<group>"; };
 		FED13D270CEA91DF00D89466 /* DOMUIKitExtensions.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DOMUIKitExtensions.mm; sourceTree = "<group>"; };
 		FED13D390CEA934600D89466 /* EditorIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EditorIOS.mm; sourceTree = "<group>"; };
 		FED13D3B0CEA936A00D89466 /* FrameIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FrameIOS.mm; sourceTree = "<group>"; };
 		FED13D3F0CEA939400D89466 /* IconIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = IconIOS.mm; sourceTree = "<group>"; };
 		FED13D500CEA949700D89466 /* RenderThemeIOS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RenderThemeIOS.h; sourceTree = "<group>"; };
-		FEDEF83F16797108000E444A /* DatabaseStrategy.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseStrategy.cpp; sourceTree = "<group>"; };
-		FEDEF84016797108000E444A /* DatabaseStrategy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseStrategy.h; sourceTree = "<group>"; };
 		FEE1811116C319E800084849 /* SQLTransactionBackend.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SQLTransactionBackend.cpp; sourceTree = "<group>"; };
 		FEE1811216C319E800084849 /* SQLTransactionBackend.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SQLTransactionBackend.h; sourceTree = "<group>"; };
 		FF945EC9161F7F3600971BC8 /* PseudoElement.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PseudoElement.cpp; sourceTree = "<group>"; };
@@ -14726,6 +14665,7 @@
 				29A812040FBB9B4100510293 /* accessibility */,
 				BC1A3790097C6F970019F3D8 /* bindings */,
 				1A569CC40D7E2B60007C3983 /* bridge */,
+				26F0C8901A2D79CB002794F8 /* contentextensions */,
 				E1FF8F5B1807362B00132674 /* crypto */,
 				F523D18402DE42E8018635CA /* css */,
 				26B9998D1803ADFA00D01121 /* cssjit */,
@@ -15372,6 +15312,32 @@
 			name = cssjit;
 			sourceTree = "<group>";
 		};
+		26F0C8901A2D79CB002794F8 /* contentextensions */ = {
+			isa = PBXGroup;
+			children = (
+				26F0C8991A2EC110002794F8 /* ContentExtensionRule.cpp */,
+				26F0C89A1A2EC110002794F8 /* ContentExtensionRule.h */,
+				26F0C89D1A2EC3BE002794F8 /* ContentExtensionsBackend.cpp */,
+				26F0C89E1A2EC3BE002794F8 /* ContentExtensionsBackend.h */,
+				26F0C8931A2D7A76002794F8 /* ContentExtensionsInterface.cpp */,
+				26F0C8911A2D79CB002794F8 /* ContentExtensionsInterface.h */,
+				26F0C8951A2E724B002794F8 /* ContentExtensionsManager.cpp */,
+				26F0C8961A2E724B002794F8 /* ContentExtensionsManager.h */,
+				267725F61A5B3AD9003C24DD /* DFA.cpp */,
+				267725F71A5B3AD9003C24DD /* DFA.h */,
+				267725F91A5B3AD9003C24DD /* DFANode.h */,
+				269397251A4A5FBD00E8349D /* NFA.cpp */,
+				269397231A4A5B6400E8349D /* NFA.h */,
+				2693971F1A4A412F00E8349D /* NFANode.cpp */,
+				269397201A4A412F00E8349D /* NFANode.h */,
+				267725FA1A5B3AD9003C24DD /* NFAToDFA.cpp */,
+				267725FB1A5B3AD9003C24DD /* NFAToDFA.h */,
+				267726021A5DF6F2003C24DD /* URLFilterParser.cpp */,
+				267726031A5DF6F2003C24DD /* URLFilterParser.h */,
+			);
+			path = contentextensions;
+			sourceTree = "<group>";
+		};
 		29A812040FBB9B4100510293 /* accessibility */ = {
 			isa = PBXGroup;
 			children = (
@@ -15461,19 +15427,6 @@
 				4162A44F101145AE00DFF3ED /* DedicatedWorkerGlobalScope.idl */,
 				41A3D58C101C152D00316D07 /* DedicatedWorkerThread.cpp */,
 				41A3D58D101C152D00316D07 /* DedicatedWorkerThread.h */,
-				4167EBF3102962BA003D252A /* DefaultSharedWorkerRepository.cpp */,
-				4167EBF4102962BA003D252A /* DefaultSharedWorkerRepository.h */,
-				41E1B1CD0FF5986900576B3B /* SharedWorker.cpp */,
-				41E1B1CE0FF5986900576B3B /* SharedWorker.h */,
-				41E1B1CF0FF5986900576B3B /* SharedWorker.idl */,
-				41D168DF10226E89009BC827 /* SharedWorkerGlobalScope.cpp */,
-				41D168E010226E89009BC827 /* SharedWorkerGlobalScope.h */,
-				41D168E110226E89009BC827 /* SharedWorkerGlobalScope.idl */,
-				E1B7841F1639CBBE0007B692 /* SharedWorkerRepository.cpp */,
-				41D168E210226E89009BC827 /* SharedWorkerRepository.h */,
-				E1B7839B163740A70007B692 /* SharedWorkerStrategy.h */,
-				41D168E510226E89009BC827 /* SharedWorkerThread.cpp */,
-				41D168E610226E89009BC827 /* SharedWorkerThread.h */,
 				2E4346330F546A8200B0F1BA /* Worker.cpp */,
 				2E4346340F546A8200B0F1BA /* Worker.h */,
 				2E4346350F546A8200B0F1BA /* Worker.idl */,
@@ -16267,6 +16220,7 @@
 				CE1252541A1BEC0E00864480 /* NSURLDownloadSPI.h */,
 				653EF83819A043AE0052202C /* NSURLFileTypeMappingsSPI.h */,
 				CE12523C1A1676CD00864480 /* QuartzCoreSPI.h */,
+				CEC337AC1A46071F009B8523 /* ServersSPI.h */,
 			);
 			path = cocoa;
 			sourceTree = "<group>";
@@ -18293,8 +18247,6 @@
 			isa = PBXGroup;
 			children = (
 				FE115FA9167988CD00249134 /* AbstractDatabaseServer.h */,
-				FE4AADEC16D2C37400026FFC /* AbstractSQLStatement.h */,
-				FE4AADED16D2C37400026FFC /* AbstractSQLStatementBackend.h */,
 				FE36FD1116C7826400F887C1 /* ChangeVersionData.h */,
 				97BC69D81505F076001B74AC /* ChangeVersionWrapper.cpp */,
 				97BC69D91505F076001B74AC /* ChangeVersionWrapper.h */,
@@ -18307,12 +18259,6 @@
 				FE16CFD0169D1DEC00D3A0C7 /* DatabaseBackend.h */,
 				97BC69D61505F076001B74AC /* DatabaseBackendBase.cpp */,
 				97BC69D71505F076001B74AC /* DatabaseBackendBase.h */,
-				FE6F6AAD169E057500FC30A2 /* DatabaseBackendContext.cpp */,
-				FE6F6AAE169E057500FC30A2 /* DatabaseBackendContext.h */,
-				FE16CFD1169D1DEC00D3A0C7 /* DatabaseBackendSync.cpp */,
-				FE16CFD2169D1DEC00D3A0C7 /* DatabaseBackendSync.h */,
-				FEBC5F2F16BD0CC300659BD3 /* DatabaseBase.cpp */,
-				FEBC5F3016BD0CC300659BD3 /* DatabaseBase.h */,
 				FE3371A0167C11D400EDB752 /* DatabaseBasicTypes.h */,
 				97BC69E31505F081001B74AC /* DatabaseCallback.h */,
 				97BC69E41505F081001B74AC /* DatabaseCallback.idl */,
@@ -18325,9 +18271,6 @@
 				97BC69F11505F081001B74AC /* DatabaseManagerClient.h */,
 				FEB26D27167A8F2A00FDD26B /* DatabaseServer.cpp */,
 				FEAF6653167970070062D0C5 /* DatabaseServer.h */,
-				97BC69E81505F081001B74AC /* DatabaseSync.cpp */,
-				97BC69E91505F081001B74AC /* DatabaseSync.h */,
-				97BC69EA1505F081001B74AC /* DatabaseSync.idl */,
 				97BC69EB1505F081001B74AC /* DatabaseTask.cpp */,
 				97BC69EC1505F081001B74AC /* DatabaseTask.h */,
 				97BC69ED1505F081001B74AC /* DatabaseThread.cpp */,
@@ -18359,15 +18302,11 @@
 				97BC6A081505F081001B74AC /* SQLStatementCallback.idl */,
 				97BC6A091505F081001B74AC /* SQLStatementErrorCallback.h */,
 				97BC6A0A1505F081001B74AC /* SQLStatementErrorCallback.idl */,
-				97BC6A0B1505F081001B74AC /* SQLStatementSync.cpp */,
-				97BC6A0C1505F081001B74AC /* SQLStatementSync.h */,
 				97BC6A0D1505F081001B74AC /* SQLTransaction.cpp */,
 				97BC6A0E1505F081001B74AC /* SQLTransaction.h */,
 				97BC6A0F1505F081001B74AC /* SQLTransaction.idl */,
 				FEE1811116C319E800084849 /* SQLTransactionBackend.cpp */,
 				FEE1811216C319E800084849 /* SQLTransactionBackend.h */,
-				FEAD7D8516C339EE00D4670B /* SQLTransactionBackendSync.cpp */,
-				FEAD7D8616C339EE00D4670B /* SQLTransactionBackendSync.h */,
 				97BC6A101505F081001B74AC /* SQLTransactionCallback.h */,
 				97BC6A111505F081001B74AC /* SQLTransactionCallback.idl */,
 				97BC6A121505F081001B74AC /* SQLTransactionClient.cpp */,
@@ -18379,14 +18318,6 @@
 				FE36FD1416C7826400F887C1 /* SQLTransactionState.h */,
 				FE36FD1216C7826400F887C1 /* SQLTransactionStateMachine.cpp */,
 				FE36FD1316C7826400F887C1 /* SQLTransactionStateMachine.h */,
-				97BC6A181505F081001B74AC /* SQLTransactionSync.cpp */,
-				97BC6A191505F081001B74AC /* SQLTransactionSync.h */,
-				97BC6A1A1505F081001B74AC /* SQLTransactionSync.idl */,
-				97BC6A1B1505F081001B74AC /* SQLTransactionSyncCallback.h */,
-				97BC6A1C1505F081001B74AC /* SQLTransactionSyncCallback.idl */,
-				A8CCBB4A151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.cpp */,
-				A8CCBB4B151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.h */,
-				A8CCBB4F151F837500AB7CE9 /* WorkerGlobalScopeWebDatabase.idl */,
 			);
 			path = webdatabase;
 			sourceTree = "<group>";
@@ -18529,9 +18460,9 @@
 		A172182419DE182B00464D17 /* ios */ = {
 			isa = PBXGroup;
 			children = (
-				A172182519DE183F00464D17 /* _UIHighlightViewSPI.h */,
 				CE12523E1A16AE1200864480 /* AVKitSPI.h */,
 				CE1252421A16C01A00864480 /* CoreUISPI.h */,
+				CEC337AE1A46086D009B8523 /* GraphicsServicesSPI.h */,
 				CE1252481A16C3BC00864480 /* MobileGestaltSPI.h */,
 				CE1252401A16B1B600864480 /* MediaPlayerSPI.h */,
 				CE1252381A166FA000864480 /* QuickLookSPI.h */,
@@ -19526,8 +19457,6 @@
 				1AE82F8E0CAAFA9D002237AE /* JSDatabase.h */,
 				B59DD698119029E5007E9684 /* JSDatabaseCallback.cpp */,
 				B59DD697119029E5007E9684 /* JSDatabaseCallback.h */,
-				B58CEB6811913607002A6790 /* JSDatabaseSync.cpp */,
-				B58CEB6711913607002A6790 /* JSDatabaseSync.h */,
 				511EF2A817F0FC4800E4FA16 /* JSIDBAny.cpp */,
 				C585A66511D4FB07004C3E4B /* JSIDBAny.h */,
 				511EF2A917F0FC4800E4FA16 /* JSIDBCursor.cpp */,
@@ -19570,10 +19499,6 @@
 				B59DD69B11902A42007E9684 /* JSSQLTransactionCallback.h */,
 				B59DD6A011902A52007E9684 /* JSSQLTransactionErrorCallback.cpp */,
 				B59DD69F11902A52007E9684 /* JSSQLTransactionErrorCallback.h */,
-				B58CEB6C1191361C002A6790 /* JSSQLTransactionSync.cpp */,
-				B58CEB6B1191361C002A6790 /* JSSQLTransactionSync.h */,
-				B55D5AA3119131FC00BCC315 /* JSSQLTransactionSyncCallback.cpp */,
-				B55D5AA2119131FC00BCC315 /* JSSQLTransactionSyncCallback.h */,
 				51E3F9D40DA05E1D00250911 /* JSStorage.cpp */,
 				51E3F9D50DA05E1D00250911 /* JSStorage.h */,
 				51E0BAE80DA55D4A00A9E417 /* JSStorageEvent.cpp */,
@@ -20510,8 +20435,6 @@
 				BCB92D4E1293550B00C8387F /* FontBaseline.h */,
 				B2C3DA510D006CD600EF6F26 /* FontCache.cpp */,
 				B2C3DA520D006CD600EF6F26 /* FontCache.h */,
-				371F4F3F0D25B9AF00ECE0D5 /* FontData.cpp */,
-				371F4F3E0D25B9AF00ECE0D5 /* FontData.h */,
 				37ACCE620DA2AA960089E602 /* FontDescription.cpp */,
 				B2C3DA550D006CD600EF6F26 /* FontDescription.h */,
 				72626E010EF022FE00A07E20 /* FontFastPath.cpp */,
@@ -20614,8 +20537,8 @@
 				BCAB418013E356E800D8AAF3 /* Region.h */,
 				A73F95FC12C97BFE0031AAF9 /* RoundedRect.cpp */,
 				A73F95FD12C97BFE0031AAF9 /* RoundedRect.h */,
-				371F4FFB0D25E7F300ECE0D5 /* SegmentedFontData.cpp */,
-				371F4FFA0D25E7F300ECE0D5 /* SegmentedFontData.h */,
+				371F4FFB0D25E7F300ECE0D5 /* FontRanges.cpp */,
+				371F4FFA0D25E7F300ECE0D5 /* FontRanges.h */,
 				0F3DD44D12F5EA1B000D9190 /* ShadowBlur.cpp */,
 				0F3DD44E12F5EA1B000D9190 /* ShadowBlur.h */,
 				B2C3DA530D006CD600EF6F26 /* SimpleFontData.cpp */,
@@ -20884,7 +20807,6 @@
 				C6F420A116B7164E0052A9F2 /* JSMutationCallback.h */,
 				93B70D4F09EB0C7C009D8468 /* JSPluginElementFunctions.cpp */,
 				93B70D5009EB0C7C009D8468 /* JSPluginElementFunctions.h */,
-				14CD8D81106B529000A46D23 /* JSSharedWorkerCustom.cpp */,
 				E1C36D320EB0A094007410BC /* JSWorkerGlobalScopeBase.cpp */,
 				E1C36D330EB0A094007410BC /* JSWorkerGlobalScopeBase.h */,
 				BCA378BA0D15F64200B793D6 /* ScheduledAction.cpp */,
@@ -21058,7 +20980,6 @@
 				07DC5FD317D3EEE90099F890 /* JSRTCStatsResponseCustom.cpp */,
 				51DCE8010CAC9F1C00488358 /* JSSQLResultSetRowListCustom.cpp */,
 				1AD2316D0CD269E700C1F194 /* JSSQLTransactionCustom.cpp */,
-				B55D5AA71191325000BCC315 /* JSSQLTransactionSyncCustom.cpp */,
 				51D0C5150DAA90B7003B3831 /* JSStorageCustom.cpp */,
 				BC98A27C0C0C9950004BEBF7 /* JSStyleSheetCustom.cpp */,
 				AD726FEC16D9F4B9003A4E6D /* JSStyleSheetCustom.h */,
@@ -21421,8 +21342,6 @@
 				2E4346570F546A9900B0F1BA /* CrossThreadCopier.h */,
 				E11AF15011B9A1A300805103 /* Cursor.cpp */,
 				F587868402DE3B8601EA4122 /* Cursor.h */,
-				FEDEF83F16797108000E444A /* DatabaseStrategy.cpp */,
-				FEDEF84016797108000E444A /* DatabaseStrategy.h */,
 				A5732B08136A161D005C8D7C /* DateComponents.cpp */,
 				A5732B09136A161D005C8D7C /* DateComponents.h */,
 				45FEA5CD156DDE8C00654101 /* Decimal.cpp */,
@@ -21847,10 +21766,6 @@
 				418F88030FF957AE0080F045 /* JSAbstractWorker.h */,
 				4162A4551011464700DFF3ED /* JSDedicatedWorkerGlobalScope.cpp */,
 				4162A4561011464700DFF3ED /* JSDedicatedWorkerGlobalScope.h */,
-				41D07A7C0FF935CA0095EDCE /* JSSharedWorker.cpp */,
-				41D07A7D0FF935CA0095EDCE /* JSSharedWorker.h */,
-				41D1690310238B66009BC827 /* JSSharedWorkerGlobalScope.cpp */,
-				41D1690410238B66009BC827 /* JSSharedWorkerGlobalScope.h */,
 				E1C8BE5C0E8BD15A0064CB7D /* JSWorker.cpp */,
 				E1CAA5C50E8BD23600A73ECA /* JSWorker.h */,
 				E182568D0EF2B02D00933242 /* JSWorkerGlobalScope.cpp */,
@@ -22288,8 +22203,6 @@
 				93CA4CA209DF93FA00DF8677 /* svg.css */,
 				B2227B000D00BFF10071B782 /* SVGCSSComputedStyleDeclaration.cpp */,
 				B2227B010D00BFF10071B782 /* SVGCSSParser.cpp */,
-				B2227B020D00BFF10071B782 /* SVGCSSPropertyNames.in */,
-				B2227B030D00BFF10071B782 /* SVGCSSStyleSelector.cpp */,
 				B2227B040D00BFF10071B782 /* SVGCSSValueKeywords.in */,
 				FB484F4A171F821E00040755 /* TransformFunctions.cpp */,
 				FB484F4B171F821E00040755 /* TransformFunctions.h */,
@@ -23390,10 +23303,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A172182619DE183F00464D17 /* _UIHighlightViewSPI.h in Headers */,
 				FE115FAB167988CD00249134 /* AbstractDatabaseServer.h in Headers */,
-				FE4AADEE16D2C37400026FFC /* AbstractSQLStatement.h in Headers */,
-				FE4AADEF16D2C37400026FFC /* AbstractSQLStatementBackend.h in Headers */,
 				41E1B1D10FF5986900576B3B /* AbstractWorker.h in Headers */,
 				29A8122E0FBB9C1D00510293 /* AccessibilityARIAGridCell.h in Headers */,
 				29A812330FBB9C1D00510293 /* AccessibilityARIAGridRow.h in Headers */,
@@ -23619,6 +23529,7 @@
 				CD318623199F1E2A0030A0F7 /* CDMPrivateMediaSourceAVFObjC.h in Headers */,
 				CDDD571518B57A8200A94FCB /* CDMSession.h in Headers */,
 				5FA904CA178E61F5004C8A2D /* CertificateInfo.h in Headers */,
+				26F0C89C1A2EC110002794F8 /* ContentExtensionRule.h in Headers */,
 				CE8245F019B671BA00AC0122 /* CFNetworkConnectionCacheSPI.h in Headers */,
 				CE12525B1A1C018200864480 /* CFNetworkSPI.h in Headers */,
 				E1A8E56717552B2A007488E7 /* CFURLExtras.h in Headers */,
@@ -23822,9 +23733,6 @@
 				97BC6A241505F081001B74AC /* DatabaseAuthorizer.h in Headers */,
 				FE16CFD4169D1DED00D3A0C7 /* DatabaseBackend.h in Headers */,
 				97BC69DB1505F076001B74AC /* DatabaseBackendBase.h in Headers */,
-				FE6F6AB0169E057500FC30A2 /* DatabaseBackendContext.h in Headers */,
-				FE16CFD6169D1DED00D3A0C7 /* DatabaseBackendSync.h in Headers */,
-				FEBC5F3216BD0CC300659BD3 /* DatabaseBase.h in Headers */,
 				FE3371A2167C11D400EDB752 /* DatabaseBasicTypes.h in Headers */,
 				97BC6A251505F081001B74AC /* DatabaseCallback.h in Headers */,
 				97BC6A281505F081001B74AC /* DatabaseContext.h in Headers */,
@@ -23833,8 +23741,6 @@
 				FE456F191677D74E005EDDF9 /* DatabaseManager.h in Headers */,
 				97BC6A331505F081001B74AC /* DatabaseManagerClient.h in Headers */,
 				FEAF6654167970320062D0C5 /* DatabaseServer.h in Headers */,
-				FEDEF84216797108000E444A /* DatabaseStrategy.h in Headers */,
-				97BC6A2B1505F081001B74AC /* DatabaseSync.h in Headers */,
 				97BC6A2E1505F081001B74AC /* DatabaseTask.h in Headers */,
 				97BC6A301505F081001B74AC /* DatabaseThread.h in Headers */,
 				97BC6A321505F081001B74AC /* DatabaseTracker.h in Headers */,
@@ -23858,7 +23764,6 @@
 				4162A451101145AE00DFF3ED /* DedicatedWorkerGlobalScope.h in Headers */,
 				41A3D58F101C152D00316D07 /* DedicatedWorkerThread.h in Headers */,
 				FD06DFA6134A4DEF006F5D7D /* DefaultAudioDestinationNode.h in Headers */,
-				4167EBF6102962BA003D252A /* DefaultSharedWorkerRepository.h in Headers */,
 				FD31602C12B0267600C1A359 /* DelayDSPKernel.h in Headers */,
 				FD31602E12B0267600C1A359 /* DelayNode.h in Headers */,
 				FD31603112B0267600C1A359 /* DelayProcessor.h in Headers */,
@@ -24064,6 +23969,7 @@
 				85183B440AA6926100F19FA3 /* DOMHTMLHeadingElement.h in Headers */,
 				85E711AE0AC5D5350053270F /* DOMHTMLHeadingElementInternal.h in Headers */,
 				85ECBEF10AA7626900544F0B /* DOMHTMLHRElement.h in Headers */,
+				269397221A4A412F00E8349D /* NFANode.h in Headers */,
 				85E711AF0AC5D5350053270F /* DOMHTMLHRElementInternal.h in Headers */,
 				85992EBC0AA5069500AC0785 /* DOMHTMLHtmlElement.h in Headers */,
 				85E711B00AC5D5350053270F /* DOMHTMLHtmlElementInternal.h in Headers */,
@@ -24084,6 +23990,7 @@
 				85992EBE0AA5069500AC0785 /* DOMHTMLLinkElement.h in Headers */,
 				85E711B80AC5D5350053270F /* DOMHTMLLinkElementInternal.h in Headers */,
 				85ECBEF30AA7626900544F0B /* DOMHTMLMapElement.h in Headers */,
+				267726051A5DF6F2003C24DD /* URLFilterParser.h in Headers */,
 				85E711B90AC5D5350053270F /* DOMHTMLMapElementInternal.h in Headers */,
 				BC51579F0C03BBD3008BB0EE /* DOMHTMLMarqueeElement.h in Headers */,
 				BC5156EA0C03B741008BB0EE /* DOMHTMLMarqueeElementInternal.h in Headers */,
@@ -24172,6 +24079,7 @@
 				E1284BD61044A01E00EAEB52 /* DOMPageTransitionEvent.h in Headers */,
 				1ACE53E80A8D18E70022947D /* DOMParser.h in Headers */,
 				7A54881714E432A1006AE05A /* DOMPatchSupport.h in Headers */,
+				269397241A4A5B6400E8349D /* NFA.h in Headers */,
 				FB91392416AE4C17001FE682 /* DOMPath.h in Headers */,
 				A9C6E4EC0D745E2B006442E9 /* DOMPlugin.h in Headers */,
 				A9C6E4F00D745E38006442E9 /* DOMPluginArray.h in Headers */,
@@ -24395,7 +24303,6 @@
 				BCB92D4F1293550B00C8387F /* FontBaseline.h in Headers */,
 				B2C3DA630D006CD600EF6F26 /* FontCache.h in Headers */,
 				B2AFFC7E0D00A5C10030074D /* FontCustomPlatformData.h in Headers */,
-				371F4F400D25B9AF00ECE0D5 /* FontData.h in Headers */,
 				B2C3DA660D006CD600EF6F26 /* FontDescription.h in Headers */,
 				4A6E9FC813C17D570046A7F8 /* FontFeatureSettings.h in Headers */,
 				B2C3DA680D006CD600EF6F26 /* FontGlyphs.h in Headers */,
@@ -24473,6 +24380,7 @@
 				0F580B0E0F12A2690051D689 /* GraphicsLayerClient.h in Headers */,
 				1AC69593161A1E53003732CB /* GraphicsLayerFactory.h in Headers */,
 				0FA24D7A162DF91900A3F4C0 /* GraphicsLayerUpdater.h in Headers */,
+				CEC337AF1A46086D009B8523 /* GraphicsServicesSPI.h in Headers */,
 				B2A015AB0AF6CD53006BCE0E /* GraphicsTypes.h in Headers */,
 				77A17A7B12F2890B004E02F6 /* GraphicsTypes3D.h in Headers */,
 				CD3E251C18046B0600E27F56 /* GridCoordinate.h in Headers */,
@@ -24693,6 +24601,7 @@
 				316FE1180E6E1DA700BF6088 /* ImplicitAnimation.h in Headers */,
 				BE961C5518AD338C00D07DC5 /* InbandDataTextTrack.h in Headers */,
 				BE16C59317CFE17200852C04 /* InbandGenericTextTrack.h in Headers */,
+				267726011A5B3AD9003C24DD /* NFAToDFA.h in Headers */,
 				07E9E12E18F5E2760011A3A4 /* InbandMetadataTextTrackPrivateAVF.h in Headers */,
 				07941792166E855F009416C2 /* InbandTextTrack.h in Headers */,
 				07941794166EA04E009416C2 /* InbandTextTrackPrivate.h in Headers */,
@@ -24835,7 +24744,6 @@
 				E10B937C0B73C00A003ED890 /* JSCustomXPathNSResolver.h in Headers */,
 				1AE82F900CAAFA9D002237AE /* JSDatabase.h in Headers */,
 				B59DD699119029E5007E9684 /* JSDatabaseCallback.h in Headers */,
-				B58CEB6911913607002A6790 /* JSDatabaseSync.h in Headers */,
 				BE61039E18A9D65A00DD50D7 /* JSDataCue.h in Headers */,
 				BCA83E500D7CE1E9003421A8 /* JSDataTransfer.h in Headers */,
 				4162A4581011464700DFF3ED /* JSDedicatedWorkerGlobalScope.h in Headers */,
@@ -25091,8 +24999,6 @@
 				FDA15ECE12B03F61003A583A /* JSScriptProcessorNode.h in Headers */,
 				9FA37EFB1172FDA600C4CD55 /* JSScriptProfile.h in Headers */,
 				9FA37EFD1172FDA600C4CD55 /* JSScriptProfileNode.h in Headers */,
-				41D07A7F0FF935CA0095EDCE /* JSSharedWorker.h in Headers */,
-				41D1690610238B66009BC827 /* JSSharedWorkerGlobalScope.h in Headers */,
 				CD9DE17B17AAC75B00EA386D /* JSSourceBuffer.h in Headers */,
 				CD9DE17D17AAC75B00EA386D /* JSSourceBufferList.h in Headers */,
 				076306E117E16089005A7C4E /* JSSourceInfo.h in Headers */,
@@ -25109,8 +25015,6 @@
 				BC82432A0D0CE8A200460C8F /* JSSQLTransaction.h in Headers */,
 				B59DD69D11902A42007E9684 /* JSSQLTransactionCallback.h in Headers */,
 				B59DD6A111902A52007E9684 /* JSSQLTransactionErrorCallback.h in Headers */,
-				B58CEB6D1191361C002A6790 /* JSSQLTransactionSync.h in Headers */,
-				B55D5AA4119131FC00BCC315 /* JSSQLTransactionSyncCallback.h in Headers */,
 				51E0BAEB0DA55D4A00A9E417 /* JSStorageEvent.h in Headers */,
 				89F60CDA15809D760075E157 /* JSStorageInfo.h in Headers */,
 				0FF5026A102BA9430066F39A /* JSStyleMedia.h in Headers */,
@@ -25142,6 +25046,7 @@
 				B2FA3D570AB75A6F000E5AC4 /* JSSVGAnimationElement.h in Headers */,
 				B2FA3D590AB75A6F000E5AC4 /* JSSVGCircleElement.h in Headers */,
 				B2FA3D5B0AB75A6F000E5AC4 /* JSSVGClipPathElement.h in Headers */,
+				26F0C8981A2E724B002794F8 /* ContentExtensionsManager.h in Headers */,
 				B2FA3D5D0AB75A6F000E5AC4 /* JSSVGColor.h in Headers */,
 				B2FA3D5F0AB75A6F000E5AC4 /* JSSVGComponentTransferFunctionElement.h in Headers */,
 				B2FA3D610AB75A6F000E5AC4 /* JSSVGCursorElement.h in Headers */,
@@ -25560,6 +25465,7 @@
 				98EB1F951313FE0500D0E1EA /* NotImplemented.h in Headers */,
 				1A569D0B0D7E2B82007C3983 /* NP_jsobject.h in Headers */,
 				1A927FD21416A15B003A83C8 /* npapi.h in Headers */,
+				267725FF1A5B3AD9003C24DD /* DFANode.h in Headers */,
 				1A219B3B0DCA87AB0040E3A0 /* npfunctions.h in Headers */,
 				1A927FD31416A15B003A83C8 /* npruntime.h in Headers */,
 				1A569D0F0D7E2B82007C3983 /* npruntime_impl.h in Headers */,
@@ -25822,6 +25728,7 @@
 				BC1A7D9818FCB5B000421879 /* RenderMultiColumnSpannerPlaceholder.h in Headers */,
 				8AC822FD180FC03300FB64D5 /* RenderNamedFlowFragment.h in Headers */,
 				BC85F23D151915E000BC17BE /* RenderNamedFlowThread.h in Headers */,
+				267725FD1A5B3AD9003C24DD /* DFA.h in Headers */,
 				BCEA4880097D93020094C9E4 /* RenderObject.h in Headers */,
 				BCFA930810333193007B25D1 /* RenderOverflow.h in Headers */,
 				A43BF59D1149292800C643CA /* RenderProgress.h in Headers */,
@@ -26046,7 +25953,7 @@
 				BCD0E0FC0E972C3500265DEA /* SecurityOriginHash.h in Headers */,
 				974D2DA5146A535D00D51F8B /* SecurityPolicy.h in Headers */,
 				2D5BC42716F882EE007048D0 /* SecurityPolicyViolationEvent.h in Headers */,
-				371F4FFC0D25E7F300ECE0D5 /* SegmentedFontData.h in Headers */,
+				371F4FFC0D25E7F300ECE0D5 /* FontRanges.h in Headers */,
 				99CC0B5E18BE984A006CEBCC /* SegmentedInputStorage.h in Headers */,
 				B2C3DA2F0D006C1D00EF6F26 /* SegmentedString.h in Headers */,
 				BEA807C90F714A0300524199 /* SelectionRect.h in Headers */,
@@ -26064,6 +25971,7 @@
 				077AF14018F4AE400001ED61 /* SerializedPlatformRepresentation.h in Headers */,
 				077AF14318F4B1BB0001ED61 /* SerializedPlatformRepresentationMac.h in Headers */,
 				A75E497610752ACB00C9B896 /* SerializedScriptValue.h in Headers */,
+				CEC337AD1A46071F009B8523 /* ServersSPI.h in Headers */,
 				2D93AEE319DF5641002A86C3 /* ServicesOverlayController.h in Headers */,
 				756B2CE118B7101600FECFAA /* SessionID.h in Headers */,
 				93309E10099E64920056E581 /* SetNodeAttributeCommand.h in Headers */,
@@ -26080,11 +25988,6 @@
 				1A4A954E0B4EDCCB002D8C3C /* SharedBuffer.h in Headers */,
 				97B1F02F13B025D200F5103F /* SharedBufferChunkReader.h in Headers */,
 				93309EA3099EB78C0056E581 /* SharedTimer.h in Headers */,
-				41E1B1D40FF5986900576B3B /* SharedWorker.h in Headers */,
-				41D168E810226E89009BC827 /* SharedWorkerGlobalScope.h in Headers */,
-				41D168EA10226E89009BC827 /* SharedWorkerRepository.h in Headers */,
-				E1B7839C163740A70007B692 /* SharedWorkerStrategy.h in Headers */,
-				41D168EE10226E89009BC827 /* SharedWorkerThread.h in Headers */,
 				B2C3DA650D006CD600EF6F26 /* SimpleFontData.h in Headers */,
 				E48944A3180B57D800F165D8 /* SimpleLineLayout.h in Headers */,
 				E4E9B11D1814569C003ACCDF /* SimpleLineLayoutFunctions.h in Headers */,
@@ -26144,18 +26047,14 @@
 				FE8A674816CDD19E00930BF8 /* SQLStatementBackend.h in Headers */,
 				97BC6A491505F081001B74AC /* SQLStatementCallback.h in Headers */,
 				97BC6A4B1505F081001B74AC /* SQLStatementErrorCallback.h in Headers */,
-				97BC6A4E1505F081001B74AC /* SQLStatementSync.h in Headers */,
 				97BC6A501505F081001B74AC /* SQLTransaction.h in Headers */,
 				FEE1811416C319E800084849 /* SQLTransactionBackend.h in Headers */,
-				FEAD7D8816C339EE00D4670B /* SQLTransactionBackendSync.h in Headers */,
 				97BC6A521505F081001B74AC /* SQLTransactionCallback.h in Headers */,
 				97BC6A551505F081001B74AC /* SQLTransactionClient.h in Headers */,
 				97BC6A571505F081001B74AC /* SQLTransactionCoordinator.h in Headers */,
 				97BC6A581505F081001B74AC /* SQLTransactionErrorCallback.h in Headers */,
 				FE36FD1816C7826500F887C1 /* SQLTransactionState.h in Headers */,
 				FE36FD1716C7826500F887C1 /* SQLTransactionStateMachine.h in Headers */,
-				97BC6A5B1505F081001B74AC /* SQLTransactionSync.h in Headers */,
-				97BC6A5D1505F081001B74AC /* SQLTransactionSyncCallback.h in Headers */,
 				1A2E6E5A0CC55213004A2062 /* SQLValue.h in Headers */,
 				93F1996308245E59001E9ABC /* SSLKeyGenerator.h in Headers */,
 				26B999911803B3C900D01121 /* StackAllocator.h in Headers */,
@@ -26367,6 +26266,7 @@
 				8419D2AD120D92FC00141F8F /* SVGPathByteStreamSource.h in Headers */,
 				8476C9EC11DF6A2900555B02 /* SVGPathConsumer.h in Headers */,
 				71537A01146BD9D7008BD615 /* SVGPathData.h in Headers */,
+				26F0C8921A2D79CB002794F8 /* ContentExtensionsInterface.h in Headers */,
 				B2227A590D00BF220071B782 /* SVGPathElement.h in Headers */,
 				8476C9F011DF6A5800555B02 /* SVGPathParser.h in Headers */,
 				B2227A5B0D00BF220071B782 /* SVGPathSeg.h in Headers */,
@@ -26570,6 +26470,7 @@
 				BE88E0C21715CE2600658D98 /* TrackListBase.h in Headers */,
 				BE913D80181EF92400DCB09E /* TrackPrivateBase.h in Headers */,
 				FFAC30FE184FB145008C4F1E /* TrailingObjects.h in Headers */,
+				26F0C8A01A2EC3BE002794F8 /* ContentExtensionsBackend.h in Headers */,
 				49E911C40EF86D47009D0CAF /* TransformationMatrix.h in Headers */,
 				FB484F4D171F821E00040755 /* TransformFunctions.h in Headers */,
 				49E911CE0EF86D47009D0CAF /* TransformOperation.h in Headers */,
@@ -26802,7 +26703,6 @@
 				51D719FC181106E00016DC51 /* WorkerGlobalScopeIndexedDatabase.h in Headers */,
 				97F8E666151D4A4E00D2D181 /* WorkerGlobalScopeNotifications.h in Headers */,
 				2E43464B0F546A8200B0F1BA /* WorkerGlobalScopeProxy.h in Headers */,
-				A8CCBB4D151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.h in Headers */,
 				F36E07A51358A8BE00AACBC9 /* WorkerInspectorController.h in Headers */,
 				18F831B80FD48C7800D8C56B /* WorkerLoaderProxy.h in Headers */,
 				2E43464D0F546A8200B0F1BA /* WorkerLocation.h in Headers */,
@@ -27256,6 +27156,7 @@
 				FDB052DF1561A42C00B500D6 /* AudioSummingJunction.cpp in Sources */,
 				BE88E0D81715D2A200658D98 /* AudioTrack.cpp in Sources */,
 				BE88E0DB1715D2A200658D98 /* AudioTrackList.cpp in Sources */,
+				267726001A5B3AD9003C24DD /* NFAToDFA.cpp in Sources */,
 				CDE3A85717F6020400C5BE20 /* AudioTrackPrivateAVFObjC.mm in Sources */,
 				CD54A762180F9F7000B076C9 /* AudioTrackPrivateMediaSourceAVFObjC.cpp in Sources */,
 				FD31608A12B026F700C1A359 /* AudioUtilities.cpp in Sources */,
@@ -27526,14 +27427,9 @@
 				97BC6A231505F081001B74AC /* DatabaseAuthorizer.cpp in Sources */,
 				FE16CFD3169D1DED00D3A0C7 /* DatabaseBackend.cpp in Sources */,
 				97BC69DA1505F076001B74AC /* DatabaseBackendBase.cpp in Sources */,
-				FE6F6AAF169E057500FC30A2 /* DatabaseBackendContext.cpp in Sources */,
-				FE16CFD5169D1DED00D3A0C7 /* DatabaseBackendSync.cpp in Sources */,
-				FEBC5F3116BD0CC300659BD3 /* DatabaseBase.cpp in Sources */,
 				97BC6A271505F081001B74AC /* DatabaseContext.cpp in Sources */,
 				FE456F181677D74E005EDDF9 /* DatabaseManager.cpp in Sources */,
 				FEB26D28167A8F2A00FDD26B /* DatabaseServer.cpp in Sources */,
-				FEDEF84116797108000E444A /* DatabaseStrategy.cpp in Sources */,
-				97BC6A2A1505F081001B74AC /* DatabaseSync.cpp in Sources */,
 				97BC6A2D1505F081001B74AC /* DatabaseTask.cpp in Sources */,
 				97BC6A2F1505F081001B74AC /* DatabaseThread.cpp in Sources */,
 				97BC6A311505F081001B74AC /* DatabaseTracker.cpp in Sources */,
@@ -27552,13 +27448,13 @@
 				4162A450101145AE00DFF3ED /* DedicatedWorkerGlobalScope.cpp in Sources */,
 				41A3D58E101C152D00316D07 /* DedicatedWorkerThread.cpp in Sources */,
 				FD06DFA5134A4DEF006F5D7D /* DefaultAudioDestinationNode.cpp in Sources */,
-				4167EBF5102962BA003D252A /* DefaultSharedWorkerRepository.cpp in Sources */,
 				FD31602B12B0267600C1A359 /* DelayDSPKernel.cpp in Sources */,
 				FD31602D12B0267600C1A359 /* DelayNode.cpp in Sources */,
 				FD31603012B0267600C1A359 /* DelayProcessor.cpp in Sources */,
 				93309DDE099E64920056E581 /* DeleteFromTextNodeCommand.cpp in Sources */,
 				93309DE0099E64920056E581 /* DeleteSelectionCommand.cpp in Sources */,
 				A7C9ABF81357A3BF00F5503F /* DetailsMarkerControl.cpp in Sources */,
+				26F0C8941A2D7A76002794F8 /* ContentExtensionsInterface.cpp in Sources */,
 				CCC2B51515F613060048CDD6 /* DeviceController.cpp in Sources */,
 				31EAF97F121435A400E7C1BF /* DeviceMotionClientIOS.mm in Sources */,
 				31FB1A58120A5D0600DC02A0 /* DeviceMotionController.cpp in Sources */,
@@ -27566,6 +27462,7 @@
 				31FB1A5C120A5D0600DC02A0 /* DeviceMotionEvent.cpp in Sources */,
 				3140379E124BEA7F00AF40E4 /* DeviceOrientationClientIOS.mm in Sources */,
 				59309A1111F4AE5800250603 /* DeviceOrientationClientMock.cpp in Sources */,
+				269397261A4A5FBD00E8349D /* NFA.cpp in Sources */,
 				59A8F1D411A69508001AC34A /* DeviceOrientationController.cpp in Sources */,
 				59D1C10411EB5DCF00B638C8 /* DeviceOrientationData.cpp in Sources */,
 				59A85EA2119D68D900DEF1EF /* DeviceOrientationEvent.cpp in Sources */,
@@ -27909,7 +27806,6 @@
 				B2AFFC7C0D00A5C10030074D /* FontCacheMac.mm in Sources */,
 				37C2360B1097EDED00EF9F72 /* FontComplexTextMac.cpp in Sources */,
 				B2AFFC7D0D00A5C10030074D /* FontCustomPlatformData.cpp in Sources */,
-				371F4F410D25B9AF00ECE0D5 /* FontData.cpp in Sources */,
 				37ACCF690DA414E70089E602 /* FontDescription.cpp in Sources */,
 				72626E020EF022FE00A07E20 /* FontFastPath.cpp in Sources */,
 				4A6E9FC713C17D570046A7F8 /* FontFeatureSettings.cpp in Sources */,
@@ -28207,6 +28103,7 @@
 				A5840E1C187B74D500843B10 /* InspectorInstrumentationCookie.cpp in Sources */,
 				71B1E1261640491A00B1880A /* InspectorLayerTreeAgent.cpp in Sources */,
 				504AACCD1834455900E3D9BC /* InspectorNodeFinder.cpp in Sources */,
+				26F0C89B1A2EC110002794F8 /* ContentExtensionRule.cpp in Sources */,
 				7C522D4B15B477E8009B7C95 /* InspectorOverlay.cpp in Sources */,
 				4F6FDD641341DEDD001F8EE3 /* InspectorPageAgent.cpp in Sources */,
 				99CC0B6618BE9F15006CEBCC /* InspectorReplayAgent.cpp in Sources */,
@@ -28317,7 +28214,6 @@
 				E10B93C30B73C291003ED890 /* JSCustomXPathNSResolver.cpp in Sources */,
 				1AE82F8F0CAAFA9D002237AE /* JSDatabase.cpp in Sources */,
 				B59DD69A119029E5007E9684 /* JSDatabaseCallback.cpp in Sources */,
-				B58CEB6A11913607002A6790 /* JSDatabaseSync.cpp in Sources */,
 				BE61039D18A9D65200DD50D7 /* JSDataCue.cpp in Sources */,
 				07FBDE2C18FED178001A7CFF /* JSDataCueCustom.cpp in Sources */,
 				BCA83E4F0D7CE1E9003421A8 /* JSDataTransfer.cpp in Sources */,
@@ -28350,6 +28246,7 @@
 				1ACE53DF0A8D18810022947D /* JSDOMParser.cpp in Sources */,
 				FB91392B16AE4FC0001FE682 /* JSDOMPath.cpp in Sources */,
 				A9D247FE0D757E6900FDF959 /* JSDOMPlugin.cpp in Sources */,
+				26F0C8971A2E724B002794F8 /* ContentExtensionsManager.cpp in Sources */,
 				A9D248000D757E6900FDF959 /* JSDOMPluginArray.cpp in Sources */,
 				A9C6E64C0D7465E7006442E9 /* JSDOMPluginArrayCustom.cpp in Sources */,
 				A9C6E64D0D7465E7006442E9 /* JSDOMPluginCustom.cpp in Sources */,
@@ -28646,9 +28543,6 @@
 				FDA15ECD12B03F61003A583A /* JSScriptProcessorNode.cpp in Sources */,
 				9FA37EFA1172FDA600C4CD55 /* JSScriptProfile.cpp in Sources */,
 				9FA37EFC1172FDA600C4CD55 /* JSScriptProfileNode.cpp in Sources */,
-				41D07A7E0FF935CA0095EDCE /* JSSharedWorker.cpp in Sources */,
-				14CD8D82106B529000A46D23 /* JSSharedWorkerCustom.cpp in Sources */,
-				41D1690510238B66009BC827 /* JSSharedWorkerGlobalScope.cpp in Sources */,
 				CD9DE17A17AAC75B00EA386D /* JSSourceBuffer.cpp in Sources */,
 				CD9DE17C17AAC75B00EA386D /* JSSourceBufferList.cpp in Sources */,
 				076306E017E16089005A7C4E /* JSSourceInfo.cpp in Sources */,
@@ -28667,9 +28561,6 @@
 				B59DD69E11902A42007E9684 /* JSSQLTransactionCallback.cpp in Sources */,
 				1AD2316E0CD269E700C1F194 /* JSSQLTransactionCustom.cpp in Sources */,
 				B59DD6A211902A52007E9684 /* JSSQLTransactionErrorCallback.cpp in Sources */,
-				B58CEB6E1191361C002A6790 /* JSSQLTransactionSync.cpp in Sources */,
-				B55D5AA5119131FC00BCC315 /* JSSQLTransactionSyncCallback.cpp in Sources */,
-				B55D5AA91191325000BCC315 /* JSSQLTransactionSyncCustom.cpp in Sources */,
 				51E3F9D60DA05E1D00250911 /* JSStorage.cpp in Sources */,
 				51D0C5160DAA90B7003B3831 /* JSStorageCustom.cpp in Sources */,
 				51E0BAEA0DA55D4A00A9E417 /* JSStorageEvent.cpp in Sources */,
@@ -28807,6 +28698,7 @@
 				B2FA3DF20AB75A6F000E5AC4 /* JSSVGScriptElement.cpp in Sources */,
 				B2FA3DF40AB75A6F000E5AC4 /* JSSVGSetElement.cpp in Sources */,
 				B2FA3DF60AB75A6F000E5AC4 /* JSSVGStopElement.cpp in Sources */,
+				26F0C89F1A2EC3BE002794F8 /* ContentExtensionsBackend.cpp in Sources */,
 				B2FA3DF80AB75A6F000E5AC4 /* JSSVGStringList.cpp in Sources */,
 				B2FA3DFA0AB75A6F000E5AC4 /* JSSVGStyleElement.cpp in Sources */,
 				B2FA3DFC0AB75A6F000E5AC4 /* JSSVGSVGElement.cpp in Sources */,
@@ -28840,6 +28732,7 @@
 				07B5A2DB1464320A00A81ECE /* JSTextTrackList.cpp in Sources */,
 				07B5A30D14687D7100A81ECE /* JSTextTrackListCustom.cpp in Sources */,
 				E446141A0CD6826900FADA75 /* JSTimeRanges.cpp in Sources */,
+				267726041A5DF6F2003C24DD /* URLFilterParser.cpp in Sources */,
 				0FDA7C16188322EB00C954B5 /* JSTouch.cpp in Sources */,
 				0FDA7C18188322EB00C954B5 /* JSTouchEvent.cpp in Sources */,
 				0FDA7C1A188322EB00C954B5 /* JSTouchList.cpp in Sources */,
@@ -29358,6 +29251,7 @@
 				93309E09099E64920056E581 /* ReplaceSelectionCommand.cpp in Sources */,
 				99CC0B5318BE9849006CEBCC /* ReplayController.cpp in Sources */,
 				99CC0B5518BE9849006CEBCC /* ReplayingInputCursor.cpp in Sources */,
+				267725FC1A5B3AD9003C24DD /* DFA.cpp in Sources */,
 				99CC0B5718BE984A006CEBCC /* ReplayInputCreationMethods.cpp in Sources */,
 				99CC0B5818BE984A006CEBCC /* ReplayInputDispatchMethods.cpp in Sources */,
 				99CC0B5918BE984A006CEBCC /* ReplaySession.cpp in Sources */,
@@ -29489,7 +29383,7 @@
 				976F36EA14686225005E93B4 /* SecurityContext.cpp in Sources */,
 				BCD0E0FA0E972C3500265DEA /* SecurityOrigin.cpp in Sources */,
 				974D2DA4146A535D00D51F8B /* SecurityPolicy.cpp in Sources */,
-				371F4FFD0D25E7F300ECE0D5 /* SegmentedFontData.cpp in Sources */,
+				371F4FFD0D25E7F300ECE0D5 /* FontRanges.cpp in Sources */,
 				99CC0B5D18BE984A006CEBCC /* SegmentedInputStorage.cpp in Sources */,
 				B2C3DA2E0D006C1D00EF6F26 /* SegmentedString.cpp in Sources */,
 				BEA807C80F714A0300524199 /* SelectionRect.cpp in Sources */,
@@ -29522,10 +29416,6 @@
 				1A4A95520B4EDCFF002D8C3C /* SharedBufferMac.mm in Sources */,
 				E45390460EAFD637003695C8 /* SharedTimerIOS.mm in Sources */,
 				93309EA2099EB78C0056E581 /* SharedTimerMac.mm in Sources */,
-				41E1B1D30FF5986900576B3B /* SharedWorker.cpp in Sources */,
-				41D168E710226E89009BC827 /* SharedWorkerGlobalScope.cpp in Sources */,
-				E1B784201639CBBE0007B692 /* SharedWorkerRepository.cpp in Sources */,
-				41D168ED10226E89009BC827 /* SharedWorkerThread.cpp in Sources */,
 				B2C3DA640D006CD600EF6F26 /* SimpleFontData.cpp in Sources */,
 				163E88F7118A39D200ED9231 /* SimpleFontDataCoreText.cpp in Sources */,
 				37E65950163B10C200EB4574 /* SimpleFontDataIOS.mm in Sources */,
@@ -29579,15 +29469,12 @@
 				97BC6A441505F081001B74AC /* SQLResultSetRowList.cpp in Sources */,
 				97BC6A471505F081001B74AC /* SQLStatement.cpp in Sources */,
 				FE8A674716CDD19E00930BF8 /* SQLStatementBackend.cpp in Sources */,
-				97BC6A4D1505F081001B74AC /* SQLStatementSync.cpp in Sources */,
 				97BC6A4F1505F081001B74AC /* SQLTransaction.cpp in Sources */,
 				2D4F96F51A1ECC240098BF88 /* TextIndicator.cpp in Sources */,
 				FEE1811316C319E800084849 /* SQLTransactionBackend.cpp in Sources */,
-				FEAD7D8716C339EE00D4670B /* SQLTransactionBackendSync.cpp in Sources */,
 				97BC6A541505F081001B74AC /* SQLTransactionClient.cpp in Sources */,
 				97BC6A561505F081001B74AC /* SQLTransactionCoordinator.cpp in Sources */,
 				FE36FD1616C7826500F887C1 /* SQLTransactionStateMachine.cpp in Sources */,
-				97BC6A5A1505F081001B74AC /* SQLTransactionSync.cpp in Sources */,
 				1A2E6E590CC55213004A2062 /* SQLValue.cpp in Sources */,
 				4476531B133170990006B789 /* SSLKeyGeneratorIOS.cpp in Sources */,
 				93F19AE608245E59001E9ABC /* SSLKeyGeneratorMac.cpp in Sources */,
@@ -29681,7 +29568,6 @@
 				B22279A40D00BF220071B782 /* SVGComponentTransferFunctionElement.cpp in Sources */,
 				B2227B050D00BFF10071B782 /* SVGCSSComputedStyleDeclaration.cpp in Sources */,
 				B2227B060D00BFF10071B782 /* SVGCSSParser.cpp in Sources */,
-				B2227B080D00BFF10071B782 /* SVGCSSStyleSelector.cpp in Sources */,
 				B22279A70D00BF220071B782 /* SVGCursorElement.cpp in Sources */,
 				B22279AD0D00BF220071B782 /* SVGDefsElement.cpp in Sources */,
 				B22279B00D00BF220071B782 /* SVGDescElement.cpp in Sources */,
@@ -29785,6 +29671,7 @@
 				B2227A960D00BF220071B782 /* SVGPreserveAspectRatio.cpp in Sources */,
 				B543B85717EB758F003BE93A /* SVGPropertyInfo.cpp in Sources */,
 				B2227A990D00BF220071B782 /* SVGRadialGradientElement.cpp in Sources */,
+				269397211A4A412F00E8349D /* NFANode.cpp in Sources */,
 				B2227A9D0D00BF220071B782 /* SVGRectElement.cpp in Sources */,
 				BC2274780E8366E200E7F975 /* SVGRenderStyle.cpp in Sources */,
 				BC22747A0E8366E200E7F975 /* SVGRenderStyleDefs.cpp in Sources */,
@@ -30091,7 +29978,6 @@
 				2E4346480F546A8200B0F1BA /* WorkerGlobalScope.cpp in Sources */,
 				51D719FB181106E00016DC51 /* WorkerGlobalScopeIndexedDatabase.cpp in Sources */,
 				97F8E665151D4A4B00D2D181 /* WorkerGlobalScopeNotifications.cpp in Sources */,
-				A8CCBB4C151F833B00AB7CE9 /* WorkerGlobalScopeWebDatabase.cpp in Sources */,
 				F36E07A41358A8BE00AACBC9 /* WorkerInspectorController.cpp in Sources */,
 				2E43464C0F546A8200B0F1BA /* WorkerLocation.cpp in Sources */,
 				2E43464F0F546A8200B0F1BA /* WorkerMessagingProxy.cpp in Sources */,

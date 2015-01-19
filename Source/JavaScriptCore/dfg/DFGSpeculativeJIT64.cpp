@@ -2563,7 +2563,7 @@ void SpeculativeJIT::compile(Node* node)
             DFG_CRASH(m_jit.graph(), node, "Bad array mode type");
             break;
         case Array::Generic: {
-            DFG_ASSERT(m_jit.graph(), node, node->op() == PutByVal);
+            DFG_ASSERT(m_jit.graph(), node, node->op() == PutByVal || node->op() == PutByValDirect);
             
             JSValueOperand arg1(this, child1);
             JSValueOperand arg2(this, child2);
@@ -4287,7 +4287,7 @@ void SpeculativeJIT::compile(Node* node)
             || !executable->parameterCount()) {
             JITCompiler::Jump notCreated = m_jit.branchTest64(JITCompiler::Zero, resultGPR);
             addSlowPathGenerator(
-                slowPathCall(notCreated, this, operationCreateArguments, resultGPR));
+                slowPathCall(notCreated, this, operationCreateArgumentsForDFG, resultGPR));
             cellResult(resultGPR, node);
             break;
         }
@@ -4297,7 +4297,7 @@ void SpeculativeJIT::compile(Node* node)
         MacroAssembler::JumpList slowPaths;
         emitAllocateArguments(resultGPR, scratchGPR1, scratchGPR2, slowPaths);
         addSlowPathGenerator(
-            slowPathCall(slowPaths, this, operationCreateArguments, resultGPR));
+            slowPathCall(slowPaths, this, operationCreateArgumentsForDFG, resultGPR));
 
         alreadyCreated.link(&m_jit);
         cellResult(resultGPR, node);

@@ -25,7 +25,6 @@
 #define SimpleFontData_h
 
 #include "FontBaseline.h"
-#include "FontData.h"
 #include "FontMetrics.h"
 #include "FontPlatformData.h"
 #include "FloatRect.h"
@@ -68,7 +67,7 @@ struct WidthIterator;
 enum FontDataVariant { AutoVariant, NormalVariant, SmallCapsVariant, EmphasisMarkVariant, BrokenIdeographVariant };
 enum Pitch { UnknownPitch, FixedPitch, VariablePitch };
 
-class SimpleFontData final : public FontData {
+class SimpleFontData : public RefCounted<SimpleFontData> {
 public:
     class SVGData {
         WTF_MAKE_FAST_ALLOCATED;
@@ -81,18 +80,18 @@ public:
     };
 
     // Used to create platform fonts.
-    static PassRefPtr<SimpleFontData> create(const FontPlatformData& platformData, bool isCustomFont = false, bool isLoading = false, bool isTextOrientationFallback = false)
+    static Ref<SimpleFontData> create(const FontPlatformData& platformData, bool isCustomFont = false, bool isLoading = false, bool isTextOrientationFallback = false)
     {
-        return adoptRef(new SimpleFontData(platformData, isCustomFont, isLoading, isTextOrientationFallback));
+        return adoptRef(*new SimpleFontData(platformData, isCustomFont, isLoading, isTextOrientationFallback));
     }
 
     // Used to create SVG Fonts.
-    static PassRefPtr<SimpleFontData> create(std::unique_ptr<SVGData> svgData, float fontSize, bool syntheticBold, bool syntheticItalic)
+    static Ref<SimpleFontData> create(std::unique_ptr<SVGData> svgData, float fontSize, bool syntheticBold, bool syntheticItalic)
     {
-        return adoptRef(new SimpleFontData(WTF::move(svgData), fontSize, syntheticBold, syntheticItalic));
+        return adoptRef(*new SimpleFontData(WTF::move(svgData), fontSize, syntheticBold, syntheticItalic));
     }
 
-    virtual ~SimpleFontData();
+    ~SimpleFontData();
 
     static const SimpleFontData* systemFallback() { return reinterpret_cast<const SimpleFontData*>(-1); }
 
@@ -178,16 +177,15 @@ public:
     const SVGData* svgData() const { return m_svgData.get(); }
     bool isSVGFont() const { return !!m_svgData; }
 
-    virtual bool isCustomFont() const override { return m_isCustomFont; }
-    virtual bool isLoading() const override { return m_isLoading; }
-    virtual bool isSegmented() const override;
+    bool isCustomFont() const { return m_isCustomFont; }
+    bool isLoading() const { return m_isLoading; }
 
 #ifndef NDEBUG
-    virtual String description() const override;
+    String description() const;
 #endif
 
 #if USE(APPKIT)
-    const SimpleFontData* getCompositeFontReferenceFontData(NSFont *key) const;
+    const SimpleFontData* compositeFontReferenceFontData(NSFont *key) const;
     NSFont* getNSFont() const { return m_platformData.nsFont(); }
 #endif
 
@@ -228,9 +226,6 @@ private:
 
     PassRefPtr<SimpleFontData> createScaledFontData(const FontDescription&, float scaleFactor) const;
     PassRefPtr<SimpleFontData> platformCreateScaledFontData(const FontDescription&, float scaleFactor) const;
-
-    virtual const SimpleFontData* simpleFontDataForCharacter(UChar32) const override;
-    virtual const SimpleFontData& simpleFontDataForFirstRange() const override;
 
     void removeFromSystemFallbackCache();
 
@@ -295,8 +290,8 @@ private:
         RefPtr<SimpleFontData> verticalRightOrientation;
         RefPtr<SimpleFontData> uprightOrientation;
         RefPtr<SimpleFontData> nonSyntheticItalic;
-#if PLATFORM(COCOA)
-        mutable RetainPtr<CFMutableDictionaryRef> compositeFontReferences;
+#if USE(APPKIT)
+        HashMap<NSFont*, RefPtr<SimpleFontData>> compositeFontReferences;
 #endif
     };
 
@@ -370,9 +365,5 @@ ALWAYS_INLINE float SimpleFontData::widthForGlyph(Glyph glyph) const
 }
 
 } // namespace WebCore
-
-SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SimpleFontData)
-    static bool isType(const WebCore::FontData& fontData) { return !fontData.isSegmented(); }
-SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // SimpleFontData_h

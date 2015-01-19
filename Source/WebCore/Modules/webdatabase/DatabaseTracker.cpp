@@ -35,7 +35,7 @@
 #include "ChromeClient.h"
 #include "Database.h"
 #include "DatabaseBackendBase.h"
-#include "DatabaseBackendContext.h"
+#include "DatabaseContext.h"
 #include "DatabaseManager.h"
 #include "DatabaseManagerClient.h"
 #include "DatabaseThread.h"
@@ -158,7 +158,7 @@ bool DatabaseTracker::hasAdequateQuotaForOrigin(SecurityOrigin* origin, unsigned
     return false;
 }
 
-bool DatabaseTracker::canEstablishDatabase(DatabaseBackendContext* context, const String& name, unsigned long estimatedSize, DatabaseError& error)
+bool DatabaseTracker::canEstablishDatabase(DatabaseContext* context, const String& name, unsigned long estimatedSize, DatabaseError& error)
 {
     error = DatabaseError::None;
 
@@ -210,7 +210,7 @@ bool DatabaseTracker::canEstablishDatabase(DatabaseBackendContext* context, cons
 // hasAdequateQuotaForOrigin() simple and correct (i.e. bug free), and just
 // re-use it. Also note that the path for opening a database involves IO, and
 // hence should not be a performance critical path anyway. 
-bool DatabaseTracker::retryCanEstablishDatabase(DatabaseBackendContext* context, const String& name, unsigned long estimatedSize, DatabaseError& error)
+bool DatabaseTracker::retryCanEstablishDatabase(DatabaseContext* context, const String& name, unsigned long estimatedSize, DatabaseError& error)
 {
     error = DatabaseError::None;
 
@@ -278,7 +278,7 @@ bool DatabaseTracker::hasEntryForDatabase(SecurityOrigin* origin, const String& 
     return statement.step() == SQLResultRow;
 }
 
-unsigned long long DatabaseTracker::getMaxSizeForDatabase(const DatabaseBackendBase* database)
+unsigned long long DatabaseTracker::getMaxSizeForDatabase(const Database* database)
 {
     // The maximum size for a database is the full quota for its origin, minus the current usage within the origin,
     // plus the current usage of the given database
@@ -303,7 +303,7 @@ unsigned long long DatabaseTracker::getMaxSizeForDatabase(const DatabaseBackendB
     return maxSize;
 }
 
-void DatabaseTracker::interruptAllDatabasesForContext(const DatabaseBackendContext* context)
+void DatabaseTracker::interruptAllDatabasesForContext(const DatabaseContext* context)
 {
     Vector<RefPtr<DatabaseBackendBase>> openDatabases;
     {
@@ -543,13 +543,13 @@ void DatabaseTracker::setDatabaseDetails(SecurityOrigin* origin, const String& n
         m_client->dispatchDidModifyDatabase(origin, name);
 }
 
-void DatabaseTracker::doneCreatingDatabase(DatabaseBackendBase* database)
+void DatabaseTracker::doneCreatingDatabase(Database* database)
 {
     MutexLocker lockDatabase(m_databaseGuard);
     doneCreatingDatabase(database->securityOrigin(), database->stringIdentifier());
 }
 
-void DatabaseTracker::addOpenDatabase(DatabaseBackendBase* database)
+void DatabaseTracker::addOpenDatabase(Database* database)
 {
     if (!database)
         return;
@@ -579,7 +579,7 @@ void DatabaseTracker::addOpenDatabase(DatabaseBackendBase* database)
     }
 }
 
-void DatabaseTracker::removeOpenDatabase(DatabaseBackendBase* database)
+void DatabaseTracker::removeOpenDatabase(Database* database)
 {
     if (!database)
         return;
@@ -623,7 +623,7 @@ void DatabaseTracker::removeOpenDatabase(DatabaseBackendBase* database)
     }
 }
 
-void DatabaseTracker::getOpenDatabases(SecurityOrigin* origin, const String& name, HashSet<RefPtr<DatabaseBackendBase>>* databases)
+void DatabaseTracker::getOpenDatabases(SecurityOrigin* origin, const String& name, HashSet<RefPtr<Database>>* databases)
 {
     MutexLocker openDatabaseMapLock(m_openDatabaseMapGuard);
     if (!m_openDatabaseMap)
@@ -1105,7 +1105,7 @@ bool DatabaseTracker::deleteDatabaseFile(SecurityOrigin* origin, const String& n
     }
 #endif
 
-    Vector<RefPtr<DatabaseBackendBase>> deletedDatabases;
+    Vector<RefPtr<Database>> deletedDatabases;
 
     // Make sure not to hold the any locks when calling
     // Database::markAsDeletedAndClose(), since that can cause a deadlock

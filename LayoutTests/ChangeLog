@@ -1,3 +1,1130 @@
+2015-01-14  Michael Saboff  <msaboff@apple.com>
+
+        JavaScript identifier incorrectly parsed if the prefix before an escape sequence is a keyword
+        https://bugs.webkit.org/show_bug.cgi?id=140420
+
+        Reviewed by Oliver Hunt.
+
+        New regression test.
+
+        * js/regress-140420-expected.txt: Added.
+        * js/regress-140420.html: Added.
+        * js/script-tests/regress-140420.js: Added.
+        (with):
+        (this):
+
+2015-01-14  Jer Noble  <jer.noble@apple.com>
+
+        Null-deref crash when seeking immediately before looping.
+        https://bugs.webkit.org/show_bug.cgi?id=140394
+
+        Reviewed by Eric Carlson.
+
+        * media/video-ended-seek-crash-expected.txt: Added.
+        * media/video-ended-seek-crash.html: Added.
+
+2015-01-14  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        * platform/win/TestExpectations: Add a Crash expectation now that
+        https://bugs.webkit.org/show_bug.cgi?id=140444 has been filed.
+
+2015-01-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178390, r178392, r178398, r178400,
+        r178402, and r178410.
+        https://bugs.webkit.org/show_bug.cgi?id=140431
+
+        Way too many failures to skip (Requested by ap_ on #webkit).
+
+        Reverted changesets:
+
+        "WebGL2: Support webgl2 context creation."
+        https://bugs.webkit.org/show_bug.cgi?id=126408
+        http://trac.webkit.org/changeset/178390
+
+        "Unreviewed iOS build fix after r178390."
+        http://trac.webkit.org/changeset/178392
+
+        "[Unreviewed] Windows build fix after r178390."
+        http://trac.webkit.org/changeset/178398
+
+        "[Unreviewed] Speculative test fix after r178390."
+        http://trac.webkit.org/changeset/178400
+
+        "[Unreviewed] Skip webgl tests for temporarily."
+        https://bugs.webkit.org/show_bug.cgi?id=140423
+        http://trac.webkit.org/changeset/178402
+
+        "[EFL] Fix build after r178390"
+        https://bugs.webkit.org/show_bug.cgi?id=140424
+        http://trac.webkit.org/changeset/178410
+
+2015-01-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test gardening.
+
+        * platform/win/TestExpectations: Add Debug Crash documentation now that Bug 140425 has been filed.
+
+2015-01-13  Chris Dumez  <cdumez@apple.com>
+
+        Only throttle DOM timers if they change CSS properties that cannot cause non-descendant elements to become visible
+        https://bugs.webkit.org/show_bug.cgi?id=140142
+
+        Reviewed by Daniel Bates.
+
+        Fix layout test introduced in r178014. I forgot to remove a
+        setTimeout() call.
+
+        * fast/dom/timer-height-change-no-throttling.html:
+
+2015-01-13  Roger Fong  <roger_fong@apple.com>
+
+        [Unreviewed] Skip webgl tests for temporarily.
+        https://bugs.webkit.org/show_bug.cgi?id=140423
+
+        * platform/mac/TestExpectations:
+
+2015-01-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Missed images and missed new lines in the expected results of the imported w3c canvas layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=140409.
+
+        Reviewed by Dean Jackson.
+        
+        Fix some failures in the imported W3C canvas tests. These failures were happening because
+        of missing images or missing new lines at the end of the expected results.
+
+        * TestExpectations:
+
+2015-01-13  Dean Jackson  <dino@apple.com>
+
+        Filters aren't applied to elements in columns after the first
+        https://bugs.webkit.org/show_bug.cgi?id=140331
+        <rdar://problem/19313858>
+
+        Unreviewed followup after discussion with Simon Fraser.
+
+        Add a new test that exercises nested blocks inside columns. Also
+        use valid properties in my existing tests :)
+
+        * fast/multicol/clip-in-columns-expected.html:
+        * fast/multicol/clip-in-columns.html:
+        * fast/multicol/filter-in-columns-expected.html:
+        * fast/multicol/filter-in-columns.html:
+        * fast/multicol/nested-filter-in-columns-expected.html: Copied from LayoutTests/fast/multicol/filter-in-columns-expected.html.
+        * fast/multicol/nested-filter-in-columns.html: Copied from LayoutTests/fast/multicol/filter-in-columns.html.
+
+2015-01-13  Dean Jackson  <dino@apple.com>
+
+        Filters aren't applied to elements in columns after the first
+        https://bugs.webkit.org/show_bug.cgi?id=140331
+        <rdar://problem/19313858>
+
+        Reviewed by Simon Fraser.
+
+        Tests for filters and clipping on a column other
+        than the first.
+
+        * fast/multicol/clip-in-columns-expected.html: Added.
+        * fast/multicol/clip-in-columns.html: Added.
+        * fast/multicol/filter-in-columns-expected.html: Added.
+        * fast/multicol/filter-in-columns.html: Added.
+
+2015-01-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        DFG can call PutByValDirect for generic arrays
+        https://bugs.webkit.org/show_bug.cgi?id=140389
+
+        Reviewed by Geoffrey Garen.
+
+        * js/dfg-put-by-val-direct-to-generic-array-expected.txt: Added.
+        * js/dfg-put-by-val-direct-to-generic-array.html: Added.
+        * js/script-tests/dfg-put-by-val-direct-to-generic-array.js: Added.
+        (foo1):
+        (foo2):
+
+2015-01-13  Jer Noble  <jer.noble@apple.com>
+
+        defaultPlaybackRate not respected when set before source is loaded
+        https://bugs.webkit.org/show_bug.cgi?id=140282
+
+        Reviewed by Eric Carlson.
+
+        * media/video-defaultplaybackrate-before-load-expected.txt: Added.
+        * media/video-defaultplaybackrate-before-load.html: Added.
+
+2015-01-13  Andreas Kling  <akling@apple.com>
+
+        Element::normalizeAttributes() needs to handle arbitrary JS executing between loop iterations.
+        <https://webkit.org/b/140379>
+        <rdar://problem/19446901>
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/dom/Element/normalize-crash2-expected.txt: Added.
+        * fast/dom/Element/normalize-crash2.html: Added.
+
+2015-01-13  Andrzej Badowski  <a.badowski@samsung.com>
+
+        AX: [ATK] Mark accessibility/table-with-footer-section-above-body.html as a suitable test for EFL and GTK
+        https://bugs.webkit.org/show_bug.cgi?id=140355
+
+        Reviewed by Chris Fleizach.
+
+        The test shows the text contents of an AccessibilityTableCell object using tableCell.childAtIndex(0).stringValue.
+        In the case of ATK childAtIndex(0) returns a non-empty object, but it is not the ATK_OBJECT,
+        so the stringValue produces an empty string.
+        To avoid this, the cell text content is obtained by direct reading of stringValue of TableCell.
+
+        * accessibility/table-with-footer-section-above-body.html:
+           This test is also suitable for EFL and GTK port.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2015-01-13  Bartlomiej Gajda  <b.gajda@samsung.com>
+
+        [EFL] Fix test expectations after r178310.
+        https://bugs.webkit.org/show_bug.cgi?id=140387.
+
+        Reviewed by Gyuyoung Kim.
+
+        Clean reference to SharedWorkers in test expecations since they were removed.
+
+        * platform/efl/TestExpectations:
+
+2015-01-11  Sam Weinig  <sam@webkit.org>
+
+        Remove support for SharedWorkers
+        https://bugs.webkit.org/show_bug.cgi?id=140344
+
+        Reviewed by Anders Carlsson.
+
+        Remove shared worker specific tests and update others to remove references to shared workers.
+
+        * fast/constructors/constructor-as-function-crash-expected.txt:
+        * fast/constructors/constructor-as-function-crash.html:
+        * fast/dom/call-a-constructor-as-a-function-expected.txt:
+        * fast/dom/call-a-constructor-as-a-function.html:
+        * fast/workers/resources/create-shared-worker-frame.html: Removed.
+        * fast/workers/resources/shared-worker-common.js: Removed.
+        * fast/workers/resources/shared-worker-count-connections.js: Removed.
+        * fast/workers/resources/shared-worker-create-common.js: Removed.
+        * fast/workers/resources/shared-worker-exception.js: Removed.
+        * fast/workers/resources/shared-worker-iframe.html: Removed.
+        * fast/workers/resources/shared-worker-lifecycle.js: Removed.
+        * fast/workers/resources/shared-worker-name.js: Removed.
+        * fast/workers/resources/shared-worker-script-error.js: Removed.
+        * fast/workers/shared-worker-constructor-expected.txt: Removed.
+        * fast/workers/shared-worker-constructor.html: Removed.
+        * fast/workers/shared-worker-context-gc-expected.txt: Removed.
+        * fast/workers/shared-worker-context-gc.html: Removed.
+        * fast/workers/shared-worker-event-listener-expected.txt: Removed.
+        * fast/workers/shared-worker-event-listener.html: Removed.
+        * fast/workers/shared-worker-exception-expected.txt: Removed.
+        * fast/workers/shared-worker-exception.html: Removed.
+        * fast/workers/shared-worker-frame-lifecycle-expected.txt: Removed.
+        * fast/workers/shared-worker-frame-lifecycle.html: Removed.
+        * fast/workers/shared-worker-gc-expected.txt: Removed.
+        * fast/workers/shared-worker-gc.html: Removed.
+        * fast/workers/shared-worker-in-iframe-expected.txt: Removed.
+        * fast/workers/shared-worker-in-iframe.html: Removed.
+        * fast/workers/shared-worker-lifecycle-expected.txt: Removed.
+        * fast/workers/shared-worker-lifecycle.html: Removed.
+        * fast/workers/shared-worker-load-error-expected.txt: Removed.
+        * fast/workers/shared-worker-load-error.html: Removed.
+        * fast/workers/shared-worker-location-expected.txt: Removed.
+        * fast/workers/shared-worker-location.html: Removed.
+        * fast/workers/shared-worker-messageevent-source-expected.txt: Removed.
+        * fast/workers/shared-worker-messageevent-source.html: Removed.
+        * fast/workers/shared-worker-name-expected.txt: Removed.
+        * fast/workers/shared-worker-name.html: Removed.
+        * fast/workers/shared-worker-navigator-expected.txt: Removed.
+        * fast/workers/shared-worker-navigator.html: Removed.
+        * fast/workers/shared-worker-replace-global-constructor-expected.txt: Removed.
+        * fast/workers/shared-worker-replace-global-constructor.html: Removed.
+        * fast/workers/shared-worker-replace-self-expected.txt: Removed.
+        * fast/workers/shared-worker-replace-self.html: Removed.
+        * fast/workers/shared-worker-script-error-expected.txt: Removed.
+        * fast/workers/shared-worker-script-error.html: Removed.
+        * fast/workers/shared-worker-shared-expected.txt: Removed.
+        * fast/workers/shared-worker-shared.html: Removed.
+        * fast/workers/shared-worker-simple-expected.txt: Removed.
+        * fast/workers/shared-worker-simple.html: Removed.
+        * fast/workers/shared-worker-storagequota-query-usage-expected.txt: Removed.
+        * fast/workers/shared-worker-storagequota-query-usage.html: Removed.
+        * fast/workers/worker-crash-with-invalid-location-expected.txt:
+        * fast/workers/worker-crash-with-invalid-location.html:
+        * http/tests/resources/js-test-pre.js:
+        (startWorker):
+        (.worker.port.onmessage): Deleted.
+        (.self.onconnect.workerPort.onmessage): Deleted.
+        (.self.onconnect): Deleted.
+        * http/tests/security/contentSecurityPolicy/resources/shared-worker-make-xhr.js: Removed.
+        * http/tests/security/contentSecurityPolicy/shared-worker-connect-src-allowed-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/shared-worker-connect-src-allowed.html: Removed.
+        * http/tests/security/contentSecurityPolicy/shared-worker-connect-src-blocked-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/shared-worker-connect-src-blocked.html: Removed.
+        * http/tests/security/cross-origin-shared-worker-allowed-expected.txt: Removed.
+        * http/tests/security/cross-origin-shared-worker-allowed.html: Removed.
+        * http/tests/security/cross-origin-shared-worker-expected.txt: Removed.
+        * http/tests/security/cross-origin-shared-worker.html: Removed.
+        * http/tests/security/resources/cross-origin-iframe-for-shared-worker.html: Removed.
+        * http/tests/security/resources/iframe-for-storage-blocking-changed-shared-worker.html: Removed.
+        * http/tests/security/resources/shared-worker.js: Removed.
+        * http/tests/security/same-origin-shared-worker-blocked-expected.txt: Removed.
+        * http/tests/security/same-origin-shared-worker-blocked.html: Removed.
+        * http/tests/security/storage-blocking-loosened-shared-worker-expected.txt: Removed.
+        * http/tests/security/storage-blocking-loosened-shared-worker.html: Removed.
+        * http/tests/security/storage-blocking-strengthened-shared-worker-expected.txt: Removed.
+        * http/tests/security/storage-blocking-strengthened-shared-worker.html: Removed.
+        * http/tests/websocket/tests/hybi/workers/close-in-shared-worker-expected.txt: Removed.
+        * http/tests/websocket/tests/hybi/workers/close-in-shared-worker.html: Removed.
+        * http/tests/websocket/tests/hybi/workers/shared-worker-simple-expected.txt: Removed.
+        * http/tests/websocket/tests/hybi/workers/shared-worker-simple.html: Removed.
+        * http/tests/workers/shared-worker-importScripts-expected.txt: Removed.
+        * http/tests/workers/shared-worker-importScripts.html: Removed.
+        * http/tests/workers/shared-worker-invalid-url-expected.txt: Removed.
+        * http/tests/workers/shared-worker-invalid-url.html: Removed.
+        * http/tests/workers/shared-worker-redirect-expected.txt: Removed.
+        * http/tests/workers/shared-worker-redirect.html: Removed.
+        * http/tests/xmlhttprequest/workers/resources/shared-worker-create.js: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-access-control-basic-get-fail-non-simple-expected.txt: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-access-control-basic-get-fail-non-simple.html: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-close-expected.txt: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-close.html: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-methods-async-expected.txt: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-methods-async.html: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-methods-expected.txt: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-methods.html: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-referer-expected.txt: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-referer.html: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-xhr-file-not-found-expected.txt: Removed.
+        * http/tests/xmlhttprequest/workers/shared-worker-xhr-file-not-found.html: Removed.
+        * js/dom/constructor-length.html:
+        * js/dom/global-constructors-attributes-expected.txt:
+        * js/dom/global-constructors-attributes-shared-worker-expected.txt: Removed.
+        * js/dom/global-constructors-attributes-shared-worker.html: Removed.
+        * platform/efl/http/tests/xmlhttprequest/workers/shared-worker-methods-async-expected.txt: Removed.
+        * platform/efl/http/tests/xmlhttprequest/workers/shared-worker-methods-expected.txt: Removed.
+        * platform/efl/js/dom/constructor-length-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-shared-worker-expected.txt: Removed.
+        * platform/gtk/http/tests/xmlhttprequest/workers/shared-worker-methods-async-expected.txt: Removed.
+        * platform/gtk/http/tests/xmlhttprequest/workers/shared-worker-methods-expected.txt: Removed.
+        * platform/gtk/js/dom/constructor-length-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/ios-sim-deprecated/fast/dom/Window/window-property-descriptors-expected.txt:
+        * platform/ios-sim-deprecated/fast/js/constructor-length-expected.txt:
+        * platform/ios-sim-deprecated/fast/js/global-constructors-expected.txt:
+        * platform/ios-sim-deprecated/fast/workers/shared-worker-storagequota-query-usage-expected.txt: Removed.
+        * platform/ios-sim-deprecated/http/tests/security/cross-origin-shared-worker-allowed-expected.txt: Removed.
+        * platform/ios-sim-deprecated/http/tests/security/cross-origin-shared-worker-expected.txt: Removed.
+        * platform/ios-sim-deprecated/js/dom/global-constructors-attributes-expected.txt:
+        * platform/ios-sim-deprecated/storage/indexeddb/basics-shared-workers-expected.txt: Removed.
+        * platform/ios-simulator/js/dom/constructor-length-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mountainlion/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/js/dom/constructor-length-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/fast/dom/call-a-constructor-as-a-function-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-shared-worker-expected.txt: Removed.
+        * resources/js-test-pre.js:
+        (startWorker):
+        (.worker.port.onmessage): Deleted.
+        (.self.onconnect.workerPort.onmessage): Deleted.
+        (.self.onconnect): Deleted.
+        * resources/js-test.js:
+        (startWorker):
+        (.worker.port.onmessage): Deleted.
+        (.self.onconnect.workerPort.onmessage): Deleted.
+        (.self.onconnect): Deleted.
+        * storage/indexeddb/basics-shared-workers-expected.txt: Removed.
+        * storage/indexeddb/basics-shared-workers.html: Removed.
+
+2015-01-12  Andreas Kling  <akling@apple.com>
+
+        Geolocation objects shouldn't prevent page caching.
+        <https://webkit.org/b/140369>
+
+        Reviewed by Joseph Pecoraro.
+
+        Take the existing test for this and make it not-specific-to-iOS.
+        Also remove a test whose only purpose was confirming that we don't cache these pages.
+
+        * fast/dom/Geolocation/no-page-cache-expected.txt: Removed.
+        * fast/dom/Geolocation/no-page-cache.html: Removed.
+        * fast/dom/Geolocation/script-tests/no-page-cache.js: Removed.
+        * fast/history/page-cache-geolocation-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/history/page-cache-geolocation-expected.txt.
+        * fast/history/page-cache-geolocation.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/history/script-tests/page-cache-geolocation.js.
+        * fast/history/resources/page-cache-helper.html: Added.
+        * platform/ios-sim-deprecated/iphone/fast/history/page-cache-geolocation-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/history/page-cache-geolocation.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/history/script-tests/page-cache-geolocation.js: Removed.
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/ios/fast/history/page-cache-geolocation.html: Removed.
+
+2015-01-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Make fast/css/first-letter-skip-out-of-flow.html a ref-test
+        https://bugs.webkit.org/show_bug.cgi?id=140324
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/first-letter-skip-out-of-flow-expected.html: Added.
+        * platform/efl/fast/css/first-letter-skip-out-of-flow-expected.png: Removed.
+        * platform/efl/fast/css/first-letter-skip-out-of-flow-expected.txt: Removed.
+        * platform/gtk/fast/css/first-letter-skip-out-of-flow-expected.png: Removed.
+        * platform/gtk/fast/css/first-letter-skip-out-of-flow-expected.txt: Removed.
+        * platform/ios-sim-deprecated/fast/css/first-letter-skip-out-of-flow-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/first-letter-skip-out-of-flow-expected.txt: Removed.
+        * platform/mac-mountainlion/fast/css/first-letter-skip-out-of-flow-expected.txt: Removed.
+        * platform/mac/fast/css/first-letter-skip-out-of-flow-expected.png: Removed.
+        * platform/mac/fast/css/first-letter-skip-out-of-flow-expected.txt: Removed.
+
+2015-01-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178281.
+        https://bugs.webkit.org/show_bug.cgi?id=140366
+
+        Broke many media tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "defaultPlaybackRate not respected when set before source is
+        loaded"
+        https://bugs.webkit.org/show_bug.cgi?id=140282
+        http://trac.webkit.org/changeset/178281
+
+2015-01-12  Jer Noble  <jer.noble@apple.com>
+
+        defaultPlaybackRate not respected when set before source is loaded
+        https://bugs.webkit.org/show_bug.cgi?id=140282
+
+        Reviewed by Eric Carlson.
+
+        * media/video-defaultplaybackrate-before-load-expected.txt: Added.
+        * media/video-defaultplaybackrate-before-load.html: Added.
+
+2015-01-12  Andrzej Badowski  <a.badowski@samsung.com>
+
+        AX: [ATK] Whether to show the title attribute, if there is a label with the attribute for?
+        https://bugs.webkit.org/show_bug.cgi?id=139986
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/radio-button-title-label.html:
+           This test is also suitable for EFL and GTK port.
+        * platform/efl/TestExpectations:
+        * platform/efl/accessibility/radio-button-title-label-expected.txt: Added.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/radio-button-title-label-expected.txt: Added.
+
+2015-01-12  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Fix lint-test-files warnings in TestExpectations files.
+        https://bugs.webkit.org/show_bug.cgi?id=140351
+
+        Unreviewed gardening.
+
+        Removed the test cases from TestExpectations files.
+
+        * platform/efl/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2015-01-11  Alexey Proskuryakov  <ap@apple.com>
+
+        editing/spelling/grammar-paste.html is flaky in debug after r177682
+        https://bugs.webkit.org/show_bug.cgi?id=139903
+
+        * TestExpectations: The test if flaky on release bots too, updating expectations.
+
+2015-01-09  Michael Saboff  <msaboff@apple.com>
+
+        Breakpoint doesn't fire in this HTML5 game
+        https://bugs.webkit.org/show_bug.cgi?id=140269
+
+        Reviewed by Mark Lam.
+
+        New tests that set breakpoints in functions with various line split
+        combinations.
+
+        * inspector/debugger/breakpoint-columns-expected.txt: Added.
+        * inspector/debugger/breakpoint-columns.html: Added.
+        * inspector/debugger/resources/column-breakpoints-1.js: Added.
+        (columnTest1.x):
+        (columnTest1):
+        (columnTest2.x):
+        (columnTest2.f):
+        (columnTest3.x):
+        (columnTest3.f):
+        (runColumnTest1):
+        (runColumnTest2):
+        (runColumnTest3):
+        * inspector/debugger/resources/column-breakpoints-2.js: Added.
+        (columnTest4.x):
+        (columnTest4.f):
+        (columnTest5.x):
+        (columnTest5):
+        (runColumnTest4):
+        (runColumnTest5):
+
+2015-01-09  Zalan Bujtas  <zalan@apple.com>
+
+        Calling clearSelection on a detached RenderObject leads to segfault.
+        https://bugs.webkit.org/show_bug.cgi?id=140275
+
+        Reviewed by Simon Fraser.
+
+        We collect selection rects and compute selection gaps in order to
+        paint/clear selection. With certain content, we need to be able
+        to walk the tree up to a particular container to compute the selection rect.
+        However this container might not be available when the selection is part of a detached tree.
+        This is a null-check fix to ensure we don't crash in such cases, but in the long run
+        selection gaps and rect should be cached between two layouts so that we don't need to
+        keep collecting/recomputing them. Tracked here: webkit.org/b/140321
+
+        * editing/selection/clearselection-on-detached-subtree-crash-expected.txt: Added.
+        * editing/selection/clearselection-on-detached-subtree-crash.html: Added.
+
+2015-01-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exception in ProbeManager deleting breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=140279
+        rdar://problem/19422299
+
+        Reviewed by Oliver Hunt.
+
+        * js/map-repack-with-object-keys-expected.txt: Added.
+        * js/map-repack-with-object-keys.html: Added.
+        * js/script-tests/map-repack-with-object-keys.js: Added.
+
+2015-01-09  Chris Dumez  <cdumez@apple.com>
+
+        plugins/crash-restoring-plugin-page-from-page-cache.html and plugins/netscape-plugin-page-cache-works.html timing out on Intel Debug WebKit2 testers
+        https://bugs.webkit.org/show_bug.cgi?id=81392
+
+        Reviewed by Alexey Proskuryakov.
+
+        Unskip those 2 plugins / page cache tests as they seem to be passing on
+        WK2 nowadays.
+
+        * platform/wk2/TestExpectations:
+
+2015-01-09  Enrica Casucci  <enrica@apple.com>
+
+        [iOS] Support additional text styles.
+        https://bugs.webkit.org/show_bug.cgi?id=140310
+        rdar://problem/18568864
+
+        Reviewed by Joseph Pecoraro.
+
+        Updates the existing test to include the new text styles.
+
+        * platform/ios-simulator/ios/fast/text/opticalFontWithTextStyle-expected.txt:
+        * platform/ios-simulator/ios/fast/text/opticalFontWithTextStyle.html:
+
+2015-01-09  Eric Carlson  <eric.carlson@apple.com>
+
+        After updating tests to use kerning, ligatures, and printer fonts, some tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=139968
+
+        * platform/mac/TestExpectations: Add more flaky tests.
+
+2015-01-09  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Add iOS-specific tests and consolidate iOS-specific accessibility tests
+
+        Copied iOS-specific tests from directory LayoutTests/platform/ios-sim-deprecated/iphone
+        to LayoutTests/platform/ios-simulator/ios and fixed references to external JavaScript
+        scripts and external style sheets. Moved iOS-specific tests in directories LayoutTests/platform/ios-sim/accessibility
+        and LayoutTests/platform/ios-simulator/ios-accessibility into LayoutTests/platform/ios-simulator/ios/accessibility.
+
+        I will remove directory LayoutTests/platform/ios-sim-deprecated, including
+        LayoutTests/platform/ios-sim-deprecated/iphone, in a subsequent commit.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/ios/accessibility/press-fires-touch-events-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios-accessibility/press-fires-touch-events-expected.txt.
+        * platform/ios-simulator/ios/accessibility/press-fires-touch-events.html: Renamed from LayoutTests/platform/ios-simulator/ios-accessibility/press-fires-touch-events.html.
+        * platform/ios-simulator/ios/accessibility/set-value-expected.txt: Copied from LayoutTests/platform/ios-sim/accessibility/set-value-expected.txt.
+        * platform/ios-simulator/ios/accessibility/set-value.html: Renamed from LayoutTests/platform/ios-sim/accessibility/set-value.html.
+        * platform/ios-simulator/ios/compositing/overlap-page-scale-expected.txt: Added.
+        [...]
+
+2015-01-09  Andreas Kling  <akling@apple.com>
+
+        Mark css3/background/background-repeat-space-content.html as ImgaeOnlyFailure
+
+        This test is failing with a subtle pixel difference, need to figure out what's
+        going on, but results are not visually wrong.
+
+        * TestExpectations:
+
+2015-01-09  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] content inside second shape area when two floats interact
+        https://bugs.webkit.org/show_bug.cgi?id=137702
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/shapes/shape-outside-floats/shape-outside-text-overlap-float-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-text-overlap-float.html: Added.
+
+2015-01-09  Chris Dumez  <cdumez@apple.com>
+
+        Allow HTTPS + 'Cache-control: no-store' sub-frames into the page cache
+        https://bugs.webkit.org/show_bug.cgi?id=140302
+
+        Reviewed by Andreas Kling.
+
+        Add a layout test to make sure a page is restored from the page cache
+        on history navigation, even though its has an HTTPS sub-frame with
+        "cache-control: no-cache".
+
+        * http/tests/navigation/https-no-store-subframe-in-page-cache-expected.txt: Added.
+        * http/tests/navigation/https-no-store-subframe-in-page-cache.html: Added.
+        * http/tests/navigation/resources/https-no-store-subframe-in-page-cache.html: Added.
+        * http/tests/navigation/resources/no-store-frame.php: Added.
+
+2015-01-08  Anders Carlsson  <andersca@apple.com>
+
+        Start removing Web Database support from workers
+        https://bugs.webkit.org/show_bug.cgi?id=140271
+
+        Reviewed by Sam Weinig.
+
+        Remove Web Database worker tests.
+
+        * fast/workers/storage/change-version-handle-reuse-sync-expected.txt: Removed.
+        * fast/workers/storage/change-version-handle-reuse-sync.html: Removed.
+        * fast/workers/storage/change-version-handle-reuse-worker-expected.txt: Removed.
+        * fast/workers/storage/change-version-handle-reuse-worker.html: Removed.
+        * fast/workers/storage/change-version-sync-expected.txt: Removed.
+        * fast/workers/storage/change-version-sync.html: Removed.
+        * fast/workers/storage/empty-statement-sync-expected.txt: Removed.
+        * fast/workers/storage/empty-statement-sync.html: Removed.
+        * fast/workers/storage/execute-sql-args-sync-expected.txt: Removed.
+        * fast/workers/storage/execute-sql-args-sync.html: Removed.
+        * fast/workers/storage/execute-sql-args-worker-expected.txt: Removed.
+        * fast/workers/storage/execute-sql-args-worker.html: Removed.
+        * fast/workers/storage/executesql-accepts-only-one-statement-sync-expected.txt: Removed.
+        * fast/workers/storage/executesql-accepts-only-one-statement-sync.html: Removed.
+        * fast/workers/storage/interrupt-database-expected.txt: Removed.
+        * fast/workers/storage/interrupt-database-sync-expected.txt: Removed.
+        * fast/workers/storage/interrupt-database-sync.html-disabled: Removed.
+        * fast/workers/storage/interrupt-database.html: Removed.
+        * fast/workers/storage/multiple-databases-garbage-collection-expected.txt: Removed.
+        * fast/workers/storage/multiple-databases-garbage-collection.html: Removed.
+        * fast/workers/storage/multiple-transactions-expected.txt: Removed.
+        * fast/workers/storage/multiple-transactions-on-different-handles-expected.txt: Removed.
+        * fast/workers/storage/multiple-transactions-on-different-handles-sync-expected.txt: Removed.
+        * fast/workers/storage/multiple-transactions-on-different-handles-sync.html: Removed.
+        * fast/workers/storage/multiple-transactions-on-different-handles.html: Removed.
+        * fast/workers/storage/multiple-transactions.html: Removed.
+        * fast/workers/storage/open-database-creation-callback-sync-expected.txt: Removed.
+        * fast/workers/storage/open-database-creation-callback-sync.html: Removed.
+        * fast/workers/storage/open-database-empty-version-sync-expected.txt: Removed.
+        * fast/workers/storage/open-database-empty-version-sync.html: Removed.
+        * fast/workers/storage/open-database-inputs-sync-expected.txt: Removed.
+        * fast/workers/storage/open-database-inputs-sync.html: Removed.
+        * fast/workers/storage/open-database-set-empty-version-sync-expected.txt: Removed.
+        * fast/workers/storage/open-database-set-empty-version-sync.html: Removed.
+        * fast/workers/storage/open-database-while-transaction-in-progress-expected.txt: Removed.
+        * fast/workers/storage/open-database-while-transaction-in-progress-sync-expected.txt: Removed.
+        * fast/workers/storage/open-database-while-transaction-in-progress-sync.html: Removed.
+        * fast/workers/storage/open-database-while-transaction-in-progress.html: Removed.
+        * fast/workers/storage/read-and-write-transactions-dont-run-together-expected.txt: Removed.
+        * fast/workers/storage/read-and-write-transactions-dont-run-together.html: Removed.
+        * fast/workers/storage/resources/change-version-handle-reuse-sync.js: Removed.
+        * fast/workers/storage/resources/change-version-sync-1.js: Removed.
+        * fast/workers/storage/resources/change-version-sync-2.js: Removed.
+        * fast/workers/storage/resources/database-worker-controller.js: Removed.
+        * fast/workers/storage/resources/database-worker.js: Removed.
+        * fast/workers/storage/resources/empty-statement-sync.js: Removed.
+        * fast/workers/storage/resources/execute-sql-args-sync.js: Removed.
+        * fast/workers/storage/resources/executesql-accepts-only-one-statement-sync.js: Removed.
+        * fast/workers/storage/resources/interrupt-database-sync.js: Removed.
+        * fast/workers/storage/resources/interrupt-database.js: Removed.
+        * fast/workers/storage/resources/multiple-transactions-on-different-handles-sync.js: Removed.
+        * fast/workers/storage/resources/multiple-transactions-sync.js: Removed.
+        * fast/workers/storage/resources/open-database-creation-callback-sync.js: Removed.
+        * fast/workers/storage/resources/open-database-empty-version-sync.js: Removed.
+        * fast/workers/storage/resources/open-database-inputs-sync.js: Removed.
+        * fast/workers/storage/resources/open-database-set-empty-version-sync.js: Removed.
+        * fast/workers/storage/resources/open-database-while-transaction-in-progress-sync.js: Removed.
+        * fast/workers/storage/resources/sql-data-types-sync.js: Removed.
+        * fast/workers/storage/resources/sql-exception-codes-sync.js: Removed.
+        * fast/workers/storage/resources/test-authorizer-sync.js: Removed.
+        * fast/workers/storage/resources/test-inputs-common.js: Removed.
+        * fast/workers/storage/resources/transaction-in-transaction-sync.js: Removed.
+        * fast/workers/storage/resources/use-same-database-in-page-and-workers.js: Removed.
+        * fast/workers/storage/sql-data-types-sync-expected.txt: Removed.
+        * fast/workers/storage/sql-data-types-sync.html: Removed.
+        * fast/workers/storage/sql-exception-codes-sync-expected.txt: Removed.
+        * fast/workers/storage/sql-exception-codes-sync.html: Removed.
+        * fast/workers/storage/test-authorizer-expected.txt: Removed.
+        * fast/workers/storage/test-authorizer-sync-expected.txt: Removed.
+        * fast/workers/storage/test-authorizer-sync.html: Removed.
+        * fast/workers/storage/test-authorizer.html: Removed.
+        * fast/workers/storage/transaction-in-transaction-sync-expected.txt: Removed.
+        * fast/workers/storage/transaction-in-transaction-sync.html: Removed.
+        * fast/workers/storage/use-same-database-in-page-and-workers-expected.txt: Removed.
+        * fast/workers/storage/use-same-database-in-page-and-workers.html: Removed.
+        * http/tests/security/cross-origin-worker-websql-allowed-expected.txt: Removed.
+        * http/tests/security/cross-origin-worker-websql-allowed.html: Removed.
+        * http/tests/security/cross-origin-worker-websql-expected.txt: Removed.
+        * http/tests/security/cross-origin-worker-websql.html: Removed.
+
+2015-01-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test gardening.
+
+        * platform/win/TestExpectations: Unskip fast/canvas/canvas-path-addPath.html now
+        that it doesn't crash anymore.
+
+2015-01-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Temporarily disable all media tests.
+
+        * platform/win/TestExpectations:
+
+2015-01-09  Alexey Proskuryakov  <ap@apple.com>
+
+        Update expectations for fast/text/atsui-rtl-override-selection.html, which also
+        fails on Mountain Lion after enabling kerning and ligatures.
+
+        * platform/mac/TestExpectations:
+
+2015-01-09  Bartlomiej Gajda  <b.gajda@samsung.com>
+
+        [MSE] Implement Append Window support.
+        https://bugs.webkit.org/show_bug.cgi?id=139861
+
+        Reviewed by Jer Noble.
+
+        Added test which checks whether correct samples from contiguous range of samples are added
+        when manipulating appendWindow.
+
+        * media/media-source/media-source-append-buffer-with-append-window-expected.txt: Added.
+        * media/media-source/media-source-append-buffer-with-append-window.html: Added.
+
+2015-01-08  Chris Dumez  <cdumez@apple.com>
+
+        ASSERTION FAILED: !valueWithCalculation.calculation() in WebCore::CSSParser::validateCalculationUnit
+        https://bugs.webkit.org/show_bug.cgi?id=140251
+
+        Reviewed by Darin Adler.
+
+        Add a layout test to check that using calculated values for
+        'text-shadow' CSS doesn't crash and works as intended. Also check
+        that the CSS parser is correctly validating the blur-radius, which
+        is supposed to be non-negative, as per the specification:
+        - http://dev.w3.org/csswg/css-text-decor-3/#text-shadow-property
+        - http://dev.w3.org/csswg/css-backgrounds-3/#shadow
+
+        * fast/css/text-shadow-calc-value-expected.txt: Added.
+        * fast/css/text-shadow-calc-value.html: Added.
+
+2015-01-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        Make better use of the stack when compiling selectors
+        https://bugs.webkit.org/show_bug.cgi?id=139615
+        rdar://problem/19226482
+
+        Reviewed by Andreas Kling.
+
+        Those tests are checking the tail behavior of the various loop, just in case.
+
+        * fast/selectors/matches-selector-list-ending-with-never-matching-selectors-expected.txt: Added.
+        * fast/selectors/matches-selector-list-ending-with-never-matching-selectors.html: Added.
+        * fast/selectors/not-selector-list-ending-with-never-matching-selectors-expected.txt: Added.
+        * fast/selectors/not-selector-list-ending-with-never-matching-selectors.html: Added.
+        * fast/selectors/nth-child-of-selector-list-ending-with-never-matching-selectors-expected.txt: Added.
+        * fast/selectors/nth-child-of-selector-list-ending-with-never-matching-selectors.html: Added.
+        * fast/selectors/nth-last-child-of-selector-list-ending-with-never-matching-selectors-expected.txt: Added.
+        * fast/selectors/nth-last-child-of-selector-list-ending-with-never-matching-selectors.html: Added.
+
+2015-01-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Further twek the results for kerning and ligature related failures:
+        1. Added Mavericks+ to all expectations, because Mountain Kion is fine.
+        2. Changed some expectations from [ Failure ] to [ Pass Failure ] to silence annoying
+        "unexpectedly passed" output. We need to do more of this.
+        3. Added a few tests that failed locally.
+
+        * platform/mac/TestExpectations:
+
+2015-01-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] DumpRenderTree always using 800x600 size even if test needs other size
+        https://bugs.webkit.org/show_bug.cgi?id=140256
+
+        Reviewed by Anders Carlsson.
+
+        * platform/win/TestExpectations: Take out the skips now that this works properly.
+
+2015-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pause Reason Improvements (Breakpoint, Debugger Statement, Pause on Next Statement)
+        https://bugs.webkit.org/show_bug.cgi?id=138991
+
+        Reviewed by Timothy Hatcher.
+
+        Test that the frontend receives expected pause reasons for different kinds of pauses.
+
+        * inspector/debugger/pause-reason-expected.txt: Added.
+        * inspector/debugger/pause-reason.html: Added.
+        * inspector/debugger/resources/pause-reasons.js: Added.
+        (triggerBreakpoint):
+        (triggerException):
+        (triggerDebuggerStatement):
+        (triggerAssert):
+
+2015-01-08  Darin Adler  <darin@apple.com>
+
+        ASSERTION FAILED: character != kEndOfFileMarker in WebCore::HTMLTokenizer::bufferCharacter
+        https://bugs.webkit.org/show_bug.cgi?id=140179
+
+        Reviewed by Anders Carlsson.
+
+        * fast/parser/numeric-entities-expected.txt: Added.
+        * fast/parser/numeric-entities.html: Added.
+
+2015-01-08  Eric Carlson  <eric.carlson@apple.com>
+
+        After updating tests to use kerning, ligatures, and printer fonts, some tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=139968
+
+        * platform/mac/TestExpectations: Mark Mavericks-only failures as Mavericks+ because some of them
+        also fail Yosemite. Add more tests that are sometimes flaky after r177774.
+
+2015-01-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed Win gardening to get bots green.
+
+        Provide new baselines for a number of tests, and add new expectations for a number of bugs I've filed
+        documenting failures on the Windows platform.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/forms/search-vertical-alignment-expected.txt:
+        * platform/win/fast/forms/textfield-overflow-by-value-update-expected.txt:
+        * platform/win/fast/regions: Added.
+        * platform/win/fast/regions/multiple-directionality-changes-in-variable-width-regions-expected.txt: Added.
+        * platform/win/fast/regions/region-dynamic-after-before-expected.txt: Added.
+        * platform/win/fast/regions/region-generated-content-before-after-expected.txt: Added.
+        * platform/win/fast/regions/repaint: Added.
+        * platform/win/fast/regions/repaint/region-painting-invalidation-expected.txt: Added.
+        * platform/win/fast/regions/text-region-split-small-pagination-expected.txt: Added.
+        * platform/win/fast/text/international/danda-space-expected.txt:
+        * platform/win/fast/text/international/thai-baht-space-expected.txt:
+        * platform/win/media/audio-constructor-preload-expected.txt: Added.
+        * platform/win/media/encrypted-media: Added.
+        * platform/win/media/encrypted-media/encrypted-media-can-play-type-expected.txt: Added.
+
+2015-01-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening after r178115.
+
+        * platform/gtk/TestExpectations: Update expected failures.
+        * platform/gtk/fast/ruby/bopomofo-expected.png: Added. Add image baseline as expected (generated before r177637).
+        * platform/gtk/fast/ruby/bopomofo-letter-spacing-expected.png: Added. Add image baseline as expected (generated before r177637).
+        * platform/gtk/fast/ruby/bopomofo-rl-expected.png: Added. Add image baseline as expected (generated before r177637).
+        * platform/gtk/fast/text/khmer-lao-font-expected.png: Added. Add image baseline as expected (generated before r177637).
+
+2015-01-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Two tests, which include data uri images, need to be changed and rebaselined since the expected results are incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=140199
+
+        Revert unneeded changes landed in this patch, and update results on Mavericks
+        to make bots green
+
+        * fast/forms/basic-buttons.html:
+
+2015-01-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r177637) [HarfBuzz][GTK][EFL] It made 3 performance tests crash and +24 layout tests crashes/failures
+        https://bugs.webkit.org/show_bug.cgi?id=139905
+
+        Reviewed by Antti Koivisto.
+
+        * platform/gtk/TestExpectations: Remove crashing/failing tests
+        that should pass now.
+
+2015-01-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Borders inside box-decoration-break: clone after a br do not contribute to line breaking
+        https://bugs.webkit.org/show_bug.cgi?id=140238
+
+        Reviewed by Darin Adler.
+
+        * fast/box-decoration-break/box-decoration-break-clone-line-break-expected.html: Added.
+        * fast/box-decoration-break/box-decoration-break-clone-line-break.html: Added.
+        * platform/mac/TestExpectations:
+
+2015-01-08  Bartlomiej Gajda  <b.gajda@samsung.com>
+
+        [EFL] Clean typos in tests expectations after r177492.
+        https://bugs.webkit.org/show_bug.cgi?id=140242.
+
+        Reviewed by Csaba Osztrogonác.
+
+        There were few missing spaces, which made expectations not correctly recognized as tokens.
+
+        * platform/efl/TestExpectations:
+
+2015-01-07  Chris Dumez  <cdumez@apple.com>
+
+        Assert should never be reached hit in WebCore::CSSCalcPrimitiveValue::doubleValue
+        https://bugs.webkit.org/show_bug.cgi?id=140180
+
+        Reviewed by Darin Adler.
+
+        Add a layout test to make sure that using float-point angles with 'turn' unit
+        does not crash and behaves as intended. Also cover the case where calc() is
+        used.
+
+        * fast/css/turn-angle-double-expected.txt: Added.
+        * fast/css/turn-angle-double.html: Added.
+
+2015-01-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The ASCII decoding for non ASCII character is incorrect if this character comes after going through the fast decoding code path and before the end of the text by less than a machine word size of characters.
+        https://bugs.webkit.org/show_bug.cgi?id=140173.
+
+        Reviewed by Darin Adler.
+
+        * fast/encoding/char-after-fast-path-ascii-decoding-expected.txt: Added.
+        * fast/encoding/char-after-fast-path-ascii-decoding.html: Added.
+        Ensures when an non ASCII character comes after a machine word, whose bytes are all
+        ASCII characters, is decoded correctly.
+
+2015-01-07  Shivakumar JM  <shiva.jm@samsung.com>
+
+        HTMLSelectElement and HTMLOptionsCollection add() method should support index as second argument.
+        https://bugs.webkit.org/show_bug.cgi?id=139179
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/HTMLSelectElement/add-expected.txt: Added.
+        * fast/dom/HTMLSelectElement/add.html: Added.
+        * fast/dom/HTMLSelectElement/options-collection-add-expected.txt: Added.
+        * fast/dom/HTMLSelectElement/options-collection-add.html: Added.
+        * fast/dom/HTMLSelectElement/select-add-optgroup-expected.txt:
+        * fast/dom/HTMLSelectElement/select-add-optgroup.html:
+        * fast/dom/incompatible-operations-expected.txt:
+        * fast/dom/incompatible-operations.html:
+        * js/dom/script-tests/select-options-add.js:
+        * js/dom/select-options-add-expected.txt:
+
+2015-01-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Two tests, which include data uri images, need to be changed and rebaselined since the expected results are incorrect.
+        https://bugs.webkit.org/show_bug.cgi?id=140199.
+
+        Reviewed by Simon Fraser.
+
+        * compositing/tiling/huge-layer-img-expected.txt:
+        * compositing/tiling/huge-layer-img.html:
+        * platform/mac/compositing/tiling/huge-layer-img-expected.txt:
+        This test draws a huge image on a canvas and then gets the data uri from the canvas and
+        set it as the source of an <img> tag. We need to rebaseline the expected results since
+        the original ones were incorrect. The test was getting the layer tree too early. Before
+        the image data was loaded, a tiled layer was created. After the image data is loaded, we
+        could have figured out that the image is a simple one and we could have removed the tiling.
+        The fix is to change the test to delay capturing the layer tree only after making sure
+        that the image data is loaded.
+        
+        * fast/forms/basic-buttons.html:
+        * platform/mac-mountainlion/fast/forms/basic-buttons-expected.txt:
+        * platform/mac/fast/forms/basic-buttons-expected.png:
+        * platform/mac/fast/forms/basic-buttons-expected.txt:
+        This test includes a data uri image just to not include a file for the image by itself. 
+        We need to rebaseline the expected results since the original ones were incorrect. The
+        test was assuming that after the <img> tag is added to the HTML body, the image size can
+        be retrieved immediately. Because this assumption is incorrect in general, we were getting
+        empty sizes for all the the data uri images. The fix is to change the test such that it
+        prints the sizes of the images only after making sure that all the images are loaded.
+
+2015-01-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Rebaseline windows fast/text tests.
+
+        Most of these work properly, but have different DRT output because the font rendering
+        on Windows is different than Mac.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/text/atsui-pointoffset-calls-cg-expected.txt: Added.
+        * platform/win/fast/text/bidi-embedding-pop-and-push-same-expected.txt: Added.
+        * platform/win/fast/text/cg-vs-atsui-expected.txt: Added.
+        * platform/win/fast/text/complex-text-opacity-expected.txt: Added.
+        * platform/win/fast/text/international/001-expected.txt: Added.
+        * platform/win/fast/text/international/bidi-linebreak-001-expected.txt: Added.
+        * platform/win/fast/text/international/bidi-linebreak-002-expected.txt: Added.
+        * platform/win/fast/text/international/bidi-linebreak-003-expected.txt: Added.
+        * platform/win/fast/text/international/bidi-listbox-atsui-expected.txt: Added.
+        * platform/win/fast/text/international/bidi-listbox-expected.txt: Added.
+        * platform/win/fast/text/international/bidi-menulist-expected.txt:
+        * platform/win/fast/text/international/danda-space-expected.txt: Added.
+        * platform/win/fast/text/international/float-as-only-child-of-isolate-crash-expected.png: Removed.
+        * platform/win/fast/text/international/float-as-only-child-of-isolate-crash-expected.txt: Removed.
+        * platform/win/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt: Added.
+        * platform/win/fast/text/international/synthesized-italic-vertical-latin-expected.txt: Added.
+        * platform/win/fast/text/international/thai-baht-space-expected.txt: Added.
+        * platform/win/fast/text/shaping: Added.
+        * platform/win/fast/text/shaping/shaping-script-order-expected.txt: Added.
+        * platform/win/fast/text/shaping/shaping-selection-rect-expected.txt: Added.
+        * platform/win/fast/text/updateNewFont-expected.txt: Added.
+        * platform/win/fast/text/vertical-rl-rtl-linebreak-expected.txt: Added.
+
+2015-01-07  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        ASSERTION FAILED: !lengthOrPercentageValue.isUndefined() in WebCore::ApplyPropertyTextIndent::applyValue
+        https://bugs.webkit.org/show_bug.cgi?id=130341
+
+        Reviewed by Chris Dumez.
+
+        Replace ASSERT() with 'if' statement because 'ex' unit length in <title> is not defined.
+
+        * fast/css3-text/css3-text-indent/text-indent-crash-in-title-expected.txt: Added.
+        * fast/css3-text/css3-text-indent/text-indent-crash-in-title.html: Added.
+
+2015-01-07  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Add a vertical-rl test for shapes affecting a box that shrinks to avoid the float
+        https://bugs.webkit.org/show_bug.cgi?id=140189
+
+        Reviewed by David Hyatt.
+
+        These are just straightforward vertical writing mode versions of the
+        existing tests.
+
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-left-margin-vertical-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-left-margin-vertical.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-right-margin-vertical-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-right-margin-vertical.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-vertical-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-vertical.html: Added.
+
+2015-01-07  Myles C. Maxfield  <litherum@gmail.com>
+
+        Update css3/flexbox/auto-margins.html after r177774
+        https://bugs.webkit.org/show_bug.cgi?id=139975
+
+        Reviewed by Darin Adler.
+
+        This is a subpixel problem. Flexbox uses SimpleLineLayout for the entire
+        box and therefore does all its math in floating point, while the
+        -expected uses the regular renderer hierarchy and therefore fixed-point
+        math. This patch updates the test to use Ahem so that the character
+        widths divide the same way in both cases.
+
+        * css3/flexbox/auto-margins-expected.html:
+        * css3/flexbox/auto-margins.html:
+        * platform/mac/TestExpectations:
+
+2015-01-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test gardening (writing-mode).
+
+        Rebaseline some of the writing-mode tests based on current WebKit behavior.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/writing-mode/fallback-orientation-expected.txt:
+        * platform/win/fast/writing-mode/vertical-font-fallback-expected.txt:
+
+2015-01-07  Eric Carlson  <eric.carlson@apple.com>
+
+        Layout Test http/tests/navigation/forward-and-cancel.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=140217
+
+        * platform/mac-wk2/TestExpectations: Mark it as flaky.
+
+2015-01-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test gardening.
+
+        Provide a correct baseline for the one failing XSL test.
+
+        * platform/win/TestExpectations: Clean up the XSL declarations.
+        * platform/win/fast/xsl: Added.
+        * platform/win/fast/xsl/xslt-missing-namespace-in-xslt-expected.txt: Added.
+
+2015-01-07  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Negative raster shape height leads to crash
+        https://bugs.webkit.org/show_bug.cgi?id=136087
+
+        Reviewed by Zoltan Horvath.
+
+        * fast/shapes/shape-outside-floats/shape-outside-negative-height-crash-expected.txt: Added.
+        * fast/shapes/shape-outside-floats/shape-outside-negative-height-crash.html: Added.
+
+2015-01-07  Chris Dumez  <cdumez@apple.com>
+
+        Add layout test for animated GIFs in iframes moved in and out of the viewport using -webkit-transform
+        https://bugs.webkit.org/show_bug.cgi?id=139701
+
+        Reviewed by Simon Fraser.
+
+        Add layout test for animated GIFs in iframes moved in and out of the
+        viewport using '-webkit-transform' CSS property.
+
+        * fast/images/animated-gif-iframe-webkit-transform-expected.txt: Added.
+        * fast/images/animated-gif-iframe-webkit-transform.html: Added.
+        * fast/images/resources/iframe-with-animated-gif.html: Added.
+        * fast/images/resources/iframe-with-animated-gif2.html: Added.
+
+2015-01-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Test gardening. Clean up lint errors on Windows file.
+
+        * platform/win/TestExpectations:
+
+2015-01-07  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        [CSS Shapes] Content does not wrap with overflow: hidden and reference box different from margin-box
+        https://bugs.webkit.org/show_bug.cgi?id=138139
+
+        Reviewed by David Hyatt.
+
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-left-margin-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-left-margin.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-right-margin-expected.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden-right-margin.html: Added.
+        * fast/shapes/shape-outside-floats/shape-overflow-hidden.html: Added.
+
+2015-01-07  Eric Carlson  <eric.carlson@apple.com>
+
+        mathml/mathml-in-dashboard.html results are different on mac-mountainlion.
+
+        * platform/mac-mountainlion/mathml/mathml-in-dashboard-expected.png: Added.
+        * platform/mac-mountainlion/mathml/mathml-in-dashboard-expected.txt: Added.
+
+2015-01-07  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Crash: com.apple.WebKit.WebContent at com.apple.WebCore: WebCore::AXObjectCache::clearTextMarkerNodesInUse + 149
+        https://bugs.webkit.org/show_bug.cgi?id=139929
+
+        Reviewed by Darin Adler.
+
+        * accessibility/frame-disconnect-textmarker-cache-crash-expected.txt: Added.
+        * accessibility/frame-disconnect-textmarker-cache-crash.html: Added.
+        * accessibility/resources/frameset.html: Added.
+        * accessibility/resources/inform-parent-of-load.html: Added.
+        * accessibility/resources/text.html: Added.
+
+2015-01-07  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening after r177637.
+
+        * platform/gtk/TestExpectations: Mark new crashing/failing tests after r177637.
+
 2015-01-07  Mihnea Ovidenie  <mihnea@adobe.com>
 
         ASSERTION FAILED: rareData->m_flowThreadContainingBlock.value() == RenderBox::locateFlowThreadContainingBlock() in WebCore::RenderBlock::locateFlowThreadContainingBlock

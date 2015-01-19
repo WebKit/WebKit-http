@@ -787,14 +787,15 @@ bool WKPreferencesGetWebAudioEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->webAudioEnabled();
 }
 
-void WKPreferencesSetApplicationChromeModeEnabled(WKPreferencesRef preferencesRef, bool enabled)
+void WKPreferencesSetApplicationChromeModeEnabled(WKPreferencesRef, bool)
 {
-    toImpl(preferencesRef)->setApplicationChromeModeEnabled(enabled);
+    // FIXME: Remove once WebKit nightlies don't need to support Safari 8.
 }
 
-bool WKPreferencesGetApplicationChromeModeEnabled(WKPreferencesRef preferencesRef)
+bool WKPreferencesGetApplicationChromeModeEnabled(WKPreferencesRef)
 {
-    return toImpl(preferencesRef)->applicationChromeMode();
+    // FIXME: Remove once WebKit nightlies don't need to support Safari 8.
+    return false;
 }
 
 void WKPreferencesSetInspectorUsesWebKitUserInterface(WKPreferencesRef, bool)

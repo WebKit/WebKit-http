@@ -99,12 +99,9 @@
 
 #if PLATFORM(IOS)
 #import "DumpRenderTreeBrowserView.h"
-#import <CoreGraphics/CGFontDB.h>
+#import "UIKitSPI.h"
 #import <QuartzCore/QuartzCore.h>
-#import <UIKit/UIApplication_Private.h>
-#import <UIKit/UIMath.h>
-#import <UIKit/UIWebBrowserView.h>
-#import <UIKit/UIWebScrollView.h>
+#import <WebCore/CoreGraphicsSPI.h>
 #import <WebKit/WAKWindow.h>
 #import <WebKit/WebCoreThread.h>
 #import <WebKit/WebCoreThreadRun.h>
@@ -138,7 +135,7 @@ using namespace std;
     ASSERT(scrollView && [scrollView isKindOfClass:[UIWebScrollView class]]);
     const CGSize scrollViewSize = [scrollView bounds].size;
     CGSize contentSize = newFrame.size;
-    contentSize.height = _ROUNDF_(MAX(CGRectGetMaxY(newFrame), scrollViewSize.height));
+    contentSize.height = CGRound(max(CGRectGetMaxY(newFrame), scrollViewSize.height));
     [(UIWebScrollView *)scrollView setContentSize:contentSize];
 }
 @end

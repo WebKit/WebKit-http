@@ -44,11 +44,6 @@ CookiesStrategy* NetworkProcessPlatformStrategies::createCookiesStrategy()
     return 0;
 }
 
-DatabaseStrategy* NetworkProcessPlatformStrategies::createDatabaseStrategy()
-{
-    return 0;
-}
-
 LoaderStrategy* NetworkProcessPlatformStrategies::createLoaderStrategy()
 {
     return this;
@@ -60,11 +55,6 @@ PasteboardStrategy* NetworkProcessPlatformStrategies::createPasteboardStrategy()
 }
 
 PluginStrategy* NetworkProcessPlatformStrategies::createPluginStrategy()
-{
-    return 0;
-}
-
-SharedWorkerStrategy* NetworkProcessPlatformStrategies::createSharedWorkerStrategy()
 {
     return 0;
 }

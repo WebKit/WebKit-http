@@ -34,13 +34,13 @@
 
 using namespace WebCore;
 
-PassRefPtr<FontData> EmojiFallbackFontSelector::getFallbackFontData(const FontDescription& fontDescription, size_t)
+PassRefPtr<SimpleFontData> EmojiFallbackFontSelector::fallbackFontDataAt(const FontDescription& fontDescription, size_t)
 {
     DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, appleColorEmoji, ("Apple Color Emoji"));
-    RefPtr<FontData> fontData = fontCache().getCachedFontData(fontDescription, appleColorEmoji);
+    RefPtr<SimpleFontData> fontData = fontCache().fontForFamily(fontDescription, appleColorEmoji);
     if (!fontData) {
         LOG_ERROR("Failed to get \"Apple Color Emoji\" from the font cache. Using the last resort fallback font instead.");
-        fontData = fontCache().getLastResortFallbackFont(fontDescription);
+        fontData = fontCache().lastResortFallbackFont(fontDescription);
     }
 
     return fontData.release();

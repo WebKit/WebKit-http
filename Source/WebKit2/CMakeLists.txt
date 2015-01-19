@@ -298,9 +298,9 @@ set(WebKit2_SOURCES
     Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp
     Shared/Plugins/Netscape/PluginInformation.cpp
 
-    UIProcess/APINavigationData.cpp
-    UIProcess/APIProcessPoolConfiguration.cpp
-    UIProcess/APISession.cpp
+    UIProcess/API/APINavigationData.cpp
+    UIProcess/API/APIProcessPoolConfiguration.cpp
+    UIProcess/API/APISession.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DrawingAreaProxy.cpp
     UIProcess/FrameLoadState.cpp
@@ -322,6 +322,8 @@ set(WebKit2_SOURCES
     UIProcess/WebBatteryProvider.cpp
     UIProcess/WebColorPicker.cpp
     UIProcess/WebConnectionToWebProcess.cpp
+    UIProcess/WebProcessLifetimeObserver.cpp
+    UIProcess/WebProcessLifetimeTracker.cpp
     UIProcess/WebProcessPool.cpp
     UIProcess/WebContextClient.cpp
     UIProcess/WebContextConnectionClient.cpp
@@ -346,6 +348,7 @@ set(WebKit2_SOURCES
     UIProcess/WebIconDatabaseClient.cpp
     UIProcess/WebInspectorProxy.cpp
     UIProcess/WebKeyValueStorageManager.cpp
+    UIProcess/WebNavigationState.cpp
     UIProcess/WebMediaCacheManagerProxy.cpp
     UIProcess/WebOpenPanelResultListenerProxy.cpp
     UIProcess/WebOriginDataManagerProxy.cpp
@@ -362,6 +365,7 @@ set(WebKit2_SOURCES
     UIProcess/WebVibrationProxy.cpp
     UIProcess/WebViewportAttributes.cpp
 
+    UIProcess/API/APINavigation.cpp
     UIProcess/API/APISessionState.cpp
     UIProcess/API/APIWebsiteDataStore.cpp
 

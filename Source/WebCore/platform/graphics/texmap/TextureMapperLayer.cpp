@@ -21,6 +21,7 @@
 #include "TextureMapperLayer.h"
 
 #include "FloatQuad.h"
+#include "GraphicsLayerTextureMapper.h"
 #include "Region.h"
 #include <wtf/MathExtras.h>
 
@@ -150,16 +151,12 @@ void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
         m_contentsLayer->drawBorder(options.textureMapper, m_state.debugBorderColor, m_state.debugBorderWidth, m_state.contentsRect, transform);
 }
 
-int TextureMapperLayer::compareGraphicsLayersZValue(const void* a, const void* b)
-{
-    TextureMapperLayer* const* layerA = static_cast<TextureMapperLayer* const*>(a);
-    TextureMapperLayer* const* layerB = static_cast<TextureMapperLayer* const*>(b);
-    return int(((*layerA)->m_centerZ - (*layerB)->m_centerZ) * 1000);
-}
-
 void TextureMapperLayer::sortByZOrder(Vector<TextureMapperLayer* >& array)
 {
-    qsort(array.data(), array.size(), sizeof(TextureMapperLayer*), compareGraphicsLayersZValue);
+    std::sort(array.begin(), array.end(),
+        [](TextureMapperLayer* a, TextureMapperLayer* b) {
+            return a->m_centerZ < b->m_centerZ;
+        });
 }
 
 void TextureMapperLayer::paintSelfAndChildren(const TextureMapperPaintOptions& options)
@@ -448,6 +445,13 @@ TextureMapperLayer::~TextureMapperLayer()
     removeFromParent();
 }
 
+void TextureMapperLayer::setChildren(const Vector<GraphicsLayer*>& newChildren)
+{
+    removeAllChildren();
+    for (auto* child : newChildren)
+        addChild(&downcast<GraphicsLayerTextureMapper>(child)->layer());
+}
+
 void TextureMapperLayer::setChildren(const Vector<TextureMapperLayer*>& newChildren)
 {
     removeAllChildren();
@@ -618,7 +622,7 @@ void TextureMapperLayer::setContentsLayer(TextureMapperPlatformLayer* platformLa
     m_contentsLayer = platformLayer;
 }
 
-void TextureMapperLayer::setAnimations(const GraphicsLayerAnimations& animations)
+void TextureMapperLayer::setAnimations(const TextureMapperAnimations& animations)
 {
     m_animations = animations;
 }

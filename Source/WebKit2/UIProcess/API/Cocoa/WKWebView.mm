@@ -86,15 +86,13 @@
 #import "ProcessThrottler.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteScrollingCoordinatorProxy.h"
+#import "UIKitSPI.h"
 #import "WKPDFView.h"
 #import "WKScrollView.h"
 #import "WKWebViewContentProviderRegistry.h"
 #import "WebPageMessages.h"
 #import "WebVideoFullscreenManagerProxy.h"
 #import <UIKit/UIApplication.h>
-#import <UIKit/UIDevice_Private.h>
-#import <UIKit/UIPeripheralHost_Private.h>
-#import <UIKit/UIWindow_Private.h>
 #import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/InspectorOverlay.h>
 #import <WebCore/QuartzCoreSPI.h>
@@ -427,10 +425,11 @@ static int32_t deviceOrientation()
 
 - (WKNavigation *)loadRequest:(NSURLRequest *)request
 {
-    uint64_t navigationID = _page->loadRequest(request);
-    auto navigation = _navigationState->createLoadRequestNavigation(navigationID, request);
+    auto navigation = _page->loadRequest(request);
+    if (!navigation)
+        return nil;
 
-    return navigation.autorelease();
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (WKNavigation *)loadFileURL:(NSURL *)URL allowingReadAccessToURL:(NSURL *)readAccessURL
@@ -441,13 +440,11 @@ static int32_t deviceOrientation()
     if (![readAccessURL isFileURL])
         [NSException raise:NSInvalidArgumentException format:@"%@ is not a file URL", readAccessURL];
 
-    uint64_t navigationID = _page->loadFile([URL _web_originalDataAsWTFString], [readAccessURL _web_originalDataAsWTFString]);
-    if (!navigationID)
+    auto navigation = _page->loadFile([URL _web_originalDataAsWTFString], [readAccessURL _web_originalDataAsWTFString]);
+    if (!navigation)
         return nil;
 
-    auto navigation = _navigationState->createLoadRequestNavigation(navigationID, [NSURLRequest requestWithURL:URL]);
-
-    return navigation.autorelease();
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (WKNavigation *)loadHTMLString:(NSString *)string baseURL:(NSURL *)baseURL
@@ -459,22 +456,20 @@ static int32_t deviceOrientation()
 
 - (WKNavigation *)loadData:(NSData *)data MIMEType:(NSString *)MIMEType characterEncodingName:(NSString *)characterEncodingName baseURL:(NSURL *)baseURL
 {
-    uint64_t navigationID = _page->loadData(API::Data::createWithoutCopying(data).get(), MIMEType, characterEncodingName, baseURL.absoluteString);
-    if (!navigationID)
+    auto navigation = _page->loadData(API::Data::createWithoutCopying(data).get(), MIMEType, characterEncodingName, baseURL.absoluteString);
+    if (!navigation)
         return nil;
 
-    auto navigation = _navigationState->createLoadDataNavigation(navigationID);
-
-    return navigation.autorelease();
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (WKNavigation *)goToBackForwardListItem:(WKBackForwardListItem *)item
 {
-    uint64_t navigationID = _page->goToBackForwardItem(&item._item);
+    auto navigation = _page->goToBackForwardItem(&item._item);
+    if (!navigation)
+        return nil;
 
-    auto navigation = _navigationState->createBackForwardNavigation(navigationID, item._item);
-
-    return navigation.autorelease();
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (NSString *)title
@@ -514,46 +509,38 @@ static int32_t deviceOrientation()
 
 - (WKNavigation *)goBack
 {
-    uint64_t navigationID = _page->goBack();
-    if (!navigationID)
+    auto navigation = _page->goBack();
+    if (!navigation)
         return nil;
-
-    ASSERT(_page->backForwardList().currentItem());
-    auto navigation = _navigationState->createBackForwardNavigation(navigationID, *_page->backForwardList().currentItem());
  
-    return navigation.autorelease();
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (WKNavigation *)goForward
 {
-    uint64_t navigationID = _page->goForward();
-    if (!navigationID)
+    auto navigation = _page->goForward();
+    if (!navigation)
         return nil;
 
-    ASSERT(_page->backForwardList().currentItem());
-    auto navigation = _navigationState->createBackForwardNavigation(navigationID, *_page->backForwardList().currentItem());
-
-    return navigation.autorelease();
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (WKNavigation *)reload
 {
-    uint64_t navigationID = _page->reload(false);
-    if (!navigationID)
+    auto navigation = _page->reload(false);
+    if (!navigation)
         return nil;
 
-    auto navigation = _navigationState->createReloadNavigation(navigationID);
-    return navigation.autorelease();
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (WKNavigation *)reloadFromOrigin
 {
-    uint64_t navigationID = _page->reload(true);
-    if (!navigationID)
+    auto navigation = _page->reload(true);
+    if (!navigation)
         return nil;
 
-    auto navigation = _navigationState->createReloadNavigation(navigationID);
-    return navigation.autorelease();
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (void)stopLoading
@@ -1765,20 +1752,16 @@ static int32_t activeOrientation(WKWebView *webView)
     if (!WebKit::decodeLegacySessionState(static_cast<const uint8_t*>(sessionStateData.bytes), sessionStateData.length, sessionState))
         return;
 
-    if (uint64_t navigationID = _page->restoreFromSessionState(WTF::move(sessionState), true)) {
-        // FIXME: This is not necessarily always a reload navigation.
-        _navigationState->createReloadNavigation(navigationID);
-    }
+    _page->restoreFromSessionState(WTF::move(sessionState), true);
 }
 
 - (WKNavigation *)_restoreSessionState:(_WKSessionState *)sessionState andNavigate:(BOOL)navigate
 {
-    if (uint64_t navigationID = _page->restoreFromSessionState(sessionState->_sessionState, navigate)) {
-        // FIXME: This is not necessarily always a reload navigation.
-        return _navigationState->createReloadNavigation(navigationID).autorelease();
-    }
+    auto navigation = _page->restoreFromSessionState(sessionState->_sessionState, navigate);
+    if (!navigation)
+        return nil;
 
-    return nil;
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (void)_close

@@ -31,6 +31,7 @@
 #define FontCache_h
 
 #include "FontDescription.h"
+#include "Timer.h"
 #include <limits.h>
 #include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
@@ -52,7 +53,6 @@ namespace WebCore {
 
 class Font;
 class FontPlatformData;
-class FontData;
 class FontSelector;
 class OpenTypeVerticalData;
 class SimpleFontData;
@@ -104,20 +104,14 @@ struct FontDescriptionFontDataCacheKey {
 };
 
 class FontCache {
-    friend class FontCachePurgePreventer;
     friend class WTF::NeverDestroyed<FontCache>;
 
     WTF_MAKE_NONCOPYABLE(FontCache); WTF_MAKE_FAST_ALLOCATED;
 public:
     friend FontCache& fontCache();
 
-    enum ShouldRetain { Retain, DoNotRetain };
-
-    PassRefPtr<FontData> getFontData(const FontDescription&, int& familyIndex, FontSelector*);
-    void releaseFontData(const SimpleFontData*);
-
     // This method is implemented by the platform.
-    PassRefPtr<SimpleFontData> systemFallbackForCharacters(const FontDescription&, const SimpleFontData* originalFontData, bool isPlatformFont, const UChar* characters, int length);
+    RefPtr<SimpleFontData> systemFallbackForCharacters(const FontDescription&, const SimpleFontData* originalFontData, bool isPlatformFont, const UChar* characters, int length);
 
     // Also implemented by the platform.
     void platformInit();
@@ -134,9 +128,10 @@ public:
 
     void getTraitsInFamily(const AtomicString&, Vector<unsigned>&);
 
-    WEBCORE_EXPORT PassRefPtr<SimpleFontData> getCachedFontData(const FontDescription&, const AtomicString&, bool checkingAlternateName = false, ShouldRetain = Retain);
-    WEBCORE_EXPORT PassRefPtr<SimpleFontData> getLastResortFallbackFont(const FontDescription&, ShouldRetain = Retain);
-    SimpleFontData* getNonRetainedLastResortFallbackFont(const FontDescription&);
+    WEBCORE_EXPORT RefPtr<SimpleFontData> fontForFamily(const FontDescription&, const AtomicString&, bool checkingAlternateName = false);
+    WEBCORE_EXPORT Ref<SimpleFontData> lastResortFallbackFont(const FontDescription&);
+    WEBCORE_EXPORT Ref<SimpleFontData> fontForPlatformData(const FontPlatformData&);
+    RefPtr<SimpleFontData> similarFontPlatformData(const FontDescription&);
 
     void addClient(FontSelector*);
     void removeClient(FontSelector*);
@@ -149,7 +144,7 @@ public:
     WEBCORE_EXPORT void purgeInactiveFontData(int count = INT_MAX);
 
 #if PLATFORM(WIN)
-    PassRefPtr<SimpleFontData> fontDataFromDescriptionAndLogFont(const FontDescription&, ShouldRetain, const LOGFONT&, AtomicString& outFontFamilyName);
+    RefPtr<SimpleFontData> fontDataFromDescriptionAndLogFont(const FontDescription&, const LOGFONT&, AtomicString& outFontFamilyName);
 #endif
 
 #if ENABLE(OPENTYPE_VERTICAL)
@@ -168,15 +163,9 @@ private:
     FontCache();
     ~FontCache();
 
-    void disablePurging() { m_purgePreventCount++; }
-    void enablePurging()
-    {
-        ASSERT(m_purgePreventCount);
-        if (!--m_purgePreventCount)
-            purgeInactiveFontDataIfNeeded();
-    }
+    void purgeTimerFired();
 
-    void WEBCORE_EXPORT purgeInactiveFontDataIfNeeded();
+    void purgeInactiveFontDataIfNeeded();
 
     // FIXME: This method should eventually be removed.
     FontPlatformData* getCachedFontPlatformData(const FontDescription&, const AtomicString& family, bool checkingAlternateName = false);
@@ -187,30 +176,17 @@ private:
     PassRefPtr<SimpleFontData> getSystemFontFallbackForCharacters(const FontDescription&, const SimpleFontData*, const UChar* characters, int length);
 #endif
     std::unique_ptr<FontPlatformData> createFontPlatformData(const FontDescription&, const AtomicString& family);
-#if PLATFORM(COCOA)
-    PassRefPtr<SimpleFontData> similarFontPlatformData(const FontDescription&);
-#endif
 
-    WEBCORE_EXPORT PassRefPtr<SimpleFontData> getCachedFontData(const FontPlatformData*, ShouldRetain = Retain);
-
-    // Don't purge if this count is > 0;
-    int m_purgePreventCount;
+    Timer m_purgeTimer;
 
 #if PLATFORM(COCOA)
     friend class ComplexTextController;
 #endif
-    friend class SimpleFontData; // For getCachedFontData(const FontPlatformData*)
-    friend class FontGlyphs;
+    friend class SimpleFontData;
 };
 
 // Get the global fontCache.
 WEBCORE_EXPORT FontCache& fontCache();
-
-class FontCachePurgePreventer {
-public:
-    FontCachePurgePreventer() { fontCache().disablePurging(); }
-    ~FontCachePurgePreventer() { fontCache().enablePurging(); }
-};
 
 }
 

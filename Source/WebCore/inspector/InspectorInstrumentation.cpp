@@ -290,12 +290,6 @@ void InspectorInstrumentation::willSendXMLHttpRequestImpl(InstrumentingAgents& i
         domDebuggerAgent->willSendXMLHttpRequest(url);
 }
 
-void InspectorInstrumentation::didScheduleResourceRequestImpl(InstrumentingAgents& instrumentingAgents, const String& url, Frame* frame)
-{
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->didScheduleResourceRequest(url, frame);
-}
-
 void InspectorInstrumentation::didInstallTimerImpl(InstrumentingAgents& instrumentingAgents, int timerId, int timeout, bool singleShot, ScriptExecutionContext* context)
 {
     pauseOnNativeEventIfNeeded(instrumentingAgents, false, setTimerEventName, true);
@@ -555,8 +549,6 @@ void InspectorInstrumentation::willSendRequestImpl(InstrumentingAgents& instrume
     if (!loader)
         return;
 
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->willSendResourceRequest(identifier, request, loader->frame());
     if (InspectorResourceAgent* resourceAgent = instrumentingAgents.inspectorResourceAgent())
         resourceAgent->willSendRequest(identifier, *loader, request, redirectResponse);
 }
@@ -584,31 +576,9 @@ void InspectorInstrumentation::didLoadResourceFromMemoryCacheImpl(InstrumentingA
         resourceAgent->didLoadResourceFromMemoryCache(*loader, *cachedResource);
 }
 
-InspectorInstrumentationCookie InspectorInstrumentation::willReceiveResourceDataImpl(InstrumentingAgents& instrumentingAgents, Frame* frame, unsigned long identifier, int length)
+InspectorInstrumentationCookie InspectorInstrumentation::willReceiveResourceResponseImpl(InstrumentingAgents& instrumentingAgents)
 {
-    int timelineAgentId = 0;
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent()) {
-        timelineAgent->willReceiveResourceData(identifier, frame, length);
-        timelineAgentId = timelineAgent->id();
-    }
-    return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);
-}
-
-void InspectorInstrumentation::didReceiveResourceDataImpl(const InspectorInstrumentationCookie& cookie)
-{
-    if (InspectorTimelineAgent* timelineAgent = retrieveTimelineAgent(cookie))
-        timelineAgent->didReceiveResourceData();
-}
-
-InspectorInstrumentationCookie InspectorInstrumentation::willReceiveResourceResponseImpl(InstrumentingAgents& instrumentingAgents, Frame* frame, unsigned long identifier, const ResourceResponse& response)
-{
-    int timelineAgentId = 0;
-    InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent();
-    if (timelineAgent && frame) {
-        timelineAgent->willReceiveResourceResponse(identifier, response, frame);
-        timelineAgentId = timelineAgent->id();
-    }
-    return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);
+    return InspectorInstrumentationCookie(instrumentingAgents, 0);
 }
 
 void InspectorInstrumentation::didReceiveResourceResponseImpl(const InspectorInstrumentationCookie& cookie, unsigned long identifier, DocumentLoader* loader, const ResourceResponse& response, ResourceLoader* resourceLoader)
@@ -621,8 +591,6 @@ void InspectorInstrumentation::didReceiveResourceResponseImpl(const InspectorIns
 
     InstrumentingAgents& instrumentingAgents = *cookie.instrumentingAgents();
 
-    if (InspectorTimelineAgent* timelineAgent = retrieveTimelineAgent(cookie))
-        timelineAgent->didReceiveResourceResponse();
     if (InspectorResourceAgent* resourceAgent = instrumentingAgents.inspectorResourceAgent())
         resourceAgent->didReceiveResponse(identifier, *loader, response, resourceLoader);
     if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
@@ -634,7 +602,7 @@ void InspectorInstrumentation::didReceiveResourceResponseButCanceledImpl(Frame* 
     if (!frame)
         return;
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willReceiveResourceResponse(frame, identifier, r);
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willReceiveResourceResponse(frame);
     InspectorInstrumentation::didReceiveResourceResponse(cookie, identifier, &loader, r, nullptr);
 }
 
@@ -664,8 +632,6 @@ void InspectorInstrumentation::didFinishLoadingImpl(InstrumentingAgents& instrum
     if (!loader)
         return;
 
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->didFinishLoadingResource(identifier, false, finishTime, loader->frame());
     if (InspectorResourceAgent* resourceAgent = instrumentingAgents.inspectorResourceAgent())
         resourceAgent->didFinishLoading(identifier, *loader, finishTime);
 }
@@ -675,8 +641,6 @@ void InspectorInstrumentation::didFailLoadingImpl(InstrumentingAgents& instrumen
     if (!loader)
         return;
 
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->didFinishLoadingResource(identifier, true, 0, loader->frame());
     if (InspectorResourceAgent* resourceAgent = instrumentingAgents.inspectorResourceAgent())
         resourceAgent->didFailLoading(identifier, *loader, error);
     if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
@@ -689,10 +653,10 @@ void InspectorInstrumentation::documentThreadableLoaderStartedLoadingForClientIm
         resourceAgent->documentThreadableLoaderStartedLoadingForClient(identifier, client);
 }
 
-void InspectorInstrumentation::willLoadXHRImpl(InstrumentingAgents& instrumentingAgents, ThreadableLoaderClient* client, const String& method, const URL& url, bool async, PassRefPtr<FormData> formData, const HTTPHeaderMap& headers, bool includeCredentials)
+void InspectorInstrumentation::willLoadXHRImpl(InstrumentingAgents& instrumentingAgents, ThreadableLoaderClient* client, const String& method, const URL& url, bool async, RefPtr<FormData>&& formData, const HTTPHeaderMap& headers, bool includeCredentials)
 {
     if (InspectorResourceAgent* resourceAgent = instrumentingAgents.inspectorResourceAgent())
-        resourceAgent->willLoadXHR(client, method, url, async, formData, headers, includeCredentials);
+        resourceAgent->willLoadXHR(client, method, url, async, WTF::move(formData), headers, includeCredentials);
 }
 
 void InspectorInstrumentation::didFailXHRLoadingImpl(InstrumentingAgents& instrumentingAgents, ThreadableLoaderClient* client)
@@ -916,7 +880,7 @@ static bool isConsoleAssertMessage(MessageSource source, MessageType type)
 }
 
 // FIXME: Drop this once we no longer generate stacks outside of Inspector.
-void InspectorInstrumentation::addMessageToConsoleImpl(InstrumentingAgents& instrumentingAgents, MessageSource source, MessageType type, MessageLevel level, const String& message, PassRefPtr<ScriptCallStack> callStack, unsigned long requestIdentifier)
+void InspectorInstrumentation::addMessageToConsoleImpl(InstrumentingAgents& instrumentingAgents, MessageSource source, MessageType type, MessageLevel level, const String& message, RefPtr<ScriptCallStack>&& callStack, unsigned long requestIdentifier)
 {
     if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
         consoleAgent->addMessageToConsole(source, type, level, message, callStack, requestIdentifier);
@@ -927,7 +891,7 @@ void InspectorInstrumentation::addMessageToConsoleImpl(InstrumentingAgents& inst
     }
 }
 
-void InspectorInstrumentation::addMessageToConsoleImpl(InstrumentingAgents& instrumentingAgents, MessageSource source, MessageType type, MessageLevel level, const String& message, JSC::ExecState* state, PassRefPtr<ScriptArguments> arguments, unsigned long requestIdentifier)
+void InspectorInstrumentation::addMessageToConsoleImpl(InstrumentingAgents& instrumentingAgents, MessageSource source, MessageType type, MessageLevel level, const String& message, JSC::ExecState* state, RefPtr<ScriptArguments>&& arguments, unsigned long requestIdentifier)
 {
     if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
         consoleAgent->addMessageToConsole(source, type, level, message, state, arguments, requestIdentifier);
@@ -949,7 +913,7 @@ void InspectorInstrumentation::addMessageToConsoleImpl(InstrumentingAgents& inst
     }
 }
 
-void InspectorInstrumentation::consoleCountImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* state, PassRefPtr<ScriptArguments> arguments)
+void InspectorInstrumentation::consoleCountImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* state, RefPtr<ScriptArguments>&& arguments)
 {
     if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
         consoleAgent->count(state, arguments);
@@ -963,7 +927,7 @@ void InspectorInstrumentation::startConsoleTimingImpl(InstrumentingAgents& instr
         consoleAgent->startTiming(title);
 }
 
-void InspectorInstrumentation::stopConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, const String& title, PassRefPtr<ScriptCallStack> stack)
+void InspectorInstrumentation::stopConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, const String& title, RefPtr<ScriptCallStack>&& stack)
 {
     if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
         consoleAgent->stopTiming(title, stack);
@@ -971,7 +935,7 @@ void InspectorInstrumentation::stopConsoleTimingImpl(InstrumentingAgents& instru
         timelineAgent->timeEnd(frame, title);
 }
 
-void InspectorInstrumentation::consoleTimeStampImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, PassRefPtr<ScriptArguments> arguments)
+void InspectorInstrumentation::consoleTimeStampImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, RefPtr<ScriptArguments>&& arguments)
 {
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent()) {
         String message;
@@ -986,7 +950,7 @@ void InspectorInstrumentation::startProfilingImpl(InstrumentingAgents& instrumen
         timelineAgent->startFromConsole(exec, title);
 }
 
-PassRefPtr<JSC::Profile> InspectorInstrumentation::stopProfilingImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* exec, const String& title)
+RefPtr<JSC::Profile> InspectorInstrumentation::stopProfilingImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* exec, const String& title)
 {
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.persistentInspectorTimelineAgent())
         return timelineAgent->stopFromConsole(exec, title);
@@ -994,7 +958,7 @@ PassRefPtr<JSC::Profile> InspectorInstrumentation::stopProfilingImpl(Instrumenti
 }
 
 #if ENABLE(SQL_DATABASE)
-void InspectorInstrumentation::didOpenDatabaseImpl(InstrumentingAgents& instrumentingAgents, PassRefPtr<Database> database, const String& domain, const String& name, const String& version)
+void InspectorInstrumentation::didOpenDatabaseImpl(InstrumentingAgents& instrumentingAgents, RefPtr<Database>&& database, const String& domain, const String& name, const String& version)
 {
     if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
         return;
@@ -1107,40 +1071,40 @@ void InspectorInstrumentation::didSendWebSocketFrameImpl(InstrumentingAgents& in
 #endif
 
 #if ENABLE(WEB_REPLAY)
-void InspectorInstrumentation::sessionCreatedImpl(InstrumentingAgents& instrumentingAgents, PassRefPtr<ReplaySession> session)
+void InspectorInstrumentation::sessionCreatedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySession>&& session)
 {
     if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->sessionCreated(session);
+        replayAgent->sessionCreated(WTF::move(session));
 }
 
-void InspectorInstrumentation::sessionLoadedImpl(InstrumentingAgents& instrumentingAgents, PassRefPtr<ReplaySession> session)
+void InspectorInstrumentation::sessionLoadedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySession>&& session)
 {
     if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->sessionLoaded(session);
+        replayAgent->sessionLoaded(WTF::move(session));
 }
 
-void InspectorInstrumentation::sessionModifiedImpl(InstrumentingAgents& instrumentingAgents, PassRefPtr<ReplaySession> session)
+void InspectorInstrumentation::sessionModifiedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySession>&& session)
 {
     if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->sessionModified(session);
+        replayAgent->sessionModified(WTF::move(session));
 }
 
-void InspectorInstrumentation::segmentCreatedImpl(InstrumentingAgents& instrumentingAgents, PassRefPtr<ReplaySessionSegment> segment)
+void InspectorInstrumentation::segmentCreatedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySessionSegment>&& segment)
 {
     if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->segmentCreated(segment);
+        replayAgent->segmentCreated(WTF::move(segment));
 }
 
-void InspectorInstrumentation::segmentCompletedImpl(InstrumentingAgents& instrumentingAgents, PassRefPtr<ReplaySessionSegment> segment)
+void InspectorInstrumentation::segmentCompletedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySessionSegment>&& segment)
 {
     if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->segmentCompleted(segment);
+        replayAgent->segmentCompleted(WTF::move(segment));
 }
 
-void InspectorInstrumentation::segmentLoadedImpl(InstrumentingAgents& instrumentingAgents, PassRefPtr<ReplaySessionSegment> segment)
+void InspectorInstrumentation::segmentLoadedImpl(InstrumentingAgents& instrumentingAgents, RefPtr<ReplaySessionSegment>&& segment)
 {
     if (InspectorReplayAgent* replayAgent = instrumentingAgents.inspectorReplayAgent())
-        replayAgent->segmentLoaded(segment);
+        replayAgent->segmentLoaded(WTF::move(segment));
 }
 
 void InspectorInstrumentation::segmentUnloadedImpl(InstrumentingAgents& instrumentingAgents)

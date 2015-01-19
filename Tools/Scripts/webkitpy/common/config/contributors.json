@@ -1999,14 +1999,6 @@
             "MPozdnyakov"
          ]
       },
-      "Myles C. Maxfield" : {
-         "emails" : [
-            "mmaxfield@apple.com"
-         ],
-         "nicks" : [
-            "litherum"
-         ]
-      },
       "Nadav Rotem" : {
          "emails" : [
             "nrotem@apple.com"
@@ -2565,6 +2557,16 @@
             "tsepez"
          ]
       },
+      "Tibor Meszaros" : {
+         "emails" : [
+            "tmeszaros.u-szeged@partner.samsung.com",
+            "mtibor@inf.u-szeged.hu",
+            "tmeszaros@inf.u-szeged.hu"
+         ],
+         "nicks" : [
+            "mtibor"
+         ]
+      },
       "Tom Hudson" : {
          "emails" : [
             "tomhudson@google.com",
@@ -2850,15 +2852,6 @@
          ],
          "nicks" : [
             "bzsolt"
-         ]
-      },
-      "\u017dan Dober\u0161ek" : {
-         "emails" : [
-            "zandobersek@gmail.com",
-            "zdobersek@igalia.com"
-         ],
-         "nicks" : [
-            "zdobersek"
          ]
       }
    },
@@ -3309,16 +3302,6 @@
          ],
          "nicks" : [
             "tczene"
-         ]
-      },
-      "Tibor Meszaros" : {
-         "emails" : [
-            "tmeszaros.u-szeged@partner.samsung.com",
-            "mtibor@inf.u-szeged.hu",
-            "tmeszaros@inf.u-szeged.hu"
-         ],
-         "nicks" : [
-            "mtibor"
          ]
       },
       "Tien-Ren Chen" : {
@@ -4372,6 +4355,15 @@
             "mihnea"
          ]
       },
+      "Myles C. Maxfield" : {
+         "emails" : [
+            "mmaxfield@apple.com"
+         ],
+         "expertise" : "Text layout and rendering",
+         "nicks" : [
+            "litherum"
+         ]
+      },
       "Nate Chapin" : {
          "emails" : [
             "japhet@chromium.org"
@@ -4743,6 +4735,16 @@
          "expertise" : "CSS Shapes, Line layout, Custom Allocation Framework, PerformanceTests, QtWebKit",
          "nicks" : [
             "zoltan"
+         ]
+      },
+      "\u017dan Dober\u0161ek" : {
+         "emails" : [
+            "zan@falconsigh.net",
+            "zdobersek@igalia.com",
+            "zandobersek@gmail.com"
+         ],
+         "nicks" : [
+            "zdobersek"
          ]
       }
    }

@@ -126,7 +126,7 @@ ALWAYS_INLINE static void JIT_OPERATION operationPutByValInternal(ExecState* exe
         PutPropertySlot slot(baseValue, strict);
         if (direct) {
             RELEASE_ASSERT(baseValue.isObject());
-            asObject(baseValue)->putDirect(*vm, jsCast<NameInstance*>(property.asCell())->privateName(), value, slot);
+            asObject(baseValue)->putDirect(*vm, ident, value, slot);
         } else
             baseValue.put(exec, ident, value, slot);
     }
@@ -796,8 +796,10 @@ EncodedJSValue JIT_OPERATION operationGetArgumentByVal(ExecState* exec, int32_t 
     
     // If there are no arguments, and we're accessing out of bounds, then we have to create the
     // arguments in case someone has installed a getter on a numeric property.
-    if (!argumentsValue)
-        exec->uncheckedR(argumentsRegister) = argumentsValue = Arguments::create(exec->vm(), exec);
+    if (!argumentsValue) {
+        JSLexicalEnvironment* lexicalEnvironment = exec->lexicalEnvironmentOrNullptr();
+        exec->uncheckedR(argumentsRegister) = argumentsValue = Arguments::create(exec->vm(), exec, lexicalEnvironment);
+    }
     
     return JSValue::encode(argumentsValue.get(exec, index));
 }

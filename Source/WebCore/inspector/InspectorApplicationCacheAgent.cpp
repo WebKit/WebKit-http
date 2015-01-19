@@ -98,8 +98,7 @@ void InspectorApplicationCacheAgent::getFramesWithManifests(ErrorString&, RefPtr
 {
     result = Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::FrameWithManifest>::create();
 
-    Frame* mainFrame = m_pageAgent->mainFrame();
-    for (Frame* frame = mainFrame; frame; frame = frame->tree().traverseNext(mainFrame)) {
+    for (Frame* frame = m_pageAgent->mainFrame(); frame; frame = frame->tree().traverseNext()) {
         DocumentLoader* documentLoader = frame->loader().documentLoader();
         if (!documentLoader)
             continue;
@@ -108,11 +107,12 @@ void InspectorApplicationCacheAgent::getFramesWithManifests(ErrorString&, RefPtr
         ApplicationCacheHost::CacheInfo info = host->applicationCacheInfo();
         String manifestURL = info.m_manifest.string();
         if (!manifestURL.isEmpty()) {
-            RefPtr<Inspector::Protocol::ApplicationCache::FrameWithManifest> value = Inspector::Protocol::ApplicationCache::FrameWithManifest::create()
+            Ref<Inspector::Protocol::ApplicationCache::FrameWithManifest> value = Inspector::Protocol::ApplicationCache::FrameWithManifest::create()
                 .setFrameId(m_pageAgent->frameId(frame))
                 .setManifestURL(manifestURL)
-                .setStatus(static_cast<int>(host->status()));
-            result->addItem(value);
+                .setStatus(static_cast<int>(host->status()))
+                .release();
+            result->addItem(WTF::move(value));
         }
     }
 }
@@ -151,7 +151,7 @@ void InspectorApplicationCacheAgent::getApplicationCacheForFrame(ErrorString& er
     applicationCache = buildObjectForApplicationCache(resources, info);
 }
 
-PassRefPtr<Inspector::Protocol::ApplicationCache::ApplicationCache> InspectorApplicationCacheAgent::buildObjectForApplicationCache(const ApplicationCacheHost::ResourceInfoList& applicationCacheResources, const ApplicationCacheHost::CacheInfo& applicationCacheInfo)
+Ref<Inspector::Protocol::ApplicationCache::ApplicationCache> InspectorApplicationCacheAgent::buildObjectForApplicationCache(const ApplicationCacheHost::ResourceInfoList& applicationCacheResources, const ApplicationCacheHost::CacheInfo& applicationCacheInfo)
 {
     return Inspector::Protocol::ApplicationCache::ApplicationCache::create()
         .setManifestURL(applicationCacheInfo.m_manifest.string())
@@ -162,17 +162,17 @@ PassRefPtr<Inspector::Protocol::ApplicationCache::ApplicationCache> InspectorApp
         .release();
 }
 
-PassRefPtr<Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::ApplicationCacheResource>> InspectorApplicationCacheAgent::buildArrayForApplicationCacheResources(const ApplicationCacheHost::ResourceInfoList& applicationCacheResources)
+Ref<Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::ApplicationCacheResource>> InspectorApplicationCacheAgent::buildArrayForApplicationCacheResources(const ApplicationCacheHost::ResourceInfoList& applicationCacheResources)
 {
-    RefPtr<Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::ApplicationCacheResource>> resources = Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::ApplicationCacheResource>::create();
+    auto resources = Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::ApplicationCacheResource>::create();
 
     for (const auto& resourceInfo : applicationCacheResources)
         resources->addItem(buildObjectForApplicationCacheResource(resourceInfo));
 
-    return resources;
+    return WTF::move(resources);
 }
 
-PassRefPtr<Inspector::Protocol::ApplicationCache::ApplicationCacheResource> InspectorApplicationCacheAgent::buildObjectForApplicationCacheResource(const ApplicationCacheHost::ResourceInfo& resourceInfo)
+Ref<Inspector::Protocol::ApplicationCache::ApplicationCacheResource> InspectorApplicationCacheAgent::buildObjectForApplicationCacheResource(const ApplicationCacheHost::ResourceInfo& resourceInfo)
 {
     StringBuilder types;
 
@@ -191,11 +191,11 @@ PassRefPtr<Inspector::Protocol::ApplicationCache::ApplicationCacheResource> Insp
     if (resourceInfo.m_isExplicit)
         types.appendLiteral("Explicit ");
 
-    RefPtr<Inspector::Protocol::ApplicationCache::ApplicationCacheResource> value = Inspector::Protocol::ApplicationCache::ApplicationCacheResource::create()
+    return Inspector::Protocol::ApplicationCache::ApplicationCacheResource::create()
         .setUrl(resourceInfo.m_resource.string())
         .setSize(static_cast<int>(resourceInfo.m_size))
-        .setType(types.toString());
-    return value;
+        .setType(types.toString())
+        .release();
 }
 
 } // namespace WebCore

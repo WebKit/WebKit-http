@@ -168,6 +168,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
+static const CSSPropertyID firstLowPriorityProperty = static_cast<CSSPropertyID>(CSSPropertyLineHeight + 1);
+
 class StyleResolver::CascadedProperties {
 public:
     CascadedProperties(TextDirection, WritingMode);
@@ -842,7 +844,7 @@ Ref<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* elementStyle
         applyProperty(CSSPropertyLineHeight, state.lineHeightValue());
 
     // Now do rest of the properties.
-    applyCascadedProperties(cascade, CSSPropertyAnimation, lastCSSProperty);
+    applyCascadedProperties(cascade, firstLowPriorityProperty, lastCSSProperty);
 
     // If our font got dirtied by one of the non-essential font props,
     // go ahead and update it a second time.
@@ -1012,7 +1014,7 @@ Ref<RenderStyle> StyleResolver::styleForPage(int pageIndex)
     if (m_state.lineHeightValue())
         applyProperty(CSSPropertyLineHeight, m_state.lineHeightValue());
 
-    applyCascadedProperties(cascade, CSSPropertyAnimation, lastCSSProperty);
+    applyCascadedProperties(cascade, firstLowPriorityProperty, lastCSSProperty);
 
     cascade.applyDeferredProperties(*this);
 
@@ -1527,13 +1529,6 @@ Vector<RefPtr<StyleRule>> StyleResolver::pseudoStyleRulesForElement(Element* ele
 
 // -------------------------------------------------------------------------------------
 
-#if ENABLE(DASHBOARD_SUPPORT)
-static Length convertToIntLength(const CSSPrimitiveValue* primitiveValue, const CSSToLengthConversionData& conversionData)
-{
-    return primitiveValue ? primitiveValue->convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(conversionData) : Length(Undefined);
-}
-#endif
-
 static Length convertToFloatLength(const CSSPrimitiveValue* primitiveValue, const CSSToLengthConversionData& conversionData)
 {
     return primitiveValue ? primitiveValue->convertToLength<FixedFloatConversion | PercentConversion | CalculatedConversion>(conversionData) : Length(Undefined);
@@ -1772,7 +1767,7 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         applyCascadedProperties(cascade, firstCSSProperty, CSSPropertyLineHeight);
     
         updateFont();
-        applyCascadedProperties(cascade, CSSPropertyAnimation, lastCSSProperty);
+        applyCascadedProperties(cascade, firstLowPriorityProperty, lastCSSProperty);
 
         state.cacheBorderAndBackground();
     }
@@ -1810,7 +1805,7 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         return applyMatchedProperties(matchResult, element, DoNotUseMatchedPropertiesCache);
 
     // Apply properties that no other properties depend on.
-    applyCascadedProperties(cascade, CSSPropertyAnimation, lastCSSProperty);
+    applyCascadedProperties(cascade, firstLowPriorityProperty, lastCSSProperty);
 
     // Finally, some properties must be applied in the order they were parsed.
     // There are some CSS properties that affect the same RenderStyle values,
@@ -1843,6 +1838,25 @@ void StyleResolver::applyPropertyToCurrentStyle(CSSPropertyID id, CSSValue* valu
 {
     if (value)
         applyProperty(id, value);
+}
+
+void StyleResolver::applyFont(CSSFontValue& font)
+{
+    if (!font.style || !font.variant || !font.weight || !font.size || !font.lineHeight || !font.family)
+        return;
+    applyProperty(CSSPropertyFontStyle, font.style.get());
+    applyProperty(CSSPropertyFontVariant, font.variant.get());
+    applyProperty(CSSPropertyFontWeight, font.weight.get());
+    // The previous properties can dirty our font but they don't try to read the font's
+    // properties back, which is safe. However if font-size is using the 'ex' unit, it will
+    // need query the dirtied font's x-height to get the computed size. To be safe in this
+    // case, let's just update the font now.
+    updateFont();
+    applyProperty(CSSPropertyFontSize, font.size.get());
+
+    m_state.setLineHeightValue(font.lineHeight.get());
+
+    applyProperty(CSSPropertyFontFamily, font.family.get());
 }
 
 inline bool isValidVisitedLinkProperty(CSSPropertyID id)
@@ -1972,571 +1986,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     if (isInherit && !state.parentStyle()->hasExplicitlyInheritedProperties() && !CSSProperty::isInheritedProperty(id))
         state.parentStyle()->setHasExplicitlyInheritedProperties();
 
-    // Use the StyleBuilder.
-    if (StyleBuilder::applyProperty(id, *this, *value, isInitial, isInherit))
-        return;
-
-    CSSPrimitiveValue* primitiveValue = is<CSSPrimitiveValue>(*value) ? downcast<CSSPrimitiveValue>(value) : nullptr;
-
-    // What follows is a list that maps the CSS properties into their corresponding front-end
-    // RenderStyle values.
-    switch (id) {
-    // Shorthand properties.
-    case CSSPropertyFont:
-        if (isInherit) {
-            FontDescription fontDescription = state.parentStyle()->fontDescription();
-            state.style()->setLineHeight(state.parentStyle()->specifiedLineHeight());
-            state.setLineHeightValue(0);
-            setFontDescription(fontDescription);
-        } else if (isInitial) {
-            Settings* settings = documentSettings();
-            ASSERT(settings); // If we're doing style resolution, this document should always be in a frame and thus have settings
-            if (!settings)
-                return;
-            initializeFontStyle(settings);
-        } else if (primitiveValue) {
-            state.style()->setLineHeight(RenderStyle::initialLineHeight());
-            state.setLineHeightValue(0);
-
-            FontDescription fontDescription;
-            RenderTheme::defaultTheme()->systemFont(primitiveValue->getValueID(), fontDescription);
-
-            // Double-check and see if the theme did anything. If not, don't bother updating the font.
-            if (fontDescription.isAbsoluteSize()) {
-                // Make sure the rendering mode and printer font settings are updated.
-                Settings* settings = documentSettings();
-                ASSERT(settings); // If we're doing style resolution, this document should always be in a frame and thus have settings
-                if (!settings)
-                    return;
-                fontDescription.setRenderingMode(settings->fontRenderingMode());
-                fontDescription.setUsePrinterFont(document().printing() || !settings->screenFontSubstitutionEnabled());
-
-                // Handle the zoom factor.
-                fontDescription.setComputedSize(Style::computedFontSizeFromSpecifiedSize(fontDescription.specifiedSize(), fontDescription.isAbsoluteSize(), useSVGZoomRules(), state.style(), document()));
-                setFontDescription(fontDescription);
-            }
-        } else if (is<CSSFontValue>(*value)) {
-            CSSFontValue& font = downcast<CSSFontValue>(*value);
-            if (!font.style || !font.variant || !font.weight
-                || !font.size || !font.lineHeight || !font.family)
-                return;
-            applyProperty(CSSPropertyFontStyle, font.style.get());
-            applyProperty(CSSPropertyFontVariant, font.variant.get());
-            applyProperty(CSSPropertyFontWeight, font.weight.get());
-            // The previous properties can dirty our font but they don't try to read the font's
-            // properties back, which is safe. However if font-size is using the 'ex' unit, it will
-            // need query the dirtied font's x-height to get the computed size. To be safe in this
-            // case, let's just update the font now.
-            updateFont();
-            applyProperty(CSSPropertyFontSize, font.size.get());
-
-            state.setLineHeightValue(font.lineHeight.get());
-
-            applyProperty(CSSPropertyFontFamily, font.family.get());
-        }
-        return;
-
-    case CSSPropertyAnimation:
-    case CSSPropertyBackground:
-    case CSSPropertyBackgroundPosition:
-    case CSSPropertyBackgroundRepeat:
-    case CSSPropertyBorder:
-    case CSSPropertyBorderBottom:
-    case CSSPropertyBorderColor:
-    case CSSPropertyBorderImage:
-    case CSSPropertyBorderLeft:
-    case CSSPropertyBorderRadius:
-    case CSSPropertyBorderRight:
-    case CSSPropertyBorderSpacing:
-    case CSSPropertyBorderStyle:
-    case CSSPropertyBorderTop:
-    case CSSPropertyBorderWidth:
-    case CSSPropertyListStyle:
-    case CSSPropertyMargin:
-    case CSSPropertyOutline:
-    case CSSPropertyOverflow:
-    case CSSPropertyPadding:
-    case CSSPropertyTransition:
-    case CSSPropertyWebkitAnimation:
-    case CSSPropertyWebkitBorderAfter:
-    case CSSPropertyWebkitBorderBefore:
-    case CSSPropertyWebkitBorderEnd:
-    case CSSPropertyWebkitBorderStart:
-    case CSSPropertyWebkitBorderRadius:
-    case CSSPropertyColumns:
-    case CSSPropertyColumnRule:
-    case CSSPropertyFlex:
-    case CSSPropertyFlexFlow:
-#if ENABLE(CSS_GRID_LAYOUT)
-    case CSSPropertyWebkitGridTemplate:
-    case CSSPropertyWebkitGridArea:
-    case CSSPropertyWebkitGridColumn:
-    case CSSPropertyWebkitGridRow:
-#endif
-    case CSSPropertyWebkitMarginCollapse:
-    case CSSPropertyWebkitMarquee:
-    case CSSPropertyWebkitMask:
-    case CSSPropertyWebkitMaskPosition:
-    case CSSPropertyWebkitMaskRepeat:
-    case CSSPropertyWebkitPerspectiveOrigin:
-    case CSSPropertyWebkitTextEmphasis:
-    case CSSPropertyWebkitTextStroke:
-    case CSSPropertyWebkitTransition:
-    case CSSPropertyWebkitTransformOrigin:
-        ASSERT(isExpandedShorthand(id));
-        ASSERT_NOT_REACHED();
-        break;
-
-    // CSS3 Properties
-    case CSSPropertySrc: // Only used in @font-face rules.
-        return;
-    case CSSPropertyUnicodeRange: // Only used in @font-face rules.
-        return;
-#if ENABLE(DASHBOARD_SUPPORT)
-    case CSSPropertyWebkitDashboardRegion:
-    {
-        HANDLE_INHERIT_AND_INITIAL(dashboardRegions, DashboardRegions)
-        if (!primitiveValue)
-            return;
-
-        if (primitiveValue->getValueID() == CSSValueNone) {
-            state.style()->setDashboardRegions(RenderStyle::noneDashboardRegions());
-            return;
-        }
-
-        DashboardRegion* region = primitiveValue->getDashboardRegionValue();
-        if (!region)
-            return;
-
-        DashboardRegion* first = region;
-        while (region) {
-            Length top = convertToIntLength(region->top(), state.cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
-            Length right = convertToIntLength(region->right(), state.cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
-            Length bottom = convertToIntLength(region->bottom(), state.cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
-            Length left = convertToIntLength(region->left(), state.cssToLengthConversionData().copyWithAdjustedZoom(1.0f));
-
-            if (top.isUndefined())
-                top = Length();
-            if (right.isUndefined())
-                right = Length();
-            if (bottom.isUndefined())
-                bottom = Length();
-            if (left.isUndefined())
-                left = Length();
-
-            if (region->m_isCircle)
-                state.style()->setDashboardRegion(StyleDashboardRegion::Circle, region->m_label, top, right, bottom, left, region == first ? false : true);
-            else if (region->m_isRectangle)
-                state.style()->setDashboardRegion(StyleDashboardRegion::Rectangle, region->m_label, top, right, bottom, left, region == first ? false : true);
-            region = region->m_next.get();
-        }
-
-        state.document().setHasAnnotatedRegions(true);
-
-        return;
-    }
-#endif
-#if PLATFORM(IOS)
-    case CSSPropertyWebkitTouchCallout: {
-        HANDLE_INHERIT_AND_INITIAL(touchCalloutEnabled, TouchCalloutEnabled);
-        if (!primitiveValue)
-            break;
-
-        state.style()->setTouchCalloutEnabled(primitiveValue->getStringValue().lower() != "none");
-        return;
-    }
-#endif
-#if ENABLE(TOUCH_EVENTS)
-    case CSSPropertyWebkitTapHighlightColor: {
-        HANDLE_INHERIT_AND_INITIAL(tapHighlightColor, TapHighlightColor);
-        if (!primitiveValue)
-            break;
-
-        Color col = colorFromPrimitiveValue(primitiveValue);
-        state.style()->setTapHighlightColor(col);
-        return;
-    }
-#endif
-#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
-    case CSSPropertyWebkitOverflowScrolling: {
-        HANDLE_INHERIT_AND_INITIAL(useTouchOverflowScrolling, UseTouchOverflowScrolling);
-        if (!primitiveValue)
-            break;
-        state.style()->setUseTouchOverflowScrolling(primitiveValue->getValueID() == CSSValueTouch);
-        return;
-    }
-#endif
-    case CSSPropertyInvalid:
-        return;
-    case CSSPropertyFontStretch:
-    case CSSPropertyPage:
-    case CSSPropertyTextLineThrough:
-    case CSSPropertyTextLineThroughColor:
-    case CSSPropertyTextLineThroughMode:
-    case CSSPropertyTextLineThroughStyle:
-    case CSSPropertyTextLineThroughWidth:
-    case CSSPropertyTextOverline:
-    case CSSPropertyTextOverlineColor:
-    case CSSPropertyTextOverlineMode:
-    case CSSPropertyTextOverlineStyle:
-    case CSSPropertyTextOverlineWidth:
-    case CSSPropertyTextUnderline:
-    case CSSPropertyTextUnderlineColor:
-    case CSSPropertyTextUnderlineMode:
-    case CSSPropertyTextUnderlineStyle:
-    case CSSPropertyTextUnderlineWidth:
-    case CSSPropertyWebkitFontSizeDelta:
-    case CSSPropertyWebkitTextDecorationsInEffect:
-        return;
-
-    // CSS Fonts Module Level 3
-    case CSSPropertyWebkitFontFeatureSettings: {
-        if (primitiveValue && primitiveValue->getValueID() == CSSValueNormal) {
-            setFontDescription(state.style()->fontDescription().makeNormalFeatureSettings());
-            return;
-        }
-
-        if (!is<CSSValueList>(*value))
-            return;
-
-        FontDescription fontDescription = state.style()->fontDescription();
-        CSSValueList& list = downcast<CSSValueList>(*value);
-        RefPtr<FontFeatureSettings> settings = FontFeatureSettings::create();
-        int length = list.length();
-        for (int i = 0; i < length; ++i) {
-            CSSValue* item = list.itemWithoutBoundsCheck(i);
-            if (!is<CSSFontFeatureValue>(*item))
-                continue;
-            CSSFontFeatureValue& feature = downcast<CSSFontFeatureValue>(*item);
-            settings->append(FontFeature(feature.tag(), feature.value()));
-        }
-        fontDescription.setFeatureSettings(settings.release());
-        setFontDescription(fontDescription);
-        return;
-    }
-    
-    // These properties are aliased and StyleBuilder already applied the property on the prefixed version.
-    case CSSPropertyWebkitMaskImage:
-    case CSSPropertyAnimationDelay:
-    case CSSPropertyAnimationDirection:
-    case CSSPropertyAnimationDuration:
-    case CSSPropertyAnimationFillMode:
-    case CSSPropertyAnimationName:
-    case CSSPropertyAnimationPlayState:
-    case CSSPropertyAnimationIterationCount:
-    case CSSPropertyAnimationTimingFunction:
-    case CSSPropertyTransitionDelay:
-    case CSSPropertyTransitionDuration:
-    case CSSPropertyTransitionProperty:
-    case CSSPropertyTransitionTimingFunction:
-        return;
-    // These properties are implemented in the StyleBuilder lookup table or in the new StyleBuilder.
-    case CSSPropertyBackgroundAttachment:
-    case CSSPropertyBackgroundClip:
-    case CSSPropertyBackgroundColor:
-    case CSSPropertyBackgroundImage:
-    case CSSPropertyBackgroundOrigin:
-    case CSSPropertyBackgroundPositionX:
-    case CSSPropertyBackgroundPositionY:
-    case CSSPropertyBackgroundRepeatX:
-    case CSSPropertyBackgroundRepeatY:
-    case CSSPropertyBackgroundSize:
-    case CSSPropertyBorderBottomColor:
-    case CSSPropertyBorderBottomLeftRadius:
-    case CSSPropertyBorderBottomRightRadius:
-    case CSSPropertyBorderBottomStyle:
-    case CSSPropertyBorderBottomWidth:
-    case CSSPropertyBorderCollapse:
-    case CSSPropertyBorderImageOutset:
-    case CSSPropertyBorderImageRepeat:
-    case CSSPropertyBorderImageSlice:
-    case CSSPropertyBorderImageSource:
-    case CSSPropertyBorderImageWidth:
-    case CSSPropertyBorderLeftColor:
-    case CSSPropertyBorderLeftStyle:
-    case CSSPropertyBorderLeftWidth:
-    case CSSPropertyBorderRightColor:
-    case CSSPropertyBorderRightStyle:
-    case CSSPropertyBorderRightWidth:
-    case CSSPropertyBorderTopColor:
-    case CSSPropertyBorderTopLeftRadius:
-    case CSSPropertyBorderTopRightRadius:
-    case CSSPropertyBorderTopStyle:
-    case CSSPropertyBorderTopWidth:
-    case CSSPropertyBottom:
-    case CSSPropertyBoxShadow:
-    case CSSPropertyBoxSizing:
-    case CSSPropertyCaptionSide:
-    case CSSPropertyClear:
-    case CSSPropertyClip:
-    case CSSPropertyColor:
-    case CSSPropertyContent:
-    case CSSPropertyCounterIncrement:
-    case CSSPropertyCounterReset:
-    case CSSPropertyCursor:
-    case CSSPropertyDirection:
-    case CSSPropertyDisplay:
-    case CSSPropertyEmptyCells:
-    case CSSPropertyFloat:
-    case CSSPropertyFontSize:
-    case CSSPropertyFontStyle:
-    case CSSPropertyFontVariant:
-    case CSSPropertyFontWeight:
-    case CSSPropertyHeight:
-#if ENABLE(CSS_IMAGE_ORIENTATION)
-    case CSSPropertyImageOrientation:
-#endif
-    case CSSPropertyImageRendering:
-#if ENABLE(CSS_IMAGE_RESOLUTION)
-    case CSSPropertyImageResolution:
-#endif
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-    case CSSPropertyWebkitTextSizeAdjust:
-#endif
-    case CSSPropertyLeft:
-    case CSSPropertyLetterSpacing:
-    case CSSPropertyLineHeight:
-    case CSSPropertyListStyleImage:
-    case CSSPropertyListStylePosition:
-    case CSSPropertyListStyleType:
-    case CSSPropertyMarginBottom:
-    case CSSPropertyMarginLeft:
-    case CSSPropertyMarginRight:
-    case CSSPropertyMarginTop:
-    case CSSPropertyMaxHeight:
-    case CSSPropertyMaxWidth:
-    case CSSPropertyMinHeight:
-    case CSSPropertyMinWidth:
-    case CSSPropertyObjectFit:
-    case CSSPropertyOpacity:
-    case CSSPropertyOrphans:
-    case CSSPropertyOutlineColor:
-    case CSSPropertyOutlineOffset:
-    case CSSPropertyOutlineStyle:
-    case CSSPropertyOutlineWidth:
-    case CSSPropertyOverflowWrap:
-    case CSSPropertyOverflowX:
-    case CSSPropertyOverflowY:
-    case CSSPropertyPaddingBottom:
-    case CSSPropertyPaddingLeft:
-    case CSSPropertyPaddingRight:
-    case CSSPropertyPaddingTop:
-    case CSSPropertyPageBreakAfter:
-    case CSSPropertyPageBreakBefore:
-    case CSSPropertyPageBreakInside:
-    case CSSPropertyPointerEvents:
-    case CSSPropertyPosition:
-    case CSSPropertyQuotes:
-    case CSSPropertyResize:
-    case CSSPropertyRight:
-    case CSSPropertySize:
-    case CSSPropertySpeak:
-    case CSSPropertyTabSize:
-    case CSSPropertyTableLayout:
-    case CSSPropertyTextAlign:
-    case CSSPropertyTextDecoration:
-    case CSSPropertyTextIndent:
-    case CSSPropertyTextOverflow:
-    case CSSPropertyTextRendering:
-    case CSSPropertyTextShadow:
-    case CSSPropertyTextTransform:
-    case CSSPropertyTop:
-    case CSSPropertyUnicodeBidi:
-    case CSSPropertyVerticalAlign:
-    case CSSPropertyVisibility:
-    case CSSPropertyWebkitAnimationDelay:
-    case CSSPropertyWebkitAnimationDirection:
-    case CSSPropertyWebkitAnimationDuration:
-    case CSSPropertyWebkitAnimationFillMode:
-    case CSSPropertyWebkitAnimationIterationCount:
-    case CSSPropertyWebkitAnimationName:
-    case CSSPropertyWebkitAnimationPlayState:
-    case CSSPropertyWebkitAnimationTimingFunction:
-    case CSSPropertyWebkitAppearance:
-    case CSSPropertyWebkitAspectRatio:
-    case CSSPropertyWebkitBackfaceVisibility:
-    case CSSPropertyWebkitBackgroundClip:
-    case CSSPropertyWebkitBackgroundComposite:
-    case CSSPropertyWebkitBackgroundOrigin:
-    case CSSPropertyWebkitBackgroundSize:
-    case CSSPropertyWebkitBorderFit:
-    case CSSPropertyWebkitBorderHorizontalSpacing:
-    case CSSPropertyWebkitBorderImage:
-    case CSSPropertyWebkitBorderVerticalSpacing:
-    case CSSPropertyWebkitBoxAlign:
-#if ENABLE(CSS_BOX_DECORATION_BREAK)
-    case CSSPropertyWebkitBoxDecorationBreak:
-#endif
-    case CSSPropertyWebkitBoxDirection:
-    case CSSPropertyWebkitBoxFlex:
-    case CSSPropertyWebkitBoxFlexGroup:
-    case CSSPropertyWebkitBoxLines:
-    case CSSPropertyWebkitBoxOrdinalGroup:
-    case CSSPropertyWebkitBoxOrient:
-    case CSSPropertyWebkitBoxPack:
-    case CSSPropertyWebkitBoxShadow:
-    case CSSPropertyWebkitBoxReflect:
-    case CSSPropertyWebkitColorCorrection:
-    case CSSPropertyWebkitColumnAxis:
-    case CSSPropertyWebkitColumnBreakAfter:
-    case CSSPropertyWebkitColumnBreakBefore:
-    case CSSPropertyWebkitColumnBreakInside:
-    case CSSPropertyWebkitJustifySelf:
-    case CSSPropertyWebkitLocale:
-    case CSSPropertyWebkitTextOrientation:
-    case CSSPropertyWebkitWritingMode:
-    case CSSPropertyColumnCount:
-    case CSSPropertyColumnGap:
-    case CSSPropertyColumnProgression:
-    case CSSPropertyColumnRuleColor:
-    case CSSPropertyColumnRuleStyle:
-    case CSSPropertyColumnRuleWidth:
-    case CSSPropertyColumnSpan:
-    case CSSPropertyColumnWidth:
-#if ENABLE(CURSOR_VISIBILITY)
-    case CSSPropertyWebkitCursorVisibility:
-#endif
-    case CSSPropertyAlignContent:
-    case CSSPropertyAlignItems:
-    case CSSPropertyAlignSelf:
-    case CSSPropertyFlexBasis:
-    case CSSPropertyFlexDirection:
-    case CSSPropertyFlexGrow:
-    case CSSPropertyFlexShrink:
-    case CSSPropertyFlexWrap:
-    case CSSPropertyJustifyContent:
-    case CSSPropertyOrder:
-#if ENABLE(CSS_REGIONS)
-    case CSSPropertyWebkitFlowFrom:
-    case CSSPropertyWebkitFlowInto:
-#endif
-    case CSSPropertyWebkitFontKerning:
-    case CSSPropertyWebkitFontSmoothing:
-    case CSSPropertyWebkitFontVariantLigatures:
-    case CSSPropertyWebkitHyphenateCharacter:
-    case CSSPropertyWebkitHyphenateLimitAfter:
-    case CSSPropertyWebkitHyphenateLimitBefore:
-    case CSSPropertyWebkitHyphenateLimitLines:
-    case CSSPropertyWebkitHyphens:
-    case CSSPropertyWebkitInitialLetter:
-    case CSSPropertyWebkitLineAlign:
-    case CSSPropertyWebkitLineBoxContain:
-    case CSSPropertyWebkitLineBreak:
-    case CSSPropertyWebkitLineClamp:
-    case CSSPropertyWebkitLineGrid:
-    case CSSPropertyWebkitLineSnap:
-    case CSSPropertyWebkitMarqueeDirection:
-    case CSSPropertyWebkitMarqueeIncrement:
-    case CSSPropertyWebkitMarqueeRepetition:
-    case CSSPropertyWebkitMarqueeSpeed:
-    case CSSPropertyWebkitMarqueeStyle:
-    case CSSPropertyWebkitMaskBoxImage:
-    case CSSPropertyWebkitMaskBoxImageOutset:
-    case CSSPropertyWebkitMaskBoxImageRepeat:
-    case CSSPropertyWebkitMaskBoxImageSlice:
-    case CSSPropertyWebkitMaskBoxImageSource:
-    case CSSPropertyWebkitMaskBoxImageWidth:
-    case CSSPropertyWebkitMaskClip:
-    case CSSPropertyWebkitMaskComposite:
-    case CSSPropertyWebkitMaskOrigin:
-    case CSSPropertyWebkitMaskPositionX:
-    case CSSPropertyWebkitMaskPositionY:
-    case CSSPropertyWebkitMaskRepeatX:
-    case CSSPropertyWebkitMaskRepeatY:
-    case CSSPropertyWebkitMaskSize:
-    case CSSPropertyWebkitMaskSourceType:
-    case CSSPropertyWebkitNbspMode:
-    case CSSPropertyWebkitPerspective:
-    case CSSPropertyWebkitPerspectiveOriginX:
-    case CSSPropertyWebkitPerspectiveOriginY:
-    case CSSPropertyWebkitPrintColorAdjust:
-#if ENABLE(CSS_REGIONS)
-    case CSSPropertyWebkitRegionBreakAfter:
-    case CSSPropertyWebkitRegionBreakBefore:
-    case CSSPropertyWebkitRegionBreakInside:
-    case CSSPropertyWebkitRegionFragment:
-#endif
-    case CSSPropertyWebkitRtlOrdering:
-    case CSSPropertyWebkitRubyPosition:
-    case CSSPropertyWebkitTextCombine:
-#if ENABLE(CSS3_TEXT)
-    case CSSPropertyWebkitTextAlignLast:
-    case CSSPropertyWebkitTextJustify:
-#endif // CSS3_TEXT
-#if ENABLE(CSS_SCROLL_SNAP)
-    case CSSPropertyWebkitScrollSnapType:
-    case CSSPropertyWebkitScrollSnapPointsX:
-    case CSSPropertyWebkitScrollSnapPointsY:
-    case CSSPropertyWebkitScrollSnapDestination:
-    case CSSPropertyWebkitScrollSnapCoordinate:
-#endif
-    case CSSPropertyWebkitTextDecorationLine:
-    case CSSPropertyWebkitTextDecorationStyle:
-    case CSSPropertyWebkitTextDecorationColor:
-    case CSSPropertyWebkitTextDecorationSkip:
-    case CSSPropertyWebkitTextUnderlinePosition:
-    case CSSPropertyWebkitTextEmphasisColor:
-    case CSSPropertyWebkitTextEmphasisPosition:
-    case CSSPropertyWebkitTextEmphasisStyle:
-    case CSSPropertyWebkitTextFillColor:
-    case CSSPropertyWebkitTextSecurity:
-    case CSSPropertyWebkitTextStrokeColor:
-    case CSSPropertyWebkitTextStrokeWidth:
-    case CSSPropertyWebkitTransformOriginX:
-    case CSSPropertyWebkitTransformOriginY:
-    case CSSPropertyWebkitTransformOriginZ:
-    case CSSPropertyWebkitTransformStyle:
-    case CSSPropertyWebkitTransitionDelay:
-    case CSSPropertyWebkitTransitionDuration:
-    case CSSPropertyWebkitTransitionProperty:
-    case CSSPropertyWebkitTransitionTimingFunction:
-    case CSSPropertyWebkitUserDrag:
-    case CSSPropertyWebkitUserModify:
-    case CSSPropertyWebkitUserSelect:
-    case CSSPropertyWebkitClipPath:
-#if ENABLE(CSS_SHAPES)
-    case CSSPropertyWebkitShapeMargin:
-    case CSSPropertyWebkitShapeImageThreshold:
-    case CSSPropertyWebkitShapeOutside:
-#endif
-    case CSSPropertyWhiteSpace:
-    case CSSPropertyWidows:
-    case CSSPropertyWidth:
-    case CSSPropertyWordBreak:
-    case CSSPropertyWordSpacing:
-    case CSSPropertyWordWrap:
-    case CSSPropertyZIndex:
-    case CSSPropertyZoom:
-#if ENABLE(CSS_DEVICE_ADAPTATION)
-    case CSSPropertyMaxZoom:
-    case CSSPropertyMinZoom:
-    case CSSPropertyOrientation:
-    case CSSPropertyUserZoom:
-#endif
-#if ENABLE(CSS_GRID_LAYOUT)
-    case CSSPropertyWebkitGridAutoColumns:
-    case CSSPropertyWebkitGridAutoRows:
-    case CSSPropertyWebkitGridTemplateColumns:
-    case CSSPropertyWebkitGridTemplateRows:
-    case CSSPropertyWebkitGridColumnStart:
-    case CSSPropertyWebkitGridColumnEnd:
-    case CSSPropertyWebkitGridRowStart:
-    case CSSPropertyWebkitGridRowEnd:
-    case CSSPropertyWebkitGridTemplateAreas:
-    case CSSPropertyWebkitGridAutoFlow:
-#endif // ENABLE(CSS_GRID_LAYOUT)
-    case CSSPropertyWebkitFilter:
-#if ENABLE(FILTERS_LEVEL_2)
-    case CSSPropertyWebkitBackdropFilter:
-#endif
-    case CSSPropertyAlt:
-        ASSERT_NOT_REACHED();
-        return;
-    default:
-        // Try the SVG properties
-        applySVGProperty(id, value);
-        return;
-    }
+    // Use the generated StyleBuilder.
+    StyleBuilder::applyProperty(id, *this, *value, isInitial, isInherit);
 }
 
 PassRefPtr<StyleImage> StyleResolver::styleImage(CSSPropertyID property, CSSValue& value)
@@ -2718,9 +2169,9 @@ static Color colorForCSSValue(CSSValueID cssValueId)
     return RenderTheme::defaultTheme()->systemColor(cssValueId);
 }
 
-bool StyleResolver::colorFromPrimitiveValueIsDerivedFromElement(CSSPrimitiveValue* value)
+bool StyleResolver::colorFromPrimitiveValueIsDerivedFromElement(CSSPrimitiveValue& value)
 {
-    int ident = value->getValueID();
+    int ident = value.getValueID();
     switch (ident) {
     case CSSValueWebkitText:
     case CSSValueWebkitLink:
@@ -2732,13 +2183,13 @@ bool StyleResolver::colorFromPrimitiveValueIsDerivedFromElement(CSSPrimitiveValu
     }
 }
 
-Color StyleResolver::colorFromPrimitiveValue(CSSPrimitiveValue* value, bool forVisitedLink) const
+Color StyleResolver::colorFromPrimitiveValue(CSSPrimitiveValue& value, bool forVisitedLink) const
 {
-    if (value->isRGBColor())
-        return Color(value->getRGBA32Value());
+    if (value.isRGBColor())
+        return Color(value.getRGBA32Value());
 
     const State& state = m_state;
-    CSSValueID ident = value->getValueID();
+    CSSValueID ident = value.getValueID();
     switch (ident) {
     case 0:
         return Color();
@@ -2957,7 +2408,7 @@ bool StyleResolver::createFilterOperations(CSSValue& inValue, FilterOperations& 
             int blur = item.blur ? item.blur->computeLength<int>(state.cssToLengthConversionData()) : 0;
             Color color;
             if (item.color)
-                color = colorFromPrimitiveValue(item.color.get());
+                color = colorFromPrimitiveValue(*item.color);
 
             operations.operations().append(DropShadowFilterOperation::create(location, blur, color.isValid() ? color : Color::transparent));
             break;

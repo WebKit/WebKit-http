@@ -29,10 +29,14 @@
 #if PLATFORM(IOS)
 
 #import "APIUIClient.h"
+#import "DataDetectorsUISPI.h"
 #import "EditingRange.h"
+#import "ManagedConfigurationSPI.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
 #import "SmartMagnificationController.h"
+#import "TextInputSPI.h"
+#import "UIKitSPI.h"
 #import "WKActionSheetAssistant.h"
 #import "WKFormInputControl.h"
 #import "WKFormSelectControl.h"
@@ -46,36 +50,17 @@
 #import "WebProcessProxy.h"
 #import "_WKFormDelegate.h"
 #import "_WKFormInputSession.h"
+#import <CoreText/CTFont.h>
 #import <CoreText/CTFontDescriptor.h>
-#import <DataDetectorsUI/DDDetectionController.h>
-#import <ManagedConfiguration/MCFeatures.h>
-#import <ManagedConfiguration/MCProfileConnection.h>
-#import <TextInput/TI_NSStringExtras.h>
-#import <UIKit/UIApplication_Private.h>
-#import <UIKit/UIFont_Private.h>
-#import <UIKit/UIGestureRecognizer_Private.h>
-#import <UIKit/UIKeyboardImpl.h>
-#import <UIKit/UIKeyboardIntl.h>
-#import <UIKit/UILongPressGestureRecognizer_Private.h>
-#import <UIKit/UITapGestureRecognizer_Private.h>
-#import <UIKit/UITextInteractionAssistant_Private.h>
-#import <UIKit/UIWebDocumentView.h> // FIXME: should not include this header.
-#import <UIKit/_UIWebHighlightLongPressGestureRecognizer.h>
+#import <MobileCoreServices/UTCoreTypes.h>
 #import <WebCore/Color.h>
+#import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/FloatQuad.h>
+#import <WebCore/Pasteboard.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/WebEvent.h>
-#import <WebCore/_UIHighlightViewSPI.h>
 #import <WebKit/WebSelectionRect.h> // FIXME: WK2 should not include WebKit headers!
 #import <wtf/RetainPtr.h>
-
-SOFT_LINK_PRIVATE_FRAMEWORK(DataDetectorsUI)
-SOFT_LINK_CLASS(DataDetectorsUI, DDDetectionController)
-SOFT_LINK_PRIVATE_FRAMEWORK(ManagedConfiguration);
-SOFT_LINK_CLASS(ManagedConfiguration, MCProfileConnection);
-SOFT_LINK_CONSTANT(ManagedConfiguration, MCFeatureDefinitionLookupAllowed, NSString *)
-
-#define MCFeatureDefinitionLookupAllowed getMCFeatureDefinitionLookupAllowed()
 
 using namespace WebCore;
 using namespace WebKit;
@@ -1203,13 +1188,11 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     static NSMutableArray *plainTextTypes = nil;
     if (!plainTextTypes) {
         plainTextTypes = [[NSMutableArray alloc] init];
-        // FIXME: should add [plainTextTypes addObject:(id)kUTTypeURL];
-        // when we figure out how to share this type between WebCore and WebKit2
+        [plainTextTypes addObject:(id)kUTTypeURL];
         [plainTextTypes addObjectsFromArray:UIPasteboardTypeListString];
 
         richTypes = [[NSMutableArray alloc] init];
-        // FIXME: should add [richTypes addObject:(PasteboardTypes::WebArchivePboardType)];
-        // when we figure out how to share this type between WebCore and WebKit2
+        [richTypes addObject:WebArchivePboardType];
         [richTypes addObjectsFromArray:UIPasteboardTypeListImage];
         [richTypes addObjectsFromArray:plainTextTypes];
     }

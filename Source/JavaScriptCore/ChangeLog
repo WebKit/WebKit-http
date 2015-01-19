@@ -1,3 +1,983 @@
+2015-01-14  Michael Saboff  <msaboff@apple.com>
+
+        JavaScript identifier incorrectly parsed if the prefix before an escape sequence is a keyword
+        https://bugs.webkit.org/show_bug.cgi?id=140420
+
+        Reviewed by Oliver Hunt.
+
+        Added new function isIdentPartIncludingEscape() that performs the original
+        isIdentPart() followed by a check for a valid unicode escape.  If there is a 
+        unicode escape, its resolved value is checked with isIdentPart().
+
+        * KeywordLookupGenerator.py:
+        (Trie.printSubTreeAsC):
+        (Trie.printAsC):
+        * parser/Lexer.cpp:
+        (JSC::isUnicodeEscapeIdentPart):
+        (JSC::isIdentPartIncludingEscape):
+
+2015-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused ResizeImage and DecodeImageData timeline events
+        https://bugs.webkit.org/show_bug.cgi?id=140404
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Timeline.json:
+
+2015-01-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        DFG can call PutByValDirect for generic arrays
+        https://bugs.webkit.org/show_bug.cgi?id=140389
+
+        Reviewed by Geoffrey Garen.
+
+        Computed properties in object initializers (ES6) use the put_by_val_direct operation.
+        However, current DFG asserts that put_by_val_direct is not used for the generic array,
+        the assertion failure is raised.
+        This patch allow DFG to use put_by_val_direct to generic arrays.
+
+        And fix the DFG put_by_val_direct implementation for string properties.
+        At first, put_by_val_direct is inteded to be used for spread elements.
+        So the property keys were limited to numbers (indexes).
+        But now, it's also used for computed properties in object initializers.
+
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::operationPutByValInternal):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2015-01-13  Geoffrey Garen  <ggaren@apple.com>
+
+        Out of bounds access in BytecodeGenerator::emitGetById under DotAccessorNode::emitBytecode
+        https://bugs.webkit.org/show_bug.cgi?id=140397
+
+        Reviewed by Geoffrey Garen.
+
+        Patch by Alexey Proskuryakov.
+
+        Reviewed, performance tested, and ChangeLogged by Geoffrey Garen.
+
+        No performance change.
+
+        No test, since this is a small past-the-end read, which is very
+        difficult to turn into a reproducible failing test -- and existing tests
+        crash reliably using ASan.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BracketAccessorNode::emitBytecode):
+        (JSC::DotAccessorNode::emitBytecode):
+        (JSC::FunctionCallBracketNode::emitBytecode):
+        (JSC::PostfixNode::emitResolve):
+        (JSC::DeleteBracketNode::emitBytecode):
+        (JSC::DeleteDotNode::emitBytecode):
+        (JSC::PrefixNode::emitResolve):
+        (JSC::UnaryOpNode::emitBytecode):
+        (JSC::BitwiseNotNode::emitBytecode):
+        (JSC::BinaryOpNode::emitBytecode):
+        (JSC::EqualNode::emitBytecode):
+        (JSC::StrictEqualNode::emitBytecode):
+        (JSC::ThrowableBinaryOpNode::emitBytecode):
+        (JSC::AssignDotNode::emitBytecode):
+        (JSC::AssignBracketNode::emitBytecode): Use RefPtr in more places. Any
+        register used across a call to a function that might allocate a new
+        temporary register must be held in a RefPtr.
+
+2015-01-12  Michael Saboff  <msaboff@apple.com>
+
+        Local JSArray* "keys" in objectConstructorKeys() is not marked during garbage collection
+        https://bugs.webkit.org/show_bug.cgi?id=140348
+
+        Reviewed by Mark Lam.
+
+        We used to read registers in MachineThreads::gatherFromCurrentThread(), but that is too late
+        because those registers may have been spilled on the stack and replaced with other values by
+        the time we call down to gatherFromCurrentThread().
+
+        Now we get the register contents at the same place that we demarcate the current top of
+        stack using the address of a local variable, in Heap::markRoots().  The register contents
+        buffer is passed along with the demarcation pointer.  These need to be done at this level 
+        in the call tree and no lower, as markRoots() calls various functions that visit object
+        pointers that may be latter proven dead.  Any of those pointers that are left on the
+        stack or in registers could be incorrectly marked as live if we scan the stack contents
+        from a called function or one of its callees.  The stack demarcation pointer and register
+        saving need to be done in the same function so that we have a consistent stack, active
+        and spilled registers.
+
+        Because we don't want to make unnecessary calls to get the register contents, we use
+        a macro to allocated, and possibly align, the register structure and get the actual
+        register contents.
+
+
+        * heap/Heap.cpp:
+        (JSC::Heap::markRoots):
+        (JSC::Heap::gatherStackRoots):
+        * heap/Heap.h:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::gatherFromCurrentThread):
+        (JSC::MachineThreads::gatherConservativeRoots):
+        * heap/MachineStackMarker.h:
+
+2015-01-12  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add basic pattern matching support to the url filters
+        https://bugs.webkit.org/show_bug.cgi?id=140283
+
+        Reviewed by Andreas Kling.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Make YarrParser.h private in order to use it from WebCore.
+
+2015-01-12  Geoffrey Garen  <ggaren@apple.com>
+
+        Out of bounds read in IdentifierArena::makeIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=140376
+
+        Patch by Alexey Proskuryakov.
+
+        Reviewed and ChangeLogged by Geoffrey Garen.
+
+        No test, since this is a small past-the-end read, which is very
+        difficult to turn into a reproducible failing test -- and existing tests
+        crash reliably using ASan.
+
+        * parser/ParserArena.h:
+        (JSC::IdentifierArena::makeIdentifier):
+        (JSC::IdentifierArena::makeIdentifierLCharFromUChar): Check for a
+        zero-length string input, like we do in the literal parser, since it is
+        not valid to dereference characters in a zero-length string.
+
+        A zero-length string is allowed in JavaScript -- for example, "".
+
+2015-01-11  Sam Weinig  <sam@webkit.org>
+
+        Remove support for SharedWorkers
+        https://bugs.webkit.org/show_bug.cgi?id=140344
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-01-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Allow targetting the SVG->OTF font converter with ENABLE(SVG_OTF_CONVERTER)
+        https://bugs.webkit.org/show_bug.cgi?id=136769
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-01-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178266.
+        https://bugs.webkit.org/show_bug.cgi?id=140363
+
+        Broke a JSC test (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Local JSArray* "keys" in objectConstructorKeys() is not
+        marked during garbage collection"
+        https://bugs.webkit.org/show_bug.cgi?id=140348
+        http://trac.webkit.org/changeset/178266
+
+2015-01-12  Michael Saboff  <msaboff@apple.com>
+
+        Local JSArray* "keys" in objectConstructorKeys() is not marked during garbage collection
+        https://bugs.webkit.org/show_bug.cgi?id=140348
+
+        Reviewed by Mark Lam.
+
+        Move the address of the local variable that is used to demarcate the top of the stack for 
+        conservative roots down to MachineThreads::gatherFromCurrentThread() since it also gets
+        the register values using setjmp().  That way we don't lose any callee save register
+        contents between Heap::markRoots(), where it was set, and gatherFromCurrentThread().
+        If we lose any JSObject* that are only in callee save registers, they will be GC'ed
+        erroneously.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::markRoots):
+        (JSC::Heap::gatherStackRoots):
+        * heap/Heap.h:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::gatherFromCurrentThread):
+        (JSC::MachineThreads::gatherConservativeRoots):
+        * heap/MachineStackMarker.h:
+
+2015-01-11  Eric Carlson  <eric.carlson@apple.com>
+
+        Fix typo in testate.c error messages
+        https://bugs.webkit.org/show_bug.cgi?id=140305
+
+        Reviewed by Geoffrey Garen.
+
+        * API/tests/testapi.c:
+        (main): "... script did not timed out ..." -> "... script did not time out ..."
+
+2015-01-09  Michael Saboff  <msaboff@apple.com>
+
+        Breakpoint doesn't fire in this HTML5 game
+        https://bugs.webkit.org/show_bug.cgi?id=140269
+
+        Reviewed by Mark Lam.
+
+        When parsing a single line cached function, use the lineStartOffset of the
+        location where we found the cached function instead of the cached lineStartOffset.
+        The cache location's lineStartOffset has not been adjusted for any possible
+        containing functions.
+
+        This change is not needed for multi-line cached functions.  Consider the
+        single line source:
+
+        function outer(){function inner1(){doStuff();}; (function inner2() {doMoreStuff()})()}
+
+        The first parser pass, we parse and cache inner1() and inner2() with a lineStartOffset
+        of 0.  Later when we parse outer() and find inner1() in the cache, SourceCode start
+        character is at outer()'s outermost open brace.  That is what we should use for
+        lineStartOffset for inner1().  When done parsing inner1() we set the parsing token
+        to the saved location for inner1(), including the lineStartOffset of 0.  We need
+        to use the value of lineStartOffset before we started parsing inner1().  That is
+        what the fix does.  When we parse inner2() the lineStartOffset will be correct.
+
+        For a multi-line function, the close brace is guaranteed to be on a different line
+        than the open brace.  Hence, its lineStartOffset will not change with the change of
+        the SourceCode start character
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+
+2015-01-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exception in ProbeManager deleting breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=140279
+        rdar://problem/19422299
+
+        Reviewed by Oliver Hunt.
+
+        * runtime/MapData.cpp:
+        (JSC::MapData::replaceAndPackBackingStore):
+        The cell table also needs to have its values fixed.
+
+2015-01-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove or use TimelineAgent Resource related event types
+        https://bugs.webkit.org/show_bug.cgi?id=140155
+
+        Reviewed by Timothy Hatcher.
+
+        Remove unused / stale Timeline event types.
+
+        * inspector/protocol/Timeline.json:
+
+2015-01-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r177925): It broke the !ENABLE(INSPECTOR) build
+        https://bugs.webkit.org/show_bug.cgi?id=140098
+
+        Reviewed by Brian Burg.
+
+        * inspector/InspectorBackendDispatcher.h: Missing ENABLE(INSPECTOR) guard added.
+
+2015-01-08  Mark Lam  <mark.lam@apple.com>
+
+        Argument object created by "Function dot arguments" should use a clone of the argument values.
+        <https://webkit.org/b/140093>
+
+        Reviewed by Geoffrey Garen.
+
+        After the change in <https://webkit.org/b/139827>, the dfg-tear-off-arguments-not-activation.js
+        test will crash.  The relevant code which manifests the issue is as follows:
+
+            function bar() {
+                return foo.arguments;
+            }
+
+            function foo(p) {
+                var x = 42;
+                if (p)
+                    return (function() { return x; });
+                else
+                    return bar();
+            }
+
+        In this case, foo() has no knowledge of bar() needing its LexicalEnvironment and
+        has dead code eliminated the SetLocal that stores it into its designated local.
+        In bar(), the factory for the Arguments object (for creating foo.arguments) tries
+        to read foo's LexicalEnvironment from its designated lexicalEnvironment local,
+        but instead, finds it to be uninitialized.  This results in a null pointer access
+        which causes a crash.
+
+        This can be resolved by having bar() instantiate a clone of the Arguments object
+        instead, and populate its elements with values fetched directly from foo's frame.
+        There's no need to reference foo's LexicalEnvironment (whether present or not).
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::createArguments):
+        * runtime/Arguments.h:
+        (JSC::Arguments::finishCreation):
+
+2015-01-08  Mark Lam  <mark.lam@apple.com>
+
+        Make the LLINT and Baseline JIT's op_create_arguments and op_get_argument_by_val use their lexicalEnvironment operand.
+        <https://webkit.org/b/140236>
+
+        Reviewed by Geoffrey Garen.
+
+        Will change the DFG to use the operand on a subsequent pass.  For now,
+        the DFG uses a temporary thunk (operationCreateArgumentsForDFG()) to
+        retain the old behavior of getting the lexicalEnviroment from the
+        ExecState.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitGetArgumentByVal):
+        (JSC::BytecodeGenerator::createArgumentsIfNecessary):
+        - When the lexicalEnvironment is not available, pass the invalid VirtualRegister
+          instead of an empty JSValue as the lexicalEnvironment operand.
+
+        * dfg/DFGOperations.cpp:
+        - Use the lexicalEnvironment from the ExecState for now.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        - Use the operationCreateArgumentsForDFG() thunk for now.
+
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::lexicalEnvironmentOrNullptr):
+        * interpreter/CallFrame.h:
+        - Added this convenience function to return either the
+          lexicalEnvironment or a nullptr so that we don't need to do a
+          conditional check on codeBlock->needsActivation() at multiple sites.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::createArguments):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_create_arguments):
+        (JSC::JIT::emitSlow_op_get_argument_by_val):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_create_arguments):
+        (JSC::JIT::emitSlow_op_get_argument_by_val):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/Arguments.h:
+        (JSC::Arguments::create):
+        (JSC::Arguments::finishCreation):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::argumentsGetter):
+
+2015-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pause Reason Improvements (Breakpoint, Debugger Statement, Pause on Next Statement)
+        https://bugs.webkit.org/show_bug.cgi?id=138991
+
+        Reviewed by Timothy Hatcher.
+
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::Debugger):
+        (JSC::Debugger::pauseIfNeeded):
+        (JSC::Debugger::didReachBreakpoint):
+        When actually pausing, if we hit a breakpoint ensure the reason
+        is PausedForBreakpoint, otherwise use the current reason.
+
+        * debugger/Debugger.h:
+        Make pause reason and pausing breakpoint ID public.
+
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::buildAssertPauseReason):
+        (Inspector::buildCSPViolationPauseReason):
+        (Inspector::InspectorDebuggerAgent::buildBreakpointPauseReason):
+        (Inspector::InspectorDebuggerAgent::buildExceptionPauseReason):
+        (Inspector::InspectorDebuggerAgent::handleConsoleAssert):
+        (Inspector::buildObjectForBreakpointCookie):
+        (Inspector::InspectorDebuggerAgent::setBreakpointByUrl):
+        (Inspector::InspectorDebuggerAgent::removeBreakpoint):
+        (Inspector::InspectorDebuggerAgent::resolveBreakpoint):
+        (Inspector::InspectorDebuggerAgent::pause):
+        (Inspector::InspectorDebuggerAgent::scriptExecutionBlockedByCSP):
+        (Inspector::InspectorDebuggerAgent::currentCallFrames):
+        (Inspector::InspectorDebuggerAgent::clearDebuggerBreakpointState):
+        Clean up creation of pause reason objects and other cleanup
+        of PassRefPtr use and InjectedScript use.
+
+        (Inspector::InspectorDebuggerAgent::didPause):
+        Clean up so that we first check for an Exception, and then fall
+        back to including a Pause Reason derived from the Debugger.
+
+        * inspector/protocol/Debugger.json:
+        Add new DebuggerStatement, Breakpoint, and PauseOnNextStatement reasons.
+
+2015-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Type check NSArray's in ObjC Interfaces have the right object types
+        https://bugs.webkit.org/show_bug.cgi?id=140209
+
+        Reviewed by Timothy Hatcher.
+
+        Check the types of objects in NSArrays for all interfaces (commands, events, types)
+        when the user can set an array of objects. Previously we were only type checking
+        they were RWIJSONObjects, now we add an explicit check for the exact object type.
+
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py:
+        (ObjCConfigurationImplementationGenerator._generate_success_block_for_command):
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py:
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event):
+        * inspector/scripts/codegen/generate_objc_protocol_types_implementation.py:
+        (ObjCProtocolTypesImplementationGenerator._generate_init_method_for_required_members):
+        (ObjCProtocolTypesImplementationGenerator._generate_setter_for_member):
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.objc_class_for_array_type):
+        (ObjCGenerator):
+
+2015-01-07  Mark Lam  <mark.lam@apple.com>
+
+        Add the lexicalEnvironment as an operand to op_get_argument_by_val.
+        <https://webkit.org/b/140233>
+
+        Reviewed by Filip Pizlo.
+
+        This patch only adds the operand to the bytecode.  It is not in use yet.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitGetArgumentByVal):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2015-01-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Investigate the character type of repeated string instead of checking is8Bit flag
+        https://bugs.webkit.org/show_bug.cgi?id=140139
+
+        Reviewed by Darin Adler.
+
+        Instead of checking is8Bit flag of the repeated string, investigate
+        the actual value of the repeated character since i8Bit flag give a false negative case.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::repeatCharacter):
+        (JSC::stringProtoFuncRepeat):
+        (JSC::repeatSmallString): Deleted.
+
+2015-01-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ObjC Generate types from the GenericTypes domain
+        https://bugs.webkit.org/show_bug.cgi?id=140229
+
+        Reviewed by Timothy Hatcher.
+
+        Generate types from the GenericTypes domain, as they are expected
+        by other domains (like Page domain). Also, don't include the @protocol
+        forward declaration for a domain if it doesn't have any commands.
+
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_header.py:
+        (ObjCBackendDispatcherHeaderGenerator._generate_objc_forward_declarations):
+        (ObjCBackendDispatcherHeaderGenerator): Deleted.
+        (ObjCBackendDispatcherHeaderGenerator._generate_objc_forward_declarations_for_domains): Deleted.
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator):
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2015-01-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unnecessary copyRef for paramsObject in generated dispatchers
+        https://bugs.webkit.org/show_bug.cgi?id=140228
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py:
+        (CppFrontendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_event):
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py:
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event_out_parameters):
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+
+2015-01-07  Saam Barati  <saambarati1@gmail.com>
+
+        interpret op_profile_type in the LLInt instead of unconditionally calling into the slow path
+        https://bugs.webkit.org/show_bug.cgi?id=140165
+
+        Reviewed by Michael Saboff.
+
+        Inlining the functionality of TypeProfilerLog::recordTypeInformationForLocation
+        into the LLInt speeds up type profiling.
+
+        * llint/LLIntOffsetsExtractor.cpp:
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        * runtime/TypeProfilerLog.h:
+        (JSC::TypeProfilerLog::recordTypeInformationForLocation): Deleted.
+
+2015-01-07  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: purge PassRefPtr from Inspector code and use Ref for typed and untyped protocol objects
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+
+        Reviewed by Andreas Kling.
+
+        This patch replaces uses of PassRefPtr with uses of RefPtr&& and WTF::move() in code
+        related to Web Inspector. It also converts many uses of RefPtr to Ref where
+        references are always non-null. These two refactorings have been combined since
+        they tend to require similar changes to the code.
+
+        Creation methods for subclasses of InspectorValue now return a Ref, and callsites
+        have been updated to take a Ref instead of RefPtr.
+
+        Builders for typed protocol objects now return a Ref. Since there is no implicit
+        call to operator&, callsites now must explicitly call .release() to convert a
+        builder object into the corresponding protocol object once required fields are set.
+        Update callsites and use auto to eliminate repetition of longwinded protocol types.
+
+        Tests for inspector protocol and replay inputs have been rebaselined.
+
+        * bindings/ScriptValue.cpp:
+        (Deprecated::jsToInspectorValue):
+        (Deprecated::ScriptValue::toInspectorValue):
+        * bindings/ScriptValue.h:
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::ConsoleMessage::addToFrontend):
+        * inspector/ContentSearchUtilities.cpp:
+        (Inspector::ContentSearchUtilities::buildObjectForSearchMatch):
+        (Inspector::ContentSearchUtilities::searchInTextByLines):
+        * inspector/ContentSearchUtilities.h:
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::getFunctionDetails):
+        (Inspector::InjectedScript::getProperties):
+        (Inspector::InjectedScript::getInternalProperties):
+        (Inspector::InjectedScript::wrapCallFrames):
+        (Inspector::InjectedScript::wrapObject):
+        (Inspector::InjectedScript::wrapTable):
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeEvalCall): Split the early exits.
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::InspectorBackendDispatcher::CallbackBase::CallbackBase):
+        (Inspector::InspectorBackendDispatcher::CallbackBase::sendIfActive):
+        (Inspector::InspectorBackendDispatcher::create):
+        (Inspector::InspectorBackendDispatcher::dispatch):
+        (Inspector::InspectorBackendDispatcher::sendResponse):
+        (Inspector::InspectorBackendDispatcher::reportProtocolError):
+        (Inspector::getPropertyValue): Add a comment to clarify what this clever code does.
+        (Inspector::InspectorBackendDispatcher::getInteger):
+        (Inspector::InspectorBackendDispatcher::getDouble):
+        (Inspector::InspectorBackendDispatcher::getString):
+        (Inspector::InspectorBackendDispatcher::getBoolean):
+        (Inspector::InspectorBackendDispatcher::getObject):
+        (Inspector::InspectorBackendDispatcher::getArray):
+        (Inspector::InspectorBackendDispatcher::getValue):
+        * inspector/InspectorBackendDispatcher.h: Use a typed protocol object to collect
+        protocol error strings.
+        (Inspector::InspectorSupplementalBackendDispatcher::InspectorSupplementalBackendDispatcher):
+        Convert the supplemental dispatcher's reference to Ref since it is never null.
+        * inspector/InspectorEnvironment.h:
+        * inspector/InspectorProtocolTypes.h: Get rid of ArrayItemHelper and
+        StructItemTraits. Add more versions of addItem to handle pushing various types.
+        (Inspector::Protocol::Array::openAccessors):
+        (Inspector::Protocol::Array::addItem):
+        (Inspector::Protocol::Array::create):
+        (Inspector::Protocol::StructItemTraits::push):
+        (Inspector::Protocol::BindingTraits<Protocol::Array<T>>::runtimeCast): Assert argument.
+        (Inspector::Protocol::StructItemTraits::pushRefPtr): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<String>::Traits::pushRaw): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<int>::Traits::pushRaw): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<double>::Traits::pushRaw): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<bool>::Traits::pushRaw): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<InspectorValue>::Traits::pushRefPtr): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<InspectorObject>::Traits::pushRefPtr): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<InspectorArray>::Traits::pushRefPtr): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<Protocol::Array<T>>::Traits::pushRefPtr): Deleted.
+        * inspector/InspectorValues.cpp: Straighten out getArray and getObject to have
+        the same call signature as other getters. Use Ref where possible.
+        (Inspector::InspectorObjectBase::getBoolean):
+        (Inspector::InspectorObjectBase::getString):
+        (Inspector::InspectorObjectBase::getObject):
+        (Inspector::InspectorObjectBase::getArray):
+        (Inspector::InspectorObjectBase::getValue):
+        (Inspector::InspectorObjectBase::writeJSON):
+        (Inspector::InspectorArrayBase::get):
+        (Inspector::InspectorObject::create):
+        (Inspector::InspectorArray::create):
+        (Inspector::InspectorValue::null):
+        (Inspector::InspectorString::create):
+        (Inspector::InspectorBasicValue::create):
+        (Inspector::InspectorObjectBase::get): Deleted.
+        * inspector/InspectorValues.h:
+        (Inspector::InspectorObjectBase::setValue):
+        (Inspector::InspectorObjectBase::setObject):
+        (Inspector::InspectorObjectBase::setArray):
+        (Inspector::InspectorArrayBase::pushValue):
+        (Inspector::InspectorArrayBase::pushObject):
+        (Inspector::InspectorArrayBase::pushArray):
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::messageWithTypeAndLevel):
+        (Inspector::JSGlobalObjectConsoleClient::count):
+        (Inspector::JSGlobalObjectConsoleClient::timeEnd):
+        (Inspector::JSGlobalObjectConsoleClient::timeStamp):
+        * inspector/JSGlobalObjectConsoleClient.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::executionStopwatch):
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/ScriptCallFrame.cpp:
+        (Inspector::ScriptCallFrame::buildInspectorObject):
+        * inspector/ScriptCallFrame.h:
+        * inspector/ScriptCallStack.cpp:
+        (Inspector::ScriptCallStack::create):
+        (Inspector::ScriptCallStack::buildInspectorArray):
+        * inspector/ScriptCallStack.h:
+        * inspector/agents/InspectorAgent.cpp:
+        (Inspector::InspectorAgent::enable):
+        (Inspector::InspectorAgent::inspect):
+        (Inspector::InspectorAgent::activateExtraDomain):
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::handleConsoleAssert):
+        (Inspector::buildObjectForBreakpointCookie):
+        (Inspector::InspectorDebuggerAgent::setBreakpointByUrl):
+        (Inspector::InspectorDebuggerAgent::setBreakpoint):
+        (Inspector::InspectorDebuggerAgent::continueToLocation):
+        (Inspector::InspectorDebuggerAgent::resolveBreakpoint):
+        (Inspector::InspectorDebuggerAgent::schedulePauseOnNextStatement):
+        (Inspector::InspectorDebuggerAgent::scriptExecutionBlockedByCSP):
+        (Inspector::InspectorDebuggerAgent::currentCallFrames):
+        (Inspector::InspectorDebuggerAgent::didParseSource):
+        (Inspector::InspectorDebuggerAgent::breakpointActionProbe):
+        (Inspector::InspectorDebuggerAgent::breakProgram):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::buildErrorRangeObject):
+        (Inspector::InspectorRuntimeAgent::callFunctionOn):
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        (Inspector::InspectorRuntimeAgent::getBasicBlocks):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/scripts/codegen/cpp_generator.py:
+        (CppGenerator.cpp_type_for_unchecked_formal_in_parameter):
+        (CppGenerator.cpp_type_for_type_with_name):
+        (CppGenerator.cpp_type_for_formal_async_parameter):
+        (CppGenerator.should_use_references_for_type):
+        (CppGenerator):
+        * inspector/scripts/codegen/cpp_generator_templates.py:
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator.generate_output):
+        (CppBackendDispatcherHeaderGenerator._generate_async_handler_declaration_for_command):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator._generate_small_dispatcher_switch_implementation_for_domain):
+        (CppBackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_header.py:
+        (CppFrontendDispatcherHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py:
+        (CppFrontendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_event):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator.generate_output):
+        (_generate_class_for_object_declaration):
+        (_generate_unchecked_setter_for_member):
+        (_generate_forward_declarations_for_binding_traits):
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py:
+        (ObjCConfigurationImplementationGenerator._generate_success_block_for_command):
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py:
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event):
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event_out_parameters):
+        * inspector/scripts/codegen/generate_objc_protocol_types_implementation.py:
+        (ObjCProtocolTypesImplementationGenerator.generate_output):
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        * replay/EncodedValue.cpp:
+        (JSC::EncodedValue::asObject):
+        (JSC::EncodedValue::asArray):
+        (JSC::EncodedValue::put<EncodedValue>):
+        (JSC::EncodedValue::append<EncodedValue>):
+        (JSC::EncodedValue::get<EncodedValue>):
+        * replay/EncodedValue.h:
+        * replay/scripts/CodeGeneratorReplayInputs.py:
+        (Type.borrow_type):
+        (Type.argument_type):
+        (Generator.generate_member_move_expression):
+        * runtime/ConsoleClient.cpp:
+        (JSC::ConsoleClient::printConsoleMessageWithArguments):
+        (JSC::ConsoleClient::internalMessageWithTypeAndLevel):
+        (JSC::ConsoleClient::logWithLevel):
+        (JSC::ConsoleClient::clear):
+        (JSC::ConsoleClient::dir):
+        (JSC::ConsoleClient::dirXML):
+        (JSC::ConsoleClient::table):
+        (JSC::ConsoleClient::trace):
+        (JSC::ConsoleClient::assertCondition):
+        (JSC::ConsoleClient::group):
+        (JSC::ConsoleClient::groupCollapsed):
+        (JSC::ConsoleClient::groupEnd):
+        * runtime/ConsoleClient.h:
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::allStructureRepresentations):
+        (JSC::TypeSet::inspectorTypeSet):
+        (JSC::StructureShape::inspectorRepresentation):
+        * runtime/TypeSet.h:
+
+2015-01-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178039.
+        https://bugs.webkit.org/show_bug.cgi?id=140187
+
+        Breaks ObjC Inspector Protocol (Requested by JoePeck on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: purge PassRefPtr from Inspector code and use
+        Ref for typed and untyped protocol objects"
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+        http://trac.webkit.org/changeset/178039
+
+2015-01-06  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: purge PassRefPtr from Inspector code and use Ref for typed and untyped protocol objects
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+
+        Reviewed by Andreas Kling.
+
+        This patch replaces uses of PassRefPtr with uses of RefPtr&& and WTF::move() in code
+        related to Web Inspector. It also converts many uses of RefPtr to Ref where
+        references are always non-null. These two refactorings have been combined since
+        they tend to require similar changes to the code.
+
+        Creation methods for subclasses of InspectorValue now return a Ref, and callsites
+        have been updated to take a Ref instead of RefPtr.
+
+        Builders for typed protocol objects now return a Ref. Since there is no implicit
+        call to operator&, callsites now must explicitly call .release() to convert a
+        builder object into the corresponding protocol object once required fields are set.
+        Update callsites and use auto to eliminate repetition of longwinded protocol types.
+
+        Tests for inspector protocol and replay inputs have been rebaselined.
+
+        * bindings/ScriptValue.cpp:
+        (Deprecated::jsToInspectorValue):
+        (Deprecated::ScriptValue::toInspectorValue):
+        * bindings/ScriptValue.h:
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::ConsoleMessage::addToFrontend):
+        * inspector/ContentSearchUtilities.cpp:
+        (Inspector::ContentSearchUtilities::buildObjectForSearchMatch):
+        (Inspector::ContentSearchUtilities::searchInTextByLines):
+        * inspector/ContentSearchUtilities.h:
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::getFunctionDetails):
+        (Inspector::InjectedScript::getProperties):
+        (Inspector::InjectedScript::getInternalProperties):
+        (Inspector::InjectedScript::wrapCallFrames):
+        (Inspector::InjectedScript::wrapObject):
+        (Inspector::InjectedScript::wrapTable):
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeEvalCall): Split the early exits.
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::InspectorBackendDispatcher::CallbackBase::CallbackBase):
+        (Inspector::InspectorBackendDispatcher::CallbackBase::sendIfActive):
+        (Inspector::InspectorBackendDispatcher::create):
+        (Inspector::InspectorBackendDispatcher::dispatch):
+        (Inspector::InspectorBackendDispatcher::sendResponse):
+        (Inspector::InspectorBackendDispatcher::reportProtocolError):
+        (Inspector::getPropertyValue): Add a comment to clarify what this clever code does.
+        (Inspector::InspectorBackendDispatcher::getInteger):
+        (Inspector::InspectorBackendDispatcher::getDouble):
+        (Inspector::InspectorBackendDispatcher::getString):
+        (Inspector::InspectorBackendDispatcher::getBoolean):
+        (Inspector::InspectorBackendDispatcher::getObject):
+        (Inspector::InspectorBackendDispatcher::getArray):
+        (Inspector::InspectorBackendDispatcher::getValue):
+        * inspector/InspectorBackendDispatcher.h: Use a typed protocol object to collect
+        protocol error strings.
+        (Inspector::InspectorSupplementalBackendDispatcher::InspectorSupplementalBackendDispatcher):
+        Convert the supplemental dispatcher's reference to Ref since it is never null.
+        * inspector/InspectorEnvironment.h:
+        * inspector/InspectorProtocolTypes.h: Get rid of ArrayItemHelper and
+        StructItemTraits. Add more versions of addItem to handle pushing various types.
+        (Inspector::Protocol::Array::openAccessors):
+        (Inspector::Protocol::Array::addItem):
+        (Inspector::Protocol::Array::create):
+        (Inspector::Protocol::StructItemTraits::push):
+        (Inspector::Protocol::BindingTraits<Protocol::Array<T>>::runtimeCast): Assert argument.
+        (Inspector::Protocol::StructItemTraits::pushRefPtr): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<String>::Traits::pushRaw): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<int>::Traits::pushRaw): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<double>::Traits::pushRaw): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<bool>::Traits::pushRaw): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<InspectorValue>::Traits::pushRefPtr): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<InspectorObject>::Traits::pushRefPtr): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<InspectorArray>::Traits::pushRefPtr): Deleted.
+        (Inspector::Protocol::ArrayItemHelper<Protocol::Array<T>>::Traits::pushRefPtr): Deleted.
+        * inspector/InspectorValues.cpp: Straighten out getArray and getObject to have
+        the same call signature as other getters. Use Ref where possible.
+        (Inspector::InspectorObjectBase::getBoolean):
+        (Inspector::InspectorObjectBase::getString):
+        (Inspector::InspectorObjectBase::getObject):
+        (Inspector::InspectorObjectBase::getArray):
+        (Inspector::InspectorObjectBase::getValue):
+        (Inspector::InspectorObjectBase::writeJSON):
+        (Inspector::InspectorArrayBase::get):
+        (Inspector::InspectorObject::create):
+        (Inspector::InspectorArray::create):
+        (Inspector::InspectorValue::null):
+        (Inspector::InspectorString::create):
+        (Inspector::InspectorBasicValue::create):
+        (Inspector::InspectorObjectBase::get): Deleted.
+        * inspector/InspectorValues.h:
+        (Inspector::InspectorObjectBase::setValue):
+        (Inspector::InspectorObjectBase::setObject):
+        (Inspector::InspectorObjectBase::setArray):
+        (Inspector::InspectorArrayBase::pushValue):
+        (Inspector::InspectorArrayBase::pushObject):
+        (Inspector::InspectorArrayBase::pushArray):
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::messageWithTypeAndLevel):
+        (Inspector::JSGlobalObjectConsoleClient::count):
+        (Inspector::JSGlobalObjectConsoleClient::timeEnd):
+        (Inspector::JSGlobalObjectConsoleClient::timeStamp):
+        * inspector/JSGlobalObjectConsoleClient.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::executionStopwatch):
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/ScriptCallFrame.cpp:
+        (Inspector::ScriptCallFrame::buildInspectorObject):
+        * inspector/ScriptCallFrame.h:
+        * inspector/ScriptCallStack.cpp:
+        (Inspector::ScriptCallStack::create):
+        (Inspector::ScriptCallStack::buildInspectorArray):
+        * inspector/ScriptCallStack.h:
+        * inspector/agents/InspectorAgent.cpp:
+        (Inspector::InspectorAgent::enable):
+        (Inspector::InspectorAgent::inspect):
+        (Inspector::InspectorAgent::activateExtraDomain):
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::handleConsoleAssert):
+        (Inspector::buildObjectForBreakpointCookie):
+        (Inspector::InspectorDebuggerAgent::setBreakpointByUrl):
+        (Inspector::InspectorDebuggerAgent::setBreakpoint):
+        (Inspector::InspectorDebuggerAgent::continueToLocation):
+        (Inspector::InspectorDebuggerAgent::resolveBreakpoint):
+        (Inspector::InspectorDebuggerAgent::schedulePauseOnNextStatement):
+        (Inspector::InspectorDebuggerAgent::scriptExecutionBlockedByCSP):
+        (Inspector::InspectorDebuggerAgent::currentCallFrames):
+        (Inspector::InspectorDebuggerAgent::didParseSource):
+        (Inspector::InspectorDebuggerAgent::breakpointActionProbe):
+        (Inspector::InspectorDebuggerAgent::breakProgram):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::buildErrorRangeObject):
+        (Inspector::InspectorRuntimeAgent::callFunctionOn):
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        (Inspector::InspectorRuntimeAgent::getBasicBlocks):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/scripts/codegen/cpp_generator.py:
+        (CppGenerator.cpp_type_for_unchecked_formal_in_parameter):
+        (CppGenerator.cpp_type_for_type_with_name):
+        (CppGenerator.cpp_type_for_formal_async_parameter):
+        (CppGenerator.should_use_references_for_type):
+        (CppGenerator):
+        * inspector/scripts/codegen/cpp_generator_templates.py:
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator.generate_output):
+        (CppBackendDispatcherHeaderGenerator._generate_async_handler_declaration_for_command):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator._generate_small_dispatcher_switch_implementation_for_domain):
+        (CppBackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_header.py:
+        (CppFrontendDispatcherHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py:
+        (CppFrontendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_event):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator.generate_output):
+        (_generate_class_for_object_declaration):
+        (_generate_unchecked_setter_for_member):
+        (_generate_forward_declarations_for_binding_traits):
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py:
+        (ObjCConfigurationImplementationGenerator._generate_success_block_for_command):
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py:
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event):
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event_out_parameters):
+        * inspector/scripts/codegen/generate_objc_protocol_types_implementation.py:
+        (ObjCProtocolTypesImplementationGenerator.generate_output):
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        * replay/EncodedValue.cpp:
+        (JSC::EncodedValue::asObject):
+        (JSC::EncodedValue::asArray):
+        (JSC::EncodedValue::put<EncodedValue>):
+        (JSC::EncodedValue::append<EncodedValue>):
+        (JSC::EncodedValue::get<EncodedValue>):
+        * replay/EncodedValue.h:
+        * replay/scripts/CodeGeneratorReplayInputs.py:
+        (Type.borrow_type):
+        (Type.argument_type):
+        (Generator.generate_member_move_expression):
+        * runtime/ConsoleClient.cpp:
+        (JSC::ConsoleClient::printConsoleMessageWithArguments):
+        (JSC::ConsoleClient::internalMessageWithTypeAndLevel):
+        (JSC::ConsoleClient::logWithLevel):
+        (JSC::ConsoleClient::clear):
+        (JSC::ConsoleClient::dir):
+        (JSC::ConsoleClient::dirXML):
+        (JSC::ConsoleClient::table):
+        (JSC::ConsoleClient::trace):
+        (JSC::ConsoleClient::assertCondition):
+        (JSC::ConsoleClient::group):
+        (JSC::ConsoleClient::groupCollapsed):
+        (JSC::ConsoleClient::groupEnd):
+        * runtime/ConsoleClient.h:
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::allStructureRepresentations):
+        (JSC::TypeSet::inspectorTypeSet):
+        (JSC::StructureShape::inspectorRepresentation):
+        * runtime/TypeSet.h:
+
 2015-01-06  Chris Dumez  <cdumez@apple.com>
 
         Drop ResourceResponseBase::connectionID and connectionReused members

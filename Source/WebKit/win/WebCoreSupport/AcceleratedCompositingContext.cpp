@@ -105,7 +105,7 @@ void AcceleratedCompositingContext::initialize()
     m_context->makeContextCurrent();
 
     m_textureMapper = TextureMapperGL::create(TextureMapper::OpenGLMode);
-    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer()->setTextureMapper(m_textureMapper.get());
+    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer().setTextureMapper(m_textureMapper.get());
 
     scheduleLayerFlush();
 }
@@ -141,10 +141,10 @@ bool AcceleratedCompositingContext::prepareForRendering()
 
 bool AcceleratedCompositingContext::startedAnimation(WebCore::GraphicsLayer* layer)
 {
-    if (!layer || !downcast<GraphicsLayerTextureMapper>(*layer).layer())
+    if (!layer)
         return false;
 
-    return downcast<GraphicsLayerTextureMapper>(*layer).layer()->descendantsOrSelfHaveRunningAnimations();
+    return downcast<GraphicsLayerTextureMapper>(*layer).layer().descendantsOrSelfHaveRunningAnimations();
 }
 
 void AcceleratedCompositingContext::compositeLayersToContext(CompositePurpose purpose)
@@ -165,7 +165,7 @@ void AcceleratedCompositingContext::compositeLayersToContext(CompositePurpose pu
     }
 
     m_textureMapper->beginPainting();
-    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer()->paint();
+    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer().paint();
     m_fpsCounter.updateFPSAndDisplay(m_textureMapper.get());
     m_textureMapper->endPainting();
 
@@ -258,7 +258,11 @@ bool AcceleratedCompositingContext::flushPendingLayerChanges()
 {
     m_rootLayer->flushCompositingStateForThisLayerOnly();
     m_nonCompositedContentLayer->flushCompositingStateForThisLayerOnly();
-    return core(&m_webView)->mainFrame().view()->flushCompositingStateIncludingSubframes();
+    if (!core(&m_webView)->mainFrame().view()->flushCompositingStateIncludingSubframes())
+        return false;
+
+    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).updateBackingStoreIncludingSubLayers();
+    return true;
 }
 
 bool AcceleratedCompositingContext::flushPendingLayerChangesSoon()
@@ -283,7 +287,8 @@ void AcceleratedCompositingContext::flushAndRenderLayers()
     if (m_context && !m_context->makeContextCurrent())
         return;
 
-    flushPendingLayerChanges();
+    if (!flushPendingLayerChanges())
+        return;
 
     compositeLayersToContext();
 }

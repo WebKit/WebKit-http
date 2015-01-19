@@ -26,9 +26,11 @@
 #ifndef WebFrameListenerProxy_h
 #define WebFrameListenerProxy_h
 
+#include "APINavigation.h"
 #include "APIObject.h"
 #include <WebCore/FrameLoaderTypes.h>
 #include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 
 namespace WebKit {
@@ -42,8 +44,8 @@ public:
     void invalidate();
     uint64_t listenerID() const { return m_listenerID; }
 
-    uint64_t navigationID() const { return m_navigationID; }
-    void setNavigationID(uint64_t navigationID) { m_navigationID = navigationID; }
+    API::Navigation* navigation() { return m_navigation.get(); }
+    void setNavigation(Ref<API::Navigation>&& navigation) { m_navigation = WTF::move(navigation); }
 
 protected:
     WebFrameListenerProxy(WebFrameProxy*, uint64_t listenerID);
@@ -53,7 +55,7 @@ protected:
 private:
     RefPtr<WebFrameProxy> m_frame;
     uint64_t m_listenerID;
-    uint64_t m_navigationID;
+    RefPtr<API::Navigation> m_navigation;
 };
 
 } // namespace WebKit

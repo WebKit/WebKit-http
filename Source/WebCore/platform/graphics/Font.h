@@ -184,7 +184,7 @@ public:
     int emphasisMarkHeight(const AtomicString&) const;
 
     const SimpleFontData& primaryFontData() const;
-    const FontData* fontDataAt(unsigned) const;
+    const FontRanges& fallbackRangesAt(unsigned) const;
     GlyphData glyphDataForCharacter(UChar32, bool mirror, FontDataVariant = AutoVariant) const;
     
 #if PLATFORM(COCOA)
@@ -289,10 +289,7 @@ public:
     FontGlyphs* glyphs() const { return m_glyphs.get(); }
 
 private:
-    bool loadingCustomFonts() const
-    {
-        return m_glyphs && m_glyphs->loadingCustomFonts();
-    }
+    bool isLoadingCustomFonts() const;
 
     TypesettingFeatures computeTypesettingFeatures() const
     {
@@ -360,10 +357,10 @@ inline const SimpleFontData& Font::primaryFontData() const
     return m_glyphs->primarySimpleFontData(m_fontDescription);
 }
 
-inline const FontData* Font::fontDataAt(unsigned index) const
+inline const FontRanges& Font::fallbackRangesAt(unsigned index) const
 {
     ASSERT(m_glyphs);
-    return m_glyphs->realizeFontDataAt(m_fontDescription, index);
+    return m_glyphs->realizeFallbackRangesAt(m_fontDescription, index);
 }
 
 inline bool Font::isFixedPitch() const

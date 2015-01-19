@@ -61,6 +61,7 @@
 #include <WebCore/AlternativeTextClient.h> // FIXME: Needed by WebPageProxyMessages.h for DICTATION_ALTERNATIVES.
 #include "WebPageProxyMessages.h"
 #include "WebPopupMenuProxy.h"
+#include "WebProcessLifetimeTracker.h"
 #include <WebCore/Color.h>
 #include <WebCore/DragActions.h>
 #include <WebCore/HitTestResult.h>
@@ -114,6 +115,7 @@ namespace API {
 class FindClient;
 class FormClient;
 class LoaderClient;
+class Navigation;
 class PolicyClient;
 class UIClient;
 class URLRequest;
@@ -169,6 +171,7 @@ class WebBackForwardListItem;
 class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebFullScreenManagerProxy;
+class WebNavigationState;
 class WebVideoFullscreenManagerProxy;
 class WebKeyboardEvent;
 class WebMouseEvent;
@@ -264,7 +267,9 @@ public:
     WebFrameProxy* frameSetLargestFrame() const { return m_frameSetLargestFrame.get(); }
 
     DrawingAreaProxy* drawingArea() const { return m_drawingArea.get(); }
-    
+
+    WebNavigationState& navigationState() { return *m_navigationState.get(); }
+
 #if ENABLE(ASYNC_SCROLLING)
     RemoteScrollingCoordinatorProxy* scrollingCoordinatorProxy() const { return m_scrollingCoordinatorProxy.get(); }
 #endif
@@ -320,22 +325,22 @@ public:
     bool tryClose();
     bool isClosed() const { return m_isClosed; }
 
-    uint64_t loadRequest(const WebCore::ResourceRequest&, API::Object* userData = nullptr);
-    uint64_t loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
-    uint64_t loadData(API::Data*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
-    uint64_t loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData = nullptr);
+    RefPtr<API::Navigation> loadRequest(const WebCore::ResourceRequest&, API::Object* userData = nullptr);
+    RefPtr<API::Navigation> loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
+    RefPtr<API::Navigation> loadData(API::Data*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
+    RefPtr<API::Navigation> loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData = nullptr);
     void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, API::Object* userData = nullptr);
     void loadPlainTextString(const String&, API::Object* userData = nullptr);
     void loadWebArchiveData(API::Data*, API::Object* userData = nullptr);
     void navigateToURLWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
 
     void stopLoading();
-    uint64_t reload(bool reloadFromOrigin);
+    RefPtr<API::Navigation> reload(bool reloadFromOrigin);
 
-    uint64_t goForward();
-    uint64_t goBack();
+    RefPtr<API::Navigation> goForward();
+    RefPtr<API::Navigation> goBack();
 
-    uint64_t goToBackForwardItem(WebBackForwardListItem*);
+    RefPtr<API::Navigation> goToBackForwardItem(WebBackForwardListItem*);
     void tryRestoreScrollPosition();
     void didChangeBackForwardList(WebBackForwardListItem* addedItem, Vector<RefPtr<WebBackForwardListItem>> removed);
     void willGoToBackForwardListItem(uint64_t itemID, const UserData&);
@@ -475,7 +480,7 @@ public:
 
     void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
 
-#if USE(TILED_BACKING_STORE) 
+#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect);
 #endif
 #if PLATFORM(EFL)
@@ -547,7 +552,7 @@ public:
 #if PLATFORM(GTK)
     PlatformWidget viewWidget();
 #endif
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     void commitPageTransitionViewport();
 #endif
 
@@ -586,7 +591,7 @@ public:
     void terminateProcess();
 
     SessionState sessionState(const std::function<bool (WebBackForwardListItem&)>& = nullptr) const;
-    uint64_t restoreFromSessionState(SessionState, bool navigate);
+    RefPtr<API::Navigation> restoreFromSessionState(SessionState, bool navigate);
 
     bool supportsTextZoom() const;
     double textZoomFactor() const { return m_textZoomFactor; }
@@ -715,7 +720,7 @@ public:
     void performDictionaryLookupOfCurrentSelection();
 #endif
 
-    void receivedPolicyDecision(WebCore::PolicyAction, WebFrameProxy*, uint64_t listenerID, uint64_t navigationID);
+    void receivedPolicyDecision(WebCore::PolicyAction, WebFrameProxy*, uint64_t listenerID, API::Navigation* navigationID);
 
     void backForwardRemovedItem(uint64_t itemID);
 
@@ -1099,7 +1104,8 @@ private:
     void setCanShortCircuitHorizontalWheelEvents(bool canShortCircuitHorizontalWheelEvents) { m_canShortCircuitHorizontalWheelEvents = canShortCircuitHorizontalWheelEvents; }
 
     void reattachToWebProcess();
-    uint64_t reattachToWebProcessWithItem(WebBackForwardListItem*);
+    RefPtr<API::Navigation> reattachToWebProcessForReload();
+    RefPtr<API::Navigation> reattachToWebProcessWithItem(WebBackForwardListItem*);
 
     void requestNotificationPermission(uint64_t notificationID, const String& originString);
     void showNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, const String& dir, const String& originString, uint64_t notificationID);
@@ -1107,14 +1113,10 @@ private:
     void clearNotifications(const Vector<uint64_t>& notificationIDs);
     void didDestroyNotification(uint64_t notificationID);
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     void pageDidRequestScroll(const WebCore::IntPoint&);
     void pageTransitionViewportReady();
-#endif
-#if USE(COORDINATED_GRAPHICS)
     void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&);
-#endif
-#if PLATFORM(EFL) || PLATFORM(HAIKU)
     void didChangeContentSize(const WebCore::IntSize&);
 #endif
 
@@ -1358,6 +1360,8 @@ private:
     WebPageContextMenuClient m_contextMenuClient;
 #endif
 
+    std::unique_ptr<WebNavigationState> m_navigationState;
+
     std::unique_ptr<DrawingAreaProxy> m_drawingArea;
 #if ENABLE(ASYNC_SCROLLING)
     std::unique_ptr<RemoteScrollingCoordinatorProxy> m_scrollingCoordinatorProxy;
@@ -1366,6 +1370,9 @@ private:
     Ref<WebProcessProxy> m_process;
     Ref<WebPageGroup> m_pageGroup;
     Ref<WebPreferences> m_preferences;
+
+    WebProcessLifetimeTracker m_webProcessLifetimeTracker { *this };
+
     const RefPtr<WebUserContentControllerProxy> m_userContentController;
     Ref<VisitedLinkProvider> m_visitedLinkProvider;
     Ref<WebsiteDataStore> m_websiteDataStore;

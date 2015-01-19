@@ -29,6 +29,7 @@
 
 #include "BasicShapeFunctions.h"
 #include "CSSCalculationValue.h"
+#include "CSSFontFeatureValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGridLineNamesValue.h"
 #include "CSSGridTemplateAreasValue.h"
@@ -64,6 +65,7 @@ public:
     static LengthSize convertRadius(StyleResolver&, CSSValue&);
     static TextDecoration convertTextDecoration(StyleResolver&, CSSValue&);
     template <typename T> static T convertNumber(StyleResolver&, CSSValue&);
+    template <typename T> static T convertNumberOrAuto(StyleResolver&, CSSValue&);
     static short convertWebkitHyphenateLimitLines(StyleResolver&, CSSValue&);
     template <CSSPropertyID property> static NinePieceImage convertBorderImage(StyleResolver&, CSSValue&);
     template <CSSPropertyID property> static NinePieceImage convertBorderMask(StyleResolver&, CSSValue&);
@@ -101,6 +103,25 @@ public:
     static bool convertMarqueeIncrement(StyleResolver&, CSSValue&, Length&);
     static bool convertFilterOperations(StyleResolver&, CSSValue&, FilterOperations&);
     static bool convertMaskImageOperations(StyleResolver&, CSSValue&, Vector<RefPtr<MaskImageOperation>>&);
+#if PLATFORM(IOS)
+    static bool convertTouchCallout(StyleResolver&, CSSValue&);
+#endif
+#if ENABLE(TOUCH_EVENTS)
+    static Color convertTapHighlightColor(StyleResolver&, CSSValue&);
+#endif
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+    static bool convertOverflowScrolling(StyleResolver&, CSSValue&);
+#endif
+    static RefPtr<FontFeatureSettings> convertFontFeatureSettings(StyleResolver&, CSSValue&);
+    static SVGLength convertSVGLength(StyleResolver&, CSSValue&);
+    static Vector<SVGLength> convertSVGLengthVector(StyleResolver&, CSSValue&);
+    static Vector<SVGLength> convertStrokeDashArray(StyleResolver&, CSSValue&);
+    static PaintOrder convertPaintOrder(StyleResolver&, CSSValue&);
+    static float convertOpacity(StyleResolver&, CSSValue&);
+    static String convertSVGURIReference(StyleResolver&, CSSValue&);
+    static Color convertSVGColor(StyleResolver&, CSSValue&);
+    static EGlyphOrientation convertGlyphOrientation(StyleResolver&, CSSValue&);
+    static EGlyphOrientation convertGlyphOrientationOrAuto(StyleResolver&, CSSValue&);
 
 private:
     friend class StyleBuilderCustom;
@@ -271,10 +292,15 @@ inline TextDecoration StyleBuilderConverter::convertTextDecoration(StyleResolver
 template <typename T>
 inline T StyleBuilderConverter::convertNumber(StyleResolver&, CSSValue& value)
 {
-    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
-    if (primitiveValue.getValueID() == CSSValueAuto)
+    return downcast<CSSPrimitiveValue>(value).getValue<T>(CSSPrimitiveValue::CSS_NUMBER);
+}
+
+template <typename T>
+inline T StyleBuilderConverter::convertNumberOrAuto(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueAuto)
         return -1;
-    return primitiveValue.getValue<T>(CSSPrimitiveValue::CSS_NUMBER);
+    return convertNumber<T>(styleResolver, value);
 }
 
 inline short StyleBuilderConverter::convertWebkitHyphenateLimitLines(StyleResolver&, CSSValue& value)
@@ -726,7 +752,7 @@ inline Vector<LengthSize> StyleBuilderConverter::convertScrollSnapCoordinates(St
 #endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
-bool StyleBuilderConverter::createGridTrackBreadth(CSSPrimitiveValue& primitiveValue, StyleResolver& styleResolver, GridLength& workingLength)
+inline bool StyleBuilderConverter::createGridTrackBreadth(CSSPrimitiveValue& primitiveValue, StyleResolver& styleResolver, GridLength& workingLength)
 {
     if (primitiveValue.getValueID() == CSSValueWebkitMinContent) {
         workingLength = Length(MinContent);
@@ -754,7 +780,7 @@ bool StyleBuilderConverter::createGridTrackBreadth(CSSPrimitiveValue& primitiveV
     return true;
 }
 
-bool StyleBuilderConverter::createGridTrackSize(CSSValue& value, GridTrackSize& trackSize, StyleResolver& styleResolver)
+inline bool StyleBuilderConverter::createGridTrackSize(CSSValue& value, GridTrackSize& trackSize, StyleResolver& styleResolver)
 {
     if (is<CSSPrimitiveValue>(value)) {
         GridLength workingLength;
@@ -777,7 +803,7 @@ bool StyleBuilderConverter::createGridTrackSize(CSSValue& value, GridTrackSize& 
     return true;
 }
 
-bool StyleBuilderConverter::createGridTrackList(CSSValue& value, Vector<GridTrackSize>& trackSizes, NamedGridLinesMap& namedGridLines, OrderedNamedGridLinesMap& orderedNamedGridLines, StyleResolver& styleResolver)
+inline bool StyleBuilderConverter::createGridTrackList(CSSValue& value, Vector<GridTrackSize>& trackSizes, NamedGridLinesMap& namedGridLines, OrderedNamedGridLinesMap& orderedNamedGridLines, StyleResolver& styleResolver)
 {
     // Handle 'none'.
     if (is<CSSPrimitiveValue>(value))
@@ -813,7 +839,7 @@ bool StyleBuilderConverter::createGridTrackList(CSSValue& value, Vector<GridTrac
     return true;
 }
 
-bool StyleBuilderConverter::createGridPosition(CSSValue& value, GridPosition& position)
+inline bool StyleBuilderConverter::createGridPosition(CSSValue& value, GridPosition& position)
 {
     // We accept the specification's grammar:
     // auto | <custom-ident> | [ <integer> && <custom-ident>? ] | [ span && [ <integer> || <custom-ident> ] ]
@@ -863,7 +889,7 @@ bool StyleBuilderConverter::createGridPosition(CSSValue& value, GridPosition& po
     return true;
 }
 
-void StyleBuilderConverter::createImplicitNamedGridLinesFromGridArea(const NamedGridAreaMap& namedGridAreas, NamedGridLinesMap& namedGridLines, GridTrackSizingDirection direction)
+inline void StyleBuilderConverter::createImplicitNamedGridLinesFromGridArea(const NamedGridAreaMap& namedGridAreas, NamedGridLinesMap& namedGridLines, GridTrackSizingDirection direction)
 {
     for (auto& area : namedGridAreas) {
         GridSpan areaSpan = direction == ForRows ? area.value.rows : area.value.columns;
@@ -1044,6 +1070,134 @@ inline bool StyleBuilderConverter::convertMaskImageOperations(StyleResolver& sty
     }
 
     return true;
+}
+
+inline RefPtr<FontFeatureSettings> StyleBuilderConverter::convertFontFeatureSettings(StyleResolver&, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNormal);
+        return nullptr;
+    }
+
+    RefPtr<FontFeatureSettings> settings = FontFeatureSettings::create();
+    for (auto& item : downcast<CSSValueList>(value)) {
+        auto& feature = downcast<CSSFontFeatureValue>(item.get());
+        settings->append(FontFeature(feature.tag(), feature.value()));
+    }
+    return WTF::move(settings);
+}
+
+#if PLATFORM(IOS)
+inline bool StyleBuilderConverter::convertTouchCallout(StyleResolver&, CSSValue& value)
+{
+    return !equalIgnoringCase(downcast<CSSPrimitiveValue>(value).getStringValue(), "none");
+}
+#endif
+
+#if ENABLE(TOUCH_EVENTS)
+inline Color StyleBuilderConverter::convertTapHighlightColor(StyleResolver& styleResolver, CSSValue& value)
+{
+    return styleResolver.colorFromPrimitiveValue(downcast<CSSPrimitiveValue>(value));
+}
+#endif
+
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+inline bool StyleBuilderConverter::convertOverflowScrolling(StyleResolver&, CSSValue& value)
+{
+    return downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueTouch;
+}
+#endif
+
+inline SVGLength StyleBuilderConverter::convertSVGLength(StyleResolver&, CSSValue& value)
+{
+    return SVGLength::fromCSSPrimitiveValue(downcast<CSSPrimitiveValue>(value));
+}
+
+inline Vector<SVGLength> StyleBuilderConverter::convertSVGLengthVector(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& valueList = downcast<CSSValueList>(value);
+
+    Vector<SVGLength> svgLengths;
+    svgLengths.reserveInitialCapacity(valueList.length());
+    for (auto& item : valueList)
+        svgLengths.uncheckedAppend(convertSVGLength(styleResolver, item));
+
+    return svgLengths;
+}
+
+inline Vector<SVGLength> StyleBuilderConverter::convertStrokeDashArray(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone);
+        return SVGRenderStyle::initialStrokeDashArray();
+    }
+
+    return convertSVGLengthVector(styleResolver, value);
+}
+
+inline PaintOrder StyleBuilderConverter::convertPaintOrder(StyleResolver&, CSSValue& value)
+{
+    if (is<CSSPrimitiveValue>(value)) {
+        ASSERT(downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNormal);
+        return PaintOrderNormal;
+    }
+
+    auto& orderTypeList = downcast<CSSValueList>(value);
+    switch (downcast<CSSPrimitiveValue>(*orderTypeList.itemWithoutBoundsCheck(0)).getValueID()) {
+    case CSSValueFill:
+        return orderTypeList.length() > 1 ? PaintOrderFillMarkers : PaintOrderFill;
+    case CSSValueStroke:
+        return orderTypeList.length() > 1 ? PaintOrderStrokeMarkers : PaintOrderStroke;
+    case CSSValueMarkers:
+        return orderTypeList.length() > 1 ? PaintOrderMarkersStroke : PaintOrderMarkers;
+    default:
+        ASSERT_NOT_REACHED();
+        return PaintOrderNormal;
+    }
+}
+
+inline float StyleBuilderConverter::convertOpacity(StyleResolver&, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    float opacity = primitiveValue.getFloatValue();
+    if (primitiveValue.isPercentage())
+        opacity /= 100.0f;
+    return opacity;
+}
+
+inline String StyleBuilderConverter::convertSVGURIReference(StyleResolver& styleResolver, CSSValue& value)
+{
+    String s;
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.isURI())
+        s = primitiveValue.getStringValue();
+
+    return SVGURIReference::fragmentIdentifierFromIRIString(s, styleResolver.document());
+}
+
+inline Color StyleBuilderConverter::convertSVGColor(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& svgColor = downcast<SVGColor>(value);
+    return svgColor.colorType() == SVGColor::SVG_COLORTYPE_CURRENTCOLOR ? styleResolver.style()->color() : svgColor.color();
+}
+
+inline EGlyphOrientation StyleBuilderConverter::convertGlyphOrientation(StyleResolver&, CSSValue& value)
+{
+    float angle = fabsf(fmodf(downcast<CSSPrimitiveValue>(value).getFloatValue(), 360.0f));
+    if (angle <= 45.0f || angle > 315.0f)
+        return GO_0DEG;
+    if (angle > 45.0f && angle <= 135.0f)
+        return GO_90DEG;
+    if (angle > 135.0f && angle <= 225.0f)
+        return GO_180DEG;
+    return GO_270DEG;
+}
+
+inline EGlyphOrientation StyleBuilderConverter::convertGlyphOrientationOrAuto(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueAuto)
+        return GO_AUTO;
+    return convertGlyphOrientation(styleResolver, value);
 }
 
 } // namespace WebCore

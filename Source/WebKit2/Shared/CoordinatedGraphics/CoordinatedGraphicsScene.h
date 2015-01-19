@@ -26,7 +26,6 @@
 #include <WebCore/CoordinatedSurface.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/GraphicsLayer.h>
-#include <WebCore/GraphicsLayerAnimation.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/TextureMapper.h>
@@ -36,6 +35,7 @@
 #include <WebCore/Timer.h>
 #include <functional>
 #include <wtf/HashSet.h>
+#include <wtf/RunLoop.h>
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/Vector.h>
 
@@ -123,6 +123,7 @@ private:
     void adjustPositionForFixedLayers(const WebCore::FloatPoint& contentPosition);
 
     void dispatchOnMainThread(std::function<void()>);
+    void dispatchOnClientRunLoop(std::function<void()>);
     void updateViewport();
     void renderNextFrame();
     void purgeBackingStores();
@@ -181,6 +182,8 @@ private:
     WebCore::Color m_viewBackgroundColor;
 
     WebCore::TextureMapperFPSCounter m_fpsCounter;
+
+    RunLoop& m_clientRunLoop;
 };
 
 } // namespace WebKit

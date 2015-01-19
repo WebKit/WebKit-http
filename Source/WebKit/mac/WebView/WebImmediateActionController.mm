@@ -44,12 +44,14 @@
 #import <WebCore/FocusController.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
+#import <WebCore/GeometryUtilities.h>
 #import <WebCore/HTMLConverter.h>
 #import <WebCore/LookupSPI.h>
 #import <WebCore/NSMenuSPI.h>
 #import <WebCore/Page.h>
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicator.h>
 #import <objc/objc-class.h>
@@ -131,16 +133,8 @@ using namespace WebCore;
     [self performHitTestAtPoint:locationInDocumentView];
     [self _updateImmediateActionItem];
 
-    if (!_immediateActionRecognizer.animationController) {
+    if (!_immediateActionRecognizer.animationController)
         [self _cancelImmediateAction];
-        return;
-    }
-
-    if (_currentActionContext) {
-        _hasActivatedActionContext = YES;
-        if (![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()])
-            [self _cancelImmediateAction];
-    }
 }
 
 - (void)immediateActionRecognizerWillBeginAnimation:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer
@@ -148,7 +142,11 @@ using namespace WebCore;
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
 
-    // FIXME: Add support for the types of functionality provided in Action menu's menuNeedsUpdate.
+    if (_currentActionContext) {
+        _hasActivatedActionContext = YES;
+        if (![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()])
+            [self _cancelImmediateAction];
+    }
 }
 
 - (void)immediateActionRecognizerDidUpdateAnimation:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer
@@ -223,10 +221,11 @@ using namespace WebCore;
     id customClientAnimationController = nil;
     if ([[_webView UIDelegate] respondsToSelector:@selector(_webView:immediateActionAnimationControllerForHitTestResult:withType:)]) {
         RetainPtr<WebElementDictionary> webHitTestResult = adoptNS([[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult]);
-        customClientAnimationController = [[_webView UIDelegate] _webView:_webView immediateActionAnimationControllerForHitTestResult:webHitTestResult.get() withType:_type];
+        customClientAnimationController = [(id)[_webView UIDelegate] _webView:_webView immediateActionAnimationControllerForHitTestResult:webHitTestResult.get() withType:_type];
     }
 
-    if (customClientAnimationController == [NSNull null]) {
+    // FIXME: We should not permanently disable this for iTunes. rdar://problem/19461358
+    if (customClientAnimationController == [NSNull null] || applicationIsITunes()) {
         [self _cancelImmediateAction];
         return;
     }
@@ -261,6 +260,48 @@ using namespace WebCore;
     [self _clearImmediateActionState];
 }
 
+static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
+{
+    if (!node)
+        return IntRect();
+
+    Frame* frame = node->document().frame();
+    if (!frame)
+        return IntRect();
+
+    FrameView* view = frame->view();
+    if (!view)
+        return IntRect();
+
+    RenderObject* renderer = node->renderer();
+    if (!renderer)
+        return IntRect();
+
+    return view->contentsToWindow(renderer->absoluteBoundingBoxRect());
+}
+
+- (NSRect)menuItem:(NSMenuItem *)menuItem itemFrameForPoint:(NSPoint)point
+{
+    if (!_webView)
+        return NSZeroRect;
+
+    Node* node = _hitTestResult.innerNode();
+    if (!node)
+        return NSZeroRect;
+
+    return elementBoundingBoxInWindowCoordinatesFromNode(node);
+}
+
+- (NSSize)menuItem:(NSMenuItem *)menuItem maxSizeForPoint:(NSPoint)point
+{
+    if (!_webView)
+        return NSZeroSize;
+
+    NSSize screenSize = _webView.window.screen.frame.size;
+    FloatRect largestRect = largestRectWithAspectRatioInsideRect(screenSize.width / screenSize.height, _webView.bounds);
+    return NSMakeSize(largestRect.width() * 0.75, largestRect.height() * 0.75);
+}
+
 #pragma mark Data Detectors actions
 
 - (NSMenuItem *)_menuItemForDataDetectedText
@@ -273,7 +314,7 @@ using namespace WebCore;
         RetainPtr<WebElementDictionary> hitTestDictionary = adoptNS([[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult]);
 
         DOMRange *customDataDetectorsRange;
-        actionContext = [[_webView UIDelegate] _webView:_webView actionContextForHitTestResult:hitTestDictionary.get() range:&customDataDetectorsRange];
+        actionContext = [(id)[_webView UIDelegate] _webView:_webView actionContextForHitTestResult:hitTestDictionary.get() range:&customDataDetectorsRange];
 
         if (actionContext && customDataDetectorsRange)
             detectedDataRange = core(customDataDetectorsRange);

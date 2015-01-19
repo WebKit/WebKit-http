@@ -28,8 +28,8 @@
 
 #import "WebKitNSStringExtras.h"
 
+#import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/Font.h>
-#import <WebCore/FontCache.h>
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/TextRun.h>
 #import <WebCore/WebCoreNSStringExtras.h>
@@ -47,15 +47,6 @@
 #endif
 
 NSString *WebKitLocalCacheDefaultsKey = @"WebKitLocalCache";
-
-#if !PLATFORM(IOS)
-static inline CGFloat webkit_CGCeiling(CGFloat value)
-{
-    if (sizeof(value) == sizeof(float))
-        return ceilf(value);
-    return ceil(value);
-}
-#endif
 
 using namespace WebCore;
 
@@ -90,7 +81,7 @@ static BOOL canUseFastRenderer(const UniChar *buffer, unsigned length)
         // It's probably incorrect for high DPI.
         // If you change this, be sure to test all the text drawn this way in Safari, including
         // the status bar, bookmarks bar, tab bar, and activity window.
-        point.y = webkit_CGCeiling(point.y);
+        point.y = CGCeiling(point.y);
 
         NSGraphicsContext *nsContext = [NSGraphicsContext currentContext];
         CGContextRef cgContext = static_cast<CGContextRef>([nsContext graphicsPort]);
@@ -100,8 +91,6 @@ static BOOL canUseFastRenderer(const UniChar *buffer, unsigned length)
         BOOL flipped = [nsContext isFlipped];
         if (!flipped)
             CGContextScaleCTM(cgContext, 1, -1);
-
-        FontCachePurgePreventer fontCachePurgePreventer;
 
         Font webCoreFont(FontPlatformData(font, [font pointSize]), ![nsContext isDrawingToScreen], fontSmoothingIsAllowed ? AutoSmoothing : Antialiased);
         TextRun run(buffer.data(), length);
@@ -149,8 +138,6 @@ static BOOL canUseFastRenderer(const UniChar *buffer, unsigned length)
     [self getCharacters:buffer.data()];
 
     if (canUseFastRenderer(buffer.data(), length)) {
-        FontCachePurgePreventer fontCachePurgePreventer;
-
         Font webCoreFont(FontPlatformData(font, [font pointSize]), ![[NSGraphicsContext currentContext] isDrawingToScreen]);
         TextRun run(buffer.data(), length);
         run.disableRoundingHacks();

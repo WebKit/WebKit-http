@@ -40,7 +40,6 @@
 #include "EventHandler.h"
 #include "FloatRect.h"
 #include "FocusController.h"
-#include "FontCache.h"
 #include "FontLoader.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
@@ -295,8 +294,11 @@ void FrameView::reset()
 
 void FrameView::removeFromAXObjectCache()
 {
-    if (AXObjectCache* cache = axObjectCache())
+    if (AXObjectCache* cache = axObjectCache()) {
+        if (HTMLFrameOwnerElement* owner = frame().ownerElement())
+            cache->childrenChanged(owner->renderer());
         cache->remove(this);
+    }
 }
 
 void FrameView::resetScrollbars()
@@ -1219,7 +1221,6 @@ void FrameView::layout(bool allowSubtree)
         // The next block sets m_layoutSchedulingEnabled back to false once again.
     }
 
-    FontCachePurgePreventer fontCachePurgePreventer;
     RenderLayer* layer;
 
     ++m_nestedLayoutCount;
@@ -3842,8 +3843,6 @@ void FrameView::paintContents(GraphicsContext* context, const IntRect& dirtyRect
 
     PaintingState paintingState;
     willPaintContents(context, dirtyRect, paintingState);
-
-    FontCachePurgePreventer fontCachePurgePreventer;
 
     // m_nodeToDraw is used to draw only one element (and its descendants)
     RenderObject* renderer = m_nodeToDraw ? m_nodeToDraw->renderer() : nullptr;

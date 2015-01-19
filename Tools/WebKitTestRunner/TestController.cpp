@@ -314,6 +314,8 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
 
     view->didInitializeClients();
 
+    TestController::shared().updateWindowScaleForTest(view, *TestController::shared().m_currentInvocation);
+
     WKRetain(newPage);
     return newPage;
 }
@@ -752,6 +754,18 @@ void TestController::reattachPageToWebProcess()
     runUntil(m_doneResetting, shortTimeout);
 }
 
+const char* TestController::webProcessName()
+{
+    // FIXME: Find a way to not hardcode the process name.
+#if PLATFORM(IOS)
+    return  "com.apple.WebKit.WebContent";
+#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080
+    return "com.apple.WebKit.WebContent.Development";
+#else
+    return "WebProcess";
+#endif
+}
+
 void TestController::updateWebViewSizeForTest(const TestInvocation& test)
 {
     bool isSVGW3CTest = strstr(test.pathOrURL(), "svg/W3C-SVG-1.1") || strstr(test.pathOrURL(), "svg\\W3C-SVG-1.1");
@@ -766,11 +780,11 @@ void TestController::updateWebViewSizeForTest(const TestInvocation& test)
     mainWebView()->resizeTo(width, height);
 }
 
-void TestController::updateWindowScaleForTest(const TestInvocation& test)
+void TestController::updateWindowScaleForTest(PlatformWebView* view, const TestInvocation& test)
 {
     WTF::String localPathOrUrl = String(test.pathOrURL());
     bool needsHighDPIWindow = localPathOrUrl.findIgnoringCase("/hidpi-") != notFound;
-    mainWebView()->changeWindowScaleIfNeeded(needsHighDPIWindow ? 2 : 1);
+    view->changeWindowScaleIfNeeded(needsHighDPIWindow ? 2 : 1);
 }
 
 // FIXME: move into relevant platformConfigureViewForTest()?
@@ -813,7 +827,7 @@ void TestController::platformResetPreferencesToConsistentValues()
 void TestController::configureViewForTest(const TestInvocation& test)
 {
     updateWebViewSizeForTest(test);
-    updateWindowScaleForTest(test);
+    updateWindowScaleForTest(mainWebView(), test);
     updateLayoutTypeForTest(test);
 
     platformConfigureViewForTest(test);
@@ -1371,17 +1385,9 @@ void TestController::processDidCrash()
     if (!m_didPrintWebProcessCrashedMessage) {
 #if PLATFORM(COCOA)
         pid_t pid = WKPageGetProcessIdentifier(m_mainWebView->page());
-        // FIXME: Find a way to not hardcode the process name.
-#if PLATFORM(IOS)
-        const char* processName = "com.apple.WebKit.WebContent";
-#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080
-        const char* processName = "com.apple.WebKit.WebContent.Development";
+        fprintf(stderr, "#CRASHED - %s (pid %ld)\n", webProcessName(), static_cast<long>(pid));
 #else
-        const char* processName = "WebProcess";
-#endif
-        fprintf(stderr, "#CRASHED - %s (pid %ld)\n", processName, static_cast<long>(pid));
-#else
-        fputs("#CRASHED - WebProcess\n", stderr);
+        fprintf(stderr, "#CRASHED - %s\n", webProcessName());
 #endif
         fflush(stderr);
         m_didPrintWebProcessCrashedMessage = true;

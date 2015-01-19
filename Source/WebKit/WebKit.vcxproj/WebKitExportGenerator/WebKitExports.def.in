@@ -204,7 +204,7 @@ EXPORTS
         symbolWithPointer(?item@StaticNodeList@WebCore@@UBEPAVNode@2@I@Z, ?item@StaticNodeList@WebCore@@UEBAPEAVNode@2@I@Z)
         ?selectTag@HTMLNames@WebCore@@3VHTMLQualifiedName@2@B
 #if ENABLE(INSPECTOR)
-        symbolWithPointer(?buildObjectForHighlightedNode@InspectorController@WebCore@@QBE?AV?$PassRefPtr@VInspectorObject@Inspector@@@WTF@@XZ, ?buildObjectForHighlightedNode@InspectorController@WebCore@@QEBA?AV?$PassRefPtr@VInspectorObject@Inspector@@@WTF@@XZ)
+        symbolWithPointer(?buildObjectForHighlightedNode@InspectorController@WebCore@@QBE?AV?$RefPtr@VInspectorObject@Inspector@@@WTF@@XZ, ?buildObjectForHighlightedNode@InspectorController@WebCore@@QEBA?AV?$RefPtr@VInspectorObject@Inspector@@@WTF@@XZ)
         symbolWithPointer(?getHighlight@InspectorController@WebCore@@QBEXPAUHighlight@2@W4CoordinateSystem@InspectorOverlay@2@@Z, ?getHighlight@InspectorController@WebCore@@QEBAXPEAUHighlight@2@W4CoordinateSystem@InspectorOverlay@2@@Z)
         symbolWithPointer(?instrumentingAgentsForPage@InspectorInstrumentation@WebCore@@SAPAVInstrumentingAgents@2@PAVPage@2@@Z, ?instrumentingAgentsForPage@InspectorInstrumentation@WebCore@@SAPEAVInstrumentingAgents@2@PEAVPage@2@@Z)
         ?s_frontendCounter@InspectorInstrumentation@WebCore@@0HA
@@ -409,7 +409,6 @@ EXPORTS
         symbolWithPointer(?numberOfActiveAnimations@AnimationController@WebCore@@QBEIPAVDocument@2@@Z, ?numberOfActiveAnimations@AnimationController@WebCore@@QEBAIPEAVDocument@2@@Z)
         symbolWithPointer(?minDOMTimerInterval@Settings@WebCore@@QAENXZ, ?minDOMTimerInterval@Settings@WebCore@@QEAANXZ)
         symbolWithPointer(?setMinDOMTimerInterval@Settings@WebCore@@QAEXN@Z, ?setMinDOMTimerInterval@Settings@WebCore@@QEAAXN@Z)
-        symbolWithPointer(?setApplicationChromeMode@Settings@WebCore@@QAEX_N@Z, ?setApplicationChromeMode@Settings@WebCore@@QEAAX_N@Z)
         symbolWithPointer(?setDOMPasteAllowed@Settings@WebCore@@QAEX_N@Z, ?setDOMPasteAllowed@Settings@WebCore@@QEAAX_N@Z)
         symbolWithPointer(?setTextAreasAreResizable@Settings@WebCore@@QAEX_N@Z, ?setTextAreasAreResizable@Settings@WebCore@@QEAAX_N@Z)
         symbolWithPointer(?setShowRepaintCounter@Settings@WebCore@@QAEX_N@Z, ?setShowRepaintCounter@Settings@WebCore@@QEAAX_N@Z)

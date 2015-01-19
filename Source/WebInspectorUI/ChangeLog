@@ -1,3 +1,298 @@
+2015-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: TextEditor doesn't update when resizing console, white space instead of content
+        https://bugs.webkit.org/show_bug.cgi?id=140240
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._consoleResizerMouseDown.dockedResizerDrag):
+        Dispatch the event that signals the console has changed size.
+
+2015-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: I do not expect to see the same rule multiple times in styles sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=138185
+
+        Reviewed by Timothy Hatcher.
+
+        In the styles sidebar, don't show a duplicate, lesser-specificity rule even
+        if it matches the selected element multiple times with different selectors
+        in the list.
+
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.isEqualTo):
+        CSSRule identifiers are objects.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh):
+        Remove duplicates from the ordered list of style declarations.
+
+2015-01-12  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: Timeline: when Network Requests view is selected, in progress requests are absent.
+        https://bugs.webkit.org/show_bug.cgi?id=140090
+
+        Reviewed by Timothy Hatcher.
+
+        TimelineContentView#_updateTimes() changed to call WebInspector.timelineSidebarPanel.updateFilter() in addition
+        to updating the layout of the current timeline view. TimelineSidebarPanel.updateFilter() now responsible for
+        updating filtered resources in a TimelineView.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        Now handles updating the UI associated with filtering of navigation sidebar tree elements.
+
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.updateLayout):
+        No longer handles updating other UI along with the navigation sidebar tree elements. That is now handled by
+        WebInspector.TimelineView.prototype.filterUpdated.
+        (WebInspector.OverviewTimelineView.prototype._compareTreeElementsByDetails): Drive-by fix. Missing vars.
+
+        * UserInterface/Views/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype._updateTimes): Add call to updateFilter().
+
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView.prototype.filterUpdated):
+        Function added to dispatch a SelectionPathComponentsDidChange event.
+
+2015-01-09  Enrica Casucci  <enrica@apple.com>
+
+        [iOS] Support additional text styles.
+        https://bugs.webkit.org/show_bug.cgi?id=140310
+        rdar://problem/18568864
+
+        Reviewed by Joseph Pecoraro.
+
+        Add support for three new text styles.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2015-01-09  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: REGRESSION: Navigation sidebar can show blank next to the Console view
+        https://bugs.webkit.org/show_bug.cgi?id=140291
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded): Don't restore collapsed false if selectedSidebarPanel is null.
+        (WebInspector._sidebarCollapsedStateDidChange): Support a _ignoreNavigationSidebarPanelCollapsedEvent flag
+        to avoid setting _navigationSidebarCollapsedSetting.
+        (WebInspector._navigationSidebarPanelSelected): Force collapsed if selectedSidebarPanel is null.
+        (WebInspector._contentBrowserCurrentContentViewDidChange): Set _ignoreNavigationSidebarPanelCollapsedEvent
+        when forcing the collapsed state to avoid setting _navigationSidebarCollapsedSetting and calling
+        _updateContentViewForCurrentNavigationSidebar.
+
+2015-01-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: REGRESSION Showing debugger sidebar shouldn't change selected JS file
+        https://bugs.webkit.org/show_bug.cgi?id=139526
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._revealAndSelectRepresentedObjectInNavigationSidebar):
+        When switching to Debugger, show last selected JS or HTML resource.
+
+        (WebInspector.showSplitConsole):
+        (WebInspector.showFullHeightConsole):
+        (WebInspector.toggleConsoleView):
+        (WebInspector._sidebarCollapsedStateDidChange):
+        (WebInspector._updateContentViewForCurrentNavigationSidebar):
+        (WebInspector._navigationSidebarPanelSelected):
+        (WebInspector._contentBrowserCurrentContentViewDidChange):
+        (WebInspector._updateNavigationSidebarForCurrentContentView): Deleted.
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        (WebInspector.ApplicationCacheFrameContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/DatabaseContentView.js:
+        (WebInspector.DatabaseContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/DatabaseTableContentView.js:
+        (WebInspector.DatabaseTableContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/FontResourceContentView.js:
+        (WebInspector.FontResourceContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/FrameDOMTreeContentView.js:
+        (WebInspector.FrameDOMTreeContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WebInspector.ResourceClusterContentView.prototype.get allowedNavigationSidebarPanels):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.showDefaultContentView):
+        (WebInspector.ResourceSidebarPanel.prototype.showMainFrame):
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype.removeSidebarPanel):
+        * UserInterface/Views/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype.get allowedNavigationSidebarPanels):
+
+2015-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Phantom breakpoint appears on empty line after reload of minified file with a breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=140276
+
+        Reviewed by Timothy Hatcher.
+
+        Styles being set on lines (e.g. breakpoint styles) before content loaded can
+        carry forward with the empty line. It is safe for us to just remove all
+        the styles from the intial empty line before we load the initial content.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.set string.update):
+        (WebInspector.TextEditor.prototype.set string):
+
+2015-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pause Reason Improvements (Breakpoint, Debugger Statement, Pause on Next Statement)
+        https://bugs.webkit.org/show_bug.cgi?id=138991
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New UI strings for Pause Reasons.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.breakpointForIdentifier):
+        Provide a way to get the breakpoint with an identifier.
+
+        * UserInterface/Images/PausedBreakpoint.svg: Added.
+        * UserInterface/Images/gtk/PausedBreakpoint.svg: Added.
+        Copy PseudoElement.svg icon and give it a new name.
+
+        * UserInterface/Views/BreakpointTreeElement.css:
+        (.breakpoint-paused-icon .icon):
+        New icon for a breakpoint causing a pause.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement.prototype.removeStatusImage):
+        (WebInspector.BreakpointTreeElement.prototype._updateStatus):
+        Give API to remove the breakpoint status icon from a BreakpointTreeElement.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype.get hasSelectedElement):
+        (WebInspector.DebuggerSidebarPanel.prototype.deselectBreakpointContentTreeElements):
+        (WebInspector.DebuggerSidebarPanel.prototype.deselectPauseReasonContentTreeElements):
+        (WebInspector.DebuggerSidebarPanel.prototype._treeElementSelected):
+        Give DebuggerSidebarPanel an optional pause reason tree outline. When available
+        include it in the pattern of ensuring a single exclusive selection.
+
+        (WebInspector.DebuggerSidebarPanel.prototype._breakpointRemoved):
+        When a breakpoint is removed, check if we should update the pause reason tree outline.
+
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReason):
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        Update Pause Reason section contents depending on the reason.
+
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReasonGotoArrow):
+        Always try to include a goto arrow to jump to the original pause location
+        if it is available at the time of pausing.
+
+2015-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expected UserAgent styles to be crossed-out if overridden
+        https://bugs.webkit.org/show_bug.cgi?id=140154
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseStylePropertyPayload):
+        Add a comment about anonymous styles. The getter is no longer used, and it is not
+        clear if we really care about this state, or if "anonymous" is an appropriate name.
+
+        (WebInspector.DOMNodeStyles.prototype._markOverriddenProperties):
+        Allow browser styles (user agent / html attributes) to be overridden.
+
+        (WebInspector.DOMNodeStyles.prototype._parseStyleDeclarationPayload):
+        When refreshing styles after changes, the Style object backing HTML attributes
+        was being completely replaced. Allow it to be remembered by a unique key.
+
+2015-01-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Do not create rulesMap entries for rules without identifiers
+        https://bugs.webkit.org/show_bug.cgi?id=140237
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseRulePayload):
+        We were accidentally converting a null into a string with a loose string
+        concatenation. Only do this if the mapKey is not-null.
+
+2015-01-07  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Abstract common functions from TypeTokenAnnotator into a parent class and introduce an AnnotatorManager
+        https://bugs.webkit.org/show_bug.cgi?id=139426
+
+        Reviewed by Timothy Hatcher.
+
+        This patch creates a parent class, Annotator, that TypeTokenAnnotator
+        inherits from. Annotator defines a common set of functionality
+        that a text editor annotator can use to mark up UI. This 
+        is in preparation other classes that will inherit from Annotator.
+        
+        This patch also introduces AnnotatorManager which controls a
+        set of Annotators and provides a single interface for
+        controlling them.
+
+        * UserInterface/Controllers/Annotator.js: Added.
+        (WebInspector.Annotator):
+        (WebInspector.Annotator.prototype.get sourceCodeTextEditor):
+        (WebInspector.Annotator.prototype.get isActive):
+        (WebInspector.Annotator.prototype.pause):
+        (WebInspector.Annotator.prototype.resume):
+        (WebInspector.Annotator.prototype.refresh):
+        (WebInspector.Annotator.prototype.reset):
+        (WebInspector.Annotator.prototype.clear):
+        (WebInspector.Annotator.prototype.insertAnnotations):
+        (WebInspector.Annotator.prototype.clearAnnotations):
+        (WebInspector.Annotator.prototype._clearTimeoutIfNeeded):
+        * UserInterface/Controllers/AnnotatorManager.js: Added.
+        (WebInspector.AnnotatorManager):
+        (WebInspector.AnnotatorManager.prototype.addAnnotator):
+        (WebInspector.AnnotatorManager.prototype.isAnnotatorActive):
+        (WebInspector.AnnotatorManager.prototype.pauseAll):
+        (WebInspector.AnnotatorManager.prototype.resumeAll):
+        (WebInspector.AnnotatorManager.prototype.refreshAllIfActive):
+        (WebInspector.AnnotatorManager.prototype.resetAllIfActive):
+        (WebInspector.AnnotatorManager.prototype.clearAll):
+        (WebInspector.AnnotatorManager.prototype.removeAllAnnotators):
+        (WebInspector.AnnotatorManager.prototype._getAnnotators):
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WebInspector.TypeTokenAnnotator):
+        (WebInspector.TypeTokenAnnotator.prototype.insertAnnotations.):
+        (WebInspector.TypeTokenAnnotator.prototype.clearAnnotations):
+        (WebInspector.TypeTokenAnnotator.prototype._insertToken):
+        (WebInspector.TypeTokenAnnotator.prototype.get isActive): Deleted.
+        (WebInspector.TypeTokenAnnotator.prototype.get sourceCodeTextEditor): Deleted.
+        (WebInspector.TypeTokenAnnotator.prototype.pause): Deleted.
+        (WebInspector.TypeTokenAnnotator.prototype.resume): Deleted.
+        (WebInspector.TypeTokenAnnotator.prototype.refresh): Deleted.
+        (WebInspector.TypeTokenAnnotator.prototype.reset): Deleted.
+        (WebInspector.TypeTokenAnnotator.prototype._insertAnnotations.): Deleted.
+        (WebInspector.TypeTokenAnnotator.prototype._clearTimeoutIfNeeded): Deleted.
+        * UserInterface/Main.html:
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype.shown):
+        (WebInspector.SourceCodeTextEditor.prototype.hidden):
+        (WebInspector.SourceCodeTextEditor.prototype.canShowTypeAnnotations):
+        (WebInspector.SourceCodeTextEditor.prototype.contentDidChange):
+        (WebInspector.SourceCodeTextEditor.prototype.toggleTypeAnnotations):
+        (WebInspector.SourceCodeTextEditor.prototype.prettyPrint):
+        (WebInspector.SourceCodeTextEditor.prototype._debuggerDidPause):
+        (WebInspector.SourceCodeTextEditor.prototype._debuggerDidResume):
+        (WebInspector.SourceCodeTextEditor.prototype._updateTokenTrackingControllerState):
+        (WebInspector.SourceCodeTextEditor.prototype._getAssociatedScript):
+        (WebInspector.SourceCodeTextEditor.prototype._makeTypeTokenAnnotator):
+        (WebInspector.SourceCodeTextEditor.prototype._makeTypeTokenScrollEventHandler.scrollHandler):
+        (WebInspector.SourceCodeTextEditor.prototype._makeTypeTokenScrollEventHandler):
+
 2015-01-06  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Do not style implicit CSS properties in the Style Rules section

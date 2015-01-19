@@ -32,6 +32,7 @@
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteScrollingCoordinatorProxy.h"
 #import "SmartMagnificationController.h"
+#import "UIKitSPI.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextGroupPrivate.h"
 #import "WKInspectorHighlightView.h"
@@ -46,7 +47,6 @@
 #import "WebProcessPool.h"
 #import "WebSystemInterface.h"
 #import <CoreGraphics/CoreGraphics.h>
-#import <UIKit/UIWindow_Private.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/InspectorOverlay.h>
@@ -54,10 +54,6 @@
 #import <WebCore/QuartzCoreSPI.h>
 #import <wtf/CurrentTime.h>
 #import <wtf/RetainPtr.h>
-
-@interface CALayer (Details)
-@property BOOL hitTestsAsOpaque;
-@end
 
 using namespace WebCore;
 using namespace WebKit;
@@ -465,6 +461,9 @@ private:
     if (boundsChanged) {
         FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), [[_webView scrollView] zoomScale]);
         [self updateFixedClippingView:fixedPositionRect];
+
+        // We need to push the new content bounds to the webview to update fixed position rects.
+        [_webView _updateVisibleContentRects];
     }
     
     [self _updateChangedSelection];

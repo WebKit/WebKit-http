@@ -104,6 +104,8 @@ public:
     void terminateWebContentProcess();
     void reattachPageToWebProcess();
 
+    static const char* webProcessName();
+
     WorkQueueManager& workQueueManager() { return m_workQueueManager; }
 
     void setHandlesAuthenticationChallenges(bool value) { m_handlesAuthenticationChallenges = value; }
@@ -134,7 +136,7 @@ private:
     void initializeTestPluginDirectory();
 
     void updateWebViewSizeForTest(const TestInvocation&);
-    void updateWindowScaleForTest(const TestInvocation&);
+    void updateWindowScaleForTest(PlatformWebView*, const TestInvocation&);
     void updateLayoutTypeForTest(const TestInvocation&);
 
     void decidePolicyForGeolocationPermissionRequestIfPossible();

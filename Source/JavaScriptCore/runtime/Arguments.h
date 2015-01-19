@@ -37,6 +37,7 @@ namespace JSC {
 
 enum ArgumentsMode {
     NormalArgumentsCreationMode,
+    ClonedArgumentsCreationMode,
     FakeArgumentValuesCreationMode
 };
 
@@ -46,10 +47,10 @@ class Arguments : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
 
-    static Arguments* create(VM& vm, CallFrame* callFrame, ArgumentsMode mode = NormalArgumentsCreationMode)
+    static Arguments* create(VM& vm, CallFrame* callFrame, JSLexicalEnvironment* lexicalEnvironment, ArgumentsMode mode = NormalArgumentsCreationMode)
     {
         Arguments* arguments = new (NotNull, allocateCell<Arguments>(vm.heap, offsetOfInlineRegisterArray() + registerArraySizeInBytes(callFrame))) Arguments(callFrame);
-        arguments->finishCreation(callFrame, mode);
+        arguments->finishCreation(callFrame, lexicalEnvironment, mode);
         return arguments;
     }
         
@@ -105,7 +106,7 @@ public:
 protected:
     static const unsigned StructureFlags = OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | OverridesGetPropertyNames | JSObject::StructureFlags;
 
-    void finishCreation(CallFrame*, ArgumentsMode);
+    void finishCreation(CallFrame*, JSLexicalEnvironment*, ArgumentsMode);
     void finishCreation(CallFrame*, InlineCallFrame*, ArgumentsMode);
 
 private:
@@ -271,7 +272,7 @@ inline WriteBarrierBase<Unknown>& Arguments::argument(size_t argument)
     return m_lexicalEnvironment->registerAt(index - m_slowArgumentData->bytecodeToMachineCaptureOffset());
 }
 
-inline void Arguments::finishCreation(CallFrame* callFrame, ArgumentsMode mode)
+inline void Arguments::finishCreation(CallFrame* callFrame, JSLexicalEnvironment* lexicalEnvironment, ArgumentsMode mode)
 {
     Base::finishCreation(callFrame->vm());
     ASSERT(inherits(info()));
@@ -300,13 +301,20 @@ inline void Arguments::finishCreation(CallFrame* callFrame, ArgumentsMode mode)
                 codeBlock->framePointerOffsetToGetActivationRegisters());
         }
         if (codeBlock->needsActivation()) {
-            RELEASE_ASSERT(callFrame->lexicalEnvironment());
-            m_lexicalEnvironment.set(callFrame->vm(), this, callFrame->lexicalEnvironment());
+            RELEASE_ASSERT(lexicalEnvironment && lexicalEnvironment == callFrame->lexicalEnvironment());
+            m_lexicalEnvironment.set(callFrame->vm(), this, lexicalEnvironment);
         }
         // The bytecode generator omits op_tear_off_lexical_environment in cases of no
         // declared parameters, so we need to tear off immediately.
         if (m_isStrictMode || !callee->jsExecutable()->parameterCount())
             tearOff(callFrame);
+        break;
+    }
+        
+    case ClonedArgumentsCreationMode: {
+        m_numArguments = callFrame->argumentCount();
+        m_registers = reinterpret_cast<WriteBarrierBase<Unknown>*>(callFrame->registers());
+        tearOff(callFrame);
         break;
     }
         
@@ -347,6 +355,20 @@ inline void Arguments::finishCreation(CallFrame* callFrame, InlineCallFrame* inl
         // declared parameters, so we need to tear off immediately.
         if (m_isStrictMode || !callee->jsExecutable()->parameterCount())
             tearOff(callFrame, inlineCallFrame);
+        break;
+    }
+        
+    case ClonedArgumentsCreationMode: {
+        m_numArguments = inlineCallFrame->arguments.size() - 1;
+        if (m_numArguments) {
+            int offsetForArgumentOne = inlineCallFrame->arguments[1].virtualRegister().offset();
+            m_registers = reinterpret_cast<WriteBarrierBase<Unknown>*>(callFrame->registers()) + offsetForArgumentOne - virtualRegisterForArgument(1).offset();
+        } else
+            m_registers = 0;
+        
+        ASSERT(!jsCast<FunctionExecutable*>(inlineCallFrame->executable.get())->symbolTable(inlineCallFrame->specializationKind())->slowArguments());
+        
+        tearOff(callFrame, inlineCallFrame);
         break;
     }
         

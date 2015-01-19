@@ -31,7 +31,6 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "AbstractSQLTransaction.h"
 #include "SQLCallbackWrapper.h"
 #include "SQLStatement.h"
 #include "SQLTransactionStateMachine.h"
@@ -41,19 +40,20 @@
 
 namespace WebCore {
 
-class AbstractSQLTransactionBackend;
 class Database;
 class SQLError;
 class SQLStatementCallback;
 class SQLStatementErrorCallback;
+class SQLTransactionBackend;
 class SQLTransactionCallback;
 class SQLTransactionErrorCallback;
 class SQLValue;
 class VoidCallback;
 
-class SQLTransaction : public SQLTransactionStateMachine<SQLTransaction>, public AbstractSQLTransaction {
+class SQLTransaction : public ThreadSafeRefCounted<SQLTransaction>, public SQLTransactionStateMachine<SQLTransaction> {
 public:
     static Ref<SQLTransaction> create(Ref<Database>&&, RefPtr<SQLTransactionCallback>&&, RefPtr<VoidCallback>&& successCallback, RefPtr<SQLTransactionErrorCallback>&&, bool readOnly);
+    ~SQLTransaction();
 
     void performPendingCallback();
 
@@ -61,17 +61,17 @@ public:
 
     Database& database() { return m_database; }
 
+    // APIs called from the backend published via SQLTransaction:
+    void requestTransitToState(SQLTransactionState);
+    bool hasCallback() const;
+    bool hasSuccessCallback() const;
+    bool hasErrorCallback() const;
+    void setBackend(SQLTransactionBackend*);
+
 private:
     SQLTransaction(Ref<Database>&&, RefPtr<SQLTransactionCallback>&&, RefPtr<VoidCallback>&& successCallback, RefPtr<SQLTransactionErrorCallback>&&, bool readOnly);
 
     void clearCallbackWrappers();
-
-    // APIs called from the backend published via AbstractSQLTransaction:
-    virtual void requestTransitToState(SQLTransactionState) override;
-    virtual bool hasCallback() const override;
-    virtual bool hasSuccessCallback() const override;
-    virtual bool hasErrorCallback() const override;
-    virtual void setBackend(AbstractSQLTransactionBackend*) override;
 
     // State Machine functions:
     virtual StateFunction stateFunctionFor(SQLTransactionState) override;
@@ -90,7 +90,7 @@ private:
     SQLTransactionState nextStateForTransactionError();
 
     Ref<Database> m_database;
-    RefPtr<AbstractSQLTransactionBackend> m_backend;
+    RefPtr<SQLTransactionBackend> m_backend;
     SQLCallbackWrapper<SQLTransactionCallback> m_callbackWrapper;
     SQLCallbackWrapper<VoidCallback> m_successCallbackWrapper;
     SQLCallbackWrapper<SQLTransactionErrorCallback> m_errorCallbackWrapper;

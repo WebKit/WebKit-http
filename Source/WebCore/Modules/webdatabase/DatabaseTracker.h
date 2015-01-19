@@ -42,8 +42,8 @@
 
 namespace WebCore {
 
-class DatabaseBackendBase;
-class DatabaseBackendContext;
+class Database;
+class DatabaseContext;
 class DatabaseManagerClient;
 class OriginLock;
 class SecurityOrigin;
@@ -61,19 +61,19 @@ public:
     // m_databaseGuard and m_openDatabaseMapGuard currently don't overlap.
     // notificationMutex() is currently independent of the other locks.
 
-    bool canEstablishDatabase(DatabaseBackendContext*, const String& name, unsigned long estimatedSize, DatabaseError&);
-    bool retryCanEstablishDatabase(DatabaseBackendContext*, const String& name, unsigned long estimatedSize, DatabaseError&);
+    bool canEstablishDatabase(DatabaseContext*, const String& name, unsigned long estimatedSize, DatabaseError&);
+    bool retryCanEstablishDatabase(DatabaseContext*, const String& name, unsigned long estimatedSize, DatabaseError&);
 
     void setDatabaseDetails(SecurityOrigin*, const String& name, const String& displayName, unsigned long estimatedSize);
     String fullPathForDatabase(SecurityOrigin*, const String& name, bool createIfDoesNotExist = true);
 
-    void addOpenDatabase(DatabaseBackendBase*);
-    void removeOpenDatabase(DatabaseBackendBase*);
-    void getOpenDatabases(SecurityOrigin*, const String& name, HashSet<RefPtr<DatabaseBackendBase>>* databases);
+    void addOpenDatabase(Database*);
+    void removeOpenDatabase(Database*);
+    void getOpenDatabases(SecurityOrigin*, const String& name, HashSet<RefPtr<Database>>* databases);
 
-    unsigned long long getMaxSizeForDatabase(const DatabaseBackendBase*);
+    unsigned long long getMaxSizeForDatabase(const Database*);
 
-    void interruptAllDatabasesForContext(const DatabaseBackendContext*);
+    void interruptAllDatabasesForContext(const DatabaseContext*);
 
 private:
     explicit DatabaseTracker(const String& databasePath);
@@ -120,7 +120,7 @@ public:
 
     bool hasEntryForOrigin(SecurityOrigin*);
 
-    void doneCreatingDatabase(DatabaseBackendBase*);
+    void doneCreatingDatabase(Database*);
 
 private:
     bool hasEntryForOriginNoLock(SecurityOrigin* origin);
@@ -146,7 +146,7 @@ private:
 
     void deleteOriginLockFor(SecurityOrigin*);
 
-    typedef HashSet<DatabaseBackendBase*> DatabaseSet;
+    typedef HashSet<Database*> DatabaseSet;
     typedef HashMap<String, DatabaseSet*> DatabaseNameMap;
     typedef HashMap<RefPtr<SecurityOrigin>, DatabaseNameMap*> DatabaseOriginMap;
 

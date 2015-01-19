@@ -1,3 +1,382 @@
+2015-01-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove WK2 Windows cruft
+        https://bugs.webkit.org/show_bug.cgi?id=140440
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/InjectedBundle/win/ActivateFonts.cpp: Removed.
+        * WebKitTestRunner/InjectedBundle/win/InjectedBundleWin.cpp: Removed.
+        * WebKitTestRunner/InjectedBundle/win/TestRunnerWin.cpp: Removed.
+
+2015-01-13  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Fix TestWTF failed in TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=140333
+
+        Reviewed by Sam Weinig.
+
+        Clear the std::ostringstream before starting test.
+
+        * TestWebKitAPI/Tests/WTF/RefLogger.h:
+        (TestWebKitAPI::DerivedRefLogger::DerivedRefLogger):
+
+2015-01-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        TestWebKitWebContext depends on British English spellcheck dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=140403
+
+        Reviewed by Martin Robinson.
+
+        Install all English hunspell dictionaries on Fedora and Arch.
+
+        * gtk/install-dependencies:
+
+2015-01-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] install-dependencies should grok dnf
+        https://bugs.webkit.org/show_bug.cgi?id=140396
+
+        Reviewed by Martin Robinson.
+
+        Fedora: install dependencies with dnf if yum is not installed.
+
+        * gtk/install-dependencies:
+
+2015-01-12  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL][GTK] Fix build after r178309  
+        https://bugs.webkit.org/show_bug.cgi?id=140381
+
+        Reviewed by Gyuyoung Kim.
+
+        * TestWebKitAPI/CMakeLists.txt: Added the API directory
+
+2015-01-11  Sam Weinig  <sam@webkit.org>
+
+        Remove support for SharedWorkers
+        https://bugs.webkit.org/show_bug.cgi?id=140344
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-01-12  Anders Carlsson  <andersca@apple.com>
+
+        Make delegates conform to formal delegate protocols
+        https://bugs.webkit.org/show_bug.cgi?id=140370
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::numberOfPendingGeolocationPermissionRequests):
+        (TestRunner::setGeolocationPermission):
+
+2015-01-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        build-webkit: silence output of 'which'
+        https://bugs.webkit.org/show_bug.cgi?id=140278
+
+        Reviewed by Daniel Bates.
+
+        Use a more elegent test for the existance of ninja and eclipse.
+
+        * Scripts/webkitdirs.pm:
+        (commandExists): Don't assume the command supports --version
+        (canUseNinja): Use commandExists()
+        (canUseEclipse): Use commandExists()
+
+2015-01-09  Sam Weinig  <sam@webkit.org>
+
+        Update the output format for run-api-tests
+        https://bugs.webkit.org/show_bug.cgi?id=140332
+
+        Reviewed by Dan Bernstein.
+
+        Changes the output format for run-api-tests be a bit simpler (no longer 
+        indented based on suite, as we were not really using suite very well) but
+        also include details in the case of failure.
+
+        Changes verbose mode to no longer spew out the gtest default printer output,
+        as the custom printer now includes the failure information.
+
+        * Scripts/run-api-tests:
+        (runTestsBySuite):
+        (runTest):
+        Augment the custom gtest printer by replacing the tokens "**PASS**" and "**FAIL**"
+        with colorized variants and strip out leaks spew (the leaks can be added back using
+        the new --show-leaks argument).
+
+        * TestWebKitAPI/TestsController.cpp:
+        (TestWebKitAPI::Printer::OnTestPartResult):
+        (TestWebKitAPI::Printer::OnTestEnd):
+        (TestWebKitAPI::TestsController::run):
+        Implement a custom result printer that just prints out the information we want.
+
+2015-01-09  Sam Weinig  <sam@webkit.org>
+
+        TestWebKitAPI should print out the lists that fail at the end
+        https://bugs.webkit.org/show_bug.cgi?id=140329
+
+        Reviewed by Tim Horton.
+
+        * Scripts/run-api-tests:
+        (runTestsBySuite):
+        Print out failures and timeouts in all modes, not just verbose.
+
+2015-01-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Make bmalloc work with ASan
+        https://bugs.webkit.org/show_bug.cgi?id=140194
+
+        Reviewed by Mark Lam.
+
+        * asan/asan.xcconfig: No need to disable FastMalloc; bmalloc supports
+        ASan automatically (by forwarding to system malloc at runtime).
+
+2015-01-09  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make DumpRenderTree build with public SDK
+        https://bugs.webkit.org/show_bug.cgi?id=140311
+
+        Reviewed by Sam Weinig.
+
+        Use CGRound() instead of the obsolete macro function _ROUNDF_ (defined in
+        header UIKit/UIMath.h), and std::max() instead of the macro function MAX.
+        Additionally, remove unused header CoreGraphics/CGFontDB.h.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (-[ScrollViewResizerDelegate view:didSetFrame:oldFrame:asResultOfZoom:]):
+
+2015-01-09  Alexey Proskuryakov  <ap@apple.com>
+
+        platform/mac-wk2/tiled-drawing/tiled-drawing-scroll-position-page-cache-restoration.html fails on Retina machines
+        https://bugs.webkit.org/show_bug.cgi?id=140300
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::updateWindowScaleForTest):
+        (WTR::TestController::configureViewForTest):
+        * WebKitTestRunner/TestController.h:
+
+2015-01-09  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Unreviewed. Moving myself to the committer section.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-01-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add a script to check for platform layering violations
+        https://bugs.webkit.org/show_bug.cgi?id=140248
+
+        Reviewed by Darin Adler.
+
+        It prints all the cases where files inside platform include
+        headers that are not in platform directory.
+
+        * Scripts/check-for-platform-layering-violations: Added.
+        (get_platform_headers):
+        (check_source_file):
+
+2015-01-08  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac WK2] Test snapshots are 1600x1200 on Retina devices
+        https://bugs.webkit.org/show_bug.cgi?id=139884
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm: (WTR::PlatformWebView::windowSnapshotImage):
+        Tell CGWindowListCreateImage to use the correct resolution. I don't really understand
+        what the "nominal resolution" is, but this appears to work in practice.
+
+2015-01-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] DumpRenderTree is always using 800x600 size, even if tests need other size.
+        https://bugs.webkit.org/show_bug.cgi?id=140256
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues): Drive-by fix of a buffer overrun found while
+        running with heap validation checks.
+        (sizeWebViewForCurrentTest): Check both path separators ('/' and '\\') when checking for
+        the "svg\\W3C-SVG-1.1" test directory.
+        (removeFontFallbackIfPresent): Use nullptr instead of 0.
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::clearPersistentUserStyleSheet): Ditto.
+
+2015-01-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Follow-up to:  When WebProcess is slow to respond to IPC, that's mistakenly reported as crash
+        https://bugs.webkit.org/show_bug.cgi?id=140218
+
+        * Scripts/webkitpy/port/driver.py: (Driver._check_for_driver_crash_or_unresponsiveness):
+        Undone an accidental change - check for self.has_crashed() again. This code path
+        is for ports that don't have a signal handler printing #CRASHED when main process
+        crashes.
+
+        * Scripts/webkitpy/port/driver_unittest.py:
+        (DriverTest.test_check_for_driver_crash.assert_crash):
+        (DriverTest.test_check_for_driver_crash):
+        Updated the tests, all changes are expected.
+
+2015-01-08  Alexey Proskuryakov  <ap@apple.com>
+
+        When WebProcess is slow to respond to IPC, that's mistakenly reported as crash
+        https://bugs.webkit.org/show_bug.cgi?id=140218
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.__init__): Removed _subprocess_was_unresponsive that was a modifier for
+        "process crashed" condition. These don't make sense together - it's either a crash
+        or a timeout, and we should detect those properly at a much lower level.
+        (Driver.run_test): Ditto.
+        (Driver._check_for_driver_crash_or_unresponsiveness): Split crash and unresponsiveness
+        cases.
+
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::webProcessName): 
+        (WTR::TestController::processDidCrash):
+        Factored out hardcoded child process names, as we now use these in two places.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::dumpWebProcessUnresponsiveness): Dump an accurate child
+        process name, so that it can be sampled (fixes sampling on Mavericks and above).
+
+2015-01-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        Reorder my list of email addresses, keeping the Bugzilla address at the
+        top since Bugzilla and other webkitpy scripts rely on that ordering.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-01-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        Moving myself to the reviewers section and updating
+        the list of my email addresses.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-01-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Build gtk-doc without gtkdoc-mktmpl
+        https://bugs.webkit.org/show_bug.cgi?id=140225
+
+        Reviewed by Darin Adler.
+
+        Stop calling gtkdoc-mktmpl. It's being removed upstream, and since we
+        don't modify the tmpl files that it generates, it's not doing anything
+        for us.
+
+        * gtk/gtkdoc.py:
+        (GTKDoc.generate):
+        (GTKDoc._run_gtkdoc_scangobj):
+        (GTKDoc._run_gtkdoc_mktmpl): Deleted.
+
+2015-01-07  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK][ThreadedCompositor] Add support for threaded compositor.
+        https://bugs.webkit.org/show_bug.cgi?id=118265
+
+        Reviewed by Martin Robinson.
+
+        Added the ENABLE_THREADED_COMPOSITOR feature flag to the cmake and
+        autotools build systems. The feature is disabled by default.
+        And remove deprecated the WTF_USE_TILED_BACKING_STORE feature flag
+        from the feature flags.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-01-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebKit2 build with public iOS SDK and more build fixes for DRT
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+
+        Reviewed by David Kilzer.
+
+        Use SPI wrapper headers instead of directly referencing private SPI headers.
+
+        * DumpRenderTree/ios/DumpRenderTreeBrowserView.h:
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        * DumpRenderTree/mac/Configurations/Base.xcconfig: Append directory Source/WebKit2/Platform/spi/ios
+        to the list of iOS header search directories so that we can include header UIKitSPI.h.
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        * DumpRenderTree/mac/DumpRenderTreeWindow.h:
+        * DumpRenderTree/mac/EventSendingController.mm:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+
+2015-01-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178068.
+        https://bugs.webkit.org/show_bug.cgi?id=140235
+
+        Breaks the iOS build (Requested by enrica on #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Make WebKit2 build with public iOS SDK and more build
+        fixes for DRT"
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+        http://trac.webkit.org/changeset/178068
+
+2015-01-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebKit2 build with public iOS SDK and more build fixes for DRT
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+
+        Reviewed by David Kilzer.
+
+        Use SPI wrapper headers instead of directly referencing private SPI headers.
+
+        * DumpRenderTree/ios/DumpRenderTreeBrowserView.h:
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        * DumpRenderTree/mac/Configurations/Base.xcconfig: Append directory Source/WebKit2/Platform/spi/ios
+        to the list of header search directories so that we can include header UIKitSPI.h.
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        * DumpRenderTree/mac/DumpRenderTreeWindow.h:
+        * DumpRenderTree/mac/EventSendingController.mm:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+
+2015-01-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test change to improve run reproducibility
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.default_child_processes): Run a single DRT instance to help
+        identify failures caused by earlier test runs.
+
+2015-01-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Myles C. Maxfield is a reviewer now
+        https://bugs.webkit.org/show_bug.cgi?id=140196
+
+        Reviewed by Dean Jackson.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-01-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Make webkit-patch try harder to find keychain credentials
+        https://bugs.webkit.org/show_bug.cgi?id=140170
+
+        Reviewed by Ryosuke Niwa.
+
+        When the user manually enters a password into webkit-patch, we hand that off to the
+        Keyring Python module. However, that module creates a generic password entry instead
+        of an internet password entry. We should look for both kinds.
+
+        * Scripts/webkitpy/common/net/credentials.py:
+        (Credentials._run_security_tool):
+        (Credentials._credentials_from_keychain):
+        * Scripts/webkitpy/common/net/credentials_unittest.py:
+        (test_security_output_parse_entry_not_found):
+        (_assert_security_call):
+
 2015-01-06  Anders Carlsson  <andersca@apple.com>
 
         Try to fix the Mountain Lion build.

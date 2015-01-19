@@ -53,6 +53,7 @@ class CSSCursorImageValue;
 class CSSFontSelector;
 class CSSFontFace;
 class CSSFontFaceRule;
+class CSSFontValue;
 class CSSImageGeneratorValue;
 class CSSImageSetValue;
 class CSSImageValue;
@@ -161,6 +162,7 @@ public:
     RenderStyle* rootElementStyle() const { return m_state.rootElementStyle(); }
     Element* element() { return m_state.element(); }
     Document& document() { return m_document; }
+    Settings* documentSettings() { return m_document.settings(); }
 
     // FIXME: It could be better to call m_ruleSets.appendAuthorStyleSheets() directly after we factor StyleRsolver further.
     // https://bugs.webkit.org/show_bug.cgi?id=108890
@@ -200,6 +202,7 @@ public:
 
     void applyPropertyToCurrentStyle(CSSPropertyID, CSSValue*);
 
+    void applyFont(CSSFontValue&);
     void updateFont();
     void initializeFontStyle(Settings*);
 
@@ -209,8 +212,8 @@ public:
     bool useSVGZoomRules();
     bool useSVGZoomRulesForLength();
 
-    static bool colorFromPrimitiveValueIsDerivedFromElement(CSSPrimitiveValue*);
-    Color colorFromPrimitiveValue(CSSPrimitiveValue*, bool forVisitedLink = false) const;
+    static bool colorFromPrimitiveValueIsDerivedFromElement(CSSPrimitiveValue&);
+    Color colorFromPrimitiveValue(CSSPrimitiveValue&, bool forVisitedLink = false) const;
 
     bool hasSelectorForId(const AtomicString&) const;
     bool hasSelectorForClass(const AtomicString&) const;
@@ -317,7 +320,6 @@ private:
 #endif
     void matchPageRules(MatchResult&, RuleSet*, bool isLeftPage, bool isFirstPage, const String& pageName);
     void matchPageRulesForList(Vector<StyleRulePage*>& matchedRules, const Vector<StyleRulePage*>&, bool isLeftPage, bool isFirstPage, const String& pageName);
-    Settings* documentSettings() { return m_document.settings(); }
 
     bool isLeftPage(int pageIndex) const;
     bool isRightPage(int pageIndex) const { return !isLeftPage(pageIndex); }

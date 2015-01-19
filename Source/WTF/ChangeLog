@@ -1,3 +1,184 @@
+2015-01-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed fix after r163330.
+
+        * wtf/Platform.h: Use C style comment.
+
+2015-01-14  Marc Juul  <juul@sudomesh.org>
+
+        C++ style comment was preventing compile if CPU(ARM_NEON)
+        https://bugs.webkit.org/show_bug.cgi?id=133827
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Platform.h:
+
+2015-01-13  Chris Dumez  <cdumez@apple.com>
+
+        Make WTF::Optional work with msvc 2013
+        https://bugs.webkit.org/show_bug.cgi?id=140401
+
+        Reviewed by Anders Carlsson.
+
+        Update the WTF::Optional implementation to use std::aligned_memory and
+        placement new instead of an unrestricted union because msvc 2013 still
+        doesn't support unrestricted unions.
+
+        This change is a pre-requirement to fix Bug 140347 as this change uses
+        WTF::Optional with types that have non-trivial copy constructors.
+
+        This change is covered by the existing Optional WTF test.
+
+        * wtf/Optional.h:
+
+2015-01-11  Sam Weinig  <sam@webkit.org>
+
+        Remove support for SharedWorkers
+        https://bugs.webkit.org/show_bug.cgi?id=140344
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/FeatureDefines.h:
+
+2015-01-12  Darin Adler  <darin@apple.com>
+
+        Modernize and streamline HTMLTokenizer
+        https://bugs.webkit.org/show_bug.cgi?id=140166
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Forward.h: Removed PassRef, added OrdinalNumber and TextPosition.
+
+2015-01-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178154, r178163, and r178164.
+        https://bugs.webkit.org/show_bug.cgi?id=140292
+
+        Still multiple assertion failures on tests (Requested by ap on
+        #webkit).
+
+        Reverted changesets:
+
+        "Modernize and streamline HTMLTokenizer"
+        https://bugs.webkit.org/show_bug.cgi?id=140166
+        http://trac.webkit.org/changeset/178154
+
+        "Unreviewed speculative buildfix after r178154."
+        http://trac.webkit.org/changeset/178163
+
+        "One more unreviewed speculative buildfix after r178154."
+        http://trac.webkit.org/changeset/178164
+
+2015-01-08  Darin Adler  <darin@apple.com>
+
+        Modernize and streamline HTMLTokenizer
+        https://bugs.webkit.org/show_bug.cgi?id=140166
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Forward.h: Removed PassRef, added OrdinalNumber and TextPosition.
+
+2015-01-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        [WK2] Start a prototype for declarative site specific extensions
+        https://bugs.webkit.org/show_bug.cgi?id=140160
+
+        Reviewed by Andreas Kling.
+
+        * wtf/FeatureDefines.h:
+
+2015-01-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebKit2 build with public iOS SDK and more build fixes for DRT
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+
+        As pointed out by Tim Horton, use C-style comment instead of C++-style comment as
+        wtf/Compiler.h is included in the sandbox profile and the sandbox profile compiler
+        doesn't understand C++-style comments.
+
+        * wtf/Compiler.h:
+
+2015-01-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebKit2 build with public iOS SDK and more build fixes for DRT
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+
+        Reviewed by David Kilzer.
+
+        Move EXTERN_C_BEGIN and EXTERN_C_END macros from file WebKit2/config.h to here and
+        rename them to WTF_EXTERN_C_BEGIN and WTF_EXTERN_C_END, respectively, so that we
+        can make use of these macros in SPI wrapper headers (e.g. UIKitSPI.h).
+
+        I'll look to transition existing code to WTF_EXTERN_C_BEGIN/WTF_EXTERN_C_END and
+        remove EXTERN_C in a subsequent commit(s).
+
+        * wtf/Compiler.h:
+
+2015-01-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178068.
+        https://bugs.webkit.org/show_bug.cgi?id=140235
+
+        Breaks the iOS build (Requested by enrica on #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Make WebKit2 build with public iOS SDK and more build
+        fixes for DRT"
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+        http://trac.webkit.org/changeset/178068
+
+2015-01-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WebKit2 build with public iOS SDK and more build fixes for DRT
+        https://bugs.webkit.org/show_bug.cgi?id=137371
+
+        Reviewed by David Kilzer.
+
+        Move EXTERN_C_BEGIN and EXTERN_C_END macros from file WebKit2/config.h to here and
+        rename them to WTF_EXTERN_C_BEGIN and WTF_EXTERN_C_END, respectively, so that we
+        can make use of these macros in SPI wrapper headers (e.g. UIKitSPI.h).
+
+        I'll look to transition existing code to WTF_EXTERN_C_BEGIN/WTF_EXTERN_C_END and
+        remove EXTERN_C in a subsequent commit(s).
+
+        * wtf/Compiler.h:
+
+2015-01-07  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: purge PassRefPtr from Inspector code and use Ref for typed and untyped protocol objects
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::create): Return a Ref.
+
+2015-01-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178039.
+        https://bugs.webkit.org/show_bug.cgi?id=140187
+
+        Breaks ObjC Inspector Protocol (Requested by JoePeck on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: purge PassRefPtr from Inspector code and use
+        Ref for typed and untyped protocol objects"
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+        http://trac.webkit.org/changeset/178039
+
+2015-01-06  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: purge PassRefPtr from Inspector code and use Ref for typed and untyped protocol objects
+        https://bugs.webkit.org/show_bug.cgi?id=140053
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::create): Return a Ref.
+
 2015-01-06  Alexey Proskuryakov  <ap@apple.com>
 
         ADDRESS_SANITIZER macro is overloaded

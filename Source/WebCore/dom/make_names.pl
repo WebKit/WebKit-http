@@ -383,9 +383,7 @@ sub printConstructorSignature
 {
     my ($F, $tagName, $constructorName, $constructorTagName) = @_;
 
-    my $smartPointerType = ($parameters{namespace} eq "MathML" || $parameters{namespace} eq "SVG") ? "PassRefPtr" : "Ref";
-
-    print F "static $smartPointerType<$parameters{namespace}Element> ${constructorName}Constructor(const QualifiedName& $constructorTagName, Document& document";
+    print F "static Ref<$parameters{namespace}Element> ${constructorName}Constructor(const QualifiedName& $constructorTagName, Document& document";
     if ($parameters{namespace} eq "HTML") {
         print F ", HTMLFormElement*";
         print F " formElement" if $enabledTags{$tagName}{constructorNeedsFormElement};
@@ -927,8 +925,6 @@ sub printFactoryCppFile
     $formElementArgumentForDeclaration = ", HTMLFormElement*" if $parameters{namespace} eq "HTML";
     $formElementArgumentForDefinition = ", HTMLFormElement* formElement" if $parameters{namespace} eq "HTML";
 
-    my $smartPointerType = ($parameters{namespace} eq "MathML" || $parameters{namespace} eq "SVG") ? "PassRefPtr" : "Ref";
-
     printLicenseHeader($F);
 
     print F <<END
@@ -961,7 +957,7 @@ namespace WebCore {
 
 using namespace $parameters{namespace}Names;
 
-typedef $smartPointerType<$parameters{namespace}Element> (*$parameters{namespace}ConstructorFunction)(const QualifiedName&, Document&$formElementArgumentForDeclaration, bool createdByParser);
+typedef Ref<$parameters{namespace}Element> (*$parameters{namespace}ConstructorFunction)(const QualifiedName&, Document&$formElementArgumentForDeclaration, bool createdByParser);
 
 END
     ;
@@ -991,26 +987,23 @@ END
         map.add(table[i].name.localName().impl(), table[i].function);
 }
 
-$smartPointerType<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createElement(const QualifiedName& name, Document& document$formElementArgumentForDefinition, bool createdByParser)
+Ref<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createElement(const QualifiedName& name, Document& document$formElementArgumentForDefinition, bool createdByParser)
 {
     static NeverDestroyed<HashMap<AtomicStringImpl*, $parameters{namespace}ConstructorFunction>> functions;
     if (functions.get().isEmpty())
         populate$parameters{namespace}FactoryMap(functions);
-    if ($parameters{namespace}ConstructorFunction function = functions.get().get(name.localName().impl())) {
+    if ($parameters{namespace}ConstructorFunction function = functions.get().get(name.localName().impl()))
 END
     ;
 
     if ($parameters{namespace} eq "HTML") {
         print F "        return function(name, document, formElement, createdByParser);\n";
     } else {
-        print F "        if (RefPtr<$parameters{namespace}Element> element = function(name, document, createdByParser))\n";
-        print F "            return element.release();\n";
+        print F "        return function(name, document, createdByParser);\n";
     }
 
-    print F "    }\n";
-    print F "    return $parameters{fallbackInterfaceName}::create(name, document);\n";
-
     print F <<END
+    return $parameters{fallbackInterfaceName}::create(name, document);
 }
 
 } // namespace WebCore
@@ -1028,8 +1021,6 @@ sub printFactoryHeaderFile
     my $headerPath = shift;
     my $F;
     open F, ">$headerPath";
-
-    my $smartPointerType = ($parameters{namespace} eq "MathML" || $parameters{namespace} eq "SVG") ? "PassRefPtr" : "Ref";
 
     printLicenseHeader($F);
 
@@ -1052,7 +1043,7 @@ namespace WebCore {
 END
 ;
 
-print F "        static $smartPointerType<$parameters{namespace}Element> createElement(const QualifiedName&, Document&";
+print F "        static Ref<$parameters{namespace}Element> createElement(const QualifiedName&, Document&";
 print F ", HTMLFormElement* = nullptr" if $parameters{namespace} eq "HTML";
 print F ", bool createdByParser = false);\n";
 
