@@ -30,8 +30,6 @@
 #include "Page.h"
 #include "PageGroup.h"
 #include "PlatformCookieJar.h"
-#include "PluginDatabase.h"
-#include "PluginPackage.h"
 
 using namespace WebCore;
 
@@ -50,11 +48,6 @@ CookiesStrategy* PlatformStrategiesHaiku::createCookiesStrategy()
     return this;
 }
 
-DatabaseStrategy* PlatformStrategiesHaiku::createDatabaseStrategy()
-{
-    return this;
-}
-
 LoaderStrategy* PlatformStrategiesHaiku::createLoaderStrategy()
 {
     return this;
@@ -67,11 +60,6 @@ PasteboardStrategy* PlatformStrategiesHaiku::createPasteboardStrategy()
 }
 
 PluginStrategy* PlatformStrategiesHaiku::createPluginStrategy()
-{
-    return this;
-}
-
-SharedWorkerStrategy* PlatformStrategiesHaiku::createSharedWorkerStrategy()
 {
     return this;
 }

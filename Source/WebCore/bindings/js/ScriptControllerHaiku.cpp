@@ -29,7 +29,7 @@
 
 #include "Bridge.h"
 #include "BridgeJSC.h"
-#include "PluginView.h"
+#include "Widget.h"
 #include "runtime_root.h"
 
 

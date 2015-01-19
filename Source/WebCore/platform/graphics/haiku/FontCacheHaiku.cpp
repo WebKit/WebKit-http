@@ -34,7 +34,6 @@
 #include "FontCache.h"
 
 #include "Font.h"
-#include "FontData.h"
 #include "FontPlatformData.h"
 #include "NotImplemented.h"
 #include <Font.h>
@@ -47,20 +46,21 @@ void FontCache::platformInit()
 {
 }
 
-PassRefPtr<SimpleFontData> FontCache::systemFallbackForCharacters(const FontDescription& description, const SimpleFontData* originalFontData, bool, const UChar* characters, int length)
+RefPtr<SimpleFontData> FontCache::systemFallbackForCharacters(const FontDescription& description, const SimpleFontData* /*originalFontData*/, bool, const UChar* /*characters*/, int /*length*/)
 {
-    FontPlatformData data(description, description.firstFamily()); // TODO be smarter, try the other families.
-    return getCachedFontData(&data);
+    FontPlatformData data(description, description.firstFamily());
+        // TODO be smarter, try the other families and actually check that the
+        // characters are available
+    return fontForPlatformData(data);
 }
 
-// FIXME: implement shouldretain
-PassRefPtr<SimpleFontData> FontCache::getLastResortFallbackFont(const FontDescription& fontDescription, ShouldRetain /*shouldRetain*/)
+Ref<SimpleFontData> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
     font_family family;
     font_style style;
     be_plain_font->GetFamilyAndStyle(&family, &style);
     AtomicString plainFontFamily(family);
-    return getCachedFontData(fontDescription, plainFontFamily);
+    return *fontForFamily(fontDescription, plainFontFamily);
 }
 
 std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family)
@@ -70,7 +70,7 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
 
 void FontCache::getTraitsInFamily(const AtomicString& familyName, Vector<unsigned>& traitsMasks)
 {
-    notImplemented();
+    // notImplemented(); also by fretype, must not be that important
 }
 
 } // namespace WebCore

@@ -51,7 +51,6 @@ class FormState;
 class FrameView;
 class HistoryItem;
 class NavigationAction;
-class PluginView;
 class ResourceLoader;
 
 struct LoadErrorResetToken;
@@ -231,10 +230,6 @@ private:
     BMessenger m_messenger;
 
     bool m_loadingErrorPage;
-
-    // Plugin view to redirect data to
-    PluginView* m_pluginView;
-    bool m_hasSentResponseToPlugin;
 
     // IDNA domain encoding and decoding.
     UIDNA* m_uidna_context;

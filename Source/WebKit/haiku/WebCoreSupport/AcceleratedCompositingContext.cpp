@@ -114,24 +114,22 @@ void AcceleratedCompositingContext::compositeLayers(BRect updateRect)
     if (!m_rootLayer || !m_rootLayer->isGraphicsLayerTextureMapper())
         return;
 
-    TextureMapperLayer* currentRootLayer = downcast<GraphicsLayerTextureMapper>(m_rootLayer)->layer();
-    if (!currentRootLayer)
-        return;
+    TextureMapperLayer& currentRootLayer = downcast<GraphicsLayerTextureMapper>(m_rootLayer)->layer();
 
     m_updateRect = updateRect;
 
-    currentRootLayer->setTextureMapper(m_textureMapper.get());
-    currentRootLayer->applyAnimationsRecursively();
+    currentRootLayer.setTextureMapper(m_textureMapper.get());
+    currentRootLayer.applyAnimationsRecursively();
 
     m_textureMapper->beginPainting();
     m_textureMapper->beginClip(TransformationMatrix(), updateRect);
 
-    currentRootLayer->paint();
+    currentRootLayer.paint();
     m_fpsCounter.updateFPSAndDisplay(m_textureMapper.get());
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 
-    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations() && !m_syncTimer.isActive())
+    if (currentRootLayer.descendantsOrSelfHaveRunningAnimations() && !m_syncTimer.isActive())
         m_syncTimer.startOneShot(1 / compositingFrameRate);
 #endif
 }

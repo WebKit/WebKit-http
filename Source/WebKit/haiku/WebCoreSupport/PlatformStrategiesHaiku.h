@@ -21,14 +21,12 @@
 #define PlatformStrategiesHaiku_h
 
 #include "CookiesStrategy.h"
-#include "DatabaseStrategy.h"
 #include "LoaderStrategy.h"
 #include "PasteboardStrategy.h"
 #include "PlatformStrategies.h"
 #include "PluginStrategy.h"
-#include "SharedWorkerStrategy.h"
 
-class PlatformStrategiesHaiku : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::DatabaseStrategy, private WebCore::LoaderStrategy, private WebCore::PluginStrategy, private WebCore::SharedWorkerStrategy {
+class PlatformStrategiesHaiku : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::LoaderStrategy, private WebCore::PluginStrategy {
 public:
     static void initialize();
 
@@ -37,11 +35,9 @@ private:
 
     // WebCore::PlatformStrategies
     virtual WebCore::CookiesStrategy* createCookiesStrategy() override;
-    virtual WebCore::DatabaseStrategy* createDatabaseStrategy() override;
     virtual WebCore::LoaderStrategy* createLoaderStrategy() override;
     virtual WebCore::PasteboardStrategy* createPasteboardStrategy() override;
     virtual WebCore::PluginStrategy* createPluginStrategy() override;
-    virtual WebCore::SharedWorkerStrategy* createSharedWorkerStrategy() override;
 
     // WebCore::CookiesStrategy
     virtual String cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
@@ -50,9 +46,6 @@ private:
     virtual String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
     virtual bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&) override;
     virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&) override;
-
-    // WebCore::DatabaseStrategy
-    // - Using default implementation.
 
     // WebCore::PluginStrategy
     virtual void refreshPlugins() override;

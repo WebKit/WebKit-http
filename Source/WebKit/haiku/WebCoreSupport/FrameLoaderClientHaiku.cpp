@@ -57,8 +57,6 @@
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PluginData.h"
-#include "PluginDatabase.h"
-#include "PluginView.h"
 #include "ProgressTracker.h"
 #include "RenderFrame.h"
 #include "ResourceRequest.h"
@@ -101,8 +99,6 @@ FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage)
     , m_webFrame(nullptr)
     , m_messenger()
     , m_loadingErrorPage(false)
-    , m_pluginView(nullptr)
-    , m_hasSentResponseToPlugin(false)
     , m_uidna_context(nullptr)
 {
     CALLED("BWebPage: %p", webPage);
@@ -242,7 +238,7 @@ void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLo
 
 
 bool FrameLoaderClientHaiku::dispatchDidReceiveInvalidCertificate(DocumentLoader*,
-    const CertificateInfo& certificate, const char* message)
+    const CertificateInfo& /*certificate*/, const char* message)
 {
     String text = "The SSL certificate received from " + 
         m_webFrame->Frame()->document()->url().string() + " could not be "
@@ -602,11 +598,6 @@ void FrameLoaderClientHaiku::revertToProvisionalState(DocumentLoader*)
 void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* /*loader*/, const WebCore::ResourceError& error)
 {
     CALLED();
-    if (m_pluginView) {
-        m_pluginView->didFail(error);
-        m_pluginView = 0;
-        m_hasSentResponseToPlugin = false;
-    }
 
     if (error.isCancellation())
         return;
@@ -641,42 +632,19 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
 {
     CALLED();
 
-    if (!m_pluginView) {
-        ASSERT(loader->frame());
-        loader->commitData(data, length);
+    ASSERT(loader->frame());
+    loader->commitData(data, length);
 
 #if 0
-        Frame* coreFrame = loader->frame();
-        if (coreFrame && coreFrame->document()->isMediaDocument())
-            loader->cancelMainResourceLoad(coreFrame->loader().client().pluginWillHandleLoadError(loader->response()));
+    Frame* coreFrame = loader->frame();
+    if (coreFrame && coreFrame->document()->isMediaDocument())
+        loader->cancelMainResourceLoad(coreFrame->loader().client().pluginWillHandleLoadError(loader->response()));
 #endif
-    }
-
-    // We re-check here as the plugin can have been created.
-    if (m_pluginView && m_pluginView->isPluginView()) {
-        if (!m_hasSentResponseToPlugin) {
-            m_pluginView->didReceiveResponse(loader->response());
-            // The function didReceiveResponse sets up a new stream to the plug-in.
-            // On a full-page plug-in, a failure in setting up this stream can cause the
-            // main document load to be cancelled, setting m_pluginView to null.
-            if (!m_pluginView)
-                return;
-            m_hasSentResponseToPlugin = true;
-        }
-        m_pluginView->didReceiveData(data, length);
-    }
 }
 
 void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* /*documentLoader*/)
 {
     CALLED();
-
-    if (m_pluginView) {
-        TRACE("m_pluginView\n");
-        m_pluginView->didFinishLoading();
-        m_pluginView = 0;
-        m_hasSentResponseToPlugin = false;
-    }
 }
 
 void FrameLoaderClientHaiku::updateGlobalHistory()
@@ -1015,9 +983,7 @@ PassRefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlug
 void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)
 {
     CALLED();
-    ASSERT(!m_pluginView);
-    m_pluginView = static_cast<PluginView*>(pluginWidget);
-    m_hasSentResponseToPlugin = false;
+    debugger("plugins are not implemented on Haiku!");
 }
 
 PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& /*baseURL*/,
