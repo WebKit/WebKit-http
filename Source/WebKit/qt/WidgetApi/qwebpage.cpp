@@ -934,13 +934,14 @@ QPalette QWebPage::palette() const
 
 void QWebPagePrivate::shortcutOverrideEvent(QKeyEvent* event)
 {
-    if (handleShortcutOverrideEvent(event))
-        return;
+    if (handleShortcutOverrideEvent(event)) {
+        if (event->isAccepted())
+            return;
 #ifndef QT_NO_SHORTCUT
-    if (editorActionForKeyEvent(event) != QWebPage::NoWebAction)
-        event->accept();
+        else if (editorActionForKeyEvent(event) != QWebPage::NoWebAction)
+            event->accept();
 #endif
-
+    }
 }
 
 bool QWebPagePrivate::gestureEvent(QGestureEvent* event)
