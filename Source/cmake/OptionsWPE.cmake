@@ -105,10 +105,6 @@ add_definitions(-DWTF_PLATFORM_WAYLAND=1)
 
 set(FORWARDING_HEADERS_DIR ${DERIVED_SOURCES_DIR}/ForwardingHeaders)
 
-# Push of rbp is needed after JSC JIT uses CStack. See http://wkbug.com/127777.
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-omit-frame-pointer")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-omit-frame-pointer")
-
 # Build with -fvisibility=hidden to reduce the size of the shared library.
 # Not to be used when building the WebKitTestRunner library.
 if (NOT DEVELOPER_MODE)
