@@ -27,7 +27,7 @@
 
 #include "config.h"
 
-#include "Font.h"
+#include "FontCascade.h"
 #include "FontDescription.h"
 #include "FontSelector.h"
 #include "GraphicsContext.h"
@@ -42,17 +42,17 @@
 
 namespace WebCore {
 
-bool Font::canReturnFallbackFontsForComplexText()
+bool FontCascade::canReturnFallbackFontsForComplexText()
 {
     return false;
 }
 
-void Font::drawEmphasisMarksForComplexText(GraphicsContext* /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
+void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext* /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
 {
     notImplemented();
 }
 
-void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* font,
+void FontCascade::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* font,
                       const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point) const
 {
     BView* view = graphicsContext->platformContext();
@@ -88,7 +88,7 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
     view->PopState();
 }
 
-bool Font::canExpandAroundIdeographsInComplexText()
+bool FontCascade::canExpandAroundIdeographsInComplexText()
 {
     return false;
 }
@@ -101,7 +101,7 @@ bool Font::canExpandAroundIdeographsInComplexText()
  * For now, we just call the usual DrawString method. It's better to at least
  * try displaying something.
  */
-float Font::drawComplexText(GraphicsContext* context, const TextRun& run, const FloatPoint& point,
+float FontCascade::drawComplexText(GraphicsContext* context, const TextRun& run, const FloatPoint& point,
                            int from, int to) const
 {
     BView* view = context->platformContext();
@@ -114,7 +114,7 @@ float Font::drawComplexText(GraphicsContext* context, const TextRun& run, const 
 }
 
 
-float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>* /*fallbackFonts*/, GlyphOverflow* /*glyphOverflow*/) const
+float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>* /*fallbackFonts*/, GlyphOverflow* /*glyphOverflow*/) const
 {
     const BFont* font = primaryFontData().platformData().font();
     ASSERT(font);
@@ -122,13 +122,13 @@ float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFon
     return width;
 }
 
-int Font::offsetForPositionForComplexText(const TextRun& run, float position,
+int FontCascade::offsetForPositionForComplexText(const TextRun& run, float position,
     bool includePartialGlyphs) const
 {
     return offsetForPositionForSimpleText(run, position, includePartialGlyphs);
 }
 
-void Font::adjustSelectionRectForComplexText(const TextRun& run,
+void FontCascade::adjustSelectionRectForComplexText(const TextRun& run,
     LayoutRect& rect, int from, int to) const
 {
     adjustSelectionRectForSimpleText(run, rect, from, to);

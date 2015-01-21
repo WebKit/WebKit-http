@@ -207,7 +207,7 @@ void RenderThemeHaiku::systemFont(CSSValueID, FontDescription& fontDescription) 
     fontDescription.setSpecifiedSize(14);
     fontDescription.setIsAbsoluteSize(true);
     fontDescription.setWeight(FontWeightNormal);
-    fontDescription.setItalic(false);
+    fontDescription.setIsItalic(false);
 }
 
 #if ENABLE(VIDEO)

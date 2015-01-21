@@ -427,12 +427,10 @@ void ChromeClientHaiku::print(Frame*)
     notImplemented();
 }
 
-#if ENABLE(SQL_DATABASE)
 void ChromeClientHaiku::exceededDatabaseQuota(Frame*, const String& /*databaseName*/, DatabaseDetails)
 {
     notImplemented();
 }
-#endif
 
 void ChromeClientHaiku::reachedMaxAppCacheSize(int64_t /*spaceNeeded*/)
 {

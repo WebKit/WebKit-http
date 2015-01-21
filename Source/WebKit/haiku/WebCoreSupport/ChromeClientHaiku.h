@@ -137,9 +137,7 @@ namespace WebCore {
 
         void print(Frame*) override;
 
-#if ENABLE(SQL_DATABASE)
         void exceededDatabaseQuota(Frame*, const String& databaseName, DatabaseDetails) override;
-#endif
         void reachedMaxAppCacheSize(int64_t spaceNeeded) override;
         void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded) override;
 

@@ -36,6 +36,7 @@
 #include "Font.h"
 #include "FontPlatformData.h"
 #include "NotImplemented.h"
+#include "SimpleFontData.h"
 #include <Font.h>
 #include <String.h>
 #include <interface/Font.h>
