@@ -22,6 +22,7 @@
 
 #if USE(TEXTURE_MAPPER)
 
+#include <limits>
 #include "FilterOperations.h"
 #include "FloatRect.h"
 #include "GraphicsLayerTransform.h"
@@ -51,7 +52,7 @@ public:
         , m_effectTarget(0)
         , m_contentsLayer(0)
         , m_currentOpacity(1)
-        , m_centerZ(0)
+        , m_centerZ(std::numeric_limits<float>::lowest())
         , m_textureMapper(0)
         , m_fixedToViewport(false)
         , m_id(0)
