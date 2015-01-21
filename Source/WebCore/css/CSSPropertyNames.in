@@ -552,9 +552,13 @@ order
 -webkit-padding-before [SkipBuilder]
 -webkit-padding-end [SkipBuilder]
 -webkit-padding-start [SkipBuilder]
+perspective = -webkit-perspective
 -webkit-perspective [ConditionalConverter=Perspective]
+perspective-origin = -webkit-perspective-origin
 -webkit-perspective-origin [Shorthand]
+perspective-origin-x = -webkit-perspective-origin-x
 -webkit-perspective-origin-x [Converter=Length]
+perspective-origin-y = -webkit-perspective-origin-y
 -webkit-perspective-origin-y [Converter=Length]
 -webkit-print-color-adjust [Inherited]
 -webkit-rtl-ordering [Inherited, Setter=setRTLOrdering, Initial=initialRTLOrdering]
