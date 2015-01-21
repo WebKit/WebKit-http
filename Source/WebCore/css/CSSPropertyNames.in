@@ -599,7 +599,7 @@ transform = -webkit-transform
 -webkit-transform [Converter=Transform]
 transform-origin = -webkit-transform-origin
 -webkit-transform-origin [Shorthand]
-transform-origin-x = -webkit-transform-origin
+transform-origin-x = -webkit-transform-origin-x
 -webkit-transform-origin-x [Converter=Length]
 transform-origin-y = -webkit-transform-origin-y
 -webkit-transform-origin-y [Converter=Length]
