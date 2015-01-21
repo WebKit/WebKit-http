@@ -1,3 +1,126 @@
+2015-01-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove non-Windows cruft from WebKit/win/Plugins
+        https://bugs.webkit.org/show_bug.cgi?id=140675
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/PluginDatabase.cpp:
+        (WebCore::PluginDatabase::defaultPluginDirectories):
+        (WebCore::PluginDatabase::isPreferredPluginDirectory):
+        (WebCore::PluginDatabase::getPluginPathsInDirectories):
+        * Plugins/PluginDebug.cpp:
+        (WebCore::prettyNameForNPNVariable):
+        (WebCore::prettyNameForNPPVariable):
+        (WebCore::prettyNameForDrawingModel): Deleted.
+        (WebCore::prettyNameForEventModel): Deleted.
+        * Plugins/PluginDebug.h:
+        * Plugins/PluginPackage.cpp:
+        (WebCore::PluginPackage::compareFileVersion):
+        (WebCore::PluginPackage::determineQuirks): Deleted.
+        (WebCore::PluginPackage::determineModuleVersionFromDescription): Deleted.
+        (WebCore::PluginPackage::hash): Deleted.
+        (WebCore::PluginPackage::equal): Deleted.
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::setFrameRect):
+        (WebCore::PluginView::handleEvent):
+        (WebCore::PluginView::stop):
+        (WebCore::PluginView::setValue):
+        (WebCore::PluginView::PluginView):
+        * Plugins/PluginView.h:
+        (WebCore::PluginView::platformPluginWidget): Deleted.
+        (WebCore::PluginView::setPlatformPluginWidget): Deleted.
+        * Plugins/PluginViewWin.cpp:
+        (windowHandleForPageClient):
+        (WebCore::PluginView::hookedBeginPaint):
+        (WebCore::PluginView::hookedEndPaint):
+        (WebCore::hook):
+        (WebCore::registerPluginView):
+        (WebCore::PluginView::paint):
+        (WebCore::PluginView::handleMouseEvent):
+        (WebCore::PluginView::setNPWindowRect):
+        (WebCore::PluginView::platformStart):
+        (WebCore::PluginView::snapshot):
+        * Plugins/npapi.cpp:
+        (NPN_InvalidateRect):
+
+2015-01-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Periodic failure in DumpRenderTree related to WebActionPropertyBag::Read
+        https://bugs.webkit.org/show_bug.cgi?id=139906
+
+        Reviewed by Dean Jackson.
+
+        WebKit on Windows was creating uninitialized VARIANT structures, then attempting
+        to use them. This patch fixes that.
+
+        Identified by dom/html/level2/html/HTMLIFrameElement03.html (and others)
+
+        * COMEnumVariant.h:
+        (COMEnumVariant<ContainerType>::Next):
+        * COMPropertyBag.h:
+        (HashType>::Read):
+        * DefaultPolicyDelegate.cpp:
+        (DefaultPolicyDelegate::decidePolicyForNavigationAction):
+        * WebActionPropertyBag.cpp:
+        (WebActionPropertyBag::Read):
+        * WebDatabaseManager.cpp:
+        (DatabaseDetailsPropertyBag::Read):
+        * WebElementPropertyBag.cpp:
+        (WebElementPropertyBag::Read):
+        * WebFrame.cpp:
+        (EnumChildFrames::Next):
+        * WebView.cpp:
+        (WebView::notifyDidAddIcon):
+
+2015-01-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SQL_DATABASE) guards
+        https://bugs.webkit.org/show_bug.cgi?id=140434
+
+        Reviewed by Darin Adler.
+
+        * ForEachCoClass.h:
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::exceededDatabaseQuota):
+        * WebCoreSupport/WebChromeClient.h:
+        * WebDatabaseManager.cpp:
+        (WebKitInitializeWebDatabasesIfNecessary):
+        * WebDatabaseManager.h:
+        * WebSecurityOrigin.cpp:
+        (WebSecurityOrigin::usage):
+        (WebSecurityOrigin::quota):
+        (WebSecurityOrigin::setQuota):
+        * WebView.cpp:
+        (WebView::initWithFrame):
+        (WebView::notifyPreferencesChanged):
+
+2015-01-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r178510
+
+        Correct #include and declarations from Font->FontCascade
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::font):
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::draw):
+        * WebKitGraphics.cpp:
+        * WebPreferences.cpp:
+
+2015-01-14  Chris Dumez  <cdumez@apple.com>
+
+        Make 'TypeName' parameter unnecessary in CSSPropertyNames.in
+        https://bugs.webkit.org/show_bug.cgi?id=140347
+
+        Reviewed by Darin Adler.
+
+        Call FontDescription::setIsItalic() instead of setItalic() as the
+        call site passes a boolean.
+
+        * WebKitGraphics.cpp:
+        (makeFont):
+
 2015-01-11  Sam Weinig  <sam@webkit.org>
 
         Remove support for SharedWorkers

@@ -28,6 +28,7 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
+#include "ContentExtensionsDebugging.h"
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 
@@ -42,8 +43,8 @@ public:
     HashMap<uint16_t, unsigned> transitions;
     Vector<uint64_t> actions;
 
-#ifndef NDEBUG
-    Vector<unsigned> correspondingDFANodes;
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+    Vector<unsigned> correspondingNFANodes;
 #endif
 };
 

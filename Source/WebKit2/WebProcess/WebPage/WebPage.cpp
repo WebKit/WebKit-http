@@ -802,7 +802,7 @@ EditorState WebPage::editorState() const
     if (!selection.isNone()) {
         Node* nodeToRemove;
         if (RenderStyle* style = Editor::styleForSelectionStart(&frame, nodeToRemove)) {
-            CTFontRef font = style->font().primaryFontData().getCTFont();
+            CTFontRef font = style->fontCascade().primaryFontData().getCTFont();
             CTFontSymbolicTraits traits = font ? CTFontGetSymbolicTraits(font) : 0;
             
             if (traits & kCTFontTraitBold)
@@ -919,6 +919,19 @@ void WebPage::executeEditingCommand(const String& commandName, const String& arg
     }
     
     frame.editor().command(commandName).execute(argument);
+}
+
+void WebPage::setEditable(bool editable)
+{
+    m_page->setEditable(editable);
+    m_page->setTabKeyCyclesThroughElements(!editable);
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (editable) {
+        frame.editor().applyEditingStyleToBodyElement();
+        // If the page is made editable and the selection is empty, set it to something.
+        if (frame.selection().isNone())
+            frame.selection().setSelectionFromNone();
+    }
 }
 
 bool WebPage::isEditingCommandEnabled(const String& commandName)
@@ -2767,9 +2780,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setInteractiveFormValidationEnabled(store.getBoolValueForKey(WebPreferencesKey::interactiveFormValidationEnabledKey()));
     settings.setSpatialNavigationEnabled(store.getBoolValueForKey(WebPreferencesKey::spatialNavigationEnabledKey()));
 
-#if ENABLE(SQL_DATABASE)
     DatabaseManager::manager().setIsAvailable(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
-#endif
 
 #if ENABLE(FULLSCREEN_API)
     settings.setFullScreenEnabled(store.getBoolValueForKey(WebPreferencesKey::fullScreenEnabledKey()));
@@ -3467,6 +3478,7 @@ void WebPage::mainFrameDidLayout()
             viewportConfigurationChanged();
         }
     }
+    m_findController.redraw();
 #endif
 }
 

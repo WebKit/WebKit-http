@@ -155,9 +155,7 @@ public:
 
     virtual void print(Frame*) override { }
 
-#if ENABLE(SQL_DATABASE)
     virtual void exceededDatabaseQuota(Frame*, const String&, DatabaseDetails) override { }
-#endif
 
     virtual void reachedMaxAppCacheSize(int64_t) override { }
     virtual void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t) override { }
@@ -634,9 +632,9 @@ class EmptyProgressTrackerClient : public ProgressTrackerClient {
     virtual void progressFinished(Frame&) override { }
 };
 
-class EmptyDiagnosticLoggingClient : public DiagnosticLoggingClient {
+class EmptyDiagnosticLoggingClient final : public DiagnosticLoggingClient {
     virtual void logDiagnosticMessage(const String&, const String&) override { }
-    virtual void logDiagnosticMessageWithResult(const String&, const String&, LogResultType) override { }
+    virtual void logDiagnosticMessageWithResult(const String&, const String&, DiagnosticLoggingResultType) override { }
     virtual void logDiagnosticMessageWithValue(const String&, const String&, const String&) override { }
 };
 

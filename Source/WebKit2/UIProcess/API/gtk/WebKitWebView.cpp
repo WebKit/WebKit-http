@@ -149,7 +149,8 @@ enum {
     PROP_URI,
     PROP_ZOOM_LEVEL,
     PROP_IS_LOADING,
-    PROP_IS_PLAYING_AUDIO
+    PROP_IS_PLAYING_AUDIO,
+    PROP_EDITABLE
 };
 
 typedef HashMap<uint64_t, GRefPtr<WebKitWebResource> > LoadingResourcesMap;
@@ -486,8 +487,6 @@ static void webkitWebViewUpdateSettings(WebKitWebView* webView)
     page->setCanRunModal(webkit_settings_get_allow_modal_dialogs(settings));
     page->setCustomUserAgent(String::fromUTF8(webkit_settings_get_user_agent(settings)));
 
-    webkitWebViewBaseUpdatePreferences(WEBKIT_WEB_VIEW_BASE(webView));
-
     g_signal_connect(settings, "notify::allow-modal-dialogs", G_CALLBACK(allowModalDialogsChanged), webView);
     g_signal_connect(settings, "notify::zoom-text-only", G_CALLBACK(zoomTextOnlyChanged), webView);
     g_signal_connect(settings, "notify::user-agent", G_CALLBACK(userAgentChanged), webView);
@@ -690,6 +689,9 @@ static void webkitWebViewSetProperty(GObject* object, guint propId, const GValue
     case PROP_ZOOM_LEVEL:
         webkit_web_view_set_zoom_level(webView, g_value_get_double(value));
         break;
+    case PROP_EDITABLE:
+        webkit_web_view_set_editable(webView, g_value_get_boolean(value));
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
     }
@@ -729,6 +731,9 @@ static void webkitWebViewGetProperty(GObject* object, guint propId, GValue* valu
         break;
     case PROP_IS_PLAYING_AUDIO:
         g_value_set_boolean(value, webkit_web_view_is_playing_audio(webView));
+        break;
+    case PROP_EDITABLE:
+        g_value_set_boolean(value, webkit_web_view_is_editable(webView));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
@@ -959,6 +964,24 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
             _("Whether the view is playing audio"),
             FALSE,
             WEBKIT_PARAM_READABLE));
+
+    /**
+     * WebKitWebView:editable:
+     *
+     * Whether the pages loaded inside #WebKitWebView are editable. For more
+     * information see webkit_web_view_set_editable().
+     *
+     * Since: 2.8
+     */
+    g_object_class_install_property(
+        gObjectClass,
+        PROP_EDITABLE,
+        g_param_spec_boolean(
+            "editable",
+            _("Editable"),
+            _("Whether the content can be modified by the user."),
+            FALSE,
+            WEBKIT_PARAM_READWRITE));
 
     /**
      * WebKitWebView::load-changed:
@@ -3477,6 +3500,7 @@ void webkit_web_view_get_snapshot(WebKitWebView* webView, WebKitSnapshotRegion r
     message.set(String::fromUTF8("SnapshotOptions"), API::UInt64::create(static_cast<uint64_t>(webKitSnapshotOptionsToSnapshotOptions(options))));
     message.set(String::fromUTF8("SnapshotRegion"), API::UInt64::create(static_cast<uint64_t>(toSnapshotRegion(region))));
     message.set(String::fromUTF8("CallbackID"), API::UInt64::create(callbackID));
+    message.set(String::fromUTF8("TransparentBackground"), API::Boolean::create(options & WEBKIT_SNAPSHOT_OPTIONS_TRANSPARENT_BACKGROUND));
 
     webView->priv->snapshotResultsMap.set(callbackID, adoptGRef(g_task_new(webView, cancellable, callback, userData)));
     getPage(webView)->postMessageToInjectedBundle(String::fromUTF8("GetSnapshot"), API::Dictionary::create(WTF::move(message)).get());
@@ -3506,3 +3530,121 @@ void webkitWebViewWebProcessCrashed(WebKitWebView* webView)
     g_signal_emit(webView, signals[WEB_PROCESS_CRASHED], 0, &returnValue);
 }
 
+/**
+ * webkit_web_view_set_background_color:
+ * @web_view: a #WebKitWebView
+ * @rgba: a #GdkRGBA
+ *
+ * Sets the color that will be used to draw the @web_view background before
+ * the actual contents are rendered. Note that if the web page loaded in @web_view
+ * specifies a background color, it will take precedence over the @rgba color.
+ * By default the @web_view background color is opaque white.
+ * If the @rgba color is not fully opaque, the parent window must have a RGBA visual and
+ * #GtkWidget:app-paintable property set to %TRUE, for the transparencies to work.
+ *
+ * <informalexample><programlisting>
+ * static void browser_window_set_background_color (BrowserWindow *window,
+ *                                                  const GdkRGBA *rgba)
+ * {
+ *     WebKitWebView *web_view;
+ *
+ *     if (rgba->alpha < 1) {
+ *         GdkScreen *screen = gtk_window_get_screen (GTK_WINDOW (window));
+ *         GdkVisual *rgba_visual = gdk_screen_get_rgba_visual (screen);
+ *
+ *         if (!rgba_visual)
+ *              return;
+ *
+ *         gtk_widget_set_visual (GTK_WIDGET (window), rgba_visual);
+ *         gtk_widget_set_app_paintable (GTK_WIDGET (window), TRUE);
+ *     }
+ *
+ *     web_view = browser_window_get_web_view (window);
+ *     webkit_web_view_set_background_color (web_view, rgba);
+ * }
+ * </programlisting></informalexample>
+ *
+ * Since: 2.8
+ */
+void webkit_web_view_set_background_color(WebKitWebView* webView, const GdkRGBA* rgba)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
+    g_return_if_fail(rgba);
+
+    Color color(*rgba);
+    WebPageProxy* page = getPage(webView);
+    if (page->backgroundColor() == color)
+        return;
+
+    page->setBackgroundColor(color);
+    page->setDrawsBackground(color == Color::white);
+}
+
+/**
+ * webkit_web_view_get_background_color:
+ * @web_view: a #WebKitWebView
+ * @rgba: (out): a #GdkRGBA to fill in with the background color
+ *
+ * Gets the color that is used to draw the @web_view background before
+ * the actual contents are rendered.
+ * For more information see also webkit_web_view_set_background_color()
+ *
+ * Since: 2.8
+ */
+void webkit_web_view_get_background_color(WebKitWebView* webView, GdkRGBA* rgba)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
+    g_return_if_fail(rgba);
+
+    *rgba = getPage(webView)->backgroundColor();
+}
+
+/*
+ * webkit_web_view_is_editable:
+ * @web_view: a #WebKitWebView
+ *
+ * Gets whether the user is allowed to edit the HTML document. When @web_view
+ * is not editable an element in the HTML document can only be edited if the
+ * CONTENTEDITABLE attribute has been set on the element or one of its parent
+ * elements. By default a #WebKitWebView is not editable.
+ *
+ * Returns: %TRUE if the user is allowed to edit the HTML document, or %FALSE otherwise.
+ *
+ * Since: 2.8
+ */
+gboolean webkit_web_view_is_editable(WebKitWebView* webView)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
+
+    return getPage(webView)->isEditable();
+}
+
+/**
+ * webkit_web_view_set_editable:
+ * @web_view: a #WebKitWebView
+ * @editable: a #gboolean indicating the editable state
+ *
+ * Sets whether the user is allowed to edit the HTML document.
+ *
+ * If @editable is %TRUE, @web_view allows the user to edit the HTML document. If
+ * @editable is %FALSE, an element in @web_view's document can only be edited if the
+ * CONTENTEDITABLE attribute has been set on the element or one of its parent
+ * elements. By default a #WebKitWebView is not editable.
+ *
+ * Normally, a HTML document is not editable unless the elements within the
+ * document are editable. This function provides a way to make the contents
+ * of a #WebKitWebView editable without altering the document or DOM structure.
+ *
+ * Since: 2.8
+ */
+void webkit_web_view_set_editable(WebKitWebView* webView, gboolean editable)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
+
+    if (editable == getPage(webView)->isEditable())
+        return;
+
+    getPage(webView)->setEditable(editable);
+
+    g_object_notify(G_OBJECT(webView), "editable");
+}

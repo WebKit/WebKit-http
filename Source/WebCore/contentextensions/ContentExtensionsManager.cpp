@@ -30,12 +30,14 @@
 
 #include "ContentExtensionRule.h"
 #include "ContentExtensionsBackend.h"
+#include "ContentExtensionsDebugging.h"
 #include <JavaScriptCore/IdentifierInlines.h>
 #include <JavaScriptCore/JSCJSValueInlines.h>
 #include <JavaScriptCore/JSGlobalObject.h>
 #include <JavaScriptCore/JSONObject.h>
 #include <JavaScriptCore/StructureInlines.h>
 #include <JavaScriptCore/VM.h>
+#include <wtf/CurrentTime.h>
 #include <wtf/text/WTFString.h>
 
 using namespace JSC;
@@ -65,8 +67,12 @@ static bool loadTrigger(ExecState& exec, JSObject& ruleObject, ContentExtensionR
         WTFLogAlways("Invalid url-filter object. The url is empty.");
         return false;
     }
-
     trigger.urlFilter = urlFilter;
+
+    JSValue urlFilterCaseObject = triggerObject.get(&exec, Identifier(&exec, "url-filter-is-case-sensitive"));
+    if (urlFilterCaseObject && !exec.hadException() && urlFilterCaseObject.isBoolean())
+        trigger.urlFilterIsCaseSensitive = urlFilterCaseObject.toBoolean(&exec);
+
     return true;
 }
 
@@ -85,12 +91,15 @@ static bool loadAction(ExecState& exec, JSObject& ruleObject, ContentExtensionRu
     }
 
     String actionType = typeObject.toWTFString(&exec);
-    if (actionType != "block") {
-        WTFLogAlways("Unrocognized action: \"%s\"", actionType.utf8().data());
+
+    if (actionType == "block")
+        action.type = ExtensionActionType::BlockLoad;
+    else if (actionType == "ignore-previous-rules")
+        action.type = ExtensionActionType::IgnorePreviousRules;
+    else if (actionType != "block" && actionType != "") {
+        WTFLogAlways("Unrecognized action: \"%s\"", actionType.utf8().data());
         return false;
     }
-
-    action.type = ExtensionActionType::BlockLoad;
 
     return true;
 }
@@ -152,8 +161,11 @@ static Vector<ContentExtensionRule> loadEncodedRules(ExecState& exec, const Stri
     return Vector<ContentExtensionRule>();
 }
 
-void loadExtension(const String& identifier, const String& rules)
+Vector<ContentExtensionRule> createRuleList(const String& rules)
 {
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double loadExtensionStartTime = monotonicallyIncreasingTime();
+#endif
     RefPtr<VM> vm = VM::create();
 
     JSLockHolder locker(vm.get());
@@ -164,12 +176,15 @@ void loadExtension(const String& identifier, const String& rules)
 
     vm.clear();
 
-    if (ruleList.isEmpty()) {
+    if (ruleList.isEmpty())
         WTFLogAlways("Empty extension.");
-        return;
-    }
 
-    ContentExtensionsBackend::sharedInstance().setRuleList(identifier, ruleList);
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double loadExtensionEndTime = monotonicallyIncreasingTime();
+    dataLogF("Time spent loading extension %s: %f\n", identifier.utf8().data(), (loadExtensionEndTime - loadExtensionStartTime));
+#endif
+
+    return ruleList;
 }
 
 } // namespace ExtensionsManager

@@ -44,7 +44,7 @@
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/CFNetworkSPI.h>
 #import <WebCore/FileSystem.h>
-#import <WebCore/Font.h>
+#import <WebCore/FontCascade.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/MemoryCache.h>
 #import <WebCore/MemoryPressureHandler.h>
@@ -194,7 +194,7 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     m_compositingRenderServerPort = WTF::move(parameters.acceleratedCompositingPort);
     m_presenterApplicationPid = parameters.presenterApplicationPid;
     m_shouldForceScreenFontSubstitution = parameters.shouldForceScreenFontSubstitution;
-    Font::setDefaultTypesettingFeatures(parameters.shouldEnableKerningAndLigaturesByDefault ? Kerning | Ligatures : 0);
+    FontCascade::setDefaultTypesettingFeatures(parameters.shouldEnableKerningAndLigaturesByDefault ? Kerning | Ligatures : 0);
 
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
 
@@ -314,7 +314,7 @@ RefPtr<ObjCObjectGraph> WebProcess::transformHandlesToObjects(ObjCObjectGraph& o
             return false;
         }
 
-        virtual RetainPtr<id> transformObject(id object) const
+        virtual RetainPtr<id> transformObject(id object) const override
         {
 #if WK_API_ENABLED
             if (auto* handle = dynamic_objc_cast<WKBrowsingContextHandle>(object)) {
@@ -352,7 +352,7 @@ RefPtr<ObjCObjectGraph> WebProcess::transformObjectsToHandles(ObjCObjectGraph& o
             return false;
         }
 
-        virtual RetainPtr<id> transformObject(id object) const
+        virtual RetainPtr<id> transformObject(id object) const override
         {
 #if WK_API_ENABLED
             if (auto* controller = dynamic_objc_cast<WKWebProcessPlugInBrowserContextController>(object))

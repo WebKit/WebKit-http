@@ -123,28 +123,24 @@ void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOpt
     platformGetLaunchOptions(launchOptions);
 }
 
-void WebProcessProxy::connectionWillOpen(IPC::Connection* connection)
+void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
 {
-    ASSERT(this->connection() == connection);
+    ASSERT(this->connection() == &connection);
 
 #if ENABLE(SEC_ITEM_SHIM)
     SecItemShimProxy::shared().initializeConnection(connection);
 #endif
 
-    for (WebPageProxyMap::iterator it = m_pageMap.begin(), end = m_pageMap.end(); it != end; ++it)
-        it->value->connectionWillOpen(connection);
-
-    m_processPool->processWillOpenConnection(this);
+    for (auto& page : m_pageMap.values())
+        page->connectionWillOpen(connection);
 }
 
-void WebProcessProxy::connectionWillClose(IPC::Connection* connection)
+void WebProcessProxy::connectionDidClose(IPC::Connection& connection)
 {
-    ASSERT(this->connection() == connection);
+    ASSERT(this->connection() == &connection);
 
-    for (WebPageProxyMap::iterator it = m_pageMap.begin(), end = m_pageMap.end(); it != end; ++it)
-        it->value->connectionWillClose(connection);
-
-    m_processPool->processWillCloseConnection(this);
+    for (auto& page : m_pageMap.values())
+        page->connectionDidClose(connection);
 }
 
 void WebProcessProxy::disconnect()
@@ -714,7 +710,7 @@ RefPtr<API::Object> WebProcessProxy::transformHandlesToObjects(API::Object* obje
 RefPtr<API::Object> WebProcessProxy::transformObjectsToHandles(API::Object* object)
 {
     struct Transformer final : UserData::Transformer {
-        virtual bool shouldTransformObject(const API::Object& object) const
+        virtual bool shouldTransformObject(const API::Object& object) const override
         {
             switch (object.type()) {
             case API::Object::Type::Frame:

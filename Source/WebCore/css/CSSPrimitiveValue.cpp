@@ -32,7 +32,7 @@
 #include "Color.h"
 #include "Counter.h"
 #include "ExceptionCode.h"
-#include "Font.h"
+#include "FontCascade.h"
 #include "Node.h"
 #include "Pair.h"
 #include "RGBColor.h"
@@ -198,11 +198,9 @@ unsigned short CSSPrimitiveValue::primitiveType() const
     case CalcPercentLength:
         return CSSPrimitiveValue::CSS_CALC_PERCENTAGE_WITH_LENGTH;
     case CalcAngle:
-        return CSSPrimitiveValue::CSS_DEG;
     case CalcTime:
-        return CSSPrimitiveValue::CSS_MS;
     case CalcFrequency:
-        return CSSPrimitiveValue::CSS_HZ;
+        return m_value.calc->primitiveType();
     case CalcOther:
         return CSSPrimitiveValue::CSS_UNKNOWN;
     }

@@ -546,59 +546,51 @@ public:
 
 static void testWebViewSnapshot(SnapshotWebViewTest* test, gconstpointer)
 {
-    test->loadHtml("<html><body><p>Whatever</p></body></html>", 0);
+    test->loadHtml("<html><head><style>html { width: 200px; height: 100px; } ::-webkit-scrollbar { display: none; }</style></head><body><p>Whatever</p></body></html>", nullptr);
     test->waitUntilLoadFinished();
 
-    // WebView not visible.
+    // WEBKIT_SNAPSHOT_REGION_VISIBLE returns a null surface when the view is not visible.
     cairo_surface_t* surface1 = test->getSnapshotAndWaitUntilReady(WEBKIT_SNAPSHOT_REGION_VISIBLE, WEBKIT_SNAPSHOT_OPTIONS_NONE);
     g_assert(!surface1);
 
-    // Show surface, resize to 50x50, try again.
-    test->showInWindowAndWaitUntilMapped();
-    test->resizeView(50, 50);
-    surface1 = test->getSnapshotAndWaitUntilReady(WEBKIT_SNAPSHOT_REGION_VISIBLE, WEBKIT_SNAPSHOT_OPTIONS_NONE);
+    // WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT works even if the window is not visible.
+    surface1 = test->getSnapshotAndWaitUntilReady(WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT, WEBKIT_SNAPSHOT_OPTIONS_NONE);
     g_assert(surface1);
+    g_assert_cmpuint(cairo_surface_get_type(surface1), ==, CAIRO_SURFACE_TYPE_IMAGE);
+    g_assert_cmpint(cairo_image_surface_get_width(surface1), ==, 200);
+    g_assert_cmpint(cairo_image_surface_get_height(surface1), ==, 100);
 
-    // obtained surface should be at the most 50x50. Store the size
-    // for comparison later.
-    int width = cairo_image_surface_get_width(surface1);
-    int height = cairo_image_surface_get_height(surface1);
-    g_assert_cmpint(width, <=, 50);
-    g_assert_cmpint(height, <=, 50);
+    // Show the WebView in a popup widow of 50x50 and try again with WEBKIT_SNAPSHOT_REGION_VISIBLE.
+    test->showInWindowAndWaitUntilMapped(GTK_WINDOW_POPUP, 50, 50);
+    surface1 = cairo_surface_reference(test->getSnapshotAndWaitUntilReady(WEBKIT_SNAPSHOT_REGION_VISIBLE, WEBKIT_SNAPSHOT_OPTIONS_NONE));
+    g_assert(surface1);
+    g_assert_cmpuint(cairo_surface_get_type(surface1), ==, CAIRO_SURFACE_TYPE_IMAGE);
+    g_assert_cmpint(cairo_image_surface_get_width(surface1), ==, 50);
+    g_assert_cmpint(cairo_image_surface_get_height(surface1), ==, 50);
 
     // Select all text in the WebView, request a snapshot ignoring selection.
     test->selectAll();
-    surface1 = cairo_surface_reference(test->getSnapshotAndWaitUntilReady(WEBKIT_SNAPSHOT_REGION_VISIBLE, WEBKIT_SNAPSHOT_OPTIONS_NONE));
-    g_assert(surface1);
-    g_assert_cmpint(cairo_image_surface_get_width(surface1), ==, width);
-    g_assert_cmpint(cairo_image_surface_get_height(surface1), ==, height);
-
-    // Create identical surface.
     cairo_surface_t* surface2 = test->getSnapshotAndWaitUntilReady(WEBKIT_SNAPSHOT_REGION_VISIBLE, WEBKIT_SNAPSHOT_OPTIONS_NONE);
     g_assert(surface2);
-
-    // Compare these two, they should be identical.
     g_assert(Test::cairoSurfacesEqual(surface1, surface2));
 
-    // Request a new snapshot, including the selection this time. The
-    // size should be the same but the result must be different to the
-    // one previously obtained.
+    // Request a new snapshot, including the selection this time. The size should be the same but the result
+    // must be different to the one previously obtained.
     surface2 = test->getSnapshotAndWaitUntilReady(WEBKIT_SNAPSHOT_REGION_VISIBLE, WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING);
-    g_assert(surface2);
-    g_assert_cmpint(cairo_image_surface_get_width(surface2), ==, width);
-    g_assert_cmpint(cairo_image_surface_get_height(surface2), ==, height);
+    g_assert_cmpuint(cairo_surface_get_type(surface2), ==, CAIRO_SURFACE_TYPE_IMAGE);
+    g_assert_cmpint(cairo_image_surface_get_width(surface1), ==, cairo_image_surface_get_width(surface2));
+    g_assert_cmpint(cairo_image_surface_get_height(surface1), ==, cairo_image_surface_get_height(surface2));
     g_assert(!Test::cairoSurfacesEqual(surface1, surface2));
 
-    // Request a snapshot of the whole document in the WebView. The
-    // result should be different from the size obtained previously.
-    surface2 = test->getSnapshotAndWaitUntilReady(WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT, WEBKIT_SNAPSHOT_OPTIONS_NONE);
-    g_assert(surface2);
-    g_assert_cmpint(cairo_image_surface_get_width(surface2),  >, width);
-    g_assert_cmpint(cairo_image_surface_get_height(surface2), >, height);
+    // Get a snpashot with a transparent background, the result must be different.
+    surface2 = test->getSnapshotAndWaitUntilReady(WEBKIT_SNAPSHOT_REGION_VISIBLE, WEBKIT_SNAPSHOT_OPTIONS_TRANSPARENT_BACKGROUND);
+    g_assert_cmpuint(cairo_surface_get_type(surface2), ==, CAIRO_SURFACE_TYPE_IMAGE);
+    g_assert_cmpint(cairo_image_surface_get_width(surface1), ==, cairo_image_surface_get_width(surface2));
+    g_assert_cmpint(cairo_image_surface_get_height(surface1), ==, cairo_image_surface_get_height(surface2));
     g_assert(!Test::cairoSurfacesEqual(surface1, surface2));
-
     cairo_surface_destroy(surface1);
 
+    // Test that cancellation works.
     g_assert(test->getSnapshotAndCancel());
 }
 
@@ -744,6 +736,31 @@ static void testWebViewIsPlayingAudio(IsPlayingAudioWebViewTest* test, gconstpoi
     g_assert(!webkit_web_view_is_playing_audio(test->m_webView));
 }
 
+static void testWebViewBackgroundColor(WebViewTest* test, gconstpointer)
+{
+    // White is the default background.
+    GdkRGBA rgba;
+    webkit_web_view_get_background_color(test->m_webView, &rgba);
+    g_assert_cmpfloat(rgba.red, ==, 1);
+    g_assert_cmpfloat(rgba.green, ==, 1);
+    g_assert_cmpfloat(rgba.blue, ==, 1);
+    g_assert_cmpfloat(rgba.alpha, ==, 1);
+
+    // Set a different (semi-transparent red).
+    rgba.red = 1;
+    rgba.green = 0;
+    rgba.blue = 0;
+    rgba.alpha = 0.5;
+    webkit_web_view_set_background_color(test->m_webView, &rgba);
+    g_assert_cmpfloat(rgba.red, ==, 1);
+    g_assert_cmpfloat(rgba.green, ==, 0);
+    g_assert_cmpfloat(rgba.blue, ==, 0);
+    g_assert_cmpfloat(rgba.alpha, ==, 0.5);
+
+    // The actual rendering can't be tested using unit tests, use
+    // MiniBrowser --bg-color="<color-value>" for manually testing this API.
+}
+
 static void serverCallback(SoupServer* server, SoupMessage* message, const char* path, GHashTable*, SoupClientContext*, gpointer)
 {
     if (message->method != SOUP_METHOD_GET) {
@@ -776,6 +793,7 @@ void beforeAll()
     WebViewTest::add("WebKitWebView", "page-visibility", testWebViewPageVisibility);
     NotificationWebViewTest::add("WebKitWebView", "notification", testWebViewNotification);
     IsPlayingAudioWebViewTest::add("WebKitWebView", "is-playing-audio", testWebViewIsPlayingAudio);
+    WebViewTest::add("WebKitWebView", "background-color", testWebViewBackgroundColor);
 }
 
 void afterAll()

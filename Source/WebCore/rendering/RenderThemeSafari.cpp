@@ -246,7 +246,7 @@ void RenderThemeSafari::systemFont(CSSValueID valueID, FontDescription& fontDesc
         cachedDesc->setOneFamily("Lucida Grande");
         cachedDesc->setSpecifiedSize(fontSize);
         cachedDesc->setWeight(FontWeightNormal);
-        cachedDesc->setItalic(false);
+        cachedDesc->setItalic(FontItalicOff);
     }
     fontDescription = *cachedDesc;
 }
@@ -401,7 +401,7 @@ void RenderThemeSafari::setFontFromControlSize(StyleResolver& styleResolver, Ren
     style.setLineHeight(RenderStyle::initialLineHeight());
 
     if (style.setFontDescription(fontDescription))
-        style.font().update(styleResolver.fontSelector());
+        style.fontCascade().update(styleResolver.fontSelector());
 }
 
 NSControlSize RenderThemeSafari::controlSizeForSystemFont(RenderStyle& style) const

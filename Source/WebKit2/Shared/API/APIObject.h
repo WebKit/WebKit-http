@@ -81,6 +81,8 @@ public:
         URLRequest,
         URLResponse,
         UserContentURLPattern,
+        UserContentFilter,
+        UserScript,
         WebArchive,
         WebArchiveResource,
 
@@ -127,6 +129,7 @@ public:
         OpenPanelResultListener,
         OriginDataManager,
         Page,
+        PageConfiguration,
         PageGroup,
         ProcessPool,
         ProcessPoolConfiguration,

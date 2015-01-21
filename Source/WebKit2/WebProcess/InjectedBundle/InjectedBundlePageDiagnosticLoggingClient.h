@@ -29,6 +29,7 @@
 #include "APIClient.h"
 #include "WKBundlePage.h"
 #include <JavaScriptCore/JSBase.h>
+#include <WebCore/DiagnosticLoggingResultType.h>
 #include <wtf/Forward.h>
 
 namespace API {
@@ -47,7 +48,7 @@ class InjectedBundlePageDiagnosticLoggingClient : public API::Client<WKBundlePag
 public:
     void logDiagnosticMessageDeprecated(WebPage*, const String& message, const String& description, const String& success);
     void logDiagnosticMessage(WebPage*, const String& message, const String& description);
-    void logDiagnosticMessageWithResult(WebPage*, const String& message, const String& description, WKDiagnosticLoggingResultType);
+    void logDiagnosticMessageWithResult(WebPage*, const String& message, const String& description, WebCore::DiagnosticLoggingResultType);
     void logDiagnosticMessageWithValue(WebPage*, const String& message, const String& description, const String& value);
 };
 

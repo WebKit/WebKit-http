@@ -50,13 +50,13 @@ public:
     static Ref<StorageManager> create(const String& localStorageDirectory);
     ~StorageManager();
 
-    void createSessionStorageNamespace(uint64_t storageNamespaceID, IPC::Connection* allowedConnection, unsigned quotaInBytes);
+    void createSessionStorageNamespace(uint64_t storageNamespaceID, unsigned quotaInBytes);
     void destroySessionStorageNamespace(uint64_t storageNamespaceID);
     void setAllowedSessionStorageNamespaceConnection(uint64_t storageNamespaceID, IPC::Connection* allowedConnection);
     void cloneSessionStorageNamespace(uint64_t storageNamespaceID, uint64_t newStorageNamespaceID);
 
-    void processWillOpenConnection(WebProcessProxy*);
-    void processWillCloseConnection(WebProcessProxy*);
+    void processWillOpenConnection(WebProcessProxy&, IPC::Connection&);
+    void processDidCloseConnection(WebProcessProxy&, IPC::Connection&);
     void applicationWillTerminate();
 
     void getOrigins(std::function<void (Vector<RefPtr<WebCore::SecurityOrigin>>)> completionHandler);
@@ -64,7 +64,7 @@ public:
     void deleteEntriesForOrigin(const WebCore::SecurityOrigin&);
     void deleteAllEntries();
 
-    void deleteLocalStorageOriginsModifiedSince(time_t, std::function<void ()> completionHandler);
+    void deleteLocalStorageOriginsModifiedSince(std::chrono::system_clock::time_point, std::function<void ()> completionHandler);
 
 private:
     explicit StorageManager(const String& localStorageDirectory);

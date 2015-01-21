@@ -28,10 +28,12 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
+#include "ContentExtensionsDebugging.h"
 #include "NFA.h"
 #include "NFAToDFA.h"
 #include "URL.h"
 #include "URLFilterParser.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/DataLog.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
@@ -39,12 +41,6 @@
 namespace WebCore {
 
 namespace ContentExtensions {
-
-ContentExtensionsBackend& ContentExtensionsBackend::sharedInstance()
-{
-    static NeverDestroyed<ContentExtensionsBackend> instance;
-    return instance;
-}
 
 void ContentExtensionsBackend::setRuleList(const String& identifier, const Vector<ContentExtensionRule>& ruleList)
 {
@@ -57,29 +53,62 @@ void ContentExtensionsBackend::setRuleList(const String& identifier, const Vecto
         return;
     }
 
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double nfaBuildTimeStart = monotonicallyIncreasingTime();
+#endif
+
     NFA nfa;
+    URLFilterParser urlFilterParser(nfa);
     for (unsigned ruleIndex = 0; ruleIndex < ruleList.size(); ++ruleIndex) {
         const ContentExtensionRule& contentExtensionRule = ruleList[ruleIndex];
         const ContentExtensionRule::Trigger& trigger = contentExtensionRule.trigger();
         ASSERT(trigger.urlFilter.length());
 
-        URLFilterParser urlFilterParser;
-        urlFilterParser.parse(trigger.urlFilter, ruleIndex, nfa);
+        String error = urlFilterParser.addPattern(trigger.urlFilter, trigger.urlFilterIsCaseSensitive, ruleIndex);
 
-        if (urlFilterParser.hasError()) {
-            dataLogF("Error while parsing %s: %s", trigger.urlFilter.utf8().data(), urlFilterParser.errorMessage().utf8().data());
+        if (!error.isNull()) {
+            dataLogF("Error while parsing %s: %s\n", trigger.urlFilter.utf8().data(), error.utf8().data());
             continue;
         }
     }
 
-    // FIXME: never add a DFA that only matches the empty set.
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double nfaBuildTimeEnd = monotonicallyIncreasingTime();
+    dataLogF("    Time spent building the NFA: %f\n", (nfaBuildTimeEnd - nfaBuildTimeStart));
+#endif
+
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+    nfa.debugPrintDot();
+#endif
+
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double dfaBuildTimeStart = monotonicallyIncreasingTime();
+#endif
+
     CompiledContentExtension compiledContentExtension = { NFAToDFA::convert(nfa), ruleList };
+
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double dfaBuildTimeEnd = monotonicallyIncreasingTime();
+    dataLogF("    Time spent building the DFA: %f\n", (dfaBuildTimeEnd - dfaBuildTimeStart));
+#endif
+
+    // FIXME: never add a DFA that only matches the empty set.
+
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+    compiledContentExtension.dfa.debugPrintDot();
+#endif
+
     m_ruleLists.set(identifier, compiledContentExtension);
 }
 
 void ContentExtensionsBackend::removeRuleList(const String& identifier)
 {
     m_ruleLists.remove(identifier);
+}
+
+void ContentExtensionsBackend::removeAllRuleLists()
+{
+    m_ruleLists.clear();
 }
 
 bool ContentExtensionsBackend::shouldBlockURL(const URL& url)
@@ -91,15 +120,25 @@ bool ContentExtensionsBackend::shouldBlockURL(const URL& url)
         CompiledContentExtension& compiledContentExtension = ruleListSlot.value;
         unsigned state = compiledContentExtension.dfa.root();
 
+        HashSet<uint64_t, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> triggeredActions;
+
         for (unsigned i = 0; i < urlString.length(); ++i) {
             char character = static_cast<char>(urlString[i]);
             bool ok;
             state = compiledContentExtension.dfa.nextState(state, character, ok);
             if (!ok)
-                return false;
+                break;
 
-            // FIXME: accumulate the actions.
-            if (!compiledContentExtension.dfa.actions(state).isEmpty())
+            const Vector<uint64_t>& actions = compiledContentExtension.dfa.actions(state);
+            if (!actions.isEmpty())
+                triggeredActions.add(actions.begin(), actions.end());
+        }
+        if (!triggeredActions.isEmpty()) {
+            Vector<uint64_t> sortedActions;
+            copyToVector(triggeredActions, sortedActions);
+            std::sort(sortedActions.begin(), sortedActions.end());
+            size_t lastAction = static_cast<size_t>(sortedActions.last());
+            if (compiledContentExtension.ruleList[lastAction].action().type == ExtensionActionType::BlockLoad)
                 return true;
         }
     }

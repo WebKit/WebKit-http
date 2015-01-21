@@ -46,11 +46,11 @@ void InjectedBundlePageDiagnosticLoggingClient::logDiagnosticMessage(WebPage* pa
     m_client.logDiagnosticMessage(toAPI(page), toAPI(message.impl()), toAPI(description.impl()), m_client.base.clientInfo);
 }
 
-void InjectedBundlePageDiagnosticLoggingClient::logDiagnosticMessageWithResult(WebPage* page, const String& message, const String& description, WKDiagnosticLoggingResultType result)
+void InjectedBundlePageDiagnosticLoggingClient::logDiagnosticMessageWithResult(WebPage* page, const String& message, const String& description, WebCore::DiagnosticLoggingResultType result)
 {
     if (!m_client.logDiagnosticMessageWithResult)
         return;
-    m_client.logDiagnosticMessageWithResult(toAPI(page), toAPI(message.impl()), toAPI(description.impl()), result, m_client.base.clientInfo);
+    m_client.logDiagnosticMessageWithResult(toAPI(page), toAPI(message.impl()), toAPI(description.impl()), toAPI(result), m_client.base.clientInfo);
 }
 
 void InjectedBundlePageDiagnosticLoggingClient::logDiagnosticMessageWithValue(WebPage* page, const String& message, const String& description, const String& value)

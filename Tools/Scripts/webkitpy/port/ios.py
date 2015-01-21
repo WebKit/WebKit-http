@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Apple Inc. All rights reserved.
+# Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@ import subprocess
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.common.system.crashlogs import CrashLogs
 from webkitpy.common.system.executive import ScriptError
+from webkitpy.port.apple import ApplePort
 from webkitpy.port import driver, image_diff
 from webkitpy.port.base import Port
 from webkitpy.port.leakdetector import LeakDetector
@@ -41,6 +42,39 @@ from webkitpy.xcode import simulator
 _log = logging.getLogger(__name__)
 
 
+class IOSPort(ApplePort):
+    port_name = "ios"
+
+    ARCHITECTURES = ['armv7', 'armv7s', 'arm64']
+    DEFAULT_ARCHITECTURE = 'armv7'
+    VERSION_FALLBACK_ORDER = ['ios-7', 'ios-8', 'ios-9']
+
+    @classmethod
+    def determine_full_port_name(cls, host, options, port_name):
+        if port_name == cls.port_name:
+            sdk_version = '8.0'
+            if host.platform.is_mac():
+                sdk_command_output = subprocess.check_output(['/usr/bin/xcrun', '--sdk', 'iphoneos', '--show-sdk-version'], stderr=None).rstrip()
+                if sdk_command_output:
+                    sdk_version = sdk_command_output
+
+            port_name = port_name + '-' + re.match('^([0-9]+)', sdk_version).group(1)
+
+        return port_name
+
+    def __init__(self, *args, **kwargs):
+        super(IOSPort, self).__init__(*args, **kwargs)
+
+        self._testing_device = None
+
+    # Despite their names, these flags do not actually get passed all the way down to webkit-build.
+    def _build_driver_flags(self):
+        return ['--sdk', 'iphoneos'] + (['ARCHS=%s' % self.architecture()] if self.architecture() else [])
+
+    def operating_system(self):
+        return 'ios'
+
+
 class IOSSimulatorPort(Port):
     port_name = "ios-simulator"
 
@@ -48,15 +82,12 @@ class IOSSimulatorPort(Port):
 
     ARCHITECTURES = ['x86_64', 'x86']
 
+    DEFAULT_ARCHITECTURE = 'x86_64'
+
     relay_name = 'LayoutTestRelay'
 
     def __init__(self, *args, **kwargs):
         super(IOSSimulatorPort, self).__init__(*args, **kwargs)
-
-        self._architecture = self.get_option('architecture')
-
-        if not self._architecture:
-            self._architecture = 'x86_64'
 
         self._leak_detector = LeakDetector(self)
         if self.get_option("leaks"):
@@ -260,7 +291,7 @@ class IOSSimulatorPort(Port):
 
         device_type = self.get_option('device_type')
         runtime = self.get_option('runtime')
-        self._testing_device = simulator.Simulator().testing_device(device_type, runtime)
+        self._testing_device = simulator.Simulator().lookup_or_create_device(device_type.name + ' WebKit Tester', device_type, runtime)
         return self.testing_device
 
     def simulator_path(self, udid):

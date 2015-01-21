@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebsiteDataStore.h"
 
+#include "StorageManager.h"
 #include "WebProcessPool.h"
 #include <wtf/RunLoop.h>
 
@@ -56,9 +57,10 @@ RefPtr<WebsiteDataStore> WebsiteDataStore::create(Configuration configuration)
     return adoptRef(new WebsiteDataStore(WTF::move(configuration)));
 }
 
-WebsiteDataStore::WebsiteDataStore(Configuration)
+WebsiteDataStore::WebsiteDataStore(Configuration configuration)
     : m_identifier(generateIdentifier())
     , m_sessionID(WebCore::SessionID::defaultSessionID())
+    , m_storageManager(StorageManager::create(WTF::move(configuration.localStorageDirectory)))
 {
 }
 
@@ -70,21 +72,21 @@ WebsiteDataStore::WebsiteDataStore(WebCore::SessionID sessionID)
 
 WebsiteDataStore::~WebsiteDataStore()
 {
-    ASSERT(m_webPages.isEmpty());
 }
 
-void WebsiteDataStore::addWebPage(WebPageProxy& webPageProxy)
+void WebsiteDataStore::cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage)
 {
-    ASSERT(!m_webPages.contains(&webPageProxy));
+    auto& sourceDataStore = sourcePage.websiteDataStore();
+    auto& newDataStore = newPage.websiteDataStore();
 
-    m_webPages.add(&webPageProxy);
-}
+    // FIXME: Handle this.
+    if (&sourceDataStore != &newDataStore)
+        return;
 
-void WebsiteDataStore::removeWebPage(WebPageProxy& webPageProxy)
-{
-    ASSERT(m_webPages.contains(&webPageProxy));
+    if (!sourceDataStore.m_storageManager)
+        return;
 
-    m_webPages.remove(&webPageProxy);
+    sourceDataStore.m_storageManager->cloneSessionStorageNamespace(sourcePage.pageID(), newPage.pageID());
 }
 
 enum class ProcessAccessType {
@@ -146,8 +148,8 @@ void WebsiteDataStore::removeData(WebsiteDataTypes dataTypes, std::chrono::syste
     auto networkProcessAccessType = computeNetworkProcessAccessType(dataTypes, isNonPersistent());
     if (networkProcessAccessType != ProcessAccessType::None) {
         HashSet<WebProcessPool*> processPools;
-        for (auto& webPage : m_webPages)
-            processPools.add(&webPage->process().processPool());
+        for (auto& process : processes())
+            processPools.add(&process->processPool());
 
         for (auto& processPool : processPools) {
             switch (networkProcessAccessType) {
@@ -171,8 +173,52 @@ void WebsiteDataStore::removeData(WebsiteDataTypes dataTypes, std::chrono::syste
         }
     }
 
+    if (dataTypes & WebsiteDataTypeLocalStorage && m_storageManager) {
+        callbackAggregator->addPendingCallback();
+
+        m_storageManager->deleteLocalStorageOriginsModifiedSince(modifiedSince, [callbackAggregator] {
+            callbackAggregator->removePendingCallback();
+        });
+    }
+
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();
+}
+
+void WebsiteDataStore::webPageWasAdded(WebPageProxy& webPageProxy)
+{
+    if (m_storageManager)
+        m_storageManager->createSessionStorageNamespace(webPageProxy.pageID(), std::numeric_limits<unsigned>::max());
+}
+
+void WebsiteDataStore::webPageWasRemoved(WebPageProxy& webPageProxy)
+{
+    if (m_storageManager)
+        m_storageManager->destroySessionStorageNamespace(webPageProxy.pageID());
+}
+
+void WebsiteDataStore::webProcessWillOpenConnection(WebProcessProxy& webProcessProxy, IPC::Connection& connection)
+{
+    if (m_storageManager)
+        m_storageManager->processWillOpenConnection(webProcessProxy, connection);
+}
+
+void WebsiteDataStore::webPageWillOpenConnection(WebPageProxy& webPageProxy, IPC::Connection& connection)
+{
+    if (m_storageManager)
+        m_storageManager->setAllowedSessionStorageNamespaceConnection(webPageProxy.pageID(), &connection);
+}
+
+void WebsiteDataStore::webPageDidCloseConnection(WebPageProxy& webPageProxy, IPC::Connection&)
+{
+    if (m_storageManager)
+        m_storageManager->setAllowedSessionStorageNamespaceConnection(webPageProxy.pageID(), nullptr);
+}
+
+void WebsiteDataStore::webProcessDidCloseConnection(WebProcessProxy& webProcessProxy, IPC::Connection& connection)
+{
+    if (m_storageManager)
+        m_storageManager->processDidCloseConnection(webProcessProxy, connection);
 }
 
 }

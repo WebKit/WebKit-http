@@ -47,6 +47,8 @@ void WebProcessLifetimeObserver::addWebPage(WebPageProxy& webPageProxy)
 
     if (m_processes.add(&process).isNewEntry)
         webProcessWillOpenConnection(process, *process.connection());
+
+    webPageWillOpenConnection(webPageProxy, *process.connection());
 }
 
 void WebProcessLifetimeObserver::removeWebPage(WebPageProxy& webPageProxy)
@@ -57,8 +59,19 @@ void WebProcessLifetimeObserver::removeWebPage(WebPageProxy& webPageProxy)
     // but we have to make sure that removeWebPage is called after the connection has been removed in that case.
     ASSERT(m_processes.contains(&process));
 
+    webPageDidCloseConnection(webPageProxy, *process.connection());
+
     if (m_processes.remove(&process))
         webProcessDidCloseConnection(process, *process.connection());
+}
+
+WTF::IteratorRange<HashCountedSet<WebProcessProxy*>::const_iterator::Keys> WebProcessLifetimeObserver::processes() const
+{
+    ASSERT(std::all_of(m_processes.begin().keys(), m_processes.end().keys(), [](WebProcessProxy* process) {
+        return process->state() == WebProcessProxy::State::Running;
+    }));
+
+    return makeIteratorRange(m_processes.begin().keys(), m_processes.end().keys());
 }
 
 }

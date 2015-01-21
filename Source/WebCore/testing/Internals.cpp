@@ -59,6 +59,7 @@
 #include "HTMLPlugInElement.h"
 #include "HTMLSelectElement.h"
 #include "HTMLTextAreaElement.h"
+#include "HTMLVideoElement.h"
 #include "HistoryController.h"
 #include "HistoryItem.h"
 #include "InspectorClient.h"
@@ -784,7 +785,7 @@ Ref<ClientRectList> Internals::inspectorHighlightRects(ExceptionCode& ec)
     }
 
     Highlight highlight;
-    document->page()->inspectorController().getHighlight(&highlight, InspectorOverlay::CoordinateSystem::View);
+    document->page()->inspectorController().getHighlight(highlight, InspectorOverlay::CoordinateSystem::View);
     return ClientRectList::create(highlight.quads);
 #else
     UNUSED_PARAM(ec);
@@ -800,7 +801,7 @@ String Internals::inspectorHighlightObject(ExceptionCode& ec)
         ec = INVALID_ACCESS_ERR;
         return String();
     }
-    RefPtr<InspectorObject> object = document->page()->inspectorController().buildObjectForHighlightedNode();
+    auto object = document->page()->inspectorController().buildObjectForHighlightedNode();
     return object ? object->toJSONString() : String();
 #else
     UNUSED_PARAM(ec);
@@ -1076,6 +1077,16 @@ String Internals::rangeAsText(const Range* range, ExceptionCode& ec)
     }
 
     return range->text();
+}
+
+PassRefPtr<Range> Internals::subrange(Range* range, int rangeLocation, int rangeLength, ExceptionCode& ec)
+{
+    if (!range) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    return TextIterator::subrange(range, rangeLocation, rangeLength);
 }
 
 void Internals::setDelegatesScrolling(bool enabled, ExceptionCode& ec)
@@ -2099,6 +2110,18 @@ String Internals::markerTextForListItem(Element* element, ExceptionCode& ec)
     return WebCore::markerTextForListItem(element);
 }
 
+String Internals::toolTipFromElement(Element* element, ExceptionCode& ec) const
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+    HitTestResult result;
+    result.setInnerNode(element);
+    TextDirection dir;
+    return result.title(dir);
+}
+
 String Internals::getImageSourceURL(Element* element, ExceptionCode& ec)
 {
     if (!element) {
@@ -2396,6 +2419,13 @@ void Internals::postRemoteControlCommand(const String& commandString, ExceptionC
     
     MediaSessionManager::sharedManager().didReceiveRemoteControlCommand(command);
 }
+
+bool Internals::elementIsBlockingDisplaySleep(Element* element) const
+{
+    HTMLMediaElement* mediaElement = downcast<HTMLMediaElement>(element);
+    return mediaElement ? mediaElement->isDisablingSleep() : false;
+}
+
 #endif // ENABLE(VIDEO)
 
 void Internals::simulateSystemSleep() const
@@ -2411,6 +2441,7 @@ void Internals::simulateSystemWake() const
     MediaSessionManager::sharedManager().systemDidWake();
 #endif
 }
+
 
 void Internals::installMockPageOverlay(const String& overlayType, ExceptionCode& ec)
 {

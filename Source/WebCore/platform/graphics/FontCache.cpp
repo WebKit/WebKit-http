@@ -30,7 +30,7 @@
 #include "config.h"
 #include "FontCache.h"
 
-#include "Font.h"
+#include "FontCascade.h"
 #include "FontGlyphs.h"
 #include "FontPlatformData.h"
 #include "FontSelector.h"
@@ -372,7 +372,7 @@ static FontDataCache& cachedFonts()
 const int cMaxInactiveFontData = 120;
 const int cTargetInactiveFontData = 100;
 #else
-const int cMaxInactiveFontData = 5;
+const int cMaxInactiveFontData = 225;
 const int cTargetInactiveFontData = 200;
 #endif
 
@@ -432,16 +432,21 @@ void FontCache::purgeInactiveFontData(int purgeCount)
     FontLocker fontLocker;
 #endif
 
-    Vector<RefPtr<SimpleFontData>, 20> fontsToDelete;
-    for (auto& font : cachedFonts().values()) {
-        if (!font->hasOneRef())
-            continue;
-        fontsToDelete.append(WTF::move(font));
-        if (!--purgeCount)
+    while (purgeCount) {
+        Vector<RefPtr<SimpleFontData>, 20> fontsToDelete;
+        for (auto& font : cachedFonts().values()) {
+            if (!font->hasOneRef())
+                continue;
+            fontsToDelete.append(WTF::move(font));
+            if (!--purgeCount)
+                break;
+        }
+        // Fonts may ref other fonts so we loop until there are no changes.
+        if (fontsToDelete.isEmpty())
             break;
-    }
-    for (auto& font : fontsToDelete)
-        cachedFonts().remove(font->platformData());
+        for (auto& font : fontsToDelete)
+            cachedFonts().remove(font->platformData());
+    };
 
     Vector<FontPlatformDataCacheKey> keysToRemove;
     keysToRemove.reserveInitialCapacity(fontPlatformDataCache().size());

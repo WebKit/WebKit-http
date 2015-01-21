@@ -1168,11 +1168,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'SVGElementInstance').hasOwnPropert
 PASS Object.getOwnPropertyDescriptor(global, 'SVGElementInstance').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGElementInstance').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGElementInstance').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'SVGElementInstanceList').value is SVGElementInstanceList
-PASS Object.getOwnPropertyDescriptor(global, 'SVGElementInstanceList').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'SVGElementInstanceList').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'SVGElementInstanceList').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'SVGElementInstanceList').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'SVGEllipseElement').value is SVGEllipseElement
 PASS Object.getOwnPropertyDescriptor(global, 'SVGEllipseElement').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'SVGEllipseElement').hasOwnProperty('set') is false
@@ -1863,6 +1858,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'WaveShaperNode').hasOwnProperty('g
 PASS Object.getOwnPropertyDescriptor(global, 'WaveShaperNode').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WaveShaperNode').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'WaveShaperNode').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').value is WebGL2RenderingContext
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'WebGLActiveInfo').value is WebGLActiveInfo
 PASS Object.getOwnPropertyDescriptor(global, 'WebGLActiveInfo').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebGLActiveInfo').hasOwnProperty('set') is false

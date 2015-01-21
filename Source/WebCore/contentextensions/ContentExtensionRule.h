@@ -35,7 +35,8 @@ namespace WebCore {
 namespace ContentExtensions {
 
 enum class ExtensionActionType {
-    BlockLoad
+    BlockLoad,
+    IgnorePreviousRules
 };
 
 // A ContentExtensionRule is the smallest unit in a ContentExtension.
@@ -46,6 +47,7 @@ class ContentExtensionRule {
 public:
     struct Trigger {
         String urlFilter;
+        bool urlFilterIsCaseSensitive = false;
     };
 
     struct Action {

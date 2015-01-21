@@ -158,6 +158,7 @@ public:
     unsigned locationFromRange(Element* scope, const Range*, ExceptionCode&);
     unsigned lengthFromRange(Element* scope, const Range*, ExceptionCode&);
     String rangeAsText(const Range*, ExceptionCode&);
+    PassRefPtr<Range> subrange(Range* range, int rangeLocation, int rangeLength, ExceptionCode&);
 
     void setDelegatesScrolling(bool enabled, ExceptionCode&);
 
@@ -290,6 +291,8 @@ public:
 
     String markerTextForListItem(Element*, ExceptionCode&);
 
+    String toolTipFromElement(Element*, ExceptionCode&) const;
+
     void forceReload(bool endToEnd);
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
@@ -344,6 +347,7 @@ public:
     void applicationWillEnterBackground() const;
     void setMediaSessionRestrictions(const String& mediaType, const String& restrictions, ExceptionCode&);
     void postRemoteControlCommand(const String&, ExceptionCode&);
+    bool elementIsBlockingDisplaySleep(Element*) const;
 #endif
 
     void simulateSystemSleep() const;

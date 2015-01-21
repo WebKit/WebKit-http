@@ -133,10 +133,120 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-bool ClipRect::intersects(const HitTestLocation& hitTestLocation) const
-{
-    return hitTestLocation.intersects(m_rect);
-}
+class ClipRects {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    static PassRefPtr<ClipRects> create()
+    {
+        return adoptRef(new ClipRects);
+    }
+
+    static PassRefPtr<ClipRects> create(const ClipRects& other)
+    {
+        return adoptRef(new ClipRects(other));
+    }
+
+    ClipRects() = default;
+
+    void reset()
+    {
+        m_overflowClipRect.reset();
+        m_fixedClipRect.reset();
+        m_posClipRect.reset();
+        m_fixed = false;
+    }
+
+    const ClipRect& overflowClipRect() const { return m_overflowClipRect; }
+    void setOverflowClipRect(const ClipRect& clipRect) { m_overflowClipRect = clipRect; }
+
+    const ClipRect& fixedClipRect() const { return m_fixedClipRect; }
+    void setFixedClipRect(const ClipRect& clipRect) { m_fixedClipRect = clipRect; }
+
+    const ClipRect& posClipRect() const { return m_posClipRect; }
+    void setPosClipRect(const ClipRect& clipRect) { m_posClipRect = clipRect; }
+
+    bool fixed() const { return m_fixed; }
+    void setFixed(bool fixed) { m_fixed = fixed; }
+
+    void ref() { m_refCount++; }
+    void deref()
+    {
+        if (!--m_refCount)
+            delete this;
+    }
+
+    bool operator==(const ClipRects& other) const
+    {
+        return m_overflowClipRect == other.overflowClipRect()
+            && m_fixedClipRect == other.fixedClipRect()
+            && m_posClipRect == other.posClipRect()
+            && m_fixed == other.fixed();
+    }
+
+    ClipRects& operator=(const ClipRects& other)
+    {
+        m_overflowClipRect = other.overflowClipRect();
+        m_fixedClipRect = other.fixedClipRect();
+        m_posClipRect = other.posClipRect();
+        m_fixed = other.fixed();
+        return *this;
+    }
+
+private:
+    ClipRects(const LayoutRect& clipRect)
+        : m_overflowClipRect(clipRect)
+        , m_fixedClipRect(clipRect)
+        , m_posClipRect(clipRect)
+    {
+    }
+
+    ClipRects(const ClipRects& other)
+        : m_overflowClipRect(other.overflowClipRect())
+        , m_fixedClipRect(other.fixedClipRect())
+        , m_posClipRect(other.posClipRect())
+        , m_fixed(other.fixed())
+    {
+    }
+
+    ClipRect m_overflowClipRect;
+    ClipRect m_fixedClipRect;
+    ClipRect m_posClipRect;
+    unsigned m_refCount = 1;
+    bool m_fixed = false;
+};
+
+class ClipRectsCache {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    ClipRectsCache()
+    {
+#ifndef NDEBUG
+        for (int i = 0; i < NumCachedClipRectsTypes; ++i) {
+            m_clipRectsRoot[i] = 0;
+            m_scrollbarRelevancy[i] = IgnoreOverlayScrollbarSize;
+        }
+#endif
+    }
+
+    PassRefPtr<ClipRects> getClipRects(ClipRectsType clipRectsType, ShouldRespectOverflowClip respectOverflow) { return m_clipRects[getIndex(clipRectsType, respectOverflow)]; }
+    void setClipRects(ClipRectsType clipRectsType, ShouldRespectOverflowClip respectOverflow, PassRefPtr<ClipRects> clipRects) { m_clipRects[getIndex(clipRectsType, respectOverflow)] = clipRects; }
+
+#ifndef NDEBUG
+    const RenderLayer* m_clipRectsRoot[NumCachedClipRectsTypes];
+    OverlayScrollbarSizeRelevancy m_scrollbarRelevancy[NumCachedClipRectsTypes];
+#endif
+
+private:
+    int getIndex(ClipRectsType clipRectsType, ShouldRespectOverflowClip respectOverflow)
+    {
+        int index = static_cast<int>(clipRectsType);
+        if (respectOverflow == RespectOverflowClip)
+            index += static_cast<int>(NumCachedClipRectsTypes);
+        return index;
+    }
+
+    RefPtr<ClipRects> m_clipRects[NumCachedClipRectsTypes * 2];
+};
 
 void makeMatrixRenderable(TransformationMatrix& matrix, bool has3DRendering)
 {
@@ -4421,14 +4531,7 @@ void RenderLayer::collectFragments(LayerFragments& fragments, const RenderLayer*
 
         // Intersect the fragment with our ancestor's background clip so that e.g., columns in an overflow:hidden block are
         // properly clipped by the overflow.
-        fragment.intersect(ancestorClipRect.rect());
-        
-        // If the ancestor clip rect has border-radius, make sure to apply it to the fragments.
-        if (ancestorClipRect.affectedByRadius()) {
-            fragment.foregroundRect.setAffectedByRadius(true);
-            fragment.backgroundRect.setAffectedByRadius(true);
-            fragment.outlineRect.setAffectedByRadius(true);
-        }
+        fragment.intersect(ancestorClipRect);
 
         // Now intersect with our pagination clip. This will typically mean we're just intersecting the dirty rect with the column
         // clip, so the column clip ends up being all we apply.
@@ -5293,11 +5396,17 @@ bool RenderLayer::mapLayerClipRectsToFragmentationLayer(ClipRects& clipRects) co
     return true;
 }
 
+ClipRects* RenderLayer::clipRects(const ClipRectsContext& context) const
+{
+    ASSERT(context.clipRectsType < NumCachedClipRectsTypes);
+    return m_clipRectsCache ? m_clipRectsCache->getClipRects(context.clipRectsType, context.respectOverflowClip).get() : 0;
+}
+
 void RenderLayer::calculateClipRects(const ClipRectsContext& clipRectsContext, ClipRects& clipRects) const
 {
     if (!parent()) {
         // The root layer's clip rect is always infinite.
-        clipRects.reset(LayoutRect::infiniteRect());
+        clipRects.reset();
         return;
     }
     
@@ -5321,7 +5430,7 @@ void RenderLayer::calculateClipRects(const ClipRectsContext& clipRectsContext, C
             parentLayer->calculateClipRects(parentContext, clipRects);
         }
     } else
-        clipRects.reset(LayoutRect::infiniteRect());
+        clipRects.reset();
 
     // A fixed object is essentially the root of its containing block hierarchy, so when
     // we encounter such an object, we reset our clip rects to the fixedClipRect.
@@ -5410,7 +5519,7 @@ ClipRect RenderLayer::backgroundClipRect(const ClipRectsContext& clipRectsContex
     RenderView& view = renderer().view();
 
     // Note: infinite clipRects should not be scrolled here, otherwise they will accidentally no longer be considered infinite.
-    if (parentRects.fixed() && &clipRectsContext.rootLayer->renderer() == &view && backgroundClipRect != LayoutRect::infiniteRect())
+    if (parentRects.fixed() && &clipRectsContext.rootLayer->renderer() == &view && !backgroundClipRect.isInfinite())
         backgroundClipRect.move(view.frameView().scrollOffsetForFixedPosition());
 
     return backgroundClipRect;
@@ -5562,7 +5671,7 @@ LayoutRect RenderLayer::localClipRect(bool& clipExceedsBounds) const
     calculateRects(clipRectsContext, LayoutRect::infiniteRect(), layerBounds, backgroundRect, foregroundRect, outlineRect, offsetFromRoot);
 
     LayoutRect clipRect = backgroundRect.rect();
-    if (clipRect == LayoutRect::infiniteRect())
+    if (clipRect.isInfinite())
         return clipRect;
 
     if (renderer().hasClip()) {
@@ -5772,7 +5881,7 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
     if (flags & UseLocalClipRectIfPossible) {
         bool clipExceedsBounds = false;
         LayoutRect localClipRect = this->localClipRect(clipExceedsBounds);
-        if (localClipRect != LayoutRect::infiniteRect() && !clipExceedsBounds) {
+        if (!localClipRect.isInfinite() && !clipExceedsBounds) {
             if ((flags & IncludeSelfTransform) && paintsWithTransform(PaintBehaviorNormal))
                 localClipRect = transform()->mapRect(localClipRect);
 
@@ -6808,7 +6917,7 @@ void RenderLayer::paintFlowThreadIfRegionForFragments(const LayerFragments& frag
         if (flowFragment->shouldClipFlowThreadContent())
             clipRect.intersect(regionClipRect);
 
-        bool shouldClip = (clipRect != LayoutRect::infiniteRect());
+        bool shouldClip = !clipRect.isInfinite();
         // Optimize clipping for the single fragment case.
         if (shouldClip)
             clipToRect(paintingInfo, context, clipRect);

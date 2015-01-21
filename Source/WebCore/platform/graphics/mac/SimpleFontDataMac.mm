@@ -32,8 +32,8 @@
 #import "CoreGraphicsSPI.h"
 #import "CoreTextSPI.h"
 #import "FloatRect.h"
-#import "Font.h"
 #import "FontCache.h"
+#import "FontCascade.h"
 #import "FontDescription.h"
 #import "SharedBuffer.h"
 #import "WebCoreSystemInterface.h"
@@ -165,6 +165,13 @@ void SimpleFontData::platformInit()
         LOG_ERROR("failed to set up font, using system font %s", m_platformData.font());
         initFontData(this);
     }
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    // Work around <rdar://problem/19433490>
+    CGGlyph dummyGlyphs[] = {0, 0};
+    CGSize dummySize[] = {CGSizeMake(0, 0), CGSizeMake(0, 0)};
+    CTFontTransformGlyphs(m_platformData.ctFont(), dummyGlyphs, dummySize, 2, kCTFontTransformApplyPositioning | kCTFontTransformApplyShaping);
+#endif
     
     int iAscent;
     int iDescent;

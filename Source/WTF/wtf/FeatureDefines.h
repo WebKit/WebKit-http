@@ -288,22 +288,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 /* --------- EFL port (Unix) --------- */
 #if PLATFORM(EFL)
-
-#if !defined(ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH)
-#define ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH 1
-#endif
-
 #endif /* PLATFORM(EFL) */
 
 /* --------- Gtk port (Unix, Windows, Mac) --------- */
 #if PLATFORM(GTK)
-
-#if OS(UNIX)
-#if !defined(ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH)
-#define ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH 1
-#endif
-#endif
-
 #endif /* PLATFORM(GTK) */
 
 /* ENABLE macro defaults for WebCore */
@@ -613,10 +601,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #endif
 #endif
 
-#if !defined(ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH)
-#define ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH 0
-#endif
-
 #if !defined(ENABLE_POINTER_LOCK)
 #define ENABLE_POINTER_LOCK 0
 #endif
@@ -663,10 +647,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_SPELLCHECK)
 #define ENABLE_SPELLCHECK 0
-#endif
-
-#if !defined(ENABLE_SQL_DATABASE)
-#define ENABLE_SQL_DATABASE 1
 #endif
 
 #if !defined(ENABLE_SVG_FONTS)

@@ -286,6 +286,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SelectorPseudoClassAndCompatibilityElementMap.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SelectorPseudoElementTypeMap.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\StyleBuilder.cpp" />
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\StylePropertyShorthandFunctions.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSANGLEInstancedArrays.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -762,6 +763,30 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGL2RenderingContext.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLRenderingContextBase.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\accessibility\AccessibilityNodeObject.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
@@ -776,7 +801,42 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSWebGLRenderingContextCustom.cpp" />
+    <ClCompile Include="..\bindings\js\JSWebGL2RenderingContextCustom.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\bindings\js\JSWebGLRenderingContextBaseCustom.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\bindings\js\JSWebGLRenderingContextCustom.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\css\CSSImageSetValue.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
@@ -4520,20 +4580,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGElementInstanceList.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGElementWrapperFactory.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGEllipseElement.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -6638,6 +6684,7 @@
     <ClCompile Include="..\html\canvas\OESTextureHalfFloat.cpp" />
     <ClCompile Include="..\html\canvas\OESTextureHalfFloatLinear.cpp" />
     <ClCompile Include="..\html\canvas\OESVertexArrayObject.cpp" />
+    <ClCompile Include="..\html\canvas\WebGL2RenderingContext.cpp" />
     <ClCompile Include="..\html\canvas\WebGLBuffer.cpp" />
     <ClCompile Include="..\html\canvas\WebGLCompressedTextureATC.cpp" />
     <ClCompile Include="..\html\canvas\WebGLCompressedTexturePVRTC.cpp" />
@@ -6658,6 +6705,7 @@
     <ClCompile Include="..\html\canvas\WebGLProgram.cpp" />
     <ClCompile Include="..\html\canvas\WebGLRenderbuffer.cpp" />
     <ClCompile Include="..\html\canvas\WebGLRenderingContext.cpp" />
+    <ClCompile Include="..\html\canvas\WebGLRenderingContextBase.cpp" />
     <ClCompile Include="..\html\canvas\WebGLShader.cpp" />
     <ClCompile Include="..\html\canvas\WebGLShaderPrecisionFormat.cpp" />
     <ClCompile Include="..\html\canvas\WebGLSharedObject.cpp" />
@@ -7933,6 +7981,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\svg\graphics\SVGImageForContainer.cpp" />
+    <ClCompile Include="..\svg\SVGToOTFFontConversion.cpp" />
     <ClCompile Include="..\WebCorePrefix.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -7978,12 +8027,11 @@
     <ClCompile Include="..\platform\graphics\FloatRect.cpp" />
     <ClCompile Include="..\platform\graphics\FloatRoundedRect.cpp" />
     <ClCompile Include="..\platform\graphics\FloatSize.cpp" />
-    <ClCompile Include="..\platform\graphics\Font.cpp" />
     <ClCompile Include="..\platform\graphics\FontCache.cpp" />
+    <ClCompile Include="..\platform\graphics\FontCascade.cpp" />
     <ClCompile Include="..\platform\graphics\FontDescription.cpp" />
     <ClCompile Include="..\platform\graphics\FontGenericFamilies.cpp" />
     <ClCompile Include="..\platform\graphics\FontGlyphs.cpp" />
-    <ClCompile Include="..\platform\graphics\FontFastPath.cpp" />
     <ClCompile Include="..\platform\graphics\FontFeatureSettings.cpp" />
     <ClCompile Include="..\platform\graphics\FontPlatformData.cpp" />
     <ClCompile Include="..\platform\graphics\FontRanges.cpp" />
@@ -11486,6 +11534,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\rendering\ClipRect.cpp" />
     <ClCompile Include="..\rendering\SelectionSubtreeRoot.cpp" />
     <ClCompile Include="..\rendering\SimpleLineLayout.cpp" />
     <ClCompile Include="..\rendering\SimpleLineLayoutFlowContents.cpp" />
@@ -18509,7 +18558,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGDocument.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGElement.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGElementInstance.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGElementInstanceList.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGElementWrapperFactory.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGEllipseElement.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSVGException.h" />
@@ -18761,6 +18809,8 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEXTsRGB.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEXTFragDepth.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEXTBlendMinMax.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebGL2RenderingContext.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebGLRenderingContextBase.h" />
     <ClInclude Include="..\accessibility\AccessibilityNodeObject.h" />
     <ClInclude Include="..\css\CSSImageSetValue.h" />
     <ClInclude Include="..\css\WebKitCSSResourceValue.h" />
@@ -18860,6 +18910,7 @@
     <ClInclude Include="..\html\canvas\OESTextureHalfFloat.h" />
     <ClInclude Include="..\html\canvas\OESTextureHalfFloatLinear.h" />
     <ClInclude Include="..\html\canvas\OESVertexArrayObject.h" />
+    <ClInclude Include="..\html\canvas\WebGL2RenderingContext.h" />
     <ClInclude Include="..\html\canvas\WebGLActiveInfo.h" />
     <ClInclude Include="..\html\canvas\WebGLBuffer.h" />
     <ClInclude Include="..\html\canvas\WebGLCompressedTextureATC.h" />
@@ -18881,6 +18932,7 @@
     <ClInclude Include="..\html\canvas\WebGLProgram.h" />
     <ClInclude Include="..\html\canvas\WebGLRenderbuffer.h" />
     <ClInclude Include="..\html\canvas\WebGLRenderingContext.h" />
+    <ClInclude Include="..\html\canvas\WebGLRenderingContextBase.h" />
     <ClInclude Include="..\html\canvas\WebGLShader.h" />
     <ClInclude Include="..\html\canvas\WebGLShaderPrecisionFormat.h" />
     <ClInclude Include="..\html\canvas\WebGLSharedObject.h" />
@@ -18968,7 +19020,6 @@
     <ClInclude Include="..\Modules\webdatabase\DatabaseAuthorizer.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseBackend.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseBackendBase.h" />
-    <ClInclude Include="..\Modules\webdatabase\DatabaseBackendSync.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseBasicTypes.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseCallback.h" />
     <ClInclude Include="..\Modules\webdatabase\DatabaseContext.h" />
@@ -18989,10 +19040,8 @@
     <ClInclude Include="..\Modules\webdatabase\SQLStatementBackend.h" />
     <ClInclude Include="..\Modules\webdatabase\SQLStatementCallback.h" />
     <ClInclude Include="..\Modules\webdatabase\SQLStatementErrorCallback.h" />
-    <ClInclude Include="..\Modules\webdatabase\SQLStatementSync.h" />
     <ClInclude Include="..\Modules\webdatabase\SQLTransaction.h" />
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionBackend.h" />
-    <ClInclude Include="..\Modules\webdatabase\SQLTransactionBackendSync.h" />
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionCallback.h" />
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionClient.h" />
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionCoordinator.h" />
@@ -19068,6 +19117,7 @@
     <ClInclude Include="..\page\DeviceClient.h" />
     <ClInclude Include="..\page\DeviceController.h" />
     <ClInclude Include="..\page\DiagnosticLoggingKeys.h" />
+    <ClInclude Include="..\page\DiagnosticLoggingResultType.h" />
     <ClInclude Include="..\page\DOMSelection.h" />
     <ClInclude Include="..\page\DOMTimer.h" />
     <ClInclude Include="..\page\DOMWindow.h" />
@@ -19466,8 +19516,8 @@
     <ClInclude Include="..\platform\graphics\FloatRoundedRect.h" />
     <ClInclude Include="..\platform\graphics\FloatSize.h" />
     <ClInclude Include="..\platform\graphics\FloatSizeHash.h" />
-    <ClInclude Include="..\platform\graphics\Font.h" />
     <ClInclude Include="..\platform\graphics\FontCache.h" />
+    <ClInclude Include="..\platform\graphics\FontCascade.h" />
     <ClInclude Include="..\platform\graphics\FontDescription.h" />
     <ClInclude Include="..\platform\graphics\FontGenericFamilies.h" />
     <ClInclude Include="..\platform\graphics\FontGlyphs.h" />
@@ -20941,7 +20991,6 @@
     <ClInclude Include="..\svg\SVGDocumentExtensions.h" />
     <ClInclude Include="..\svg\SVGElement.h" />
     <ClInclude Include="..\svg\SVGElementInstance.h" />
-    <ClInclude Include="..\svg\SVGElementInstanceList.h" />
     <ClInclude Include="..\svg\SVGElementRareData.h" />
     <ClInclude Include="..\svg\SVGEllipseElement.h" />
     <ClInclude Include="..\svg\SVGException.h" />

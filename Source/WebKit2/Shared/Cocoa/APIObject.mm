@@ -45,6 +45,7 @@
 #import "WKNavigationInternal.h"
 #import "WKProcessPoolInternal.h"
 #import "WKUserContentControllerInternal.h"
+#import "WKUserScriptInternal.h"
 #import "WKWebProcessPlugInBrowserContextControllerInternal.h"
 #import "WKWebProcessPlugInFrameInternal.h"
 #import "WKWebProcessPlugInHitTestResultInternal.h"
@@ -54,6 +55,7 @@
 #import "WKWebProcessPlugInScriptWorldInternal.h"
 #import "_WKDownloadInternal.h"
 #import "_WKFrameHandleInternal.h"
+#import "_WKProcessPoolConfigurationInternal.h"
 #import "_WKWebsiteDataStoreInternal.h"
 #import <objc/objc-auto.h>
 
@@ -110,6 +112,10 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [WKProcessPool alloc];
         break;
 
+    case Type::ProcessPoolConfiguration:
+        wrapper = [_WKProcessPoolConfiguration alloc];
+        break;
+
     case Type::Data:
         wrapper = [WKNSData alloc];
         break;
@@ -156,6 +162,10 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::UserContentController:
         wrapper = [WKUserContentController alloc];
+        break;
+
+    case Type::UserScript:
+        wrapper = [WKUserScript alloc];
         break;
 
     case Type::WebsiteDataStore:

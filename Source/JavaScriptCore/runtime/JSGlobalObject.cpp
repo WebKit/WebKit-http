@@ -100,6 +100,7 @@
 #include "NativeErrorConstructor.h"
 #include "NativeErrorPrototype.h"
 #include "NullGetterFunction.h"
+#include "NullSetterFunction.h"
 #include "NumberConstructor.h"
 #include "NumberPrototype.h"
 #include "ObjCCallbackFunction.h"
@@ -234,6 +235,7 @@ void JSGlobalObject::init(VM& vm)
     m_callFunction.set(vm, this, callFunction);
     m_applyFunction.set(vm, this, applyFunction);
     m_nullGetterFunction.set(vm, this, NullGetterFunction::create(vm, NullGetterFunction::createStructure(vm, this, m_functionPrototype.get())));
+    m_nullSetterFunction.set(vm, this, NullSetterFunction::create(vm, NullSetterFunction::createStructure(vm, this, m_functionPrototype.get())));
     m_objectPrototype.set(vm, this, ObjectPrototype::create(vm, this, ObjectPrototype::createStructure(vm, this, jsNull())));
     GetterSetter* protoAccessor = GetterSetter::create(vm, this);
     protoAccessor->setGetter(vm, this, JSFunction::create(vm, this, 0, String(), globalFuncProtoGetter));
@@ -654,6 +656,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 #endif
 
     visitor.append(&thisObject->m_nullGetterFunction);
+    visitor.append(&thisObject->m_nullSetterFunction);
 
     visitor.append(&thisObject->m_evalFunction);
     visitor.append(&thisObject->m_callFunction);

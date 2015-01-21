@@ -2783,9 +2783,7 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
         // of the initialization code which may depend on the strategies.
         WebPlatformStrategies::initialize();
 
-#if ENABLE(SQL_DATABASE)
         WebKitInitializeWebDatabasesIfNecessary();
-#endif
         WebKitSetApplicationCachePathIfNecessary();
         Settings::setDefaultMinDOMTimerInterval(0.004);
 
@@ -2928,7 +2926,7 @@ HRESULT WebView::notifyDidAddIcon(IWebNotification* notification)
         return E_FAIL;
 
     COMVariant iconUserInfoURL;
-    hr = propertyBag->Read(WebIconDatabase::iconDatabaseNotificationUserInfoURLKey(), &iconUserInfoURL, 0);
+    hr = propertyBag->Read(WebIconDatabase::iconDatabaseNotificationUserInfoURLKey(), &iconUserInfoURL, nullptr);
     if (FAILED(hr))
         return hr;
 
@@ -4956,12 +4954,10 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings.setOfflineWebApplicationCacheEnabled(enabled);
 
-#if ENABLE(SQL_DATABASE)
     hr = prefsPrivate->databasesEnabled(&enabled);
     if (FAILED(hr))
         return hr;
     DatabaseManager::manager().setIsAvailable(enabled);
-#endif
 
     hr = prefsPrivate->localStorageEnabled(&enabled);
     if (FAILED(hr))

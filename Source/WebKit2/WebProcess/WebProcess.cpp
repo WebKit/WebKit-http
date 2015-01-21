@@ -43,6 +43,7 @@
 #include "WebConnectionToUIProcess.h"
 #include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebDatabaseManager.h"
 #include "WebFrame.h"
 #include "WebFrameNetworkingContext.h"
 #include "WebGeolocationManager.h"
@@ -66,8 +67,8 @@
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/CrossOriginPreflightResultCache.h>
-#include <WebCore/Font.h>
 #include <WebCore/FontCache.h>
+#include <WebCore/FontCascade.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/GCController.h>
@@ -103,10 +104,6 @@
 #include "NetworkProcessConnection.h"
 #endif
 
-#if ENABLE(CONTENT_EXTENSIONS)
-#include <WebCore/ContentExtensionsManager.h>
-#endif
-
 #if ENABLE(SEC_ITEM_SHIM)
 #include "SecItemShim.h"
 #endif
@@ -119,11 +116,8 @@
 #include "WebNotificationManager.h"
 #endif
 
-#if ENABLE(SQL_DATABASE)
-#include "WebDatabaseManager.h"
 #if PLATFORM(IOS)
 #include "WebSQLiteDatabaseTracker.h"
-#endif
 #endif
 
 #if ENABLE(BATTERY_STATUS)
@@ -198,12 +192,9 @@ WebProcess::WebProcess()
     addSupplement<WebCookieManager>();
     addSupplement<WebMediaCacheManager>();
     addSupplement<AuthenticationManager>();
-    
-#if ENABLE(SQL_DATABASE)
     addSupplement<WebDatabaseManager>();
 #if PLATFORM(IOS)
     addSupplement<WebSQLiteDatabaseTracker>();
-#endif
 #endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
@@ -463,12 +454,12 @@ void WebProcess::setDefaultRequestTimeoutInterval(double timeoutInterval)
 
 void WebProcess::setAlwaysUsesComplexTextCodePath(bool alwaysUseComplexText)
 {
-    WebCore::Font::setCodePath(alwaysUseComplexText ? WebCore::Font::Complex : WebCore::Font::Auto);
+    WebCore::FontCascade::setCodePath(alwaysUseComplexText ? WebCore::FontCascade::Complex : WebCore::FontCascade::Auto);
 }
 
 void WebProcess::setShouldUseFontSmoothing(bool useFontSmoothing)
 {
-    WebCore::Font::setShouldUseSmoothing(useFontSmoothing);
+    WebCore::FontCascade::setShouldUseSmoothing(useFontSmoothing);
 }
 
 void WebProcess::userPreferredLanguagesChanged(const Vector<String>& languages) const
@@ -597,7 +588,10 @@ void WebProcess::terminate()
 
 void WebProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
 {
-    messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder);
+    if (messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder))
+        return;
+
+    LOG_ERROR("Unhandled synchronous web process message '%s:%s'", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data());
 }
 
 void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
@@ -621,6 +615,8 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDeco
         
         pageGroupProxy->didReceiveMessage(connection, decoder);
     }
+
+    LOG_ERROR("Unhandled web process message '%s:%s'", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data());
 }
 
 void WebProcess::didClose(IPC::Connection&)
@@ -1318,13 +1314,6 @@ RefPtr<API::Object> WebProcess::transformObjectsToHandles(API::Object* object)
 
     return UserData::transform(object, Transformer());
 }
-
-#if ENABLE(CONTENT_EXTENSIONS)
-void WebProcess::loadContentExtension(const String& identifier, const String& serializedRules)
-{
-    ContentExtensions::ExtensionsManager::loadExtension(identifier, serializedRules);
-}
-#endif
 
 void WebProcess::setMemoryCacheDisabled(bool disabled)
 {

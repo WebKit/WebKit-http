@@ -30,7 +30,6 @@
 #include "LargeChunk.h"
 #include "PerProcess.h"
 #include "Sizes.h"
-#include "XLargeChunk.h"
 #include <algorithm>
 #include <cstdlib>
 
@@ -49,6 +48,18 @@ Allocator::Allocator(Heap* heap, Deallocator& deallocator)
 Allocator::~Allocator()
 {
     scavenge();
+}
+
+void* Allocator::allocate(size_t alignment, size_t size)
+{
+    if (!m_isBmallocEnabled) {
+        void* result = nullptr;
+        posix_memalign(&result, alignment, size);
+        return result;
+    }
+    
+    BASSERT(isPowerOfTwo(alignment));
+    return nullptr;
 }
 
 void* Allocator::reallocate(void* object, size_t newSize)
@@ -78,8 +89,10 @@ void* Allocator::reallocate(void* object, size_t newSize)
         break;
     }
     case XLarge: {
-        XLargeChunk* chunk = XLargeChunk::get(object);
-        oldSize = chunk->size();
+        std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+        Range range = PerProcess<Heap>::getFastCase()->findXLarge(lock, object);
+        RELEASE_BASSERT(range);
+        oldSize = range.size();
         break;
     }
     }
@@ -139,7 +152,7 @@ NO_INLINE void* Allocator::allocateLarge(size_t size)
 
 NO_INLINE void* Allocator::allocateXLarge(size_t size)
 {
-    size = roundUpToMultipleOf<largeAlignment>(size);
+    size = roundUpToMultipleOf<xLargeAlignment>(size);
     std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
     return PerProcess<Heap>::getFastCase()->allocateXLarge(lock, size);
 }

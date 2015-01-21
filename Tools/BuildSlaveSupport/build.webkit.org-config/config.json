@@ -5,11 +5,9 @@
                     { "name": "bot196",  "platform": "mac-mountainlion" },
                     { "name": "bot197",  "platform": "mac-mountainlion" },
                     { "name": "bot201",  "platform": "mac-mountainlion" },
-                    { "name": "bot139", "platform": "mac-mountainlion" },
                     { "name": "bot141", "platform": "mac-mountainlion" },
                     { "name": "bot142", "platform": "mac-mountainlion" },
                     { "name": "bot145", "platform": "mac-mountainlion" },
-                    { "name": "bot148", "platform": "mac-mountainlion" },
                     { "name": "bot150", "platform": "mac-mountainlion" },
                     { "name": "bot155", "platform": "mac-mountainlion" },
                     { "name": "bot156", "platform": "mac-mountainlion" },
@@ -32,6 +30,8 @@
                     { "name": "bot151", "platform": "mac-mavericks" },
                     { "name": "bot152", "platform": "mac-mavericks" },
 
+                    { "name": "bot139", "platform": "mac-yosemite" },
+                    { "name": "bot148", "platform": "mac-yosemite" },
                     { "name": "bot180", "platform": "mac-yosemite" },
                     { "name": "bot181", "platform": "mac-yosemite" },
                     { "name": "bot182", "platform": "mac-yosemite" },
@@ -55,6 +55,8 @@
                     { "name": "bot511", "platform": "win" },
                     { "name": "bot501", "platform": "win" },
 
+                    { "name": "wincairo-1", "platform": "wincairo" },
+
                     { "name": "gtk-linux-slave-1", "platform": "gtk" },
                     { "name": "gtk-linux-slave-2", "platform": "gtk" },
                     { "name": "gtk-linux-slave-3", "platform": "gtk" },
@@ -70,13 +72,13 @@
 
                   ],
 
-    "builders":   [ { "name": "Apple MountainLion (Leaks)", "type": "TestLeaks", "builddir": "mountainlion-leaks",
-                      "platform": "mac-mountainlion", "configuration": "debug", "architectures": ["x86_64"],
+    "builders":   [ { "name": "Apple Yosemite (Leaks)", "type": "TestLeaks", "builddir": "yosemite-leaks",
+                      "platform": "mac-yosemite", "configuration": "debug", "architectures": ["x86_64"],
                       "slavenames": ["bot148"]
                     },
                     { "name": "Apple MountainLion Debug (Build)", "type": "Build", "builddir": "mountainlion-debug",
                       "platform": "mac-mountainlion", "configuration": "debug", "architectures": ["x86_64"],
-                      "triggers": ["mountainlion-debug-tests-wk1", "mountainlion-debug-tests-wk2", "mountainlion-leaks"],
+                      "triggers": ["mountainlion-debug-tests-wk1", "mountainlion-debug-tests-wk2"],
                       "slavenames": ["bot145", "bot157"]
                     },
                     { "name": "Apple MountainLion Release (Build)", "type": "Build", "builddir": "mountainlion-release",
@@ -84,8 +86,8 @@
                       "triggers": ["mountainlion-release-tests-wk1", "mountainlion-release-tests-wk2", "mountainlion-release-perf"],
                       "slavenames": ["bot195", "bot159"]
                     },
-                    { "name": "Apple MountainLion Release (32-bit Build)", "type": "Build", "builddir": "mountainlion-32bit-release",
-                      "platform": "mac-mountainlion", "configuration": "release", "architectures": ["i386"],
+                    { "name": "Apple Yosemite Release (32-bit Build)", "type": "Build", "builddir": "yosemite-32bit-release",
+                      "platform": "mac-yosemite", "configuration": "release", "architectures": ["i386"],
                       "slavenames": ["bot139"]
                     },
                     { "name": "Apple MountainLion Debug WK1 (Tests)", "type": "Test", "builddir": "mountainlion-debug-tests-wk1",
@@ -154,7 +156,7 @@
                     },
                     { "name": "Apple Yosemite Debug (Build)", "type": "Build", "builddir": "yosemite-debug",
                       "platform": "mac-yosemite", "configuration": "debug", "architectures": ["x86_64"],
-                      "triggers": ["yosemite-debug-tests-wk1", "yosemite-debug-tests-wk2"],
+                      "triggers": ["yosemite-debug-tests-wk1", "yosemite-debug-tests-wk2", "yosemite-leaks"],
                       "slavenames": ["bot180", "bot181"]
                     },
                     { "name": "Apple Yosemite Debug WK1 (Tests)", "type": "Test", "builddir": "yosemite-debug-tests-wk1",
@@ -253,6 +255,11 @@
                       "slavenames": ["gtk-linux-slave-8"]
                     },
                     {
+                      "name": "WinCairo 64-Bit Release", "type": "BuildAndNonLayoutTest", "builddir": "win-cairo-release",
+                      "platform": "wincairo", "configuration": "release", "architectures": ["x86_64"],
+                      "slavenames": ["wincairo-1"]
+                    },
+                    {
                       "name": "EFL Linux 64-bit Release WK2", "type": "BuildAndTest", "builddir": "efl-linux-64-release-wk2",
                       "platform": "efl", "configuration": "release", "architectures": ["x86_64"],
                       "slavenames": ["efl-linux-slave-2"]
@@ -281,10 +288,10 @@
                       "builderNames": ["GTK Linux 32-bit Release", "GTK Linux 64-bit Release (Build)", "GTK Linux 64-bit Debug (Build)", "GTK Linux ARM Release",
                                        "EFL Linux 64-bit Release WK2",
                                        "EFL Linux ARMv7 Thumb2 Release (Build)", "EFL Linux ARMv7 Traditional Release (Build)",
-                                       "EFL Linux 64-bit Release WK2 (Perf)"]
+                                       "EFL Linux 64-bit Release WK2 (Perf)", "WinCairo 64-Bit Release"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "mac-mountainlion", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple MountainLion Release (Build)", "Apple MountainLion Debug (Build)", "Apple MountainLion Release (32-bit Build)"]
+                      "builderNames": ["Apple MountainLion Release (Build)", "Apple MountainLion Debug (Build)", "Apple Yosemite Release (32-bit Build)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "mac-mavericks", "branch": "trunk", "treeStableTimer": 45.0,
                       "builderNames": ["Apple Mavericks Release (Build)", "Apple Mavericks Debug (Build)", "Apple Mavericks LLINT CLoop (BuildAndTest)", "Apple Mavericks 32-bit JSC (BuildAndTest)"]
@@ -310,8 +317,8 @@
                     { "type": "Triggerable", "name": "mountainlion-debug-tests-wk2",
                       "builderNames": ["Apple MountainLion Debug WK2 (Tests)"]
                     },
-                    { "type": "Triggerable", "name": "mountainlion-leaks",
-                      "builderNames": ["Apple MountainLion (Leaks)"]
+                    { "type": "Triggerable", "name": "yosemite-leaks",
+                      "builderNames": ["Apple Yosemite (Leaks)"]
                     },
                     { "type": "Triggerable", "name": "mavericks-release-tests-wk1",
                       "builderNames": ["Apple Mavericks Release WK1 (Tests)"]

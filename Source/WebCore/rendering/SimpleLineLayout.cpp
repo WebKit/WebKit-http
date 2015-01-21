@@ -184,17 +184,17 @@ bool canUseFor(const RenderBlockFlow& flow)
             }
         }
     }
-    if (style.font().primaryFontData().isSVGFont())
+    if (style.fontCascade().primaryFontData().isSVGFont())
         return false;
     // We assume that all lines have metrics based purely on the primary font.
-    auto& primaryFontData = style.font().primaryFontData();
+    auto& primaryFontData = style.fontCascade().primaryFontData();
     if (primaryFontData.isLoading())
         return false;
     for (const auto& textRenderer : childrenOfType<RenderText>(flow)) {
         if (textRenderer.isCombineText() || textRenderer.isCounter() || textRenderer.isQuote() || textRenderer.isTextFragment()
             || textRenderer.isSVGInlineText())
             return false;
-        if (style.font().codePath(TextRun(textRenderer.text())) != Font::Simple)
+        if (style.fontCascade().codePath(TextRun(textRenderer.text())) != FontCascade::Simple)
             return false;
         if (!canUseForText(textRenderer, primaryFontData))
             return false;
@@ -382,8 +382,8 @@ static void removeTrailingWhitespace(LineState& lineState, Layout::RunVector& li
         lineState.removeCommittedTrailingWhitespace();
     }
 
-    // If we skipped any whitespace and now the line end is a "preserved" newline, skip the newline too as we are wrapping the line here already.
-    if (lastPosition != lineState.position && style.preserveNewline && !flowContents.isEnd(lineState.position) && flowContents.isLineBreak(lineState.position))
+    // If we skipped any whitespace and now the line end is a hard newline, skip the newline too as we are wrapping the line here already.
+    if (lastPosition != lineState.position && !flowContents.isEnd(lineState.position) && flowContents.isLineBreak(lineState.position))
         ++lineState.position;
 }
 

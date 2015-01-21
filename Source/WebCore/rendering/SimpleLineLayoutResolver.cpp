@@ -79,9 +79,9 @@ StringView RunResolver::Run::text() const
     auto& segment = resolver.m_flowContents.segmentForPosition(run.start);
     // We currently split runs on segment boundaries (different RenderText).
     ASSERT(run.end <= segment.end);
-    if (segment.renderer.is8Bit())
-        return StringView(segment.renderer.characters8(), segment.renderer.textLength()).substring(run.start - segment.start, run.end - run.start);
-    return StringView(segment.renderer.characters16(), segment.renderer.textLength()).substring(run.start - segment.start, run.end - run.start);
+    if (segment.text.is8Bit())
+        return StringView(segment.text.characters8(), segment.text.length()).substring(run.start - segment.start, run.end - run.start);
+    return StringView(segment.text.characters16(), segment.text.length()).substring(run.start - segment.start, run.end - run.start);
 }
 
 RunResolver::Iterator::Iterator(const RunResolver& resolver, unsigned runIndex, unsigned lineIndex)
@@ -120,8 +120,8 @@ RunResolver::RunResolver(const RenderBlockFlow& flow, const Layout& layout)
     , m_lineHeight(lineHeightFromFlow(flow))
     , m_baseline(baselineFromFlow(flow))
     , m_borderAndPaddingBefore(flow.borderAndPaddingBefore())
-    , m_ascent(flow.style().font().fontMetrics().ascent())
-    , m_descent(flow.style().font().fontMetrics().descent())
+    , m_ascent(flow.style().fontCascade().fontMetrics().ascent())
+    , m_descent(flow.style().fontCascade().fontMetrics().descent())
 {
 }
 

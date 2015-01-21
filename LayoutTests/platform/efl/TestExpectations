@@ -690,13 +690,6 @@ webkit.org/b/49182 animations/stop-animation-on-suspend.html [ Failure Pass ]
 
 webkit.org/b/103383 fast/css/counters/element-removal-crash.xhtml [ Failure Pass ]
 
-# flaky console output problem
-webkit.org/b/105280 http/tests/xmlhttprequest/origin-whitelisting-https.html [ Failure Pass ]
-webkit.org/b/105280 http/tests/xmlhttprequest/access-control-preflight-async-header-denied.html [ Failure Pass ]
-webkit.org/b/105280 http/tests/xmlhttprequest/access-control-preflight-async-method-denied.html [ Failure Pass ]
-webkit.org/b/105280 http/tests/xmlhttprequest/cross-site-denied-response.html [ Failure Pass ]
-webkit.org/b/105280 http/tests/xmlhttprequest/access-control-preflight-async-not-supported.html [ Failure Pass ]
-
 webkit.org/b/105296 webaudio/delaynode-maxdelay.html [ Failure Pass ]
 webkit.org/b/105296 webaudio/delaynode-max-nondefault-delay.html [ Failure Pass ]
 webkit.org/b/105296 webaudio/delaynode-scheduling.html [ Failure Pass ]
@@ -1442,9 +1435,6 @@ webkit.org/b/109353 fast/flexbox/line-clamp-link-after-ellipsis.html [ Failure ]
 # Leaking state into the next test.
 webkit.org/b/85522 http/tests/security/sandboxed-iframe-form-top.html [ Skip ]
 
-# Newly added test at r139002 is failing.
-webkit.org/b/106316 accessibility/render-counter-text.html [ Failure ]
-
 # New accessibility test added in r149155 is failing. Has been moved to the mac port in r155603.
 webkit.org/b/115659 accessibility/meter-element.html [ Missing ]
 
@@ -1621,8 +1611,6 @@ webkit.org/b/117182 accessibility/text-role-with-aria-hidden-inside.html [ Failu
 webkit.org/b/118418 accessibility/img-fallsback-to-title.html [ Missing ]
 webkit.org/b/98348  accessibility/internal-link-anchors2.html [ Missing ]
 webkit.org/b/98348  accessibility/radio-button-group-members.html [ Missing ]
-
-accessibility/negative-tabindex-does-not-expose-label.html [ Missing ]
 
 # isProtocolHandlerRegistered() isn't supported by WK2 yet.
 webkit.org/b/92749 fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Skip ]
@@ -1824,8 +1812,6 @@ webkit.org/b/124663 media/track/track-legacyapi-with-automatic-mode.html [ Skip 
 
 webkit.org/b/124890 platform/efl/accessibility/media-emits-object-replacement.html [ Failure ]
 
-webkit.org/b/124894 accessibility/fieldset-element.html [ Missing ]
-
 webkit.org/b/125506 accessibility/alt-tag-on-image-with-nonimage-role.html [ Failure ]
 
 # QuickTime plug-in not relevant to this port
@@ -1988,9 +1974,6 @@ webkit.org/b/133306 fast/canvas/webgl/css-webkit-canvas-repaint.html [ Failure ]
 
 # Failures EFL WK2 since the inception
 webkit.org/b/133484 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Timeout ]
-
-# Failing at least from 2014-05-01, but cause unknown
-webkit.org/b/133507 accessibility/media-element.html [ Failure ]
 
 webkit.org/b/130187 accessibility/aria-hidden-false-works-in-subtrees.html [ Missing ]
 

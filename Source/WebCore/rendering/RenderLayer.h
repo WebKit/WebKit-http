@@ -44,7 +44,9 @@
 #ifndef RenderLayer_h
 #define RenderLayer_h
 
+#include "ClipRect.h"
 #include "GraphicsLayer.h"
+#include "LayerFragment.h"
 #include "PaintInfo.h"
 #include "RenderBox.h"
 #include "RenderPtr.h"
@@ -53,6 +55,8 @@
 
 namespace WebCore {
 
+class ClipRects;
+class ClipRectsCache;
 class FilterEffectRenderer;
 class FilterEffectRendererHelper;
 class FilterOperations;
@@ -81,149 +85,6 @@ enum RepaintStatus {
     NeedsFullRepaintForPositionedMovementLayout
 };
 
-class ClipRect {
-public:
-    ClipRect()
-        : m_affectedByRadius(false)
-    {
-    }
-    
-    ClipRect(const LayoutRect& rect)
-        : m_rect(rect)
-        , m_affectedByRadius(false)
-    {
-    }
-    
-    const LayoutRect& rect() const { return m_rect; }
-    void setRect(const LayoutRect& rect) { m_rect = rect; }
-
-    bool affectedByRadius() const { return m_affectedByRadius; }
-    void setAffectedByRadius(bool affectedByRadius) { m_affectedByRadius = affectedByRadius; }
-
-    bool operator==(const ClipRect& other) const { return rect() == other.rect() && affectedByRadius() == other.affectedByRadius(); }
-    bool operator!=(const ClipRect& other) const { return rect() != other.rect() || affectedByRadius() != other.affectedByRadius(); }
-    bool operator!=(const LayoutRect& otherRect) const { return rect() != otherRect; }
-
-    void intersect(const LayoutRect& other) { m_rect.intersect(other); }
-    void intersect(const ClipRect& other)
-    {
-        m_rect.intersect(other.rect());
-        if (other.affectedByRadius())
-            m_affectedByRadius = true;
-    }
-    void move(LayoutUnit x, LayoutUnit y) { m_rect.move(x, y); }
-    void move(const LayoutSize& size) { m_rect.move(size); }
-    void moveBy(const LayoutPoint& point) { m_rect.moveBy(point); }
-
-    bool isEmpty() const { return m_rect.isEmpty(); }
-    bool intersects(const LayoutRect& rect) const { return m_rect.intersects(rect); }
-    bool intersects(const HitTestLocation&) const;
-
-    void inflateX(LayoutUnit dx) { m_rect.inflateX(dx); }
-    void inflateY(LayoutUnit dy) { m_rect.inflateY(dy); }
-    void inflate(LayoutUnit d) { inflateX(d); inflateY(d); }
-
-private:
-    LayoutRect m_rect;
-    bool m_affectedByRadius;
-};
-
-inline ClipRect intersection(const ClipRect& a, const ClipRect& b)
-{
-    ClipRect c = a;
-    c.intersect(b);
-    return c;
-}
-
-class ClipRects {
-    WTF_MAKE_FAST_ALLOCATED;
-public:
-    static PassRefPtr<ClipRects> create()
-    {
-        return adoptRef(new ClipRects);
-    }
-
-    static PassRefPtr<ClipRects> create(const ClipRects& other)
-    {
-        return adoptRef(new ClipRects(other));
-    }
-
-    ClipRects()
-        : m_refCnt(1)
-        , m_fixed(false)
-    {
-    }
-
-    void reset(const LayoutRect& r)
-    {
-        m_overflowClipRect = r;
-        m_fixedClipRect = r;
-        m_posClipRect = r;
-        m_fixed = false;
-    }
-    
-    const ClipRect& overflowClipRect() const { return m_overflowClipRect; }
-    void setOverflowClipRect(const ClipRect& r) { m_overflowClipRect = r; }
-
-    const ClipRect& fixedClipRect() const { return m_fixedClipRect; }
-    void setFixedClipRect(const ClipRect&r) { m_fixedClipRect = r; }
-
-    const ClipRect& posClipRect() const { return m_posClipRect; }
-    void setPosClipRect(const ClipRect& r) { m_posClipRect = r; }
-
-    bool fixed() const { return m_fixed; }
-    void setFixed(bool fixed) { m_fixed = fixed; }
-
-    void ref() { m_refCnt++; }
-    void deref()
-    {
-        if (!--m_refCnt)
-            delete this;
-    }
-
-    bool operator==(const ClipRects& other) const
-    {
-        return m_overflowClipRect == other.overflowClipRect() &&
-               m_fixedClipRect == other.fixedClipRect() &&
-               m_posClipRect == other.posClipRect() &&
-               m_fixed == other.fixed();
-    }
-
-    ClipRects& operator=(const ClipRects& other)
-    {
-        m_overflowClipRect = other.overflowClipRect();
-        m_fixedClipRect = other.fixedClipRect();
-        m_posClipRect = other.posClipRect();
-        m_fixed = other.fixed();
-        return *this;
-    }
-
-private:
-    ClipRects(const LayoutRect& r)
-        : m_overflowClipRect(r)
-        , m_fixedClipRect(r)
-        , m_posClipRect(r)
-        , m_refCnt(1)
-        , m_fixed(false)
-    {
-    }
-
-    ClipRects(const ClipRects& other)
-        : m_overflowClipRect(other.overflowClipRect())
-        , m_fixedClipRect(other.fixedClipRect())
-        , m_posClipRect(other.posClipRect())
-        , m_refCnt(1)
-        , m_fixed(other.fixed())
-    {
-    }
-
-    ClipRect m_overflowClipRect;
-    ClipRect m_fixedClipRect;
-    ClipRect m_posClipRect;
-    unsigned m_refCnt : 31;
-    bool m_fixed : 1;
-};
-
 enum ClipRectsType {
     PaintingClipRects, // Relative to painting ancestor. Used for painting.
     RootRelativeClipRects, // Relative to the ancestor treated as the root (e.g. transformed layer). Used for hit testing.
@@ -242,94 +103,6 @@ enum ShouldApplyRootOffsetToFragments {
     ApplyRootOffsetToFragments,
     IgnoreRootOffsetForFragments
 };
-
-struct ClipRectsCache {
-    WTF_MAKE_FAST_ALLOCATED;
-public:
-    ClipRectsCache()
-    {
-#ifndef NDEBUG
-        for (int i = 0; i < NumCachedClipRectsTypes; ++i) {
-            m_clipRectsRoot[i] = 0;
-            m_scrollbarRelevancy[i] = IgnoreOverlayScrollbarSize;
-        }
-#endif
-    }
-
-    PassRefPtr<ClipRects> getClipRects(ClipRectsType clipRectsType, ShouldRespectOverflowClip respectOverflow) { return m_clipRects[getIndex(clipRectsType, respectOverflow)]; }
-    void setClipRects(ClipRectsType clipRectsType, ShouldRespectOverflowClip respectOverflow, PassRefPtr<ClipRects> clipRects) { m_clipRects[getIndex(clipRectsType, respectOverflow)] = clipRects; }
-
-#ifndef NDEBUG
-    const RenderLayer* m_clipRectsRoot[NumCachedClipRectsTypes];
-    OverlayScrollbarSizeRelevancy m_scrollbarRelevancy[NumCachedClipRectsTypes];
-#endif
-
-private:
-    int getIndex(ClipRectsType clipRectsType, ShouldRespectOverflowClip respectOverflow)
-    {
-        int index = static_cast<int>(clipRectsType);
-        if (respectOverflow == RespectOverflowClip)
-            index += static_cast<int>(NumCachedClipRectsTypes);
-        return index;
-    }
-
-    RefPtr<ClipRects> m_clipRects[NumCachedClipRectsTypes * 2];
-};
-
-struct LayerFragment {
-public:
-    LayerFragment()
-        : shouldPaintContent(false)
-        , hasBoundingBox(false)
-    { }
-
-    void setRects(const LayoutRect& bounds, const ClipRect& background, const ClipRect& foreground, const ClipRect& outline, const LayoutRect* bbox)
-    {
-        layerBounds = bounds;
-        backgroundRect = background;
-        foregroundRect = foreground;
-        outlineRect = outline;
-        if (bbox) {
-            boundingBox = *bbox;
-            hasBoundingBox = true;
-        }
-    }
-    
-    void moveBy(const LayoutPoint& offset)
-    {
-        layerBounds.moveBy(offset);
-        backgroundRect.moveBy(offset);
-        foregroundRect.moveBy(offset);
-        outlineRect.moveBy(offset);
-        paginationClip.moveBy(offset);
-        boundingBox.moveBy(offset);
-    }
-    
-    void intersect(const LayoutRect& rect)
-    {
-        backgroundRect.intersect(rect);
-        foregroundRect.intersect(rect);
-        outlineRect.intersect(rect);
-        boundingBox.intersect(rect);
-    }
-    
-    bool shouldPaintContent;
-    bool hasBoundingBox;
-    LayoutRect layerBounds;
-    ClipRect backgroundRect;
-    ClipRect foregroundRect;
-    ClipRect outlineRect;
-    LayoutRect boundingBox;
-    
-    // Unique to paginated fragments. The physical translation to apply to shift the layer when painting/hit-testing.
-    LayoutSize paginationOffset;
-    
-    // Also unique to paginated fragments. An additional clip that applies to the layer. It is in layer-local
-    // (physical) coordinates.
-    LayoutRect paginationClip;
-};
-
-typedef Vector<LayerFragment, 1> LayerFragments;
 
 class RenderLayer final : public ScrollableArea {
     WTF_MAKE_FAST_ALLOCATED;
@@ -705,18 +478,6 @@ public:
     void calculateRects(const ClipRectsContext&, const LayoutRect& paintDirtyRect, LayoutRect& layerBounds,
         ClipRect& backgroundRect, ClipRect& foregroundRect, ClipRect& outlineRect, const LayoutSize& offsetFromRoot) const;
 
-    // Compute and cache clip rects computed with the given layer as the root
-    void updateClipRects(const ClipRectsContext&);
-    // Compute and return the clip rects. If useCached is true, will used previously computed clip rects on ancestors
-    // (rather than computing them all from scratch up the parent chain).
-    void calculateClipRects(const ClipRectsContext&, ClipRects&) const;
-
-    ClipRects* clipRects(const ClipRectsContext& context) const
-    {
-        ASSERT(context.clipRectsType < NumCachedClipRectsTypes);
-        return m_clipRectsCache ? m_clipRectsCache->getClipRects(context.clipRectsType, context.respectOverflowClip).get() : 0;
-    }
-
     LayoutRect childrenClipRect() const; // Returns the foreground clip rect of the layer in the document's coordinate space.
     LayoutRect selfClipRect() const; // Returns the background clip rect of the layer in the document's coordinate space.
     LayoutRect localClipRect(bool& clipExceedsBounds) const; // Returns the background clip rect of the layer in the local coordinate space.
@@ -907,6 +668,13 @@ private:
         PaintBehavior paintBehavior;
         bool clipToDirtyRect;
     };
+
+    // Compute and cache clip rects computed with the given layer as the root
+    void updateClipRects(const ClipRectsContext&);
+    // Compute and return the clip rects. If useCached is true, will used previously computed clip rects on ancestors
+    // (rather than computing them all from scratch up the parent chain).
+    void calculateClipRects(const ClipRectsContext&, ClipRects&) const;
+    ClipRects* clipRects(const ClipRectsContext&) const;
 
     void updateZOrderLists();
     void rebuildZOrderLists();

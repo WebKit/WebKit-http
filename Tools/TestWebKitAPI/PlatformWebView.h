@@ -59,6 +59,7 @@ namespace TestWebKitAPI {
 
 class PlatformWebView {
 public:
+    explicit PlatformWebView(WKPageConfigurationRef);
     explicit PlatformWebView(WKContextRef, WKPageGroupRef = 0);
     explicit PlatformWebView(WKPageRef relatedPage);
 #if PLATFORM(MAC)
@@ -77,6 +78,10 @@ public:
     void simulateMouseMove(unsigned x, unsigned y);
 
 private:
+#if PLATFORM(MAC)
+    void initialize(WKPageConfigurationRef, Class wkViewSubclass);
+#endif
+
     PlatformWKView m_view;
     PlatformWindow m_window;
 };

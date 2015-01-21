@@ -75,7 +75,7 @@ namespace WebCore {
 
 class Cursor;
 class Event;
-class Font;
+class FontCascade;
 class FrameView;
 class GraphicsContext;
 class PlatformMouseEvent;

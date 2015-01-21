@@ -26,12 +26,18 @@
 #include "config.h"
 #include "WebUserContentControllerProxy.h"
 
+#include "APIArray.h"
+#include "APIUserScript.h"
 #include "DataReference.h"
 #include "WebProcessProxy.h"
 #include "WebScriptMessageHandler.h"
 #include "WebUserContentControllerMessages.h"
 #include "WebUserContentControllerProxyMessages.h"
 #include <WebCore/SerializedScriptValue.h>
+
+#if ENABLE(CONTENT_EXTENSIONS)
+#include "APIUserContentFilter.h"
+#endif
 
 namespace WebKit {
 
@@ -44,6 +50,10 @@ static uint64_t generateIdentifier()
 
 WebUserContentControllerProxy::WebUserContentControllerProxy()
     : m_identifier(generateIdentifier())
+    , m_userScripts(*API::Array::create())
+#if ENABLE(CONTENT_EXTENSIONS)
+    , m_userContentFilters(*API::Array::create())
+#endif
 {
 }
 
@@ -62,13 +72,24 @@ void WebUserContentControllerProxy::addProcess(WebProcessProxy& webProcessProxy)
 
     webProcessProxy.addMessageReceiver(Messages::WebUserContentControllerProxy::messageReceiverName(), m_identifier, *this);
 
-    webProcessProxy.connection()->send(Messages::WebUserContentController::AddUserScripts(m_userScripts), m_identifier);
+    Vector<WebCore::UserScript> userScripts;
+    for (const auto& userScript : m_userScripts->elementsOfType<API::UserScript>())
+        userScripts.append(userScript->userScript());
+    webProcessProxy.connection()->send(Messages::WebUserContentController::AddUserScripts(userScripts), m_identifier);
+
     webProcessProxy.connection()->send(Messages::WebUserContentController::AddUserStyleSheets(m_userStyleSheets), m_identifier);
 
     Vector<WebScriptMessageHandlerHandle> messageHandlerHandles;
     for (auto& handler : m_scriptMessageHandlers.values())
         messageHandlerHandles.append(handler->handle());
     webProcessProxy.connection()->send(Messages::WebUserContentController::AddUserScriptMessageHandlers(messageHandlerHandles), m_identifier);
+
+#if ENABLE(CONTENT_EXTENSIONS)
+    Vector<std::pair<String, String>> userContentFilters;
+    for (const auto& userContentFilter : m_userContentFilters->elementsOfType<API::UserContentFilter>())
+        userContentFilters.append(std::make_pair(userContentFilter->name(), userContentFilter->serializedRules()));
+    webProcessProxy.connection()->send(Messages::WebUserContentController::AddUserContentFilters(userContentFilters), m_identifier);
+#endif
 }
 
 void WebUserContentControllerProxy::removeProcess(WebProcessProxy& webProcessProxy)
@@ -79,17 +100,17 @@ void WebUserContentControllerProxy::removeProcess(WebProcessProxy& webProcessPro
     webProcessProxy.removeMessageReceiver(Messages::WebUserContentControllerProxy::messageReceiverName(), m_identifier);
 }
 
-void WebUserContentControllerProxy::addUserScript(WebCore::UserScript userScript)
+void WebUserContentControllerProxy::addUserScript(API::UserScript& userScript)
 {
-    m_userScripts.append(WTF::move(userScript));
+    m_userScripts->elements().append(&userScript);
 
     for (WebProcessProxy* process : m_processes)
-        process->connection()->send(Messages::WebUserContentController::AddUserScripts({ m_userScripts.last() }), m_identifier);
+        process->connection()->send(Messages::WebUserContentController::AddUserScripts({ userScript.userScript() }), m_identifier);
 }
 
 void WebUserContentControllerProxy::removeAllUserScripts()
 {
-    m_userScripts.clear();
+    m_userScripts->elements().clear();
 
     for (WebProcessProxy* process : m_processes)
         process->connection()->send(Messages::WebUserContentController::RemoveAllUserScripts(), m_identifier);
@@ -161,5 +182,26 @@ void WebUserContentControllerProxy::didPostMessage(IPC::Connection& connection, 
 
     handler->client().didPostMessage(*page, *frame, *value);
 }
+
+
+#if ENABLE(CONTENT_EXTENSIONS)
+void WebUserContentControllerProxy::addUserContentFilter(API::UserContentFilter& userContentFilter)
+{
+    m_userContentFilters->elements().append(&userContentFilter);
+
+    auto pair = std::make_pair(userContentFilter.name(), userContentFilter.serializedRules());
+
+    for (WebProcessProxy* process : m_processes)
+        process->connection()->send(Messages::WebUserContentController::AddUserContentFilters({ pair }), m_identifier);
+}
+
+void WebUserContentControllerProxy::removeAllUserContentFilters()
+{
+    m_userContentFilters->elements().clear();
+
+    for (WebProcessProxy* process : m_processes)
+        process->connection()->send(Messages::WebUserContentController::RemoveAllUserContentFilters(), m_identifier);
+}
+#endif
 
 } // namespace WebKit
