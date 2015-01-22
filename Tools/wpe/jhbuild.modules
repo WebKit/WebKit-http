@@ -19,7 +19,7 @@
   </metamodule>
 
   <repository type="tarball" name="sourceware.org-mirror"
-      href="ftp://mirrors.kernel.org/sources.redhat.com/"/>
+      href="http://mirrors.kernel.org/sources.redhat.com/"/>
   <repository type="tarball" name="ftp.gnome.org"
       href="http://ftp.gnome.org"/>
   <repository type="tarball" name="cairographics.org"
