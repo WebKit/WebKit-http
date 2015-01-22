@@ -1222,6 +1222,48 @@ QWebInspector* QWebPagePrivate::getOrCreateInspector()
     \value WebModalDialog The window acts as modal dialog.
 */
 
+/*!
+    \enum QWebPage::PermissionPolicy
+
+    This enum describes the permission policies that the user may set for data or device access.
+
+    \value PermissionUnknown It is unknown whether the user grants or denies permission.
+    \value PermissionGrantedByUser The user has granted permission.
+    \value PermissionDeniedByUser The user has denied permission.
+
+    \sa featurePermissionRequested(), featurePermissionRequestCanceled(), setFeaturePermission(), Feature
+*/
+
+/*!
+    \enum QWebPage::Feature
+
+    This enum describes the platform feature access categories that the user may be asked to grant or deny access to.
+
+    \value Notifications Access to notifications
+    \value Geolocation Access to location hardware or service
+
+    \sa featurePermissionRequested(), featurePermissionRequestCanceled(), setFeaturePermission(), PermissionPolicy
+
+*/
+
+/*!
+    \fn void QWebPage::featurePermissionRequested(QWebFrame* frame, QWebPage::Feature feature);
+
+    This is signal is emitted when the given \a frame requests to make use of
+    the resource or device identified by \a feature.
+
+    \sa featurePermissionRequestCanceled(), setFeaturePermission()
+*/
+
+/*!
+    \fn void QWebPage::featurePermissionRequestCanceled(QWebFrame* frame, QWebPage::Feature feature);
+
+    This is signal is emitted when the given \a frame cancels a previously issued
+    request to make use of \a feature.
+
+    \sa featurePermissionRequested(), setFeaturePermission()
+
+*/
 
 /*!
     \class QWebPage::ViewportAttributes
@@ -1623,6 +1665,13 @@ bool QWebPage::shouldInterruptJavaScript()
 #endif
 }
 
+/*!
+    \fn void QWebPage::setFeaturePermission(QWebFrame* frame, Feature feature, PermissionPolicy policy)
+
+    Sets the permission for the given \a frame to use \a feature to \a policy.
+
+    \sa featurePermissionRequested(), featurePermissionRequestCanceled()
+*/
 void QWebPage::setFeaturePermission(QWebFrame* frame, Feature feature, PermissionPolicy policy)
 {
 #if !ENABLE(NOTIFICATIONS) && !ENABLE(LEGACY_NOTIFICATIONS) && !ENABLE(GEOLOCATION)
