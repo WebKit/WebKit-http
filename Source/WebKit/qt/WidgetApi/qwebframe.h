@@ -79,7 +79,10 @@ public:
 
     QString linkText() const;
     QUrl linkUrl() const;
-    QUrl linkTitle() const;
+#if QT_DEPRECATED_SINCE(5,5)
+    QT_DEPRECATED QUrl linkTitle() const;
+#endif // QT_DEPRECATED_SINCE(5,5)
+    QString linkTitleString() const;
     QWebFrame *linkTargetFrame() const;
     QWebElement linkElement() const;
 

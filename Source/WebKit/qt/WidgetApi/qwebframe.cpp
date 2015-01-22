@@ -1161,13 +1161,29 @@ QUrl QWebHitTestResult::linkUrl() const
     return d->linkUrl;
 }
 
+#if QT_DEPRECATED_SINCE(5,5)
 /*!
+    \obsolete
+    Use linkTitleString instead.
+
     Returns the title of the link.
 */
 QUrl QWebHitTestResult::linkTitle() const
 {
     if (!d)
         return QUrl();
+    return d->linkTitle;
+}
+#endif // QT_DEPRECATED_SINCE(5,5)
+
+/*!
+    \since 5.5
+    Returns the title of the link.
+*/
+QString QWebHitTestResult::linkTitleString() const
+{
+    if (!d)
+        return QString();
     return d->linkTitle;
 }
 
