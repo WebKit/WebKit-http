@@ -71,7 +71,11 @@ const struct weston_pointer_grab_interface Shell::m_pgInterface = {
     },
 
     // button
-    [](struct weston_pointer_grab*, uint32_t, uint32_t, uint32_t) { },
+    [](struct weston_pointer_grab* grab, uint32_t time, uint32_t button, uint32_t state)
+    {
+        WKInputHandlerNotifyPointerButton(Shell::instance().m_inputHandler.get(),
+            WKPointerButton{ time, button, state });
+    },
 
     // cancel
     [](struct weston_pointer_grab*) { }
