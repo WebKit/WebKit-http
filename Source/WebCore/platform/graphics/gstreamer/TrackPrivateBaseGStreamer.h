@@ -70,8 +70,8 @@ private:
     bool getTag(GstTagList* tags, const gchar* tagName, StringType& value);
 
     TrackPrivateBase* m_owner;
-    GMainLoopSource::Simple m_activeTimerHandler;
-    GMainLoopSource::Simple m_tagTimerHandler;
+    GThreadSafeMainLoopSource m_activeTimerHandler;
+    GThreadSafeMainLoopSource m_tagTimerHandler;
 
     Mutex m_tagMutex;
     GRefPtr<GstTagList> m_tags;
