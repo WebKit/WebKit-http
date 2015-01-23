@@ -1,3 +1,195 @@
+2015-01-21  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: support aligned allocation
+        https://bugs.webkit.org/show_bug.cgi?id=140732
+
+        Reviewed by Andreas Kling.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::allocate): New function for aligned allocation.
+
+        Small and medium requests just allocate and free until they find an
+        aligned pointer. This is slightly inefficient in the worst case, but
+        still constant-time with little-to-no space overhead.
+
+        Large requests use a new API that requires the client to specify both
+        its ideal size and alignment, and the worst-case size you would have to
+        allocate in order to produce some interior pointer of the requested size
+        and alignment. We put the burden of this calculation on the client
+        because it simplifies things if we guarantee that allocation won't fail.
+
+        XLarge requests are easy: we just forward them to vmAllocate, which
+        already supported aligned requests.
+
+        * bmalloc/BoundaryTag.h:
+        * bmalloc/BoundaryTagInlines.h:
+        (bmalloc::BoundaryTag::mergeLeft):
+        (bmalloc::BoundaryTag::mergeRight):
+        (bmalloc::BoundaryTag::merge):
+        (bmalloc::BoundaryTag::deallocate):
+        (bmalloc::BoundaryTag::split):
+        (bmalloc::BoundaryTag::allocate): No behavior change here. I just
+        refactored the interface to remove some reference out parameters in
+        order to clarify what changes and what doesn't.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::allocateXLarge): Added an alignment API.
+
+        (bmalloc::Heap::allocateLarge):
+        * bmalloc/Heap.h: Added an alignment API. I split out allocateLarge into
+        a few variants, so aligned and unaligned allocation could share some code.
+
+        * bmalloc/SegregatedFreeList.cpp:
+        (bmalloc::SegregatedFreeList::take):
+        * bmalloc/SegregatedFreeList.h: Changed to use a separate, explicit API
+        for aligned allocation. It turns out that the aligned path is pretty
+        different, since it ends up searching for two potential ways to satisfy
+        an allocation: either large enough and aligned, or large enough to split
+        into something not aligned and something large enough and aligned.
+
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmAllocate): Switched alignment to come before size because
+        that's how the memalign API specifies it.
+
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateLargeRange): Added an alignment API.
+
+2015-01-20  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: a little bit of cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=140687
+
+        Reviewed by Anders Carlsson.
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::isPowerOfTwo): Added a check for 0, since 0 would break a lot
+        of code.
+
+        * bmalloc/BoundaryTag.h:
+        * bmalloc/BoundaryTagInlines.h:
+        (bmalloc::BoundaryTag::mergeLeft):
+        (bmalloc::BoundaryTag::mergeRight):
+        (bmalloc::BoundaryTag::merge):
+        (bmalloc::BoundaryTag::deallocate):
+        (bmalloc::BoundaryTag::split):
+        (bmalloc::BoundaryTag::allocate):
+        (bmalloc::BoundaryTag::mergeLargeLeft): Deleted.
+        (bmalloc::BoundaryTag::mergeLargeRight): Deleted.
+        (bmalloc::BoundaryTag::mergeLarge): Deleted.
+        (bmalloc::BoundaryTag::splitLarge): Deleted. Removed the word "Large"
+        from all these functions, since boundary tags always pertain to large
+        objects, and putting the word "Large" everywhere wasn't helping to
+        explain that.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::allocateXLarge):
+        (bmalloc::Heap::findXLarge):
+        (bmalloc::Heap::deallocateXLarge):
+        * bmalloc/Heap.h:
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateXLarge): Deleted.
+        (bmalloc::VMHeap::findXLarge): Deleted.
+        (bmalloc::VMHeap::deallocateXLarge): Deleted. Moved XLarge allocation
+        from VMHeap to Heap. Since the purpose of the VMHeap is to cache VM
+        ranges, and the VMHeap never caches any XLarge ranges, it doesn't
+        really make sense for the VMHeap to be involved.
+
+2015-01-16  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: refactored XLarge allocation for better alignment
+        https://bugs.webkit.org/show_bug.cgi?id=140582
+
+        Reviewed by Andreas Kling.
+
+        XLarge objects used to be Large objects with an extra bit of metadata
+        that said "actually, I'm not large -- I'm extra large".
+
+        The metadata header in an XLarge allocation made it impossible for the
+        XLarge object to honor a very large alignment request.
+
+        The solution is to stop using a metadata header for XLarge objects, and
+        instead to store explicit metadata on the side.
+
+        This is a bit less astonishing, which is also nice.
+
+        Finding XLarge metadata is now a linear search. That's probably OK, since
+        it was always so in TCMalloc, and the usual number of XLarge allocations
+        in a process is 0.
+
+        This design makes it possible for the heap to cache XLarge allocations
+        with and/or without physical pages. I haven't actually done that yet
+        because the tradeoffs are subtle, so I don't want to do anything without
+        a motivating test case.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::reallocate): Removed the concept of an XLargeChunk,
+        since an XLarge allocation is now just a naked buffer without a header.
+
+        (bmalloc::Allocator::allocateXLarge): Added an explicit qualifier for
+        XLarge alignment, since XLargeChunk won't give this to us implicitly
+        anymore.
+
+        * bmalloc/BoundaryTag.h:
+        (bmalloc::BoundaryTag::setRange):
+        (bmalloc::BoundaryTag::isXLarge): Deleted.
+        (bmalloc::BoundaryTag::setXLarge): Deleted.
+        * bmalloc/BoundaryTagInlines.h:
+        (bmalloc::validate):
+        (bmalloc::BoundaryTag::deallocate): Removed the XLarge hacks from Large allocations.
+
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::deallocateXLarge):
+        (bmalloc::Deallocator::deallocateSlowCase):
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::findXLarge):
+        (bmalloc::Heap::allocateXLarge):
+        (bmalloc::Heap::deallocateXLarge):
+        * bmalloc/Heap.h: Updated for interface changes.
+
+        * bmalloc/ObjectType.cpp:
+        (bmalloc::objectType):
+        * bmalloc/ObjectType.h:
+        (bmalloc::isXLarge): We can now tell if a pointer is XLarge just by
+        examining its bit pattern -- just like we do for other kinds of
+        allocations -- which is nice.
+
+        * bmalloc/Sizes.h:
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateXLarge):
+        (bmalloc::VMHeap::findXLarge):
+        (bmalloc::VMHeap::deallocateXLarge): Keep an explicit vector of metadata
+        for XLarge allocations.
+
+        * bmalloc/XLargeChunk.h: Removed.
+
+2015-01-16  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: added some infrastructure for aligned allocation
+        https://bugs.webkit.org/show_bug.cgi?id=140572
+
+        Reviewed by Andreas Kling.
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::isPowerOfTwo):
+        (bmalloc::roundUpToMultipleOf):
+        (bmalloc::roundDownToMultipleOf): Refactored some duplicate code to use our
+        isPowerOfTwo helper function.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::allocate):
+        * bmalloc/Allocator.h: Stubbed out an implementation of aligned allocation.
+        Doesn't do anything yet, but does correctly forward to system malloc
+        when bmalloc is disabled.
+
+        * bmalloc/Cache.cpp:
+        (bmalloc::Cache::allocateSlowCaseNullCache):
+        * bmalloc/Cache.h:
+        (bmalloc::Cache::allocate):
+        * bmalloc/bmalloc.h:
+        (bmalloc::api::memalign):
+        * bmalloc/mbmalloc.cpp: Stubbed out an API for aligned allocation.
+
 2015-01-13  Geoffrey Garen  <ggaren@apple.com>
 
         Consider alignment when allocating from a SegregatedFreeList

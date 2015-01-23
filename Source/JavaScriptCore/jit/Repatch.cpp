@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -511,13 +511,6 @@ static void generateByIdStub(
                 MacroAssembler::NotEqual, loadedValueGPR, addressOfLinkFunctionCheck,
                 MacroAssembler::TrustedImmPtr(0));
             
-            // loadedValueGPR is already burned. We can reuse it. From here on we assume that
-            // any volatile register will be clobbered anyway.
-            stubJit.loadPtr(
-                MacroAssembler::Address(loadedValueGPR, JSFunction::offsetOfScopeChain()),
-                loadedValueGPR);
-            stubJit.storeCell(
-                loadedValueGPR, calleeFrame.withOffset(JSStack::ScopeChain * sizeof(Register)));
             fastPathCall = stubJit.nearCall();
             
             stubJit.addPtr(
@@ -1685,23 +1678,6 @@ void linkClosureCall(
             CCallHelpers::Address(calleeGPR, JSFunction::offsetOfExecutable()),
             CCallHelpers::TrustedImmPtr(executable)));
     
-    stubJit.loadPtr(
-        CCallHelpers::Address(calleeGPR, JSFunction::offsetOfScopeChain()),
-        GPRInfo::returnValueGPR);
-    
-#if USE(JSVALUE64)
-    stubJit.store64(
-        GPRInfo::returnValueGPR,
-        CCallHelpers::Address(MacroAssembler::stackPointerRegister, static_cast<ptrdiff_t>(sizeof(Register) * JSStack::ScopeChain) + offsetToFrame));
-#else
-    stubJit.storePtr(
-        GPRInfo::returnValueGPR,
-        CCallHelpers::Address(MacroAssembler::stackPointerRegister, static_cast<ptrdiff_t>(sizeof(Register) * JSStack::ScopeChain) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload) + offsetToFrame));
-    stubJit.store32(
-        CCallHelpers::TrustedImm32(JSValue::CellTag),
-        CCallHelpers::Address(MacroAssembler::stackPointerRegister, static_cast<ptrdiff_t>(sizeof(Register) * JSStack::ScopeChain) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag) + offsetToFrame));
-#endif
-    
     AssemblyHelpers::Call call = stubJit.nearCall();
     AssemblyHelpers::Jump done = stubJit.jump();
     
@@ -1731,7 +1707,7 @@ void linkClosureCall(
             ("Closure call stub for %s, return point %p, target %p (%s)",
                 toCString(*callerCodeBlock).data(), callLinkInfo.callReturnLocation.labelAtOffset(0).executableAddress(),
                 codePtr.executableAddress(), toCString(pointerDump(calleeCodeBlock)).data())),
-        *vm, callerCodeBlock->ownerExecutable(), executable, callLinkInfo.codeOrigin));
+        *vm, callerCodeBlock->ownerExecutable(), executable));
     
     RepatchBuffer repatchBuffer(callerCodeBlock);
     

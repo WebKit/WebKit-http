@@ -48,15 +48,13 @@
 // Supplements
 #include "WebApplicationCacheManagerProxy.h"
 #include "WebCookieManagerProxy.h"
+#include "WebDatabaseManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
 #include "WebKeyValueStorageManager.h"
 #include "WebMediaCacheManagerProxy.h"
 #include "WebNotificationManagerProxy.h"
 #include "WebOriginDataManagerProxy.h"
 #include "WebResourceCacheManagerProxy.h"
-#if ENABLE(SQL_DATABASE)
-#include "WebDatabaseManagerProxy.h"
-#endif
 #if ENABLE(BATTERY_STATUS)
 #include "WebBatteryManagerProxy.h"
 #endif
@@ -80,20 +78,21 @@ WKTypeID WKContextGetTypeID()
 
 WKContextRef WKContextCreate()
 {
-    return WKContextCreateWithConfiguration(adoptWK(WKContextConfigurationCreate()).get());
+    auto configuration = API::ProcessPoolConfiguration::createWithLegacyOptions();
+    return toAPI(&WebProcessPool::create(configuration).leakRef());
 }
 
 WKContextRef WKContextCreateWithInjectedBundlePath(WKStringRef pathRef)
 {
-    auto configuration = adoptWK(WKContextConfigurationCreate());
-    WKContextConfigurationSetInjectedBundlePath(configuration.get(), pathRef);
+    auto configuration = API::ProcessPoolConfiguration::createWithLegacyOptions();
+    configuration->setInjectedBundlePath(toWTFString(pathRef));
 
-    return WKContextCreateWithConfiguration(configuration.get());
+    return toAPI(&WebProcessPool::create(configuration).leakRef());
 }
 
 WKContextRef WKContextCreateWithConfiguration(WKContextConfigurationRef configuration)
 {
-    return toAPI(WebProcessPool::create(toImpl(configuration)->webProcessPoolConfiguration()).leakRef());
+    return toAPI(&WebProcessPool::create(*toImpl(configuration)).leakRef());
 }
 
 void WKContextSetClient(WKContextRef contextRef, const WKContextClientBase* wkClient)
@@ -422,12 +421,7 @@ WKBatteryManagerRef WKContextGetBatteryManager(WKContextRef contextRef)
 
 WKDatabaseManagerRef WKContextGetDatabaseManager(WKContextRef contextRef)
 {
-#if ENABLE(SQL_DATABASE)
     return toAPI(toImpl(contextRef)->supplement<WebDatabaseManagerProxy>());
-#else
-    UNUSED_PARAM(contextRef);
-    return 0;
-#endif
 }
 
 WKGeolocationManagerRef WKContextGetGeolocationManager(WKContextRef contextRef)

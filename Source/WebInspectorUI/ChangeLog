@@ -1,3 +1,317 @@
+2015-01-22  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: ResourceContentView.js incorrectly contains call to WebInspector.UIString with a variable parameter
+        https://bugs.webkit.org/show_bug.cgi?id=140268
+
+        Reviewed by Timothy Hatcher.
+
+        UIString no longer incorrectly used around variables. Drive-by fixes to prototype inheritance style.
+        Use of Promises corrected such that requesting content for a resource resolves rather than rejects if
+        a resource can't be found or has another error that isn't a web inspector error.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/Models/Resource.js: Change reject to resolve.
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype.requestContentFromBackend): Proper use of Error object.
+        * UserInterface/Models/SourceCode.js: Use correct inheritance style.
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype._contentAvailable): Handle error now that promise resolves.
+        (WebInspector.ResourceContentView.prototype._contentError): Remove incorrect use of UIString.
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._contentAvailable): Handle error now that promise resolves.
+
+2015-01-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Expected gutter highlight when selecting console input line, just like output line
+        https://bugs.webkit.org/show_bug.cgi?id=140696
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+
+2015-01-21  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Change Annotator's isActive getter into an isActive() function.
+        https://bugs.webkit.org/show_bug.cgi?id=140729
+
+        Reviewed by Timothy Hatcher.
+
+        This patch also makes the child classes of Annotator use
+        the function instead of accessing the property directly.
+
+        * UserInterface/Controllers/Annotator.js:
+        (WebInspector.Annotator.prototype.isActive):
+        (WebInspector.Annotator.prototype.get isActive): Deleted.
+        * UserInterface/Controllers/BasicBlockAnnotator.js:
+        (WebInspector.BasicBlockAnnotator.prototype.insertAnnotations):
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WebInspector.TypeTokenAnnotator.prototype.toggleTypeAnnotations):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.toggleTypeAnnotations):
+        (WebInspector.SourceCodeTextEditor.prototype.prettyPrint):
+        (WebInspector.SourceCodeTextEditor.prototype._debuggerDidPause):
+        (WebInspector.SourceCodeTextEditor.prototype._debuggerDidResume):
+        (WebInspector.SourceCodeTextEditor.prototype._updateTokenTrackingControllerState):
+
+2015-01-21  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Don't allow the BasicBlockAnnotator to highlight a section if it's only a closing brace
+        https://bugs.webkit.org/show_bug.cgi?id=140727
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/BasicBlockAnnotator.js:
+        (WebInspector.BasicBlockAnnotator.prototype.set _highlightTextForBasicBlock):
+        (WebInspector.BasicBlockAnnotator.prototype._isTextRangeOnlyClosingBrace):
+        BasicBlockAnnotator tries to no longer highlight a basic block if it is only
+        whitespace and a closing brace. These ranges are often after statements
+        that make these basic blocks unreachable, such as a return/break/continue
+        statement occurring inside a if/else/while/for block. This check won't
+        match every highlighted empty closing brace, but catches most of them 
+        because it only does intra block analysis instead of inter block analysis.
+
+2015-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use spread operator in a few places
+        https://bugs.webkit.org/show_bug.cgi?id=140699
+
+        Reviewed by Geoffrey Garen.
+
+        * UserInterface/Controllers/ProbeManager.js:
+        (WebInspector.ProbeManager.prototype.get probeSets):
+        Simplify by using the spread operator.
+
+        * UserInterface/Models/TimelineRecording.js:
+        This actually fixes an issue. The one place this was used was expecting
+        an array and called ".length" on the result. However, the iterator being
+        returned does not have a ".length" property so it was always undefined.
+
+2015-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expanding event objects in console shows undefined for most values, it should have real values
+        https://bugs.webkit.org/show_bug.cgi?id=137306
+
+        Reviewed by Timothy Hatcher.
+
+        When first expanding an object, show all the object's own properties and any
+        getter properties that may be on its prototype chain. Now, we only fetch
+        own properties, for __proto__ properties.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.getOwnProperties):
+        (WebInspector.RemoteObject.prototype.getOwnAndGetterProperties):
+        (WebInspector.RemoteObject.prototype.getAllProperties):
+        (WebInspector.RemoteObject.prototype.get hasChildren): Deleted.
+        * UserInterface/Views/ObjectPropertiesSection.js:
+        (WebInspector.ObjectPropertiesSection):
+        (WebInspector.ObjectPropertiesSection.prototype.update):
+        (WebInspector.ObjectPropertyTreeElement.prototype.onpopulate):
+
+2015-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should show dynamic specificity values
+        https://bugs.webkit.org/show_bug.cgi?id=140647
+
+        Reviewed by Benjamin Poulain.
+
+        For dynamic selectors, provide text in the tooltip describing that the
+        specificity is dynamic and may change, and pointing out the element
+        the current value was calculated against.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/CSSSelector.js:
+        (WebInspector.CSSSelector):
+        (WebInspector.CSSSelector.prototype.get specificity):
+        (WebInspector.CSSSelector.prototype.get dynamic):
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseSelectorListPayload.return):
+        (WebInspector.DOMNodeStyles.prototype._parseSelectorListPayload):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh.appendSelector):
+
+2015-01-19  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Provide a front end for JSC's Control Flow Profiler
+        https://bugs.webkit.org/show_bug.cgi?id=138454
+
+        Reviewed by Timothy Hatcher.
+
+        This patch creates a user interface for JSC's control flow profiler.
+        The Web Inspector gets basic block ranges from JSC, and displays
+        basic blocks that have not executed as having a gray background.
+        
+        BasicBlockAnnotator is the class responsible for this UI logic.
+        It also does a few nifty things when presenting a UI for this gray
+        background color: if an entire line of code is within the basic 
+        block's boundary, the annotator will not just highlight the background 
+        behind the text, but the background of the entire line itself. This
+        provides a nicer experience when glancing through large JavaScript files.
+
+        This patch also adds some necessary wrapper methods inside TextEditor
+        for accessing CodeMirror's text highlighting functionality. It also
+        creates a way for TextEditor and SourceCodeTextEditor to listen
+        for focus events inside CodeMirror.
+
+        * UserInterface/Controllers/AnnotatorManager.js: Removed.
+        * UserInterface/Controllers/BasicBlockAnnotator.js: Added.
+        (WebInspector.BasicBlockAnnotator):
+        (WebInspector.BasicBlockAnnotator.prototype.clearAnnotations):
+        (WebInspector.BasicBlockAnnotator.prototype.insertAnnotations):
+        (WebInspector.BasicBlockAnnotator.prototype._annotateBasicBlockExecutionRanges.):
+        (WebInspector.BasicBlockAnnotator.prototype._annotateBasicBlockExecutionRanges):
+        (WebInspector.BasicBlockAnnotator.prototype.set _highlightTextForBasicBlock):
+        (WebInspector.BasicBlockAnnotator.prototype._isTextRangeOnlyWhitespace):
+        (WebInspector.BasicBlockAnnotator.prototype._canGrayOutEntireLine):
+        (WebInspector.BasicBlockAnnotator.prototype._grayOutLine):
+        (WebInspector.BasicBlockAnnotator.prototype._clearRangeForBasicBlockMarker.get marker):
+        (WebInspector.BasicBlockAnnotator.prototype._clearRangeForBasicBlockMarker):
+        * UserInterface/Main.html:
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.basic-block-has-not-executed):
+        (.basic-block-has-not-executed-prepend::before):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype.shown):
+        (WebInspector.SourceCodeTextEditor.prototype.hidden):
+        (WebInspector.SourceCodeTextEditor.prototype.canShowTypeAnnotations):
+        (WebInspector.SourceCodeTextEditor.prototype.contentDidChange):
+        (WebInspector.SourceCodeTextEditor.prototype.gainedFocus):
+        (WebInspector.SourceCodeTextEditor.prototype.lostFocus):
+        (WebInspector.SourceCodeTextEditor.prototype.toggleTypeAnnotations):
+        (WebInspector.SourceCodeTextEditor.prototype.prettyPrint):
+        (WebInspector.SourceCodeTextEditor.prototype._populateWithContent):
+        (WebInspector.SourceCodeTextEditor.prototype._debuggerDidPause):
+        (WebInspector.SourceCodeTextEditor.prototype._debuggerDidResume):
+        (WebInspector.SourceCodeTextEditor.prototype._updateTokenTrackingControllerState):
+        (WebInspector.SourceCodeTextEditor.prototype._makeTypeTokenAnnotator):
+        (WebInspector.SourceCodeTextEditor.prototype._makeBasicBlockAnnotator):
+        (WebInspector.SourceCodeTextEditor.prototype._makeTypeTokenScrollEventHandler.scrollHandler):
+        (WebInspector.SourceCodeTextEditor.prototype._makeTypeTokenScrollEventHandler):
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        (WebInspector.TextEditor.prototype.getTextInRange):
+        (WebInspector.TextEditor.prototype.addStyleToTextRange):
+        (WebInspector.TextEditor.prototype.gainedFocus):
+        (WebInspector.TextEditor.prototype.lostFocus):
+
+2015-01-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Make message selection in the console more readable
+        https://bugs.webkit.org/show_bug.cgi?id=140385
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-item.selected):
+        (.console-messages:focus .console-item.selected):
+        (.console-item.selected .console-message::after):
+        (.console-messages:focus .console-item.selected .console-message::after):
+        (.console-messages:focus .console-item.selected .go-to-link):
+        * UserInterface/Views/Main.css:
+        (.go-to-link):
+        !important statements seem to be unnecessary, remove them.
+
+2015-01-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused WebInspector.LocalJSONObject
+        https://bugs.webkit.org/show_bug.cgi?id=140570
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.fromLocalObject): Deleted.
+        (WebInspector.LocalJSONObject): Deleted.
+        (WebInspector.LocalJSONObject.prototype.get description.switch.case.string_appeared_here): Deleted.
+        (WebInspector.LocalJSONObject.prototype.get description.switch.default): Deleted.
+        (WebInspector.LocalJSONObject.prototype.get description): Deleted.
+        (WebInspector.LocalJSONObject.prototype._concatenate): Deleted.
+        (WebInspector.LocalJSONObject.prototype.get type): Deleted.
+        (WebInspector.LocalJSONObject.prototype.get subtype): Deleted.
+        (WebInspector.LocalJSONObject.prototype.get hasChildren): Deleted.
+        (WebInspector.LocalJSONObject.prototype.getOwnProperties): Deleted.
+        (WebInspector.LocalJSONObject.prototype.getAllProperties): Deleted.
+        (WebInspector.LocalJSONObject.prototype._children.buildProperty): Deleted.
+        (WebInspector.LocalJSONObject.prototype._children): Deleted.
+        (WebInspector.LocalJSONObject.prototype.isError): Deleted.
+
+2015-01-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exceptions, attempting to dispatch unimplemented Network WebSocket methods
+        https://bugs.webkit.org/show_bug.cgi?id=140532
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WebInspector.NetworkObserver.prototype.webSocketFrameReceived):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameError):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameSent):
+        Add stubs to prevent an exception when trying to dispatch the event.
+
+2015-01-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reopening the inspector can selects a sub-frame instead of the Main Frame's DOM
+        https://bugs.webkit.org/show_bug.cgi?id=140513
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Frame.js:
+        (WebInspector.Frame.prototype.saveIdentityToCookie):
+        Specifically identify the main frame, so that any sub-frames with the same
+        URL, don't get choosen over the main frame when restoring state from cookie.
+
+2015-01-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: selecting Paint timeline records from sidebar does not trigger preview of paint quad
+        https://bugs.webkit.org/show_bug.cgi?id=139151
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/LayoutTimelineDataGrid.js:
+        (WebInspector.LayoutTimelineDataGrid):
+        (WebInspector.LayoutTimelineDataGrid.prototype.callFramePopoverAnchorElement):
+        (WebInspector.LayoutTimelineDataGrid.prototype.reset): Deleted.
+        (WebInspector.LayoutTimelineDataGrid.prototype.hidden): Deleted.
+        (WebInspector.LayoutTimelineDataGrid.prototype._layoutDataGridSelectedNodeChanged): Deleted.
+        (WebInspector.LayoutTimelineDataGrid.prototype._hideHighlightIfNeeded): Deleted.
+        Move the node highlight from the datagrid to the timeline view because
+        we want this to happen on both the Navigation sidebar and the datagrid.
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.prototype.shown):
+        (WebInspector.LayoutTimelineView.prototype.hidden):
+        (WebInspector.LayoutTimelineView.prototype.filterDidChange):
+        (WebInspector.LayoutTimelineView.prototype.reset):
+        (WebInspector.LayoutTimelineView.prototype._treeElementDeselected):
+        (WebInspector.LayoutTimelineView.prototype._treeElementSelected):
+        Update the highlight for major view updates.
+
+        (WebInspector.LayoutTimelineView.prototype._updateHighlight):
+        (WebInspector.LayoutTimelineView.prototype._showHighlightForRecord):
+        (WebInspector.LayoutTimelineView.prototype._hideHighlightIfNeeded):
+        (WebInspector.LayoutTimelineView.prototype._hoveredOrSelectedRecord):
+        Show a highlight for what we are hovering, or what is selected.
+        Note the selected node may not be visible due to filtering.
+
+        (WebInspector.LayoutTimelineView.prototype._mouseOverDataGrid):
+        (WebInspector.LayoutTimelineView.prototype._mouseLeaveDataGrid):
+        (WebInspector.LayoutTimelineView.prototype._mouseOverTreeOutline):
+        (WebInspector.LayoutTimelineView.prototype._mouseLeaveTreeOutline):
+        Update hovered information mousing over the datagrid and tree outline.
+
+        * UserInterface/Views/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype.filterDidChange):
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.updateFilter):
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView.prototype.filterDidChange):
+        Include a "filterDidChange" TimelineView method that gets called after
+        updateFilter (things like the filter bar or timeline range changes).
+
+        * UserInterface/Views/TreeOutline.js:
+        (TreeOutline.prototype.treeElementFromNode):
+        (TreeOutline.prototype.treeElementFromPoint):
+        Provide a helper to get a tree element from an event target.
+
 2015-01-13  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: TextEditor doesn't update when resizing console, white space instead of content

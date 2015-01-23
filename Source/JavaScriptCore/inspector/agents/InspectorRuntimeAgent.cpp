@@ -32,8 +32,6 @@
 #include "config.h"
 #include "InspectorRuntimeAgent.h"
 
-#if ENABLE(INSPECTOR)
-
 #include "Completion.h"
 #include "HeapIterationScope.h"
 #include "InjectedScript.h"
@@ -46,7 +44,6 @@
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
 #include "VMEntryScope.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/CurrentTime.h>
 
 using namespace JSC;
@@ -129,7 +126,7 @@ void InspectorRuntimeAgent::evaluate(ErrorString& errorString, const String& exp
     if (asBool(doNotPauseOnExceptionsAndMuteConsole))
         muteConsole();
 
-    injectedScript.evaluate(errorString, expression, objectGroup ? *objectGroup : "", asBool(includeCommandLineAPI), asBool(returnByValue), asBool(generatePreview), &result, wasThrown);
+    injectedScript.evaluate(errorString, expression, objectGroup ? *objectGroup : String(), asBool(includeCommandLineAPI), asBool(returnByValue), asBool(generatePreview), &result, wasThrown);
 
     if (asBool(doNotPauseOnExceptionsAndMuteConsole)) {
         unmuteConsole();
@@ -163,7 +160,7 @@ void InspectorRuntimeAgent::callFunctionOn(ErrorString& errorString, const Strin
     }
 }
 
-void InspectorRuntimeAgent::getProperties(ErrorString& errorString, const String& objectId, const bool* const ownProperties, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties)
+void InspectorRuntimeAgent::getProperties(ErrorString& errorString, const String& objectId, const bool* const ownProperties, const bool* const ownAndGetterProperties, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties)
 {
     InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
@@ -174,7 +171,7 @@ void InspectorRuntimeAgent::getProperties(ErrorString& errorString, const String
     ScriptDebugServer::PauseOnExceptionsState previousPauseOnExceptionsState = setPauseOnExceptionsState(m_scriptDebugServer, ScriptDebugServer::DontPauseOnExceptions);
     muteConsole();
 
-    injectedScript.getProperties(errorString, objectId, ownProperties ? *ownProperties : false, &result);
+    injectedScript.getProperties(errorString, objectId, asBool(ownProperties), asBool(ownAndGetterProperties), &result);
     injectedScript.getInternalProperties(errorString, objectId, &internalProperties);
 
     unmuteConsole();
@@ -195,6 +192,7 @@ void InspectorRuntimeAgent::releaseObjectGroup(ErrorString&, const String& objec
 
 void InspectorRuntimeAgent::run(ErrorString&)
 {
+    // FIXME: <https://webkit.org/b/127634> Web Inspector: support debugging web workers
 }
 
 void InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets(ErrorString& errorString, const RefPtr<Inspector::InspectorArray>&& locations, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::TypeDescription>>& typeDescriptions)
@@ -227,6 +225,7 @@ void InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets(ErrorString& er
 
         bool okay;
         TypeLocation* typeLocation = vm.typeProfiler()->findLocation(divot, sourceIDAsString.toIntPtrStrict(&okay), static_cast<TypeProfilerSearchDescriptor>(descriptor), vm);
+        ASSERT(okay);
 
         RefPtr<TypeSet> typeSet;
         if (typeLocation) {
@@ -271,10 +270,12 @@ public:
 
 static void recompileAllJSFunctionsForTypeProfiling(VM& vm, bool shouldEnableTypeProfiling)
 {
-    vm.prepareToDiscardCode();
+    bool shouldRecompileFromTypeProfiler = (shouldEnableTypeProfiling ? vm.enableTypeProfiler() : vm.disableTypeProfiler());
+    bool shouldRecompileFromControlFlowProfiler = (shouldEnableTypeProfiling ? vm.enableControlFlowProfiler() : vm.disableControlFlowProfiler());
+    bool needsToRecompile = shouldRecompileFromTypeProfiler || shouldRecompileFromControlFlowProfiler;
 
-    bool needsToRecompile = (shouldEnableTypeProfiling ? vm.enableTypeProfiler() : vm.disableTypeProfiler());
     if (needsToRecompile) {
+        vm.prepareToDiscardCode();
         TypeRecompiler recompiler;
         HeapIterationScope iterationScope(vm.heap);
         vm.heap.objectSpace().forEachLiveCell(iterationScope, recompiler);
@@ -311,7 +312,7 @@ void InspectorRuntimeAgent::setTypeProfilerEnabledState(bool shouldEnableTypePro
     if (vm.entryScope) {
         vm.entryScope->setEntryScopeDidPopListener(this,
             [=] (VM& vm, JSGlobalObject*) {
-                recompileAllJSFunctionsForTypeProfiling(vm, shouldEnableTypeProfiling); 
+                recompileAllJSFunctionsForTypeProfiling(vm, shouldEnableTypeProfiling);
             }
         );
     } else
@@ -342,5 +343,3 @@ void InspectorRuntimeAgent::getBasicBlocks(ErrorString& errorString, const Strin
 }
 
 } // namespace Inspector
-
-#endif // ENABLE(INSPECTOR)

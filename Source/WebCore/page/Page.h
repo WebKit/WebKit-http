@@ -141,7 +141,7 @@ public:
     WEBCORE_EXPORT void setCanStartMedia(bool);
     bool canStartMedia() const { return m_canStartMedia; }
 
-    EditorClient* editorClient() const { return m_editorClient; }
+    EditorClient& editorClient() { return m_editorClient; }
     PlugInClient* plugInClient() const { return m_plugInClient; }
 
     MainFrame& mainFrame() { ASSERT(m_mainFrame); return *m_mainFrame; }
@@ -181,9 +181,7 @@ public:
 #if ENABLE(WEB_REPLAY)
     ReplayController& replayController() const { return *m_replayController; }
 #endif
-#if ENABLE(INSPECTOR)
     InspectorController& inspectorController() const { return *m_inspectorController; }
-#endif
 #if ENABLE(POINTER_LOCK)
     PointerLockController& pointerLockController() const { return *m_pointerLockController; }
 #endif
@@ -468,9 +466,7 @@ private:
 #if ENABLE(WEB_REPLAY)
     const std::unique_ptr<ReplayController> m_replayController;
 #endif
-#if ENABLE(INSPECTOR)
     const std::unique_ptr<InspectorController> m_inspectorController;
-#endif
 #if ENABLE(POINTER_LOCK)
     const std::unique_ptr<PointerLockController> m_pointerLockController;
 #endif
@@ -486,7 +482,7 @@ private:
 
     RefPtr<RenderTheme> m_theme;
 
-    EditorClient* m_editorClient;
+    EditorClient& m_editorClient;
     PlugInClient* m_plugInClient;
     ValidationMessageClient* m_validationMessageClient;
 

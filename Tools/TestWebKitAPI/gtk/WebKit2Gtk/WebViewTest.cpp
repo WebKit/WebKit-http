@@ -232,10 +232,12 @@ void WebViewTest::showInWindow(GtkWindowType windowType)
     gtk_widget_show(m_parentWindow);
 }
 
-void WebViewTest::showInWindowAndWaitUntilMapped(GtkWindowType windowType)
+void WebViewTest::showInWindowAndWaitUntilMapped(GtkWindowType windowType, int width, int height)
 {
     g_assert(!m_parentWindow);
     m_parentWindow = gtk_window_new(windowType);
+    if (width && height)
+        gtk_window_resize(GTK_WINDOW(m_parentWindow), width, height);
     gtk_container_add(GTK_CONTAINER(m_parentWindow), GTK_WIDGET(m_webView));
     gtk_widget_show(GTK_WIDGET(m_webView));
 
@@ -258,6 +260,16 @@ void WebViewTest::resizeView(int width, int height)
 void WebViewTest::selectAll()
 {
     webkit_web_view_execute_editing_command(m_webView, "SelectAll");
+}
+
+bool WebViewTest::isEditable()
+{
+    webkit_web_view_is_editable(m_webView);
+}
+
+void WebViewTest::setEditable(bool editable)
+{
+    webkit_web_view_set_editable(m_webView, editable);
 }
 
 static void resourceGetDataCallback(GObject* object, GAsyncResult* result, gpointer userData)

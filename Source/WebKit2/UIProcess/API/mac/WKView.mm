@@ -34,6 +34,7 @@
 #endif
 
 #import "APILegacyContextHistoryClient.h"
+#import "APIPageConfiguration.h"
 #import "ActionMenuHitTestResult.h"
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
@@ -743,11 +744,9 @@ individual methods here with Mac-specific code.
 
 Editing-related methods still unimplemented that are implemented in WebKit1:
 
-- (void)capitalizeWord:(id)sender;
 - (void)changeFont:(id)sender;
 - (void)complete:(id)sender;
 - (void)copyFont:(id)sender;
-- (void)lowercaseWord:(id)sender;
 - (void)makeBaseWritingDirectionLeftToRight:(id)sender;
 - (void)makeBaseWritingDirectionNatural:(id)sender;
 - (void)makeBaseWritingDirectionRightToLeft:(id)sender;
@@ -755,7 +754,6 @@ Editing-related methods still unimplemented that are implemented in WebKit1:
 - (void)scrollLineDown:(id)sender;
 - (void)scrollLineUp:(id)sender;
 - (void)showGuessPanel:(id)sender;
-- (void)uppercaseWord:(id)sender;
 
 Some other editing-related methods still unimplemented:
 
@@ -3615,12 +3613,12 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    if ([self respondsToSelector:@selector(setActionMenu:)]) {
+    if ([self respondsToSelector:@selector(_setActionMenu:)]) {
         RetainPtr<NSMenu> menu = adoptNS([[NSMenu alloc] init]);
-        self.actionMenu = menu.get();
+        self._actionMenu = menu.get();
         _data->_actionMenuController = adoptNS([[WKActionMenuController alloc] initWithPage:*_data->_page view:self]);
-        self.actionMenu.delegate = _data->_actionMenuController.get();
-        self.actionMenu.autoenablesItems = NO;
+        self._actionMenu.delegate = _data->_actionMenuController.get();
+        self._actionMenu.autoenablesItems = NO;
     }
 
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
@@ -3796,6 +3794,14 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     webPageConfiguration.relatedPage = toImpl(relatedPage);
 
     return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:webPageConfiguration webView:nil];
+}
+
+- (id)initWithFrame:(NSRect)frame configurationRef:(WKPageConfigurationRef)configuration
+{
+    auto& processPool = *toImpl(configuration)->processPool();
+    auto webPageConfiguration = toImpl(configuration)->webPageConfiguration();
+
+    return [self initWithFrame:frame processPool:processPool configuration:webPageConfiguration webView:nil];
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080

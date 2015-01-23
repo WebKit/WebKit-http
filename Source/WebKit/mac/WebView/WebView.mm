@@ -279,10 +279,6 @@
 #endif
 #endif
 
-#if USE(GLIB)
-#import <glib.h>
-#endif
-
 #if USE(QUICK_LOOK)
 #include <WebCore/QuickLook.h>
 #endif
@@ -562,9 +558,6 @@ static WebPageVisibilityState kit(PageVisibilityState visibilityState)
 + (void)_preflightSpellChecker;
 - (BOOL)_continuousCheckingAllowed;
 - (NSResponder *)_responderForResponderOperations;
-#if USE(GLIB)
-- (void)_clearGlibLoopObserver;
-#endif
 @end
 
 NSString *WebElementDOMNodeKey =            @"WebElementDOMNode";
@@ -889,11 +882,11 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     [frameView release];
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    if ([self respondsToSelector:@selector(setActionMenu:)]) {
+    if ([self respondsToSelector:@selector(_setActionMenu:)]) {
         RetainPtr<NSMenu> actionMenu = adoptNS([[NSMenu alloc] init]);
-        self.actionMenu = actionMenu.get();
+        self._actionMenu = actionMenu.get();
         _private->actionMenuController = [[WebActionMenuController alloc] initWithWebView:self];
-        self.actionMenu.autoenablesItems = NO;
+        self._actionMenu.autoenablesItems = NO;
     }
 
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
@@ -917,7 +910,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         // of the initialization code which may depend on the strategies.
         WebPlatformStrategies::initializeIfNecessary();
 
-#if ENABLE(SQL_DATABASE)
 #if PLATFORM(IOS)
         // Set the WebSQLiteDatabaseTrackerClient.
         SQLiteDatabaseTracker::setClient(WebSQLiteDatabaseTrackerClient::sharedWebSQLiteDatabaseTrackerClient());
@@ -925,7 +917,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         if ([standardPreferences databasesEnabled])
 #endif
         [WebDatabaseManager sharedWebDatabaseManager];
-#endif
 
 #if PLATFORM(IOS)        
         if ([standardPreferences storageTrackerEnabled])
@@ -1080,10 +1071,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         ResourceHandle::forceContentSniffing();
 
     _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
-#endif
-
-#if USE(GLIB)
-    [self _scheduleGlibContextIterations];
 #endif
 }
 
@@ -1784,10 +1771,6 @@ static bool fastDocumentTeardownEnabled()
         _private->layerFlushController->invalidate();
         _private->layerFlushController = nullptr;
     }
-    
-#if USE(GLIB)
-    [self _clearGlibLoopObserver];
-#endif
 
     [[self _notificationProvider] unregisterWebView:self];
 
@@ -2392,9 +2375,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setQTKitEnabled([preferences isQTKitEnabled]);
 #endif // PLATFORM(MAC)
 
-#if ENABLE(SQL_DATABASE)
     DatabaseManager::manager().setIsAvailable([preferences databasesEnabled]);
-#endif
 
 #if ENABLE(MEDIA_SOURCE)
     settings.setMediaSourceEnabled([preferences mediaSourceEnabled]);
@@ -8152,17 +8133,6 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
 }
 #endif // !PLATFORM(IOS)
 
-#if USE(GLIB)
-- (void)_clearGlibLoopObserver
-{
-    if (!_private->glibRunLoopObserver)
-        return;
-
-    CFRunLoopObserverInvalidate(_private->glibRunLoopObserver);
-    CFRelease(_private->glibRunLoopObserver);
-    _private->glibRunLoopObserver = 0;
-}
-#endif
 @end
 
 @implementation WebView (WebViewInternal)
@@ -8495,32 +8465,6 @@ bool LayerFlushController::flushLayers()
 }
 #endif
 
-#if USE(GLIB)
-
-static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity, void*)
-{
-    g_main_context_iteration(0, FALSE);
-}
-
-- (void)_scheduleGlibContextIterations
-{
-    if (_private->glibRunLoopObserver)
-        return;
-
-    NSRunLoop* myRunLoop = [NSRunLoop currentRunLoop];
-
-    // Create a run loop observer and attach it to the run loop.
-    CFRunLoopObserverContext context = {0, self, 0, 0, 0};
-    _private->glibRunLoopObserver = CFRunLoopObserverCreate(kCFAllocatorDefault, kCFRunLoopBeforeWaiting, YES, 0, &glibContextIterationCallback, &context);
-
-    if (_private->glibRunLoopObserver) {
-        CFRunLoopRef cfLoop = [myRunLoop getCFRunLoop];
-        CFRunLoopAddObserver(cfLoop, _private->glibRunLoopObserver, kCFRunLoopDefaultMode);
-    }
-
-}
-#endif
-
 #if USE(AUTOCORRECTION_PANEL)
 - (void)handleAcceptedAlternativeText:(NSString*)text
 {
@@ -8576,6 +8520,10 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
 
 - (NSRect)_convertRectFromRootView:(NSRect)rect
 {
+#if PLATFORM(MAC)
+    if (self.isFlipped)
+        return rect;
+#endif
     return NSMakeRect(rect.origin.x, [self bounds].size.height - rect.origin.y - rect.size.height, rect.size.width, rect.size.height);
 }
 
@@ -8583,7 +8531,7 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 - (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
 {
-    if (menu != self.actionMenu)
+    if (menu != self._actionMenu)
         return;
 
     [_private->actionMenuController prepareForMenu:menu withEvent:event];
@@ -8591,7 +8539,7 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
 
 - (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event
 {
-    if (menu != self.actionMenu)
+    if (menu != self._actionMenu)
         return;
 
     [_private->actionMenuController willOpenMenu:menu withEvent:event];
@@ -8599,7 +8547,7 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
 
 - (void)didCloseMenu:(NSMenu *)menu withEvent:(NSEvent *)event
 {
-    if (menu != self.actionMenu)
+    if (menu != self._actionMenu)
         return;
 
     [_private->actionMenuController didCloseMenu:menu withEvent:event];

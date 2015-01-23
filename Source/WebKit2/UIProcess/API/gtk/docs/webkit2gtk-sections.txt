@@ -199,6 +199,10 @@ webkit_web_view_download_uri
 webkit_web_view_get_tls_info
 webkit_web_view_get_snapshot
 webkit_web_view_get_snapshot_finish
+webkit_web_view_set_background_color
+webkit_web_view_get_background_color
+webkit_web_view_set_editable
+webkit_web_view_is_editable
 
 <SUBSECTION WebKitJavascriptResult>
 WebKitJavascriptResult

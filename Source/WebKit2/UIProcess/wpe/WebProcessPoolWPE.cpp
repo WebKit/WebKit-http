@@ -116,13 +116,13 @@ void WebProcessPool::platformInvalidateContext()
     notImplemented();
 }
 
-String WebProcessPool::platformDefaultWebSQLDatabaseDirectory()
+String WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory()
 {
     GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "databases", nullptr));
     return WebCore::filenameToString(databaseDirectory.get());
 }
 
-String WebProcessPool::platformDefaultIndexedDBDatabaseDirectory()
+String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
 {
     notImplemented();
     return String();
@@ -134,13 +134,13 @@ String WebProcessPool::platformDefaultIconDatabasePath() const
     return WebCore::filenameToString(databaseDirectory.get());
 }
 
-String WebProcessPool::platformDefaultLocalStorageDirectory()
+String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
 {
     GUniquePtr<gchar> storageDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "localstorage", nullptr));
     return WebCore::filenameToString(storageDirectory.get());
 }
 
-String WebProcessPool::platformDefaultMediaKeysStorageDirectory()
+String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
 {
     GUniquePtr<gchar> mediaKeysStorageDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "mediakeys", nullptr));
     return WebCore::filenameToString(mediaKeysStorageDirectory.get());

@@ -124,8 +124,8 @@ FontCascade::FontCascade(const FontDescription& fd, float letterSpacing, float w
 }
 
 // FIXME: We should make this constructor platform-independent.
-FontCascade::FontCascade(const FontPlatformData& fontData, bool isPrinterFont, FontSmoothingMode fontSmoothingMode)
-    : m_glyphs(FontGlyphs::createForPlatformFont(fontData))
+FontCascade::FontCascade(const FontPlatformData& font, bool isPrinterFont, FontSmoothingMode fontSmoothingMode)
+    : m_glyphs(FontGlyphs::createForPlatformFont(font))
     , m_letterSpacing(0)
     , m_wordSpacing(0)
     , m_useBackslashAsYenSymbol(false)
@@ -134,27 +134,27 @@ FontCascade::FontCascade(const FontPlatformData& fontData, bool isPrinterFont, F
     m_fontDescription.setUsePrinterFont(isPrinterFont);
     m_fontDescription.setFontSmoothing(fontSmoothingMode);
 #if PLATFORM(IOS)
-    m_fontDescription.setSpecifiedSize(CTFontGetSize(fontData.font()));
-    m_fontDescription.setComputedSize(CTFontGetSize(fontData.font()));
-    m_fontDescription.setIsItalic(CTFontGetSymbolicTraits(fontData.font()) & kCTFontTraitItalic);
-    m_fontDescription.setWeight((CTFontGetSymbolicTraits(fontData.font()) & kCTFontTraitBold) ? FontWeightBold : FontWeightNormal);
+    m_fontDescription.setSpecifiedSize(CTFontGetSize(font.font()));
+    m_fontDescription.setComputedSize(CTFontGetSize(font.font()));
+    m_fontDescription.setIsItalic(CTFontGetSymbolicTraits(font.font()) & kCTFontTraitItalic);
+    m_fontDescription.setWeight((CTFontGetSymbolicTraits(font.font()) & kCTFontTraitBold) ? FontWeightBold : FontWeightNormal);
 #endif
 }
 
 // FIXME: We should make this constructor platform-independent.
 #if PLATFORM(IOS)
-FontCascade::FontCascade(const FontPlatformData& fontData, PassRefPtr<FontSelector> fontSelector)
-    : m_glyphs(FontGlyphs::createForPlatformFont(fontData))
+FontCascade::FontCascade(const FontPlatformData& font, PassRefPtr<FontSelector> fontSelector)
+    : m_glyphs(FontGlyphs::createForPlatformFont(font))
     , m_letterSpacing(0)
     , m_wordSpacing(0)
     , m_typesettingFeatures(computeTypesettingFeatures())
 {
-    CTFontRef primaryFont = fontData.font();
+    CTFontRef primaryFont = font.font();
     m_fontDescription.setSpecifiedSize(CTFontGetSize(primaryFont));
     m_fontDescription.setComputedSize(CTFontGetSize(primaryFont));
     m_fontDescription.setIsItalic(CTFontGetSymbolicTraits(primaryFont) & kCTFontTraitItalic);
     m_fontDescription.setWeight((CTFontGetSymbolicTraits(primaryFont) & kCTFontTraitBold) ? FontWeightBold : FontWeightNormal);
-    m_fontDescription.setUsePrinterFont(fontData.isPrinterFont());
+    m_fontDescription.setUsePrinterFont(font.isPrinterFont());
     m_glyphs = retrieveOrAddCachedFontGlyphs(m_fontDescription, fontSelector.get());
 }
 #endif
@@ -287,14 +287,15 @@ static unsigned computeFontGlyphsCacheHash(const FontGlyphsCacheKey& key)
 
 void pruneUnreferencedEntriesFromFontGlyphsCache()
 {
-    Vector<unsigned, 50> toRemove;
-    FontGlyphsCache::iterator end = fontGlyphsCache().end();
-    for (FontGlyphsCache::iterator it = fontGlyphsCache().begin(); it != end; ++it) {
-        if (it->value->glyphs.get().hasOneRef())
-            toRemove.append(it->key);
-    }
-    for (unsigned i = 0; i < toRemove.size(); ++i)
-        fontGlyphsCache().remove(toRemove[i]);
+    fontGlyphsCache().removeIf([](FontGlyphsCache::KeyValuePairType& entry) {
+        return entry.value->glyphs.get().hasOneRef();
+    });
+}
+
+void pruneSystemFallbackFonts()
+{
+    for (auto& entry : fontGlyphsCache().values())
+        entry->glyphs->pruneSystemFallbacks();
 }
 
 static Ref<FontGlyphs> retrieveOrAddCachedFontGlyphs(const FontDescription& fontDescription, PassRefPtr<FontSelector> fontSelector)
@@ -370,7 +371,7 @@ void FontCascade::drawEmphasisMarks(GraphicsContext* context, const TextRun& run
         drawEmphasisMarksForComplexText(context, run, mark, point, from, to);
 }
 
-float FontCascade::width(const TextRun& run, HashSet<const SimpleFontData*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
+float FontCascade::width(const TextRun& run, HashSet<const Font*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
 {
     CodePath codePathToUse = codePath(run);
     if (codePathToUse != Complex) {
@@ -388,7 +389,7 @@ float FontCascade::width(const TextRun& run, HashSet<const SimpleFontData*>* fal
     if (cacheEntry && !std::isnan(*cacheEntry))
         return *cacheEntry;
 
-    HashSet<const SimpleFontData*> localFallbackFonts;
+    HashSet<const Font*> localFallbackFonts;
     if (!fallbackFonts)
         fallbackFonts = &localFallbackFonts;
 
@@ -415,10 +416,10 @@ float FontCascade::width(const TextRun& run, int& charsConsumed, String& glyphNa
     return width(run);
 }
 
-GlyphData FontCascade::glyphDataForCharacter(UChar32 c, bool mirror, FontDataVariant variant) const
+GlyphData FontCascade::glyphDataForCharacter(UChar32 c, bool mirror, FontVariant variant) const
 {
     if (variant == AutoVariant) {
-        if (m_fontDescription.smallCaps() && !primaryFontData().isSVGFont()) {
+        if (m_fontDescription.smallCaps() && !primaryFont().isSVGFont()) {
             UChar32 upperC = u_toupper(c);
             if (upperC != c) {
                 c = upperC;
@@ -445,7 +446,7 @@ void FontCascade::deleteLayout(TextLayout*)
 {
 }
 
-float FontCascade::width(TextLayout&, unsigned, unsigned, HashSet<const SimpleFontData*>*)
+float FontCascade::width(TextLayout&, unsigned, unsigned, HashSet<const Font*>*)
 {
     ASSERT_NOT_REACHED();
     return 0;
@@ -504,7 +505,7 @@ bool FontCascade::hasValidAverageCharWidth() const
 
 #if PLATFORM(MAC) || PLATFORM(IOS)
     // Internal fonts on OS X and iOS also have an invalid entry in the table for avgCharWidth.
-    if (primaryFontDataIsSystemFont())
+    if (primaryFontIsSystemFont())
         return false;
 #endif
 
@@ -524,7 +525,7 @@ bool FontCascade::fastAverageCharWidthIfAvailable(float& width) const
 {
     bool success = hasValidAverageCharWidth();
     if (success)
-        width = roundf(primaryFontData().avgCharWidth()); // FIXME: primaryFontData() might not correspond to firstFamily().
+        width = roundf(primaryFont().avgCharWidth()); // FIXME: primaryFont() might not correspond to firstFamily().
     return success;
 }
 
@@ -1138,5 +1139,305 @@ GlyphToPathTranslator::GlyphUnderlineType computeUnderlineType(const TextRun& te
         return GlyphToPathTranslator::GlyphUnderlineType::SkipDescenders;
     }
 }
+
+// FIXME: This function may not work if the emphasis mark uses a complex script, but none of the
+// standard emphasis marks do so.
+bool FontCascade::getEmphasisMarkGlyphData(const AtomicString& mark, GlyphData& glyphData) const
+{
+    if (mark.isEmpty())
+        return false;
+
+    UChar32 character = mark[0];
+
+    if (U16_IS_SURROGATE(character)) {
+        if (!U16_IS_SURROGATE_LEAD(character))
+            return false;
+
+        if (mark.length() < 2)
+            return false;
+
+        UChar low = mark[1];
+        if (!U16_IS_TRAIL(low))
+            return false;
+
+        character = U16_GET_SUPPLEMENTARY(character, low);
+    }
+
+    glyphData = glyphDataForCharacter(character, false, EmphasisMarkVariant);
+    return true;
+}
+
+int FontCascade::emphasisMarkAscent(const AtomicString& mark) const
+{
+    GlyphData markGlyphData;
+    if (!getEmphasisMarkGlyphData(mark, markGlyphData))
+        return 0;
+
+    const Font* markFontData = markGlyphData.font;
+    ASSERT(markFontData);
+    if (!markFontData)
+        return 0;
+
+    return markFontData->fontMetrics().ascent();
+}
+
+int FontCascade::emphasisMarkDescent(const AtomicString& mark) const
+{
+    GlyphData markGlyphData;
+    if (!getEmphasisMarkGlyphData(mark, markGlyphData))
+        return 0;
+
+    const Font* markFontData = markGlyphData.font;
+    ASSERT(markFontData);
+    if (!markFontData)
+        return 0;
+
+    return markFontData->fontMetrics().descent();
+}
+
+int FontCascade::emphasisMarkHeight(const AtomicString& mark) const
+{
+    GlyphData markGlyphData;
+    if (!getEmphasisMarkGlyphData(mark, markGlyphData))
+        return 0;
+
+    const Font* markFontData = markGlyphData.font;
+    ASSERT(markFontData);
+    if (!markFontData)
+        return 0;
+
+    return markFontData->fontMetrics().height();
+}
+
+float FontCascade::getGlyphsAndAdvancesForSimpleText(const TextRun& run, int from, int to, GlyphBuffer& glyphBuffer, ForTextEmphasisOrNot forTextEmphasis) const
+{
+    float initialAdvance;
+
+    WidthIterator it(this, run, 0, false, forTextEmphasis);
+    // FIXME: Using separate glyph buffers for the prefix and the suffix is incorrect when kerning or
+    // ligatures are enabled.
+    GlyphBuffer localGlyphBuffer;
+    it.advance(from, &localGlyphBuffer);
+    float beforeWidth = it.m_runWidthSoFar;
+    it.advance(to, &glyphBuffer);
+
+    if (glyphBuffer.isEmpty())
+        return 0;
+
+    float afterWidth = it.m_runWidthSoFar;
+
+    if (run.rtl()) {
+        float finalRoundingWidth = it.m_finalRoundingWidth;
+        it.advance(run.length(), &localGlyphBuffer);
+        initialAdvance = finalRoundingWidth + it.m_runWidthSoFar - afterWidth;
+    } else
+        initialAdvance = beforeWidth;
+
+    if (run.rtl())
+        glyphBuffer.reverse(0, glyphBuffer.size());
+
+    return initialAdvance;
+}
+
+float FontCascade::drawSimpleText(GraphicsContext* context, const TextRun& run, const FloatPoint& point, int from, int to) const
+{
+    // This glyph buffer holds our glyphs+advances+font data for each glyph.
+    GlyphBuffer glyphBuffer;
+
+    float startX = point.x() + getGlyphsAndAdvancesForSimpleText(run, from, to, glyphBuffer);
+
+    if (glyphBuffer.isEmpty())
+        return 0;
+
+    FloatPoint startPoint(startX, point.y());
+    drawGlyphBuffer(context, run, glyphBuffer, startPoint);
+
+    return startPoint.x() - startX;
+}
+
+void FontCascade::drawEmphasisMarksForSimpleText(GraphicsContext* context, const TextRun& run, const AtomicString& mark, const FloatPoint& point, int from, int to) const
+{
+    GlyphBuffer glyphBuffer;
+    float initialAdvance = getGlyphsAndAdvancesForSimpleText(run, from, to, glyphBuffer, ForTextEmphasis);
+
+    if (glyphBuffer.isEmpty())
+        return;
+
+    drawEmphasisMarks(context, run, glyphBuffer, mark, FloatPoint(point.x() + initialAdvance, point.y()));
+}
+
+void FontCascade::drawGlyphBuffer(GraphicsContext* context, const TextRun& run, const GlyphBuffer& glyphBuffer, FloatPoint& point) const
+{
+#if !ENABLE(SVG_FONTS)
+    UNUSED_PARAM(run);
+#endif
+
+    // Draw each contiguous run of glyphs that use the same font data.
+    const Font* fontData = glyphBuffer.fontAt(0);
+    FloatSize offset = glyphBuffer.offsetAt(0);
+    FloatPoint startPoint(point.x(), point.y() - glyphBuffer.initialAdvance().height());
+    float nextX = startPoint.x() + glyphBuffer.advanceAt(0).width();
+    float nextY = startPoint.y() + glyphBuffer.advanceAt(0).height();
+    int lastFrom = 0;
+    int nextGlyph = 1;
+#if ENABLE(SVG_FONTS)
+    TextRun::RenderingContext* renderingContext = run.renderingContext();
+#endif
+    while (nextGlyph < glyphBuffer.size()) {
+        const Font* nextFontData = glyphBuffer.fontAt(nextGlyph);
+        FloatSize nextOffset = glyphBuffer.offsetAt(nextGlyph);
+
+        if (nextFontData != fontData || nextOffset != offset) {
+#if ENABLE(SVG_FONTS)
+            if (renderingContext && fontData->isSVGFont())
+                renderingContext->drawSVGGlyphs(context, fontData, glyphBuffer, lastFrom, nextGlyph - lastFrom, startPoint);
+            else
+#endif
+                drawGlyphs(context, fontData, glyphBuffer, lastFrom, nextGlyph - lastFrom, startPoint);
+
+            lastFrom = nextGlyph;
+            fontData = nextFontData;
+            offset = nextOffset;
+            startPoint.setX(nextX);
+            startPoint.setY(nextY);
+        }
+        nextX += glyphBuffer.advanceAt(nextGlyph).width();
+        nextY += glyphBuffer.advanceAt(nextGlyph).height();
+        nextGlyph++;
+    }
+
+#if ENABLE(SVG_FONTS)
+    if (renderingContext && fontData->isSVGFont())
+        renderingContext->drawSVGGlyphs(context, fontData, glyphBuffer, lastFrom, nextGlyph - lastFrom, startPoint);
+    else
+#endif
+    {
+        drawGlyphs(context, fontData, glyphBuffer, lastFrom, nextGlyph - lastFrom, startPoint);
+        point.setX(nextX);
+    }
+}
+
+inline static float offsetToMiddleOfGlyph(const Font* fontData, Glyph glyph)
+{
+    if (fontData->platformData().orientation() == Horizontal) {
+        FloatRect bounds = fontData->boundsForGlyph(glyph);
+        return bounds.x() + bounds.width() / 2;
+    }
+    // FIXME: Use glyph bounds once they make sense for vertical fonts.
+    return fontData->widthForGlyph(glyph) / 2;
+}
+
+inline static float offsetToMiddleOfGlyphAtIndex(const GlyphBuffer& glyphBuffer, size_t i)
+{
+    return offsetToMiddleOfGlyph(glyphBuffer.fontAt(i), glyphBuffer.glyphAt(i));
+}
+
+void FontCascade::drawEmphasisMarks(GraphicsContext* context, const TextRun& run, const GlyphBuffer& glyphBuffer, const AtomicString& mark, const FloatPoint& point) const
+{
+    GlyphData markGlyphData;
+    if (!getEmphasisMarkGlyphData(mark, markGlyphData))
+        return;
+
+    const Font* markFontData = markGlyphData.font;
+    ASSERT(markFontData);
+    if (!markFontData)
+        return;
+
+    Glyph markGlyph = markGlyphData.glyph;
+    Glyph spaceGlyph = markFontData->spaceGlyph();
+
+    float middleOfLastGlyph = offsetToMiddleOfGlyphAtIndex(glyphBuffer, 0);
+    FloatPoint startPoint(point.x() + middleOfLastGlyph - offsetToMiddleOfGlyph(markFontData, markGlyph), point.y());
+
+    GlyphBuffer markBuffer;
+    for (int i = 0; i + 1 < glyphBuffer.size(); ++i) {
+        float middleOfNextGlyph = offsetToMiddleOfGlyphAtIndex(glyphBuffer, i + 1);
+        float advance = glyphBuffer.advanceAt(i).width() - middleOfLastGlyph + middleOfNextGlyph;
+        markBuffer.add(glyphBuffer.glyphAt(i) ? markGlyph : spaceGlyph, markFontData, advance);
+        middleOfLastGlyph = middleOfNextGlyph;
+    }
+    markBuffer.add(glyphBuffer.glyphAt(glyphBuffer.size() - 1) ? markGlyph : spaceGlyph, markFontData, 0);
+
+    drawGlyphBuffer(context, run, markBuffer, startPoint);
+}
+
+float FontCascade::floatWidthForSimpleText(const TextRun& run, HashSet<const Font*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
+{
+    WidthIterator it(this, run, fallbackFonts, glyphOverflow);
+    GlyphBuffer glyphBuffer;
+    it.advance(run.length(), (typesettingFeatures() & (Kerning | Ligatures)) ? &glyphBuffer : 0);
+
+    if (glyphOverflow) {
+        glyphOverflow->top = std::max<int>(glyphOverflow->top, ceilf(-it.minGlyphBoundingBoxY()) - (glyphOverflow->computeBounds ? 0 : fontMetrics().ascent()));
+        glyphOverflow->bottom = std::max<int>(glyphOverflow->bottom, ceilf(it.maxGlyphBoundingBoxY()) - (glyphOverflow->computeBounds ? 0 : fontMetrics().descent()));
+        glyphOverflow->left = ceilf(it.firstGlyphOverflow());
+        glyphOverflow->right = ceilf(it.lastGlyphOverflow());
+    }
+
+    return it.m_runWidthSoFar;
+}
+
+void FontCascade::adjustSelectionRectForSimpleText(const TextRun& run, LayoutRect& selectionRect, int from, int to) const
+{
+    GlyphBuffer glyphBuffer;
+    WidthIterator it(this, run);
+    it.advance(from, &glyphBuffer);
+    float beforeWidth = it.m_runWidthSoFar;
+    it.advance(to, &glyphBuffer);
+    float afterWidth = it.m_runWidthSoFar;
+    float totalWidth = -1;
+
+    if (run.rtl()) {
+        it.advance(run.length(), &glyphBuffer);
+        totalWidth = it.m_runWidthSoFar;
+        selectionRect.move(totalWidth - afterWidth, 0);
+    } else
+        selectionRect.move(beforeWidth, 0);
+    selectionRect.setWidth(afterWidth - beforeWidth);
+}
+
+int FontCascade::offsetForPositionForSimpleText(const TextRun& run, float x, bool includePartialGlyphs) const
+{
+    float delta = x;
+
+    WidthIterator it(this, run);
+    GlyphBuffer localGlyphBuffer;
+    unsigned offset;
+    if (run.rtl()) {
+        delta -= floatWidthForSimpleText(run);
+        while (1) {
+            offset = it.m_currentCharacter;
+            float w;
+            if (!it.advanceOneCharacter(w, localGlyphBuffer))
+                break;
+            delta += w;
+            if (includePartialGlyphs) {
+                if (delta - w / 2 >= 0)
+                    break;
+            } else {
+                if (delta >= 0)
+                    break;
+            }
+        }
+    } else {
+        while (1) {
+            offset = it.m_currentCharacter;
+            float w;
+            if (!it.advanceOneCharacter(w, localGlyphBuffer))
+                break;
+            delta -= w;
+            if (includePartialGlyphs) {
+                if (delta + w / 2 <= 0)
+                    break;
+            } else {
+                if (delta <= 0)
+                    break;
+            }
+        }
+    }
+
+    return offset;
+}
+
 
 }

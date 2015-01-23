@@ -141,9 +141,7 @@ Page::Page(PageConfiguration& pageConfiguration)
 #if ENABLE(WEB_REPLAY)
     , m_replayController(std::make_unique<ReplayController>(*this))
 #endif
-#if ENABLE(INSPECTOR)
     , m_inspectorController(std::make_unique<InspectorController>(*this, pageConfiguration.inspectorClient))
-#endif
 #if ENABLE(POINTER_LOCK)
     , m_pointerLockController(std::make_unique<PointerLockController>(*this))
 #endif
@@ -152,7 +150,7 @@ Page::Page(PageConfiguration& pageConfiguration)
     , m_backForwardController(std::make_unique<BackForwardController>(*this, pageConfiguration.backForwardClient))
     , m_mainFrame(MainFrame::create(*this, pageConfiguration))
     , m_theme(RenderTheme::themeForPage(this))
-    , m_editorClient(pageConfiguration.editorClient)
+    , m_editorClient(*pageConfiguration.editorClient)
     , m_plugInClient(pageConfiguration.plugInClient)
     , m_validationMessageClient(pageConfiguration.validationMessageClient)
     , m_subframeCount(0)
@@ -212,8 +210,6 @@ Page::Page(PageConfiguration& pageConfiguration)
     , m_isClosing(false)
     , m_isPlayingAudio(false)
 {
-    ASSERT(m_editorClient);
-    
     setTimerThrottlingEnabled(m_viewState & ViewState::IsVisuallyIdle);
 
     m_storageNamespaceProvider->addPage(*this);
@@ -254,15 +250,13 @@ Page::~Page()
         frame->detachFromPage();
     }
 
-    m_editorClient->pageDestroyed();
+    m_editorClient.pageDestroyed();
     if (m_plugInClient)
         m_plugInClient->pageDestroyed();
     if (m_alternativeTextClient)
         m_alternativeTextClient->pageDestroyed();
 
-#if ENABLE(INSPECTOR)
     m_inspectorController->inspectedPageDestroyed();
-#endif
 
     if (m_scrollingCoordinator)
         m_scrollingCoordinator->pageDestroyed();
@@ -731,7 +725,7 @@ void Page::setDefersLoading(bool defers)
 
 void Page::clearUndoRedoOperations()
 {
-    m_editorClient->clearUndoRedoOperations();
+    m_editorClient.clearUndoRedoOperations();
 }
 
 bool Page::inLowQualityImageInterpolationMode() const

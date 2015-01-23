@@ -39,7 +39,7 @@
 #import "WebProcessMessages.h"
 #import "WebProcessPool.h"
 #import "_WKDownloadDelegate.h"
-#import "_WKProcessPoolConfiguration.h"
+#import "_WKProcessPoolConfigurationInternal.h"
 #import <WebCore/CFNetworkSPI.h>
 #import <WebCore/CertificateInfo.h>
 #import <wtf/RetainPtr.h>
@@ -71,12 +71,12 @@
 
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"<%@: %p; configuration = %@>", NSStringFromClass(self.class), self, _configuration.get()];
+    return [NSString stringWithFormat:@"<%@: %p; configuration = %@>", NSStringFromClass(self.class), self, wrapper(_processPool->configuration())];
 }
 
 - (_WKProcessPoolConfiguration *)_configuration
 {
-    return [[_configuration copy] autorelease];
+    return wrapper(_processPool->configuration().copy().leakRef());
 }
 
 - (API::Object&)_apiObject
@@ -113,73 +113,17 @@
     return [url URLByAppendingPathComponent:@"WebsiteData" isDirectory:YES];
 }
 
-static NSURL *websiteDataDirectoryURL(NSString *directoryName)
-{
-    static dispatch_once_t onceToken;
-    static NSURL *websiteDataURL;
-
-    dispatch_once(&onceToken, ^{
-        NSURL *url = [[NSFileManager defaultManager] URLForDirectory:NSLibraryDirectory inDomain:NSUserDomainMask appropriateForURL:nullptr create:NO error:nullptr];
-        if (!url)
-            RELEASE_ASSERT_NOT_REACHED();
-
-        url = [url URLByAppendingPathComponent:@"WebKit" isDirectory:YES];
-
-        if (!WebKit::processHasContainer()) {
-            NSString *bundleIdentifier = [NSBundle mainBundle].bundleIdentifier;
-            if (!bundleIdentifier)
-                bundleIdentifier = [NSProcessInfo processInfo].processName;
-            url = [url URLByAppendingPathComponent:bundleIdentifier isDirectory:YES];
-        }
-
-        websiteDataURL = [[url URLByAppendingPathComponent:@"WebsiteData" isDirectory:YES] retain];
-    });
-
-    NSURL *url = [websiteDataURL URLByAppendingPathComponent:directoryName isDirectory:YES];
-    if (![[NSFileManager defaultManager] createDirectoryAtURL:url withIntermediateDirectories:YES attributes:nil error:nullptr])
-        LOG_ERROR("Failed to create directory %@", url);
-
-    return url;
-}
-
 - (instancetype)_initWithConfiguration:(_WKProcessPoolConfiguration *)configuration
 {
     if (!(self = [super init]))
         return nil;
-
-    _configuration = adoptNS([configuration copy]);
 
 #if PLATFORM(IOS)
     // FIXME: Remove once <rdar://problem/15256572> is fixed.
     InitWebCoreThreadSystemInterface();
 #endif
 
-    WebKit::WebProcessPoolConfiguration processPoolConfiguration;
-
-    if (NSURL *bundleURL = [_configuration injectedBundleURL]) {
-        if (!bundleURL.isFileURL)
-            [NSException raise:NSInvalidArgumentException format:@"Injected Bundle URL must be a file URL"];
-
-        processPoolConfiguration.injectedBundlePath = bundleURL.path;
-    }
-
-    processPoolConfiguration.localStorageDirectory = websiteDataDirectoryURL(@"LocalStorage").absoluteURL.path.fileSystemRepresentation;
-    processPoolConfiguration.webSQLDatabaseDirectory = websiteDataDirectoryURL(@"WebSQL").absoluteURL.path.fileSystemRepresentation;
-    processPoolConfiguration.indexedDBDatabaseDirectory = websiteDataDirectoryURL(@"IndexedDB").absoluteURL.path.fileSystemRepresentation;
-    processPoolConfiguration.mediaKeysStorageDirectory = websiteDataDirectoryURL(@"MediaKeys").absoluteURL.path.fileSystemRepresentation;
-
-    API::Object::constructInWrapper<WebKit::WebProcessPool>(self, WTF::move(processPoolConfiguration));
-    _processPool->setUsesNetworkProcess(true);
-    _processPool->setProcessModel(WebKit::ProcessModelMultipleSecondaryProcesses);
-    _processPool->setMaximumNumberOfProcesses([_configuration maximumProcessCount]);
-
-#if ENABLE(CACHE_PARTITIONING)
-    for (NSString *urlScheme in [_configuration cachePartitionedURLSchemes])
-        _processPool->registerURLSchemeAsCachePartitioned(urlScheme);
-#endif
-
-    // FIXME: Add a way to configure the cache model, see <rdar://problem/16206857>.
-    _processPool->setCacheModel(WebKit::CacheModelPrimaryWebBrowser);
+    API::Object::constructInWrapper<WebKit::WebProcessPool>(self, *configuration->_processPoolConfiguration);
 
     return self;
 }
@@ -242,20 +186,6 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
         [_processPool->ensureBundleParameters() removeObjectForKey:parameter];
 
     _processPool->sendToAllProcesses(Messages::WebProcess::SetInjectedBundleParameter(parameter, IPC::DataReference(static_cast<const uint8_t*>([data bytes]), [data length])));
-}
-
-- (void)_loadContentExtensionWithIdentifier:(NSString *)identifier serializedRules:(NSString *)serializedRules successCompletionHandler:(void (^)(NSDictionary *info))successCompletionHandler errorCompletionHandler:(void (^)(NSError *error))errorCompletionHandler
-{
-#if ENABLE(CONTENT_EXTENSIONS)
-    // For this experimentation, the ContentExtensions are handled by each WebProcess.
-    // Eventually the ContentExtension will have to be handled separately from the WebProcesses and we'll be able
-    // to provide meaningful completion handlers.
-    UNUSED_PARAM(errorCompletionHandler);
-
-    _processPool->loadContentExtension(identifier, serializedRules);
-
-    successCompletionHandler(nil);
-#endif
 }
 
 - (id <_WKDownloadDelegate>)_downloadDelegate

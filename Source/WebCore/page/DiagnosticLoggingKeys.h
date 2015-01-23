@@ -32,23 +32,82 @@ namespace WebCore {
 
 class DiagnosticLoggingKeys {
 public:
-    // Message keys.
+    static String applicationCacheKey();
+    static String audioKey();
+    static String cachedResourceRevalidationKey();
+    static String cannotSuspendActiveDOMObjectsKey();
+    static String deniedByClientKey();
+    static String deviceMotionKey();
+    static String deviceOrientationKey();
+    static String deviceProximityKey();
+    static String documentLoaderStoppingKey();
+    static String engineFailedToLoadKey();
+    static String expiredKey();
+    static String fontKey();
+    static String hasOpenDatabasesKey();
+    static String hasPluginsKey();
+    static String httpsNoStoreKey();
+    static String imageKey();
+    static String inMemoryCacheKey();
+    static String isErrorPageKey();
+    static String isExpiredKey();
+    static String loadedKey();
+    static String loadingKey();
+    static String loadingAPISenseKey();
+    static String mainDocumentErrorKey();
+    static String mainResourceKey();
+    static String mediaKey();
     static String mediaLoadedKey();
     static String mediaLoadingFailedKey();
-    static String pluginLoadedKey();
-    static String pluginLoadingFailedKey();
-    static String pageContainsPluginKey();
+    static String mustRevalidateIsExpiredKey();
+    static String navigationKey();
+    static String noCacheKey();
+    static String noCurrentHistoryItemKey();
+    static String noDocumentLoaderKey();
+    static String noStoreKey();
+    static String notInMemoryCacheKey();
+    static String otherKey();
+    static String pageCacheKey();
+    static String pageContainsAtLeastOneMediaEngineKey();
     static String pageContainsAtLeastOnePluginKey();
     static String pageContainsMediaEngineKey();
-    static String pageContainsAtLeastOneMediaEngineKey();
+    static String pageContainsPluginKey();
     static String pageLoadedKey();
-    static String engineFailedToLoadKey();
-    static String navigationKey();
+    static String playedKey();
+    static String pluginLoadedKey();
+    static String pluginLoadingFailedKey();
+    static String prunedDueToCapacityReached();
+    static String prunedDueToMemoryPressureKey();
+    static String prunedDueToProcessSuspended();
+    static String quirkRedirectComingKey();
+    static String rawKey();
+    static String reasonKey();
+    static String reloadFromOriginKey();
+    static String reloadKey();
+    static String resourceKey();
+    static String resourceRequestKey();
+    static String revalidatingKey();
+    static String sameLoadKey();
+    static String scriptKey();
+    static String styleSheetKey();
+    static String svgDocumentKey();
+    static String unusedKey();
+    static String unusedReasonCredentialSettingsKey();
+    static String unusedReasonErrorKey();
+    static String unusedReasonMustRevalidateNoValidatorKey();
+    static String unusedReasonNoStoreKey();
+    static String unusedReasonRedirectChainKey();
+    static String unusedReasonReloadKey();
+    static String unusedReasonTypeMismatchKey();
+    static String usedKey();
+    static String userKey();
+    static String videoKey();
+    static String webViewKey();
+    static String zoomedKey();
 
-    // Success keys.
-    static String passKey();
-    static String failKey();
-    static String noopKey();
+    // Success / Failure keys.
+    static String successKey();
+    static String failureKey();
 };
 
 }

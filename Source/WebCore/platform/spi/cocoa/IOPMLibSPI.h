@@ -34,9 +34,8 @@
 
 #else
 
-#include <mach/kern_return.h>
+#include "IOReturnSPI.h"
 
-typedef kern_return_t IOReturn;
 typedef uint32_t IOPMAssertionID;
 
 EXTERN_C const CFStringRef kIOPMAssertionTypePreventUserIdleDisplaySleep = CFSTR("PreventUserIdleDisplaySleep");

@@ -29,15 +29,18 @@
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include <wtf/Forward.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
 namespace ContentExtensions {
 
+class ContentExtensionRule;
+
 // The ExtensionsManager loads serialized content extension rules directly into WebCore.
 namespace ExtensionsManager {
 
-void loadExtension(const String& identifier, const String& rules);
+Vector<ContentExtensionRule> createRuleList(const String& rules);
 
 } // namespace ExtensionsManager
 

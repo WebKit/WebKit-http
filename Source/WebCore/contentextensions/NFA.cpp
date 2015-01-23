@@ -40,10 +40,10 @@ NFA::NFA()
 {
 }
 
-unsigned NFA::createNode(uint64_t ruleId)
+unsigned NFA::createNode()
 {
     unsigned nextId = m_nodes.size();
-    m_nodes.append(NFANode(ruleId));
+    m_nodes.append(NFANode());
     return nextId;
 }
 
@@ -52,6 +52,10 @@ void NFA::addTransition(unsigned from, unsigned to, char character)
     ASSERT(from < m_nodes.size());
     ASSERT(to < m_nodes.size());
     ASSERT(character);
+
+    NFANode& fromNode = m_nodes[from];
+    if (fromNode.transitionsOnAnyCharacter.contains(to))
+        return;
 
     auto addResult = m_nodes[from].transitions.add(character, HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>>());
     addResult.iterator->value.add(to);
@@ -66,10 +70,22 @@ void NFA::addEpsilonTransition(unsigned from, unsigned to)
     addResult.iterator->value.add(to);
 }
 
-void NFA::setFinal(unsigned node)
+void NFA::addTransitionsOnAnyCharacter(unsigned from, unsigned to)
 {
-    ASSERT(node < m_nodes.size());
-    m_nodes[node].isFinal = true;
+    ASSERT(from < m_nodes.size());
+    ASSERT(to < m_nodes.size());
+
+    NFANode& fromNode = m_nodes[from];
+    fromNode.transitionsOnAnyCharacter.add(to);
+
+    for (auto transitionSlot : fromNode.transitions)
+        transitionSlot.value.remove(to);
+}
+
+void NFA::setFinal(unsigned node, uint64_t ruleId)
+{
+    ASSERT(!m_nodes[node].finalRuleIds.contains(ruleId));
+    m_nodes[node].finalRuleIds.append(ruleId);
 }
 
 unsigned NFA::graphSize() const
@@ -79,13 +95,19 @@ unsigned NFA::graphSize() const
 
 void NFA::restoreToGraphSize(unsigned size)
 {
-    ASSERT(size > 1);
+    ASSERT(size >= 1);
     ASSERT(size <= graphSize());
 
     m_nodes.shrink(size);
 }
 
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+
+void NFA::addRuleId(unsigned node, uint64_t ruleId)
+{
+    ASSERT(!m_nodes[node].ruleIds.contains(ruleId));
+    m_nodes[node].ruleIds.append(ruleId);
+}
 
 static void printRange(bool firstRange, uint16_t rangeStart, uint16_t rangeEnd, uint16_t epsilonTransitionCharacter)
 {
@@ -108,8 +130,11 @@ static void printRange(bool firstRange, uint16_t rangeStart, uint16_t rangeEnd, 
     }
 }
 
-static void printTransition(unsigned sourceNode, const HashMap<uint16_t, HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>>>& transitions, uint16_t epsilonTransitionCharacter)
+static void printTransitions(const Vector<NFANode>& graph, unsigned sourceNode, uint16_t epsilonTransitionCharacter)
 {
+    const NFANode& node = graph[sourceNode];
+    const HashMap<uint16_t, HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>>>& transitions = node.transitions;
+
     HashMap<unsigned, HashSet<uint16_t>, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> transitionsPerTarget;
 
     for (const auto& transition : transitions) {
@@ -143,6 +168,9 @@ static void printTransition(unsigned sourceNode, const HashMap<uint16_t, HashSet
 
         dataLogF("\"];\n");
     }
+
+    for (unsigned targetOnAnyCharacter : node.transitionsOnAnyCharacter)
+        dataLogF("        %d -> %d [label=\"[any input]\"];\n", sourceNode, targetOnAnyCharacter);
 }
 
 void NFA::debugPrintDot() const
@@ -152,12 +180,33 @@ void NFA::debugPrintDot() const
     dataLogF("    node [shape=circle];\n");
     dataLogF("    {\n");
     for (unsigned i = 0; i < m_nodes.size(); ++i) {
-        if (m_nodes[i].ruleId  == std::numeric_limits<uint64_t>::max())
-            dataLogF("         %d [label=\"Node %d\"]", i, i);
-        else
-            dataLogF("         %d [label=<Node %d<BR/>(Rule %llu)>]", i, i, m_nodes[i].ruleId);
+        dataLogF("         %d [label=<Node %d", i, i);
 
-        if (m_nodes[i].isFinal)
+        const Vector<uint64_t>& originalRules = m_nodes[i].ruleIds;
+        if (!originalRules.isEmpty()) {
+            dataLogF("<BR/>(Rules: ");
+            for (unsigned ruleIndex = 0; ruleIndex < originalRules.size(); ++ruleIndex) {
+                if (ruleIndex)
+                    dataLogF(", ");
+                dataLogF("%llu", originalRules[ruleIndex]);
+            }
+            dataLogF(")");
+        }
+
+        const Vector<uint64_t>& finalRules = m_nodes[i].finalRuleIds;
+        if (!finalRules.isEmpty()) {
+            dataLogF("<BR/>(Final: ");
+            for (unsigned ruleIndex = 0; ruleIndex < finalRules.size(); ++ruleIndex) {
+                if (ruleIndex)
+                    dataLogF(", ");
+                dataLogF("%llu", finalRules[ruleIndex]);
+            }
+            dataLogF(")");
+        }
+
+        dataLogF(">]");
+
+        if (!finalRules.isEmpty())
             dataLogF(" [shape=doublecircle]");
 
         dataLogF(";\n");
@@ -166,7 +215,7 @@ void NFA::debugPrintDot() const
 
     dataLogF("    {\n");
     for (unsigned i = 0; i < m_nodes.size(); ++i)
-        printTransition(i, m_nodes[i].transitions, epsilonTransitionCharacter);
+        printTransitions(m_nodes, i, epsilonTransitionCharacter);
     dataLogF("    }\n");
     dataLogF("}\n");
 }

@@ -58,7 +58,6 @@
 #include "Event.h"
 #include "EventHandler.h"
 #include "EventNames.h"
-#include "FeatureCounter.h"
 #include "FloatRect.h"
 #include "FormState.h"
 #include "FormSubmission.h"
@@ -453,12 +452,12 @@ void FrameLoader::stopLoading(UnloadEventPolicy unloadEventPolicy)
                         // time into freed memory.
                         RefPtr<DocumentLoader> documentLoader = m_provisionalDocumentLoader;
                         m_pageDismissalEventBeingDispatched = UnloadDismissal;
-                        if (documentLoader && !documentLoader->timing()->unloadEventStart() && !documentLoader->timing()->unloadEventEnd()) {
-                            DocumentLoadTiming* timing = documentLoader->timing();
-                            ASSERT(timing->navigationStart());
-                            timing->markUnloadEventStart();
+                        if (documentLoader && !documentLoader->timing().unloadEventStart() && !documentLoader->timing().unloadEventEnd()) {
+                            DocumentLoadTiming& timing = documentLoader->timing();
+                            ASSERT(timing.navigationStart());
+                            timing.markUnloadEventStart();
                             m_frame.document()->domWindow()->dispatchEvent(unloadEvent, m_frame.document());
-                            timing->markUnloadEventEnd();
+                            timing.markUnloadEventEnd();
                         } else
                             m_frame.document()->domWindow()->dispatchEvent(unloadEvent, m_frame.document());
                     }
@@ -494,10 +493,8 @@ void FrameLoader::stopLoading(UnloadEventPolicy unloadEventPolicy)
         // http://www.w3.org/Bugs/Public/show_bug.cgi?id=10537
         doc->setReadyState(Document::Complete);
 
-#if ENABLE(SQL_DATABASE)
         // FIXME: Should the DatabaseManager watch for something like ActiveDOMObject::stop() rather than being special-cased here?
         DatabaseManager::manager().stopDatabases(doc, 0);
-#endif
     }
 
     // FIXME: This will cancel redirection timer, which really needs to be restarted when restoring the frame from b/f cache.
@@ -1375,35 +1372,27 @@ void FrameLoader::load(DocumentLoader* newDocumentLoader)
 
 static void logNavigation(MainFrame& frame, FrameLoadType type)
 {
-    const char* featureCounterKey;
     String navigationDescription;
     switch (type) {
     case FrameLoadType::Standard:
-        featureCounterKey = FeatureCounterNavigationStandardKey;
         navigationDescription = ASCIILiteral("standard");
         break;
     case FrameLoadType::Back:
-        featureCounterKey = FeatureCounterNavigationBackKey;
         navigationDescription = ASCIILiteral("back");
         break;
     case FrameLoadType::Forward:
-        featureCounterKey = FeatureCounterNavigationForwardKey;
         navigationDescription = ASCIILiteral("forward");
         break;
     case FrameLoadType::IndexedBackForward:
-        featureCounterKey = FeatureCounterNavigationIndexedBackForwardKey;
         navigationDescription = ASCIILiteral("indexedBackForward");
         break;
     case FrameLoadType::Reload:
-        featureCounterKey = FeatureCounterNavigationReloadKey;
         navigationDescription = ASCIILiteral("reload");
         break;
     case FrameLoadType::Same:
-        featureCounterKey = FeatureCounterNavigationSameKey;
         navigationDescription = ASCIILiteral("same");
         break;
     case FrameLoadType::ReloadFromOrigin:
-        featureCounterKey = FeatureCounterNavigationReloadFromOriginKey;
         navigationDescription = ASCIILiteral("reloadFromOrigin");
         break;
     case FrameLoadType::Replace:
@@ -1411,12 +1400,7 @@ static void logNavigation(MainFrame& frame, FrameLoadType type)
         // Not logging those for now.
         return;
     }
-    if (frame.settings().diagnosticLoggingEnabled()) {
-        if (auto* client = frame.diagnosticLoggingClient())
-            client->logDiagnosticMessage(DiagnosticLoggingKeys::navigationKey(), navigationDescription);
-    }
-    // FIXME: Remove once DiagnosticLoggingClient works on iOS.
-    FEATURE_COUNTER_INCREMENT_KEY(frame.page(), featureCounterKey);
+    frame.diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::navigationKey(), navigationDescription);
 }
 
 void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType type, PassRefPtr<FormState> prpFormState, AllowNavigationToInvalidURL allowNavigationToInvalidURL)
@@ -1802,7 +1786,7 @@ void FrameLoader::commitProvisionalLoad()
     if (pdl && m_documentLoader) {
         // Check if the destination page is allowed to access the previous page's timing information.
         Ref<SecurityOrigin> securityOrigin(SecurityOrigin::create(pdl->request().url()));
-        m_documentLoader->timing()->setHasSameOriginAsPreviousDocument(securityOrigin.get().canRequest(m_previousURL));
+        m_documentLoader->timing().setHasSameOriginAsPreviousDocument(securityOrigin.get().canRequest(m_previousURL));
     }
 
     // Call clientRedirectCancelledOrFinished() here so that the frame load delegate is notified that the redirect's
@@ -2290,14 +2274,8 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             if (AXObjectCache* cache = m_frame.document()->existingAXObjectCache())
                 cache->frameLoadingEventNotification(&m_frame, loadingEvent);
 
-            if (!page || !page->settings().diagnosticLoggingEnabled())
-                return;
-
-            DiagnosticLoggingClient* diagnosticLoggingClient = page->mainFrame().diagnosticLoggingClient();
-            if (!diagnosticLoggingClient)
-                return;
-
-            diagnosticLoggingClient->logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageLoadedKey(), emptyString(), error.isNull() ? DiagnosticLoggingClient::Pass : DiagnosticLoggingClient::Fail);
+            if (page)
+                page->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageLoadedKey(), emptyString(), error.isNull() ? DiagnosticLoggingResultPass : DiagnosticLoggingResultFail);
 
             return;
         }
@@ -2957,12 +2935,10 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
     if (!m_frame.page())
         return;
 
-#if ENABLE(INSPECTOR)
     if (Page* page = m_frame.page()) {
         if (m_frame.isMainFrame())
             page->inspectorController().resume();
     }
-#endif
 
     setProvisionalDocumentLoader(m_policyDocumentLoader.get());
     m_loadType = type;
@@ -3115,9 +3091,9 @@ void FrameLoader::loadProvisionalItemFromCachedPage()
     m_loadingFromCachedPage = true;
 
     // Should have timing data from previous time(s) the page was shown.
-    ASSERT(provisionalLoader->timing()->navigationStart());
+    ASSERT(provisionalLoader->timing().navigationStart());
     provisionalLoader->resetTiming();
-    provisionalLoader->timing()->markNavigationStart();
+    provisionalLoader->timing().markNavigationStart();
 
     provisionalLoader->setCommitted(true);
     commitProvisionalLoad();
@@ -3331,10 +3307,8 @@ void FrameLoader::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& world)
 
     m_client.dispatchDidClearWindowObjectInWorld(world);
 
-#if ENABLE(INSPECTOR)
     if (Page* page = m_frame.page())
         page->inspectorController().didClearWindowObjectInWorld(m_frame, world);
-#endif
 
     InspectorInstrumentation::didClearWindowObjectInWorld(m_frame, world);
 }

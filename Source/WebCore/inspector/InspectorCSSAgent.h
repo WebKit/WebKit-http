@@ -61,8 +61,6 @@ class StyleResolver;
 class StyleRule;
 class ChangeRegionOversetTask;
 
-#if ENABLE(INSPECTOR)
-
 class InspectorCSSAgent final
     : public InspectorAgentBase
     , public InspectorDOMAgent::DOMListener
@@ -152,7 +150,7 @@ private:
     InspectorStyleSheet* assertStyleSheetForId(ErrorString&, const String&);
     Inspector::Protocol::CSS::StyleSheetOrigin detectOrigin(CSSStyleSheet* pageStyleSheet, Document* ownerDocument);
 
-    RefPtr<Inspector::Protocol::CSS::CSSRule> buildObjectForRule(StyleRule*, StyleResolver&);
+    RefPtr<Inspector::Protocol::CSS::CSSRule> buildObjectForRule(StyleRule*, StyleResolver&, Element*);
     RefPtr<Inspector::Protocol::CSS::CSSRule> buildObjectForRule(CSSStyleRule*);
     RefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>> buildArrayForMatchedRuleList(const Vector<RefPtr<StyleRule>>&, StyleResolver&, Element*);
     RefPtr<Inspector::Protocol::CSS::CSSStyle> buildObjectForAttributesStyle(Element*);
@@ -183,8 +181,6 @@ private:
 
     int m_lastStyleSheetId;
 };
-
-#endif
 
 } // namespace WebCore
 

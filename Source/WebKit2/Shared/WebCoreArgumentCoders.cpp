@@ -686,9 +686,7 @@ void ArgumentCoder<ResourceRequest>::encode(ArgumentEncoder& encoder, const Reso
     encoder << resourceRequest.cachePartition();
 #endif
 
-#if ENABLE(INSPECTOR)
     encoder << resourceRequest.hiddenFromInspector();
-#endif
 
     if (resourceRequest.encodingRequiresPlatformData()) {
         encoder << true;
@@ -708,12 +706,10 @@ bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRe
     resourceRequest.setCachePartition(cachePartition);
 #endif
 
-#if ENABLE(INSPECTOR)
     bool isHiddenFromInspector;
     if (!decoder.decode(isHiddenFromInspector))
         return false;
     resourceRequest.setHiddenFromInspector(isHiddenFromInspector);
-#endif
 
     bool hasPlatformData;
     if (!decoder.decode(hasPlatformData))
@@ -957,8 +953,6 @@ bool ArgumentCoder<Cookie>::decode(ArgumentDecoder& decoder, Cookie& cookie)
     return true;
 }
 
-
-#if ENABLE(SQL_DATABASE)
 void ArgumentCoder<DatabaseDetails>::encode(ArgumentEncoder& encoder, const DatabaseDetails& details)
 {
     encoder << details.name();
@@ -998,8 +992,6 @@ bool ArgumentCoder<DatabaseDetails>::decode(ArgumentDecoder& decoder, DatabaseDe
     details = DatabaseDetails(name, displayName, expectedUsage, currentUsage, creationTime, modificationTime);
     return true;
 }
-
-#endif
 
 #if PLATFORM(IOS)
 

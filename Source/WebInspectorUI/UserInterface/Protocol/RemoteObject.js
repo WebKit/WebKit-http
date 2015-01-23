@@ -51,11 +51,6 @@ WebInspector.RemoteObject.fromPrimitiveValue = function(value)
     return new WebInspector.RemoteObject(undefined, typeof value, undefined, value);
 };
 
-WebInspector.RemoteObject.fromLocalObject = function(value)
-{
-    return new WebInspector.LocalJSONObject(value);
-};
-
 WebInspector.RemoteObject.resolveNode = function(node, objectGroup, callback)
 {
     function mycallback(error, object)
@@ -118,15 +113,20 @@ WebInspector.RemoteObject.prototype = {
 
     getOwnProperties: function(callback)
     {
-        this._getProperties(true, callback);
+        this._getProperties(true, false, callback);
+    },
+
+    getOwnAndGetterProperties: function(callback)
+    {
+        this._getProperties(false, true, callback);
     },
 
     getAllProperties: function(callback)
     {
-        this._getProperties(false, callback);
+        this._getProperties(false, false, callback);
     },
 
-    _getProperties: function(ownProperties, callback)
+    _getProperties: function(ownProperties, ownAndGetterProperties, callback)
     {
         if (!this._objectId) {
             callback([]);
@@ -152,7 +152,32 @@ WebInspector.RemoteObject.prototype = {
             }
             callback(result);
         }
-        RuntimeAgent.getProperties(this._objectId, ownProperties, remoteObjectBinder);
+
+        // COMPATIBILITY (iOS 8): RuntimeAgent.getProperties did not support ownerAndGetterProperties.
+        // Here we do our best to reimplement it by getting all properties and reducing them down.
+        if (ownAndGetterProperties && !RuntimeAgent.getProperties.supports("ownAndGetterProperties")) {
+            RuntimeAgent.getProperties(this._objectId, function(error, allProperties) {
+                var ownOrGetterPropertiesList = [];
+                if (allProperties) {
+                    for (var property of allProperties) {
+                        if (property.isOwn || property.get || property.name === "__proto__") {
+                            // Own property or getter property in prototype chain.
+                            ownOrGetterPropertiesList.push(property);
+                        } else if (property.value && property.name !== property.name.toUpperCase()) {
+                            var type = property.value.type;
+                            if (type && type !== "function" && property.name !== "constructor") {
+                                // Possible native binding getter property converted to a value. Also, no CONSTANT name style and not "constructor".
+                                ownOrGetterPropertiesList.push(property);
+                            }
+                        }
+                    }
+                }
+                remoteObjectBinder(error, ownOrGetterPropertiesList);
+            }); 
+            return;
+        }
+
+        RuntimeAgent.getProperties(this._objectId, ownProperties, ownAndGetterProperties, remoteObjectBinder);
     },
 
     setPropertyValue: function(name, value, callback)
@@ -250,117 +275,4 @@ WebInspector.RemoteObjectProperty = function(name, value, descriptor)
 WebInspector.RemoteObjectProperty.fromPrimitiveValue = function(name, value)
 {
     return new WebInspector.RemoteObjectProperty(name, WebInspector.RemoteObject.fromPrimitiveValue(value));
-};
-
-// The below is a wrapper around a local object that provides an interface comaptible
-// with RemoteObject, to be used by the UI code (primarily ObjectPropertiesSection).
-// Note that only JSON-compliant objects are currently supported, as there's no provision
-// for traversing prototypes, extracting class names via constuctor, handling properties
-// or functions.
-
-WebInspector.LocalJSONObject = function(value)
-{
-    this._value = value;
-};
-
-WebInspector.LocalJSONObject.prototype = {
-    get description()
-    {
-        if (this._cachedDescription)
-            return this._cachedDescription;
-
-        if (this.type === "object") {
-            switch (this.subtype) {
-            case "array":
-                function formatArrayItem(property)
-                {
-                    return property.value.description;
-                }
-                this._cachedDescription = this._concatenate("[", "]", formatArrayItem);
-                break;
-            case "null":
-                this._cachedDescription = "null";
-                break;
-            default:
-                function formatObjectItem(property)
-                {
-                    return property.name + ":" + property.value.description;
-                }
-                this._cachedDescription = this._concatenate("{", "}", formatObjectItem);
-            }
-        } else
-            this._cachedDescription = String(this._value);
-
-        return this._cachedDescription;
-    },
-
-    _concatenate: function(prefix, suffix, formatProperty)
-    {
-        const previewChars = 100;
-
-        var buffer = prefix;
-        var children = this._children();
-        for (var i = 0; i < children.length; ++i) {
-            var itemDescription = formatProperty(children[i]);
-            if (buffer.length + itemDescription.length > previewChars) {
-                buffer += ",\u2026";
-                break;
-            }
-            if (i)
-                buffer += ", ";
-            buffer += itemDescription;
-        }
-        buffer += suffix;
-        return buffer;
-    },
-
-    get type()
-    {
-        return typeof this._value;
-    },
-
-    get subtype()
-    {
-        if (this._value === null)
-            return "null";
-
-        if (this._value instanceof Array)
-            return "array";
-
-        return undefined;
-    },
-
-    get hasChildren()
-    {
-        return typeof this._value === "object" && this._value !== null && !isEmptyObject(this._value);
-    },
-
-    getOwnProperties: function(callback)
-    {
-        callback(this._children());
-    },
-
-    getAllProperties: function(callback)
-    {
-        callback(this._children());
-    },
-
-    _children: function()
-    {
-        if (!this.hasChildren)
-            return [];
-
-        function buildProperty(propName)
-        {
-            return new WebInspector.RemoteObjectProperty(propName, new WebInspector.LocalJSONObject(this._value[propName]));
-        }
-        if (!this._cachedChildren)
-            this._cachedChildren = Object.keys(this._value || {}).map(buildProperty, this);
-        return this._cachedChildren;
-    },
-
-    isError: function()
-    {
-        return false;
-    }
 };

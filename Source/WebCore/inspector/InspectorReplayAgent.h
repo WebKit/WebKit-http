@@ -28,7 +28,7 @@
 #ifndef InspectorReplayAgent_h
 #define InspectorReplayAgent_h
 
-#if ENABLE(INSPECTOR) && ENABLE(WEB_REPLAY)
+#if ENABLE(WEB_REPLAY)
 
 #include "InspectorWebAgentBase.h"
 #include <inspector/InspectorBackendDispatchers.h>
@@ -73,14 +73,14 @@ public:
     void willDispatchEvent(const Event&, Frame*);
 
     // Notifications from ReplayController.
-    void sessionCreated(PassRefPtr<ReplaySession>);
+    void sessionCreated(RefPtr<ReplaySession>&&);
     // This is called internally (when adding/removing) and by ReplayController during capture.
-    void sessionModified(PassRefPtr<ReplaySession>);
-    void sessionLoaded(PassRefPtr<ReplaySession>);
+    void sessionModified(RefPtr<ReplaySession>&&);
+    void sessionLoaded(RefPtr<ReplaySession>&&);
 
-    void segmentCreated(PassRefPtr<ReplaySessionSegment>);
-    void segmentCompleted(PassRefPtr<ReplaySessionSegment>);
-    void segmentLoaded(PassRefPtr<ReplaySessionSegment>);
+    void segmentCreated(RefPtr<ReplaySessionSegment>&&);
+    void segmentCompleted(RefPtr<ReplaySessionSegment>&&);
+    void segmentLoaded(RefPtr<ReplaySessionSegment>&&);
     void segmentUnloaded();
 
     void captureStarted();
@@ -110,8 +110,8 @@ public:
     virtual void getSegmentData(ErrorString&, Inspector::Protocol::Replay::SegmentIdentifier, RefPtr<Inspector::Protocol::Replay::SessionSegment>&) override;
 
 private:
-    PassRefPtr<ReplaySession> findSession(ErrorString&, SessionIdentifier);
-    PassRefPtr<ReplaySessionSegment> findSegment(ErrorString&, SegmentIdentifier);
+    RefPtr<ReplaySession> findSession(ErrorString&, SessionIdentifier);
+    RefPtr<ReplaySessionSegment> findSegment(ErrorString&, SegmentIdentifier);
     WebCore::SessionState sessionState() const;
 
     std::unique_ptr<Inspector::InspectorReplayFrontendDispatcher> m_frontendDispatcher;
@@ -124,6 +124,6 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(INSPECTOR) && ENABLE(WEB_REPLAY)
+#endif // ENABLE(WEB_REPLAY)
 
 #endif // InspectorReplayAgent_h

@@ -42,12 +42,6 @@ typedef struct _GstMessage GstMessage;
 typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _WebKitVideoSink WebKitVideoSink;
 
-typedef struct _GstMiniObject GstMiniObject;
-
-typedef struct _GstEGLImageMemoryPool GstEGLImageMemoryPool;
-typedef struct _GstEGLImageMemory GstEGLImageMemory;
-typedef struct _EGLDetails EGLDetails;
-
 namespace WebCore {
 
 class GraphicsContext;
@@ -82,8 +76,6 @@ public:
     void setVisible(bool) { }
     void setSize(const IntSize&);
     void sizeChanged();
-
-    void triggerDrain();
 
     void triggerRepaint(GstSample*);
     void paint(GraphicsContext*, const IntRect&);
@@ -129,7 +121,6 @@ protected:
     GRefPtr<GstElement> m_fpsSink;
     MediaPlayer::ReadyState m_readyState;
     MediaPlayer::NetworkState m_networkState;
-    bool m_isEndReached;
     IntSize m_size;
     mutable GMutex m_sampleMutex;
     GstSample* m_sample;
@@ -138,11 +129,9 @@ protected:
     unsigned long m_repaintHandler;
     unsigned long m_volumeSignalHandler;
     unsigned long m_muteSignalHandler;
-    unsigned long m_drainHandler;
     mutable IntSize m_videoSize;
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     PassRefPtr<BitmapTexture> updateTexture(TextureMapper*);
-    guint m_orientation;
 #endif
 };
 }

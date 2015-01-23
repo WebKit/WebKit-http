@@ -123,8 +123,8 @@ TextCheckerClient* SpellChecker::client() const
 {
     Page* page = m_frame.page();
     if (!page)
-        return 0;
-    return page->editorClient()->textChecker();
+        return nullptr;
+    return page->editorClient().textChecker();
 }
 
 void SpellChecker::timerFiredToProcessQueuedRequest()
@@ -236,8 +236,7 @@ void SpellChecker::didCheckSucceed(int sequence, const Vector<TextCheckingResult
 
 void SpellChecker::didCheckCancel(int sequence)
 {
-    Vector<TextCheckingResult> results;
-    didCheck(sequence, results);
+    didCheck(sequence, Vector<TextCheckingResult>());
 }
 
 } // namespace WebCore

@@ -198,11 +198,9 @@ unsigned short CSSPrimitiveValue::primitiveType() const
     case CalcPercentLength:
         return CSSPrimitiveValue::CSS_CALC_PERCENTAGE_WITH_LENGTH;
     case CalcAngle:
-        return CSSPrimitiveValue::CSS_DEG;
     case CalcTime:
-        return CSSPrimitiveValue::CSS_MS;
     case CalcFrequency:
-        return CSSPrimitiveValue::CSS_HZ;
+        return m_value.calc->primitiveType();
     case CalcOther:
         return CSSPrimitiveValue::CSS_UNKNOWN;
     }
@@ -378,11 +376,11 @@ void CSSPrimitiveValue::init(const LengthSize& lengthSize, const RenderStyle* st
     m_value.pair = Pair::create(create(lengthSize.width(), style), create(lengthSize.height(), style)).leakRef();
 }
 
-void CSSPrimitiveValue::init(PassRefPtr<Counter> c)
+void CSSPrimitiveValue::init(Ref<Counter>&& counter)
 {
     m_primitiveUnitType = CSS_COUNTER;
     m_hasCachedCSSText = false;
-    m_value.counter = c.leakRef();
+    m_value.counter = &counter.leakRef();
 }
 
 void CSSPrimitiveValue::init(PassRefPtr<Rect> r)

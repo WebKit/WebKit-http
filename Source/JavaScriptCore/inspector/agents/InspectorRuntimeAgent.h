@@ -32,8 +32,6 @@
 #ifndef InspectorRuntimeAgent_h
 #define InspectorRuntimeAgent_h
 
-#if ENABLE(INSPECTOR)
-
 #include "InspectorBackendDispatchers.h"
 #include "InspectorFrontendDispatchers.h"
 #include "inspector/InspectorAgentBase.h"
@@ -65,7 +63,7 @@ public:
     virtual void evaluate(ErrorString&, const String& expression, const String* objectGroup, const bool* includeCommandLineAPI, const bool* doNotPauseOnExceptionsAndMuteConsole, const int* executionContextId, const bool* returnByValue, const bool* generatePreview, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result, Inspector::Protocol::OptOutput<bool>* wasThrown) override final;
     virtual void callFunctionOn(ErrorString&, const String& objectId, const String& expression, const RefPtr<Inspector::InspectorArray>&& optionalArguments, const bool* doNotPauseOnExceptionsAndMuteConsole, const bool* returnByValue, const bool* generatePreview, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result, Inspector::Protocol::OptOutput<bool>* wasThrown) override final;
     virtual void releaseObject(ErrorString&, const ErrorString& objectId) override final;
-    virtual void getProperties(ErrorString&, const String& objectId, const bool* ownProperties, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties) override final;
+    virtual void getProperties(ErrorString&, const String& objectId, const bool* ownProperties, const bool* ownAndGetterProperties, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties) override final;
     virtual void releaseObjectGroup(ErrorString&, const String& objectGroup) override final;
     virtual void run(ErrorString&) override;
     virtual void getRuntimeTypesForVariablesAtOffsets(ErrorString&, const RefPtr<Inspector::InspectorArray>&& locations, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::TypeDescription>>&) override;
@@ -99,5 +97,4 @@ private:
 
 } // namespace Inspector
 
-#endif // ENABLE(INSPECTOR)
 #endif // InspectorRuntimeAgent_h

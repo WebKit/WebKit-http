@@ -1,3 +1,240 @@
+2015-01-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test fix after r178965.
+
+        * WebView.cpp: Supply missing implementation of 'setEditable'. It
+        currently asserts, causing all debug tests to fail.
+
+2015-01-22  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] No plugin content on some sites.
+        https://bugs.webkit.org/show_bug.cgi?id=140780
+
+        Reviewed by Anders Carlsson.
+
+        Add override modifier to bindingInstance method.
+
+        * Plugins/PluginView.h:
+
+2015-01-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Expose missing editing features through WebView interface
+        https://bugs.webkit.org/show_bug.cgi?id=140773
+        <rdar://problem/19565421>
+
+        Reviewed by Dean Jackson.
+
+        Connect the various WebView editing delegate methods to our
+        test infrastructure. Also prefer _bstr_t to raw BSTR types
+        to simplify life cycle management.
+
+        * DOMCoreClasses.cpp: Flesh out the DOMRange object.
+        (DOMElement::createInstance):
+        (DOMRange::QueryInterface):
+        (DOMRange::DOMRange):
+        (DOMRange::~DOMRange):
+        (DOMRange::createInstance):
+        (DOMRange::startContainer):
+        (DOMRange::startOffset):
+        (DOMRange::endContainer):
+        (DOMRange::endOffset):
+        (DOMRange::collapsed):
+        (DOMRange::commonAncestorContainer):
+        (DOMRange::setStart):
+        (DOMRange::setEnd):
+        (DOMRange::setStartBefore):
+        (DOMRange::setStartAfter):
+        (DOMRange::setEndBefore):
+        (DOMRange::setEndAfter):
+        (DOMRange::collapse):
+        (DOMRange::selectNode):
+        (DOMRange::selectNodeContents):
+        (DOMRange::compareBoundaryPoints):
+        (DOMRange::deleteContents):
+        (DOMRange::extractContents):
+        (DOMRange::cloneContents):
+        (DOMRange::insertNode):
+        (DOMRange::surroundContents):
+        (DOMRange::cloneRange):
+        (DOMRange::toString):
+        (DOMRange::detach):
+        * DOMCoreClasses.h:
+        (DOMRange::AddRef):
+        (DOMRange::Release):
+        (DOMRange::throwException):
+        (DOMRange::callWebScriptMethod):
+        (DOMRange::evaluateWebScript):
+        (DOMRange::removeWebScriptKey):
+        (DOMRange::stringRepresentation):
+        (DOMRange::webScriptValueAtIndex):
+        (DOMRange::setWebScriptValueAtIndex):
+        (DOMRange::setException):
+        * Interfaces/IWebEditingDelegate.idl:
+        * Interfaces/IWebView.idl:
+        * WebCoreSupport/WebEditorClient.cpp: Connect more methods
+        to actual editing features in WebCore.
+        (WebEditorClient::shouldBeginEditing):
+        (WebEditorClient::shouldEndEditing):
+        (WebEditorClient::didBeginEditing):
+        (WebEditorClient::respondToChangedContents):
+        (WebEditorClient::respondToChangedSelection):
+        (WebEditorClient::didEndEditing):
+        (WebEditorClient::shouldDeleteRange):
+        (WebEditorClient::shouldInsertNode):
+        (WebEditorClient::shouldInsertText):
+        (WebEditorClient::shouldChangeSelectedRange):
+        (WebEditorClient::webViewDidChangeTypingStyle):
+        (WebEditorClient::webViewDidChangeSelection):
+        (WebEditorClient::isSelectTrailingWhitespaceEnabled):
+        * WebView.cpp:
+        (WebView::setEditingDelegate): Added.
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] eventSender does not support scalePageBy
+        https://bugs.webkit.org/show_bug.cgi?id=140726
+        <rdar://problem/19549865>
+
+        Reviewed by Dean Jackson.
+
+        * Interfaces/IWebViewPrivate.idl: Add scaleWebView API.
+        * WebView.cpp:
+        (WebView::scaleWebView): 
+        Connect WebCore implementation to the Windows COM interface.
+        * WebView.h:
+
+2015-01-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(INSPECTOR) ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=140668
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (registerWindowClass):
+        * WebInspector.cpp:
+        (WebInspector::setTimelineProfilingEnabled):
+        * WebNodeHighlight.cpp:
+        (WebNodeHighlight::WebNodeHighlight):
+        (WebNodeHighlight::update):
+        * WebNodeHighlight.h:
+        * WebView.cpp:
+        (WebView::WebView):
+        (WebView::close):
+        (WebView::initWithFrame):
+        (WebView::inspector):
+        * WebView.h:
+
+2015-01-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove non-Windows cruft from WebKit/win/Plugins
+        https://bugs.webkit.org/show_bug.cgi?id=140675
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/PluginDatabase.cpp:
+        (WebCore::PluginDatabase::defaultPluginDirectories):
+        (WebCore::PluginDatabase::isPreferredPluginDirectory):
+        (WebCore::PluginDatabase::getPluginPathsInDirectories):
+        * Plugins/PluginDebug.cpp:
+        (WebCore::prettyNameForNPNVariable):
+        (WebCore::prettyNameForNPPVariable):
+        (WebCore::prettyNameForDrawingModel): Deleted.
+        (WebCore::prettyNameForEventModel): Deleted.
+        * Plugins/PluginDebug.h:
+        * Plugins/PluginPackage.cpp:
+        (WebCore::PluginPackage::compareFileVersion):
+        (WebCore::PluginPackage::determineQuirks): Deleted.
+        (WebCore::PluginPackage::determineModuleVersionFromDescription): Deleted.
+        (WebCore::PluginPackage::hash): Deleted.
+        (WebCore::PluginPackage::equal): Deleted.
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::setFrameRect):
+        (WebCore::PluginView::handleEvent):
+        (WebCore::PluginView::stop):
+        (WebCore::PluginView::setValue):
+        (WebCore::PluginView::PluginView):
+        * Plugins/PluginView.h:
+        (WebCore::PluginView::platformPluginWidget): Deleted.
+        (WebCore::PluginView::setPlatformPluginWidget): Deleted.
+        * Plugins/PluginViewWin.cpp:
+        (windowHandleForPageClient):
+        (WebCore::PluginView::hookedBeginPaint):
+        (WebCore::PluginView::hookedEndPaint):
+        (WebCore::hook):
+        (WebCore::registerPluginView):
+        (WebCore::PluginView::paint):
+        (WebCore::PluginView::handleMouseEvent):
+        (WebCore::PluginView::setNPWindowRect):
+        (WebCore::PluginView::platformStart):
+        (WebCore::PluginView::snapshot):
+        * Plugins/npapi.cpp:
+        (NPN_InvalidateRect):
+
+2015-01-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Periodic failure in DumpRenderTree related to WebActionPropertyBag::Read
+        https://bugs.webkit.org/show_bug.cgi?id=139906
+
+        Reviewed by Dean Jackson.
+
+        WebKit on Windows was creating uninitialized VARIANT structures, then attempting
+        to use them. This patch fixes that.
+
+        Identified by dom/html/level2/html/HTMLIFrameElement03.html (and others)
+
+        * COMEnumVariant.h:
+        (COMEnumVariant<ContainerType>::Next):
+        * COMPropertyBag.h:
+        (HashType>::Read):
+        * DefaultPolicyDelegate.cpp:
+        (DefaultPolicyDelegate::decidePolicyForNavigationAction):
+        * WebActionPropertyBag.cpp:
+        (WebActionPropertyBag::Read):
+        * WebDatabaseManager.cpp:
+        (DatabaseDetailsPropertyBag::Read):
+        * WebElementPropertyBag.cpp:
+        (WebElementPropertyBag::Read):
+        * WebFrame.cpp:
+        (EnumChildFrames::Next):
+        * WebView.cpp:
+        (WebView::notifyDidAddIcon):
+
+2015-01-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SQL_DATABASE) guards
+        https://bugs.webkit.org/show_bug.cgi?id=140434
+
+        Reviewed by Darin Adler.
+
+        * ForEachCoClass.h:
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::exceededDatabaseQuota):
+        * WebCoreSupport/WebChromeClient.h:
+        * WebDatabaseManager.cpp:
+        (WebKitInitializeWebDatabasesIfNecessary):
+        * WebDatabaseManager.h:
+        * WebSecurityOrigin.cpp:
+        (WebSecurityOrigin::usage):
+        (WebSecurityOrigin::quota):
+        (WebSecurityOrigin::setQuota):
+        * WebView.cpp:
+        (WebView::initWithFrame):
+        (WebView::notifyPreferencesChanged):
+
+2015-01-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r178510
+
+        Correct #include and declarations from Font->FontCascade
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::font):
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::draw):
+        * WebKitGraphics.cpp:
+        * WebPreferences.cpp:
+
 2015-01-14  Chris Dumez  <cdumez@apple.com>
 
         Make 'TypeName' parameter unnecessary in CSSPropertyNames.in

@@ -41,11 +41,8 @@ class BoundaryTag {
 public:
     static Range init(LargeChunk*);
     static Range deallocate(void*);
-    static void allocate(size_t, Range&, Range& leftover, bool& hasPhysicalPages);
+    static void allocate(const Range&, size_t, Range& leftover, bool& hasPhysicalPages);
     static unsigned compactBegin(const Range&);
-
-    bool isXLarge() { return m_size == xLargeMarker; }
-    void setXLarge() { m_size = xLargeMarker; }
 
     bool isFree() { return m_isFree; }
     void setFree(bool isFree) { m_isFree = isFree; }
@@ -71,16 +68,14 @@ private:
     static const size_t flagBits = 3;
     static const size_t compactBeginBits = 5;
     static const size_t sizeBits = bitCount<unsigned>() - flagBits - compactBeginBits;
-    static const size_t xLargeMarker = 1; // This size is unused because our minimum object size is greater than it.
 
-    static_assert(largeMin > xLargeMarker, "largeMin must provide enough umbrella to fit xLargeMarker.");
     static_assert((1 << compactBeginBits) - 1 >= largeMin / largeAlignment, "compactBegin must be encodable in a BoundaryTag.");
     static_assert((1 << sizeBits) - 1 >= largeMax, "largeMax must be encodable in a BoundaryTag.");
 
-    static void splitLarge(BeginTag*, size_t size, EndTag*& endTag, Range&, Range& leftover);
-    static void mergeLargeLeft(EndTag*& prev, BeginTag*& beginTag, Range&, bool& hasPhysicalPages);
-    static void mergeLargeRight(EndTag*&, BeginTag*& next, Range&, bool& hasPhysicalPages);
-    static void mergeLarge(BeginTag*&, EndTag*&, Range&);
+    static void split(const Range&, size_t, BeginTag*, EndTag*&, Range& leftover);
+    static Range mergeLeft(const Range&, BeginTag*&, EndTag* prev, bool& hasPhysicalPages);
+    static Range mergeRight(const Range&, EndTag*&, BeginTag* next, bool& hasPhysicalPages);
+    static Range merge(const Range&, BeginTag*&, EndTag*&);
 
     bool m_isFree: 1;
     bool m_isEnd: 1;
@@ -102,7 +97,6 @@ inline void BoundaryTag::setRange(const Range& range)
     m_compactBegin = compactBegin(range);
     m_size = static_cast<unsigned>(range.size());
     BASSERT(this->size() == range.size());
-    BASSERT(!isXLarge());
 }
 
 inline EndTag* BoundaryTag::prev()

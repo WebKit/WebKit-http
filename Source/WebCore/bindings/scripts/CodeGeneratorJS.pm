@@ -142,56 +142,31 @@ sub GenerateInterface
 
 sub GenerateAttributeEventListenerCall
 {
-    my $className = shift;
     my $implSetterFunctionName = shift;
     my $windowEventListener = shift;
 
     my $wrapperObject = $windowEventListener ? "globalObject" : "castedThis";
     my @GenerateEventListenerImpl = ();
 
-    if ($className eq "JSSVGElementInstance") {
-        # SVGElementInstances have to create JSEventListeners with the wrapper equal to the correspondingElement
-        $wrapperObject = "asObject(correspondingElementWrapper)";
-
-        push(@GenerateEventListenerImpl, <<END);
-    JSValue correspondingElementWrapper = toJS(exec, castedThis->globalObject(), impl.correspondingElement());
-    if (correspondingElementWrapper.isObject())
-END
-
-        # Add leading whitespace to format the impl.set... line correctly
-        push(@GenerateEventListenerImpl, "    ");
-    }
-
-    push(@GenerateEventListenerImpl, "    impl.set$implSetterFunctionName(createJSAttributeEventListener(exec, value, $wrapperObject));\n");
+    push(@GenerateEventListenerImpl, "    impl.set$implSetterFunctionName(createJSEventListenerForAttribute(*exec, value, *$wrapperObject));\n");
     return @GenerateEventListenerImpl;
 }
 
 sub GenerateEventListenerCall
 {
-    my $className = shift;
     my $functionName = shift;
-    my $passRefPtrHandling = ($functionName eq "add") ? "" : ".get()";
+    my $suffix = ucfirst $functionName;
+    my $passRefPtrHandling = ($functionName eq "add") ? "" : ".ptr()";
 
     $implIncludes{"JSEventListener.h"} = 1;
 
     my @GenerateEventListenerImpl = ();
-    my $wrapperObject = "castedThis";
-    if ($className eq "JSSVGElementInstance") {
-        # SVGElementInstances have to create JSEventListeners with the wrapper equal to the correspondingElement
-        $wrapperObject = "asObject(correspondingElementWrapper)";
-
-        push(@GenerateEventListenerImpl, <<END);
-    JSValue correspondingElementWrapper = toJS(exec, castedThis->globalObject(), impl.correspondingElement());
-    if (!correspondingElementWrapper.isObject())
-        return JSValue::encode(jsUndefined());
-END
-    }
 
     push(@GenerateEventListenerImpl, <<END);
     JSValue listener = exec->argument(1);
-    if (!listener.isObject())
+    if (UNLIKELY(!listener.isObject()))
         return JSValue::encode(jsUndefined());
-    impl.${functionName}EventListener(exec->argument(0).toString(exec)->value(exec), JSEventListener::create(asObject(listener), $wrapperObject, false, currentWorld(exec))$passRefPtrHandling, exec->argument(2).toBoolean(exec));
+    impl.${functionName}EventListener(exec->argument(0).toString(exec)->toAtomicString(exec), createJSEventListenerFor$suffix(*exec, *asObject(listener), *castedThis)$passRefPtrHandling, exec->argument(2).toBoolean(exec));
     return JSValue::encode(jsUndefined());
 END
     return @GenerateEventListenerImpl;
@@ -954,6 +929,8 @@ sub GenerateHeader
     push(@headerContent, "    {\n");
     if (IsDOMGlobalObject($interface)) {
         push(@headerContent, "        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::GlobalObjectType, StructureFlags), info());\n");
+    } elsif ($codeGenerator->InheritsInterface($interface, "Document")) {
+        push(@headerContent, "        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::JSType(JSDocumentWrapperType), StructureFlags), info());\n");
     } elsif ($codeGenerator->InheritsInterface($interface, "Element")) {
         push(@headerContent, "        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::JSType(JSElementType), StructureFlags), info());\n");
     } elsif ($codeGenerator->InheritsInterface($interface, "Node")) {
@@ -1634,20 +1611,10 @@ sub GetCastingHelperForThisObject
     if ($interface->name eq "Element") {
         return "jsElementCast";
     }
+    if ($interface->name eq "Document") {
+        return "jsDocumentCast";
+    }
     return "jsDynamicCast<JS" . $interface->name . "*>";
-}
-
-sub GetCastingHelperForBaseObject
-{
-    my $interface = shift;
-
-    if ($interface->name eq "Node") {
-        return "jsNodeCast";
-    }
-    if ($interface->name eq "Element") {
-        return "jsElementCast";
-    }
-    return "jsCast<JS" . $interface->name . "*>";
 }
 
 sub GetIndexedGetterExpression
@@ -2198,7 +2165,7 @@ sub GenerateImplementation
                 if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
                     push(@implContent, "    ${className}* castedThis = to${className}(JSValue::decode(thisValue));\n");
                 } elsif (AttributeShouldBeOnInstance($interface, $attribute)) {
-                    push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForBaseObject($interface) . "(slotBase);\n");
+                    push(@implContent, "    ${className}* castedThis = jsCast<JS${interfaceName}*>(slotBase);\n");
                     if (InterfaceRequiresAttributesOnInstanceForCompatibility($interface)) {
                         push(@implContent, "    ${className}* castedThisObject = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
                         push(@implContent, "    if (UNLIKELY(!castedThisObject))\n");
@@ -2554,7 +2521,7 @@ sub GenerateImplementation
                         push(@implContent, "    ${className}* castedThis = to${className}(JSValue::decode(thisValue));\n");
                     } elsif (AttributeShouldBeOnInstance($interface, $attribute)) {
                         push(@implContent, "    UNUSED_PARAM(thisValue);\n");
-                        push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForBaseObject($interface) . "(baseObject);\n");
+                        push(@implContent, "    ${className}* castedThis = jsCast<JS${interfaceName}*>(baseObject);\n");
                         if (InterfaceRequiresAttributesOnInstanceForCompatibility($interface)) {
                             push(@implContent, "    ${className}* castedThisObject = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
                             push(@implContent, "    if (UNLIKELY(!castedThisObject))\n");
@@ -2597,7 +2564,7 @@ sub GenerateImplementation
                         $implIncludes{"JSErrorHandler.h"} = 1;
                         push(@implContent, "    impl.set$implSetterFunctionName(createJSErrorHandler(exec, value, castedThis));\n");
                     } else {
-                        push(@implContent, GenerateAttributeEventListenerCall($className, $implSetterFunctionName, $windowEventListener));
+                        push(@implContent, GenerateAttributeEventListenerCall($implSetterFunctionName, $windowEventListener));
                     }
                 } elsif ($attribute->signature->type =~ /Constructor$/) {
                     my $constructorType = $attribute->signature->type;
@@ -2837,9 +2804,9 @@ sub GenerateImplementation
 
                     # For compatibility with legacy content, the EventListener calls are generated without GenerateArgumentsCountCheck.
                     if ($function->signature->name eq "addEventListener") {
-                        push(@implContent, GenerateEventListenerCall($className, "add"));
+                        push(@implContent, GenerateEventListenerCall("add"));
                     } elsif ($function->signature->name eq "removeEventListener") {
-                        push(@implContent, GenerateEventListenerCall($className, "remove"));
+                        push(@implContent, GenerateEventListenerCall("remove"));
                     } else {
                         GenerateArgumentsCountCheck(\@implContent, $function, $interface);
 
@@ -2983,7 +2950,7 @@ sub GenerateImplementation
             if (GetGenerateIsReachable($interface) eq "Impl") {
                 $rootString  = "    ${implType}* root = &js${interfaceName}->impl();\n";
             } elsif (GetGenerateIsReachable($interface) eq "ImplWebGLRenderingContext") {
-                $rootString  = "    WebGLRenderingContext* root = WTF::getPtr(js${interfaceName}->impl().context());\n";
+                $rootString  = "    WebGLRenderingContextBase* root = WTF::getPtr(js${interfaceName}->impl().context());\n";
             } elsif (GetGenerateIsReachable($interface) eq "ImplFrame") {
                 $rootString  = "    Frame* root = WTF::getPtr(js${interfaceName}->impl().frame());\n";
                 $rootString .= "    if (!root)\n";
@@ -4521,7 +4488,7 @@ EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct${className}(Exec
     if (!executionContext)
         return throwVMError(exec, createReferenceError(exec, "Constructor associated execution context is unavailable"));
 
-    AtomicString eventType = exec->argument(0).toString(exec)->value(exec);
+    AtomicString eventType = exec->argument(0).toString(exec)->toAtomicString(exec);
     if (UNLIKELY(exec->hadException()))
         return JSValue::encode(jsUndefined());
 

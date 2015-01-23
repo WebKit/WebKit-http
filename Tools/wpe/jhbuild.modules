@@ -19,7 +19,7 @@
   </metamodule>
 
   <repository type="tarball" name="sourceware.org-mirror"
-      href="ftp://mirrors.kernel.org/sources.redhat.com/"/>
+      href="http://mirrors.kernel.org/sources.redhat.com/"/>
   <repository type="tarball" name="ftp.gnome.org"
       href="http://ftp.gnome.org"/>
   <repository type="tarball" name="cairographics.org"
@@ -95,7 +95,7 @@
     <branch repo="github.com" module="WebKitForWayland/cairo.git" checkoutdir="cairo" tag="patches"/>
   </autotools>
 
-  <autotools id="wayland">
+  <autotools id="wayland" autogenargs="--disable-documentation">
     <branch module="releases/wayland-1.6.0.tar.xz" version="1.6.0"
             repo="wayland.freedesktop.org"
             hash="sha256:a7d5102dcf53d08c059d24bc62de491d7cd482070abeb6737a20d0d86ba6fc7f"/>

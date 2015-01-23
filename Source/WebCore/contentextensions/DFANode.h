@@ -41,10 +41,12 @@ namespace ContentExtensions {
 class DFANode {
 public:
     HashMap<uint16_t, unsigned> transitions;
+    bool hasFallbackTransition = false;
+    unsigned fallbackTransition;
     Vector<uint64_t> actions;
 
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
-    Vector<unsigned> correspondingDFANodes;
+    Vector<unsigned> correspondingNFANodes;
 #endif
 };
 
