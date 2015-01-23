@@ -51,10 +51,11 @@
 #import <CoreText/CTFont.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/DNS.h>
+#import <WebCore/DiagnosticLoggingClient.h>
+#import <WebCore/DiagnosticLoggingKeys.h>
 #import <WebCore/Element.h>
 #import <WebCore/ElementAncestorIterator.h>
 #import <WebCore/EventHandler.h>
-#import <WebCore/FeatureCounter.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Frame.h>
@@ -502,8 +503,13 @@ void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore:
         send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(location)));
 }
 
-void WebPage::handleTap(const IntPoint& point)
+void WebPage::handleTap(const IntPoint& point, uint64_t lastLayerTreeTranscationId)
 {
+    if (lastLayerTreeTranscationId < m_firstLayerTreeTransactionIDAfterDidCommitLoad) {
+        send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(m_potentialTapLocation)));
+        return;
+    }
+
     FloatPoint adjustedPoint;
     Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(point, adjustedPoint);
     handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
@@ -551,9 +557,9 @@ void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoi
     sendTapHighlightForNodeIfNecessary(requestID, m_potentialTapNode.get());
 }
 
-void WebPage::commitPotentialTap()
+void WebPage::commitPotentialTap(uint64_t lastLayerTreeTranscationId)
 {
-    if (!m_potentialTapNode || !m_potentialTapNode->renderer()) {
+    if (!m_potentialTapNode || !m_potentialTapNode->renderer() || lastLayerTreeTranscationId < m_firstLayerTreeTransactionIDAfterDidCommitLoad) {
         commitPotentialTapFailed();
         return;
     }
@@ -635,7 +641,6 @@ void WebPage::setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSel
     select.optionSelectedByUser(index, true, allowMultipleSelection);
 }
 
-#if ENABLE(INSPECTOR)
 void WebPage::showInspectorHighlight(const WebCore::Highlight& highlight)
 {
     send(Messages::WebPageProxy::ShowInspectorHighlight(highlight));
@@ -665,7 +670,6 @@ void WebPage::disableInspectorNodeSearch()
 {
     send(Messages::WebPageProxy::DisableInspectorNodeSearch());
 }
-#endif
 
 static FloatQuad innerFrameQuad(Frame* frame, Node* assistedNode)
 {
@@ -1792,8 +1796,8 @@ void WebPage::requestAutocorrectionData(const String& textForAutocorrection, uin
 
     bool multipleFonts = false;
     CTFontRef font = nil;
-    if (const SimpleFontData* fontData = frame.editor().fontForSelection(multipleFonts))
-        font = fontData->getCTFont();
+    if (auto* coreFont = frame.editor().fontForSelection(multipleFonts))
+        font = coreFont->getCTFont();
 
     CGFloat fontSize = CTFontGetSize(font);
     uint64_t fontTraits = CTFontGetSymbolicTraits(font);
@@ -2694,7 +2698,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
 void WebPage::willStartUserTriggeredZooming()
 {
-    FEATURE_COUNTER_INCREMENT_KEY(m_page.get(), FeatureCounterWebViewUserZoomedKey);
+    m_page->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::webViewKey(), DiagnosticLoggingKeys::userKey(), DiagnosticLoggingKeys::zoomedKey());
     m_userHasChangedPageScaleFactor = true;
 }
 

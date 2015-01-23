@@ -262,14 +262,18 @@ void CSSParserSelector::adoptSelectorVector(Vector<std::unique_ptr<CSSParserSele
 }
 
 #if ENABLE(CSS_SELECTORS_LEVEL4)
-void CSSParserSelector::setArgumentList(Vector<CSSParserString>& stringVector)
+void CSSParserSelector::setLangArgumentList(const Vector<CSSParserString>& stringVector)
 {
     ASSERT_WITH_MESSAGE(!stringVector.isEmpty(), "No CSS Selector takes an empty argument list.");
-    auto argumentList = std::make_unique<Vector<AtomicString>>();
+    auto argumentList = std::make_unique<Vector<LanguageArgument>>();
     argumentList->reserveInitialCapacity(stringVector.size());
-    for (const AtomicString& argument : stringVector)
-        argumentList->append(argument);
-    m_selector->setArgumentList(WTF::move(argumentList));
+    for (const CSSParserString& string : stringVector) {
+        LanguageArgument languageArgument;
+        languageArgument.languageRange = string;
+        languageArgument.tokenType = string.tokenType();
+        argumentList->append(languageArgument);
+    }
+    m_selector->setLangArgumentList(WTF::move(argumentList));
 }
 #endif
 
@@ -318,7 +322,40 @@ void CSSParserSelector::appendTagHistory(CSSSelector::Relation relation, std::un
     CSSParserSelector* end = this;
     while (end->tagHistory())
         end = end->tagHistory();
+
     end->setRelation(relation);
+    end->setTagHistory(WTF::move(selector));
+}
+
+void CSSParserSelector::appendTagHistory(CSSParserSelectorCombinator relation, std::unique_ptr<CSSParserSelector> selector)
+{
+    CSSParserSelector* end = this;
+    while (end->tagHistory())
+        end = end->tagHistory();
+
+    CSSSelector::Relation selectorRelation;
+    switch (relation) {
+    case CSSParserSelectorCombinator::Child:
+        selectorRelation = CSSSelector::Child;
+        break;
+    case CSSParserSelectorCombinator::DescendantSpace:
+        selectorRelation = CSSSelector::Descendant;
+        break;
+    case CSSParserSelectorCombinator::DescendantDoubleChild:
+        selectorRelation = CSSSelector::Descendant;
+        break;
+    case CSSParserSelectorCombinator::DirectAdjacent:
+        selectorRelation = CSSSelector::DirectAdjacent;
+        break;
+    case CSSParserSelectorCombinator::IndirectAdjacent:
+        selectorRelation = CSSSelector::IndirectAdjacent;
+        break;
+    }
+    end->setRelation(selectorRelation);
+
+    if (relation == CSSParserSelectorCombinator::DescendantDoubleChild)
+        end->setDescendantUseDoubleChildSyntax();
+
     end->setTagHistory(WTF::move(selector));
 }
 

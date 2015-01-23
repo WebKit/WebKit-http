@@ -55,8 +55,8 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebFindClient.h"
 #include "WebFrameProxy.h"
-#include "WebPageContextMenuClient.h"
 #include "WebPageCreationParameters.h"
+#include "WebPageDiagnosticLoggingClient.h"
 #include "WebPreferences.h"
 #include <WebCore/AlternativeTextClient.h> // FIXME: Needed by WebPageProxyMessages.h for DICTATION_ALTERNATIVES.
 #include "WebPageProxyMessages.h"
@@ -112,6 +112,7 @@
 #endif
 
 namespace API {
+class ContextMenuClient;
 class FindClient;
 class FormClient;
 class LoaderClient;
@@ -160,6 +161,7 @@ class NativeWebKeyboardEvent;
 class NativeWebMouseEvent;
 class NativeWebWheelEvent;
 class PageClient;
+class RemoteLayerTreeScrollingPerformanceData;
 class RemoteLayerTreeTransaction;
 class RemoteScrollingCoordinatorProxy;
 class StringPairVector;
@@ -270,6 +272,8 @@ public:
 
     WebNavigationState& navigationState() { return *m_navigationState.get(); }
 
+    WebsiteDataStore& websiteDataStore() { return m_websiteDataStore; }
+
 #if ENABLE(ASYNC_SCROLLING)
     RemoteScrollingCoordinatorProxy* scrollingCoordinatorProxy() const { return m_scrollingCoordinatorProxy.get(); }
 #endif
@@ -283,9 +287,7 @@ public:
     void didEnterFullscreen();
     void didExitFullscreen();
 
-#if ENABLE(INSPECTOR)
     WebInspectorProxy* inspector();
-#endif
 
 #if ENABLE(REMOTE_INSPECTOR)
     bool allowsRemoteInspection() const { return m_allowsRemoteInspection; }
@@ -304,10 +306,12 @@ public:
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
-    void initializeContextMenuClient(const WKPageContextMenuClientBase*);
+    void setContextMenuClient(std::unique_ptr<API::ContextMenuClient>);
 #endif
     API::FindClient& findClient() { return *m_findClient; }
     void setFindClient(std::unique_ptr<API::FindClient>);
+    API::DiagnosticLoggingClient& diagnosticLoggingClient() { return *m_diagnosticLoggingClient; }
+    void setDiagnosticLoggingClient(std::unique_ptr<API::DiagnosticLoggingClient>);
     void initializeFindMatchesClient(const WKPageFindMatchesClientBase*);
     void setFormClient(std::unique_ptr<API::FormClient>);
     void setLoaderClient(std::unique_ptr<API::LoaderClient>);
@@ -409,6 +413,8 @@ public:
     
     bool maintainsInactiveSelection() const { return m_maintainsInactiveSelection; }
     void setMaintainsInactiveSelection(bool);
+    void setEditable(bool);
+    bool isEditable() const { return m_isEditable; }
 
 #if PLATFORM(IOS)
     void executeEditCommand(const String& commandName, std::function<void (CallbackBase::Error)>);
@@ -520,6 +526,11 @@ public:
     void setCompositionAsync(const String& text, Vector<WebCore::CompositionUnderline> underlines, const EditingRange& selectionRange, const EditingRange& replacementRange);
     void confirmCompositionAsync();
 
+    void setScrollPerformanceDataCollectionEnabled(bool);
+    bool scrollPerformanceDataCollectionEnabled() const { return m_scrollPerformanceDataCollectionEnabled; }
+    RemoteLayerTreeScrollingPerformanceData* scrollingPerformanceData() { return m_scrollingPerformanceData.get(); }
+#endif // PLATFORM(COCOA)
+
 #if PLATFORM(MAC)
     void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>& dictationAlternatives, bool registerUndoGroup);
     void attributedSubstringForCharacterRangeAsync(const EditingRange&, std::function<void (const AttributedString&, const EditingRange&, CallbackBase::Error)>);
@@ -536,22 +547,26 @@ public:
     WebCore::IntRect firstRectForCharacterRange(const EditingRange&);
     bool executeKeypressCommands(const Vector<WebCore::KeypressCommand>&);
     void cancelComposition();
-#endif
+#endif // !USE(ASYNC_NSTEXTINPUTCLIENT)
 
     WKView* wkView() const;
     void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize);
     CGRect boundsOfLayerInLayerBackedWindowCoordinates(CALayer *) const;
-#endif
-#endif // PLATFORM(COCOA)
+#endif // PLATFORM(MAC)
+
 #if PLATFORM(EFL)
     void handleInputMethodKeydown(bool& handled);
     void confirmComposition(const String&);
     void setComposition(const String&, Vector<WebCore::CompositionUnderline>&, int);
     void cancelComposition();
 #endif
+
 #if PLATFORM(GTK)
     PlatformWidget viewWidget();
+    const WebCore::Color& backgroundColor() const { return m_backgroundColor; }
+    void setBackgroundColor(const WebCore::Color& color) { m_backgroundColor = color; }
 #endif
+
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     void commitPageTransitionViewport();
 #endif
@@ -559,9 +574,11 @@ public:
     void handleMouseEvent(const NativeWebMouseEvent&);
     void handleWheelEvent(const NativeWebWheelEvent&);
     void handleKeyboardEvent(const NativeWebKeyboardEvent&);
+
 #if ENABLE(IOS_TOUCH_EVENTS)
     void handleTouchEventSynchronously(const NativeWebTouchEvent&);
     void handleTouchEventAsynchronously(const NativeWebTouchEvent&);
+
 #elif ENABLE(TOUCH_EVENTS)
     void handleTouchEvent(const NativeWebTouchEvent&);
 #endif
@@ -879,6 +896,7 @@ public:
     void commitPotentialTap();
     void cancelPotentialTap();
     void tapHighlightAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
+    void handleTap(const WebCore::FloatPoint&);
 
     void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
     void inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint&);
@@ -905,8 +923,8 @@ public:
     void didFinishCheckingText(uint64_t requestID, const Vector<WebCore::TextCheckingResult>&);
     void didCancelCheckingText(uint64_t requestID);
 
-    void connectionWillOpen(IPC::Connection*);
-    void connectionWillClose(IPC::Connection*);
+    void connectionWillOpen(IPC::Connection&);
+    void connectionDidClose(IPC::Connection&);
 
     void processDidFinishLaunching();
 
@@ -1215,6 +1233,11 @@ private:
     void setCursor(const WebCore::Cursor&);
     void setCursorHiddenUntilMouseMoves(bool);
 
+    // Diagnostic messages logging.
+    void logDiagnosticMessage(const String& message, const String& description);
+    void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result);
+    void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value);
+
     void didReceiveEvent(uint32_t opaqueType, bool handled);
     void stopResponsivenessTimer();
 
@@ -1287,7 +1310,6 @@ private:
     void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, const UserData&);
     void stopAssistingNode();
 
-#if ENABLE(INSPECTOR)
     void showInspectorHighlight(const WebCore::Highlight&);
     void hideInspectorHighlight();
 
@@ -1296,7 +1318,7 @@ private:
 
     void enableInspectorNodeSearch();
     void disableInspectorNodeSearch();
-#endif
+
     void notifyRevealedSelection();
 #endif // PLATFORM(IOS)
 
@@ -1356,8 +1378,9 @@ private:
 #endif
     std::unique_ptr<API::FindClient> m_findClient;
     WebFindMatchesClient m_findMatchesClient;
+    std::unique_ptr<API::DiagnosticLoggingClient> m_diagnosticLoggingClient;
 #if ENABLE(CONTEXT_MENUS)
-    WebPageContextMenuClient m_contextMenuClient;
+    std::unique_ptr<API::ContextMenuClient> m_contextMenuClient;
 #endif
 
     std::unique_ptr<WebNavigationState> m_navigationState;
@@ -1386,9 +1409,7 @@ private:
     String m_customUserAgent;
     String m_customTextEncodingName;
 
-#if ENABLE(INSPECTOR)
     RefPtr<WebInspectorProxy> m_inspector;
-#endif
 
 #if ENABLE(FULLSCREEN_API)
     RefPtr<WebFullScreenManagerProxy> m_fullScreenManager;
@@ -1402,6 +1423,7 @@ private:
     bool m_dynamicViewportSizeUpdateWaitingForTarget;
     bool m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit;
     uint64_t m_dynamicViewportSizeUpdateLayerTreeTransactionID;
+    uint64_t m_layerTreeTransactionIdAtLastTouchStart;
 #endif
 
 #if ENABLE(VIBRATION)
@@ -1444,6 +1466,7 @@ private:
     String m_toolTip;
 
     EditorState m_editorState;
+    bool m_isEditable;
 #if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     bool m_temporarilyClosedComposition; // Editor state changed from hasComposition to !hasComposition, but that was only with shouldIgnoreCompositionSelectionChange yet.
 #endif
@@ -1531,6 +1554,7 @@ private:
 
 #if PLATFORM(GTK)
     String m_accessibilityPlugID;
+    WebCore::Color m_backgroundColor;
 #endif
 
     int64_t m_spellDocumentTag;
@@ -1600,6 +1624,9 @@ private:
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;
     std::unique_ptr<WebCore::RunLoopObserver> m_viewStateChangeDispatcher;
+
+    std::unique_ptr<RemoteLayerTreeScrollingPerformanceData> m_scrollingPerformanceData;
+    bool m_scrollPerformanceDataCollectionEnabled;
 #endif
     UserObservablePageToken m_pageIsUserObservableCount;
     ProcessSuppressionDisabledToken m_preventProcessSuppressionCount;

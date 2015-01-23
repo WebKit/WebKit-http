@@ -43,27 +43,57 @@ namespace ContentExtensions {
 // FIXME: include the hash inside NodeIdSet.
 typedef HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> NodeIdSet;
 
-static inline void epsilonClosure(NodeIdSet& nodeSet, const Vector<NFANode>& graph, unsigned epsilonTransitionCharacter)
+static inline void epsilonClosureExcludingSelf(const Vector<NFANode>& nfaGraph, unsigned nodeId, unsigned epsilonTransitionCharacter, Vector<unsigned>& output)
 {
-    ASSERT(!nodeSet.isEmpty());
-    ASSERT(!graph.isEmpty());
+    const auto& transitions = nfaGraph[nodeId].transitions;
+    auto epsilonTransitionSlot = transitions.find(epsilonTransitionCharacter);
 
-    // FIXME: fine a good inline size for unprocessedNodes.
-    Vector<unsigned> unprocessedNodes;
-    copyToVector(nodeSet, unprocessedNodes);
+    if (epsilonTransitionSlot == transitions.end())
+        return;
+
+    NodeIdSet closure({ nodeId });
+    Vector<unsigned, 64> unprocessedNodes;
+    copyToVector(epsilonTransitionSlot->value, unprocessedNodes);
+    closure.add(unprocessedNodes.begin(), unprocessedNodes.end());
+    output = unprocessedNodes;
 
     do {
         unsigned unprocessedNodeId = unprocessedNodes.takeLast();
-        const NFANode& node = graph[unprocessedNodeId];
+        const NFANode& node = nfaGraph[unprocessedNodeId];
         auto epsilonTransitionSlot = node.transitions.find(epsilonTransitionCharacter);
         if (epsilonTransitionSlot != node.transitions.end()) {
             for (unsigned targetNodeId : epsilonTransitionSlot->value) {
-                auto addResult = nodeSet.add(targetNodeId);
-                if (addResult.isNewEntry)
+                auto addResult = closure.add(targetNodeId);
+                if (addResult.isNewEntry) {
                     unprocessedNodes.append(targetNodeId);
+                    output.append(targetNodeId);
+                }
             }
         }
     } while (!unprocessedNodes.isEmpty());
+}
+
+static void resolveEpsilonClosures(Vector<NFANode>& nfaGraph, unsigned epsilonTransitionCharacter, Vector<Vector<unsigned>>& nfaNodeClosures)
+{
+    unsigned nfaGraphSize = nfaGraph.size();
+    nfaNodeClosures.resize(nfaGraphSize);
+    for (unsigned nodeId = 0; nodeId < nfaGraphSize; ++nodeId)
+        epsilonClosureExcludingSelf(nfaGraph, nodeId, epsilonTransitionCharacter, nfaNodeClosures[nodeId]);
+
+    for (unsigned nodeId = 0; nodeId < nfaGraphSize; ++nodeId) {
+        if (!nfaNodeClosures[nodeId].isEmpty()) {
+            bool epsilonTransitionIsRemoved = nfaGraph[nodeId].transitions.remove(epsilonTransitionCharacter);
+            ASSERT_UNUSED(epsilonTransitionIsRemoved, epsilonTransitionIsRemoved);
+        }
+    }
+}
+
+static ALWAYS_INLINE void extendSetWithClosure(const Vector<Vector<unsigned>>& nfaNodeClosures, unsigned nodeId, NodeIdSet& set)
+{
+    ASSERT(set.contains(nodeId));
+    const Vector<unsigned>& nodeClosure = nfaNodeClosures[nodeId];
+    if (!nodeClosure.isEmpty())
+        set.add(nodeClosure.begin(), nodeClosure.end());
 }
 
 struct UniqueNodeIdSetImpl {
@@ -219,10 +249,9 @@ struct NodeIdSetToUniqueNodeIdSetTranslator {
         HashSet<uint64_t, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> actions;
         for (unsigned nfaNodeId : source.nodeIdSet) {
             const NFANode& nfaNode = source.nfaGraph[nfaNodeId];
-            if (nfaNode.isFinal)
-                actions.add(nfaNode.ruleId);
+            actions.add(nfaNode.finalRuleIds.begin(), nfaNode.finalRuleIds.end());
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
-            newDFANode.correspondingDFANodes.append(nfaNodeId);
+            newDFANode.correspondingNFANodes.append(nfaNodeId);
 #endif
         }
         copyToVector(actions, newDFANode.actions);
@@ -235,7 +264,7 @@ struct NodeIdSetToUniqueNodeIdSetTranslator {
     }
 };
 
-class SetTransitionsExcludingEpsilon {
+class SetTransitions {
 public:
     NodeIdSet& operator[](unsigned index)
     {
@@ -262,49 +291,79 @@ private:
     NodeIdSet m_targets[128];
 };
 
-static inline void populateTransitionsExcludingEpsilon(SetTransitionsExcludingEpsilon& setTransitionsExcludingEpsilon, const UniqueNodeIdSetImpl& sourceNodeSet, const Vector<NFANode>& graph, unsigned epsilonTransitionCharacter)
+static inline void populateTransitions(SetTransitions& setTransitions, NodeIdSet& setFallbackTransition, const UniqueNodeIdSetImpl& sourceNodeSet, const Vector<NFANode>& graph, const Vector<Vector<unsigned>>& nfaNodeclosures)
 {
     ASSERT(!graph.isEmpty());
+    ASSERT(setFallbackTransition.isEmpty());
 #if !ASSERT_DISABLED
-    for (const NodeIdSet& set : setTransitionsExcludingEpsilon)
+    for (const NodeIdSet& set : setTransitions)
         ASSERT(set.isEmpty());
 #endif
 
+    Vector<unsigned, 8> allFallbackTransitions;
     const unsigned* buffer = sourceNodeSet.buffer();
     for (unsigned i = 0; i < sourceNodeSet.m_size; ++i) {
         unsigned nodeId = buffer[i];
-        const NFANode& node = graph[nodeId];
-        for (const auto& transitionSlot : node.transitions) {
-            if (transitionSlot.key != epsilonTransitionCharacter)
-                setTransitionsExcludingEpsilon[transitionSlot.key].add(transitionSlot.value.begin(), transitionSlot.value.end());
+        const NFANode& nfaSourceNode = graph[nodeId];
+        for (unsigned targetTransition : nfaSourceNode.transitionsOnAnyCharacter)
+            allFallbackTransitions.append(targetTransition);
+    }
+    for (unsigned targetNodeId : allFallbackTransitions) {
+        auto addResult = setFallbackTransition.add(targetNodeId);
+        if (addResult.isNewEntry)
+            extendSetWithClosure(nfaNodeclosures, targetNodeId, setFallbackTransition);
+    }
+
+    for (unsigned i = 0; i < sourceNodeSet.m_size; ++i) {
+        unsigned nodeId = buffer[i];
+        for (const auto& transitionSlot : graph[nodeId].transitions) {
+            NodeIdSet& targetSet = setTransitions[transitionSlot.key];
+            for (unsigned targetNodId : transitionSlot.value) {
+                targetSet.add(targetNodId);
+                extendSetWithClosure(nfaNodeclosures, targetNodId, targetSet);
+            }
+            targetSet.add(setFallbackTransition.begin(), setFallbackTransition.end());
         }
     }
 }
 
-DFA NFAToDFA::convert(const NFA& nfa)
+static ALWAYS_INLINE unsigned getOrCreateDFANode(const NodeIdSet& nfaNodeSet, const Vector<NFANode>& nfaGraph, Vector<DFANode>& dfaGraph, UniqueNodeIdSetTable& uniqueNodeIdSetTable, Vector<UniqueNodeIdSetImpl*>& unprocessedNodes)
 {
-    Vector<DFANode> dfaGraph;
+    NodeIdSetToUniqueNodeIdSetSource nodeIdSetToUniqueNodeIdSetSource(dfaGraph, nfaGraph, nfaNodeSet);
+    auto uniqueNodeIdAddResult = uniqueNodeIdSetTable.add<NodeIdSetToUniqueNodeIdSetTranslator>(nodeIdSetToUniqueNodeIdSetSource);
+    if (uniqueNodeIdAddResult.isNewEntry)
+        unprocessedNodes.append(uniqueNodeIdAddResult.iterator->impl());
 
-    const Vector<NFANode>& nfaGraph = nfa.m_nodes;
+    return uniqueNodeIdAddResult.iterator->impl()->m_dfaNodeId;
+}
+
+DFA NFAToDFA::convert(NFA& nfa)
+{
+    Vector<NFANode>& nfaGraph = nfa.m_nodes;
+
+    Vector<Vector<unsigned>> nfaNodeClosures;
+    resolveEpsilonClosures(nfaGraph, NFA::epsilonTransitionCharacter, nfaNodeClosures);
 
     NodeIdSet initialSet({ nfa.root() });
-    epsilonClosure(initialSet, nfaGraph, NFA::epsilonTransitionCharacter);
+    extendSetWithClosure(nfaNodeClosures, nfa.root(), initialSet);
 
     UniqueNodeIdSetTable uniqueNodeIdSetTable;
 
+    Vector<DFANode> dfaGraph;
     NodeIdSetToUniqueNodeIdSetSource initialNodeIdSetToUniqueNodeIdSetSource(dfaGraph, nfaGraph, initialSet);
     auto addResult = uniqueNodeIdSetTable.add<NodeIdSetToUniqueNodeIdSetTranslator>(initialNodeIdSetToUniqueNodeIdSetSource);
 
     Vector<UniqueNodeIdSetImpl*> unprocessedNodes;
     unprocessedNodes.append(addResult.iterator->impl());
 
-    SetTransitionsExcludingEpsilon transitionsFromClosedSet;
+    SetTransitions transitionsFromClosedSet;
 
     do {
         UniqueNodeIdSetImpl* uniqueNodeIdSetImpl = unprocessedNodes.takeLast();
 
         unsigned dfaNodeId = uniqueNodeIdSetImpl->m_dfaNodeId;
-        populateTransitionsExcludingEpsilon(transitionsFromClosedSet, *uniqueNodeIdSetImpl, nfaGraph, NFA::epsilonTransitionCharacter);
+        NodeIdSet setFallbackTransition;
+        populateTransitions(transitionsFromClosedSet, setFallbackTransition, *uniqueNodeIdSetImpl, nfaGraph, nfaNodeClosures);
 
         // FIXME: there should not be any transition on key 0.
         for (unsigned key = 0; key < transitionsFromClosedSet.size(); ++key) {
@@ -313,19 +372,18 @@ DFA NFAToDFA::convert(const NFA& nfa)
             if (targetNodeSet.isEmpty())
                 continue;
 
-            epsilonClosure(targetNodeSet, nfaGraph, NFA::epsilonTransitionCharacter);
-
-            NodeIdSetToUniqueNodeIdSetSource nodeIdSetToUniqueNodeIdSetSource(dfaGraph, nfaGraph, targetNodeSet);
-            auto uniqueNodeIdAddResult = uniqueNodeIdSetTable.add<NodeIdSetToUniqueNodeIdSetTranslator>(nodeIdSetToUniqueNodeIdSetSource);
-
-            unsigned targetNodeId = uniqueNodeIdAddResult.iterator->impl()->m_dfaNodeId;
+            unsigned targetNodeId = getOrCreateDFANode(targetNodeSet, nfaGraph, dfaGraph, uniqueNodeIdSetTable, unprocessedNodes);
             const auto addResult = dfaGraph[dfaNodeId].transitions.add(key, targetNodeId);
             ASSERT_UNUSED(addResult, addResult.isNewEntry);
 
-            if (uniqueNodeIdAddResult.isNewEntry)
-                unprocessedNodes.append(uniqueNodeIdAddResult.iterator->impl());
-
             targetNodeSet.clear();
+        }
+        if (!setFallbackTransition.isEmpty()) {
+            unsigned targetNodeId = getOrCreateDFANode(setFallbackTransition, nfaGraph, dfaGraph, uniqueNodeIdSetTable, unprocessedNodes);
+            DFANode& dfaSourceNode = dfaGraph[dfaNodeId];
+            ASSERT(!dfaSourceNode.hasFallbackTransition);
+            dfaSourceNode.hasFallbackTransition = true;
+            dfaSourceNode.fallbackTransition = targetNodeId;
         }
     } while (!unprocessedNodes.isEmpty());
 

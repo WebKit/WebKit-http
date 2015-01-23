@@ -27,10 +27,7 @@
 #ifndef InspectorBackendDispatcher_h
 #define InspectorBackendDispatcher_h
 
-#if ENABLE(INSPECTOR)
-
 #include "InspectorProtocolTypes.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -106,5 +103,4 @@ private:
 
 } // namespace Inspector
 
-#endif // ENABLE(INSPECTOR)
 #endif // !defined(InspectorBackendDispatcher_h)

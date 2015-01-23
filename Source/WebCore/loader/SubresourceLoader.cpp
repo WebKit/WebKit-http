@@ -30,14 +30,17 @@
 #include "SubresourceLoader.h"
 
 #include "CachedResourceLoader.h"
+#include "DiagnosticLoggingClient.h"
+#include "DiagnosticLoggingKeys.h"
 #include "Document.h"
 #include "DocumentLoader.h"
-#include "FeatureCounter.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "Logging.h"
+#include "MainFrame.h"
 #include "MemoryCache.h"
 #include "Page.h"
+#include "Settings.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
@@ -157,7 +160,8 @@ void SubresourceLoader::willSendRequest(ResourceRequest& newRequest, const Resou
         if (newRequest.isConditional() && m_resource->resourceToRevalidate() && newRequest.url() != m_resource->resourceToRevalidate()->response().url()) {
             newRequest.makeUnconditional();
             memoryCache().revalidationFailed(m_resource);
-            FEATURE_COUNTER_INCREMENT_KEY(m_frame ? m_frame->page() : nullptr, FeatureCounterCachedResourceRevalidationFailureKey);
+            if (m_frame)
+                m_frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::cachedResourceRevalidationKey(), emptyString(), DiagnosticLoggingResultFail);
         }
         
         if (!m_documentLoader->cachedResourceLoader().canRequest(m_resource->type(), newRequest.url(), options())) {
@@ -204,14 +208,16 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
             // Existing resource is ok, just use it updating the expiration time.
             m_resource->setResponse(response);
             memoryCache().revalidationSucceeded(m_resource, response);
-            FEATURE_COUNTER_INCREMENT_KEY(m_frame ? m_frame->page() : nullptr, FeatureCounterCachedResourceRevalidationSuccessKey);
+            if (m_frame)
+                m_frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::cachedResourceRevalidationKey(), emptyString(), DiagnosticLoggingResultPass);
             if (!reachedTerminalState())
                 ResourceLoader::didReceiveResponse(response);
             return;
         }
         // Did not get 304 response, continue as a regular resource load.
         memoryCache().revalidationFailed(m_resource);
-        FEATURE_COUNTER_INCREMENT_KEY(m_frame ? m_frame->page() : nullptr, FeatureCounterCachedResourceRevalidationFailureKey);
+        if (m_frame)
+            m_frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::cachedResourceRevalidationKey(), emptyString(), DiagnosticLoggingResultFail);
     }
 
     m_resource->responseReceived(response);
@@ -292,36 +298,39 @@ bool SubresourceLoader::checkForHTTPStatusCodeError()
     return true;
 }
 
-static void logResourceLoadedUsingFeatureCounter(Page* page, CachedResource::Type type)
+static void logResourceLoaded(Frame* frame, CachedResource::Type type)
 {
-    const char* key;
+    if (!frame)
+        return;
+
+    String resourceType;
     switch (type) {
     case CachedResource::MainResource:
-        key = FeatureCounterResourceLoadedMainResourceKey;
+        resourceType = DiagnosticLoggingKeys::mainResourceKey();
         break;
     case CachedResource::ImageResource:
-        key = FeatureCounterResourceLoadedImageKey;
+        resourceType = DiagnosticLoggingKeys::imageKey();
         break;
 #if ENABLE(XSLT)
     case CachedResource::XSLStyleSheet:
 #endif
     case CachedResource::CSSStyleSheet:
-        key = FeatureCounterResourceLoadedStyleSheetKey;
+        resourceType = DiagnosticLoggingKeys::styleSheetKey();
         break;
     case CachedResource::Script:
-        key = FeatureCounterResourceLoadedScriptKey;
+        resourceType = DiagnosticLoggingKeys::scriptKey();
         break;
     case CachedResource::FontResource:
 #if ENABLE(SVG_FONTS)
     case CachedResource::SVGFontResource:
 #endif
-        key = FeatureCounterResourceLoadedFontKey;
+        resourceType = DiagnosticLoggingKeys::fontKey();
         break;
     case CachedResource::RawResource:
-        key = FeatureCounterResourceLoadedRawKey;
+        resourceType = DiagnosticLoggingKeys::rawKey();
         break;
     case CachedResource::SVGDocumentResource:
-        key = FeatureCounterResourceLoadedSVGDocumentKey;
+        resourceType = DiagnosticLoggingKeys::svgDocumentKey();
         break;
 #if ENABLE(LINK_PREFETCH)
     case CachedResource::LinkPrefetch:
@@ -330,10 +339,10 @@ static void logResourceLoadedUsingFeatureCounter(Page* page, CachedResource::Typ
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
 #endif
-        key = FeatureCounterResourceLoadedOtherKey;
+        resourceType = DiagnosticLoggingKeys::otherKey();
         break;
     }
-    FEATURE_COUNTER_INCREMENT_KEY(page, key);
+    frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceKey(), DiagnosticLoggingKeys::loadedKey(), resourceType);
 }
 
 void SubresourceLoader::didFinishLoading(double finishTime)
@@ -345,7 +354,7 @@ void SubresourceLoader::didFinishLoading(double finishTime)
     // FIXME (129394): We should cancel the load when a decode error occurs instead of continuing the load to completion.
     ASSERT(!m_resource->errorOccurred() || m_resource->status() == CachedResource::DecodeError);
     LOG(ResourceLoading, "Received '%s'.", m_resource->url().string().latin1().data());
-    logResourceLoadedUsingFeatureCounter(m_frame ? m_frame->page() : nullptr, m_resource->type());
+    logResourceLoaded(m_frame.get(), m_resource->type());
 
     Ref<SubresourceLoader> protect(*this);
     CachedResourceHandle<CachedResource> protectResource(m_resource);

@@ -27,8 +27,6 @@
 #include "config.h"
 #include "WebConsoleAgent.h"
 
-#if ENABLE(INSPECTOR)
-
 #include "CommandLineAPIHost.h"
 #include "DOMWindow.h"
 #include "ResourceError.h"
@@ -76,7 +74,7 @@ void WebConsoleAgent::didFinishXHRLoading(unsigned long requestIdentifier, const
 
     if (m_frontendDispatcher && m_monitoringXHREnabled) {
         String message = "XHR finished loading: \"" + url + "\".";
-        addMessageToConsole(MessageSource::Network, MessageType::Log, MessageLevel::Debug, message, sendURL, sendLineNumber, sendColumnNumber, nullptr, requestIdentifier);
+        addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::Network, MessageType::Log, MessageLevel::Debug, message, sendURL, sendLineNumber, sendColumnNumber, nullptr, requestIdentifier));
     }
 }
 
@@ -87,7 +85,7 @@ void WebConsoleAgent::didReceiveResponse(unsigned long requestIdentifier, const 
 
     if (response.httpStatusCode() >= 400) {
         String message = "Failed to load resource: the server responded with a status of " + String::number(response.httpStatusCode()) + " (" + response.httpStatusText() + ')';
-        addMessageToConsole(MessageSource::Network, MessageType::Log, MessageLevel::Error, message, response.url().string(), 0, 0, nullptr, requestIdentifier);
+        addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::Network, MessageType::Log, MessageLevel::Error, message, response.url().string(), 0, 0, nullptr, requestIdentifier));
     }
 }
 
@@ -107,9 +105,7 @@ void WebConsoleAgent::didFailLoading(unsigned long requestIdentifier, const Reso
         message.append(error.localizedDescription());
     }
 
-    addMessageToConsole(MessageSource::Network, MessageType::Log, MessageLevel::Error, message.toString(), error.failingURL(), 0, 0, nullptr, requestIdentifier);
+    addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::Network, MessageType::Log, MessageLevel::Error, message.toString(), error.failingURL(), 0, 0, nullptr, requestIdentifier));
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(INSPECTOR)

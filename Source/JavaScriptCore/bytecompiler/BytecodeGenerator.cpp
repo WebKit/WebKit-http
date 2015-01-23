@@ -173,7 +173,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedP
     , m_localScopeDepth(0)
     , m_codeType(GlobalCode)
     , m_nextConstantOffset(0)
-    , m_globalConstantIndex(0)
     , m_firstLazyFunction(0)
     , m_lastLazyFunction(0)
     , m_staticPropertyAnalyzer(&m_instructions)
@@ -221,7 +220,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     , m_localScopeDepth(0)
     , m_codeType(FunctionCode)
     , m_nextConstantOffset(0)
-    , m_globalConstantIndex(0)
     , m_firstLazyFunction(0)
     , m_lastLazyFunction(0)
     , m_staticPropertyAnalyzer(&m_instructions)
@@ -463,7 +461,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
     , m_localScopeDepth(0)
     , m_codeType(EvalCode)
     , m_nextConstantOffset(0)
-    , m_globalConstantIndex(0)
     , m_firstLazyFunction(0)
     , m_lastLazyFunction(0)
     , m_staticPropertyAnalyzer(&m_instructions)
@@ -520,7 +517,10 @@ RegisterID* BytecodeGenerator::initializeCapturedVariable(RegisterID* dst, const
     instructions().append(addConstant(propertyName));
     instructions().append(value->index());
     instructions().append(ResolveModeAndType(ThrowIfNotFound, LocalClosureVar).operand());
-    instructions().append(0);
+    int operand = registerFor(dst->index()).index();
+    bool isWatchableVariable = hasWatchableVariable(operand);
+    ASSERT(!isWatchableVariable || watchableVariableIdentifier(operand) == propertyName);
+    instructions().append(isWatchableVariable);
     instructions().append(dst->index());
     return dst;
 }
@@ -563,7 +563,7 @@ void BytecodeGenerator::addParameter(const Identifier& ident, int parameterIndex
     m_codeBlock->addParameter();
 }
 
-bool BytecodeGenerator::willResolveToArguments(const Identifier& ident)
+bool BytecodeGenerator::willResolveToArgumentsRegister(const Identifier& ident)
 {
     if (ident != propertyNames().arguments)
         return false;
@@ -575,6 +575,9 @@ bool BytecodeGenerator::willResolveToArguments(const Identifier& ident)
     if (entry.isNull())
         return false;
 
+    if (m_localArgumentsRegister && isCaptured(m_localArgumentsRegister->index()))
+        return false;
+
     if (m_codeBlock->usesArguments() && m_codeType == FunctionCode && m_localArgumentsRegister)
         return true;
     
@@ -583,7 +586,7 @@ bool BytecodeGenerator::willResolveToArguments(const Identifier& ident)
 
 RegisterID* BytecodeGenerator::uncheckedLocalArgumentsRegister()
 {
-    ASSERT(willResolveToArguments(propertyNames().arguments));
+    ASSERT(willResolveToArgumentsRegister(propertyNames().arguments));
     ASSERT(m_localArgumentsRegister);
     return m_localArgumentsRegister;
 }
@@ -998,6 +1001,12 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfNotFunctionApply(RegisterID* cond
     return target;
 }
 
+bool BytecodeGenerator::hasConstant(const Identifier& ident) const
+{
+    StringImpl* rep = ident.impl();
+    return m_identifierMap.contains(rep);
+}
+    
 unsigned BytecodeGenerator::addConstant(const Identifier& ident)
 {
     StringImpl* rep = ident.impl();
@@ -1396,10 +1405,14 @@ RegisterID* BytecodeGenerator::emitPutToScope(RegisterID* scope, const Identifie
     instructions().append(value->index());
     if (info.isLocal()) {
         instructions().append(ResolveModeAndType(resolveMode, LocalClosureVar).operand());
-        instructions().append(watchableVariable(registerFor(info.localIndex()).index()));
+        int operand = registerFor(info.localIndex()).index();
+        bool isWatchableVariable = hasWatchableVariable(operand);
+        ASSERT(!isWatchableVariable || watchableVariableIdentifier(operand) == identifier);
+        instructions().append(isWatchableVariable);
     } else {
+        ASSERT(resolveType() != LocalClosureVar);
         instructions().append(ResolveModeAndType(resolveMode, resolveType()).operand());
-        instructions().append(0);
+        instructions().append(false);
     }
     instructions().append(info.localIndex());
     return value;
@@ -1874,7 +1887,7 @@ RegisterID* BytecodeGenerator::emitCall(OpcodeID opcodeID, RegisterID* dst, Regi
             RELEASE_ASSERT(!n->m_next);
             auto expression = static_cast<SpreadExpressionNode*>(n->m_expr)->expression();
             RefPtr<RegisterID> argumentRegister;
-            if (expression->isResolveNode() && willResolveToArguments(static_cast<ResolveNode*>(expression)->identifier()) && !symbolTable().slowArguments())
+            if (expression->isResolveNode() && willResolveToArgumentsRegister(static_cast<ResolveNode*>(expression)->identifier()) && !symbolTable().slowArguments())
                 argumentRegister = uncheckedLocalArgumentsRegister();
             else
                 argumentRegister = expression->emitBytecode(*this, callArguments.argumentRegister(0));
@@ -2016,7 +2029,7 @@ RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, 
             RELEASE_ASSERT(!n->m_next);
             auto expression = static_cast<SpreadExpressionNode*>(n->m_expr)->expression();
             RefPtr<RegisterID> argumentRegister;
-            if (expression->isResolveNode() && willResolveToArguments(static_cast<ResolveNode*>(expression)->identifier()) && !symbolTable().slowArguments())
+            if (expression->isResolveNode() && willResolveToArgumentsRegister(static_cast<ResolveNode*>(expression)->identifier()) && !symbolTable().slowArguments())
                 argumentRegister = uncheckedLocalArgumentsRegister();
             else
                 argumentRegister = expression->emitBytecode(*this, callArguments.argumentRegister(0));
@@ -2594,7 +2607,7 @@ void BytecodeGenerator::emitReadOnlyExceptionIfNeeded()
 void BytecodeGenerator::emitEnumeration(ThrowableExpressionData* node, ExpressionNode* subjectNode, const std::function<void(BytecodeGenerator&, RegisterID*)>& callBack)
 {
     if (subjectNode->isResolveNode()
-        && willResolveToArguments(static_cast<ResolveNode*>(subjectNode)->identifier())
+        && willResolveToArgumentsRegister(static_cast<ResolveNode*>(subjectNode)->identifier())
         && !symbolTable().slowArguments()) {
         RefPtr<RegisterID> index = emitLoad(newTemporary(), jsNumber(0));
 

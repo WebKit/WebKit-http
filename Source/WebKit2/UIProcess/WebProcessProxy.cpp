@@ -116,35 +116,29 @@ WebProcessProxy::~WebProcessProxy()
 void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
 {
     launchOptions.processType = ProcessLauncher::WebProcess;
-#if ENABLE(INSPECTOR)
     if (&m_processPool.get() == &WebInspectorProxy::inspectorProcessPool())
         launchOptions.extraInitializationData.add(ASCIILiteral("inspector-process"), ASCIILiteral("1"));
-#endif
     platformGetLaunchOptions(launchOptions);
 }
 
-void WebProcessProxy::connectionWillOpen(IPC::Connection* connection)
+void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
 {
-    ASSERT(this->connection() == connection);
+    ASSERT(this->connection() == &connection);
 
 #if ENABLE(SEC_ITEM_SHIM)
     SecItemShimProxy::shared().initializeConnection(connection);
 #endif
 
-    for (WebPageProxyMap::iterator it = m_pageMap.begin(), end = m_pageMap.end(); it != end; ++it)
-        it->value->connectionWillOpen(connection);
-
-    m_processPool->processWillOpenConnection(this);
+    for (auto& page : m_pageMap.values())
+        page->connectionWillOpen(connection);
 }
 
-void WebProcessProxy::connectionWillClose(IPC::Connection* connection)
+void WebProcessProxy::connectionDidClose(IPC::Connection& connection)
 {
-    ASSERT(this->connection() == connection);
+    ASSERT(this->connection() == &connection);
 
-    for (WebPageProxyMap::iterator it = m_pageMap.begin(), end = m_pageMap.end(); it != end; ++it)
-        it->value->connectionWillClose(connection);
-
-    m_processPool->processWillCloseConnection(this);
+    for (auto& page : m_pageMap.values())
+        page->connectionDidClose(connection);
 }
 
 void WebProcessProxy::disconnect()
@@ -168,6 +162,10 @@ void WebProcessProxy::disconnect()
 
     if (m_downloadProxyMap)
         m_downloadProxyMap->processDidClose();
+
+    for (VisitedLinkProvider* visitedLinkProvider : m_visitedLinkProviders)
+        visitedLinkProvider->removeProcess(*this);
+    m_visitedLinkProviders.clear();
 
     for (WebUserContentControllerProxy* webUserContentControllerProxy : m_webUserContentControllerProxies)
         webUserContentControllerProxy->removeProcess(*this);
@@ -232,10 +230,22 @@ void WebProcessProxy::removeWebPage(uint64_t pageID)
     disconnect();
 }
 
+void WebProcessProxy::addVisitedLinkProvider(VisitedLinkProvider& provider)
+{
+    m_visitedLinkProviders.add(&provider);
+    provider.addProcess(*this);
+}
+
 void WebProcessProxy::addWebUserContentControllerProxy(WebUserContentControllerProxy& proxy)
 {
     m_webUserContentControllerProxies.add(&proxy);
     proxy.addProcess(*this);
+}
+
+void WebProcessProxy::didDestroyVisitedLinkProvider(VisitedLinkProvider& provider)
+{
+    ASSERT(m_visitedLinkProviders.contains(&provider));
+    m_visitedLinkProviders.remove(&provider);
 }
 
 void WebProcessProxy::didDestroyWebUserContentControllerProxy(WebUserContentControllerProxy& proxy)
@@ -698,7 +708,7 @@ RefPtr<API::Object> WebProcessProxy::transformHandlesToObjects(API::Object* obje
 RefPtr<API::Object> WebProcessProxy::transformObjectsToHandles(API::Object* object)
 {
     struct Transformer final : UserData::Transformer {
-        virtual bool shouldTransformObject(const API::Object& object) const
+        virtual bool shouldTransformObject(const API::Object& object) const override
         {
             switch (object.type()) {
             case API::Object::Type::Frame:

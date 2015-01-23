@@ -74,6 +74,8 @@ class AbstractQueue(Command, QueueEngineDelegate):
         self.help_text = "Run the %s" % self.name
         Command.__init__(self, options=options_list)
         self._iteration_count = 0
+        if not hasattr(self, 'architecture'):
+            self.architecture = None
 
     def _cc_watchers(self, bug_id):
         try:
@@ -275,7 +277,10 @@ class PatchProcessingQueue(AbstractPatchQueue):
         self._deprecated_port = DeprecatedPort.port(self.port_name)
         # FIXME: This violates abstraction
         self._tool._deprecated_port = self._deprecated_port
+
         self._port = self._tool.port_factory.get(self._new_port_name_from_old(self.port_name, self._tool.platform))
+        if self.architecture:
+            self._port.set_architecture(self.architecture)
 
     def _upload_results_archive_for_patch(self, patch, results_archive_zip):
         if not self._port:
@@ -303,7 +308,7 @@ class CommitQueue(PatchProcessingQueue, StepSequenceErrorHandler, CommitQueueTas
         PatchProcessingQueue.__init__(self)
 
     name = "commit-queue"
-    port_name = "mac-mountainlion"
+    port_name = "mac"
 
     # AbstractPatchQueue methods
 

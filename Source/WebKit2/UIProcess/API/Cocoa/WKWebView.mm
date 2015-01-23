@@ -31,9 +31,11 @@
 #import "APIFormClient.h"
 #import "APISerializedScriptValue.h"
 #import "CompletionHandlerCallChecker.h"
+#import "DiagnosticLoggingClient.h"
 #import "FindClient.h"
 #import "LegacySessionStateCoding.h"
 #import "NavigationState.h"
+#import "RemoteLayerTreeScrollingPerformanceData.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "RemoteObjectRegistry.h"
 #import "RemoteObjectRegistryMessages.h"
@@ -66,6 +68,7 @@
 #import "WebPreferencesKeys.h"
 #import "WebProcessPool.h"
 #import "WebProcessProxy.h"
+#import "_WKDiagnosticLoggingDelegate.h"
 #import "_WKFindDelegate.h"
 #import "_WKFormDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
@@ -300,7 +303,6 @@ static int32_t deviceOrientation()
 #if PLATFORM(IOS)
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackAllowsInlineKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsInlineMediaPlayback]));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::allowsAlternateFullscreenKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsAlternateFullscreen]));
-    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::featureCounterEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _featureCounterEnabled]));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackRequiresUserGestureKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackRequiresUserAction]));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::mediaPlaybackAllowsAirPlayKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackAllowsAirPlay]));
 #endif
@@ -362,6 +364,7 @@ static int32_t deviceOrientation()
     _page->setUIClient(_uiDelegate->createUIClient());
 
     _page->setFindClient(std::make_unique<WebKit::FindClient>(self));
+    _page->setDiagnosticLoggingClient(std::make_unique<WebKit::DiagnosticLoggingClient>(self));
 
     pageToViewMap().add(_page.get(), self);
 
@@ -845,6 +848,15 @@ static void changeContentOffsetBoundedInValidRange(UIScrollView *scrollView, Web
     scrollView.contentOffset = contentOffsetBoundedInValidRange(scrollView, contentOffset);
 }
 
+- (WebCore::FloatRect)visibleRectInViewCoordinates
+{
+    WebCore::FloatRect bounds = self.bounds;
+    bounds.moveBy([_scrollView contentOffset]);
+    WebCore::FloatRect contentViewBounds = [_contentView bounds];
+    bounds.intersect(contentViewBounds);
+    return bounds;
+}
+
 // WebCore stores the page scale factor as float instead of double. When we get a scale from WebCore,
 // we need to ignore differences that are within a small rounding error on floats.
 static inline bool areEssentiallyEqualAsFloat(float a, float b)
@@ -915,6 +927,9 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         }
         [self _updateVisibleContentRects];
     }
+    
+    if (WebKit::RemoteLayerTreeScrollingPerformanceData* scrollPerfData = _page->scrollingPerformanceData())
+        scrollPerfData->didCommitLayerTree([self visibleRectInViewCoordinates]);
 }
 
 - (void)_dynamicViewportUpdateChangedTargetToScale:(double)newScale position:(CGPoint)newScrollPosition nextValidLayerTreeTransactionID:(uint64_t)nextValidLayerTreeTransactionID
@@ -1373,6 +1388,9 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         [_customContentView scrollViewDidScroll:(UIScrollView *)scrollView];
 
     [self _updateVisibleContentRects];
+    
+    if (WebKit::RemoteLayerTreeScrollingPerformanceData* scrollPerfData = _page->scrollingPerformanceData())
+        scrollPerfData->didScroll([self visibleRectInViewCoordinates]);
 }
 
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView
@@ -1604,6 +1622,16 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 @end
 
 @implementation WKWebView (WKPrivate)
+
+- (BOOL)_isEditable
+{
+    return _page->isEditable();
+}
+
+- (void)_setEditable:(BOOL)editable
+{
+    _page->setEditable(editable);
+}
 
 - (_WKRemoteObjectRegistry *)_remoteObjectRegistry
 {
@@ -1960,6 +1988,16 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     _page->setPageZoomFactor(zoomFactor);
 }
 
+- (id <_WKDiagnosticLoggingDelegate>)_diagnosticLoggingDelegate
+{
+    return [static_cast<WebKit::DiagnosticLoggingClient&>(_page->diagnosticLoggingClient()).delegate().leakRef() autorelease];
+}
+
+- (void)_setDiagnosticLoggingDelegate:(id<_WKDiagnosticLoggingDelegate>)diagnosticLoggingDelegate
+{
+    static_cast<WebKit::DiagnosticLoggingClient&>(_page->diagnosticLoggingClient()).setDelegate(diagnosticLoggingDelegate);
+}
+
 - (id <_WKFindDelegate>)_findDelegate
 {
     return [static_cast<WebKit::FindClient&>(_page->findClient()).delegate().leakRef() autorelease];
@@ -2029,18 +2067,21 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
         virtual ~FormClient() { }
 
-        virtual bool willSubmitForm(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, WebKit::WebFrameProxy* sourceFrame, const Vector<std::pair<WTF::String, WTF::String>>& textFieldValues, API::Object* userData, WebKit::WebFormSubmissionListenerProxy* listener) override
+        virtual void willSubmitForm(WebKit::WebPageProxy&, WebKit::WebFrameProxy&, WebKit::WebFrameProxy& sourceFrame, const Vector<std::pair<WTF::String, WTF::String>>& textFieldValues, API::Object* userData, Ref<WebKit::WebFormSubmissionListenerProxy>&& listener) override
         {
             if (userData && userData->type() != API::Object::Type::Data) {
                 ASSERT(!userData || userData->type() == API::Object::Type::Data);
                 m_webView->_page->process().connection()->markCurrentlyDispatchedMessageAsInvalid();
-                return false;
+                listener->continueSubmission();
+                return;
             }
 
             auto formDelegate = m_webView->_formDelegate.get();
 
-            if (![formDelegate respondsToSelector:@selector(_webView:willSubmitFormValues:userObject:submissionHandler:)])
-                return false;
+            if (![formDelegate respondsToSelector:@selector(_webView:willSubmitFormValues:userObject:submissionHandler:)]) {
+                listener->continueSubmission();
+                return;
+            }
 
             auto valueMap = adoptNS([[NSMutableDictionary alloc] initWithCapacity:textFieldValues.size()]);
             for (const auto& pair : textFieldValues)
@@ -2058,12 +2099,12 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
                 }
             }
 
+            RefPtr<WebKit::WebFormSubmissionListenerProxy> localListener = WTF::move(listener);
             RefPtr<WebKit::CompletionHandlerCallChecker> checker = WebKit::CompletionHandlerCallChecker::create(formDelegate.get(), @selector(_webView:willSubmitFormValues:userObject:submissionHandler:));
-            [formDelegate _webView:m_webView willSubmitFormValues:valueMap.get() userObject:userObject submissionHandler:[listener, checker] {
+            [formDelegate _webView:m_webView willSubmitFormValues:valueMap.get() userObject:userObject submissionHandler:[localListener, checker] {
                 checker->didCallCompletionHandler();
-                listener->continueSubmission();
+                localListener->continueSubmission();
             }];
-            return true;
         }
 
     private:
@@ -2086,6 +2127,27 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (BOOL)_isShowingNavigationGestureSnapshot
 {
     return _page->isShowingNavigationGestureSnapshot();
+}
+
+#pragma mark scrollperf methods
+
+- (void)_setScrollPerformanceDataCollectionEnabled:(BOOL)enabled
+{
+    _page->setScrollPerformanceDataCollectionEnabled(enabled);
+}
+
+- (BOOL)_scrollPerformanceDataCollectionEnabled
+{
+    return _page->scrollPerformanceDataCollectionEnabled();
+}
+
+- (NSArray *)_scrollPerformanceData
+{
+#if PLATFORM(IOS)
+    if (WebKit::RemoteLayerTreeScrollingPerformanceData* scrollPefData = _page->scrollingPerformanceData())
+        return scrollPefData->data();
+#endif
+    return nil;
 }
 
 #pragma mark iOS-specific methods

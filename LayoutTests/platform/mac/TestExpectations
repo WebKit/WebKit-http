@@ -236,7 +236,6 @@ storage/storageinfo-request-quota.html
 storage/storagequota-query-usage.html
 storage/storagequota-request-quota.html
 fast/workers/worker-storagequota-query-usage.html
-fast/workers/shared-worker-storagequota-query-usage.html
 
 # Tests that require ENABLE(DOWNLOAD_ATTRIBUTE).
 fast/dom/HTMLAnchorElement/anchor-nodownload.html
@@ -317,8 +316,6 @@ proximity
 fast/events/constructors/device-proximity-event-constructor.html
 
 webkit.org/b/81410 scrollbars/scrollbar-middleclick-nopaste.html
-
-webkit.org/b/81618 fast/workers/storage/use-same-database-in-page-and-workers.html [ Pass Timeout ]
 
 # Has failed since its introduction in r105826.
 webkit.org/b/61630 fast/events/dropzone-005.html [ Failure ]
@@ -501,8 +498,8 @@ webgl/1.0.3/conformance/extensions/webgl-draw-buffers.html [ Skip ]
 # Sending the mouse down event to the scrollbar starts a nested run loop which causes a hang.
 fast/events/mousedown-in-subframe-scrollbar.html [ Skip ]
 
-# http://webkit.org/b/96828
-fast/canvas/webgl/oes-vertex-array-object.html [ Skip ]
+webkit.org/b/96828 fast/canvas/webgl/oes-vertex-array-object.html [ Skip ]
+webkit.org/b/96828 webgl/1.0.2/conformance/extensions/oes-vertex-array-object.html [ Skip ]
 
 http/tests/misc/willCacheResponse-delegate-callback.html [ Failure ]
 http/tests/xmlhttprequest/basic-auth-nopassword.html [ Failure ]
@@ -918,8 +915,6 @@ webkit.org/b/131787 [ MountainLion ] fast/canvas/canvas-putImageData-zero-alpha.
 
 webkit.org/b/135133 [ MountainLion ] fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/136717 js/dom/string-replace-exception-crash.html [ Skip ]
-
 webkit.org/b/136718 fast/dynamic/layer-no-longer-paginated.html [ Skip ]
 
 webkit.org/b/137737 accessibility/table-cells-roles.html [ Skip ]
@@ -1170,8 +1165,7 @@ webkit.org/b/137319 [ MountainLion ] fast/css/test-setting-canvas-color.html [ P
 [ Yosemite+ ] webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
 [ Yosemite+ ] webaudio/oscillator-sawtooth.html [ Failure ]
 
-# Flaky logging underneath us
-webkit.org/b/124219 [ Yosemite ] media/track/track-forced-subtitles-in-band.html [ Failure Pass ]
+webkit.org/b/137505 [ Mavericks+ ] media/track/track-forced-subtitles-in-band.html [ Failure Pass ]
 
 # FIXME: Needs bugzilla (<rdar://problem/15971968>)
 [ Yosemite+ ] platform/mac/accessibility/misspelled-attributed-string.html [ Pass Failure ]
@@ -1364,7 +1358,6 @@ webkit.org/b/139968 [ Mavericks+ ] fast/text/word-space-between-inlines.html [ I
 webkit.org/b/139968 [ Mavericks+ ] imported/mozilla/svg/dynamic-text-07.svg [ ImageOnlyFailure ]
 webkit.org/b/139968 [ Mavericks+ ] mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
 webkit.org/b/139968 [ Mavericks+ ] platform/mac/fast/text/multiple-codeunit-vertical-upright.html [ ImageOnlyFailure ]
-webkit.org/b/139968 [ Mavericks+ ] svg/text/alt-glyph-for-surrogate-pair.svg [ ImageOnlyFailure ]
 webkit.org/b/139968 [ Mavericks+ ] svg/text/svg-font-word-rounding-hacks-spaces.html [ ImageOnlyFailure ]
 webkit.org/b/139968 [ Mavericks+ ] svg/text/tspan-outline.html [ ImageOnlyFailure ]
 webkit.org/b/139968 [ Mavericks+ ] svg/transforms/transformed-text-fill-gradient.html [ ImageOnlyFailure ]
@@ -1483,14 +1476,6 @@ webkit.org/b/139968 [ MountainLion ] platform/mac/editing/spelling/autocorrectio
 # Fails on Mountain Lion and Yosemite on bots.
 webkit.org/b/139968 fast/text/atsui-rtl-override-selection.html [ Failure ]
 # These tests became flaky, text width gets slightly off.
-webkit.org/b/139968 [ Yosemite+ ] http/tests/misc/acid3.html [ Pass Failure ]
-webkit.org/b/139968 [ Mavericks+ ] tables/mozilla/bugs/bug10633.html [ Pass Failure ]
-webkit.org/b/139968 [ Mavericks+ ] tables/mozilla/bugs/bug113235-1.html [ Pass Failure ]
-webkit.org/b/139968 [ Mavericks+ ] tables/mozilla/bugs/bug8858.html [ Pass Failure ]
-webkit.org/b/139977 [ Mavericks+ ] fast/encoding/utf-16-big-endian.html [ Pass Failure ]
-webkit.org/b/139977 [ Mavericks+ ] fast/encoding/utf-16-little-endian.html [ Pass Failure ]
-webkit.org/b/139982 [ Mavericks+ ] svg/custom/svg-fonts-without-missing-glyph.xhtml [ Pass Failure ]
-webkit.org/b/139988 [ Mavericks+ ] fonts/sans-serif.html [ Pass Failure ]
 webkit.org/b/139968 [ Mavericks+ ] fast/block/margin-collapse/103.html [ Pass Failure ]
 webkit.org/b/139968 [ Mavericks+ ] fast/dom/52776.html [ Pass Failure ]
 webkit.org/b/139968 [ Mavericks+ ] fast/text/complex-text-opacity.html [ Pass Failure ]
@@ -1507,7 +1492,21 @@ webkit.org/b/139968 [ Mavericks+ ] sputnik/Unicode/Unicode_510/S7.6_A5.3_T1.html
 webkit.org/b/139968 [ Mavericks+ ] sputnik/Unicode/Unicode_510/S7.6_A5.3_T2.html [ Pass Failure ]
 webkit.org/b/139968 [ Mavericks+ ] svg/W3C-SVG-1.1-SE/text-intro-05-t.svg [ Pass Failure ]
 webkit.org/b/139968 [ Mavericks+ ] svg/W3C-SVG-1.1/text-intro-05-t.svg [ Pass Failure ]
+webkit.org/b/139968 [ Mavericks+ ] svg/custom/svg-fonts-without-missing-glyph.xhtml [ Pass Failure ]
 webkit.org/b/139968 [ Mavericks+ ] svg/text/text-intro-05-t.svg [ Pass Failure ]
 webkit.org/b/139968 [ Mavericks+ ] tables/mozilla/bugs/bug2479-2.html [ Pass Failure ]
-webkit.org/b/139968 [ Mavericks+ ] media/controls-after-reload.html [ Pass Failure ]
-webkit.org/b/139968 [ Mavericks+ ] media/controls-without-preload.html [ Pass Failure ]
+webkit.org/b/139968 [ Mavericks ] media/controls-after-reload.html [ Pass Failure ]
+webkit.org/b/139968 [ Mavericks ] media/controls-without-preload.html [ Pass Failure ]
+
+# Tests that fail with the SVG -> OTF font converter, but are lower priority than live-on
+webkit.org/b/140537 fast/css/ex-unit-with-no-x-height.html [ Failure ]
+webkit.org/b/140588 svg/W3C-SVG-1.1/fonts-desc-02-t.svg [ Failure ]
+webkit.org/b/137096 svg/W3C-SVG-1.1/text-altglyph-01-b.svg [ Failure ]
+webkit.org/b/137096 svg/custom/altglyph.svg [ Failure ]
+webkit.org/b/140590 svg/custom/svg-fonts-in-text-controls.html [ Failure ]
+webkit.org/b/137096 svg/text/text-altglyph-01-b.svg [ Failure ]
+webkit.org/b/137096 svg/text/alt-glyph-for-surrogate-pair.svg [ ImageOnlyFailure ]
+webkit.org/b/140589 svg/W3C-SVG-1.1/text-text-06-t.svg [ Failure ]
+webkit.org/b/140589 svg/text/text-text-06-t.svg [ Failure ]
+webkit.org/b/137098 svg/text/text-hkern.svg [ Failure ]
+webkit.org/b/137100 svg/text/text-vkern.svg [ Failure ]

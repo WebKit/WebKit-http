@@ -29,6 +29,17 @@
 namespace WebCore {
     class CSSSelectorList;
 
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+    enum class TokenType {
+        IdentifierToken = 0,
+        AtomicStringToken
+    };
+    
+    struct LanguageArgument {
+        AtomicString languageRange;
+        TokenType tokenType;
+    };
+#endif
     enum class SelectorSpecificityIncrement {
         ClassA = 0x10000,
         ClassB = 0x100,
@@ -222,7 +233,7 @@ namespace WebCore {
         const AtomicString& attributeCanonicalLocalName() const;
         const AtomicString& argument() const { return m_hasRareData ? m_data.m_rareData->m_argument : nullAtom; }
 #if ENABLE(CSS_SELECTORS_LEVEL4)
-        const Vector<AtomicString>* argumentList() const { return m_hasRareData ? m_data.m_rareData->m_argumentList.get() : nullptr; }
+        const Vector<LanguageArgument>* langArgumentList() const { return m_hasRareData ? m_data.m_rareData->m_langArgumentList.get() : nullptr; }
 #endif
         const CSSSelectorList* selectorList() const { return m_hasRareData ? m_data.m_rareData->m_selectorList.get() : nullptr; }
 
@@ -230,7 +241,7 @@ namespace WebCore {
         void setAttribute(const QualifiedName&, bool isCaseInsensitive);
         void setArgument(const AtomicString&);
 #if ENABLE(CSS_SELECTORS_LEVEL4)
-        void setArgumentList(std::unique_ptr<Vector<AtomicString>>);
+        void setLangArgumentList(std::unique_ptr<Vector<LanguageArgument>>);
 #endif
         void setSelectorList(std::unique_ptr<CSSSelectorList>);
 
@@ -285,6 +296,12 @@ namespace WebCore {
             ASSERT(m_relation == relation);
         }
 
+        void setDescendantUseDoubleChildSyntax()
+        {
+            ASSERT(relation() == Descendant);
+            m_descendantDoubleChildSyntax = true;
+        }
+
         Match match() const { return static_cast<Match>(m_match); }
         void setMatch(Match match)
         {
@@ -310,6 +327,7 @@ namespace WebCore {
         unsigned m_hasRareData           : 1;
         unsigned m_isForPage             : 1;
         unsigned m_tagIsForNamespaceRule : 1;
+        unsigned m_descendantDoubleChildSyntax : 1;
 
         unsigned simpleSelectorSpecificityForPage() const;
 
@@ -330,7 +348,7 @@ namespace WebCore {
             AtomicString m_attributeCanonicalLocalName;
             AtomicString m_argument; // Used for :contains and :nth-*
 #if ENABLE(CSS_SELECTORS_LEVEL4)
-            std::unique_ptr<Vector<AtomicString>> m_argumentList;
+            std::unique_ptr<Vector<LanguageArgument>> m_langArgumentList;
 #endif
             std::unique_ptr<CSSSelectorList> m_selectorList; // Used for :-webkit-any and :not
         
@@ -436,6 +454,7 @@ inline CSSSelector::CSSSelector()
     , m_hasRareData(false)
     , m_isForPage(false)
     , m_tagIsForNamespaceRule(false)
+    , m_descendantDoubleChildSyntax(false)
 {
 }
 
@@ -449,6 +468,7 @@ inline CSSSelector::CSSSelector(const QualifiedName& tagQName, bool tagIsForName
     , m_hasRareData(false)
     , m_isForPage(false)
     , m_tagIsForNamespaceRule(tagIsForNamespaceRule)
+    , m_descendantDoubleChildSyntax(false)
 {
     m_data.m_tagQName = tagQName.impl();
     m_data.m_tagQName->ref();
@@ -464,6 +484,7 @@ inline CSSSelector::CSSSelector(const CSSSelector& o)
     , m_hasRareData(o.m_hasRareData)
     , m_isForPage(o.m_isForPage)
     , m_tagIsForNamespaceRule(o.m_tagIsForNamespaceRule)
+    , m_descendantDoubleChildSyntax(o.m_descendantDoubleChildSyntax)
 {
     if (o.match() == Tag) {
         m_data.m_tagQName = o.m_data.m_tagQName;

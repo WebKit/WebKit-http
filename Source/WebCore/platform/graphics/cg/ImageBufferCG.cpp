@@ -49,7 +49,7 @@
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
 #include "IOSurface.h"
-#include <IOSurface/IOSurface.h>
+#include "IOSurfaceSPI.h"
 #endif
 
 // CA uses ARGB32 for textures and ARGB32 -> ARGB32 resampling is optimized.
@@ -540,6 +540,7 @@ String ImageDataToDataURL(const ImageData& source, const String& mimeType, const
         if (!premultipliedData.tryReserveCapacity(size))
             return "data:,";
 
+        premultipliedData.resize(size);
         unsigned char *buffer = premultipliedData.data();
         for (size_t i = 0; i < size; i += 4) {
             unsigned alpha = data[i + 3];

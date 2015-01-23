@@ -26,8 +26,6 @@
 #include "config.h"
 #include "WebInspectorClient.h"
 
-#if ENABLE(INSPECTOR)
-
 #include "DrawingArea.h"
 #include "WebInspector.h"
 #include "WebPage.h"
@@ -123,7 +121,7 @@ void WebInspectorClient::highlight()
     }
 #else
     Highlight highlight;
-    m_page->corePage()->inspectorController().getHighlight(&highlight, InspectorOverlay::CoordinateSystem::Document);
+    m_page->corePage()->inspectorController().getHighlight(highlight, InspectorOverlay::CoordinateSystem::Document);
     m_page->showInspectorHighlight(highlight);
 #endif
 }
@@ -227,5 +225,3 @@ bool WebInspectorClient::mouseEvent(PageOverlay&, const PlatformMouseEvent&)
 }
 
 } // namespace WebKit
-
-#endif // ENABLE(INSPECTOR)

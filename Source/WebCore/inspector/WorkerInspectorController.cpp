@@ -29,9 +29,6 @@
  */
 
 #include "config.h"
-
-#if ENABLE(INSPECTOR)
-
 #include "WorkerInspectorController.h"
 
 #include "CommandLineAPIHost.h"
@@ -103,9 +100,7 @@ WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGl
             , nullptr
             , nullptr
             , nullptr
-#if ENABLE(SQL_DATABASE)
             , nullptr
-#endif
         );
     }
 }
@@ -178,5 +173,3 @@ Ref<Stopwatch> WorkerInspectorController::executionStopwatch()
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(INSPECTOR)

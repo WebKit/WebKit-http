@@ -1,3 +1,150 @@
+2015-01-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a build flag for ES6 class syntax
+        https://bugs.webkit.org/show_bug.cgi?id=140760
+
+        Reviewed by Michael Saboff.
+
+        * wtf/FeatureDefines.h:
+
+2015-01-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(INSPECTOR) ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=140668
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+
+2015-01-20  YunQiang Su  <wzssyqa@gmail.com>
+
+        Fix failed to build for Linux/MIPS64EL
+        https://bugs.webkit.org/show_bug.cgi?id=124370
+
+        Reviewed by Darin Adler.
+
+        Add MIPS64EL support.
+
+        * wtf/Platform.h:
+        * wtf/dtoa/utils.h:
+
+2015-01-19  Alexey Proskuryakov  <ap@apple.com>
+
+        Make ASan do bounds checks for WTF::Vector
+        https://bugs.webkit.org/show_bug.cgi?id=140631
+        rdar://problem/19437718
+
+        Reviewed by Darin Adler.
+
+        * wtf/SizeLimits.cpp: Disable Vector object size checks for ASan enabled builds.
+
+        * wtf/Vector.h:
+        (WTF::VectorBuffer::endOfBuffer):
+        (WTF::Vector::Vector):
+        (WTF::Vector::~Vector):
+        (WTF::Vector::swap):
+        (WTF::OverflowHandler>::Vector):
+        (WTF::=):
+        (WTF::OverflowHandler>::fill):
+        (WTF::OverflowHandler>::resize):
+        (WTF::OverflowHandler>::shrink):
+        (WTF::OverflowHandler>::grow):
+        (WTF::OverflowHandler>::asanSetInitialBufferSizeTo):
+        (WTF::OverflowHandler>::asanSetBufferSizeToFullCapacity):
+        (WTF::OverflowHandler>::asanBufferSizeWillChangeTo):
+        (WTF::OverflowHandler>::reserveCapacity):
+        (WTF::OverflowHandler>::tryReserveCapacity):
+        (WTF::OverflowHandler>::shrinkCapacity):
+        (WTF::OverflowHandler>::append):
+        (WTF::OverflowHandler>::tryAppend):
+        (WTF::OverflowHandler>::appendSlowCase):
+        (WTF::OverflowHandler>::uncheckedAppend):
+        (WTF::OverflowHandler>::insert):
+        (WTF::OverflowHandler>::remove):
+        (WTF::OverflowHandler>::releaseBuffer):
+
+        * wtf/Compiler.h: Changed ASAN_ENABLED macro fallback value from false to 0,
+        MSVC was not happy with false.
+
+2015-01-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove non-Windows cruft from WebKit/win/Plugins
+        https://bugs.webkit.org/show_bug.cgi?id=140675
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/FeatureDefines.h:
+
+2015-01-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        WeakPtr functions crash when created with default constructor
+        https://bugs.webkit.org/show_bug.cgi?id=140479
+
+        Reviewed by Andreas Kling.
+
+        This patch rearranges how WeakPtr works, and has the following ideas behind it:
+
+        1. WeakPtr should use Ref internally. This solves the crash by always having a
+        valid WeakReference.
+        2. Clients should not be able to construct WeakReferences directly. Instead,
+        only WeakPtrFactory (and WeakPtr's default constructor) should be able to
+        construct them. They are considered an implementation detail of WeakPtr.
+        3. Except for the default constructor, clients should not be able to construct
+        WeakPtrs directly. Instead, the WeakPtrFactory must construct them. This
+        guarantees that the WeakPtrs all reference the same WeakReference.
+        4. Clients can construct a WeakPtr using its default constructor, and then
+        use the assignment operator to make it non-null. (Or they could use
+        WeakPtrFactory to make it non-null at creation-time.)
+        5. No one was using WeakReference::bindTo(), and it doesn't seem useful, so I
+        removed it.
+
+        Tests: WTF_WeakPtr API tests
+
+        * wtf/Ref.h:
+        (WTF::Ref::Ref): Added extra ASSERT()s, and explicitly deleted copy
+        constructors with a comment.
+        (WTF::Ref::operator=): Added extra ASSERT()s, and explicitly deleted copy
+        assignment operators with a comment.
+        * wtf/WeakPtr.h:
+        (WTF::WeakReference::clear): Used nullptr.
+        (WTF::WeakReference::create): Moved to private:
+        (WTF::WeakPtr::WeakPtr): For the default constructor, initialized the Ref with
+        a new WeakReference. For the other constructor, moved it to private:. Also added
+        copy constructors and copy assignment operators (since Ref doesn't have them but
+        RefPtr does). These constructors/operators are relied upon in various places
+        throughout WebCore.
+        (WTF::WeakPtr::operator bool): Made non-explicit.
+        (WTF::WeakReference::createUnbound): Deleted.
+        (WTF::WeakReference::bindTo): Deleted.
+        (WTF::WeakReference::WeakReference): Deleted.
+        (WTF::WeakPtrFactory::WeakPtrFactory): Deleted.
+
+2015-01-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        std::all_of requires complete C++ iterators in GCC 4.8
+        https://bugs.webkit.org/show_bug.cgi?id=140530
+
+        Reviewed by Darin Adler.
+
+        In the WebKit2/UIProcess/WebProcessLifetimeObserver.cpp, std::all_of
+        is used for HashIterators. However, std::all_of requires the complete
+        C++ iterator interface including iterator_category typedef member and
+        it raises compile error in GCC 4.8 (and libstdc++) environment.
+
+        This patch inherits std::iterator with appropriate type parameters.
+        It automatically defines required typedefs including iterator_category.
+
+        * wtf/HashIterators.h:
+
+2015-01-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SQL_DATABASE) guards
+        https://bugs.webkit.org/show_bug.cgi?id=140434
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+
 2015-01-14  Csaba Osztrogonác  <ossy@webkit.org>
 
         Unreviewed fix after r163330.

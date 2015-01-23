@@ -28,6 +28,7 @@
 #include "WebPageProxy.h"
 
 #include "APIArray.h"
+#include "APIContextMenuClient.h"
 #include "APIFindClient.h"
 #include "APIFormClient.h"
 #include "APIGeometry.h"
@@ -128,12 +129,13 @@
 #endif
 
 #if PLATFORM(COCOA)
+#include "RemoteLayerTreeDrawingAreaProxy.h"
+#include "RemoteLayerTreeScrollingPerformanceData.h"
 #include "ViewSnapshotStore.h"
 #include <WebCore/RunLoopObserver.h>
 #endif
 
 #if PLATFORM(IOS)
-#include "RemoteLayerTreeDrawingAreaProxy.h"
 #include "WebVideoFullscreenManagerProxy.h"
 #include "WebVideoFullscreenManagerProxyMessages.h"
 #endif
@@ -264,6 +266,10 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_formClient(std::make_unique<API::FormClient>())
     , m_uiClient(std::make_unique<API::UIClient>())
     , m_findClient(std::make_unique<API::FindClient>())
+    , m_diagnosticLoggingClient(std::make_unique<API::DiagnosticLoggingClient>())
+#if ENABLE(CONTEXT_MENUS)
+    , m_contextMenuClient(std::make_unique<API::ContextMenuClient>())
+#endif
     , m_navigationState(std::make_unique<WebNavigationState>())
     , m_process(process)
     , m_pageGroup(*configuration.pageGroup)
@@ -280,6 +286,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_dynamicViewportSizeUpdateWaitingForTarget(false)
     , m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit(false)
     , m_dynamicViewportSizeUpdateLayerTreeTransactionID(0)
+    , m_layerTreeTransactionIdAtLastTouchStart(0)
 #endif
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
@@ -288,6 +295,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_viewWasEverInWindow(false)
     , m_backForwardList(WebBackForwardList::create(*this))
     , m_maintainsInactiveSelection(false)
+    , m_isEditable(false)
 #if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     , m_temporarilyClosedComposition(false)
 #endif
@@ -334,6 +342,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 #if PLATFORM(COCOA)
     , m_isSmartInsertDeleteEnabled(TextChecker::isSmartInsertDeleteEnabled())
 #endif
+#if PLATFORM(GTK)
+    , m_backgroundColor(Color::white)
+#endif
     , m_spellDocumentTag(0)
     , m_hasSpellDocumentTag(false)
     , m_pendingLearnOrIgnoreWordMessageCount(0)
@@ -373,6 +384,10 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_mediaVolume(1)
     , m_muted(false)
     , m_mayStartMediaWhenInWindow(true)
+    , m_waitingForDidUpdateViewState(false)
+#if PLATFORM(COCOA)
+    , m_scrollPerformanceDataCollectionEnabled(false)
+#endif
     , m_scrollPinningBehavior(DoNotPin)
     , m_navigationID(0)
     , m_configurationPreferenceValues(configuration.preferenceValues)
@@ -389,6 +404,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
         if (m_userContentController)
             m_process->addWebUserContentControllerProxy(*m_userContentController);
         m_process->processPool().storageManager().setAllowedSessionStorageNamespaceConnection(m_pageID, m_process->connection());
+        m_process->addVisitedLinkProvider(m_visitedLinkProvider);
     }
 
     updateViewState();
@@ -410,9 +426,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     m_preferences->addPage(*this);
     m_pageGroup->addPage(this);
 
-#if ENABLE(INSPECTOR)
     m_inspector = WebInspectorProxy::create(this);
-#endif
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
@@ -425,7 +439,10 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
-    setSessionID(configuration.sessionID);
+#if ENABLE(NETWORK_PROCESS)
+    if (m_sessionID.isEphemeral())
+        m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(m_sessionID));
+#endif
 
 #if PLATFORM(COCOA)
     const CFIndex viewStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
@@ -549,10 +566,25 @@ void WebPageProxy::initializeFindMatchesClient(const WKPageFindMatchesClientBase
     m_findMatchesClient.initialize(client);
 }
 
-#if ENABLE(CONTEXT_MENUS)
-void WebPageProxy::initializeContextMenuClient(const WKPageContextMenuClientBase* client)
+void WebPageProxy::setDiagnosticLoggingClient(std::unique_ptr<API::DiagnosticLoggingClient> diagnosticLoggingClient)
 {
-    m_contextMenuClient.initialize(client);
+    if (!diagnosticLoggingClient) {
+        m_diagnosticLoggingClient = std::make_unique<API::DiagnosticLoggingClient>();
+        return;
+    }
+
+    m_diagnosticLoggingClient = WTF::move(diagnosticLoggingClient);
+}
+
+#if ENABLE(CONTEXT_MENUS)
+void WebPageProxy::setContextMenuClient(std::unique_ptr<API::ContextMenuClient> contextMenuClient)
+{
+    if (!contextMenuClient) {
+        m_contextMenuClient = std::make_unique<API::ContextMenuClient>();
+        return;
+    }
+
+    m_contextMenuClient = WTF::move(contextMenuClient);
 }
 #endif
 
@@ -580,9 +612,7 @@ void WebPageProxy::reattachToWebProcess()
     updateViewState();
     updateActivityToken();
 
-#if ENABLE(INSPECTOR)
     m_inspector = WebInspectorProxy::create(this);
-#endif
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
@@ -639,6 +669,9 @@ RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessWithItem(WebBackForwar
 
 void WebPageProxy::setSessionID(SessionID sessionID)
 {
+    if (!isValid())
+        return;
+
     m_sessionID = sessionID;
     m_process->send(Messages::WebPage::SetSessionID(sessionID), m_pageID);
 
@@ -700,12 +733,13 @@ void WebPageProxy::close()
     m_formClient = std::make_unique<API::FormClient>();
     m_uiClient = std::make_unique<API::UIClient>();
 #if PLATFORM(EFL)
-    m_uiPopupMenuClient.initialize(0);
+    m_uiPopupMenuClient.initialize(nullptr);
 #endif
     m_findClient = std::make_unique<API::FindClient>();
-    m_findMatchesClient.initialize(0);
+    m_findMatchesClient.initialize(nullptr);
+    m_diagnosticLoggingClient = std::make_unique<API::DiagnosticLoggingClient>();
 #if ENABLE(CONTEXT_MENUS)
-    m_contextMenuClient.initialize(0);
+    m_contextMenuClient = std::make_unique<API::ContextMenuClient>();
 #endif
 
     m_webProcessLifetimeTracker.pageWasInvalidated();
@@ -735,10 +769,8 @@ bool WebPageProxy::maybeInitializeSandboxExtensionHandle(const URL& url, Sandbox
     if (m_process->hasAssumedReadAccessToURL(url))
         return false;
 
-#if ENABLE(INSPECTOR)
     // Inspector resources are in a directory with assumed access.
     ASSERT_WITH_SECURITY_IMPLICATION(!WebInspectorProxy::isInspectorPage(*this));
-#endif
 
     SandboxExtension::createHandle("/", SandboxExtension::ReadOnly, sandboxExtensionHandle);
     return true;
@@ -1394,6 +1426,17 @@ void WebPageProxy::executeEditCommand(const String& commandName)
     m_process->send(Messages::WebPage::ExecuteEditCommand(commandName), m_pageID);
 }
 
+void WebPageProxy::setEditable(bool editable)
+{
+    if (editable == m_isEditable)
+        return;
+    if (!isValid())
+        return;
+
+    m_isEditable = editable;
+    m_process->send(Messages::WebPage::SetEditable(editable), m_pageID);
+}
+
 #if !PLATFORM(IOS)
 void WebPageProxy::didCommitLayerTree(const RemoteLayerTreeTransaction&)
 {
@@ -1740,8 +1783,10 @@ void WebPageProxy::handleTouchEventSynchronously(const NativeWebTouchEvent& even
     if (!isValid())
         return;
 
-    if (event.type() == WebEvent::TouchStart)
+    if (event.type() == WebEvent::TouchStart) {
         m_isTrackingTouchEvents = shouldStartTrackingTouchEvents(event);
+        m_layerTreeTransactionIdAtLastTouchStart = downcast<RemoteLayerTreeDrawingAreaProxy>(*drawingArea()).lastCommittedLayerTreeTransactionID();
+    }
 
     if (!m_isTrackingTouchEvents)
         return;
@@ -2925,7 +2970,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, uint64_t na
 
     WebFrameProxy* originatingFrame = m_process->webFrame(originatingFrameID);
     
-    RefPtr<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID);
+    Ref<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID);
     if (!navigationID && frame->isMainFrame()) {
         auto navigation = m_navigationState->createLoadRequestNavigation(request);
         newNavigationID = navigation->navigationID();
@@ -2945,7 +2990,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, uint64_t na
     m_inDecidePolicyForNavigationAction = true;
     m_syncNavigationActionPolicyActionIsValid = false;
 
-    m_policyClient->decidePolicyForNavigationAction(this, frame, navigationActionData, originatingFrame, originalRequest, request, WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
+    m_policyClient->decidePolicyForNavigationAction(*this, frame, navigationActionData, originatingFrame, originalRequest, request, WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
     m_inDecidePolicyForNavigationAction = false;
 
@@ -2963,9 +3008,9 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Naviga
     MESSAGE_CHECK(frame);
     MESSAGE_CHECK_URL(request.url());
 
-    RefPtr<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID);
+    Ref<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID);
 
-    m_policyClient->decidePolicyForNewWindowAction(this, frame, navigationActionData, request, frameName, WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
+    m_policyClient->decidePolicyForNewWindowAction(*this, *frame, navigationActionData, request, frameName, WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
 }
 
 void WebPageProxy::decidePolicyForResponse(uint64_t frameID, const ResourceResponse& response, const ResourceRequest& request, bool canShowMIMEType, uint64_t listenerID, const UserData& userData)
@@ -2975,9 +3020,9 @@ void WebPageProxy::decidePolicyForResponse(uint64_t frameID, const ResourceRespo
     MESSAGE_CHECK_URL(request.url());
     MESSAGE_CHECK_URL(response.url());
 
-    RefPtr<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID);
+    Ref<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID);
 
-    m_policyClient->decidePolicyForResponse(this, frame, response, request, canShowMIMEType, WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
+    m_policyClient->decidePolicyForResponse(*this, *frame, response, request, canShowMIMEType, WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
 }
 
 void WebPageProxy::decidePolicyForResponseSync(uint64_t frameID, const ResourceResponse& response, const ResourceRequest& request, bool canShowMIMEType, uint64_t listenerID, const UserData& userData, bool& receivedPolicyAction, uint64_t& policyAction, uint64_t& downloadID)
@@ -3006,7 +3051,7 @@ void WebPageProxy::unableToImplementPolicy(uint64_t frameID, const ResourceError
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
-    m_policyClient->unableToImplementPolicy(this, frame, error, m_process->transformHandlesToObjects(userData.object()).get());
+    m_policyClient->unableToImplementPolicy(*this, *frame, error, m_process->transformHandlesToObjects(userData.object()).get());
 }
 
 // FormClient
@@ -3019,9 +3064,8 @@ void WebPageProxy::willSubmitForm(uint64_t frameID, uint64_t sourceFrameID, cons
     WebFrameProxy* sourceFrame = m_process->webFrame(sourceFrameID);
     MESSAGE_CHECK(sourceFrame);
 
-    RefPtr<WebFormSubmissionListenerProxy> listener = frame->setUpFormSubmissionListenerProxy(listenerID);
-    if (!m_formClient->willSubmitForm(this, frame, sourceFrame, textFieldValues, m_process->transformHandlesToObjects(userData.object()).get(), listener.get()))
-        listener->continueSubmission();
+    Ref<WebFormSubmissionListenerProxy> listener = frame->setUpFormSubmissionListenerProxy(listenerID);
+    m_formClient->willSubmitForm(*this, *frame, *sourceFrame, textFieldValues, m_process->transformHandlesToObjects(userData.object()).get(), listener.get());
 }
 
 void WebPageProxy::didNavigateWithNavigationData(const WebNavigationDataStore& store, uint64_t frameID) 
@@ -3093,7 +3137,8 @@ void WebPageProxy::createNewPage(uint64_t frameID, const ResourceRequest& reques
 
     newPageID = newPage->pageID();
     newPageParameters = newPage->creationParameters();
-    process().processPool().storageManager().cloneSessionStorageNamespace(m_pageID, newPage->pageID());
+
+    WebsiteDataStore::cloneSessionData(*this, *newPage);
 }
     
 void WebPageProxy::showPage()
@@ -3195,20 +3240,18 @@ void WebPageProxy::didCancelTrackingPotentialLongMousePress(const UserData& user
     m_uiClient->didCancelTrackingPotentialLongMousePress(this, m_process->transformHandlesToObjects(userData.object()).get());
 }
 
-void WebPageProxy::connectionWillOpen(IPC::Connection* connection)
+void WebPageProxy::connectionWillOpen(IPC::Connection& connection)
 {
-    ASSERT(connection == m_process->connection());
+    ASSERT(&connection == m_process->connection());
 
-    m_webProcessLifetimeTracker.connectionWillOpen();
-    m_process->processPool().storageManager().setAllowedSessionStorageNamespaceConnection(m_pageID, connection);
+    m_webProcessLifetimeTracker.connectionWillOpen(connection);
 }
 
-void WebPageProxy::connectionWillClose(IPC::Connection* connection)
+void WebPageProxy::connectionDidClose(IPC::Connection& connection)
 {
-    ASSERT_UNUSED(connection, connection == m_process->connection());
+    ASSERT_UNUSED(connection, &connection == m_process->connection());
 
-    m_webProcessLifetimeTracker.connectionWillClose();
-    m_process->processPool().storageManager().setAllowedSessionStorageNamespaceConnection(m_pageID, 0);
+    m_webProcessLifetimeTracker.connectionDidClose(connection);
 }
 
 void WebPageProxy::processDidFinishLaunching()
@@ -3217,6 +3260,7 @@ void WebPageProxy::processDidFinishLaunching()
 
     if (m_userContentController)
         m_process->addWebUserContentControllerProxy(*m_userContentController);
+    m_process->addVisitedLinkProvider(m_visitedLinkProvider);
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -3524,17 +3568,12 @@ void WebPageProxy::didDraw()
 }
 
 // Inspector
-
-#if ENABLE(INSPECTOR)
-
 WebInspectorProxy* WebPageProxy::inspector()
 {
     if (isClosed() || !isValid())
         return 0;
     return m_inspector.get();
 }
-
-#endif
 
 #if ENABLE(FULLSCREEN_API)
 WebFullScreenManagerProxy* WebPageProxy::fullScreenManager()
@@ -3824,9 +3863,9 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
 {
     m_activeContextMenuContextData = contextMenuContextData;
 
-    if (!m_contextMenuClient.hideContextMenu(this) && m_activeContextMenu) {
+    if (!m_contextMenuClient->hideContextMenu(*this) && m_activeContextMenu) {
         m_activeContextMenu->hideContextMenu();
-        m_activeContextMenu = 0;
+        m_activeContextMenu = nullptr;
     }
 
     m_activeContextMenu = m_pageClient.createContextMenuProxy(this);
@@ -3845,21 +3884,21 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
         askClientToChangeMenu = false;
 #endif
 
-    if (askClientToChangeMenu && m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, contextMenuContextData.webHitTestResultData(), m_process->transformHandlesToObjects(userData.object()).get()))
+    if (askClientToChangeMenu && m_contextMenuClient->getContextMenuFromProposedMenu(*this, proposedItems, items, contextMenuContextData.webHitTestResultData(), m_process->transformHandlesToObjects(userData.object()).get()))
         useProposedItems = false;
 
     const Vector<WebContextMenuItemData>& itemsToShow = useProposedItems ? proposedItems : items;
-    if (!m_contextMenuClient.showContextMenu(this, menuLocation, itemsToShow))
+    if (!m_contextMenuClient->showContextMenu(*this, menuLocation, itemsToShow))
         m_activeContextMenu->showContextMenu(menuLocation, itemsToShow, contextMenuContextData);
 
-    m_contextMenuClient.contextMenuDismissed(this);
+    m_contextMenuClient->contextMenuDismissed(*this);
 }
 
 void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
 {
     // Application custom items don't need to round-trip through to WebCore in the WebProcess.
     if (item.action() >= ContextMenuItemBaseApplicationTag) {
-        m_contextMenuClient.customContextMenuItemSelected(this, item);
+        m_contextMenuClient->customContextMenuItemSelected(*this, item);
         return;
     }
 
@@ -4366,6 +4405,21 @@ void WebPageProxy::editingRangeCallback(const EditingRange& range, uint64_t call
     callback->performCallbackWithReturnValue(range);
 }
 
+void WebPageProxy::logDiagnosticMessage(const String& message, const String& description)
+{
+    m_diagnosticLoggingClient->logDiagnosticMessage(this, message, description);
+}
+
+void WebPageProxy::logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result)
+{
+    m_diagnosticLoggingClient->logDiagnosticMessageWithResult(this, message, description, static_cast<WebCore::DiagnosticLoggingResultType>(result));
+}
+
+void WebPageProxy::logDiagnosticMessageWithValue(const String& message, const String& description, const String& value)
+{
+    m_diagnosticLoggingClient->logDiagnosticMessageWithValue(this, message, description, value);
+}
+
 void WebPageProxy::rectForCharacterRangeCallback(const IntRect& rect, const EditingRange& actualRange, uint64_t callbackID)
 {
     MESSAGE_CHECK(actualRange.isValid());
@@ -4467,12 +4521,10 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_mainFrame = nullptr;
     m_drawingArea = nullptr;
 
-#if ENABLE(INSPECTOR)
     if (m_inspector) {
         m_inspector->invalidate();
         m_inspector = nullptr;
     }
-#endif
 
 #if ENABLE(FULLSCREEN_API)
     if (m_fullScreenManager) {
@@ -4529,6 +4581,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_dynamicViewportSizeUpdateWaitingForTarget = false;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = false;
     m_dynamicViewportSizeUpdateLayerTreeTransactionID = 0;
+    m_layerTreeTransactionIdAtLastTouchStart = 0;
 #endif
 
     CallbackBase::Error error;
@@ -4615,6 +4668,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.store = preferencesStore();
     parameters.pageGroupData = m_pageGroup->data();
     parameters.drawsBackground = m_drawsBackground;
+    parameters.isEditable = m_isEditable;
     parameters.drawsTransparentBackground = m_drawsTransparentBackground;
     parameters.underlayColor = m_underlayColor;
     parameters.useFixedLayout = m_useFixedLayout;
@@ -5287,6 +5341,18 @@ void WebPageProxy::confirmCompositionAsync()
     process().send(Messages::WebPage::ConfirmCompositionAsync(), m_pageID);
 }
 
+void WebPageProxy::setScrollPerformanceDataCollectionEnabled(bool enabled)
+{
+    if (enabled == m_scrollPerformanceDataCollectionEnabled)
+        return;
+
+    m_scrollPerformanceDataCollectionEnabled = enabled;
+
+    if (m_scrollPerformanceDataCollectionEnabled && !m_scrollingPerformanceData)
+        m_scrollingPerformanceData = std::make_unique<RemoteLayerTreeScrollingPerformanceData>(downcast<RemoteLayerTreeDrawingAreaProxy>(*m_drawingArea));
+    else if (!m_scrollPerformanceDataCollectionEnabled)
+        m_scrollingPerformanceData = nullptr;
+}
 #endif
 
 void WebPageProxy::takeSnapshot(IntRect rect, IntSize bitmapSize, SnapshotOptions options, std::function<void (const ShareableBitmap::Handle&, CallbackBase::Error)> callbackFunction)

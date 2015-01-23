@@ -48,6 +48,7 @@ my (
     $canvasPathSupport,
     $canvasProxySupport,
     $channelMessagingSupport,
+    $classSyntax,
     $cspNextSupport,
     $css3ConditionalRulesSupport,
     $css3TextSupport,
@@ -86,7 +87,6 @@ my (
     $inputTypeMonthSupport,
     $inputTypeTimeSupport,
     $inputTypeWeekSupport,
-    $inspectorSupport,
     $legacyNotificationsSupport,
     $legacyVendorPrefixSupport,
     $legacyWebAudioSupport,
@@ -117,7 +117,6 @@ my (
     $resourceTimingSupport,
     $scriptedSpeechSupport,
     $seccompFiltersSupport,
-    $sqlDatabaseSupport,
     $styleScopedSupport,
     $subtleCrypto,
     $suidLinuxSandbox,
@@ -165,6 +164,9 @@ my @features = (
 
     { option => "channel-messaging", desc => "Toggle Channel Messaging support",
       define => "ENABLE_CHANNEL_MESSAGING", default => 1, value => \$channelMessagingSupport },
+
+    { option => "class-syntax", desc => "Toggle ES6 class syntax support",
+      define => "ENABLE_ES6_CLASS_SYNTAX", default => 0, value => \$classSyntax },
 
     { option => "csp-next", desc => "Toggle Content Security Policy 1.1 support",
       define => "ENABLE_CSP_NEXT", default => isGtk(), value => \$cspNextSupport },
@@ -274,9 +276,6 @@ my @features = (
     { option => "input-type-week", desc => "Toggle Input Type Week support",
       define => "ENABLE_INPUT_TYPE_WEEK", default => 0, value => \$inputTypeWeekSupport },
 
-    { option => "inspector", desc => "Toggle Inspector support",
-      define => "ENABLE_INSPECTOR", default => 1, value => \$inspectorSupport },
-
     { option => "legacy-notifications", desc => "Toggle Legacy Notifications support",
       define => "ENABLE_LEGACY_NOTIFICATIONS", default => 0, value => \$legacyNotificationsSupport },
 
@@ -360,9 +359,6 @@ my @features = (
 
     { option => "scripted-speech", desc => "Toggle Scripted Speech support",
       define => "ENABLE_SCRIPTED_SPEECH", default => 0, value => \$scriptedSpeechSupport },
-
-    { option => "sql-database", desc => "Toggle SQL Database support",
-      define => "ENABLE_SQL_DATABASE", default => 1, value => \$sqlDatabaseSupport },
 
     { option => "subtle-crypto", desc => "Toggle WebCrypto Subtle-Crypto support",
       define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isEfl() || isAppleMacWebKit() || isIOSWebKit()), value => \$subtleCrypto },

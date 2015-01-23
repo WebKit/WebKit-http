@@ -50,9 +50,6 @@ class Document;
 class Element;
 class InspectorPageAgent;
 class InspectorStyleSheet;
-class Node;
-
-#if ENABLE(INSPECTOR)
 
 typedef String ErrorString;
 
@@ -194,7 +191,7 @@ public:
     CSSStyleRule* ruleForId(const InspectorCSSId&) const;
     RefPtr<Inspector::Protocol::CSS::CSSStyleSheetBody> buildObjectForStyleSheet();
     RefPtr<Inspector::Protocol::CSS::CSSStyleSheetHeader> buildObjectForStyleSheetInfo();
-    RefPtr<Inspector::Protocol::CSS::CSSRule> buildObjectForRule(CSSStyleRule*);
+    RefPtr<Inspector::Protocol::CSS::CSSRule> buildObjectForRule(CSSStyleRule*, Element*);
     RefPtr<Inspector::Protocol::CSS::CSSStyle> buildObjectForStyle(CSSStyleDeclaration*);
     bool setStyleText(const InspectorCSSId&, const String& text, String* oldText, ExceptionCode&);
     bool setPropertyText(const InspectorCSSId&, unsigned propertyIndex, const String& text, bool overwrite, String* oldPropertyText, ExceptionCode&);
@@ -239,8 +236,8 @@ private:
     bool resourceStyleSheetText(String* result) const;
     bool inlineStyleSheetText(String* result) const;
     Ref<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>> buildArrayForRuleList(CSSRuleList*);
-    Ref<Inspector::Protocol::CSS::CSSSelector> buildObjectForSelector(const CSSSelector*);
-    Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*);
+    Ref<Inspector::Protocol::CSS::CSSSelector> buildObjectForSelector(const CSSSelector*, Element*);
+    Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*, Element*);
 
     InspectorPageAgent* m_pageAgent;
     String m_id;
@@ -290,8 +287,6 @@ private:
     mutable String m_styleText;
     mutable bool m_isStyleTextValid;
 };
-
-#endif
 
 } // namespace WebCore
 

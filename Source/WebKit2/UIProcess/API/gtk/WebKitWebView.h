@@ -156,6 +156,8 @@ typedef enum {
  * @WEBKIT_SNAPSHOT_OPTIONS_NONE: Do not include any special options.
  * @WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING: Whether to include in the
  * snapshot the highlight of the selected content.
+ * @WEBKIT_SNAPSHOT_OPTIONS_TRANSPARENT_BACKGROUND: Do not fill the background with white before
+ * rendering the snapshot. Since 2.8
  *
  * Enum values used to specify options when taking a snapshot
  * from a #WebKitWebView.
@@ -163,6 +165,7 @@ typedef enum {
 typedef enum {
   WEBKIT_SNAPSHOT_OPTIONS_NONE = 0,
   WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING = 1 << 0,
+  WEBKIT_SNAPSHOT_OPTIONS_TRANSPARENT_BACKGROUND = 1 << 1,
 } WebKitSnapshotOptions;
 
 /**
@@ -473,6 +476,21 @@ webkit_web_view_get_snapshot_finish                  (WebKitWebView             
 
 WEBKIT_API WebKitUserContentManager *
 webkit_web_view_get_user_content_manager             (WebKitWebView             *web_view);
+
+WEBKIT_API void
+webkit_web_view_set_background_color                 (WebKitWebView             *web_view,
+                                                      const GdkRGBA             *rgba);
+
+WEBKIT_API void
+webkit_web_view_get_background_color                 (WebKitWebView             *web_view,
+                                                      GdkRGBA                   *rgba);
+
+WEBKIT_API gboolean
+webkit_web_view_is_editable                          (WebKitWebView             *web_view);
+
+WEBKIT_API void
+webkit_web_view_set_editable                         (WebKitWebView             *web_view,
+                                                      gboolean                  editable);
 
 G_END_DECLS
 

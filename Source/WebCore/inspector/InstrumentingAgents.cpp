@@ -32,8 +32,6 @@
 #include "config.h"
 #include "InstrumentingAgents.h"
 
-#if ENABLE(INSPECTOR)
-
 #include "InspectorController.h"
 #include "Page.h"
 #include "WorkerGlobalScope.h"
@@ -61,9 +59,7 @@ InstrumentingAgents::InstrumentingAgents(InspectorEnvironment& environment)
 #if ENABLE(WEB_REPLAY)
     , m_inspectorReplayAgent(nullptr)
 #endif
-#if ENABLE(SQL_DATABASE)
     , m_inspectorDatabaseAgent(nullptr)
-#endif
     , m_inspectorApplicationCacheAgent(nullptr)
     , m_inspectorDebuggerAgent(nullptr)
     , m_pageDebuggerAgent(nullptr)
@@ -89,9 +85,7 @@ void InstrumentingAgents::reset()
 #if ENABLE(WEB_REPLAY)
     m_inspectorReplayAgent = nullptr;
 #endif
-#if ENABLE(SQL_DATABASE)
     m_inspectorDatabaseAgent = nullptr;
-#endif
     m_inspectorApplicationCacheAgent = nullptr;
     m_inspectorDebuggerAgent = nullptr;
     m_pageDebuggerAgent = nullptr;
@@ -100,5 +94,3 @@ void InstrumentingAgents::reset()
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(INSPECTOR)

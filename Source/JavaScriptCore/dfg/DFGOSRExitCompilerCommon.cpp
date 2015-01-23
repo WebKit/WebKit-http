@@ -197,8 +197,6 @@ void reifyInlinedCallFrames(CCallHelpers& jit, const OSRExitBase& exit)
                          
 #if USE(JSVALUE64)
         jit.storePtr(AssemblyHelpers::TrustedImmPtr(baselineCodeBlock), AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::CodeBlock)));
-        if (!inlineCallFrame->isClosureCall)
-            jit.store64(AssemblyHelpers::TrustedImm64(JSValue::encode(JSValue(inlineCallFrame->calleeConstant()->scope()))), AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::ScopeChain)));
         jit.store64(callerFrameGPR, AssemblyHelpers::addressForByteOffset(inlineCallFrame->callerFrameOffset()));
         uint32_t locationBits = CallFrame::Location::encodeAsBytecodeOffset(codeOrigin.bytecodeIndex);
         jit.store32(AssemblyHelpers::TrustedImm32(locationBits), AssemblyHelpers::tagFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::ArgumentCount)));
@@ -211,9 +209,6 @@ void reifyInlinedCallFrames(CCallHelpers& jit, const OSRExitBase& exit)
             jit.loadPtr(AssemblyHelpers::addressFor(VirtualRegister(inlineCallFrame->stackOffset + unmodifiedArgumentsRegister(baselineCodeBlock->argumentsRegister()).offset())), GPRInfo::regT3);
 #else // USE(JSVALUE64) // so this is the 32-bit part
         jit.storePtr(AssemblyHelpers::TrustedImmPtr(baselineCodeBlock), AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::CodeBlock)));
-        jit.store32(AssemblyHelpers::TrustedImm32(JSValue::CellTag), AssemblyHelpers::tagFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::ScopeChain)));
-        if (!inlineCallFrame->isClosureCall)
-            jit.storePtr(AssemblyHelpers::TrustedImmPtr(inlineCallFrame->calleeConstant()->scope()), AssemblyHelpers::payloadFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::ScopeChain)));
         jit.storePtr(callerFrameGPR, AssemblyHelpers::addressForByteOffset(inlineCallFrame->callerFrameOffset()));
         Instruction* instruction = baselineCodeBlock->instructions().begin() + codeOrigin.bytecodeIndex;
         uint32_t locationBits = CallFrame::Location::encodeAsBytecodeInstruction(instruction);
@@ -327,7 +322,6 @@ void ArgumentsRecoveryGenerator::generateFor(
     if (m_didCreateArgumentsObject.add(inlineCallFrame).isNewEntry) {
         // We know this call frame optimized out an arguments object that
         // the baseline JIT would have created. Do that creation now.
-#if USE(JSVALUE64)
         if (inlineCallFrame) {
             jit.addPtr(AssemblyHelpers::TrustedImm32(inlineCallFrame->stackOffset * sizeof(EncodedJSValue)), GPRInfo::callFrameRegister, GPRInfo::regT0);
             jit.setupArguments(GPRInfo::regT0);
@@ -337,6 +331,7 @@ void ArgumentsRecoveryGenerator::generateFor(
             AssemblyHelpers::TrustedImmPtr(
                 bitwise_cast<void*>(operationCreateArgumentsDuringOSRExit)),
             GPRInfo::nonArgGPR0);
+#if USE(JSVALUE64)
         jit.call(GPRInfo::nonArgGPR0);
         jit.store64(GPRInfo::returnValueGPR, AssemblyHelpers::addressFor(argumentsRegister));
         jit.store64(
@@ -344,20 +339,6 @@ void ArgumentsRecoveryGenerator::generateFor(
             AssemblyHelpers::addressFor(unmodifiedArgumentsRegister(argumentsRegister)));
         jit.move(GPRInfo::returnValueGPR, GPRInfo::regT0); // no-op move on almost all platforms.
 #else // USE(JSVALUE64) -> so the 32_64 part
-        if (inlineCallFrame) {
-            jit.setupArgumentsWithExecState(
-                AssemblyHelpers::TrustedImmPtr(inlineCallFrame));
-            jit.move(
-                AssemblyHelpers::TrustedImmPtr(
-                    bitwise_cast<void*>(operationCreateInlinedArgumentsDuringOSRExit)),
-                GPRInfo::nonArgGPR0);
-        } else {
-            jit.setupArgumentsExecState();
-            jit.move(
-                AssemblyHelpers::TrustedImmPtr(
-                    bitwise_cast<void*>(operationCreateArgumentsDuringOSRExit)),
-                GPRInfo::nonArgGPR0);
-        }
         jit.call(GPRInfo::nonArgGPR0);
         jit.store32(
             AssemblyHelpers::TrustedImm32(JSValue::CellTag),

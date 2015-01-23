@@ -32,8 +32,6 @@
 #include "config.h"
 #include "InjectedScript.h"
 
-#if ENABLE(INSPECTOR)
-
 #include "InspectorValues.h"
 #include "JSCInlines.h"
 #include "ScriptFunctionCall.h"
@@ -109,11 +107,12 @@ void InjectedScript::getFunctionDetails(ErrorString& errorString, const String& 
     *result = BindingTraits<Inspector::Protocol::Debugger::FunctionDetails>::runtimeCast(WTF::move(resultValue));
 }
 
-void InjectedScript::getProperties(ErrorString& errorString, const String& objectId, bool ownProperties, RefPtr<Array<Inspector::Protocol::Runtime::PropertyDescriptor>>* properties)
+void InjectedScript::getProperties(ErrorString& errorString, const String& objectId, bool ownProperties, bool ownAndGetterProperties, RefPtr<Array<Inspector::Protocol::Runtime::PropertyDescriptor>>* properties)
 {
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), ASCIILiteral("getProperties"), inspectorEnvironment()->functionCallHandler());
     function.appendArgument(objectId);
     function.appendArgument(ownProperties);
+    function.appendArgument(ownAndGetterProperties);
 
     RefPtr<InspectorValue> result;
     makeCall(function, &result);
@@ -262,4 +261,3 @@ void InjectedScript::releaseObjectGroup(const String& objectGroup)
 
 } // namespace Inspector
 
-#endif // ENABLE(INSPECTOR)

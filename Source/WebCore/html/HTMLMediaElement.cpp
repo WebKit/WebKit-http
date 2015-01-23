@@ -45,7 +45,6 @@
 #include "ElementIterator.h"
 #include "EventNames.h"
 #include "ExceptionCodePlaceholder.h"
-#include "FeatureCounter.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
@@ -1164,7 +1163,9 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     }
 
     // Log that we started loading a media element.
-    FEATURE_COUNTER_INCREMENT_KEY(document().page(), isVideo() ? FeatureCounterMediaVideoElementLoadingKey : FeatureCounterMediaAudioElementLoadingKey);
+    if (Frame* frame = document().frame())
+        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::mediaKey(), isVideo() ? DiagnosticLoggingKeys::videoKey() : DiagnosticLoggingKeys::audioKey(), DiagnosticLoggingKeys::loadingKey());
+
     m_firstTimePlaying = true;
 
     // Set m_currentSrc *before* changing to the cache url, the fact that we are loading from the app
@@ -1829,25 +1830,22 @@ void HTMLMediaElement::mediaPlayerNetworkStateChanged(MediaPlayer*)
 
 static void logMediaLoadRequest(Page* page, const String& mediaEngine, const String& errorMessage, bool succeeded)
 {
-    if (!page || !page->settings().diagnosticLoggingEnabled())
+    if (!page)
         return;
 
-    DiagnosticLoggingClient* diagnosticLoggingClient = page->mainFrame().diagnosticLoggingClient();
-    if (!diagnosticLoggingClient)
-        return;
-
+    DiagnosticLoggingClient& diagnosticLoggingClient = page->mainFrame().diagnosticLoggingClient();
     if (!succeeded) {
-        diagnosticLoggingClient->logDiagnosticMessageWithResult(DiagnosticLoggingKeys::mediaLoadingFailedKey(), errorMessage, DiagnosticLoggingClient::Fail);
+        diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::mediaLoadingFailedKey(), errorMessage, DiagnosticLoggingResultFail);
         return;
     }
 
-    diagnosticLoggingClient->logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadedKey(), mediaEngine);
+    diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadedKey(), mediaEngine);
 
     if (!page->hasSeenAnyMediaEngine())
-        diagnosticLoggingClient->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsAtLeastOneMediaEngineKey(), emptyString());
+        diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsAtLeastOneMediaEngineKey(), emptyString());
 
     if (!page->hasSeenMediaEngine(mediaEngine))
-        diagnosticLoggingClient->logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsMediaEngineKey(), mediaEngine);
+        diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsMediaEngineKey(), mediaEngine);
 
     page->sawMediaEngine(mediaEngine);
 }
@@ -3033,6 +3031,7 @@ void HTMLMediaElement::setMuted(bool muted)
             }
         }
         scheduleEvent(eventNames().volumechangeEvent);
+        document().updateIsPlayingAudio();
     }
 #endif
 }
@@ -4551,7 +4550,8 @@ void HTMLMediaElement::updatePlayState()
 
             if (m_firstTimePlaying) {
                 // Log that a media element was played.
-                FEATURE_COUNTER_INCREMENT_KEY(document().page(), isVideo() ? FeatureCounterMediaVideoElementPlayedKey : FeatureCounterMediaAudioElementPlayedKey);
+                if (Frame* frame = document().frame())
+                    frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::mediaKey(), isVideo() ? DiagnosticLoggingKeys::videoKey() : DiagnosticLoggingKeys::audioKey(), DiagnosticLoggingKeys::playedKey());
                 m_firstTimePlaying = false;
             }
 
@@ -5785,16 +5785,8 @@ void HTMLMediaElement::mediaPlayerEngineFailedToLoad() const
     if (!m_player)
         return;
 
-    Page* page = document().page();
-    if (!page || !page->settings().diagnosticLoggingEnabled())
-        return;
-
-    DiagnosticLoggingClient* diagnosticLoggingClient = page->mainFrame().diagnosticLoggingClient();
-    if (!diagnosticLoggingClient)
-        return;
-
-    String engine = m_player->engineDescription();
-    diagnosticLoggingClient->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::engineFailedToLoadKey(), engine, String::number(m_player->platformErrorCode()));
+    if (Frame* frame = document().frame())
+        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::engineFailedToLoadKey(), m_player->engineDescription(), String::number(m_player->platformErrorCode()));
 }
 
 double HTMLMediaElement::mediaPlayerRequestedPlaybackRate() const
@@ -5821,7 +5813,7 @@ RefPtr<VideoPlaybackQuality> HTMLMediaElement::getVideoPlaybackQuality()
     double now = performance ? performance->now() : 0;
 #else
     DocumentLoader* loader = document().loader();
-    double now = loader ? 1000.0 * loader->timing()->monotonicTimeToZeroBasedDocumentTime(monotonicallyIncreasingTime()) : 0;
+    double now = loader ? 1000.0 * loader->timing().monotonicTimeToZeroBasedDocumentTime(monotonicallyIncreasingTime()) : 0;
 #endif
 
     if (!m_player)
@@ -6107,7 +6099,7 @@ bool HTMLMediaElement::overrideBackgroundPlaybackRestriction() const
 
 bool HTMLMediaElement::isPlayingAudio()
 {
-    return isPlaying() && hasAudio();
+    return isPlaying() && hasAudio() && !muted();
 }
 
 void HTMLMediaElement::pageMutedStateDidChange()

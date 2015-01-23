@@ -67,6 +67,10 @@
 #include "GraphicsContext3D.h"
 #endif
 
+#if PLATFORM(IOS)
+#include "RuntimeApplicationChecksIOS.h"
+#endif
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -331,6 +335,17 @@ void RenderLayerBacking::layerWillBeDestroyed()
         if (pluginViewBase && m_graphicsLayer->contentsLayerForMedia())
             pluginViewBase->detachPluginLayer();
     }
+}
+
+bool RenderLayerBacking::needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack(const GraphicsLayer& layer) const
+{
+    if (m_isMainFrameRenderViewLayer && applicationIsDumpRenderTree()) {
+        // In iOS WebKit1 the main frame's RenderView layer is always transparent. We lie that it is opaque so that
+        // internals.layerTreeAsText() tests succeed.
+        ASSERT_UNUSED(layer, !layer.contentsOpaque());
+        return true;
+    }
+    return false;
 }
 #endif
 
@@ -774,7 +789,7 @@ void RenderLayerBacking::updateGeometry()
         ShouldRespectOverflowClip shouldRespectOverflowClip = compAncestor->isolatesCompositedBlending() ? RespectOverflowClip : IgnoreOverflowClip;
         RenderLayer::ClipRectsContext clipRectsContext(compAncestor, TemporaryClipRects, IgnoreOverlayScrollbarSize, shouldRespectOverflowClip);
         LayoutRect parentClipRect = m_owningLayer.backgroundClipRect(clipRectsContext).rect(); // FIXME: Incorrect for CSS regions.
-        ASSERT(parentClipRect != LayoutRect::infiniteRect());
+        ASSERT(!parentClipRect.isInfinite());
         m_ancestorClippingLayer->setPosition(FloatPoint(parentClipRect.location() - graphicsLayerParentLocation));
         m_ancestorClippingLayer->setSize(parentClipRect.size());
 

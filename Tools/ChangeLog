@@ -1,3 +1,874 @@
+2015-01-22  David Kilzer  <ddkilzer@apple.com>
+
+        configure-xcode-for-ios-development needs to import webkitdirs.pm
+        <http://webkit.org/b/140704>
+
+        Fixes the following runtime error:
+
+            Undefined subroutine &main::exitStatus called at ./Tools/Scripts/configure-xcode-for-ios-development line 167.
+
+        * Scripts/configure-xcode-for-ios-development: Add back code to
+        import webkitdirs.pm for the exitStatus() method.  Not sure why
+        I removed it before patch review.
+
+2015-01-22  Timothy Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r178847): Yosemite 32-bit bot isn't doing any work
+        https://bugs.webkit.org/show_bug.cgi?id=140795
+
+        Reviewed by Jon Honeycutt.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        r178847 accidentally remove the scheduler for this bot. Re-add it to the
+        Yosemite scheduler.
+
+2015-01-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Expose missing editing features through WebView interface
+        https://bugs.webkit.org/show_bug.cgi?id=140773
+        <rdar://problem/19565421>
+
+        Reviewed by Dean Jackson.
+
+        Connect the various WebView editing delegate methods to our
+        test infrastructure. Also prefer _bstr_t to raw BSTR types
+        to simplify life cycle management.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebViewToConsistentStateBeforeTesting):
+        * DumpRenderTree/win/EditingDelegate.cpp:
+        (EditingDelegate::QueryInterface):
+        (dumpPath):
+        (dump):
+        (EditingDelegate::shouldBeginEditingInDOMRange):
+        (EditingDelegate::shouldEndEditingInDOMRange):
+        (EditingDelegate::shouldInsertNode):
+        (EditingDelegate::shouldInsertText):
+        (EditingDelegate::shouldDeleteDOMRange):
+        (EditingDelegate::shouldChangeSelectedDOMRange):
+        (EditingDelegate::shouldApplyStyle):
+        (EditingDelegate::shouldChangeTypingStyle):
+        (EditingDelegate::doPlatformCommand):
+        (EditingDelegate::webViewDidBeginEditing):
+        (EditingDelegate::webViewDidChange):
+        (EditingDelegate::webViewDidEndEditing):
+        (EditingDelegate::webViewDidChangeTypingStyle):
+        (EditingDelegate::webViewDidChangeSelection):
+        (EditingDelegate::checkSpellingOfString):
+        (EditingDelegate::onNotify):
+        * DumpRenderTree/win/EditingDelegate.h:
+
+2015-01-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a build flag for ES6 class syntax
+        https://bugs.webkit.org/show_bug.cgi?id=140760
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-01-22  Daniel Bates  <dabates@apple.com>
+
+        [iOS] run-webkit-tests --ios-sim dies with an error; fails to parse Apple Internal
+        runtime in simctl output
+        https://bugs.webkit.org/show_bug.cgi?id=140751
+
+        Reviewed by David Kilzer.
+
+        Following the fix for <rdar://problem/19444383>, run-webkit-tests --ios-sim dies
+        with an error because it does not know how to parse the output of the simctl tool
+        to identify an Apple Internal runtime.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Runtime.__init__): Add parameter is_internal_runtime (defaults to False).
+        (Runtime.__eq__): Take is_internal_runtime when comparing two Runtime objects for equality.
+        (Runtime.__repr__): Update printable representation of Runtime object to indicate whether
+        the runtime is an internal runtime.
+        (Simulator): Update regular expressions runtime_re and version_re to match an internal runtime.
+        (Simulator._parse_runtimes): Pass is_internal_runtime to the Runtime constructor with the
+        appropriate value.
+        (Simulator._parse_devices): Pass argument is_internal_runtime to Simulator.runtime() so that
+        it updates the appropriate Runtime object.
+        (Simulator.runtime): Added optional parameter, is_internal_runtime. Modified to support
+        looking up a Runtime object for an internal runtime.
+
+2015-01-22  Alexey Proskuryakov  <ap@apple.com>
+
+        LeaksViewer doesn't show recent builds if there are less than 10
+        https://bugs.webkit.org/show_bug.cgi?id=140716
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/LeaksViewer/RecentBuildsLoader.js:
+
+2015-01-22  Lucas Forschler  <lforschler@apple.com>
+
+        Add Apple build slaves.
+        Fixed text alignment for slave list.
+        
+        Unreviewed.
+        
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-01-21  Lucas Forschler  <lforschler@apple.com>
+
+        Teach build.webkit.org about bot308 and bot309.
+        
+        Unreviewed.
+        
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-01-21  Lucas Forschler  <lforschler@apple.com>
+
+        Add two Apple Mavericks slaves.
+        
+        Unreviewed.
+        
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-01-21  Daniel Bates  <dabates@apple.com>
+
+        Add iOS WebKit1 TestExpectation file
+        https://bugs.webkit.org/show_bug.cgi?id=140739
+
+        Reviewed by David Kilzer.
+
+        Teach run-webkit-tests to look for iOS WebKit1-specific test results and
+        expectations in directory LayoutTests/platform/ios-simulator-wk1.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.default_baseline_search_path):
+
+2015-01-21  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Update configure-xcode-for-ios-development to copy missing headers to iphoneos SDK
+        <http://webkit.org/b/140704>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/configure-xcode-for-ios-development:
+        - Update copyright.
+        - Remove FIXME addressed by r178709.
+        - Call copyMissingHeadersToIPhoneOSSDKIfNeeded().
+        (copyMissingHeadersToIPhoneOSSDKIfNeeded): Add method to copy
+        missing headers from iphonesimulator SDK to iphoneos SDK.
+        (sdkDirectory): Add method that returns SDK directory.
+        (sdkPlatformDirectory): Extract method from
+        xcodeSDKSpecificationsPath() that returns SDK platform
+        directory.
+        (xcodeSDKSpecificationsPath): Update to use
+        sdkPlatformDirectory().
+
+2015-01-21  Alexey Proskuryakov  <ap@apple.com>
+
+        https://build.webkit.org/dashboard/metrics.html fails because of ios-ews
+        https://bugs.webkit.org/show_bug.cgi?id=140731
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js:
+        (Analyzer.prototype._analyzeAllBubblesPerformance): Corrected a typo.
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] eventSender does not support scalePageBy
+        https://bugs.webkit.org/show_bug.cgi?id=140726
+        <rdar://problem/19549865>
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/win/EventSender.cpp:
+        (scalePageByCallback): Provide implementation using new WebView method.
+
+2015-01-21  Lucas Forschler  <lforschler@apple.com>
+
+        Remove Apple Mountain Lion Build & Test slaves.
+        
+        Unreviewed.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-01-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(INSPECTOR) ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=140668
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::showWebInspector):
+        (TestRunner::closeWebInspector):
+        (TestRunner::evaluateInWebInspector):
+        * Scripts/webkitperl/FeatureList.pm:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::showWebInspector):
+        (WTR::TestRunner::closeWebInspector):
+        (WTR::TestRunner::evaluateInWebInspector):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke):
+
+2015-01-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Update build.webkit.org/dashboard to match current Mac queues.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Lion.png: Removed.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Lion@2x.png: Removed.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/MountainLion.png: Removed.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/MountainLion@2x.png: Removed.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (table.queue-grid tr.platform.mac-os-x-mountain-lion img.logo): Deleted.
+        (table.queue-grid tr.platform.mac-os-x-lion img.logo): Deleted.
+
+2015-01-20  Lucas Forschler  <lforschler@apple.com>
+
+        Update Apple MountainLion Leaks slave to Yosemite
+        Update Apple MountainLion Release (32-bit) Build slave to Yosemite
+        
+        Unreviewed.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-01-20  Lucas Forschler  <lforschler@apple.com>
+
+        Update LeaksViewer from MountainLion to Yosemite
+        
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/LeaksViewer/LeaksViewer.js:
+        (LeaksViewer._displayURLPrompt):
+
+2015-01-20  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Fix EWS python unit tests and address code comments as per 140476
+        https://bugs.webkit.org/show_bug.cgi?id=140637
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port):
+        (Port.__init__):
+        Adds DEFAULT_ARCHITECTURE member.
+        (Port.architecture):
+        Removes architecture member and instead uses
+        self.get_option('architecture'). Also removes redundant architecture
+        method.
+        (Port.set_architecture):
+        Adds a setter for the architecture variable to be able to set a flag
+        upon modification.
+        (Port.test_configuration):
+        Uses self.architecture() instead of self._architecture.
+        * Scripts/webkitpy/port/ios.py:
+        Overrides DEFAULT_ARCHITECTURE.
+        (IOSPort):
+        (IOSPort.determine_full_port_name):
+        Uses subprocess.check_output instead of Popen. Uses rstrip instead of
+        strip. Fixes regex to not match arbitrary characters after the
+        relevent digits are matched.
+        (IOSPort.__init__):
+        Removes old _architecture defaulting strategy.
+        (IOSPort._build_driver_flags):
+        Uses self.architecture() instead of self._architecture.
+        (IOSSimulatorPort):
+        Overrides DEFAULT_ARCHITECTURE.
+        (IOSSimulatorPort.__init__):
+        Removes old _architecture defaulting strategy.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort):
+        Overrides DEFAULT_ARCHITECTURE.
+        (MacPort.__init__):
+        Removes old _architecture defaulting strategy.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem.run_command):
+        Checks the did_override_architecture flag to determine whether to add
+        the --architecture option.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        Uses ews.architecture rather than trying to discern the correct
+        architecture using a port object.
+        (EarlyWarningSystemTest._default_expected_logs):
+        * Scripts/webkitpy/tool/commands/queues.py:
+        Removes use of optparse, and removes the import statement.
+        (AbstractQueue.__init__):
+        (PatchProcessingQueue.begin_work_queue):
+
+2015-01-20  Sam Weinig  <sam@webkit.org>
+
+        Attempt to fix Mountain Lion and EFL tests.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        Disable Process-per-tab and network process on Mountain Lion and EFL.
+
+2015-01-20  Darin Adler  <darin@apple.com>
+
+        Remove SVGElementInstanceList, m_instanceUnderMouse, DUMP_INSTANCE_TREE, DUMP_SHADOW_TREE
+        https://bugs.webkit.org/show_bug.cgi?id=140679
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/webkitperl/filter-build-webkit_unittest/shouldIgnoreLine_unittests.pl:
+        Removed a reference to SVGElementInstanceList.
+
+2015-01-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] WebViewTest should prohibit overriding initializeWebExtensions()
+        https://bugs.webkit.org/show_bug.cgi?id=140028
+
+        Reviewed by Carlos Garcia Campos.
+
+        This won't work as expected, since this function is called before the
+        WebViewTest constructor completes.
+
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.h:
+
+2015-01-20  David Kilzer  <ddkilzer@apple.com>
+
+        configure-xcode-for-ios-development needs to update iPhoneOS SDK
+        <http://webkit.org/b/140661>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/configure-xcode-for-ios-development: Add for() loop to
+        run createXcodeSpecificationFilesForSDKIfNeeded() for both
+        "iphoneos" and "iphonesimulator" SDKs.
+        (createXcodeSpecificationFilesForSDKIfNeeded): Extracted from
+        the main body of the script.
+
+2015-01-20  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Add API to set the web view editable into WebKit2 GTK+ API
+        https://bugs.webkit.org/show_bug.cgi?id=139443
+
+        Reviewed by Carlos Garcia Campos.
+
+        Create the new test cases for setting the editable property on the web
+        view and on the contenteditable enabled document. Also rework the
+        current tests that are expecting that the web view is editable.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebViewEditor.cpp:
+        (loadTestHtml):
+        (testWebViewEditorCutCopyPasteNonEditable):
+        (testWebViewEditorCutCopyPasteEditable):
+        (testWebViewEditorSelectAllNonEditable):
+        (testWebViewEditorSelectAllEditable):
+        (runEditorEditableCutTests):
+        (testWebViewEditorEditableOnNonEditable):
+        (testWebViewEditorEditableOnContentEditable):
+        (testWebViewEditorNonEditable):
+        (beforeAll):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::isEditable):
+        (WebViewTest::setEditable):
+
+2015-01-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add an option to create WebKitWebView snapshots with transparent background
+        https://bugs.webkit.org/show_bug.cgi?id=140617
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewSnapshot): Check that the same snapshot with
+        transparent background is different than the default one filled
+        with white.
+
+2015-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to change the WebKitWebView background color
+        https://bugs.webkit.org/show_bug.cgi?id=140610
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add --bg-color command line option to MiniBrowser to be able to
+        manually test the API passing any RGBA color to MiniBrowser.
+        Also add a simple unit test to check that getting and setting
+        colors from the API point of view.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browser_window_set_background_color):
+        * MiniBrowser/gtk/BrowserWindow.h:
+        * MiniBrowser/gtk/main.c:
+        (createBrowserWindow):
+        (parseBackgroundColor):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewBackgroundColor):
+        (beforeAll):
+
+2015-01-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Layout Test fast/xmlhttprequest/xmlhttprequest-no-file-access.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=140665
+
+        Reviewed by Brian Burg.
+
+        * DumpRenderTree/win/UIDelegate.cpp:
+        (UIDelegate::webViewAddMessageToConsole): Correct string search and concatenation to
+        match expected test output.
+
+2015-01-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove the support for custom suffixes on ChangeLog
+        https://bugs.webkit.org/show_bug.cgi?id=140648
+
+        Reviewed by David Kilzer.
+
+        Custom suffixes were used for the iOS branch of WebKit.
+        Now that everything is opensource, there is no need for it.
+
+        * Scripts/VCSUtils.pm:
+        (changeLogSuffix): Deleted.
+        (changeLogFileName): Deleted.
+        * Scripts/commit-log-editor:
+        * Scripts/prepare-ChangeLog:
+        (getLatestChangeLogs):
+        (generateNewChangeLogs):
+        (generateFileList):
+        * Scripts/resolve-ChangeLogs:
+        (findChangeLog):
+
+2015-01-19  Timothy Horton  <timothy_horton@apple.com>
+
+        Adjust naming of action menu SPI
+        https://bugs.webkit.org/show_bug.cgi?id=140644
+        <rdar://problem/19448129>
+
+        Reviewed by Brian Weinstein.
+
+        * TestWebKitAPI/Tests/WebKit2ObjC/ActionMenus.mm:
+        (-[ActionMenusTestWKView runMenuSequenceAtPoint:preDidCloseMenuHandler:]):
+        (TestWebKitAPI::TEST):
+
+2015-01-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Generate the make dist manifest from a CMake template file
+        https://bugs.webkit.org/show_bug.cgi?id=139387
+
+        Reviewed by Martin Robinson.
+
+        Remove the code that performs variable substitution on manifest.txt.
+        Replace the custom variables used in that file with CMake variables.
+
+        * gtk/make-dist.py:
+        (Manifest.add_directory):
+        (Manifest.get_full_source_path):
+        (Manifest.process_line):
+        (Manifest.resolve_variables): Deleted.
+        (Manifest.get_full_tarball_path): Deleted.
+        * gtk/manifest.txt.in: Renamed from Tools/gtk/manifest.txt.
+
+2015-01-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct merge error in last commit.
+
+        * DumpRenderTree/win/AccessibilityControllerWin.cpp:
+        (findAccessibleObjectById): Undo accidental paste made during landing.
+
+2015-01-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Periodic failure in DumpRenderTree related to WebActionPropertyBag::Read
+        https://bugs.webkit.org/show_bug.cgi?id=139906
+
+        Reviewed by Dean Jackson.
+
+        WebKit on Windows was creating uninitialized VARIANT structures, then attempting
+        to use them. This patch fixes that.
+
+        * DumpRenderTree/win/AccessibilityControllerWin.cpp:
+        (findAccessibleObjectById):
+        (AccessibilityController::focusedElement):
+        (logEventProc):
+        (notificationListenerProc):
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (AccessibilityUIElement::getChildAtIndex):
+        (AccessibilityUIElement::titleUIElement):
+        (self):
+        (AccessibilityUIElement::role):
+        (AccessibilityUIElement::valueDescription):
+        (accessibilityState):
+        (AccessibilityUIElement::isChecked):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (dumpFrameScrollPosition):
+        (dumpFramesAsText):
+        * DumpRenderTree/win/PolicyDelegate.cpp:
+        (PolicyDelegate::decidePolicyForNavigationAction):
+        * DumpRenderTree/win/UIDelegate.cpp:
+        (UIDelegate::exceededDatabaseQuota):
+        * WinLauncher/Common.cpp:
+        (setWindowText):
+
+2015-01-19  Dean Jackson  <dino@apple.com>
+
+        Add "override" to fix the build with newer clangs.
+
+        * TestWebKitAPI/Tests/WebCore/CalculationValue.cpp:
+        (TestWebKitAPI::CalculationDeletionTestNode::operator==):
+
+2015-01-19  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Do not hard-code iphoneos.internal SDK in buildXCodeProject()
+        <http://webkit.org/b/140623>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/build-webkit: Update help for --device switch.
+        * Scripts/webkitdirs.pm:
+        (determineXcodeSDK): When passing --device, prefer the internal
+        iOS SDK if it exists, else fall back to the external iOS SDK.
+        (buildXCodeProject): Use xcodeSDK() as -sdk argument for
+        xcodebuild instead of trying to sanitize values.
+
+2015-01-19  Alexey Proskuryakov  <ap@apple.com>
+
+        "Unknown option: sharedworkerglobalscopeconstructorsfile" when running bindings tests.
+        https://bugs.webkit.org/show_bug.cgi?id=140606
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.generate_supplemental_dependency):
+        (BindingsTests.main):
+
+2015-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] [WK2] TestWebKitWebView snapshot fails
+        https://bugs.webkit.org/show_bug.cgi?id=120404
+
+        Reviewed by Žan Doberšek.
+
+        Rework the test to make sure the snapshot is always created at the
+        desired size.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Unskip /webkit2/WebKitWebView/snapshot.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewSnapshot): Use a fixed size for the document, and
+        disable scrollbars to make sure the visible area is always the
+        WebView size.
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::showInWindowAndWaitUntilMapped): Add optional width
+        and height parameters to create the window with a given size.
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.h:
+
+2015-01-18  David Kilzer  <ddkilzer@apple.com>
+
+        iOS EWS queue name should be consistent
+        <http://webkit.org/b/140585>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/common/config/ews.json: Rename 'ios-device'
+        to 'ios'.
+        * Scripts/webkitpy/common/config/ports.py: Ditto.
+        (DeprecatedPort.port):
+        (IOSPort):
+        * Scripts/webkitpy/port/ios.py: Ditto.
+        (IOSPort):
+
+        * Scripts/webkitpy/port/factory.py:
+        (PortFactory): Re-order PORT_CLASSES so ios.IOSSimulatorPort
+        appears before ios.IOSPort.  If this is not done,
+        `run-webkit-tests --ios-simulator` will get the wrong Port class
+        (IOSPort instead of IOSSimulatorPort) due to the way that
+        PortFactory.get() uses prefix matching of <Port>.port_name to
+        find the correct class to use.
+
+2015-01-18  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: OS X EWS is now on Mavericks
+        https://bugs.webkit.org/show_bug.cgi?id=140595
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+        (BubbleQueueServer):
+
+2015-01-17  David Kilzer  <ddkilzer@apple.com>
+
+        Attempt to fix webkitpy tests on Mountain Lion, Mavericks bots
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort): Add 'ios-device-7' to VERSION_FALLBACK_ORDER so that
+        test-webkitpy doesn't fail since iOS 7.x SDKs are installed on
+        the Mountain Lion and Mavericks bots.
+
+2015-01-17  David Kilzer  <ddkilzer@apple.com>
+
+        Attempt to fix webkitpy tests on GTK Linux ports
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.determine_full_port_name): Set a sensible default if
+        not running on a Mac platform or if no iOS SDK is installed.
+
+2015-01-17  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Create iOS-EWS client queue
+        https://bugs.webkit.org/show_bug.cgi?id=140476
+
+        Reviewed by Alexey Proskuryakov.
+
+        * EWSTools/start-queue-mac.sh:
+        Adds call to configure-xcode-for-ios-development for iOS EWS.
+        * Scripts/webkitpy/common/config/ews.json:
+        Adds the iOS EWS config entry.
+        * Scripts/webkitpy/common/config/ports.py:
+        (DeprecatedPort.port):
+        Adds IOSPort to the port map.
+        (IOSPort):
+        (IOSPort.build_webkit_command):
+        Adds --sdk=iphoneos to the webkit build command.
+        * Scripts/webkitpy/port/base.py:
+        (Port.architecture):
+        Adds an accessor for the architecture member variable.
+        * Scripts/webkitpy/port/factory.py:
+        (PortFactory):
+        Adds IOSPort to the port class list.
+        * Scripts/webkitpy/port/ios.py:
+        Adds the IOSPort to encapsulate iOS-specific things.
+        (IOSPort):
+        (IOSPort.determine_full_port_name):
+        (IOSPort.__init__):
+        (IOSPort._build_driver_flags):
+        (IOSPort.operating_system):
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        Adds the archetecture option to the mock options.
+        (DownloadCommandsTest._default_options):
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        Appends the archetecture option into calls to webkit-patch.
+        (AbstractEarlyWarningSystem.review_patch):
+        (AbstractEarlyWarningSystem.run_command):
+        (AbstractEarlyWarningSystem.load_ews_classes):
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        Adds logic to soothe the unittest now that --architecture is being
+        thrown around everywhere.
+        (EarlyWarningSystemTest._default_expected_logs):
+        * Scripts/webkitpy/tool/commands/queues.py:
+        Adds glue code to ferry the --architecture option around.
+        (AbstractQueue.__init__):
+        (PatchProcessingQueue.begin_work_queue):
+        * Scripts/webkitpy/tool/steps/abstractstep.py:
+        Adds the archetecture option to all AbstractSteps so that
+        EarlyWarningSystem doesn't start shoving --architecture into
+        unsuspecting commands.
+        (AbstractStep.options):
+        * Scripts/webkitpy/tool/steps/build.py:
+        Translates the --architecture option into an ARCHS= format to pass to
+        build-webkit.
+        (Build.build):
+        * Scripts/webkitpy/tool/steps/options.py:
+        Adds a definition for the --architecture option.
+        (Options):
+
+2015-01-16  Sam Weinig  <sam@webkit.org>
+
+        Add a basic configuration object for WKView
+        https://bugs.webkit.org/show_bug.cgi?id=140559
+
+        Reviewed by Anders Carlsson.
+
+        Add tests for WKPageConfigurationRef.
+
+        * TestWebKitAPI/PlatformWebView.h:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/WKPageConfiguration.cpp: Added.
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::setPageLoaderClient):
+        * TestWebKitAPI/mac/PlatformWebViewMac.mm:
+        (TestWebKitAPI::PlatformWebView::initialize):
+        (TestWebKitAPI::PlatformWebView::PlatformWebView):
+
+2015-01-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        WeakPtr functions crash when created with default constructor
+        https://bugs.webkit.org/show_bug.cgi?id=140479
+
+        Reviewed by Andreas Kling.
+
+        Add WeakPtr API tests.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp: Added.
+        * TestWebKitAPI/Tests/WTF/Ref.cpp: Update to not use copy constructor.
+
+2015-01-16  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r178586): Caused webkitpy.w3c.test_converter_unittest.W3CTestConverterTest.test_convert_prefixed_properties to fail
+        https://bugs.webkit.org/show_bug.cgi?id=140568
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fix the script parsing CSSPropertyNames.in to stop splitting lines
+        on '=' sign. The '=' sign is also used in StyleBuilder parameters:
+        e.g. "Longhands=background-position-x|background-position-y".
+        This would confuse the script and treat this as a CSS property:
+        "background-position-x|background-position-y".
+
+        We now split on white space and treat the first string on the line
+        to be the property name (this is the syntax in this file).
+
+        * Scripts/webkitpy/w3c/test_converter.py:
+        (_W3CTestConverter.__init__):
+        (_W3CTestConverter.read_webkit_prefixed_css_property_list):
+
+2015-01-16  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r171968): run-safari --simulator fails to launch Safari on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=135589
+
+        Reviewed by David Kilzer.
+
+        Derived from a patch by David Farler.
+
+        Following the removal IPhoneSimulatorNotification.pm in <http://trac.webkit.org/changeset/171968>
+        run-safari --simulator fails to launch Safari on iOS. We need to implement run-safari
+        in terms of the simctl command line utility.
+
+        * Scripts/webkitdirs.pm: Added constant SIMULATOR_DEVICE_STATE_BOOTED.
+        (eraseIOSSimulatorDevice): Added.
+        (bootedIOSSimulatorDevice): Added.
+        (iosSimulatorApplicationsPath): Added.
+        (installedMobileSafariBundle): Implemented in terms of iosSimulatorApplicationsPath().
+        (openIOSSimulator): Modified to launch iOS Simulator using OPEN(1).
+        (quitIOSSimulator): Added.
+        (iosSimulatorDeviceByName): Modified to find the first simulator device that matches
+        the specified name and currently selected iOS runtime.
+        (isIOSSimulatorSystemInstalledApp): Added.
+        (runIOSWebKitAppInSimulator): Modified to use simctl launch to launch an app in the simulator.
+        (deleteiOSSimulatorDevice): Deleted.
+        (loadIPhoneSimulatorNotificationIfNeeded): Deleted.
+        (installAndLaunchIOSWebKitAppInSimulator): Deleted.
+
+2015-01-16  Alex Christensen  <alex.christensen@flexsim.com>
+
+        Resurrect the WinCairo bot.
+        https://bugs.webkit.org/show_bug.cgi?id=139908
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (appendCustomBuildFlags):
+        * BuildSlaveSupport/test-result-archive:
+        (archiveTestResults):
+        Add WinCairo buildbot.
+
+2015-01-16  Chris Dumez  <cdumez@apple.com>
+
+        webkit-patch should auto-install the keyring python module
+        https://bugs.webkit.org/show_bug.cgi?id=140547
+
+        Reviewed by David Kilzer.
+
+        Auto-install the keyring python module. This is the module that
+        webkit-patch uses for cross-platform access to the keyring
+        service.
+
+        Without this module, if the password if not in the keychain,
+        webkit-patch will keep asking for your username / password and
+        never remember them.
+
+        * Scripts/webkitpy/common/net/credentials.py:
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook.find_module):
+        (AutoinstallImportHook._install_keyring):
+
+2015-01-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(SQL_DATABASE) guards
+        https://bugs.webkit.org/show_bug.cgi?id=140434
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-01-15  Daniel Bates  <dabates@apple.com>
+
+        [iOS] REGRESSION (r174642): DumpRenderTree.app test may dump result twice
+        https://bugs.webkit.org/show_bug.cgi?id=139685
+        <rdar://problem/19281317>
+
+        Reviewed by Simon Fraser.
+
+        Fixes an issue where a test in DumpRenderTree.app may dump its result twice. In particular,
+        the test LayoutTests/fast/dom/gc-10.html may dump its result twice.
+
+        Following <http://trac.webkit.org/changeset/174642>, we dump the test result asynchronously
+        as opposed to synchronously. So, the WebThread or the main thread may perform other tasks
+        before DRT dumps the output of a test. In particular, the WebThread may start a new page
+        load (say, as a result of continued JavaScript execution), which will ultimately lead to
+        dumping the test result again. Instead we want DRT to dump the test result synchronously
+        such that we capture the state of the web page either when the page is loaded or when
+        window.testRunner.notifyDone() is called.
+
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        (createBitmapContextFromWebView): Moved logic to re-enable tile painting and update the
+        state of the display from here to updateDisplay(). Added call to -[CATransaction flush] to
+        flush CA transactions to the window.
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (updateDisplay): Added iOS-specific code to update tiles and tell WebKit to flush
+        compositing changes to ensure that we have up-to-date tile content for a pixel/ref-test.
+        (dump): Renamed; formerly named dumpTestResults().
+        (displayWebView): Removed outdated FIXME comment. Added FIXME comment to investigate
+        enabling repaint support on iOS.
+        (-[DumpRenderTree _deferDumpToMainThread]): Deleted.
+        (-[DumpRenderTree _waitForWebThreadThenDump]): Deleted.
+        (dumpTestResults): Deleted.
+
+2015-01-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Miscellaneous DRT fixes
+        https://bugs.webkit.org/show_bug.cgi?id=116562
+
+        Reviewed by Tim Horton.
+
+        While investigating the cause of several Windows crashes, I found:
+        (1) Messy conversions to and from BSTR types
+        (2) Weird mixes of wide-string and narrow string conversions
+        (3) Passing nullptr to some CoreFoundation routines that do not
+            permit null arguments.
+        (4) Commands to link the executable to the VS2005 runtime.
+
+        This patch cleans up these issues to improve DRT reliability on
+        Windows.
+
+        * DumpRenderTree/cg/ImageDiffCG.cpp:
+        (main): Get rid of VS2005 runtime linking.
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (urlSuitableForTestResult): Protect against being asked
+        to process an empty URL.
+        (dumpHistoryItem): Do BSTR string building using _bstr_t, rather
+        than converting to/from wchar_t buffers.
+        (runTest): Simplify string and BSTR handling.
+        (createWebViewAndOffscreenWindow): Ditto.
+        (main): Get rid of VS2005 runtime linking.
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (jsStringRefToWString): Simplify code.
+        (TestRunner::pathToLocalResource):
+        (TestRunner::setUserStyleSheetLocation):
+        * TestWebKitAPI/win/main.cpp: Get rid of
+        VS2005 runtime linking.
+        * win/DLLLauncher/DLLLauncherMain.cpp:
+        (wWinMain): Ditto.
+
+2015-01-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Stop hardcoding mac-mountainlion in commit queue
+        https://bugs.webkit.org/show_bug.cgi?id=140492
+
+        Reviewed by Anders Carlsson.
+
+        Use "mac", not "mac-<platform>". This matches how EWS queues are initialized, and
+        there should be no change in behavior, because:
+        1. PatchProcessingQueue converts the name with _new_port_name_from_old() before
+        using it to create a port object.
+        2. Although it doesn't convert the name before using DeprecatedPort.port(), it
+        is actually correct to use "mac" for the name there. We only used to get the expected
+        behavior with "mac-mountainlion" accidentally, because of a fallback to "mac"
+        for unknown deprecated port names.
+
+        * Scripts/webkitpy/tool/commands/queues.py: (CommitQueue):
+
 2015-01-14  Jake Nielsen  <jacob_nielsen@apple.com>
 
         Create iOS-EWS server queue
