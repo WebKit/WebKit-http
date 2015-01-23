@@ -296,15 +296,6 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
 
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
 
-    if (m_redirected) {
-        BUrlContext* context = m_request->Context();
-        delete m_request;
-        m_request = m_nextRequest->toNetworkRequest(context);
-        resetState();
-        start();
-        return;
-    }
-
     if (success || (httpRequest && ignoreHttpError(httpRequest, m_responseDataSent))) {
         client->didFinishLoading(m_resourceHandle, 0);
             // TODO put the actual finish time instead of 0
@@ -417,10 +408,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
 
 void BUrlProtocolHandler::sendResponseIfNeeded()
 {
-    WTF::String contentType;
-    int contentLength = 0;
-
-    if(!m_request || !m_resourceHandle)
+    if((!m_request) || (!m_resourceHandle) || m_redirected)
         return;
 
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
@@ -432,16 +420,15 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
             return;
     }
 
-    if (m_responseSent || !m_resourceHandle)
+    if (!m_resourceHandle)
         return;
-    m_responseSent = true;
 
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client)
         return;
 
-    contentType = m_request->Result().ContentType();
-    contentLength = m_request->Result().Length();
+    WTF::String contentType = m_request->Result().ContentType();
+    int contentLength = m_request->Result().Length();
 
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
@@ -450,17 +437,11 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     ResourceResponse response(url, mimeType, contentLength, encoding);
 
-    if (!httpRequest) {
-        // For protocols other than http, we don't have more information to add.
-        // (this includes file: and data: for now).
-        client->didReceiveResponse(m_resourceHandle, response);
-        return;
-    }
+    if (httpRequest) {
+        const BHttpResult& result = static_cast<const BHttpResult&>(
+            httpRequest->Result());
+        int statusCode = result.StatusCode();
 
-    const BHttpResult& result = static_cast<const BHttpResult&>(
-        httpRequest->Result());
-    int statusCode = result.StatusCode();
-    if (url.protocolIsInHTTPFamily()) {
         String suggestedFilename = filenameFromHTTPContentDisposition(
             result.Headers()["Content-Disposition"]);
 
@@ -476,46 +457,55 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
             BHttpHeader& headerPair = resultHeaders.HeaderAt(i);
             response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
         }
+
+        if (statusCode == 401)
+            AuthenticationNeeded(httpRequest, response);
+
     }
 
-    if (statusCode == 401)
-        AuthenticationNeeded(httpRequest, response);
-
-    BString locationString(result.Headers()["Location"]);
-    if (locationString.Length()) {
-        URL location(url, locationString);
-        m_redirectionTries--;
-
-        if (m_redirectionTries == 0) {
-            ResourceError error(location.host(), 400, location.string(),
-                "Redirection limit reached");
-            client->didFail(m_resourceHandle, error);
-            return;
-        }
-
-        m_redirected = true;
-
-        m_nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
-        m_nextRequest->setURL(location);
-
-        if (((statusCode >= 301 && statusCode <= 303) || statusCode == 307) && m_method == B_HTTP_POST) {
-            m_method = B_HTTP_GET;
-            m_nextRequest->setHTTPMethod(m_method.String());
-
-            // Remove headers that are not appropriate in a GET request
-            m_nextRequest->clearHTTPContentType();
-            m_nextRequest->clearHTTPOrigin();
-        }
-
-        client->willSendRequest(m_resourceHandle, *m_nextRequest, response);
+    if (!m_responseSent) {
+        m_responseSent = true;
+        client->didReceiveResponse(m_resourceHandle, response);
         return;
     }
-
-    client->didReceiveResponse(m_resourceHandle, response);
 }
 
 void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
 {
+    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
+    const BHttpResult& result = static_cast<const BHttpResult&>(
+        httpRequest->Result());
+
+    BString locationString(result.Headers()["Location"]);
+    if (locationString.Length()) {
+        URL url(m_request->Url());
+        URL location(url, locationString);
+        m_redirectionTries--;
+
+        ResourceHandleClient* client = m_resourceHandle->client();
+
+        if (m_redirectionTries == 0) {
+            ResourceError error(location.host(), 400, location.string(),
+                "Redirection limit reached");
+            if (client)
+                client->didFail(m_resourceHandle, error);
+            return;
+        }
+
+        m_nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
+        m_nextRequest->setURL(location);
+
+        WTF::String contentType = m_request->Result().ContentType();
+        int contentLength = m_request->Result().Length();
+
+        WTF::String encoding = extractCharsetFromMediaType(contentType);
+        WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
+
+        ResourceResponse response(location, mimeType, contentLength, encoding);
+        client->willSendRequest(m_resourceHandle, *m_nextRequest, response);
+        m_redirected = true;
+    } else
+        m_redirected = false;
 }
 
 void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data, off_t position, ssize_t size)
@@ -573,7 +563,7 @@ void BUrlProtocolHandler::start()
             }
         }
 
-        httpRequest->SetFollowLocation(false);
+        //httpRequest->SetFollowLocation(false);
         httpRequest->SetMethod(m_method.String());
     }
 

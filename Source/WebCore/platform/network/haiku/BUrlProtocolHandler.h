@@ -83,7 +83,7 @@ private:
     void resetState();
 
     ResourceHandle* m_resourceHandle;
-    BReference<ResourceRequest> m_nextRequest;
+    ResourceRequest* m_nextRequest;
     bool m_redirected;
     bool m_responseSent;
     bool m_responseDataSent;

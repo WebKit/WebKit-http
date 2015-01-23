@@ -39,7 +39,7 @@ class BUrlRequest;
 
 namespace WebCore {
 
-    class ResourceRequest : public ResourceRequestBase, public BReferenceable {
+    class ResourceRequest : public ResourceRequestBase {
     public:
         ResourceRequest(const String& url) 
             : ResourceRequestBase(URL(ParsedURLString, url), UseProtocolCachePolicy)
