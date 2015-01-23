@@ -269,7 +269,7 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
         glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    m_textureMapper->beginPainting();
+    m_textureMapper->beginPainting(TextureMapper::PaintingMirrored);
     downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer().paint();
     m_textureMapper->endPainting();
 
