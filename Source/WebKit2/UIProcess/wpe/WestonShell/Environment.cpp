@@ -73,6 +73,8 @@ Environment::Environment(struct weston_compositor* compositor)
     wl_list_for_each(output, &m_compositor->output_list, link)
         createOutput(output);
 
+    createCursor();
+
     wl_global_create(m_compositor->wl_display,
         &wl_wpe_interface, wl_wpe_interface.version, this,
         [](struct wl_client* client, void* data, uint32_t version, uint32_t id) {
@@ -81,6 +83,13 @@ Environment::Environment(struct weston_compositor* compositor)
             struct wl_resource* resource = wl_resource_create(client, &wl_wpe_interface, version, id);
             wl_resource_set_implementation(resource, &m_wpeInterface, environment, nullptr);
         });
+}
+
+void Environment::updateCursorPosition(int x, int y)
+{
+    ASSERT(m_cursorView);
+    weston_view_set_position(m_cursorView, x, y);
+    weston_compositor_schedule_repaint(m_compositor);
 }
 
 const struct wl_wpe_interface Environment::m_wpeInterface = {
@@ -115,6 +124,19 @@ void Environment::createOutput(struct weston_output* output)
 
 void Environment::outputCreated(struct wl_listener*, void*)
 {
+}
+
+void Environment::createCursor()
+{
+    struct weston_surface* surface = weston_surface_create(m_compositor);
+    weston_surface_set_color(surface, 1.0f, 0.0f, 0.0f, 1.0f);
+    pixman_region32_fini(&surface->opaque);
+    pixman_region32_init_rect(&surface->opaque, 0, 0, 10, 10);
+    weston_surface_set_size(surface, 10, 10);
+
+    m_cursorView = weston_view_create(surface);
+    weston_view_set_position(m_cursorView, 0, 0);
+    weston_layer_entry_insert(&m_compositor->cursor_layer.view_list, &m_cursorView->layer_link);
 }
 
 void Environment::registerSurface(struct weston_surface* surface)
