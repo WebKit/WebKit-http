@@ -62,8 +62,8 @@ struct PointerEvent {
     struct Raw {
         Type type;
         uint32_t time;
-        double dx;
-        double dy;
+        int x;
+        int y;
         uint32_t button;
         uint32_t state;
     };

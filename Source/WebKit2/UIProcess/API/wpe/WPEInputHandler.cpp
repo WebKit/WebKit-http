@@ -82,9 +82,11 @@ void InputHandler::handleKeyboardKey(KeyboardEvent::Raw event)
 
 void InputHandler::handlePointerEvent(PointerEvent::Raw event)
 {
-    const WebCore::IntSize& viewSize = m_view.size();
-    m_pointer.x = std::max(0.0, std::min<double>(m_pointer.x + event.dx, viewSize.width() - 1));
-    m_pointer.y = std::max(0.0, std::min<double>(m_pointer.y + event.dy, viewSize.height() - 1));
+    if (event.type == PointerEvent::Motion) {
+        const WebCore::IntSize& viewSize = m_view.size();
+        m_pointer.x = std::max<double>(0.0, std::min(event.x, viewSize.width() - 1));
+        m_pointer.y = std::max<double>(0.0, std::min(event.y, viewSize.height() - 1));
+    }
     fprintf(stderr, "InputHandler::handlePointerEvent() (%.2f, %.2f)\n", m_pointer.x, m_pointer.y);
 
     m_view.page().handleMouseEvent(WebKit::NativeWebMouseEvent({

@@ -52,9 +52,6 @@ const struct weston_pointer_grab_interface Shell::m_pgInterface = {
     // motion
     [](struct weston_pointer_grab* grab, uint32_t time, wl_fixed_t x, wl_fixed_t y)
     {
-        static int lastX = 0;
-        static int lastY = 0;
-
         struct weston_pointer* pointer = grab->pointer;
         weston_pointer_move(pointer, x, y);
 
@@ -62,12 +59,8 @@ const struct weston_pointer_grab_interface Shell::m_pgInterface = {
         int newY = wl_fixed_to_int(pointer->y);
 
         Shell::instance().m_environment.updateCursorPosition(newX, newY);
-
         WKInputHandlerNotifyPointerMotion(Shell::instance().m_inputHandler.get(),
-            WKPointerMotion{ time, static_cast<double>(newX - lastX), static_cast<double>(newY - lastY) });
-
-        lastX = newX;
-        lastY = newY;
+            WKPointerMotion{ time, newX, newY });
     },
 
     // button

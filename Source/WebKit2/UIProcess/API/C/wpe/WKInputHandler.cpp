@@ -50,8 +50,8 @@ void WKInputHandlerNotifyPointerMotion(WKInputHandlerRef handler, WKPointerMotio
     toImpl(handler)->handlePointerEvent(WPE::PointerEvent::Raw{
         WPE::PointerEvent::Motion,
         event.time,
-        event.dx,
-        event.dy,
+        event.x,
+        event.y,
         0, 0
     });
 }
@@ -61,7 +61,7 @@ void WKInputHandlerNotifyPointerButton(WKInputHandlerRef handler, WKPointerButto
     toImpl(handler)->handlePointerEvent(WPE::PointerEvent::Raw{
         WPE::PointerEvent::Button,
         event.time,
-        0.0, 0.0,
+        0, 0,
         event.button,
         event.state
     });
