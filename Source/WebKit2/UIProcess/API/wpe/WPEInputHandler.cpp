@@ -87,7 +87,6 @@ void InputHandler::handlePointerEvent(PointerEvent::Raw event)
         m_pointer.x = std::max<double>(0.0, std::min(event.x, viewSize.width() - 1));
         m_pointer.y = std::max<double>(0.0, std::min(event.y, viewSize.height() - 1));
     }
-    fprintf(stderr, "InputHandler::handlePointerEvent() (%.2f, %.2f)\n", m_pointer.x, m_pointer.y);
 
     m_view.page().handleMouseEvent(WebKit::NativeWebMouseEvent({
         event.type,
@@ -101,7 +100,6 @@ void InputHandler::handlePointerEvent(PointerEvent::Raw event)
 
 void InputHandler::handleTouchDown(TouchEvent::Raw event)
 {
-    // std::fprintf(stderr, "InputHandler::handleTouchDown()     [%d] (%d,%d)\n", event.id, event.x, event.y);
     ASSERT(m_touchEvents[event.id].type == TouchEvent::Null);
     m_touchEvents[event.id] = TouchEvent::Raw{ TouchEvent::Down, event.time, event.id, event.x, event.y };
     dispatchTouchEvent(event.id);
@@ -109,7 +107,6 @@ void InputHandler::handleTouchDown(TouchEvent::Raw event)
 
 void InputHandler::handleTouchUp(TouchEvent::Raw event)
 {
-    // std::fprintf(stderr, "InputHandler::handleTouchUp()       [%d]\n", event.id);
     ASSERT(m_touchEvents[event.id].type == TouchEvent::Down || m_touchEvents[event.id].type == TouchEvent::Motion);
     auto& previousEvent = m_touchEvents[event.id];
     int x = previousEvent.x;
@@ -120,7 +117,6 @@ void InputHandler::handleTouchUp(TouchEvent::Raw event)
 
 void InputHandler::handleTouchMotion(TouchEvent::Raw event)
 {
-    // std::fprintf(stderr, "InputHandler::handleTouchMotion()   [%d] (%d,%d)\n", event.id, event.x, event.y);
     ASSERT(m_touchEvents[event.id].type == TouchEvent::Down || m_touchEvents[event.id].type == TouchEvent::Motion);
     m_touchEvents[event.id] = TouchEvent::Raw{ TouchEvent::Motion, event.time, event.id, event.x, event.y };
     dispatchTouchEvent(event.id);
