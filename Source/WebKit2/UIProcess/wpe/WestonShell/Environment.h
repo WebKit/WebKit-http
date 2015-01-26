@@ -32,6 +32,8 @@ private:
     struct wl_listener m_outputCreatedListener;
     WKSize m_outputSize;
 
+    static constexpr unsigned c_cursorSize = 5;
+    static constexpr unsigned c_cursorOffset = (c_cursorSize - 1) / 2;
     struct weston_view* m_cursorView;
 };
 

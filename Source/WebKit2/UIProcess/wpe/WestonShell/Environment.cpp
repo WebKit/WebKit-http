@@ -88,7 +88,7 @@ Environment::Environment(struct weston_compositor* compositor)
 void Environment::updateCursorPosition(int x, int y)
 {
     ASSERT(m_cursorView);
-    weston_view_set_position(m_cursorView, x, y);
+    weston_view_set_position(m_cursorView, x - c_cursorOffset, y - c_cursorOffset);
     weston_compositor_schedule_repaint(m_compositor);
 }
 
@@ -131,11 +131,11 @@ void Environment::createCursor()
     struct weston_surface* surface = weston_surface_create(m_compositor);
     weston_surface_set_color(surface, 1.0f, 0.0f, 0.0f, 1.0f);
     pixman_region32_fini(&surface->opaque);
-    pixman_region32_init_rect(&surface->opaque, 0, 0, 10, 10);
-    weston_surface_set_size(surface, 10, 10);
+    pixman_region32_init_rect(&surface->opaque, 0, 0, c_cursorSize, c_cursorSize);
+    weston_surface_set_size(surface, c_cursorSize, c_cursorSize);
 
     m_cursorView = weston_view_create(surface);
-    weston_view_set_position(m_cursorView, 0, 0);
+    weston_view_set_position(m_cursorView, -c_cursorOffset, -c_cursorOffset);
     weston_layer_entry_insert(&m_compositor->cursor_layer.view_list, &m_cursorView->layer_link);
 }
 
