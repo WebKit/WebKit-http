@@ -1,6 +1,8 @@
 #include "config.h"
 #include "Environment.h"
 
+#include <cstdlib>
+
 namespace WPE {
 
 class Output {
@@ -62,6 +64,7 @@ void Surface::configure(struct weston_surface* surface, int32_t sx, int32_t sy)
 Environment::Environment(struct weston_compositor* compositor)
     : m_compositor(compositor)
     , m_outputSize(WKSizeMake(800, 600))
+    , m_cursorView(nullptr)
 {
     weston_layer_init(&m_layer, &m_compositor->cursor_layer.link);
 
@@ -73,7 +76,8 @@ Environment::Environment(struct weston_compositor* compositor)
     wl_list_for_each(output, &m_compositor->output_list, link)
         createOutput(output);
 
-    createCursor();
+    if (std::getenv("WPE_SHELL_MOUSE_CURSOR"))
+        createCursor();
 
     wl_global_create(m_compositor->wl_display,
         &wl_wpe_interface, wl_wpe_interface.version, this,
@@ -87,7 +91,9 @@ Environment::Environment(struct weston_compositor* compositor)
 
 void Environment::updateCursorPosition(int x, int y)
 {
-    ASSERT(m_cursorView);
+    if (!m_cursorView)
+        return;
+
     weston_view_set_position(m_cursorView, x - c_cursorOffset, y - c_cursorOffset);
     weston_compositor_schedule_repaint(m_compositor);
 }
