@@ -103,11 +103,17 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, H
         ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
 
         m_state.boundFBO = m_fbo;
-        if (!m_attrs.antialias && (m_attrs.stencil || m_attrs.depth))
-            ::glGenRenderbuffers(1, &m_depthStencilBuffer);
-
-        // Create a multisample FBO.
-        if (m_attrs.antialias) {
+        if (!m_attrs.antialias) {
+            if (m_attrs.stencil || m_attrs.depth)
+                glGenRenderbuffers(1, &m_depthStencilBuffer);
+#if USE(OPENGL_ES_2)
+            if (m_attrs.depth)
+                glGenRenderbuffers(1, &m_depthBuffer);
+            if (m_attrs.stencil)
+                glGenRenderbuffers(1, &m_stencilBuffer);
+#endif
+        } else {
+            // Create a multisample FBO.
             ::glGenFramebuffers(1, &m_multisampleFBO);
             ::glBindFramebuffer(GL_FRAMEBUFFER, m_multisampleFBO);
             m_state.boundFBO = m_multisampleFBO;
@@ -165,6 +171,12 @@ GraphicsContext3D::~GraphicsContext3D()
     } else {
         if (m_attrs.stencil || m_attrs.depth)
             ::glDeleteRenderbuffers(1, &m_depthStencilBuffer);
+#if USE(OPENGL_ES_2)
+        if (m_attrs.depth)
+            ::glDeleteRenderbuffers(1, &m_depthBuffer);
+        if (m_attrs.stencil)
+            ::glDeleteRenderbuffers(1, &m_stencilBuffer);
+#endif
     }
     ::glDeleteFramebuffers(1, &m_fbo);
 }
