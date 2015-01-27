@@ -61,7 +61,7 @@ void TextureMapperLayer::computeTransformsRecursive()
         auto& transform = m_currentTransform.combined();
         if (!m_state.size.isEmpty()) {
             float centerZ = std::numeric_limits<float>::max();
-            FloatQuad rectQuad(FloatRect(FloatPoint(), m_state.size));
+            FloatQuad rectQuad(FloatRect(m_state.pos, m_state.size));
 
             centerZ = std::min(centerZ, transform.mapPoint(FloatPoint3D(rectQuad.p1())).z());
             centerZ = std::min(centerZ, transform.mapPoint(FloatPoint3D(rectQuad.p2())).z());
