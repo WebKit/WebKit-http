@@ -53,6 +53,8 @@ public:
     // IPC::Connection::Client
     void didClose(IPC::Connection&) override { close(); }
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference) override { close(); }
+    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
+    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
 
     // Called by WebInspector messages
     void connectionEstablished();
@@ -82,6 +84,8 @@ public:
     void remoteFrontendConnected();
     void remoteFrontendDisconnected();
 #endif
+
+    void disconnectFromPage() { close(); }
 
 private:
     friend class WebInspectorClient;

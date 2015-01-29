@@ -109,6 +109,7 @@ public:
         Download,
         FormSubmissionListener,
         Frame,
+        FrameInfo,
         FramePolicyListener,
         FullScreenManager,
         GeolocationManager,
@@ -121,7 +122,9 @@ public:
         KeyValueStorageManager,
         MediaCacheManager,
         Navigation,
+        NavigationAction,
         NavigationData,
+        NavigationResponse,
         Notification,
         NotificationManager,
         NotificationPermissionRequest,
@@ -141,6 +144,7 @@ public:
         UserMediaPermissionRequest,
         Vibration,
         ViewportAttributes,
+        VisitedLinkProvider,
         WebsiteDataStore,
 
         // Bundle types

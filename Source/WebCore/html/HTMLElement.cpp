@@ -460,6 +460,35 @@ static inline bool shouldProhibitSetInnerOuterText(const HTMLElement& element)
         || element.hasTagName(trTag);
 }
 
+// Returns the conforming 'dir' value associated with the state the attribute is in (in its canonical case), if any,
+// or the empty string if the attribute is in a state that has no associated keyword value or if the attribute is
+// not in a defined state (e.g. the attribute is missing and there is no missing value default).
+// http://www.whatwg.org/specs/web-apps/current-work/multipage/common-dom-interfaces.html#limited-to-only-known-values
+static inline const AtomicString& toValidDirValue(const AtomicString& value)
+{
+    static NeverDestroyed<AtomicString> ltrValue("ltr", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<AtomicString> rtlValue("rtl", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<AtomicString> autoValue("auto", AtomicString::ConstructFromLiteral);
+
+    if (equalIgnoringCase(value, ltrValue))
+        return ltrValue;
+    if (equalIgnoringCase(value, rtlValue))
+        return rtlValue;
+    if (equalIgnoringCase(value, autoValue))
+        return autoValue;
+    return nullAtom;
+}
+
+const AtomicString& HTMLElement::dir() const
+{
+    return toValidDirValue(fastGetAttribute(dirAttr));
+}
+
+void HTMLElement::setDir(const AtomicString& value)
+{
+    setAttribute(dirAttr, value);
+}
+
 void HTMLElement::setInnerText(const String& text, ExceptionCode& ec)
 {
     if (ieForbidsInsertHTML()) {
@@ -827,13 +856,13 @@ static void setHasDirAutoFlagRecursively(Node* firstNode, bool flag, Node* lastN
         if (elementAffectsDirectionality(*node)) {
             if (node == lastNode)
                 return;
-            node = NodeTraversal::nextSkippingChildren(node, firstNode);
+            node = NodeTraversal::nextSkippingChildren(*node, firstNode);
             continue;
         }
         node->setSelfOrAncestorHasDirAutoAttribute(flag);
         if (node == lastNode)
             return;
-        node = NodeTraversal::next(node, firstNode);
+        node = NodeTraversal::next(*node, firstNode);
     }
 }
 
@@ -876,7 +905,7 @@ TextDirection HTMLElement::directionality(Node** strongDirectionalityTextNode) c
         // Skip bdi, script, style and text form controls.
         if (equalIgnoringCase(node->nodeName(), "bdi") || node->hasTagName(scriptTag) || node->hasTagName(styleTag) 
             || (is<Element>(*node) && downcast<Element>(*node).isTextFormControl())) {
-            node = NodeTraversal::nextSkippingChildren(node, this);
+            node = NodeTraversal::nextSkippingChildren(*node, this);
             continue;
         }
 
@@ -884,7 +913,7 @@ TextDirection HTMLElement::directionality(Node** strongDirectionalityTextNode) c
         if (is<Element>(*node)) {
             AtomicString dirAttributeValue = downcast<Element>(*node).fastGetAttribute(dirAttr);
             if (isLTROrRTLIgnoringCase(dirAttributeValue) || equalIgnoringCase(dirAttributeValue, "auto")) {
-                node = NodeTraversal::nextSkippingChildren(node, this);
+                node = NodeTraversal::nextSkippingChildren(*node, this);
                 continue;
             }
         }
@@ -898,7 +927,7 @@ TextDirection HTMLElement::directionality(Node** strongDirectionalityTextNode) c
                 return (textDirection == U_LEFT_TO_RIGHT) ? LTR : RTL;
             }
         }
-        node = NodeTraversal::next(node, this);
+        node = NodeTraversal::next(*node, this);
     }
     if (strongDirectionalityTextNode)
         *strongDirectionalityTextNode = nullptr;
@@ -950,7 +979,7 @@ void HTMLElement::adjustDirectionalityIfNeededAfterChildrenChanged(Element* befo
 
     Node* oldMarkedNode = nullptr;
     if (beforeChange)
-        oldMarkedNode = changeType == ElementInserted ? ElementTraversal::nextSibling(beforeChange) : beforeChange->nextSibling();
+        oldMarkedNode = changeType == ElementInserted ? ElementTraversal::nextSibling(*beforeChange) : beforeChange->nextSibling();
 
     while (oldMarkedNode && elementAffectsDirectionality(*oldMarkedNode))
         oldMarkedNode = oldMarkedNode->nextSibling();

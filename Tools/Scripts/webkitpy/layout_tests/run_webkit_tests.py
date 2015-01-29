@@ -205,9 +205,9 @@ def parse_args(args):
         optparse.make_option("--nocheck-sys-deps", action="store_true",
             default=False,
             help="Don't check the system dependencies (themes)"),
-        optparse.make_option("--nojava", action="store_true",
+        optparse.make_option("--java", action="store_true",
             default=False,
-            help="Don't build java support files"),
+            help="Build java support files"),
     ]))
 
     option_group_definitions.append(("Testing Options", [
@@ -293,6 +293,10 @@ def parse_args(args):
         optparse.make_option("--lint-test-files", action="store_true",
         default=False, help=("Makes sure the test files parse for all "
                             "configurations. Does not run any tests.")),
+    ]))
+
+    option_group_definitions.append(("Web Platform Test Server Options", [
+        optparse.make_option("--wptserver-doc-root", type="string", help=("Set web platform server document root, relative to LayoutTests directory")),
     ]))
 
     # FIXME: Move these into json_results_generator.py

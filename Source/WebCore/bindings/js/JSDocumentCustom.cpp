@@ -59,7 +59,7 @@ JSValue JSDocument::location(ExecState* exec) const
     if (JSObject* wrapper = getCachedWrapper(globalObject()->world(), location.get()))
         return wrapper;
 
-    JSLocation* jsLocation = JSLocation::create(getDOMStructure<JSLocation>(exec->vm(), globalObject()), globalObject(), location.get());
+    JSLocation* jsLocation = JSLocation::create(getDOMStructure<JSLocation>(exec->vm(), globalObject()), globalObject(), *location);
     cacheWrapper(globalObject()->world(), location.get(), jsLocation);
     return jsLocation;
 }
@@ -106,7 +106,7 @@ JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, Document* documen
     // back/forward cache.
     if (!document->frame()) {
         size_t nodeCount = 0;
-        for (Node* n = document; n; n = NodeTraversal::next(n))
+        for (Node* n = document; n; n = NodeTraversal::next(*n))
             nodeCount++;
         
         exec->heap()->reportExtraMemoryCost(nodeCount * sizeof(Node));

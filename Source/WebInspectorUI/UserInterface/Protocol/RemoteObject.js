@@ -28,7 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.RemoteObject = function(objectId, type, subtype, value, description)
+WebInspector.RemoteObject = function(objectId, type, subtype, value, description, preview)
 {
     this._type = type;
     this._subtype = subtype;
@@ -37,6 +37,7 @@ WebInspector.RemoteObject = function(objectId, type, subtype, value, description
         this._objectId = objectId;
         this._description = description;
         this._hasChildren = true;
+        this._preview = preview;
     } else {
         // Primitive or null object.
         console.assert(type !== "object" || value === null);
@@ -70,7 +71,7 @@ WebInspector.RemoteObject.fromPayload = function(payload)
 {
     console.assert(typeof payload === "object", "Remote object payload should only be an object");
 
-    return new WebInspector.RemoteObject(payload.objectId, payload.type, payload.subtype, payload.value, payload.description);
+    return new WebInspector.RemoteObject(payload.objectId, payload.type, payload.subtype, payload.value, payload.description, payload.preview);
 };
 
 WebInspector.RemoteObject.type = function(remoteObject)
@@ -109,6 +110,11 @@ WebInspector.RemoteObject.prototype = {
     get hasChildren()
     {
         return this._hasChildren;
+    },
+
+    get preview()
+    {
+        return this._preview;
     },
 
     getOwnProperties: function(callback)
@@ -217,6 +223,42 @@ WebInspector.RemoteObject.prototype = {
         }
     },
 
+    isCollectionType: function()
+    {
+        return this.subtype === "map" || this.subtype === "set" || this.subtype === "weakmap";
+    },
+
+    isWeakCollection: function()
+    {
+        return this.subtype === "weakmap";
+    },
+
+    getCollectionEntries: function(start, numberToFetch, callback)
+    {
+        start = typeof start === "number" ? start : 0;
+        numberToFetch = typeof numberToFetch === "number" ? numberToFetch : 100;
+
+        console.assert(start >= 0);
+        console.assert(numberToFetch >= 0);
+        console.assert(this.isCollectionType());
+
+        // WeakMaps are not ordered. We should never send a non-zero start.
+        console.assert((this.subtype === "weakmap" && start === 0) || this.subtype !== "weakmap");
+
+        var objectGroup = this.isWeakCollection() ? this._weakCollectionObjectGroup() : "";
+
+        RuntimeAgent.getCollectionEntries(this._objectId, objectGroup, start, numberToFetch, function(error, entries) {
+            callback(entries);
+        });
+    },
+
+    releaseWeakCollectionEntries: function()
+    {
+        console.assert(this.isWeakCollection());
+
+        RuntimeAgent.releaseObjectGroup(this._weakCollectionObjectGroup());
+    },
+
     pushNodeToFrontend: function(callback)
     {
         if (this._objectId)
@@ -259,6 +301,13 @@ WebInspector.RemoteObject.prototype = {
         if (!matches)
             return 0;
         return parseInt(matches[1], 10);
+    },
+
+    // Private
+
+    _weakCollectionObjectGroup: function()
+    {
+        return JSON.stringify(this._objectId) + "-WeakMap";
     }
 };
 

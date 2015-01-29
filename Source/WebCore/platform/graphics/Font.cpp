@@ -30,7 +30,7 @@
 #include "config.h"
 #include "Font.h"
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080)
+#if PLATFORM(COCOA)
 #include "CoreTextSPI.h"
 #endif
 #include "FontCache.h"
@@ -384,7 +384,7 @@ bool Font::applyTransforms(GlyphBufferGlyph* glyphs, GlyphBufferAdvance* advance
 {
     // We need to handle transforms on SVG fonts internally, since they are rendered internally.
     ASSERT(!isSVGFont());
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080)
+#if PLATFORM(COCOA)
     CTFontTransformOptions options = (typesettingFeatures & Kerning ? kCTFontTransformApplyPositioning : 0) | (typesettingFeatures & Ligatures ? kCTFontTransformApplyShaping : 0);
     return CTFontTransformGlyphs(m_platformData.ctFont(), glyphs, reinterpret_cast<CGSize*>(advances), glyphCount, options);
 #else
@@ -397,7 +397,8 @@ bool Font::applyTransforms(GlyphBufferGlyph* glyphs, GlyphBufferAdvance* advance
 }
 
 // Fonts are not ref'd to avoid cycles.
-typedef HashMap<std::pair<UChar32, unsigned>, Font*> CharacterFallbackMap;
+typedef std::pair<UChar32, bool /* isForPlatformFont */> CharacterFallbackMapKey;
+typedef HashMap<CharacterFallbackMapKey, Font*> CharacterFallbackMap;
 typedef HashMap<const Font*, CharacterFallbackMap> SystemFallbackCache;
 
 static SystemFallbackCache& systemFallbackCache()
@@ -443,7 +444,7 @@ void Font::removeFromSystemFallbackCache()
         return;
 
     for (auto& characterMap : systemFallbackCache().values()) {
-        Vector<std::pair<UChar32, unsigned>, 512> toRemove;
+        Vector<CharacterFallbackMapKey, 512> toRemove;
         for (auto& entry : characterMap) {
             if (entry.value == this)
                 toRemove.append(entry.key);

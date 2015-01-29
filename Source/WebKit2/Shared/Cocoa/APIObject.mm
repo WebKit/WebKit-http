@@ -33,6 +33,7 @@
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextGroupInternal.h"
 #import "WKConnectionInternal.h"
+#import "WKFrameInfoInternal.h"
 #import "WKNSArray.h"
 #import "WKNSData.h"
 #import "WKNSDictionary.h"
@@ -41,8 +42,11 @@
 #import "WKNSURL.h"
 #import "WKNSURLAuthenticationChallenge.h"
 #import "WKNSURLRequest.h"
+#import "WKNavigationActionInternal.h"
 #import "WKNavigationDataInternal.h"
 #import "WKNavigationInternal.h"
+#import "WKNavigationResponseInternal.h"
+#import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
 #import "WKUserContentControllerInternal.h"
 #import "WKUserScriptInternal.h"
@@ -56,6 +60,7 @@
 #import "_WKDownloadInternal.h"
 #import "_WKFrameHandleInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
+#import "_WKVisitedLinkProviderInternal.h"
 #import "_WKWebsiteDataStoreInternal.h"
 #import <objc/objc-auto.h>
 
@@ -108,6 +113,10 @@ void* Object::newObject(size_t size, Type type)
         wrapper = NSAllocateObject([WKConnection self], size, nullptr);
         break;
 
+    case Type::Preferences:
+        wrapper = [WKPreferences alloc];
+        break;
+
     case Type::ProcessPool:
         wrapper = [WKProcessPool alloc];
         break;
@@ -136,12 +145,24 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [_WKFrameHandle alloc];
         break;
 
+    case Type::FrameInfo:
+        wrapper = [WKFrameInfo alloc];
+        break;
+
     case Type::Navigation:
         wrapper = [WKNavigation alloc];
         break;
 
+    case Type::NavigationAction:
+        wrapper = [WKNavigationAction alloc];
+        break;
+
     case Type::NavigationData:
         wrapper = [WKNavigationData alloc];
+        break;
+
+    case Type::NavigationResponse:
+        wrapper = [WKNavigationResponse alloc];
         break;
 
     case Type::PageGroup:
@@ -166,6 +187,10 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::UserScript:
         wrapper = [WKUserScript alloc];
+        break;
+
+    case Type::VisitedLinkProvider:
+        wrapper = [_WKVisitedLinkProvider alloc];
         break;
 
     case Type::WebsiteDataStore:

@@ -62,7 +62,6 @@ private:
 // Custom StylePropertyShorthand functions.
 StylePropertyShorthand animationShorthandForParsing(CSSPropertyID);
 StylePropertyShorthand borderAbridgedShorthand();
-StylePropertyShorthand fontShorthand();
 
 // Returns empty value if the property is not a shorthand.
 // The implementation is generated in StylePropertyShorthandFunctions.cpp.
@@ -74,25 +73,7 @@ Vector<StylePropertyShorthand> matchingShorthandsForLonghand(CSSPropertyID);
 
 unsigned indexOfShorthandForLonghand(CSSPropertyID, const Vector<StylePropertyShorthand>&);
 
-bool isExpandedShorthand(CSSPropertyID);
-
-// FIXME: This should try to get rid of this function and generate the rest of these shorthands.
-inline Vector<StylePropertyShorthand> matchingCustomShorthandsForLonghand(CSSPropertyID propertyID)
-{
-    switch (propertyID) {
-    case CSSPropertyFontFamily:
-    case CSSPropertyFontSize:
-    case CSSPropertyFontStyle:
-    case CSSPropertyFontVariant:
-    case CSSPropertyFontWeight:
-    case CSSPropertyLineHeight:
-        return Vector<StylePropertyShorthand>{fontShorthand()};
-    default:
-        break;
-    }
-
-    return Vector<StylePropertyShorthand>();
-}
+bool isShorthandCSSProperty(CSSPropertyID);
 
 } // namespace WebCore
 

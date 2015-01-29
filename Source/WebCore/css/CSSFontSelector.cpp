@@ -32,6 +32,7 @@
 #include "CSSFontFaceRule.h"
 #include "CSSFontFaceSource.h"
 #include "CSSFontFaceSrcValue.h"
+#include "CSSFontFamily.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPropertyNames.h"
 #include "CSSSegmentedFontFace.h"
@@ -58,12 +59,11 @@ namespace WebCore {
 
 static unsigned fontSelectorId;
 
-CSSFontSelector::CSSFontSelector(Document* document)
-    : m_document(document)
+CSSFontSelector::CSSFontSelector(Document& document)
+    : m_document(&document)
     , m_beginLoadingTimer(*this, &CSSFontSelector::beginLoadTimerFired)
     , m_uniqueId(++fontSelectorId)
     , m_version(0)
-    
 {
     // FIXME: An old comment used to say there was no need to hold a reference to m_document
     // because "we are guaranteed to be destroyed before the document". But there does not
@@ -257,16 +257,15 @@ void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule)
     }
 
     // Hash under every single family name.
-    int familyLength = familyList.length();
-    for (int i = 0; i < familyLength; i++) {
-        CSSPrimitiveValue* item = downcast<CSSPrimitiveValue>(familyList.itemWithoutBoundsCheck(i));
+    for (auto& item : familyList) {
+        auto& value = downcast<CSSPrimitiveValue>(item.get());
         String familyName;
-        if (item->isString()) {
-            familyName = item->getStringValue();
-        } else if (item->isValueID()) {
+        if (value.isFontFamily()) {
+            familyName = value.fontFamily().familyName;
+        } else if (value.isValueID()) {
             // We need to use the raw text for all the generic family types, since @font-face is a way of actually
             // defining what font to use for those types.
-            switch (item->getValueID()) {
+            switch (value.getValueID()) {
                 case CSSValueSerif:
                     familyName = serifFamily;
                     break;
@@ -339,15 +338,6 @@ void CSSFontSelector::dispatchInvalidationCallbacks()
     copyToVector(m_clients, clients);
     for (size_t i = 0; i < clients.size(); ++i)
         clients[i]->fontsNeedUpdate(this);
-
-    // FIXME: Make Document a FontSelectorClient so that it can simply register for invalidation callbacks.
-    if (!m_document)
-        return;
-    if (StyleResolver* styleResolver = m_document->styleResolverIfExists())
-        styleResolver->invalidateMatchedPropertiesCache();
-    if (m_document->inPageCache() || !m_document->renderView())
-        return;
-    m_document->scheduleForcedStyleRecalc();
 }
 
 void CSSFontSelector::fontLoaded()
@@ -550,15 +540,14 @@ void CSSFontSelector::clearDocument()
 
     m_beginLoadingTimer.stop();
 
-    CachedResourceLoader* cachedResourceLoader = m_document->cachedResourceLoader();
-    for (size_t i = 0; i < m_fontsToBeginLoading.size(); ++i) {
+    CachedResourceLoader& cachedResourceLoader = m_document->cachedResourceLoader();
+    for (auto& fontHandle : m_fontsToBeginLoading) {
         // Balances incrementRequestCount() in beginLoadingFontSoon().
-        cachedResourceLoader->decrementRequestCount(m_fontsToBeginLoading[i].get());
+        cachedResourceLoader.decrementRequestCount(fontHandle.get());
     }
-
     m_fontsToBeginLoading.clear();
 
-    m_document = 0;
+    m_document = nullptr;
 }
 
 void CSSFontSelector::beginLoadingFontSoon(CachedFont* font)
@@ -570,7 +559,7 @@ void CSSFontSelector::beginLoadingFontSoon(CachedFont* font)
     // Increment the request count now, in order to prevent didFinishLoad from being dispatched
     // after this font has been requested but before it began loading. Balanced by
     // decrementRequestCount() in beginLoadTimerFired() and in clearDocument().
-    m_document->cachedResourceLoader()->incrementRequestCount(font);
+    m_document->cachedResourceLoader().incrementRequestCount(font);
     m_beginLoadingTimer.startOneShot(0);
 }
 
@@ -582,14 +571,14 @@ void CSSFontSelector::beginLoadTimerFired()
     // CSSFontSelector could get deleted via beginLoadIfNeeded() or loadDone() unless protected.
     Ref<CSSFontSelector> protect(*this);
 
-    CachedResourceLoader* cachedResourceLoader = m_document->cachedResourceLoader();
-    for (size_t i = 0; i < fontsToBeginLoading.size(); ++i) {
-        fontsToBeginLoading[i]->beginLoadIfNeeded(cachedResourceLoader);
+    CachedResourceLoader& cachedResourceLoader = m_document->cachedResourceLoader();
+    for (auto& fontHandle : fontsToBeginLoading) {
+        fontHandle->beginLoadIfNeeded(cachedResourceLoader);
         // Balances incrementRequestCount() in beginLoadingFontSoon().
-        cachedResourceLoader->decrementRequestCount(fontsToBeginLoading[i].get());
+        cachedResourceLoader.decrementRequestCount(fontHandle.get());
     }
     // Ensure that if the request count reaches zero, the frame loader will know about it.
-    cachedResourceLoader->loadDone(0);
+    cachedResourceLoader.loadDone(nullptr);
     // New font loads may be triggered by layout after the document load is complete but before we have dispatched
     // didFinishLoading for the frame. Make sure the delegate is always dispatched by checking explicitly.
     if (m_document && m_document->frame())

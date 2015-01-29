@@ -53,7 +53,9 @@ class IOSPort(ApplePort):
     def determine_full_port_name(cls, host, options, port_name):
         if port_name == cls.port_name:
             sdk_version = '8.0'
-            if host.platform.is_mac():
+            # FIXME: We should move the call to xcrun to the PlatformInfo object so that
+            # we can use MockPlatformInfo to set an expectation when running the unit tests.
+            if os.path.isfile('/usr/bin/xcrun'):
                 sdk_command_output = subprocess.check_output(['/usr/bin/xcrun', '--sdk', 'iphoneos', '--show-sdk-version'], stderr=None).rstrip()
                 if sdk_command_output:
                     sdk_version = sdk_command_output
@@ -94,8 +96,6 @@ class IOSSimulatorPort(Port):
             # DumpRenderTree slows down noticably if we run more than about 1000 tests in a batch
             # with MallocStackLogging enabled.
             self.set_option_default("batch_size", 1000)
-        mac_config = port_config.Config(self._executive, self._filesystem, 'mac')
-        self._mac_build_directory = mac_config.build_directory(self.get_option('configuration'))
 
         self._testing_device = None
 
@@ -108,7 +108,8 @@ class IOSSimulatorPort(Port):
 
     @property
     def relay_path(self):
-        return self._filesystem.join(self._mac_build_directory, self.relay_name)
+        mac_config = port_config.Config(self._executive, self._filesystem, 'mac')
+        return self._filesystem.join(mac_config.build_directory(self.get_option('configuration')), self.relay_name)
 
     def default_timeout_ms(self):
         if self.get_option('guard_malloc'):
@@ -172,7 +173,7 @@ class IOSSimulatorPort(Port):
 
     def default_baseline_search_path(self):
         if self.get_option('webkit_test_runner'):
-            fallback_names = [self.port_name + '-wk2'] + [self.port_name]
+            fallback_names = [self._wk2_port_name(), 'wk2'] + [self.port_name]
         else:
             fallback_names = [self.port_name + '-wk1'] + [self.port_name]
 
@@ -228,8 +229,8 @@ class IOSSimulatorPort(Port):
             return
         total_bytes_string, unique_leaks = self._leak_detector.count_total_bytes_and_unique_leaks(leaks_files)
         total_leaks = self._leak_detector.count_total_leaks(leaks_files)
-        _log.info("%s total leaks found for a total of %s!" % (total_leaks, total_bytes_string))
-        _log.info("%s unique leaks found!" % unique_leaks)
+        _log.info("%s total leaks found for a total of %s." % (total_leaks, total_bytes_string))
+        _log.info("%s unique leaks found." % unique_leaks)
 
     def _path_to_webcore_library(self):
         return self._build_path('WebCore.framework/Versions/A/WebCore')

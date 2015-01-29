@@ -33,6 +33,7 @@
 #include "Attr.h"
 #include "AudioProducer.h"
 #include "CDATASection.h"
+#include "CSSFontSelector.h"
 #include "CSSStyleDeclaration.h"
 #include "CSSStyleSheet.h"
 #include "CachedCSSStyleSheet.h"
@@ -414,6 +415,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_ignorePendingStylesheets(false)
     , m_pendingSheetLayout(NoLayoutWithPendingSheets)
     , m_frame(frame)
+    , m_cachedResourceLoader(m_frame ? Ref<CachedResourceLoader>(m_frame->loader().activeDocumentLoader()->cachedResourceLoader()) : CachedResourceLoader::create(nullptr))
     , m_activeParserCount(0)
     , m_wellFormed(false)
     , m_printing(false)
@@ -527,10 +529,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     if ((frame && frame->ownerElement()) || !url.isEmpty())
         setURL(url);
 
-    if (m_frame)
-        m_cachedResourceLoader = &m_frame->loader().activeDocumentLoader()->cachedResourceLoader();
-    if (!m_cachedResourceLoader)
-        m_cachedResourceLoader = CachedResourceLoader::create(nullptr);
     m_cachedResourceLoader->setDocument(this);
 
 #if ENABLE(TEXT_AUTOSIZING)
@@ -624,7 +622,6 @@ Document::~Document()
     // load the initial empty document and the SVGDocument with the same DocumentLoader).
     if (m_cachedResourceLoader->document() == this)
         m_cachedResourceLoader->setDocument(nullptr);
-    m_cachedResourceLoader.clear();
 
     // We must call clearRareData() here since a Document class inherits TreeScope
     // as well as Node. See a comment on TreeScope.h for the reason.
@@ -1858,7 +1855,7 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
         // moment.  If it were more refined, we might be able to do something better.)
         // It's worth noting though that this entire method is a hack, since what we really want to do is
         // suspend JS instead of doing a layout with inaccurate information.
-        HTMLElement* bodyElement = body();
+        HTMLElement* bodyElement = bodyOrFrameset();
         if (bodyElement && !bodyElement->renderer() && m_pendingSheetLayout == NoLayoutWithPendingSheets) {
             m_pendingSheetLayout = DidLayoutWithPendingSheets;
             styleResolverChanged(RecalcStyleImmediately);
@@ -1941,9 +1938,34 @@ void Document::createStyleResolver()
     m_styleSheetCollection.combineCSSFeatureFlags();
 }
 
+void Document::fontsNeedUpdate(FontSelector*)
+{
+    if (m_styleResolver)
+        m_styleResolver->invalidateMatchedPropertiesCache();
+    if (inPageCache() || !renderView())
+        return;
+    scheduleForcedStyleRecalc();
+}
+
+CSSFontSelector& Document::fontSelector()
+{
+    if (!m_fontSelector) {
+        m_fontSelector = CSSFontSelector::create(*this);
+        m_fontSelector->registerForInvalidationCallbacks(this);
+    }
+    return *m_fontSelector;
+}
+
 void Document::clearStyleResolver()
 {
     m_styleResolver = nullptr;
+
+    // FIXME: It would be better if the FontSelector could survive this operation.
+    if (m_fontSelector) {
+        m_fontSelector->clearDocument();
+        m_fontSelector->unregisterForInvalidationCallbacks(this);
+        m_fontSelector = nullptr;
+    }
 }
 
 void Document::createRenderTree()
@@ -2129,7 +2151,7 @@ void Document::removeAllEventListeners()
 #if ENABLE(IOS_TOUCH_EVENTS)
     clearTouchEventListeners();
 #endif
-    for (Node* node = firstChild(); node; node = NodeTraversal::next(node))
+    for (Node* node = firstChild(); node; node = NodeTraversal::next(*node))
         node->removeAllEventListeners();
 }
 
@@ -2298,21 +2320,32 @@ void Document::implicitOpen()
     setReadyState(Loading);
 }
 
-HTMLElement* Document::body() const
+HTMLBodyElement* Document::body() const
 {
-    // If the document element contains both a frameset and a body, the frameset wins.
-    auto element = documentElement();
+    auto* element = documentElement();
     if (!element)
         return nullptr;
-    if (auto frameset = childrenOfType<HTMLFrameSetElement>(*element).first())
+    return childrenOfType<HTMLBodyElement>(*element).first();
+}
+
+HTMLElement* Document::bodyOrFrameset() const
+{
+    // If the document element contains both a frameset and a body, the frameset wins.
+    auto* element = documentElement();
+    if (!element)
+        return nullptr;
+    if (auto* frameset = childrenOfType<HTMLFrameSetElement>(*element).first())
         return frameset;
     return childrenOfType<HTMLBodyElement>(*element).first();
 }
 
-void Document::setBody(PassRefPtr<HTMLElement> prpNewBody, ExceptionCode& ec)
+void Document::setBodyOrFrameset(PassRefPtr<HTMLElement> prpNewBody, ExceptionCode& ec)
 {
     RefPtr<HTMLElement> newBody = prpNewBody;
 
+    // FIXME: This does not support setting a <frameset> Element, only a <body>. This does
+    // not match the HTML specification:
+    // https://html.spec.whatwg.org/multipage/dom.html#dom-document-body
     if (!newBody || !documentElement() || !newBody->hasTagName(bodyTag)) { 
         ec = HIERARCHY_REQUEST_ERR;
         return;
@@ -2327,7 +2360,7 @@ void Document::setBody(PassRefPtr<HTMLElement> prpNewBody, ExceptionCode& ec)
         newBody = downcast<HTMLElement>(node.get());
     }
 
-    HTMLElement* b = body();
+    HTMLElement* b = bodyOrFrameset();
     if (!b)
         documentElement()->appendChild(newBody.release(), ec);
     else
@@ -2515,8 +2548,8 @@ bool Document::shouldScheduleLayout()
     //    (a) Only schedule a layout once the stylesheets are loaded.
     //    (b) Only schedule layout once we have a body element.
 
-    return (haveStylesheetsLoaded() && body())
-        || (documentElement() && !documentElement()->hasTagName(htmlTag));
+    return (haveStylesheetsLoaded() && bodyOrFrameset())
+        || (documentElement() && !is<HTMLHtmlElement>(*documentElement()));
 }
     
 bool Document::isLayoutTimerActive()
@@ -3246,7 +3279,7 @@ void Document::updateViewportUnitsOnResize()
     ensureStyleResolver().clearCachedPropertiesAffectedByViewportUnits();
 
     // FIXME: Ideally, we should save the list of elements that have viewport units and only iterate over those.
-    for (Element* element = ElementTraversal::firstWithin(&rootNode()); element; element = ElementTraversal::nextIncludingPseudo(element)) {
+    for (Element* element = ElementTraversal::firstWithin(rootNode()); element; element = ElementTraversal::nextIncludingPseudo(*element)) {
         auto* renderer = element->renderer();
         if (renderer && renderer->style().hasViewportUnits())
             element->setNeedsStyleRecalc(InlineStyleChange);
@@ -3779,8 +3812,7 @@ void Document::dispatchWindowLoadEvent()
         return;
     m_domWindow->dispatchLoadEvent();
     m_loadEventFinished = true;
-    if (m_cachedResourceLoader)
-        m_cachedResourceLoader->documentDidFinishLoadEvent();
+    m_cachedResourceLoader->documentDidFinishLoadEvent();
 }
 
 void Document::enqueueWindowEvent(PassRefPtr<Event> event)
@@ -5936,7 +5968,7 @@ Element* eventTargetElementForDocument(Document* document)
     if (!element && is<PluginDocument>(*document))
         element = downcast<PluginDocument>(*document).pluginElement();
     if (!element && is<HTMLDocument>(*document))
-        element = document->body();
+        element = document->bodyOrFrameset();
     if (!element)
         element = document->documentElement();
     return element;
@@ -6268,7 +6300,7 @@ Element* Document::activeElement()
 {
     if (Element* element = treeScope().focusedElement())
         return element;
-    return body();
+    return bodyOrFrameset();
 }
 
 bool Document::hasFocus() const

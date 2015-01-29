@@ -1,3 +1,264 @@
+2015-01-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Console Format for Set and Map Objects (like Arrays)
+        https://bugs.webkit.org/show_bug.cgi?id=122867
+
+        Reviewed by Timothy Hatcher.
+
+        This includes Set/Map/WeakMap previews:
+
+            - Set previews: Set {1, 2, 3}
+            - Map/WeakMap previews: Map {1 => 2, "key" => "value"}
+
+        For WeakMaps:
+        
+            - the preview itself shows up to 5 key/value pairs from when the object was logged
+            - the previews are strings only, and thus do not retain the actual keys/values
+            - when expanding, we get RemoteObjects and strongly retain the keys/values
+            - when collapsing / clearing, we release the RemoteObjects so they can get collected
+
+        Currently you collapse the <entries> section, and re-expand later the
+        collection may show you knew keys/values. The UI for this will change.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.isCollectionType):
+        (WebInspector.RemoteObject.prototype.isWeakCollection):
+        (WebInspector.RemoteObject.prototype.getCollectionEntries):
+        (WebInspector.RemoteObject.prototype.releaseWeakCollectionEntries):
+        (WebInspector.RemoteObject.prototype.arrayLength):
+        (WebInspector.RemoteObject.prototype._weakCollectionObjectGroup):
+        High level functions for dealing with a RemoteObject that may be a
+        collection / weak collection.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsObject):
+        Include default formatters for collection types.
+
+        (WebInspector.ConsoleMessageImpl.prototype._appendPreview):
+        (WebInspector.ConsoleMessageImpl.prototype._appendEntryPreviews):
+        (WebInspector.ConsoleMessageImpl.prototype._appendPropertyPreviews):
+        (WebInspector.ConsoleMessageImpl.prototype._appendValuePreview):
+        (WebInspector.ConsoleMessageImpl.prototype._appendObjectPreview): Deleted.
+        Refactor preview generation a bit and include a specific path for
+        generation the output of a preview with "entries".
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-object-preview-body .console-object-preview-name.console-object-preview-name-Object):
+        With nested Object previews ("Map {{a:1} => 1}") don't show "Object" for the inner
+        object preview. Only show it if it has a unique type ("Map {Foo {a:1} => 1}")
+
+        (.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap):
+        (:matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .section):
+        (:matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .properties):
+        Make map/set/weakmap display like Objects.
+
+        * UserInterface/Views/ObjectPropertiesSection.js:
+        (WebInspector.ObjectPropertiesSection.prototype.update):
+        (WebInspector.ObjectPropertiesSection.prototype.updateProperties):
+        (WebInspector.ObjectPropertyTreeElement.prototype.onpopulate.callback):
+        (WebInspector.ObjectPropertyTreeElement.prototype.onpopulate):
+        (WebInspector.CollectionEntriesMainTreeElement):
+        (WebInspector.CollectionEntriesMainTreeElement.prototype.onexpand.callback):
+        (WebInspector.CollectionEntriesMainTreeElement.prototype.onexpand):
+        (WebInspector.CollectionEntriesMainTreeElement.prototype.oncollapse):
+        (WebInspector.CollectionEntriesMainTreeElement.prototype.ondetach):
+        (WebInspector.CollectionEntriesMainTreeElement.prototype._trackWeakEntries):
+        (WebInspector.CollectionEntriesMainTreeElement.prototype._untrackWeakEntries):
+        (WebInspector.CollectionEntryTreeElement):
+        (WebInspector.CollectionEntryTreeElement.prototype.onpopulate):
+        (WebInspector.CollectionEntryTreeElement.prototype.onattach):
+        (WebInspector.EmptyCollectionTreeElement):
+        (WebInspector.ObjectPropertiesSection.prototype.update.callback): Deleted.
+        Add a quick UI for exploring the entries of a collection. We are actively
+        changing the styles of objects in the Console, so this should change soon.
+
+2015-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Change Main Frame Status Buttons when debugging Augmented JSContext
+        https://bugs.webkit.org/show_bug.cgi?id=141006
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New "Restart" string.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.canArchiveMainFrame):
+        * UserInterface/Views/FrameTreeElement.js:
+        (WebInspector.FrameTreeElement.prototype.updateStatusForMainFrame):
+        (WebInspector.FrameTreeElement.prototype._updateDownloadButton):
+        Update the tooltip when in a non-Web debuggable, and only show
+        the Download button when in a Web debuggable.
+
+        * UserInterface/Views/TreeElementStatusButton.js:
+        (WebInspector.TreeElementStatusButton.prototype.set hidden):
+        Oops! The implementation was backwards. Simplify with classList.toggle.
+
+2015-01-28  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove CSS.setPropertyText, CSS.toggleProperty and related dead code
+        https://bugs.webkit.org/show_bug.cgi?id=140961
+
+        Reviewed by Timothy Hatcher.
+
+        Setters for CSSProperty (except override) are not used, so delete them. These setters
+        and their callees in DOMNodeStyles were the only clients of the removed protocol commands.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WebInspector.CSSProperty.prototype.update):
+        (WebInspector.CSSProperty.prototype.get name):
+        (WebInspector.CSSProperty.prototype.get value):
+        (WebInspector.CSSProperty.prototype.get priority):
+        (WebInspector.CSSProperty.prototype.hasOtherVendorNameOrKeyword):
+        (WebInspector.CSSProperty.prototype.set text): Deleted.
+        (WebInspector.CSSProperty.prototype.set name): Deleted.
+        (WebInspector.CSSProperty.prototype.set value): Deleted.
+        (WebInspector.CSSProperty.prototype.set important): Deleted.
+        (WebInspector.CSSProperty.prototype.set priority): Deleted.
+        (WebInspector.CSSProperty.prototype.set enabled): Deleted.
+        (WebInspector.CSSProperty.prototype.add): Deleted.
+        (WebInspector.CSSProperty.prototype.remove): Deleted.
+        (WebInspector.CSSProperty.prototype._updatePropertySoon.performUpdate): Deleted.
+        (WebInspector.CSSProperty.prototype._updatePropertySoon): Deleted.
+        (WebInspector.CSSProperty.prototype._cancelPendingUpdate): Deleted.
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WebInspector.CSSStyleDeclaration.prototype.addProperty): Deleted.
+        (WebInspector.CSSStyleDeclaration.prototype.removeProperty): Deleted.
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.addEmptyRule):
+        (WebInspector.DOMNodeStyles.prototype.addRule): Deleted.
+        (WebInspector.DOMNodeStyles.prototype.changeProperty): Deleted.
+        (WebInspector.DOMNodeStyles.prototype.changePropertyText): Deleted.
+        (WebInspector.DOMNodeStyles.prototype.changePropertyEnabledState): Deleted.
+        (WebInspector.DOMNodeStyles.prototype.addProperty): Deleted.
+        (WebInspector.DOMNodeStyles.prototype.removeProperty): Deleted.
+        (WebInspector.DOMNodeStyles.prototype._handlePropertyChange): Deleted.
+        * UserInterface/Protocol/Legacy/6.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype._newRuleClicked):
+        * Versions/Inspector-iOS-6.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/Inspector-iOS-8.0.json:
+
+2015-01-28  Dana Burkart  <dburkart@apple.com>
+
+        Move ASan flag settings from DebugRelease.xcconfig to Base.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=136765
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2015-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Object Previews in the Console
+        https://bugs.webkit.org/show_bug.cgi?id=129204
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted):
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (get WebInspector.JavaScriptRuntimeCompletionProvider.prototype.):
+        Update RuntimeManager callsites that do not need object previews.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WebInspector.RuntimeManager.prototype.evalCallback):
+        (WebInspector.RuntimeManager.prototype.evaluateInInspectedWindow):
+        Update the main evaluate method to include a boolean parameter for
+        object previews. Most callers do not need them. Also, since previews
+        were not available on iOS 6, switch to invoke, to conditionally
+        include the command parameter.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.prototype.get preview):
+        Store the preview from the payload.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._format):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameter):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsNode):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsString):
+        (WebInspector.ConsoleMessageImpl.prototype._formatAsArrayEntry):
+        Pass an explicit false for most formatters to not use a preview if available.
+        
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsArray):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsObject):
+        Currently only object types are previewed. Though we request previews
+        for arrays, we don't use the preview because we show a better preview
+        by just immediately requesting for a full non-preview property list.
+        
+        (WebInspector.ConsoleMessageImpl.prototype._appendObjectPreview):
+        Quickly output an object preview into the title element. The format
+        is "ClassName {prop: value...}". Elide the class name if it is "Object".
+        Also skip over certain preview properties that may not be useful
+        at a glance (like constructor, or accessors without values).
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-object-preview):
+        (.console-formatted-array .console-object-preview):
+        (.console-object-preview-lossless):
+        (.expanded .console-object-preview):
+        Show lossy previews in italics.
+        Show lossless previews and array previews without italics.
+        Do not show the class name in the preview in italics when expanded.
+
+        (.console-object-preview .name):
+        Give preview property names the same color as ObjectPropertiesSection property names.
+        
+        (.expanded .console-object-preview > .console-object-preview-body):
+        When expanding an object, hide the preview.
+
+        (.console-object-preview > .console-object-preview-name.console-object-preview-name-Object):
+        (.expanded .console-object-preview > .console-object-preview-name.console-object-preview-name-Object):
+        For "Object" previews, hide the name "Object" when not expanded, and show it when expanded.
+
+2015-01-23  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Disable *Annotators on minified files that aren't pretty printed
+        https://bugs.webkit.org/show_bug.cgi?id=140550
+
+        Reviewed by Timothy Hatcher.
+
+        When SourceCodeTextEditor speculates that a file is minified it 
+        sets a flag on itself that the Annotators will notice when pretty 
+        printing and turning on type profiling. 
+
+        SourceCodeTextEditor enforces the following two behaviors:
+
+        1. Always pretty print a file if we think it's minified while 
+        viewing type annotations. So, while viewing a minified file, 
+        if you press the type profiling button, the pretty printer will 
+        first reformat the file, then the type profiler will insert type annotations.
+
+        2. If the type profiler is enabled and we're viewing a pretty 
+        printed file that we think originally was minified, and the 
+        pretty printer is disabled via pressing the button, then the 
+        type profiler will also be disabled.
+
+        These two behaviors maintain a good user experience because 
+        it prevents a bad visual representation of profiler data and 
+        also prevents bad performance.
+
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WebInspector.TypeTokenAnnotator.prototype.toggleTypeAnnotations): Deleted.
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype.shown):
+        (WebInspector.SourceCodeTextEditor.prototype.contentDidChange):
+        (WebInspector.SourceCodeTextEditor.prototype.toggleTypeAnnotations):
+        (WebInspector.SourceCodeTextEditor.prototype.prettyPrint):
+        (WebInspector.SourceCodeTextEditor.prototype._contentWillPopulate):
+        (WebInspector.SourceCodeTextEditor.prototype._populateWithContent):
+        (WebInspector.SourceCodeTextEditor.prototype._setTypeTokenAnnotatorEnabledState):
+
 2015-01-22  Jonathan Wells  <jonowells@apple.com>
 
         Web Inspector: ResourceContentView.js incorrectly contains call to WebInspector.UIString with a variable parameter

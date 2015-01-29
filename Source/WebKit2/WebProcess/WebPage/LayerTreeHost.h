@@ -99,6 +99,8 @@ public:
     virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) { return nullptr; }
 #endif
 
+    virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) = 0;
+
 protected:
     explicit LayerTreeHost(WebPage*);
 

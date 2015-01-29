@@ -1502,12 +1502,8 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 #if !PLATFORM(IOS)
 static BOOL isQuickLookEvent(NSEvent *event)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     const int kCGSEventSystemSubtypeHotKeyCombinationReleased = 9;
     return [event type] == NSSystemDefined && [event subtype] == kCGSEventSystemSubtypeHotKeyCombinationReleased && [event data1] == 'lkup';
-#else
-    return NO;
-#endif
 }
 #endif
 
@@ -3711,6 +3707,7 @@ static void setMenuTargets(NSMenu* menu)
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [[[self _webView] _actionMenuController] webView:[self _webView] didHandleScrollWheel:event];
+    [[[self _webView] _immediateActionController] webView:[self _webView] didHandleScrollWheel:event];
 #endif
 }
 
@@ -5348,7 +5345,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     return haveWebCoreFrame;
 }
 
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+#if !PLATFORM(IOS)
 - (BOOL)_automaticFocusRingDisabled
 {
     // The default state for _automaticFocusRingDisabled is NO, which prevents focus rings

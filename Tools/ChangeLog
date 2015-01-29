@@ -1,3 +1,781 @@
+2015-01-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Make run-jsc-stress-tests --remote work on Linux too
+        https://bugs.webkit.org/show_bug.cgi?id=141000
+
+        Reviewed by Darin Adler.
+
+        * Scripts/jsc-stress-test-helpers/shell-runner.sh: Omit error message of sysctl,
+        use bash/dash compatible signal names, use Linux/Mac compatible find options,
+        use bash/dash compatible functions.
+        * Scripts/run-jsc-stress-tests: Use Linux/Mac compatible find options.
+
+2015-01-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [buildbot] Simplify jscore-test buildstep
+        https://bugs.webkit.org/show_bug.cgi?id=140821
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunJavaScriptCoreTests): Inherited from TestWithFailureCount and removed useless actual.html logfile.
+        (RunJavaScriptCoreTests.countFailures): Added.
+        (RunJavaScriptCoreTests.commandComplete): Deleted.
+        (RunJavaScriptCoreTests.evaluateCommand): Deleted.
+        (RunJavaScriptCoreTests.getText): Deleted.
+        (RunJavaScriptCoreTests.getText2): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py: Updated.
+        (RunJavaScriptCoreTestsTest.test_mozilla_failure_old_output):
+        (RunJavaScriptCoreTestsTest.test_mozilla_failures_old_output):
+        (RunJavaScriptCoreTestsTest.test_jsc_stress_failure_new_output):
+        (RunJavaScriptCoreTestsTest.test_jsc_stress_failures_new_output):
+
+2015-01-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, revert r179337, we don't need this dependency.
+
+        * efl/install-dependencies:
+        * gtk/install-dependencies:
+
+2015-01-28  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Unreviewed. Moving myself to the committer section.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-01-28  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r179326, added uuid-dev package as new dependency.
+
+        * efl/install-dependencies:
+        * gtk/install-dependencies:
+
+2015-01-28  Timothy Horton  <timothy_horton@apple.com>
+
+        Add a WebKitMessageRecorder DTrace provider, exposing IPC details to DTrace
+        https://bugs.webkit.org/show_bug.cgi?id=140673
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/dtrace/trace-webkit2-messages.d: Added.
+        Add a DTrace script that outputs a small blob of JSON per message.
+
+2015-01-28  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed fastMallocForbid / fastMallocAllow
+        https://bugs.webkit.org/show_bug.cgi?id=141012
+
+        Reviewed by Mark Hahnenberg.
+
+        Fixed a test bug I noticed while testing.
+
+        * DumpRenderTree/JavaScriptThreading.cpp:
+        (stopJavaScriptThreads): Lock the javaScriptThreads lock before
+        accessing javaScriptThreads -- otherwise, you'll ASSERT.
+
+2015-01-28  Dana Burkart  <dburkart@apple.com>
+
+        asan.xcconfig should use CLANG_ADDRESS_SANITIZER=YES instead of -fsanitize=address
+        https://bugs.webkit.org/show_bug.cgi?id=141015
+
+        Reviewed by Alexey Proskuryakov.
+
+        * asan/asan.xcconfig:
+
+2015-01-28  Sam Weinig  <sam@webkit.org>
+
+        Fix the build.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2015-01-28  Lucas Forschler  <lforschler@apple.com>
+
+        Increase the FileUpload block size in an attempt to improve network performance.
+        
+        Reviewed by Alexey Proskuryakov.
+        
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (UploadBuiltProduct.__init__):
+
+2015-01-28  Dana Burkart  <dburkart@apple.com>
+
+        Move ASan flag settings from DebugRelease.xcconfig to Base.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=136765
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * LayoutTestRelay/Configurations/Base.xcconfig:
+        * LayoutTestRelay/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * WebKitLauncher/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+
+2015-01-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Implement support for new AtkRole types for MathML
+        https://bugs.webkit.org/show_bug.cgi?id=140916
+
+        Reviewed by Chris Fleizach.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp: Add mapping for new ATK roles
+        * gtk/jhbuild.modules: Bump minimum version of ATK used by jhbuild to 2.15.4
+
+2015-01-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Stop removing color marks from unit tests output
+        https://bugs.webkit.org/show_bug.cgi?id=140996
+
+        Reviewed by Philippe Normand.
+
+        Since r178236 google tests use a custom simplified output without
+        any colors, so we don't need to handle the case of non ttys to
+        remove the color marks.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner.__init__):
+        (TestRunner._run_test_command.parse_line):
+
+2015-01-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Unit test /webkit2/WebKitWebView/page-visibility from WebKit2Gtk/TestWebKitWebView fails
+        https://bugs.webkit.org/show_bug.cgi?id=131731
+
+        Reviewed by Žan Doberšek.
+
+        A web page loaded offscreen is in prerender state not hidden.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Unskip /webkit2/WebKitWebView/page-visibility.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewPageVisibility):
+
+2015-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Partially revert r178802.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/MountainLion.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/MountainLion@2x.png:
+
+2015-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard asserts on some commits
+        https://bugs.webkit.org/show_bug.cgi?id=140926
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype._convertCommitInfoElementToObject): Added a case for another root directory.
+
+2015-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Make flakiness dashboard OS list actually match test_expectations.py
+        https://bugs.webkit.org/show_bug.cgi?id=140969
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+
+2015-01-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] WinLauncher crashes on eleventh site visited
+        https://bugs.webkit.org/show_bug.cgi?id=140960
+
+        Reviewed by Anders Carlsson.
+
+        * WinLauncher/WinLauncher.cpp:
+        (WinLauncher::showLastVisitedSites): Don't access off the end of
+        the history array.
+
+2015-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Disable building Java applets by default
+        https://bugs.webkit.org/show_bug.cgi?id=140957
+        rdar://problem/19619529
+
+        Reviewed by Anders Carlsson.
+
+        It was actually already disabled unconditionally, by accident.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py: (parse_args):
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort._check_port_build):
+        (MacPort._build_java_test_support):
+
+2015-01-27  Daniel Bates  <dabates@apple.com>
+
+        [iOS] run-webkit-tests --platform=ios* --lint-test-files does not work
+        https://bugs.webkit.org/show_bug.cgi?id=140949
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add "ios-simulator" and "ios-simulator-wk2" to the list of ports without
+        builders so that run-webkit-tests can lint the appropriate TestExpectation
+        files.
+
+        * Scripts/webkitpy/port/builders.py:
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.__init__): Move logic to query for the Mac build directory from here...
+        (IOSSimulatorPort.relay_path): to here as this is the only caller that makes use of that
+        information to find the LayoutTestRelay tool. Otherwise, "self.assertEqual(len(calls), 1)"
+        in unit test webkitpy.tool.commands.rebaseline_unittest.TestRebaselineExpectations.test_rebaseline_expectations
+        will fail because IOSSimulatorPort.__init__() ultimately calls Tools/Scripts/webkit-build-directory
+        to determine the Mac build directory for each instantiation of IOSSimulatorPort. And this unit
+        test instantiates a port object for each builder listed in file Scripts/webkitpy/port/builders.py.
+
+
+2015-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Update bots on the flakiness dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=140956
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+
+2015-01-27  Daniel Bates  <dabates@apple.com>
+
+        [iOS WK2] Add directory LayoutTests/platform/wk2 to the list of baseline search paths
+        https://bugs.webkit.org/show_bug.cgi?id=140942
+
+        Reviewed by Alexey Proskuryakov.
+
+        The directory LayoutTests/platform/wk2 contains test expectations and test results that
+        are applicable to all WebKit2 ports. We should make use of this information when
+        running layout tests using iOS WebKit2.
+
+        Additionally, make use of the convenience function Port._wk2_port_name() for the name
+        of the WebKit2 port instead of directly using string concatenation.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.default_baseline_search_path):
+
+2015-01-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Win] Disable FTL stress tests
+        https://bugs.webkit.org/show_bug.cgi?id=140932
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/run-javascriptcore-tests:
+
+2015-01-27  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r179130): Perl warns about subroutine redefinition when running configure-xcode-for-ios-development
+        https://bugs.webkit.org/show_bug.cgi?id=140939
+
+        Reviewed by Eric Carlson.
+
+        Fixes the Perl warning: "Subroutine wanted redefined at Tools/Scripts/configure-xcode-for-ios-development line 106."
+
+        * Scripts/webkitdirs.pm:
+        (hasUserInstalledAppInSimulatorDevice): Pass a reference to an anonymous function instead
+        of a named function to find() to avoid redefinition warnings in scripts that include webkitdirs.pm
+        and define a function called wanted.
+
+2015-01-27  Daniel Bates  <dabates@apple.com>
+
+        Teach run-webkit-app --simulator how to install custom built app
+        https://bugs.webkit.org/show_bug.cgi?id=140691
+
+        Fix inadvertent omission of directory test flag in expression to check for the
+        existence of the iOS simulator device-specific directory for user installed apps.
+
+        * Scripts/webkitdirs.pm:
+        (hasUserInstalledAppInSimulatorDevice):
+
+2015-01-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] ASSERTION FAILED !m_ptr under AccessibilityController::winAddNotificationListener
+        https://bugs.webkit.org/show_bug.cgi?id=87426
+        <rdar://problem/11527899>
+
+        Reviewed by Darin Adler.
+
+        Revise COMPtr to work better with our HashMap implementation. Use
+        modern loop syntax.
+
+        * DumpRenderTree/win/AccessibilityControllerWin.cpp:
+        (AccessibilityController::~AccessibilityController):
+        (AccessibilityController::winNotificationReceived):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (dumpBackForwardListForAllWindows):
+
+2015-01-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Win] Enable JSC stress tests by default
+        https://bugs.webkit.org/show_bug.cgi?id=128307
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/run-javascriptcore-tests:
+
+2015-01-26  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Remove the various aliases for --ios-simulator (--sim, --simulator, --ios-sim) in
+        arguments for build and test scripts
+        https://bugs.webkit.org/show_bug.cgi?id=139748
+
+        Reviewed by Daniel Bates.
+
+        There was much confusion resulting from the multitude of aliases used to build/test for
+        the iOS simulator. Standardize on "--ios-simulator", which is also the name of the layout
+        tests directory.
+
+        This fixes an issue where run-api-tests and some other scripts failed when run with
+        --simulator.
+
+        * Scripts/build-webkit:
+        * Scripts/package-root:
+        (usage):
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration):
+        (determineXcodeSDK):
+        * Scripts/webkitpy/port/factory.py:
+        (platform_options):
+
+2015-01-26  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Fix possible crash when -[WKWebView evaluateJavaScript:completionHandler:] was called then the WKWebView is destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=140203
+        rdar://problem/19198492
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewEvaluateJavaScript.mm: Added.
+        (TEST):
+
+2015-01-26  David Kilzer  <ddkilzer@apple.com>
+
+        Add iOS EWS to build.webkit.org/dashboard
+        <http://webkit.org/b/140627>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOSDevice.png: Add.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOSDevice@2x.png: Add.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+        (BubbleQueueServer): Add ios-ews queue info.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        Add iOS8Device platform.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (table.queue-grid tr.platform.ios-8 img.logo): Add CSS to draw
+        iOS device logo.
+
+2015-01-26  Filip Pizlo  <fpizlo@apple.com>
+
+        copy-webkitlibraries-to-product-directory's hack to build LLVM from source should be hardened for Xcode deciding it needs SDKROOT set
+        https://bugs.webkit.org/show_bug.cgi?id=140896
+
+        Reviewed by Michael Saboff.
+        
+        I've encountered some Xcode setups where you need to set SDKROOT to get llvm to build. This
+        makes our script do this.
+        
+        Note that an alternative would be to run clang via "xcrun clang" rather than directly, but
+        this would be harder given llvm's autoconf setup.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2015-01-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Update bot assignments.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-01-26  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Integrate WP python server into WebKit test framework
+        https://bugs.webkit.org/show_bug.cgi?id=127094
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch adds W3C web server (wptserver) as a new HTTP server.
+        wptserver is used to serve all tests inside LayoutTests/imported/w3c/wpt.
+        wptserver implementation should be imported within the import of the Web Platform Test suite (to ensure keeping server and tests in sync) in LayoutTests/imported/w3c/wpt.
+
+        Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py serves as main entry point to wpt spawned process.
+        Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py is responsible to start/stop the wpt server process.
+        It also sets up the server config and testharness.js/testharnessreport.js files at start and stop of the wpt server.
+
+        * Scripts/webkitpy/common/system/executive_mock.py:
+        (MockProcess.communicate):
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py: Adding start/stop of web platform test server according boolean parameter.
+        (LayoutTestRunner.__init__):
+        (LayoutTestRunner.run_tests):
+        (LayoutTestRunner.start_servers):
+        (LayoutTestRunner.stop_servers):
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner_unittest.py: Updated to check for wpt server start/stop.
+        (LayoutTestRunnerTests._run_tests):
+        (LayoutTestRunnerTests.test_servers_started.start_web_platform_test_server):
+        (LayoutTestRunnerTests.test_servers_started.stop_web_platform_test_server):
+        (LayoutTestRunnerTests):
+        (LayoutTestRunnerTests.test_servers_started):
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:  Updated to check whether a test is a wpt test and whether wpt server launch is needed.
+        (Manager.__init__):
+        (Manager._is_http_test):
+        (Manager._is_web_platform_test):
+        (Manager._run_tests):
+        * Scripts/webkitpy/layout_tests/controllers/manager_unittest.py:
+        (ManagerTest.test_needs_servers.get_wpt_doc_root):
+        (ManagerTest.test_needs_servers.get_manager):
+        (ManagerTest.test_needs_servers):
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py: Added an option to control the doc_root of the wpt server.
+        (parse_args):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py: Added.
+        (main):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py: Added.
+        (doc_root):
+        (base_url):
+        (WebPlatformTestServer):
+        (WebPlatformTestServer.__init__):
+        (WebPlatformTestServer._set_start_cmd):
+        (WebPlatformTestServer._copy_webkit_test_files):
+        (WebPlatformTestServer._clean_webkit_test_files):
+        (WebPlatformTestServer._prepare_config):
+        (WebPlatformTestServer._spawn_process):
+        (WebPlatformTestServer._stop_running_server):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server_unittest.py: Added.
+        (TestWebPlatformTestServer):
+        (TestWebPlatformTestServer.test_start_cmd):
+        * Scripts/webkitpy/port/base.py:
+        (Port.__init__):
+        (Port.to.start_web_platform_test_server):
+        (Port.to):
+        (Port.to.web_platform_test_server_doc_root):
+        (Port.to.web_platform_test_server_base_url):
+        (Port.to.stop_web_platform_test_server):
+        * Scripts/webkitpy/port/driver.py: Updated the test name <-> test URL conversion routines.
+        (Driver.__init__):
+        (Driver.is_web_platform_test):
+        (Driver.test_to_uri):
+        (Driver.uri_to_test):
+        (Driver._command_from_driver_input):
+        * Scripts/webkitpy/port/driver_unittest.py:  Updated tests according new conversion rules.
+        (DriverTest.test_test_to_uri):
+        (DriverTest.test_uri_to_test):
+
+2015-01-26  Daniel Bates  <dabates@apple.com>
+
+        Teach run-webkit-app --simulator how to install custom built app
+        https://bugs.webkit.org/show_bug.cgi?id=140691
+
+        Reviewed by David Kilzer.
+
+        We should teach run-webkit-app --simulator how to install a custom built app.
+
+        Currently run-webkit-app --simulator can only run a system app or an app that
+        was installed using the simctl command line tool. For convenience we should
+        teach run-webkit-app --simulator how to install a custom built app.
+
+        As a side effect of this change run-safari --simulator will install and run
+        a custom built of MobileSafari (if it exists).
+
+        * Scripts/webkitdirs.pm:
+        (iOSSimulatorDevices): Added FIXME comment to decouple device representation in
+        Perl from the structure of the device.plist file.
+        (plistPathFromBundle): Fix if-statement condition so that we actually perform a
+        file system check to determine the plist path for a Mac app bundle.
+        (appIdentifierFromBundle): Pass absolute files system path to defaults(1). Otherwise,
+        it will complain that it cannot find the file: "Domain ... does not exist".
+        (appDisplayNameFromBundle): Ditto.
+        (waitUntilIOSSimulatorDeviceIsInState): Added; helper function that does not return
+        until a simulator device is the specified state.
+        (relaunchIOSSimulator): Renamed; formerly named openIOSSimulator. Quits iOS Simulator
+        (if it's open) before opening it again so as to ensure that the iOS Simulator boots
+        the specified device.
+        (quitIOSSimulator): Added optional parameter, $waitForShutdownOfSimulatedDeviceUDID.
+        As implied by its name, this function will not return until the specified simulator
+        device UDID is in the shutdown state.
+        (iosSimulatorDeviceByUDID): Added; returns the device dictionary object for the simulator
+        device with the specified UDID.
+        (isIOSSimulatorSystemInstalledApp): Resolve symbolic links in iosSimulatorApplicationsPath()
+        before using it as part of a prefix match to avoid a mismatch. In the public iOS 8.1 SDK the
+        return value of iosSimulatorApplicationsPath(), which returns a result analogous to the shell
+        expression echo `xcrun --sdk iphonesimulator --show-sdk-path`/Applications/, contains a
+        symbolic link. Specifically, echo `xcrun --sdk iphonesimulator --show-sdk-path` returns
+        /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator8.1.sdk,
+        which is a symbolic link to /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk.
+        (hasUserInstalledAppInSimulatorDevice): Added.
+        (isSimulatorDeviceBooted): Added; returns whether the specified simulator device is in the
+        "Booted" state.
+        (runIOSWebKitAppInSimulator): Modified to install a custom built app (if needed). For now,
+        switching between a system installed app and a custom built version of the same app (e.g.
+        custom build of MobileSafari) will erase all contents and settings in the simulator device.
+        (eraseIOSSimulatorDevice): Deleted; inline implementation into runIOSWebKitAppInSimulator()
+        as that was the only caller of this function.
+        (bootedIOSSimulatorDevice): Deleted.
+        (openIOSSimulator): Deleted.
+
+2015-01-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Update bot assignments.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-01-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Leaks bot shouldn't run JSC tests
+        https://bugs.webkit.org/show_bug.cgi?id=140877
+
+        Reviewed by Darin Adler.
+
+        Shaves off 48 minutes of time.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (TestLeaksFactory): Slim down the leaks queue.
+
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.print_leaks_summary):
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.print_leaks_summary):
+        Don't yell when leaks are detected.
+
+2015-01-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Refactor run-javascriptcore-tests
+        https://bugs.webkit.org/show_bug.cgi?id=140824
+
+        Reviewed by Darin Adler.
+
+        Separated mozilla, stress test code paths and
+        determining skipped mozilla tests into subroutines.
+
+        * Scripts/run-javascriptcore-tests:
+        (runMozillaTests):
+        (runJSCStressTests):
+        (defaultJsDriverArgsForMozillaTests):
+
+2015-01-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [buildbot] Fix grammar of TestWithFailureCount
+        https://bugs.webkit.org/show_bug.cgi?id=140884
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (TestWithFailureCount):
+        (TestWithFailureCount.commandComplete):
+        (TestWithFailureCount.getText2):
+        (RunUnitTests):
+        (RunPythonTests):
+        (RunPerlTests):
+        (RunLLINTCLoopTests):
+        (Run32bitJSCTests):
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        (RunLLINTCLoopTestsTest.test_failure):
+        (Run32bitJSCTestsTest.test_failure):
+        (RunUnitTestsTest.assertFailures):
+
+2015-01-26  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Unreviewed. Moving myself to the committer section.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-01-26  Michael Catanzaro  <mcatanzaro@igalia.com> and Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] gtkdoc does not appear in DevHelp
+        https://bugs.webkit.org/show_bug.cgi?id=139369
+
+        Reviewed by Philippe Normand.
+
+        * gtk/generate-gtkdoc: Create the generators in the main function
+        and use them to get the local cross renference dependencies. Also
+        pass the generator module name to webkitdom.write_doc_files().
+        (get_gtkdoc_module_paths): Receive a list of local cross reference
+        dependencies.
+        (get_generator_for_config): Set the main_sgml_file property of the
+        GtkDoc object from the configuration file.
+        (generate_documentation): Generate the documentation for the given
+        generator.
+        (generate_documentation_for_config): Deleted.
+        * gtk/manifest.txt.in: Expect the API version in the gtkdoc filenames.
+        * gtk/webkitdom.py:
+        (write_doc_files): Receive the module name used to build the
+        -sections.txt filename.
+
+2015-01-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179107.
+        https://bugs.webkit.org/show_bug.cgi?id=140880
+
+        The GCC in the bots doesn't support the AsyncTask
+        implementation (Requested by KaL on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Enable IndexedDB"
+        https://bugs.webkit.org/show_bug.cgi?id=98932
+        http://trac.webkit.org/changeset/179107
+
+2015-01-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump libseccomp version to 2.1.1
+        https://bugs.webkit.org/show_bug.cgi?id=140357
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2015-01-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=98932
+
+        Reviewed by Žan Doberšek.
+
+        * Scripts/webkitperl/FeatureList.pm: Enable IndexedDB for the GTK port.
+
+2015-01-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Would like leaks bot results at build.webkit.org/dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=122657
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        Record links provided by buildbot steps. Currently, the dashboard hardcodes more links
+        than necessary, could use the ones from buildbot in more places.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue): Reflect configuration option for leaks queues.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        Add leaks queues to performance column. First, leaks are about performance indeed,
+        and second, this is where we have some space to spare.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot): Added Yosemite Leaks queue, which was sitting neglected for at
+        least a year.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (table.queue-grid td): Moved height from queue-view - we can now have more than one
+        queue view per cell. The heigt is needed to avoid ugly overlapping while loading
+        results - once the results are loaded, all rows are currently higher than that.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/QueueView.css:
+        (.leaks-popover): Added.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotLeaksQueueView.js:
+        Added.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/index.html:
+        Load BuildbotLeaksQueueView.js.
+
+2015-01-25  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Add WebKit message loop interface.
+        https://bugs.webkit.org/show_bug.cgi?id=140857
+
+        Reviewed by Brent Fulgham.
+
+        Added message loop interface which will run the message loop,
+        and perform required tasks (like calling CFRunLoopRunInMode)
+        on each iteration of the loop.
+
+        * WinLauncher/WinMain.cpp:
+        (wWinMain): Use new message loop interface.
+
+2015-01-24  Dan Bernstein  <mitz@apple.com>
+
+        update-webkit’s --internal option is unused
+        https://bugs.webkit.org/show_bug.cgi?id=140861
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/update-webkit: Removed the option.
+
+2015-01-24  Brent Fulgham  <bfulgham@apple.com>
+
+        DumpRenderTree needs to run with Windows native controls on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=25592
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues): Tell DRT to use native controls.
+        (prepareConsistentTestingEnvironment): Ditto.
+
+2015-01-23  David Kilzer  <ddkilzer@apple.com>
+
+        test-webkitpy: webkitpy.tool.commands.earlywarningsystem_unittest.EarlyWarningSystemTest.test_ewses fails on EFL, GTK, Win ports
+        <http://webkit.org/b/140787>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.determine_full_port_name): Instead of checking the type
+        of the current host, test if /usr/bin/xcrun exists before trying
+        to use it.
+
+2015-01-23  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the false positive build failures on the Windows buildbots
+        https://bugs.webkit.org/show_bug.cgi?id=140819
+
+        Reviewed by Brent Fulgham.
+
+        Increase the build timeout (without producing output) to 2 hours for Windows bots,
+        the default 20 minutes is enough for others since they produce output during the build.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (BuildFactory.__init__):
+
+2015-01-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Teach WebKit to provide IAccessible2 'get_language' and access AXLanguage
+        https://bugs.webkit.org/show_bug.cgi?id=140839
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (AccessibilityUIElement::language): Retrieve the 'language' BSTR
+        from the IA2Locale structure and pass it to DRT.
+
+2015-01-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update DRT Accessibility implementation to better match Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=140830
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (AccessibilityUIElement::titleUIElement):
+        (AccessibilityUIElement::parentElement):
+        (convertToDRTLabel):
+        (AccessibilityUIElement::role):
+        (AccessibilityUIElement::title):
+        (AccessibilityUIElement::description):
+        (AccessibilityUIElement::stringValue):
+        (AccessibilityUIElement::helpText):
+        (AccessibilityUIElement::isFocused):
+
+2015-01-23  Sergio Villar Senin  <svillar@igalia.com>
+
+        REGRESSION: run-perf-tests --profiler= seems to have broken
+        https://bugs.webkit.org/show_bug.cgi?id=113528
+
+        Reviewed by Daniel Bates.
+
+        The problem is that "perf --record" (or the equivalent call for
+        other profilers) is never called whenever there is a wrapper
+        option in the port. We should inject the profiler call first
+        (should it exists) and then use the port wrapper.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._command_wrapper):
+        * Scripts/webkitpy/port/driver_unittest.py:
+        (DriverTest.test_profiler_and_wrapper): New unit test.
+
 2015-01-22  David Kilzer  <ddkilzer@apple.com>
 
         configure-xcode-for-ios-development needs to import webkitdirs.pm

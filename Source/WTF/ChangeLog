@@ -1,3 +1,226 @@
+2015-01-29  Santosh Mahto  <santoshbit2007@gmail.com>
+
+        Refactor String::format to handle unreached va_end.
+        https://bugs.webkit.org/show_bug.cgi?id=140938
+
+        Reviewed by Alexey Proskuryakov.
+
+        Now va_end is called for all platform after getting length
+        of formatted string and again va_start/va_end is called to write
+        formatted string in buffer. This way it ensure va_end is always
+        reached for each va_start.
+
+        * wtf/text/WTFString.cpp:
+
+2015-01-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Move HAVE_DTRACE definition back to Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=141033
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h:
+
+2015-01-28  Namhoon Kim  <namkim@ea.com>
+
+        Windows return -1 when calling vsnprintf with arguments that exceed target buffer size
+        https://bugs.webkit.org/show_bug.cgi?id=140917
+
+        Reviewed by Brent Fulgham.
+
+        Fix return value of vsnprintf when windows API return -1 to denote
+        requested buffer exceeded. Replace return value by calling vscprintf.
+
+        * wtf/StringExtras.h:
+        (snprintf): Fix return value by calling vscprintf when buffer exceeded.
+        (wtf_vsnprintf): Ditto.
+
+2015-01-28  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed fastMallocForbid / fastMallocAllow
+        https://bugs.webkit.org/show_bug.cgi?id=141012
+
+        Reviewed by Mark Hahnenberg.
+
+        Removed the forbid / allow API because it is no longer used.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::tryFastMalloc):
+        (WTF::fastMalloc):
+        (WTF::tryFastCalloc):
+        (WTF::fastCalloc):
+        (WTF::fastFree):
+        (WTF::tryFastRealloc):
+        (WTF::fastRealloc):
+        (WTF::TCMalloc_ThreadCache::CreateCacheIfNecessary):
+        (WTF::isForbidden): Deleted.
+        (WTF::fastMallocForbid): Deleted.
+        (WTF::fastMallocAllow): Deleted.
+        (WTF::initializeIsForbiddenKey): Deleted.
+        * wtf/FastMalloc.h:
+
+2015-01-28  Dana Burkart  <dburkart@apple.com>
+
+        Move ASan flag settings from DebugRelease.xcconfig to Base.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=136765
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2015-01-28  Darin Adler  <darin@apple.com>
+
+        Fix small leak in Collator
+        https://bugs.webkit.org/show_bug.cgi?id=140990
+
+        Reviewed by Andreas Kling.
+
+        * wtf/unicode/icu/CollatorICU.cpp:
+        (WTF::Collator::Collator): Use fastStrDup instead of strdup.
+        (WTF::Collator::~Collator): Use fastFree on the collator locale that we
+        are abandoning. The old code instead just called free on a null pointer.
+
+2015-01-27  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed WTF_MALLOC_VALIDATION
+        https://bugs.webkit.org/show_bug.cgi?id=140958
+
+        Reviewed by Anders Carlsson.
+
+        I don't think anyone has been using this, and the #ifdefs were driving
+        me crazy.
+
+        We have other options for validation -- like MallocGuardEdges,
+        MallocCheckHeapEach, MallocScribble, and GuardMalloc.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::tryFastMalloc):
+        (WTF::fastMalloc):
+        (WTF::tryFastCalloc):
+        (WTF::fastCalloc):
+        (WTF::fastFree):
+        (WTF::tryFastRealloc):
+        (WTF::fastRealloc):
+        (WTF::fastMallocSize):
+        (WTF::TCMalloc_ThreadCache::CreateCacheIfNecessary):
+        (WTF::Internal::fastMallocMatchFailed): Deleted.
+        * wtf/FastMalloc.h:
+        (WTF::Internal::fastMallocValidationHeader): Deleted.
+        (WTF::Internal::fastMallocValidationSuffix): Deleted.
+        (WTF::Internal::fastMallocMatchValidationType): Deleted.
+        (WTF::Internal::setFastMallocMatchValidationType): Deleted.
+        (WTF::fastMallocMatchValidateMalloc): Deleted.
+        (WTF::fastMallocMatchValidateFree): Deleted.
+        (WTF::fastMallocValidate): Deleted.
+
+2015-01-27  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179192.
+        https://bugs.webkit.org/show_bug.cgi?id=140953
+
+        Caused numerous layout test failures (Requested by mattbaker_
+        on #webkit).
+
+        Reverted changeset:
+
+        "Use FastMalloc (bmalloc) instead of BlockAllocator for GC
+        pages"
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+        http://trac.webkit.org/changeset/179192
+
+2015-01-26  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        New interface for aligned allocation: fastAlignedMalloc / fastAlignedFree.
+        We require a special function call on free because Windows.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastAlignedMalloc):
+        (WTF::fastAlignedFree): Do it.
+
+        (WTF::do_memalign): Un-ifdef this, since we use it now.
+
+        * wtf/FastMalloc.h: Make our new function names visible like the rest
+        of fastMalloc.
+
+2015-01-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] ASSERTION FAILED !m_ptr under AccessibilityController::winAddNotificationListener
+        https://bugs.webkit.org/show_bug.cgi?id=87426
+        <rdar://problem/11527899>
+
+        Reviewed by Darin Adler.
+
+        Revise internal containers to use std::addressof in preference to
+        to using the '&' operator.
+
+        * wtf/Deque.h:
+        (WTF::inlineCapacity>::append):
+        (WTF::inlineCapacity>::prepend):
+        (WTF::inlineCapacity>::removeFirst):
+        (WTF::inlineCapacity>::removeLast):
+        (WTF::inlineCapacity>::remove):
+        (WTF::inlineCapacity>::after):
+        (WTF::inlineCapacity>::before):
+        * wtf/GetPtr.h:
+        * wtf/HashTable.h:
+        (WTF::HashTableBucketInitializer<false>::initialize):
+        * wtf/HashTraits.h:
+        (WTF::SimpleClassHashTraits::constructDeletedValue):
+        (WTF::CustomHashTraits::constructDeletedValue):
+        * wtf/ListHashSet.h:
+        (WTF::ListHashSetConstIterator::get):
+        * wtf/Vector.h:
+        (WTF::Vector::swap):
+        (WTF::OverflowHandler>::append):
+        (WTF::OverflowHandler>::tryAppend):
+        (WTF::OverflowHandler>::insert):
+
+2015-01-24  Chris Dumez  <cdumez@apple.com>
+
+        Provide implementation for WTF::DefaultHash<bool>
+        https://bugs.webkit.org/show_bug.cgi?id=140848
+
+        Reviewed by Anders Carlsson.
+
+        Provide implementation for WTF::DefaultHash<bool> so that we can use
+        HashMap<std::pair<XXX, bool>> in the code base. Right now, we need to
+        use some integer type to work around the issue.
+
+        * wtf/HashFunctions.h:
+
+2015-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add missing null check in some derefGPtr implementations
+        https://bugs.webkit.org/show_bug.cgi?id=140822
+
+        Reviewed by Sergio Villar Senin.
+
+        It's missing in GHashTable and GVariant implementations.
+
+        * wtf/gobject/GRefPtr.cpp:
+        (WTF::derefGPtr):
+
+2015-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add initial database process support
+        https://bugs.webkit.org/show_bug.cgi?id=139491
+
+        Reviewed by Sergio Villar Senin.
+
+        Add support for using GRefPtr with GVariantBuilder.
+
+        * wtf/gobject/GRefPtr.cpp:
+        (WTF::refGPtr):
+        (WTF::derefGPtr):
+        * wtf/gobject/GRefPtr.h:
+        * wtf/gobject/GTypedefs.h:
+
 2015-01-22  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add a build flag for ES6 class syntax
