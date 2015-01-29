@@ -76,6 +76,8 @@ private:
 
     virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
 
+    virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override { };
+
     // GraphicsLayerClient
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect);
 
