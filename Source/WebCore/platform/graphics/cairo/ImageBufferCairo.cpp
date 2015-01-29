@@ -407,11 +407,10 @@ void ImageBufferData::paintToTextureMapper(TextureMapper* textureMapper, const F
 
     // Cairo may change the active context, so we make sure to change it back after flushing.
     // FIXME: Re-evaluate whether necessary.
-/*
+
     GLContext* previousActiveContext = GLContext::getCurrent();
     cairo_surface_flush(m_surface.get());
     previousActiveContext->makeContextCurrent();
-*/
 
     static_cast<TextureMapperGL*>(textureMapper)->drawTexture(m_texture, TextureMapperGL::ShouldBlend, m_size, targetRect, matrix, opacity);
 }
