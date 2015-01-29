@@ -890,9 +890,10 @@ void RenderView::splitSelectionBetweenSubtrees(const RenderObject* start, int st
     if (start && end) {
         Node* startNode = start->node();
         Node* endNode = end->node();
-        Node* stopNode = NodeTraversal::nextSkippingChildren(endNode);
+        ASSERT(endNode);
+        Node* stopNode = NodeTraversal::nextSkippingChildren(*endNode);
 
-        for (Node* node = startNode; node != stopNode; node = NodeTraversal::next(node)) {
+        for (Node* node = startNode; node != stopNode; node = NodeTraversal::next(*node)) {
             RenderObject* renderer = node->renderer();
             if (!renderer)
                 continue;
@@ -1215,6 +1216,9 @@ void RenderView::updateHitTestResult(HitTestResult& result, const LayoutPoint& p
 {
     if (result.innerNode())
         return;
+
+    if (multiColumnFlowThread() && multiColumnFlowThread()->firstMultiColumnSet())
+        return multiColumnFlowThread()->firstMultiColumnSet()->updateHitTestResult(result, point);
 
     Node* node = document().documentElement();
     if (node) {

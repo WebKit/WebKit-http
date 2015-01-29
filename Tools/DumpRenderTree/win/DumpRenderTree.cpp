@@ -658,7 +658,7 @@ static void dumpBackForwardListForAllWindows()
     unsigned count = openWindows().size();
     for (unsigned i = 0; i < count; i++) {
         HWND window = openWindows()[i];
-        IWebView* webView = windowToWebViewMap().get(window).get();
+        IWebView* webView = windowToWebViewMap().get(window);
         dumpBackForwardList(webView);
     }
 }
@@ -838,7 +838,7 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     preferences->setCSSRegionsEnabled(TRUE);
     // Set uses HTML5 parser quirks: NO
     // Async spellcheck: NO
-    prefsPrivate->setShouldPaintNativeControls(TRUE); // FIXME - need to make DRT pass with Windows native controls <http://bugs.webkit.org/show_bug.cgi?id=25592>
+    prefsPrivate->setShouldPaintNativeControls(TRUE);
     prefsPrivate->setMockScrollbarsEnabled(TRUE);
 
     preferences->setFontSmoothing(FontSmoothingTypeStandard);
@@ -865,6 +865,19 @@ static void resetWebViewToConsistentStateBeforeTesting()
     COMPtr<IWebView> webView;
     if (FAILED(frame->webView(&webView))) 
         return;
+
+    COMPtr<IWebViewEditing> viewEditing;
+    if (SUCCEEDED(webView->QueryInterface(&viewEditing)) && viewEditing) {
+
+        viewEditing->setEditable(FALSE);
+
+        COMPtr<IWebEditingDelegate> delegate;
+        if (SUCCEEDED(viewEditing->editingDelegate(&delegate)) && delegate) {
+            COMPtr<EditingDelegate> editingDelegate(Query, viewEditing.get());
+            if (editingDelegate)
+                editingDelegate->setAcceptsEditing(TRUE);
+        }
+    }
 
     COMPtr<IWebIBActions> webIBActions(Query, webView);
     if (webIBActions) {
@@ -1364,8 +1377,7 @@ static void prepareConsistentTestingEnvironment(IWebPreferences* standardPrefere
     ASSERT(standardPreferencesPrivate);
     standardPreferences->setAutosaves(FALSE);
 
-    // FIXME - need to make DRT pass with Windows native controls <http://bugs.webkit.org/show_bug.cgi?id=25592>
-    standardPreferencesPrivate->setShouldPaintNativeControls(FALSE);
+    standardPreferencesPrivate->setShouldPaintNativeControls(TRUE);
     standardPreferences->setJavaScriptEnabled(TRUE);
     standardPreferences->setDefaultFontSize(16);
 #if USE(CG)

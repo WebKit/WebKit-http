@@ -26,8 +26,6 @@
 #ifndef WebInjectedScriptHost_h
 #define WebInjectedScriptHost_h
 
-#if ENABLE(INSPECTOR)
-
 #include <inspector/InjectedScriptHost.h>
 
 namespace WebCore {
@@ -36,12 +34,10 @@ class WebInjectedScriptHost final : public Inspector::InjectedScriptHost {
 public:
     static PassRefPtr<WebInjectedScriptHost> create() { return adoptRef(new WebInjectedScriptHost); }
 
-    virtual JSC::JSValue type(JSC::ExecState*, JSC::JSValue) override;
+    virtual JSC::JSValue subtype(JSC::ExecState*, JSC::JSValue) override;
     virtual bool isHTMLAllCollection(JSC::JSValue) override;
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(INSPECTOR)
 
 #endif // !defined(WebInjectedScriptHost_h)

@@ -27,8 +27,8 @@
 #define CSSFontSelector_h
 
 #include "CachedResourceHandle.h"
+#include "Font.h"
 #include "FontSelector.h"
-#include "SimpleFontData.h"
 #include "Timer.h"
 #include <memory>
 #include <wtf/Forward.h>
@@ -49,9 +49,9 @@ class StyleRuleFontFace;
 
 class CSSFontSelector final : public FontSelector {
 public:
-    static PassRefPtr<CSSFontSelector> create(Document* document)
+    static Ref<CSSFontSelector> create(Document& document)
     {
-        return adoptRef(new CSSFontSelector(document));
+        return adoptRef(*new CSSFontSelector(document));
     }
     virtual ~CSSFontSelector();
     
@@ -59,8 +59,8 @@ public:
     virtual unsigned uniqueId() const override { return m_uniqueId; }
 
     virtual FontRanges fontRangesForFamily(const FontDescription&, const AtomicString&) override;
-    virtual size_t fallbackFontDataCount() override;
-    virtual PassRefPtr<SimpleFontData> fallbackFontDataAt(const FontDescription&, size_t) override;
+    virtual size_t fallbackFontCount() override;
+    virtual PassRefPtr<Font> fallbackFontAt(const FontDescription&, size_t) override;
     CSSSegmentedFontFace* getFontFace(const FontDescription&, const AtomicString& family);
 
     virtual bool resolvesFamilyFor(const FontDescription&) const override;
@@ -82,7 +82,7 @@ public:
     void beginLoadingFontSoon(CachedFont*);
 
 private:
-    CSSFontSelector(Document*);
+    explicit CSSFontSelector(Document&);
 
     void dispatchInvalidationCallbacks();
 

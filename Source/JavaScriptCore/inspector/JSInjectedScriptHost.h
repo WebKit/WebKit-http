@@ -26,8 +26,6 @@
 #ifndef JSInjectedScriptHost_h
 #define JSInjectedScriptHost_h
 
-#if ENABLE(INSPECTOR)
-
 #include "JSDestructibleObject.h"
 
 namespace Inspector {
@@ -64,7 +62,7 @@ public:
     // Functions.
     JSC::JSValue internalConstructorName(JSC::ExecState*);
     JSC::JSValue isHTMLAllCollection(JSC::ExecState*);
-    JSC::JSValue type(JSC::ExecState*);
+    JSC::JSValue subtype(JSC::ExecState*);
     JSC::JSValue functionDetails(JSC::ExecState*);
     JSC::JSValue getInternalProperties(JSC::ExecState*);
 
@@ -84,7 +82,5 @@ JSC::JSValue toJS(JSC::ExecState*, JSC::JSGlobalObject*, InjectedScriptHost*);
 JSInjectedScriptHost* toJSInjectedScriptHost(JSC::JSValue);
 
 } // namespace Inspector
-
-#endif // ENABLE(INSPECTOR)
 
 #endif // !defined(JSInjectedScriptHost_h)

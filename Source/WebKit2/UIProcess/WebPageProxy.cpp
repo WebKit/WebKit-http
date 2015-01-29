@@ -28,6 +28,7 @@
 #include "WebPageProxy.h"
 
 #include "APIArray.h"
+#include "APIContextMenuClient.h"
 #include "APIFindClient.h"
 #include "APIFormClient.h"
 #include "APIGeometry.h"
@@ -266,6 +267,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_uiClient(std::make_unique<API::UIClient>())
     , m_findClient(std::make_unique<API::FindClient>())
     , m_diagnosticLoggingClient(std::make_unique<API::DiagnosticLoggingClient>())
+#if ENABLE(CONTEXT_MENUS)
+    , m_contextMenuClient(std::make_unique<API::ContextMenuClient>())
+#endif
     , m_navigationState(std::make_unique<WebNavigationState>())
     , m_process(process)
     , m_pageGroup(*configuration.pageGroup)
@@ -282,6 +286,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_dynamicViewportSizeUpdateWaitingForTarget(false)
     , m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit(false)
     , m_dynamicViewportSizeUpdateLayerTreeTransactionID(0)
+    , m_layerTreeTransactionIdAtLastTouchStart(0)
 #endif
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
@@ -421,9 +426,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     m_preferences->addPage(*this);
     m_pageGroup->addPage(this);
 
-#if ENABLE(INSPECTOR)
     m_inspector = WebInspectorProxy::create(this);
-#endif
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
@@ -574,9 +577,14 @@ void WebPageProxy::setDiagnosticLoggingClient(std::unique_ptr<API::DiagnosticLog
 }
 
 #if ENABLE(CONTEXT_MENUS)
-void WebPageProxy::initializeContextMenuClient(const WKPageContextMenuClientBase* client)
+void WebPageProxy::setContextMenuClient(std::unique_ptr<API::ContextMenuClient> contextMenuClient)
 {
-    m_contextMenuClient.initialize(client);
+    if (!contextMenuClient) {
+        m_contextMenuClient = std::make_unique<API::ContextMenuClient>();
+        return;
+    }
+
+    m_contextMenuClient = WTF::move(contextMenuClient);
 }
 #endif
 
@@ -604,9 +612,7 @@ void WebPageProxy::reattachToWebProcess()
     updateViewState();
     updateActivityToken();
 
-#if ENABLE(INSPECTOR)
     m_inspector = WebInspectorProxy::create(this);
-#endif
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
@@ -733,7 +739,7 @@ void WebPageProxy::close()
     m_findMatchesClient.initialize(nullptr);
     m_diagnosticLoggingClient = std::make_unique<API::DiagnosticLoggingClient>();
 #if ENABLE(CONTEXT_MENUS)
-    m_contextMenuClient.initialize(nullptr);
+    m_contextMenuClient = std::make_unique<API::ContextMenuClient>();
 #endif
 
     m_webProcessLifetimeTracker.pageWasInvalidated();
@@ -763,10 +769,8 @@ bool WebPageProxy::maybeInitializeSandboxExtensionHandle(const URL& url, Sandbox
     if (m_process->hasAssumedReadAccessToURL(url))
         return false;
 
-#if ENABLE(INSPECTOR)
     // Inspector resources are in a directory with assumed access.
     ASSERT_WITH_SECURITY_IMPLICATION(!WebInspectorProxy::isInspectorPage(*this));
-#endif
 
     SandboxExtension::createHandle("/", SandboxExtension::ReadOnly, sandboxExtensionHandle);
     return true;
@@ -1779,8 +1783,10 @@ void WebPageProxy::handleTouchEventSynchronously(const NativeWebTouchEvent& even
     if (!isValid())
         return;
 
-    if (event.type() == WebEvent::TouchStart)
+    if (event.type() == WebEvent::TouchStart) {
         m_isTrackingTouchEvents = shouldStartTrackingTouchEvents(event);
+        m_layerTreeTransactionIdAtLastTouchStart = downcast<RemoteLayerTreeDrawingAreaProxy>(*drawingArea()).lastCommittedLayerTreeTransactionID();
+    }
 
     if (!m_isTrackingTouchEvents)
         return;
@@ -3562,17 +3568,12 @@ void WebPageProxy::didDraw()
 }
 
 // Inspector
-
-#if ENABLE(INSPECTOR)
-
 WebInspectorProxy* WebPageProxy::inspector()
 {
     if (isClosed() || !isValid())
         return 0;
     return m_inspector.get();
 }
-
-#endif
 
 #if ENABLE(FULLSCREEN_API)
 WebFullScreenManagerProxy* WebPageProxy::fullScreenManager()
@@ -3862,9 +3863,9 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
 {
     m_activeContextMenuContextData = contextMenuContextData;
 
-    if (!m_contextMenuClient.hideContextMenu(this) && m_activeContextMenu) {
+    if (!m_contextMenuClient->hideContextMenu(*this) && m_activeContextMenu) {
         m_activeContextMenu->hideContextMenu();
-        m_activeContextMenu = 0;
+        m_activeContextMenu = nullptr;
     }
 
     m_activeContextMenu = m_pageClient.createContextMenuProxy(this);
@@ -3883,21 +3884,21 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
         askClientToChangeMenu = false;
 #endif
 
-    if (askClientToChangeMenu && m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, contextMenuContextData.webHitTestResultData(), m_process->transformHandlesToObjects(userData.object()).get()))
+    if (askClientToChangeMenu && m_contextMenuClient->getContextMenuFromProposedMenu(*this, proposedItems, items, contextMenuContextData.webHitTestResultData(), m_process->transformHandlesToObjects(userData.object()).get()))
         useProposedItems = false;
 
     const Vector<WebContextMenuItemData>& itemsToShow = useProposedItems ? proposedItems : items;
-    if (!m_contextMenuClient.showContextMenu(this, menuLocation, itemsToShow))
+    if (!m_contextMenuClient->showContextMenu(*this, menuLocation, itemsToShow))
         m_activeContextMenu->showContextMenu(menuLocation, itemsToShow, contextMenuContextData);
 
-    m_contextMenuClient.contextMenuDismissed(this);
+    m_contextMenuClient->contextMenuDismissed(*this);
 }
 
 void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
 {
     // Application custom items don't need to round-trip through to WebCore in the WebProcess.
     if (item.action() >= ContextMenuItemBaseApplicationTag) {
-        m_contextMenuClient.customContextMenuItemSelected(this, item);
+        m_contextMenuClient->customContextMenuItemSelected(*this, item);
         return;
     }
 
@@ -4520,12 +4521,10 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_mainFrame = nullptr;
     m_drawingArea = nullptr;
 
-#if ENABLE(INSPECTOR)
     if (m_inspector) {
         m_inspector->invalidate();
         m_inspector = nullptr;
     }
-#endif
 
 #if ENABLE(FULLSCREEN_API)
     if (m_fullScreenManager) {
@@ -4582,6 +4581,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_dynamicViewportSizeUpdateWaitingForTarget = false;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = false;
     m_dynamicViewportSizeUpdateLayerTreeTransactionID = 0;
+    m_layerTreeTransactionIdAtLastTouchStart = 0;
 #endif
 
     CallbackBase::Error error;

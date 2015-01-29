@@ -558,14 +558,19 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/WebGLFramebuffer.idl
     html/canvas/WebGLLoseContext.idl
     html/canvas/WebGLProgram.idl
+    html/canvas/WebGLQuery.idl
     html/canvas/WebGLRenderbuffer.idl
     html/canvas/WebGLRenderingContextBase.idl
     html/canvas/WebGLRenderingContext.idl
     html/canvas/WebGL2RenderingContext.idl
+    html/canvas/WebGLSampler.idl
     html/canvas/WebGLShader.idl
     html/canvas/WebGLShaderPrecisionFormat.idl
+    html/canvas/WebGLSync.idl
     html/canvas/WebGLTexture.idl
+    html/canvas/WebGLTransformFeedback.idl
     html/canvas/WebGLUniformLocation.idl
+    html/canvas/WebGLVertexArrayObject.idl
     html/canvas/WebGLVertexArrayObjectOES.idl
 
     inspector/CommandLineAPIHost.idl
@@ -1694,15 +1699,20 @@ set(WebCore_SOURCES
     html/canvas/WebGLLoseContext.cpp
     html/canvas/WebGLObject.cpp
     html/canvas/WebGLProgram.cpp
+    html/canvas/WebGLQuery.cpp
     html/canvas/WebGLRenderbuffer.cpp
     html/canvas/WebGLRenderingContextBase.cpp
     html/canvas/WebGLRenderingContext.cpp
     html/canvas/WebGL2RenderingContext.cpp
+    html/canvas/WebGLSampler.cpp
     html/canvas/WebGLShader.cpp
     html/canvas/WebGLShaderPrecisionFormat.cpp
     html/canvas/WebGLSharedObject.cpp
+    html/canvas/WebGLSync.cpp
     html/canvas/WebGLTexture.cpp
+    html/canvas/WebGLTransformFeedback.cpp
     html/canvas/WebGLUniformLocation.cpp
+    html/canvas/WebGLVertexArrayObject.cpp
     html/canvas/WebGLVertexArrayObjectOES.cpp
 
     html/forms/FileIconLoader.cpp
@@ -1969,7 +1979,6 @@ set(WebCore_SOURCES
     platform/DisplaySleepDisabler.cpp
     platform/DragData.cpp
     platform/DragImage.cpp
-    platform/FeatureCounter.cpp
     platform/FileChooser.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
@@ -2058,6 +2067,7 @@ set(WebCore_SOURCES
     platform/graphics/FloatRect.cpp
     platform/graphics/FloatRoundedRect.cpp
     platform/graphics/FloatSize.cpp
+    platform/graphics/Font.cpp
     platform/graphics/FontCache.cpp
     platform/graphics/FontCascade.cpp
     platform/graphics/FontDescription.cpp
@@ -2093,7 +2103,6 @@ set(WebCore_SOURCES
     platform/graphics/RoundedRect.cpp
     platform/graphics/SVGGlyph.cpp
     platform/graphics/ShadowBlur.cpp
-    platform/graphics/SimpleFontData.cpp
     platform/graphics/StringTruncator.cpp
     platform/graphics/SurrogatePairAwareTextIterator.cpp
     platform/graphics/TextRun.cpp
@@ -2792,15 +2801,20 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLLoseContext.cpp
         html/canvas/WebGLObject.cpp
         html/canvas/WebGLProgram.cpp
+        html/canvas/WebGLQuery.cpp
         html/canvas/WebGLRenderbuffer.cpp
         html/canvas/WebGLRenderingContextBase.cpp
         html/canvas/WebGLRenderingContext.cpp
         html/canvas/WebGL2RenderingContext.cpp
+        html/canvas/WebGLSampler.cpp
         html/canvas/WebGLShader.cpp
         html/canvas/WebGLShaderPrecisionFormat.cpp
         html/canvas/WebGLSharedObject.cpp
+        html/canvas/WebGLSync.cpp
         html/canvas/WebGLTexture.cpp
+        html/canvas/WebGLTransformFeedback.cpp
         html/canvas/WebGLUniformLocation.cpp
+        html/canvas/WebGLVertexArrayObject.cpp
         html/canvas/WebGLVertexArrayObjectOES.cpp
     )
     list(APPEND WebCore_IDL_FILES
@@ -2831,14 +2845,19 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLFramebuffer.idl
         html/canvas/WebGLLoseContext.idl
         html/canvas/WebGLProgram.idl
+        html/canvas/WebGLQuery.idl
         html/canvas/WebGLRenderbuffer.idl
         html/canvas/WebGLRenderingContextBase.idl
         html/canvas/WebGLRenderingContext.idl
         html/canvas/WebGL2RenderingContext.idl
+        html/canvas/WebGLSampler.idl
         html/canvas/WebGLShader.idl
         html/canvas/WebGLShaderPrecisionFormat.idl
+        html/canvas/WebGLSync.idl
         html/canvas/WebGLTexture.idl
+        html/canvas/WebGLTransformFeedback.idl
         html/canvas/WebGLUniformLocation.idl
+        html/canvas/WebGLVertexArrayObject.idl
         html/canvas/WebGLVertexArrayObjectOES.idl
     )
 endif ()

@@ -276,6 +276,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_accessibilityObject(nullptr)
 #endif
     , m_setCanStartMediaTimer(RunLoop::main(), this, &WebPage::setCanStartMediaTimerFired)
+#if ENABLE(CONTEXT_MENUS)
+    , m_contextMenuClient(std::make_unique<API::InjectedBundle::PageContextMenuClient>())
+#endif
     , m_formClient(std::make_unique<API::InjectedBundle::FormClient>())
     , m_uiClient(std::make_unique<API::InjectedBundle::PageUIClient>())
     , m_findController(this)
@@ -360,10 +363,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     pageConfiguration.dragClient = new WebDragClient(this);
 #endif
     pageConfiguration.backForwardClient = WebBackForwardListProxy::create(this);
-#if ENABLE(INSPECTOR)
     m_inspectorClient = new WebInspectorClient(this);
     pageConfiguration.inspectorClient = m_inspectorClient;
-#endif
 #if USE(AUTOCORRECTION_PANEL)
     pageConfiguration.alternativeTextClient = new WebAlternativeTextClient(this);
 #endif
@@ -479,10 +480,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     WebProcess::shared().addMessageReceiver(Messages::CoordinatedLayerTreeHost::messageReceiverName(), m_pageID, *this);
 #endif
-#if ENABLE(INSPECTOR)
     WebProcess::shared().addMessageReceiver(Messages::WebInspector::messageReceiverName(), m_pageID, *this);
     WebProcess::shared().addMessageReceiver(Messages::WebInspectorUI::messageReceiverName(), m_pageID, *this);
-#endif
 #if ENABLE(FULLSCREEN_API)
     WebProcess::shared().addMessageReceiver(Messages::WebFullScreenManager::messageReceiverName(), m_pageID, *this);
 #endif
@@ -565,10 +564,8 @@ WebPage::~WebPage()
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     WebProcess::shared().removeMessageReceiver(Messages::CoordinatedLayerTreeHost::messageReceiverName(), m_pageID);
 #endif
-#if ENABLE(INSPECTOR)
     WebProcess::shared().removeMessageReceiver(Messages::WebInspector::messageReceiverName(), m_pageID);
     WebProcess::shared().removeMessageReceiver(Messages::WebInspectorUI::messageReceiverName(), m_pageID);
-#endif
 #if ENABLE(FULLSCREEN_API)
     WebProcess::shared().removeMessageReceiver(Messages::WebFullScreenManager::messageReceiverName(), m_pageID);
 #endif
@@ -593,9 +590,14 @@ uint64_t WebPage::messageSenderDestinationID()
 }
 
 #if ENABLE(CONTEXT_MENUS)
-void WebPage::initializeInjectedBundleContextMenuClient(WKBundlePageContextMenuClientBase* client)
+void WebPage::setInjectedBundleContextMenuClient(std::unique_ptr<API::InjectedBundle::PageContextMenuClient> contextMenuClient)
 {
-    m_contextMenuClient.initialize(client);
+    if (!contextMenuClient) {
+        m_contextMenuClient = std::make_unique<API::InjectedBundle::PageContextMenuClient>();
+        return;
+    }
+
+    m_contextMenuClient = WTF::move(contextMenuClient);
 }
 #endif
 
@@ -802,7 +804,7 @@ EditorState WebPage::editorState() const
     if (!selection.isNone()) {
         Node* nodeToRemove;
         if (RenderStyle* style = Editor::styleForSelectionStart(&frame, nodeToRemove)) {
-            CTFontRef font = style->fontCascade().primaryFontData().getCTFont();
+            CTFontRef font = style->fontCascade().primaryFont().getCTFont();
             CTFontSymbolicTraits traits = font ? CTFontGetSymbolicTraits(font) : 0;
             
             if (traits & kCTFontTraitBold)
@@ -975,9 +977,7 @@ void WebPage::close()
     if (pageGroup()->isVisibleToInjectedBundle() && WebProcess::shared().injectedBundle())
         WebProcess::shared().injectedBundle()->willDestroyPage(this);
 
-#if ENABLE(INSPECTOR)
     m_inspector = 0;
-#endif
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = 0;
 #endif
@@ -1013,7 +1013,7 @@ void WebPage::close()
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
-    m_contextMenuClient.initialize(0);
+    m_contextMenuClient = std::make_unique<API::InjectedBundle::PageContextMenuClient>();
 #endif
     m_editorClient.initialize(0);
     m_formClient = std::make_unique<API::InjectedBundle::FormClient>();
@@ -2720,7 +2720,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setForceFTPDirectoryListings(store.getBoolValueForKey(WebPreferencesKey::forceFTPDirectoryListingsKey()));
     settings.setDNSPrefetchingEnabled(store.getBoolValueForKey(WebPreferencesKey::dnsPrefetchingEnabledKey()));
     settings.setDOMTimersThrottlingEnabled(store.getBoolValueForKey(WebPreferencesKey::domTimersThrottlingEnabledKey()));
-    settings.setFeatureCounterEnabled(store.getBoolValueForKey(WebPreferencesKey::featureCounterEnabledKey()));
 #if ENABLE(WEB_ARCHIVE)
     settings.setWebArchiveDebugModeEnabled(store.getBoolValueForKey(WebPreferencesKey::webArchiveDebugModeEnabledKey()));
 #endif
@@ -2956,7 +2955,6 @@ void WebPage::didFlushLayerTreeAtTime(std::chrono::milliseconds timestamp)
 }
 #endif
 
-#if ENABLE(INSPECTOR)
 WebInspector* WebPage::inspector()
 {
     if (m_isClosed)
@@ -2974,7 +2972,6 @@ WebInspectorUI* WebPage::inspectorUI()
         m_inspectorUI = WebInspectorUI::create(this);
     return m_inspectorUI.get();
 }
-#endif
 
 #if PLATFORM(IOS)
 WebVideoFullscreenManager* WebPage::videoFullscreenManager()
@@ -3562,7 +3559,6 @@ void WebPage::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder
     }
 #endif
 
-#if ENABLE(INSPECTOR)
     if (decoder.messageReceiverName() == Messages::WebInspector::messageReceiverName()) {
         if (WebInspector* inspector = this->inspector())
             inspector->didReceiveMessage(connection, decoder);
@@ -3574,7 +3570,6 @@ void WebPage::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder
             inspectorUI->didReceiveMessage(connection, decoder);
         return;
     }
-#endif
 
 #if ENABLE(FULLSCREEN_API)
     if (decoder.messageReceiverName() == Messages::WebFullScreenManager::messageReceiverName()) {
@@ -4552,6 +4547,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
     m_firstLayerTreeTransactionIDAfterDidCommitLoad = downcast<RemoteLayerTreeDrawingArea>(*m_drawingArea).nextTransactionID();
     m_userHasChangedPageScaleFactor = false;
     m_estimatedLatency = std::chrono::milliseconds(1000 / 60);
+    cancelPotentialTap();
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     WebProcess::shared().eventDispatcher().clearQueuedTouchEventsForPage(*this);

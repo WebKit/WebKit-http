@@ -1,3 +1,202 @@
+2015-01-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] ASSERTION FAILED !m_ptr under AccessibilityController::winAddNotificationListener
+        https://bugs.webkit.org/show_bug.cgi?id=87426
+        <rdar://problem/11527899>
+
+        Reviewed by Darin Adler.
+
+        Revise COMPtr to work better with our HashMap implementation. Use
+        modern loop syntax.
+
+        * WebHistory.cpp:
+        (WebHistory::visitedURL): Adjust for new COMPtr changes.
+        * WebPreferences.cpp:
+        (WebPreferences::getInstanceForIdentifier): Ditto.
+        (WebPreferences::removeReferenceForIdentifier): Ditto.
+        * WebView.cpp:
+        (WebView::setEditable): Ditto.
+
+2015-01-26  Chris Dumez  <cdumez@apple.com>
+
+        Rename Document::body() to Document::bodyOrFrameset() for clarity
+        https://bugs.webkit.org/show_bug.cgi?id=140902
+
+        Reviewed by Andreas Kling.
+
+        Rename Document::body() to Document::bodyOrFrameset() for clarity. This
+        method does not necessarily return an HTMLBodyElement, it can also
+        return a frameset as per the specification:
+        http://www.w3.org/TR/html5/dom.html#dom-tree-accessors
+
+        This method is often misused internally (the caller is only interested
+        in the <body> element). I will fix these instances in a follow-up patch,
+        this patch is only renaming mechanically.
+
+2015-01-25  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] Add WebKit message loop interface.
+        https://bugs.webkit.org/show_bug.cgi?id=140857
+
+        Reviewed by Brent Fulgham.
+
+        Added message loop interface which will run the message loop,
+        and perform required tasks (like calling CFRunLoopRunInMode)
+        on each iteration of the loop.
+
+        * ForEachCoClass.h:
+        * Interfaces/WebKit.idl:
+        * Interfaces/WebKitMessageLoop.idl: Added.
+        * WebKitClassFactory.cpp:
+        * WebKitMessageLoop.cpp: Added.
+        (WebKitMessageLoop::WebKitMessageLoop):
+        (WebKitMessageLoop::~WebKitMessageLoop):
+        (WebKitMessageLoop::createInstance):
+        (WebKitMessageLoop::QueryInterface):
+        (WebKitMessageLoop::AddRef):
+        (WebKitMessageLoop::Release):
+        (WebKitMessageLoop::run):
+        (WebKitMessageLoop::performMessageLoopTasks):
+        * WebKitMessageLoop.h: Added.
+
+2015-01-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Teach WebKit to provide IAccessible2 'get_language'
+        https://bugs.webkit.org/show_bug.cgi?id=140839
+
+        Reviewed by Dean Jackson.
+
+        * AccessibleBase.cpp:
+        (AccessibleBase::get_locale): Wrap the Webore::AccessibleObject::language
+        result in an IA2Locale structure to statisfy the IAccessible2 specification.
+
+2015-01-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test fix after r178965.
+
+        * WebView.cpp: Supply missing implementation of 'setEditable'. It
+        currently asserts, causing all debug tests to fail.
+
+2015-01-22  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win] No plugin content on some sites.
+        https://bugs.webkit.org/show_bug.cgi?id=140780
+
+        Reviewed by Anders Carlsson.
+
+        Add override modifier to bindingInstance method.
+
+        * Plugins/PluginView.h:
+
+2015-01-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Expose missing editing features through WebView interface
+        https://bugs.webkit.org/show_bug.cgi?id=140773
+        <rdar://problem/19565421>
+
+        Reviewed by Dean Jackson.
+
+        Connect the various WebView editing delegate methods to our
+        test infrastructure. Also prefer _bstr_t to raw BSTR types
+        to simplify life cycle management.
+
+        * DOMCoreClasses.cpp: Flesh out the DOMRange object.
+        (DOMElement::createInstance):
+        (DOMRange::QueryInterface):
+        (DOMRange::DOMRange):
+        (DOMRange::~DOMRange):
+        (DOMRange::createInstance):
+        (DOMRange::startContainer):
+        (DOMRange::startOffset):
+        (DOMRange::endContainer):
+        (DOMRange::endOffset):
+        (DOMRange::collapsed):
+        (DOMRange::commonAncestorContainer):
+        (DOMRange::setStart):
+        (DOMRange::setEnd):
+        (DOMRange::setStartBefore):
+        (DOMRange::setStartAfter):
+        (DOMRange::setEndBefore):
+        (DOMRange::setEndAfter):
+        (DOMRange::collapse):
+        (DOMRange::selectNode):
+        (DOMRange::selectNodeContents):
+        (DOMRange::compareBoundaryPoints):
+        (DOMRange::deleteContents):
+        (DOMRange::extractContents):
+        (DOMRange::cloneContents):
+        (DOMRange::insertNode):
+        (DOMRange::surroundContents):
+        (DOMRange::cloneRange):
+        (DOMRange::toString):
+        (DOMRange::detach):
+        * DOMCoreClasses.h:
+        (DOMRange::AddRef):
+        (DOMRange::Release):
+        (DOMRange::throwException):
+        (DOMRange::callWebScriptMethod):
+        (DOMRange::evaluateWebScript):
+        (DOMRange::removeWebScriptKey):
+        (DOMRange::stringRepresentation):
+        (DOMRange::webScriptValueAtIndex):
+        (DOMRange::setWebScriptValueAtIndex):
+        (DOMRange::setException):
+        * Interfaces/IWebEditingDelegate.idl:
+        * Interfaces/IWebView.idl:
+        * WebCoreSupport/WebEditorClient.cpp: Connect more methods
+        to actual editing features in WebCore.
+        (WebEditorClient::shouldBeginEditing):
+        (WebEditorClient::shouldEndEditing):
+        (WebEditorClient::didBeginEditing):
+        (WebEditorClient::respondToChangedContents):
+        (WebEditorClient::respondToChangedSelection):
+        (WebEditorClient::didEndEditing):
+        (WebEditorClient::shouldDeleteRange):
+        (WebEditorClient::shouldInsertNode):
+        (WebEditorClient::shouldInsertText):
+        (WebEditorClient::shouldChangeSelectedRange):
+        (WebEditorClient::webViewDidChangeTypingStyle):
+        (WebEditorClient::webViewDidChangeSelection):
+        (WebEditorClient::isSelectTrailingWhitespaceEnabled):
+        * WebView.cpp:
+        (WebView::setEditingDelegate): Added.
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] eventSender does not support scalePageBy
+        https://bugs.webkit.org/show_bug.cgi?id=140726
+        <rdar://problem/19549865>
+
+        Reviewed by Dean Jackson.
+
+        * Interfaces/IWebViewPrivate.idl: Add scaleWebView API.
+        * WebView.cpp:
+        (WebView::scaleWebView): 
+        Connect WebCore implementation to the Windows COM interface.
+        * WebView.h:
+
+2015-01-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(INSPECTOR) ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=140668
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (registerWindowClass):
+        * WebInspector.cpp:
+        (WebInspector::setTimelineProfilingEnabled):
+        * WebNodeHighlight.cpp:
+        (WebNodeHighlight::WebNodeHighlight):
+        (WebNodeHighlight::update):
+        * WebNodeHighlight.h:
+        * WebView.cpp:
+        (WebView::WebView):
+        (WebView::close):
+        (WebView::initWithFrame):
+        (WebView::inspector):
+        * WebView.h:
+
 2015-01-20  Csaba Osztrogonác  <ossy@webkit.org>
 
         Remove non-Windows cruft from WebKit/win/Plugins

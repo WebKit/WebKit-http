@@ -53,6 +53,7 @@
 #include "HTMLImageElement.h"
 #include "HTMLStyleElement.h"
 #include "InsertionPoint.h"
+#include "InspectorController.h"
 #include "KeyboardEvent.h"
 #include "Logging.h"
 #include "MutationEvent.h"
@@ -85,10 +86,6 @@
 
 #if ENABLE(INDIE_UI)
 #include "UIRequestEvent.h"
-#endif
-
-#if ENABLE(INSPECTOR)
-#include "InspectorController.h"
 #endif
 
 namespace WebCore {
@@ -479,7 +476,7 @@ void Node::normalize()
             break;
 
         if (type != TEXT_NODE) {
-            node = NodeTraversal::nextPostOrder(node.get());
+            node = NodeTraversal::nextPostOrder(*node);
             continue;
         }
 
@@ -488,7 +485,7 @@ void Node::normalize()
         // Remove empty text nodes.
         if (!text->length()) {
             // Care must be taken to get the next node before removing the current node.
-            node = NodeTraversal::nextPostOrder(node.get());
+            node = NodeTraversal::nextPostOrder(*node);
             text->remove(IGNORE_EXCEPTION);
             continue;
         }
@@ -512,7 +509,7 @@ void Node::normalize()
             nextText->remove(IGNORE_EXCEPTION);
         }
 
-        node = NodeTraversal::nextPostOrder(node.get());
+        node = NodeTraversal::nextPostOrder(*node);
     }
 }
 
@@ -554,10 +551,8 @@ bool Node::isContentRichlyEditable()
 
 void Node::inspect()
 {
-#if ENABLE(INSPECTOR)
     if (document().page())
         document().page()->inspectorController().inspect(this);
-#endif
 }
 
 bool Node::hasEditableStyle(EditableLevel editableLevel, UserSelectAllTreatment treatment) const
@@ -1602,7 +1597,7 @@ void Node::showNodePathForThis() const
 
 static void traverseTreeAndMark(const String& baseIndent, const Node* rootNode, const Node* markedNode1, const char* markedLabel1, const Node* markedNode2, const char* markedLabel2)
 {
-    for (const Node* node = rootNode; node; node = NodeTraversal::next(node)) {
+    for (const Node* node = rootNode; node; node = NodeTraversal::next(*node)) {
         if (node == markedNode1)
             fprintf(stderr, "%s", markedLabel1);
         if (node == markedNode2)

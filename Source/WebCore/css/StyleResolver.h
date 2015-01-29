@@ -50,7 +50,6 @@
 namespace WebCore {
 
 class CSSCursorImageValue;
-class CSSFontSelector;
 class CSSFontFace;
 class CSSFontFaceRule;
 class CSSFontValue;
@@ -202,7 +201,6 @@ public:
 
     void applyPropertyToCurrentStyle(CSSPropertyID, CSSValue*);
 
-    void applyFont(CSSFontValue&);
     void updateFont();
     void initializeFontStyle(Settings*);
 
@@ -219,7 +217,6 @@ public:
     bool hasSelectorForClass(const AtomicString&) const;
     bool hasSelectorForAttribute(const Element&, const AtomicString&) const;
 
-    CSSFontSelector* fontSelector() const { return m_fontSelector.get(); }
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     ViewportStyleResolver* viewportStyleResolver() { return m_viewportStyleResolver.get(); }
 #endif
@@ -347,7 +344,6 @@ public:
             , m_elementAffectedByClassRules(false)
             , m_applyPropertyToRegularStyle(true)
             , m_applyPropertyToVisitedLinkStyle(false)
-            , m_lineHeightValue(nullptr)
             , m_fontDirty(false)
             , m_fontSizeHasViewportUnits(false)
             , m_hasUAAppearance(false)
@@ -385,8 +381,6 @@ public:
         Vector<RefPtr<ReferenceFilterOperation>>& filtersWithPendingSVGDocuments() { return m_filtersWithPendingSVGDocuments; }
         Vector<RefPtr<MaskImageOperation>>& maskImagesWithPendingSVGDocuments() { return m_maskImagesWithPendingSVGDocuments; }
 
-        void setLineHeightValue(CSSValue* value) { m_lineHeightValue = value; }
-        CSSValue* lineHeightValue() { return m_lineHeightValue; }
         void setFontDirty(bool isDirty) { m_fontDirty = isDirty; }
         bool fontDirty() const { return m_fontDirty; }
         void setFontSizeHasViewportUnits(bool hasViewportUnits) { m_fontSizeHasViewportUnits = hasViewportUnits; }
@@ -434,7 +428,6 @@ public:
         Vector<RefPtr<ReferenceFilterOperation>> m_filtersWithPendingSVGDocuments;
         Vector<RefPtr<MaskImageOperation>> m_maskImagesWithPendingSVGDocuments;
 
-        CSSValue* m_lineHeightValue;
         bool m_fontDirty;
         bool m_fontSizeHasViewportUnits;
 
@@ -521,7 +514,6 @@ private:
 
     bool m_matchAuthorAndUserStyles;
 
-    RefPtr<CSSFontSelector> m_fontSelector;
     Vector<std::unique_ptr<MediaQueryResult>> m_viewportDependentMediaQueryResults;
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)

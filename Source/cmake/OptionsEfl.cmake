@@ -246,12 +246,10 @@ if (ENABLE_WEBGL AND OPENGLX_FOUND)
     endif ()
 endif ()
 
-if (ENABLE_INSPECTOR)
-    set(WEB_INSPECTOR_DIR "${DATA_INSTALL_DIR}/inspector")
-    set(WEBINSPECTORUI_DIR "${CMAKE_SOURCE_DIR}/Source/WebInspectorUI")
-    add_definitions(-DWEB_INSPECTOR_DIR=\"${CMAKE_BINARY_DIR}/${WEB_INSPECTOR_DIR}\")
-    add_definitions(-DWEB_INSPECTOR_INSTALL_DIR=\"${CMAKE_INSTALL_PREFIX}/${WEB_INSPECTOR_DIR}\")
-endif ()
+set(WEB_INSPECTOR_DIR "${DATA_INSTALL_DIR}/inspector")
+set(WEBINSPECTORUI_DIR "${CMAKE_SOURCE_DIR}/Source/WebInspectorUI")
+add_definitions(-DWEB_INSPECTOR_DIR=\"${CMAKE_BINARY_DIR}/${WEB_INSPECTOR_DIR}\")
+add_definitions(-DWEB_INSPECTOR_INSTALL_DIR=\"${CMAKE_INSTALL_PREFIX}/${WEB_INSPECTOR_DIR}\")
 
 if (ENABLE_SECCOMP_FILTERS)
     find_package(LibSeccomp REQUIRED)
@@ -262,8 +260,8 @@ set(CPACK_SOURCE_GENERATOR TBZ2)
 # Optimize binary size for release builds by removing dead sections on unix/gcc.
 # Push of rbp is needed after JSC JIT uses CStack.
 if (CMAKE_COMPILER_IS_GNUCC AND UNIX AND NOT APPLE)
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffunction-sections -fdata-sections -fno-omit-frame-pointer -fno-tree-dce")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections -fno-rtti -fno-omit-frame-pointer -fno-tree-dce")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffunction-sections -fdata-sections")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections -fno-rtti")
     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
 endif ()
 

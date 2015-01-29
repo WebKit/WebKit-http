@@ -77,7 +77,6 @@ javaScriptExperimentsEnabled initial=false
 scriptMarkupEnabled initial=true
 needsSiteSpecificQuirks initial=false
 domTimersThrottlingEnabled initial=true
-featureCounterEnabled initial=false
 webArchiveDebugModeEnabled initial=false, conditional=WEB_ARCHIVE
 localFileContentSniffingEnabled initial=false
 offlineWebApplicationCacheEnabled initial=false
@@ -148,8 +147,6 @@ shouldRespectImageOrientation initial=defaultShouldRespectImageOrientation
 imageSubsamplingEnabled initial=defaultImageSubsamplingEnabled
 wantsBalancedSetDefersLoadingBehavior initial=false
 requestAnimationFrameEnabled initial=true
-deviceSupportsTouch initial=false
-deviceSupportsMouse initial=true
 
 fixedPositionCreatesStackingContext initial=defaultFixedPositionCreatesStackingContext
 syncXHRInDocumentsEnabled initial=true

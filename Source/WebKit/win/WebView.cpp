@@ -96,6 +96,7 @@
 #include <WebCore/FileSystem.h>
 #include <WebCore/FloatQuad.h>
 #include <WebCore/FocusController.h>
+#include <WebCore/Font.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameSelection.h>
 #include <WebCore/FrameTree.h>
@@ -148,7 +149,6 @@
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityPolicy.h>
 #include <WebCore/Settings.h>
-#include <WebCore/SimpleFontData.h>
 #include <WebCore/SystemInfo.h>
 #include <WebCore/WindowMessageBroadcaster.h>
 #include <WebCore/WindowsTouch.h>
@@ -385,9 +385,7 @@ WebView::WebView()
     , m_viewWindow(0)
     , m_mainFrame(0)
     , m_page(0)
-#if ENABLE(INSPECTOR)
     , m_inspectorClient(0)
-#endif // ENABLE(INSPECTOR)
     , m_hasCustomDropTarget(false)
     , m_useBackForwardList(true)
     , m_userAgentOverridden(false)
@@ -773,11 +771,9 @@ HRESULT STDMETHODCALLTYPE WebView::close()
     setUIDelegate(0);
     setFormDelegate(0);
 
-#if ENABLE(INSPECTOR)
     m_inspectorClient = 0;
     if (m_webInspector)
         m_webInspector->webViewClosed();
-#endif // ENABLE(INSPECTOR)
 
     delete m_page;
     m_page = 0;
@@ -2800,18 +2796,14 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
     if (SUCCEEDED(m_preferences->shouldUseHighResolutionTimers(&useHighResolutionTimer)))
         Settings::setShouldUseHighResolutionTimers(useHighResolutionTimer);
 
-#if ENABLE(INSPECTOR)
     m_inspectorClient = new WebInspectorClient(this);
-#endif // ENABLE(INSPECTOR)
 
     PageConfiguration configuration;
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
     configuration.editorClient = new WebEditorClient(this);
     configuration.dragClient = new WebDragClient(this);
-#if ENABLE(INSPECTOR)
     configuration.inspectorClient = m_inspectorClient;
-#endif // ENABLE(INSPECTOR)
     configuration.loaderClientForMainFrame = new WebFrameLoaderClient;
     configuration.databaseProvider = &WebDatabaseProvider::shared();
     configuration.storageNamespaceProvider = WebStorageNamespaceProvider::create(localStorageDatabasePath(m_preferences.get()));
@@ -4185,8 +4177,7 @@ HRESULT STDMETHODCALLTYPE WebView::setSelectedDOMRange(
     return E_NOTIMPL;
 }
     
-HRESULT STDMETHODCALLTYPE WebView::selectedDOMRange( 
-        /* [retval][out] */ IDOMRange** /*range*/)
+HRESULT WebView::selectedDOMRange(IDOMRange** range)
 {
     ASSERT_NOT_REACHED();
     return E_NOTIMPL;
@@ -4199,18 +4190,34 @@ HRESULT STDMETHODCALLTYPE WebView::selectionAffinity(
     return E_NOTIMPL;
 }
     
-HRESULT STDMETHODCALLTYPE WebView::setEditable( 
-        /* [in] */ BOOL /*flag*/)
+HRESULT WebView::setEditable(BOOL flag)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    if (!m_page)
+        return S_OK;
+
+    if (m_page->isEditable() == static_cast<bool>(flag))
+        return S_OK;
+
+    m_page->setEditable(flag);
+    if (!m_page->tabKeyCyclesThroughElements())
+        m_page->setTabKeyCyclesThroughElements(!flag);
+
+    return S_OK;
 }
     
-HRESULT STDMETHODCALLTYPE WebView::isEditable( 
-        /* [retval][out] */ BOOL* /*isEditable*/)
+HRESULT WebView::isEditable(BOOL* isEditable)
 {
-    ASSERT_NOT_REACHED();
-    return E_NOTIMPL;
+    if (!isEditable)
+        return E_POINTER;
+
+    if (!m_page) {
+        *isEditable = FALSE;
+        return S_OK;
+    }
+
+    *isEditable = m_page->isEditable();
+
+    return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE WebView::setTypingStyle( 
@@ -4348,10 +4355,39 @@ HRESULT STDMETHODCALLTYPE WebView::undoManager(
     return E_NOTIMPL;
 }
     
-HRESULT STDMETHODCALLTYPE WebView::setEditingDelegate( 
-        /* [in] */ IWebEditingDelegate* d)
+HRESULT WebView::setEditingDelegate(IWebEditingDelegate* d)
 {
+    if (m_editingDelegate == d)
+        return S_OK;
+
+    static BSTR webViewDidBeginEditingNotificationName = SysAllocString(WebViewDidBeginEditingNotification);
+    static BSTR webViewDidChangeSelectionNotificationName = SysAllocString(WebViewDidChangeSelectionNotification);
+    static BSTR webViewDidEndEditingNotificationName = SysAllocString(WebViewDidEndEditingNotification);
+    static BSTR webViewDidChangeTypingStyleNotificationName = SysAllocString(WebViewDidChangeTypingStyleNotification);
+    static BSTR webViewDidChangeNotificationName = SysAllocString(WebViewDidChangeNotification);
+
+    IWebNotificationCenter* notifyCenter = WebNotificationCenter::defaultCenterInternal();
+
+    COMPtr<IWebNotificationObserver> wasObserver(Query, m_editingDelegate);
+    if (wasObserver) {
+        notifyCenter->removeObserver(wasObserver.get(), webViewDidBeginEditingNotificationName, nullptr);
+        notifyCenter->removeObserver(wasObserver.get(), webViewDidChangeSelectionNotificationName, nullptr);
+        notifyCenter->removeObserver(wasObserver.get(), webViewDidEndEditingNotificationName, nullptr);
+        notifyCenter->removeObserver(wasObserver.get(), webViewDidChangeTypingStyleNotificationName, nullptr);
+        notifyCenter->removeObserver(wasObserver.get(), webViewDidChangeNotificationName, nullptr);
+    }
+
     m_editingDelegate = d;
+
+    COMPtr<IWebNotificationObserver> isObserver(Query, m_editingDelegate);
+    if (isObserver) {
+        notifyCenter->addObserver(isObserver.get(), webViewDidBeginEditingNotificationName, nullptr);
+        notifyCenter->addObserver(isObserver.get(), webViewDidChangeSelectionNotificationName, nullptr);
+        notifyCenter->addObserver(isObserver.get(), webViewDidEndEditingNotificationName, nullptr);
+        notifyCenter->addObserver(isObserver.get(), webViewDidChangeTypingStyleNotificationName, nullptr);
+        notifyCenter->addObserver(isObserver.get(), webViewDidChangeNotificationName, nullptr);
+    }
+
     return S_OK;
 }
     
@@ -5513,7 +5549,7 @@ HRESULT WebView::setProhibitsMainFrameScrolling(BOOL b)
 
 HRESULT WebView::setShouldApplyMacFontAscentHack(BOOL b)
 {
-    SimpleFontData::setShouldApplyMacAscentHack(b);
+    Font::setShouldApplyMacAscentHack(b);
     return S_OK;
 }
 
@@ -5906,14 +5942,10 @@ bool WebView::onIMESetContext(WPARAM wparam, LPARAM)
 
 HRESULT STDMETHODCALLTYPE WebView::inspector(IWebInspector** inspector)
 {
-#if ENABLE(INSPECTOR)
     if (!m_webInspector)
         m_webInspector.adoptRef(WebInspector::createInstance(this, m_inspectorClient));
 
     return m_webInspector.copyRefTo(inspector);
-#else // !ENABLE(INSPECTOR)
-    return S_OK;
-#endif // ENABLE(INSPECTOR)
 }
 
 
@@ -7048,5 +7080,15 @@ HRESULT WebView::setLoadResourcesSerially(BOOL serialize)
 {
     WebPlatformStrategies::initialize();
     resourceLoadScheduler()->setSerialLoadingEnabled(serialize);
+    return S_OK;
+}
+
+HRESULT WebView::scaleWebView(double scale, POINT origin)
+{
+    if (!m_page)
+        return E_FAIL;
+
+    m_page->setPageScaleFactor(scale, origin);
+
     return S_OK;
 }

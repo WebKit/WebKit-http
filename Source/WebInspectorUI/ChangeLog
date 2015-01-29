@@ -1,3 +1,180 @@
+2015-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Object Previews in the Console
+        https://bugs.webkit.org/show_bug.cgi?id=129204
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted):
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (get WebInspector.JavaScriptRuntimeCompletionProvider.prototype.):
+        Update RuntimeManager callsites that do not need object previews.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WebInspector.RuntimeManager.prototype.evalCallback):
+        (WebInspector.RuntimeManager.prototype.evaluateInInspectedWindow):
+        Update the main evaluate method to include a boolean parameter for
+        object previews. Most callers do not need them. Also, since previews
+        were not available on iOS 6, switch to invoke, to conditionally
+        include the command parameter.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.prototype.get preview):
+        Store the preview from the payload.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._format):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameter):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsNode):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsString):
+        (WebInspector.ConsoleMessageImpl.prototype._formatAsArrayEntry):
+        Pass an explicit false for most formatters to not use a preview if available.
+        
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsArray):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsObject):
+        Currently only object types are previewed. Though we request previews
+        for arrays, we don't use the preview because we show a better preview
+        by just immediately requesting for a full non-preview property list.
+        
+        (WebInspector.ConsoleMessageImpl.prototype._appendObjectPreview):
+        Quickly output an object preview into the title element. The format
+        is "ClassName {prop: value...}". Elide the class name if it is "Object".
+        Also skip over certain preview properties that may not be useful
+        at a glance (like constructor, or accessors without values).
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-object-preview):
+        (.console-formatted-array .console-object-preview):
+        (.console-object-preview-lossless):
+        (.expanded .console-object-preview):
+        Show lossy previews in italics.
+        Show lossless previews and array previews without italics.
+        Do not show the class name in the preview in italics when expanded.
+
+        (.console-object-preview .name):
+        Give preview property names the same color as ObjectPropertiesSection property names.
+        
+        (.expanded .console-object-preview > .console-object-preview-body):
+        When expanding an object, hide the preview.
+
+        (.console-object-preview > .console-object-preview-name.console-object-preview-name-Object):
+        (.expanded .console-object-preview > .console-object-preview-name.console-object-preview-name-Object):
+        For "Object" previews, hide the name "Object" when not expanded, and show it when expanded.
+
+2015-01-23  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Disable *Annotators on minified files that aren't pretty printed
+        https://bugs.webkit.org/show_bug.cgi?id=140550
+
+        Reviewed by Timothy Hatcher.
+
+        When SourceCodeTextEditor speculates that a file is minified it 
+        sets a flag on itself that the Annotators will notice when pretty 
+        printing and turning on type profiling. 
+
+        SourceCodeTextEditor enforces the following two behaviors:
+
+        1. Always pretty print a file if we think it's minified while 
+        viewing type annotations. So, while viewing a minified file, 
+        if you press the type profiling button, the pretty printer will 
+        first reformat the file, then the type profiler will insert type annotations.
+
+        2. If the type profiler is enabled and we're viewing a pretty 
+        printed file that we think originally was minified, and the 
+        pretty printer is disabled via pressing the button, then the 
+        type profiler will also be disabled.
+
+        These two behaviors maintain a good user experience because 
+        it prevents a bad visual representation of profiler data and 
+        also prevents bad performance.
+
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WebInspector.TypeTokenAnnotator.prototype.toggleTypeAnnotations): Deleted.
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype.shown):
+        (WebInspector.SourceCodeTextEditor.prototype.contentDidChange):
+        (WebInspector.SourceCodeTextEditor.prototype.toggleTypeAnnotations):
+        (WebInspector.SourceCodeTextEditor.prototype.prettyPrint):
+        (WebInspector.SourceCodeTextEditor.prototype._contentWillPopulate):
+        (WebInspector.SourceCodeTextEditor.prototype._populateWithContent):
+        (WebInspector.SourceCodeTextEditor.prototype._setTypeTokenAnnotatorEnabledState):
+
+2015-01-22  Jonathan Wells  <jonowells@apple.com>
+
+        Web Inspector: ResourceContentView.js incorrectly contains call to WebInspector.UIString with a variable parameter
+        https://bugs.webkit.org/show_bug.cgi?id=140268
+
+        Reviewed by Timothy Hatcher.
+
+        UIString no longer incorrectly used around variables. Drive-by fixes to prototype inheritance style.
+        Use of Promises corrected such that requesting content for a resource resolves rather than rejects if
+        a resource can't be found or has another error that isn't a web inspector error.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/Models/Resource.js: Change reject to resolve.
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype.requestContentFromBackend): Proper use of Error object.
+        * UserInterface/Models/SourceCode.js: Use correct inheritance style.
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype._contentAvailable): Handle error now that promise resolves.
+        (WebInspector.ResourceContentView.prototype._contentError): Remove incorrect use of UIString.
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._contentAvailable): Handle error now that promise resolves.
+
+2015-01-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Expected gutter highlight when selecting console input line, just like output line
+        https://bugs.webkit.org/show_bug.cgi?id=140696
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+
+2015-01-21  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Change Annotator's isActive getter into an isActive() function.
+        https://bugs.webkit.org/show_bug.cgi?id=140729
+
+        Reviewed by Timothy Hatcher.
+
+        This patch also makes the child classes of Annotator use
+        the function instead of accessing the property directly.
+
+        * UserInterface/Controllers/Annotator.js:
+        (WebInspector.Annotator.prototype.isActive):
+        (WebInspector.Annotator.prototype.get isActive): Deleted.
+        * UserInterface/Controllers/BasicBlockAnnotator.js:
+        (WebInspector.BasicBlockAnnotator.prototype.insertAnnotations):
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WebInspector.TypeTokenAnnotator.prototype.toggleTypeAnnotations):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.toggleTypeAnnotations):
+        (WebInspector.SourceCodeTextEditor.prototype.prettyPrint):
+        (WebInspector.SourceCodeTextEditor.prototype._debuggerDidPause):
+        (WebInspector.SourceCodeTextEditor.prototype._debuggerDidResume):
+        (WebInspector.SourceCodeTextEditor.prototype._updateTokenTrackingControllerState):
+
+2015-01-21  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Don't allow the BasicBlockAnnotator to highlight a section if it's only a closing brace
+        https://bugs.webkit.org/show_bug.cgi?id=140727
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/BasicBlockAnnotator.js:
+        (WebInspector.BasicBlockAnnotator.prototype.set _highlightTextForBasicBlock):
+        (WebInspector.BasicBlockAnnotator.prototype._isTextRangeOnlyClosingBrace):
+        BasicBlockAnnotator tries to no longer highlight a basic block if it is only
+        whitespace and a closing brace. These ranges are often after statements
+        that make these basic blocks unreachable, such as a return/break/continue
+        statement occurring inside a if/else/while/for block. This check won't
+        match every highlighted empty closing brace, but catches most of them 
+        because it only does intra block analysis instead of inter block analysis.
+
 2015-01-20  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Use spread operator in a few places

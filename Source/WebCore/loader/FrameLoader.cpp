@@ -452,12 +452,12 @@ void FrameLoader::stopLoading(UnloadEventPolicy unloadEventPolicy)
                         // time into freed memory.
                         RefPtr<DocumentLoader> documentLoader = m_provisionalDocumentLoader;
                         m_pageDismissalEventBeingDispatched = UnloadDismissal;
-                        if (documentLoader && !documentLoader->timing()->unloadEventStart() && !documentLoader->timing()->unloadEventEnd()) {
-                            DocumentLoadTiming* timing = documentLoader->timing();
-                            ASSERT(timing->navigationStart());
-                            timing->markUnloadEventStart();
+                        if (documentLoader && !documentLoader->timing().unloadEventStart() && !documentLoader->timing().unloadEventEnd()) {
+                            DocumentLoadTiming& timing = documentLoader->timing();
+                            ASSERT(timing.navigationStart());
+                            timing.markUnloadEventStart();
                             m_frame.document()->domWindow()->dispatchEvent(unloadEvent, m_frame.document());
-                            timing->markUnloadEventEnd();
+                            timing.markUnloadEventEnd();
                         } else
                             m_frame.document()->domWindow()->dispatchEvent(unloadEvent, m_frame.document());
                     }
@@ -1786,7 +1786,7 @@ void FrameLoader::commitProvisionalLoad()
     if (pdl && m_documentLoader) {
         // Check if the destination page is allowed to access the previous page's timing information.
         Ref<SecurityOrigin> securityOrigin(SecurityOrigin::create(pdl->request().url()));
-        m_documentLoader->timing()->setHasSameOriginAsPreviousDocument(securityOrigin.get().canRequest(m_previousURL));
+        m_documentLoader->timing().setHasSameOriginAsPreviousDocument(securityOrigin.get().canRequest(m_previousURL));
     }
 
     // Call clientRedirectCancelledOrFinished() here so that the frame load delegate is notified that the redirect's
@@ -2829,7 +2829,7 @@ bool FrameLoader::handleBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLoad
         return true;
 
     RefPtr<Document> document = m_frame.document();
-    if (!document->body())
+    if (!document->bodyOrFrameset())
         return true;
     
     RefPtr<BeforeUnloadEvent> beforeUnloadEvent = BeforeUnloadEvent::create();
@@ -2935,12 +2935,10 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
     if (!m_frame.page())
         return;
 
-#if ENABLE(INSPECTOR)
     if (Page* page = m_frame.page()) {
         if (m_frame.isMainFrame())
             page->inspectorController().resume();
     }
-#endif
 
     setProvisionalDocumentLoader(m_policyDocumentLoader.get());
     m_loadType = type;
@@ -3093,9 +3091,9 @@ void FrameLoader::loadProvisionalItemFromCachedPage()
     m_loadingFromCachedPage = true;
 
     // Should have timing data from previous time(s) the page was shown.
-    ASSERT(provisionalLoader->timing()->navigationStart());
+    ASSERT(provisionalLoader->timing().navigationStart());
     provisionalLoader->resetTiming();
-    provisionalLoader->timing()->markNavigationStart();
+    provisionalLoader->timing().markNavigationStart();
 
     provisionalLoader->setCommitted(true);
     commitProvisionalLoad();
@@ -3309,10 +3307,8 @@ void FrameLoader::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& world)
 
     m_client.dispatchDidClearWindowObjectInWorld(world);
 
-#if ENABLE(INSPECTOR)
     if (Page* page = m_frame.page())
         page->inspectorController().didClearWindowObjectInWorld(m_frame, world);
-#endif
 
     InspectorInstrumentation::didClearWindowObjectInWorld(m_frame, world);
 }

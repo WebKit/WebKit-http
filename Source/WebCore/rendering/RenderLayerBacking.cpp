@@ -36,6 +36,7 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
+#include "HTMLBodyElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLMediaElement.h"
@@ -65,6 +66,10 @@
 
 #if ENABLE(WEBGL) || ENABLE(ACCELERATED_2D_CANVAS)
 #include "GraphicsContext3D.h"
+#endif
+
+#if PLATFORM(IOS)
+#include "RuntimeApplicationChecksIOS.h"
 #endif
 
 namespace WebCore {
@@ -331,6 +336,17 @@ void RenderLayerBacking::layerWillBeDestroyed()
         if (pluginViewBase && m_graphicsLayer->contentsLayerForMedia())
             pluginViewBase->detachPluginLayer();
     }
+}
+
+bool RenderLayerBacking::needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack(const GraphicsLayer& layer) const
+{
+    if (m_isMainFrameRenderViewLayer && applicationIsDumpRenderTree()) {
+        // In iOS WebKit1 the main frame's RenderView layer is always transparent. We lie that it is opaque so that
+        // internals.layerTreeAsText() tests succeed.
+        ASSERT_UNUSED(layer, !layer.contentsOpaque());
+        return true;
+    }
+    return false;
 }
 #endif
 
@@ -1774,7 +1790,7 @@ bool RenderLayerBacking::isSimpleContainerCompositingLayer() const
 
     if (renderer().isRenderView()) {
         // Look to see if the root object has a non-simple background
-        RenderObject* rootObject = renderer().document().documentElement() ? renderer().document().documentElement()->renderer() : 0;
+        auto* rootObject = renderer().document().documentElement() ? renderer().document().documentElement()->renderer() : nullptr;
         if (!rootObject)
             return false;
         
@@ -1784,12 +1800,14 @@ bool RenderLayerBacking::isSimpleContainerCompositingLayer() const
             return false;
         
         // Now look at the body's renderer.
-        HTMLElement* body = renderer().document().body();
-        RenderObject* bodyObject = (body && body->hasTagName(bodyTag)) ? body->renderer() : 0;
-        if (!bodyObject)
+        auto* body = renderer().document().body();
+        if (!body)
+            return false;
+        auto* bodyRenderer = body->renderer();
+        if (!bodyRenderer)
             return false;
         
-        if (hasBoxDecorationsOrBackgroundImage(bodyObject->style()))
+        if (hasBoxDecorationsOrBackgroundImage(bodyRenderer->style()))
             return false;
     }
 
@@ -2174,7 +2192,7 @@ void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, Grap
     const IntRect& paintDirtyRect, // In the coords of rootLayer.
     PaintBehavior paintBehavior, GraphicsLayerPaintingPhase paintingPhase)
 {
-    if (paintsIntoWindow() || paintsIntoCompositedAncestor()) {
+    if ((paintsIntoWindow() || paintsIntoCompositedAncestor()) && paintingPhase != GraphicsLayerPaintChildClippingMask) {
 #if !PLATFORM(IOS)
         // FIXME: Looks like the CALayer tree is out of sync with the GraphicsLayer heirarchy
         // when pages are restored from the PageCache.

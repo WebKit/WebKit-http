@@ -31,8 +31,6 @@
 #include "config.h"
 #include "InspectorResourceAgent.h"
 
-#if ENABLE(INSPECTOR)
-
 #include "CachedRawResource.h"
 #include "CachedResource.h"
 #include "CachedResourceLoader.h"
@@ -202,7 +200,7 @@ static Ref<InspectorObject> buildObjectForHeaders(const HTTPHeaderMap& headers)
 static Ref<Inspector::Protocol::Network::ResourceTiming> buildObjectForTiming(const ResourceLoadTiming& timing, DocumentLoader* loader)
 {
     return Inspector::Protocol::Network::ResourceTiming::create()
-        .setNavigationStart(loader->timing()->navigationStart())
+        .setNavigationStart(loader->timing().navigationStart())
         .setDomainLookupStart(timing.domainLookupStart)
         .setDomainLookupEnd(timing.domainLookupEnd)
         .setConnectStart(timing.connectStart)
@@ -796,5 +794,3 @@ void InspectorResourceAgent::mainFrameNavigated(DocumentLoader& loader)
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(INSPECTOR)

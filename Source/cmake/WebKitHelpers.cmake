@@ -10,14 +10,6 @@ macro(WEBKIT_SET_EXTRA_COMPILER_FLAGS _target)
             set(OLD_COMPILE_FLAGS "")
         endif ()
 
-        include(TestCXXAcceptsFlag)
-        CHECK_CXX_ACCEPTS_FLAG("-dumpversion" CMAKE_CXX_ACCEPTS_DUMPVERSION)
-        if (CMAKE_CXX_ACCEPTS_DUMPVERSION)
-            EXEC_PROGRAM(${CMAKE_CXX_COMPILER} ARGS -dumpversion OUTPUT_VARIABLE COMPILER_VERSION)
-        else ()
-            EXEC_PROGRAM("${CMAKE_CXX_COMPILER} -E -Wp,-dM - < /dev/null | grep '#define __VERSION__' | grep -E -o '[0-9]+\\.[0-9]+\\.?[0-9]+?'" OUTPUT_VARIABLE COMPILER_VERSION)
-        endif ()
-
         get_target_property(TARGET_TYPE ${_target} TYPE)
         if (${TARGET_TYPE} STREQUAL "STATIC_LIBRARY") # -fPIC is automatically added to shared libraries
             set(OLD_COMPILE_FLAGS "-fPIC ${OLD_COMPILE_FLAGS}")
@@ -30,9 +22,7 @@ macro(WEBKIT_SET_EXTRA_COMPILER_FLAGS _target)
 
         # Enable errors on warning
         if (OPTION_ENABLE_WERROR)
-            # FIXME: When we use -fno-tree-dce to support the jsCStack branch merge, build error occurs due to the uninitialization. Temporarily we set
-            # uninitialized as build warning in order to support the jsCStack merge. https://bugs.webkit.org/show_bug.cgi?id=127777.
-            set(OLD_COMPILE_FLAGS "-Werror -Wno-error=unused-parameter -Wno-error=uninitialized -Wno-error=literal-suffix ${OLD_COMPILE_FLAGS}")
+            set(OLD_COMPILE_FLAGS "-Werror -Wno-error=unused-parameter ${OLD_COMPILE_FLAGS}")
         endif ()
 
         set_target_properties(${_target} PROPERTIES

@@ -33,6 +33,7 @@
 #import <wtf/RetainPtr.h>
 
 OBJC_CLASS WKContentView;
+OBJC_CLASS WKView;
 OBJC_CLASS WKWebView;
 OBJC_CLASS WKEditorUndoTargetObjC;
 
@@ -45,6 +46,7 @@ class PageClientImpl : public PageClient
     {
 public:
     PageClientImpl(WKContentView *, WKWebView *);
+    PageClientImpl(WKContentView *, WKView *);
     virtual ~PageClientImpl();
     
 private:
@@ -132,7 +134,6 @@ private:
     virtual double minimumZoomScale() const override;
     virtual WebCore::FloatSize contentsSize() const override;
 
-#if ENABLE(INSPECTOR)
     virtual void showInspectorHighlight(const WebCore::Highlight&) override;
     virtual void hideInspectorHighlight() override;
 
@@ -141,7 +142,6 @@ private:
 
     virtual void enableInspectorNodeSearch() override;
     virtual void disableInspectorNodeSearch() override;
-#endif
 
     virtual void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale) override;
     virtual void overflowScrollViewWillStartPanGesture() override;
@@ -181,6 +181,7 @@ private:
 
     WKContentView *m_contentView;
     WKWebView *m_webView;
+    WKView *m_wkView;
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
 };
 } // namespace WebKit

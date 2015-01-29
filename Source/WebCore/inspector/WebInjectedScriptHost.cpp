@@ -26,8 +26,6 @@
 #include "config.h"
 #include "WebInjectedScriptHost.h"
 
-#if ENABLE(INSPECTOR)
-
 #include "ExceptionHeaders.h"
 #include "ExceptionInterfaces.h"
 #include "JSHTMLAllCollection.h"
@@ -43,7 +41,7 @@ namespace WebCore {
     if (value.inherits(JS##interfaceName::info())) \
         return jsNontrivialString(exec, ASCIILiteral("error"));
 
-JSValue WebInjectedScriptHost::type(JSC::ExecState* exec, JSC::JSValue value)
+JSValue WebInjectedScriptHost::subtype(JSC::ExecState* exec, JSC::JSValue value)
 {
     if (value.inherits(JSNode::info()))
         return jsNontrivialString(exec, ASCIILiteral("node"));
@@ -51,7 +49,7 @@ JSValue WebInjectedScriptHost::type(JSC::ExecState* exec, JSC::JSValue value)
         return jsNontrivialString(exec, ASCIILiteral("array"));
     if (value.inherits(JSHTMLCollection::info()))
         return jsNontrivialString(exec, ASCIILiteral("array"));
-    
+
     DOM_EXCEPTION_INTERFACES_FOR_EACH(RETURN_ERROR_IF_VALUE_INHERITS_EXCEPTION_TYPE)
 
     return jsUndefined();
@@ -63,5 +61,3 @@ bool WebInjectedScriptHost::isHTMLAllCollection(JSC::JSValue value)
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(INSPECTOR)

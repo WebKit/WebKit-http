@@ -173,7 +173,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedP
     , m_localScopeDepth(0)
     , m_codeType(GlobalCode)
     , m_nextConstantOffset(0)
-    , m_globalConstantIndex(0)
     , m_firstLazyFunction(0)
     , m_lastLazyFunction(0)
     , m_staticPropertyAnalyzer(&m_instructions)
@@ -221,7 +220,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     , m_localScopeDepth(0)
     , m_codeType(FunctionCode)
     , m_nextConstantOffset(0)
-    , m_globalConstantIndex(0)
     , m_firstLazyFunction(0)
     , m_lastLazyFunction(0)
     , m_staticPropertyAnalyzer(&m_instructions)
@@ -463,7 +461,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
     , m_localScopeDepth(0)
     , m_codeType(EvalCode)
     , m_nextConstantOffset(0)
-    , m_globalConstantIndex(0)
     , m_firstLazyFunction(0)
     , m_lastLazyFunction(0)
     , m_staticPropertyAnalyzer(&m_instructions)
@@ -520,7 +517,10 @@ RegisterID* BytecodeGenerator::initializeCapturedVariable(RegisterID* dst, const
     instructions().append(addConstant(propertyName));
     instructions().append(value->index());
     instructions().append(ResolveModeAndType(ThrowIfNotFound, LocalClosureVar).operand());
-    instructions().append(0);
+    int operand = registerFor(dst->index()).index();
+    bool isWatchableVariable = hasWatchableVariable(operand);
+    ASSERT(!isWatchableVariable || watchableVariableIdentifier(operand) == propertyName);
+    instructions().append(isWatchableVariable);
     instructions().append(dst->index());
     return dst;
 }
@@ -575,7 +575,7 @@ bool BytecodeGenerator::willResolveToArgumentsRegister(const Identifier& ident)
     if (entry.isNull())
         return false;
 
-    if (m_localArgumentsRegister && isCaptured(m_localArgumentsRegister->index()))
+    if (m_localArgumentsRegister && isCaptured(m_localArgumentsRegister->index()) && m_lexicalEnvironmentRegister)
         return false;
 
     if (m_codeBlock->usesArguments() && m_codeType == FunctionCode && m_localArgumentsRegister)
@@ -1001,6 +1001,12 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfNotFunctionApply(RegisterID* cond
     return target;
 }
 
+bool BytecodeGenerator::hasConstant(const Identifier& ident) const
+{
+    StringImpl* rep = ident.impl();
+    return m_identifierMap.contains(rep);
+}
+    
 unsigned BytecodeGenerator::addConstant(const Identifier& ident)
 {
     StringImpl* rep = ident.impl();
@@ -1399,10 +1405,14 @@ RegisterID* BytecodeGenerator::emitPutToScope(RegisterID* scope, const Identifie
     instructions().append(value->index());
     if (info.isLocal()) {
         instructions().append(ResolveModeAndType(resolveMode, LocalClosureVar).operand());
-        instructions().append(watchableVariable(registerFor(info.localIndex()).index()));
+        int operand = registerFor(info.localIndex()).index();
+        bool isWatchableVariable = hasWatchableVariable(operand);
+        ASSERT(!isWatchableVariable || watchableVariableIdentifier(operand) == identifier);
+        instructions().append(isWatchableVariable);
     } else {
+        ASSERT(resolveType() != LocalClosureVar);
         instructions().append(ResolveModeAndType(resolveMode, resolveType()).operand());
-        instructions().append(0);
+        instructions().append(false);
     }
     instructions().append(info.localIndex());
     return value;

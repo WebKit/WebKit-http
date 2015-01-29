@@ -55,7 +55,6 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebFindClient.h"
 #include "WebFrameProxy.h"
-#include "WebPageContextMenuClient.h"
 #include "WebPageCreationParameters.h"
 #include "WebPageDiagnosticLoggingClient.h"
 #include "WebPreferences.h"
@@ -113,6 +112,7 @@
 #endif
 
 namespace API {
+class ContextMenuClient;
 class FindClient;
 class FormClient;
 class LoaderClient;
@@ -287,9 +287,7 @@ public:
     void didEnterFullscreen();
     void didExitFullscreen();
 
-#if ENABLE(INSPECTOR)
     WebInspectorProxy* inspector();
-#endif
 
 #if ENABLE(REMOTE_INSPECTOR)
     bool allowsRemoteInspection() const { return m_allowsRemoteInspection; }
@@ -308,7 +306,7 @@ public:
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
-    void initializeContextMenuClient(const WKPageContextMenuClientBase*);
+    void setContextMenuClient(std::unique_ptr<API::ContextMenuClient>);
 #endif
     API::FindClient& findClient() { return *m_findClient; }
     void setFindClient(std::unique_ptr<API::FindClient>);
@@ -898,6 +896,7 @@ public:
     void commitPotentialTap();
     void cancelPotentialTap();
     void tapHighlightAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
+    void handleTap(const WebCore::FloatPoint&);
 
     void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
     void inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint&);
@@ -1141,8 +1140,8 @@ private:
 
 #if ENABLE(INPUT_TYPE_COLOR)
     void showColorPicker(const WebCore::Color& initialColor, const WebCore::IntRect&);
-    void didChooseColor(const WebCore::Color&);
-    void didEndColorPicker();
+    virtual void didChooseColor(const WebCore::Color&) override;
+    virtual void didEndColorPicker() override;
 #endif
 
     void editorStateChanged(const EditorState&);
@@ -1311,7 +1310,6 @@ private:
     void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, const UserData&);
     void stopAssistingNode();
 
-#if ENABLE(INSPECTOR)
     void showInspectorHighlight(const WebCore::Highlight&);
     void hideInspectorHighlight();
 
@@ -1320,7 +1318,7 @@ private:
 
     void enableInspectorNodeSearch();
     void disableInspectorNodeSearch();
-#endif
+
     void notifyRevealedSelection();
 #endif // PLATFORM(IOS)
 
@@ -1382,7 +1380,7 @@ private:
     WebFindMatchesClient m_findMatchesClient;
     std::unique_ptr<API::DiagnosticLoggingClient> m_diagnosticLoggingClient;
 #if ENABLE(CONTEXT_MENUS)
-    WebPageContextMenuClient m_contextMenuClient;
+    std::unique_ptr<API::ContextMenuClient> m_contextMenuClient;
 #endif
 
     std::unique_ptr<WebNavigationState> m_navigationState;
@@ -1411,9 +1409,7 @@ private:
     String m_customUserAgent;
     String m_customTextEncodingName;
 
-#if ENABLE(INSPECTOR)
     RefPtr<WebInspectorProxy> m_inspector;
-#endif
 
 #if ENABLE(FULLSCREEN_API)
     RefPtr<WebFullScreenManagerProxy> m_fullScreenManager;
@@ -1427,6 +1423,7 @@ private:
     bool m_dynamicViewportSizeUpdateWaitingForTarget;
     bool m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit;
     uint64_t m_dynamicViewportSizeUpdateLayerTreeTransactionID;
+    uint64_t m_layerTreeTransactionIdAtLastTouchStart;
 #endif
 
 #if ENABLE(VIBRATION)

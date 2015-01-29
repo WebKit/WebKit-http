@@ -94,6 +94,8 @@ webkit.org/b/131919 inspector/dom [ Skip ]
 webkit.org/b/137131 inspector/debugger [ Skip ]
 webkit.org/b/137130 inspector/replay [ Skip ]
 webkit.org/b/137131 inspector/timeline [ Skip ]
+inspector/model/remote-object-get-properties.html [ Skip ]
+inspector/model/remote-object.html [ Skip ]
 
 # Doesn't work yet, relies on network replay functionality (webkit.org/b/130728, webkit.org/b/129391)
 webkit.org/b/131318 http/tests/inspector/replay/document-last-modified-fallback-value.html [ Skip ]
@@ -454,5 +456,3 @@ webkit.org/b/139840 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html
 webkit.org/b/140043 [ Debug ] js/dom/Promise.html [ Pass Failure ]
 
 webkit.org/b/140309 css3/background/background-repeat-space-content.html [ ImageOnlyFailure ]
-
-webkit.org/b/137306 inspector/model/remote-object-get-properties.html [ Skip ]

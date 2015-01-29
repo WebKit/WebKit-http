@@ -576,7 +576,9 @@ namespace JSC {
         bool isStrictMode() const { return m_codeBlock->isStrictMode(); }
         
         bool isBuiltinFunction() const { return m_isBuiltinFunction; }
-        
+
+        OpcodeID lastOpcodeID() const { return m_lastOpcodeID; }
+
     private:
         friend class Label;
         
@@ -650,6 +652,7 @@ namespace JSC {
             return m_parameters[VirtualRegister(index).toArgument()];
         }
 
+        bool hasConstant(const Identifier&) const;
         unsigned addConstant(const Identifier&);
         RegisterID* addConstantValue(JSValue);
         RegisterID* addConstantEmptyValue();
@@ -724,24 +727,28 @@ namespace JSC {
         void createArgumentsIfNecessary();
         RegisterID* createLazyRegisterIfNecessary(RegisterID*);
         
-        unsigned watchableVariable(int operand)
+        bool hasWatchableVariable(int operand) const
         {
             VirtualRegister reg(operand);
             if (!reg.isLocal())
-                return UINT_MAX;
+                return false;
             if (static_cast<size_t>(reg.toLocal()) >= m_watchableVariables.size())
-                return UINT_MAX;
-            Identifier& ident = m_watchableVariables[reg.toLocal()];
+                return false;
+            const Identifier& ident = m_watchableVariables[reg.toLocal()];
             if (ident.isNull())
-                return UINT_MAX;
-            return addConstant(ident);
+                return false;
+            ASSERT(hasConstant(ident)); // Should have already been added.
+            return true;
         }
         
-        bool hasWatchableVariable(int operand)
+        const Identifier& watchableVariableIdentifier(int operand) const
         {
-            return watchableVariable(operand) != UINT_MAX;
+            ASSERT(hasWatchableVariable(operand));
+            VirtualRegister reg(operand);
+            return m_watchableVariables[reg.toLocal()];
         }
-        
+
+    private:
         Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow> m_instructions;
 
         bool m_shouldEmitDebugHooks;
@@ -786,9 +793,6 @@ namespace JSC {
 
         int m_firstConstantIndex;
         int m_nextConstantOffset;
-        unsigned m_globalConstantIndex;
-
-        int m_globalVarStorageOffset;
 
         int m_firstLazyFunction;
         int m_lastLazyFunction;

@@ -32,6 +32,7 @@
 #include "CSSFontFaceRule.h"
 #include "CSSFontFaceSource.h"
 #include "CSSFontFaceSrcValue.h"
+#include "CSSFontFamily.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPropertyNames.h"
 #include "CSSSegmentedFontFace.h"
@@ -40,13 +41,13 @@
 #include "CSSValueList.h"
 #include "CachedResourceLoader.h"
 #include "Document.h"
+#include "Font.h"
 #include "FontCache.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "SVGFontFaceElement.h"
 #include "SVGNames.h"
 #include "Settings.h"
-#include "SimpleFontData.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
@@ -58,12 +59,11 @@ namespace WebCore {
 
 static unsigned fontSelectorId;
 
-CSSFontSelector::CSSFontSelector(Document* document)
-    : m_document(document)
+CSSFontSelector::CSSFontSelector(Document& document)
+    : m_document(&document)
     , m_beginLoadingTimer(*this, &CSSFontSelector::beginLoadTimerFired)
     , m_uniqueId(++fontSelectorId)
     , m_version(0)
-    
 {
     // FIXME: An old comment used to say there was no need to hold a reference to m_document
     // because "we are guaranteed to be destroyed before the document". But there does not
@@ -257,16 +257,15 @@ void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace* fontFaceRule)
     }
 
     // Hash under every single family name.
-    int familyLength = familyList.length();
-    for (int i = 0; i < familyLength; i++) {
-        CSSPrimitiveValue* item = downcast<CSSPrimitiveValue>(familyList.itemWithoutBoundsCheck(i));
+    for (auto& item : familyList) {
+        auto& value = downcast<CSSPrimitiveValue>(item.get());
         String familyName;
-        if (item->isString()) {
-            familyName = item->getStringValue();
-        } else if (item->isValueID()) {
+        if (value.isFontFamily()) {
+            familyName = value.fontFamily().familyName;
+        } else if (value.isValueID()) {
             // We need to use the raw text for all the generic family types, since @font-face is a way of actually
             // defining what font to use for those types.
-            switch (item->getValueID()) {
+            switch (value.getValueID()) {
                 case CSSValueSerif:
                     familyName = serifFamily;
                     break;
@@ -339,15 +338,6 @@ void CSSFontSelector::dispatchInvalidationCallbacks()
     copyToVector(m_clients, clients);
     for (size_t i = 0; i < clients.size(); ++i)
         clients[i]->fontsNeedUpdate(this);
-
-    // FIXME: Make Document a FontSelectorClient so that it can simply register for invalidation callbacks.
-    if (!m_document)
-        return;
-    if (StyleResolver* styleResolver = m_document->styleResolverIfExists())
-        styleResolver->invalidateMatchedPropertiesCache();
-    if (m_document->inPageCache() || !m_document->renderView())
-        return;
-    m_document->scheduleForcedStyleRecalc();
 }
 
 void CSSFontSelector::fontLoaded()
@@ -612,7 +602,7 @@ bool CSSFontSelector::resolvesFamilyFor(const FontDescription& description) cons
     return false;
 }
 
-size_t CSSFontSelector::fallbackFontDataCount()
+size_t CSSFontSelector::fallbackFontCount()
 {
     if (!m_document)
         return 0;
@@ -623,7 +613,7 @@ size_t CSSFontSelector::fallbackFontDataCount()
     return 0;
 }
 
-PassRefPtr<SimpleFontData> CSSFontSelector::fallbackFontDataAt(const FontDescription& fontDescription, size_t index)
+PassRefPtr<Font> CSSFontSelector::fallbackFontAt(const FontDescription& fontDescription, size_t index)
 {
     ASSERT_UNUSED(index, !index);
 

@@ -686,7 +686,7 @@ void WebPageProxy::potentialTapAtPosition(const WebCore::FloatPoint& position, u
 
 void WebPageProxy::commitPotentialTap()
 {
-    process().send(Messages::WebPage::CommitPotentialTap(), m_pageID);
+    process().send(Messages::WebPage::CommitPotentialTap(m_layerTreeTransactionIdAtLastTouchStart), m_pageID);
 }
 
 void WebPageProxy::cancelPotentialTap()
@@ -697,6 +697,11 @@ void WebPageProxy::cancelPotentialTap()
 void WebPageProxy::tapHighlightAtPosition(const WebCore::FloatPoint& position, uint64_t& requestID)
 {
     process().send(Messages::WebPage::TapHighlightAtPosition(requestID, position), m_pageID);
+}
+
+void WebPageProxy::handleTap(const FloatPoint& location)
+{
+    process().send(Messages::WebPage::HandleTap(roundedIntPoint(location), m_layerTreeTransactionIdAtLastTouchStart), m_pageID);
 }
 
 void WebPageProxy::inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint& position)
@@ -763,7 +768,6 @@ void WebPageProxy::stopAssistingNode()
     m_pageClient.stopAssistingNode();
 }
 
-#if ENABLE(INSPECTOR)
 void WebPageProxy::showInspectorHighlight(const WebCore::Highlight& highlight)
 {
     m_pageClient.showInspectorHighlight(highlight);
@@ -793,7 +797,6 @@ void WebPageProxy::disableInspectorNodeSearch()
 {
     m_pageClient.disableInspectorNodeSearch();
 }
-#endif
 
 void WebPageProxy::focusNextAssistedNode(bool isForward, std::function<void (CallbackBase::Error)> callbackFunction)
 {

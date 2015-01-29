@@ -40,13 +40,31 @@ class FlowContents {
 public:
     FlowContents(const RenderBlockFlow&);
 
-    unsigned findNextBreakablePosition(unsigned position) const;
-    unsigned findNextNonWhitespacePosition(unsigned position, unsigned& spaceCount) const;
+    struct TextFragment {
+        TextFragment() = default;
+        TextFragment(unsigned textStart, unsigned textEnd, float textWidth, bool isWhitespaceOnly)
+            : start(textStart)
+            , end(textEnd)
+            , type(isWhitespaceOnly ? Whitespace : NonWhitespace)
+            , width(textWidth)
+        {
+        }
 
+        bool isEmpty() const
+        {
+            return start == end;
+        }
+
+        enum Type { LineBreak, Whitespace, NonWhitespace };
+        unsigned start = 0;
+        unsigned end = 0;
+        Type type = NonWhitespace;
+        bool isCollapsed = false;
+        bool isBreakable = false;
+        float width = 0;
+    };
+    TextFragment nextTextFragment(float xPosition = 0);
     float textWidth(unsigned from, unsigned to, float xPosition) const;
-
-    bool isLineBreak(unsigned position) const;
-    bool isEnd(unsigned position) const;
 
     struct Segment {
         unsigned start;
@@ -76,6 +94,10 @@ public:
     const Style& style() const { return m_style; }
 
 private:
+    unsigned findNextNonWhitespacePosition(unsigned position, unsigned& spaceCount) const;
+    unsigned findNextBreakablePosition(unsigned position) const;
+    bool isLineBreak(unsigned position) const;
+    bool isEnd(unsigned position) const;
     unsigned segmentIndexForPosition(unsigned position) const;
     unsigned segmentIndexForPositionSlow(unsigned position) const;
 
@@ -87,6 +109,7 @@ private:
 
     mutable LazyLineBreakIterator m_lineBreakIterator;
     mutable unsigned m_lastSegmentIndex;
+    unsigned m_position { 0 };
 };
 
 inline UChar FlowContents::characterAt(unsigned position) const
@@ -97,6 +120,8 @@ inline UChar FlowContents::characterAt(unsigned position) const
 
 inline bool FlowContents::isLineBreak(unsigned position) const
 {
+    if (isEnd(position))
+        return false;
     return m_style.preserveNewline && characterAt(position) == '\n';
 }
 

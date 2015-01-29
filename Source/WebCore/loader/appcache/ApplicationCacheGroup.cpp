@@ -41,15 +41,12 @@
 #include "InspectorInstrumentation.h"
 #include "ManifestParser.h"
 #include "Page.h"
+#include "ProgressTracker.h"
 #include "ResourceHandle.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include <wtf/HashMap.h>
 #include <wtf/MainThread.h>
-
-#if ENABLE(INSPECTOR)
-#include "ProgressTracker.h"
-#endif
 
 namespace WebCore {
 
@@ -303,7 +300,7 @@ void ApplicationCacheGroup::failedLoadingMainResource(DocumentLoader* loader)
     case Failure:
         // Cache update failed, too.
         ASSERT(!m_cacheBeingUpdated); // Already cleared out by stopLoading().
-        ASSERT(!loader->applicationCacheHost()->applicationCache() || loader->applicationCacheHost()->applicationCache() == m_cacheBeingUpdated);
+        ASSERT(!loader->applicationCacheHost()->applicationCache() || loader->applicationCacheHost()->applicationCache()->group() == this);
 
         loader->applicationCacheHost()->setApplicationCache(0); // Will unset candidate, too.
         m_associatedDocumentLoaders.remove(loader);
@@ -489,29 +486,26 @@ PassRefPtr<ResourceHandle> ApplicationCacheGroup::createResourceHandle(const URL
     }
 
     RefPtr<ResourceHandle> handle = ResourceHandle::create(m_frame->loader().networkingContext(), request, this, false, true);
-#if ENABLE(INSPECTOR)
+
     // Because willSendRequest only gets called during redirects, we initialize
     // the identifier and the first willSendRequest here.
     m_currentResourceIdentifier = m_frame->page()->progress().createUniqueIdentifier();
     ResourceResponse redirectResponse = ResourceResponse();
     InspectorInstrumentation::willSendRequest(m_frame, m_currentResourceIdentifier, m_frame->loader().documentLoader(), request, redirectResponse);
-#endif
     return handle;
 }
 
 void ApplicationCacheGroup::didReceiveResponse(ResourceHandle* handle, const ResourceResponse& response)
 {
-#if ENABLE(INSPECTOR)
     DocumentLoader* loader = (handle == m_manifestHandle) ? nullptr : m_frame->loader().documentLoader();
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willReceiveResourceResponse(m_frame);
     InspectorInstrumentation::didReceiveResourceResponse(cookie, m_currentResourceIdentifier, loader, response, 0);
-#endif
 
     if (handle == m_manifestHandle) {
         didReceiveManifestResponse(response);
         return;
     }
-    
+
     ASSERT(handle == m_currentHandle);
 
     URL url(handle->firstRequest().url());

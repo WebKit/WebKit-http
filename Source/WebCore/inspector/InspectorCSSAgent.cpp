@@ -23,9 +23,6 @@
  */
 
 #include "config.h"
-
-#if ENABLE(INSPECTOR)
-
 #include "InspectorCSSAgent.h"
 
 #include "CSSComputedStyleDeclaration.h"
@@ -961,10 +958,10 @@ InspectorStyleSheet* InspectorCSSAgent::viaInspectorStyleSheet(Document* documen
     if (!ec) {
         ContainerNode* targetNode;
         // HEAD is absent in ImageDocuments, for example.
-        if (document->head())
-            targetNode = document->head();
-        else if (document->body())
-            targetNode = document->body();
+        if (auto* head = document->head())
+            targetNode = head;
+        else if (auto* body = document->bodyOrFrameset())
+            targetNode = body;
         else
             return nullptr;
 
@@ -1201,5 +1198,3 @@ void InspectorCSSAgent::resetPseudoStates()
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(INSPECTOR)

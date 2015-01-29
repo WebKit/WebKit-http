@@ -27,6 +27,7 @@
 #include "CSSFontSelector.h"
 #include "CSSValueKeywords.h"
 #include "Chrome.h"
+#include "Font.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
@@ -42,7 +43,6 @@
 #include "RenderView.h"
 #include "SearchPopupMenu.h"
 #include "Settings.h"
-#include "SimpleFontData.h"
 #include "StyleResolver.h"
 #include "TextControlInnerElements.h"
 
@@ -339,7 +339,7 @@ void RenderSearchField::setTextFromItem(unsigned listIndex)
 
 FontSelector* RenderSearchField::fontSelector() const
 {
-    return document().ensureStyleResolver().fontSelector();
+    return &document().fontSelector();
 }
 
 HostWindow* RenderSearchField::hostWindow() const

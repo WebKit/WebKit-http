@@ -92,6 +92,7 @@
 #import <WebCore/ExceptionHandlers.h>
 #import <WebCore/FloatRect.h>
 #import <WebCore/FocusController.h>
+#import <WebCore/Font.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
@@ -112,7 +113,6 @@
 #import <WebCore/RenderWidget.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
-#import <WebCore/SimpleFontData.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/Text.h>
 #import <WebCore/TextAlternativeWithRange.h>
@@ -3711,6 +3711,7 @@ static void setMenuTargets(NSMenu* menu)
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [[[self _webView] _actionMenuController] webView:[self _webView] didHandleScrollWheel:event];
+    [[[self _webView] _immediateActionController] webView:[self _webView] didHandleScrollWheel:event];
 #endif
 }
 
@@ -4878,8 +4879,8 @@ static NSString *fontNameForDescription(NSString *familyName, BOOL italic, BOOL 
     fontDescription.setIsItalic(italic);
     fontDescription.setWeight(bold ? FontWeight900 : FontWeight500);
     fontDescription.setSpecifiedSize(pointSize);
-    RefPtr<SimpleFontData> simpleFontData = fontCache().fontForFamily(fontDescription, familyName);
-    return [simpleFontData->platformData().nsFont() fontName];
+    RefPtr<Font> font = fontCache().fontForFamily(fontDescription, familyName);
+    return [font->platformData().nsFont() fontName];
 }
 
 - (void)_addToStyle:(DOMCSSStyleDeclaration *)style fontA:(NSFont *)a fontB:(NSFont *)b
@@ -5442,7 +5443,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     bool multipleFonts = false;
     NSFont *font = nil;
     if (Frame* coreFrame = core([self _frame])) {
-        if (const SimpleFontData* fd = coreFrame->editor().fontForSelection(multipleFonts))
+        if (const Font* fd = coreFrame->editor().fontForSelection(multipleFonts))
             font = fd->getNSFont();
     }
 

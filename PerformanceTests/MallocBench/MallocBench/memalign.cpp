@@ -30,27 +30,27 @@
 
 #include "mbmalloc.h"
 
+void test(size_t alignment, size_t size)
+{
+    void* result = mbmemalign(alignment, size);
+
+    assert(result);
+    assert(!((uintptr_t)result & (alignment - 1)));
+    
+    mbfree(result, size);
+}
+
 void benchmark_memalign(bool isParallel)
 {
-    {
-        size_t alignment = 128;
-        size_t size = 8;
-        void* result = mbmemalign(alignment, size);
-
-        assert(result);
-        assert(((uintptr_t)result & (alignment - 1)) == 0);
-        
-        mbfree(result, size);
+    for (size_t alignment = 2; alignment < 4096; alignment *= 2) {
+        for (size_t size = 0; size < 4096; ++size)
+            test(alignment, size);
     }
-    
-    {
-        size_t alignment = 2048 * 1024 * 1024;
-        size_t size = 8;
-        void* result = mbmemalign(alignment, size);
 
-        assert(result);
-        assert(((uintptr_t)result & (alignment - 1)) == 0);
-        
-        mbfree(result, size);
-    }
+    test(1 * 1024 * 1024, 8);
+    test(8 * 1024 * 1024, 8);
+    test(32 * 1024 * 1024, 8);
+    test(64 * 1024 * 1024, 8);
+    test(1 * 1024 * 1024, 8 * 1024 * 1024);
+    test(1 * 1024 * 1024, 16 * 1024 * 1024);
 }

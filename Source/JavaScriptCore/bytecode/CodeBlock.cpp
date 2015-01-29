@@ -1663,7 +1663,8 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
 #endif
 {
     ASSERT(m_heap->isDeferred());
-    
+    ASSERT(m_scopeRegister.isLocal());
+
     if (SymbolTable* symbolTable = other.symbolTable())
         m_symbolTable.set(*m_vm, m_ownerExecutable.get(), symbolTable);
     
@@ -1719,6 +1720,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
 #endif
 {
     ASSERT(m_heap->isDeferred());
+    ASSERT(m_scopeRegister.isLocal());
 
     bool didCloneSymbolTable = false;
     
@@ -1998,11 +2000,12 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
 
             ResolveModeAndType modeAndType = ResolveModeAndType(pc[4].u.operand);
             if (modeAndType.type() == LocalClosureVar) {
-                if (pc[5].u.index == UINT_MAX) {
-                    instructions[i + 5].u.watchpointSet = 0;
+                bool isWatchableVariable = pc[5].u.operand;
+                if (!isWatchableVariable) {
+                    instructions[i + 5].u.watchpointSet = nullptr;
                     break;
                 }
-                StringImpl* uid = identifier(pc[5].u.index).impl();
+                StringImpl* uid = ident.impl();
                 RELEASE_ASSERT(didCloneSymbolTable);
                 if (ident != m_vm->propertyNames->arguments) {
                     ConcurrentJITLocker locker(m_symbolTable->m_lock);

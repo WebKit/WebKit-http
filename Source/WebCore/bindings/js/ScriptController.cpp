@@ -39,6 +39,7 @@
 #include "Page.h"
 #include "PageConsoleClient.h"
 #include "PageGroup.h"
+#include "PluginViewBase.h"
 #include "ScriptSourceCode.h"
 #include "ScriptableDocumentParser.h"
 #include "Settings.h"
@@ -358,7 +359,6 @@ PassRefPtr<Bindings::RootObject> ScriptController::createRootObject(void* native
     return rootObject.release();
 }
 
-#if ENABLE(INSPECTOR)
 void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*, SecurityOrigin*>>& result)
 {
     for (ShellMap::iterator iter = m_windowShells.begin(); iter != m_windowShells.end(); ++iter) {
@@ -367,7 +367,6 @@ void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*,
         result.append(std::pair<JSC::ExecState*, SecurityOrigin*>(exec, origin));
     }
 }
-#endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
@@ -405,9 +404,12 @@ NPObject* ScriptController::createScriptObjectForPluginElement(HTMLPlugInElement
 #endif
 
 #if !PLATFORM(COCOA) && !PLATFORM(HAIKU)
-PassRefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(Widget*)
+PassRefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(Widget* widget)
 {
-    return nullptr;
+    if (!is<PluginViewBase>(*widget))
+        return nullptr;
+
+    return downcast<PluginViewBase>(*widget).bindingInstance();
 }
 #endif
 

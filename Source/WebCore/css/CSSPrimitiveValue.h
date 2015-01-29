@@ -27,6 +27,7 @@
 #include "CSSValueKeywords.h"
 #include "Color.h"
 #include "LayoutUnit.h"
+#include <utility>
 #include <wtf/Forward.h>
 #include <wtf/MathExtras.h>
 #include <wtf/PassRefPtr.h>
@@ -48,6 +49,7 @@ class CSSBasicShape;
 class LengthRepeat;
 #endif
 
+struct CSSFontFamily;
 struct Length;
 struct LengthSize;
 
@@ -149,6 +151,8 @@ public:
         CSS_CALC_PERCENTAGE_WITH_NUMBER = 114,
         CSS_CALC_PERCENTAGE_WITH_LENGTH = 115,
 
+        CSS_FONT_FAMILY = 116,
+
         CSS_PROPERTY_ID = 117,
         CSS_VALUE_ID = 118
     };
@@ -200,6 +204,7 @@ public:
     bool isRGBColor() const { return m_primitiveUnitType == CSS_RGBCOLOR; }
     bool isShape() const { return m_primitiveUnitType == CSS_SHAPE; }
     bool isString() const { return m_primitiveUnitType == CSS_STRING; }
+    bool isFontFamily() const { return m_primitiveUnitType == CSS_FONT_FAMILY; }
     bool isTime() const { return m_primitiveUnitType == CSS_S || m_primitiveUnitType == CSS_MS; }
     bool isURI() const { return m_primitiveUnitType == CSS_URI; }
     bool isCalculated() const { return m_primitiveUnitType == CSS_CALC; }
@@ -232,9 +237,9 @@ public:
     static Ref<CSSPrimitiveValue> create(const Length& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
     static Ref<CSSPrimitiveValue> create(const LengthSize& value, const RenderStyle* style) { return adoptRef(*new CSSPrimitiveValue(value, style)); }
 
-    template<typename T> static Ref<CSSPrimitiveValue> create(T value)
+    template<typename T> static Ref<CSSPrimitiveValue> create(T&& value)
     {
-        return adoptRef(*new CSSPrimitiveValue(value));
+        return adoptRef(*new CSSPrimitiveValue(std::forward<T>(value)));
     }
 
     // This value is used to handle quirky margins in reflow roots (body, td, and th) like WinIE.
@@ -328,15 +333,17 @@ public:
     RGBA32 getRGBA32Value() const { return m_primitiveUnitType != CSS_RGBCOLOR ? 0 : m_value.rgbcolor; }
 
     Pair* getPairValue(ExceptionCode&) const;
-    Pair* getPairValue() const { return m_primitiveUnitType != CSS_PAIR ? 0 : m_value.pair; }
+    Pair* getPairValue() const { return m_primitiveUnitType != CSS_PAIR ? nullptr : m_value.pair; }
 
 #if ENABLE(DASHBOARD_SUPPORT)
-    DashboardRegion* getDashboardRegionValue() const { return m_primitiveUnitType != CSS_DASHBOARD_REGION ? 0 : m_value.region; }
+    DashboardRegion* getDashboardRegionValue() const { return m_primitiveUnitType != CSS_DASHBOARD_REGION ? nullptr : m_value.region; }
 #endif
 
-    CSSBasicShape* getShapeValue() const { return m_primitiveUnitType != CSS_SHAPE ? 0 : m_value.shape; }
+    CSSBasicShape* getShapeValue() const { return m_primitiveUnitType != CSS_SHAPE ? nullptr : m_value.shape; }
 
-    CSSCalcValue* cssCalcValue() const { return m_primitiveUnitType != CSS_CALC ? 0 : m_value.calc; }
+    const CSSFontFamily& fontFamily() const { ASSERT(m_primitiveUnitType == CSS_FONT_FAMILY); return *m_value.fontFamily; }
+
+    CSSCalcValue* cssCalcValue() const { return m_primitiveUnitType != CSS_CALC ? nullptr : m_value.calc; }
 
     CSSPropertyID getPropertyID() const { return m_primitiveUnitType == CSS_PROPERTY_ID ? m_value.propertyID : CSSPropertyInvalid; }
     CSSValueID getValueID() const { return m_primitiveUnitType == CSS_VALUE_ID ? m_value.valueID : CSSValueInvalid; }
@@ -376,10 +383,16 @@ private:
         init(PassRefPtr<T>(val));
     }
 
-    template<typename T> CSSPrimitiveValue(PassRefPtr<T> val)
+    template<typename T> CSSPrimitiveValue(PassRefPtr<T> value)
         : CSSValue(PrimitiveClass)
     {
-        init(val);
+        init(value);
+    }
+
+    template<typename T> CSSPrimitiveValue(Ref<T>&& value)
+        : CSSValue(PrimitiveClass)
+    {
+        init(WTF::move(value));
     }
 
     static void create(int); // compile-time guard
@@ -388,7 +401,7 @@ private:
 
     void init(const Length&);
     void init(const LengthSize&, const RenderStyle*);
-    void init(PassRefPtr<Counter>);
+    void init(Ref<Counter>&&);
     void init(PassRefPtr<Rect>);
     void init(PassRefPtr<Pair>);
     void init(PassRefPtr<Quad>);
@@ -424,6 +437,7 @@ private:
         DashboardRegion* region;
         CSSBasicShape* shape;
         CSSCalcValue* calc;
+        const CSSFontFamily* fontFamily;
     } m_value;
 };
 

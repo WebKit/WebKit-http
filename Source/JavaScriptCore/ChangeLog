@@ -1,3 +1,783 @@
+2015-01-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Move DFGBinarySwitch out of the DFG so that all of the JITs can use it
+        https://bugs.webkit.org/show_bug.cgi?id=140959
+
+        Rubber stamped by Geoffrey Garen.
+        
+        I want to use this for polymorphic stubs for https://bugs.webkit.org/show_bug.cgi?id=140660.
+        This code no longer has DFG dependencies so this is a very clean move.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGBinarySwitch.cpp: Removed.
+        * dfg/DFGBinarySwitch.h: Removed.
+        * dfg/DFGSpeculativeJIT.cpp:
+        * jit/BinarySwitch.cpp: Copied from Source/JavaScriptCore/dfg/DFGBinarySwitch.cpp.
+        * jit/BinarySwitch.h: Copied from Source/JavaScriptCore/dfg/DFGBinarySwitch.h.
+
+2015-01-27  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179192.
+        https://bugs.webkit.org/show_bug.cgi?id=140953
+
+        Caused numerous layout test failures (Requested by mattbaker_
+        on #webkit).
+
+        Reverted changeset:
+
+        "Use FastMalloc (bmalloc) instead of BlockAllocator for GC
+        pages"
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+        http://trac.webkit.org/changeset/179192
+
+2015-01-27  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r178591): 20% regression in Octane box2d
+        https://bugs.webkit.org/show_bug.cgi?id=140948
+
+        Reviewed by Geoffrey Garen.
+
+        Added check that we have a lexical environment to the arguments is captured check.
+        It doesn't make sense to resolve "arguments" when it really isn't captured.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::willResolveToArgumentsRegister):
+
+2015-01-26  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Removes some more custom allocation code.
+
+        Looks like a speedup. (See results attached to bugzilla.)
+
+        Will hopefully reduce memory use by improving sharing between the GC and
+        malloc heaps.
+
+        * API/JSBase.cpp:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj: Feed the compiler.
+
+        * heap/BlockAllocator.cpp: Removed.
+        * heap/BlockAllocator.h: Removed. No need for a custom allocator anymore.
+
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::CodeBlockSet):
+        * heap/CodeBlockSet.h: Feed the compiler.
+
+        * heap/CopiedBlock.h:
+        (JSC::CopiedBlock::createNoZeroFill):
+        (JSC::CopiedBlock::create):
+        (JSC::CopiedBlock::CopiedBlock):
+        (JSC::CopiedBlock::isOversize):
+        (JSC::CopiedBlock::payloadEnd):
+        (JSC::CopiedBlock::capacity):
+        * heap/CopiedBlockInlines.h:
+        (JSC::CopiedBlock::reportLiveBytes): Each copied block now tracks its
+        own size, since we can't rely on Region to tell us our size anymore.
+
+        * heap/CopiedSpace.cpp:
+        (JSC::CopiedSpace::~CopiedSpace):
+        (JSC::CopiedSpace::tryAllocateOversize):
+        (JSC::CopiedSpace::tryReallocateOversize):
+        * heap/CopiedSpaceInlines.h:
+        (JSC::CopiedSpace::recycleEvacuatedBlock):
+        (JSC::CopiedSpace::recycleBorrowedBlock):
+        (JSC::CopiedSpace::allocateBlockForCopyingPhase):
+        (JSC::CopiedSpace::allocateBlock):
+        (JSC::CopiedSpace::startedCopying): Deallocate blocks directly, rather
+        than pushing them onto the block allocator's free list; the block
+        allocator doesn't exist anymore.
+
+        * heap/CopyWorkList.h:
+        (JSC::CopyWorkListSegment::create):
+        (JSC::CopyWorkListSegment::CopyWorkListSegment):
+        (JSC::CopyWorkList::~CopyWorkList):
+        (JSC::CopyWorkList::append):
+        (JSC::CopyWorkList::CopyWorkList): Deleted.
+        * heap/GCSegmentedArray.h:
+        (JSC::GCArraySegment::GCArraySegment):
+        * heap/GCSegmentedArrayInlines.h:
+        (JSC::GCSegmentedArray<T>::GCSegmentedArray):
+        (JSC::GCSegmentedArray<T>::~GCSegmentedArray):
+        (JSC::GCSegmentedArray<T>::clear):
+        (JSC::GCSegmentedArray<T>::expand):
+        (JSC::GCSegmentedArray<T>::refill):
+        (JSC::GCArraySegment<T>::create):
+        * heap/GCThreadSharedData.cpp:
+        (JSC::GCThreadSharedData::GCThreadSharedData):
+        * heap/GCThreadSharedData.h: Feed the compiler.
+
+        * heap/HandleBlock.h:
+        * heap/HandleBlockInlines.h:
+        (JSC::HandleBlock::create):
+        (JSC::HandleBlock::HandleBlock):
+        (JSC::HandleBlock::payloadEnd):
+        * heap/HandleSet.cpp:
+        (JSC::HandleSet::~HandleSet):
+        (JSC::HandleSet::grow): Same as above.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        * heap/Heap.h: Removed the block allocator since it is unused now.
+
+        * heap/HeapBlock.h:
+        (JSC::HeapBlock::destroy):
+        (JSC::HeapBlock::HeapBlock):
+        (JSC::HeapBlock::region): Deleted. Removed the Region pointer from each
+        HeapBlock since a HeapBlock is just a normal allocation now.
+
+        * heap/HeapInlines.h:
+        (JSC::Heap::blockAllocator): Deleted.
+
+        * heap/HeapTimer.cpp:
+        * heap/MarkStack.cpp:
+        (JSC::MarkStackArray::MarkStackArray):
+        * heap/MarkStack.h: Feed the compiler.
+
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::allocateBlock): No need to use a custom code path
+        based on size, since we use a general purpose allocator now.
+
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::create):
+        (JSC::MarkedBlock::destroy):
+        (JSC::MarkedBlock::MarkedBlock):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::capacity): Track block size explicitly, like CopiedBlock.
+
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::freeBlock):
+        * heap/MarkedSpace.h:
+
+        * heap/Region.h: Removed.
+
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::SlotVisitor): Removed reference to block allocator.
+
+        * heap/SuperRegion.cpp: Removed.
+        * heap/SuperRegion.h: Removed.
+
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::create):
+        (JSC::WeakBlock::WeakBlock):
+        * heap/WeakBlock.h:
+        * heap/WeakSet.cpp:
+        (JSC::WeakSet::~WeakSet):
+        (JSC::WeakSet::addAllocator):
+        (JSC::WeakSet::removeAllocator): Removed reference to block allocator.
+
+2015-01-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Typo fix after r176083
+        https://bugs.webkit.org/show_bug.cgi?id=140937
+
+        Reviewed by Anders Carlsson.
+
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::ldrh):
+
+2015-01-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Win] Unreviewed gardening, skip failing tests.
+
+        * tests/exceptionFuzz.yaml: Skip exception fuzz tests due to bug140928.
+        * tests/mozilla/mozilla-tests.yaml: Skip ecma/Date/15.9.5.28-1.js due to bug140927.
+
+2015-01-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Win] Enable JSC stress tests by default
+        https://bugs.webkit.org/show_bug.cgi?id=128307
+
+        Unreviewed typo fix after r179165.
+
+        * tests/mozilla/mozilla-tests.yaml:
+
+2015-01-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Win] Enable JSC stress tests by default
+        https://bugs.webkit.org/show_bug.cgi?id=128307
+
+        Reviewed by Brent Fulgham.
+
+        * tests/mozilla/mozilla-tests.yaml: Skipped on Windows.
+        * tests/stress/ftl-arithcos.js: Skipped on Windows.
+
+2015-01-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Parse a function expression as a primary expression
+        https://bugs.webkit.org/show_bug.cgi?id=140908
+
+        Reviewed by Mark Lam.
+
+        Moved the code to generate an AST node for a function expression from parseMemberExpression
+        to parsePrimaryExpression to match the ES6 specification terminology:
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-primary-expression
+
+        There should be no behavior change from this change since parsePrimaryExpression is only
+        called in parseMemberExpression other than the fact failIfStackOverflow() is called.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+
+2015-01-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] [SVG -> OTF Converter] Flip the switch off on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=140860
+
+        Reviewed by Darin Adler.
+
+        The fonts it makes are grotesque. (See what I did there? Typographic
+        humor is the best humor.)
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename InjectedScriptHost::type to subtype
+        https://bugs.webkit.org/show_bug.cgi?id=140841
+
+        Reviewed by Timothy Hatcher.
+
+        We were using this to set the subtype of an "object" type RemoteObject
+        so we should clean up the name and call it subtype.
+
+        * inspector/InjectedScriptHost.h:
+        * inspector/InjectedScriptSource.js:
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::subtype):
+        (Inspector::JSInjectedScriptHost::type): Deleted.
+        * inspector/JSInjectedScriptHost.h:
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        (Inspector::jsInjectedScriptHostPrototypeFunctionSubtype):
+        (Inspector::jsInjectedScriptHostPrototypeFunctionType): Deleted.
+
+2015-01-23  Michael Saboff  <msaboff@apple.com>
+
+        LayoutTests/js/script-tests/reentrant-caching.js crashing on 32 bit builds
+        https://bugs.webkit.org/show_bug.cgi?id=140843
+
+        Reviewed by Oliver Hunt.
+
+        When we are in vmEntryToJavaScript, we keep the stack pointer at an
+        alignment sutiable for pointing to a call frame header, which is the
+        alignment post making a call.  We adjust the sp when calling to JS code,
+        but don't adjust it before calling the out of stack handler.
+
+        * llint/LowLevelInterpreter32_64.asm:
+        Moved stack point down 8 bytes to get it aligned.
+
+2015-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Object Previews in the Console
+        https://bugs.webkit.org/show_bug.cgi?id=129204
+
+        Reviewed by Timothy Hatcher.
+
+        Update the very old, unused object preview code. Part of this comes from
+        the earlier WebKit legacy implementation, and the Blink implementation.
+
+        A RemoteObject may include a preview, if it is asked for, and if the
+        RemoteObject is an object. Previews are a shallow (single level) list
+        of a limited number of properties on the object. The previewed
+        properties are always stringified (even if primatives). Previews are
+        limited to just 5 properties or 100 indices. Previews are marked
+        as lossless if they are a complete snapshot of the object.
+
+        There is a path to make previews two levels deep, that is currently
+        unused but should soon be used for tables (e.g. IndexedDB).
+
+        * inspector/InjectedScriptSource.js:
+        - Move some code off of InjectedScript to be generic functions
+        usable by RemoteObject as well.
+        - Update preview generation to use 
+
+        * inspector/protocol/Runtime.json:
+        - Add a new type, "accessor" for preview objects. This represents
+        a getter / setter. We currently don't get the value.
+
+2015-01-23  Michael Saboff  <msaboff@apple.com>
+
+        Immediate crash when setting JS breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=140811
+
+        Reviewed by Mark Lam.
+
+        When the DFG stack layout phase doesn't allocate a register for the scope register,
+        it incorrectly sets the scope register in the code block to a bad value, one with
+        an offset of 0.  Changed it so that we set the code block's scope register to the 
+        invalid VirtualRegister instead.
+
+        No tests needed as adding the ASSERT in setScopeRegister() was used to find the bug.
+        We crash with that ASSERT in testapi and likely many other tests as well.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::setScopeRegister):
+        (JSC::CodeBlock::scopeRegister):
+        Added ASSERTs to catch any future improper setting of the code block's scope register.
+
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+
+2015-01-22  Mark Hahnenberg  <mhahnenb@gmail.com>
+
+        EdenCollections unnecessarily visit SmallStrings
+        https://bugs.webkit.org/show_bug.cgi?id=140762
+
+        Reviewed by Geoffrey Garen.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::copyBackingStores): Also added a GCPhase for copying
+        backing stores, which is a significant portion of garbage collection.
+        (JSC::Heap::visitSmallStrings): Check to see if we need to visit
+        SmallStrings based on the collection type.
+        * runtime/SmallStrings.cpp:
+        (JSC::SmallStrings::SmallStrings):
+        (JSC::SmallStrings::visitStrongReferences): Set the fact that we have
+        visited the SmallStrings since the last modification.
+        * runtime/SmallStrings.h:
+        (JSC::SmallStrings::needsToBeVisited): If we're doing a
+        FullCollection, we need to visit. Otherwise, it depends on whether
+        we've been visited since the last modification/allocation.
+
+2015-01-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a build flag for ES6 class syntax
+        https://bugs.webkit.org/show_bug.cgi?id=140760
+
+        Reviewed by Michael Saboff.
+
+        Added ES6_CLASS_SYNTAX build flag and used it in tokenizer to recognize
+        "class", "extends", "static" and "super" keywords.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * parser/Keywords.table:
+        * parser/ParserTokens.h:
+
+2015-01-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178894.
+        https://bugs.webkit.org/show_bug.cgi?id=140775
+
+        Broke JSC and bindings tests (Requested by ap_ on #webkit).
+
+        Reverted changeset:
+
+        "put_by_val_direct need to check the property is index or not
+        for using putDirect / putDirectIndex"
+        https://bugs.webkit.org/show_bug.cgi?id=140426
+        http://trac.webkit.org/changeset/178894
+
+2015-01-22  Mark Lam  <mark.lam@apple.com>
+
+        BytecodeGenerator::initializeCapturedVariable() sets a misleading value for the 5th operand of op_put_to_scope.
+        <https://webkit.org/b/140743>
+
+        Reviewed by Oliver Hunt.
+
+        BytecodeGenerator::initializeCapturedVariable() was setting the 5th operand to
+        op_put_to_scope to an inappropriate value (i.e. 0).  As a result, the execution
+        of put_to_scope could store a wrong inferred value into the VariableWatchpointSet
+        for which ever captured variable is at local index 0.  In practice, this turns
+        out to be the local for the Arguments object.  In this reproduction case in the
+        bug, the wrong inferred value written there is the boolean true.
+
+        Subsequently, DFG compilation occurs and CreateArguments is emitted to first do
+        a check of the local for the Arguments object.  But because that local has a
+        wrong inferred value, the check always discovers a non-null value and we never
+        actually create the Arguments object.  Immediately after this, an OSR exit
+        occurs leaving the Arguments object local uninitialized.  Later on at arguments
+        tear off, we run into a boolean true where we had expected to find an Arguments
+        object, which in turn, leads to the crash.
+
+        The fix is to:
+        1. In the case where the resolveModeType is LocalClosureVar, change the
+           5th operand of op_put_to_scope to be a boolean.  True means that the
+           local var is watchable.  False means it is not watchable.  We no longer
+           pass the local index (instead of true) and UINT_MAX (instead of false).
+
+           This allows us to express more clearer in the code what that value means,
+           as well as remove the redundant way of getting the local's identifier.
+           The identifier is always the one passed in the 2nd operand. 
+
+        2. Previously, though intuitively, we know that the watchable variable
+           identifier should be the same as the one that is passed in operand 2, this
+           relationship was not clear in the code.  By code analysis, I confirmed that 
+           the callers of BytecodeGenerator::emitPutToScope() always use the same
+           identifier for operand 2 and for filling out the ResolveScopeInfo from
+           which we get the watchable variable identifier later.  I've changed the
+           code to make this clear now by always using the identifier passed in
+           operand 2.
+
+        3. In the case where the resolveModeType is LocalClosureVar,
+           initializeCapturedVariable() and emitPutToScope() will now query
+           hasWatchableVariable() to determine if the local is watchable or not.
+           Accordingly, we pass the boolean result of hasWatchableVariable() as
+           operand 5 of op_put_to_scope.
+
+        Also added some assertions.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::initializeCapturedVariable):
+        (JSC::BytecodeGenerator::hasConstant):
+        (JSC::BytecodeGenerator::emitPutToScope):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::hasWatchableVariable):
+        (JSC::BytecodeGenerator::watchableVariableIdentifier):
+        (JSC::BytecodeGenerator::watchableVariable): Deleted.
+
+2015-01-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        PropertyListNode::emitNode duplicates the code to put a constant property
+        https://bugs.webkit.org/show_bug.cgi?id=140761
+
+        Reviewed by Geoffrey Garen.
+
+        Extracted PropertyListNode::emitPutConstantProperty to share the code.
+
+        Also made PropertyListNode::emitBytecode private since nobody is calling this function directly.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode):
+        (JSC::PropertyListNode::emitPutConstantProperty): Added.
+        * parser/Nodes.h:
+
+2015-01-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        put_by_val_direct need to check the property is index or not for using putDirect / putDirectIndex
+        https://bugs.webkit.org/show_bug.cgi?id=140426
+
+        Reviewed by Geoffrey Garen.
+
+        In the put_by_val_direct operation, we use JSObject::putDirect.
+        However, it only accepts non-index property. For index property, we need to use JSObject::putDirectIndex.
+        This patch changes Identifier::asIndex() to return Optional<uint32_t>.
+        It forces callers to check the value is index or not explicitly.
+        Additionally, it checks toString-ed Identifier is index or not to choose putDirect / putDirectIndex.
+
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFor):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFor):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitDirectPutById):
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::operationPutByValInternal):
+        * jit/JITOperations.cpp:
+        * jit/Repatch.cpp:
+        (JSC::emitPutTransitionStubAndGetOldStructure):
+        * jsc.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/Arguments.cpp:
+        (JSC::Arguments::getOwnPropertySlot):
+        (JSC::Arguments::put):
+        (JSC::Arguments::deleteProperty):
+        (JSC::Arguments::defineOwnProperty):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSort):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::defineOwnProperty):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnPropertySlot):
+        (JSC::JSGenericTypedArrayView<Adaptor>::put):
+        (JSC::JSGenericTypedArrayView<Adaptor>::defineOwnProperty):
+        (JSC::JSGenericTypedArrayView<Adaptor>::deleteProperty):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::put):
+        (JSC::JSObject::putDirectAccessor):
+        (JSC::JSObject::putDirectCustomAccessor):
+        (JSC::JSObject::deleteProperty):
+        (JSC::JSObject::putDirectMayBeIndex):
+        (JSC::JSObject::defineOwnProperty):
+        * runtime/JSObject.h:
+        (JSC::JSObject::getOwnPropertySlot):
+        (JSC::JSObject::getPropertySlot):
+        (JSC::JSObject::putDirectInternal):
+        * runtime/JSString.cpp:
+        (JSC::JSString::getStringPropertyDescriptor):
+        * runtime/JSString.h:
+        (JSC::JSString::getStringPropertySlot):
+        * runtime/LiteralParser.cpp:
+        (JSC::LiteralParser<CharType>::parse):
+        * runtime/PropertyName.h:
+        (JSC::toUInt32FromCharacters):
+        (JSC::toUInt32FromStringImpl):
+        (JSC::PropertyName::asIndex):
+        * runtime/PropertyNameArray.cpp:
+        (JSC::PropertyNameArray::add):
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::deleteProperty):
+        * runtime/Structure.cpp:
+        (JSC::Structure::prototypeChainMayInterceptStoreTo):
+
+2015-01-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Consolidate out arguments of parseFunctionInfo into a struct
+        https://bugs.webkit.org/show_bug.cgi?id=140754
+
+        Reviewed by Oliver Hunt.
+
+        Introduced ParserFunctionInfo for storing out arguments of parseFunctionInfo.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionExpr):
+        (JSC::ASTBuilder::createGetterOrSetterProperty): This one takes a property name in addition to
+        ParserFunctionInfo since the property name and the function name could differ.
+        (JSC::ASTBuilder::createFuncDeclStatement):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/Parser.h:
+        * parser/ParserFunctionInfo.h: Added.
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createFunctionExpr):
+        (JSC::SyntaxChecker::createFuncDeclStatement):
+        (JSC::SyntaxChecker::createClassDeclStatement):
+        (JSC::SyntaxChecker::createGetterOrSetterProperty):
+
+2015-01-21  Mark Hahnenberg  <mhahnenb@gmail.com>
+
+        Change Heap::m_compiledCode to use a Vector
+        https://bugs.webkit.org/show_bug.cgi?id=140717
+
+        Reviewed by Andreas Kling.
+
+        Right now it's a DoublyLinkedList, which is iterated during each
+        collection. This contributes to some of the longish Eden pause times.
+        A Vector would be more appropriate and would also allow ExecutableBase
+        to be 2 pointers smaller.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::deleteAllCompiledCode):
+        (JSC::Heap::deleteAllUnlinkedFunctionCode):
+        (JSC::Heap::clearUnmarkedExecutables):
+        * heap/Heap.h:
+        * runtime/Executable.h: No longer need to inherit from DoublyLinkedListNode.
+
+2015-01-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        BytecodeGenerator shouldn't expose all of its member variables
+        https://bugs.webkit.org/show_bug.cgi?id=140752
+
+        Reviewed by Mark Lam.
+
+        Added "private:" and removed unused data members as detected by clang.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::lastOpcodeID): Added. Used in BinaryOpNode::emitBytecode.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BinaryOpNode::emitBytecode):
+
+2015-01-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ASSERT expanding objects in console PrimitiveBindingTraits<T>::assertValueHasExpectedType
+        https://bugs.webkit.org/show_bug.cgi?id=140746
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        Do not add impure properties to the descriptor object that will
+        eventually be sent to the frontend.
+
+2015-01-21  Matthew Mirman  <mmirman@apple.com>
+
+        Updated split such that it does not include the empty end of input string match.
+        https://bugs.webkit.org/show_bug.cgi?id=138129
+        <rdar://problem/18807403>
+
+        Reviewed by Filip Pizlo.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncSplit):
+        * tests/stress/empty_eos_regex_split.js: Added.
+
+2015-01-21  Michael Saboff  <msaboff@apple.com>
+
+        Eliminate Scope slot from JavaScript CallFrame
+        https://bugs.webkit.org/show_bug.cgi?id=136724
+
+        Reviewed by Geoffrey Garen.
+
+        This finishes the removal of the scope chain slot from the call frame header.
+
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * ftl/FTLJSCall.cpp:
+        (JSC::FTL::JSCall::emit):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNativeCallOrConstruct):
+        (JSC::FTL::LowerDFGToLLVM::compileCallOrConstruct):
+        * interpreter/JSStack.h:
+        * interpreter/VMInspector.cpp:
+        (JSC::VMInspector::dumpFrame):
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileOpCall):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileOpCall):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::privateCompileCTINativeCall):
+        * jit/Repatch.cpp:
+        (JSC::generateByIdStub):
+        (JSC::linkClosureCall):
+        * jit/ThunkGenerators.cpp:
+        (JSC::virtualForThunkGenerator):
+        (JSC::nativeForGenerator):
+        Deleted ScopeChain slot from JSStack.  Removed all code where ScopeChain was being
+        read or set.  In most cases this was where we make JS calls.
+
+        * interpreter/CallFrameClosure.h:
+        (JSC::CallFrameClosure::setArgument):
+        (JSC::CallFrameClosure::resetCallFrame): Deleted.
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::prepareForRepeatCall):
+        * interpreter/ProtoCallFrame.cpp:
+        (JSC::ProtoCallFrame::init):
+        * interpreter/ProtoCallFrame.h:
+        (JSC::ProtoCallFrame::scope): Deleted.
+        (JSC::ProtoCallFrame::setScope): Deleted.
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+        Removed the related scopeChainValue member from ProtoCallFrame.  Reduced the number of
+        registers that needed to be copied from the ProtoCallFrame to a callee's frame
+        from 5 to 4.
+
+        * llint/LowLevelInterpreter32_64.asm:
+        In addition to the prior changes, also deleted the unused macro getDeBruijnScope.
+
+2015-01-21  Michael Saboff  <msaboff@apple.com>
+
+        Eliminate construct methods from NullGetterFunction and NullSetterFunction classes
+        https://bugs.webkit.org/show_bug.cgi?id=140708
+
+        Reviewed by Mark Lam.
+
+        Eliminated construct methods and change getConstructData() for both classes to return
+        ConstructTypeNone as they can never be called.
+
+        * runtime/NullGetterFunction.cpp:
+        (JSC::NullGetterFunction::getConstructData):
+        (JSC::constructReturnUndefined): Deleted.
+        * runtime/NullSetterFunction.cpp:
+        (JSC::NullSetterFunction::getConstructData):
+        (JSC::constructReturnUndefined): Deleted.
+
+2015-01-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(INSPECTOR) ifdef guards
+        https://bugs.webkit.org/show_bug.cgi?id=140668
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * bindings/ScriptValue.cpp:
+        (Deprecated::ScriptValue::toInspectorValue):
+        * bindings/ScriptValue.h:
+        * inspector/ConsoleMessage.cpp:
+        * inspector/ConsoleMessage.h:
+        * inspector/ContentSearchUtilities.cpp:
+        * inspector/ContentSearchUtilities.h:
+        * inspector/IdentifiersFactory.cpp:
+        * inspector/IdentifiersFactory.h:
+        * inspector/InjectedScript.cpp:
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScriptBase.cpp:
+        * inspector/InjectedScriptBase.h:
+        * inspector/InjectedScriptHost.cpp:
+        * inspector/InjectedScriptHost.h:
+        * inspector/InjectedScriptManager.cpp:
+        * inspector/InjectedScriptManager.h:
+        * inspector/InjectedScriptModule.cpp:
+        * inspector/InjectedScriptModule.h:
+        * inspector/InspectorAgentRegistry.cpp:
+        * inspector/InspectorBackendDispatcher.cpp:
+        * inspector/InspectorBackendDispatcher.h:
+        * inspector/InspectorProtocolTypes.h:
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/JSGlobalObjectScriptDebugServer.cpp:
+        * inspector/JSGlobalObjectScriptDebugServer.h:
+        * inspector/JSInjectedScriptHost.cpp:
+        * inspector/JSInjectedScriptHost.h:
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        * inspector/JSInjectedScriptHostPrototype.h:
+        * inspector/JSJavaScriptCallFrame.cpp:
+        * inspector/JSJavaScriptCallFrame.h:
+        * inspector/JSJavaScriptCallFramePrototype.cpp:
+        * inspector/JSJavaScriptCallFramePrototype.h:
+        * inspector/JavaScriptCallFrame.cpp:
+        * inspector/JavaScriptCallFrame.h:
+        * inspector/ScriptCallFrame.cpp:
+        (Inspector::ScriptCallFrame::buildInspectorObject):
+        * inspector/ScriptCallFrame.h:
+        * inspector/ScriptCallStack.cpp:
+        (Inspector::ScriptCallStack::buildInspectorArray):
+        * inspector/ScriptCallStack.h:
+        * inspector/ScriptDebugServer.cpp:
+        * inspector/agents/InspectorAgent.cpp:
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        * inspector/agents/InspectorConsoleAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/JSGlobalObjectConsoleAgent.cpp:
+        * inspector/agents/JSGlobalObjectConsoleAgent.h:
+        * inspector/agents/JSGlobalObjectDebuggerAgent.cpp:
+        * inspector/agents/JSGlobalObjectDebuggerAgent.h:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.cpp:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.h:
+        * inspector/scripts/codegen/cpp_generator_templates.py:
+        (CppGeneratorTemplates):
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::inspectorTypeSet):
+        (JSC::StructureShape::inspectorRepresentation):
+
 2015-01-20  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Clean up InjectedScriptSource.js

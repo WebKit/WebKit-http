@@ -40,6 +40,7 @@
 #import <WebCore/NSMenuSPI.h>
 #import <WebCore/NSPopoverSPI.h>
 #import <WebCore/QuickLookMacSPI.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/URL.h>
 
@@ -75,6 +76,13 @@ using namespace WebKit;
     _page = nullptr;
     _wkView = nil;
     _hitTestResult = ActionMenuHitTestResult();
+
+    id animationController = [_immediateActionRecognizer animationController];
+    if ([animationController isKindOfClass:NSClassFromString(@"QLPreviewMenuItem")]) {
+        QLPreviewMenuItem *menuItem = (QLPreviewMenuItem *)animationController;
+        menuItem.delegate = nil;
+    }
+
     _immediateActionRecognizer = nil;
     _currentActionContext = nil;
 }
@@ -87,15 +95,15 @@ using namespace WebKit;
 - (void)_cancelImmediateAction
 {
     // Reset the recognizer by turning it off and on again.
-    _immediateActionRecognizer.enabled = NO;
-    _immediateActionRecognizer.enabled = YES;
+    [_immediateActionRecognizer setEnabled:NO];
+    [_immediateActionRecognizer setEnabled:YES];
 
     [self _clearImmediateActionState];
 }
 
 - (void)_cancelImmediateActionIfNeeded
 {
-    if (!_immediateActionRecognizer.animationController)
+    if (![_immediateActionRecognizer animationController])
         [self _cancelImmediateAction];
 
     if (_currentActionContext) {
@@ -110,8 +118,8 @@ using namespace WebKit;
     _page->clearTextIndicator();
 
     if (_currentActionContext && _hasActivatedActionContext) {
-        [getDDActionsManagerClass() didUseActions];
         _hasActivatedActionContext = NO;
+        [getDDActionsManagerClass() didUseActions];
     }
 
     _state = ImmediateActionState::None;
@@ -119,10 +127,16 @@ using namespace WebKit;
     _type = kWKImmediateActionNone;
     _currentActionContext = nil;
     _userData = nil;
+    _currentQLPreviewMenuItem = nil;
 }
 
 - (void)didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult userData:(API::Object*)userData
 {
+    // If we've already given up on this gesture (either because it was canceled or the
+    // willBeginAnimation timeout expired), we shouldn't build a new animationController for it.
+    if (_state != ImmediateActionState::Pending)
+        return;
+
     // FIXME: This needs to use the WebKit2 callback mechanism to avoid out-of-order replies.
     _state = ImmediateActionState::Ready;
     _hitTestResult = hitTestResult;
@@ -132,6 +146,12 @@ using namespace WebKit;
     [self _cancelImmediateActionIfNeeded];
 }
 
+- (void)dismissContentRelativeChildWindows
+{
+    _page->setMaintainsInactiveSelection(false);
+    [_currentQLPreviewMenuItem close];
+}
+
 #pragma mark NSImmediateActionGestureRecognizerDelegate
 
 - (void)immediateActionRecognizerWillPrepare:(NSImmediateActionGestureRecognizer *)immediateActionRecognizer
@@ -139,9 +159,9 @@ using namespace WebKit;
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
 
-    _page->setMaintainsInactiveSelection(true);
-
     [_wkView _dismissContentRelativeChildWindows];
+
+    _page->setMaintainsInactiveSelection(true);
 
     _page->performActionMenuHitTestAtLocation([immediateActionRecognizer locationInView:immediateActionRecognizer.view], true);
 
@@ -197,7 +217,6 @@ using namespace WebKit;
         return;
 
     _page->setTextIndicatorAnimationProgress(1);
-    _page->setMaintainsInactiveSelection(false);
 }
 
 - (PassRefPtr<WebHitTestResult>)_webHitTestResult
@@ -230,6 +249,7 @@ using namespace WebKit;
         RetainPtr<QLPreviewMenuItem> qlPreviewLinkItem = [NSMenuItem standardQuickLookMenuItem];
         [qlPreviewLinkItem setPreviewStyle:QLPreviewStylePopover];
         [qlPreviewLinkItem setDelegate:self];
+        _currentQLPreviewMenuItem = qlPreviewLinkItem.get();
         return (id<NSImmediateActionAnimationController>)qlPreviewLinkItem.get();
     }
 
@@ -256,14 +276,17 @@ using namespace WebKit;
 
     RefPtr<WebHitTestResult> hitTestResult = [self _webHitTestResult];
     id customClientAnimationController = [_wkView _immediateActionAnimationControllerForHitTestResult:toAPI(hitTestResult.get()) withType:_type userData:toAPI(_userData.get())];
-    if (customClientAnimationController == [NSNull null]) {
+
+    // FIXME: We should not permanently disable this for iBooks. rdar://problem/19585689
+    if (customClientAnimationController == [NSNull null] || applicationIsIBooks()) {
         [self _cancelImmediateAction];
         return;
     }
+
     if (customClientAnimationController && [customClientAnimationController conformsToProtocol:@protocol(NSImmediateActionAnimationController)])
-        _immediateActionRecognizer.animationController = (id <NSImmediateActionAnimationController>)customClientAnimationController;
+        [_immediateActionRecognizer setAnimationController:(id <NSImmediateActionAnimationController>)customClientAnimationController];
     else
-        _immediateActionRecognizer.animationController = defaultAnimationController;
+        [_immediateActionRecognizer setAnimationController:defaultAnimationController];
 }
 
 #pragma mark QLPreviewMenuItemDelegate implementation

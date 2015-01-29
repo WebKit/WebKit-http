@@ -1211,7 +1211,6 @@ webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailur
 
 # Fullscreen API is enabled but not fully implemented.
 webkit.org/b/86187 media/media-fullscreen-not-in-document.html [ Timeout ]
-webkit.org/b/86187 media/media-fullscreen-inline.html [ Failure ]
 
 # This test is specific to QuickTime media engine.
 Bug(EFL) media/video-does-not-loop.html
@@ -1889,8 +1888,6 @@ webkit.org/b/128667 fast/regions/repaint/hover-border-radius.html [ Failure ]
 webkit.org/b/128670 batterystatus/window-property.html [ Failure ]
 webkit.org/b/128670 fast/forms/form-hides-table.html [ Failure ]
 webkit.org/b/128670 js/dom/dom-static-property-for-in-iteration.html [ Failure ]
-
-webkit.org/b/128901 accessibility/list-detection.html [ Failure ]
 
 webkit.org/b/128902 media/media-event-listeners.html [ Timeout ]
 

@@ -547,6 +547,7 @@ void Heap::markRoots(double gcStartTime)
 
 void Heap::copyBackingStores()
 {
+    GCPHASE(CopyBackingStores);
     if (m_operationInProgress == EdenCollection)
         m_storageSpace.startedCopying<EdenCollection>();
     else {
@@ -611,11 +612,12 @@ void Heap::visitExternalRememberedSet()
 void Heap::visitSmallStrings()
 {
     GCPHASE(VisitSmallStrings);
-    m_vm->smallStrings.visitStrongReferences(m_slotVisitor);
+    if (!m_vm->smallStrings.needsToBeVisited(m_operationInProgress))
+        return;
 
+    m_vm->smallStrings.visitStrongReferences(m_slotVisitor);
     if (Options::logGC() == GCLogging::Verbose)
         dataLog("Small strings:\n", m_slotVisitor);
-
     m_slotVisitor.donateAndDrain();
 }
 
@@ -902,7 +904,7 @@ void Heap::deleteAllCompiledCode()
     }
 #endif // ENABLE(DFG_JIT)
 
-    for (ExecutableBase* current = m_compiledCode.head(); current; current = current->next()) {
+    for (ExecutableBase* current : m_compiledCode) {
         if (!current->isFunctionExecutable())
             continue;
         static_cast<FunctionExecutable*>(current)->clearCodeIfNotCompiling();
@@ -915,7 +917,7 @@ void Heap::deleteAllCompiledCode()
 
 void Heap::deleteAllUnlinkedFunctionCode()
 {
-    for (ExecutableBase* current = m_compiledCode.head(); current; current = current->next()) {
+    for (ExecutableBase* current : m_compiledCode) {
         if (!current->isFunctionExecutable())
             continue;
         static_cast<FunctionExecutable*>(current)->clearUnlinkedCodeForRecompilationIfNotCompiling();
@@ -925,16 +927,16 @@ void Heap::deleteAllUnlinkedFunctionCode()
 void Heap::clearUnmarkedExecutables()
 {
     GCPHASE(ClearUnmarkedExecutables);
-    ExecutableBase* next;
-    for (ExecutableBase* current = m_compiledCode.head(); current; current = next) {
-        next = current->next();
+    for (unsigned i = m_compiledCode.size(); i--;) {
+        ExecutableBase* current = m_compiledCode[i];
         if (isMarked(current))
             continue;
 
         // We do this because executable memory is limited on some platforms and because
         // CodeBlock requires eager finalization.
         ExecutableBase::clearCodeVirtual(current);
-        m_compiledCode.remove(current);
+        std::swap(m_compiledCode[i], m_compiledCode.last());
+        m_compiledCode.removeLast();
     }
 }
 

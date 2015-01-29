@@ -27,6 +27,7 @@
 #define WebPage_h
 
 #include "APIInjectedBundleFormClient.h"
+#include "APIInjectedBundlePageContextMenuClient.h"
 #include "APIInjectedBundlePageUIClient.h"
 #include "APIObject.h"
 #include "DictionaryPopupInfo.h"
@@ -228,11 +229,9 @@ public:
     void didFlushLayerTreeAtTime(std::chrono::milliseconds);
 #endif
 
-#if ENABLE(INSPECTOR)
     WebInspector* inspector();
     WebInspectorUI* inspectorUI();
     bool isInspectorPage() { return !!m_inspectorUI; }
-#endif
 
 #if PLATFORM(IOS)
     WebVideoFullscreenManager* videoFullscreenManager();
@@ -283,7 +282,7 @@ public:
 
     // -- InjectedBundle methods
 #if ENABLE(CONTEXT_MENUS)
-    void initializeInjectedBundleContextMenuClient(WKBundlePageContextMenuClientBase*);
+    void setInjectedBundleContextMenuClient(std::unique_ptr<API::InjectedBundle::PageContextMenuClient>);
 #endif
     void initializeInjectedBundleEditorClient(WKBundlePageEditorClientBase*);
     void setInjectedBundleFormClient(std::unique_ptr<API::InjectedBundle::FormClient>);
@@ -297,7 +296,7 @@ public:
     void initializeInjectedBundleDiagnosticLoggingClient(WKBundlePageDiagnosticLoggingClientBase*);
 
 #if ENABLE(CONTEXT_MENUS)
-    InjectedBundlePageContextMenuClient& injectedBundleContextMenuClient() { return m_contextMenuClient; }
+    API::InjectedBundle::PageContextMenuClient& injectedBundleContextMenuClient() { return *m_contextMenuClient.get(); }
 #endif
     InjectedBundlePageEditorClient& injectedBundleEditorClient() { return m_editorClient; }
     API::InjectedBundle::FormClient& injectedBundleFormClient() { return *m_formClient.get(); }
@@ -474,9 +473,9 @@ public:
     bool allowsUserScaling() const;
     bool hasStablePageScaleFactor() const { return m_hasStablePageScaleFactor; }
 
-    void handleTap(const WebCore::IntPoint&);
+    void handleTap(const WebCore::IntPoint&, uint64_t lastLayerTreeTranscationId);
     void potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
-    void commitPotentialTap();
+    void commitPotentialTap(uint64_t lastLayerTreeTranscationId);
     void commitPotentialTapFailed();
     void cancelPotentialTap();
     void tapHighlightAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
@@ -528,7 +527,7 @@ public:
     void executeEditCommandWithCallback(const String&, uint64_t callbackID);
 
     std::chrono::milliseconds eventThrottlingDelay() const;
-#if ENABLE(INSPECTOR)
+
     void showInspectorHighlight(const WebCore::Highlight&);
     void hideInspectorHighlight();
 
@@ -537,7 +536,6 @@ public:
 
     void enableInspectorNodeSearch();
     void disableInspectorNodeSearch();
-#endif
 #endif
 
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
@@ -1185,7 +1183,7 @@ private:
     WebCore::IntSize m_windowResizerSize;
 
 #if ENABLE(CONTEXT_MENUS)
-    InjectedBundlePageContextMenuClient m_contextMenuClient;
+    std::unique_ptr<API::InjectedBundle::PageContextMenuClient> m_contextMenuClient;
 #endif
     InjectedBundlePageEditorClient m_editorClient;
     std::unique_ptr<API::InjectedBundle::FormClient> m_formClient;
@@ -1200,10 +1198,8 @@ private:
 
     FindController m_findController;
 
-#if ENABLE(INSPECTOR)
     RefPtr<WebInspector> m_inspector;
     RefPtr<WebInspectorUI> m_inspectorUI;
-#endif
 #if PLATFORM(IOS)
     RefPtr<WebVideoFullscreenManager> m_videoFullscreenManager;
 #endif

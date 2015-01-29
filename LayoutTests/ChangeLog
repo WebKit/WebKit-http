@@ -1,3 +1,1698 @@
+2015-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (OS X 10.10.2): media/track/track-in-band-style.html frequently times out
+        https://bugs.webkit.org/show_bug.cgi?id=140974
+
+        * platform/mac/TestExpectations: Added an expectation.
+
+2015-01-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Re-enable Sputnik.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/text/backslash-to-yen-sign-euc-expected.txt:
+
+2015-01-27  Roger Fong  <roger_fong@apple.com>
+
+        WebGL2: Disable various extensions on WebGL2 context that have been promoted to core.
+        https://bugs.webkit.org/show_bug.cgi?id=140907.
+        <rdar://problem/19545857>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/canvas/webgl/constants.html:
+
+2015-01-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More Windows rebaselines.
+
+        * platform/win/fast/events/ondrop-text-htmlt-expected.txt: Added.
+        * platform/win/fast/text/backslash-to-yen-sign-euc-expected.txt:
+        * platform/win/fast/text/fallback-traits-fixup-expected.txt:
+        * platform/win/fast/text/international/complex-character-based-fallback-expected.txt:
+
+2015-01-27  Eric Carlson  <eric.carlson@apple.com>
+
+        Simplify http/tests/media/video-play-stall.html
+        https://bugs.webkit.org/show_bug.cgi?id=140630
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/media/video-play-stall-expected.txt:
+        * http/tests/media/video-play-stall.html:
+        * http/tests/media/video-play-waiting-expected.txt: Added.
+        * http/tests/media/video-play-waiting.html: Added.
+        * media/content/long-test.mp4: Added. New media file with 30 second duration.
+        * media/content/long-test.ogv: Ditto.
+        * platform/mac/TestExpectations: Remove video-play-stall.html from the skip list. Mark 
+            video-play-waiting.html as flakey as it sometimes times out.
+
+2015-01-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Another round of bug filing and expectation updates.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/selectors: Added.
+        * platform/win/fast/selectors/064-expected.txt: Added.
+        * platform/win/fast/text/backslash-to-yen-sign-euc-expected.txt:
+        * platform/win/fast/text/backslash-to-yen-sign-expected.png: Added.
+        * platform/win/fast/text/drawBidiText-expected.txt: Added.
+        * platform/win/fast/text/fallback-traits-fixup-expected.txt:
+        * platform/win/fast/text/international/complex-character-based-fallback-expected.txt:
+        * platform/win/fast/text/international/hindi-spacing-expected.txt: Added.
+        * platform/win/fast/text/international/synthesized-italic-vertical-latin-expected.txt: Removed property svn:executable.
+        * platform/win/fast/text/international/unicode-bidi-plaintext-in-textarea-expected.txt: Added.
+        * platform/win/fast/text/unicode-variation-selector-expected.txt:
+        * platform/win/fast/text/whitespace: Added.
+        * platform/win/fast/text/whitespace/normal-after-nowrap-breaking-expected.txt: Added.
+        * platform/win/fast/writing-mode/Kusa-Makura-background-canvas-expected.txt:
+        * platform/win/fast/writing-mode/fieldsets-expected.txt: Added.
+        * platform/win/js/dom/global-constructors-attributes-dedicated-worker-expected.txt: Removed.
+        * platform/win/printing/iframe-print-expected.txt: Added.
+        * platform/win/transforms/2d/zoom-menulist-expected.txt: Added.
+
+2015-01-27  Benjamin Poulain  <benjamin@webkit.org>
+
+        Import the layout test style-sharing-type-and-readonly.html from blink
+        https://bugs.webkit.org/show_bug.cgi?id=125280
+
+        Reviewed by Sergio Villar Senin.
+
+        I fixed the bug a while ago but having one more test seems valuable.
+        This test is from blink: https://codereview.chromium.org/27033011
+        by Elliott Sprehn.
+
+        * fast/css/style-sharing-type-and-readonly-expected.txt: Added.
+        * fast/css/style-sharing-type-and-readonly.html: Added.
+
+2015-01-27  Benjamin Poulain  <benjamin@webkit.org>
+
+        Import some extra tests for r179132
+        https://bugs.webkit.org/show_bug.cgi?id=140930
+
+        Reviewed by Sam Weinig.
+
+        Add some tests that were done from previous attempts at fixing
+        the bug.
+
+        * fast/dom/SelectorAPI/tag-case-insensitive-expected.txt: Added.
+        * fast/dom/SelectorAPI/tag-case-insensitive.html: Added.
+        * fast/dom/SelectorAPI/tag-case-sensitive-expected.txt: Added.
+        * fast/dom/SelectorAPI/tag-case-sensitive.xhtml: Added.
+        * svg/css/case-sensitive-tags-expected.txt: Added.
+        * svg/css/case-sensitive-tags.html: Added.
+        * svg/dom/tag-case-sensitive-svg-in-html-expected.txt: Added.
+        * svg/dom/tag-case-sensitive-svg-in-html.html: Added.
+        Those tests were created by Alexandru Chiculita for
+        https://bugs.webkit.org/show_bug.cgi?id=83438
+
+        The patch was rejected at the time due to the perf impact.
+        That has been solved since then by the CSS JIT.
+
+        * svg/css/foreignObject-case-styling-expected.html: Added.
+        * svg/css/foreignObject-case-styling.html: Added.
+        This test is from Boris Zbarsky when he reported
+        https://bugs.webkit.org/show_bug.cgi?id=79444.
+
+2015-01-27  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Update test results and test expectations
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/css3/blending/blend-mode-simple-composited-expected.txt:
+        * platform/ios-simulator/css3/blending/blend-mode-simple-expected.txt:
+
+2015-01-26  Sylvain Galineau  <galineau@adobe.com>
+
+        CSSKeyframesRule::findRule() and deleteRule() should delete the last matching rule, not the first
+        https://bugs.webkit.org/show_bug.cgi?id=139732
+
+        Reviewed by Dean Jackson and Darin Adler.
+
+        Update existing keyframes OM tests to check for findRule/deleteRule matching order i.e. find/delete last specified rule.
+
+        * animations/keyframes-rule-expected.txt:
+        * animations/keyframes-rule.html:
+        * animations/unprefixed-keyframes-rule-expected.txt:
+        * animations/unprefixed-keyframes-rule.html:
+
+2015-01-27  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline fast/css/css2-system-fonts.html on iOS.
+
+        Rebaseline fast/css/css2-system-fonts.html on iOS after r179168.
+
+        * platform/ios-sim-deprecated/fast/css/css2-system-fonts-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/css2-system-fonts-expected.txt:
+        * platform/ios-simulator/fast/css/css2-system-fonts-expected.txt: Removed.
+
+2015-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/16801814> Media controls do not appear in 2 DRT tests
+
+        This doesn't appear to happen any more, although the tests are still flaky due to
+        flaky font metrics.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/media/controls-without-preload-expected.txt:
+
+2015-01-27  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed. Rebaseline several editing tests on Mac after r179168.
+
+        * platform/mac/editing/attributed-string/font-size-expected.txt:
+        * platform/mac/editing/attributed-string/vertical-align-expected.txt:
+
+2015-01-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unskip tests now that r179170 is in place.
+
+        * platform/win/TestExpectations:
+
+2015-01-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Adjust some expectations based on test bot display metrics.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/dom/adopt-node-crash-2-expected.txt:
+        * platform/win/fast/ondrop-text-html-expected.txt: Added.
+
+2015-01-27  Chris Dumez  <cdumez@apple.com>
+
+        HTMLElement.dir should only return known values
+        https://bugs.webkit.org/show_bug.cgi?id=140925
+
+        Reviewed by Darin Adler.
+
+        Update fast/dom/document-dir-property.html to make sure HTMLDocument.dir
+        and HTMLElement.dir only return known values, as per the HTML
+        specification.
+
+        * fast/dom/document-dir-property-expected.txt:
+        * fast/dom/document-dir-property.html:
+
+2015-01-27  Michal Poteralski  <m.poteralski@samsung.com>
+
+        [EFL] AX: Update test expectations for test related with AXRole.
+        https://bugs.webkit.org/show_bug.cgi?id=140933
+
+        Unreviewed EFL gardening.
+
+        roles-exposed.html's test expectation changed: for specified elements
+        AXRole value should NOT be equal AXUnknown but AXStatic because for ATK
+        version 2.15.2 there is new ATK_ROLE_STATIC role which should be used
+        instead of ATK_ROLE_UNKNOWN.
+
+        * platform/efl/accessibility/roles-exposed-expected.txt:
+
+2015-01-26  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline several CSS tests after r179168.
+
+        Computed line-height is no longer 'normal' but the font's line
+        spacing.
+
+        * fast/css/font-shorthand-line-height-expected.txt:
+        * fast/css/font-shorthand-line-height.html:
+        * platform/mac-mavericks/fast/css/css2-system-fonts-expected.txt:
+        * platform/mac/fast/css/css2-system-fonts-expected.txt:
+
+2015-01-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unskipping more tests after correcting baselines for Windows widgets.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/events/context-no-deselect-expected.png: Added.
+        * platform/win/fast/events/context-no-deselect-expected.txt: Added.
+        * platform/win/fast/events/dropzone-005-expected.txt: Added.
+        * platform/win/fast/events/ime-composition-events-001-expected.txt:
+        * platform/win/fast/events/key-events-in-input-button-expected.txt: Added.
+        * platform/win/fast/events/mouseup-from-button2-expected.txt: Added.
+        * platform/win/fast/flexbox: Added.
+        * platform/win/fast/flexbox/clear-overflow-before-scroll-update-expected.txt: Added.
+        * platform/win/fast/frames/flattening: Added.
+        * platform/win/fast/frames/flattening/frameset-flattening-simple-expected.txt: Added.
+        * platform/win/fast/multicol/client-rects-expected.png: Added.
+        * platform/win/fast/multicol/client-rects-expected.txt: Added.
+        * platform/win/fast/multicol/client-rects-spanners-complex-expected.png: Added.
+        * platform/win/fast/multicol/client-rects-spanners-complex-expected.txt: Added.
+        * platform/win/fast/multicol/client-rects-spanners-expected.png: Added.
+        * platform/win/fast/multicol/client-rects-spanners-expected.txt: Added.
+        * platform/win/fast/multicol/newmulticol: Added.
+        * platform/win/fast/multicol/newmulticol/client-rects-expected.png: Added.
+        * platform/win/fast/multicol/newmulticol/client-rects-expected.txt: Added.
+        * platform/win/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/win/fast/overflow/scrollRevealButton-expected.txt:
+        * platform/win/fast/parser/bad-xml-slash-expected.txt: Added.
+        * platform/win/fast/parser/document-write-option-expected.txt: Added.
+        * platform/win/fast/repaint/control-clip-expected.txt:
+        * platform/win/fast/replaced/object-with-embed-url-param-expected.txt: Added.
+        * platform/win/fast/replaced/replaced-breaking-expected.txt: Added.
+        * platform/win/fast/replaced/replaced-breaking-mixture-expected.txt: Added.
+        * platform/win/fast/replaced/width100percent-button-expected.txt:
+        * platform/win/fast/replaced/width100percent-checkbox-expected.txt: Added.
+        * platform/win/fast/replaced/width100percent-menulist-expected.txt: Added.
+        * platform/win/fast/replaced/width100percent-radio-expected.txt: Added.
+
+2015-01-26  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        Apply feTurbulence spec change to fix zero length vector generation
+        https://bugs.webkit.org/show_bug.cgi?id=140812
+
+        Reviewed by Darin Adler.
+
+        Ref test that generates a turbulence image which is then coloured black
+        and alpha min/maxxed (>0 becomes 1, 0 stays zero). This allows holes
+        caused by zero length vectors to be easily identified.
+
+        * svg/filters/feTurbulence_bad_seeds-expected.html: Added.
+        * svg/filters/feTurbulence_bad_seeds.html: Added.
+
+2015-01-26  Sylvain Galineau  <galineau@adobe.com>
+
+        The computed value of line-height:normal is incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=133744
+
+        Reviewed by Dean Jackson.
+
+        line-height:normal now computes to a length value.
+        This patch updates the tests to reflect the new computed value, as needed.
+
+        * css3/calc/line-height-expected.txt:
+        * editing/pasteboard/simplfiying-markup-should-not-strip-content-expected.txt:
+        * fast/css/font-calculated-value-expected.txt:
+        * fast/css/font-calculated-value.html:
+        * fast/css/font-shorthand-from-longhands-expected.txt:
+        * fast/css/font-shorthand-from-longhands.html:
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-font-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/getComputedStyle/script-tests/computed-style-font.js:
+        * fast/css/line-height-text-autosizing-expected.txt:
+        * fast/css/line-height-text-autosizing.html:
+        * fast/ruby/ruby-line-height-expected.txt:
+        * fast/ruby/script-tests/ruby-line-height.js:
+        * media/track/track-cue-rendering-on-resize-expected.txt:
+        * media/track/track-cue-rendering-on-resize.html:
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/anchor-element-expected.txt:
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/basic-expected.txt:
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/font-size-expected.txt:
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/font-style-variant-effect-expected.txt:
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/font-weight-expected.txt:
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/letter-spacing-expected.txt:
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/text-decorations-expected.txt:
+        * platform/mac-mavericks/platform/mac/editing/attributed-string/vertical-align-expected.txt:
+        * platform/mac/editing/attributed-string/anchor-element-expected.txt:
+        * platform/mac/editing/attributed-string/basic-expected.txt:
+        * platform/mac/editing/attributed-string/font-size-expected.txt:
+        * platform/mac/editing/attributed-string/font-style-variant-effect-expected.txt:
+        * platform/mac/editing/attributed-string/font-weight-expected.txt:
+        * platform/mac/editing/attributed-string/letter-spacing-expected.txt:
+        * platform/mac/editing/attributed-string/text-decorations-expected.txt:
+        * platform/mac/editing/attributed-string/vertical-align-expected.txt:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2015-01-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Windows gardening (removing more skips).
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/block/basic/011-expected.png: Added.
+        * platform/win/fast/block/basic/011-expected.txt: Added.
+        * platform/win/fast/block/float/overhanging-tall-block-expected.png: Added.
+        * platform/win/fast/block/float/overhanging-tall-block-expected.txt: Added.
+        * platform/win/fast/borders/bidi-002-expected.png: Added.
+        * platform/win/fast/borders/bidi-002-expected.txt: Added.
+        * platform/win/fast/borders/bidi-009a-expected.png: Added.
+        * platform/win/fast/borders/bidi-009a-expected.txt: Added.
+        * platform/win/fast/borders/border-fit-expected.txt: Added.
+        * platform/win/fast/dom/HTMLInputElement/input-image-alt-text-expected.png: Added.
+        * platform/win/fast/dom/HTMLInputElement/input-image-alt-text-expected.txt: Added.
+        * platform/win/fast/dom/HTMLInputElement/input-slider-update-expected.txt: Removed property svn:executable.
+        * platform/win/fast/dom/HTMLInputElement/input-slider-update-styled-expected.txt: Removed property svn:executable.
+        * platform/win/fast/dom/HTMLTableColElement: Added.
+        * platform/win/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.png: Added.
+        * platform/win/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.txt: Added.
+        * platform/win/fast/dom/call-a-constructor-as-a-function-expected.txt: Removed.
+
+2015-01-26  Chris Dumez  <cdumez@apple.com>
+
+        Document.dir should reflect the 'dir' attribute of the root html element
+        https://bugs.webkit.org/show_bug.cgi?id=140922
+
+        Reviewed by Darin Adler.
+
+        Update fast/dom/document-dir-property.html to reflect the behavior
+        change.
+
+        * fast/dom/document-dir-property-expected.txt:
+        * fast/dom/document-dir-property.html:
+
+2015-01-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Win] Enable JSC stress tests by default
+        https://bugs.webkit.org/show_bug.cgi?id=128307
+
+        Reviewed by Brent Fulgham.
+
+        * js/script-tests/date-constructor.js: Skipped on Windows.
+        * js/script-tests/sort-stability.js: Skipped on Windows.
+
+2015-01-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More test gardening.
+
+        * platform/win/TestExpectations:
+
+2015-01-26  Byungseon Shin  <sun.shin@lge.com>
+
+        Fix Border-radius clipping issue on a composited descendants
+        https://bugs.webkit.org/show_bug.cgi?id=138551
+
+        Reviewed by Simon Fraser.
+
+        Ref test that clips composited descendant by stacking context with border-radius and overflow hidden element.
+
+        * compositing/clipping/border-radius-overflow-hidden-stacking-context-expected.txt: Added.
+        * compositing/clipping/border-radius-overflow-hidden-stacking-context.html: Added.
+
+2015-01-26  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix CSS Selector's tag name matching when mixing HTML and XML
+        https://bugs.webkit.org/show_bug.cgi?id=140878
+
+        Reviewed by Darin Adler.
+
+        We had very little coverage for XHTML and XML in HTML.
+        I added lots of new tests to cover the basics.
+
+        * fast/dom/css-dom-read-2-expected.txt:
+        * fast/dom/css-dom-read-expected.txt:
+        CSSOM now provide the tagname in the original case instead of lowercase,
+        which is actually what the spec defines:
+        "If the character is not handled by one of the above rules and is greater
+         than or equal to U+0080, is "-" (U+002D) or "_" (U+005F), or is in one
+         of the ranges [0-9] (U+0030 to U+0039), [A-Z] (U+0041 to U+005A),
+         or [a-z] (U+0061 to U+007A), then the character itself."
+
+        * fast/css/tagname-and-namespace-case-sensitivity-xml-in-html-expected.html: Added.
+        * fast/css/tagname-and-namespace-case-sensitivity-xml-in-html.html: Added.
+        * fast/css/tagname-and-namespace-case-sensitivity-xml-in-xhtml-expected.xhtml: Added.
+        * fast/css/tagname-and-namespace-case-sensitivity-xml-in-xhtml.xhtml: Added.
+        * fast/css/tagname-case-sensitivity-svg-in-html-expected.html: Added.
+        * fast/css/tagname-case-sensitivity-svg-in-html.html: Added.
+        * fast/css/tagname-case-sensitivity-svg-in-xhtml-expected.xhtml: Added.
+        * fast/css/tagname-case-sensitivity-svg-in-xhtml.xhtml: Added.
+        * fast/css/tagname-case-sensitivity-xml-in-html-expected.html: Added.
+        * fast/css/tagname-case-sensitivity-xml-in-html.html: Added.
+        * fast/css/tagname-case-sensitivity-xml-in-xhtml-expected.xhtml: Added.
+        * fast/css/tagname-case-sensitivity-xml-in-xhtml.xhtml: Added.
+        * fast/selectors/element-closest-tagname-case-sensitivity-svg-in-html-expected.txt: Added.
+        * fast/selectors/element-closest-tagname-case-sensitivity-svg-in-html.html: Added.
+        * fast/selectors/element-closest-tagname-case-sensitivity-svg-in-xhtml-expected.txt: Added.
+        * fast/selectors/element-closest-tagname-case-sensitivity-svg-in-xhtml.xhtml: Added.
+        * fast/selectors/element-matches-tagname-case-sensitivity-svg-in-html-expected.txt: Added.
+        * fast/selectors/element-matches-tagname-case-sensitivity-svg-in-html.html: Added.
+        * fast/selectors/element-matches-tagname-case-sensitivity-svg-in-xhtml-expected.txt: Added.
+        * fast/selectors/element-matches-tagname-case-sensitivity-svg-in-xhtml.xhtml: Added.
+        * fast/selectors/querySelector-tagname-case-sensitivity-svg-in-html-expected.txt: Added.
+        * fast/selectors/querySelector-tagname-case-sensitivity-svg-in-html.html: Added.
+        * fast/selectors/querySelector-tagname-case-sensitivity-svg-in-xhtml-expected.txt: Added.
+        * fast/selectors/querySelector-tagname-case-sensitivity-svg-in-xhtml.xhtml: Added.
+        * fast/selectors/querySelector-tagname-case-sensitivity-xml-in-html-expected.txt: Added.
+        * fast/selectors/querySelector-tagname-case-sensitivity-xml-in-html.html: Added.
+        * fast/selectors/querySelector-tagname-case-sensitivity-xml-in-xhtml-expected.txt: Added.
+        * fast/selectors/querySelector-tagname-case-sensitivity-xml-in-xhtml.xhtml: Added.
+        * fast/selectors/tagname-adjacent-backtracking-case-sensitivity-html-expected.txt: Added.
+        * fast/selectors/tagname-adjacent-backtracking-case-sensitivity-html.html: Added.
+        * fast/selectors/tagname-descendant-backtracking-case-sensitivity-html-expected.txt: Added.
+        * fast/selectors/tagname-descendant-backtracking-case-sensitivity-html.html: Added.
+
+2015-01-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Remove references to removed tests from GTK+ TestExpectations.
+
+        Shared workers are no longer supported and the layout tests were
+        removed.
+
+        * platform/gtk/TestExpectations:
+
+2015-01-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179107.
+        https://bugs.webkit.org/show_bug.cgi?id=140880
+
+        The GCC in the bots doesn't support the AsyncTask
+        implementation (Requested by KaL on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Enable IndexedDB"
+        https://bugs.webkit.org/show_bug.cgi?id=98932
+        http://trac.webkit.org/changeset/179107
+
+2015-01-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=98932
+
+        Reviewed by Žan Doberšek.
+
+        * platform/gtk/TestExpectations: Update IndexedDB test expectations.
+
+2015-01-25  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Update expected results and test expectations
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        [...]
+
+2015-01-25  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/html/marquee-scrollamount.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=140851
+
+        Reviewed by Darin Adler.
+
+        Updated the test to not have a zero delay timer race. Added many comments, because
+        what is being tested here is quite subtle.
+
+        * fast/html/marquee-scrollamount.html:
+
+        * platform/efl/fast/html/marquee-scrollamount-expected.txt:
+        * platform/gtk/fast/html/marquee-scrollamount-expected.txt:
+        * platform/ios-simulator-wk2/fast/html/marquee-scrollamount-expected.txt:
+        * platform/mac/fast/html/marquee-scrollamount-expected.txt:
+        The DOM changed slightly, because we now insert the marquee after load event.
+
+2015-01-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Setting HTMLMarqueeElement.trueSpeed doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=140863
+
+        Reviewed by Darin Adler.
+
+        Verify that setting scrollDelay to a value under 60 actually works when trueSpeed is set.
+
+        * fast/html/marquee-set-truespeed-expected.html: Added.
+        * fast/html/marquee-set-truespeed.html: Added.
+
+2015-01-25  Chris Dumez  <cdumez@apple.com>
+
+        Remove 'font' shorthand property special casing
+        https://bugs.webkit.org/show_bug.cgi?id=140577
+
+        Reviewed by Darin Adler.
+
+        * fast/css/CSSPrimitiveValue-font-family-primitiveType-expected.txt: Added.
+        * fast/css/CSSPrimitiveValue-font-family-primitiveType.html: Added.
+        Add layout test to make sure that the font-family is still exposed to the
+        Web as a CSSValueList of CSSPrimitiveValues whose primitiveType is
+        CSS_STRING. This is useful because we now use a slightly different
+        representation internally.
+
+        * fast/css/font-shorthand-line-height-expected.txt:
+        * fast/css/font-shorthand-line-height.html:
+        Rebaseline the test. This is a progression. Setting the 'font' property
+        to a system font ID is supposed to reset the line-height property to
+        'normal'. It previously did not because system font IDs were not
+        expanded at parsing time. The new behavior is consistent with Chrome and
+        Firefox as well.
+
+        * fast/css/font-systemFontID-parsing-expected.txt: Added.
+        * fast/css/font-systemFontID-parsing.html: Added.
+        Add a layout test to make sure that the CSS parser is rejecting a 'font'
+        property with more than one system font id.
+
+2015-01-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        Document a few more failures in the expectations file.
+
+        * platform/win/TestExpectations:
+
+2015-01-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Document some Debug crashes in Accessibility code.
+
+        * platform/win/TestExpectations:
+
+2015-01-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        Skip crashes and timeouts to speed up test runs.
+
+        * platform/win/TestExpectations:
+
+2015-01-25  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, gardening for EFL port.
+
+        * platform/efl/TestExpectations: media/media-fullscreen-inline.html has been passed since r19100. 
+
+2015-01-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More rebaselines. (Tables)
+
+        * platform/win/tables/mozilla/bugs/bug1188-expected.png: Added.
+        * platform/win/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug18359-expected.png: Added.
+        * platform/win/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug2479-3-expected.png: Added.
+        * platform/win/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug2479-4-expected.png: Added.
+        * platform/win/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug29326-expected.png: Added.
+        * platform/win/tables/mozilla/bugs/bug29326-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug33855-expected.png: Added.
+        * platform/win/tables/mozilla/bugs/bug33855-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug4382-expected.png: Added.
+        * platform/win/tables/mozilla/bugs/bug4382-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug96334-expected.png: Added.
+        * platform/win/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/win/tables/mozilla/core/margins-expected.png: Added.
+        * platform/win/tables/mozilla/core/margins-expected.txt:
+        * platform/win/tables/mozilla/dom/tableDom-expected.png: Added.
+        * platform/win/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/win/tables/mozilla/other/move_row-expected.txt:
+        * platform/win/tables/mozilla_expected_failures/bugs/bug2479-5-expected.png: Added.
+        * platform/win/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/win/tables/mozilla_expected_failures/core/captions1-expected.png: Added.
+        * platform/win/tables/mozilla_expected_failures/core/captions1-expected.txt:
+        * platform/win/tables/mozilla_expected_failures/core/captions2-expected.png: Added.
+        * platform/win/tables/mozilla_expected_failures/core/captions2-expected.txt:
+
+2015-01-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed rebaselining.
+
+        Second batch: Fast
+
+        * platform/win/fast/block/float/float-avoidance-expected.png: Added.
+        * platform/win/fast/block/margin-collapse/103-expected.png: Added.
+        * platform/win/fast/canvas/fallback-content-expected.txt:
+        * platform/win/fast/css/non-standard-checkbox-size-expected.png: Added.
+        * platform/win/fast/css/non-standard-checkbox-size-expected.txt:
+        * platform/win/fast/dom/HTMLInputElement/input-slider-update-expected.txt:
+        * platform/win/fast/forms/001-expected.png:
+        * platform/win/fast/forms/001-expected.txt:
+        * platform/win/fast/forms/003-expected.png: Added.
+        * platform/win/fast/forms/003-expected.txt:
+        * platform/win/fast/forms/004-expected.png: Added.
+        * platform/win/fast/forms/004-expected.txt:
+        * platform/win/fast/forms/HTMLOptionElement_label01-expected.png: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label01-expected.txt:
+        * platform/win/fast/forms/HTMLOptionElement_label02-expected.png: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label02-expected.txt:
+        * platform/win/fast/forms/HTMLOptionElement_label03-expected.png: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label03-expected.txt:
+        * platform/win/fast/forms/HTMLOptionElement_label04-expected.png: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label04-expected.txt:
+        * platform/win/fast/forms/HTMLOptionElement_label06-expected.txt:
+        * platform/win/fast/forms/HTMLOptionElement_label07-expected.txt:
+        * platform/win/fast/forms/basic-inputs-expected.png:
+        * platform/win/fast/forms/basic-inputs-expected.txt:
+        * platform/win/fast/forms/basic-selects-expected.png:
+        * platform/win/fast/forms/basic-selects-expected.txt:
+        * platform/win/fast/forms/basic-textareas-quirks-expected.png: Added.
+        * platform/win/fast/forms/box-shadow-override-expected.png:
+        * platform/win/fast/forms/box-shadow-override-expected.txt:
+        * platform/win/fast/forms/control-clip-overflow-expected.png: Added.
+        * platform/win/fast/forms/control-clip-overflow-expected.txt:
+        * platform/win/fast/forms/control-restrict-line-height-expected.png: Added.
+        * platform/win/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/win/fast/forms/disabled-select-change-index-expected.png: Added.
+        * platform/win/fast/forms/disabled-select-change-index-expected.txt:
+        * platform/win/fast/forms/file/file-input-disabled-expected.png:
+        * platform/win/fast/forms/file/file-input-disabled-expected.txt:
+        * platform/win/fast/forms/form-element-geometry-expected.png: Added.
+        * platform/win/fast/forms/form-element-geometry-expected.txt:
+        * platform/win/fast/forms/formmove-expected.png: Added.
+        * platform/win/fast/forms/formmove-expected.txt:
+        * platform/win/fast/forms/indeterminate-expected.png: Added.
+        * platform/win/fast/forms/indeterminate-expected.txt:
+        * platform/win/fast/forms/input-appearance-height-expected.png: Added.
+        * platform/win/fast/forms/input-appearance-height-expected.txt:
+        * platform/win/fast/forms/input-appearance-selection-expected.png: Added.
+        * platform/win/fast/forms/input-appearance-selection-expected.txt: Added.
+        * platform/win/fast/forms/menulist-deselect-update-expected.txt:
+        * platform/win/fast/forms/menulist-no-overflow-expected.png: Added.
+        * platform/win/fast/forms/menulist-no-overflow-expected.txt:
+        * platform/win/fast/forms/menulist-restrict-line-height-expected.png: Added.
+        * platform/win/fast/forms/menulist-restrict-line-height-expected.txt:
+        * platform/win/fast/forms/menulist-separator-painting-expected.txt:
+        * platform/win/fast/forms/menulist-style-color-expected.png:
+        * platform/win/fast/forms/menulist-style-color-expected.txt:
+        * platform/win/fast/forms/menulist-width-change-expected.txt:
+        * platform/win/fast/forms/option-script-expected.txt:
+        * platform/win/fast/forms/option-strip-whitespace-expected.png: Added.
+        * platform/win/fast/forms/option-strip-whitespace-expected.txt:
+        * platform/win/fast/forms/option-text-clip-expected.png:
+        * platform/win/fast/forms/option-text-clip-expected.txt:
+        * platform/win/fast/forms/range/input-appearance-range-expected.png: Added.
+        * platform/win/fast/forms/range/input-appearance-range-expected.txt:
+        * platform/win/fast/forms/range/slider-delete-while-dragging-thumb-expected.txt: Added.
+        * platform/win/fast/forms/range/slider-mouse-events-expected.txt:
+        * platform/win/fast/forms/range/slider-onchange-event-expected.txt: Added.
+        * platform/win/fast/forms/range/slider-padding-expected.txt:
+        * platform/win/fast/forms/range/slider-thumb-shared-style-expected.png: Added.
+        * platform/win/fast/forms/range/slider-thumb-shared-style-expected.txt:
+        * platform/win/fast/forms/range/slider-zoomed-expected.txt: Added.
+        * platform/win/fast/forms/select-align-expected.png: Added.
+        * platform/win/fast/forms/select-align-expected.txt:
+        * platform/win/fast/forms/select-background-none-expected.txt:
+        * platform/win/fast/forms/select-baseline-expected.png: Added.
+        * platform/win/fast/forms/select-baseline-expected.txt:
+        * platform/win/fast/forms/select-change-listbox-to-popup-expected.png: Added.
+        * platform/win/fast/forms/select-change-listbox-to-popup-expected.txt:
+        * platform/win/fast/forms/select-change-popup-to-listbox-expected.png: Added.
+        * platform/win/fast/forms/select-change-popup-to-listbox-expected.txt: Added.
+        * platform/win/fast/forms/select-disabled-appearance-expected.png: Added.
+        * platform/win/fast/forms/select-disabled-appearance-expected.txt:
+        * platform/win/fast/forms/select-initial-position-expected.png: Added.
+        * platform/win/fast/forms/select-initial-position-expected.txt:
+        * platform/win/fast/forms/select-selected-expected.png: Added.
+        * platform/win/fast/forms/select-selected-expected.txt:
+        * platform/win/fast/forms/select-size-expected.txt:
+        * platform/win/fast/forms/select-style-expected.png: Added.
+        * platform/win/fast/forms/select-style-expected.txt:
+        * platform/win/fast/forms/select-visual-hebrew-expected.txt:
+        * platform/win/fast/forms/select-writing-direction-natural-expected.png:
+        * platform/win/fast/forms/select-writing-direction-natural-expected.txt:
+        * platform/win/fast/forms/select/optgroup-rendering-expected.png:
+        * platform/win/fast/forms/select/optgroup-rendering-expected.txt:
+        * platform/win/fast/forms/selectlist-minsize-expected.txt:
+        * platform/win/fast/forms/stuff-on-my-optgroup-expected.png: Added.
+        * platform/win/fast/forms/stuff-on-my-optgroup-expected.txt:
+        * platform/win/fast/invalid: Added.
+        * platform/win/fast/invalid/014-expected.txt: Added.
+        * platform/win/fast/multicol/pagination/RightToLeft-rl-hittest-expected.txt:
+        * platform/win/fast/parser: Added.
+        * platform/win/fast/parser/entity-comment-in-textarea-expected.txt: Added.
+        * platform/win/fast/parser/open-comment-in-textarea-expected.txt: Added.
+        * platform/win/fast/repaint/slider-thumb-drag-release-expected.txt:
+        * platform/win/fast/replaced/three-selects-break-expected.txt:
+        * platform/win/fast/text/international/bidi-menulist-expected.txt:
+        * platform/win/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt:
+        * platform/win/fast/text/textIteratorNilRenderer-expected.txt:
+
+2015-01-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed baseline update.
+
+        First batch: CSS updates.
+
+        * platform/win/css2.1/t09-c5526c-display-00-e-expected.txt:
+        * platform/win/css3/selectors3/html/css3-modsel-161-expected.png:
+        * platform/win/css3/selectors3/html/css3-modsel-161-expected.txt:
+        * platform/win/css3/selectors3/html/css3-modsel-25-expected.png:
+        * platform/win/css3/selectors3/html/css3-modsel-25-expected.txt:
+        * platform/win/css3/selectors3/html/css3-modsel-70-expected.png:
+        * platform/win/css3/selectors3/html/css3-modsel-70-expected.txt:
+        * platform/win/css3/selectors3/xhtml/css3-modsel-161-expected.png:
+        * platform/win/css3/selectors3/xhtml/css3-modsel-161-expected.txt:
+        * platform/win/css3/selectors3/xhtml/css3-modsel-25-expected.png:
+        * platform/win/css3/selectors3/xhtml/css3-modsel-25-expected.txt:
+        * platform/win/css3/selectors3/xhtml/css3-modsel-70-expected.png:
+        * platform/win/css3/selectors3/xhtml/css3-modsel-70-expected.txt:
+        * platform/win/css3/selectors3/xml/css3-modsel-161-expected.png:
+        * platform/win/css3/selectors3/xml/css3-modsel-161-expected.txt:
+        * platform/win/css3/selectors3/xml/css3-modsel-25-expected.png:
+        * platform/win/css3/selectors3/xml/css3-modsel-25-expected.txt:
+        * platform/win/css3/selectors3/xml/css3-modsel-70-expected.png:
+        * platform/win/css3/selectors3/xml/css3-modsel-70-expected.txt:
+        * platform/win/fast/block/float/float-avoidance-expected.txt:
+        * platform/win/fast/block/margin-collapse/103-expected.txt:
+
+2015-01-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening. Reactivating tests.
+
+        Re-enable a series of tests that work properly on Windows. New baselines will be needed.
+
+        * platform/win/TestExpectations:
+        * platform/win/css1/box_properties/acid_test-expected.png: Added.
+        * platform/win/css1/box_properties/acid_test-expected.txt:
+        * platform/win/editing/input/caret-at-the-edge-of-input-expected.txt:
+        * platform/win/fast/block/float/float-avoidance-expected.txt:
+        * platform/win/fast/block/margin-collapse/103-expected.txt:
+        * platform/win/fast/css/box-shadow-and-border-radius-expected.png:
+        * platform/win/fast/dynamic/008-expected.txt: Added.
+        * platform/win/fast/forms/001-expected.png: Added.
+        * platform/win/fast/forms/001-expected.txt:
+        * platform/win/fast/forms/003-expected.txt:
+        * platform/win/fast/forms/004-expected.txt:
+        * platform/win/fast/forms/006-expected.png: Added.
+        * platform/win/fast/forms/007-expected.png: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label01-expected.txt: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label02-expected.txt: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label03-expected.txt: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label04-expected.txt: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label05-expected.txt: Added.
+        * platform/win/fast/forms/HTMLOptionElement_label06-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/HTMLOptionElement_label07-expected.txt: Added.
+        * platform/win/fast/forms/basic-buttons-expected.png: Added.
+        * platform/win/fast/forms/basic-buttons-expected.txt: Added.
+        * platform/win/fast/forms/basic-inputs-expected.png: Added.
+        * platform/win/fast/forms/basic-selects-expected.txt:
+        * platform/win/fast/forms/basic-textareas-expected.png: Added.
+        * platform/win/fast/forms/box-shadow-override-expected.png: Added.
+        * platform/win/fast/forms/box-shadow-override-expected.txt: Added.
+        * platform/win/fast/forms/button-positioned-expected.txt: Added.
+        * platform/win/fast/forms/button-sizes-expected.txt: Added.
+        * platform/win/fast/forms/button-style-color-expected.txt: Added.
+        * platform/win/fast/forms/button-text-transform-expected.txt: Added.
+        * platform/win/fast/forms/control-clip-overflow-expected.txt: Added.
+        * platform/win/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/win/fast/forms/disabled-select-change-index-expected.txt: Added.
+        * platform/win/fast/forms/form-element-geometry-expected.txt: Added.
+        * platform/win/fast/forms/hidden-listbox-expected.txt: Added.
+        * platform/win/fast/forms/input-appearance-focus-expected.txt: Added.
+        * platform/win/fast/forms/input-double-click-selection-gap-bug-expected.txt: Added.
+        * platform/win/fast/forms/input-readonly-autoscroll-expected.txt: Added.
+        * platform/win/fast/forms/input-text-double-click-expected.txt: Added.
+        * platform/win/fast/forms/listbox-hit-test-zoomed-expected.txt: Added.
+        * platform/win/fast/forms/listbox-scrollbar-incremental-load-expected.txt: Added.
+        * platform/win/fast/forms/listbox-width-change-expected.txt: Added.
+        * platform/win/fast/forms/menulist-deselect-update-expected.txt:
+        * platform/win/fast/forms/menulist-no-overflow-expected.txt: Added.
+        * platform/win/fast/forms/number/number-appearance-rtl-expected.txt: Added.
+        * platform/win/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.txt: Added.
+        * platform/win/fast/forms/number/number-appearance-spinbutton-layer-expected.txt: Added.
+        * platform/win/fast/forms/option-strip-whitespace-expected.txt: Added.
+        * platform/win/fast/forms/plaintext-mode-2-expected.txt: Added.
+        * platform/win/fast/forms/search: Added.
+        * platform/win/fast/forms/search/search-size-with-decorations-expected.txt: Added.
+        * platform/win/fast/forms/select-align-expected.txt: Added.
+        * platform/win/fast/forms/select-baseline-expected.txt: Added.
+        * platform/win/fast/forms/select-block-background-expected.txt: Added.
+        * platform/win/fast/forms/select-change-listbox-size-expected.txt: Added.
+        * platform/win/fast/forms/select-change-listbox-to-popup-expected.txt: Added.
+        * platform/win/fast/forms/select-dirty-parent-pref-widths-expected.txt: Added.
+        * platform/win/fast/forms/select-disabled-appearance-expected.txt: Added.
+        * platform/win/fast/forms/select-initial-position-expected.txt: Added.
+        * platform/win/fast/forms/select-item-background-clip-expected.txt: Added.
+        * platform/win/fast/forms/select-list-box-with-height-expected.txt: Added.
+        * platform/win/fast/forms/select-selected-expected.txt: Added.
+        * platform/win/fast/forms/select/optgroup-rendering-expected.txt:
+        * platform/win/fast/forms/tabbing-input-iframe-expected.txt: Added.
+        * platform/win/fast/frames: Added.
+        * platform/win/fast/frames/take-focus-from-iframe-expected.txt: Added.
+        * platform/win/fast/multicol/pagination: Added.
+        * platform/win/fast/multicol/pagination/LeftToRight-tb-hittest-expected.txt: Added.
+        * platform/win/fast/multicol/pagination/RightToLeft-rl-hittest-expected.txt: Added.
+        * platform/win/fast/overflow/entity-comment-in-textarea-expected.txt: Added.
+        * platform/win/fast/overflow/open-comment-in-textarea-expected.txt: Added.
+        * platform/win/fast/overflow/overflow-x-y-expected.txt: Added.
+        * platform/win/fast/table/003-expected.txt: Added.
+        * platform/win/fast/table/colspanMinWidth-expected.txt: Added.
+        * platform/win/fast/table/colspanMinWidth-vertical-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug103533-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug1188-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug12384-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug1318-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug2479-2-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug29326-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug30559-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug30692-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug33855-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug4382-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug4429-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug44505-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug55545-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug92647-2-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug96334-expected.txt: Added.
+        * platform/win/tables/mozilla/bugs/bug99948-expected.txt: Added.
+        * platform/win/tables/mozilla/core: Added.
+        * platform/win/tables/mozilla/core/bloomberg-expected.txt: Added.
+        * platform/win/tables/mozilla/core/margins-expected.txt: Added.
+        * platform/win/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/win/tables/mozilla/marvin/x_col_align_justify-expected.png: Added.
+        * platform/win/tables/mozilla_expected_failures/bugs/bug1725-expected.txt:
+        * platform/win/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/win/tables/mozilla_expected_failures/bugs/bug45621-expected.txt: Added.
+        * platform/win/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt:
+
+2015-01-24  Darin Adler  <darin@apple.com>
+
+        Move height/width implementation for use element from RenderSVGViewportContainer to SVGUseElement
+        https://bugs.webkit.org/show_bug.cgi?id=140826
+
+        Reviewed by Anders Carlsson.
+
+        * platform/mac/svg/custom/relative-sized-shadow-tree-content-with-symbol-expected.png: Old test
+        result was expecting failure. New one expects success.
+        * platform/mac/svg/custom/relative-sized-shadow-tree-content-with-symbol-expected.txt: Ditto.
+        * svg/animations/use-animate-width-and-height-expected.txt: Added.
+        * svg/animations/use-animate-width-and-height.html: Added.
+        * svg/custom/use-attribute-invalidations-expected.html: Added.
+        * svg/custom/use-attribute-invalidations.html: Added.
+        * svg/custom/use-dynamic-attribute-setting-expected.html: Added.
+        * svg/custom/use-dynamic-attribute-setting.html: Added.
+
+2015-01-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening. Add Windows baseline for
+        mouse-cursor-image-set.
+
+        * platform/win/fast/events/mouse-cursor-image-set-expected.txt: Added.
+
+2015-01-23  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add pointer/hover media queries
+        https://bugs.webkit.org/show_bug.cgi?id=134822
+
+        Reviewed by Antti Koivisto.
+
+        * fast/media/mq-any-hover-cssom-expected.txt: Added.
+        * fast/media/mq-any-hover-cssom.html: Added.
+        * fast/media/mq-any-hover-invalid-expected.txt: Added.
+        * fast/media/mq-any-hover-invalid.html: Added.
+        * fast/media/mq-any-hover-matchMedia-expected.txt: Added.
+        * fast/media/mq-any-hover-matchMedia.html: Added.
+        * fast/media/mq-any-hover-styling-expected.txt: Added.
+        * fast/media/mq-any-hover-styling.html: Added.
+        * fast/media/mq-any-pointer-cssom-expected.txt: Added.
+        * fast/media/mq-any-pointer-cssom.html: Added.
+        * fast/media/mq-any-pointer-invalid-expected.txt: Added.
+        * fast/media/mq-any-pointer-invalid.html: Added.
+        * fast/media/mq-any-pointer-matchMedia-expected.txt: Added.
+        * fast/media/mq-any-pointer-matchMedia.html: Added.
+        * fast/media/mq-any-pointer-styling-expected.txt: Added.
+        * fast/media/mq-any-pointer-styling.html: Added.
+        * fast/media/mq-hover-cssom-expected.txt: Added.
+        * fast/media/mq-hover-cssom.html: Added.
+        * fast/media/mq-hover-invalid-expected.txt: Added.
+        * fast/media/mq-hover-invalid.html: Added.
+        * fast/media/mq-hover-matchMedia-expected.txt: Added.
+        * fast/media/mq-hover-matchMedia.html: Added.
+        * fast/media/mq-hover-styling-expected.txt: Added.
+        * fast/media/mq-hover-styling.html: Added.
+        * fast/media/mq-pointer-cssom-expected.txt: Added.
+        * fast/media/mq-pointer-cssom.html: Added.
+        * fast/media/mq-pointer-expected.txt:
+        * fast/media/mq-pointer-invalid-expected.txt: Added.
+        * fast/media/mq-pointer-invalid.html: Added.
+        * fast/media/mq-pointer-matchMedia-expected.txt: Added.
+        * fast/media/mq-pointer-matchMedia.html: Added.
+        * fast/media/mq-pointer-styling-expected.txt: Added.
+        * fast/media/mq-pointer-styling.html: Added.
+        * fast/media/mq-pointer.html:
+        * platform/ios-simulator/fast/media/mq-any-hover-matchMedia-expected.txt: Added.
+        * platform/ios-simulator/fast/media/mq-any-hover-styling-expected.txt: Added.
+        * platform/ios-simulator/fast/media/mq-any-pointer-matchMedia-expected.txt: Added.
+        * platform/ios-simulator/fast/media/mq-any-pointer-styling-expected.txt: Added.
+        * platform/ios-simulator/fast/media/mq-hover-matchMedia-expected.txt: Added.
+        * platform/ios-simulator/fast/media/mq-hover-styling-expected.txt: Added.
+        * platform/ios-simulator/fast/media/mq-pointer-expected.txt: Added.
+        * platform/ios-simulator/fast/media/mq-pointer-matchMedia-expected.txt: Added.
+        * platform/ios-simulator/fast/media/mq-pointer-styling-expected.txt: Added.
+
+2015-01-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179051.
+        https://bugs.webkit.org/show_bug.cgi?id=140850
+
+        broke the 32-bit build (Requested by thorton on #webkit).
+
+        Reverted changeset:
+
+        "[Mac][EME] Support ClearKey encryption with AES128-encrypted
+        HLS"
+        https://bugs.webkit.org/show_bug.cgi?id=140825
+        http://trac.webkit.org/changeset/179051
+
+2015-01-23  Jer Noble  <jer.noble@apple.com>
+
+        [Mac][EME] Support ClearKey encryption with AES128-encrypted HLS
+        https://bugs.webkit.org/show_bug.cgi?id=140825
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/clearkey/clear-key-hls-aes128-expected.txt: Added.
+        * http/tests/media/clearkey/clear-key-hls-aes128.html: Added.
+        * http/tests/media/clearkey/support.js: Added.
+        (stringToUInt8Array):
+        (uInt8ArrayToString):
+        (base64EncodeUint8Array):
+        * http/tests/media/resources/hls/clearkey/crypt0.key: Added.
+        * http/tests/media/resources/hls/clearkey/iframe_index.m3u8: Added.
+        * http/tests/media/resources/hls/clearkey/main0.ts: Added.
+        * http/tests/media/resources/hls/clearkey/prog_index.m3u8: Added.
+        * media/video-test.js:
+        (waitForEventOnceOn):
+
+2015-01-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening: Correct some typos in Failure entries.
+
+        * platform/win/TestExpectations:
+
+2015-01-23  Bartlomiej Gajda  <b.gajda@samsung.com>
+
+        [MSE] Implement Range Removal algorithm.
+        https://bugs.webkit.org/show_bug.cgi?id=140622.
+
+        Reviewed by Jer Noble.
+
+        Added short test to check whether endOfStream incorrectly switches back
+        to 'open' state.
+
+        * media/media-source/media-source-end-of-stream-readyState.html: Added.
+        * media/media-source/media-source-end-of-stream-readyState-expected.txt: Added.
+
+2015-01-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Test gardening. Mark a few failures after filing bugs.
+
+        Also rebaseline a few tests.
+
+        * platform/win/TestExpectations:
+        * platform/win/accessibility/parent-element-expected.txt:
+        * platform/win/editing/input/caret-at-the-edge-of-input-expected.png: Added.
+        * platform/win/editing/input/caret-at-the-edge-of-input-expected.txt: Added.
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2015-01-23  Enrica Casucci  <enrica@apple.com>
+
+        Hit test returns incorrect results when performed in paginated content over the page gaps.
+        https://bugs.webkit.org/show_bug.cgi?id=140837
+        rdar://problem/17494390
+
+        Reviewed by Dave Hyatt.
+
+        * fast/multicol/pagination/LeftToRight-tb-hittest-expected.txt: Added.
+        * fast/multicol/pagination/LeftToRight-tb-hittest.html: Added.
+        * fast/multicol/pagination/RightToLeft-rl-hittest-expected.txt: Added.
+        * fast/multicol/pagination/RightToLeft-rl-hittest.html: Added.
+
+2015-01-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening after landing r179024.
+
+        Update Windows-specific accessibility tests and test expectations after making Windows AX output match Mac.
+        This allows us to share more Mac results.
+
+        * platform/win/TestExpectations:
+        * platform/win/accessibility/adjacent-continuations-cause-assertion-failure-expected.txt:
+        * platform/win/accessibility/aria-checkbox-text-expected.txt: Removed.
+        * platform/win/accessibility/aria-combobox-expected.txt:
+        * platform/win/accessibility/aria-fallback-roles-expected.txt: Removed.
+        * platform/win/accessibility/aria-hidden-expected.txt: Removed.
+        * platform/win/accessibility/aria-labelledby-on-input-expected.txt: Removed.
+        * platform/win/accessibility/aria-labelledby-overrides-aria-label-expected.txt:
+        * platform/win/accessibility/aria-labelledby-overrides-label-expected.txt: Removed.
+        * platform/win/accessibility/aria-list-and-listitem-expected.txt:
+        * platform/win/accessibility/aria-mappings-expected.txt: Added.
+        * platform/win/accessibility/aria-menubar-menuitems-expected.txt:
+        * platform/win/accessibility/aria-option-role-expected.txt:
+        * platform/win/accessibility/aria-presentational-role-expected.txt: Removed.
+        * platform/win/accessibility/aria-roles-expected.txt:
+        * platform/win/accessibility/aria-tab-role-on-buttons-expected.txt:
+        * platform/win/accessibility/aria-tab-roles-expected.txt:
+        * platform/win/accessibility/aria-toggle-button-with-title-expected.txt: Removed.
+        * platform/win/accessibility/canvas-description-and-role-expected.txt:
+        * platform/win/accessibility/canvas-fallback-content-expected.txt:
+        * platform/win/accessibility/css-content-attribute-expected.txt: Added.
+        * platform/win/accessibility/deleting-iframe-destroys-axcache-expected.txt:
+        * platform/win/accessibility/div-within-anchors-causes-crash-expected.txt:
+        * platform/win/accessibility/document-enabled-state-expected.txt:
+        * platform/win/accessibility/document-enabled-state.html:
+        * platform/win/accessibility/document-role-expected.txt:
+        * platform/win/accessibility/heading-elements-expected.txt:
+        * platform/win/accessibility/heading-elements.html:
+        * platform/win/accessibility/image-map1-expected.txt: Added.
+        * platform/win/accessibility/image-with-alt-and-map-expected.txt: Added.
+        * platform/win/accessibility/img-alt-attribute-expected.txt:
+        * platform/win/accessibility/img-alt-attribute.html:
+        * platform/win/accessibility/img-alt-tag-only-whitespace-expected.txt: Removed.
+        * platform/win/accessibility/img-aria-button-alt-tag-expected.txt: Removed.
+        * platform/win/accessibility/img-fallsback-to-title-expected.txt: Removed.
+        * platform/win/accessibility/input-image-alt-expected.txt: Removed.
+        * platform/win/accessibility/linked-elements-expected.txt:
+        * platform/win/accessibility/linked-elements.html:
+        * platform/win/accessibility/list-item-role-expected.txt:
+        * platform/win/accessibility/list-item-role.html:
+        * platform/win/accessibility/list-marker-role-expected.txt:
+        * platform/win/accessibility/list-marker-role.html:
+        * platform/win/accessibility/list-role-expected.txt:
+        * platform/win/accessibility/list-role.html:
+        * platform/win/accessibility/multiple-select-element-role-expected.txt:
+        * platform/win/accessibility/multiple-select-element-role.html:
+        * platform/win/accessibility/parent-element-expected.txt:
+        * platform/win/accessibility/parent-element.html:
+        * platform/win/accessibility/select-element-role-expected.txt:
+        * platform/win/accessibility/select-element-role.html:
+        * platform/win/accessibility/selection-and-focus-expected.txt:
+        * platform/win/accessibility/selection-and-focus.html:
+        * platform/win/accessibility/single-select-children.html:
+        * platform/win/accessibility/svg-image-expected.txt: Removed.
+        * platform/win/accessibility/text-role-expected.txt:
+        * platform/win/aria-labelledby-overrides-aria-label-actual.txt: Added.
+
+2015-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Object Previews in the Console
+        https://bugs.webkit.org/show_bug.cgi?id=129204
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/command-line-api-exception-nested-catch.html:
+        * inspector/debugger/command-line-api-exception.html:
+        * inspector/model/remote-object-get-properties.html:
+        Update RuntimeManager callsites to not ask for previews when evaluating.
+
+        * inspector/model/remote-object-expected.txt: Added.
+        * inspector/model/remote-object.html: Added.
+        Add a test specifically for Remote Object. This test can also be
+        opened in a browser. It attempts to run the gamut of all different
+        types of objects and shows the RemoteObject constructed for it.
+
+2015-01-23  Eric Carlson  <eric.carlson@apple.com>
+
+        Create a "load and stall" cgi that support byte ranges.
+        https://bugs.webkit.org/show_bug.cgi?id=140628
+
+        Reviewed by Jer Noble.
+
+        * http/tests/media/resources/serve-video.php: Add support for "stallOffset", "stallDuration", 
+            and "chunkSize" parameters.
+
+2015-01-23  Alexey Proskuryakov  <ap@apple.com>
+
+        svg-resource-fragment-identifier-img-src.html is a hidpi reftest, but its -expected.html
+        counterpart isn't hidpi
+        https://bugs.webkit.org/show_bug.cgi?id=140815
+
+        Reviewed by Simon Fraser.
+
+        * svg/css/svg-resource-fragment-identifier-img-src-expected.html: Make the expectation
+        match its test.
+
+2015-01-23  Chris Dumez  <cdumez@apple.com>
+
+        Rewrite the fast/css/css2-system-fonts.html test to be more useful on all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=140810
+
+        Reviewed by Andreas Kling.
+
+        Make the fast/css/css2-system-fonts.html explicit about the font styles
+        expected on each platform instead of just Mac.
+
+        It also converts the test to be text only as the style information is
+        now displayed in text format.
+
+        This change is in preparation for a refactor of system font handling.
+
+        This change is based on the following Blink revision by
+        <alancutter@chromium.org>:
+        http://src.chromium.org/viewvc/blink?view=revision&revision=169612
+
+        * fast/css/css2-system-fonts.html:
+        * platform/efl/fast/css/css2-system-fonts-expected.png: Removed.
+        * platform/efl/fast/css/css2-system-fonts-expected.txt: Removed.
+        * platform/gtk/fast/css/css2-system-fonts-expected.png: Removed.
+        * platform/gtk/fast/css/css2-system-fonts-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/css2-system-fonts-expected.txt:
+        * platform/mac-mavericks/fast/css/css2-system-fonts-expected.png: Removed.
+        * platform/mac-mavericks/fast/css/css2-system-fonts-expected.txt:
+        * platform/mac-mountainlion/fast/css/css2-system-fonts-expected.txt: Removed.
+        * platform/mac/fast/css/css2-system-fonts-expected.png: Removed.
+        * platform/mac/fast/css/css2-system-fonts-expected.txt:
+
+2015-01-22  Chris Dumez  <cdumez@apple.com>
+
+        Import fast/css/font-shorthand-line-height.html layout test from Blink
+        https://bugs.webkit.org/show_bug.cgi?id=140801
+
+        Reviewed by Andreas Kling.
+
+        Import fast/css/font-shorthand-line-height.html layout test from Blink
+        to get better test coverage for 'line-height' font shorthands cascades:
+        https://src.chromium.org/viewvc/blink?view=rev&revision=184346
+
+        I am working on expanding the font shorthand at parsing time (like
+        other shorthands) via Bug 140577 and I want to make sure I don't break
+        line-height in the process.
+
+        * fast/css/font-shorthand-line-height-expected.txt: Added.
+        * fast/css/font-shorthand-line-height.html: Added.
+
+2015-01-22  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (174847): can't view NHK(Japan's national public broadcasting organization)’s news pages
+        https://bugs.webkit.org/show_bug.cgi?id=140794
+
+        Reviewed by Anders Carlsson.
+
+        * js/dom/document-overwrite-open-expected.txt: Added.
+        * js/dom/document-overwrite-open.html: Added.
+
+2015-01-22  Roger Fong  <roger_fong@apple.com>
+
+        [WebGL2] Create empty interface files for new WebGL2 objects.
+        https://bugs.webkit.org/show_bug.cgi?id=140779.
+        <rdar://problem/15002288>
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mountainlion/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2015-01-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip another copy of oes-vertex-array-object test, because it has the same problems
+        as the old one.
+
+        * platform/mac/TestExpectations:
+
+2015-01-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test gardening.
+
+        Clean up editing-related tests and rebaseline some output.
+
+        * platform/win/TestExpectations:
+        * platform/win/editing/input/reveal-caret-of-multiline-contenteditable-expected.txt:
+        * platform/win/editing/input/reveal-caret-of-multiline-input-expected.txt:
+        * platform/win/editing/inserting/4960120-1-expected.txt:
+        * platform/win/editing/inserting/break-blockquote-after-delete-expected.txt:
+        * platform/win/editing/inserting/insert-3907422-fix-expected.txt: Removed.
+        * platform/win/editing/pasteboard/4641033-expected.txt: Added.
+        * platform/win/editing/pasteboard/4944770-1-expected.txt: Added.
+        * platform/win/editing/pasteboard/4944770-2-expected.txt: Added.
+        * platform/win/editing/pasteboard/drop-text-without-selection-expected.txt: Added.
+        * platform/win/editing/selection/3690703-2-expected.txt:
+        * platform/win/editing/selection/3690703-expected.txt:
+        * platform/win/editing/selection/3690719-expected.txt:
+        * platform/win/editing/selection/4975120-expected.txt: Added.
+        * platform/win/editing/selection/5240265-expected.txt:
+        * platform/win/editing/selection/caret-before-select-expected.txt: Added.
+        * platform/win/editing/selection/caret-rtl-2-expected.txt: Added.
+        * platform/win/editing/selection/caret-rtl-2-left-expected.txt:
+        * platform/win/editing/selection/caret-rtl-expected.txt: Added.
+        * platform/win/editing/selection/caret-rtl-right-expected.txt:
+        * platform/win/editing/selection/drag-select-1-expected.txt: Added.
+        * platform/win/editing/selection/mixed-editability-10-expected.txt:
+        * platform/win/editing/selection/replaced-boundaries-3-expected.txt: Added.
+        * platform/win/editing/selection/select-box-expected.txt: Added.
+        * platform/win/editing/selection/select-element-paragraph-boundary-expected.txt: Added.
+        * platform/win/editing/selection/select-from-textfield-outwards-expected.txt:
+        * platform/win/editing/selection/selection-button-text-expected.txt:
+        * platform/win/editing/selection/vertical-rl-ltr-extend-line-backward-wrap-expected.txt:
+        * platform/win/editing/selection/vertical-rl-ltr-extend-line-forward-wrap-expected.txt:
+        * platform/win/editing/selection/vertical-rl-rtl-extend-line-backward-br-expected.txt:
+
+2015-01-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed, skip flakey inspector test.
+
+        * TestExpectations:
+
+2015-01-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Crash in URL::protocol() after appcache load fails
+        https://bugs.webkit.org/show_bug.cgi?id=140755
+        rdar://problem/7881290
+
+        * http/tests/appcache/404-resource-with-slow-main-resource.php: Try updating the
+        tiemout, as it's not sufficient for appcache load to fail on some bots.
+
+2015-01-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Crash in URL::protocol() after appcache load fails
+        https://bugs.webkit.org/show_bug.cgi?id=140755
+        rdar://problem/7881290
+
+        Reviewed by Dan Bates.
+
+        * http/tests/appcache/404-resource-with-slow-main-resource-expected.txt: Added.
+        * http/tests/appcache/404-resource-with-slow-main-resource.php: Added.
+
+2015-01-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r178894.
+        https://bugs.webkit.org/show_bug.cgi?id=140775
+
+        Broke JSC and bindings tests (Requested by ap_ on #webkit).
+
+        Reverted changeset:
+
+        "put_by_val_direct need to check the property is index or not
+        for using putDirect / putDirectIndex"
+        https://bugs.webkit.org/show_bug.cgi?id=140426
+        http://trac.webkit.org/changeset/178894
+
+2015-01-22  Mark Lam  <mark.lam@apple.com>
+
+        BytecodeGenerator::initializeCapturedVariable() sets a misleading value for the 5th operand of op_put_to_scope.
+        <https://webkit.org/b/140743>
+
+        Reviewed by Oliver Hunt.
+
+        * js/dfg-osr-exit-between-create-and-tearoff-arguments-expected.txt: Added.
+        * js/dfg-osr-exit-between-create-and-tearoff-arguments.html: Added.
+        * js/script-tests/dfg-osr-exit-between-create-and-tearoff-arguments.js: Added.
+        (foo):
+
+2015-01-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More unskips and rebaselines. 
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/repaint/repaint-across-writing-mode-boundary-expected.png:
+        * platform/win/fast/repaint/repaint-across-writing-mode-boundary-expected.txt:
+        * platform/win/inspector-protocol: Added.
+        * platform/win/inspector-protocol/debugger: Added.
+        * platform/win/inspector-protocol/debugger/breakpoint-eval-with-exception-expected.txt: Added.
+        * platform/win/inspector-protocol/debugger/setBreakpoint-actions-expected.txt: Added.
+        * platform/win/inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local-expected.txt: Added.
+        * platform/win/svg/text/kerning-expected.txt:
+        * platform/win/svg/text/multichar-glyph-expected.txt:
+        * platform/win/svg/transforms/text-with-mask-with-svg-transform-expected.png:
+        * platform/win/svg/transforms/text-with-mask-with-svg-transform-expected.txt:
+
+2015-01-22  Andrzej Badowski  <a.badowski@samsung.com>
+
+        AX: [ATK] Mark accessibility/list-detection.html as a suitable test for EFL and GTK.
+        https://bugs.webkit.org/show_bug.cgi?id=140721
+
+        Reviewed by Chris Fleizach.
+
+        The test checks the heuristic to determine if a 'list' is really a list.
+        In the area of ATK a role for description list has been separated from the role AXList.
+        This made the test stopped giving positive results for ports EFL and GTK.
+        The proposed amendment restores test for these ports.
+
+        * accessibility/list-detection.html:
+        * platform/efl/TestExpectations:
+        * platform/efl/accessibility/list-detection-expected.txt: Added.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/list-detection-expected.txt: Added.
+
+2015-01-21  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Skip items spanning flex tracks when sizing content based tracks
+        https://bugs.webkit.org/show_bug.cgi?id=140720
+
+        Reviewed by David Hyatt.
+
+        * fast/css-grid-layout/flex-and-content-sized-resolution-columns-expected.txt: Added.
+        * fast/css-grid-layout/flex-and-content-sized-resolution-columns.html: Added.
+
+2015-01-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        put_by_val_direct need to check the property is index or not for using putDirect / putDirectIndex
+        https://bugs.webkit.org/show_bug.cgi?id=140426
+
+        Reviewed by Geoffrey Garen.
+
+        * js/dfg-put-by-val-direct-with-edge-numbers-expected.txt: Added.
+        * js/dfg-put-by-val-direct-with-edge-numbers.html: Added.
+        * js/script-tests/dfg-put-by-val-direct-with-edge-numbers.js: Added.
+        (lookupWithKey):
+        (dfgShouldThrow):
+        (lookupWithKey2):
+        (toStringThrowsError.toString):
+
+2015-01-19  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Size tracks using a list of all items sorted by span
+        https://bugs.webkit.org/show_bug.cgi?id=140615
+
+        Reviewed by Andreas Kling.
+
+        * fast/css-grid-layout/grid-content-sized-columns-resolution-expected.txt:
+        Added tons of new test cases.
+        * fast/css-grid-layout/grid-content-sized-columns-resolution.html: Ditto.
+        * fast/css-grid-layout/grid-preferred-logical-widths.html:
+        Adjusted results.
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Rebaseline SVG results from test machine.
+
+        * platform/win/css2.1/20110323/c543-txt-decor-000-expected.png: Added.
+        * platform/win/css2.1/20110323/c543-txt-decor-000-expected.txt: Added.
+        * platform/win/css2.1/20110323/replaced-elements-001-expected.png: Added.
+        * platform/win/css2.1/20110323/replaced-elements-001-expected.txt: Added.
+        * platform/win/svg/W3C-SVG-1.1-SE/styling-css-04-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/filters-light-04-f-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-elem-05-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-elem-06-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/fonts-kern-01-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/masking-mask-01-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-elems-06-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-elems-07-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-elems-08-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-groups-01-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/render-groups-03-t-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/text-align-08-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1/text-tselect-02-f-expected.txt:
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update expectations file for failures on test machine.
+
+        * platform/win/TestExpectations:
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Add more tests and baselines.
+
+        Stop skipping a number of tests that are fully functional. Add some
+        Windows baselines.
+
+        * platform/win/TestExpectations:
+        * platform/win/printing/setPrinting-expected.txt: Added.
+        * platform/win/printing/width-overflow-expected.txt: Added.
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More gardening.
+
+        Unskip the flexbox tests. These have been functional in Windows for YEARS!
+
+        * platform/win/TestExpectations:
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Gardening pass over file.
+   
+        Convert Skips to Failure wherever possible. Try to delete unnecessary skips/failures.
+
+        * platform/win/TestExpectations:
+
+2015-01-21  Tim Horton  <timothy_horton@apple.com>
+
+        After updating tests to use kerning, ligatures, and printer fonts, some tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=139968
+
+        * platform/mac/TestExpectations:
+        Mark svg/custom/svg-fonts-without-missing-glyph.xhtml as flaky.
+
+2015-01-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ASSERT expanding objects in console PrimitiveBindingTraits<T>::assertValueHasExpectedType
+        https://bugs.webkit.org/show_bug.cgi?id=140746
+
+        Reviewed by Timothy Hatcher.
+
+        * TestExpectations:
+        Unskip the test now that is doesn't ASSERT in debug builds.
+
+2015-01-21  Daniel Bates  <dabates@apple.com>
+
+        Update iOS WebKit2 expected results for compositing tests
+
+        Following the patch for bug #140742, <https://bugs.webkit.org/show_bug.cgi?id=140742>, we can remove
+        all iOS WebKit2-specific expected results that are identical to the platform-independent results.
+
+        * platform/ios-simulator-wk2/TestExpectations: Add WebKit2-specific failures: compositing/reflections/nested-reflection-on-overflow.html
+        and compositing/repaint/invalidations-on-composited-layers.html.
+        * platform/ios-simulator-wk2/compositing/absolute-inside-out-of-view-fixed-expected.txt: Removed.
+        [...]
+        * platform/ios-simulator-wk2/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt: Removed.
+        * platform/ios-simulator-wk2/compositing/visibility/layer-visible-content-expected.txt: Removed.
+        * platform/ios-simulator-wk2/compositing/visible-rect/3d-transform-style-expected.txt: Removed.
+        * platform/ios-simulator/TestExpectations: Remove tests that now pass in both iOS WebKit1 and WebKit2.
+
+2015-01-21  Daniel Bates  <dabates@apple.com>
+
+        Update iOS WebKit test expectations for compositing tests
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2015-01-21  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Many compositing tests fail in DumpRenderTree due to contentsOpaque difference
+        https://bugs.webkit.org/show_bug.cgi?id=140742
+
+        Reviewed by Simon Fraser.
+
+        Update test expectations and remove an unnecessary test result.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/compositing/backing/backface-visibility-flip-expected.txt: Removed.
+
+2015-01-21  Daniel Bates  <dabates@apple.com>
+
+        Add iOS WebKit1 TestExpectation file
+        https://bugs.webkit.org/show_bug.cgi?id=140739
+
+        Reviewed by David Kilzer.
+
+        iOS WebKit1 is different enough from iOS WebKit2 that it would benefit from having its
+        own TestExpectation file. We can work to reduce such differences over time.
+
+        * platform/ios-simulator-wk1/TestExpectations: Added.
+        * platform/ios-simulator/TestExpectations: Move iOS WebKit1-specific test expectation from here
+        to file LayoutTests/platform/ios-simulator-wk1/TestExpectations.
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening based on TestBot runs.
+
+        Update a few failure cass with bug reports. Rebaseline a handful of tests.
+
+        * platform/win/TestExpectations: Update based on bug reports.
+        * platform/win/fast/regions/text-region-split-small-pagination-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/coords-units-03-b-expected.txt:
+        * platform/win/svg/W3C-SVG-1.1-SE/styling-css-04-f-expected.txt:
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] eventSender does not support scalePageBy
+        https://bugs.webkit.org/show_bug.cgi?id=140726
+        <rdar://problem/19549865>
+
+        Reviewed by Dean Jackson.
+
+        * platform/win/TestExpectations: Unskip test.
+
+2015-01-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening after reactivating some tests.
+
+        * platform/win/TestExpectations: Add failure entries for a few tests with bug reports.
+
+2015-01-21  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        first-letter pseudo-element from ancestors is not being ignored in grids and flexboxes
+        https://bugs.webkit.org/show_bug.cgi?id=138424
+
+        Reviewed by Benjamin Poulain.
+
+        Modified current tests to check that first-letter from ancestors is
+        ignored too.
+        Added 2 new tests to increase coverage.
+
+        * css3/flexbox/flexbox-ignore-container-firstLetter-expected.txt:
+        * css3/flexbox/flexbox-ignore-container-firstLetter.html:
+        * fast/css-grid-layout/grid-container-ignore-first-letter-expected.txt:
+        * fast/css-grid-layout/grid-container-ignore-first-letter.html:
+        * fast/css/first-letter-from-ancestors-not-apply-inline-elements-expected.html: Added.
+        * fast/css/first-letter-from-ancestors-not-apply-inline-elements.html: Added.
+        * fast/css/first-letter-ignores-display-property-expected.html: Added.
+        * fast/css/first-letter-ignores-display-property.html: Added.
+
+2015-01-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        Rebaseline and clean-up of skipped files.
+
+        * platform/win/TestExpectations:
+        * platform/win/css2.1/20110323: Added.
+        * platform/win/css2.1/20110323/abspos-containing-block-initial-001-expected.png: Added.
+        * platform/win/css2.1/20110323/abspos-containing-block-initial-007-expected.png: Added.
+        * platform/win/css2.1/20110323/border-conflict-style-079-expected.png: Added.
+        * platform/win/css2.1/20110323/border-conflict-style-088-expected.png: Added.
+        * platform/win/css2.1/20110323/border-spacing-applies-to-015-expected.png: Added.
+        * platform/win/css2.1/20110323/dynamic-top-change-001-expected.png: Added.
+        * platform/win/css2.1/20110323/dynamic-top-change-002-expected.png: Added.
+        * platform/win/css2.1/20110323/dynamic-top-change-003-expected.png: Added.
+        * platform/win/css2.1/20110323/dynamic-top-change-004-expected.png: Added.
+        * platform/win/css2.1/20110323/floating-replaced-height-008-expected.png: Added.
+        * platform/win/css2.1/20110323/height-width-inline-table-001-expected.png: Added.
+        * platform/win/css2.1/20110323/height-width-table-001-expected.png: Added.
+        * platform/win/css2.1/20110323/inline-block-replaced-height-008-expected.png: Added.
+        * platform/win/css2.1/20110323/inline-replaced-height-008-expected.png: Added.
+        * platform/win/css2.1/20110323/inline-table-001-expected.png: Added.
+        * platform/win/css2.1/20110323/inline-table-002a-expected.png: Added.
+        * platform/win/css2.1/20110323/inline-table-003-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-001-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-002-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-003-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-004-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-005-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-006-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-007-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-008-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-009-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-010-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-012-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-013-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-014-expected.png: Added.
+        * platform/win/css2.1/20110323/margin-applies-to-015-expected.png: Added.
+        * platform/win/css2.1/20110323/table-caption-001-expected.png: Added.
+        * platform/win/css2.1/20110323/table-caption-002-expected.png: Added.
+        * platform/win/css2.1/20110323/table-caption-horizontal-alignment-001-expected.png: Added.
+        * platform/win/css2.1/20110323/table-caption-margins-001-expected.png: Added.
+        * platform/win/css2.1/20110323/table-caption-optional-001-expected.png: Added.
+        * platform/win/css2.1/20110323/table-caption-optional-002-expected.png: Added.
+        * platform/win/css2.1/20110323/table-height-algorithm-023-expected.png: Added.
+        * platform/win/css2.1/20110323/table-height-algorithm-024-expected.png: Added.
+        * platform/win/css2.1/t0805-c5518-brdr-t-01-e-expected.png: Added.
+        * platform/win/css2.1/t0805-c5518-brdr-t-01-e-expected.txt: Added.
+        * platform/win/css2.1/t0805-c5519-brdr-r-00-a-expected.png: Added.
+        * platform/win/css2.1/t0805-c5519-brdr-r-00-a-expected.txt: Added.
+        * platform/win/css2.1/t0805-c5519-brdr-r-01-e-expected.png: Added.
+        * platform/win/css2.1/t0805-c5519-brdr-r-01-e-expected.txt:
+        * platform/win/css2.1/t0805-c5520-brdr-b-01-e-expected.png: Added.
+        * platform/win/css2.1/t0805-c5520-brdr-b-01-e-expected.txt: Added.
+        * platform/win/css2.1/t0805-c5521-brdr-l-00-a-expected.png: Added.
+        * platform/win/css2.1/t0805-c5521-brdr-l-00-a-expected.txt: Added.
+        * platform/win/css2.1/t0805-c5521-brdr-l-01-e-expected.png: Added.
+        * platform/win/css2.1/t0805-c5521-brdr-l-01-e-expected.txt:
+        * platform/win/css2.1/t0805-c5521-ibrdr-l-00-a-expected.png: Added.
+        * platform/win/css2.1/t0805-c5521-ibrdr-l-00-a-expected.txt: Added.
+        * platform/win/css2.1/t09-c5526c-display-00-e-expected.png: Added.
+        * platform/win/css2.1/t09-c5526c-display-00-e-expected.txt: Added.
+        * platform/win/css2.1/t0905-c414-flt-01-b-expected.png: Added.
+        * platform/win/css2.1/t0905-c414-flt-01-b-expected.txt: Added.
+        * platform/win/css2.1/t0905-c414-flt-02-c-expected.png: Added.
+        * platform/win/css2.1/t0905-c414-flt-02-c-expected.txt: Added.
+        * platform/win/css2.1/t0905-c414-flt-03-c-expected.png: Added.
+        * platform/win/css2.1/t0905-c414-flt-03-c-expected.txt: Added.
+        * platform/win/css2.1/t0905-c414-flt-04-c-expected.png: Added.
+        * platform/win/css2.1/t0905-c414-flt-04-c-expected.txt: Added.
+        * platform/win/css2.1/t0905-c414-flt-fit-01-d-g-expected.png: Added.
+        * platform/win/css2.1/t0905-c414-flt-fit-01-d-g-expected.txt: Added.
+        * platform/win/css2.1/t0905-c414-flt-wrap-00-e-expected.txt:
+        * platform/win/css2.1/t0905-c5525-fltblck-00-d-ag-expected.txt:
+        * platform/win/css2.1/t0905-c5525-fltblck-01-d-expected.png: Added.
+        * platform/win/css2.1/t0905-c5525-fltblck-01-d-expected.txt: Added.
+        * platform/win/css2.1/t0905-c5525-fltcont-00-d-g-expected.png: Added.
+        * platform/win/css2.1/t0905-c5525-fltcont-00-d-g-expected.txt: Added.
+        * platform/win/css2.1/t0905-c5525-flthw-00-c-g-expected.png: Added.
+        * platform/win/css2.1/t0905-c5525-flthw-00-c-g-expected.txt: Added.
+        * platform/win/css2.1/t0905-c5525-fltwidth-00-c-g-expected.png: Added.
+        * platform/win/css2.1/t0905-c5525-fltwidth-00-c-g-expected.txt:
+        * platform/win/css2.1/t0905-c5525-fltwidth-02-c-g-expected.png: Added.
+        * platform/win/css2.1/t0905-c5525-fltwidth-02-c-g-expected.txt: Added.
+        * platform/win/css2.1/t0905-c5525-fltwidth-03-c-g-expected.png: Added.
+        * platform/win/css2.1/t0905-c5525-fltwidth-03-c-g-expected.txt: Added.
+        * platform/win/css2.1/t0905-c5525-fltwrap-00-b-expected.png: Added.
+        * platform/win/css2.1/t0905-c5525-fltwrap-00-b-expected.txt:
+        * platform/win/css2.1/t0905-c5526-flthw-00-c-g-expected.png: Added.
+        * platform/win/css2.1/t0905-c5526-flthw-00-c-g-expected.txt: Added.
+        * platform/win/css2.1/t090501-c414-flt-01-b-expected.png: Added.
+        * platform/win/css2.1/t090501-c414-flt-01-b-expected.txt: Added.
+        * platform/win/css2.1/t090501-c414-flt-03-b-g-expected.png: Added.
+        * platform/win/css2.1/t090501-c414-flt-03-b-g-expected.txt: Added.
+        * platform/win/css2.1/t090501-c414-flt-ln-01-d-g-expected.txt: Added.
+        * platform/win/css2.1/t090501-c5525-flt-l-00-b-g-expected.png: Added.
+        * platform/win/css2.1/t090501-c5525-flt-l-00-b-g-expected.txt: Added.
+        * platform/win/css2.1/t090501-c5525-flt-r-00-b-g-expected.png: Added.
+        * platform/win/css2.1/t090501-c5525-flt-r-00-b-g-expected.txt: Added.
+        * platform/win/css2.1/t100304-c43-rpl-bbx-01-d-g-expected.png: Added.
+        * platform/win/css2.1/t100304-c43-rpl-bbx-01-d-g-expected.txt: Added.
+        * platform/win/css2.1/t1202-counter-03-b-expected.txt: Added.
+        * platform/win/css2.1/t1202-counter-04-b-expected.png: Added.
+        * platform/win/css2.1/t1202-counter-04-b-expected.txt:
+        * platform/win/css2.1/t1202-counters-03-b-expected.png: Added.
+        * platform/win/css2.1/t1202-counters-03-b-expected.txt: Added.
+        * platform/win/css2.1/t1202-counters-04-b-expected.png: Added.
+        * platform/win/css2.1/t1202-counters-04-b-expected.txt:
+        * platform/win/css2.1/t1205-c566-list-stl-01-c-g-expected.png: Added.
+        * platform/win/css2.1/t1205-c566-list-stl-01-c-g-expected.txt: Added.
+        * platform/win/css3/selectors3: Added.
+        * platform/win/css3/selectors3/html: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-161-expected.png: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-161-expected.txt: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-19b-expected.png: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-19b-expected.txt: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-23-expected.png: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-23-expected.txt: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-24-expected.png: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-24-expected.txt: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-25-expected.png: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-25-expected.txt: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-64-expected.png: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-64-expected.txt: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-68-expected.png: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-68-expected.txt: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-69-expected.png: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-69-expected.txt: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-70-expected.png: Added.
+        * platform/win/css3/selectors3/html/css3-modsel-70-expected.txt: Added.
+        * platform/win/css3/selectors3/xhtml: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-161-expected.png: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-161-expected.txt: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-19b-expected.png: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-19b-expected.txt: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-23-expected.png: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-23-expected.txt: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-24-expected.png: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-24-expected.txt: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-25-expected.png: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-25-expected.txt: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-64-expected.png: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-64-expected.txt: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-68-expected.png: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-68-expected.txt: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-69-expected.png: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-69-expected.txt: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-70-expected.png: Added.
+        * platform/win/css3/selectors3/xhtml/css3-modsel-70-expected.txt: Added.
+        * platform/win/css3/selectors3/xml: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-161-expected.png: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-161-expected.txt: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-19b-expected.png: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-19b-expected.txt: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-23-expected.png: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-23-expected.txt: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-24-expected.png: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-24-expected.txt: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-25-expected.png: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-25-expected.txt: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-64-expected.png: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-64-expected.txt: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-68-expected.png: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-68-expected.txt: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-69-expected.png: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-69-expected.txt: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-70-expected.png: Added.
+        * platform/win/css3/selectors3/xml/css3-modsel-70-expected.txt: Added.
+        * platform/win/fast/block/float/016-expected.png: Added.
+        * platform/win/fast/block/float/016-expected.txt: Added.
+        * platform/win/fast/css/non-standard-checkbox-size-expected.txt: Added.
+        * platform/win/fast/dom/HTMLMeterElement/meter-appearances-capacity-expected.txt:
+        * platform/win/fast/dom/HTMLMeterElement/meter-appearances-rating-relevancy-expected.txt:
+        * platform/win/fast/dom/HTMLMeterElement/meter-boundary-values-expected.png:
+        * platform/win/fast/dom/HTMLMeterElement/meter-boundary-values-expected.txt:
+        * platform/win/fast/dom/HTMLMeterElement/meter-element-expected.txt:
+        * platform/win/fast/dom/HTMLMeterElement/meter-optimums-expected.png:
+        * platform/win/fast/dom/HTMLMeterElement/meter-optimums-expected.txt:
+        * platform/win/fast/dom/HTMLMeterElement/meter-styles-changing-pseudo-expected.png:
+        * platform/win/fast/dom/HTMLMeterElement/meter-styles-changing-pseudo-expected.txt:
+        * platform/win/fast/dom/HTMLMeterElement/meter-styles-expected.png:
+        * platform/win/fast/dom/HTMLMeterElement/meter-styles-expected.txt:
+
 2015-01-20  Alexey Proskuryakov  <ap@apple.com>
 
         inspector/model/remote-object-get-properties.html asserts
