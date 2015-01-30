@@ -62,9 +62,10 @@ public:
     // Functions.
     JSC::JSValue internalConstructorName(JSC::ExecState*);
     JSC::JSValue isHTMLAllCollection(JSC::ExecState*);
-    JSC::JSValue type(JSC::ExecState*);
+    JSC::JSValue subtype(JSC::ExecState*);
     JSC::JSValue functionDetails(JSC::ExecState*);
     JSC::JSValue getInternalProperties(JSC::ExecState*);
+    JSC::JSValue weakMapEntries(JSC::ExecState*);
 
 protected:
     static const unsigned StructureFlags = Base::StructureFlags;

@@ -15,6 +15,8 @@ add_definitions(-DLIBDIR="${LIB_INSTALL_DIR}")
 set(WebKit2_USE_PREFIX_HEADER ON)
 
 list(APPEND WebKit2_SOURCES
+    DatabaseProcess/gtk/DatabaseProcessMainGtk.cpp
+
     NetworkProcess/cache/NetworkCacheStorageSoup.cpp
 
     NetworkProcess/gtk/NetworkProcessMainGtk.cpp
@@ -50,6 +52,8 @@ list(APPEND WebKit2_SOURCES
     Shared/cairo/ShareableBitmapCairo.cpp
 
     Shared/gtk/ArgumentCodersGtk.cpp
+    Shared/gtk/KeyedEncoder.cpp
+    Shared/gtk/KeyedDecoder.cpp
     Shared/gtk/NativeWebKeyboardEventGtk.cpp
     Shared/gtk/NativeWebMouseEventGtk.cpp
     Shared/gtk/NativeWebTouchEventGtk.cpp
@@ -71,6 +75,8 @@ list(APPEND WebKit2_SOURCES
     Shared/soup/WebCoreArgumentCodersSoup.cpp
 
     Shared/unix/ChildProcessMain.cpp
+
+    UIProcess/Databases/gtk/DatabaseProcessProxyGtk.cpp
 
     UIProcess/DefaultUndoController.cpp
     UIProcess/DrawingAreaProxyImpl.cpp
@@ -401,6 +407,7 @@ file(GLOB InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Controllers/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/CodeMirror/*.css
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/CodeMirror/*.js
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/ESLint/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/Esprima/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Models/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Protocol/*.js
@@ -431,6 +438,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/enchant"
+    "${WEBKIT2_DIR}/DatabaseProcess/unix"
     "${WEBKIT2_DIR}/NetworkProcess/gtk"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
     "${WEBKIT2_DIR}/Shared/API/c/gtk"
@@ -486,6 +494,10 @@ list(APPEND WebProcess_SOURCES
 
 list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
+)
+
+list(APPEND DatabaseProcess_SOURCES
+    DatabaseProcess/EntryPoint/unix/DatabaseProcessMain.cpp
 )
 
 file(WRITE ${CMAKE_BINARY_DIR}/test_atomic.cpp
@@ -926,7 +938,7 @@ if (ENABLE_INTROSPECTION)
 endif ()
 
 file(WRITE ${CMAKE_BINARY_DIR}/gtkdoc-webkit2gtk.cfg
-    "[webkit2gtk]\n"
+    "[webkit2gtk-${WEBKITGTK_API_VERSION}]\n"
     "pkgconfig_file=${WebKit2_PKGCONFIG_FILE}\n"
     "namespace=webkit\n"
     "cflags=-I${CMAKE_SOURCE_DIR}/Source\n"
@@ -938,6 +950,7 @@ file(WRITE ${CMAKE_BINARY_DIR}/gtkdoc-webkit2gtk.cfg
     "            ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/gtk\n"
     "            ${DERIVED_SOURCES_WEBKIT2GTK_API_DIR}\n"
     "headers=${WebKit2GTK_ENUM_GENERATION_HEADERS} ${WebKit2WebExtension_INSTALLED_HEADERS}\n"
+    "main_sgml_file=webkit2gtk-docs.sgml\n"
 )
 
 file(GLOB_RECURSE WebKit2_HEADERS
@@ -950,6 +963,7 @@ add_custom_command(
             ${WebKit2_SOURCES}
             ${WebProcess_SOURCES}
             ${NetworkProcess_SOURCES}
+            ${DatabaseProcess_SOURCES}
             ${PluginProcessGTK2_SOURCES}
             ${PluginProcess_SOURCES}
             ${WebKit2_HEADERS}

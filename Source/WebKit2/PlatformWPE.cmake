@@ -156,6 +156,7 @@ list(APPEND WebKit2_LIBRARIES
     ${LIBXKBCOMMON_LIBRARIES}
 )
 
+if (ENABLE_WESTON_SHELL)
 set(WPEWestonShell_SOURCES
     UIProcess/wpe/WestonShell/Environment.cpp
     UIProcess/wpe/WestonShell/Module.cpp
@@ -176,6 +177,7 @@ add_library(WPEWestonShell SHARED ${WPEWestonShell_SOURCES})
 target_link_libraries(WPEWestonShell ${WPEWestonShell_LIBRARIES})
 target_include_directories(WPEWestonShell PUBLIC ${WPEWestonShell_INCLUDE_DIRECTORIES})
 install(TARGETS WPEWestonShell DESTINATION "${LIB_INSTALL_DIR}")
+endif () # ENABLE_WESTON_SHELL
 
 if (ENABLE_ATHOL_SHELL)
 set(WPEAtholShell_SOURCES
@@ -197,7 +199,7 @@ add_library(WPEAtholShell SHARED ${WPEAtholShell_SOURCES})
 target_link_libraries(WPEAtholShell ${WPEAtholShell_LIBRARIES})
 target_include_directories(WPEAtholShell PUBLIC ${WPEAtholShell_INCLUDE_DIRECTORIES})
 install(TARGETS WPEAtholShell DESTINATION "${LIB_INSTALL_DIR}")
-endif ()
+endif () # ENABLE_ATHOL_SHELL
 
 file(GLOB InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html
@@ -206,6 +208,7 @@ file(GLOB InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Controllers/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/CodeMirror/*.css
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/CodeMirror/*.js
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/ESLint/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/Esprima/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Models/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Protocol/*.js

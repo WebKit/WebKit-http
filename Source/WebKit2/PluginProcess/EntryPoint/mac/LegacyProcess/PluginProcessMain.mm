@@ -51,7 +51,7 @@ public:
     {
     }
 
-    virtual void doPreInitializationWork()
+    virtual void doPreInitializationWork() override
     {
         // Remove the PluginProcess shim from the DYLD_INSERT_LIBRARIES environment variable so any processes
         // spawned by the PluginProcess don't try to insert the shim and crash.
@@ -86,7 +86,7 @@ public:
         }
     }
 
-    virtual bool getExtraInitializationData(HashMap<String, String>& extraInitializationData)
+    virtual bool getExtraInitializationData(HashMap<String, String>& extraInitializationData) override
     {
         String pluginPath = m_commandLine["plugin-path"];
         if (pluginPath.isEmpty())
@@ -106,9 +106,8 @@ public:
         [NSApp run];
     }
 
-    virtual void doPostRunWork()
+    virtual void doPostRunWork() override
     {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         // If we have private temporary and cache directories, clean them up.
         if (getenv("DIRHELPER_USER_DIR_SUFFIX")) {
             char darwinDirectory[PATH_MAX];
@@ -117,7 +116,6 @@ public:
             if (confstr(_CS_DARWIN_USER_CACHE_DIR, darwinDirectory, sizeof(darwinDirectory)))
                 [[NSFileManager defaultManager] removeItemAtPath:[[NSFileManager defaultManager] stringWithFileSystemRepresentation:darwinDirectory length:strlen(darwinDirectory)] error:nil];
         }
-#endif
     }
 };
 

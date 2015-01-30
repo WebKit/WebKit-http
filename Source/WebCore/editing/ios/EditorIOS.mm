@@ -230,7 +230,7 @@ const Font* Editor::fontForSelection(bool& hasMultipleFonts) const
         Node* pastEnd = range->pastLastNode();
         // In the loop below, n should eventually match pastEnd and not become nil, but we've seen at least one
         // unreproducible case where this didn't happen, so check for null also.
-        for (Node* node = startNode; node && node != pastEnd; node = NodeTraversal::next(node)) {
+        for (Node* node = startNode; node && node != pastEnd; node = NodeTraversal::next(*node)) {
             auto renderer = node->renderer();
             if (!renderer)
                 continue;
@@ -280,7 +280,7 @@ void Editor::removeUnchangeableStyles()
 {
     // This function removes styles that the user cannot modify by applying their default values.
     
-    RefPtr<EditingStyle> editingStyle = EditingStyle::create(m_frame.document()->body());
+    RefPtr<EditingStyle> editingStyle = EditingStyle::create(m_frame.document()->bodyOrFrameset());
     RefPtr<MutableStyleProperties> defaultStyle = editingStyle.get()->style()->mutableCopy();
     
     // Text widgets implement background color via the UIView property. Their body element will not have one.

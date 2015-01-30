@@ -1,3 +1,517 @@
+2015-01-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Console Format for Set and Map Objects (like Arrays)
+        https://bugs.webkit.org/show_bug.cgi?id=122867
+
+        Reviewed by Timothy Hatcher.
+
+        Add new Runtime.RemoteObject object subtypes for "map", "set", and "weakmap".
+
+        Upgrade Runtime.ObjectPreview to include type/subtype information. Now,
+        an ObjectPreview can be used for any value, in place of a RemoteObject,
+        and not capture / hold a reference to the value. The value will be in
+        the string description.
+
+        Adding this information to ObjectPreview can duplicate some information
+        in the protocol messages if a preview is provided, but simplifies
+        previews, so that all the information you need for any RemoteObject
+        preview is available. To slim messages further, make "overflow" and
+        "properties" only available on previews that may contain properties.
+        So, not primitives or null.
+
+        Finally, for "Map/Set/WeakMap" add an "entries" list to the preview
+        that will return previews with "key" and "value" properties depending
+        on the collection type. To get live, non-preview objects from a
+        collection, use Runtime.getCollectionEntries.
+
+        In order to keep the WeakMap's values Weak the frontend may provide
+        a unique object group name when getting collection entries. It may
+        then release that object group, e.g. when not showing the WeakMap's
+        values to the user, and thus remove the strong reference to the keys
+        so they may be garbage collected.
+
+        * runtime/WeakMapData.h:
+        (JSC::WeakMapData::begin):
+        (JSC::WeakMapData::end):
+        Expose iterators so the Inspector may access WeakMap keys/values.
+
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        (Inspector::jsInjectedScriptHostPrototypeFunctionWeakMapEntries):
+        * inspector/JSInjectedScriptHost.h:
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::subtype):
+        Discern "map", "set", and "weakmap" object subtypes.
+
+        (Inspector::JSInjectedScriptHost::weakMapEntries):
+        Return a list of WeakMap entries. These are strong references
+        that the Inspector code is responsible for releasing.
+
+        * inspector/protocol/Runtime.json:
+        Update types and expose the new getCollectionEntries command.
+
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getCollectionEntries):
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::getInternalProperties):
+        (Inspector::InjectedScript::getCollectionEntries):
+        Pass through to the InjectedScript and call getCollectionEntries.
+
+        * inspector/scripts/codegen/generator.py:
+        Add another type with runtime casting.
+
+        * inspector/InjectedScriptSource.js:
+        - Implement getCollectionEntries to get a range of values from a
+        collection. The non-Weak collections have an order to their keys (in
+        order of added) so range'd gets are okay. WeakMap does not have an
+        order, so only allow fetching a number of values.
+        - Update preview generation to address the Runtime.ObjectPreview
+        type changes.
+
+2015-01-28  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the GCArraySegment piece of this patch.
+
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::CodeBlockSet):
+        * heap/CodeBlockSet.h:
+        * heap/GCSegmentedArray.h:
+        (JSC::GCArraySegment::GCArraySegment):
+        * heap/GCSegmentedArrayInlines.h:
+        (JSC::GCSegmentedArray<T>::GCSegmentedArray):
+        (JSC::GCSegmentedArray<T>::~GCSegmentedArray):
+        (JSC::GCSegmentedArray<T>::clear):
+        (JSC::GCSegmentedArray<T>::expand):
+        (JSC::GCSegmentedArray<T>::refill):
+        (JSC::GCArraySegment<T>::create):
+        (JSC::GCArraySegment<T>::destroy):
+        * heap/GCThreadSharedData.cpp:
+        (JSC::GCThreadSharedData::GCThreadSharedData):
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        * heap/MarkStack.cpp:
+        (JSC::MarkStackArray::MarkStackArray):
+        * heap/MarkStack.h:
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::SlotVisitor):
+
+2015-01-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Move HAVE_DTRACE definition back to Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=141033
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2015-01-28  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed fastMallocForbid / fastMallocAllow
+        https://bugs.webkit.org/show_bug.cgi?id=141012
+
+        Reviewed by Mark Hahnenberg.
+
+        Copy non-current thread stacks before scanning them instead of scanning
+        them in-place.
+
+        This operation is uncommon (i.e., never in the web content process),
+        and even in a stress test with 4 threads it only copies about 27kB,
+        so I think the performance cost is OK.
+
+        Scanning in-place requires a complex dance where we constrain our GC
+        data structures not to use malloc, free, or any other interesting functions
+        that might acquire locks. We've gotten this wrong many times in the past,
+        and I just got it wrong again yesterday. Since this code path is rarely
+        tested, I want it to just make sense, and not depend on or constrain the
+        details of the rest of the GC heap's design.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::otherThreadStack): Factored out a helper function for dealing with
+        unaligned and/or backwards pointers.
+
+        (JSC::MachineThreads::tryCopyOtherThreadStack): This is now the only
+        constrained function, and it only calls memcpy and low-level thread APIs.
+
+        (JSC::MachineThreads::tryCopyOtherThreadStacks): The design here is that
+        you do one pass over all the threads to compute their combined size,
+        and then a second pass to do all the copying. In theory, the threads may
+        grow in between passes, in which case you'll continue until the threads
+        stop growing. In practice, you never continue.
+
+        (JSC::growBuffer): Helper function for growing.
+
+        (JSC::MachineThreads::gatherConservativeRoots):
+        (JSC::MachineThreads::gatherFromOtherThread): Deleted.
+        * heap/MachineStackMarker.h: Updated for interface changes.
+
+2015-01-28  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove CSS.setPropertyText, CSS.toggleProperty and related dead code
+        https://bugs.webkit.org/show_bug.cgi?id=140961
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/CSS.json: Remove unused protocol methods.
+
+2015-01-28  Dana Burkart  <dburkart@apple.com>
+
+        Move ASan flag settings from DebugRelease.xcconfig to Base.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=136765
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2015-01-27  Filip Pizlo  <fpizlo@apple.com>
+
+        ExitSiteData saying m_takesSlowPath shouldn't mean early returning takesSlowPath() since for the non-LLInt case we later set m_couldTakeSlowPath, which is more precise
+        https://bugs.webkit.org/show_bug.cgi?id=140980
+
+        Reviewed by Oliver Hunt.
+
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFor):
+
+2015-01-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Move DFGBinarySwitch out of the DFG so that all of the JITs can use it
+        https://bugs.webkit.org/show_bug.cgi?id=140959
+
+        Rubber stamped by Geoffrey Garen.
+        
+        I want to use this for polymorphic stubs for https://bugs.webkit.org/show_bug.cgi?id=140660.
+        This code no longer has DFG dependencies so this is a very clean move.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGBinarySwitch.cpp: Removed.
+        * dfg/DFGBinarySwitch.h: Removed.
+        * dfg/DFGSpeculativeJIT.cpp:
+        * jit/BinarySwitch.cpp: Copied from Source/JavaScriptCore/dfg/DFGBinarySwitch.cpp.
+        * jit/BinarySwitch.h: Copied from Source/JavaScriptCore/dfg/DFGBinarySwitch.h.
+
+2015-01-27  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179192.
+        https://bugs.webkit.org/show_bug.cgi?id=140953
+
+        Caused numerous layout test failures (Requested by mattbaker_
+        on #webkit).
+
+        Reverted changeset:
+
+        "Use FastMalloc (bmalloc) instead of BlockAllocator for GC
+        pages"
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+        http://trac.webkit.org/changeset/179192
+
+2015-01-27  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r178591): 20% regression in Octane box2d
+        https://bugs.webkit.org/show_bug.cgi?id=140948
+
+        Reviewed by Geoffrey Garen.
+
+        Added check that we have a lexical environment to the arguments is captured check.
+        It doesn't make sense to resolve "arguments" when it really isn't captured.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::willResolveToArgumentsRegister):
+
+2015-01-26  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Removes some more custom allocation code.
+
+        Looks like a speedup. (See results attached to bugzilla.)
+
+        Will hopefully reduce memory use by improving sharing between the GC and
+        malloc heaps.
+
+        * API/JSBase.cpp:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj: Feed the compiler.
+
+        * heap/BlockAllocator.cpp: Removed.
+        * heap/BlockAllocator.h: Removed. No need for a custom allocator anymore.
+
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::CodeBlockSet):
+        * heap/CodeBlockSet.h: Feed the compiler.
+
+        * heap/CopiedBlock.h:
+        (JSC::CopiedBlock::createNoZeroFill):
+        (JSC::CopiedBlock::create):
+        (JSC::CopiedBlock::CopiedBlock):
+        (JSC::CopiedBlock::isOversize):
+        (JSC::CopiedBlock::payloadEnd):
+        (JSC::CopiedBlock::capacity):
+        * heap/CopiedBlockInlines.h:
+        (JSC::CopiedBlock::reportLiveBytes): Each copied block now tracks its
+        own size, since we can't rely on Region to tell us our size anymore.
+
+        * heap/CopiedSpace.cpp:
+        (JSC::CopiedSpace::~CopiedSpace):
+        (JSC::CopiedSpace::tryAllocateOversize):
+        (JSC::CopiedSpace::tryReallocateOversize):
+        * heap/CopiedSpaceInlines.h:
+        (JSC::CopiedSpace::recycleEvacuatedBlock):
+        (JSC::CopiedSpace::recycleBorrowedBlock):
+        (JSC::CopiedSpace::allocateBlockForCopyingPhase):
+        (JSC::CopiedSpace::allocateBlock):
+        (JSC::CopiedSpace::startedCopying): Deallocate blocks directly, rather
+        than pushing them onto the block allocator's free list; the block
+        allocator doesn't exist anymore.
+
+        * heap/CopyWorkList.h:
+        (JSC::CopyWorkListSegment::create):
+        (JSC::CopyWorkListSegment::CopyWorkListSegment):
+        (JSC::CopyWorkList::~CopyWorkList):
+        (JSC::CopyWorkList::append):
+        (JSC::CopyWorkList::CopyWorkList): Deleted.
+        * heap/GCSegmentedArray.h:
+        (JSC::GCArraySegment::GCArraySegment):
+        * heap/GCSegmentedArrayInlines.h:
+        (JSC::GCSegmentedArray<T>::GCSegmentedArray):
+        (JSC::GCSegmentedArray<T>::~GCSegmentedArray):
+        (JSC::GCSegmentedArray<T>::clear):
+        (JSC::GCSegmentedArray<T>::expand):
+        (JSC::GCSegmentedArray<T>::refill):
+        (JSC::GCArraySegment<T>::create):
+        * heap/GCThreadSharedData.cpp:
+        (JSC::GCThreadSharedData::GCThreadSharedData):
+        * heap/GCThreadSharedData.h: Feed the compiler.
+
+        * heap/HandleBlock.h:
+        * heap/HandleBlockInlines.h:
+        (JSC::HandleBlock::create):
+        (JSC::HandleBlock::HandleBlock):
+        (JSC::HandleBlock::payloadEnd):
+        * heap/HandleSet.cpp:
+        (JSC::HandleSet::~HandleSet):
+        (JSC::HandleSet::grow): Same as above.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        * heap/Heap.h: Removed the block allocator since it is unused now.
+
+        * heap/HeapBlock.h:
+        (JSC::HeapBlock::destroy):
+        (JSC::HeapBlock::HeapBlock):
+        (JSC::HeapBlock::region): Deleted. Removed the Region pointer from each
+        HeapBlock since a HeapBlock is just a normal allocation now.
+
+        * heap/HeapInlines.h:
+        (JSC::Heap::blockAllocator): Deleted.
+
+        * heap/HeapTimer.cpp:
+        * heap/MarkStack.cpp:
+        (JSC::MarkStackArray::MarkStackArray):
+        * heap/MarkStack.h: Feed the compiler.
+
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::allocateBlock): No need to use a custom code path
+        based on size, since we use a general purpose allocator now.
+
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::create):
+        (JSC::MarkedBlock::destroy):
+        (JSC::MarkedBlock::MarkedBlock):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::capacity): Track block size explicitly, like CopiedBlock.
+
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::freeBlock):
+        * heap/MarkedSpace.h:
+
+        * heap/Region.h: Removed.
+
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::SlotVisitor): Removed reference to block allocator.
+
+        * heap/SuperRegion.cpp: Removed.
+        * heap/SuperRegion.h: Removed.
+
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::create):
+        (JSC::WeakBlock::WeakBlock):
+        * heap/WeakBlock.h:
+        * heap/WeakSet.cpp:
+        (JSC::WeakSet::~WeakSet):
+        (JSC::WeakSet::addAllocator):
+        (JSC::WeakSet::removeAllocator): Removed reference to block allocator.
+
+2015-01-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Typo fix after r176083
+        https://bugs.webkit.org/show_bug.cgi?id=140937
+
+        Reviewed by Anders Carlsson.
+
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::ldrh):
+
+2015-01-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Win] Unreviewed gardening, skip failing tests.
+
+        * tests/exceptionFuzz.yaml: Skip exception fuzz tests due to bug140928.
+        * tests/mozilla/mozilla-tests.yaml: Skip ecma/Date/15.9.5.28-1.js due to bug140927.
+
+2015-01-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Win] Enable JSC stress tests by default
+        https://bugs.webkit.org/show_bug.cgi?id=128307
+
+        Unreviewed typo fix after r179165.
+
+        * tests/mozilla/mozilla-tests.yaml:
+
+2015-01-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Win] Enable JSC stress tests by default
+        https://bugs.webkit.org/show_bug.cgi?id=128307
+
+        Reviewed by Brent Fulgham.
+
+        * tests/mozilla/mozilla-tests.yaml: Skipped on Windows.
+        * tests/stress/ftl-arithcos.js: Skipped on Windows.
+
+2015-01-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Parse a function expression as a primary expression
+        https://bugs.webkit.org/show_bug.cgi?id=140908
+
+        Reviewed by Mark Lam.
+
+        Moved the code to generate an AST node for a function expression from parseMemberExpression
+        to parsePrimaryExpression to match the ES6 specification terminology:
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-primary-expression
+
+        There should be no behavior change from this change since parsePrimaryExpression is only
+        called in parseMemberExpression other than the fact failIfStackOverflow() is called.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+
+2015-01-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] [SVG -> OTF Converter] Flip the switch off on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=140860
+
+        Reviewed by Darin Adler.
+
+        The fonts it makes are grotesque. (See what I did there? Typographic
+        humor is the best humor.)
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename InjectedScriptHost::type to subtype
+        https://bugs.webkit.org/show_bug.cgi?id=140841
+
+        Reviewed by Timothy Hatcher.
+
+        We were using this to set the subtype of an "object" type RemoteObject
+        so we should clean up the name and call it subtype.
+
+        * inspector/InjectedScriptHost.h:
+        * inspector/InjectedScriptSource.js:
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::subtype):
+        (Inspector::JSInjectedScriptHost::type): Deleted.
+        * inspector/JSInjectedScriptHost.h:
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        (Inspector::jsInjectedScriptHostPrototypeFunctionSubtype):
+        (Inspector::jsInjectedScriptHostPrototypeFunctionType): Deleted.
+
+2015-01-23  Michael Saboff  <msaboff@apple.com>
+
+        LayoutTests/js/script-tests/reentrant-caching.js crashing on 32 bit builds
+        https://bugs.webkit.org/show_bug.cgi?id=140843
+
+        Reviewed by Oliver Hunt.
+
+        When we are in vmEntryToJavaScript, we keep the stack pointer at an
+        alignment sutiable for pointing to a call frame header, which is the
+        alignment post making a call.  We adjust the sp when calling to JS code,
+        but don't adjust it before calling the out of stack handler.
+
+        * llint/LowLevelInterpreter32_64.asm:
+        Moved stack point down 8 bytes to get it aligned.
+
+2015-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Object Previews in the Console
+        https://bugs.webkit.org/show_bug.cgi?id=129204
+
+        Reviewed by Timothy Hatcher.
+
+        Update the very old, unused object preview code. Part of this comes from
+        the earlier WebKit legacy implementation, and the Blink implementation.
+
+        A RemoteObject may include a preview, if it is asked for, and if the
+        RemoteObject is an object. Previews are a shallow (single level) list
+        of a limited number of properties on the object. The previewed
+        properties are always stringified (even if primatives). Previews are
+        limited to just 5 properties or 100 indices. Previews are marked
+        as lossless if they are a complete snapshot of the object.
+
+        There is a path to make previews two levels deep, that is currently
+        unused but should soon be used for tables (e.g. IndexedDB).
+
+        * inspector/InjectedScriptSource.js:
+        - Move some code off of InjectedScript to be generic functions
+        usable by RemoteObject as well.
+        - Update preview generation to use 
+
+        * inspector/protocol/Runtime.json:
+        - Add a new type, "accessor" for preview objects. This represents
+        a getter / setter. We currently don't get the value.
+
+2015-01-23  Michael Saboff  <msaboff@apple.com>
+
+        Immediate crash when setting JS breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=140811
+
+        Reviewed by Mark Lam.
+
+        When the DFG stack layout phase doesn't allocate a register for the scope register,
+        it incorrectly sets the scope register in the code block to a bad value, one with
+        an offset of 0.  Changed it so that we set the code block's scope register to the 
+        invalid VirtualRegister instead.
+
+        No tests needed as adding the ASSERT in setScopeRegister() was used to find the bug.
+        We crash with that ASSERT in testapi and likely many other tests as well.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::setScopeRegister):
+        (JSC::CodeBlock::scopeRegister):
+        Added ASSERTs to catch any future improper setting of the code block's scope register.
+
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+
 2015-01-22  Mark Hahnenberg  <mhahnenb@gmail.com>
 
         EdenCollections unnecessarily visit SmallStrings

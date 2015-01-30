@@ -171,6 +171,7 @@ public:
     PassRefPtr<CSSValue> parseAnimationPlayState();
     PassRefPtr<CSSValue> parseAnimationProperty(AnimationParseContext&);
     PassRefPtr<CSSValue> parseAnimationTimingFunction();
+    static Vector<double> parseKeyframeSelector(const String&);
 
     bool parseTransformOriginShorthand(RefPtr<CSSValue>&, RefPtr<CSSValue>&, RefPtr<CSSValue>&);
     bool parseCubicBezierTimingFunctionValue(CSSParserValueList& args, double& result);
@@ -215,6 +216,7 @@ public:
     PassRefPtr<CSSBasicShape> parseBasicShapeInset(CSSParserValueList&);
 
     bool parseFont(bool important);
+    void parseSystemFont(bool important);
     PassRefPtr<CSSValueList> parseFontFamily();
 
     bool parseCounter(CSSPropertyID, int defaultValue, bool important);

@@ -35,12 +35,12 @@ class Environment;
 
 class Shell {
 public:
-    Shell(const Environment&);
+    Shell(Environment&);
 
     static Shell& instance() { return *m_instance; }
     static gpointer launchWPE(gpointer);
 
-    const Environment& environment() const { return m_environment; }
+    Environment& environment() { return m_environment; }
 
 private:
     static const struct weston_pointer_grab_interface m_pgInterface;
@@ -49,7 +49,7 @@ private:
 
     static Shell* m_instance;
 
-    const Environment& m_environment;
+    Environment& m_environment;
 
     WKRetainPtr<WKInputHandlerRef> m_inputHandler;
     WKRetainPtr<WKViewRef> m_view;

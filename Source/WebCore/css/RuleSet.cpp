@@ -281,7 +281,8 @@ void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, AddRuleFlags addR
     }
 
     if (tagSelector) {
-        addToRuleSet(tagSelector->tagQName().localName().impl(), m_tagRules, ruleData);
+        addToRuleSet(tagSelector->tagQName().localName().impl(), m_tagLocalNameRules, ruleData);
+        addToRuleSet(tagSelector->tagLowercaseLocalName().impl(), m_tagLowercaseLocalNameRules, ruleData);
         return;
     }
 
@@ -330,7 +331,7 @@ void RuleSet::addChildRules(const Vector<RefPtr<StyleRuleBase>>& rules, const Me
                 addChildRules(mediaRule.childRules(), medium, resolver, hasDocumentSecurityOrigin, addRuleFlags);
         } else if (is<StyleRuleFontFace>(*rule) && resolver) {
             // Add this font face to our set.
-            resolver->fontSelector()->addFontFaceRule(downcast<StyleRuleFontFace>(rule.get()));
+            resolver->document().fontSelector().addFontFaceRule(downcast<StyleRuleFontFace>(rule.get()));
             resolver->invalidateMatchedPropertiesCache();
         } else if (is<StyleRuleKeyframes>(*rule) && resolver)
             resolver->addKeyframeStyle(downcast<StyleRuleKeyframes>(rule.get()));
@@ -385,7 +386,8 @@ void RuleSet::shrinkToFit()
 {
     shrinkMapVectorsToFit(m_idRules);
     shrinkMapVectorsToFit(m_classRules);
-    shrinkMapVectorsToFit(m_tagRules);
+    shrinkMapVectorsToFit(m_tagLocalNameRules);
+    shrinkMapVectorsToFit(m_tagLowercaseLocalNameRules);
     shrinkMapVectorsToFit(m_shadowPseudoElementRules);
     m_linkPseudoClassRules.shrinkToFit();
 #if ENABLE(VIDEO_TRACK)

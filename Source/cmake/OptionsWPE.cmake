@@ -70,10 +70,14 @@ find_package(PNG REQUIRED)
 find_package(Sqlite REQUIRED)
 find_package(Wayland 1.6.0 REQUIRED)
 find_package(WebP REQUIRED)
-find_package(Weston 1.6.0 REQUIRED)
 
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
+
+find_package(Weston 1.6.0 REQUIRED)
+if (WESTON_FOUND)
+    set(ENABLE_WESTON_SHELL ON)
+endif ()
 
 find_package(Athol 0.1)
 if (ATHOL_FOUND)

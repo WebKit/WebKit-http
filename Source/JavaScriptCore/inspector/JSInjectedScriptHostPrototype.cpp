@@ -38,11 +38,12 @@ using namespace JSC;
 
 namespace Inspector {
 
-static EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionType(ExecState*);
+static EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionSubtype(ExecState*);
 static EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionFunctionDetails(ExecState*);
 static EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionGetInternalProperties(ExecState*);
 static EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionInternalConstructorName(ExecState*);
 static EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionIsHTMLAllCollection(ExecState*);
+static EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionWeakMapEntries(ExecState*);
 
 static EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeAttributeEvaluate(ExecState*);
 
@@ -54,11 +55,12 @@ void JSInjectedScriptHostPrototype::finishCreation(VM& vm, JSGlobalObject* globa
     ASSERT(inherits(info()));
     vm.prototypeMap.addPrototype(this);
 
-    JSC_NATIVE_FUNCTION("type", jsInjectedScriptHostPrototypeFunctionType, DontEnum, 1);
+    JSC_NATIVE_FUNCTION("subtype", jsInjectedScriptHostPrototypeFunctionSubtype, DontEnum, 1);
     JSC_NATIVE_FUNCTION("functionDetails", jsInjectedScriptHostPrototypeFunctionFunctionDetails, DontEnum, 1);
     JSC_NATIVE_FUNCTION("getInternalProperties", jsInjectedScriptHostPrototypeFunctionGetInternalProperties, DontEnum, 1);
     JSC_NATIVE_FUNCTION("internalConstructorName", jsInjectedScriptHostPrototypeFunctionInternalConstructorName, DontEnum, 1);
     JSC_NATIVE_FUNCTION("isHTMLAllCollection", jsInjectedScriptHostPrototypeFunctionIsHTMLAllCollection, DontEnum, 1);
+    JSC_NATIVE_FUNCTION("weakMapEntries", jsInjectedScriptHostPrototypeFunctionWeakMapEntries, DontEnum, 1);
 
     Identifier evaluateIdentifier(&vm, "evaluate");
     GetterSetter* accessor = GetterSetter::create(vm, globalObject);
@@ -100,7 +102,7 @@ EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionIsHTMLAllColle
     return JSValue::encode(castedThis->isHTMLAllCollection(exec));
 }
 
-EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionType(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionWeakMapEntries(ExecState* exec)
 {
     JSValue thisValue = exec->thisValue();
     JSInjectedScriptHost* castedThis = jsDynamicCast<JSInjectedScriptHost*>(thisValue);
@@ -108,7 +110,18 @@ EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionType(ExecState
         return throwVMTypeError(exec);
 
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSInjectedScriptHost::info());
-    return JSValue::encode(castedThis->type(exec));
+    return JSValue::encode(castedThis->weakMapEntries(exec));
+}
+
+EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionSubtype(ExecState* exec)
+{
+    JSValue thisValue = exec->thisValue();
+    JSInjectedScriptHost* castedThis = jsDynamicCast<JSInjectedScriptHost*>(thisValue);
+    if (!castedThis)
+        return throwVMTypeError(exec);
+
+    ASSERT_GC_OBJECT_INHERITS(castedThis, JSInjectedScriptHost::info());
+    return JSValue::encode(castedThis->subtype(exec));
 }
 
 EncodedJSValue JSC_HOST_CALL jsInjectedScriptHostPrototypeFunctionFunctionDetails(ExecState* exec)

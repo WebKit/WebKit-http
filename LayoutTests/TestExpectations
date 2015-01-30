@@ -95,6 +95,8 @@ webkit.org/b/137131 inspector/debugger [ Skip ]
 webkit.org/b/137130 inspector/replay [ Skip ]
 webkit.org/b/137131 inspector/timeline [ Skip ]
 inspector/model/remote-object-get-properties.html [ Skip ]
+inspector/model/remote-object-weak-collection.html [ Skip ]
+inspector/model/remote-object.html [ Skip ]
 
 # Doesn't work yet, relies on network replay functionality (webkit.org/b/130728, webkit.org/b/129391)
 webkit.org/b/131318 http/tests/inspector/replay/document-last-modified-fallback-value.html [ Skip ]
@@ -447,6 +449,8 @@ webkit.org/b/135053 [ Debug ] html5lib/webkit-resumer.html [ Slow ]
 [ Debug ] js/dom/string-replacement-outofmemory.html [ Slow ]
 [ Debug ] js/regress-139548.html [ Slow ]
 [ Debug ] webgl/1.0.2/conformance/uniforms/gl-uniform-arrays.html [ Slow ]
+[ Debug ] js/dfg-osr-entry-hoisted-clobbered-structure-check.html [ Slow ]
+[ Debug ] editing/selection/move-by-character-brute-force.html [ Slow ]
 
 webkit.org/b/139865 js/promises-tests/promises-tests-2-3-3.html [ Skip ]
 

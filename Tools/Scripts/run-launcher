@@ -55,6 +55,7 @@ if (isGtk() || isEfl()) {
 
     $ENV{WEBKIT_EXEC_PATH} = catdir($productDir, "bin");
     $ENV{WPE_SHELL_URL} = $url;
+    $ENV{WPE_SHELL_MOUSE_CURSOR} = 1;
     $launcherPath = catdir($productDir, "bin", "WPELauncher");
 }
 

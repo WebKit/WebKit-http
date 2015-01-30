@@ -35,6 +35,7 @@
 #include "DocumentStyleSheetCollection.h"
 #include "DocumentTiming.h"
 #include "FocusDirection.h"
+#include "FontSelector.h"
 #include "IconURL.h"
 #include "MutationObserver.h"
 #include "PageVisibilityState.h"
@@ -69,6 +70,7 @@ class AXObjectCache;
 class Attr;
 class AudioProducer;
 class CDATASection;
+class CSSFontSelector;
 class CSSStyleDeclaration;
 class CSSStyleSheet;
 class CachedCSSStyleSheet;
@@ -99,9 +101,10 @@ class FloatQuad;
 class FormController;
 class Frame;
 class FrameView;
+class HTMLAllCollection;
+class HTMLBodyElement;
 class HTMLCanvasElement;
 class HTMLCollection;
-class HTMLAllCollection;
 class HTMLDocument;
 class HTMLElement;
 class HTMLFrameOwnerElement;
@@ -255,7 +258,7 @@ enum class DocumentCompatibilityMode : unsigned char {
     LimitedQuirksMode = 1 << 2
 };
 
-class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext {
+class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext, public FontSelectorClient {
 public:
     static Ref<Document> create(Frame* frame, const URL& url)
     {
@@ -544,6 +547,8 @@ public:
         return *m_styleResolver;
     }
 
+    CSSFontSelector& fontSelector();
+
     void notifyRemovePendingSheetIfNeeded();
 
     bool haveStylesheetsLoaded() const;
@@ -618,7 +623,7 @@ public:
     // auto is specified.
     WEBCORE_EXPORT void pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int& marginTop, int& marginRight, int& marginBottom, int& marginLeft);
 
-    CachedResourceLoader* cachedResourceLoader() { return m_cachedResourceLoader.get(); }
+    CachedResourceLoader& cachedResourceLoader() { return m_cachedResourceLoader; }
 
     void didBecomeCurrentDocumentInFrame();
     void destroyRenderTree();
@@ -933,8 +938,9 @@ public:
     static bool hasValidNamespaceForElements(const QualifiedName&);
     static bool hasValidNamespaceForAttributes(const QualifiedName&);
 
-    WEBCORE_EXPORT HTMLElement* body() const;
-    void setBody(PassRefPtr<HTMLElement>, ExceptionCode&);
+    HTMLBodyElement* body() const;
+    WEBCORE_EXPORT HTMLElement* bodyOrFrameset() const;
+    void setBodyOrFrameset(PassRefPtr<HTMLElement>, ExceptionCode&);
 
     WEBCORE_EXPORT HTMLHeadElement* head();
 
@@ -1304,6 +1310,9 @@ private:
     typedef void (*ArgumentsCallback)(const String& keyString, const String& valueString, Document*, void* data);
     void processArguments(const String& features, void* data, ArgumentsCallback);
 
+    // FontSelectorClient
+    virtual void fontsNeedUpdate(FontSelector*) override final;
+
     virtual bool isDocument() const override final { return true; }
 
     virtual void childrenChanged(const ChildChange&) override final;
@@ -1386,7 +1395,7 @@ private:
     Frame* m_frame;
     RefPtr<DOMWindow> m_domWindow;
 
-    RefPtr<CachedResourceLoader> m_cachedResourceLoader;
+    Ref<CachedResourceLoader> m_cachedResourceLoader;
     RefPtr<DocumentParser> m_parser;
     unsigned m_activeParserCount;
 
@@ -1690,6 +1699,8 @@ private:
     RefPtr<Document> m_templateDocument;
     Document* m_templateDocumentHost; // Manually managed weakref (backpointer from m_templateDocument).
 #endif
+
+    RefPtr<CSSFontSelector> m_fontSelector;
 
 #if ENABLE(FONT_LOAD_EVENTS)
     RefPtr<FontLoader> m_fontloader;

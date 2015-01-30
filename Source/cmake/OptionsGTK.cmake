@@ -219,6 +219,7 @@ set(WebKit2_OUTPUT_NAME webkit2gtk-${WEBKITGTK_API_VERSION})
 set(WebKit2_WebProcess_OUTPUT_NAME WebKitWebProcess)
 set(WebKit2_NetworkProcess_OUTPUT_NAME WebKitNetworkProcess)
 set(WebKit2_PluginProcess_OUTPUT_NAME WebKitPluginProcess)
+set(WebKit2_DatabaseProcess_OUTPUT_NAME WebKitDatabaseProcess)
 
 add_definitions(-DBUILDING_GTK__=1)
 add_definitions(-DGETTEXT_PACKAGE="WebKit2GTK-${WEBKITGTK_API_VERSION}")
@@ -361,18 +362,6 @@ set(WebKit2_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit2/webkit2gtk-${WEBKI
 set(WebKit2WebExtension_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit2/webkit2gtk-web-extension-${WEBKITGTK_API_VERSION}.pc)
 
 set(SHOULD_INSTALL_JS_SHELL ON)
-
-# Push of rbp is needed after JSC JIT uses CStack. See http://wkbug.com/127777.
-if (UNIX AND NOT APPLE)
-    if (CMAKE_COMPILER_IS_GNUCXX)
-        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-omit-frame-pointer -fno-tree-dce")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-omit-frame-pointer -fno-tree-dce")
-    endif ()
-    if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-omit-frame-pointer")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-omit-frame-pointer")
-    endif ()
-endif ()
 
 # Add a typelib file to the list of all typelib dependencies. This makes it easy to
 # expose a 'gir' target with all gobject-introspection files.

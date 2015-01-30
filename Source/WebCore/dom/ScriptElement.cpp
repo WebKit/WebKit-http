@@ -261,7 +261,7 @@ bool ScriptElement::requestScript(const String& sourceUrl)
         request.setCharset(scriptCharset());
         request.setInitiator(&element());
 
-        m_cachedScript = m_element.document().cachedResourceLoader()->requestScript(request);
+        m_cachedScript = m_element.document().cachedResourceLoader().requestScript(request);
         m_isExternalScript = true;
     }
 
@@ -377,7 +377,7 @@ bool ScriptElement::isScriptForEventSupported() const
 
 String ScriptElement::scriptContent() const
 {
-    return TextNodeTraversal::contentsAsString(&m_element);
+    return TextNodeTraversal::contentsAsString(m_element);
 }
 
 ScriptElement* toScriptElementIfPossible(Element* element)

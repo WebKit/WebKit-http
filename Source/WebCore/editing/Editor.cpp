@@ -267,7 +267,7 @@ static HTMLImageElement* imageElementFromImageDocument(Document& document)
     if (!document.isImageDocument())
         return nullptr;
     
-    HTMLElement* body = document.body();
+    HTMLElement* body = document.bodyOrFrameset();
     if (!body)
         return nullptr;
     
@@ -871,9 +871,9 @@ Node* Editor::findEventTargetFrom(const VisibleSelection& selection) const
 {
     Node* target = selection.start().element();
     if (!target)
-        target = document().body();
+        target = document().bodyOrFrameset();
     if (!target)
-        return 0;
+        return nullptr;
 
     return target;
 }
@@ -1281,8 +1281,7 @@ void Editor::paste(Pasteboard& pasteboard)
     if (!canPaste())
         return;
     updateMarkersForWordsAffectedByEditing(false);
-    CachedResourceLoader* loader = document().cachedResourceLoader();
-    ResourceCacheValidationSuppressor validationSuppressor(loader);
+    ResourceCacheValidationSuppressor validationSuppressor(document().cachedResourceLoader());
     if (m_frame.selection().selection().isContentRichlyEditable())
         pasteWithPasteboard(&pasteboard, true);
     else
@@ -1324,12 +1323,12 @@ void Editor::simplifyMarkup(Node* startNode, Node* endNode)
         // check if start node is before endNode
         Node* node = startNode;
         while (node && node != endNode)
-            node = NodeTraversal::next(node);
+            node = NodeTraversal::next(*node);
         if (!node)
             return;
     }
     
-    applyCommand(SimplifyMarkupCommand::create(document(), startNode, (endNode) ? NodeTraversal::next(endNode) : 0));
+    applyCommand(SimplifyMarkupCommand::create(document(), startNode, endNode ? NodeTraversal::next(*endNode) : nullptr));
 }
 
 void Editor::copyURL(const URL& url, const String& title)

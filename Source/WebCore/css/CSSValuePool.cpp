@@ -27,6 +27,7 @@
 #include "CSSValuePool.h"
 
 #include "CSSParser.h"
+#include "CSSPrimitiveValueMappings.h"
 #include "CSSStyleSheet.h"
 #include "CSSValueKeywords.h"
 #include "CSSValueList.h"
@@ -118,11 +119,17 @@ Ref<CSSPrimitiveValue> CSSValuePool::createValue(double value, CSSPrimitiveValue
     return *cache[intValue];
 }
 
-Ref<CSSPrimitiveValue> CSSValuePool::createFontFamilyValue(const String& familyName)
+Ref<CSSPrimitiveValue> CSSValuePool::createFontFamilyValue(const String& familyName, FromSystemFontID fromSystemFontID)
 {
-    RefPtr<CSSPrimitiveValue>& value = m_fontFamilyValueCache.add(familyName, nullptr).iterator->value;
+    // Remove one entry at random if the cache grows too large.
+    const int maximumFontFamilyCacheSize = 128;
+    if (m_fontFamilyValueCache.size() >= maximumFontFamilyCacheSize)
+        m_fontFamilyValueCache.remove(m_fontFamilyValueCache.begin());
+
+    bool isFromSystemID = fromSystemFontID == FromSystemFontID::Yes;
+    RefPtr<CSSPrimitiveValue>& value = m_fontFamilyValueCache.add({familyName, isFromSystemID}, nullptr).iterator->value;
     if (!value)
-        value = CSSPrimitiveValue::create(familyName, CSSPrimitiveValue::CSS_STRING);
+        value = CSSPrimitiveValue::create(CSSFontFamily{familyName, isFromSystemID});
     return *value;
 }
 

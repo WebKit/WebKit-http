@@ -1120,7 +1120,7 @@ RenderElement& RenderElement::rendererForRootBackground()
         // to crawl around a render tree with potential :before/:after content and
         // anonymous blocks created by inline <body> tags etc. We can locate the <body>
         // render object very easily via the DOM.
-        if (auto* body = childrenOfType<HTMLBodyElement>(*element()).first()) {
+        if (auto* body = document().body()) {
             if (auto* renderer = body->renderer())
                 return *renderer;
         }
@@ -1377,9 +1377,11 @@ static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const 
     // can no longer check if it is a background image.
     bool backgroundIsPaintedByRoot = renderer.isRoot();
     if (renderer.isBody()) {
+        auto& rootRenderer = *renderer.parent(); // If <body> has a renderer then <html> does too.
+        ASSERT(rootRenderer.isRoot());
+        ASSERT(is<HTMLHtmlElement>(rootRenderer.element()));
         // FIXME: Should share body background propagation code.
-        RenderElement* rootObject = renderer.document().documentElement() ? renderer.document().documentElement()->renderer() : nullptr;
-        backgroundIsPaintedByRoot = &rootObject->rendererForRootBackground() == &renderer;
+        backgroundIsPaintedByRoot = !rootRenderer.hasBackground();
 
     }
     LayoutRect backgroundPaintingRect = backgroundIsPaintedByRoot ? renderer.view().backgroundRect(&renderer.view()) : renderer.absoluteClippedOverflowRect();

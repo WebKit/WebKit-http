@@ -2567,6 +2567,11 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         }
 
         [self _accessibilityRegisterUIProcessTokens];
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+        if (_data->_immediateActionGestureRecognizer && ![[self gestureRecognizers] containsObject:_data->_immediateActionGestureRecognizer.get()] && !_data->_ignoresNonWheelEvents)
+            [self addGestureRecognizer:_data->_immediateActionGestureRecognizer.get()];
+#endif
     } else {
         ViewState::Flags viewStateChanges = ViewState::WindowIsActive | ViewState::IsVisible;
         if ([self isDeferringViewInWindowChanges])
@@ -2579,6 +2584,11 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         _data->_flagsChangedEventMonitor = nil;
 
         [self _dismissContentRelativeChildWindows];
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+        if (_data->_immediateActionGestureRecognizer)
+            [self removeGestureRecognizer:_data->_immediateActionGestureRecognizer.get()];
+#endif
     }
 
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
@@ -2840,16 +2850,21 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     _data->_resizeScrollOffset = NSZeroSize;
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 - (void)quickLookWithEvent:(NSEvent *)event
 {
     if (_data->_ignoresNonWheelEvents)
         return;
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    if (_data->_immediateActionGestureRecognizer) {
+        [super quickLookWithEvent:event];
+        return;
+    }
+#endif
+
     NSPoint locationInViewCoordinates = [self convertPoint:[event locationInWindow] fromView:nil];
     _data->_page->performDictionaryLookupAtLocation(FloatPoint(locationInViewCoordinates.x, locationInViewCoordinates.y));
 }
-#endif
 
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy
 {
@@ -3625,7 +3640,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
         _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:_data->_immediateActionGestureRecognizer.get()]);
         [_data->_immediateActionGestureRecognizer setDelegate:_data->_immediateActionController.get()];
-        [self addGestureRecognizer:_data->_immediateActionGestureRecognizer.get()];
     }
 #endif
 
@@ -3804,7 +3818,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return [self initWithFrame:frame processPool:processPool configuration:webPageConfiguration webView:nil];
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 - (BOOL)wantsUpdateLayer
 {
     return YES;
@@ -3826,7 +3839,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     if (DrawingAreaProxy* drawingArea = _data->_page->drawingArea())
         drawingArea->waitForPossibleGeometryUpdate();
 }
-#endif
 
 - (WKPageRef)pageRef
 {
@@ -3987,12 +3999,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (NSWindow *)createFullScreenWindow
 {
 #if ENABLE(FULLSCREEN_API)
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1080
-    NSRect contentRect = NSZeroRect;
-#else
-    NSRect contentRect = [[NSScreen mainScreen] frame];
-#endif
-    return [[[WebCoreFullScreenWindow alloc] initWithContentRect:contentRect styleMask:(NSBorderlessWindowMask | NSResizableWindowMask) backing:NSBackingStoreBuffered defer:NO] autorelease];
+    return [[[WebCoreFullScreenWindow alloc] initWithContentRect:[[NSScreen mainScreen] frame] styleMask:(NSBorderlessWindowMask | NSResizableWindowMask) backing:NSBackingStoreBuffered defer:NO] autorelease];
 #else
     return nil;
 #endif
@@ -4353,6 +4360,10 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
 
     [self _setTextIndicator:nullptr fadeOut:NO];
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [_data->_immediateActionController dismissContentRelativeChildWindows];
+#endif
 
     static_cast<PageClient&>(*_data->_pageClient).dismissCorrectionPanel(ReasonForDismissingAlternativeTextIgnored);
 }

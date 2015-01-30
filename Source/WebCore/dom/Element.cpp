@@ -419,6 +419,7 @@ ALWAYS_INLINE void Element::synchronizeAttribute(const AtomicString& localName) 
     // e.g when called from DOM API.
     if (!elementData())
         return;
+    // FIXME: this should be comparing in the ASCII range.
     if (elementData()->styleAttributeIsDirty() && equalPossiblyIgnoringCase(localName, styleAttr.localName(), shouldIgnoreAttributeCase(*this))) {
         ASSERT_WITH_SECURITY_IMPLICATION(isStyledElement());
         static_cast<const StyledElement*>(this)->synchronizeStyleAttributeInternal();
@@ -771,7 +772,7 @@ double Element::clientWidth()
     // When in strict mode, clientWidth for the document element should return the width of the containing frame.
     // When in quirks mode, clientWidth for the body element should return the width of the containing frame.
     bool inQuirksMode = document().inQuirksMode();
-    if ((!inQuirksMode && document().documentElement() == this) || (inQuirksMode && isHTMLElement() && document().body() == this))
+    if ((!inQuirksMode && document().documentElement() == this) || (inQuirksMode && isHTMLElement() && document().bodyOrFrameset() == this))
         return adjustForAbsoluteZoom(renderView.frameView().layoutWidth(), renderView);
     
     if (RenderBox* renderer = renderBox()) {
@@ -792,7 +793,7 @@ double Element::clientHeight()
     // When in strict mode, clientHeight for the document element should return the height of the containing frame.
     // When in quirks mode, clientHeight for the body element should return the height of the containing frame.
     bool inQuirksMode = document().inQuirksMode();
-    if ((!inQuirksMode && document().documentElement() == this) || (inQuirksMode && isHTMLElement() && document().body() == this))
+    if ((!inQuirksMode && document().documentElement() == this) || (inQuirksMode && isHTMLElement() && document().bodyOrFrameset() == this))
         return adjustForAbsoluteZoom(renderView.frameView().layoutHeight(), renderView);
 
     if (RenderBox* renderer = renderBox()) {
@@ -973,7 +974,7 @@ void Element::setAttribute(const AtomicString& localName, const AtomicString& va
     }
 
     synchronizeAttribute(localName);
-    const AtomicString& caseAdjustedLocalName = shouldIgnoreAttributeCase(*this) ? localName.lower() : localName;
+    const AtomicString& caseAdjustedLocalName = shouldIgnoreAttributeCase(*this) ? localName.convertToASCIILowercase() : localName;
 
     unsigned index = elementData() ? elementData()->findAttributeIndexByName(caseAdjustedLocalName, false) : ElementData::attributeNotFound;
     const QualifiedName& qName = index != ElementData::attributeNotFound ? attributeAt(index).name() : QualifiedName(nullAtom, caseAdjustedLocalName, nullAtom);
@@ -1558,18 +1559,18 @@ static void checkForEmptyStyleChange(Element& element)
 
 enum SiblingCheckType { FinishedParsingChildren, SiblingElementRemoved, Other };
 
-static void checkForSiblingStyleChanges(Element* parent, SiblingCheckType checkType, Element* elementBeforeChange, Element* elementAfterChange)
+static void checkForSiblingStyleChanges(Element& parent, SiblingCheckType checkType, Element* elementBeforeChange, Element* elementAfterChange)
 {
     // :empty selector.
-    checkForEmptyStyleChange(*parent);
+    checkForEmptyStyleChange(parent);
 
-    if (parent->styleChangeType() >= FullStyleChange)
+    if (parent.styleChangeType() >= FullStyleChange)
         return;
 
     // :first-child.  In the parser callback case, we don't have to check anything, since we were right the first time.
     // In the DOM case, we only need to do something if |afterChange| is not 0.
     // |afterChange| is 0 in the parser case, so it works out that we'll skip this block.
-    if (parent->childrenAffectedByFirstChildRules() && elementAfterChange) {
+    if (parent.childrenAffectedByFirstChildRules() && elementAfterChange) {
         // Find our new first child.
         Element* newFirstElement = ElementTraversal::firstChild(parent);
         // Find the first element node following |afterChange|
@@ -1591,7 +1592,7 @@ static void checkForSiblingStyleChanges(Element* parent, SiblingCheckType checkT
 
     // :last-child.  In the parser callback case, we don't have to check anything, since we were right the first time.
     // In the DOM case, we only need to do something if |afterChange| is not 0.
-    if (parent->childrenAffectedByLastChildRules() && elementBeforeChange) {
+    if (parent.childrenAffectedByLastChildRules() && elementBeforeChange) {
         // Find our new last child.
         Element* newLastElement = ElementTraversal::lastChild(parent);
 
@@ -1630,8 +1631,8 @@ static void checkForSiblingStyleChanges(Element* parent, SiblingCheckType checkT
     // |afterChange| is 0 in the parser callback case, so we won't do any work for the forward case if we don't have to.
     // For performance reasons we just mark the parent node as changed, since we don't want to make childrenChanged O(n^2) by crawling all our kids
     // here.  recalcStyle will then force a walk of the children when it sees that this has happened.
-    if (parent->childrenAffectedByBackwardPositionalRules() && elementBeforeChange)
-        parent->setNeedsStyleRecalc();
+    if (parent.childrenAffectedByBackwardPositionalRules() && elementBeforeChange)
+        parent.setNeedsStyleRecalc();
 }
 
 void Element::childrenChanged(const ChildChange& change)
@@ -1641,7 +1642,7 @@ void Element::childrenChanged(const ChildChange& change)
         checkForEmptyStyleChange(*this);
     else {
         SiblingCheckType checkType = change.type == ElementRemoved ? SiblingElementRemoved : Other;
-        checkForSiblingStyleChanges(this, checkType, change.previousSiblingElement, change.nextSiblingElement);
+        checkForSiblingStyleChanges(*this, checkType, change.previousSiblingElement, change.nextSiblingElement);
     }
 
     if (ShadowRoot* shadowRoot = this->shadowRoot())
@@ -1666,7 +1667,7 @@ void Element::finishParsingChildren()
 {
     ContainerNode::finishParsingChildren();
     setIsParsingChildrenFinished();
-    checkForSiblingStyleChanges(this, FinishedParsingChildren, ElementTraversal::lastChild(this), nullptr);
+    checkForSiblingStyleChanges(*this, FinishedParsingChildren, ElementTraversal::lastChild(*this), nullptr);
     if (auto styleResolver = document().styleResolverIfExists())
         styleResolver->popParentElement(this);
 }
@@ -1838,7 +1839,7 @@ bool Element::removeAttribute(const AtomicString& name)
     if (!elementData())
         return false;
 
-    AtomicString localName = shouldIgnoreAttributeCase(*this) ? name.lower() : name;
+    AtomicString localName = shouldIgnoreAttributeCase(*this) ? name.convertToASCIILowercase() : name;
     unsigned index = elementData()->findAttributeIndexByName(localName, false);
     if (index == ElementData::attributeNotFound) {
         if (UNLIKELY(localName == styleAttr) && elementData()->styleAttributeIsDirty() && is<StyledElement>(*this))
@@ -1883,7 +1884,7 @@ bool Element::hasAttribute(const AtomicString& localName) const
     if (!elementData())
         return false;
     synchronizeAttribute(localName);
-    return elementData()->findAttributeByName(shouldIgnoreAttributeCase(*this) ? localName.lower() : localName, false);
+    return elementData()->findAttributeByName(shouldIgnoreAttributeCase(*this) ? localName.convertToASCIILowercase() : localName, false);
 }
 
 bool Element::hasAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const
@@ -2375,22 +2376,22 @@ void Element::clearAfterPseudoElement()
 // ElementTraversal API
 Element* Element::firstElementChild() const
 {
-    return ElementTraversal::firstChild(this);
+    return ElementTraversal::firstChild(*this);
 }
 
 Element* Element::lastElementChild() const
 {
-    return ElementTraversal::lastChild(this);
+    return ElementTraversal::lastChild(*this);
 }
 
 Element* Element::previousElementSibling() const
 {
-    return ElementTraversal::previousSibling(this);
+    return ElementTraversal::previousSibling(*this);
 }
 
 Element* Element::nextElementSibling() const
 {
-    return ElementTraversal::nextSibling(this);
+    return ElementTraversal::nextSibling(*this);
 }
 
 unsigned Element::childElementCount() const

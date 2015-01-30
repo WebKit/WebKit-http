@@ -53,7 +53,11 @@ MessageDecoder::MessageDecoder(const DataReference& buffer, Vector<Attachment> a
     if (!decode(m_messageName))
         return;
 
-    decode(m_destinationID);
+    if (!decode(m_destinationID))
+        return;
+#if HAVE(DTRACE)
+    decode(m_UUID);
+#endif
 }
 
 bool MessageDecoder::isSyncMessage() const

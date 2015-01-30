@@ -50,8 +50,8 @@ typedef struct WKKeyboardModifiers WKKeyboardModifiers;
 
 struct WKPointerMotion {
     uint32_t time;
-    double dx;
-    double dy;
+    int32_t x;
+    int32_t y;
 };
 typedef struct WKPointerMotion WKPointerMotion;
 

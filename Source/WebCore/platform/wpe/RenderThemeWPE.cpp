@@ -30,15 +30,15 @@
 
 namespace WebCore {
 
-void RenderThemeWPE::systemFont(CSSValueID, FontDescription&) const
-{
-    notImplemented();
-}
-
 PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page*)
 {
     static RenderTheme* theme = RenderThemeWPE::create().leakRef();
     return theme;
+}
+
+void RenderThemeWPE::updateCachedSystemFontDescription(CSSValueID, FontDescription&) const
+{
+    notImplemented();
 }
 
 } // namespace WebCore

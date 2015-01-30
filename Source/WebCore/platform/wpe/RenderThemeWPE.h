@@ -38,11 +38,11 @@ public:
         return adoptRef(new RenderThemeWPE);
     }
 
-    virtual void systemFont(CSSValueID, FontDescription&) const override;
-
 private:
     RenderThemeWPE() = default;
     virtual ~RenderThemeWPE() = default;
+
+    virtual void updateCachedSystemFontDescription(CSSValueID, FontDescription&) const override;
 };
 
 } // namespace WebCore

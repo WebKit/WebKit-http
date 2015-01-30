@@ -1325,14 +1325,6 @@ MediaTime MediaPlayerPrivateAVFoundationObjC::platformMaxTimeSeekable() const
 
 MediaTime MediaPlayerPrivateAVFoundationObjC::platformMaxTimeLoaded() const
 {
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 1080
-    // AVFoundation on Mountain Lion will occasionally not send a KVO notification
-    // when loadedTimeRanges changes when there is no video output. In that case
-    // update the cached value explicitly.
-    if (!hasLayerRenderer() && !hasContextRenderer())
-        m_cachedLoadedRanges = [m_avPlayerItem loadedTimeRanges];
-#endif
-
     if (!m_cachedLoadedRanges)
         return MediaTime::zeroTime();
 
@@ -2728,13 +2720,13 @@ void MediaPlayerPrivateAVFoundationObjC::metadataDidArrive(RetainPtr<NSArray> me
     if (seeking())
         return;
 
+    if (!m_metadataTrack)
+        processMetadataTrack();
+
     if (!metadata || [metadata isKindOfClass:[NSNull class]]) {
         m_metadataTrack->updatePendingCueEndTimes(mediaTime);
         return;
     }
-
-    if (!m_metadataTrack)
-        processMetadataTrack();
 
     // Set the duration of all incomplete cues before adding new ones.
     MediaTime earliestStartTime = MediaTime::positiveInfiniteTime();
@@ -2941,12 +2933,19 @@ NSArray* assetTrackMetadataKeyNames()
     UNUSED_PARAM(object);
     id newValue = [change valueForKey:NSKeyValueChangeNewKey];
 
-    LOG(Media, "WebCoreAVFMovieObserver::observeValueForKeyPath(%p) - keyPath = %s", self, [keyPath UTF8String]);
-
     if (!m_callback)
         return;
 
     bool willChange = [[change valueForKey:NSKeyValueChangeNotificationIsPriorKey] boolValue];
+
+#if !LOG_DISABLED
+    if (willChange)
+        LOG(Media, "WebCoreAVFMovieObserver::observeValueForKeyPath(%p) - will change, keyPath = %s", self, [keyPath UTF8String]);
+    else {
+        RetainPtr<NSString> valueString = adoptNS([[NSString alloc] initWithFormat:@"%@", newValue]);
+        LOG(Media, "WebCoreAVFMovieObserver::observeValueForKeyPath(%p) - did change, keyPath = %s, value = %s", self, [keyPath UTF8String], [valueString.get() UTF8String]);
+    }
+#endif
 
     WTF::Function<void ()> function;
 

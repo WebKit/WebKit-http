@@ -228,7 +228,7 @@ CachedResourceHandle<CachedCSSStyleSheet> CachedResourceLoader::requestUserCSSSt
     memoryCache().add(userSheet.get());
     // FIXME: loadResource calls setOwningCachedResourceLoader() if the resource couldn't be added to cache. Does this function need to call it, too?
 
-    userSheet->load(this, ResourceLoaderOptions(DoNotSendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, DoNotIncludeCertificateInfo));
+    userSheet->load(*this, ResourceLoaderOptions(DoNotSendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, DoNotIncludeCertificateInfo));
     
     return userSheet;
 }
@@ -516,7 +516,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         resource->setLoadPriority(request.priority());
 
     if ((policy != Use || resource->stillNeedsLoad()) && CachedResourceRequest::NoDefer == request.defer()) {
-        resource->load(this, request.options());
+        resource->load(*this, request.options());
 
         // We don't support immediate loads, but we do support immediate failure.
         if (resource->errorOccurred()) {
@@ -763,7 +763,7 @@ void CachedResourceLoader::reloadImagesIfNotDeferred()
     for (DocumentResourceMap::iterator it = m_documentResources.begin(); it != end; ++it) {
         CachedResource* resource = it->value.get();
         if (is<CachedImage>(*resource) && resource->stillNeedsLoad() && !clientDefersImage(resource->url()))
-            downcast<CachedImage>(*resource).load(this, defaultCachedResourceOptions());
+            downcast<CachedImage>(*resource).load(*this, defaultCachedResourceOptions());
     }
 }
 
@@ -897,7 +897,7 @@ void CachedResourceLoader::preload(CachedResource::Type type, CachedResourceRequ
     // FIXME: We should consider adding a setting to toggle aggressive preloading behavior as opposed
     // to making this behavior specific to iOS.
 #if !PLATFORM(IOS)
-    bool hasRendering = m_document->body() && m_document->renderView();
+    bool hasRendering = m_document->bodyOrFrameset() && m_document->renderView();
     bool canBlockParser = type == CachedResource::Script || type == CachedResource::CSSStyleSheet;
     if (!hasRendering && !canBlockParser) {
         // Don't preload subresources that can't block the parser before we have something to draw.
@@ -912,7 +912,10 @@ void CachedResourceLoader::preload(CachedResource::Type type, CachedResourceRequ
 
 void CachedResourceLoader::checkForPendingPreloads() 
 {
-    if (m_pendingPreloads.isEmpty() || !m_document->body() || !m_document->body()->renderer())
+    if (m_pendingPreloads.isEmpty())
+        return;
+    auto* body = m_document->bodyOrFrameset();
+    if (!body || !body->renderer())
         return;
 #if PLATFORM(IOS)
     // We always preload resources on iOS. See <https://bugs.webkit.org/show_bug.cgi?id=91276>.
