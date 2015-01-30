@@ -201,7 +201,7 @@ bool RenderThemeHaiku::paintSliderThumb(const RenderObject& object, const PaintI
 }
 
 
-void RenderThemeHaiku::systemFont(CSSValueID, FontDescription& fontDescription) const
+void RenderThemeHaiku::updateCachedSystemFontDescription(CSSValueID, FontDescription& fontDescription) const
 {
     fontDescription.setOneFamily("Sans");
     fontDescription.setSpecifiedSize(14);

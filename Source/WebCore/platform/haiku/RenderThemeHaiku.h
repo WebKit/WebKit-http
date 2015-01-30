@@ -54,7 +54,7 @@ public:
     Color platformFocusRingColor() const override;
 
     // System fonts.
-    void systemFont(CSSValueID propId, FontDescription&) const override;
+    void updateCachedSystemFontDescription(CSSValueID propId, FontDescription&) const override;
 
 #if ENABLE(VIDEO)
     String mediaControlsStyleSheet() override;

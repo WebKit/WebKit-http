@@ -28,7 +28,7 @@
  */
 
 #include "config.h"
-#include "SimpleFontData.h"
+#include "Font.h"
 
 #include "FloatRect.h"
 #include "FontCache.h"
@@ -49,7 +49,7 @@ namespace WebCore {
 static const float smallCapsFraction = 0.7;
 static const float emphasisMarkFraction = 0.5;
 
-void SimpleFontData::platformInit()
+void Font::platformInit()
 {
     const BFont* font = m_platformData.font();
     if (!font)
@@ -70,29 +70,29 @@ void SimpleFontData::platformInit()
         // css2.1/20110323/c541-word-sp-000.htm
 }
 
-void SimpleFontData::platformCharWidthInit()
+void Font::platformCharWidthInit()
 {
     m_avgCharWidth = 0.f;
     m_maxCharWidth = 0.f;
     initCharWidths();
 }
 
-void SimpleFontData::platformDestroy()
+void Font::platformDestroy()
 {
 }
 
-PassRefPtr<SimpleFontData> SimpleFontData::platformCreateScaledFontData(const FontDescription& fontDescription, float scaleFactor) const
+PassRefPtr<Font> Font::platformCreateScaledFont(const FontDescription& fontDescription, float scaleFactor) const
 {
     const float scaledSize = lroundf(fontDescription.computedSize() * scaleFactor);
-    return SimpleFontData::create(FontPlatformData(m_platformData, scaledSize), isCustomFont(), false);
+    return Font::create(FontPlatformData(m_platformData, scaledSize), isCustomFont(), false);
 }
 
-void SimpleFontData::determinePitch()
+void Font::determinePitch()
 {
     m_treatAsFixedPitch = m_platformData.font() && m_platformData.font()->IsFixed();
 }
 
-FloatRect SimpleFontData::platformBoundsForGlyph(Glyph glyph) const
+FloatRect Font::platformBoundsForGlyph(Glyph glyph) const
 {
     const BFont* font = m_platformData.font();
     if (!font)
@@ -106,7 +106,7 @@ FloatRect SimpleFontData::platformBoundsForGlyph(Glyph glyph) const
     return rect;
 }
 
-float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
+float Font::platformWidthForGlyph(Glyph glyph) const
 {
     if (!glyph || !platformData().size())
         return 0;

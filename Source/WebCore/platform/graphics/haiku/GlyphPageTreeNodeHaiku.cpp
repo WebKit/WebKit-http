@@ -31,13 +31,13 @@
 #include "config.h"
 #include "GlyphPage.h"
 
-#include "SimpleFontData.h"
+#include "Font.h"
 #include "../freetype/UTF16UChar32Iterator.h"
 
 
 namespace WebCore {
 
-bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned bufferLength, const SimpleFontData* fontData)
+bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned bufferLength, const Font* fontData)
 {
     bool haveGlyphs = false;
     UTF16UChar32Iterator iterator(buffer, bufferLength);

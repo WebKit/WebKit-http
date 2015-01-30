@@ -52,7 +52,7 @@ void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext* /* context */
     notImplemented();
 }
 
-void FontCascade::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* font,
+void FontCascade::drawGlyphs(GraphicsContext* graphicsContext, const Font* font,
                       const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point) const
 {
     BView* view = graphicsContext->platformContext();
@@ -105,7 +105,7 @@ float FontCascade::drawComplexText(GraphicsContext* context, const TextRun& run,
                            int from, int to) const
 {
     BView* view = context->platformContext();
-    view->SetFont(primaryFontData().platformData().font());
+    view->SetFont(primaryFont().platformData().font());
 
     const char* string = run.subRun(from,to).string().utf8().data();
     view->DrawString(string, point);
@@ -114,9 +114,9 @@ float FontCascade::drawComplexText(GraphicsContext* context, const TextRun& run,
 }
 
 
-float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>* /*fallbackFonts*/, GlyphOverflow* /*glyphOverflow*/) const
+float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const Font*>* /*fallbackFonts*/, GlyphOverflow* /*glyphOverflow*/) const
 {
-    const BFont* font = primaryFontData().platformData().font();
+    const BFont* font = primaryFont().platformData().font();
     ASSERT(font);
     float width = font->StringWidth(run.string().utf8().data());
     return width;

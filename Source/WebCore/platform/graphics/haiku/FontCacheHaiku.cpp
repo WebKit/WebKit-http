@@ -36,7 +36,7 @@
 #include "Font.h"
 #include "FontPlatformData.h"
 #include "NotImplemented.h"
-#include "SimpleFontData.h"
+#include "Font.h"
 #include <Font.h>
 #include <String.h>
 #include <interface/Font.h>
@@ -47,7 +47,7 @@ void FontCache::platformInit()
 {
 }
 
-RefPtr<SimpleFontData> FontCache::systemFallbackForCharacters(const FontDescription& description, const SimpleFontData* /*originalFontData*/, bool, const UChar* /*characters*/, int /*length*/)
+RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font* /*originalFontData*/, bool, const UChar* /*characters*/, int /*length*/)
 {
     FontPlatformData data(description, description.firstFamily());
         // TODO be smarter, try the other families and actually check that the
@@ -55,7 +55,7 @@ RefPtr<SimpleFontData> FontCache::systemFallbackForCharacters(const FontDescript
     return fontForPlatformData(data);
 }
 
-Ref<SimpleFontData> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
+Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
     font_family family;
     font_style style;
