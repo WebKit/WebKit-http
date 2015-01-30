@@ -238,20 +238,54 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
     : BUrlProtocolAsynchronousListener(!synchronous)
     , m_resourceHandle(handle)
     , m_redirected(false)
-    , m_responseSent(false)
     , m_responseDataSent(false)
     , m_postData(NULL)
     , m_request(handle->firstRequest().toNetworkRequest(
         context ? context->context() : NULL))
-    , m_shouldStart(true)
-    , m_shouldFinish(false)
-    , m_shouldSendResponse(false)
-    , m_shouldForwardData(false)
     , m_redirectionTries(gMaxRecursionLimit)
 {
     m_method = BString(m_resourceHandle->firstRequest().httpMethod());
 
-    start();
+    if (!m_resourceHandle)
+        return;
+
+    m_postData = NULL;
+
+    if (m_request == NULL)
+        return;
+
+    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
+    if(httpRequest) {
+        // TODO maybe we have data to send in other cases ?
+        if(m_method == B_HTTP_POST || m_method == B_HTTP_PUT) {
+            FormData* form = m_resourceHandle->firstRequest().httpBody();
+            if(form) {
+                m_postData = new BFormDataIO(*form);
+                httpRequest->AdoptInputData(m_postData, m_postData->Size());
+            }
+        }
+
+        httpRequest->SetMethod(m_method.String());
+    }
+
+    // In synchronous mode, call this listener directly.
+    // In asynchronous mode, go through a BMessage
+    if(this->SynchronousListener()) {
+        m_request->SetListener(this->SynchronousListener());
+    } else {
+        m_request->SetListener(this);
+    }
+
+    if (m_request->Run() < B_OK) {
+        ResourceHandleClient* client = m_resourceHandle->client();
+        if (!client)
+            return;
+
+        ResourceError error("BUrlProtocol", 42,
+            handle->firstRequest().url().string().utf8().data(),
+            "The service kit failed to start the request.");
+        client->didFail(m_resourceHandle, error);
+    }
 }
 
 BUrlProtocolHandler::~BUrlProtocolHandler()
@@ -285,8 +319,6 @@ static bool ignoreHttpError(BHttpRequest* reply, bool receivedData)
 
 void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
 {
-    sendResponseIfNeeded();
-
     if (!m_resourceHandle)
         return;
 
@@ -300,28 +332,24 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
         client->didFinishLoading(m_resourceHandle, 0);
             // TODO put the actual finish time instead of 0
             // (this isn't done on other platforms either...)
-        return;
-    }
-
-    if(httpRequest) {
+    } else if(httpRequest) {
         const BHttpResult& result = static_cast<const BHttpResult&>(httpRequest->Result());
         int httpStatusCode = result.StatusCode();
 
-        if (httpStatusCode) {
+        if (httpStatusCode != 0) {
             ResourceError error("HTTP", httpStatusCode,
                 caller->Url().UrlString().String(), strerror(caller->Status()));
 
             client->didFail(m_resourceHandle, error);
-            return;
         }
+    } else {
+        ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), strerror(caller->Status()));
+        client->didFail(m_resourceHandle, error);
     }
-
-    ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), strerror(caller->Status()));
-    client->didFail(m_resourceHandle, error);
 }
 
 
-bool BUrlProtocolHandler::CertificateVerificationFailed(BUrlRequest* caller,
+bool BUrlProtocolHandler::CertificateVerificationFailed(BUrlRequest*,
     BCertificate& certificate, const char* message)
 {
     return m_resourceHandle->didReceiveInvalidCertificate(certificate, message);
@@ -382,7 +410,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         return;
     }
 
-    m_nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
+    ResourceRequest* nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
 
     Credential proposedCredential(d->m_user, d->m_pass, CredentialPersistenceForSession);
 
@@ -396,46 +424,46 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         // Handle this just like redirects.
         m_redirected = true;
 
-        // We just reuse the same request, it's already set up like we want it.
-        //m_nextRequest->setURL(location);
-        m_nextRequest->setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
-        client->willSendRequest(m_resourceHandle, *m_nextRequest, response);
+        nextRequest->setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
+        client->willSendRequest(m_resourceHandle, *nextRequest, response);
     } else {
         client->didFinishLoading(m_resourceHandle, 0);
     }
 }
 
 
-void BUrlProtocolHandler::sendResponseIfNeeded()
+void BUrlProtocolHandler::ConnectionOpened(BUrlRequest*)
 {
-    if((!m_request) || (!m_resourceHandle) || m_redirected)
-        return;
+    m_redirected = true;
+    m_responseDataSent = false;
+}
 
+
+void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
+{
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
-    if(httpRequest)
-    {
-        if (m_request->Status() != B_OK
-                && m_request->Status() != B_BUSY
-                && !ignoreHttpError(httpRequest, m_responseDataSent))
-            return;
-    }
-
-    if (!m_resourceHandle)
-        return;
-
-    ResourceHandleClient* client = m_resourceHandle->client();
-    if (!client)
-        return;
 
     WTF::String contentType = m_request->Result().ContentType();
     int contentLength = m_request->Result().Length();
+    URL url(m_request->Url());
 
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
-    URL url(m_request->Url());
+    URL location;
 
-    ResourceResponse response(url, mimeType, contentLength, encoding);
+    if (httpRequest) {
+        const BHttpResult& result = static_cast<const BHttpResult&>(
+            httpRequest->Result());
+        BString locationString(result.Headers()["Location"]);
+        if (locationString.Length())
+            m_redirected = true;
+        else
+            m_redirected = false;
+        location = URL(url, locationString);
+    }
+
+    ResourceResponse response(location, mimeType, contentLength, encoding);
 
     if (httpRequest) {
         const BHttpResult& result = static_cast<const BHttpResult&>(
@@ -460,55 +488,32 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
         if (statusCode == 401)
             AuthenticationNeeded(httpRequest, response);
-
     }
 
-    if (!m_responseSent) {
-        m_responseSent = true;
-        client->didReceiveResponse(m_resourceHandle, response);
+    ResourceHandleClient* client = m_resourceHandle->client();
+    if (!client)
         return;
-    }
-}
 
-void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
-{
-    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
-    const BHttpResult& result = static_cast<const BHttpResult&>(
-        httpRequest->Result());
-
-    BString locationString(result.Headers()["Location"]);
-    if (locationString.Length()) {
-        URL url(m_request->Url());
-        URL location(url, locationString);
+    if (m_redirected) {
         m_redirectionTries--;
-
-        ResourceHandleClient* client = m_resourceHandle->client();
 
         if (m_redirectionTries == 0) {
             ResourceError error(location.host(), 400, location.string(),
                 "Redirection limit reached");
-            if (client)
-                client->didFail(m_resourceHandle, error);
+            client->didFail(m_resourceHandle, error);
             return;
         }
 
-        m_nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
-        m_nextRequest->setURL(location);
+        ResourceRequest* nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
+        nextRequest->setURL(location);
 
-        WTF::String contentType = m_request->Result().ContentType();
-        int contentLength = m_request->Result().Length();
-
-        WTF::String encoding = extractCharsetFromMediaType(contentType);
-        WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
-
-        ResourceResponse response(location, mimeType, contentLength, encoding);
-        client->willSendRequest(m_resourceHandle, *m_nextRequest, response);
-        m_redirected = true;
-    } else
-        m_redirected = false;
+        client->willSendRequest(m_resourceHandle, *nextRequest, response);
+    } else {
+        client->didReceiveResponse(m_resourceHandle, response);
+    }
 }
 
-void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data, off_t position, ssize_t size)
+void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data, off_t /*position*/, ssize_t size)
 {
     if (!m_resourceHandle)
         return;
@@ -516,8 +521,6 @@ void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client)
         return;
-
-    sendResponseIfNeeded();
 
     // don't emit the "Document has moved here" type of HTML
     if (m_redirected)
@@ -541,61 +544,5 @@ void BUrlProtocolHandler::UploadProgress(BUrlRequest* /*caller*/, ssize_t bytesS
     client->didSendData(m_resourceHandle, bytesSent, bytesTotal);
 }
 
-void BUrlProtocolHandler::start()
-{
-    if (!m_resourceHandle)
-        return;
-
-    m_shouldStart = false;
-    m_postData = NULL;
-
-    if (m_request == NULL)
-        return;
-
-    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
-    if(httpRequest) {
-        // TODO maybe we have data to send in other cases ?
-        if(m_method == B_HTTP_POST || m_method == B_HTTP_PUT) {
-            FormData* form = m_resourceHandle->firstRequest().httpBody();
-            if(form) {
-                m_postData = new BFormDataIO(*form);
-                httpRequest->AdoptInputData(m_postData, m_postData->Size());
-            }
-        }
-
-        //httpRequest->SetFollowLocation(false);
-        httpRequest->SetMethod(m_method.String());
-    }
-
-    // In synchronous mode, call this listener directly.
-    // In asynchronous mode, go through a BMessage
-    if(this->SynchronousListener()) {
-        m_request->SetListener(this->SynchronousListener());
-    } else {
-        m_request->SetListener(this);
-    }
-
-    if (m_request->Run() < B_OK) {
-        ResourceHandleClient* client = m_resourceHandle->client();
-        if (!client)
-            return;
-
-        ResourceError error("BUrlProtocol", 42,
-            m_nextRequest->url().string().utf8().data(),
-            "The service kit failed to start the request.");
-        client->didFail(m_resourceHandle, error);
-    }
-}
-
-void BUrlProtocolHandler::resetState()
-{
-    m_redirected = false;
-    m_responseSent = false;
-    m_responseDataSent = false;
-    m_shouldStart = true;
-    m_shouldFinish = false;
-    m_shouldSendResponse = false;
-    m_shouldForwardData = false;
-}
 
 }

@@ -68,10 +68,10 @@ public:
     bool isValid() { return m_request != NULL; }
 
 private:
-    void sendResponseIfNeeded();
     void AuthenticationNeeded(BHttpRequest* caller, ResourceResponse& response);
 
     // BUrlListener hooks
+    void ConnectionOpened(BUrlRequest* caller) override;
 	void HeadersReceived(BUrlRequest* caller) override;
 	void DataReceived(BUrlRequest* caller, const char* data, off_t position, ssize_t size) override;
 	void UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal) override;
@@ -79,23 +79,13 @@ private:
     bool CertificateVerificationFailed(BUrlRequest* caller, BCertificate& certificate, const char* message) override;
 
 private:
-    void start();
-    void resetState();
-
     ResourceHandle* m_resourceHandle;
-    ResourceRequest* m_nextRequest;
     bool m_redirected;
-    bool m_responseSent;
     bool m_responseDataSent;
     BString m_method;
     BFormDataIO* m_postData;
     BUrlRequest* m_request;
 
-    // defer state holding
-    bool m_shouldStart;
-    bool m_shouldFinish;
-    bool m_shouldSendResponse;
-    bool m_shouldForwardData;
     int m_redirectionTries;
 };
 
