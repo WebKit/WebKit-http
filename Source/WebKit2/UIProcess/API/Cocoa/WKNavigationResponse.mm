@@ -28,31 +28,42 @@
 
 #if WK_API_ENABLED
 
-#import <wtf/RetainPtr.h>
-#import "WKFrameInfo.h"
+#import "WKFrameInfoInternal.h"
 
-@implementation WKNavigationResponse {
-    RetainPtr<NSURLResponse> _response;
+@implementation WKNavigationResponse
+
+- (void)dealloc
+{
+    _navigationResponse->~NavigationResponse();
+
+    [super dealloc];
 }
 
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"<%@: %p; response = %@>", NSStringFromClass(self.class), self, _response.get()];
+    return [NSString stringWithFormat:@"<%@: %p; response = %@>", NSStringFromClass(self.class), self, self.response];
 }
 
 - (BOOL)isForMainFrame
 {
-    return [_frame isMainFrame];
+    return _navigationResponse->frame().isMainFrame();
 }
 
 - (NSURLResponse *)response
 {
-    return _response.get();
+    return _navigationResponse->response().nsURLResponse();
 }
 
-- (void)setResponse:(NSURLResponse *)response
+- (BOOL)canShowMIMEType
 {
-    _response = adoptNS([response copy]);
+    return _navigationResponse->canShowMIMEType();
+}
+
+#pragma mark WKObject protocol implementation
+
+- (API::Object&)_apiObject
+{
+    return *_navigationResponse;
 }
 
 @end
@@ -61,12 +72,12 @@
 
 - (WKFrameInfo *)_frame
 {
-    return _frame.get();
+    return wrapper(_navigationResponse->frame());
 }
 
 - (NSURLRequest *)_request
 {
-    return _request.get();
+    return _navigationResponse->request().nsURLRequest(WebCore::DoNotUpdateHTTPBody);
 }
 
 @end

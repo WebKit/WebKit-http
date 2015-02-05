@@ -220,6 +220,7 @@ VM::VM(VMType vmType, HeapType heapType)
     programExecutableStructure.set(*this, ProgramExecutable::createStructure(*this, 0, jsNull()));
     functionExecutableStructure.set(*this, FunctionExecutable::createStructure(*this, 0, jsNull()));
     regExpStructure.set(*this, RegExp::createStructure(*this, 0, jsNull()));
+    symbolStructure.set(*this, Symbol::createStructure(*this, 0, jsNull()));
     symbolTableStructure.set(*this, SymbolTable::createStructure(*this, 0, jsNull()));
     structureChainStructure.set(*this, StructureChain::createStructure(*this, 0, jsNull()));
     sparseArrayValueMapStructure.set(*this, SparseArrayValueMap::createStructure(*this, 0, jsNull()));
@@ -356,10 +357,8 @@ VM& VM::sharedInstance()
 {
     GlobalJSLock globalLock;
     VM*& instance = sharedInstanceInternal();
-    if (!instance) {
+    if (!instance)
         instance = adoptRef(new VM(APIShared, SmallHeap)).leakRef();
-        instance->makeUsableFromMultipleThreads();
-    }
     return *instance;
 }
 
@@ -367,13 +366,6 @@ VM*& VM::sharedInstanceInternal()
 {
     static VM* sharedInstance;
     return sharedInstance;
-}
-
-CallEdgeLog& VM::ensureCallEdgeLog()
-{
-    if (!callEdgeLog)
-        callEdgeLog = std::make_unique<CallEdgeLog>();
-    return *callEdgeLog;
 }
 
 #if ENABLE(JIT)
@@ -459,9 +451,6 @@ void VM::stopSampling()
 
 void VM::prepareToDiscardCode()
 {
-    if (callEdgeLog)
-        callEdgeLog->processLog();
-    
 #if ENABLE(DFG_JIT)
     for (unsigned i = DFG::numberOfWorklists(); i--;) {
         if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))

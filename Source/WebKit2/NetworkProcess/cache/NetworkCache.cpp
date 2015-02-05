@@ -43,14 +43,10 @@
 
 namespace WebKit {
 
-NetworkCache& NetworkCache::shared()
+NetworkCache& NetworkCache::singleton()
 {
     static NeverDestroyed<NetworkCache> instance;
     return instance;
-}
-
-NetworkCache::NetworkCache()
-{
 }
 
 bool NetworkCache::initialize(const String& cachePath)
@@ -171,13 +167,14 @@ static std::unique_ptr<NetworkCache::Entry> decodeStorageEntry(const NetworkCach
     }
 
     auto entry = std::make_unique<NetworkCache::Entry>();
+    entry->storageEntry = storageEntry;
     entry->needsRevalidation = needsRevalidation;
 
     cachedResponse.setSource(needsRevalidation ? WebCore::ResourceResponse::Source::DiskCacheAfterValidation : WebCore::ResourceResponse::Source::DiskCache);
     entry->response = cachedResponse;
 
 #if ENABLE(SHAREABLE_RESOURCE)
-    RefPtr<SharedMemory> sharedMemory = storageEntry.body.size() ? SharedMemory::createFromVMBuffer(const_cast<uint8_t*>(storageEntry.body.data()), storageEntry.body.size()) : nullptr;
+    RefPtr<SharedMemory> sharedMemory = storageEntry.body.isMap() ? SharedMemory::createFromVMBuffer(const_cast<uint8_t*>(storageEntry.body.data()), storageEntry.body.size()) : nullptr;
     RefPtr<ShareableResource> shareableResource = sharedMemory ? ShareableResource::create(sharedMemory.release(), 0, storageEntry.body.size()) : nullptr;
 
     if (shareableResource && shareableResource->createHandle(entry->shareableResourceHandle))
@@ -221,7 +218,7 @@ void NetworkCache::retrieve(const WebCore::ResourceRequest& originalRequest, std
 {
     ASSERT(isEnabled());
 
-    LOG(NetworkCache, "(NetworkProcess) retrieving %s priority %d", originalRequest.url().string().ascii().data(), originalRequest.priority());
+    LOG(NetworkCache, "(NetworkProcess) retrieving %s priority %u", originalRequest.url().string().ascii().data(), originalRequest.priority());
 
     if (!canRetrieve(originalRequest)) {
         completionHandler(nullptr);
@@ -252,7 +249,7 @@ void NetworkCache::retrieve(const WebCore::ResourceRequest& originalRequest, std
 #if !LOG_DISABLED
         auto elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count();
 #endif
-        LOG(NetworkCache, "(NetworkProcess) retrieve complete success=%d priority=%d time=%lldms", success, capture->originalRequest.priority(), elapsedMS);
+        LOG(NetworkCache, "(NetworkProcess) retrieve complete success=%d priority=%u time=%lldms", success, capture->originalRequest.priority(), elapsedMS);
         capture->completionHandler(WTF::move(decodedEntry));
         return success;
     });
@@ -320,11 +317,10 @@ void NetworkCache::update(const WebCore::ResourceRequest& originalRequest, const
     WebCore::ResourceResponse response = entry.response;
     WebCore::updateResponseHeadersAfterRevalidation(response, validatingResponse);
 
-    // FIXME: This rewrites the entire resource instead of just the header.
     auto key = makeCacheKey(originalRequest);
-    auto storageEntry = encodeStorageEntry(originalRequest, response, entry.buffer);
+    auto updateEntry = encodeStorageEntry(originalRequest, response, entry.buffer);
 
-    m_storage->store(key, storageEntry, [](bool success) {
+    m_storage->update(key, updateEntry, entry.storageEntry, [](bool success) {
         LOG(NetworkCache, "(NetworkProcess) updated, success=%d", success);
     });
 }

@@ -377,7 +377,7 @@ void CSSParserString::lower()
     makeLower(characters16(), characters16(), length());
 }
 
-void CSSParser::setupParser(const char* prefix, unsigned prefixLength, const String& string, const char* suffix, unsigned suffixLength)
+void CSSParser::setupParser(const char* prefix, unsigned prefixLength, StringView string, const char* suffix, unsigned suffixLength)
 {
     m_parsedTextPrefixLength = prefixLength;
     unsigned stringLength = string.length();
@@ -1480,18 +1480,55 @@ std::unique_ptr<MediaQuery> CSSParser::parseMediaQuery(const String& string)
 }
 
 #if ENABLE(PICTURE_SIZES)
-std::unique_ptr<SourceSizeList> CSSParser::parseSizesAttribute(const String& string)
-{
-    if (string.isEmpty())
-        return nullptr;
 
-    ASSERT(!m_sourceSizeList.get());
+Vector<CSSParser::SourceSize> CSSParser::parseSizesAttribute(StringView string)
+{
+    Vector<SourceSize> result;
+
+    if (string.isEmpty())
+        return result;
+
+    ASSERT(!m_sourceSizeList);
 
     setupParser("@-webkit-sizesattr ", string, "}");
     cssyyparse(this);
 
-    return WTF::move(m_sourceSizeList);
+    if (!m_sourceSizeList)
+        return result;
+
+    result = WTF::move(*m_sourceSizeList);
+    m_sourceSizeList = nullptr;
+    return result;
 }
+
+CSSParser::SourceSize::SourceSize(CSSParser::SourceSize&& original)
+    : expression(WTF::move(original.expression))
+    , length(original.length)
+{
+}
+
+CSSParser::SourceSize::SourceSize(std::unique_ptr<MediaQueryExp>&& origExp, RefPtr<CSSValue> value)
+    : expression(WTF::move(origExp))
+    , length(value)
+{
+}
+
+CSSParser::SourceSize CSSParser::sourceSize(std::unique_ptr<MediaQueryExp>&& expression, CSSParserValue& parserValue)
+{
+    RefPtr<CSSValue> value;
+    if (isCalculation(parserValue)) {
+        auto* args = parserValue.function->args.get();
+        if (args && args->size())
+            value = CSSCalcValue::create(parserValue.function->name, *args, CalculationRangeNonNegative);
+    }
+    if (!value)
+        value = parserValue.createCSSValue();
+    destroy(parserValue);
+    // FIXME: Calling the constructor explicitly here to work around an MSVC bug.
+    // For other compilers, we did not need to define the constructors and we could use aggregate initialization syntax.
+    return SourceSize(WTF::move(expression), WTF::move(value));
+}
+
 #endif
 
 static inline void filterProperties(bool important, const CSSParser::ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties)
@@ -6320,7 +6357,7 @@ void CSSParser::parseSystemFont(bool important)
     addProperty(CSSPropertyFontWeight, cssValuePool().createValue(fontDescription.weight()), important);
     addProperty(CSSPropertyFontSize, cssValuePool().createValue(fontDescription.specifiedSize(), CSSPrimitiveValue::CSS_PX), important);
     Ref<CSSValueList> fontFamilyList = CSSValueList::createCommaSeparated();
-    fontFamilyList->append(cssValuePool().createFontFamilyValue(fontDescription.familyAt(0), FromSystemFontID));
+    fontFamilyList->append(cssValuePool().createFontFamilyValue(fontDescription.familyAt(0), FromSystemFontID::Yes));
     addProperty(CSSPropertyFontFamily, WTF::move(fontFamilyList), important);
     addProperty(CSSPropertyFontVariant, cssValuePool().createIdentifierValue(CSSValueNormal), important);
     addProperty(CSSPropertyLineHeight, cssValuePool().createIdentifierValue(CSSValueNormal), important);

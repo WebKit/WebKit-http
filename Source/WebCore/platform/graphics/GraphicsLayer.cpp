@@ -71,7 +71,7 @@ void KeyframeValueList::insert(std::unique_ptr<const AnimationValue> value)
     m_values.append(WTF::move(value));
 }
 
-GraphicsLayer::GraphicsLayer(GraphicsLayerClient& client)
+GraphicsLayer::GraphicsLayer(Type, GraphicsLayerClient& client)
     : m_client(client)
     , m_anchorPoint(0.5f, 0.5f, 0)
     , m_opacity(1)
@@ -99,7 +99,6 @@ GraphicsLayer::GraphicsLayer(GraphicsLayerClient& client)
     , m_replicatedLayer(nullptr)
     , m_repaintCount(0)
     , m_customAppearance(NoCustomAppearance)
-    , m_customBehavior(NoCustomBehavior)
 {
 #ifndef NDEBUG
     m_client.verifyNotPainting();
@@ -253,14 +252,7 @@ void GraphicsLayer::removeAllChildren()
 void GraphicsLayer::removeFromParent()
 {
     if (m_parent) {
-        unsigned i;
-        for (i = 0; i < m_parent->m_children.size(); i++) {
-            if (this == m_parent->m_children[i]) {
-                m_parent->m_children.remove(i);
-                break;
-            }
-        }
-
+        m_parent->m_children.removeFirst(this);
         setParent(nullptr);
     }
 }

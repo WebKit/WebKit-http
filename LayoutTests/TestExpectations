@@ -66,6 +66,10 @@ webkit.org/b/126166 [ Debug ] js/dfg-uint32array-overflow-values.html [ Skip ]
 
 webkit.org/b/127860 [ Debug ] js/function-apply-aliased.html [ Skip ]
 
+# ES6 class syntax hasn't been enabled yet.
+webkit.org/b/140491 js/class-syntax-declaration.html [ Failure ]
+webkit.org/b/140491 js/class-syntax-expression.html [ Failure ]
+
 # This test verifies dynamic manipulation of the mroot and msqrt elements.
 mathml/roots-removeChild.html [ ImageOnlyFailure ]
 
@@ -95,6 +99,7 @@ webkit.org/b/137131 inspector/debugger [ Skip ]
 webkit.org/b/137130 inspector/replay [ Skip ]
 webkit.org/b/137131 inspector/timeline [ Skip ]
 inspector/model/remote-object-get-properties.html [ Skip ]
+inspector/model/remote-object-weak-collection.html [ Skip ]
 inspector/model/remote-object.html [ Skip ]
 
 # Doesn't work yet, relies on network replay functionality (webkit.org/b/130728, webkit.org/b/129391)
@@ -223,6 +228,16 @@ webkit.org/b/137883 transitions/started-while-suspended.html [ Pass Failure ]
 webkit.org/b/137883 transitions/transition-shorthand-delay.html
 webkit.org/b/137883 transitions/transition-timing-function.html [ Pass Failure ]
 
+# W3C web platform tests infrastructure directories are skipped as they may contain html files
+imported/w3c/web-platform-tests/common [ Skip ]
+imported/w3c/web-platform-tests/fonts [ Skip ]
+imported/w3c/web-platform-tests/images [ Skip ]
+imported/w3c/web-platform-tests/tools [ Skip ]
+
+# W3C domparsing test suite
+# Bug 141235: Tests marked as Skip until being able to relaunch wpt server properly
+imported/w3c/web-platform-tests [ Skip ]
+
 # Imported W3C canvas failed tests
 webkit.org/b/138676 imported/w3c/canvas/2d.pattern.image.null.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/2d.pattern.image.incomplete.omitted.html [ Failure ]
@@ -317,9 +332,6 @@ webkit.org/b/139595 http/tests/xmlhttprequest/workers/abort-exception-assert.htm
 [ Debug ] fast/history/go-back-to-iframe-with-plugin.html [ Skip ]
 [ Debug ] fast/history/history-back-while-pdf-in-pagecache.html [ Skip ]
 webkit.org/b/121628 [ Release ] fast/history/history-back-while-pdf-in-pagecache.html [ Pass ImageOnlyFailure ]
-
-# Network process disk cache is not enabled yet
-webkit.org/b/30322 http/tests/cache/disk-cache-validation.html [ Skip ]
 
 webkit.org/b/139634 [ Debug ] fast/selectors/matches-backtracking.html [ Slow ]
 webkit.org/b/139634 [ Debug ] fast/selectors/nth-child-of-register-requirement.html [ Slow ]
@@ -448,6 +460,8 @@ webkit.org/b/135053 [ Debug ] html5lib/webkit-resumer.html [ Slow ]
 [ Debug ] js/dom/string-replacement-outofmemory.html [ Slow ]
 [ Debug ] js/regress-139548.html [ Slow ]
 [ Debug ] webgl/1.0.2/conformance/uniforms/gl-uniform-arrays.html [ Slow ]
+[ Debug ] js/dfg-osr-entry-hoisted-clobbered-structure-check.html [ Slow ]
+[ Debug ] editing/selection/move-by-character-brute-force.html [ Slow ]
 
 webkit.org/b/139865 js/promises-tests/promises-tests-2-3-3.html [ Skip ]
 
@@ -456,3 +470,5 @@ webkit.org/b/139840 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html
 webkit.org/b/140043 [ Debug ] js/dom/Promise.html [ Pass Failure ]
 
 webkit.org/b/140309 css3/background/background-repeat-space-content.html [ ImageOnlyFailure ]
+
+webkit.org/b/141267 http/tests/misc/detached-frame-console.html [ Pass Failure ]

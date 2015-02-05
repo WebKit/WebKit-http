@@ -73,7 +73,6 @@ namespace JSC {
 
 class ArityCheckFailReturnThunks;
 class BuiltinExecutables;
-class CallEdgeLog;
 class CodeBlock;
 class CodeCache;
 class CommonIdentifiers;
@@ -218,8 +217,6 @@ public:
     static PassRefPtr<VM> createContextGroup(HeapType = SmallHeap);
     JS_EXPORT_PRIVATE ~VM();
 
-    void makeUsableFromMultipleThreads() { heap.machineThreads().makeUsableFromMultipleThreads(); }
-
 private:
     RefPtr<JSLock> m_apiLock;
 
@@ -237,9 +234,6 @@ public:
 #if ENABLE(DFG_JIT)
     std::unique_ptr<DFG::LongLivedState> dfgState;
 #endif // ENABLE(DFG_JIT)
-
-    std::unique_ptr<CallEdgeLog> callEdgeLog;
-    CallEdgeLog& ensureCallEdgeLog();
 
     VMType vmType;
     ClientData* clientData;
@@ -264,6 +258,7 @@ public:
     Strong<Structure> programExecutableStructure;
     Strong<Structure> functionExecutableStructure;
     Strong<Structure> regExpStructure;
+    Strong<Structure> symbolStructure;
     Strong<Structure> symbolTableStructure;
     Strong<Structure> structureChainStructure;
     Strong<Structure> sparseArrayValueMapStructure;

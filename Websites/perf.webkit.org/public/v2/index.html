@@ -78,7 +78,7 @@
                                 {{/if}}
                             {{else}}
                                 {{#if chartData}}
-                                    {{#link-to 'charts' (query-params paneList=paneList)}}
+                                    {{#link-to 'charts' (query-params paneList=paneList since=controller.since)}}
                                     {{interactive-chart
                                         chartData=chartData
                                         domain=controller.sharedDomain
@@ -188,8 +188,10 @@
 
                 <form {{bind-attr class=":search-pane showingSearchPane::hidden"}}>
                     <span class="repositories">
-                        {{view Ember.Select content=App.Manifest.repositoriesWithReportedCommits
-                            optionLabelPath='content.id'
+                        {{view Ember.Select
+                            content=App.Manifest.repositoriesWithReportedCommits
+                            optionValuePath='content.id'
+                            optionLabelPath='content.name'
                             selection=commitSearchRepository}}
                     </span>
                     {{input action="searchCommit" placeholder="Name or email" value=commitSearchKeyword}}
@@ -459,7 +461,7 @@
                         enableSelection=false
                         chartPointRadius=2
                         domain=chartDomain
-                        markedPoints=markedPoints}}
+                        highlightedItems=highlightedItems}}
                 </div>
                 <div class="details">
                     <table class="analysis-bugs">

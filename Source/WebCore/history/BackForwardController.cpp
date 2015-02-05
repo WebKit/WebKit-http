@@ -74,7 +74,7 @@ void BackForwardController::goBackOrForward(int distance)
     if (!item)
         return;
 
-    m_page.goToItem(item, FrameLoadType::IndexedBackForward);
+    m_page.goToItem(*item, FrameLoadType::IndexedBackForward);
 }
 
 bool BackForwardController::goBack()
@@ -83,7 +83,7 @@ bool BackForwardController::goBack()
     if (!item)
         return false;
 
-    m_page.goToItem(item, FrameLoadType::Back);
+    m_page.goToItem(*item, FrameLoadType::Back);
     return true;
 }
 
@@ -93,13 +93,13 @@ bool BackForwardController::goForward()
     if (!item)
         return false;
 
-    m_page.goToItem(item, FrameLoadType::Forward);
+    m_page.goToItem(*item, FrameLoadType::Forward);
     return true;
 }
 
-void BackForwardController::addItem(PassRefPtr<HistoryItem> item)
+void BackForwardController::addItem(Ref<HistoryItem>&& item)
 {
-    m_client->addItem(item);
+    m_client->addItem(WTF::move(item));
 }
 
 void BackForwardController::setCurrentItem(HistoryItem* item)

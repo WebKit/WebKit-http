@@ -104,7 +104,7 @@ void DocumentThreadableLoader::makeCrossOriginAccessRequest(const ResourceReques
         m_simpleRequest = false;
         m_actualRequest = WTF::move(crossOriginRequest);
 
-        if (CrossOriginPreflightResultCache::shared().canSkipPreflight(securityOrigin()->toString(), m_actualRequest->url(), m_options.allowCredentials(), m_actualRequest->httpMethod(), m_actualRequest->httpHeaderFields()))
+        if (CrossOriginPreflightResultCache::singleton().canSkipPreflight(securityOrigin()->toString(), m_actualRequest->url(), m_options.allowCredentials(), m_actualRequest->httpMethod(), m_actualRequest->httpHeaderFields()))
             preflightSuccess();
         else
             makeCrossOriginAccessRequestWithPreflight(*m_actualRequest);
@@ -256,7 +256,7 @@ void DocumentThreadableLoader::didReceiveResponse(unsigned long identifier, cons
             return;
         }
 
-        CrossOriginPreflightResultCache::shared().appendEntry(securityOrigin()->toString(), m_actualRequest->url(), WTF::move(preflightResult));
+        CrossOriginPreflightResultCache::singleton().appendEntry(securityOrigin()->toString(), m_actualRequest->url(), WTF::move(preflightResult));
     } else {
         if (!m_sameOriginRequest && m_options.crossOriginRequestPolicy == UseAccessControl) {
             if (!passesAccessControlCheck(response, m_options.allowCredentials(), securityOrigin(), accessControlErrorDescription)) {
@@ -366,7 +366,7 @@ void DocumentThreadableLoader::loadRequest(const ResourceRequest& request, Secur
         newRequest.setInitiator(m_options.initiator);
 #endif
         ASSERT(!m_resource);
-        m_resource = m_document.cachedResourceLoader()->requestRawResource(newRequest);
+        m_resource = m_document.cachedResourceLoader().requestRawResource(newRequest);
         if (m_resource) {
             if (m_resource->loader()) {
                 unsigned long identifier = m_resource->loader()->identifier();

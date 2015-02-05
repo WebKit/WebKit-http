@@ -1,3 +1,93 @@
+2015-02-04  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should sort the list of files when generating the w3c-import.log
+        https://bugs.webkit.org/show_bug.cgi?id=141156
+
+        Reviewed by Bem Jones-Bey.
+
+        Updated web-platform-tests logs according importer file sorting.
+
+        * web-platform-tests/common/w3c-import.log:
+        * web-platform-tests/fonts/w3c-import.log:
+        * web-platform-tests/images/w3c-import.log:
+        * web-platform-tests/tools/runner/css/w3c-import.log:
+        * web-platform-tests/tools/runner/fonts/w3c-import.log:
+        * web-platform-tests/tools/runner/w3c-import.log:
+        * web-platform-tests/tools/scripts/w3c-import.log:
+        * web-platform-tests/tools/sslutils/w3c-import.log:
+        * web-platform-tests/tools/w3c-import.log:
+        * web-platform-tests/tools/webdriver/webdriver/w3c-import.log:
+
+2015-02-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Web Platform Tests dirty a few untracked files
+        https://bugs.webkit.org/show_bug.cgi?id=141185
+
+        Reviewed by Darin Adler.
+
+        Added the empty file web-platform-tests/_certs/index.txt to .gitignore.
+
+        * web-platform-tests/.gitignore:
+
+2015-02-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Web platform test server should not need to create __init__.py files
+        https://bugs.webkit.org/show_bug.cgi?id=141030
+
+        Reviewed by Ryosuke Niwa.
+
+        Updated __init__.py using TestImporter.
+        Removed added logs to serve.py to be the same as W3C repository.
+
+        * web-platform-tests/serve.py:
+        * web-platform-tests/tools/__init__.py:
+        * web-platform-tests/tools/scripts/__init__.py: Copied from LayoutTests/imported/w3c/web-platform-tests/tools/__init__.py.
+        * web-platform-tests/tools/webdriver/webdriver/__init__.py: Copied from LayoutTests/imported/w3c/web-platform-tests/tools/__init__.py.
+
+2015-02-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        imported/w3c/web-platform-tests should contain top level files of the W3C web-platform-tests repository
+        https://bugs.webkit.org/show_bug.cgi?id=141151
+
+        Reviewed by Ryosuke Niwa.
+
+        * web-platform-tests/CONTRIBUTING.md: Added.
+        * web-platform-tests/LICENSE: Added.
+        * web-platform-tests/README.md: Added.
+        * web-platform-tests/server-side.md: Added.
+        * web-platform-tests/w3c-import.log:
+
+2015-01-31  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Import W3C web platform tests infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=140934
+
+        Reviewed by Ryosuke Niwa.
+
+        Initial import of the web-platform-tests repository.
+        This includes all infrastructure folders.
+        web-platform-tests submodules are downloaded when needed based on resources/WPTModules.
+
+        This patch also adds two tests from the domparsing folder to ensure 
+        W3C test infrastructure works properly on WebKit bots.
+
+        * resources/WPTModules: Added
+        * web-platform-tests/.gitignore: Added.
+        * web-platform-tests/_certs: Added.
+        * web-platform-tests/common: Added.
+        * web-platform-tests/config.default.json: Added.
+        * web-platform-tests/fonts: Added.
+        * web-platform-tests/images: Added.
+        * web-platform-tests/resource: Added.
+        * web-platform-tests/serve.py: Added.
+        * web-platform-tests/tools: Added.
+        * web-platform-tests/w3c-import.log: Added
+        * web-platform-tests/domparsing/DOMParser-parseFromString-html-expected.txt: Added.
+        * web-platform-tests/domparsing/DOMParser-parseFromString-html.html: Added.
+        * web-platform-tests/domparsing/insert-adjacent-expected.txt: Added.
+        * web-platform-tests/domparsing/insert-adjacent.html: Added.
+        * web-platform-tests/domparsing/w3c-import.log: Added.
+
 2015-01-26  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         Integrate WP python server into WebKit test framework

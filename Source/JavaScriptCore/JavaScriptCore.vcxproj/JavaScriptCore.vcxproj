@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
@@ -314,7 +314,6 @@
     <ClCompile Include="..\bytecode\BytecodeBasicBlock.cpp" />
     <ClCompile Include="..\bytecode\BytecodeLivenessAnalysis.cpp" />
     <ClCompile Include="..\bytecode\CallEdge.cpp" />
-    <ClCompile Include="..\bytecode\CallEdgeProfile.cpp" />
     <ClCompile Include="..\bytecode\CallLinkInfo.cpp" />
     <ClCompile Include="..\bytecode\CallLinkStatus.cpp" />
     <ClCompile Include="..\bytecode\CallVariant.cpp" />
@@ -354,6 +353,7 @@
     <ClCompile Include="..\bytecode\UnlinkedInstructionStream.cpp" />
     <ClCompile Include="..\bytecode\ValueRecovery.cpp" />
     <ClCompile Include="..\bytecode\VariableWatchpointSet.cpp" />
+    <ClCompile Include="..\bytecode\VirtualRegister.cpp" />
     <ClCompile Include="..\bytecode\Watchpoint.cpp" />
     <ClCompile Include="..\bytecompiler\BytecodeGenerator.cpp" />
     <ClCompile Include="..\bytecompiler\NodesCodegen.cpp" />
@@ -598,7 +598,6 @@
     <ClCompile Include="..\jit\ArityCheckFailReturnThunks.cpp" />
     <ClCompile Include="..\jit\AssemblyHelpers.cpp" />
     <ClCompile Include="..\jit\BinarySwitch.cpp" />
-    <ClCompile Include="..\jit\ClosureCallStubRoutine.cpp" />
     <ClCompile Include="..\jit\ExecutableAllocator.cpp" />
     <ClCompile Include="..\jit\GCAwareJITStubRoutine.cpp" />
     <ClCompile Include="..\jit\HostCallReturnValue.cpp" />
@@ -621,6 +620,7 @@
     <ClCompile Include="..\jit\JITStubs.cpp" />
     <ClCompile Include="..\jit\JITThunks.cpp" />
     <ClCompile Include="..\jit\JITToDFGDeferredCompilationCallback.cpp" />
+    <ClCompile Include="..\jit\PolymorphicCallStubRoutine.cpp" />
     <ClCompile Include="..\jit\Reg.cpp" />
     <ClCompile Include="..\jit\RegisterPreservationWrapperGenerator.cpp" />
     <ClCompile Include="..\jit\RegisterSet.cpp" />
@@ -773,9 +773,6 @@
     <ClCompile Include="..\runtime\MapPrototype.cpp" />
     <ClCompile Include="..\runtime\MathObject.cpp" />
     <ClCompile Include="..\runtime\MemoryStatistics.cpp" />
-    <ClCompile Include="..\runtime\NameConstructor.cpp" />
-    <ClCompile Include="..\runtime\NameInstance.cpp" />
-    <ClCompile Include="..\runtime\NamePrototype.cpp" />
     <ClCompile Include="..\runtime\NativeErrorConstructor.cpp" />
     <ClCompile Include="..\runtime\NativeErrorPrototype.cpp" />
     <ClCompile Include="..\runtime\NullGetterFunction.cpp" />
@@ -816,6 +813,10 @@
     <ClCompile Include="..\runtime\StructureChain.cpp" />
     <ClCompile Include="..\runtime\StructureIDTable.cpp" />
     <ClCompile Include="..\runtime\StructureRareData.cpp" />
+    <ClCompile Include="..\runtime\Symbol.cpp" />
+    <ClCompile Include="..\runtime\SymbolConstructor.cpp" />
+    <ClCompile Include="..\runtime\SymbolObject.cpp" />
+    <ClCompile Include="..\runtime\SymbolPrototype.cpp" />
     <ClCompile Include="..\runtime\SymbolTable.cpp" />
     <ClCompile Include="..\runtime\TestRunnerUtils.cpp" />
     <ClCompile Include="..\runtime\TypedArrayController.cpp" />
@@ -863,7 +864,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromisePrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\KeywordLookup.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\Lexer.lut.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NamePrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NumberConstructor.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NumberPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ObjectConstructor.lut.h" />
@@ -872,6 +872,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpObject.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\StringConstructor.lut.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SymbolPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCBuiltins.h" />
   </ItemGroup>
   <ItemGroup>
@@ -931,8 +932,6 @@
     <ClInclude Include="..\bytecode\BytecodeLivenessAnalysis.h" />
     <ClInclude Include="..\bytecode\BytecodeUseDef.h" />
     <ClInclude Include="..\bytecode\CallEdge.h" />
-    <ClInclude Include="..\bytecode\CallEdgeProfile.h" />
-    <ClInclude Include="..\bytecode\CallEdgeProfileInlines.h" />
     <ClInclude Include="..\bytecode\CallLinkInfo.h" />
     <ClInclude Include="..\bytecode\CallLinkStatus.h" />
     <ClInclude Include="..\bytecode\CallReturnOffsetToBytecodeOffset.h" />
@@ -1297,7 +1296,6 @@
     <ClInclude Include="..\inspector\InspectorBackendDispatcher.h" />
     <ClInclude Include="..\inspector\InspectorEnvironment.h" />
     <ClInclude Include="..\inspector\InspectorFrontendChannel.h" />
-    <ClInclude Include="..\inspector\InspectorProtocolObjects.h" />
     <ClInclude Include="..\inspector\InspectorValues.h" />
     <ClInclude Include="..\inspector\JSInjectedScriptHost.h" />
     <ClInclude Include="..\inspector\JSInjectedScriptHostPrototype.h" />
@@ -1333,7 +1331,6 @@
     <ClInclude Include="..\jit\AssemblyHelpers.h" />
     <ClInclude Include="..\jit\BinarySwitch.h" />
     <ClInclude Include="..\jit\CCallHelpers.h" />
-    <ClInclude Include="..\jit\ClosureCallStubRoutine.h" />
     <ClInclude Include="..\jit\CompactJITCodeMap.h" />
     <ClInclude Include="..\jit\ExecutableAllocator.h" />
     <ClInclude Include="..\jit\FPRInfo.h" />
@@ -1357,6 +1354,7 @@
     <ClInclude Include="..\jit\JITToDFGDeferredCompilationCallback.h" />
     <ClInclude Include="..\jit\JITWriteBarrier.h" />
     <ClInclude Include="..\jit\JSInterfaceJIT.h" />
+    <ClInclude Include="..\jit\PolymorphicCallStubRoutine.h" />
     <ClInclude Include="..\jit\Reg.h" />
     <ClInclude Include="..\jit\RegisterPreservationWrapperGenerator.h" />
     <ClInclude Include="..\jit\RegisterSet.h" />
@@ -1568,9 +1566,6 @@
     <ClInclude Include="..\runtime\MathObject.h" />
     <ClInclude Include="..\runtime\MemoryStatistics.h" />
     <ClInclude Include="..\runtime\Microtask.h" />
-    <ClInclude Include="..\runtime\NameConstructor.h" />
-    <ClInclude Include="..\runtime\NameInstance.h" />
-    <ClInclude Include="..\runtime\NamePrototype.h" />
     <ClInclude Include="..\runtime\NativeErrorConstructor.h" />
     <ClInclude Include="..\runtime\NativeErrorPrototype.h" />
     <ClInclude Include="..\runtime\NullGetterFunction.h" />
@@ -1625,6 +1620,10 @@
     <ClInclude Include="..\runtime\StructureRareData.h" />
     <ClInclude Include="..\runtime\StructureRareDataInlines.h" />
     <ClInclude Include="..\runtime\StructureTransitionTable.h" />
+    <ClInclude Include="..\runtime\Symbol.h" />
+    <ClInclude Include="..\runtime\SymbolConstructor.h" />
+    <ClInclude Include="..\runtime\SymbolObject.h" />
+    <ClInclude Include="..\runtime\SymbolPrototype.h" />
     <ClInclude Include="..\runtime\SymbolTable.h" />
     <ClInclude Include="..\runtime\TestRunnerUtils.h" />
     <ClInclude Include="..\runtime\Tracing.h" />

@@ -57,8 +57,8 @@ static void setImageLoadingSettings(Page* page)
         return;
 
     for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        frame->document()->cachedResourceLoader()->setImagesEnabled(page->settings().areImagesEnabled());
-        frame->document()->cachedResourceLoader()->setAutoLoadImages(page->settings().loadsImagesAutomatically());
+        frame->document()->cachedResourceLoader().setImagesEnabled(page->settings().areImagesEnabled());
+        frame->document()->cachedResourceLoader().setAutoLoadImages(page->settings().loadsImagesAutomatically());
     }
 }
 
@@ -177,7 +177,6 @@ Settings::Settings(Page* page)
 #endif
 #endif
     SETTINGS_INITIALIZER_LIST
-    , m_screenFontSubstitutionEnabled(shouldEnableScreenFontSubstitutionByDefault())
     , m_isJavaEnabled(false)
     , m_isJavaEnabledForLocalFiles(true)
     , m_loadsImagesAutomatically(false)
@@ -229,13 +228,6 @@ double Settings::hiddenPageDOMTimerAlignmentInterval()
 {
     return gHiddenPageDOMTimerAlignmentInterval;
 }
-
-#if !PLATFORM(COCOA)
-bool Settings::shouldEnableScreenFontSubstitutionByDefault()
-{
-    return true;
-}
-#endif
 
 #if !PLATFORM(COCOA)
 void Settings::initializeDefaultFontFamilies()
@@ -519,22 +511,8 @@ void Settings::setUsesPageCache(bool usesPageCache)
     if (!m_page)
         return;
 
-    if (!m_usesPageCache) {
-        int first = -m_page->backForward().backCount();
-        int last = m_page->backForward().forwardCount();
-        for (int i = first; i <= last; i++)
-            pageCache()->remove(m_page->backForward().itemAtIndex(i));
-    }
-}
-
-void Settings::setScreenFontSubstitutionEnabled(bool enabled)
-{
-    if (m_screenFontSubstitutionEnabled == enabled)
-        return;
-    m_screenFontSubstitutionEnabled = enabled;
-
-    if (m_page)
-        m_page->setNeedsRecalcStyleInAllFrames();
+    if (!m_usesPageCache)
+        PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
 }
 
 void Settings::setFontRenderingMode(FontRenderingMode mode)

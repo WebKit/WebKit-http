@@ -934,7 +934,7 @@ static void AXAttributeStringSetSpelling(NSMutableAttributedString* attrString, 
         for (unsigned i = 0; i < size; i++) {
             const TextCheckingResult& result = results[i];
             AXAttributeStringSetNumber(attrString, NSAccessibilityMisspelledTextAttribute, trueValue, NSMakeRange(result.location + range.location, result.length));
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if PLATFORM(MAC)
             AXAttributeStringSetNumber(attrString, NSAccessibilityMarkedMisspelledTextAttribute, trueValue, NSMakeRange(result.location + range.location, result.length));
 #endif
         }
@@ -950,7 +950,7 @@ static void AXAttributeStringSetSpelling(NSMutableAttributedString* attrString, 
         
         NSRange spellRange = NSMakeRange(range.location + currentPosition + misspellingLocation, misspellingLength);
         AXAttributeStringSetNumber(attrString, NSAccessibilityMisspelledTextAttribute, [NSNumber numberWithBool:YES], spellRange);
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if PLATFORM(MAC)
         AXAttributeStringSetNumber(attrString, NSAccessibilityMarkedMisspelledTextAttribute, [NSNumber numberWithBool:YES], spellRange);
 #endif
 
@@ -1038,7 +1038,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     
     // remove inherited attachment from prior AXAttributedStringAppendReplaced
     [attrString removeAttribute:NSAccessibilityAttachmentTextAttribute range:attrStringRange];
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if PLATFORM(MAC)
     [attrString removeAttribute:NSAccessibilityMarkedMisspelledTextAttribute range:attrStringRange];
 #endif
     [attrString removeAttribute:NSAccessibilityMisspelledTextAttribute range:attrStringRange];
@@ -1147,19 +1147,11 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
     
     // All elements should get ShowMenu and ScrollToVisible.
     // But certain earlier VoiceOver versions do not support scroll to visible, and it confuses them to see it in the list.
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 1090
-    static NSArray *defaultElementActions = [[NSArray alloc] initWithObjects:NSAccessibilityShowMenuAction, nil];
-#else
     static NSArray *defaultElementActions = [[NSArray alloc] initWithObjects:NSAccessibilityShowMenuAction, NSAccessibilityScrollToVisibleAction, nil];
-#endif
 
     // Action elements allow Press.
     // The order is important to VoiceOver, which expects the 'default' action to be the first action. In this case the default action should be press.
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 1090
-    static NSArray *actionElementActions = [[NSArray alloc] initWithObjects:NSAccessibilityPressAction, NSAccessibilityShowMenuAction, nil];
-#else
     static NSArray *actionElementActions = [[NSArray alloc] initWithObjects:NSAccessibilityPressAction, NSAccessibilityShowMenuAction, NSAccessibilityScrollToVisibleAction, nil];
-#endif
 
     // Menu elements allow Press and Cancel.
     static NSArray *menuElementActions = [[actionElementActions arrayByAddingObject:NSAccessibilityCancelAction] retain];
@@ -2020,11 +2012,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         if (listObject.isUnorderedList() || listObject.isOrderedList())
             return NSAccessibilityContentListSubrole;
         if (listObject.isDescriptionList()) {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 1090
-            return NSAccessibilityDefinitionListSubrole;
-#else
             return NSAccessibilityDescriptionListSubrole;
-#endif
         }
     }
     

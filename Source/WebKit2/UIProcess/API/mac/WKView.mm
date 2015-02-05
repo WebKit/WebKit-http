@@ -2487,10 +2487,8 @@ static void* keyValueObservingContext = &keyValueObservingContext;
                                                      name:NSWindowDidChangeScreenNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeLayerHosting:)
                                                      name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeOcclusionState:)
                                                      name:NSWindowDidChangeOcclusionStateNotification object:window];
-#endif
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         [window addObserver:self forKeyPath:@"contentLayoutRect" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
         [window addObserver:self forKeyPath:@"titlebarAppearsTransparent" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
@@ -2516,9 +2514,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeBackingPropertiesNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeScreenNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeOcclusionStateNotification object:window];
-#endif
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [window removeObserver:self forKeyPath:@"contentLayoutRect" context:keyValueObservingContext];
     [window removeObserver:self forKeyPath:@"titlebarAppearsTransparent" context:keyValueObservingContext];
@@ -2668,12 +2664,10 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     _data->_page->setIntrinsicDeviceScaleFactor(newBackingScaleFactor);
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 - (void)_windowDidChangeOcclusionState:(NSNotification *)notification
 {
     _data->_page->viewStateDidChange(ViewState::IsVisible);
 }
-#endif
 
 - (void)drawRect:(NSRect)rect
 {
@@ -2850,16 +2844,21 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     _data->_resizeScrollOffset = NSZeroSize;
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 - (void)quickLookWithEvent:(NSEvent *)event
 {
     if (_data->_ignoresNonWheelEvents)
         return;
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    if (_data->_immediateActionGestureRecognizer) {
+        [super quickLookWithEvent:event];
+        return;
+    }
+#endif
+
     NSPoint locationInViewCoordinates = [self convertPoint:[event locationInWindow] fromView:nil];
     _data->_page->performDictionaryLookupAtLocation(FloatPoint(locationInViewCoordinates.x, locationInViewCoordinates.y));
 }
-#endif
 
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy
 {
@@ -3813,7 +3812,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return [self initWithFrame:frame processPool:processPool configuration:webPageConfiguration webView:nil];
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 - (BOOL)wantsUpdateLayer
 {
     return YES;
@@ -3835,7 +3833,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     if (DrawingAreaProxy* drawingArea = _data->_page->drawingArea())
         drawingArea->waitForPossibleGeometryUpdate();
 }
-#endif
 
 - (WKPageRef)pageRef
 {
@@ -3996,12 +3993,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (NSWindow *)createFullScreenWindow
 {
 #if ENABLE(FULLSCREEN_API)
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1080
-    NSRect contentRect = NSZeroRect;
-#else
-    NSRect contentRect = [[NSScreen mainScreen] frame];
-#endif
-    return [[[WebCoreFullScreenWindow alloc] initWithContentRect:contentRect styleMask:(NSBorderlessWindowMask | NSResizableWindowMask) backing:NSBackingStoreBuffered defer:NO] autorelease];
+    return [[[WebCoreFullScreenWindow alloc] initWithContentRect:[[NSScreen mainScreen] frame] styleMask:(NSBorderlessWindowMask | NSResizableWindowMask) backing:NSBackingStoreBuffered defer:NO] autorelease];
 #else
     return nil;
 #endif

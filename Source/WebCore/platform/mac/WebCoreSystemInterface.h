@@ -132,7 +132,7 @@ typedef enum {
     wkPatternTilingConstantSpacing
 } wkPatternTiling;
 extern void (*wkCGContextResetClip)(CGContextRef);
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+#if !PLATFORM(IOS)
 extern bool (*wkCGContextDrawsWithCorrectShadowOffsets)(CGContextRef);
 #endif
 extern CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef, CGAffineTransform, int);
@@ -297,11 +297,11 @@ extern void (*wkSetMetadataURL)(NSString *urlString, NSString *referrer, NSStrin
 extern dispatch_source_t (*wkCreateVMPressureDispatchOnMainQueue)(void);
 #endif
 
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if PLATFORM(MAC)
 extern dispatch_source_t (*wkCreateMemoryStatusPressureCriticalDispatchOnMainQueue)(void);
 #endif
     
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+#if !PLATFORM(IOS)
 extern bool (*wkExecutableWasLinkedOnOrBeforeLion)(void);
 #endif
 
@@ -309,7 +309,7 @@ extern void (*wkCGPathAddRoundedRect)(CGMutablePathRef path, const CGAffineTrans
 
 extern void (*wkCFURLRequestAllowAllPostCaching)(CFURLRequestRef);
 
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+#if !PLATFORM(IOS)
 extern CGFloat (*wkNSElasticDeltaForTimeDelta)(CGFloat initialPosition, CGFloat initialVelocity, CGFloat elapsedTime);
 extern CGFloat (*wkNSElasticDeltaForReboundDelta)(CGFloat delta);
 extern CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);

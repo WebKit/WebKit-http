@@ -255,13 +255,13 @@ String InspectorPageAgent::sourceMapURLForResource(CachedResource* cachedResourc
 
 CachedResource* InspectorPageAgent::cachedResource(Frame* frame, const URL& url)
 {
-    CachedResource* cachedResource = frame->document()->cachedResourceLoader()->cachedResource(url);
+    CachedResource* cachedResource = frame->document()->cachedResourceLoader().cachedResource(url);
     if (!cachedResource) {
         ResourceRequest request(url);
 #if ENABLE(CACHE_PARTITIONING)
         request.setDomainForCachePartition(frame->document()->topOrigin()->domainForCachePartition());
 #endif
-        cachedResource = memoryCache().resourceForRequest(request, frame->page()->sessionID());
+        cachedResource = MemoryCache::singleton().resourceForRequest(request, frame->page()->sessionID());
     }
 
     return cachedResource;
@@ -447,7 +447,7 @@ static Vector<CachedResource*> cachedResourcesForFrame(Frame* frame)
 {
     Vector<CachedResource*> result;
 
-    for (auto& cachedResourceHandle : frame->document()->cachedResourceLoader()->allCachedResources().values()) {
+    for (auto& cachedResourceHandle : frame->document()->cachedResourceLoader().allCachedResources().values()) {
         auto* cachedResource = cachedResourceHandle.get();
         if (cachedResource->resourceRequest().hiddenFromInspector())
             continue;

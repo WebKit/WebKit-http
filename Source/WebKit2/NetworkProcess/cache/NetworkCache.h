@@ -43,10 +43,9 @@ namespace WebKit {
 
 class NetworkCache {
     WTF_MAKE_NONCOPYABLE(NetworkCache);
+    friend class WTF::NeverDestroyed<NetworkCache>;
 public:
-    static NetworkCache& shared();
-
-    NetworkCache();
+    static NetworkCache& singleton();
 
     bool initialize(const String& cachePath);
     void setMaximumSize(size_t);
@@ -54,6 +53,7 @@ public:
     bool isEnabled() const { return !!m_storage; }
 
     struct Entry {
+        NetworkCacheStorage::Entry storageEntry;
         WebCore::ResourceResponse response;
         RefPtr<WebCore::SharedBuffer> buffer;
 #if ENABLE(SHAREABLE_RESOURCE)
@@ -69,6 +69,9 @@ public:
     void clear();
 
 private:
+    NetworkCache() = default;
+    ~NetworkCache() = delete;
+
     std::unique_ptr<NetworkCacheStorage> m_storage;
 };
 

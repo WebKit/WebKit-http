@@ -530,13 +530,13 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
     unsigned cacheMaxDeadCapacity = 0;
     auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
 
-    unsigned pageCacheCapacity = 0;
+    unsigned pageCacheSize = 0;
 
 
     switch (cacheModel) {
     case WebCacheModelDocumentViewer: {
         // Page cache capacity (in pages)
-        pageCacheCapacity = 0;
+        pageCacheSize = 0;
 
         // Object cache capacities (in bytes)
         if (memSize >= 2048)
@@ -563,13 +563,13 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
     case WebCacheModelDocumentBrowser: {
         // Page cache capacity (in pages)
         if (memSize >= 1024)
-            pageCacheCapacity = 3;
+            pageCacheSize = 3;
         else if (memSize >= 512)
-            pageCacheCapacity = 2;
+            pageCacheSize = 2;
         else if (memSize >= 256)
-            pageCacheCapacity = 1;
+            pageCacheSize = 1;
         else
-            pageCacheCapacity = 0;
+            pageCacheSize = 0;
 
         // Object cache capacities (in bytes)
         if (memSize >= 2048)
@@ -610,15 +610,15 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         // Page cache capacity (in pages)
         // (Research indicates that value / page drops substantially after 3 pages.)
         if (memSize >= 2048)
-            pageCacheCapacity = 5;
+            pageCacheSize = 5;
         else if (memSize >= 1024)
-            pageCacheCapacity = 4;
+            pageCacheSize = 4;
         else if (memSize >= 512)
-            pageCacheCapacity = 3;
+            pageCacheSize = 3;
         else if (memSize >= 256)
-            pageCacheCapacity = 2;
+            pageCacheSize = 2;
         else
-            pageCacheCapacity = 1;
+            pageCacheSize = 1;
 
         // Object cache capacities (in bytes)
         // (Testing indicates that value / MB depends heavily on content and
@@ -673,9 +673,10 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         ASSERT_NOT_REACHED();
     }
 
-    memoryCache().setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    memoryCache().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
-    pageCache()->setCapacity(pageCacheCapacity);
+    auto& memoryCache = MemoryCache::singleton();
+    memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    PageCache::singleton().setMaxSize(pageCacheSize);
 
 #if USE(CFNETWORK)
     // Don't shrink a big disk cache, since that would cause churn.
@@ -2805,10 +2806,10 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
     configuration.dragClient = new WebDragClient(this);
     configuration.inspectorClient = m_inspectorClient;
     configuration.loaderClientForMainFrame = new WebFrameLoaderClient;
-    configuration.databaseProvider = &WebDatabaseProvider::shared();
+    configuration.databaseProvider = &WebDatabaseProvider::singleton();
     configuration.storageNamespaceProvider = WebStorageNamespaceProvider::create(localStorageDatabasePath(m_preferences.get()));
     configuration.progressTrackerClient = static_cast<WebFrameLoaderClient*>(configuration.loaderClientForMainFrame);
-    configuration.visitedLinkStore = &WebVisitedLinkStore::shared();
+    configuration.visitedLinkStore = &WebVisitedLinkStore::singleton();
 
     m_page = new Page(configuration);
     provideGeolocationTo(m_page, new WebGeolocationClient(this));
@@ -3154,7 +3155,7 @@ HRESULT STDMETHODCALLTYPE WebView::goToBackForwardItem(
     if (FAILED(hr))
         return hr;
 
-    m_page->goToItem(webHistoryItem->historyItem(), FrameLoadType::IndexedBackForward);
+    m_page->goToItem(*webHistoryItem->historyItem(), FrameLoadType::IndexedBackForward);
     *succeeded = TRUE;
 
     return S_OK;
@@ -5135,11 +5136,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings.setEnableInheritURIQueryComponent(enabled);
 
-    hr = prefsPrivate->screenFontSubstitutionEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
-    settings.setScreenFontSubstitutionEnabled(enabled);
-
     return S_OK;
 }
 
@@ -5494,14 +5490,14 @@ HRESULT STDMETHODCALLTYPE WebView::loadBackForwardListFromOtherView(
             // until we leave that page.
             otherWebView->m_page->mainFrame().loader().history().saveDocumentAndScrollState();
         }
-        RefPtr<HistoryItem> newItem = otherBackForwardClient->itemAtIndex(i)->copy();
+        Ref<HistoryItem> newItem = otherBackForwardClient->itemAtIndex(i)->copy();
         if (!i) 
-            newItemToGoTo = newItem.get();
-        backForwardClient->addItem(newItem.release());
+            newItemToGoTo = newItem.ptr();
+        backForwardClient->addItem(WTF::move(newItem));
     }
     
     ASSERT(newItemToGoTo);
-    m_page->goToItem(newItemToGoTo, FrameLoadType::IndexedBackForward);
+    m_page->goToItem(*newItemToGoTo, FrameLoadType::IndexedBackForward);
     return S_OK;
 }
 
@@ -6469,7 +6465,7 @@ HRESULT WebView::historyDelegate(IWebHistoryDelegate** historyDelegate)
 
 HRESULT WebView::addVisitedLinks(BSTR* visitedURLs, unsigned visitedURLCount)
 {
-    auto& visitedLinkStore = WebVisitedLinkStore::shared();
+    auto& visitedLinkStore = WebVisitedLinkStore::singleton();
     PageGroup& group = core(this)->group();
     
     for (unsigned i = 0; i < visitedURLCount; ++i) {

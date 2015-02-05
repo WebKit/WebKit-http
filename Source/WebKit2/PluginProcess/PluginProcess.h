@@ -50,7 +50,7 @@ class PluginProcess : public ChildProcess, private WebCore::AudioHardwareListene
     WTF_MAKE_NONCOPYABLE(PluginProcess);
     friend class NeverDestroyed<PluginProcess>;
 public:
-    static PluginProcess& shared();
+    static PluginProcess& singleton();
 
     void removeWebProcessConnection(WebProcessConnection*);
 
@@ -91,6 +91,8 @@ private:
     virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
     virtual void didClose(IPC::Connection&) override;
     virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
+    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::Plugin; }
+    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
 
     // Message handlers.
     void didReceivePluginProcessMessage(IPC::Connection&, IPC::MessageDecoder&);

@@ -27,7 +27,12 @@
 #define MessageEncoder_h
 
 #include "ArgumentEncoder.h"
+#include "StringReference.h"
 #include <wtf/Forward.h>
+
+#if HAVE(DTRACE)
+#include <uuid/uuid.h>
+#endif
 
 namespace IPC {
 
@@ -36,10 +41,34 @@ class StringReference;
 class MessageEncoder : public ArgumentEncoder {
 public:
     MessageEncoder(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID);
+#if HAVE(DTRACE)
+    MessageEncoder(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID, const uuid_t&);
+#endif
     virtual ~MessageEncoder();
 
+    StringReference messageReceiverName() const { return m_messageReceiverName; }
+    StringReference messageName() const { return m_messageName; }
+    uint64_t destinationID() const { return m_destinationID; }
+
     void setIsSyncMessage(bool);
+    bool isSyncMessage() const;
+
     void setShouldDispatchMessageWhenWaitingForSyncReply(bool);
+    bool shouldDispatchMessageWhenWaitingForSyncReply() const;
+
+#if HAVE(DTRACE)
+    const uuid_t& UUID() const { return m_UUID; }
+#endif
+
+private:
+    void encodeHeader();
+
+    StringReference m_messageReceiverName;
+    StringReference m_messageName;
+    uint64_t m_destinationID;
+#if HAVE(DTRACE)
+    uuid_t m_UUID;
+#endif
 };
 
 } // namespace IPC

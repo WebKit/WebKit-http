@@ -107,9 +107,9 @@ CachedImage::~CachedImage()
     clearImage();
 }
 
-void CachedImage::load(CachedResourceLoader* cachedResourceLoader, const ResourceLoaderOptions& options)
+void CachedImage::load(CachedResourceLoader& cachedResourceLoader, const ResourceLoaderOptions& options)
 {
-    if (!cachedResourceLoader || cachedResourceLoader->autoLoadImages())
+    if (cachedResourceLoader.shouldPerformImageLoad(resourceRequest().url()))
         CachedResource::load(cachedResourceLoader, options);
     else
         setLoading(false);
@@ -381,7 +381,7 @@ void CachedImage::addIncrementalDataBuffer(SharedBuffer& data)
         // Image decoding failed. Either we need more image data or the image data is malformed.
         error(errorOccurred() ? status() : DecodeError);
         if (inCache())
-            memoryCache().remove(this);
+            MemoryCache::singleton().remove(*this);
         return;
     }
 
@@ -415,21 +415,25 @@ void CachedImage::finishLoading(SharedBuffer* data)
     if (!m_image && data)
         createImage();
 
-    if (m_image)
+    if (m_image) {
+        if (m_loader && m_image->isSVGImage())
+            downcast<SVGImage>(*m_image).setDataProtocolLoader(&m_loader->dataProtocolFrameLoader());
         m_image->setData(data, true);
+    }
 
     if (!m_image || m_image->isNull()) {
         // Image decoding failed; the image data is malformed.
         error(errorOccurred() ? status() : DecodeError);
         if (inCache())
-            memoryCache().remove(this);
+            MemoryCache::singleton().remove(*this);
         return;
     }
 
-    notifyObservers();
     if (m_image)
         setEncodedSize(m_image->data() ? m_image->data()->size() : 0);
-    CachedResource::finishLoading(data);
+
+    setLoading(false);
+    notifyObservers();
 }
 
 void CachedImage::error(CachedResource::Status status)

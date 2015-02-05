@@ -28,6 +28,7 @@
 
 #if ENABLE(VIDEO_TRACK)
 
+#import "Language.h"
 #import "SoftLinking.h"
 #import <AVFoundation/AVAsset.h>
 #import <AVFoundation/AVMediaSelectionGroup.h>
@@ -35,6 +36,7 @@
 #import <objc/runtime.h>
 #import <wtf/HashMap.h>
 #import <wtf/HashSet.h>
+#import <wtf/text/WTFString.h>
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 
@@ -88,7 +90,6 @@ PassRefPtr<MediaSelectionGroupAVFObjC> MediaSelectionGroupAVFObjC::create(AVPlay
 MediaSelectionGroupAVFObjC::MediaSelectionGroupAVFObjC(AVPlayerItem *item, AVMediaSelectionGroup *group)
     : m_playerItem(item)
     , m_mediaSelectionGroup(group)
-    , m_selectedOption(nullptr)
     , m_selectionTimer(*this, &MediaSelectionGroupAVFObjC::selectionTimerFired)
 {
     updateOptions();
@@ -107,10 +108,10 @@ void MediaSelectionGroupAVFObjC::updateOptions()
     for (auto& avOption : m_options.keys())
         [oldAVOptions addObject:avOption];
 
-    RetainPtr<NSMutableSet> addedAVOptions = [newAVOptions mutableCopy];
+    RetainPtr<NSMutableSet> addedAVOptions = adoptNS([newAVOptions mutableCopy]);
     [addedAVOptions minusSet:oldAVOptions.get()];
 
-    RetainPtr<NSMutableSet> removedAVOptions = [oldAVOptions mutableCopy];
+    RetainPtr<NSMutableSet> removedAVOptions = adoptNS([oldAVOptions mutableCopy]);
     [removedAVOptions minusSet:newAVOptions.get()];
 
     for (AVMediaSelectionOption* removedAVOption in removedAVOptions.get()) {
@@ -128,6 +129,25 @@ void MediaSelectionGroupAVFObjC::updateOptions()
             m_selectedOption = addedOption.get();
         m_options.set(addedAVOption, addedOption.release());
     }
+
+    if (!m_shouldSelectOptionAutomatically)
+        return;
+
+    RetainPtr<NSMutableArray> nsLanguages = adoptNS([[NSMutableArray alloc] initWithCapacity:userPreferredLanguages().size()]);
+    for (auto& language : userPreferredLanguages())
+        [nsLanguages addObject:(NSString*)language];
+    NSArray* filteredOptions = [getAVMediaSelectionGroupClass() mediaSelectionOptionsFromArray:[m_mediaSelectionGroup options] filteredAndSortedAccordingToPreferredLanguages:nsLanguages.get()];
+
+    if (![filteredOptions count])
+        return;
+
+    AVMediaSelectionOption* preferredOption = [filteredOptions objectAtIndex:0];
+    if (m_selectedOption && m_selectedOption->avMediaSelectionOption() == preferredOption)
+        return;
+
+    ASSERT(m_options.contains(preferredOption));
+    m_selectedOption = m_options.get(preferredOption);
+    m_selectionTimer.startOneShot(0);
 }
 
 void MediaSelectionGroupAVFObjC::setSelectedOption(MediaSelectionOptionAVFObjC* option)
@@ -135,6 +155,7 @@ void MediaSelectionGroupAVFObjC::setSelectedOption(MediaSelectionOptionAVFObjC* 
     if (m_selectedOption == option)
         return;
 
+    m_shouldSelectOptionAutomatically = false;
     m_selectedOption = option;
     if (m_selectionTimer.isActive())
         m_selectionTimer.stop();

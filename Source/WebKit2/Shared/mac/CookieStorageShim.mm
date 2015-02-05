@@ -52,9 +52,7 @@ using namespace WebCore;
 
 @interface WKNSURLSessionLocal : NSObject
 - (CFDictionaryRef) _copyCookiesForRequestUsingAllAppropriateStorageSemantics:(CFURLRequestRef) request;
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 - (void)_getCookieHeadersForTask:(NSURLSessionTask*)task completionHandler:(void (^)(CFDictionaryRef))completionHandler;
-#endif
 @end
 
 namespace WebKit {
@@ -63,7 +61,7 @@ static CFDictionaryRef webKitCookieStorageCopyRequestHeaderFieldsForURL(CFHTTPCo
 {
     String cookies;
     URL firstPartyForCookiesURL;
-    if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue(SessionID::defaultSessionID(), firstPartyForCookiesURL, inRequestURL), Messages::NetworkConnectionToWebProcess::CookiesForDOM::Reply(cookies), 0))
+    if (!WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue(SessionID::defaultSessionID(), firstPartyForCookiesURL, inRequestURL), Messages::NetworkConnectionToWebProcess::CookiesForDOM::Reply(cookies), 0))
         return 0;
 
     if (cookies.isNull())
@@ -75,7 +73,7 @@ static CFDictionaryRef webKitCookieStorageCopyRequestHeaderFieldsForURL(CFHTTPCo
     return CFDictionaryCreate(0, cookieKeys, cookieValues, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 }
 
-CookieStorageShim& CookieStorageShim::shared()
+CookieStorageShim& CookieStorageShim::singleton()
 {
     static NeverDestroyed<CookieStorageShim> storage;
     return storage;
@@ -98,13 +96,11 @@ void CookieStorageShim::initialize()
         method_exchangeImplementations(original, replacement);
     }
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     if (Method original = class_getInstanceMethod(__NSURLSessionLocalClass, @selector(_getCookieHeadersForTask:completionHandler:))) {
         Method replacement = class_getInstanceMethod([WKNSURLSessionLocal class], @selector(_getCookieHeadersForTask:completionHandler:));
         ASSERT(replacement);
         method_exchangeImplementations(original, replacement);
     }
-#endif
 }
 
 }
@@ -115,7 +111,6 @@ void CookieStorageShim::initialize()
     return WebKit::webKitCookieStorageCopyRequestHeaderFieldsForURL(nullptr, CFURLRequestGetURL(request));
 }
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 using CompletionHandlerBlock = void(^)(CFDictionaryRef);
 - (void)_getCookieHeadersForTask:(NSURLSessionTask*)task completionHandler:(CompletionHandlerBlock)completionHandler
 {
@@ -129,7 +124,7 @@ using CompletionHandlerBlock = void(^)(CFDictionaryRef);
         [completionHandlerCopy release];
     });
 }
-#endif
+
 @end
 
 #endif // ENABLE(NETWORK_PROCESS)

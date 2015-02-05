@@ -223,9 +223,9 @@ ControllerIOS.prototype = {
             this.controls.timelineBox.appendChild(this.controls.remainingTime);
         }
         if (!this.isAudio()) {
-            this.controls.panel.appendChild(this.controls.fullscreenButton);
             if ('webkitSupportsPresentationMode' in this.video && this.video.webkitSupportsPresentationMode('optimized'))
                 this.controls.panel.appendChild(this.controls.optimizedFullscreenButton);
+            this.controls.panel.appendChild(this.controls.fullscreenButton);
         }
     },
 
@@ -413,7 +413,7 @@ ControllerIOS.prototype = {
 
     isFullScreen: function()
     {
-        return this.video.webkitDisplayingFullscreen;
+        return this.video.webkitDisplayingFullscreen && this.presentationMode() != 'optimized';
     },
 
     handleFullscreenButtonClicked: function(event) {

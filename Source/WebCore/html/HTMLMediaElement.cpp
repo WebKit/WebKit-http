@@ -2182,6 +2182,11 @@ bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, const String& keySyste
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
+RefPtr<ArrayBuffer> HTMLMediaElement::mediaPlayerCachedKeyForKeyId(const String& keyId) const
+{
+    return m_mediaKeys ? m_mediaKeys->cachedKeyForKeyId(keyId) : nullptr;
+}
+
 bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array* initData)
 {
     if (!hasEventListeners("webkitneedkey")) {
@@ -2229,6 +2234,12 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys)
     m_mediaKeys = mediaKeys;
     if (m_mediaKeys)
         m_mediaKeys->setMediaElement(this);
+}
+
+void HTMLMediaElement::keyAdded()
+{
+    if (m_player)
+        m_player->keyAdded();
 }
 #endif
 
@@ -2964,14 +2975,6 @@ bool HTMLMediaElement::controls() const
 
     // always show controls when scripting is disabled
     if (frame && !frame->script().canExecuteScripts(NotAboutToExecuteScript))
-        return true;
-
-    // always show controls for video when fullscreen playback is required.
-    if (isVideo() && m_mediaSession->requiresFullscreenForVideoPlayback(*this))
-        return true;
-
-    // Always show controls when in full screen mode.
-    if (isFullscreen())
         return true;
 
     return fastHasAttribute(controlsAttr);
@@ -5256,13 +5259,23 @@ bool HTMLMediaElement::createMediaControls()
 
 void HTMLMediaElement::configureMediaControls()
 {
+    bool requireControls = controls();
+
+    // Always create controls for video when fullscreen playback is required.
+    if (isVideo() && m_mediaSession->requiresFullscreenForVideoPlayback(*this))
+        requireControls = true;
+
+    // Always create controls when in full screen mode.
+    if (isFullscreen())
+        requireControls = true;
+
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (!controls() || !inDocument())
+    if (!requireControls || !inDocument())
         return;
 
     ensureUserAgentShadowRoot();
 #else
-    if (!controls() || !inDocument()) {
+    if (!requireControls || !inDocument()) {
         if (hasMediaControls())
             mediaControls()->hide();
         return;
@@ -5721,7 +5734,7 @@ bool HTMLMediaElement::mediaPlayerIsLooping() const
 
 CachedResourceLoader* HTMLMediaElement::mediaPlayerCachedResourceLoader()
 {
-    return document().cachedResourceLoader();
+    return &document().cachedResourceLoader();
 }
 
 PassRefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient> client)

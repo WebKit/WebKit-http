@@ -66,7 +66,7 @@ void RemoteLayerTreeContext::layerWasCreated(PlatformCALayerRemote& layer, Platf
         creationProperties.hostingDeviceScaleFactor = deviceScaleFactor();
     }
 
-    m_createdLayers.append(creationProperties);
+    m_createdLayers.add(layerID, WTF::move(creationProperties));
     m_liveLayers.add(layerID, &layer);
 }
 
@@ -75,6 +75,7 @@ void RemoteLayerTreeContext::layerWillBeDestroyed(PlatformCALayerRemote& layer)
     ASSERT(layer.layerID());
     GraphicsLayer::PlatformLayerID layerID = layer.layerID();
 
+    m_createdLayers.remove(layerID);
     m_liveLayers.remove(layerID);
 
     ASSERT(!m_destroyedLayers.contains(layerID));
@@ -98,9 +99,9 @@ void RemoteLayerTreeContext::backingStoreWillBeDisplayed(RemoteLayerBackingStore
     m_backingStoreCollection.backingStoreWillBeDisplayed(backingStore);
 }
 
-std::unique_ptr<GraphicsLayer> RemoteLayerTreeContext::createGraphicsLayer(GraphicsLayerClient& client)
+std::unique_ptr<GraphicsLayer> RemoteLayerTreeContext::createGraphicsLayer(WebCore::GraphicsLayer::Type layerType, GraphicsLayerClient& client)
 {
-    return std::make_unique<GraphicsLayerCARemote>(client, *this);
+    return std::make_unique<GraphicsLayerCARemote>(layerType, client, *this);
 }
 
 void RemoteLayerTreeContext::buildTransaction(RemoteLayerTreeTransaction& transaction, PlatformCALayer& rootLayer)
@@ -112,8 +113,12 @@ void RemoteLayerTreeContext::buildTransaction(RemoteLayerTreeTransaction& transa
     rootLayerRemote.recursiveBuildTransaction(*this, transaction);
     m_currentTransaction = nullptr;
 
-    transaction.setCreatedLayers(WTF::move(m_createdLayers));
+    Vector<RemoteLayerTreeTransaction::LayerCreationProperties> createdLayerProperties;
+    copyValuesToVector(m_createdLayers, createdLayerProperties);
+    transaction.setCreatedLayers(WTF::move(createdLayerProperties));
     transaction.setDestroyedLayerIDs(WTF::move(m_destroyedLayers));
+    
+    m_createdLayers.clear();
 }
 
 void RemoteLayerTreeContext::layerPropertyChangedWhileBuildingTransaction(PlatformCALayerRemote& layer)

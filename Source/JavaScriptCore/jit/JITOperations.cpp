@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -159,7 +159,7 @@ EncodedJSValue JIT_OPERATION operationGetByIdOptimize(ExecState* exec, Structure
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    Identifier ident = uid->isEmptyUnique() ? Identifier::from(PrivateName(uid)) : Identifier(vm, uid);
+    Identifier ident = uid->isUnique() ? Identifier::from(PrivateName(uid)) : Identifier(vm, uid);
 
     JSValue baseValue = JSValue::decode(base);
     PropertySlot slot(baseValue);
@@ -466,11 +466,8 @@ static void putByVal(CallFrame* callFrame, JSValue baseValue, JSValue subscript,
                 object->methodTable(vm)->putByIndex(object, callFrame, i, value, callFrame->codeBlock()->isStrictMode());
         } else
             baseValue.putByIndex(callFrame, i, value, callFrame->codeBlock()->isStrictMode());
-    } else if (isName(subscript)) {
-        PutPropertySlot slot(baseValue, callFrame->codeBlock()->isStrictMode());
-        baseValue.put(callFrame, jsCast<NameInstance*>(subscript.asCell())->privateName(), value, slot);
     } else {
-        Identifier property = subscript.toString(callFrame)->toIdentifier(callFrame);
+        PropertyName property = subscript.toPropertyKey(callFrame);
         if (!callFrame->vm().exception()) { // Don't put to an object if toString threw an exception.
             PutPropertySlot slot(baseValue, callFrame->codeBlock()->isStrictMode());
             baseValue.put(callFrame, property, value, slot);
@@ -483,11 +480,8 @@ static void directPutByVal(CallFrame* callFrame, JSObject* baseObject, JSValue s
     if (LIKELY(subscript.isUInt32())) {
         uint32_t i = subscript.asUInt32();
         baseObject->putDirectIndex(callFrame, i, value);
-    } else if (isName(subscript)) {
-        PutPropertySlot slot(baseObject, callFrame->codeBlock()->isStrictMode());
-        baseObject->putDirect(callFrame->vm(), jsCast<NameInstance*>(subscript.asCell())->privateName(), value, slot);
     } else {
-        Identifier property = subscript.toString(callFrame)->toIdentifier(callFrame);
+        PropertyName property = subscript.toPropertyKey(callFrame);
         if (!callFrame->vm().exception()) { // Don't put to an object if toString threw an exception.
             PutPropertySlot slot(baseObject, callFrame->codeBlock()->isStrictMode());
             baseObject->putDirect(callFrame->vm(), property, value, slot);
@@ -776,47 +770,12 @@ inline char* virtualFor(
     return virtualForWithFunction(execCallee, kind, registers, calleeAsFunctionCellIgnored);
 }
 
-static bool attemptToOptimizeClosureCall(
-    ExecState* execCallee, RegisterPreservationMode registers, JSCell* calleeAsFunctionCell,
-    CallLinkInfo& callLinkInfo)
-{
-    if (!calleeAsFunctionCell)
-        return false;
-    
-    JSFunction* callee = jsCast<JSFunction*>(calleeAsFunctionCell);
-    JSFunction* oldCallee = callLinkInfo.callee.get();
-    
-    if (!oldCallee || oldCallee->executable() != callee->executable())
-        return false;
-    
-    ASSERT(callee->executable()->hasJITCodeForCall());
-    MacroAssemblerCodePtr codePtr =
-        callee->executable()->generatedJITCodeForCall()->addressForCall(
-            *execCallee->callerFrame()->codeBlock()->vm(), callee->executable(),
-            ArityCheckNotRequired, registers);
-    
-    CodeBlock* codeBlock;
-    if (callee->executable()->isHostFunction())
-        codeBlock = 0;
-    else {
-        codeBlock = jsCast<FunctionExecutable*>(callee->executable())->codeBlockForCall();
-        if (execCallee->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters()) || callLinkInfo.callType == CallLinkInfo::CallVarargs || callLinkInfo.callType == CallLinkInfo::ConstructVarargs)
-            return false;
-    }
-    
-    linkClosureCall(
-        execCallee, callLinkInfo, codeBlock, callee->executable(), codePtr, registers);
-    
-    return true;
-}
-
-char* JIT_OPERATION operationLinkClosureCall(ExecState* execCallee, CallLinkInfo* callLinkInfo)
+char* JIT_OPERATION operationLinkPolymorphicCall(ExecState* execCallee, CallLinkInfo* callLinkInfo)
 {
     JSCell* calleeAsFunctionCell;
     char* result = virtualForWithFunction(execCallee, CodeForCall, RegisterPreservationNotRequired, calleeAsFunctionCell);
 
-    if (!attemptToOptimizeClosureCall(execCallee, RegisterPreservationNotRequired, calleeAsFunctionCell, *callLinkInfo))
-        linkSlowFor(execCallee, *callLinkInfo, CodeForCall, RegisterPreservationNotRequired);
+    linkPolymorphicCall(execCallee, *callLinkInfo, CallVariant(calleeAsFunctionCell), RegisterPreservationNotRequired);
     
     return result;
 }
@@ -831,13 +790,12 @@ char* JIT_OPERATION operationVirtualConstruct(ExecState* execCallee, CallLinkInf
     return virtualFor(execCallee, CodeForConstruct, RegisterPreservationNotRequired);
 }
 
-char* JIT_OPERATION operationLinkClosureCallThatPreservesRegs(ExecState* execCallee, CallLinkInfo* callLinkInfo)
+char* JIT_OPERATION operationLinkPolymorphicCallThatPreservesRegs(ExecState* execCallee, CallLinkInfo* callLinkInfo)
 {
     JSCell* calleeAsFunctionCell;
     char* result = virtualForWithFunction(execCallee, CodeForCall, MustPreserveRegisters, calleeAsFunctionCell);
 
-    if (!attemptToOptimizeClosureCall(execCallee, MustPreserveRegisters, calleeAsFunctionCell, *callLinkInfo))
-        linkSlowFor(execCallee, *callLinkInfo, CodeForCall, MustPreserveRegisters);
+    linkPolymorphicCall(execCallee, *callLinkInfo, CallVariant(calleeAsFunctionCell), MustPreserveRegisters);
     
     return result;
 }
@@ -1033,6 +991,10 @@ SlowPathReturnType JIT_OPERATION operationOptimize(ExecState* exec, int32_t byte
     DeferGCForAWhile deferGC(vm.heap);
     
     CodeBlock* codeBlock = exec->codeBlock();
+    if (codeBlock->jitType() != JITCode::BaselineJIT) {
+        dataLog("Unexpected code block in Baseline->DFG tier-up: ", *codeBlock, "\n");
+        RELEASE_ASSERT_NOT_REACHED();
+    }
     
     if (bytecodeIndex) {
         // If we're attempting to OSR from a loop, assume that this should be
@@ -1467,10 +1429,7 @@ static JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript, R
         return baseValue.get(exec, i);
     }
 
-    if (isName(subscript))
-        return baseValue.get(exec, jsCast<NameInstance*>(subscript.asCell())->privateName());
-
-    Identifier property = subscript.toString(exec)->toIdentifier(exec);
+    PropertyName property = subscript.toPropertyKey(exec);
     return baseValue.get(exec, property);
 }
 
@@ -1605,10 +1564,8 @@ EncodedJSValue JIT_OPERATION operationGetByValString(ExecState* exec, EncodedJSV
             if (!isJSString(baseValue))
                 ctiPatchCallByReturnAddress(exec->codeBlock(), ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationGetByValDefault));
         }
-    } else if (isName(subscript))
-        result = baseValue.get(exec, jsCast<NameInstance*>(subscript.asCell())->privateName());
-    else {
-        Identifier property = subscript.toString(exec)->toIdentifier(exec);
+    } else {
+        PropertyName property = subscript.toPropertyKey(exec);
         result = baseValue.get(exec, property);
     }
 

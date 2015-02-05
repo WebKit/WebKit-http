@@ -36,7 +36,7 @@ WebInspector.RemoteObject = function(objectId, type, subtype, value, description
         // handle
         this._objectId = objectId;
         this._description = description;
-        this._hasChildren = true;
+        this._hasChildren = type !== "symbol";
         this._preview = preview;
     } else {
         // Primitive or null object.
@@ -134,7 +134,7 @@ WebInspector.RemoteObject.prototype = {
 
     _getProperties: function(ownProperties, ownAndGetterProperties, callback)
     {
-        if (!this._objectId) {
+        if (!this._objectId || this._isSymbol()) {
             callback([]);
             return;
         }
@@ -188,7 +188,7 @@ WebInspector.RemoteObject.prototype = {
 
     setPropertyValue: function(name, value, callback)
     {
-        if (!this._objectId) {
+        if (!this._objectId || this._isSymbol()) {
             callback("Can't set a property of non-object.");
             return;
         }
@@ -221,6 +221,47 @@ WebInspector.RemoteObject.prototype = {
             }
             callback();
         }
+    },
+
+    _isSymbol: function()
+    {
+        return this.type === "symbol";
+    },
+
+    isCollectionType: function()
+    {
+        return this.subtype === "map" || this.subtype === "set" || this.subtype === "weakmap";
+    },
+
+    isWeakCollection: function()
+    {
+        return this.subtype === "weakmap";
+    },
+
+    getCollectionEntries: function(start, numberToFetch, callback)
+    {
+        start = typeof start === "number" ? start : 0;
+        numberToFetch = typeof numberToFetch === "number" ? numberToFetch : 100;
+
+        console.assert(start >= 0);
+        console.assert(numberToFetch >= 0);
+        console.assert(this.isCollectionType());
+
+        // WeakMaps are not ordered. We should never send a non-zero start.
+        console.assert((this.subtype === "weakmap" && start === 0) || this.subtype !== "weakmap");
+
+        var objectGroup = this.isWeakCollection() ? this._weakCollectionObjectGroup() : "";
+
+        RuntimeAgent.getCollectionEntries(this._objectId, objectGroup, start, numberToFetch, function(error, entries) {
+            callback(entries);
+        });
+    },
+
+    releaseWeakCollectionEntries: function()
+    {
+        console.assert(this.isWeakCollection());
+
+        RuntimeAgent.releaseObjectGroup(this._weakCollectionObjectGroup());
     },
 
     pushNodeToFrontend: function(callback)
@@ -265,6 +306,13 @@ WebInspector.RemoteObject.prototype = {
         if (!matches)
             return 0;
         return parseInt(matches[1], 10);
+    },
+
+    // Private
+
+    _weakCollectionObjectGroup: function()
+    {
+        return JSON.stringify(this._objectId) + "-WeakMap";
     }
 };
 

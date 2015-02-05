@@ -34,10 +34,6 @@
 #include <wtf/Deque.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(COCOA)
-#include <wtf/OSObjectPtr.h>
-#endif
-
 namespace WebCore {
 class SharedBuffer;
 }
@@ -51,6 +47,57 @@ namespace WebKit {
 
 class ShareableResource;
 
+#if PLATFORM(COCOA)
+template <typename T> class DispatchPtr;
+template <typename T> DispatchPtr<T> adoptDispatch(T dispatchObject);
+
+// FIXME: Use OSObjectPtr instead when it works with dispatch_data_t on all platforms.
+template<typename T> class DispatchPtr {
+public:
+    DispatchPtr()
+        : m_ptr(nullptr)
+    {
+    }
+    DispatchPtr(const DispatchPtr& other)
+        : m_ptr(other.m_ptr)
+    {
+        if (m_ptr)
+            dispatch_retain(m_ptr);
+    }
+    ~DispatchPtr()
+    {
+        if (m_ptr)
+            dispatch_release(m_ptr);
+    }
+
+    DispatchPtr& operator=(const DispatchPtr& other)
+    {
+        auto copy = other;
+        std::swap(m_ptr, copy.m_ptr);
+        return *this;
+    }
+
+    T get() const { return m_ptr; }
+    explicit operator bool() const { return m_ptr; }
+
+    friend DispatchPtr adoptDispatch<T>(T);
+
+private:
+    struct Adopt { };
+    DispatchPtr(Adopt, T data)
+        : m_ptr(data)
+    {
+    }
+
+    T m_ptr;
+};
+
+template <typename T> DispatchPtr<T> adoptDispatch(T dispatchObject)
+{
+    return DispatchPtr<T>(typename DispatchPtr<T>::Adopt { }, dispatchObject);
+}
+#endif
+
 class NetworkCacheStorage {
     WTF_MAKE_NONCOPYABLE(NetworkCacheStorage);
 public:
@@ -58,25 +105,29 @@ public:
 
     class Data {
     public:
-        Data();
+        Data() { }
         Data(const uint8_t*, size_t);
+
+        enum class Backing { Buffer, Map };
 #if PLATFORM(COCOA)
-        explicit Data(OSObjectPtr<dispatch_data_t>);
+        explicit Data(DispatchPtr<dispatch_data_t>, Backing = Backing::Buffer);
 #endif
         bool isNull() const;
 
         const uint8_t* data() const;
         size_t size() const { return m_size; }
+        bool isMap() const { return m_isMap; }
 
 #if PLATFORM(COCOA)
         dispatch_data_t dispatchData() const { return m_dispatchData.get(); }
 #endif
     private:
 #if PLATFORM(COCOA)
-        mutable OSObjectPtr<dispatch_data_t> m_dispatchData;
+        mutable DispatchPtr<dispatch_data_t> m_dispatchData;
 #endif
-        mutable const uint8_t* m_data;
-        size_t m_size;
+        mutable const uint8_t* m_data { nullptr };
+        size_t m_size { 0 };
+        bool m_isMap { false };
     };
 
     struct Entry {
@@ -87,6 +138,7 @@ public:
     // This may call completion handler synchronously on failure.
     void retrieve(const NetworkCacheKey&, unsigned priority, std::function<bool (std::unique_ptr<Entry>)>);
     void store(const NetworkCacheKey&, const Entry&, std::function<void (bool success)>);
+    void update(const NetworkCacheKey&, const Entry& updateEntry, const Entry& existingEntry, std::function<void (bool success)>);
 
     void setMaximumSize(size_t);
     void clear();
@@ -112,16 +164,19 @@ private:
 
     size_t m_maximumSize { std::numeric_limits<size_t>::max() };
 
-    BloomFilter<20> m_keyFilter;
+    BloomFilter<20> m_contentsFilter;
     std::atomic<size_t> m_approximateEntryCount { 0 };
     std::atomic<bool> m_shrinkInProgress { false };
 
     Vector<Deque<RetrieveOperation>> m_pendingRetrieveOperationsByPriority;
     unsigned m_activeRetrieveOperationCount { 0 };
 
+    typedef std::pair<NetworkCacheKey, Entry> KeyEntryPair;
+    HashMap<NetworkCacheKey::HashType, std::shared_ptr<KeyEntryPair>, AlreadyHashed> m_writeCache;
+
 #if PLATFORM(COCOA)
-    mutable OSObjectPtr<dispatch_queue_t> m_ioQueue;
-    mutable OSObjectPtr<dispatch_queue_t> m_backgroundIOQueue;
+    mutable DispatchPtr<dispatch_queue_t> m_ioQueue;
+    mutable DispatchPtr<dispatch_queue_t> m_backgroundIOQueue;
 #endif
 };
 

@@ -93,7 +93,7 @@ class WebToDatabaseProcessConnection;
 class WebProcess : public ChildProcess, public WebOriginDataManagerSupplement, private DownloadManager::Client {
     friend class NeverDestroyed<DownloadManager>;
 public:
-    static WebProcess& shared();
+    static WebProcess& singleton();
 
     template <typename T>
     T* supplement()
@@ -136,7 +136,6 @@ public:
 
 #if PLATFORM(COCOA)
     pid_t presenterApplicationPid() const { return m_presenterApplicationPid; }
-    bool shouldForceScreenFontSubstitution() const { return m_shouldForceScreenFontSubstitution; }
 #endif
     
     const TextCheckerState& textCheckerState() const { return m_textCheckerState; }
@@ -290,6 +289,8 @@ private:
     virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
     virtual void didClose(IPC::Connection&) override;
     virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
+    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
+    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
 
     // Implemented in generated WebProcessMessageReceiver.cpp
     void didReceiveWebProcessMessage(IPC::Connection&, IPC::MessageDecoder&);
@@ -325,7 +326,6 @@ private:
     WebCore::MachSendRight m_compositingRenderServerPort;
     pid_t m_presenterApplicationPid;
     dispatch_group_t m_clearResourceCachesDispatchGroup;
-    bool m_shouldForceScreenFontSubstitution;
 #endif
 
     bool m_fullKeyboardAccessEnabled;

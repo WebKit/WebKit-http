@@ -65,6 +65,58 @@
 using namespace WebCore;
 using namespace WebKit;
 
+namespace WebKit {
+
+WKSelectionDrawingInfo::WKSelectionDrawingInfo()
+    : type(SelectionType::None)
+{
+}
+
+WKSelectionDrawingInfo::WKSelectionDrawingInfo(const EditorState& editorState)
+{
+    if (editorState.selectionIsNone) {
+        type = SelectionType::None;
+        return;
+    }
+
+    if (editorState.isInPlugin) {
+        type = SelectionType::Plugin;
+        return;
+    }
+
+    type = SelectionType::Range;
+    caretRect = editorState.caretRectAtEnd;
+    selectionRects = editorState.selectionRects;
+}
+
+inline bool operator==(const WKSelectionDrawingInfo& a, const WKSelectionDrawingInfo& b)
+{
+    if (a.type != b.type)
+        return false;
+
+    if (a.type == WKSelectionDrawingInfo::SelectionType::Range) {
+        if (a.caretRect != b.caretRect)
+            return false;
+
+        if (a.selectionRects.size() != b.selectionRects.size())
+            return false;
+
+        for (unsigned i = 0; i < a.selectionRects.size(); ++i) {
+            if (a.selectionRects[i].rect() != b.selectionRects[i].rect())
+                return false;
+        }
+    }
+
+    return true;
+}
+
+inline bool operator!=(const WKSelectionDrawingInfo& a, const WKSelectionDrawingInfo& b)
+{
+    return !(a == b);
+}
+
+} // namespace WebKit
+
 static const float highlightDelay = 0.12;
 static const float tapAndHoldDelay  = 0.75;
 const CGFloat minimumTapHighlightRadius = 2.0;
@@ -135,6 +187,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 @interface UIKeyboardImpl (StagingToRemove)
 - (void)didHandleWebKeyEvent;
+- (void)deleteFromInputWithFlags:(NSUInteger)flags;
 @end
 
 @interface UIView (UIViewInternalHack)
@@ -382,7 +435,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     }
 
     _selectionNeedsUpdate = YES;
-    [self _updateChangedSelection];
+    [self _updateChangedSelection:YES];
     [self _updateTapHighlight];
 }
 
@@ -2409,17 +2462,22 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
         NSString *characters = [event characters];
         if ([characters length] == 0)
             break;
+        UIKeyboardImpl *keyboard = [UIKeyboardImpl sharedInstance];
         switch ([characters characterAtIndex:0]) {
         case kWebBackspaceKey:
         case kWebDeleteKey:
-            [[UIKeyboardImpl sharedInstance] deleteFromInput];
+            // FIXME: remove deleteFromInput once UIKit adopts deleteFromInputWithFlags
+            if ([keyboard respondsToSelector:@selector(deleteFromInputWithFlags:)])
+                [keyboard deleteFromInputWithFlags:event.keyboardFlags];
+            else
+                [keyboard deleteFromInput];
             return YES;
 
         case kWebEnterKey:
         case kWebReturnKey:
             if (isCharEvent) {
                 // Map \r from HW keyboard to \n to match the behavior of the soft keyboard.
-                [[UIKeyboardImpl sharedInstance] addInputString:@"\n" withFlags:0];
+                [keyboard addInputString:@"\n" withFlags:0];
                 return YES;
             }
             return NO;
@@ -2430,7 +2488,7 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 
         default: {
             if (isCharEvent) {
-                [[UIKeyboardImpl sharedInstance] addInputString:event.characters withFlags:event.keyboardFlags];
+                [keyboard addInputString:event.characters withFlags:event.keyboardFlags];
                 return YES;
             }
             return NO;
@@ -2755,8 +2813,19 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 
 - (void)_updateChangedSelection
 {
+    [self _updateChangedSelection:NO];
+}
+
+- (void)_updateChangedSelection:(BOOL)force
+{
     if (!_selectionNeedsUpdate)
         return;
+
+    WKSelectionDrawingInfo selectionDrawingInfo(_page->editorState());
+    if (!force && selectionDrawingInfo == _lastSelectionDrawingInfo)
+        return;
+
+    _lastSelectionDrawingInfo = selectionDrawingInfo;
 
     // FIXME: We need to figure out what to do if the selection is changed by Javascript.
     if (_textSelectionAssistant) {

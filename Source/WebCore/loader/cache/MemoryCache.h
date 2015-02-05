@@ -31,6 +31,7 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/ListHashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 #include <wtf/text/StringHash.h>
@@ -38,16 +39,12 @@
 
 namespace WebCore  {
 
-class CachedCSSStyleSheet;
 class CachedResource;
-class CachedResourceLoader;
 class URL;
 class ResourceRequest;
 class ResourceResponse;
 class ScriptExecutionContext;
 class SecurityOrigin;
-struct CrossThreadResourceRequestData;
-struct SecurityOriginHash;
 
 // This cache holds subresources used by Web pages: images, scripts, stylesheets, etc.
 
@@ -64,23 +61,9 @@ struct SecurityOriginHash;
 
 class MemoryCache {
     WTF_MAKE_NONCOPYABLE(MemoryCache); WTF_MAKE_FAST_ALLOCATED;
-public:
     friend NeverDestroyed<MemoryCache>;
 
-#if ENABLE(CACHE_PARTITIONING)
-    typedef HashMap<String, CachedResource*> CachedResourceItem;
-    typedef HashMap<String, OwnPtr<CachedResourceItem>> CachedResourceMap;
-#else
-    typedef HashMap<String, CachedResource*> CachedResourceMap;
-#endif
-    typedef HashMap<SessionID, std::unique_ptr<CachedResourceMap>> SessionCachedResourceMap;
-
-    struct LRUList {
-        CachedResource* m_head;
-        CachedResource* m_tail;
-        LRUList() : m_head(0), m_tail(0) { }
-    };
-
+public:
     struct TypeStatistic {
         int count;
         int size;
@@ -95,7 +78,7 @@ public:
         { 
         }
 
-        void addResource(CachedResource*);
+        void addResource(CachedResource&);
     };
     
     struct Statistics {
@@ -106,17 +89,18 @@ public:
         TypeStatistic fonts;
     };
 
-    WEBCORE_EXPORT CachedResource* resourceForURL(const URL&);
-    WEBCORE_EXPORT CachedResource* resourceForURL(const URL&, SessionID);
+    WEBCORE_EXPORT static MemoryCache& singleton();
+
+    WEBCORE_EXPORT CachedResource* resourceForURL(const URL&, SessionID = SessionID::defaultSessionID());
     WEBCORE_EXPORT CachedResource* resourceForRequest(const ResourceRequest&, SessionID);
 
-    bool add(CachedResource*);
-    void remove(CachedResource* resource) { evict(resource); }
+    bool add(CachedResource&);
+    void remove(CachedResource&);
 
     static URL removeFragmentIdentifierIfNeeded(const URL& originalURL);
     
-    void revalidationSucceeded(CachedResource* revalidatingResource, const ResourceResponse&);
-    void revalidationFailed(CachedResource* revalidatingResource);
+    void revalidationSucceeded(CachedResource& revalidatingResource, const ResourceResponse&);
+    void revalidationFailed(CachedResource& revalidatingResource);
     
     // Sets the cache's memory capacities, in bytes. These will hold only approximately, 
     // since the decoded cost of resources like scripts and stylesheets is not known.
@@ -132,45 +116,36 @@ public:
 
     WEBCORE_EXPORT void evictResources();
     
-    void setPruneEnabled(bool enabled) { m_pruneEnabled = enabled; }
     void prune();
-    void pruneToPercentage(float targetPercentLive);
 
     void setDeadDecodedDataDeletionInterval(std::chrono::milliseconds interval) { m_deadDecodedDataDeletionInterval = interval; }
     std::chrono::milliseconds deadDecodedDataDeletionInterval() const { return m_deadDecodedDataDeletionInterval; }
 
     // Calls to put the cached resource into and out of LRU lists.
-    void insertInLRUList(CachedResource*);
-    void removeFromLRUList(CachedResource*);
+    void insertInLRUList(CachedResource&);
+    void removeFromLRUList(CachedResource&);
 
     // Called to adjust the cache totals when a resource changes size.
     void adjustSize(bool live, int delta);
 
     // Track decoded resources that are in the cache and referenced by a Web page.
-    void insertInLiveDecodedResourcesList(CachedResource*);
-    void removeFromLiveDecodedResourcesList(CachedResource*);
+    void insertInLiveDecodedResourcesList(CachedResource&);
+    void removeFromLiveDecodedResourcesList(CachedResource&);
 
-    void addToLiveResourcesSize(CachedResource*);
-    void removeFromLiveResourcesSize(CachedResource*);
+    void addToLiveResourcesSize(CachedResource&);
+    void removeFromLiveResourcesSize(CachedResource&);
 
-    static void removeUrlFromCache(ScriptExecutionContext*, const String& urlString, SessionID);
-    static void removeRequestFromCache(ScriptExecutionContext*, const ResourceRequest&, SessionID);
-    static void removeRequestFromSessionCaches(ScriptExecutionContext*, const ResourceRequest&);
+    static void removeRequestFromSessionCaches(ScriptExecutionContext&, const ResourceRequest&);
 
     // Function to collect cache statistics for the caches window in the Safari Debug menu.
     WEBCORE_EXPORT Statistics getStatistics();
     
-    void resourceAccessed(CachedResource*);
+    void resourceAccessed(CachedResource&);
+    bool inLiveDecodedResourcesList(CachedResource& resource) const { return m_liveDecodedResources.contains(&resource); }
 
     typedef HashSet<RefPtr<SecurityOrigin>> SecurityOriginSet;
-    WEBCORE_EXPORT void removeResourcesWithOrigin(SecurityOrigin*);
+    WEBCORE_EXPORT void removeResourcesWithOrigin(SecurityOrigin&);
     WEBCORE_EXPORT void getOriginsWithCache(SecurityOriginSet& origins);
-
-    unsigned minDeadCapacity() const { return m_minDeadCapacity; }
-    unsigned maxDeadCapacity() const { return m_maxDeadCapacity; }
-    unsigned capacity() const { return m_capacity; }
-    unsigned liveSize() const { return m_liveSize; }
-    unsigned deadSize() const { return m_deadSize; }
 
 #if USE(CG)
     // FIXME: Remove the USE(CG) once we either make NativeImagePtr a smart pointer on all platforms or
@@ -185,15 +160,24 @@ public:
     WEBCORE_EXPORT void pruneLiveResources(bool shouldDestroyDecodedDataForAllLiveResources = false);
 
 private:
-    void pruneDeadResourcesToPercentage(float prunePercentage); // Prune to % current size
-    void pruneLiveResourcesToPercentage(float prunePercentage);
+#if ENABLE(CACHE_PARTITIONING)
+    typedef HashMap<std::pair<URL, String /* partitionName */>, CachedResource*> CachedResourceMap;
+#else
+    typedef HashMap<URL, CachedResource*> CachedResourceMap;
+#endif
+
+    struct LRUList {
+        CachedResource* m_head {nullptr};
+        CachedResource* m_tail {nullptr};
+    };
+
     void pruneDeadResourcesToSize(unsigned targetSize);
     void pruneLiveResourcesToSize(unsigned targetSize, bool shouldDestroyDecodedDataForAllLiveResources = false);
 
     MemoryCache();
     ~MemoryCache(); // Not implemented to make sure nobody accidentally calls delete -- WebCore does not delete singletons.
 
-    LRUList* lruListFor(CachedResource*);
+    LRUList* lruListFor(CachedResource&);
 #ifndef NDEBUG
     void dumpStats();
     void dumpLRULists(bool includeLive) const;
@@ -202,14 +186,12 @@ private:
     unsigned liveCapacity() const;
     unsigned deadCapacity() const;
 
-    void evict(CachedResource*);
+    CachedResource* resourceForRequestImpl(const ResourceRequest&, CachedResourceMap&);
 
-    WEBCORE_EXPORT CachedResource* resourceForRequestImpl(const ResourceRequest&, CachedResourceMap&);
-
-    CachedResourceMap& getSessionMap(SessionID);
+    CachedResourceMap& ensureSessionResourceMap(SessionID);
+    CachedResourceMap* sessionResourceMap(SessionID) const;
 
     bool m_disabled;  // Whether or not the cache is enabled.
-    bool m_pruneEnabled;
     bool m_inPruneResources;
 
     unsigned m_capacity;
@@ -226,15 +208,13 @@ private:
     Vector<LRUList, 32> m_allResources;
     
     // List just for live resources with decoded data.  Access to this list is based off of painting the resource.
-    LRUList m_liveDecodedResources;
+    ListHashSet<CachedResource*> m_liveDecodedResources;
     
     // A URL-based map of all resources that are in the cache (including the freshest version of objects that are currently being 
     // referenced by a Web page).
+    typedef HashMap<SessionID, std::unique_ptr<CachedResourceMap>> SessionCachedResourceMap;
     SessionCachedResourceMap m_sessionResources;
 };
-
-// Function to obtain the global cache.
-WEBCORE_EXPORT MemoryCache& memoryCache();
 
 }
 

@@ -104,18 +104,6 @@ SVGUseElement::~SVGUseElement()
     clearResourceReferences();
 }
 
-SVGElementInstance* SVGUseElement::instanceRoot()
-{
-    // If there is no element instance tree, force immediate SVGElementInstance tree
-    // creation by asking the document to invoke our recalcStyle function - as we can't
-    // wait for the lazy creation to happen if e.g. JS wants to access the instanceRoot
-    // object right after creating the element on-the-fly
-    if (!m_targetElementInstance)
-        document().updateLayoutIgnorePendingStylesheets();
-
-    return m_targetElementInstance.get();
-}
-
 bool SVGUseElement::isSupportedAttribute(const QualifiedName& attrName)
 {
     static NeverDestroyed<HashSet<QualifiedName>> supportedAttributes;
@@ -260,7 +248,7 @@ void SVGUseElement::svgAttributeChanged(const QualifiedName& attrName)
             if (url.hasFragmentIdentifier()) {
                 CachedResourceRequest request(ResourceRequest(url.string()));
                 request.setInitiator(this);
-                setCachedDocument(document().cachedResourceLoader()->requestSVGDocument(request));
+                setCachedDocument(document().cachedResourceLoader().requestSVGDocument(request));
             }
         } else
             setCachedDocument(0);
@@ -776,10 +764,8 @@ void SVGUseElement::invalidateShadowTree()
 void SVGUseElement::invalidateDependentShadowTrees()
 {
     // Recursively invalidate dependent <use> shadow trees
-    const HashSet<SVGElementInstance*>& instances = instancesForElement();
-    const HashSet<SVGElementInstance*>::const_iterator end = instances.end();
-    for (HashSet<SVGElementInstance*>::const_iterator it = instances.begin(); it != end; ++it) {
-        if (SVGUseElement* element = (*it)->correspondingUseElement()) {
+    for (auto* instance : instances()) {
+        if (SVGUseElement* element = instance->correspondingUseElement()) {
             ASSERT(element->inDocument());
             element->invalidateShadowTree();
         }

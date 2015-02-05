@@ -28,24 +28,60 @@
 
 #include "ArgumentCoders.h"
 #include "MessageFlags.h"
+#include "MessageRecorder.h"
 #include "StringReference.h"
 
 namespace IPC {
 
 static uint8_t defaultMessageFlags = 0;
 
-MessageEncoder::MessageEncoder(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID)
+#if HAVE(DTRACE)
+MessageEncoder::MessageEncoder(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID, const uuid_t& UUID)
+    : m_messageReceiverName(messageReceiverName)
+    , m_messageName(messageName)
+    , m_destinationID(destinationID)
 {
-    ASSERT(!messageReceiverName.isEmpty());
+    uuid_copy(m_UUID, UUID);
+    encodeHeader();
+}
+#endif
 
-    *this << defaultMessageFlags;
-    *this << messageReceiverName;
-    *this << messageName;
-    *this << destinationID;
+MessageEncoder::MessageEncoder(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID)
+    : m_messageReceiverName(messageReceiverName)
+    , m_messageName(messageName)
+    , m_destinationID(destinationID)
+{
+#if HAVE(DTRACE)
+    uuid_generate(m_UUID);
+#endif
+    encodeHeader();
 }
 
 MessageEncoder::~MessageEncoder()
 {
+}
+
+void MessageEncoder::encodeHeader()
+{
+    ASSERT(!m_messageReceiverName.isEmpty());
+
+    *this << defaultMessageFlags;
+    *this << m_messageReceiverName;
+    *this << m_messageName;
+    *this << m_destinationID;
+#if HAVE(DTRACE)
+    *this << m_UUID;
+#endif
+}
+
+bool MessageEncoder::isSyncMessage() const
+{
+    return *buffer() & SyncMessage;
+}
+
+bool MessageEncoder::shouldDispatchMessageWhenWaitingForSyncReply() const
+{
+    return *buffer() & DispatchMessageWhenWaitingForSyncReply;
 }
 
 void MessageEncoder::setIsSyncMessage(bool isSyncMessage)

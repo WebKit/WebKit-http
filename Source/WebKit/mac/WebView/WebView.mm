@@ -849,7 +849,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     if (initialized)
         return;
 
-    GamepadProvider::shared().setSharedProvider(HIDGamepadProvider::shared());
+    GamepadProvider::singleton().setSharedProvider(HIDGamepadProvider::singleton());
     initialized = true;
 }
 #endif
@@ -957,7 +957,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.alternativeTextClient = new WebAlternativeTextClient(self);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
-    pageConfiguration.databaseProvider = &WebDatabaseProvider::shared();
+    pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
     pageConfiguration.userContentController = &_private->group->userContentController();
     pageConfiguration.visitedLinkStore = &_private->group->visitedLinkStore();
@@ -1190,7 +1190,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
-    pageConfiguration.databaseProvider = &WebDatabaseProvider::shared();
+    pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
     pageConfiguration.userContentController = &_private->group->userContentController();
     pageConfiguration.visitedLinkStore = &_private->group->visitedLinkStore();
@@ -1208,7 +1208,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->page->settings().setDefaultFixedFontSize(13);
     _private->page->settings().setDownloadableBinaryFontsEnabled(false);
     _private->page->settings().setAcceleratedDrawingEnabled([preferences acceleratedDrawingEnabled]);
-    _private->page->settings().setScreenFontSubstitutionEnabled(false);
     
     _private->page->settings().setFontFallbackPrefersPictographs(true);
     _private->page->settings().setPictographFontFamily("AppleColorEmoji");
@@ -1268,11 +1267,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         [WebView _handleMemoryWarning];
     }, shouldAutoClearPressureOnMemoryRelease);
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     static dispatch_source_t memoryNotificationEventSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYSTATUS, 0, DISPATCH_MEMORYSTATUS_PRESSURE_WARN, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
-#else
-    static dispatch_source_t memoryNotificationEventSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_VM, 0, DISPATCH_VM_PRESSURE, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
-#endif
     dispatch_source_set_event_handler(memoryNotificationEventSource, ^{
         // Set memory pressure flag and schedule releasing memory in web thread runloop exit.
         memoryPressureHandler().setReceivedMemoryPressure(WebCore::MemoryPressureReasonVMPressure);
@@ -1873,12 +1868,12 @@ static bool fastDocumentTeardownEnabled()
 #if ENABLE(REMOTE_INSPECTOR)
 + (void)_enableRemoteInspector
 {
-    RemoteInspector::shared().start();
+    RemoteInspector::singleton().start();
 }
 
 + (void)_disableRemoteInspector
 {
-    RemoteInspector::shared().stop();
+    RemoteInspector::singleton().stop();
 }
 
 + (void)_disableAutoStartRemoteInspector
@@ -1888,12 +1883,12 @@ static bool fastDocumentTeardownEnabled()
 
 + (BOOL)_isRemoteInspectorEnabled
 {
-    return RemoteInspector::shared().enabled();
+    return RemoteInspector::singleton().enabled();
 }
 
 + (BOOL)_hasRemoteInspectorSession
 {
-    return RemoteInspector::shared().hasActiveDebugSession();
+    return RemoteInspector::singleton().hasActiveDebugSession();
 }
 
 - (BOOL)allowsRemoteInspection
@@ -1931,7 +1926,7 @@ static bool fastDocumentTeardownEnabled()
 - (void)_setHostApplicationProcessIdentifier:(pid_t)pid auditToken:(audit_token_t)auditToken
 {
     RetainPtr<CFDataRef> auditData = adoptCF(CFDataCreate(nullptr, (const UInt8*)&auditToken, sizeof(auditToken)));
-    RemoteInspector::shared().setParentProcessInformation(pid, auditData);
+    RemoteInspector::singleton().setParentProcessInformation(pid, auditData);
 }
 #endif // PLATFORM(IOS)
 #endif // ENABLE(REMOTE_INSPECTOR)
@@ -1997,7 +1992,7 @@ static bool fastDocumentTeardownEnabled()
     if (!otherBackForwardClient->currentItem())
         return; // empty back forward list, bail
     
-    HistoryItem* newItemToGoTo = 0;
+    HistoryItem* newItemToGoTo = nullptr;
 
     int lastItemIndex = otherBackForwardClient->forwardListCount();
     for (int i = -otherBackForwardClient->backListCount(); i <= lastItemIndex; ++i) {
@@ -2007,14 +2002,14 @@ static bool fastDocumentTeardownEnabled()
             // until we leave that page.
             otherView->_private->page->mainFrame().loader().history().saveDocumentAndScrollState();
         }
-        RefPtr<HistoryItem> newItem = otherBackForwardClient->itemAtIndex(i)->copy();
+        Ref<HistoryItem> newItem = otherBackForwardClient->itemAtIndex(i)->copy();
         if (i == 0) 
-            newItemToGoTo = newItem.get();
-        backForwardClient->addItem(newItem.release());
+            newItemToGoTo = newItem.ptr();
+        backForwardClient->addItem(WTF::move(newItem));
     }
     
     ASSERT(newItemToGoTo);
-    _private->page->goToItem(newItemToGoTo, FrameLoadType::IndexedBackForward);
+    _private->page->goToItem(*newItemToGoTo, FrameLoadType::IndexedBackForward);
 }
 
 - (void)_setFormDelegate: (id<WebFormDelegate>)delegate
@@ -2204,12 +2199,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setUsesEncodingDetector([preferences usesEncodingDetector]);
     settings.setFantasyFontFamily([preferences fantasyFontFamily]);
     settings.setFixedFontFamily([preferences fixedFontFamily]);
-    settings.setScreenFontSubstitutionEnabled(
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-        [[NSUserDefaults standardUserDefaults] boolForKey:@"NSFontDefaultScreenFontSubstitutionEnabled"] ||
-#endif
-        [preferences screenFontSubstitutionEnabled]
-    );
     settings.setForceFTPDirectoryListings([preferences _forceFTPDirectoryListings]);
     settings.setFTPDirectoryTemplatePath([preferences _ftpDirectoryTemplatePath]);
     settings.setLocalStorageDatabasePath([preferences _localStorageDatabasePath]);
@@ -4676,10 +4665,7 @@ static Vector<String> toStringVector(NSArray* patterns)
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_preferencesRemovedNotification:) name:WebPreferencesRemovedNotification object:nil];
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [defaults registerDefaults:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey]];
-#endif
 
 #if PLATFORM(IOS)
     continuousSpellCheckingEnabled = NO;
@@ -4703,13 +4689,10 @@ static Vector<String> toStringVector(NSArray* patterns)
         name:NSSpellCheckerDidChangeAutomaticTextReplacementNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didChangeAutomaticSpellingCorrectionEnabled:)
         name:NSSpellCheckerDidChangeAutomaticSpellingCorrectionNotification object:nil];
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didChangeAutomaticQuoteSubstitutionEnabled:)
         name:NSSpellCheckerDidChangeAutomaticQuoteSubstitutionNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didChangeAutomaticDashSubstitutionEnabled:)
         name:NSSpellCheckerDidChangeAutomaticDashSubstitutionNotification object:nil];
-#endif
 #endif
 }
 
@@ -4745,24 +4728,21 @@ static Vector<String> toStringVector(NSArray* patterns)
 + (BOOL)_shouldAutomaticQuoteSubstitutionBeEnabled
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     if (![defaults objectForKey:WebAutomaticQuoteSubstitutionEnabled])
         return [NSSpellChecker isAutomaticQuoteSubstitutionEnabled];
-#endif
+
     return [defaults boolForKey:WebAutomaticQuoteSubstitutionEnabled];
 }
 
 + (BOOL)_shouldAutomaticDashSubstitutionBeEnabled
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     if (![defaults objectForKey:WebAutomaticDashSubstitutionEnabled])
         return [NSSpellChecker isAutomaticDashSubstitutionEnabled];
-#endif
+
     return [defaults boolForKey:WebAutomaticDashSubstitutionEnabled];
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 + (void)_didChangeAutomaticQuoteSubstitutionEnabled:(NSNotification *)notification
 {
     automaticQuoteSubstitutionEnabled = [self _shouldAutomaticQuoteSubstitutionBeEnabled];
@@ -4774,7 +4754,6 @@ static Vector<String> toStringVector(NSArray* patterns)
     automaticDashSubstitutionEnabled = [self _shouldAutomaticDashSubstitutionBeEnabled];
     [[NSSpellChecker sharedSpellChecker] updatePanels];
 }
-#endif
 
 + (void)_applicationWillTerminate
 {   
@@ -5647,7 +5626,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     if (!_private->page)
         return NO;
 
-    _private->page->goToItem(core(item), FrameLoadType::IndexedBackForward);
+    ASSERT(item);
+    _private->page->goToItem(*core(item), FrameLoadType::IndexedBackForward);
     return YES;
 }
 
@@ -7742,7 +7722,7 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
     unsigned cacheMaxDeadCapacity = 0;
     auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
 
-    unsigned pageCacheCapacity = 0;
+    unsigned pageCacheSize = 0;
 
     NSUInteger nsurlCacheMemoryCapacity = 0;
     NSUInteger nsurlCacheDiskCapacity = 0;
@@ -7753,7 +7733,7 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
     switch (cacheModel) {
     case WebCacheModelDocumentViewer: {
         // Page cache capacity (in pages)
-        pageCacheCapacity = 0;
+        pageCacheSize = 0;
 
         // Object cache capacities (in bytes)
         if (memSize >= 4096)
@@ -7790,13 +7770,13 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
     case WebCacheModelDocumentBrowser: {
         // Page cache capacity (in pages)
         if (memSize >= 1024)
-            pageCacheCapacity = 3;
+            pageCacheSize = 3;
         else if (memSize >= 512)
-            pageCacheCapacity = 2;
+            pageCacheSize = 2;
         else if (memSize >= 256)
-            pageCacheCapacity = 1;
+            pageCacheSize = 1;
         else
-            pageCacheCapacity = 0;
+            pageCacheSize = 0;
 
         // Object cache capacities (in bytes)
         if (memSize >= 4096)
@@ -7844,22 +7824,22 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
         // Page cache capacity (in pages)
         // (Research indicates that value / page drops substantially after 3 pages.)
         if (memSize >= 2048)
-            pageCacheCapacity = 5;
+            pageCacheSize = 5;
         else if (memSize >= 1024)
-            pageCacheCapacity = 4;
+            pageCacheSize = 4;
         else if (memSize >= 512)
-            pageCacheCapacity = 3;
+            pageCacheSize = 3;
         else if (memSize >= 256)
-            pageCacheCapacity = 2;
+            pageCacheSize = 2;
         else
-            pageCacheCapacity = 1;
+            pageCacheSize = 1;
 
 #if PLATFORM(IOS)
         // Cache page less aggressively in iOS to reduce the chance of being jettisoned.
         // FIXME (<rdar://problem/11779846>): Avoiding jettisoning should not have to require reducing the page cache capacity.
         // Reducing the capacity by 1 reduces overall back-forward performance.
-        if (pageCacheCapacity > 0)
-            pageCacheCapacity -= 1;
+        if (pageCacheSize > 0)
+            pageCacheSize -= 1;
 #endif
 
         // Object cache capacities (in bytes)
@@ -7933,11 +7913,14 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
     // Don't shrink a big disk cache, since that would cause churn.
     nsurlCacheDiskCapacity = std::max(nsurlCacheDiskCapacity, [nsurlCache diskCapacity]);
 
-    memoryCache().setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    memoryCache().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
-    pageCache()->setCapacity(pageCacheCapacity);
+    auto& memoryCache = MemoryCache::singleton();
+    memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+
+    auto& pageCache = PageCache::singleton();
+    pageCache.setMaxSize(pageCacheSize);
 #if PLATFORM(IOS)
-    pageCache()->setShouldClearBackingStores(true);
+    pageCache.setShouldClearBackingStores(true);
     nsurlCacheMemoryCapacity = std::max(nsurlCacheMemoryCapacity, [nsurlCache memoryCapacity]);
     CFURLCacheRef cfCache;
     if ([nsurlCache respondsToSelector:@selector(_CFURLCache)] && (cfCache = [nsurlCache _CFURLCache]))

@@ -293,13 +293,8 @@ webkit.org/b/29359 fast/forms/week [ Skip ]
 # TODO ENABLE_GAMEPAD not enabled.
 gamepad/ [ Skip ]
 
-# DOM4_EVENTS_CONSTRUCTOR is not yet enabled. Seems to be missing UIEventConstructor
-fast/events/constructors/ui-event-constructor.html [ Skip ]
-fast/events/constructors/mouse-event-constructor.html [ Skip ]
-fast/events/constructors/composition-event-constructor.html [ Skip ]
-fast/events/constructors/wheel-event-constructor.html [ Skip ]
-fast/events/constructors/keyboard-event-constructor.html [ Skip ]
-fast/events/constructors/focus-event-constructor.html [ Skip ]
+# X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
+webkit.org/b/136452 http/tests/security/contentTypeOptions
 
 # TODO Userscripts stuff is not implemented
 webkit.org/b/140258 userscripts/ [ Skip ]
@@ -508,9 +503,6 @@ fast/events/constructors/device-proximity-event-constructor.html
 # TODO Fail until SUBPIXEL_LAYOUT is enabled
 webkit.org/b/85532 fast/sub-pixel [ Skip ]
 
-# TODO JavaScript Experiments are not enabled on Windows
-webkit.org/b/87858 js/names.html [ Skip ]
-
 # TODO LAYER_TREE_INCLUDES_VISIBLE_RECTS option to layerTreeAsText is only applicable to Mac.
 compositing/visible-rect/  [ Skip ]
 
@@ -556,7 +548,7 @@ compositing/overflow/updating-scrolling-content.html [ Skip ]
 webkit.org/b/39725 [ Debug ] fast/events/drag-and-drop-autoscroll.html [ Skip ]  # Crashing
 webkit.org/b/39725 [ Release ] fast/events/drag-and-drop-autoscroll.html [ Failure ]
 
-# TODO Disable document.register tests, ENABLE_CUSTOM_ELEMENT disabled
+# Disable document.register tests, ENABLE_CUSTOM_ELEMENT disabled
 fast/dom/custom/ [ Skip ]
 
 # TODO User Timing is not enabled yet. so skip it.
@@ -565,11 +557,8 @@ webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing [ Skip ]
 # TODO Resource Timing is not enable yet, skip it.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing [ Skip ]
 
-# TODO CURSOR_VISIBILITY is not enabled on win
-webkit.org/b/107601 fullscreen/video-cursor-auto-hide.html [ Skip ]
-
-# TODO Need support for ResourceHandle::didChangePriority and DRT support
-webkit.org/b/111016 http/tests/loading/promote-img-preload-priority.html [ Failure ]
+# Need support for ResourceHandle::didChangePriority and DRT support
+webkit.org/b/111016 http/tests/loading/promote-img-preload-priority.html [ Skip ] # Crash
 
 # TODO Snapshotted plugins not enabled on WK1
 webkit.org/b/98696 plugins/snapshotting [ Skip ]
@@ -620,9 +609,9 @@ webkit.org/b/57693 plugins/windowless_plugin_paint_test.html [ Skip ]
 plugins/reloadplugins-and-pages.html
 plugins/reloadplugins-no-pages.html
 webkit.org/b/29289 plugins/destroy-during-npp-new.html [ Skip ]
-webkit.org/b/24810 plugins/npruntime/npruntime.html [ Skip ]
-webkit.org/b/24810 plugins/netscape-destroy-plugin-script-objects.html [ Skip ]
-webkit.org/b/24810 plugins/netscape-plugin-setwindow-size-2.html [ Skip ]
+plugins/npruntime/npruntime.html [ Skip ]
+plugins/netscape-destroy-plugin-script-objects.html [ Skip ]
+plugins/netscape-plugin-setwindow-size-2.html [ Skip ]
 # Needs to implement NPP_HandleEvent() in TestNetscapePlugin
 plugins/keyboard-events.html  [ Skip ]
 plugins/plugin-initiate-popup-window.html [ Skip ]
@@ -722,16 +711,14 @@ webkit.org/b/48753 http/tests/security/window-events-clear-port.html [ Pass Time
 webkit.org/b/48753 http/tests/security/window-properties-clear-port.html [ Pass Timeout ]
 fast/workers/worker-document-leak.html [ Skip ] # Timeout
 ################################################################################
-######################        Skip all media tests        ######################
+######################            Media tests             ######################
 ################################################################################
-#media/ [ Skip ]
-#media/W3C [ Skip ]
-fast/media [ Skip ]
-http/tests/media [ Skip ]
+# Web Audio is not supported on Windows
+media/W3C/audio [ Skip ]
 
 # Assertion failures
 webkit.org/b/48910 [ Debug ] http/tests/media/pdf-served-as-pdf.html [ Skip ]  # Crashing
-webkit.org/b/48910 [ Debug ] http/tests/media/video-cancel-load.html [ Skip ]  # Crashing
+webkit.org/b/48910 http/tests/media/video-cancel-load.html [ Skip ]  # Crashing
 
 webkit.org/b/58654 media/video-controls-in-media-document.html [ Skip ]
 
@@ -743,11 +730,9 @@ media/media-can-play-ogg.html [ WontFix ]
 # This test requires flac codec
 media/media-can-play-flac-audio.html [ WontFix ]
 
-webkit.org/b/112659 media/video-playing-and-pause.html [ Failure Pass ]
+webkit.org/b/112659 media/video-playing-and-pause.html [ Skip ] # [ Crash Failure Pass ]
 webkit.org/b/29047 media/audio-delete-while-step-button-clicked.html [ Skip ]
 media/video-empty-source.html [ Failure ]
-# This test requires media controls has a volume slider.
-media/video-volume-slider.html [ Failure ]
 
 # Needs to pass cookies to the media player
 webkit.org/b/33954 http/tests/media/video-cookie.html [ Skip ]
@@ -777,44 +762,46 @@ webkit.org/b/45603 http/tests/media/video-served-as-text.html [ Failure ]
 webkit.org/b/56167 http/tests/media/remove-while-loading.html [ Skip ]
 
 # Opera-submitted tests to W3C for <track>, a lot of failures still.
-# webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/kind.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/src.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrack/activeCues.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/constructor.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/createEvent.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/getCueAsHTML.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/line.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onenter.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onexit.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/snapToLines.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/entities.html [ Skip ] 
-# webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tags.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/12345_timestamps.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/timestamps.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tree-building.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/cue_font_size_transition.html [ Skip ]
-# webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/voice_with_evil_timestamp.html [ Skip ]
+webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/kind.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/src.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrack/activeCues.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/constructor.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/createEvent.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/getCueAsHTML.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/line.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onenter.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onexit.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/snapToLines.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
+webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html [ Skip ]
+webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html [ Skip ]
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html [ Skip ]
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/entities.html [ Skip ] 
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tags.html [ Skip ]
+webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/12345_timestamps.html [ Skip ]
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/timestamps.html [ Skip ]
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tree-building.html [ Skip ]
+webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/cue_font_size_transition.html [ Skip ]
+webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/voice_with_evil_timestamp.html [ Skip ]
 
 # Tests for MediaSource API. Feature is not yet functional.
-#webkit.org/b/64731 http/tests/media/media-source/ [ Skip ]
+media/media-source/ [ Skip ]
+webkit.org/b/64731 http/tests/media/media-source/ [ Skip ]
 
 # These tests are for an obsolete version of the EME spec.
 fast/events/constructors/media-key-event-constructor.html [ WontFix ]
-#media/encrypted-media/encrypted-media-can-play-type-webm.html [ WontFix ]
-#media/encrypted-media/encrypted-media-events.html [ WontFix ]
-#media/encrypted-media/encrypted-media-not-loaded.html [ WontFix ]
-#media/encrypted-media/encrypted-media-syntax.html [ WontFix ]
+media/encrypted-media/encrypted-media-can-play-type-webm.html [ Skip ] # [ WontFix ]
+media/encrypted-media/encrypted-media-events.html [ Skip ] # [ WontFix ]
+media/encrypted-media/encrypted-media-not-loaded.html [ Skip ] # [ WontFix ]
+media/encrypted-media/encrypted-media-syntax.html [ Skip ] # [ WontFix ]
 
 webkit.org/b/103442 media/W3C/video/networkState/networkState_during_progress.html
+
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html [ Skip ]
 
@@ -822,227 +809,407 @@ http/tests/security/video-cross-origin-readback.html [ Skip ]
 fast/forms/file/file-input-capture.html [ Skip ]
 
 # Requires testRunner.setMediaType() and implementation
-#fast/media/print-restores-previous-mediatype.html
-
-# media/controls-after-reload.html [ Failure ]
-# media/controls-strict.html [ Failure ]
-# media/controls-without-preload.html [ Failure ]
-# media/video-controls-rendering.html [ Failure ]
-# media/video-display-toggle.html [ Failure ]
-# media/video-pause-immediately.html [ Failure ]
+fast/media/print-restores-previous-mediatype.html
 
 # The following are already skipped on Mac because of a QuickTime problem
-#webkit.org/b/38000 http/tests/media/video-play-stall-seek.html [ Skip ]
-#webkit.org/b/38000 http/tests/media/video-play-stall.html [ Skip ]
-#webkit.org/b/38000 media/media-fullscreen-not-in-document.html [ Skip ]
+webkit.org/b/38000 http/tests/media/video-play-stall-seek.html [ Skip ]
+webkit.org/b/38000 http/tests/media/video-play-stall.html [ Skip ]
+webkit.org/b/38000 media/media-fullscreen-not-in-document.html [ Skip ]
 
 # Flaky media/video tests
-#webkit.org/b/95806 media/video-aspect-ratio.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-replaces-poster.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-set-rate-from-pause.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-src-change.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-timeupdate-reverse-play.html [ Pass Failure ]
-#webkit.org/b/95806 media/W3C/video/src/src_removal_does_not_trigger_loadstart.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-pause-empty-events.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-play-empty-events.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-single-valid-source.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-source-error-no-candidate.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-src-remove.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-size-intrinsic-scale.html [ Skip ]
-#webkit.org/b/95806 media/video-source-media.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-source-load.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-source-moved.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-seeking.html [ Pass Failure ]
-#webkit.org/b/95806 media/video-src-empty.html [ Pass Failure ]
+webkit.org/b/95806 media/video-source-error-no-candidate.html [ Pass Failure ]
+webkit.org/b/95806 media/video-source-moved.html [ Pass Failure ]
 
-#media/controls-styling.html [ Failure Crash ]
-#media/media-document-audio-repaint.html [ Skip ]
-#webkit.org/b/25465 media/video-zoom-controls.html [ Failure ]
+media/controls-styling.html [ Skip ] # Crashing
+media/media-document-audio-repaint.html [ Skip ] # Timeout
+webkit.org/b/25465 media/video-zoom-controls.html [ Skip ] # Crashing
 
 # Resolution media query is not yet enabled.
-#webkit.org/b/85262 fast/media/mq-resolution.html [ Skip ]
-#webkit.org/b/85262 fast/media/mq-resolution-dpi-dpcm-warning.html [ Skip ]
-#webkit.org/b/97026 media/audio-controls-rendering.html [ Failure ]
-#webkit.org/b/97026 media/audio-repaint.html [ Skip ] # Timeout
-#webkit.org/b/97026 media/controls-styling-strict.html [ Failure ]
-#webkit.org/b/97026 media/video-controls-fullscreen-volume.html [ Failure ]
-#http/tests/media/media-document.html [ Skip ]
-#http/tests/media/video-useragent.html [ Skip ]
+webkit.org/b/85262 fast/media/mq-resolution.html [ Skip ]
+webkit.org/b/85262 fast/media/mq-resolution-dpi-dpcm-warning.html [ Skip ]
+webkit.org/b/97026 media/audio-controls-rendering.html [ Skip ]
+webkit.org/b/97026 media/audio-repaint.html [ Skip ]
+webkit.org/b/97026 media/controls-styling-strict.html [ Skip ]
+webkit.org/b/97026 media/video-controls-fullscreen-volume.html [ Skip ]
+http/tests/media/media-document.html [ Skip ]
+http/tests/media/video-useragent.html [ Skip ]
 
-#webkit.org/b/103442 media/video-size.html [ Pass Timeout ]
-#webkit.org/b/103442 media/W3C/video/readyState/readyState_during_loadedmetadata.html [ Pass Timeout ]
+webkit.org/b/103442 media/video-size.html [ Skip ] # Crash
+webkit.org/b/103442 media/W3C/video/readyState/readyState_during_loadedmetadata.html [ Skip ] # Crash
 # This test requires generation of progress events during loading
-#webkit.org/b/97026 media/progress-events-generated-correctly.html [ Failure ]
+webkit.org/b/97026 media/progress-events-generated-correctly.html [ Failure ]
 
-#webkit.org/b/97132 media/track/track-cue-rendering-vertical.html [ Failure ]
+webkit.org/b/97132 media/track/track-cue-rendering-vertical.html [ Skip ] # Crashing
 
-#webkit.org/b/106477 media/video-controls-captions-trackmenu-sorted.html [ Failure ]
-#webkit.org/b/106477 media/video-controls-captions-trackmenu.html [ Skip ]  # [ Timeout ]
-#webkit.org/b/106477 media/video-controls-captions-trackmenu-hide-on-click.html [ Failure ]
-#webkit.org/b/106477 media/video-controls-captions-trackmenu-hide-on-click-outside.html [ Failure ]
-#webkit.org/b/106477 media/video-controls-visible-exiting-fullscreen.html [ Failure ]
-#webkit.org/b/106477 media/video-controls-captions-trackmenu-includes-enabled-track.html [ Failure ]
+webkit.org/b/106477 media/video-controls-captions-trackmenu-sorted.html [ Skip ] # Crashing
+webkit.org/b/106477 media/video-controls-captions-trackmenu.html [ Skip ]  # [ Timeout ]
+webkit.org/b/106477 media/video-controls-captions-trackmenu-hide-on-click-outside.html [ Skip ] # Crashing
+webkit.org/b/106477 media/video-controls-visible-exiting-fullscreen.html [ Skip ] # Crash
+webkit.org/b/106477 media/video-controls-captions-trackmenu-includes-enabled-track.html [ Skip ] # Crashing
+
 # Windows doesn't have a toggle for CC any more, it's based on a menu of choices.
 # https://bugs.webkit.org/show_bug.cgi?id=95428
-#webkit.org/b/101670 media/video-controls-captions.html [ Skip ]
+webkit.org/b/101670 media/video-controls-captions.html [ Skip ]
+
 # Windows does not support custom media data loading
-#media/video-src-blob.html [ Skip ]
-#webkit.org/b/113106 media/track/track-prefer-captions.html [ Skip ]
+media/video-src-blob.html [ Skip ]
+webkit.org/b/113106 media/track/track-prefer-captions.html [ Skip ]
 
 # The logic in this test is no longer correct for Apple ports
-#webkit.org/b/112492 media/track/track-user-preferences.html [ Skip ]
+webkit.org/b/112492 media/track/track-user-preferences.html [ Skip ]
 
 # WEBVTT_REGIONS is not enabled on win
-#media/track/regions-webvtt [ Skip ]
-
-#webkit.org/b/113076 [ Debug ] media/video-volume.html [ Skip ]  # Crashing
-#webkit.org/b/113076 [ Release ] media/video-volume.html [ Pass Failure ]
+media/track/regions-webvtt [ Skip ]
 
 # Feature not implemented
-#webkit.org/b/112766 media/media-higher-prio-audio-stream.html [ Skip ]
+webkit.org/b/112766 media/media-higher-prio-audio-stream.html [ Skip ]
 
 # Don't run ogv and mkv tests on mac
-#media/track/in-band [ WontFix ]
-#media/track/video [ WontFix ]
-#media/track/audio [ WontFix ]
+media/track/in-band [ Skip ] # [ WontFix ]
+media/track/video [ Skip ] # [ WontFix ]
+media/track/audio [ Skip ] # [ WontFix ]
 
-#webkit.org/b/116564 media/click-volume-bar-not-pausing.html [ Skip ] #  [ Timeout ]
-#webkit.org/b/117322 media/video-poster-background.html [ ImageOnlyFailure ]
-# These test fail due to 'notifyDone' not being executed.
-#webkit.org/b/121509 media/audio-mpeg-supported.html	[ Skip ]
-#webkit.org/b/121509 media/audio-data-url.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cues-seeking.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-mode.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-inline-assertion-crash.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-css-matching-default.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-css-matching.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-forced-subtitles-in-band.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-css-matching-timestamps.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-rendering-with-padding.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-overlap-snap-to-lines-not-set.html	[ Skip ]
-#webkit.org/b/121509 media/track/text-track-cue-is-reachable.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-negative-timestamp.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-kind.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cues-pause-on-exit.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-mutable.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-webvtt-tc002-bom.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-css-property-whitelist.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-remove-by-setting-innerHTML.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-load-error-readyState.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-mutable-text.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cues-missed.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cues-enter-exit.html	[ Skip ]
-#webkit.org/b/121509 media/track/text-track-is-reachable.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-css-cue-lifetime.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-disabled.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-in-band-style.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-mode-not-changed-by-new-track.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-webvtt-tc028-unsupported-markup.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-default-attribute.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-active-cues.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-rendering-rtl.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-css-matching-lang.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-webvtt-tc000-empty.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-mutable-fragment.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-container-rendering-position.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cues-cuechange.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-in-band-cues-added-once.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-large-timestamp.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-webvtt-tc027-empty-cue.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-load-from-element-readyState.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-rendering-on-resize.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cue-rendering.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-add-remove-cue.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-cues-sorted-before-dispatch.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-in-band-duplicate-tracks-when-source-changes.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-webvtt-tc010-no-timings.html	[ Skip ]
-#webkit.org/b/121509 media/track/track-text-track-cue-list.html	[ Skip ]
-#webkit.org/b/121509 media/audio-constructor-preload.html	[ Skip ]
+webkit.org/b/116564 media/click-volume-bar-not-pausing.html [ Skip ] #  [ Timeout ]
+webkit.org/b/117322 media/video-poster-background.html [ ImageOnlyFailure ]
 
-#webkit.org/b/62024 http/tests/media/video-cross-site.html [ Failure ]
-#media/audio-constructor-src.html [ Skip ] #  [ Timeout ]
-#media/audio-delete-while-slider-thumb-clicked.html	[ Skip ] #  [ Timeout ]
-#media/track/track-in-band-legacy-api.html [ Skip ]
-#media/track/track-in-band-mode.html [ Skip ]
-#fast/media/mq-transform-02.html [ Pass ImageOnlyFailure ]
-#fast/media/mq-transform-03.html [ Pass ImageOnlyFailure ]
+webkit.org/b/62024 http/tests/media/video-cross-site.html [ Skip ] # Crash
+media/audio-constructor-src.html [ Skip ] #  [ Timeout ]
+media/audio-delete-while-slider-thumb-clicked.html	[ Skip ] #  [ Timeout ]
+media/track/track-in-band-legacy-api.html [ Skip ]
+media/track/track-in-band-mode.html [ Skip ]
+media/track/track-in-band-duplicate-tracks-when-source-changes.html [ Skip ]
+fast/media/mq-transform-02.html [ Pass ImageOnlyFailure ]
+fast/media/mq-transform-03.html [ Pass ImageOnlyFailure ]
+
 # The following tests fail due to the new CSS/JS-based media controls.
 # They need to be rebaselined.
 # REGRESSION(r156730): 18 media tests broken (122021)
-#webkit.org/b/122021 media/track/track-cue-rendering-mode-changed.html [ Failure ]
-#webkit.org/b/122021 media/video-controls-toggling.html [ Skip ] #  [ Timeout ]
+webkit.org/b/122021 media/track/track-cue-rendering-mode-changed.html [ Skip ] # Crashing
+webkit.org/b/122021 media/video-controls-toggling.html [ Skip ] #  [ Timeout ]
 
 # The following tests also seem affected by r156730
-#webkit.org/b/122166 media/track/audio-track.html [ Failure ]
-#webkit.org/b/122166 media/track/video-track.html [ Failure ]
-#webkit.org/b/122166 media/audio-controls-do-not-fade-out.html [ Skip ] #  [ Timeout ]
-#webkit.org/b/122166 media/media-controls-invalid-url.html [ Failure ]
-#webkit.org/b/122166 media/media-volume-slider-rendered-normal.html [ Failure ]
-#webkit.org/b/122166 media/video-controls-visible-audio-only.html [ Failure ]
+webkit.org/b/122166 media/track/audio-track.html [ Failure ]
+webkit.org/b/122166 media/track/video-track.html [ Skip ] # Crashing
+webkit.org/b/122166 media/audio-controls-do-not-fade-out.html [ Skip ] #  [ Timeout ]
+webkit.org/b/122166 media/media-controls-invalid-url.html [ Skip ] # Crashing
+webkit.org/b/122166 media/media-volume-slider-rendered-normal.html [ Skip ] # Crashing
+webkit.org/b/122166 media/video-controls-visible-audio-only.html [ Failure ]
+
 # Test introduced in r157133 fails. State of colorspace management on Windows is unclear.
-#media/video-canvas-drawing-output.html [ Skip ] #  [ Timeout ]
+media/video-canvas-drawing-output.html [ Skip ] #  [ Timeout ]
 # Mock media source does not work on Windows
 # CONSOLE MESSAGE: line 13: TypeError: undefined is not a function (evaluating 'internals.initializeMockMediaSource()')
 # CONSOLE MESSAGE: line 18: ReferenceError: Can't find variable: MediaSource
 # FAIL: Timed out waiting for notifyDone to be called
-#media/media-source [ Skip ]
-#fast/media/mq-compound-query-01.html [ Pass Timeout ]
-#fast/media/mq-simple-neg-query-01.html [ Pass Timeout ]
-#fast/media/mq-simple-neg-query-03.html [ Pass Timeout ]
-#fast/media/update-media-query-css-parser.html [ Pass Timeout ]
+
+fast/media/mq-compound-query-01.html [ Pass Timeout ]
+fast/media/mq-simple-neg-query-01.html [ Pass Timeout ]
+fast/media/mq-simple-neg-query-03.html [ Pass Timeout ]
+fast/media/update-media-query-css-parser.html [ Pass Timeout ]
 
 # Remove these expected failures when the Windows test bots are upgraded to support
 # WAV files with AVCF:
-#webkit.org/b/128943 media/audio-constructor.html [ Skip ] #  [ Timeout ]
-#webkit.org/b/128943 media/media-can-play-wav-audio.html [ Failure ]
-#webkit.org/b/128943 media/media-load-event.html [ Skip ] #  [ Timeout ]
-# DataCue.value not enabled
-#http/tests/media/track-in-band-hls-metadata.html [ Skip ]
-#media/track/track-datacue-value.html [ Skip ]
-#[ Release ] http/tests/media/video-cancel-load.html [ Crash Failure Timeout ]
+webkit.org/b/128943 media/audio-constructor.html [ Skip ] #  [ Timeout ]
+webkit.org/b/128943 media/media-can-play-wav-audio.html [ Failure ]
+webkit.org/b/128943 media/media-load-event.html [ Skip ] #  [ Timeout ]
 
-# Skip remaining failing media tests after adding audio devices to the bots
-#media/audio-only-video-intrinsic-size.html [ Skip ] #  [ Timeout ]
-#media/audio-play-event.html [ Skip ] #  [ Timeout ]
-#media/context-menu-actions.html [ Skip ] #  [ Timeout ]
-#media/controls-after-reload.html [ Failure ]
-#media/controls-strict.html [ Failure ]
-#media/controls-without-preload.html [ Failure ]
-#media/media-blocked-by-beforeload.html [ Skip ] #  [ Timeout ]
-#media/media-can-play-flac-audio.html [ Failure ]
-#media/media-can-play-ogg.html [ Failure ]
-#media/media-captions.html [ Skip ] #  [ Timeout ]
-#media/media-continues-playing-after-replace-source.html [ Skip ] #  [ Timeout ]
-#media/media-controls-cancel-events.html [ Skip ] #  [ Timeout ]
-#media/media-document-audio-controls-visible.html [ Skip ] #  [ Timeout ]
-#media/media-document-audio-size.html [ Failure ]
-#media/media-volume-slider-rendered-below.html [ Skip ] #  [ Timeout ]
-#media/sources-fallback-codecs.html [ Failure ]
-#media/track/track-datacue.html [ Skip ] #  [ Timeout ]
-#media/track/track-in-band-subtitles-too-large.html [ Failure ]
-#media/track/track-long-word-container-sizing.html [ Failure ]
-#media/video-canvas-source.html [ Failure ]
-#media/video-colorspace-yuv420.html [ Failure ]
-#media/video-colorspace-yuv422.html [ Failure ]
-#media/video-controls-audiotracks-trackmenu.html [ Failure ]
-#media/video-controls-rendering.html [ Failure ]
-#media/video-defaultmuted.html [ Skip ] #  [ Timeout ]
-#media/video-display-toggle.html [ Failure ]
-#media/video-does-not-loop.html [ Skip ] #  [ Timeout ]
-#media/video-empty-source.html [ Skip ]
-#media/video-no-audio.html [ Failure ]
-#media/video-pause-immediately.html [ Failure ]
-#media/video-playing-and-pause.html [ Failure ]
-#media/video-source-type-params.html [ Failure ]
-#media/video-volume-slider.html [ Failure ]
-#media/track/w3c/interfaces/TextTrackCue/align.html [ Skip ]
-#media/track/w3c/interfaces/TextTrackCue/endTime.html [ Skip ]
-#media/track/w3c/interfaces/TextTrackCue/id.html [ Skip ]
-#media/track/w3c/interfaces/TextTrackCue/pauseOnExit.html [ Skip ]
-#media/track/w3c/interfaces/TextTrackCue/startTime.html [ Skip ]
-#media/track/w3c/interfaces/TextTrackCue/track.html [ Skip ]
-#media/video-volume-slider-drag.html [ Skip ]
-#media/audio-delete-while-step-button-clicked.html [ Skip ] #  [ Timeout ]
+# DataCue.value not enabled
+http/tests/media/track-in-band-hls-metadata.html [ Skip ]
+media/track/track-datacue-value.html [ Skip ]
+
+# Crashing due to a decoding bug
+media/video-played-collapse.html [ Skip ] # Crash
+media/video-currentTime-delay.html [ Skip ] # Crash
+media/video-timeupdate-during-playback.html [ Skip ] # Crash
+webkit.org/b/113076 media/video-volume.html [ Skip ] # Crashing
+media/video-paused-0-rate.html [ Skip ] # Crashing
+media/video-pause-immediately.html [ Skip ] # Crashing
+media/video-src-source.html [ Skip ] # Crashing
+media/video-seekable.html [ Skip ] # Crashing
+media/video-load-readyState.html [ Skip ] # Crashing
+media/controls-right-click-on-timebar.html [ Skip ] # Crashing
+media/video-controls-transformed.html [ Skip ] # Crashing
+media/media-controller-time-constant.html [ Skip ] # Crashing
+media/video-controller-child-rate.html [ Skip ] # Crashing
+media/video-trackmenu-selection.html [ Skip ] # Crashing
+media/video-system-sleep.html [ Skip ] # Crashing
+media/video-extreme-playbackrate-crash.html [ Skip ] # Crashing
+media/video-display-toggle.html [ Skip ] # Crashing
+media/video-timeupdate-reverse-play.html [ Skip ] # Crashing
+media/video-remove-insert-repaints.html [ Skip ] # Crashing
+media/video-restricted-no-preload-metadata.html [ Skip ] # Crashing
+media/video-seek-by-small-increment.html [ Skip ] # Crashing
+media/video-controller-currentTime.html [ Skip ] # Crashing
+media/media-controller-timeupdate.html [ Skip ] # Crashing
+media/media-extension-with-fragment.html [ Skip ] # Crashing
+media/video-muted.html [ Skip ] # Crashing
+media/event-attributes.html [ Skip ] # Crashing
+media/no-autoplay-with-user-gesture-requirement.html [ Skip ] # Crashing
+media/video-controller-currentTime-rate.html [ Skip ] # Crashing
+media/video-layer-crash.html [ Skip ] # Crashing
+media/video-zoom.html [ Skip ] # Crashing
+media/video-object-fit-change.html [ Skip ] # Crashing
+media/video-load-preload-metadata.html [ Skip ] # Crashing
+media/remove-from-document.html [ Skip ] # Crashing
+media/restore-from-page-cache.html [ Skip ] # Crashing
+media/volume-bar-empty-when-muted.html [ Skip ] # Crashing
+media/sources-fallback-codecs.html [ Skip ] # Crashing
+media/auto-play-in-sandbox-with-allow-scripts.html [ Skip ] # Crashing
+media/video-played-reset.html [ Skip ] # Crashing
+media/media-captions-no-controls.html [ Skip ] # Crashing
+media/video-transformed.html [ Skip ] # Crashing
+media/media-controller-drag-crash.html [ Skip ] # Crashing
+media/video-ended-seek-crash.html [ Skip ] # Crashing
+media/video-concurrent-playback.html [ Skip ] # Crashing
+media/video-load-networkState.html [ Skip ] # Crashing
+media/video-seek-past-end-playing.html [ Skip ] # Crashing
+media/video-dom-src.html [ Skip ] # Crashing
+media/video-seek-multiple.html [ Skip ] # Crashing
+media/video-interruption-with-resume-allowing-play.html [ Skip ] # Crashing
+media/media-controller-time-clamp.html [ Skip ] # Crashing
+media/media-controller-playbackrate.html [ Skip ] # Crashing
+media/video-load-preload-none.html [ Skip ] # Crashing
+media/video-background-playback.html [ Skip ] # Crashing
+media/video-autoplay.html [ Skip ] # Crashing
+media/video-object-fit.html [ Skip ] # Crashing
+media/video-plays-past-end-of-test.html [ Skip ] # Crashing
+media/media-controller-playback.html [ Skip ] # Crashing
+media/video-single-valid-source.html [ Skip ] # Crashing
+media/video-duration-known-after-eos.html [ Skip ] # Crashing
+media/media-event-listeners.html [ Skip ] # Crashing
+media/controls-after-reload.html [ Skip ] # Crashing
+media/video-canvas-alpha.html [ Skip ] # Crashing
+media/video-pause-empty-events.html [ Skip ] # Crashing
+media/video-seek-double.html [ Skip ] # Crashing
+media/video-currentTime-set.html [ Skip ] # Crashing
+media/video-replaces-poster.html [ Skip ] # Crashing
+media/video-source-load.html [ Skip ] # Crashing
+media/media-controller-time.html [ Skip ] # Crashing
+media/video-reverse-play-duration.html [ Skip ] # Crashing
+media/video-src.html [ Skip ] # Crashing
+media/video-controls-captions-trackmenu-only-captions-descriptions-and-subtitles.html [ Skip ] # Crashing
+media/video-display-aspect-ratio.html [ Skip ] # Crashing
+media/video-ended-event-slow-motion-playback.html [ Skip ] # Crashing
+media/video-buffered.html [ Skip ] # Crashing
+media/video-poster-delayed.html [ Skip ] # Crashing
+media/video-delay-load-event.html [ Skip ] # Crashing
+media/video-dom-autoplay.html [ Skip ] # Crashing
+media/video-controls-rendering.html [ Skip ] # Crashing
+media/muted-video-is-playing-audio.html [ Skip ] # Crashing
+media/video-source-type.html [ Skip ] # Crashing
+media/video-played-ranges-1.html [ Skip ] # Crashing
+media/video-seek-past-end-paused.html [ Skip ] # Crashing
+media/video-loop.html [ Skip ] # Crashing
+media/video-seek-with-negative-playback.html [ Skip ] # Crashing
+media/video-currentTime.html [ Skip ] # Crashing
+media/video-controls-captions-trackmenu-hide-on-click.html [ Skip ] # Crashing
+media/video-element-other-namespace-crash.html [ Skip ] # Crashing
+media/video-controls.html [ Skip ] # Crashing
+media/video-volume-slider-drag.html [ Skip ] # Crashing
+media/controls-without-preload.html [ Skip ] # Crashing
+media/video-src-set.html [ Skip ] # Crashing
+media/video-source-media.html [ Skip ] # Crashing
+media/video-volume-slider.html [ Skip ] # Crashing
+media/video-fast-seek.html [ Skip ] # Crashing
+media/video-playbackrate.html [ Skip ] # Crashing
+media/video-currentsrc-cleared.html [ Skip ] # Crashing
+media/video-remote-control-playpause.html [ Skip ] # Crashing
+media/video-defaultplaybackrate-before-load.html [ Skip ] # Crashing
+media/video-controls-zoomed.html [ Skip ] # Crashing
+media/nodesFromRect-shadowContent.html [ Skip ] # Crashing
+media/video-src-change.html [ Skip ] # Crashing
+media/video-preload.html [ Skip ] # Crashing
+media/media-controller-unpause.html [ Skip ] # Crashing
+media/video-controls-audiotracks-trackmenu.html [ Skip ] # Crashing
+media/video-src-remove.html [ Skip ] # Crashing
+media/media-fullscreen-inline.html [ Skip ] # Crashing
+media/video-aspect-ratio.html [ Skip ] # Crashing
+media/controls-drag-timebar.html [ Skip ] # Crashing
+media/video-seeking.html [ Skip ] # Crashing
+media/video-append-source.html [ Skip ] # Crashing
+media/video-fullscreeen-only-controls.html [ Skip ] # Crashing
+media/video-no-autoplay.html [ Skip ] # Crashing
+media/video-source-error.html [ Skip ] # Crashing
+media/video-interruption-with-resume-not-allowing-play.html [ Skip ] # Crashing
+media/track/track-cues-seeking.html [ Skip ] # Crashing
+media/track/track-cue-rendering-tree-is-removed-properly.html [ Skip ] # Crashing
+media/track/track-mode.html [ Skip ] # Crashing
+media/track/track-cue-inline-assertion-crash.html [ Skip ] # Crashing
+media/track/track-css-user-override.html [ Skip ] # Crashing
+media/track/track-css-matching-default.html [ Skip ] # Crashing
+media/track/track-css-matching.html [ Skip ] # Crashing
+media/track/track-cues-missed.html [ Skip ] # Crashing
+media/track/track-cues-cuechange.html [ Skip ] # Crashing
+media/track/track-css-matching-timestamps.html [ Skip ] # Crashing
+media/track/track-cue-rendering-with-padding.html [ Skip ] # Crashing
+media/track/track-cue-rendering-on-resize.html [ Skip ] # Crashing
+media/track/track-insert-after-load-crash.html [ Skip ] # Crashing
+media/track/track-disabled-addcue.html [ Skip ] # Crashing
+media/track/track-cue-rendering-snap-to-lines-not-set.html [ Skip ] # Crashing
+media/track/track-cue-empty-text-crash.html [ Skip ] # Crashing
+media/track/track-css-all-cues.html [ Skip ] # Crashing
+media/track/track-cue-rendering-horizontal.html [ Skip ] # Crashing
+media/track/track-cues-pause-on-exit.html [ Skip ] # Crashing
+media/track/track-css-property-whitelist.html [ Skip ] # Crashing
+media/track/track-automatic-subtitles.html [ Skip ] # Crashing
+media/track/track-long-captions-file.html [ Skip ] # Crashing
+media/track/track-long-word-container-sizing.html [ Skip ] # Crashing
+media/track/track-cues-enter-exit.html [ Skip ] # Crashing
+media/track/track-mode-triggers-loading.html [ Skip ] # Crashing
+media/track/track-css-cue-lifetime.html [ Skip ] # Crashing
+media/track/track-disabled.html [ Skip ] # Crashing
+media/track/track-mode-not-changed-by-new-track.html [ Skip ] # Crashing
+media/track/media-element-enqueue-event-crash.html [ Skip ] # Crashing
+media/track/track-active-cues.html [ Skip ] # Crashing
+media/track/track-cue-rendering-rtl.html [ Skip ] # Crashing
+media/track/track-css-matching-lang.html [ Skip ] # Crashing
+media/track/track-cue-rendering-empty-cue-crash.html [ Skip ] # Crashing
+media/track/track-cue-container-rendering-position.html [ Skip ] # Crashing
+media/track/track-delete-during-setup.html [ Skip ] # Crashing
+media/track/track-legacyapi-with-automatic-mode.html [ Skip ] # Crashing
+media/track/regions-webvtt/vtt-region-display.html [ Skip ] # Crashing
+media/track/regions-webvtt/vtt-region-dom-layout.html [ Skip ] # Crashing
+media/track/track-cue-rendering.html [ Skip ] # Crashing
+media/track/track-cues-sorted-before-dispatch.html [ Skip ] # Crashing
+media/track/track-cue-overlap-snap-to-lines-not-set.html [ Skip ] # Crashing
+media/track/track-remove-active-cue-crash.html [ Skip ] # Crashing
+media/track/track-remove-quickly.html [ Skip ] # Crashing
+media/video-play-empty-events.html [ Skip ] # Crashing
+media/video-restricted-no-preload-auto.html [ Skip ] # Crashing
+media/media-controls-cancel-events.html [ Skip ] # Crashing
+media/media-controls-timeline-updates.html [ Skip ] # Crashing
+media/video-currentTime-set2.html [ Skip ] # Crashing
+media/video-source.html [ Skip ] # Crashing
+media/video-fullscreeen-only-playback.html [ Skip ] # Crashing
+media/video-frame-accurate-seek.html [ Skip ] # Crashing
+media/video-src-empty.html [ Skip ] # Crashing
+media/video-play-require-user-gesture.html [ Skip ] # Crashing
+media/video-ended-event-negative-playback.html [ Skip ] # Crashing
+media/video-seek-after-end.html [ Skip ] # Crashing
+media/video-set-rate-from-pause.html [ Skip ] # Crashing
+media/controls-strict.html [ Skip ] # Crashing
+media/W3C/video/src/src_removal_does_not_trigger_loadstart.html [ Skip ] # Crashing
+media/W3C/video/readyState/readyState_during_canplay.html [ Skip ] # Crashing
+media/W3C/video/readyState/readyState_during_canplaythrough.html [ Skip ] # Crashing
+media/W3C/video/readyState/readyState_during_playing.html [ Skip ] # Crashing
+media/W3C/video/readyState/readyState_during_loadeddata.html [ Skip ] # Crashing
+media/W3C/video/paused/paused_false_during_play.html [ Skip ] # Crashing
+media/W3C/video/paused/paused_true_during_pause.html [ Skip ] # Crashing
+media/W3C/video/networkState/networkState_during_loadstart.html [ Skip ] # Crashing
+media/W3C/video/events/event_loadedmetadata.html [ Skip ] # Crashing
+media/W3C/video/events/event_canplaythrough_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_loadstart.html [ Skip ] # Crashing
+media/W3C/video/events/event_playing_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_order_loadedmetadata_loadeddata.html [ Skip ] # Crashing
+media/W3C/video/events/event_order_canplay_playing.html [ Skip ] # Crashing
+media/W3C/video/events/event_canplay.html [ Skip ] # Crashing
+media/W3C/video/events/event_play_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_progress_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_loadstart_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_order_loadstart_progress.html [ Skip ] # Crashing
+media/W3C/video/events/event_loadeddata.html [ Skip ] # Crashing
+media/W3C/video/events/event_play.html [ Skip ] # Crashing
+media/W3C/video/events/event_canplaythrough.html [ Skip ] # Crashing
+media/W3C/video/events/event_progress.html [ Skip ] # Crashing
+media/W3C/video/events/event_playing.html [ Skip ] # Crashing
+media/W3C/video/events/event_pause_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_order_canplay_canplaythrough.html [ Skip ] # Crashing
+media/W3C/video/events/event_timeupdate_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_canplay_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_loadedmetadata_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_loadeddata_manual.html [ Skip ] # Crashing
+media/W3C/video/events/event_timeupdate.html [ Skip ] # Crashing
+http/tests/media/reload-after-dialog.html [ Skip ] # Crashing
+http/tests/media/video-error-abort.html [ Skip ] # Crashing
+http/tests/media/hls/hls-audio-tracks.html [ Skip ] # Crashing
+http/tests/media/hls/hls-audio-tracks-locale-selection.html [ Skip ] # Crashing
+http/tests/media/hls/video-controls-live-stream.html [ Skip ] # Crashing
+http/tests/media/hls/hls-audio-tracks-has-audio.html [ Skip ] # Crashing
+http/tests/media/video-query-url.html [ Skip ] # Crashing
+http/tests/media/video-load-suspend.html [ Skip ] # Crashing
+http/tests/media/video-load-twice.html [ Skip ] # Crashing
+http/tests/media/video-play-progress.html [ Skip ] # Crashing
+
+# Timeouts
+media/audio-only-video-intrinsic-size.html [ Skip ] # Timeout
+media/audio-play-event.html [ Skip ] # Timeout
+media/media-document-audio-controls-visible.html [ Skip ] # Timeout
+media/media-blocked-by-beforeload.html [ Skip ] # Timeout
+media/media-volume-slider-rendered-below.html [ Skip ] # Timeout
+media/video-does-not-loop.html [ Skip ] # Timeout
+media/media-captions.html [ Skip ] # Timeout
+media/media-continues-playing-after-replace-source.html [ Skip ] # Timeout
+media/video-defaultmuted.html [ Skip ] # Timeout
+media/audio-data-url.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-kate-ogg-kind.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-srt-mkv-language.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-srt-mkv-style.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-mkv-chapters.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-srt-mkv-kind.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-srt-mkv-addtrack.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-srt-mkv-cues-added-once.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-kate-ogg-language.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-mpegts-metadata.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-kate-ogg-track-order.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-kate-ogg-addtrack.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-srt-mkv-mode.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-kate-ogg-style.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-kate-ogg-mode.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-srt-mkv-track-order.html [ Skip ] # Timeout
+media/track/in-band/track-in-band-kate-ogg-cues-added-once.html [ Skip ] # Timeout
+media/track/track-language-preference.html [ Skip ] # Timeout
+media/track/video/video-track-mkv-theora-language.html [ Skip ] # Timeout
+media/track/video/video-track-mkv-theora-selected.html [ Skip ] # Timeout
+media/track/video/video-track-mkv-theora-addtrack.html [ Skip ] # Timeout
+media/track/track-datacue.html [ Skip ] # Timeout
+media/track/track-load-error-readyState.html [ Skip ] # Timeout
+media/track/audio/audio-track-mkv-vorbis-language.html [ Skip ] # Timeout
+media/track/audio/audio-track-mkv-vorbis-enabled.html [ Skip ] # Timeout
+media/track/audio/audio-track-mkv-vorbis-addtrack.html [ Skip ] # Timeout
+media/video-rtl.html [ Skip ] # Timeout
+media/audio-constructor-preload.html [ Skip ] # Timeout
+media/video-size-intrinsic-scale.html [ Skip ] # Timeout
+http/tests/media/hls/video-cookie.html [ Skip ] # Timeout
+http/tests/media/video-play-waiting.html [ Skip ] # Timeout
+http/tests/media/media-stream/disconnected-frame-already.html [ Skip ] # Timeout
+http/tests/media/media-stream/disconnected-frame.html [ Skip ] # Timeout
+http/tests/media/media-stream/disconnected-frame-permission-denied.html [ Skip ] # Timeout
+http/tests/media/video-buffered-range-contains-currentTime.html [ Skip ] # Timeout
+
+# Extra whitespace in the output
+media/W3C/video/canPlayType/canPlayType_codecs_order_2.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_supported_but_no_codecs_parameter_2.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_two_implies_one_3.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_two_implies_one_4.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_two_implies_one_5.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_two_implies_one_6.html [ Failure ]
+
+# Extra whitespace, plus 'probably' result instead of ""
+media/W3C/video/canPlayType/canPlayType_codecs_order_3.html [ Failure ]
+
+media/audio-mpeg-supported.html [ Failure ]
+
+# Received an extra RUN(video.play()) event. Normal for Windows?
+media/track/track-in-band-cues-added-once.html [ Failure ]
+
+# Tracks don't seem to be appearing at all:
+media/track/track-in-band-subtitles-too-large.html [ Failure ]
+
+# DOM security problem
+media/video-canvas-source.html [ Failure ]
+
+# Parser is saying "line 0" for blocking message, but expect another value (e.g., 10)
+media/video-controls-no-scripting.html [ Failure ]
+
+# relativeURL/current Source is wrong:
+media/video-source-type-params.html [ Failure ]
+
+# Problems loading content
+http/tests/media/media-document-referer.html [ Failure ]
+http/tests/media/video-accept-encoding.html [ Failure ]
+http/tests/media/video-auth.html [ Failure ]
+http/tests/media/video-throttled-load-metadata.html [ Failure ]
+
 ################################################################################
 ############################   End Media Failures   ############################
 ################################################################################
@@ -1140,6 +1307,7 @@ editing/execCommand/find-after-replace.html [ Failure ]
 # TODO testRunner::setAutomaticLinkDetectionEnabled isn't implemented
 editing/inserting/typing-space-to-trigger-smart-link.html [ Skip ]
 editing/inserting/smart-link-when-caret-is-moved-before-URL.html [ Skip ]
+editing/inserting/smart-quote-with-all-configurations.html [ Skip ]
 
 ###### Text Iterator
 # Plain text controller currently in Mac DumpRenderTree only.
@@ -1179,6 +1347,8 @@ webkit.org/b/140528 fast/encoding/idn-security.html [ Skip ]
 
 editing/style/non-inheritable-styles.html [ Failure ]
 
+# Emoji!
+editing/deleting/delete-emoji.html [ Failure ]
 ################################################################################
 ###########################   End Editing Failures   ###########################
 ################################################################################
@@ -1207,6 +1377,7 @@ webkit.org/b/140798 accessibility/aria-controls-with-tabs.html [ Skip ]
 # thing is that these do not consistently fail:
 webkit.org/b/140798 accessibility/aria-checked-mixed-value.html [ Failure ]
 webkit.org/b/140798 accessibility/aria-controls.html [ Failure ]
+webkit.org/b/140798 accessibility/aria-disabled-propagated-to-children.html [ Pass Failure ]
 webkit.org/b/140798 accessibility/aria-flowto.html [ Failure ]
 webkit.org/b/140798 accessibility/aria-hidden-negates-no-visibility.html [ Failure ]
 webkit.org/b/140798 accessibility/aria-hidden-with-elements.html [ Failure ]
@@ -1232,6 +1403,7 @@ webkit.org/b/140798 accessibility/legend-children-are-visible.html [ Failure ]
 webkit.org/b/140798 accessibility/link-inside-button-accessible-text.html [ Failure ]
 webkit.org/b/140798 accessibility/list-detection.html [ Failure ]
 webkit.org/b/140798 accessibility/listitem-title.html [ Failure ]
+webkit.org/b/140798 accessibility/math-multiscript-attributes.html [ Failure ]
 webkit.org/b/140798 accessibility/math-text.html [ Failure ]
 webkit.org/b/140798 accessibility/negative-tabindex-does-not-expose-label.html [ Failure ]
 webkit.org/b/140798 accessibility/non-data-table-cell-title-ui-element.html [ Failure ]
@@ -1276,7 +1448,6 @@ webkit.org/b/140798 accessibility/aria-hidden-false-works-in-subtrees.html [ Ski
 # The following fail because of missing numerical output support.
 webkit.org/b/140832 accessibility/aria-slider-value-change.html [ Failure ]
 webkit.org/b/140832 accessibility/aria-slider-value.html [ Failure ]
-webkit.org/b/140832 accessibility/combo-box-collapsed-selection-changed.html [ Failure ]
 webkit.org/b/140832 accessibility/meter-element.html [ Failure ]
 webkit.org/b/140832 accessibility/progressbar.html [ Failure ]
 webkit.org/b/140832 accessibility/range-alter-by-step.html [ Failure ]
@@ -1287,7 +1458,7 @@ webkit.org/b/140832 accessibility/svg-remote-element.html [ Failure ]
 webkit.org/b/140832 accessibility/textarea-line-for-index.html [ Failure ]
 webkit.org/b/140832 accessibility/textarea-selected-text-range.html [ Failure ]
 
-# Need to implement global addNotificationListener in Windows DRT
+# TODO Need to implement global addNotificationListener in Windows DRT
 accessibility/content-editable-as-textarea.html [ Skip ]
 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Skip ]
 accessibility/loading-iframe-sends-notification.html [ Failure ]
@@ -1300,9 +1471,6 @@ webkit.org/b/95405 platform/win/accessibility/single-select-children.html [ Skip
 accessibility/file-upload-button-stringvalue.html
 webkit.org/b/97026 accessibility/file-upload-button-with-axpress.html [ Skip ] #  [ Timeout ]
 
-# AX role needs to be updated on Windows, many test cases involve AX role crash or fail
-#accessibility/svg-bounds.html
-#accessibility/html-html-element-is-ignored.html
 # Wants 'webkitCreateShadowRoot()' access:
 webkit.org/b/108249 accessibility/corresponding-control-deleted-crash.html [ Failure ]
 
@@ -1311,7 +1479,7 @@ accessibility/color-well.html
 
 # Failing Windows-only accessibility tests
 webkit.org/b/127485 [ Debug ] platform/win/accessibility/parent-element.html [ Failure ]
-webkit.org/b/127485 [ Release ] platform/win/accessibility/parent-element.html [ Pass Fail ]
+webkit.org/b/127485 [ Release ] platform/win/accessibility/parent-element.html [ Pass Failure ]
 
 # Skipping on windows, missing implementation of cellForColumnAndRow
 webkit.org/b/129250 accessibility/table-scope.html [ Skip ]
@@ -1324,15 +1492,16 @@ accessibility/aria-invalid.html [ Skip ]
 
 # The following fail in debug mode because an assertion is fired:
 webkit.org/b/140867 [ Debug ] accessibility/aria-labelledby-overrides-aria-label.html [ Skip ]
-webkit.org/b/140867 [ Debug ] accessibility/aria-tab-role-on-buttons.html [ Skip ]
 webkit.org/b/140867 [ Debug ] accessibility/aria-labelledby-overrides-label.html [ Skip ]
-webkit.org/b/140867 [ Debug ] accessibility/button-title-uses-inner-img-alt.html [ Skip ]
-webkit.org/b/140867 [ Debug ] accessibility/spinbutton-value.html [ Skip ]
-webkit.org/b/140867 [ Debug ] accessibility/canvas-fallback-content-2.html [ Skip ]
-webkit.org/b/140867 [ Debug ] accessibility/aria-tab-roles.html [ Skip ]
 webkit.org/b/140867 [ Debug ] accessibility/aria-option-role.html [ Skip ]
+webkit.org/b/140867 [ Debug ] accessibility/aria-tab-role-on-buttons.html [ Skip ]
+webkit.org/b/140867 [ Debug ] accessibility/aria-tab-roles.html [ Skip ]
 webkit.org/b/140867 [ Debug ] accessibility/aria-toggle-button-with-title.html [ Skip ]
+webkit.org/b/140867 [ Debug ] accessibility/button-title-uses-inner-img-alt.html [ Skip ]
+webkit.org/b/140867 [ Debug ] accessibility/canvas-fallback-content-2.html [ Skip ]
 webkit.org/b/140867 [ Debug ] accessibility/focusable-div.html [ Skip ]
+[ Debug ] accessibility/heading-title-includes-links.html [ Skip ]
+webkit.org/b/140867 [ Debug ] accessibility/spinbutton-value.html [ Skip ]
 
 # Attempt to add a text element that claims NOT to be an accessibility element:
 webkit.org/b/140870 [ Debug ] accessibility/canvas-fallback-content.html [ Skip ]
@@ -1342,6 +1511,7 @@ webkit.org/b/140870 [ Debug ] accessibility/canvas-accessibilitynodeobject.html 
 webkit.org/b/140869 [ Debug ] accessibility/aria-combobox.html [ Skip ]
 
 # The following failures have not been investigated.
+accessibility/deleting-iframe-destroys-axcache.html [ Failure ]
 accessibility/aria-readonly.html [ Failure ]
 accessibility/aria-required.html [ Failure ]
 accessibility/content-editable.html [ Failure ]
@@ -1354,9 +1524,8 @@ accessibility/html5-required-attribute.html [ Failure ]
 accessibility/image-link.html [ Failure ]
 accessibility/image-map2.html [ Failure ]
 accessibility/internal-link-anchors2.html [ Failure ]
-accessibility/language-attribute.html [ Failure ]
+accessibility/language-attribute.html [ Pass Failure ]
 accessibility/lists.html [ Failure ]
-accessibility/multiselect-list-reports-active-option.html [ Failure ]
 accessibility/onclick-handlers.html [ Failure ]
 accessibility/parent-delete.html [ Failure ]
 accessibility/placeholder.html [ Failure ]
@@ -1399,7 +1568,7 @@ webkit.org/b/140759 canvas/philip/tests/2d.shadow.enable.blur.html
 webkit.org/b/140759 canvas/philip/tests/2d.shadow.enable.x.html
 webkit.org/b/140759 canvas/philip/tests/2d.shadow.enable.y.html
 
-webkit.org/b/24810 fast/canvas/canvas-gradient-addStop-error.html [ Failure ]
+fast/canvas/canvas-gradient-addStop-error.html [ Failure ]
 fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
 fast/canvas/canvas-blending-global-alpha.html [ Failure ]
 fast/canvas/canvas-blending-shadow.html [ Failure ]
@@ -1450,7 +1619,7 @@ webkit.org/b/53700 svg/W3C-SVG-1.1-SE/types-dom-01-b.svg [ Pass Failure ]
 # See https://bugs.webkit.org/show_bug.cgi?id=33374
 svg/W3C-SVG-1.1/filters-conv-01-f.svg [ Pass Failure ]
 
-webkit.org/b/24810 svg/hixie/viewbox/preserveAspectRatio/001.xml [ Failure ]
+svg/hixie/viewbox/preserveAspectRatio/001.xml [ Failure ]
 svg/as-image/img-preserveAspectRatio-support-1.html [ Failure ]
 svg/carto.net/tabgroup.svg [ Failure ]
 svg/W3C-I18N/g-dirLTR-ubNone.svg [ Failure ]
@@ -1668,6 +1837,8 @@ webkit.org/b/140768 fast/dom/HTMLImageElement/sizes/image-sizes-js-change.html [
 
 # Tests that exceed maximum call stack on windows
 fast/dom/Window/window-postmessage-clone-deep-array.html [ Skip ]
+fast/dom/adopt-node-crash-2.html [ Failure ]
+fast/dom/html-link-element-activation-behavior-url-is-null.html [ Failure ]
 ################################################################################
 #################            End DOM Issues              #######################
 ################################################################################
@@ -1677,7 +1848,7 @@ fast/dom/Window/window-postmessage-clone-deep-array.html [ Skip ]
 ################             Forms Issues                   ####################
 ################################################################################
 # Not putting 'focused' text
-webkit.org/b/24810 fast/forms/legend-access-key.html [ Failure ]
+fast/forms/legend-access-key.html [ Failure ]
 
 webkit.org/b/97026 fast/forms/state-restore-broken-state.html [ Failure ]
 fast/forms/select/listbox-click-on-scrollbar.html [ Failure ]
@@ -1700,7 +1871,7 @@ fast/forms/select/intrinsic-min-width-applies-with-fixed-width.html [ Pass Timeo
 fast/forms/003.html [ ImageOnlyFailure ]
 fast/forms/004.html [ ImageOnlyFailure ]
 
-webkit.org/b/140865 fast/forms/textarea-placeholder-set-attribute.html [ ImageOnlyFailure ]
+webkit.org/b/140865 fast/forms/textarea-placeholder-set-attribute.html [ Pass ImageOnlyFailure ]
 
 # new timeouts, need bug reports
 fast/forms/button-state-restore.html [ Skip ]
@@ -1720,147 +1891,220 @@ fast/forms/textarea/textarea-state-restore.html [ Skip ]
 ################################################################################
 ################             HTTP Issues                 #######################
 ################################################################################
+# These fail because the URL is not available when the loader first runs, so instead of 'didFinishLoading' being
+# attributed to 'block-test.html', it shows up as <unknown>
+webkit.org/b/140703 http/tests/cache/iframe-304-crash.html [ Failure ]
+webkit.org/b/140703 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Failure ]
+webkit.org/b/140703 http/tests/loading/307-after-303-after-post.html [ Failure ]
+webkit.org/b/140703 http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials.html [ Failure ]
+webkit.org/b/140703 http/tests/loading/basic-auth-resend-wrong-credentials.html [ Failure ]
+webkit.org/b/140703 http/tests/loading/basic-credentials-sent-automatically.html [ Failure ]
+webkit.org/b/140703 http/tests/loading/redirect-methods.html [ Failure ]
+webkit.org/b/140703 http/tests/misc/401-alternative-content.php [ Failure ]
+webkit.org/b/140703 http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin.html [ Failure ]
+webkit.org/b/140703 http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin.html [ Failure ]
+webkit.org/b/140703 http/tests/misc/authentication-redirect-3/authentication-sent-to-redirect-same-origin-with-location-credentials.html [ Failure ]
+webkit.org/b/140703 http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url.html [ Failure ]
+webkit.org/b/140703 http/tests/misc/favicon-loads-with-images-disabled.html [ Failure ]
+webkit.org/b/140703 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
+webkit.org/b/140703 http/tests/misc/will-send-request-returns-null-on-redirect.html [ Failure ]
+webkit.org/b/140703 http/tests/misc/window-dot-stop.html [ Failure ]
+webkit.org/b/140703 http/tests/security/401-logout/401-logout.php [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-allowall.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-in-body.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-invalid.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-allow.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny.html [ Failure ]
+webkit.org/b/140703 http/tests/xmlhttprequest/remember-bad-password.html [ Failure ]
+webkit.org/b/140703 http/tests/xmlhttprequest/failed-auth.html [ Failure ]
 
-http/ [ Skip ]
+# CSP Stuff
+http/tests/security/contentSecurityPolicy/block-mixed-content-hides-warning.html [ Failure ]
+http/tests/security/contentSecurityPolicy/object-src-url-allowed.html [ Failure ]
+http/tests/security/contentSecurityPolicy/object-src-url-blocked.html [ Failure ]
+http/tests/security/contentSecurityPolicy/script-src-star-cross-scheme.html [ Failure ]
 
-# Apache 1.3 doesn't support SSL <rdar://problem/5345985>
-#http/tests/navigation/ping-cross-origin-from-https.html
-#http/tests/ssl
-#http/tests/security/cross-frame-access-protocol-explicit-domain.html
-#http/tests/security/cross-frame-access-protocol.html
+# Crashes
+http/tests/misc/drag-not-loaded-image.html [ Skip ] # Crash
+http/tests/misc/canvas-pattern-from-incremental-image.html [ Skip ] # Crash
+http/tests/xmlhttprequest/access-control-repeated-failed-preflight-crash.html [ Skip ] # Crash
+http/tests/security/video-cross-origin-accesssameorigin.html [ Skip ] # Crash
+http/tests/security/contentSecurityPolicy/object-src-none-allowed.html [ Skip ] # Crash
+http/tests/security/contentSecurityPolicy/object-src-none-blocked.html [ Skip ] # Crash
+http/tests/security/video-cross-origin-accessfailure.html [ Skip ] # Crash
+http/tests/security/mixedContent/insecure-plugin-in-iframe.html [ Skip ] # Crash
+http/tests/websocket/tests/hybi/workers/close-in-worker.html [ Skip ] # Crash
+http/tests/websocket/tests/hybi/workers/close.html [ Skip ] # Crash
+http/tests/webgl/1.0.2/texSubImage2DHTML.html [ Skip ] # Crash
+
+# The following timeout
+http/tests/cache/history-navigation-no-resource-revalidation.html [ Skip ] # Timeout
+http/tests/cache/subresource-failover-to-network.html [ Skip ] # Timeout
+http/tests/cache/history-only-cached-subresource-loads.html [ Skip ] # Timeout
+http/tests/fullscreen/fullscreenelement-different-origin.html [ Skip ] # Timeout
+http/tests/fullscreen/fullscreenelement-same-origin.html [ Skip ] # Timeout
+http/tests/storage/callbacks-are-called-in-correct-context.html [ Skip ] # Timeout
+http/tests/mime/mime-type-sniff.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-https-no-referrer.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-no-referrer.html [ Skip ] # Timeout
+http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-never.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-redirect.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-redirect-link.html [ Skip ] # Timeout
+http/tests/security/appcache-switching-private-browsing.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-https-always.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-https-no-referrer-when-downgrade.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-https-default.html [ Skip ] # Timeout
+http/tests/security/originHeader/origin-header-for-https.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-https-origin.html [ Skip ] # Timeout
+http/tests/security/text-track-crossorigin.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-https-unsafe-url.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-https-never.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-invalid.html [ Skip ] # Timeout
+http/tests/security/referrer-policy-rel-noreferrer.html [ Skip ] # Timeout
+http/tests/security/frameNavigation/xss-DENIED-plugin-navigation.html [ Skip ] # Timeout
+webkit.org/b/95530 http/tests/security/inactive-document-with-empty-security-origin.html [ Skip ] # Timeout
+http/tests/security/mixedContent/insecure-xhr-in-main-frame.html [ Skip ] # Timeout
+http/tests/security/mixedContent/insecure-iframe-in-main-frame.html [ Skip ] # Timeout
+http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame.html [ Skip ] # Timeout
+http/tests/security/mixedContent/blob-url-in-iframe.html [ Skip ] # Timeout
+http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Skip ] # Timeout
+http/tests/security/mixedContent/about-blank-iframe-in-main-frame.html [ Skip ] # Timeout
+http/tests/security/mixedContent/insecure-image-in-main-frame.html [ Skip ] # Timeout
+http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame.html [ Skip ] # Timeout
+http/tests/security/mixedContent/insecure-css-in-main-frame.html [ Skip ] # Timeout
+http/tests/security/mixedContent/data-url-iframe-in-main-frame.html [ Skip ] # Timeout
+http/tests/navigation/forward-to-fragment-fires-onload.html [ Skip ] # Timeout
+http/tests/navigation/https-in-page-cache.html [ Skip ] # Timeout
+http/tests/navigation/post-frames-goback1-uncached.html [ Skip ] # Timeout
+http/tests/navigation/post-frames-goback1.html [ Skip ] # Timeout
+http/tests/navigation/postredirect-frames-goback1.html [ Skip ] # Timeout
+http/tests/navigation/post-goback1.html [ Skip ] # Timeout
+http/tests/navigation/history-back-across-form-submission-to-fragment.html [ Skip ] # Timeout
+http/tests/navigation/https-no-store-subframe-in-page-cache.html [ Skip ] # Timeout
+http/tests/navigation/back-send-referrer.html [ Skip ] # Timeout
+http/tests/history/back-with-fragment-change.php [ Skip ] # Timeout
+http/tests/history/back-to-post.php [ Skip ] # Timeout
+http/tests/history/replacestate-post-to-get-2.html [ Skip ] # Timeout
+http/tests/workers/text-encoding.html [ Skip ] # Timeout
+http/tests/security/cross-frame-access-protocol-explicit-domain.html [ Skip ] # Timeout
+http/tests/history/back-during-onload-triggered-by-back.html [ Skip ] # Timeout
+
+# SSL Configuration on Windows <rdar://problem/5345985>
+http/tests/navigation/ping-cross-origin-from-https.html [ Skip ] # Timeout
+http/tests/security/cross-frame-access-protocol.html [ Skip ] # Timeout
 
 #<rdar://problem/5224271> Some LayoutTests fail when not run by themselves.
-#http/tests/navigation/anchor-frames.html
+http/tests/navigation/anchor-frames.html
 
 # Sometimes times out
-#webkit.org/b/63806 http/tests/cache/history-only-cached-subresource-loads-max-age-https.html [ Pass Timeout ]
-#webkit.org/b/25189 http/tests/incremental/slow-utf8-text.pl [ Pass Timeout ]
-#webkit.org/b/25483 http/tests/navigation/redirect-cycle.html [ Pass Timeout ]
-#webkit.org/b/28467 http/tests/loading/preload-img-test.html [ Pass Timeout ]
+webkit.org/b/63806 http/tests/cache/history-only-cached-subresource-loads-max-age-https.html [ Skip ] # Timeout
+webkit.org/b/25189 http/tests/incremental/slow-utf8-text.pl [ Pass Timeout ]
+webkit.org/b/25483 http/tests/navigation/redirect-cycle.html [ Pass Timeout ]
+webkit.org/b/28467 http/tests/loading/preload-img-test.html [ Pass Timeout ]
 
 # Different tests sometimes time out on apple-windows-5
 #webkit.org/b/55579 http/tests/websocket [ Skip ]
 
 # Times out <rdar://problem/9304941>
-#http/tests/multipart/invalid-image-data-standalone.html [ Pass Timeout ]
-
-# Times out <rdar://problem/7091605>
-#http/tests/cache/subresource-expiration-1.html [ Pass Timeout ]
-#http/tests/cache/subresource-expiration-2.html [ Pass Timeout ]
+http/tests/multipart/invalid-image-data-standalone.html [ Skip ] # Timeout
 
 # Not investigated yet
-#webkit.org/b/51596 http/tests/xmlhttprequest/basic-auth-nopassword.html
-#webkit.org/b/51596 http/tests/xmlhttprequest/basic-auth-nouser.html
+webkit.org/b/51596 http/tests/xmlhttprequest/basic-auth-nopassword.html [ Failure ]
+webkit.org/b/51596 http/tests/xmlhttprequest/basic-auth-nouser.html [ Failure ]
 
 # <rdar://problem/5961006> LayoutTests that send an OPTIONS request don't work on Windows due to Apache 1.3
 #http/tests/xmlhttprequest/access-control-basic-non-simple-allow-async.html
 #http/tests/xmlhttprequest/access-control-basic-non-simple-allow.html
 
-# Some http tests crash in Debug Windows builds due to an assertion in CFNetwork when releasing a CFURLConnection
-#webkit.org/b/25344 [ Debug ] http/tests/misc/redirect-to-external-url.html [ Crash Failure ]
-#webkit.org/b/25344 [ Debug ] http/tests/xmlhttprequest/redirect-cross-origin-tripmine.html [ Skip ]  # Crashing
-
-# FIXME: File bugs and examine these tests
-#http/tests/xmlhttprequest/cache-override.html [ Failure ]
-#http/tests/xmlhttprequest/cross-origin-no-authorization.html [ Pass Failure Timeout ]
-
-# <rdar://7127902> Crashes on Windows debug
-#[ Debug ] http/tests/misc/favicon-loads-with-images-disabled.html [ Skip ]  # Crashing
-
 # Mixed content tests failing on Windows
-#webkit.org/b/29213 http/tests/security/mixedContent [ Failure ]
-
-# Skip these two failures I introduced this morning while I explore them.
-#http/tests/globalhistory/history-delegate-basic-visited-links.html [ Failure ]
+webkit.org/b/29213 http/tests/security/mixedContent [ Skip ]
 
 # HTTP 204 (No Content) should be ignored
-#webkit.org/b/60206 http/tests/navigation/response204.html [ Failure ]
+webkit.org/b/60206 http/tests/navigation/response204.html [ Failure ]
 
-#webkit.org/b/24810 http/tests/misc/window-dot-stop.html [ Failure ]
-#webkit.org/b/24810 http/tests/xmlhttprequest/abort-should-cancel-load.html [ Pass Failure ]
-#webkit.org/b/24810 http/tests/xmlhttprequest/access-control-basic-non-simple-deny-cached.html [ Pass Failure ]
-#webkit.org/b/24810 http/tests/xmlhttprequest/access-control-basic-whitelist-request-headers.html [ Failure ]
-#webkit.org/b/24810 http/tests/xmlhttprequest/redirect-cross-origin-post-sync.html [ Pass Failure ]
-#webkit.org/b/24810 http/tests/xmlhttprequest/redirect-cross-origin-sync-double.html [ Pass Failure ]
-#webkit.org/b/24810 http/tests/xmlhttprequest/redirect-cross-origin-sync.html [ Pass Failure ]
-#webkit.org/b/24810 http/tests/security/frame-loading-via-document-write.html [ Pass Timeout ]
-#webkit.org/b/24810 http/tests/security/local-CSS-from-remote.html [ Pass Timeout ]
-#webkit.org/b/24810 http/tests/security/local-JavaScript-from-remote.html [ Pass Timeout ]
-#webkit.org/b/24810 http/tests/security/local-iFrame-from-remote.html [ Pass Timeout ]
-#webkit.org/b/24810 http/tests/security/local-image-from-remote.html [ Pass Timeout ]
-#webkit.org/b/24810 http/tests/security/local-user-CSS-from-remote.html [ Pass Failure Timeout ]
-#webkit.org/b/24810 http/tests/security/originHeader/origin-header-for-https.html [ Failure Timeout ]
-#http/tests/security/referrer-policy-https-origin.html [ Skip ] #  [ Timeout ]
-#webkit.org/b/95803 http/tests/security/local-image-from-remote-whitelisted.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/object-literals.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/script-with-failed-cors-check-fails-to-load.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/xss-DENIED-mime-type-execute-as-html.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/xss-DENIED-xsl-external-entity.xml [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/contentSecurityPolicy/report-blocked-uri.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/cookies/cookie-theft-with-javascript-doc.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/local-video-poster-from-remote.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/local-video-source-from-remote.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/location-prototype.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/script-crossorigin-loads-correctly.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/video-poster-cross-origin-crash.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/xss-eval.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/cookies/xmlhttprequest.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/canvas-cors-with-two-hosts.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/cross-frame-access-frameelement.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/document-all.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/window-named-proto.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/window-named-valueOf.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/xss-DENIED-synchronous-frame-load-in-javascript-url.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/xss-DENIED-window-open-javascript-url-with-spaces.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/xss-DENIED-window-open-parent.html [ Pass Failure ]
-#webkit.org/b/95803 http/tests/security/xss-DENIED-xsl-document-securityOrigin.xml [ Pass Failure ]
-#http/tests/security/cross-frame-access-call.html
-#http/tests/security/cross-frame-access-get.html
-#http/tests/security/sandboxed-iframe-modify-self.html
-#http/tests/security/contentSecurityPolicy/block-mixed-content-hides-warning.html
-#http/tests/security/contentSecurityPolicy/script-src-star-cross-scheme.html
-#http/tests/security/xssAuditor/script-tag-with-callbacks.html
-#http/tests/security/xssAuditor/xss-filter-bypass-long-string.html
-#http/tests/security/no-referrer.html [ Pass Failure ]
-#http/tests/security/referrer-policy-https-always.html [ Pass Failure Timeout ]
-#http/tests/security/referrer-policy-https-default.html [ Pass Failure Timeout  ]
-#http/tests/security/referrer-policy-https-never.html [ Skip ] #  [ Timeout ]
-#http/tests/security/referrer-policy-redirect.html [ Timeout ]
-#webkit.org/b/95805 http/tests/cookies/multiple-cookies.html [ Pass Failure ]
-#webkit.org/b/95805 http/tests/cookies/single-quoted-value.html [ Pass Failure ]
-#http/tests/fullscreen/fullscreenelement-different-origin.html [ Skip ]
-#http/tests/fullscreen/fullscreenelement-same-origin.html [ Skip ]
-#http/tests/history/back-with-fragment-change.php [ Skip ]
-#http/tests/loading/pdf-commit-load-callbacks.html [ Skip ]
-#http/tests/loading/post-in-iframe-with-back-navigation.html [ Skip ]
-#http/tests/misc/submit-post-keygen.html [ Skip ]
-#http/tests/navigation/https-in-page-cache.html [ Skip ]
-#http/tests/navigation/post-307-response.html [ Skip ]
-#http/tests/navigation/post-frames-goback1.html [ Skip ]
-#http/tests/navigation/post-goback1.html [ Skip ]
-#http/tests/xmlhttprequest/access-control-allow-lists-starting-with-comma.html [ Skip ]
-#http/tests/xmlhttprequest/range-test.html [ Skip ]
-#webkit.org/b/97271 http/tests/security/sandboxed-iframe-origin-add.html [ Skip ]
-#webkit.org/b/97271 http/tests/security/sandboxed-iframe-origin-remove.html [ Skip ]
-#webkit.org/b/97485 http/tests/security/sandboxed-iframe-form-top.html [ Skip ]
-#webkit.org/b/95530 http/tests/security/inactive-document-with-empty-security-origin.html [ Skip ]
-#webkit.org/b/98079 http/tests/security/cross-origin-local-storage-wk1.html [ Skip ]
-#webkit.org/b/97026 http/tests/cookies/third-party-cookie-relaxing.html [ Failure ]
-#http/tests/security/mixedContent/insecure-plugin-in-iframe.html [ Skip ]
-#http/tests/security/mixedContent/insecure-xhr-in-main-frame.html [ Skip ] #  [ Timeout ]
-#http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Timeout ]
-#http/tests/security/mixedContent/insecure-iframe-in-main-frame.html [ Skip ] #  [ Timeout ]
-#http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame.html [ Skip ] #  [ Timeout ]
-#http/tests/security/mixedContent/blob-url-in-iframe.html [ Skip ] #  [ Timeout ]
-#http/tests/security/mixedContent/about-blank-iframe-in-main-frame.html [ Skip ] #  [ Timeout ]
-#http/tests/security/mixedContent/insecure-image-in-main-frame.html [ Skip ] #  [ Timeout ]
-#http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame.html [ Skip ] #  [ Timeout ]
-#http/tests/security/mixedContent/insecure-css-in-main-frame.html [ Skip ] #  [ Timeout ]
-#http/tests/security/mixedContent/data-url-iframe-in-main-frame.html [ Skip ] #  [ Timeout ]
-#http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_cached.html [ Skip ] #  [ Timeout ]
-#http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_connection_reuse.html [ Skip ] #  [ Timeout ]
-#http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_iframe_self_navigation.html [ Skip ] #  [ Timeout ]
+# The following are unreviewed:
+http/tests/cache/content-type-ignored-during-revalidation.html [ Failure ]
+http/tests/cache/disk-cache-validation.html [ Failure ]
+http/tests/cache/partitioned-cache.html [ Failure ]
+http/tests/cache/partitioned-cache-iframe.html [ Failure ]
+http/tests/cache/post-redirect-get.php [ Failure ] # Easy
+http/tests/canvas/canvas-slow-font-loading.html [ ImageOnlyFailure ]
+http/tests/css/css-image-valued-shape.html [ Failure ]
+http/tests/cookies/set-cookie-on-redirect.html [ Pass Failure ]
+http/tests/cookies/third-party-cookie-relaxing.html [ Failure ]
+http/tests/dom/document-contentType.html [ Failure ]
+http/tests/globalhistory/history-delegate-basic-refresh-redirect.html [ Failure ]
+http/tests/globalhistory/history-delegate-basic-visited-links.html [ Failure ]
+http/tests/loading/pdf-commit-load-callbacks.html [ Failure ]
+http/tests/loading/post-in-iframe-with-back-navigation.html [ Failure ]
+http/tests/loading/sizes/preload-image-sizes-2x.html [ Failure ]
+http/tests/misc/acid3.html [ Failure ]
+http/tests/misc/async-script-removed.html [ Failure ]
+http/tests/misc/bad-charset-alias.html
+http/tests/misc/refresh-headers.php [ Failure ] # Easy
+http/tests/misc/submit-post-keygen.html [ Failure ]
+http/tests/multipart/load-last-non-html-frame.php [ Failure ] # Extra whitespace
+http/tests/multipart/multipart-replace-non-html-content.php [ Failure ] # Extra whitespace
+http/tests/navigation/no-referrer-reset.html [ Failure ] # Easy
+http/tests/navigation/no-referrer-same-window.html [ Failure ] # Easy
+http/tests/navigation/no-referrer-subframe.html [ Failure ] # Easy
+http/tests/navigation/no-referrer-target-blank.html [ Failure ] # Easy
+http/tests/navigation/post-goback-same-url.html [ Failure ] # Easy
+http/tests/navigation/restore-form-state-https.html [ Failure ]
+http/tests/security/contentTypeOptions/nosniff-script-blocked.html [ Failure ]
+http/tests/security/cross-frame-access-call.html [ Failure ]
+http/tests/security/cross-frame-access-get.html [ Failure ]
+http/tests/security/cross-frame-access-getOwnPropertyDescriptor.html [ Failure ]
+http/tests/security/cross-origin-appcache-allowed.html [ Failure ]
+http/tests/security/cross-origin-appcache.html [ Failure ]
+webkit.org/b/98079 http/tests/security/cross-origin-local-storage-wk1.html [ Failure ]
+http/tests/security/cross-origin-plugin-allowed.html [ Failure ]
+http/tests/security/cross-origin-plugin-private-browsing-toggled-allowed.html [ Failure ]
+http/tests/security/cross-origin-plugin-private-browsing-toggled.html [ Failure ]
+http/tests/security/cross-origin-plugin.html [ Failure ]
+http/tests/security/cross-origin-websql-allowed.html [ Failure ]
+http/tests/security/cross-origin-websql.html [ Failure ]
+http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html [ Failure ]
+http/tests/security/local-user-CSS-from-remote.html [ Failure ]
+http/tests/security/mixedContent/data-url-script-in-iframe.html [ Failure ]
+webkit.org/b/95803 http/tests/security/script-crossorigin-loads-correctly.html [ Pass Failure ]
+http/tests/security/storage-blocking-loosened-plugin.html [ Failure ]
+http/tests/security/storage-blocking-loosened-private-browsing-plugin.html [ Failure ]
+http/tests/security/storage-blocking-loosened-websql.html [ Failure ]
+http/tests/security/storage-blocking-strengthened-plugin.html [ Failure ]
+http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html [ Failure ]
+http/tests/security/storage-blocking-strengthened-websql.html [ Failure ]
+http/tests/security/xssAuditor/script-tag-with-callbacks.html [ Failure ]
+http/tests/ssl/ping-with-unsafe-redirect.html [ Failure ]
+http/tests/ssl/referer-301.html [ Failure ]
+http/tests/ssl/referer-303.html [ Failure ]
+http/tests/ssl/verify-ssl-enabled.php [ Failure ] # Easy?
+http/tests/xmlhttprequest/access-control-basic-whitelist-request-headers.html [ Failure ]
+http/tests/xmlhttprequest/access-control-preflight-headers-async.html [ Pass Failure ] # Easy?
+http/tests/xmlhttprequest/cache-override.html [ Failure ]
+http/tests/xmlhttprequest/cross-origin-authorization-with-embedder.html [ Failure ]
+http/tests/xmlhttprequest/range-test.html [ Failure ]
+http/tests/xmlhttprequest/response-special-characters.html [ Failure ]
+http/tests/xmlhttprequest/web-apps/012.html
+http/tests/xmlhttprequest/web-apps/013.html
+
+# Assertion failures: Not investigated
+[ Debug ] http/tests/loading/preload-append-scan.php [ Skip ]
+[ Debug ] http/tests/misc/isindex-with-no-form.html [ Skip ]
+[ Debug ] http/tests/incremental/pause-in-script-element.pl [ Skip ]
+[ Debug ] http/tests/security/isolatedWorld/storage-properties.html [ Skip ]
+[ Debug ] http/tests/security/javascriptURL/javascriptURL-execution-context-frame-location-htmldom.html [ Skip ]
+[ Debug ] http/tests/security/listener/xss-window-onclick-shortcut.html [ Skip ]
+[ Debug ] http/tests/local/file-url-sent-as-referer.html [ Skip ]
+
 ################################################################################
 #################            End HTTP Issues             #######################
 ################################################################################
@@ -1883,12 +2127,17 @@ inspector/dom/content-node-region-info.html [ Crash Pass Failure Timeout ]
 inspector/css/selector-specificity.html [ Skip ]
 inspector/css/pseudo-element-matches.html [ Skip ]
 
-[ Release ] inspector-protocol/layers/layers-reflected-content.html [ Pass Timeout ]
+# Inspector Protocol
+webkit.org/b/140510 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Skip ]  # Crashing
+inspector-protocol/debugger/pause-on-assert.html [ Skip ]
+inspector-protocol/debugger/regress-133182.html	[ Skip ]  # Crashing
 [ Release ] inspector-protocol/debugger/setBreakpoint-actions.html [ Pass Timeout ]
+webkit.org/b/140520 inspector-protocol/debugger/setBreakpoint-dfg.html [ Skip ]  # Crashing
 [ Release ] inspector-protocol/dom/focus.html [ Pass Timeout ]
+webkit.org/b/128979 [ Release ] inspector-protocol/dom/getAccessibilityPropertiesForNode.html [ Pass Failure ]
 [ Release ] inspector-protocol/dom/remove-multiple-nodes.html [ Pass Timeout ]
 inspector-protocol/layers/layers-blending-compositing-reasons.html [ Failure ]
-webkit.org/b/140520 inspector-protocol/debugger/setBreakpoint-dfg.html [ Skip ]  # Crashing
+[ Release ] inspector-protocol/layers/layers-reflected-content.html [ Pass Timeout ]
 ################################################################################
 #################        End Inspector Issues               ####################
 ################################################################################
@@ -1933,8 +2182,8 @@ fast/html/keygen.html [ Failure ]
 # Sometimes times out
 webkit.org/b/48997 animations/animation-iteration-event-destroy-renderer.html [ Pass Timeout ]
 fast/frames/flattening/scrolling-in-object.html [ Pass Timeout ]
-webkit.org/b/24810 fast/dom/location-new-window-no-crash.html [ Pass Timeout ]
-webkit.org/b/24810 fast/loader/user-style-sheet-resource-load-callbacks.html [ Pass Timeout ]
+fast/dom/location-new-window-no-crash.html [ Pass Timeout ]
+fast/loader/user-style-sheet-resource-load-callbacks.html [ Pass Timeout ]
 fast/block/positioning/percent-top-left-on-relative-position.html [ Pass Timeout ]
 fast/block/margin-collapse/021.html [ Pass Timeout ]
 dom/xhtml/level1/core/hc_characterdataindexsizeerrdeletedataoffsetnegative.xhtml [ Pass Failure ]
@@ -1984,16 +2233,10 @@ webkit.org/b/87416 fast/dom/Window/Location/set-location-after-close.html [ Skip
 # As usual, DRT on Windows has problems knowing how to continue a test when focus moves to a popup window, in this case the file chooser
 webkit.org/b/87469 fast/events/domactivate-sets-underlying-click-event-as-handled.html [ Pass Failure Timeout ]
 
-# Inspector Protocol
-webkit.org/b/140510 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Skip ]  # Crashing
-webkit.org/b/128979 [ Release ] inspector-protocol/dom/getAccessibilityPropertiesForNode.html [ Pass Failure ]
-inspector-protocol/debugger/pause-on-assert.html [ Skip ]
-
 # <rdar://problem/19526412>
 fast/images/bad-png.html [ Skip ]
 
 webkit.org/b/140703 loader/go-back-cached-main-resource.html [ Failure ]
-webkit.org/b/140703 fast/preloader/scan-body-from-head-script.html [ Failure ]
 
 # These fail because the URL is not available when the loader first runs, so instead of 'didFinishLoading' being
 # attributed to 'block-test.html', it shows up as <unknown>
@@ -2018,7 +2261,6 @@ webkit.org/b/140866 fast/repaint/obscured-background-no-repaint.html [ Failure ]
 # Main frame document does not match cached page document:
 webkit.org/b/140871 [ Debug ] fast/loader/non-deferred-substitute-load.html [ Skip ]
 
-fast/inline/out-of-flow-positioned-render-replaced-box-moves.html [ ImageOnlyFailure ]
 webkit.org/b/140250 fast/loader/stateobjects/document-destroyed-navigate-back-with-fragment-scroll.html [ Failure ]
 webkit.org/b/140250 fast/loader/stateobjects/document-destroyed-navigate-back.html [ Failure ]
 webkit.org/b/140250 fast/loader/stateobjects/replacestate-in-iframe.html [ Failure ]
@@ -2034,6 +2276,40 @@ platform/win/fast/text/uniscribe-missing-glyph.html [ Failure ]
 [ Debug ] inspector-protocol [ Skip ]
 [ Debug ] transforms/3d/hit-testing [ Skip ]
 [ Debug ] transforms/3d/point-mapping [ Skip ]
+
+[ Debug ] fast/loader/empty-embed-src-attribute.html [ Skip ]
+[ Debug ] fast/frames/frame-inherit-noresize-from-frameset.html [ Skip ]
+[ Debug ] fast/frames/frame-deep-nested-resize.html [ Skip ]
+[ Debug ] fast/frames/frame-element-name.html [ Skip ]
+[ Debug ] fast/frames/iframe-with-frameborder.html [ Skip ]
+[ Debug ] fast/regions/subtree-with-vert-lr.html [ Skip ]
+[ Debug ] fast/regions/hover-content-inside-iframe-in-region.html [ Skip ]
+[ Debug ] fast/regions/subtree-with-vert-rl.html [ Skip ]
+[ Debug ] fast/forms/number/number-stepup-stepdown-from-renderer.html [ Skip ]
+[ Debug ] fast/forms/autofocus-input-css-style-change.html [ Skip ]
+[ Debug ] fast/line-grid/line-align-left-edges.html [ Skip ]
+[ Debug ] fast/events/gc-freeze-with-attribute-listeners.html [ Skip ]
+[ Debug ] fast/events/backspace-navigates-back.html [ Skip ]
+[ Debug ] fast/events/page-scaled-mouse-click.html [ Skip ]
+[ Debug ] fast/events/keypress-insert-tab.html [ Skip ]
+[ Debug ] fast/events/drag-parent-node.html [ Skip ]
+[ Debug ] fast/events/autoscroll-in-textarea.html [ Skip ]
+[ Debug ] fast/events/autoscroll-overflow-hidden-longhands.html [ Skip ]
+[ Debug ] fast/events/mousedown-inside-dragstart-should-not-cause-crash.html [ Skip ]
+[ Debug ] fast/events/onblur-remove.html [ Skip ]
+[ Debug ] fast/events/change-overflow-on-overflow-change.html [ Skip ]
+[ Debug ] fast/overflow/scrollbar-click-retains-focus.html [ Skip ]
+[ Debug ] fast/repaint/4776765.html [ Skip ]
+[ Debug ] fast/repaint/text-selection-rect-in-overflow.html [ Skip ]
+[ Debug ] fast/repaint/fixed-move-after-scroll.html [ Skip ]
+[ Debug ] fast/dom/HTMLDocument/activeElement.html [ Skip ]
+[ Debug ] fast/dom/html-link-element-activation-behavior-url-is-null.html [ Skip ]
+[ Debug ] fast/dom/adopt-attribute-crash.svg [ Skip ]
+[ Debug ] fast/dom/HTMLAnchorElement/anchor-ismap-crash.html [ Skip ]
+[ Debug ] fast/history/form-submit-in-frame.html [ Skip ]
+[ Debug ] editing/pasteboard/testcase-9507.html [ Skip ]
+[ Debug ] editing/pasteboard/copy-crash-with-extraneous-attribute.html [ Skip ]
+[ Debug ] editing/selection/4975120.html [ Skip ]
 
 webkit.org/b/117323 animations/animation-delay-changed.html [ Pass Failure Timeout ]
 animations/cross-fade-background-image.html [ ImageOnlyFailure ]
@@ -2102,12 +2378,13 @@ webkit.org/b/121509 fast/events/wheelevent-mousewheel-interaction.html	[ Skip ] 
 webkit.org/b/121509 fast/events/page-visibility-iframe-propagation-test.html	[ Skip ] #  [ Timeout ]
 webkit.org/b/121509 fast/events/page-visibility-transition-test.html	[ Skip ] #  [ Timeout ]
 webkit.org/b/121509 fast/events/page-visibility-iframe-move-test.html	[ Skip ] #  [ Timeout ]
-webkit.org/b/24810 fast/events/special-key-events-in-input-text.html [ Failure ]
+fast/events/special-key-events-in-input-text.html [ Failure ]
 fast/events/attribute-listener-cloned-from-frameless-doc-context.html [ Pass Failure ]
 fast/events/drag-outside-window.html [ Pass Timeout ]
 fast/events/event-sender-mouse-moved.html [ Pass Timeout ]
 fast/events/inputText-never-fired-on-keydown-cancel.html [ Pass Timeout ]
 webkit.org/b/140518 [ Debug ] fast/events/drag-and-drop-autoscroll.html [ Skip ]  # Crashing
+fast/events/ondrop-text-html.html [ Failure ]
 fast/events/shadow-event-path.html [ Failure ]
 fast/events/pageshow-pagehide-on-back-uncached.html [ Skip ]
 
@@ -2133,6 +2410,8 @@ fast/history/history-subframe-with-name.html [ Skip ]
 fast/history/location-replace-hash.html [ Skip ]
 fast/history/saves-state-after-fragment-nav.html [ Skip ]
 
+fast/html/marquee-scrollamount.html [ Failure ]
+
 fast/images/image-controls-basic.html [ Failure ]
 fast/images/exif-orientation-composited.html [ Failure ]
 webkit.org/b/140516 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]  # Crashing
@@ -2147,11 +2426,11 @@ fast/lists/li-style-alpha-huge-value-crash.html	 [ Pass Timeout ]
 
 fast/loader/file-protocol-fragment.html [ Failure ]
 webkit.org/b/97026 fast/loader/javascript-url-in-embed.html [ Failure ]
-webkit.org/b/24810 fast/loader/main-document-url-for-non-http-loads.html [ Failure ]
-webkit.org/b/24810 fast/loader/stop-provisional-loads.html [ Failure ]
-webkit.org/b/24810 fast/loader/local-CSS-from-local.html [ Failure Timeout ]
-webkit.org/b/24810 fast/loader/local-JavaScript-from-local.html [ Failure ]
-webkit.org/b/24810 fast/loader/local-image-from-local.html [ Failure ]
+fast/loader/main-document-url-for-non-http-loads.html [ Failure ]
+fast/loader/stop-provisional-loads.html [ Failure ]
+fast/loader/local-CSS-from-local.html [ Failure Timeout ]
+fast/loader/local-JavaScript-from-local.html [ Failure ]
+fast/loader/local-image-from-local.html [ Failure ]
 fast/loader/fragment-after-redirect-gets-back-entry.html [ Pass Failure ]
 fast/loader/url-parse-1.html [ Pass Failure ]
 fast/loader/child-frame-add-after-back-forward.html [ Skip ]
@@ -2174,12 +2453,12 @@ webkit.org/b/128855 fast/regions/overflow/overflow-in-variable-width-regions-inl
 webkit.org/b/128855 fast/regions/overflow/overflow-region-transform.html [ ImageOnlyFailure ] 
 webkit.org/b/128855 fast/regions/selection/selecting-text-including-region.html [ ImageOnlyFailure ] 
 webkit.org/b/128855 fast/regions/repaint/japanese-rl-selection-repaint-in-regions.html [ Failure ] 
-#webkit.org/b/128855 fast/regions/selection/position-for-point-1-vert-lr.html [ Failure ] 
-#webkit.org/b/128855 fast/regions/selection/position-for-point-1-vert-rl.html [ Failure ] 
-#webkit.org/b/128855 fast/regions/selection/position-for-point-1.html [ Failure ] 
-#webkit.org/b/128855 fast/regions/selection/position-for-point-vert-lr.html [ Failure ] 
-#webkit.org/b/128855 fast/regions/selection/position-for-point-vert-rl.html [ Failure ] 
-#webkit.org/b/128855 fast/regions/selection/position-for-point.html [ Failure ]
+webkit.org/b/128855 fast/regions/selection/position-for-point-1-vert-lr.html [ Failure ] 
+webkit.org/b/128855 fast/regions/selection/position-for-point-1-vert-rl.html [ Failure ] 
+webkit.org/b/128855 fast/regions/selection/position-for-point-1.html [ Failure ] 
+webkit.org/b/128855 fast/regions/selection/position-for-point-vert-lr.html [ Failure ] 
+webkit.org/b/128855 fast/regions/selection/position-for-point-vert-rl.html [ Failure ] 
+webkit.org/b/128855 fast/regions/selection/position-for-point.html [ Failure ]
 webkit.org/b/128855 fast/regions/selection/selection-direction.html [ Pass Timeout ]
 webkit.org/b/128855 fast/regions/fullscreen/full-screen-video-in-region-crash.html [ Crash Failure Timeout ]
 webkit.org/b/128855 fast/regions/repaint/repaint-absolute-pushed-to-next-region.html [ Failure ]
@@ -2282,7 +2561,7 @@ fast/regions/fragmentation-after-monolithic-overflow.html [ ImageOnlyFailure ]
 fast/regions/frame-view-overflow-scroll.html [ ImageOnlyFailure ]
 fast/regions/generated-content/firstletter-inside-flowthread.html [ ImageOnlyFailure ]
 fast/regions/hidpi-region-with-auto-margin-on-subpixel-position.html [ ImageOnlyFailure ]
-fast/regions/hover-content-inside-iframe-in-region.html [ ImageOnlyFailure ]
+[ Release ] fast/regions/hover-content-inside-iframe-in-region.html [ ImageOnlyFailure ]
 fast/regions/hover-in-second-region.html [ ImageOnlyFailure ]
 fast/regions/hover-overflow-hidden.html [ ImageOnlyFailure ]
 fast/regions/inline-block-flowed-in-regions.html [ ImageOnlyFailure ]
@@ -2367,8 +2646,8 @@ fast/regions/shape-outside-floats/regions-shape-outside-region-polygon-floats.ht
 fast/regions/static-in-relative-overflow.html [ ImageOnlyFailure ]
 fast/regions/sticky-border-overflow.html [ ImageOnlyFailure ]
 fast/regions/subtree-with-horiz-bt.html [ ImageOnlyFailure ]
-webkit.org/b/139973 fast/regions/subtree-with-vert-lr.html [ ImageOnlyFailure ]
-webkit.org/b/139973 fast/regions/subtree-with-vert-rl.html [ ImageOnlyFailure ]
+webkit.org/b/139973 [ Release ] fast/regions/subtree-with-vert-lr.html [ ImageOnlyFailure ]
+webkit.org/b/139973 [ Release ] fast/regions/subtree-with-vert-rl.html [ ImageOnlyFailure ]
 fast/regions/table-cell-as-region.html [ ImageOnlyFailure ]
 fast/regions/top-overflow-out-of-second-region.html [ ImageOnlyFailure ]
 fast/regions/unsplittable-nested-region.html [ ImageOnlyFailure ]
@@ -2390,12 +2669,12 @@ webkit.org/b/138042 fast/repaint/subtree-root-skipped.html [ Failure ]
 webkit.org/b/138042 fast/repaint/button-spurious-layout-hint.html [ Failure ]
 webkit.org/b/138042 fast/repaint/renderer-destruction-by-invalidateSelection-crash.html [ Failure ]
 
-webkit.org/b/24810 fast/replaced/border-radius-clip.html [ Failure ]
+fast/replaced/border-radius-clip.html [ Failure ]
 webkit.org/b/117323 fast/replaced/invalid-object-with-fallback.html [ Failure ]
 webkit.org/b/117323 fast/replaced/no-focus-ring-embed.html [ Skip ] #  [ Timeout ]
 webkit.org/b/117323 fast/replaced/no-focus-ring-object.html [ Skip ] #  [ Timeout ]
 webkit.org/b/117323 fast/replaced/object-with-embed-url-param.html [ Failure ]
-webkit.org/b/24810 fast/replaced/replaced-breaking.html [ Failure ]
+fast/replaced/replaced-breaking.html [ Failure ]
 fast/replaced/width100percent-button.html [ Failure ]
 fast/replaced/width100percent-radio.html [ Failure ]
 webkit.org/b/138025 fast/replaced/width100percent-textfield.html [ Failure ]
@@ -2413,6 +2692,7 @@ webkit.org/b/117322 fast/selectors/selection-window-inactive.html [ ImageOnlyFai
 webkit.org/b/140519 [ Debug ] fast/selectors/querySelector-id-with-multiple-elements-with-same-id.html [ Skip ]  # Crashing
 fast/selectors/querySelector-window-inactive.html [ Failure ]
 fast/selectors/read-only-read-write-input-basics.html [ Failure ]
+fast/selectors/several-nth-last-child.html [ Failure ]
 
 fast/shapes/shape-outside-floats/shape-outside-image-fit-002.html [ Pass ImageOnlyFailure ]
 fast/shapes/shape-outside-floats/shape-outside-floats-layout-after-initial-layout-pass.html [ ImageOnlyFailure ]
@@ -2425,6 +2705,9 @@ fast/table/table-cell-change-last-row-with-needsCellRecalc-section.html [ Pass T
 
 fast/text/emphasis-vertical-over-right.html [ Pass Timeout ]
 fast/text/backslash-to-yen-sign-dynamic.html [ Pass Timeout ]
+fast/text/backslash-to-yen-sign-euc.html [ Failure ]
+fast/text/fallback-traits-fixup.html [ Failure ]
+fast/text/international/complex-character-based-fallback.html [ Failure ]
 fast/text/indic.html [ Failure ]
 fast/text/khmer-lao-font.html [ Failure ]
 fast/text/line-runs-rounding-simple-lines.html [ Pass Timeout ]
@@ -2440,6 +2723,7 @@ webkit.org/b/138041 fast/text/international/rtl-white-space-pre-wrap.html [ Fail
 
 webkit.org/b/140216 fast/writing-mode/broken-ideograph-small-caps.html [ Failure ]
 webkit.org/b/117322 fast/writing-mode/vertical-subst-font-vert-no-dflt.html [ ImageOnlyFailure ]
+fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure ]
 
 imported/w3c/html-templates/parsing-html-templates/creating-an-element-for-the-token/template-owner-document.html [ Pass Failure Timeout ]
 

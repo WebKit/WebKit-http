@@ -94,7 +94,7 @@ public:
     CachedResource(const ResourceRequest&, Type, SessionID);
     virtual ~CachedResource();
 
-    virtual void load(CachedResourceLoader*, const ResourceLoaderOptions&);
+    virtual void load(CachedResourceLoader&, const ResourceLoaderOptions&);
 
     virtual void setEncoding(const String&) { }
     virtual String encoding() const { return String(); }
@@ -117,7 +117,7 @@ public:
     Type type() const { return static_cast<Type>(m_type); }
     
     ResourceLoadPriority loadPriority() const { return m_loadPriority; }
-    void setLoadPriority(ResourceLoadPriority);
+    void setLoadPriority(const Optional<ResourceLoadPriority>&);
 
     WEBCORE_EXPORT void addClient(CachedResourceClient*);
     WEBCORE_EXPORT void removeClient(CachedResourceClient*);
@@ -186,8 +186,6 @@ public:
     // The resource can be brought back to cache after successful revalidation.
     void setInCache(bool inCache) { m_inCache = inCache; }
     bool inCache() const { return m_inCache; }
-    
-    bool inLiveDecodedResourcesList() { return m_inLiveDecodedResourcesList; }
     
     void clearLoader();
 
@@ -282,7 +280,7 @@ private:
 
     double freshnessLifetime(const ResourceResponse&) const;
 
-    void addAdditionalRequestHeaders(CachedResourceLoader*);
+    void addAdditionalRequestHeaders(CachedResourceLoader&);
     void failBeforeStarting();
 
     HashMap<CachedResourceClient*, std::unique_ptr<Callback>> m_clientsAwaitingCallback;
@@ -306,7 +304,6 @@ private:
 
     unsigned m_preloadResult : 2; // PreloadResult
 
-    bool m_inLiveDecodedResourcesList : 1;
     bool m_requestedFromNetworkingLayer : 1;
 
     bool m_inCache : 1;
@@ -324,9 +321,6 @@ private:
 
     CachedResource* m_nextInAllResourcesList;
     CachedResource* m_prevInAllResourcesList;
-    
-    CachedResource* m_nextInLiveResourcesList;
-    CachedResource* m_prevInLiveResourcesList;
 
     CachedResourceLoader* m_owningCachedResourceLoader; // only non-null for resources that are not in the cache
     

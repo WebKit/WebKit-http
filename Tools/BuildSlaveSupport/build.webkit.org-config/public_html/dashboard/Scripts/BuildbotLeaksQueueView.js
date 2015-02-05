@@ -65,7 +65,7 @@ BuildbotLeaksQueueView.prototype = {
                         var leaksViewerURL = iteration.resultURLs["view leaks"];
                         var status = new StatusLineView(messageElement, StatusLineView.Status.Neutral, leakCount === 1 ? "unique leak" : "unique leaks", leakCount, leaksViewerURL);
                     } else
-                        var status = new StatusLineView(messageElement, StatusLineView.Status.Good, iteration.text, null, buildPageURL);
+                        var status = new StatusLineView(messageElement, StatusLineView.Status.Danger, iteration.text, null, buildPageURL);
                 } else {
                     var url = iteration.queue.buildbot.buildPageURLForIteration(iteration);
                     var status = new StatusLineView(messageElement, StatusLineView.Status.Danger, iteration.text, null, buildPageURL);
@@ -84,21 +84,7 @@ BuildbotLeaksQueueView.prototype = {
             new PopoverTracker(status.statusBubbleElement, this._presentPopoverForLeaksQueue.bind(this), iteration);
         }
 
-        function appendBuild(queues, label)
-        {
-            queues.forEach(function(queue) {
-                var releaseLabel = document.createElement("a");
-                releaseLabel.classList.add("queueLabel");
-                releaseLabel.textContent = queue.LeaksTestName ? queue.LeaksTestName : label;
-                releaseLabel.href = queue.overviewURL;
-                releaseLabel.target = "_blank";
-                this.element.appendChild(releaseLabel);
-
-                appendLeaksQueueStatus.call(this, queue);
-            }.bind(this));
-        }
-
-        appendBuild.call(this, this.releaseQueues, "Leaks");
+        this.appendBuildStyle.call(this, this.releaseQueues, "Leaks", appendLeaksQueueStatus);
     },
 
     addLinkToRow: function(rowElement, className, text, url)

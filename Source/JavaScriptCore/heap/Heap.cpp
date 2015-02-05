@@ -317,7 +317,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_slotVisitor(m_sharedData)
     , m_copyVisitor(m_sharedData)
     , m_handleSet(vm)
-    , m_codeBlocks(m_blockAllocator)
     , m_isSafeToCollect(false)
     , m_writeBarrierBuffer(256)
     , m_vm(vm)
@@ -991,11 +990,6 @@ void Heap::collect(HeapOperation collectionType)
     if (vm()->typeProfiler()) {
         DeferGCForAWhile awhile(*this);
         vm()->typeProfilerLog()->processLogEntries(ASCIILiteral("GC"));
-    }
-    
-    if (vm()->callEdgeLog) {
-        DeferGCForAWhile awhile(*this);
-        vm()->callEdgeLog->processLog();
     }
     
     RELEASE_ASSERT(!m_deferralDepth);

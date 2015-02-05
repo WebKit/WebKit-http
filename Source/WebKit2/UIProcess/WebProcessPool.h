@@ -202,7 +202,7 @@ public:
     void registerURLSchemeAsCachePartitioned(const String&);
 #endif
 
-    VisitedLinkProvider& visitedLinkProvider() { return *m_visitedLinkProvider; }
+    VisitedLinkProvider& visitedLinkProvider() { return m_visitedLinkProvider.get(); }
 
     void setCacheModel(CacheModel);
     CacheModel cacheModel() const { return m_cacheModel; }
@@ -442,7 +442,7 @@ private:
 #if ENABLE(NETSCAPE_PLUGIN_API)
     PluginInfoStore m_pluginInfoStore;
 #endif
-    RefPtr<VisitedLinkProvider> m_visitedLinkProvider;
+    Ref<VisitedLinkProvider> m_visitedLinkProvider;
     bool m_visitedLinksPopulated;
 
     PlugInAutoStartProvider m_plugInAutoStartProvider;
@@ -489,10 +489,8 @@ private:
     RetainPtr<NSObject> m_enhancedAccessibilityObserver;
     RetainPtr<NSObject> m_automaticTextReplacementNotificationObserver;
     RetainPtr<NSObject> m_automaticSpellingCorrectionNotificationObserver;
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     RetainPtr<NSObject> m_automaticQuoteSubstitutionNotificationObserver;
     RetainPtr<NSObject> m_automaticDashSubstitutionNotificationObserver;
-#endif
 #endif
 
     String m_overrideApplicationCacheDirectory;

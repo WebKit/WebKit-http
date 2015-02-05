@@ -99,7 +99,7 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool)
     , m_numberOfTimesSuddenTerminationWasDisabled(0)
     , m_throttler(std::make_unique<ProcessThrottler>(this))
 {
-    WebPasteboardProxy::shared().addWebProcessProxy(*this);
+    WebPasteboardProxy::singleton().addWebProcessProxy(*this);
 
     connect();
 }
@@ -126,7 +126,7 @@ void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
     ASSERT(this->connection() == &connection);
 
 #if ENABLE(SEC_ITEM_SHIM)
-    SecItemShimProxy::shared().initializeConnection(connection);
+    SecItemShimProxy::singleton().initializeConnection(connection);
 #endif
 
     for (auto& page : m_pageMap.values())
@@ -384,7 +384,7 @@ void WebProcessProxy::getPlugins(bool refresh, Vector<PluginInfo>& plugins, Vect
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void WebProcessProxy::getPluginProcessConnection(uint64_t pluginProcessToken, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
 {
-    PluginProcessManager::shared().getPluginProcessConnection(pluginProcessToken, reply);
+    PluginProcessManager::singleton().getPluginProcessConnection(pluginProcessToken, reply);
 }
 #endif
 
@@ -503,7 +503,7 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 
     m_processPool->processDidFinishLaunching(this);
 
-#if PLATFORM(IOS) && USE(XPC_SERVICES)
+#if PLATFORM(IOS)
     xpc_connection_t xpcConnection = connection()->xpcConnection();
     ASSERT(xpcConnection);
     m_throttler->didConnnectToProcess(xpc_connection_get_pid(xpcConnection));

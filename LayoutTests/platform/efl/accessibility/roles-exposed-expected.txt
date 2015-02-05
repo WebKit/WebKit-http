@@ -250,6 +250,57 @@ mrow
 ms
       AXRole: AXStatic
       
+msub
+      AXRole: AXSection
+      
+mi
+      AXRole: AXStatic
+      
+mi
+      AXRole: AXStatic
+      
+msup
+      AXRole: AXSection
+      
+mi
+      AXRole: AXStatic
+      
+mi
+      AXRole: AXStatic
+      
+msubsup
+      AXRole: AXSection
+      
+mi
+      AXRole: AXStatic
+      
+mi
+      AXRole: AXStatic
+      
+mi
+      AXRole: AXStatic
+      
+mmultiscripts
+      AXRole: AXSection
+      
+mi
+      AXRole: AXStatic
+      
+mi
+      AXRole: AXStatic
+      
+mi
+      AXRole: AXStatic
+      
+mprescripts
+      AXRole: 
+      
+mi
+      AXRole: AXStatic
+      
+mi
+      AXRole: AXStatic
+      
 mtext
       AXRole: AXStatic
       

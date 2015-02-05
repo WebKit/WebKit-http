@@ -28,7 +28,7 @@
 #include <WebCore/Modules/indexeddb/IDBFactoryBackendInterface.h>
 #include <wtf/NeverDestroyed.h>
 
-WebDatabaseProvider& WebDatabaseProvider::shared()
+WebDatabaseProvider& WebDatabaseProvider::singleton()
 {
     static WebDatabaseProvider& databaseProvider = adoptRef(*new WebDatabaseProvider).leakRef();
 

@@ -36,14 +36,19 @@ var Object = {}.constructor;
 
 function toString(obj)
 {
-    return "" + obj;
+    return String(obj);
 }
-    
+
 function isUInt32(obj)
 {
     if (typeof obj === "number")
         return obj >>> 0 === obj && (obj > 0 || 1 / obj > 0);
     return "" + (obj >>> 0) === obj;
+}
+
+function isSymbol(obj)
+{
+    return typeof obj === "symbol";
 }
 
 var InjectedScript = function()
@@ -59,7 +64,13 @@ InjectedScript.primitiveTypes = {
     undefined: true,
     boolean: true,
     number: true,
-    string: true
+    string: true,
+}
+
+InjectedScript.CollectionMode = {
+    OwnProperties: 1 << 0,    // own properties.
+    GetterProperties: 1 << 1, // getter properties in the prototype chain.
+    AllProperties: 1 << 2,    // all properties in the prototype chain.
 }
 
 InjectedScript.prototype = {
@@ -101,14 +112,21 @@ InjectedScript.prototype = {
     {
         if (!canAccessInspectedGlobalObject)
             return this._fallbackWrapper(table);
+
+        // FIXME: Currently columns are ignored. Instead, the frontend filters all
+        // properties based on the provided column names and in the provided order.
+        // Should we filter here too?
+
         var columnNames = null;
         if (typeof columns === "string")
             columns = [columns];
+
         if (InjectedScriptHost.subtype(columns) === "array") {
             columnNames = [];
             for (var i = 0; i < columns.length; ++i)
-                columnNames.push(String(columns[i]));
+                columnNames.push(toString(columns[i]));
         }
+
         return this._wrapObject(table, "console", false, true, columnNames);
     },
 
@@ -187,7 +205,16 @@ InjectedScript.prototype = {
         if (!this._isDefined(object))
             return false;
 
-        var descriptors = this._propertyDescriptors(object, ownProperties, ownAndGetterProperties);
+        if (isSymbol(object))
+            return false;
+
+        var collectionMode = InjectedScript.CollectionMode.AllProperties;
+        if (ownProperties)
+            collectionMode = InjectedScript.CollectionMode.OwnProperties;
+        else if (ownAndGetterProperties)
+            collectionMode = InjectedScript.CollectionMode.OwnProperties | InjectedScript.CollectionMode.GetterProperties;
+
+        var descriptors = this._propertyDescriptors(object, collectionMode);
 
         // Go over properties, wrap object values.
         for (var i = 0; i < descriptors.length; ++i) {
@@ -212,7 +239,11 @@ InjectedScript.prototype = {
         var parsedObjectId = this._parseObjectId(objectId);
         var object = this._objectForId(parsedObjectId);
         var objectGroupName = this._idToObjectGroupName[parsedObjectId.id];
+
         if (!this._isDefined(object))
+            return false;
+
+        if (isSymbol(object))
             return false;
 
         var descriptors = [];
@@ -229,6 +260,27 @@ InjectedScript.prototype = {
         }
 
         return descriptors;
+    },
+
+    getCollectionEntries: function(objectId, objectGroupName, startIndex, numberToFetch)
+    {
+        var parsedObjectId = this._parseObjectId(objectId);
+        var object = this._objectForId(parsedObjectId);
+        var objectGroupName = objectGroupName || this._idToObjectGroupName[parsedObjectId.id];
+        if (!this._isDefined(object))
+            return;
+
+        if (typeof object !== "object")
+            return;
+
+        var entries = this._getCollectionEntries(object, InjectedScriptHost.subtype(object), startIndex, numberToFetch);
+        
+        return entries.map(function(entry) {
+            entry.value = injectedScript._wrapObject(entry.value, objectGroupName, false, true);
+            if ("key" in entry)
+                entry.key = injectedScript._wrapObject(entry.key, objectGroupName, false, true);
+            return entry;
+        });
     },
 
     getFunctionDetails: function(functionId)
@@ -487,13 +539,8 @@ InjectedScript.prototype = {
         return module;
     },
 
-    _propertyDescriptors: function(object, ownProperties, ownAndGetterProperties)
+    _propertyDescriptors: function(object, collectionMode)
     {
-        // Modes:
-        //  - ownProperties - only own properties and __proto__
-        //  - ownAndGetterProperties - own properties, __proto__, and getters in the prototype chain
-        //  - neither - get all properties in the prototype chain and __proto__
-
         var descriptors = [];
         var nameProcessed = {};
         nameProcessed["__proto__"] = null;
@@ -512,30 +559,32 @@ InjectedScript.prototype = {
 
         function processDescriptor(descriptor, isOwnProperty, possibleNativeBindingGetter)
         {
-            // Own properties only.
-            if (ownProperties) {
-                if (isOwnProperty)
-                    descriptors.push(descriptor);
+            // All properties.
+            if (collectionMode & InjectedScript.CollectionMode.AllProperties) {
+                descriptors.push(descriptor);
                 return;
             }
 
-            // Own and getter properties.
-            if (ownAndGetterProperties) {
-                if (isOwnProperty) {
-                    // Own property, include the descriptor as is.
-                    descriptors.push(descriptor);
-                } else if (descriptor.hasOwnProperty("get") && descriptor.get) {
+            // Own properties.
+            if (collectionMode & InjectedScript.CollectionMode.OwnProperties && isOwnProperty) {
+                descriptors.push(descriptor);
+                return;
+            }
+
+            // Getter properties.
+            if (collectionMode & InjectedScript.CollectionMode.GetterProperties) {
+                if (descriptor.hasOwnProperty("get") && descriptor.get) {
                     // Getter property in the prototype chain. Create a fake value descriptor.
                     descriptors.push(createFakeValueDescriptor(descriptor.name, descriptor, isOwnProperty));
-                } else if (possibleNativeBindingGetter) {
+                    return;
+                }
+
+                if (possibleNativeBindingGetter) {
                     // Possible getter property in the prototype chain.
                     descriptors.push(descriptor);
+                    return;
                 }
-                return;
             }
-
-            // All properties.
-            descriptors.push(descriptor);
         }
 
         function processPropertyNames(o, names, isOwnProperty)
@@ -576,11 +625,11 @@ InjectedScript.prototype = {
         for (var o = object; this._isDefined(o); o = o.__proto__) {
             var isOwnProperty = o === object;
             processPropertyNames(o, Object.getOwnPropertyNames(o), isOwnProperty);
-            if (ownProperties)
+            if (collectionMode === InjectedScript.CollectionMode.OwnProperties)
                 break;
         }
-        
-        // Include __proto__ at the end.
+
+        // Always include __proto__ at the end.
         try {
             if (object.__proto__)
                 descriptors.push({name: "__proto__", value: object.__proto__, writable: true, configurable: true, enumerable: false, isOwn: true});
@@ -632,6 +681,9 @@ InjectedScript.prototype = {
         if (this.isPrimitiveValue(obj))
             return null;
 
+        if (isSymbol(obj))
+            return toString(obj);
+
         var subtype = this._subtype(obj);
 
         if (subtype === "regexp")
@@ -677,6 +729,61 @@ InjectedScript.prototype = {
         }
 
         return className;
+    },
+
+    _getSetEntries: function(object, skip, numberToFetch)
+    {
+        var entries = [];
+
+        for (var value of object) {
+            if (skip > 0) {
+                skip--;
+                continue;
+            }
+
+            entries.push({value: value});
+
+            if (numberToFetch && entries.length === numberToFetch)
+                break;
+        }
+
+        return entries;
+    },
+
+    _getMapEntries: function(object, skip, numberToFetch)
+    {
+        var entries = [];
+
+        for (var [key, value] of object) {
+            if (skip > 0) {
+                skip--;
+                continue;
+            }
+
+            entries.push({key: key, value: value});
+
+            if (numberToFetch && entries.length === numberToFetch)
+                break;
+        }
+
+        return entries;
+    },
+
+    _getWeakMapEntries: function(object, numberToFetch)
+    {
+        return InjectedScriptHost.weakMapEntries(object, numberToFetch);
+    },
+
+    _getCollectionEntries: function(object, subtype, startIndex, numberToFetch)
+    {
+        if (subtype === "set")
+            return this._getSetEntries(object, startIndex, numberToFetch);
+        if (subtype === "map")
+            return this._getMapEntries(object, startIndex, numberToFetch);
+        if (subtype === "weakmap")
+            return this._getWeakMapEntries(object, numberToFetch);
+
+        throw "unexpected type";
     }
 }
 
@@ -695,7 +802,7 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
         if (this.type !== "undefined")
             this.value = object;
 
-        // Null object is object with 'null' subtype'
+        // Null object is object with 'null' subtype.
         if (object === null)
             this.subtype = "null";
 
@@ -706,6 +813,7 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
     }
 
     this.objectId = injectedScript._bind(object, objectGroupName);
+
     var subtype = injectedScript._subtype(object);
     if (subtype)
         this.subtype = subtype;
@@ -718,12 +826,41 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
 }
 
 InjectedScript.RemoteObject.prototype = {
+    _emptyPreview: function()
+    {
+        var preview = {
+            type: this.type,
+            description: this.description || toString(this.value),
+            lossless: true,
+        };
+
+        if (this.subtype) {
+            preview.subtype = this.subtype;
+            if (this.subtype !== "null") {
+                preview.overflow = false;
+                preview.properties = [];
+            }
+        }
+
+        return preview;
+    },
+
+    _createObjectPreviewForValue: function(value)
+    {
+        var remoteObject = new InjectedScript.RemoteObject(value, undefined, false, true, undefined);
+        if (remoteObject.objectId)
+            injectedScript.releaseObject(remoteObject.objectId);
+
+        return remoteObject.preview || remoteObject._emptyPreview();
+    },
+
     _generatePreview: function(object, firstLevelKeys, secondLevelKeys)
     {
-        var preview = {};
-        preview.lossless = true;
-        preview.overflow = false;
-        preview.properties = [];
+        var preview = this._emptyPreview();
+
+        // Primitives just have a value.
+        if (this.type !== "object")
+            return;
 
         var isTableRowsRequest = secondLevelKeys === null || secondLevelKeys;
         var firstLevelKeysCount = firstLevelKeys ? firstLevelKeys.length : 0;
@@ -734,14 +871,19 @@ InjectedScript.RemoteObject.prototype = {
         };
 
         try {
-            // All properties.
-            var descriptors = injectedScript._propertyDescriptors(object);
-            this._appendPropertyDescriptors(preview, descriptors, propertiesThreshold, secondLevelKeys);
+            // Maps and Sets have entries.
+            if (this.subtype === "map" || this.subtype === "set" || this.subtype === "weakmap")
+                this._appendEntryPreviews(object, preview);
+
+            // Properties.
+            preview.properties = [];
+            var descriptors = injectedScript._propertyDescriptors(object, InjectedScript.CollectionMode.AllProperties);
+            this._appendPropertyPreviews(preview, descriptors, propertiesThreshold, firstLevelKeys, secondLevelKeys);
             if (propertiesThreshold.indexes < 0 || propertiesThreshold.properties < 0)
                 return preview;
 
             // FIXME: Internal properties.
-            // FIXME: Map/Set/Iterator entries.
+            // FIXME: Iterator entries.
         } catch (e) {
             preview.lossless = false;
         }
@@ -749,7 +891,7 @@ InjectedScript.RemoteObject.prototype = {
         return preview;
     },
 
-    _appendPropertyDescriptors: function(preview, descriptors, propertiesThreshold, secondLevelKeys)
+    _appendPropertyPreviews: function(preview, descriptors, propertiesThreshold, firstLevelKeys, secondLevelKeys)
     {
         for (var descriptor of descriptors) {
             // Seen enough.
@@ -773,6 +915,10 @@ InjectedScript.RemoteObject.prototype = {
 
             // Do not show non-enumerable non-own properties. Special case to allow array indexes that may be on the prototype.
             if (!descriptor.enumerable && !descriptor.isOwn && !(this.subtype === "array" && isUInt32(name)))
+                continue;
+
+            // If we have a filter, only show properties in the filter.
+            if (firstLevelKeys && firstLevelKeys.indexOf(name) === -1)
                 continue;
 
             // Getter/setter.
@@ -807,6 +953,17 @@ InjectedScript.RemoteObject.prototype = {
                 }
                 this._appendPropertyPreview(preview, {name: name, type: type, value: toString(value)}, propertiesThreshold);
                 continue;
+            }
+
+            // Symbol.
+            if (isSymbol(value)) {
+                var symbolString = toString(value);
+                if (symbolString.length > maxLength) {
+                    symbolString = this._abbreviateString(symbolString, maxLength, true);
+                    preview.lossless = false;
+                }
+                this._appendPropertyPreview(preview, {name: name, type: type, value: symbolString}, propertiesThreshold);
+                return;
             }
 
             // Object.
@@ -849,6 +1006,27 @@ InjectedScript.RemoteObject.prototype = {
         }
 
         preview.properties.push(property);
+    },
+
+    _appendEntryPreviews: function(object, preview)
+    {
+        // Fetch 6, but only return 5, so we can tell if we overflowed.
+        var entries = injectedScript._getCollectionEntries(object, this.subtype, 0, 6);
+        if (!entries)
+            return;
+
+        if (entries.length > 5) {
+            entries.pop();
+            preview.overflow = true;
+            preview.lossless = false;
+        }
+
+        preview.entries = entries.map(function(entry) {
+            entry.value = this._createObjectPreviewForValue(entry.value);
+            if ("key" in entry)
+                entry.key = this._createObjectPreviewForValue(entry.key);
+            return entry;
+        }, this);
     },
 
     _abbreviateString: function(string, maxLength, middle)

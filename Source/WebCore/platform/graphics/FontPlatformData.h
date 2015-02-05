@@ -87,10 +87,10 @@ public:
     FontPlatformData(float size, bool syntheticBold, bool syntheticOblique, FontOrientation = Horizontal, FontWidthVariant = RegularWidth);
 
 #if PLATFORM(COCOA)
-    WEBCORE_EXPORT FontPlatformData(CTFontRef, float size, bool isPrinterFont = false, bool syntheticBold = false, bool syntheticOblique = false, FontOrientation = Horizontal, FontWidthVariant = RegularWidth);
+    WEBCORE_EXPORT FontPlatformData(CTFontRef, float size, bool syntheticBold = false, bool syntheticOblique = false, FontOrientation = Horizontal, FontWidthVariant = RegularWidth);
 #if USE(APPKIT)
     // FIXME: Remove this when all NSFont usage is removed.
-    WEBCORE_EXPORT FontPlatformData(NSFont *, float size, bool isPrinterFont = false, bool syntheticBold = false, bool syntheticOblique = false, FontOrientation = Horizontal, FontWidthVariant = RegularWidth);
+    WEBCORE_EXPORT FontPlatformData(NSFont *, float size, bool syntheticBold = false, bool syntheticOblique = false, FontOrientation = Horizontal, FontWidthVariant = RegularWidth);
 #endif
 #endif
 
@@ -114,7 +114,6 @@ public:
     HFONT hfont() const { return m_font ? m_font->get() : 0; }
     bool useGDI() const { return m_useGDI; }
 #elif PLATFORM(COCOA)
-    // 
     CTFontRef font() const { return m_font; }
     void setFont(CTFontRef);
 
@@ -136,9 +135,6 @@ public:
     CGFontRef cgFont() const { return m_cgFont.get(); }
 #endif
 
-#if PLATFORM(COCOA)
-#endif
-
     bool isFixedPitch() const;
     float size() const { return m_size; }
     void setSize(float size) { m_size = size; }
@@ -146,9 +142,6 @@ public:
     bool syntheticOblique() const { return m_syntheticOblique; }
     bool isColorBitmapFont() const { return m_isColorBitmapFont; }
     bool isCompositeFontReference() const { return m_isCompositeFontReference; }
-#if PLATFORM(COCOA)
-    bool isPrinterFont() const { return m_isPrinterFont; }
-#endif
     FontOrientation orientation() const { return m_orientation; }
     FontWidthVariant widthVariant() const { return m_widthVariant; }
 
@@ -165,10 +158,10 @@ public:
 #elif OS(DARWIN)
 #if USE(APPKIT)
         ASSERT(m_font || !m_cgFont);
-        uintptr_t hashCodes[3] = { (uintptr_t)m_font, m_widthVariant, static_cast<uintptr_t>(m_isPrinterFont << 3 | m_orientation << 2 | m_syntheticBold << 1 | m_syntheticOblique) };
+        uintptr_t hashCodes[3] = { (uintptr_t)m_font, m_widthVariant, static_cast<uintptr_t>(m_orientation << 2 | m_syntheticBold << 1 | m_syntheticOblique) };
 #else
         ASSERT(m_font || !m_cgFont || m_isEmoji);
-        uintptr_t hashCodes[3] = { static_cast<uintptr_t>(CFHash(m_font)), m_widthVariant, static_cast<uintptr_t>(m_isEmoji << 4 | m_isPrinterFont << 3 | m_orientation << 2 | m_syntheticBold << 1 | m_syntheticOblique) };
+        uintptr_t hashCodes[3] = { static_cast<uintptr_t>(CFHash(m_font)), m_widthVariant, static_cast<uintptr_t>(m_isEmoji << 3 | m_orientation << 2 | m_syntheticBold << 1 | m_syntheticOblique) };
 #endif // !PLATFORM(IOS)
         return StringHasher::hashMemory<sizeof(hashCodes)>(hashCodes);
 #elif USE(CAIRO)
@@ -186,9 +179,6 @@ public:
             && m_syntheticOblique == other.m_syntheticOblique
             && m_isColorBitmapFont == other.m_isColorBitmapFont
             && m_isCompositeFontReference == other.m_isCompositeFontReference
-#if PLATFORM(COCOA)
-            && m_isPrinterFont == other.m_isPrinterFont
-#endif
             && m_orientation == other.m_orientation
             && m_widthVariant == other.m_widthVariant;
     }
@@ -253,9 +243,6 @@ private:
 
     bool m_isColorBitmapFont { false };
     bool m_isCompositeFontReference { false };
-#if PLATFORM(COCOA)
-    bool m_isPrinterFont { false };
-#endif
 
 #if PLATFORM(WIN)
     bool m_useGDI { false };

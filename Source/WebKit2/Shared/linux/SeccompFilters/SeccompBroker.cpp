@@ -52,7 +52,7 @@ namespace WebKit {
 
 class SeccompBrokerClient {
 public:
-    static SeccompBrokerClient& shared(int socket = -1);
+    static SeccompBrokerClient& singleton(int socket = -1);
     ~SeccompBrokerClient();
 
     void dispatch(Syscall*) const;
@@ -140,7 +140,7 @@ static void SIGSYSHandler(int signal, siginfo_t* info, void* data)
     if (!ucontext)
         CRASH();
 
-    SeccompBrokerClient* client = &SeccompBrokerClient::shared();
+    SeccompBrokerClient* client = &SeccompBrokerClient::singleton();
 
     if (client->handleIfOpeningOnlineCPUCount(&ucontext->uc_mcontext))
         return;
@@ -174,7 +174,7 @@ static void registerSIGSYSHandler()
         CRASH();
 }
 
-SeccompBrokerClient& SeccompBrokerClient::shared(int socket)
+SeccompBrokerClient& SeccompBrokerClient::singleton(int socket)
 {
     DEPRECATED_DEFINE_STATIC_LOCAL(SeccompBrokerClient, brokerClient, (socket));
 
@@ -290,7 +290,7 @@ void SeccompBroker::initialize()
     pid_t pid = fork();
     if (pid) { // Sandboxed process.
         close(sockets[1]);
-        SeccompBrokerClient::shared(sockets[0]);
+        SeccompBrokerClient::singleton(sockets[0]);
         registerSIGSYSHandler();
     } else { // Broker.
         // TODO: The broker should setup seccomp filters

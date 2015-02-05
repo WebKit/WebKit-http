@@ -302,6 +302,9 @@ static inline bool handleWheelEventInAppropriateEnclosingBoxForSingleAxis(Node* 
     bool shouldHandleEvent = (axis == ScrollEventAxis::Vertical && wheelEvent->deltaY()) || (axis == ScrollEventAxis::Horizontal && wheelEvent->deltaX());
 #if PLATFORM(MAC)
     shouldHandleEvent |= wheelEvent->phase() == PlatformWheelEventPhaseEnded;
+#if ENABLE(CSS_SCROLL_SNAP)
+    shouldHandleEvent |= wheelEvent->momentumPhase() == PlatformWheelEventPhaseEnded;
+#endif
 #endif
     if (!startNode->renderer() || !shouldHandleEvent)
         return false;
@@ -459,7 +462,6 @@ void EventHandler::clear()
     m_resizeLayer = nullptr;
     m_elementUnderMouse = nullptr;
     m_lastElementUnderMouse = nullptr;
-    m_lastInstanceUnderMouse = nullptr;
     m_lastMouseMoveEventSubframe = nullptr;
     m_lastScrollbarUnderMouse = nullptr;
     m_clickCount = 0;
@@ -2352,22 +2354,6 @@ MouseEventWithHitTestResults EventHandler::prepareMouseEvent(const HitTestReques
     return m_frame.document()->prepareMouseEvent(request, documentPointForWindowPoint(m_frame, mouseEvent.position()), mouseEvent);
 }
 
-static inline SVGElementInstance* instanceAssociatedWithShadowTreeElement(Node* referenceNode)
-{
-    if (!referenceNode || !referenceNode->isSVGElement())
-        return nullptr;
-
-    ShadowRoot* shadowRoot = referenceNode->containingShadowRoot();
-    if (!shadowRoot)
-        return nullptr;
-
-    Element* shadowTreeParentElement = shadowRoot->hostElement();
-    if (!shadowTreeParentElement || !shadowTreeParentElement->hasTagName(useTag))
-        return nullptr;
-
-    return downcast<SVGUseElement>(*shadowTreeParentElement).instanceForShadowTreeElement(referenceNode);
-}
-
 static RenderElement* nearestCommonHoverAncestor(RenderElement* obj1, RenderElement* obj2)
 {
     if (!obj1 || !obj2)
@@ -2408,37 +2394,6 @@ void EventHandler::updateMouseEventTargetNode(Node* targetNode, const PlatformMo
     }
 
     m_elementUnderMouse = targetElement;
-
-    // <use> shadow tree elements may have been recloned, update node under mouse in any case
-    if (m_lastInstanceUnderMouse) {
-        SVGElement* lastCorrespondingElement = m_lastInstanceUnderMouse->correspondingElement();
-        SVGElement* lastCorrespondingUseElement = m_lastInstanceUnderMouse->correspondingUseElement();
-
-        if (lastCorrespondingElement && lastCorrespondingUseElement) {
-            HashSet<SVGElementInstance*> instances = lastCorrespondingElement->instancesForElement();
-
-            // Locate the recloned shadow tree element for our corresponding instance
-            HashSet<SVGElementInstance*>::iterator end = instances.end();
-            for (HashSet<SVGElementInstance*>::iterator it = instances.begin(); it != end; ++it) {
-                SVGElementInstance* instance = (*it);
-                ASSERT(instance->correspondingElement() == lastCorrespondingElement);
-
-                if (instance == m_lastInstanceUnderMouse)
-                    continue;
-
-                if (instance->correspondingUseElement() != lastCorrespondingUseElement)
-                    continue;
-
-                SVGElement* shadowTreeElement = instance->shadowTreeElement();
-                if (!shadowTreeElement->inDocument() || m_lastElementUnderMouse == shadowTreeElement)
-                    continue;
-
-                m_lastElementUnderMouse = shadowTreeElement;
-                m_lastInstanceUnderMouse = instance;
-                break;
-            }
-        }
-    }
 
     // Fire mouseout/mouseover if the mouse has shifted to a different node.
     if (fireMouseOverOut) {
@@ -2481,7 +2436,6 @@ void EventHandler::updateMouseEventTargetNode(Node* targetNode, const PlatformMo
         if (m_lastElementUnderMouse && &m_lastElementUnderMouse->document() != m_frame.document()) {
             m_lastElementUnderMouse = nullptr;
             m_lastScrollbarUnderMouse = nullptr;
-            m_lastInstanceUnderMouse = nullptr;
         }
 
         if (m_lastElementUnderMouse != m_elementUnderMouse) {
@@ -2539,7 +2493,6 @@ void EventHandler::updateMouseEventTargetNode(Node* targetNode, const PlatformMo
             }
         }
         m_lastElementUnderMouse = m_elementUnderMouse;
-        m_lastInstanceUnderMouse = instanceAssociatedWithShadowTreeElement(m_elementUnderMouse.get());
     }
 }
 

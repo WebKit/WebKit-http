@@ -32,12 +32,15 @@
 
 #include "ApplicationCacheHost.h"
 #include "AuthenticationChallenge.h"
+#include "DiagnosticLoggingClient.h"
+#include "DiagnosticLoggingKeys.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "InspectorInstrumentation.h"
 #include "LoaderStrategy.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "PlatformStrategies.h"
 #include "ProgressTracker.h"
@@ -158,6 +161,7 @@ void ResourceLoader::start()
     ASSERT(!m_handle);
     ASSERT(!m_request.isNull());
     ASSERT(m_deferredRequest.isNull());
+    ASSERT(frameLoader());
 
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
     if (m_documentLoader->scheduleArchiveLoad(this, m_request))
@@ -172,8 +176,10 @@ void ResourceLoader::start()
         return;
     }
 
-    if (!m_reachedTerminalState)
-        m_handle = ResourceHandle::create(m_frame->loader().networkingContext(), m_request, this, m_defersLoading, m_options.sniffContent() == SniffContent);
+    if (!m_reachedTerminalState) {
+        FrameLoader& loader = m_request.url().protocolIsData() ? dataProtocolFrameLoader() : *frameLoader();
+        m_handle = ResourceHandle::create(loader.networkingContext(), m_request, this, m_defersLoading, m_options.sniffContent() == SniffContent);
+    }
 }
 
 void ResourceLoader::setDefersLoading(bool defers)
@@ -195,6 +201,15 @@ FrameLoader* ResourceLoader::frameLoader() const
     if (!m_frame)
         return 0;
     return &m_frame->loader();
+}
+
+// This function should only be called when frameLoader() is non-null.
+FrameLoader& ResourceLoader::dataProtocolFrameLoader() const
+{
+    FrameLoader* loader = frameLoader();
+    ASSERT(loader);
+    FrameLoader* dataProtocolLoader = loader->client().dataProtocolLoader();
+    return *(dataProtocolLoader ? dataProtocolLoader : loader);
 }
 
 void ResourceLoader::setDataBufferingPolicy(DataBufferingPolicy dataBufferingPolicy)
@@ -294,6 +309,29 @@ void ResourceLoader::didSendData(unsigned long long, unsigned long long)
 {
 }
 
+static void logResourceResponseSource(Frame* frame, ResourceResponse::Source source)
+{
+    if (!frame)
+        return;
+
+    String sourceKey;
+    switch (source) {
+    case ResourceResponse::Source::Network:
+        sourceKey = DiagnosticLoggingKeys::networkKey();
+        break;
+    case ResourceResponse::Source::DiskCache:
+        sourceKey = DiagnosticLoggingKeys::diskCacheKey();
+        break;
+    case ResourceResponse::Source::DiskCacheAfterValidation:
+        sourceKey = DiagnosticLoggingKeys::diskCacheAfterValidationKey();
+        break;
+    case ResourceResponse::Source::Unknown:
+        return;
+    }
+
+    frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceResponseKey(), DiagnosticLoggingKeys::sourceKey(), sourceKey);
+}
+
 void ResourceLoader::didReceiveResponse(const ResourceResponse& r)
 {
     ASSERT(!m_reachedTerminalState);
@@ -301,6 +339,8 @@ void ResourceLoader::didReceiveResponse(const ResourceResponse& r)
     // Protect this in this delegate method since the additional processing can do
     // anything including possibly derefing this; one example of this is Radar 3266216.
     Ref<ResourceLoader> protect(*this);
+
+    logResourceResponseSource(m_frame.get(), r.source());
 
     m_response = r;
 

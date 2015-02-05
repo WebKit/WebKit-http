@@ -1,3 +1,116 @@
+2015-02-02  Chris Dumez  <cdumez@apple.com>
+
+        Access MemoryCache singleton using MemoryCache::singleton()
+        https://bugs.webkit.org/show_bug.cgi?id=141104
+
+        Reviewed by Andreas Kling.
+
+        Access MemoryCache singleton using MemoryCache::singleton() static
+        member function, instead of a free function, as per the recent
+        coding style discussion on WebKit-dev.
+
+2015-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Rename shared() static member functions to singleton() for singleton classes.
+        https://bugs.webkit.org/show_bug.cgi?id=141088
+
+        Reviewed by Ryosuke Niwa and Benjamin Poulain.
+
+        Rename shared() static member functions to singleton() for singleton
+        classes as per the recent coding style change.
+
+2015-01-29  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Build fix after r179368.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferences.cpp:
+        (WebPreferences::screenFontSubstitutionEnabled): Deleted.
+        (WebPreferences::setScreenFontSubstitutionEnabled): Deleted.
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2015-01-29  Sam Weinig  <sam@webkit.org>
+
+        Remove support for screen font substitution
+        https://bugs.webkit.org/show_bug.cgi?id=141038
+
+        Reviewed by Tim Horton.
+
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::screenFontSubstitutionEnabled):
+        (WebPreferences::setScreenFontSubstitutionEnabled):
+        Remove implementations. Have this setting set on windows didn't have any effect before,
+        so this doesn't change behavior.
+
+2015-01-29  Chris Dumez  <cdumez@apple.com>
+
+        Clean up / modernize PageCache class
+        https://bugs.webkit.org/show_bug.cgi?id=141009
+
+        Reviewed by Darin Adler.
+
+        Clean up / modernize PageCache class.
+
+        * WebView.cpp:
+        (WebView::setCacheModel):
+
+2015-01-28  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Message loop is flooded with timer messages when animating in accelerated compositing mode.
+        https://bugs.webkit.org/show_bug.cgi?id=140985
+
+        Reviewed by Brent Fulgham.
+
+        The animation timer has zero timeout, which makes it hard for other messages to slip through.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::scheduleLayerFlush):
+
+2015-01-28  Chris Dumez  <cdumez@apple.com>
+
+        Fix typo in markPagesForVistedLinkStyleRecalc()
+        https://bugs.webkit.org/show_bug.cgi?id=140977
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebVisitedLinkStore.cpp:
+        (WebVisitedLinkStore::removeAllVisitedLinks):
+        (WebVisitedLinkStore::addVisitedLinkHash):
+
+2015-01-28  Chris Dumez  <cdumez@apple.com>
+
+        Rename pageCache() to PageCache::shared() and return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=140983
+
+        Reviewed by Andreas Kling.
+
+        Rename pageCache() to PageCache::shared() as this is a singleton class
+        and have it return a reference instead of a pointer.
+
+        * WebCoreStatistics.cpp:
+        (WebCoreStatistics::cachedPageCount):
+        (WebCoreStatistics::cachedFrameCount):
+        * WebCoreSupport/WebVisitedLinkStore.cpp:
+        (WebVisitedLinkStore::removeAllVisitedLinks):
+        (WebVisitedLinkStore::addVisitedLinkHash):
+        * WebView.cpp:
+        (WebView::setCacheModel):
+
+2015-01-27  Chris Dumez  <cdumez@apple.com>
+
+        Use a Ref<CachedResourceLoader> in Document instead of a RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=140971
+
+        Reviewed by Andreas Kling.
+
+        Use more references instead of pointers.
+
+        * WebDataSource.cpp:
+        (WebDataSource::subresourceForURL):
+
 2015-01-26  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] ASSERTION FAILED !m_ptr under AccessibilityController::winAddNotificationListener

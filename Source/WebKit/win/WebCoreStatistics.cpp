@@ -327,7 +327,7 @@ HRESULT WebCoreStatistics::cachedPageCount(INT* count)
     if (!count)
         return E_POINTER;
 
-    *count = pageCache()->pageCount();
+    *count = PageCache::singleton().pageCount();
     return S_OK;
 }
 
@@ -336,6 +336,6 @@ HRESULT WebCoreStatistics::cachedFrameCount(INT* count)
     if (!count)
         return E_POINTER;
 
-    *count = pageCache()->frameCount();
+    *count = PageCache::singleton().frameCount();
     return S_OK;
 }

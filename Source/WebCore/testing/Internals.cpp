@@ -304,7 +304,7 @@ void Internals::resetToConsistentState(Page* page)
     AXObjectCache::disableAccessibility();
 #endif
 
-    MockPageOverlayClient::shared().uninstallAllOverlays();
+    MockPageOverlayClient::singleton().uninstallAllOverlays();
 }
 
 Internals::Internals(Document* document)
@@ -373,14 +373,14 @@ String Internals::description(Deprecated::ScriptValue value)
 bool Internals::isPreloaded(const String& url)
 {
     Document* document = contextDocument();
-    return document->cachedResourceLoader()->isPreloaded(url);
+    return document->cachedResourceLoader().isPreloaded(url);
 }
 
 bool Internals::isLoadingFromMemoryCache(const String& url)
 {
     if (!contextDocument() || !contextDocument()->page())
         return false;
-    CachedResource* resource = memoryCache().resourceForURL(contextDocument()->completeURL(url), contextDocument()->page()->sessionID());
+    CachedResource* resource = MemoryCache::singleton().resourceForURL(contextDocument()->completeURL(url), contextDocument()->page()->sessionID());
     return resource && resource->status() == CachedResource::Cached;
 }
 
@@ -406,7 +406,7 @@ String Internals::xhrResponseSource(XMLHttpRequest* xhr)
 
 void Internals::clearMemoryCache()
 {
-    memoryCache().evictResources();
+    MemoryCache::singleton().evictResources();
 }
 
 Node* Internals::treeScopeRootNode(Node* node, ExceptionCode& ec)
@@ -1685,11 +1685,7 @@ void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
         ec = INVALID_ACCESS_ERR;
         return;
     }
-
-    CachedResourceLoader* cachedResourceLoader = document->cachedResourceLoader();
-    if (!cachedResourceLoader)
-        return;
-    cachedResourceLoader->garbageCollectDocumentResources();
+    document->cachedResourceLoader().garbageCollectDocumentResources();
 }
 
 void Internals::allowRoundingHacks() const
@@ -2435,7 +2431,7 @@ void Internals::installMockPageOverlay(const String& overlayType, ExceptionCode&
         return;
     }
 
-    MockPageOverlayClient::shared().installOverlay(document->frame()->mainFrame(), overlayType == "view" ? PageOverlay::OverlayType::View : PageOverlay::OverlayType::Document);
+    MockPageOverlayClient::singleton().installOverlay(document->frame()->mainFrame(), overlayType == "view" ? PageOverlay::OverlayType::View : PageOverlay::OverlayType::Document);
 }
 
 String Internals::pageOverlayLayerTreeAsText(ExceptionCode& ec) const
@@ -2448,7 +2444,7 @@ String Internals::pageOverlayLayerTreeAsText(ExceptionCode& ec) const
 
     document->updateLayout();
 
-    return MockPageOverlayClient::shared().layerTreeAsText(document->frame()->mainFrame());
+    return MockPageOverlayClient::singleton().layerTreeAsText(document->frame()->mainFrame());
 }
 
 void Internals::setPageMuted(bool muted)

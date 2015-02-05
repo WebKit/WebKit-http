@@ -56,10 +56,10 @@ public:
     // to keep the overall tile cost low.
     static const int kTiledLayerTileSize = 512;
 
-    WEBCORE_EXPORT explicit GraphicsLayerCA(GraphicsLayerClient&);
+    WEBCORE_EXPORT explicit GraphicsLayerCA(Type, GraphicsLayerClient&);
     WEBCORE_EXPORT virtual ~GraphicsLayerCA();
 
-    WEBCORE_EXPORT virtual void initialize() override;
+    WEBCORE_EXPORT virtual void initialize(Type) override;
 
     WEBCORE_EXPORT virtual void setName(const String&) override;
 
@@ -118,7 +118,8 @@ public:
     
     WEBCORE_EXPORT virtual void setContentsRect(const FloatRect&) override;
     WEBCORE_EXPORT virtual void setContentsClippingRect(const FloatRoundedRect&) override;
-    
+    WEBCORE_EXPORT virtual bool setMasksToBoundsRect(const FloatRoundedRect&) override;
+
     WEBCORE_EXPORT virtual void suspendAnimations(double time) override;
     WEBCORE_EXPORT virtual void resumeAnimations() override;
 
@@ -142,7 +143,6 @@ public:
     WEBCORE_EXPORT virtual void setDebugBorder(const Color&, float borderWidth) override;
 
     WEBCORE_EXPORT virtual void setCustomAppearance(CustomAppearance) override;
-    WEBCORE_EXPORT virtual void setCustomBehavior(CustomBehavior) override;
 
     WEBCORE_EXPORT virtual void deviceOrPageScaleFactorChanged() override;
 
@@ -172,9 +172,6 @@ protected:
 
 private:
     virtual bool isGraphicsLayerCA() const override { return true; }
-
-    virtual bool applyClippingBorder(const FloatRoundedRect&) override;
-    virtual void clearClippingBorder() override;
 
     WEBCORE_EXPORT virtual void willBeDestroyed() override;
 
@@ -350,7 +347,7 @@ private:
     PassRefPtr<PlatformCALayer> findOrMakeClone(CloneID, PlatformCALayer *, LayerMap*, CloneLevel);
 
     void ensureCloneLayers(CloneID, RefPtr<PlatformCALayer>& primaryLayer, RefPtr<PlatformCALayer>& structuralLayer,
-        RefPtr<PlatformCALayer>& contentsLayer, RefPtr<PlatformCALayer>& contentsClippingLayer, RefPtr<PlatformCALayer>& shapeMaskLayer, CloneLevel);
+        RefPtr<PlatformCALayer>& contentsLayer, RefPtr<PlatformCALayer>& contentsClippingLayer, RefPtr<PlatformCALayer>& contentsShapeMaskLayer, RefPtr<PlatformCALayer>& shapeMaskLayer, CloneLevel);
 
     bool hasCloneLayers() const { return !!m_layerClones; }
     void removeCloneLayers();
@@ -374,6 +371,7 @@ private:
     void updateContentsPlatformLayer();
     void updateContentsColorLayer();
     void updateContentsRects();
+    void updateMasksToBoundsRect();
     void updateMaskLayer();
     void updateReplicatedLayers();
 
@@ -385,7 +383,6 @@ private:
     void updateTiles();
     void updateContentsScale(float pageScaleFactor);
     void updateCustomAppearance();
-    void updateCustomBehavior();
 
     enum StructuralLayerPurpose {
         NoStructuralLayer = 0,
@@ -402,8 +399,17 @@ private:
 
     enum MoveOrCopy { Move, Copy };
     static void moveOrCopyLayerAnimation(MoveOrCopy, const String& animationIdentifier, PlatformCALayer *fromLayer, PlatformCALayer *toLayer);
-    void moveOrCopyAnimations(MoveOrCopy, PlatformCALayer * fromLayer, PlatformCALayer * toLayer);
-    
+    void moveOrCopyAnimations(MoveOrCopy, PlatformCALayer* fromLayer, PlatformCALayer* toLayer);
+
+    void moveAnimations(PlatformCALayer* fromLayer, PlatformCALayer* toLayer)
+    {
+        moveOrCopyAnimations(Move, fromLayer, toLayer);
+    }
+    void copyAnimations(PlatformCALayer* fromLayer, PlatformCALayer* toLayer)
+    {
+        moveOrCopyAnimations(Copy, fromLayer, toLayer);
+    }
+
     bool appendToUncommittedAnimations(const KeyframeValueList&, const TransformOperations*, const Animation*, const String& animationName, const FloatSize& boxSize, int animationIndex, double timeOffset, bool isMatrixAnimation);
     bool appendToUncommittedAnimations(const KeyframeValueList&, const FilterOperation*, const Animation*, const String& animationName, int animationIndex, double timeOffset);
 
@@ -427,20 +433,20 @@ private:
         ContentsPlatformLayerChanged =  1LLU << 16,
         ContentsColorLayerChanged =     1LLU << 17,
         ContentsRectsChanged =          1LLU << 18,
-        MaskLayerChanged =              1LLU << 19,
-        ReplicatedLayerChanged =        1LLU << 20,
-        ContentsNeedsDisplay =          1LLU << 21,
-        AcceleratesDrawingChanged =     1LLU << 22,
-        ContentsScaleChanged =          1LLU << 23,
-        ContentsVisibilityChanged =     1LLU << 24,
-        VisibleRectChanged =            1LLU << 25,
-        FiltersChanged =                1LLU << 26,
-        BackdropFiltersChanged =        1LLU << 27,
-        TilingAreaChanged =             1LLU << 28,
-        TilesAdded =                    1LLU << 29,
-        DebugIndicatorsChanged =        1LLU << 30,
-        CustomAppearanceChanged =       1LLU << 31,
-        CustomBehaviorChanged =         1LLU << 32,
+        MasksToBoundsRectChanged =      1LLU << 19,
+        MaskLayerChanged =              1LLU << 20,
+        ReplicatedLayerChanged =        1LLU << 21,
+        ContentsNeedsDisplay =          1LLU << 22,
+        AcceleratesDrawingChanged =     1LLU << 23,
+        ContentsScaleChanged =          1LLU << 24,
+        ContentsVisibilityChanged =     1LLU << 25,
+        VisibleRectChanged =            1LLU << 26,
+        FiltersChanged =                1LLU << 27,
+        BackdropFiltersChanged =        1LLU << 28,
+        TilingAreaChanged =             1LLU << 29,
+        TilesAdded =                    1LLU << 30,
+        DebugIndicatorsChanged =        1LLU << 31,
+        CustomAppearanceChanged =       1LLU << 32,
         BlendModeChanged =              1LLU << 33,
     };
     typedef uint64_t LayerChangeFlags;
@@ -458,6 +464,7 @@ private:
     RefPtr<PlatformCALayer> m_contentsClippingLayer; // A layer used to clip inner content
     RefPtr<PlatformCALayer> m_shapeMaskLayer; // Used to clip with non-trivial corner radii.
     RefPtr<PlatformCALayer> m_contentsLayer; // A layer used for inner content, like image and video
+    RefPtr<PlatformCALayer> m_contentsShapeMaskLayer; // Used to clip the content layer with non-trivial corner radii.
     RefPtr<PlatformCALayer> m_backdropLayer; // The layer used for backdrop rendering, if necessary.
 
     // References to clones of our layers, for replicated layers.
@@ -465,6 +472,7 @@ private:
     std::unique_ptr<LayerMap> m_structuralLayerClones;
     std::unique_ptr<LayerMap> m_contentsLayerClones;
     std::unique_ptr<LayerMap> m_contentsClippingLayerClones;
+    std::unique_ptr<LayerMap> m_contentsShapeMaskLayerClones;
     std::unique_ptr<LayerMap> m_shapeMaskLayerClones;
 
 #ifdef VISIBLE_TILE_WASH

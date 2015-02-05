@@ -60,10 +60,7 @@ public:
 
     static bool supportsTypesettingFeatures(const FontCascade& font)
     {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080)
-        if (!font.isPrinterFont())
-            return !font.typesettingFeatures();
-
+#if PLATFORM(COCOA)
         return !(font.typesettingFeatures() & ~(Kerning | Ligatures));
 #else
         return !font.typesettingFeatures();

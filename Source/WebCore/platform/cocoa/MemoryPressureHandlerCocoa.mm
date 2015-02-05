@@ -84,7 +84,7 @@ void MemoryPressureHandler::install()
     dispatch_async(dispatch_get_main_queue(), ^{
 #if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 80000
         _cache_event_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYSTATUS, 0, DISPATCH_MEMORYSTATUS_PRESSURE_NORMAL | DISPATCH_MEMORYSTATUS_PRESSURE_WARN | DISPATCH_MEMORYSTATUS_PRESSURE_CRITICAL, dispatch_get_main_queue());
-#elif PLATFORM(MAC) && MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#elif PLATFORM(MAC)
         _cache_event_source = wkCreateMemoryStatusPressureCriticalDispatchOnMainQueue();
 #else
         _cache_event_source = wkCreateVMPressureDispatchOnMainQueue();
@@ -123,6 +123,8 @@ void MemoryPressureHandler::install()
 
         // Release any freed up blocks from the JS heap back to the system.
         JSDOMWindowBase::commonVM().heap.blockAllocator().releaseFreeRegions();
+
+        WTF::releaseFastMallocFreeMemory();
 
         malloc_zone_pressure_relief(nullptr, 0);
     });
@@ -189,7 +191,6 @@ void MemoryPressureHandler::respondToMemoryPressure(bool critical)
 #endif
 }
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
 size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
 {
     // Flush free memory back to the OS before every measurement.
@@ -222,10 +223,6 @@ void MemoryPressureHandler::ReliefLogger::platformLog()
     else
         NSLog(@"Pressure relief: %s: =dirty (at %ld bytes)\n", m_logString, currentMemory);
 }
-#else
-void MemoryPressureHandler::ReliefLogger::platformLog() { }
-size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage() { return 0; }
-#endif
 
 #if PLATFORM(IOS)
 static void respondToMemoryPressureCallback(CFRunLoopObserverRef observer, CFRunLoopActivity /*activity*/, void* /*info*/)

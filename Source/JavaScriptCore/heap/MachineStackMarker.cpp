@@ -129,12 +129,12 @@ MachineThreads::MachineThreads(Heap* heap)
 #endif
 {
     UNUSED_PARAM(heap);
+    threadSpecificKeyCreate(&m_threadSpecific, removeThread);
 }
 
 MachineThreads::~MachineThreads()
 {
-    if (m_threadSpecific)
-        threadSpecificKeyDelete(m_threadSpecific);
+    threadSpecificKeyDelete(m_threadSpecific);
 
     MutexLocker registeredThreadsLock(m_registeredThreadsMutex);
     for (Thread* t = m_registeredThreads; t;) {
@@ -168,20 +168,14 @@ static inline bool equalThread(const PlatformThread& first, const PlatformThread
 #endif
 }
 
-void MachineThreads::makeUsableFromMultipleThreads()
-{
-    if (m_threadSpecific)
-        return;
-
-    threadSpecificKeyCreate(&m_threadSpecific, removeThread);
-}
-
 void MachineThreads::addCurrentThread()
 {
     ASSERT(!m_heap->vm()->hasExclusiveThread() || m_heap->vm()->exclusiveThread() == std::this_thread::get_id());
 
-    if (!m_threadSpecific || threadSpecificGet(m_threadSpecific))
+    if (threadSpecificGet(m_threadSpecific)) {
+        ASSERT(threadSpecificGet(m_threadSpecific) == this);
         return;
+    }
 
     threadSpecificSet(m_threadSpecific, this);
     Thread* thread = new Thread(getCurrentPlatformThread(), wtfThreadData().stack().origin());
@@ -194,8 +188,7 @@ void MachineThreads::addCurrentThread()
 
 void MachineThreads::removeThread(void* p)
 {
-    if (p)
-        static_cast<MachineThreads*>(p)->removeCurrentThread();
+    static_cast<MachineThreads*>(p)->removeCurrentThread();
 }
 
 void MachineThreads::removeCurrentThread()
@@ -203,7 +196,6 @@ void MachineThreads::removeCurrentThread()
     PlatformThread currentPlatformThread = getCurrentPlatformThread();
 
     MutexLocker lock(m_registeredThreadsMutex);
-
     if (equalThread(currentPlatformThread, m_registeredThreads->platformThread)) {
         Thread* t = m_registeredThreads;
         m_registeredThreads = m_registeredThreads->next;
@@ -222,7 +214,7 @@ void MachineThreads::removeCurrentThread()
         delete t;
     }
 }
-
+    
 void MachineThreads::gatherFromCurrentThread(ConservativeRoots& conservativeRoots, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks, void* stackCurrent, RegisterState& registers)
 {
     void* registersBegin = &registers;
@@ -234,16 +226,21 @@ void MachineThreads::gatherFromCurrentThread(ConservativeRoots& conservativeRoot
     conservativeRoots.add(stackBegin, stackEnd, jitStubRoutines, codeBlocks);
 }
 
-static inline void suspendThread(const PlatformThread& platformThread)
+static inline bool suspendThread(const PlatformThread& platformThread)
 {
 #if OS(DARWIN)
-    thread_suspend(platformThread);
+    kern_return_t result = thread_suspend(platformThread);
+    return result == KERN_SUCCESS;
 #elif OS(HAIKU)
-    suspend_thread(platformThread);
+    status_t result = suspend_thread(platformThread);
+    return result == B_OK;
 #elif OS(WINDOWS)
-    SuspendThread(platformThread);
+    bool threadIsSuspended = (SuspendThread(platformThread) != (DWORD)-1);
+    ASSERT(threadIsSuspended);
+    return threadIsSuspended;
 #elif USE(PTHREADS)
     pthread_kill(platformThread, SigThreadSuspendResume);
+    return true;
 #else
 #error Need a way to suspend threads on this platform
 #endif
@@ -433,57 +430,138 @@ static void freePlatformThreadRegisters(PlatformThreadRegisters& regs)
 #endif
 }
 
-void MachineThreads::gatherFromOtherThread(ConservativeRoots& conservativeRoots, Thread* thread, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks)
+static std::pair<void*, size_t> otherThreadStack(void* stackBase, const PlatformThreadRegisters& registers)
 {
-    PlatformThreadRegisters regs;
-    size_t regSize = getPlatformThreadRegisters(thread->platformThread, regs);
-
-    conservativeRoots.add(static_cast<void*>(&regs), static_cast<void*>(reinterpret_cast<char*>(&regs) + regSize), jitStubRoutines, codeBlocks);
-
-    void* stackPointer = otherThreadStackPointer(regs);
-    void* stackBase = thread->stackBase;
-    stackPointer = reinterpret_cast<void*>(WTF::roundUpToMultipleOf<sizeof(void*)>(reinterpret_cast<uintptr_t>(stackPointer)));
-    conservativeRoots.add(stackPointer, stackBase, jitStubRoutines, codeBlocks);
-
-    freePlatformThreadRegisters(regs);
+    void* begin = stackBase;
+    void* end = reinterpret_cast<void*>(
+        WTF::roundUpToMultipleOf<sizeof(void*)>(
+            reinterpret_cast<uintptr_t>(
+                otherThreadStackPointer(registers))));
+    if (begin > end)
+        std::swap(begin, end);
+    return std::make_pair(begin, static_cast<char*>(end) - static_cast<char*>(begin));
 }
 
-void MachineThreads::gatherConservativeRoots(ConservativeRoots& conservativeRoots, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks, void* stackCurrent, RegisterState& registers)
+// This function must not call malloc(), free(), or any other function that might
+// acquire a lock. Since 'thread' is suspended, trying to acquire a lock
+// will deadlock if 'thread' holds that lock.
+void MachineThreads::tryCopyOtherThreadStack(Thread* thread, void* buffer, size_t capacity, size_t* size)
 {
-    gatherFromCurrentThread(conservativeRoots, jitStubRoutines, codeBlocks, stackCurrent, registers);
+    PlatformThreadRegisters registers;
+    size_t registersSize = getPlatformThreadRegisters(thread->platformThread, registers);
+    std::pair<void*, size_t> stack = otherThreadStack(thread->stackBase, registers);
 
-    if (m_threadSpecific) {
-        PlatformThread currentPlatformThread = getCurrentPlatformThread();
+    bool canCopy = *size + registersSize + stack.second <= capacity;
 
-        MutexLocker lock(m_registeredThreadsMutex);
+    if (canCopy)
+        memcpy(static_cast<char*>(buffer) + *size, &registers, registersSize);
+    *size += registersSize;
 
-#ifndef NDEBUG
-        // Forbid malloc during the gather phase. The gather phase suspends
-        // threads, so a malloc during gather would risk a deadlock with a
-        // thread that had been suspended while holding the malloc lock.
-        fastMallocForbid();
+    if (canCopy)
+        memcpy(static_cast<char*>(buffer) + *size, stack.first, stack.second);
+    *size += stack.second;
+
+    freePlatformThreadRegisters(registers);
+}
+
+bool MachineThreads::tryCopyOtherThreadStacks(MutexLocker&, void* buffer, size_t capacity, size_t* size)
+{
+    *size = 0;
+
+    PlatformThread currentPlatformThread = getCurrentPlatformThread();
+    int numberOfThreads = 0; // Using 0 to denote that we haven't counted the number of threads yet.
+    int index = 1;
+    Thread* threadsToBeDeleted = nullptr;
+
+    Thread* previousThread = nullptr;
+    for (Thread* thread = m_registeredThreads; thread; index++) {
+        if (!equalThread(thread->platformThread, currentPlatformThread)) {
+            bool success = suspendThread(thread->platformThread);
+#if OS(DARWIN)
+            if (!success) {
+                if (!numberOfThreads) {
+                    for (Thread* countedThread = m_registeredThreads; countedThread; countedThread = countedThread->next)
+                        numberOfThreads++;
+                }
+                
+                // Re-do the suspension to get the actual failure result for logging.
+                kern_return_t error = thread_suspend(thread->platformThread);
+                ASSERT(error != KERN_SUCCESS);
+
+                WTFReportError(__FILE__, __LINE__, WTF_PRETTY_FUNCTION,
+                    "JavaScript garbage collection encountered an invalid thread (err 0x%x): Thread [%d/%d: %p] platformThread %p.",
+                    error, index, numberOfThreads, thread, reinterpret_cast<void*>(thread->platformThread));
+
+                // Put the invalid thread on the threadsToBeDeleted list.
+                // We can't just delete it here because we have suspended other
+                // threads, and they may still be holding the C heap lock which
+                // we need for deleting the invalid thread. Hence, we need to
+                // defer the deletion till after we have resumed all threads.
+                Thread* nextThread = thread->next;
+                thread->next = threadsToBeDeleted;
+                threadsToBeDeleted = thread;
+
+                if (previousThread)
+                    previousThread->next = nextThread;
+                else
+                    m_registeredThreads = nextThread;
+                thread = nextThread;
+                continue;
+            }
+#else
+            UNUSED_PARAM(numberOfThreads);
+            UNUSED_PARAM(previousThread);
+            ASSERT_UNUSED(success, success);
 #endif
-        for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
-            if (!equalThread(thread->platformThread, currentPlatformThread))
-                suspendThread(thread->platformThread);
         }
-
-        // It is safe to access the registeredThreads list, because we earlier asserted that locks are being held,
-        // and since this is a shared heap, they are real locks.
-        for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
-            if (!equalThread(thread->platformThread, currentPlatformThread))
-                gatherFromOtherThread(conservativeRoots, thread, jitStubRoutines, codeBlocks);
-        }
-
-        for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
-            if (!equalThread(thread->platformThread, currentPlatformThread))
-                resumeThread(thread->platformThread);
-        }
-
-#ifndef NDEBUG
-        fastMallocAllow();
-#endif
+        previousThread = thread;
+        thread = thread->next;
     }
+
+    for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
+        if (!equalThread(thread->platformThread, currentPlatformThread))
+            tryCopyOtherThreadStack(thread, buffer, capacity, size);
+    }
+
+    for (Thread* thread = m_registeredThreads; thread; thread = thread->next) {
+        if (!equalThread(thread->platformThread, currentPlatformThread))
+            resumeThread(thread->platformThread);
+    }
+
+    for (Thread* thread = threadsToBeDeleted; thread; ) {
+        Thread* nextThread = thread->next;
+        delete thread;
+        thread = nextThread;
+    }
+    
+    return *size <= capacity;
+}
+
+static void growBuffer(size_t size, void** buffer, size_t* capacity)
+{
+    if (*buffer)
+        fastFree(*buffer);
+
+    *capacity = WTF::roundUpToMultipleOf(WTF::pageSize(), size * 2);
+    *buffer = fastMalloc(*capacity);
+}
+
+void MachineThreads::gatherConservativeRoots(ConservativeRoots& conservativeRoots, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks, void* stackCurrent, RegisterState& currentThreadRegisters)
+{
+    gatherFromCurrentThread(conservativeRoots, jitStubRoutines, codeBlocks, stackCurrent, currentThreadRegisters);
+
+    size_t size;
+    size_t capacity = 0;
+    void* buffer = nullptr;
+    MutexLocker lock(m_registeredThreadsMutex);
+    while (!tryCopyOtherThreadStacks(lock, buffer, capacity, &size))
+        growBuffer(size, &buffer, &capacity);
+
+    if (!buffer)
+        return;
+
+    conservativeRoots.add(buffer, static_cast<char*>(buffer) + size, jitStubRoutines, codeBlocks);
+    fastFree(buffer);
 }
 
 } // namespace JSC

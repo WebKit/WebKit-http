@@ -1,3 +1,1042 @@
+2015-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Console Support for Symbol Objects
+        https://bugs.webkit.org/show_bug.cgi?id=141173
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        Update the RemoteObject test to include Symbols.
+
+2015-02-04  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/misc/detached-frame-console.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=141267
+
+        * TestExpectations: Mark it as such.
+
+2015-02-04  Jer Noble  <jer.noble@apple.com>
+
+        [Mac][EME] Support ClearKey encryption with AES128-encrypted HLS
+        https://bugs.webkit.org/show_bug.cgi?id=140825
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/clearkey/clear-key-hls-aes128-expected.txt: Added.
+        * http/tests/media/clearkey/clear-key-hls-aes128.html: Added.
+        * http/tests/media/clearkey/support.js: Added.
+        (stringToUInt8Array):
+        (uInt8ArrayToString):
+        (base64EncodeUint8Array):
+        * http/tests/media/resources/hls/clearkey/crypt0.key: Added.
+        * http/tests/media/resources/hls/clearkey/iframe_index.m3u8: Added.
+        * http/tests/media/resources/hls/clearkey/main0.ts: Added.
+        * http/tests/media/resources/hls/clearkey/prog_index.m3u8: Added.
+        * media/video-test.js:
+        (waitForEventOnceOn):
+
+2015-02-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179618.
+        https://bugs.webkit.org/show_bug.cgi?id=141263
+
+        Off-by-one error causing flaky behavior in webaudio
+        /audiobuffersource-negative-playbackrate.html (Requested by
+        jernoble_ on #webkit).
+
+        Reverted changeset:
+
+        "[WebAudio] AudioBufferSourceNodes should accurately play
+        backwards if given a negative playbackRate."
+        https://bugs.webkit.org/show_bug.cgi?id=140955
+        http://trac.webkit.org/changeset/179618
+
+2015-02-03  David Hyatt  <hyatt@apple.com>
+
+        Tables don't repaginate properly when the pagination height changes or the pagination offset changes.
+        https://bugs.webkit.org/show_bug.cgi?id=141207
+        <rdar://problem/18387659>
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/table-dynamic-movement-expected.html: Added.
+        * fast/multicol/table-dynamic-movement.html: Added.
+
+2015-02-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        When using SVG as an image, we should load datauri images when these images are not in the image cache.
+        https://bugs.webkit.org/show_bug.cgi?id=99677.
+
+        Reviewed by Darin Adler.
+
+        * svg/as-image/resources/image-with-nested-data-uri-images.svg: Added.
+        This SVG has a tree of depth = 5 of nested data URI images. All the data URI images are
+        SVG images expect the innermost one which is a png data URI image.
+        
+        * svg/as-image/resources/image-with-nested-rects.svg: Added.
+        This SVG produces the same drawing as image-with-nested-data-uri-images.svg does but
+        it uses <rect> SVG elements instead.
+        
+        * svg/as-image/svg-image-with-data-uri-background-expected.html: Added.
+        * svg/as-image/svg-image-with-data-uri-background.html: Added.
+        Test the data URI SVG as a css background image.
+        
+        * svg/as-image/svg-image-with-data-uri-from-canvas-expected.html: Added.
+        * svg/as-image/svg-image-with-data-uri-from-canvas.html: Added.
+        Test the data URI image when it is the result of drawing an SVG image on a canvas object.
+        
+        * svg/as-image/svg-image-with-data-uri-images-disabled-expected.html: Added.
+        * svg/as-image/svg-image-with-data-uri-images-disabled.html: Added.
+        Ensure the data uri images are not loaded if imagesEnabled is turned off.
+        
+        * svg/as-image/svg-image-with-data-uri-reloading-expected.html: Added.
+        * svg/as-image/svg-image-with-data-uri-reloading.html: Added.
+        Test the data URI SVG when reloading the page.
+        
+        * svg/as-image/svg-image-with-data-uri-use-data-uri-expected.svg: Added.
+        * svg/as-image/svg-image-with-data-uri-use-data-uri.svg: Added.
+        Test the data URI image when it is referenced from an SVG <use> tag.
+        
+        * svg/as-image/svg-image-with-svg-data-uri-expected.html: Added.
+        * svg/as-image/svg-image-with-svg-data-uri.html: Added.
+        Test the data URI image when it is referenced from an HTML <img> tag.
+
+2015-02-04  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+        Mark http/tests/media/video-preload.html flaky.
+
+        * platform/mac/TestExpectations:
+
+2015-02-04  Jer Noble  <jer.noble@apple.com>
+
+        [WebAudio] AudioBufferSourceNodes should accurately play backwards if given a negative playbackRate.
+        https://bugs.webkit.org/show_bug.cgi?id=140955
+
+        Reviewed by Eric Carlson.
+
+        * webaudio/audiobuffersource-negative-playbackrate-expected.wav: Added.
+        * webaudio/audiobuffersource-negative-playbackrate-interpolated-expected.wav: Added.
+        * webaudio/audiobuffersource-negative-playbackrate-interpolated.html: Added.
+        * webaudio/audiobuffersource-negative-playbackrate.html: Added.
+
+        Get rid of extra HRTF padding as it's now unnecessary.
+
+        * webaudio/resources/note-grain-on-testing.js:
+        (createSignalBuffer):
+        (verifyStartAndEndFrames):
+
+2015-02-04  Eric Carlson  <eric.carlson@apple.com>
+
+        video.attribute should not return true just because of fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=141219
+
+        Reviewed by Dean Jackson.
+
+        * media/video-fullscreeen-only-controls-expected.txt: Update.
+        * media/video-fullscreeen-only-controls.html: Ditto.
+
+2015-02-04  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector/css/selector-dynamic-specificity.html is very slow on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=141252
+
+        * platform/mac-wk2/TestExpectations: Added an expectation.
+
+2015-02-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Unreviewed. Marking web-platform-tests as Skip to stop running wpt server.
+
+        * LayoutTests/TestExpectations:
+
+2015-02-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Unreviewed. Marking web-platform-tests as failed until wpt server can be properly relaunched.
+
+        * LayoutTests/TestExpectations:
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More test results gardening.
+
+        * platform/win/TestExpectations:
+
+2015-02-03  Maciej Stachowiak  <mjs@apple.com>
+
+        Crash when printing snapshotted plugins
+        https://bugs.webkit.org/show_bug.cgi?id=141212
+
+        Reviewed by Simon Fraser.
+
+        This test would crash without the fix due to a bad cast to RenderBox. <object>
+        is not prepared to have rendered inline children when rendering a plugin.
+        
+        * plugins/snapshotting/print-snapshotted-plugin-expected.txt: Added.
+        * plugins/snapshotting/print-snapshotted-plugin.html: Added.
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed. Activate more tests.
+
+        * platform/win/TestExpectations: Unskip the DOM4 constructor and cursor visibility
+        tests (since they work).
+
+2015-02-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Commit the forgotten expected result supposed to be added in r179569.
+
+        * editing/inserting/smart-quote-with-all-configurations-expected.txt: Added.
+
+2015-02-03  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/xmlhttprequest/event-listener-gc.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=33342
+
+        Reviewed by Zalan Bujtas.
+
+        This failure means that the GC timer fires after readystatechange event. As a
+        speculative fix, start the timer before starting the load, so that it's certain to
+        finish earlier.
+
+        * http/tests/xmlhttprequest/event-listener-gc.html:
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Mark some debug assertion failures to be skipped.
+
+        * platform/win/TestExpectations:
+
+2015-02-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Smart quoting could move the caret backwards in some configurations
+        https://bugs.webkit.org/show_bug.cgi?id=141203
+
+        Reviewed by Enrica Casucci.
+
+        Added a regression test for smart quote under all combinations of
+        spellchecking and substitution configurations.
+
+        * editing/inserting/smart-quote-with-all-configurations-expected.txt: Added.
+        * editing/inserting/smart-quote-with-all-configurations.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2015-02-02  Enrica Casucci  <enrica@apple.com>
+
+        Additional emoji support.
+        https://bugs.webkit.org/show_bug.cgi?id=141047
+        rdar://problem/19045135
+
+        Reviewed by Darin Adler.
+
+        * editing/deleting/delete-emoji.html: Added.
+        * editing/deleting/delete-emoji-expected.txt: Added.
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Lint cleanup of Windows TestExpectations (Unreviewed)
+
+        * platform/win/TestExpectations:
+
+2015-02-03  Jer Noble  <jer.noble@apple.com>
+
+        Passing invalid values to OfflineAudioContext's constructor should not crash.
+        https://bugs.webkit.org/show_bug.cgi?id=141197
+
+        Reviewed by Darin Adler.
+
+        * webaudio/offlineaudiocontext-constructor-expected.txt: Added.
+        * webaudio/offlineaudiocontext-constructor.html: Added.
+
+2015-02-03  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Setting timestampOffset does not change the timestamps in the actual sample, leading to visual and audible errors.
+        https://bugs.webkit.org/show_bug.cgi?id=140929
+
+        Reviewed by Darin Adler.
+
+        * media/media-source/media-source-timeoffset-expected.txt: Added.
+        * media/media-source/media-source-timeoffset.html: Added.
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [WIn] Unreviewed test updates.
+
+        * platform/win/TestExpectations:
+
+2015-02-03  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] HLS audio is not correctly selected according to system language
+        https://bugs.webkit.org/show_bug.cgi?id=140398
+        rdar://problem/19218487
+
+        Reviewed by Darin Adler.
+
+        * http/tests/media/hls/hls-audio-tracks-locale-selection-expected.txt: Added.
+        * http/tests/media/hls/hls-audio-tracks-locale-selection.html: Added.
+        * http/tests/media/resources/hls/audio-tracks.m3u8:
+
+2015-02-03  Piotr Krysiewicz  <p.krysiewicz@samsung.com>
+
+        [EFL] fast/borders/mixed-border-style2.html fails due to missing -expected.txt
+        https://bugs.webkit.org/show_bug.cgi?id=141080
+
+        Unreviewed EFL gardening
+
+        Wrong: Test has no expected result
+        Right: Test has an expected result as well as an image showing
+               the correct page render
+
+        * platform/efl/fast/borders/mixed-border-style2-expected.png: Added.
+        * platform/efl/fast/borders/mixed-border-style2-expected.txt: Added.
+
+2015-02-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Activate HTTP tests
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/dom/adopt-node-crash-2-expected.txt:
+
+2015-02-02  Benjamin Poulain  <benjamin@webkit.org>
+
+        JIT Compile simple cases of :nth-last-child()
+        https://bugs.webkit.org/show_bug.cgi?id=141053
+
+        Reviewed by Andreas Kling.
+
+        There was almost no test coverage for :nth-last-child(). I copied the main tests
+        from :nth-child() and updated the expected results.
+
+        This is not ideal because we should have style update tests targetting
+        backward invalidation... Still better than nothing :)
+
+        * fast/selectors/nth-last-child-as-first-simple-selector-style-update-expected.txt: Added.
+        * fast/selectors/nth-last-child-as-first-simple-selector-style-update.html: Added.
+        * fast/selectors/nth-last-child-basics-expected.txt: Added.
+        * fast/selectors/nth-last-child-basics.html: Added.
+        * fast/selectors/nth-last-child-bounds-expected.txt: Added.
+        * fast/selectors/nth-last-child-bounds.html: Added.
+        * fast/selectors/nth-last-child-chained-expected.txt: Added.
+        * fast/selectors/nth-last-child-chained.html: Added.
+        * fast/selectors/nth-last-child-on-root-expected.txt: Added.
+        * fast/selectors/nth-last-child-on-root.html: Added.
+        * fast/selectors/nth-last-child-style-update-expected.txt: Added.
+        * fast/selectors/nth-last-child-style-update.html: Added.
+        * fast/selectors/nth-last-child-with-backtracking-expected.txt: Added.
+        * fast/selectors/nth-last-child-with-backtracking.html: Added.
+        * fast/selectors/several-nth-last-child-expected.txt: Added.
+        * fast/selectors/several-nth-last-child.html: Added.
+
+2015-02-02  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL gardening. Update flakiness tests on W3C SVG 1.1 tests.
+
+        * platform/efl/TestExpectations:
+
+2015-02-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Clean up attribute handling: part 2 - attributeNode
+        https://bugs.webkit.org/show_bug.cgi?id=141109
+
+        Reviewed by Andreas Kling.
+
+        Improve the coverage a little.
+
+        Not everything is right yet: some getters return an empty string when they
+        should return null.
+
+        * fast/dom/Element/attribute-ascii-case-insensitive-1-expected.txt:
+        This is now fixed :)
+
+        * fast/dom/Element/attribute-ascii-case-insensitive-3-expected.txt: Added.
+        * fast/dom/Element/attribute-ascii-case-insensitive-3.html: Added.
+        Test prefixed-like attribute defined through the parser.
+
+        * fast/dom/Element/attribute-setAttributeNode-multiple-times-expected.txt: Added.
+        * fast/dom/Element/attribute-setAttributeNode-multiple-times.html: Added.
+        Make sure we don't accumulate nodes.
+
+        * fast/dom/Element/attribute-setAttributeNodeNS-multiple-times-expected.txt: Added.
+        * fast/dom/Element/attribute-setAttributeNodeNS-multiple-times.html: Added.
+        Same without the crazy setter.
+
+        * fast/dom/Element/script-tests/getAttribute-check-case-sensitivity.js:
+        * fast/dom/Element/getAttribute-check-case-sensitivity-expected.txt:
+        With the latest spec, getting a node with any uppercase character through
+        getAttributeNode() always fails. Update the test to use .getAttributeNodeNS()
+        were needed.
+
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug1075702-expected.txt: Added.
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug1075702.html: Added.
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug339494-expected.txt: Added.
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug339494.html: Added.
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug364092-expected.txt: Added.
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug364092.xhtml: Added.
+        (testGetAttributeNodeMixedCase):
+        (testAttribNodeNamePreservesCaseGetNode):
+        (testAttribNodeNamePreservesCaseGetNode2):
+        Some related tests from Gecko, for completeness.
+
+        * fast/dom/Element/setAttributeNode-case-insensitivity-expected.txt:
+        * fast/dom/Element/setAttributeNode-case-insensitivity.html:
+        Test that the getAttribute part of setAttributeNode() do not ignore the prefix. The spec
+        says to use the name, not the localname.
+
+        * fast/dom/Element/setAttributeNode-for-existing-attribute-expected.txt:
+        * fast/dom/Element/setAttributeNode-for-existing-attribute.html:
+        This test was for legacy behavior that came from Firefox. Firefox does not do that anymore.
+        Keep the test around for regression catching, but add a sentence explaining the 'incorrect'
+        behavior.
+
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-1-expected.txt: Added.
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-1.html: Added.
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-2-expected.txt: Added.
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-2.html: Added.
+        Some coverage for the name overriding craziness.
+
+2015-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Rebaseline test with new expected results.
+
+        * http/tests/inspector-protocol/access-inspected-object-expected.txt:
+
+2015-02-02  Benjamin Poulain  <benjamin@webkit.org>
+
+        Multiple CSS plus selector not working after checkbox:checked
+        https://bugs.webkit.org/show_bug.cgi?id=110594
+
+        Reviewed by Darin Adler.
+
+        I fixed the bug not so long ago.
+
+        This patch adds coverage for :checked since internal states
+        tend to have tricky update behaviors.
+
+        * fast/selectors/checked-direct-adjacent-style-update-1-expected.txt: Added.
+        * fast/selectors/checked-direct-adjacent-style-update-1.html: Added.
+        * fast/selectors/checked-direct-adjacent-style-update-2-expected.txt: Added.
+        * fast/selectors/checked-direct-adjacent-style-update-2.html: Added.
+        * fast/selectors/checked-direct-adjacent-style-update-3-expected.txt: Added.
+        * fast/selectors/checked-direct-adjacent-style-update-3.html: Added.
+        * fast/selectors/checked-direct-adjacent-style-update-4-expected.txt: Added.
+        * fast/selectors/checked-direct-adjacent-style-update-4.html: Added.
+
+2015-01-30  Roger Fong  <roger_fong@apple.com>
+
+        WebGL2: Implement spec section 3.7.1 Setting and getting state (Part 1).
+        https://bugs.webkit.org/show_bug.cgi?id=141096
+        <rdar://problem/15002469>
+
+        Reviewed by Brent Fulgham.
+
+        Two read format parameters were moved from the WebGL2 spec to the WebGL1 spec. Update tests accordingly.
+        * fast/canvas/webgl/constants.html:
+        * fast/canvas/webgl/webgl-specific-expected.txt:
+        * fast/canvas/webgl/webgl-specific.html:
+        * webgl/1.0.2/resources/webgl_test_files/conformance/misc/webgl-specific.html:
+
+2015-02-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] ASSERTION FAILED: m_scriptExecutionContext->isContextThread() in ContextDestructionObserver::observeContext
+        https://bugs.webkit.org/show_bug.cgi?id=141057
+        <rdar://problem/19068790>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Un-skip crypto tests. Also, group skip entries for tests crypto/subtle/{rsa-indexeddb, rsa-indexeddb-non-exportable}.html
+        with other skipped IndexedDB tests.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-02-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179467 and r179470.
+        https://bugs.webkit.org/show_bug.cgi?id=141144
+
+        Broke svg/custom/use-events-crash.svg (Requested by ap on
+        #webkit).
+
+        Reverted changesets:
+
+        "Stop dispatching events with SVGElementInstance objects as
+        their targets"
+        https://bugs.webkit.org/show_bug.cgi?id=141108
+        http://trac.webkit.org/changeset/179467
+
+        "REGRESSION(r179467): svg/custom/use-events-crash.svg times
+        out"
+        http://trac.webkit.org/changeset/179470
+
+2015-02-01  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION(r179467): svg/custom/use-events-crash.svg times out
+
+        Looks like the new test (svg/custom/use-event-retargeting.html) somehow breaks
+        subsequent one, let's try skipping it for now.
+
+        * TestExpectations:
+
+2015-01-31  Darin Adler  <darin@apple.com>
+
+        Stop dispatching events with SVGElementInstance objects as their targets
+        https://bugs.webkit.org/show_bug.cgi?id=141108
+
+        Reviewed by Anders Carlsson.
+
+        Many tests are no longer relevant once we aren't doing this any more.
+
+        * platform/gtk/svg/custom/use-instanceRoot-event-bubbling-expected.png: Removed.
+        * platform/gtk/svg/custom/use-instanceRoot-modifications-expected.png: Removed.
+        * platform/gtk/svg/custom/use-instanceRoot-modifications-expected.txt: Removed.
+        * platform/ios-sim-deprecated/svg/custom/use-instanceRoot-modifications-expected.txt: Removed.
+        * platform/ios-simulator/svg/custom/use-instanceRoot-modifications-expected.txt: Removed.
+        * platform/mac-mountainlion/svg/custom/use-instanceRoot-modifications-expected.txt: Removed.
+        * platform/mac/svg/custom/use-instanceRoot-event-bubbling-expected.png: Removed.
+        * platform/mac/svg/custom/use-instanceRoot-modifications-expected.png: Removed.
+        * platform/mac/svg/custom/use-instanceRoot-modifications-expected.txt: Removed.
+        * svg/custom/use-instanceRoot-modifications.svg: Removed.
+        * svg/custom/use-instanceRoot-with-use-removed-expected.txt: Removed.
+        * svg/custom/use-instanceRoot-with-use-removed.svg: Removed.
+
+        * svg/custom/resources/use-instanceRoot-event-bubbling.js: Updated this test to expect
+        the events to be dispatched with the SVGUseElement as the target. I talked this over with
+        Sam Weinig and we decided this is good behavior for now, and it almost matches what the
+        spec says. Might be worth refining later.
+        * svg/custom/use-instanceRoot-event-bubbling-expected.txt: Updated expected results.
+        * svg/custom/use-instanceRoot-event-bubbling.xhtml: Tweaked the test a little. It still
+        could use improvement; it's like half a "repaint test", which is strange.
+
+        * svg/custom/use-event-retargeting-expected.txt: Added. Got this test from Blink.
+        * svg/custom/use-event-retargeting.html: Added. Ditto.
+
+2015-02-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewd EFL gardening. Add new failing tests related to W3C SVG 1.1.
+
+        * platform/efl/TestExpectations:
+
+2015-02-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Update crash tests related to webgl because
+        webgl isn't supported by EFL port at the moment.
+
+        * platform/efl/TestExpectations:
+
+2015-02-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Update tests which don't have expectation result yet.
+
+        * platform/efl/TestExpectations:
+
+2015-01-31  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Update flaky tests regarding W3C SVG 1.1 tests.
+
+        * platform/efl/TestExpectations:
+
+2015-01-31  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test machine configuration change.
+
+        * http/conf/apache2.4-httpd-win.conf: Provide reasonable default PidFile location for xampp-based install.
+
+2015-01-31  Myles C. Maxfield  <litherum@gmail.com>
+
+        REGRESSION (r177689): Emoji variation sequences rendered incorrectly (as characters from other non-emoji font)
+        https://bugs.webkit.org/show_bug.cgi?id=141112
+
+        Reviewed by Sam Weinig.
+
+        * platform/mac/fast/text/combining-mark-paint-expected.html: Added.
+        * platform/mac/fast/text/combining-mark-paint.html: Added.
+
+2015-01-31  Michael Saboff  <msaboff@apple.com>
+
+        Crash (DFG assertion) beneath AbstractInterpreter::verifyEdge() @ http://experilous.com/1/planet-generator/2014-09-28/version-1
+        https://bugs.webkit.org/show_bug.cgi?id=141111
+
+        Reviewed by Filip Pizlo.
+
+        New tests.
+
+        * js/regress-141111-expected.txt: Added.
+        * js/regress-141111.html: Added.
+        * js/script-tests/regress-141111.js: Added.
+        (MyObject):
+        (foo):
+        (.result):
+        (bar):
+
+2015-01-31  Antti Koivisto  <antti@apple.com>
+
+        Enable WebKit disk cache on OS X
+        https://bugs.webkit.org/show_bug.cgi?id=141022
+
+        Reviewed by Gavin Barraclough.
+
+        * TestExpectations: Enable the test for cache functionality.
+
+2015-01-31  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Import W3C web platform tests infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=140934
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestExpectations: added lines to skip web-platform-tests
+        infrastructure folders. Added one line for a partially passing test.
+
+2015-01-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement ES6 Symbol
+        https://bugs.webkit.org/show_bug.cgi?id=140435
+
+        Reviewed by Geoffrey Garen.
+
+        * js/script-tests/symbol-abstract-equality-comparison.js: Added.
+        (Pair):
+        (relationalOperators.forEach):
+        * js/script-tests/symbol-abstract-relational-comparison.js: Added.
+        (relationalOperators.forEach):
+        * js/script-tests/symbol-in-map.js: Added.
+        (set shouldBe):
+        * js/script-tests/symbol-object.js: Added.
+        * js/script-tests/symbol-prototype-is-ordinary-object.js: Added.
+        * js/script-tests/symbol-strict-equality-comparison.js: Added.
+        (Pair):
+        (relationalOperators.forEach):
+        * js/script-tests/symbol-tostring.js: Added.
+        * js/script-tests/symbols.js: Renamed from LayoutTests/js/script-tests/names.js.
+        (forIn):
+        * js/symbol-abstract-equality-comparison-expected.txt: Added.
+        * js/symbol-abstract-equality-comparison.html: Copied from LayoutTests/js/names.html.
+        * js/symbol-abstract-relational-comparison-expected.txt: Added.
+        * js/symbol-abstract-relational-comparison.html: Copied from LayoutTests/js/names.html.
+        * js/symbol-in-map-expected.txt: Added.
+        * js/symbol-in-map.html: Copied from LayoutTests/js/names.html.
+        * js/symbol-object-expected.txt: Added.
+        * js/symbol-object.html: Copied from LayoutTests/js/names.html.
+        * js/symbol-prototype-is-ordinary-object-expected.txt: Added.
+        * js/symbol-prototype-is-ordinary-object.html: Copied from LayoutTests/js/names.html.
+        * js/symbol-strict-equality-comparison-expected.txt: Added.
+        * js/symbol-strict-equality-comparison.html: Copied from LayoutTests/js/names.html.
+        * js/symbol-tostring-expected.txt: Added.
+        * js/symbol-tostring.html: Copied from LayoutTests/js/names.html.
+        * js/symbols-expected.txt: Renamed from LayoutTests/js/names-expected.txt.
+        * js/symbols.html: Renamed from LayoutTests/js/names.html.
+
+2015-01-30  Dariusz Frankiewicz  <d.frankiewic@samsung.com>
+
+        [EFL] Gardening: update some accessibility tests as failed
+        https://bugs.webkit.org/show_bug.cgi?id=141034
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/accessibility/roles-exposed-expected.txt:
+        update expectation after bumping ATK to 2.15.2
+
+2015-01-30  Piotr Pajak  <p.pajak@samsung.com>
+
+        [EFL] Mark test css3/masking/mask-repeat-space-padding.html as passing
+        https://bugs.webkit.org/show_bug.cgi?id=141077
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations:
+
+2015-01-30  Karol Pawlowski  <k.pawlowski@samsung.com>
+
+        [EFL] Rebaseline efl/js/dom/global-constructors-attributes-expected.txt
+        https://bugs.webkit.org/show_bug.cgi?id=141029
+        
+        Unreviewed EFL gardening
+
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+
+2015-01-30  Chris Dumez  <cdumez@apple.com>
+
+        When no background-size is specified on the 2nd background layer, it takes the first instead of the initial value
+        https://bugs.webkit.org/show_bug.cgi?id=141059
+
+        Reviewed by Antti Koivisto.
+
+        Add layout test to cover the case where we have 2 background layers, with an explicit
+        size only for the first one.
+
+        * fast/css/background-layers-initial-size-expected.txt: Added.
+        * fast/css/background-layers-initial-size.html: Added.
+
+2015-01-30  Matthew Mirman  <mmirman@apple.com>
+
+        Added a test for JSON.stringify on ClientRect.
+        https://bugs.webkit.org/show_bug.cgi?id=141063
+        <rdar://problem/18437653>
+
+        Reviewed by Oliver Hunt.
+
+        * js/resources/JSON-stringify.js:
+        (createTests.var):
+        (createTests.result):
+        * js/resources/JSON-stringify-expected.txt:
+
+2015-01-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Switch to Apache on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=141060
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a new Windows XAMPP Apache configuration file for running
+        the http test suite on Windows.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/conf/apache2.4-httpd-win.conf: Added.
+
+2015-01-29  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed. Further rebaselining after r179368.
+
+        * platform/mac-mavericks/fast/forms/select-visual-hebrew-expected.txt: Added.
+
+2015-01-29  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, gardening on EFL port. some tests aren't flaky anymore.
+        Unskip those tests on EFL port.
+
+        * platform/efl/TestExpectations:
+
+2015-01-29  Darin Adler  <darin@apple.com>
+
+        Remove SVGUseElement.instanceRoot and all tests that depend on it
+        https://bugs.webkit.org/show_bug.cgi?id=141025
+
+        Reviewed by Anders Carlsson.
+
+        * platform/gtk/TestExpectations: Removed expected failure for now-removed test.
+        * platform/ios-simulator-wk2/TestExpectations: Ditto.
+        * platform/mac/TestExpectations: Ditto.
+
+        * platform/gtk/svg/custom/use-elementInstance-event-target-expected.png: Removed.
+        * platform/gtk/svg/custom/use-elementInstance-event-target-expected.txt: Removed.
+        * platform/gtk/svg/custom/use-elementInstance-methods-expected.png: Removed.
+        * platform/gtk/svg/custom/use-elementInstance-methods-expected.txt: Removed.
+        * platform/ios-sim-deprecated/svg/custom/use-elementInstance-event-target-expected.txt: Removed.
+        * platform/ios-sim-deprecated/svg/custom/use-elementInstance-methods-expected.txt: Removed.
+        * platform/ios-simulator/svg/custom/use-elementInstance-event-target-expected.txt: Removed.
+        * platform/ios-simulator/svg/custom/use-elementInstance-methods-expected.txt: Removed.
+        * platform/mac-mountainlion/svg/custom/use-elementInstance-event-target-expected.txt: Removed.
+        * platform/mac-mountainlion/svg/custom/use-elementInstance-methods-expected.txt: Removed.
+        * platform/mac/svg/custom/use-elementInstance-event-target-expected.png: Removed.
+        * platform/mac/svg/custom/use-elementInstance-event-target-expected.txt: Removed.
+        * platform/mac/svg/custom/use-elementInstance-methods-expected.png: Removed.
+        * platform/mac/svg/custom/use-elementInstance-methods-expected.txt: Removed.
+        * svg/custom/element-instance-held-by-js-crash-expected.txt: Removed.
+        * svg/custom/element-instance-held-by-js-crash.svg: Removed.
+        * svg/custom/resources/use-instanceRoot-event-bubbling.js: Find element by id instead
+        of using use.instanceRoot.correspondingElement.
+        * svg/custom/resources/use-instanceRoot-event-listeners.js: Removed.
+        * svg/custom/use-crash-using-children-before-destroy.svg: Removed a line of code that
+        got at the instanceRoot. It's possible this test no longer has value, and if so, then
+        we could later delete it, but it does no harm.
+        * svg/custom/use-elementInstance-event-target.svg: Removed.
+        * svg/custom/use-elementInstance-methods.svg: Removed.
+        * svg/custom/use-instanceRoot-as-event-target-expected.txt: Removed.
+        * svg/custom/use-instanceRoot-as-event-target.xhtml: Removed.
+        * svg/custom/use-instanceRoot-event-listener-liveness-expected.txt: Removed.
+        * svg/custom/use-instanceRoot-event-listener-liveness.xhtml: Removed.
+        * svg/custom/use-instanceRoot-event-listeners-expected.txt: Removed.
+        * svg/custom/use-instanceRoot-event-listeners.xhtml: Removed.
+        * svg/custom/use-instanceRoot-modifications.svg: Removed the part of this that involved
+        the instanceRoot property. It's possible this test now has reduced value, and if so, we
+        could later delete it but it does no harm.
+        * svg/custom/use-instanceRoot-with-use-removed.svg: Removed the use of instanceRoot
+        and correspondingUseElement. Not certain this remains a useful test. Also converted line
+        endings to LF instead of CRLF.
+        * svg/custom/use-listener-append-crash.html: Get elements by id instead of instanceRoot.
+        * svg/custom/use-modify-target-container.svg: Ditto.
+        * svg/custom/use-modify-target-symbol.svg: Ditto.
+        * svg/custom/use-on-use-with-child-expected.txt: Updated since we don't dump an instance
+        tree any more.
+        * svg/custom/use-on-use-with-child.svg: Removed the part about dumping the instance tree,
+        and added in the part about dragging to make sure it doesn't crash.
+        * svg/dom/use-transform.svg: Get element by id instead of instanceRoot.
+
+2015-01-29  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL port gardening. Some tests have been passed since r172999 though,
+        those have marked with "Failure".
+
+        * platform/efl/TestExpectations:
+
+2015-01-29  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, gardening on EFL port. Unskip tests which don't come to crash or
+        timeout anymore.
+
+        * platform/efl/TestExpectations:
+
+2015-01-29  Sam Weinig  <sam@webkit.org>
+
+        More follow up to https://bugs.webkit.org/show_bug.cgi?id=141038
+
+        * platform/mac-mavericks/fast/text/international/hindi-spacing-expected.txt:
+        * platform/mac/fast/text/international/hindi-spacing-expected.txt:
+
+2015-01-29  Sam Weinig  <sam@webkit.org>
+
+        Follow up to https://bugs.webkit.org/show_bug.cgi?id=141038
+
+        Update test results on Yosemite now that we don't use the screen font
+        in controls.
+
+        * platform/mac/fast/css/rtl-ordering-expected.png:
+        * platform/mac/fast/css/rtl-ordering-expected.txt:
+        * platform/mac/fast/forms/search-rtl-expected.png:
+        * platform/mac/fast/forms/search-rtl-expected.txt:
+        * platform/mac/fast/forms/select-visual-hebrew-expected.png:
+        * platform/mac/fast/forms/select-visual-hebrew-expected.txt:
+        * platform/mac/fast/forms/select-writing-direction-natural-expected.png:
+        * platform/mac/fast/forms/select-writing-direction-natural-expected.txt:
+        * platform/mac/fast/text/international/hindi-spacing-expected.txt:
+        * platform/mac/fast/text/international/pop-up-button-text-alignment-and-direction-expected.png:
+        * platform/mac/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt:
+
+2015-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Skip these two tests in the stress testing since the feature isn't enabled.
+
+        * js/script-tests/class-syntax-declaration.js:
+        * js/script-tests/class-syntax-expression.js:
+
+2015-01-29  Eric Carlson  <eric.carlson@apple.com>
+
+        media/track/track-in-band-cues-added-once.html fails sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=138806
+
+        Reviewed by Brent Fulgham.
+
+        * media/track/track-in-band-cues-added-once-expected.txt: Update results.
+        * media/track/track-in-band-cues-added-once.html: Seek before beginning playback so
+            the media engine is more likely to buffer and process the initial cue.
+        * platform/mac/TestExpectations: Unskip track-in-band-cues-added-once.html.
+
+2015-01-29  Eric Carlson  <eric.carlson@apple.com>
+
+        REGRESSION (OS X 10.10.2): media/track/track-in-band-style.html frequently times out
+        https://bugs.webkit.org/show_bug.cgi?id=140974
+
+        Reviewed by Brent Fulgham.
+
+        * media/track/track-in-band-style-expected.txt: Updated.
+        * media/track/track-in-band-style.html: Introduce a brief pause between receiving the 'seeked'
+            event and checking caption style to allow for media engine latency. Add additional logging
+            when the test fails to make future failure diagnosis easier.
+
+        * platform/mac/TestExpectations: Remove track-in-band-style.html.
+
+2015-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Implement ES6 class syntax without inheritance support
+        https://bugs.webkit.org/show_bug.cgi?id=140918
+
+        Reviewed by Geoffrey Garen.
+
+        Added two tests for class declarations and class expressions.
+
+        * TestExpectations:
+        * js/class-syntax-declaration-expected.txt: Added.
+        * js/class-syntax-declaration.html: Added.
+        * js/class-syntax-expression-expected.txt: Added.
+        * js/class-syntax-expression.html: Added.
+        * js/script-tests/class-syntax-declaration.js: Added.
+        * js/script-tests/class-syntax-expression.js: Added.
+
+2015-01-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Border-radius clipping on a stacking context causes descendants to not render
+        https://bugs.webkit.org/show_bug.cgi?id=140536
+
+        Reviewed by Zalan Bujtas.
+        
+        Ref test that clips out the middle of a composited rounded-rect overflow element,
+        and also tests reflections.
+
+        * compositing/clipping/border-radius-stacking-context-clip-expected.html: Added.
+        * compositing/clipping/border-radius-stacking-context-clip.html: Added.
+
+2015-01-29  Sam Weinig  <sam@webkit.org>
+
+        Remove support for screen font substitution
+        https://bugs.webkit.org/show_bug.cgi?id=141038
+
+        Reviewed by Tim Horton.
+
+        * platform/mac/fast/text/international/hindi-spacing-expected.txt:
+        Update results now that buttons always use printer fonts. We were accidentally
+        allowing buttons to use screen fonts, which usually didn't make a difference,
+        but does with some fallback fonts.
+
+2015-01-20  David Hyatt  <hyatt@apple.com>
+
+        Japanese line breaking rules need to be respected before and after Ruby.
+        https://bugs.webkit.org/show_bug.cgi?id=91588
+        <rdar://problem/17306535>
+
+        Reviewed by Dean Jackson.
+
+        * fast/ruby/ruby-block-style-not-updated-with-before-after-content-expected.txt:
+        * fast/ruby/ruby-block-style-not-updated-with-before-after-content.html:
+        * fast/ruby/ruby-inline-style-not-updated-with-before-after-content-expected.txt:
+        * fast/ruby/ruby-inline-style-not-updated-with-before-after-content.html:
+        * fast/ruby/ruby-punctuation-avoid-breaking-expected.html: Added.
+        * fast/ruby/ruby-punctuation-avoid-breaking.html: Added.
+
+2015-01-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark more tests as slow in debug.
+
+        * TestExpectations:
+
+2015-01-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Console Format for Set and Map Objects (like Arrays)
+        https://bugs.webkit.org/show_bug.cgi?id=122867
+
+        Reviewed by Timothy Hatcher.
+
+        * TestExpectations:
+        Inspector tests are still flakey on bots, so skip the test.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        Update based on Runtime.ObjectPreview changes.
+
+        * inspector/model/remote-object-weak-collection-expected.txt: Added.
+        * inspector/model/remote-object-weak-collection.html: Added.
+        New test for weak collection handling.
+
+2015-01-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        security/mixedContent/redirect-https-to-http-iframe-in-main-frame test is the same as security/mixedContent/redirect-http-to-https-iframe-in-main-frame.html
+        https://bugs.webkit.org/show_bug.cgi?id=140876
+
+        Reviewed by Darin Adler.
+
+        Fix the test so it's not identical to the redirect-http-to-https-iframe-in-main-frame
+        test, and update the expected results.
+
+        * http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame.html:
+
+2015-01-28  Benjamin Poulain  <bpoulain@apple.com>
+
+        Start fixing the handling of Element's attributes when they contain non-ASCII characters
+        https://bugs.webkit.org/show_bug.cgi?id=141016
+
+        Reviewed by Ryosuke Niwa.
+
+        Start some basic testing.
+
+        Some tests are failing due to the more complicated case being handled incorrectly, this will
+        be fixed in follow ups.
+
+        * fast/css/attribute-ascii-case-insensitive-html-expected.html: Added.
+        * fast/css/attribute-ascii-case-insensitive-html.html: Added.
+        * fast/css/attribute-ascii-case-insensitive-xhtml-expected.xhtml: Added.
+        * fast/css/attribute-ascii-case-insensitive-xhtml.xhtml: Added.
+        * fast/css/attribute-ascii-case-insensitive-xml-in-html-expected.html: Added.
+        * fast/css/attribute-ascii-case-insensitive-xml-in-html.html: Added.
+        * fast/dom/Element/attribute-ascii-case-insensitive-1-expected.txt: Added.
+        * fast/dom/Element/attribute-ascii-case-insensitive-1.html: Added.
+        * fast/dom/Element/attribute-ascii-case-insensitive-2-expected.txt: Added.
+        * fast/dom/Element/attribute-ascii-case-insensitive-2.html: Added.
+        * fast/selectors/attribute-ascii-case-insensitive-style-update-expected.txt: Added.
+        * fast/selectors/attribute-ascii-case-insensitive-style-update.html: Added.
+        * fast/selectors/element-matches-attribute-ascii-case-insensitive-html-expected.txt: Added.
+        * fast/selectors/element-matches-attribute-ascii-case-insensitive-html.html: Added.
+        * fast/selectors/querySelector-attribute-ascii-case-insensitive-html-expected.txt: Added.
+        * fast/selectors/querySelector-attribute-ascii-case-insensitive-html.html: Added.
+
+2015-01-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Actually delete the file!
+
+        * platform/win/fast/events/ondrop-text-htmlt-expected.txt: Removed.
+
+2015-01-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening. Get rid of misspelled expected file.
+
+        Get rid of the 'ondrop-text-htmlt-expected.txt' file, and commit a new baseline
+        from the test system.
+
+        * platform/win/fast/events/ondrop-text-htmlt-expected.txt: Removed.
+        * platform/win/fast/text/backslash-to-yen-sign-euc-expected.txt:
+
+2015-01-28  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r177494): Bad cast to WebKitCSSResourceValue in StyleBuilderConverter::convertMaskImageOperations()
+        https://bugs.webkit.org/show_bug.cgi?id=140991
+        <rdar://problem/19625305>
+
+        Reviewed by Antti Koivisto.
+
+        Add layout test to cover the case where a CSSValue is incorrectly casted to
+        a WebKitCSSResourceValue in StyleBuilderConverter::convertMaskImageOperations(),
+        thus hitting an assertion in downcast<>() on debug builds.
+
+        * css3/masking/mask-image-initial-value-crash-expected.txt: Added.
+        * css3/masking/mask-image-initial-value-crash.html: Added.
+
+2015-01-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More gardening to get the bot green.
+
+        * css3/scroll-snap/resources: Added.
+        * platform/win/TestExpectations:
+        * platform/win/fast/events/ondrop-text-html-expected.txt: Copied from platform/win/fast/events/ondrop-text-htmlt-expected.txt.
+        * platform/win/fast/events/ondrop-text-htmlt-expected.txt: Removed.
+        * platform/win/fast/html/marquee-scrollamount-expected.txt: Added.
+        * platform/win/fast/text/backslash-to-yen-sign-euc-expected.txt:
+        * platform/win/fast/text/fallback-traits-fixup-expected.txt:
+        * platform/win/fast/text/international/complex-character-based-fallback-expected.txt:
+
+2015-01-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening. Reskip some region tests.
+
+        * platform/win/TestExpectations:
+
+2015-01-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Implement support for new AtkRole types for MathML
+        https://bugs.webkit.org/show_bug.cgi?id=140916
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/math-multiscript-attributes.html: Added.
+        * accessibility/roles-exposed.html: New test cases added.
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated for new test cases.
+        * platform/gtk/accessibility/math-multiscript-attributes-expected.txt: Added.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated for new test cases.
+        * platform/mac-mavericks/accessibility/roles-exposed-expected.txt: Updated for new test cases.
+        * platform/mac-mountainlion/accessibility/roles-exposed-expected.txt: Updated for new test cases.
+        * platform/mac/accessibility/math-multiscript-attributes-expected.txt: Added.
+        * platform/mac/accessibility/roles-exposed-expected.txt: Updated for new test cases.
+
+2015-01-28  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION: Re-skip media tests. (Unreviewed)
+        https://bugs.webkit.org/show_bug.cgi?id=140995
+
+        * platform/win/TestExpectations: Re-skip the tests.
+
 2015-01-27  Alexey Proskuryakov  <ap@apple.com>
 
         REGRESSION (OS X 10.10.2): media/track/track-in-band-style.html frequently times out

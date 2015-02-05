@@ -131,8 +131,9 @@ class GraphicsContext3D;
 class IntRect;
 class IntSize;
 class MediaPlayer;
-struct MediaPlayerFactory;
 class PlatformTimeRanges;
+
+struct MediaPlayerFactory;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
 struct GraphicsDeviceAdapter;
@@ -210,6 +211,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
+    virtual RefPtr<ArrayBuffer> mediaPlayerCachedKeyForKeyId(const String&) const { return nullptr; }
     virtual bool mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array*) { return false; }
     virtual String mediaPlayerMediaKeysStorageDirectory() const { return emptyString(); }
 #endif
@@ -350,6 +352,7 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     std::unique_ptr<CDMSession> createSession(const String& keySystem);
     void setCDMSession(CDMSession*);
+    void keyAdded();
 #endif
 
     bool paused() const;
@@ -516,6 +519,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
+    RefPtr<ArrayBuffer> cachedKeyForKeyId(const String& keyId) const;
     bool keyNeeded(Uint8Array* initData);
     String mediaKeysStorageDirectory() const;
 #endif
@@ -581,8 +585,8 @@ public:
 
 private:
     MediaPlayer(MediaPlayerClient&);
-    MediaPlayerFactory* nextBestMediaEngine(MediaPlayerFactory*) const;
-    void loadWithNextMediaEngine(MediaPlayerFactory*);
+    const MediaPlayerFactory* nextBestMediaEngine(const MediaPlayerFactory*) const;
+    void loadWithNextMediaEngine(const MediaPlayerFactory*);
     void reloadTimerFired();
 
     static void initializeMediaEngines();
@@ -590,7 +594,7 @@ private:
     MediaPlayerClient& m_client;
     Timer m_reloadTimer;
     OwnPtr<MediaPlayerPrivateInterface> m_private;
-    MediaPlayerFactory* m_currentMediaEngine;
+    const MediaPlayerFactory* m_currentMediaEngine;
     URL m_url;
     String m_contentMIMEType;
     String m_contentTypeCodecs;

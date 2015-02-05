@@ -624,9 +624,9 @@ void SpeculativeJIT::compileMiscStrictEq(Node* node)
 
 void SpeculativeJIT::emitCall(Node* node)
 {
-    bool isCall = node->op() == Call || node->op() == ProfiledCall;
+    bool isCall = node->op() == Call;
     if (!isCall)
-        DFG_ASSERT(m_jit.graph(), node, node->op() == Construct || node->op() == ProfiledConstruct);
+        DFG_ASSERT(m_jit.graph(), node, node->op() == Construct);
     
     // For constructors, the this argument is not passed but we have to make space
     // for it.
@@ -669,11 +669,6 @@ void SpeculativeJIT::emitCall(Node* node)
     
     CallLinkInfo* callLinkInfo = m_jit.codeBlock()->addCallLinkInfo();
     
-    if (node->op() == ProfiledCall || node->op() == ProfiledConstruct) {
-        m_jit.vm()->callEdgeLog->emitLogCode(
-            m_jit, callLinkInfo->callEdgeProfile, JSValueRegs(calleeGPR));
-    }
-
     slowPath = m_jit.branchPtrWithPatch(MacroAssembler::NotEqual, calleeGPR, targetToCheck, MacroAssembler::TrustedImmPtr(0));
 
     JITCompiler::Call fastCall = m_jit.nearCall();
@@ -4236,8 +4231,6 @@ void SpeculativeJIT::compile(Node* node)
 
     case Call:
     case Construct:
-    case ProfiledCall:
-    case ProfiledConstruct:
         emitCall(node);
         break;
         
@@ -4401,21 +4394,19 @@ void SpeculativeJIT::compile(Node* node)
                         m_jit.graph().machineArgumentsRegisterFor(node->origin.semantic))));
         }
 
-        m_jit.add32(TrustedImm32(1), indexGPR, resultGPR);
         if (node->origin.semantic.inlineCallFrame) {
             speculationCheck(
                 Uncountable, JSValueRegs(), 0,
                 m_jit.branch32(
                     JITCompiler::AboveOrEqual,
-                    resultGPR,
-                    Imm32(node->origin.semantic.inlineCallFrame->arguments.size())));
+                    indexGPR,
+                    Imm32(node->origin.semantic.inlineCallFrame->arguments.size() - 1)));
         } else {
+            m_jit.load32(JITCompiler::payloadFor(JSStack::ArgumentCount), resultGPR);
+            m_jit.sub32(TrustedImm32(1), resultGPR);
             speculationCheck(
                 Uncountable, JSValueRegs(), 0,
-                m_jit.branch32(
-                    JITCompiler::AboveOrEqual,
-                    resultGPR,
-                    JITCompiler::payloadFor(JSStack::ArgumentCount)));
+                m_jit.branch32(JITCompiler::AboveOrEqual, indexGPR, resultGPR));
         }
 
         JITCompiler::JumpList slowArgument;
@@ -4445,11 +4436,9 @@ void SpeculativeJIT::compile(Node* node)
         }
         slowArgumentOutOfBounds.link(&m_jit);
 
-        m_jit.signExtend32ToPtr(resultGPR, resultGPR);
-            
         m_jit.load64(
             JITCompiler::BaseIndex(
-                GPRInfo::callFrameRegister, resultGPR, JITCompiler::TimesEight, m_jit.offsetOfArgumentsIncludingThis(node->origin.semantic)),
+                GPRInfo::callFrameRegister, indexGPR, JITCompiler::TimesEight, m_jit.offsetOfArguments(node->origin.semantic)),
             resultGPR);
 
         slowArgument.link(&m_jit);
@@ -4470,19 +4459,17 @@ void SpeculativeJIT::compile(Node* node)
                 JITCompiler::addressFor(
                     m_jit.graph().machineArgumentsRegisterFor(node->origin.semantic))));
         
-        m_jit.add32(TrustedImm32(1), indexGPR, resultGPR);
         if (node->origin.semantic.inlineCallFrame) {
             slowPath.append(
                 m_jit.branch32(
                     JITCompiler::AboveOrEqual,
                     resultGPR,
-                    Imm32(node->origin.semantic.inlineCallFrame->arguments.size())));
+                    Imm32(node->origin.semantic.inlineCallFrame->arguments.size() - 1)));
         } else {
+            m_jit.load32(JITCompiler::payloadFor(JSStack::ArgumentCount), resultGPR);
+            m_jit.sub32(TrustedImm32(1), resultGPR);
             slowPath.append(
-                m_jit.branch32(
-                    JITCompiler::AboveOrEqual,
-                    resultGPR,
-                    JITCompiler::payloadFor(JSStack::ArgumentCount)));
+                m_jit.branch32(JITCompiler::AboveOrEqual, indexGPR, resultGPR));
         }
         
         JITCompiler::JumpList slowArgument;
@@ -4512,11 +4499,9 @@ void SpeculativeJIT::compile(Node* node)
         }
         slowArgumentOutOfBounds.link(&m_jit);
 
-        m_jit.signExtend32ToPtr(resultGPR, resultGPR);
-        
         m_jit.load64(
             JITCompiler::BaseIndex(
-                GPRInfo::callFrameRegister, resultGPR, JITCompiler::TimesEight, m_jit.offsetOfArgumentsIncludingThis(node->origin.semantic)),
+                GPRInfo::callFrameRegister, indexGPR, JITCompiler::TimesEight, m_jit.offsetOfArguments(node->origin.semantic)),
             resultGPR);
         
         if (node->origin.semantic.inlineCallFrame) {

@@ -1,6 +1,6 @@
 // Copyright (c) 2005, 2007, Google Inc.
 // All rights reserved.
-// Copyright (C) 2005, 2006, 2007, 2008, 2009, 2011 Apple Inc. All rights reserved.
+// Copyright (C) 2005, 2006, 2007, 2008, 2009, 2011, 2015 Apple Inc. All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -117,72 +117,6 @@
 // Use a background thread to periodically scavenge memory to release back to the system
 #define USE_BACKGROUND_THREAD_TO_SCAVENGE_MEMORY 1
 
-#ifndef NDEBUG
-namespace WTF {
-
-#if OS(WINDOWS)
-
-static DWORD isForibiddenTlsIndex = TLS_OUT_OF_INDEXES;
-static const LPVOID kTlsAllowValue = reinterpret_cast<LPVOID>(0); // Must be zero.
-static const LPVOID kTlsForbiddenValue = reinterpret_cast<LPVOID>(1);
-
-#if !ASSERT_DISABLED
-static bool isForbidden()
-{
-    // By default, fastMalloc is allowed so we don't allocate the
-    // tls index unless we're asked to make it forbidden. If TlsSetValue
-    // has not been called on a thread, the value returned by TlsGetValue is 0.
-    return (isForibiddenTlsIndex != TLS_OUT_OF_INDEXES) && (TlsGetValue(isForibiddenTlsIndex) == kTlsForbiddenValue);
-}
-#endif
-
-void fastMallocForbid()
-{
-    if (isForibiddenTlsIndex == TLS_OUT_OF_INDEXES)
-        isForibiddenTlsIndex = TlsAlloc(); // a little racey, but close enough for debug only
-    TlsSetValue(isForibiddenTlsIndex, kTlsForbiddenValue);
-}
-
-void fastMallocAllow()
-{
-    if (isForibiddenTlsIndex == TLS_OUT_OF_INDEXES)
-        return;
-    TlsSetValue(isForibiddenTlsIndex, kTlsAllowValue);
-}
-
-#else // !OS(WINDOWS)
-
-static pthread_key_t isForbiddenKey;
-static pthread_once_t isForbiddenKeyOnce = PTHREAD_ONCE_INIT;
-static void initializeIsForbiddenKey()
-{
-  pthread_key_create(&isForbiddenKey, 0);
-}
-
-#if !ASSERT_DISABLED
-static bool isForbidden()
-{
-    pthread_once(&isForbiddenKeyOnce, initializeIsForbiddenKey);
-    return !!pthread_getspecific(isForbiddenKey);
-}
-#endif
-
-void fastMallocForbid()
-{
-    pthread_once(&isForbiddenKeyOnce, initializeIsForbiddenKey);
-    pthread_setspecific(isForbiddenKey, &isForbiddenKey);
-}
-
-void fastMallocAllow()
-{
-    pthread_once(&isForbiddenKeyOnce, initializeIsForbiddenKey);
-    pthread_setspecific(isForbiddenKey, 0);
-}
-#endif // OS(WINDOWS)
-
-} // namespace WTF
-#endif // NDEBUG
-
 namespace WTF {
 
 void* fastZeroedMalloc(size_t n) 
@@ -228,17 +162,41 @@ size_t fastMallocGoodSize(size_t bytes)
 #endif
 }
 
+#if OS(WINDOWS)
+
+void* fastAlignedMalloc(size_t alignment, size_t size) 
+{
+    return _aligned_malloc(alignment, size);
+}
+
+void fastAlignedFree(void* p) 
+{
+    _aligned_free(p);
+}
+
+#else
+
+void* fastAlignedMalloc(size_t alignment, size_t size) 
+{
+    void* p = nullptr;
+    posix_memalign(&p, alignment, size);
+    return p;
+}
+
+void fastAlignedFree(void* p) 
+{
+    free(p);
+}
+
+#endif // OS(WINDOWS)
+
 TryMallocReturnValue tryFastMalloc(size_t n) 
 {
-    ASSERT(!isForbidden());
-
     return malloc(n);
 }
 
 void* fastMalloc(size_t n) 
 {
-    ASSERT(!isForbidden());
-
     void* result = malloc(n);
     if (!result)
         CRASH();
@@ -248,14 +206,11 @@ void* fastMalloc(size_t n)
 
 TryMallocReturnValue tryFastCalloc(size_t n_elements, size_t element_size)
 {
-    ASSERT(!isForbidden());
     return calloc(n_elements, element_size);
 }
 
 void* fastCalloc(size_t n_elements, size_t element_size)
 {
-    ASSERT(!isForbidden());
-
     void* result = calloc(n_elements, element_size);
     if (!result)
         CRASH();
@@ -265,19 +220,16 @@ void* fastCalloc(size_t n_elements, size_t element_size)
 
 void fastFree(void* p)
 {
-    ASSERT(!isForbidden());
     free(p);
 }
 
 TryMallocReturnValue tryFastRealloc(void* p, size_t n)
 {
-    ASSERT(!isForbidden());
     return realloc(p, n);
 }
 
 void* fastRealloc(void* p, size_t n)
 {
-    ASSERT(!isForbidden());
     void* result = realloc(p, n);
     if (!result)
         CRASH();
@@ -285,6 +237,7 @@ void* fastRealloc(void* p, size_t n)
 }
 
 void releaseFastMallocFreeMemory() { }
+void releaseFastMallocFreeMemoryForThisThread() { }
     
 FastMallocStatistics fastMallocStatistics()
 {
@@ -320,7 +273,6 @@ namespace WTF {
 
 void* fastMalloc(size_t size)
 {
-    ASSERT(!isForbidden());
     return bmalloc::api::malloc(size);
 }
 
@@ -349,6 +301,16 @@ size_t fastMallocGoodSize(size_t size)
     return size;
 }
     
+void* fastAlignedMalloc(size_t alignment, size_t size) 
+{
+    return bmalloc::api::memalign(alignment, size);
+}
+
+void fastAlignedFree(void* p) 
+{
+    bmalloc::api::free(p);
+}
+
 TryMallocReturnValue tryFastMalloc(size_t size)
 {
     return fastMalloc(size);
@@ -364,6 +326,11 @@ TryMallocReturnValue tryFastCalloc(size_t numElements, size_t elementSize)
     return fastCalloc(numElements, elementSize);
 }
     
+void releaseFastMallocFreeMemoryForThisThread()
+{
+    bmalloc::api::scavengeThisThread();
+}
+
 void releaseFastMallocFreeMemory()
 {
     bmalloc::api::scavenge();
@@ -4017,10 +3984,6 @@ template <bool crashOnFailure>
 static ALWAYS_INLINE void* do_malloc(size_t size) {
   void* ret = NULL;
 
-#ifdef WTF_CHANGES
-    ASSERT(!isForbidden());
-#endif
-
   // The following call forces module initialization
   TCMalloc_ThreadCache* heap = TCMalloc_ThreadCache::GetCache();
 #ifndef WTF_CHANGES
@@ -4099,7 +4062,6 @@ static ALWAYS_INLINE void do_free(void* ptr) {
   }
 }
 
-#ifndef WTF_CHANGES
 // For use by exported routines below that want specific alignments
 //
 // Note: this code can be slow, and can significantly fragment memory.
@@ -4170,7 +4132,6 @@ static void* do_memalign(size_t align, size_t size) {
   }
   return SpanToMallocResult(span);
 }
-#endif
 
 // Helpers for use by exported routines below:
 
@@ -4226,6 +4187,16 @@ extern "C"
 
 template <bool crashOnFailure>
 ALWAYS_INLINE void* malloc(size_t);
+
+void* fastAlignedMalloc(size_t alignment, size_t size) 
+{
+    return do_memalign(alignment, size);
+}
+
+void fastAlignedFree(void* p) 
+{
+    do_free(p);
+}
 
 void* fastMalloc(size_t size)
 {
@@ -4564,11 +4535,15 @@ void *(*__memalign_hook)(size_t, size_t, const void *) = MemalignOverride;
 #endif
 
 #ifdef WTF_CHANGES
-void releaseFastMallocFreeMemory()
+void releaseFastMallocFreeMemoryForThisThread()
 {
-    // Flush free pages in the current thread cache back to the page heap.
     if (TCMalloc_ThreadCache* threadCache = TCMalloc_ThreadCache::GetCacheIfPresent())
         threadCache->Cleanup();
+}
+
+void releaseFastMallocFreeMemory()
+{
+    releaseFastMallocFreeMemoryForThisThread();
 
     SpinLockHolder h(&pageheap_lock);
     pageheap->ReleaseFreePages();

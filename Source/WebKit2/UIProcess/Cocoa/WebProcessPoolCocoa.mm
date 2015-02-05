@@ -100,7 +100,7 @@ static void registerUserDefaultsIfNeeded()
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitJSCJITEnabledDefaultsKey];
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitJSCFTLJITEnabledDefaultsKey];
     
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if PLATFORM(COCOA)
     [registrationDictionary setObject:[NSNumber numberWithBool:YES] forKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
 #endif
 
@@ -122,7 +122,7 @@ void WebProcessPool::updateProcessSuppressionState()
     if (!m_processSuppressionDisabledForPageCounter.value())
         m_pluginProcessManagerProcessSuppressionDisabledToken = nullptr;
     else if (!m_pluginProcessManagerProcessSuppressionDisabledToken)
-        m_pluginProcessManagerProcessSuppressionDisabledToken = PluginProcessManager::shared().processSuppressionDisabledToken();
+        m_pluginProcessManagerProcessSuppressionDisabledToken = PluginProcessManager::singleton().processSuppressionDisabledToken();
 #endif
 }
 
@@ -140,7 +140,7 @@ void WebProcessPool::platformInitialize()
     registerNotificationObservers();
 
 #if PLATFORM(IOS)
-    WebKit::WebMemoryPressureHandler::shared();
+    WebKit::WebMemoryPressureHandler::singleton();
 #endif
 }
 
@@ -189,9 +189,6 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.nsURLCacheMemoryCapacity = [urlCache memoryCapacity];
     parameters.nsURLCacheDiskCapacity = [urlCache diskCapacity];
 
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-    parameters.shouldForceScreenFontSubstitution = [[NSUserDefaults standardUserDefaults] boolForKey:@"NSFontDefaultScreenFontSubstitutionEnabled"];
-#endif
     parameters.shouldEnableKerningAndLigaturesByDefault = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
     parameters.shouldEnableJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCJITEnabledDefaultsKey];
     parameters.shouldEnableFTLJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCFTLJITEnabledDefaultsKey];
@@ -421,7 +418,6 @@ void WebProcessPool::registerNotificationObservers()
         textCheckerStateChanged();
     }];
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     m_automaticQuoteSubstitutionNotificationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSSpellCheckerDidChangeAutomaticQuoteSubstitutionNotification object:nil queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *notification) {
         TextChecker::didChangeAutomaticQuoteSubstitutionEnabled();
         textCheckerStateChanged();
@@ -431,7 +427,6 @@ void WebProcessPool::registerNotificationObservers()
         TextChecker::didChangeAutomaticDashSubstitutionEnabled();
         textCheckerStateChanged();
     }];
-#endif
 #endif // !PLATFORM(IOS)
 }
 
@@ -441,14 +436,11 @@ void WebProcessPool::unregisterNotificationObservers()
     [[NSNotificationCenter defaultCenter] removeObserver:m_enhancedAccessibilityObserver.get()];    
     [[NSNotificationCenter defaultCenter] removeObserver:m_automaticTextReplacementNotificationObserver.get()];
     [[NSNotificationCenter defaultCenter] removeObserver:m_automaticSpellingCorrectionNotificationObserver.get()];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     [[NSNotificationCenter defaultCenter] removeObserver:m_automaticQuoteSubstitutionNotificationObserver.get()];
     [[NSNotificationCenter defaultCenter] removeObserver:m_automaticDashSubstitutionNotificationObserver.get()];
-#endif
 #endif // !PLATFORM(IOS)
 }
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 static CFURLStorageSessionRef privateBrowsingSession()
 {
     static CFURLStorageSessionRef session;
@@ -461,25 +453,18 @@ static CFURLStorageSessionRef privateBrowsingSession()
 
     return session;
 }
-#endif
 
 bool WebProcessPool::isURLKnownHSTSHost(const String& urlString, bool privateBrowsingEnabled) const
 {
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     RetainPtr<CFURLRef> url = URL(URL(), urlString).createCFURL();
 
     return _CFNetworkIsKnownHSTSHostWithSession(url.get(), privateBrowsingEnabled ? privateBrowsingSession() : nullptr);
-#else
-    return false;
-#endif
 }
 
 void WebProcessPool::resetHSTSHosts()
 {
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     _CFNetworkResetHSTSHostsWithSession(nullptr);
     _CFNetworkResetHSTSHostsWithSession(privateBrowsingSession());
-#endif
 }
 
 int networkProcessLatencyQOS()

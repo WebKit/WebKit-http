@@ -324,6 +324,7 @@ WebInspector.contentLoaded = function()
     this.toolbar.element.addEventListener("mousedown", this._toolbarMouseDown.bind(this));
     document.getElementById("docked-resizer").addEventListener("mousedown", this._dockedResizerMouseDown.bind(this));
 
+    this._updateDockNavigationItems();
     this._updateToolbarHeight();
 
     if (this._navigationSidebarWidthSetting.value)
@@ -1886,7 +1887,7 @@ WebInspector.archiveMainFrame = function()
 
 WebInspector.canArchiveMainFrame = function()
 {
-    if (!PageAgent.archive)
+    if (!PageAgent.archive || this.debuggableType !== WebInspector.DebuggableType.Web)
         return false;
 
     return WebInspector.Resource.typeFromMIMEType(WebInspector.frameResourceManager.mainFrame.mainResource.mimeType) === WebInspector.Resource.Type.Document;

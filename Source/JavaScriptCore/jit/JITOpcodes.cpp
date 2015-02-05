@@ -251,31 +251,6 @@ void JIT::emit_op_ret(Instruction* currentInstruction)
     ret();
 }
 
-void JIT::emit_op_ret_object_or_this(Instruction* currentInstruction)
-{
-    ASSERT(callFrameRegister != regT1);
-    ASSERT(regT1 != returnValueGPR);
-    ASSERT(returnValueGPR != callFrameRegister);
-
-    // Return the result in %eax.
-    emitGetVirtualRegister(currentInstruction[1].u.operand, returnValueGPR);
-    Jump notJSCell = emitJumpIfNotJSCell(returnValueGPR);
-    Jump notObject = emitJumpIfCellNotObject(returnValueGPR);
-
-    // Return.
-    emitFunctionEpilogue();
-    ret();
-
-    // Return 'this' in %eax.
-    notJSCell.link(this);
-    notObject.link(this);
-    emitGetVirtualRegister(currentInstruction[2].u.operand, returnValueGPR);
-
-    // Return.
-    emitFunctionEpilogue();
-    ret();
-}
-
 void JIT::emit_op_to_primitive(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -945,13 +920,12 @@ void JIT::emit_op_get_argument_by_val(Instruction* currentInstruction)
     addSlowCase(branchTest64(NonZero, addressFor(argumentsRegister)));
     emitGetVirtualRegister(property, regT1);
     addSlowCase(emitJumpIfNotImmediateInteger(regT1));
-    add32(TrustedImm32(1), regT1);
-    // regT1 now contains the integer index of the argument we want, including this
     emitGetFromCallFrameHeader32(JSStack::ArgumentCount, regT2);
+    sub32(TrustedImm32(1), regT2);
     addSlowCase(branch32(AboveOrEqual, regT1, regT2));
 
     signExtend32ToPtr(regT1, regT1);
-    load64(BaseIndex(callFrameRegister, regT1, TimesEight, CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register))), regT0);
+    load64(BaseIndex(callFrameRegister, regT1, TimesEight, CallFrame::argumentOffset(0) * static_cast<int>(sizeof(Register))), regT0);
     emitValueProfilingSite();
     emitPutVirtualRegister(dst, regT0);
 }

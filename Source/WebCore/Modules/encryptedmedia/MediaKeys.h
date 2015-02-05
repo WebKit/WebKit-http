@@ -57,6 +57,9 @@ public:
     HTMLMediaElement* mediaElement() const { return m_mediaElement; }
     void setMediaElement(HTMLMediaElement*);
 
+    void keyAdded();
+    RefPtr<ArrayBuffer> cachedKeyForKeyId(const String& keyId) const;
+
 protected:
     // CDMClient:
     virtual MediaPlayer* cdmMediaPlayer(const CDM*) const override;

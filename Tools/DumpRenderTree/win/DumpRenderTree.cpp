@@ -842,7 +842,6 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     prefsPrivate->setMockScrollbarsEnabled(TRUE);
 
     preferences->setFontSmoothing(FontSmoothingTypeStandard);
-    prefsPrivate->setScreenFontSubstitutionEnabled(TRUE);
 
     setAlwaysAcceptCookies(false);
 }
@@ -1108,8 +1107,9 @@ static void runTest(const string& inputLine)
     if (webView && SUCCEEDED(webView->backForwardList(&bfList)))
         bfList->currentItem(&prevTestBFItem);
 
-    WorkQueue::shared()->clear();
-    WorkQueue::shared()->setFrozen(false);
+    auto& workQueue = WorkQueue::singleton();
+    workQueue.clear();
+    workQueue.setFrozen(false);
 
     MSG msg = { 0 };
     HWND hostWindow;
@@ -1141,7 +1141,7 @@ static void runTest(const string& inputLine)
     }
 
     // EventSendingController clearSavedEvents
-    WorkQueue::shared()->clear();
+    workQueue.clear();
 
     if (::gTestRunner->closeRemainingWindowsWhenComplete()) {
         Vector<HWND> windows = openWindows();
