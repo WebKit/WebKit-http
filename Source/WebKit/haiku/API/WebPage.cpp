@@ -194,9 +194,9 @@ BMessenger BWebPage::sDownloadListener;
         return;
     }
 
-    memoryCache().setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    memoryCache().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
-    pageCache()->setCapacity(pageCacheCapacity);
+    MemoryCache::singleton().setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    MemoryCache::singleton().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    PageCache::singleton().setMaxSize(pageCacheCapacity);
 }
 
 BWebPage::BWebPage(BWebView* webView)
@@ -232,7 +232,7 @@ BWebPage::BWebPage(BWebView* webView)
     // userContentController?
     pageClients.visitedLinkStore = &WebVisitedLinkStore::shared();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
-    pageClients.databaseProvider = &WebDatabaseProvider::shared();
+    pageClients.databaseProvider = &WebDatabaseProvider::singleton();
 
     // FIXME we should get this from the page settings, but they are created
     // after the page, and we need this before the page is created.

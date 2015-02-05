@@ -398,8 +398,8 @@ static void runTest(const string& inputLine)
     resetDefaultsToConsistentValues();
     createTestRunner(testURL, expectedPixelHash);
 
-    WorkQueue::shared()->clear();
-    WorkQueue::shared()->setFrozen(false);
+    WorkQueue::singleton().clear();
+    WorkQueue::singleton().setFrozen(false);
 
     const bool isSVGW3CTest = testURL.contains("svg/W3C-SVG-1.1");
     const int width = isSVGW3CTest ? TestRunner::w3cSVGViewWidth : TestRunner::viewWidth;
@@ -556,13 +556,13 @@ void DumpRenderTreeApp::topLoadingFrameLoadFinished()
 {
     topLoadingFrame = 0;
 
-    WorkQueue::shared()->setFrozen(true);
+    WorkQueue::singleton().setFrozen(true);
     if (gTestRunner->waitToDump()) {
         return;
     }
 
-    if (WorkQueue::shared()->count()) {
-        // FIXME should wait untile the work queue is done before dumping
+    if (WorkQueue::singleton().count()) {
+        // FIXME should wait until the work queue is done before dumping
         // ecore_idler_add(processWork, 0 /*frame*/);
         dump();
     } else {

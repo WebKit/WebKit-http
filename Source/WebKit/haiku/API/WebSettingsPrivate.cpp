@@ -89,7 +89,7 @@ void WebSettingsPrivate::apply()
 	    settings->setLocalStorageEnabled(global->localStorageEnabled);
 	    settings->setLocalStorageDatabasePath(global->localStoragePath);
 	    settings->setDefaultTextEncodingName("UTF-8");
-        settings->setUsesPageCache(WebCore::pageCache()->capacity());
+        settings->setUsesPageCache(WebCore::PageCache::singleton().maxSize());
         settings->setNeedsSiteSpecificQuirks(true);
 
         char path[256];

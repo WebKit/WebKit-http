@@ -106,7 +106,7 @@ size_t TestRunner::webHistoryItemCount()
 
 void TestRunner::notifyDone()
 {
-    if (m_waitToDump && !topLoadingFrame && !WorkQueue::shared()->count())
+    if (m_waitToDump && !topLoadingFrame && !WorkQueue::singleton().count())
         dump();
     m_waitToDump = false;
     waitForPolicy = false;
