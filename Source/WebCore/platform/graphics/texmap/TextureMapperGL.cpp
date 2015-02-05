@@ -264,10 +264,19 @@ void TextureMapperGL::beginPainting(PaintFlags flags)
     m_context3D->getIntegerv(GraphicsContext3D::CURRENT_PROGRAM, &data().previousProgram);
     data().previousScissorState = m_context3D->isEnabled(GraphicsContext3D::SCISSOR_TEST);
     data().previousDepthState = m_context3D->isEnabled(GraphicsContext3D::DEPTH_TEST);
+
+    m_context3D->clear(GraphicsContext3D::COLOR_BUFFER_BIT | GraphicsContext3D::DEPTH_BUFFER_BIT);
+    m_context3D->clearColor(0.0, 1.0, 0.0, 1.0);
+    m_context3D->clearDepth(1.0);
+
     m_context3D->disable(GraphicsContext3D::DEPTH_TEST);
+    m_context3D->depthMask(1);
+    m_context3D->depthFunc(GraphicsContext3D::LEQUAL);
+    m_context3D->depthRange(0.0, 1.0);
+
     m_context3D->enable(GraphicsContext3D::SCISSOR_TEST);
     data().didModifyStencil = false;
-    m_context3D->depthMask(0);
+
     m_context3D->getIntegerv(GraphicsContext3D::VIEWPORT, data().viewport);
     m_context3D->getIntegerv(GraphicsContext3D::SCISSOR_BOX, data().previousScissor);
     m_clipStack.reset(IntRect(0, 0, data().viewport[2], data().viewport[3]), flags & PaintingMirrored ? ClipStack::DefaultYAxis : ClipStack::InvertedYAxis);
@@ -900,8 +909,9 @@ PassRefPtr<BitmapTexture> BitmapTextureGL::applyFilters(TextureMapper* textureMa
 
 static inline TransformationMatrix createProjectionMatrix(const IntSize& size, bool mirrored)
 {
-    const float nearValue = 9999999;
-    const float farValue = -99999;
+    // FIXME: Explain the change in values.
+    const float nearValue = -99999; // Previously 9999999.
+    const float farValue = 9999999; // Previously -99999.
 
     return TransformationMatrix(2.0 / float(size.width()), 0, 0, 0,
                                 0, (mirrored ? 2.0 : -2.0) / float(size.height()), 0, 0,
@@ -1103,6 +1113,16 @@ void TextureMapperGL::endClip()
 IntRect TextureMapperGL::clipBounds()
 {
     return clipStack().current().scissorBox;
+}
+
+void TextureMapperGL::beginDepthTesting()
+{
+    m_context3D->enable(GraphicsContext3D::DEPTH_TEST);
+}
+
+void TextureMapperGL::endDepthTesting()
+{
+    m_context3D->disable(GraphicsContext3D::DEPTH_TEST);
 }
 
 PassRefPtr<BitmapTexture> TextureMapperGL::createTexture()
