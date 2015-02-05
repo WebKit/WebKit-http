@@ -434,7 +434,11 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
 
 void BUrlProtocolHandler::ConnectionOpened(BUrlRequest*)
 {
-    m_redirected = true;
+    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
+    if (httpRequest != NULL)
+        m_redirected = true;
+    else
+        m_redirected = false;
     m_responseDataSent = false;
 }
 
