@@ -699,7 +699,24 @@ class Port(object):
 
     @memoized
     def skipped_perf_tests(self):
-        return self._expectations_from_skipped_files([self.perf_tests_dir()])
+        filename = self._filesystem.join(self.perf_tests_dir(), "Skipped")
+        if not self._filesystem.exists(filename):
+            _log.debug("Skipped does not exist: %s" % filename)
+            return []
+
+        skipped_file_contents = self._filesystem.read_text_file(filename)
+        tests_to_skip = []
+        for line_number, line in enumerate(skipped_file_contents.split('\n')):
+            match = re.match(r'^\s*(\[(?P<platforms>[\w ]*?)\])?\s*(?P<test>[\w\-\/\.]+?)?\s*(?P<comment>\#.*)?$', line)
+            if not match:
+                _log.error("Syntax error at line %d in %s: %s" % (line_number + 1, filename, line))
+            else:
+                platform_names = filter(lambda token: token, match.group('platforms').lower().split(' ')) if match.group('platforms') else []
+                test_name = match.group('test')
+                if test_name and (not platform_names or self.port_name in platform_names or self._name in platform_names):
+                    tests_to_skip.append(test_name)
+
+        return tests_to_skip
 
     def skips_perf_test(self, test_name):
         for test_or_category in self.skipped_perf_tests():
@@ -1093,8 +1110,8 @@ class Port(object):
 
     # We pass sys_platform into this method to make it easy to unit test.
     def _apache_config_file_name_for_platform(self, sys_platform):
-        if sys_platform == 'cygwin':
-            return 'cygwin-httpd.conf'  # CYGWIN is the only platform to still use Apache 1.3.
+        if sys_platform == 'cygwin' or sys_platform == 'win32':
+            return 'apache' + self._apache_version() + '-httpd-win.conf'
         if sys_platform.startswith('linux'):
             if self._is_redhat_based():
                 return 'fedora-httpd-' + self._apache_version() + '.conf'

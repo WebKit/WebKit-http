@@ -1,6 +1,7 @@
 import itertools
 import logging
 import os
+import plistlib
 import re
 import subprocess
 import time
@@ -13,7 +14,6 @@ Minimally wraps CoreSimulator functionality through simctl.
 If possible, use real CoreSimulator.framework functionality by linking to the framework itself.
 Do not use PyObjC to dlopen the framework.
 """
-
 
 class DeviceType(object):
     """
@@ -110,13 +110,10 @@ class Runtime(object):
         :returns: A `Runtime` object with the specified identifier or throws a TypeError if it doesn't exist.
         :rtype: Runtime
         """
-        runtime = None
         for runtime in Simulator().runtimes:
             if runtime.identifier == identifier:
-                break
-        if runtime is None:
-            raise TypeError('A runtime with identifier "{identifier}" does not exist.'.format(identifier=identifier))
-        return runtime
+                return runtime
+        raise TypeError('A runtime with identifier "{identifier}" does not exist.'.format(identifier=identifier))
 
     def __eq__(self, other):
         return (self.version == other.version) and (self.identifier == other.identifier) and (self.is_internal_runtime == other.is_internal_runtime)
@@ -140,14 +137,12 @@ class Device(object):
     Represents a CoreSimulator device underneath a runtime
     """
 
-    def __init__(self, name, udid, state, available, runtime):
+    def __init__(self, name, udid, available, runtime):
         """
         :param name: The device name
         :type name: str
         :param udid: The device UDID (a UUID string)
         :type udid: str
-        :param state: The last known device state
-        :type state: str
         :param available: Whether the device is available for use.
         :type available: bool
         :param runtime: The iOS Simulator runtime that hosts this device
@@ -155,9 +150,16 @@ class Device(object):
         """
         self.name = name
         self.udid = udid
-        self.state = state
         self.available = available
         self.runtime = runtime
+
+    @property
+    def state(self):
+        """
+        :returns: The current state of the device.
+        :rtype: Simulator.DeviceState
+        """
+        return Simulator.device_state(self.udid)
 
     @property
     def path(self):
@@ -165,9 +167,7 @@ class Device(object):
         :returns: The filesystem path that contains the simulator device's data.
         :rtype: str
         """
-        return os.path.realpath(
-            os.path.expanduser(
-                os.path.join('~/Library/Developer/CoreSimulator/Devices', self.udid)))
+        return Simulator.device_directory(self.udid)
 
     @classmethod
     def create(cls, name, device_type, runtime):
@@ -182,16 +182,9 @@ class Device(object):
         :return: The new device or raises a CalledProcessError if ``simctl create`` failed.
         :rtype: Device
         """
-        sim = Simulator()
         device_udid = subprocess.check_output(['xcrun', 'simctl', 'create', name, device_type.identifier, runtime.identifier]).rstrip()
-        assert(device_udid)
-        while True:
-            sim.refresh()
-            device = sim.find_device_by_udid(device_udid)
-            if not device or device.state == 'Creating':
-                time.sleep(2)
-                continue
-            return device
+        Simulator.wait_until_device_is_in_state(device_udid, Simulator.DeviceState.SHUTDOWN)
+        return Simulator().find_device_by_udid(device_udid)
 
     def __eq__(self, other):
         return self.udid == other.udid
@@ -227,6 +220,32 @@ class Simulator(object):
         self.runtimes = []
         self.device_types = []
         self.refresh()
+
+    # Keep these constants synchronized with the SimDeviceState constants in CoreSimulator/SimDevice.h.
+    class DeviceState:
+        DOES_NOT_EXIST = -1
+        CREATING = 0
+        SHUTDOWN = 1
+        BOOTING = 2
+        BOOTED = 3
+        SHUTTING_DOWN = 4
+
+    @staticmethod
+    def wait_until_device_is_in_state(udid, wait_until_state):
+        # FIXME: Implement support for a timed wait.
+        while (Simulator.device_state(udid) != wait_until_state):
+            time.sleep(0.5)
+
+    @staticmethod
+    def device_state(udid):
+        device_plist = os.path.join(Simulator.device_directory(udid), 'device.plist')
+        if not os.path.isfile(device_plist):
+            return Simulator.DeviceState.DOES_NOT_EXIST
+        return plistlib.readPlist(device_plist)['state']
+
+    @staticmethod
+    def device_directory(udid):
+        return os.path.realpath(os.path.expanduser(os.path.join('~/Library/Developer/CoreSimulator/Devices', udid)))
 
     def refresh(self):
         """
@@ -305,7 +324,6 @@ class Simulator(object):
                 raise RuntimeError('Expected an iOS Simulator device line, got "{}"'.format(line))
             device = Device(name=device_match.group('name').rstrip(),
                             udid=device_match.group('udid'),
-                            state=device_match.group('state'),
                             available=device_match.group('availability') is None,
                             runtime=current_runtime)
             current_runtime.devices.append(device)

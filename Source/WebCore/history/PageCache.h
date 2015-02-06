@@ -44,7 +44,7 @@ class PageCache {
     WTF_MAKE_NONCOPYABLE(PageCache); WTF_MAKE_FAST_ALLOCATED;
 public:
     // Function to obtain the global page cache.
-    WEBCORE_EXPORT static PageCache& shared();
+    WEBCORE_EXPORT static PageCache& singleton();
 
     bool canCache(Page*) const;
 
@@ -55,7 +55,7 @@ public:
 
     void add(HistoryItem&, Page&); // Prunes if maxSize() is exceeded.
     WEBCORE_EXPORT void remove(HistoryItem&);
-    CachedPage* get(HistoryItem&, Page*) const;
+    CachedPage* get(HistoryItem&, Page*);
     std::unique_ptr<CachedPage> take(HistoryItem&, Page*);
 
     unsigned pageCount() const { return m_items.size(); }
@@ -73,7 +73,7 @@ public:
     void setShouldClearBackingStores(bool flag) { m_shouldClearBackingStores = flag; }
 
 private:
-    PageCache() = default; // Use shared() instead.
+    PageCache() = default; // Use singleton() instead.
     ~PageCache() = delete; // Make sure nobody accidentally calls delete -- WebCore does not delete singletons.
 
     static bool canCachePageContainingThisFrame(Frame&);

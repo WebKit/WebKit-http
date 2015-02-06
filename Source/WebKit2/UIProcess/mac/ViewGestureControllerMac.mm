@@ -387,6 +387,9 @@ void ViewGestureController::trackSwipeGesture(NSEvent *event, SwipeDirection dir
     CGFloat maxProgress = (direction == SwipeDirection::Left) ? 1 : 0;
     CGFloat minProgress = (direction == SwipeDirection::Right) ? -1 : 0;
     RefPtr<WebBackForwardListItem> targetItem = (direction == SwipeDirection::Left) ? m_webPageProxy.backForwardList().backItem() : m_webPageProxy.backForwardList().forwardItem();
+    if (!targetItem)
+        return;
+    
     __block bool swipeCancelled = false;
 
     ASSERT(!m_swipeCancellationTracker);
@@ -495,10 +498,8 @@ static bool layerGeometryFlippedToRoot(CALayer *layer)
 
 void ViewGestureController::applyDebuggingPropertiesToSwipeViews()
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     CAFilter* filter = [CAFilter filterWithType:kCAFilterColorInvert];
     [m_swipeLayer setFilters:@[ filter ]];
-#endif
     [m_swipeLayer setBackgroundColor:[NSColor blueColor].CGColor];
     [m_swipeLayer setBorderColor:[NSColor yellowColor].CGColor];
     [m_swipeLayer setBorderWidth:4];

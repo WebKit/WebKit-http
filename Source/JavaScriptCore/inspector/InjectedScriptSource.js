@@ -36,7 +36,7 @@ var Object = {}.constructor;
 
 function toString(obj)
 {
-    return "" + obj;
+    return String(obj);
 }
 
 function isUInt32(obj)
@@ -44,6 +44,11 @@ function isUInt32(obj)
     if (typeof obj === "number")
         return obj >>> 0 === obj && (obj > 0 || 1 / obj > 0);
     return "" + (obj >>> 0) === obj;
+}
+
+function isSymbol(obj)
+{
+    return typeof obj === "symbol";
 }
 
 var InjectedScript = function()
@@ -59,7 +64,13 @@ InjectedScript.primitiveTypes = {
     undefined: true,
     boolean: true,
     number: true,
-    string: true
+    string: true,
+}
+
+InjectedScript.CollectionMode = {
+    OwnProperties: 1 << 0,    // own properties.
+    GetterProperties: 1 << 1, // getter properties in the prototype chain.
+    AllProperties: 1 << 2,    // all properties in the prototype chain.
 }
 
 InjectedScript.prototype = {
@@ -101,14 +112,21 @@ InjectedScript.prototype = {
     {
         if (!canAccessInspectedGlobalObject)
             return this._fallbackWrapper(table);
+
+        // FIXME: Currently columns are ignored. Instead, the frontend filters all
+        // properties based on the provided column names and in the provided order.
+        // Should we filter here too?
+
         var columnNames = null;
         if (typeof columns === "string")
             columns = [columns];
+
         if (InjectedScriptHost.subtype(columns) === "array") {
             columnNames = [];
             for (var i = 0; i < columns.length; ++i)
-                columnNames.push(String(columns[i]));
+                columnNames.push(toString(columns[i]));
         }
+
         return this._wrapObject(table, "console", false, true, columnNames);
     },
 
@@ -187,7 +205,16 @@ InjectedScript.prototype = {
         if (!this._isDefined(object))
             return false;
 
-        var descriptors = this._propertyDescriptors(object, ownProperties, ownAndGetterProperties);
+        if (isSymbol(object))
+            return false;
+
+        var collectionMode = InjectedScript.CollectionMode.AllProperties;
+        if (ownProperties)
+            collectionMode = InjectedScript.CollectionMode.OwnProperties;
+        else if (ownAndGetterProperties)
+            collectionMode = InjectedScript.CollectionMode.OwnProperties | InjectedScript.CollectionMode.GetterProperties;
+
+        var descriptors = this._propertyDescriptors(object, collectionMode);
 
         // Go over properties, wrap object values.
         for (var i = 0; i < descriptors.length; ++i) {
@@ -212,7 +239,11 @@ InjectedScript.prototype = {
         var parsedObjectId = this._parseObjectId(objectId);
         var object = this._objectForId(parsedObjectId);
         var objectGroupName = this._idToObjectGroupName[parsedObjectId.id];
+
         if (!this._isDefined(object))
+            return false;
+
+        if (isSymbol(object))
             return false;
 
         var descriptors = [];
@@ -508,13 +539,8 @@ InjectedScript.prototype = {
         return module;
     },
 
-    _propertyDescriptors: function(object, ownProperties, ownAndGetterProperties)
+    _propertyDescriptors: function(object, collectionMode)
     {
-        // Modes:
-        //  - ownProperties - only own properties and __proto__
-        //  - ownAndGetterProperties - own properties, __proto__, and getters in the prototype chain
-        //  - neither - get all properties in the prototype chain and __proto__
-
         var descriptors = [];
         var nameProcessed = {};
         nameProcessed["__proto__"] = null;
@@ -533,30 +559,32 @@ InjectedScript.prototype = {
 
         function processDescriptor(descriptor, isOwnProperty, possibleNativeBindingGetter)
         {
-            // Own properties only.
-            if (ownProperties) {
-                if (isOwnProperty)
-                    descriptors.push(descriptor);
+            // All properties.
+            if (collectionMode & InjectedScript.CollectionMode.AllProperties) {
+                descriptors.push(descriptor);
                 return;
             }
 
-            // Own and getter properties.
-            if (ownAndGetterProperties) {
-                if (isOwnProperty) {
-                    // Own property, include the descriptor as is.
-                    descriptors.push(descriptor);
-                } else if (descriptor.hasOwnProperty("get") && descriptor.get) {
+            // Own properties.
+            if (collectionMode & InjectedScript.CollectionMode.OwnProperties && isOwnProperty) {
+                descriptors.push(descriptor);
+                return;
+            }
+
+            // Getter properties.
+            if (collectionMode & InjectedScript.CollectionMode.GetterProperties) {
+                if (descriptor.hasOwnProperty("get") && descriptor.get) {
                     // Getter property in the prototype chain. Create a fake value descriptor.
                     descriptors.push(createFakeValueDescriptor(descriptor.name, descriptor, isOwnProperty));
-                } else if (possibleNativeBindingGetter) {
+                    return;
+                }
+
+                if (possibleNativeBindingGetter) {
                     // Possible getter property in the prototype chain.
                     descriptors.push(descriptor);
+                    return;
                 }
-                return;
             }
-
-            // All properties.
-            descriptors.push(descriptor);
         }
 
         function processPropertyNames(o, names, isOwnProperty)
@@ -597,11 +625,11 @@ InjectedScript.prototype = {
         for (var o = object; this._isDefined(o); o = o.__proto__) {
             var isOwnProperty = o === object;
             processPropertyNames(o, Object.getOwnPropertyNames(o), isOwnProperty);
-            if (ownProperties)
+            if (collectionMode === InjectedScript.CollectionMode.OwnProperties)
                 break;
         }
 
-        // Include __proto__ at the end.
+        // Always include __proto__ at the end.
         try {
             if (object.__proto__)
                 descriptors.push({name: "__proto__", value: object.__proto__, writable: true, configurable: true, enumerable: false, isOwn: true});
@@ -652,6 +680,9 @@ InjectedScript.prototype = {
     {
         if (this.isPrimitiveValue(obj))
             return null;
+
+        if (isSymbol(obj))
+            return toString(obj);
 
         var subtype = this._subtype(obj);
 
@@ -846,8 +877,8 @@ InjectedScript.RemoteObject.prototype = {
 
             // Properties.
             preview.properties = [];
-            var descriptors = injectedScript._propertyDescriptors(object);
-            this._appendPropertyPreviews(preview, descriptors, propertiesThreshold, secondLevelKeys);
+            var descriptors = injectedScript._propertyDescriptors(object, InjectedScript.CollectionMode.AllProperties);
+            this._appendPropertyPreviews(preview, descriptors, propertiesThreshold, firstLevelKeys, secondLevelKeys);
             if (propertiesThreshold.indexes < 0 || propertiesThreshold.properties < 0)
                 return preview;
 
@@ -860,7 +891,7 @@ InjectedScript.RemoteObject.prototype = {
         return preview;
     },
 
-    _appendPropertyPreviews: function(preview, descriptors, propertiesThreshold, secondLevelKeys)
+    _appendPropertyPreviews: function(preview, descriptors, propertiesThreshold, firstLevelKeys, secondLevelKeys)
     {
         for (var descriptor of descriptors) {
             // Seen enough.
@@ -884,6 +915,10 @@ InjectedScript.RemoteObject.prototype = {
 
             // Do not show non-enumerable non-own properties. Special case to allow array indexes that may be on the prototype.
             if (!descriptor.enumerable && !descriptor.isOwn && !(this.subtype === "array" && isUInt32(name)))
+                continue;
+
+            // If we have a filter, only show properties in the filter.
+            if (firstLevelKeys && firstLevelKeys.indexOf(name) === -1)
                 continue;
 
             // Getter/setter.
@@ -918,6 +953,17 @@ InjectedScript.RemoteObject.prototype = {
                 }
                 this._appendPropertyPreview(preview, {name: name, type: type, value: toString(value)}, propertiesThreshold);
                 continue;
+            }
+
+            // Symbol.
+            if (isSymbol(value)) {
+                var symbolString = toString(value);
+                if (symbolString.length > maxLength) {
+                    symbolString = this._abbreviateString(symbolString, maxLength, true);
+                    preview.lossless = false;
+                }
+                this._appendPropertyPreview(preview, {name: name, type: type, value: symbolString}, propertiesThreshold);
+                return;
             }
 
             // Object.

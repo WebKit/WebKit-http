@@ -591,7 +591,7 @@ static void resizeWebKitWebViewBaseFromAllocation(WebKitWebViewBase* webViewBase
     if (priv->inspectorView) {
         GtkAllocation childAllocation = viewRect;
 
-        if (priv->inspectorAttachmentSide == AttachmentSideBottom) {
+        if (priv->inspectorAttachmentSide == AttachmentSide::Bottom) {
             int inspectorViewHeight = std::min(static_cast<int>(priv->inspectorViewSize), allocation->height);
             childAllocation.x = 0;
             childAllocation.y = allocation->height - inspectorViewHeight;
@@ -1307,4 +1307,30 @@ void webkitWebViewBaseUpdateTextInputState(WebKitWebViewBase* webkitWebViewBase)
 void webkitWebViewBaseResetClickCounter(WebKitWebViewBase* webkitWebViewBase)
 {
     webkitWebViewBase->priv->clickCounter.reset();
+}
+
+void webkitWebViewBaseEnterAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase)
+{
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
+    WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
+    if (!priv->redirectedWindow)
+        return;
+    DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
+    if (!drawingArea)
+        return;
+    priv->redirectedWindow->resize(drawingArea->size());
+#else
+    UNUSED_PARAM(webkitWebViewBase);
+#endif
+}
+
+void webkitWebViewBaseExitAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase)
+{
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
+    WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
+    if (priv->redirectedWindow)
+        priv->redirectedWindow->resize(IntSize());
+#else
+    UNUSED_PARAM(webkitWebViewBase);
+#endif
 }

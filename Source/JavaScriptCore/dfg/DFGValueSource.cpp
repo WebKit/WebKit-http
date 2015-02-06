@@ -42,22 +42,22 @@ void ValueSource::dump(PrintStream& out) const
         out.print("IsDead");
         break;
     case ValueInJSStack:
-        out.print("JS:r", virtualRegister());
+        out.print("JS:", virtualRegister());
         break;
     case Int32InJSStack:
-        out.print("Int32:r", virtualRegister());
+        out.print("Int32:", virtualRegister());
         break;
     case Int52InJSStack:
-        out.print("Int52:r", virtualRegister());
+        out.print("Int52:", virtualRegister());
         break;
     case CellInJSStack:
-        out.print("Cell:r", virtualRegister());
+        out.print("Cell:", virtualRegister());
         break;
     case BooleanInJSStack:
-        out.print("Bool:r", virtualRegister());
+        out.print("Bool:", virtualRegister());
         break;
     case DoubleInJSStack:
-        out.print("Double:r", virtualRegister());
+        out.print("Double:", virtualRegister());
         break;
     case ArgumentsSource:
         out.print("Arguments");

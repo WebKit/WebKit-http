@@ -130,8 +130,7 @@ gpointer Shell::launchWPE(gpointer data)
     auto pageGroupIdentifier = adoptWK(WKStringCreateWithUTF8CString("WPEPageGroup"));
     auto pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
 
-    auto contextConfiguration = adoptWK(WKContextConfigurationCreate());
-    auto context = adoptWK(WKContextCreateWithConfiguration(contextConfiguration.get()));
+    auto context = adoptWK(WKContextCreate());
 
     Shell::instance().m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
     auto view = Shell::instance().m_view.get();

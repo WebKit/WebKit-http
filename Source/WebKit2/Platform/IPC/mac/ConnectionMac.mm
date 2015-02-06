@@ -87,9 +87,7 @@ private:
     
     void watchdogTimerFired()
     {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
         xpc_connection_kill(m_xpcConnection.get(), SIGKILL);
-#endif
         delete this;
     }
 
@@ -188,7 +186,7 @@ bool Connection::open()
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         mach_port_set_attributes(mach_task_self(), m_receivePort, MACH_PORT_DENAP_RECEIVER, (mach_port_info_t)0, 0);
-#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#elif PLATFORM(MAC)
         mach_port_set_attributes(mach_task_self(), m_receivePort, MACH_PORT_IMPORTANCE_RECEIVER, (mach_port_info_t)0, 0);
 #endif
 
@@ -285,8 +283,11 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
 
     char stackBuffer[inlineMessageMaxSize];
     char* buffer = &stackBuffer[0];
-    if (messageSize > inlineMessageMaxSize)
+    if (messageSize > inlineMessageMaxSize) {
         buffer = (char*)mmap(0, messageSize, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+        if (buffer == MAP_FAILED)
+            return false;
+    }
 
     bool isComplex = (numberOfPortDescriptors + numberOfOOLMemoryDescriptors > 0);
 
@@ -475,7 +476,7 @@ void Connection::receiveSourceEventHandler()
     std::unique_ptr<MessageDecoder> decoder = createMessageDecoder(header);
     ASSERT(decoder);
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if PLATFORM(MAC)
     decoder->setImportanceAssertion(std::make_unique<ImportanceAssertion>(header));
 #endif
 
@@ -585,12 +586,10 @@ bool Connection::getAuditToken(audit_token_t& auditToken)
 
 bool Connection::kill()
 {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
     if (m_xpcConnection) {
         xpc_connection_kill(m_xpcConnection.get(), SIGKILL);
         return true;
     }
-#endif
 
     return false;
 }

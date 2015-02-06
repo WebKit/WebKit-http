@@ -112,10 +112,10 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
         cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval,
         pageCacheSize, urlCacheMemoryCapacity, urlCacheDiskCapacity);
 
-
-    memoryCache().setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    memoryCache().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
-    PageCache::shared().setMaxSize(pageCacheSize);
+    auto& memoryCache = MemoryCache::singleton();
+    memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    PageCache::singleton().setMaxSize(pageCacheSize);
 
     NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
 
@@ -144,7 +144,7 @@ void WebProcess::platformClearResourceCaches(ResourceCachesToClear cachesToClear
 #if USE(APPKIT)
 static id NSApplicationAccessibilityFocusedUIElement(NSApplication*, SEL)
 {
-    WebPage* page = WebProcess::shared().focusedWebPage();
+    WebPage* page = WebProcess::singleton().focusedWebPage();
     if (!page || !page->accessibilityRemoteObject())
         return 0;
 
@@ -193,7 +193,6 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 
     m_compositingRenderServerPort = WTF::move(parameters.acceleratedCompositingPort);
     m_presenterApplicationPid = parameters.presenterApplicationPid;
-    m_shouldForceScreenFontSubstitution = parameters.shouldForceScreenFontSubstitution;
     FontCascade::setDefaultTypesettingFeatures(parameters.shouldEnableKerningAndLigaturesByDefault ? Kerning | Ligatures : 0);
 
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
@@ -227,7 +226,7 @@ void WebProcess::platformInitializeProcess(const ChildProcessInitializationParam
     WKAXRegisterRemoteApp();
 
 #if ENABLE(SEC_ITEM_SHIM)
-    SecItemShim::shared().initialize(this);
+    SecItemShim::singleton().initialize(this);
 #endif
 }
 
@@ -268,7 +267,7 @@ void WebProcess::initializeSandbox(const ChildProcessInitializationParameters& p
 
 void WebProcess::updateActivePages()
 {
-#if USE(APPKIT) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if USE(APPKIT)
     RetainPtr<CFMutableArrayRef> activePageURLs = adoptCF(CFArrayCreateMutable(0, 0, &kCFTypeArrayCallBacks));
     for (const auto& iter: m_pageMap) {
         WebPage* page = iter.value.get();

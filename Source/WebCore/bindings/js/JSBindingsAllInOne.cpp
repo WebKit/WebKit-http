@@ -111,6 +111,10 @@
 #include "JSNodeListCustom.cpp"
 #include "JSPluginElementFunctions.cpp"
 #include "JSPopStateEventCustom.cpp"
+#if ENABLE(STREAMS_API)
+#include "JSReadableStreamCustom.cpp"
+#include "ReadableStreamJSSource.cpp"
+#endif
 #include "JSRequestAnimationFrameCallbackCustom.cpp"
 #include "JSSQLResultSetRowListCustom.cpp"
 #include "JSSQLTransactionCustom.cpp"
@@ -131,9 +135,6 @@
 #include "JSTreeWalkerCustom.cpp"
 #include "JSVideoTrackCustom.cpp"
 #include "JSVideoTrackListCustom.cpp"
-#include "JSWebGL2RenderingContextCustom.cpp"
-#include "JSWebGLRenderingContextBaseCustom.cpp"
-#include "JSWebGLRenderingContextCustom.cpp"
 #include "JSWebKitPointCustom.cpp"
 #include "JSWorkerCustom.cpp"
 #include "JSWorkerGlobalScopeBase.cpp"

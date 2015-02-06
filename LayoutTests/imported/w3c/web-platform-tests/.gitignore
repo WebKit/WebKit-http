@@ -1,0 +1,16 @@
+/.resources.url
+/__init__.py
+/_certs/index.txt
+
+/resources/
+
+/tools/.html5lib.url
+/tools/.pywebsocket.url
+/tools/.six.url
+/tools/.wptserve.url
+
+/tools/html5lib/
+/tools/pywebsocket/
+/tools/six/
+/tools/wptserve/
+

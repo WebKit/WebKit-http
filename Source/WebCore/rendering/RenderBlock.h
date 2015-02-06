@@ -100,11 +100,13 @@ public:
     static void clearPercentHeightDescendantsFrom(RenderBox&);
     static void removePercentHeightDescendantIfNeeded(RenderBox&);
 
-    void setHasMarginBeforeQuirk(bool b) { m_hasMarginBeforeQuirk = b; }
-    void setHasMarginAfterQuirk(bool b) { m_hasMarginAfterQuirk = b; }
+    void setHasMarginBeforeQuirk(bool b) { setRenderBlockHasMarginBeforeQuirk(b); }
+    void setHasMarginAfterQuirk(bool b) { setRenderBlockHasMarginAfterQuirk(b); }
+    void setHasBorderOrPaddingLogicalWidthChanged(bool b) { setRenderBlockHasBorderOrPaddingLogicalWidthChanged(b); }
 
-    bool hasMarginBeforeQuirk() const { return m_hasMarginBeforeQuirk; }
-    bool hasMarginAfterQuirk() const { return m_hasMarginAfterQuirk; }
+    bool hasMarginBeforeQuirk() const { return renderBlockHasMarginBeforeQuirk(); }
+    bool hasMarginAfterQuirk() const { return renderBlockHasMarginAfterQuirk(); }
+    bool hasBorderOrPaddingLogicalWidthChanged() const { return renderBlockHasBorderOrPaddingLogicalWidthChanged(); }
 
     bool hasMarginBeforeQuirk(const RenderBox& child) const;
     bool hasMarginAfterQuirk(const RenderBox& child) const;
@@ -112,7 +114,7 @@ public:
     bool generatesLineBoxesForInlineChild(RenderObject*);
 
     void markPositionedObjectsForLayout();
-    virtual void markForPaginationRelayoutIfNeeded() override final;
+    virtual void markForPaginationRelayoutIfNeeded() override;
     
     // FIXME-BLOCKFLOW: Remove virtualizaion when all of the line layout code has been moved out of RenderBlock
     virtual bool containsFloats() const { return false; }
@@ -511,14 +513,6 @@ public:
     // FIXME-BLOCKFLOW: Remove this when the line layout stuff has all moved out of RenderBlock
     friend class LineBreaker;
 
-    mutable signed m_lineHeight : 25;
-    unsigned m_hasMarginBeforeQuirk : 1; // Note these quirk values can't be put in RenderBlockRareData since they are set too frequently.
-    unsigned m_hasMarginAfterQuirk : 1;
-    unsigned m_hasMarkupTruncation : 1;
-    unsigned m_hasBorderOrPaddingLogicalWidthChanged : 1;
-    enum LineLayoutPath { UndeterminedPath, SimpleLinesPath, LineBoxesPath, ForceLineBoxesPath };
-    unsigned m_lineLayoutPath : 2;
-    
     // RenderRubyBase objects need to be able to split and merge, moving their children around
     // (calling moveChildTo, moveAllChildrenTo, and makeChildrenNonInline).
     friend class RenderRubyBase;

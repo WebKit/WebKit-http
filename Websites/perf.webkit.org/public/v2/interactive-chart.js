@@ -66,7 +66,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
         }
 
         if (this.get('showYAxis')) {
-            this._yAxis = d3.svg.axis().scale(this._y).orient("left").ticks(6).tickFormat(d3.format("s"));
+            this._yAxis = d3.svg.axis().scale(this._y).orient("left").ticks(6).tickFormat(chartData.formatter);
             this._yAxisLabels = svg.append("g")
                 .attr("class", "y axis");
         }
@@ -96,34 +96,27 @@ App.InteractiveChartComponent = Ember.Component.extend({
             this._dots.forEach(function (dot) { dots.remove(); });
         this._dots = [];
         if (this._highlights)
-            this._highlights.forEach(function (highlight) { highlight.remove(); });
-        this._highlights = [];
+            this._highlights.remove();
+        this._highlights = null;
 
-        this._currentTimeSeries = chartData.current.timeSeriesByCommitTime();
+        this._currentTimeSeries = chartData.current;
         this._currentTimeSeriesData = this._currentTimeSeries.series();
-        this._baselineTimeSeries = chartData.baseline ? chartData.baseline.timeSeriesByCommitTime() : null;
-        this._targetTimeSeries = chartData.target ? chartData.target.timeSeriesByCommitTime() : null;
+        this._baselineTimeSeries = chartData.baseline;
+        this._targetTimeSeries = chartData.target;
 
         this._yAxisUnit = chartData.unit;
 
-        var minMax = this._minMaxForAllTimeSeries();
-        var smallEnoughValue = minMax[0] - (minMax[1] - minMax[0]) * 10;
-        var largeEnoughValue = minMax[1] + (minMax[1] - minMax[0]) * 10;
-
-        // FIXME: Flip the sides based on smallerIsBetter-ness.
         if (this._baselineTimeSeries) {
-            var data = this._baselineTimeSeries.series();
-            this._areas.push(this._clippedContainer
+            this._paths.push(this._clippedContainer
                 .append("path")
-                .datum(data.map(function (point) { return {time: point.time, value: point.value, interval: point.interval ? point.interval : [point.value, largeEnoughValue]}; }))
-                .attr("class", "area baseline"));
+                .datum(this._baselineTimeSeries.series())
+                .attr("class", "baseline"));
         }
         if (this._targetTimeSeries) {
-            var data = this._targetTimeSeries.series();
-            this._areas.push(this._clippedContainer
+            this._paths.push(this._clippedContainer
                 .append("path")
-                .datum(data.map(function (point) { return {time: point.time, value: point.value, interval: point.interval ? point.interval : [smallEnoughValue, point.value]}; }))
-                .attr("class", "area target"));
+                .datum(this._targetTimeSeries.series())
+                .attr("class", "target"));
         }
 
         this._areas.push(this._clippedContainer
@@ -134,7 +127,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
         this._paths.push(this._clippedContainer
             .append("path")
             .datum(this._currentTimeSeriesData)
-            .attr("class", "commit-time-line"));
+            .attr("class", "current"));
 
         this._dots.push(this._clippedContainer
             .selectAll(".dot")
@@ -180,6 +173,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
 
         this._needsConstruction = false;
 
+        this._highlightedItemsChanged();
         this._rangesChanged();
     },
     _updateDomain: function ()
@@ -273,7 +267,6 @@ App.InteractiveChartComponent = Ember.Component.extend({
                 .attr("cx", function(measurement) { return xScale(measurement.time); })
                 .attr("cy", function(measurement) { return yScale(measurement.value); });
         });
-        this._updateMarkedDots();
         this._updateHighlightPositions();
         this._updateRangeBarRects();
 
@@ -295,35 +288,22 @@ App.InteractiveChartComponent = Ember.Component.extend({
         this._yAxisLabels.call(this._yAxis);
         if (this._yAxisUnitContainer)
             this._yAxisUnitContainer.remove();
+        var x = - 3 * this._rem;
+        var y = this._contentHeight / 2;
         this._yAxisUnitContainer = this._yAxisLabels.append("text")
-            .attr("x", 0.5 * this._rem)
-            .attr("y", 0.2 * this._rem)
-            .attr("dy", 0.8 * this._rem)
-            .style("text-anchor", "start")
-            .style("z-index", "100")
+            .attr("transform", "rotate(90 0 0) translate(" + y + ", " + (-x) + ")")
+            .style("text-anchor", "middle")
             .text(this._yAxisUnit);
     },
-    _updateMarkedDots: function () {
-        var markedPoints = this.get('markedPoints') || {};
-        var defaultDotRadius = this.get('chartPointRadius') || 1;
-        this._dots.forEach(function (dot) {
-            dot.classed('marked', function (point) { return markedPoints[point.measurement.id()]; });
-            dot.attr('r', function (point) {
-                return markedPoints[point.measurement.id()] ? defaultDotRadius * 1.5 : defaultDotRadius; });
-        });
-    }.observes('markedPoints'),
     _updateHighlightPositions: function () {
+        if (!this._highlights)
+            return;
+
         var xScale = this._x;
         var yScale = this._y;
-        var y2 = this._margin.top + this._contentHeight;
-        this._highlights.forEach(function (highlight) {
-            highlight
-                .attr("y1", 0)
-                .attr("y2", y2)
-                .attr("y", function(measurement) { return yScale(measurement.value); })
-                .attr("x1", function(measurement) { return xScale(measurement.time); })
-                .attr("x2", function(measurement) { return xScale(measurement.time); });
-        });
+        this._highlights
+            .attr("cy", function(point) { return yScale(point.value); })
+            .attr("cx", function(point) { return xScale(point.time); });
     },
     _computeXAxisDomain: function (timeSeries)
     {
@@ -588,24 +568,23 @@ App.InteractiveChartComponent = Ember.Component.extend({
         }
     }.observes('selectedItem').on('init'),
     _highlightedItemsChanged: function () {
-        if (!this._margin)
-            return;
-
         var highlightedItems = this.get('highlightedItems');
+
+        if (!this._clippedContainer || !highlightedItems)
+            return;
 
         var data = this._currentTimeSeriesData.filter(function (item) { return highlightedItems[item.measurement.id()]; });
 
-        if (this._highlights.length)
-            this._highlights.forEach(function (highlight) { highlight.remove(); });
-
-        this._highlights.push(this._clippedContainer
+        if (this._highlights)
+            this._highlights.remove();
+        this._highlights = this._clippedContainer
             .selectAll(".highlight")
                 .data(data)
-            .enter().append("line")
-                .attr("class", "highlight"));
+            .enter().append("circle")
+                .attr("class", "highlight")
+                .attr("r", (this.get('chartPointRadius') || 1) * 1.8);
 
         this._updateHighlightPositions();
-
     }.observes('highlightedItems'),
     _rangesChanged: function ()
     {

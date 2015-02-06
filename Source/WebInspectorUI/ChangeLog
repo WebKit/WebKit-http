@@ -1,3 +1,267 @@
+2015-02-04  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: REGRESSION: Inline SourceMap resources show empty content when opened.
+        https://bugs.webkit.org/show_bug.cgi?id=141225
+
+        Reviewed by Timothy Hatcher.
+
+        Change WebInspector.SourceMapResource.prototype.requestContentFromBackend to correctly and consistently handle
+        calls to NetworkAgent. The helper function sourceMapResourceLoaded will now properly handle parameters as a single
+        payload, including manual calls in the case where the source map content is in a data URI. Also
+        WebInspector.SourceCode.prototype._processContent now properly handles an error string used for displaying
+        resource loading error messages in the resource content view.
+
+        * UserInterface/Models/Resource.js: drive-by style fix.
+
+        * UserInterface/Models/SourceCode.js:
+        (WebInspector.SourceCode.prototype._processContent):
+        Properly handle error string.
+
+        * UserInterface/Models/SourceMapResource.js:
+        (WebInspector.SourceMapResource.prototype.requestContentFromBackend):
+        (WebInspector.SourceMapResource.prototype.requestContentFromBackend.sourceMapResourceLoaded):
+        Formerly sourceMapResourceLoadError, now handles parameters from the NetworkAgent correctly.
+
+        (WebInspector.SourceMapResource.prototype.requestContentFromBackend.sourceMapResourceLoadError):
+        This function now handles NetworkAgent errors only.
+
+2015-02-05  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: eliminate some unnecessary layout/painting in timeline overview and ruler
+        https://bugs.webkit.org/show_bug.cgi?id=141293
+
+        Reviewed by Timothy Hatcher.
+
+        The timeline overview's ruler was forcing repaints of divider labels even if the labels
+        had not changed since the last requestAnimationFrame. Bail out early if nothing changed.
+
+        The timeline overview and its graphs were updating layout using requestAnimationFrame
+        even when the TimelineContentView is not visible. Fix this by propagating visibility
+        changes to subviews, and not updating layout when hidden.
+
+        The above change also fixes an assertion sometimes encountered when the timeline view
+        tries to cache an element's offset width, but cannot because it isn't visible.
+
+        * UserInterface/Views/TimelineContentView.js:
+        (WebInspector.TimelineContentView.prototype.shown):
+        (WebInspector.TimelineContentView.prototype.hidden):
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype.get visible):
+        (WebInspector.TimelineOverview.prototype.shown):
+        (WebInspector.TimelineOverview.prototype.hidden):
+        (WebInspector.TimelineOverview.prototype._needsLayout):
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WebInspector.TimelineOverviewGraph.prototype.get visible):
+        (WebInspector.TimelineOverviewGraph.prototype.shown):
+        (WebInspector.TimelineOverviewGraph.prototype.hidden):
+        (WebInspector.TimelineOverviewGraph.prototype.needsLayout):
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.updateLayout):
+
+2015-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Console Support for Symbol Objects
+        https://bugs.webkit.org/show_bug.cgi?id=141173
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.prototype._isSymbol):
+        Symbols have an objectId because it is a non-primitive that cannot be passed
+        by value, however it cannot have properties, so handle some cases.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-formatted-symbol):
+        Give Symbol's their own color.
+
+2015-02-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Insertion bar (caret) is hidden behind the placeholder text in the style editor
+        https://bugs.webkit.org/show_bug.cgi?id=139659
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-placeholder):
+        Use non-monospace font to fit the placeholder text on a single line and
+        match the color if the native placeholder.
+
+2015-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.table with columnName filter for non-existent property should still show column
+        https://bugs.webkit.org/show_bug.cgi?id=141066
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._appendPropertyPreviews):
+        (WebInspector.ConsoleMessageImpl.prototype._userProvidedColumnNames):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsTable):
+        If a second argument was provided to console.table, try to extract a list
+        of string names to use for the object properties. Output a table with
+        the provided column names, in the specified order. Also, use this
+        opportunity to mark missing properties with an em dash.
+
+2015-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CSS Autocompletion: Autodetect many color supporting properties
+        https://bugs.webkit.org/show_bug.cgi?id=141166
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        Add String.prototype.endsWith. Group String extensions together.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WebInspector.CSSKeywordCompletions.forProperty):
+        If a property name ends in "color", provide CSS color completions.
+
+        (WebInspector.CSSKeywordCompletions.isColorAwareProperty): Deleted.
+        This was unused and disagrees slightly with the implementation above.
+
+2015-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Support console.table
+        https://bugs.webkit.org/show_bug.cgi?id=141058
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New "Index", "(Index)", "Value", table header strings.
+
+        * UserInterface/Views/ConsoleMessage.js:
+        Add "Table", but add FIXMEs to consider using the protocol generated enums.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._format):
+        Special case console.table messages.
+
+        (WebInspector.ConsoleMessageImpl.prototype._appendPropertyPreviews):
+        (WebInspector.ConsoleMessageImpl.prototype._propertyPreviewElement):
+        Factor out ProjectPreview printing. Also, replace newlines in strings
+        with return characters, like we did elsewhere.
+
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsTable):
+        Ultimately try to create a DataGrid from the output. Search first
+        for rich object data in the list. If no rich object data is found
+        just check for simple values. If the table is lossy, also do
+        a log of the object in case the user wants to see more data.
+
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid):
+        The for..in enumeration is unordered and may not give us the
+        column ordering we wanted. So include an optional preferred
+        column names list to get the preferred order.
+
+        (WebInspector.DataGrid.createSortableDataGrid):
+        Numerous bug fixes here. Accidental globals, typos, and sorting failures.
+
+        (WebInspector.DataGrid.prototype.autoSizeColumns):
+        (WebInspector.DataGrid.prototype.textForDataGridNodeColumn):
+        (WebInspector.DataGrid.prototype._copyTextForDataGridNode):
+        Create a generic method to get the text for a datagrid node in a column.
+        This is important for getting the text from console.table previews which
+        contains Nodes.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-messages:focus .console-item.selected .data-grid tr.selected):
+        (.console-item .data-grid tr.selected):
+        DataGrid selection colors while in the console which may or may
+        not have selected console items.
+
+2015-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Extend CSS.getSupportedCSSProperties to provide values for properties for CSS Augmented JSContext
+        https://bugs.webkit.org/show_bug.cgi?id=141064
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSCompletions.js:
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WebInspector.CSSKeywordCompletions.addCustomCompletions):
+        (WebInspector.CSSKeywordCompletions.addPropertyCompletionValues):
+        If a property is specified with custom values, extend the
+        keyword completions map to make those values available
+        in autocompletion.
+
+2015-01-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remote Web Inspector should not show undock toolbar buttons
+        https://bugs.webkit.org/show_bug.cgi?id=141061
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        Be sure to update the toolbar's dock navigation icons because they
+        may need to be hidden (the default state).
+
+2015-01-29  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Allow text selection when the BasicBlockAnnotator is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=140987
+
+        Reviewed by Timothy Hatcher.
+
+        Because the BasicBlockAnnotator no longer sets the background color of
+        lines that haven't executed to gray, text selection while the
+        BasicBlockAnnotator is enabled no longer results in a bad user interface.
+        This patch both allows text selection while the BasicBlockAnnotator is
+        enabled and also removes the now unused listeners to CodeMirror's focus
+        and blur events.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype._setTypeTokenAnnotatorEnabledState):
+        (WebInspector.SourceCodeTextEditor.prototype._makeTypeTokenScrollEventHandler.scrollHandler):
+        (WebInspector.SourceCodeTextEditor.prototype._makeTypeTokenScrollEventHandler):
+        (WebInspector.SourceCodeTextEditor.prototype.gainedFocus): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype.lostFocus): Deleted.
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        (WebInspector.TextEditor.prototype.gainedFocus): Deleted.
+        (WebInspector.TextEditor.prototype.lostFocus): Deleted.
+
+2015-01-29  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: Make BasicBlockAnnotator lessen the saturation of syntax highlighting instead of graying out unexecuted code
+        https://bugs.webkit.org/show_bug.cgi?id=141011
+
+        Reviewed by Timothy Hatcher.
+
+        This patch removes a lot of the complicated logic associated around 
+        determining which code can be grayed out by the BasicBlockAnnotator. 
+        Instead, the BasicBlockAnnotator now applies a CSS class to all the
+        code that has not executed which lessens the saturation of the 
+        syntax coloring for the code. This creates both a nicer user
+        interface and a nicer user experience because it makes reading
+        source code with the BasicBlockAnnotator enabled more pleasant.
+
+        * UserInterface/Controllers/BasicBlockAnnotator.js:
+        (WebInspector.BasicBlockAnnotator.prototype._annotateBasicBlockExecutionRanges.):
+        (WebInspector.BasicBlockAnnotator.prototype._annotateBasicBlockExecutionRanges):
+        (WebInspector.BasicBlockAnnotator.prototype.set _highlightTextForBasicBlock):
+        (WebInspector.BasicBlockAnnotator.prototype._isTextRangeOnlyWhitespace): Deleted.
+        (WebInspector.BasicBlockAnnotator.prototype._isTextRangeOnlyClosingBrace): Deleted.
+        (_canGrayOutEntireLine): Deleted.
+        (_grayOutLine): Deleted.
+        (_clearRangeForBasicBlockMarker.get marker): Deleted.
+        (_clearRangeForBasicBlockMarker): Deleted.
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.hover-menu.color > img):
+        (.basic-block-has-not-executed): Deleted.
+        (.basic-block-has-not-executed-prepend::before): Deleted.
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.cm-s-default .basic-block-has-not-executed):
+        (.cm-s-default .basic-block-has-not-executed.cm-comment):
+        (.cm-s-default .basic-block-has-not-executed.cm-m-css:matches(.cm-atom, .cm-meta, .cm-variable-3, .cm-property)):
+        (.cm-s-default .basic-block-has-not-executed:matches(.cm-number, .cm-atom.cm-hex-color)):
+        (.cm-s-default .basic-block-has-not-executed.cm-string):
+        (.cm-s-default .basic-block-has-not-executed.cm-m-xml.cm-meta):
+        (.cm-s-default .basic-block-has-not-executed.cm-m-xml.cm-attribute):
+
 2015-01-29  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: ES6: Improved Console Format for Set and Map Objects (like Arrays)

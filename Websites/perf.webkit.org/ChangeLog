@@ -1,3 +1,238 @@
+2015-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Move commits viewer to the end of details view
+        https://bugs.webkit.org/show_bug.cgi?id=141315
+
+        Rubber-stamped by Andreas Kling.
+
+        Show the difference instead of the old value per kling's request.
+
+        * public/v2/app.js:
+        (App.PaneController._updateDetails):
+        * public/v2/index.html:
+
+2015-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Move commits viewer to the end of details view
+        https://bugs.webkit.org/show_bug.cgi?id=141315
+
+        Reviewed by Andreas Kling.
+
+        Improved the way list of commits are shown per kling's request.
+
+        * public/v2/app.js:
+        (App.PaneController._updateDetails): Always show the old value even when a single point is selected.
+
+        * public/v2/chart-pane.css: Updated the style for the commits viewer.
+
+        * public/v2/commits-viewer.js:
+        (App.CommitsViewerComponent): Added "visible" property to hide the list of commits.
+        (App.CommitsViewerComponent.actions.toggleVisibility): Added. Toggles "visible" property.
+
+        * public/v2/index.html: Updated the template for commits viewer to support "visible" property. Also
+        moved the commits viewers out of the details tables so that they don't interleave revision data.
+
+2015-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard should compare results to baseline and target
+        https://bugs.webkit.org/show_bug.cgi?id=141286
+
+        Reviewed by Chris Dumez.
+
+        Compare the selected value against baseline and target values as done in v1. e.g. "5% below target"
+        Also use d3.format to format the selected value to show four significant figures.
+
+        * public/v2/app.js:
+        (App.Pane.searchCommit):
+        (App.Pane._fetch): Create time series here via createChartData so that _computeStatus can use them
+        to compute the status text without having to recreate them.
+        (App.createChartData): Added.
+        (App.PaneController._updateDetails): Use 3d.format on current and old values.
+        (App.PaneController._computeStatus): Added. Computes the status text.
+        (App.PaneController._relativeDifferentToLaterPointInTimeSeries): Added.
+        (App.AnalysisTaskController._fetchedManifest): Use createChartData as done in App.Pane._fetch. Also
+        format the values using chartData.formatter.
+
+        * public/v2/chart-pane.css: Enlarge the status text. Show the status text in red if it's worse than
+        the baseline and in blue if it's better than the target.
+
+        * public/v2/data.js:
+        (TimeSeries.prototype.findPointAfterTime): Added.
+
+        * public/v2/index.html: Added a new tbody for the status text and the selected value. Also fixed
+        the bug that we were not showing the old value's unit.
+
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._constructGraphIfPossible): Use chartData.formatter. Also cleaned up
+        the code to show the baseline and the target lines.
+
+        * public/v2/manifest.js:
+        (App.Manifest.fetchRunsWithPlatformAndMetric): Added smallerIsBetter.
+
+2015-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix.
+
+        * public/v2/app.js:
+        (App.IndexController.gridChanged): Use store.createRecord to create a custom dashboard as required by Ember.js
+
+2015-02-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard doesn't preserve the number of days when clicking on a dashboard chart
+        https://bugs.webkit.org/show_bug.cgi?id=141280
+
+        Reviewed by Chris Dumez.
+
+        Fixed the bug by passing in "since" as a query parameter to the charts page.
+
+        Also fixed the styling issue that manifests when a JSON fetching fails on "Dashboard" page.
+
+        * public/v2/app.css: Fixed CSS rules for error messages shown in the place of charts.
+        * public/v2/app.js:
+        (App.IndexController): Changed the default number of days from one month to one week.
+        (App.IndexController._sharedDomainChanged): Set "since" property on the controller.
+        * public/v2/index.html: Pass in "since" property on the controller as a query parameter.
+
+2015-02-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard erroneously clears zoom when poping history items
+        https://bugs.webkit.org/show_bug.cgi?id=141278
+
+        Reviewed by Chris Dumez.
+
+        The bug was caused by _sharedZoomChanged updating overviewSelection without updating mainPlotDomain.
+
+        Updating overviewSelection resulted in _overviewSelectionChanged, which observes changes to overviewSelection,
+        to schedule a call to propagateZoom, which in turn overrode "sharedZoom" we just parsed from the query string.
+
+        * public/v2/app.js:
+        (App.PaneController._overviewSelectionChanged): Don't schedule propagateZoom if the selected domain is already
+        shown in the main plot.
+        (App.PaneController._sharedZoomChanged): Set both overviewSelection and mainPlotDomain to avoid overriding
+        "sharedZoom" via propagateZoom inside _overviewSelectionChanged.
+
+2015-02-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard shows null as the aggregator name if no aggregation is done
+        https://bugs.webkit.org/show_bug.cgi?id=141256
+
+        Reviewed by Chris Dumez.
+
+        Don't show the aggregator name if there isn't one.
+
+        * public/v2/manifest.js:
+        (App.Metric.label):
+
+2015-02-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix after r179611.
+
+        * public/v2/interactive-chart.js:
+
+2015-02-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard doesn’t show the right unit for Safari UI tests
+        https://bugs.webkit.org/show_bug.cgi?id=141238
+
+        Reviewed by Darin Adler.
+
+        Safari UI tests use custom metrics that end with "Time". This patch teaches the perf dashboard how to
+        get the unit for a given metric based on the suffix of the metric name instead of hard-coding the mapping
+        between metrics and their units.
+
+        * public/js/helper-classes.js:
+        (PerfTestRuns): Use the suffix of the metric name to compute the unit.
+        * public/v2/manifest.js:
+        (App.Manifest.fetchRunsWithPlatformAndMetric): Ditto. Also set "useSI" property iff for "bytes".
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._constructGraphIfPossible): Respect useSI. Use toPrecision(3) otherwise.
+        (App.InteractiveChartComponent._relayoutDataAndAxes): Place the unit vertically on the left of ticks.
+
+2015-02-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Interactive chart component provides two duplicate API for highlighting points
+        https://bugs.webkit.org/show_bug.cgi?id=141234
+
+        Reviewed by Chris Dumez.
+
+        Prior to this patch, the interactive chart component supported highlightedItems for finding commits
+        on the main charts page and markedPoints to show the two end points in the analysis task page.
+
+        This patch merges markedPoints into highlightedItems. 
+
+        * public/v2/app.js:
+        (App.AnalysisTaskController._fetchedRuns): Use highlightedItems.
+        * public/v2/chart-pane.css:
+        * public/v2/index.html: Ditto.
+        * public/v2/interactive-chart.js: 
+        (App.InteractiveChartComponent._constructGraphIfPossible): Make this._highlights an array instead of
+        array of arrays. Also call _highlightedItemsChanged at the end to fix the bug that we never highlight
+        items if highlightedItems was set before the initial layout.
+        (App.InteractiveChartComponent._relayoutDataAndAxes):
+        (App.InteractiveChartComponent._updateHighlightPositions): Now that highlights are circles instead of
+        vertical lines, just set cx and cy as done for other "dots".
+        (App.InteractiveChartComponent._highlightedItemsChanged): Exit early only if _clippedContainer wasn't
+        already set; i.e. _constructGraphIfPossible hasn't been called. Also updated the logic to accommodate
+        the fact this._highlights is an array of elements instead of an array of arrays of elements. Finally,
+        set the radius of highlight circles here.
+
+2015-02-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Don’t use repository names as id’s.
+        https://bugs.webkit.org/show_bug.cgi?id=141226
+
+        Reviewed by Chris Dumez.
+
+        Not using repository names as their id's reduces the need to fetch the entire repositories table.
+        Since names of repositories are available in manifest.json, we can resolve their names in the front end.
+
+        * Websites/perf.webkit.org/public/api/runs.php:
+        (parse_revisions_array): No longer uses $repository_id_to_name.
+        (main): No longer populates $repository_id_to_name.
+
+        * Websites/perf.webkit.org/public/api/triggerables.php:
+        (main): Don't resolve repository names.
+
+        * Websites/perf.webkit.org/public/include/manifest.php:
+        (ManifestGenerator::repositories): Use repositories ids as keys in the result and include their names.
+        (ManifestGenerator::bug_trackers): Don't resolve repository names.
+
+        * Websites/perf.webkit.org/public/js/helper-classes.js:
+        (TestBuild): Renamed repositoryName to repositoryId.
+        (TestBuild.revision): Ditto.
+        (TestBuild.formattedRevisions): Ditto. Continue to use the repository name in the formatted result
+        since this is the text shown to human.
+
+        * Websites/perf.webkit.org/public/v2/app.js:
+        (App.pane.searchCommit): Renamed repositoryName to repositoryId.
+        (App.PaneController._updateDetails): Ditto.
+        (App.AnalysisTaskController.updateRoots): Ditto.
+
+        * Websites/perf.webkit.org/public/v2/data.js:
+        (Measurement): Ditto.
+        (Measurement.prototype.commitTimeForRepository): Ditto.
+        (Measurement.prototype.formattedRevisions): Ditto.
+
+        * Websites/perf.webkit.org/public/v2/index.html: Use the repository name and the repository id as
+        select element's label and value respectively.
+
+2015-02-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix. Declare $repository_id_to_name in the global scope.
+
+        * public/api/runs.php:
+
+2015-02-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        /api/runs.php should have main function
+        https://bugs.webkit.org/show_bug.cgi?id=141220
+
+        Reviewed by Benjamin Poulain.
+
+        Wrapped the code inside main function for clarity.
+
+        * public/api/runs.php:
+
 2015-01-27  Ryosuke Niwa  <rniwa@webkit.org>
 
         Unreviewed build fix. "eta" isn't set on a in-progress build on a newly added builder.

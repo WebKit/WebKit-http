@@ -43,10 +43,9 @@ namespace WebKit {
 
 class NetworkCache {
     WTF_MAKE_NONCOPYABLE(NetworkCache);
+    friend class WTF::NeverDestroyed<NetworkCache>;
 public:
-    static NetworkCache& shared();
-
-    NetworkCache();
+    static NetworkCache& singleton();
 
     bool initialize(const String& cachePath);
     void setMaximumSize(size_t);
@@ -54,6 +53,7 @@ public:
     bool isEnabled() const { return !!m_storage; }
 
     struct Entry {
+        NetworkCacheStorage::Entry storageEntry;
         WebCore::ResourceResponse response;
         RefPtr<WebCore::SharedBuffer> buffer;
 #if ENABLE(SHAREABLE_RESOURCE)
@@ -63,12 +63,22 @@ public:
     };
     // Completion handler may get called back synchronously on failure.
     void retrieve(const WebCore::ResourceRequest&, std::function<void (std::unique_ptr<Entry>)>);
-    void store(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, PassRefPtr<WebCore::SharedBuffer>);
+
+    struct MappedBody {
+#if ENABLE(SHAREABLE_RESOURCE)
+        RefPtr<ShareableResource> shareableResource;
+        ShareableResource::Handle shareableResourceHandle;
+#endif
+    };
+    void store(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, RefPtr<WebCore::SharedBuffer>&&, std::function<void (MappedBody&)>);
     void update(const WebCore::ResourceRequest&, const Entry&, const WebCore::ResourceResponse& validatingResponse);
 
     void clear();
 
 private:
+    NetworkCache() = default;
+    ~NetworkCache() = delete;
+
     std::unique_ptr<NetworkCacheStorage> m_storage;
 };
 

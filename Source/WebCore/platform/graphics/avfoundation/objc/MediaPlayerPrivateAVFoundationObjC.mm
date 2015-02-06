@@ -49,9 +49,11 @@
 #import "MediaSelectionGroupAVFObjC.h"
 #import "MediaTimeAVFoundation.h"
 #import "PlatformTimeRanges.h"
+#import "QuartzCoreSPI.h"
 #import "SecurityOrigin.h"
 #import "SerializedPlatformRepresentationMac.h"
 #import "SoftLinking.h"
+#import "TextEncoding.h"
 #import "TextTrackRepresentation.h"
 #import "UUID.h"
 #import "VideoTrackPrivateAVFObjC.h"
@@ -80,6 +82,7 @@
 #if PLATFORM(IOS)
 #import "WAKAppKitStubs.h"
 #import <CoreImage/CoreImage.h>
+#import <mach/mach_port.h>
 #else
 #import <Foundation/NSGeometry.h>
 #import <QuartzCore/CoreImage.h>
@@ -595,7 +598,7 @@ void MediaPlayerPrivateAVFoundationObjC::createVideoLayer()
         if (!m_videoLayer)
             createAVPlayerLayer();
 
-#if USE(VIDEOTOOLBOX) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#if USE(VIDEOTOOLBOX)
         if (!m_videoOutput)
             createVideoOutput();
 #endif
@@ -935,12 +938,6 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerItem()
     [m_avPlayerItem.get() addOutput:m_legibleOutput.get()];
 #endif
 
-#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP) && HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
-        [m_avPlayerItem selectMediaOptionAutomaticallyInMediaSelectionGroup:safeMediaSelectionGroupForLegibleMedia()];
-        [m_avPlayerItem selectMediaOptionAutomaticallyInMediaSelectionGroup:safeMediaSelectionGroupForAudibleMedia()];
-        [m_avPlayerItem selectMediaOptionAutomaticallyInMediaSelectionGroup:safeMediaSelectionGroupForVisualMedia()];
-#endif
-
 #if ENABLE(WEB_AUDIO) && USE(MEDIATOOLBOX)
     if (m_provider)
         m_provider->setPlayerItem(m_avPlayerItem.get());
@@ -1045,18 +1042,41 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenLayer(PlatformLayer* 
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
+    
+    CALayer *oldRootLayer = videoFullscreenLayer;
+    while (oldRootLayer.superlayer)
+        oldRootLayer = oldRootLayer.superlayer;
 
+    CALayer *newRootLayer = nil;
+    
     if (m_videoFullscreenLayer && m_videoLayer) {
         [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
         [m_videoLayer removeFromSuperlayer];
         [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
+        newRootLayer = m_videoFullscreenLayer.get();
     } else if (m_videoInlineLayer && m_videoLayer) {
         [m_videoLayer setFrame:[m_videoInlineLayer bounds]];
         [m_videoLayer removeFromSuperlayer];
         [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
+        newRootLayer = m_videoInlineLayer.get();
     } else if (m_videoLayer)
         [m_videoLayer removeFromSuperlayer];
 
+    while (newRootLayer.superlayer)
+        newRootLayer = newRootLayer.superlayer;
+
+    if (oldRootLayer && newRootLayer && oldRootLayer != newRootLayer) {
+        mach_port_t fencePort = 0;
+        for (CAContext *context in [CAContext allContexts]) {
+            if (context.layer == oldRootLayer || context.layer == newRootLayer) {
+                if (!fencePort)
+                    fencePort = [context createFencePort];
+                else
+                    [context setFencePort:fencePort];
+            }
+        }
+        mach_port_deallocate(mach_task_self(), fencePort);
+    }
     [CATransaction commit];
 
     if (m_videoFullscreenLayer && m_textTrackRepresentationLayer) {
@@ -1499,7 +1519,7 @@ void MediaPlayerPrivateAVFoundationObjC::getSupportedTypes(HashSet<String>& supp
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
 static bool keySystemIsSupported(const String& keySystem)
 {
-    if (equalIgnoringCase(keySystem, "com.apple.fps") || equalIgnoringCase(keySystem, "com.apple.fps.1_0"))
+    if (equalIgnoringCase(keySystem, "com.apple.fps") || equalIgnoringCase(keySystem, "com.apple.fps.1_0") || equalIgnoringCase(keySystem, "org.w3c.clearkey"))
         return true;
     return false;
 }
@@ -1514,6 +1534,10 @@ MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const
     // 1. Check whether the Key System is supported with the specified container and codec type(s) by following the steps for the first matching condition from the following list:
     //    If keySystem is null, continue to the next step.
     if (!parameters.keySystem.isNull() && !parameters.keySystem.isEmpty()) {
+        // "Clear Key" is only supported with HLS:
+        if (equalIgnoringCase(parameters.keySystem, "org.w3c.clearkey") && !parameters.type.isEmpty() && !equalIgnoringCase(parameters.type, "application/x-mpegurl"))
+            return MediaPlayer::IsNotSupported;
+
         // If keySystem contains an unrecognized or unsupported Key System, return the empty string
         if (!keySystemIsSupported(parameters.keySystem))
             return MediaPlayer::IsNotSupported;
@@ -1546,6 +1570,10 @@ bool MediaPlayerPrivateAVFoundationObjC::supportsKeySystem(const String& keySyst
 {
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     if (!keySystem.isEmpty()) {
+        // "Clear Key" is only supported with HLS:
+        if (equalIgnoringCase(keySystem, "org.w3c.clearkey") && !mimeType.isEmpty() && !equalIgnoringCase(mimeType, "application/x-mpegurl"))
+            return MediaPlayer::IsNotSupported;
+
         if (!keySystemIsSupported(keySystem))
             return false;
 
@@ -1562,6 +1590,34 @@ bool MediaPlayerPrivateAVFoundationObjC::supportsKeySystem(const String& keySyst
 }
 
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+static void fulfillRequestWithKeyData(AVAssetResourceLoadingRequest *request, ArrayBuffer* keyData)
+{
+    if (AVAssetResourceLoadingContentInformationRequest *infoRequest = [request contentInformationRequest]) {
+        [infoRequest setContentLength:keyData->byteLength()];
+        [infoRequest setByteRangeAccessSupported:YES];
+    }
+
+    if (AVAssetResourceLoadingDataRequest *dataRequest = [request dataRequest]) {
+        long long start = [dataRequest currentOffset];
+        long long end = std::min<long long>(keyData->byteLength(), [dataRequest currentOffset] + [dataRequest requestedLength]);
+
+        if (start < 0 || end < 0 || start >= static_cast<long long>(keyData->byteLength())) {
+            [request finishLoadingWithError:nil];
+            return;
+        }
+
+        ASSERT(start <= std::numeric_limits<int>::max());
+        ASSERT(end <= std::numeric_limits<int>::max());
+        RefPtr<ArrayBuffer> requestedKeyData = keyData->slice(static_cast<int>(start), static_cast<int>(end));
+        RetainPtr<NSData> nsData = adoptNS([[NSData alloc] initWithBytes:requestedKeyData->data() length:requestedKeyData->byteLength()]);
+        [dataRequest respondWithData:nsData.get()];
+    }
+
+    [request finishLoading];
+}
+#endif
+
 bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetResourceLoadingRequest* avRequest)
 {
     String scheme = [[[avRequest request] URL] scheme];
@@ -1589,6 +1645,27 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
 
         m_keyURIToRequestMap.set(keyURI, avRequest);
         return true;
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    } else if (scheme == "clearkey") {
+        String keyID = [[[avRequest request] URL] resourceSpecifier];
+        StringView keyIDView(keyID);
+        CString utf8EncodedKeyId = UTF8Encoding().encode(keyIDView, URLEncodedEntitiesForUnencodables);
+
+        RefPtr<Uint8Array> initData = Uint8Array::create(utf8EncodedKeyId.length());
+        initData->setRange((JSC::Uint8Adaptor::Type*)utf8EncodedKeyId.data(), utf8EncodedKeyId.length(), 0);
+
+        auto keyData = player()->cachedKeyForKeyId(keyID);
+        if (keyData) {
+            fulfillRequestWithKeyData(avRequest, keyData.get());
+            return false;
+        }
+
+        if (!player()->keyNeeded(initData.get()))
+            return false;
+
+        m_keyURIToRequestMap.set(keyID, avRequest);
+        return true;
+#endif
     }
 #endif
 
@@ -2011,11 +2088,7 @@ void MediaPlayerPrivateAVFoundationObjC::createVideoOutput()
         return;
 
 #if USE(VIDEOTOOLBOX)
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     NSDictionary* attributes = nil;
-#else
-    NSDictionary* attributes = @{ (NSString*)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_422YpCbCr8) };
-#endif
 #else
     NSDictionary* attributes = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInt:kCVPixelFormatType_32BGRA], kCVPixelBufferPixelFormatTypeKey,
                                 nil];
@@ -2283,6 +2356,26 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateAVFoundationObjC::cancelKeyRequ
 RetainPtr<AVAssetResourceLoadingRequest> MediaPlayerPrivateAVFoundationObjC::takeRequestForKeyURI(const String& keyURI)
 {
     return m_keyURIToRequestMap.take(keyURI);
+}
+
+void MediaPlayerPrivateAVFoundationObjC::keyAdded()
+{
+    Vector<String> fulfilledKeyIds;
+
+    for (auto& pair : m_keyURIToRequestMap) {
+        const String& keyId = pair.key;
+        const RetainPtr<AVAssetResourceLoadingRequest>& request = pair.value;
+
+        auto keyData = player()->cachedKeyForKeyId(keyId);
+        if (!keyData)
+            continue;
+
+        fulfillRequestWithKeyData(request.get(), keyData.get());
+        fulfilledKeyIds.append(keyId);
+    }
+
+    for (auto& keyId : fulfilledKeyIds)
+        m_keyURIToRequestMap.remove(keyId);
 }
 
 std::unique_ptr<CDMSession> MediaPlayerPrivateAVFoundationObjC::createSession(const String& keySystem)

@@ -85,10 +85,10 @@ if (ATHOL_FOUND)
 endif ()
 
 if (ENABLE_VIDEO)
-    set(GSTREAMER_COMPONENTS app audio fft gl pbutils tag video)
+    set(GSTREAMER_COMPONENTS app audio fft pbutils tag video)
     add_definitions(-DWTF_USE_GSTREAMER)
 
-    find_package(GStreamer 1.4.1 REQUIRED COMPONENTS ${GSTREAMER_COMPONENTS})
+    find_package(GStreamer 1.4.2 REQUIRED COMPONENTS ${GSTREAMER_COMPONENTS})
 
     # FIXME: What about MPEGTS support? WTF_USE_GSTREAMER_MPEGTS?
 endif ()

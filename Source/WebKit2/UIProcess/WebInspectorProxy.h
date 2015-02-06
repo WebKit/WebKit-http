@@ -31,7 +31,6 @@
 #include "Attachment.h"
 #include "MessageReceiver.h"
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -45,7 +44,7 @@ OBJC_CLASS NSButton;
 OBJC_CLASS NSURL;
 OBJC_CLASS NSWindow;
 OBJC_CLASS WKWebInspectorProxyObjCAdapter;
-OBJC_CLASS WKWebInspectorWKView;
+OBJC_CLASS WKWebInspectorWKWebView;
 #endif
 
 #if PLATFORM(GTK)
@@ -62,18 +61,19 @@ namespace WebKit {
 class WebFrameProxy;
 class WebPageGroup;
 class WebPageProxy;
+class WebPreferences;
 class WebProcessPool;
 
-enum AttachmentSide {
-    AttachmentSideBottom,
-    AttachmentSideRight
+enum class AttachmentSide {
+    Bottom,
+    Right
 };
 
 class WebInspectorProxy : public API::ObjectImpl<API::Object::Type::Inspector>, public IPC::MessageReceiver {
 public:
-    static PassRefPtr<WebInspectorProxy> create(WebPageProxy* page)
+    static Ref<WebInspectorProxy> create(WebPageProxy* inspectedPage)
     {
-        return adoptRef(new WebInspectorProxy(page));
+        return adoptRef(*new WebInspectorProxy(inspectedPage));
     }
 
     ~WebInspectorProxy();
@@ -81,7 +81,7 @@ public:
     void invalidate();
 
     // Public APIs
-    WebPageProxy* page() const { return m_page; }
+    WebPageProxy* inspectedPage() const { return m_inspectedPage; }
 
     bool isConnected() const { return !!m_inspectorPage; }
     bool isVisible() const { return m_isVisible; }
@@ -94,8 +94,8 @@ public:
     void close();
 
     void didRelaunchInspectorPageProcess();
-    
-#if PLATFORM(MAC)
+
+#if PLATFORM(MAC) && WK_API_ENABLED
     void createInspectorWindow();
     void updateInspectorWindowTitle() const;
     void inspectedViewFrameDidChange(CGFloat = 0);
@@ -120,7 +120,7 @@ public:
     bool isAttached() const { return m_isAttached; }
     void attachRight();
     void attachBottom();
-    void attach(AttachmentSide = AttachmentSideBottom);
+    void attach(AttachmentSide = AttachmentSide::Bottom);
     void detach();
 
     void setAttachedWindowHeight(unsigned);
@@ -130,8 +130,8 @@ public:
     bool isProfilingPage() const { return m_isProfilingPage; }
     void togglePageProfiling();
 
-    static bool isInspectorPage(WebPageProxy&);
     static WebProcessPool& inspectorProcessPool();
+    static bool isInspectorPage(WebPageProxy&);
 
     // Provided by platform WebInspectorProxy implementations.
     String inspectorPageURL() const;
@@ -192,7 +192,11 @@ private:
 
     void open();
 
-    WebPageGroup* inspectorPageGroup() const;
+    // The inspector level is used to give different preferences to each inspector
+    // level by setting a per-level page group identifier.
+    unsigned inspectorLevel() const;
+    String inspectorPageGroupIdentifier() const;
+    WebPreferences& inspectorPagePreferences() const;
 
 #if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
     void createInspectorWindow();
@@ -209,28 +213,23 @@ private:
     static const unsigned initialWindowWidth;
     static const unsigned initialWindowHeight;
 
-    WebPageProxy* m_page;
-    WebPageProxy* m_inspectorPage;
+    WebPageProxy* m_inspectedPage {nullptr};
+    WebPageProxy* m_inspectorPage {nullptr};
 
-    bool m_underTest;
-    bool m_isVisible;
-    bool m_isAttached;
-    bool m_canAttach;
-    bool m_isProfilingPage;
-    bool m_showMessageSent;
-    bool m_ignoreFirstBringToFront;
+    bool m_underTest {false};
+    bool m_isVisible {false};
+    bool m_isAttached {false};
+    bool m_canAttach {false};
+    bool m_isProfilingPage {false};
+    bool m_showMessageSent {false};
+    bool m_ignoreFirstBringToFront {false};
 
-    // The debugger stops all the pages in the same PageGroup. Having
-    // all the inspectors in the same group will make it impossible to debug
-    // the inspector code, so we use the level to make different page groups.
-    unsigned m_level;
-    
     IPC::Attachment m_connectionIdentifier;
 
-    AttachmentSide m_attachmentSide;
+    AttachmentSide m_attachmentSide {AttachmentSide::Bottom};
 
-#if PLATFORM(MAC)
-    RetainPtr<WKWebInspectorWKView> m_inspectorView;
+#if PLATFORM(MAC) && WK_API_ENABLED
+    RetainPtr<WKWebInspectorWKWebView> m_inspectorView;
     RetainPtr<NSWindow> m_inspectorWindow;
     RetainPtr<NSButton> m_dockBottomButton;
     RetainPtr<NSButton> m_dockRightButton;
@@ -240,18 +239,18 @@ private:
     String m_urlString;
 #elif PLATFORM(GTK)
     WebInspectorClientGtk m_client;
-    GtkWidget* m_inspectorView;
-    GtkWidget* m_inspectorWindow;
-    GtkWidget* m_headerBar;
-    GtkWidget* m_dockBottomButton;
-    GtkWidget* m_dockRightButton;
+    GtkWidget* m_inspectorView {nullptr};
+    GtkWidget* m_inspectorWindow {nullptr};
+    GtkWidget* m_headerBar {nullptr};
+    GtkWidget* m_dockBottomButton {nullptr};
+    GtkWidget* m_dockRightButton {nullptr};
     String m_inspectedURLString;
 #elif PLATFORM(EFL)
-    Evas_Object* m_inspectorView;
-    Ecore_Evas* m_inspectorWindow;
+    Evas_Object* m_inspectorView {nullptr};
+    Ecore_Evas* m_inspectorWindow {nullptr};
 #endif
 #if ENABLE(INSPECTOR_SERVER)
-    int m_remoteInspectionPageId;
+    int m_remoteInspectionPageId {0};
 #endif
 };
 

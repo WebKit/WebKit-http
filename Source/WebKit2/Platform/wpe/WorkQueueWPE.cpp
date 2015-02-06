@@ -56,7 +56,8 @@ void WorkQueue::platformInitialize(const char* name, QOS)
     if (strlen(threadName) > kVisualStudioThreadNameLimit)
         threadName += strlen(threadName) - kVisualStudioThreadNameLimit;
 
-    m_workQueueThread = createThread(reinterpret_cast<WTF::ThreadFunction>(&WorkQueue::startWorkQueueThread), this, threadName);
+    RefPtr<WorkQueue> protector(this);
+    m_workQueueThread = createThread(threadName, [protector] { g_main_loop_run(protector->m_eventLoop.get()); });
 }
 
 void WorkQueue::platformInvalidate()
@@ -70,16 +71,6 @@ void WorkQueue::platformInvalidate()
     }
 
     m_eventContext.clear();
-}
-
-void WorkQueue::startWorkQueueThread(WorkQueue* workQueue)
-{
-    workQueue->workQueueThreadBody();
-}
-
-void WorkQueue::workQueueThreadBody()
-{
-    g_main_loop_run(m_eventLoop.get());
 }
 
 void WorkQueue::registerSocketEventHandler(int fileDescriptor, std::function<void ()> function, std::function<void ()> closeFunction)

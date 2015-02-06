@@ -1,3 +1,139 @@
+2015-02-05  Youenn Fablet  <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar <calvaris@igalia.com>
+
+        [Streams API] Implement a barebone ReadableStream interface
+        https://bugs.webkit.org/show_bug.cgi?id=141045
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-02-03  Enrica Casucci  <enrica@apple.com>
+
+        [iOS] Add support for deleteFromInputWithFlags.
+        https://bugs.webkit.org/show_bug.cgi?id=141216
+        rdar://problem/19130081
+
+        Reviewed by Benjamin Poulain.
+
+        Adopts the new method as soon as it is available.
+        The patch also removes some obsolete code used for staging.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _handleEditingKeyEvent:]):
+
+2015-02-02  Chris Dumez  <cdumez@apple.com>
+
+        Access MemoryCache singleton using MemoryCache::singleton()
+        https://bugs.webkit.org/show_bug.cgi?id=141104
+
+        Reviewed by Andreas Kling.
+
+        Access MemoryCache singleton using MemoryCache::singleton() static
+        member function, instead of a free function, as per the recent
+        coding style discussion on WebKit-dev.
+
+2015-02-01  Chris Dumez  <cdumez@apple.com>
+
+        Use more references in HistoryItem
+        https://bugs.webkit.org/show_bug.cgi?id=141133
+
+        Reviewed by Andreas Kling.
+
+        Use more references in HistoryItem instead of pointers.
+
+2015-01-31  Sam Weinig  <sam@webkit.org>
+
+        Remove even more Mountain Lion support
+        https://bugs.webkit.org/show_bug.cgi?id=141124
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitLegacy.xcconfig:
+
+2015-01-30  Eric Carlson  <eric.carlson@apple.com>
+
+        Remove MediaPlayerProxy.h
+        https://bugs.webkit.org/show_bug.cgi?id=141087
+
+        Reviewed by Sam Weinig.
+
+        * MigrateHeaders.make: Don't need to copy MediaPlayerProxy.h.
+        * Plugins/WebPluginController.mm: Don't include MediaPlayerProxy.h.
+
+2015-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Rename shared() static member functions to singleton() for singleton classes.
+        https://bugs.webkit.org/show_bug.cgi?id=141088
+
+        Reviewed by Ryosuke Niwa and Benjamin Poulain.
+
+        Rename shared() static member functions to singleton() for singleton
+        classes as per the recent coding style change.
+
+2015-01-29  Beth Dakin  <bdakin@apple.com>
+
+        Remove more Mountain Lion code from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=141050
+
+        Reviewed by Anders Carlsson.
+
+        * History/WebHistory.mm:
+        (getDayBoundaries):
+        * Panels/WebAuthenticationPanel.m:
+        (-[WebAuthenticationPanel cancel:]):
+        (-[WebAuthenticationPanel logIn:]):
+        (-[WebAuthenticationPanel runAsSheetOnWindow:withChallenge:]):
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * WebView/WebFrameView.mm:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (needsScreenFontsEnabledQuirk):
+        * WebView/WebView.mm:
+        (+[WebView registerForMemoryNotifications]):
+        (-[WebView _preferencesChanged:]):
+        (+[WebView initialize]):
+        (+[WebView _shouldAutomaticQuoteSubstitutionBeEnabled]):
+        (+[WebView _shouldAutomaticDashSubstitutionBeEnabled]):
+        (+[WebView _didChangeAutomaticDashSubstitutionEnabled:]):
+
+2015-01-29  Sam Weinig  <sam@webkit.org>
+
+        Remove support for screen font substitution
+        https://bugs.webkit.org/show_bug.cgi?id=141038
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _web_drawAtPoint:font:textColor:allowingFontSmoothing:]):
+        (-[NSString _web_widthWithFont:]):
+        * Misc/WebStringTruncator.mm:
+        (fontFromNSFont):
+        Update for new signature of the FontPlatformData constructor, which no longer cares about
+        whether to use printer fonts.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        Remove the WebKitScreenFontSubstitutionEnabledKey key.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        Remove support for WebKitScreenFontSubstitutionEnabledKey.
+
+        (needsScreenFontsEnabledQuirk): Deleted.
+        Remove support for the Mountain Lion era 1-Password quirk.
+
+        (-[WebPreferences screenFontSubstitutionEnabled]): Deleted.
+        (-[WebPreferences setScreenFontSubstitutionEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView _preferencesChanged:]):
+        Remove support for the screen font substitution setting.
+
 2015-01-29  Chris Dumez  <cdumez@apple.com>
 
         Clean up / modernize PageCache class

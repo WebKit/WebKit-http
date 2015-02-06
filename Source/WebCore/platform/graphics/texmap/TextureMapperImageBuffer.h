@@ -61,8 +61,10 @@ public:
     virtual void bindSurface(BitmapTexture* surface) override { m_currentSurface = surface;}
     virtual void endClip() override { graphicsContext()->restore(); }
     virtual IntRect clipBounds() override { return currentContext()->clipBounds(); }
-    virtual IntSize maxTextureSize() const;
+    virtual void beginDepthTesting() override { }
+    virtual void endDepthTesting() override { }
     virtual PassRefPtr<BitmapTexture> createTexture() override { return BitmapTextureImageBuffer::create(); }
+    virtual IntSize maxTextureSize() const;
 
     inline GraphicsContext* currentContext()
     {

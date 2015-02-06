@@ -1395,6 +1395,11 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
             continue;
         }
 
+        if (m_timestampOffset) {
+            // Reflect the new timestamps back into the sample.
+            sample->offsetTimestampsBy(m_timestampOffset);
+        }
+
         // 1.7 Let frame end timestamp equal the sum of presentation timestamp and frame duration.
         MediaTime frameEndTimestamp = presentationTimestamp + frameDuration;
 

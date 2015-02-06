@@ -237,8 +237,8 @@ void WebProcessPool::platformInitialize()
 
 WebProcessPool::~WebProcessPool()
 {
-    ASSERT(processPools().find(this) != notFound);
-    processPools().remove(processPools().find(this));
+    bool removed = processPools().removeFirst(this);
+    ASSERT_UNUSED(removed, removed);
 
     removeLanguageChangeObserver(this);
 
@@ -675,10 +675,11 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     parameters.memoryCacheDisabled = m_memoryCacheDisabled;
 
 #if ENABLE(SERVICE_CONTROLS)
-    parameters.hasImageServices = ServicesController::shared().hasImageServices();
-    parameters.hasSelectionServices = ServicesController::shared().hasSelectionServices();
-    parameters.hasRichContentServices = ServicesController::shared().hasRichContentServices();
-    ServicesController::shared().refreshExistingServices();
+    auto& serviceController = ServicesController::singleton();
+    parameters.hasImageServices = serviceController.hasImageServices();
+    parameters.hasSelectionServices = serviceController.hasSelectionServices();
+    parameters.hasRichContentServices = serviceController.hasRichContentServices();
+    serviceController.refreshExistingServices();
 #endif
 
     // Add any platform specific parameters
@@ -715,7 +716,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
 
 #if ENABLE(REMOTE_INSPECTOR)
     // Initialize remote inspector connection now that we have a sub-process that is hosting one of our web views.
-    Inspector::RemoteInspector::shared(); 
+    Inspector::RemoteInspector::singleton(); 
 #endif
 
     return process;
@@ -804,7 +805,7 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
 
         static_cast<WebContextSupplement*>(supplement<WebGeolocationManagerProxy>())->processDidClose(process);
 
-        m_processes.remove(m_processes.find(process));
+        m_processes.removeFirst(process);
         return;
     }
 
@@ -818,8 +819,8 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
     // if it were invoked from Vector::remove(). RefPtr delays destruction until it's safe.
     RefPtr<WebProcessProxy> protect(process);
     if (m_processWithPageCache == process)
-        m_processWithPageCache = 0;
-    m_processes.remove(m_processes.find(process));
+        m_processWithPageCache = nullptr;
+    m_processes.removeFirst(process);
 }
 
 WebProcessProxy& WebProcessPool::createNewWebProcessRespectingProcessCountLimit()
@@ -1105,7 +1106,7 @@ void WebProcessPool::startMemorySampler(const double interval)
     
     // For UIProcess
 #if ENABLE(MEMORY_SAMPLER)
-    WebMemorySampler::shared()->start(interval);
+    WebMemorySampler::singleton()->start(interval);
 #endif
     
     // For WebProcess
@@ -1124,7 +1125,7 @@ void WebProcessPool::stopMemorySampler()
     
     // For UIProcess
 #if ENABLE(MEMORY_SAMPLER)
-    WebMemorySampler::shared()->stop();
+    WebMemorySampler::singleton()->stop();
 #endif
 
     sendToAllProcesses(Messages::WebProcess::StopMemorySampler());

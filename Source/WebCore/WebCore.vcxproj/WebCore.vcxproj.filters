@@ -34,6 +34,9 @@
     <Filter Include="Modules\notifications">
       <UniqueIdentifier>{a595ffcf-fa22-48a9-91ad-c528a75a62e5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Modules\streams">
+      <UniqueIdentifier>{d67ba5bd-6574-42f3-9da3-55f550747863}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Modules\webdatabase">
       <UniqueIdentifier>{5e0e9582-b4b4-452d-a6de-7c6b31f614e7}</UniqueIdentifier>
     </Filter>
@@ -461,6 +464,9 @@
     </ClCompile>
     <ClCompile Include="..\Modules\notifications\WorkerGlobalScopeNotifications.cpp">
       <Filter>Modules\notifications</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Modules\streams\ReadableStream.cpp">
+      <Filter>Modules\streams</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\ChangeVersionWrapper.cpp">
       <Filter>Modules\webdatabase</Filter>
@@ -1387,9 +1393,6 @@
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\ShadowBlur.cpp">
-      <Filter>platform\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\graphics\SimpleFontData.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\TextRun.cpp">
@@ -4398,6 +4401,12 @@
     <ClCompile Include="..\bindings\js\JSPluginElementFunctions.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
+    <ClCompile Include="..\bindings\js\JSReadableStreamCustom.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bindings\js\ReadableStreamJSSource.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
     <ClCompile Include="..\bindings\js\JSRequestAnimationFrameCallbackCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -5674,6 +5683,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRangeException.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRect.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6772,7 +6784,7 @@
     <ClCompile Include="..\rendering\SimpleLineLayoutFlowContents.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
-    <ClCompile Include="..\rendering\SimpleLineLayoutFlowContentsIterator.cpp">
+    <ClCompile Include="..\rendering\SimpleLineLayoutTextFragmentIterator.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\SimpleLineLayoutFunctions.cpp">
@@ -6920,6 +6932,12 @@
       <Filter>Modules\encryptedmedia</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\encryptedmedia\CDMPrivateMediaPlayer.cpp">
+      <Filter>Modules\encryptedmedia</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Modules\encryptedmedia\CDMPrivateClearKey.cpp">
+      <Filter>Modules\encryptedmedia</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Modules\encryptedmedia\CDMSessionClearKey.cpp">
       <Filter>Modules\encryptedmedia</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\encryptedmedia\MediaKeyMessageEvent.cpp">
@@ -7206,6 +7224,9 @@
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLVertexArrayObject.cpp">
       <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\Font.cpp">
+      <Filter>platform\graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -8473,9 +8494,6 @@
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\ShadowBlur.h">
-      <Filter>platform\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\SimpleFontData.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\TextRun.h">
@@ -13565,6 +13583,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWorkerNavigator.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequest.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -14912,6 +14933,15 @@
     <ClInclude Include="..\svg\SVGURIReference.h">
       <Filter>svg</Filter>
     </ClInclude>
+    <ClInclude Include="..\Modules\encryptedmedia\CDMPrivateClearKey.h">
+      <Filter>Modules\encryptedmedia</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\encryptedmedia\CDMSessionClearKey.h">
+      <Filter>Modules\encryptedmedia</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\encryptedmedia\MediaKeyMessageEvent.h">
+      <Filter>Modules\encryptedmedia</Filter>
+    </ClInclude>
     <ClInclude Include="..\svg\SVGUseElement.h">
       <Filter>svg</Filter>
     </ClInclude>
@@ -15128,20 +15158,23 @@
     <ClInclude Include="..\html\canvas\WebGLVertexArrayObject.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLQuery.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebGLQuery.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLSampler.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebGLSampler.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLSync.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebGLSync.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLTransformFeedback.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebGLTransformFeedback.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include=".$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSWebGLVertexArrayObject.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebGLVertexArrayObject.h">
       <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\Font.h">
+      <Filter>platform\graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

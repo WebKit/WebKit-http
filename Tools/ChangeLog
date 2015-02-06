@@ -1,3 +1,640 @@
+2015-02-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Dashboard doesn't consider building ASan a productive step
+        https://bugs.webkit.org/show_bug.cgi?id=141312
+
+        Reviewed by Simon Fraser.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+
+2015-02-05  Daniel Bates  <dabates@apple.com>
+
+        [iOS] webkitpy.xcode.simulator.Runtime.from_identifier() returns wrong result for non-existent runtime
+        https://bugs.webkit.org/show_bug.cgi?id=141306
+
+        Reviewed by Alexey Proskuryakov.
+
+        The function webkitpy.xcode.simulator.Runtime.from_identifier always returns a Runtime object
+        corresponding to the last-most runtime parsed from the output of `simctl list` for any non-
+        existent runtime.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Runtime.from_identifier):
+
+2015-02-05  Daniel Bates  <dabates@apple.com>
+
+        LayoutTestRelay does not install DumpRenderTree.app/WebKitTestRunnerApp.app
+        https://bugs.webkit.org/show_bug.cgi?id=139746
+        <rdar://problem/19283658>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fixes an issues where LayoutTestRelay may fail to install DumpRenderTree.app/WebKitTestRunnerApp.app
+        if the simulator device is not in state Booted.
+
+        Currently run-webkit-test --ios-sim executes LayoutTestRelay immediately after
+        launching/relaunching the iOS Simulator app and a simulator app can only be installed
+        on a device that is in the Booted state. LayoutTestRelay may run before the
+        device is booted and hence fail to install DumpRenderTree.app/WebKitTestRunnerApp.app.
+        We should defer executing LayoutTestRelay until the simulator device booted by
+        iOS Simulator is in the Booted state.
+
+        * Scripts/webkitpy/port/ios.py: Import webkitpy.xcode.simulator.Simulator to avoid prefixing
+        Simulator methods with the module name, simulator.
+        (IOSSimulatorPort.setup_test_run): Wait for the simulator device to be in the Booted state
+        after launching iOS Simulator. Also, wait until the simulator device is in the Shutdown state
+        before launching iOS Simulator to boot it.
+        (IOSSimulatorPort.testing_device): Fix up caller since we now import webkitpy.xcode.simulator.Simulator.
+        (IOSSimulatorPort.simulator_path): Deleted; moved this function to class Simulator and renamed to device_directory().
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Device.__init__): Remove parameter state and an instance variable of the same name, which represented
+        the state of the device when we created this object as part of parsing the output of `simctl list`. Callers
+        interested in the state of the device are more likely interested in the current state of the device as
+        opposed to the state of the device when the Device object was created.
+        (Device.state): Added; turn around and call Simulator.device_state() for the current state of the device.
+        (Device.path): Extracted implementation into Simulator.device_directory() so that it can be called
+        from both this function and Simulator.device_state().
+        (Device.create): Use Simulator.wait_until_device_is_in_state() to simplify the implementation of this function.
+        (Simulator.DeviceState): Added; class of constants.
+        (Simulator.wait_until_device_is_in_state): Added; this function does not return until the specified
+        device is in the specified state.
+        (Simulator.device_state): Added; parses the state of the device from the appropriate CoreSimulator device.plist file.
+        (Simulator.device_directory): Added.
+        (Simulator._parse_devices): Do not pass argument state to Device constructor as it no longer accepts it.
+
+2015-02-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Disable retries on Mac debug testers
+        https://bugs.webkit.org/show_bug.cgi?id=141296
+
+        Reviewed by Simon Fraser.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-02-05  Dan Bernstein  <mitz@apple.com>
+
+        Need a way to force $xcodeSDK in webkitdirs.pm
+        https://bugs.webkit.org/show_bug.cgi?id=141291
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/webkitdirs.pm:
+        (setXcodeSDK): Added.
+
+2015-02-05  Youenn Fablet  <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar <calvaris@igalia.com>
+
+        [Streams API] Implement a barebone ReadableStream interface
+        https://bugs.webkit.org/show_bug.cgi?id=141045
+
+        Reviewed by Benjamin Poulain.
+
+        * Scripts/webkitperl/FeatureList.pm: Added streams-api compilation switch.
+
+2015-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        filter-build-webkit: reduce more unfiltered output
+        https://bugs.webkit.org/show_bug.cgi?id=141282
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/filter-build-webkit:
+        Report CompileDTraceScript and Preprocess lines as successful.
+
+2015-02-04  Dana Burkart  <dburkart@apple.com>
+
+        Botwatcher's Dashboard is cramped
+        https://bugs.webkit.org/show_bug.cgi?id=140273
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a heading key which will allow for arbitrary headings in builder queues.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotBuilderQueueView.js:
+        (BuildbotBuilderQueueView.prototype.update.appendBuilderQueueStatus):
+        (BuildbotBuilderQueueView.prototype.update):
+        (BuildbotBuilderQueueView.prototype.update.appendBuildArchitecture): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotLeaksQueueView.js:
+        (BuildbotLeaksQueueView.prototype.update):
+        (BuildbotLeaksQueueView.prototype.update.appendBuild): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotPerformanceQueueView.js:
+        (BuildbotPerformanceQueueView.prototype.update):
+        (BuildbotPerformanceQueueView.prototype.update.appendBuild): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._unauthorizedAccess):
+        (BuildbotQueueView.prototype._appendBuild):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTestResults.js:
+        (BuildbotTestResults):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.update.appendBuilderQueueStatus):
+        (BuildbotTesterQueueView.prototype.update):
+        (BuildbotTesterQueueView.prototype.update.appendBuild): Deleted.
+
+2015-02-04  Simon Fraser  <simon.fraser@apple.com>
+
+        WKTR should not use -mainScreen to pick a color profile
+        https://bugs.webkit.org/show_bug.cgi?id=141265
+
+        Reviewed by Tim Horton.
+        
+        -[NSScreen mainScreen] depends on the active window, so use the first screen
+        (which is the one we put the window on anyway).
+        
+        Do some cleanup in DRT that makes the code look similar.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (createWebViewAndOffscreenWindow):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::PlatformWebView):
+
+2015-02-04  Simon Fraser  <simon.fraser@apple.com>
+
+        LayoutTestHelper should set the color profile of all displays
+        https://bugs.webkit.org/show_bug.cgi?id=141260
+
+        Reviewed by Tim Horton.
+        
+        WebKitTestRunner can (erroneously) grab the colorspace of the "main" screen.
+        which is the screen with the active window. Make things more robust by changing
+        the colorspace of all displays, not just the main screen, when running layout tests.
+
+        * DumpRenderTree/mac/Configurations/LayoutTestHelper.xcconfig: Enable ARC
+        * DumpRenderTree/mac/LayoutTestHelper.m: 
+        (originalColorProfileURLs):
+        (colorProfileURLForDisplay):
+        (displayUUIDStrings):
+        (saveDisplayColorProfiles):
+        (setDisplayColorProfile):
+        (restoreDisplayColorProfiles):
+        (installLayoutTestColorProfile):
+        (restoreUserColorProfile):
+        (main):        
+        Store display color profiles by map of UUID strings to URLs (NSUUID and CFUUID are not
+        toll-free bridged, sadly). Use the map to restore all profiles on exit.
+        Convert to use more Obj-C types.
+
+2015-02-04  Daniel Bates  <dabates@apple.com>
+
+        test-webkitpy fails on Mac without iphoneos SDK
+        https://bugs.webkit.org/show_bug.cgi?id=141255
+        <rdar://problem/19619691>
+
+        I inadvertently committed the wrong exception message. Fix up the exception message
+        to instruct a person to install the iOS SDK when it cannot be found.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.determine_full_port_name):
+
+2015-02-04  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should sort the list of files when generating the w3c-import.log
+        https://bugs.webkit.org/show_bug.cgi?id=141156
+
+        Reviewed by Bem Jones-Bey.
+
+        Sort explicitly the list of imported files written in the w3c-import.log.
+        Removed logging of the import date.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.write_import_log):
+
+2015-02-04  Daniel Bates  <dabates@apple.com>
+
+        test-webkitpy fails on Mac without iphoneos SDK
+        https://bugs.webkit.org/show_bug.cgi?id=141255
+        <rdar://problem/19619691>
+
+        Reviewed by David Kilzer and Alexey Proskuryakov.
+
+        Fixes an issue where test-webkitpy fails on a Mac without the iOS SDK. We should
+        should not require the iphoneos SDK to be installed to run the webkitpy tests.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo.xcode_sdk_version): Added; return the version of the specified SDK, if
+        installed. We take advantage of the behavior that xcrun --show-sdk-version only writes
+        to standard output if the SDK is installed to return the empty string if the SDK is
+        not installed.
+        * Scripts/webkitpy/common/system/platforminfo_mock.py:
+        (MockPlatformInfo.xcode_sdk_version): Added.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.determine_full_port_name): Modified to call PlatformInfo.xcode_sdk_version()
+        to get the version of the iphoneos SDK, if installed.
+
+2015-02-04  Alexey Proskuryakov  <ap@apple.com>
+
+        run-webkit-tests doesn't always capture ASan violation reports
+        https://bugs.webkit.org/show_bug.cgi?id=141231
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.run_test): Don't look for CrashReporter crash logs if a log was provided
+        by the driver already (as is the case with ASan violations, which are printed to
+        stderr).
+        (Driver._check_for_address_sanitizer_violation): Check if the line is a start of ASan
+        report.
+        (Driver._read_block): Give ASan enough time to symbolicate a crash, and put it into
+        a separate variable for reporting.
+
+2015-02-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [webkitpy] Add platform specific Skipped file mechanism for performance tests
+        https://bugs.webkit.org/show_bug.cgi?id=141152
+
+        Reviewed by Csaba Osztrogonác.
+
+        Support a test-expectation-like syntax in performance tests' skipped files.
+        e.g. [Mac] Parsed/BadTest.html will skip Parsed/BadTest.html on Mac ports.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.skipped_perf_tests): Implemented the syntax support by a regular expression.
+
+        * Scripts/webkitpy/port/base_unittest.py:
+        (PortTest.test_skipped_perf_tests): Test the new syntax.
+
+2015-02-04  Alexey Proskuryakov  <ap@apple.com>
+
+        When tests fail on leaks bot so much that there are no leaks detected, dashboard erroneously shows green
+        https://bugs.webkit.org/show_bug.cgi?id=141236
+
+        Reviewed by Sam Weinig.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotLeaksQueueView.js:
+        (BuildbotLeaksQueueView.prototype.update.appendLeaksQueueStatus):
+
+2015-02-04  Chris Dumez  <cdumez@apple.com>
+
+        Add removeFirst(value) / removeAll(value) methods to WTF::Vector
+        https://bugs.webkit.org/show_bug.cgi?id=141192
+
+        Reviewed by Benjamin Poulain.
+
+        Add API tests for Vector::removeFirst(value) and
+        Vector::removeAll(value).
+
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-02-03  Tim Horton  <timothy_horton@apple.com>
+
+        Add WKPageNavigationClient as C SPI around API::NavigationClient, and adopt in WKTR
+        https://bugs.webkit.org/show_bug.cgi?id=141217
+
+        Reviewed by Sam Weinig.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::copyWebCryptoMasterKey):
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::TestController::ensureViewSupportsOptions):
+        (WTR::TestController::didCommitNavigation):
+        (WTR::TestController::didFinishNavigation):
+        (WTR::TestController::canAuthenticateAgainstProtectionSpace):
+        (WTR::TestController::didReceiveAuthenticationChallenge):
+        (WTR::TestController::decidePolicyForPluginLoad):
+        (WTR::TestController::decidePolicyForNavigationAction):
+        (WTR::TestController::decidePolicyForNavigationResponse):
+        (WTR::TestController::didCommitLoadForFrame): Deleted.
+        (WTR::TestController::didFinishLoadForFrame): Deleted.
+        * WebKitTestRunner/TestController.h:
+        Adopt WKPageNavigationClient and adjust to its semantics (navigations are main-frame-only, etc.)
+
+2015-02-03  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test fix.
+
+        * DumpRenderTree/win/PolicyDelegate.cpp:
+        (PolicyDelegate::unableToImplementPolicyWithError): The message was missing a linefeed,
+        so was not matching expected output.
+
+2015-02-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Unreviewed. Moving myself to the committer section at last.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Tests fail because DRT reports '(null)' instead of an empty string
+        https://bugs.webkit.org/show_bug.cgi?id=141205
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/win/HistoryDelegate.cpp:
+        (HistoryDelegate::didNavigateWithNavigationData): Deal with empty BSTR values
+        properly so that we match expected DumpRenderTree output.
+
+2015-02-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] TestWebKitAccessibility is not skipped
+        https://bugs.webkit.org/show_bug.cgi?id=141179
+
+        Reviewed by Carlos Garcia Campos.
+
+        Don't attempt to skip TestWebKitAccessibility. This path is wrong so it was not being
+        skipped, and it apparently works reliably on the bots.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2015-02-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        run-perf-tests: allow to specify a wrapper command.
+        https://bugs.webkit.org/show_bug.cgi?id=141172
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args): Update text to indicate is also valid for WTR.
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (PerfTestsRunner._parse_args): Add wrapper command.
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct version parsing warning in update-webkit
+        https://bugs.webkit.org/show_bug.cgi?id=141200
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/webkitdirs.pm:
+        (setupAppleWinEnv): Strip out any specific version build level
+        from the Cygwin version information.
+  
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Attempt to improve the reliability of HTTP service
+        https://bugs.webkit.org/show_bug.cgi?id=141191
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__): Use default XAMPP pidfile location.
+        (LayoutTestApacheHttpd._stop_running_server): Delete the abandoned PID file
+        when stopping the service doesn't do so on its own (for Windows runs).
+
+2015-02-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Web platform test server should not need to create __init__.py files
+        https://bugs.webkit.org/show_bug.cgi?id=141030
+
+        Reviewed by Ryosuke Niwa.
+
+        W3C TestImporter ensures that copied __init__.py files are not empty.
+        If needed, a comment is inserted in __init__.py files.
+        Added a unit test to check that web-platform-tests tools and scripts python modules can be imported.
+
+        * Scripts/webkitpy/common/system/filesystem.py:
+        (FileSystem.getsize):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server_unittest.py:
+        (TestWebPlatformTestServer.test_start_cmd):
+        (TestWebPlatformTestServer):
+        (TestWebPlatformTestServer.test_import_web_platform_test_modules):
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.import_tests):
+
+2015-01-26  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Unreviewed. Moving myself to the committer section.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-02-02  Saam Barati  <saambarati1@gmail.com>
+
+        Create tests for JSC's Control Flow Profiler
+        https://bugs.webkit.org/show_bug.cgi?id=141123
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+        * Scripts/run-jsc-stress-tests:
+
+2015-02-02  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove copy/paste code from run-jsc-stress-tests to determine numberOfTests
+        https://bugs.webkit.org/show_bug.cgi?id=141158
+
+        Reviewed by Darin Adler.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-02-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] MiniBrowser should close itself on Ctrl+W or Ctrl+Q
+        https://bugs.webkit.org/show_bug.cgi?id=141142
+
+        Reviewed by Carlos Garcia Campos.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browser_window_init): Quit on Ctrl+W or Ctrl+Q
+
+2015-02-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Web platform test server is not always launching properly on Mac EWS bots
+        https://bugs.webkit.org/show_bug.cgi?id=141141
+
+        Unreviewed.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py:
+        (create_wpt_empty_file_if_needed): Removed creation of empty __init.py__ files from AutoInstalled modules.
+
+2015-01-31  Sam Weinig  <sam@webkit.org>
+
+        Remove even more Mountain Lion support
+        https://bugs.webkit.org/show_bug.cgi?id=141124
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::attributedStringRangeIsMisspelled):
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (activateTestingFonts):
+        (prepareConsistentTestingEnvironment):
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (-[EventSendingController mouseScrollByX:andY:withWheel:andMomentumPhases:]):
+        (-[EventSendingController contextClick]):
+        * DumpRenderTree/mac/TextInputController.m:
+        * LayoutTestRelay/Configurations/Base.xcconfig:
+        * LayoutTestRelay/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[WK2BrowserWindowController webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[WK2BrowserWindowController webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:]):
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadDelegate _downloadDidFinish:]):
+        * TestWebKitAPI/Tests/mac/StringTruncator.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/mac/InjectedBundleControllerMac.mm:
+        (TestWebKitAPI::InjectedBundleController::platformInitialize):
+        * WebKitLauncher/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::attributedStringRangeIsMisspelled):
+        * WebKitTestRunner/InjectedBundle/mac/ActivateFonts.mm:
+        (WTR::activateFonts):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        (WTR::TestController::webProcessName):
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        * asan/asan.xcconfig:
+
+2015-01-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179408.
+        https://bugs.webkit.org/show_bug.cgi?id=141117
+
+        This didn't fully fix the issue (Requested by anttik on
+        #webkit).
+
+        Reverted changeset:
+
+        "OSObjectPtr does not work with dispatch_data_t on Maverics"
+        https://bugs.webkit.org/show_bug.cgi?id=141081
+        http://trac.webkit.org/changeset/179408
+
+2015-01-31  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        https://trac.webkit.org/changeset/179439 breaks a python test
+        https://bugs.webkit.org/show_bug.cgi?id=141114
+
+        Unreviewed.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._install_modules): Checks whether WPTModules file exists before reading it as no such file exists in mock tests.  
+
+2015-01-31  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Import W3C web platform tests infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=140934
+
+        Reviewed by Ryosuke Niwa.
+
+        Loading necessary web platform tests modules before launching server.
+        Ensuring that some empty __init__.py files are present and create them if necessary. 
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py:
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+
+2015-01-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Another unreviewed test fix.
+
+        Correct copy/paste error in buildbot handling.
+
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__):
+        (LayoutTestApacheHttpd._get_apache_config_file_path):
+
+2015-01-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test fix.
+
+        Correct path handling based on failures on test bots to get things running again.
+
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__):
+        (LayoutTestApacheHttpd._get_apache_config_file_path):
+
+2015-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed. Fix Windows build after r179409.
+
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::notifyDone):
+        (TestRunner::queueLoad):
+
+2015-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Rename shared() static member functions to singleton() for singleton classes.
+        https://bugs.webkit.org/show_bug.cgi?id=141088
+
+        Reviewed by Ryosuke Niwa and Benjamin Poulain.
+
+        Rename shared() static member functions to singleton() for singleton
+        classes as per the recent coding style change.
+
+2015-01-30  Antti Koivisto  <antti@apple.com>
+
+        OSObjectPtr does not work with dispatch_data_t on Maverics
+        https://bugs.webkit.org/show_bug.cgi?id=141081
+
+        Reviewed by Pratik Solanki.
+
+        * TestWebKitAPI/Tests/WTF/darwin/OSObjectPtr.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-01-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Switch to Apache on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=141060
+
+        Reviewed by Alexey Proskuryakov.
+
+        Update our scripts under Windows (and Cygwin) to locate and use
+        the XAMPP installation of Apache for running tests.
+
+        * Scripts/run-webkit-httpd:
+        * Scripts/webkitperl/httpd.pm:
+        (getHTTPDPath):
+        (getDefaultConfigForTestDirectory):
+        (getHTTPDConfigPathForTestDirectory):
+        * Scripts/webkitpy/common/system/executive_unittest.py:
+        (ExecutiveTest.serial_test_kill_process):
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__):
+        (LayoutTestApacheHttpd._get_apache_config_file_path):
+        (LayoutTestApacheHttpd._stop_running_server):
+        * Scripts/webkitpy/layout_tests/servers/http_server_base.py:
+        (HttpServerBase._is_server_running_on_all_ports):
+        * Scripts/webkitpy/port/base.py:
+        (Port._apache_config_file_name_for_platform):
+        * Scripts/webkitpy/port/port_testcase.py:
+        (test_apache_config_file_name_for_platform):
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.show_results_html_file):
+        (WinPort._uses_apache):
+        (WinPort):
+        (WinPort._path_to_apache):
+
+2015-01-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Built result takes too long to be compressed on bots
+        https://bugs.webkit.org/show_bug.cgi?id=141056
+
+        Reviewed by Daniel Bates.
+
+        Reduces compression time from ~3.5 min to ~1.5 min. Archive size gets 2% bigger.
+
+        * BuildSlaveSupport/test-result-archive: (archiveTestResults):
+
+2015-01-29  Sam Weinig  <sam@webkit.org>
+
+        Remove support for screen font substitution
+        https://bugs.webkit.org/show_bug.cgi?id=141038
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+        Remove call to now setScreenFontSubstitutionEnabled() which is a no-op.
+
 2015-01-29  Csaba Osztrogonác  <ossy@webkit.org>
 
         Make run-jsc-stress-tests --remote work on Linux too

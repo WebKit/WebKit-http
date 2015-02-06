@@ -33,6 +33,7 @@
 #include "CryptoAlgorithmRegistry.h"
 #include "CryptoKeyDataRSAComponents.h"
 #include "CryptoKeyPair.h"
+#include <wtf/MainThread.h>
 
 namespace WebCore {
 
@@ -181,7 +182,7 @@ void CryptoKeyRSA::buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder& 
 
     if (m_restrictedToSpecificHash) {
         auto hashDescriptionBuilder = builder.createEmptyClone();
-        hashDescriptionBuilder->add("name", CryptoAlgorithmRegistry::shared().nameForIdentifier(m_hash));
+        hashDescriptionBuilder->add("name", CryptoAlgorithmRegistry::singleton().nameForIdentifier(m_hash));
         builder.add("hash", *hashDescriptionBuilder);
     }
 }
@@ -258,13 +259,13 @@ void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, unsigned mo
         CCCryptorStatus status = CCRSACryptorGeneratePair(modulusLength, e, &ccPublicKey, &ccPrivateKey);
         if (status) {
             WTFLogAlways("Could not generate a key pair, status %d", status);
-            dispatch_async(dispatch_get_main_queue(), ^{
+            callOnWebThreadOrDispatchAsyncOnMainThread(^{
                 (*localFailureCallback)();
                 delete localFailureCallback;
             });
             return;
         }
-        dispatch_async(dispatch_get_main_queue(), ^{
+        callOnWebThreadOrDispatchAsyncOnMainThread(^{
             RefPtr<CryptoKeyRSA> publicKey = CryptoKeyRSA::create(algorithm, CryptoKeyType::Public, ccPublicKey, true, usage);
             RefPtr<CryptoKeyRSA> privateKey = CryptoKeyRSA::create(algorithm, CryptoKeyType::Private, ccPrivateKey, extractable, usage);
             (*localCallback)(CryptoKeyPair::create(publicKey.release(), privateKey.release()));

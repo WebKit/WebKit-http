@@ -49,7 +49,7 @@
 
 #if USE(CF)
 #include <CoreFoundation/CFString.h>
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+#if PLATFORM(COCOA)
 #define WTF_USE_APPLE_SYSTEM_LOG 1
 #include <asl.h>
 #endif
@@ -126,7 +126,7 @@ static void vprintf_stderr_common(const char* format, va_list args)
             if (buffer == NULL)
                 break;
 
-            if (_vsnprintf(buffer, size, format, args) != -1) {
+            if (vsnprintf(buffer, size, format, args) != -1) {
                 OutputDebugStringA(buffer);
                 free(buffer);
                 break;

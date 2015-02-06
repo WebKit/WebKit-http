@@ -52,7 +52,6 @@ public:
         , m_effectTarget(0)
         , m_contentsLayer(0)
         , m_currentOpacity(1)
-        , m_centerZ(std::numeric_limits<float>::lowest())
         , m_textureMapper(0)
         , m_fixedToViewport(false)
         , m_id(0)
@@ -141,8 +140,6 @@ private:
     }
     void computeTransformsRecursive();
 
-    static void sortByZOrder(Vector<TextureMapperLayer* >& array);
-
     PassRefPtr<BitmapTexture> texture() { return m_backingStore ? m_backingStore->texture() : 0; }
     FloatPoint adjustedPosition() const { return m_state.pos + m_scrollPositionDelta - m_userScrollOffset; }
     bool isAncestorFixedToViewport() const;
@@ -193,7 +190,6 @@ private:
     GraphicsLayerTransform m_currentTransform;
     float m_currentOpacity;
     FilterOperations m_currentFilters;
-    float m_centerZ;
 
     template<class HitTestCondition> TextureMapperLayer* hitTest(const FloatPoint&, HitTestCondition);
     static bool scrollableLayerHitTestCondition(TextureMapperLayer*, const FloatPoint&);
@@ -230,7 +226,8 @@ private:
         bool showRepaintCounter : 1;
 
         State()
-            : opacity(1)
+            : anchorPoint(0.5, 0.5, 0)
+            , opacity(1)
             , maskLayer(0)
             , replicaLayer(0)
             , debugBorderWidth(0)

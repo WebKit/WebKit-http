@@ -78,13 +78,13 @@ void GraphicsLayerTransform::setChildrenTransform(const TransformationMatrix& tr
     m_dirty = true;
 }
 
-const TransformationMatrix& GraphicsLayerTransform::combined()
+const TransformationMatrix& GraphicsLayerTransform::combined() const
 {
     ASSERT(!m_dirty);
     return m_combined;
 }
 
-const TransformationMatrix& GraphicsLayerTransform::combinedForChildren()
+const TransformationMatrix& GraphicsLayerTransform::combinedForChildren() const
 {
     ASSERT(!m_dirty);
     if (m_childrenDirty)
@@ -109,7 +109,7 @@ void GraphicsLayerTransform::combineTransforms(const TransformationMatrix& paren
     m_childrenDirty = true;
 }
 
-void GraphicsLayerTransform::combineTransformsForChildren()
+void GraphicsLayerTransform::combineTransformsForChildren() const
 {
     ASSERT(!m_dirty);
     ASSERT(m_childrenDirty);

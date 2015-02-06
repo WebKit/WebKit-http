@@ -1,3 +1,1511 @@
+2015-02-05  Michael Saboff  <msaboff@apple.com>
+
+        CodeCache is not thread safe when adding the same source from two different threads
+        https://bugs.webkit.org/show_bug.cgi?id=141275
+
+        Reviewed by Mark Lam.
+
+        The issue for this bug is that one thread, takes a cache miss in CodeCache::getGlobalCodeBlock,
+        but in the process creates a cache entry with a nullptr UnlinkedCodeBlockType* which it
+        will fill in later in the function.  During the body of that function, it allocates
+        objects that may garbage collect.  During that garbage collection, we drop the all locks.
+        While the locks are released by the first thread, another thread can enter the VM and might
+        have exactly the same source and enter CodeCache::getGlobalCodeBlock() itself.  When it
+        looks up the code block, it sees it as a cache it and uses the nullptr UnlinkedCodeBlockType*
+        and crashes.  This fixes the problem by not dropping the locks during garbage collection.
+        There are other likely scenarios where we have a data structure like this code cache in an
+        unsafe state for arbitrary reentrance.
+
+        Moved the functionality of DelayedReleaseScope directly into Heap.  Changed it into
+        a simple list that is cleared with the new function Heap::releaseDelayedReleasedObjects.
+        Now we accumulate objects to be released and release them when all locks are dropped or
+        when destroying the Heap.  This eliminated the dropping and reaquiring of locks associated
+        with the old scope form of this list.
+
+        Given that all functionality of DelayedReleaseScope is now used and referenced by Heap
+        and the lock management no longer needs to be done, just made the list a member of Heap.
+        We do need to guard against the case that releasing an object can create more objects
+        by calling into JS.  That is why releaseDelayedReleasedObjects() is written to remove
+        an object to release so that we aren't recursively in Vector code.  The other thing we
+        do in releaseDelayedReleasedObjects() is to guard against recursive calls to itself using
+        the m_delayedReleaseRecursionCount.  We only release at the first entry into the function.
+        This case is already tested by testapi.mm.
+
+        * heap/DelayedReleaseScope.h: Removed file
+
+        * API/JSAPIWrapperObject.mm:
+        * API/ObjCCallbackFunction.mm:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::doSweep):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::tryAllocateHelper):
+        (JSC::MarkedAllocator::tryAllocate):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::sweep):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::MarkedSpace):
+        (JSC::MarkedSpace::lastChanceToFinalize):
+        (JSC::MarkedSpace::didFinishIterating):
+        * heap/MarkedSpace.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::collectAllGarbage):
+        (JSC::Heap::zombifyDeadObjects):
+        Removed references to DelayedReleaseScope and DelayedReleaseScope.h.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap): Initialized m_delayedReleaseRecursionCount.
+        (JSC::Heap::lastChanceToFinalize): Call releaseDelayedObjectsNow() as the VM is going away.
+        (JSC::Heap::releaseDelayedReleasedObjects): New function that released the accumulated
+        delayed release objects.
+
+        * heap/Heap.h:
+        (JSC::Heap::m_delayedReleaseObjects): List of objects to be released later.
+        (JSC::Heap::m_delayedReleaseRecursionCount): Counter to indicate that
+        releaseDelayedReleasedObjects is being called recursively.
+        * heap/HeapInlines.h:
+        (JSC::Heap::releaseSoon): Changed location of list to add delayed release objects.
+        
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::willReleaseLock):
+        Call Heap::releaseDelayedObjectsNow() when releasing the lock.
+
+2015-02-05  Youenn Fablet  <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar <calvaris@igalia.com>
+
+        [Streams API] Implement a barebone ReadableStream interface
+        https://bugs.webkit.org/show_bug.cgi?id=141045
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-02-05  Saam Barati  <saambarati1@gmail.com>
+
+        Crash in uninitialized deconstructing variable.
+        https://bugs.webkit.org/show_bug.cgi?id=141070
+
+        Reviewed by Michael Saboff.
+
+        According to the ES6 spec, when a destructuring pattern occurs
+        as the left hand side of an assignment inside a var declaration 
+        statement, the assignment must also have a right hand side value.
+        "var {x} = {};" is a legal syntactic statement, but,
+        "var {x};" is a syntactic error.
+
+        Section 13.2.2 of the latest draft ES6 spec specifies this requirement:
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-variable-statement
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVarDeclaration):
+        (JSC::Parser<LexerType>::parseVarDeclarationList):
+        (JSC::Parser<LexerType>::parseForStatement):
+        * parser/Parser.h:
+
+2015-02-04  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, fix a build break on EFL port since r179648.
+
+        * heap/MachineStackMarker.cpp: EFL port doesn't use previousThread variable. 
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+
+2015-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Console Support for Symbol Objects
+        https://bugs.webkit.org/show_bug.cgi?id=141173
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Runtime.json:
+        New type, "symbol".
+
+        * inspector/InjectedScriptSource.js:
+        Handle Symbol objects in a few places. They don't have properties
+        and they cannot be implicitly converted to strings.
+
+2015-02-04  Mark Lam  <mark.lam@apple.com>
+
+        Undo gardening: Restoring the expected ERROR message since that is not the cause of the bot unhappiness.
+
+        Not reviewed.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+
+2015-02-04  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Changed expected ERROR message to WARNING to make test bots happy.
+
+        Rubber stamped by Simon Fraser.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+
+2015-02-04  Mark Lam  <mark.lam@apple.com>
+
+        r179576 introduce a deadlock potential during GC thread suspension.
+        <https://webkit.org/b/141268>
+
+        Reviewed by Michael Saboff.
+
+        http://trac.webkit.org/r179576 introduced a potential for deadlocking.
+        In the GC thread suspension loop, we currently delete
+        MachineThreads::Thread that we detect to be invalid.  This is unsafe
+        because we may have already suspended some threads, and one of those
+        suspended threads may still be holding the C heap lock which we need
+        for deleting the invalid thread.
+
+        The fix is to put the invalid threads in a separate toBeDeleted list,
+        and delete them only after GC has resumed all threads.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::removeCurrentThread):
+        - Undo refactoring removeThreadWithLockAlreadyAcquired() out of
+          removeCurrentThread() since it is no longer needed.
+
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        - Put invalid Threads on a threadsToBeDeleted list, and delete those
+          Threads only after all threads have been resumed.
+
+        (JSC::MachineThreads::removeThreadWithLockAlreadyAcquired): Deleted.
+        * heap/MachineStackMarker.h:
+
+2015-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Clean up Object Property Descriptor Collection
+        https://bugs.webkit.org/show_bug.cgi?id=141222
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        Use a list of options when determining which properties to collect
+        instead of a few booleans with overlapping responsibilities.
+
+2015-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.table with columnName filter for non-existent property should still show column
+        https://bugs.webkit.org/show_bug.cgi?id=141066
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::ConsoleMessage::addToFrontend):
+        When a user provides a second argument, e.g. console.table(..., columnNames),
+        then pass that second argument to the frontend.
+
+        * inspector/InjectedScriptSource.js:
+        Add a FIXME about the old, unused path now.
+
+2015-02-04  Saam Barati  <saambarati1@gmail.com>
+
+        TypeSet can use 1 byte instead of 4 bytes for its m_seenTypes member variable
+        https://bugs.webkit.org/show_bug.cgi?id=141204
+
+        Reviewed by Darin Adler.
+
+        There is no need to use 32 bits to store a TypeSet::RuntimeType set 
+        bit-vector when the largest value for a single TypeSet::RuntimeType 
+        is 0x80. 8 bits is enough to represent the set of seen types.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::doesTypeConformTo):
+        * runtime/TypeSet.h:
+        (JSC::TypeSet::seenTypes):
+
+2015-02-04  Mark Lam  <mark.lam@apple.com>
+
+        Remove concept of makeUsableFromMultipleThreads().
+        <https://webkit.org/b/141221>
+
+        Reviewed by Mark Hahnenberg.
+
+        Currently, we rely on VM::makeUsableFromMultipleThreads() being called before we
+        start acquiring the JSLock and entering the VM from different threads.
+        Acquisition of the JSLock will register the acquiring thread with the VM's thread
+        registry if not already registered.  However, it will only do this if the VM's
+        thread specific key has been initialized by makeUsableFromMultipleThreads().
+
+        This is fragile, and also does not read intuitively because one would expect to
+        acquire the JSLock before calling any methods on the VM.  This is exactly what
+        JSGlobalContextCreateInGroup() did (i.e. acquire the lock before calling
+        makeUsableFromMultipleThreads()), but is wrong.  The result is that the invoking
+        thread will not have been registered with the VM during that first entry into
+        the VM.
+
+        The fix is to make it so that we initialize the VM's thread specific key on
+        construction of the VM's MachineThreads registry instead of relying on
+        makeUsableFromMultipleThreads() being called.  With this, we can eliminate
+        makeUsableFromMultipleThreads() altogether.
+
+        Performance results are neutral in aggregate.
+
+        * API/JSContextRef.cpp:
+        (JSGlobalContextCreateInGroup):
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThreads):
+        (JSC::MachineThreads::~MachineThreads):
+        (JSC::MachineThreads::addCurrentThread):
+        (JSC::MachineThreads::removeThread):
+        (JSC::MachineThreads::gatherConservativeRoots):
+        (JSC::MachineThreads::makeUsableFromMultipleThreads): Deleted.
+        * heap/MachineStackMarker.h:
+        * runtime/VM.cpp:
+        (JSC::VM::sharedInstance):
+        * runtime/VM.h:
+        (JSC::VM::makeUsableFromMultipleThreads): Deleted.
+
+2015-02-04  Chris Dumez  <cdumez@apple.com>
+
+        Add removeFirst(value) / removeAll(value) methods to WTF::Vector
+        https://bugs.webkit.org/show_bug.cgi?id=141192
+
+        Reviewed by Benjamin Poulain.
+
+        Use new Vector::removeFirst(value) / removeAll(value) API to simplify the
+        code a bit.
+
+        * inspector/InspectorValues.cpp:
+        (Inspector::InspectorObjectBase::remove):
+
+2015-02-03  Mark Lam  <mark.lam@apple.com>
+
+        Workaround a thread library bug where thread destructors may not get called.
+        <https://webkit.org/b/141209>
+
+        Reviewed by Michael Saboff.
+
+        There's a bug where thread destructors may not get called.  As far as
+        we know, this only manifests on darwin ports.  We will work around this
+        by checking at GC time if the platform thread is still valid.  If not,
+        we'll purge it from the VM's registeredThreads list before proceeding
+        with thread scanning activity.
+
+        Note: it is important that we do this invalid thread detection during
+        suspension, because the validity (and liveness) of the other thread is
+        only guaranteed while it is suspended.
+
+        * API/tests/testapi.mm:
+        (threadMain):
+        - Added a test to enter the VM from another thread before we GC on
+          the main thread.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::removeThreadWithLockAlreadyAcquired):
+        (JSC::MachineThreads::removeCurrentThread):
+        - refactored removeThreadWithLockAlreadyAcquired() out from
+          removeCurrentThread() so that we can also call it for purging invalid
+          threads.
+        (JSC::suspendThread):
+        - Added a return status to tell if the suspension succeeded or not.
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        - Check if the suspension failed, and purge the thread if we can't
+          suspend it.  Failure to suspend implies that the thread has
+          terminated without calling its destructor.
+        * heap/MachineStackMarker.h:
+
+2015-02-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ASSERT mainThreadPthread launching remote debuggable JSContext app with Debug JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=141189
+
+        Reviewed by Michael Saboff.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::singleton):
+        Ensure we call WTF::initializeMainThread() on the main thread so that
+        we can perform automatic String <-> NSString conversions.
+
+2015-02-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Project file cleanups after r179429.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+
+2015-02-02  Filip Pizlo  <fpizlo@apple.com>
+
+        arguments[-1] should have well-defined behavior
+        https://bugs.webkit.org/show_bug.cgi?id=141183
+
+        Reviewed by Mark Lam.
+        
+        According to JSC's internal argument numbering, 0 is "this" and 1 is the first argument.
+        In the "arguments[i]" expression, "this" is not accessible and i = 0 refers to the first
+        argument. Previously we handled the bounds check in "arguments[i]" - where "arguments" is
+        statically known to be the current function's arguments object - as follows:
+        
+            add 1, i
+            branchAboveOrEqual i, callFrame.ArgumentCount, slowPath
+        
+        The problem with this is that if i = -1, this passes the test, and we end up accessing
+        what would be the "this" argument slot. That's wrong, since we should really be bottoming
+        out in arguments["-1"], which is usually undefined but could be anything. It's even worse
+        if the function is inlined or if we're in a constructor - in that case the "this" slot
+        could be garbage.
+        
+        It turns out that we had this bug in all of our engines.
+        
+        This fixes the issue by changing the algorithm to:
+        
+            load32 callFrame.ArgumentCount, tmp
+            sub 1, tmp
+            branchAboveOrEqual i, tmp, slowPath
+        
+        In some engines, we would have used the modified "i" (the one that had 1 added to it) for
+        the subsequent argument load; since we don't do this anymore I also had to change some of
+        the offsets on the BaseIndex arguments load.
+        
+        This also includes tests that are written in such a way as to get coverage on LLInt and
+        Baseline JIT (get-my-argument-by-val-wrap-around-no-warm-up), DFG and FTL
+        (get-my-argument-by-val-wrap-around), and DFG when we're being paranoid about the user
+        overwriting the "arguments" variable (get-my-argument-by-val-safe-wrap-around). This also
+        includes off-by-1 out-of-bounds tests for each of these cases, since in the process of
+        writing the patch I broke the arguments[arguments.length] case in the DFG and didn't see
+        any test failures.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileGetMyArgumentByVal):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::offsetOfArguments):
+        (JSC::AssemblyHelpers::offsetOfArgumentsIncludingThis): Deleted.
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_get_argument_by_val):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_get_argument_by_val):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * tests/stress/get-my-argument-by-val-out-of-bounds-no-warm-up.js: Added.
+        (foo):
+        * tests/stress/get-my-argument-by-val-out-of-bounds.js: Added.
+        (foo):
+        * tests/stress/get-my-argument-by-val-safe-out-of-bounds.js: Added.
+        (foo):
+        * tests/stress/get-my-argument-by-val-safe-wrap-around.js: Added.
+        (foo):
+        * tests/stress/get-my-argument-by-val-wrap-around-no-warm-up.js: Added.
+        (foo):
+        * tests/stress/get-my-argument-by-val-wrap-around.js: Added.
+        (foo):
+
+2015-02-02  Filip Pizlo  <fpizlo@apple.com>
+
+        MultiGetByOffset should be marked NodeMustGenerate
+        https://bugs.webkit.org/show_bug.cgi?id=140137
+
+        Reviewed by Michael Saboff.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToGetByOffset): We were sloppy - we should also clear NodeMustGenerate once it's a GetByOffset.
+        (JSC::DFG::Node::convertToMultiGetByOffset): Assert that we converted from something that already had NodeMustGenerate.
+        * dfg/DFGNodeType.h: We shouldn't DCE a node that does checks and could be effectful in baseline. Making MultiGetByOffset as NodeMustGenerate prevents DCE. FTL could still DCE the actual loads, but the checks will stay.
+        * tests/stress/multi-get-by-offset-dce.js: Added. This previously failed because the getter wasn't called.
+        (foo):
+
+2015-02-02  Filip Pizlo  <fpizlo@apple.com>
+
+        [FTL] inlined GetMyArgumentByVal with no arguments passed causes instant crash
+        https://bugs.webkit.org/show_bug.cgi?id=141180
+        rdar://problem/19677552
+
+        Reviewed by Benjamin Poulain.
+        
+        If we do a GetMyArgumentByVal on an inlined call frame that has no arguments, then the
+        bounds check already terminates execution. This means we can skip the part where we
+        previously did an out-of-bound array access on the inlined call frame arguments vector.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::safelyInvalidateAfterTermination):
+        (JSC::FTL::LowerDFGToLLVM::compileGetMyArgumentByVal):
+        (JSC::FTL::LowerDFGToLLVM::terminate):
+        (JSC::FTL::LowerDFGToLLVM::didAlreadyTerminate):
+        (JSC::FTL::LowerDFGToLLVM::crash):
+        * tests/stress/get-my-argument-by-val-inlined-no-formal-parameters.js: Added.
+        (foo):
+        (bar):
+
+2015-02-02  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r179477): arguments simplification no longer works
+        https://bugs.webkit.org/show_bug.cgi?id=141169
+
+        Reviewed by Mark Lam.
+        
+        The operations involved in callee/scope access don't exit and shouldn't get in the way
+        of strength-reducing a Flush to a PhantomLocal. Then the PhantomLocal shouldn't get in
+        the way of further such strength-reduction. We also need to canonicalize PhantomLocal
+        before running arguments simplification.
+
+        * dfg/DFGMayExit.cpp:
+        (JSC::DFG::mayExit):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+
+2015-02-02  Filip Pizlo  <fpizlo@apple.com>
+
+        VirtualRegister should really know how to dump itself
+        https://bugs.webkit.org/show_bug.cgi?id=141171
+
+        Reviewed by Geoffrey Garen.
+        
+        Gives VirtualRegister a dump() method that pretty-prints the virtual register. The rest of
+        the patch is all about using this new power.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::constantName):
+        (JSC::CodeBlock::registerName):
+        * bytecode/CodeBlock.h:
+        (JSC::missingThisObjectMarker): Deleted.
+        * bytecode/VirtualRegister.cpp: Added.
+        (JSC::VirtualRegister::dump):
+        * bytecode/VirtualRegister.h:
+        (WTF::printInternal): Deleted.
+        * dfg/DFGArgumentPosition.h:
+        (JSC::DFG::ArgumentPosition::dump):
+        * dfg/DFGFlushedAt.cpp:
+        (JSC::DFG::FlushedAt::dump):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGPutLocalSinkingPhase.cpp:
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::reportValidationContext):
+        * dfg/DFGValueSource.cpp:
+        (JSC::DFG::ValueSource::dump):
+        * dfg/DFGVariableEvent.cpp:
+        (JSC::DFG::VariableEvent::dump):
+        (JSC::DFG::VariableEvent::dumpSpillInfo):
+        * ftl/FTLExitArgumentForOperand.cpp:
+        (JSC::FTL::ExitArgumentForOperand::dump):
+        * ftl/FTLExitValue.cpp:
+        (JSC::FTL::ExitValue::dumpInContext):
+        * profiler/ProfilerBytecodeSequence.cpp:
+        (JSC::Profiler::BytecodeSequence::BytecodeSequence):
+
+2015-02-02  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the HandleBlock piece of this patch.
+
+        * heap/HandleBlock.h:
+        * heap/HandleBlockInlines.h:
+        (JSC::HandleBlock::create):
+        (JSC::HandleBlock::destroy):
+        (JSC::HandleBlock::HandleBlock):
+        (JSC::HandleBlock::payloadEnd):
+        * heap/HandleSet.cpp:
+        (JSC::HandleSet::~HandleSet):
+        (JSC::HandleSet::grow):
+
+2015-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Support console.table
+        https://bugs.webkit.org/show_bug.cgi?id=141058
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        Include the firstLevelKeys filter when generating previews.
+
+        * runtime/ConsoleClient.cpp:
+        (JSC::appendMessagePrefix):
+        Differentiate console.table logs to system log.
+
+2015-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        BinarySwitch should be faster on average
+        https://bugs.webkit.org/show_bug.cgi?id=141046
+
+        Reviewed by Anders Carlsson.
+        
+        This optimizes our binary switch using math. It's strictly better than what we had before
+        assuming we bottom out in some case (rather than fall through), assuming all cases get
+        hit with equal probability. The difference is particularly large for large switch
+        statements. For example, a switch statement with 1000 cases would previously require on
+        average 13.207 branches to get to some case, while now it just requires 10.464.
+        
+        This is also a progression for the fall-through case, though we could shave off another
+        1/6 branch on average if we wanted to - though it would regress taking a case (not falling
+        through) by 1/6 branch. I believe it's better to bias the BinarySwitch for not falling
+        through.
+        
+        This also adds some randomness to the algorithm to minimize the likelihood of us
+        generating a switch statement that is always particularly bad for some input. Note that
+        the randomness has no effect on average-case performance assuming all cases are equally
+        likely.
+        
+        This ought to have no actual performance change because we don't rely on binary switches
+        that much. The main reason why this change is interesting is that I'm finding myself
+        increasingly relying on BinarySwitch, and I'd like to know that it's optimal.
+
+        * jit/BinarySwitch.cpp:
+        (JSC::BinarySwitch::BinarySwitch):
+        (JSC::BinarySwitch::~BinarySwitch):
+        (JSC::BinarySwitch::build):
+        * jit/BinarySwitch.h:
+
+2015-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Extend CSS.getSupportedCSSProperties to provide values for properties for CSS Augmented JSContext
+        https://bugs.webkit.org/show_bug.cgi?id=141064
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/CSS.json:
+
+2015-02-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] ASSERTION FAILED: m_scriptExecutionContext->isContextThread() in ContextDestructionObserver::observeContext
+        https://bugs.webkit.org/show_bug.cgi?id=141057
+        <rdar://problem/19068790>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::receivedIndicateMessage): Modified to call WTF::callOnWebThreadOrDispatchAsyncOnMainThread().
+        (Inspector::dispatchAsyncOnQueueSafeForAnyDebuggable): Deleted; moved logic to common helper function,
+        WTF::callOnWebThreadOrDispatchAsyncOnMainThread() so that it can be called from both RemoteInspector::receivedIndicateMessage()
+        and CryptoKeyRSA::generatePair().
+
+2015-02-02  Saam Barati  <saambarati1@gmail.com>
+
+        Create tests for JSC's Control Flow Profiler
+        https://bugs.webkit.org/show_bug.cgi?id=141123
+
+        Reviewed by Filip Pizlo.
+
+        This patch creates a control flow profiler testing API in jsc.cpp 
+        that accepts a function and a string as arguments. The string must 
+        be a substring of the text of the function argument. The API returns 
+        a boolean indicating whether or not the basic block that encloses the 
+        substring has executed.
+
+        This patch uses this API to test that the control flow profiler
+        behaves as expected on basic block boundaries. These tests do not
+        provide full coverage for all JavaScript statements that can create
+        basic blocks boundaries. Full coverage will come in a later patch.
+
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionHasBasicBlockExecuted):
+        * runtime/ControlFlowProfiler.cpp:
+        (JSC::ControlFlowProfiler::hasBasicBlockAtTextOffsetBeenExecuted):
+        * runtime/ControlFlowProfiler.h:
+        * tests/controlFlowProfiler: Added.
+        * tests/controlFlowProfiler.yaml: Added.
+        * tests/controlFlowProfiler/driver: Added.
+        * tests/controlFlowProfiler/driver/driver.js: Added.
+        (assert):
+        * tests/controlFlowProfiler/if-statement.js: Added.
+        (testIf):
+        (noMatches):
+        * tests/controlFlowProfiler/loop-statements.js: Added.
+        (forRegular):
+        (forIn):
+        (forOf):
+        (whileLoop):
+        * tests/controlFlowProfiler/switch-statements.js: Added.
+        (testSwitch):
+        * tests/controlFlowProfiler/test-jit.js: Added.
+        (tierUpToBaseline):
+        (tierUpToDFG):
+        (baselineTest):
+        (dfgTest):
+
+2015-01-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Polymorphic call inlining should be based on polymorphic call inline caching rather than logging
+        https://bugs.webkit.org/show_bug.cgi?id=140660
+
+        Reviewed by Geoffrey Garen.
+        
+        When we first implemented polymorphic call inlining, we did the profiling based on a call
+        edge log. The idea was to store each call edge (a tuple of call site and callee) into a
+        global log that was processed lazily. Processing the log would give precise counts of call
+        edges, and could be used to drive well-informed inlining decisions - polymorphic or not.
+        This was a speed-up on throughput tests but a slow-down for latency tests. It was a net win
+        nonetheless.
+        
+        Experience with this code shows three things. First, the call edge profiler is buggy and
+        complex. It would take work to fix the bugs. Second, the call edge profiler incurs lots of
+        overhead for latency code that we care deeply about. Third, it's not at all clear that
+        having call edge counts for every possible callee is any better than just having call edge
+        counts for the limited number of callees that an inline cache would catch.
+        
+        So, this patch removes the call edge profiler and replaces it with a polymorphic call inline
+        cache. If we miss the basic call inline cache, we inflate the cache to be a jump to an
+        out-of-line stub that cases on the previously known callees. If that misses again, then we
+        rewrite that stub to include the new callee. We do this up to some number of callees. If we
+        hit the limit then we switch to using a plain virtual call.
+        
+        Substantial speed-up on V8Spider; undoes the slow-down that the original call edge profiler
+        caused. Might be a SunSpider speed-up (below 1%), depending on hardware.
+        
+        Rolling this back in after fixing https://bugs.webkit.org/show_bug.cgi?id=141107.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CallEdge.h:
+        (JSC::CallEdge::count):
+        (JSC::CallEdge::CallEdge):
+        * bytecode/CallEdgeProfile.cpp: Removed.
+        * bytecode/CallEdgeProfile.h: Removed.
+        * bytecode/CallEdgeProfileInlines.h: Removed.
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::unlink):
+        (JSC::CallLinkInfo::visitWeak):
+        * bytecode/CallLinkInfo.h:
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::CallLinkStatus):
+        (JSC::CallLinkStatus::computeFor):
+        (JSC::CallLinkStatus::computeFromCallLinkInfo):
+        (JSC::CallLinkStatus::isClosureCall):
+        (JSC::CallLinkStatus::makeClosureCall):
+        (JSC::CallLinkStatus::dump):
+        (JSC::CallLinkStatus::computeFromCallEdgeProfile): Deleted.
+        * bytecode/CallLinkStatus.h:
+        (JSC::CallLinkStatus::CallLinkStatus):
+        (JSC::CallLinkStatus::isSet):
+        (JSC::CallLinkStatus::variants):
+        (JSC::CallLinkStatus::size):
+        (JSC::CallLinkStatus::at):
+        (JSC::CallLinkStatus::operator[]):
+        (JSC::CallLinkStatus::canOptimize):
+        (JSC::CallLinkStatus::edges): Deleted.
+        (JSC::CallLinkStatus::canTrustCounts): Deleted.
+        * bytecode/CallVariant.cpp:
+        (JSC::variantListWithVariant):
+        (JSC::despecifiedVariantList):
+        * bytecode/CallVariant.h:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::~CodeBlock):
+        (JSC::CodeBlock::linkIncomingPolymorphicCall):
+        (JSC::CodeBlock::unlinkIncomingCalls):
+        (JSC::CodeBlock::noticeIncomingCall):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::isIncomingCallAlreadyLinked): Deleted.
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addCallWithoutSettingResult):
+        (JSC::DFG::ByteCodeParser::handleCall):
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        (JSC::DFG::TierUpCheckInjectionPhase::removeFTLProfiling): Deleted.
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * heap/Heap.cpp:
+        (JSC::Heap::collect):
+        * jit/BinarySwitch.h:
+        * jit/ClosureCallStubRoutine.cpp: Removed.
+        * jit/ClosureCallStubRoutine.h: Removed.
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileOpCall):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileOpCall):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        (JSC::operationLinkPolymorphicCallFor):
+        (JSC::operationLinkClosureCallFor): Deleted.
+        * jit/JITStubRoutine.h:
+        * jit/JITWriteBarrier.h:
+        * jit/PolymorphicCallStubRoutine.cpp: Added.
+        (JSC::PolymorphicCallNode::~PolymorphicCallNode):
+        (JSC::PolymorphicCallNode::unlink):
+        (JSC::PolymorphicCallCase::dump):
+        (JSC::PolymorphicCallStubRoutine::PolymorphicCallStubRoutine):
+        (JSC::PolymorphicCallStubRoutine::~PolymorphicCallStubRoutine):
+        (JSC::PolymorphicCallStubRoutine::variants):
+        (JSC::PolymorphicCallStubRoutine::edges):
+        (JSC::PolymorphicCallStubRoutine::visitWeak):
+        (JSC::PolymorphicCallStubRoutine::markRequiredObjectsInternal):
+        * jit/PolymorphicCallStubRoutine.h: Added.
+        (JSC::PolymorphicCallNode::PolymorphicCallNode):
+        (JSC::PolymorphicCallCase::PolymorphicCallCase):
+        (JSC::PolymorphicCallCase::variant):
+        (JSC::PolymorphicCallCase::codeBlock):
+        * jit/Repatch.cpp:
+        (JSC::linkSlowFor):
+        (JSC::linkFor):
+        (JSC::revertCall):
+        (JSC::unlinkFor):
+        (JSC::linkVirtualFor):
+        (JSC::linkPolymorphicCall):
+        (JSC::linkClosureCall): Deleted.
+        * jit/Repatch.h:
+        * jit/ThunkGenerators.cpp:
+        (JSC::linkPolymorphicCallForThunkGenerator):
+        (JSC::linkPolymorphicCallThunkGenerator):
+        (JSC::linkPolymorphicCallThatPreservesRegsThunkGenerator):
+        (JSC::linkClosureCallForThunkGenerator): Deleted.
+        (JSC::linkClosureCallThunkGenerator): Deleted.
+        (JSC::linkClosureCallThatPreservesRegsThunkGenerator): Deleted.
+        * jit/ThunkGenerators.h:
+        (JSC::linkPolymorphicCallThunkGeneratorFor):
+        (JSC::linkClosureCallThunkGeneratorFor): Deleted.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::jitCompileAndSetHeuristics):
+        * runtime/Options.h:
+        * runtime/VM.cpp:
+        (JSC::VM::prepareToDiscardCode):
+        (JSC::VM::ensureCallEdgeLog): Deleted.
+        * runtime/VM.h:
+
+2015-01-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Converting Flushes and PhantomLocals to Phantoms requires an OSR availability analysis rather than just using the SetLocal's child
+        https://bugs.webkit.org/show_bug.cgi?id=141107
+
+        Reviewed by Michael Saboff.
+        
+        See the bugzilla for a discussion of the problem. This addresses the problem by ensuring
+        that Flushes are always strength-reduced to PhantomLocals, and CPS rethreading does a mini
+        OSR availability analysis to determine the right MovHint value to use for the Phantom.
+
+        * dfg/DFGCPSRethreadingPhase.cpp:
+        (JSC::DFG::CPSRethreadingPhase::CPSRethreadingPhase):
+        (JSC::DFG::CPSRethreadingPhase::freeUnnecessaryNodes):
+        (JSC::DFG::CPSRethreadingPhase::clearVariables):
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeFlushOrPhantomLocalFor):
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeLocalsInBlock):
+        (JSC::DFG::CPSRethreadingPhase::clearVariablesAtHeadAndTail): Deleted.
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertPhantomToPhantomLocal):
+        (JSC::DFG::Node::convertFlushToPhantomLocal):
+        (JSC::DFG::Node::convertToPhantomLocal): Deleted.
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * tests/stress/inline-call-that-doesnt-use-all-args.js: Added.
+        (foo):
+        (bar):
+        (baz):
+
+2015-01-31  Michael Saboff  <msaboff@apple.com>
+
+        Crash (DFG assertion) beneath AbstractInterpreter::verifyEdge() @ http://experilous.com/1/planet-generator/2014-09-28/version-1
+        https://bugs.webkit.org/show_bug.cgi?id=141111
+
+        Reviewed by Filip Pizlo.
+
+        In LowerDFGToLLVM::compileNode(), if we determine while compiling a node that we would have
+        exited, we don't need to process the OSR availability or abstract interpreter.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::safelyInvalidateAfterTermination): Broke this out a a separate
+        method since we need to call it at the top and near the bottom of compileNode().
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+
+2015-01-31  Sam Weinig  <sam@webkit.org>
+
+        Remove even more Mountain Lion support
+        https://bugs.webkit.org/show_bug.cgi?id=141124
+
+        Reviewed by Alexey Proskuryakov.
+
+        * API/tests/DateTests.mm:
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+
+2015-01-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179426.
+        https://bugs.webkit.org/show_bug.cgi?id=141119
+
+        "caused a memory use regression" (Requested by Guest45 on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use FastMalloc (bmalloc) instead of BlockAllocator for GC
+        pages"
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+        http://trac.webkit.org/changeset/179426
+
+2015-01-30  Daniel Bates  <dabates@apple.com>
+
+        Clean up: Remove unnecessary <dispatch/dispatch.h> header from RemoteInspectorDebuggableConnection.h
+        https://bugs.webkit.org/show_bug.cgi?id=141067
+
+        Reviewed by Timothy Hatcher.
+
+        Remove the header <dispatch/dispatch.h> from RemoteInspectorDebuggableConnection.h as we
+        do not make use of its functionality. Instead, include this header in RemoteInspectorDebuggableConnection.mm
+        and RemoteInspector.mm. The latter depended on <dispatch/dispatch.h> being included via
+        header RemoteInspectorDebuggableConnection.h.
+
+        * inspector/remote/RemoteInspector.mm: Include header <dispatch/dispatch.h>.
+        * inspector/remote/RemoteInspectorDebuggableConnection.h: Remove header <dispatch/dispatch.h>.
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm: Include header <dispatch/dispatch.h>.
+
+2015-01-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement ES6 Symbol
+        https://bugs.webkit.org/show_bug.cgi?id=140435
+
+        Reviewed by Geoffrey Garen.
+
+        This patch implements ES6 Symbol. In this patch, we don't support
+        Symbol.keyFor, Symbol.for, Object.getOwnPropertySymbols. They will be
+        supported in the subsequent patches.
+
+        Since ES6 Symbol is introduced as new primitive value, we implement
+        Symbol as a derived class from JSCell. And now JSValue accepts Symbol*
+        as a new primitive value.
+
+        Symbol has a *unique* flagged StringImpl* as an `uid`. Which pointer
+        value represents the Symbol's identity. So don't compare Symbol's
+        JSCell pointer value for comparison.
+        This enables re-producing Symbol primitive value from StringImpl* uid
+        by executing`Symbol::create(vm, uid)`. This is needed to produce
+        Symbol primitive values from stored StringImpl* in `Object.getOwnPropertySymbols`.
+
+        And Symbol.[[Description]] is folded into the string value of Symbol's uid.
+        By doing so, we can represent ES6 Symbol without extending current PropertyTable key; StringImpl*.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.order:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createBuiltinExecutable):
+        * builtins/BuiltinNames.h:
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::operationPutByValInternal):
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::subtype):
+        * interpreter/Interpreter.cpp:
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::getByVal):
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/CommonIdentifiers.h:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::opIn):
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createUndefinedVariableError):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::synthesizePrototype):
+        (JSC::JSValue::dumpInContextAssumingStructure):
+        (JSC::JSValue::toStringSlowCase):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::isSymbol):
+        (JSC::JSValue::isPrimitive):
+        (JSC::JSValue::toPropertyKey):
+
+        It represents ToPropertyKey abstract operation in the ES6 spec.
+        It cleans up the old implementation's `isName` checks.
+        And to prevent performance regressions in
+            js/regress/fold-get-by-id-to-multi-get-by-offset-rare-int.html
+            js/regress/fold-get-by-id-to-multi-get-by-offset.html
+        we annnotate this function as ALWAYS_INLINE.
+
+        (JSC::JSValue::getPropertySlot):
+        (JSC::JSValue::get):
+        (JSC::JSValue::equalSlowCaseInline):
+        (JSC::JSValue::strictEqualSlowCaseInline):
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::put):
+        (JSC::JSCell::putByIndex):
+        (JSC::JSCell::toPrimitive):
+        (JSC::JSCell::getPrimitiveNumber):
+        (JSC::JSCell::toNumber):
+        (JSC::JSCell::toObject):
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::isSymbol):
+        (JSC::JSCell::toBoolean):
+        (JSC::JSCell::pureToBoolean):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::symbolPrototype):
+        (JSC::JSGlobalObject::symbolObjectStructure):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::Stringifier):
+        * runtime/JSSymbolTableObject.cpp:
+        (JSC::JSSymbolTableObject::getOwnNonIndexPropertyNames):
+        * runtime/JSType.h:
+        * runtime/JSTypeInfo.h:
+        (JSC::TypeInfo::isName): Deleted.
+        * runtime/MapData.cpp:
+        (JSC::MapData::find):
+        (JSC::MapData::add):
+        (JSC::MapData::remove):
+        (JSC::MapData::replaceAndPackBackingStore):
+        * runtime/MapData.h:
+        (JSC::MapData::clear):
+        * runtime/NameInstance.h: Removed.
+        * runtime/NamePrototype.cpp: Removed.
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorGetOwnPropertyDescriptor):
+        (JSC::objectConstructorDefineProperty):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncHasOwnProperty):
+        (JSC::objectProtoFuncDefineGetter):
+        (JSC::objectProtoFuncDefineSetter):
+        (JSC::objectProtoFuncLookupGetter):
+        (JSC::objectProtoFuncLookupSetter):
+        (JSC::objectProtoFuncPropertyIsEnumerable):
+        * runtime/Operations.cpp:
+        (JSC::jsTypeStringForValue):
+        (JSC::jsIsObjectType):
+        * runtime/PrivateName.h:
+        (JSC::PrivateName::PrivateName):
+        (JSC::PrivateName::operator==):
+        (JSC::PrivateName::operator!=):
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::find):
+        (JSC::PropertyTable::get):
+        * runtime/PropertyName.h:
+        (JSC::PropertyName::PropertyName):
+        (JSC::PropertyName::publicName):
+        * runtime/SmallStrings.h:
+        * runtime/StringConstructor.cpp:
+        (JSC::callStringConstructor):
+
+        In ES6, String constructor accepts Symbol to execute `String(symbol)`.
+
+        * runtime/Structure.cpp:
+        (JSC::Structure::getPropertyNamesFromStructure):
+        * runtime/StructureInlines.h:
+        (JSC::Structure::prototypeForLookup):
+        * runtime/Symbol.cpp: Added.
+        (JSC::Symbol::Symbol):
+        (JSC::SymbolObject::create):
+        (JSC::Symbol::toPrimitive):
+        (JSC::Symbol::toBoolean):
+        (JSC::Symbol::getPrimitiveNumber):
+        (JSC::Symbol::toObject):
+        (JSC::Symbol::toNumber):
+        (JSC::Symbol::destroy):
+        (JSC::Symbol::descriptiveString):
+        * runtime/Symbol.h: Added.
+        (JSC::Symbol::createStructure):
+        (JSC::Symbol::create):
+        (JSC::Symbol::privateName):
+        (JSC::Symbol::finishCreation):
+        (JSC::asSymbol):
+        * runtime/SymbolConstructor.cpp: Renamed from Source/JavaScriptCore/runtime/NameConstructor.cpp.
+        (JSC::SymbolConstructor::SymbolConstructor):
+        (JSC::SymbolConstructor::finishCreation):
+        (JSC::callSymbol):
+        (JSC::SymbolConstructor::getConstructData):
+        (JSC::SymbolConstructor::getCallData):
+        * runtime/SymbolConstructor.h: Renamed from Source/JavaScriptCore/runtime/NameConstructor.h.
+        (JSC::SymbolConstructor::create):
+        (JSC::SymbolConstructor::createStructure):
+        * runtime/SymbolObject.cpp: Renamed from Source/JavaScriptCore/runtime/NameInstance.cpp.
+        (JSC::SymbolObject::SymbolObject):
+        (JSC::SymbolObject::finishCreation):
+        (JSC::SymbolObject::defaultValue):
+
+        Now JSC doesn't support @@toPrimitive. So instead of it, we implement
+        Symbol.prototype[@@toPrimitive] as ES5 Symbol.[[DefaultValue]].
+
+        * runtime/SymbolObject.h: Added.
+        (JSC::SymbolObject::create):
+        (JSC::SymbolObject::internalValue):
+        (JSC::SymbolObject::createStructure):
+        * runtime/SymbolPrototype.cpp: Added.
+        (JSC::SymbolPrototype::SymbolPrototype):
+        (JSC::SymbolPrototype::finishCreation):
+        (JSC::SymbolPrototype::getOwnPropertySlot):
+        (JSC::symbolProtoFuncToString):
+        (JSC::symbolProtoFuncValueOf):
+        * runtime/SymbolPrototype.h: Renamed from Source/JavaScriptCore/runtime/NamePrototype.h.
+        (JSC::SymbolPrototype::create):
+        (JSC::SymbolPrototype::createStructure):
+
+        SymbolPrototype object is ordinary JS object. Not wrapper object of Symbol.
+        It is tested in js/symbol-prototype-is-ordinary-object.html.
+
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2015-01-30  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the HandleBlock piece of this patch.
+
+        * heap/HandleBlock.h:
+        * heap/HandleBlockInlines.h:
+        (JSC::HandleBlock::create):
+        (JSC::HandleBlock::destroy):
+        (JSC::HandleBlock::HandleBlock):
+        (JSC::HandleBlock::payloadEnd):
+        * heap/HandleSet.cpp:
+        (JSC::HandleSet::~HandleSet):
+        (JSC::HandleSet::grow):
+
+2015-01-30  Geoffrey Garen  <ggaren@apple.com>
+
+        GC marking threads should clear malloc caches
+        https://bugs.webkit.org/show_bug.cgi?id=141097
+
+        Reviewed by Sam Weinig.
+
+        Follow-up based on Mark Hahnenberg's review: Release after the copy
+        phase, rather than after any phase, since we'd rather not release
+        between marking and copying.
+
+        * heap/GCThread.cpp:
+        (JSC::GCThread::waitForNextPhase):
+        (JSC::GCThread::gcThreadMain):
+
+2015-01-30  Geoffrey Garen  <ggaren@apple.com>
+
+        GC marking threads should clear malloc caches
+        https://bugs.webkit.org/show_bug.cgi?id=141097
+
+        Reviewed by Andreas Kling.
+
+        This is an attempt to ameliorate a potential memory use regression
+        caused by https://bugs.webkit.org/show_bug.cgi?id=140900
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages.
+
+        FastMalloc may accumulate a per-thread cache on each of the 8-ish
+        GC marking threads, which can be expensive.
+
+        * heap/GCThread.cpp:
+        (JSC::GCThread::waitForNextPhase): Scavenge the current thread before
+        going to sleep. There's probably not too much value to keeping our
+        per-thread cache between GCs, and it has some memory footprint.
+
+2015-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Rename shared() static member functions to singleton() for singleton classes.
+        https://bugs.webkit.org/show_bug.cgi?id=141088
+
+        Reviewed by Ryosuke Niwa and Benjamin Poulain.
+
+        Rename shared() static member functions to singleton() for singleton
+        classes as per the recent coding style change.
+
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::singleton):
+        (Inspector::RemoteInspector::start):
+        (Inspector::RemoteInspector::shared): Deleted.
+        * inspector/remote/RemoteInspectorDebuggable.cpp:
+        (Inspector::RemoteInspectorDebuggable::~RemoteInspectorDebuggable):
+        (Inspector::RemoteInspectorDebuggable::init):
+        (Inspector::RemoteInspectorDebuggable::update):
+        (Inspector::RemoteInspectorDebuggable::setRemoteDebuggingAllowed):
+        (Inspector::RemoteInspectorDebuggable::pauseWaitingForAutomaticInspection):
+        (Inspector::RemoteInspectorDebuggable::unpauseForInitializedInspector):
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorDebuggableConnection::setup):
+        (Inspector::RemoteInspectorDebuggableConnection::sendMessageToFrontend):
+
+2015-01-30  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the CopyWorkListSegment piece of this patch.
+
+        * heap/CopiedBlockInlines.h:
+        (JSC::CopiedBlock::reportLiveBytes):
+        * heap/CopyWorkList.h:
+        (JSC::CopyWorkListSegment::create):
+        (JSC::CopyWorkListSegment::destroy):
+        (JSC::CopyWorkListSegment::CopyWorkListSegment):
+        (JSC::CopyWorkList::CopyWorkList):
+        (JSC::CopyWorkList::~CopyWorkList):
+        (JSC::CopyWorkList::append):
+
+2015-01-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179357 and r179358.
+        https://bugs.webkit.org/show_bug.cgi?id=141062
+
+        Suspect this caused WebGL tests to start flaking (Requested by
+        kling on #webkit).
+
+        Reverted changesets:
+
+        "Polymorphic call inlining should be based on polymorphic call
+        inline caching rather than logging"
+        https://bugs.webkit.org/show_bug.cgi?id=140660
+        http://trac.webkit.org/changeset/179357
+
+        "Unreviewed, fix no-JIT build."
+        http://trac.webkit.org/changeset/179358
+
+2015-01-29  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed op_ret_object_or_this
+        https://bugs.webkit.org/show_bug.cgi?id=141048
+
+        Reviewed by Michael Saboff.
+
+        op_ret_object_or_this was one opcode that would keep us out of the
+        optimizing compilers.
+
+        We don't need a special-purpose opcode; we can just use a branch.
+
+        * bytecode/BytecodeBasicBlock.cpp:
+        (JSC::isTerminal): Removed.
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset): Removed.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode): Removed.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitReturn): Use an explicit branch to determine
+        if we need to substitute 'this' for the return value. Our engine no longer
+        benefits from fused opcodes that dispatch less in the interpreter.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::emit_op_ret_object_or_this): Deleted.
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_ret_object_or_this): Deleted.
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm: Removed.
+
+2015-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Implement ES6 class syntax without inheritance support
+        https://bugs.webkit.org/show_bug.cgi?id=140918
+
+        Reviewed by Geoffrey Garen.
+
+        Added the most basic support for ES6 class syntax. After this patch, we support basic class definition like:
+        class A {
+            constructor() { }
+            someMethod() { }
+        }
+
+        We'll add the support for "extends" keyword and automatically generating a constructor in follow up patches.
+        We also don't support block scoping of a class declaration.
+
+        We support both class declaration and class expression. A class expression is implemented by the newly added
+        ClassExprNode AST node. A class declaration is implemented by ClassDeclNode, which is a thin wrapper around
+        AssignResolveNode.
+
+        Tests: js/class-syntax-declaration.html
+               js/class-syntax-expression.html
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ObjectLiteralNode::emitBytecode): Create a new object instead of delegating the work to PropertyListNode.
+        Also fixed the 5-space indentation.
+        (JSC::PropertyListNode::emitBytecode): Don't create a new object now that ObjectLiteralNode does this.
+        (JSC::ClassDeclNode::emitBytecode): Added. Just let the AssignResolveNode node emit the byte code.
+        (JSC::ClassExprNode::emitBytecode): Create the class constructor and add static methods to the constructor by
+        emitting the byte code for PropertyListNode. Add instance methods to the class's prototype object the same way.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createClassExpr): Added. Creates a ClassExprNode.
+        (JSC::ASTBuilder::createClassDeclStatement): Added. Creates a AssignResolveNode and wraps it by a ClassDeclNode.
+
+        * parser/NodeConstructors.h:
+        (JSC::ClassDeclNode::ClassDeclNode): Added.
+        (JSC::ClassExprNode::ClassExprNode): Added.
+
+        * parser/Nodes.h:
+        (JSC::ClassExprNode): Added.
+        (JSC::ClassDeclNode): Added.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseStatement): Added the support for class declaration.
+        (JSC::stringForFunctionMode): Return "method" for MethodMode.
+        (JSC::Parser<LexerType>::parseClassDeclaration): Added. Uses parseClass to create a class expression and wraps
+        it with ClassDeclNode as described above.
+        (JSC::Parser<LexerType>::parseClass): Parses a class expression.
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parseGetterSetter): Extracted from parseProperty to share the code between parseProperty
+        and parseClass.
+        (JSC::Parser<LexerType>::parsePrimaryExpression): Added the support for class expression.
+
+        * parser/Parser.h:
+        (FunctionParseMode): Added MethodMode.
+
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createClassExpr): Added.
+        (JSC::SyntaxChecker::createClassDeclStatement): Added.
+
+2015-01-29  Geoffrey Garen  <ggaren@apple.com>
+
+        Try to fix the Windows build.
+
+        Not reviewed.
+
+        * heap/WeakBlock.h: Use the fully qualified name when declaring our friend.
+
+2015-01-29  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the WeakBlock piece of this patch.
+
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::create):
+        (JSC::WeakBlock::destroy):
+        (JSC::WeakBlock::WeakBlock):
+        * heap/WeakBlock.h:
+        * heap/WeakSet.cpp:
+        (JSC::WeakSet::~WeakSet):
+        (JSC::WeakSet::addAllocator):
+        (JSC::WeakSet::removeAllocator):
+
+2015-01-29  Geoffrey Garen  <ggaren@apple.com>
+
+        Use Vector instead of GCSegmentedArray in CodeBlockSet
+        https://bugs.webkit.org/show_bug.cgi?id=141044
+
+        Reviewed by Ryosuke Niwa.
+
+        This is allowed now that we've gotten rid of fastMallocForbid.
+
+        4kB was a bit overkill for just storing a few pointers.
+
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::CodeBlockSet):
+        * heap/CodeBlockSet.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+
+2015-01-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix no-JIT build.
+
+        * jit/PolymorphicCallStubRoutine.cpp:
+
+2015-01-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Polymorphic call inlining should be based on polymorphic call inline caching rather than logging
+        https://bugs.webkit.org/show_bug.cgi?id=140660
+
+        Reviewed by Geoffrey Garen.
+        
+        When we first implemented polymorphic call inlining, we did the profiling based on a call
+        edge log. The idea was to store each call edge (a tuple of call site and callee) into a
+        global log that was processed lazily. Processing the log would give precise counts of call
+        edges, and could be used to drive well-informed inlining decisions - polymorphic or not.
+        This was a speed-up on throughput tests but a slow-down for latency tests. It was a net win
+        nonetheless.
+        
+        Experience with this code shows three things. First, the call edge profiler is buggy and
+        complex. It would take work to fix the bugs. Second, the call edge profiler incurs lots of
+        overhead for latency code that we care deeply about. Third, it's not at all clear that
+        having call edge counts for every possible callee is any better than just having call edge
+        counts for the limited number of callees that an inline cache would catch.
+        
+        So, this patch removes the call edge profiler and replaces it with a polymorphic call inline
+        cache. If we miss the basic call inline cache, we inflate the cache to be a jump to an
+        out-of-line stub that cases on the previously known callees. If that misses again, then we
+        rewrite that stub to include the new callee. We do this up to some number of callees. If we
+        hit the limit then we switch to using a plain virtual call.
+        
+        Substantial speed-up on V8Spider; undoes the slow-down that the original call edge profiler
+        caused. Might be a SunSpider speed-up (below 1%), depending on hardware.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CallEdge.h:
+        (JSC::CallEdge::count):
+        (JSC::CallEdge::CallEdge):
+        * bytecode/CallEdgeProfile.cpp: Removed.
+        * bytecode/CallEdgeProfile.h: Removed.
+        * bytecode/CallEdgeProfileInlines.h: Removed.
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::unlink):
+        (JSC::CallLinkInfo::visitWeak):
+        * bytecode/CallLinkInfo.h:
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::CallLinkStatus):
+        (JSC::CallLinkStatus::computeFor):
+        (JSC::CallLinkStatus::computeFromCallLinkInfo):
+        (JSC::CallLinkStatus::isClosureCall):
+        (JSC::CallLinkStatus::makeClosureCall):
+        (JSC::CallLinkStatus::dump):
+        (JSC::CallLinkStatus::computeFromCallEdgeProfile): Deleted.
+        * bytecode/CallLinkStatus.h:
+        (JSC::CallLinkStatus::CallLinkStatus):
+        (JSC::CallLinkStatus::isSet):
+        (JSC::CallLinkStatus::variants):
+        (JSC::CallLinkStatus::size):
+        (JSC::CallLinkStatus::at):
+        (JSC::CallLinkStatus::operator[]):
+        (JSC::CallLinkStatus::canOptimize):
+        (JSC::CallLinkStatus::edges): Deleted.
+        (JSC::CallLinkStatus::canTrustCounts): Deleted.
+        * bytecode/CallVariant.cpp:
+        (JSC::variantListWithVariant):
+        (JSC::despecifiedVariantList):
+        * bytecode/CallVariant.h:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::~CodeBlock):
+        (JSC::CodeBlock::linkIncomingPolymorphicCall):
+        (JSC::CodeBlock::unlinkIncomingCalls):
+        (JSC::CodeBlock::noticeIncomingCall):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::isIncomingCallAlreadyLinked): Deleted.
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addCallWithoutSettingResult):
+        (JSC::DFG::ByteCodeParser::handleCall):
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        (JSC::DFG::TierUpCheckInjectionPhase::removeFTLProfiling): Deleted.
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * heap/Heap.cpp:
+        (JSC::Heap::collect):
+        * jit/BinarySwitch.h:
+        * jit/ClosureCallStubRoutine.cpp: Removed.
+        * jit/ClosureCallStubRoutine.h: Removed.
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileOpCall):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileOpCall):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        (JSC::operationLinkPolymorphicCallFor):
+        (JSC::operationLinkClosureCallFor): Deleted.
+        * jit/JITStubRoutine.h:
+        * jit/JITWriteBarrier.h:
+        * jit/PolymorphicCallStubRoutine.cpp: Added.
+        (JSC::PolymorphicCallNode::~PolymorphicCallNode):
+        (JSC::PolymorphicCallNode::unlink):
+        (JSC::PolymorphicCallCase::dump):
+        (JSC::PolymorphicCallStubRoutine::PolymorphicCallStubRoutine):
+        (JSC::PolymorphicCallStubRoutine::~PolymorphicCallStubRoutine):
+        (JSC::PolymorphicCallStubRoutine::variants):
+        (JSC::PolymorphicCallStubRoutine::edges):
+        (JSC::PolymorphicCallStubRoutine::visitWeak):
+        (JSC::PolymorphicCallStubRoutine::markRequiredObjectsInternal):
+        * jit/PolymorphicCallStubRoutine.h: Added.
+        (JSC::PolymorphicCallNode::PolymorphicCallNode):
+        (JSC::PolymorphicCallCase::PolymorphicCallCase):
+        (JSC::PolymorphicCallCase::variant):
+        (JSC::PolymorphicCallCase::codeBlock):
+        * jit/Repatch.cpp:
+        (JSC::linkSlowFor):
+        (JSC::linkFor):
+        (JSC::revertCall):
+        (JSC::unlinkFor):
+        (JSC::linkVirtualFor):
+        (JSC::linkPolymorphicCall):
+        (JSC::linkClosureCall): Deleted.
+        * jit/Repatch.h:
+        * jit/ThunkGenerators.cpp:
+        (JSC::linkPolymorphicCallForThunkGenerator):
+        (JSC::linkPolymorphicCallThunkGenerator):
+        (JSC::linkPolymorphicCallThatPreservesRegsThunkGenerator):
+        (JSC::linkClosureCallForThunkGenerator): Deleted.
+        (JSC::linkClosureCallThunkGenerator): Deleted.
+        (JSC::linkClosureCallThatPreservesRegsThunkGenerator): Deleted.
+        * jit/ThunkGenerators.h:
+        (JSC::linkPolymorphicCallThunkGeneratorFor):
+        (JSC::linkClosureCallThunkGeneratorFor): Deleted.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::jitCompileAndSetHeuristics):
+        * runtime/Options.h:
+        * runtime/VM.cpp:
+        (JSC::VM::prepareToDiscardCode):
+        (JSC::VM::ensureCallEdgeLog): Deleted.
+        * runtime/VM.h:
+
 2015-01-29  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: ES6: Improved Console Format for Set and Map Objects (like Arrays)

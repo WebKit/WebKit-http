@@ -28,17 +28,19 @@
 
 #if PLATFORM(IOS)
 
-#include <wtf/NeverDestroyed.h>
+#import <dispatch/dispatch.h>
+#import <wtf/NeverDestroyed.h>
 
 namespace WebKit {
 
 class WebMemoryPressureHandler {
     friend class NeverDestroyed<WebMemoryPressureHandler>;
 public:
-    static WebMemoryPressureHandler& shared();
+    static WebMemoryPressureHandler& singleton();
 
 private:
     WebMemoryPressureHandler();
+    dispatch_source_t _source;
 };
 
 } // namespace WebKit
