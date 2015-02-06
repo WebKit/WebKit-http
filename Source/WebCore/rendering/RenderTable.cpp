@@ -230,12 +230,8 @@ void RenderTable::addCaption(const RenderTableCaption* caption)
 
 void RenderTable::removeCaption(const RenderTableCaption* oldCaption)
 {
-    size_t index = m_captions.find(oldCaption);
-    ASSERT(index != notFound);
-    if (index == notFound)
-        return;
-
-    m_captions.remove(index);
+    bool removed = m_captions.removeFirst(oldCaption);
+    ASSERT_UNUSED(removed, removed);
 }
 
 void RenderTable::invalidateCachedColumns()
@@ -1538,6 +1534,20 @@ const BorderValue& RenderTable::tableEndBorderAdjoiningCell(const RenderTableCel
         return style().borderEnd();
 
     return style().borderStart();
+}
+
+void RenderTable::markForPaginationRelayoutIfNeeded()
+{
+    if (!view().layoutState()->isPaginated() || (!view().layoutState()->pageLogicalHeightChanged() && (!view().layoutState()->pageLogicalHeight() || view().layoutState()->pageLogicalOffset(this, logicalTop()) == pageLogicalOffset())))
+        return;
+    
+    // When a table moves, we have to dirty all of the sections too.
+    if (!needsLayout())
+        setChildNeedsLayout(MarkOnlyThis);
+    for (auto& child : childrenOfType<RenderTableSection>(*this)) {
+        if (!child.needsLayout())
+            child.setChildNeedsLayout(MarkOnlyThis);
+    }
 }
 
 }

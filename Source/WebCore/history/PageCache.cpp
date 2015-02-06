@@ -291,7 +291,7 @@ static void logCanCachePageDecision(Page& page)
     diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageCacheKey(), emptyString(), rejectReasons ? DiagnosticLoggingResultFail : DiagnosticLoggingResultPass);
 }
 
-PageCache& PageCache::shared()
+PageCache& PageCache::singleton()
 {
     static NeverDestroyed<PageCache> globalPageCache;
     return globalPageCache;
@@ -472,7 +472,7 @@ std::unique_ptr<CachedPage> PageCache::take(HistoryItem& item, Page* page)
     return cachedPage;
 }
 
-CachedPage* PageCache::get(HistoryItem& item, Page* page) const
+CachedPage* PageCache::get(HistoryItem& item, Page* page)
 {
     CachedPage* cachedPage = item.m_cachedPage.get();
     if (!cachedPage) {
@@ -484,7 +484,7 @@ CachedPage* PageCache::get(HistoryItem& item, Page* page) const
     if (cachedPage->hasExpired()) {
         LOG(PageCache, "Not restoring page for %s from back/forward cache because cache entry has expired", item.url().string().ascii().data());
         logPageCacheFailureDiagnosticMessage(page, DiagnosticLoggingKeys::expiredKey());
-        PageCache::shared().remove(item);
+        remove(item);
         return nullptr;
     }
     return cachedPage;

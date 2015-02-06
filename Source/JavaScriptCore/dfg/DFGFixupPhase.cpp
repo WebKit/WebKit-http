@@ -1143,7 +1143,7 @@ private:
             // (The other direction does not hold in general).
 
             RefPtr<TypeSet> typeSet = node->typeLocation()->m_instructionTypeSet;
-            uint32_t seenTypes = typeSet->seenTypes();
+            uint8_t seenTypes = typeSet->seenTypes();
             if (typeSet->doesTypeConformTo(TypeMachineInt)) {
                 node->convertToCheck();
                 if (node->child1()->shouldSpeculateInt32())
@@ -1202,8 +1202,6 @@ private:
         case AllocationProfileWatchpoint:
         case Call:
         case Construct:
-        case ProfiledCall:
-        case ProfiledConstruct:
         case ProfileControlFlow:
         case NativeCall:
         case NativeConstruct:

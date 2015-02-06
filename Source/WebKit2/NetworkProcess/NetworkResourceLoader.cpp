@@ -100,13 +100,13 @@ NetworkResourceLoader::NetworkResourceLoader(const NetworkResourceLoadParameters
     if (originalRequest().httpBody()) {
         for (const FormDataElement& element : originalRequest().httpBody()->elements()) {
             if (element.m_type == FormDataElement::Type::EncodedBlob)
-                m_fileReferences.appendVector(NetworkBlobRegistry::shared().filesInBlob(connection, element.m_url));
+                m_fileReferences.appendVector(NetworkBlobRegistry::singleton().filesInBlob(connection, element.m_url));
         }
     }
 
     if (originalRequest().url().protocolIs("blob")) {
         ASSERT(!m_parameters.resourceSandboxExtension);
-        m_fileReferences.appendVector(NetworkBlobRegistry::shared().filesInBlob(connection, originalRequest().url()));
+        m_fileReferences.appendVector(NetworkBlobRegistry::singleton().filesInBlob(connection, originalRequest().url()));
     }
 
     if (synchronousReply)
@@ -135,13 +135,13 @@ void NetworkResourceLoader::start()
     m_currentRequest = originalRequest();
 
 #if ENABLE(NETWORK_CACHE)
-    if (!NetworkCache::shared().isEnabled() || sessionID().isEphemeral()) {
+    if (!NetworkCache::singleton().isEnabled() || sessionID().isEphemeral()) {
         startNetworkLoad();
         return;
     }
 
     RefPtr<NetworkResourceLoader> loader(this);
-    NetworkCache::shared().retrieve(originalRequest(), [loader](std::unique_ptr<NetworkCache::Entry> entry) {
+    NetworkCache::singleton().retrieve(originalRequest(), [loader](std::unique_ptr<NetworkCache::Entry> entry) {
         if (loader->hasOneRef()) {
             // The loader has been aborted and is only held alive by this lambda.
             return;
@@ -175,7 +175,7 @@ void NetworkResourceLoader::startNetworkLoad()
         m_bufferedData = WebCore::SharedBuffer::create();
 
 #if ENABLE(NETWORK_CACHE)
-    if (NetworkCache::shared().isEnabled())
+    if (NetworkCache::singleton().isEnabled())
         m_bufferedDataForCache = WebCore::SharedBuffer::create();
 #endif
 
@@ -204,7 +204,7 @@ void NetworkResourceLoader::cleanup()
 
     invalidateSandboxExtensions();
 
-    NetworkProcess::shared().networkResourceLoadScheduler().removeLoader(this);
+    NetworkProcess::singleton().networkResourceLoadScheduler().removeLoader(this);
 
     m_handle = nullptr;
 
@@ -257,7 +257,7 @@ void NetworkResourceLoader::didReceiveResponseAsync(ResourceHandle* handle, cons
     if (m_cacheEntryForValidation) {
         bool validationSucceeded = m_response.httpStatusCode() == 304; // 304 Not Modified
         if (validationSucceeded)
-            NetworkCache::shared().update(originalRequest(), *m_cacheEntryForValidation, m_response);
+            NetworkCache::singleton().update(originalRequest(), *m_cacheEntryForValidation, m_response);
         if (!validationSucceeded || isConditionalRequest(originalRequest()))
             m_cacheEntryForValidation = nullptr;
     }
@@ -318,7 +318,7 @@ void NetworkResourceLoader::didFinishLoading(ResourceHandle* handle, double fini
     ASSERT_UNUSED(handle, handle == m_handle);
 
 #if ENABLE(NETWORK_CACHE)
-    if (NetworkCache::shared().isEnabled()) {
+    if (NetworkCache::singleton().isEnabled()) {
         if (m_cacheEntryForValidation) {
             // 304 Not Modified
             ASSERT(m_response.httpStatusCode() == 304);
@@ -336,8 +336,19 @@ void NetworkResourceLoader::didFinishLoading(ResourceHandle* handle, double fini
         }
 
         bool isPrivate = sessionID().isEphemeral();
-        if (hasCacheableRedirect && !isPrivate)
-            NetworkCache::shared().store(originalRequest(), m_response, m_bufferedDataForCache.release());
+        if (hasCacheableRedirect && !isPrivate) {
+            // Keep the connection alive.
+            RefPtr<NetworkConnectionToWebProcess> connection(connectionToWebProcess());
+            RefPtr<NetworkResourceLoader> loader(this);
+            NetworkCache::singleton().store(originalRequest(), m_response, WTF::move(m_bufferedDataForCache), [loader, connection](NetworkCache::MappedBody& mappedBody) {
+#if ENABLE(SHAREABLE_RESOURCE)
+                if (mappedBody.shareableResourceHandle.isNull())
+                    return;
+                LOG(NetworkCache, "(NetworkProcess) sending DidCacheResource");
+                loader->send(Messages::NetworkProcessConnection::DidCacheResource(loader->originalRequest(), mappedBody.shareableResourceHandle, loader->sessionID()));
+#endif
+            });
+        }
     }
 #endif
 
@@ -474,7 +485,7 @@ void NetworkResourceLoader::didReceiveAuthenticationChallenge(ResourceHandle* ha
         return;
     }
 
-    NetworkProcess::shared().authenticationManager().didReceiveAuthenticationChallenge(m_parameters.webPageID, m_parameters.webFrameID, challenge);
+    NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(m_parameters.webPageID, m_parameters.webFrameID, challenge);
 }
 
 void NetworkResourceLoader::didCancelAuthenticationChallenge(ResourceHandle* handle, const AuthenticationChallenge&)
@@ -522,7 +533,7 @@ bool NetworkResourceLoader::sendBufferMaybeAborting(WebCore::SharedBuffer& buffe
 {
     ASSERT(!isSynchronous());
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
+#if PLATFORM(COCOA)
     ShareableResource::Handle shareableResourceHandle;
     NetworkResourceLoader::tryGetShareableHandleFromSharedBuffer(shareableResourceHandle, buffer);
     if (!shareableResourceHandle.isNull()) {
@@ -631,7 +642,7 @@ void NetworkResourceLoader::canAuthenticateAgainstProtectionSpaceAsync(ResourceH
 
     // Handle server trust evaluation at platform-level if requested, for performance reasons.
     if (protectionSpace.authenticationScheme() == ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested
-        && !NetworkProcess::shared().canHandleHTTPSServerTrustEvaluation()) {
+        && !NetworkProcess::singleton().canHandleHTTPSServerTrustEvaluation()) {
         continueCanAuthenticateAgainstProtectionSpace(false);
         return;
     }

@@ -73,6 +73,7 @@ public:
     WEBCORE_EXPORT void setWebVideoFullscreenModel(WebVideoFullscreenModel*);
     WEBCORE_EXPORT void setWebVideoFullscreenChangeObserver(WebVideoFullscreenChangeObserver*);
     
+    WEBCORE_EXPORT virtual void resetMediaState() override;
     WEBCORE_EXPORT virtual void setDuration(double) override;
     WEBCORE_EXPORT virtual void setCurrentTime(double currentTime, double anchorTime) override;
     WEBCORE_EXPORT virtual void setRate(bool isPlaying, float playbackRate) override;
@@ -93,8 +94,10 @@ public:
     HTMLMediaElement::VideoFullscreenMode mode() const { return m_mode; }
     void setIsOptimized(bool);
     bool mayAutomaticallyShowVideoOptimized();
+    bool fullscreenMayReturnToInline();
 
 protected:
+    void beginSession();
     void setupFullscreenInternal(PlatformLayer&, IntRect initialRect, UIView *, HTMLMediaElement::VideoFullscreenMode, bool allowOptimizedFullscreen);
     void enterFullscreenOptimized();
     void enterFullscreenStandard();
@@ -118,8 +121,6 @@ protected:
     bool m_exitCompleted;
     bool m_enterRequested;
 
-    WebAVPlayerController *playerController();
-    
     void doEnterFullscreen();
 };
 

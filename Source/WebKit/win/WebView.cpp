@@ -673,9 +673,10 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         ASSERT_NOT_REACHED();
     }
 
-    memoryCache().setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    memoryCache().setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
-    PageCache::shared().setMaxSize(pageCacheSize);
+    auto& memoryCache = MemoryCache::singleton();
+    memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    PageCache::singleton().setMaxSize(pageCacheSize);
 
 #if USE(CFNETWORK)
     // Don't shrink a big disk cache, since that would cause churn.
@@ -2805,10 +2806,10 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
     configuration.dragClient = new WebDragClient(this);
     configuration.inspectorClient = m_inspectorClient;
     configuration.loaderClientForMainFrame = new WebFrameLoaderClient;
-    configuration.databaseProvider = &WebDatabaseProvider::shared();
+    configuration.databaseProvider = &WebDatabaseProvider::singleton();
     configuration.storageNamespaceProvider = WebStorageNamespaceProvider::create(localStorageDatabasePath(m_preferences.get()));
     configuration.progressTrackerClient = static_cast<WebFrameLoaderClient*>(configuration.loaderClientForMainFrame);
-    configuration.visitedLinkStore = &WebVisitedLinkStore::shared();
+    configuration.visitedLinkStore = &WebVisitedLinkStore::singleton();
 
     m_page = new Page(configuration);
     provideGeolocationTo(m_page, new WebGeolocationClient(this));
@@ -5135,11 +5136,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings.setEnableInheritURIQueryComponent(enabled);
 
-    hr = prefsPrivate->screenFontSubstitutionEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
-    settings.setScreenFontSubstitutionEnabled(enabled);
-
     return S_OK;
 }
 
@@ -5494,10 +5490,10 @@ HRESULT STDMETHODCALLTYPE WebView::loadBackForwardListFromOtherView(
             // until we leave that page.
             otherWebView->m_page->mainFrame().loader().history().saveDocumentAndScrollState();
         }
-        RefPtr<HistoryItem> newItem = otherBackForwardClient->itemAtIndex(i)->copy();
+        Ref<HistoryItem> newItem = otherBackForwardClient->itemAtIndex(i)->copy();
         if (!i) 
-            newItemToGoTo = newItem.get();
-        backForwardClient->addItem(newItem.release());
+            newItemToGoTo = newItem.ptr();
+        backForwardClient->addItem(WTF::move(newItem));
     }
     
     ASSERT(newItemToGoTo);
@@ -6469,7 +6465,7 @@ HRESULT WebView::historyDelegate(IWebHistoryDelegate** historyDelegate)
 
 HRESULT WebView::addVisitedLinks(BSTR* visitedURLs, unsigned visitedURLCount)
 {
-    auto& visitedLinkStore = WebVisitedLinkStore::shared();
+    auto& visitedLinkStore = WebVisitedLinkStore::singleton();
     PageGroup& group = core(this)->group();
     
     for (unsigned i = 0; i < visitedURLCount; ++i) {

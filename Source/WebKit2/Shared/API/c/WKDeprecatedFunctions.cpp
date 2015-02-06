@@ -28,6 +28,7 @@
 #include "APIDictionary.h"
 #include "WKArray.h"
 #include "WKMutableDictionary.h"
+#include "WKPreferencesRefPrivate.h"
 #include "WKSharedAPICast.h"
 
 #if PLATFORM(MAC)
@@ -102,6 +103,15 @@ void WKPreferencesSetMultithreadedWebGLEnabled(WKPreferencesRef, bool)
 }
 
 bool WKPreferencesGetMultithreadedWebGLEnabled(WKPreferencesRef)
+{
+    return false;
+}
+
+void WKPreferencesSetScreenFontSubstitutionEnabled(WKPreferencesRef, bool)
+{
+}
+
+bool WKPreferencesGetScreenFontSubstitutionEnabled(WKPreferencesRef)
 {
     return false;
 }

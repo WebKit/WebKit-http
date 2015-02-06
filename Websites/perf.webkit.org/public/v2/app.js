@@ -59,7 +59,7 @@ App.IndexController = Ember.Controller.extend({
     _previousGrid: {},
     headerColumns: [],
     rows: [],
-    numberOfDays: 30,
+    numberOfDays: 7,
     editMode: false,
 
     gridChanged: function ()
@@ -70,7 +70,7 @@ App.IndexController = Ember.Controller.extend({
 
         var dashboard = null;
         if (grid) {
-            dashboard = App.Dashboard.create({serialized: grid});
+            dashboard = this.store.createRecord('dashboard', {serialized: grid});
             if (!dashboard.get('headerColumns').length)
                 dashboard = null;
         }
@@ -119,6 +119,7 @@ App.IndexController = Ember.Controller.extend({
         numberOfDays = parseInt(numberOfDays);
         var present = Date.now();
         var past = present - numberOfDays * 24 * 3600 * 1000;
+        this.set('since', past);
         this.set('sharedDomain', [past, present]);
     }.observes('numberOfDays').on('init'),
 
@@ -276,11 +277,11 @@ App.Pane = Ember.Object.extend({
     selectedItem: null,
     searchCommit: function (repository, keyword) {
         var self = this;
-        var repositoryName = repository.get('id');
-        CommitLogs.fetchForTimeRange(repositoryName, null, null, keyword).then(function (commits) {
+        var repositoryId = repository.get('id');
+        CommitLogs.fetchForTimeRange(repositoryId, null, null, keyword).then(function (commits) {
             if (self.isDestroyed || !self.get('chartData') || !commits.length)
                 return;
-            var currentRuns = self.get('chartData').current.timeSeriesByCommitTime().series();
+            var currentRuns = self.get('chartData').current.series();
             if (!currentRuns.length)
                 return;
 
@@ -288,7 +289,7 @@ App.Pane = Ember.Object.extend({
             var commitIndex = 0;
             for (var runIndex = 0; runIndex < currentRuns.length && commitIndex < commits.length; runIndex++) {
                 var measurement = currentRuns[runIndex].measurement;
-                var commitTime = measurement.commitTimeForRepository(repositoryName);
+                var commitTime = measurement.commitTimeForRepository(repositoryId);
                 if (!commitTime)
                     continue;
                 if (commits[commitIndex].time <= commitTime) {
@@ -328,7 +329,7 @@ App.Pane = Ember.Object.extend({
             App.Manifest.fetchRunsWithPlatformAndMetric(this.get('store'), platformId, metricId).then(function (result) {
                 self.set('platform', result.platform);
                 self.set('metric', result.metric);
-                self.set('chartData', result.runs);
+                self.set('chartData', App.createChartData(result));
             }, function (result) {
                 if (!result || typeof(result) === "string")
                     self.set('failure', 'Failed to fetch the JSON with an error: ' + result);
@@ -363,6 +364,19 @@ App.Pane = Ember.Object.extend({
         return false;
     }
 });
+
+App.createChartData = function (data)
+{
+    var runs = data.runs;
+    return {
+        current: runs.current.timeSeriesByCommitTime(),
+        baseline: runs.baseline ? runs.baseline.timeSeriesByCommitTime() : null,
+        target: runs.target ? runs.target.timeSeriesByCommitTime() : null,
+        unit: data.unit,
+        formatter: data.useSI ? d3.format('.4s') : d3.format('.4g'),
+        smallerIsBetter: data.smallerIsBetter,
+    };
+}
 
 App.encodePrettifiedJSON = function (plain)
 {
@@ -680,6 +694,8 @@ App.PaneController = Ember.ObjectController.extend({
     _overviewSelectionChanged: function ()
     {
         var overviewSelection = this.get('overviewSelection');
+        if (App.domainsAreEqual(overviewSelection, this.get('mainPlotDomain')))
+            return;
         this.set('mainPlotDomain', overviewSelection || this.get('overviewDomain'));
         Ember.run.debounce(this, 'propagateZoom', 100);
     }.observes('overviewSelection'),
@@ -701,6 +717,7 @@ App.PaneController = Ember.ObjectController.extend({
         var newSelection = this.get('parentController').get('sharedZoom');
         if (App.domainsAreEqual(newSelection, this.get('mainPlotDomain')))
             return;
+        this.set('mainPlotDomain', newSelection);
         this.set('overviewSelection', newSelection);
     }.observes('parentController.sharedZoom').on('init'),
     _updateDetails: function ()
@@ -727,12 +744,11 @@ App.PaneController = Ember.ObjectController.extend({
         var revisions = App.Manifest.get('repositories')
             .filter(function (repository) { return formattedRevisions[repository.get('id')]; })
             .map(function (repository) {
-            var repositoryName = repository.get('id');
-            var revision = Ember.Object.create(formattedRevisions[repositoryName]);
+            var revision = Ember.Object.create(formattedRevisions[repository.get('id')]);
             revision['url'] = revision.previousRevision
                 ? repository.urlForRevisionRange(revision.previousRevision, revision.currentRevision)
                 : repository.urlForRevision(revision.currentRevision);
-            revision['name'] = repositoryName;
+            revision['name'] = repository.get('name');
             revision['repository'] = repository;
             return revision; 
         });
@@ -746,9 +762,15 @@ App.PaneController = Ember.ObjectController.extend({
                 buildURL = builder.urlFromBuildNumber(buildNumber);
         }
 
+        var chartData = this.get('chartData');
+        var valueDiff = oldMeasurement ? chartData.formatter(currentMeasurement.mean() - oldMeasurement.mean()) : null;
+        if (valueDiff && valueDiff > 0)
+            valueDiff = '+' + valueDiff;
+
         this.set('details', Ember.Object.create({
-            currentValue: currentMeasurement.mean().toFixed(2),
-            oldValue: oldMeasurement && selectedPoints ? oldMeasurement.mean().toFixed(2) : null,
+            status: this._computeStatus(currentPoint),
+            currentValue: chartData.formatter(currentMeasurement.mean()),
+            valueDiff: valueDiff,
             buildNumber: buildNumber,
             buildURL: buildURL,
             buildTime: currentMeasurement.formattedBuildTime(),
@@ -761,6 +783,40 @@ App.PaneController = Ember.ObjectController.extend({
         var points = this.get('selectedPoints');
         this.set('cannotAnalyze', !this.get('newAnalysisTaskName') || !points || points.length < 2);
     }.observes('newAnalysisTaskName'),
+    _computeStatus: function (currentPoint)
+    {
+        var chartData = this.get('chartData');
+
+        var diffFromBaseline = this._relativeDifferentToLaterPointInTimeSeries(currentPoint, chartData.baseline);
+        var diffFromTarget = this._relativeDifferentToLaterPointInTimeSeries(currentPoint, chartData.target);
+
+        var label = '';
+        var className = '';
+        var formatter = d3.format('.3p');
+
+        var smallerIsBetter = chartData.smallerIsBetter;
+        if (diffFromBaseline !== undefined && diffFromBaseline > 0 == smallerIsBetter) {
+            label = formatter(Math.abs(diffFromBaseline)) + ' ' + (smallerIsBetter ? 'above' : 'below') + ' baseline';
+            className = 'worse';
+        } else if (diffFromTarget !== undefined && diffFromTarget < 0 == smallerIsBetter) {
+            label = formatter(Math.abs(diffFromTarget)) + ' ' + (smallerIsBetter ? 'below' : 'above') + ' target';
+            className = 'better';
+        } else if (diffFromTarget !== undefined)
+            label = formatter(Math.abs(diffFromTarget)) + ' until target';
+
+        return {className: className, label: label};
+    },
+    _relativeDifferentToLaterPointInTimeSeries: function (currentPoint, timeSeries)
+    {
+        if (!currentPoint || !timeSeries)
+            return undefined;
+        
+        var referencePoint = timeSeries.findPointAfterTime(currentPoint.time);
+        if (!referencePoint)
+            return undefined;
+
+        return (currentPoint.value - referencePoint.value) / referencePoint.value;
+    }
 });
 
 
@@ -828,23 +884,24 @@ App.AnalysisTaskController = Ember.Controller.extend({
         if (!start || !end)
             return; // FIXME: Report an error.
 
-        var markedPoints = {};
-        markedPoints[start.measurement.id()] = true;
-        markedPoints[end.measurement.id()] = true;
+        var highlightedItems = {};
+        highlightedItems[start.measurement.id()] = true;
+        highlightedItems[end.measurement.id()] = true;
 
+        var chartData = App.createChartData(data);
         var formatedPoints = currentTimeSeries.seriesBetweenPoints(start, end).map(function (point, index) {
             return {
                 id: point.measurement.id(),
                 measurement: point.measurement,
                 label: 'Point ' + (index + 1),
-                value: point.value + (runs.unit ? ' ' + runs.unit : ''),
+                value: chartData.formatter(point.value) + (data.unit ? ' ' + data.unit : ''),
             };
         });
 
         var margin = (end.time - start.time) * 0.1;
-        this.set('chartData', runs);
+        this.set('chartData', chartData);
         this.set('chartDomain', [start.time - margin, +end.time + margin]);
-        this.set('markedPoints', markedPoints);
+        this.set('highlightedItems', highlightedItems);
         this.set('analysisPoints', formatedPoints);
     },
     testSets: function ()
@@ -888,11 +945,11 @@ App.AnalysisTaskController = Ember.Controller.extend({
         var repositoryToRevisions = {};
         analysisPoints.forEach(function (point, pointIndex) {
             var revisions = point.measurement.formattedRevisions();
-            for (var repositoryName in revisions) {
-                if (!repositoryToRevisions[repositoryName])
-                    repositoryToRevisions[repositoryName] = new Array(analysisPoints.length);
-                var revision = revisions[repositoryName];
-                repositoryToRevisions[repositoryName][pointIndex] = {
+            for (var repositoryId in revisions) {
+                if (!repositoryToRevisions[repositoryId])
+                    repositoryToRevisions[repositoryId] = new Array(analysisPoints.length);
+                var revision = revisions[repositoryId];
+                repositoryToRevisions[repositoryId][pointIndex] = {
                     label: point.label + ': ' + revision.label,
                     value: revision.currentRevision,
                 };
@@ -905,15 +962,15 @@ App.AnalysisTaskController = Ember.Controller.extend({
                 return;
 
             self.set('roots', triggerable.get('acceptedRepositories').map(function (repository) {
-                var repositoryName = repository.get('id');
-                var revisions = [{value: ' ', label: 'None'}].concat(repositoryToRevisions[repositoryName]);
+                var repositoryId = repository.get('id');
+                var revisions = [{value: ' ', label: 'None'}].concat(repositoryToRevisions[repositoryId]);
                 return Ember.Object.create({
-                    name: repositoryName,
+                    name: repository.get('name'),
                     sets: [
-                        Ember.Object.create({name: 'A[' + repositoryName + ']',
+                        Ember.Object.create({name: 'A[' + repositoryId + ']',
                             revisions: revisions,
                             selection: revisions[1]}),
-                        Ember.Object.create({name: 'B[' + repositoryName + ']',
+                        Ember.Object.create({name: 'B[' + repositoryId + ']',
                             revisions: revisions,
                             selection: revisions[revisions.length - 1]}),
                     ],

@@ -215,17 +215,18 @@ CachedResourceHandle<CachedCSSStyleSheet> CachedResourceLoader::requestUserCSSSt
     request.mutableResourceRequest().setDomainForCachePartition(document()->topOrigin()->domainForCachePartition());
 #endif
 
-    if (CachedResource* existing = memoryCache().resourceForRequest(request.resourceRequest(), sessionID())) {
+    auto& memoryCache = MemoryCache::singleton();
+    if (CachedResource* existing = memoryCache.resourceForRequest(request.resourceRequest(), sessionID())) {
         if (is<CachedCSSStyleSheet>(*existing))
             return downcast<CachedCSSStyleSheet>(existing);
-        memoryCache().remove(existing);
+        memoryCache.remove(*existing);
     }
     if (url.string() != request.resourceRequest().url())
         request.mutableResourceRequest().setURL(url);
 
     CachedResourceHandle<CachedCSSStyleSheet> userSheet = new CachedCSSStyleSheet(request.resourceRequest(), request.charset(), sessionID());
 
-    memoryCache().add(userSheet.get());
+    memoryCache.add(*userSheet);
     // FIXME: loadResource calls setOwningCachedResourceLoader() if the resource couldn't be added to cache. Does this function need to call it, too?
 
     userSheet->load(*this, ResourceLoaderOptions(DoNotSendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, DoNotIncludeCertificateInfo));
@@ -451,7 +452,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
 {
     URL url = request.resourceRequest().url();
     
-    LOG(ResourceLoading, "CachedResourceLoader::requestResource '%s', charset '%s', priority=%d, forPreload=%u", url.stringCenterEllipsizedToLength().latin1().data(), request.charset().latin1().data(), request.priority(), request.forPreload());
+    LOG(ResourceLoading, "CachedResourceLoader::requestResource '%s', charset '%s', priority=%d, forPreload=%u", url.stringCenterEllipsizedToLength().latin1().data(), request.charset().latin1().data(), request.priority() ? request.priority().value() : -1, request.forPreload());
     
     // If only the fragment identifiers differ, it is the same resource.
     url = MemoryCache::removeFragmentIdentifierIfNeeded(url);
@@ -467,7 +468,8 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         return nullptr;
 #endif
 
-    if (memoryCache().disabled()) {
+    auto& memoryCache = MemoryCache::singleton();
+    if (memoryCache.disabled()) {
         DocumentResourceMap::iterator it = m_documentResources.find(url.string());
         if (it != m_documentResources.end()) {
             it->value->setOwningCachedResourceLoader(0);
@@ -482,14 +484,14 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         request.mutableResourceRequest().setDomainForCachePartition(document()->topOrigin()->domainForCachePartition());
 #endif
 
-    resource = memoryCache().resourceForRequest(request.resourceRequest(), sessionID());
+    resource = memoryCache.resourceForRequest(request.resourceRequest(), sessionID());
 
     logMemoryCacheResourceRequest(frame(), resource ? DiagnosticLoggingKeys::inMemoryCacheKey() : DiagnosticLoggingKeys::notInMemoryCacheKey());
 
     const RevalidationPolicy policy = determineRevalidationPolicy(type, request.mutableResourceRequest(), request.forPreload(), resource.get(), request.defer());
     switch (policy) {
     case Reload:
-        memoryCache().remove(resource.get());
+        memoryCache.remove(*resource);
         FALLTHROUGH;
     case Load:
         if (resource)
@@ -505,7 +507,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         if (!shouldContinueAfterNotifyingLoadedFromMemoryCache(request, resource.get()))
             return nullptr;
         logMemoryCacheResourceRequest(frame(), DiagnosticLoggingKeys::inMemoryCacheKey(), DiagnosticLoggingKeys::usedKey());
-        memoryCache().resourceAccessed(resource.get());
+        memoryCache.resourceAccessed(*resource);
         break;
     }
 
@@ -521,7 +523,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         // We don't support immediate loads, but we do support immediate failure.
         if (resource->errorOccurred()) {
             if (resource->inCache())
-                memoryCache().remove(resource.get());
+                memoryCache.remove(*resource);
             return nullptr;
         }
     }
@@ -543,20 +545,19 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(co
 {
     ASSERT(resource);
     ASSERT(resource->inCache());
-    ASSERT(!memoryCache().disabled());
+    auto& memoryCache = MemoryCache::singleton();
+    ASSERT(!memoryCache.disabled());
     ASSERT(resource->canUseCacheValidator());
     ASSERT(!resource->resourceToRevalidate());
     ASSERT(resource->sessionID() == sessionID());
 
-    // Copy the URL out of the resource to be revalidated in case it gets deleted by the remove() call below.
-    String url = resource->url();
     CachedResourceHandle<CachedResource> newResource = createResource(resource->type(), resource->resourceRequest(), resource->encoding(), resource->sessionID());
     
     LOG(ResourceLoading, "Resource %p created to revalidate %p", newResource.get(), resource);
     newResource->setResourceToRevalidate(resource);
     
-    memoryCache().remove(resource);
-    memoryCache().add(newResource.get());
+    memoryCache.remove(*resource);
+    memoryCache.add(*newResource);
 #if ENABLE(RESOURCE_TIMING)
     storeResourceTimingInitiatorInformation(resource, request);
 #else
@@ -567,13 +568,14 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(co
 
 CachedResourceHandle<CachedResource> CachedResourceLoader::loadResource(CachedResource::Type type, CachedResourceRequest& request)
 {
-    ASSERT(!memoryCache().resourceForRequest(request.resourceRequest(), sessionID()));
+    auto& memoryCache = MemoryCache::singleton();
+    ASSERT(!memoryCache.resourceForRequest(request.resourceRequest(), sessionID()));
 
     LOG(ResourceLoading, "Loading CachedResource for '%s'.", request.resourceRequest().url().stringCenterEllipsizedToLength().latin1().data());
 
     CachedResourceHandle<CachedResource> resource = createResource(type, request.mutableResourceRequest(), request.charset(), sessionID());
 
-    if (!memoryCache().add(resource.get()))
+    if (!memoryCache.add(*resource))
         resource->setOwningCachedResourceLoader(this);
 #if ENABLE(RESOURCE_TIMING)
     storeResourceTimingInitiatorInformation(resource, request);
@@ -752,9 +754,14 @@ bool CachedResourceLoader::clientDefersImage(const URL&) const
     return !m_imagesEnabled;
 }
 
+bool CachedResourceLoader::shouldPerformImageLoad(const URL& url) const
+{
+    return m_autoLoadImages || url.protocolIsData();
+}
+
 bool CachedResourceLoader::shouldDeferImageLoad(const URL& url) const
 {
-    return clientDefersImage(url) || !m_autoLoadImages;
+    return clientDefersImage(url) || !shouldPerformImageLoad(url);
 }
 
 void CachedResourceLoader::reloadImagesIfNotDeferred()
@@ -789,22 +796,22 @@ CachePolicy CachedResourceLoader::cachePolicy(CachedResource::Type type) const
     }
 }
 
-void CachedResourceLoader::removeCachedResource(CachedResource* resource) const
+void CachedResourceLoader::removeCachedResource(CachedResource& resource)
 {
 #ifndef NDEBUG
-    DocumentResourceMap::iterator it = m_documentResources.find(resource->url());
+    DocumentResourceMap::iterator it = m_documentResources.find(resource.url());
     if (it != m_documentResources.end())
-        ASSERT(it->value.get() == resource);
+        ASSERT(it->value.get() == &resource);
 #endif
-    m_documentResources.remove(resource->url());
+    m_documentResources.remove(resource.url());
 }
 
-void CachedResourceLoader::addCachedResource(CachedResource* resource)
+void CachedResourceLoader::addCachedResource(CachedResource& resource)
 {
-    m_documentResources.set(resource->url(), resource);
+    m_documentResources.set(resource.url(), &resource);
 
-    if (!memoryCache().add(resource))
-        resource->setOwningCachedResourceLoader(this);
+    if (!MemoryCache::singleton().add(resource))
+        resource.setOwningCachedResourceLoader(this);
 }
 
 void CachedResourceLoader::loadDone(CachedResource* resource, bool shouldPerformPostLoadActions)
@@ -985,13 +992,11 @@ void CachedResourceLoader::clearPreloads()
     if (!m_preloads)
         return;
 
-    ListHashSet<CachedResource*>::iterator end = m_preloads->end();
-    for (ListHashSet<CachedResource*>::iterator it = m_preloads->begin(); it != end; ++it) {
-        CachedResource* res = *it;
-        res->decreasePreloadCount();
-        bool deleted = res->deleteIfPossible();
-        if (!deleted && res->preloadResult() == CachedResource::PreloadNotReferenced)
-            memoryCache().remove(res);
+    for (auto* resource : *m_preloads) {
+        resource->decreasePreloadCount();
+        bool deleted = resource->deleteIfPossible();
+        if (!deleted && resource->preloadResult() == CachedResource::PreloadNotReferenced)
+            MemoryCache::singleton().remove(*resource);
     }
     m_preloads = nullptr;
 }
@@ -1035,7 +1040,7 @@ void CachedResourceLoader::printPreloadStats()
         }
         
         if (res->errorOccurred())
-            memoryCache().remove(res);
+            MemoryCache::singleton().remove(res);
         
         res->decreasePreloadCount();
     }

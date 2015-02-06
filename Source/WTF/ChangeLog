@@ -1,3 +1,266 @@
+2015-02-05  Youenn Fablet  <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar <calvaris@igalia.com>
+
+        [Streams API] Implement a barebone ReadableStream interface
+        https://bugs.webkit.org/show_bug.cgi?id=141045
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/FeatureDefines.h:
+
+2015-02-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Optimized equal() functions in StringImpl.h are not ASan compatible
+        https://bugs.webkit.org/show_bug.cgi?id=141258
+
+        Reviewed by Daniel Bates.
+
+        * wtf/text/StringImpl.h: (WTF::equal): Add custom implementations for ASan.
+
+2015-02-04  Chris Dumez  <cdumez@apple.com>
+
+        Add removeFirst(value) / removeAll(value) methods to WTF::Vector
+        https://bugs.webkit.org/show_bug.cgi?id=141192
+
+        Reviewed by Benjamin Poulain.
+
+        Add removeFirst(value) / removeAll(value) convenience methods to
+        WTF::Vector to reduce complexity a bit at call sites.
+
+        I am planning to add overloads for these taking a lambda function for
+        matching in a follow-up patch as well. I have seen quite a few
+        Vector::remove(index) call sites that would benefit from it.
+
+        * wtf/Vector.h:
+        (WTF::OverflowHandler>::removeFirst):
+        (WTF::OverflowHandler>::removeAll):
+
+2015-02-02  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Optimize matchesLangPseudoClass() of :lang()
+        https://bugs.webkit.org/show_bug.cgi?id=140873
+
+        Reviewed by Darin Adler.
+
+        Add some basic equality comparison operators.
+
+        * wtf/text/StringView.h:
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::equal):
+        (WTF::equalIgnoringASCIICase):
+
+2015-02-02  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the HandleBlock piece of this patch.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastAlignedMalloc):
+        (WTF::fastAlignedFree):
+        (WTF::TCMalloc_ThreadCache::CreateCacheIfNecessary):
+        * wtf/FastMalloc.h:
+
+2015-02-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] ASSERTION FAILED: m_scriptExecutionContext->isContextThread() in ContextDestructionObserver::observeContext
+        https://bugs.webkit.org/show_bug.cgi?id=141057
+        <rdar://problem/19068790>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/MainThread.h:
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::callOnWebThreadOrDispatchAsyncOnMainThread): Added.
+
+2015-01-31  Sam Weinig  <sam@webkit.org>
+
+        Remove even more Mountain Lion support
+        https://bugs.webkit.org/show_bug.cgi?id=141124
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * wtf/Assertions.cpp:
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2015-01-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179426.
+        https://bugs.webkit.org/show_bug.cgi?id=141119
+
+        "caused a memory use regression" (Requested by Guest45 on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use FastMalloc (bmalloc) instead of BlockAllocator for GC
+        pages"
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+        http://trac.webkit.org/changeset/179426
+
+2015-01-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179408.
+        https://bugs.webkit.org/show_bug.cgi?id=141117
+
+        This didn't fully fix the issue (Requested by anttik on
+        #webkit).
+
+        Reverted changeset:
+
+        "OSObjectPtr does not work with dispatch_data_t on Maverics"
+        https://bugs.webkit.org/show_bug.cgi?id=141081
+        http://trac.webkit.org/changeset/179408
+
+2015-01-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement ES6 Symbol
+        https://bugs.webkit.org/show_bug.cgi?id=140435
+
+        Reviewed by Geoffrey Garen.
+
+        Introduce new unique string mechanizm into StringImpl.
+        It is used for implementing Symbol which holds a [[Description]] value.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::add):
+        (WTF::AtomicString::addWithStringTableProvider):
+
+        Previously, we checked `isAtomic()` or `!length()`. This guard can filter out EmptyUnique.
+        But now, we introduced new unique StringImpl. Since it has an actual string value, we need to check `isUnique()`.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        (WTF::StringImpl::createUnique):
+
+        In createUnique, we leverage Substring mechanizm to produce a new unique
+        string from an existing string.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+        (WTF::StringImpl::createUniqueEmpty):
+        (WTF::StringImpl::flagIsUnique):
+        (WTF::StringImpl::isUnique):
+        (WTF::StringImpl::setIsAtomic):
+        (WTF::StringImpl::createEmptyUnique): Deleted.
+        (WTF::StringImpl::isEmptyUnique): Deleted.
+
+        Instead of EmptyUnique, we introduced new flag to StringImpl, `isUnique`.
+        While EmptyUnique cannot hold any string values except for empty string,
+        the unique StringImpl can hold any String values.
+        We fold the Symbol's descriptiveString value here.
+
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::hashAndFlagsForUnique):
+        (WTF::StringImpl::hashAndFlagsForEmptyUnique): Deleted.
+
+2015-01-30  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the HandleBlock piece of this patch.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastAlignedMalloc):
+        (WTF::fastAlignedFree):
+        (WTF::TCMalloc_ThreadCache::CreateCacheIfNecessary):
+        * wtf/FastMalloc.h:
+
+2015-01-30  Namhoon Kim  <yanhkim@gmail.com>
+
+        Call vsnprintf instead of _vsnprintf in vprintf_stderr_common
+        https://bugs.webkit.org/show_bug.cgi?id=141078
+
+        In windows _vsnprintf api does not place null character
+        automatically. Simply replace it with vsnprintf. Which is
+        polyfill to call wtf_vsnprintf in windows.
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Assertions.cpp:
+
+2015-01-30  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: ASSERT in InspectorTimelineAgent::internalStop
+        https://bugs.webkit.org/show_bug.cgi?id=141039
+
+        Reviewed by Timothy Hatcher.
+
+        Add messages to Stopwatch assertions, and clean up constructor.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::Stopwatch):
+        (WTF::Stopwatch::start):
+        (WTF::Stopwatch::stop):
+
+2015-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Add match_constness<Reference, T> helper struct
+        https://bugs.webkit.org/show_bug.cgi?id=140905
+
+        Reviewed by Benjamin Poulain.
+
+        Add match_constness<Reference, T> helper struct to simplify downcast<>()
+        a bit. The purpose of this helper is to update T's constness to match
+        Reference's.
+
+        * wtf/TypeCasts.h:
+        (WTF::downcast):
+
+2015-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Add assertion in RefPtr's operator*() to make sure we don't dereference nullptr
+        https://bugs.webkit.org/show_bug.cgi?id=141092
+
+        Reviewed by Anders Carlsson.
+
+        Add assertion in RefPtr's operator*() to make sure we don't dereference
+        nullptr.
+
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::operator*):
+
+2015-01-30  Geoffrey Garen  <ggaren@apple.com>
+
+        GC marking threads should clear malloc caches
+        https://bugs.webkit.org/show_bug.cgi?id=141097
+
+        Reviewed by Andreas Kling.
+
+        Split the scavenging API into per-thread vs global, so that you can
+        request to scavenge your own thread without scavenging the whole heap.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::releaseFastMallocFreeMemoryForThisThread):
+        (WTF::TCMalloc_ThreadCache::CreateCacheIfNecessary):
+        * wtf/FastMalloc.h:
+
+2015-01-30  Antti Koivisto  <antti@apple.com>
+
+        OSObjectPtr does not work with dispatch_data_t on Maverics
+        https://bugs.webkit.org/show_bug.cgi?id=141081
+
+        Reviewed by Pratik Solanki.
+        
+        Trying to use OSObjectPtr<dispatch_data_t> throws 
+        
+        -[OS_dispatch_data _xref_dispose]: unrecognized selector sent to instance 0
+
+        * wtf/OSObjectPtr.h:
+        (WTF::retainOSObject<dispatch_data_t>):
+        (WTF::releaseOSObject<dispatch_data_t>):
+        
+            Add specialization for dispatch_data_t on Maverics.
+
 2015-01-29  Santosh Mahto  <santoshbit2007@gmail.com>
 
         Refactor String::format to handle unreached va_end.

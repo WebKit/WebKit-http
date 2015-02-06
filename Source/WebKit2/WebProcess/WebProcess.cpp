@@ -143,7 +143,7 @@ static const double nonVisibleProcessCleanupDelay = 10;
 
 namespace WebKit {
 
-WebProcess& WebProcess::shared()
+WebProcess& WebProcess::singleton()
 {
     static WebProcess& process = *new WebProcess;
     return process;
@@ -231,7 +231,7 @@ void WebProcess::initializeConnection(IPC::Connection* connection)
 #endif
 
 #if ENABLE(SEC_ITEM_SHIM)
-    SecItemShim::shared().initializeConnection(connection);
+    SecItemShim::singleton().initializeConnection(connection);
 #endif
     
     WebProcessSupplementMap::const_iterator it = m_supplements.begin();
@@ -353,7 +353,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
 #if PLATFORM(COCOA)
     if (usesNetworkProcess())
-        CookieStorageShim::shared().initialize();
+        CookieStorageShim::singleton().initialize();
 #endif
 #endif
     setTerminationTimeout(parameters.terminationTimeout);
@@ -372,7 +372,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     audit_token_t auditToken;
     if (parentProcessConnection()->getAuditToken(auditToken)) {
         RetainPtr<CFDataRef> auditData = adoptCF(CFDataCreate(nullptr, (const UInt8*)&auditToken, sizeof(auditToken)));
-        Inspector::RemoteInspector::shared().setParentProcessInformation(presenterApplicationPid(), auditData);
+        Inspector::RemoteInspector::singleton().setParentProcessInformation(presenterApplicationPid(), auditData);
     }
 #endif
 }
@@ -575,7 +575,7 @@ void WebProcess::terminate()
 #ifndef NDEBUG
     gcController().garbageCollectNow();
     fontCache().invalidate();
-    memoryCache().setDisabled(true);
+    MemoryCache::singleton().setDisabled(true);
 #endif
 
     m_webConnection->invalidate();
@@ -633,7 +633,7 @@ void WebProcess::didClose(IPC::Connection&)
 
     gcController().garbageCollectSoon();
     fontCache().invalidate();
-    memoryCache().setDisabled(true);
+    MemoryCache::singleton().setDisabled(true);
 #endif    
 
     // The UI process closed this connection, shut down.
@@ -705,10 +705,10 @@ void WebProcess::clearResourceCaches(ResourceCachesToClear resourceCachesToClear
     setCacheModel(CacheModelDocumentViewer);
     setCacheModel(cacheModel);
 
-    memoryCache().evictResources();
+    MemoryCache::singleton().evictResources();
 
     // Empty the cross-origin preflight cache.
-    CrossOriginPreflightResultCache::shared().empty();
+    CrossOriginPreflightResultCache::singleton().empty();
 }
 
 void WebProcess::clearApplicationCache()
@@ -861,7 +861,7 @@ static void getWebCoreMemoryCacheStatistics(Vector<HashMap<String, uint64_t>>& r
     String xslString(ASCIILiteral("XSL"));
     String javaScriptString(ASCIILiteral("JavaScript"));
     
-    MemoryCache::Statistics memoryCacheStatistics = memoryCache().getStatistics();
+    MemoryCache::Statistics memoryCacheStatistics = MemoryCache::singleton().getStatistics();
     
     HashMap<String, uint64_t> counts;
     counts.set(imagesString, memoryCacheStatistics.images.count);
@@ -951,7 +951,7 @@ void WebProcess::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
 
 void WebProcess::handleInjectedBundleMessage(const String& messageName, const UserData& messageBody)
 {
-    InjectedBundle* injectedBundle = WebProcess::shared().injectedBundle();
+    InjectedBundle* injectedBundle = WebProcess::singleton().injectedBundle();
     if (!injectedBundle)
         return;
 
@@ -960,7 +960,7 @@ void WebProcess::handleInjectedBundleMessage(const String& messageName, const Us
 
 void WebProcess::setInjectedBundleParameter(const String& key, const IPC::DataReference& value)
 {
-    InjectedBundle* injectedBundle = WebProcess::shared().injectedBundle();
+    InjectedBundle* injectedBundle = WebProcess::singleton().injectedBundle();
     if (!injectedBundle)
         return;
 
@@ -1079,7 +1079,7 @@ void WebProcess::setEnhancedAccessibility(bool flag)
 void WebProcess::startMemorySampler(const SandboxExtension::Handle& sampleLogFileHandle, const String& sampleLogFilePath, const double interval)
 {
 #if ENABLE(MEMORY_SAMPLER)    
-    WebMemorySampler::shared()->start(sampleLogFileHandle, sampleLogFilePath, interval);
+    WebMemorySampler::singleton()->start(sampleLogFileHandle, sampleLogFilePath, interval);
 #else
     UNUSED_PARAM(sampleLogFileHandle);
     UNUSED_PARAM(sampleLogFilePath);
@@ -1090,7 +1090,7 @@ void WebProcess::startMemorySampler(const SandboxExtension::Handle& sampleLogFil
 void WebProcess::stopMemorySampler()
 {
 #if ENABLE(MEMORY_SAMPLER)
-    WebMemorySampler::shared()->stop();
+    WebMemorySampler::singleton()->stop();
 #endif
 }
 
@@ -1116,7 +1116,7 @@ void WebProcess::setTextCheckerState(const TextCheckerState& textCheckerState)
 
 void WebProcess::releasePageCache()
 {
-    PageCache::shared().pruneToSizeNow(0, PruningReason::MemoryPressure);
+    PageCache::singleton().pruneToSizeNow(0, PruningReason::MemoryPressure);
 }
 
 #if !PLATFORM(COCOA)
@@ -1319,8 +1319,9 @@ RefPtr<API::Object> WebProcess::transformObjectsToHandles(API::Object* object)
 
 void WebProcess::setMemoryCacheDisabled(bool disabled)
 {
-    if (memoryCache().disabled() != disabled)
-        memoryCache().setDisabled(disabled);
+    auto& memoryCache = MemoryCache::singleton();
+    if (memoryCache.disabled() != disabled)
+        memoryCache.setDisabled(disabled);
 }
 
 #if ENABLE(SERVICE_CONTROLS)

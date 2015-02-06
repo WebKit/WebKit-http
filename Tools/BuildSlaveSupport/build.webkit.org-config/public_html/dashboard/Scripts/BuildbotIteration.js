@@ -71,6 +71,7 @@ BuildbotIteration.RETRY = 5;
 BuildbotIteration.ProductiveSteps = {
     "compile-webkit": 1,
     "build archive": 1,
+    "build ASAN archive": 1,
     "Build" : 1,
     "layout-test": 1,
     "jscore-test": 1,
@@ -227,6 +228,7 @@ BuildbotIteration.prototype = {
             testResults.uniqueLeakCount = testStep.results[1].reduce(resultSummarizer.bind(null, "unique leak"), undefined);
             testResults.newPassesCount = testStep.results[1].reduce(resultSummarizer.bind(null, "new pass"), undefined);
             testResults.missingCount = testStep.results[1].reduce(resultSummarizer.bind(null, "missing"), undefined);
+            testResults.crashCount = testStep.results[1].reduce(resultSummarizer.bind(null, "crash"), undefined);
 
             if (!testResults.failureCount && !testResults.flakyCount && !testResults.totalLeakCount && !testResults.uniqueLeakCount && !testResults.newPassesCount && !testResults.missingCount) {
                 // This step exited with a non-zero exit status, but we didn't find any output about the number of failed tests.

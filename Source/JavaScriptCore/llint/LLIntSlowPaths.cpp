@@ -332,6 +332,7 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
         }
     }
     default:
+        dataLog("Unexpected code block in LLInt: ", *codeBlock, "\n");
         RELEASE_ASSERT_NOT_REACHED();
         return false;
     }
@@ -744,10 +745,7 @@ inline JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript)
         return baseValue.get(exec, i);
     }
 
-    if (isName(subscript))
-        return baseValue.get(exec, jsCast<NameInstance*>(subscript.asCell())->privateName());
-    
-    Identifier property = subscript.toString(exec)->toIdentifier(exec);
+    PropertyName property = subscript.toPropertyKey(exec);
     return baseValue.get(exec, property);
 }
 
@@ -797,13 +795,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_val)
         LLINT_END();
     }
 
-    if (isName(subscript)) {
-        PutPropertySlot slot(baseValue, exec->codeBlock()->isStrictMode());
-        baseValue.put(exec, jsCast<NameInstance*>(subscript.asCell())->privateName(), value, slot);
-        LLINT_END();
-    }
-
-    Identifier property = subscript.toString(exec)->toIdentifier(exec);
+    PropertyName property = subscript.toPropertyKey(exec);
     LLINT_CHECK_EXCEPTION();
     PutPropertySlot slot(baseValue, exec->codeBlock()->isStrictMode());
     baseValue.put(exec, property, value, slot);
@@ -822,11 +814,8 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_val_direct)
     if (LIKELY(subscript.isUInt32())) {
         uint32_t i = subscript.asUInt32();
         baseObject->putDirectIndex(exec, i, value);
-    } else if (isName(subscript)) {
-        PutPropertySlot slot(baseObject, exec->codeBlock()->isStrictMode());
-        baseObject->putDirect(exec->vm(), jsCast<NameInstance*>(subscript.asCell())->privateName(), value, slot);
     } else {
-        Identifier property = subscript.toString(exec)->toIdentifier(exec);
+        PropertyName property = subscript.toPropertyKey(exec);
         if (!exec->vm().exception()) { // Don't put to an object if toString threw an exception.
             PutPropertySlot slot(baseObject, exec->codeBlock()->isStrictMode());
             baseObject->putDirect(exec->vm(), property, value, slot);
@@ -848,11 +837,9 @@ LLINT_SLOW_PATH_DECL(slow_path_del_by_val)
     uint32_t i;
     if (subscript.getUInt32(i))
         couldDelete = baseObject->methodTable()->deletePropertyByIndex(baseObject, exec, i);
-    else if (isName(subscript))
-        couldDelete = baseObject->methodTable()->deleteProperty(baseObject, exec, jsCast<NameInstance*>(subscript.asCell())->privateName());
     else {
         LLINT_CHECK_EXCEPTION();
-        Identifier property = subscript.toString(exec)->toIdentifier(exec);
+        PropertyName property = subscript.toPropertyKey(exec);
         LLINT_CHECK_EXCEPTION();
         couldDelete = baseObject->methodTable()->deleteProperty(baseObject, exec, property);
     }

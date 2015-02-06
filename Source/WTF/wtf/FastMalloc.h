@@ -37,6 +37,10 @@ namespace WTF {
     WTF_EXPORT_PRIVATE size_t fastMallocSize(const void*);
     WTF_EXPORT_PRIVATE size_t fastMallocGoodSize(size_t);
 
+    // Allocations from fastAlignedMalloc() must be freed using fastAlignedFree().
+    WTF_EXPORT_PRIVATE void* fastAlignedMalloc(size_t alignment, size_t);
+    WTF_EXPORT_PRIVATE void fastAlignedFree(void*);
+
     struct TryMallocReturnValue {
         TryMallocReturnValue(void* data)
             : m_data(data)
@@ -77,6 +81,7 @@ namespace WTF {
     WTF_EXPORT_PRIVATE void fastFree(void*);
 
     WTF_EXPORT_PRIVATE void releaseFastMallocFreeMemory();
+    WTF_EXPORT_PRIVATE void releaseFastMallocFreeMemoryForThisThread();
     
     struct FastMallocStatistics {
         size_t reservedVMBytes;
@@ -103,6 +108,8 @@ using WTF::tryFastCalloc;
 using WTF::tryFastMalloc;
 using WTF::tryFastRealloc;
 using WTF::tryFastZeroedMalloc;
+using WTF::fastAlignedMalloc;
+using WTF::fastAlignedFree;
 
 #if COMPILER(GCC) && OS(DARWIN)
 #define WTF_PRIVATE_INLINE __private_extern__ inline __attribute__((always_inline))

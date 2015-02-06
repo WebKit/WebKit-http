@@ -64,7 +64,7 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     if (!m_diskCacheDirectory.isNull()) {
         SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
 #if ENABLE(NETWORK_CACHE)
-        if (parameters.shouldEnableNetworkCache && NetworkCache::shared().initialize(m_diskCacheDirectory)) {
+        if (parameters.shouldEnableNetworkCache && NetworkCache::singleton().initialize(m_diskCacheDirectory)) {
             RetainPtr<NSURLCache> urlCache(adoptNS([[NSURLCache alloc] initWithMemoryCapacity:0 diskCapacity:0 diskPath:nil]));
             [NSURLCache setSharedURLCache:urlCache.get()];
             return;
@@ -83,13 +83,11 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
 #endif
     }
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     RetainPtr<CFURLCacheRef> cache = adoptCF(CFURLCacheCopySharedURLCache());
     if (!cache)
         return;
 
     _CFURLCacheSetMinSizeForVMCachedResource(cache.get(), NetworkResourceLoader::fileBackedResourceMinimumSize());
-#endif
 }
 
 static uint64_t memorySize()
@@ -136,8 +134,9 @@ void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
         pageCacheCapacity, urlCacheMemoryCapacity, urlCacheDiskCapacity);
 
 #if ENABLE(NETWORK_CACHE)
-    if (NetworkCache::shared().isEnabled()) {
-        NetworkCache::shared().setMaximumSize(urlCacheDiskCapacity);
+    auto& networkCache = NetworkCache::singleton();
+    if (networkCache.isEnabled()) {
+        networkCache.setMaximumSize(urlCacheDiskCapacity);
         return;
     }
 #endif
@@ -150,7 +149,7 @@ void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
 void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
 {
 #if ENABLE(NETWORK_CACHE)
-    NetworkCache::shared().clear();
+    NetworkCache::singleton().clear();
 #endif
 
     if (!m_clearCacheDispatchGroup)

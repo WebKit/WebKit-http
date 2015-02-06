@@ -66,7 +66,6 @@ set(JavaScriptCore_SOURCES
     bytecode/BytecodeBasicBlock.cpp
     bytecode/BytecodeLivenessAnalysis.cpp
     bytecode/CallEdge.cpp
-    bytecode/CallEdgeProfile.cpp
     bytecode/CallLinkInfo.cpp
     bytecode/CallLinkStatus.cpp
     bytecode/CallVariant.cpp
@@ -106,6 +105,7 @@ set(JavaScriptCore_SOURCES
     bytecode/UnlinkedInstructionStream.cpp
     bytecode/ValueRecovery.cpp
     bytecode/VariableWatchpointSet.cpp
+    bytecode/VirtualRegister.cpp
     bytecode/Watchpoint.cpp
 
     bytecompiler/BytecodeGenerator.cpp
@@ -327,7 +327,6 @@ set(JavaScriptCore_SOURCES
     jit/AssemblyHelpers.cpp
     jit/ArityCheckFailReturnThunks.cpp
     jit/BinarySwitch.cpp
-    jit/ClosureCallStubRoutine.cpp
     jit/ExecutableAllocator.cpp
     jit/ExecutableAllocatorFixedVMPool.cpp
     jit/GCAwareJITStubRoutine.cpp
@@ -350,6 +349,7 @@ set(JavaScriptCore_SOURCES
     jit/JITStubs.cpp
     jit/JITThunks.cpp
     jit/JITToDFGDeferredCompilationCallback.cpp
+    jit/PolymorphicCallStubRoutine.cpp
     jit/Reg.cpp
     jit/RegisterPreservationWrapperGenerator.cpp
     jit/RegisterSet.cpp
@@ -508,9 +508,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/MapPrototype.cpp
     runtime/MathObject.cpp
     runtime/MemoryStatistics.cpp
-    runtime/NameConstructor.cpp
-    runtime/NameInstance.cpp
-    runtime/NamePrototype.cpp
     runtime/NativeErrorConstructor.cpp
     runtime/NativeErrorPrototype.cpp
     runtime/NullGetterFunction.cpp
@@ -551,6 +548,10 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/StructureChain.cpp
     runtime/StructureIDTable.cpp
     runtime/StructureRareData.cpp
+    runtime/Symbol.cpp
+    runtime/SymbolObject.cpp
+    runtime/SymbolPrototype.cpp
+    runtime/SymbolConstructor.cpp
     runtime/SymbolTable.cpp
     runtime/TestRunnerUtils.cpp
     runtime/TypeLocationCache.cpp
@@ -584,7 +585,6 @@ set(JavaScriptCore_LUT_FILES
     runtime/JSONObject.cpp
     runtime/JSPromiseConstructor.cpp
     runtime/JSPromisePrototype.cpp
-    runtime/NamePrototype.cpp
     runtime/NumberConstructor.cpp
     runtime/NumberPrototype.cpp
     runtime/ObjectConstructor.cpp
@@ -592,6 +592,7 @@ set(JavaScriptCore_LUT_FILES
     runtime/RegExpObject.cpp
     runtime/RegExpPrototype.cpp
     runtime/StringConstructor.cpp
+    runtime/SymbolPrototype.cpp
 )
 
 set(JavaScriptCore_LIBRARIES

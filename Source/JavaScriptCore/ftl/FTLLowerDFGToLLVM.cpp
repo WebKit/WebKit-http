@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -306,30 +306,34 @@ private:
                 break;
         }
     }
-    
+
+    void safelyInvalidateAfterTermination()
+    {
+        if (verboseCompilationEnabled())
+            dataLog("Bailing.\n");
+        crash();
+
+        // Invalidate dominated blocks. Under normal circumstances we would expect
+        // them to be invalidated already. But you can have the CFA become more
+        // precise over time because the structures of objects change on the main
+        // thread. Failing to do this would result in weird crashes due to a value
+        // being used but not defined. Race conditions FTW!
+        for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
+            BasicBlock* target = m_graph.block(blockIndex);
+            if (!target)
+                continue;
+            if (m_graph.m_dominators.dominates(m_highBlock, target)) {
+                if (verboseCompilationEnabled())
+                    dataLog("Block ", *target, " will bail also.\n");
+                target->cfaHasVisited = false;
+            }
+        }
+    }
+
     bool compileNode(unsigned nodeIndex)
     {
         if (!m_state.isValid()) {
-            if (verboseCompilationEnabled())
-                dataLog("Bailing.\n");
-            crash(m_highBlock->index, m_node->index());
-            
-            // Invalidate dominated blocks. Under normal circumstances we would expect
-            // them to be invalidated already. But you can have the CFA become more
-            // precise over time because the structures of objects change on the main
-            // thread. Failing to do this would result in weird crashes due to a value
-            // being used but not defined. Race conditions FTW!
-            for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
-                BasicBlock* target = m_graph.block(blockIndex);
-                if (!target)
-                    continue;
-                if (m_graph.m_dominators.dominates(m_highBlock, target)) {
-                    if (verboseCompilationEnabled())
-                        dataLog("Block ", *target, " will bail also.\n");
-                    target->cfaHasVisited = false;
-                }
-            }
-            
+            safelyInvalidateAfterTermination();
             return false;
         }
         
@@ -749,7 +753,12 @@ private:
             DFG_CRASH(m_graph, m_node, "Unrecognized node in FTL backend");
             break;
         }
-        
+
+        if (!m_state.isValid()) {
+            safelyInvalidateAfterTermination();
+            return false;
+        }
+
         m_availabilityCalculator.executeNode(m_node);
         m_interpreter.executeEffects(nodeIndex);
         
@@ -1988,16 +1997,15 @@ private:
         
         CodeOrigin codeOrigin = m_node->origin.semantic;
         
-        LValue zeroBasedIndex = lowInt32(m_node->child1());
-        LValue oneBasedIndex = m_out.add(zeroBasedIndex, m_out.int32One);
+        LValue index = lowInt32(m_node->child1());
         
         LValue limit;
         if (codeOrigin.inlineCallFrame)
-            limit = m_out.constInt32(codeOrigin.inlineCallFrame->arguments.size());
+            limit = m_out.constInt32(codeOrigin.inlineCallFrame->arguments.size() - 1);
         else
-            limit = m_out.load32(payloadFor(JSStack::ArgumentCount));
+            limit = m_out.sub(m_out.load32(payloadFor(JSStack::ArgumentCount)), m_out.int32One);
         
-        speculate(Uncountable, noValue(), 0, m_out.aboveOrEqual(oneBasedIndex, limit));
+        speculate(Uncountable, noValue(), 0, m_out.aboveOrEqual(index, limit));
         
         SymbolTable* symbolTable = m_graph.baselineCodeBlockFor(codeOrigin)->symbolTable();
         if (symbolTable->slowArguments()) {
@@ -2008,13 +2016,22 @@ private:
         }
         
         TypedPointer base;
-        if (codeOrigin.inlineCallFrame)
+        if (codeOrigin.inlineCallFrame) {
+            if (codeOrigin.inlineCallFrame->arguments.size() <= 1) {
+                // We should have already exited due to the bounds check, above. Just tell the
+                // compiler that anything dominated by this instruction is not reachable, so
+                // that we don't waste time generating such code. This will also plant some
+                // kind of crashing instruction so that if by some fluke the bounds check didn't
+                // work, we'll crash in an easy-to-see way.
+                didAlreadyTerminate();
+                return;
+            }
             base = addressFor(codeOrigin.inlineCallFrame->arguments[1].virtualRegister());
-        else
+        } else
             base = addressFor(virtualRegisterForArgument(1));
         
         LValue pointer = m_out.baseIndex(
-            base.value(), m_out.zeroExt(zeroBasedIndex, m_out.intPtr), ScaleEight);
+            base.value(), m_out.zeroExt(index, m_out.intPtr), ScaleEight);
         setJSValue(m_out.load64(TypedPointer(m_heaps.variables.atAnyIndex(), pointer)));
     }
 
@@ -5417,6 +5434,11 @@ private:
     void terminate(ExitKind kind)
     {
         speculate(kind, noValue(), nullptr, m_out.booleanTrue);
+        didAlreadyTerminate();
+    }
+    
+    void didAlreadyTerminate()
+    {
         m_state.setIsValid(false);
     }
     
@@ -6880,6 +6902,10 @@ private:
         return addressFor(operand, TagOffset);
     }
     
+    void crash()
+    {
+        crash(m_highBlock->index, m_node->index());
+    }
     void crash(BlockIndex blockIndex, unsigned nodeIndex)
     {
 #if ASSERT_DISABLED

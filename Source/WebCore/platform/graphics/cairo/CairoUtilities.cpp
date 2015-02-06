@@ -27,6 +27,8 @@
 #include "config.h"
 #include "CairoUtilities.h"
 
+#if USE(CAIRO)
+
 #include "AffineTransform.h"
 #include "Color.h"
 #include "FloatPoint.h"
@@ -310,3 +312,5 @@ void cairoSurfaceGetDeviceScale(cairo_surface_t* surface, double& xScale, double
 }
 
 } // namespace WebCore
+
+#endif // USE(CAIRO)

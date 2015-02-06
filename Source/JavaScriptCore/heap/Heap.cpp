@@ -27,7 +27,6 @@
 #include "CopiedSpaceInlines.h"
 #include "CopyVisitorInlines.h"
 #include "DFGWorklist.h"
-#include "DelayedReleaseScope.h"
 #include "EdenGCActivityCallback.h"
 #include "FullGCActivityCallback.h"
 #include "GCActivityCallback.h"
@@ -317,7 +316,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_slotVisitor(m_sharedData)
     , m_copyVisitor(m_sharedData)
     , m_handleSet(vm)
-    , m_codeBlocks()
     , m_isSafeToCollect(false)
     , m_writeBarrierBuffer(256)
     , m_vm(vm)
@@ -338,6 +336,9 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_sweeper(std::make_unique<IncrementalSweeper>(this->vm()))
 #endif
     , m_deferralDepth(0)
+#if USE(CF)
+    , m_delayedReleaseRecursionCount(0)
+#endif
 {
     m_storageSpace.init();
     if (Options::verifyHeap())
@@ -361,6 +362,20 @@ void Heap::lastChanceToFinalize()
     RELEASE_ASSERT(m_operationInProgress == NoOperation);
 
     m_objectSpace.lastChanceToFinalize();
+    releaseDelayedReleasedObjects();
+}
+
+void Heap::releaseDelayedReleasedObjects()
+{
+#if USE(CF)
+    if (!m_delayedReleaseRecursionCount++) {
+        while (!m_delayedReleaseObjects.isEmpty()) {
+            RetainPtr<CFTypeRef> objectToRelease = m_delayedReleaseObjects.takeLast();
+            objectToRelease.clear();
+        }
+    }
+    m_delayedReleaseRecursionCount--;
+#endif
 }
 
 void Heap::reportExtraMemoryCostSlowCase(size_t cost)
@@ -967,7 +982,6 @@ void Heap::collectAllGarbage()
     collect(FullCollection);
 
     SamplingRegion samplingRegion("Garbage Collection: Sweeping");
-    DelayedReleaseScope delayedReleaseScope(m_objectSpace);
     m_objectSpace.sweep();
     m_objectSpace.shrink();
 }
@@ -991,11 +1005,6 @@ void Heap::collect(HeapOperation collectionType)
     if (vm()->typeProfiler()) {
         DeferGCForAWhile awhile(*this);
         vm()->typeProfilerLog()->processLogEntries(ASCIILiteral("GC"));
-    }
-    
-    if (vm()->callEdgeLog) {
-        DeferGCForAWhile awhile(*this);
-        vm()->callEdgeLog->processLog();
     }
     
     RELEASE_ASSERT(!m_deferralDepth);
@@ -1384,7 +1393,6 @@ void Heap::zombifyDeadObjects()
     // Sweep now because destructors will crash once we're zombified.
     {
         SamplingRegion samplingRegion("Garbage Collection: Sweeping");
-        DelayedReleaseScope delayedReleaseScope(m_objectSpace);
         m_objectSpace.zombifySweep();
     }
     HeapIterationScope iterationScope(*this);

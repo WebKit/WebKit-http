@@ -104,6 +104,7 @@ public:
     void setImagesEnabled(bool);
 
     bool shouldDeferImageLoad(const URL&) const;
+    bool shouldPerformImageLoad(const URL&) const;
     
     CachePolicy cachePolicy(CachedResource::Type) const;
     
@@ -113,8 +114,8 @@ public:
     void clearDocumentLoader() { m_documentLoader = 0; }
     SessionID sessionID() const;
 
-    void removeCachedResource(CachedResource*) const;
-    void addCachedResource(CachedResource*);
+    void removeCachedResource(CachedResource&);
+    void addCachedResource(CachedResource&);
 
     void loadDone(CachedResource*, bool shouldPerformPostLoadActions = true);
 

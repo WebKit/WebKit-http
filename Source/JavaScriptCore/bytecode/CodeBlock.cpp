@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2010, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2010, 2012-2015 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -174,7 +174,7 @@ void CodeBlock::dump(PrintStream& out) const
 
 static CString constantName(int k, JSValue value)
 {
-    return toCString(value, "(@k", k - FirstConstantRegisterIndex, ")");
+    return toCString(value, "(", VirtualRegister(k), ")");
 }
 
 static CString idName(int id0, const Identifier& ident)
@@ -184,19 +184,10 @@ static CString idName(int id0, const Identifier& ident)
 
 CString CodeBlock::registerName(int r) const
 {
-    if (r == missingThisObjectMarker())
-        return "<null>";
-
     if (isConstantRegisterIndex(r))
         return constantName(r, getConstant(r));
 
-    if (operandIsArgument(r)) {
-        if (!VirtualRegister(r).toArgument())
-            return "this";
-        return toCString("arg", VirtualRegister(r).toArgument());
-    }
-
-    return toCString("loc", VirtualRegister(r).toLocal());
+    return toCString(VirtualRegister(r));
 }
 
 static CString regexpToSourceString(RegExp* regExp)
@@ -1332,13 +1323,6 @@ void CodeBlock::dumpBytecode(
             printLocationOpAndRegisterOperand(out, exec, location, it, "ret", r0);
             break;
         }
-        case op_ret_object_or_this: {
-            int r0 = (++it)->u.operand;
-            int r1 = (++it)->u.operand;
-            printLocationAndOp(out, exec, location, it, "constructor_ret");
-            out.printf("%s %s", registerName(r0).data(), registerName(r1).data());
-            break;
-        }
         case op_construct: {
             printCallOp(out, exec, location, it, "construct", DumpCaches, hasPrintedProfiling, callLinkInfos);
             break;
@@ -2181,6 +2165,8 @@ CodeBlock::~CodeBlock()
     // destructor will try to remove nodes from our (no longer valid) linked list.
     while (m_incomingCalls.begin() != m_incomingCalls.end())
         m_incomingCalls.begin()->remove();
+    while (m_incomingPolymorphicCalls.begin() != m_incomingPolymorphicCalls.end())
+        m_incomingPolymorphicCalls.begin()->remove();
     
     // Note that our outgoing calls will be removed from other CodeBlocks'
     // m_incomingCalls linked lists through the execution of the ~CallLinkInfo
@@ -3047,6 +3033,12 @@ void CodeBlock::linkIncomingCall(ExecState* callerFrame, CallLinkInfo* incoming)
     noticeIncomingCall(callerFrame);
     m_incomingCalls.push(incoming);
 }
+
+void CodeBlock::linkIncomingPolymorphicCall(ExecState* callerFrame, PolymorphicCallNode* incoming)
+{
+    noticeIncomingCall(callerFrame);
+    m_incomingPolymorphicCalls.push(incoming);
+}
 #endif // ENABLE(JIT)
 
 void CodeBlock::unlinkIncomingCalls()
@@ -3054,11 +3046,13 @@ void CodeBlock::unlinkIncomingCalls()
     while (m_incomingLLIntCalls.begin() != m_incomingLLIntCalls.end())
         m_incomingLLIntCalls.begin()->unlink();
 #if ENABLE(JIT)
-    if (m_incomingCalls.isEmpty())
+    if (m_incomingCalls.isEmpty() && m_incomingPolymorphicCalls.isEmpty())
         return;
     RepatchBuffer repatchBuffer(this);
     while (m_incomingCalls.begin() != m_incomingCalls.end())
         m_incomingCalls.begin()->unlink(repatchBuffer);
+    while (m_incomingPolymorphicCalls.begin() != m_incomingPolymorphicCalls.end())
+        m_incomingPolymorphicCalls.begin()->unlink(repatchBuffer);
 #endif // ENABLE(JIT)
 }
 
@@ -3252,12 +3246,19 @@ void CodeBlock::noticeIncomingCall(ExecState* callerFrame)
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
     
     if (Options::verboseCallLink())
-        dataLog("Noticing call link from ", *callerCodeBlock, " to ", *this, "\n");
+        dataLog("Noticing call link from ", pointerDump(callerCodeBlock), " to ", *this, "\n");
     
+#if ENABLE(DFG_JIT)
     if (!m_shouldAlwaysBeInlined)
         return;
+    
+    if (!callerCodeBlock) {
+        m_shouldAlwaysBeInlined = false;
+        if (Options::verboseCallLink())
+            dataLog("    Clearing SABI because caller is native.\n");
+        return;
+    }
 
-#if ENABLE(DFG_JIT)
     if (!hasBaselineJITProfiling())
         return;
 
@@ -3285,6 +3286,13 @@ void CodeBlock::noticeIncomingCall(ExecState* callerFrame)
         return;
     }
     
+    if (JITCode::isOptimizingJIT(callerCodeBlock->jitType())) {
+        m_shouldAlwaysBeInlined = false;
+        if (Options::verboseCallLink())
+            dataLog("    Clearing SABI bcause caller was already optimized.\n");
+        return;
+    }
+    
     if (callerCodeBlock->codeType() != FunctionCode) {
         // If the caller is either eval or global code, assume that that won't be
         // optimized anytime soon. For eval code this is particularly true since we
@@ -3305,8 +3313,11 @@ void CodeBlock::noticeIncomingCall(ExecState* callerFrame)
         m_shouldAlwaysBeInlined = false;
         return;
     }
-
-    RELEASE_ASSERT(callerCodeBlock->m_capabilityLevelState != DFG::CapabilityLevelNotSet);
+    
+    if (callerCodeBlock->m_capabilityLevelState == DFG::CapabilityLevelNotSet) {
+        dataLog("In call from ", *callerCodeBlock, " ", callerFrame->codeOrigin(), " to ", *this, ": caller's DFG capability level is not set.\n");
+        CRASH();
+    }
     
     if (canCompile(callerCodeBlock->m_capabilityLevelState))
         return;
@@ -3926,7 +3937,7 @@ struct VerifyCapturedDef {
 
         if (codeBlock->captureCount() && codeBlock->symbolTable()->isCaptured(operand)) {
             codeBlock->beginValidationDidFail();
-            dataLog("    At bc#", bytecodeOffset, " encountered invalid assignment to captured variable loc", virtualReg.toLocal(), ".\n");
+            dataLog("    At bc#", bytecodeOffset, " encountered invalid assignment to captured variable ", virtualReg, ".\n");
             codeBlock->endValidationDidFail();
             return;
         }

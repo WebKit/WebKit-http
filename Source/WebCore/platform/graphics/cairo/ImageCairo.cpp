@@ -60,6 +60,6 @@ void Image::drawPattern(GraphicsContext* context, const FloatRect& tileRect, con
         imageObserver()->didDraw(this);
 }
 
-}
+} // namespace WebCore
 
 #endif // USE(CAIRO)

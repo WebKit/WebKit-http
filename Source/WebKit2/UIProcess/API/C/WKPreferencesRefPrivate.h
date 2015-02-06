@@ -225,10 +225,6 @@ WK_EXPORT void WKPreferencesSetScrollingPerformanceLoggingEnabled(WKPreferencesR
 WK_EXPORT bool WKPreferencesGetScrollingPerformanceLoggingEnabled(WKPreferencesRef preferencesRef);
 
 // Defaults to true
-WK_EXPORT void WKPreferencesSetScreenFontSubstitutionEnabled(WKPreferencesRef preferences, bool enabled);
-WK_EXPORT bool WKPreferencesGetScreenFontSubstitutionEnabled(WKPreferencesRef preferences);
-
-// Defaults to true
 WK_EXPORT void WKPreferencesSetCookieEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetCookieEnabled(WKPreferencesRef preferences);
 
@@ -345,6 +341,10 @@ WK_EXPORT bool WKPreferencesGetLongMousePressEnabled(WKPreferencesRef preference
 // Defaults to 0. Setting this to 0 disables font autosizing on iOS.
 WK_EXPORT void WKPreferencesSetMinimumZoomFontSize(WKPreferencesRef preferencesRef, double);
 WK_EXPORT double WKPreferencesGetMinimumZoomFontSize(WKPreferencesRef preferencesRef);
+
+// Not implemented, should be deleted once Safari no longer uses this function.
+WK_EXPORT void WKPreferencesSetScreenFontSubstitutionEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetScreenFontSubstitutionEnabled(WKPreferencesRef preferences);
 
 #ifdef __cplusplus
 }
