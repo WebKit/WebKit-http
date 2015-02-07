@@ -32,6 +32,7 @@ list(APPEND WebCore_SOURCES
     loader/soup/SubresourceLoaderSoup.cpp
     platform/Cursor.cpp
     platform/PlatformStrategies.cpp
+    platform/Theme.cpp
     platform/audio/gstreamer/AudioDestinationGStreamer.cpp
     platform/audio/gstreamer/AudioFileReaderGStreamer.cpp
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
@@ -156,6 +157,7 @@ list(APPEND WebCore_SOURCES
     platform/wpe/SharedBufferWPE.cpp
     platform/wpe/SharedTimerWPE.cpp
     platform/wpe/SoundWPE.cpp
+    platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp
 
     ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocol.c
