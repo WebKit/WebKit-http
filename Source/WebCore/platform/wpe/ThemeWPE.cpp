@@ -59,6 +59,9 @@ void ThemeWPE::paint(ControlPart part, ControlStates* states, GraphicsContext* c
     case CheckboxPart:
         paintCheckbox(*states, *context, zoomedRect, zoomFactor);
         break;
+    case PushButtonPart:
+        paintButton(*states, *context, zoomedRect, zoomFactor);
+        break;
     default:
         break;
     }
@@ -91,6 +94,24 @@ void ThemeWPE::paintCheckbox(ControlStates& states, GraphicsContext& context, co
         context.setStrokeColor(makeRGB(84, 84, 84), ColorSpaceDeviceRGB);
         context.strokePath(checkerPath);
     }
+}
+
+void ThemeWPE::paintButton(ControlStates& states, GraphicsContext& context, const FloatRect& zoomedRect, float)
+{
+    GraphicsContextStateSaver stateSaver(context);
+
+    FloatSize corner(2, 2);
+    FloatRoundedRect roundedRect(zoomedRect, corner, corner, corner, corner);
+    Path path;
+    path.addRoundedRect(roundedRect);
+
+    Color fillColor = states.states() & ControlStates::PressedState ? makeRGB(244, 244, 244) : makeRGB(224, 224, 224);
+    context.setFillColor(fillColor, ColorSpaceDeviceRGB);
+    context.fillPath(path);
+
+    context.setStrokeThickness(1);
+    context.setStrokeColor(makeRGB(94, 94, 94), ColorSpaceDeviceRGB);
+    context.strokePath(path);
 }
 
 } // namespace WebCore
