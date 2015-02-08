@@ -39,6 +39,7 @@
 #include <WebCore/Page.h>
 #include <WebCore/Settings.h>
 #include <WebCore/WaylandDisplayWPE.h>
+#include <cstdlib>
 #include <wtf/CurrentTime.h>
 
 #include <stdio.h>
@@ -337,20 +338,27 @@ PassRefPtr<WebCore::DisplayRefreshMonitor> LayerTreeHostWPE::createDisplayRefres
     return m_displayRefreshMonitor;
 }
 
-static double lastTime = currentTime();
-static unsigned frameCount = 0;
+static void debugLayerTreeHostFPS()
+{
+    static double lastTime = currentTime();
+    static unsigned frameCount = 0;
+
+    double ct = currentTime();
+    frameCount++;
+
+    if (ct - lastTime >= 5.0) {
+        fprintf(stderr, "LayerTreeHostWPE: frame callbacks %.2f FPS\n", frameCount / (ct - lastTime));
+        lastTime = ct;
+        frameCount = 0;
+    }
+}
 
 const struct wl_callback_listener LayerTreeHostWPE::m_frameListener = {
     // frame
     [](void* data, struct wl_callback* callback, uint32_t) {
-        double ct = currentTime();
-        frameCount++;
-
-        if (ct - lastTime >= 5.0) {
-            fprintf(stderr, "LayerTreeHostWPE::frameCompleted() %f FPS\n", frameCount / (ct - lastTime));
-            lastTime = ct;
-            frameCount = 0;
-        }
+        static bool reportFPS = !!std::getenv("WPE_LAYER_TREE_HOST_FPS");
+        if (reportFPS)
+            debugLayerTreeHostFPS();
 
         wl_callback_destroy(callback);
 
