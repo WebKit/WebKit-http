@@ -23,28 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebEventFactory_h
-#define WebEventFactory_h
+#include "config.h"
+#include "NativeWebWheelEvent.h"
 
-#include "WebEvent.h"
+#include "WebEventFactory.h"
 
-namespace WPE {
-struct AxisEvent;
-struct KeyboardEvent;
-struct PointerEvent;
-struct TouchEvent;
-};
+#include <cstdio>
 
 namespace WebKit {
 
-class WebEventFactory {
-public:
-    static WebKeyboardEvent createWebKeyboardEvent(WPE::KeyboardEvent&&);
-    static WebMouseEvent createWebMouseEvent(WPE::PointerEvent&&);
-    static WebWheelEvent createWebWheelEvent(WPE::AxisEvent&&);
-    static WebTouchEvent createWebTouchEvent(WPE::TouchEvent&&);
-};
+NativeWebWheelEvent::NativeWebWheelEvent(WPE::AxisEvent&& event)
+    : WebWheelEvent(WebEventFactory::createWebWheelEvent(WTF::move(event)))
+{
+}
 
 } // namespace WebKit
-
-#endif // WebEventFactory_h

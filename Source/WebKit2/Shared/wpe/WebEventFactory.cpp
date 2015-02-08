@@ -575,6 +575,33 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(WPE::PointerEvent&& event)
         0, 0, 0, 1, static_cast<WebEvent::Modifiers>(0), event.time);
 }
 
+WebWheelEvent WebEventFactory::createWebWheelEvent(WPE::AxisEvent&& event)
+{
+    // FIXME: We shouldn't hard-code this.
+    enum Axis {
+        Vertical,
+        Horizontal
+    };
+
+    WebCore::FloatSize wheelTicks;
+    switch (event.axis) {
+    case Vertical:
+        wheelTicks = WebCore::FloatSize(0, 1);
+        break;
+    case Horizontal:
+        wheelTicks = WebCore::FloatSize(1, 0);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    };
+
+    WebCore::FloatSize delta = wheelTicks;
+    delta.scale(event.value);
+
+    return WebWheelEvent(WebEvent::Wheel, WebCore::IntPoint(event.x, event.y), WebCore::IntPoint(event.x, event.y),
+        delta, wheelTicks, WebWheelEvent::ScrollByPixelWheelEvent, static_cast<WebEvent::Modifiers>(0), event.time);
+}
+
 WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::TouchEvent&& event)
 {
     WebEvent::Type type = WebEvent::NoType;

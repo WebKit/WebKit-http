@@ -62,6 +62,13 @@ struct WKPointerButton {
 };
 typedef struct WKPointerButton WKPointerButton;
 
+struct WKAxisMotion {
+    uint32_t time;
+    uint32_t axis;
+    int32_t value;
+};
+typedef struct WKAxisMotion WKAxisMotion;
+
 struct WKTouchDown {
     uint32_t time;
     int id;
@@ -90,6 +97,8 @@ WK_EXPORT void WKInputHandlerNotifyKeyboardKey(WKInputHandlerRef, WKKeyboardKey)
 
 WK_EXPORT void WKInputHandlerNotifyPointerMotion(WKInputHandlerRef, WKPointerMotion);
 WK_EXPORT void WKInputHandlerNotifyPointerButton(WKInputHandlerRef, WKPointerButton);
+
+WK_EXPORT void WKInputHandlerNotifyAxisMotion(WKInputHandlerRef, WKAxisMotion);
 
 WK_EXPORT void WKInputHandlerNotifyTouchDown(WKInputHandlerRef, WKTouchDown);
 WK_EXPORT void WKInputHandlerNotifyTouchUp(WKInputHandlerRef, WKTouchUp);

@@ -43,6 +43,10 @@ OBJC_CLASS NSView;
 typedef union _GdkEvent GdkEvent;
 #endif
 
+#if PLATFORM(WPE)
+#include "WPEInputEvents.h"
+#endif
+
 namespace WebKit {
 
 class NativeWebWheelEvent : public WebWheelEvent {
@@ -55,7 +59,7 @@ public:
 #elif PLATFORM(EFL)
     NativeWebWheelEvent(const Evas_Event_Mouse_Wheel*, const WebCore::AffineTransform& toWebContent, const WebCore::AffineTransform& toDeviceScreen);
 #elif PLATFORM(WPE)
-    NativeWebWheelEvent(const void*);
+    NativeWebWheelEvent(WPE::AxisEvent&&);
 #endif
 
 #if USE(APPKIT)

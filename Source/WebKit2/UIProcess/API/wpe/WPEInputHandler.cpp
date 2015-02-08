@@ -28,6 +28,7 @@
 
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
+#include "NativeWebWheelEvent.h"
 #include "WPEView.h"
 
 namespace WPE {
@@ -95,6 +96,19 @@ void InputHandler::handlePointerEvent(PointerEvent::Raw event)
         m_pointer.y,
         event.button,
         event.state
+    }));
+}
+
+void InputHandler::handleAxisEvent(AxisEvent::Raw event)
+{
+    ASSERT(event.type == AxisEvent::Motion);
+    m_view.page().handleWheelEvent(WebKit::NativeWebWheelEvent({
+        event.type,
+        event.time,
+        m_pointer.x,
+        m_pointer.y,
+        event.axis,
+        event.value
     }));
 }
 

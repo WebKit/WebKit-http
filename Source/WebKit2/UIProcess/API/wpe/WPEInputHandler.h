@@ -47,6 +47,8 @@ public:
 
     void handlePointerEvent(PointerEvent::Raw);
 
+    void handleAxisEvent(AxisEvent::Raw);
+
     void handleTouchDown(TouchEvent::Raw);
     void handleTouchUp(TouchEvent::Raw);
     void handleTouchMotion(TouchEvent::Raw);

@@ -76,6 +76,27 @@ struct PointerEvent {
     uint32_t state;
 };
 
+struct AxisEvent {
+    enum Type : uint32_t {
+        Null,
+        Motion
+    };
+
+    struct Raw {
+        Type type;
+        uint32_t time;
+        uint32_t axis;
+        int32_t value;
+    };
+
+    Type type;
+    uint32_t time;
+    double x;
+    double y;
+    uint32_t axis;
+    int32_t value;
+};
+
 struct TouchEvent {
     enum Type : uint32_t {
         Null,

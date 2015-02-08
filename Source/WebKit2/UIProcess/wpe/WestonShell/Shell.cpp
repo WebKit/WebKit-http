@@ -70,6 +70,15 @@ const struct weston_pointer_grab_interface Shell::m_pgInterface = {
             WKPointerButton{ time, button, state });
     },
 
+    // axis
+    [](struct weston_pointer_grab* grab, uint32_t time, uint32_t axis, wl_fixed_t value)
+    {
+        // Multiply the delta value by -4 to turn it into a more acceptable direction,
+        // and to increase the pixel step into something more ... efficient.
+        WKInputHandlerNotifyAxisMotion(Shell::instance().m_inputHandler.get(),
+            WKAxisMotion{ time, axis, -4 * wl_fixed_to_int(value) });
+    },
+
     // cancel
     [](struct weston_pointer_grab*) { }
 };

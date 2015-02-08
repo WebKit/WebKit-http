@@ -58,6 +58,7 @@ list(APPEND WebKit2_SOURCES
     Shared/wpe/NativeWebKeyboardEventWPE.cpp
     Shared/wpe/NativeWebMouseEventWPE.cpp
     Shared/wpe/NativeWebTouchEventWPE.cpp
+    Shared/wpe/NativeWebWheelEventWPE.cpp
     Shared/wpe/ProcessExecutablePathWPE.cpp
     Shared/wpe/WebEventFactory.cpp
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
