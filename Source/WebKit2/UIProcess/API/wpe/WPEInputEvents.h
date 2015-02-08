@@ -70,8 +70,8 @@ struct PointerEvent {
 
     Type type;
     uint32_t time;
-    double x;
-    double y;
+    uint32_t x;
+    uint32_t y;
     uint32_t button;
     uint32_t state;
 };
@@ -91,8 +91,8 @@ struct AxisEvent {
 
     Type type;
     uint32_t time;
-    double x;
-    double y;
+    uint32_t x;
+    uint32_t y;
     uint32_t axis;
     int32_t value;
 };

@@ -570,8 +570,9 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(WPE::PointerEvent&& event)
     }
 
     // FIXME: Proper button support. Modifiers. deltaX/Y/Z. Click count.
+    WebCore::IntPoint position(event.x, event.y);
     return WebMouseEvent(type, WebMouseEvent::LeftButton /* FIXME: HAH! */,
-        WebCore::IntPoint(event.x, event.y), WebCore::IntPoint(event.x, event.y),
+        position, position,
         0, 0, 0, 1, static_cast<WebEvent::Modifiers>(0), event.time);
 }
 
@@ -598,7 +599,8 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(WPE::AxisEvent&& event)
     WebCore::FloatSize delta = wheelTicks;
     delta.scale(event.value);
 
-    return WebWheelEvent(WebEvent::Wheel, WebCore::IntPoint(event.x, event.y), WebCore::IntPoint(event.x, event.y),
+    WebCore::IntPoint position(event.x, event.y);
+    return WebWheelEvent(WebEvent::Wheel, position, position,
         delta, wheelTicks, WebWheelEvent::ScrollByPixelWheelEvent, static_cast<WebEvent::Modifiers>(0), event.time);
 }
 

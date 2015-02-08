@@ -69,8 +69,8 @@ private:
     } m_modifiers;
 
     struct Pointer {
-        double x;
-        double y;
+        uint32_t x;
+        uint32_t y;
     } m_pointer;
 
     void dispatchTouchEvent(int id);
