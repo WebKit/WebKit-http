@@ -92,7 +92,8 @@
       <dep package="fontconfig"/>
       <dep package="pixman"/>
     </dependencies>
-    <branch repo="github.com" module="WebKitForWayland/cairo.git" checkoutdir="cairo" tag="patches"/>
+    <branch repo="github.com" module="WebKitForWayland/cairo.git"
+            tag="dd8e6a461d53add34008ea9f33e7f1dba5d2c5cb"/>
   </autotools>
 
   <autotools id="wayland" autogenargs="--disable-documentation">
@@ -113,7 +114,8 @@
       <dep package="libinput"/>
       <dep package="cairo"/>
     </dependencies>
-    <branch repo="github.com" module="WebKitForWayland/weston.git" checkoutdir="weston" tag="patches-1.6"/>
+    <branch repo="github.com" module="WebKitForWayland/weston.git"
+            tag="1368d5c263178fac1a2c36c5f2cca91f648503d5"/>
   </autotools>
 
   <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
