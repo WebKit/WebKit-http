@@ -41,10 +41,12 @@ Theme* platformTheme()
 
 LengthSize ThemeWPE::controlSize(ControlPart part, const FontCascade& fontCascade, const LengthSize& zoomedSize, float zoomFactor) const
 {
+    if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
+        return Theme::controlSize(part, fontCascade, zoomedSize, zoomFactor);
+
     switch (part) {
     case CheckboxPart:
-        if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
-            break;
+    case RadioPart:
         return LengthSize(Length(12, Fixed), Length(12, Fixed));
     default:
         break;
@@ -58,6 +60,9 @@ void ThemeWPE::paint(ControlPart part, ControlStates* states, GraphicsContext* c
     switch (part) {
     case CheckboxPart:
         paintCheckbox(*states, *context, zoomedRect, zoomFactor);
+        break;
+    case RadioPart:
+        paintRadio(*states, *context, zoomedRect, zoomFactor);
         break;
     case PushButtonPart:
         paintButton(*states, *context, zoomedRect, zoomFactor);
@@ -93,6 +98,32 @@ void ThemeWPE::paintCheckbox(ControlStates& states, GraphicsContext& context, co
         context.setStrokeThickness(2);
         context.setStrokeColor(makeRGB(84, 84, 84), ColorSpaceDeviceRGB);
         context.strokePath(checkerPath);
+    }
+}
+
+void ThemeWPE::paintRadio(ControlStates& states, GraphicsContext& context, const FloatRect& zoomedRect, float)
+{
+    GraphicsContextStateSaver stateSaver(context);
+
+    Path path;
+    path.addEllipse(zoomedRect);
+
+    context.setFillColor(makeRGB(224, 224, 224), ColorSpaceDeviceRGB);
+    context.fillPath(path);
+
+    context.setStrokeThickness(1);
+    context.setStrokeColor(makeRGB(94, 94, 94), ColorSpaceDeviceRGB);
+    context.strokePath(path);
+
+    if (states.states() & ControlStates::CheckedState) {
+        FloatRect checkerRect = zoomedRect;
+        checkerRect.inflate(-3);
+
+        Path checkerPath;
+        checkerPath.addEllipse(checkerRect);
+
+        context.setFillColor(makeRGB(84, 84, 84), ColorSpaceDeviceRGB);
+        context.fillPath(checkerPath);
     }
 }
 
