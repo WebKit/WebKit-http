@@ -26,6 +26,9 @@
 #include "config.h"
 #include "ThemeWPE.h"
 
+#include "Color.h"
+#include "FloatRoundedRect.h"
+#include "GraphicsContext.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -34,6 +37,60 @@ Theme* platformTheme()
 {
     static NeverDestroyed<ThemeWPE> theme;
     return &theme.get();
+}
+
+LengthSize ThemeWPE::controlSize(ControlPart part, const FontCascade& fontCascade, const LengthSize& zoomedSize, float zoomFactor) const
+{
+    switch (part) {
+    case CheckboxPart:
+        if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
+            break;
+        return LengthSize(Length(12, Fixed), Length(12, Fixed));
+    default:
+        break;
+    }
+
+    return Theme::controlSize(part, fontCascade, zoomedSize, zoomFactor);
+}
+
+void ThemeWPE::paint(ControlPart part, ControlStates* states, GraphicsContext* context, const FloatRect& zoomedRect, float zoomFactor, ScrollView*)
+{
+    switch (part) {
+    case CheckboxPart:
+        paintCheckbox(*states, *context, zoomedRect, zoomFactor);
+        break;
+    default:
+        break;
+    }
+}
+
+void ThemeWPE::paintCheckbox(ControlStates& states, GraphicsContext& context, const FloatRect& zoomedRect, float)
+{
+    GraphicsContextStateSaver stateSaver(context);
+
+    FloatSize corner(2, 2);
+    FloatRoundedRect roundedRect(zoomedRect, corner, corner, corner, corner);
+    Path path;
+    path.addRoundedRect(roundedRect);
+
+    context.setFillColor(makeRGB(224, 224, 224), ColorSpaceDeviceRGB);
+    context.fillPath(path);
+
+    context.setStrokeThickness(1);
+    context.setStrokeColor(makeRGB(94, 94, 94), ColorSpaceDeviceRGB);
+    context.strokePath(path);
+
+    if (states.states() & ControlStates::CheckedState) {
+        auto& rect = roundedRect.rect();
+
+        Path checkerPath;
+        checkerPath.moveTo(FloatPoint(rect.x() + 3, rect.maxY() - 3));
+        checkerPath.addLineTo(FloatPoint(rect.maxX() - 3, rect.y() + 3));
+
+        context.setStrokeThickness(2);
+        context.setStrokeColor(makeRGB(84, 84, 84), ColorSpaceDeviceRGB);
+        context.strokePath(checkerPath);
+    }
 }
 
 } // namespace WebCore

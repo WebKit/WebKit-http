@@ -34,6 +34,13 @@ class ThemeWPE : public Theme {
 public:
     ThemeWPE() { }
     virtual ~ThemeWPE() { }
+
+    virtual LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize&, float) const override;
+
+    virtual void paint(ControlPart, ControlStates*, GraphicsContext*, const FloatRect&, float, ScrollView*) override;
+
+private:
+    void paintCheckbox(ControlStates&, GraphicsContext&, const FloatRect&, float);
 };
 
 } // namespace WebCore
