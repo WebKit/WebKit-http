@@ -29,8 +29,24 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-# FIXME: This, for now, also looks for pixman.
-pkg_check_modules(WESTON weston pixman-1)
+pkg_check_modules(PC_WESTON QUIET weston)
+
+find_path(WESTON_INCLUDE_DIRS
+    NAMES compositor.h
+    HINTS ${PC_WESTON_INCLUDEDIR}
+          ${PC_WESTON_INCLUDE_DIRS}
+    PATH_SUFFIXES weston
+)
+
+set(WESTON_INCLUDE_DIRS ${WESTON_INCLUDE_DIRS} ${PC_WESTON_INCLUDE_DIRS})
+
+# Weston does not provide any usable libraries.
+
+if ("${Weston_FIND_VERSION}" VERSION_GREATER "${PC_WESTON_VERSION}")
+    message(FATAL_ERROR "Required version (" ${Weston_FIND_VERSION} ") is higher than found version (" ${PC_WESTON_VERSION} ")")
+endif ()
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(WESTON DEFAULT_MSG WESTON_INCLUDE_DIRS)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(WESTON REQUIRED_VARS WESTON_INCLUDE_DIRS VERSION_VAR PC_WESTON_VERSION)
+
+mark_as_advanced(WESTON_INCLUDE_DIRS)
