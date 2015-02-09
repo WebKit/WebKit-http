@@ -102,8 +102,7 @@ gpointer AtholShell::launchWPE(gpointer data)
     auto pageGroupIdentifier = adoptWK(WKStringCreateWithUTF8CString("WPEPageGroup"));
     auto pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
 
-    auto contextConfiguration = adoptWK(WKContextConfigurationCreate());
-    auto context = adoptWK(WKContextCreateWithConfiguration(contextConfiguration.get()));
+    auto context = adoptWK(WKContextCreate());
 
     shell.m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
     auto* view = shell.m_view.get();
