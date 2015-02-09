@@ -67,6 +67,7 @@ find_package(WebP REQUIRED)
 
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
+find_package(WaylandEGL REQUIRED)
 
 find_package(Weston 1.6.0 REQUIRED)
 if (WESTON_FOUND)
