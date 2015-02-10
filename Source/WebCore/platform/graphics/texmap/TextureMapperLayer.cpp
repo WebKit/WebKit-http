@@ -54,6 +54,8 @@ void TextureMapperLayer::computeTransformsRecursive()
         m_currentTransform.combineTransforms(m_parent->m_currentTransform.combinedForChildren());
     else if (m_effectTarget)
         m_currentTransform.combineTransforms(m_effectTarget->m_currentTransform.combined());
+    else
+        m_currentTransform.combineTransforms(TransformationMatrix());
 
     m_state.visible = m_state.backfaceVisibility || !m_currentTransform.combined().isBackFaceVisible();
 
