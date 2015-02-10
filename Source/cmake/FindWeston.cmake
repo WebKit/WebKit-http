@@ -32,10 +32,9 @@ find_package(PkgConfig)
 pkg_check_modules(PC_WESTON QUIET weston)
 
 find_path(WESTON_INCLUDE_DIRS
-    NAMES compositor.h
+    NAMES weston/compositor.h
     HINTS ${PC_WESTON_INCLUDEDIR}
           ${PC_WESTON_INCLUDE_DIRS}
-    PATH_SUFFIXES weston
 )
 
 set(WESTON_INCLUDE_DIRS ${WESTON_INCLUDE_DIRS} ${PC_WESTON_INCLUDE_DIRS})
