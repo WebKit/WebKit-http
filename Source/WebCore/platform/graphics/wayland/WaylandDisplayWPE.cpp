@@ -183,6 +183,7 @@ std::unique_ptr<WaylandSurface> WaylandDisplay::createSurface(const IntSize& siz
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, std::max(1, size.width()), std::max(1, size.height()));
 
     wl_wpe_register_surface(m_wpe, wlSurface);
+    wl_display_roundtrip(m_display);
     return std::make_unique<WaylandSurface>(wlSurface, nativeWindow);
 }
 
@@ -190,6 +191,8 @@ std::unique_ptr<GLContextEGL> WaylandDisplay::createOffscreenGLContext(GLContext
 {
     struct wl_surface* wlSurface = wl_compositor_create_surface(m_compositor);
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, 1, 1);
+
+    wl_display_roundtrip(m_display);
     return GLContextEGL::createWindowContext(nativeWindow, sharingContext);
 }
 
