@@ -79,9 +79,17 @@ if (ATHOL_FOUND)
     set(ENABLE_ATHOL_SHELL ON)
 endif ()
 
-if (ENABLE_VIDEO)
-    set(GSTREAMER_COMPONENTS app audio fft pbutils tag video)
+if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
+    set(GSTREAMER_COMPONENTS app pbutils)
     add_definitions(-DWTF_USE_GSTREAMER)
+    if (ENABLE_VIDEO)
+        list(APPEND GSTREAMER_COMPONENTS video mpegts tag)
+    endif ()
+
+    if (ENABLE_WEB_AUDIO)
+        list(APPEND GSTREAMER_COMPONENTS audio fft)
+        add_definitions(-DWTF_USE_WEBAUDIO_GSTREAMER)
+    endif ()
 
     find_package(GStreamer 1.4.2 REQUIRED COMPONENTS ${GSTREAMER_COMPONENTS})
 
