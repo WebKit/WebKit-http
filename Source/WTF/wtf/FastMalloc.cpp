@@ -100,7 +100,7 @@
 #endif
 #endif
 
-#if PLATFORM(COCOA) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
 #define USE_BMALLOC 1
 #endif
 
