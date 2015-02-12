@@ -384,10 +384,11 @@ bool LayerTreeHostWPE::DisplayRefreshMonitorWPE::requestRefreshCallback()
 
 void LayerTreeHostWPE::DisplayRefreshMonitorWPE::dispatchRefreshCallback()
 {
-    if (!isScheduled())
-        return;
-
-    callOnMainThread(DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread, this);
+    // We're currently dispatching this callback on main thread, so let's
+    // go straight ahead to handling the refresh notifications.
+    ASSERT(isMainThread());
+    if (isScheduled())
+        handleDisplayRefreshedNotificationOnMainThread(this);
 }
 
 } // namespace WebKit
