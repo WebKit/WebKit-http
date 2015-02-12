@@ -431,7 +431,7 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 
 void MediaPlayerPrivateGStreamerBase::triggerDrain()
 {
-    GMutexLocker<GMutex> lock(m_sampleMutex);
+    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
     m_videoSize.setWidth(0);
     m_videoSize.setHeight(0);
     if (m_sample)
