@@ -149,8 +149,8 @@ set(WebKit2_INCLUDE_DIRECTORIES
 
 if (WTF_USE_3D_GRAPHICS)
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
+        "${THIRDPARTY_DIR}/ANGLE/ForwardingHeaders"
         "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-        "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
     )
 endif ()
 
