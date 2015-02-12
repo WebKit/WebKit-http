@@ -80,14 +80,14 @@ if (ATHOL_FOUND)
 endif ()
 
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
-    set(GSTREAMER_COMPONENTS app pbutils)
+    set(GSTREAMER_COMPONENTS app audio pbutils)
     add_definitions(-DWTF_USE_GSTREAMER)
     if (ENABLE_VIDEO)
-        list(APPEND GSTREAMER_COMPONENTS video mpegts tag)
+        list(APPEND GSTREAMER_COMPONENTS video tag)
     endif ()
 
     if (ENABLE_WEB_AUDIO)
-        list(APPEND GSTREAMER_COMPONENTS audio fft)
+        list(APPEND GSTREAMER_COMPONENTS fft)
         add_definitions(-DWTF_USE_WEBAUDIO_GSTREAMER)
     endif ()
 
