@@ -89,6 +89,7 @@ struct WebProcessCreationParameters {
 
     Vector<String> urlSchemesRegistererdAsEmptyDocument;
     Vector<String> urlSchemesRegisteredAsSecure;
+    Vector<String> urlSchemesRegisteredAsBypassingContentSecurityPolicy;
     Vector<String> urlSchemesForWhichDomainRelaxationIsForbidden;
     Vector<String> urlSchemesRegisteredAsLocal;
     Vector<String> urlSchemesRegisteredAsNoAccess;
@@ -108,6 +109,7 @@ struct WebProcessCreationParameters {
     CacheModel cacheModel;
 
     bool shouldAlwaysUseComplexTextCodePath;
+    bool shouldEnableMemoryPressureReliefLogging;
     bool shouldUseFontSmoothing;
 
     bool iconDatabaseEnabled;
@@ -142,7 +144,6 @@ struct WebProcessCreationParameters {
     bool shouldEnableKerningAndLigaturesByDefault;
     bool shouldEnableJIT;
     bool shouldEnableFTLJIT;
-    bool shouldEnableMemoryPressureReliefLogging;
     
     RefPtr<API::Data> bundleParameterData;
 

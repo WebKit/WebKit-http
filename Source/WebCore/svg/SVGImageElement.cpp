@@ -28,9 +28,7 @@
 #include "RenderImageResource.h"
 #include "RenderSVGImage.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
-#include "SVGSVGElement.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>
 

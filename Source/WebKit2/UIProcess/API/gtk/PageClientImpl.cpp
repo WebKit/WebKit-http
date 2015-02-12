@@ -32,8 +32,11 @@
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #include "NotImplemented.h"
+#include "WebColorPickerGtk.h"
 #include "WebContextMenuProxyGtk.h"
 #include "WebEventFactory.h"
+#include "WebKitColorChooser.h"
+#include "WebKitWebView.h"
 #include "WebKitWebViewBasePrivate.h"
 #include "WebPageProxy.h"
 #include "WebPopupMenuProxyGtk.h"
@@ -225,13 +228,12 @@ PassRefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPagePr
     return WebContextMenuProxyGtk::create(m_viewWidget, page);
 }
 
-#if ENABLE(INPUT_TYPE_COLOR)
-PassRefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy*, const WebCore::Color&, const WebCore::IntRect&)
+PassRefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page, const WebCore::Color& color, const WebCore::IntRect& rect)
 {
-    notImplemented();
-    return 0;
+    if (WEBKIT_IS_WEB_VIEW(m_viewWidget))
+        return WebKitColorChooser::create(*page, color, rect);
+    return WebColorPickerGtk::create(*page, color, rect);
 }
-#endif
 
 void PageClientImpl::setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool /* fadeOut */)
 {

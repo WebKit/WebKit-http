@@ -695,6 +695,7 @@ static FloatQuad innerFrameQuad(Frame* frame, Node* assistedNode)
 
 static IntPoint constrainPoint(const IntPoint& point, Frame* frame, Node* assistedNode)
 {
+    ASSERT(!assistedNode || &assistedNode->document() == frame->document());
     const int DEFAULT_CONSTRAIN_INSET = 2;
     IntRect innerFrame = innerFrameQuad(frame, assistedNode).enclosingBoundingBox();
     IntPoint constrainedPoint = point;
@@ -1274,8 +1275,10 @@ PassRefPtr<Range> WebPage::contractedRangeFromHandle(Range* currentRange, Select
 
         IntRect copyRect = selectionBoxForRange(newRange.get());
         if (copyRect.isEmpty()) {
-            bestRange = rangeForBlockAtPoint(testPoint);
-            break;
+            // If the new range is an empty rectangle, we try the block at the current point
+            // and see if that has a rectangle that is a better choice.
+            newRange = rangeForBlockAtPoint(testPoint);
+            copyRect = selectionBoxForRange(newRange.get());
         }
         bool isBetterChoice;
         switch (handlePosition) {
@@ -2259,6 +2262,16 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         information.isAutocorrect = true;   // FIXME: Should we look at the attribute?
         information.autocapitalizeType = WebAutocapitalizeTypeSentences; // FIXME: Should we look at the attribute?
         information.isReadOnly = false;
+    }
+}
+
+void WebPage::resetAssistedNodeForFrame(WebFrame* frame)
+{
+    if (!m_assistedNode)
+        return;
+    if (m_assistedNode->document().frame() == frame->coreFrame()) {
+        send(Messages::WebPageProxy::StopAssistingNode());
+        m_assistedNode = nullptr;
     }
 }
 

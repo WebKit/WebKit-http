@@ -90,6 +90,8 @@
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
 @property (nonatomic, setter=_setTotalHeightOfBanners:) CGFloat _totalHeightOfBanners;
 
+@property (nonatomic, setter=_setOverrideDeviceScaleFactor:) CGFloat _overrideDeviceScaleFactor WK_AVAILABLE(WK_MAC_TBA, NA);
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 @property (nonatomic, setter=_setAutomaticallyAdjustsContentInsets:) BOOL _automaticallyAdjustsContentInsets;
 #endif
@@ -131,6 +133,10 @@
 // Clients that want to maintain default behavior can return nil. To disable the immediate action entirely, return NSNull. And to
 // do something custom, return an object that conforms to the NSImmediateActionAnimationController protocol.
 - (id)_immediateActionAnimationControllerForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKImmediateActionType)type userData:(WKTypeRef)userData;
+
+- (void)_prepareForImmediateActionAnimation;
+- (void)_cancelImmediateActionAnimation;
+- (void)_completeImmediateActionAnimation;
 
 - (void)_dismissContentRelativeChildWindows;
 #endif

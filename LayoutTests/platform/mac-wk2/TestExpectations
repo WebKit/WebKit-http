@@ -1,8 +1,8 @@
 # This file should contain entries for expectations that are specific
 # to the Apple Mac port running the WebKit2 variant (--webkit-test-runner)
 
-###### This file has six sections. When adding new tests, make sure to
-###### add to the right section:
+###### This file has seven sections. When adding new tests, make sure to
+###### add to the correct section:
 
 ### (1) Classified failures with bug reports
 ### (2) Classified failures without bug reports (yet)
@@ -10,6 +10,7 @@
 ### (4) Features that are not supported in WebKit2 and likely never will be
 ### (5) IndexedDB related failures
 ### (6) Features that are not supported in WebKit2, on Mavericks
+### (7) New WebKit2-only failures in Yosemite
 
 ########################################
 ### START OF (1) Classified failures with bug reports
@@ -184,9 +185,6 @@ webkit.org/b/95043 http/tests/security/local-user-CSS-from-remote.html [ Failure
 # All spatial navigation tests fail on Mac WK2
 webkit.org/b/96438 fast/spatial-navigation
 
-# Causes next test to crash
-webkit.org/b/98960 fast/parser/document-open-in-unload.html [ Skip ]
-
 # ENABLE(SHADOW_DOM) is disabled.
 webkit.org/b/76359 editing/shadow [ Skip ]
 webkit.org/b/76359 fast/dom/shadow [ Skip ]
@@ -311,8 +309,9 @@ fast/dom/frame-loading-via-document-write.html [ Timeout ]
 
 webkit.org/b/140084 [ Yosemite+ ] js/dom/dfg-inline-resolve.html [ Pass Timeout ]
 
-webkit.org/b/141252 [ Release Yosemite+ ] inspector/css/selector-dynamic-specificity.html [ Slow ]
-webkit.org/b/141252 [ Debug Yosemite+ ] inspector/css/selector-dynamic-specificity.html [ Slow Pass Timeout ]
+#webkit.org/b/141252 [ Release Yosemite+ ] inspector/css/selector-dynamic-specificity.html [ Slow ]
+#webkit.org/b/141252 [ Debug Yosemite+ ] inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
+webkit.org/b/141118 inspector/css/selector-dynamic-specificity.html [ Skip ]
 
 ### END OF (3) Unclassified failures
 ########################################
@@ -497,10 +496,8 @@ webkit.org/b/138736 http/tests/appcache/auth.html [ Skip ]
 ### END OF (6) Features that are not supported in WebKit2, on Mavericks
 ########################################
 
-# ======================================================================
-# Section 7
-# New WebKit2-only failures in Yosemite
-# ======================================================================
+########################################
+### START OF (7) New WebKit2-only failures in Yosemite
 
 # FIXME: Needs bugzilla (<rdar://problem/16678392>). Perhaps skip these tests?
 [ Yosemite+ ] fast/events/page-visibility-iframe-delete-test.html [ Timeout ]
@@ -517,3 +514,8 @@ webkit.org/b/140607 [ Yosemite+ ] http/tests/navigation/navigation-interrupted-b
 webkit.org/b/141322 [ Debug Yosemite+ ] fast/images/destroyed-image-load-event.html [ Pass Timeout ]
 
 webkit.org/b/141325 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-abortedonmain.html [ Pass Failure ]
+
+webkit.org/b/141085 [ Yosemite ] http/tests/media/video-query-url.html [ Pass Timeout ]
+
+### END OF (7) New WebKit2-only failures in Yosemite
+########################################

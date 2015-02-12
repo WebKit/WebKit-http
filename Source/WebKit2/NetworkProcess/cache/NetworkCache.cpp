@@ -30,6 +30,7 @@
 
 #include "Logging.h"
 #include "NetworkCacheCoders.h"
+#include "NetworkCacheStatistics.h"
 #include "NetworkCacheStorage.h"
 #include "NetworkResourceLoader.h"
 #include "WebCoreArgumentCoders.h"
@@ -49,9 +50,12 @@ NetworkCache& NetworkCache::singleton()
     return instance;
 }
 
-bool NetworkCache::initialize(const String& cachePath)
+bool NetworkCache::initialize(const String& cachePath, bool enableEfficacyLogging)
 {
     m_storage = NetworkCacheStorage::open(cachePath);
+
+    if (enableEfficacyLogging)
+        m_statistics = NetworkCacheStatistics::open(cachePath);
 
     LOG(NetworkCache, "(NetworkProcess) opened cache storage, success %d", !!m_storage);
     return !!m_storage;
@@ -214,29 +218,39 @@ static NetworkCacheKey makeCacheKey(const WebCore::ResourceRequest& request)
     return NetworkCacheKey(request.httpMethod(), partition, request.url().string());
 }
 
-void NetworkCache::retrieve(const WebCore::ResourceRequest& originalRequest, std::function<void (std::unique_ptr<Entry>)> completionHandler)
+void NetworkCache::retrieve(const WebCore::ResourceRequest& originalRequest, uint64_t webPageID, std::function<void (std::unique_ptr<Entry>)> completionHandler)
 {
     ASSERT(isEnabled());
 
     LOG(NetworkCache, "(NetworkProcess) retrieving %s priority %u", originalRequest.url().string().ascii().data(), originalRequest.priority());
 
+    NetworkCacheKey storageKey = makeCacheKey(originalRequest);
     if (!canRetrieve(originalRequest)) {
+        if (m_statistics)
+            m_statistics->recordNotUsingCacheForRequest(webPageID, storageKey, originalRequest);
+
         completionHandler(nullptr);
         return;
     }
 
     auto startTime = std::chrono::system_clock::now();
-    NetworkCacheKey storageKey = makeCacheKey(originalRequest);
     unsigned priority = originalRequest.priority();
 
-    m_storage->retrieve(storageKey, priority, [this, originalRequest, completionHandler, startTime](std::unique_ptr<NetworkCacheStorage::Entry> entry) {
+    m_storage->retrieve(storageKey, priority, [this, originalRequest, completionHandler, startTime, storageKey, webPageID](std::unique_ptr<NetworkCacheStorage::Entry> entry) {
         if (!entry) {
             LOG(NetworkCache, "(NetworkProcess) not found in storage");
+
+            if (m_statistics)
+                m_statistics->recordRetrievalFailure(webPageID, storageKey, originalRequest);
+
             completionHandler(nullptr);
             return false;
         }
         auto decodedEntry = decodeStorageEntry(*entry, originalRequest);
         bool success = !!decodedEntry;
+        if (m_statistics)
+            m_statistics->recordRetrievedCachedEntry(webPageID, storageKey, originalRequest, success);
+
 #if !LOG_DISABLED
         auto elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count();
 #endif
@@ -331,6 +345,13 @@ void NetworkCache::clear()
     LOG(NetworkCache, "(NetworkProcess) clearing cache");
     if (m_storage)
         m_storage->clear();
+    if (m_statistics)
+        m_statistics->clear();
+}
+
+String NetworkCache::storagePath() const
+{
+    return m_storage ? m_storage->directoryPath() : String();
 }
 
 }

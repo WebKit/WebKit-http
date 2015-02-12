@@ -52,7 +52,7 @@ public:
     WEBCORE_EXPORT unsigned bindParameterCount() const;
 
     WEBCORE_EXPORT int step();
-    int finalize();
+    WEBCORE_EXPORT int finalize();
     WEBCORE_EXPORT int reset();
     
     int prepareAndStep() { if (int error = prepare()) return error; return step(); }
@@ -90,7 +90,7 @@ public:
     bool returnInt64Results(int col, Vector<int64_t>&);
     bool returnDoubleResults(int col, Vector<double>&);
 
-    SQLiteDatabase* database() { return &m_database; }
+    SQLiteDatabase& database() { return m_database; }
     
     const String& query() const { return m_query; }
     

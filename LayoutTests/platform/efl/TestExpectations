@@ -600,10 +600,6 @@ webkit.org/b/108340 fast/layers/no-clipping-overflow-hidden-added-after-transfor
 webkit.org/b/108340 fast/layers/no-clipping-overflow-hidden-added-after-transition.html [ ImageOnlyFailure Pass ]
 webkit.org/b/108340 fast/layers/no-clipping-overflow-hidden-hardware-acceleration.html [ ImageOnlyFailure Pass ]
 
-# Aborting application cache downloads is flaky.
-webkit.org/b/87633 http/tests/appcache/abort-cache-onchecking-manifest-404.html [ Crash Pass ]
-webkit.org/b/87633 http/tests/appcache/abort-cache-ondownloading-resource-404.html [ Crash Failure Pass ]
-
 # Tests that sometimes fail on the bot (for GTK and Chromium ports as well).
 webkit.org/b/77631 fast/multicol/span/span-as-immediate-child-property-removal.html [ Failure Pass ]
 webkit.org/b/77631 fast/multicol/span/span-as-immediate-columns-child-removal.html [ Failure Pass ]
@@ -2014,6 +2010,62 @@ webkit.org/b/136406 compositing/tiling/huge-layer-with-layer-children-resize.htm
 webkit.org/b/136406 compositing/tiling/huge-layer-with-layer-children.html [ Failure ]
 webkit.org/b/136406 compositing/tiling/tiled-layer-resize.html [ Failure ]
 webkit.org/b/136406 compositing/visibility/visibility-image-layers-dynamic.html [ Failure ]
+
+# Begun to be failed since r177330
+webkit.org/b/141458 imported/mozilla/svg/as-image/img-dyn-1.html [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-color-burn.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-color-dodge.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-darken.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-difference.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-exclusion.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-lighten.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-multiply.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-overlay.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-screen.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/dynamic-small-object-scaled-up-01.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01a.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01b.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01c.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/stroke-width-percentage-02a.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/symbol-01.svg [ ImageOnlyFailure ]
+
+# Need to have new baseline since r172874
+webkit.org/b/141462 fast/ruby/bopomofo-letter-spacing.html [ Failure ]
+webkit.org/b/141462 fast/ruby/bopomofo-rl.html [ Failure ]
+webkit.org/b/141462 fast/ruby/bopomofo.html [ Failure ]
+webkit.org/b/141462 fast/ruby/ruby-beforeafter.html [ Failure ]
+webkit.org/b/141462 fast/ruby/ruby-length.html [ Failure ]
+webkit.org/b/141462 fast/ruby/ruby-run-break.html [ Failure ]
+webkit.org/b/141462 fast/ruby/ruby-runs-spans.html [ Failure ]
+webkit.org/b/141462 fast/ruby/ruby-runs.html [ Failure ]
+webkit.org/b/141462 fast/ruby/ruby-trailing.html [ Failure ]
+webkit.org/b/141462 fast/ruby/rubyDOM-insert-rt.html [ Failure ]
+webkit.org/b/141462 fast/ruby/rubyDOM-insert-text1.html [ Failure ]
+webkit.org/b/141462 fast/ruby/rubyDOM-insert-text2.html [ Failure ]
+webkit.org/b/141462 fast/ruby/rubyDOM-insert-text3.html [ Failure ]
+webkit.org/b/141462 fast/ruby/rubyDOM-remove-rt1.html [ Failure ]
+webkit.org/b/141462 fast/ruby/rubyDOM-remove-rt2.html [ Failure ]
+webkit.org/b/141462 fast/ruby/rubyDOM-remove-text1.html [ Failure ]
+
+# Started failing since r167808
+webkit.org/b/141496 fast/multicol/client-rects-spanners-complex.html [ Failure ]
+webkit.org/b/141496 fast/multicol/client-rects-spanners.html [ Failure ]
+webkit.org/b/141496 fast/multicol/client-rects.html [ Failure ]
+webkit.org/b/141496 fast/multicol/layers-split-across-columns.html [ Failure ]
+webkit.org/b/141496 fast/multicol/newmulticol/client-rects.html [ Failure ]
+webkit.org/b/141496 fast/multicol/pagination/LeftToRight-tb-hittest.html [ Failure ]
+webkit.org/b/141496 fast/multicol/pagination/RightToLeft-rl-hittest.html [ Failure ]
+
+# Started failing since r179055
+webkit.org/b/141497 fast/media/mq-any-hover-matchMedia.html [ Failure ]
+webkit.org/b/141497 fast/media/mq-any-hover-styling.html [ Failure ]
+webkit.org/b/141497 fast/media/mq-any-pointer-matchMedia.html [ Failure ]
+webkit.org/b/141497 fast/media/mq-any-pointer-styling.html [ Failure ]
+webkit.org/b/141497 fast/media/mq-hover-matchMedia.html [ Failure ]
+webkit.org/b/141497 fast/media/mq-hover-styling.html [ Failure ]
+webkit.org/b/141497 fast/media/mq-pointer-matchMedia.html [ Failure ]
+webkit.org/b/141497 fast/media/mq-pointer-styling.html [ Failure ]
+webkit.org/b/141497 fast/media/mq-pointer.html [ Failure ]
 
 # This test need a rebaseline.
 webkit.org/b/139150 fast/forms/form-hides-table.html [ Failure ]

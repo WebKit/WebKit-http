@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,48 +30,19 @@
 
 #include "Logging.h"
 #include "NetworkCacheCoders.h"
-#include <WebCore/FileSystem.h>
-#include <dirent.h>
+#include "NetworkCacheFileSystemPosix.h"
 #include <dispatch/dispatch.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <wtf/RandomNumber.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebKit {
 
-static const char* networkCacheSubdirectory = "WebKitCache";
-
-template <typename Function>
-static void traverseDirectory(const String& path, uint8_t type, const Function& function)
-{
-    DIR* dir = opendir(WebCore::fileSystemRepresentation(path).data());
-    if (!dir)
-        return;
-    struct dirent* dp;
-    while ((dp = readdir(dir))) {
-        if (dp->d_type != type)
-            continue;
-        const char* name = dp->d_name;
-        if (!strcmp(name, ".") || !strcmp(name, ".."))
-            continue;
-        function(String(name));
-    }
-    closedir(dir);
-}
-
-static void traverseCacheFiles(const String& cachePath, std::function<void (const String& fileName, const String& partitionPath)> function)
-{
-    traverseDirectory(cachePath, DT_DIR, [&cachePath, &function](const String& subdirName) {
-        String partitionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
-        traverseDirectory(partitionPath, DT_REG, [&function, &partitionPath](const String& fileName) {
-            if (fileName.length() != 8)
-                return;
-            function(fileName, partitionPath);
-        });
-    });
-}
+static const char networkCacheSubdirectory[] = "WebKitCache";
+static const char versionDirectoryPrefix[] = "Version ";
 
 NetworkCacheStorage::Data::Data(const uint8_t* data, size_t size)
     : m_dispatchData(adoptDispatch(dispatch_data_create(data, size, nullptr, DISPATCH_DATA_DESTRUCTOR_DEFAULT)))
@@ -116,13 +87,21 @@ std::unique_ptr<NetworkCacheStorage> NetworkCacheStorage::open(const String& cac
     return std::unique_ptr<NetworkCacheStorage>(new NetworkCacheStorage(networkCachePath));
 }
 
-NetworkCacheStorage::NetworkCacheStorage(const String& directoryPath)
-    : m_directoryPath(directoryPath)
+static String makeVersionedDirectoryPath(const String& baseDirectoryPath)
+{
+    String versionSubdirectory = versionDirectoryPrefix + String::number(NetworkCacheStorage::version);
+    return WebCore::pathByAppendingComponent(baseDirectoryPath, versionSubdirectory);
+}
+
+NetworkCacheStorage::NetworkCacheStorage(const String& baseDirectoryPath)
+    : m_baseDirectoryPath(baseDirectoryPath)
+    , m_directoryPath(makeVersionedDirectoryPath(baseDirectoryPath))
     , m_ioQueue(adoptDispatch(dispatch_queue_create("com.apple.WebKit.Cache.Storage", DISPATCH_QUEUE_CONCURRENT)))
     , m_backgroundIOQueue(adoptDispatch(dispatch_queue_create("com.apple.WebKit.Cache.Storage.Background", DISPATCH_QUEUE_CONCURRENT)))
 {
     dispatch_set_target_queue(m_backgroundIOQueue.get(), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
 
+    deleteOldVersions();
     initialize();
 }
 
@@ -131,18 +110,21 @@ void NetworkCacheStorage::initialize()
     ASSERT(RunLoop::isMain());
 
     StringCapture cachePathCapture(m_directoryPath);
-    auto& entryCount = m_approximateEntryCount;
 
-    dispatch_async(m_backgroundIOQueue.get(), [this, cachePathCapture, &entryCount] {
+    dispatch_async(m_backgroundIOQueue.get(), [this, cachePathCapture] {
         String cachePath = cachePathCapture.string();
-        traverseCacheFiles(cachePath, [this, &entryCount](const String& fileName, const String&) {
+        traverseCacheFiles(cachePath, [this](const String& fileName, const String& partitionPath) {
             NetworkCacheKey::HashType hash;
             if (!NetworkCacheKey::stringToHash(fileName, hash))
                 return;
-            dispatch_async(dispatch_get_main_queue(), [this, hash] {
-                m_contentsFilter.add(hash);
+            unsigned shortHash = NetworkCacheKey::toShortHash(hash);
+            dispatch_async(dispatch_get_main_queue(), [this, shortHash] {
+                m_contentsFilter.add(shortHash);
             });
-            ++entryCount;
+            auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+            long long fileSize = 0;
+            WebCore::getFileSize(filePath, fileSize);
+            m_approximateSize += fileSize;
         });
     });
 }
@@ -344,14 +326,15 @@ void NetworkCacheStorage::removeEntry(const NetworkCacheKey& key)
 {
     ASSERT(RunLoop::isMain());
 
-    if (m_contentsFilter.mayContain(key.hash()))
-        m_contentsFilter.remove(key.hash());
+    // For simplicity we don't reduce m_approximateSize on removals caused by load or decode errors.
+    // The next cache shrink will update the size.
+
+    if (m_contentsFilter.mayContain(key.shortHash()))
+        m_contentsFilter.remove(key.shortHash());
 
     StringCapture filePathCapture(filePathForKey(key, m_directoryPath));
-    dispatch_async(m_ioQueue.get(), [this, filePathCapture] {
+    dispatch_async(m_backgroundIOQueue.get(), [this, filePathCapture] {
         WebCore::deleteFile(filePathCapture.string());
-        if (m_approximateEntryCount)
-            --m_approximateEntryCount;
     });
 }
 
@@ -430,7 +413,7 @@ void NetworkCacheStorage::retrieve(const NetworkCacheKey& key, unsigned priority
     ASSERT(RunLoop::isMain());
     ASSERT(priority <= maximumRetrievePriority);
 
-    if (!m_contentsFilter.mayContain(key.hash())) {
+    if (!m_contentsFilter.mayContain(key.shortHash())) {
         completionHandler(nullptr);
         return;
     }
@@ -449,8 +432,7 @@ void NetworkCacheStorage::store(const NetworkCacheKey& key, const Entry& entry, 
 {
     ASSERT(RunLoop::isMain());
 
-    m_contentsFilter.add(key.hash());
-    ++m_approximateEntryCount;
+    m_contentsFilter.add(key.shortHash());
 
     auto storeOperation = std::make_unique<StoreOperation>(StoreOperation { key, entry, WTF::move(completionHandler) });
     auto& store = *storeOperation;
@@ -462,19 +444,20 @@ void NetworkCacheStorage::store(const NetworkCacheKey& key, const Entry& entry, 
         auto writeData = adoptDispatch(dispatch_data_create_concat(encodedHeader.get(), store.entry.body.dispatchData()));
 
         size_t bodyOffset = dispatch_data_get_size(encodedHeader.get());
-        size_t bodySize = store.entry.body.size();
 
         int fd;
         auto channel = openFileForKey(store.key, FileOpenType::Create, cachePathCapture.string(), fd);
-        dispatch_io_write(channel.get(), 0, writeData.get(), dispatch_get_main_queue(), [this, &store, fd, bodyOffset, bodySize](bool done, dispatch_data_t, int error) {
+        dispatch_io_write(channel.get(), 0, writeData.get(), dispatch_get_main_queue(), [this, &store, fd, bodyOffset](bool done, dispatch_data_t, int error) {
             ASSERT_UNUSED(done, done);
             LOG(NetworkCacheStorage, "(NetworkProcess) write complete error=%d", error);
             if (error) {
-                if (m_contentsFilter.mayContain(store.key.hash()))
-                    m_contentsFilter.remove(store.key.hash());
-                if (m_approximateEntryCount)
-                    --m_approximateEntryCount;
+                if (m_contentsFilter.mayContain(store.key.shortHash()))
+                    m_contentsFilter.remove(store.key.shortHash());
             }
+            size_t bodySize = store.entry.body.size();
+            size_t totalSize = bodyOffset + bodySize;
+
+            m_approximateSize += totalSize;
 
             bool shouldMapBody = !error && bodySize >= vm_page_size;
             auto bodyMap = shouldMapBody ? mapFile(fd, bodyOffset, bodySize) : nullptr;
@@ -493,7 +476,7 @@ void NetworkCacheStorage::update(const NetworkCacheKey& key, const Entry& update
 {
     ASSERT(RunLoop::isMain());
 
-    if (!m_contentsFilter.mayContain(key.hash())) {
+    if (!m_contentsFilter.mayContain(key.shortHash())) {
         LOG(NetworkCacheStorage, "(NetworkProcess) existing entry not found, storing full entry");
         store(key, updateEntry, WTF::move(completionHandler));
         return;
@@ -552,7 +535,7 @@ void NetworkCacheStorage::clear()
     LOG(NetworkCacheStorage, "(NetworkProcess) clearing cache");
 
     m_contentsFilter.clear();
-    m_approximateEntryCount = 0;
+    m_approximateSize = 0;
 
     StringCapture directoryPathCapture(m_directoryPath);
 
@@ -570,44 +553,65 @@ void NetworkCacheStorage::clear()
 
 void NetworkCacheStorage::shrinkIfNeeded()
 {
-    const size_t assumedAverageResourceSize { 48 * 1024 };
-    const size_t everyNthResourceToDelete { 4 };
+    ASSERT(RunLoop::isMain());
 
-    size_t estimatedCacheSize = assumedAverageResourceSize * m_approximateEntryCount;
+    static const double deletionProbability { 0.25 };
 
-    if (estimatedCacheSize <= m_maximumSize)
+    if (m_approximateSize <= m_maximumSize)
         return;
     if (m_shrinkInProgress)
         return;
     m_shrinkInProgress = true;
 
-    LOG(NetworkCacheStorage, "(NetworkProcess) shrinking cache m_approximateEntryCount=%d estimatedCacheSize=%d, m_maximumSize=%d", static_cast<size_t>(m_approximateEntryCount), estimatedCacheSize, m_maximumSize);
+    LOG(NetworkCacheStorage, "(NetworkProcess) shrinking cache approximateSize=%d, m_maximumSize=%d", static_cast<size_t>(m_approximateSize), m_maximumSize);
+
+    m_approximateSize = 0;
 
     StringCapture cachePathCapture(m_directoryPath);
     dispatch_async(m_backgroundIOQueue.get(), [this, cachePathCapture] {
         String cachePath = cachePathCapture.string();
-        size_t foundEntryCount = 0;
-        size_t deletedCount = 0;
-        traverseCacheFiles(cachePath, [this, &foundEntryCount, &deletedCount](const String& fileName, const String& partitionPath) {
-            ++foundEntryCount;
-            if (foundEntryCount % everyNthResourceToDelete)
+        traverseCacheFiles(cachePath, [this](const String& fileName, const String& partitionPath) {
+            auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+
+            bool shouldDelete = randomNumber() < deletionProbability;
+            if (!shouldDelete) {
+                long long fileSize = 0;
+                WebCore::getFileSize(filePath, fileSize);
+                m_approximateSize += fileSize;
                 return;
-            ++deletedCount;
+            }
 
-            WebCore::deleteFile(WebCore::pathByAppendingComponent(partitionPath, fileName));
-
+            WebCore::deleteFile(filePath);
             NetworkCacheKey::HashType hash;
             if (!NetworkCacheKey::stringToHash(fileName, hash))
                 return;
-            dispatch_async(dispatch_get_main_queue(), [this, hash] {
-                if (m_contentsFilter.mayContain(hash))
-                    m_contentsFilter.remove(hash);
+            unsigned shortHash = NetworkCacheKey::toShortHash(hash);
+            dispatch_async(dispatch_get_main_queue(), [this, shortHash] {
+                if (m_contentsFilter.mayContain(shortHash))
+                    m_contentsFilter.remove(shortHash);
             });
         });
-        m_approximateEntryCount = foundEntryCount - deletedCount;
         m_shrinkInProgress = false;
 
-        LOG(NetworkCacheStorage, "(NetworkProcess) cache shrink completed m_approximateEntryCount=%d", static_cast<size_t>(m_approximateEntryCount));
+        LOG(NetworkCacheStorage, "(NetworkProcess) cache shrink completed approximateSize=%d", static_cast<size_t>(m_approximateSize));
+    });
+}
+
+void NetworkCacheStorage::deleteOldVersions()
+{
+    // Delete V1 cache.
+    StringCapture cachePathCapture(m_baseDirectoryPath);
+    dispatch_async(m_backgroundIOQueue.get(), [cachePathCapture] {
+        String cachePath = cachePathCapture.string();
+        traverseDirectory(cachePath, DT_DIR, [&cachePath](const String& subdirName) {
+            if (subdirName.startsWith(versionDirectoryPrefix))
+                return;
+            String partitionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
+            traverseDirectory(partitionPath, DT_REG, [&partitionPath](const String& fileName) {
+                WebCore::deleteFile(WebCore::pathByAppendingComponent(partitionPath, fileName));
+            });
+            WebCore::deleteEmptyDirectory(partitionPath);
+        });
     });
 }
 

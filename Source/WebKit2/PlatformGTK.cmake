@@ -101,6 +101,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitBackForwardListItem.cpp
     UIProcess/API/gtk/WebKitBackForwardListItem.h
     UIProcess/API/gtk/WebKitBackForwardListPrivate.h
+    UIProcess/API/gtk/WebKitColorChooser.cpp
+    UIProcess/API/gtk/WebKitColorChooserRequest.cpp
     UIProcess/API/gtk/WebKitContextMenu.cpp
     UIProcess/API/gtk/WebKitContextMenu.h
     UIProcess/API/gtk/WebKitContextMenuActions.cpp
@@ -274,6 +276,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gtk/InputMethodFilter.cpp
     UIProcess/gtk/RedirectedXCompositeWindow.cpp
     UIProcess/gtk/TextCheckerGtk.cpp
+    UIProcess/gtk/WebColorPickerGtk.cpp
     UIProcess/gtk/WebContextMenuProxyGtk.cpp
     UIProcess/gtk/WebFullScreenClientGtk.cpp
     UIProcess/gtk/WebInspectorClientGtk.cpp
@@ -346,6 +349,7 @@ set(WebKit2GTK_INSTALLED_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitAuthenticationRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitBackForwardList.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitBackForwardListItem.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitColorChooserRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitCredential.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitContextMenu.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitContextMenuActions.h

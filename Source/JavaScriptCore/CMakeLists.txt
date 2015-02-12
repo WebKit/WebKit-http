@@ -349,6 +349,7 @@ set(JavaScriptCore_SOURCES
     jit/JITStubs.cpp
     jit/JITThunks.cpp
     jit/JITToDFGDeferredCompilationCallback.cpp
+    jit/SetupVarargsFrame.cpp
     jit/PolymorphicCallStubRoutine.cpp
     jit/Reg.cpp
     jit/RegisterPreservationWrapperGenerator.cpp
@@ -842,6 +843,7 @@ if (ENABLE_FTL_JIT)
         ftl/FTLJITCode.cpp
         ftl/FTLJITFinalizer.cpp
         ftl/FTLJSCall.cpp
+        ftl/FTLJSCallBase.cpp
         ftl/FTLLink.cpp
         ftl/FTLLocation.cpp
         ftl/FTLLowerDFGToLLVM.cpp

@@ -214,10 +214,9 @@ static inline QualifiedName constructQualifiedName(const SVGElement* svgElement,
 
 static inline void clearTimesWithDynamicOrigins(Vector<SMILTimeWithOrigin>& timeList)
 {
-    for (int i = timeList.size() - 1; i >= 0; --i) {
-        if (timeList[i].originIsScript())
-            timeList.remove(i);
-    }
+    timeList.removeAllMatching([] (const SMILTimeWithOrigin& time) {
+        return time.originIsScript();
+    });
 }
 
 void SVGSMILElement::reset()
@@ -249,8 +248,7 @@ Node::InsertionNotificationRequest SVGSMILElement::insertedInto(ContainerNode& r
     if (!owner)
         return InsertionDone;
 
-    m_timeContainer = owner->timeContainer();
-    ASSERT(m_timeContainer);
+    m_timeContainer = &owner->timeContainer();
     m_timeContainer->setDocumentOrderIndexesDirty();
 
     // "If no attribute is present, the default begin value (an offset-value of 0) must be evaluated."

@@ -24,7 +24,6 @@
 #include "RenderSVGHiddenContainer.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGTransformableContainer.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include <wtf/NeverDestroyed.h>
 
@@ -48,6 +47,11 @@ SVGGElement::SVGGElement(const QualifiedName& tagName, Document& document)
 Ref<SVGGElement> SVGGElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(*new SVGGElement(tagName, document));
+}
+
+Ref<SVGGElement> SVGGElement::create(Document& document)
+{
+    return create(SVGNames::gTag, document);
 }
 
 bool SVGGElement::isSupportedAttribute(const QualifiedName& attrName)

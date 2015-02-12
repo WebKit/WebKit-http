@@ -667,7 +667,6 @@ set(WebCore_SVG_IDL_FILES
     svg/SVGDescElement.idl
     svg/SVGDocument.idl
     svg/SVGElement.idl
-    svg/SVGElementInstance.idl
     svg/SVGEllipseElement.idl
     svg/SVGException.idl
     svg/SVGExternalResourcesRequired.idl
@@ -1138,14 +1137,12 @@ set(WebCore_SOURCES
     bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
     bindings/js/JSSQLTransactionCustom.cpp
-    bindings/js/JSSVGElementInstanceCustom.cpp
     bindings/js/JSSVGLengthCustom.cpp
     bindings/js/JSSVGPathSegCustom.cpp
     bindings/js/JSStorageCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSStyleSheetListCustom.cpp
     bindings/js/JSSubtleCryptoCustom.cpp
-    bindings/js/JSSVGElementInstanceCustom.cpp
     bindings/js/JSSVGLengthCustom.cpp
     bindings/js/JSSVGPathSegCustom.cpp
     bindings/js/JSTextCustom.cpp
@@ -2536,7 +2533,6 @@ set(WebCore_SOURCES
     svg/SVGDocument.cpp
     svg/SVGDocumentExtensions.cpp
     svg/SVGElement.cpp
-    svg/SVGElementInstance.cpp
     svg/SVGEllipseElement.cpp
     svg/SVGException.cpp
     svg/SVGExternalResourcesRequired.cpp
@@ -3377,7 +3373,7 @@ file(WRITE ${IDL_FILES_TMP} ${IDL_FILES_LIST})
 
 add_custom_command(
     OUTPUT ${SUPPLEMENTAL_DEPENDENCY_FILE} ${WINDOW_CONSTRUCTORS_FILE} ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE} ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-    DEPENDS ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl ${SCRIPTS_PREPROCESS_IDLS} ${WebCore_IDL_FILES} ${WebCoreTestSupport_IDL_FILES}
+    DEPENDS ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl ${SCRIPTS_PREPROCESS_IDLS} ${WebCore_IDL_FILES} ${WebCoreTestSupport_IDL_FILES} ${WEBCORE_DIR}/CMakeLists.txt
     COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl --defines "${FEATURE_DEFINES_JAVASCRIPT}" --idlFilesList ${IDL_FILES_TMP} --supplementalDependencyFile ${SUPPLEMENTAL_DEPENDENCY_FILE} --windowConstructorsFile ${WINDOW_CONSTRUCTORS_FILE} --workerGlobalScopeConstructorsFile ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
 --dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
     VERBATIM)
