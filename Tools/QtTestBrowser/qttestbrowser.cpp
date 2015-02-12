@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
+ * Copyright (C) 2015 The Qt Company Ltd.
  * Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2009 Girish Ramakrishnan <girish@forwardbias.in>
  * Copyright (C) 2006 George Staikos <staikos@kde.org>

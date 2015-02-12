@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
- * Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies)
+ * Copyright (C) 2015 The Qt Company Ltd
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public

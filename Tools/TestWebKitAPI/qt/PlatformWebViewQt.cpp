@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2010 Apple Inc. All rights reserved.
  * Copyright (C) 2010 University of Szeged. All rights reserved.
- * Copyright (C) 2013 Digia Plc. and/or its subsidiary(-ies).
+ * Copyright (C) 2015 The Qt Company Ltd.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

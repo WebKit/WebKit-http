@@ -10,7 +10,7 @@
  * Copyright (C) 2008 Dirk Schulze <vbs85@gmx.de>
  * Copyright (C) 2010, 2011 Sencha, Inc.
  * Copyright (C) 2011 Andreas Kling <kling@webkit.org>
- * Copyright (C) 2013 Digia Plc. and/or its subsidiary(-ies).
+ * Copyright (C) 2015 The Qt Company Ltd.
  *
  * All rights reserved.
  *

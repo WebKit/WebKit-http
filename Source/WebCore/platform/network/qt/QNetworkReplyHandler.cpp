@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2008, 2012 Digia Plc. and/or its subsidiary(-ies)
+    Copyright (C) 2015 The Qt Company Ltd
     Copyright (C) 2007 Staikos Computing Services Inc.  <info@staikos.net>
     Copyright (C) 2008 Holger Hans Peter Freyther
 

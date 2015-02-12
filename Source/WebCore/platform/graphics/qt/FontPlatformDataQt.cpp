@@ -2,7 +2,7 @@
     Copyright (C) 2008 Holger Hans Peter Freyther
     Copyright (C) 2009 Torch Mobile Inc. http://www.torchmobile.com/
     Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies)
-    Copyright (C) 2013 Digia Plc. and/or its subsidiary(-ies)
+    Copyright (C) 2015 The Qt Company Ltd
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
