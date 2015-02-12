@@ -26,14 +26,17 @@
 #include "config.h"
 #include "BitmapImage.h"
 
+#include <cstdio>
+
 namespace WebCore {
 
 void BitmapImage::invalidatePlatformData()
 {
 }
 
-PassRefPtr<Image> Image::loadPlatformResource(const char*)
+PassRefPtr<Image> Image::loadPlatformResource(const char* resource)
 {
+    std::fprintf(stderr, "WARNING: trying to load platform resource '%s'\n", resource);
     return nullptr;
 }
 
