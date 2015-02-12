@@ -160,9 +160,6 @@ http/tests/notifications/legacy/double-show.html
 # Datalist is not yet enabled.
 webkit.org/b/98934 fast/forms/datalist [ Skip ]
 
-# Color input is not yet enabled.
-webkit.org/b/98935 fast/forms/color [ Skip ]
-
 # ENABLE_INPUT_TYPE_* are not enabled.
 webkit.org/b/98936 fast/forms/date [ Skip ]
 webkit.org/b/98936 fast/forms/datetime [ Skip ]
@@ -530,6 +527,34 @@ webkit.org/b/133806 svg/masking/mask-transformed-text-missing.svg [ ImageOnlyFai
 
 # No support for Filters Level 2 on GTK yet
 Bug(GTK) css3/filters/backdrop [ Skip ]
+
+webkit.org/b/141072 accessibility/frame-disconnect-textmarker-cache-crash.html [ Failure ]
+
+webkit.org/b/141423 css3/calc/line-height.html [ Failure ]
+webkit.org/b/141419 editing/deleting/delete-emoji.html [ Failure ]
+webkit.org/b/141423 editing/pasteboard/simplfiying-markup-should-not-strip-content.html [ Failure ]
+webkit.org/b/141423 fast/css/font-shorthand-from-longhands.html [ Failure ]
+webkit.org/b/141423 fast/css/font-shorthand-line-height.html [ Failure ]
+webkit.org/b/141423 fast/css/getComputedStyle/computed-style-font.html [ Failure ]
+webkit.org/b/141423 fast/css/getComputedStyle/computed-style-without-renderer.html [ Failure ]
+webkit.org/b/141423 fast/css/line-height-text-autosizing.html [ Failure ]
+webkit.org/b/141423 fast/css/getComputedStyle/computed-style.html [ Failure ]
+
+#Pointer and hover media queries.
+webkit.org/b/141466 fast/media/mq-any-hover-matchMedia.html [ Failure ]
+webkit.org/b/141466 fast/media/mq-any-hover-styling.html [ Failure ]
+webkit.org/b/141466 fast/media/mq-any-pointer-matchMedia.html [ Failure ]
+webkit.org/b/141466 fast/media/mq-any-pointer-styling.html [ Failure ]
+webkit.org/b/141466 fast/media/mq-hover-matchMedia.html [ Failure ]
+webkit.org/b/141466 fast/media/mq-hover-styling.html [ Failure ]
+webkit.org/b/141466 fast/media/mq-pointer-matchMedia.html [ Failure ]
+webkit.org/b/141466 fast/media/mq-pointer-styling.html [ Failure ]
+webkit.org/b/141466 fast/media/mq-pointer.html [ Failure ]
+
+webkit.org/b/141468 http/tests/media/hls/hls-audio-tracks-locale-selection.html [ Failure ]
+webkit.org/b/116259 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Failure ]
+webkit.org/b/141469 http/tests/media/hls/hls-progress.html [ Failure ]
+webkit.org/b/141423 svg/css/getComputedStyle-basic.xhtml [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures

@@ -1981,22 +1981,23 @@ bool FrameView::scrollToFragment(const URL& url)
 bool FrameView::scrollToAnchor(const String& name)
 {
     ASSERT(frame().document());
+    auto& document = *frame().document();
 
-    if (!frame().document()->haveStylesheetsLoaded()) {
-        frame().document()->setGotoAnchorNeededAfterStylesheetsLoad(true);
+    if (!document.haveStylesheetsLoaded()) {
+        document.setGotoAnchorNeededAfterStylesheetsLoad(true);
         return false;
     }
 
-    frame().document()->setGotoAnchorNeededAfterStylesheetsLoad(false);
+    document.setGotoAnchorNeededAfterStylesheetsLoad(false);
 
-    Element* anchorElement = frame().document()->findAnchor(name);
+    Element* anchorElement = document.findAnchor(name);
 
     // Setting to null will clear the current target.
-    frame().document()->setCSSTarget(anchorElement);
+    document.setCSSTarget(anchorElement);
 
-    if (is<SVGDocument>(*frame().document())) {
-        if (SVGSVGElement* svg = downcast<SVGDocument>(*frame().document()).rootElement()) {
-            svg->setupInitialView(name, anchorElement);
+    if (is<SVGDocument>(document)) {
+        if (auto* rootElement = downcast<SVGDocument>(document).rootElement()) {
+            rootElement->scrollToAnchor(name, anchorElement);
             if (!anchorElement)
                 return true;
         }
@@ -2013,7 +2014,7 @@ bool FrameView::scrollToAnchor(const String& name)
     
     // If the anchor accepts keyboard focus, move focus there to aid users relying on keyboard navigation.
     if (anchorElement && anchorElement->isFocusable())
-        frame().document()->setFocusedElement(anchorElement);
+        document.setFocusedElement(anchorElement);
     
     return true;
 }
@@ -3967,6 +3968,7 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     // Grab a copy of the children() set, as it may be mutated by the following updateLayoutAndStyleIfNeededRecursive
     // calls, as they can potentially re-enter a layout of the parent frame view, which may add/remove scrollbars
     // and thus mutates the children() set.
+    // We use the Widget children because walking the Frame tree would include display:none frames.
     Vector<Ref<FrameView>, 16> childViews;
     childViews.reserveInitialCapacity(children().size());
     for (auto& widget : children()) {

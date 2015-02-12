@@ -70,3 +70,6 @@ class WPEPort(Port):
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
         name = "WPEWebProcess" if name == "WebProcess" else name
         return GDBCrashLogGenerator(name, pid, newer_than, self._filesystem, self._path_to_driver).generate_crash_log(stdout, stderr)
+
+    def use_generic_wk2_test_expectations(self):
+        return False

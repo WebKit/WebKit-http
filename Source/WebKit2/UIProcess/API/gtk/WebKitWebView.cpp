@@ -131,7 +131,8 @@ enum {
     AUTHENTICATE,
 
     SHOW_NOTIFICATION,
-    CLOSE_NOTIFICATION,
+
+    RUN_COLOR_CHOOSER,
 
     LAST_SIGNAL
 };
@@ -155,9 +156,7 @@ enum {
 
 typedef HashMap<uint64_t, GRefPtr<WebKitWebResource> > LoadingResourcesMap;
 typedef HashMap<uint64_t, GRefPtr<GTask> > SnapshotResultsMap;
-#if USE(LIBNOTIFY)
-typedef HashMap<uint64_t, GRefPtr<NotifyNotification>> NotifyNotificationsMap;
-#endif
+
 class PageLoadStateObserver;
 
 struct _WebKitWebViewPrivate {
@@ -209,9 +208,6 @@ struct _WebKitWebViewPrivate {
     SnapshotResultsMap snapshotResultsMap;
     GRefPtr<WebKitAuthenticationRequest> authenticationRequest;
 
-#if USE(LIBNOTIFY)
-    NotifyNotificationsMap notifyNotificationsMap;
-#endif
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -583,41 +579,48 @@ static void webkitWebViewHandleDownloadRequest(WebKitWebViewBase* webViewBase, D
     webkitDownloadSetWebView(download.get(), WEBKIT_WEB_VIEW(webViewBase));
 }
 
-static gboolean webkitWebViewShowNotification(WebKitWebView* webView, WebKitNotification* webNotification)
+#if USE(LIBNOTIFY)
+static const char* gNotifyNotificationID = "wk-notify-notification";
+
+static void notifyNotificationClosed(NotifyNotification*, WebKitNotification* webNotification)
+{
+    g_object_set_data(G_OBJECT(webNotification), gNotifyNotificationID, nullptr);
+    webkit_notification_close(webNotification);
+}
+
+static void webNotificationClosed(WebKitNotification* webNotification)
+{
+    NotifyNotification* notification = NOTIFY_NOTIFICATION(g_object_get_data(G_OBJECT(webNotification), gNotifyNotificationID));
+    if (!notification)
+        return;
+
+    notify_notification_close(notification, nullptr);
+    g_object_set_data(G_OBJECT(webNotification), gNotifyNotificationID, nullptr);
+}
+#endif // USE(LIBNOTIFY)
+
+static gboolean webkitWebViewShowNotification(WebKitWebView*, WebKitNotification* webNotification)
 {
 #if USE(LIBNOTIFY)
     if (!notify_is_initted())
         notify_init(g_get_prgname());
 
-    GRefPtr<NotifyNotification> notification = webView->priv->notifyNotificationsMap.get(webkit_notification_get_id(webNotification));
+    NotifyNotification* notification = NOTIFY_NOTIFICATION(g_object_get_data(G_OBJECT(webNotification), gNotifyNotificationID));
     if (!notification) {
-        notification = adoptGRef(notify_notification_new(webkit_notification_get_title(webNotification),
-            webkit_notification_get_body(webNotification), nullptr));
-
-        webView->priv->notifyNotificationsMap.set(webkit_notification_get_id(webNotification), notification);
-    } else
-        notify_notification_update(notification.get(), webkit_notification_get_title(webNotification),
+        notification = notify_notification_new(webkit_notification_get_title(webNotification),
             webkit_notification_get_body(webNotification), nullptr);
 
-    notify_notification_show(notification.get(), nullptr);
-    return TRUE;
-#else
-    UNUSED_PARAM(webView);
-    UNUSED_PARAM(webNotification);
-    return FALSE;
-#endif
-}
-
-static gboolean webkitWebViewCloseNotification(WebKitWebView* webView, WebKitNotification* webNotification)
-{
-#if USE(LIBNOTIFY)
-    if (GRefPtr<NotifyNotification> notification = webView->priv->notifyNotificationsMap.get(webkit_notification_get_id(webNotification))) {
-        notify_notification_close(notification.get(), nullptr);
-        webView->priv->notifyNotificationsMap.remove(webkit_notification_get_id(webNotification));
+        g_signal_connect_object(notification, "closed", G_CALLBACK(notifyNotificationClosed), webNotification, static_cast<GConnectFlags>(0));
+        g_signal_connect(webNotification, "closed", G_CALLBACK(webNotificationClosed), nullptr);
+        g_object_set_data_full(G_OBJECT(webNotification), gNotifyNotificationID, notification, static_cast<GDestroyNotify>(g_object_unref));
+    } else {
+        notify_notification_update(notification, webkit_notification_get_title(webNotification),
+            webkit_notification_get_body(webNotification), nullptr);
     }
+
+    notify_notification_show(notification, nullptr);
     return TRUE;
 #else
-    UNUSED_PARAM(webView);
     UNUSED_PARAM(webNotification);
     return FALSE;
 #endif
@@ -784,7 +787,6 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
     webViewClass->run_file_chooser = webkitWebViewRunFileChooser;
     webViewClass->authenticate = webkitWebViewAuthenticate;
     webViewClass->show_notification = webkitWebViewShowNotification;
-    webViewClass->close_notification = webkitWebViewCloseNotification;
 
     /**
      * WebKitWebView:web-context:
@@ -1715,29 +1717,39 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
             G_TYPE_BOOLEAN, 1,
             WEBKIT_TYPE_NOTIFICATION);
 
-    /**
-     * WebKitNotification::close-notification:
-     * @web_view: the #WebKitWebView
-     * @notification: a #WebKitNofication
-     *
-     * This signal is emitted when a notification should be withdrawn.
-     *
-     * The default handler will close the notification using libnotify, if built with
-     * support for it.
-     *
-     * Returns: %TRUE to stop other handlers from being invoked. %FALSE otherwise.
-     *
-     * Since: 2.8
-     */
-    signals[CLOSE_NOTIFICATION] =
-        g_signal_new("close-notification",
-            G_TYPE_FROM_CLASS(gObjectClass),
+     /**
+      * WebKitWebView::run-color-chooser:
+      * @web_view: the #WebKitWebView on which the signal is emitted
+      * @request: a #WebKitColorChooserRequest
+      *
+      * This signal is emitted when the user interacts with a &lt;input
+      * type='color' /&gt; HTML element, requesting from WebKit to show
+      * a dialog to select a color. To let the application know the details of
+      * the color chooser, as well as to allow the client application to either
+      * cancel the request or perform an actual color selection, the signal will
+      * pass an instance of the #WebKitColorChooserRequest in the @request
+      * argument.
+      *
+      * It is possible to handle this request asynchronously by increasing the
+      * reference count of the request.
+      *
+      * The default signal handler will asynchronously run a regular
+      * #GtkColorChooser for the user to interact with.
+      *
+      * Returns: %TRUE to stop other handlers from being invoked for the event.
+      *   %FALSE to propagate the event further.
+      *
+      * Since: 2.8
+      */
+    signals[RUN_COLOR_CHOOSER] =
+        g_signal_new("run-color-chooser",
+            G_TYPE_FROM_CLASS(webViewClass),
             G_SIGNAL_RUN_LAST,
-            G_STRUCT_OFFSET(WebKitWebViewClass, close_notification),
-            g_signal_accumulator_true_handled, nullptr /* accumulator data */,
+            G_STRUCT_OFFSET(WebKitWebViewClass, run_color_chooser),
+            g_signal_accumulator_true_handled, nullptr,
             webkit_marshal_BOOLEAN__OBJECT,
             G_TYPE_BOOLEAN, 1,
-            WEBKIT_TYPE_NOTIFICATION);
+            WEBKIT_TYPE_COLOR_CHOOSER_REQUEST);
 }
 
 static void webkitWebViewCancelAuthenticationRequest(WebKitWebView* webView)
@@ -2115,10 +2127,11 @@ bool webkitWebViewEmitShowNotification(WebKitWebView* webView, WebKitNotificatio
     return handled;
 }
 
-void webkitWebViewEmitCloseNotification(WebKitWebView* webView, WebKitNotification* webNotification)
+bool webkitWebViewEmitRunColorChooser(WebKitWebView* webView, WebKitColorChooserRequest* request)
 {
     gboolean handled;
-    g_signal_emit(webView, signals[CLOSE_NOTIFICATION], 0, webNotification, &handled);
+    g_signal_emit(webView, signals[RUN_COLOR_CHOOSER], 0, request, &handled);
+    return handled;
 }
 
 /**

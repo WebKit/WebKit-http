@@ -58,6 +58,7 @@ list(APPEND WebKit2_SOURCES
     Shared/wpe/NativeWebKeyboardEventWPE.cpp
     Shared/wpe/NativeWebMouseEventWPE.cpp
     Shared/wpe/NativeWebTouchEventWPE.cpp
+    Shared/wpe/NativeWebWheelEventWPE.cpp
     Shared/wpe/ProcessExecutablePathWPE.cpp
     Shared/wpe/WebEventFactory.cpp
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
@@ -111,6 +112,32 @@ list(APPEND WebKit2_SOURCES
 list(APPEND WebKit2_DERIVED_SOURCES
     ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
     ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
+    ${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.c
+)
+
+set(WebKit2Resources
+)
+
+if (ENABLE_WEB_AUDIO)
+    list(APPEND WebKit2Resources
+        "        <file alias=\"audio/Composite\">Composite.wav</file>\n"
+    )
+endif ()
+
+file(WRITE ${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.xml
+    "<?xml version=1.0 encoding=UTF-8?>\n"
+    "<gresources>\n"
+    "    <gresource prefix=\"/org/webkitwpe/resources\">\n"
+    ${WebKit2Resources}
+    "    </gresource>\n"
+    "</gresources>\n"
+)
+
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.c
+    DEPENDS ${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.xml
+    COMMAND glib-compile-resources --generate --sourcedir=${CMAKE_SOURCE_DIR}/Source/WebCore/Resources --sourcedir=${CMAKE_SOURCE_DIR}/Source/WebCore/platform/audio/resources --target=${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.c ${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.xml
+    VERBATIM
 )
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES

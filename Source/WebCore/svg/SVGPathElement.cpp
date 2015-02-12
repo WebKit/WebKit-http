@@ -24,7 +24,6 @@
 #include "Attribute.h"
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGMPathElement.h"
 #include "SVGNames.h"
 #include "SVGPathSegArcAbs.h"
@@ -50,7 +49,6 @@
 #include "SVGPathSegMovetoAbs.h"
 #include "SVGPathSegMovetoRel.h"
 #include "SVGPathUtilities.h"
-#include "SVGSVGElement.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {

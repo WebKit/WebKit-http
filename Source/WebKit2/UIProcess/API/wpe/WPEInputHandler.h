@@ -47,6 +47,8 @@ public:
 
     void handlePointerEvent(PointerEvent::Raw);
 
+    void handleAxisEvent(AxisEvent::Raw);
+
     void handleTouchDown(TouchEvent::Raw);
     void handleTouchUp(TouchEvent::Raw);
     void handleTouchMotion(TouchEvent::Raw);
@@ -67,8 +69,8 @@ private:
     } m_modifiers;
 
     struct Pointer {
-        double x;
-        double y;
+        uint32_t x;
+        uint32_t y;
     } m_pointer;
 
     void dispatchTouchEvent(int id);

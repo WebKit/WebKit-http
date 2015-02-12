@@ -44,7 +44,6 @@
 #include "RenderSVGResourceMasker.h"
 #include "SVGCursorElement.h"
 #include "SVGDocumentExtensions.h"
-#include "SVGElementInstance.h"
 #include "SVGElementRareData.h"
 #include "SVGGraphicsElement.h"
 #include "SVGImageElement.h"
@@ -73,11 +72,11 @@ BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGElement)
     REGISTER_LOCAL_ANIMATED_PROPERTY(className)
 END_REGISTER_ANIMATED_PROPERTIES
 
-using namespace HTMLNames;
-using namespace SVGNames;
-
 static NEVER_INLINE void populateAttributeNameToCSSPropertyIDMap(HashMap<AtomicStringImpl*, CSSPropertyID>& map)
 {
+    using namespace HTMLNames;
+    using namespace SVGNames;
+
     // This list should include all base CSS and SVG CSS properties which are exposed as SVG XML attributes.
     static const QualifiedName* const attributeNames[] = {
         &alignment_baselineAttr,
@@ -165,6 +164,9 @@ static NEVER_INLINE void populateAttributeNameToCSSPropertyIDMap(HashMap<AtomicS
 
 static NEVER_INLINE void populateAttributeNameToAnimatedPropertyTypeMap(HashMap<QualifiedName::QualifiedNameImpl*, AnimatedPropertyType>& map)
 {
+    using namespace HTMLNames;
+    using namespace SVGNames;
+
     struct TableEntry {
         const QualifiedName& attributeName;
         AnimatedPropertyType type;
@@ -243,6 +245,9 @@ static inline HashMap<QualifiedName::QualifiedNameImpl*, AnimatedPropertyType>& 
 
 static NEVER_INLINE void populateCSSPropertyWithSVGDOMNameToAnimatedPropertyTypeMap(HashMap<QualifiedName::QualifiedNameImpl*, AnimatedPropertyType>& map)
 {
+    using namespace HTMLNames;
+    using namespace SVGNames;
+
     struct TableEntry {
         const QualifiedName& attributeName;
         AnimatedPropertyType type;
@@ -475,9 +480,8 @@ void SVGElement::cursorImageValueRemoved()
     m_svgRareData->setCursorImageValue(0);
 }
 
-SVGElement* SVGElement::correspondingElement()
+SVGElement* SVGElement::correspondingElement() const
 {
-    ASSERT(!m_svgRareData || !m_svgRareData->correspondingElement() || correspondingUseElement());
     return m_svgRareData ? m_svgRareData->correspondingElement() : nullptr;
 }
 
@@ -509,7 +513,7 @@ void SVGElement::parseAttribute(const QualifiedName& name, const AtomicString& v
 {
     if (name == HTMLNames::classAttr)
         setClassNameBaseValue(value);
-    else if (name == tabindexAttr) {
+    else if (name == HTMLNames::tabindexAttr) {
         int tabindex = 0;
         if (value.isEmpty())
             clearTabIndexExplicitlyIfNeeded();
@@ -961,26 +965,6 @@ String SVGElement::title() const
     // the document, not a tooltip) so we instantly return.
     if (isOutermostSVGSVGElement() && document().topDocument().isSVGDocument())
         return String();
-
-    // Walk up the tree, to find out whether we're inside a <use> shadow tree, to find the right title.
-    if (isInShadowTree()) {
-        Element* shadowHostElement = downcast<ShadowRoot>(treeScope().rootNode()).hostElement();
-        // At this time, SVG nodes are not allowed in non-<use> shadow trees, so any shadow root we do
-        // have should be a use. The assert and following test is here to catch future shadow DOM changes
-        // that do enable SVG in a shadow tree.
-        ASSERT(!shadowHostElement || shadowHostElement->hasTagName(SVGNames::useTag));
-        if (shadowHostElement && shadowHostElement->hasTagName(SVGNames::useTag)) {
-            SVGUseElement& useElement = downcast<SVGUseElement>(*shadowHostElement);
-
-            // If the <use> title is not empty we found the title to use.
-            String useTitle(useElement.title());
-            if (!useTitle.isEmpty())
-                return useTitle;
-        }
-    }
-
-    // If we aren't an instance in a <use> or the <use> title was not found, then find the first
-    // <title> child of this element.
     auto firstTitle = childrenOfType<SVGTitleElement>(*this).first();
     return firstTitle ? const_cast<SVGTitleElement*>(firstTitle)->innerText() : String();
 }
@@ -1207,28 +1191,16 @@ void SVGElement::accessKeyAction(bool sendMouseEvents)
 
 void SVGElement::invalidateInstances()
 {
-    if (!inDocument())
-        return;
-
     if (instanceUpdatesBlocked())
         return;
 
     auto& instances = this->instances();
-    if (instances.isEmpty())
-        return;
-
-    // Mark all use elements referencing 'element' for rebuilding
-    do {
+    while (!instances.isEmpty()) {
         SVGElement* instance = *instances.begin();
-        if (SVGUseElement* element = instance->correspondingUseElement()) {
-            ASSERT(element->inDocument());
-            element->invalidateShadowTree();
-        }
+        if (SVGUseElement* useElement = instance->correspondingUseElement())
+            useElement->invalidateShadowTree();
         instance->setCorrespondingElement(nullptr);
     } while (!instances.isEmpty());
-
-    // FIXME: Why is this needed?
-    document().updateStyleIfNeeded();
 }
 
 }

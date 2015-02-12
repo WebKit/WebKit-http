@@ -235,6 +235,8 @@ private:
     virtual void contentFilterDidBlockLoad(std::unique_ptr<WebCore::ContentFilter>) override;
 #endif
 
+    virtual bool shouldPaintBrokenImage(const WebCore::URL&) const override;
+
     WebFrame* m_frame;
     RefPtr<PluginView> m_pluginView;
     bool m_hasSentResponseToPluginView;

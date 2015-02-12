@@ -98,23 +98,6 @@ ALWAYS_INLINE void JIT::emitPutIntToCallFrameHeader(RegisterID from, JSStack::Ca
 #endif
 }
 
-ALWAYS_INLINE void JIT::emitGetFromCallFrameHeaderPtr(JSStack::CallFrameHeaderEntry entry, RegisterID to, RegisterID from)
-{
-    loadPtr(Address(from, entry * sizeof(Register)), to);
-}
-
-ALWAYS_INLINE void JIT::emitGetFromCallFrameHeader32(JSStack::CallFrameHeaderEntry entry, RegisterID to, RegisterID from)
-{
-    load32(Address(from, entry * sizeof(Register)), to);
-}
-
-#if USE(JSVALUE64)
-ALWAYS_INLINE void JIT::emitGetFromCallFrameHeader64(JSStack::CallFrameHeaderEntry entry, RegisterID to, RegisterID from)
-{
-    load64(Address(from, entry * sizeof(Register)), to);
-}
-#endif
-
 ALWAYS_INLINE void JIT::emitLoadCharacterString(RegisterID src, RegisterID dst, JumpList& failures)
 {
     failures.append(branchStructure(NotEqual, Address(src, JSCell::structureIDOffset()), m_vm->stringStructure.get()));
@@ -386,15 +369,15 @@ ALWAYS_INLINE MacroAssembler::Call JIT::callOperationWithCallFrameRollbackOnExce
 
 
 #if USE(JSVALUE64)
-ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(F_JITOperation_EJZZ operation, GPRReg arg1, int32_t arg2, int32_t arg3)
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(Z_JITOperation_EJZZ operation, GPRReg arg1, int32_t arg2, int32_t arg3)
 {
     setupArgumentsWithExecState(arg1, TrustedImm32(arg2), TrustedImm32(arg3));
     return appendCallWithExceptionCheck(operation);
 }
 
-ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(F_JITOperation_EFJJZ operation, GPRReg arg1, GPRReg arg2, GPRReg arg3, int32_t arg4)
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(F_JITOperation_EFJZZ operation, GPRReg arg1, GPRReg arg2, int32_t arg3, GPRReg arg4)
 {
-    setupArgumentsWithExecState(arg1, arg2, arg3, TrustedImm32(arg4));
+    setupArgumentsWithExecState(arg1, arg2, TrustedImm32(arg3), arg4);
     return appendCallWithExceptionCheck(operation);
 }
 
@@ -533,15 +516,15 @@ ALWAYS_INLINE MacroAssembler::Call JIT::callOperationNoExceptionCheck(V_JITOpera
     return appendCall(operation);
 }
 
-ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(F_JITOperation_EJZZ operation, GPRReg arg1Tag, GPRReg arg1Payload, int32_t arg2, int32_t arg3)
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(Z_JITOperation_EJZZ operation, GPRReg arg1Tag, GPRReg arg1Payload, int32_t arg2, int32_t arg3)
 {
     setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, TrustedImm32(arg2), TrustedImm32(arg3));
     return appendCallWithExceptionCheck(operation);
 }
 
-ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(F_JITOperation_EFJJZ operation, GPRReg arg1, GPRReg arg2Tag, GPRReg arg2Payload, GPRReg arg3Tag, GPRReg arg3Payload, int32_t arg4)
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(F_JITOperation_EFJZZ operation, GPRReg arg1, GPRReg arg2Tag, GPRReg arg2Payload, int32_t arg3, GPRReg arg4)
 {
-    setupArgumentsWithExecState(arg1, arg2Payload, arg2Tag, arg3Payload, arg3Tag, TrustedImm32(arg4));
+    setupArgumentsWithExecState(arg1, arg2Payload, arg2Tag, TrustedImm32(arg3), arg4);
     return appendCallWithExceptionCheck(operation);
 }
     

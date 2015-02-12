@@ -32,8 +32,11 @@ list(APPEND WebCore_SOURCES
     loader/soup/SubresourceLoaderSoup.cpp
     platform/Cursor.cpp
     platform/PlatformStrategies.cpp
+    platform/Theme.cpp
+    platform/audio/glib/AudioBusGlib.cpp
     platform/audio/gstreamer/AudioDestinationGStreamer.cpp
     platform/audio/gstreamer/AudioFileReaderGStreamer.cpp
+    platform/audio/gstreamer/AudioSourceProviderGStreamer.cpp
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
     platform/geoclue/GeolocationProviderGeoclue1.cpp
@@ -157,6 +160,7 @@ list(APPEND WebCore_SOURCES
     platform/wpe/SharedBufferWPE.cpp
     platform/wpe/SharedTimerWPE.cpp
     platform/wpe/SoundWPE.cpp
+    platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp
 
     ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocol.c
@@ -173,10 +177,8 @@ list(APPEND WebCore_LIBRARIES
     ${GLIB_LIBRARIES}
     ${GSTREAMER_LIBRARIES}
     ${GSTREAMER_BASE_LIBRARIES}
-    ${GSTREAMER_APP_LIBRARIES}
     ${GSTREAMER_AUDIO_LIBRARIES}
-    ${GSTREAMER_FFT_LIBRARIES}
-    ${GSTREAMER_GL_LIBRARIES}
+    ${GSTREAMER_APP_LIBRARIES}
     ${GSTREAMER_PBUTILS_LIBRARIES}
     ${GSTREAMER_TAG_LIBRARIES}
     ${GSTREAMER_VIDEO_LIBRARIES}
@@ -188,6 +190,7 @@ list(APPEND WebCore_LIBRARIES
     ${LIBXSLT_LIBRARIES}
     ${PNG_LIBRARIES}
     ${SQLITE_LIBRARIES}
+    ${WAYLAND_EGL_LIBRARIES}
     ${WAYLAND_LIBRARIES}
     ${WEBP_LIBRARIES}
 )
@@ -200,9 +203,8 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
     ${GSTREAMER_BASE_INCLUDE_DIRS}
-    ${GSTREAMER_APP_INCLUDE_DIRS}
     ${GSTREAMER_AUDIO_INCLUDE_DIRS}
-    ${GSTREAMER_FFT_INCLUDE_DIRS}
+    ${GSTREAMER_APP_INCLUDE_DIRS}
     ${GSTREAMER_GL_INCLUDE_DIRS}
     ${GSTREAMER_PBUTILS_INCLUDE_DIRS}
     ${GSTREAMER_TAG_INCLUDE_DIRS}
@@ -215,6 +217,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${LIBXSLT_INCLUDE_DIR}
     ${PNG_INCLUDE_DIRS}
     ${SQLITE_INCLUDE_DIR}
+    ${WAYLAND_EGL_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
     ${WEBP_INCLUDE_DIRS}
 )
@@ -227,6 +230,16 @@ if (ENABLE_TEXTURE_MAPPER)
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
         platform/graphics/texmap/TextureMapperGL.cpp
         platform/graphics/texmap/TextureMapperShaderProgram.cpp
+    )
+endif ()
+
+if (ENABLE_WEB_AUDIO)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${WEBCORE_DIR}/platform/audio/gstreamer
+        ${GSTREAMER_FFT_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${GSTREAMER_FFT_LIBRARIES}
     )
 endif ()
 

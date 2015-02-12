@@ -1010,6 +1010,9 @@ class Port(object):
     def warn_if_bug_missing_in_test_expectations(self):
         return False
 
+    def use_generic_wk2_test_expectations(self):
+        return True
+
     def expectations_dict(self):
         """Returns an OrderedDict of name -> expectations strings.
         The names are expected to be (but not required to be) paths in the filesystem.
@@ -1043,7 +1046,7 @@ class Port(object):
         if non_wk2_name != self.port_name:
             search_paths.append(non_wk2_name)
 
-        if self.get_option('webkit_test_runner'):
+        if self.get_option('webkit_test_runner') and self.use_generic_wk2_test_expectations():
             # Because nearly all of the skipped tests for WebKit 2 are due to cross-platform
             # issues, all wk2 ports share a skipped list under platform/wk2.
             search_paths.extend(["wk2", self._wk2_port_name()])

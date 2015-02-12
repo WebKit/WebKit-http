@@ -18,6 +18,8 @@ App.InteractiveChartComponent = Ember.Component.extend({
         if (!chartData)
             return;
         this._needsConstruction = true;
+        this._totalWidth = undefined;
+        this._totalHeight = undefined;
         this._constructGraphIfPossible(chartData);
     }.observes('chartData').on('init'),
     didInsertElement: function ()
@@ -25,6 +27,14 @@ App.InteractiveChartComponent = Ember.Component.extend({
         var chartData = this.get('chartData');
         if (chartData)
             this._constructGraphIfPossible(chartData);
+
+        if (this.get('interactive')) {
+            var element = this.get('element');
+            this._attachEventListener(element, "mousemove", this._mouseMoved.bind(this));
+            this._attachEventListener(element, "mouseleave", this._mouseLeft.bind(this));
+            this._attachEventListener(element, "mousedown", this._mouseDown.bind(this));
+            this._attachEventListener($(element).parents("[tabindex]"), "keydown", this._keyPressed.bind(this));
+        }
     },
     willClearRender: function ()
     {
@@ -47,7 +57,8 @@ App.InteractiveChartComponent = Ember.Component.extend({
         this._x = d3.time.scale();
         this._y = d3.scale.linear();
 
-        // FIXME: Tear down the old SVG element.
+        if (this._svgElement)
+            this._svgElement.remove();
         this._svgElement = d3.select(element).append("svg")
                 .attr("width", "100%")
                 .attr("height", "100%");
@@ -65,10 +76,15 @@ App.InteractiveChartComponent = Ember.Component.extend({
                 .attr("class", "x axis");
         }
 
+        var isInteractive = this.get('interactive');
         if (this.get('showYAxis')) {
             this._yAxis = d3.svg.axis().scale(this._y).orient("left").ticks(6).tickFormat(chartData.formatter);
-            this._yAxisLabels = svg.append("g")
-                .attr("class", "y axis");
+            
+            this._yAxisLabels = svg.append('g').attr('class', 'y axis' + (isInteractive ? ' interactive' : ''));
+            if (isInteractive) {
+                var self = this;
+                this._yAxisLabels.on('click', function () { self.toggleProperty('showFullYAxis'); });
+            }
         }
 
         this._clippedContainer = svg.append("g")
@@ -86,23 +102,16 @@ App.InteractiveChartComponent = Ember.Component.extend({
             .y0(function(point) { return point.interval ? yScale(point.interval[0]) : null; })
             .y1(function(point) { return point.interval ? yScale(point.interval[1]) : null; });
 
-        if (this._paths)
-            this._paths.forEach(function (path) { path.remove(); });
         this._paths = [];
-        if (this._areas)
-            this._areas.forEach(function (area) { area.remove(); });
         this._areas = [];
-        if (this._dots)
-            this._dots.forEach(function (dot) { dots.remove(); });
         this._dots = [];
-        if (this._highlights)
-            this._highlights.remove();
         this._highlights = null;
 
         this._currentTimeSeries = chartData.current;
         this._currentTimeSeriesData = this._currentTimeSeries.series();
         this._baselineTimeSeries = chartData.baseline;
         this._targetTimeSeries = chartData.target;
+        this._movingAverageTimeSeries = chartData.movingAverage;
 
         this._yAxisUnit = chartData.unit;
 
@@ -119,29 +128,38 @@ App.InteractiveChartComponent = Ember.Component.extend({
                 .attr("class", "target"));
         }
 
+        var movingAverageIsVisible = this._movingAverageTimeSeries;
+        var foregroundClass = movingAverageIsVisible ? '' : ' foreground';
         this._areas.push(this._clippedContainer
             .append("path")
             .datum(this._currentTimeSeriesData)
-            .attr("class", "area"));
+            .attr("class", "area" + foregroundClass));
 
         this._paths.push(this._clippedContainer
             .append("path")
             .datum(this._currentTimeSeriesData)
-            .attr("class", "current"));
+            .attr("class", "current" + foregroundClass));
 
         this._dots.push(this._clippedContainer
             .selectAll(".dot")
                 .data(this._currentTimeSeriesData)
             .enter().append("circle")
-                .attr("class", "dot")
+                .attr("class", "dot" + foregroundClass)
                 .attr("r", this.get('chartPointRadius') || 1));
 
-        if (this.get('interactive')) {
-            this._attachEventListener(element, "mousemove", this._mouseMoved.bind(this));
-            this._attachEventListener(element, "mouseleave", this._mouseLeft.bind(this));
-            this._attachEventListener(element, "mousedown", this._mouseDown.bind(this));
-            this._attachEventListener($(element).parents("[tabindex]"), "keydown", this._keyPressed.bind(this));
+        if (movingAverageIsVisible) {
+            this._paths.push(this._clippedContainer
+                .append("path")
+                .datum(this._movingAverageTimeSeries.series())
+                .attr("class", "movingAverage"));
 
+            this._areas.push(this._clippedContainer
+                .append("path")
+                .datum(this._movingAverageTimeSeries.series())
+                .attr("class", "envelope"));
+        }
+
+        if (isInteractive) {
             this._currentItemLine = this._clippedContainer
                 .append("line")
                 .attr("class", "current-item");
@@ -182,11 +200,14 @@ App.InteractiveChartComponent = Ember.Component.extend({
         var intrinsicXDomain = this._computeXAxisDomain(this._currentTimeSeriesData);
         if (!xDomain)
             xDomain = intrinsicXDomain;
-        var currentDomain = this._x.domain();
-        if (currentDomain && App.domainsAreEqual(currentDomain, xDomain))
+        var yDomain = this._computeYAxisDomain(xDomain[0], xDomain[1]);
+
+        var currentXDomain = this._x.domain();
+        var currentYDomain = this._y.domain();
+        if (currentXDomain && App.domainsAreEqual(currentXDomain, xDomain)
+            && currentYDomain && App.domainsAreEqual(currentYDomain, yDomain))
             return currentDomain;
 
-        var yDomain = this._computeYAxisDomain(xDomain[0], xDomain[1]);
         this._x.domain(xDomain);
         this._y.domain(yDomain);
         return xDomain;
@@ -288,7 +309,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
         this._yAxisLabels.call(this._yAxis);
         if (this._yAxisUnitContainer)
             this._yAxisUnitContainer.remove();
-        var x = - 3 * this._rem;
+        var x = - 3.2 * this._rem;
         var y = this._contentHeight / 2;
         this._yAxisUnitContainer = this._yAxisLabels.append("text")
             .attr("transform", "rotate(90 0 0) translate(" + y + ", " + (-x) + ")")
@@ -313,28 +334,33 @@ App.InteractiveChartComponent = Ember.Component.extend({
     },
     _computeYAxisDomain: function (startTime, endTime)
     {
-        var range = this._minMaxForAllTimeSeries(startTime, endTime);
+        var shouldShowFullYAxis = this.get('showFullYAxis');
+        var range = this._minMaxForAllTimeSeries(startTime, endTime, !shouldShowFullYAxis);
         var min = range[0];
         var max = range[1];
         if (max < min)
             min = max = 0;
+        else if (shouldShowFullYAxis)
+            min = Math.min(min, 0);
         var diff = max - min;
         var margin = diff * 0.05;
 
         yExtent = [min - margin, max + margin];
-//        if (yMin !== undefined)
-//            yExtent[0] = parseInt(yMin);
         return yExtent;
     },
-    _minMaxForAllTimeSeries: function (startTime, endTime)
+    _minMaxForAllTimeSeries: function (startTime, endTime, ignoreOutliners)
     {
-        var currentRange = this._currentTimeSeries.minMaxForTimeRange(startTime, endTime);
-        var baselineRange = this._baselineTimeSeries ? this._baselineTimeSeries.minMaxForTimeRange(startTime, endTime) : [Number.MAX_VALUE, Number.MIN_VALUE];
-        var targetRange = this._targetTimeSeries ? this._targetTimeSeries.minMaxForTimeRange(startTime, endTime) : [Number.MAX_VALUE, Number.MIN_VALUE];
-        return [
-            Math.min(currentRange[0], baselineRange[0], targetRange[0]),
-            Math.max(currentRange[1], baselineRange[1], targetRange[1]),
-        ];
+        var seriesList = [this._currentTimeSeries, this._movingAverageTimeSeries, this._baselineTimeSeries, this._targetTimeSeries];
+        var min = Infinity;
+        var max = -Infinity;
+        for (var i = 0; i < seriesList.length; i++) {
+            if (seriesList[i]) {
+                var minMax = seriesList[i].minMaxForTimeRange(startTime, endTime, ignoreOutliners);
+                min = Math.min(min, minMax[0]);
+                max = Math.max(max, minMax[1]);
+            }
+        }
+        return [min, max];
     },
     _currentSelection: function ()
     {
@@ -349,7 +375,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
             selection = null; // Otherwise the user has no way of clearing the selection.
 
         this._relayoutDataAndAxes(selection);
-    }.observes('domain'),
+    }.observes('domain', 'showFullYAxis'),
     _selectionChanged: function ()
     {
         this._updateSelection(this.get('selection'));
@@ -378,7 +404,6 @@ App.InteractiveChartComponent = Ember.Component.extend({
             if (!this._brushExtent)
                 return;
 
-            this.set('selectionIsLocked', false);
             this._setCurrentSelection(undefined);
 
             // Avoid locking the indicator in _mouseDown when the brush was cleared in the same mousedown event.
@@ -391,7 +416,6 @@ App.InteractiveChartComponent = Ember.Component.extend({
             return;
         }
 
-        this.set('selectionIsLocked', true);
         this._setCurrentSelection(this._brush.extent());
     },
     _keyPressed: function (event)

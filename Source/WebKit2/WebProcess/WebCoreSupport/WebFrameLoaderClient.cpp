@@ -142,6 +142,9 @@ void WebFrameLoaderClient::detachedFromParent2()
     if (!webPage)
         return;
 
+#if PLATFORM(IOS)
+    webPage->resetAssistedNodeForFrame(m_frame);
+#endif
     RefPtr<API::Object> userData;
 
     // Notify the bundle client.
@@ -1498,6 +1501,12 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
         return ObjectContentFrame;
 
+#if PLATFORM(IOS)
+    // iOS can render PDF in <object>/<embed> via PDFDocumentImage.
+    if (MIMETypeRegistry::isPDFOrPostScriptMIMEType(mimeType))
+        return ObjectContentImage;
+#endif
+
     return ObjectContentNone;
 }
 
@@ -1649,5 +1658,14 @@ void WebFrameLoaderClient::didRequestAutocomplete(PassRefPtr<WebCore::FormState>
 {
 }
 #endif
+
+bool WebFrameLoaderClient::shouldPaintBrokenImage(const WebCore::URL&) const
+{
+#if PLATFORM(WPE)
+    return false;
+#else
+    return true;
+#endif
+}
 
 } // namespace WebKit

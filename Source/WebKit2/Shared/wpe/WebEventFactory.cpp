@@ -570,9 +570,38 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(WPE::PointerEvent&& event)
     }
 
     // FIXME: Proper button support. Modifiers. deltaX/Y/Z. Click count.
+    WebCore::IntPoint position(event.x, event.y);
     return WebMouseEvent(type, WebMouseEvent::LeftButton /* FIXME: HAH! */,
-        WebCore::IntPoint(event.x, event.y), WebCore::IntPoint(event.x, event.y),
+        position, position,
         0, 0, 0, 1, static_cast<WebEvent::Modifiers>(0), event.time);
+}
+
+WebWheelEvent WebEventFactory::createWebWheelEvent(WPE::AxisEvent&& event)
+{
+    // FIXME: We shouldn't hard-code this.
+    enum Axis {
+        Vertical,
+        Horizontal
+    };
+
+    WebCore::FloatSize wheelTicks;
+    switch (event.axis) {
+    case Vertical:
+        wheelTicks = WebCore::FloatSize(0, 1);
+        break;
+    case Horizontal:
+        wheelTicks = WebCore::FloatSize(1, 0);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    };
+
+    WebCore::FloatSize delta = wheelTicks;
+    delta.scale(event.value);
+
+    WebCore::IntPoint position(event.x, event.y);
+    return WebWheelEvent(WebEvent::Wheel, position, position,
+        delta, wheelTicks, WebWheelEvent::ScrollByPixelWheelEvent, static_cast<WebEvent::Modifiers>(0), event.time);
 }
 
 WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::TouchEvent&& event)

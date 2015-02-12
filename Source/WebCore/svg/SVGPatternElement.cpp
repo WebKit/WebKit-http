@@ -32,12 +32,10 @@
 #include "PatternAttributes.h"
 #include "RenderSVGContainer.h"
 #include "RenderSVGResourcePattern.h"
-#include "SVGElementInstance.h"
 #include "SVGFitToViewBox.h"
 #include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGRenderSupport.h"
-#include "SVGSVGElement.h"
 #include "SVGTransformable.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>

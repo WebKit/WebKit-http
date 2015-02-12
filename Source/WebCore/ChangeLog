@@ -1,3 +1,1931 @@
+2015-02-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove the USE(ACCELERATED_COMPOSITING) guard from the
+        MediaPlayerPrivateGStreamerBase destructor.
+
+        The guard was removed in r163079. It was still defined through CMake
+        for the EFL and GTK ports when the guarded code was introduced in
+        r172828. In r171741 the macro was finally removed for the GTK and EFL
+        ports as well, but the guards for the affected code weren't updated
+        so TextureMapperPlatformLayer::Client::platformLayerWillBeDestroyed()
+        wasn't being called anymore.
+
+        Rubber-stamped by Philippe Normand.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase):
+
+2015-02-11  Darin Adler  <darin@apple.com>
+
+        Streamline and simplify SVGSVGElement and related classes
+        https://bugs.webkit.org/show_bug.cgi?id=141463
+
+        Reviewed by Antti Koivisto.
+
+        * dom/Document.cpp: Removed unneeded include of SVGSVGElement.h.
+        * loader/FrameLoader.cpp: Ditto.
+        * rendering/RenderBoxModelObject.cpp: Ditto.
+        * rendering/svg/RenderSVGForeignObject.cpp: Ditto.
+        * svg/SVGImageElement.cpp: Ditto.
+        * svg/SVGMarkerElement.cpp: Ditto.
+        * svg/SVGPathElement.cpp: Ditto.
+        * svg/SVGPatternElement.cpp: Ditto.
+        * svg/SVGTransform.cpp: Ditto.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollToAnchor): Updated to call the SVGSVGElement function
+        named scrollToAnchor (was setupInitialView). Also refactored to avoid repeating
+        the expression frame().document() so often.
+
+        * platform/graphics/FloatSize.h: Added operator/.
+
+        * svg/SVGDocument.cpp:
+        (WebCore::SVGDocument::rootElement): Rearranged to use early return.
+        (WebCore::SVGDocument::zoomAndPanEnabled): Ditto.
+        (WebCore::SVGDocument::startPan): Ditto. Also used FloatPoint math instead
+        of breaking things apart into x and y.
+        (WebCore::SVGDocument::updatePan): Ditto.
+
+        * svg/SVGDocument.h: Removed some unneeded includes and forward declarations.
+        Moved function bodies out of the class to make it more readable. Renamed
+        m_translate to m_panningOffset and made it a FloatSize instead of FloatPoint.
+
+        * svg/SVGDocumentExtensions.cpp:
+        (WebCore::SVGDocumentExtensions::startAnimations): Use a modern for loop
+        and update since timeContainer() now returns a reference.
+
+        * svg/SVGSVGElement.cpp: Removed many unneeded includes.
+        (WebCore::SVGSVGElement::SVGSVGElement): Moved initialization of scalars to
+        the class definition. Updated since m_timerContainer is a Ref (later should
+        change it to be a std::unique_ptr or just directly contained in SVGSVGElement).
+        (WebCore::SVGSVGElement::~SVGSVGElement): Removed comment that doesn't say much,
+        but is worded in a confusing way.
+        (WebCore::SVGSVGElement::contentScriptType): Use NeverDestroyed instead of
+        DEPRECATED_DEFINE_STATIC_LOCAL.
+        (WebCore::SVGSVGElement::contentStyleType): Ditto.
+        (WebCore::SVGSVGElement::viewport): Streamlined a bit.
+        (WebCore::SVGSVGElement::pixelUnitToMillimeterX): Ditto.
+        (WebCore::SVGSVGElement::pixelUnitToMillimeterY): Ditto.
+        (WebCore::SVGSVGElement::currentView): Changed to return a reference.
+        (WebCore::SVGSVGElement::frameForCurrentScale): Added. Helper for the two
+        functions below.
+        (WebCore::SVGSVGElement::currentScale): Updated to use frameForCurrentScale.
+        (WebCore::SVGSVGElement::setCurrentScale): Ditto.
+        (WebCore::SVGSVGElement::setCurrentTranslate): Optimized the case where there
+        is no change to the translation. Also changed the data member's name to
+        m_currentTranslate to more directly match the DOM API naming.
+        (WebCore::SVGSVGElement::parseAttribute): Simplified the parsing a bit, and
+        changed to pass a reference to SVGZoomAndPan::parseAttribute.
+        (WebCore::SVGSVGElement::svgAttributeChanged): Tweaked formatting and removed
+        code that converts the renderer pointer to a RenderObject* unnecessarily.
+        (WebCore::SVGSVGElement::suspendRedraw): Removed FIXME about implementing this,
+        since we don't really plan to do that.
+        (WebCore::SVGSVGElement::unsuspendRedraw): Ditto.
+        (WebCore::SVGSVGElement::unsuspendRedrawAll): Ditto.
+        (WebCore::SVGSVGElement::forceRedraw): Ditto.
+        (WebCore::SVGSVGElement::collectIntersectionOrEnclosureList): Changed return
+        type to Ref, and pass in a function instead of an enumeration value.
+        (WebCore::SVGSVGElement::getIntersectionList): Updated for above.
+        (WebCore::SVGSVGElement::getEnclosureList): Ditto.
+        (WebCore::SVGSVGElement::checkIntersection): Use && instead of early return
+        for the null check.
+        (WebCore::SVGSVGElement::checkEnclosure): Ditto.
+        (WebCore::SVGSVGElement::createSVGLength): Use initialization list syntax
+        for greater brevity.
+        (WebCore::SVGSVGElement::createSVGAngle): Ditto.
+        (WebCore::SVGSVGElement::createSVGPoint): Ditto.
+        (WebCore::SVGSVGElement::createSVGMatrix): Ditto.
+        (WebCore::SVGSVGElement::createSVGRect): Ditto.
+        (WebCore::SVGSVGElement::createSVGTransform): Removed unneeded explicit
+        constructor invocation.
+        (WebCore::SVGSVGElement::createSVGTransformFromMatrix): Removed unneeded cast.
+        (WebCore::SVGSVGElement::insertedInto): Updated since timeContainer() now
+        returns a reference.
+        (WebCore::SVGSVGElement::setCurrentTime): Use isfinite instead of isnan, so
+        we won't store infinity as the current time.
+        (WebCore::SVGSVGElement::currentViewBoxRect): Renamed locals and changed
+        to use initializer lists for brevity.
+        (WebCore::SVGSVGElement::currentViewportSize): Streamlined code by using
+        initializer lists, using local variables only for things used more than once,
+        and using the / operator defined above.
+        (WebCore::SVGSVGElement::viewBoxToViewTransform): Use the concatenate function
+        in a way that is more straightforward, rather than doing it with a temporary.
+        (WebCore::SVGSVGElement::scrollToAnchor): Renamed this from
+        setupInitialView.
+        (WebCore::SVGSVGElement::inheritViewAttributes): Changed this to work with
+        references rather than pointers.
+        (WebCore::SVGSVGElement::getElementById): Use getAllElementsById as the
+        FIXME comment suggested for better efficiency when there are a lot of descendants
+        of the <svg> element at the cost of making it less efficient if there are
+        a lot of elements all with the desired ID, but not inside the <svg> element.
+        (WebCore::SVGSVGElement::isValid): Moved here from the header.
+
+        * svg/SVGSVGElement.h: Removed unneeded forward declarations. Moved the
+        animated properties to the top of the file, then other DOM, the other
+        public members. Changed return types to references and Ref. Moved
+        function bodies out of the class definition. Made createSVGNumber inline.
+
+        * svg/SVGViewElement.cpp: Removed unneeded includes.
+        (WebCore::SVGViewElement::isSupportedAttribute): Deleted.
+        (WebCore::SVGViewElement::parseAttribute): Changed to not rely on
+        isSupportedAttribute. Eventually I will do this in all the SVG classes.
+
+        * svg/SVGViewSpec.cpp: Removed unneeded include of SVGSVGElement.h.
+        (WebCore::SVGViewSpec::parseViewSpec): Updated for change in the name
+        of the parse function in the SVGZoomAndPan class.
+
+        * svg/SVGZoomAndPan.cpp:
+        (WebCore::SVGZoomAndPan::isKnownAttribute): Deleted.
+        (WebCore::SVGZoomAndPan::addSupportedAttributes): Deleted.
+        (WebCore::SVGZoomAndPan::parse): Renamed from parseZoomAndPan since
+        this is a member of the SVGZoomAndPan class and also has an argument
+        of SVGZoomAndPanType.
+        (WebCore::SVGZoomAndPan::parseAttributeValue): Added. Helper so the
+        template function is not so big. Also write it in a simpler way.
+        (WebCore::SVGZoomAndPan::ref): Deleted.
+        (WebCore::SVGZoomAndPan::deref): Deleted.
+        (WebCore::SVGZoomAndPan::setZoomAndPan): Deleted.
+
+        * svg/SVGZoomAndPan.h: Removed unneeded includes. Reformatted the enum.
+        Moved function bodies out of the class definition. Removed many unneeded
+        functions.
+
+        * svg/animation/SVGSMILElement.cpp:
+        (WebCore::SVGSMILElement::insertedInto): Updated since timeContainer
+        now returns a reference rather than a pointer.
+
+2015-02-11  Darin Adler  <darin@apple.com>
+
+        SVGUseElement follow-up improvements
+        https://bugs.webkit.org/show_bug.cgi?id=141382
+
+        Reviewed by Antti Koivisto.
+
+        * loader/cache/CachedSVGDocumentClient.h: Removed unneeded forward declaration.
+
+        * page/EventHandler.cpp: Removed unneeded include of SVGUseElement.h.
+        * rendering/svg/RenderSVGViewportContainer.cpp: Ditto.
+
+        * svg/SVGDocumentExtensions.cpp:
+        (WebCore::SVGDocumentExtensions::clearTargetDependencies): Removed too-specific
+        check that assumed that SVG elements in shadow trees are always for <use> elements.
+        This amounted to an unneeded optimization that could be removed with no bad effect.
+
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::correspondingElement): Removed the assertions so this could
+        be used more freely outside of cases where the shadow tree state is fully consistent.
+        It's fine to have this just be a mechanical getter; there's nothing super-tricky
+        here that needs to be caught by the assertion.
+        (WebCore::SVGElement::title): Removed unneeded special handling for titles inside
+        the shadow tree.
+
+        * svg/SVGGElement.cpp:
+        (WebCore::SVGGElement::create): Added an overload that doesn't require explicitly
+        passing in the tag name.
+        * svg/SVGGElement.h: Ditto.
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::create): Ditto.
+        * svg/SVGSVGElement.h: Ditto.
+
+        * svg/SVGUseElement.cpp: Removed a lot of unneeded includes.
+        (WebCore::SVGUseElement::SVGUseElement): Removed code to initialize some booleans.
+        We do that in the class definition now.
+        (WebCore::SVGUseElement::create): Removed the code that calls the
+        ensureUserAgentShadowRoot function unconditionally. That's properly done when
+        needed; no need to do it here.
+        (WebCore::SVGUseElement::~SVGUseElement): Removed unneeded code to destroy the
+        shadow tree (that happens automatically) and simplified the code to stop loading
+        the external document.
+        (WebCore::SVGUseElement::isSupportedAttribute): Deleted.
+        (WebCore::SVGUseElement::parseAttribute): Simplified this. Removed assumptions
+        about the intersection of various sets of attributes, and also removed the
+        isSupportedAttribute function. This seems to serve no purpose here, or in any
+        other SVG element class. I plan to remove it everywhere over time.
+        (WebCore::isWellFormedDocument): Deleted.
+        (WebCore::SVGUseElement::insertedInto): Simplified code by removing all the
+        special cases during initial parsing, and did the invalidation here rather than
+        deferring it to didNotifySubtreeInsertions. Added a call to the new function,
+        updateExternalDocument, since that won't do anything when the element is not
+        in a document.
+        (WebCore::SVGUseElement::didNotifySubtreeInsertions): Deleted.
+        (WebCore::SVGUseElement::removedFrom): Added code to call clearShadowTree and
+        updateExternalDocument. Both are efficient when doing nothing, and both are
+        appropriate since the element is no longer in a document.
+        (WebCore::SVGUseElement::referencedDocument): Deleted. No longer needed.
+        (WebCore::SVGUseElement::externalDocument): Streamlined the logic here, removing
+        multiple unneeded checks.
+        (WebCore::SVGUseElement::transferSizeAttributesToTargetClone): Renamed since
+        "target clone" is clear enough within this class, without explicitly stating
+        "shadow tree". All the clones are in the shadow tree.
+        (WebCore::SVGUseElement::svgAttributeChanged): Removed unneeded code calling
+        isSupportedAttribute. Changed the code that detects changes in href to just
+        call updateExternalDocument (for the document URL) and invalidateShadowTree
+        (for the fragment). Also updated the transferSizeAttributesToTargetClone logic
+        to only trigger on width and height and updated names.
+        (WebCore::SVGUseElement::willAttachRenderers): Updated for the new name of
+        m_shouldRebuildShadowTree and added a call through to the base class.
+        (WebCore::createAllowedElementSet): Added. A more efficient way to implement
+        the initialization of the set for isDisallowedElement.
+        (WebCore::isDisallowedElement): Simplified this by using the function above,
+        and also overloaded for both SVGElement and Element for a tiny efficiency boost.
+        (WebCore::SVGUseElement::clearShadowTree): Renamed form clearResourceReferences.
+        This is a much more straightforward name. Also deleted the code that sets the
+        m_needsShadowTreeRecreation flag to false. That should be done by the build
+        function, not here.
+        (WebCore::SVGUseElement::buildPendingResource): Made this just invalidate the
+        shadow tree now instead of explicitly building it.
+        (WebCore::SVGUseElement::updateShadowTree): Moved the code to create a shadow
+        tree here from buildPendingResource. ALso changed the logic so that we
+        always blow away the old shadow tree. Moved the comment about rebuilding things
+        every time here. Updated the code to use the findTarget and cloneTarget functions,
+        eliminating the buildShadowTree function entirely. Moved the call to
+        transferSizeAttributesToShadowTreeTargetClone inside cloneTarget. Also updated
+        for the name change for m_shouldRebuildShadowTree.
+        (WebCore::SVGUseElement::targetClone): Renamed from shadowTreeTargetClone.
+        No need to emphasize "shadow tree" since that's where all clones are.
+        (WebCore::isDirectReference): Streamlined a bit using "using namespace".
+        (WebCore::SVGUseElement::toClipPath): Rewrote to use early return and updated
+        for name changes. Also used ASCIILiteral.
+        (WebCore::SVGUseElement::rendererClipChild): Changed local variable names.
+        (WebCore::removeDisallowedElementsFromSubtree): Wrote the iteration in a
+        slightly more idiomatic style.
+        (WebCore::SVGUseElement::findTarget): Added. This new function implements
+        the rule for finding a valid target for a use element. This replaces logic
+        that was duplicated in two different places and it also includes all the
+        rules that were formerly in the isValidTarget function. Also, this implements
+        a correct check for a cycle that handles cases the code in isValidTarget did not.
+        (WebCore::SVGUseElement::isValidTarget): Deleted.
+        (WebCore::SVGUseElement::cloneTarget): Added. Helper function used both when
+        cloning the target of the top level <use> elements and for other <use> elements
+        inside the shadow tree.
+        (WebCore::cloneDataAndChildren): Added. Helper function that allows both the
+        <use> and <symbol> element expanding functions to be shorter and share more code.
+        (WebCore::SVGUseElement::expandUseElementsInShadowTree): Removed unneeded checks
+        of cachedDocumentIsStillLoading. Used the new findTarget function, which handles
+        finding the target cross-document correctly. Removed the incorrect use of
+        referencedDocument when creating new elements and finding targets. Refactored
+        to use the new cloneDataAndChildren function and also moved the code that removes
+        the special attributes here, replacing the transferAttributesToShadowTreeReplacement
+        function. Made a few other simplifications.
+        (WebCore::SVGUseElement::expandSymbolElementsInShadowTree): Ditto, just like the
+        <use> changes only simpler.
+        (WebCore::SVGUseElement::transferEventListenersToShadowTree): Made this const.
+        Removed unneeded assertions.
+        (WebCore::SVGUseElement::invalidateShadowTree): Updated for name change.
+        (WebCore::SVGUseElement::invalidateDependentShadowTrees): Removed assertion.
+        (WebCore::SVGUseElement::transferAttributesToShadowTreeReplacement): Deleted.
+        (WebCore::SVGUseElement::selfHasRelativeLengths): Tweaked names.
+        (WebCore::SVGUseElement::notifyFinished): Removed the inDocument check, since
+        this function will only be called for elements that are in a document.
+        (WebCore::SVGUseElement::cachedDocumentIsStillLoading): Deleted.
+        (WebCore::SVGUseElement::finishParsingChildren): Removed the code that calls
+        buildPendingResource here. Shadow tree updating is driven solely by renderer
+        generation now.
+        (WebCore::SVGUseElement::updateExternalDocument): Replaced setCachedDocument
+        with this. This function knows how to load a different document if the URL
+        has changed, or leave it alone if not, and also stop the load if it should.
+        (WebCore::SVGUseElement::isValid): Moved this here from the header, since it's
+        always being called virtually.
+        (WebCore::SVGUseElement::haveLoadedRequiredResources): Ditto.
+        (WebCore::SVGUseElement::setHaveFiredLoadEvent): Ditto.
+        (WebCore::SVGUseElement::haveFiredLoadEvent): Ditto.
+        (WebCore::SVGUseElement::svgLoadEventTimer): Ditto.
+
+        * svg/SVGUseElement.h: Removed unneeded include. Moved the animated properties
+        to the top of the class because they are public DOM API and so are logical to
+        list first. I'd like to do that for other classes too over time. Changed to
+        derive privately from CachedSVGDocumentClient. Made the function
+        invalidateDependentShadowTrees private. Removed didNotifySubtreeInsertions,
+        isSupportedAttribute, clearResourceReferences, buildShadowTree,
+        transferAttributesToShadowTreeReplacement, isParserInserted, and
+        m_wasInsertedByParser. Added updateExternalDocument, cloneTarget, targetClone,
+        updateShadowTree, and clearShadowTree. Also did a couple other renames,
+        including renaming m_cachedDocument to m_externalDocument.
+
+        * svg/svgtags.in: Removed constructorNeedsCreatedByParser from the <use>
+        element since we don't have to handle constructing by the parser specially.
+
+2015-02-11  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        CSS selector JIT compilation support for :lang()
+        https://bugs.webkit.org/show_bug.cgi?id=140818
+
+        Reviewed by Benjamin Poulain.
+
+        Add the JIT support for :lang(), to ensure :lang() no longer force the engine to
+        the slow path.
+
+        Test: fast/selectors/lang-chained-multiple.html
+
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::addPseudoClassType):
+        Get rid of the FunctionType::CannotCompile
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementMatching):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsInLanguage):
+
+2015-02-11  Alex Christensen  <achristensen@webkit.org>
+
+        Fix more weak external symbol errors.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        * page/make_settings.pl:
+        (printGetterAndSetter):
+        Remove some WEBCORE_EXPORT macros.
+
+2015-02-11  Alex Christensen  <achristensen@webkit.org>
+
+        Do not export functions defined in headers.
+        This prevents weak external symbol errors in some configurations.
+
+        * dom/Range.h:
+        (WebCore::Range::startContainer):
+        (WebCore::Range::startOffset):
+        (WebCore::Range::endContainer):
+        (WebCore::Range::endOffset):
+        * inspector/InspectorController.h:
+        * page/Settings.h:
+        (WebCore::Settings::setMediaKeysStorageDirectory):
+        * page/make_settings.pl:
+        (printGetterAndSetter):
+        * platform/network/cocoa/ProtectionSpaceCocoa.h:
+        (WebCore::ProtectionSpace::encodingRequiresPlatformData):
+        * platform/text/TextEncoding.h:
+        (WebCore::TextEncoding::decode):
+        Removed WEBCORE_EXPORT macros.
+
+2015-02-11  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add logging to validate the network cache efficacy (Part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=141345
+        <rdar://problem/19632080>
+
+        Reviewed by Sam Weinig.
+
+        Add a few more diagnostic logging keys for the network cache efficacy
+        logging.
+
+2015-02-11  Sam Weinig  <sam@webkit.org>
+
+        REGRESSION(r179166): Crash when accessing document.dir on a document with no elements
+        <rdar://problem/19804351>
+        https://bugs.webkit.org/show_bug.cgi?id=141480
+
+        Reviewed by Chris Dumez.
+
+        Test: fast/dom/document-dir-empty-document-crash.html
+
+        * html/HTMLDocument.cpp:
+        (WebCore::HTMLDocument::dir):
+        Don't unnecessarily dereference the documentElement. is<HTMLHtmlElement>() will handle null just fine.
+
+2015-02-11  Mark Rowe  <mrowe@apple.com>
+
+        <https://webkit.org/b/141492> extract-localizable-strings.pl shouldn't update the target file if the contents haven't changed
+
+        Avoid updating the target file if the contents haven't changed. This prevents Xcode from copying the identical
+        file into the framework and resigning it, which avoids the resulting relinking of all targets that depend on
+        the framework.
+
+        Reviewed by Dan Bernstein.
+
+        * extract-localizable-strings.pl: Write our output to a temporary file. If the output differs from the
+        existing contents of the target file, move the temporary file over the target file. Otherwise, delete
+        the temporary file.
+
+2015-02-11  Chris Dumez  <cdumez@apple.com>
+
+        Turn recent assertions into release assertions to help track down crash in DocumentLoader::stopLoadingForPolicyChange()
+        https://bugs.webkit.org/show_bug.cgi?id=141484
+        <rdar://problem/13811738>
+
+        Reviewed by Andy Estes.
+
+        Turn recent assertions into release assertions to help track down crash in
+        DocumentLoader::stopLoadingForPolicyChange(). This should increase the
+        likelyhood of tripping them so that we better understand why this happens.
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::~DocumentLoader):
+        (WebCore::DocumentLoader::detachFromFrame):
+
+2015-02-11  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] SampleMap::addRange() returns an inverted iterator_range, possibly causing a crash when that iterator_range is traversed.
+        https://bugs.webkit.org/show_bug.cgi?id=141479
+        rdar://problem/19067597
+
+        Reviewed by Chris Dumez.
+
+        When looking backwards through a presentationOrder map to find samples, we then reverse our iterators
+        and put them in an iterator_range to return to the caller. But in addition to reversing the iterators
+        themselves, we also need to put them in the iterator_range in reverse order, so that when the caller
+        iterates from iterator_range.first -> iterator_range.second, they don't end up off the end of the
+        the underlying storage.
+
+        * Modules/mediasource/SampleMap.cpp:
+        (WebCore::PresentationOrderSampleMap::findSamplesWithinPresentationRangeFromEnd):
+
+2015-02-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the showFrameTree() output slightly
+        https://bugs.webkit.org/show_bug.cgi?id=141482
+
+        Reviewed by Zalan Bujtas.
+
+        Have showFrameTree() show the Frame's RenderView so it can be correlated with
+        layer dumps, and show styleRecalc and needsLayout state.
+
+        * page/FrameTree.cpp:
+        (printFrames):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::updateLayoutAndStyleIfNeededRecursive): Add an explanatory
+        comment about why we don't walk the Frame tree.
+
+2015-02-11  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using WebCore.exp.in on Mac and iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=141413
+
+        Reviewed by Dan Bates.
+
+        * Configurations/Base.xcconfig:
+        Make symbols hidden by default unless exported by WEBCORE_EXPORT macros.
+        * platform/PlatformExportMacros.h:
+        Start using WEBCORE_EXPORT on Mac and iOS (but not Windows yet).
+
+2015-02-11  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        Div having contentEditable and display:flex cannot be edited if it is empty.
+        https://bugs.webkit.org/show_bug.cgi?id=141218
+
+        Reviewed by Ryosuke Niwa.
+
+        RenderFlexibleBox should be treated as a candidate for visible position. Visible selection
+        in an editable area is recalculated whenever an inner value of div is changed. If the inner value
+        is empty, the visible selection recalculated with DeleteSelectionCommand::m_endingPostion
+        is not correct. Because RenderBlockFlow is only considered but not RenderFlexibleBox
+        in Position::isCandidate so that a calculated ending VisiblePosition for an editable div
+        having "display : flex" goes weird and VisibleSelection is empty accordingly.
+
+        Test: fast/events/key-events-in-editable-flexbox.html
+
+        * dom/Position.cpp:
+        (WebCore::Position::isCandidate):
+
+2015-02-11  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        Activate ReliefLogger of a memory pressure handler for linux system.
+        https://bugs.webkit.org/show_bug.cgi?id=123611
+
+        Reviewed by Anders Carlsson.
+
+        Put more logs for the time when a system goes under memory pressure or viceversa.
+
+        No new tests since no engine behavior changed.
+
+        * platform/linux/MemoryPressureHandlerLinux.cpp:
+        (WebCore::MemoryPressureHandler::waitForMemoryPressureEvent): Wait a memory pressure event
+        from cgroup in a seperated thread. Once a pressure event happens, respondToMemoryPressure()
+        would be called to get back some resources.
+        (WebCore::MemoryPressureHandler::install): Install memoryPressureHandler module
+        to make it work.
+
+2015-02-11  Alex Christensen  <achristensen@webkit.org>
+
+        Final preparations to switch to WEBCORE_EXPORT.
+
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.h:
+        Export the vtable and a function.
+
+2015-02-11  Sam Weinig  <sam@webkit.org>
+
+        performance.now can crash if accessed from a window that has navigated
+        <rdar://problem/16892506>
+        https://bugs.webkit.org/show_bug.cgi?id=141478
+
+        Reviewed by Alexey Proskuryakov.
+
+        Test: fast/performance/performance-now-crash-on-navigated-window.html
+
+        * page/Performance.cpp:
+        (WebCore::Performance::now):
+        Check for a null frame, which can happen when the window has been navigated.
+
+2015-02-10  Alexey Proskuryakov  <ap@apple.com>
+
+        URL::setUser and URL::setPass don't percent encode
+        https://bugs.webkit.org/show_bug.cgi?id=141453
+        rdar://problem/14844503&16551802&19623145
+
+        Reviewed by Darin Adler.
+
+        Tests: fast/url/url-credentials-escaping.html
+               http/tests/xmlhttprequest/basic-auth-credentials-escaping.html
+
+        Start adding some code that performs escaping in a way that matches the URL Standard.
+        Right now, it's only used where we failed to do any escaping at all, and over time,
+        we'll be moving towards a new implementation.
+
+        * html/URLUtils.h:
+        (WebCore::URLUtils<T>::username):
+        (WebCore::URLUtils<T>::password):
+        * platform/URL.cpp:
+        (WebCore::isSchemeFirstChar):
+        (WebCore::URL::user):
+        (WebCore::URL::pass):
+        (WebCore::URL::encodedUser):
+        (WebCore::URL::encodedPass):
+        (WebCore::URL::setUser):
+        (WebCore::URL::setPass):
+        (WebCore::encodeWithURLEscapeSequences):
+        * platform/URL.h:
+
+2015-02-11  Alex Christensen  <achristensen@webkit.org>
+
+        Add a few more WEBCORE_EXPORT macros for debug and iOS builds.
+
+        * page/EventHandler.h:
+        * page/ios/WebEventRegion.h:
+        * platform/sql/SQLiteDatabaseTracker.h:
+
+2015-02-11  Darin Adler  <darin@apple.com>
+
+        REGRESSION(r179476): It broke the !ENABLE(PICTURE_SIZES) build
+        https://bugs.webkit.org/show_bug.cgi?id=141327
+
+        Reviewed by Csaba Osztrogonác.
+
+        * html/parser/HTMLPreloadScanner.cpp:
+        (WebCore::TokenPreloadScanner::StartTagScanner::processAttributes):
+        Put #if around use of m_sizesAttribute.
+
+2015-02-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179921.
+        https://bugs.webkit.org/show_bug.cgi?id=141473
+
+        caused about 30 test failures on yosemite and mavericks
+        (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Div having contentEditable and display:flex cannot be edited
+        if it is empty."
+        https://bugs.webkit.org/show_bug.cgi?id=141218
+        http://trac.webkit.org/changeset/179921
+
+2015-02-11  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        Div having contentEditable and display:flex cannot be edited if it is empty.
+        https://bugs.webkit.org/show_bug.cgi?id=141218
+
+        Reviewed by Ryosuke Niwa.
+
+        RenderFlexibleBox should be treated as a candidate for visible position. Visible selection
+        in an editable area is recalculated whenever an inner value of div is changed. If the inner value
+        is empty, the visible selection recalculated with DeleteSelectionCommand::m_endingPostion
+        is not correct. Because RenderBlockFlow is only considered but not RenderFlexibleBox
+        in Position::isCandidate so that a calculated ending VisiblePosition for an editable div
+        having "display : flex" goes weird and VisibleSelection is empty accordingly.
+
+        Test: fast/events/key-events-in-editable-flexbox.html
+
+        * dom/Position.cpp:
+        (WebCore::Position::isCandidate):
+
+2015-02-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179910.
+        https://bugs.webkit.org/show_bug.cgi?id=141464
+
+        Caused assertions on debug bots (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[WK2] Add logging to validate the network cache efficacy
+        (Part 2)"
+        https://bugs.webkit.org/show_bug.cgi?id=141345
+        http://trac.webkit.org/changeset/179910
+
+2015-02-10  Chris Dumez  <cdumez@apple.com>
+
+        Optimize MutableStyleProperties::removePropertiesInSet()
+        https://bugs.webkit.org/show_bug.cgi?id=141460
+
+        Reviewed by Andreas Kling.
+
+        Optimize MutableStyleProperties::removePropertiesInSet() by doing an
+        in-place removal of the vector properties, using the new and efficient
+        Vector::removalAllMatching().
+
+        I see a ~11% speed-up on CSS/CSSPropertySetterGetter.html performance
+        test.
+
+        This change was inspired by the following Blink revision:
+        https://src.chromium.org/viewvc/blink?view=rev&revision=189387
+
+        Test: PerformanceTests/CSS/CSSPropertySetterGetter.html
+
+        * css/StyleProperties.cpp:
+        (WebCore::MutableStyleProperties::removePropertiesInSet):
+
+2015-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Fix debug build after r179807.
+        https://bugs.webkit.org/show_bug.cgi?id=141461
+
+        Reviewed by Benjamin Poulain.
+
+        * dom/TypedElementDescendantIterator.h:
+        Explicitly call Iterator constructor to reduce complexity when iterating descendantsOfType.
+
+2015-02-10  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add logging to validate the network cache efficacy (Part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=141345
+
+        Reviewed by Antti Koivisto.
+
+        Add a few more diagnostic logging keys for the network cache efficacy
+        logging.
+
+2015-02-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179896.
+        https://bugs.webkit.org/show_bug.cgi?id=141452
+
+        broke linking debug builds (Requested by thorton on #webkit).
+
+        Reverted changeset:
+
+        "Stop using WebCore.exp.in on Mac and iOS."
+        https://bugs.webkit.org/show_bug.cgi?id=141413
+        http://trac.webkit.org/changeset/179896
+
+2015-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix bindings tests after r179886.
+
+        * bindings/scripts/test/ObjC/DOMFloat64Array.h:
+        * bindings/scripts/test/ObjC/DOMTestActiveDOMObject.h:
+        * bindings/scripts/test/ObjC/DOMTestCallback.h:
+        * bindings/scripts/test/ObjC/DOMTestCustomNamedGetter.h:
+        * bindings/scripts/test/ObjC/DOMTestEventConstructor.h:
+        * bindings/scripts/test/ObjC/DOMTestEventTarget.h:
+        * bindings/scripts/test/ObjC/DOMTestException.h:
+        * bindings/scripts/test/ObjC/DOMTestGenerateIsReachable.h:
+        * bindings/scripts/test/ObjC/DOMTestInterface.h:
+        * bindings/scripts/test/ObjC/DOMTestMediaQueryListListener.h:
+        * bindings/scripts/test/ObjC/DOMTestNamedConstructor.h:
+        * bindings/scripts/test/ObjC/DOMTestNode.h:
+        * bindings/scripts/test/ObjC/DOMTestNondeterministic.h:
+        * bindings/scripts/test/ObjC/DOMTestObj.h:
+        * bindings/scripts/test/ObjC/DOMTestOverloadedConstructors.h:
+        * bindings/scripts/test/ObjC/DOMTestSerializedScriptValueInterface.h:
+        * bindings/scripts/test/ObjC/DOMTestTypedefs.h:
+        * bindings/scripts/test/ObjC/DOMattribute.h:
+        * bindings/scripts/test/ObjC/DOMreadonly.h:
+
+2015-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using WebCore.exp.in on Mac and iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=141413
+
+        Reviewed by Dan Bates.
+
+        * Configurations/Base.xcconfig:
+        Make symbols hidden by default unless exported by WEBCORE_EXPORT macros.
+        * platform/PlatformExportMacros.h:
+        Start using WEBCORE_EXPORT on Mac and iOS (but not Windows yet).
+
+2015-02-10  Chris Dumez  <cdumez@apple.com>
+
+        Add another assertion to help track down crash in DocumentLoader::stopLoadingForPolicyChange()
+        https://bugs.webkit.org/show_bug.cgi?id=141447
+        <rdar://problem/13811738>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add another assertion to help track down crash in
+        DocumentLoader::stopLoadingForPolicyChange().
+
+        The trace seems to hint that frameLoader() returns null when
+        stopLoadingForPolicyChange() is called. frameLoader() can only return
+        null after DocumentLoader::detachFromFrame() has been called.
+        Also, stopLoadingForPolicyChange() here is called from the
+        DocumentLoader::continueAfterContentPolicy() policy callback which
+        requires m_waitingForContentPolicy to be true. Therefore, we should
+        assert that m_waitingForContentPolicy is false when m_frame is cleared
+        in DocumentLoader::detachFromFrame().
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::detachFromFrame):
+
+2015-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using WebCore.exp.in on Mac and iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=141413
+
+        Reviewed by Dan Bates.
+
+        * Configurations/Base.xcconfig:
+        Make symbols hidden by default unless exported by WEBCORE_EXPORT macros.
+        * platform/PlatformExportMacros.h:
+        Start using WEBCORE_EXPORT on Mac and iOS (but not Windows yet).
+
+2015-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Add more WEBCORE_EXPORT macros for iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=141430
+
+        Reviewed by Tim Horton.
+
+        * bindings/objc/WebScriptObject.h:
+        * bindings/scripts/CodeGeneratorObjC.pm:
+        (GenerateHeader):
+        * dom/Event.h:
+        * dom/Node.h:
+        * editing/FrameSelection.h:
+        * html/HTMLFormControlElement.h:
+        * html/HTMLMediaSession.h:
+        * page/Frame.h:
+        * page/FrameView.h:
+        * platform/ScrollView.h:
+        * platform/ios/PasteboardIOS.mm:
+        * platform/ios/wak/WAKAppKitStubs.h:
+        * platform/ios/wak/WAKClipView.h:
+        * platform/ios/wak/WAKScrollView.h:
+        * platform/ios/wak/WAKView.h:
+        * platform/ios/wak/WAKWindow.h:
+        * platform/ios/wak/WAKWindow.mm:
+        * platform/ios/wak/WKContentObservation.h:
+        * platform/ios/wak/WKGraphics.h:
+        * platform/ios/wak/WebCoreThread.h:
+        * platform/ios/wak/WebCoreThread.mm:
+        * platform/ios/wak/WebCoreThreadRun.h:
+        * platform/ios/wak/WebCoreThreadSystemInterface.h:
+        * platform/network/ios/QuickLook.h:
+        * platform/text/TextBreakIterator.h:
+
+2015-02-09  David Hyatt  <hyatt@apple.com>
+
+        text-underline-position: under is broken
+        https://bugs.webkit.org/show_bug.cgi?id=141400
+        <rdar://problem/18569583>
+
+        Reviewed by Simon Fraser.
+
+        Added fast/text/text-underline-position-under.html
+
+        * rendering/InlineFlowBox.cpp:
+        (WebCore::InlineFlowBox::computeMaxLogicalBottom):
+        (WebCore::InlineFlowBox::computeMaxLogicalTop): Deleted.
+        * rendering/InlineFlowBox.h:
+        Switch to using the bottom to compute the offset. Using the top is incorrect, since
+        the heights of boxes can vary.
+
+        Fix a bug where the y() of the box was being used instead of the logical value, making the result
+        wrong for vertical text.
+
+        * rendering/RootInlineBox.cpp:
+        (WebCore::RootInlineBox::maxLogicalBottom):
+        (WebCore::RootInlineBox::maxLogicalTop): Deleted.
+        Switch to using the bottom instead of the top. Make sure the root box contributes its own bottom,
+        since the old code just ignored the root's placement.
+
+        * rendering/RootInlineBox.h:
+        * style/InlineTextBoxStyle.cpp:
+        (WebCore::computeUnderlineOffset):
+        Call the bottom function now instead of the top.
+
+2015-02-10  Chris Dumez  <cdumez@apple.com>
+
+        Add assertion to help track down WebCore::DocumentLoader::stopLoadingForPolicyChange() crash
+        https://bugs.webkit.org/show_bug.cgi?id=141441
+        <rdar://problem/13811738>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add assertion to help track down a crash in
+        WebCore::DocumentLoader::stopLoadingForPolicyChange().
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::~DocumentLoader):
+        Make sure the DocumentLoader is not waiting for a content policy
+        response when it is destroyed. If this were to happen, then the
+        lambda function passed to PolicyChecker::checkContentPolicy()
+        would outlive the DocumentLoader. This is an issue because
+        that lambda function captures [this], which is the DocumentLoader.
+        This would cause DocumentLoader::continueAfterContentPolicy() to
+        be called after the DocumentLoader has been destroyed, which would
+        explain the crash.
+
+2015-02-07  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r168046): Crash in WebCore::InlineBox::renderer / WebCore::RenderFlowThread::checkLinesConsistency
+        https://bugs.webkit.org/show_bug.cgi?id=133462
+
+        Reviewed by David Hyatt.
+
+        RenderFlowThread::m_lineToRegionMap stores pointers to the root inlineboxes in the block flow.
+        Normally root inlineboxes remove themselves from this map in their dtors. However when collapsing an anonymous block,
+        we detach the inline tree first and destroy them after. The detached root boxes can't access
+        the flowthread containing block and we end up with dangling pointers in this map.
+        Call removeFlowChildInfo() before detaching the subtree to ensure proper pointer removal.
+
+        Test: fast/multicol/newmulticol/crash-when-switching-to-floating.html
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::collapseAnonymousBoxChild):
+
+2015-02-10  Julien Isorce  <j.isorce@samsung.com>
+
+        Render: properly update body's background image
+        https://bugs.webkit.org/show_bug.cgi?id=140183
+
+        When HTML and BODY renderers are both composited the
+        skipBodyBackground condition should also take into account
+        if the HTML's layer can draw its contents.
+
+        Reviewed by Darin Adler.
+
+        Test: animations/animation-background-image.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::skipBodyBackground): Do not skip
+        if document's layer cannot draw its content.
+        Previously both body and html did not paint the background
+        when they are both composited.
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::contentChanged): Also redisplay
+        the content.
+
+2015-02-10  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] don't get out of sync when interrupt/resume calls are not balanced
+        https://bugs.webkit.org/show_bug.cgi?id=141310
+
+        Reviewed by Jer Noble.
+
+        No new tests, updated media/video-interruption-with-resume-allowing-play.html.
+
+        * platform/audio/MediaSession.cpp:
+        (WebCore::MediaSession::beginInterruption): Count interruptions.
+        (WebCore::MediaSession::endInterruption): Ignore calls when m_interruptionCount is already zero.
+        * platform/audio/MediaSession.h:
+
+2015-02-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] GMutexLocker build issue
+        https://bugs.webkit.org/show_bug.cgi?id=141381
+
+        Reviewed by Žan Doberšek.
+
+        Use always WTF::GMutexLocker because newer glib versions have a
+        GMutexLocker in the public API.
+
+        * platform/audio/gstreamer/AudioSourceProviderGStreamer.cpp:
+        (WebCore::AudioSourceProviderGStreamer::provideInput):
+        (WebCore::AudioSourceProviderGStreamer::handleAudioBuffer):
+        (WebCore::AudioSourceProviderGStreamer::clearAdapters):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::naturalSize):
+        (WebCore::MediaPlayerPrivateGStreamerBase::updateTexture):
+        (WebCore::MediaPlayerPrivateGStreamerBase::triggerRepaint):
+        (WebCore::MediaPlayerPrivateGStreamerBase::paint):
+        * platform/graphics/gstreamer/VideoSinkGStreamer.cpp:
+        (webkitVideoSinkTimeoutCallback):
+        (webkitVideoSinkRender):
+        (unlockSampleMutex):
+        (webkitVideoSinkUnlockStop):
+        (webkitVideoSinkStart):
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webKitWebSrcGetProperty):
+        (webKitWebSrcStop):
+        (webKitWebSrcStart):
+        (webKitWebSrcChangeState):
+        (webKitWebSrcQueryWithParent):
+        (webKitWebSrcGetUri):
+        (webKitWebSrcSetUri):
+        (webKitWebSrcNeedDataMainCb):
+        (webKitWebSrcNeedDataCb):
+        (webKitWebSrcEnoughDataMainCb):
+        (webKitWebSrcEnoughDataCb):
+        (webKitWebSrcSeekDataCb):
+        (webKitWebSrcSetMediaPlayer):
+        (StreamingClient::createReadBuffer):
+        (StreamingClient::handleResponseReceived):
+        (StreamingClient::handleDataReceived):
+        (StreamingClient::handleNotifyFinished):
+        (ResourceHandleStreamingClient::wasBlocked):
+        (ResourceHandleStreamingClient::cannotShowURL):
+
+2015-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Update WEBCORE_EXPORT to prepare to start using it.
+        https://bugs.webkit.org/show_bug.cgi?id=141409
+
+        Reviewed by Tim Horton.
+
+        * bindings/js/JSDOMGlobalObject.h:
+        * bindings/objc/DOMInternal.h:
+        * bindings/objc/ExceptionHandlers.mm:
+        * bindings/objc/WebScriptObjectPrivate.h:
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.h:
+        * bindings/scripts/test/JS/JSTestCustomNamedGetter.h:
+        * bindings/scripts/test/JS/JSTestEventConstructor.h:
+        * bindings/scripts/test/JS/JSTestEventTarget.h:
+        * bindings/scripts/test/JS/JSTestException.h:
+        * bindings/scripts/test/JS/JSTestGenerateIsReachable.h:
+        * bindings/scripts/test/JS/JSTestInterface.h:
+        * bindings/scripts/test/JS/JSTestMediaQueryListListener.h:
+        * bindings/scripts/test/JS/JSTestNamedConstructor.h:
+        * bindings/scripts/test/JS/JSTestNondeterministic.h:
+        * bindings/scripts/test/JS/JSTestObj.h:
+        * bindings/scripts/test/JS/JSTestOverloadedConstructors.h:
+        * bindings/scripts/test/JS/JSTestSerializedScriptValueInterface.h:
+        * bindings/scripts/test/JS/JSTestTypedefs.h:
+        * bindings/scripts/test/JS/JSattribute.h:
+        * bindings/scripts/test/JS/JSreadonly.h:
+        * css/StyleProperties.h:
+        * dom/DeviceMotionData.h:
+        * dom/Node.h:
+        * dom/Position.h:
+        * dom/ScriptExecutionContext.h:
+        * editing/Editor.h:
+        * editing/htmlediting.h:
+        * html/HTMLInputElement.h:
+        * html/TimeRanges.h:
+        * loader/FrameLoader.h:
+        * loader/cache/CacheValidation.h:
+        * loader/cache/MemoryCache.h:
+        * loader/icon/IconDatabase.h:
+        * page/DatabaseProvider.h:
+        * page/DiagnosticLoggingKeys.h:
+        * page/EventHandler.h:
+        * page/FrameSnapshotting.h:
+        * page/MainFrame.h:
+        * page/PageConsoleClient.h:
+        * page/PageOverlay.h:
+        * platform/CrossThreadCopier.h:
+        * platform/FileSystem.h:
+        * platform/PlatformSpeechSynthesizer.h:
+        * platform/RemoteCommandListener.h:
+        * platform/RuntimeApplicationChecks.h:
+        * platform/graphics/Font.h:
+        * platform/graphics/FontCache.h:
+        * platform/graphics/FontGlyphs.h:
+        * platform/graphics/FontRanges.h:
+        * platform/graphics/GeometryUtilities.h:
+        * platform/graphics/GlyphPage.h:
+        * platform/graphics/Region.h:
+        * platform/graphics/ca/PlatformCALayer.h:
+        * platform/graphics/ca/TileController.h:
+        * platform/graphics/transforms/TransformationMatrix.h:
+        * platform/mac/WebCoreFullScreenWarningView.h:
+        * platform/network/BlobDataFileReference.h:
+        * platform/network/ResourceRequestBase.h:
+        * platform/network/ResourceResponseBase.h:
+        * platform/network/create-http-header-name-table:
+        * platform/network/mac/WebCoreURLResponse.h:
+        * platform/sql/SQLiteDatabaseTracker.h:
+        * platform/sql/SQLiteStatement.h:
+        * rendering/HitTestLocation.h:
+        * rendering/HitTestResult.h:
+        * storage/StorageEventDispatcher.h:
+        Added WEBCORE_EXPORT macros.
+
+2015-02-09  Chris Dumez  <cdumez@apple.com>
+
+        Check for self-assignment in Length::operator=(const Length&)
+        https://bugs.webkit.org/show_bug.cgi?id=141402
+
+        Reviewed by Andreas Kling.
+
+        Check for self-assignment in Length::operator=(const Length&) as
+        calling memcpy() with the same source and destination addresses has
+        undefined behavior.
+
+        * platform/Length.h:
+        (WebCore::Length::operator=):
+
+2015-02-09  Roger Fong  <roger_fong@apple.com>
+
+        WebGL: Update 1.0.2 conformance layout tests and address new failure.
+        https://bugs.webkit.org/show_bug.cgi?id=141408.
+        <rdar://problem/19773236>
+
+        Reviewed by Dean Jackson.
+
+        Tests covered by updated 1.0.2 conformance tests.
+
+        * html/canvas/WebGLRenderingContextBase.cpp: 
+        Return null string instead of empty string if parameter validation fails.
+        (WebCore::WebGLRenderingContextBase::getProgramInfoLog):
+        (WebCore::WebGLRenderingContextBase::getShaderInfoLog):
+        (WebCore::WebGLRenderingContextBase::getShaderSource):
+
+2015-02-09  Timothy Horton  <timothy_horton@apple.com>
+
+        Avoid using a HashMap for DisplayRefreshMonitorManager, which rarely has more than one item
+        https://bugs.webkit.org/show_bug.cgi?id=141353
+
+        Reviewed by Anders Carlsson.
+
+        No new tests, because there's no behavior change.
+
+        * platform/graphics/DisplayRefreshMonitorManager.cpp:
+        (WebCore::DisplayRefreshMonitorManager::ensureMonitorForClient):
+        (WebCore::DisplayRefreshMonitorManager::unregisterClient):
+        (WebCore::DisplayRefreshMonitorManager::displayDidRefresh):
+        * platform/graphics/DisplayRefreshMonitorManager.h:
+        Use a Vector of RefPtr<DisplayRefreshMonitor> instead of a HashMap
+        from uint64_t to RefPtr<DisplayRefreshMonitor>. There's usually only one
+        display, so there's usually only one DisplayRefreshMonitor. Linear search
+        on the Vector will be faster than the hash lookup in all conceivable cases.
+        This also avoids the situation mentioned in the comments in DisplayRefreshMonitorManager.h
+        where we don't know enough about PlatformDisplayID to safely hash it.
+
+2015-02-09  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Disable the currentTime estimation code in HTMLMediaElement for Yosemite+
+        https://bugs.webkit.org/show_bug.cgi?id=141399
+
+        Reviewed by Eric Carlson.
+
+        Apparenty -[AVPlayer rate] means different things for HLS and progressive content; for progressive,
+        the -rate is the actual rate of playback. For HLS, the -rate is the requested rate, and will return
+        the requested value even if time is not progressing.
+
+        We added the currentTime estimation engine because asking AVFoundation for its -currentTime used to
+        be expensive, but we've been assured that in recent iOS and OS X releases, -currentTime should be
+        very fast. That, in combination with the HLS behavior of -rate and how it breaks the currentTime
+        estimation, means we should probably turn it off for iOS and Yosemite.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.h:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::maximumDurationToCacheMediaTime): Move implementation to .mm.
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::maximumDurationToCacheMediaTime): Disable on iOS and >=10.10.
+
+2015-02-07  Roger Fong  <roger_fong@apple.com>
+
+        WebGL 2: Texture call format, internal format, and type validation.
+        https://bugs.webkit.org/show_bug.cgi?id=141318.
+        <rdar://problem/19733828>
+
+        Reviewed by Brent Fulgham.
+
+        Tests will be covered by WebGL2 conformance tests.
+
+        * html/canvas/WebGL2RenderingContext.cpp:
+        (WebCore::WebGL2RenderingContext::getFramebufferAttachmentParameter): Add missing ExceptionCode argument.
+        (WebCore::WebGL2RenderingContext::copyTexImage2D): Validate texture formats based on GLES3 spec.
+        (WebCore::WebGL2RenderingContext::texSubImage2DBase): Validate using internal format from texture target.
+        (WebCore::WebGL2RenderingContext::texSubImage2DImpl): Validate using internal format from texture target.
+        (WebCore::WebGL2RenderingContext::texSubImage2D): Validate using internal format from texture target.
+        (WebCore::WebGL2RenderingContext::validateTexFuncParameters): Do extra validation for copyTexImage2D.
+        (WebCore::WebGL2RenderingContext::validateTexFuncFormatAndType): Validate internal format, format and type combination.
+        (WebCore::WebGL2RenderingContext::validateTexFuncData): Validate new data types.
+        This method now accepts an internal format argument.
+        (WebCore::WebGL2RenderingContext::baseInternalFormatFromInternalFormat):
+        Helper method to convert internal format to base internal format.
+        * html/canvas/WebGL2RenderingContext.h:
+
+        * html/canvas/WebGLRenderingContext.cpp:
+        (WebCore::WebGLRenderingContext::copyTexImage2D): Moved from WebGLRenderingContextBase.
+        (WebCore::WebGLRenderingContext::texSubImage2DBase): Ditto.
+        (WebCore::WebGLRenderingContext::texSubImage2DImpl): Ditto.
+        (WebCore::WebGLRenderingContext::texSubImage2D): Ditto.
+        (WebCore::WebGLRenderingContext::validateTexFuncParameters): Ditto.
+        (WebCore::WebGLRenderingContext::validateTexFuncFormatAndType): Ditto.
+        (WebCore::WebGLRenderingContext::validateTexFuncData): Ditto.
+        * html/canvas/WebGLRenderingContext.h:
+
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::texImage2DBase):
+        (WebCore::WebGLRenderingContextBase::validateTexFunc):
+        (WebCore::WebGLRenderingContextBase::texImage2D):
+        (WebCore::WebGLRenderingContextBase::copyTexImage2D): Deleted.
+        (WebCore::WebGLRenderingContextBase::texSubImage2DBase): Deleted.
+        (WebCore::WebGLRenderingContextBase::texSubImage2DImpl): Deleted.
+        (WebCore::WebGLRenderingContextBase::texSubImage2D): Deleted.
+        (WebCore::WebGLRenderingContextBase::validateTexFuncFormatAndType): Deleted.
+        (WebCore::WebGLRenderingContextBase::validateTexFuncParameters): Deleted.
+        (WebCore::WebGLRenderingContextBase::validateTexFuncData): Deleted.
+        * html/canvas/WebGLRenderingContextBase.h: Modify validation type enums to differentiate between CopyImage, TexImage and TexSubImage calls.
+        (WebCore::ScopedDrawingBufferBinder::ScopedDrawingBufferBinder):  Moved from WebGLRenderingContextBase.
+        (WebCore::ScopedDrawingBufferBinder::~ScopedDrawingBufferBinder): Ditto.
+        (WebCore::clip1D): Ditto.
+        (WebCore::clip2D): Ditto.
+        * platform/graphics/GraphicsContext3D.h: Rename a typo'ed enum.
+
+2015-02-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179494.
+        https://bugs.webkit.org/show_bug.cgi?id=141395
+
+        Caused slowdown in a WebKit client test scenario (Requested by
+        kling on #webkit).
+
+        Reverted changeset:
+
+        "[Cocoa] Make decoded image data purgeable ASAP."
+        https://bugs.webkit.org/show_bug.cgi?id=140298
+        http://trac.webkit.org/changeset/179494
+
+2015-02-09  Jer Noble  <jer.noble@apple.com>
+
+        [WebAudio] AudioBufferSourceNodes should accurately play backwards if given a negative playbackRate.
+        https://bugs.webkit.org/show_bug.cgi?id=140955
+
+        Reviewed by Eric Carlson.
+
+        Tests: webaudio/audiobuffersource-negative-playbackrate-interpolated.html
+               webaudio/audiobuffersource-negative-playbackrate.html
+
+        Add support for playing an AudioBufferSourceNode at a negative playbackRate. Change the meaning of
+        start() to set the initial playback position at the end of the play range if the rate of playback
+        is negtive.
+
+        * Modules/webaudio/AudioBufferSourceNode.cpp:
+        (WebCore::AudioBufferSourceNode::AudioBufferSourceNode): Allow the playbackRate AudioParam to range from [-32, 32].
+        (WebCore::AudioBufferSourceNode::renderFromBuffer): Change variable names from "start" and "end" to "min" and "max"
+            for clarity. Add a non-interpolated and interpolated render step for negative playback.
+        (WebCore::AudioBufferSourceNode::start): Drive-by fix: default value of grainDuration is not 0.02.
+        (WebCore::AudioBufferSourceNode::startPlaying): Start playing at the end of the buffer for negative playback.
+        (WebCore::AudioBufferSourceNode::totalPitchRate): Allow the pitch to be negative.
+
+2015-02-09  Darin Adler  <darin@apple.com>
+
+        Try to fix build on platforms that use SVG "all in one" file (Windows).
+
+        * svg/SVGAElement.cpp: Don't do "using namespace HTMLNames;" outside of
+        function boundaries, because that will be inherited by other files.
+        (WebCore::SVGAElement::isURLAttribute): Use XLinkNames directly here
+        instead of using HTMLNames implicitly.
+
+        * svg/SVGElement.cpp: Don't do "using namespace HTMLNames;" outside of
+        function boundaries, because that will be inherited by other files.
+        (WebCore::populateAttributeNameToCSSPropertyIDMap): Instead do it in here.
+        (WebCore::populateAttributeNameToAnimatedPropertyTypeMap): And here.
+        (WebCore::populateCSSPropertyWithSVGDOMNameToAnimatedPropertyTypeMap): And here.
+        (WebCore::SVGElement::parseAttribute): And use HTMLNames directly here
+        instead of implicitly.
+
+2015-02-09  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] exit from fullscreen when player view controller calls delegate
+        https://bugs.webkit.org/show_bug.cgi?id=141350
+
+        Reviewed by Jer Noble.
+
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        (-[WebAVPlayerController playerViewControllerWillCancelOptimizedFullscree:]): New, ask delegate
+            to exit from fullscreen.
+
+2015-02-06  Sergio Villar Senin  <svillar@igalia.com>
+
+        ASSERTION FAILED: resolvedInitialPosition <= resolvedFinalPosition in WebCore::GridSpan::GridSpan
+        https://bugs.webkit.org/show_bug.cgi?id=141328
+
+        Reviewed by Darin Adler.
+
+        Whenever
+        GridResolvedPosition::resolveGridPositionsFromAutoPlacementPosition()
+        was trying to place an item with span, it was completely ignoring
+        the resolvedInitialPosition returned by
+        GridResolvedPosition::resolveGridPositionAgainstOppositePosition()
+        and only using the finalResolvedPosition. This works with an
+        unlimited grid which can indefinitely grow. But if the item spans
+        over the grid track limits, then it might happen that the final
+        resolved position is placed before the initial resolved position,
+        something that is forbidden.
+
+        The solution is to directly use the GridSpan returned by
+        GridResolvedPosition::resolveGridPositionAgainstOppositePosition(), if the item
+        does not surpass the track limits then the returned initialResolvedPosition
+        is identical to the provided one, otherwise it's properly corrected to respect
+        track boundaries.
+
+        * rendering/style/GridResolvedPosition.cpp:
+        (WebCore::GridResolvedPosition::resolveGridPositionsFromAutoPlacementPosition):
+
+2015-01-22  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Tracks' growth limits must be >= base sizes
+        https://bugs.webkit.org/show_bug.cgi?id=140540
+
+        Reviewed by Antti Koivisto.
+
+        The track sizing algorithm is supposed to avoid those situations
+        but they easily (specially when we mix absolute lengths and
+        intrinsic lengths in min and max track sizing functions) and
+        frequently appear. In those cases the outcome from the algorithm
+        is wrong, tracks are not correctly sized.
+
+        In order to fulfill the restriction, m_usedBreadth and
+        m_maxBreadth are now private members of GridTrack and the class
+        now provides a couple of methods to modify them respecting the
+        growthLimit >= baseSize precondition.
+
+        Apart from that, the members and methods of GridTrack were also
+        renamed to match the ones used in the recent algorithm rewrite:
+        usedBreadth became baseSize and maxBreadth is now growthLimit.
+
+        Although the algorithm was not modified at all, this change
+        detected and fixed several invalid results (tracks and/or grids
+        bigger than expected).
+
+        * rendering/RenderGrid.cpp:
+        (WebCore::GridTrack::GridTrack): Renamed fields and methods. Added
+        assertions.
+        (WebCore::GridTrack::baseSize): Renamed from usedBreadth.
+        (WebCore::GridTrack::growthLimit): Renamed from maxBreadth.
+        (WebCore::GridTrack::setBaseSize):
+        (WebCore::GridTrack::setGrowthLimit):
+        (WebCore::GridTrack::growBaseSize): Renamed from growUsedBreadth.
+        (WebCore::GridTrack::growGrowthLimit): Renamed from growMaxBreadth.
+        (WebCore::GridTrack::growthLimitIsInfinite): New helper method.
+        (WebCore::GridTrack::growthLimitIfNotInfinite): Renamed from
+        maxBreadthIfNotInfinite.
+        (WebCore::GridTrack::isGrowthLimitBiggerThanBaseSize): New helper
+        method to verify ASSERTs are true.
+        (WebCore::GridTrack::ensureGrowthLimitIsBiggerThanBaseSize): Ditto.
+        (WebCore::GridTrackForNormalization::GridTrackForNormalization):
+        (WebCore::RenderGrid::computeIntrinsicLogicalWidths):
+        (WebCore::RenderGrid::computeUsedBreadthOfGridTracks):
+        (WebCore::RenderGrid::computeNormalizedFractionBreadth):
+        (WebCore::RenderGrid::resolveContentBasedTrackSizingFunctions):
+        (WebCore::sortByGridTrackGrowthPotential):
+        (WebCore::RenderGrid::distributeSpaceToTracks):
+        (WebCore::RenderGrid::tracksAreWiderThanMinTrackBreadth):
+        (WebCore::RenderGrid::layoutGridItems):
+        (WebCore::RenderGrid::gridAreaBreadthForChild):
+        (WebCore::RenderGrid::populateGridPositions):
+        (WebCore::GridTrack::growUsedBreadth): Renamed to growBaseSize.
+        (WebCore::GridTrack::usedBreadth): Renamed to baseSize.
+        (WebCore::GridTrack::growMaxBreadth): Renamed to growGrowthLimit.
+        (WebCore::GridTrack::maxBreadthIfNotInfinite): Renamed to
+        growthLimitIfNotInfinite.
+        * rendering/RenderGrid.h:
+
+2015-02-08  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver appears unresponsive when JavaScript alerts are triggered via focus or blur events
+        https://bugs.webkit.org/show_bug.cgi?id=140485
+
+        Reviewed by Anders Carlsson.
+
+        If setting an accessibility attribute results in a modal alert being displayed, it can cause VoiceOver
+        to hang. A simple solution is perform the actual work after a short delay, which will ensure the call
+        returns without hanging.
+
+        Test: platform/mac/accessibility/setting-attributes-is-asynchronous.html
+
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper accessibilitySetValue:forAttribute:]):
+        (-[WebAccessibilityObjectWrapper _accessibilitySetValue:forAttribute:]):
+
+2015-02-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add parsing support for CSS Selector L4's case-insensitive attribute
+        https://bugs.webkit.org/show_bug.cgi?id=141373
+
+        Reviewed by Darin Adler.
+
+        This patch adds parsing for the case-insensitive attribute value
+        matching of CSS Selectors Level 4: http://dev.w3.org/csswg/selectors-4/#attribute-case
+        Excuse of a grammar: http://dev.w3.org/csswg/selectors-4/#grammar
+
+        This patch also covers serialization for CSSOM. The serialization
+        is defined here: http://dev.w3.org/csswg/cssom/#serializing-selectors
+
+        Matching is completely ignored in this patch. All the simple selectors
+        are treated as regular attribute selectors.
+
+        Tests: fast/css/parsing-css-attribute-case-insensitive-value-1.html
+               fast/css/parsing-css-attribute-case-insensitive-value-2.html
+               fast/css/parsing-css-attribute-case-insensitive-value-3.html
+               fast/css/parsing-css-attribute-case-insensitive-value-4.html
+
+        * css/CSSGrammar.y.in:
+        * css/CSSParserValues.h:
+        (WebCore::CSSParserSelector::setAttributeValueMatchingIsCaseInsensitive):
+        * css/CSSSelector.cpp:
+        (WebCore::CSSSelector::CSSSelector):
+        (WebCore::CSSSelector::selectorText):
+        * css/CSSSelector.h:
+        (WebCore::CSSSelector::CSSSelector):
+        (WebCore::CSSSelector::setAttributeValueMatchingIsCaseInsensitive):
+        (WebCore::CSSSelector::attributeValueMatchingIsCaseInsensitive):
+
+2015-02-08  Darin Adler  <darin@apple.com>
+
+        Fix CMake-based build.
+
+        * CMakeLists.txt: Added a dependency on the CMakeLists.txt itself, analogous
+        to the one I added in DerivedSources.make.
+
+2015-02-08  Darin Adler  <darin@apple.com>
+
+        Fix debug build.
+
+        * bindings/js/JSEventListener.h: Removed a call to forwardEventListeners.
+
+2015-02-08  Darin Adler  <darin@apple.com>
+
+        Remove the SVG instance tree
+        https://bugs.webkit.org/show_bug.cgi?id=140602
+
+        Reviewed by Dean Jackson.
+
+        * CMakeLists.txt: Removed SVGElementInstance source files.
+        * DerivedSources.cpp: Ditto.
+        * DerivedSources.make: Ditto.
+        * WebCore.vcxproj/WebCore.vcxproj: Ditto.
+        * WebCore.vcxproj/WebCore.vcxproj.filters: Ditto.
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
+        * bindings/js/JSBindingsAllInOne.cpp: Ditto.
+
+        * bindings/js/JSEventListener.cpp:
+        (WebCore::forwardsEventListeners): Deleted. Only returned true for JSSVGElementInstance.
+        (WebCore::correspondingElementWrapper): Deleted. Only used for JSSVGElementInstance.
+        (WebCore::createJSEventListenerForAttribute): Deleted. Argument type was JSSVGElementInstance.
+        (WebCore::createJSEventListenerForAdd): Removed most of the code; later we can delete this entirely.
+
+        * bindings/js/JSEventListener.h: Removed the overload of createJSEventListenerForAttribute
+        that takes a JSSVGElementInstance.
+
+        * bindings/js/JSSVGElementInstanceCustom.cpp: Removed.
+
+        * dom/ContainerNodeAlgorithms.h: Updated comment to reflect the fact that
+        this code is really now only used for ContainerNode and no longer needs to
+        exist in a generic form.
+
+        * dom/EventTarget.h: Removed forward declaration of SVGElementInstance.
+        * svg/SVGElement.h: Ditto.
+
+        * dom/EventTargetFactory.in: Removed SVGElementInstance.
+
+        * svg/SVGElementInstance.cpp: Removed.
+        * svg/SVGElementInstance.h: Removed.
+        * svg/SVGElementInstance.idl: Removed.
+
+        * svg/SVGUseElement.cpp:
+        (WebCore::SVGUseElement::insertedInto): Removed obsolete comment.
+        (WebCore::SVGUseElement::instanceTreeIsLoading): Deleted. Unused
+        function that I forgot to delete in my last patch. It also had a
+        glaring mistake, a missing "return" before the recursive call to
+        itself that would cause it to return false when it should return true.
+
+        * svg/SVGUseElement.h: Removed instanceTreeIsLoading.
+
+        * dom/EventDispatcher.cpp: Removed include of SVGElementInstance.h.
+        * page/EventHandler.cpp: Ditto.
+        * rendering/svg/RenderSVGViewportContainer.cpp: Ditto.
+        * svg/SVGAElement.cpp: Ditto.
+        * svg/SVGAllInOne.cpp: Ditto.
+        * svg/SVGAnimateMotionElement.cpp: Ditto.
+        * svg/SVGAnimatedTypeAnimator.h: Ditto.
+        * svg/SVGAnimationElement.cpp: Ditto.
+        * svg/SVGCircleElement.cpp: Ditto.
+        * svg/SVGClipPathElement.cpp: Ditto.
+        * svg/SVGComponentTransferFunctionElement.cpp: Ditto.
+        * svg/SVGCursorElement.cpp: Ditto.
+        * svg/SVGElement.cpp: Ditto.
+        * svg/SVGEllipseElement.cpp: Ditto.
+        * svg/SVGFEBlendElement.cpp: Ditto.
+        * svg/SVGFEColorMatrixElement.cpp: Ditto.
+        * svg/SVGFECompositeElement.cpp: Ditto.
+        * svg/SVGFEConvolveMatrixElement.cpp: Ditto.
+        * svg/SVGFEDiffuseLightingElement.cpp: Ditto.
+        * svg/SVGFEDisplacementMapElement.cpp: Ditto.
+        * svg/SVGFEDropShadowElement.cpp: Ditto.
+        * svg/SVGFEGaussianBlurElement.cpp: Ditto.
+        * svg/SVGFEImageElement.cpp: Ditto.
+        * svg/SVGFELightElement.cpp: Ditto.
+        * svg/SVGFEMergeNodeElement.cpp: Ditto.
+        * svg/SVGFEMorphologyElement.cpp: Ditto.
+        * svg/SVGFEOffsetElement.cpp: Ditto.
+        * svg/SVGFESpecularLightingElement.cpp: Ditto.
+        * svg/SVGFETileElement.cpp: Ditto.
+        * svg/SVGFETurbulenceElement.cpp: Ditto.
+        * svg/SVGFilterElement.cpp: Ditto.
+        * svg/SVGFilterPrimitiveStandardAttributes.cpp: Ditto.
+        * svg/SVGForeignObjectElement.cpp: Ditto.
+        * svg/SVGGElement.cpp: Ditto.
+        * svg/SVGGradientElement.cpp: Ditto.
+        * svg/SVGGraphicsElement.cpp: Ditto.
+        * svg/SVGImageElement.cpp: Ditto.
+        * svg/SVGLineElement.cpp: Ditto.
+        * svg/SVGLinearGradientElement.cpp: Ditto.
+        * svg/SVGMarkerElement.cpp: Ditto.
+        * svg/SVGMaskElement.cpp: Ditto.
+        * svg/SVGPathElement.cpp: Ditto.
+        * svg/SVGPatternElement.cpp: Ditto.
+        * svg/SVGPolyElement.cpp: Ditto.
+        * svg/SVGRadialGradientElement.cpp: Ditto.
+        * svg/SVGRectElement.cpp: Ditto.
+        * svg/SVGSVGElement.cpp: Ditto.
+        * svg/SVGScriptElement.cpp: Ditto.
+        * svg/SVGStopElement.cpp: Ditto.
+        * svg/SVGSymbolElement.cpp: Ditto.
+        * svg/SVGTRefElement.cpp: Ditto.
+        * svg/SVGTextContentElement.cpp: Ditto.
+        * svg/SVGTextElement.cpp: Ditto.
+        * svg/SVGTextPathElement.cpp: Ditto.
+        * svg/SVGTextPositioningElement.cpp: Ditto.
+
+2015-02-07  Dean Jackson  <dino@apple.com>
+
+        Tweak inline playback controls to match system spec
+        https://bugs.webkit.org/show_bug.cgi?id=141375
+        <rdar://problem/19760754>
+
+        Reviewed by Sam Weinig.
+
+        Rework the UI of the inline media controls on iOS, to
+        better match the system specification. I've batched a
+        few changes into one patch because many of them are
+        inter-dependent, and not very aggressive. Changes are:
+
+        - updated artwork for the buttons.
+        - separate artwork for normal and active states.
+        - background images are now explicitly sized and positioned
+          in the middle of the element, allowing audio and video
+          to use the same glyphs even though the elements are
+          different sizes.
+        - use plus-darker blend mode on the button glyphs.
+        - rearranged some of the rules to group things in a
+          logical order.
+        - time should front-pad a "0" character, if less than 10.
+        - no need for an "active" class on the Airplay button (although
+          I won't be surprised if this changes back).
+
+        * Modules/mediacontrols/mediaControlsiOS.css:
+        (::-webkit-media-controls):
+        (video::-webkit-media-controls-wireless-playback-picker-button.active): Deleted.
+        (audio::-webkit-media-controls-wireless-playback-picker-button.active): Deleted.
+        (audio::-webkit-media-controls-play-button:active): Deleted.
+        (audio::-webkit-media-controls-play-button.paused): Deleted.
+        (video::-webkit-media-controls-timeline): Deleted.
+        * Modules/mediacontrols/mediaControlsiOS.js:
+        (ControllerIOS.prototype.updateWirelessPlaybackStatus): No need
+        for the "active" class.
+        (ControllerIOS.prototype.formatTime): Pad with a leading zero.
+
+2015-02-08  Darin Adler  <darin@apple.com>
+
+        Make SVGUseElement work without creating any SVGElementInstance objects
+        https://bugs.webkit.org/show_bug.cgi?id=141374
+
+        Reviewed by Sam Weinig.
+
+        * dom/ElementIterator.h: Changed the * and -> operators to be const.
+        There is no need for the iterator itself to be modified just to dereference it.
+
+        * dom/TypedElementDescendantIterator.h: Added DoubleTypedElementDescendantIterator.
+        This allows callers to call descendantsOfType on two elements, as long as the caller
+        can guarantee that both have the same number of descendants of that type. It's handy
+        for walking a tree of cloned elements to set up something between each original and
+        its clone. In the future we might instead change the cloning machinery so it can do
+        this work as we clone, and if so, we could consider deleting this.
+
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::correspondingElement): Made this const.
+        (WebCore::SVGElement::invalidateInstances): Got rid of the rule that said "this can
+        only be done for an element in a document", since it's useful to do this on an element
+        that has just been removed from a document. Removed the "updateStyleIfNeeded" call
+        here now that the other changes make it no longer needed. Removed an unimportant
+        assertion that we only invalidate use elements that are in a document; that's not
+        a necessary restriction. Streamlined the logic a bit.
+
+        * svg/SVGElement.h: Made correspondingElement const.
+
+        * svg/SVGUseElement.cpp:
+        (WebCore::SVGUseElement::insertedInto): Removed an assertion about
+        m_targetElementInstance since that's gone now.
+        (WebCore::SVGUseElement::svgAttributeChanged): Changed code that transfers
+        size attributes to the shadow tree to use shadowTreeTargetClone instead of
+        m_targetElementInstance.
+        (WebCore::SVGUseElement::clearResourceReferences): Removed code to detach
+        m_targetElementInstance, and also the call to removeAllTargetReferencesForElement,
+        because we no longer use those.
+        (WebCore::SVGUseElement::buildPendingResource): Moved the code to build the
+        shadow tree in here and deleted the buildShadowAndInstanceTree function.
+        Also changed logic so that we use a pending resource any time the target is not
+        a valid one. That helps us correctly handle cases where we initially have an
+        invalid target, but later get a value one
+        (WebCore::SVGUseElement::buildShadowAndInstanceTree): Deleted. The code here
+        was greatly simplified and moved into buildPendingResource.
+        (WebCore::SVGUseElement::buildInstanceTree): Deleted.
+        (WebCore::SVGUseElement::hasCycleUseReferencing): Deleted. Cycles are now
+        detected by the new isValidTarget function and so there's no need for a
+        separate explicit check for a cycle.
+        (WebCore::associateClonesWithOriginals): Added. Helper that makes
+        functions that build the shadow tree simpler and easier to read.
+        (WebCore::associateReplacementCloneWithOriginal): Added. Helper to
+        make associateReplacementClonesWithOriginals simple.
+        (WebCore::associateReplacementClonesWithOriginals): Added. Helper that
+        makes functions that build the shadow tree simpler and easier to read.
+        (WebCore::SVGUseElement::buildShadowTree): Call associateClonesWithOriginals
+        since associateInstancesWithShadowTreeElements no longer does this.
+        (WebCore::SVGUseElement::isValidTarget): Added. Covers all the different
+        reasons a target might not be valid: type of element, reference cycles, and
+        also "not in document" (refactored in here; not sure when that can happen
+        in practice, might be possible to remove it later).
+        (WebCore::SVGUseElement::expandUseElementsInShadowTree): Add checks for
+        documents that are still loading; this used to be checked when building the
+        instance tree. Added calls to associateReplacementClonesWithOriginals and
+        associateClonesWithOriginals; that used to be done by later in the
+        associateInstancesWithShadowTreeElements function. Use isValidTarget so
+        we handle cycles as well as invalid target types.
+        (WebCore::SVGUseElement::expandSymbolElementsInShadowTree): Added a call to
+        associateReplacementClonesWithOriginals, since we can no longer do that in
+        associateInstancesWithShadowTreeElements.
+        (WebCore::SVGUseElement::associateInstancesWithShadowTreeElements): Deleted.
+        (WebCore::SVGUseElement::instanceForShadowTreeElement): Deleted.
+        (WebCore::SVGUseElement::invalidateDependentShadowTrees): Removed a comment
+        that simply restated the name of the function.
+
+        * svg/SVGUseElement.h: Removed instanceForShadowTreeElement,
+        buildShadowAndInstanceTree, detachInstance, buildInstanceTree,
+        hasCycleUseReferencing, associateInstancesWithShadowTreeElements,
+        instanceForShadowTreeElement, and m_targetElementInstance. Added isValidTarget.
+
+2015-02-08  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add logging to validate the network cache efficacy (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=141269
+        <rdar://problem/19632080>
+
+        Reviewed by Antti Koivisto.
+
+        Export an extra symbol.
+
+        * WebCore.exp.in:
+
+2015-02-07  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: The input element with type="search" has no default focus outline
+        https://bugs.webkit.org/show_bug.cgi?id=140326
+
+        Reviewed by Darin Adler.
+
+        The platform RenderTheme takes care of the search field, and that code
+        was missing a check for whether the element was focused.
+
+        Test: fast/css/focus-ring-exists-for-search-field.html
+
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::paintSearchField):
+
+2015-02-07  Tim Horton  <timothy_horton@apple.com>
+
+        Add some dictionary lookup tests
+        https://bugs.webkit.org/show_bug.cgi?id=141355
+
+        Reviewed by Darin Adler.
+
+        Tests: platform/mac/editing/dictionary-lookup/dictionary-lookup-input.html
+               platform/mac/editing/dictionary-lookup/dictionary-lookup-inside-selection.html
+               platform/mac/editing/dictionary-lookup/dictionary-lookup-outside-selection.html
+               platform/mac/editing/dictionary-lookup/dictionary-lookup-rtl.html
+               platform/mac/editing/dictionary-lookup/dictionary-lookup.html
+
+        * WebCore.exp.in:
+        Remove an unneeded export.
+
+        * editing/mac/DictionaryLookup.h:
+        Use OBJC_CLASS instead of @class so that this can be included in pure-C++ files.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::rangeForDictionaryLookupAtLocation):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+        Expose rangeForDictionaryLookupAtHitTestResult fairly directly to JavaScript.
+
+2015-02-07  Chris Dumez  <cdumez@apple.com>
+
+        Add Vector::removeFirstMatching() / removeAllMatching() methods taking lambda functions
+        https://bugs.webkit.org/show_bug.cgi?id=141321
+
+        Reviewed by Darin Adler.
+
+        Use new Vector::removeFirstMatching() / removeAllMatching() methods.
+
+2015-02-07  Darin Adler  <darin@apple.com>
+
+        Stop dispatching events to with SVGElementInstance objects as their targets
+        https://bugs.webkit.org/show_bug.cgi?id=141108
+
+        Reviewed by Anders Carlsson.
+
+        Test: svg/custom/use-event-retargeting.html
+
+        * dom/EventDispatcher.cpp:
+        (WebCore::eventTargetRespectingTargetRules): Replaced the code that retargeted
+        events at SVGElementInstance objects with code that retargets them at the use
+        element instead. Also wrote the code in a simpler way.
+
+2015-02-07  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Set -contentsScale on AVPlayerLayer to allow AVPlayer to select the appropriate HLS variant.
+        https://bugs.webkit.org/show_bug.cgi?id=141354
+        rdar://problem/19717591
+
+        Reviewed by Darin Adler.
+
+        AVPlayer will try to determine the correct HLS variant based on the bounds of an AVPlayerLayer.
+        When not in a layer tree, AVFoundation is not able to determine the correct mapping from logical
+        units to pixel values. To provide AVPlayer with that scaling value, set -contentsScale based on
+        both the current device scale and the current page scale.
+
+        Since this needs to be set at initialization time, before the AVPlayer is has any AVPlayerItems,
+        add some plumbing up from MediaPlayer to as the HTMLMediaElement for the appropriate contents
+        scale.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::mediaPlayerContentsScale):
+        * html/HTMLMediaElement.h:
+        * platform/graphics/MediaPlayer.h:
+        (WebCore::MediaPlayerClient::mediaPlayerContentsScale):
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer):
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::updateContentsScale):
+
+2015-02-07  Alexey Proskuryakov  <ap@apple.com>
+
+        ASan complains about plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image.html
+        https://bugs.webkit.org/show_bug.cgi?id=141352
+        rdar://problem/19717490
+
+        Reviewed by Anders Carlsson.
+
+        * dom/Document.cpp: (WebCore::Document::ensurePlugInsInjectedScript): This string
+        is not null terminated.
+
+2015-02-06  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERT repaintContainer->hasLayer() in WebCore::RenderObject::repaintUsingContainer
+        https://bugs.webkit.org/show_bug.cgi?id=140750
+
+        Reviewed by Simon Fraser.
+
+        There's a short period of time when RenderObject::layer() still returns a valid pointer
+        even though we already cleared the hasLayer() flag.
+        Do not use the layer as repaint container in such cases.
+
+        Test: compositing/repaint-container-assertion-when-toggling-compositing.html
+
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::enclosingLayer):
+
+2015-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Have SQLiteStatement::database() return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=141348
+
+        Reviewed by Andreas Kling.
+
+        Have SQLiteStatement::database() return a reference as it can never
+        return null.
+
+        * loader/icon/IconDatabase.cpp:
+        (WebCore::readySQLiteStatement):
+        * platform/sql/SQLiteStatement.h:
+        (WebCore::SQLiteStatement::database):
+
+2015-02-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Add youtube-nocookie URL to isYouTubeURL predicate 
+        https://bugs.webkit.org/show_bug.cgi?id=141347
+        <rdar://problem/19430657>
+
+        Reviewed by Eric Carlson.
+
+        * Modules/plugins/YouTubePluginReplacement.cpp:
+        (WebCore::isYouTubeURL): Update for additional youtube-nocookie site.
+
+2015-02-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Invalid cast in WebCore::SVGAnimateElement::calculateAnimatedValue.
+        https://bugs.webkit.org/show_bug.cgi?id=135171.
+
+        Reviewed by Dean Jackson.
+
+        The bug happens when an SVG element is animated by <animateMotion> followed by an
+        <animateColor> or an <animate> and the values of the "attributeName" in both elements
+        are the same. The problem is <animateMotion> should not have an attribute to animate.
+        If it does by fuzz or by mistake, then we assume the <animateMotion> and the <animate>
+        animate the same attribute for the same element target. Therefore we schedule them in
+        the same AnimationVector in SMILTimeContainer::schedule(). When we call
+        SVGAnimateElementBase::calculateAnimatedValue() for an SVGAnimateColorElement and the
+        resultElement is SVGAnimateMotionElement, we fail to cast it to SVGAnimateElementBase
+        because SVGAnimateMotionElement is derived from SVGAnimationElement which is the base
+        class of all animate elements including SVGAnimateElementBase.
+
+        The fix is to nullify setting "attributeName" of an SVGAnimationElement. By doing so,
+        "attributeName" and its value will be ignored from the <animateMotion> which is correct.
+        
+        Tests: svg/animations/animate-montion-invalid-attribute.svg.
+
+        * svg/SVGAnimateElementBase.cpp:
+        (WebCore::SVGAnimateElementBase::setAttributeName):
+        Do not call SVGAnimationElement::setAttributeName() since SVGAnimationElement should
+        not have an attribute to animate. We prevent this by bypassing the parent in the class 
+        hierarchy: SVGAnimationElement and calling SVGSMILElement::setAttributeName() directly.
+        
+        * svg/SVGAnimationElement.cpp:
+        (WebCore::SVGAnimationElement::setAttributeName): Deleted.
+        * svg/SVGAnimationElement.h:
+        SVGAnimationElement should not have an attribute to animate. So implement its
+        setAttributeName() as a null function.
+
+2015-02-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert the compositing overlap map to use LayoutRects
+        https://bugs.webkit.org/show_bug.cgi?id=141346
+        rdar://problem/18206365
+
+        Reviewed by Zalan Bujtas.
+        
+        If two compositing layers were adjoining but not overlapping, but happened to
+        have non-integral offsets, then using enclosing IntRects in the overlap map
+        would cause us to think they are overlapping, and create unnecessary backing store.
+        
+        Fix by converting the overlap map to use LayoutRects.
+
+        Test: compositing/layer-creation/subpixel-adjacent-layers-overlap.html
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::OverlapMapContainer::add):
+        (WebCore::OverlapMapContainer::overlapsLayers):
+        (WebCore::RenderLayerCompositor::OverlapMap::add):
+        (WebCore::RenderLayerCompositor::OverlapMap::overlapsLayers):
+        (WebCore::RenderLayerCompositor::OverlapMap::RectList::append):
+        (WebCore::RenderLayerCompositor::OverlapMap::RectList::intersects):
+        (WebCore::RenderLayerCompositor::logLayerInfo):
+        (WebCore::RenderLayerCompositor::addToOverlapMap):
+        (WebCore::RenderLayerCompositor::addToOverlapMapRecursive):
+        (WebCore::RenderLayerCompositor::computeCompositingRequirements):
+        * rendering/RenderLayerCompositor.h:
+
+2015-02-06  Andreas Kling  <akling@apple.com>
+
+        Ref-ify various getters that return HTMLCollection.
+        <https://webkit.org/b/141336>
+
+        Reviewed by Anders Carlsson.
+
+        Make all the getters that return HTMLCollection objects (and never return nullptr)
+        return Ref instead of RefPtr.
+
+        Removed a couple of useless null checks that were exposed by this change.
+
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::getDocumentLinks):
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::namedItemGetter):
+        * bindings/js/JSHTMLDocumentCustom.cpp:
+        (WebCore::JSHTMLDocument::nameGetter):
+        * dom/Document.cpp:
+        (WebCore::Document::ensureCachedCollection):
+        (WebCore::Document::images):
+        (WebCore::Document::applets):
+        (WebCore::Document::embeds):
+        (WebCore::Document::plugins):
+        (WebCore::Document::scripts):
+        (WebCore::Document::links):
+        (WebCore::Document::forms):
+        (WebCore::Document::anchors):
+        (WebCore::Document::all):
+        (WebCore::Document::windowNamedItems):
+        (WebCore::Document::documentNamedItems):
+        (WebCore::Document::iconURLs):
+        * dom/Document.h:
+        * dom/Element.cpp:
+        (WebCore::Element::ensureCachedHTMLCollection):
+        * dom/Element.h:
+        * html/ColorInputType.cpp:
+        (WebCore::ColorInputType::suggestions):
+        * html/HTMLDataListElement.cpp:
+        (WebCore::HTMLDataListElement::options):
+        * html/HTMLDataListElement.h:
+        * html/HTMLElement.cpp:
+        (WebCore::HTMLElement::children):
+        * html/HTMLElement.h:
+        * html/HTMLFieldSetElement.cpp:
+        (WebCore::HTMLFieldSetElement::elements):
+        * html/HTMLFieldSetElement.h:
+        * html/HTMLFormElement.cpp:
+        (WebCore::HTMLFormElement::elements):
+        * html/HTMLFormElement.h:
+        * html/HTMLInputElement.cpp:
+        (WebCore::HTMLInputElement::setupDateTimeChooserParameters):
+        * html/HTMLMapElement.cpp:
+        (WebCore::HTMLMapElement::areas):
+        * html/HTMLMapElement.h:
+        * html/HTMLSelectElement.cpp:
+        (WebCore::HTMLSelectElement::selectedOptions):
+        (WebCore::HTMLSelectElement::options):
+        * html/HTMLSelectElement.h:
+        * html/HTMLTableElement.cpp:
+        (WebCore::HTMLTableElement::rows):
+        (WebCore::HTMLTableElement::tBodies):
+        * html/HTMLTableElement.h:
+        * html/HTMLTableRowElement.cpp:
+        (WebCore::HTMLTableRowElement::insertCell):
+        (WebCore::HTMLTableRowElement::deleteCell):
+        (WebCore::HTMLTableRowElement::cells):
+        * html/HTMLTableRowElement.h:
+        * html/HTMLTableSectionElement.cpp:
+        (WebCore::HTMLTableSectionElement::insertRow):
+        (WebCore::HTMLTableSectionElement::deleteRow):
+        (WebCore::HTMLTableSectionElement::rows):
+        * html/HTMLTableSectionElement.h:
+        * html/RangeInputType.cpp:
+        (WebCore::RangeInputType::updateTickMarkValues):
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::paintSliderTicks):
+
+2015-02-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS] Implement audio track selection in fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=131236
+        <rdar://problem/16552632>
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios/WebVideoFullscreenModelVideoElement.h:
+        * platform/ios/WebVideoFullscreenModelVideoElement.mm:
+        (WebVideoFullscreenModelVideoElement::selectAudioMediaOption): Provide implementation.
+        (WebVideoFullscreenModelVideoElement::updateLegibleOptions): Add audio track information
+        to menu displayed to user.
+
+2015-02-06  Bartlomiej Gajda  <b.gajda@samsung.com>
+
+        [MSE] Implement Append Error algorithm.
+        https://bugs.webkit.org/show_bug.cgi?id=139439
+
+        Reviewed by Jer Noble.
+
+        If Source Buffer has not received first init segment, then it shall call endOfStream after receiving
+        Media Segment, as per Media Source spec. (from 17 July 2014) in paragraph 3.5.1 point 6.1.
+
+        Based this change on Editor's Draft 12 December 2014, as it clarifies order of events.
+
+        Test: media/media-source/media-source-append-media-segment-without-init.html
+
+        * Modules/mediasource/MediaSource.cpp:
+        (WebCore::MediaSource::streamEndedWithError):
+        * Modules/mediasource/MediaSource.h:
+        * Modules/mediasource/SourceBuffer.cpp:
+        (WebCore::SourceBuffer::sourceBufferPrivateAppendComplete):
+        (WebCore::SourceBuffer::sourceBufferPrivateDidReceiveInitializationSegment):
+        (WebCore::SourceBuffer::validateInitializationSegment):
+        (WebCore::SourceBuffer::appendError):
+        * Modules/mediasource/SourceBuffer.h:
+
+2015-02-06  Timothy Horton  <timothy_horton@apple.com>
+
+        REGRESSION: Lookup doesn't work in RTL
+        https://bugs.webkit.org/show_bug.cgi?id=141338
+        <rdar://problem/19738407>
+
+        Reviewed by Dan Bernstein.
+
+        * editing/Editor.cpp:
+        (WebCore::Editor::scanSelectionForTelephoneNumbers):
+        * editing/mac/DictionaryLookup.mm:
+        (WebCore::rangeExpandedAroundPositionByCharacters):
+        Positions are independent of writing direction, so we don't
+        need to (and shouldn't) do anything special for RTL here.
+
+2015-02-06  Maciej Stachowiak  <mjs@apple.com>
+
+        REGRESSION(r179706): Caused memory corruption on some tests (Requested by _ap_ on #webkit).
+        https://bugs.webkit.org/show_bug.cgi?id=141324
+
+        Reviewed by Alexey Proskuryakov.
+
+        No new tests. This is caught by existing tests under ASAN, and I don't know how to reproduce
+        it without ASAN.
+
+        * rendering/RenderLineBoxList.cpp:
+        (WebCore::RenderLineBoxList::dirtyLinesFromChangedChild): Give up
+        and just always invalidate the next line. It's too hard to come up
+        with the condition that catches all needed cases, doesn't itself
+        cause a crash, and isn't overzealous. And we do this for the
+        previous line anyway.  Also clean up the code a bit since it
+        confusingly reuses a variable, and declares it uninitialized, for
+        no good reason.
+
 2015-02-05  Dhi Aurrahman  <diorahman@rockybars.com>
 
         Remove duplicate loop after r179532

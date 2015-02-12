@@ -67,6 +67,16 @@ void WKInputHandlerNotifyPointerButton(WKInputHandlerRef handler, WKPointerButto
     });
 }
 
+void WKInputHandlerNotifyAxisMotion(WKInputHandlerRef handler, WKAxisMotion event)
+{
+    toImpl(handler)->handleAxisEvent(WPE::AxisEvent::Raw{
+        WPE::AxisEvent::Motion,
+        event.time,
+        event.axis,
+        event.value
+    });
+}
+
 void WKInputHandlerNotifyTouchDown(WKInputHandlerRef handler, WKTouchDown event)
 {
     toImpl(handler)->handleTouchDown(WPE::TouchEvent::Raw{

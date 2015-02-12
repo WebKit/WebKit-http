@@ -101,7 +101,7 @@
 #endif
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(WPE)
 #define WTF_USE_NEW_THEME 1
 #endif
 

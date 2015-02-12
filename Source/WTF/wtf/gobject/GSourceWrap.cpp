@@ -80,6 +80,8 @@ GSourceFuncs GSourceWrap::Base::sourceFunctions = {
     [](GSource* source, GSourceFunc callback, gpointer data) -> gboolean
     {
         ASSERT(source);
+        if (g_source_get_ready_time(source) == -1)
+            return G_SOURCE_CONTINUE;
         CallbackContext context{ *reinterpret_cast<Source*>(source), data };
         return callback(&context);
     },

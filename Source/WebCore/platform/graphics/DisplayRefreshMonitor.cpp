@@ -54,6 +54,7 @@ PassRefPtr<DisplayRefreshMonitor> DisplayRefreshMonitor::create(DisplayRefreshMo
     return DisplayRefreshMonitorMac::create(displayID);
 #elif PLATFORM(WPE)
     RELEASE_ASSERT_NOT_REACHED();
+    return nullptr;
 #endif
 }
 

@@ -1,3 +1,224 @@
+2015-02-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to allow overriding the default color chooser implementation
+        https://bugs.webkit.org/show_bug.cgi?id=98935
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add a color chooser implementation for MiniBrowser using
+        GtkPopover when the GTK+ version is recent enough.
+        And a test case to check the new color chooser API.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (colorChooserRGBAChanged):
+        (popoverColorClosed):
+        (colorChooserRequestFinished):
+        (runColorChooserCallback):
+        (browserWindowConstructed):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        (testWebViewColorChooserRequest):
+        (beforeAll):
+
+2015-02-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Make run-jsc-stress-tests --remote work with make-based runner
+        https://bugs.webkit.org/show_bug.cgi?id=141079
+
+        Reviewed by Darin Adler.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests): Pass through the --shell-runner and --make-runner arguments.
+        * Scripts/run-jsc-stress-tests: Made the make-based runner the default runner,
+        except for remote testing on Darwin. Unified runShellTestRunner and runMakeTestRunner
+        to avoid code duplication.
+
+2015-02-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        run-jsc-stress tests should detect the number of processors on the remote machine too
+        https://bugs.webkit.org/show_bug.cgi?id=141196
+
+        Reviewed by Darin Adler.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests): Pass through the --child-processes argument.
+        * Scripts/run-jsc-stress-tests: Added determineNumberOfProcessors function
+        to detect the number of local and remote processors with the same algorithm.
+        Additionally introduced $numChildProcesses to emphasize it isn't necessarily
+        same as $numProcessors.
+
+2015-02-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        run-jsc-stress-tests should pass JSC_timeout to remote hosts
+        https://bugs.webkit.org/show_bug.cgi?id=141164
+
+        Reviewed by Darin Adler.
+
+        Additonally removed IMPORTANT_ENVS, since JSC_timeout was the only one.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-02-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add default color chooser implementation using GtkColorChooserDialog
+        https://bugs.webkit.org/show_bug.cgi?id=141392
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Enable INPUT_TYPE_COLOR by default for GTK+ port.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-02-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        run-jsc-stress-tests shell test runner should run tests in fixed order
+        https://bugs.webkit.org/show_bug.cgi?id=141383
+
+        Reviewed by Darin Adler.
+
+        * Scripts/jsc-stress-test-helpers/shell-runner.sh:
+
+2015-02-08  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver appears unresponsive when JavaScript alerts are triggered via focus or blur events
+        https://bugs.webkit.org/show_bug.cgi?id=140485
+
+        Reviewed by Anders Carlsson.
+
+        Implement takeFocus() as a way to set focus through accessibility wrappers.
+
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::takeFocus):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::takeFocus):
+
+2015-02-08  Darin Adler  <darin@apple.com>
+
+        Remove the SVG instance tree
+        https://bugs.webkit.org/show_bug.cgi?id=140602
+
+        Reviewed by Dean Jackson.
+
+        * Scripts/check-for-global-initializers: Removed special case for
+        SVGElementInstance.o.
+
+2015-02-07  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] run-webkit-tests fails due to simulator devices from previous SDK installs being marked as unavailable
+        <http://webkit.org/b/141365>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator): Add unavailable_version_re precompiled regex.
+        (Simulator._parse_devices): Check for unavailable versions and
+        ignore them if found when parsing the output of
+        `xcrun simctl list`.
+        * Scripts/webkitpy/xcode/simulator_unittest.py:
+        (test_unavailable_devices): Add test with output from
+        `xcrun simctl list` with unavailable runtimes that fails before
+        the fix.
+
+2015-02-07  Chris Dumez  <cdumez@apple.com>
+
+        Add Vector::removeFirstMatching() / removeAllMatching() methods taking lambda functions
+        https://bugs.webkit.org/show_bug.cgi?id=141321
+
+        Reviewed by Darin Adler.
+
+        Use new Vector::removeFirstMatching() / removeAllMatching() methods.
+
+2015-02-07  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Make Simulator class testable
+        <http://webkit.org/b/141358>
+
+        Rubber-stamped by Darin Adler.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo.xcode_simctl_list): Move `xcrun simctl list`
+        command to here from Simulator.refresh() in xcode/simulator.py
+        so that the output of the command can be mocked.
+
+        * Scripts/webkitpy/common/system/platforminfo_mock.py:
+        (MockPlatformInfo.__init__): Set self.expected_xcode_simctl_list
+        to None.
+        (MockPlatformInfo.xcode_simctl_list): Add method that returns
+        self.expected_xcode_simctl_list expectation.
+
+        * Scripts/webkitpy/xcode/simulator.py: Add missing copyright
+        and license header.
+        (Simulator.__init__): Add optional 'host' parameter to make it
+        possible to pass in a mock object for testing.  Set self._host
+        to 'host' parameter or create Host() object.
+        (Simulator.refresh): Call new PlatformInfo.xcode_simctl_list()
+        method.
+
+        * Scripts/webkitpy/xcode/simulator_unittest.py: Add unit test
+        for current code.
+        (SimulatorTest):
+        (SimulatorTest.setUp):
+        (SimulatorTest._set_expected_xcrun_simctl_list):
+        (SimulatorTest.test_simulator_device_types):
+        (test_invalid_device_types_header):
+        (test_invalid_runtimes_header):
+        (test_invalid_devices_header):
+
+2015-02-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        run-jsc-stress-tests --remote should use the default ssh port
+        https://bugs.webkit.org/show_bug.cgi?id=141287
+
+        Reviewed by Darin Adler.
+
+        * Scripts/run-jsc-stress-tests: Extended URI module to be able to handle ssh scheme with the default 22 port number.
+
+2015-02-06  Dana Burkart  <dburkart@apple.com>
+
+        dashboard: BuildbotTesterQueueView crashesOnly logic is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=141349
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.update.appendBuilderQueueStatus):
+        (BuildbotTesterQueueView.prototype.update):
+
+2015-02-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Report network process crashes during layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=139646
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        (WTR::TestController::networkProcessName):
+        (WTR::TestController::networkProcessDidCrash):
+        * WebKitTestRunner/TestController.h:
+
+2015-02-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        run-jsc-stress-tests --remote should create remote directory before copying the bundle
+        https://bugs.webkit.org/show_bug.cgi?id=141329
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-02-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove WebKitWebView::close-notification signal
+        https://bugs.webkit.org/show_bug.cgi?id=141330
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Update notifications unit tests according to the API changes, and
+        add a test case to check that onclose event is fired when a
+        notification is closed by the user.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewNotification):
+
 2015-02-05  Alexey Proskuryakov  <ap@apple.com>
 
         Dashboard doesn't consider building ASan a productive step

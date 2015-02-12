@@ -29,6 +29,7 @@
 #include "WebEvent.h"
 
 namespace WPE {
+struct AxisEvent;
 struct KeyboardEvent;
 struct PointerEvent;
 struct TouchEvent;
@@ -40,6 +41,7 @@ class WebEventFactory {
 public:
     static WebKeyboardEvent createWebKeyboardEvent(WPE::KeyboardEvent&&);
     static WebMouseEvent createWebMouseEvent(WPE::PointerEvent&&);
+    static WebWheelEvent createWebWheelEvent(WPE::AxisEvent&&);
     static WebTouchEvent createWebTouchEvent(WPE::TouchEvent&&);
 };
 

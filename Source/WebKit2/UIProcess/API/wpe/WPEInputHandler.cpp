@@ -28,6 +28,7 @@
 
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
+#include "NativeWebWheelEvent.h"
 #include "WPEView.h"
 
 namespace WPE {
@@ -84,8 +85,8 @@ void InputHandler::handlePointerEvent(PointerEvent::Raw event)
 {
     if (event.type == PointerEvent::Motion) {
         const WebCore::IntSize& viewSize = m_view.size();
-        m_pointer.x = std::max<double>(0.0, std::min(event.x, viewSize.width() - 1));
-        m_pointer.y = std::max<double>(0.0, std::min(event.y, viewSize.height() - 1));
+        m_pointer.x = std::max(0, std::min(event.x, viewSize.width() - 1));
+        m_pointer.y = std::max(0, std::min(event.y, viewSize.height() - 1));
     }
 
     m_view.page().handleMouseEvent(WebKit::NativeWebMouseEvent({
@@ -95,6 +96,19 @@ void InputHandler::handlePointerEvent(PointerEvent::Raw event)
         m_pointer.y,
         event.button,
         event.state
+    }));
+}
+
+void InputHandler::handleAxisEvent(AxisEvent::Raw event)
+{
+    ASSERT(event.type == AxisEvent::Motion);
+    m_view.page().handleWheelEvent(WebKit::NativeWebWheelEvent({
+        event.type,
+        event.time,
+        m_pointer.x,
+        m_pointer.y,
+        event.axis,
+        event.value
     }));
 }
 
