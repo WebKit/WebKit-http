@@ -24,7 +24,6 @@
 #include "Attribute.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGTextPath.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -112,7 +111,7 @@ void SVGTextPathElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (SVGURIReference::isKnownAttribute(attrName)) {
         buildPendingResource();

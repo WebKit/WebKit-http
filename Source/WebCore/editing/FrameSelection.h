@@ -102,7 +102,7 @@ public:
     bool hasCaret() const { return m_position.isNotNull(); }
     const VisiblePosition& caretPosition() { return m_position; }
     void setCaretPosition(const VisiblePosition&);
-    WEBCORE_EXPORT void clear() { setCaretPosition(VisiblePosition()); }
+    void clear() { setCaretPosition(VisiblePosition()); }
 
     void nodeWillBeRemoved(Node&);
 
@@ -137,7 +137,7 @@ public:
     WEBCORE_EXPORT Element* rootEditableElementOrDocumentElement() const;
      
     void moveTo(const Range*);
-    void moveTo(const VisiblePosition&, EUserTriggered = NotUserTriggered, CursorAlignOnScroll = AlignCursorOnScrollIfNeeded);
+    WEBCORE_EXPORT void moveTo(const VisiblePosition&, EUserTriggered = NotUserTriggered, CursorAlignOnScroll = AlignCursorOnScrollIfNeeded);
     WEBCORE_EXPORT void moveTo(const VisiblePosition&, const VisiblePosition&, EUserTriggered = NotUserTriggered);
     void moveTo(const Position&, EAffinity, EUserTriggered = NotUserTriggered);
     void moveTo(const Position&, const Position&, EAffinity, EUserTriggered = NotUserTriggered);

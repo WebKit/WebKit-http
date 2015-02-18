@@ -475,21 +475,19 @@ public:
     ValueProfile* valueProfileFor(Node* node)
     {
         if (!node)
-            return 0;
+            return nullptr;
         
         CodeBlock* profiledBlock = baselineCodeBlockFor(node->origin.semantic);
         
-        if (node->op() == GetArgument)
-            return profiledBlock->valueProfileForArgument(node->local().toArgument());
-        
         if (node->hasLocal(*this)) {
-            if (m_form == SSA)
-                return 0;
             if (!node->local().isArgument())
                 return 0;
             int argument = node->local().toArgument();
-            if (node->variableAccessData() != m_arguments[argument]->variableAccessData())
-                return 0;
+            Node* argumentNode = m_arguments[argument];
+            if (!argumentNode)
+                return nullptr;
+            if (node->variableAccessData() != argumentNode->variableAccessData())
+                return nullptr;
             return profiledBlock->valueProfileForArgument(argument);
         }
         
@@ -504,16 +502,19 @@ public:
         if (!node)
             return MethodOfGettingAValueProfile();
         
-        CodeBlock* profiledBlock = baselineCodeBlockFor(node->origin.semantic);
+        if (ValueProfile* valueProfile = valueProfileFor(node))
+            return MethodOfGettingAValueProfile(valueProfile);
         
         if (node->op() == GetLocal) {
+            CodeBlock* profiledBlock = baselineCodeBlockFor(node->origin.semantic);
+        
             return MethodOfGettingAValueProfile::fromLazyOperand(
                 profiledBlock,
                 LazyOperandValueProfileKey(
                     node->origin.semantic.bytecodeIndex, node->local()));
         }
         
-        return MethodOfGettingAValueProfile(valueProfileFor(node));
+        return MethodOfGettingAValueProfile();
     }
     
     bool usesArguments() const
@@ -544,72 +545,6 @@ public:
     void killBlockAndItsContents(BasicBlock*);
     
     void killUnreachableBlocks();
-    
-    bool isPredictedNumerical(Node* node)
-    {
-        return isNumerical(node->child1().useKind()) && isNumerical(node->child2().useKind());
-    }
-    
-    // Note that a 'true' return does not actually mean that the ByVal access clobbers nothing.
-    // It really means that it will not clobber the entire world. It's still up to you to
-    // carefully consider things like:
-    // - PutByVal definitely changes the array it stores to, and may even change its length.
-    // - PutByOffset definitely changes the object it stores to.
-    // - and so on.
-    bool byValIsPure(Node* node)
-    {
-        switch (node->arrayMode().type()) {
-        case Array::Generic:
-            return false;
-        case Array::Int32:
-        case Array::Double:
-        case Array::Contiguous:
-        case Array::ArrayStorage:
-            return !node->arrayMode().isOutOfBounds();
-        case Array::SlowPutArrayStorage:
-            return !node->arrayMode().mayStoreToHole();
-        case Array::String:
-            return node->op() == GetByVal && node->arrayMode().isInBounds();
-#if USE(JSVALUE32_64)
-        case Array::Arguments:
-            if (node->op() == GetByVal)
-                return true;
-            return false;
-#endif // USE(JSVALUE32_64)
-        default:
-            return true;
-        }
-    }
-    
-    bool clobbersWorld(Node* node)
-    {
-        if (node->flags() & NodeClobbersWorld)
-            return true;
-        if (!(node->flags() & NodeMightClobber))
-            return false;
-        switch (node->op()) {
-        case GetByVal:
-        case PutByValDirect:
-        case PutByVal:
-        case PutByValAlias:
-            return !byValIsPure(node);
-        case ToString:
-            switch (node->child1().useKind()) {
-            case StringObjectUse:
-            case StringOrStringObjectUse:
-                return false;
-            case CellUse:
-            case UntypedUse:
-                return true;
-            default:
-                RELEASE_ASSERT_NOT_REACHED();
-                return true;
-            }
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            return true; // If by some oddity we hit this case in release build it's safer to have CSE assume the worst.
-        }
-    }
     
     void determineReachability();
     void resetReachability();
@@ -877,7 +812,37 @@ public:
     Bag<FrozenValue> m_frozenValues;
     
     Bag<StorageAccessData> m_storageAccessData;
+    
+    // In CPS, this is all of the SetArgument nodes for the arguments in the machine code block
+    // that survived DCE. All of them except maybe "this" will survive DCE, because of the Flush
+    // nodes.
+    //
+    // In SSA, this is all of the GetLocal nodes for the arguments in the machine code block that
+    // may have some speculation in the prologue and survived DCE. Note that to get the speculation
+    // for an argument in SSA, you must use m_argumentFormats, since we still have to speculate
+    // even if the argument got killed. For example:
+    //
+    //     function foo(x) {
+    //        var tmp = x + 1;
+    //     }
+    //
+    // Assume that x is always int during profiling. The ArithAdd for "x + 1" will be dead and will
+    // have a proven check for the edge to "x". So, we will not insert a Check node and we will
+    // kill the GetLocal for "x". But, we must do the int check in the progolue, because that's the
+    // thing we used to allow DCE of ArithAdd. Otherwise the add could be impure:
+    //
+    //     var o = {
+    //         valueOf: function() { do side effects; }
+    //     };
+    //     foo(o);
+    //
+    // If we DCE the ArithAdd and we remove the int check on x, then this won't do the side
+    // effects.
     Vector<Node*, 8> m_arguments;
+    
+    // In CPS, this is meaningless. In SSA, this is the argument speculation that we've locked in.
+    Vector<FlushFormat> m_argumentFormats;
+    
     SegmentedVector<VariableAccessData, 16> m_variableAccessData;
     SegmentedVector<ArgumentPosition, 8> m_argumentPositions;
     SegmentedVector<StructureSet, 16> m_structureSet;

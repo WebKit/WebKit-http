@@ -30,7 +30,6 @@
 namespace WebCore {
 
     class JSDOMGlobalObject;
-    class JSSVGElementInstance;
 
     class JSEventListener : public EventListener {
     public:
@@ -78,12 +77,9 @@ namespace WebCore {
 
     // For "onXXX" event attributes.
     RefPtr<JSEventListener> createJSEventListenerForAttribute(JSC::ExecState&, JSC::JSValue listener, JSC::JSObject& wrapper);
-    RefPtr<JSEventListener> createJSEventListenerForAttribute(JSC::ExecState&, JSC::JSValue listener, JSSVGElementInstance& wrapper);
 
     Ref<JSEventListener> createJSEventListenerForAdd(JSC::ExecState&, JSC::JSObject& listener, JSC::JSObject& wrapper);
     Ref<JSEventListener> createJSEventListenerForRemove(JSC::ExecState&, JSC::JSObject& listener, JSC::JSObject& wrapper);
-
-    bool forwardsEventListeners(JSC::JSObject& wrapper);
 
     inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext* scriptExecutionContext) const
     {
@@ -118,7 +114,6 @@ namespace WebCore {
 
     inline RefPtr<JSEventListener> createJSEventListenerForAttribute(JSC::ExecState& state, JSC::JSValue listener, JSC::JSObject& wrapper)
     {
-        ASSERT(!forwardsEventListeners(wrapper));
         if (!listener.isObject())
             return nullptr;
         return JSEventListener::create(asObject(listener), &wrapper, true, currentWorld(&state));

@@ -125,9 +125,9 @@
 #include "ResourceLoader.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
+#include "SVGElement.h"
 #include "SVGElementFactory.h"
 #include "SVGNames.h"
-#include "SVGSVGElement.h"
 #include "SchemeRegistry.h"
 #include "ScopedEventQueue.h"
 #include "ScriptController.h"
@@ -145,6 +145,7 @@
 #include "StyleResolver.h"
 #include "StyleSheetContents.h"
 #include "StyleSheetList.h"
+#include "TextNodeTraversal.h"
 #include "TextResourceDecoder.h"
 #include "TransformSource.h"
 #include "TreeWalker.h"
@@ -3684,6 +3685,11 @@ void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
             frame->page()->dragCaretController().nodeWillBeRemoved(*n);
         }
     }
+
+    if (m_markers->hasMarkers()) {
+        for (Text* textNode = TextNodeTraversal::firstChild(container); textNode; textNode = TextNodeTraversal::nextSibling(*textNode))
+            m_markers->removeMarkers(textNode);
+    }
 }
 
 void Document::nodeWillBeRemoved(Node& n)
@@ -3703,6 +3709,9 @@ void Document::nodeWillBeRemoved(Node& n)
         frame->selection().nodeWillBeRemoved(n);
         frame->page()->dragCaretController().nodeWillBeRemoved(n);
     }
+
+    if (is<Text>(n))
+        m_markers->removeMarkers(&n);
 }
 
 void Document::textInserted(Node* text, unsigned offset, unsigned length)
@@ -4537,63 +4546,63 @@ bool Document::hasSVGRootNode() const
     return documentElement() && documentElement()->hasTagName(SVGNames::svgTag);
 }
 
-RefPtr<HTMLCollection> Document::ensureCachedCollection(CollectionType type)
+Ref<HTMLCollection> Document::ensureCachedCollection(CollectionType type)
 {
     return ensureRareData().ensureNodeLists().addCachedCollection<HTMLCollection>(*this, type);
 }
 
-RefPtr<HTMLCollection> Document::images()
+Ref<HTMLCollection> Document::images()
 {
     return ensureCachedCollection(DocImages);
 }
 
-RefPtr<HTMLCollection> Document::applets()
+Ref<HTMLCollection> Document::applets()
 {
     return ensureCachedCollection(DocApplets);
 }
 
-RefPtr<HTMLCollection> Document::embeds()
+Ref<HTMLCollection> Document::embeds()
 {
     return ensureCachedCollection(DocEmbeds);
 }
 
-RefPtr<HTMLCollection> Document::plugins()
+Ref<HTMLCollection> Document::plugins()
 {
     // This is an alias for embeds() required for the JS DOM bindings.
     return ensureCachedCollection(DocEmbeds);
 }
 
-RefPtr<HTMLCollection> Document::scripts()
+Ref<HTMLCollection> Document::scripts()
 {
     return ensureCachedCollection(DocScripts);
 }
 
-RefPtr<HTMLCollection> Document::links()
+Ref<HTMLCollection> Document::links()
 {
     return ensureCachedCollection(DocLinks);
 }
 
-RefPtr<HTMLCollection> Document::forms()
+Ref<HTMLCollection> Document::forms()
 {
     return ensureCachedCollection(DocForms);
 }
 
-RefPtr<HTMLCollection> Document::anchors()
+Ref<HTMLCollection> Document::anchors()
 {
     return ensureCachedCollection(DocAnchors);
 }
 
-RefPtr<HTMLCollection> Document::all()
+Ref<HTMLCollection> Document::all()
 {
     return ensureRareData().ensureNodeLists().addCachedCollection<HTMLAllCollection>(*this, DocAll);
 }
 
-RefPtr<HTMLCollection> Document::windowNamedItems(const AtomicString& name)
+Ref<HTMLCollection> Document::windowNamedItems(const AtomicString& name)
 {
     return ensureRareData().ensureNodeLists().addCachedCollection<WindowNameCollection>(*this, WindowNamedItems, name);
 }
 
-RefPtr<HTMLCollection> Document::documentNamedItems(const AtomicString& name)
+Ref<HTMLCollection> Document::documentNamedItems(const AtomicString& name)
 {
     return ensureRareData().ensureNodeLists().addCachedCollection<DocumentNameCollection>(*this, DocumentNamedItems, name);
 }
@@ -4704,10 +4713,10 @@ const Vector<IconURL>& Document::iconURLs(int iconTypesMask)
 {
     m_iconURLs.clear();
 
-    if (!head() || !(head()->children()))
+    if (!head())
         return m_iconURLs;
 
-    RefPtr<HTMLCollection> children = head()->children();
+    Ref<HTMLCollection> children = head()->children();
     unsigned int length = children->length();
     for (unsigned int i = 0; i < length; ++i) {
         Node* child = children->item(i);
@@ -6271,7 +6280,7 @@ void Document::ensurePlugInsInjectedScript(DOMWrapperWorld& world)
     // Use the JS file provided by the Chrome client, or fallback to the default one.
     String jsString = page()->chrome().client().plugInExtraScript();
     if (!jsString)
-        jsString = plugInsJavaScript;
+        jsString = String(plugInsJavaScript, sizeof(plugInsJavaScript));
 
     m_frame->mainFrame().script().evaluateInWorld(ScriptSourceCode(jsString), world);
 

@@ -27,7 +27,6 @@
 #include "CopiedSpaceInlines.h"
 #include "CopyVisitorInlines.h"
 #include "DFGWorklist.h"
-#include "DelayedReleaseScope.h"
 #include "EdenGCActivityCallback.h"
 #include "FullGCActivityCallback.h"
 #include "GCActivityCallback.h"
@@ -312,7 +311,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_objectSpace(this)
     , m_storageSpace(this)
     , m_extraMemoryUsage(0)
-    , m_machineThreads(this)
     , m_sharedData(vm)
     , m_slotVisitor(m_sharedData)
     , m_copyVisitor(m_sharedData)
@@ -337,7 +335,11 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_sweeper(std::make_unique<IncrementalSweeper>(this->vm()))
 #endif
     , m_deferralDepth(0)
+#if USE(CF)
+    , m_delayedReleaseRecursionCount(0)
+#endif
 {
+    m_machineThreads = adoptRef(new MachineThreads(this));
     m_storageSpace.init();
     if (Options::verifyHeap())
         m_verifier = std::make_unique<HeapVerifier>(this, Options::numberOfGCCyclesToRecordForVerification());
@@ -345,6 +347,9 @@ Heap::Heap(VM* vm, HeapType heapType)
 
 Heap::~Heap()
 {
+    // We need to remove the main thread explicitly here because the main thread
+    // may not terminate for a while though the Heap (and VM) is being shut down.
+    m_machineThreads->removeCurrentThread();
 }
 
 bool Heap::isPagedOut(double deadline)
@@ -360,6 +365,20 @@ void Heap::lastChanceToFinalize()
     RELEASE_ASSERT(m_operationInProgress == NoOperation);
 
     m_objectSpace.lastChanceToFinalize();
+    releaseDelayedReleasedObjects();
+}
+
+void Heap::releaseDelayedReleasedObjects()
+{
+#if USE(CF)
+    if (!m_delayedReleaseRecursionCount++) {
+        while (!m_delayedReleaseObjects.isEmpty()) {
+            RetainPtr<CFTypeRef> objectToRelease = m_delayedReleaseObjects.takeLast();
+            objectToRelease.clear();
+        }
+    }
+    m_delayedReleaseRecursionCount--;
+#endif
 }
 
 void Heap::reportExtraMemoryCostSlowCase(size_t cost)
@@ -571,7 +590,7 @@ void Heap::gatherStackRoots(ConservativeRoots& roots, void** dummy, MachineThrea
 {
     GCPHASE(GatherStackRoots);
     m_jitStubRoutines.clearMarks();
-    m_machineThreads.gatherConservativeRoots(roots, m_jitStubRoutines, m_codeBlocks, dummy, registers);
+    m_machineThreads->gatherConservativeRoots(roots, m_jitStubRoutines, m_codeBlocks, dummy, registers);
 }
 
 void Heap::gatherJSStackRoots(ConservativeRoots& roots)
@@ -966,7 +985,6 @@ void Heap::collectAllGarbage()
     collect(FullCollection);
 
     SamplingRegion samplingRegion("Garbage Collection: Sweeping");
-    DelayedReleaseScope delayedReleaseScope(m_objectSpace);
     m_objectSpace.sweep();
     m_objectSpace.shrink();
 }
@@ -1378,7 +1396,6 @@ void Heap::zombifyDeadObjects()
     // Sweep now because destructors will crash once we're zombified.
     {
         SamplingRegion samplingRegion("Garbage Collection: Sweeping");
-        DelayedReleaseScope delayedReleaseScope(m_objectSpace);
         m_objectSpace.zombifySweep();
     }
     HeapIterationScope iterationScope(*this);

@@ -30,6 +30,7 @@
 
 #include "Logging.h"
 #include "NetworkCacheCoders.h"
+#include "NetworkCacheStatistics.h"
 #include "NetworkCacheStorage.h"
 #include "NetworkResourceLoader.h"
 #include "WebCoreArgumentCoders.h"
@@ -49,9 +50,12 @@ NetworkCache& NetworkCache::singleton()
     return instance;
 }
 
-bool NetworkCache::initialize(const String& cachePath)
+bool NetworkCache::initialize(const String& cachePath, bool enableEfficacyLogging)
 {
     m_storage = NetworkCacheStorage::open(cachePath);
+
+    if (enableEfficacyLogging)
+        m_statistics = NetworkCacheStatistics::open(cachePath);
 
     LOG(NetworkCache, "(NetworkProcess) opened cache storage, success %d", !!m_storage);
     return !!m_storage;
@@ -214,50 +218,51 @@ static NetworkCacheKey makeCacheKey(const WebCore::ResourceRequest& request)
     return NetworkCacheKey(request.httpMethod(), partition, request.url().string());
 }
 
-void NetworkCache::retrieve(const WebCore::ResourceRequest& originalRequest, std::function<void (std::unique_ptr<Entry>)> completionHandler)
+void NetworkCache::retrieve(const WebCore::ResourceRequest& originalRequest, uint64_t webPageID, std::function<void (std::unique_ptr<Entry>)> completionHandler)
 {
     ASSERT(isEnabled());
 
     LOG(NetworkCache, "(NetworkProcess) retrieving %s priority %u", originalRequest.url().string().ascii().data(), originalRequest.priority());
 
+    NetworkCacheKey storageKey = makeCacheKey(originalRequest);
     if (!canRetrieve(originalRequest)) {
+        if (m_statistics)
+            m_statistics->recordNotUsingCacheForRequest(webPageID, storageKey, originalRequest);
+
         completionHandler(nullptr);
         return;
     }
 
     auto startTime = std::chrono::system_clock::now();
-
-    NetworkCacheKey storageKey = makeCacheKey(originalRequest);
     unsigned priority = originalRequest.priority();
 
-    // Captured data is going to be shuffled around threads. Avoid unsafe copying.
-    struct Capture {
-        WebCore::ResourceRequest originalRequest;
-        std::function<void (std::unique_ptr<Entry>)> completionHandler;
-    };
-    // FIXME: With C++14 this could use unique_ptr and initialized lambda capture
-    auto capture = std::make_shared<Capture>(Capture { originalRequest, completionHandler });
-
-    m_storage->retrieve(storageKey, priority, [this, capture, startTime](std::unique_ptr<NetworkCacheStorage::Entry> entry) {
+    m_storage->retrieve(storageKey, priority, [this, originalRequest, completionHandler, startTime, storageKey, webPageID](std::unique_ptr<NetworkCacheStorage::Entry> entry) {
         if (!entry) {
             LOG(NetworkCache, "(NetworkProcess) not found in storage");
-            capture->completionHandler(nullptr);
+
+            if (m_statistics)
+                m_statistics->recordRetrievalFailure(webPageID, storageKey, originalRequest);
+
+            completionHandler(nullptr);
             return false;
         }
-        auto decodedEntry = decodeStorageEntry(*entry, capture->originalRequest);
+        auto decodedEntry = decodeStorageEntry(*entry, originalRequest);
         bool success = !!decodedEntry;
+        if (m_statistics)
+            m_statistics->recordRetrievedCachedEntry(webPageID, storageKey, originalRequest, success);
+
 #if !LOG_DISABLED
         auto elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count();
 #endif
-        LOG(NetworkCache, "(NetworkProcess) retrieve complete success=%d priority=%u time=%lldms", success, capture->originalRequest.priority(), elapsedMS);
-        capture->completionHandler(WTF::move(decodedEntry));
+        LOG(NetworkCache, "(NetworkProcess) retrieve complete success=%d priority=%u time=%lldms", success, originalRequest.priority(), elapsedMS);
+        completionHandler(WTF::move(decodedEntry));
         return success;
     });
 }
 
 static bool canStore(const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceResponse& response)
 {
-    if (!originalRequest.url().protocolIsInHTTPFamily()) {
+    if (!originalRequest.url().protocolIsInHTTPFamily() || !response.isHTTP()) {
         LOG(NetworkCache, "(NetworkProcess) not HTTP");
         return false;
     }
@@ -290,7 +295,7 @@ static bool canStore(const WebCore::ResourceRequest& originalRequest, const WebC
     return false;
 }
 
-void NetworkCache::store(const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceResponse& response, PassRefPtr<WebCore::SharedBuffer> responseData)
+void NetworkCache::store(const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceResponse& response, RefPtr<WebCore::SharedBuffer>&& responseData, std::function<void (MappedBody&)> completionHandler)
 {
     ASSERT(isEnabled());
     ASSERT(responseData);
@@ -303,9 +308,19 @@ void NetworkCache::store(const WebCore::ResourceRequest& originalRequest, const 
     }
 
     auto key = makeCacheKey(originalRequest);
-    auto storageEntry = encodeStorageEntry(originalRequest, response, responseData);
+    auto storageEntry = encodeStorageEntry(originalRequest, response, WTF::move(responseData));
 
-    m_storage->store(key, storageEntry, [](bool success) {
+    m_storage->store(key, storageEntry, [completionHandler](bool success, const NetworkCacheStorage::Data& bodyData) {
+        MappedBody mappedBody;
+#if ENABLE(SHAREABLE_RESOURCE)
+        if (bodyData.isMap()) {
+            RefPtr<SharedMemory> sharedMemory = SharedMemory::createFromVMBuffer(const_cast<uint8_t*>(bodyData.data()), bodyData.size());
+            mappedBody.shareableResource = sharedMemory ? ShareableResource::create(WTF::move(sharedMemory), 0, bodyData.size()) : nullptr;
+            if (mappedBody.shareableResource)
+                mappedBody.shareableResource->createHandle(mappedBody.shareableResourceHandle);
+        }
+#endif
+        completionHandler(mappedBody);
         LOG(NetworkCache, "(NetworkProcess) store success=%d", success);
     });
 }
@@ -320,7 +335,7 @@ void NetworkCache::update(const WebCore::ResourceRequest& originalRequest, const
     auto key = makeCacheKey(originalRequest);
     auto updateEntry = encodeStorageEntry(originalRequest, response, entry.buffer);
 
-    m_storage->update(key, updateEntry, entry.storageEntry, [](bool success) {
+    m_storage->update(key, updateEntry, entry.storageEntry, [](bool success, const NetworkCacheStorage::Data&) {
         LOG(NetworkCache, "(NetworkProcess) updated, success=%d", success);
     });
 }
@@ -330,6 +345,13 @@ void NetworkCache::clear()
     LOG(NetworkCache, "(NetworkProcess) clearing cache");
     if (m_storage)
         m_storage->clear();
+    if (m_statistics)
+        m_statistics->clear();
+}
+
+String NetworkCache::storagePath() const
+{
+    return m_storage ? m_storage->directoryPath() : String();
 }
 
 }

@@ -32,12 +32,10 @@
 #include "PatternAttributes.h"
 #include "RenderSVGContainer.h"
 #include "RenderSVGResourcePattern.h"
-#include "SVGElementInstance.h"
 #include "SVGFitToViewBox.h"
 #include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGRenderSupport.h"
-#include "SVGSVGElement.h"
 #include "SVGTransformable.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -159,7 +157,7 @@ void SVGPatternElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::xAttr
         || attrName == SVGNames::yAttr

@@ -26,7 +26,6 @@
 #include "CSSPropertyNames.h"
 #include "RenderSVGForeignObject.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGLength.h"
 #include "SVGNames.h"
 #include "XLinkNames.h"
@@ -112,7 +111,7 @@ void SVGForeignObjectElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::widthAttr
         || attrName == SVGNames::heightAttr) {

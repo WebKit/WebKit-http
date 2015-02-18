@@ -279,6 +279,9 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
 
 bool Element::dispatchWheelEvent(const PlatformWheelEvent& event)
 {
+    if (!event.deltaX() && !event.deltaY())
+        return false;
+
     RefPtr<WheelEvent> wheelEvent = WheelEvent::create(event, document().defaultView());
     return EventDispatcher::dispatchEvent(this, wheelEvent) && !wheelEvent->defaultHandled();
 }
@@ -2901,10 +2904,10 @@ void Element::didRemoveAttribute(const QualifiedName& name, const AtomicString& 
     dispatchSubtreeModifiedEvent();
 }
 
-RefPtr<HTMLCollection> Element::ensureCachedHTMLCollection(CollectionType type)
+Ref<HTMLCollection> Element::ensureCachedHTMLCollection(CollectionType type)
 {
     if (HTMLCollection* collection = cachedHTMLCollection(type))
-        return collection;
+        return *collection;
 
     if (type == TableRows) {
         return ensureRareData().ensureNodeLists().addCachedCollection<HTMLTableRowsCollection>(downcast<HTMLTableElement>(*this), type);
@@ -2965,16 +2968,13 @@ void Element::detachAttrNodeFromElementWithValue(Attr* attrNode, const AtomicStr
     ASSERT(hasSyntheticAttrChildNodes());
     attrNode->detachFromElementWithValue(value);
 
-    auto* attrNodeList = attrNodeListForElement(*this);
-    for (unsigned i = 0; i < attrNodeList->size(); ++i) {
-        if (attrNodeList->at(i)->qualifiedName() == attrNode->qualifiedName()) {
-            attrNodeList->remove(i);
-            if (attrNodeList->isEmpty())
-                removeAttrNodeListForElement(*this);
-            return;
-        }
-    }
-    ASSERT_NOT_REACHED();
+    auto& attrNodeList = *attrNodeListForElement(*this);
+    bool found = attrNodeList.removeFirstMatching([attrNode] (const RefPtr<Attr>& attribute) {
+        return attribute->qualifiedName() == attrNode->qualifiedName();
+    });
+    ASSERT_UNUSED(found, found);
+    if (attrNodeList.isEmpty())
+        removeAttrNodeListForElement(*this);
 }
 
 void Element::detachAllAttrNodesFromElement()

@@ -117,6 +117,7 @@ my (
     $resourceTimingSupport,
     $scriptedSpeechSupport,
     $seccompFiltersSupport,
+    $streamsAPISupport,
     $styleScopedSupport,
     $subtleCrypto,
     $suidLinuxSandbox,
@@ -256,7 +257,7 @@ my @features = (
       define => "ENABLE_INPUT_SPEECH", default => 0, value => \$inputSpeechSupport },
 
     { option => "input-type-color", desc => "Toggle Input Type Color support",
-      define => "ENABLE_INPUT_TYPE_COLOR", default => (isEfl() || isHaiku()), value => \$inputTypeColorSupport },
+      define => "ENABLE_INPUT_TYPE_COLOR", default => (isEfl() || isGtk() || isHaiku()), value => \$inputTypeColorSupport },
 
     { option => "input-type-date", desc => "Toggle Input Type Date support",
       define => "ENABLE_INPUT_TYPE_DATE", default => isHaiku(), value => \$inputTypeDateSupport },
@@ -359,6 +360,9 @@ my @features = (
 
     { option => "scripted-speech", desc => "Toggle Scripted Speech support",
       define => "ENABLE_SCRIPTED_SPEECH", default => 0, value => \$scriptedSpeechSupport },
+
+    { option => "streams-api", desc => "Toggle Streams API support",
+      define => "ENABLE_STREAMS_API", default => 1, value => \$streamsAPISupport },
 
     { option => "subtle-crypto", desc => "Toggle WebCrypto Subtle-Crypto support",
       define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isEfl() || isAppleMacWebKit() || isIOSWebKit()), value => \$subtleCrypto },

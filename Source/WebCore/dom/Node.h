@@ -278,7 +278,7 @@ public:
     void setHasSyntheticAttrChildNodes(bool flag) { setFlag(flag, HasSyntheticAttrChildNodesFlag); }
 
     // If this node is in a shadow tree, returns its shadow host. Otherwise, returns null.
-    Element* shadowHost() const;
+    WEBCORE_EXPORT Element* shadowHost() const;
     // If this node is in a shadow tree, returns its shadow host. Otherwise, returns this.
     // Deprecated. Should use shadowHost() and check the return value.
     WEBCORE_EXPORT Node* deprecatedShadowAncestorNode() const;
@@ -363,7 +363,7 @@ public:
 
     WEBCORE_EXPORT void inspect();
 
-    WEBCORE_EXPORT bool hasEditableStyle(EditableType editableType = ContentIsEditable, UserSelectAllTreatment treatment = UserSelectAllIsAlwaysNonEditable) const
+    bool hasEditableStyle(EditableType editableType = ContentIsEditable, UserSelectAllTreatment treatment = UserSelectAllIsAlwaysNonEditable) const
     {
         switch (editableType) {
         case ContentIsEditable:
@@ -690,7 +690,7 @@ private:
     bool hasTreeSharedParent() const { return !!parentNode(); }
 
     enum EditableLevel { Editable, RichlyEditable };
-    bool hasEditableStyle(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
+    WEBCORE_EXPORT bool hasEditableStyle(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
     WEBCORE_EXPORT bool isEditableToAccessibility(EditableLevel) const;
 
     virtual void refEventTarget() override;

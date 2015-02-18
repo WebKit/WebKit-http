@@ -206,14 +206,14 @@ bool Connection::open()
 
     // Register the data available handler.
     RefPtr<Connection> connection(this);
-    m_receivePortDataAvailableSource = createDataAvailableSource(m_receivePort, *m_connectionQueue, [connection] {
+    m_receivePortDataAvailableSource = createDataAvailableSource(m_receivePort, m_connectionQueue, [connection] {
         connection->receiveSourceEventHandler();
     });
 
 #if !PLATFORM(IOS)
     // If we have an exception port, register the data available handler and send over the port to the other end.
     if (m_exceptionPort) {
-        m_exceptionPortDataAvailableSource = createDataAvailableSource(m_exceptionPort, *m_connectionQueue, [connection] {
+        m_exceptionPortDataAvailableSource = createDataAvailableSource(m_exceptionPort, m_connectionQueue, [connection] {
             connection->exceptionSourceEventHandler();
         });
 
@@ -283,8 +283,11 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
 
     char stackBuffer[inlineMessageMaxSize];
     char* buffer = &stackBuffer[0];
-    if (messageSize > inlineMessageMaxSize)
+    if (messageSize > inlineMessageMaxSize) {
         buffer = (char*)mmap(0, messageSize, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+        if (buffer == MAP_FAILED)
+            return false;
+    }
 
     bool isComplex = (numberOfPortDescriptors + numberOfOOLMemoryDescriptors > 0);
 

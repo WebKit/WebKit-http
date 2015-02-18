@@ -26,7 +26,6 @@
 #include "FilterEffect.h"
 #include "RenderSVGResourceFilterPrimitive.h"
 #include "SVGElement.h"
-#include "SVGElementInstance.h"
 #include "SVGFilterBuilder.h"
 #include "SVGLength.h"
 #include "SVGNames.h"
@@ -112,7 +111,7 @@ void SVGFilterPrimitiveStandardAttributes::svgAttributeChanged(const QualifiedNa
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);    
+    InstanceInvalidationGuard guard(*this);
     invalidate();
 }
 

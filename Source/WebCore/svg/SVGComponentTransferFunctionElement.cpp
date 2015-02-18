@@ -22,7 +22,6 @@
 #include "SVGComponentTransferFunctionElement.h"
 
 #include "Attribute.h"
-#include "SVGElementInstance.h"
 #include "SVGFEComponentTransferElement.h"
 #include "SVGNames.h"
 #include "SVGNumberList.h"
@@ -131,7 +130,7 @@ void SVGComponentTransferFunctionElement::svgAttributeChanged(const QualifiedNam
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     invalidateFilterPrimitiveParent(this);
 }

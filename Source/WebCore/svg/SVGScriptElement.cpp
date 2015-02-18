@@ -27,7 +27,6 @@
 #include "EventNames.h"
 #include "HTMLNames.h"
 #include "SVGAnimatedStaticPropertyTearOff.h"
-#include "SVGElementInstance.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>
 
@@ -98,7 +97,7 @@ void SVGScriptElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::typeAttr || attrName == HTMLNames::onerrorAttr)
         return;

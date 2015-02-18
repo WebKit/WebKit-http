@@ -22,7 +22,6 @@
 #include "SVGSymbolElement.h"
 
 #include "RenderSVGHiddenContainer.h"
-#include "SVGElementInstance.h"
 #include "SVGFitToViewBox.h"
 #include "SVGNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -88,7 +87,7 @@ void SVGSymbolElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     // Every other property change is ignored.
     if (attrName == SVGNames::viewBoxAttr)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,48 +30,19 @@
 
 #include "Logging.h"
 #include "NetworkCacheCoders.h"
-#include <WebCore/FileSystem.h>
-#include <dirent.h>
+#include "NetworkCacheFileSystemPosix.h"
 #include <dispatch/dispatch.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <wtf/RandomNumber.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebKit {
 
-static const char* networkCacheSubdirectory = "WebKitCache";
-
-template <typename Function>
-static void traverseDirectory(const String& path, uint8_t type, const Function& function)
-{
-    DIR* dir = opendir(WebCore::fileSystemRepresentation(path).data());
-    if (!dir)
-        return;
-    struct dirent* dp;
-    while ((dp = readdir(dir))) {
-        if (dp->d_type != type)
-            continue;
-        const char* name = dp->d_name;
-        if (!strcmp(name, ".") || !strcmp(name, ".."))
-            continue;
-        function(String(name));
-    }
-    closedir(dir);
-}
-
-static void traverseCacheFiles(const String& cachePath, std::function<void (const String& fileName, const String& partitionPath)> function)
-{
-    traverseDirectory(cachePath, DT_DIR, [&cachePath, &function](const String& subdirName) {
-        String partitionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
-        traverseDirectory(partitionPath, DT_REG, [&function, &partitionPath](const String& fileName) {
-            if (fileName.length() != 8)
-                return;
-            function(fileName, partitionPath);
-        });
-    });
-}
+static const char networkCacheSubdirectory[] = "WebKitCache";
+static const char versionDirectoryPrefix[] = "Version ";
 
 NetworkCacheStorage::Data::Data(const uint8_t* data, size_t size)
     : m_dispatchData(adoptDispatch(dispatch_data_create(data, size, nullptr, DISPATCH_DATA_DESTRUCTOR_DEFAULT)))
@@ -81,6 +52,8 @@ NetworkCacheStorage::Data::Data(const uint8_t* data, size_t size)
 
 NetworkCacheStorage::Data::Data(DispatchPtr<dispatch_data_t> dispatchData, Backing backing)
 {
+    if (!dispatchData)
+        return;
     const void* data;
     m_dispatchData = adoptDispatch(dispatch_data_create_map(dispatchData.get(), &data, &m_size));
     m_data = static_cast<const uint8_t*>(data);
@@ -114,13 +87,21 @@ std::unique_ptr<NetworkCacheStorage> NetworkCacheStorage::open(const String& cac
     return std::unique_ptr<NetworkCacheStorage>(new NetworkCacheStorage(networkCachePath));
 }
 
-NetworkCacheStorage::NetworkCacheStorage(const String& directoryPath)
-    : m_directoryPath(directoryPath)
+static String makeVersionedDirectoryPath(const String& baseDirectoryPath)
+{
+    String versionSubdirectory = versionDirectoryPrefix + String::number(NetworkCacheStorage::version);
+    return WebCore::pathByAppendingComponent(baseDirectoryPath, versionSubdirectory);
+}
+
+NetworkCacheStorage::NetworkCacheStorage(const String& baseDirectoryPath)
+    : m_baseDirectoryPath(baseDirectoryPath)
+    , m_directoryPath(makeVersionedDirectoryPath(baseDirectoryPath))
     , m_ioQueue(adoptDispatch(dispatch_queue_create("com.apple.WebKit.Cache.Storage", DISPATCH_QUEUE_CONCURRENT)))
     , m_backgroundIOQueue(adoptDispatch(dispatch_queue_create("com.apple.WebKit.Cache.Storage.Background", DISPATCH_QUEUE_CONCURRENT)))
 {
     dispatch_set_target_queue(m_backgroundIOQueue.get(), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0));
 
+    deleteOldVersions();
     initialize();
 }
 
@@ -129,17 +110,21 @@ void NetworkCacheStorage::initialize()
     ASSERT(RunLoop::isMain());
 
     StringCapture cachePathCapture(m_directoryPath);
-    auto& diskContentsFilter = m_contentsFilter;
-    auto& entryCount = m_approximateEntryCount;
 
-    dispatch_async(m_backgroundIOQueue.get(), [cachePathCapture, &diskContentsFilter, &entryCount] {
+    dispatch_async(m_backgroundIOQueue.get(), [this, cachePathCapture] {
         String cachePath = cachePathCapture.string();
-        traverseCacheFiles(cachePath, [&diskContentsFilter, &entryCount](const String& fileName, const String&) {
+        traverseCacheFiles(cachePath, [this](const String& fileName, const String& partitionPath) {
             NetworkCacheKey::HashType hash;
             if (!NetworkCacheKey::stringToHash(fileName, hash))
                 return;
-            diskContentsFilter.add(hash);
-            ++entryCount;
+            unsigned shortHash = NetworkCacheKey::toShortHash(hash);
+            dispatch_async(dispatch_get_main_queue(), [this, shortHash] {
+                m_contentsFilter.add(shortHash);
+            });
+            auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+            long long fileSize = 0;
+            WebCore::getFileSize(filePath, fileSize);
+            m_approximateSize += fileSize;
         });
     });
 }
@@ -163,7 +148,7 @@ static DispatchPtr<dispatch_io_t> openFileForKey(const NetworkCacheKey& key, Fil
 
     switch (type) {
     case FileOpenType::Create:
-        oflag = O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK;
+        oflag = O_RDWR | O_CREAT | O_TRUNC | O_NONBLOCK;
         mode = S_IRUSR | S_IWUSR;
         WebCore::makeAllDirectories(directoryPathForKey(key, cachePath));
         break;
@@ -249,6 +234,17 @@ static bool decodeEntryMetaData(EntryMetaData& metaData, dispatch_data_t fileDat
     return success;
 }
 
+static DispatchPtr<dispatch_data_t> mapFile(int fd, size_t offset, size_t size)
+{
+    void* map = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, offset);
+    if (map == MAP_FAILED)
+        return nullptr;
+    auto bodyMap = adoptDispatch(dispatch_data_create(map, size, dispatch_get_main_queue(), [map, size] {
+        munmap(map, size);
+    }));
+    return bodyMap;
+}
+
 static std::unique_ptr<NetworkCacheStorage::Entry> decodeEntry(dispatch_data_t fileData, int fd, const NetworkCacheKey& key)
 {
     EntryMetaData metaData;
@@ -269,16 +265,12 @@ static std::unique_ptr<NetworkCacheStorage::Entry> decodeEntry(dispatch_data_t f
         LOG(NetworkCacheStorage, "(NetworkProcess) header checksum mismatch");
         return nullptr;
     }
-    size_t mapSize = metaData.bodySize;
-    void* map = mmap(nullptr, mapSize, PROT_READ, MAP_PRIVATE, fd, metaData.bodyOffset);
-    if (!map) {
+
+    auto bodyData = mapFile(fd, metaData.bodyOffset, metaData.bodySize);
+    if (!bodyData) {
         LOG(NetworkCacheStorage, "(NetworkProcess) map failed");
         return nullptr;
     }
-
-    auto bodyData = adoptDispatch(dispatch_data_create(map, metaData.bodySize, dispatch_get_main_queue(), [map, mapSize] {
-        munmap(map, mapSize);
-    }));
 
     if (metaData.bodyChecksum != hashData(bodyData.get())) {
         LOG(NetworkCacheStorage, "(NetworkProcess) data checksum mismatch");
@@ -330,180 +322,253 @@ static DispatchPtr<dispatch_data_t> encodeEntryHeader(const NetworkCacheKey& key
     return adoptDispatch(dispatch_data_create_concat(headerData.get(), alignmentData.get()));
 }
 
-static DispatchPtr<dispatch_data_t> encodeEntry(const NetworkCacheKey& key, const NetworkCacheStorage::Entry& entry)
-{
-    auto encodedHeader = encodeEntryHeader(key, entry);
-    return adoptDispatch(dispatch_data_create_concat(encodedHeader.get(), entry.body.dispatchData()));
-}
-
 void NetworkCacheStorage::removeEntry(const NetworkCacheKey& key)
 {
     ASSERT(RunLoop::isMain());
 
-    if (m_contentsFilter.mayContain(key.hash()))
-        m_contentsFilter.remove(key.hash());
+    // For simplicity we don't reduce m_approximateSize on removals caused by load or decode errors.
+    // The next cache shrink will update the size.
+
+    if (m_contentsFilter.mayContain(key.shortHash()))
+        m_contentsFilter.remove(key.shortHash());
 
     StringCapture filePathCapture(filePathForKey(key, m_directoryPath));
-    dispatch_async(m_ioQueue.get(), [this, filePathCapture] {
-        CString path = WebCore::fileSystemRepresentation(filePathCapture.string());
-        unlink(path.data());
-        if (m_approximateEntryCount)
-            --m_approximateEntryCount;
+    dispatch_async(m_backgroundIOQueue.get(), [this, filePathCapture] {
+        WebCore::deleteFile(filePathCapture.string());
     });
 }
 
-void NetworkCacheStorage::dispatchRetrieveOperation(const RetrieveOperation& retrieve)
+void NetworkCacheStorage::dispatchReadOperation(const ReadOperation& read)
 {
     ASSERT(RunLoop::isMain());
-
-    ++m_activeRetrieveOperationCount;
+    ASSERT(m_activeReadOperations.contains(&read));
 
     StringCapture cachePathCapture(m_directoryPath);
-    dispatch_async(m_ioQueue.get(), [this, retrieve, cachePathCapture] {
+    dispatch_async(m_ioQueue.get(), [this, &read, cachePathCapture] {
         int fd;
-        auto channel = openFileForKey(retrieve.key, FileOpenType::Read, cachePathCapture.string(), fd);
+        auto channel = openFileForKey(read.key, FileOpenType::Read, cachePathCapture.string(), fd);
 
         bool didCallCompletionHandler = false;
-        dispatch_io_read(channel.get(), 0, std::numeric_limits<size_t>::max(), dispatch_get_main_queue(), [this, fd, retrieve, didCallCompletionHandler](bool done, dispatch_data_t fileData, int error) mutable {
+        dispatch_io_read(channel.get(), 0, std::numeric_limits<size_t>::max(), dispatch_get_main_queue(), [this, fd, &read, didCallCompletionHandler](bool done, dispatch_data_t fileData, int error) mutable {
             if (done) {
-                ASSERT(m_activeRetrieveOperationCount);
-                --m_activeRetrieveOperationCount;
-                dispatchPendingRetrieveOperations();
-            }
-            if (done) {
-                if (!didCallCompletionHandler)
-                    retrieve.completionHandler(nullptr);
                 if (error)
-                    removeEntry(retrieve.key);
+                    removeEntry(read.key);
+
+                if (!didCallCompletionHandler)
+                    read.completionHandler(nullptr);
+
+                ASSERT(m_activeReadOperations.contains(&read));
+                m_activeReadOperations.remove(&read);
+                dispatchPendingReadOperations();
                 return;
             }
             ASSERT(!didCallCompletionHandler); // We are requesting maximum sized chunk so we should never get called more than once with data.
 
-            auto entry = decodeEntry(fileData, fd, retrieve.key);
-            bool success = retrieve.completionHandler(WTF::move(entry));
+            auto entry = decodeEntry(fileData, fd, read.key);
+            bool success = read.completionHandler(WTF::move(entry));
             didCallCompletionHandler = true;
             if (!success)
-                removeEntry(retrieve.key);
+                removeEntry(read.key);
         });
     });
 }
 
-void NetworkCacheStorage::dispatchPendingRetrieveOperations()
+void NetworkCacheStorage::dispatchPendingReadOperations()
 {
     ASSERT(RunLoop::isMain());
 
-    const unsigned maximumActiveRetrieveOperationCount = 5;
+    const int maximumActiveReadOperationCount = 5;
 
-    for (int priority = m_pendingRetrieveOperationsByPriority.size() - 1; priority >= 0; --priority) {
-        if (m_activeRetrieveOperationCount > maximumActiveRetrieveOperationCount) {
+    for (int priority = maximumRetrievePriority; priority >= 0; --priority) {
+        if (m_activeReadOperations.size() > maximumActiveReadOperationCount) {
             LOG(NetworkCacheStorage, "(NetworkProcess) limiting parallel retrieves");
             return;
         }
-        auto& pendingRetrieveQueue = m_pendingRetrieveOperationsByPriority[priority];
+        auto& pendingRetrieveQueue = m_pendingReadOperationsByPriority[priority];
         if (pendingRetrieveQueue.isEmpty())
             continue;
-        dispatchRetrieveOperation(pendingRetrieveQueue.takeFirst());
+        auto readOperation = pendingRetrieveQueue.takeFirst();
+        auto& read = *readOperation;
+        m_activeReadOperations.add(WTF::move(readOperation));
+        dispatchReadOperation(read);
     }
 }
 
-void NetworkCacheStorage::retrieve(const NetworkCacheKey& key, unsigned priority, std::function<bool (std::unique_ptr<Entry>)> completionHandler)
+template <class T> bool retrieveFromMemory(const T& operations, const NetworkCacheKey& key, NetworkCacheStorage::RetrieveCompletionHandler& completionHandler)
+{
+    for (auto& operation : operations) {
+        if (operation->key == key) {
+            LOG(NetworkCacheStorage, "(NetworkProcess) found write operation in progress");
+            auto entry = operation->entry;
+            dispatch_async(dispatch_get_main_queue(), [entry, completionHandler] {
+                completionHandler(std::make_unique<NetworkCacheStorage::Entry>(entry));
+            });
+            return true;
+        }
+    }
+    return false;
+}
+
+void NetworkCacheStorage::retrieve(const NetworkCacheKey& key, unsigned priority, RetrieveCompletionHandler&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
+    ASSERT(priority <= maximumRetrievePriority);
 
-    if (!m_contentsFilter.mayContain(key.hash())) {
+    if (!m_maximumSize) {
         completionHandler(nullptr);
         return;
     }
 
-    // Write cache is a temporary memory cache used to respond to requests while a write is pending.
-    if (auto keyEntryPair = m_writeCache.get(key.hash())) {
-        if (keyEntryPair->first == key) {
-            LOG(NetworkCacheStorage, "(NetworkProcess) found from the write cache");
-            dispatch_async(dispatch_get_main_queue(), [keyEntryPair, completionHandler] {
-                completionHandler(std::make_unique<Entry>(keyEntryPair->second));
-            });
-            return;
-        }
+    if (!m_contentsFilter.mayContain(key.shortHash())) {
+        completionHandler(nullptr);
+        return;
     }
 
-    if (m_pendingRetrieveOperationsByPriority.size() < priority + 1)
-        m_pendingRetrieveOperationsByPriority.grow(priority + 1);
-    m_pendingRetrieveOperationsByPriority[priority].append(RetrieveOperation { key, completionHandler });
+    if (retrieveFromMemory(m_pendingWriteOperations, key, completionHandler))
+        return;
+    if (retrieveFromMemory(m_activeWriteOperations, key, completionHandler))
+        return;
 
-    dispatchPendingRetrieveOperations();
+    m_pendingReadOperationsByPriority[priority].append(std::make_unique<ReadOperation>(ReadOperation { key, WTF::move(completionHandler) }));
+    dispatchPendingReadOperations();
 }
 
-void NetworkCacheStorage::store(const NetworkCacheKey& key, const Entry& entry, std::function<void (bool success)> completionHandler)
+void NetworkCacheStorage::store(const NetworkCacheKey& key, const Entry& entry, StoreCompletionHandler&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
 
-    m_contentsFilter.add(key.hash());
-    ++m_approximateEntryCount;
+    if (!m_maximumSize) {
+        completionHandler(false, Data());
+        return;
+    }
 
-    m_writeCache.set(key.hash(), std::make_shared<KeyEntryPair>(key, entry));
+    auto writeOperation = std::make_unique<WriteOperation>(WriteOperation { key, entry, { }, WTF::move(completionHandler) });
+    m_pendingWriteOperations.append(WTF::move(writeOperation));
+
+    // Add key to the filter already here as we do lookups from the pending operations too.
+    m_contentsFilter.add(key.shortHash());
+
+    dispatchPendingWriteOperations();
+}
+
+void NetworkCacheStorage::update(const NetworkCacheKey& key, const Entry& updateEntry, const Entry& existingEntry, StoreCompletionHandler&& completionHandler)
+{
+    ASSERT(RunLoop::isMain());
+
+    if (!m_maximumSize) {
+        completionHandler(false, Data());
+        return;
+    }
+
+    auto writeOperation = std::make_unique<WriteOperation>(WriteOperation { key, updateEntry, existingEntry, WTF::move(completionHandler) });
+    m_pendingWriteOperations.append(WTF::move(writeOperation));
+
+    dispatchPendingWriteOperations();
+}
+
+void NetworkCacheStorage::dispatchPendingWriteOperations()
+{
+    ASSERT(RunLoop::isMain());
+
+    const int maximumActiveWriteOperationCount { 3 };
+
+    while (!m_pendingWriteOperations.isEmpty()) {
+        if (m_activeWriteOperations.size() >= maximumActiveWriteOperationCount) {
+            LOG(NetworkCacheStorage, "(NetworkProcess) limiting parallel writes");
+            return;
+        }
+        auto writeOperation = m_pendingWriteOperations.takeFirst();
+        auto& write = *writeOperation;
+        m_activeWriteOperations.add(WTF::move(writeOperation));
+
+        if (write.existingEntry && m_contentsFilter.mayContain(write.key.shortHash())) {
+            dispatchHeaderWriteOperation(write);
+            continue;
+        }
+        dispatchFullWriteOperation(write);
+    }
+}
+
+void NetworkCacheStorage::dispatchFullWriteOperation(const WriteOperation& write)
+{
+    ASSERT(RunLoop::isMain());
+    ASSERT(m_activeWriteOperations.contains(&write));
+
+    if (!m_contentsFilter.mayContain(write.key.shortHash()))
+        m_contentsFilter.add(write.key.shortHash());
 
     StringCapture cachePathCapture(m_directoryPath);
-    dispatch_async(m_backgroundIOQueue.get(), [this, key, entry, cachePathCapture, completionHandler] {
-        auto data = encodeEntry(key, entry);
+    dispatch_async(m_backgroundIOQueue.get(), [this, &write, cachePathCapture] {
+        auto encodedHeader = encodeEntryHeader(write.key, write.entry);
+        auto writeData = adoptDispatch(dispatch_data_create_concat(encodedHeader.get(), write.entry.body.dispatchData()));
+
+        size_t bodyOffset = dispatch_data_get_size(encodedHeader.get());
 
         int fd;
-        auto channel = openFileForKey(key, FileOpenType::Create, cachePathCapture.string(), fd);
-        dispatch_io_write(channel.get(), 0, data.get(), dispatch_get_main_queue(), [this, key, completionHandler](bool done, dispatch_data_t, int error) {
+        auto channel = openFileForKey(write.key, FileOpenType::Create, cachePathCapture.string(), fd);
+        dispatch_io_write(channel.get(), 0, writeData.get(), dispatch_get_main_queue(), [this, &write, fd, bodyOffset](bool done, dispatch_data_t, int error) {
             ASSERT_UNUSED(done, done);
             LOG(NetworkCacheStorage, "(NetworkProcess) write complete error=%d", error);
             if (error) {
-                if (m_contentsFilter.mayContain(key.hash()))
-                    m_contentsFilter.remove(key.hash());
-                if (m_approximateEntryCount)
-                    --m_approximateEntryCount;
+                if (m_contentsFilter.mayContain(write.key.shortHash()))
+                    m_contentsFilter.remove(write.key.shortHash());
             }
-            m_writeCache.remove(key.hash());
+            size_t bodySize = write.entry.body.size();
+            size_t totalSize = bodyOffset + bodySize;
 
-            completionHandler(!error);
+            m_approximateSize += totalSize;
+
+            bool shouldMapBody = !error && bodySize >= vm_page_size;
+            auto bodyMap = shouldMapBody ? mapFile(fd, bodyOffset, bodySize) : nullptr;
+
+            Data bodyData(bodyMap, Data::Backing::Map);
+            write.completionHandler(!error, bodyData);
+
+            ASSERT(m_activeWriteOperations.contains(&write));
+            m_activeWriteOperations.remove(&write);
+            dispatchPendingWriteOperations();
         });
     });
 
     shrinkIfNeeded();
 }
 
-void NetworkCacheStorage::update(const NetworkCacheKey& key, const Entry& updateEntry, const Entry& existingEntry, std::function<void (bool success)> completionHandler)
+void NetworkCacheStorage::dispatchHeaderWriteOperation(const WriteOperation& write)
 {
     ASSERT(RunLoop::isMain());
-
-    if (!m_contentsFilter.mayContain(key.hash())) {
-        LOG(NetworkCacheStorage, "(NetworkProcess) existing entry not found, storing full entry");
-        store(key, updateEntry, completionHandler);
-        return;
-    }
-
-    m_writeCache.set(key.hash(), std::make_shared<KeyEntryPair>(key, updateEntry));
+    ASSERT(write.existingEntry);
+    ASSERT(m_activeWriteOperations.contains(&write));
+    ASSERT(m_contentsFilter.mayContain(write.key.shortHash()));
 
     // Try to update the header of an existing entry.
     StringCapture cachePathCapture(m_directoryPath);
-    dispatch_async(m_backgroundIOQueue.get(), [this, key, updateEntry, existingEntry, cachePathCapture, completionHandler] {
-        auto headerData = encodeEntryHeader(key, updateEntry);
-        auto existingHeaderData = encodeEntryHeader(key, existingEntry);
+    dispatch_async(m_backgroundIOQueue.get(), [this, &write, cachePathCapture] {
+        auto headerData = encodeEntryHeader(write.key, write.entry);
+        auto existingHeaderData = encodeEntryHeader(write.key, write.existingEntry.value());
 
         bool pageRoundedHeaderSizeChanged = dispatch_data_get_size(headerData.get()) != dispatch_data_get_size(existingHeaderData.get());
         if (pageRoundedHeaderSizeChanged) {
             LOG(NetworkCacheStorage, "(NetworkProcess) page-rounded header size changed, storing full entry");
-            dispatch_async(dispatch_get_main_queue(), [this, key, updateEntry, completionHandler] {
-                store(key, updateEntry, completionHandler);
+            dispatch_async(dispatch_get_main_queue(), [this, &write] {
+                dispatchFullWriteOperation(write);
             });
             return;
         }
 
         int fd;
-        auto channel = openFileForKey(key, FileOpenType::Write, cachePathCapture.string(), fd);
-        dispatch_io_write(channel.get(), 0, headerData.get(), dispatch_get_main_queue(), [this, key, completionHandler](bool done, dispatch_data_t, int error) {
+        auto channel = openFileForKey(write.key, FileOpenType::Write, cachePathCapture.string(), fd);
+        dispatch_io_write(channel.get(), 0, headerData.get(), dispatch_get_main_queue(), [this, &write](bool done, dispatch_data_t, int error) {
             ASSERT_UNUSED(done, done);
             LOG(NetworkCacheStorage, "(NetworkProcess) update complete error=%d", error);
 
             if (error)
-                removeEntry(key);
-            m_writeCache.remove(key.hash());
+                removeEntry(write.key);
 
-            completionHandler(!error);
+            write.completionHandler(!error, Data());
+
+            ASSERT(m_activeWriteOperations.contains(&write));
+            m_activeWriteOperations.remove(&write);
+            dispatchPendingWriteOperations();
         });
     });
 }
@@ -521,9 +586,8 @@ void NetworkCacheStorage::clear()
     ASSERT(RunLoop::isMain());
     LOG(NetworkCacheStorage, "(NetworkProcess) clearing cache");
 
-    m_writeCache.clear();
     m_contentsFilter.clear();
-    m_approximateEntryCount = 0;
+    m_approximateSize = 0;
 
     StringCapture directoryPathCapture(m_directoryPath);
 
@@ -532,56 +596,74 @@ void NetworkCacheStorage::clear()
         traverseDirectory(directoryPath, DT_DIR, [&directoryPath](const String& subdirName) {
             String subdirPath = WebCore::pathByAppendingComponent(directoryPath, subdirName);
             traverseDirectory(subdirPath, DT_REG, [&subdirPath](const String& fileName) {
-                String filePath = WebCore::pathByAppendingComponent(subdirPath, fileName);
-                unlink(WebCore::fileSystemRepresentation(filePath).data());
+                WebCore::deleteFile(WebCore::pathByAppendingComponent(subdirPath, fileName));
             });
-            rmdir(WebCore::fileSystemRepresentation(subdirPath).data());
+            WebCore::deleteEmptyDirectory(subdirPath);
         });
     });
 }
 
 void NetworkCacheStorage::shrinkIfNeeded()
 {
-    const size_t assumedAverageResourceSize { 48 * 1024 };
-    const size_t everyNthResourceToDelete { 4 };
+    ASSERT(RunLoop::isMain());
 
-    size_t estimatedCacheSize = assumedAverageResourceSize * m_approximateEntryCount;
+    static const double deletionProbability { 0.25 };
 
-    if (estimatedCacheSize <= m_maximumSize)
+    if (m_approximateSize <= m_maximumSize)
         return;
     if (m_shrinkInProgress)
         return;
     m_shrinkInProgress = true;
 
-    LOG(NetworkCacheStorage, "(NetworkProcess) shrinking cache m_approximateEntryCount=%d estimatedCacheSize=%d, m_maximumSize=%d", static_cast<size_t>(m_approximateEntryCount), estimatedCacheSize, m_maximumSize);
+    LOG(NetworkCacheStorage, "(NetworkProcess) shrinking cache approximateSize=%d, m_maximumSize=%d", static_cast<size_t>(m_approximateSize), m_maximumSize);
+
+    m_approximateSize = 0;
 
     StringCapture cachePathCapture(m_directoryPath);
     dispatch_async(m_backgroundIOQueue.get(), [this, cachePathCapture] {
         String cachePath = cachePathCapture.string();
-        size_t foundEntryCount = 0;
-        size_t deletedCount = 0;
-        traverseCacheFiles(cachePath, [this, &foundEntryCount, &deletedCount](const String& fileName, const String& directory) {
-            String partitionPath = WebCore::pathByAppendingComponent(directory, fileName);
-            CString path = WebCore::fileSystemRepresentation(partitionPath);
-            ++foundEntryCount;
-            if (foundEntryCount % everyNthResourceToDelete)
+        traverseCacheFiles(cachePath, [this](const String& fileName, const String& partitionPath) {
+            auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+
+            bool shouldDelete = randomNumber() < deletionProbability;
+            if (!shouldDelete) {
+                long long fileSize = 0;
+                WebCore::getFileSize(filePath, fileSize);
+                m_approximateSize += fileSize;
                 return;
-            ++deletedCount;
+            }
 
-            unlink(path.data());
-
+            WebCore::deleteFile(filePath);
             NetworkCacheKey::HashType hash;
             if (!NetworkCacheKey::stringToHash(fileName, hash))
                 return;
-            dispatch_async(dispatch_get_main_queue(), [this, hash] {
-                if (m_contentsFilter.mayContain(hash))
-                    m_contentsFilter.remove(hash);
+            unsigned shortHash = NetworkCacheKey::toShortHash(hash);
+            dispatch_async(dispatch_get_main_queue(), [this, shortHash] {
+                if (m_contentsFilter.mayContain(shortHash))
+                    m_contentsFilter.remove(shortHash);
             });
         });
-        m_approximateEntryCount = foundEntryCount - deletedCount;
         m_shrinkInProgress = false;
 
-        LOG(NetworkCacheStorage, "(NetworkProcess) cache shrink completed m_approximateEntryCount=%d", static_cast<size_t>(m_approximateEntryCount));
+        LOG(NetworkCacheStorage, "(NetworkProcess) cache shrink completed approximateSize=%d", static_cast<size_t>(m_approximateSize));
+    });
+}
+
+void NetworkCacheStorage::deleteOldVersions()
+{
+    // Delete V1 cache.
+    StringCapture cachePathCapture(m_baseDirectoryPath);
+    dispatch_async(m_backgroundIOQueue.get(), [cachePathCapture] {
+        String cachePath = cachePathCapture.string();
+        traverseDirectory(cachePath, DT_DIR, [&cachePath](const String& subdirName) {
+            if (subdirName.startsWith(versionDirectoryPrefix))
+                return;
+            String partitionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
+            traverseDirectory(partitionPath, DT_REG, [&partitionPath](const String& fileName) {
+                WebCore::deleteFile(WebCore::pathByAppendingComponent(partitionPath, fileName));
+            });
+            WebCore::deleteEmptyDirectory(partitionPath);
+        });
     });
 }
 

@@ -27,7 +27,6 @@
 #include "RenderSVGEllipse.h"
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGException.h"
 #include "SVGLength.h"
 #include "SVGNames.h"
@@ -104,7 +103,7 @@ void SVGCircleElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::cxAttr
         || attrName == SVGNames::cyAttr

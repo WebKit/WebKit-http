@@ -123,6 +123,8 @@ webkit.org/b/132791 svg/as-object/sizing/svg-in-object-placeholder-height-auto.h
 
 webkit.org/b/133057 fast/table/border-collapsing/collapsed-borders-adjoining-sections.html [ ImageOnlyFailure ]
 
+webkit.org/b/141661 fast/text/emoji.html [ Failure ]
+
 webkit.org/b/128736 inspector-protocol/debugger/setBreakpoint-dfg.html [ Failure Pass ]
 webkit.org/b/134982 inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local.html [ Failure Pass ]
 
@@ -271,9 +273,6 @@ webkit.org/b/138676 imported/w3c/canvas/security.drawImage.canvas.html [ Failure
 webkit.org/b/138676 imported/w3c/canvas/security.pattern.image.fillStyle.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/2d.imageData.put.nonfinite.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/2d.pattern.image.incomplete.empty.html [ Failure ]
-webkit.org/b/138676 imported/w3c/canvas/2d.gradient.interpolate.colouralpha.html [ Failure ]
-webkit.org/b/138676 imported/w3c/canvas/2d.line.join.parallel.html [ Failure ]
-webkit.org/b/138676 imported/w3c/canvas/2d.strokeRect.zero.5.html [ Failure ]
 
 # Imported W3C canvas tests need to be changed such that they can be automatically verified
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.fontface.repeat.html [ Skip ]
@@ -332,6 +331,7 @@ webkit.org/b/139595 http/tests/xmlhttprequest/workers/abort-exception-assert.htm
 [ Debug ] fast/history/go-back-to-iframe-with-plugin.html [ Skip ]
 [ Debug ] fast/history/history-back-while-pdf-in-pagecache.html [ Skip ]
 webkit.org/b/121628 [ Release ] fast/history/history-back-while-pdf-in-pagecache.html [ Pass ImageOnlyFailure ]
+[ Debug ] fullscreen/full-screen-iframe-legacy.html [ Pass Crash ]
 
 webkit.org/b/139634 [ Debug ] fast/selectors/matches-backtracking.html [ Slow ]
 webkit.org/b/139634 [ Debug ] fast/selectors/nth-child-of-register-requirement.html [ Slow ]
@@ -401,7 +401,6 @@ webkit.org/b/139155 imported/mozilla/svg/dynamic-textPath-02.svg [ ImageOnlyFail
 webkit.org/b/139155 imported/mozilla/svg/dynamic-textPath-03.svg [ ImageOnlyFailure ]
 webkit.org/b/139155 imported/mozilla/svg/dynamic-pattern-01.svg [ ImageOnlyFailure ]
 webkit.org/b/139155 imported/mozilla/svg/dynamic-use-01.svg [ ImageOnlyFailure ]
-webkit.org/b/139155 imported/mozilla/svg/dynamic-use-02.svg [ ImageOnlyFailure ]
 webkit.org/b/139155 imported/mozilla/svg/dynamic-use-03.svg [ ImageOnlyFailure ]
 webkit.org/b/139155 imported/mozilla/svg/dynamic-use-07.svg [ ImageOnlyFailure ]
 webkit.org/b/139183 imported/mozilla/svg/text/pseudo-first-letter.svg [ ImageOnlyFailure ]
@@ -462,6 +461,7 @@ webkit.org/b/135053 [ Debug ] html5lib/webkit-resumer.html [ Slow ]
 [ Debug ] webgl/1.0.2/conformance/uniforms/gl-uniform-arrays.html [ Slow ]
 [ Debug ] js/dfg-osr-entry-hoisted-clobbered-structure-check.html [ Slow ]
 [ Debug ] editing/selection/move-by-character-brute-force.html [ Slow ]
+[ Debug ] fast/workers/dedicated-worker-lifecycle.html [ Slow ]
 
 webkit.org/b/139865 js/promises-tests/promises-tests-2-3-3.html [ Skip ]
 
@@ -472,3 +472,14 @@ webkit.org/b/140043 [ Debug ] js/dom/Promise.html [ Pass Failure ]
 webkit.org/b/140309 css3/background/background-repeat-space-content.html [ ImageOnlyFailure ]
 
 webkit.org/b/141267 http/tests/misc/detached-frame-console.html [ Pass Failure ]
+
+# Aborting application cache abort tests are intrinsically flaky.
+webkit.org/b/87633 http/tests/appcache/abort-cache-onchecking-manifest-404.html [ Pass Failure ]
+webkit.org/b/87633 http/tests/appcache/abort-cache-ondownloading-resource-404.html [ Pass Failure ]
+
+webkit.org/b/141370 http/tests/security/appcache-in-private-browsing.html [ Pass Failure ]
+
+# The current expectations for this test only make sense for WebKit on iOS; other platforms can have very different behaviors.
+webkit.org/b/141488 fast/replaced/pdf-as-object-and-embed.html [ Skip ]
+
+webkit.org/b/141695 [ Debug ] fast/selectors/nth-last-child-of-register-requirement.html [ Slow ]

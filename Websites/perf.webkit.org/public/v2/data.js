@@ -242,6 +242,11 @@ Measurement.prototype.latestCommitTime = function()
     return this._latestCommitTime || this._buildTime;
 }
 
+Measurement.prototype.buildId = function()
+{
+    return this._raw['build'];
+}
+
 Measurement.prototype.buildNumber = function ()
 {
     return this._raw['buildNumber'];
@@ -315,9 +320,12 @@ RunsData.prototype.timeSeriesByBuildTime = function ()
 
 // FIXME: We need to devise a way to fetch runs in multiple chunks so that
 // we don't have to fetch the entire time series to just show the last 3 days.
-RunsData.fetchRuns = function (platformId, metricId)
+RunsData.fetchRuns = function (platformId, metricId, testGroupId)
 {
     var filename = platformId + '-' + metricId + '.json';
+
+    if (testGroupId)
+        filename += '?testGroup=' + testGroupId;
 
     return new Ember.RSVP.Promise(function (resolve, reject) {
         $.getJSON('../api/runs/' + filename, function (data) {
@@ -355,9 +363,19 @@ function TimeSeries(series)
     this._max = max;
 }
 
+TimeSeries.prototype.findPointByBuild = function (buildId)
+{
+    return this._series.find(function (point) { return point.measurement.buildId() == buildId; })
+}
+
 TimeSeries.prototype.findPointByMeasurementId = function (measurementId)
 {
     return this._series.find(function (point) { return point.measurement.id() == measurementId; });
+}
+
+TimeSeries.prototype.findPointAfterTime = function (time)
+{
+    return this._series.find(function (point) { return point.time >= time; });
 }
 
 TimeSeries.prototype.seriesBetweenPoints = function (startPoint, endPoint)
@@ -367,7 +385,7 @@ TimeSeries.prototype.seriesBetweenPoints = function (startPoint, endPoint)
     return this._series.slice(startPoint.seriesIndex, endPoint.seriesIndex + 1);
 }
 
-TimeSeries.prototype.minMaxForTimeRange = function (startTime, endTime)
+TimeSeries.prototype.minMaxForTimeRange = function (startTime, endTime, ignoreOutlier)
 {
     var data = this._series;
     var i = 0;
@@ -384,6 +402,8 @@ TimeSeries.prototype.minMaxForTimeRange = function (startTime, endTime)
     var max = Number.MIN_VALUE;
     for (; i < data.length; i++) {
         var point = data[i];
+        if (point.isOutlier && ignoreOutlier)
+            continue;
         var currentMin = point.interval ? point.interval[0] : point.value;
         var currentMax = point.interval ? point.interval[1] : point.value;
 
@@ -399,6 +419,13 @@ TimeSeries.prototype.minMaxForTimeRange = function (startTime, endTime)
 }
 
 TimeSeries.prototype.series = function () { return this._series; }
+
+TimeSeries.prototype.lastPoint = function ()
+{
+    if (!this._series || !this._series.length)
+        return null;
+    return this._series[this._series.length - 1];
+}
 
 TimeSeries.prototype.previousPoint = function (point)
 {

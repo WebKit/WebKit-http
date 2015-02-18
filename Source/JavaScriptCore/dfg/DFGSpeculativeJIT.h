@@ -717,49 +717,6 @@ public:
     void compileInstanceOfForObject(Node*, GPRReg valueReg, GPRReg prototypeReg, GPRReg scratchAndResultReg, GPRReg scratch2Reg);
     void compileInstanceOf(Node*);
     
-    ptrdiff_t calleeFrameOffset(int numArgs)
-    {
-        return virtualRegisterForLocal(m_jit.graph().m_nextMachineLocal - 1 + JSStack::CallFrameHeaderSize + numArgs).offset() * sizeof(Register);
-    }
-    
-    // Access to our fixed callee CallFrame.
-    MacroAssembler::Address calleeFrameSlot(int slot)
-    {
-        ASSERT(slot >= JSStack::CallerFrameAndPCSize);
-        return MacroAssembler::Address(MacroAssembler::stackPointerRegister, sizeof(Register) * (slot - JSStack::CallerFrameAndPCSize));
-    }
-
-    // Access to our fixed callee CallFrame.
-    MacroAssembler::Address calleeArgumentSlot(int argument)
-    {
-        return calleeFrameSlot(virtualRegisterForArgument(argument).offset());
-    }
-
-    MacroAssembler::Address calleeFrameTagSlot(int slot)
-    {
-        return calleeFrameSlot(slot).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
-    }
-
-    MacroAssembler::Address calleeFramePayloadSlot(int slot)
-    {
-        return calleeFrameSlot(slot).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
-    }
-
-    MacroAssembler::Address calleeArgumentTagSlot(int argument)
-    {
-        return calleeArgumentSlot(argument).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
-    }
-
-    MacroAssembler::Address calleeArgumentPayloadSlot(int argument)
-    {
-        return calleeArgumentSlot(argument).withOffset(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
-    }
-
-    MacroAssembler::Address calleeFrameCallerFrame()
-    {
-        return calleeFrameSlot(0).withOffset(CallFrame::callerFrameOffset());
-    }
-
     void emitCall(Node*);
     
     int32_t framePointerOffsetToGetActivationRegisters()
@@ -2159,7 +2116,9 @@ public:
 
     void compileGetByValOnArguments(Node*);
     void compileGetArgumentsLength(Node*);
-    
+    void compileGetScope(Node*);
+    void compileSkipScope(Node*);
+
     void compileGetArrayLength(Node*);
     
     void compileValueRep(Node*);
@@ -2175,6 +2134,8 @@ public:
     void compileArithMul(Node*);
     void compileArithDiv(Node*);
     void compileArithMod(Node*);
+    void compileArithPow(Node*);
+    void compileArithSqrt(Node*);
     void compileConstantStoragePointer(Node*);
     void compileGetIndexedPropertyStorage(Node*);
     JITCompiler::Jump jumpForTypedArrayOutOfBounds(Node*, GPRReg baseGPR, GPRReg indexGPR);

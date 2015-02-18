@@ -30,6 +30,13 @@ require 'rbconfig'
 require 'uri'
 require 'yaml'
 
+module URI
+    class SSH < Generic
+        DEFAULT_PORT = 22
+    end
+    @@schemes['SSH'] = SSH
+end
+
 THIS_SCRIPT_PATH = Pathname.new(__FILE__).realpath
 SCRIPTS_PATH = THIS_SCRIPT_PATH.dirname
 WEBKIT_PATH = SCRIPTS_PATH.dirname.dirname
@@ -38,8 +45,6 @@ raise unless SCRIPTS_PATH.basename.to_s == "Scripts"
 raise unless SCRIPTS_PATH.dirname.basename.to_s == "Tools"
 
 HELPERS_PATH = SCRIPTS_PATH + "jsc-stress-test-helpers"
-
-IMPORTANT_ENVS = ["JSC_timeout"]
 
 begin
     require 'shellwords'
@@ -82,22 +87,6 @@ def escapeAll(array)
     }.join(' ')
 end
 
-begin
-    $numProcessors = `sysctl -n hw.activecpu 2>/dev/null`.to_i
-rescue
-    $numProcessors = 0
-end
-
-if $numProcessors == 0
-    $numProcessors = `nproc --all 2>/dev/null`.to_i
-end
-if $numProcessors == 0
-    $numProcessors = 1
-end
-
-if ENV["WEBKIT_TEST_CHILD_PROCESSES"]
-    $numProcessors = ENV["WEBKIT_TEST_CHILD_PROCESSES"].to_i
-end
 
 $jscPath = nil
 $doNotMessWithVMPath = false
@@ -109,7 +98,7 @@ $bundle = nil
 $tarball = false
 $tarFileName = "payload.tar.gz"
 $copyVM = false
-$testRunnerType = :make
+$testRunnerType = nil
 $remoteUser = nil
 $remoteHost = nil
 $remotePort = nil
@@ -137,7 +126,9 @@ def usage
     puts "                            e.g. darwin, linux & windows."
     puts "--shell-runner              Uses the shell-based test runner instead of the default make-based runner."
     puts "                            In general the shell runner is slower than the make runner."
-    puts "--remote                    Specify a remote host on which to run tests."
+    puts "--make-runner               Uses the faster make-based runner."
+    puts "--remote                    Specify a remote host on which to run tests from command line argument."
+    puts "--remote-config-file        Specify a remote host on which to run tests from JSON file."
     puts "--child-processes    (-c)   Specify the number of child processes."
     puts "--help               (-h)   Print this message."
     exit 1
@@ -157,7 +148,9 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
                ['--arch', GetoptLong::REQUIRED_ARGUMENT],
                ['--os', GetoptLong::REQUIRED_ARGUMENT],
                ['--shell-runner', GetoptLong::NO_ARGUMENT],
+               ['--make-runner', GetoptLong::NO_ARGUMENT],
                ['--remote', GetoptLong::REQUIRED_ARGUMENT],
+               ['--remote-config-file', GetoptLong::REQUIRED_ARGUMENT],
                ['--child-processes', '-c', GetoptLong::REQUIRED_ARGUMENT],
                ['--verbose', '-v', GetoptLong::NO_ARGUMENT]).each {
     | opt, arg |
@@ -186,21 +179,41 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
         $copyVM = true
     when '--shell-runner'
         $testRunnerType = :shell
+    when '--make-runner'
+        $testRunnerType = :make
     when '--remote'
         $copyVM = true
-        $testRunnerType = :shell
         $tarball = true
         $remote = true
-        uri = URI("ftp://" + arg)
+        uri = URI("ssh://" + arg)
         $remoteUser, $remoteHost, $remotePort = uri.user, uri.host, uri.port
+    when '--remote-config-file'
+        $remoteConfigFile = arg
     when '--child-processes'
-        $numProcessors = arg.to_i
+        $numChildProcesses = arg.to_i
     when '--arch'
         $architecture = arg
     when '--os'
         $hostOS = arg
     end
 }
+
+if $remoteConfigFile
+    file = File.read($remoteConfigFile)
+    config = JSON.parse(file)
+
+    if !$remote and config['remote']
+        $copyVM = true
+        $tarball = true
+        $remote = true
+        uri = URI("ssh://" + config['remote'])
+        $remoteUser, $remoteHost, $remotePort = uri.user, uri.host, uri.port
+    end
+
+    if config['remoteDirectory']
+        $remoteDirectory = config['remoteDirectory']
+    end
+end
 
 unless jscArg
     $stderr.puts "Error: must specify -jsc <path>"
@@ -272,6 +285,14 @@ end
 
 $architecture = determineArchitecture unless $architecture
 $hostOS = determineOS unless $hostOS
+
+if !$testRunnerType
+    if $remote and $hostOS == "darwin"
+        $testRunnerType = :shell
+    else
+        $testRunnerType = :make
+    end
+end
 
 $numFailures = 0
 
@@ -485,12 +506,7 @@ class Plan
         script += "cd .runner\n"
 
         script += "export DYLD_FRAMEWORK_PATH=$(cd #{$testingFrameworkPath.dirname}; pwd)\n"
-        IMPORTANT_ENVS.each {
-            | key |
-            if ENV[key]
-                script += "export #{key}=#{Shellwords.shellescape(ENV[key])}\n"
-            end
-        }
+        script += "export JSC_timeout=#{Shellwords.shellescape(ENV['JSC_timeout'])}\n"
         script += "#{shellCommand} || exit 1"
         "echo #{Shellwords.shellescape(script)} > #{Shellwords.shellescape((Pathname.new("..") + @name).to_s)}"
     end
@@ -542,7 +558,7 @@ end
 def addRunCommand(kind, command, outputHandler, errorHandler)
     $didAddRunCommand = true
     plan = Plan.new($benchmarkDirectory, command, baseOutputName(kind), outputHandler, errorHandler)
-    if $numProcessors > 1 and $runCommandOptions[:isSlow]
+    if $numChildProcesses > 1 and $runCommandOptions[:isSlow]
         $runlist.unshift plan
     else
         $runlist << plan
@@ -709,6 +725,11 @@ def defaultNoEagerRun
 end
 
 def runProfiler
+    if $remote
+        skip
+        return
+    end
+
     profilerOutput = uniqueFilename(".json")
     if $canRunDisplayProfilerOutput
         addRunCommand("profiler", ["ruby", (pathToHelpers + "profiler-test-helper").to_s, (SCRIPTS_PATH + "display-profiler-output").to_s, profilerOutput.to_s, pathToVM.to_s, "-p", profilerOutput.to_s, $benchmark.to_s], silentOutputHandler, simpleErrorHandler)
@@ -1105,6 +1126,18 @@ def prepareBundle
                     FileUtils.cp_r source, destination
                 end
             end
+
+            if $remote and $hostOS == "linux"
+                begin
+                    dependencies = `ldd #{source}`
+                    dependencies.split(/\n/).each {
+                        | dependency |
+                        FileUtils.cp_r $&, $jscPath.dirname if dependency =~ /#{WEBKIT_PATH}[^ ]*/
+                    }
+                rescue
+                    $stderr.puts "Warning: unable to determine or copy library dependnecies of JSC."
+                end
+            end
         }
     end
     
@@ -1249,17 +1282,6 @@ def prepareMakeTestRunner
     }
 end
 
-if $enableFTL and ENV["JSC_timeout"]
-    # Currently, using the FTL is a performance regression particularly in real
-    # (i.e. non-loopy) benchmarks. Account for this in the timeout.
-    ENV["JSC_timeout"] = (ENV["JSC_timeout"].to_i * 2).to_s
-end
-
-if ENV["JSC_timeout"]
-    # In the worst case, the processors just interfere with each other.
-    # Increase the timeout proportionally to the number of processors.
-    ENV["JSC_timeout"] = (ENV["JSC_timeout"].to_i.to_f * Math.sqrt($numProcessors)).to_i.to_s
-end
     
 puts
 
@@ -1270,17 +1292,6 @@ def cleanRunnerDirectory
         next unless filename =~ /^test_fail/
         FileUtils.rm_f $runnerDir + filename
     }
-end
-
-def runTestRunner
-    case $testRunnerType
-    when :shell
-        runShellTestRunner
-    when :make
-        runMakeTestRunner
-    else
-        raise "Unknown test runner type: #{$testRunnerType.to_s}"
-    end
 end
 
 def sshRead(cmd)
@@ -1296,6 +1307,35 @@ def sshRead(cmd)
     }
     raise "#{$?}" unless $?.success?
     result
+end
+
+def runCommandOnTester(cmd)
+    if $remote
+        result = sshRead(cmd)
+    else
+        result = `#{cmd}`
+    end
+end
+
+def numberOfProcessors
+    begin
+        numProcessors = runCommandOnTester("sysctl -n hw.activecpu 2>/dev/null").to_i
+    rescue
+        numProcessors = 0
+    end
+
+    if numProcessors == 0
+        begin
+            numProcessors = runCommandOnTester("nproc --all 2>/dev/null").to_i
+        rescue
+            numProcessors == 0
+        end
+    end
+
+    if numProcessors == 0
+        numProcessors = 1
+    end
+    return numProcessors
 end
 
 def runAndMonitorTestRunnerCommand(*cmd)
@@ -1365,30 +1405,37 @@ def runAndMonitorTestRunnerCommand(*cmd)
     end
 end
 
-def runShellTestRunner
+def runTestRunner
+    case $testRunnerType
+    when :shell
+        testRunnerCommand = "sh runscript"
+    when :make
+        testRunnerCommand = "make -j #{$numChildProcesses.to_s} -s -f Makefile"
+    else
+        raise "Unknown test runner type: #{$testRunnerType.to_s}"
+    end
+
     if $remote
-        $remoteDirectory = JSON::parse(sshRead("cat ~/.bencher"))["tempPath"]
+        if !$remoteDirectory
+            $remoteDirectory = JSON::parse(sshRead("cat ~/.bencher"))["tempPath"]
+        end
+        mysys("ssh", "-p", $remotePort.to_s, "#{$remoteUser}@#{$remoteHost}", "mkdir -p #{$remoteDirectory}")
         mysys("scp", "-P", $remotePort.to_s, ($outputDir.dirname + $tarFileName).to_s, "#{$remoteUser}@#{$remoteHost}:#{$remoteDirectory}")
         remoteScript = "\""
         remoteScript += "cd #{$remoteDirectory} && "
         remoteScript += "rm -rf #{$outputDir.basename} && "
         remoteScript += "tar xzf #{$tarFileName} && "
         remoteScript += "cd #{$outputDir.basename}/.runner && "
-        remoteScript += "DYLD_FRAMEWORK_PATH=\\\"\\$(cd #{$testingFrameworkPath.dirname}; pwd)\\\" sh runscript"
-        remoteScript += "\""
+        remoteScript += "export DYLD_FRAMEWORK_PATH=\\\"\\$(cd #{$testingFrameworkPath.dirname}; pwd)\\\" && "
+        remoteScript += "export LD_LIBRARY_PATH=#{$remoteDirectory}/#{$outputDir.basename}/#{$jscPath.dirname} && "
+        remoteScript += "export JSC_timeout=#{Shellwords.shellescape(ENV['JSC_timeout'])} && "
+        remoteScript += "#{testRunnerCommand}\""
         runAndMonitorTestRunnerCommand("ssh", "-p", $remotePort.to_s, "#{$remoteUser}@#{$remoteHost}", remoteScript)
     else
         Dir.chdir($runnerDir) {
-            runAndMonitorTestRunnerCommand("sh", "runscript")
+            runAndMonitorTestRunnerCommand(testRunnerCommand)
         }
     end
-end
-
-def runMakeTestRunner
-    raise if $remote
-    Dir.chdir($runnerDir) {
-        runAndMonitorTestRunnerCommand("make", "-j", $numProcessors.to_s, "-s", "-f", "Makefile")
-    }
 end
 
 def detectFailures
@@ -1431,6 +1478,26 @@ Dir.mkdir($outputDir) unless $outputDir.directory?
 
 $outputDir = $outputDir.realpath
 $runnerDir = $outputDir + ".runner"
+
+if !$numChildProcesses
+    if ENV["WEBKIT_TEST_CHILD_PROCESSES"]
+        $numChildProcesses = ENV["WEBKIT_TEST_CHILD_PROCESSES"].to_i
+    else
+        $numChildProcesses = numberOfProcessors
+    end
+end
+
+if $enableFTL and ENV["JSC_timeout"]
+    # Currently, using the FTL is a performance regression particularly in real
+    # (i.e. non-loopy) benchmarks. Account for this in the timeout.
+    ENV["JSC_timeout"] = (ENV["JSC_timeout"].to_i * 2).to_s
+end
+
+if ENV["JSC_timeout"]
+    # In the worst case, the processors just interfere with each other.
+    # Increase the timeout proportionally to the number of processors.
+    ENV["JSC_timeout"] = (ENV["JSC_timeout"].to_i.to_f * Math.sqrt($numChildProcesses)).to_i.to_s
+end
 
 def runBundle
     raise unless $bundle

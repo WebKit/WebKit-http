@@ -1,3 +1,183 @@
+2015-02-13  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Enable bmalloc for EFL port 
+        https://bugs.webkit.org/show_bug.cgi?id=141459
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/CMakeLists.txt: Remove TCSystemAlloc.cpp/h.
+        * wtf/FastMalloc.cpp: Enable BMALLOC for EFL port.
+
+2015-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Add a move constructor and move assignment operator to Deque
+        https://bugs.webkit.org/show_bug.cgi?id=141571
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Deque.h:
+        (WTF::inlineCapacity>::Deque):
+        (WTF::=): Deleted.
+
+2015-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Add an initializer list constructor to Deque
+        https://bugs.webkit.org/show_bug.cgi?id=141565
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Deque.h:
+        (WTF::inlineCapacity>::Deque):
+
+2015-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Re-indent Deque.h
+
+        Rubber-stamped by Antti Koivisto.
+
+        * wtf/Deque.h:
+
+2015-02-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] [64-bit] Work around MSVC2013 Runtime Bug
+        https://bugs.webkit.org/show_bug.cgi?id=141498
+        <rdar://problem/19803642>
+
+        Reviewed by Anders Carlsson.
+
+        Disable FMA3 instruction use in the MSVC math library to
+        work around a VS2013 runtime crash. We can remove this
+        workaround when we switch to VS2015.
+
+        * WTF.vcxproj/WTF.vcxproj: Add new files.
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+        * wtf/win/WTFDLL.cpp: Added.
+
+2015-02-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL][GTK] Use bmalloc instead of tcmalloc
+        https://bugs.webkit.org/show_bug.cgi?id=140162
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/CMakeLists.txt:
+        * wtf/FastMalloc.cpp:
+            Enable bmalloc on GTK ports, but EFL port will enable it when bmalloc supports
+            memory statistics.
+
+2015-02-10  Darin Adler  <darin@apple.com>
+
+        Add the crash-on-failure behavior to bmalloc-based fastMalloc
+        https://bugs.webkit.org/show_bug.cgi?id=141434
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/FastMalloc.cpp: Removed unneeded includes.
+        (WTF::fastMalloc): Added null check and CRASH.
+        (WTF::fastCalloc): Added overflow checking, null check, and CRASH.
+        (WTF::fastRealloc): Added null check and CRASH.
+        (WTF::fastMallocSize): Added FIXME comment.
+        (WTF::fastMallocGoodSize): Added FIXME comment.
+        (WTF::fastAlignedMalloc): Added null check and CRASH.
+        (WTF::tryFastMalloc): Changed to call bmalloc directly instead of
+        calling fastMalloc, since fastMalloc will now crash on failure.
+        (WTF::tryFastRealloc): Changed to call bmalloc directly instead of
+        calling fastRealloc, since fastRealloc will now crash on failure.
+        (WTF::tryFastCalloc): Added overflow checking.
+        (WTF::fastMallocStatistics): Added FIXME comment.
+
+2015-02-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] GMutexLocker build issue
+        https://bugs.webkit.org/show_bug.cgi?id=141381
+
+        Reviewed by Žan Doberšek.
+
+        Remove using WTF::GMutexLocker from the header, since newer glib
+        versions have a GMutexLocker in the public API.
+
+        * wtf/gobject/GMutexLocker.h:
+
+2015-02-09  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: tryFastCalloc is no longer "try"
+        https://bugs.webkit.org/show_bug.cgi?id=141406
+
+        Reviewed by Darin Adler.
+
+        This causes crashes on some WebKit regression test bots.
+
+        * wtf/FastMalloc.cpp: (WTF::tryFastCalloc): Fix what looks like a copy/paste mistake.
+
+2015-02-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] GC sometimes stuck in an infinite loop if parallel GC is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=141290
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Platform.h:
+
+2015-02-07  Chris Dumez  <cdumez@apple.com>
+
+        Add Vector::removeFirstMatching() / removeAllMatching() methods taking lambda functions
+        https://bugs.webkit.org/show_bug.cgi?id=141321
+
+        Reviewed by Darin Adler.
+
+        Add Vector::removeFirstMatching() / removeAllMatching() methods taking
+        lambda functions to match the element(s) to remove. This simplifies the
+        code a bit. Vector::removeAllMatching() is also more efficient than the
+        manual removal alternative.
+
+        * wtf/Vector.h:
+
+2015-02-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179743.
+        https://bugs.webkit.org/show_bug.cgi?id=141335
+
+        caused missing symbols in non-WebKit clients of WTF::Vector
+        (Requested by kling on #webkit).
+
+        Reverted changeset:
+
+        "Remove WTF::fastMallocGoodSize()."
+        https://bugs.webkit.org/show_bug.cgi?id=141020
+        http://trac.webkit.org/changeset/179743
+
+2015-02-06  Andreas Kling  <akling@apple.com>
+
+        Remove WTF::fastMallocGoodSize().
+        <https://webkit.org/b/141020>
+
+        Reviewed by Anders Carlsson.
+
+        bmalloc's good-size API just returns exactly whatever you pass it,
+        so it's of no utility to us anymore.
+
+        This gets rid of a bunch of pointless out-of-line calls in Vector
+        construction and growth.
+
+        * wtf/Compression.cpp:
+        (WTF::GenericCompressedData::create):
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMallocGoodSize): Deleted.
+        * wtf/FastMalloc.h:
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+
+2015-02-05  Youenn Fablet  <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar <calvaris@igalia.com>
+
+        [Streams API] Implement a barebone ReadableStream interface
+        https://bugs.webkit.org/show_bug.cgi?id=141045
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/FeatureDefines.h:
+
 2015-02-04  Alexey Proskuryakov  <ap@apple.com>
 
         Optimized equal() functions in StringImpl.h are not ASan compatible

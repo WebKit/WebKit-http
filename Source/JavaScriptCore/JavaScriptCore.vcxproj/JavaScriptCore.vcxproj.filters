@@ -1755,6 +1755,10 @@
     <ClCompile Include="..\bytecode\VirtualRegister.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
+    <ClCompile Include="..\jit\SetupVarargsFrame.cpp" />
+    <ClCompile Include="JavaScriptCoreDLL.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\API\APICallbackFunction.h">
@@ -3768,9 +3772,6 @@
     <ClInclude Include="..\runtime\StackAlignment.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\heap\DelayedReleaseScope.h">
-      <Filter>heap</Filter>
-    </ClInclude>
     <ClInclude Include="..\bytecode\VariableWatchpointSet.h">
       <Filter>bytecode</Filter>
     </ClInclude>
@@ -4201,6 +4202,7 @@
     <ClInclude Include="..\jit\PolymorphicCallStubRoutine.h">
       <Filter>jit</Filter>
     </ClInclude>
+    <ClInclude Include="..\jit\SetupVarargsFrame.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="JavaScriptCorePreLink.cmd" />

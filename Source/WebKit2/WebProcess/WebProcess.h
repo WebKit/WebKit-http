@@ -181,7 +181,9 @@ public:
     void processWillSuspend();
     void cancelProcessWillSuspend();
     bool markAllLayersVolatileIfPossible();
+    void setAllLayerTreeStatesFrozen(bool);
     void processSuspensionCleanupTimerFired();
+    void processDidResume();
 
 #if PLATFORM(IOS)
     void resetAllGeolocationPermissions();
@@ -216,6 +218,7 @@ private:
     void platformTerminate();
     void registerURLSchemeAsEmptyDocument(const String&);
     void registerURLSchemeAsSecure(const String&) const;
+    void registerURLSchemeAsBypassingContentSecurityPolicy(const String&) const;
     void setDomainRelaxationForbiddenForURLScheme(const String&) const;
     void registerURLSchemeAsLocal(const String&) const;
     void registerURLSchemeAsNoAccess(const String&) const;

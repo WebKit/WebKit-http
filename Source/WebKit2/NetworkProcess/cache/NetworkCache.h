@@ -41,13 +41,15 @@ class URL;
 
 namespace WebKit {
 
+class NetworkCacheStatistics;
+
 class NetworkCache {
     WTF_MAKE_NONCOPYABLE(NetworkCache);
     friend class WTF::NeverDestroyed<NetworkCache>;
 public:
     static NetworkCache& singleton();
 
-    bool initialize(const String& cachePath);
+    bool initialize(const String& cachePath, bool enableEfficacyLogging);
     void setMaximumSize(size_t);
 
     bool isEnabled() const { return !!m_storage; }
@@ -62,17 +64,27 @@ public:
         bool needsRevalidation;
     };
     // Completion handler may get called back synchronously on failure.
-    void retrieve(const WebCore::ResourceRequest&, std::function<void (std::unique_ptr<Entry>)>);
-    void store(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, PassRefPtr<WebCore::SharedBuffer>);
+    void retrieve(const WebCore::ResourceRequest&, uint64_t webPageID, std::function<void (std::unique_ptr<Entry>)>);
+
+    struct MappedBody {
+#if ENABLE(SHAREABLE_RESOURCE)
+        RefPtr<ShareableResource> shareableResource;
+        ShareableResource::Handle shareableResourceHandle;
+#endif
+    };
+    void store(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, RefPtr<WebCore::SharedBuffer>&&, std::function<void (MappedBody&)>);
     void update(const WebCore::ResourceRequest&, const Entry&, const WebCore::ResourceResponse& validatingResponse);
 
     void clear();
+
+    String storagePath() const;
 
 private:
     NetworkCache() = default;
     ~NetworkCache() = delete;
 
     std::unique_ptr<NetworkCacheStorage> m_storage;
+    std::unique_ptr<NetworkCacheStatistics> m_statistics;
 };
 
 }

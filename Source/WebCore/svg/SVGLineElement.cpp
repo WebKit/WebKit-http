@@ -25,7 +25,6 @@
 #include "FloatPoint.h"
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGLength.h"
 #include "SVGNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -107,7 +106,7 @@ void SVGLineElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     bool isLengthAttribute = attrName == SVGNames::x1Attr
                           || attrName == SVGNames::y1Attr

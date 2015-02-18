@@ -27,7 +27,6 @@
 
 #include "Attribute.h"
 #include "RenderSVGResourceMasker.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGRenderSupport.h"
 #include "SVGUnitTypes.h"
@@ -134,7 +133,7 @@ void SVGMaskElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::xAttr
         || attrName == SVGNames::yAttr

@@ -87,7 +87,7 @@ public:
     {
         return adoptRef(*new Event);
     }
-    WEBCORE_EXPORT static Ref<Event> create(const AtomicString& type, bool canBubble, bool cancelable)
+    static Ref<Event> create(const AtomicString& type, bool canBubble, bool cancelable)
     {
         return adoptRef(*new Event(type, canBubble, cancelable));
     }
@@ -180,7 +180,7 @@ public:
 
 protected:
     Event();
-    Event(const AtomicString& type, bool canBubble, bool cancelable);
+    WEBCORE_EXPORT Event(const AtomicString& type, bool canBubble, bool cancelable);
     Event(const AtomicString& type, bool canBubble, bool cancelable, double timestamp);
     Event(const AtomicString& type, const EventInit&);
 

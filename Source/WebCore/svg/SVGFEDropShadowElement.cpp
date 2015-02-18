@@ -22,7 +22,6 @@
 
 #include "Attribute.h"
 #include "RenderStyle.h"
-#include "SVGElementInstance.h"
 #include "SVGFilterBuilder.h"
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
@@ -135,7 +134,7 @@ void SVGFEDropShadowElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     if (attrName == SVGNames::inAttr
         || attrName == SVGNames::stdDeviationAttr

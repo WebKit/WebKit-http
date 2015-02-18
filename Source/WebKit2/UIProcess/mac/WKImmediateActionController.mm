@@ -115,7 +115,8 @@ using namespace WebKit;
 
 - (void)_clearImmediateActionState
 {
-    _page->clearTextIndicator();
+    if (_page)
+        _page->clearTextIndicator();
 
     if (_currentActionContext && _hasActivatedActionContext) {
         _hasActivatedActionContext = NO;
@@ -158,6 +159,8 @@ using namespace WebKit;
 {
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
+
+    [_wkView _prepareForImmediateActionAnimation];
 
     [_wkView _dismissContentRelativeChildWindows];
 
@@ -206,6 +209,8 @@ using namespace WebKit;
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
 
+    [_wkView _cancelImmediateActionAnimation];
+
     _page->setTextIndicatorAnimationProgress(0);
     [self _clearImmediateActionState];
     _page->setMaintainsInactiveSelection(false);
@@ -215,6 +220,8 @@ using namespace WebKit;
 {
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
+
+    [_wkView _completeImmediateActionAnimation];
 
     _page->setTextIndicatorAnimationProgress(1);
 }

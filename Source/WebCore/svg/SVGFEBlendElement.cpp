@@ -24,7 +24,6 @@
 
 #include "Attribute.h"
 #include "FilterEffect.h"
-#include "SVGElementInstance.h"
 #include "SVGFilterBuilder.h"
 #include "SVGNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -111,7 +110,7 @@ void SVGFEBlendElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::modeAttr) {
         primitiveAttributeChanged(attrName);

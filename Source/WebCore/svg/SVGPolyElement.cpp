@@ -27,7 +27,6 @@
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
 #include "SVGAnimatedPointList.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
 #include <wtf/NeverDestroyed.h>
@@ -109,7 +108,7 @@ void SVGPolyElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     auto* renderer = downcast<RenderSVGShape>(this->renderer());
     if (!renderer)

@@ -378,7 +378,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseVarDeclaratio
     TreeDeconstructionPattern scratch1 = 0;
     TreeExpression scratch2 = 0;
     JSTextPosition scratch3;
-    TreeExpression varDecls = parseVarDeclarationList(context, scratch, scratch1, scratch2, scratch3, scratch3, scratch3);
+    TreeExpression varDecls = parseVarDeclarationList(context, scratch, scratch1, scratch2, scratch3, scratch3, scratch3, VarDeclarationContext);
     propagateError();
     failIfFalse(autoSemiColon(), "Expected ';' after var declaration");
     
@@ -447,11 +447,12 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseWhileStatemen
 }
 
 template <typename LexerType>
-template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVarDeclarationList(TreeBuilder& context, int& declarations, TreeDeconstructionPattern& lastPattern, TreeExpression& lastInitializer, JSTextPosition& identStart, JSTextPosition& initStart, JSTextPosition& initEnd)
+template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVarDeclarationList(TreeBuilder& context, int& declarations, TreeDeconstructionPattern& lastPattern, TreeExpression& lastInitializer, JSTextPosition& identStart, JSTextPosition& initStart, JSTextPosition& initEnd, VarDeclarationListContext declarationListContext)
 {
     TreeExpression head = 0;
     TreeExpression tail = 0;
     const Identifier* lastIdent;
+    JSToken lastIdentToken; 
     do {
         lastIdent = 0;
         lastPattern = 0;
@@ -466,6 +467,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVarDeclarati
             identStart = varStart;
             const Identifier* name = m_token.m_data.ident;
             lastIdent = name;
+            lastIdentToken = m_token;
             next();
             hasInitializer = match(EQUAL);
             failIfFalseIfStrict(declareVariable(name), "Cannot declare a variable named ", name->impl(), " in strict mode");
@@ -487,6 +489,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVarDeclarati
             auto pattern = parseDeconstructionPattern(context, DeconstructToVariables);
             failIfFalse(pattern, "Cannot parse this deconstruction pattern");
             hasInitializer = match(EQUAL);
+            failIfTrue(declarationListContext == VarDeclarationContext && !hasInitializer, "Expected an initializer in destructuring variable declaration");
             lastPattern = pattern;
             if (hasInitializer) {
                 next(TreeBuilder::DontBuildStrings); // consume '='
@@ -505,7 +508,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVarDeclarati
             tail = context.appendToCommaExpr(location, head, tail, node);
     } while (match(COMMA));
     if (lastIdent)
-        lastPattern = createBindingPattern(context, DeconstructToVariables, *lastIdent, 0, m_token);
+        lastPattern = createBindingPattern(context, DeconstructToVariables, *lastIdent, 0, lastIdentToken);
     return head;
 }
 
@@ -735,7 +738,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseForStatement(
         m_allowsIn = false;
         JSTextPosition initStart;
         JSTextPosition initEnd;
-        decls = parseVarDeclarationList(context, declarations, forInTarget, forInInitializer, declsStart, initStart, initEnd);
+        decls = parseVarDeclarationList(context, declarations, forInTarget, forInInitializer, declsStart, initStart, initEnd, ForLoopContext);
         m_allowsIn = true;
         propagateError();
 

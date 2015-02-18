@@ -22,7 +22,6 @@
 
 #include "Attribute.h"
 #include "FilterEffect.h"
-#include "SVGElementInstance.h"
 #include "SVGFilterBuilder.h"
 #include "SVGNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -132,7 +131,7 @@ void SVGFEDisplacementMapElement::svgAttributeChanged(const QualifiedName& attrN
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     if (attrName == SVGNames::xChannelSelectorAttr || attrName == SVGNames::yChannelSelectorAttr || attrName == SVGNames::scaleAttr) {
         primitiveAttributeChanged(attrName);

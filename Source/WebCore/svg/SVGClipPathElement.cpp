@@ -25,7 +25,6 @@
 #include "Attribute.h"
 #include "Document.h"
 #include "RenderSVGResourceClipper.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGTransformList.h"
 #include "StyleResolver.h"
@@ -96,7 +95,7 @@ void SVGClipPathElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (RenderObject* object = renderer())
         object->setNeedsLayout();

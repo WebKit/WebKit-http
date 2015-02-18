@@ -510,6 +510,7 @@
     <ClCompile Include="..\ftl\FTLJITCode.cpp" />
     <ClCompile Include="..\ftl\FTLJITFinalizer.cpp" />
     <ClCompile Include="..\ftl\FTLJSCall.cpp" />
+    <ClCompile Include="..\ftl\FTLJSCallBase.cpp" />
     <ClCompile Include="..\ftl\FTLLink.cpp" />
     <ClCompile Include="..\ftl\FTLLocation.cpp" />
     <ClCompile Include="..\ftl\FTLLowerDFGToLLVM.cpp" />
@@ -620,6 +621,7 @@
     <ClCompile Include="..\jit\JITStubs.cpp" />
     <ClCompile Include="..\jit\JITThunks.cpp" />
     <ClCompile Include="..\jit\JITToDFGDeferredCompilationCallback.cpp" />
+    <ClCompile Include="..\jit\SetupVarargsFrame.cpp" />
     <ClCompile Include="..\jit\PolymorphicCallStubRoutine.cpp" />
     <ClCompile Include="..\jit\Reg.cpp" />
     <ClCompile Include="..\jit\RegisterPreservationWrapperGenerator.cpp" />
@@ -844,6 +846,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorFrontendDispatchers.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorProtocolObjects.cpp" />
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCBuiltins.cpp" />
+    <ClCompile Include="JavaScriptCoreDLL.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ArrayConstructor.lut.h" />
@@ -1190,6 +1193,7 @@
     <ClInclude Include="..\ftl\FTLJITCode.h" />
     <ClInclude Include="..\ftl\FTLJITFinalizer.h" />
     <ClInclude Include="..\ftl\FTLJSCall.h" />
+    <ClInclude Include="..\ftl\FTLJSCallBase.h" />
     <ClInclude Include="..\ftl\FTLLink.h" />
     <ClInclude Include="..\ftl\FTLLocation.h" />
     <ClInclude Include="..\ftl\FTLLowerDFGToLLVM.h" />
@@ -1230,7 +1234,6 @@
     <ClInclude Include="..\heap\CopyWorkList.h" />
     <ClInclude Include="..\heap\CopyWriteBarrier.h" />
     <ClInclude Include="..\heap\DeferGC.h" />
-    <ClInclude Include="..\heap\DelayedReleaseScope.h" />
     <ClInclude Include="..\heap\EdenGCActivityCallback.h" />
     <ClInclude Include="..\heap\FullGCActivityCallback.h" />
     <ClInclude Include="..\heap\GCActivityCallback.h" />
@@ -1354,6 +1357,7 @@
     <ClInclude Include="..\jit\JITToDFGDeferredCompilationCallback.h" />
     <ClInclude Include="..\jit\JITWriteBarrier.h" />
     <ClInclude Include="..\jit\JSInterfaceJIT.h" />
+    <ClInclude Include="..\jit\SetupVarargsFrame.h" />
     <ClInclude Include="..\jit\PolymorphicCallStubRoutine.h" />
     <ClInclude Include="..\jit\Reg.h" />
     <ClInclude Include="..\jit\RegisterPreservationWrapperGenerator.h" />

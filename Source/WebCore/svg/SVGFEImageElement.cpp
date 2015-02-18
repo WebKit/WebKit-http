@@ -31,7 +31,6 @@
 #include "Image.h"
 #include "RenderObject.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGPreserveAspectRatio.h"
 #include "XLinkNames.h"
@@ -155,7 +154,7 @@ void SVGFEImageElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     if (attrName == SVGNames::preserveAspectRatioAttr) {
         invalidate();

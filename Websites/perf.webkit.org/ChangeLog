@@ -1,3 +1,422 @@
+2015-02-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build URL on new perf dashboard doesn't resolve $builderName
+        https://bugs.webkit.org/show_bug.cgi?id=141583
+
+        Reviewed by Darin Adler.
+
+        Support $builderName in the build URL template.
+
+        * public/js/helper-classes.js:
+        (TestBuild.buildUrl): Replaced $builderName with the builder name.
+
+        * public/v2/manifest.js:
+        (App.Metric.fullName): Fixed the typo. We need &ni, not &in.
+        (App.BuilderurlFromBuildNumber): Replaced $builderName with the builder name.
+
+2015-02-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix after r179591.
+
+        * public/api/commits.php:
+
+2015-02-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The status of a A/B testing request always eventually becomes "Failed"
+        https://bugs.webkit.org/show_bug.cgi?id=141523
+
+        Reviewed by Andreas Kling.
+
+        The bug was caused by /api/build-requests always setting the status of a build request to 'failed' when
+        'failedIfNotCompleted' was sent by the buildbot sync'er.
+
+        Fixed the bug by only setting the status to 'failed' if it wasn't set to 'completed'.
+
+        * public/api/build-requests.php:
+        (main):
+
+2015-02-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, remove empty directories.
+
+        * public/data: Removed.
+
+2015-02-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should show the results of A/B testing
+        https://bugs.webkit.org/show_bug.cgi?id=141500
+
+        Reviewed by Chris Dumez.
+
+        Added the support for fetching test_runs for a specific test group in /api/runs/, and used it in the
+        analysis task page to fetch results for each test group.
+
+        Merged App.createChartData into App.Manifest.fetchRunsWithPlatformAndMetric so that App.BuildRequest
+        can use the formatter.
+
+        * public/api/runs.php:
+        (fetch_runs_for_config_and_test_group): Added.
+        (fetch_runs_for_config): Just return the fetched rows since main will format them with RunsGenerator.
+        (main): Use fetch_runs_for_config_and_test_group to fetch rows when a test group id is specified. Also
+        use RunsGenerator to format results.
+        (RunsGenerator): Added.
+        (RunsGenerator::__construct): Added.
+        (RunsGenerator::add_runs): Added.
+        (RunsGenerator::format_run): Moved.
+        (RunsGenerator::parse_revisions_array): Moved.
+
+        * public/v2/analysis.js:
+        (App.TestGroup): Fixed a typo. The property on a test group that refers to an analysis task is "task".
+        (App.TestGroup._fetchChartData): Added. Fetches all A/B testing results for this group.
+        (App.BuildRequest.configLetter): Renamed from config since this returns a letter that identifies the
+        configuration associated with this build request such as "A" and "B".
+        (App.BuildRequest.statusLabel): Added the missing label for failed build requests.
+        (App.BuildRequest.url): Added. Returns the URL associated with this build request.
+        (App.BuildRequest._meanFetched): Added. Retrieve the mean and the build number for this request via
+        _fetchChartData.
+
+        * public/v2/app.js:
+        (App.Pane._fetch): Set chartData directly here.
+        (App.Pane._updateMovingAverageAndEnvelope): Renamed from _computeChartData. No longer sets chartData
+        now that it's done in App.Pane._fetch.
+        (App.AnalysisTaskController._fetchedRuns): Updated per createChartData merge.
+
+        * public/v2/data.js:
+        (Measurement.prototype.buildId): Added.
+        (TimeSeries.prototype.findPointByBuild): Added.
+
+        * public/v2/index.html: Fixed a bug that build status URL was broken. We can't use link-to helper since
+        url is not an Ember routed path.
+
+        * public/v2/manifest.js:
+        (App.Manifest.fetchRunsWithPlatformAndMetric): Takes testGroupId as the third argument. Merged
+        App.createChartData here so that App.BuildRequest can use the formatter
+
+2015-02-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v2 UI should adjust the number of ticks on dashboards based on screen size
+        https://bugs.webkit.org/show_bug.cgi?id=141502
+
+        Reviewed by Chris Dumez.
+
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._updateDimensionsIfNeeded): Compute the number of ticks based on the
+        content size.
+
+2015-02-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard shows too much space around interesting data points
+        https://bugs.webkit.org/show_bug.cgi?id=141487
+
+        Reviewed by Chris Dumez.
+
+        Revise the y-axis range adjustment algorithm in r179913. Instead of showing the entire moving average,
+        show the current time series excluding points in the series outside the moving average envelope.
+
+        * public/v2/app.js:
+        (App.Pane._computeChartData): Don't deal with missing moving average or enveloping strategy here.
+        (App.Pane._computeMovingAverageAndOutliers): Set isOutliner to true on all data points in the current
+        time series if the point lies outside the moving average envelope. Don't expose the moving average or
+        the envelope computed for this purpose if they're not set by the user.
+
+        * public/v2/data.js:
+        (TimeSeries.prototype.minMaxForTimeRange): Takes a boolean argument, ignoreOutlier. When the flag is set
+        to true, min/max computation will ignore any point in the series with non-falsy "isOutliner" property.
+
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._constructGraphIfPossible): Unsupport hideMovingAverage and hideEnvelope.
+        (App.InteractiveChartComponent._computeYAxisDomain): Removed the commented out code. Also moved the code
+        to deal with showFullYAxis here.
+        (App.InteractiveChartComponent._minMaxForAllTimeSeries): Rewrote the code. Takes ignoreOutliners as an
+        argument instead of directly inspecting showFullYAxis.
+
+2015-02-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard shouldn't always show outliners
+        https://bugs.webkit.org/show_bug.cgi?id=141445
+
+        Reviewed by Chris Dumez.
+
+        Use the simple moving average with an average difference envelope to compute the y-axis range to show
+        to avoid expanding it spuriously to show one off outlier.
+
+        * public/v2/app.js:
+        (App.Pane): Don't show the full y-axis range by default.
+        (App.Pane._computeChartData): Use the first strategies for the moving average and the enveloping if
+        one is not specified by the user but without showing them in the charts.
+        (App.Pane._computeMovingAverage): Takes moving average and enveloping strategies as arguments instead
+        of retrieving via chosenMovingAverageStrategy and chosenEnvelopingStrategy.
+
+        (App.ChartsController._parsePaneList): Added showFullYAxis as a query string argument to each pane.
+        (App.ChartsController._serializePaneList): Ditto.
+
+        * public/v2/chart-pane.css: Added a CSS rule for when y-axis is clickable.
+
+        * public/v2/index.html: Pass in showFullYAxis as an argument to the main interactive chart.
+
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._constructGraphIfPossible): Add an event listener on y-axis labels when
+        the chart is interactive so that toggle showFullYAxis. Also hide the moving average and/or the envelope
+        if they are not specified by the user (i.e. only used to adjust y-axis range).
+        (App.InteractiveChartComponent._updateDomain): Don't exit early if y-axis domains are different even if
+        x-axis domain remained the same. Without this change, the charts would never redraw.
+        (App.InteractiveChartComponent._minMaxForAllTimeSeries): Use the moving average instead of the current
+        time series to compute the y-axis range if showFullYAxis is false. When showFullYAxis is true, expand
+        y-axis all the way down to 0 or the minimum value in the current time series whichever is smaller.
+
+        * public/v2/js/statistics.js:
+        (Statistics.MovingAverageStrategies): Use a wider window in Simple Moving Average by default.
+
+2015-02-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix.
+
+        * public/v2/app.js:
+        (set get App.Pane.Ember.Object.extend):
+
+2015-02-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard should have the ability to overlay moving average with an envelope
+        https://bugs.webkit.org/show_bug.cgi?id=141438
+
+        Reviewed by Andreas Kling.
+
+        This patch adds three kinds of moving average strategies and two kinds of enveloping strategies:
+
+        Simple Moving Average - The moving average x̄_i of x_i is computed as the arithmetic mean of values
+        from x_(i - n) though x_(i + m) where n is a non-negative integer and m is a positive integer. It takes
+        n, backward window size, and m, forward window size, as an argument.
+
+        Cumulative Moving Average - x̄_i is computed as the arithmetic mean of all values x_0 though x_i.
+        That is, x̄_1 = x_1 and x̄_i = ((i - 1) * M_(i - 1) + x_i) / i for all i > 1.
+
+        Exponential Moving Average - x̄_i is computed as the weighted average of x_i and x̄_(i - 1) with α as
+        an argument specifying x_i's weight. To be precise, x̄_1 = x_1 and x̄_i = α * x_i + (α - 1) x̄_(i-1).
+
+
+        Average Difference - The enveloping delta d is computed as the arithmetic mean of the difference
+        between each x_i and x̄_i.
+
+        Moving Average Standard Deviation - d is computed like the standard deviation except the deviation
+        for each term is measured from the moving average instead of the sample arithmetic mean. i.e. it uses
+        the average of (x_i - x̄_i)^2 as the "sample variance" instead of the conventional (x_i - x̄)^2 where
+        x̄ is the sample mean of all x_i's. This change was necessary since our time series is non-stationary.
+
+
+        Each strategy is cloned for an App.Pane instance so that its parameterList can be configured per pane.
+        The configuration of the currently chosen strategies is saved in the query string for convenience.
+
+        Also added the "stat pane" to choose a moving average strategy and a enveloping strategy in each pane.
+
+        * public/v2/app.css: Specify the fill color for all SVG groups in the pane toolbar icons.
+
+        * public/v2/app.js:
+        (App.Pane._fetch): Delegate the creation of 'chartData' to _computeChartData.
+        (App.Pane.updateStatisticsTools): Added. Clones moving average and enveloping strategies for this pane.
+        (App.Pane._cloneStrategy): Added. Clones a strategy for a new pane.
+        (App.Pane._configureStrategy): Added. Finds and configures a strategy from the configuration retrieved
+        from the query string via ChartsController.
+        (App.Pane._computeChartData): Added. Creates chartData from fetchedData.
+        (App.Pane._computeMovingAverage): Added. Computes the moving average and the envelope.
+        (App.Pane._executeStrategy): Added.
+        (App.Pane._updateStrategyConfigIfNeeded): Pushes the strategy configurations to the query string via
+        ChartsController.
+        (App.ChartsController._parsePaneList): Merged the query string arguments for the range and point
+        selections, and added two new arguments for the moving average and the enveloping configurations.
+        (App.ChartsController._serializePaneList): Ditto.
+        (App.ChartsController._scheduleQueryStringUpdate): Observes strategy configurations.
+        (App.PaneController.actions.toggleBugsPane): Hides the stat pane.
+        (App.PaneController.actions.toggleSearchPane): Hides the stat pane.
+        (App.PaneController.actions.toggleStatPane): Added.
+
+        * public/v2/chart-pane.css: Added CSS rules for the new stat pane. Also added .foreground class for the
+        current (as opposed to baseline and target) time series for when it's the most foreground graph without
+        moving average and its envelope overlapping on top of it.
+
+        * public/v2/index.html: Added the templates for the stat pane and the corresponding icon (Σ).
+
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent.chartDataDidChange): Unset _totalWidth and _totalHeight to avoid exiting
+        early inside _updateDimensionsIfNeeded when chartData changes after the initial layout.
+        (App.InteractiveChartComponent.didInsertElement): Attach event listeners here instead of inside
+        _constructGraphIfPossible since that could be called multiple times on the same SVG element.
+        (App.InteractiveChartComponent._constructGraphIfPossible): Clear down the old SVG element we created
+        but don't bother removing individual paths and circles. Added the code to show the moving average time
+        series when there is one. Also add "foreground" class on SVG elements for the current time series when
+        we're not showing the moving average. chart-pane.css has been updated to "dim down" the current time
+        series when "foreground" is not set.
+        (App.InteractiveChartComponent._minMaxForAllTimeSeries): Take the moving average time series into
+        account when computing the y-axis range.
+        (App.InteractiveChartComponent._brushChanged): Removed 'selectionIsLocked' argument as it's useless.
+
+        * public/v2/js/statistics.js:
+        (Statistics.MovingAverageStrategies): Added.
+        (Statistics.EnvelopingStrategies): Added.
+
+2015-02-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The delta value in the chart pane sometimes doens't show '+' for a positive delta
+        https://bugs.webkit.org/show_bug.cgi?id=141340
+
+        Reviewed by Andreas Kling.
+
+        The bug was caused by computeStatus prefixing the value delta with '+' if it's greater than 0 after
+        it had already been formatted. Fixed the bug by using a formatter that always emits a sign symbol.
+
+        * public/v2/app.js:
+        (App.Pane.computeStatus):
+        (App.createChartData):
+
+2015-02-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix. currentPoint wasn't defined when selectedPoints was used to find points.
+
+        * public/v2/app.js:
+        (App.PaneController._updateDetails):
+
+2015-02-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed. Commit the forgotten change.
+
+        * public/include/manifest.php:
+
+2015-02-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard should have multiple dashboard pages
+        https://bugs.webkit.org/show_bug.cgi?id=141339
+
+        Reviewed by Chris Dumez.
+
+        Added the support for multiple dashboard pages. Also added the status of the latest data point.
+        e.g. "5% better than target"
+
+        * public/v2/app.css: Tweaked the styles to work around the fact Ember.js creates empty script elements.
+        Also hid the border lines around charts on the dashboard page for a cleaner look.
+
+        * public/v2/app.js:
+        (App.IndexRoute): Added. Navigate to /dashboard/<defaultDashboardName> once the manifest.json is loaded.
+        (App.IndexRoute.beforeModel): Added.
+        (App.DashboardRoute): Added.
+        (App.DashboardRoute.model): Added. Return the dashboard specified by the name.
+        (App.CustomDashboardRoute): Added. This route is used for a customized dashboard specified by "grid".
+        (App.CustomDashboardRoute.model): Create a dashboard model from "grid" query parameter.
+        (App.CustomDashboardRoute.renderTemplate): Use the dashboard template.
+        (App.DashboardController): Renamed from App.IndexController.
+        (App.DashboardController.modelChanged): Renamed from gridChanged. Removed the code to deal with "grid"
+        and "defaultDashboard" as these are taken care of by newly added routers.
+        (App.DashboardController.computeGrid): Renamed from updateGrid. No longer updates "grid" since this is
+        now done in actions.toggleEditMode.
+        (App.DashboardController.actions.toggleEditMode): Navigate to CustomDashboardRoute when start editing
+        an existing dashboard.
+
+        (App.Pane.computeStatus): Moved from App.PaneController so that to be called in App.Pane.latestStatus.
+        Also moved the code to compute the delta with respect to the previous data point from _updateDetails.
+        (App.Pane._relativeDifferentToLaterPointInTimeSeries): Ditto.
+        (App.Pane.latestStatus): Added. Used by the dashboard template to show the status of the latest result.
+
+        (App.createChartData): Added deltaFormatter to show less significant digits for differences.
+
+        (App.PaneController._updateDetails): Updated per changes to computeStatus.
+
+        * public/v2/chart-pane.css: Added style rules for the status labels on the dashboard.
+
+        * public/v2/data.js:
+        (TimeSeries.prototype.lastPoint): Added.
+
+        * public/v2/index.html: Prefetch manifest.json as soon as possible, show the latest data points' status
+        on the dashboard, and enumerate all predefined dashboards.
+
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._relayoutDataAndAxes): Slightly adjust the offset at which we show unit
+        for the dashboard page.
+
+        * public/v2/manifest.js:
+        (App.Dashboard): Inherit from App.NameLabelModel now that each predefined dashboard has a name.
+        (App.MetricSerializer.normalizePayload): Parse all predefined dashboards instead of a single dashboard.
+        IDs are generated for each dashboard for forward compatibility.
+        (App.Manifest):
+        (App.Manifest.dashboardByName): Added.
+        (App.Manifest.defaultDashboardName): Added.
+        (App.Manifest._fetchedManifest): Create dashboard model objects for all predefined ones.
+
+2015-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Move commits viewer to the end of details view
+        https://bugs.webkit.org/show_bug.cgi?id=141315
+
+        Rubber-stamped by Andreas Kling.
+
+        Show the difference instead of the old value per kling's request.
+
+        * public/v2/app.js:
+        (App.PaneController._updateDetails):
+        * public/v2/index.html:
+
+2015-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Move commits viewer to the end of details view
+        https://bugs.webkit.org/show_bug.cgi?id=141315
+
+        Reviewed by Andreas Kling.
+
+        Improved the way list of commits are shown per kling's request.
+
+        * public/v2/app.js:
+        (App.PaneController._updateDetails): Always show the old value even when a single point is selected.
+
+        * public/v2/chart-pane.css: Updated the style for the commits viewer.
+
+        * public/v2/commits-viewer.js:
+        (App.CommitsViewerComponent): Added "visible" property to hide the list of commits.
+        (App.CommitsViewerComponent.actions.toggleVisibility): Added. Toggles "visible" property.
+
+        * public/v2/index.html: Updated the template for commits viewer to support "visible" property. Also
+        moved the commits viewers out of the details tables so that they don't interleave revision data.
+
+2015-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New perf dashboard should compare results to baseline and target
+        https://bugs.webkit.org/show_bug.cgi?id=141286
+
+        Reviewed by Chris Dumez.
+
+        Compare the selected value against baseline and target values as done in v1. e.g. "5% below target"
+        Also use d3.format to format the selected value to show four significant figures.
+
+        * public/v2/app.js:
+        (App.Pane.searchCommit):
+        (App.Pane._fetch): Create time series here via createChartData so that _computeStatus can use them
+        to compute the status text without having to recreate them.
+        (App.createChartData): Added.
+        (App.PaneController._updateDetails): Use 3d.format on current and old values.
+        (App.PaneController._computeStatus): Added. Computes the status text.
+        (App.PaneController._relativeDifferentToLaterPointInTimeSeries): Added.
+        (App.AnalysisTaskController._fetchedManifest): Use createChartData as done in App.Pane._fetch. Also
+        format the values using chartData.formatter.
+
+        * public/v2/chart-pane.css: Enlarge the status text. Show the status text in red if it's worse than
+        the baseline and in blue if it's better than the target.
+
+        * public/v2/data.js:
+        (TimeSeries.prototype.findPointAfterTime): Added.
+
+        * public/v2/index.html: Added a new tbody for the status text and the selected value. Also fixed
+        the bug that we were not showing the old value's unit.
+
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._constructGraphIfPossible): Use chartData.formatter. Also cleaned up
+        the code to show the baseline and the target lines.
+
+        * public/v2/manifest.js:
+        (App.Manifest.fetchRunsWithPlatformAndMetric): Added smallerIsBetter.
+
+2015-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix.
+
+        * public/v2/app.js:
+        (App.IndexController.gridChanged): Use store.createRecord to create a custom dashboard as required by Ember.js
+
 2015-02-04  Ryosuke Niwa  <rniwa@webkit.org>
 
         New perf dashboard doesn't preserve the number of days when clicking on a dashboard chart

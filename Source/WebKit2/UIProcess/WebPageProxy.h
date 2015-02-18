@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -115,6 +115,7 @@ namespace API {
 class ContextMenuClient;
 class FindClient;
 class FormClient;
+class HistoryClient;
 class LoaderClient;
 class Navigation;
 class NavigationClient;
@@ -316,6 +317,7 @@ public:
     void initializeFindMatchesClient(const WKPageFindMatchesClientBase*);
     void setFormClient(std::unique_ptr<API::FormClient>);
     void setNavigationClient(std::unique_ptr<API::NavigationClient>);
+    void setHistoryClient(std::unique_ptr<API::HistoryClient>);
     void setLoaderClient(std::unique_ptr<API::LoaderClient>);
     void setPolicyClient(std::unique_ptr<API::PolicyClient>);
 
@@ -615,13 +617,13 @@ public:
     bool supportsTextZoom() const;
     double textZoomFactor() const { return m_textZoomFactor; }
     void setTextZoomFactor(double);
-    double pageZoomFactor() const { return m_pageZoomFactor; }
+    double pageZoomFactor() const;
     void setPageZoomFactor(double);
     void setPageAndTextZoomFactors(double pageZoomFactor, double textZoomFactor);
 
     void scalePage(double scale, const WebCore::IntPoint& origin);
     void scalePageInViewCoordinates(double scale, const WebCore::IntPoint& centerInViewCoordinates);
-    double pageScaleFactor() const { return m_pageScaleFactor; }
+    double pageScaleFactor() const;
 
     float deviceScaleFactor() const;
     void setIntrinsicDeviceScaleFactor(float);
@@ -694,7 +696,8 @@ public:
 #endif
 
     void pageScaleFactorDidChange(double);
-    void pageZoomFactorDidChange(double);
+    void pluginScaleFactorDidChange(double);
+    void pluginZoomFactorDidChange(double);
 
     // Find.
     void findString(const String&, FindOptions, unsigned maxMatchCount);
@@ -986,6 +989,11 @@ public:
 
     void setShouldDispatchFakeMouseMoveEvents(bool);
 
+    // Diagnostic messages logging.
+    void logDiagnosticMessage(const String& message, const String& description);
+    void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result);
+    void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value);
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
     void platformInitialize();
@@ -1219,6 +1227,10 @@ private:
     void didPerformDictionaryLookup(const DictionaryPopupInfo&);
 #endif
 
+#if PLATFORM(MAC)
+    bool appleMailPaginationQuirkEnabled();
+#endif
+
     // Spelling and grammar.
     void checkSpellingOfString(const String& text, int32_t& misspellingLocation, int32_t& misspellingLength);
     void checkGrammarOfString(const String& text, Vector<WebCore::GrammarDetail>&, int32_t& badGrammarLocation, int32_t& badGrammarLength);
@@ -1234,11 +1246,6 @@ private:
     void setToolTip(const String&);
     void setCursor(const WebCore::Cursor&);
     void setCursorHiddenUntilMouseMoves(bool);
-
-    // Diagnostic messages logging.
-    void logDiagnosticMessage(const String& message, const String& description);
-    void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result);
-    void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value);
 
     void didReceiveEvent(uint32_t opaqueType, bool handled);
     void stopResponsivenessTimer();
@@ -1374,6 +1381,7 @@ private:
     std::unique_ptr<API::LoaderClient> m_loaderClient;
     std::unique_ptr<API::PolicyClient> m_policyClient;
     std::unique_ptr<API::NavigationClient> m_navigationClient;
+    std::unique_ptr<API::HistoryClient> m_historyClient;
     std::unique_ptr<API::FormClient> m_formClient;
     std::unique_ptr<API::UIClient> m_uiClient;
 #if PLATFORM(EFL)
@@ -1477,6 +1485,8 @@ private:
     double m_textZoomFactor;
     double m_pageZoomFactor;
     double m_pageScaleFactor;
+    double m_pluginZoomFactor;
+    double m_pluginScaleFactor;
     float m_intrinsicDeviceScaleFactor;
     float m_customDeviceScaleFactor;
     float m_topContentInset;

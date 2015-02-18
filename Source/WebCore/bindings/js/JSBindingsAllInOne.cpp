@@ -111,10 +111,13 @@
 #include "JSNodeListCustom.cpp"
 #include "JSPluginElementFunctions.cpp"
 #include "JSPopStateEventCustom.cpp"
+#if ENABLE(STREAMS_API)
+#include "JSReadableStreamCustom.cpp"
+#include "ReadableStreamJSSource.cpp"
+#endif
 #include "JSRequestAnimationFrameCallbackCustom.cpp"
 #include "JSSQLResultSetRowListCustom.cpp"
 #include "JSSQLTransactionCustom.cpp"
-#include "JSSVGElementInstanceCustom.cpp"
 #include "JSSVGLengthCustom.cpp"
 #include "JSSVGPathSegCustom.cpp"
 #include "JSStorageCustom.cpp"

@@ -55,7 +55,7 @@ void Label::setLocation(unsigned location)
     
     unsigned size = m_unresolvedJumps.size();
     for (unsigned i = 0; i < size; ++i)
-        m_generator->m_instructions[m_unresolvedJumps[i].second].u.operand = m_location - m_unresolvedJumps[i].first;
+        m_generator.instructions()[m_unresolvedJumps[i].second].u.operand = m_location - m_unresolvedJumps[i].first;
 }
 
 ParserError BytecodeGenerator::generate()
@@ -151,39 +151,14 @@ bool BytecodeGenerator::addVar(
     return true;
 }
 
-void BytecodeGenerator::preserveLastVar()
-{
-    if ((m_firstConstantIndex = m_calleeRegisters.size()) != 0)
-        m_lastVar = &m_calleeRegisters.last();
-}
-
 BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedProgramCodeBlock* codeBlock, DebuggerMode debuggerMode, ProfilerMode profilerMode)
     : m_shouldEmitDebugHooks(Options::forceDebuggerBytecodeGeneration() || debuggerMode == DebuggerOn)
     , m_shouldEmitProfileHooks(Options::forceProfilerBytecodeGeneration() || profilerMode == ProfilerOn)
-    , m_symbolTable(0)
     , m_scopeNode(programNode)
     , m_codeBlock(vm, codeBlock)
     , m_thisRegister(CallFrame::thisArgumentOffset())
-    , m_scopeRegister(0)
-    , m_lexicalEnvironmentRegister(0)
-    , m_emptyValueRegister(0)
-    , m_globalObjectRegister(0)
-    , m_localArgumentsRegister(0)
-    , m_finallyDepth(0)
-    , m_localScopeDepth(0)
     , m_codeType(GlobalCode)
-    , m_nextConstantOffset(0)
-    , m_firstLazyFunction(0)
-    , m_lastLazyFunction(0)
-    , m_staticPropertyAnalyzer(&m_instructions)
     , m_vm(&vm)
-    , m_lastOpcodeID(op_end)
-#ifndef NDEBUG
-    , m_lastOpcodePosition(0)
-#endif
-    , m_usesExceptions(false)
-    , m_expressionTooDeep(false)
-    , m_isBuiltinFunction(false)
 {
     m_codeBlock->setNumParameters(1); // Allocate space for "this"
 
@@ -211,25 +186,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     , m_symbolTable(codeBlock->symbolTable())
     , m_scopeNode(functionNode)
     , m_codeBlock(vm, codeBlock)
-    , m_scopeRegister(0)
-    , m_lexicalEnvironmentRegister(0)
-    , m_emptyValueRegister(0)
-    , m_globalObjectRegister(0)
-    , m_localArgumentsRegister(0)
-    , m_finallyDepth(0)
-    , m_localScopeDepth(0)
     , m_codeType(FunctionCode)
-    , m_nextConstantOffset(0)
-    , m_firstLazyFunction(0)
-    , m_lastLazyFunction(0)
-    , m_staticPropertyAnalyzer(&m_instructions)
     , m_vm(&vm)
-    , m_lastOpcodeID(op_end)
-#ifndef NDEBUG
-    , m_lastOpcodePosition(0)
-#endif
-    , m_usesExceptions(false)
-    , m_expressionTooDeep(false)
     , m_isBuiltinFunction(codeBlock->isBuiltinFunction())
 {
     if (m_isBuiltinFunction)
@@ -428,7 +386,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         }
         addParameter(simpleParameter->boundProperty(), index);
     }
-    preserveLastVar();
 
     // We declare the callee's name last because it should lose to a var, function, and/or parameter declaration.
     addCallee(functionNode, calleeRegister);
@@ -452,26 +409,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
     , m_scopeNode(evalNode)
     , m_codeBlock(vm, codeBlock)
     , m_thisRegister(CallFrame::thisArgumentOffset())
-    , m_scopeRegister(0)
-    , m_lexicalEnvironmentRegister(0)
-    , m_emptyValueRegister(0)
-    , m_globalObjectRegister(0)
-    , m_localArgumentsRegister(0)
-    , m_finallyDepth(0)
-    , m_localScopeDepth(0)
     , m_codeType(EvalCode)
-    , m_nextConstantOffset(0)
-    , m_firstLazyFunction(0)
-    , m_lastLazyFunction(0)
-    , m_staticPropertyAnalyzer(&m_instructions)
     , m_vm(&vm)
-    , m_lastOpcodeID(op_end)
-#ifndef NDEBUG
-    , m_lastOpcodePosition(0)
-#endif
-    , m_usesExceptions(false)
-    , m_expressionTooDeep(false)
-    , m_isBuiltinFunction(false)
 {
     m_symbolTable->setUsesNonStrictEval(codeBlock->usesEval() && !codeBlock->isStrictMode());
     m_codeBlock->setNumParameters(1);
@@ -493,7 +432,6 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
         variables.append(varStack[i].first);
     }
     codeBlock->adoptVariables(variables);
-    preserveLastVar();
 }
 
 BytecodeGenerator::~BytecodeGenerator()
@@ -643,7 +581,7 @@ PassRefPtr<Label> BytecodeGenerator::newLabel()
         m_labels.removeLast();
 
     // Allocate new label ID.
-    m_labels.append(this);
+    m_labels.append(*this);
     return &m_labels.last();
 }
 

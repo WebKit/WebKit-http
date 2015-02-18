@@ -27,7 +27,6 @@
 
 #include "Attr.h"
 #include "RenderSVGResourceFilter.h"
-#include "SVGElementInstance.h"
 #include "SVGFilterBuilder.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 #include "SVGNames.h"
@@ -165,7 +164,7 @@ void SVGFilterElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::xAttr
         || attrName == SVGNames::yAttr

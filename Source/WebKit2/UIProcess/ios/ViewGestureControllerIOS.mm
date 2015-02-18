@@ -214,8 +214,8 @@ void ViewGestureController::beginSwipeGesture(_UINavigationInteractiveTransition
     [m_liveSwipeViewClippingView setClipsToBounds:YES];
 
     [m_liveSwipeView.superview insertSubview:m_transitionContainerView.get() belowSubview:m_liveSwipeView];
-    [m_liveSwipeViewClippingView addSubview:m_liveSwipeView];
     [m_transitionContainerView addSubview:m_liveSwipeViewClippingView.get()];
+    [m_liveSwipeViewClippingView addSubview:m_liveSwipeView];
 
     RetainPtr<UIViewController> targettedViewController = adoptNS([[UIViewController alloc] init]);
     [targettedViewController setView:m_liveSwipeViewClippingView.get()];
@@ -344,12 +344,6 @@ void ViewGestureController::removeSwipeSnapshot()
         return;
     
     ++m_gesturePendingSnapshotRemoval;
-
-#if USE(IOSURFACE)
-    if (m_currentSwipeSnapshotSurface)
-        m_currentSwipeSnapshotSurface->setIsVolatile(true);
-    m_currentSwipeSnapshotSurface = nullptr;
-#endif
     
     [m_snapshotView removeFromSuperview];
     m_snapshotView = nullptr;

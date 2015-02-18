@@ -22,7 +22,6 @@
 #include "SVGFETurbulenceElement.h"
 
 #include "Attribute.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
 #include <wtf/NeverDestroyed.h>
@@ -155,7 +154,7 @@ void SVGFETurbulenceElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     if (attrName == SVGNames::baseFrequencyAttr
         || attrName == SVGNames::numOctavesAttr

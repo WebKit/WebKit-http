@@ -84,7 +84,10 @@ public:
     bool isPreloaded(const String& url);
     bool isLoadingFromMemoryCache(const String& url);
     String xhrResponseSource(XMLHttpRequest*);
+
     void clearMemoryCache();
+    void pruneMemoryCacheToSize(unsigned size);
+    unsigned memoryCacheSize() const;
 
     PassRefPtr<CSSComputedStyleDeclaration> computedStyleIncludingVisitedInfo(Node*, ExceptionCode&) const;
 
@@ -159,6 +162,7 @@ public:
     unsigned lengthFromRange(Element* scope, const Range*, ExceptionCode&);
     String rangeAsText(const Range*, ExceptionCode&);
     PassRefPtr<Range> subrange(Range* range, int rangeLocation, int rangeLength, ExceptionCode&);
+    RefPtr<Range> rangeForDictionaryLookupAtLocation(int x, int y, ExceptionCode&);
 
     void setDelegatesScrolling(bool enabled, ExceptionCode&);
 

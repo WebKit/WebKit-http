@@ -23,7 +23,6 @@
 
 #include "Attr.h"
 #include "Document.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -121,7 +120,7 @@ void SVGCursorElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     // Any change of a cursor specific attribute triggers this recalc.
     HashSet<SVGElement*>::const_iterator it = m_clients.begin();

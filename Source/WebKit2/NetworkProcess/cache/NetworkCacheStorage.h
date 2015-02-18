@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,9 +29,10 @@
 #if ENABLE(NETWORK_CACHE)
 
 #include "NetworkCacheKey.h"
-#include <WebCore/ResourceResponse.h>
 #include <wtf/BloomFilter.h>
 #include <wtf/Deque.h>
+#include <wtf/HashSet.h>
+#include <wtf/Optional.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -45,8 +46,6 @@ class ArgumentDecoder;
 
 namespace WebKit {
 
-class ShareableResource;
-
 #if PLATFORM(COCOA)
 template <typename T> class DispatchPtr;
 template <typename T> DispatchPtr<T> adoptDispatch(T dispatchObject);
@@ -57,6 +56,12 @@ public:
     DispatchPtr()
         : m_ptr(nullptr)
     {
+    }
+    DispatchPtr(T ptr)
+        : m_ptr(ptr)
+    {
+        if (m_ptr)
+            dispatch_retain(m_ptr);
     }
     DispatchPtr(const DispatchPtr& other)
         : m_ptr(other.m_ptr)
@@ -136,43 +141,61 @@ public:
         Data body;
     };
     // This may call completion handler synchronously on failure.
-    void retrieve(const NetworkCacheKey&, unsigned priority, std::function<bool (std::unique_ptr<Entry>)>);
-    void store(const NetworkCacheKey&, const Entry&, std::function<void (bool success)>);
-    void update(const NetworkCacheKey&, const Entry& updateEntry, const Entry& existingEntry, std::function<void (bool success)>);
+    typedef std::function<bool (std::unique_ptr<Entry>)> RetrieveCompletionHandler;
+    void retrieve(const NetworkCacheKey&, unsigned priority, RetrieveCompletionHandler&&);
+
+    typedef std::function<void (bool success, const Data& mappedBody)> StoreCompletionHandler;
+    void store(const NetworkCacheKey&, const Entry&, StoreCompletionHandler&&);
+    void update(const NetworkCacheKey&, const Entry& updateEntry, const Entry& existingEntry, StoreCompletionHandler&&);
 
     void setMaximumSize(size_t);
     void clear();
 
-    static const unsigned version = 1;
+    static const unsigned version = 2;
+
+    const String& directoryPath() const { return m_directoryPath; }
 
 private:
     NetworkCacheStorage(const String& directoryPath);
 
     void initialize();
+    void deleteOldVersions();
     void shrinkIfNeeded();
 
     void removeEntry(const NetworkCacheKey&);
 
-    struct RetrieveOperation {
+    struct ReadOperation {
         NetworkCacheKey key;
-        std::function<bool (std::unique_ptr<Entry>)> completionHandler;
+        RetrieveCompletionHandler completionHandler;
     };
-    void dispatchRetrieveOperation(const RetrieveOperation&);
-    void dispatchPendingRetrieveOperations();
+    void dispatchReadOperation(const ReadOperation&);
+    void dispatchPendingReadOperations();
 
+    struct WriteOperation {
+        NetworkCacheKey key;
+        Entry entry;
+        Optional<Entry> existingEntry;
+        StoreCompletionHandler completionHandler;
+    };
+    void dispatchFullWriteOperation(const WriteOperation&);
+    void dispatchHeaderWriteOperation(const WriteOperation&);
+    void dispatchPendingWriteOperations();
+
+    const String m_baseDirectoryPath;
     const String m_directoryPath;
 
     size_t m_maximumSize { std::numeric_limits<size_t>::max() };
 
     BloomFilter<20> m_contentsFilter;
-    std::atomic<size_t> m_approximateEntryCount { 0 };
+    std::atomic<size_t> m_approximateSize { 0 };
     std::atomic<bool> m_shrinkInProgress { false };
 
-    Vector<Deque<RetrieveOperation>> m_pendingRetrieveOperationsByPriority;
-    unsigned m_activeRetrieveOperationCount { 0 };
+    static const int maximumRetrievePriority = 4;
+    Deque<std::unique_ptr<const ReadOperation>> m_pendingReadOperationsByPriority[maximumRetrievePriority + 1];
+    HashSet<std::unique_ptr<const ReadOperation>> m_activeReadOperations;
 
-    typedef std::pair<NetworkCacheKey, Entry> KeyEntryPair;
-    HashMap<NetworkCacheKey::HashType, std::shared_ptr<KeyEntryPair>, AlreadyHashed> m_writeCache;
+    Deque<std::unique_ptr<const WriteOperation>> m_pendingWriteOperations;
+    HashSet<std::unique_ptr<const WriteOperation>> m_activeWriteOperations;
 
 #if PLATFORM(COCOA)
     mutable DispatchPtr<dispatch_queue_t> m_ioQueue;

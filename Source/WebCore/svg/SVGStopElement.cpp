@@ -25,7 +25,6 @@
 #include "Document.h"
 #include "RenderSVGGradientStop.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGGradientElement.h"
 #include "SVGNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -86,7 +85,7 @@ void SVGStopElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::offsetAttr) {
         if (auto renderer = this->renderer())

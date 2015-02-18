@@ -17,6 +17,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/proximity"
     "${WEBCORE_DIR}/Modules/quota"
     "${WEBCORE_DIR}/Modules/speech"
+    "${WEBCORE_DIR}/Modules/streams"
     "${WEBCORE_DIR}/Modules/vibration"
     "${WEBCORE_DIR}/Modules/webaudio"
     "${WEBCORE_DIR}/Modules/webdatabase"
@@ -146,6 +147,7 @@ set(WebCore_IDL_INCLUDES
     Modules/proximity
     Modules/quota
     Modules/speech
+    Modules/streams
     Modules/vibration
     Modules/webaudio
     Modules/webdatabase
@@ -272,6 +274,8 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/speech/SpeechSynthesisEvent.idl
     Modules/speech/SpeechSynthesisUtterance.idl
     Modules/speech/SpeechSynthesisVoice.idl
+
+    Modules/streams/ReadableStream.idl
 
     Modules/vibration/NavigatorVibration.idl
 
@@ -667,7 +671,6 @@ set(WebCore_SVG_IDL_FILES
     svg/SVGDescElement.idl
     svg/SVGDocument.idl
     svg/SVGElement.idl
-    svg/SVGElementInstance.idl
     svg/SVGEllipseElement.idl
     svg/SVGException.idl
     svg/SVGExternalResourcesRequired.idl
@@ -904,6 +907,8 @@ set(WebCore_SOURCES
     Modules/speech/SpeechSynthesisUtterance.cpp
     Modules/speech/SpeechSynthesisVoice.cpp
 
+    Modules/streams/ReadableStream.cpp
+
     Modules/vibration/NavigatorVibration.cpp
     Modules/vibration/Vibration.cpp
 
@@ -1131,17 +1136,17 @@ set(WebCore_SOURCES
     bindings/js/JSRTCPeerConnectionCustom.cpp
     bindings/js/JSRTCSessionDescriptionCustom.cpp
     bindings/js/JSRTCStatsResponseCustom.cpp
+    bindings/js/JSReadableStreamCustom.cpp
+    bindings/js/ReadableStreamJSSource.cpp
     bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
     bindings/js/JSSQLTransactionCustom.cpp
-    bindings/js/JSSVGElementInstanceCustom.cpp
     bindings/js/JSSVGLengthCustom.cpp
     bindings/js/JSSVGPathSegCustom.cpp
     bindings/js/JSStorageCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSStyleSheetListCustom.cpp
     bindings/js/JSSubtleCryptoCustom.cpp
-    bindings/js/JSSVGElementInstanceCustom.cpp
     bindings/js/JSSVGLengthCustom.cpp
     bindings/js/JSSVGPathSegCustom.cpp
     bindings/js/JSTextCustom.cpp
@@ -1541,6 +1546,7 @@ set(WebCore_SOURCES
     html/HTMLAnchorElement.cpp
     html/HTMLAppletElement.cpp
     html/HTMLAreaElement.cpp
+    html/HTMLAttachmentElement.cpp
     html/HTMLAudioElement.cpp
     html/HTMLBRElement.cpp
     html/HTMLBaseElement.cpp
@@ -2264,6 +2270,7 @@ set(WebCore_SOURCES
     rendering/LayoutState.cpp
     rendering/OrderIterator.cpp
     rendering/PointerEventsHitRules.cpp
+    rendering/RenderAttachment.cpp
     rendering/RenderBlock.cpp
     rendering/RenderBlockFlow.cpp
     rendering/RenderBlockLineLayout.cpp
@@ -2529,7 +2536,6 @@ set(WebCore_SOURCES
     svg/SVGDocument.cpp
     svg/SVGDocumentExtensions.cpp
     svg/SVGElement.cpp
-    svg/SVGElementInstance.cpp
     svg/SVGEllipseElement.cpp
     svg/SVGException.cpp
     svg/SVGExternalResourcesRequired.cpp
@@ -3372,7 +3378,7 @@ file(WRITE ${IDL_FILES_TMP} ${IDL_FILES_LIST})
 
 add_custom_command(
     OUTPUT ${SUPPLEMENTAL_DEPENDENCY_FILE} ${WINDOW_CONSTRUCTORS_FILE} ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE} ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-    DEPENDS ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl ${SCRIPTS_PREPROCESS_IDLS} ${WebCore_IDL_FILES} ${WebCoreTestSupport_IDL_FILES}
+    DEPENDS ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl ${SCRIPTS_PREPROCESS_IDLS} ${WebCore_IDL_FILES} ${WebCoreTestSupport_IDL_FILES} ${WEBCORE_DIR}/CMakeLists.txt
     COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl --defines "${FEATURE_DEFINES_JAVASCRIPT}" --idlFilesList ${IDL_FILES_TMP} --supplementalDependencyFile ${SUPPLEMENTAL_DEPENDENCY_FILE} --windowConstructorsFile ${WINDOW_CONSTRUCTORS_FILE} --workerGlobalScopeConstructorsFile ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
 --dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
     VERBATIM)

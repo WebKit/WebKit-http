@@ -34,7 +34,7 @@ App.Metric = App.NameLabelModel.extend({
     }.property('name', 'test'),
     fullName: function ()
     {
-        return this.get('path').join(' \u2208 ') /* &in; */
+        return this.get('path').join(' \u220b ') /* &ni; */
             + ' : ' + this.get('label');
     }.property('path', 'label'),
 });
@@ -44,7 +44,7 @@ App.Builder = App.NameLabelModel.extend({
     urlFromBuildNumber: function (buildNumber)
     {
         var template = this.get('buildUrl');
-        return template ? template.replace(/\$buildNumber/g, buildNumber) : null;
+        return template ? template.replace(/\$builderName/g, this.get('name')).replace(/\$buildNumber/g, buildNumber) : null;
     }
 });
 
@@ -92,7 +92,7 @@ App.Repository = App.NameLabelModel.extend({
     },
 });
 
-App.Dashboard = App.Model.extend({
+App.Dashboard = App.NameLabelModel.extend({
     serialized: DS.attr('string'),
     table: function ()
     {
@@ -152,7 +152,7 @@ App.MetricSerializer = App.PlatformSerializer = DS.RESTSerializer.extend({
             metrics: this._normalizeIdMap(payload['metrics']),
             repositories: this._normalizeIdMap(payload['repositories']),
             bugTrackers: this._normalizeIdMap(payload['bugTrackers']),
-            dashboards: [{id: 1, serialized: JSON.stringify(payload['defaultDashboard'])}],
+            dashboards: [],
         };
 
         for (var testId in payload['tests']) {
@@ -171,6 +171,17 @@ App.MetricSerializer = App.PlatformSerializer = DS.RESTSerializer.extend({
             if (!test['metrics'])
                 test['metrics'] = [];
             test['metrics'].push(metricId);
+        }
+
+        var id = 1;
+        var dashboardsInPayload = payload['dashboards'];
+        for (var dashboardName in dashboardsInPayload) {
+            results['dashboards'].push({
+                id: id,
+                name: dashboardName,
+                serialized: JSON.stringify(dashboardsInPayload[dashboardName])
+            });
+            id++;
         }
 
         return results;
@@ -211,6 +222,8 @@ App.Manifest = Ember.Controller.extend({
     _metricById: {},
     _builderById: {},
     _repositoryById: {},
+    _dashboardByName: {},
+    _defaultDashboardName: null,
     _fetchPromise: null,
     fetch: function (store)
     {
@@ -223,6 +236,8 @@ App.Manifest = Ember.Controller.extend({
     metric: function (id) { return this._metricById[id]; },
     builder: function (id) { return this._builderById[id]; },
     repository: function (id) { return this._repositoryById[id]; },
+    dashboardByName: function (name) { return this._dashboardByName[name]; },
+    defaultDashboardName: function () { return this._defaultDashboardName; },
     _fetchedManifest: function (store)
     {
         var startTime = Date.now();
@@ -259,12 +274,15 @@ App.Manifest = Ember.Controller.extend({
 
         this.set('bugTrackers', store.all('bugTracker').sortBy('name'));
 
-        this.set('defaultDashboard', store.all('dashboard').objectAt(0));
+        var dashboards = store.all('dashboard').sortBy('name');
+        this.set('dashboards', dashboards);
+        dashboards.forEach(function (dashboard) { self._dashboardByName[dashboard.get('name')] = dashboard; });
+        this._defaultDashboardName = dashboards.length ? dashboards[0].get('name') : null;
     },
-    fetchRunsWithPlatformAndMetric: function (store, platformId, metricId)
+    fetchRunsWithPlatformAndMetric: function (store, platformId, metricId, testGroupId)
     {
         return Ember.RSVP.all([
-            RunsData.fetchRuns(platformId, metricId),
+            RunsData.fetchRuns(platformId, metricId, testGroupId),
             this.fetch(store),
         ]).then(function (values) {
             var runs = values[0];
@@ -281,12 +299,22 @@ App.Manifest = Ember.Controller.extend({
                 'Heap': 'bytes',
                 'Allocations': 'bytes'
             }[suffix];
+            var smallerIsBetter = unit != 'fps' && unit != '/s'; // Assume smaller is better for unit-less metrics.
 
-            // FIXME: Include this information in JSON and process it in RunsData.fetchRuns
-            runs.unit = unit;
-            runs.useSI = unit == 'bytes';
-
-            return {platform: platform, metric: metric, runs: runs};
+            var useSI = unit == 'bytes';
+            return {
+                platform: platform,
+                metric: metric,
+                data: {
+                    current: runs.current.timeSeriesByCommitTime(),
+                    baseline: runs.baseline ? runs.baseline.timeSeriesByCommitTime() : null,
+                    target: runs.target ? runs.target.timeSeriesByCommitTime() : null,
+                    unit: unit,
+                    formatter: useSI ? d3.format('.4s') : d3.format('.4g'),
+                    deltaFormatter: useSI ? d3.format('+.2s') : d3.format('+.2g'),
+                    smallerIsBetter: smallerIsBetter,
+                }
+            };
         });
     },
 }).create();

@@ -635,18 +635,13 @@ void SpeculativeJIT::emitCall(Node* node)
     CallLinkInfo::CallType callType = isCall ? CallLinkInfo::Call : CallLinkInfo::Construct;
     
     Edge calleeEdge = m_jit.graph().m_varArgChildren[node->firstChild()];
-    JSValueOperand callee(this, calleeEdge);
-    GPRReg calleeGPR = callee.gpr();
-    use(calleeEdge);
-    
     // The call instruction's first child is the function; the subsequent children are the
     // arguments.
     int numPassedArgs = node->numChildren() - 1;
     
     int numArgs = numPassedArgs + dummyThisArgument;
     
-    m_jit.store32(MacroAssembler::TrustedImm32(numArgs), calleeFramePayloadSlot(JSStack::ArgumentCount));
-    m_jit.store64(calleeGPR, calleeFrameSlot(JSStack::Callee));
+    m_jit.store32(MacroAssembler::TrustedImm32(numArgs), m_jit.calleeFramePayloadSlot(JSStack::ArgumentCount));
     
     for (int i = 0; i < numPassedArgs; i++) {
         Edge argEdge = m_jit.graph().m_varArgChildren[node->firstChild() + 1 + i];
@@ -654,9 +649,14 @@ void SpeculativeJIT::emitCall(Node* node)
         GPRReg argGPR = arg.gpr();
         use(argEdge);
         
-        m_jit.store64(argGPR, calleeArgumentSlot(i + dummyThisArgument));
+        m_jit.store64(argGPR, m_jit.calleeArgumentSlot(i + dummyThisArgument));
     }
 
+    JSValueOperand callee(this, calleeEdge);
+    GPRReg calleeGPR = callee.gpr();
+    use(calleeEdge);
+    m_jit.store64(calleeGPR, m_jit.calleeFrameSlot(JSStack::Callee));
+    
     flushRegisters();
 
     GPRFlushedCallResult result(this);
@@ -2240,17 +2240,15 @@ void SpeculativeJIT::compile(Node* node)
         }
         break;
     }
-        
-    case ArithSqrt: {
-        SpeculateDoubleOperand op1(this, node->child1());
-        FPRTemporary result(this, op1);
-        
-        m_jit.sqrtDouble(op1.fpr(), result.fpr());
-        
-        doubleResult(result.fpr(), node);
+
+    case ArithPow:
+        compileArithPow(node);
         break;
-    }
-        
+
+    case ArithSqrt:
+        compileArithSqrt(node);
+        break;
+
     case ArithFRound: {
         SpeculateDoubleOperand op1(this, node->child1());
         FPRTemporary result(this, op1);
@@ -3623,21 +3621,13 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
-    case GetScope: {
-        SpeculateCellOperand function(this, node->child1());
-        GPRTemporary result(this, Reuse, function);
-        m_jit.loadPtr(JITCompiler::Address(function.gpr(), JSFunction::offsetOfScopeChain()), result.gpr());
-        cellResult(result.gpr(), node);
+    case GetScope:
+        compileGetScope(node);
         break;
-    }
         
-    case SkipScope: {
-        SpeculateCellOperand scope(this, node->child1());
-        GPRTemporary result(this, Reuse, scope);
-        m_jit.loadPtr(JITCompiler::Address(scope.gpr(), JSScope::offsetOfNext()), result.gpr());
-        cellResult(result.gpr(), node);
+    case SkipScope:
+        compileSkipScope(node);
         break;
-    }
         
     case GetClosureRegisters: {
         if (WriteBarrierBase<Unknown>* registers = m_jit.graph().tryGetRegisters(node->child1().node())) {
@@ -5003,7 +4993,6 @@ void SpeculativeJIT::compile(Node* node)
     case LastNodeType:
     case Phi:
     case Upsilon:
-    case GetArgument:
     case ExtractOSREntryLocal:
     case CheckInBounds:
     case ArithIMul:

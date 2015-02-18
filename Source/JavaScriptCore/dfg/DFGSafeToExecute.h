@@ -122,7 +122,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case KillLocal:
     case MovHint:
     case ZombieHint:
-    case GetArgument:
     case Phantom:
     case HardPhantom:
     case Upsilon:
@@ -150,6 +149,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithAbs:
     case ArithMin:
     case ArithMax:
+    case ArithPow:
     case ArithSqrt:
     case ArithFRound:
     case ArithSin:

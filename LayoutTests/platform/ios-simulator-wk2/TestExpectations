@@ -5,6 +5,8 @@
 # Animation tests that fail:
 webkit.org/b/129562 [ Debug ] animations/animation-direction-reverse-fill-mode.html [ Skip ]
 webkit.org/b/129562 [ Debug ] animations/fill-mode-reverse.html [ Skip ]
+animations/additive-transform-animations.html [ Failure ]
+animations/play-state-paused.html [ Failure ]
 
 # Animation tests that time out:
 animations/animation-direction-normal.html
@@ -99,7 +101,6 @@ css3/flexbox/flexbox-baseline-margins.html [ Failure ]
 css3/flexbox/flexbox-baseline.html [ Failure ]
 css3/font-feature-settings-rendering.html [ Failure ]
 css3/masking/mask-base64.html [ ImageOnlyFailure ]
-css3/masking/mask-repeat-space-padding.html [ Failure ]
 css3/masking/mask-svg-clipped-fragmentId.html [ ImageOnlyFailure ]
 css3/shapes/shape-outside/shape-image/shape-image-001.html [ ImageOnlyFailure ]
 css3/shapes/shape-outside/shape-image/shape-image-002.html [ ImageOnlyFailure ]
@@ -275,9 +276,16 @@ mathml/presentation/semantics.html [ ImageOnlyFailure ]
 mathml/presentation/tokenElements-background-color.html [ ImageOnlyFailure ]
 
 # MathML tests that fail:
-mathml/opentype/large-operators.html [ Failure ]
-mathml/opentype/vertical.html [ Failure ]
 mathml/presentation/mo-stretch.html [ Failure ]
+
+# <rdar://problem/19760282&19760299> Some MathML tests crash in RenderMathMLOperator::advanceForGlyph() or boundsForGlyph()
+webkit.org/b/141371 mathml/opentype/horizontal.html [ Crash ]
+webkit.org/b/141371 mathml/opentype/horizontal-munderover.html [ Crash Timeout ]
+webkit.org/b/141371 mathml/opentype/large-operators.html [ Crash Failure ]
+webkit.org/b/141371 mathml/opentype/munderover-layout-resize.html [ Crash ]
+webkit.org/b/141371 mathml/opentype/munderover-layout-resize-expected.html [ Crash ]
+webkit.org/b/141371 mathml/presentation/mo-invisible.html [ Crash ]
+webkit.org/b/141371 mathml/opentype/vertical.html [ Crash Failure ]
 
 # SVG tests that time out:
 svg/animations/animVal-basics.html
@@ -409,12 +417,9 @@ svg/custom/pointer-events-on-svg-without-pointer.xhtml
 svg/custom/pointer-events-with-linecaps-and-miterlimits.xhtml
 svg/custom/prevent-default.svg
 svg/custom/scroll-hit-test.xhtml
-svg/custom/use-elementInstance-event-target.svg
-svg/custom/use-elementInstance-methods.svg
 svg/custom/use-event-handler-on-referenced-element.svg
 svg/custom/use-event-handler-on-use-element.svg
 svg/custom/use-instanceRoot-event-bubbling.xhtml
-svg/custom/use-instanceRoot-event-listeners.xhtml
 svg/custom/use-move-to-offset.svg
 svg/dom/viewspec-parser-1.html
 svg/dom/viewspec-parser-2.html
@@ -484,6 +489,7 @@ svg/custom/svg-fonts-fallback.xhtml [ Failure ]
 svg/custom/text-hit-test.svg [ Failure ]
 svg/custom/use-clipped-hit.svg [ Failure ]
 svg/custom/use-css-events.svg [ ImageOnlyFailure ]
+svg/custom/use-event-retargeting.html [ Failure ]
 svg/custom/viewBox-hit.svg [ Failure ]
 svg/dom/SVGLength-px-with-context.html [ Failure ]
 svg/filters/feOffset.svg [ Failure ]
@@ -541,7 +547,9 @@ webarchive/test-link-rel-icon-beforeload.html [ Failure ]
 webarchive/test-script-src.html [ Failure ]
 
 # HTTP tests that fail:
+http/tests/appcache/interrupted-update.html [ Failure ]
 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Failure ]
+http/tests/cache/disk-cache-validation.html [ Failure ]
 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Failure ]
 http/tests/cookies/js-get-and-set-http-only-cookie.html [ Failure ]
 http/tests/cookies/third-party-cookie-relaxing.html [ Failure ]
@@ -793,6 +801,7 @@ fast/css-grid-layout/grid-dynamic-updates-relayout.html [ Failure ]
 fast/css-grid-layout/grid-element-change-columns-repaint.html [ Failure ]
 fast/css-grid-layout/grid-element-change-rows-repaint.html [ Failure ]
 fast/css-grid-layout/grid-element-min-max-width.html [ Failure ]
+fast/css-grid-layout/grid-initialize-span-one-items.html [ Failure ]
 fast/css-grid-layout/grid-item-addition-auto-placement-update.html [ Failure ]
 fast/css-grid-layout/grid-item-addition-track-breadth-update.html [ Failure ]
 fast/css-grid-layout/grid-item-change-column-repaint.html [ Failure ]
@@ -1541,6 +1550,7 @@ editing/execCommand/query-command-state.html [ Failure ]
 editing/execCommand/remove-format-multiple-elements-mac.html [ Failure ]
 editing/execCommand/remove-format-multiple-elements-win.html [ Failure ]
 editing/execCommand/remove-formatting-2.html [ Failure ]
+editing/execCommand/remove-list-item-1.html [ Failure ]
 editing/execCommand/selectAll.html [ Failure ]
 editing/execCommand/toggle-link-mac.html [ Failure ]
 editing/execCommand/toggle-unlink-mac.html [ Failure ]
@@ -1557,11 +1567,19 @@ editing/input/scroll-to-edge-if-paragraph-separator-at-end-of-document-contented
 editing/input/scroll-viewport-page-up-down.html [ Failure ]
 editing/input/setting-input-value-cancel-ime-composition.html [ Failure ]
 editing/input/style-change-during-input.html [ Failure ]
+editing/inserting/4278698.html [ Failure ]
+editing/inserting/before-after-input-element.html [ Failure ]
 editing/inserting/caret-position.html [ Failure ]
+editing/inserting/editable-html-element.html [ Failure ]
+editing/inserting/editing-empty-divs.html [ Failure ]
 editing/inserting/insert-3654864-fix.html [ Failure ]
 editing/inserting/insert-3775316-fix.html [ Failure ]
+editing/inserting/insert-3778059-fix.html [ Failure ]
 editing/inserting/insert-3800346-fix.html [ Failure ]
+editing/inserting/insert-3851164-fix.html [ Failure ]
 editing/inserting/insert-after-delete-001.html [ Failure ]
+editing/inserting/insert-at-end-01.html [ Failure ]
+editing/inserting/insert-at-end-02.html [ Failure ]
 editing/inserting/insert-before-link-1.html [ Failure ]
 editing/inserting/insert-br-001.html [ Failure ]
 editing/inserting/insert-br-002.html [ Failure ]
@@ -1571,6 +1589,16 @@ editing/inserting/insert-br-005.html [ Failure ]
 editing/inserting/insert-br-006.html [ Failure ]
 editing/inserting/insert-br-007.html [ Failure ]
 editing/inserting/insert-br-008.html [ Failure ]
+editing/inserting/insert-br-009.html [ Failure ]
+editing/inserting/insert-br-at-tabspan-001.html [ Failure ]
+editing/inserting/insert-br-at-tabspan-002.html [ Failure ]
+editing/inserting/insert-br-at-tabspan-003.html [ Failure ]
+editing/inserting/insert-br-quoted-001.html [ Failure ]
+editing/inserting/insert-br-quoted-002.html [ Failure ]
+editing/inserting/insert-br-quoted-003.html [ Failure ]
+editing/inserting/insert-br-quoted-004.html [ Failure ]
+editing/inserting/insert-br-quoted-005.html [ Failure ]
+editing/inserting/insert-br-quoted-006.html [ Failure ]
 editing/inserting/insert-character-in-first-letter-crash.html [ Failure ]
 editing/inserting/insert-div-001.html [ Failure ]
 editing/inserting/insert-div-002.html [ Failure ]
@@ -1580,15 +1608,55 @@ editing/inserting/insert-div-005.html [ Failure ]
 editing/inserting/insert-div-006.html [ Failure ]
 editing/inserting/insert-div-007.html [ Failure ]
 editing/inserting/insert-div-008.html [ Failure ]
+editing/inserting/insert-div-009.html [ Failure ]
+editing/inserting/insert-div-010.html [ Failure ]
+editing/inserting/insert-div-011.html [ Failure ]
+editing/inserting/insert-div-012.html [ Failure ]
+editing/inserting/insert-div-013.html [ Failure ]
+editing/inserting/insert-div-014.html [ Failure ]
+editing/inserting/insert-div-015.html [ Failure ]
+editing/inserting/insert-div-016.html [ Failure ]
+editing/inserting/insert-div-017.html [ Failure ]
+editing/inserting/insert-div-018.html [ Failure ]
+editing/inserting/insert-div-019.html [ Failure ]
+editing/inserting/insert-div-020.html [ Failure ]
+editing/inserting/insert-div-022.html [ Failure ]
+editing/inserting/insert-div-023.html [ Failure ]
+editing/inserting/insert-div-024.html [ Failure ]
+editing/inserting/insert-div-025.html [ Failure ]
+editing/inserting/insert-div-026.html [ Failure ]
+editing/inserting/insert-div-027.html [ Failure ]
+editing/inserting/insert-paragraph-01.html [ Failure ]
+editing/inserting/insert-paragraph-02.html [ Failure ]
+editing/inserting/insert-paragraph-03.html [ Failure ]
+editing/inserting/insert-paragraph-04.html [ Failure ]
+editing/inserting/insert-paragraph-05.html [ Failure ]
 editing/inserting/insert-paragraph-selection-outside-contenteditable.html [ Failure ]
 editing/inserting/insert-space-in-empty-doc.html [ Failure ]
 editing/inserting/insert-tab-001.html [ Failure ]
 editing/inserting/insert-tab-002.html [ Failure ]
+editing/inserting/insert-tab-003.html [ Failure ]
 editing/inserting/insert-tab-004.html [ Failure ]
+editing/inserting/insert-text-at-tabspan-001.html [ Failure ]
+editing/inserting/insert-text-at-tabspan-002.html [ Failure ]
+editing/inserting/insert-text-at-tabspan-003.html [ Failure ]
+editing/inserting/insert-text-with-newlines.html [ Failure ]
+editing/inserting/line-break.html [ Failure ]
+editing/inserting/multiple-lines-selected.html [ Failure ]
 editing/inserting/paragraph-outside-nested-divs.html [ Failure ]
+editing/inserting/paragraph-separator-01.html [ Failure ]
+editing/inserting/paragraph-separator-02.html [ Failure ]
+editing/inserting/paragraph-separator-03.html [ Failure ]
+editing/inserting/paragraph-separator-in-table-1.html [ Failure ]
+editing/inserting/paragraph-separator-in-table-2.html [ Failure ]
+editing/inserting/redo.html [ Failure ]
+editing/inserting/return-key-with-selection-001.html [ Failure ]
+editing/inserting/return-key-with-selection-002.html [ Failure ]
+editing/inserting/return-key-with-selection-003.html [ Failure ]
 editing/inserting/smart-link-when-caret-is-moved-before-URL.html [ Failure ]
 editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
 editing/inserting/typing-001.html [ Failure ]
+editing/inserting/typing-002.html [ Failure ]
 editing/inserting/typing-003.html [ Failure ]
 editing/inserting/typing-around-br-001.html [ Failure ]
 editing/inserting/typing-around-image-001.html [ Failure ]
@@ -1857,6 +1925,8 @@ editing/undo/4063751.html [ Failure ]
 editing/undo/5378473.html [ Failure ]
 editing/undo/redo-typing-001.html [ Failure ]
 editing/undo/replace-text-in-node-preserving-markers-crash.html [ Failure ]
+editing/undo/undo-delete-boundary.html [ Failure ]
+editing/undo/undo-delete.html [ Failure ]
 editing/undo/undo-deleteWord.html [ Failure ]
 editing/undo/undo-misspellings.html [ Failure ]
 editing/undo/undo-smart-delete-word.html [ Failure ]
@@ -2005,7 +2075,8 @@ platform/ios-simulator/ios/storage/domstorage/5mb-quota-expected.txt [ Failure ]
 platform/ios-simulator/ios/fast/coordinates/mouse-event-zoomed.html
 platform/ios-simulator/ios/fast/coordinates/mouse-event.html
 
-# iOS-specific tests that time out in WebKitTestRunner due to missing DRT-specific functionality:
+# iOS-specific tests that time out or fail in WebKitTestRunner due to missing DRT-specific functionality:
+platform/ios-simulator/accessibility
 platform/ios-simulator/ios/accessibility
 platform/ios-simulator/ios/fast/coordinates/touch-event-zoomed.html
 platform/ios-simulator/ios/fast/coordinates/touch-event.html
@@ -2256,3 +2327,9 @@ transitions/cubic-bezier-overflow-transform.html
 transitions/default-timing-function.html
 transitions/extra-transition.html
 transitions/interrupt-transform-transition.html
+
+# Crashes when running all tests, but not by itself.
+webkit.org/b/141436 fast/loader/subframe-navigate-during-main-frame-load.html [ Crash Pass ]
+
+# Unskip otherwise globally-skipped test
+fast/replaced/pdf-as-object-and-embed.html [ Pass ]

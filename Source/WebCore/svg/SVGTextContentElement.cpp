@@ -29,7 +29,6 @@
 #include "RenderSVGResource.h"
 #include "RenderSVGText.h"
 #include "SVGDocumentExtensions.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGTextQuery.h"
 #include "XMLNames.h"
@@ -268,7 +267,7 @@ void SVGTextContentElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::textLengthAttr)
         m_specifiedTextLength = m_textLength.value;

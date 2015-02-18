@@ -25,7 +25,6 @@
 #include "Attribute.h"
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGPathData.h"
 #include <wtf/NeverDestroyed.h>
@@ -137,7 +136,7 @@ void SVGGraphicsElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (SVGTests::handleAttributeChange(this, attrName))
         return;

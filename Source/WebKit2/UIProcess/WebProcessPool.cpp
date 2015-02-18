@@ -448,9 +448,10 @@ void WebProcessPool::networkProcessCrashed(NetworkProcessProxy* networkProcessPr
     for (; it != end; ++it)
         it->value->processDidClose(networkProcessProxy);
 
-    m_networkProcess = nullptr;
-
     m_client.networkProcessDidCrash(this);
+
+    // Leave the process proxy around during client call, so that the client could query the process identifier.
+    m_networkProcess = nullptr;
 }
 
 void WebProcessPool::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
@@ -636,6 +637,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
 
     copyToVector(m_schemesToRegisterAsEmptyDocument, parameters.urlSchemesRegistererdAsEmptyDocument);
     copyToVector(m_schemesToRegisterAsSecure, parameters.urlSchemesRegisteredAsSecure);
+    copyToVector(m_schemesToRegisterAsBypassingContentSecurityPolicy, parameters.urlSchemesRegisteredAsBypassingContentSecurityPolicy);
     copyToVector(m_schemesToSetDomainRelaxationForbiddenFor, parameters.urlSchemesForWhichDomainRelaxationIsForbidden);
     copyToVector(m_schemesToRegisterAsLocal, parameters.urlSchemesRegisteredAsLocal);
     copyToVector(m_schemesToRegisterAsNoAccess, parameters.urlSchemesRegisteredAsNoAccess);
@@ -680,6 +682,10 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     parameters.hasSelectionServices = serviceController.hasSelectionServices();
     parameters.hasRichContentServices = serviceController.hasRichContentServices();
     serviceController.refreshExistingServices();
+#endif
+
+#if OS(LINUX)
+    parameters.shouldEnableMemoryPressureReliefLogging = true;
 #endif
 
     // Add any platform specific parameters
@@ -939,6 +945,16 @@ void WebProcessPool::setAdditionalPluginsDirectory(const String& directory)
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
+#if ENABLE(NETWORK_PROCESS)
+PlatformProcessIdentifier WebProcessPool::networkProcessIdentifier()
+{
+    if (!m_networkProcess)
+        return 0;
+
+    return m_networkProcess->processIdentifier();
+}
+#endif
+
 void WebProcessPool::setAlwaysUsesComplexTextCodePath(bool alwaysUseComplexText)
 {
     m_alwaysUsesComplexTextCodePath = alwaysUseComplexText;
@@ -961,6 +977,12 @@ void WebProcessPool::registerURLSchemeAsSecure(const String& urlScheme)
 {
     m_schemesToRegisterAsSecure.add(urlScheme);
     sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsSecure(urlScheme));
+}
+
+void WebProcessPool::registerURLSchemeAsBypassingContentSecurityPolicy(const String& urlScheme)
+{
+    m_schemesToRegisterAsBypassingContentSecurityPolicy.add(urlScheme);
+    sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsBypassingContentSecurityPolicy(urlScheme));
 }
 
 void WebProcessPool::setDomainRelaxationForbiddenForURLScheme(const String& urlScheme)
@@ -1045,9 +1067,12 @@ void WebProcessPool::registerURLSchemeAsCachePartitioned(const String& urlScheme
 void WebProcessPool::setCacheModel(CacheModel cacheModel)
 {
     m_cacheModel = cacheModel;
-    sendToAllProcesses(Messages::WebProcess::SetCacheModel(static_cast<uint32_t>(m_cacheModel)));
+    sendToAllProcesses(Messages::WebProcess::SetCacheModel(m_cacheModel));
 
-    // FIXME: Inform the Network Process if in use.
+#if ENABLE(NETWORK_PROCESS)
+    if (m_usesNetworkProcess && m_networkProcess)
+        m_networkProcess->send(Messages::NetworkProcess::SetCacheModel(m_cacheModel), 0);
+#endif
 }
 
 void WebProcessPool::setDefaultRequestTimeoutInterval(double timeoutInterval)

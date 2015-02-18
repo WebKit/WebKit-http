@@ -562,6 +562,8 @@
 		0FCEFADC18064A1400472CE4 /* config_llvm.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FCEFADB18064A1400472CE4 /* config_llvm.h */; };
 		0FCEFADF180738C000472CE4 /* FTLLocation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0FCEFADD180738C000472CE4 /* FTLLocation.cpp */; };
 		0FCEFAE0180738C000472CE4 /* FTLLocation.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FCEFADE180738C000472CE4 /* FTLLocation.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		0FD1202F1A8AED12000F5280 /* FTLJSCallBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0FD1202D1A8AED12000F5280 /* FTLJSCallBase.cpp */; };
+		0FD120301A8AED12000F5280 /* FTLJSCallBase.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FD1202E1A8AED12000F5280 /* FTLJSCallBase.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0FD2C92416D01EE900C7803F /* StructureInlines.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FD2C92316D01EE900C7803F /* StructureInlines.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0FD3C82614115D4000FD81CB /* DFGDriver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0FD3C82014115CF800FD81CB /* DFGDriver.cpp */; };
 		0FD3C82814115D4F00FD81CB /* DFGDriver.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FD3C82214115D0E00FD81CB /* DFGDriver.h */; };
@@ -632,6 +634,8 @@
 		0FEA0A33170D40BF00BB722C /* DFGJITCode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0FEA0A2F170D40BF00BB722C /* DFGJITCode.cpp */; };
 		0FEA0A34170D40BF00BB722C /* DFGJITCode.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FEA0A30170D40BF00BB722C /* DFGJITCode.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0FEB3ECF16237F6C00AB67AD /* MacroAssembler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0FEB3ECE16237F6700AB67AD /* MacroAssembler.cpp */; };
+		0FEE98411A8865B700754E93 /* SetupVarargsFrame.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FEE98401A8865B600754E93 /* SetupVarargsFrame.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		0FEE98431A89227500754E93 /* SetupVarargsFrame.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0FEE98421A89227500754E93 /* SetupVarargsFrame.cpp */; };
 		0FEFC9AA1681A3B300567F53 /* DFGOSRExitJumpPlaceholder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0FEFC9A71681A3B000567F53 /* DFGOSRExitJumpPlaceholder.cpp */; };
 		0FEFC9AB1681A3B600567F53 /* DFGOSRExitJumpPlaceholder.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FEFC9A81681A3B000567F53 /* DFGOSRExitJumpPlaceholder.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0FF0F19916B729F6005DF95B /* DFGLongLivedState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0FB4B51C16B62772003F696B /* DFGLongLivedState.cpp */; };
@@ -864,7 +868,6 @@
 		2A05ABD61961DF2400341750 /* JSPropertyNameEnumerator.h in Headers */ = {isa = PBXBuildFile; fileRef = 2A05ABD41961DF2400341750 /* JSPropertyNameEnumerator.h */; };
 		2A111245192FCE79005EE18D /* CustomGetterSetter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A111243192FCE79005EE18D /* CustomGetterSetter.cpp */; };
 		2A111246192FCE79005EE18D /* CustomGetterSetter.h in Headers */ = {isa = PBXBuildFile; fileRef = 2A111244192FCE79005EE18D /* CustomGetterSetter.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		2A2825D018341F2D0087FBA9 /* DelayedReleaseScope.h in Headers */ = {isa = PBXBuildFile; fileRef = 2A2825CF18341F2D0087FBA9 /* DelayedReleaseScope.h */; };
 		2A48D1911772365B00C65A5F /* APICallbackFunction.h in Headers */ = {isa = PBXBuildFile; fileRef = C211B574176A224D000E2A23 /* APICallbackFunction.h */; };
 		2A4BB7F318A41179008A0FCD /* JSManagedValueInternal.h in Headers */ = {isa = PBXBuildFile; fileRef = 2A4BB7F218A41179008A0FCD /* JSManagedValueInternal.h */; };
 		2A4EC90B1860D6C20094F782 /* WriteBarrierBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A4EC9091860D6C20094F782 /* WriteBarrierBuffer.cpp */; };
@@ -2242,6 +2245,8 @@
 		0FCEFADB18064A1400472CE4 /* config_llvm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = config_llvm.h; sourceTree = "<group>"; };
 		0FCEFADD180738C000472CE4 /* FTLLocation.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FTLLocation.cpp; path = ftl/FTLLocation.cpp; sourceTree = "<group>"; };
 		0FCEFADE180738C000472CE4 /* FTLLocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FTLLocation.h; path = ftl/FTLLocation.h; sourceTree = "<group>"; };
+		0FD1202D1A8AED12000F5280 /* FTLJSCallBase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FTLJSCallBase.cpp; path = ftl/FTLJSCallBase.cpp; sourceTree = "<group>"; };
+		0FD1202E1A8AED12000F5280 /* FTLJSCallBase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FTLJSCallBase.h; path = ftl/FTLJSCallBase.h; sourceTree = "<group>"; };
 		0FD2C92316D01EE900C7803F /* StructureInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StructureInlines.h; sourceTree = "<group>"; };
 		0FD3C82014115CF800FD81CB /* DFGDriver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGDriver.cpp; path = dfg/DFGDriver.cpp; sourceTree = "<group>"; };
 		0FD3C82214115D0E00FD81CB /* DFGDriver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGDriver.h; path = dfg/DFGDriver.h; sourceTree = "<group>"; };
@@ -2314,6 +2319,8 @@
 		0FEA0A2F170D40BF00BB722C /* DFGJITCode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGJITCode.cpp; path = dfg/DFGJITCode.cpp; sourceTree = "<group>"; };
 		0FEA0A30170D40BF00BB722C /* DFGJITCode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGJITCode.h; path = dfg/DFGJITCode.h; sourceTree = "<group>"; };
 		0FEB3ECE16237F6700AB67AD /* MacroAssembler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MacroAssembler.cpp; sourceTree = "<group>"; };
+		0FEE98401A8865B600754E93 /* SetupVarargsFrame.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SetupVarargsFrame.h; sourceTree = "<group>"; };
+		0FEE98421A89227500754E93 /* SetupVarargsFrame.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SetupVarargsFrame.cpp; sourceTree = "<group>"; };
 		0FEFC9A71681A3B000567F53 /* DFGOSRExitJumpPlaceholder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGOSRExitJumpPlaceholder.cpp; path = dfg/DFGOSRExitJumpPlaceholder.cpp; sourceTree = "<group>"; };
 		0FEFC9A81681A3B000567F53 /* DFGOSRExitJumpPlaceholder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGOSRExitJumpPlaceholder.h; path = dfg/DFGOSRExitJumpPlaceholder.h; sourceTree = "<group>"; };
 		0FF4272F158EBD44004CB9FF /* Disassembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Disassembler.h; path = disassembler/Disassembler.h; sourceTree = "<group>"; };
@@ -2499,7 +2506,6 @@
 		2A05ABD41961DF2400341750 /* JSPropertyNameEnumerator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSPropertyNameEnumerator.h; sourceTree = "<group>"; };
 		2A111243192FCE79005EE18D /* CustomGetterSetter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CustomGetterSetter.cpp; sourceTree = "<group>"; };
 		2A111244192FCE79005EE18D /* CustomGetterSetter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomGetterSetter.h; sourceTree = "<group>"; };
-		2A2825CF18341F2D0087FBA9 /* DelayedReleaseScope.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DelayedReleaseScope.h; sourceTree = "<group>"; };
 		2A343F7418A1748B0039B085 /* GCSegmentedArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GCSegmentedArray.h; sourceTree = "<group>"; };
 		2A343F7718A1749D0039B085 /* GCSegmentedArrayInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GCSegmentedArrayInlines.h; sourceTree = "<group>"; };
 		2A4BB7F218A41179008A0FCD /* JSManagedValueInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSManagedValueInternal.h; sourceTree = "<group>"; };
@@ -3598,6 +3604,8 @@
 				A78A977E179738D5009DF744 /* FTLJITFinalizer.h */,
 				0F6B1CB3185FC9E900845D97 /* FTLJSCall.cpp */,
 				0F6B1CB4185FC9E900845D97 /* FTLJSCall.h */,
+				0FD1202D1A8AED12000F5280 /* FTLJSCallBase.cpp */,
+				0FD1202E1A8AED12000F5280 /* FTLJSCallBase.h */,
 				0F8F2B93172E049E007DBDA5 /* FTLLink.cpp */,
 				0F8F2B94172E049E007DBDA5 /* FTLLink.h */,
 				0FCEFADD180738C000472CE4 /* FTLLocation.cpp */,
@@ -3794,6 +3802,8 @@
 				0FC712E117CD878F008CC93C /* JITToDFGDeferredCompilationCallback.h */,
 				A76F54A213B28AAB00EF2BCE /* JITWriteBarrier.h */,
 				A76C51741182748D00715B05 /* JSInterfaceJIT.h */,
+				0FEE98421A89227500754E93 /* SetupVarargsFrame.cpp */,
+				0FEE98401A8865B600754E93 /* SetupVarargsFrame.h */,
 				0FE834151A6EF97B00D04847 /* PolymorphicCallStubRoutine.cpp */,
 				0FE834161A6EF97B00D04847 /* PolymorphicCallStubRoutine.h */,
 				0FA7A8E918B413C80052371D /* Reg.cpp */,
@@ -3848,7 +3858,6 @@
 				2A68295A1875F80500B6C3E2 /* CopyWriteBarrier.h */,
 				2A7A58EE1808A4C40020BDF7 /* DeferGC.cpp */,
 				0F136D4B174AD69B0075B354 /* DeferGC.h */,
-				2A2825CF18341F2D0087FBA9 /* DelayedReleaseScope.h */,
 				BCBE2CAD14E985AA000593AD /* GCAssertions.h */,
 				0F2B66A817B6B53D00A7AE3F /* GCIncomingRefCounted.h */,
 				0F2B66A917B6B53D00A7AE3F /* GCIncomingRefCountedInlines.h */,
@@ -5513,6 +5522,7 @@
 				C2FC9BD316644DFB00810D33 /* CopiedBlockInlines.h in Headers */,
 				C2EAA3FA149A835E00FCE112 /* CopiedSpace.h in Headers */,
 				C2C8D02D14A3C6E000578E65 /* CopiedSpaceInlines.h in Headers */,
+				0FEE98411A8865B700754E93 /* SetupVarargsFrame.h in Headers */,
 				0FC3CCFD19ADA410006AC72A /* DFGBlockMapInlines.h in Headers */,
 				0F5A52D017ADD717008ECB2D /* CopyToken.h in Headers */,
 				C2239D1816262BDD005AC5FD /* CopyVisitor.h in Headers */,
@@ -5535,7 +5545,6 @@
 				FEA08621182B7A0400F6D851 /* DebuggerPrimitives.h in Headers */,
 				0F136D4D174AD69E0075B354 /* DeferGC.h in Headers */,
 				0FC712DF17CD877C008CC93C /* DeferredCompilationCallback.h in Headers */,
-				2A2825D018341F2D0087FBA9 /* DelayedReleaseScope.h in Headers */,
 				A77A423E17A0BBFD00A8DB81 /* DFGAbstractHeap.h in Headers */,
 				A5EA70E819F5B1010098F5EC /* AugmentableInspectorControllerClient.h in Headers */,
 				A704D90317A0BAA8006BA554 /* DFGAbstractInterpreter.h in Headers */,
@@ -6126,6 +6135,7 @@
 				147B84630E6DE6B1004775A4 /* PutPropertySlot.h in Headers */,
 				2AAD964A18569417001F93BE /* RecursiveAllocationScope.h in Headers */,
 				0FF60AC216740F8300029779 /* ReduceWhitespace.h in Headers */,
+				0FD120301A8AED12000F5280 /* FTLJSCallBase.h in Headers */,
 				0FA7A8EC18B413C80052371D /* Reg.h in Headers */,
 				BC18C45A0E16F5CD00B34460 /* RegExp.h in Headers */,
 				A1712B3F11C7B228007A5315 /* RegExpCache.h in Headers */,
@@ -7141,6 +7151,7 @@
 				A7CA3AE717DA41AE006538AF /* JSWeakMap.cpp in Sources */,
 				A7482B9411671147003B0712 /* JSWeakObjectMapRefPrivate.cpp in Sources */,
 				1442566115EDE98D0066A49B /* JSWithScope.cpp in Sources */,
+				0FEE98431A89227500754E93 /* SetupVarargsFrame.cpp in Sources */,
 				86E3C618167BABEE006D760A /* JSWrapperMap.mm in Sources */,
 				14280870107EC1340013E7B2 /* JSWrapperObject.cpp in Sources */,
 				BCFD8C920EEB2EE700283848 /* JumpTable.cpp in Sources */,
@@ -7253,6 +7264,7 @@
 				A54CF2F9184EAEDA00237F19 /* ScriptObject.cpp in Sources */,
 				A54CF2F5184EAB2400237F19 /* ScriptValue.cpp in Sources */,
 				A7299DA517D12858005F5FF9 /* SetConstructor.cpp in Sources */,
+				0FD1202F1A8AED12000F5280 /* FTLJSCallBase.cpp in Sources */,
 				A790DD6B182F499700588807 /* SetIteratorConstructor.cpp in Sources */,
 				A790DD6D182F499700588807 /* SetIteratorPrototype.cpp in Sources */,
 				A7299DA117D12848005F5FF9 /* SetPrototype.cpp in Sources */,

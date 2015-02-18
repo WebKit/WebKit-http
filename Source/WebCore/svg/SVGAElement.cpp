@@ -40,15 +40,12 @@
 #include "RenderSVGText.h"
 #include "RenderSVGTransformableContainer.h"
 #include "ResourceRequest.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGSMILElement.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
-
-using namespace HTMLNames;
 
 // Animated property definitions
 DEFINE_ANIMATED_STRING(SVGAElement, SVGNames::targetAttr, SVGTarget, svgTarget)
@@ -126,7 +123,7 @@ void SVGAElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     // Unlike other SVG*Element classes, SVGAElement only listens to SVGURIReference changes
     // as none of the other properties changes the linking behaviour for our <a> element.
@@ -210,7 +207,7 @@ bool SVGAElement::isFocusable() const
 
 bool SVGAElement::isURLAttribute(const Attribute& attribute) const
 {
-    return attribute.name().localName() == hrefAttr || SVGGraphicsElement::isURLAttribute(attribute);
+    return attribute.name().localName() == XLinkNames::hrefAttr || SVGGraphicsElement::isURLAttribute(attribute);
 }
 
 bool SVGAElement::isMouseFocusable() const

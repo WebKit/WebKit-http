@@ -25,7 +25,6 @@
 #include "FloatPoint.h"
 #include "IntPoint.h"
 #include "IntSize.h"
-#include "SVGElementInstance.h"
 #include "SVGFilterBuilder.h"
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
@@ -257,7 +256,7 @@ void SVGFEConvolveMatrixElement::svgAttributeChanged(const QualifiedName& attrNa
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::edgeModeAttr
         || attrName == SVGNames::divisorAttr

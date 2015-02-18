@@ -27,7 +27,6 @@
 #include "RenderSVGResource.h"
 #include "RenderSVGText.h"
 #include "SVGAltGlyphElement.h"
-#include "SVGElementInstance.h"
 #include "SVGLengthList.h"
 #include "SVGNames.h"
 #include "SVGNumberList.h"
@@ -141,7 +140,7 @@ void SVGTextPositioningElement::svgAttributeChanged(const QualifiedName& attrNam
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     bool updateRelativeLengths = attrName == SVGNames::xAttr
                               || attrName == SVGNames::yAttr

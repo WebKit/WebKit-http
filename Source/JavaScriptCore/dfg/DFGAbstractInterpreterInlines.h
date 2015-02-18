@@ -31,6 +31,7 @@
 #include "DFGAbstractInterpreter.h"
 #include "GetByIdStatus.h"
 #include "GetterSetter.h"
+#include "JITOperations.h"
 #include "Operations.h"
 #include "PutByIdStatus.h"
 #include "StringObject.h"
@@ -140,18 +141,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
-    case GetArgument: {
-        ASSERT(m_graph.m_form == SSA);
-        VariableAccessData* variable = node->variableAccessData();
-        AbstractValue& value = m_state.variables().operand(variable->local().offset());
-        ASSERT(value.isHeapTop());
-        FiltrationResult result =
-            value.filter(typeFilterFor(useKindFor(variable->flushFormat())));
-        ASSERT_UNUSED(result, result == FiltrationOK);
-        forNode(node) = value;
-        break;
-    }
-        
     case ExtractOSREntryLocal: {
         if (!(node->unlinkedLocal().isArgument())
             && m_graph.m_lazyVars.get(node->unlinkedLocal().toLocal())) {
@@ -169,6 +158,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case GetLocal: {
         VariableAccessData* variableAccessData = node->variableAccessData();
         AbstractValue value = m_state.variables().operand(variableAccessData->local().offset());
+        // The value in the local should already be checked.
+        DFG_ASSERT(m_graph, node, value.isType(typeFilterFor(variableAccessData->flushFormat())));
         if (value.value())
             m_state.setFoundConstants(true);
         forNode(node) = value;
@@ -716,6 +707,24 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             RELEASE_ASSERT_NOT_REACHED();
             break;
         }
+        break;
+    }
+
+    case ArithPow: {
+        JSValue childY = forNode(node->child2()).value();
+        if (childY && childY.isNumber()) {
+            if (!childY.asNumber()) {
+                setConstant(node, jsDoubleNumber(1));
+                break;
+            }
+
+            JSValue childX = forNode(node->child1()).value();
+            if (childX && childX.isNumber()) {
+                setConstant(node, jsDoubleNumber(operationMathPow(childX.asNumber(), childY.asNumber())));
+                break;
+            }
+        }
+        forNode(node).setType(typeOfDoublePow(forNode(node->child1()).m_type, forNode(node->child2()).m_type));
         break;
     }
             

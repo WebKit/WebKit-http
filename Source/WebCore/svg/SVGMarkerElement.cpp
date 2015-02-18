@@ -24,10 +24,8 @@
 
 #include "Attribute.h"
 #include "RenderSVGResourceMarker.h"
-#include "SVGElementInstance.h"
 #include "SVGFitToViewBox.h"
 #include "SVGNames.h"
-#include "SVGSVGElement.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -166,7 +164,7 @@ void SVGMarkerElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     if (attrName == SVGNames::refXAttr
         || attrName == SVGNames::refYAttr

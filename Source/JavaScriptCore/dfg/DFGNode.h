@@ -448,7 +448,7 @@ struct Node {
             m_op = Int52Constant;
         else
             m_op = JSConstant;
-        m_flags &= ~(NodeMustGenerate | NodeMightClobber | NodeClobbersWorld);
+        m_flags &= ~NodeMustGenerate;
         m_opInfo = bitwise_cast<uintptr_t>(value);
         children.reset();
     }
@@ -464,7 +464,7 @@ struct Node {
     void convertToGetLocalUnlinked(VirtualRegister local)
     {
         m_op = GetLocalUnlinked;
-        m_flags &= ~(NodeMustGenerate | NodeMightClobber | NodeClobbersWorld);
+        m_flags &= ~NodeMustGenerate;
         m_opInfo = local.offset();
         m_opInfo2 = VirtualRegister().offset();
         children.reset();
@@ -478,7 +478,7 @@ struct Node {
         children.child2().setUseKind(KnownCellUse);
         children.setChild1(storage);
         m_op = GetByOffset;
-        m_flags &= ~(NodeClobbersWorld | NodeMustGenerate);
+        m_flags &= ~NodeMustGenerate;
     }
     
     void convertToMultiGetByOffset(MultiGetByOffsetData* data)
@@ -487,7 +487,6 @@ struct Node {
         m_opInfo = bitwise_cast<intptr_t>(data);
         child1().setUseKind(CellUse);
         m_op = MultiGetByOffset;
-        m_flags &= ~NodeClobbersWorld;
         ASSERT(m_flags & NodeMustGenerate);
     }
     
@@ -499,7 +498,6 @@ struct Node {
         children.setChild2(children.child1());
         children.setChild1(storage);
         m_op = PutByOffset;
-        m_flags &= ~NodeClobbersWorld;
     }
     
     void convertToMultiPutByOffset(MultiPutByOffsetData* data)
@@ -507,7 +505,6 @@ struct Node {
         ASSERT(m_op == PutById || m_op == PutByIdDirect || m_op == PutByIdFlush);
         m_opInfo = bitwise_cast<intptr_t>(data);
         m_op = MultiPutByOffset;
-        m_flags &= ~NodeClobbersWorld;
     }
     
     void convertToPutByOffsetHint()
@@ -567,6 +564,13 @@ struct Node {
     {
         ASSERT(m_op == ToPrimitive);
         m_op = ToString;
+    }
+
+    void convertToArithSqrt()
+    {
+        ASSERT(m_op == ArithPow);
+        child2() = Edge();
+        m_op = ArithSqrt;
     }
     
     JSValue asJSValue()
@@ -772,33 +776,13 @@ struct Node {
         return m_opInfo;
     }
     
-    bool hasArithNodeFlags()
-    {
-        switch (op()) {
-        case UInt32ToNumber:
-        case ArithAdd:
-        case ArithSub:
-        case ArithNegate:
-        case ArithMul:
-        case ArithAbs:
-        case ArithMin:
-        case ArithMax:
-        case ArithMod:
-        case ArithDiv:
-        case ValueAdd:
-            return true;
-        default:
-            return false;
-        }
-    }
-    
     // This corrects the arithmetic node flags, so that irrelevant bits are
     // ignored. In particular, anything other than ArithMul does not need
     // to know if it can speculate on negative zero.
     NodeFlags arithNodeFlags()
     {
         NodeFlags result = m_flags & NodeArithFlagsMask;
-        if (op() == ArithMul || op() == ArithDiv || op() == ArithMod || op() == ArithNegate || op() == DoubleAsInt32)
+        if (op() == ArithMul || op() == ArithDiv || op() == ArithMod || op() == ArithNegate || op() == ArithPow || op() == DoubleAsInt32)
             return result;
         return result & ~NodeBytecodeNeedsNegZero;
     }

@@ -187,11 +187,16 @@ public:
     PluginInfoStore& pluginInfoStore() { return m_pluginInfoStore; }
 #endif
 
+#if ENABLE(NETWORK_PROCESS)
+    PlatformProcessIdentifier networkProcessIdentifier();
+#endif
+
     void setAlwaysUsesComplexTextCodePath(bool);
     void setShouldUseFontSmoothing(bool);
     
     void registerURLSchemeAsEmptyDocument(const String&);
     void registerURLSchemeAsSecure(const String&);
+    void registerURLSchemeAsBypassingContentSecurityPolicy(const String&);
     void setDomainRelaxationForbiddenForURLScheme(const String&);
     void setCanHandleHTTPSServerTrustEvaluation(bool);
     void registerURLSchemeAsLocal(const String&);
@@ -449,6 +454,7 @@ private:
         
     HashSet<String> m_schemesToRegisterAsEmptyDocument;
     HashSet<String> m_schemesToRegisterAsSecure;
+    HashSet<String> m_schemesToRegisterAsBypassingContentSecurityPolicy;
     HashSet<String> m_schemesToSetDomainRelaxationForbiddenFor;
     HashSet<String> m_schemesToRegisterAsLocal;
     HashSet<String> m_schemesToRegisterAsNoAccess;

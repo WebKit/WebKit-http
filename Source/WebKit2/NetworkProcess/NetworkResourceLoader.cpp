@@ -141,7 +141,7 @@ void NetworkResourceLoader::start()
     }
 
     RefPtr<NetworkResourceLoader> loader(this);
-    NetworkCache::singleton().retrieve(originalRequest(), [loader](std::unique_ptr<NetworkCache::Entry> entry) {
+    NetworkCache::singleton().retrieve(originalRequest(), m_parameters.webPageID, [loader](std::unique_ptr<NetworkCache::Entry> entry) {
         if (loader->hasOneRef()) {
             // The loader has been aborted and is only held alive by this lambda.
             return;
@@ -327,7 +327,7 @@ void NetworkResourceLoader::didFinishLoading(ResourceHandle* handle, double fini
             return;
         }
         bool allowStale = originalRequest().cachePolicy() >= ReturnCacheDataElseLoad;
-        bool hasCacheableRedirect = WebCore::redirectChainAllowsReuse(m_redirectChainCacheStatus, allowStale ? WebCore::ReuseExpiredRedirection : WebCore::DoNotReuseExpiredRedirection);
+        bool hasCacheableRedirect = m_response.isHTTP() && WebCore::redirectChainAllowsReuse(m_redirectChainCacheStatus, allowStale ? WebCore::ReuseExpiredRedirection : WebCore::DoNotReuseExpiredRedirection);
         if (hasCacheableRedirect && m_redirectChainCacheStatus.status == RedirectChainCacheStatus::CachedRedirection) {
             // FIXME: Cache the actual redirects instead of the end result.
             double now = currentTime();
@@ -336,8 +336,19 @@ void NetworkResourceLoader::didFinishLoading(ResourceHandle* handle, double fini
         }
 
         bool isPrivate = sessionID().isEphemeral();
-        if (hasCacheableRedirect && !isPrivate)
-            NetworkCache::singleton().store(originalRequest(), m_response, m_bufferedDataForCache.release());
+        if (hasCacheableRedirect && !isPrivate) {
+            // Keep the connection alive.
+            RefPtr<NetworkConnectionToWebProcess> connection(connectionToWebProcess());
+            RefPtr<NetworkResourceLoader> loader(this);
+            NetworkCache::singleton().store(originalRequest(), m_response, WTF::move(m_bufferedDataForCache), [loader, connection](NetworkCache::MappedBody& mappedBody) {
+#if ENABLE(SHAREABLE_RESOURCE)
+                if (mappedBody.shareableResourceHandle.isNull())
+                    return;
+                LOG(NetworkCache, "(NetworkProcess) sending DidCacheResource");
+                loader->send(Messages::NetworkProcessConnection::DidCacheResource(loader->originalRequest(), mappedBody.shareableResourceHandle, loader->sessionID()));
+#endif
+            });
+        }
     }
 #endif
 

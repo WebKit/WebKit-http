@@ -94,6 +94,10 @@
 #import <VideoToolbox/VideoToolbox.h>
 #endif
 
+#if USE(CFNETWORK)
+#include "CFNSURLConnectionSPI.h"
+#endif
+
 namespace std {
 template <> struct iterator_traits<HashSet<RefPtr<WebCore::MediaSelectionOptionAVFObjC>>::iterator> {
     typedef RefPtr<WebCore::MediaSelectionOptionAVFObjC> value_type;
@@ -387,6 +391,58 @@ static dispatch_queue_t globalPullDelegateQueue()
 }
 #endif
 
+#if USE(CFNETWORK)
+class WebCoreNSURLAuthenticationChallengeClient : public RefCounted<WebCoreNSURLAuthenticationChallengeClient>, public AuthenticationClient {
+public:
+    static RefPtr<WebCoreNSURLAuthenticationChallengeClient> create(NSURLAuthenticationChallenge *challenge)
+    {
+        return adoptRef(new WebCoreNSURLAuthenticationChallengeClient(challenge));
+    }
+
+    using RefCounted<WebCoreNSURLAuthenticationChallengeClient>::ref;
+    using RefCounted<WebCoreNSURLAuthenticationChallengeClient>::deref;
+
+private:
+    WebCoreNSURLAuthenticationChallengeClient(NSURLAuthenticationChallenge *challenge)
+        : m_challenge(challenge)
+    {
+        ASSERT(m_challenge);
+    }
+
+    virtual void refAuthenticationClient() override { ref(); }
+    virtual void derefAuthenticationClient() override { deref(); }
+
+    virtual void receivedCredential(const AuthenticationChallenge&, const Credential& credential)
+    {
+        [[m_challenge sender] useCredential:credential.nsCredential() forAuthenticationChallenge:m_challenge.get()];
+    }
+
+    virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&)
+    {
+        [[m_challenge sender] continueWithoutCredentialForAuthenticationChallenge:m_challenge.get()];
+    }
+
+    virtual void receivedCancellation(const AuthenticationChallenge&)
+    {
+        [[m_challenge sender] cancelAuthenticationChallenge:m_challenge.get()];
+    }
+
+    virtual void receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&)
+    {
+        if ([[m_challenge sender] respondsToSelector:@selector(performDefaultHandlingForAuthenticationChallenge:)])
+            [[m_challenge sender] performDefaultHandlingForAuthenticationChallenge:m_challenge.get()];
+    }
+
+    virtual void receivedChallengeRejection(const AuthenticationChallenge&)
+    {
+        if ([[m_challenge sender] respondsToSelector:@selector(rejectProtectionSpaceAndContinueWithChallenge:)])
+            [[m_challenge sender] rejectProtectionSpaceAndContinueWithChallenge:m_challenge.get()];
+    }
+
+    RetainPtr<NSURLAuthenticationChallenge> m_challenge;
+};
+#endif
+
 PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateAVFoundationObjC::create(MediaPlayer* player)
 { 
     return adoptPtr(new MediaPlayerPrivateAVFoundationObjC(player));
@@ -620,6 +676,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
 #endif
     [m_videoLayer addObserver:m_objcObserver.get() forKeyPath:@"readyForDisplay" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextAVPlayerLayer];
     updateVideoLayerGravity();
+    [m_videoLayer setContentsScale:player()->client().mediaPlayerContentsScale()];
     IntSize defaultSize = player()->client().mediaPlayerContentBoxRect().pixelSnappedSize();
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::createVideoLayer(%p) - returning %p", this, m_videoLayer.get());
 
@@ -1678,14 +1735,14 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
 bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForResponseToAuthenticationChallenge(NSURLAuthenticationChallenge* nsChallenge)
 {
 #if USE(CFNETWORK)
-    UNUSED_PARAM(nsChallenge);
-    // FIXME: <rdar://problem/15799844>
-    return false;
+    RefPtr<WebCoreNSURLAuthenticationChallengeClient> client = WebCoreNSURLAuthenticationChallengeClient::create(nsChallenge);
+    RetainPtr<CFURLAuthChallengeRef> cfChallenge = adoptCF([nsChallenge _createCFAuthChallenge]);
+    AuthenticationChallenge challenge(cfChallenge.get(), client.get());
 #else
     AuthenticationChallenge challenge(nsChallenge);
+#endif
 
     return player()->shouldWaitForResponseToAuthenticationChallenge(challenge);
-#endif
 }
 
 void MediaPlayerPrivateAVFoundationObjC::didCancelLoadingRequest(AVAssetResourceLoadingRequest* avRequest)
@@ -1716,6 +1773,15 @@ MediaTime MediaPlayerPrivateAVFoundationObjC::mediaTimeForTimeValue(const MediaT
 
     // FIXME - impossible to implement until rdar://8721510 is fixed.
     return timeValue;
+}
+
+double MediaPlayerPrivateAVFoundationObjC::maximumDurationToCacheMediaTime() const
+{
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1010
+    return 0;
+#else
+    return 5;
+#endif
 }
 
 void MediaPlayerPrivateAVFoundationObjC::updateVideoLayerGravity()

@@ -35,6 +35,7 @@
 #include "CodeBlockWithJITType.h"
 #include "DFGArrayMode.h"
 #include "DFGCapabilities.h"
+#include "DFGGraph.h"
 #include "DFGJITCode.h"
 #include "GetByIdStatus.h"
 #include "Heap.h"
@@ -1667,9 +1668,6 @@ bool ByteCodeParser::handleIntrinsic(int resultOperand, Intrinsic intrinsic, int
         
         switch (intrinsic) {
         case SqrtIntrinsic:
-            if (!MacroAssembler::supportsFloatingPointSqrt())
-                return false;
-            
             set(VirtualRegister(resultOperand), addToGraph(ArithSqrt, get(virtualRegisterForArgument(1, registerOffset))));
             return true;
             
@@ -1685,6 +1683,18 @@ bool ByteCodeParser::handleIntrinsic(int resultOperand, Intrinsic intrinsic, int
             RELEASE_ASSERT_NOT_REACHED();
             return false;
         }
+    }
+
+    case PowIntrinsic: {
+        if (argumentCountIncludingThis < 3) {
+            // Math.pow() and Math.pow(x) return NaN.
+            set(VirtualRegister(resultOperand), addToGraph(JSConstant, OpInfo(m_constantNaN)));
+            return true;
+        }
+        VirtualRegister xOperand = virtualRegisterForArgument(1, registerOffset);
+        VirtualRegister yOperand = virtualRegisterForArgument(2, registerOffset);
+        set(VirtualRegister(resultOperand), addToGraph(ArithPow, get(xOperand), get(yOperand)));
+        return true;
     }
         
     case ArrayPushIntrinsic: {

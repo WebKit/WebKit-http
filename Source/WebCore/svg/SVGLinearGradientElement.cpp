@@ -29,7 +29,6 @@
 #include "FloatPoint.h"
 #include "LinearGradientAttributes.h"
 #include "RenderSVGResourceLinearGradient.h"
-#include "SVGElementInstance.h"
 #include "SVGLength.h"
 #include "SVGNames.h"
 #include "SVGTransform.h"
@@ -109,7 +108,7 @@ void SVGLinearGradientElement::svgAttributeChanged(const QualifiedName& attrName
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     updateRelativeLengthsInformation();
 

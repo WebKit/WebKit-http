@@ -1501,6 +1501,8 @@ Vector<CSSParser::SourceSize> CSSParser::parseSizesAttribute(StringView string)
     return result;
 }
 
+// FIXME(141289): The following two constructors are only needed because of a bug in MSVC 2013 (and prior).
+// We should remove this code as soon as a Visual Studio update that fixes this problem is released.
 CSSParser::SourceSize::SourceSize(CSSParser::SourceSize&& original)
     : expression(WTF::move(original.expression))
     , length(original.length)
@@ -12075,14 +12077,9 @@ void CSSParser::endDeclarationsForMarginBox()
 void CSSParser::deleteFontFaceOnlyValues()
 {
     ASSERT(m_hasFontFaceOnlyValues);
-    for (unsigned i = 0; i < m_parsedProperties.size();) {
-        CSSProperty& property = m_parsedProperties[i];
-        if (property.id() == CSSPropertyFontVariant && property.value()->isValueList()) {
-            m_parsedProperties.remove(i);
-            continue;
-        }
-        ++i;
-    }
+    m_parsedProperties.removeAllMatching([] (const CSSProperty& property) {
+        return property.id() == CSSPropertyFontVariant && property.value()->isValueList();
+    });
 }
 
 PassRefPtr<StyleKeyframe> CSSParser::createKeyframe(CSSParserValueList& keys)

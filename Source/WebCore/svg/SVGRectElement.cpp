@@ -26,7 +26,6 @@
 #include "RenderSVGPath.h"
 #include "RenderSVGRect.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGLength.h"
 #include "SVGNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -120,7 +119,7 @@ void SVGRectElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
 
     if (attrName == SVGNames::xAttr
         || attrName == SVGNames::yAttr

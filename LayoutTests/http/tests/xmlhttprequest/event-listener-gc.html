@@ -16,8 +16,7 @@ function collect()
 
 function processStateChange(e)
 {
-    if (didCollect)
-        write("PASS: event handler fired after garbage collection.\n");
+    write("PASS: event handler fired" + (didCollect ? " after garbage collection" : "") + ", readyState: " + e.target.readyState + ".\n");
     if (e.target.readyState == 4) {
         if (window.testRunner)
             testRunner.notifyDone();
@@ -31,19 +30,19 @@ function test()
         testRunner.waitUntilDone();
     }
 
-    // Timeout ensures stack references to request are cleared when we collect.
-    // Start the timer before starting the load, so that it's guaranteed to fire first.
-    setTimeout('collect();', 0);
-
     var request = new XMLHttpRequest();
     request.onreadystatechange = processStateChange;
-    request.open("GET", "print-content-type.cgi", true);
+    request.open("GET", "resources/print-headers.cgi", true);
     request.send(null);
+    request = null;
 }
+
+window.addEventListener("load", test);
+window.addEventListener("load", collect);
 </script>
 </head>
 
-<body onload="test();">
+<body>
 <p>This test checks whether event handlers for outstanding XMLHttpRequests survive garbage collection.</p>
 <p>See https://bugs.webkit.org/show_bug.cgi?id=9113 REGRESSION (14581): 
 XMLHttpRequest never calls onreadystatechange with a readystate == 4</p>

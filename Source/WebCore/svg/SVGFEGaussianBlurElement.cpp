@@ -23,7 +23,6 @@
 
 #include "Attribute.h"
 #include "FilterEffect.h"
-#include "SVGElementInstance.h"
 #include "SVGFilterBuilder.h"
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
@@ -130,7 +129,7 @@ void SVGFEGaussianBlurElement::svgAttributeChanged(const QualifiedName& attrName
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     if (attrName == SVGNames::inAttr
         || attrName == SVGNames::stdDeviationAttr

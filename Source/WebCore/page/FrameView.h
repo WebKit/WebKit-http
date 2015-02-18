@@ -122,6 +122,8 @@ public:
     WEBCORE_EXPORT void setNeedsLayout();
     void setViewportConstrainedObjectsNeedLayout();
 
+    bool needsStyleRecalcOrLayout(bool includeSubframes = true) const;
+
     bool needsFullRepaint() const { return m_needsFullRepaint; }
 
     WEBCORE_EXPORT bool renderedCharactersExceed(unsigned threshold);
@@ -244,7 +246,7 @@ public:
     void delayedScrollEventTimerFired();
 
     void viewportContentsChanged();
-    void resumeVisibleImageAnimationsIncludingSubframes();
+    WEBCORE_EXPORT void resumeVisibleImageAnimationsIncludingSubframes();
 
     // This is different than visibleContentRect() in that it ignores negative (or overly positive)
     // offsets from rubber-banding, and it takes zooming into account. 

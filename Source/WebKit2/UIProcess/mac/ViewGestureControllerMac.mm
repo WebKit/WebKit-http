@@ -387,6 +387,9 @@ void ViewGestureController::trackSwipeGesture(NSEvent *event, SwipeDirection dir
     CGFloat maxProgress = (direction == SwipeDirection::Left) ? 1 : 0;
     CGFloat minProgress = (direction == SwipeDirection::Right) ? -1 : 0;
     RefPtr<WebBackForwardListItem> targetItem = (direction == SwipeDirection::Left) ? m_webPageProxy.backForwardList().backItem() : m_webPageProxy.backForwardList().forwardItem();
+    if (!targetItem)
+        return;
+    
     __block bool swipeCancelled = false;
 
     ASSERT(!m_swipeCancellationTracker);
@@ -551,7 +554,7 @@ void ViewGestureController::beginSwipeGesture(WebBackForwardListItem* targetItem
         if (coreColor.isValid())
             backgroundColor = cachedCGColor(coreColor, ColorSpaceDeviceRGB);
 #if USE_IOSURFACE_VIEW_SNAPSHOTS
-        m_currentSwipeSnapshotSurface = snapshot->surface();
+        m_currentSwipeSnapshot = snapshot;
 #endif
     }
 
@@ -769,9 +772,9 @@ void ViewGestureController::removeSwipeSnapshot()
         return;
 
 #if USE_IOSURFACE_VIEW_SNAPSHOTS
-    if (m_currentSwipeSnapshotSurface)
-        m_currentSwipeSnapshotSurface->setIsVolatile(true);
-    m_currentSwipeSnapshotSurface = nullptr;
+    if (m_currentSwipeSnapshot)
+        m_currentSwipeSnapshot->surface()->setIsVolatile(true);
+    m_currentSwipeSnapshot = nullptr;
 #endif
 
     for (const auto& layer : m_currentSwipeLiveLayers)

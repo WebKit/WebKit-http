@@ -253,10 +253,20 @@ public:
     }
 #endif
 
-    void emitGetFromCallFrameHeaderPtr(JSStack::CallFrameHeaderEntry entry, GPRReg to)
+    void emitGetFromCallFrameHeaderPtr(JSStack::CallFrameHeaderEntry entry, GPRReg to, GPRReg from = GPRInfo::callFrameRegister)
     {
-        loadPtr(Address(GPRInfo::callFrameRegister, entry * sizeof(Register)), to);
+        loadPtr(Address(from, entry * sizeof(Register)), to);
     }
+    void emitGetFromCallFrameHeader32(JSStack::CallFrameHeaderEntry entry, GPRReg to, GPRReg from = GPRInfo::callFrameRegister)
+    {
+        load32(Address(from, entry * sizeof(Register)), to);
+    }
+#if USE(JSVALUE64)
+    void emitGetFromCallFrameHeader64(JSStack::CallFrameHeaderEntry entry, GPRReg to, GPRReg from = GPRInfo::callFrameRegister)
+    {
+        load64(Address(from, entry * sizeof(Register)), to);
+    }
+#endif // USE(JSVALUE64)
     void emitPutToCallFrameHeader(GPRReg from, JSStack::CallFrameHeaderEntry entry)
     {
         storePtr(from, Address(GPRInfo::callFrameRegister, entry * sizeof(Register)));
@@ -354,6 +364,44 @@ public:
     static Address payloadFor(int operand)
     {
         return payloadFor(static_cast<VirtualRegister>(operand));
+    }
+
+    // Access to our fixed callee CallFrame.
+    Address calleeFrameSlot(int slot)
+    {
+        ASSERT(slot >= JSStack::CallerFrameAndPCSize);
+        return MacroAssembler::Address(MacroAssembler::stackPointerRegister, sizeof(Register) * (slot - JSStack::CallerFrameAndPCSize));
+    }
+
+    // Access to our fixed callee CallFrame.
+    Address calleeArgumentSlot(int argument)
+    {
+        return calleeFrameSlot(virtualRegisterForArgument(argument).offset());
+    }
+
+    Address calleeFrameTagSlot(int slot)
+    {
+        return calleeFrameSlot(slot).withOffset(TagOffset);
+    }
+
+    Address calleeFramePayloadSlot(int slot)
+    {
+        return calleeFrameSlot(slot).withOffset(PayloadOffset);
+    }
+
+    Address calleeArgumentTagSlot(int argument)
+    {
+        return calleeArgumentSlot(argument).withOffset(TagOffset);
+    }
+
+    Address calleeArgumentPayloadSlot(int argument)
+    {
+        return calleeArgumentSlot(argument).withOffset(PayloadOffset);
+    }
+
+    Address calleeFrameCallerFrame()
+    {
+        return calleeFrameSlot(0).withOffset(CallFrame::callerFrameOffset());
     }
 
     Jump branchIfCellNotObject(GPRReg cellReg)

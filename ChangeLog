@@ -1,3 +1,64 @@
+2015-02-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, remove empty directories.
+
+        * ManualTests/qt: Removed.
+
+2015-02-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Don't set flag fuse-ld on the C/C++ compiler flags, but on the linker flags.
+        https://bugs.webkit.org/show_bug.cgi?id=141481
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsCommon.cmake: Move -fuse-ld=gold to the linker flags.
+
+2015-02-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL][GTK] Use bmalloc instead of tcmalloc
+        https://bugs.webkit.org/show_bug.cgi?id=140162
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add bmalloc directory to build list.
+
+        * CMakeLists.txt: Define BMALLOC_DIR directory.
+        * Source/CMakeLists.txt: Add bmalloc path to sub-directories list.
+
+2015-02-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add default color chooser implementation using GtkColorChooserDialog
+        https://bugs.webkit.org/show_bug.cgi?id=141392
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Enable INPUT_TYPE_COLOR by default for GTK+ port.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-02-09  Sergio Villar Senin  <svillar@igalia.com>
+
+        ASSERTION FAILED: resolvedInitialPosition <= resolvedFinalPosition in WebCore::GridSpan::GridSpan
+        https://bugs.webkit.org/show_bug.cgi?id=141328
+
+        Reviewed by Darin Adler.
+
+        Added as manual test because it involves a huge grid allocation
+        which is very slow on Debug bots, the only ones capable to trigger
+        the assertion.
+
+        * ManualTests/css-grid-layout-item-with-huge-span-crash.html: Added.
+
+2015-02-05  Youenn Fablet  <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar <calvaris@igalia.com>
+
+        [Streams API] Implement a barebone ReadableStream interface
+        https://bugs.webkit.org/show_bug.cgi?id=141045
+
+        Reviewed by Benjamin Poulain.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake: Made streams API compilation on by default.
+
 2015-02-02  Filip Pizlo  <fpizlo@apple.com>
 
         Revert accidental change in r179490.

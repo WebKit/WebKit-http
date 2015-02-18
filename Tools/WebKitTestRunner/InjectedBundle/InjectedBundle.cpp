@@ -109,13 +109,9 @@ void InjectedBundle::didCreatePage(WKBundlePageRef page)
 
 void InjectedBundle::willDestroyPage(WKBundlePageRef page)
 {
-    size_t size = m_pages.size();
-    for (size_t i = 0; i < size; ++i) {
-        if (m_pages[i]->page() == page) {
-            m_pages.remove(i);
-            break;
-        }
-    }
+    m_pages.removeFirstMatching([page] (const std::unique_ptr<InjectedBundlePage>& current) {
+        return current->page() == page;
+    });
 }
 
 void InjectedBundle::didInitializePageGroup(WKBundlePageGroupRef pageGroup)
@@ -255,7 +251,6 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     WKBundleSetPopupBlockingEnabled(m_bundle, m_pageGroup, false);
     WKBundleSetAlwaysAcceptCookies(m_bundle, false); // FIXME: Do this from UI process, so that Networking process gets the preference, too.
     WKBundleSetSerialLoadingEnabled(m_bundle, false);
-    WKBundleSetCacheModel(m_bundle, 1 /*CacheModelDocumentBrowser*/);
 
     WKBundleRemoveAllUserContent(m_bundle, m_pageGroup);
 
@@ -493,6 +488,13 @@ void InjectedBundle::setHidden(bool hidden)
     WKRetainPtr<WKBooleanRef> isInitialWK(AdoptWK, WKBooleanCreate(hidden));
     WKDictionarySetItem(messageBody.get(), isInitialKeyWK.get(), isInitialWK.get());
 
+    WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
+}
+
+void InjectedBundle::setCacheModel(int model)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetCacheModel"));
+    WKRetainPtr<WKUInt64Ref> messageBody(AdoptWK, WKUInt64Create(model));
     WKBundlePostMessage(m_bundle, messageName.get(), messageBody.get());
 }
 

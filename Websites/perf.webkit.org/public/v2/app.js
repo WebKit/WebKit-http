@@ -1,6 +1,8 @@
 window.App = Ember.Application.create();
 
 App.Router.map(function () {
+    this.resource('customDashboard', {path: 'dashboard/custom'});
+    this.resource('dashboard', {path: 'dashboard/:name'});
     this.resource('charts', {path: 'charts'});
     this.resource('analysis', {path: 'analysis'});
     this.resource('analysisTask', {path: 'analysis/task/:taskId'});
@@ -54,28 +56,47 @@ App.DashboardPaneProxyForPicker = Ember.ObjectProxy.extend({
     }.property('platformId', 'metricId'),
 });
 
-App.IndexController = Ember.Controller.extend({
+App.IndexRoute = Ember.Route.extend({
+    beforeModel: function ()
+    {
+        var self = this;
+        App.Manifest.fetch(this.store).then(function () {
+            self.transitionTo('dashboard', App.Manifest.defaultDashboardName());
+        });
+    },
+});
+
+App.DashboardRoute = Ember.Route.extend({
+    model: function (param)
+    {
+        return App.Manifest.fetch(this.store).then(function () {
+            return App.Manifest.dashboardByName(param.name);
+        });
+    },
+});
+
+App.CustomDashboardRoute = Ember.Route.extend({
+    controllerName: 'dashboard',
+    model: function (param)
+    {
+        return this.store.createRecord('dashboard', {serialized: param.grid});
+    },
+    renderTemplate: function()
+    {
+        this.render('dashboard');
+    }
+});
+
+App.DashboardController = Ember.Controller.extend({
     queryParams: ['grid', 'numberOfDays'],
-    _previousGrid: {},
     headerColumns: [],
     rows: [],
     numberOfDays: 7,
     editMode: false,
 
-    gridChanged: function ()
+    modelChanged: function ()
     {
-        var grid = this.get('grid');
-        if (grid === this._previousGrid)
-            return;
-
-        var dashboard = null;
-        if (grid) {
-            dashboard = App.Dashboard.create({serialized: grid});
-            if (!dashboard.get('headerColumns').length)
-                dashboard = null;
-        }
-        if (!dashboard)
-            dashboard = App.Manifest.get('defaultDashboard');
+        var dashboard = this.get('model');
         if (!dashboard)
             return;
 
@@ -95,9 +116,9 @@ App.IndexController = Ember.Controller.extend({
         }));
 
         this.set('emptyRow', new Array(columnCount));
-    }.observes('grid', 'App.Manifest.defaultDashboard').on('init'),
+    }.observes('model').on('init'),
 
-    updateGrid: function()
+    computeGrid: function()
     {
         var headers = this.get('headerColumns').map(function (header) { return header.label; });
         var table = [headers].concat(this.get('rows').map(function (row) {
@@ -106,8 +127,7 @@ App.IndexController = Ember.Controller.extend({
                 return platformAndMetric[0] || platformAndMetric[1] ? platformAndMetric : [];
             }));
         }));
-        this._previousGrid = JSON.stringify(table);
-        this.set('grid', this._previousGrid);
+        return JSON.stringify(table);
     },
 
     _sharedDomainChanged: function ()
@@ -173,8 +193,10 @@ App.IndexController = Ember.Controller.extend({
         toggleEditMode: function ()
         {
             this.toggleProperty('editMode');
-            if (!this.get('editMode'))
-                this.updateGrid();
+            if (this.get('editMode'))
+                this.transitionToRoute('dashboard', 'custom', {name: null, queryParams: {grid: this.computeGrid()}});
+            else
+                this.set('grid', this.computeGrid());
         },
     },
 
@@ -275,13 +297,14 @@ App.Pane = Ember.Object.extend({
     metricId: null,
     metric: null,
     selectedItem: null,
+    showFullYAxis: false,
     searchCommit: function (repository, keyword) {
         var self = this;
         var repositoryId = repository.get('id');
         CommitLogs.fetchForTimeRange(repositoryId, null, null, keyword).then(function (commits) {
             if (self.isDestroyed || !self.get('chartData') || !commits.length)
                 return;
-            var currentRuns = self.get('chartData').current.timeSeriesByCommitTime().series();
+            var currentRuns = self.get('chartData').current.series();
             if (!currentRuns.length)
                 return;
 
@@ -329,7 +352,8 @@ App.Pane = Ember.Object.extend({
             App.Manifest.fetchRunsWithPlatformAndMetric(this.get('store'), platformId, metricId).then(function (result) {
                 self.set('platform', result.platform);
                 self.set('metric', result.metric);
-                self.set('chartData', result.runs);
+                self.set('chartData', result.data);
+                self._updateMovingAverageAndEnvelope();
             }, function (result) {
                 if (!result || typeof(result) === "string")
                     self.set('failure', 'Failed to fetch the JSON with an error: ' + result);
@@ -362,7 +386,158 @@ App.Pane = Ember.Object.extend({
         if (typeof(id) == "string")
             return !!id.match(/^[A-Za-z0-9_]+$/);
         return false;
-    }
+    },
+    computeStatus: function (currentPoint, previousPoint)
+    {
+        var chartData = this.get('chartData');
+        var diffFromBaseline = this._relativeDifferentToLaterPointInTimeSeries(currentPoint, chartData.baseline);
+        var diffFromTarget = this._relativeDifferentToLaterPointInTimeSeries(currentPoint, chartData.target);
+
+        var label = '';
+        var className = '';
+        var formatter = d3.format('.3p');
+
+        var smallerIsBetter = chartData.smallerIsBetter;
+        if (diffFromBaseline !== undefined && diffFromBaseline > 0 == smallerIsBetter) {
+            label = formatter(Math.abs(diffFromBaseline)) + ' ' + (smallerIsBetter ? 'above' : 'below') + ' baseline';
+            className = 'worse';
+        } else if (diffFromTarget !== undefined && diffFromTarget < 0 == smallerIsBetter) {
+            label = formatter(Math.abs(diffFromTarget)) + ' ' + (smallerIsBetter ? 'below' : 'above') + ' target';
+            className = 'better';
+        } else if (diffFromTarget !== undefined)
+            label = formatter(Math.abs(diffFromTarget)) + ' until target';
+
+        var valueDelta = previousPoint ? chartData.deltaFormatter(currentPoint.value - previousPoint.value) : null;
+        return {className: className, label: label, currentValue: chartData.formatter(currentPoint.value), valueDelta: valueDelta};
+    },
+    _relativeDifferentToLaterPointInTimeSeries: function (currentPoint, timeSeries)
+    {
+        if (!currentPoint || !timeSeries)
+            return undefined;
+
+        var referencePoint = timeSeries.findPointAfterTime(currentPoint.time);
+        if (!referencePoint)
+            return undefined;
+
+        return (currentPoint.value - referencePoint.value) / referencePoint.value;
+    },
+    latestStatus: function ()
+    {
+        var chartData = this.get('chartData');
+        if (!chartData || !chartData.current)
+            return null;
+
+        var lastPoint = chartData.current.lastPoint();
+        if (!lastPoint)
+            return null;
+
+        return this.computeStatus(lastPoint, chartData.current.previousPoint(lastPoint));
+    }.property('chartData'),
+    updateStatisticsTools: function ()
+    {
+        var movingAverageStrategies = Statistics.MovingAverageStrategies.map(this._cloneStrategy.bind(this));
+        this.set('movingAverageStrategies', [{label: 'None'}].concat(movingAverageStrategies));
+        this.set('chosenMovingAverageStrategy', this._configureStrategy(movingAverageStrategies, this.get('movingAverageConfig')));
+
+        var envelopingStrategies = Statistics.EnvelopingStrategies.map(this._cloneStrategy.bind(this));
+        this.set('envelopingStrategies', [{label: 'None'}].concat(envelopingStrategies));
+        this.set('chosenEnvelopingStrategy', this._configureStrategy(envelopingStrategies, this.get('envelopingConfig')));
+    }.on('init'),
+    _cloneStrategy: function (strategy)
+    {
+        var parameterList = (strategy.parameterList || []).map(function (param) { return Ember.Object.create(param); });
+        return Ember.Object.create({
+            id: strategy.id,
+            label: strategy.label,
+            description: strategy.description,
+            parameterList: parameterList,
+            execute: strategy.execute,
+        });
+    },
+    _configureStrategy: function (strategies, config)
+    {
+        if (!config || !config[0])
+            return null;
+
+        var id = config[0];
+        var chosenStrategy = strategies.find(function (strategy) { return strategy.id == id });
+        if (!chosenStrategy)
+            return null;
+
+        if (chosenStrategy.parameterList) {
+            for (var i = 0; i < chosenStrategy.parameterList.length; i++)
+                chosenStrategy.parameterList[i].value = parseFloat(config[i + 1]);
+        }
+
+        return chosenStrategy;
+    },
+    _updateMovingAverageAndEnvelope: function ()
+    {
+        var chartData = this.get('chartData');
+        if (!chartData)
+            return;
+
+        var movingAverageStrategy = this.get('chosenMovingAverageStrategy');
+        this._updateStrategyConfigIfNeeded(movingAverageStrategy, 'movingAverageConfig');
+
+        var envelopingStrategy = this.get('chosenEnvelopingStrategy');
+        this._updateStrategyConfigIfNeeded(envelopingStrategy, 'envelopingConfig');
+
+        chartData.movingAverage = this._computeMovingAverageAndOutliers(chartData, movingAverageStrategy, envelopingStrategy);
+    }.observes('chosenMovingAverageStrategy', 'chosenMovingAverageStrategy.parameterList.@each.value',
+        'chosenEnvelopingStrategy', 'chosenEnvelopingStrategy.parameterList.@each.value'),
+    _computeMovingAverageAndOutliers: function (chartData, movingAverageStrategy, envelopingStrategy)
+    {
+        var currentTimeSeriesData = chartData.current.series();
+        var movingAverageIsSetByUser = movingAverageStrategy && movingAverageStrategy.execute;
+        var movingAverageValues = this._executeStrategy(
+            movingAverageIsSetByUser ? movingAverageStrategy : Statistics.MovingAverageStrategies[0], currentTimeSeriesData);
+        if (!movingAverageValues)
+            return null;
+
+        var envelopeIsSetByUser = envelopingStrategy && envelopingStrategy.execute;
+        var envelopeDelta = this._executeStrategy(envelopeIsSetByUser ? envelopingStrategy : Statistics.EnvelopingStrategies[0],
+            currentTimeSeriesData, [movingAverageValues]);
+
+        for (var i = 0; i < currentTimeSeriesData.length; i++) {
+            var currentValue = currentTimeSeriesData[i].value;
+            var movingAverageValue = movingAverageValues[i];
+            if (currentValue < movingAverageValue - envelopeDelta || movingAverageValue + envelopeDelta < currentValue)
+                currentTimeSeriesData[i].isOutlier = true;
+        }
+        if (!envelopeIsSetByUser)
+            envelopeDelta = null;
+
+        if (movingAverageIsSetByUser) {
+            return new TimeSeries(currentTimeSeriesData.map(function (point, index) {
+                var value = movingAverageValues[index];
+                return {
+                    measurement: point.measurement,
+                    time: point.time,
+                    value: value,
+                    interval: envelopeDelta !== null ? [value - envelopeDelta, value + envelopeDelta] : null,
+                }
+            }));            
+        }
+    },
+    _executeStrategy: function (strategy, currentTimeSeriesData, additionalArguments)
+    {
+        var parameters = (strategy.parameterList || []).map(function (param) {
+            var parsed = parseFloat(param.value);
+            return Math.min(param.max || Infinity, Math.max(param.min || -Infinity, isNaN(parsed) ? 0 : parsed));
+        });
+        parameters.push(currentTimeSeriesData.map(function (point) { return point.value }));
+        return strategy.execute.apply(window, parameters.concat(additionalArguments));
+    },
+    _updateStrategyConfigIfNeeded: function (strategy, configName)
+    {
+        var config = null;
+        if (strategy && strategy.execute)
+            config = [strategy.id].concat((strategy.parameterList || []).map(function (param) { return param.value; }));
+
+        if (JSON.stringify(config) != JSON.stringify(this.get(configName)))
+            this.set(configName, config);
+    },
 });
 
 App.encodePrettifiedJSON = function (plain)
@@ -470,26 +645,31 @@ App.ChartsController = Ember.Controller.extend({
         if (!parsedPaneList)
             return null;
 
-        // Don't re-create all panes.
+        // FIXME: Don't re-create all panes.
         var self = this;
         return parsedPaneList.map(function (paneInfo) {
             var timeRange = null;
-            if (paneInfo[3] && paneInfo[3] instanceof Array) {
-                var timeRange = paneInfo[3];
+            var selectedItem = null;
+            if (paneInfo[2] instanceof Array) {
+                var timeRange = paneInfo[2];
                 try {
                     timeRange = [new Date(timeRange[0]), new Date(timeRange[1])];
                 } catch (error) {
                     console.log("Failed to parse the time range:", timeRange, error);
                 }
-            }
+            } else
+                selectedItem = paneInfo[2];
+
             return App.Pane.create({
                 store: self.store,
                 info: paneInfo,
                 platformId: paneInfo[0],
                 metricId: paneInfo[1],
-                selectedItem: paneInfo[2],
+                selectedItem: selectedItem,
                 timeRange: timeRange,
-                timeRangeIsLocked: !!paneInfo[4],
+                showFullYAxis: paneInfo[3],
+                movingAverageConfig: paneInfo[4],
+                envelopingConfig: paneInfo[5],
             });
         });
     },
@@ -498,13 +678,15 @@ App.ChartsController = Ember.Controller.extend({
     {
         if (!panes.length)
             return undefined;
+        var self = this;
         return App.encodePrettifiedJSON(panes.map(function (pane) {
             return [
                 pane.get('platformId'),
                 pane.get('metricId'),
-                pane.get('selectedItem'),
-                pane.get('timeRange') ? pane.get('timeRange').map(function (date) { return date.getTime() }) : null,
-                !!pane.get('timeRangeIsLocked'),
+                pane.get('timeRange') ? pane.get('timeRange').map(function (date) { return date.getTime() }) : pane.get('selectedItem'),
+                pane.get('showFullYAxis'),
+                pane.get('movingAverageConfig'),
+                pane.get('envelopingConfig'),
             ];
         }));
     },
@@ -512,8 +694,8 @@ App.ChartsController = Ember.Controller.extend({
     _scheduleQueryStringUpdate: function ()
     {
         Ember.run.debounce(this, '_updateQueryString', 1000);
-    }.observes('sharedZoom', 'panes.@each.platform', 'panes.@each.metric', 'panes.@each.selectedItem',
-        'panes.@each.timeRange', 'panes.@each.timeRangeIsLocked'),
+    }.observes('sharedZoom', 'panes.@each.platform', 'panes.@each.metric', 'panes.@each.selectedItem', 'panes.@each.timeRange',
+        'panes.@each.showFullYAxis', 'panes.@each.movingAverageConfig', 'panes.@each.envelopingConfig'),
 
     _updateQueryString: function ()
     {
@@ -629,8 +811,10 @@ App.PaneController = Ember.ObjectController.extend({
         },
         toggleBugsPane: function ()
         {
-            if (this.toggleProperty('showingAnalysisPane'))
+            if (this.toggleProperty('showingAnalysisPane')) {
                 this.set('showingSearchPane', false);
+                this.set('showingStatPane', false);
+            }
         },
         createAnalysisTask: function ()
         {
@@ -661,12 +845,21 @@ App.PaneController = Ember.ObjectController.extend({
             var model = this.get('model');
             if (!model.get('commitSearchRepository'))
                 model.set('commitSearchRepository', App.Manifest.repositoriesWithReportedCommits[0]);
-            if (this.toggleProperty('showingSearchPane'))
+            if (this.toggleProperty('showingSearchPane')) {
                 this.set('showingAnalysisPane', false);
+                this.set('showingStatPane', false);
+            }
         },
         searchCommit: function () {
             var model = this.get('model');
             model.searchCommit(model.get('commitSearchRepository'), model.get('commitSearchKeyword'));                
+        },
+        toggleStatPane: function ()
+        {
+            if (this.toggleProperty('showingStatPane')) {
+                this.set('showingSearchPane', false);
+                this.set('showingAnalysisPane', false);
+            }
         },
         zoomed: function (selection)
         {
@@ -704,7 +897,7 @@ App.PaneController = Ember.ObjectController.extend({
         var newSelection = this.get('parentController').get('sharedZoom');
         if (App.domainsAreEqual(newSelection, this.get('mainPlotDomain')))
             return;
-        this.set('mainPlotDomain', newSelection);
+        this.set('mainPlotDomain', newSelection || this.get('overviewDomain'));
         this.set('overviewSelection', newSelection);
     }.observes('parentController.sharedZoom').on('init'),
     _updateDetails: function ()
@@ -717,15 +910,15 @@ App.PaneController = Ember.ObjectController.extend({
         }
 
         var currentMeasurement;
-        var oldMeasurement;
-        if (currentPoint) {
-            currentMeasurement = currentPoint.measurement;
-            var previousPoint = currentPoint.series.previousPoint(currentPoint);
-            oldMeasurement = previousPoint ? previousPoint.measurement : null;
-        } else {
-            currentMeasurement = selectedPoints[selectedPoints.length - 1].measurement;
-            oldMeasurement = selectedPoints[0].measurement;            
+        var previousPoint;
+        if (!selectedPoints)
+            previousPoint = currentPoint.series.previousPoint(currentPoint);
+        else {
+            currentPoint = selectedPoints[selectedPoints.length - 1];
+            previousPoint = selectedPoints[0];
         }
+        var currentMeasurement = currentPoint.measurement;
+        var oldMeasurement = previousPoint ? previousPoint.measurement : null;
 
         var formattedRevisions = currentMeasurement.formattedRevisions(oldMeasurement);
         var revisions = App.Manifest.get('repositories')
@@ -742,7 +935,7 @@ App.PaneController = Ember.ObjectController.extend({
 
         var buildNumber = null;
         var buildURL = null;
-        if (currentPoint) {
+        if (!selectedPoints) {
             buildNumber = currentMeasurement.buildNumber();
             var builder = App.Manifest.builder(currentMeasurement.builderId());
             if (builder)
@@ -750,8 +943,7 @@ App.PaneController = Ember.ObjectController.extend({
         }
 
         this.set('details', Ember.Object.create({
-            currentValue: currentMeasurement.mean().toFixed(2),
-            oldValue: oldMeasurement && selectedPoints ? oldMeasurement.mean().toFixed(2) : null,
+            status: this.get('model').computeStatus(currentPoint, previousPoint),
             buildNumber: buildNumber,
             buildURL: buildURL,
             buildTime: currentMeasurement.formattedBuildTime(),
@@ -818,11 +1010,10 @@ App.AnalysisTaskController = Ember.Controller.extend({
             });
         }));
     },
-    _fetchedRuns: function (data)
+    _fetchedRuns: function (result)
     {
-        var runs = data.runs;
-
-        var currentTimeSeries = runs.current.timeSeriesByCommitTime();
+        var chartData = result.data;
+        var currentTimeSeries = chartData.current;
         if (!currentTimeSeries)
             return; // FIXME: Report an error.
 
@@ -840,12 +1031,12 @@ App.AnalysisTaskController = Ember.Controller.extend({
                 id: point.measurement.id(),
                 measurement: point.measurement,
                 label: 'Point ' + (index + 1),
-                value: point.value + (runs.unit ? ' ' + runs.unit : ''),
+                value: chartData.formatter(point.value) + (chartData.unit ? ' ' + chartData.unit : ''),
             };
         });
 
         var margin = (end.time - start.time) * 0.1;
-        this.set('chartData', runs);
+        this.set('chartData', chartData);
         this.set('chartDomain', [start.time - margin, +end.time + margin]);
         this.set('highlightedItems', highlightedItems);
         this.set('analysisPoints', formatedPoints);

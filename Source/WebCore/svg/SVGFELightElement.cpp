@@ -26,7 +26,6 @@
 #include "ElementIterator.h"
 #include "RenderObject.h"
 #include "RenderSVGResource.h"
-#include "SVGElementInstance.h"
 #include "SVGFEDiffuseLightingElement.h"
 #include "SVGFESpecularLightingElement.h"
 #include "SVGFilterElement.h"
@@ -170,7 +169,7 @@ void SVGFELightElement::svgAttributeChanged(const QualifiedName& attrName)
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     if (attrName == SVGNames::azimuthAttr
         || attrName == SVGNames::elevationAttr

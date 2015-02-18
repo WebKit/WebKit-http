@@ -323,7 +323,8 @@ public:
     virtual bool isRenderNamedFlowFragment() const { return false; }
     virtual bool isReplica() const { return false; }
 
-    virtual bool isRuby() const { return false; }
+    virtual bool isRubyInline() const { return false; }
+    virtual bool isRubyBlock() const { return false; }
     virtual bool isRubyBase() const { return false; }
     virtual bool isRubyRun() const { return false; }
     virtual bool isRubyText() const { return false; }
@@ -343,6 +344,9 @@ public:
     virtual bool isVideo() const { return false; }
     virtual bool isWidget() const { return false; }
     virtual bool isCanvas() const { return false; }
+#if ENABLE(ATTACHMENT_ELEMENT)
+    virtual bool isAttachment() const { return false; }
+#endif
 #if ENABLE(FULLSCREEN_API)
     virtual bool isRenderFullScreen() const { return false; }
     virtual bool isRenderFullScreenPlaceholder() const { return false; }
@@ -702,7 +706,7 @@ public:
     
     virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const;
 
-    void getTextDecorationColors(int decorations, Color& underline, Color& overline, Color& linethrough, bool quirksMode = false, bool firstlineStyle = false);
+    void getTextDecorationColors(int decorations, Color& underline, Color& overline, Color& linethrough, bool firstlineStyle = false);
 
     // Return the RenderLayerModelObject in the container chain which is responsible for painting this object, or 0
     // if painting is root-relative. This is the container that should be passed to the 'forRepaint'

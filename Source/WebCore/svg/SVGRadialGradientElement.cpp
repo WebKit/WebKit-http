@@ -29,7 +29,6 @@
 #include "FloatPoint.h"
 #include "RadialGradientAttributes.h"
 #include "RenderSVGResourceRadialGradient.h"
-#include "SVGElementInstance.h"
 #include "SVGNames.h"
 #include "SVGStopElement.h"
 #include "SVGTransform.h"
@@ -121,7 +120,7 @@ void SVGRadialGradientElement::svgAttributeChanged(const QualifiedName& attrName
         return;
     }
 
-    SVGElementInstance::InvalidationGuard invalidationGuard(this);
+    InstanceInvalidationGuard guard(*this);
     
     updateRelativeLengthsInformation();
         

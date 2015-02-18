@@ -1355,6 +1355,8 @@ void FrameView::layout(bool allowSubtree)
     if (m_needsFullRepaint)
         root->view().repaintRootContents();
 
+    ASSERT(!root->needsLayout());
+
     layer->updateLayerPositionsAfterLayout(renderView()->layer(), updateLayerPositionFlags(layer, subtree, m_needsFullRepaint));
 
     updateCompositingLayersAfterLayout();
@@ -1375,8 +1377,6 @@ void FrameView::layout(bool allowSubtree)
 #if ENABLE(IOS_TOUCH_EVENTS)
     document.dirtyTouchEventRects();
 #endif
-
-    ASSERT(!root->needsLayout());
 
     updateCanBlitOnScrollRecursively();
 
@@ -1981,22 +1981,23 @@ bool FrameView::scrollToFragment(const URL& url)
 bool FrameView::scrollToAnchor(const String& name)
 {
     ASSERT(frame().document());
+    auto& document = *frame().document();
 
-    if (!frame().document()->haveStylesheetsLoaded()) {
-        frame().document()->setGotoAnchorNeededAfterStylesheetsLoad(true);
+    if (!document.haveStylesheetsLoaded()) {
+        document.setGotoAnchorNeededAfterStylesheetsLoad(true);
         return false;
     }
 
-    frame().document()->setGotoAnchorNeededAfterStylesheetsLoad(false);
+    document.setGotoAnchorNeededAfterStylesheetsLoad(false);
 
-    Element* anchorElement = frame().document()->findAnchor(name);
+    Element* anchorElement = document.findAnchor(name);
 
     // Setting to null will clear the current target.
-    frame().document()->setCSSTarget(anchorElement);
+    document.setCSSTarget(anchorElement);
 
-    if (is<SVGDocument>(*frame().document())) {
-        if (SVGSVGElement* svg = downcast<SVGDocument>(*frame().document()).rootElement()) {
-            svg->setupInitialView(name, anchorElement);
+    if (is<SVGDocument>(document)) {
+        if (auto* rootElement = downcast<SVGDocument>(document).rootElement()) {
+            rootElement->scrollToAnchor(name, anchorElement);
             if (!anchorElement)
                 return true;
         }
@@ -2013,7 +2014,7 @@ bool FrameView::scrollToAnchor(const String& name)
     
     // If the anchor accepts keyboard focus, move focus there to aid users relying on keyboard navigation.
     if (anchorElement && anchorElement->isFocusable())
-        frame().document()->setFocusedElement(anchorElement);
+        document.setFocusedElement(anchorElement);
     
     return true;
 }
@@ -2558,6 +2559,33 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
 bool FrameView::layoutPending() const
 {
     return m_layoutTimer.isActive();
+}
+
+bool FrameView::needsStyleRecalcOrLayout(bool includeSubframes) const
+{
+    if (frame().document() && frame().document()->childNeedsStyleRecalc())
+        return true;
+    
+    if (needsLayout())
+        return true;
+
+    if (!includeSubframes)
+        return false;
+
+    // Find child frames via the Widget tree, as updateLayoutAndStyleIfNeededRecursive() does.
+    Vector<Ref<FrameView>, 16> childViews;
+    childViews.reserveInitialCapacity(children().size());
+    for (auto& widget : children()) {
+        if (is<FrameView>(*widget))
+            childViews.uncheckedAppend(downcast<FrameView>(*widget));
+    }
+
+    for (unsigned i = 0; i < childViews.size(); ++i) {
+        if (childViews[i]->needsStyleRecalcOrLayout())
+            return true;
+    }
+
+    return false;
 }
 
 bool FrameView::needsLayout() const
@@ -3967,6 +3995,8 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     // Grab a copy of the children() set, as it may be mutated by the following updateLayoutAndStyleIfNeededRecursive
     // calls, as they can potentially re-enter a layout of the parent frame view, which may add/remove scrollbars
     // and thus mutates the children() set.
+    // We use the Widget children because walking the Frame tree would include display:none frames.
+    // FIXME: use FrameTree::traverseNextRendered().
     Vector<Ref<FrameView>, 16> childViews;
     childViews.reserveInitialCapacity(children().size());
     for (auto& widget : children()) {
@@ -3977,10 +4007,12 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     for (unsigned i = 0; i < childViews.size(); ++i)
         childViews[i]->updateLayoutAndStyleIfNeededRecursive();
 
-    // When frame flattening is on, child frame can mark parent frame dirty. In such case, child frame
-    // needs to call layout on parent frame recursively.
-    // This assert ensures that parent frames are clean, when child frames finished updating layout and style.
-    ASSERT(!needsLayout());
+    // A child frame may have dirtied us during its layout.
+    frame().document()->updateStyleIfNeeded();
+    if (needsLayout())
+        layout();
+
+    ASSERT(!frame().isMainFrame() || !needsStyleRecalcOrLayout());
 }
 
 bool FrameView::qualifiesAsVisuallyNonEmpty() const

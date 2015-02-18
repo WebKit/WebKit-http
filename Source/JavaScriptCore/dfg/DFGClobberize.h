@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -122,6 +122,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithAbs:
     case ArithMin:
     case ArithMax:
+    case ArithPow:
     case ArithSqrt:
     case ArithFRound:
     case ArithSin:
@@ -390,7 +391,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
         
     case GetLocal:
-    case GetArgument:
         read(AbstractHeap(Variables, node->local()));
         def(HeapLocation(VariableLoc, AbstractHeap(Variables, node->local())), node);
         return;
@@ -933,6 +933,8 @@ private:
 
 bool accessesOverlap(Graph&, Node*, AbstractHeap);
 bool writesOverlap(Graph&, Node*, AbstractHeap);
+
+bool clobbersWorld(Graph&, Node*);
 
 // We would have used bind() for these, but because of the overlaoding that we are doing,
 // it's quite a bit of clearer to just write this out the traditional way.

@@ -3,6 +3,14 @@
 <head>
     <meta charset="utf-8">
     <title>WebKit Performance Monitor (Beta)</title>
+
+    <link rel="prefetch" href="../data/manifest.json">
+    <script type="application/json" src="../data/manifest.json"></script>
+
+    <link rel="stylesheet" href="app.css">
+    <link rel="stylesheet" href="chart-pane.css">
+
+    <script src="js/jquery.min.js" defer></script>
     <script src="js/jquery.min.js" defer></script>
     <script src="js/handlebars.js" defer></script>
     <script src="js/ember.js" defer></script>
@@ -16,10 +24,8 @@
     <script src="popup.js" defer></script>
     <script src="interactive-chart.js" defer></script>
     <script src="commits-viewer.js" defer></script>
-    <link rel="stylesheet" href="app.css">
-    <link rel="stylesheet" href="chart-pane.css">
 
-    <script type="text/x-handlebars" data-template-name="index">
+    <script type="text/x-handlebars" data-template-name="dashboard">
         <header id="header">
             {{partial "navbar"}}
             {{view App.NumberOfDaysControlView tagName="ul" numberOfDays=numberOfDays}}
@@ -78,11 +84,19 @@
                                 {{/if}}
                             {{else}}
                                 {{#if chartData}}
+                                    <div class="dashboard-status">
+                                        {{#if latestStatus}}
+                                            {{latestStatus.currentValue}} {{chartData.unit}}
+                                            {{#if latestStatus.label}}
+                                                <span {{bind-attr class=":status-label latestStatus.className"}}>{{latestStatus.label}}</span>
+                                            {{/if}}
+                                        {{/if}}
+                                    </div>
                                     {{#link-to 'charts' (query-params paneList=paneList since=controller.since)}}
-                                    {{interactive-chart
-                                        chartData=chartData
-                                        domain=controller.sharedDomain
-                                        enableSelection=false}}
+                                        {{interactive-chart
+                                            chartData=chartData
+                                            domain=controller.sharedDomain
+                                            enableSelection=false}}
                                     {{/link-to}}
                                 {{else}}
                                     {{#if failure}}
@@ -133,6 +147,9 @@
                 <header>
                     <h1 {{action "toggleDetails"}}>{{metric.fullName}} - {{ platform.name}}</h1>
                     <a href="#" title="Close" class="close-button" {{action "close"}}>{{partial "close-button"}}</a>
+                    {{#if movingAverageStrategies}}
+                        <a href="#" title="Statistical Tools" class="stat-button" {{action "toggleStatPane"}}>{{partial "stat-button"}}</a>
+                    {{/if}}
                     {{#if App.Manifest.bugTrackers}}
                         <a href="#" title="Analysis" class="bugs-button" {{action "toggleBugsPane"}}>
                             {{partial "analysis-button"}}
@@ -159,8 +176,8 @@
                             rangeRoute="analysisTask"
                             selection=timeRange
                             selectedPoints=selectedPoints
-                            selectionIsLocked=timeRangeIsLocked
                             markedPoints=markedPoints
+                            showFullYAxis=showFullYAxis
                             zoom="zoomed"}}
                     {{else}}
                         {{#if failure}}
@@ -186,7 +203,12 @@
                     </div>
                 </div>
 
-                <form {{bind-attr class=":search-pane showingSearchPane::hidden"}}>
+                <div {{bind-attr class=":popup-pane :analysis-pane showingAnalysisPane::hidden"}}>
+                    <label>Name: {{input type=text value=newAnalysisTaskName}}</label>
+                    <button {{action "createAnalysisTask"}} {{bind-attr disabled=cannotAnalyze}}>Analyze</button>
+                </div>
+
+                <form {{bind-attr class=":popup-pane :search-pane showingSearchPane::hidden"}}>
                     <span class="repositories">
                         {{view Ember.Select
                             content=App.Manifest.repositoriesWithReportedCommits
@@ -197,19 +219,7 @@
                     {{input action="searchCommit" placeholder="Name or email" value=commitSearchKeyword}}
                 </form>
 
-                <div {{bind-attr class=":analysis-pane showingAnalysisPane::hidden"}}>
-                    <table>
-                        <tbody>
-                            <tr>
-                                <th>
-                                    <label>Name: {{input type=text value=newAnalysisTaskName}}</label>
-                                    <button {{action "createAnalysisTask"}} {{bind-attr disabled=cannotAnalyze}}>Analyze</button>
-                                </th>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
+                {{partial "stat-pane"}}
             </section>
         {{/each}}
     </script>
@@ -254,10 +264,22 @@
                 {{/if}}
             {{/each}}
             </tbody>
-            <tr><th>Current</th><td>{{details.currentValue}} {{chartData.unit}}
-            {{#if details.oldValue}}
-                (from {{details.oldValue}})
-            {{/if}}</td></tr>
+            <tbody class="status">
+                <tr>
+                    <th>Current</th>
+                    <td>
+                        {{details.status.currentValue}} {{chartData.unit}}
+                        {{#if details.status.valueDelta}}
+                            ({{details.status.valueDelta}} {{chartData.unit}})
+                        {{/if}}
+                        {{#if details.status.label}}
+                            <br>
+                            <span {{bind-attr class=details.status.className}}>{{details.status.label}}</span>
+                        {{/if}}
+                    </td>
+                </tr>
+            </tbody>
+            <tbody>
             {{#if details.buildNumber}}
                 <tr>
                     <th>Build</th>
@@ -282,31 +304,40 @@
                         {{/if}}
                     </td>
                 </tr>
-                <tr>
-                    <td colspan="2">{{commits-viewer repository=repository revisionInfo=this}}</td>
-                </tr>
             {{/each}}
+            </tbody>
         </table>
+        <div class="commits">
+            {{#each details.revisions}}
+                {{commits-viewer repository=repository revisionInfo=this caption=name}}
+            {{/each}}
+        </div>
     </div>
     </script>
 
     <script type="text/x-handlebars" data-template-name="components/commits-viewer">
     {{#if commits}}
-        <table>
-            <tbody>
-                {{#each commits}}
-                    <tr>
-                        <td>
-                            {{#if url}}
-                                <a {{bind-attr href=url}} target="_blank">{{author}}</a>
-                            {{else}}
-                                {{author}}
-                            {{/if}}
-                        </td>
-                        <td>{{message}}</td>
-                    </tr>
-                {{/each}}
-            </tbody>
+        <table {{bind-attr class=":commits-viewer visible::hidden"}}>
+            {{#if caption}}
+                <caption {{action toggleVisibility}}>{{caption}} commits</caption>
+            {{/if}}
+            {{#if visible}}
+                <tbody>
+                    {{#each commits}}
+                        <tr>
+                            <th>
+                                {{#if url}}
+                                    <a {{bind-attr href=url}} target="_blank">{{revision}}</a>
+                                {{else}}
+                                    {{revision}}
+                                {{/if}}
+                            </th>
+                            <th>{{author}}</th>
+                            <td>{{message}}</td>
+                        </tr>
+                    {{/each}}
+                </tbody>
+            {{/if}}
         </table>
     {{/if}}
     </script>
@@ -321,12 +352,53 @@
         </svg>
     </script>
 
+    <script type="text/x-handlebars" data-template-name="stat-button">
+        <svg class="stat-button icon-button" viewBox="10 0 110 100">
+            <g stroke="none" stroke-width="0" fill="black">
+                <path id="upper-sigma" d="M 5 5 H 95 V 40 h -10 c -5 -20 -5 -20 -25 -20 H 35 L 60 50 l -20 0" />
+                <use xlink:href="#upper-sigma" transform="translate(0, 100) scale(1, -1)" />
+            </g>
+        </svg>
+    </script>
+
+    <script type="text/x-handlebars" data-template-name="stat-pane">
+        <section {{bind-attr class=":popup-pane :stat-pane showingStatPane::hidden"}}>
+            <section class="stat-option">
+                <h1>Moving average</h1>
+                <label>Type: {{view Ember.Select
+                    content=movingAverageStrategies
+                    optionValuePath='content'
+                    optionLabelPath='content.label'
+                    selection=chosenMovingAverageStrategy}}</label>
+                {{#each chosenMovingAverageStrategy.parameterList}}
+                    <label>{{label}}: {{input type="number" value=value min=min max=max step=step}}</label>
+                {{/each}}
+            </section>
+            {{#if chosenMovingAverageStrategy.execute}}
+                <section class="stat-option">
+                    <h1>Envelope</h1>
+                    <label>Type: {{view Ember.Select
+                        content=envelopingStrategies
+                        optionValuePath='content'
+                        optionLabelPath='content.label'
+                        selection=chosenEnvelopingStrategy}}</label>
+                    {{#if chosenEnvelopingStrategy.description}}
+                        <p class="description">{{chosenEnvelopingStrategy.description}}</p>
+                    {{/if}}
+                    {{#each chosenEnvelopingStrategy.parameterList}}
+                        <label>{{label}}: <input type="number" {{bind-attr value=value min=min max=max step=step}}></label>
+                    {{/each}}
+                </section>
+            {{/if}}
+        </section>
+    </script>
+
     <script type="text/x-handlebars" data-template-name="analysis-button">
         <svg class="analysis-button icon-button" viewBox="0 0 100 100">
-            <g stroke="black" stroke-width="15">
+            <g stroke="black" fill="black" stroke-width="15">
                 <circle cx="50" cy="50" r="40" fill="transparent"/>
                 <line x1="50" y1="25" x2="50" y2="55"/>
-                <circle cx="50" cy="67.5" r="2.5" fill="transparent"/>
+                <circle cx="50" cy="67.5" r="10" stroke="none"/>
             </g>
         </svg>
     </script>
@@ -357,9 +429,13 @@
         <nav id="navigation" role="navigation">
             <h1><a href="#">WebKit Perf Monitor</a></h1>
             <ul>
-                {{#link-to 'index' tagName='li'}}
-                    {{#link-to 'index'}}Dashboard{{/link-to}}
-                {{/link-to}}
+                {{#each App.Manifest.dashboards}}
+                    {{#if name}}
+                        {{#link-to 'dashboard' name tagName='li'}}
+                            {{#link-to 'dashboard' name}}{{label}}{{/link-to}}
+                        {{/link-to}}
+                    {{/if}}
+                {{/each}}
                 {{#link-to 'charts' tagName='li'}}
                     {{#link-to 'charts'}}Charts{{/link-to}}
                 {{/link-to}}
@@ -504,9 +580,9 @@
                             {{#each buildRequests}}
                                 <tr>
                                     <td>{{orderLabel}}</td>
-                                    <td>{{config}}</td>
-                                    <td>{{#if url}}{{#link-to url}}{{statusLabel}}{{/link-to}}{{else}}{{statusLabel}}{{/if}}</td>
-                                    <td>{{build}}</td>
+                                    <td>{{configLetter}}</td>
+                                    <td><a {{bind-attr href=url}}>{{statusLabel}}</a></td>
+                                    <td>{{buildNumber}}</td>
                                     <td>{{mean}}</td>
                                 </tr>
                             {{/each}}

@@ -1,3 +1,1307 @@
+2015-02-15  Sam Weinig  <sam@webkit.org>
+
+        Add experimental <attachment> element support
+        https://bugs.webkit.org/show_bug.cgi?id=141626
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-02-16  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r180060): C Loop crashes
+        https://bugs.webkit.org/show_bug.cgi?id=141671
+
+        Reviewed by Geoffrey Garen.
+
+        Fixed a typo that only affected the C Loop in the prologue() macro in LowLevelInterpreter.asm.
+        After the stackHeightOKGetCodeBlock label, codeBlockSetter(t1) should be codeBlockGetter(t1).
+        Fixed the processing of an out of stack exception in llint_stack_check to not get the caller's
+        frame.  This isn't needed, since this helper is only called to check the stack on entry.  Any
+        exception will be handled by a call ancestor.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::llint_stack_check): Changed to use the current frame for processing an exception.
+        * llint/LowLevelInterpreter.asm: Fixed a typo.
+
+2015-02-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Scope details sidebar should label objects with constructor names
+        https://bugs.webkit.org/show_bug.cgi?id=139449
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::internalConstructorName):
+        * runtime/Structure.cpp:
+        (JSC::Structure::toStructureShape):
+        Share calculatedClassName.
+
+        * runtime/JSObject.h:        
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::calculatedClassName):
+        Elaborate on a way to get an Object's class name.
+
+2015-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG SSA should use GetLocal for arguments, and the GetArgument node type should be removed
+        https://bugs.webkit.org/show_bug.cgi?id=141623
+
+        Reviewed by Oliver Hunt.
+        
+        During development of https://bugs.webkit.org/show_bug.cgi?id=141332, I realized that I
+        needed to use GetArgument for loading something that has magically already appeared on the
+        stack, so currently trunk sort of allows this. But then I realized three things:
+        
+        - A GetArgument with a non-JSValue flush format means speculating that the value on the
+          stack obeys that format, rather than just assuming that that it already has that format.
+          In bug 141332, I want it to assume rather than speculate. That also happens to be more
+          intuitive; I don't think I was wrong to expect that.
+        
+        - The node I really want is GetLocal. I'm just getting the value of the local and I don't
+          want to do anything else.
+        
+        - Maybe it would be easier if we just used GetLocal for all of the cases where we currently
+          use GetArgument.
+        
+        This changes the FTL to do argument speculations in the prologue just like the DFG does.
+        This brings some consistency to our system, and allows us to get rid of the GetArgument
+        node. The speculations that the FTL must do are now made explicit in the m_argumentFormats
+        vector in DFG::Graph. This has natural DCE behavior: even if all uses of the argument are
+        dead we will still speculate. We already have safeguards to ensure we only speculate if
+        there are uses that benefit from speculation (which is a much more conservative criterion
+        than DCE).
+        
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::DCEPhase::run):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGFlushFormat.h:
+        (JSC::DFG::typeFilterFor):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::valueProfileFor):
+        (JSC::DFG::Graph::methodOfGettingAValueProfileFor):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::initialize):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::hasVariableAccessData):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::OSRAvailabilityAnalysisPhase::run):
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGPutLocalSinkingPhase.cpp:
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::lower):
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileGetLocal):
+        (JSC::FTL::LowerDFGToLLVM::compileGetArgument): Deleted.
+        * tests/stress/dead-speculating-argument-use.js: Added.
+        (foo):
+        (o.valueOf):
+
+2015-02-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Rare case profiling should actually work
+        https://bugs.webkit.org/show_bug.cgi?id=141632
+
+        Reviewed by Michael Saboff.
+        
+        This simple adjustment appears to be a 2% speed-up on Octane. Over time, the slow case
+        heuristic has essentially stopped working because the typical execution count threshold for a
+        bytecode instruction is around 66 while the slow case threshold is 100: virtually
+        guaranteeing that the DFG will never think that a bytecode instruction has taken the slow
+        case even if it took it every single time. So, this changes the slow case threshold to 20.
+        
+        I checked if we could lower this down further, like to 10. That is worse than 20, and about
+        as bad as 100.
+
+        * runtime/Options.h:
+
+2015-02-15  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove unused XHR replay code
+        https://bugs.webkit.org/show_bug.cgi?id=141622
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Network.json: remove XHR replay methods.
+
+2015-02-15  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r180082): WebCore Debug builds fail on Mavericks due to weak export symbols
+        <http://webkit.org/b/141607>
+
+        More work towards fixing the Mavericks Debug build.
+
+        * inspector/ScriptDebugServer.h:
+        (Inspector::ScriptDebugServer::Task):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        (Inspector::InspectorDebuggerAgent::Listener):
+        - Remove subclass exports. They did not help.
+
+        * runtime/JSCJSValue.h:
+        (JSC::JSValue::toFloat): Do not mark inline method for export.
+
+2015-02-09  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove some unnecessary Inspector prefixes from class names in Inspector namespace
+        https://bugs.webkit.org/show_bug.cgi?id=141372
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::ConsoleMessage::addToFrontend):
+        (Inspector::ConsoleMessage::updateRepeatCountInConsole):
+        * inspector/ConsoleMessage.h:
+        * inspector/InspectorAgentBase.h:
+        * inspector/InspectorAgentRegistry.cpp:
+        (Inspector::AgentRegistry::AgentRegistry):
+        (Inspector::AgentRegistry::append):
+        (Inspector::AgentRegistry::appendExtraAgent):
+        (Inspector::AgentRegistry::didCreateFrontendAndBackend):
+        (Inspector::AgentRegistry::willDestroyFrontendAndBackend):
+        (Inspector::AgentRegistry::discardAgents):
+        (Inspector::InspectorAgentRegistry::InspectorAgentRegistry): Deleted.
+        (Inspector::InspectorAgentRegistry::append): Deleted.
+        (Inspector::InspectorAgentRegistry::appendExtraAgent): Deleted.
+        (Inspector::InspectorAgentRegistry::didCreateFrontendAndBackend): Deleted.
+        (Inspector::InspectorAgentRegistry::willDestroyFrontendAndBackend): Deleted.
+        (Inspector::InspectorAgentRegistry::discardAgents): Deleted.
+        * inspector/InspectorAgentRegistry.h:
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::BackendDispatcher::CallbackBase::CallbackBase):
+        (Inspector::BackendDispatcher::CallbackBase::isActive):
+        (Inspector::BackendDispatcher::CallbackBase::sendFailure):
+        (Inspector::BackendDispatcher::CallbackBase::sendIfActive):
+        (Inspector::BackendDispatcher::create):
+        (Inspector::BackendDispatcher::registerDispatcherForDomain):
+        (Inspector::BackendDispatcher::dispatch):
+        (Inspector::BackendDispatcher::sendResponse):
+        (Inspector::BackendDispatcher::reportProtocolError):
+        (Inspector::BackendDispatcher::getInteger):
+        (Inspector::BackendDispatcher::getDouble):
+        (Inspector::BackendDispatcher::getString):
+        (Inspector::BackendDispatcher::getBoolean):
+        (Inspector::BackendDispatcher::getObject):
+        (Inspector::BackendDispatcher::getArray):
+        (Inspector::BackendDispatcher::getValue):
+        (Inspector::InspectorBackendDispatcher::CallbackBase::CallbackBase): Deleted.
+        (Inspector::InspectorBackendDispatcher::CallbackBase::isActive): Deleted.
+        (Inspector::InspectorBackendDispatcher::CallbackBase::sendFailure): Deleted.
+        (Inspector::InspectorBackendDispatcher::CallbackBase::sendIfActive): Deleted.
+        (Inspector::InspectorBackendDispatcher::create): Deleted.
+        (Inspector::InspectorBackendDispatcher::registerDispatcherForDomain): Deleted.
+        (Inspector::InspectorBackendDispatcher::dispatch): Deleted.
+        (Inspector::InspectorBackendDispatcher::sendResponse): Deleted.
+        (Inspector::InspectorBackendDispatcher::reportProtocolError): Deleted.
+        (Inspector::InspectorBackendDispatcher::getInteger): Deleted.
+        (Inspector::InspectorBackendDispatcher::getDouble): Deleted.
+        (Inspector::InspectorBackendDispatcher::getString): Deleted.
+        (Inspector::InspectorBackendDispatcher::getBoolean): Deleted.
+        (Inspector::InspectorBackendDispatcher::getObject): Deleted.
+        (Inspector::InspectorBackendDispatcher::getArray): Deleted.
+        (Inspector::InspectorBackendDispatcher::getValue): Deleted.
+        * inspector/InspectorBackendDispatcher.h:
+        (Inspector::SupplementalBackendDispatcher::SupplementalBackendDispatcher):
+        (Inspector::SupplementalBackendDispatcher::~SupplementalBackendDispatcher):
+        (Inspector::InspectorSupplementalBackendDispatcher::InspectorSupplementalBackendDispatcher): Deleted.
+        (Inspector::InspectorSupplementalBackendDispatcher::~InspectorSupplementalBackendDispatcher): Deleted.
+        * inspector/InspectorFrontendChannel.h:
+        (Inspector::FrontendChannel::~FrontendChannel):
+        (Inspector::InspectorFrontendChannel::~InspectorFrontendChannel): Deleted.
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::globalObjectDestroyed):
+        (Inspector::JSGlobalObjectInspectorController::connectFrontend):
+        (Inspector::JSGlobalObjectInspectorController::disconnectFrontend):
+        (Inspector::JSGlobalObjectInspectorController::dispatchMessageFromFrontend):
+        (Inspector::JSGlobalObjectInspectorController::appendExtraAgent):
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/agents/InspectorAgent.cpp:
+        (Inspector::InspectorAgent::didCreateFrontendAndBackend):
+        (Inspector::InspectorAgent::willDestroyFrontendAndBackend):
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::didCreateFrontendAndBackend):
+        (Inspector::InspectorConsoleAgent::willDestroyFrontendAndBackend):
+        * inspector/agents/InspectorConsoleAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::didCreateFrontendAndBackend):
+        (Inspector::InspectorDebuggerAgent::willDestroyFrontendAndBackend):
+        (Inspector::InspectorDebuggerAgent::handleConsoleAssert):
+        (Inspector::InspectorDebuggerAgent::schedulePauseOnNextStatement):
+        (Inspector::InspectorDebuggerAgent::pause):
+        (Inspector::InspectorDebuggerAgent::scriptExecutionBlockedByCSP):
+        (Inspector::InspectorDebuggerAgent::didPause):
+        (Inspector::InspectorDebuggerAgent::breakProgram):
+        (Inspector::InspectorDebuggerAgent::clearBreakDetails):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::willDestroyFrontendAndBackend):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.cpp:
+        (Inspector::JSGlobalObjectRuntimeAgent::didCreateFrontendAndBackend):
+        (Inspector::JSGlobalObjectRuntimeAgent::willDestroyFrontendAndBackend):
+        * inspector/agents/JSGlobalObjectRuntimeAgent.h:
+        * inspector/augmentable/AlternateDispatchableAgent.h:
+        * inspector/augmentable/AugmentableInspectorController.h:
+        * inspector/remote/RemoteInspectorDebuggable.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.h:
+        * inspector/scripts/codegen/cpp_generator.py:
+        (CppGenerator.cpp_type_for_formal_out_parameter):
+        (CppGenerator.cpp_type_for_stack_out_parameter):
+        * inspector/scripts/codegen/cpp_generator_templates.py:
+        (AlternateBackendDispatcher):
+        (Alternate):
+        (void):
+        (AlternateInspectorBackendDispatcher): Deleted.
+        (AlternateInspector): Deleted.
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator._generate_alternate_handler_forward_declarations_for_domains.Alternate):
+        (CppBackendDispatcherHeaderGenerator._generate_dispatcher_declaration_for_command):
+        (CppBackendDispatcherHeaderGenerator._generate_alternate_handler_forward_declarations_for_domains.AlternateInspector): Deleted.
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator._generate_handler_class_destructor_for_domain):
+        (CppBackendDispatcherImplementationGenerator._generate_large_dispatcher_switch_implementation_for_domain):
+        (CppBackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py:
+        (CppFrontendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_event):
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py:
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event):
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+        * runtime/JSGlobalObjectDebuggable.cpp:
+        (JSC::JSGlobalObjectDebuggable::connect):
+        (JSC::JSGlobalObjectDebuggable::disconnect):
+        * runtime/JSGlobalObjectDebuggable.h:
+
+2015-02-14  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r180082): WebCore Debug builds fail on Mavericks due to weak export symbols
+        <http://webkit.org/b/141607>
+
+        Work towards fixing the Mavericks Debug build.
+
+        * inspector/ScriptDebugServer.h:
+        (Inspector::ScriptDebugServer::Task): Export class.
+        * inspector/agents/InspectorDebuggerAgent.h:
+        (Inspector::InspectorDebuggerAgent::Listener): Export class.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::setConsoleClient): Do not mark inline
+        method for export.
+
+2015-02-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Symbol RemoteObject should not send sub-type
+        https://bugs.webkit.org/show_bug.cgi?id=141604
+
+        Reviewed by Brian Burg.
+
+        * inspector/InjectedScriptSource.js:
+
+2015-02-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        Attempt to fix 32bits build after r180098
+
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        I copied the attribute from the MathObject version of that function when I moved
+        it over. DFG has no version of a function call taking those attributes.
+
+2015-02-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Do not stash console messages for non-debuggable JSContext
+        https://bugs.webkit.org/show_bug.cgi?id=141589
+
+        Reviewed by Timothy Hatcher.
+
+        Consider developer extras disabled for JSContext inspection if the
+        RemoteInspector server is not enabled (typically a non-debuggable
+        process rejected by webinspectord) or if remote debugging on the
+        JSContext was explicitly disabled via SPI.
+
+        When developer extras are disabled, console message will not be stashed.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::developerExtrasEnabled):
+        * inspector/JSGlobalObjectInspectorController.h:
+
+2015-02-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add a DFG node for the Pow Intrinsics
+        https://bugs.webkit.org/show_bug.cgi?id=141540
+
+        Reviewed by Filip Pizlo.
+
+        Add a DFG Node for PowIntrinsic. This patch covers the basic cases
+        need to avoid massive regression. I will iterate over the node to cover
+        the missing types.
+
+        With this patch I get the following progressions on benchmarks:
+        -LongSpider's math-partial-sums: +5%.
+        -Kraken's imaging-darkroom: +17%
+        -AsmBench's cray.c: +6.6%
+        -CompressionBench: +2.2% globally.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        Cover a couple of trivial cases:
+        -If the exponent is zero, the result is always one, regardless of the base.
+        -If both arguments are constants, compute the result at compile time.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsic):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        We only support 2 basic cases at this time:
+        -Math.pow(double, int)
+        -Math.pow(double, double).
+
+        I'll cover Math.pow(int, int) in a follow up.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToArithSqrt):
+        (JSC::DFG::Node::arithNodeFlags):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        (JSC::DFG::PredictionPropagationPhase::doDoubleVoting):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::compileArithPowIntegerFastPath):
+        (JSC::DFG::SpeculativeJIT::compileArithPow):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validate):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileArithPow):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::doublePow):
+        (JSC::FTL::Output::doublePowi):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * runtime/MathObject.cpp:
+        (JSC::mathProtoFuncPow):
+        (JSC::isDenormal): Deleted.
+        (JSC::isEdgeCase): Deleted.
+        (JSC::mathPow): Deleted.
+
+        * tests/stress/math-pow-basics.js: Added.
+        * tests/stress/math-pow-integer-exponent-fastpath.js: Added.
+        * tests/stress/math-pow-nan-behaviors.js: Added.
+        * tests/stress/math-pow-with-constants.js: Added.
+        Start some basic testing of Math.pow().
+        Due to the various transform, the value change when the code tiers up,
+        I covered this by checking for approximate values.
+
+2015-02-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        ArithSqrt should not be conditional on supportsFloatingPointSqrt
+        https://bugs.webkit.org/show_bug.cgi?id=141546
+
+        Reviewed by Geoffrey Garen and Filip Pizlo.
+
+        Just fallback to the function call in the DFG codegen.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsic):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithSqrt):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * tests/stress/math-sqrt-basics.js: Added.
+        Basic coverage.
+
+        * tests/stress/math-sqrt-basics-disable-architecture-specific-optimizations.js: Added.
+        Same tests but forcing the function call.
+
+2015-02-13  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r180060) New js/regress-141098 test crashes when LLInt is disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=141577
+
+        Reviewed by Benjamin Poulain.
+
+        Changed the prologue of the baseline JIT to check for stack space for all
+        types of code blocks.  Previously, it was only checking Function.  Now
+        it checks Program and Eval as well.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompile):
+
+2015-02-13  Benjamin Poulain  <bpoulain@apple.com>
+
+        Generate incq instead of addq when the immediate value is one
+        https://bugs.webkit.org/show_bug.cgi?id=141548
+
+        Reviewed by Gavin Barraclough.
+
+        JSC emits "addq #1 (rXX)" *a lot*.
+        This patch replace that by incq, which is one byte shorter
+        and is the adviced form.
+
+        Sunspider: +0.47%
+        Octane: +0.28%
+        Kraken: +0.44%
+        AsmBench, CompressionBench: neutral.
+
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::add64):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::incq_m):
+
+2015-02-13  Benjamin Poulain  <benjamin@webkit.org>
+
+        Little clean up of Bytecode Generator's Label
+        https://bugs.webkit.org/show_bug.cgi?id=141557
+
+        Reviewed by Michael Saboff.
+
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        Label was a friend of BytecodeGenerator in order to access
+        m_instructions. There is no need for that, BytecodeGenerator
+        has a public getter.
+
+        * bytecompiler/Label.h:
+        (JSC::Label::Label):
+        (JSC::Label::setLocation):
+        (JSC::BytecodeGenerator::newLabel):
+        Make it explicit that the generator must exist.
+
+2015-02-13  Michael Saboff  <msaboff@apple.com>
+
+        Google doc spreadsheet reproducibly crashes when sorting
+        https://bugs.webkit.org/show_bug.cgi?id=141098
+
+        Reviewed by Oliver Hunt.
+
+        Moved the stack check to before the callee registers are allocated in the
+        prologue() by movving it from the functionInitialization() macro.  This
+        way we can check the stack before moving the stack pointer, avoiding a
+        crash during a "call" instruction.  Before this change, we weren't even
+        checking the stack for program and eval execution.
+
+        Made a couple of supporting changes.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::llint_stack_check): We can't just go up one frame as we
+        may be processing an exception to an entry frame.
+
+        * llint/LowLevelInterpreter.asm:
+
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        (llint_throw_from_slow_path_trampoline): Changed method to get the vm
+        from the code block to not use the codeBlock, since we may need to
+        continue from an exception in a native function.
+
+2015-02-12  Benjamin Poulain  <benjamin@webkit.org>
+
+        Simplify the initialization of BytecodeGenerator a bit
+        https://bugs.webkit.org/show_bug.cgi?id=141505
+
+        Reviewed by Anders Carlsson.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/BytecodeGenerator.h:
+        Setup the default initialization at the declaration level
+        instead of the constructor.
+
+        Also made m_scopeNode and m_codeType const to make it explicit
+        that they are invariant after construction.
+
+        * parser/Nodes.cpp:
+        * runtime/Executable.cpp:
+        Remove 2 useless #includes.
+
+2015-02-12  Benjamin Poulain  <benjamin@webkit.org>
+
+        Move the generators for GetScope and SkipScope to the common core in DFGSpeculativeJIT
+        https://bugs.webkit.org/show_bug.cgi?id=141506
+
+        Reviewed by Michael Saboff.
+
+        The generators for the nodes GetScope and SkipScope were
+        completely identical between 32 and 64bits.
+
+        This patch moves the duplicated code to DFGSpeculativeJIT.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetScope):
+        (JSC::DFG::SpeculativeJIT::compileSkipScope):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2015-02-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] [64-bit] Work around MSVC2013 Runtime Bug
+        https://bugs.webkit.org/show_bug.cgi?id=141498
+        <rdar://problem/19803642>
+
+        Reviewed by Anders Carlsson.
+
+        Disable FMA3 instruction use in the MSVC math library to
+        work around a VS2013 runtime crash. We can remove this
+        workaround when we switch to VS2015.
+
+        * API/tests/testapi.c: Call _set_FMA3_enable(0) to disable
+        FMA3 support.
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj: Add new files.
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters: Ditto.
+        * JavaScriptCore.vcxproj/JavaScriptCoreDLL.cpp: Added.
+        * JavaScriptCore.vcxproj/jsc/DLLLauncherMain.cpp: Call _set_FMA3_enable(0)
+        to disable FMA3 support.
+        * jsc.cpp: Ditto.
+        * testRegExp.cpp: Ditto.
+
+2015-02-11  Filip Pizlo  <fpizlo@apple.com>
+
+        The callee frame helpers in DFG::SpeculativeJIT should be available to other JITs
+        https://bugs.webkit.org/show_bug.cgi?id=141493
+
+        Reviewed by Michael Saboff.
+
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::calleeFrameSlot): Deleted.
+        (JSC::DFG::SpeculativeJIT::calleeArgumentSlot): Deleted.
+        (JSC::DFG::SpeculativeJIT::calleeFrameTagSlot): Deleted.
+        (JSC::DFG::SpeculativeJIT::calleeFramePayloadSlot): Deleted.
+        (JSC::DFG::SpeculativeJIT::calleeArgumentTagSlot): Deleted.
+        (JSC::DFG::SpeculativeJIT::calleeArgumentPayloadSlot): Deleted.
+        (JSC::DFG::SpeculativeJIT::calleeFrameCallerFrame): Deleted.
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::calleeFrameSlot):
+        (JSC::AssemblyHelpers::calleeArgumentSlot):
+        (JSC::AssemblyHelpers::calleeFrameTagSlot):
+        (JSC::AssemblyHelpers::calleeFramePayloadSlot):
+        (JSC::AssemblyHelpers::calleeArgumentTagSlot):
+        (JSC::AssemblyHelpers::calleeArgumentPayloadSlot):
+        (JSC::AssemblyHelpers::calleeFrameCallerFrame):
+
+2015-02-11  Filip Pizlo  <fpizlo@apple.com>
+
+        SetupVarargsFrame should not assume that an inline stack frame would have identical layout to a normal stack frame
+        https://bugs.webkit.org/show_bug.cgi?id=141485
+
+        Reviewed by Oliver Hunt.
+        
+        The inlineStackOffset argument was meant to make it easy for the DFG to use this helper for
+        vararg calls from inlined code, but that doesn't work since the DFG inline call frame
+        doesn't actually put the argument count at the JSStack::ArgumentCount offset. In fact there
+        is really no such thing as an inlineStackOffset except when we OSR exit; while the code is
+        running the stack layout is compacted so that the stackOffset is not meaningful.
+
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        * jit/SetupVarargsFrame.cpp:
+        (JSC::emitSetupVarargsFrameFastCase):
+        * jit/SetupVarargsFrame.h:
+
+2015-02-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Split FTL::JSCall into the part that knows about call inline caching and the part that interacts with LLVM patchpoints
+        https://bugs.webkit.org/show_bug.cgi?id=141455
+
+        Reviewed by Mark Lam.
+        
+        The newly introduced FTL::JSCallBase can be used to build other things, like the FTL portion
+        of https://bugs.webkit.org/show_bug.cgi?id=141332.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::specializationKindFor):
+        (JSC::CallLinkInfo::specializationKind):
+        * ftl/FTLJSCall.cpp:
+        (JSC::FTL::JSCall::JSCall):
+        (JSC::FTL::JSCall::emit): Deleted.
+        (JSC::FTL::JSCall::link): Deleted.
+        * ftl/FTLJSCall.h:
+        * ftl/FTLJSCallBase.cpp: Added.
+        (JSC::FTL::JSCallBase::JSCallBase):
+        (JSC::FTL::JSCallBase::emit):
+        (JSC::FTL::JSCallBase::link):
+        * ftl/FTLJSCallBase.h: Added.
+
+2015-02-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix build.
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+
+2015-02-10  Filip Pizlo  <fpizlo@apple.com>
+
+        op_call_varargs should only load the length once
+        https://bugs.webkit.org/show_bug.cgi?id=141440
+        rdar://problem/19761683
+
+        Reviewed by Michael Saboff.
+        
+        Refactors the pair of calls that set up the varargs frame so that the first call returns the
+        length, and the second call uses the length returned by the first one. It turns out that this
+        gave me an opportunity to shorten a lot of the code.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::sizeFrameForVarargs):
+        (JSC::loadVarargs):
+        (JSC::setupVarargsFrame):
+        (JSC::setupVarargsFrameAndSetThis):
+        * interpreter/Interpreter.h:
+        (JSC::calleeFrameForVarargs):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+        * jit/JIT.h:
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/SetupVarargsFrame.cpp:
+        (JSC::emitSetVarargsFrame):
+        (JSC::emitSetupVarargsFrameFastCase):
+        * jit/SetupVarargsFrame.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/Arguments.cpp:
+        (JSC::Arguments::copyToArguments):
+        * runtime/Arguments.h:
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::copyToArguments):
+        * runtime/JSArray.h:
+        * runtime/VM.h:
+        * tests/stress/call-varargs-length-effects.js: Added.
+        (foo):
+        (bar):
+
+2015-02-10  Michael Saboff  <msaboff@apple.com>
+
+        Crash in JSC::FTL::LowerDFGToLLVM::compileCompareStrictEq
+        https://bugs.webkit.org/show_bug.cgi?id=139398
+
+        Reviewed by Filip Pizlo.
+
+        Due to CFA analysis, the CompareStrictEq node was determined to be unreachable, but later
+        was determined to be reachable.  When we go to lower to LLVM, the edges for the CompareStrictEq
+        node are UntypedUse which we can't compile.  Fixed this by checking that the IR before
+        lowering can still be handled by the FTL.
+
+        Had to add GetArgument as a node that the FTL can compile as the SSA conversion phase converts
+        a SetArgument to a GetArgument.  Before this change FTL::canCompile() would never see a GetArgument
+        node.  With the check right before lowering, we see this node.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl): Added a final FTL::canCompile() check before lowering
+        to verify that after all the transformations we still have valid IR for the FTL.
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile): Added GetArgument as a node the FTL can compile.
+
+2015-02-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove unused DFG::SpeculativeJIT::calleeFrameOffset().
+
+        Rubber stamped by Michael Saboff.
+        
+        Not only was this not used, I believe that the math was wrong. The callee frame doesn't
+        actually land past m_nextMachineLocal; instead it lands just below wherever we put SP and
+        that decision is made elsewhere. Also, it makes no sense to subtract 1 from
+        m_nextMachineLocal when trying to deduce the number of in-use stack slots.
+
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::calleeFrameOffset): Deleted.
+
+2015-02-10  Saam Barati  <saambarati1@gmail.com>
+
+        Parser::parseVarDeclarationList gets the wrong JSToken for the last identifier
+        https://bugs.webkit.org/show_bug.cgi?id=141272
+
+        Reviewed by Oliver Hunt.
+
+        This patch fixes a bug where the wrong text location would be 
+        assigned to a variable declaration inside a ForIn/ForOf loop. 
+        It also fixes a bug in the type profiler where the type profiler 
+        emits the wrong text offset for a ForIn loop's variable declarator 
+        when it's not a pattern node.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ForInNode::emitLoopHeader):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVarDeclarationList):
+        * tests/typeProfiler/loop.js:
+        (testForIn):
+        (testForOf):
+
+2015-02-09  Saam Barati  <saambarati1@gmail.com>
+
+        JSC's Type Profiler doesn't profile the type of the looping variable in ForOf/ForIn loops
+        https://bugs.webkit.org/show_bug.cgi?id=141241
+
+        Reviewed by Filip Pizlo.
+
+        Type information is now recorded for ForIn and ForOf statements. 
+        It was an oversight to not have these statements profiled before.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ForInNode::emitLoopHeader):
+        (JSC::ForOfNode::emitBytecode):
+        * tests/typeProfiler/loop.js: Added.
+        (testForIn):
+        (testForOf):
+
+2015-02-09  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::StackLayoutPhase should always set the scopeRegister to VirtualRegister() because the DFG doesn't do anything to make its value valid
+        https://bugs.webkit.org/show_bug.cgi?id=141412
+
+        Reviewed by Michael Saboff.
+        
+        StackLayoutPhase was attempting to ensure that the register that
+        CodeBlock::scopeRegister() points to is the right one for the DFG. But the DFG did nothing
+        else to maintain the validity of the scopeRegister(). It wasn't captured as far as I can
+        tell. StackLayoutPhase didn't explicitly mark it live. PreciseLocalClobberize didn't mark
+        it as being live. So, by the time we got here the register referred to by
+        CodeBlock::scopeRegister() would have been junk. Moreover, CodeBlock::scopeRegister() was
+        not used for DFG code blocks, and was hardly ever used outside of bytecode generation.
+        
+        So, this patch just removes the code to manipulate this field and replaces it with an
+        unconditional setScopeRegister(VirtualRegister()). Setting it to the invalid register
+        ensures that any attempst to read the scopeRegister in a DFG or FTL frame immediately
+        punts.
+
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+
+2015-02-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Varargs frame set-up should be factored out for use by other JITs
+        https://bugs.webkit.org/show_bug.cgi?id=141388
+
+        Reviewed by Michael Saboff.
+        
+        Previously the code that dealt with varargs always assumed that we were setting up a varargs call
+        frame by literally following the execution semantics of op_call_varargs. This isn't how it'll
+        happen once the DFG and FTL do varargs calls, or when varargs calls get inlined. The DFG and FTL
+        don't literally execute bytecode; for example their stack frame layout has absolutely nothing in
+        common with what the bytecode says, and that will never change.
+        
+        This patch makes two changes:
+        
+        Setting up the varargs callee frame can be done in smaller steps: particularly in the case of a
+        varargs call that gets inlined, we aren't going to actually want to set up a callee frame in
+        full - we just want to put the arguments somewhere, and that place will not have much (if
+        anything) in common with the call frame format. This patch factors that out into something called
+        a loadVarargs. The thing we used to call loadVarargs is now called setupVarargsFrame. This patch
+        also separates loading varargs from setting this, since the fact that those two things are done
+        together is a detail made explicit in bytecode but it's not at all required in the higher-tier
+        engines. In the process of factoring this code out, I found a bunch of off-by-one errors in the
+        various calculations. I fixed them. The distance from the caller's frame pointer to the callee
+        frame pointer is always:
+        
+            numUsedCallerSlots + argCount + 1 + CallFrameSize
+        
+        where numUsedCallerSlots is toLocal(firstFreeRegister) - 1, which simplifies down to just
+        -firstFreeRegister. The code now speaks of numUsedCallerSlots rather than firstFreeRegister,
+        since the latter is a bytecode peculiarity that doesn't apply in the DFG or FTL. In the DFG, the
+        internally-computed frame size, minus the parameter slots, will be used for numUsedCallerSlots.
+        In the FTL, we will essentially compute numUsedCallerSlots dynamically by subtracting SP from FP.
+        Eventually, LLVM might give us some cleaner way of doing this, but it probably doesn't matter
+        very much.
+        
+        The arguments forwarding optimization is factored out of the Baseline JIT: the DFG and FTL will
+        want to do this optimization as well, but it involves quite a bit of code. So, this code is now
+        factored out into SetupVarargsFrame.h|cpp, so that other JITs can use it. In the process of factoring
+        this code out I noticed that the 32-bit and 64-bit code is nearly identical, so I combined them.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.h:
+        (JSC::ExecState::r):
+        (JSC::ExecState::uncheckedR):
+        * bytecode/VirtualRegister.h:
+        (JSC::VirtualRegister::operator+):
+        (JSC::VirtualRegister::operator-):
+        (JSC::VirtualRegister::operator+=):
+        (JSC::VirtualRegister::operator-=):
+        * interpreter/CallFrame.h:
+        * interpreter/Interpreter.cpp:
+        (JSC::sizeFrameForVarargs):
+        (JSC::loadVarargs):
+        (JSC::setupVarargsFrame):
+        (JSC::setupVarargsFrameAndSetThis):
+        * interpreter/Interpreter.h:
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitGetFromCallFrameHeaderPtr):
+        (JSC::AssemblyHelpers::emitGetFromCallFrameHeader32):
+        (JSC::AssemblyHelpers::emitGetFromCallFrameHeader64):
+        * jit/JIT.h:
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        (JSC::JIT::emitGetFromCallFrameHeaderPtr): Deleted.
+        (JSC::JIT::emitGetFromCallFrameHeader32): Deleted.
+        (JSC::JIT::emitGetFromCallFrameHeader64): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/SetupVarargsFrame.cpp: Added.
+        (JSC::emitSetupVarargsFrameFastCase):
+        * jit/SetupVarargsFrame.h: Added.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/Arguments.cpp:
+        (JSC::Arguments::copyToArguments):
+        * runtime/Arguments.h:
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::copyToArguments):
+        * runtime/JSArray.h:
+
+2015-02-09  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG call codegen should resolve the callee operand as late as possible
+        https://bugs.webkit.org/show_bug.cgi?id=141398
+
+        Reviewed by Mark Lam.
+        
+        This is mostly a benign restructuring to help with the implementation of
+        https://bugs.webkit.org/show_bug.cgi?id=141332.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+
+2015-02-08  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should only have two mechanisms for describing effectfulness of nodes; previously there were three
+        https://bugs.webkit.org/show_bug.cgi?id=141369
+
+        Reviewed by Michael Saboff.
+
+        We previously used the NodeMightClobber and NodeClobbersWorld NodeFlags to describe
+        effectfulness.  Starting over a year ago, we introduced a more powerful mechanism - the
+        DFG::clobberize() function.  Now we only have one remaining client of the old NodeFlags,
+        and everyone else uses DFG::clobberize().  We should get rid of those NodeFlags and
+        finally switch everyone over to DFG::clobberize().
+        
+        Unfortunately there is still another place where effectfulness of nodes is described: the
+        AbstractInterpreter. This is because the AbstractInterpreter has special tuning both for
+        compile time performance and there are places where the AI is more precise than
+        clobberize() because of its flow-sensitivity.
+        
+        This means that after this change there will be only two places, rather than three, where
+        the effectfulness of a node has to be described:
+
+        - DFG::clobberize()
+        - DFG::AbstractInterpreter
+
+        * dfg/DFGClobberize.cpp:
+        (JSC::DFG::clobbersWorld):
+        * dfg/DFGClobberize.h:
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::attemptToMakeGetTypedArrayByteLength):
+        (JSC::DFG::FixupPhase::convertToGetArrayLength):
+        (JSC::DFG::FixupPhase::attemptToMakeGetTypedArrayByteOffset):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::isPredictedNumerical): Deleted.
+        (JSC::DFG::Graph::byValIsPure): Deleted.
+        (JSC::DFG::Graph::clobbersWorld): Deleted.
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToConstant):
+        (JSC::DFG::Node::convertToGetLocalUnlinked):
+        (JSC::DFG::Node::convertToGetByOffset):
+        (JSC::DFG::Node::convertToMultiGetByOffset):
+        (JSC::DFG::Node::convertToPutByOffset):
+        (JSC::DFG::Node::convertToMultiPutByOffset):
+        * dfg/DFGNodeFlags.cpp:
+        (JSC::DFG::dumpNodeFlags):
+        * dfg/DFGNodeFlags.h:
+        * dfg/DFGNodeType.h:
+
+2015-02-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !ENABLE(DFG_JIT) build
+        https://bugs.webkit.org/show_bug.cgi?id=141387
+
+        Reviewed by Darin Adler.
+
+        * jit/Repatch.cpp:
+
+2015-02-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove a few duplicate propagation steps from the DFG's PredictionPropagation phase
+        https://bugs.webkit.org/show_bug.cgi?id=141363
+
+        Reviewed by Darin Adler.
+
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        Some blocks were duplicated, they probably evolved separately
+        to the same state.
+
+2015-02-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove useless declarations and a stale comment from DFGByteCodeParser.h
+        https://bugs.webkit.org/show_bug.cgi?id=141361
+
+        Reviewed by Darin Adler.
+
+        The comment refers to the original form of the ByteCodeParser:
+            parse(Graph&, JSGlobalData*, CodeBlock*, unsigned startIndex);
+
+        That form is long dead, the comment is more misleading than anything.
+
+        * dfg/DFGByteCodeParser.cpp:
+        * dfg/DFGByteCodeParser.h:
+
+2015-02-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        Encapsulate DFG::Plan's beforeFTL timestamp
+        https://bugs.webkit.org/show_bug.cgi?id=141360
+
+        Reviewed by Darin Adler.
+
+        Make the attribute private, it is an internal state.
+
+        Rename beforeFTL->timeBeforeFTL for readability.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThread):
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPlan.h:
+
+2015-02-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove DFGNode::hasArithNodeFlags()
+        https://bugs.webkit.org/show_bug.cgi?id=141319
+
+        Reviewed by Michael Saboff.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasArithNodeFlags): Deleted.
+        Unused code is unused.
+
+2015-02-07  Chris Dumez  <cdumez@apple.com>
+
+        Add Vector::removeFirstMatching() / removeAllMatching() methods taking lambda functions
+        https://bugs.webkit.org/show_bug.cgi?id=141321
+
+        Reviewed by Darin Adler.
+
+        Use new Vector::removeFirstMatching() / removeAllMatching() methods.
+
+2015-02-06  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG SSA shouldn't have SetArgument nodes
+        https://bugs.webkit.org/show_bug.cgi?id=141342
+
+        Reviewed by Mark Lam.
+
+        I was wondering why we kept the SetArgument around for captured
+        variables. It turns out we did so because we thought we had to, even
+        though we didn't have to. The node is meaningless in SSA.
+
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+
+2015-02-06  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to use the DFG SetArgument node to indicate that someone set the value of a local out-of-band
+        https://bugs.webkit.org/show_bug.cgi?id=141337
+
+        Reviewed by Mark Lam.
+
+        This mainly involved ensuring that SetArgument behaves just like SetLocal from a CPS standpoint, but with a special case for those SetArguments that
+        are associated with the prologue.
+
+        * dfg/DFGCPSRethreadingPhase.cpp:
+        (JSC::DFG::CPSRethreadingPhase::run):
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeSet):
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeLocalsInBlock):
+        (JSC::DFG::CPSRethreadingPhase::specialCaseArguments):
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeSetLocal): Deleted.
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeSetArgument): Deleted.
+
+2015-02-06  Mark Lam  <mark.lam@apple.com>
+
+        MachineThreads should be ref counted.
+        <https://webkit.org/b/141317>
+
+        Reviewed by Filip Pizlo.
+
+        The VM's MachineThreads registry object is being referenced from other
+        threads as a raw pointer.  In a scenario where the VM is destructed on
+        the main thread, there is no guarantee that another thread isn't still
+        holding a reference to the registry and will eventually invoke
+        removeThread() on it on thread exit.  Hence, there's a possible use
+        after free scenario here.
+
+        The fix is to make MachineThreads ThreadSafeRefCounted, and have all
+        threads that references keep a RefPtr to it to ensure that it stays
+        alive until the very last thread is done with it.
+
+        * API/tests/testapi.mm:
+        (useVMFromOtherThread): - Renamed to be more descriptive.
+        (useVMFromOtherThreadAndOutliveVM):
+        - Added a test that has another thread which uses the VM outlive the
+          VM to confirm that there is no crash.
+
+          However, I was not actually able to get the VM to crash without this
+          patch because I wasn't always able to the thread destructor to be
+          called.  With this patch applied, I did verify with some logging that
+          the MachineThreads registry is only destructed after all threads
+          have removed themselves from it.
+
+        (threadMain): Deleted.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::~Heap):
+        (JSC::Heap::gatherStackRoots):
+        * heap/Heap.h:
+        (JSC::Heap::machineThreads):
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::Thread::Thread):
+        (JSC::MachineThreads::addCurrentThread):
+        (JSC::MachineThreads::removeCurrentThread):
+        * heap/MachineStackMarker.h:
+
+2015-02-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179743.
+        https://bugs.webkit.org/show_bug.cgi?id=141335
+
+        caused missing symbols in non-WebKit clients of WTF::Vector
+        (Requested by kling on #webkit).
+
+        Reverted changeset:
+
+        "Remove WTF::fastMallocGoodSize()."
+        https://bugs.webkit.org/show_bug.cgi?id=141020
+        http://trac.webkit.org/changeset/179743
+
+2015-02-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove BytecodeGenerator::preserveLastVar() and replace it with a more robust mechanism for preserving non-temporary registers
+        https://bugs.webkit.org/show_bug.cgi?id=141211
+
+        Reviewed by Mark Lam.
+
+        Previously, the way non-temporary registers were preserved (i.e. not reclaimed anytime
+        we did newTemporary()) by calling preserveLastVar() after all non-temps are created. It
+        would raise the refcount on the last (highest-numbered) variable created, and rely on
+        the fact that register reclamation started at higher-numbered registers and worked its
+        way down. So any retained register would block any lower-numbered registers from being
+        reclaimed.
+        
+        Also, preserveLastVar() sets a thing called m_firstConstantIndex. It's unused.
+        
+        This removes preserveLastVar() and makes addVar() retain each register it creates. This
+        is more explicit, since addVar() is the mechanism for creating non-temporary registers.
+        
+        To make this work I had to remove an assertion that Register::setIndex() can only be
+        called when the refcount is zero. This method might be called after a var is created to
+        change its index. This previously worked because preserveLastVar() would be called after
+        we had already made all index changes, so the vars would still have refcount zero. Now
+        they have refcount 1. I think it's OK to lose this assertion; I can't remember this
+        assertion ever firing in a way that alerted me to a serious issue.
+        
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::preserveLastVar): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::addVar):
+        * bytecompiler/RegisterID.h:
+        (JSC::RegisterID::setIndex):
+
+2015-02-06  Andreas Kling  <akling@apple.com>
+
+        Remove WTF::fastMallocGoodSize().
+        <https://webkit.org/b/141020>
+
+        Reviewed by Anders Carlsson.
+
+        * assembler/AssemblerBuffer.h:
+        (JSC::AssemblerData::AssemblerData):
+        (JSC::AssemblerData::grow):
+
+2015-02-05  Michael Saboff  <msaboff@apple.com>
+
+        CodeCache is not thread safe when adding the same source from two different threads
+        https://bugs.webkit.org/show_bug.cgi?id=141275
+
+        Reviewed by Mark Lam.
+
+        The issue for this bug is that one thread, takes a cache miss in CodeCache::getGlobalCodeBlock,
+        but in the process creates a cache entry with a nullptr UnlinkedCodeBlockType* which it
+        will fill in later in the function.  During the body of that function, it allocates
+        objects that may garbage collect.  During that garbage collection, we drop the all locks.
+        While the locks are released by the first thread, another thread can enter the VM and might
+        have exactly the same source and enter CodeCache::getGlobalCodeBlock() itself.  When it
+        looks up the code block, it sees it as a cache it and uses the nullptr UnlinkedCodeBlockType*
+        and crashes.  This fixes the problem by not dropping the locks during garbage collection.
+        There are other likely scenarios where we have a data structure like this code cache in an
+        unsafe state for arbitrary reentrance.
+
+        Moved the functionality of DelayedReleaseScope directly into Heap.  Changed it into
+        a simple list that is cleared with the new function Heap::releaseDelayedReleasedObjects.
+        Now we accumulate objects to be released and release them when all locks are dropped or
+        when destroying the Heap.  This eliminated the dropping and reaquiring of locks associated
+        with the old scope form of this list.
+
+        Given that all functionality of DelayedReleaseScope is now used and referenced by Heap
+        and the lock management no longer needs to be done, just made the list a member of Heap.
+        We do need to guard against the case that releasing an object can create more objects
+        by calling into JS.  That is why releaseDelayedReleasedObjects() is written to remove
+        an object to release so that we aren't recursively in Vector code.  The other thing we
+        do in releaseDelayedReleasedObjects() is to guard against recursive calls to itself using
+        the m_delayedReleaseRecursionCount.  We only release at the first entry into the function.
+        This case is already tested by testapi.mm.
+
+        * heap/DelayedReleaseScope.h: Removed file
+
+        * API/JSAPIWrapperObject.mm:
+        * API/ObjCCallbackFunction.mm:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::doSweep):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::tryAllocateHelper):
+        (JSC::MarkedAllocator::tryAllocate):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::sweep):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::MarkedSpace):
+        (JSC::MarkedSpace::lastChanceToFinalize):
+        (JSC::MarkedSpace::didFinishIterating):
+        * heap/MarkedSpace.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::collectAllGarbage):
+        (JSC::Heap::zombifyDeadObjects):
+        Removed references to DelayedReleaseScope and DelayedReleaseScope.h.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap): Initialized m_delayedReleaseRecursionCount.
+        (JSC::Heap::lastChanceToFinalize): Call releaseDelayedObjectsNow() as the VM is going away.
+        (JSC::Heap::releaseDelayedReleasedObjects): New function that released the accumulated
+        delayed release objects.
+
+        * heap/Heap.h:
+        (JSC::Heap::m_delayedReleaseObjects): List of objects to be released later.
+        (JSC::Heap::m_delayedReleaseRecursionCount): Counter to indicate that
+        releaseDelayedReleasedObjects is being called recursively.
+        * heap/HeapInlines.h:
+        (JSC::Heap::releaseSoon): Changed location of list to add delayed release objects.
+        
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::willReleaseLock):
+        Call Heap::releaseDelayedObjectsNow() when releasing the lock.
+
+2015-02-05  Youenn Fablet  <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar <calvaris@igalia.com>
+
+        [Streams API] Implement a barebone ReadableStream interface
+        https://bugs.webkit.org/show_bug.cgi?id=141045
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-02-05  Saam Barati  <saambarati1@gmail.com>
+
+        Crash in uninitialized deconstructing variable.
+        https://bugs.webkit.org/show_bug.cgi?id=141070
+
+        Reviewed by Michael Saboff.
+
+        According to the ES6 spec, when a destructuring pattern occurs
+        as the left hand side of an assignment inside a var declaration 
+        statement, the assignment must also have a right hand side value.
+        "var {x} = {};" is a legal syntactic statement, but,
+        "var {x};" is a syntactic error.
+
+        Section 13.2.2 of the latest draft ES6 spec specifies this requirement:
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-variable-statement
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVarDeclaration):
+        (JSC::Parser<LexerType>::parseVarDeclarationList):
+        (JSC::Parser<LexerType>::parseForStatement):
+        * parser/Parser.h:
+
 2015-02-04  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         Unreviewed, fix a build break on EFL port since r179648.

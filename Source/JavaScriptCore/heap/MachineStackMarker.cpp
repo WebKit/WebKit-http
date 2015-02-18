@@ -97,9 +97,10 @@ static void pthreadSignalHandlerSuspendResume(int)
 class MachineThreads::Thread {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    Thread(const PlatformThread& platThread, void* base)
+    Thread(PassRefPtr<MachineThreads> machineThreads, const PlatformThread& platThread, void* base)
         : platformThread(platThread)
         , stackBase(base)
+        , m_machineThreads(machineThreads)
     {
 #if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(HAIKU) && defined(SA_RESTART)
         // if we have SA_RESTART, enable SIGUSR2 debugging mechanism
@@ -119,6 +120,7 @@ public:
     Thread* next;
     PlatformThread platformThread;
     void* stackBase;
+    RefPtr<MachineThreads> m_machineThreads;
 };
 
 MachineThreads::MachineThreads(Heap* heap)
@@ -126,6 +128,7 @@ MachineThreads::MachineThreads(Heap* heap)
     , m_threadSpecific(0)
 #if !ASSERT_DISABLED
     , m_heap(heap)
+    , m_magicNumber(0x1234567890abcdef)
 #endif
 {
     UNUSED_PARAM(heap);
@@ -142,6 +145,9 @@ MachineThreads::~MachineThreads()
         delete t;
         t = next;
     }
+#if !ASSERT_DISABLED
+    m_magicNumber = 0xbaddbeefdeadbeef;
+#endif
 }
 
 static inline PlatformThread getCurrentPlatformThread()
@@ -178,7 +184,7 @@ void MachineThreads::addCurrentThread()
     }
 
     threadSpecificSet(m_threadSpecific, this);
-    Thread* thread = new Thread(getCurrentPlatformThread(), wtfThreadData().stack().origin());
+    Thread* thread = new Thread(this, getCurrentPlatformThread(), wtfThreadData().stack().origin());
 
     MutexLocker lock(m_registeredThreadsMutex);
 
@@ -188,6 +194,7 @@ void MachineThreads::addCurrentThread()
 
 void MachineThreads::removeThread(void* p)
 {
+    ASSERT(static_cast<MachineThreads*>(p)->m_magicNumber == 0x1234567890abcdef);
     static_cast<MachineThreads*>(p)->removeCurrentThread();
 }
 
@@ -195,6 +202,21 @@ void MachineThreads::removeCurrentThread()
 {
     PlatformThread currentPlatformThread = getCurrentPlatformThread();
 
+    // This thread could be the last entity that holds a RefPtr to the
+    // MachineThreads registry. We don't want the registry to be deleted while
+    // we're deleting the the Thread entry, because:
+    //
+    // 1. ~MachineThread() will attempt to lock its m_registeredThreadsMutex
+    //    and we already hold it here. m_registeredThreadsMutex is not
+    //    re-entrant.
+    // 2. The MutexLocker will unlock m_registeredThreadsMutex at the end of
+    //    this function. We can't let it be destructed until before then.
+    //
+    // Using this RefPtr here will defer destructing the registry till after
+    // MutexLocker releases its m_registeredThreadsMutex.
+    RefPtr<MachineThreads> retainMachineThreadsRegistryUntilDoneRemovingThread = this;
+
+    ASSERT(m_magicNumber == 0x1234567890abcdef);
     MutexLocker lock(m_registeredThreadsMutex);
     if (equalThread(currentPlatformThread, m_registeredThreads->platformThread)) {
         Thread* t = m_registeredThreads;
