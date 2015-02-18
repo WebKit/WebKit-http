@@ -66,6 +66,8 @@ if JSVALUE64
     const ValueTrue       = TagBitTypeOther | TagBitBool | 1
     const ValueUndefined  = TagBitTypeOther | TagBitUndefined
     const ValueNull       = TagBitTypeOther
+    const TagTypeNumber   = 0xffff000000000000
+    const TagMask         = TagTypeNumber | TagBitTypeOther
 else
     const Int32Tag = -1
     const BooleanTag = -2
@@ -631,7 +633,7 @@ macro prologue(codeBlockGetter, codeBlockSetter, osrSlowPath, traceSlowPath)
 .stackHeightOKGetCodeBlock:
     # Stack check slow path returned that the stack was ok.
     # Since they were clobbered, need to get CodeBlock and new sp
-    codeBlockGetter(t1)
+    codeBlockSetter(t1)
     getFrameRegisterSizeForCodeBlock(t1, t0)
     subp cfr, t0, t0
 

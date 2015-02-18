@@ -1,3 +1,254 @@
+2015-02-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r180258 to fix Windows build.
+
+        * runtime/MathCommon.cpp:
+        (JSC::mathPowInternal):
+
+2015-02-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r180235): It broke the !ENABLE(PROMISES) build
+        https://bugs.webkit.org/show_bug.cgi?id=141746
+
+        Unreviewed build fix.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::getInternalProperties):
+        Wrap JSPromise related code in ENABLE(PROMISES) guard.
+
+2015-02-18  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix the C-Loop LLInt build
+        https://bugs.webkit.org/show_bug.cgi?id=141618
+
+        Reviewed by Filip Pizlo.
+
+        I broke C-Loop when moving the common code of pow()
+        to JITOperations because that file is #ifdefed out
+        when the JITs are disabled.
+
+        It would be weird to move it back to MathObject since
+        the function needs to know about the calling conventions.
+
+        To avoid making a mess, I just gave the function its own file
+        that is used by both the runtime and the JIT.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * runtime/MathCommon.cpp: Added.
+        (JSC::fdlibmScalbn):
+        (JSC::fdlibmPow):
+        (JSC::isDenormal):
+        (JSC::isEdgeCase):
+        (JSC::mathPowInternal):
+        (JSC::operationMathPow):
+        * runtime/MathCommon.h: Added.
+        * runtime/MathObject.cpp:
+
+2015-02-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        Clean up OSRExit's considerAddingAsFrequentExitSite()
+        https://bugs.webkit.org/show_bug.cgi?id=141690
+
+        Reviewed by Anders Carlsson.
+
+        Looks like some code was removed from CodeBlock::tallyFrequentExitSites()
+        and the OSRExit were left untouched.
+
+        This patch cleans up the two loops and remove the boolean return
+        on considerAddingAsFrequentExitSite().
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::tallyFrequentExitSites):
+        * dfg/DFGOSRExit.h:
+        (JSC::DFG::OSRExit::considerAddingAsFrequentExitSite):
+        * dfg/DFGOSRExitBase.cpp:
+        (JSC::DFG::OSRExitBase::considerAddingAsFrequentExitSiteSlow):
+        * dfg/DFGOSRExitBase.h:
+        (JSC::DFG::OSRExitBase::considerAddingAsFrequentExitSite):
+        * ftl/FTLOSRExit.h:
+        (JSC::FTL::OSRExit::considerAddingAsFrequentExitSite):
+
+2015-02-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Debug build fix after r180247.
+
+        * ftl/FTLLowerDFGToLLVM.cpp: (JSC::FTL::LowerDFGToLLVM::loweringFailed):
+
+2015-02-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r180184.
+        https://bugs.webkit.org/show_bug.cgi?id=141733
+
+        Caused infinite recursion on js/function-apply-aliased.html
+        (Requested by ap_ on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r180060): C Loop crashes"
+        https://bugs.webkit.org/show_bug.cgi?id=141671
+        http://trac.webkit.org/changeset/180184
+
+2015-02-17  Michael Saboff  <msaboff@apple.com>
+
+        CrashTracer: DFG_CRASH beneath JSC::FTL::LowerDFGToLLVM::compileNode
+        https://bugs.webkit.org/show_bug.cgi?id=141730
+
+        Reviewed by Geoffrey Garen.
+
+        Added a new failure handler, loweringFailed(), to LowerDFGToLLVM that reports failures
+        while processing DFG lowering.  For debug builds, the failures are logged identical
+        to the way the DFG_CRASH() reports them.  For release builds, the failures are reported
+        and that FTL compilation is terminated, but the process is allowed to continue.
+        Wrapped calls to loweringFailed() in a macro LOWERING_FAILED so the function and
+        line number are reported at the point of the inconsistancy.
+
+        Converted instances of DFG_CRASH to LOWERING_FAILED.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl): Added lowerDFGToLLVM() failure check that
+        will fail the FTL compile.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::LowerDFGToLLVM):
+        Added new member variable, m_loweringSucceeded, to stop compilation on the first
+        reported failure.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::lower):
+        * ftl/FTLLowerDFGToLLVM.h:
+        Added check for compilation failures and now report those failures via a boolean
+        return value.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::createPhiVariables):
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileUpsilon):
+        (JSC::FTL::LowerDFGToLLVM::compilePhi):
+        (JSC::FTL::LowerDFGToLLVM::compileDoubleRep):
+        (JSC::FTL::LowerDFGToLLVM::compileValueRep):
+        (JSC::FTL::LowerDFGToLLVM::compileValueToInt32):
+        (JSC::FTL::LowerDFGToLLVM::compilePutLocal):
+        (JSC::FTL::LowerDFGToLLVM::compileArithAddOrSub):
+        (JSC::FTL::LowerDFGToLLVM::compileArithMul):
+        (JSC::FTL::LowerDFGToLLVM::compileArithDiv):
+        (JSC::FTL::LowerDFGToLLVM::compileArithMod):
+        (JSC::FTL::LowerDFGToLLVM::compileArithMinOrMax):
+        (JSC::FTL::LowerDFGToLLVM::compileArithAbs):
+        (JSC::FTL::LowerDFGToLLVM::compileArithNegate):
+        (JSC::FTL::LowerDFGToLLVM::compileArrayifyToStructure):
+        (JSC::FTL::LowerDFGToLLVM::compileGetById):
+        (JSC::FTL::LowerDFGToLLVM::compileGetMyArgumentByVal):
+        (JSC::FTL::LowerDFGToLLVM::compileGetArrayLength):
+        (JSC::FTL::LowerDFGToLLVM::compileGetByVal):
+        (JSC::FTL::LowerDFGToLLVM::compilePutByVal):
+        (JSC::FTL::LowerDFGToLLVM::compileArrayPush):
+        (JSC::FTL::LowerDFGToLLVM::compileArrayPop):
+        (JSC::FTL::LowerDFGToLLVM::compileNewArray):
+        (JSC::FTL::LowerDFGToLLVM::compileToString):
+        (JSC::FTL::LowerDFGToLLVM::compileMakeRope):
+        (JSC::FTL::LowerDFGToLLVM::compileCompareEq):
+        (JSC::FTL::LowerDFGToLLVM::compileCompareStrictEq):
+        (JSC::FTL::LowerDFGToLLVM::compileSwitch):
+        (JSC::FTL::LowerDFGToLLVM::compare):
+        (JSC::FTL::LowerDFGToLLVM::boolify):
+        (JSC::FTL::LowerDFGToLLVM::opposite):
+        (JSC::FTL::LowerDFGToLLVM::lowJSValue):
+        (JSC::FTL::LowerDFGToLLVM::speculate):
+        (JSC::FTL::LowerDFGToLLVM::isArrayType):
+        (JSC::FTL::LowerDFGToLLVM::exitValueForAvailability):
+        (JSC::FTL::LowerDFGToLLVM::exitValueForNode):
+        (JSC::FTL::LowerDFGToLLVM::setInt52):
+        Changed DFG_CRASH() to LOWERING_FAILED().  Updated related control flow as appropriate.
+
+        (JSC::FTL::LowerDFGToLLVM::loweringFailed): New error reporting member function.
+
+2015-02-17  Filip Pizlo  <fpizlo@apple.com>
+
+        StackLayoutPhase should use CodeBlock::usesArguments rather than FunctionExecutable::usesArguments
+        https://bugs.webkit.org/show_bug.cgi?id=141721
+        rdar://problem/17198633
+
+        Reviewed by Michael Saboff.
+        
+        I've seen cases where the two are out of sync.  We know we can trust the CodeBlock::usesArguments because
+        we use it everywhere else.
+        
+        No test because I could never reproduce the crash.
+
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::usesArguments):
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+
+2015-02-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improved Console Support for Bound Functions
+        https://bugs.webkit.org/show_bug.cgi?id=141635
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::getInternalProperties):
+        Expose internal properties of a JSBoundFunction.
+
+2015-02-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Console Support for Promise Objects
+        https://bugs.webkit.org/show_bug.cgi?id=141634
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::getInternalProperties):
+        * inspector/InjectedScriptSource.js:
+        Include internal properties in previews. Share code
+        with normal internal property handling.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::constructInternalProperty):
+        (Inspector::JSInjectedScriptHost::getInternalProperties):
+        Provide internal state of Promises.
+
+        * inspector/protocol/Runtime.json:
+        Provide an optional field to distinguish if a PropertyPreview
+        is for an Internal property or not.
+
+2015-02-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Throwing from an FTL call IC slow path may result in tag registers being clobbered on 64-bit CPUs
+        https://bugs.webkit.org/show_bug.cgi?id=141717
+        rdar://problem/19863382
+
+        Reviewed by Geoffrey Garen.
+        
+        The best solution is to ensure that the engine catching an exception restores tag registers.
+        
+        Each of these new test cases reliably crashed prior to this patch and they don't crash at all now.
+
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_catch):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * tests/stress/throw-from-ftl-call-ic-slow-path-cells.js: Added.
+        * tests/stress/throw-from-ftl-call-ic-slow-path-undefined.js: Added.
+        * tests/stress/throw-from-ftl-call-ic-slow-path.js: Added.
+
+2015-02-17  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Add the necessary setupArgumentsWithExecState after bug141332
+        https://bugs.webkit.org/show_bug.cgi?id=141714
+
+        Reviewed by Michael Saboff.
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+
 2015-02-15  Sam Weinig  <sam@webkit.org>
 
         Add experimental <attachment> element support

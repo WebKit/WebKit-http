@@ -1,3 +1,93 @@
+2015-02-18  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Remove some leftovers related to "stack" removal
+        https://bugs.webkit.org/show_bug.cgi?id=141722
+
+        Reviewed by Sergio Villar Senin.
+
+        In r177858 "stack" packing mode was removed from grid-auto-flow syntax.
+
+        This patch removes some missing cases, where "stack" was still used in
+        the layout tests.
+
+        * fast/css-grid-layout/grid-auto-flow-resolution.html: Remove
+        gridAutoFlowStack usage.
+        * fast/css-grid-layout/resources/grid.css:
+        (.gridAutoFlowStack): Deleted.
+
+2015-02-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update editing/selection/fake-drag.html after r177774
+        https://bugs.webkit.org/show_bug.cgi?id=141605
+
+        Reviewed by Alexey Proskuryakov.
+
+        Text metrics changed, so the locations where the "user" interacts with the page should
+        change accordingly.
+
+        * editing/selection/fake-drag.html:
+        * platform/mac/TestExpectations:
+
+2015-02-17  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector/css/stylesheet-with-mutations.html is a flaky timeout/crash
+        https://bugs.webkit.org/show_bug.cgi?id=141601
+
+        Skipping the test; it's flaky in such a way that I'm concerned about it breaking
+        subsequent tests.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-02-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improved Console Support for Bound Functions
+        https://bugs.webkit.org/show_bug.cgi?id=141635
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-get-properties-expected.txt:
+        * inspector/model/remote-object-get-properties.html:
+        Show that boundFunction has extra properties (targetFunction, boundThis, boundArgs).
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        Include a bound function. Much different from a function now though.
+
+2015-02-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Console Support for Promise Objects
+        https://bugs.webkit.org/show_bug.cgi?id=141634
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        Include more tests for Promises.
+
+2015-02-17  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        Unreviewed GTK Gardening 17th February.
+
+        https://bugs.webkit.org/show_bug.cgi?id=141712
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/press-targets-center-point-expected.txt: Added. Rebaselined after r180107.
+        * platform/gtk/svg/custom/glyph-selection-non-bmp-expected.txt: Added. Rebaselined after r177774.
+        * platform/gtk/svg/text/textPathBoundsBug-expected.txt: Added. Rebaselined after r177774.
+
+2015-02-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Document some accessibility and animation debug assertions (Unreviewed)
+
+        * platform/win/TestExpectations:
+
+2015-02-17  Brent Fulgham  <bfulgham@apple.com>
+
+        Document some debug assertions in Accessibility tests (Unreviewed)
+
+        * platform/win/TestExpectations:
+
 2015-02-17  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Update svg/animations/animate-text-nested-transforms.html after r177774

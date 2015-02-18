@@ -1,3 +1,312 @@
+2015-02-18  Timothy Horton  <timothy_horton@apple.com>
+
+        Remove more references to WebCore.exp.in
+        https://bugs.webkit.org/show_bug.cgi?id=141747
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2015-02-17  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add a trivial code generator for the DFA
+        https://bugs.webkit.org/show_bug.cgi?id=141017
+
+        Reviewed by Andreas Kling.
+
+        Nothing fancy yet, this is just doing a literal translation from the DFA
+        to machine code. It is extremely inefficient at the moment.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * contentextensions/ContentExtensionsBackend.cpp:
+        (WebCore::ContentExtensions::ContentExtensionsBackend::ContentExtensionsBackend):
+        (WebCore::ContentExtensions::ContentExtensionsBackend::setRuleList):
+        (WebCore::ContentExtensions::addActionToHashSet):
+        (WebCore::ContentExtensions::ContentExtensionsBackend::shouldBlockURL):
+        * contentextensions/ContentExtensionsBackend.h:
+        * contentextensions/DFA.cpp:
+        (WebCore::ContentExtensions::DFA::nextState): Deleted.
+        (WebCore::ContentExtensions::DFA::actions): Deleted.
+        * contentextensions/DFA.h:
+        (WebCore::ContentExtensions::DFA::size):
+        (WebCore::ContentExtensions::DFA::nodeAt):
+        * contentextensions/DFACompiler.cpp: Added.
+        (WebCore::ContentExtensions::compileDFA):
+        (WebCore::ContentExtensions::DFACodeGenerator::DFACodeGenerator):
+        (WebCore::ContentExtensions::DFACodeGenerator::compile):
+        (WebCore::ContentExtensions::DFACodeGenerator::lowerStateMachine):
+        (WebCore::ContentExtensions::DFACodeGenerator::lowerNode):
+        (WebCore::ContentExtensions::DFACodeGenerator::getNextCharacter):
+        (WebCore::ContentExtensions::DFACodeGenerator::callAddActionFunction):
+        * contentextensions/DFACompiler.h: Copied from Source/WebCore/contentextensions/DFA.h.
+
+2015-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Rename ScopedEventQueue::instance() to singleton()
+        https://bugs.webkit.org/show_bug.cgi?id=141738
+
+        Reviewed by Daniel Bates.
+
+        Rename ScopedEventQueue::instance() to singleton(), as per coding
+        style. Also modernize the code a little bit.
+
+        * dom/EventDispatcher.cpp:
+        (WebCore::EventDispatcher::dispatchScopedEvent):
+        * dom/ScopedEventQueue.cpp:
+        (WebCore::ScopedEventQueue::singleton):
+        (WebCore::ScopedEventQueue::dispatchAllEvents):
+        (WebCore::ScopedEventQueue::incrementScopingLevel):
+        (WebCore::ScopedEventQueue::decrementScopingLevel):
+        (WebCore::ScopedEventQueue::ScopedEventQueue): Deleted.
+        (WebCore::ScopedEventQueue::~ScopedEventQueue): Deleted.
+        (WebCore::ScopedEventQueue::instance): Deleted.
+        * dom/ScopedEventQueue.h:
+        (WebCore::EventQueueScope::EventQueueScope):
+        (WebCore::EventQueueScope::~EventQueueScope):
+
+2015-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Remove dead code from FontCache
+        https://bugs.webkit.org/show_bug.cgi?id=141741
+
+        Reviewed by Daniel Bates.
+
+        Remove dead code from FontCache:
+        - getFontFamilyForCharacters() has no implementation.
+        - SimpleFontFamily is unused.
+
+        * platform/graphics/FontCache.h:
+
+2015-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Rename CSSPropertyAnimationWrapperMap::instance() to singleton()
+        https://bugs.webkit.org/show_bug.cgi?id=141739
+
+        Reviewed by Simon Fraser.
+
+        Rename CSSPropertyAnimationWrapperMap::instance() to singleton(), as
+        per coding style.
+
+        * page/animation/CSSPropertyAnimation.cpp:
+        (WebCore::CSSPropertyAnimationWrapperMap::singleton):
+        (WebCore::CSSPropertyAnimation::blendProperties):
+        (WebCore::CSSPropertyAnimation::animationOfPropertyIsAccelerated):
+        (WebCore::CSSPropertyAnimation::animatableShorthandsAffectingProperty):
+        (WebCore::CSSPropertyAnimation::propertiesEqual):
+        (WebCore::CSSPropertyAnimation::getPropertyAtIndex):
+        (WebCore::CSSPropertyAnimation::getNumProperties):
+        (WebCore::CSSPropertyAnimationWrapperMap::instance): Deleted.
+
+2015-02-17  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r180224): Remove unused generate-export-file script
+        <http://webkit.org/b/141491>
+
+        * generate-export-file: Removed.  This was the script used to
+        create WebCore.exp files for iOS since we couldn't compile a
+        host-side tool to run like we did on Mac OS X.  Dont't tell
+        anyone, but this was an epic hack I created while merging open
+        source changes to the internal iOS WebKit repository around the
+        time that the WebCore.exp.in file was created.  End of an era.
+
+2015-02-17  David Kilzer  <ddkilzer@apple.com>
+
+        SoftLinking.h: Update copyright and license; clean up whitespace
+
+        * platform/win/SoftLinking.h:
+
+2015-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Slight CachedPage class clean up
+        https://bugs.webkit.org/show_bug.cgi?id=141693
+
+        Reviewed by Andreas Kling.
+
+        Slight CachedPage class clean up:
+        - Drop unnecessary m_timeStamp data member
+        - Protect m_needsCaptionPreferencesChanged data member with
+          #if ENABLE(VIDEO_TRACK)
+        - Merge destroy() method into the destructor as this is the
+          only caller
+        - Update clear() to reset 2 data members that were missing
+
+2015-02-17  Anders Carlsson  <andersca@apple.com>
+
+        Silence two -Wcast-qual warnings.
+        rdar://problem/19758266
+
+        * platform/ios/wak/WKUtilities.c:
+        (WKRetain):
+        (WKRelease):
+
+2015-02-17  Zalan Bujtas  <zalan@apple.com>
+
+        Minor RenderTable* class cleanups.
+        https://bugs.webkit.org/show_bug.cgi?id=141707
+
+        Reviewed by Andreas Kling.
+
+        Use in-class initializer where possible.
+        Remove redundant code.
+        Move multiline implementations out of class declaration.
+
+        No change in functionality.
+
+        * rendering/RenderTableCaption.cpp:
+        (WebCore::RenderTableCaption::insertedIntoTree):
+        (WebCore::RenderTableCaption::willBeRemovedFromTree):
+        (WebCore::RenderTableCaption::containingBlockLogicalWidthForContent): Deleted.
+        * rendering/RenderTableCaption.h:
+        * rendering/RenderTableCell.cpp:
+        (WebCore::RenderTableCell::RenderTableCell):
+        * rendering/RenderTableCell.h:
+        (WebCore::RenderTableCell::colSpan):
+        (WebCore::RenderTableCell::rowSpan):
+        (WebCore::RenderTableCell::setCol):
+        (WebCore::RenderTableCell::col):
+        (WebCore::RenderTableCell::section):
+        (WebCore::RenderTableCell::table):
+        (WebCore::RenderTableCell::rowIndex):
+        (WebCore::RenderTableCell::styleOrColLogicalWidth):
+        (WebCore::RenderTableCell::logicalHeightForRowSizing):
+        (WebCore::RenderTableCell::isBaselineAligned):
+        (WebCore::RenderTableCell::borderAdjoiningTableStart):
+        (WebCore::RenderTableCell::borderAdjoiningTableEnd):
+        (WebCore::RenderTableCell::borderAdjoiningCellBefore):
+        (WebCore::RenderTableCell::borderAdjoiningCellAfter):
+        * rendering/RenderTableCol.cpp:
+        (WebCore::RenderTableCol::RenderTableCol):
+        * rendering/RenderTableCol.h:
+        (WebCore::RenderTableCol::enclosingColumnGroupIfAdjacentBefore):
+        (WebCore::RenderTableCol::enclosingColumnGroupIfAdjacentAfter):
+        * rendering/RenderTableRow.h:
+        (WebCore::RenderTableRow::setRowIndex):
+        (WebCore::RenderTableRow::rowIndex):
+        (WebCore::RenderTableRow::borderAdjoiningTableStart):
+        (WebCore::RenderTableRow::borderAdjoiningTableEnd):
+        (WebCore::RenderTableRow::table):
+        (WebCore::RenderTableSection::firstRow):
+        (WebCore::RenderTableSection::lastRow):
+        * rendering/RenderTableSection.cpp:
+        (WebCore::RenderTableSection::RenderTableSection):
+        (WebCore::RenderTableSection::dirtiedRows):
+        (WebCore::RenderTableSection::dirtiedColumns):
+        (WebCore::RenderTableSection::paintObject):
+        (WebCore::RenderTableSection::nodeAtPoint):
+        * rendering/RenderTableSection.h:
+        (WebCore::CellSpan::CellSpan):
+        (WebCore::RenderTableSection::borderAdjoiningTableStart):
+        (WebCore::RenderTableSection::borderAdjoiningTableEnd):
+        (WebCore::RenderTableSection::cellAt):
+        (WebCore::RenderTableSection::primaryCellAt):
+        (WebCore::RenderTableSection::rowRendererAt):
+        (WebCore::RenderTableSection::outerBorderLeft):
+        (WebCore::RenderTableSection::outerBorderRight):
+        (WebCore::RenderTableSection::outerBorderTop):
+        (WebCore::RenderTableSection::outerBorderBottom):
+        (WebCore::RenderTableSection::numRows):
+        (WebCore::RenderTableSection::recalcCellsIfNeeded):
+        (WebCore::RenderTableSection::rowBaseline):
+        (WebCore::RenderTableSection::fullTableRowSpan):
+        (WebCore::CellSpan::start): Deleted.
+        (WebCore::CellSpan::end): Deleted.
+
+2015-02-16  Dean Jackson  <dino@apple.com>
+
+        REGRESSION: Video control fails to hide after playback begins in reflowable EPUB files
+        https://bugs.webkit.org/show_bug.cgi?id=141689
+        <rdar://problem/19689286>
+
+        Reviewed by Eric Carlson.
+
+        The iBooks app turns off the requirement for a user gesture
+        before triggering playback. When we moved to script-based
+        media controls there were a few regressions in this setup.
+        This makes them behave a lot more like iOS 7.
+
+        * Modules/mediacontrols/mediaControlsApple.js:
+        (Controller.prototype.setPlaying): We don't want to hide the controls
+        yet, just start a hiding timer.
+        * Modules/mediacontrols/mediaControlsiOS.js:
+        (ControllerIOS.prototype.shouldHaveStartPlaybackButton): If we've ever
+        played before, we don't want to show the big start button. If we
+        are in the middle of construction, we do want to show it. We no
+        longer care about the case where you're not in setup and have
+        the relaxed restrictions (we still want to show the start button
+        in that case).
+        (ControllerIOS.prototype.showControls): When we show the controls,
+        make sure our timeline is up to date. This is necessary for the
+        cases where we automatically show the controls, such as when we hit
+        the end of a video.
+        (ControllerIOS.prototype.updateTime): Make sure to pass the forceUpdate
+        parameter on to the super-method.
+        (ControllerIOS.prototype.setPlaying):
+        (ControllerIOS.prototype.progressFillStyle): Deleted.
+
+2015-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Access MemoryPressureHandler global instance via a singleton() static member function
+        https://bugs.webkit.org/show_bug.cgi?id=141691
+
+        Reviewed by Andreas Kling.
+
+        Access MemoryPressureHandler global instance via a singleton() static
+        member function as per coding style. Also make all other member
+        functions non-static as callers can just use singleton() to get the
+        instance and access methods. This avoid having to call
+        MemoryPressureHandler::singleton() from member functions.
+
+        * bindings/js/ScriptController.cpp:
+        (WebCore::collectGarbageAfterWindowShellDestruction):
+        * history/PageCache.cpp:
+        (WebCore::PageCache::canCache):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::commitProvisionalLoad):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::willPaintContents):
+        (WebCore::FrameView::didPaintContents):
+        (WebCore::FrameView::computeCoverageRect):
+        * platform/MemoryPressureHandler.cpp:
+        (WebCore::MemoryPressureHandler::singleton):
+        (WebCore::MemoryPressureHandler::MemoryPressureHandler):
+        (WebCore::MemoryPressureHandler::releaseCriticalMemory):
+        (WebCore::memoryPressureHandler): Deleted.
+        * platform/MemoryPressureHandler.h:
+        (WebCore::MemoryPressureHandler::setLowMemoryHandler):
+        * platform/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WebCore::MemoryPressureHandler::platformReleaseMemory):
+        (WebCore::MemoryPressureHandler::install):
+        (WebCore::MemoryPressureHandler::holdOff):
+        (WebCore::respondToMemoryPressureCallback):
+        * platform/graphics/FontCache.cpp:
+        (WebCore::FontCache::purgeInactiveFontDataIfNeeded):
+        * platform/ios/LegacyTileCache.mm:
+        (WebCore::LegacyTileCache::createTilesInActiveGrid):
+        * platform/ios/LegacyTileGrid.mm:
+        (WebCore::LegacyTileGrid::shouldUseMinimalTileCoverage):
+        * platform/ios/LegacyTileLayerPool.mm:
+        (WebCore::LegacyTileLayerPool::addLayer):
+        * platform/ios/TileControllerMemoryHandlerIOS.cpp:
+        (WebCore::TileControllerMemoryHandler::tileControllerGainedUnparentedTiles):
+        * platform/linux/MemoryPressureHandlerLinux.cpp:
+        (WebCore::MemoryPressureHandler::waitForMemoryPressureEvent):
+
+2015-02-17  Alex Christensen  <achristensen@webkit.org>
+
+        Remove WebCore.exp.in and clean up.
+        https://bugs.webkit.org/show_bug.cgi?id=141491
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/WebCore.xcconfig:
+        Don't use exported symbols files.
+        * DerivedSources.make:
+        Don't generate export files.
+        * WebCore.exp.in: Removed.
+        * WebCore.xcodeproj/project.pbxproj:
+        Removed WebCoreExportFileGenerator targets.
+        * make-export-file-generator: Removed.
+
 2015-02-17  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Use HashMap::add instead of get/contains + set in DOMObjectCache

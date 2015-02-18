@@ -30,6 +30,7 @@
 #include "Error.h"
 #include "InjectedScriptHost.h"
 #include "JSArray.h"
+#include "JSBoundFunction.h"
 #include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSInjectedScriptHostPrototype.h"
@@ -42,6 +43,10 @@
 #include "SourceCode.h"
 #include "TypedArrayInlines.h"
 #include "WeakMapData.h"
+
+#if ENABLE(PROMISES)
+#include "JSPromise.h"
+#endif
 
 using namespace JSC;
 
@@ -192,9 +197,52 @@ JSValue JSInjectedScriptHost::functionDetails(ExecState* exec)
     return result;
 }
 
-JSValue JSInjectedScriptHost::getInternalProperties(ExecState*)
+static JSObject* constructInternalProperty(ExecState* exec, const String& name, JSValue value)
 {
-    // FIXME: <https://webkit.org/b/94533> [JSC] expose object inner properties to debugger
+    JSObject* result = constructEmptyObject(exec);
+    result->putDirect(exec->vm(), Identifier(exec, "name"), jsString(exec, name));
+    result->putDirect(exec->vm(), Identifier(exec, "value"), value);
+    return result;
+}
+
+JSValue JSInjectedScriptHost::getInternalProperties(ExecState* exec)
+{
+    if (exec->argumentCount() < 1)
+        return jsUndefined();
+
+    JSValue value = exec->uncheckedArgument(0);
+
+#if ENABLE(PROMISES)
+    if (JSPromise* promise = jsDynamicCast<JSPromise*>(value)) {
+        unsigned index = 0;
+        JSArray* array = constructEmptyArray(exec, nullptr);
+        switch (promise->status()) {
+        case JSPromise::Status::Unresolved:
+            array->putDirectIndex(exec, index++, constructInternalProperty(exec, ASCIILiteral("status"), jsNontrivialString(exec, ASCIILiteral("pending"))));
+            break;
+        case JSPromise::Status::HasResolution:
+            array->putDirectIndex(exec, index++, constructInternalProperty(exec, ASCIILiteral("status"), jsNontrivialString(exec, ASCIILiteral("resolved"))));
+            array->putDirectIndex(exec, index++, constructInternalProperty(exec, ASCIILiteral("result"), promise->result()));
+            break;
+        case JSPromise::Status::HasRejection:
+            array->putDirectIndex(exec, index++, constructInternalProperty(exec, ASCIILiteral("status"), jsNontrivialString(exec, ASCIILiteral("rejected"))));
+            array->putDirectIndex(exec, index++, constructInternalProperty(exec, ASCIILiteral("result"), promise->result()));
+            break;
+        }
+        // FIXME: <https://webkit.org/b/141664> Web Inspector: ES6: Improved Support for Promises - Promise Reactions
+        return array;
+    }
+#endif
+
+    if (JSBoundFunction* boundFunction = jsDynamicCast<JSBoundFunction*>(value)) {
+        unsigned index = 0;
+        JSArray* array = constructEmptyArray(exec, nullptr, 3);
+        array->putDirectIndex(exec, index++, constructInternalProperty(exec, "targetFunction", boundFunction->targetFunction()));
+        array->putDirectIndex(exec, index++, constructInternalProperty(exec, "boundThis", boundFunction->boundThis()));
+        array->putDirectIndex(exec, index++, constructInternalProperty(exec, "boundArgs", boundFunction->boundArgs()));
+        return array;
+    }
+
     return jsUndefined();
 }
 

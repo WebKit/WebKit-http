@@ -1,3 +1,123 @@
+2015-02-18  Timothy Horton  <timothy_horton@apple.com>
+
+        Remove more references to WebCore.exp.in
+        https://bugs.webkit.org/show_bug.cgi?id=141747
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        (ShouldBuildTest):
+
+2015-02-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Windows test results should not fall back to mac-mountainlion after r180176
+        https://bugs.webkit.org/show_bug.cgi?id=141719
+
+        Reviewed by Brent Fulgham.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        (_should_file_trigger_build):
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.default_baseline_search_path):
+        * Scripts/webkitpy/port/win_unittest.py:
+        (WinPortTest.test_baseline_search_path):
+
+2015-02-17  Daniel Bates  <dabates@apple.com>
+
+        [iOS] run-webkit-tests should check that simctl can boot and shutdown simulator device before running tests
+        https://bugs.webkit.org/show_bug.cgi?id=141718
+
+        Reviewed by Alex Christensen.
+
+        We should only run layout tests if simctl can successfully boot and shutdown the testing device.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.check_sys_deps): Modified to call Simulator.check_simulator_device_and_erase_if_needed().
+        Log a error and return False if we are unable to boot the simulator device so that the caller can take
+        appropriate action, say exit(3) before running any layout tests.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator._boot_and_shutdown_simulator_device): Added. Boot and then shut down the simulator device
+        with the specified UDID.
+        (Simulator.check_simulator_device_and_erase_if_needed): Added. Checks that simulator device
+        with the specified UDID can successfully boot and shut down. We make at most two attempts to
+        boot and shut down the device, erasing the device between tries so as to restore the device
+        to a known good state.
+
+2015-02-17  Daniel Bates  <dabates@apple.com>
+
+        run_webkit_tests.py should not know about iOS Simulator details
+        https://bugs.webkit.org/show_bug.cgi?id=141711
+
+        Reviewed by Alex Christensen.
+
+        Run_webkit_tests.py should only parse the iOS-specific command
+        line options --runtime and --device-type. Let the port-specific
+        logic in ios.py validate the parsed options and instantiate
+        internal data structures.
+
+        Currently run_webkit_tests.py parses the iOS-specific command
+        line options --runtime and --device-type, validates them, and
+        instantiates internal data structures from the parsed strings.
+        Instead the validation logic and instantiation of internal
+        data structures should be handled by the iOS port object.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (_set_up_derived_options): Remove logic to validate --runtime and --device-type
+        and instantiate internal data structures for them.
+        * Scripts/webkitpy/port/driver.py:
+        (IOSSimulatorDriver.cmd_line): Modified to reference IOSSimulatorPort.simulator_runtime
+        and IOSSimulatorPort.simulator_device_type for the iOS Simulator runtime and device type,
+        respectively.
+        * Scripts/webkitpy/port/ios.py: Sort the list of imports.
+        (IOSSimulatorPort.simulator_runtime): Added. Instantiates a Runtime
+        object from --runtime, if specified. Otherwise, instantiates a Runtime
+        object for the latest installed iphonesimulator SDK version.
+        (IOSSimulatorPort.simulator_device_type): Added. Instantiates a DeviceType
+        object from --device-type, if specified. Otherwise, instantiates
+        a DeviceType object for a iPhone 5 or iPhone 5s when on a 32-bit and 64-bit
+        machine, respectively.
+        (IOSSimulatorPort.check_sys_deps): Added. Validate if the chosen iOS simulator
+        runtime is available to use.
+        (IOSSimulatorPort.testing_device): Modified to make use of properties simulator_device_type
+        and simulator_runtime for the iOS Simulator device type and runtime, respectively.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Runtime.from_version_string): Added. Turns around and calls Runtime.from_identifier()
+        with a runtime identifier for the specified iOS version.
+
+2015-02-17  Dana Burkart  <dburkart@apple.com>
+
+        ASan does not like JSC::MachineThreads::tryCopyOtherThreadStack
+        https://bugs.webkit.org/show_bug.cgi?id=141672
+
+        Reviewed by David Kilzer.
+
+        * asan/webkit-asan-ignore.txt:
+
+2015-02-17  Alex Christensen  <achristensen@webkit.org>
+
+        Remove WebCore.exp.in and clean up.
+        https://bugs.webkit.org/show_bug.cgi?id=141491
+
+        Reviewed by Andreas Kling.
+
+        * Scripts/sort-export-file: Removed.
+        * Scripts/webkitpy/style/checker.py:
+        (_all_categories):
+        (FileType):
+        (CheckerDispatcher._file_type):
+        (CheckerDispatcher._create_checker):
+        Don't check if the export files are sorted.
+        * Scripts/webkitpy/style/checkers/exportfile.py: Removed.
+        * Scripts/webkitpy/style/checkers/exportfile_unittest.py: Removed.
+
+2015-02-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ make distcheck.
+
+        Do not exclude bmalloc directory from the tarball.
+
+        * gtk/manifest.txt.in:
+
 2015-02-17  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Fix /webkit2/WebKitDOMNode/dom-cache after r180214.
