@@ -116,6 +116,8 @@ inline void vmDeallocatePhysicalPages(void* p, size_t vmSize)
     vmValidate(p, vmSize);
 #if BOS(DARWIN)
     SYSCALL(madvise(p, vmSize, MADV_FREE_REUSABLE));
+#elif BOS(HAIKU)
+    SYSCALL(posix_madvise(p, vmSize, POSIX_MADV_DONTNEED));
 #else
     SYSCALL(madvise(p, vmSize, MADV_DONTNEED));
 #endif
@@ -126,6 +128,8 @@ inline void vmAllocatePhysicalPages(void* p, size_t vmSize)
     vmValidate(p, vmSize);
 #if BOS(DARWIN)
     SYSCALL(madvise(p, vmSize, MADV_FREE_REUSE));
+#elif BOS(HAIKU)
+    SYSCALL(posix_madvise(p, vmSize, POSIX_MADV_NORMAL));
 #else
     SYSCALL(madvise(p, vmSize, MADV_NORMAL));
 #endif
