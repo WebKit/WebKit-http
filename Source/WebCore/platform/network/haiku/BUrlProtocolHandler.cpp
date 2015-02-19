@@ -410,7 +410,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         return;
     }
 
-    ResourceRequest* nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
+    ResourceRequest& currentRequest = m_resourceHandle->firstRequest();
 
     Credential proposedCredential(d->m_user, d->m_pass, CredentialPersistenceForSession);
 
@@ -424,8 +424,8 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         // Handle this just like redirects.
         m_redirected = true;
 
-        nextRequest->setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
-        client->willSendRequest(m_resourceHandle, *nextRequest, response);
+        currentRequest.setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
+        client->willSendRequest(m_resourceHandle, currentRequest, response);
     } else {
         client->didFinishLoading(m_resourceHandle, 0);
     }
@@ -508,10 +508,11 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
             return;
         }
 
-        ResourceRequest* nextRequest = new ResourceRequest(m_resourceHandle->firstRequest());
-        nextRequest->setURL(location);
+        // Notify the client that we are redirecting.
+        ResourceRequest& request = m_resourceHandle->firstRequest();
+        request.setURL(location);
 
-        client->willSendRequest(m_resourceHandle, *nextRequest, response);
+        client->willSendRequest(m_resourceHandle, request, response);
     } else {
         client->didReceiveResponse(m_resourceHandle, response);
     }
