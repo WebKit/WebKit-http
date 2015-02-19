@@ -170,7 +170,7 @@ my @features = (
       define => "ENABLE_ES6_CLASS_SYNTAX", default => 0, value => \$classSyntax },
 
     { option => "csp-next", desc => "Toggle Content Security Policy 1.1 support",
-      define => "ENABLE_CSP_NEXT", default => isGtk(), value => \$cspNextSupport },
+      define => "ENABLE_CSP_NEXT", default => (isGtk() || isHaiku()), value => \$cspNextSupport },
 
     { option => "css-device-adaptation", desc => "Toggle CSS Device Adaptation support",
       define => "ENABLE_CSS_DEVICE_ADAPTATION", default => isEfl(), value => \$cssDeviceAdaptation },
