@@ -1,3 +1,416 @@
+2015-02-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Run JSC tests on ARM EFL bots
+        https://bugs.webkit.org/show_bug.cgi?id=141165
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunJavaScriptCoreTests.countFailures):
+        (RunRemoteJavaScriptCoreTests):
+        (RunRemoteJavaScriptCoreTests.start):
+        (BuildAndRemoteJSCTestsFactory):
+        (BuildAndRemoteJSCTestsFactory.__init__):
+
+2015-02-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Streamline unexported function build fixes
+        https://bugs.webkit.org/show_bug.cgi?id=141761
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/check-for-weak-vtables-and-externals: (readXcode5SymbolsToIgnore): Deleted.
+        We don't need to ignore symbols that are not exported due to the .unexp file.
+
+2015-02-18  Timothy Horton  <timothy_horton@apple.com>
+
+        Remove more references to WebCore.exp.in
+        https://bugs.webkit.org/show_bug.cgi?id=141747
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        (ShouldBuildTest):
+
+2015-02-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Windows test results should not fall back to mac-mountainlion after r180176
+        https://bugs.webkit.org/show_bug.cgi?id=141719
+
+        Reviewed by Brent Fulgham.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        (_should_file_trigger_build):
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.default_baseline_search_path):
+        * Scripts/webkitpy/port/win_unittest.py:
+        (WinPortTest.test_baseline_search_path):
+
+2015-02-17  Daniel Bates  <dabates@apple.com>
+
+        [iOS] run-webkit-tests should check that simctl can boot and shutdown simulator device before running tests
+        https://bugs.webkit.org/show_bug.cgi?id=141718
+
+        Reviewed by Alex Christensen.
+
+        We should only run layout tests if simctl can successfully boot and shutdown the testing device.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.check_sys_deps): Modified to call Simulator.check_simulator_device_and_erase_if_needed().
+        Log a error and return False if we are unable to boot the simulator device so that the caller can take
+        appropriate action, say exit(3) before running any layout tests.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator._boot_and_shutdown_simulator_device): Added. Boot and then shut down the simulator device
+        with the specified UDID.
+        (Simulator.check_simulator_device_and_erase_if_needed): Added. Checks that simulator device
+        with the specified UDID can successfully boot and shut down. We make at most two attempts to
+        boot and shut down the device, erasing the device between tries so as to restore the device
+        to a known good state.
+
+2015-02-17  Daniel Bates  <dabates@apple.com>
+
+        run_webkit_tests.py should not know about iOS Simulator details
+        https://bugs.webkit.org/show_bug.cgi?id=141711
+
+        Reviewed by Alex Christensen.
+
+        Run_webkit_tests.py should only parse the iOS-specific command
+        line options --runtime and --device-type. Let the port-specific
+        logic in ios.py validate the parsed options and instantiate
+        internal data structures.
+
+        Currently run_webkit_tests.py parses the iOS-specific command
+        line options --runtime and --device-type, validates them, and
+        instantiates internal data structures from the parsed strings.
+        Instead the validation logic and instantiation of internal
+        data structures should be handled by the iOS port object.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (_set_up_derived_options): Remove logic to validate --runtime and --device-type
+        and instantiate internal data structures for them.
+        * Scripts/webkitpy/port/driver.py:
+        (IOSSimulatorDriver.cmd_line): Modified to reference IOSSimulatorPort.simulator_runtime
+        and IOSSimulatorPort.simulator_device_type for the iOS Simulator runtime and device type,
+        respectively.
+        * Scripts/webkitpy/port/ios.py: Sort the list of imports.
+        (IOSSimulatorPort.simulator_runtime): Added. Instantiates a Runtime
+        object from --runtime, if specified. Otherwise, instantiates a Runtime
+        object for the latest installed iphonesimulator SDK version.
+        (IOSSimulatorPort.simulator_device_type): Added. Instantiates a DeviceType
+        object from --device-type, if specified. Otherwise, instantiates
+        a DeviceType object for a iPhone 5 or iPhone 5s when on a 32-bit and 64-bit
+        machine, respectively.
+        (IOSSimulatorPort.check_sys_deps): Added. Validate if the chosen iOS simulator
+        runtime is available to use.
+        (IOSSimulatorPort.testing_device): Modified to make use of properties simulator_device_type
+        and simulator_runtime for the iOS Simulator device type and runtime, respectively.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Runtime.from_version_string): Added. Turns around and calls Runtime.from_identifier()
+        with a runtime identifier for the specified iOS version.
+
+2015-02-17  Dana Burkart  <dburkart@apple.com>
+
+        ASan does not like JSC::MachineThreads::tryCopyOtherThreadStack
+        https://bugs.webkit.org/show_bug.cgi?id=141672
+
+        Reviewed by David Kilzer.
+
+        * asan/webkit-asan-ignore.txt:
+
+2015-02-17  Alex Christensen  <achristensen@webkit.org>
+
+        Remove WebCore.exp.in and clean up.
+        https://bugs.webkit.org/show_bug.cgi?id=141491
+
+        Reviewed by Andreas Kling.
+
+        * Scripts/sort-export-file: Removed.
+        * Scripts/webkitpy/style/checker.py:
+        (_all_categories):
+        (FileType):
+        (CheckerDispatcher._file_type):
+        (CheckerDispatcher._create_checker):
+        Don't check if the export files are sorted.
+        * Scripts/webkitpy/style/checkers/exportfile.py: Removed.
+        * Scripts/webkitpy/style/checkers/exportfile_unittest.py: Removed.
+
+2015-02-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ make distcheck.
+
+        Do not exclude bmalloc directory from the tarball.
+
+        * gtk/manifest.txt.in:
+
+2015-02-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix /webkit2/WebKitDOMNode/dom-cache after r180214.
+
+        I forgot to add the return of a bool function.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMNodeTest.cpp:
+        (WebKitDOMNodeTest::testDOMCache):
+
+2015-02-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] GObject DOM bindings object are cached forever
+        https://bugs.webkit.org/show_bug.cgi?id=141558
+
+        Reviewed by Sergio Villar Senin.
+
+        Add checks for all DOM objects to ensure they are not leaked. Also
+        add a dedicated test for the DOM Object Cache.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMNodeFilterTest.cpp:
+        (WebKitDOMNodeFilterTest::testTreeWalker):
+        (WebKitDOMNodeFilterTest::testNodeIterator):
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMNodeTest.cpp:
+        (WebKitDOMNodeTest::testHierarchyNavigation):
+        (WebKitDOMNodeTest::testInsertion):
+        (WebKitDOMNodeTest::testTagNames):
+        (WebKitDOMNodeTest::testDOMCache):
+        (registerTests):
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMXPathNSResolverTest.cpp:
+        (WebKitDOMXPathNSResolverTest::evaluateFooChildTextAndCheckResult):
+        (WebKitDOMXPathNSResolverTest::testXPathNSResolverNative):
+        (WebKitDOMXPathNSResolverTest::testXPathNSResolverCustom):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDOMNode.cpp:
+        (testWebKitDOMObjectCache):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (documentLoadedCallback):
+
+2015-02-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebKitFrame objects are never released
+        https://bugs.webkit.org/show_bug.cgi?id=141641
+
+        Reviewed by Martin Robinson.
+
+        Add a way to check GObjects leaks for WebProcess tests and check
+        WebKitFrame objects are not leaked.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/FrameTest.cpp:
+        (WebKitFrameTest::testMainFrame):
+        (WebKitFrameTest::testURI):
+        (WebKitFrameTest::testJavaScriptContext):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebProcessTest.cpp:
+        (WebProcessTest::assertObjectIsDeletedWhenTestFinishes):
+        (runTest):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebProcessTest.h:
+
+2015-02-16  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the MiniBrowser build with newer clang
+
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _toggleBooleanDefault:]):
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController windowWillClose:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController windowWillClose:]):
+        NSApp is id and clang gets confused about which -delegate we're talking about.
+
+2015-02-16  Antti Koivisto  <antti@apple.com>
+
+        Develop/Disable Caches does not properly disable disk cache
+        https://bugs.webkit.org/show_bug.cgi?id=141636
+
+        Reviewed by Anders Carlsson.
+
+        Make testRunner.setCacheModel() use the WKContext interface so the model gets passed to
+        the network process too.
+
+        This makes setCacheModel asynchronous but there don't seem to be any tests that expect otherwise.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        (WTR::InjectedBundle::setCacheModel):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+
+            Forward to TestController.
+
+        (WTR::TestRunner::setCacheModel):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2015-02-16  Andrzej Badowski  <a.badowski@samsung.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-02-15  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r180082): WebCore Debug builds fail on Mavericks due to weak export symbols
+        <http://webkit.org/b/141607>
+
+        * Scripts/check-for-weak-vtables-and-externals: Ignore weak
+        externals in Source/WebCore/Configurations/WebCore.unexp when
+        building with Xcode 5.x.
+        (readXcode5SymbolsToIgnore): Add.
+
+2015-02-15  KwangHyuk Kim  <hyuki.kim@samsung.com>
+
+        [EFL] fix Evas GL engine error.
+        https://bugs.webkit.org/show_bug.cgi?id=141621
+
+        Reviewed by Gyuyoung Kim.
+
+        As new elm engine api was added from efl 1.10, replace elm_config_preferred_engine_set with elm_config_accel_preference_set.
+
+        * MiniBrowser/efl/main.c:
+        (elm_main):
+
+2015-02-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [buildbot] Enable run-api-tests on release Mac bots
+        https://bugs.webkit.org/show_bug.cgi?id=141518
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunUnitTests):
+        (BuildFactory.__init__):
+        (TestFactory.__init__):
+        (BuildAndTestFactory.__init__):
+        (RunUnitTests.start): Deleted.
+        (unitTestsSupported): Deleted.
+
+2015-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Add a move constructor and move assignment operator to Deque
+        https://bugs.webkit.org/show_bug.cgi?id=141571
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/Tests/WTF/Deque.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-02-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        run-jsc-stress-tests --remote should skip profiler tests
+        https://bugs.webkit.org/show_bug.cgi?id=141470
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Add an initializer list constructor to Deque
+        https://bugs.webkit.org/show_bug.cgi?id=141565
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/Tests/WTF/Deque.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-02-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [buildbot] Remove buildJSCTool cruft from master.cfg
+        https://bugs.webkit.org/show_bug.cgi?id=141513
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunJavaScriptCoreTests):
+        (RunJavaScriptCoreTests.start):
+        (RunWebKitTests):
+        (RunWebKitTests.start):
+        (TestFactory.__init__):
+        (TestLeaksFactory.__init__):
+        (RunJavaScriptCoreTests.__init__): Deleted.
+        (RunWebKitTests.__init__): Deleted.
+
+2015-02-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, remove empty directories.
+
+        * DumpRenderTree/gtk: Removed.
+        * DumpRenderTree/gtk/fonts: Removed.
+        * DumpRenderTree/unix: Removed.
+        * DumpRenderTree/unix/TestNetscapePlugin: Removed.
+        * GtkLauncher: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk: Removed.
+        * TestWebKitAPI/Tests/WebKitGtk/resources: Removed.
+        * WebKitTestRunner/WebKitTestRunnerAppTests: Removed.
+        * WebKitTestRunner/WebKitTestRunnerAppTests/en.lproj: Removed.
+
+2015-02-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove Windows cruft from Tools/Scripts/build-webkittestrunner
+        https://bugs.webkit.org/show_bug.cgi?id=141519
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/build-webkittestrunner:
+
+2015-02-12  Alex Christensen  <achristensen@webkit.org>
+
+        Removed empty directory.
+
+        * WinCELauncher: Removed.
+
+2015-02-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        run-jsc-stress-tests --remote should be able add the necessary libraries to the bundle on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=141202
+
+        Reviewed by Darin Adler.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-02-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Test bot infrastructure should not try to find/use old Safari DLLs
+        https://bugs.webkit.org/show_bug.cgi?id=141517
+
+        Reviewed by Anders Carlsson.
+
+        We do not need to locate or use the DLL's that came with Safari, so stop
+        failing when we cannot find them. Also remove some old Qt cruft from this
+        script.
+
+        * BuildSlaveSupport/built-product-archive:
+        (archiveBuiltProduct): 
+        (extractBuiltProduct):
+
+2015-02-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] [64-bit] Work around MSVC2013 Runtime Bug
+        https://bugs.webkit.org/show_bug.cgi?id=141498
+        <rdar://problem/19803642>
+
+        Reviewed by Anders Carlsson.
+
+        Disable FMA3 instruction use in the MSVC math library to
+        work around a VS2013 runtime crash. We can remove this
+        workaround when we switch to VS2015.
+
+        * DumpRenderTree/cg/ImageDiffCG.cpp: Call _set_FMA3_enable(0) to
+        disable FMA3 support.
+        * DumpRenderTree/win/DumpRenderTree.cpp: Ditto.
+        * DumpRenderTree/win/ImageDiffCairo.cpp: Ditto.
+        * DumpRenderTree/win/TestRunnerWin.cpp: Ditto.
+        * Scripts/webkitperl/httpd.pm: Ditto.
+        * TestWebKitAPI/win/main.cpp: Ditto.
+        * WinLauncher/Common.cpp: Ditto.
+        * win/DLLLauncher/DLLLauncherMain.cpp: Ditto.
+
+2015-02-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        run-jsc-stress-tests should accept remote host config from JSON file
+        https://bugs.webkit.org/show_bug.cgi?id=141509
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+        * Scripts/run-jsc-stress-tests:
+
 2015-02-12  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Add API to allow overriding the default color chooser implementation

@@ -61,7 +61,11 @@ void MemoryPressureHandler::platformReleaseMemory(bool)
 #endif
 
 #if PLATFORM(IOS)
-    {
+    if (isUnderMemoryPressure()) {
+        gcController().garbageCollectSoon();
+    } else {
+        // If we're not under memory pressure, that means we're here due to impending process suspension.
+        // Do a full GC since this is our last chance to run any code.
         ReliefLogger log("Collecting JavaScript garbage");
         gcController().garbageCollectNow();
     }
@@ -103,8 +107,9 @@ void MemoryPressureHandler::install()
 #if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 80000
                 unsigned long status = dispatch_source_get_data(_cache_event_source);
                 critical = status == DISPATCH_MEMORYPRESSURE_CRITICAL;
-                bool wasCritical = memoryPressureHandler().isUnderMemoryPressure();
-                memoryPressureHandler().setUnderMemoryPressure(critical);
+                auto& memoryPressureHandler = MemoryPressureHandler::singleton();
+                bool wasCritical = memoryPressureHandler.isUnderMemoryPressure();
+                memoryPressureHandler.setUnderMemoryPressure(critical);
                 if (status == DISPATCH_MEMORYSTATUS_PRESSURE_NORMAL) {
                     if (ReliefLogger::loggingEnabled())
                         NSLog(@"System is no longer under (%s) memory pressure.", wasCritical ? "critical" : "non-critical");
@@ -114,7 +119,7 @@ void MemoryPressureHandler::install()
                 if (ReliefLogger::loggingEnabled())
                     NSLog(@"Got memory pressure notification (%s)", critical ? "critical" : "non-critical");
 #endif
-                memoryPressureHandler().respondToMemoryPressure(critical);
+                MemoryPressureHandler::singleton().respondToMemoryPressure(critical);
             });
             dispatch_resume(_cache_event_source);
         }
@@ -122,7 +127,7 @@ void MemoryPressureHandler::install()
 
     // Allow simulation of memory pressure with "notifyutil -p org.WebKit.lowMemory"
     notify_register_dispatch("org.WebKit.lowMemory", &_notifyToken, dispatch_get_main_queue(), ^(int) {
-        memoryPressureHandler().respondToMemoryPressure(true);
+        MemoryPressureHandler::singleton().respondToMemoryPressure(true);
 
         // We only do a synchronous GC when *simulating* memory pressure.
         // This gives us a more consistent picture of live objects at the end of testing.
@@ -176,7 +181,7 @@ void MemoryPressureHandler::holdOff(unsigned seconds)
                     dispatch_release(_timer_event_source);
                     _timer_event_source = 0;
                 }
-                memoryPressureHandler().install();
+                MemoryPressureHandler::singleton().install();
             });
             dispatch_resume(_timer_event_source);
         }
@@ -234,7 +239,7 @@ void MemoryPressureHandler::ReliefLogger::platformLog()
 #if PLATFORM(IOS)
 static void respondToMemoryPressureCallback(CFRunLoopObserverRef observer, CFRunLoopActivity /*activity*/, void* /*info*/)
 {
-    memoryPressureHandler().respondToMemoryPressureIfNeeded();
+    MemoryPressureHandler::singleton().respondToMemoryPressureIfNeeded();
     CFRunLoopObserverInvalidate(observer);
     CFRelease(observer);
 }

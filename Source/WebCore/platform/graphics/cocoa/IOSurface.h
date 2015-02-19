@@ -31,18 +31,18 @@
 #include "GraphicsContext.h"
 #include "IntSize.h"
 #include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
 class MachSendRight;
 
-class IOSurface final : public RefCounted<IOSurface> {
+class IOSurface final {
 public:
-    WEBCORE_EXPORT static PassRefPtr<IOSurface> create(IntSize, ColorSpace);
-    WEBCORE_EXPORT static PassRefPtr<IOSurface> createFromSendRight(const MachSendRight&, ColorSpace);
-    static PassRefPtr<IOSurface> createFromSurface(IOSurfaceRef, ColorSpace);
-    WEBCORE_EXPORT static PassRefPtr<IOSurface> createFromImage(CGImageRef);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, ColorSpace);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, IntSize contextSize, ColorSpace);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromSendRight(const MachSendRight&, ColorSpace);
+    static std::unique_ptr<IOSurface> createFromSurface(IOSurfaceRef, ColorSpace);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromImage(CGImageRef);
 
     static IntSize maximumSize();
 
@@ -82,10 +82,12 @@ public:
 
 private:
     IOSurface(IntSize, ColorSpace);
+    IOSurface(IntSize, IntSize contextSize, ColorSpace);
     IOSurface(IOSurfaceRef, ColorSpace);
 
     ColorSpace m_colorSpace;
     IntSize m_size;
+    IntSize m_contextSize;
     size_t m_totalBytes;
 
     OwnPtr<GraphicsContext> m_graphicsContext;

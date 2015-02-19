@@ -65,21 +65,43 @@ App.BugAdapter = DS.RESTAdapter.extend({
     }
 });
 
+App.Root = App.Model.extend({
+    repository: DS.belongsTo('repository'),
+    revision: DS.attr('string'),
+});
+
+App.RootSet = App.Model.extend({
+    roots: DS.hasMany('roots'),
+    revisionForRepository: function (repository)
+    {
+        var root = this.get('roots').findBy('repository', repository);
+        if (!root)
+            return null;
+        return root.get('revision');
+    }
+});
+
 App.TestGroup = App.NameLabelModel.extend({
-    analysisTask: DS.belongsTo('analysisTask'),
+    task: DS.belongsTo('analysisTask'),
     author: DS.attr('string'),
     createdAt: DS.attr('date'),
     buildRequests: DS.hasMany('buildRequests'),
-    rootSets: function ()
+    rootSets: DS.hasMany('rootSets'),
+    _fetchChartData: function ()
     {
-        var rootSetIds = [];
-        this.get('buildRequests').forEach(function (request) {
-            var rootSet = request.get('rootSet');
-            if (!rootSetIds.contains(rootSet))
-                rootSetIds.push(rootSet);
-        });
-        return rootSetIds;
-    }.property('buildRequests'),
+        var task = this.get('task');
+        if (!task)
+            return null;
+        var self = this;
+        return App.Manifest.fetchRunsWithPlatformAndMetric(this.store,
+            task.get('platform').get('id'), task.get('metric').get('id'), this.get('id')).then(
+            function (result) { self.set('chartData', result.data); },
+            function (error) {
+                // FIXME: Somehow this never gets called.
+                alert('Failed to fetch the results:' + error);
+                return null;
+            });
+    }.observes('task', 'task.platform', 'task.metric').on('init'),
 });
 
 App.TestGroup.create = function (analysisTask, name, rootSets, repetitionCount)
@@ -129,13 +151,7 @@ App.BuildRequest = App.Model.extend({
     {
         return this.get('order') + 1;
     }.property('order'),
-    rootSet: DS.attr('number'),
-    config: function ()
-    {
-        var rootSets = this.get('testGroup').get('rootSets');
-        var index = rootSets.indexOf(this.get('rootSet'));
-        return String.fromCharCode('A'.charCodeAt(0) + index);
-    }.property('testGroup', 'testGroup.rootSets'),
+    rootSet: DS.belongsTo('rootSet'),
     status: DS.attr('string'),
     statusLabel: function ()
     {
@@ -146,9 +162,36 @@ App.BuildRequest = App.Model.extend({
             return 'Scheduled';
         case 'running':
             return 'Running';
+        case 'failed':
+            return 'Failed';
         case 'completed':
-            return 'Finished';
+            return 'Completed';
         }
     }.property('status'),
+    url: DS.attr('string'),
     build: DS.attr('number'),
 });
+
+App.BuildRequest.aggregateStatuses = function (requests)
+{
+    var completeCount = 0;
+    var failureCount = 0;
+    requests.forEach(function (request) {
+        switch (request.get('status')) {
+        case 'failed':
+            failureCount++;
+            break;
+        case 'completed':
+            completeCount++;
+            break;
+        }
+    });
+    if (completeCount == requests.length)
+        return 'Done';
+    if (failureCount == requests.length)
+        return 'All failed';
+    var status = completeCount + ' out of ' + requests.length + ' completed';
+    if (failureCount)
+        status += ', ' + failureCount + ' failed';
+    return status;
+}

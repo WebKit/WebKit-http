@@ -197,6 +197,8 @@ App.InteractiveChartComponent = Ember.Component.extend({
     _updateDomain: function ()
     {
         var xDomain = this.get('domain');
+        if (!xDomain || !this._currentTimeSeriesData)
+            return null;
         var intrinsicXDomain = this._computeXAxisDomain(this._currentTimeSeriesData);
         if (!xDomain)
             xDomain = intrinsicXDomain;
@@ -249,12 +251,15 @@ App.InteractiveChartComponent = Ember.Component.extend({
         this._y.range([this._contentHeight, 0]);
 
         if (this._xAxis) {
+            this._xAxis.ticks(Math.round(this._contentWidth / 4 / rem));
             this._xAxis.tickSize(-this._contentHeight);
             this._xAxisLabels.attr("transform", "translate(0," + this._contentHeight + ")");
         }
 
-        if (this._yAxis)
+        if (this._yAxis) {
+            this._yAxis.ticks(Math.round(this._contentHeight / 2 / rem));
             this._yAxis.tickSize(-this._contentWidth);
+        }
 
         if (this._currentItemLine) {
             this._currentItemLine
@@ -370,6 +375,8 @@ App.InteractiveChartComponent = Ember.Component.extend({
     {
         var selection = this._currentSelection() || this.get('sharedSelection');
         var newXDomain = this._updateDomain();
+        if (!newXDomain)
+            return;
 
         if (selection && newXDomain && selection[0] <= newXDomain[0] && newXDomain[1] <= selection[1])
             selection = null; // Otherwise the user has no way of clearing the selection.
@@ -750,7 +757,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
     },
     _updateSelectionToolbar: function ()
     {
-        if (!this.get('interactive'))
+        if (!this.get('zoomable'))
             return;
 
         var selection = this._currentSelection();

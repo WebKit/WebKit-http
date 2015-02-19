@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012, 2013-2015 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Intel Corporation. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  *
@@ -504,6 +504,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     if (WebMediaKeyStorageManager* manager = webProcess.supplement<WebMediaKeyStorageManager>())
         m_page->settings().setMediaKeysStorageDirectory(manager->mediaKeyStorageDirectory());
 #endif
+    m_page->settings().setAppleMailPaginationQuirkEnabled(parameters.appleMailPaginationQuirkEnabled);
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -1428,7 +1429,7 @@ void WebPage::setPageAndTextZoomFactors(double pageZoomFactor, double textZoomFa
     return frame->setPageAndTextZoomFactors(static_cast<float>(pageZoomFactor), static_cast<float>(textZoomFactor));
 }
 
-void WebPage::windowScreenDidChange(uint64_t displayID)
+void WebPage::windowScreenDidChange(uint32_t displayID)
 {
     m_page->chrome().windowScreenDidChange(static_cast<PlatformDisplayID>(displayID));
 }
@@ -4648,7 +4649,7 @@ void WebPage::determinePrimarySnapshottedPlugIn()
     HTMLPlugInImageElement* candidatePlugIn = nullptr;
     unsigned candidatePlugInArea = 0;
 
-    for (Frame* frame = &mainFrame; frame; frame = frame->tree().traverseNext()) {
+    for (Frame* frame = &mainFrame; frame; frame = frame->tree().traverseNextRendered()) {
         if (!frame->loader().subframeLoader().containsPlugins())
             continue;
         if (!frame->document() || !frame->view())

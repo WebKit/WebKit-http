@@ -55,7 +55,6 @@
 namespace JSC {
 
     class Identifier;
-    class Label;
 
     enum ExpectedFunction {
         NoExpectedFunction,
@@ -255,6 +254,7 @@ namespace JSC {
 
     class BytecodeGenerator {
         WTF_MAKE_FAST_ALLOCATED;
+        WTF_MAKE_NONCOPYABLE(BytecodeGenerator);
     public:
         typedef DeclarationStacks::VarStack VarStack;
         typedef DeclarationStacks::FunctionStack FunctionStack;
@@ -442,7 +442,6 @@ namespace JSC {
         void emitProfileControlFlow(int);
 
         RegisterID* emitLoad(RegisterID* dst, bool);
-        RegisterID* emitLoad(RegisterID* dst, double);
         RegisterID* emitLoad(RegisterID* dst, const Identifier&);
         RegisterID* emitLoad(RegisterID* dst, JSValue);
         RegisterID* emitLoadGlobalObject(RegisterID* dst);
@@ -580,8 +579,6 @@ namespace JSC {
         OpcodeID lastOpcodeID() const { return m_lastOpcodeID; }
 
     private:
-        friend class Label;
-        
         void emitOpcode(OpcodeID);
         UnlinkedArrayAllocationProfile newArrayAllocationProfile();
         UnlinkedObjectAllocationProfile newObjectAllocationProfile();
@@ -757,9 +754,9 @@ namespace JSC {
         bool m_shouldEmitDebugHooks;
         bool m_shouldEmitProfileHooks;
 
-        SymbolTable* m_symbolTable;
+        SymbolTable* m_symbolTable { nullptr };
 
-        ScopeNode* m_scopeNode;
+        ScopeNode* const m_scopeNode;
         Strong<UnlinkedCodeBlock> m_codeBlock;
 
         // Some of these objects keep pointers to one another. They are arranged
@@ -768,11 +765,11 @@ namespace JSC {
         RegisterID m_ignoredResultRegister;
         RegisterID m_thisRegister;
         RegisterID m_calleeRegister;
-        RegisterID* m_scopeRegister;
-        RegisterID* m_lexicalEnvironmentRegister;
-        RegisterID* m_emptyValueRegister;
-        RegisterID* m_globalObjectRegister;
-        RegisterID* m_localArgumentsRegister;
+        RegisterID* m_scopeRegister { nullptr };
+        RegisterID* m_lexicalEnvironmentRegister { nullptr };
+        RegisterID* m_emptyValueRegister { nullptr };
+        RegisterID* m_globalObjectRegister { nullptr };
+        RegisterID* m_localArgumentsRegister { nullptr };
 
         Vector<Identifier, 16> m_watchableVariables;
         SegmentedVector<RegisterID, 32> m_constantPoolRegisters;
@@ -780,9 +777,9 @@ namespace JSC {
         SegmentedVector<RegisterID, 32> m_parameters;
         SegmentedVector<Label, 32> m_labels;
         LabelScopeStore m_labelScopes;
-        int m_finallyDepth;
-        int m_localScopeDepth;
-        CodeType m_codeType;
+        int m_finallyDepth { 0 };
+        int m_localScopeDepth { 0 };
+        const CodeType m_codeType;
 
         Vector<ControlFlowContext, 0, UnsafeVectorOverflow> m_scopeContextStack;
         Vector<SwitchInfo> m_switchContextStack;
@@ -793,10 +790,10 @@ namespace JSC {
         Vector<TryRange> m_tryRanges;
         SegmentedVector<TryData, 8> m_tryData;
 
-        int m_nextConstantOffset;
+        int m_nextConstantOffset { 0 };
 
-        int m_firstLazyFunction;
-        int m_lastLazyFunction;
+        int m_firstLazyFunction { 0 };
+        int m_lastLazyFunction { 0 };
         HashMap<unsigned int, FunctionBodyNode*, WTF::IntHash<unsigned int>, WTF::UnsignedWithZeroKeyHashTraits<unsigned int>> m_lazyFunctions;
         typedef HashMap<FunctionBodyNode*, unsigned> FunctionOffsetMap;
         FunctionOffsetMap m_functionOffsets;
@@ -804,21 +801,20 @@ namespace JSC {
         // Constant pool
         IdentifierMap m_identifierMap;
         JSValueMap m_jsValueMap;
-        NumberMap m_numberMap;
         IdentifierStringMap m_stringMap;
 
-        StaticPropertyAnalyzer m_staticPropertyAnalyzer;
+        StaticPropertyAnalyzer m_staticPropertyAnalyzer { &m_instructions };
 
         VM* m_vm;
 
-        OpcodeID m_lastOpcodeID;
+        OpcodeID m_lastOpcodeID = op_end;
 #ifndef NDEBUG
-        size_t m_lastOpcodePosition;
+        size_t m_lastOpcodePosition { 0 };
 #endif
 
-        bool m_usesExceptions;
-        bool m_expressionTooDeep;
-        bool m_isBuiltinFunction;
+        bool m_usesExceptions { false };
+        bool m_expressionTooDeep { false };
+        bool m_isBuiltinFunction { false };
     };
 
 }

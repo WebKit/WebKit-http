@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,10 +58,11 @@ public:
         
         BasicBlock* root = m_graph.block(0);
         root->ssa->availabilityAtHead.m_locals.fill(Availability::unavailable());
-        for (unsigned argument = root->ssa->availabilityAtHead.m_locals.numberOfArguments(); argument--;) {
-            root->ssa->availabilityAtHead.m_locals.argument(argument) =
-                Availability::unavailable().withFlush(
-                    FlushedAt(FlushedJSValue, virtualRegisterForArgument(argument)));
+        for (unsigned argument = m_graph.m_argumentFormats.size(); argument--;) {
+            FlushedAt flushedAt = FlushedAt(
+                m_graph.m_argumentFormats[argument],
+                virtualRegisterForArgument(argument));
+            root->ssa->availabilityAtHead.m_locals.argument(argument) = Availability(flushedAt);
         }
 
         // This could be made more efficient by processing blocks in reverse postorder.
@@ -138,7 +139,7 @@ void LocalOSRAvailabilityCalculator::executeNode(Node* node)
         break;
     }
 
-    case GetArgument: {
+    case GetLocal: {
         VariableAccessData* variable = node->variableAccessData();
         m_availability.m_locals.operand(variable->local()) =
             Availability(node, variable->flushedAt());
@@ -152,6 +153,17 @@ void LocalOSRAvailabilityCalculator::executeNode(Node* node)
 
     case ZombieHint: {
         m_availability.m_locals.operand(node->unlinkedLocal()).setNodeUnavailable();
+        break;
+    }
+        
+    case LoadVarargs: {
+        LoadVarargsData* data = node->loadVarargsData();
+        m_availability.m_locals.operand(data->count) =
+            Availability(FlushedAt(FlushedInt32, data->machineCount));
+        for (unsigned i = data->limit; i--;) {
+            m_availability.m_locals.operand(VirtualRegister(data->start.offset() + i)) =
+                Availability(FlushedAt(FlushedJSValue, VirtualRegister(data->machineStart.offset() + i)));
+        }
         break;
     }
         

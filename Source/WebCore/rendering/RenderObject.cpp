@@ -2110,8 +2110,8 @@ static Color decorationColor(RenderStyle* style)
     return result;
 }
 
-void RenderObject::getTextDecorationColors(int decorations, Color& underline, Color& overline,
-                                           Color& linethrough, bool quirksMode, bool firstlineStyle)
+void RenderObject::getTextDecorationColorsAndStyles(int decorations, Color& underlineColor, Color& overlineColor, Color& linethroughColor,
+    TextDecorationStyle& underlineStyle, TextDecorationStyle& overlineStyle, TextDecorationStyle& linethroughStyle, bool firstlineStyle)
 {
     RenderObject* current = this;
     RenderStyle* styleToUse = nullptr;
@@ -2125,15 +2125,18 @@ void RenderObject::getTextDecorationColors(int decorations, Color& underline, Co
         if (currDecs) {
             if (currDecs & TextDecorationUnderline) {
                 decorations &= ~TextDecorationUnderline;
-                underline = resultColor;
+                underlineColor = resultColor;
+                underlineStyle = styleToUse->textDecorationStyle();
             }
             if (currDecs & TextDecorationOverline) {
                 decorations &= ~TextDecorationOverline;
-                overline = resultColor;
+                overlineColor = resultColor;
+                overlineStyle = styleToUse->textDecorationStyle();
             }
             if (currDecs & TextDecorationLineThrough) {
                 decorations &= ~TextDecorationLineThrough;
-                linethrough = resultColor;
+                linethroughColor = resultColor;
+                linethroughStyle = styleToUse->textDecorationStyle();
             }
         }
         if (current->isRubyText())
@@ -2141,18 +2144,24 @@ void RenderObject::getTextDecorationColors(int decorations, Color& underline, Co
         current = current->parent();
         if (current && current->isAnonymousBlock() && downcast<RenderBlock>(*current).continuation())
             current = downcast<RenderBlock>(*current).continuation();
-    } while (current && decorations && (!quirksMode || !current->node() || (!is<HTMLAnchorElement>(*current->node()) && !current->node()->hasTagName(fontTag))));
+    } while (current && decorations && (!current->node() || (!is<HTMLAnchorElement>(*current->node()) && !current->node()->hasTagName(fontTag))));
 
     // If we bailed out, use the element we bailed out at (typically a <font> or <a> element).
     if (decorations && current) {
         styleToUse = firstlineStyle ? &current->firstLineStyle() : &current->style();
         resultColor = decorationColor(styleToUse);
-        if (decorations & TextDecorationUnderline)
-            underline = resultColor;
-        if (decorations & TextDecorationOverline)
-            overline = resultColor;
-        if (decorations & TextDecorationLineThrough)
-            linethrough = resultColor;
+        if (decorations & TextDecorationUnderline) {
+            underlineColor = resultColor;
+            underlineStyle = styleToUse->textDecorationStyle();
+        }
+        if (decorations & TextDecorationOverline) {
+            overlineColor = resultColor;
+            overlineStyle = styleToUse->textDecorationStyle();
+        }
+        if (decorations & TextDecorationLineThrough) {
+            linethroughColor = resultColor;
+            linethroughStyle = styleToUse->textDecorationStyle();
+        }
     }
 }
 

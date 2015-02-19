@@ -8222,6 +8222,7 @@
     <ClCompile Include="..\platform\win\WidgetWin.cpp" />
     <ClCompile Include="..\platform\win\WindowMessageBroadcaster.cpp" />
     <ClCompile Include="..\platform\cf\CFURLExtras.cpp" />
+    <ClCompile Include="..\platform\cf\CoreMediaSoftLink.cpp" />
     <ClCompile Include="..\platform\cf\FileSystemCF.cpp" />
     <ClCompile Include="..\platform\cf\URLCF.cpp" />
     <ClCompile Include="..\platform\cf\SharedBufferCF.cpp" />
@@ -8239,9 +8240,9 @@
     <ClCompile Include="..\platform\graphics\Font.cpp" />
     <ClCompile Include="..\platform\graphics\FontCache.cpp" />
     <ClCompile Include="..\platform\graphics\FontCascade.cpp" />
+    <ClCompile Include="..\platform\graphics\FontCascadeFonts.cpp" />
     <ClCompile Include="..\platform\graphics\FontDescription.cpp" />
     <ClCompile Include="..\platform\graphics\FontGenericFamilies.cpp" />
-    <ClCompile Include="..\platform\graphics\FontGlyphs.cpp" />
     <ClCompile Include="..\platform\graphics\FontFeatureSettings.cpp" />
     <ClCompile Include="..\platform\graphics\FontPlatformData.cpp" />
     <ClCompile Include="..\platform\graphics\FontRanges.cpp" />
@@ -10371,6 +10372,20 @@
     </ClCompile>
     <ClCompile Include="..\rendering\OrderIterator.cpp" />
     <ClCompile Include="..\rendering\PointerEventsHitRules.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\rendering\RenderAttachment.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
@@ -15231,6 +15246,20 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\html\HTMLAttachmentElement.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\html\HTMLAudioElement.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -19733,6 +19762,7 @@
     <ClInclude Include="..\platform\win\WindowMessageListener.h" />
     <ClInclude Include="..\platform\win\WindowsTouch.h" />
     <ClInclude Include="..\platform\cf\CFURLExtras.h" />
+    <ClInclude Include="..\platform\cf\CoreMediaSoftLink.h" />
     <ClInclude Include="..\platform\cf\win\CertificateCFWin.h" />
     <ClInclude Include="..\platform\graphics\BitmapImage.h" />
     <ClInclude Include="..\platform\graphics\Color.h" />
@@ -19748,9 +19778,9 @@
     <ClInclude Include="..\platform\graphics\Font.h" />
     <ClInclude Include="..\platform\graphics\FontCache.h" />
     <ClInclude Include="..\platform\graphics\FontCascade.h" />
+    <ClInclude Include="..\platform\graphics\FontCascadeFonts.h" />
     <ClInclude Include="..\platform\graphics\FontDescription.h" />
     <ClInclude Include="..\platform\graphics\FontGenericFamilies.h" />
-    <ClInclude Include="..\platform\graphics\FontGlyphs.h" />
     <ClInclude Include="..\platform\graphics\FontFeatureSettings.h" />
     <ClInclude Include="..\platform\graphics\FontMetrics.h" />
     <ClInclude Include="..\platform\graphics\FontPlatformData.h" />
@@ -20402,6 +20432,7 @@
     <ClInclude Include="..\rendering\PaintPhase.h" />
     <ClInclude Include="..\rendering\PointerEventsHitRules.h" />
     <ClInclude Include="..\rendering\RenderAncestorIterator.h" />
+    <ClInclude Include="..\rendering\RenderAttachment.h" />
     <ClInclude Include="..\rendering\RenderBlock.h" />
     <ClInclude Include="..\rendering\RenderBox.h" />
     <ClInclude Include="..\rendering\RenderBoxModelObject.h" />
@@ -20940,6 +20971,7 @@
     <ClInclude Include="..\html\HTMLAnchorElement.h" />
     <ClInclude Include="..\html\HTMLAppletElement.h" />
     <ClInclude Include="..\html\HTMLAreaElement.h" />
+    <ClInclude Include="..\html\HTMLAttachmentElement.h" />
     <ClInclude Include="..\html\HTMLAudioElement.h" />
     <ClInclude Include="..\html\HTMLBaseElement.h" />
     <ClInclude Include="..\html\HTMLBaseFontElement.h" />

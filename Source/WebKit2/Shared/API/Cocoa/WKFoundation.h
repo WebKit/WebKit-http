@@ -34,45 +34,73 @@
 #endif
 #endif
 
-#ifndef __NSi_10_11
-#define __NSi_10_11 introduced=10.11
-#endif
-
 #ifdef __cplusplus
 #define WK_EXTERN extern "C" __attribute__((visibility ("default")))
 #else
 #define WK_EXTERN extern __attribute__((visibility ("default")))
 #endif
 
-#ifndef WK_API_AVAILABILITY_ENABLED
+#ifndef WK_FRAMEWORK_HEADER_POSTPROCESSING_ENABLED
+
 #define WK_AVAILABLE(_mac, _ios)
 #define WK_CLASS_AVAILABLE(_mac, _ios) __attribute__((visibility ("default")))
 #define WK_DEPRECATED(_macIntro, _macDep, _iosIntro, _iosDep, ...) __attribute__((deprecated(__VA_ARGS__)))
 #define WK_ENUM_AVAILABLE(_mac, _ios)
 #define WK_ENUM_AVAILABLE_IOS(_ios)
 
-#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
-
-#define WK_DESIGNATED_INITIALIZER
-#define WK_UNAVAILABLE
+#ifndef __NSi_8_3
+#define __NSi_8_3 introduced=8.3
+#endif
 
 #ifdef __OBJC__
 #import <Foundation/Foundation.h>
 
-#if __MAC_OS_X_VERSION_MAX_ALLOWED < 101000
-typedef NSUInteger NSEventModifierFlags;
+#ifdef NS_DESIGNATED_INITIALIZER
+#define WK_DESIGNATED_INITIALIZER NS_DESIGNATED_INITIALIZER
+#else
+#define WK_DESIGNATED_INITIALIZER
 #endif
 
-#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1090
-typedef NSInteger NSURLSessionAuthChallengeDisposition;
+#ifdef NS_UNAVAILABLE
+#define WK_UNAVAILABLE NS_UNAVAILABLE
+#else
+#define WK_UNAVAILABLE
 #endif
 
+#if __has_feature(assume_nonnull)
+
+#ifdef NS_ASSUME_NONNULL_BEGIN
+#define WK_ASSUME_NONNULL_BEGIN NS_ASSUME_NONNULL_BEGIN
+#else
+#define WK_ASSUME_NONNULL_BEGIN _Pragma("clang assume_nonnull begin")
 #endif
+
+#ifdef NS_ASSUME_NONNULL_END
+#define WK_ASSUME_NONNULL_END NS_ASSUME_NONNULL_END
+#else
+#define WK_ASSUME_NONNULL_END _Pragma("clang assume_nonnull end")
+#endif
+
+#define WK_NULLABLE nullable
+#define WK_NULL_UNSPECIFIED null_unspecified
+#define WK_NULLABLE_SPECIFIER __nullable
+#define WK_NULLABLE_PROPERTY nullable,
 
 #else
 
-#define WK_DESIGNATED_INITIALIZER NS_DESIGNATED_INITIALIZER
-#define WK_UNAVAILABLE NS_UNAVAILABLE
+#define WK_ASSUME_NONNULL_BEGIN
+#define WK_ASSUME_NONNULL_END
+
+#define WK_NULLABLE
+#define WK_NULL_UNSPECIFIED
+#define WK_NULLABLE_SPECIFIER
+#define WK_NULLABLE_PROPERTY
+
+#endif
+
+#if defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101000
+typedef NSUInteger NSEventModifierFlags;
+#endif
 
 #endif
 

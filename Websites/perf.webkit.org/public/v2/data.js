@@ -169,14 +169,14 @@ Measurement.prototype.formattedRevisions = function (previousMeasurement)
     for (var repositoryId in revisions) {
         var currentRevision = revisions[repositoryId][0];
         var previousRevision = previousRevisions ? previousRevisions[repositoryId][0] : null;
-        var formatttedRevision = this._formatRevisionRange(previousRevision, currentRevision);
+        var formatttedRevision = Measurement.formatRevisionRange(currentRevision, previousRevision);
         formattedRevisions[repositoryId] = formatttedRevision;
     }
 
     return formattedRevisions;
 }
 
-Measurement.prototype._formatRevisionRange = function (previousRevision, currentRevision)
+Measurement.formatRevisionRange = function (currentRevision, previousRevision)
 {
     var revisionChanged = false;
     if (previousRevision == currentRevision)
@@ -240,6 +240,11 @@ Measurement.prototype.confidenceInterval = function()
 Measurement.prototype.latestCommitTime = function()
 {
     return this._latestCommitTime || this._buildTime;
+}
+
+Measurement.prototype.buildId = function()
+{
+    return this._raw['build'];
 }
 
 Measurement.prototype.buildNumber = function ()
@@ -315,9 +320,12 @@ RunsData.prototype.timeSeriesByBuildTime = function ()
 
 // FIXME: We need to devise a way to fetch runs in multiple chunks so that
 // we don't have to fetch the entire time series to just show the last 3 days.
-RunsData.fetchRuns = function (platformId, metricId)
+RunsData.fetchRuns = function (platformId, metricId, testGroupId)
 {
     var filename = platformId + '-' + metricId + '.json';
+
+    if (testGroupId)
+        filename += '?testGroup=' + testGroupId;
 
     return new Ember.RSVP.Promise(function (resolve, reject) {
         $.getJSON('../api/runs/' + filename, function (data) {
@@ -353,6 +361,11 @@ function TimeSeries(series)
     });
     this._min = min;
     this._max = max;
+}
+
+TimeSeries.prototype.findPointByBuild = function (buildId)
+{
+    return this._series.find(function (point) { return point.measurement.buildId() == buildId; })
 }
 
 TimeSeries.prototype.findPointByMeasurementId = function (measurementId)

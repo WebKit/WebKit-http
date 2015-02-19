@@ -41,25 +41,31 @@ CGImageRef CGIOSurfaceContextCreateImage(CGContextRef);
 
 using namespace WebCore;
 
-PassRefPtr<IOSurface> IOSurface::create(IntSize size, ColorSpace colorSpace)
+std::unique_ptr<IOSurface> IOSurface::create(IntSize size, ColorSpace colorSpace)
 {
-    if (RefPtr<IOSurface> cachedSurface = IOSurfacePool::sharedPool().takeSurface(size, colorSpace))
-        return cachedSurface.release();
-    return adoptRef(new IOSurface(size, colorSpace));
+    if (std::unique_ptr<IOSurface> cachedSurface = IOSurfacePool::sharedPool().takeSurface(size, colorSpace))
+        return cachedSurface;
+    return std::unique_ptr<IOSurface>(new IOSurface(size, colorSpace));
 }
 
-PassRefPtr<IOSurface> IOSurface::createFromSendRight(const MachSendRight& sendRight, ColorSpace colorSpace)
+std::unique_ptr<IOSurface> IOSurface::create(IntSize size, IntSize contextSize, ColorSpace colorSpace)
+{
+    // FIXME: We should be able to pull surfaces out of the IOSurfacePool and adjust their contextSize.
+    return std::unique_ptr<IOSurface>(new IOSurface(size, contextSize, colorSpace));
+}
+
+std::unique_ptr<IOSurface> IOSurface::createFromSendRight(const MachSendRight& sendRight, ColorSpace colorSpace)
 {
     RetainPtr<IOSurfaceRef> surface = adoptCF(IOSurfaceLookupFromMachPort(sendRight.sendRight()));
     return IOSurface::createFromSurface(surface.get(), colorSpace);
 }
 
-PassRefPtr<IOSurface> IOSurface::createFromSurface(IOSurfaceRef surface, ColorSpace colorSpace)
+std::unique_ptr<IOSurface> IOSurface::createFromSurface(IOSurfaceRef surface, ColorSpace colorSpace)
 {
-    return adoptRef(new IOSurface(surface, colorSpace));
+    return std::unique_ptr<IOSurface>(new IOSurface(surface, colorSpace));
 }
 
-PassRefPtr<IOSurface> IOSurface::createFromImage(CGImageRef image)
+std::unique_ptr<IOSurface> IOSurface::createFromImage(CGImageRef image)
 {
     if (!image)
         return nullptr;
@@ -67,17 +73,18 @@ PassRefPtr<IOSurface> IOSurface::createFromImage(CGImageRef image)
     size_t width = CGImageGetWidth(image);
     size_t height = CGImageGetHeight(image);
 
-    RefPtr<IOSurface> surface = IOSurface::create(IntSize(width, height), ColorSpaceDeviceRGB);
+    std::unique_ptr<IOSurface> surface = IOSurface::create(IntSize(width, height), ColorSpaceDeviceRGB);
     auto surfaceContext = surface->ensurePlatformContext();
     CGContextDrawImage(surfaceContext, CGRectMake(0, 0, width, height), image);
     CGContextFlush(surfaceContext);
 
-    return surface.release();
+    return surface;
 }
 
 IOSurface::IOSurface(IntSize size, ColorSpace colorSpace)
     : m_colorSpace(colorSpace)
     , m_size(size)
+    , m_contextSize(size)
 {
     unsigned pixelFormat = 'BGRA';
     unsigned bytesPerElement = 4;
@@ -103,6 +110,14 @@ IOSurface::IOSurface(IntSize size, ColorSpace colorSpace)
     };
 
     m_surface = adoptCF(IOSurfaceCreate((CFDictionaryRef)options));
+}
+
+IOSurface::IOSurface(IntSize size, IntSize contextSize, ColorSpace colorSpace)
+    : IOSurface(size, colorSpace)
+{
+    ASSERT(contextSize.width() <= size.width());
+    ASSERT(contextSize.height() <= size.height());
+    m_contextSize = contextSize;
 }
 
 IOSurface::IOSurface(IOSurfaceRef surface, ColorSpace colorSpace)
@@ -136,7 +151,7 @@ CGContextRef IOSurface::ensurePlatformContext()
     CGBitmapInfo bitmapInfo = kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host;
     size_t bitsPerComponent = 8;
     size_t bitsPerPixel = 32;
-    m_cgContext = adoptCF(CGIOSurfaceContextCreate(m_surface.get(), m_size.width(), m_size.height(), bitsPerComponent, bitsPerPixel, cachedCGColorSpace(m_colorSpace), bitmapInfo));
+    m_cgContext = adoptCF(CGIOSurfaceContextCreate(m_surface.get(), m_contextSize.width(), m_contextSize.height(), bitsPerComponent, bitsPerPixel, cachedCGColorSpace(m_colorSpace), bitmapInfo));
 
     return m_cgContext.get();
 }
@@ -147,6 +162,7 @@ GraphicsContext& IOSurface::ensureGraphicsContext()
         return *m_graphicsContext;
 
     m_graphicsContext = adoptPtr(new GraphicsContext(ensurePlatformContext()));
+    m_graphicsContext->setIsAcceleratedContext(true);
 
     return *m_graphicsContext;
 }

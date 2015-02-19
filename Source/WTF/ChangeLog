@@ -1,3 +1,58 @@
+2015-02-13  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Enable bmalloc for EFL port 
+        https://bugs.webkit.org/show_bug.cgi?id=141459
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/CMakeLists.txt: Remove TCSystemAlloc.cpp/h.
+        * wtf/FastMalloc.cpp: Enable BMALLOC for EFL port.
+
+2015-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Add a move constructor and move assignment operator to Deque
+        https://bugs.webkit.org/show_bug.cgi?id=141571
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Deque.h:
+        (WTF::inlineCapacity>::Deque):
+        (WTF::=): Deleted.
+
+2015-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Add an initializer list constructor to Deque
+        https://bugs.webkit.org/show_bug.cgi?id=141565
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Deque.h:
+        (WTF::inlineCapacity>::Deque):
+
+2015-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Re-indent Deque.h
+
+        Rubber-stamped by Antti Koivisto.
+
+        * wtf/Deque.h:
+
+2015-02-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] [64-bit] Work around MSVC2013 Runtime Bug
+        https://bugs.webkit.org/show_bug.cgi?id=141498
+        <rdar://problem/19803642>
+
+        Reviewed by Anders Carlsson.
+
+        Disable FMA3 instruction use in the MSVC math library to
+        work around a VS2013 runtime crash. We can remove this
+        workaround when we switch to VS2015.
+
+        * WTF.vcxproj/WTF.vcxproj: Add new files.
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+        * wtf/win/WTFDLL.cpp: Added.
+
 2015-02-11  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         [EFL][GTK] Use bmalloc instead of tcmalloc

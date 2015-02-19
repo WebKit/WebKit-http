@@ -39,8 +39,6 @@ CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef, CGAffineTrans
 NSString* (*wkCopyNSURLResponseStatusLine)(NSURLResponse*);
 CFArrayRef (*wkCopyNSURLResponseCertificateChain)(NSURLResponse*);
 CFStringEncoding (*wkGetWebDefaultCFStringEncoding)(void);
-NSString* (*wkCreateURLPasteboardFlavorTypeName)(void);
-NSString* (*wkCreateURLNPasteboardFlavorTypeName)(void);
 void (*wkDrawCapsLockIndicator)(CGContextRef, CGRect);
 void (*wkDrawBezeledTextArea)(NSRect, BOOL enabled);
 void (*wkDrawFocusRing)(CGContextRef, CGColorRef, int);
@@ -103,9 +101,6 @@ void (*wkSetRequestStorageSession)(CFURLStorageSessionRef, CFMutableURLRequestRe
 #endif
 
 void* wkGetHyphenationLocationBeforeIndex;
-
-CGContextRef (*wkIOSurfaceContextCreate)(IOSurfaceRef surface, unsigned width, unsigned height, CGColorSpaceRef colorSpace);
-CGImageRef (*wkIOSurfaceContextCreateImage)(CGContextRef context);
 
 int (*wkRecommendedScrollerStyle)(void);
 

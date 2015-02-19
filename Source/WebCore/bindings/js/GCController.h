@@ -26,22 +26,20 @@
 #ifndef GCController_h
 #define GCController_h
 
-#if USE(CF)
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
-#else
 #include "Timer.h"
-#endif
 
 namespace WebCore {
 
     class GCController {
         WTF_MAKE_NONCOPYABLE(GCController); WTF_MAKE_FAST_ALLOCATED;
-        friend GCController& gcController();
+        WEBCORE_EXPORT friend GCController& gcController();
 
     public:
         WEBCORE_EXPORT void garbageCollectSoon();
         WEBCORE_EXPORT void garbageCollectNow(); // It's better to call garbageCollectSoon, unless you have a specific reason not to.
+        void garbageCollectOnNextRunLoop();
 
         WEBCORE_EXPORT void garbageCollectOnAlternateThreadForDebugging(bool waitUntilDone); // Used for stress testing.
         WEBCORE_EXPORT void releaseExecutableMemory();
@@ -51,10 +49,8 @@ namespace WebCore {
     private:
         GCController(); // Use gcController() instead
 
-#if !USE(CF)
         void gcTimerFired();
         Timer m_GCTimer;
-#endif
     };
 
     // Function to obtain the global GC controller.

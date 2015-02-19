@@ -160,11 +160,11 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, Ref<RenderSt
     if (element.hasTagName(HTMLNames::rubyTag)) {
         if (style.get().display() == INLINE)
             return createRenderer<RenderRubyAsInline>(element, WTF::move(style));
-        if (style.get().display() == BLOCK)
+        if (style.get().display() == BLOCK || style.get().display() == INLINE_BLOCK)
             return createRenderer<RenderRubyAsBlock>(element, WTF::move(style));
     }
-    // treat <rt> as ruby text ONLY if it still has its default treatment of block
-    if (element.hasTagName(HTMLNames::rtTag) && style.get().display() == BLOCK)
+    // treat <rt> as ruby text ONLY if the parent is ruby.
+    if (element.hasTagName(HTMLNames::rtTag) && element.parentElement() && isRuby(element.parentElement()->renderer()))
         return createRenderer<RenderRubyText>(element, WTF::move(style));
     switch (style.get().display()) {
     case NONE:
@@ -1673,6 +1673,24 @@ LayoutRect RenderElement::anchorRect() const
     } // Otherwise, it's not obvious what to do.
 
     return enclosingLayoutRect(FloatRect(upperLeft, lowerRight.expandedTo(upperLeft) - upperLeft));
+}
+
+const RenderElement* RenderElement::enclosingRendererWithTextDecoration(TextDecoration textDecoration, bool firstLine) const
+{
+    const RenderElement* current = this;
+    do {
+        if (current->isRenderBlock())
+            return current;
+        if (!current->isRenderInline() || current->isRubyText())
+            return nullptr;
+        
+        const RenderStyle& styleToUse = firstLine ? current->firstLineStyle() : current->style();
+        if (styleToUse.textDecoration() & textDecoration)
+            return current;
+        current = current->parent();
+    } while (current && (!current->element() || (!is<HTMLAnchorElement>(*current->element()) && !current->element()->hasTagName(HTMLNames::fontTag))));
+
+    return current;
 }
 
 }

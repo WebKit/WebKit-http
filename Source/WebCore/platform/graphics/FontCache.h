@@ -107,7 +107,7 @@ class FontCache {
 
     WTF_MAKE_NONCOPYABLE(FontCache); WTF_MAKE_FAST_ALLOCATED;
 public:
-    friend FontCache& fontCache();
+    WEBCORE_EXPORT static FontCache& singleton();
 
     // This method is implemented by the platform.
     RefPtr<Font> systemFallbackForCharacters(const FontDescription&, const Font* originalFontData, bool isPlatformFont, const UChar* characters, int length);
@@ -151,16 +151,9 @@ public:
     PassRefPtr<OpenTypeVerticalData> getVerticalData(const FontFileKey&, const FontPlatformData&);
 #endif
 
-    struct SimpleFontFamily {
-        String name;
-        bool isBold;
-        bool isItalic;
-    };
-    static void getFontFamilyForCharacters(const UChar* characters, size_t numCharacters, const char* preferredLocale, SimpleFontFamily*);
-
 private:
     FontCache();
-    ~FontCache();
+    ~FontCache() = delete;
 
     void purgeTimerFired();
 
@@ -183,9 +176,6 @@ private:
 #endif
     friend class Font;
 };
-
-// Get the global fontCache.
-WEBCORE_EXPORT FontCache& fontCache();
 
 }
 

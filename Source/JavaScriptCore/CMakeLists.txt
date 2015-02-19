@@ -507,6 +507,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/MapIteratorConstructor.cpp
     runtime/MapIteratorPrototype.cpp
     runtime/MapPrototype.cpp
+    runtime/MathCommon.cpp
     runtime/MathObject.cpp
     runtime/MemoryStatistics.cpp
     runtime/NativeErrorConstructor.cpp
@@ -844,6 +845,7 @@ if (ENABLE_FTL_JIT)
         ftl/FTLJITFinalizer.cpp
         ftl/FTLJSCall.cpp
         ftl/FTLJSCallBase.cpp
+        ftl/FTLJSCallVarargs.cpp
         ftl/FTLLink.cpp
         ftl/FTLLocation.cpp
         ftl/FTLLowerDFGToLLVM.cpp

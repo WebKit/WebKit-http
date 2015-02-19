@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2012, 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -291,7 +291,10 @@ public:
 
     void add64(TrustedImm32 imm, Address address)
     {
-        m_assembler.addq_im(imm.m_value, address.offset, address.base);
+        if (imm.m_value == 1)
+            m_assembler.incq_m(address.offset, address.base);
+        else
+            m_assembler.addq_im(imm.m_value, address.offset, address.base);
     }
 
     void add64(TrustedImm32 imm, AbsoluteAddress address)
@@ -329,6 +332,11 @@ public:
     void rshift64(TrustedImm32 imm, RegisterID dest)
     {
         m_assembler.sarq_i8r(imm.m_value, dest);
+    }
+    
+    void urshift64(TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.shrq_i8r(imm.m_value, dest);
     }
     
     void mul64(RegisterID src, RegisterID dest)
