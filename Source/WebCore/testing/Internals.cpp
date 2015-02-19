@@ -80,6 +80,7 @@
 #include "MemoryInfo.h"
 #include "MockPageOverlayClient.h"
 #include "Page.h"
+#include "PageCache.h"
 #include "PageOverlay.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
@@ -422,6 +423,16 @@ void Internals::pruneMemoryCacheToSize(unsigned size)
 unsigned Internals::memoryCacheSize() const
 {
     return MemoryCache::singleton().size();
+}
+
+void Internals::clearPageCache()
+{
+    PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
+}
+
+unsigned Internals::pageCacheSize() const
+{
+    return PageCache::singleton().pageCount();
 }
 
 Node* Internals::treeScopeRootNode(Node* node, ExceptionCode& ec)
@@ -884,7 +895,7 @@ void Internals::setMarkedTextMatchesAreHighlighted(bool flag, ExceptionCode& ec)
 
 void Internals::invalidateFontCache()
 {
-    fontCache().invalidate();
+    FontCache::singleton().invalidate();
 }
 
 void Internals::setScrollViewPosition(long x, long y, ExceptionCode& ec)
@@ -1558,7 +1569,7 @@ void Internals::closeDummyInspectorFrontend()
     ASSERT(page);
     ASSERT(m_frontendWindow);
 
-    page->inspectorController().disconnectFrontend(InspectorDisconnectReason::InspectorDestroyed);
+    page->inspectorController().disconnectFrontend(Inspector::DisconnectReason::InspectorDestroyed);
 
     m_frontendClient = nullptr;
     m_frontendChannel = nullptr;
@@ -2403,8 +2414,10 @@ void Internals::setMediaSessionRestrictions(const String& mediaTypeString, const
         restrictions += MediaSessionManager::MetadataPreloadingNotPermitted;
     if (equalIgnoringCase(restrictionsString, "AutoPreloadingNotPermitted"))
         restrictions += MediaSessionManager::AutoPreloadingNotPermitted;
-    if (equalIgnoringCase(restrictionsString, "BackgroundPlaybackNotPermitted"))
-        restrictions += MediaSessionManager::BackgroundPlaybackNotPermitted;
+    if (equalIgnoringCase(restrictionsString, "BackgroundProcessPlaybackRestricted"))
+        restrictions += MediaSessionManager::BackgroundProcessPlaybackRestricted;
+    if (equalIgnoringCase(restrictionsString, "BackgroundTabPlaybackRestricted"))
+        restrictions += MediaSessionManager::BackgroundTabPlaybackRestricted;
 
     MediaSessionManager::sharedManager().addRestriction(mediaType, restrictions);
 }

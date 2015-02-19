@@ -61,6 +61,7 @@
 #include "WebProcessPoolMessages.h"
 #include "WebProcessProxyMessages.h"
 #include "WebResourceCacheManager.h"
+#include "WebsiteDataTypes.h"
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/MemoryStatistics.h>
 #include <WebCore/AXObjectCache.h>
@@ -284,7 +285,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
     WTF::setCurrentThreadIsUserInitiated();
 
-    memoryPressureHandler().install();
+    MemoryPressureHandler::singleton().install();
 
     if (!parameters.injectedBundlePath.isEmpty())
         m_injectedBundle = InjectedBundle::create(parameters, transformHandlesToObjects(parameters.initializationUserData.object()).get());
@@ -586,7 +587,7 @@ void WebProcess::terminate()
 {
 #ifndef NDEBUG
     gcController().garbageCollectNow();
-    fontCache().invalidate();
+    FontCache::singleton().invalidate();
     MemoryCache::singleton().setDisabled(true);
 #endif
 
@@ -639,12 +640,12 @@ void WebProcess::didClose(IPC::Connection&)
     // Close all the live pages.
     Vector<RefPtr<WebPage>> pages;
     copyValuesToVector(m_pageMap, pages);
-    for (size_t i = 0; i < pages.size(); ++i)
-        pages[i]->close();
+    for (auto& page : pages)
+        page->close();
     pages.clear();
 
     gcController().garbageCollectSoon();
-    fontCache().invalidate();
+    FontCache::singleton().invalidate();
     MemoryCache::singleton().setDisabled(true);
 #endif    
 
@@ -939,8 +940,9 @@ void WebProcess::getWebCoreStatistics(uint64_t callbackID)
     data.statisticsNumbers.set(ASCIILiteral("IconsWithDataCount"), iconDatabase().iconRecordCountWithData());
     
     // Gather font statistics.
-    data.statisticsNumbers.set(ASCIILiteral("CachedFontDataCount"), fontCache().fontCount());
-    data.statisticsNumbers.set(ASCIILiteral("CachedFontDataInactiveCount"), fontCache().inactiveFontCount());
+    auto& fontCache = FontCache::singleton();
+    data.statisticsNumbers.set(ASCIILiteral("CachedFontDataCount"), fontCache.fontCount());
+    data.statisticsNumbers.set(ASCIILiteral("CachedFontDataInactiveCount"), fontCache.inactiveFontCount());
     
     // Gather glyph page statistics.
     data.statisticsNumbers.set(ASCIILiteral("GlyphPageCount"), GlyphPage::count());
@@ -1131,6 +1133,18 @@ void WebProcess::releasePageCache()
     PageCache::singleton().pruneToSizeNow(0, PruningReason::MemoryPressure);
 }
 
+void WebProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
+{
+    if (websiteDataTypes & WebsiteDataTypeMemoryCache) {
+        PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
+        MemoryCache::singleton().evictResources(sessionID);
+
+        CrossOriginPreflightResultCache::singleton().empty();
+    }
+
+    parentProcessConnection()->send(Messages::WebProcessProxy::DidDeleteWebsiteData(callbackID), 0);
+}
+
 #if !PLATFORM(COCOA)
 void WebProcess::initializeProcessName(const ChildProcessInitializationParameters&)
 {
@@ -1163,7 +1177,8 @@ void WebProcess::resetAllGeolocationPermissions()
     
 void WebProcess::processWillSuspend()
 {
-    memoryPressureHandler().releaseMemory(true);
+    MemoryPressureHandler::singleton().releaseMemory(true);
+    setAllLayerTreeStatesFrozen(true);
 
     if (!markAllLayersVolatileIfPossible())
         m_processSuspensionCleanupTimer.startRepeating(std::chrono::milliseconds(20));
@@ -1173,6 +1188,8 @@ void WebProcess::processWillSuspend()
 
 void WebProcess::cancelProcessWillSuspend()
 {
+    setAllLayerTreeStatesFrozen(false);
+
     // If we've already finished cleaning up and sent ProcessReadyToSuspend, we
     // shouldn't send DidCancelProcessSuspension; the UI process strictly expects one or the other.
     if (!m_processSuspensionCleanupTimer.isActive())
@@ -1193,11 +1210,25 @@ bool WebProcess::markAllLayersVolatileIfPossible()
     return successfullyMarkedAllLayersVolatile;
 }
 
+void WebProcess::setAllLayerTreeStatesFrozen(bool frozen)
+{
+    for (auto& page : m_pageMap.values()) {
+        if (auto drawingArea = page->drawingArea())
+            drawingArea->setLayerTreeStateIsFrozen(frozen);
+    }
+}
+
 void WebProcess::processSuspensionCleanupTimerFired()
 {
     if (markAllLayersVolatileIfPossible()) {
+        m_processSuspensionCleanupTimer.stop();
         parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
     }
+}
+    
+void WebProcess::processDidResume()
+{
+    setAllLayerTreeStatesFrozen(false);
 }
 
 void WebProcess::pageDidEnterWindow(uint64_t pageID)

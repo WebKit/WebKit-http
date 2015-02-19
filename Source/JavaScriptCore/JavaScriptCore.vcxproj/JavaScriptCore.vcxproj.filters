@@ -735,6 +735,9 @@
     <ClCompile Include="..\runtime\MapConstructor.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\MathCommon.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\MathObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -1754,6 +1757,10 @@
     </ClCompile>
     <ClCompile Include="..\bytecode\VirtualRegister.cpp">
       <Filter>bytecode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\SetupVarargsFrame.cpp" />
+    <ClCompile Include="JavaScriptCoreDLL.cpp">
+      <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -4198,6 +4205,7 @@
     <ClInclude Include="..\jit\PolymorphicCallStubRoutine.h">
       <Filter>jit</Filter>
     </ClInclude>
+    <ClInclude Include="..\jit\SetupVarargsFrame.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="JavaScriptCorePreLink.cmd" />

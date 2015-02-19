@@ -34,7 +34,7 @@ App.Metric = App.NameLabelModel.extend({
     }.property('name', 'test'),
     fullName: function ()
     {
-        return this.get('path').join(' \u2208 ') /* &in; */
+        return this.get('path').join(' \u220b ') /* &ni; */
             + ' : ' + this.get('label');
     }.property('path', 'label'),
 });
@@ -44,7 +44,7 @@ App.Builder = App.NameLabelModel.extend({
     urlFromBuildNumber: function (buildNumber)
     {
         var template = this.get('buildUrl');
-        return template ? template.replace(/\$buildNumber/g, buildNumber) : null;
+        return template ? template.replace(/\$builderName/g, this.get('name')).replace(/\$buildNumber/g, buildNumber) : null;
     }
 });
 
@@ -279,10 +279,10 @@ App.Manifest = Ember.Controller.extend({
         dashboards.forEach(function (dashboard) { self._dashboardByName[dashboard.get('name')] = dashboard; });
         this._defaultDashboardName = dashboards.length ? dashboards[0].get('name') : null;
     },
-    fetchRunsWithPlatformAndMetric: function (store, platformId, metricId)
+    fetchRunsWithPlatformAndMetric: function (store, platformId, metricId, testGroupId)
     {
         return Ember.RSVP.all([
-            RunsData.fetchRuns(platformId, metricId),
+            RunsData.fetchRuns(platformId, metricId, testGroupId),
             this.fetch(store),
         ]).then(function (values) {
             var runs = values[0];
@@ -301,7 +301,27 @@ App.Manifest = Ember.Controller.extend({
             }[suffix];
             var smallerIsBetter = unit != 'fps' && unit != '/s'; // Assume smaller is better for unit-less metrics.
 
-            return {platform: platform, metric: metric, runs: runs, unit: unit, useSI: unit == 'bytes', smallerIsBetter: smallerIsBetter};
+            var useSI = unit == 'bytes';
+            var unitSuffix = unit ? ' ' + unit : '';
+            var deltaFormatterWithoutSign = useSI ? d3.format('.2s') : d3.format('.2g');
+            return {
+                platform: platform,
+                metric: metric,
+                data: {
+                    current: runs.current.timeSeriesByCommitTime(),
+                    baseline: runs.baseline ? runs.baseline.timeSeriesByCommitTime() : null,
+                    target: runs.target ? runs.target.timeSeriesByCommitTime() : null,
+                    unit: unit,
+                    formatWithUnit: function (value) { return this.formatter(value) + unitSuffix; },
+                    formatWithDeltaAndUnit: function (value, delta)
+                    {
+                        return this.formatter(value) + (delta && !isNaN(delta) ? ' \u00b1 ' + deltaFormatterWithoutSign(delta) : '') + unitSuffix;
+                    },
+                    formatter: useSI ? d3.format('.4s') : d3.format('.4g'),
+                    deltaFormatter: useSI ? d3.format('+.2s') : d3.format('+.2g'),
+                    smallerIsBetter: smallerIsBetter,
+                }
+            };
         });
     },
 }).create();

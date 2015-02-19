@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -617,13 +617,13 @@ public:
     bool supportsTextZoom() const;
     double textZoomFactor() const { return m_textZoomFactor; }
     void setTextZoomFactor(double);
-    double pageZoomFactor() const { return m_pageZoomFactor; }
+    double pageZoomFactor() const;
     void setPageZoomFactor(double);
     void setPageAndTextZoomFactors(double pageZoomFactor, double textZoomFactor);
 
     void scalePage(double scale, const WebCore::IntPoint& origin);
     void scalePageInViewCoordinates(double scale, const WebCore::IntPoint& centerInViewCoordinates);
-    double pageScaleFactor() const { return m_pageScaleFactor; }
+    double pageScaleFactor() const;
 
     float deviceScaleFactor() const;
     void setIntrinsicDeviceScaleFactor(float);
@@ -696,7 +696,8 @@ public:
 #endif
 
     void pageScaleFactorDidChange(double);
-    void pageZoomFactorDidChange(double);
+    void pluginScaleFactorDidChange(double);
+    void pluginZoomFactorDidChange(double);
 
     // Find.
     void findString(const String&, FindOptions, unsigned maxMatchCount);
@@ -1226,6 +1227,10 @@ private:
     void didPerformDictionaryLookup(const DictionaryPopupInfo&);
 #endif
 
+#if PLATFORM(MAC)
+    bool appleMailPaginationQuirkEnabled();
+#endif
+
     // Spelling and grammar.
     void checkSpellingOfString(const String& text, int32_t& misspellingLocation, int32_t& misspellingLength);
     void checkGrammarOfString(const String& text, Vector<WebCore::GrammarDetail>&, int32_t& badGrammarLocation, int32_t& badGrammarLength);
@@ -1480,6 +1485,8 @@ private:
     double m_textZoomFactor;
     double m_pageZoomFactor;
     double m_pageScaleFactor;
+    double m_pluginZoomFactor;
+    double m_pluginScaleFactor;
     float m_intrinsicDeviceScaleFactor;
     float m_customDeviceScaleFactor;
     float m_topContentInset;

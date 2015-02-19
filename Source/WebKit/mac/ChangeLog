@@ -1,3 +1,112 @@
+2015-02-18  Timothy Horton  <timothy_horton@apple.com>
+
+        Adopt WebCore::IOSurface in ImageBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=141751
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        Remove old WKSI IOSurface-related functions.
+
+2015-02-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r180286.
+        https://bugs.webkit.org/show_bug.cgi?id=141766
+
+        Caused >50 crashed LayoutTests (Requested by jernoble on
+        #webkit).
+
+        Reverted changeset:
+
+        "Page::userContentController() should return a reference, not
+        a pointer"
+        https://bugs.webkit.org/show_bug.cgi?id=141764
+        http://trac.webkit.org/changeset/180286
+
+2015-02-18  Brady Eidson  <beidson@apple.com>
+
+        Page::userContentController() should return a reference, not a pointer
+        https://bugs.webkit.org/show_bug.cgi?id=141764
+
+        Reviewed by Jer Noble.
+
+        * WebView/WebView.mm:
+        (-[WebView setGroupName:]):
+
+2015-02-18  Chris Dumez  <cdumez@apple.com>
+
+        Access FontCache global instance via singleton() static member function
+        https://bugs.webkit.org/show_bug.cgi?id=141726
+
+        Reviewed by Daniel Bates.
+
+        Access FontCache global instance via singleton() static member function,
+        as per coding style.
+
+2015-02-17  Chris Dumez  <cdumez@apple.com>
+
+        Access MemoryPressureHandler global instance via a singleton() static member function
+        https://bugs.webkit.org/show_bug.cgi?id=141691
+
+        Reviewed by Andreas Kling.
+
+        Access MemoryPressureHandler global instance via a singleton() static
+        member function.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (+[WebView registerForMemoryNotifications]):
+        (+[WebView _isUnderMemoryPressure]):
+        (+[WebView _clearMemoryPressure]):
+        (+[WebView _shouldWaitForMemoryClearMessage]):
+        (WebInstallMemoryPressureHandler):
+
+2015-02-15  Sam Weinig  <sam@webkit.org>
+
+        Add experimental <attachment> element support
+        https://bugs.webkit.org/show_bug.cgi?id=141626
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-02-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Mac] Possible DDActionContext leaks, RetainPtr cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=141613
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::WebEditorClient):
+        Avoid unnecessary retain/autorelease by adopting.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForDataDetectableLink]):
+        Adopt the allocated object.
+
+2015-02-09  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: remove some unnecessary Inspector prefixes from class names in Inspector namespace
+        https://bugs.webkit.org/show_bug.cgi?id=141372
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController destroyInspectorView:]):
+
+2015-02-14  Alexey Proskuryakov  <ap@apple.com>
+
+        rel="noreferrer" should make window.opener null
+        https://bugs.webkit.org/show_bug.cgi?id=141579
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]): Updated for a new WebCore
+        function signature. There is no rel="noreferrer" in PDF, so we can just always allow.
+
 2015-02-05  Youenn Fablet  <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar <calvaris@igalia.com>
 
         [Streams API] Implement a barebone ReadableStream interface

@@ -54,6 +54,28 @@ TEST(WTF_Deque, Iterator)
     EXPECT_TRUE(end == it);
 }
 
+TEST(WTF_Deque, InitializerList)
+{
+    Deque<int> deque = { 1, 2, 3, 4 };
+
+    EXPECT_EQ(4u, deque.size());
+
+    auto it = deque.begin();
+    auto end = deque.end();
+    EXPECT_TRUE(end != it);
+
+    EXPECT_EQ(1, *it);
+    ++it;
+    EXPECT_EQ(2, *it);
+    ++it;
+    EXPECT_EQ(3, *it);
+    ++it;
+    EXPECT_EQ(4, *it);
+    ++it;
+
+    EXPECT_TRUE(end == it);
+}
+
 TEST(WTF, DequeReverseIterator)
 {
     Deque<int> deque;
@@ -120,6 +142,50 @@ TEST(WTF_Deque, MoveOnly)
 
     auto last = deque.takeLast();
     EXPECT_EQ(1U, last.value());
+}
+
+TEST(WTF_Deque, MoveConstructor)
+{
+    Deque<MoveOnly, 4> deque;
+
+    for (unsigned i = 0; i < 10; ++i)
+        deque.append(MoveOnly(i));
+
+    EXPECT_EQ(10u, deque.size());
+
+    Deque<MoveOnly, 4> deque2 = WTF::move(deque);
+
+    EXPECT_EQ(10u, deque2.size());
+
+    unsigned i = 0;
+    for (auto& element : deque2) {
+        EXPECT_EQ(i, element.value());
+        ++i;
+    }
+}
+
+TEST(WTF_Deque, MoveAssignmentOperator)
+{
+    Deque<MoveOnly, 4> deque1;
+
+    for (unsigned i = 0; i < 10; ++i)
+        deque1.append(MoveOnly(i));
+
+    EXPECT_EQ(10u, deque1.size());
+
+    Deque<MoveOnly, 4> deque2;
+    for (unsigned i = 0; i < 10; ++i)
+        deque2.append(MoveOnly(i * 2));
+
+    deque1 = WTF::move(deque2);
+
+    EXPECT_EQ(10u, deque2.size());
+
+    unsigned i = 0;
+    for (auto& element : deque1) {
+        EXPECT_EQ(i * 2, element.value());
+        ++i;
+    }
 }
 
 } // namespace TestWebKitAPI

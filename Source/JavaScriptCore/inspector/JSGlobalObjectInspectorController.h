@@ -50,12 +50,12 @@ class JSValue;
 
 namespace Inspector {
 
+class BackendDispatcher;
+class FrontendChannel;
 class InjectedScriptManager;
 class InspectorAgent;
-class InspectorBackendDispatcher;
 class InspectorConsoleAgent;
 class InspectorDebuggerAgent;
-class InspectorFrontendChannel;
 class JSGlobalObjectConsoleClient;
 class ScriptCallStack;
 
@@ -71,8 +71,8 @@ public:
     JSGlobalObjectInspectorController(JSC::JSGlobalObject&);
     ~JSGlobalObjectInspectorController();
 
-    void connectFrontend(InspectorFrontendChannel*, bool isAutomaticInspection);
-    void disconnectFrontend(InspectorDisconnectReason reason);
+    void connectFrontend(FrontendChannel*, bool isAutomaticInspection);
+    void disconnectFrontend(DisconnectReason);
     void dispatchMessageFromFrontend(const String&);
 
     void globalObjectDestroyed();
@@ -84,7 +84,7 @@ public:
 
     JSC::ConsoleClient* consoleClient() const;
 
-    virtual bool developerExtrasEnabled() const override { return true; }
+    virtual bool developerExtrasEnabled() const override;
     virtual bool canAccessInspectedScriptState(JSC::ExecState*) const override { return true; }
     virtual InspectorFunctionCallHandler functionCallHandler() const override;
     virtual InspectorEvaluateHandler evaluateHandler() const override;
@@ -97,7 +97,7 @@ public:
     virtual AugmentableInspectorControllerClient* augmentableInspectorControllerClient() const override { return m_augmentingClient; } 
     virtual void setAugmentableInspectorControllerClient(AugmentableInspectorControllerClient* client) override { m_augmentingClient = client; }
 
-    virtual InspectorFrontendChannel* frontendChannel() const override { return m_inspectorFrontendChannel; }
+    virtual FrontendChannel* frontendChannel() const override { return m_frontendChannel; }
     virtual void appendExtraAgent(std::unique_ptr<InspectorAgentBase>) override;
 #endif
 
@@ -110,9 +110,9 @@ private:
     InspectorAgent* m_inspectorAgent;
     InspectorConsoleAgent* m_consoleAgent;
     InspectorDebuggerAgent* m_debuggerAgent;
-    InspectorAgentRegistry m_agents;
-    InspectorFrontendChannel* m_inspectorFrontendChannel;
-    RefPtr<InspectorBackendDispatcher> m_inspectorBackendDispatcher;
+    AgentRegistry m_agents;
+    FrontendChannel* m_frontendChannel;
+    RefPtr<BackendDispatcher> m_backendDispatcher;
     Ref<WTF::Stopwatch> m_executionStopwatch;
     bool m_includeNativeCallStackWithExceptions;
     bool m_isAutomaticInspection;

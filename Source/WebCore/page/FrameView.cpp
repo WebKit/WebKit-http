@@ -2561,6 +2561,33 @@ bool FrameView::layoutPending() const
     return m_layoutTimer.isActive();
 }
 
+bool FrameView::needsStyleRecalcOrLayout(bool includeSubframes) const
+{
+    if (frame().document() && frame().document()->childNeedsStyleRecalc())
+        return true;
+    
+    if (needsLayout())
+        return true;
+
+    if (!includeSubframes)
+        return false;
+
+    // Find child frames via the Widget tree, as updateLayoutAndStyleIfNeededRecursive() does.
+    Vector<Ref<FrameView>, 16> childViews;
+    childViews.reserveInitialCapacity(children().size());
+    for (auto& widget : children()) {
+        if (is<FrameView>(*widget))
+            childViews.uncheckedAppend(downcast<FrameView>(*widget));
+    }
+
+    for (unsigned i = 0; i < childViews.size(); ++i) {
+        if (childViews[i]->needsStyleRecalcOrLayout())
+            return true;
+    }
+
+    return false;
+}
+
 bool FrameView::needsLayout() const
 {
     // This can return true in cases where the document does not have a body yet.
@@ -3757,7 +3784,7 @@ void FrameView::willPaintContents(GraphicsContext* context, const IntRect& dirty
 
     paintingState.isTopLevelPainter = !sCurrentPaintTimeStamp;
 
-    if (paintingState.isTopLevelPainter && memoryPressureHandler().isUnderMemoryPressure()) {
+    if (paintingState.isTopLevelPainter && MemoryPressureHandler::singleton().isUnderMemoryPressure()) {
         LOG(MemoryPressure, "Under memory pressure: %s", WTF_PRETTY_FUNCTION);
 
         // To avoid unnecessary image decoding, we don't prune recently-decoded live resources here since
@@ -3801,7 +3828,7 @@ void FrameView::didPaintContents(GraphicsContext* context, const IntRect& dirtyR
 
     // Painting can lead to decoding of large amounts of bitmaps
     // If we are low on memory, wipe them out after the paint.
-    if (paintingState.isTopLevelPainter && memoryPressureHandler().isUnderMemoryPressure())
+    if (paintingState.isTopLevelPainter && MemoryPressureHandler::singleton().isUnderMemoryPressure())
         MemoryCache::singleton().pruneLiveResources(true);
 
     // Regions may have changed as a result of the visibility/z-index of element changing.
@@ -3969,6 +3996,7 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     // calls, as they can potentially re-enter a layout of the parent frame view, which may add/remove scrollbars
     // and thus mutates the children() set.
     // We use the Widget children because walking the Frame tree would include display:none frames.
+    // FIXME: use FrameTree::traverseNextRendered().
     Vector<Ref<FrameView>, 16> childViews;
     childViews.reserveInitialCapacity(children().size());
     for (auto& widget : children()) {
@@ -3979,10 +4007,12 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     for (unsigned i = 0; i < childViews.size(); ++i)
         childViews[i]->updateLayoutAndStyleIfNeededRecursive();
 
-    // When frame flattening is on, child frame can mark parent frame dirty. In such case, child frame
-    // needs to call layout on parent frame recursively.
-    // This assert ensures that parent frames are clean, when child frames finished updating layout and style.
-    ASSERT(!needsLayout());
+    // A child frame may have dirtied us during its layout.
+    frame().document()->updateStyleIfNeeded();
+    if (needsLayout())
+        layout();
+
+    ASSERT(!frame().isMainFrame() || !needsStyleRecalcOrLayout());
 }
 
 bool FrameView::qualifiesAsVisuallyNonEmpty() const
@@ -4475,7 +4505,7 @@ void FrameView::setScrollVelocity(double horizontalVelocity, double verticalVelo
 FloatRect FrameView::computeCoverageRect(double horizontalMargin, double verticalMargin) const
 {
     FloatRect exposedContentRect = this->exposedContentRect();
-    if (!m_speculativeTilingEnabled || memoryPressureHandler().isUnderMemoryPressure())
+    if (!m_speculativeTilingEnabled || MemoryPressureHandler::singleton().isUnderMemoryPressure())
         return exposedContentRect;
 
     double currentTime = monotonicallyIncreasingTime();

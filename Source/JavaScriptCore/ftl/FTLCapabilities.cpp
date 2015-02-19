@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,7 +51,6 @@ inline CapabilityLevel canCompile(Node* node)
     case KillLocal:
     case MovHint:
     case ZombieHint:
-    case GetArgument:
     case Phantom:
     case HardPhantom:
     case Flush:
@@ -89,6 +88,7 @@ inline CapabilityLevel canCompile(Node* node)
     case ArithAbs:
     case ArithSin:
     case ArithCos:
+    case ArithPow:
     case ArithSqrt:
     case ArithFRound:
     case ArithNegate:
@@ -120,6 +120,10 @@ inline CapabilityLevel canCompile(Node* node)
     case StoreBarrierWithNullCheck:
     case Call:
     case Construct:
+    case CallVarargs:
+    case CallForwardVarargs:
+    case ConstructVarargs:
+    case LoadVarargs:
     case NativeCall:
     case NativeConstruct:
     case ValueToInt32:

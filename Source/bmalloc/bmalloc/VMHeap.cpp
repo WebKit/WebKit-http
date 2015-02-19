@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #include "LargeChunk.h"
 #include "Line.h"
 #include "PerProcess.h"
+#include "SuperChunk.h"
 #include "VMHeap.h"
 #include <thread>
 
@@ -36,19 +37,20 @@ VMHeap::VMHeap()
 {
 }
 
-void VMHeap::allocateSuperChunk()
+void VMHeap::grow()
 {
-    char* superChunk = static_cast<char*>(vmAllocate(superChunkSize, superChunkSize));
+    SuperChunk* superChunk = SuperChunk::create();
+    m_superChunks.push(superChunk);
 
-    SmallChunk* smallChunk = new (superChunk + smallChunkOffset) SmallChunk;
+    SmallChunk* smallChunk = superChunk->smallChunk();
     for (auto* it = smallChunk->begin(); it != smallChunk->end(); ++it)
         m_smallPages.push(it);
 
-    MediumChunk* mediumChunk = new (superChunk + mediumChunkOffset) MediumChunk;
+    MediumChunk* mediumChunk = superChunk->mediumChunk();
     for (auto* it = mediumChunk->begin(); it != mediumChunk->end(); ++it)
         m_mediumPages.push(it);
 
-    LargeChunk* largeChunk = new (superChunk + largeChunkOffset) LargeChunk;
+    LargeChunk* largeChunk = superChunk->largeChunk();
     m_largeRanges.insert(BoundaryTag::init(largeChunk));
 }
 

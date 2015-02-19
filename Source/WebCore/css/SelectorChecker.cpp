@@ -581,7 +581,11 @@ bool SelectorChecker::checkOne(const CheckingContextWithStatus& context, PseudoI
             return false;
 
         const QualifiedName& attr = selector->attribute();
-        bool caseSensitive = !(m_documentIsHTML && element->isHTMLElement()) || HTMLDocument::isCaseSensitiveAttribute(attr);
+        bool caseSensitive = true;
+        if (selector->attributeValueMatchingIsCaseInsensitive())
+            caseSensitive = false;
+        else if (m_documentIsHTML && element->isHTMLElement() && !HTMLDocument::isCaseSensitiveAttribute(attr))
+            caseSensitive = false;
 
         return anyAttributeMatches(element, selector, attr, caseSensitive);
     }
@@ -805,9 +809,6 @@ bool SelectorChecker::checkOne(const CheckingContextWithStatus& context, PseudoI
             if (!selector->parseNth())
                 break;
             if (Element* parentElement = element->parentElement()) {
-                if (!parentElement->isFinishedParsingChildren())
-                    return false;
-
                 if (const CSSSelectorList* selectorList = selector->selectorList()) {
                     unsigned selectorListSpecificity;
                     if (matchSelectorList(context, *element, *selectorList, selectorListSpecificity))
@@ -821,6 +822,9 @@ bool SelectorChecker::checkOne(const CheckingContextWithStatus& context, PseudoI
                     }
                 } else if (context.resolvingMode == Mode::ResolvingStyle)
                     parentElement->setChildrenAffectedByBackwardPositionalRules();
+
+                if (!parentElement->isFinishedParsingChildren())
+                    return false;
 
                 int count = 1;
                 if (const CSSSelectorList* selectorList = selector->selectorList()) {

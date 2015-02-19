@@ -36,6 +36,7 @@
 #include "PositionIterator.h"
 #include "RenderBlock.h"
 #include "RenderFlexibleBox.h"
+#include "RenderGrid.h"
 #include "RenderInline.h"
 #include "RenderIterator.h"
 #include "RenderLineBreak.h"
@@ -49,7 +50,7 @@
 #include <stdio.h>
 #include <wtf/text/CString.h>
 #include <wtf/unicode/CharacterNames.h>
-  
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -915,11 +916,11 @@ bool Position::isCandidate() const
 {
     if (isNull())
         return false;
-        
+
     RenderObject* renderer = deprecatedNode()->renderer();
     if (!renderer)
         return false;
-    
+
     if (renderer->style().visibility() != VISIBLE)
         return false;
 
@@ -936,7 +937,11 @@ bool Position::isCandidate() const
     if (m_anchorNode->hasTagName(htmlTag))
         return false;
 
-    if (is<RenderBlockFlow>(*renderer) || is<RenderFlexibleBox>(*renderer)) {
+    if (is<RenderBlockFlow>(*renderer)
+#if ENABLE(CSS_GRID_LAYOUT)
+        || is<RenderGrid>(*renderer)
+#endif
+        || is<RenderFlexibleBox>(*renderer)) {
         RenderBlock& block = downcast<RenderBlock>(*renderer);
         if (block.logicalHeight() || m_anchorNode->hasTagName(bodyTag)) {
             if (!Position::hasRenderedNonAnonymousDescendantsWithHeight(block))
@@ -953,11 +958,11 @@ bool Position::isRenderedCharacter() const
 {
     if (!is<Text>(deprecatedNode()))
         return false;
-        
+
     RenderText* renderer = downcast<Text>(*deprecatedNode()).renderer();
     if (!renderer)
         return false;
-    
+
     return renderer->containsRenderedCharacterOffset(m_offset);
 }
 

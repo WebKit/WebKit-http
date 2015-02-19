@@ -181,7 +181,9 @@ public:
     void processWillSuspend();
     void cancelProcessWillSuspend();
     bool markAllLayersVolatileIfPossible();
+    void setAllLayerTreeStatesFrozen(bool);
     void processSuspensionCleanupTimerFired();
+    void processDidResume();
 
 #if PLATFORM(IOS)
     void resetAllGeolocationPermissions();
@@ -256,6 +258,8 @@ private:
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
     void releasePageCache();
+
+    void deleteWebsiteData(WebCore::SessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
 
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);

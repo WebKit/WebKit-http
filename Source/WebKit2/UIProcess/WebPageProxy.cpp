@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -307,6 +307,8 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_textZoomFactor(1)
     , m_pageZoomFactor(1)
     , m_pageScaleFactor(1)
+    , m_pluginZoomFactor(1)
+    , m_pluginScaleFactor(1)
     , m_intrinsicDeviceScaleFactor(1)
     , m_customDeviceScaleFactor(0)
     , m_topContentInset(0)
@@ -735,6 +737,14 @@ void WebPageProxy::close()
         return;
 
     m_isClosed = true;
+
+    if (m_activePopupMenu)
+        m_activePopupMenu->cancelTracking();
+
+#if ENABLE(CONTEXT_MENUS)
+    if (m_activeContextMenu)
+        m_activeContextMenu->cancelTracking();
+#endif
 
     m_backForwardList->pageClosed();
     m_pageClient.pageClosed();
@@ -2121,6 +2131,24 @@ void WebPageProxy::setPageAndTextZoomFactors(double pageZoomFactor, double textZ
     m_process->send(Messages::WebPage::SetPageAndTextZoomFactors(m_pageZoomFactor, m_textZoomFactor), m_pageID); 
 }
 
+double WebPageProxy::pageZoomFactor() const
+{
+    // Zoom factor for non-PDF pages persists across page loads. We maintain a separate member variable for PDF
+    // zoom which ensures that we don't use the PDF zoom for a normal page.
+    if (m_mainFrame && m_mainFrame->isDisplayingPDFDocument())
+        return m_pluginZoomFactor;
+    return m_pageZoomFactor;
+}
+
+double WebPageProxy::pageScaleFactor() const
+{
+    // PDF documents use zoom and scale factors to size themselves appropriately in the window. We store them
+    // separately but decide which to return based on the main frame.
+    if (m_mainFrame && m_mainFrame->isDisplayingPDFDocument())
+        return m_pluginScaleFactor;
+    return m_pageScaleFactor;
+}
+
 void WebPageProxy::scalePage(double scale, const IntPoint& origin)
 {
     if (!isValid())
@@ -2381,9 +2409,14 @@ void WebPageProxy::pageScaleFactorDidChange(double scaleFactor)
     m_pageScaleFactor = scaleFactor;
 }
 
-void WebPageProxy::pageZoomFactorDidChange(double zoomFactor)
+void WebPageProxy::pluginScaleFactorDidChange(double pluginScaleFactor)
 {
-    m_pageZoomFactor = zoomFactor;
+    m_pluginScaleFactor = pluginScaleFactor;
+}
+
+void WebPageProxy::pluginZoomFactorDidChange(double pluginZoomFactor)
+{
+    m_pluginZoomFactor = pluginZoomFactor;
 }
 
 void WebPageProxy::findStringMatches(const String& string, FindOptions options, unsigned maxMatchCount)
@@ -2803,8 +2836,10 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
     // WebPageProxy's cache of the value can get out of sync (e.g. in the case where a
     // plugin is handling page scaling itself) so we should reset it to the default
     // for standard main frame loads.
-    if (frame->isMainFrame() && static_cast<FrameLoadType>(opaqueFrameLoadType) == FrameLoadType::Standard)
+    if (frame->isMainFrame() && static_cast<FrameLoadType>(opaqueFrameLoadType) == FrameLoadType::Standard) {
         m_pageScaleFactor = 1;
+        m_pluginScaleFactor = 1;
+    }
 
     m_pageLoadState.commitChanges();
     if (m_navigationClient) {
@@ -3913,7 +3948,7 @@ void WebPageProxy::showPopupMenu(const IntRect& rect, uint64_t textDirection, co
         m_activePopupMenu->hidePopupMenu();
 #endif
         m_activePopupMenu->invalidate();
-        m_activePopupMenu = 0;
+        m_activePopupMenu = nullptr;
     }
 
     m_activePopupMenu = m_pageClient.createPopupMenuProxy(this);
@@ -3928,14 +3963,10 @@ void WebPageProxy::showPopupMenu(const IntRect& rect, uint64_t textDirection, co
     UNUSED_PARAM(data);
     m_uiPopupMenuClient.showPopupMenu(this, m_activePopupMenu.get(), rect, static_cast<TextDirection>(textDirection), m_pageScaleFactor, items, selectedIndex);
 #else
-    RefPtr<WebPopupMenuProxy> protectedActivePopupMenu = m_activePopupMenu;
 
-    protectedActivePopupMenu->showPopupMenu(rect, static_cast<TextDirection>(textDirection), m_pageScaleFactor, items, data, selectedIndex);
-
-    // Since Efl doesn't use a nested mainloop to show the popup and get the answer, we need to keep the client pointer valid.
-    // FIXME: The above comment doesn't make any sense since this code is compiled out for EFL.
-    protectedActivePopupMenu->invalidate();
-    protectedActivePopupMenu = 0;
+    // Showing a popup menu runs a nested runloop, which can handle messages that cause |this| to get closed.
+    Ref<WebPageProxy> protect(*this);
+    m_activePopupMenu->showPopupMenu(rect, static_cast<TextDirection>(textDirection), m_pageScaleFactor, items, data, selectedIndex);
 #endif
 }
 
@@ -3950,12 +3981,15 @@ void WebPageProxy::hidePopupMenu()
     m_activePopupMenu->hidePopupMenu();
 #endif
     m_activePopupMenu->invalidate();
-    m_activePopupMenu = 0;
+    m_activePopupMenu = nullptr;
 }
 
 #if ENABLE(CONTEXT_MENUS)
 void WebPageProxy::showContextMenu(const IntPoint& menuLocation, const ContextMenuContextData& contextMenuContextData, const Vector<WebContextMenuItemData>& proposedItems, const UserData& userData)
 {
+    // Showing a context menu runs a nested runloop, which can handle messages that cause |this| to get closed.
+    Ref<WebPageProxy> protect(*this);
+
     internalShowContextMenu(menuLocation, contextMenuContextData, proposedItems, ContextMenuClientEligibility::EligibleForClient, userData);
     
     // No matter the result of internalShowContextMenu, always notify the WebProcess that the menu is hidden so it starts handling mouse events again.
@@ -4710,7 +4744,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     for (size_t i = 0, size = editCommandVector.size(); i < size; ++i)
         editCommandVector[i]->invalidate();
 
-    m_activePopupMenu = 0;
+    m_activePopupMenu = nullptr;
     m_isPlayingAudio = false;
 }
 
@@ -4814,6 +4848,12 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.availableScreenSize = availableScreenSize();
     parameters.textAutosizingWidth = textAutosizingWidth();
     parameters.mimeTypesWithCustomContentProviders = m_pageClient.mimeTypesWithCustomContentProviders();
+#endif
+
+#if PLATFORM(MAC)
+    parameters.appleMailPaginationQuirkEnabled = appleMailPaginationQuirkEnabled();
+#else
+    parameters.appleMailPaginationQuirkEnabled = false;
 #endif
 
     return parameters;

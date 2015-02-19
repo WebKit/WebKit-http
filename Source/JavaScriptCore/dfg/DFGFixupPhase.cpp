@@ -337,6 +337,19 @@ private:
             node->setResult(NodeResultDouble);
             break;
         }
+
+        case ArithPow: {
+            node->setResult(NodeResultDouble);
+            if (node->child2()->shouldSpeculateInt32OrBooleanForArithmetic()) {
+                fixDoubleOrBooleanEdge(node->child1());
+                fixIntOrBooleanEdge(node->child2());
+                break;
+            }
+
+            fixDoubleOrBooleanEdge(node->child1());
+            fixDoubleOrBooleanEdge(node->child2());
+            break;
+        }
             
         case ArithSqrt:
         case ArithFRound:
@@ -1020,7 +1033,6 @@ private:
         case GetArrayLength:
         case Phi:
         case Upsilon:
-        case GetArgument:
         case GetIndexedPropertyStorage:
         case GetTypedArrayByteOffset:
         case LastNodeType:
@@ -1202,6 +1214,10 @@ private:
         case AllocationProfileWatchpoint:
         case Call:
         case Construct:
+        case CallVarargs:
+        case ConstructVarargs:
+        case CallForwardVarargs:
+        case LoadVarargs:
         case ProfileControlFlow:
         case NativeCall:
         case NativeConstruct:

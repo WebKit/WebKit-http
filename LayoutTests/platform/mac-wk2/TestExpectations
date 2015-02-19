@@ -309,9 +309,7 @@ fast/dom/frame-loading-via-document-write.html [ Timeout ]
 
 webkit.org/b/140084 [ Yosemite+ ] js/dom/dfg-inline-resolve.html [ Pass Timeout ]
 
-#webkit.org/b/141252 [ Release Yosemite+ ] inspector/css/selector-dynamic-specificity.html [ Slow ]
-#webkit.org/b/141252 [ Debug Yosemite+ ] inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
-webkit.org/b/141118 inspector/css/selector-dynamic-specificity.html [ Skip ]
+webkit.org/b/141364 [ Yosemite ] fullscreen/full-screen-plugin.html [ Pass Timeout ]
 
 ### END OF (3) Unclassified failures
 ########################################
@@ -504,6 +502,7 @@ webkit.org/b/138736 http/tests/appcache/auth.html [ Skip ]
 [ Yosemite+ ] fast/events/page-visibility-iframe-move-test.html [ Timeout ]
 [ Yosemite+ ] fast/events/page-visibility-iframe-propagation-test.html [ Timeout ]
 [ Yosemite+ ] fast/events/page-visibility-transition-test.html [ Timeout ]
+media/video-background-tab-playback.html [ Failure ]
 
 webkit.org/b/138097 [ Yosemite ] inspector-protocol/debugger/setPauseOnExceptions-uncaught.html [ Pass Failure Timeout ]
 

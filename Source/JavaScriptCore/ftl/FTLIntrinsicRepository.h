@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,6 +40,8 @@ namespace JSC { namespace FTL {
     macro(doubleAbs, "llvm.fabs.f64", functionType(doubleType, doubleType)) \
     macro(doubleSin, "llvm.sin.f64", functionType(doubleType, doubleType)) \
     macro(doubleCos, "llvm.cos.f64", functionType(doubleType, doubleType)) \
+    macro(doublePow, "llvm.pow.f64", functionType(doubleType, doubleType, doubleType)) \
+    macro(doublePowi, "llvm.powi.f64", functionType(doubleType, doubleType, int32)) \
     macro(doubleSqrt, "llvm.sqrt.f64", functionType(doubleType, doubleType)) \
     macro(frameAddress, "llvm.frameaddress", functionType(pointerType(int8), int32)) \
     macro(mulWithOverflow32, "llvm.smul.with.overflow.i32", functionType(structType(m_context, int32, boolean), int32, int32)) \
@@ -97,10 +99,12 @@ namespace JSC { namespace FTL {
     macro(V_JITOperation_EC, functionType(voidType, intPtr, intPtr)) \
     macro(V_JITOperation_ECb, functionType(voidType, intPtr, intPtr)) \
     macro(V_JITOperation_EVwsJ, functionType(voidType, intPtr, intPtr, int64)) \
+    macro(V_JITOperation_EZJZZZ, functionType(voidType, intPtr, int32, int64, int32, int32, int32)) \
     macro(V_JITOperation_J, functionType(voidType, int64)) \
     macro(V_JITOperation_Z, functionType(voidType, int32)) \
     macro(Z_JITOperation_D, functionType(int32, doubleType)) \
-    macro(Z_JITOperation_EC, functionType(int32, intPtr, intPtr))
+    macro(Z_JITOperation_EC, functionType(int32, intPtr, intPtr)) \
+    macro(Z_JITOperation_EJZ, functionType(int32, intPtr, int64, int32))
     
 class IntrinsicRepository : public CommonValues {
 public:

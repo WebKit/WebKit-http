@@ -43,48 +43,19 @@ public:
     RenderTableCell* firstCell() const;
     RenderTableCell* lastCell() const;
 
-    RenderTableSection* section() const { return downcast<RenderTableSection>(parent()); }
-    RenderTable* table() const { return downcast<RenderTable>(parent()->parent()); }
+    RenderTable* table() const;
 
     void paintOutlineForRowIfNeeded(PaintInfo&, const LayoutPoint&);
 
     static RenderTableRow* createAnonymousWithParentRenderer(const RenderObject*);
-    virtual RenderBox* createAnonymousBoxWithSameTypeAs(const RenderObject* parent) const override
-    {
-        return createAnonymousWithParentRenderer(parent);
-    }
+    virtual RenderBox* createAnonymousBoxWithSameTypeAs(const RenderObject* parent) const override { return createAnonymousWithParentRenderer(parent); }
 
-    void setRowIndex(unsigned rowIndex)
-    {
-        if (UNLIKELY(rowIndex > maxRowIndex))
-            CRASH();
-
-        m_rowIndex = rowIndex;
-    }
-
+    void setRowIndex(unsigned);
     bool rowIndexWasSet() const { return m_rowIndex != unsetRowIndex; }
-    unsigned rowIndex() const
-    {
-        ASSERT(rowIndexWasSet());
-        return m_rowIndex;
-    }
+    unsigned rowIndex() const;
 
-    const BorderValue& borderAdjoiningTableStart() const
-    {
-        if (section()->hasSameDirectionAs(table()))
-            return style().borderStart();
-
-        return style().borderEnd();
-    }
-
-    const BorderValue& borderAdjoiningTableEnd() const
-    {
-        if (section()->hasSameDirectionAs(table()))
-            return style().borderEnd();
-
-        return style().borderStart();
-    }
-
+    const BorderValue& borderAdjoiningTableStart() const;
+    const BorderValue& borderAdjoiningTableEnd() const;
     const BorderValue& borderAdjoiningStartCell(const RenderTableCell*) const;
     const BorderValue& borderAdjoiningEndCell(const RenderTableCell*) const;
 
@@ -111,6 +82,8 @@ private:
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
+    RenderTableSection* section() const { return downcast<RenderTableSection>(parent()); }
+
     void firstChild() const = delete;
     void lastChild() const = delete;
     void nextSibling() const = delete;
@@ -119,14 +92,41 @@ private:
     unsigned m_rowIndex : 31;
 };
 
-inline RenderTableRow* RenderTableSection::firstRow() const
+inline void RenderTableRow::setRowIndex(unsigned rowIndex)
 {
-    return downcast<RenderTableRow>(RenderBox::firstChild());
+    if (UNLIKELY(rowIndex > maxRowIndex))
+        CRASH();
+    m_rowIndex = rowIndex;
 }
 
-inline RenderTableRow* RenderTableSection::lastRow() const
+inline unsigned RenderTableRow::rowIndex() const
 {
-    return downcast<RenderTableRow>(RenderBox::lastChild());
+    ASSERT(rowIndexWasSet());
+    return m_rowIndex;
+}
+
+inline const BorderValue& RenderTableRow::borderAdjoiningTableStart() const
+{
+    RenderTableSection* section = this->section();
+    if (section && section->hasSameDirectionAs(table()))
+        return style().borderStart();
+    return style().borderEnd();
+}
+
+inline const BorderValue& RenderTableRow::borderAdjoiningTableEnd() const
+{
+    RenderTableSection* section = this->section();
+    if (section && section->hasSameDirectionAs(table()))
+        return style().borderEnd();
+    return style().borderStart();
+}
+
+inline RenderTable* RenderTableRow::table() const
+{
+    RenderTableSection* section = this->section();
+    if (!section)
+        return nullptr;
+    return downcast<RenderTable>(section->parent());
 }
 
 inline RenderTableRow* RenderTableRow::nextRow() const
@@ -137,6 +137,16 @@ inline RenderTableRow* RenderTableRow::nextRow() const
 inline RenderTableRow* RenderTableRow::previousRow() const
 {
     return downcast<RenderTableRow>(RenderBox::previousSibling());
+}
+
+inline RenderTableRow* RenderTableSection::firstRow() const
+{
+    return downcast<RenderTableRow>(RenderBox::firstChild());
+}
+
+inline RenderTableRow* RenderTableSection::lastRow() const
+{
+    return downcast<RenderTableRow>(RenderBox::lastChild());
 }
 
 } // namespace WebCore
