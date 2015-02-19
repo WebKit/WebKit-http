@@ -39,6 +39,7 @@
 #include <gst/gst.h>
 #include <gst/pbutils/missing-plugins.h>
 #include <limits>
+#include <wtf/CurrentTime.h>
 #include <wtf/HexNumber.h>
 #include <wtf/MediaTime.h>
 #include <wtf/gobject/GUniquePtr.h>
@@ -258,6 +259,8 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_readyTimerHandler("[WebKit] mediaPlayerPrivateReadyStateTimeoutCallback", [this] { changePipelineState(GST_STATE_NULL); })
     , m_totalBytes(0)
     , m_preservesPitch(false)
+    , m_cachedPosition(-1)
+    , m_lastQuery(-1)
 #if ENABLE(WEB_AUDIO)
     , m_audioSourceProvider(AudioSourceProviderGStreamer::create())
 #endif
@@ -407,6 +410,12 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
         return 0;
     }
 
+    double now = WTF::currentTime();
+    if (m_lastQuery > -1 && ((now - m_lastQuery) < 0.25) && (m_cachedPosition > -1))
+        return m_cachedPosition;
+
+    m_lastQuery = now;
+
     // Position is only available if no async state change is going on and the state is either paused or playing.
     gint64 position = GST_CLOCK_TIME_NONE;
     GstQuery* query= gst_query_new_position(GST_FORMAT_TIME);
@@ -422,7 +431,7 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
     LOG_MEDIA_MESSAGE("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
     gst_query_unref(query);
-
+    m_cachedPosition = result;
     return result;
 }
 

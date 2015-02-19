@@ -247,6 +247,8 @@ private:
     mutable unsigned long long m_totalBytes;
     URL m_url;
     bool m_preservesPitch;
+    mutable float m_cachedPosition;
+    mutable double m_lastQuery;
 #if ENABLE(WEB_AUDIO)
     OwnPtr<AudioSourceProviderGStreamer> m_audioSourceProvider;
 #endif
