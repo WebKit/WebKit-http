@@ -45,7 +45,7 @@ void WebPage::platformPreferencesDidChange(const WebPreferencesStore&)
     notImplemented();
 }
 
-bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent& keyboardEvent)
+bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent&)
 {
     notImplemented();
     return false;
@@ -81,7 +81,7 @@ PassRefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL&)
     return nullptr;
 }
 
-String WebPage::platformUserAgent(const URL& url) const
+String WebPage::platformUserAgent(const URL&) const
 {
     notImplemented();
     return String();
