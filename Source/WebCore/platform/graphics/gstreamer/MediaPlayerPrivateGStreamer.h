@@ -142,7 +142,7 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     void needKey(RefPtr<Uint8Array>);
-    void keyAdded();
+    void signalDRM();
 #endif
 
 private:

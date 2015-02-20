@@ -1951,9 +1951,9 @@ void MediaPlayerPrivateGStreamer::needKey(RefPtr<Uint8Array> initData)
     }
 }
 
-void MediaPlayerPrivateGStreamer::keyAdded()
+void MediaPlayerPrivateGStreamer::signalDRM()
 {
-    GST_DEBUG("key/license was added, signal semaphore");
+    GST_DEBUG("key/license was changed or failed, signal semaphore");
     // Wake up a potential waiter blocked in the GStreamer thread
     m_drmKeySemaphore.signal();
 }

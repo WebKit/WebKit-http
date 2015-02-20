@@ -31,6 +31,7 @@
 #include "CDM.h"
 #include "CDMSession.h"
 #include "UUID.h"
+#include "MediaKeyError.h"
 #include "MediaPlayerPrivateGStreamer.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/CString.h>
@@ -75,6 +76,7 @@ PassRefPtr<Uint8Array> CDMSessionGStreamer::generateKeyRequest(const String& mim
     EDxDrmStatus status = DxDrmClient_OpenDrmStreamFromData(&m_DxDrmStream, initData->data(), initData->byteLength());
     if (status != DX_SUCCESS) {
         GST_WARNING("failed creating DxDrmClient from initData (%d)", status);
+        errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
         return nullptr;
     }
 
@@ -82,6 +84,8 @@ PassRefPtr<Uint8Array> CDMSessionGStreamer::generateKeyRequest(const String& mim
     status = DxDrmStream_AdjustClock(m_DxDrmStream, DX_AUTO_NO_UI);
     if (status != DX_SUCCESS) {
         GST_WARNING("failed setting secure clock (%d)", status);
+        errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
+        systemCode = status;
         return nullptr;
     }
 
@@ -117,6 +121,7 @@ PassRefPtr<Uint8Array> CDMSessionGStreamer::generateKeyRequest(const String& mim
 
 void CDMSessionGStreamer::releaseKeys()
 {
+    m_parent->signalDRM();
 }
 
 bool CDMSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, unsigned long& systemCode)
@@ -163,13 +168,15 @@ bool CDMSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessag
         m_waitAck = true;
     } else {
         // Notify the player instance that a key was added
-        m_parent->keyAdded();
+        m_parent->signalDRM();
         ret = true;
     }
     return true;
 error:
-    // FIXME: Should we unblock the player semaphore or the error will do it ?
-    errorCode = 1;
+    errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
+    systemCode = status;
+    // Notify Player that license acquisition failed
+    m_parent->signalDRM();
     return ret;
 #else
     return false;
