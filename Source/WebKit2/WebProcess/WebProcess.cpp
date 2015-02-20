@@ -1133,7 +1133,7 @@ void WebProcess::releasePageCache()
     PageCache::singleton().pruneToSizeNow(0, PruningReason::MemoryPressure);
 }
 
-void WebProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
+void WebProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point, uint64_t callbackID)
 {
     if (websiteDataTypes & WebsiteDataTypeMemoryCache) {
         PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
