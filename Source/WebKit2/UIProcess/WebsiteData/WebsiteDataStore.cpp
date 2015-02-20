@@ -112,7 +112,7 @@ static ProcessAccessType computeNetworkProcessAccessType(WebsiteDataTypes dataTy
     return processAccessType;
 }
 
-static ProcessAccessType computeWebProcessAccessType(WebsiteDataTypes dataTypes, bool isNonPersistentStore)
+static ProcessAccessType computeWebProcessAccessType(WebsiteDataTypes dataTypes)
 {
     ProcessAccessType processAccessType = ProcessAccessType::None;
 
@@ -183,7 +183,7 @@ void WebsiteDataStore::removeData(WebsiteDataTypes dataTypes, std::chrono::syste
         }
     }
 
-    auto webProcessAccessType = computeWebProcessAccessType(dataTypes, isNonPersistent());
+    auto webProcessAccessType = computeWebProcessAccessType(dataTypes);
     if (webProcessAccessType != ProcessAccessType::None) {
         for (auto& process : processes()) {
             switch (webProcessAccessType) {
