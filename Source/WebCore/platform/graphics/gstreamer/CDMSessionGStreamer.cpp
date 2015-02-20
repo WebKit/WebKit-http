@@ -33,6 +33,7 @@
 #include "UUID.h"
 #include "MediaPlayerPrivateGStreamer.h"
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/CString.h>
 
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
@@ -98,16 +99,16 @@ PassRefPtr<Uint8Array> CDMSessionGStreamer::generateKeyRequest(const String& mim
     // Get License URL
     destinationURL = (const char *) DxDrmStream_GetTextAttribute(m_DxDrmStream, DX_ATTR_SILENT_URL, DX_ACTIVE_CONTENT);
 
-    StringBuilder builder;
-    builder.appendLiteral("challenge=");
-    builder.append((const char *)challenge);
-    builder.appendLiteral("\n");
+    GST_DEBUG("destination URL : %s", destinationURL.utf8().data());
+    GST_MEMDUMP("generated license request :", (const guint8 *) challenge, challenge_length);
+
+    PassRefPtr<Uint8Array> result = Uint8Array::create(reinterpret_cast<const unsigned char *>(challenge), challenge_length);
 
     g_free(challenge);
 
-    GST_MEMDUMP("generated license request :", (const guint8 *) builder.characters8(), builder.length());
+    // This is the first stage of license aquisition.
+    m_waitAck = false;
 
-    PassRefPtr<Uint8Array> result = Uint8Array::create(reinterpret_cast<const unsigned char *>(builder.characters8()), builder.length());
     return result;
 #else
     return nullptr;
@@ -131,7 +132,8 @@ bool CDMSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessag
         return false;
     }
 
-    if (isAckRequired) {
+    // We need to trak our state on our own as Discretix library seem to set isAckRequired to true even when processing the ack response..
+    if (!m_waitAck && isAckRequired) {
         guint32 challenge_length = MAX_CHALLENGE_LEN;
         gpointer challenge = g_malloc0(challenge_length);
 
@@ -142,17 +144,11 @@ bool CDMSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessag
             return false;
         }
 
-        StringBuilder builder;
-        builder.appendLiteral("challenge=");
-        builder.append((const char *)challenge);
-        builder.appendLiteral("\n");
+        GST_MEMDUMP ("generated license ack request :", (const guint8 *) challenge, challenge_length);
+        nextMessage = Uint8Array::create(reinterpret_cast<const unsigned char *>(challenge), challenge_length);
 
         g_free(challenge);
-
-        GST_MEMDUMP("generated license ack request :", (const guint8 *) builder.characters8(), builder.length());
-
-        nextMessage = Uint8Array::create(reinterpret_cast<const unsigned char *>(builder.characters8()), builder.length());
-
+        m_waitAck = true;
         return false;
     } else {
         // Notify the player instance that a key was added

@@ -55,7 +55,7 @@ protected:
     MediaPlayerPrivateGStreamer* m_parent;
     CDMSessionClient* m_client;
     String m_sessionId;
-
+    bool m_waitAck;
 #if USE(DXDRM)
     HDxDrmStream m_DxDrmStream;
 #endif
