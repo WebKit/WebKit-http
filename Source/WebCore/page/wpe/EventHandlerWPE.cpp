@@ -41,13 +41,13 @@ void EventHandler::focusDocumentView()
     notImplemented();
 }
 
-bool EventHandler::passWidgetMouseDownEventToWidget(const MouseEventWithHitTestResults& event)
+bool EventHandler::passWidgetMouseDownEventToWidget(const MouseEventWithHitTestResults&)
 {
     notImplemented();
     return false;
 }
 
-bool EventHandler::passWidgetMouseDownEventToWidget(RenderWidget* renderWidget)
+bool EventHandler::passWidgetMouseDownEventToWidget(RenderWidget*)
 {
     notImplemented();
     return false;
@@ -65,25 +65,25 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent&) const
     return false;
 }
 
-bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widget& widget)
+bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent&, Widget&)
 {
     notImplemented();
     return false;
 }
 
-bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
+bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults&, Frame*)
 {
     notImplemented();
     return false;
 }
 
-bool EventHandler::passMouseMoveEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe, HitTestResult* hoveredNode)
+bool EventHandler::passMouseMoveEventToSubframe(MouseEventWithHitTestResults&, Frame*, HitTestResult*)
 {
     notImplemented();
     return false;
 }
 
-bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
+bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&, Frame*)
 {
     notImplemented();
     return false;
@@ -99,7 +99,7 @@ unsigned EventHandler::accessKeyModifiers()
 // horizontal scrollbar while scrolling with the wheel; we need to
 // add the deltas and ticks here so that this behavior is consistent
 // for styled scrollbars.
-bool EventHandler::shouldTurnVerticalTicksIntoHorizontal(const HitTestResult& result, const PlatformWheelEvent&) const
+bool EventHandler::shouldTurnVerticalTicksIntoHorizontal(const HitTestResult&, const PlatformWheelEvent&) const
 {
     notImplemented();
     return false;
