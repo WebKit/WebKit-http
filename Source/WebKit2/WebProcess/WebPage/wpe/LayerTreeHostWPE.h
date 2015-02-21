@@ -87,7 +87,6 @@ private:
     void flushAndRenderLayers();
     void cancelPendingLayerFlush();
 
-    static constexpr const double m_targetFlushFrequency = 60;
     void layerFlushTimerFired();
 
     WebCore::GLContext* glContext();
