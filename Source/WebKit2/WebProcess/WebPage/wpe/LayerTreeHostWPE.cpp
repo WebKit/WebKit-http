@@ -60,7 +60,8 @@ LayerTreeHostWPE::LayerTreeHostWPE(WebPage* webPage)
     , m_isValid(true)
     , m_notifyAfterScheduledLayerFlush(false)
     , m_layerFlushSchedulingEnabled(true)
-    , m_layerFlushTimer("[WebKit] layerFlushTimer", std::bind(&LayerTreeHostWPE::layerFlushTimerFired, this), G_PRIORITY_HIGH_IDLE + 10)
+    , m_layerFlushTimer("[WebKit] layerFlushTimer", std::bind(&LayerTreeHostWPE::layerFlushTimerFired, this), G_PRIORITY_HIGH_IDLE + 20)
+    , m_frameRequestState(FrameRequestState::Completed)
     , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitorWPE))
 {
 }
@@ -232,6 +233,11 @@ void LayerTreeHostWPE::paintContents(const GraphicsLayer* graphicsLayer, Graphic
 
 void LayerTreeHostWPE::layerFlushTimerFired()
 {
+    if (m_frameRequestState != FrameRequestState::Completed) {
+        m_frameRequestState = FrameRequestState::ScheduleLayerFlushOnCompletion;
+        return;
+    }
+
     flushAndRenderLayers();
 }
 
@@ -268,7 +274,10 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
     downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer().paint();
     m_textureMapper->endPainting();
 
+    ASSERT(m_frameRequestState == FrameRequestState::Completed);
+    m_frameRequestState = FrameRequestState::InProgress;
     wl_callback_add_listener(m_waylandSurface->requestFrame(), &m_frameListener, this);
+
     context->swapBuffers();
 }
 
@@ -303,6 +312,11 @@ void LayerTreeHostWPE::scheduleLayerFlush()
 {
     if (!m_layerFlushSchedulingEnabled || m_layerFlushTimer.isScheduled())
         return;
+
+    if (m_frameRequestState != FrameRequestState::Completed) {
+        m_frameRequestState = FrameRequestState::ScheduleLayerFlushOnCompletion;
+        return;
+    }
 
     m_layerFlushTimer.schedule();
 }
@@ -364,6 +378,20 @@ const struct wl_callback_listener LayerTreeHostWPE::m_frameListener = {
 
         auto& layerTreeHost = *static_cast<LayerTreeHostWPE*>(data);
         layerTreeHost.m_displayRefreshMonitor->dispatchRefreshCallback();
+
+        switch (layerTreeHost.m_frameRequestState) {
+        case FrameRequestState::InProgress:
+            layerTreeHost.m_frameRequestState = FrameRequestState::Completed;
+            break;
+        case FrameRequestState::ScheduleLayerFlushOnCompletion:
+            ASSERT(!layerTreeHost.m_layerFlushTimer.isActive());
+            layerTreeHost.m_frameRequestState = FrameRequestState::Completed;
+            layerTreeHost.flushAndRenderLayers();
+            break;
+        case FrameRequestState::Completed:
+            ASSERT_NOT_REACHED();
+            break;
+        }
     }
 };
 
