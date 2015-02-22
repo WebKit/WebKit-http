@@ -41,7 +41,6 @@ list(APPEND WebKit2_SOURCES
     Platform/unix/SharedMemoryUnix.cpp
     Platform/wpe/LoggingWPE.cpp
     Platform/wpe/ModuleWPE.cpp
-    Platform/wpe/WorkQueueWPE.cpp
     PluginProcess/unix/PluginControllerProxyUnix.cpp
     PluginProcess/unix/PluginProcessMainUnix.cpp
     PluginProcess/unix/PluginProcessUnix.cpp

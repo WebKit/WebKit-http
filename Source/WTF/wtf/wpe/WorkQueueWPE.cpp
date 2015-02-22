@@ -32,6 +32,8 @@
 
 // FIXME: Merge with WorkQueueGtk.cpp?
 
+namespace WTF {
+
 static const size_t kVisualStudioThreadNameLimit = 31;
 
 void WorkQueue::platformInitialize(const char* name, Type, QOS)
@@ -62,8 +64,12 @@ void WorkQueue::platformInitialize(const char* name, Type, QOS)
 
 void WorkQueue::platformInvalidate()
 {
-    MutexLocker locker(m_eventLoopLock);
+    if (m_workQueueThread) {
+        detachThread(m_workQueueThread);
+        m_workQueueThread = 0;
+    }
 
+    MutexLocker locker(m_eventLoopLock);
     if (m_eventLoop) {
         if (g_main_loop_is_running(m_eventLoop.get()))
             g_main_loop_quit(m_eventLoop.get());
@@ -111,3 +117,5 @@ void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<v
     GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy("[WebKit] WorkQueue::dispatchAfter", WTF::move(function),
         std::chrono::duration_cast<std::chrono::milliseconds>(duration), G_PRIORITY_DEFAULT, [this] { deref(); }, m_eventContext.get());
 }
+
+} // namespace WTF

@@ -7,6 +7,7 @@ list(APPEND WTF_SOURCES
 
     gtk/MainThreadGtk.cpp
     gtk/RunLoopGtk.cpp
+    wpe/WorkQueueWPE.cpp
 )
 
 list(APPEND WTF_LIBRARIES
