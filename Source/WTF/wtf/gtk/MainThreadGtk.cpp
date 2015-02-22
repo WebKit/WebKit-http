@@ -30,7 +30,7 @@
 #include "config.h"
 #include "MainThread.h"
 
-#include <wtf/gobject/GMainLoopSource.h>
+#include <wtf/gobject/GSourceWrap.h>
 
 namespace WTF {
 
@@ -40,7 +40,8 @@ void initializeMainThreadPlatform()
 
 void scheduleDispatchFunctionsOnMainThread()
 {
-    GMainLoopSource::scheduleAndDeleteOnDestroy("[WebKit] dispatchFunctionsFromMainThread", std::function<void()>(dispatchFunctionsFromMainThread));
+    static GSourceWrap::Static dispatcher("[WebKit] dispatchFunctionsFromMainThread", std::function<void ()>(dispatchFunctionsFromMainThread));
+    dispatcher.schedule();
 }
 
 } // namespace WTF
