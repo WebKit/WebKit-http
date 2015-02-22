@@ -40,6 +40,11 @@ void WebPage::platformDetach()
 {
 }
 
+void WebPage::platformEditorState(Frame&, EditorState&) const
+{
+    notImplemented();
+}
+
 void WebPage::platformPreferencesDidChange(const WebPreferencesStore&)
 {
     notImplemented();

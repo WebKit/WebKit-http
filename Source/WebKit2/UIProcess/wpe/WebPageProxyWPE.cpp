@@ -50,4 +50,9 @@ void WebPageProxy::loadRecentSearches(const String&, Vector<String>&)
     notImplemented();
 }
 
+void WebPageProxy::editorStateChanged(const EditorState&)
+{
+    notImplemented();
+}
+
 } // namespace WebKit
