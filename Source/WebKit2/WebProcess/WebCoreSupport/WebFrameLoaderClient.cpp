@@ -631,7 +631,9 @@ void WebFrameLoaderClient::dispatchDidLayout()
 
     if (m_frame == m_frame->page()->mainWebFrame()) {
         // FIXME: Remove at the soonest possible time.
+#if 0
         webPage->send(Messages::WebPageProxy::SetRenderTreeSize(webPage->renderTreeSize()));
+#endif
         webPage->mainFrameDidLayout();
     }
 }
