@@ -29,6 +29,8 @@
 #include "PageClientImpl.h"
 #include "WKAPICast.h"
 #include "WPEView.h"
+#include "WebPageGroup.h"
+#include "WebProcessPool.h"
 #include <memory>
 #include <wtf/RefPtr.h>
 

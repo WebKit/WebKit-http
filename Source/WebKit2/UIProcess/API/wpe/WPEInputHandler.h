@@ -26,6 +26,7 @@
 #ifndef WPEInputHandler_h
 #define WPEInputHandler_h
 
+#include "APIObject.h"
 #include "WPEInputEvents.h"
 #include <array>
 #include <wtf/Vector.h>
@@ -35,7 +36,7 @@ namespace WPE {
 
 class View;
 
-class InputHandler {
+class InputHandler : public API::ObjectImpl<API::Object::Type::InputHandler> {
 public:
     static InputHandler* create(View& view)
     {
