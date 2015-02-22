@@ -97,8 +97,6 @@ set(WTF_HEADERS
     StringExtras.h
     StringHasher.h
     StringPrintStream.h
-    TCPackedCache.h
-    TCPageMap.h
     TCSpinLock.h
     ThreadIdentifierDataPthreads.h
     ThreadSafeRefCounted.h
@@ -110,6 +108,7 @@ set(WTF_HEADERS
     Vector.h
     VectorTraits.h
     WTFThreadData.h
+    WorkQueue.h
     WeakPtr.h
     dtoa.h
 
@@ -184,6 +183,7 @@ set(WTF_SOURCES
     StringPrintStream.cpp
     Threading.cpp
     WTFThreadData.cpp
+    WorkQueue.cpp
     dtoa.cpp
 
     dtoa/bignum-dtoa.cc

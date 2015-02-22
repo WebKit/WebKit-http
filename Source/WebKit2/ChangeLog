@@ -1,3 +1,434 @@
+2015-02-20  Brent Fulgham  <bfulgham@apple.com>
+
+        Scrollbars and ScrollAnimators must always have a ScrollableArea
+        https://bugs.webkit.org/show_bug.cgi?id=141855
+
+        Reviewed by Simon Fraser.
+        
+        Change users of the scrollAnimator() method to expect a reference instead of a pointer.
+
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::createScrollbar):
+        (WebKit::PDFPlugin::destroyScrollbar):
+
+2015-02-20  Jessie Berlin  <jberlin@webkit.org>
+
+        Build fix after r180465.
+
+        * UIProcess/mac/PageClientImpl.h:
+
+2015-02-20  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed build fix after r180449.
+
+        * UIProcess/API/gtk/WebKitFileChooserRequest.cpp:
+        (webkit_file_chooser_request_get_selected_files):
+
+2015-02-20  Enrica Casucci  <enrica@apple.com>
+
+        [WK2] Add support for font panel on OS X.
+        https://bugs.webkit.org/show_bug.cgi?id=141777
+
+        Reviewed by Tim Horton.
+
+        This patch adds the necessary hooks to WKView to support
+        the font panel. It also includes refactoring of WebPage::editorState
+        and WebPageProxy::editorStateChanged to separate the different platform
+        specific tasks.
+
+        * Shared/EditorState.cpp:
+        (WebKit::EditorState::encode):
+        (WebKit::EditorState::decode):
+        * Shared/EditorState.h:
+        (WebKit::EditorState::EditorState):
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _selectionChanged]):
+        (-[WKView changeFont:]):
+        * UIProcess/API/mac/WKViewInternal.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::editorStateChanged): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/efl/WebPageProxyEfl.cpp:
+        (WebKit::WebPageProxy::editorStateChanged):
+        * UIProcess/gtk/WebPageProxyGtk.cpp:
+        (WebKit::WebPageProxy::editorStateChanged):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::editorStateChanged):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::selectionDidChange):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::setFont):
+        (WebKit::WebPageProxy::editorStateChanged):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::editorState):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/efl/WebPageEfl.cpp:
+        (WebKit::WebPage::platformEditorState):
+        * WebProcess/WebPage/gtk/WebPageGtk.cpp:
+        (WebKit::WebPage::platformEditorState):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::platformEditorState):
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::platformEditorState):
+        (WebKit::WebPage::setFont):
+
+2015-02-20  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add more detailed diagnostic logging for measuring network cache efficacy
+        https://bugs.webkit.org/show_bug.cgi?id=141803
+        <rdar://problem/19632080>
+
+        Reviewed by Antti Koivisto.
+
+        Add more detailed diagnostic logging for measuring network cache
+        efficacy.
+
+        We want to know the reason the network cache is being by-passed, why
+        the network cache decided not to cache a response and why it cannot
+        reuse a cache entry.
+
+        This patch adds a new "UncachedReason" table to the SQLite database
+        to store the reason the network cache is deciding not to cache a
+        given response. This information is used later, when the resource is
+        requested again to log the reason why the request cannot be satistied
+        by the cache.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::decodeStorageEntry):
+        (WebKit::canRetrieve):
+        (WebKit::NetworkCache::retrieve):
+        (WebKit::canStore):
+        (WebKit::NetworkCache::store):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheStatistics.h:
+        * NetworkProcess/cache/NetworkCacheStatisticsCocoa.mm:
+        (WebKit::NetworkCacheStatistics::initialize):
+        (WebKit::NetworkCacheStatistics::recordNotCachingResponse):
+        (WebKit::retrieveDecisionToDiagnosticKey):
+        (WebKit::NetworkCacheStatistics::recordNotUsingCacheForRequest):
+        (WebKit::storeDecisionToDiagnosticKey):
+        (WebKit::NetworkCacheStatistics::recordRetrievalFailure):
+        (WebKit::cachedEntryReuseFailureToDiagnosticKey):
+        (WebKit::NetworkCacheStatistics::recordRetrievedCachedEntry):
+        (WebKit::NetworkCacheStatistics::queryWasEverRequested):
+        (WebKit::NetworkCacheStatistics::clear):
+
+2015-02-20  Anders Carlsson  <andersca@apple.com>
+
+        API::String should just be a simple wrapper for WTF strings
+        https://bugs.webkit.org/show_bug.cgi?id=141852
+
+        Reviewed by Beth Dakin.
+
+        Expose a StringView member function on API::String. Move all the WKString API implementations to WKString.cpp.
+
+        * Shared/API/APIString.h:
+        * Shared/API/c/WKString.cpp:
+        (WKStringIsEmpty):
+        (WKStringGetLength):
+        (WKStringGetCharacters):
+        (WKStringGetMaximumUTF8CStringSize):
+        (WKStringGetUTF8CString):
+        (WKStringIsEqual):
+        (WKStringIsEqualToUTF8CString):
+        (WKStringIsEqualToUTF8CStringIgnoringCase):
+
+2015-02-20  Anders Carlsson  <andersca@apple.com>
+
+        API::String::string() needs to return an isolated string copy
+        https://bugs.webkit.org/show_bug.cgi?id=141846
+
+        Reviewed by Tim Horton.
+
+        Since we can expose API::String objects as NSStrings now, we need to make sure that
+        we return copied strings so we won't mess up the StringImpl refcounts.
+
+        * Shared/API/APIString.h:
+
+2015-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove svn:keywords property.
+
+        As far as I can tell, the property had no effect on any of these files, but also,
+        when it has effect it's likely harmful.
+
+        * Platform/spi/ios/DataDetectorsUISPI.h: Removed property svn:keywords.
+        * Platform/spi/ios/ManagedConfigurationSPI.h: Removed property svn:keywords.
+        * Platform/spi/ios/TextInputSPI.h: Removed property svn:keywords.
+        * Scripts/webkit/LegacyMessageReceiver-expected.cpp: Removed property svn:keywords.
+        * Scripts/webkit/LegacyMessages-expected.h: Removed property svn:keywords.
+        * Scripts/webkit/MessageReceiver-expected.cpp: Removed property svn:keywords.
+        * Scripts/webkit/MessageReceiverSuperclass-expected.cpp: Removed property svn:keywords.
+        * Scripts/webkit/Messages-expected.h: Removed property svn:keywords.
+        * Scripts/webkit/MessagesSuperclass-expected.h: Removed property svn:keywords.
+        * UIProcess/ios/PageClientImplIOS.h: Removed property svn:keywords.
+        * UIProcess/ios/WKActionSheet.h: Removed property svn:keywords.
+        * UIProcess/ios/WKActionSheetAssistant.h: Removed property svn:keywords.
+        * UIProcess/ios/WKContentView.h: Removed property svn:keywords.
+        * UIProcess/ios/WKContentViewInteraction.h: Removed property svn:keywords.
+        * UIProcess/ios/WKGeolocationProviderIOS.h: Removed property svn:keywords.
+        * UIProcess/ios/WKScrollView.h: Removed property svn:keywords.
+        * UIProcess/mac/PageClientImpl.h: Removed property svn:keywords.
+        * UIProcess/mac/WKPrintingView.h: Removed property svn:keywords.
+        * UIProcess/mac/WKTextInputWindowController.h: Removed property svn:keywords.
+        * WebProcess/WebCoreSupport/WebSQLiteDatabaseTracker.h: Removed property svn:keywords.
+
+2015-02-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        EFL URTBF
+
+        * Platform/efl/DispatchQueueEfl.cpp:
+
+2015-02-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r180410, WorkQueue.h is in WTF now.
+
+        * Platform/efl/DispatchQueueWorkItemEfl.h:
+
+2015-02-20  Anders Carlsson  <andersca@apple.com>
+
+        Use toAPI when returning the object graph as a WKTypeRef
+        https://bugs.webkit.org/show_bug.cgi?id=141841
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKProcessGroup.mm:
+        (getInjectedBundleInitializationUserData):
+
+2015-02-20  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] cleanup AirPlay code
+        https://bugs.webkit.org/show_bug.cgi?id=141811
+
+        Reviewed by Jer Noble.
+
+        * Configurations/FeatureDefines.xcconfig: IOS_AIRPLAY -> WIRELESS_PLAYBACK_TARGET.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences): Ditto.
+
+2015-02-20  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [WK2][EFL] Fix the build after r180362
+        https://bugs.webkit.org/show_bug.cgi?id=141836
+
+        Reviewed by Carlos Garcia Campos.
+
+        As r180409, EFL port needs to add missing includes for several features,
+        and needs to have a specific implementation of toAPI/toImple for EFL port.
+
+        * UIProcess/API/C/WKBatteryManager.cpp:
+        * UIProcess/API/C/WKPage.cpp:
+        * UIProcess/API/C/efl/WKAPICastEfl.h:
+        (WebKit::toAPI):
+        (WebKit::toImpl):
+        * UIProcess/API/efl/ewk_url_scheme_request.cpp:
+        * UIProcess/CoordinatedGraphics/WebViewClient.cpp:
+        * UIProcess/efl/WebUIPopupMenuClient.cpp:
+        * UIProcess/efl/WebViewEfl.cpp:
+        * WebProcess/efl/ExtensionManagerEfl.cpp:
+
+2015-02-20  Antti Koivisto  <antti@apple.com>
+
+        Move WorkQueue from WK2 to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=141797
+
+        Reviewed by Anders Carlsson.
+
+        * CMakeLists.txt:
+        * DatabaseProcess/DatabaseProcess.h:
+        * Platform/IPC/Connection.h:
+        * Platform/WorkQueue.cpp: Removed.
+        * Platform/WorkQueue.h: Removed.
+        * Platform/efl/WorkQueueEfl.cpp: Removed.
+        * Platform/gtk/WorkQueueGtk.cpp: Removed.
+        * Platform/mac/WorkQueueMac.cpp: Removed.
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * Shared/Network/CustomProtocols/CustomProtocolManager.h:
+        * UIProcess/Launcher/ProcessLauncher.cpp:
+        * UIProcess/Storage/LocalStorageDatabase.cpp:
+        * UIProcess/Storage/LocalStorageDatabase.h:
+        * UIProcess/Storage/LocalStorageDatabaseTracker.cpp:
+        * UIProcess/Storage/LocalStorageDatabaseTracker.h:
+        * UIProcess/Storage/StorageManager.cpp:
+        * UIProcess/Storage/StorageManager.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-02-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WK2][GTK] Fix the build after r180362
+        https://bugs.webkit.org/show_bug.cgi?id=141813
+
+        Reviewed by Žan Doberšek.
+
+        Add several missing includes and a specific implementation of
+        toAPI/toImpl for GTK+ WebView.
+
+        * UIProcess/API/C/gtk/WKAPICastGtk.h:
+        (WebKit::toAPI):
+        (WebKit::toImpl):
+        * UIProcess/API/C/gtk/WKView.cpp:
+        * UIProcess/API/gtk/WebKitFormClient.cpp:
+        * UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp:
+        * UIProcess/gtk/WebInspectorClientGtk.cpp:
+
+2015-02-19  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Fix build warning in WebKit2/WebProcess and UIProcess module.
+        https://bugs.webkit.org/show_bug.cgi?id=141794.
+
+        Reviewed by Anders Carlsson.
+
+        Fix build warning by using UNUSED_PARAM macro.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::computeWebProcessAccessType):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::deleteWebsiteData):
+
+2015-02-19  Remy Demarest  <rdemarest@apple.com>
+
+        Make EnvironmentVariables::appendValue() handle the case where the existing value is an empty string.
+        https://bugs.webkit.org/show_bug.cgi?id=141818.
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/Launcher/mac/EnvironmentVariables.cpp:
+        (WebKit::EnvironmentVariables::appendValue): If the existing value is an empty string, replace it rather than
+        append to it.
+
+2015-02-19  Anders Carlsson  <andersca@apple.com>
+
+        Make C SPI objects and modern API objects toll-free bridged
+        https://bugs.webkit.org/show_bug.cgi?id=141808
+
+        Reviewed by Tim Horton.
+
+        * Shared/API/APIObject.h:
+        (API::Object::wrap):
+        (API::Object::unwrap):
+        Add default implementations of wrap and unwrap. These just cast.
+
+        * Shared/API/c/WKArray.cpp:
+        (WKArrayCreate):
+        (WKArrayCreateAdoptingValues):
+        (WKArrayGetItemAtIndex):
+        * Shared/API/c/WKDictionary.cpp:
+        (WKDictionaryGetItemForKey):
+        Add toImpl and toAPI where necessary.
+
+        * Shared/API/c/WKSharedAPICast.h:
+        Add API::Object::wrap in toAPI and unwrap in toImpl.
+
+        * Shared/API/c/WKType.cpp:
+        (WKGetTypeID):
+        (WKRetain):
+        (WKRelease):
+        Add missing toImpl calls.
+
+        * Shared/Cocoa/APIObject.mm:
+        (API::Object::wrap):
+        Return the APIObject Objective-C wrapper.
+
+        (API::Object::unwrap):
+        Return the API::Object from the Objective-C object.
+
+        * Shared/Cocoa/WKObject.h:
+        Add wrap and unwrap declarations.
+
+        * UIProcess/API/C/WKPage.cpp:
+        * UIProcess/API/C/WKPageConfigurationRef.cpp:
+        * UIProcess/API/C/WKPageGroup.cpp:
+        * UIProcess/API/C/WKUserContentControllerRef.cpp:
+        Add missing includes; toImpl now requires a complete type.
+
+2015-02-19  Timothy Horton  <timothy_horton@apple.com>
+
+        Remove unused forward declaration from WKWebViewInternal.h
+        https://bugs.webkit.org/show_bug.cgi?id=141806
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        The use of WebCore::Highlight moved to WKContentView.
+
+2015-02-19  Anders Carlsson  <andersca@apple.com>
+
+        Use the real implementation type in our API cast traits
+        https://bugs.webkit.org/show_bug.cgi?id=141805
+
+        Reviewed by Sam Weinig.
+
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::toURLRef):
+        (WebKit::toAPI): Deleted.
+        (WebKit::toImpl): Deleted.
+        * UIProcess/GenericCallback.h:
+
+2015-02-19  Anders Carlsson  <andersca@apple.com>
+
+        Remove the stray storage manager from WebProcessPool
+        https://bugs.webkit.org/show_bug.cgi?id=141800
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView dealloc]):
+        (-[WKView initWithFrame:processPool:configuration:webView:]):
+        (-[WKView _applicationWillTerminate:]): Deleted.
+        Remove code that calls applicationWillTerminate on the WebPageProxy.
+
+        * UIProcess/WebKeyValueStorageManager.cpp:
+        (WebKit::WebKeyValueStorageManager::getKeyValueStorageOrigins):
+        (WebKit::WebKeyValueStorageManager::getStorageDetailsByOrigin):
+        (WebKit::WebKeyValueStorageManager::deleteEntriesForOrigin):
+        (WebKit::WebKeyValueStorageManager::deleteAllEntries):
+        Get the storage manager from the website data store.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::close):
+        Remove storage manager calls.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::WebProcessPool):
+        (WebKit::WebProcessPool::applicationWillTerminate): Deleted.
+        * UIProcess/WebProcessPool.h:
+        Remove storage manager code.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        (WebKit::WebsiteDataStore::storageManager):
+        Add getter.
+
+2015-02-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [WK2] Unreviewed buildfix for non-Cocoa platforms.
+
+        * CMakeLists.txt:
+        * UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp: Added.
+        (WebKit::WebsiteDataStore::platformInitialize): Added.
+        (WebKit::WebsiteDataStore::platformDestroy): Added.
+
+2015-02-19  Anders Carlsson  <andersca@apple.com>
+
+        WebsiteDataStore should ensure that local storage is written before exiting
+        https://bugs.webkit.org/show_bug.cgi?id=141798
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm: Added.
+        (WebKit::dataStoresWithStorageManagers):
+        (WebKit::WebsiteDataStore::platformInitialize):
+        (WebKit::WebsiteDataStore::platformDestroy):
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::WebsiteDataStore):
+        (WebKit::WebsiteDataStore::~WebsiteDataStore):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
 2015-02-18  Chris Dumez  <cdumez@apple.com>
 
         [WK2][iOS] Fix NetworkCache build

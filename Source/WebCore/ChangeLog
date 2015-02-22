@@ -1,3 +1,824 @@
+2015-02-21  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Fix build failure after including CoreMediaSoftLink.h in WebVideoFullscreenInterfaceAVKit.mm
+        <http://webkit.org/b/141816>
+
+        Attempt to fix the following build failure:
+
+            WebCore/platform/ios/WebVideoFullscreenInterfaceAVKit.mm:68:1: error: call to 'CoreMediaLibrary' is ambiguous
+            SOFT_LINK(CoreMedia, CMTimeRangeContainsTime, Boolean, (CMTimeRange range, CMTime time), (range, time))
+            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            In file included from WebCore/platform/ios/WebVideoFullscreenInterfaceAVKit.mm:34:
+            In file included from WebCore/platform/cf/CoreMediaSoftLink.h:32:
+            WebCore/platform/mac/SoftLinking.h:107:79: note: expanded from macro 'SOFT_LINK'
+            <scratch space>:58:1: note: expanded from here
+            CoreMediaLibrary
+            ^~~~~~~~~~~~~~~~
+            In file included from WebCore/platform/ios/WebVideoFullscreenInterfaceAVKit.mm:34:
+            WebCore/platform/cf/CoreMediaSoftLink.h:35:1: note: candidate function
+            SOFT_LINK_FRAMEWORK_HEADER(WebCore, CoreMedia)
+            ^
+            In file included from WebCore/platform/ios/WebVideoFullscreenInterfaceAVKit.mm:34:
+            In file included from WebCore/platform/cf/CoreMediaSoftLink.h:32:
+            WebCore/platform/mac/SoftLinking.h:298:18: note: expanded from macro 'SOFT_LINK_FRAMEWORK_HEADER'
+            <scratch space>:42:1: note: expanded from here
+            CoreMediaLibrary
+            ^
+            WebCore/platform/ios/WebVideoFullscreenInterfaceAVKit.mm:67:1: note: candidate function
+            SOFT_LINK_FRAMEWORK(CoreMedia)
+            ^
+            In file included from WebCore/platform/ios/WebVideoFullscreenInterfaceAVKit.mm:34:
+            In file included from WebCore/platform/cf/CoreMediaSoftLink.h:32:
+            WebCore/platform/mac/SoftLinking.h:46:18: note: expanded from macro 'SOFT_LINK_FRAMEWORK'
+            <scratch space>:51:1: note: expanded from here
+            CoreMediaLibrary
+            ^
+
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm: Remove the
+        SOFT_LINK_FRAMEWORK(CoreMedia) macro since the remaining
+        SOFT_LINK() and SOFT_LINK_CONSTANT() macros can use the
+        CoreMediaLibrary() method exposed by CoreMediaSoftLink.h.
+
+2015-02-21  David Kilzer  <ddkilzer@apple.com>
+
+        Add SOFT_LINK_CONSTANT_SOURCE() cross-platform macro and start using it
+        <http://webkit.org/b/141816>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        - Remove CoreMediaSoftLinking.h.
+
+        * platform/cf/CoreMediaSoftLink.cpp:
+        - Add kCMTimeZero constant.
+        * platform/cf/CoreMediaSoftLink.h:
+        - Add SOFT_LINK_FRAMEWORK_HEADER() macro for CoreMedia.
+        - Add kCMTimeZero constant.
+
+        * platform/graphics/avfoundation/cf/CoreMediaSoftLinking.h: Remove.
+
+        * platform/graphics/avfoundation/cf/MediaPlayerPrivateAVFoundationCF.cpp:
+        - Remove reference to CoreMediaSoftLinking.h and update comment.
+        (WebCore::MediaPlayerPrivateAVFoundationCF::isAvailable):
+        - Switch to using new method to check if a framework is
+          available.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        - Remove all local soft-linking macros for CoreMedia.
+          CoreMediaSoftLink.h handles everything now.
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::isAvailable):
+        - Switch to using new method to check if a framework is
+          available.
+
+        * platform/mac/SoftLinking.h:
+        (SOFT_LINK_FRAMEWORK_HEADER): Add.  Defines
+        is_Name_FrameworkAvailable() macro.
+        (SOFT_LINK_FRAMEWORK_SOURCE): Update to make it work with
+        optional framework checks without a separate macro.
+        (SOFT_LINK_CONSTANT_HEADER): Add.
+        (SOFT_LINK_CONSTANT_SOURCE): Add.
+        - Support soft-links to constants.
+
+        * platform/win/SoftLinking.h:
+        (SOFT_LINK_FRAMEWORK_HELPER): Add.  Copied from
+        SOFT_LINK_LIBRARY_HELPER, with addition of namespace and
+        non-static function.
+        (SOFT_LINK_FRAMEWORK): Add.  Copied from SOFT_LINK_LIBRARY.
+        (SOFT_LINK_DEBUG_FRAMEWORK): Add.  Copied from
+        SOFT_LINK_DEBUG_LIBRARY.
+        (SOFT_LINK_FRAMEWORK_HEADER): Add.  Defines
+        is_Name_FrameworkAvailable() macro.
+        (SOFT_LINK_FRAMEWORK_SOURCE): Redefine in terms of
+        SOFT_LINK_FRAMEWORK/SOFT_LINK_DEBUG_FRAMEWORK.
+        (SOFT_LINK_CONSTANT_HEADER): Add.
+        (SOFT_LINK_CONSTANT_SOURCE): Add.
+        - Support soft-links to constants.
+
+2015-02-20  David Kilzer  <ddkilzer@apple.com>
+
+        Make namespace configurable for SOFT_LINK_*_{HEADER,SOURCE}() macros
+        <http://webkit.org/b/141849>
+
+        Reviewed by Brent Fulgham.
+
+        This patch does the following:
+        - Add namespace argument to the SOFT_LINK_*_{HEADER,SOURCE}()
+          macros for reuse in other projects.
+        - Adds SOFT_LINK_FRAMEWORK_SOURCE() macro in preparation for Bug
+          141816.
+        - Adds back framework argument to SOFT_LINK_FUNCTION_HEADER()
+          and includes framework name in generated function names.  This
+          adds more entropy to the names in case there are two functions
+          with the same name in different frameworks.
+
+        * platform/cf/CoreMediaSoftLink.cpp:
+        - Add FIXME about USE(COREMEDIA).
+        - Switch from SOFT_LINK_FRAMEWORK() to
+          SOFT_LINK_FRAMEWORK_SOURCE().
+        * platform/cf/CoreMediaSoftLink.h:
+        - Add FIXME about USE(COREMEDIA).
+        - Add back framework argument to SOFT_LINK_FUNCTION_HEADER()
+          macros.
+
+        * platform/mac/SoftLinking.h:
+        - Add missing header guards.
+        - Add pragmas for different macro groups.
+        (SOFT_LINK_FRAMEWORK_SOURCE): Add.
+        (SOFT_LINK_FUNCTION_HEADER): Move. Add back framework argument.
+        (SOFT_LINK_FUNCTION_SOURCE): Move.
+        - Add framework name to generated function names.
+        - Incorporates namespace so that it doesn't have to be listed in
+          the *SoftLink.{cpp,h} file.
+
+        * platform/win/SoftLinking.h:
+        - Add pragmas for different macro groups.
+        (SOFT_LINK_FRAMEWORK_SOURCE): Add.
+        (SOFT_LINK_FUNCTION_HEADER): Move. Add back framework argument.
+        (SOFT_LINK_FUNCTION_SOURCE): Move.
+        - Add framework name to generated function names.
+        - Incorporates namespace so that it doesn't have to be listed in
+          the *SoftLink.{cpp,h} file.
+
+2015-02-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Gtk] Unreviewed build fix.
+
+        * platform/ScrollAnimatorNone.cpp:
+        (WebCore::ScrollAnimatorNone::ScrollAnimatorNone): Forget to update two
+        uses of ScrollableArea.
+
+2015-02-20  Brent Fulgham  <bfulgham@apple.com>
+
+        Scrollbars and ScrollAnimators must always have a ScrollableArea
+        https://bugs.webkit.org/show_bug.cgi?id=141855
+
+        Reviewed by Simon Fraser.
+
+        No change in functionality.
+        
+        Change users of the scrollAnimator() method to expect a reference instead of a pointer. Also get rid of
+        a number of unnecessary nullptr checks.
+
+        * accessibility/AccessibilityScrollbar.cpp:
+        (WebCore::AccessibilityScrollbar::setValue):
+        * css/SelectorCheckerTestFunctions.h:
+        (WebCore::scrollbarMatchesCornerPresentPseudoClass):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::createScrollbar):
+        (WebCore::FrameView::setFixedVisibleContentRect):
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::handleWheelEventPhase):
+        * platform/PopupMenuClient.h:
+        * platform/ScrollAnimator.cpp:
+        (WebCore::ScrollAnimator::ScrollAnimator):
+        (WebCore::ScrollAnimator::scroll):
+        (WebCore::ScrollAnimator::handleWheelEvent):
+        (WebCore::ScrollAnimator::notifyPositionChanged):
+        (WebCore::ScrollAnimator::updateScrollAnimatorsAndTimers):
+        * platform/ScrollAnimator.h:
+        (WebCore::ScrollAnimator::ScrollAnimator::scrollableArea):
+        * platform/ScrollAnimatorNone.cpp:
+        * platform/ScrollAnimatorNone.h:
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::createScrollbar):
+        * platform/ScrollableArea.cpp:
+        (WebCore::ScrollableArea::scrollAnimator):
+        (WebCore::ScrollableArea::scroll):
+        (WebCore::ScrollableArea::scrollToOffsetWithoutAnimation):
+        (WebCore::ScrollableArea::notifyScrollPositionChanged):
+        (WebCore::ScrollableArea::scrollPositionChanged):
+        (WebCore::ScrollableArea::handleWheelEvent):
+        (WebCore::ScrollableArea::handleTouchEvent):
+        (WebCore::ScrollableArea::mouseEnteredScrollbar):
+        (WebCore::ScrollableArea::mouseExitedScrollbar):
+        (WebCore::ScrollableArea::didAddScrollbar):
+        (WebCore::ScrollableArea::willRemoveScrollbar):
+        (WebCore::ScrollableArea::verticalScrollbarLayerDidChange):
+        (WebCore::ScrollableArea::horizontalScrollbarLayerDidChange):
+        * platform/ScrollableArea.h:
+        * platform/Scrollbar.cpp:
+        (WebCore::Scrollbar::createNativeScrollbar):
+        (WebCore::Scrollbar::Scrollbar):
+        (WebCore::Scrollbar::scrollbarOverlayStyle):
+        (WebCore::Scrollbar::isScrollableAreaActive):
+        (WebCore::Scrollbar::offsetDidChange):
+        (WebCore::Scrollbar::autoscrollPressedPart):
+        (WebCore::Scrollbar::moveThumb):
+        (WebCore::Scrollbar::mouseMoved):
+        (WebCore::Scrollbar::mouseEntered):
+        (WebCore::Scrollbar::mouseExited):
+        (WebCore::Scrollbar::mouseUp):
+        (WebCore::Scrollbar::shouldParticipateInHitTesting):
+        (WebCore::Scrollbar::isWindowActive):
+        (WebCore::Scrollbar::invalidateRect):
+        (WebCore::Scrollbar::convertToContainingView):
+        (WebCore::Scrollbar::convertFromContainingView):
+        (WebCore::Scrollbar::supportsUpdateOnSecondaryThread):
+        * platform/Scrollbar.h:
+        (WebCore::Scrollbar::scrollableArea):
+        (WebCore::Scrollbar::disconnectFromScrollableArea): Deleted.
+        * platform/ios/ScrollAnimatorIOS.mm:
+        (WebCore::ScrollAnimatorIOS::handleTouchEvent):
+        (WebCore::ScrollAnimatorIOS::determineScrollableAreaForTouchSequence):
+        * platform/mac/ScrollAnimatorMac.h:
+        * platform/mac/ScrollAnimatorMac.mm:
+        (-[WebScrollbarPainterControllerDelegate scrollerImpPair:setContentAreaNeedsDisplayInRect:]):
+        (-[WebScrollbarPainterControllerDelegate scrollerImpPair:updateScrollerStyleForNewRecommendedScrollerStyle:]):
+        (-[WebScrollbarPainterDelegate scrollAnimator]):
+        (-[WebScrollbarPainterDelegate layer]):
+        (-[WebScrollbarPainterDelegate mouseLocationInScrollerForScrollerImp:]):
+        (-[WebScrollbarPainterDelegate setUpAlphaAnimation:scrollerPainter:part:animateAlphaTo:duration:]):
+        (WebCore::ScrollAnimator::create):
+        (WebCore::ScrollAnimatorMac::ScrollAnimatorMac):
+        (WebCore::ScrollAnimatorMac::scroll):
+        (WebCore::ScrollAnimatorMac::adjustScrollPositionIfNecessary):
+        (WebCore::ScrollAnimatorMac::adjustScrollPositionToBoundsIfNecessary):
+        (WebCore::ScrollAnimatorMac::immediateScrollTo):
+        (WebCore::ScrollAnimatorMac::didAddVerticalScrollbar):
+        (WebCore::ScrollAnimatorMac::didAddHorizontalScrollbar):
+        (WebCore::ScrollAnimatorMac::verticalScrollbarLayerDidChange):
+        (WebCore::ScrollAnimatorMac::horizontalScrollbarLayerDidChange):
+        (WebCore::ScrollAnimatorMac::notifyContentAreaScrolled):
+        (WebCore::ScrollAnimatorMac::pinnedInDirection):
+        (WebCore::ScrollAnimatorMac::isAlreadyPinnedInDirectionOfGesture):
+        (WebCore::ScrollAnimatorMac::allowsVerticalStretching):
+        (WebCore::ScrollAnimatorMac::allowsHorizontalStretching):
+        (WebCore::ScrollAnimatorMac::stretchAmount):
+        (WebCore::ScrollAnimatorMac::canScrollHorizontally):
+        (WebCore::ScrollAnimatorMac::canScrollVertically):
+        (WebCore::ScrollAnimatorMac::absoluteScrollPosition):
+        (WebCore::ScrollAnimatorMac::immediateScrollByWithoutContentEdgeConstraints):
+        (WebCore::ScrollAnimatorMac::updateScrollerStyle):
+        (WebCore::ScrollAnimatorMac::setVisibleScrollerThumbRect):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::RenderLayer):
+        (WebCore::RenderLayer::createScrollbar):
+        (WebCore::RenderLayer::destroyScrollbar):
+        (WebCore::RenderLayer::updateScrollInfoAfterLayout):
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::createScrollbar):
+        (WebCore::RenderListBox::destroyScrollbar):
+        * rendering/RenderMenuList.cpp:
+        (RenderMenuList::createScrollbar):
+        * rendering/RenderMenuList.h:
+        * rendering/RenderScrollbar.cpp:
+        (WebCore::RenderScrollbar::createCustomScrollbar):
+        (WebCore::RenderScrollbar::RenderScrollbar):
+        * rendering/RenderScrollbar.h:
+        * rendering/RenderSearchField.cpp:
+        (WebCore::RenderSearchField::createScrollbar):
+        * rendering/RenderSearchField.h:
+
+2015-02-20  Enrica Casucci  <enrica@apple.com>
+
+        [WK2] Add support for font panel on OS X.
+        https://bugs.webkit.org/show_bug.cgi?id=141777
+
+        Reviewed by Tim Horton.
+
+        This patch adds the necessary hooks to the Editor class to support
+        the font panel.
+
+        * editing/Editor.h:
+        * editing/mac/EditorMac.mm:
+        (WebCore::Editor::applyFontStyles):
+
+2015-02-20  Zalan Bujtas  <zalan@apple.com>
+
+        Invalid assert in CompositeEditCommand::insertNodeAfter/insertNodeBefore
+        https://bugs.webkit.org/show_bug.cgi?id=141854
+
+        Reviewed by Ryosuke Niwa.
+
+        Inserting content before/after the body as the result of editing is a valid operation.
+        This assert was originally introduced to cover cases where edited content would get moved
+        out of body. However, asserting such operation properly is not possible atm.
+
+        Test: editing/inserting/insert-as-body-sibling.html
+
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::insertNodeBefore):
+        (WebCore::CompositeEditCommand::insertNodeAfter):
+
+2015-02-20  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add more detailed diagnostic logging for measuring network cache efficacy
+        https://bugs.webkit.org/show_bug.cgi?id=141803
+        <rdar://problem/19632080>
+
+        Reviewed by Antti Koivisto.
+
+        Add more diagnostic logging keys for the network cache.
+
+        * page/DiagnosticLoggingKeys.cpp:
+        (WebCore::DiagnosticLoggingKeys::missingValidatorFieldsKey):
+        (WebCore::DiagnosticLoggingKeys::noLongerInCacheKey):
+        (WebCore::DiagnosticLoggingKeys::isReloadIgnoringCacheDataKey):
+        (WebCore::DiagnosticLoggingKeys::isAttachmentKey):
+        (WebCore::DiagnosticLoggingKeys::isConditionalRequestKey):
+        (WebCore::DiagnosticLoggingKeys::cacheControlNoStoreKey):
+        (WebCore::DiagnosticLoggingKeys::uncacheableStatusCodeKey):
+        (WebCore::DiagnosticLoggingKeys::unsupportedHTTPMethodKey):
+        (WebCore::DiagnosticLoggingKeys::unusableCachedEntryKey):
+        (WebCore::DiagnosticLoggingKeys::varyingHeaderMismatchKey):
+        (WebCore::WebCore::DiagnosticLoggingKeys::notHTTPFamilyKey):
+        (WebCore::DiagnosticLoggingKeys::notInCacheKey):
+        (WebCore::DiagnosticLoggingKeys::noLongerInCacheFailureKey): Deleted.
+        (WebCore::DiagnosticLoggingKeys::unhandledRequestFailureKey): Deleted.
+        (WebCore::DiagnosticLoggingKeys::unusableCachedEntryFailureKey): Deleted.
+        * page/DiagnosticLoggingKeys.h:
+
+2015-02-20  Tim Horton  <timothy_horton@apple.com>
+
+        <attachment> turns the wrong blue when you highlight it
+        https://bugs.webkit.org/show_bug.cgi?id=141853
+
+        Reviewed by Simon Fraser.
+
+        * rendering/RenderAttachment.h:
+        * rendering/RenderReplaced.cpp:
+        (WebCore::RenderReplaced::shouldDrawSelectionTint):
+        (WebCore::RenderReplaced::paint):
+        * rendering/RenderReplaced.h:
+        Don't draw the selection tint for RenderAttachment.
+
+2015-02-20  Tim Horton  <timothy_horton@apple.com>
+
+        Allow <attachment> elements to be focused
+        https://bugs.webkit.org/show_bug.cgi?id=141847
+
+        Reviewed by Enrica Casucci.
+
+        * css/html.css:
+        (attachment:focus):
+        Disable focus rings for <attachment>.
+
+        * html/HTMLAttachmentElement.cpp:
+        (WebCore::HTMLAttachmentElement::setFocus):
+        * html/HTMLAttachmentElement.h:
+        Allow HTMLAttachmentElement to get editing focus.
+        Let RenderAttachment know when focus changes.
+
+        * rendering/RenderAttachment.cpp:
+        (WebCore::RenderAttachment::paintReplaced):
+        Paint the background in cyan when we are inside the selection or have focus.
+        Otherwise, it will be gray.
+
+        (WebCore::RenderAttachment::focusChanged):
+        When focus changes, repaint.
+
+        * rendering/RenderAttachment.h:
+
+2015-02-20  Brent Fulgham  <bfulgham@apple.com>
+
+        Rename ScrollElasticityController to ScrollController
+        https://bugs.webkit.org/show_bug.cgi?id=141842
+
+        Reviewed by Simon Fraser.
+
+        No change in functionality.
+
+        * PlatformMac.cmake:
+        * WebCore.order:
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.h:
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::ScrollingTreeFrameScrollingNodeMac):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::handleWheelEvent):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::startSnapRubberbandTimer):
+        * platform/mac/ScrollAnimatorMac.h:
+        * platform/mac/ScrollAnimatorMac.mm:
+        (WebCore::ScrollAnimatorMac::ScrollAnimatorMac):
+        (WebCore::ScrollAnimatorMac::isRubberBandInProgress):
+        (WebCore::ScrollAnimatorMac::handleWheelEvent):
+        (WebCore::ScrollAnimatorMac::snapRubberBandTimerFired):
+        * platform/mac/ScrollController.h: Copied from WebCore/platform/mac/ScrollElasticityController.h.
+        (WebCore::ScrollControllerClient::~ScrollControllerClient):
+        (WebCore::ScrollElasticityControllerClient::~ScrollElasticityControllerClient): Deleted.
+        * platform/mac/ScrollController.mm: Copied from WebCore/platform/mac/ScrollElasticityController.mm.
+        (WebCore::ScrollController::ScrollController):
+        (WebCore::ScrollController::handleWheelEvent):
+        (WebCore::ScrollController::snapRubberBandTimerFired):
+        (WebCore::ScrollController::isRubberBandInProgress):
+        (WebCore::ScrollController::stopSnapRubberbandTimer):
+        (WebCore::ScrollController::snapRubberBand):
+        (WebCore::ScrollController::shouldRubberBandInHorizontalDirection):
+        (WebCore::ScrollElasticityController::ScrollElasticityController): Deleted.
+        (WebCore::ScrollElasticityController::handleWheelEvent): Deleted.
+        (WebCore::ScrollElasticityController::snapRubberBandTimerFired): Deleted.
+        (WebCore::ScrollElasticityController::isRubberBandInProgress): Deleted.
+        (WebCore::ScrollElasticityController::stopSnapRubberbandTimer): Deleted.
+        (WebCore::ScrollElasticityController::snapRubberBand): Deleted.
+        (WebCore::ScrollElasticityController::shouldRubberBandInHorizontalDirection): Deleted.
+        * platform/mac/ScrollElasticityController.h: Removed.
+        * platform/mac/ScrollElasticityController.mm: Removed.
+
+2015-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove svn:keywords property.
+
+        As far as I can tell, the property had no effect on any of these files, but also,
+        when it has effect it's likely harmful.
+
+        * Modules/mediacontrols/assets-apple-iOS.svg: Removed property svn:keywords.
+        * Modules/mediacontrols/mediaControlsBase.css: Removed property svn:keywords.
+        * Modules/mediacontrols/mediaControlsBase.js: Removed property svn:keywords.
+        * bindings/js/JSDeviceMotionEventCustom.cpp: Removed property svn:keywords.
+        * css/CSSKeyframeRule.cpp: Removed property svn:keywords.
+        * css/CSSKeyframeRule.h: Removed property svn:keywords.
+        * css/CSSKeyframesRule.cpp: Removed property svn:keywords.
+        * css/CSSKeyframesRule.h: Removed property svn:keywords.
+        * css/WebKitCSSFilterValue.cpp: Removed property svn:keywords.
+        * css/WebKitCSSFilterValue.h: Removed property svn:keywords.
+        * css/plugIns.css: Removed property svn:keywords.
+        * dom/AnimationEvent.cpp: Removed property svn:keywords.
+        * dom/AnimationEvent.h: Removed property svn:keywords.
+        * dom/DeviceMotionClient.h: Removed property svn:keywords.
+        * dom/DeviceMotionController.cpp: Removed property svn:keywords.
+        * dom/DeviceMotionController.h: Removed property svn:keywords.
+        * dom/DeviceMotionData.cpp: Removed property svn:keywords.
+        * dom/DeviceMotionData.h: Removed property svn:keywords.
+        * dom/DeviceMotionEvent.cpp: Removed property svn:keywords.
+        * dom/DeviceMotionEvent.h: Removed property svn:keywords.
+        * html/canvas/ANGLEInstancedArrays.cpp: Removed property svn:keywords.
+        * html/canvas/ANGLEInstancedArrays.h: Removed property svn:keywords.
+        * html/canvas/OESTextureFloatLinear.cpp: Removed property svn:keywords.
+        * html/canvas/OESTextureFloatLinear.h: Removed property svn:keywords.
+        * html/canvas/OESTextureHalfFloatLinear.cpp: Removed property svn:keywords.
+        * html/canvas/OESTextureHalfFloatLinear.h: Removed property svn:keywords.
+        * html/shadow/MediaControlsApple.cpp: Removed property svn:keywords.
+        * html/shadow/MediaControlsApple.h: Removed property svn:keywords.
+        * page/Frame.h: Removed property svn:keywords.
+        * page/scrolling/ScrollingConstraints.cpp: Removed property svn:keywords.
+        * page/scrolling/ScrollingConstraints.h: Removed property svn:keywords.
+        * page/scrolling/ScrollingStateStickyNode.cpp: Removed property svn:keywords.
+        * page/scrolling/ios/ScrollingTreeIOS.cpp: Removed property svn:keywords.
+        * page/scrolling/mac/ScrollingTreeStickyNode.h: Removed property svn:keywords.
+        * platform/ControlStates.h: Removed property svn:keywords.
+        * platform/ScrollbarTheme.cpp: Removed property svn:keywords.
+        * platform/graphics/GraphicsLayerUpdater.cpp: Removed property svn:keywords.
+        * platform/graphics/GraphicsLayerUpdater.h: Removed property svn:keywords.
+        * platform/graphics/ca/TileController.h: Removed property svn:keywords.
+        * platform/graphics/ca/mac/WebTiledBackingLayer.h: Removed property svn:keywords.
+        * platform/graphics/filters/FilterOperation.cpp: Removed property svn:keywords.
+        * platform/graphics/filters/FilterOperation.h: Removed property svn:keywords.
+        * platform/graphics/filters/FilterOperations.h: Removed property svn:keywords.
+        * platform/ios/SystemMemory.h: Removed property svn:keywords.
+        * platform/mock/ScrollbarThemeMock.cpp: Removed property svn:keywords.
+        * platform/mock/ScrollbarThemeMock.h: Removed property svn:keywords.
+        * platform/spi/cocoa/ServersSPI.h: Removed property svn:keywords.
+        * platform/text/mac/ios-encodings.txt: Removed property svn:keywords.
+        * rendering/FilterEffectRenderer.cpp: Removed property svn:keywords.
+        * rendering/FilterEffectRenderer.h: Removed property svn:keywords.
+        * rendering/RenderGeometryMap.cpp: Removed property svn:keywords.
+        * rendering/RenderGeometryMap.h: Removed property svn:keywords.
+        * rendering/RenderMediaControlElements.h: Removed property svn:keywords.
+        * rendering/TextAutoSizing.cpp: Removed property svn:keywords.
+        * rendering/TextAutoSizing.h: Removed property svn:keywords.
+        * rendering/style/StylePendingImage.h: Removed property svn:keywords.
+
+2015-02-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] REGRESSION: Scroll snap points broken after r180018
+        https://bugs.webkit.org/show_bug.cgi?id=141821
+        <rdar://problem/19898333>
+
+        Reviewed by Simon Fraser.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::platformNotifySnapIfNecessary): Added stub.
+        (WebCore::EventHandler::handleWheelEvent): Call new 'platformNotifySnapIfNecessary' method
+        to catch the 'ended wheel' gesture.
+        * page/EventHandler.h:
+        * page/mac/EventHandlerMac.mm:
+        (WebCore::EventHandler::platformNotifySnapIfNecessary): Added. If the wheel event signifies
+        the end of a wheel/swipe gesture, let the snap logic decide if it should do anything
+        (i.e., trigger an animation)
+        * platform/ScrollAnimator.cpp:
+        (WebCore::ScrollAnimator::processWheelEventForScrollSnap): Added.
+        * platform/ScrollAnimator.h:
+
+2015-02-20  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] cleanup AirPlay code
+        https://bugs.webkit.org/show_bug.cgi?id=141811
+
+        Reviewed by Jer Noble.
+
+        * Configurations/FeatureDefines.xcconfig: IOS_AIRPLAY -> WIRELESS_PLAYBACK_TARGET.
+
+        * Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.cpp: Ditto.
+        * Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.h:
+        * Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl:
+
+        * Modules/mediacontrols/MediaControlsHost.cpp:
+        (WebCore::MediaControlsHost::externalDeviceDisplayName): Ditto.
+        (WebCore::MediaControlsHost::externalDeviceType):
+
+        * dom/EventNames.h: Ditto.
+        * dom/EventNames.in:
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::HTMLMediaElement): Ditto.
+        (WebCore::HTMLMediaElement::~HTMLMediaElement): Ditto.
+        (WebCore::HTMLMediaElement::parseAttribute):
+        * html/HTMLMediaElement.h:
+        * html/HTMLMediaElement.idl:
+
+        * html/HTMLMediaSession.cpp:
+        (WebCore::restrictionName): Ditto.
+        (WebCore::HTMLMediaSession::applyMediaPlayerRestrictions): Ditto.
+        * html/HTMLMediaSession.h:
+
+        * html/HTMLVideoElement.cpp:
+        (WebCore::HTMLVideoElement::parseAttribute): Ditto.
+        * html/HTMLVideoElement.h:
+        * html/HTMLVideoElement.idl:
+
+        * page/Settings.in: Ditto.
+
+        * platform/audio/MediaSessionManager.h:
+        * platform/audio/ios/MediaSessionManagerIOS.h:
+        * platform/audio/ios/MediaSessionManagerIOS.mm: Ditto.
+
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::MediaPlayer::showPlaybackTargetPicker): Deleted.
+        (WebCore::MediaPlayer::hasWirelessPlaybackTargets): Deleted.
+        * platform/graphics/MediaPlayer.h:
+        * platform/graphics/MediaPlayerPrivate.h:
+        (WebCore::MediaPlayerPrivateInterface::showPlaybackTargetPicker): Deleted.
+        (WebCore::MediaPlayerPrivateInterface::hasWirelessPlaybackTargets): Deleted.
+        * platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.cpp:
+        (WebCore::MediaPlayerPrivateAVFoundation::rateChanged):
+        (WebCore::MediaPlayerPrivateAVFoundation::dispatchNotification):
+
+        * platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::MediaPlayerPrivateAVFoundationObjC): IOS_AIRPLAY -> WIRELESS_PLAYBACK_TARGET.
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::cancelLoad): Ditto.
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::createAVPlayer): Ditto.
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenLayer): Ditto.
+        (-[WebCoreAVFMovieObserver observeValueForKeyPath:ofObject:change:context:]): Ditto.
+
+2015-02-20  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Language ranges containing asterisks must be quoted as strings
+        https://bugs.webkit.org/show_bug.cgi?id=141659
+
+        Reviewed by Benjamin Poulain.
+
+        As specified in [1], the language ranges containing asterisks must be quoted as strings.
+
+        [1] http://dev.w3.org/csswg/selectors-4/#the-lang-pseudo.
+
+        * css/CSSGrammar.y.in:
+        * css/CSSParser.cpp:
+        (WebCore::CSSParser::realLex):
+
+2015-02-20  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Use std::unique_ptr instead of PassOwnPtr|OwnPtr in MediaPlayerFoo classes
+        https://bugs.webkit.org/show_bug.cgi?id=137765
+
+        Reviewed by Ryosuke Niwa.
+
+        As a step to use std::unique_ptr|std::make_unique<>, this patch changes use of OwnPtr|PassOwnPtr
+        with std::unique_ptr<>|std::make_unique<>. To remove all create() factory function, lambdas is
+        used in registerMediaEngine().
+
+        No new tests, no behavior changes.
+
+        * WebCore.exp.in:
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::parseAttribute):
+        * html/HTMLMediaElement.h:
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::NullMediaPlayerPrivate::NullMediaPlayerPrivate):
+        (WebCore::MediaPlayer::MediaPlayer):
+        (WebCore::MediaPlayer::loadWithNextMediaEngine):
+        (WebCore::createNullMediaPlayer): Deleted.
+        * platform/graphics/MediaPlayer.h:
+        (WebCore::MediaPlayer::create): Deleted.
+        * platform/graphics/MediaPlayerPrivate.h:
+        * platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.h:
+        * platform/graphics/avfoundation/cf/MediaPlayerPrivateAVFoundationCF.cpp:
+        (WebCore::MediaPlayerPrivateAVFoundationCF::registerMediaEngine):
+        (WebCore::MediaPlayerPrivateAVFoundationCF::create): Deleted.
+        * platform/graphics/avfoundation/cf/MediaPlayerPrivateAVFoundationCF.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::registerMediaEngine):
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::create): Deleted.
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::create): Deleted.
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::registerMediaEngine):
+        (WebCore::MediaPlayerPrivateGStreamer::create): Deleted.
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.h:
+        * platform/graphics/mac/MediaPlayerPrivateQTKit.h:
+        * platform/graphics/mac/MediaPlayerPrivateQTKit.mm:
+        (WebCore::MediaPlayerPrivateQTKit::registerMediaEngine):
+        (WebCore::MediaPlayerPrivateQTKit::create): Deleted.
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::registerMediaEngine):
+        (WebCore::MediaPlayerPrivateMediaFoundation::create): Deleted.
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.h:
+        * platform/mock/mediasource/MockMediaPlayerMediaSource.cpp:
+        (WebCore::MockMediaPlayerMediaSource::registerMediaEngine):
+        (WebCore::MockMediaPlayerMediaSource::create): Deleted.
+        * platform/mock/mediasource/MockMediaPlayerMediaSource.h:
+
+2015-02-19  David Kilzer  <ddkilzer@apple.com>
+
+        Rename SOFT_LINK_FUNCTION_{DECL,IMPL}() to SOFT_LINK_FUNCTION_{HEADER,SOURCE}()
+
+        Rubber-stamped by Brent Fulgham.
+
+        "HEADER" and "SOURCE" seem clearer than "DECL" and "IMPL", and
+        Brent agreed when I talked to him in person.
+
+        * platform/cf/CoreMediaSoftLink.cpp:
+        * platform/cf/CoreMediaSoftLink.h:
+        * platform/mac/SoftLinking.h:
+        * platform/win/SoftLinking.h:
+        - Do the rename.
+
+2015-02-19  David Kilzer  <ddkilzer@apple.com>
+
+        Move more CoreMedia soft-linked functions to CoreMediaSoftLink.{cpp,h}
+        <http://webkit.org/b/141791>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/WebCore.unexp:
+        - Remove five more symbols.
+
+        * Modules/plugins/QuickTimePluginReplacement.mm:
+        - Remove all local soft-links and include CoreMediaSoftLink.h.
+          Note that SOFT_LINK_FRAMEWORK_OPTIONAL() should not have been
+          used here since we didn't use the optional function soft-link
+          method.
+
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        * WebCore.vcxproj/WebCoreCFNetwork.props:
+        * WebCore.xcodeproj/project.pbxproj:
+        - Add CoreMediaSPI.h to the project.
+
+        * platform/cf/CoreMediaSoftLink.cpp:
+        * platform/cf/CoreMediaSoftLink.h:
+        - Add three cross-platform symbols, five Cocoa-only symbols, and
+          two Windows-only symbols (based on current usage, not
+          availability on each platform).
+        - Include CoreMediaSPI.h header.
+        - Include <CoreMedia/CoreMedia.h> instead of just CMTime.h.
+
+        * platform/graphics/avfoundation/AudioSourceProviderAVFObjC.mm:
+        - Remove all CoreMedia soft-linked functions.  Constants remain.
+
+        * platform/graphics/avfoundation/InbandTextTrackPrivateAVF.cpp:
+        - Remove one CoreMedia soft-linked method.
+
+        * platform/graphics/avfoundation/MediaTimeAVFoundation.cpp:
+        - Remove all CoreMedia soft-linked funtions.  With this change,
+          we are already realizing space savings for duplicate
+          SOFT_LINK_FRAMEWORK() calls.  (On Windows, there was code
+          generated for many unused functions included by
+          CoreMediaSoftLinking.h.)
+
+        * platform/graphics/avfoundation/cf/CoreMediaSoftLinking.h:
+        - Remove all CoreMedia soft-linked funtions.  Constants remain.
+
+        * platform/graphics/avfoundation/cf/MediaPlayerPrivateAVFoundationCF.cpp:
+        - Remove duplicate header included by CoreMediaSoftLink.h.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        - Remove all CoreMedia soft-linked funtions.  Constants remain.
+
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        - Remove three CoreMedia soft-linked methods.
+
+        * platform/mac/PlatformClockCM.mm:
+        - Remove two CoreMedia soft-linked methods.
+
+        * platform/mac/SerializedPlatformRepresentationMac.mm:
+        - Remove only CoreMedia soft-linked funtion.  It wasn't even
+          used.
+
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        - Remove two CoreMedia soft-linked method.
+
+        * platform/spi/cf/CoreMediaSPI.h:
+        - Add for SPI from CMNotificationCenter.h.
+
+2015-02-19  David Hyatt  <hyatt@apple.com>
+
+        Columns are splitting unsplittable content.
+        https://bugs.webkit.org/show_bug.cgi?id=141807
+        <rdar://problem/18387659>
+
+        Reviewed by Dean Jackson.
+
+        Added inline-table-dynamic-movement.html
+
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::pageLogicalTopForOffset):
+        (WebCore::RenderBlockFlow::pageLogicalHeightForOffset):
+        Patch these functions to always check the layout state for a zero
+        pageLogicalHeight, since that is actually our indicator that we're
+        doing column balancing and don't have a height set yet.
+
+        * rendering/RenderMultiColumnFlowThread.cpp:
+        (WebCore::RenderMultiColumnFlowThread::isPageLogicalHeightKnown):
+        * rendering/RenderMultiColumnSet.cpp:
+        (WebCore::RenderMultiColumnSet::RenderMultiColumnSet):
+        (WebCore::RenderMultiColumnSet::setAndConstrainColumnHeight):
+        (WebCore::RenderMultiColumnSet::prepareForLayout):
+        * rendering/RenderMultiColumnSet.h:
+        The function for deciding whether the logical height of the columns was
+        known was checking for a zero computedColumnHeight. However, a column set
+        can legitimately compute a zero column height, and with the fix to examine
+        the layout state, this bug was exposed.
+
+        The fix is to add a new variable that caches whether or not the column height
+        has been computed, so that even if it computes to zero, we aren't fooled.
+
+2015-02-19  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Fix inefficiencies in ResourceResponse::platformLazyInit()
+        https://bugs.webkit.org/show_bug.cgi?id=141744
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fix inefficiencies in iOS's ResourceResponse::platformLazyInit()
+        implementation, similarly to what was already done for Mac in:
+        <http://trac.webkit.org/changeset/174717>
+
+        The following changes were made:
+        - Add missing "initLevel == AllFields" check before initializing
+          uncommon fields. This bug was causing us to initialize uncommon
+          fields even if called with 'CommonFieldsOnly' initLevel.
+        - Bypass the first pass populating common HTTP headers in
+          m_httpHeaderFields if the initLevel is AllFields. If called
+          with AllFields initLevel, we will end up populating all HTTP
+          headers later on so this first pass is redundant.
+        - Use C++11 range loop to iterator over commonHeaderFields array
+          for readability.
+        - Use CFDictionaryApplyFunction() to populate m_httpHeaderFields
+          for the CFDictionaryRef containing the headers instead of creating
+          copies of keys and values using CFDictionaryGetKeysAndValues() and
+          then iterating over those. This avoids allocating Vectors for keys /
+          values and avoids unnecessary copying.
+
+
+2015-02-18  Dean Jackson  <dino@apple.com>
+
+        Sufficiently small media controls should remove toolbar elements
+        https://bugs.webkit.org/show_bug.cgi?id=141780
+        <rdar://problem/16548548>
+        <rdar://problem/17598778>
+        <rdar://problem/18351963>
+
+        Reviewed by Eric Carlson.
+
+        Implement some logic where elements on the media controls are
+        hidden when there isn't enough room. We start by dropping
+        the scrubber, then the various buttons on the right hand
+        side.
+
+        This solution isn't perfect. If we had perfection, it would
+        be because we get resize events and respond accordingly. Instead
+        we check the size when the user has pinch-zoomed, or when
+        we start/stop playing.
+
+        This is going to cause some extra layout, because we need
+        to know the size of things before we can work out which
+        bits to hide.
+
+        * Modules/mediacontrols/mediaControlsiOS.css:
+        (::-webkit-media-controls): Remove the minimum width. This can
+        cause the controls to get clipped.
+        (audio::-webkit-media-controls-spacer): Add this empty element to
+        replace the scrubber when it is hidden.
+        (audio::-webkit-media-controls-timeline-container):
+        * Modules/mediacontrols/mediaControlsiOS.js:
+        (ControllerIOS): Remember our size so we don't churn.
+        (ControllerIOS.prototype.createControls): Create a new spacer element.
+        (ControllerIOS.prototype.configureInlineControls):
+        (ControllerIOS.prototype.showControls): Check if we need to hide stuff.
+        (ControllerIOS.prototype.updateControls):
+        (ControllerIOS.prototype.setPlaying): Ditto.
+        (ControllerIOS.prototype.set pageScaleFactor): Ditto.
+        (ControllerIOS.prototype.scheduleUpdateLayoutForDisplayedWidth): Trigger an update
+        asap. In this case it's probably ok to be in a bad state for a frame, or
+        we are inside setup and we know that we'll layout soon.
+        (ControllerIOS.prototype.updateLayoutForDisplayedWidth): The actual code
+        that hides elements.
+
 2015-02-19  Tim Horton  <timothy_horton@apple.com>
 
         Move the software-only ImageBuffer::m_context to ImageBufferData

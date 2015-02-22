@@ -1,3 +1,327 @@
+2015-02-21  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Tests don't work on some bots: Failed to stop wptwk
+        https://bugs.webkit.org/show_bug.cgi?id=141235
+
+        Reviewed by Ryosuke Niwa.
+
+        Logging of server subprocesses in launcher script.
+        Killing of server subprocesses when stopping/before starting.
+        Removed empty __init.py__ file creation as importer now ensures these files cannot be empty anymore.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py:
+        (main): Removed empty __init.py__ file creation as importer now ensures these files cannot be empty anymore. Added logging in a file of server subprocesses to clean them in case of abnormal shutdown. 
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer.__init__):
+        (WebPlatformTestServer._stop_running_subservers): Kill server subprocesses based on file created by wpt launcher.
+        (WebPlatformTestServer):
+        (WebPlatformTestServer.stop): Overriden to ensure killing subprocesses in case of orphaned process.
+        (WebPlatformTestServer._stop_running_server): Killing of wpt launcher process after regular shutdown. 
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server_unittest.py:
+        (TestWebPlatformTestServer.test_server_closes_previously_spawned_instance): Reworked the test to call start/stop with an existing pid file.
+        (TestWebPlatformTestServer.test_import_web_platform_test_modules): No change.
+        (TestWebPlatformTestServer):
+        (TestWebPlatformTestServer.test_corrupted_subserver_files): Checked that server subprocess cleaning does not throw in case of bad server pid file.
+
+2015-02-20  Timothy Horton  <timothy_horton@apple.com>
+
+        [WebEditingTester] Allow dropping HTML files on the app
+        https://bugs.webkit.org/show_bug.cgi?id=141834
+
+        Reviewed by Simon Fraser.
+
+        * WebEditingTester/AppDelegate.m:
+        (-[WebEditingAppDelegate openDocument:]):
+        (-[WebEditingAppDelegate application:openFile:]):
+        Implement application:openFile:, factoring file loading code out of openDocument.
+
+        * WebEditingTester/Info.plist:
+        Register as an editor for HTML files.
+
+        * WebEditingTester/WebEditingTester.xcodeproj/project.pbxproj:
+        Enrica is not an organization.
+
+2015-02-20  Timothy Horton  <timothy_horton@apple.com>
+
+        [WebEditingTester] Expand "WK" to "WebKit" in a few places
+        https://bugs.webkit.org/show_bug.cgi?id=141833
+
+        Reviewed by Anders Carlsson.
+
+        * WebEditingTester/AppDelegate.h:
+        * WebEditingTester/AppDelegate.m:
+        (-[WebEditingAppDelegate newEditor:]):
+        (-[WebEditingAppDelegate toggleUseWebKit2ByDefault:]):
+        (-[WebEditingAppDelegate validateMenuItem:]):
+        (-[WebEditingAppDelegate _updateNewWindowKeyEquivalents]):
+        (-[WebEditingAppDelegate applicationDidFinishLaunching:]): Deleted.
+        (-[WebEditingAppDelegate applicationWillTerminate:]): Deleted.
+        (-[WebEditingAppDelegate showOperations:]): Deleted.
+        * WebEditingTester/MainMenu.xib:
+        The WK abbreviation is unnaturally grating in menu items for some reason.
+
+2015-02-20  Timothy Horton  <timothy_horton@apple.com>
+
+        [WebEditingTester] Add a custom protocol for loading canned content
+        https://bugs.webkit.org/show_bug.cgi?id=141830
+
+        Reviewed by Enrica Casucci.
+
+        Add a canned:// protocol handler, which can be used to emulate behaviors
+        in WebKit client apps (like Mail) that use custom protocol handlers,
+        which can have important effects on editing (mostly, the URLs are only
+        valid inside of the client application, but not when copied/dragged out).
+
+        For now, we only support two canned files:
+
+            canned://dice is a PNG of dice (stolen from LayoutTests/)
+            canned://text is the string "canned text" served as text/html
+
+        In the future we could support things like very large (generated) files,
+        progressive loading, etc. to further simulate conditions in other apps.
+
+        * WebEditingTester/AppDelegate.m:
+        (-[WebEditingAppDelegate applicationDidFinishLaunching:]):
+        Register the protocol with CFNetwork, and the scheme with WebKit2.
+
+        * WebEditingTester/Canned Content/dice.png: Added.
+        * WebEditingTester/CannedContent.h: Added.
+        * WebEditingTester/CannedContent.m: Added.
+        (-[CannedContent initWithRequest:cachedResponse:client:]):
+        (+[CannedContent canonicalRequestForRequest:]):
+        (+[CannedContent canInitWithRequest:]):
+        We only want to handle canned:// URLs.
+
+        (-[CannedContent startLoading]):
+        For now, immediately load the two files we know about.
+        Otherwise, immediately fail the load.
+
+        (-[CannedContent stopLoading]):
+        * WebEditingTester/WebEditingTester.xcodeproj/project.pbxproj:
+
+2015-02-20  Timothy Horton  <timothy_horton@apple.com>
+
+        [WebEditingTester] Implement an open panel
+        https://bugs.webkit.org/show_bug.cgi?id=141829
+
+        Reviewed by Simon Fraser.
+
+        * WebEditingTester/AppDelegate.m:
+        (-[WebEditingAppDelegate _useWebKit1ForOpeningDocument:]):
+        (-[WebEditingAppDelegate _useWebKit2ForOpeningDocument:]):
+        (-[WebEditingAppDelegate openDocument:]):
+        Add an open panel (with radio buttons to pick which WebKit to open with).
+        Loads the file as an HTML string.
+
+2015-02-20  Simon Fraser  <simon.fraser@apple.com>
+
+        [WebEditingTester] @properties, dot syntax, and remember the window position
+        https://bugs.webkit.org/show_bug.cgi?id=141843
+
+        Reviewed by Tim Horton.
+        
+        Modernize a bit with more dot syntax, use @property for the web views,
+        and give the main window an Autosave name so it remembers the widow position.
+
+        * WebEditingTester/WK1WebDocumentController.m:
+        (-[WK1WebDocumentController awakeFromNib]):
+        (-[WK1WebDocumentController loadHTMLString:]):
+        * WebEditingTester/WK2WebDocumentController.m:
+        (-[WK2WebDocumentController awakeFromNib]):
+        * WebEditingTester/WebDocument.xib:
+
+2015-02-20  Timothy Horton  <timothy_horton@apple.com>
+
+        [WebEditingTester] Hook up key equivalents for new window action
+        https://bugs.webkit.org/show_bug.cgi?id=141828
+
+        Reviewed by Enrica Casucci.
+
+        * WebEditingTester/AppDelegate.h:
+        * WebEditingTester/AppDelegate.m:
+        (-[WebEditingAppDelegate applicationDidFinishLaunching:]):
+        (-[WebEditingAppDelegate newEditor:]):
+        (-[WebEditingAppDelegate _defaultWebDocumentControllerClass]):
+        (-[WebEditingAppDelegate toggleUseWK2ByDefault:]):
+        (-[WebEditingAppDelegate _updateNewWindowKeyEquivalents]):
+        (defaultConfiguration): Deleted.
+        (-[WebEditingAppDelegate applicationWillTerminate:]): Deleted.
+        Move WKWebViewConfiguration setup into WK2WebDocumentController.
+        Remove unused application termination code.
+        Update new-window menu item key equivalents when launching and when
+        changing the use-WebKit2-by-default setting.
+        Make WebDocumentController subclasses all initialized the same way,
+        and use that to factor out alloc/init.
+        Rename loadContent to loadHTMLString for future use.
+
+        * WebEditingTester/MainMenu.xib:
+        Add default key equivalents.
+        Cmd-N will always make the default kind of window (controlled by the pref).
+        Cmd-Opt-N will always make the other kind.
+        The menu items are configured as alternates so they only show up if you
+        press alt (just like in MiniBrowser).
+
+        * WebEditingTester/WK1WebDocumentController.m:
+        (-[WK1WebDocumentController loadHTMLString:]):
+        (-[WK1WebDocumentController loadContent]): Deleted.
+        * WebEditingTester/WK2WebDocumentController.h:
+        * WebEditingTester/WK2WebDocumentController.m:
+        (defaultConfiguration):
+        (-[WK2WebDocumentController awakeFromNib]):
+        (-[WK2WebDocumentController loadHTMLString:]):
+        (-[WK2WebDocumentController initWithConfiguration:]): Deleted.
+        (-[WK2WebDocumentController dealloc]): Deleted.
+        * WebEditingTester/WebDocumentController.h:
+        * WebEditingTester/WebDocumentController.m:
+        (-[WebDocumentController init]):
+        (-[WebDocumentController initWithWindow:]):
+        (+[WebDocumentController defaultEditingSource]):
+        (-[WebDocumentController loadHTMLString:]):
+        (-[WebDocumentController windowDidLoad]): Deleted.
+        (-[WebDocumentController defaultEditingSource]): Deleted.
+        (-[WebDocumentController applicationTerminating]): Deleted.
+        (-[WebDocumentController loadContent]): Deleted.
+
+2015-02-20  Timothy Horton  <timothy_horton@apple.com>
+
+        [WebEditingTester] ARC-ify WebEditingTester
+        https://bugs.webkit.org/show_bug.cgi?id=141827
+
+        Reviewed by Sam Weinig.
+
+        * WebEditingTester/AppDelegate.m:
+        (-[WebEditingAppDelegate showOperations:]):
+        * WebEditingTester/EditingOperations.m:
+        (editingOperations):
+        * WebEditingTester/WK1WebDocumentController.m:
+        (-[WK1WebDocumentController dealloc]): Deleted.
+        * WebEditingTester/WK2WebDocumentController.m:
+        (-[WK2WebDocumentController dealloc]): Deleted.
+        * WebEditingTester/WebEditingTester.xcodeproj/project.pbxproj:
+        Turn on ARC and remove a few retain/release/autorelease calls.
+        We don't need to implement dealloc in either document controller
+        because WebView and WKWebView's UIDelegate property does not hold a
+        strong reference.
+
+2015-02-20  Timothy Horton  <timothy_horton@apple.com>
+
+        [WebEditingTester] Factor out list of editing operations
+        https://bugs.webkit.org/show_bug.cgi?id=141826
+
+        Reviewed by Sam Weinig.
+
+        * WebEditingTester/AppDelegate.m:
+        (-[WebEditingAppDelegate showOperations:]):
+        * WebEditingTester/EditingOperations.h: Added.
+        * WebEditingTester/EditingOperations.m: Added.
+        (editingOperations):
+        * WebEditingTester/WebEditingTester.xcodeproj/project.pbxproj:
+        Move EditingOperations array to its own file, and make it an NSArray
+        instead of a C array. Adjust accordingly in showOperations:.
+
+2015-02-20  Michael Saboff  <msaboff@apple.com>
+
+        DFG JIT needs to check for stack overflow at the start of Program and Eval execution
+        https://bugs.webkit.org/show_bug.cgi?id=141676
+
+        Reviewed by Filip Pizlo.
+
+        Set the newly added --maximumEvalCacheableSourceLength option for eager test runs.  This is needed
+        to allow the eval out of stack tests to tier up.  Without this option, we don't cache the likely
+        large string expression that we want to eval.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-02-19  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r180239): run-webkit-test fails to boot simulator device that was booted by previous test run
+        https://bugs.webkit.org/show_bug.cgi?id=141815
+        <rdar://problem/19893933>
+
+        Reviewed by Simon Fraser.
+
+        Fixes an issue where run-webkit-tests would fail to boot the WebKit Tester simulator device if it
+        was booted by iOS Simulator in a previous run of run-webkit-test.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.check_sys_deps): Added logic moved from IOSSimulatorPort.setup_test_run().
+        (IOSSimulatorPort.setup_test_run): Moved logic to quit the iOS Simulator app and wait for the
+        testing device to be in the shutdown state from here to IOSSimulatorPort.check_sys_deps().
+
+2015-02-19  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style: do not warn about missing primary header for *SoftLink.cpp files
+        <http://webkit.org/b/141799>
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (_IncludeState.check_next_include_order): Don't emit a warning
+        if the primary header exists and the source file name ends with
+        "SoftLink.cpp".  Add 'filename' argument to method.
+        (check_include_line): Pass in 'filename'.
+
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (OrderOfIncludesTest.test_check_next_include_order__no_config):
+        (OrderOfIncludesTest.test_check_next_include_order__no_self):
+        (OrderOfIncludesTest.test_check_next_include_order__likely_then_config):
+        (OrderOfIncludesTest.test_check_next_include_order__other_then_config):
+        (OrderOfIncludesTest.test_check_next_include_order__config_then_other_then_likely):
+        - Add test filename arguments for calls to
+          check_next_include_order().
+        (OrderOfIncludesTest.test_primary_header): Add test for a file
+        name ending in "SoftLink.cpp".
+
+2015-02-18  Enrica Casucci  <enrica@apple.com>
+
+        Add new tool to test editable Webviews.
+        https://bugs.webkit.org/show_bug.cgi?id=141772
+
+        Reviewed by Tim Horton.
+
+        Adding WebEditingTester, a Cocoa application to
+        test WK1 and Wk2 views in editable mode.
+
+        * WebEditingTester: Added.
+        * WebEditingTester/AppDelegate.h: Added.
+        * WebEditingTester/AppDelegate.m: Added.
+        (-[WebEditingAppDelegate init]):
+        (defaultConfiguration):
+        (-[WebEditingAppDelegate applicationDidFinishLaunching:]):
+        (-[WebEditingAppDelegate applicationWillTerminate:]):
+        (-[WebEditingAppDelegate newEditor:]):
+        (-[WebEditingAppDelegate showOperations:]):
+        (-[WebEditingAppDelegate useWebKit2ByDefault]):
+        (-[WebEditingAppDelegate toggleUseWK2ByDefault:]):
+        (-[WebEditingAppDelegate validateMenuItem:]):
+        * WebEditingTester/Info.plist: Added.
+        * WebEditingTester/MainMenu.xib: Added.
+        * WebEditingTester/WK1WebDocumentController.h: Added.
+        * WebEditingTester/WK1WebDocumentController.m: Added.
+        (-[WK1WebDocumentController awakeFromNib]):
+        (-[WK1WebDocumentController loadContent]):
+        (-[WK1WebDocumentController dealloc]):
+        (-[WK1WebDocumentController pasteAsMarkup:]):
+        * WebEditingTester/WK2WebDocumentController.h: Added.
+        * WebEditingTester/WK2WebDocumentController.m: Added.
+        (-[WK2WebDocumentController initWithConfiguration:]):
+        (-[WK2WebDocumentController pasteAsMarkup:]):
+        (-[WK2WebDocumentController awakeFromNib]):
+        (-[WK2WebDocumentController dealloc]):
+        (-[WK2WebDocumentController loadContent]):
+        * WebEditingTester/WebDocument.xib: Added.
+        * WebEditingTester/WebDocumentController.h: Added.
+        * WebEditingTester/WebDocumentController.m: Added.
+        (-[WebDocumentController initWithWindow:]):
+        (-[WebDocumentController windowDidLoad]):
+        (-[WebDocumentController defaultEditingSource]):
+        (-[WebDocumentController applicationTerminating]):
+        (-[WebDocumentController loadContent]):
+        * WebEditingTester/WebEditingTester.xcodeproj: Added.
+        * WebEditingTester/WebEditingTester.xcodeproj/project.pbxproj: Added.
+        * WebEditingTester/main.m: Added.
+        (main):
+
 2015-02-18  Csaba Osztrogonác  <ossy@webkit.org>
 
         Run JSC tests on ARM EFL bots

@@ -58,6 +58,8 @@ public:
 
     void removeData(WebsiteDataTypes, std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler);
 
+    StorageManager* storageManager() { return m_storageManager.get(); }
+
 private:
     explicit WebsiteDataStore(WebCore::SessionID);
     explicit WebsiteDataStore(Configuration);
@@ -69,6 +71,9 @@ private:
     virtual void webPageWillOpenConnection(WebPageProxy&, IPC::Connection&) override;
     virtual void webPageDidCloseConnection(WebPageProxy&, IPC::Connection&) override;
     virtual void webProcessDidCloseConnection(WebProcessProxy&, IPC::Connection&) override;
+
+    void platformInitialize();
+    void platformDestroy();
 
     const uint64_t m_identifier;
     const WebCore::SessionID m_sessionID;

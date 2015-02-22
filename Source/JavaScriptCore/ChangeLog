@@ -1,3 +1,278 @@
+2015-02-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Generate Previews more often for RemoteObject interaction
+        https://bugs.webkit.org/show_bug.cgi?id=141875
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Runtime.json:
+        Add generatePreview to getProperties.
+
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::getProperties):
+        (Inspector::InjectedScript::getInternalProperties):
+        * inspector/InjectedScript.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getProperties):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        Plumb the generatePreview boolean through to the injected script.
+
+        * inspector/InjectedScriptSource.js:
+        Add generatePreview for getProperties.
+        Fix callFunctionOn to generatePreviews if asked.
+
+2015-02-20  Mark Lam  <mark.lam@apple.com>
+
+        Refactor JSWrapperMap.mm to defer creation of the ObjC JSValue until the latest possible moment.
+        <https://webkit.org/b/141856>
+
+        Reviewed by Geoffrey Garen.
+
+        1. Make JSObjCClassInfo's -constructor and -wrapperForObject return a
+           JSC::JSObject* just like -prototype.
+        2. Defer the creation of the ObjC JSValue from JSC::JSObject* until
+           the latest moment when it is needed.  This allows us to not have to
+           keep converting back to a JSC::JSObject* in intermediate code.
+
+        * API/JSWrapperMap.mm:
+        (makeWrapper):
+        (objectWithCustomBrand):
+        (constructorWithCustomBrand):
+        (allocateConstructorForCustomClass):
+        (-[JSObjCClassInfo allocateConstructorAndPrototype]):
+        (-[JSObjCClassInfo wrapperForObject:]):
+        (-[JSObjCClassInfo constructor]):
+        (-[JSWrapperMap jsWrapperForObject:]):
+
+2015-02-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Build fix for gcc.
+
+        * runtime/JSNameScope.cpp:
+        (JSC::JSNameScope::create):
+
+2015-02-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Get rid of JSNameScope::m_type
+        https://bugs.webkit.org/show_bug.cgi?id=141851
+
+        Reviewed by Geoffrey Garen.
+        
+        This is a big step towards getting rid of JSEnvironmentRecord::m_registers. To do it we need
+        to ensure that subclasses of JSEnvironmentRecord never have additional C++ fields, so that
+        JSEnvironmentRecord can always place "registers" right after the end of itself.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::isCatchScope):
+        (JSC::DebuggerScope::isFunctionNameScope):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/JSCatchScope.cpp: Added.
+        * runtime/JSCatchScope.h: Added.
+        (JSC::JSCatchScope::JSCatchScope):
+        (JSC::JSCatchScope::create):
+        (JSC::JSCatchScope::createStructure):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::addNameScopeIfNeeded):
+        * runtime/JSFunctionNameScope.cpp: Added.
+        * runtime/JSFunctionNameScope.h: Added.
+        (JSC::JSFunctionNameScope::JSFunctionNameScope):
+        (JSC::JSFunctionNameScope::create):
+        (JSC::JSFunctionNameScope::createStructure):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::catchScopeStructure):
+        (JSC::JSGlobalObject::functionNameScopeStructure):
+        (JSC::JSGlobalObject::nameScopeStructure): Deleted.
+        * runtime/JSNameScope.cpp:
+        (JSC::JSNameScope::create):
+        * runtime/JSNameScope.h:
+        (JSC::JSNameScope::create):
+        (JSC::JSNameScope::JSNameScope):
+        (JSC::JSNameScope::createStructure): Deleted.
+        (JSC::JSNameScope::isFunctionNameScope): Deleted.
+        (JSC::JSNameScope::isCatchScope): Deleted.
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::isCatchScopeObject):
+        (JSC::JSObject::isFunctionNameScopeObject):
+        * runtime/JSObject.h:
+
+2015-02-20  Mark Lam  <mark.lam@apple.com>
+
+        [JSObjCClassInfo reallocateConstructorAndOrPrototype] should also reallocate super class prototype chain.
+        <https://webkit.org/b/141809>
+
+        Reviewed by Geoffrey Garen.
+
+        A ObjC class that implement the JSExport protocol will have a JS prototype
+        chain and constructor automatically synthesized for its JS wrapper object.
+        However, if there are no more instances of that ObjC class reachable by a
+        JS GC root scan, then its synthesized prototype chain and constructors may
+        be released by the GC.  If a new instance of that ObjC class is subsequently
+        instantiated, then [JSObjCClassInfo reallocateConstructorAndOrPrototype]
+        should re-construct the prototype chain and constructor (if they were
+        previously released).  However, the current implementation only
+        re-constructs the immediate prototype, but not every other prototype
+        object upstream in the prototype chain.
+
+        To fix this, we do the following:
+        1. We no longer allocate the JSObjCClassInfo's prototype and constructor
+           eagerly.  Hence, -initWithContext:forClass: will no longer call
+           -allocateConstructorAndPrototypeWithSuperClassInfo:.
+        2. Instead, we'll always access the prototype and constructor thru
+           accessor methods.  The accessor methods will call
+           -allocateConstructorAndPrototype: if needed.
+        3. -allocateConstructorAndPrototype: will fetch the needed superClassInfo
+           from the JSWrapperMap itself.  This makes it so that we no longer
+           need to pass the superClassInfo all over.
+        4. -allocateConstructorAndPrototype: will get the super class prototype
+           by invoking -prototype: on the superClassInfo, thereby allowing the
+           super class to allocate its prototype and constructor if needed and
+           fixing the issue in this bug.
+
+        5. Also removed the GC warning comments, and ensured that needed JS
+           objects are kept alive by having a local var pointing to it from the
+           stack (which makes a GC root).
+
+        * API/JSWrapperMap.mm:
+        (-[JSObjCClassInfo initWithContext:forClass:]):
+        (-[JSObjCClassInfo allocateConstructorAndPrototype]):
+        (-[JSObjCClassInfo wrapperForObject:]):
+        (-[JSObjCClassInfo constructor]):
+        (-[JSObjCClassInfo prototype]):
+        (-[JSWrapperMap classInfoForClass:]):
+        (-[JSObjCClassInfo initWithContext:forClass:superClassInfo:]): Deleted.
+        (-[JSObjCClassInfo allocateConstructorAndPrototypeWithSuperClassInfo:]): Deleted.
+        (-[JSObjCClassInfo reallocateConstructorAndOrPrototype]): Deleted.
+        * API/tests/Regress141809.h: Added.
+        * API/tests/Regress141809.mm: Added.
+        (-[TestClassB name]):
+        (-[TestClassC name]):
+        (runRegress141809):
+        * API/tests/testapi.mm:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2015-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove svn:keywords property.
+
+        As far as I can tell, the property had no effect on any of these files, but also,
+        when it has effect it's likely harmful.
+
+        * builtins/ArrayConstructor.js: Removed property svn:keywords.
+
+2015-02-20  Michael Saboff  <msaboff@apple.com>
+
+        DFG JIT needs to check for stack overflow at the start of Program and Eval execution
+        https://bugs.webkit.org/show_bug.cgi?id=141676
+
+        Reviewed by Filip Pizlo.
+
+        Added stack check to the beginning of the code the DFG copmiler emits for Program and Eval nodes.
+        To aid in testing the code, I replaced the EvalCodeCache::maxCacheableSourceLength const
+        a options in runtime/Options.h.  The test script, run-jsc-stress-tests, sets that option
+        to a huge value when running with the "Eager" options.  This allows the updated test to 
+        reliably exercise the code in questions.
+
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compile):
+        Added stack check.
+
+        * bytecode/EvalCodeCache.h:
+        (JSC::EvalCodeCache::tryGet):
+        (JSC::EvalCodeCache::getSlow):
+        * runtime/Options.h:
+        Replaced EvalCodeCache::imaxCacheableSourceLength with Options::maximumEvalCacheableSourceLength
+        so that it can be configured when running the related test.
+
+2015-02-20  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] cleanup AirPlay code
+        https://bugs.webkit.org/show_bug.cgi?id=141811
+
+        Reviewed by Jer Noble.
+
+        * Configurations/FeatureDefines.xcconfig: IOS_AIRPLAY -> WIRELESS_PLAYBACK_TARGET.
+
+2015-02-19  Dean Jackson  <dino@apple.com>
+
+        ES6: Implement Array.from()
+        https://bugs.webkit.org/show_bug.cgi?id=141054
+        <rdar://problem/19654521>
+
+        Reviewed by Filip Pizlo.
+
+        Implement the Array.from() ES6 method
+        as defined in Section 22.1.2.1 of the specification.
+
+        Given that we can't rely on the built-in
+        global functions or objects to be untainted,
+        I had to expose a few of them directly to
+        the function via private names. In particular:
+        - Math.floor -> @floor
+        - Math.abs -> @abs
+        - Number -> @Number
+        - Array -> @Array
+        - isFinite -> @isFinite
+
+        * builtins/ArrayConstructor.js: Added.
+        (from): Implementation of Array.from in JavaScript.
+        * runtime/ArrayConstructor.cpp: Add "from" to the lookup
+        table for the constructor object.
+        * runtime/CommonIdentifiers.h: Add the private versions
+        of the identifiers listed above.
+        * runtime/JSGlobalObject.cpp: Add the implementations of
+        those identifiers to the global object (using their
+        private names).
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalPrivateFuncAbs): Implementation of the abs function.
+        (JSC::globalPrivateFuncFloor): Implementation of the floor function.
+        * runtime/JSGlobalObjectFunctions.h:
+
+2015-02-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        Refine the FTL part of ArithPow
+        https://bugs.webkit.org/show_bug.cgi?id=141792
+
+        Reviewed by Filip Pizlo.
+
+        This patch refines the FTL lowering of ArithPow. This was left out
+        of the original patch to keep it simpler.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileArithPow):
+        Two improvements here:
+        1) Do not generate the NaN check unless we know the exponent might be a NaN.
+        2) Use one BasicBlock per check with the appropriate weight. Now that we have
+           one branch per test, move the Infinity check before the check for 1 since
+           it is the less common case.
+
+        * tests/stress/math-pow-becomes-custom-function.js: Added.
+        Test for changing the Math.pow() function after it has been optimized.
+
+        * tests/stress/math-pow-nan-behaviors.js:
+        The previous tests were only going as far as the DFGAbstractInterpreter
+        were the operations were replaced by the equivalent constant.
+
+        I duplicated the test functions to also test the dynamic behavior of DFG
+        and FTL.
+
+        * tests/stress/math-pow-with-constants.js:
+        Add cases covering exponent constants. LLVM removes many value
+        checks for those.
+
+        * tests/stress/math-pow-with-never-NaN-exponent.js: Added.
+        Test for the new optimization removing the NaN check.
+
 2015-02-19  Csaba Osztrogonác  <ossy@webkit.org>
 
         REGRESSION(r180279): It broke 20 tests on ARM Linux

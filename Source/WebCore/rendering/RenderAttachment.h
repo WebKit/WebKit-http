@@ -40,11 +40,15 @@ public:
 
     HTMLAttachmentElement& attachmentElement() const;
 
+    void focusChanged();
+
 private:
     void element() const = delete;
     virtual bool isAttachment() const override { return true; }
     virtual const char* renderName() const override { return "RenderAttachment"; }
     virtual void paintReplaced(PaintInfo&, const LayoutPoint&) override;
+
+    virtual bool shouldDrawSelectionTint() const override { return false; }
 };
 
 } // namespace WebCore

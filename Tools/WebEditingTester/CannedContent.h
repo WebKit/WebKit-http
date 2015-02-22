@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,20 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WorkQueue.h"
+#import <Foundation/Foundation.h>
 
-Ref<WorkQueue> WorkQueue::create(const char* name, Type type, QOS qos)
-{
-    return adoptRef(*new WorkQueue(name, type, qos));
-}
+@interface CannedContent : NSURLProtocol
 
-WorkQueue::WorkQueue(const char* name, Type type, QOS qos)
-{
-    platformInitialize(name, type, qos);
-}
-
-WorkQueue::~WorkQueue()
-{
-    platformInvalidate();
-}
+@end

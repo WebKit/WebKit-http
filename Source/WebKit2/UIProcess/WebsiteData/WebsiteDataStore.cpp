@@ -62,16 +62,19 @@ WebsiteDataStore::WebsiteDataStore(Configuration configuration)
     , m_sessionID(WebCore::SessionID::defaultSessionID())
     , m_storageManager(StorageManager::create(WTF::move(configuration.localStorageDirectory)))
 {
+    platformInitialize();
 }
 
 WebsiteDataStore::WebsiteDataStore(WebCore::SessionID sessionID)
     : m_identifier(generateIdentifier())
     , m_sessionID(sessionID)
 {
+    platformInitialize();
 }
 
 WebsiteDataStore::~WebsiteDataStore()
 {
+    platformDestroy();
 }
 
 void WebsiteDataStore::cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage)
@@ -114,6 +117,8 @@ static ProcessAccessType computeNetworkProcessAccessType(WebsiteDataTypes dataTy
 
 static ProcessAccessType computeWebProcessAccessType(WebsiteDataTypes dataTypes)
 {
+    UNUSED_PARAM(isNonPersistentStore);
+
     ProcessAccessType processAccessType = ProcessAccessType::None;
 
     if (dataTypes & WebsiteDataTypeMemoryCache)

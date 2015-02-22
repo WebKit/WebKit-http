@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,13 +31,11 @@
 #import "WebVideoFullscreenInterfaceAVKit.h"
 
 #import "AVKitSPI.h"
-#import "CoreMediaSoftLink.h"
 #import "Logging.h"
 #import "GeometryUtilities.h"
 #import "WebCoreSystemInterface.h"
 #import "WebVideoFullscreenModel.h"
 #import <AVFoundation/AVTime.h>
-#import <CoreMedia/CMTime.h>
 #import <UIKit/UIKit.h>
 #import <WebCore/RuntimeApplicationChecksIOS.h>
 #import <WebCore/SoftLinking.h>
@@ -48,6 +46,9 @@
 #import <wtf/text/WTFString.h>
 
 using namespace WebCore;
+
+// Soft-linking headers must be included last since they #define functions, constants, etc.
+#import "CoreMediaSoftLink.h"
 
 SOFT_LINK_FRAMEWORK(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
@@ -65,11 +66,7 @@ SOFT_LINK_CLASS(UIKit, UIView)
 SOFT_LINK_CLASS(UIKit, UIViewController)
 SOFT_LINK_CLASS(UIKit, UIColor)
 
-SOFT_LINK_FRAMEWORK(CoreMedia)
-SOFT_LINK(CoreMedia, CMTimeGetSeconds, Float64, (CMTime time), (time))
-SOFT_LINK(CoreMedia, CMTimeMake, CMTime, (int64_t value, int32_t timescale), (value, timescale))
 SOFT_LINK(CoreMedia, CMTimeRangeContainsTime, Boolean, (CMTimeRange range, CMTime time), (range, time))
-SOFT_LINK(CoreMedia, CMTimeRangeGetEnd, CMTime, (CMTimeRange range), (range))
 SOFT_LINK(CoreMedia, CMTimeRangeMake, CMTimeRange, (CMTime start, CMTime duration), (start, duration))
 SOFT_LINK(CoreMedia, CMTimeSubtract, CMTime, (CMTime minuend, CMTime subtrahend), (minuend, subtrahend))
 SOFT_LINK(CoreMedia, CMTimeMaximum, CMTime, (CMTime time1, CMTime time2), (time1, time2))

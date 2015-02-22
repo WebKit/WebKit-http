@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,7 +58,6 @@
 #include <AVFoundationCF/AVCFAssetResourceLoader.h>
 #endif
 #include <AVFoundationCF/AVFoundationCF.h>
-#include <CoreMedia/CoreMedia.h>
 #include <d3d9.h>
 #include <delayimp.h>
 #include <dispatch/dispatch.h>
@@ -72,10 +71,9 @@
 #include <wtf/text/StringView.h>
 #include <wtf/StringPrintStream.h>
 
-// The softlink header files must be included after the AVCF and CoreMedia header files.
+// Soft-linking headers must be included last since they #define functions, constants, etc.
 #include "AVFoundationCFSoftLinking.h"
 #include "CoreMediaSoftLink.h"
-#include "CoreMediaSoftLinking.h"
 
 // We don't bother softlinking against libdispatch since it's already been loaded by AAS.
 #ifdef DEBUG_ALL
@@ -336,15 +334,11 @@ static dispatch_queue_t globalLoaderDelegateQueue()
 }
 #endif
 
-PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateAVFoundationCF::create(MediaPlayer* player) 
-{ 
-    return adoptPtr(new MediaPlayerPrivateAVFoundationCF(player));
-}
-
 void MediaPlayerPrivateAVFoundationCF::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-        registrar(create, getSupportedTypes, supportsType, 0, 0, 0, supportsKeySystem);
+        registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateAVFoundationCF>(player); },
+            getSupportedTypes, supportsType, 0, 0, 0, supportsKeySystem);
 }
 
 MediaPlayerPrivateAVFoundationCF::MediaPlayerPrivateAVFoundationCF(MediaPlayer* player)
@@ -945,7 +939,7 @@ bool MediaPlayerPrivateAVFoundationCF::supportsKeySystem(const String& keySystem
 
 bool MediaPlayerPrivateAVFoundationCF::isAvailable()
 {
-    return AVFoundationCFLibrary() && CoreMediaLibrary();
+    return AVFoundationCFLibrary() && isCoreMediaFrameworkAvailable();
 }
 
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)

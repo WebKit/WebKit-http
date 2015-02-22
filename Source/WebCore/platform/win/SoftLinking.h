@@ -28,11 +28,7 @@
 #include <windows.h>
 #include <wtf/Assertions.h>
 
-#ifdef DEBUG_ALL
-#define SOFT_LINK_FRAMEWORK(framework) SOFT_LINK_DEBUG_LIBRARY(framework)
-#else
-#define SOFT_LINK_FRAMEWORK(framework) SOFT_LINK_LIBRARY(framework)
-#endif
+#pragma mark - Soft-link helper macros
 
 #define SOFT_LINK_LIBRARY_HELPER(lib, suffix) \
     static HMODULE lib##Library() \
@@ -44,6 +40,8 @@
 #define SOFT_LINK_GETPROCADDRESS GetProcAddress
 #define SOFT_LINK_LIBRARY(lib) SOFT_LINK_LIBRARY_HELPER(lib, L".dll")
 #define SOFT_LINK_DEBUG_LIBRARY(lib) SOFT_LINK_LIBRARY_HELPER(lib, L"_debug.dll")
+
+#pragma mark - Soft-link macros for use within a single source file
 
 #define SOFT_LINK(library, functionName, resultType, callingConvention, parameterDeclarations, parameterNames) \
     static resultType callingConvention init##functionName parameterDeclarations; \
@@ -116,27 +114,6 @@
         return softLink##functionName parameterNames; \
     }
 
-#define SOFT_LINK_FUNCTION_DECL(functionName, resultType, parameterDeclarations, parameterNames) \
-    namespace WebCore { \
-    extern resultType(__cdecl*softLink##functionName) parameterDeclarations; \
-    } \
-    inline resultType softLink_##functionName parameterDeclarations \
-    { \
-        return WebCore::softLink##functionName parameterNames; \
-    }
-
-#define SOFT_LINK_FUNCTION_IMPL(library, functionName, resultType, parameterDeclarations, parameterNames) \
-    namespace WebCore { \
-    static resultType __cdecl init##functionName parameterDeclarations; \
-    resultType(__cdecl*softLink##functionName) parameterDeclarations = init##functionName; \
-    static resultType __cdecl init##functionName parameterDeclarations \
-    { \
-        softLink##functionName = reinterpret_cast<resultType (__cdecl*)parameterDeclarations>(SOFT_LINK_GETPROCADDRESS(library##Library(), #functionName)); \
-        ASSERT(softLink##functionName); \
-        return softLink##functionName parameterNames; \
-    } \
-    }
-
 #define SOFT_LINK_DLL_IMPORT_OPTIONAL(library, functionName, resultType, callingConvention, parameterDeclarations) \
     typedef resultType (callingConvention *functionName##PtrType) parameterDeclarations; \
     static functionName##PtrType functionName##Ptr() \
@@ -193,5 +170,81 @@
             return 0; \
         return *ptr; \
     } \
+
+#pragma mark - Soft-link macros for sharing across multiple source files
+
+// See Source/WebCore/platform/cf/CoreMediaSoftLink.{cpp,h} for an example implementation.
+
+#define SOFT_LINK_FRAMEWORK_HEADER(functionNamespace, framework) \
+    namespace functionNamespace { \
+    extern HMODULE framework##Library(bool isOptional = false); \
+    bool is##framework##FrameworkAvailable(); \
+    inline bool is##framework##FrameworkAvailable() { \
+        return framework##Library(true) != nullptr; \
+    } \
+    }
+
+#define SOFT_LINK_FRAMEWORK_HELPER(functionNamespace, framework, suffix) \
+    namespace functionNamespace { \
+    HMODULE framework##Library(bool isOptional = false); \
+    HMODULE framework##Library(bool isOptional) \
+    { \
+        static HMODULE library = LoadLibraryW(L###framework suffix); \
+        ASSERT_WITH_MESSAGE_UNUSED(isOptional, isOptional || library, "Could not load %s", L###framework suffix); \
+        return library; \
+    } \
+    }
+
+#define SOFT_LINK_FRAMEWORK(functionNamespace, framework) SOFT_LINK_FRAMEWORK_HELPER(functionNamespace, framework, L".dll")
+#define SOFT_LINK_DEBUG_FRAMEWORK(functionNamespace, framework) SOFT_LINK_FRAMEWORK_HELPER(functionNamespace, framework, L"_debug.dll")
+
+#ifdef DEBUG_ALL
+#define SOFT_LINK_FRAMEWORK_SOURCE(functionNamespace, framework) SOFT_LINK_DEBUG_FRAMEWORK(functionNamespace, framework)
+#else
+#define SOFT_LINK_FRAMEWORK_SOURCE(functionNamespace, framework) SOFT_LINK_FRAMEWORK(functionNamespace, framework)
+#endif
+
+#define SOFT_LINK_CONSTANT_HEADER(functionNamespace, framework, variableName, variableType) \
+    namespace functionNamespace { \
+    const variableType get_##framework##_##variableName(); \
+    }
+
+#define SOFT_LINK_CONSTANT_SOURCE(functionNamespace, framework, variableName, variableType) \
+    namespace functionNamespace { \
+    static void init##framework##variableName(void* context) { \
+        variableType* ptr = reinterpret_cast<variableType*>(SOFT_LINK_GETPROCADDRESS(framework##Library(), #variableName)); \
+        ASSERT(ptr); \
+        *static_cast<variableType*>(context) = *ptr; \
+    } \
+    const variableType get_##framework##_##variableName(); \
+    const variableType get_##framework##_##variableName() \
+    { \
+        static variableType constant##framework##variableName; \
+        static dispatch_once_t once; \
+        dispatch_once_f(&once, static_cast<void*>(&constant##framework##variableName), init##framework##variableName); \
+        return constant##framework##variableName; \
+    } \
+    }
+
+#define SOFT_LINK_FUNCTION_HEADER(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
+    namespace functionNamespace { \
+    extern resultType(__cdecl*softLink##framework##functionName) parameterDeclarations; \
+    inline resultType softLink_##framework##_##functionName parameterDeclarations \
+    { \
+        return softLink##framework##functionName parameterNames; \
+    } \
+    }
+
+#define SOFT_LINK_FUNCTION_SOURCE(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
+    namespace functionNamespace { \
+    static resultType __cdecl init##framework##functionName parameterDeclarations; \
+    resultType(__cdecl*softLink##framework##functionName) parameterDeclarations = init##framework##functionName; \
+    static resultType __cdecl init##framework##functionName parameterDeclarations \
+    { \
+        softLink##framework##functionName = reinterpret_cast<resultType (__cdecl*)parameterDeclarations>(SOFT_LINK_GETPROCADDRESS(framework##Library(), #functionName)); \
+        ASSERT(softLink##framework##functionName); \
+        return softLink##framework##functionName parameterNames; \
+    } \
+    }
 
 #endif // SoftLinking_h
