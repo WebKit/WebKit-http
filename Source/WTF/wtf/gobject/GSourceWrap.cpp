@@ -49,6 +49,8 @@ void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext*
     if (priority != G_PRIORITY_DEFAULT_IDLE)
         g_source_set_priority(m_source.get(), priority);
 
+    if (!context)
+        context = g_main_context_get_thread_default();
     g_source_attach(m_source.get(), context);
 }
 
