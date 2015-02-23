@@ -305,6 +305,17 @@ bool Extensions3DOpenGLES::supportsExtension(const String& name)
         return true;
 #endif
 
+#if defined(GL_IMG_multisampled_render_to_texture) && GL_IMG_multisampled_render_to_texture
+    if (name == "GL_IMG_multisampled_render_to_texture") {
+        if (!m_supportsIMGMultisampledRenderToTexture) {
+            m_glFramebufferTexture2DMultisampleIMG = reinterpret_cast<PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC>(eglGetProcAddress("glFramebufferTexture2DMultisampleIMG"));
+            m_glRenderbufferStorageMultisampleIMG = reinterpret_cast<PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC>(eglGetProcAddress("glRenderbufferStorageMultisampleIMG"));
+            m_supportsIMGMultisampledRenderToTexture = true;
+        }
+        return true;
+    }
+#endif
+
     if (m_availableExtensions.contains(name)) {
         if (!m_supportsOESvertexArrayObject && name == "GL_OES_vertex_array_object") {
             m_glBindVertexArrayOES = reinterpret_cast<PFNGLBINDVERTEXARRAYOESPROC>(eglGetProcAddress("glBindVertexArrayOES"));
@@ -312,10 +323,6 @@ bool Extensions3DOpenGLES::supportsExtension(const String& name)
             m_glDeleteVertexArraysOES = reinterpret_cast<PFNGLDELETEVERTEXARRAYSOESPROC>(eglGetProcAddress("glDeleteVertexArraysOES"));
             m_glIsVertexArrayOES = reinterpret_cast<PFNGLISVERTEXARRAYOESPROC>(eglGetProcAddress("glIsVertexArrayOES"));
             m_supportsOESvertexArrayObject = true;
-        } else if (!m_supportsIMGMultisampledRenderToTexture && name == "GL_IMG_multisampled_render_to_texture") {
-            m_glFramebufferTexture2DMultisampleIMG = reinterpret_cast<PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC>(eglGetProcAddress("glFramebufferTexture2DMultisampleIMG"));
-            m_glRenderbufferStorageMultisampleIMG = reinterpret_cast<PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC>(eglGetProcAddress("glRenderbufferStorageMultisampleIMG"));
-            m_supportsIMGMultisampledRenderToTexture = true;
         } else if (!m_glGetGraphicsResetStatusEXT && name == "GL_EXT_robustness") {
             m_glGetGraphicsResetStatusEXT = reinterpret_cast<PFNGLGETGRAPHICSRESETSTATUSEXTPROC>(eglGetProcAddress("glGetGraphicsResetStatusEXT"));
             m_glReadnPixelsEXT = reinterpret_cast<PFNGLREADNPIXELSEXTPROC>(eglGetProcAddress("glReadnPixelsEXT"));
