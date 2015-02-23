@@ -409,6 +409,9 @@ bool QGraphicsWebView::event(QEvent* event)
                     d->page->d->client->resetCursor();
             }
 #endif
+            if (event->type() == QEvent::Show
+                || event->type() == QEvent::Hide)
+                d->page->event(event);
         }
     }
     return QGraphicsWidget::event(event);

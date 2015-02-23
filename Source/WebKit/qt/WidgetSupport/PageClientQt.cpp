@@ -151,6 +151,11 @@ void PageClientQWidget::setWidgetVisible(Widget* widget, bool visible)
     qtWidget->setVisible(visible);
 }
 
+bool PageClientQWidget::isViewVisible()
+{
+    return view ? view->isVisible() : false;
+}
+
 #if !defined(QT_NO_GRAPHICSVIEW)
 PageClientQGraphicsWidget::~PageClientQGraphicsWidget()
 {
@@ -302,6 +307,11 @@ QGraphicsView* PageClientQGraphicsWidget::firstGraphicsView() const
     if (view->scene() && !view->scene()->views().isEmpty())
         return view->scene()->views().first();
     return 0;
+}
+
+bool PageClientQGraphicsWidget::isViewVisible()
+{
+    return view ? view->isVisible() : false;
 }
 #endif // QT_NO_GRAPHICSVIEW
 

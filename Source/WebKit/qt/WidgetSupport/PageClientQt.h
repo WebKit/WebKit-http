@@ -77,6 +77,7 @@ public:
     virtual QRectF windowRect() const;
 
     virtual void setWidgetVisible(Widget*, bool visible);
+    virtual bool isViewVisible();
 
     QWidget* view;
     QWebPage* page;
@@ -160,6 +161,7 @@ public:
     virtual bool viewResizesToContentsEnabled() const { return viewResizesToContents; }
 
     virtual void setWidgetVisible(Widget*, bool);
+    virtual bool isViewVisible();
 
 #if USE(TILED_BACKING_STORE)
     virtual QRectF graphicsItemVisibleRect() const;

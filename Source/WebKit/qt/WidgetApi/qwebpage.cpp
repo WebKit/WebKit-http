@@ -2617,6 +2617,12 @@ bool QWebPage::event(QEvent *ev)
         d->dynamicPropertyChangeEvent(this, static_cast<QDynamicPropertyChangeEvent*>(ev));
         break;
 #endif
+    case QEvent::Show:
+        d->setPluginsVisible(true);
+        break;
+    case QEvent::Hide:
+        d->setPluginsVisible(false);
+        break;
     default:
         return QObject::event(ev);
     }

@@ -289,6 +289,8 @@ public:
     void setVisibilityState(VisibilityState);
     VisibilityState visibilityState() const;
 
+    void setPluginsVisible(bool);
+
     static QWebPageAdapter* kit(WebCore::Page*);
     WebCore::ViewportArguments viewportArguments() const;
     void registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep>);

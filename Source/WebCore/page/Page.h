@@ -380,6 +380,10 @@ public:
     WEBCORE_EXPORT PageVisibilityState visibilityState() const;
     WEBCORE_EXPORT void resumeAnimatingImages();
 
+#if PLATFORM(QT)
+    void pluginVisibilityChanged(bool visible);
+#endif // PLATFORM(QT)
+
     WEBCORE_EXPORT void addLayoutMilestones(LayoutMilestones);
     WEBCORE_EXPORT void removeLayoutMilestones(LayoutMilestones);
     LayoutMilestones requestedLayoutMilestones() const { return m_requestedLayoutMilestones; }

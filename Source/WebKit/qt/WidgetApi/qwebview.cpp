@@ -703,7 +703,9 @@ bool QWebView::event(QEvent *e)
             d->page->updatePositionDependentActions(event->pos());
         } else
 #endif // QT_NO_CONTEXTMENU
-        if (e->type() == QEvent::ShortcutOverride) {
+        if (e->type() == QEvent::ShortcutOverride
+            || e->type() == QEvent::Show
+            || e->type() == QEvent::Hide) {
             d->page->event(e);
 #ifndef QT_NO_CURSOR
         } else if (e->type() == QEvent::CursorChange) {

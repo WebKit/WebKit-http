@@ -325,6 +325,17 @@ static bool isWindowsMessageUserGesture(UINT message)
     }
 }
 
+static inline bool isWebViewVisible(FrameView* view)
+{
+#if PLATFORM(QT)
+    if (PlatformPageClient client = view->hostWindow()->platformPageClient())
+        return client->isViewVisible();
+    return false;
+#else
+    return true;
+#endif // PLATFORM(QT)
+}
+
 static inline IntPoint contentsToNativeWindow(FrameView* view, const IntPoint& point)
 {
 #if PLATFORM(QT)
@@ -484,9 +495,10 @@ void PluginView::show()
 {
     setSelfVisible(true);
 
-    if (isParentVisible() && platformPluginWidget())
+    if (isParentVisible() && platformPluginWidget()) {
         ShowWindow(platformPluginWidget(), SW_SHOWNA);
-
+        forceRedraw();
+    }
     Widget::show();
 }
 
@@ -774,9 +786,10 @@ void PluginView::setParentVisible(bool visible)
     Widget::setParentVisible(visible);
 
     if (isSelfVisible() && platformPluginWidget()) {
-        if (visible)
+        if (visible) {
             ShowWindow(platformPluginWidget(), SW_SHOWNA);
-        else
+            forceRedraw();
+        } else
             ShowWindow(platformPluginWidget(), SW_HIDE);
     }
 }
@@ -957,7 +970,7 @@ bool PluginView::platformStart()
         setUpOffscreenPaintingHooks(hookedBeginPaint, hookedEndPaint);
 
         DWORD flags = WS_CHILD;
-        if (isSelfVisible())
+        if (isSelfVisible() && isWebViewVisible(toFrameView(parent())))
             flags |= WS_VISIBLE;
 
         HWND parentWindowHandle = windowHandleForPageClient(m_parentFrame->view()->hostWindow()->platformPageClient());
