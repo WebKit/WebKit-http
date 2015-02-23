@@ -148,6 +148,8 @@ WaylandDisplay::WaylandDisplay(struct wl_display* wlDisplay)
         EGL_ALPHA_SIZE, 1,
         EGL_DEPTH_SIZE, 24,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_SAMPLE_BUFFERS, 1,
+        EGL_SAMPLES, 4,
         EGL_NONE
     };
 
