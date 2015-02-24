@@ -266,7 +266,7 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
     glViewport(0, 0, contextSize.width(), contextSize.height());
 
     if (purpose == ForResize) {
-        glClearColor(1, 1, 1, 0);
+        glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
     }
 
