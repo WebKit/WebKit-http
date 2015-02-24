@@ -391,6 +391,7 @@ private:
     Vector<RetainPtr<CFTypeRef>> m_delayedReleaseObjects;
     unsigned m_delayedReleaseRecursionCount;
 #endif
+    bool m_computingBacktrace;
 };
 
 } // namespace JSC

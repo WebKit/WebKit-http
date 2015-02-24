@@ -32,6 +32,8 @@
 #include "JSObject.h"
 #include "Options.h"
 #include <stdlib.h>
+#include "API/OpaqueJSString.h"
+#include "API/JSContextRefPrivate.h"
 #if OS(UNIX)
 #include <sys/resource.h>
 #endif
@@ -255,5 +257,23 @@ void HeapStatistics::showObjectStatistics(Heap* heap)
     dataLogF("wasted .property storage: %ldkB (%ld%%)\n", wastedPropertyStorageBytes, wastedPropertyStoragePercent);
     dataLogF("objects with out-of-line .property storage: %ld (%ld%%)\n", objectWithOutOfLineStorageCount, objectsWithOutOfLineStoragePercent);
 }
+
+#if ENABLE(JS_MEMORY_TRACKING)
+void HeapStatistics::showAllocBacktrace(Heap *heap, size_t size, void *address)
+{
+    if (heap->m_computingBacktrace)
+        // we got called by an allocation triggered by JSContextCreateBacktrace()
+        return;
+
+    JSContextRef context = (JSContextRef)heap->vm()->topCallFrame;
+    dataLogF("\n%zu bytes at %p\n", size, address);
+    if (context) {
+        heap->m_computingBacktrace = true;
+        RefPtr<OpaqueJSString> backtrace = adoptRef(JSContextCreateBacktrace(context, 50));
+        heap->m_computingBacktrace = false;
+        dataLogF("Backtrace:\n%s\nBacktrace end.\n", backtrace->string().utf8().data());
+    }
+}
+#endif
 
 } // namespace JSC

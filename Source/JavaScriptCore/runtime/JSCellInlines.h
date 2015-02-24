@@ -29,6 +29,7 @@
 #include "CallFrame.h"
 #include "DeferGC.h"
 #include "Handle.h"
+#include "HeapStatistics.h"
 #include "JSCell.h"
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
@@ -136,6 +137,10 @@ void* allocateCell(Heap& heap, size_t size)
         result = static_cast<JSCell*>(heap.allocateWithNormalDestructor(size));
     else 
         result = static_cast<JSCell*>(heap.allocateWithoutDestructor(size));
+#if ENABLE(JS_MEMORY_TRACKING)
+    if (Options::showAllocationBacktraces())
+        HeapStatistics::showAllocBacktrace(&heap, size, result);
+#endif
 #if ENABLE(GC_VALIDATION)
     ASSERT(!heap.vm()->isInitializingObject());
     heap.vm()->setInitializingObjectClass(T::info());
