@@ -165,18 +165,18 @@ GSourceWrap::Dynamic::Dynamic(const char* name, int priority, GMainContext* cont
 
 void GSourceWrap::Dynamic::schedule(std::function<void ()>&& function, std::chrono::microseconds delay)
 {
-    Base::schedule(delay);
-
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicVoidCallback),
         new std::function<void ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyVoidCallback));
+
+    Base::schedule(delay);
 }
 
 void GSourceWrap::Dynamic::schedule(std::function<bool ()>&& function, std::chrono::microseconds delay)
 {
-    Base::schedule(delay);
-
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicBoolCallback),
         new std::function<bool ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyBoolCallback));
+
+    Base::schedule(delay);
 }
 
 void GSourceWrap::Dynamic::cancel()
