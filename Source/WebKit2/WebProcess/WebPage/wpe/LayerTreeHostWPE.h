@@ -76,7 +76,7 @@ private:
 
     virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
 
-    virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override { };
+    virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override;
 
     // GraphicsLayerClient
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect);
@@ -101,6 +101,7 @@ private:
     std::unique_ptr<WebCore::GLContext> m_context;
     bool m_layerFlushSchedulingEnabled;
     GSourceWrap::Static m_layerFlushTimer;
+    WebCore::GraphicsLayer* m_viewOverlayRootLayer;
 
     static const struct wl_callback_listener m_frameListener;
     enum class FrameRequestState {

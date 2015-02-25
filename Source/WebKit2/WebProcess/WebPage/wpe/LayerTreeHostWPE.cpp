@@ -61,6 +61,7 @@ LayerTreeHostWPE::LayerTreeHostWPE(WebPage* webPage)
     , m_notifyAfterScheduledLayerFlush(false)
     , m_layerFlushSchedulingEnabled(true)
     , m_layerFlushTimer("[WebKit] layerFlushTimer", std::bind(&LayerTreeHostWPE::layerFlushTimerFired, this), G_PRIORITY_HIGH_IDLE + 20)
+    , m_viewOverlayRootLayer(nullptr)
     , m_frameRequestState(FrameRequestState::Completed)
     , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitorWPE))
 {
@@ -249,6 +250,9 @@ bool LayerTreeHostWPE::flushPendingLayerChanges()
     if (!m_webPage->corePage()->mainFrame().view()->flushCompositingStateIncludingSubframes())
         return false;
 
+    if (m_viewOverlayRootLayer)
+        m_viewOverlayRootLayer->flushCompositingState(FloatRect(FloatPoint(), m_rootLayer->size()));
+
     downcast<GraphicsLayerTextureMapper>(*m_rootLayer).updateBackingStoreIncludingSubLayers();
     return true;
 }
@@ -350,6 +354,13 @@ PassRefPtr<WebCore::DisplayRefreshMonitor> LayerTreeHostWPE::createDisplayRefres
 {
     // FIXME: See LayerTreeHostWPE::DisplayRefreshMonitorWPE implementation.
     return m_displayRefreshMonitor;
+}
+
+void LayerTreeHostWPE::setViewOverlayRootLayer(WebCore::GraphicsLayer* viewOverlayRootLayer)
+{
+    m_viewOverlayRootLayer = viewOverlayRootLayer;
+    if (m_viewOverlayRootLayer)
+        m_rootLayer->addChild(m_viewOverlayRootLayer);
 }
 
 static void debugLayerTreeHostFPS()
