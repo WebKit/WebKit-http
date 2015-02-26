@@ -36,7 +36,7 @@
 #include <gst/gst.h>
 #include <gst/video/gstvideometa.h>
 #include <wtf/gobject/GMutexLocker.h>
-#include <wtf/gobject/GMainLoopSource.h>
+#include <wtf/gobject/GSourceWrap.h>
 
 #if USE(EGL)
 #define WL_EGL_PLATFORM
@@ -136,7 +136,7 @@ struct _WebKitVideoSinkPrivate {
 
     GstSample* sample;
     GstSample* previousSample;
-    GMainLoopSource::Simple timeoutSource;
+    GSourceWrap::Dynamic timeoutSource;
     GMutex sampleMutex;
     GCond dataCondition;
 
@@ -307,7 +307,7 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     // lower priority sources.
     // See: https://bugzilla.gnome.org/show_bug.cgi?id=610830.
     GstObjectRef protector(GST_OBJECT(sink));
-    priv->timeoutSource.schedule(std::chrono::milliseconds(0), [protector] { webkitVideoSinkTimeoutCallback(WEBKIT_VIDEO_SINK(protector.get())); });
+    priv->timeoutSource.schedule([protector] { webkitVideoSinkTimeoutCallback(WEBKIT_VIDEO_SINK(protector.get())); });
 
     g_cond_wait(&priv->dataCondition, &priv->sampleMutex);
 
