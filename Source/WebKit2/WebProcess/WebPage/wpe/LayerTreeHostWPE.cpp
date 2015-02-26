@@ -401,7 +401,7 @@ const struct wl_callback_listener LayerTreeHostWPE::m_frameListener = {
         case FrameRequestState::ScheduleLayerFlushOnCompletion:
             ASSERT(!layerTreeHost.m_layerFlushTimer.isActive());
             layerTreeHost.m_frameRequestState = FrameRequestState::Completed;
-            layerTreeHost.flushAndRenderLayers();
+            layerTreeHost.scheduleLayerFlush();
             break;
         case FrameRequestState::Completed:
             ASSERT_NOT_REACHED();
