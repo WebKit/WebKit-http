@@ -1609,6 +1609,12 @@ webkit.org/b/140869 [ Debug ] accessibility/aria-combobox.html [ Skip ]
 [ Debug ] accessibility/textbox-role-on-contenteditable-crash.html [ Skip ] # Debug assertion
 [ Debug ] accessibility/textbox-role-reports-selection.html [ Skip ] # Debug assertion
 [ Debug ] accessibility/updating-attribute-in-table-causes-crash.html [ Skip ] # Debug assertion
+
+# The ARIA 1.1 'switch' role isn't implemented on Windows.
+webkit.org/b/142016 accessibility/aria-fallback-roles.html [ Skip ]
+webkit.org/b/142016 accessibility/aria-switch-checked.html [ Skip ]
+webkit.org/b/142016 accessibility/aria-switch-text.html [ Skip ]
+webkit.org/b/142016 accessibility/aria-switch-sends-notification.html [ Skip ]
 ################################################################################
 #######################   End Accessibility Issues   ###########################
 ################################################################################
@@ -2267,7 +2273,7 @@ http/tests/xmlhttprequest/web-apps/013.html
 ################################################################################
 # Some inspector tests timing out after r173992. Skip them.
 webkit.org/b/137157 inspector/css/matched-style-properties.html [ Skip ]
-webkit.org/b/137157 inspector/css/selector-dynamic-specificity.html [ Skip ]
+webkit.org/b/141118 inspector/css/selector-dynamic-specificity.html [ Skip ]
 webkit.org/b/137157 inspector/event-listener-set.html [ Skip ]
 webkit.org/b/137157 inspector/event-listener.html [ Skip ]
 webkit.org/b/137157 inspector/model/parse-script-syntax-tree.html [ Skip ]
@@ -2941,6 +2947,10 @@ fast/regions/writing-mode/invalid-first-region-with-writing-mode-2.html [ ImageO
 fast/regions/writing-mode/invalid-first-region-with-writing-mode.html [ ImageOnlyFailure ]
 [ Debug ] fast/repaint/animation-after-layer-scroll.html [ Failure ]
 
+fast/regions/region-overflow-break.html [ ImageOnlyFailure ]
+fast/regions/scrolling/wheel-scroll-abspos.html [ ImageOnlyFailure ]
+fast/regions/scrolling/wheel-scroll.html [ ImageOnlyFailure ]
+
 # Weird shading across image:
 fast/repaint/moving-shadow-on-container.html [ Failure ]
 fast/repaint/moving-shadow-on-path.html [ Failure ]
@@ -3025,6 +3035,8 @@ transitions/move-after-transition.html [ Failure Timeout ]
 fast/workers/worker-lifecycle.html [ Skip ] # Timeout
 inspector/css/stylesheet-with-mutations.html [ Skip ] # Timeout
 
+webkit.org/b/142017 fast/attachment/attachment-dom.html [ Skip ]
+webkit.org/b/141977 fast/history/page-cache-createObjectURL.html [ Skip ]
 ################################################################################
 ######################### End list of UNREVIEWED failures ##########################
 ################################################################################

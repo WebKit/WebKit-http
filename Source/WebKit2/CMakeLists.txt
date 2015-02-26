@@ -315,6 +315,8 @@ set(WebKit2_SOURCES
     Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp
     Shared/Plugins/Netscape/PluginInformation.cpp
 
+    Shared/WebsiteData/WebsiteData.cpp
+
     UIProcess/API/APINavigationData.cpp
     UIProcess/API/APIProcessPoolConfiguration.cpp
     UIProcess/API/APISession.cpp
@@ -474,6 +476,7 @@ set(WebKit2_SOURCES
     UIProcess/UserContent/WebScriptMessageHandler.cpp
     UIProcess/UserContent/WebUserContentControllerProxy.cpp
 
+    UIProcess/WebsiteData/WebsiteDataRecord.cpp
     UIProcess/WebsiteData/WebsiteDataStore.cpp
 
     WebProcess/WebConnectionToUIProcess.cpp

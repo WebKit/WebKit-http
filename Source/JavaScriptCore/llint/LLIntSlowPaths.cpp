@@ -1094,7 +1094,7 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
         codePtr = executable->entrypointFor(vm, kind, MustCheckArity, RegisterPreservationNotRequired);
     else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
-        JSObject* error = functionExecutable->prepareForExecution(execCallee, callee, &scope, kind);
+        JSObject* error = functionExecutable->prepareForExecution(execCallee, callee, scope, kind);
         if (error)
             LLINT_CALL_THROW(exec, error);
         codeBlock = functionExecutable->codeBlockFor(kind);
@@ -1286,11 +1286,12 @@ LLINT_SLOW_PATH_DECL(slow_path_pop_scope)
 LLINT_SLOW_PATH_DECL(slow_path_push_name_scope)
 {
     LLINT_BEGIN();
-    CodeBlock* codeBlock = exec->codeBlock();
     int scopeReg = pc[1].u.operand;
     JSScope* currentScope = exec->uncheckedR(scopeReg).Register::scope();
-    JSNameScope::Type type = static_cast<JSNameScope::Type>(pc[5].u.operand);
-    JSNameScope* scope = JSNameScope::create(vm, exec->lexicalGlobalObject(), currentScope, codeBlock->identifier(pc[2].u.operand), LLINT_OP(3).jsValue(), pc[4].u.operand, type);
+    JSValue value = LLINT_OP_C(2).jsValue();
+    SymbolTable* symbolTable = jsCast<SymbolTable*>(LLINT_OP_C(3).jsValue());
+    JSNameScope::Type type = static_cast<JSNameScope::Type>(pc[4].u.operand);
+    JSNameScope* scope = JSNameScope::create(vm, exec->lexicalGlobalObject(), currentScope, symbolTable, value, type);
     exec->uncheckedR(scopeReg) = scope;
     LLINT_END();
 }

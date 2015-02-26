@@ -575,7 +575,7 @@ public:
         return Structure::create(vm, 0, prototype, TypeInfo(GlobalObjectType, StructureFlags), info());
     }
 
-    static bool javaScriptExperimentsEnabled(const JSGlobalObject*) { return true; }
+    static RuntimeFlags javaScriptRuntimeFlags(const JSGlobalObject*) { return RuntimeFlags::createAllEnabled(); }
 
 protected:
     void finishCreation(VM& vm, const Vector<String>& arguments)
@@ -663,7 +663,7 @@ protected:
 };
 
 const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, &globalObjectTable, CREATE_METHOD_TABLE(GlobalObject) };
-const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled, 0, &shouldInterruptScriptBeforeTimeout };
+const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout };
 
 
 GlobalObject::GlobalObject(VM& vm, Structure* structure)
@@ -1127,6 +1127,7 @@ EncodedJSValue JSC_HOST_CALL functionHasBasicBlockExecuted(ExecState* exec)
     RELEASE_ASSERT(exec->argument(1).isString());
     String substring = exec->argument(1).getString(exec);
     String sourceCodeText = executable->source().toString();
+    RELEASE_ASSERT(sourceCodeText.contains(substring));
     int offset = sourceCodeText.find(substring) + executable->source().startOffset();
     
     bool hasExecuted = exec->vm().controlFlowProfiler()->hasBasicBlockAtTextOffsetBeenExecuted(offset, executable->sourceID(), exec->vm());
@@ -1318,10 +1319,10 @@ static void runInteractive(GlobalObject* globalObject)
             if (!line[0])
                 break;
             add_history(line);
-        } while (error.m_syntaxErrorType == ParserError::SyntaxErrorRecoverable);
+        } while (error.syntaxErrorType() == ParserError::SyntaxErrorRecoverable);
         
-        if (error.m_type != ParserError::ErrorNone) {
-            printf("%s:%d\n", error.m_message.utf8().data(), error.m_line);
+        if (error.isValid()) {
+            printf("%s:%d\n", error.message().utf8().data(), error.line());
             continue;
         }
         

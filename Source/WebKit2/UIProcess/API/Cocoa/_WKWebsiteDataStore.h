@@ -27,16 +27,7 @@
 
 #if WK_API_ENABLED
 
-#import <Foundation/Foundation.h>
-
-typedef NS_OPTIONS(NSUInteger, WKWebsiteDataTypes) {
-    WKWebsiteDataTypeCookies = 1 << 0,
-    WKWebsiteDataTypeDiskCache = 1 << 1,
-    WKWebsiteDataTypeMemoryCache = 1 << 2,
-
-    WKWebsiteDataTypeLocalStorage = 1 << 3,
-    WKWebsiteDataTypeAll = NSUIntegerMax,
-} WK_ENUM_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+#import <WebKit/_WKWebsiteDataRecord.h>
 
 WK_CLASS_AVAILABLE(10_10, 8_0)
 @interface _WKWebsiteDataStore : NSObject
@@ -49,6 +40,7 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
 
 @property (readonly, getter=isNonPersistent) BOOL nonPersistent;
 
+- (void)fetchDataRecordsOfTypes:(WKWebsiteDataTypes)websiteDataTypes completionHandler:(void (^)(NSArray *))completionHandler;
 - (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes modifiedSince:(NSDate *)date completionHandler:(void (^)())completionHandler WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 
 @end

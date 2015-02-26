@@ -48,6 +48,7 @@
 #include "Element.h"
 #include "EventHandler.h"
 #include "ExceptionCode.h"
+#include "File.h"
 #include "FontCache.h"
 #include "FormController.h"
 #include "FrameLoader.h"
@@ -107,6 +108,7 @@
 #include "WebConsoleAgent.h"
 #include "WorkerThread.h"
 #include "XMLHttpRequest.h"
+#include <JavaScriptCore/Profile.h>
 #include <bytecode/CodeBlock.h>
 #include <inspector/InspectorAgentBase.h>
 #include <inspector/InspectorValues.h>
@@ -2514,6 +2516,19 @@ bool Internals::isPagePlayingAudio()
         return false;
 
     return document->page()->isPlayingAudio();
+}
+
+RefPtr<File> Internals::createFile(const String& path)
+{
+    Document* document = contextDocument();
+    if (!document)
+        return nullptr;
+
+    URL url = document->completeURL(path);
+    if (!url.isLocalFile())
+        return nullptr;
+
+    return File::create(url.fileSystemPath());
 }
 
 }

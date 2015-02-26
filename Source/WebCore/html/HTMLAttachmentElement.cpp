@@ -28,6 +28,7 @@
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
+#include "File.h"
 #include "HTMLNames.h"
 #include "RenderAttachment.h"
 
@@ -41,6 +42,10 @@ HTMLAttachmentElement::HTMLAttachmentElement(const QualifiedName& tagName, Docum
     ASSERT(hasTagName(attachmentTag));
 }
 
+HTMLAttachmentElement::~HTMLAttachmentElement()
+{
+}
+
 Ref<HTMLAttachmentElement> HTMLAttachmentElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(*new HTMLAttachmentElement(tagName, document));
@@ -50,7 +55,17 @@ RenderPtr<RenderElement> HTMLAttachmentElement::createElementRenderer(Ref<Render
 {
     return createRenderer<RenderAttachment>(*this, WTF::move(style));
 }
-    
+
+File* HTMLAttachmentElement::file()
+{
+    return m_file.get();
+}
+
+void HTMLAttachmentElement::setFile(File* file)
+{
+    m_file = file;
+}
+
 void HTMLAttachmentElement::setFocus(bool shouldBeFocused)
 {
     if (focused() == shouldBeFocused)

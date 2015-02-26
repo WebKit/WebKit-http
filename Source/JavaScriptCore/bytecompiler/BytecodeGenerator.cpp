@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2012-2015 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  * Copyright (C) 2012 Igalia, S.L.
  *
@@ -208,6 +208,19 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     emitOpcode(op_enter);
 
     allocateAndEmitScope();
+    
+    if (functionNameIsInScope(functionNode->ident(), functionNode->functionMode())
+        && functionNameScopeIsDynamic(codeBlock->usesEval(), codeBlock->isStrictMode())) {
+        // When we do this, we should make our local scope stack know about the function name symbol
+        // table. Currently this works because bytecode linking creates a phony name scope.
+        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=141885
+        // Also, we could create the scope once per JSFunction instance that needs it. That wouldn't
+        // be any more correct, but it would be more performant.
+        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=141887
+        RegisterID calleeRegister;
+        calleeRegister.setIndex(JSStack::Callee);
+        emitPushFunctionNameScope(m_scopeRegister, functionNode->ident(), &calleeRegister, ReadOnly | DontDelete);
+    }
 
     if (m_codeBlock->needsFullScopeChain() || m_shouldEmitDebugHooks) {
         m_lexicalEnvironmentRegister = addVar();
@@ -325,7 +338,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
 
     m_symbolTable->setCaptureEnd(virtualRegisterForLocal(codeBlock->m_numVars).offset());
 
-    bool canLazilyCreateFunctions = !functionNode->needsActivationForMoreThanVariables() && !m_shouldEmitDebugHooks && !m_vm->typeProfiler();
+    bool canLazilyCreateFunctions = !functionNode->needsActivationForMoreThanVariables() && !m_shouldEmitDebugHooks && !m_vm->typeProfiler() && !m_vm->controlFlowProfiler();
     m_firstLazyFunction = codeBlock->m_numVars;
     if (!shouldCaptureAllTheThings) {
         for (size_t i = 0; i < functionStack.size(); ++i) {
@@ -1083,7 +1096,7 @@ RegisterID* BytecodeGenerator::emitEqualityOp(OpcodeID opcodeID, RegisterID* dst
             }
             if (value == "object") {
                 rewindUnaryOp();
-                emitOpcode(op_is_object);
+                emitOpcode(op_is_object_or_null);
                 instructions().append(dst->index());
                 instructions().append(srcIndex);
                 return dst;
@@ -1551,19 +1564,12 @@ RegisterID* BytecodeGenerator::emitPutByIndex(RegisterID* base, unsigned index, 
 
 RegisterID* BytecodeGenerator::emitCreateThis(RegisterID* dst)
 {
-    RefPtr<RegisterID> func = newTemporary(); 
-
-    m_codeBlock->addPropertyAccessInstruction(instructions().size());
-    emitOpcode(op_get_callee);
-    instructions().append(func->index());
-    instructions().append(0);
-
     size_t begin = instructions().size();
     m_staticPropertyAnalyzer.createThis(m_thisRegister.index(), begin + 3);
 
     emitOpcode(op_create_this); 
     instructions().append(m_thisRegister.index()); 
-    instructions().append(func->index()); 
+    instructions().append(m_thisRegister.index()); 
     instructions().append(0);
     return dst;
 }
@@ -1868,9 +1874,9 @@ RegisterID* BytecodeGenerator::emitCallVarargs(RegisterID* dst, RegisterID* func
     return emitCallVarargs(op_call_varargs, dst, func, thisRegister, arguments, firstFreeRegister, firstVarArgOffset, profileHookRegister, divot, divotStart, divotEnd);
 }
 
-RegisterID* BytecodeGenerator::emitConstructVarargs(RegisterID* dst, RegisterID* func, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+RegisterID* BytecodeGenerator::emitConstructVarargs(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
-    return emitCallVarargs(op_construct_varargs, dst, func, 0, arguments, firstFreeRegister, firstVarArgOffset, profileHookRegister, divot, divotStart, divotEnd);
+    return emitCallVarargs(op_construct_varargs, dst, func, thisRegister, arguments, firstFreeRegister, firstVarArgOffset, profileHookRegister, divot, divotStart, divotEnd);
 }
     
 RegisterID* BytecodeGenerator::emitCallVarargs(OpcodeID opcode, RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
@@ -1932,15 +1938,6 @@ RegisterID* BytecodeGenerator::emitReturn(RegisterID* src)
         instructions().append(isObjectRegister->index());
         instructions().append(isObjectLabel->bind(begin, instructions().size()));
 
-        emitOpcode(op_is_function);
-        instructions().append(isObjectRegister->index());
-        instructions().append(src->index());
-
-        begin = instructions().size();
-        emitOpcode(op_jtrue);
-        instructions().append(isObjectRegister->index());
-        instructions().append(isObjectLabel->bind(begin, instructions().size()));
-
         emitUnaryNoDstOp(op_ret, &m_thisRegister);
 
         emitLabel(isObjectLabel.get());
@@ -1975,7 +1972,7 @@ RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, 
                 argumentRegister = uncheckedLocalArgumentsRegister();
             else
                 argumentRegister = expression->emitBytecode(*this, callArguments.argumentRegister(0));
-            return emitConstructVarargs(dst, func, argumentRegister.get(), newTemporary(), 0, callArguments.profileHookRegister(), divot, divotStart, divotEnd);
+            return emitConstructVarargs(dst, func, callArguments.thisRegister(), argumentRegister.get(), newTemporary(), 0, callArguments.profileHookRegister(), divot, divotStart, divotEnd);
         }
         
         for (ArgumentListNode* n = argumentsNode->m_listNode; n; n = n->m_next)
@@ -2381,9 +2378,8 @@ void BytecodeGenerator::emitPushFunctionNameScope(RegisterID* dst, const Identif
 {
     emitOpcode(op_push_name_scope);
     instructions().append(dst->index());
-    instructions().append(addConstant(property));
     instructions().append(value->index());
-    instructions().append(attributes);
+    instructions().append(addConstantValue(SymbolTable::createNameScopeTable(*vm(), property, attributes))->index());
     instructions().append(JSNameScope::FunctionNameScope);
 }
 
@@ -2396,9 +2392,8 @@ void BytecodeGenerator::emitPushCatchScope(RegisterID* dst, const Identifier& pr
 
     emitOpcode(op_push_name_scope);
     instructions().append(dst->index());
-    instructions().append(addConstant(property));
     instructions().append(value->index());
-    instructions().append(attributes);
+    instructions().append(addConstantValue(SymbolTable::createNameScopeTable(*vm(), property, attributes))->index());
     instructions().append(JSNameScope::CatchScope);
 }
 

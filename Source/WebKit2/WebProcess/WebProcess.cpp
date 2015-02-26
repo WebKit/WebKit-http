@@ -61,6 +61,7 @@
 #include "WebProcessPoolMessages.h"
 #include "WebProcessProxyMessages.h"
 #include "WebResourceCacheManager.h"
+#include "WebsiteData.h"
 #include "WebsiteDataTypes.h"
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/MemoryStatistics.h>
@@ -1133,6 +1134,18 @@ void WebProcess::releasePageCache()
     PageCache::singleton().pruneToSizeNow(0, PruningReason::MemoryPressure);
 }
 
+void WebProcess::fetchWebsiteData(WebCore::SessionID sessionID, uint64_t websiteDataTypes, uint64_t callbackID)
+{
+    WebsiteData websiteData;
+
+    if (websiteDataTypes & WebsiteDataTypeMemoryCache) {
+        for (auto& origin : MemoryCache::singleton().originsWithCache(sessionID))
+            websiteData.entries.append(WebsiteData::Entry { origin, WebsiteDataTypeMemoryCache });
+    }
+
+    parentProcessConnection()->send(Messages::WebProcessProxy::DidFetchWebsiteData(callbackID, websiteData), 0);
+}
+
 void WebProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
 {
     UNUSED_PARAM(modifiedSince);
@@ -1145,6 +1158,13 @@ void WebProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataType
     }
 
     parentProcessConnection()->send(Messages::WebProcessProxy::DidDeleteWebsiteData(callbackID), 0);
+}
+
+void WebProcess::deleteWebsiteDataForOrigins(WebCore::SessionID sessionID, uint64_t websiteDataTypes, const Vector<WebKit::SecurityOriginData>& origins, uint64_t callbackID)
+{
+    // FIXME: Actually delete something here.
+
+    parentProcessConnection()->send(Messages::WebProcessProxy::DidDeleteWebsiteDataForOrigins(callbackID), 0);
 }
 
 #if !PLATFORM(COCOA)

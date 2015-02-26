@@ -91,10 +91,9 @@ static void pthreadSignalHandlerSuspendResume(int)
 class MachineThreads::Thread {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    Thread(PassRefPtr<MachineThreads> machineThreads, const PlatformThread& platThread, void* base)
+    Thread(const PlatformThread& platThread, void* base)
         : platformThread(platThread)
         , stackBase(base)
-        , m_machineThreads(machineThreads)
     {
 #if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && defined(SA_RESTART)
         // if we have SA_RESTART, enable SIGUSR2 debugging mechanism
@@ -114,34 +113,18 @@ public:
     Thread* next;
     PlatformThread platformThread;
     void* stackBase;
-    RefPtr<MachineThreads> m_machineThreads;
 };
 
-MachineThreads::MachineThreads(Heap* heap)
+MachineThreads::MachineThreads()
     : m_registeredThreads(0)
     , m_threadSpecific(0)
-#if !ASSERT_DISABLED
-    , m_heap(heap)
-    , m_magicNumber(0x1234567890abcdef)
-#endif
 {
-    UNUSED_PARAM(heap);
     threadSpecificKeyCreate(&m_threadSpecific, removeThread);
 }
 
-MachineThreads::~MachineThreads()
+NO_RETURN_DUE_TO_CRASH MachineThreads::~MachineThreads()
 {
-    threadSpecificKeyDelete(m_threadSpecific);
-
-    MutexLocker registeredThreadsLock(m_registeredThreadsMutex);
-    for (Thread* t = m_registeredThreads; t;) {
-        Thread* next = t->next;
-        delete t;
-        t = next;
-    }
-#if !ASSERT_DISABLED
-    m_magicNumber = 0xbaddbeefdeadbeef;
-#endif
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 static inline PlatformThread getCurrentPlatformThread()
@@ -166,9 +149,9 @@ static inline bool equalThread(const PlatformThread& first, const PlatformThread
 #endif
 }
 
-void MachineThreads::addCurrentThread()
+void MachineThreads::addCurrentThread(VM* vm)
 {
-    ASSERT(!m_heap->vm()->hasExclusiveThread() || m_heap->vm()->exclusiveThread() == std::this_thread::get_id());
+    ASSERT_UNUSED(vm, !vm->hasExclusiveThread() || vm->exclusiveThread() == std::this_thread::get_id());
 
     if (threadSpecificGet(m_threadSpecific)) {
         ASSERT(threadSpecificGet(m_threadSpecific) == this);
@@ -176,7 +159,7 @@ void MachineThreads::addCurrentThread()
     }
 
     threadSpecificSet(m_threadSpecific, this);
-    Thread* thread = new Thread(this, getCurrentPlatformThread(), wtfThreadData().stack().origin());
+    Thread* thread = new Thread(getCurrentPlatformThread(), wtfThreadData().stack().origin());
 
     MutexLocker lock(m_registeredThreadsMutex);
 
@@ -186,7 +169,6 @@ void MachineThreads::addCurrentThread()
 
 void MachineThreads::removeThread(void* p)
 {
-    ASSERT(static_cast<MachineThreads*>(p)->m_magicNumber == 0x1234567890abcdef);
     static_cast<MachineThreads*>(p)->removeCurrentThread();
 }
 
@@ -194,21 +176,6 @@ void MachineThreads::removeCurrentThread()
 {
     PlatformThread currentPlatformThread = getCurrentPlatformThread();
 
-    // This thread could be the last entity that holds a RefPtr to the
-    // MachineThreads registry. We don't want the registry to be deleted while
-    // we're deleting the the Thread entry, because:
-    //
-    // 1. ~MachineThread() will attempt to lock its m_registeredThreadsMutex
-    //    and we already hold it here. m_registeredThreadsMutex is not
-    //    re-entrant.
-    // 2. The MutexLocker will unlock m_registeredThreadsMutex at the end of
-    //    this function. We can't let it be destructed until before then.
-    //
-    // Using this RefPtr here will defer destructing the registry till after
-    // MutexLocker releases its m_registeredThreadsMutex.
-    RefPtr<MachineThreads> retainMachineThreadsRegistryUntilDoneRemovingThread = this;
-
-    ASSERT(m_magicNumber == 0x1234567890abcdef);
     MutexLocker lock(m_registeredThreadsMutex);
     if (equalThread(currentPlatformThread, m_registeredThreads->platformThread)) {
         Thread* t = m_registeredThreads;
@@ -442,6 +409,26 @@ static std::pair<void*, size_t> otherThreadStack(void* stackBase, const Platform
         std::swap(begin, end);
     return std::make_pair(begin, static_cast<char*>(end) - static_cast<char*>(begin));
 }
+
+#if ASAN_ENABLED
+void asanUnsafeMemcpy(void* dst, const void* src, size_t);
+void asanUnsafeMemcpy(void* dst, const void* src, size_t size)
+{
+    size_t dstAsSize = reinterpret_cast<size_t>(dst);
+    size_t srcAsSize = reinterpret_cast<size_t>(src);
+    RELEASE_ASSERT(dstAsSize == WTF::roundUpToMultipleOf<sizeof(intptr_t)>(dstAsSize));
+    RELEASE_ASSERT(srcAsSize == WTF::roundUpToMultipleOf<sizeof(intptr_t)>(srcAsSize));
+    RELEASE_ASSERT(size == WTF::roundUpToMultipleOf<sizeof(intptr_t)>(size));
+
+    intptr_t* dstPtr = reinterpret_cast<intptr_t*>(dst);
+    const intptr_t* srcPtr = reinterpret_cast<const intptr_t*>(src);
+    size /= sizeof(intptr_t);
+    while (size--)
+        *dstPtr++ = *srcPtr++;
+}
+    
+#define memcpy asanUnsafeMemcpy
+#endif
 
 // This function must not call malloc(), free(), or any other function that might
 // acquire a lock. Since 'thread' is suspended, trying to acquire a lock

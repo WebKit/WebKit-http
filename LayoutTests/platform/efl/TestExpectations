@@ -452,6 +452,16 @@ media/encrypted-media/encrypted-media-syntax.html [ WontFix ]
 # No support for Filters Level 2 on EFL yet
 Bug(EFL) css3/filters/backdrop [ Skip ]
 
+Bug(EFL) editing/selection/doubleclick-crash.html [ Failure ]
+Bug(EFL) editing/selection/move-by-word-visually-mac.html [ Failure ]
+
+# EFL port doesn't support attachment feature yet. It was added by r180193.
+webkit.org/b/141894 fast/attachment/attachment-disabled-rendering.html [ Failure ]
+webkit.org/b/141894 fast/attachment/attachment-rendering.html [ Failure ]
+
+# EFL port doesn't fully support EME yet.
+webkit.org/b/141959 http/tests/media/clearkey/clear-key-hls-aes128.html [ Timeout ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -505,7 +515,10 @@ webkit.org/b/131044 media [ Skip ]
 
 # A lot of crash happen since buildbot bagan to use Ubuntu 13.10.
 webkit.org/b/131729 compositing/webgl/webgl-no-alpha.html [ Crash ]
+webkit.org/b/131729 compositing/webgl/webgl-background-color.html [ Crash ]
+webkit.org/b/131729 compositing/webgl/webgl-repaint.html [ Crash ]
 webkit.org/b/131729 compositing/webgl/webgl-reflection.html [ Crash ]
+webkit.org/b/131729 compositing/backface-visibility/backface-visibility-webgl.html [ Crash ]
 webkit.org/b/131729 fast/canvas/webgl [ Skip ]
 webkit.org/b/131729 fast/events/touch [ Skip ]
 webkit.org/b/131729 webgl [ Skip ]
@@ -561,6 +574,7 @@ webkit.org/b/135197 webgl/1.0.2/conformance/textures/texture-attachment-formats.
 
 webkit.org/b/135498 css3/device-adapt/opera/constrain-009.xhtml [ Crash Timeout ]
 webkit.org/b/135498 css3/device-adapt/opera/constrain-023.xhtml [ Crash Timeout ]
+webkit.org/b/135498 css3/device-adapt/viewport-width-not-affecting-next-page.html [ Failure ]
 
 # Started to timeout after bumping EFL to 1.9
 webkit.org/b/136099 fast/animation/request-animation-frame-during-modal.html [ Crash Timeout ]
@@ -769,6 +783,9 @@ webkit.org/b/125517 compositing/regions/transformed-layer-inside-transformed-lay
 webkit.org/b/125517 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure Crash ]
 webkit.org/b/125517 compositing/regions/z-index-update.html [ Crash Pass ]
 
+webkit.org/b/141897 fast/regions/overflow/overflow-region-float.html [ ImageOnlyFailure ]
+webkit.org/b/141897 fast/regions/overflow/overflow-region-inline.html [ ImageOnlyFailure ]
+
 webkit.org/b/125573 compositing/backgrounds/fixed-backgrounds.html [ Crash Pass ]
 
 # Regressions in svg/clip-path
@@ -834,6 +851,9 @@ webkit.org/b/135697 fast/dom/Window/open-zero-size-as-default.html [ Failure Pas
 # SVG 1.1 tests are flaky on EFL bots
 webkit.org/b/137138 svg/W3C-SVG-1.1-SE [ Failure ImageOnlyFailure Pass ]
 webkit.org/b/137138 svg/W3C-SVG-1.1 [ Failure ImageOnlyFailure Pass ]
+
+# EFL port doesn't support Khmer and Lao fallback fonts, this test has added since r170207.
+Bug(EFL) fast/text/khmer-lao-font.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS WITH INCORRECT EXPECTATIONS
@@ -989,8 +1009,11 @@ webkit.org/b/61540 http/tests/security/isolatedWorld/cross-origin-xhr.html [ Tim
 Bug(EFL) http/tests/security/isolatedWorld/didClearWindowObject.html
 
 # EFL has accelerated compositing disabled
+webkit.org/b/79766 compositing/backing/replaced-child-no-backing.html [ Failure ]
+webkit.org/b/79766 compositing/geometry/fixed-position-composited-switch.html [ Failure ]
 webkit.org/b/79766 compositing/geometry/layer-due-to-layer-children-deep-switch.html [ Failure ]
 webkit.org/b/79766 compositing/geometry/layer-due-to-layer-children-switch.html [ Failure ]
+webkit.org/b/79766 compositing/geometry/limit-layer-bounds-overflow-root.html [ Failure ]
 webkit.org/b/79766 compositing/geometry/preserve-3d-switching.html [ Failure ]
 webkit.org/b/79766 compositing/iframes/iframe-size-from-zero.html [ Failure ]
 webkit.org/b/79766 compositing/iframes/iframe-size-to-zero.html [ Failure ]
@@ -1011,7 +1034,6 @@ webkit.org/b/79766 compositing/tiling/huge-layer-resize.html [ Failure ]
 webkit.org/b/79766 compositing/tiling/huge-layer.html [ Failure ]
 webkit.org/b/79766 compositing/tiling/tile-cache-zoomed.html [ Failure ]
 webkit.org/b/79766 compositing/video/video-poster.html [ Failure ]
-webkit.org/b/79766 compositing/geometry/fixed-position-composited-switch.html [ Failure ]
 
 # LAYER_TREE_INCLUDES_VISIBLE_RECTS option to layerTreeAsText is only applicable to Mac.
 compositing/visible-rect [ Skip ]
@@ -1729,6 +1751,7 @@ webkit.org/b/118126 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailur
 webkit.org/b/118126 fast/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
 
 webkit.org/b/124656 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink.html [ ImageOnlyFailure ]
+webkit.org/b/124656 fast/css3-text/css3-text-decoration/text-decoration-skip/decoration-skip-crash-fallback-svg.html [ ImageOnlyFailure ]
 
 webkit.org/b/124657 fast/dom/SelectorAPI/resig-SelectorsAPI-test.xhtml [ Failure ]
 
@@ -2085,3 +2108,24 @@ webkit.org/b/139150 fast/forms/form-hides-table.html [ Failure ]
 webkit.org/b/141627 compositing/fixed-positioned-pseudo-content-no-compositing.html [ Failure ]
 webkit.org/b/141628 compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html [ Failure ]
 webkit.org/b/141628 compositing/layer-creation/fixed-position-out-of-view-scaled.html [ Failure ]
+
+# Disk cache isn't supported by EFL port yet.
+webkit.org/b/141891 http/tests/cache/disk-cache-disable.html [ Failure ]
+webkit.org/b/141891 http/tests/cache/disk-cache-redirect-to-data.html [ Failure ]
+webkit.org/b/141891 http/tests/cache/disk-cache-validation.html [ Failure ]
+
+webkit.org/b/141892 fast/sub-pixel/client-width-height-snapping.html [ Failure ]
+webkit.org/b/141892 fast/sub-pixel/inline-block-with-padding.html [ Failure ]
+webkit.org/b/141892 fast/sub-pixel/selection/selection-rect-in-sub-pixel-table.html [ Failure ]
+
+webkit.org/b/141895 compositing/contents-scale/non-decomposable-matrix.html [ ImageOnlyFailure ]
+
+# Need to have new baseline since r177686.
+webkit.org/b/141896 fast/borders/0px-borders.html [ ImageOnlyFailure ]
+webkit.org/b/141896 fast/borders/border-painting-correctness-dashed.html [ ImageOnlyFailure ]
+webkit.org/b/141896 fast/borders/border-painting-correctness-dotted.html [ ImageOnlyFailure ]
+webkit.org/b/141896 fast/borders/border-radius-on-html.html [ ImageOnlyFailure ]
+
+# Need to investigate why these security tests have been failed since r144338.
+webkit.org/b/141958 http/tests/security/XFrameOptions/x-frame-options-deny-multiple-clients.html [ Failure ]
+webkit.org/b/141958 http/tests/security/cross-frame-access-callback-explicit-domain-ALLOW.html [ Failure ]

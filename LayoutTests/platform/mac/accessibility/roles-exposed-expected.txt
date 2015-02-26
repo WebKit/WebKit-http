@@ -1049,6 +1049,11 @@ div[role=search]
       AXSubrole: AXLandmarkSearch
       AXRoleDescription: search
       
+div[role=searchbox]
+      AXRole: AXTextField
+      AXSubrole: AXSearchField
+      AXRoleDescription: search text field
+      
 div[role=separator]
       AXRole: AXSplitter
       AXSubrole: 
@@ -1068,6 +1073,11 @@ div[role=status]
       AXRole: AXGroup
       AXSubrole: AXApplicationStatus
       AXRoleDescription: application status
+      
+div[role=switch]
+      AXRole: AXCheckBox
+      AXSubrole: AXSwitch
+      AXRoleDescription: switch
       
 div[role=tablist]
       AXRole: AXTabGroup

@@ -1,3 +1,349 @@
+2015-02-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Use WEBCORE_EXPORT instead of Definition file
+        https://bugs.webkit.org/show_bug.cgi?id=141734
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTree.vcxproj:
+        Use a precompiled header so we can define our export macros properly.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTree.vcxproj.filters:
+        Visual studio automatic update stuff.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeCommon.props:
+        Set up Precompiled Header use for project..
+        * DumpRenderTree/win/DumpRenderTreePrefix.cpp: Added.
+        * DumpRenderTree/DumpRenderTreePrefix.h: Update with proper export
+        declarations for building DumpRenderTree as a client of
+        WebCore/WebKit.
+
+2015-02-25  Mark Lam  <mark.lam@apple.com>
+
+        ASan does not like JSC::MachineThreads::tryCopyOtherThreadStack.
+        <https://webkit.org/b/141672>
+
+        Reviewed by Alexey Proskuryakov.
+
+        ASan does not like the fact that we memcpy the stack for GC scans.  So,
+        we're working around this by using our own memcpy (asanUnsafeMemcpy)
+        implementation that we can tell ASan to ignore.
+
+        Also removed the previous added directive to ignore *tryCopyOtherThreadStack*
+        which isn't effective for working around this issue. 
+
+        * asan/webkit-asan-ignore.txt:
+
+2015-02-25  Benjamin Poulain  <bpoulain@apple.com>
+
+        CodeBlock crashes when dumping op_push_name_scope
+        https://bugs.webkit.org/show_bug.cgi?id=141953
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-02-25  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should use argparse instead of optparse
+        https://bugs.webkit.org/show_bug.cgi?id=142013
+
+        Reviewed by Bem Jones-Bey.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (main): Updating according argparse.
+        (parse_args): Moving from optparse to argparse.
+
+2015-02-25  Brady Eidson  <beidson@apple.com>
+
+        Get rid of TestInvocation::pathOrURL
+        https://bugs.webkit.org/show_bug.cgi?id=142021
+
+        Reviewed by Tim Horton.
+
+        The pathOrURL string is a relative path used as an argument to WebKitTestRunner,
+        but most code that uses it expected an absolute path.
+
+        This gets rid of the member and replaces all uses with a more descriptive "urlContains" method.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::updateWebViewSizeForTest):
+        (WTR::TestController::updateWindowScaleForTest):
+        (WTR::shouldUseFixedLayout):
+        (WTR::TestController::updateLayoutTypeForTest):
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::TestInvocation):
+        (WTR::TestInvocation::urlContains):
+        (WTR::TestInvocation::shouldLogFrameLoadDelegates):
+        (WTR::TestInvocation::shouldLogHistoryClientCallbacks):
+        (WTR::TestInvocation::invoke):
+        (WTR::shouldLogFrameLoadDelegates): Deleted.
+        (WTR::shouldLogHistoryClientCallbacks): Deleted.
+        * WebKitTestRunner/TestInvocation.h:
+        (WTR::TestInvocation::pathOrURL): Deleted.
+
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::shouldMakeViewportFlexible):
+        (WTR::TestController::platformConfigureViewForTest):
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::shouldUseThreadedScrolling):
+        (WTR::TestController::platformConfigureViewForTest):
+
+2015-02-25  Brady Eidson  <beidson@apple.com>
+
+        Layout test support for user content filters
+        https://bugs.webkit.org/show_bug.cgi?id=142018
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues): Clear all user content filters between tests.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformConfigureViewForTest): For all tests with usercontentfilter/ in their path try to load a matching .json
+          file before loading the test itself.
+
+2015-02-24  Sam Weinig  <sam@webkit.org>
+
+        Convert WebEditingTester to use xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=141879
+
+        Reviewed by Darin Adler.
+
+        Add xcconfig files to WebEditingTester based on the ones used by MiniBrowser.
+
+        * WebEditingTester/Configurations: Added.
+        * WebEditingTester/Configurations/Base.xcconfig: Added.
+        * WebEditingTester/Configurations/DebugRelease.xcconfig: Added.
+        * WebEditingTester/WebEditingTester.xcodeproj/project.pbxproj:
+
+2015-02-24  Andy Estes  <aestes@apple.com>
+
+        Teach MiniBrowser how to disable per-window web processes
+        https://bugs.webkit.org/show_bug.cgi?id=141988
+
+        Reviewed by Darin Adler.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (defaultConfiguration): Created a _WKProcessPoolConfiguration with maximumProcessCount == 1 if per-window web processes are disabled.
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]): Added a new Settings menu item.
+        (-[SettingsController validateMenuItem:]): Validated the new Settings menu item.
+        (-[SettingsController togglePerWindowWebProcessesDisabled:]): Displayed an alert informing the user that MiniBrowser must be restarted for the setting to take effect.
+        (-[SettingsController perWindowWebProcessesDisabled]): Returned the value from user defaults.
+
+2015-02-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Bot watcher's dashboard sometimes hits an assertion: data.num_missing === this.layoutTestResults.testsWithMissingResults.length
+        https://bugs.webkit.org/show_bug.cgi?id=141889
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+
+2015-02-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r179429): Can't type comments in Facebook
+        https://bugs.webkit.org/show_bug.cgi?id=141859
+
+        Reviewed by Brent Fulgham.
+
+        Drop javaScriptExperimentsEnabled and specify JavaScriptRuntimeFlagsAllEnabled as KJavaScriptRuntimeFlags.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2015-02-24  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Crash loading local file with WebPageProxy::loadAlternateHTMLString
+        https://bugs.webkit.org/show_bug.cgi?id=141867
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKit2/LoadAlternateHTMLStringWithNonDirectoryURL.cpp:
+        (TestWebKitAPI::loadAlternateHTMLString): Split most of this test into a function so it can
+        be shared with the new test.
+        (TestWebKitAPI::TEST): Add a cross-platform test for this crash.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestLoaderClient.cpp: Add a GTK+ test for this crash.
+        (testLoadAlternateHTMLForLocalPage):
+        (beforeAll):
+
+2015-02-24  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Implement WTR::activateFonts() to fix missing fonts in WebKit2 test runs
+        <http://webkit.org/b/141900>
+
+        Reviewed by Myles C. Maxfield.
+
+        * WebKitTestRunner/Configurations/InjectedBundle.xcconfig:
+        (OTHER_LDFLAGS_BASE): Link to CoreText.framework.
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm: Rename from Tools/WebKitTestRunner/InjectedBundle/mac/ActivateFonts.mm.
+        - Rename to share code with iOS.
+        - Add USE(APPKIT) around AppKit-specific headers and code.
+        - Fix a check-webkit-style warning.
+        * WebKitTestRunner/InjectedBundle/ios/ActivateFontsIOS.mm: Remove.
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        - Rename mac/ActivateFonts.mm to cocoa/ActivateFontsCocoa.mm.
+        - Remove ios/ActivateFontsIOS.mm.
+        - Fix InjectedBundle/cocoa group to represent the directory on
+          disk.  Includes a change to InjectedBundlePageCocoa.mm.
+
+2015-02-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r180547 and r180550.
+        https://bugs.webkit.org/show_bug.cgi?id=141957
+
+        Broke 10 Windows tests. (Requested by bfulgham_ on #webkit).
+
+        Reverted changesets:
+
+        "REGRESSION(r179429): Can't type comments in Facebook"
+        https://bugs.webkit.org/show_bug.cgi?id=141859
+        http://trac.webkit.org/changeset/180547
+
+        "Constructor returning null should construct an object instead
+        of null"
+        https://bugs.webkit.org/show_bug.cgi?id=141640
+        http://trac.webkit.org/changeset/180550
+
+2015-02-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r179429): Can't type comments in Facebook
+        https://bugs.webkit.org/show_bug.cgi?id=141859
+
+        Reviewed by Geoffrey Garen.
+
+        Drop javaScriptExperimentsEnabled and specify JavaScriptRuntimeFlagsAllEnabled as KJavaScriptRuntimeFlags.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2015-02-23  KwangHyuk Kim  <hyuki.kim@samsung.com>
+
+        [EFL] fix eo errors
+        https://bugs.webkit.org/show_bug.cgi?id=141909
+
+        Reviewed by Gyuyoung Kim.
+
+        Fix eo errors that occur whenever minibrowser is launched.
+        - elm_obj_entry_text_style_user_push can only be applied for elm_entry
+        - elm_obj_win_resize_object_add's first parameter should be elm_win
+
+        * MiniBrowser/efl/main.c:
+        (window_create):
+
+2015-02-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix after r180535. Removed the test case that wasn't compiling.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-02-23  Brent Fulgham  <bfulgham@apple.com>
+
+        WTF::WeakPtr should rename 'forgot' to 'clear' and support nullptr assignment
+        https://bugs.webkit.org/show_bug.cgi?id=141935
+
+        Reviewed by Myles C. Maxfield.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (TestWebKitAPI::TEST): Updated for 'clear' method rename, and added a few
+        tests for assigning from nullptr.
+
+2015-02-23  Brent Fulgham  <bfulgham@apple.com>
+
+        WTF::WeakPtr should have a 'forget' method.
+        https://bugs.webkit.org/show_bug.cgi?id=141923
+
+        Reviewed by Myles C. Maxfield.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (TestWebKitAPI::TEST): Added 'Forget' tests case.
+
+2015-02-23  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard CrashOnly queues should not show two green bubbles
+        https://bugs.webkit.org/show_bug.cgi?id=141920
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.update.appendBuilderQueueStatus):
+        Do the same thing as we do for regular green bubbles.
+
+2015-02-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Bot watcher's dashboard doesn't show a popover for commit history when all commits were to another branch
+        https://bugs.webkit.org/show_bug.cgi?id=141925
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._presentPopoverForRevisionRange):
+
+2015-02-23  Anders Carlsson  <andersca@apple.com>
+
+        Add API for fetching website data records to _WKWebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=141926
+
+        Reviewed by Beth Dakin.
+
+        * MiniBrowser/mac/MainMenu.xib:
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController fetchWebsiteData:]):
+        Add menu item to fetch and dump website data.
+
+2015-02-23  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] run-webkit-tests --leaks is broken because IOSSimulatorPort has no is_snowleopard attribute
+        <http://webkit.org/b/141884>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/leakdetector.py:
+        (LeakDetector._callstacks_to_exclude_from_leaks): Remove
+        snowleopard, lion and older leaks.  Add known leak for
+        mavericks, but check Port.operating_system before calling
+        Port.is_mavericks.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.is_snowleopard): Delete.
+        (MacPort.is_lion): Delete.
+        (MacPort.is_mavericks): Add.
+
+2015-02-23  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard should filter out commits to other branches
+        https://bugs.webkit.org/show_bug.cgi?id=140362
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._presentPopoverForPendingCommits):
+        (BuildbotQueueView.prototype._presentPopoverForRevisionRange):
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration):
+        (BuildbotQueueView.prototype.revisionContentForIteration):
+        (BuildbotQueueView.prototype._appendPendingRevisionCount): Deleted.
+        (BuildbotQueueView.prototype._popoverLinesForCommitRange): Deleted.
+        (BuildbotQueueView.prototype._revisionPopoverContentForIteration): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype.get oldestRecordedRevisionNumber):
+        (Trac.prototype.commitsOnBranch):
+        (Trac.prototype._xmlTimelineURL):
+        (Trac.prototype._convertCommitInfoElementToObject):
+        (Trac.prototype._update):
+        (Trac.prototype.startPeriodicUpdates):
+        (Trac.prototype.loadMoreHistoricalData):
+        (Trac.prototype.update): Deleted.
+
 2015-02-21  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         Tests don't work on some bots: Failed to stop wptwk

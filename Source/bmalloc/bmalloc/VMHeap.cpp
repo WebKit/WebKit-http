@@ -40,7 +40,7 @@ VMHeap::VMHeap()
 void VMHeap::grow()
 {
     SuperChunk* superChunk = SuperChunk::create();
-#if BOS(DARWIN)
+#if BPLATFORM(DARWIN)
     m_zone.addSuperChunk(superChunk);
 #endif
 
@@ -53,7 +53,7 @@ void VMHeap::grow()
         m_mediumPages.push(it);
 
     LargeChunk* largeChunk = superChunk->largeChunk();
-    m_largeRanges.insert(BoundaryTag::init(largeChunk));
+    m_largeObjects.insert(LargeObject(BoundaryTag::init(largeChunk).begin()));
 }
 
 } // namespace bmalloc

@@ -80,7 +80,7 @@ ControllerIOS.prototype = {
     shouldHaveStartPlaybackButton: function() {
         var allowsInline = this.host.mediaPlaybackAllowsInline;
 
-        if (this.isPlaying || this.hasPlayed)
+        if (this.isPlaying || (this.hasPlayed && allowsInline))
             return false;
 
         if (this.isAudio() && allowsInline)
@@ -317,7 +317,7 @@ ControllerIOS.prototype = {
 
         buffered /= this.video.duration;
 
-        var ctx = document.getCSSCanvasContext('2d', this.timelineContextName, width, height);
+        var ctx = this.video.ownerDocument.getCSSCanvasContext('2d', this.timelineContextName, width, height);
 
         ctx.clearRect(0, 0, width, height);
 

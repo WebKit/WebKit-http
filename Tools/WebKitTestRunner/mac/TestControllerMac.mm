@@ -32,7 +32,9 @@
 #import "TestInvocation.h"
 #import "WebKitTestRunnerPasteboard.h"
 #import <WebKit/WKStringCF.h>
-#import <mach-o/dyld.h> 
+#import <WebKit/WKURLCF.h>
+#import <WebKit/WKUserContentFilterRef.h>
+#import <mach-o/dyld.h>
 
 @interface NSSound (Details)
 + (void)_setAlertType:(NSUInteger)alertType;
@@ -73,9 +75,9 @@ void TestController::platformWillRunTest(const TestInvocation& testInvocation)
     setCrashReportApplicationSpecificInformationToURL(testInvocation.url());
 }
 
-static bool shouldUseThreadedScrolling(const char* pathOrURL)
+static bool shouldUseThreadedScrolling(const TestInvocation& test)
 {
-    return strstr(pathOrURL, "tiled-drawing/");
+    return test.urlContains("tiled-drawing/");
 }
 
 void TestController::platformResetPreferencesToConsistentValues()
@@ -86,7 +88,7 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
 {
     auto viewOptions = adoptWK(WKMutableDictionaryCreate());
     auto useThreadedScrollingKey = adoptWK(WKStringCreateWithUTF8CString("ThreadedScrolling"));
-    auto useThreadedScrollingValue = adoptWK(WKBooleanCreate(shouldUseThreadedScrolling(test.pathOrURL())));
+    auto useThreadedScrollingValue = adoptWK(WKBooleanCreate(shouldUseThreadedScrolling(test)));
     WKDictionarySetItem(viewOptions.get(), useThreadedScrollingKey.get(), useThreadedScrollingValue.get());
 
     auto useRemoteLayerTreeKey = adoptWK(WKStringCreateWithUTF8CString("RemoteLayerTree"));
@@ -94,6 +96,23 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
     WKDictionarySetItem(viewOptions.get(), useRemoteLayerTreeKey.get(), useRemoteLayerTreeValue.get());
 
     ensureViewSupportsOptions(viewOptions.get());
+
+    if (!test.urlContains("usercontentfilter/"))
+        return;
+
+    RetainPtr<CFURLRef> testURL = adoptCF(WKURLCopyCFURL(kCFAllocatorDefault, test.url()));
+    NSURL *filterURL = [(NSURL *)testURL.get() URLByAppendingPathExtension:@"json"];
+
+    NSStringEncoding encoding;
+    NSString *contentFilterString = [NSString stringWithContentsOfURL:filterURL usedEncoding:&encoding error:NULL];
+    if (!contentFilterString)
+        return;
+
+    WKRetainPtr<WKStringRef> name = adoptWK(WKStringCreateWithUTF8CString("TestContentFilter"));
+    WKRetainPtr<WKStringRef> contentFilterStringWK = adoptWK(WKStringCreateWithCFString((CFStringRef)contentFilterString));
+    WKRetainPtr<WKUserContentFilterRef> filter = adoptWK(WKUserContentFilterCreate(name.get(), contentFilterStringWK.get()));
+
+    WKPageGroupAddUserContentFilter(WKPageGetPageGroup(TestController::singleton().mainWebView()->page()), filter.get());
 }
 
 void TestController::platformRunUntil(bool& done, double timeout)

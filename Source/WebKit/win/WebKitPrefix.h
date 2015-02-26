@@ -43,9 +43,12 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-// This is needed because we include WebCore's headers.
-#define WEBCORE_EXPORT
-
 #include <CoreFoundation/CoreFoundation.h>
 #include <WebKit/WebKit.h>
 #include "config.h"
+
+// WebKit.dll is expected to export the symbols in WebCore that have been marked
+// as WEBCORE_EXPORT
+#undef WEBCORE_EXPORT
+#define WEBCORE_EXPORT WTF_EXPORT_DECLARATION
+

@@ -1164,7 +1164,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
 
     // Log that we started loading a media element.
     if (Frame* frame = document().frame())
-        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::mediaKey(), isVideo() ? DiagnosticLoggingKeys::videoKey() : DiagnosticLoggingKeys::audioKey(), DiagnosticLoggingKeys::loadingKey());
+        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::mediaKey(), isVideo() ? DiagnosticLoggingKeys::videoKey() : DiagnosticLoggingKeys::audioKey(), DiagnosticLoggingKeys::loadingKey(), ShouldSample::No);
 
     m_firstTimePlaying = true;
 
@@ -1835,17 +1835,17 @@ static void logMediaLoadRequest(Page* page, const String& mediaEngine, const Str
 
     DiagnosticLoggingClient& diagnosticLoggingClient = page->mainFrame().diagnosticLoggingClient();
     if (!succeeded) {
-        diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::mediaLoadingFailedKey(), errorMessage, DiagnosticLoggingResultFail);
+        diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::mediaLoadingFailedKey(), errorMessage, DiagnosticLoggingResultFail, ShouldSample::No);
         return;
     }
 
-    diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadedKey(), mediaEngine);
+    diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadedKey(), mediaEngine, ShouldSample::No);
 
     if (!page->hasSeenAnyMediaEngine())
-        diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsAtLeastOneMediaEngineKey(), emptyString());
+        diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsAtLeastOneMediaEngineKey(), emptyString(), ShouldSample::No);
 
     if (!page->hasSeenMediaEngine(mediaEngine))
-        diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsMediaEngineKey(), mediaEngine);
+        diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::pageContainsMediaEngineKey(), mediaEngine, ShouldSample::No);
 
     page->sawMediaEngine(mediaEngine);
 }
@@ -4554,7 +4554,7 @@ void HTMLMediaElement::updatePlayState()
             if (m_firstTimePlaying) {
                 // Log that a media element was played.
                 if (Frame* frame = document().frame())
-                    frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::mediaKey(), isVideo() ? DiagnosticLoggingKeys::videoKey() : DiagnosticLoggingKeys::audioKey(), DiagnosticLoggingKeys::playedKey());
+                    frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::mediaKey(), isVideo() ? DiagnosticLoggingKeys::videoKey() : DiagnosticLoggingKeys::audioKey(), DiagnosticLoggingKeys::playedKey(), ShouldSample::No);
                 m_firstTimePlaying = false;
             }
 
@@ -4630,7 +4630,7 @@ void HTMLMediaElement::userCancelledLoad()
     // If the media data fetching process is aborted by the user:
 
     // 1 - The user agent should cancel the fetching process.
-    clearMediaPlayer(-1);
+    clearMediaPlayer(EveryDelayedAction);
 
     // 2 - Set the error attribute to a new MediaError object whose code attribute is set to MEDIA_ERR_ABORTED.
     m_error = MediaError::create(MediaError::MEDIA_ERR_ABORTED);
@@ -4737,9 +4737,10 @@ void HTMLMediaElement::stop()
     m_asyncEventQueue.close();
 
     // Once an active DOM object has been stopped it can not be restarted, so we can deallocate
-    // the media player now. Note that userCancelledLoad will already have cleared the player
-    // if the media was not fully loaded. This handles all other cases.
-    m_player = nullptr;
+    // the media player now. Note that userCancelledLoad will already called clearMediaPlayer
+    // if the media was not fully loaded, but we need the same cleanup if the file was completely
+    // loaded and calling it again won't cause any problems.
+    clearMediaPlayer(EveryDelayedAction);
 
     updateSleepDisabling();
 }
@@ -5806,7 +5807,7 @@ void HTMLMediaElement::mediaPlayerEngineFailedToLoad() const
         return;
 
     if (Frame* frame = document().frame())
-        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::engineFailedToLoadKey(), m_player->engineDescription(), String::number(m_player->platformErrorCode()));
+        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::engineFailedToLoadKey(), m_player->engineDescription(), String::number(m_player->platformErrorCode()), ShouldSample::No);
 }
 
 double HTMLMediaElement::mediaPlayerRequestedPlaybackRate() const

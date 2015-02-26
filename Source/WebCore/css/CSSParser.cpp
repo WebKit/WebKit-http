@@ -89,6 +89,7 @@
 #include "WebKitCSSRegionRule.h"
 #include "WebKitCSSResourceValue.h"
 #include "WebKitCSSTransformValue.h"
+#include <JavaScriptCore/Profile.h>
 #include <bitset>
 #include <limits.h>
 #include <wtf/HexNumber.h>
@@ -807,7 +808,7 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
             return true;
         break;
     case CSSPropertyWebkitAppearance:
-        if ((valueID >= CSSValueCheckbox && valueID <= CSSValueTextarea) || valueID == CSSValueNone)
+        if ((valueID >= CSSValueCheckbox && valueID <= CSSValueCapsLockIndicator) || valueID == CSSValueNone)
             return true;
         break;
     case CSSPropertyWebkitBackfaceVisibility:

@@ -111,6 +111,7 @@
 #include <WebCore/WindowFeatures.h>
 #include <stdio.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/RandomNumber.h>
 #include <wtf/text/StringView.h>
 
 #if ENABLE(ASYNC_SCROLLING)
@@ -918,6 +919,7 @@ void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const Strin
         m_mainFrame->setUnreachableURL(unreachableURL);
 
     m_process->assumeReadAccessToBaseURL(baseURL);
+    m_process->assumeReadAccessToBaseURL(unreachableURL);
     m_process->send(Messages::WebPage::LoadAlternateHTMLString(htmlString, baseURL, unreachableURL, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
     m_process->responsivenessTimer()->start();
 }
@@ -4494,19 +4496,31 @@ void WebPageProxy::editingRangeCallback(const EditingRange& range, uint64_t call
     callback->performCallbackWithReturnValue(range);
 }
 
-void WebPageProxy::logDiagnosticMessage(const String& message, const String& description)
+static bool shouldLogDiagnosticMessage(bool shouldSample)
 {
-    m_diagnosticLoggingClient->logDiagnosticMessage(this, message, description);
+    if (!shouldSample)
+        return true;
+    // Log 5% of messages when sampling.
+    static const double selectionProbability = 0.05;
+    return randomNumber() <= selectionProbability;
 }
 
-void WebPageProxy::logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result)
+void WebPageProxy::logDiagnosticMessage(const String& message, const String& description, bool shouldSample)
 {
-    m_diagnosticLoggingClient->logDiagnosticMessageWithResult(this, message, description, static_cast<WebCore::DiagnosticLoggingResultType>(result));
+    if (shouldLogDiagnosticMessage(shouldSample))
+        m_diagnosticLoggingClient->logDiagnosticMessage(this, message, description);
 }
 
-void WebPageProxy::logDiagnosticMessageWithValue(const String& message, const String& description, const String& value)
+void WebPageProxy::logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result, bool shouldSample)
 {
-    m_diagnosticLoggingClient->logDiagnosticMessageWithValue(this, message, description, value);
+    if (shouldLogDiagnosticMessage(shouldSample))
+        m_diagnosticLoggingClient->logDiagnosticMessageWithResult(this, message, description, static_cast<WebCore::DiagnosticLoggingResultType>(result));
+}
+
+void WebPageProxy::logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, bool shouldSample)
+{
+    if (shouldLogDiagnosticMessage(shouldSample))
+        m_diagnosticLoggingClient->logDiagnosticMessageWithValue(this, message, description, value);
 }
 
 void WebPageProxy::rectForCharacterRangeCallback(const IntRect& rect, const EditingRange& actualRange, uint64_t callbackID)
@@ -5010,7 +5024,7 @@ void WebPageProxy::notifyScrollerThumbIsVisibleInRect(const IntRect& scrollerThu
 void WebPageProxy::recommendedScrollbarStyleDidChange(int32_t newStyle)
 {
 #if USE(APPKIT)
-    m_pageClient.recommendedScrollbarStyleDidChange(newStyle);
+    m_pageClient.recommendedScrollbarStyleDidChange(static_cast<WebCore::ScrollbarStyle>(newStyle));
 #else
     UNUSED_PARAM(newStyle);
 #endif

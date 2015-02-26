@@ -28,11 +28,19 @@
 
 #include <unknwn.h>
 
+#ifndef WEBKIT_API
+#ifdef WEBKIT_EXPORTS
+#define WEBKIT_API __declspec(dllexport)
+#else
+#define WEBKIT_API __declspec(dllimport)
+#endif
+#endif
+
 extern "C" {
 
 // Callers should use this API instead of CoCreateInstance to instantiate WebKit COM classes.
 // This bypasses CoCreateInstance entirely, so registry keys and isolated COM manifests aren't needed.
-HRESULT WebKitCreateInstance(REFCLSID, IUnknown* pUnkOuter, REFIID, void** ppvObject);
+HRESULT WEBKIT_API WebKitCreateInstance(REFCLSID, IUnknown* pUnkOuter, REFIID, void** ppvObject);
 
 }
 

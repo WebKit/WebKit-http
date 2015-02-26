@@ -53,6 +53,9 @@
 #endif
 #endif
 
+#undef WEBCORE_EXPORT
+#define WEBCORE_EXPORT WTF_EXPORT_DECLARATION
+
 #else
 
 #include <pthread.h>

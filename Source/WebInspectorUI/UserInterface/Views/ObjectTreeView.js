@@ -38,25 +38,21 @@ WebInspector.ObjectTreeView = function(object, mode, forceExpanding)
     this._element.className = "object-tree";
 
     if (this._object.preview) {
-        var previewView = new WebInspector.ObjectPreviewView(this._object.preview);
-        this._previewElement = previewView.element;
-        this._previewElement.addEventListener("click", this._handlePreviewOrTitleElementClick.bind(this));
-        this._element.appendChild(this._previewElement);
+        this._previewView = new WebInspector.ObjectPreviewView(this._object.preview);
+        this._previewView.element.addEventListener("click", this._handlePreviewOrTitleElementClick.bind(this));
+        this._element.appendChild(this._previewView.element);
 
-        if (previewView.lossless && !forceExpanding) {
+        if (this._previewView.lossless && !forceExpanding) {
             this._hasLosslessPreview = true;
             this.element.classList.add("lossless-preview");
         }
+    } else {
+        this._titleElement = document.createElement("span");
+        this._titleElement.className = "title";
+        this._titleElement.appendChild(WebInspector.FormattedValue.createElementForRemoteObject(this._object));
+        this._titleElement.addEventListener("click", this._handlePreviewOrTitleElementClick.bind(this));
+        this._element.appendChild(this._titleElement);
     }
-
-    this._titleElement = document.createElement("span");
-    this._titleElement.className = "title";
-    this._titleElement.textContent = this._object.description || "";
-    this._titleElement.addEventListener("click", this._handlePreviewOrTitleElementClick.bind(this));
-    this._element.appendChild(this._titleElement);
-
-    if (this._object.preview)
-        this._titleElement.hidden = true;
 
     this._outlineElement = document.createElement("ol");
     this._outlineElement.className = "object-tree-outline";
@@ -153,10 +149,8 @@ WebInspector.ObjectTreeView.prototype = {
         this._expanded = true;
         this._element.classList.add("expanded");
 
-        if (this._previewElement) {
-            this._previewElement.hidden = true;
-            this._titleElement.hidden = false;
-        }
+        if (this._previewView)
+            this._previewView.showTitle();
 
         this.update();
     },
@@ -169,34 +163,44 @@ WebInspector.ObjectTreeView.prototype = {
         this._expanded = false;
         this._element.classList.remove("expanded");
 
-        if (this._previewElement) {
-            this._previewElement.hidden = false;
-            this._titleElement.hidden = true;
-        }
+        if (this._previewView)
+            this._previewView.showPreview();
     },
 
     // Protected
 
     update: function()
     {
-        this._object.getOwnAndGetterPropertyDescriptors(this._updateProperties.bind(this));
+        this._object.getDisplayablePropertyDescriptors(this._updateProperties.bind(this));
     },
 
     // Private
 
     _updateProperties: function(properties)
     {
-        properties.sort(WebInspector.ObjectTreeView.ComparePropertyDescriptors);
-
         this._outline.removeChildren();
 
-        for (var propertyDescriptor of properties)
-            this._outline.appendChild(new WebInspector.ObjectTreePropertyTreeElement(propertyDescriptor, this._mode));
-
-        if (this._mode === WebInspector.ObjectTreeView.Mode.Properties) {
-            if (this._object.isCollectionType())
-                this._outline.appendChild(new WebInspector.ObjectTreeCollectionTreeElement(this._object));
+        if (!properties) {
+            var errorMessageElement = document.createElement("div");
+            errorMessageElement.className = "empty-message";
+            errorMessageElement.textContent = WebInspector.UIString("Could not fetch properties. Object may no longer exist.");;
+            this._outline.appendChild(new TreeElement(errorMessageElement, null, false));
+            return;
         }
+
+        properties.sort(WebInspector.ObjectTreeView.ComparePropertyDescriptors);
+
+        // FIXME: Intialize component with "$n" instead of "obj".
+        var rootPropertyPath = new WebInspector.PropertyPath(this._object, "obj");
+
+        for (var propertyDescriptor of properties)
+            this._outline.appendChild(new WebInspector.ObjectTreePropertyTreeElement(propertyDescriptor, rootPropertyPath, this._mode));
+
+        // FIXME: Re-enable Collection Entries with new UI.
+        // if (this._mode === WebInspector.ObjectTreeView.Mode.Properties) {
+        //     if (this._object.isCollectionType())
+        //         this._outline.appendChild(new WebInspector.ObjectTreeCollectionTreeElement(this._object));
+        // }
 
         if (!this._outline.children.length) {
             var emptyMessageElement = document.createElement("div");

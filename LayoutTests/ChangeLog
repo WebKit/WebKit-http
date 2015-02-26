@@ -1,3 +1,915 @@
+2015-02-25  Zalan Bujtas  <zalan@apple.com>
+
+        Black line across screen on Adobe Illustrator detail page (non-retina only)
+        https://bugs.webkit.org/show_bug.cgi?id=141866
+
+        Reviewed by Simon Fraser.
+
+        Phase is relative to the destination origin. We need to take location information into account
+        while snapping so that the result is inline with the snapped destination rect.
+        (location affects the snapped size.)
+
+        * fast/backgrounds/gradient-background-on-subpixel-position-expected.html: Added.
+        * fast/backgrounds/gradient-background-on-subpixel-position.html: Added.
+
+2015-02-25  Michael Saboff  <msaboff@apple.com>
+
+        Web Inspector: CRASH when debugger pauses inside a Promise handler
+        https://bugs.webkit.org/show_bug.cgi?id=141396
+
+        Reviewed by Mark Lam.
+
+        New test.
+
+        * inspector/debugger/breakpoint-scope-expected.txt: Added.
+        * inspector/debugger/breakpoint-scope.html: Added.
+        * inspector/debugger/resources/scope.js: Added.
+
+2015-02-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Make Windows green again after r180654.
+
+        * platform/win/TestExpectations:
+
+2015-02-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update fast/regions/region-overflow-break.html after r177774
+
+        Unreviewed.
+
+        * fast/regions/region-overflow-break-expected.html:
+        * platform/mac/TestExpectations:
+
+2015-02-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update 3 more tests after r177774
+
+        Unreviewed.
+
+        * fast/multicol/newmulticol/spanner-table-expected.html:
+        * fast/multicol/newmulticol/spanner-table.html:
+        * fast/regions/scrolling/wheel-scroll-abspos-expected.html:
+        * fast/regions/scrolling/wheel-scroll-expected.html:
+        * platform/mac/TestExpectations:
+
+2015-02-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update css3/flexbox/csswg/flexbox_direction-row-reverse.html after r177774
+
+        Unreviewed.
+
+        * css3/flexbox/csswg/flexbox_direction-row-reverse-expected.html:
+        * css3/flexbox/csswg/flexbox_direction-row-reverse.html:
+        * platform/mac/TestExpectations:
+
+2015-02-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Skip timing-out test after r180646.
+
+        * platform/win/TestExpectations:
+
+2015-02-25  Chris Dumez  <cdumez@apple.com>
+
+        Make PublicURLManager suspendable
+        https://bugs.webkit.org/show_bug.cgi?id=141977
+        <rdar://problem/19923085>
+
+        Reviewed by Andreas Kling.
+
+        Add a layout test to check that a page using URL.createObjectURL() API
+        can enter the PageCache.
+
+        * fast/history/page-cache-createObjectURL-expected.txt: Added.
+        * fast/history/page-cache-createObjectURL.html: Added.
+
+        * platform/wk2/TestExpectations:
+          The new test is skipped on WK2 because WKTR does not support
+          eventSender.beginDragWithFiles().
+
+2015-02-25  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Horizontal and vertical lines are clipped completely if clip-path is included in the tag but the referenced element is defined later.
+        https://bugs.webkit.org/show_bug.cgi?id=141776.
+
+        Reviewed by Dean Jackson.
+        
+        New test cases for SVG lines which are clipped to a <clipPath>. The <clipPath>
+        is referenced before it is defined.
+
+        * svg/clip-path/clip-path-line-use-before-defined-expected.svg: Added.
+        * svg/clip-path/clip-path-line-use-before-defined.svg: Added.
+
+2015-02-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening
+
+        Unreviewed.
+
+        Getting the bots green after r180633 until Brady fixes the underlying issue.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-02-25  Brady Eidson  <beidson@apple.com>
+
+        Layout test support for user content filters
+        https://bugs.webkit.org/show_bug.cgi?id=142018
+
+        Reviewed by Tim Horton.
+
+        * TestExpectations:
+        * http/tests/usercontentfilter/basic-filter.html: Added.
+        * http/tests/usercontentfilter/basic-filter.html.json: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2015-02-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Skip new <attachment> test since it's not working on Windows.
+
+        * platform/win/TestExpectations:
+
+2015-02-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Skip ARIA 1.1 tests for unsupported feature.
+
+        * platform/win/TestExpectations:
+
+2015-02-25  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Tracks growing beyond limits when they should not
+        https://bugs.webkit.org/show_bug.cgi?id=140883
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-content-sized-columns-resolution-expected.txt:
+        * fast/css-grid-layout/grid-content-sized-columns-resolution.html:
+
+2015-02-25  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for ARIA 1.1 'searchbox' role
+        https://bugs.webkit.org/show_bug.cgi?id=142004
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/roles-computedRoleString-expected.txt: Updated for new role.
+        * accessibility/roles-computedRoleString.html: Updated for new role.
+        * accessibility/roles-exposed.html: New test case added.
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated for new test case.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated for new test case.
+        * platform/mac-mavericks/accessibility/roles-exposed-expected.txt: Updated for new test case.
+        * platform/mac/accessibility/roles-exposed-expected.txt: Updated for new test case.
+
+2015-02-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Updating js/dom/global-constructors-attributes.html results for HTMLAttachmentElement.
+
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2015-02-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r180599.
+        https://bugs.webkit.org/show_bug.cgi?id=141998
+
+        Lots of new test failures (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Parsing support for -webkit-trailing-word"
+        https://bugs.webkit.org/show_bug.cgi?id=141939
+        http://trac.webkit.org/changeset/180599
+
+2015-02-24  Sam Weinig  <sam@webkit.org>
+
+        [Attachment] Give <attachment> elements an underlying File
+        https://bugs.webkit.org/show_bug.cgi?id=141993
+
+        Reviewed by Tim Horton.
+
+        Update attachment-dom.html to test setting and getting the
+        underlying file.
+
+        * fast/attachment/attachment-dom-expected.txt:
+        * fast/attachment/attachment-dom.html:
+        * fast/attachment/resources: Added.
+        * fast/attachment/resources/test-file.txt: Added.
+
+2015-02-24  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for ARIA 1.1 'switch' role
+        https://bugs.webkit.org/show_bug.cgi?id=141986
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-switch-checked-expected.txt: Added.
+        * accessibility/aria-switch-checked.html: Added.
+        * accessibility/aria-switch-sends-notification-expected.txt: Added.
+        * accessibility/aria-switch-sends-notification.html: Added.
+        * accessibility/aria-switch-text.html: Added.
+        * accessibility/roles-exposed.html: Added a test case for the new role.
+        * platform/efl/accessibility/aria-fallback-roles-expected.txt: Added.
+        * platform/efl/accessibility/aria-switch-text-expected.txt: Added.
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated for the new role.
+        * platform/gtk/accessibility/aria-fallback-roles-expected.txt: Added.
+        * platform/gtk/accessibility/aria-switch-text-expected.txt: Added.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated for the new role.
+        * platform/mac-mavericks/accessibility/roles-exposed-expected.txt: Updated for the new role.
+        * platform/mac/TestExpectations: Skip the 'checked' notifcation as the Mac doesn't have it.
+        * platform/mac/accessibility/aria-switch-text-expected.txt: Added.
+        * platform/mac/accessibility/roles-exposed-expected.txt: Updated for the new role.
+
+2015-02-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Parsing support for -webkit-trailing-word
+        https://bugs.webkit.org/show_bug.cgi?id=141939
+
+        Reviewed by Andreas Kling.
+
+        Test parsing using getComputedStyle().
+
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-roundtrip.html: Updated.
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-roundtrip-expected.txt: Updated.
+        * platform/mac/fast/text/trailing-word-parse-expected.txt: Added.
+        * platform/mac/fast/text/trailing-word-parse.html: Added.
+
+2015-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make Getter/Setter RemoteObject property and ObjectPreview handling consistent
+        https://bugs.webkit.org/show_bug.cgi?id=141587
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-get-properties-expected.txt:
+        * inspector/model/remote-object-get-properties.html:
+
+2015-02-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Constructor returning null should construct an object instead of null
+        https://bugs.webkit.org/show_bug.cgi?id=141640
+
+        Reviewed by Filip Pizlo.
+
+        Follow the old ret_object_or_this semantics.
+        When constructor returns an object that masquerades as undefined, we see it as an object.
+
+        * js/dom/constructor-with-return-masquerades-expected.txt: Added.
+        * js/dom/constructor-with-return-masquerades.html: Added.
+        * js/dom/script-tests/constructor-with-return-masquerades.js: Added.
+        (Constructor):
+
+2015-02-24  Dean Jackson  <dino@apple.com>
+
+        Temporarily skip this test on iOS 64-bit.
+
+        Rubber-stamped by Michael Saboff.
+
+        * js/script-tests/array-from.js:
+
+2015-02-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Unreviewed GTK+ gardening.
+
+        This was introduced in r180555, but the test has been generalized in
+        r180562 and we don't need a particular expectation anymore.
+
+        * platform/gtk/fast/css-grid-layout/grid-item-order-in-content-sized-columns-resolution-expected.txt: Removed.
+
+2015-02-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Support "sparse" in auto-placed items locked to a row/column
+        https://bugs.webkit.org/show_bug.cgi?id=141748
+
+        Reviewed by Sergio Villar Senin.
+
+        New test to check "sparse" and "dense" packing mode behavior in
+        auto-placed items locked to a given row (or column).
+
+        * fast/css-grid-layout/grid-item-auto-placement-definite-span.html:
+        Extract some common styles to resources/grid.css.
+        * fast/css-grid-layout/grid-item-auto-placement-fixed-row-column-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-placement-fixed-row-column.html: Added.
+        * fast/css-grid-layout/resources/grid.css: Modified generic CSS file to
+        add common styles.
+
+2015-02-24  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] Layout Test accessibility/roles-exposed.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=141960
+
+        Reviewed by Martin Robinson.
+
+        * platform/gtk/TestExpectations: Unskip the failing test.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Update the expectations.
+
+2015-02-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Use Ahem in grid-item-order-in-content-sized-columns-resolution.html
+        https://bugs.webkit.org/show_bug.cgi?id=141970
+
+        Reviewed by Sergio Villar Senin.
+
+        Without using Ahem we were having different results depending on the
+        platform.
+
+        * fast/css-grid-layout/grid-item-order-in-content-sized-columns-resolution-expected.txt:
+          Update results to the new values.
+        * fast/css-grid-layout/grid-item-order-in-content-sized-columns-resolution.html:
+          Use Ahem.
+
+2015-02-24  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening: Mark svg/canvas/canvas-global-alpha-svg.html as ImageOnlyFailure
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-02-24  Xabier Rodriguez Calvar <calvaris@igalia.com> and Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Reading ReadableStream ready and closed attributes should not always create a new promise
+        https://bugs.webkit.org/show_bug.cgi?id=141650
+
+        Reviewed by Benjamin Poulain.
+
+        * streams/readablestream-constructor-expected.txt:
+        * streams/readablestream-constructor.html: Added test to ensure ready and closed always return the same promise object.
+
+2015-02-24  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Always serialize :lang()'s arguments to strings
+        https://bugs.webkit.org/show_bug.cgi?id=141944
+
+        Reviewed by Benjamin Poulain.
+
+        Some tests results are updated to reflect the always serialize
+        :lang()'s arguments to strings.
+
+        * fast/css/css-lang-selector-with-string-arguments-text-expected.txt:
+        * fast/css/css-lang-selector-with-string-arguments-text.html:
+        * fast/css/parsing-css-lang-expected.txt:
+        * fast/css/parsing-css-lang.html:
+        * fast/css/css-selector-text-expected.txt:
+        * fast/css/css-selector-text.html:
+        * fast/css/css-set-selector-text-expected.txt:
+        * fast/css/css-set-selector-text.html:
+        * fast/dom/css-selectorText-expected.txt:
+
+2015-02-24  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Implement WTR::activateFonts() to fix missing fonts in WebKit2 test runs
+        <http://webkit.org/b/141900>
+
+        Rebaseline ios-simulator-wk2 results after fixing font
+        registration for WebKitTestRunner.app.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        - Shuffle css2.1 test expectations to make tests pass.
+
+        * platform/ios-simulator/TestExpectations:
+        - Shuffle css2.1 test expectations to make tests pass.
+        - Mark a few ref tests as image-only failures via platform/mac.
+
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-height-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-height-007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-height-009-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-max-height-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-max-height-007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-max-height-009-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-004-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-005-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-008-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-009-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-010-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-011-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-012-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-013-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-014-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-016-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-017-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-018-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-019-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-020-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-021-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-022-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-023-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/absolute-non-replaced-width-024-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-001-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-004a-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-004b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-004c-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-004d-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-004e-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-004f-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-005a-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-005b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-005c-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-005d-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-007-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-009a-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-009b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-009e-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-containing-block-initial-009f-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-non-replaced-width-margin-000-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/abspos-replaced-width-margin-000-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/block-non-replaced-height-005-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/block-non-replaced-height-006-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/20110323/block-non-replaced-width-007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/block-replaced-width-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/block-replaced-width-006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/c543-txt-decor-000-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/empty-inline-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/float-non-replaced-width-006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/float-non-replaced-width-007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/float-non-replaced-width-008-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/float-non-replaced-width-009-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/float-non-replaced-width-010-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/float-non-replaced-width-011-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/float-non-replaced-width-012-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/inline-block-non-replaced-width-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/inline-block-non-replaced-width-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/inline-block-non-replaced-width-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/inline-block-non-replaced-width-004-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/inline-non-replaced-height-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/inline-non-replaced-height-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/inline-non-replaced-width-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/inline-non-replaced-width-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/20110323/replaced-intrinsic-002-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/20110323/replaced-intrinsic-ratio-001-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t040302-c61-ex-len-00-b-a-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t040302-c61-rel-len-00-b-ag-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t040303-c62-percent-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t040306-c63-color-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0801-c412-hz-box-00-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5501-imrgn-t-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5501-mrgn-t-00-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-imrgn-r-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-imrgn-r-01-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-imrgn-r-02-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-imrgn-r-03-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-imrgn-r-04-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-imrgn-r-05-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-imrgn-r-06-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-mrgn-r-00-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-mrgn-r-01-c-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5502-mrgn-r-03-c-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5503-imrgn-b-00-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5503-mrgn-b-00-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-imrgn-l-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-imrgn-l-01-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-imrgn-l-02-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-imrgn-l-03-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-imrgn-l-04-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-imrgn-l-05-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-imrgn-l-06-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-mrgn-l-00-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-mrgn-l-01-c-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5504-mrgn-l-03-c-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5505-imrgn-00-a-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5505-mrgn-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5505-mrgn-01-e-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0803-c5505-mrgn-03-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5506-ipadn-t-00-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5506-ipadn-t-01-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5506-ipadn-t-02-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5506-padn-t-00-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5507-ipadn-r-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5507-ipadn-r-01-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5507-ipadn-r-02-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5507-ipadn-r-03-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5507-ipadn-r-04-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5507-padn-r-00-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5507-padn-r-01-c-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5507-padn-r-03-f-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5508-ipadn-b-00-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5508-ipadn-b-01-f-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5508-ipadn-b-02-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5508-ipadn-b-03-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5509-ipadn-l-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5509-ipadn-l-01-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5509-ipadn-l-02-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5509-ipadn-l-03-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5509-ipadn-l-04-f-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5509-padn-l-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5509-padn-l-01-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5509-padn-l-03-f-g-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5510-ipadn-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5510-padn-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5510-padn-01-e-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0804-c5510-padn-02-f-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t09-c5526c-display-00-e-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t090204-display-change-01-b-ao-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t090402-c42-ibx-pad-00-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0905-c5525-fltblck-00-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0905-c5525-fltclr-00-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0905-c5525-fltcont-00-d-g-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t0905-c5525-fltinln-00-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0905-c5525-fltmrgn-00-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t0905-c5525-fltwidth-00-c-g-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t0905-c5525-fltwidth-03-c-g-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t0905-c5525-fltwrap-00-b-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t0905-c5526-fltclr-00-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t090501-c414-flt-01-b-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t090501-c414-flt-03-b-g-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t1001-abs-pos-cb-01-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1001-abs-pos-cb-02-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1001-abs-pos-cb-03-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1001-abs-pos-cb-04-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1001-abs-pos-cb-05-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1001-abs-pos-cb-06-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1001-abs-pos-cb-07-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1001-abs-pos-cb-08-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1001-abs-pos-cb-09-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t100303-c412-blockw-00-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1004-c43-rpl-bbx-00-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1004-c43-rpl-ibx-00-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1008-c44-ln-box-00-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1008-c44-ln-box-01-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1008-c44-ln-box-02-d-ag-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t1008-c44-ln-box-03-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t100801-c42-ibx-ht-00-d-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t100801-c544-valgn-00-a-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t100801-c544-valgn-01-d-ag-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t100801-c544-valgn-02-d-agi-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t100801-c544-valgn-03-d-agi-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t100801-c544-valgn-04-d-agi-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t100801-c548-leadin-00-d-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t100801-c548-ln-ht-00-c-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t100801-c548-ln-ht-01-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t100801-c548-ln-ht-02-b-ag-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t100801-c548-ln-ht-03-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t100801-c548-ln-ht-04-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1202-counter-08-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1202-counter-13-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1202-counter-14-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1202-counters-08-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1202-counters-13-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1202-counters-14-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1205-c566-list-stl-00-e-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1205-c566-list-stl-01-c-g-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t140201-c534-bgre-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c534-bgre-01-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c534-bgreps-00-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c534-bgreps-01-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c534-bgreps-02-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c534-bgreps-03-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c534-bgreps-04-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c534-bgreps-05-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c536-bgpos-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c536-bgpos-01-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t140201-c537-bgfxps-00-c-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1507-c526-font-sz-01-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1507-c526-font-sz-02-b-a-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t1507-c526-font-sz-03-f-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-00-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-01-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-02-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-03-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-04-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-05-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-06-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-07-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-08-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-09-b-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1508-c527-font-10-c-expected.txt: Added.
+        * platform/ios-simulator-wk2/css2.1/t1601-c547-indent-00-b-a-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t1602-c43-center-00-d-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1604-c542-letter-sp-00-b-a-expected.txt: Updated.
+        * platform/ios-simulator-wk2/css2.1/t1604-c542-letter-sp-01-b-a-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1605-c545-txttrans-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/css2.1/t1606-c562-white-sp-00-b-ag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/basic/010-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/basic/min-pref-width-nowrap-floats-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/float/004-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/float/005-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/float/006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/float/float-not-removed-from-next-sibling3-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/float/float-not-removed-from-next-sibling4-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/block-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/block-glyphs-replaced-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/block-replaced-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/font-replaced-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/glyphs-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/inline-box-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/inline-box-replaced-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/inline-box-vertical-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/inline-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/inline-replaced-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/none-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/lineboxcontain/parsing-invalid-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/margin-collapse/006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/margin-collapse/030-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/margin-collapse/031-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/margin-collapse/037-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/margin-collapse/038-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/margin-collapse/055-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/margin-collapse/block-inside-inline/006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/positioning/002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/positioning/vertical-lr/002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/block/positioning/vertical-rl/002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/compact/002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css-generated-content/nested-tables-with-before-after-content-crash-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/font-face-unicode-range-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/font-weight-1-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/line-after-floating-div-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/dynamic/first-letter-display-change-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/inline-block/002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/inline/continuation-outlines-with-layers-2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/inline/justify-emphasis-inline-box-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/line-grid/line-align-left-edges-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/line-grid/line-align-right-edges-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/line-grid/line-grid-contains-value-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/line-grid/line-grid-into-columns-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/multicol/client-rects-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/multicol/client-rects-spanners-complex-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/multicol/client-rects-spanners-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/multicol/newmulticol/client-rects-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/multicol/span/clone-flexbox-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/multicol/span/clone-summary-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/multicol/span/span-as-immediate-columns-child-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/ruby/ruby-base-merge-block-children-crash-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/ruby/select-ruby-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/international/text-spliced-font-expected.txt: Updated.
+        * platform/ios-simulator-wk2/fast/text/whitespace/002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/004-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/005-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/008-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/009-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/010-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/011-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/012-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/015-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/016-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/whitespace/018-expected.txt: Removed.
+        - Add, update or remove platform-specific results as needed.
+
+2015-02-24  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening: Clean up some failing WK2 tests
+
+        * platform/ios-simulator/TestExpectations:
+        - svg/as-image/svg-image-with-data-uri-from-canvas.html: Mark as
+          ImageOnlyFailure since it has the same difference of 0.02% on
+          every run.
+
+        * platform/ios-simulator/fast/attachment/attachment-disabled-rendering-expected.txt: Add.
+        * platform/ios-simulator/fast/attachment/attachment-rendering-expected.txt: Add.
+        * platform/ios-simulator/fast/multicol/span/span-as-immediate-columns-child-expected.txt: Update.
+        - Add or update platform-specific results.
+
+2015-02-24  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        Unreviewed GTK+ Gardening 24th February
+        https://bugs.webkit.org/show_bug.cgi?id=141964
+
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/css-grid-layout/grid-item-order-in-content-sized-columns-resolution-expected.txt: Added. Rebaselined after r180107. (This revision updates expectations on mac platform but it doesn't do it in any other platform).
+
+2015-02-24  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL daily gardening 24th Feb.
+
+        * platform/efl/TestExpectations:
+
+2015-02-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r180547 and r180550.
+        https://bugs.webkit.org/show_bug.cgi?id=141957
+
+        Broke 10 Windows tests. (Requested by bfulgham_ on #webkit).
+
+        Reverted changesets:
+
+        "REGRESSION(r179429): Can't type comments in Facebook"
+        https://bugs.webkit.org/show_bug.cgi?id=141859
+        http://trac.webkit.org/changeset/180547
+
+        "Constructor returning null should construct an object instead
+        of null"
+        https://bugs.webkit.org/show_bug.cgi?id=141640
+        http://trac.webkit.org/changeset/180550
+
+2015-02-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Constructor returning null should construct an object instead of null
+        https://bugs.webkit.org/show_bug.cgi?id=141640
+
+        Reviewed by Geoffrey Garen.
+
+        * js/dfg-to-primitive-pass-symbol-expected.txt: Added.
+        * js/dfg-to-primitive-pass-symbol.html: Added.
+        * js/dom/constructor-with-return-masquerades-expected.txt: Added.
+        * js/dom/constructor-with-return-masquerades.html: Added.
+        * js/dom/script-tests/constructor-with-return-masquerades.js: Added.
+        (Constructor):
+
+        Follow the old ret_object_or_this semantics.
+        When constructor returns an object that masquerades as undefined, we see it as an object.
+
+        * js/regress/constructor-with-return-expected.txt: Added.
+        * js/regress/constructor-with-return.html: Added.
+        * js/regress/script-tests/constructor-with-return.js: Added.
+        (Test):
+
+        When constructor doesn't return an object, `this` should be returned instead.
+        In this test, we check all primitives. And test object, array and wrappers.
+
+        * js/script-tests/dfg-to-primitive-pass-symbol.js: Added.
+        (toPrimitiveTarget):
+        (doToPrimitive):
+
+        op_to_primitive operation passes Symbol in fast path.
+
+2015-02-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Disable font loading events until our implementation gets updated to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=141938
+
+        Reviewed by Andreas Kling.
+
+        * TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-02-23  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS JIT: add support for case-insensitive attribute matching
+        https://bugs.webkit.org/show_bug.cgi?id=141880
+
+        Reviewed by Andreas Kling.
+
+        * fast/css/case-insensitive-attribute-with-svg-expected.html:
+        * fast/css/case-insensitive-attribute-with-svg.html:
+        * fast/css/implicitly-case-insensitive-attribute-with-svg-expected.html: Copied from LayoutTests/fast/css/case-insensitive-attribute-with-svg-expected.html.
+        * fast/css/implicitly-case-insensitive-attribute-with-svg.html: Copied from LayoutTests/fast/css/case-insensitive-attribute-with-svg.html.
+
+        I renamed the HTML legacy case-insensitive behavior to separate
+        it from the new selector.
+
+        * fast/selectors/querySelector-explicit-case-insensitive-attribute-match-with-svg-expected.txt: Added.
+        * fast/selectors/querySelector-explicit-case-insensitive-attribute-match-with-svg.html: Added.
+        Mixing explicit case-insensitive with implicit.
+
+        * fast/selectors/case-insensitive-attribute-register-requirement-1-expected.txt: Added.
+        * fast/selectors/case-insensitive-attribute-register-requirement-1.html: Added.
+        * fast/selectors/case-insensitive-attribute-register-requirement-2-expected.txt: Added.
+        * fast/selectors/case-insensitive-attribute-register-requirement-2.html: Added.
+        The usual register allocation stress tests.
+
+
+2015-02-23  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL gardening. Mark webgl tests to crash.
+        Skip khmer-lao-font.html because EFL port doesn't support it.
+
+        * platform/efl/TestExpectations:
+
+2015-02-23  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Default value of HTMLSelectElement size IDL attribute should be 0.
+        https://bugs.webkit.org/show_bug.cgi?id=141795
+
+        Reviewed by Andreas Kling.
+
+        * fast/dom/select-size-expected.txt: Added.
+        * fast/dom/select-size.html: Added.
+
+2015-02-23  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Drawing an SVG image into a canvas using drawImage() ignores globalAlpha.
+        https://bugs.webkit.org/show_bug.cgi?id=141729.
+
+        Reviewed by Simon Fraser.
+
+        Add a new test which draws an SVG image on a canvas after setting its 
+        globalAlpha to a value less than 1.
+
+        * svg/canvas/canvas-global-alpha-svg-expected.html: Added.
+        * svg/canvas/canvas-global-alpha-svg.html: Added.
+
+2015-02-23  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Mark tests of css3 overflow, border to ImageOnlyFailure.
+
+        * platform/efl/TestExpectations:
+
+2015-02-23  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Add new failure tests related to attachment, editing, and compositing.
+
+        * platform/efl/TestExpectations:
+
+2015-02-22  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL gardening. Mark sub-pixel and disk cache tests to failure.
+
+        * platform/efl/TestExpectations:
+
+2015-02-22  Dean Jackson  <dino@apple.com>
+
+        Print a console warning when HTMLCanvasElement exceeds the maximum size
+        https://bugs.webkit.org/show_bug.cgi?id=141861
+        <rdar://problem/19729145>
+
+        Reviewed by Simon Fraser.
+
+        Add error message to expected results.
+
+        * fast/canvas/canvas-toDataURL-crash-expected.txt:
+        * fast/canvas/pattern-too-large-to-create-expected.txt:
+
+2015-02-22  Sam Weinig  <sam@webkit.org>
+
+        Update results for Mac Yosemite.
+
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+
+2015-02-21  Sam Weinig  <sam@webkit.org>
+
+        Convert the caps lock indicator to be implemented using the shadow DOM
+        https://bugs.webkit.org/show_bug.cgi?id=141868
+
+        Reviewed by Dan Bernstein.
+
+        * fast/css/appearance-caps-lock-indicator-expected.txt:
+        * fast/css/appearance-caps-lock-indicator.html:
+        * platform/mac/fast/css/text-overflow-input-expected.txt:
+        * platform/mac/fast/forms/basic-inputs-expected.txt:
+        * platform/mac/fast/forms/input-appearance-height-expected.txt:
+        * platform/mac/fast/forms/input-value-expected.txt:
+        * platform/mac/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/mac/fast/forms/validation-message-appearance-expected.txt:
+
+2015-02-22  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening: Clean up timeout test for ios-simulator-{wk1,wk2}
+
+        Changes for WK1 results:
+        * inspector/css/stylesheet-with-mutations.html
+        - Skip for both WK1 and WK2.  Already marked as Skip on mac.
+        * fast/events/dispatch-message-string-data.html
+        - Marked as Slow for both WK1 and WK2.  Previously marked as
+          Skip via override on WK2 and marked as Failure on both.
+
+        Changes for WK2:
+        * inspector/css/selector-dynamic-specificity.html
+        - Skip on WK1 and WK2.  Already marked as Skip on mac and win.
+          Updated bug number for win TestExpectations.
+        * inspector/css/stylesheet-with-mutations.html
+        - See above.
+        * fast/dynamic/window-resize-scrollbars-test.html
+        - Skip on WK1 and WK2 since iOS does not support window
+          resizing and test always times out.  Remove old test results.
+        * fast/images/animated-gif-window-resizing.html
+        - Skip on WK1 and WK2 since iOS does not support window
+          resizing and test always times out. Previously skipped on WK1
+          only.
+        * fast/events/autoscroll-should-not-stop-on-keypress.html
+        - Skip on WK1 and WK2 due to always timing out.  Previously
+          skipped on WK1 only.
+        * http/tests/cache/history-navigation-no-resource-revalidation.html
+        - Skip on WK2 due to always timing out.  Does not timeout on
+          WK1.
+        * http/tests/navigation/target-blank-opener-post.html
+        - Ditto.
+        * svg/animations/use-animate-width-and-height.html
+        - Ditto.
+
+        * platform/ios-sim-deprecated/fast/dynamic/window-resize-scrollbars-test-expected.txt: Removed.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-02-22  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening: Add missing results for WK2 tests
+
+        In all cases, WK1 and WK2 results were the same.
+
+        * platform/ios-simulator/fast/block/positioning/vertical-rl/001-expected.txt: Rename from LayoutTests/platform/ios-sim-deprecated/fast/block/positioning/vertical-rl/001-expected.txt.
+        * platform/ios-simulator/fast/body-propagation/background-color/001-xhtml-expected.txt: Rename from LayoutTests/platform/ios-sim-deprecated/fast/body-propagation/background-color/001-xhtml-expected.txt.
+        * platform/ios-simulator/fast/body-propagation/background-image/001-xhtml-expected.txt: Rename from LayoutTests/platform/ios-sim-deprecated/fast/body-propagation/background-image/001-xhtml-expected.txt.
+        * platform/ios-simulator/fast/body-propagation/overflow/001-xhtml-expected.txt: Rename from LayoutTests/platform/ios-sim-deprecated/fast/body-propagation/overflow/001-xhtml-expected.txt.
+        * platform/ios-simulator/fast/repaint/body-background-image-expected.txt: Rename from LayoutTests/platform/ios-sim-deprecated/fast/repaint/body-background-image-expected.txt.
+
+2015-02-22  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening: Add missing results for WK1 tests
+
+        * platform/ios-simulator/fast/css/css2-system-fonts-expected.txt: Rename from LayoutTests/platform/ios-simulator-wk2/fast/css/css2-system-fonts-expected.txt.
+        - Platform-specific results are the same for WK1 and WK2.
+          Regressed in r179196: shared ios-simulator results should not
+          have been removed.
+        * platform/ios-simulator/fast/css/focus-ring-exists-for-search-field-expected.txt: Add.
+        - Platform-specific results were missing for both WK1 and WK2.
+          Regressed in r179796: no ios-simulator results landed.
+
 2015-02-21  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         Tests don't work on some bots: Failed to stop wptwk

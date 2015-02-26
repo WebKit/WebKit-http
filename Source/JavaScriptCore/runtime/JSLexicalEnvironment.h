@@ -97,16 +97,11 @@ private:
     bool symbolTablePut(ExecState*, PropertyName, JSValue, bool shouldThrow);
     bool symbolTablePutWithAttributes(VM&, PropertyName, JSValue, unsigned attributes);
 
-    static EncodedJSValue argumentsGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
-
     static size_t allocationSize(SymbolTable*);
     static size_t storageOffset();
 
     WriteBarrier<Unknown>* storage(); // captureCount() number of registers.
 };
-
-extern int activationCount;
-extern int allTheThingsCount;
 
 inline JSLexicalEnvironment::JSLexicalEnvironment(VM& vm, CallFrame* callFrame, Register* registers, JSScope* currentScope, CodeBlock* codeBlock)
     : Base(

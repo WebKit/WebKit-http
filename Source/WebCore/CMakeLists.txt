@@ -445,6 +445,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/HTMLAnchorElement.idl
     html/HTMLAppletElement.idl
     html/HTMLAreaElement.idl
+    html/HTMLAttachmentElement.idl
     html/HTMLAudioElement.idl
     html/HTMLBRElement.idl
     html/HTMLBaseElement.idl
@@ -805,6 +806,7 @@ set(WebCore_SOURCES
     Modules/gamepad/deprecated/NavigatorGamepad.cpp
 
     Modules/geolocation/Coordinates.cpp
+    Modules/geolocation/GeoNotifier.cpp
     Modules/geolocation/Geolocation.cpp
     Modules/geolocation/GeolocationController.cpp
     Modules/geolocation/NavigatorGeolocation.cpp
