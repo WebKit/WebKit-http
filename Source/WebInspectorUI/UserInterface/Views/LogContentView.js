@@ -72,6 +72,8 @@ WebInspector.LogContentView = function(representedObject)
     this._clearLogNavigationItem = new WebInspector.ButtonNavigationItem("clear-log", WebInspector.UIString("Clear log (%s or %s)").format(this._logViewController.messagesClearKeyboardShortcut.displayName, this._logViewController.messagesAlternateClearKeyboardShortcut.displayName), trashImage.src, trashImage.width, trashImage.height);
     this._clearLogNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._clearLog, this);
 
+    this._clearLogOnReloadSetting = new WebInspector.Setting("clear-log-on-reload", true);
+
     var toolTip = WebInspector.UIString("Show split console");
     var altToolTip = WebInspector.UIString("Show full-height console");
 
@@ -301,6 +303,9 @@ WebInspector.LogContentView.prototype = {
 
     _sessionStarted: function(event)
     {
+        if (this._clearLogOnReloadSetting.value) 
+            this._clearLog();
+
         this._logViewController.startNewSession();
     },
 
@@ -330,6 +335,12 @@ WebInspector.LogContentView.prototype = {
 
         var contextMenu = new WebInspector.ContextMenu(event);
         contextMenu.appendItem(WebInspector.UIString("Clear Log"), this._clearLog.bind(this));
+        contextMenu.appendSeparator();
+
+        var clearLogOnReloadUIString = this._clearLogOnReloadSetting.value ? WebInspector.UIString("Keep Log on Reload") : WebInspector.UIString("Clear Log on Reload");
+
+        contextMenu.appendItem(clearLogOnReloadUIString, this._toggleClearLogOnReloadSetting.bind(this));
+
         contextMenu.show();
     },
 
@@ -583,7 +594,7 @@ WebInspector.LogContentView.prototype = {
 
     _allMessages: function()
     {
-        return Array.prototype.slice.call(this.messagesElement.querySelectorAll(".console-message, .console-user-command"));
+        return Array.from(this.messagesElement.querySelectorAll(".console-message, .console-user-command"));
     },
 
     _unfilteredMessages: function()
@@ -618,6 +629,11 @@ WebInspector.LogContentView.prototype = {
             WebInspector.showFullHeightConsole();
         else
             WebInspector.showSplitConsole();
+    },
+
+    _toggleClearLogOnReloadSetting: function()
+    {
+        this._clearLogOnReloadSetting.value = !this._clearLogOnReloadSetting.value;
     },
 
     _clearLog: function()
@@ -768,6 +784,7 @@ WebInspector.LogContentView.prototype = {
                 else
                     outlineTitle.treeElement.collapse();
             } else {
+                // FIXME: <https://webkit.org/b/141949> Web Inspector: Right/Left arrow no longer works in console to expand/collapse ObjectTrees
                 var outlineSection = currentMessage.querySelector(".console-formatted-object > .section");
                 if (outlineSection)
                     outlineSection._section.collapse();
@@ -799,6 +816,7 @@ WebInspector.LogContentView.prototype = {
                 else
                     outlineTitle.treeElement.expand();
             } else {
+                // FIXME: <https://webkit.org/b/141949> Web Inspector: Right/Left arrow no longer works in console to expand/collapse ObjectTrees
                 var outlineSection = currentMessage.querySelector(".console-formatted-object > .section");
                 if (outlineSection) {
                     outlineSection._section.addEventListener(WebInspector.Section.Event.VisibleContentDidChange, this._propertiesSectionDidUpdateContent, this);

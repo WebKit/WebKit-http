@@ -49,6 +49,8 @@ void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext*
     if (priority != G_PRIORITY_DEFAULT_IDLE)
         g_source_set_priority(m_source.get(), priority);
 
+    if (!context)
+        context = g_main_context_get_thread_default();
     g_source_attach(m_source.get(), context);
 }
 
@@ -163,18 +165,18 @@ GSourceWrap::Dynamic::Dynamic(const char* name, int priority, GMainContext* cont
 
 void GSourceWrap::Dynamic::schedule(std::function<void ()>&& function, std::chrono::microseconds delay)
 {
-    Base::schedule(delay);
-
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicVoidCallback),
         new std::function<void ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyVoidCallback));
+
+    Base::schedule(delay);
 }
 
 void GSourceWrap::Dynamic::schedule(std::function<bool ()>&& function, std::chrono::microseconds delay)
 {
-    Base::schedule(delay);
-
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicBoolCallback),
         new std::function<bool ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyBoolCallback));
+
+    Base::schedule(delay);
 }
 
 void GSourceWrap::Dynamic::cancel()

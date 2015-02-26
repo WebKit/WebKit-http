@@ -66,7 +66,9 @@ class VideoTrackPrivateGStreamer;
 
 class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateGStreamerBase {
 public:
+    explicit MediaPlayerPrivateGStreamer(MediaPlayer*);
     ~MediaPlayerPrivateGStreamer();
+
     static void registerMediaEngine(MediaEngineRegistrar);
     void handleSyncMessage(GstMessage*);
     gboolean handleMessage(GstMessage*);
@@ -146,10 +148,6 @@ public:
 #endif
 
 private:
-    MediaPlayerPrivateGStreamer(MediaPlayer*);
-
-    static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
-
     static void getSupportedTypes(HashSet<String>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
@@ -250,7 +248,7 @@ private:
     mutable float m_cachedPosition;
     mutable double m_lastQuery;
 #if ENABLE(WEB_AUDIO)
-    OwnPtr<AudioSourceProviderGStreamer> m_audioSourceProvider;
+    std::unique_ptr<AudioSourceProviderGStreamer> m_audioSourceProvider;
 #endif
     GstState m_requestedState;
     GRefPtr<GstElement> m_autoAudioSink;

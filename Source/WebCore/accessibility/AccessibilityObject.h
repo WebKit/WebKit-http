@@ -180,6 +180,7 @@ enum AccessibilityRole {
     RulerMarkerRole,
     ScrollAreaRole,
     ScrollBarRole,
+    SearchFieldRole,
     SheetRole,
     SliderRole,
     SliderThumbRole,
@@ -188,6 +189,7 @@ enum AccessibilityRole {
     SplitGroupRole,
     SplitterRole,
     StaticTextRole,
+    SwitchRole,
     SystemWideRole,
     SVGRootRole,
     TabGroupRole,
@@ -499,6 +501,7 @@ public:
     virtual bool isSpinButtonPart() const { return false; }
     virtual bool isMockObject() const { return false; }
     virtual bool isMediaControlLabel() const { return false; }
+    bool isSwitch() const { return roleValue() == SwitchRole; }
     bool isTextControl() const;
     bool isARIATextControl() const;
     bool isTabList() const { return roleValue() == TabListRole; }

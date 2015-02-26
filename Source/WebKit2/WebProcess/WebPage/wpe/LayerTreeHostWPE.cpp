@@ -60,7 +60,8 @@ LayerTreeHostWPE::LayerTreeHostWPE(WebPage* webPage)
     , m_isValid(true)
     , m_notifyAfterScheduledLayerFlush(false)
     , m_layerFlushSchedulingEnabled(true)
-    , m_layerFlushTimer("[WebKit] layerFlushTimer", std::bind(&LayerTreeHostWPE::layerFlushTimerFired, this), G_PRIORITY_HIGH_IDLE + 10)
+    , m_layerFlushTimer("[WebKit] layerFlushTimer", std::bind(&LayerTreeHostWPE::layerFlushTimerFired, this), G_PRIORITY_HIGH_IDLE + 20)
+    , m_viewOverlayRootLayer(nullptr)
     , m_frameRequestState(FrameRequestState::Completed)
     , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitorWPE))
 {
@@ -249,6 +250,9 @@ bool LayerTreeHostWPE::flushPendingLayerChanges()
     if (!m_webPage->corePage()->mainFrame().view()->flushCompositingStateIncludingSubframes())
         return false;
 
+    if (m_viewOverlayRootLayer)
+        m_viewOverlayRootLayer->flushCompositingState(FloatRect(FloatPoint(), m_rootLayer->size()));
+
     downcast<GraphicsLayerTextureMapper>(*m_rootLayer).updateBackingStoreIncludingSubLayers();
     return true;
 }
@@ -273,6 +277,10 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
     m_textureMapper->beginPainting(TextureMapper::PaintingMirrored);
     downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer().paint();
     m_textureMapper->endPainting();
+
+    ASSERT(m_frameRequestState == FrameRequestState::Completed);
+    m_frameRequestState = FrameRequestState::InProgress;
+    wl_callback_add_listener(m_waylandSurface->requestFrame(), &m_frameListener, this);
 
     context->swapBuffers();
 }
@@ -352,6 +360,13 @@ PassRefPtr<WebCore::DisplayRefreshMonitor> LayerTreeHostWPE::createDisplayRefres
     return m_displayRefreshMonitor;
 }
 
+void LayerTreeHostWPE::setViewOverlayRootLayer(WebCore::GraphicsLayer* viewOverlayRootLayer)
+{
+    m_viewOverlayRootLayer = viewOverlayRootLayer;
+    if (m_viewOverlayRootLayer)
+        m_rootLayer->addChild(m_viewOverlayRootLayer);
+}
+
 static void debugLayerTreeHostFPS()
 {
     static double lastTime = currentTime();
@@ -386,7 +401,7 @@ const struct wl_callback_listener LayerTreeHostWPE::m_frameListener = {
         case FrameRequestState::ScheduleLayerFlushOnCompletion:
             ASSERT(!layerTreeHost.m_layerFlushTimer.isActive());
             layerTreeHost.m_frameRequestState = FrameRequestState::Completed;
-            layerTreeHost.scheduleLayerFlush();
+            layerTreeHost.flushAndRenderLayers();
             break;
         case FrameRequestState::Completed:
             ASSERT_NOT_REACHED();

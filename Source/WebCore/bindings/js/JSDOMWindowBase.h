@@ -34,7 +34,7 @@ namespace WebCore {
 
     class JSDOMWindowBasePrivate;
 
-    class JSDOMWindowBase : public JSDOMGlobalObject {
+    class WEBCORE_EXPORT JSDOMWindowBase : public JSDOMGlobalObject {
         typedef JSDOMGlobalObject Base;
     protected:
         JSDOMWindowBase(JSC::VM&, JSC::Structure*, PassRefPtr<DOMWindow>, JSDOMWindowShell*);
@@ -64,14 +64,14 @@ namespace WebCore {
         static bool supportsRichSourceInfo(const JSC::JSGlobalObject*);
         static bool shouldInterruptScript(const JSC::JSGlobalObject*);
         static bool shouldInterruptScriptBeforeTimeout(const JSC::JSGlobalObject*);
-        static bool javaScriptExperimentsEnabled(const JSC::JSGlobalObject*);
+        static JSC::RuntimeFlags javaScriptRuntimeFlags(const JSC::JSGlobalObject*);
         static void queueTaskToEventLoop(const JSC::JSGlobalObject*, PassRefPtr<JSC::Microtask>);
         
         void printErrorMessage(const String&) const;
 
         JSDOMWindowShell* shell() const;
 
-        WEBCORE_EXPORT static JSC::VM& commonVM();
+        static JSC::VM& commonVM();
         static void fireFrameClearedWatchpointsForWindow(DOMWindow*);
 
     protected:

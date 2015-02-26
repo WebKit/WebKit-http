@@ -76,7 +76,7 @@ private:
 
     virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
 
-    virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override { };
+    virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override;
 
     // GraphicsLayerClient
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect);
@@ -87,7 +87,6 @@ private:
     void flushAndRenderLayers();
     void cancelPendingLayerFlush();
 
-    static constexpr const double m_targetFlushFrequency = 60;
     void layerFlushTimerFired();
 
     WebCore::GLContext* glContext();
@@ -102,12 +101,13 @@ private:
     std::unique_ptr<WebCore::GLContext> m_context;
     bool m_layerFlushSchedulingEnabled;
     GSourceWrap::Static m_layerFlushTimer;
+    WebCore::GraphicsLayer* m_viewOverlayRootLayer;
 
     static const struct wl_callback_listener m_frameListener;
     enum class FrameRequestState {
+        Completed,
         InProgress,
         ScheduleLayerFlushOnCompletion,
-        Completed
     };
     FrameRequestState m_frameRequestState;
 

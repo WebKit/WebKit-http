@@ -24,7 +24,6 @@
 
 #include <setjmp.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/ThreadSpecific.h>
 #include <wtf/ThreadingPrimitives.h>
 
@@ -34,20 +33,19 @@ namespace JSC {
     class ConservativeRoots;
     class Heap;
     class JITStubRoutineSet;
+    class VM;
 
-    class MachineThreads : public ThreadSafeRefCounted<MachineThreads> {
+    class MachineThreads {
         WTF_MAKE_NONCOPYABLE(MachineThreads);
     public:
         typedef jmp_buf RegisterState;
 
-        MachineThreads(Heap*);
-        ~MachineThreads();
+        MachineThreads();
+        NO_RETURN_DUE_TO_CRASH ~MachineThreads();
 
         void gatherConservativeRoots(ConservativeRoots&, JITStubRoutineSet&, CodeBlockSet&, void* stackCurrent, RegisterState& registers);
 
-        JS_EXPORT_PRIVATE void addCurrentThread(); // Only needs to be called by clients that can use the same heap from multiple threads.
-
-        void removeCurrentThread();
+        JS_EXPORT_PRIVATE void addCurrentThread(VM*); // Only needs to be called by clients that can use the same heap from multiple threads.
 
     private:
         class Thread;
@@ -58,14 +56,11 @@ namespace JSC {
         bool tryCopyOtherThreadStacks(MutexLocker&, void*, size_t capacity, size_t*);
 
         static void removeThread(void*);
+        void removeCurrentThread();
 
         Mutex m_registeredThreadsMutex;
         Thread* m_registeredThreads;
         WTF::ThreadSpecificKey m_threadSpecific;
-#if !ASSERT_DISABLED
-        Heap* m_heap;
-        uint64_t m_magicNumber; // Only used for detecting use after free.
-#endif
     };
 
 } // namespace JSC

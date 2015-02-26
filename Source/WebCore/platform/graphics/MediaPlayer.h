@@ -216,7 +216,7 @@ public:
     virtual String mediaPlayerMediaKeysStorageDirectory() const { return emptyString(); }
 #endif
     
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) { };
 #endif
 
@@ -280,11 +280,7 @@ public:
 class MediaPlayer {
     WTF_MAKE_NONCOPYABLE(MediaPlayer); WTF_MAKE_FAST_ALLOCATED;
 public:
-
-    static PassOwnPtr<MediaPlayer> create(MediaPlayerClient& client)
-    {
-        return adoptPtr(new MediaPlayer(client));
-    }
+    explicit MediaPlayer(MediaPlayerClient&);
     virtual ~MediaPlayer();
 
     // Media engine support.
@@ -455,17 +451,13 @@ public:
     void exitFullscreen();
 #endif
 
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     bool isCurrentPlaybackTargetWireless() const;
 
     enum WirelessPlaybackTargetType { TargetTypeNone, TargetTypeAirPlay, TargetTypeTVOut };
     WirelessPlaybackTargetType wirelessPlaybackTargetType() const;
 
     String wirelessPlaybackTargetName() const;
-
-    void showPlaybackTargetPicker();
-
-    bool hasWirelessPlaybackTargets() const;
 
     bool wirelessVideoPlaybackDisabled() const;
     void setWirelessVideoPlaybackDisabled(bool);
@@ -585,7 +577,6 @@ public:
     String sourceApplicationIdentifier() const;
 
 private:
-    MediaPlayer(MediaPlayerClient&);
     const MediaPlayerFactory* nextBestMediaEngine(const MediaPlayerFactory*) const;
     void loadWithNextMediaEngine(const MediaPlayerFactory*);
     void reloadTimerFired();
@@ -594,7 +585,7 @@ private:
 
     MediaPlayerClient& m_client;
     Timer m_reloadTimer;
-    OwnPtr<MediaPlayerPrivateInterface> m_private;
+    std::unique_ptr<MediaPlayerPrivateInterface> m_private;
     const MediaPlayerFactory* m_currentMediaEngine;
     URL m_url;
     String m_contentMIMEType;
@@ -615,7 +606,7 @@ private:
 #endif
 };
 
-typedef PassOwnPtr<MediaPlayerPrivateInterface> (*CreateMediaEnginePlayer)(MediaPlayer*);
+typedef std::function<std::unique_ptr<MediaPlayerPrivateInterface> (MediaPlayer*)> CreateMediaEnginePlayer;
 typedef void (*MediaEngineSupportedTypes)(HashSet<String>& types);
 typedef MediaPlayer::SupportsType (*MediaEngineSupportsType)(const MediaEngineSupportParameters& parameters);
 typedef void (*MediaEngineGetSitesInMediaCache)(Vector<String>&);

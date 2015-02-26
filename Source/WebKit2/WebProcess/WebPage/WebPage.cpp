@@ -764,76 +764,8 @@ EditorState WebPage::editorState() const
     result.isInPasswordField = selection.isInPasswordField();
     result.hasComposition = frame.editor().hasComposition();
     result.shouldIgnoreCompositionSelectionChange = frame.editor().ignoreCompositionSelectionChange();
-
-#if PLATFORM(IOS)
-    if (frame.editor().hasComposition()) {
-        RefPtr<Range> compositionRange = frame.editor().compositionRange();
-        Vector<WebCore::SelectionRect> compositionRects;
-        compositionRange->collectSelectionRects(compositionRects);
-        if (compositionRects.size())
-            result.firstMarkedRect = compositionRects[0].rect();
-        if (compositionRects.size() > 1)
-            result.lastMarkedRect = compositionRects.last().rect();
-        else
-            result.lastMarkedRect = result.firstMarkedRect;
-        result.markedText = plainTextReplacingNoBreakSpace(compositionRange.get());
-    }
-    FrameView* view = frame.view();
-    if (selection.isCaret()) {
-        result.caretRectAtStart = view->contentsToRootView(frame.selection().absoluteCaretBounds());
-        result.caretRectAtEnd = result.caretRectAtStart;
-        // FIXME: The following check should take into account writing direction.
-        result.isReplaceAllowed = result.isContentEditable && atBoundaryOfGranularity(selection.start(), WordGranularity, DirectionForward);
-        result.wordAtSelection = plainTextReplacingNoBreakSpace(wordRangeFromPosition(selection.start()).get());
-        if (selection.isContentEditable()) {
-            charactersAroundPosition(selection.start(), result.characterAfterSelection, result.characterBeforeSelection, result.twoCharacterBeforeSelection);
-            Node* root = selection.rootEditableElement();
-            result.hasContent = root && root->hasChildNodes() && !isEndOfEditableOrNonEditableContent(firstPositionInNode(root));
-        }
-    } else if (selection.isRange()) {
-        result.caretRectAtStart = view->contentsToRootView(VisiblePosition(selection.start()).absoluteCaretBounds());
-        result.caretRectAtEnd = view->contentsToRootView(VisiblePosition(selection.end()).absoluteCaretBounds());
-        RefPtr<Range> selectedRange = selection.toNormalizedRange();
-        selectedRange->collectSelectionRects(result.selectionRects);
-        convertSelectionRectsToRootView(view, result.selectionRects);
-        String selectedText = plainTextReplacingNoBreakSpace(selectedRange.get(), TextIteratorDefaultBehavior, true);
-        // FIXME: We should disallow replace when the string contains only CJ characters.
-        result.isReplaceAllowed = result.isContentEditable && !result.isInPasswordField && !selectedText.containsOnlyWhitespace();
-        result.selectedTextLength = selectedText.length();
-        const int maxSelectedTextLength = 200;
-        if (selectedText.length() <= maxSelectedTextLength)
-            result.wordAtSelection = selectedText;
-    }
-    if (!selection.isNone()) {
-        Node* nodeToRemove;
-        if (RenderStyle* style = Editor::styleForSelectionStart(&frame, nodeToRemove)) {
-            CTFontRef font = style->fontCascade().primaryFont().getCTFont();
-            CTFontSymbolicTraits traits = font ? CTFontGetSymbolicTraits(font) : 0;
-            
-            if (traits & kCTFontTraitBold)
-                result.typingAttributes |= AttributeBold;
-            if (traits & kCTFontTraitItalic)
-                result.typingAttributes |= AttributeItalics;
-
-            RefPtr<EditingStyle> typingStyle = frame.selection().typingStyle();
-            if (typingStyle && typingStyle->style()) {
-                String value = typingStyle->style()->getPropertyValue(CSSPropertyWebkitTextDecorationsInEffect);
-                if (value.contains("underline"))
-                    result.typingAttributes |= AttributeUnderline;
-            } else {
-                if (style->textDecorationsInEffect() & TextDecorationUnderline)
-                    result.typingAttributes |= AttributeUnderline;
-            }
-
-            if (nodeToRemove)
-                nodeToRemove->remove(ASSERT_NO_EXCEPTION);
-        }
-    }
-#endif
-
-#if PLATFORM(GTK)
-    result.cursorRect = frame.selection().absoluteCaretBounds();
-#endif
+    
+    platformEditorState(frame, result);
 
     return result;
 }
@@ -2721,7 +2653,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     else if (!store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && sessionID() == SessionID::legacyPrivateSessionID())
         setSessionID(SessionID::defaultSessionID());
     settings.setDeveloperExtrasEnabled(store.getBoolValueForKey(WebPreferencesKey::developerExtrasEnabledKey()));
-    settings.setJavaScriptExperimentsEnabled(store.getBoolValueForKey(WebPreferencesKey::javaScriptExperimentsEnabledKey()));
+    settings.setJavaScriptRuntimeFlags(RuntimeFlags(store.getUInt32ValueForKey(WebPreferencesKey::javaScriptRuntimeFlagsKey())));
     settings.setTextAreasAreResizable(store.getBoolValueForKey(WebPreferencesKey::textAreasAreResizableKey()));
     settings.setNeedsSiteSpecificQuirks(store.getBoolValueForKey(WebPreferencesKey::needsSiteSpecificQuirksKey()));
     settings.setJavaScriptCanOpenWindowsAutomatically(store.getBoolValueForKey(WebPreferencesKey::javaScriptCanOpenWindowsAutomaticallyKey()));
@@ -2816,7 +2748,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setImageControlsEnabled(store.getBoolValueForKey(WebPreferencesKey::imageControlsEnabledKey()));
 #endif
 
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     settings.setMediaPlaybackAllowsAirPlay(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackAllowsAirPlayKey()));
 #endif
 

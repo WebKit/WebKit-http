@@ -340,7 +340,6 @@ Heap::Heap(VM* vm, HeapType heapType)
 #endif
     , m_computingBacktrace(false)
 {
-    m_machineThreads = adoptRef(new MachineThreads(this));
     m_storageSpace.init();
     if (Options::verifyHeap())
         m_verifier = std::make_unique<HeapVerifier>(this, Options::numberOfGCCyclesToRecordForVerification());
@@ -348,11 +347,20 @@ Heap::Heap(VM* vm, HeapType heapType)
 
 Heap::~Heap()
 {
-    // We need to remove the main thread explicitly here because the main thread
-    // may not terminate for a while though the Heap (and VM) is being shut down.
-    m_machineThreads->removeCurrentThread();
 }
 
+MachineThreads& Heap::machineThreads()
+{
+    static std::once_flag initializeMachineThreadsOnceFlag;
+    static MachineThreads* machineThreads = nullptr;
+
+    std::call_once(initializeMachineThreadsOnceFlag, [] {
+        machineThreads = new MachineThreads();
+    });
+
+    return *machineThreads;
+}
+    
 bool Heap::isPagedOut(double deadline)
 {
     return m_objectSpace.isPagedOut(deadline) || m_storageSpace.isPagedOut(deadline);
@@ -591,7 +599,7 @@ void Heap::gatherStackRoots(ConservativeRoots& roots, void** dummy, MachineThrea
 {
     GCPHASE(GatherStackRoots);
     m_jitStubRoutines.clearMarks();
-    m_machineThreads->gatherConservativeRoots(roots, m_jitStubRoutines, m_codeBlocks, dummy, registers);
+    machineThreads().gatherConservativeRoots(roots, m_jitStubRoutines, m_codeBlocks, dummy, registers);
 }
 
 void Heap::gatherJSStackRoots(ConservativeRoots& roots)

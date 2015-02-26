@@ -302,6 +302,8 @@ AccessibilityRole AccessibilityNodeObject::determineAccessibilityRole()
             return SliderRole;
         if (input.isInputTypeHidden())
             return IgnoredRole;
+        if (input.isSearchField())
+            return SearchFieldRole;
         
 #if ENABLE(INPUT_TYPE_COLOR)
         const AtomicString& type = input.getAttribute(typeAttr);
@@ -403,6 +405,7 @@ bool AccessibilityNodeObject::canHaveChildren() const
     case ListBoxOptionRole:
     case ScrollBarRole:
     case ProgressIndicatorRole:
+    case SwitchRole:
         return false;
     default:
         return true;
@@ -484,12 +487,12 @@ bool AccessibilityNodeObject::isSearchField() const
     if (!node)
         return false;
 
+    if (roleValue() == SearchFieldRole)
+        return true;
+
     HTMLInputElement* inputElement = node->toInputElement();
     if (!inputElement)
         return false;
-
-    if (inputElement->isSearchField())
-        return true;
 
     // Some websites don't label their search fields as such. However, they will
     // use the word "search" in either the form or input type. This won't catch every case,
@@ -699,6 +702,7 @@ bool AccessibilityNodeObject::isChecked() const
     case MenuItemRole:
     case MenuItemCheckboxRole:
     case MenuItemRadioRole:
+    case SwitchRole:
         validRole = true;
         break;
     default:
@@ -1356,6 +1360,7 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
     case MenuItemCheckboxRole:
     case MenuItemRadioRole:
     case RadioButtonRole:
+    case SwitchRole:
     case TabRole:
     case ProgressIndicatorRole:
         useTextUnderElement = true;
@@ -1734,6 +1739,7 @@ String AccessibilityNodeObject::title() const
     case MenuItemCheckboxRole:
     case MenuItemRadioRole:
     case RadioButtonRole:
+    case SwitchRole:
     case TabRole:
         return textUnderElement();
     // SVGRoots should not use the text under itself as a title. That could include the text of objects like <text>.

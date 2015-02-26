@@ -197,7 +197,9 @@
                                 selection=overviewSelection}}
                         {{/if}}
                         </div>
-                        {{partial "chart-details"}}
+                        <div class="details-table-container">
+                            {{partial "chart-details"}}
+                        </div>
                     </div>
                 </div>
 
@@ -247,7 +249,6 @@
 
     <script type="text/x-handlebars" data-template-name="chart-details">
     {{#if details}}
-    <div class="details-table-container">
         <table class="details-table">
             <tbody class="bugs">
             {{#each details.bugTrackers}}
@@ -311,7 +312,6 @@
                 {{commits-viewer repository=repository revisionInfo=this caption=name}}
             {{/each}}
         </div>
-    </div>
     {{/if}}
     </script>
 
@@ -535,7 +535,7 @@
                     {{interactive-chart
                         chartData=pane.chartData
                         ranges=pane.analyticRanges
-                        domain=paneDomain
+                        domain=overviewDomain
                         interactive=true
                         chartPointRadius=2
                         currentItem=pane.hoveredOrSelectedItem
@@ -545,7 +545,23 @@
                         rangeRoute="analysisTask"}}
                 </div>
                 <div class="details">
-                    {{partial "chart-details"}}
+                    <div class="details-table-container">
+                        <table class="analysis-bugs">
+                            <tbody>
+                                {{#each bugTrackers}}
+                                    <tr>
+                                        <th>{{label}}</th>
+                                        <td>
+                                            <form {{action "associateBug" this editedBugNumber on="submit"}}>
+                                                {{input type=text value=editedBugNumber}}
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {{/each}}
+                            </tbody>
+                        </table>
+                        {{partial "chart-details"}}
+                    </div>
                 </div>
             </section>
         {{/if}}
@@ -591,11 +607,22 @@
                     </tbody>
                 {{/each}}
             </table>
+            <div class="reference-chart">
+                {{#if referenceChart}}
+                    {{interactive-chart
+                        chartData=referenceChart.data
+                        domain=overviewDomain
+                        chartPointRadius=2
+                        showYAxis=false
+                        enableSelection=false
+                        highlightedItems=referenceChart.highlightedItems}}
+                {{/if}}
+            </div>
         </section>
     </script>
 
     <script type="text/x-handlebars" data-template-name="testGroupRow">
-        {{#each revisions}}
+        {{#each revisionList}}
             <td>{{this}}</td>
         {{/each}}
         <td>
@@ -605,61 +632,40 @@
             {{formattedValue}}
         </td>
         <td>
-            {{#if buildNumber}}
-                 {{statusLabel}} / <a {{bind-attr href=url}}>Build {{buildNumber}}</a>
-            {{else}}
-                <a {{bind-attr href=url}}>{{statusLabel}}</a>
-            {{/if}}
+            <a {{bind-attr href=url title=buildLabel}}>{{statusLabel}}</a>
         </td>
     </script>
 
     <script type="text/x-handlebars" data-template-name="testGroupForm">
-    {{#if roots}}
         <form method="POST" {{action "createTestGroup" newTestGroupName repetitionCount on="submit"}}>
             <section class="analysis-group">
                 <h1>{{input name="name" value=newTestGroupName placeholder="Test group name" required=true type="text"}}</h1>
                 <table>
                     <thead>
                         <tr>
-                            <th>Root</th>
-                            {{#each testSets}}
-                                <th>
-                                    {{name}}
-                                    {{view Ember.Select
-                                        content=options
-                                        optionValuePath="content.value"
-                                        optionLabelPath="content.label"
-                                        selection=selection}}
-                                </th>
+                            <th>Configuration</th>
+                            {{#each configurations}}
+                                <th>{{this}}</th>
                             {{/each}}
                         </tr>
                     </thead>
                     <tbody>
-                        {{#each roots}}
+                        {{#each rootConfigurations}}
                             <tr>
                                 <th>{{name}}</th>
                                 {{#each sets}}
-                                    <td>{{view Ember.Select name=name content=revisions disabled=true
+                                    <td>{{view Ember.Select name=name content=options disabled=true
                                         optionValuePath="content.value" optionLabelPath="content.label"
                                         selection=selection}}</td>
                                 {{/each}}
                             </tr>
                         {{/each}}
                     </tbody>
-                    <tbody>
-                        <tr>
-                            <th>Number of runs</th>
-                            <td colspan=2>
-                                {{view Ember.Select content=possibleRepetitionCounts value=repetitionCount}}
-                            </td>
-                        </tr>
-                    </tbody>
                 </table>
-
+                <label>Number of runs {{view Ember.Select content=possibleRepetitionCounts value=repetitionCount}}</label>
                 <button type="submit">Start A/B testing</button>
             </section>
         </form>
-    {{/if}}
     </script>
 
 </head>

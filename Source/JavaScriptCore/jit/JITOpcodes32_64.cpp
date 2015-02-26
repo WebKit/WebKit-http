@@ -331,6 +331,24 @@ void JIT::emit_op_is_string(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
+void JIT::emit_op_is_object(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    int value = currentInstruction[2].u.operand;
+
+    emitLoad(value, regT1, regT0);
+    Jump isNotCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+
+    compare8(AboveOrEqual, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(ObjectType), regT0);
+    Jump done = jump();
+
+    isNotCell.link(this);
+    move(TrustedImm32(0), regT0);
+
+    done.link(this);
+    emitStoreBool(dst, regT0);
+}
+
 void JIT::emit_op_tear_off_arguments(Instruction* currentInstruction)
 {
     VirtualRegister arguments = VirtualRegister(currentInstruction[1].u.operand);
@@ -351,7 +369,7 @@ void JIT::emit_op_to_primitive(Instruction* currentInstruction)
     emitLoad(src, regT1, regT0);
 
     Jump isImm = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
-    addSlowCase(branchPtr(NotEqual, Address(regT0, JSCell::structureIDOffset()), TrustedImmPtr(m_vm->stringStructure.get())));
+    addSlowCase(emitJumpIfCellObject(regT0));
     isImm.link(this);
 
     if (dst != src)
@@ -624,12 +642,12 @@ void JIT::compileOpStrictEq(Instruction* currentInstruction, CompileOpStrictEqTy
     addSlowCase(branch32(NotEqual, regT1, regT3));
     addSlowCase(branch32(Below, regT1, TrustedImm32(JSValue::LowestTag)));
 
-    // Jump to a slow case if both are strings.
+    // Jump to a slow case if both are strings or symbols (non object).
     Jump notCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
-    Jump firstNotString = branchPtr(NotEqual, Address(regT0, JSCell::structureIDOffset()), TrustedImmPtr(m_vm->stringStructure.get()));
-    addSlowCase(branchPtr(Equal, Address(regT2, JSCell::structureIDOffset()), TrustedImmPtr(m_vm->stringStructure.get())));
+    Jump firstIsObject = emitJumpIfCellObject(regT0);
+    addSlowCase(emitJumpIfCellNotObject(regT2));
     notCell.link(this);
-    firstNotString.link(this);
+    firstIsObject.link(this);
 
     // Simply compare the payloads.
     if (type == OpStrictEq)
@@ -779,14 +797,14 @@ void JIT::emitSlow_op_to_number(Instruction* currentInstruction, Vector<SlowCase
 void JIT::emit_op_push_name_scope(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
-    emitLoad(currentInstruction[3].u.operand, regT1, regT0);
-    if (currentInstruction[5].u.operand == JSNameScope::CatchScope) {
-        callOperation(operationPushCatchScope, dst, &m_codeBlock->identifier(currentInstruction[2].u.operand), regT1, regT0, currentInstruction[4].u.operand);
+    emitLoad(currentInstruction[2].u.operand, regT1, regT0);
+    if (currentInstruction[4].u.operand == JSNameScope::CatchScope) {
+        callOperation(operationPushCatchScope, dst, jsCast<SymbolTable*>(getConstantOperand(currentInstruction[3].u.operand)), regT1, regT0);
         return;
     }
 
-    RELEASE_ASSERT(currentInstruction[5].u.operand == JSNameScope::FunctionNameScope);
-    callOperation(operationPushFunctionNameScope, dst, &m_codeBlock->identifier(currentInstruction[2].u.operand), regT1, regT0, currentInstruction[4].u.operand);
+    RELEASE_ASSERT(currentInstruction[4].u.operand == JSNameScope::FunctionNameScope);
+    callOperation(operationPushFunctionNameScope, dst, jsCast<SymbolTable*>(getConstantOperand(currentInstruction[3].u.operand)), regT1, regT0);
 }
 
 void JIT::emit_op_catch(Instruction* currentInstruction)

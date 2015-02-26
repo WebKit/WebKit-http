@@ -349,27 +349,41 @@ App.Pane = Ember.Object.extend({
         else if (!this._isValidId(metricId))
             this.set('failure', metricId ? 'Invalid metric id:' + metricId : 'Metric id was not specified');
         else {
-            var self = this;
+            var store = this.get('store');
+            var updateChartData = this._updateChartData.bind(this);
+            var handleErrors = this._handleFetchErrors.bind(this, platformId, metricId);
+            var useCache = true;
+            App.Manifest.fetchRunsWithPlatformAndMetric(store, platformId, metricId, null, useCache).then(function (result) {
+                    updateChartData(result);
+                    if (!result.shouldRefetch)
+                        return;
 
-            App.Manifest.fetchRunsWithPlatformAndMetric(this.get('store'), platformId, metricId).then(function (result) {
-                self.set('platform', result.platform);
-                self.set('metric', result.metric);
-                self.set('chartData', result.data);
-                self._updateMovingAverageAndEnvelope();
-            }, function (result) {
-                if (!result || typeof(result) === "string")
-                    self.set('failure', 'Failed to fetch the JSON with an error: ' + result);
-                else if (!result.platform)
-                    self.set('failure', 'Could not find the platform "' + platformId + '"');
-                else if (!result.metric)
-                    self.set('failure', 'Could not find the metric "' + metricId + '"');
-                else
-                    self.set('failure', 'An internal error');
-            });
-
+                    useCache = false;
+                    App.Manifest.fetchRunsWithPlatformAndMetric(store, platformId, metricId, null, useCache)
+                        .then(updateChartData, handleErrors);
+                }, handleErrors);
             this.fetchAnalyticRanges();
         }
     }.observes('platformId', 'metricId').on('init'),
+    _updateChartData: function (result)
+    {
+        this.set('platform', result.platform);
+        this.set('metric', result.metric);
+        this.set('chartData', result.data);
+        this._updateMovingAverageAndEnvelope();
+    },
+    _handleFetchErrors: function (platformId, metricId, result)
+    {
+        console.log(platformId, metricId, result)
+        if (!result || typeof(result) === "string")
+            this.set('failure', 'Failed to fetch the JSON with an error: ' + result);
+        else if (!result.platform)
+            this.set('failure', 'Could not find the platform "' + platformId + '"');
+        else if (!result.metric)
+            this.set('failure', 'Could not find the metric "' + metricId + '"');
+        else
+            this.set('failure', 'An internal error');
+    },
     fetchAnalyticRanges: function ()
     {
         var platformId = this.get('platformId');
@@ -979,7 +993,6 @@ App.AnalysisTaskController = Ember.Controller.extend({
     platform: Ember.computed.alias('model.platform'),
     metric: Ember.computed.alias('model.metric'),
     details: Ember.computed.alias('pane.details'),
-    testSets: [],
     roots: [],
     bugTrackers: [],
     possibleRepetitionCounts: [1, 2, 3, 4, 5, 6],
@@ -995,7 +1008,12 @@ App.AnalysisTaskController = Ember.Controller.extend({
             platformId: model.get('platform').get('id'),
             metricId: model.get('metric').get('id'),
         }));
-    }.observes('model').on('init'),
+
+        var self = this;
+        model.get('testGroups').then(function (groups) {
+            self.set('testGroupPanes', groups.map(function (group) { return App.TestGroupPane.create({content: group}); }));
+        });
+    }.observes('model', 'model.testGroups').on('init'),
     _fetchedManifest: function ()
     {
         var trackerIdToBugNumber = {};
@@ -1012,7 +1030,7 @@ App.AnalysisTaskController = Ember.Controller.extend({
             });
         }));
     },
-    paneDomain: function ()
+    _chartDataChanged: function ()
     {
         var pane = this.get('pane');
         if (!pane)
@@ -1046,44 +1064,20 @@ App.AnalysisTaskController = Ember.Controller.extend({
 
         var margin = (end.time - start.time) * 0.1;
         this.set('highlightedItems', highlightedItems);
+        this.set('overviewEndPoints', [start, end]);
         this.set('analysisPoints', formatedPoints);
 
-        return [start.time - margin, +end.time + margin];
-    }.property('pane.chartData', 'model', 'model'),
-    testSets: function ()
-    {
-        var analysisPoints = this.get('analysisPoints');
-        if (!analysisPoints)
-            return;
-        var pointOptions = [{value: ' ', label: 'None'}]
-            .concat(analysisPoints.map(function (point) { return {value: point.id, label: point.label}; }));
-        return [
-            Ember.Object.create({name: "A", options: pointOptions, selection: pointOptions[1]}),
-            Ember.Object.create({name: "B", options: pointOptions, selection: pointOptions[pointOptions.length - 1]}),
-        ];
-    }.property('analysisPoints'),
-    _rootChangedForTestSet: function ()
-    {
-        var sets = this.get('testSets');
-        var roots = this.get('roots');
-        if (!sets || !roots)
-            return;
+        var overviewDomain = [start.time - margin, +end.time + margin];
 
-        sets.forEach(function (testSet, setIndex) {
-            var currentSelection = testSet.get('selection');
-            if (currentSelection == testSet.get('previousSelection'))
-                return;
-            testSet.set('previousSelection', currentSelection);
-            var pointIndex = testSet.get('options').indexOf(currentSelection);
+        var testGroupPanes = this.get('testGroupPanes');
+        if (testGroupPanes) {
+            testGroupPanes.setEach('overviewPane', pane);
+            testGroupPanes.setEach('overviewDomain', overviewDomain);
+        }
 
-            roots.forEach(function (root) {
-                var set = root.sets[setIndex];
-                set.set('selection', set.revisions[pointIndex]);
-            });
-        });
-
-    }.observes('testSets.@each.selection'),
-    updateRoots: function ()
+        this.set('overviewDomain', overviewDomain);
+    }.observes('pane.chartData'),
+    updateRootConfigurations: function ()
     {
         var analysisPoints = this.get('analysisPoints');
         if (!analysisPoints)
@@ -1107,33 +1101,25 @@ App.AnalysisTaskController = Ember.Controller.extend({
             if (!triggerable)
                 return;
 
-            self.set('roots', triggerable.get('acceptedRepositories').map(function (repository) {
+            self.set('configurations', ['A', 'B']);
+            self.set('rootConfigurations', triggerable.get('acceptedRepositories').map(function (repository) {
                 var repositoryId = repository.get('id');
-                var revisions = [{value: ' ', label: 'None'}].concat(repositoryToRevisions[repositoryId]);
+                var options = [{value: ' ', label: 'None'}].concat(repositoryToRevisions[repositoryId]);
                 return Ember.Object.create({
+                    repository: repository,
                     name: repository.get('name'),
                     sets: [
                         Ember.Object.create({name: 'A[' + repositoryId + ']',
-                            revisions: revisions,
-                            selection: revisions[1]}),
+                            options: options,
+                            selection: options[1]}),
                         Ember.Object.create({name: 'B[' + repositoryId + ']',
-                            revisions: revisions,
-                            selection: revisions[revisions.length - 1]}),
+                            options: options,
+                            selection: options[options.length - 1]}),
                     ],
                 });
             }));
         });
     }.observes('analysisPoints'),
-    updateTestGroupPanes: function ()
-    {
-        var model = this.get('model');
-        if (!model)
-            return;
-        var self = this;
-        model.get('testGroups').then(function (groups) {
-            self.set('testGroupPanes', groups.map(function (group) { return App.TestGroupPane.create({content: group}); }));
-        });
-    }.observes('model'),
     actions: {
         associateBug: function (bugTracker, bugNumber)
         {
@@ -1148,11 +1134,12 @@ App.AnalysisTaskController = Ember.Controller.extend({
         createTestGroup: function (name, repetitionCount)
         {
             var roots = {};
-            this.get('roots').map(function (root) {
+            this.get('rootConfigurations').map(function (root) {
                 roots[root.get('name')] = root.get('sets').map(function (item) { return item.get('selection').value; });
             });
             App.TestGroup.create(this.get('model'), name, roots, repetitionCount).then(function () {
-                
+            }, function (error) {
+                alert('Failed to create a new test group:' + error);
             });
         },
         toggleShowRequestList: function (configuration)
@@ -1160,14 +1147,43 @@ App.AnalysisTaskController = Ember.Controller.extend({
             configuration.toggleProperty('showRequestList');
         }
     },
+    _updateRootsBySelectedPoints: function ()
+    {
+        var rootConfigurations = this.get('rootConfigurations');
+        var pane = this.get('pane');
+        if (!rootConfigurations || !pane)
+            return;
+
+        var rootSetPoints;
+        var selectedPoints = pane.get('selectedPoints');
+        if (selectedPoints && selectedPoints.length >= 2)
+            rootSetPoints = [selectedPoints[0], selectedPoints[selectedPoints.length - 1]];
+        else
+            rootSetPoints = this.get('overviewEndPoints');
+        if (!rootSetPoints)
+            return;
+
+        rootConfigurations.forEach(function (root) {
+            root.get('sets').forEach(function (set, setIndex) {
+                if (setIndex >= rootSetPoints.length)
+                    return;
+                var targetRevision = rootSetPoints[setIndex].measurement.revisionForRepository(root.get('repository').get('id'));
+                var selectedOption;
+                if (targetRevision)
+                    selectedOption = set.get('options').find(function (option) { return option.value == targetRevision; });
+                set.set('selection', selectedOption || sets[i].get('options')[0]);
+            });
+        });
+
+    }.observes('pane.selectedPoints'),
 });
 
 App.TestGroupPane = Ember.ObjectProxy.extend({
     _populate: function ()
     {
         var buildRequests = this.get('buildRequests');
-        var chartData = this.get('chartData');
-        if (!buildRequests || !chartData)
+        var testResults = this.get('testResults');
+        if (!buildRequests || !testResults)
             return [];
 
         var repositories = this._computeRepositoryList();
@@ -1188,7 +1204,41 @@ App.TestGroupPane = Ember.ObjectProxy.extend({
         range.min -= margin;
 
         this.set('configurations', configurations);
-    }.observes('chartData', 'buildRequests'),
+    }.observes('testResults', 'buildRequests'),
+    _updateReferenceChart: function ()
+    {
+        var configurations = this.get('configurations');
+        var chartData = this.get('overviewPane') ? this.get('overviewPane').get('chartData') : null;
+        if (!configurations || !chartData || this.get('referenceChart'))
+            return;
+
+        var currentTimeSeries = chartData.current;
+        if (!currentTimeSeries)
+            return;
+
+        var repositories = this.get('repositories');
+        var highlightedItems = {};
+        var failedToFindPoint = false;
+        configurations.forEach(function (config) {
+            var revisions = {};
+            config.get('rootSet').get('roots').forEach(function (root) {
+                revisions[root.get('repository').get('id')] = root.get('revision');
+            });
+            var point = currentTimeSeries.findPointByRevisions(revisions);
+            if (!point) {
+                failedToFindPoint = true;
+                return;
+            }
+            highlightedItems[point.measurement.id()] = true;
+        });
+        if (failedToFindPoint)
+            return;
+
+        this.set('referenceChart', {
+            data: chartData,
+            highlightedItems: highlightedItems,
+        });
+    }.observes('configurations', 'overviewPane.chartData'),
     _computeRepositoryList: function ()
     {
         var specifiedRepositories = new Ember.Set();
@@ -1198,9 +1248,9 @@ App.TestGroupPane = Ember.ObjectProxy.extend({
             });
         });
         var reportedRepositories = new Ember.Set();
-        var chartData = this.get('chartData');
+        var testResults = this.get('testResults');
         (this.get('buildRequests') || []).forEach(function (request) {
-            var point = chartData.current.findPointByBuild(request.get('build'));
+            var point = testResults.current.findPointByBuild(request.get('build'));
             if (!point)
                 return;
 
@@ -1228,19 +1278,19 @@ App.TestGroupPane = Ember.ObjectProxy.extend({
     _createConfigurationSummary: function (buildRequests, configLetter, range)
     {
         var repositories = this.get('repositories');
-        var chartData = this.get('chartData');
+        var testResults = this.get('testResults');
         var requests = buildRequests.map(function (originalRequest) {
-            var point = chartData.current.findPointByBuild(originalRequest.get('build'));
+            var point = testResults.current.findPointByBuild(originalRequest.get('build'));
             var revisionByRepositoryId = point ? point.measurement.formattedRevisions() : {};
             return Ember.ObjectProxy.create({
                 content: originalRequest,
-                revisions: repositories.map(function (repository, index) {
+                revisionList: repositories.map(function (repository, index) {
                     return (revisionByRepositoryId[repository.get('id')] || {label:null}).label;
                 }),
                 value: point ? point.value : null,
                 valueRange: range,
-                formattedValue: point ? chartData.formatWithUnit(point.value) : null,
-                buildNumber: point ? point.measurement.buildNumber() : null,
+                formattedValue: point ? testResults.formatWithUnit(point.value) : null,
+                buildLabel: point ? 'Build ' + point.measurement.buildNumber() : null,
             });
         });
 
@@ -1248,15 +1298,15 @@ App.TestGroupPane = Ember.ObjectProxy.extend({
         var summaryRevisions = repositories.map(function (repository, index) {
             var revision = rootSet ? rootSet.revisionForRepository(repository) : null;
             if (!revision)
-                return requests[0].get('revisions')[index];
+                return requests[0].get('revisionList')[index];
             return Measurement.formatRevisionRange(revision).label;
         });
 
         requests.forEach(function (request) {
-            var revisions = request.get('revisions');
+            var revisionList = request.get('revisionList');
             repositories.forEach(function (repository, index) {
-                if (revisions[index] == summaryRevisions[index])
-                    revisions[index] = null;
+                if (revisionList[index] == summaryRevisions[index])
+                    revisionList[index] = null;
             });
         });
 
@@ -1275,15 +1325,15 @@ App.TestGroupPane = Ember.ObjectProxy.extend({
         var summary = Ember.Object.create({
             isAverage: true,
             configLetter: configLetter,
-            revisions: summaryRevisions,
-            formattedValue: isNaN(mean) ? null : chartData.formatWithDeltaAndUnit(mean, ciDelta),
+            revisionList: summaryRevisions,
+            formattedValue: isNaN(mean) ? null : testResults.formatWithDeltaAndUnit(mean, ciDelta),
             value: mean,
             confidenceIntervalDelta: ciDelta,
             valueRange: range,
             statusLabel: App.BuildRequest.aggregateStatuses(requests),
         });
 
-        return Ember.Object.create({summary: summary, items: requests});
+        return Ember.Object.create({summary: summary, items: requests, rootSet: rootSet});
     },
 });
 

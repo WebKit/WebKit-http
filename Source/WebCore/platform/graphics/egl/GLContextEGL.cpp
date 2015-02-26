@@ -110,6 +110,8 @@ static bool getEGLConfig(EGLConfig* config, GLContextEGL::EGLSurfaceType surface
         EGL_STENCIL_SIZE, 8,
         EGL_ALPHA_SIZE, 8,
         EGL_SURFACE_TYPE, EGL_NONE,
+        EGL_SAMPLE_BUFFERS, 1,
+        EGL_SAMPLES, 4,
         EGL_NONE
     };
 

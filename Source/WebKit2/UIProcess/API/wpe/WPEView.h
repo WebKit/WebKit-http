@@ -26,6 +26,7 @@
 #ifndef WPEView_h
 #define WPEView_h
 
+#include "APIObject.h"
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
 #include <memory>
@@ -38,7 +39,7 @@ class WebProcessPool;
 
 namespace WPE {
 
-class View {
+class View : public API::ObjectImpl<API::Object::Type::View> {
 public:
     static View* create(WebKit::WebProcessPool* pool, WebKit::WebPageGroup* pageGroup)
     {

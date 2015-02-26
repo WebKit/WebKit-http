@@ -315,9 +315,6 @@ webkit.org/b/99029 vibration [ Failure ]
 # DumpRenderTree code to enable Java is currently a no-op
 webkit.org/b/99031 java [ Skip ]
 
-# Directory upload is not enabled.
-webkit.org/b/99032 fast/forms/file/input-file-directory-upload.html [ Timeout ]
-
 # Pointer Lock is not implemented.
 webkit.org/b/99036 pointer-lock [ Skip ]
 # As well as testing fullscreen functionality, these tests also utilize the pointer lock feature.
@@ -572,6 +569,34 @@ webkit.org/b/141705 media/video-fullscreeen-only-controls.html [ Failure ]
 webkit.org/b/141706 fast/forms/color/input-appearance-color.html [ Failure ]
 webkit.org/b/141709 http/tests/security/XFrameOptions/x-frame-options-deny-multiple-clients.html [ Failure ]
 webkit.org/b/141709 http/tests/security/cross-frame-access-callback-explicit-domain-ALLOW.html [ Failure ]
+
+webkit.org/b/141831 svg/animations/animate-text-nested-transforms.html [ Failure ]
+webkit.org/b/98653  svg/text/lengthAdjust-text-metrics.html [ Failure ]
+webkit.org/b/141835 media/video-controls-no-scripting.html [ Failure ]
+
+webkit.org/b/141837 fast/borders/border-painting-correctness-dashed.html [ ImageOnlyFailure ]
+webkit.org/b/141837 fast/borders/border-painting-correctness-dotted.html [ ImageOnlyFailure ]
+webkit.org/b/141838 fast/borders/0px-borders.html [ ImageOnlyFailure ]
+
+webkit.org/b/141458 imported/mozilla/svg/blend-color-burn.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-color-dodge.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-darken.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-difference.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-exclusion.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-lighten.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-multiply.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-overlay.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/blend-screen.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01a.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01b.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01c.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/symbol-01.svg [ ImageOnlyFailure ]
+
+webkit.org/b/141961 fast/multicol/span/span-as-immediate-columns-child.html [ Failure ]
+webkit.org/b/141962 http/tests/notifications/legacy/notification-request-permission-then-navigate.html [ Failure ]
+webkit.org/b/141591 inspector-protocol/debugger/breakpoint-eval-with-exception.html [ Failure ]
+
+webkit.org/b/118126 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
 
 
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1202,10 +1227,6 @@ webkit.org/b/130411 editing/spelling/spellcheck-paste-continuous-disabled.html [
 
 Bug(GTK) plugins/reloadplugins-and-pages.html [ Timeout ]
 
-Bug(GTK) http/tests/local/blob/send-hybrid-blob.html [ Timeout ]
-
-Bug(GTK) fast/forms/file/selected-files-from-history-state.html [ Timeout ]
-
 Bug(GTK) fast/forms/select/menulist-popup-crash.html [ Timeout ]
 
 Bug(GTK) fast/forms/select/optgroup-clicking.html [ Timeout ]
@@ -1330,7 +1351,6 @@ webkit.org/b/63706 fast/events/selectstart-by-drag.html [ Failure ]
 webkit.org/b/63706 fast/events/standalone-image-drag-to-editable.html [ Failure Timeout ]
 webkit.org/b/63706 fast/forms/drag-into-textarea.html [ Failure ]
 webkit.org/b/63706 fast/forms/drag-out-of-textarea.html [ Failure ]
-webkit.org/b/63706 fast/forms/file/input-file-write-files.html [ Failure Timeout ]
 webkit.org/b/63706 fast/forms/range/slider-delete-while-dragging-thumb.html [ Failure ]
 webkit.org/b/63706 fast/lists/drag-into-marker.html [ Failure ]
 webkit.org/b/63706 http/tests/security/resources/drag-drop-allowed.html [ Skip ]
@@ -1356,10 +1376,6 @@ webkit.org/b/78290 fast/dom/MutationObserver/end-of-task-delivery.html [ Failure
 # Implement testRunner.setUseDeferredFrameLoading
 # http://webkit.org/b/93980
 webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Failure ]
-
-# Implement testRunner.setStorageDatabaseIdleInterval
-# http://webkit.org/b/93982
-webkit.org/b/93982 storage/domstorage/storage-close-database-on-idle.html [ Timeout ]
 
 # WebKitTestRunner needs a more-complete implementation of eventSender
 # https://bugs.webkit.org/show_bug.cgi?id=42194
@@ -1422,7 +1438,6 @@ webkit.org/b/39160 security/block-test-no-port.html [ Failure ]
 Bug(GTK) editing/selection/5136696.html [ Failure ]
 Bug(GTK) editing/selection/inactive-selection.html [ Failure ]
 Bug(GTK) fast/css/disabled-author-styles.html [ Failure ]
-Bug(GTK) fast/dom/Window/window-postmessage-clone.html [ Failure Timeout ]
 Bug(GTK) fast/events/backspace-navigates-back.html [ Failure ]
 Bug(GTK) fast/events/keydown-leftright-keys.html [ Failure ]
 Bug(GTK) fast/events/keydown-numpad-keys.html [ Failure ]
@@ -1742,9 +1757,6 @@ webkit.org/b/105693 http/tests/multipart/multipart-wait-before-boundary.html [ S
 # Does not render the rectangle as it should, even though the multiple parts seem to work
 webkit.org/b/54251 http/tests/multipart/invalid-image-data.html [ Failure ]
 
-# Fails because it does not throw a couple of expected exceptions
-Bug(GTK) http/tests/local/fileapi/send-sliced-dragged-file.html [ Failure Timeout ]
-
 webkit.org/b/72248 editing/spelling/spelling-unified-emulation.html [ Failure ]
 
 webkit.org/b/62204 svg/custom/relative-sized-use-without-attributes-on-symbol.xhtml [ Failure ]
@@ -1912,7 +1924,6 @@ webkit.org/b/105296 webaudio/delaynode-scheduling.html [ Failure ]
 
 webkit.org/b/105299 webaudio/javascriptaudionode.html [ Failure ]
 
-webkit.org/b/115437 css3/flexbox/auto-margins.html [ ImageOnlyFailure ]
 webkit.org/b/115437 fast/css/sticky/sticky-writing-mode-vertical-lr.html [ ImageOnlyFailure ]
 webkit.org/b/115437 fast/regions/region-content-flown-into-region.html [ ImageOnlyFailure ]
 
@@ -1929,8 +1940,6 @@ webkit.org/b/116806 fast/css/text-overflow-ellipsis-behind-floats.html [ ImageOn
 webkit.org/b/117581 accessibility/text-role-with-aria-hidden-inside.html [ Failure ]
 
 webkit.org/b/117582 fast/flexbox/clear-overflow-before-scroll-update.html [ Failure ]
-
-webkit.org/b/118126 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailure ]
 
 webkit.org/b/118220 http/tests/cache/partitioned-cache.html [ Failure ]
 webkit.org/b/118220 http/tests/cache/partitioned-cache-iframe.html [ Failure ]
@@ -2242,7 +2251,6 @@ webkit.org/b/136159 fast/borders/border-painting-dotted-at-all.html [ ImageOnlyF
 webkit.org/b/136159 fast/borders/hidpi-border-painting-groove.html [ ImageOnlyFailure ]
 webkit.org/b/136159 fast/borders/hidpi-border-painting-ridge.html [ ImageOnlyFailure ]
 
-webkit.org/b/136537 css3/flexbox/flex-rounding.html [ Failure ]
 webkit.org/b/136537 fast/sub-pixel/client-width-height-snapping.html [ Failure ]
 
 webkit.org/b/136672 fast/selectors/read-only-read-write-input-basics.html [ Failure ]
@@ -2255,7 +2263,6 @@ webkit.org/b/137109 accessibility/legend-children-are-visible.html [ Failure ]
 webkit.org/b/137695 media/video-controls-audiotracks-trackmenu.html [ Failure ]
 webkit.org/b/138074 media/video-volume-slider-drag.html [ Failure ]
 
-webkit.org/b/138072 http/tests/xmlhttprequest/cross-origin-redirect-responseURL.html [ Failure ]
 webkit.org/b/138073 http/tests/media/hls/hls-audio-tracks.html [ Failure ]
 
 # Font is clipped incorrectly

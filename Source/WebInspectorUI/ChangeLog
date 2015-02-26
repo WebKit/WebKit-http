@@ -1,3 +1,896 @@
+2015-02-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Regex/Error output in Object Tree and Previews
+        https://bugs.webkit.org/show_bug.cgi?id=142010
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView):
+        (WebInspector.ObjectPreviewView.prototype._initTitleElement):
+        Since some object types may be formatted as simple values, ensure they get
+        the formatted style even in the title view.
+
+        (WebInspector.ObjectPreviewView.prototype._appendPreview):
+        Those object types that can be formatted as simple values should skip
+        to the value formatting phase.
+
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        Do not show property previews for error objects. Always assume lossy
+        so that it can be expanded.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView):
+        Make a similiar improvement for ObjectTree titles when previews are
+        unavailable. This will make dir(value) show a stylized value in the
+        title of the Object Tree.
+
+2015-02-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve PropertyPath display strings for getters / values
+        https://bugs.webkit.org/show_bug.cgi?id=142008
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        (doubleQuotedString):
+        Helper to double quote a string and escape double quotes with-in it.
+
+        * UserInterface/Models/PropertyPath.js:
+        (WebInspector.PropertyPath.prototype.get reducedPath):
+        Compute the path eliminating unnecessary __proto__s. Note we don't
+        property handle the case where a .__proto__.x is override earlier
+        by a .x, but that case is rare.
+
+        (WebInspector.PropertyPath.prototype.displayPath):
+        Helper for choosing fullPath or reducedPath display strings.
+
+        (WebInspector.PropertyPath.prototype.appendPropertyName):
+        (WebInspector.PropertyPath.prototype.appendGetterPropertyName):
+        (WebInspector.PropertyPath.prototype.appendSetterPropertyName):
+        (WebInspector.PropertyPath.prototype.appendPropertyDescriptor):
+        When appending a descriptor, specify if it is for a getter/setter or value.
+        For getters / setters the actual function can be directly fetched via
+        __lookupGetter__/__lookupSetter__. Continue to use the property name for values.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForTypesAndValue):
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._propertyPathType):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._resolvedValuePropertyPath):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._thisPropertyPath):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype):
+
+2015-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Eliminate console-formatted-* class names in favor of formatted-*
+        https://bugs.webkit.org/show_bug.cgi?id=141948
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForNode):
+        Helper for formatting a node as a DOMTreeOutline.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameter):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsString):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsNode):
+        (WebInspector.ConsoleMessageImpl.prototype.appendUndefined):
+        (WebInspector.ConsoleMessageImpl.prototype._printArray):
+        (WebInspector.ConsoleMessageImpl.prototype.): Deleted.
+        * UserInterface/Views/LogContentView.css:
+        (.console-user-command-result):
+        (.console-formatted-object): Deleted.
+        (.console-object-preview): Deleted.
+        (.expanded .console-object-preview): Deleted.
+        (.console-object-preview .name): Deleted.
+        (.expanded .console-object-preview > .console-object-preview-body): Deleted.
+        (.console-object-preview > .console-object-preview-name.console-object-preview-name-Object): Deleted.
+        (.console-object-preview-body .console-object-preview-name.console-object-preview-name-Object): Deleted.
+        (.expanded .console-object-preview > .console-object-preview-name.console-object-preview-name-Object): Deleted.
+        (.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap): Deleted.
+        (:matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .section): Deleted.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._leftArrowWasPressed):
+        (WebInspector.LogContentView.prototype._rightArrowWasPressed):
+        Add FIXMEs since this will no longer work with ObjectTree.
+
+        * UserInterface/Views/ObjectPreviewView.css:
+        (.object-preview):
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree):
+        Copy over the font styles from console-formatted-object.
+
+        * UserInterface/Views/ObjectPropertiesSection.js:
+        (WebInspector.ObjectPropertyTreeElement.prototype.update):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForFunction.didGetDetails):
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForFunction):
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForString):
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForRegExp):
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForNumber):
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForBoolean):
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForNull):
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForUndefined):
+        Convert to formatted value class names.
+
+2015-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make Getter/Setter RemoteObject property and ObjectPreview handling consistent
+        https://bugs.webkit.org/show_bug.cgi?id=141587
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CallFrame.js:
+        (WebInspector.CallFrame.prototype.collectScopeChainVariableNames):
+        * UserInterface/Models/PropertyDescriptor.js:
+        (WebInspector.PropertyDescriptor.prototype.get nativeGetter):
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.prototype.getOwnPropertyDescriptors):
+        (WebInspector.RemoteObject.prototype.getAllPropertyDescriptors):
+        (WebInspector.RemoteObject.prototype.getDisplayablePropertyDescriptors):
+        (WebInspector.RemoteObject.prototype._getPropertyDescriptors):
+        (WebInspector.RemoteObject.prototype.if):
+        (WebInspector.RemoteObject.prototype.deprecatedGetOwnProperties):
+        (WebInspector.RemoteObject.prototype.deprecatedGetAllProperties):
+        (WebInspector.RemoteObject.prototype._deprecatedGetProperties):
+        (WebInspector.RemoteObject.prototype.getOwnAndGetterPropertyDescriptors): Deleted.
+        (WebInspector.RemoteObject.prototype.callback): Deleted.
+        (WebInspector.RemoteObject.prototype.getOwnProperties): Deleted.
+        (WebInspector.RemoteObject.prototype.getOwnAndGetterProperties): Deleted.
+        (WebInspector.RemoteObject.prototype.getAllProperties): Deleted.
+        (WebInspector.RemoteObject.prototype.set else): Deleted.
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsArray):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshProperties.nodePrototypesReady):
+        * UserInterface/Views/ObjectPropertiesSection.js:
+        (WebInspector.ObjectPropertiesSection.prototype.update):
+        (WebInspector.ObjectPropertyTreeElement.prototype.onpopulate):
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype):
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.prototype.update):
+
+2015-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: New Object Tree View UI
+        https://bugs.webkit.org/show_bug.cgi?id=141932
+
+        Reviewed by Timothy Hatcher.
+
+        Part 1: Majority of the UI.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Images/Eye.svg: Added.
+        * UserInterface/Images/TypeBoolean.svg: Added.
+        * UserInterface/Images/TypeNull.svg: Added.
+        * UserInterface/Images/TypeNumber.svg: Added.
+        * UserInterface/Images/TypeObject.svg: Added.
+        * UserInterface/Images/TypeRegex.svg: Added.
+        * UserInterface/Images/TypeString.svg: Added.
+        * UserInterface/Images/TypeSymbol.svg: Added.
+        * UserInterface/Images/TypeUndefined.svg: Added.
+        * UserInterface/Main.html:
+        Miscellaneous.
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-boolean):
+        Give booleans a light purple color.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForTypesAndValue):
+        Previously we were truncating function value logging in the console. E.g.
+          js> multiLineFunction
+          <-  function multiLineFunction() {
+        No longer truncate so we display the full string.
+
+        * UserInterface/Models/PropertyPath.js: Added.
+        (WebInspector.PropertyPath):
+        (WebInspector.PropertyPath.prototype.get object):
+        (WebInspector.PropertyPath.prototype.get parent):
+        (WebInspector.PropertyPath.prototype.get isPrototype):
+        (WebInspector.PropertyPath.prototype.get rootObject):
+        (WebInspector.PropertyPath.prototype.get lastNonPrototypeObject):
+        (WebInspector.PropertyPath.prototype.get pathComponent):
+        (WebInspector.PropertyPath.prototype.get fullPath):
+        (WebInspector.PropertyPath.prototype.isRoot):
+        (WebInspector.PropertyPath.prototype.isPathComponentImpossible):
+        (WebInspector.PropertyPath.prototype.isFullPathImpossible):
+        (WebInspector.PropertyPath.prototype.appendPropertyName):
+        (WebInspector.PropertyPath.prototype.appendPropertySymbol):
+        (WebInspector.PropertyPath.prototype.appendInternalPropertyName):
+        (WebInspector.PropertyPath.prototype.appendArrayIndex):
+        (WebInspector.PropertyPath.prototype.appendCollectionIndex):
+        (WebInspector.PropertyPath.prototype.appendPropertyDescriptor):
+        (WebInspector.PropertyPath.prototype._canPropertyNameBeDotAccess):
+        PropertyPaths are a linked list of remote object / patch component pairs.
+        For a property like "foo['property 1'].__proto__.baz" we will have a PropertyPath
+        chain with the RemoteObject for each component. This allows us to accurately
+        select the RemoteObject on which we should invoke a getter. It also allows
+        us to display the property path string from the root object, if possible.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.callFunction):
+        (WebInspector.RemoteObject.prototype.backendInvokeGetter):
+        (WebInspector.RemoteObject.prototype.invokeGetter):
+        Provide a way to invoke a getter function on a remote object if we
+        have a reference to the getter function. At the same time, improve
+        the mostly unused callFunction API to automatically convert
+        RemoteObjects / values to their Runtime.CallArgument format.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css: Added.
+        (.object-tree-property):
+        (.object-tree-property > .disclosure-button):
+        (.object-tree-property.parent > .disclosure-button):
+        (.object-tree-property.parent.expanded > .disclosure-button):
+        (.object-tree-property > .titles):
+        Focused styles for the ObjectTree property GeneralTreeElements.
+        Reuse navigation sidebar disclosure-triangles.
+
+        (.object-tree-property > .icon):
+        (.object-tree-property.boolean > .icon):
+        (.object-tree-property.function > .icon):
+        (.object-tree-property.number > .icon):
+        (.object-tree-property.object > .icon):
+        (.object-tree-property.object.null > .icon):
+        (.object-tree-property.object.node > .icon):
+        (.object-tree-property.regex > .icon):
+        (.object-tree-property.string > .icon):
+        (.object-tree-property.symbol > .icon):
+        (.object-tree-property.undefined > .icon):
+        Use different icons for different object types. Special case
+        "accessor" to be undefined.
+
+        (.object-tree-property .prototype-name):
+        (.object-tree-property .property-name.not-enumerable):
+        Style property names in sans-serif font.
+        Give non-enumerable properties a slightly transparent look.
+
+        (.object-tree-property.prototype-property):
+        (.object-tree-property.prototype-property > .icon):
+        (.object-tree-property.prototype-property + ol):
+        Special styles for prototype properties and their children.
+
+        (.object-tree-property .getter):
+        (.object-tree-property .getter:hover):
+        (.object-tree-property .read-only):
+        Styles for clickable getter button and non-interactive read-only indicator.
+
+        (.object-tree-property :matches(.formatted-string, .formatted-regexp)):
+        Do not allow wrapping for values that previously allowed wrapping.
+
+        (.object-tree-property .value.error):
+        If getting a value resulted in an error, display that error in red.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement):
+        Extend from GeneralTreeElement and set up class names on the root <li> object.
+
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.onattach): Deleted.
+        No longer needed by using GeneralTreeElement.
+
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.onexpand):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.oncollapse):
+        Expand / collapse an associated ObjectPreview if we have one.
+
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._resolvedValue):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._resolvedValuePropertyPath):
+        This PropertyTreeElement may be displaying for a value, or a getter that has
+        gotten a value. Refer to this as the "resolvedValue".
+
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._thisPropertyPath):
+        A PropertyPath leaf used for tooltips.
+
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateHasChildren):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTooltips):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitleAndIcon):
+        Helpers for updating small parts of the UI. When a getter is invoked,
+        we need to update the entire UI of this TreeElement.
+
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._titleFragment):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitle): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitlePropertyStyle): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitleAPIStyle): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitlePrototype):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitlePropertyStyle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitleAPIStyle):
+        Create the UI for the mainTitle of this PropertyTreeElement.
+        
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createInteractiveGetterElement):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createReadOnlyIconElement):
+        Helpers for creating the small components of the title UI.
+
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._alwaysDisplayAsProperty):
+        Establish when a property should still be displayed as a "property" even when in API mode.
+        For example a value property on a prototype, should still display as an expandable property.
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree > :matches(.title, .object-preview)::before):
+        (.object-tree:not(.lossless-preview) > :matches(.title, .object-preview)):
+        (.object-tree.expanded > :matches(.title, .object-preview)::before):
+        (.object-tree .object-tree-outline):
+        (.object-tree-outline ol):
+        (.object-tree-outline li .empty-message):
+        (:matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .object-tree-outline):
+        (.object-tree > .title): Deleted.
+        (.object-tree-outline): Deleted.
+        (.object-tree-outline li): Deleted.
+        (.object-tree-outline li.parent): Deleted.
+        (.object-tree-outline li.parent::before): Deleted.
+        (.object-tree-outline li.parent.expanded::before): Deleted.
+        (.object-tree-property .name): Deleted.
+        (.object-tree-property .name.not-enumerable): Deleted.
+        (.object-tree-property .value.error): Deleted.
+        (.console-group-messages .object-tree:not(.lossless-preview)): Deleted.
+        (.console-group-messages .object-tree:not(.lossless-preview) > :matches(.title, .object-preview)): Deleted.
+        (.console-group-messages .object-tree:not(.lossless-preview) > :matches(.title, .object-preview)::before): Deleted.
+        (.console-group-messages :matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .object-tree): Deleted.
+        (.console-group-messages :matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .object-tree-outline): Deleted.
+        Move most PropertyTreeElement specific styles into ObjectPropertyTreeElement.css.
+        Plenty of console specific files were eliminated.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.prototype.update):
+        (WebInspector.ObjectTreeView.prototype._updateProperties):
+
+
+        Part 2: Provide better parameter lists for native functions.
+
+        When expanding an object's prototype chain, with authored code
+        you will accurately see parameter lists for user authored functions
+        because we can get this by parsing Function.prototype.toString.
+        For native code, we don't get any parameter information. In such cases
+        we can detect we are a native function, and provide our own strings.
+
+        This fills in most of the JavaScript built-ins and some DOM
+        functions, however we should autogenerate the rest of the DOM.
+
+        * UserInterface/Base/Utilities.js:
+        (isFunctionStringNativeCode):
+        Helper to check if a function is native or not based on its string.
+
+        * UserInterface/Main.html:
+        * UserInterface/Models/NativeFunctionParameters.js: Added.
+        Dictionary of parameter lists for native constructor functions
+        and prototype functions.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._functionPropertyString):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._functionParameterString):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype):
+        When we have a native function, try to provide a better parameter string.
+
+
+        Part 3: Better handle errors when invoking getters.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.callFunction):
+        (WebInspector.RemoteObject.prototype.invokeGetter):
+        Pass the error, wasThrown, and result through to the caller so they can
+        act on all the information possible. Provide encapsulation though
+        and auto-convert the result to a RemoteObject for the callback.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshProperties.nodeResolved):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshProperties.nodePrototypesReady):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._createTooltipForNode.setTooltip):
+        (WebInspector.DOMTreeElement.prototype._createTooltipForNode.resolvedNode):
+        (WebInspector.DOMTreeElement.prototype._createTooltipForNode):
+        Update current users of callFunctionOn for the new callback parameters.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property.had-error > .icon):
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateHasChildren):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitleAndIcon):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitlePropertyStyle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createInteractiveGetterElement.):
+        Better style getters with errors.
+
+2015-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Do not show "{}" after Date description in Object Previews
+        https://bugs.webkit.org/show_bug.cgi?id=141898
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        Only show "{...}" section for Date objects that have user
+        defined properties. Otherwise, Dates do not have properties.
+
+2015-02-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused console-object-preview styles - replaced by ObjectPreviewView
+        https://bugs.webkit.org/show_bug.cgi?id=141945
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-object-preview): Deleted.
+        (.expanded .console-object-preview): Deleted.
+        (.console-object-preview .name): Deleted.
+        (.expanded .console-object-preview > .console-object-preview-body): Deleted.
+        (.console-object-preview > .console-object-preview-name.console-object-preview-name-Object): Deleted.
+        (.console-object-preview-body .console-object-preview-name.console-object-preview-name-Object): Deleted.
+        (.expanded .console-object-preview > .console-object-preview-name.console-object-preview-name-Object): Deleted.
+
+2015-02-23  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: BasicBlockAnnotator ranges should be inclusive of both the start and end offset
+        https://bugs.webkit.org/show_bug.cgi?id=141334
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.addStyleToTextRange):
+
+2015-02-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Lazily Create GeneralTreeElement Status Elements
+        https://bugs.webkit.org/show_bug.cgi?id=141873
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.set status):
+        (WebInspector.GeneralTreeElement.prototype.onattach):
+        (WebInspector.GeneralTreeElement.prototype._createElementsIfNeeded):
+        (WebInspector.GeneralTreeElement.prototype._updateStatusElement):
+        Lazily create and attach the status element container if
+        "this.status" is actually used by a GeneralTreeElement subclass.
+
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype._updateStatus):
+        Set to the empty string instead of null to avoid inadvertently
+        creating status elements for no reason.
+
+2015-02-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Give ObjectPreviewView a showTitle/showPreview toggle
+        https://bugs.webkit.org/show_bug.cgi?id=141874
+
+        Reviewed by Timothy Hatcher.
+
+        Refactor ObjectTree/ObjectPreview a bit to make it easier
+        to use expanding/collapsing previews in other places.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView):
+        (WebInspector.ObjectPreviewView.prototype.showTitle):
+        (WebInspector.ObjectPreviewView.prototype.showPreview):
+        Maintain both a titleElement and previewElement. Show only
+        one at a time based on showTitle/showPreview APIs.
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree.expanded .object-preview):
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView):
+        (WebInspector.ObjectTreeView.prototype.expand):
+        (WebInspector.ObjectTreeView.prototype.collapse):
+        If we have a preview, let PreviewView handle toggling
+        between a title and preview display.
+
+2015-02-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make Console UI icons / lines slightly larger
+        https://bugs.webkit.org/show_bug.cgi?id=141876
+
+        Reviewed by Timothy Hatcher.
+
+        In preparation for a new ObjectTree design with larger icons,
+        increase the size of existing output in the Console / Log
+        so they don't look so small in comparison. This:
+
+          - bumps minimum height of lines from 16px to 21px
+          - 10x10 icons to be 12x12
+          - recenters icons to match console prompt
+          - realigns icons with console log / object output
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-user-command-result.console-log-level::before):
+        (.console-message, .console-user-command):
+        (.console-item::before):
+        (.console-user-command::before):
+        (:matches(.console-warning-level, .console-error-level, .console-log-level).console-message):
+        (:matches(.console-warning-level, .console-error-level, .console-log-level)::before):
+        (.outline-disclosure li):
+        (.outline-disclosure .expanded li):
+        Fix a case breaking single-line message height.
+        Only add padding to expanded trees, not collapsed trees.
+
+        * UserInterface/Views/QuickConsole.css:
+        (.quick-console > .console-prompt::before):
+
+2015-02-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Generate Previews more often for RemoteObject interaction
+        https://bugs.webkit.org/show_bug.cgi?id=141875
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/PropertyDescriptor.js:
+        (WebInspector.PropertyDescriptor.fromPayload):
+        Fix InternalPropertyDescriptor ingestion. There was no ".internal"
+        property on these objects, so take a flag.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype._getPropertyDescriptors):
+        Fix InternalPropertyDescriptor ingestion by specifying during
+        importing the internal properties. Also, get previews.
+
+        (WebInspector.RemoteObject.prototype.callFunction):
+        Always get previews when using callFunctionOn.
+
+2015-02-20  Ronald Jett  <rjett@apple.com>
+
+        Web Inspector: Add a setting for clearing the console on page reload
+        https://bugs.webkit.org/show_bug.cgi?id=134414
+
+        Reviewed by Timothy Hatcher.
+
+        Created a new setting "clear-log-on-reload", which defaults to true.
+        Users can toggle this setting with an item added to the console's context menu. 
+        When enabled, the console will clear on page reload. When disabled, the console
+        content will remain during page reloads. 
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype._sessionStarted):
+        (WebInspector.LogContentView.prototype._handleContextMenuEvent):
+        (WebInspector.LogContentView.prototype._toggleClearLogOnReloadSetting):
+
+2015-02-19  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: merge in upstream Esprima to support parsing more of ES6
+        https://bugs.webkit.org/show_bug.cgi?id=141215
+
+        Reviewed by Timothy Hatcher.
+
+        This patch merges in a new esprima that has some ES6 support.
+        Specifically, the ES6 support ScriptSyntaxTree now has is:
+        - ForOf loops
+        - Object destructuring
+        - Array destructuring
+
+        ScriptSyntaxTree now uses Symbols for identifying AST node types
+        instead of strings. This will prevent any direct usage of strings 
+        for node types instead of a direct property access off the 
+        ScriptSyntaxTree constructor.
+
+        This patch also does some gardening work: 
+        - TypeTokenAnnotator only walks over the incoming type information
+          data once to be more efficient. 
+        - TypeTokenView is now smarter about updating its associated DOM node
+          only if its display name has changed.
+
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WebInspector.TypeTokenAnnotator.prototype._insertTypeTokensForEachNode):
+        * UserInterface/External/Esprima/esprima.js:
+        (.):
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype.gatherIdentifiersInVariableDeclaration):
+        (WebInspector.ScriptSyntaxTree.prototype._recurse):
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        * UserInterface/Views/TypeTokenView.js:
+        (WebInspector.TypeTokenView.prototype.update):
+
+2015-02-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use of Array.from for NodeList/Arguments to Array conversion
+        https://bugs.webkit.org/show_bug.cgi?id=141819
+
+        Reviewed by Timothy Hatcher.
+
+        Array.from is clearer than Array.prototype.slice.call(arrayLike).
+
+        * UserInterface/Base/Test.js:
+        (.console.logType):
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Command.prototype.promise):
+        (InspectorBackend.Command.prototype._invokeWithArguments):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._allMessages):
+
+2015-02-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Follow-up fix to r180371. formatParameterAsValue expects full object, not just a description.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameter):
+
+2015-02-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Introduce FormattedValue helpers and use them in Console/ObjectTree
+        https://bugs.webkit.org/show_bug.cgi?id=141812
+
+        Reviewed by Timothy Hatcher.
+
+        There were a few different ways to get styled values. Try to consolidate them
+        all in FormattedValue. That is also a convenient place to have the styles.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatMessage):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameter):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsValue):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsString):
+
+        (WebInspector.ConsoleMessageImpl.prototype._userProvidedColumnNames):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsTable):
+        (WebInspector.ConsoleMessageImpl.prototype._populateStackTraceTreeElement):
+        (WebInspector.ConsoleMessageImpl.prototype._propertyPreviewElement): Deleted.
+        Fix console.table after renaming ObjectPreview.properties to ObjectPreview.propertyPreviews.
+        Also, use FormattedValue to create the value elements. Also, remove class
+        "source-code" as I do not see it actually being used in a meaningful way.
+
+        * UserInterface/Views/FormattedValue.css: Added.
+        (.formatted-object, .formatted-node, .formatted-error, .formatted-map, .formatted-set, .formatted-weakmap):
+        (.formatted-number):
+        (.formatted-string, .formatted-regexp):
+        (.formatted-string):
+        (.formatted-regexp):
+        (.formatted-symbol):
+        (.formatted-null, .formatted-undefined):
+        * UserInterface/Views/FormattedValue.js: Added.
+        (WebInspector.FormattedValue.classNameForTypes):
+        (WebInspector.FormattedValue.classNameForObject):
+        (WebInspector.FormattedValue.createLinkifiedElementString):
+        (WebInspector.FormattedValue.createElementForTypesAndValue):
+        (WebInspector.FormattedValue.createElementForRemoteObject):
+        (WebInspector.FormattedValue.createElementForObjectPreview):
+        (WebInspector.FormattedValue.createElementForPropertyPreview):
+        Styles and formatted value element creation.
+
+        * UserInterface/Views/LogContentView.css:
+        (.expandable.source-code): Deleted.
+        Remove ".source-code". I do not see it actually being used in a meaningful way.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        (WebInspector.ObjectPreviewView.prototype._appendValuePreview):
+        (WebInspector.ObjectPreviewView.prototype._formattedObjectElementForPreview): Deleted.
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitlePropertyStyle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._descriptionString): Deleted.
+        * UserInterface/Views/ObjectTreeView.css:
+        (.formatted-object, .formatted-node, .formatted-error, .formatted-map, .formatted-set, .formatted-weakmap): Deleted.
+        (.formatted-number): Deleted.
+        (.formatted-string, .formatted-regexp): Deleted.
+        (.formatted-string): Deleted.
+        (.formatted-regexp): Deleted.
+        (.formatted-symbol): Deleted.
+        (.formatted-null, .formatted-undefined): Deleted.
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.classNameForObject): Deleted.
+        Extract styles and value formatting to FormattedValue helpers.
+
+2015-02-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Disable DOM Tree Editing / Styles Editing of Shadow DOM Nodes
+        https://bugs.webkit.org/show_bug.cgi?id=141793
+
+        Unreviewed follow-up. Fix prototypes.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        * UserInterface/Views/ObjectTreeView.js:
+
+2015-02-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Create Separate Model and View Objects for RemoteObjects / ObjectPreview / PropertyDescriptor
+        https://bugs.webkit.org/show_bug.cgi?id=141696
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Main.html:
+        Add new files.
+
+        * UserInterface/Models/CollectionEntry.js: Added.
+        (WebInspector.CollectionEntry):
+        (WebInspector.CollectionEntry.fromPayload):
+        (WebInspector.CollectionEntry.prototype.get key):
+        (WebInspector.CollectionEntry.prototype.get value):
+        * UserInterface/Models/CollectionEntryPreview.js: Added.
+        (WebInspector.CollectionEntryPreview):
+        (WebInspector.CollectionEntryPreview.fromPayload):
+        (WebInspector.CollectionEntryPreview.prototype.get keyPreview):
+        (WebInspector.CollectionEntryPreview.prototype.get valuePreview):
+        * UserInterface/Models/ObjectPreview.js: Added.
+        (WebInspector.ObjectPreview):
+        (WebInspector.ObjectPreview.fromPayload):
+        (WebInspector.ObjectPreview.prototype.get type):
+        (WebInspector.ObjectPreview.prototype.get subtype):
+        (WebInspector.ObjectPreview.prototype.get description):
+        (WebInspector.ObjectPreview.prototype.get lossless):
+        (WebInspector.ObjectPreview.prototype.get overflow):
+        (WebInspector.ObjectPreview.prototype.get properties):
+        (WebInspector.ObjectPreview.prototype.get entries):
+        * UserInterface/Models/PropertyPreview.js: Added.
+        (WebInspector.PropertyPreview):
+        (WebInspector.PropertyPreview.fromPayload):
+        (WebInspector.PropertyPreview.prototype.get name):
+        (WebInspector.PropertyPreview.prototype.get type):
+        (WebInspector.PropertyPreview.prototype.get subtype):
+        (WebInspector.PropertyPreview.prototype.get value):
+        (WebInspector.PropertyPreview.prototype.get valuePreview):
+        * UserInterface/Models/PropertyDescriptor.js: Added.
+        (WebInspector.PropertyDescriptor.fromPayload):
+        (WebInspector.PropertyDescriptor.prototype.get name):
+        (WebInspector.PropertyDescriptor.prototype.get value):
+        (WebInspector.PropertyDescriptor.prototype.get writable):
+        (WebInspector.PropertyDescriptor.prototype.get configurable):
+        (WebInspector.PropertyDescriptor.prototype.get enumerable):
+        (WebInspector.PropertyDescriptor.prototype.get isOwnProperty):
+        (WebInspector.PropertyDescriptor.prototype.get wasThrown):
+        (WebInspector.PropertyDescriptor.prototype.get isInternalProperty):
+        (WebInspector.PropertyDescriptor.prototype.hasValue):
+        (WebInspector.PropertyDescriptor.prototype.hasGetter):
+        (WebInspector.PropertyDescriptor.prototype.hasSetter):
+        New Model objects for different Protocol types.
+        The only customizations right now are compatibility modifications
+        and PropertyDescriptor's "hasValue", "hasGetter", and "hasSetter"
+        functions to return reliable checks based on the descriptors contents.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.resolveNode):
+        (WebInspector.RemoteObject.prototype.get value):
+        (WebInspector.RemoteObject.prototype._isSymbol):
+        (WebInspector.RemoteObject.prototype.isCollectionType):
+        (WebInspector.RemoteObject.prototype.isWeakCollection):
+        (WebInspector.RemoteObject.prototype.getCollectionEntries):
+        (WebInspector.RemoteObject.prototype.arrayLength):
+        Clean up the existing code to enforce more checks and use our
+        style of member variables and public accessors.
+
+        (WebInspector.RemoteObject.prototype.getOwnPropertyDescriptors):
+        (WebInspector.RemoteObject.prototype.getOwnAndGetterPropertyDescriptors):
+        (WebInspector.RemoteObject.prototype.getAllPropertyDescriptors):
+        (WebInspector.RemoteObject.prototype.callback):
+        Provide a new way of getting properties that returns Model objects
+        instead of raw protocol types.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._format):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameter):
+        (WebInspector.ConsoleMessageImpl.prototype._propertyPreviewElement):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsNode):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsTable):
+        (WebInspector.ConsoleMessageImpl.prototype._formatAsArrayEntry):
+        Always include a preview when possible. Now, when forced to be an object,
+        force expansion even if the preview is lossless.
+
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsObject):
+        Use an ObjectTreeView instead of ObjectPropertiesSection.
+
+        (WebInspector.ConsoleMessageImpl.prototype._appendPreview): Deleted.
+        (WebInspector.ConsoleMessageImpl.prototype._appendEntryPreviews): Deleted.
+        (WebInspector.ConsoleMessageImpl.prototype._appendPropertyPreviews): Deleted.
+        (WebInspector.ConsoleMessageImpl.prototype._appendValuePreview): Deleted.
+        This code is moved into ObjectPreviewView.
+
+
+        * UserInterface/Views/ObjectPropertiesSection.js:
+        (WebInspector.CollectionEntriesMainTreeElement.prototype.onexpand.callback):
+        (WebInspector.CollectionEntriesMainTreeElement.prototype.onexpand):
+        These types are now converted to Model types in Model objects, so do not do it here.
+
+        * UserInterface/Views/ObjectPreviewView.css: Added.
+        (.object-preview):
+        (.object-preview.lossless):
+        (.object-preview .name):
+        * UserInterface/Views/ObjectPreviewView.js: Added.
+        (WebInspector.ObjectPreviewView):
+        (WebInspector.ObjectPreviewView.prototype.get preview):
+        (WebInspector.ObjectPreviewView.prototype.get element):
+        (WebInspector.ObjectPreviewView.prototype.get mode):
+        (WebInspector.ObjectPreviewView.prototype.get lossless):
+        (WebInspector.ObjectPreviewView.prototype._numberOfPropertiesToShowInMode):
+        (WebInspector.ObjectPreviewView.prototype._appendPreview):
+        (WebInspector.ObjectPreviewView.prototype._appendEntryPreviews):
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        (WebInspector.ObjectPreviewView.prototype._appendValuePreview):
+        (WebInspector.ObjectPreviewView.prototype._formattedObjectElementForPreview):
+        An ObjectPreviewView can create a full/brief view given a ObjectPreview.
+        The view will contain formatted values everywhere possible.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js: Added.
+        (WebInspector.ObjectTreePropertyTreeElement):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.get property):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.onpopulate):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.onattach):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitlePropertyStyle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitleAPIStyle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._descriptionString):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._functionParameterString):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.mode):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype):
+        * UserInterface/Views/ObjectTreeView.js: Added.
+        (WebInspector.ObjectTreeView):
+        (WebInspector.ObjectTreeView.classNameForObject):
+        (WebInspector.ObjectTreeView.ComparePropertyDescriptors):
+        (WebInspector.ObjectTreeView.prototype.get object):
+        (WebInspector.ObjectTreeView.prototype.get element):
+        (WebInspector.ObjectTreeView.prototype.get expanded):
+        (WebInspector.ObjectTreeView.prototype.expand):
+        (WebInspector.ObjectTreeView.prototype.collapse):
+        (WebInspector.ObjectTreeView.prototype.update):
+        (WebInspector.ObjectTreeView.prototype._updateProperties):
+        (WebInspector.ObjectTreeView.prototype._handlePreviewOrTitleElementClick):
+        Re-implementation of ObjectPropertiesSection for our Model objects
+        without "Section" semantics / dependencies. An ObjectTree will creates
+        an expandable tree for a RemoteObject. The top level clickable item
+        will be an ObjectPreview if possible, otherwise just a title element.
+
+        * UserInterface/Views/ObjectTreeView.css: Added.
+        (.object-tree):
+        (.object-tree > .title):
+        (.object-tree > :matches(.title, .object-preview)::before):
+        (.object-tree.expanded > :matches(.title, .object-preview)::before):
+        (.object-tree.lossless-preview > :matches(.title, .object-preview)::before):
+        (.object-tree-outline):
+        (.object-tree.expanded > .object-tree-outline):
+        (.object-tree-outline li):
+        (.object-tree-outline li.parent):
+        (.object-tree-outline li.parent::before):
+        (.object-tree-outline li.parent.expanded::before):
+        (.object-tree-outline ol):
+        (.object-tree-outline ol.expanded):
+        (.object-tree-outline li .empty-message):
+        (.object-tree-property .name):
+        (.object-tree-property .name.not-enumerable):
+        (.object-tree-property .value.error):
+        (.formatted-object, .formatted-node, .formatted-error, .formatted-map, .formatted-set, .formatted-weakmap):
+        (.formatted-number):
+        (.formatted-string, .formatted-regexp):
+        (.formatted-string):
+        (.formatted-regexp):
+        (.formatted-symbol):
+        (.formatted-null, .formatted-undefined):
+        (.console-group-messages .object-tree:not(.lossless-preview)):
+        (.console-group-messages .object-tree:not(.lossless-preview) > :matches(.title, .object-preview)):
+        (.console-group-messages .object-tree:not(.lossless-preview) > :matches(.title, .object-preview)::before):
+        (.console-group-messages :matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .object-tree):
+        (.console-group-messages :matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .object-tree-outline):
+        All styles for ObjectTree / ObjectPreview. Independent from
+        other styles in the inspector. Most of this is a copy of
+        the styles applied to ObjectPropertiesSection, renamed.
+
+
+        * UserInterface/Views/ObjectTreeCollectionTreeElement.js: Added.
+        (WebInspector.ObjectTreeCollectionTreeElement):
+        (WebInspector.ObjectTreeCollectionTreeElement.propertyDescriptorForEntry):
+        (WebInspector.ObjectTreeCollectionTreeElement.prototype.get remoteObject):
+        (WebInspector.ObjectTreeCollectionTreeElement.prototype.onexpand.callback):
+        (WebInspector.ObjectTreeCollectionTreeElement.prototype.onexpand):
+        (WebInspector.ObjectTreeCollectionTreeElement.prototype.oncollapse):
+        (WebInspector.ObjectTreeCollectionTreeElement.prototype.ondetach):
+        (WebInspector.ObjectTreeCollectionTreeElement.prototype._trackWeakEntries):
+        (WebInspector.ObjectTreeCollectionTreeElement.prototype._untrackWeakEntries):
+        (WebInspector.ObjectTreeCollectionEntryTreeElement):
+        (WebInspector.ObjectTreeCollectionEntryTreeElement.prototype.onpopulate):
+        (WebInspector.ObjectTreeCollectionEntryTreeElement.prototype.onattach):
+        (WebInspector.ObjectTreeEmptyCollectionTreeElement):
+        Essentially a copy of ObjectPropertiesSection Collection handling using
+        the ObjectTree class names.
+
+        * UserInterface/Views/TreeOutlineDataGridSynchronizer.js:
+        Fix prototype typo.
+
 2015-02-19  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: DOMTree / Node Details Sidebar do not update as <input> content changes

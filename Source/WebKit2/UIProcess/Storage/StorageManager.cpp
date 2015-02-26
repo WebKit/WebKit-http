@@ -33,11 +33,11 @@
 #include "StorageAreaMapMessages.h"
 #include "StorageManagerMessages.h"
 #include "WebProcessProxy.h"
-#include "WorkQueue.h"
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/StorageMap.h>
 #include <WebCore/TextEncoding.h>
 #include <memory>
+#include <wtf/WorkQueue.h>
 #include <wtf/threads/BinarySemaphore.h>
 
 using namespace WebCore;
@@ -624,7 +624,7 @@ void StorageManager::createTransientLocalStorageMap(IPC::Connection& connection,
     // FIXME: This should be a message check.
     ASSERT(!slot);
 
-    TransientLocalStorageNamespace* transientLocalStorageNamespace = getOrCreateTransientLocalStorageNamespace(storageNamespaceID, *topLevelOriginData.securityOrigin());
+    TransientLocalStorageNamespace* transientLocalStorageNamespace = getOrCreateTransientLocalStorageNamespace(storageNamespaceID, topLevelOriginData.securityOrigin());
 
     auto storageArea = transientLocalStorageNamespace->getOrCreateStorageArea(securityOriginData.securityOrigin());
     storageArea->addListener(connection, storageMapID);

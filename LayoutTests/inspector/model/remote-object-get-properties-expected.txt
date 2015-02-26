@@ -9,7 +9,7 @@ OWN PROPERTIES:
     b
     __proto__
 
-OWN AND GETTER PROPERTIES:
+DISPLAYABLE PROPERTIES:
     a
     b
     __proto__
@@ -40,7 +40,7 @@ OWN PROPERTIES:
     clipboardData
     __proto__
 
-OWN AND GETTER PROPERTIES:
+DISPLAYABLE PROPERTIES:
     clipboardData
     type
     target
@@ -116,27 +116,20 @@ OWN PROPERTIES:
     _foo
     __proto__
 
-OWN AND GETTER PROPERTIES:
+DISPLAYABLE PROPERTIES:
     _bar
     _foo
-    getterProperty
-    foo
-    bar
     __proto__
 
 ALL PROPERTIES:
     _bar
     _foo
     constructor
-    get getterProperty
-    set getterProperty
-    get foo
-    set foo
+    getterProperty
+    foo
     BAR_CONSTANT
-    get bar
-    set bar
-    get setterOnly
-    set setterOnly
+    bar
+    setterOnly
     toString
     toLocaleString
     valueOf
@@ -158,14 +151,12 @@ description: ClassWithBadGetter
 OWN PROPERTIES:
     __proto__
 
-OWN AND GETTER PROPERTIES:
-    badGetter
+DISPLAYABLE PROPERTIES:
     __proto__
 
 ALL PROPERTIES:
     constructor
-    get badGetter
-    set badGetter
+    badGetter
     toString
     toLocaleString
     valueOf
@@ -192,7 +183,7 @@ OWN PROPERTIES:
     prototype
     __proto__
 
-OWN AND GETTER PROPERTIES:
+DISPLAYABLE PROPERTIES:
     arguments
     caller
     length
@@ -233,22 +224,18 @@ description: function () {
 OWN PROPERTIES:
     name
     length
-    get arguments
-    set arguments
-    get caller
-    set caller
+    arguments
+    caller
     __proto__
     targetFunction
     boundThis
     boundArgs
 
-OWN AND GETTER PROPERTIES:
+DISPLAYABLE PROPERTIES:
     name
     length
-    get arguments
-    set arguments
-    get caller
-    set caller
+    arguments
+    caller
     __proto__
     targetFunction
     boundThis
@@ -257,10 +244,8 @@ OWN AND GETTER PROPERTIES:
 ALL PROPERTIES:
     name
     length
-    get arguments
-    set arguments
-    get caller
-    set caller
+    arguments
+    caller
     toString
     apply
     call

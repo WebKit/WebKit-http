@@ -58,7 +58,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
     _formatMessage: function()
     {
         this._formattedMessage = document.createElement("span");
-        this._formattedMessage.className = "console-message-text source-code";
+        this._formattedMessage.className = "console-message-text";
 
         var messageText;
         if (this.source === WebInspector.ConsoleMessage.MessageSource.ConsoleAPI) {
@@ -247,7 +247,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
                 span.textContent = parameters[i].description;
                 formattedResult.appendChild(span);
             } else
-                formattedResult.appendChild(this._formatParameter(parameters[i], false, true));
+                formattedResult.appendChild(this._formatParameter(parameters[i], false));
 
             if (i < parameters.length - 1 && !this._isExpandable(parameters[i]))
                 formattedResult.appendChild(document.createTextNode(" "));
@@ -266,7 +266,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
         return remoteObject.hasChildren;
     },
 
-    _formatParameter: function(output, forceObjectFormat, includePreview)
+    _formatParameter: function(output, forceObjectFormat)
     {
         var type;
         if (forceObjectFormat)
@@ -277,192 +277,45 @@ WebInspector.ConsoleMessageImpl.prototype = {
             type = typeof output;
 
         var formatter = this._customFormatters[type];
-        if (!formatter) {
+        if (!formatter)
             formatter = this._formatParameterAsValue;
-            output = output.description;
-        }
 
         var span = document.createElement("span");
-        span.className = "console-formatted-" + type + " source-code";
 
         if (this._isExpandable(output))
             span.classList.add("expandable");
 
-        formatter.call(this, output, span, includePreview);
+        formatter.call(this, output, span, forceObjectFormat);
         return span;
     },
 
-    _formatParameterAsValue: function(val, elem)
+    _formatParameterAsValue: function(value, elem)
     {
-        elem.appendChild(document.createTextNode(val));
+        elem.appendChild(WebInspector.FormattedValue.createElementForRemoteObject(value));
     },
 
-    _formatParameterAsObject: function(obj, elem, includePreview)
+    _formatParameterAsObject: function(obj, elem, forceExpansion)
     {
-        var titleElement = document.createElement("span");
-        if (includePreview && obj.preview) {
-            titleElement.classList.add("console-object-preview");
-
-            // COMPATIBILITY (iOS 8): iOS 7 and 8 did not have type/subtype/description on
-            // Runtime.ObjectPreview. Copy them over from the RemoteObject.
-            var preview = obj.preview;
-            if (!preview.type) {
-                preview.type = obj.type;
-                preview.subtype = obj.subtype;
-                preview.description = obj.description;
-            }
-
-            var lossless = this._appendPreview(titleElement, preview);
-            if (lossless) {
-                titleElement.classList.add("console-object-preview-lossless");
-                elem.appendChild(titleElement);
-                return;
-            }
-        } else
-            titleElement.appendChild(document.createTextNode(obj.description || ""));
-
-        var section = new WebInspector.ObjectPropertiesSection(obj, titleElement);
-        elem.appendChild(section.element);
+        var objectTree = new WebInspector.ObjectTreeView(obj, WebInspector.ObjectTreeView.Mode.Properties, forceExpansion);
+        elem.appendChild(objectTree.element);
     },
 
-    _appendPreview: function(element, preview)
+    _formatParameterAsString: function(output, elem)
     {
-        if (preview.type === "object" && preview.subtype !== "null" && preview.subtype !== "array") {
-            var previewObjectNameElement = document.createElement("span");
-            previewObjectNameElement.classList.add("console-object-preview-name");
-            if (preview.description === "Object")
-                previewObjectNameElement.classList.add("console-object-preview-name-Object");
-
-            previewObjectNameElement.textContent = preview.description + " ";
-            element.appendChild(previewObjectNameElement);
-        }
-
-        var bodyElement = element.createChild("span", "console-object-preview-body");
-        if (preview.entries)
-            return this._appendEntryPreviews(bodyElement, preview);
-        if (preview.properties)
-            return this._appendPropertyPreviews(bodyElement, preview);
-        return this._appendValuePreview(bodyElement, preview);
-    },
-
-    _appendEntryPreviews: function(element, preview)
-    {
-        var lossless = preview.lossless && !preview.properties.length;
-
-        element.appendChild(document.createTextNode("{"));
-
-        for (var i = 0; i < preview.entries.length; ++i) {
-            if (i > 0)
-                element.appendChild(document.createTextNode(", "));
-
-            var entry = preview.entries[i];
-            if (entry.key) {
-                this._appendPreview(element, entry.key);
-                element.appendChild(document.createTextNode(" => "));
-            }
-
-            this._appendPreview(element, entry.value);
-        }
-
-        if (preview.overflow)
-            element.createChild("span").textContent = "\u2026";
-        element.appendChild(document.createTextNode("}"));
-
-        return lossless;
-    },
-
-    _appendPropertyPreviews: function(element, preview)
-    {
-        var isArray = preview.subtype === "array";
-
-        element.appendChild(document.createTextNode(isArray ? "[" : "{"));
-
-        for (var i = 0; i < preview.properties.length; ++i) {
-            var property = preview.properties[i];
-
-            // FIXME: Better handle getter/setter accessors. Should we show getters in previews?
-            if (property.type === "accessor")
-                continue;
-
-            // Constructor name is often already visible, so don't show it as a property.
-            if (property.name === "constructor")
-                continue;
-
-            if (i > 0)
-                element.appendChild(document.createTextNode(", "));
-
-            if (!isArray || property.name != i) {
-                element.createChild("span", "name").textContent = property.name;
-                element.appendChild(document.createTextNode(": "));
-            }
-
-            element.appendChild(this._propertyPreviewElement(property));
-        }
-
-        if (preview.overflow)
-            element.createChild("span").textContent = "\u2026";
-
-        element.appendChild(document.createTextNode(isArray ? "]" : "}"));
-
-        return preview.lossless;
-    },
-
-    _propertyPreviewElement: function(property)
-    {
-        var span = document.createElement("span");
-        span.classList.add("console-formatted-" + property.type);
-
-        if (property.type === "string") {
-            span.textContent = "\"" + property.value.replace(/\n/g, "\u21B5") + "\"";
-            return span;
-        }
-
-        if (property.type === "function") {
-            span.textContent = "function";
-            return span;
-        }
-
-        if (property.type === "object") {
-            if (property.subtype === "node")
-                span.classList.add("console-formatted-preview-node");
-            else if (property.subtype === "regexp")
-                span.classList.add("console-formatted-regexp");
-        }
-
-        span.textContent = property.value;
-        return span;
-    },
-
-    _appendValuePreview: function(element, preview)
-    {
-        element.appendChild(document.createTextNode(preview.description));
+        var span = WebInspector.FormattedValue.createLinkifiedElementString(output.description);
+        elem.appendChild(span);
     },
 
     _formatParameterAsNode: function(object, elem)
     {
-        function printNode(nodeId)
-        {
-            if (!nodeId) {
-                // Sometimes DOM is loaded after the sync message is being formatted, so we get no
-                // nodeId here. So we fall back to object formatting here.
-                this._formatParameterAsObject(object, elem, false);
-                return;
-            }
-            var treeOutline = new WebInspector.DOMTreeOutline(false, false, true);
-            treeOutline.setVisible(true);
-            treeOutline.rootDOMNode = WebInspector.domTreeManager.nodeForId(nodeId);
-            treeOutline.element.classList.add("outline-disclosure");
-            if (!treeOutline.children[0].hasChildren)
-                treeOutline.element.classList.add("single-node");
-            elem.appendChild(treeOutline.element);
-        }
-        object.pushNodeToFrontend(printNode.bind(this));
+        var span = WebInspector.FormattedValue.createElementForNode(object);
+        elem.appendChild(span);
     },
 
     _formatParameterAsArray: function(arr, elem)
     {
         // FIXME: Array previews look poor. Keep doing what we currently do for arrays.
-        arr.getOwnProperties(this._printArray.bind(this, arr, elem));
+        arr.deprecatedGetOwnProperties(this._printArray.bind(this, arr, elem));
     },
 
     _userProvidedColumnNames: function(columnNamesArgument)
@@ -477,12 +330,12 @@ WebInspector.ConsoleMessageImpl.prototype = {
             return [String(columnNamesArgument.value)];
 
         // Ignore everything that is not an array with property previews.
-        if (remoteObject.type !== "object" || remoteObject.subtype !== "array" || !remoteObject.preview || !remoteObject.preview.properties)
+        if (remoteObject.type !== "object" || remoteObject.subtype !== "array" || !remoteObject.preview || !remoteObject.preview.propertyPreviews)
             return null;
 
         // Array. Look into the preview and get string values.
         var extractedColumnNames = [];
-        for (var propertyPreview of remoteObject.preview.properties) {
+        for (var propertyPreview of remoteObject.preview.propertyPreviews) {
             if (propertyPreview.type === "string" || propertyPreview.type === "number")
                 extractedColumnNames.push(String(propertyPreview.value));
         }
@@ -511,27 +364,29 @@ WebInspector.ConsoleMessageImpl.prototype = {
         }
 
         // Check first for valuePreviews in the properties meaning this was an array of objects.
-        for (var i = 0; i < preview.properties.length; ++i) {
-            var rowProperty = preview.properties[i];
-            var rowPreview = rowProperty.valuePreview;
-            if (!rowPreview)
-                continue;
+        if (preview.propertyPreviews) {
+            for (var i = 0; i < preview.propertyPreviews.length; ++i) {
+                var rowProperty = preview.propertyPreviews[i];
+                var rowPreview = rowProperty.valuePreview;
+                if (!rowPreview)
+                    continue;
 
-            var rowValue = {};
-            const maxColumnsToRender = 10;
-            for (var j = 0; j < rowPreview.properties.length; ++j) {
-                var cellProperty = rowPreview.properties[j];
-                var columnRendered = columnNames.contains(cellProperty.name);
-                if (!columnRendered) {
-                    if (userProvidedColumnNames || columnNames.length === maxColumnsToRender)
-                        continue;
-                    columnRendered = true;
-                    columnNames.push(cellProperty.name);
+                var rowValue = {};
+                const maxColumnsToRender = 10;
+                for (var j = 0; j < rowPreview.propertyPreviews.length; ++j) {
+                    var cellProperty = rowPreview.propertyPreviews[j];
+                    var columnRendered = columnNames.contains(cellProperty.name);
+                    if (!columnRendered) {
+                        if (userProvidedColumnNames || columnNames.length === maxColumnsToRender)
+                            continue;
+                        columnRendered = true;
+                        columnNames.push(cellProperty.name);
+                    }
+
+                    rowValue[cellProperty.name] = WebInspector.FormattedValue.createElementForPropertyPreview(cellProperty);
                 }
-
-                rowValue[cellProperty.name] = this._propertyPreviewElement(cellProperty);
+                rows.push([rowProperty.name, rowValue]);
             }
-            rows.push([rowProperty.name, rowValue]);
         }
 
         // If there were valuePreviews, convert to a flat list.
@@ -553,9 +408,9 @@ WebInspector.ConsoleMessageImpl.prototype = {
         }
 
         // If there were no value Previews, then check for an array of values.
-        if (!flatValues.length) {
-            for (var i = 0; i < preview.properties.length; ++i) {
-                var rowProperty = preview.properties[i];
+        if (!flatValues.length && preview.propertyPreviews) {
+            for (var i = 0; i < preview.propertyPreviews.length; ++i) {
+                var rowProperty = preview.propertyPreviews[i];
                 if (!("value" in rowProperty))
                     continue;
 
@@ -565,13 +420,13 @@ WebInspector.ConsoleMessageImpl.prototype = {
                 }
 
                 flatValues.push(rowProperty.name);
-                flatValues.push(this._propertyPreviewElement(rowProperty));
+                flatValues.push(WebInspector.FormattedValue.createElementForPropertyPreview(rowProperty));
             }
         }
 
         // If lossless or not table data, output the object so full data can be gotten.
         if (!preview.lossless || !flatValues.length) {
-            element.appendChild(this._formatParameter(table, true, false));
+            element.appendChild(this._formatParameter(table));
             if (!flatValues.length)
                 return element;
         }
@@ -582,18 +437,6 @@ WebInspector.ConsoleMessageImpl.prototype = {
         dataGridContainer.appendChild(dataGrid.element);
 
         return element;
-    },
-
-    _formatParameterAsString: function(output, elem)
-    {
-        var span = document.createElement("span");
-        span.className = "console-formatted-string source-code";
-        span.appendChild(document.createTextNode("\""));
-        span.appendChild(WebInspector.linkifyStringAsFragment(output.description));
-        span.appendChild(document.createTextNode("\""));
-
-        elem.classList.remove("console-formatted-string");        
-        elem.appendChild(span);
     },
 
     _printArray: function(array, elem, properties)
@@ -616,7 +459,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
         {
             if (index - lastNonEmptyIndex <= 1)
                 return;
-            var span = elem.createChild("span", "console-formatted-undefined");
+            var span = elem.createChild("span", "formatted-undefined");
             span.textContent = WebInspector.UIString("undefined × %d").format(index - lastNonEmptyIndex - 1);
         }
 
@@ -644,7 +487,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
     _formatAsArrayEntry: function(output)
     {
         // Prevent infinite expansion of cross-referencing arrays.
-        return this._formatParameter(output, output.subtype && output.subtype === "array", false);
+        return this._formatParameter(output, output.subtype && output.subtype === "array");
     },
 
     _formatWithSubstitutionString: function(parameters, formattedResult)
@@ -653,7 +496,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
 
         function parameterFormatter(force, obj)
         {
-            return this._formatParameter(obj, force, false);
+            return this._formatParameter(obj, force);
         }
 
         function stringFormatter(obj)
@@ -799,7 +642,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
 
             var content = document.createElement("div");
             var messageTextElement = document.createElement("span");
-            messageTextElement.className = "console-message-text source-code";
+            messageTextElement.className = "console-message-text";
             var functionName = frame.functionName || WebInspector.UIString("(anonymous function)");
             messageTextElement.appendChild(document.createTextNode(functionName));
             content.appendChild(messageTextElement);

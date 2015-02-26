@@ -28,6 +28,7 @@
 
 #include "WKAPICast.h"
 #include "WPEInputHandler.h"
+#include "WPEView.h"
 
 using namespace WebKit;
 

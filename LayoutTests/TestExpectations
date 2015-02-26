@@ -136,6 +136,7 @@ webkit.org/b/135390 fast/css/fontloader-multiple-faces-download-error.html [ Ski
 webkit.org/b/135390 fast/css/fontloader-multiple-faces.html [ Skip ]
 webkit.org/b/135390 fast/css/fontloader-multiple-families.html [ Skip ]
 webkit.org/b/135390 fast/css/fontloader-page-cache.html [ Skip ]
+webkit.org/b/135390 fast/css/fontloader-svg-select.svg [ Skip ]
 webkit.org/b/135390 http/tests/webfont/fontloader-loading-attribute.html [ Skip ]
 
 # Various failures from the W3C CSS Shapes test suite import
@@ -237,8 +238,9 @@ imported/w3c/web-platform-tests/images [ Skip ]
 imported/w3c/web-platform-tests/tools [ Skip ]
 
 # W3C domparsing test suite
-# Bug 141235: Tests marked as Skip until being able to relaunch wpt server properly
-imported/w3c/web-platform-tests [ Skip ]
+# Tests marked as pass or fail until wpt server proves to be stable enough
+imported/w3c/web-platform-tests/domparsing/DOMParser-parseFromString-html.html [ Pass Failure ]
+imported/w3c/web-platform-tests/domparsing/insert-adjacent.html [ Pass Failure ]
 
 # Imported W3C canvas failed tests
 webkit.org/b/138676 imported/w3c/canvas/2d.pattern.image.null.html [ Failure ]
@@ -483,3 +485,6 @@ webkit.org/b/141370 http/tests/security/appcache-in-private-browsing.html [ Pass
 webkit.org/b/141488 fast/replaced/pdf-as-object-and-embed.html [ Skip ]
 
 webkit.org/b/141695 [ Debug ] fast/selectors/nth-last-child-of-register-requirement.html [ Slow ]
+
+# UserContentFilters are Mac-WK2-only for now
+http/tests/usercontentfilter [ Skip ]

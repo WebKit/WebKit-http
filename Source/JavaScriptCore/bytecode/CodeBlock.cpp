@@ -1008,6 +1008,10 @@ void CodeBlock::dumpBytecode(
             printUnaryOp(out, exec, location, it, "is_object");
             break;
         }
+        case op_is_object_or_null: {
+            printUnaryOp(out, exec, location, it, "is_object_or_null");
+            break;
+        }
         case op_is_function: {
             printUnaryOp(out, exec, location, it, "is_function");
             break;
@@ -1441,12 +1445,11 @@ void CodeBlock::dumpBytecode(
         }
         case op_push_name_scope: {
             int dst = (++it)->u.operand;
-            int id0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
-            unsigned attributes = (++it)->u.operand;
+            int k0 = (++it)->u.operand;
             JSNameScope::Type scopeType = (JSNameScope::Type)(++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "push_name_scope");
-            out.printf("%s, %s, %s, %u %s", registerName(dst).data(), idName(id0, identifier(id0)).data(), registerName(r1).data(), attributes, (scopeType == JSNameScope::FunctionNameScope) ? "functionScope" : ((scopeType == JSNameScope::CatchScope) ? "catchScope" : "unknownScopeType"));
+            out.printf("%s, %s, %s, %s", registerName(dst).data(), registerName(r1).data(), constantName(k0, getConstant(k0)).data(), (scopeType == JSNameScope::FunctionNameScope) ? "functionScope" : ((scopeType == JSNameScope::CatchScope) ? "catchScope" : "unknownScopeType"));
             break;
         }
         case op_catch: {
@@ -4052,7 +4055,7 @@ void CodeBlock::insertBasicBlockBoundariesForControlFlowProfiler(Vector<Instruct
         if (i + 1 < offsetsLength) {
             size_t endIdx = bytecodeOffsets[i + 1];
             RELEASE_ASSERT(vm()->interpreter->getOpcodeID(instructions[endIdx].u.opcode) == op_profile_control_flow);
-            basicBlockEndOffset = instructions[endIdx + 1].u.operand;
+            basicBlockEndOffset = instructions[endIdx + 1].u.operand - 1;
         } else {
             basicBlockEndOffset = m_sourceOffset + m_ownerExecutable->source().length() - 1; // Offset before the closing brace.
             basicBlockStartOffset = std::min(basicBlockStartOffset, basicBlockEndOffset); // Some start offsets may be at the closing brace, ensure it is the offset before.

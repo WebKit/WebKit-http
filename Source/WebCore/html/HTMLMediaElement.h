@@ -137,6 +137,8 @@ public:
         ConfigureTextTracks = 1 << 1,
         TextTrackChangesNotification = 1 << 2,
         ConfigureTextTrackDisplay = 1 << 3,
+
+        EveryDelayedAction = LoadMediaResource | ConfigureTextTracks | TextTrackChangesNotification | ConfigureTextTrackDisplay,
     };
     void scheduleDelayedAction(DelayedActionType);
     
@@ -371,7 +373,7 @@ public:
     void syncTextTrackBounds();
 #endif
 
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void webkitShowPlaybackTargetPicker();
     bool webkitCurrentPlaybackTargetIsWireless() const;
 
@@ -570,7 +572,7 @@ private:
     virtual String mediaPlayerMediaKeysStorageDirectory() const override;
 #endif
 
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) override;
     void enqueuePlaybackTargetAvailabilityChangedEvent();
 #endif
@@ -805,7 +807,7 @@ private:
     MediaPlayer::VideoGravity m_videoFullscreenGravity;
 #endif
 
-    OwnPtr<MediaPlayer> m_player;
+    std::unique_ptr<MediaPlayer> m_player;
 
     MediaPlayer::Preload m_preload;
 

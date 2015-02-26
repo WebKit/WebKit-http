@@ -30,7 +30,7 @@
 
 namespace WebKit {
 
-void WebProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
+void WebProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions&)
 {
     notImplemented();
 }

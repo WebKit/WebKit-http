@@ -162,20 +162,20 @@ WebInspector.DOMNodeDetailsSidebarPanel.prototype = {
                 return result;
             }
 
-            object.callFunction(collectPrototypes, undefined, nodePrototypesReady.bind(this));
+            object.callFunction(collectPrototypes, undefined, false, nodePrototypesReady.bind(this));
             object.release();
         }
 
-        function nodePrototypesReady(object)
+        function nodePrototypesReady(error, object, wasThrown)
         {
-            if (!object)
+            if (error || wasThrown || !object)
                 return;
 
             // Bail if the DOM node changed while we were waiting for the async response.
             if (this.domNode !== domNode)
                 return;
 
-            object.getOwnProperties(fillSection.bind(this));
+            object.deprecatedGetOwnProperties(fillSection.bind(this));
         }
 
         function fillSection(prototypes)

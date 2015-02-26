@@ -761,6 +761,9 @@ private:
         case IsObject:
             compileIsObject();
             break;
+        case IsObjectOrNull:
+            compileIsObjectOrNull();
+            break;
         case IsFunction:
             compileIsFunction();
             break;
@@ -1659,44 +1662,52 @@ private:
 
             LBasicBlock integerExponentIsSmallBlock = FTL_NEW_BLOCK(m_out, ("ArithPow test integer exponent is small."));
             LBasicBlock integerExponentPowBlock = FTL_NEW_BLOCK(m_out, ("ArithPow pow(double, (int)double)."));
-            LBasicBlock doubleExponentPowBlock = FTL_NEW_BLOCK(m_out, ("ArithPow pow(double, double)."));
+            LBasicBlock doubleExponentPowBlockEntry = FTL_NEW_BLOCK(m_out, ("ArithPow pow(double, double)."));
+            LBasicBlock nanExceptionExponentIsInfinity = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception, check exponent is infinity."));
+            LBasicBlock nanExceptionBaseIsOne = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception, check base is one."));
             LBasicBlock powBlock = FTL_NEW_BLOCK(m_out, ("ArithPow regular pow"));
-            LBasicBlock nanException = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception"));
+            LBasicBlock nanExceptionResultIsNaN = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception, result is NaN."));
             LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithPow continuation"));
 
             LValue integerExponent = m_out.fpToInt32(exponent);
             LValue integerExponentConvertedToDouble = m_out.intToDouble(integerExponent);
             LValue exponentIsInteger = m_out.doubleEqual(exponent, integerExponentConvertedToDouble);
-            m_out.branch(exponentIsInteger, unsure(integerExponentIsSmallBlock), unsure(doubleExponentPowBlock));
+            m_out.branch(exponentIsInteger, unsure(integerExponentIsSmallBlock), unsure(doubleExponentPowBlockEntry));
 
             LBasicBlock lastNext = m_out.appendTo(integerExponentIsSmallBlock, integerExponentPowBlock);
             LValue integerExponentBelow1000 = m_out.below(integerExponent, m_out.constInt32(1000));
-            m_out.branch(integerExponentBelow1000, usually(integerExponentPowBlock), rarely(doubleExponentPowBlock));
+            m_out.branch(integerExponentBelow1000, usually(integerExponentPowBlock), rarely(doubleExponentPowBlockEntry));
 
-            m_out.appendTo(integerExponentPowBlock, doubleExponentPowBlock);
+            m_out.appendTo(integerExponentPowBlock, doubleExponentPowBlockEntry);
             ValueFromBlock powDoubleIntResult = m_out.anchor(m_out.doublePowi(base, integerExponent));
             m_out.jump(continuation);
 
-            m_out.appendTo(doubleExponentPowBlock, powBlock);
             // If y is NaN, the result is NaN.
-            // FIXME: shouldn't we only check that if the type of child2() might have NaN?
-            LValue exponentIsNaN = m_out.doubleNotEqualOrUnordered(exponent, exponent);
+            m_out.appendTo(doubleExponentPowBlockEntry, nanExceptionExponentIsInfinity);
+            LValue exponentIsNaN;
+            if (m_state.forNode(m_node->child2()).m_type & SpecDoubleNaN)
+                exponentIsNaN = m_out.doubleNotEqualOrUnordered(exponent, exponent);
+            else
+                exponentIsNaN = m_out.booleanFalse;
+            m_out.branch(exponentIsNaN, rarely(nanExceptionResultIsNaN), usually(nanExceptionExponentIsInfinity));
 
             // If abs(x) is 1 and y is +infinity, the result is NaN.
             // If abs(x) is 1 and y is -infinity, the result is NaN.
+            m_out.appendTo(nanExceptionExponentIsInfinity, nanExceptionBaseIsOne);
             LValue absoluteExponent = m_out.doubleAbs(exponent);
             LValue absoluteExponentIsInfinity = m_out.doubleEqual(absoluteExponent, m_out.constDouble(std::numeric_limits<double>::infinity()));
+            m_out.branch(absoluteExponentIsInfinity, rarely(nanExceptionBaseIsOne), usually(powBlock));
+
+            m_out.appendTo(nanExceptionBaseIsOne, powBlock);
             LValue absoluteBase = m_out.doubleAbs(base);
             LValue absoluteBaseIsOne = m_out.doubleEqual(absoluteBase, m_out.constDouble(1));
-            LValue oneBaseInfiniteExponent = m_out.bitAnd(absoluteExponentIsInfinity, absoluteBaseIsOne);
+            m_out.branch(absoluteBaseIsOne, unsure(nanExceptionResultIsNaN), unsure(powBlock));
 
-            m_out.branch(m_out.bitOr(exponentIsNaN, oneBaseInfiniteExponent), rarely(nanException), usually(powBlock));
-
-            m_out.appendTo(powBlock, nanException);
+            m_out.appendTo(powBlock, nanExceptionResultIsNaN);
             ValueFromBlock powResult = m_out.anchor(m_out.doublePow(base, exponent));
             m_out.jump(continuation);
 
-            m_out.appendTo(nanException, continuation);
+            m_out.appendTo(nanExceptionResultIsNaN, continuation);
             ValueFromBlock pureNan = m_out.anchor(m_out.constDouble(PNaN));
             m_out.jump(continuation);
 
@@ -3088,9 +3099,7 @@ private:
             ValueFromBlock simpleResult = m_out.anchor(value);
             LValue isStringPredicate;
             if (m_node->child1()->prediction() & SpecString) {
-                isStringPredicate = m_out.equal(
-                    m_out.load32(value, m_heaps.JSCell_structureID),
-                    m_out.constInt32(vm().stringStructure->id()));
+                isStringPredicate = isString(value);
             } else
                 isStringPredicate = m_out.booleanFalse;
             m_out.branch(isStringPredicate, unsure(continuation), unsure(notString));
@@ -3757,9 +3766,8 @@ private:
 #if ENABLE(FTL_NATIVE_CALL_INLINING)
     void compileNativeCallOrConstruct() 
     {
-        int dummyThisArgument = m_node->op() == NativeCall ? 0 : 1;
         int numPassedArgs = m_node->numChildren() - 1;
-        int numArgs = numPassedArgs + dummyThisArgument;
+        int numArgs = numPassedArgs;
 
         JSFunction* knownFunction = jsCast<JSFunction*>(m_node->cellOperand()->value().asCell());
         NativeFunction function = knownFunction->nativeFunction();
@@ -3780,12 +3788,9 @@ private:
 
         m_out.store64(m_out.constInt64(numArgs), addressFor(m_execStorage, JSStack::ArgumentCount));
 
-        if (dummyThisArgument) 
-            m_out.storePtr(getUndef(m_out.int64), addressFor(m_execStorage, JSStack::ThisArgument));
-        
         for (int i = 0; i < numPassedArgs; ++i) {
             m_out.storePtr(lowJSValue(m_graph.varArgChild(m_node, 1 + i)),
-                addressFor(m_execStorage, dummyThisArgument ? JSStack::FirstArgument : JSStack::ThisArgument, i * sizeof(Register)));
+                addressFor(m_execStorage, JSStack::ThisArgument, i * sizeof(Register)));
         }
 
         LValue calleeCallFrame = m_out.address(m_execState, m_heaps.CallFrame_callerFrame).value();
@@ -3808,9 +3813,8 @@ private:
 
     void compileCallOrConstruct()
     {
-        int dummyThisArgument = m_node->op() == Call ? 0 : 1;
         int numPassedArgs = m_node->numChildren() - 1;
-        int numArgs = numPassedArgs + dummyThisArgument;
+        int numArgs = numPassedArgs;
 
         LValue jsCallee = lowJSValue(m_graph.varArgChild(m_node, 0));
 
@@ -3825,8 +3829,6 @@ private:
         arguments.append(getUndef(m_out.int64)); // code block
         arguments.append(jsCallee); // callee -> stack
         arguments.append(m_out.constInt64(numArgs)); // argument count and zeros for the tag
-        if (dummyThisArgument)
-            arguments.append(getUndef(m_out.int64));
         for (int i = 0; i < numPassedArgs; ++i)
             arguments.append(lowJSValue(m_graph.varArgChild(m_node, 1 + i)));
         
@@ -3857,6 +3859,7 @@ private:
             break;
         case ConstructVarargs:
             jsArguments = lowJSValue(m_node->child2());
+            thisArg = lowJSValue(m_node->child3());
             break;
         default:
             DFG_CRASH(m_graph, m_node, "bad node type");
@@ -3869,12 +3872,12 @@ private:
         arguments.append(m_out.constInt64(stackmapID));
         arguments.append(m_out.constInt32(sizeOfICFor(m_node)));
         arguments.append(constNull(m_out.ref8));
-        arguments.append(m_out.constInt32(1 + !!jsArguments + !!thisArg));
+        arguments.append(m_out.constInt32(2 + !!jsArguments));
         arguments.append(jsCallee);
         if (jsArguments)
             arguments.append(jsArguments);
-        if (thisArg)
-            arguments.append(thisArg);
+        ASSERT(thisArg);
+        arguments.append(thisArg);
         
         callPreflight();
         
@@ -4196,11 +4199,29 @@ private:
         m_out.appendTo(continuation, lastNext);
         setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
     }
-    
+
     void compileIsObject()
     {
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("IsObject cell case"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("IsObject continuation"));
+
+        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
+        m_out.branch(isCell(value), unsure(isCellCase), unsure(continuation));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, continuation);
+        ValueFromBlock cellResult = m_out.anchor(isObject(value));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
+    }
+
+    void compileIsObjectOrNull()
+    {
         LValue pointerResult = vmCall(
-            m_out.operation(operationIsObject), m_callFrame, lowJSValue(m_node->child1()));
+            m_out.operation(operationIsObjectOrNull), m_callFrame, lowJSValue(m_node->child1()));
         setBoolean(m_out.notNull(pointerResult));
     }
     
@@ -5122,10 +5143,7 @@ private:
             return;
         }
         
-        LValue structureID = m_out.load32(cell, m_heaps.JSCell_structureID);
-        FTL_TYPE_CHECK(
-            jsValueValue(cell), edge, filter,
-            m_out.equal(structureID, m_out.constInt32(vm().stringStructure->id())));
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, filter, isNotObject(cell));
         speculate(
             BadType, jsValueValue(cell), edge.node(),
             m_out.testNonZero8(
@@ -5435,10 +5453,7 @@ private:
             break;
         case CellCaseSpeculatesObject:
             FTL_TYPE_CHECK(
-                jsValueValue(value), edge, (~SpecCell) | SpecObject,
-                m_out.equal(
-                    m_out.load32(value, m_heaps.JSCell_structureID),
-                    m_out.constInt32(vm().stringStructure->id())));
+                jsValueValue(value), edge, (~SpecCell) | SpecObject, isNotObject(value));
             break;
         }
         
@@ -6264,14 +6279,23 @@ private:
     
     LValue isObject(LValue cell)
     {
+        return m_out.aboveOrEqual(
+            m_out.load8(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt8(ObjectType));
+    }
+
+    LValue isNotObject(LValue cell)
+    {
+        return m_out.below(
+            m_out.load8(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt8(ObjectType));
+    }
+
+    LValue isNotString(LValue cell)
+    {
         return m_out.notEqual(
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().stringStructure->id()));
-    }
-    
-    LValue isNotString(LValue cell)
-    {
-        return isObject(cell);
     }
     
     LValue isString(LValue cell)
@@ -6279,11 +6303,6 @@ private:
         return m_out.equal(
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().stringStructure->id()));
-    }
-    
-    LValue isNotObject(LValue cell)
-    {
-        return isString(cell);
     }
     
     LValue isArrayType(LValue cell, ArrayMode arrayMode)
@@ -6482,11 +6501,7 @@ private:
     
     void speculateNonNullObject(Edge edge, LValue cell)
     {
-        FTL_TYPE_CHECK(
-            jsValueValue(cell), edge, SpecObject, 
-            m_out.equal(
-                m_out.load32(cell, m_heaps.JSCell_structureID),
-                m_out.constInt32(vm().stringStructure->id())));
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecObject, isNotObject(cell));
         if (masqueradesAsUndefinedWatchpointIsStillValid())
             return;
         

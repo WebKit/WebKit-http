@@ -44,6 +44,8 @@
 #include "JIT.h"
 #include "JITToDFGDeferredCompilationCallback.h"
 #include "JSCInlines.h"
+#include "JSCatchScope.h"
+#include "JSFunctionNameScope.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSNameScope.h"
 #include "JSPropertyNameEnumerator.h"
@@ -58,6 +60,24 @@
 #include <wtf/InlineASM.h>
 
 namespace JSC {
+
+template<typename ScopeType>
+void pushNameScope(ExecState* exec, int32_t dst, SymbolTable* symbolTable, EncodedJSValue encodedValue)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    
+    ASSERT(!JITCode::isOptimizingJIT(exec->codeBlock()->jitType()));
+
+    // FIXME: This won't work if this operation is called from the DFG or FTL.
+    // This should be changed to pass in the new scope.
+    JSScope* currentScope = exec->uncheckedR(dst).Register::scope();
+    JSNameScope* scope = ScopeType::create(vm, exec->lexicalGlobalObject(), currentScope, symbolTable, JSValue::decode(encodedValue));
+
+    // FIXME: This won't work if this operation is called from the DFG or FTL.
+    // This should be changed to return the new scope.
+    exec->uncheckedR(dst) = scope;
+}
 
 extern "C" {
 
@@ -695,7 +715,7 @@ inline char* linkFor(
         codePtr = executable->entrypointFor(*vm, kind, MustCheckArity, registers);
     else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
-        JSObject* error = functionExecutable->prepareForExecution(execCallee, callee, &scope, kind);
+        JSObject* error = functionExecutable->prepareForExecution(execCallee, callee, scope, kind);
         if (error) {
             throwStackOverflowError(exec);
             return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
@@ -753,7 +773,7 @@ inline char* virtualForWithFunction(
     ExecutableBase* executable = function->executable();
     if (UNLIKELY(!executable->hasJITCodeFor(kind))) {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
-        JSObject* error = functionExecutable->prepareForExecution(execCallee, function, &scope, kind);
+        JSObject* error = functionExecutable->prepareForExecution(execCallee, function, scope, kind);
         if (error) {
             exec->vm().throwException(exec, error);
             return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
@@ -1139,17 +1159,7 @@ SlowPathReturnType JIT_OPERATION operationOptimize(ExecState* exec, int32_t byte
         Operands<JSValue> mustHandleValues(codeBlock->numParameters(), numVarsWithValues);
         for (size_t i = 0; i < mustHandleValues.size(); ++i) {
             int operand = mustHandleValues.operandForIndex(i);
-            if (operandIsArgument(operand)
-                && !VirtualRegister(operand).toArgument()
-                && codeBlock->codeType() == FunctionCode
-                && codeBlock->specializationKind() == CodeForConstruct) {
-                // Ugh. If we're in a constructor, the 'this' argument may hold garbage. It will
-                // also never be used. It doesn't matter what we put into the value for this,
-                // but it has to be an actual value that can be grokked by subsequent DFG passes,
-                // so we sanitize it here by turning it into Undefined.
-                mustHandleValues[i] = jsUndefined();
-            } else
-                mustHandleValues[i] = exec->uncheckedR(operand).jsValue();
+            mustHandleValues[i] = exec->uncheckedR(operand).jsValue();
         }
 
         RefPtr<CodeBlock> replacementCodeBlock = codeBlock->newReplacement();
@@ -1269,33 +1279,15 @@ void JIT_OPERATION operationPutGetterSetter(ExecState* exec, JSCell* object, Ide
 }
 #endif
 
-void JIT_OPERATION operationPushNameScope(ExecState* exec, int32_t dst, Identifier* identifier, EncodedJSValue encodedValue, int32_t attibutes, int32_t type)
+void JIT_OPERATION operationPushCatchScope(ExecState* exec, int32_t dst, SymbolTable* symbolTable, EncodedJSValue encodedValue)
 {
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-
-    // FIXME: This won't work if this operation is called from the DFG or FTL.
-    // This should be changed to pass in the new scope.
-    JSScope* currentScope = exec->uncheckedR(dst).Register::scope();
-    JSNameScope::Type scopeType = static_cast<JSNameScope::Type>(type);
-    JSNameScope* scope = JSNameScope::create(exec, currentScope, *identifier, JSValue::decode(encodedValue), attibutes, scopeType);
-
-    // FIXME: This won't work if this operation is called from the DFG or FTL.
-    // This should be changed to return the new scope.
-    exec->uncheckedR(dst) = scope;
+    pushNameScope<JSCatchScope>(exec, dst, symbolTable, encodedValue);
 }
 
-#if USE(JSVALUE32_64)
-void JIT_OPERATION operationPushCatchScope(ExecState* exec, int32_t dst, Identifier* identifier, EncodedJSValue encodedValue, int32_t attibutes)
+void JIT_OPERATION operationPushFunctionNameScope(ExecState* exec, int32_t dst, SymbolTable* symbolTable, EncodedJSValue encodedValue)
 {
-    operationPushNameScope(exec, dst, identifier, encodedValue, attibutes, JSNameScope::CatchScope);
+    pushNameScope<JSFunctionNameScope>(exec, dst, symbolTable, encodedValue);
 }
-
-void JIT_OPERATION operationPushFunctionNameScope(ExecState* exec, int32_t dst, Identifier* identifier, EncodedJSValue encodedValue, int32_t attibutes)
-{
-    operationPushNameScope(exec, dst, identifier, encodedValue, attibutes, JSNameScope::FunctionNameScope);
-}
-#endif
 
 void JIT_OPERATION operationPushWithScope(ExecState* exec, int32_t dst, EncodedJSValue encodedValue)
 {

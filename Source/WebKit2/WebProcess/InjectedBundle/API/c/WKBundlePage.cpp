@@ -275,6 +275,8 @@ void WKAccessibilityEnableEnhancedAccessibility(bool enable)
 {
 #if HAVE(ACCESSIBILITY)
     WebCore::AXObjectCache::setEnhancedUserInterfaceAccessibility(enable);
+#else
+    UNUSED_PARAM(enable);
 #endif
 }
 

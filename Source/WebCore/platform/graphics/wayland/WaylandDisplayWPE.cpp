@@ -127,7 +127,7 @@ WaylandDisplay* WaylandDisplay::instance()
 
     g_source_set_priority(baseSource, G_PRIORITY_DEFAULT);
     g_source_set_can_recurse(baseSource, TRUE);
-    g_source_attach(baseSource, nullptr);
+    g_source_attach(baseSource, g_main_context_get_thread_default());
 
     return display;
 }
@@ -148,6 +148,8 @@ WaylandDisplay::WaylandDisplay(struct wl_display* wlDisplay)
         EGL_ALPHA_SIZE, 1,
         EGL_DEPTH_SIZE, 24,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_SAMPLE_BUFFERS, 1,
+        EGL_SAMPLES, 4,
         EGL_NONE
     };
 

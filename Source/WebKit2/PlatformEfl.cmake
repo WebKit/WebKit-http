@@ -11,7 +11,6 @@ list(APPEND WebKit2_SOURCES
     Platform/efl/DispatchQueueEfl.cpp
     Platform/efl/LoggingEfl.cpp
     Platform/efl/ModuleEfl.cpp
-    Platform/efl/WorkQueueEfl.cpp
 
     Platform/unix/SharedMemoryUnix.cpp
 
@@ -538,6 +537,7 @@ if (ENABLE_API_TESTS)
     endforeach ()
 
     add_library(ewk2UnitTestExtensionSample SHARED ${TEST_EXTENSIONS_DIR}/extension_sample.cpp)
+    target_link_libraries(ewk2UnitTestExtensionSample ${EINA_LIBRARIES} WebKit2)
 endif ()
 
 if (ENABLE_SPELLCHECK)

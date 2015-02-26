@@ -93,7 +93,7 @@ void InspectorRuntimeAgent::parse(ErrorString&, const String& expression, Inspec
     ParserError error;
     checkSyntax(vm, JSC::makeSource(expression), error);
 
-    switch (error.m_syntaxErrorType) {
+    switch (error.syntaxErrorType()) {
     case ParserError::SyntaxErrorNone:
         *result = Inspector::Protocol::Runtime::SyntaxErrorType::None;
         break;
@@ -108,9 +108,9 @@ void InspectorRuntimeAgent::parse(ErrorString&, const String& expression, Inspec
         break;
     }
 
-    if (error.m_syntaxErrorType != ParserError::SyntaxErrorNone) {
-        *message = error.m_message;
-        range = buildErrorRangeObject(error.m_token.m_location);
+    if (error.syntaxErrorType() != ParserError::SyntaxErrorNone) {
+        *message = error.message();
+        range = buildErrorRangeObject(error.token().m_location);
     }
 }
 
@@ -160,7 +160,7 @@ void InspectorRuntimeAgent::callFunctionOn(ErrorString& errorString, const Strin
     }
 }
 
-void InspectorRuntimeAgent::getProperties(ErrorString& errorString, const String& objectId, const bool* const ownProperties, const bool* const ownAndGetterProperties, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties)
+void InspectorRuntimeAgent::getProperties(ErrorString& errorString, const String& objectId, const bool* const ownProperties, const bool* const generatePreview, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties)
 {
     InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
@@ -171,8 +171,26 @@ void InspectorRuntimeAgent::getProperties(ErrorString& errorString, const String
     ScriptDebugServer::PauseOnExceptionsState previousPauseOnExceptionsState = setPauseOnExceptionsState(m_scriptDebugServer, ScriptDebugServer::DontPauseOnExceptions);
     muteConsole();
 
-    injectedScript.getProperties(errorString, objectId, asBool(ownProperties), asBool(ownAndGetterProperties), &result);
-    injectedScript.getInternalProperties(errorString, objectId, &internalProperties);
+    injectedScript.getProperties(errorString, objectId, asBool(ownProperties), asBool(generatePreview), &result);
+    injectedScript.getInternalProperties(errorString, objectId, asBool(generatePreview), &internalProperties);
+
+    unmuteConsole();
+    setPauseOnExceptionsState(m_scriptDebugServer, previousPauseOnExceptionsState);
+}
+
+void InspectorRuntimeAgent::getDisplayableProperties(ErrorString& errorString, const String& objectId, const bool* const generatePreview, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties)
+{
+    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(objectId);
+    if (injectedScript.hasNoValue()) {
+        errorString = ASCIILiteral("Inspected frame has gone");
+        return;
+    }
+
+    ScriptDebugServer::PauseOnExceptionsState previousPauseOnExceptionsState = setPauseOnExceptionsState(m_scriptDebugServer, ScriptDebugServer::DontPauseOnExceptions);
+    muteConsole();
+
+    injectedScript.getDisplayableProperties(errorString, objectId, asBool(generatePreview), &result);
+    injectedScript.getInternalProperties(errorString, objectId, asBool(generatePreview), &internalProperties);
 
     unmuteConsole();
     setPauseOnExceptionsState(m_scriptDebugServer, previousPauseOnExceptionsState);

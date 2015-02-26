@@ -52,9 +52,9 @@ WebInspector.ObjectPropertiesSection.prototype = {
         }
 
         if (this.getAllProperties)
-            this.object.getAllProperties(callback.bind(this));
+            this.object.deprecatedGetAllProperties(callback.bind(this));
         else
-            this.object.getOwnAndGetterProperties(callback.bind(this));
+            this.object.deprecatedGetDisplayableProperties(callback.bind(this));
     },
 
     updateProperties: function(properties, rootTreeElementConstructor, rootPropertyComparer)
@@ -171,9 +171,9 @@ WebInspector.ObjectPropertyTreeElement.prototype = {
         };
 
         if (this.property.name === "__proto__")
-            this.property.value.getOwnProperties(callback.bind(this));
+            this.property.value.deprecatedGetOwnProperties(callback.bind(this));
         else
-            this.property.value.getOwnAndGetterProperties(callback.bind(this));
+            this.property.value.deprecatedGetDisplayableProperties(callback.bind(this));
     },
 
     ondblclick: function(event)
@@ -207,7 +207,7 @@ WebInspector.ObjectPropertyTreeElement.prototype = {
         if (this.property.wasThrown)
             this.valueElement.textContent = "[Exception: " + description + "]";
         else if (this.property.value.type === "string" && typeof description === "string") {
-            this.valueElement.textContent = "\"" + description.replace(/\n/g, "\u21B5") + "\"";
+            this.valueElement.textContent = "\"" + description.replace(/\n/g, "\u21B5").replace(/"/g, "\\\"") + "\"";
             this.valueElement._originalTextContent = "\"" + description + "\"";
         } else if (this.property.value.type === "function" && typeof description === "string") {
             this.valueElement.textContent = /.*/.exec(description)[0].replace(/ +$/g, "");
@@ -221,9 +221,9 @@ WebInspector.ObjectPropertyTreeElement.prototype = {
         if (this.property.wasThrown)
             this.valueElement.classList.add("error");
         if (this.property.value.subtype)
-            this.valueElement.classList.add("console-formatted-" + this.property.value.subtype);
+            this.valueElement.classList.add("formatted-" + this.property.value.subtype);
         else if (this.property.value.type)
-            this.valueElement.classList.add("console-formatted-" + this.property.value.type);
+            this.valueElement.classList.add("formatted-" + this.property.value.type);
         if (this.property.value.subtype === "node")
             this.valueElement.addEventListener("contextmenu", this._contextMenuEventFired.bind(this), false);
 
@@ -404,7 +404,7 @@ WebInspector.CollectionEntriesMainTreeElement.prototype = {
                 else {
                     this.appendChild(new WebInspector.ObjectPropertyTreeElement({
                         name: "" + i,
-                        value: WebInspector.RemoteObject.fromPayload(entry.value),
+                        value: entry.value,
                         enumerable: true,
                         writable: false,
                     }));
@@ -472,8 +472,8 @@ WebInspector.CollectionEntryTreeElement = function(entry, index)
     console.assert(entry);
 
     this._name = "" + index;
-    this._key = WebInspector.RemoteObject.fromPayload(entry.key);
-    this._value = WebInspector.RemoteObject.fromPayload(entry.value);
+    this._key = entry.key;
+    this._value = entry.value;
 
     this.toggleOnClick = true;
     this.selectable = false;

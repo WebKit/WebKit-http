@@ -94,6 +94,9 @@ void GMainLoopSource::scheduleIdleSource(const char* name, GSourceFunc sourceFun
     if (priority != G_PRIORITY_DEFAULT_IDLE)
         g_source_set_priority(m_context.source.get(), priority);
     g_source_set_callback(m_context.source.get(), sourceFunction, this, nullptr);
+
+    if (!context)
+        context = g_main_context_get_thread_default();
     g_source_attach(m_context.source.get(), context);
 }
 
@@ -151,6 +154,9 @@ void GMainLoopSource::schedule(const char* name, std::function<bool (GIOConditio
     m_status = Scheduled;
     g_source_set_name(m_context.source.get(), name);
     g_source_set_callback(m_context.source.get(), reinterpret_cast<GSourceFunc>(socketSourceCallback), this, nullptr);
+
+    if (!context)
+        context = g_main_context_get_thread_default();
     g_source_attach(m_context.source.get(), context);
 }
 
@@ -163,6 +169,9 @@ void GMainLoopSource::scheduleTimeoutSource(const char* name, GSourceFunc source
     if (priority != G_PRIORITY_DEFAULT)
         g_source_set_priority(m_context.source.get(), priority);
     g_source_set_callback(m_context.source.get(), sourceFunction, this, nullptr);
+
+    if (!context)
+        context = g_main_context_get_thread_default();
     g_source_attach(m_context.source.get(), context);
 }
 
@@ -481,7 +490,8 @@ GMainLoopSource::Simple::Simple(const char* name)
 {
     g_source_set_name(m_source.get(), name);
     g_source_set_callback(m_source.get(), reinterpret_cast<GSourceFunc>(simpleSourceCallback), this, nullptr);
-    g_source_attach(m_source.get(), nullptr);
+
+    g_source_attach(m_source.get(), g_main_context_get_thread_default());
 }
 
 GMainLoopSource::Simple::Simple(const char* name, std::function<void ()> function)
@@ -492,7 +502,8 @@ GMainLoopSource::Simple::Simple(const char* name, std::function<void ()> functio
     ASSERT(m_function);
     g_source_set_name(m_source.get(), name);
     g_source_set_callback(m_source.get(), reinterpret_cast<GSourceFunc>(simpleSourceCallback), this, nullptr);
-    g_source_attach(m_source.get(), nullptr);
+
+    g_source_attach(m_source.get(), g_main_context_get_thread_default());
 }
 
 void GMainLoopSource::Simple::schedule(std::chrono::microseconds delay)

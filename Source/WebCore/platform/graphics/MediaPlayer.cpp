@@ -79,7 +79,7 @@ const PlatformMedia NoPlatformMedia = { PlatformMedia::None, {0} };
 
 class NullMediaPlayerPrivate : public MediaPlayerPrivateInterface {
 public:
-    NullMediaPlayerPrivate(MediaPlayer*) { }
+    explicit NullMediaPlayerPrivate(MediaPlayer*) { }
 
     virtual void load(const String&) { }
 #if ENABLE(MEDIA_SOURCE)
@@ -124,7 +124,7 @@ public:
 
     virtual double maxTimeSeekableDouble() const { return 0; }
     virtual double minTimeSeekable() const { return 0; }
-    virtual std::unique_ptr<PlatformTimeRanges> buffered() const { return PlatformTimeRanges::create(); }
+    virtual std::unique_ptr<PlatformTimeRanges> buffered() const { return std::make_unique<PlatformTimeRanges>(); }
 
     virtual unsigned long long totalBytes() const { return 0; }
     virtual bool didLoadingProgress() const { return false; }
@@ -144,12 +144,6 @@ public:
     virtual MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override { return MediaPlayer::InvalidPlayerState; }
 #endif
 };
-
-static PassOwnPtr<MediaPlayerPrivateInterface> createNullMediaPlayer(MediaPlayer* player) 
-{ 
-    return adoptPtr(new NullMediaPlayerPrivate(player)); 
-}
-
 
 // engine support
 
@@ -287,7 +281,7 @@ static const MediaPlayerFactory* nextMediaEngine(const MediaPlayerFactory* curre
 MediaPlayer::MediaPlayer(MediaPlayerClient& client)
     : m_client(client)
     , m_reloadTimer(*this, &MediaPlayer::reloadTimerFired)
-    , m_private(createNullMediaPlayer(this))
+    , m_private(std::make_unique<NullMediaPlayerPrivate>(this))
     , m_currentMediaEngine(0)
     , m_preload(Auto)
     , m_visible(false)
@@ -404,7 +398,7 @@ void MediaPlayer::loadWithNextMediaEngine(const MediaPlayerFactory* current)
 #endif
         m_private->load(m_url.string());
     } else {
-        m_private = createNullMediaPlayer(this);
+        m_private = std::make_unique<NullMediaPlayerPrivate>(this);
         m_client.mediaPlayerEngineUpdated(this);
         m_client.mediaPlayerResourceNotSupported(this);
     }
@@ -813,7 +807,7 @@ void MediaPlayer::exitFullscreen()
 }
 #endif
 
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
 bool MediaPlayer::isCurrentPlaybackTargetWireless() const
 {
     return m_private->isCurrentPlaybackTargetWireless();
@@ -827,16 +821,6 @@ String MediaPlayer::wirelessPlaybackTargetName() const
 MediaPlayer::WirelessPlaybackTargetType MediaPlayer::wirelessPlaybackTargetType() const
 {
     return m_private->wirelessPlaybackTargetType();
-}
-
-void MediaPlayer::showPlaybackTargetPicker()
-{
-    m_private->showPlaybackTargetPicker();
-}
-
-bool MediaPlayer::hasWirelessPlaybackTargets() const
-{
-    return m_private->hasWirelessPlaybackTargets();
 }
 
 bool MediaPlayer::wirelessVideoPlaybackDisabled() const
