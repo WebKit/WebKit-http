@@ -92,14 +92,10 @@ ssize_t MediaBuffer::ReadAt(off_t position, void* buffer, size_t size)
 }
 
 
-PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivate::create(MediaPlayer* player)
-{
-    return adoptPtr(new MediaPlayerPrivate(player));
-}
-
 void MediaPlayerPrivate::registerMediaEngine(MediaEngineRegistrar registrar)
 {
-    registrar(create, getSupportedTypes, supportsType, 0, 0, 0, 0);
+    registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivate>(player); },
+        getSupportedTypes, supportsType, 0, 0, 0, 0);
 }
 
 MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
@@ -309,7 +305,7 @@ MediaPlayer::ReadyState MediaPlayerPrivate::readyState() const
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivate::buffered() const
 {
     notImplemented();
-    auto timeRanges = PlatformTimeRanges::create();
+    auto timeRanges = std::make_unique<PlatformTimeRanges>();
     return timeRanges;
 }
 

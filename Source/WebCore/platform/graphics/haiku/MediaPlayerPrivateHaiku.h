@@ -40,6 +40,8 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
     public:
         static void registerMediaEngine(MediaEngineRegistrar);
 
+        MediaPlayerPrivate(MediaPlayer*);
+
         ~MediaPlayerPrivate();
 
         void load(const String& url) override;
@@ -85,7 +87,6 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         // BHandler API
 	    void MessageReceived(BMessage* message) override;
     private:
-        MediaPlayerPrivate(MediaPlayer*);
         
         void IdentifyTracks();
 

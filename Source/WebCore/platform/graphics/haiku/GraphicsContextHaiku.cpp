@@ -870,7 +870,7 @@ void GraphicsContext::setMiterLimit(float limit)
     m_data->view()->SetLineMode(m_data->view()->LineCapMode(), m_data->view()->LineJoinMode(), limit);
 }
 
-void GraphicsContext::setAlpha(float opacity)
+void GraphicsContext::setPlatformAlpha(float opacity)
 {
     if (paintingDisabled())
         return;

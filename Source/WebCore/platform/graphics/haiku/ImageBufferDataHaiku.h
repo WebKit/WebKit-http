@@ -47,6 +47,7 @@ public:
 
     BBitmap m_bitmap;
     BView* m_view;
+    GraphicsContext* m_context;
     
     RefPtr<Image> m_image;
 };

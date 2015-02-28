@@ -433,6 +433,13 @@ void Path::addRect(const FloatRect& r)
     m_path->Close();
 }
 
+
+void Path::addEllipse(FloatPoint p, float radiusX, float radiusY, float rotation,
+    float startAngle, float endAngle, bool anticlockwise) {
+    notImplemented();
+}
+
+
 void Path::addEllipse(const FloatRect& r)
 {
     BPoint points[3];

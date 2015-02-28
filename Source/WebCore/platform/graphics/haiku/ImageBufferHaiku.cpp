@@ -71,6 +71,7 @@ ImageBufferData::ImageBufferData(const FloatSize& size)
     m_view->SetLineMode(B_BUTT_CAP, B_MITER_JOIN, 10);
     m_view->SetDrawingMode(B_OP_ALPHA);
     m_view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+    m_context = new GraphicsContext(m_view);
 
     m_image = StillImage::createForRendering(&m_bitmap);
 }
@@ -80,6 +81,7 @@ ImageBufferData::~ImageBufferData()
     m_view = nullptr;
         // m_bitmap owns m_view and deletes it when going out of this destructor.
     m_image = nullptr;
+    delete m_context;
 
     m_bitmap.Unlock();
 }
@@ -94,7 +96,6 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
         return;
     }
 
-    m_context = adoptPtr(new GraphicsContext(m_data.m_view));
     success = m_data.m_view != nullptr;
 }
 
@@ -107,8 +108,7 @@ GraphicsContext* ImageBuffer::context() const
     if(!m_data.m_view)
         return NULL;
 
-    ASSERT(m_data.m_view->Window());
-    return m_context.get();
+    return m_data.m_context;
 }
 
 PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
