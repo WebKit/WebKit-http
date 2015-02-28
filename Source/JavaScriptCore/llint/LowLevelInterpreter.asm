@@ -633,7 +633,7 @@ macro prologue(codeBlockGetter, codeBlockSetter, osrSlowPath, traceSlowPath)
 .stackHeightOKGetCodeBlock:
     # Stack check slow path returned that the stack was ok.
     # Since they were clobbered, need to get CodeBlock and new sp
-    codeBlockSetter(t1)
+    codeBlockGetter(t1)
     getFrameRegisterSizeForCodeBlock(t1, t0)
     subp cfr, t0, t0
 
@@ -983,11 +983,10 @@ _llint_op_typeof:
     dispatch(3)
 
 
-_llint_op_is_object:
+_llint_op_is_object_or_null:
     traceExecution()
-    callSlowPath(_slow_path_is_object)
+    callSlowPath(_slow_path_is_object_or_null)
     dispatch(3)
-
 
 _llint_op_is_function:
     traceExecution()
@@ -1256,7 +1255,7 @@ _llint_op_pop_scope:
 _llint_op_push_name_scope:
     traceExecution()
     callSlowPath(_llint_slow_path_push_name_scope)
-    dispatch(6)
+    dispatch(5)
 
 
 _llint_op_throw:

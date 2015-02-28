@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -102,7 +102,7 @@ EncodedJSValue JIT_OPERATION operationGetInlinedArgumentByVal(ExecState*, int32_
 EncodedJSValue JIT_OPERATION operationGetArgumentByVal(ExecState*, int32_t, int32_t) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationNewFunctionNoCheck(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
 double JIT_OPERATION operationFModOnInts(int32_t, int32_t) WTF_INTERNAL;
-size_t JIT_OPERATION operationIsObject(ExecState*, EncodedJSValue) WTF_INTERNAL;
+size_t JIT_OPERATION operationIsObjectOrNull(ExecState*, EncodedJSValue) WTF_INTERNAL;
 size_t JIT_OPERATION operationIsFunction(EncodedJSValue) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationTypeOf(ExecState*, JSCell*) WTF_INTERNAL;
 char* JIT_OPERATION operationAllocatePropertyStorageWithInitialCapacity(ExecState*) WTF_INTERNAL;
@@ -125,6 +125,8 @@ JSCell* JIT_OPERATION operationMakeRope3(ExecState*, JSString*, JSString*, JSStr
 char* JIT_OPERATION operationFindSwitchImmTargetForDouble(ExecState*, EncodedJSValue, size_t tableIndex);
 char* JIT_OPERATION operationSwitchString(ExecState*, size_t tableIndex, JSString*);
 void JIT_OPERATION operationNotifyWrite(ExecState*, VariableWatchpointSet*, EncodedJSValue);
+int32_t JIT_OPERATION operationSizeOfVarargs(ExecState*, EncodedJSValue arguments, int32_t firstVarArgOffset);
+void JIT_OPERATION operationLoadVarargs(ExecState*, int32_t firstElementDest, EncodedJSValue arguments, int32_t offset, int32_t length, int32_t mandatoryMinimum);
 
 int64_t JIT_OPERATION operationConvertBoxedDoubleToInt52(EncodedJSValue);
 int64_t JIT_OPERATION operationConvertDoubleToInt52(double);

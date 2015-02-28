@@ -1,3 +1,486 @@
+2015-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fixed a typo in the previous commit.
+
+        * bmalloc/BoundaryTag.h:
+        (bmalloc::BoundaryTag::setOwner):
+
+2015-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        EFL build fix after r180797.
+
+        * bmalloc/BoundaryTag.h:
+        (bmalloc::BoundaryTag::owner):
+        (bmalloc::BoundaryTag::setOwner):
+
+2015-02-27  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Pathological madvise churn on the free(malloc(x)) benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=142058
+
+        Reviewed by Andreas Kling.
+
+        The churn was caused by repeatedly splitting an object with physical
+        pages from an object without, and then merging them back together again.
+        The merge would conservatively forget that we had physical pages, forcing
+        a new call to madvise on the next allocation.
+
+        This patch more strictly segregates objects in the heap from objects in
+        the VM heap, with these changes:
+
+        (1) Objects in the heap are not allowed to merge with objects in the VM
+        heap, and vice versa -- since that would erase our precise knowledge of
+        which physical pages had been allocated.
+
+        (2) The VM heap is exclusively responsible for allocating and deallocating
+        physical pages.
+
+        (3) The heap free list must consider entries for objects that are in the
+        VM heap to be invalid, and vice versa. (This condition can arise
+        because the free list does not eagerly remove items.)
+
+        With these changes, we can know that any valid object in the heap's free
+        list already has physical pages, and does not need to call madvise.
+
+        Note that the VM heap -- as before -- might sometimes contain ranges
+        or pieces of ranges that have physical pages, since we allow splitting
+        of ranges at granularities smaller than the VM page size. These ranges
+        can eventually merge with ranges in the heap during scavenging.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+
+        * bmalloc/BoundaryTag.h:
+        (bmalloc::BoundaryTag::owner):
+        (bmalloc::BoundaryTag::setOwner):
+        (bmalloc::BoundaryTag::initSentinel):
+        (bmalloc::BoundaryTag::hasPhysicalPages): Deleted.
+        (bmalloc::BoundaryTag::setHasPhysicalPages): Deleted. Replaced the concept
+        of "has physical pages" with a bit indicating which heap owns the large
+        object. This is a more precise concept, since the old bit was really a
+        Yes / Maybe bit.
+
+        * bmalloc/Deallocator.cpp:
+
+        * bmalloc/FreeList.cpp: Adopt
+        (bmalloc::FreeList::takeGreedy):
+        (bmalloc::FreeList::take):
+        (bmalloc::FreeList::removeInvalidAndDuplicateEntries):
+        * bmalloc/FreeList.h:
+        (bmalloc::FreeList::push): Added API for considering the owner when
+        deciding if a free list entry is valid.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap): Adopt new API.
+
+        (bmalloc::Heap::scavengeLargeRanges): Scavenge all ranges with no minimum,
+        since some ranges might be able to merge with ranges in the VM heap, and
+        they won't be allowed to until we scavenge them.
+
+        (bmalloc::Heap::allocateSmallPage):
+        (bmalloc::Heap::allocateMediumPage):
+        (bmalloc::Heap::allocateLarge): New VM heap API makes this function
+        simpler, since we always get back physical pages now.
+
+        * bmalloc/Heap.h:
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::end):
+        (bmalloc::LargeObject::owner):
+        (bmalloc::LargeObject::setOwner):
+        (bmalloc::LargeObject::isValidAndFree):
+        (bmalloc::LargeObject::merge): Do not merge objects across heaps since
+        that causes madvise churn.
+        (bmalloc::LargeObject::validateSelf):
+        (bmalloc::LargeObject::init):
+        (bmalloc::LargeObject::hasPhysicalPages): Deleted.
+        (bmalloc::LargeObject::setHasPhysicalPages): Deleted. Propogate the Owner API.
+
+        * bmalloc/Owner.h: Added.
+
+        * bmalloc/SegregatedFreeList.cpp:
+        (bmalloc::SegregatedFreeList::SegregatedFreeList):
+        (bmalloc::SegregatedFreeList::insert):
+        (bmalloc::SegregatedFreeList::takeGreedy):
+        (bmalloc::SegregatedFreeList::take):
+        * bmalloc/SegregatedFreeList.h: Propogate the owner API.
+
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmDeallocatePhysicalPagesSloppy):
+        (bmalloc::vmAllocatePhysicalPagesSloppy): Clarified these functions and
+        removed an edge case.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::VMHeap):
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateSmallPage):
+        (bmalloc::VMHeap::allocateMediumPage):
+        (bmalloc::VMHeap::allocateLargeObject):
+        (bmalloc::VMHeap::deallocateLargeObject): Be sure to give each object
+        a new chance to merge, since it might have been prohibited from merging
+        before by virtue of not being in the VM heap.
+
+        (bmalloc::VMHeap::allocateLargeRange): Deleted.
+        (bmalloc::VMHeap::deallocateLargeRange): Deleted.
+
+2015-02-26  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Large object free list can grow infinitely
+        https://bugs.webkit.org/show_bug.cgi?id=142055
+
+        Reviewed by Andreas Kling.
+
+        By design, we don't eagerly remove large objects from the free list.
+        This creates two simple pathologies:
+
+            (1) If you free and then allocate the same object repeatedly, it will
+            duplicate itself in the free list repeatedly. Since it is never
+            invalid at the time of allocation, it will never be removed.
+
+            (2) If you split and then merge the same object repeatedly, it will
+            duplicate its split sibling in the free list repeatedly. If its
+            sibling is in a separate free list size class, it will never be
+            consulted at the time of allocation, so it will never be removed.
+
+        So, a simple "while (1) { free(malloc(x)); }" causes infinite memory
+        use in the free list.
+
+        The solution in this patch is a simple helper to remove garbage from the
+        free list if it grows too large. This pathology is not common, so the
+        cost is OK.
+
+        Long-term, perhaps we should rethink the laziness of these free lists.
+
+        * bmalloc/BoundaryTag.h:
+        (bmalloc::BoundaryTag::isMarked):
+        (bmalloc::BoundaryTag::setMarked): New bit, used by free list GC.
+
+        * bmalloc/FreeList.cpp:
+        (bmalloc::FreeList::removeInvalidAndDuplicateEntries): The GC algorithm.
+
+        * bmalloc/FreeList.h:
+        (bmalloc::FreeList::FreeList):
+        (bmalloc::FreeList::push): Invoke the GC if we're getting huge.
+
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::isMarked):
+        (bmalloc::LargeObject::setMarked):
+        (bmalloc::LargeObject::validateSelf): Expose the new bit.
+
+        * bmalloc/Sizes.h: New constant to control GC frequency.
+
+2015-02-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r180693.
+
+        * CMakeLists.txt:
+
+2015-02-26  Geoffrey Garen  <ggaren@apple.com>
+
+        Try to fix the Mac build.
+
+        Unreviewed.
+
+        * bmalloc.xcodeproj/project.pbxproj: Make FreeList.h available.
+
+2015-02-26  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Refactored SegregatedFreeList and BoundaryTag::init
+        https://bugs.webkit.org/show_bug.cgi?id=142049
+
+        Reviewed by Anders Carlsson.
+
+        Split out a FreeList class from SegregatedFreeList. This will make it
+        easier to add behaviors on free list insertion and removal -- and it's
+        probably how I should have designed things at the start.
+
+        Moved BoundaryTag::init into LargeObject, since all the related logic
+        lives in LargeObject now too, and this allows us to remove BoundaryTagInlines.h.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/BoundaryTagInlines.h: Removed.
+        * bmalloc/FreeList.cpp: Copied from Source/bmalloc/bmalloc/SegregatedFreeList.cpp.
+        (bmalloc::FreeList::takeGreedy):
+        (bmalloc::FreeList::take):
+        (bmalloc::SegregatedFreeList::SegregatedFreeList): Deleted.
+        (bmalloc::SegregatedFreeList::insert): Deleted.
+        (bmalloc::SegregatedFreeList::takeGreedy): Deleted.
+        (bmalloc::SegregatedFreeList::take): Deleted.
+        * bmalloc/FreeList.h: Copied from Source/bmalloc/bmalloc/SegregatedFreeList.h.
+        (bmalloc::FreeList::push):
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::init):
+        * bmalloc/SegregatedFreeList.cpp:
+        (bmalloc::SegregatedFreeList::SegregatedFreeList):
+        (bmalloc::SegregatedFreeList::insert):
+        (bmalloc::SegregatedFreeList::takeGreedy):
+        (bmalloc::SegregatedFreeList::take):
+        * bmalloc/SegregatedFreeList.h:
+        * bmalloc/Sizes.h:
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+
+2015-02-26  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: free up a bit in BoundaryTag
+        https://bugs.webkit.org/show_bug.cgi?id=142048
+
+        Reviewed by Brady Eidson.
+
+        We were wasting a bit by accident, and I need one now.
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::rightShift): Deleted. Not needed, now that I've simplified
+        the math.
+
+        * bmalloc/BoundaryTag.h: Since each boundary tag bucket is 1024 bytes
+        long, the maximum offset into a bucket is 1023.
+
+        You need 5 bits to count up to 1024, but only 4 to count up to 1023.
+        
+        Math is hard.
+
+        (bmalloc::BoundaryTag::compactBegin): Switched to division because it
+        is simpler, and easier to match up with our ASSERT. The compiler will
+        turn division by constant power of two into a shift for us.
+
+        (bmalloc::BoundaryTag::setRange): Added an ASSERT for compactBegin
+        because we do encode it, so we should ASSERT that encoding did not
+        lose information.
+
+        * bmalloc/Sizes.h: Shifting is no longer used since we use division
+        instead.
+
+2015-02-24  Stephanie Lewis  <slewis@apple.com>
+
+        Rolling out http://trac.webkit.org/changeset/180430 as it causes the PLT to crash.
+        <rdar://problem/19948015>
+
+        Unreviewed.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+        * bmalloc/VMHeap.h:
+        * bmalloc/Zone.cpp:
+        (bmalloc::Zone::Zone):
+        (bmalloc::Zone::size): Deleted.
+        * bmalloc/Zone.h:
+
+2015-02-24  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Added a little more abstraction for large objects
+        https://bugs.webkit.org/show_bug.cgi?id=141978
+
+        Reviewed by Sam Weinig.
+
+        Previously, each client needed to manage the boundary tags of
+        a large object using free functions. This patch introduces a LargeObject
+        class that does things a little more automatically.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::reallocate): Use the new LargeObject class.
+
+        * bmalloc/BeginTag.h:
+        (bmalloc::BeginTag::isInFreeList): Deleted. Moved this logic into the
+        LargeObject class.
+
+        * bmalloc/BoundaryTag.h:
+        (bmalloc::BoundaryTag::isSentinel):
+        (bmalloc::BoundaryTag::compactBegin):
+        (bmalloc::BoundaryTag::setRange):
+        (bmalloc::BoundaryTag::initSentinel): Added an explicit API for sentinels,
+        which we used to create and test for implicitly.
+
+        * bmalloc/BoundaryTagInlines.h:
+        (bmalloc::BoundaryTag::init):
+        (bmalloc::validate): Deleted.
+        (bmalloc::validatePrev): Deleted.
+        (bmalloc::validateNext): Deleted.
+        (bmalloc::BoundaryTag::mergeLeft): Deleted.
+        (bmalloc::BoundaryTag::mergeRight): Deleted.
+        (bmalloc::BoundaryTag::merge): Deleted.
+        (bmalloc::BoundaryTag::deallocate): Deleted.
+        (bmalloc::BoundaryTag::split): Deleted.
+        (bmalloc::BoundaryTag::allocate): Deleted. Moved this logic into the
+        LargeObject class.
+
+        * bmalloc/EndTag.h:
+        (bmalloc::EndTag::init):
+        (bmalloc::EndTag::operator=): Deleted. Re-reading this code, I found
+        special behavior in the assignment operator to be a surprising API.
+        So, I replaced the assignment operation with an explicit initializing
+        function.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::scavengeLargeRanges):
+        (bmalloc::Heap::allocateXLarge):
+        (bmalloc::Heap::findXLarge):
+        (bmalloc::Heap::deallocateXLarge):
+        (bmalloc::Heap::allocateLarge):
+        (bmalloc::Heap::deallocateLarge):
+        * bmalloc/Heap.h: No behavior changes here -- just adopting the
+        LargeObject interface.
+
+        * bmalloc/LargeObject.h: Added.
+        (bmalloc::LargeObject::operator!):
+        (bmalloc::LargeObject::begin):
+        (bmalloc::LargeObject::size):
+        (bmalloc::LargeObject::range):
+        (bmalloc::LargeObject::LargeObject):
+        (bmalloc::LargeObject::setFree):
+        (bmalloc::LargeObject::isFree):
+        (bmalloc::LargeObject::hasPhysicalPages):
+        (bmalloc::LargeObject::setHasPhysicalPages):
+        (bmalloc::LargeObject::isValidAndFree):
+        (bmalloc::LargeObject::merge):
+        (bmalloc::LargeObject::split):
+        (bmalloc::LargeObject::validateSelf):
+        (bmalloc::LargeObject::validate): Moved this code into a class, out of
+        BoundaryTag free functions.
+
+        New to the class are these features:
+
+            (1) Every reference to an object is validated upon creation and use.
+
+            (2) There's an explicit API for "This is a reference to an object
+            that might be stale (the DoNotValidate API)".
+
+            (3) The begin and end tags are kept in sync automatically.
+
+        * bmalloc/SegregatedFreeList.cpp:
+        (bmalloc::SegregatedFreeList::insert):
+        (bmalloc::SegregatedFreeList::takeGreedy):
+        (bmalloc::SegregatedFreeList::take):
+        * bmalloc/SegregatedFreeList.h: Adopt the LargeObject interface.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateLargeRange):
+        (bmalloc::VMHeap::deallocateLargeRange): Adopt the LargeObject interface.
+
+2015-02-20  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc should implement malloc introspection (to stop false-positive leaks when MallocStackLogging is off)
+        https://bugs.webkit.org/show_bug.cgi?id=141802
+
+        Reviewed by Andreas Kling.
+
+        Rolling back in with a fix for a crash seen while using GuardMalloc.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+        * bmalloc/VMHeap.h:
+        * bmalloc/Zone.cpp: Re-land the old patch.
+
+        (bmalloc::Zone::size): Be sure to implement the size() function since
+        it's accessible indirectly via the malloc_zone_from_ptr public API --
+        and GuardMalloc calls it all the time.
+
+        (bmalloc::Zone::Zone):
+        * bmalloc/Zone.h: Re-land the old patch.
+
+2015-02-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r180363.
+        https://bugs.webkit.org/show_bug.cgi?id=141814
+
+        Caused >50 crashes when running LayoutTests in GuardMalloc or
+        ASAN modes. (Requested by jernoble on #webkit).
+
+        Reverted changeset:
+
+        "bmalloc should implement malloc introspection (to stop false-
+        positive leaks when MallocStackLogging is off)"
+        https://bugs.webkit.org/show_bug.cgi?id=141802
+        http://trac.webkit.org/changeset/180363
+
+2015-02-19  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc should implement malloc introspection (to stop false-positive leaks when MallocStackLogging is off)
+        https://bugs.webkit.org/show_bug.cgi?id=141802
+
+        Reviewed by Andreas Kling.
+
+        Fixed a last-minute type.
+
+        The macro is OS, not PLATFORM.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+        * bmalloc/VMHeap.h:
+        * bmalloc/Zone.h:
+
+2015-02-19  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc should implement malloc introspection (to stop false-positive leaks when MallocStackLogging is off)
+        https://bugs.webkit.org/show_bug.cgi?id=141802
+
+        Reviewed by Andreas Kling.
+
+        This patch does the bare minimum to stop false positive leaks from
+        being reported by the Darwin leaks tool. We register each super chunk
+        as a single object, and then request that the leaks tool scan it.
+
+        * bmalloc.xcodeproj/project.pbxproj: Added an abstraction for the malloc
+        zone introspection API.
+
+        * bmalloc/Algorithm.h: Missing #include.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+        * bmalloc/VMHeap.h: Adopt the new abstraction.
+
+        * bmalloc/Zone.cpp: Added.
+        (bmalloc::remoteRead): Helper for reading an object out of another process.
+        (bmalloc::Zone::enumerator):
+        (bmalloc::Zone::Zone): Register a malloc zone so that we will participate
+        in introspection.
+
+        * bmalloc/Zone.h: Added.
+        (bmalloc::Zone::superChunks):
+        (bmalloc::Zone::addSuperChunk): Use a non-dynamically-allocated vector
+        since our dynamic allocations will not be scanned by leaks since they
+        will have the malloc VM tag.
+
+2015-02-18  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: VMHeap should keep a record of all of its VM ranges (for malloc introspection)
+        https://bugs.webkit.org/show_bug.cgi?id=141759
+
+        Reviewed by Andreas Kling.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/SuperChunk.h: Added.
+        (bmalloc::SuperChunk::create):
+        (bmalloc::SuperChunk::SuperChunk):
+        (bmalloc::SuperChunk::smallChunk):
+        (bmalloc::SuperChunk::mediumChunk):
+        (bmalloc::SuperChunk::largeChunk): Factored out super chunk creation
+        into a separate class, for clarity and type safety.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+        (bmalloc::VMHeap::allocateSuperChunk): Renamed "allocateSuperChunk" to
+        "grow" because Andreas found "allocateSuperChunk" to be unclear.
+
+        * bmalloc/VMHeap.h: Track all our VM ranges. We will use this information
+        for malloc introspection.
+
+        (bmalloc::VMHeap::allocateSmallPage):
+        (bmalloc::VMHeap::allocateMediumPage):
+        (bmalloc::VMHeap::allocateLargeRange): Updated for renames.
+
+2015-02-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Build bmalloc through CMake as a static library. It's then linked either
+        into the WTF library (if built as a shared library) or into the JSC and
+        WebKit2 libraries. There's no need to build it as a standalone shared library.
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        * CMakeLists.txt:
+
 2015-02-13  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         [BMalloc] Add a FIXME comment for memory alignas

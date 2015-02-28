@@ -85,6 +85,9 @@ int caretMaxOffset(const Node*);
 
 // boolean functions on Node
 
+bool hasEditableStyle(const Node&, EditableType);
+bool isEditableNode(const Node&);
+
 // FIXME: editingIgnoresContent, canHaveChildrenForEditing, and isAtomicNode
 // should be renamed to reflect its usage.
 
@@ -119,6 +122,11 @@ bool isNodeVisiblyContainedWithin(Node*, const Range*);
 bool isRenderedAsNonInlineTableImageOrHR(const Node*);
 bool areIdenticalElements(const Node*, const Node*);
 bool isNonTableCellHTMLBlockElement(const Node*);
+
+inline bool positionBeforeOrAfterNodeIsCandidate(Node* node)
+{
+    return isRenderedTable(node) || editingIgnoresContent(node);
+}
 
 WEBCORE_EXPORT TextDirection directionOfEnclosingBlock(const Position&);
 
@@ -159,9 +167,8 @@ int comparePositions(const Position&, const Position&);
 
 // boolean functions on Position
 
-enum EUpdateStyle { UpdateStyle, DoNotUpdateStyle };
-WEBCORE_EXPORT bool isEditablePosition(const Position&, EditableType = ContentIsEditable, EUpdateStyle = UpdateStyle);
-bool isRichlyEditablePosition(const Position&, EditableType = ContentIsEditable);
+WEBCORE_EXPORT bool isEditablePosition(const Position&, EditableType = ContentIsEditable);
+bool isRichlyEditablePosition(const Position&);
 bool isFirstVisiblePositionInSpecialElement(const Position&);
 bool isLastVisiblePositionInSpecialElement(const Position&);
 bool lineBreakExistsAtPosition(const Position&);

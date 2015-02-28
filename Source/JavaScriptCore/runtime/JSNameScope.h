@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2009, 2015 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,59 +41,41 @@ public:
         FunctionNameScope
     };
 
-    static JSNameScope* create(ExecState* exec, JSScope* currentScope, const Identifier& identifier, JSValue value, unsigned attributes, Type type)
+    template<typename T>
+    static T* create(VM& vm, JSGlobalObject* globalObject, JSScope* currentScope, SymbolTable* symbolTable, JSValue value)
     {
-        VM& vm = exec->vm();
-        JSNameScope* scopeObject = new (NotNull, allocateCell<JSNameScope>(vm.heap)) JSNameScope(vm, exec->lexicalGlobalObject(), currentScope, type);
-        scopeObject->finishCreation(vm, identifier, value, attributes);
+        T* scopeObject = new (NotNull, allocateCell<T>(vm.heap)) T(vm, globalObject, currentScope, symbolTable);
+        scopeObject->finishCreation(vm, value);
         return scopeObject;
     }
-
-    static JSNameScope* create(VM& vm, JSGlobalObject* globalObject, const Identifier& identifier, JSValue value, unsigned attributes, JSScope* next, Type type)
-    {
-        JSNameScope* scopeObject = new (NotNull, allocateCell<JSNameScope>(vm.heap)) JSNameScope(vm, globalObject, next, type);
-        scopeObject->finishCreation(vm, identifier, value, attributes);
-        return scopeObject;
-    }
+    
+    static JSNameScope* create(VM&, JSGlobalObject*, JSScope* currentScope, SymbolTable*, JSValue, Type);
 
     static void visitChildren(JSCell*, SlotVisitor&);
     static JSValue toThis(JSCell*, ExecState*, ECMAMode);
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto) { return Structure::create(vm, globalObject, proto, TypeInfo(NameScopeObjectType, StructureFlags), info()); }
-
     DECLARE_INFO;
-
-    bool isFunctionNameScope() const { return m_type == FunctionNameScope; }
-    bool isCatchScope() const { return m_type == CatchScope; }
 
     JSValue value() const { return m_registerStore.get(); }
 
 protected:
-    void finishCreation(VM& vm, const Identifier& identifier, JSValue value, unsigned attributes)
+    void finishCreation(VM& vm, JSValue value)
     {
         Base::finishCreation(vm);
         m_registerStore.set(vm, this, value);
-        symbolTable()->add(identifier.impl(), SymbolTableEntry(-1, attributes));
     }
 
     static const unsigned StructureFlags = OverridesGetOwnPropertySlot | Base::StructureFlags;
 
-private:
-    JSNameScope(VM& vm, JSGlobalObject* globalObject, JSScope* next, Type type)
-        : Base(
-            vm,
-            globalObject->nameScopeStructure(),
-            reinterpret_cast<Register*>(&m_registerStore + 1),
-            next
-        )
-        , m_type(type)
+    JSNameScope(VM& vm, Structure* structure, JSScope* next, SymbolTable* symbolTable)
+        : Base(vm, structure, reinterpret_cast<Register*>(&m_registerStore + 1), next, symbolTable)
     {
     }
 
+private:
     WriteBarrier<Unknown> m_registerStore;
-    Type m_type;
 };
 
 }

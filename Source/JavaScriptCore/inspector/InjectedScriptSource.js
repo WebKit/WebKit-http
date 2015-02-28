@@ -58,6 +58,8 @@ var InjectedScript = function()
     this._idToObjectGroupName = {};
     this._objectGroups = {};
     this._modules = {};
+    this._nextSavedResultIndex = 1;
+    this._savedResults = [];
 }
 
 InjectedScript.primitiveTypes = {
@@ -68,9 +70,9 @@ InjectedScript.primitiveTypes = {
 }
 
 InjectedScript.CollectionMode = {
-    OwnProperties: 1 << 0,    // own properties.
-    GetterProperties: 1 << 1, // getter properties in the prototype chain.
-    AllProperties: 1 << 2,    // all properties in the prototype chain.
+    OwnProperties: 1 << 0,          // own properties.
+    NativeGetterProperties: 1 << 1, // native getter properties in the prototype chain.
+    AllProperties: 1 << 2,          // all properties in the prototype chain.
 }
 
 InjectedScript.prototype = {
@@ -174,13 +176,19 @@ InjectedScript.prototype = {
 
     releaseObjectGroup: function(objectGroupName)
     {
-        if (objectGroupName === "console")
+        if (objectGroupName === "console") {
             delete this._lastResult;
+            this._nextSavedResultIndex = 1;
+            this._savedResults = [];
+        }
+
         var group = this._objectGroups[objectGroupName];
         if (!group)
             return;
+
         for (var i = 0; i < group.length; i++)
             this._releaseObject(group[i]);
+
         delete this._objectGroups[objectGroupName];
     },
 
@@ -196,7 +204,7 @@ InjectedScript.prototype = {
         return result;
     },
 
-    getProperties: function(objectId, ownProperties, ownAndGetterProperties)
+    _getProperties: function(objectId, collectionMode, generatePreview)
     {
         var parsedObjectId = this._parseObjectId(objectId);
         var object = this._objectForId(parsedObjectId);
@@ -208,12 +216,6 @@ InjectedScript.prototype = {
         if (isSymbol(object))
             return false;
 
-        var collectionMode = InjectedScript.CollectionMode.AllProperties;
-        if (ownProperties)
-            collectionMode = InjectedScript.CollectionMode.OwnProperties;
-        else if (ownAndGetterProperties)
-            collectionMode = InjectedScript.CollectionMode.OwnProperties | InjectedScript.CollectionMode.GetterProperties;
-
         var descriptors = this._propertyDescriptors(object, collectionMode);
 
         // Go over properties, wrap object values.
@@ -224,7 +226,7 @@ InjectedScript.prototype = {
             if ("set" in descriptor)
                 descriptor.set = this._wrapObject(descriptor.set, objectGroupName);
             if ("value" in descriptor)
-                descriptor.value = this._wrapObject(descriptor.value, objectGroupName);
+                descriptor.value = this._wrapObject(descriptor.value, objectGroupName, false, generatePreview);
             if (!("configurable" in descriptor))
                 descriptor.configurable = false;
             if (!("enumerable" in descriptor))
@@ -234,7 +236,19 @@ InjectedScript.prototype = {
         return descriptors;
     },
 
-    getInternalProperties: function(objectId)
+    getProperties: function(objectId, ownProperties, generatePreview)
+    {
+        var collectionMode = ownProperties ? InjectedScript.CollectionMode.OwnProperties : InjectedScript.CollectionMode.AllProperties;
+        return this._getProperties(objectId, collectionMode, generatePreview);
+    },
+
+    getDisplayableProperties: function(objectId, generatePreview)
+    {
+        var collectionMode = InjectedScript.CollectionMode.OwnProperties | InjectedScript.CollectionMode.NativeGetterProperties;
+        return this._getProperties(objectId, collectionMode, generatePreview);
+    },
+
+    getInternalProperties: function(objectId, generatePreview)
     {
         var parsedObjectId = this._parseObjectId(objectId);
         var object = this._objectForId(parsedObjectId);
@@ -254,7 +268,7 @@ InjectedScript.prototype = {
         for (var i = 0; i < descriptors.length; ++i) {
             var descriptor = descriptors[i];
             if ("value" in descriptor)
-                descriptor.value = this._wrapObject(descriptor.value, objectGroupName);
+                descriptor.value = this._wrapObject(descriptor.value, objectGroupName, false, generatePreview);
         }
 
         return descriptors;
@@ -314,12 +328,12 @@ InjectedScript.prototype = {
         delete this._idToObjectGroupName[id];
     },
 
-    evaluate: function(expression, objectGroup, injectCommandLineAPI, returnByValue, generatePreview)
+    evaluate: function(expression, objectGroup, injectCommandLineAPI, returnByValue, generatePreview, saveResult)
     {
-        return this._evaluateAndWrap(InjectedScriptHost.evaluate, InjectedScriptHost, expression, objectGroup, false, injectCommandLineAPI, returnByValue, generatePreview);
+        return this._evaluateAndWrap(InjectedScriptHost.evaluate, InjectedScriptHost, expression, objectGroup, false, injectCommandLineAPI, returnByValue, generatePreview, saveResult);
     },
 
-    callFunctionOn: function(objectId, expression, args, returnByValue)
+    callFunctionOn: function(objectId, expression, args, returnByValue, generatePreview)
     {
         var parsedObjectId = this._parseObjectId(objectId);
         var object = this._objectForId(parsedObjectId);
@@ -346,7 +360,7 @@ InjectedScript.prototype = {
 
             return {
                 wasThrown: false,
-                result: this._wrapObject(func.apply(object, resolvedArgs), objectGroup, returnByValue)
+                result: this._wrapObject(func.apply(object, resolvedArgs), objectGroup, returnByValue, generatePreview)
             };
         } catch (e) {
             return this._createThrownValue(e, objectGroup);
@@ -370,13 +384,20 @@ InjectedScript.prototype = {
         return undefined;
     },
 
-    _evaluateAndWrap: function(evalFunction, object, expression, objectGroup, isEvalOnCallFrame, injectCommandLineAPI, returnByValue, generatePreview)
+    _evaluateAndWrap: function(evalFunction, object, expression, objectGroup, isEvalOnCallFrame, injectCommandLineAPI, returnByValue, generatePreview, saveResult)
     {
         try {
-            return {
+            this._savedResultIndex = undefined;
+
+            var returnObject = {
                 wasThrown: false,
-                result: this._wrapObject(this._evaluateOn(evalFunction, object, objectGroup, expression, isEvalOnCallFrame, injectCommandLineAPI), objectGroup, returnByValue, generatePreview)
+                result: this._wrapObject(this._evaluateOn(evalFunction, object, objectGroup, expression, isEvalOnCallFrame, injectCommandLineAPI, saveResult), objectGroup, returnByValue, generatePreview)
             };
+
+            if (saveResult && this._savedResultIndex)
+                returnObject.savedResultIndex = this._savedResultIndex;
+
+            return returnObject;
         } catch (e) {
             return this._createThrownValue(e, objectGroup);
         }
@@ -394,7 +415,7 @@ InjectedScript.prototype = {
         };
     },
 
-    _evaluateOn: function(evalFunction, object, objectGroup, expression, isEvalOnCallFrame, injectCommandLineAPI)
+    _evaluateOn: function(evalFunction, object, objectGroup, expression, isEvalOnCallFrame, injectCommandLineAPI, saveResult)
     {
         var commandLineAPI = null;
         if (injectCommandLineAPI) {
@@ -439,8 +460,8 @@ InjectedScript.prototype = {
             var expressionFunction = evalFunction.call(object, boundExpressionFunctionString);
             var result = expressionFunction.apply(null, parameters);
 
-            if (objectGroup === "console")
-                this._lastResult = result;
+            if (objectGroup === "console" && saveResult)
+                this._saveResult(result);
 
             return result;
         }
@@ -459,8 +480,8 @@ InjectedScript.prototype = {
 
             var result = evalFunction.call(inspectedGlobalObject, expression);
 
-            if (objectGroup === "console")
-                this._lastResult = result;
+            if (objectGroup === "console" && saveResult)
+                this._saveResult(result);
 
             return result;
         } finally {
@@ -487,12 +508,12 @@ InjectedScript.prototype = {
         return result;
     },
 
-    evaluateOnCallFrame: function(topCallFrame, callFrameId, expression, objectGroup, injectCommandLineAPI, returnByValue, generatePreview)
+    evaluateOnCallFrame: function(topCallFrame, callFrameId, expression, objectGroup, injectCommandLineAPI, returnByValue, generatePreview, saveResult)
     {
         var callFrame = this._callFrameForId(topCallFrame, callFrameId);
         if (!callFrame)
             return "Could not find call frame with given id";
-        return this._evaluateAndWrap(callFrame.evaluate, callFrame, expression, objectGroup, true, injectCommandLineAPI, returnByValue, generatePreview);
+        return this._evaluateAndWrap(callFrame.evaluate, callFrame, expression, objectGroup, true, injectCommandLineAPI, returnByValue, generatePreview, saveResult);
     },
 
     _callFrameForId: function(topCallFrame, callFrameId)
@@ -564,10 +585,13 @@ InjectedScript.prototype = {
         var nameProcessed = {};
         nameProcessed["__proto__"] = null;
 
-        function createFakeValueDescriptor(name, descriptor, isOwnProperty)
+        function createFakeValueDescriptor(name, descriptor, isOwnProperty, possibleNativeBindingGetter)
         {
             try {
-                return {name: name, value: object[name], writable: descriptor.writable || false, configurable: descriptor.configurable || false, enumerable: descriptor.enumerable || false};
+                var descriptor = {name: name, value: object[name], writable: descriptor.writable || false, configurable: descriptor.configurable || false, enumerable: descriptor.enumerable || false};
+                if (possibleNativeBindingGetter)
+                    descriptor.nativeGetter = true;
+                return descriptor;
             } catch (e) {
                 var errorDescriptor = {name: name, value: e, wasThrown: true};
                 if (isOwnProperty)
@@ -590,13 +614,10 @@ InjectedScript.prototype = {
                 return;
             }
 
-            // Getter properties.
-            if (collectionMode & InjectedScript.CollectionMode.GetterProperties) {
-                if (descriptor.hasOwnProperty("get") && descriptor.get) {
-                    // Getter property in the prototype chain. Create a fake value descriptor.
-                    descriptors.push(createFakeValueDescriptor(descriptor.name, descriptor, isOwnProperty));
-                    return;
-                }
+            // Native Getter properties.
+            if (collectionMode & InjectedScript.CollectionMode.NativeGetterProperties) {
+                // FIXME: <https://webkit.org/b/140575> Web Inspector: Native Bindings Descriptors are Incomplete
+                // if (descriptor.hasOwnProperty("get") && descriptor.get && isNativeFunction(descriptor.get)) { ... }
 
                 if (possibleNativeBindingGetter) {
                     // Possible getter property in the prototype chain.
@@ -628,7 +649,7 @@ InjectedScript.prototype = {
                     // FIXME: <https://webkit.org/b/140575> Web Inspector: Native Bindings Descriptors are Incomplete
                     // Developers may create such a descriptors, so we should be resilient:
                     // var x = {}; Object.defineProperty(x, "p", {get:undefined}); Object.getOwnPropertyDescriptor(x, "p")
-                    var fakeDescriptor = createFakeValueDescriptor(name, descriptor, isOwnProperty);
+                    var fakeDescriptor = createFakeValueDescriptor(name, descriptor, isOwnProperty, true);
                     processDescriptor(fakeDescriptor, isOwnProperty, true);
                     continue;
                 }
@@ -803,6 +824,32 @@ InjectedScript.prototype = {
             return this._getWeakMapEntries(object, numberToFetch);
 
         throw "unexpected type";
+    },
+
+    _saveResult: function(result)
+    {
+        this._lastResult = result;
+
+        if (result === undefined || result === null)
+            return;
+
+        var existingIndex = this._savedResults.indexOf(result);
+        if (existingIndex !== -1) {
+            this._savedResultIndex = existingIndex;
+            return;
+        }
+
+        this._savedResultIndex = this._nextSavedResultIndex;
+        this._savedResults[this._nextSavedResultIndex++] = result;
+
+        // $n is limited from $1-$99. $0 is special.
+        if (this._nextSavedResultIndex >= 100)
+            this._nextSavedResultIndex = 1;
+    },
+
+    _savedResult: function(index)
+    {
+        return this._savedResults[index];
     }
 }
 
@@ -1111,10 +1158,35 @@ InjectedScript.CallFrameProxy._createScopeJson = function(scopeTypeCode, scopeOb
     };
 }
 
+
+function slice(array, index)
+{
+    var result = [];
+    for (var i = index || 0; i < array.length; ++i)
+        result.push(array[i]);
+    return result;
+}
+
+function bind(func, thisObject, var_args)
+{
+    var args = slice(arguments, 2);
+    return function(var_args) {
+        return func.apply(thisObject, args.concat(slice(arguments)));
+    }
+}
+
 function BasicCommandLineAPI()
 {
     this.$_ = injectedScript._lastResult;
     this.$exception = injectedScript._exceptionValue;
+
+    // $1-$99
+    for (var i = 1; i <= injectedScript._savedResults.length; ++i) {
+        var member = "$" + i;
+        if (member in inspectedGlobalObject)
+            continue;
+        this.__defineGetter__("$" + i, bind(injectedScript._savedResult, injectedScript, i));
+    }
 }
 
 return injectedScript;

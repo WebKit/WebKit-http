@@ -816,6 +816,7 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     prefsPrivate->setJavaScriptCanAccessClipboard(TRUE);
     prefsPrivate->setOfflineWebApplicationCacheEnabled(TRUE);
     prefsPrivate->setDeveloperExtrasEnabled(FALSE);
+    prefsPrivate->setJavaScriptRuntimeFlags(WebKitJavaScriptRuntimeFlagsAllEnabled);
     // Set JS experiments enabled: YES
     preferences->setLoadsImagesAutomatically(TRUE);
     prefsPrivate->setLoadsSiteIconsIgnoringImageLoadingPreference(FALSE);
@@ -838,7 +839,6 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     preferences->setCSSRegionsEnabled(TRUE);
     // Set uses HTML5 parser quirks: NO
     // Async spellcheck: NO
-    prefsPrivate->setShouldPaintNativeControls(TRUE);
     prefsPrivate->setMockScrollbarsEnabled(TRUE);
 
     preferences->setFontSmoothing(FontSmoothingTypeStandard);
@@ -1377,7 +1377,6 @@ static void prepareConsistentTestingEnvironment(IWebPreferences* standardPrefere
     ASSERT(standardPreferencesPrivate);
     standardPreferences->setAutosaves(FALSE);
 
-    standardPreferencesPrivate->setShouldPaintNativeControls(TRUE);
     standardPreferences->setJavaScriptEnabled(TRUE);
     standardPreferences->setDefaultFontSize(16);
 #if USE(CG)

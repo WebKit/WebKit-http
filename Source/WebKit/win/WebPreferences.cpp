@@ -215,6 +215,7 @@ void WebPreferences::initializeDefaultSettings()
     CFDictionaryAddValue(defaults, CFSTR(WebKitTextAreasAreResizablePreferenceKey), kCFBooleanFalse);
     CFDictionaryAddValue(defaults, CFSTR(WebKitJavaEnabledPreferenceKey), kCFBooleanTrue);
     CFDictionaryAddValue(defaults, CFSTR(WebKitJavaScriptEnabledPreferenceKey), kCFBooleanTrue);
+    CFDictionaryAddValue(defaults, CFSTR(WebKitJavaScriptRuntimeFlagsPreferenceKey), CFSTR("0"));
     CFDictionaryAddValue(defaults, CFSTR(WebKitWebSecurityEnabledPreferenceKey), kCFBooleanTrue);
     CFDictionaryAddValue(defaults, CFSTR(WebKitAllowUniversalAccessFromFileURLsPreferenceKey), kCFBooleanFalse);
     CFDictionaryAddValue(defaults, CFSTR(WebKitAllowFileAccessFromFileURLsPreferenceKey), kCFBooleanTrue);
@@ -823,7 +824,21 @@ HRESULT STDMETHODCALLTYPE WebPreferences::setJavaScriptEnabled(
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE WebPreferences::isWebSecurityEnabled( 
+HRESULT STDMETHODCALLTYPE WebPreferences::javaScriptRuntimeFlags(
+    /* [retval][out] */ unsigned* flags)
+{
+    *flags = static_cast<unsigned>(integerValueForKey(WebKitJavaScriptRuntimeFlagsPreferenceKey));
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebPreferences::setJavaScriptRuntimeFlags(
+    /* [in] */ unsigned flags)
+{
+    setIntegerValue(WebKitJavaScriptRuntimeFlagsPreferenceKey, static_cast<int>(flags));
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebPreferences::isWebSecurityEnabled(
     /* [retval][out] */ BOOL* enabled)
 {
     *enabled = boolValueForKey(WebKitWebSecurityEnabledPreferenceKey);
@@ -1395,18 +1410,6 @@ HRESULT WebPreferences::unused4()
 {
     ASSERT_NOT_REACHED();
     return E_FAIL;
-}
-
-HRESULT WebPreferences::shouldPaintNativeControls(BOOL* shouldPaint)
-{
-    *shouldPaint = boolValueForKey(WebKitPaintNativeControlsPreferenceKey);
-    return S_OK;
-}
-
-HRESULT WebPreferences::setShouldPaintNativeControls(BOOL shouldPaint)
-{
-    setBoolValue(WebKitPaintNativeControlsPreferenceKey, shouldPaint);
-    return S_OK;
 }
 
 HRESULT WebPreferences::setDeveloperExtrasEnabled(BOOL enabled)

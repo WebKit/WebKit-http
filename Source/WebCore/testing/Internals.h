@@ -47,6 +47,7 @@ class DOMStringList;
 class DOMWindow;
 class Document;
 class Element;
+class File;
 class Frame;
 class InspectorFrontendChannelDummy;
 class InspectorFrontendClientDummy;
@@ -88,6 +89,9 @@ public:
     void clearMemoryCache();
     void pruneMemoryCacheToSize(unsigned size);
     unsigned memoryCacheSize() const;
+
+    void clearPageCache();
+    unsigned pageCacheSize() const;
 
     PassRefPtr<CSSComputedStyleDeclaration> computedStyleIncludingVisitedInfo(Node*, ExceptionCode&) const;
 
@@ -268,7 +272,7 @@ public:
     void webkitDidExitFullScreenForElement(Element*);
 #endif
 
-    WEBCORE_EXPORT void setApplicationCacheOriginQuota(unsigned long long);
+    WEBCORE_TESTSUPPORT_EXPORT void setApplicationCacheOriginQuota(unsigned long long);
 
     void registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme);
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme);
@@ -338,7 +342,7 @@ public:
     bool isPluginSnapshotted(Element*, ExceptionCode&);
 
 #if ENABLE(MEDIA_SOURCE)
-    WEBCORE_EXPORT void initializeMockMediaSource();
+    WEBCORE_TESTSUPPORT_EXPORT void initializeMockMediaSource();
     Vector<String> bufferedSamplesForTrackID(SourceBuffer*, const AtomicString&);
 #endif
 
@@ -360,6 +364,8 @@ public:
 
     void setPageMuted(bool);
     bool isPagePlayingAudio();
+
+    RefPtr<File> createFile(const String&);
 
 private:
     explicit Internals(Document*);

@@ -95,6 +95,7 @@
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/Region.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextAlternativeWithRange.h>
@@ -337,8 +338,6 @@ struct WKViewInterpretKeyEventsParameters {
 
     NSNotificationCenter* workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
     [workspaceNotificationCenter removeObserver:self name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
-
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSApplicationWillTerminateNotification object:NSApp];
 
     if (canLoadLUNotificationPopoverWillClose())
         [[NSNotificationCenter defaultCenter] removeObserver:self name:getLUNotificationPopoverWillClose() object:nil];
@@ -738,6 +737,36 @@ WEBCORE_COMMAND(yankAndSelect)
     return _data->_page->readSelectionFromPasteboard([pasteboard name]);
 }
 
+// Font panel support.
+
+- (void)updateFontPanelIfNeeded
+{
+    const EditorState& editorState = _data->_page->editorState();
+    if (editorState.selectionIsNone || !editorState.isContentEditable)
+        return;
+    if ([NSFontPanel sharedFontPanelExists] && [[NSFontPanel sharedFontPanel] isVisible]) {
+        _data->_page->fontAtSelection([](const String& fontName, double fontSize, bool selectionHasMultipleFonts, CallbackBase::Error error) {
+            NSFont *font = [NSFont fontWithName:fontName size:fontSize];
+            if (font)
+                [[NSFontManager sharedFontManager] setSelectedFont:font isMultiple:selectionHasMultipleFonts];
+        });
+    }
+}
+
+- (void)_selectionChanged
+{
+    [self updateFontPanelIfNeeded];
+}
+
+- (void)changeFont:(id)sender
+{
+    NSFontManager *fontManager = [NSFontManager sharedFontManager];
+    NSFont *font = [fontManager convertFont:[fontManager selectedFont]];
+    if (!font)
+        return;
+    _data->_page->setFont([font familyName], [font pointSize], [[font fontDescriptor] symbolicTraits]);
+}
+
 /*
 
 When possible, editing-related methods should be implemented in WebCore with the
@@ -746,7 +775,6 @@ individual methods here with Mac-specific code.
 
 Editing-related methods still unimplemented that are implemented in WebKit1:
 
-- (void)changeFont:(id)sender;
 - (void)complete:(id)sender;
 - (void)copyFont:(id)sender;
 - (void)makeBaseWritingDirectionLeftToRight:(id)sender;
@@ -2491,6 +2519,10 @@ static void* keyValueObservingContext = &keyValueObservingContext;
                                                      name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeOcclusionState:)
                                                      name:NSWindowDidChangeOcclusionStateNotification object:window];
+        [[NSFontPanel sharedFontPanel] addObserver:self
+                                        forKeyPath:@"visible"
+                                           options:NSKeyValueObservingOptionNew
+                                           context:nil];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         [window addObserver:self forKeyPath:@"contentLayoutRect" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
         [window addObserver:self forKeyPath:@"titlebarAppearsTransparent" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
@@ -2517,6 +2549,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeScreenNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeOcclusionStateNotification object:window];
+    [[NSFontPanel sharedFontPanel] removeObserver:self forKeyPath:@"visible" context:nil];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [window removeObserver:self forKeyPath:@"contentLayoutRect" context:keyValueObservingContext];
     [window removeObserver:self forKeyPath:@"titlebarAppearsTransparent" context:keyValueObservingContext];
@@ -2713,11 +2746,6 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 - (void)_activeSpaceDidChange:(NSNotification *)notification
 {
     _data->_page->viewStateDidChange(ViewState::IsVisible);
-}
-
-- (void)_applicationWillTerminate:(NSNotification *)notification
-{
-    _data->_page->process().processPool().applicationWillTerminate();
 }
 
 - (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
@@ -3620,8 +3648,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     NSNotificationCenter* workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
     [workspaceNotificationCenter addObserver:self selector:@selector(_activeSpaceDidChange:) name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
 
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillTerminate:) name:NSApplicationWillTerminateNotification object:NSApp];
-
     if (canLoadLUNotificationPopoverWillClose())
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
 
@@ -3634,7 +3660,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         self._actionMenu.autoenablesItems = NO;
     }
 
-    if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
+    // FIXME: We should not permanently disable this for iBooks. rdar://problem/19585689
+    Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer");
+    if (gestureClass && !applicationIsIBooks()) {
         _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
         _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:_data->_immediateActionGestureRecognizer.get()]);
         [_data->_immediateActionGestureRecognizer setDelegate:_data->_immediateActionController.get()];
@@ -3701,8 +3729,15 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         self._topContentInset = 0;
 }
 
+#endif
+
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
+    if ([NSFontPanel sharedFontPanelExists] && object == [NSFontPanel sharedFontPanel]) {
+        [self updateFontPanelIfNeeded];
+        return;
+    }
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     if (context == keyValueObservingContext) {
         if ([keyPath isEqualToString:@"contentLayoutRect"] || [keyPath isEqualToString:@"titlebarAppearsTransparent"])
             [self _updateContentInsetsIfAutomatic];
@@ -3710,9 +3745,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     }
 
     [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+#endif
 }
 
-#endif
 
 - (void)_didFirstVisuallyNonEmptyLayoutForMainFrame
 {
@@ -4373,12 +4408,14 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (void)_dismissContentRelativeChildWindows
 {
     // FIXME: We don't know which panel we are dismissing, it may not even be in the current page (see <rdar://problem/13875766>).
-    if (Class lookupDefinitionModuleClass = getLULookupDefinitionModuleClass())
-        [lookupDefinitionModuleClass hideDefinition];
+    if ([[self window] isKeyWindow]) {
+        if (Class lookupDefinitionModuleClass = getLULookupDefinitionModuleClass())
+            [lookupDefinitionModuleClass hideDefinition];
 
-    DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
-    if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
-        [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
+        DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
+        if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
+            [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
+    }
 
     [self _setTextIndicator:nullptr fadeOut:NO];
 

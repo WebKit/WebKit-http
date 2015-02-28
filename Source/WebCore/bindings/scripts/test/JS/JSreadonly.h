@@ -23,10 +23,11 @@
 
 #include "JSDOMWrapper.h"
 #include "readonly.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-class JSreadonly : public JSDOMWrapper {
+class WEBCORE_EXPORT JSreadonly : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSreadonly* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<readonly>&& impl)
@@ -38,7 +39,7 @@ public:
 
     static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
     static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    WEBCORE_EXPORT static readonly* toWrapped(JSC::JSValue);
+    static readonly* toWrapped(JSC::JSValue);
     static void destroy(JSC::JSCell*);
     ~JSreadonly();
 
@@ -82,8 +83,8 @@ public:
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, readonly*)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(JSreadonlyOwner, jsreadonlyOwner, ());
-    return &jsreadonlyOwner;
+    static NeverDestroyed<JSreadonlyOwner> owner;
+    return &owner.get();
 }
 
 WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, readonly*);

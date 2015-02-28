@@ -33,7 +33,7 @@
 #include "DownloadManager.h"
 #include "MessageReceiverMap.h"
 #include "NetworkResourceLoadScheduler.h"
-#include <WebCore/DiagnosticLoggingResultType.h>
+#include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/SessionID.h>
 #include <memory>
 #include <wtf/Forward.h>
@@ -48,6 +48,7 @@ class AuthenticationManager;
 class NetworkConnectionToWebProcess;
 class NetworkProcessSupplement;
 struct NetworkProcessCreationParameters;
+struct SecurityOriginData;
 
 class NetworkProcess : public ChildProcess, private DownloadManager::Client {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
@@ -77,9 +78,9 @@ public:
     bool canHandleHTTPSServerTrustEvaluation() const { return m_canHandleHTTPSServerTrustEvaluation; }
 
     // Diagnostic messages logging.
-    void logDiagnosticMessage(uint64_t webPageID, const String& message, const String& description);
-    void logDiagnosticMessageWithResult(uint64_t webPageID, const String& message, const String& description, WebCore::DiagnosticLoggingResultType);
-    void logDiagnosticMessageWithValue(uint64_t webPageID, const String& message, const String& description, const String& value);
+    void logDiagnosticMessage(uint64_t webPageID, const String& message, const String& description, WebCore::ShouldSample);
+    void logDiagnosticMessageWithResult(uint64_t webPageID, const String& message, const String& description, WebCore::DiagnosticLoggingResultType, WebCore::ShouldSample);
+    void logDiagnosticMessageWithValue(uint64_t webPageID, const String& message, const String& description, const String& value, WebCore::ShouldSample);
 
 private:
     NetworkProcess();
@@ -120,7 +121,9 @@ private:
     void ensurePrivateBrowsingSession(WebCore::SessionID);
     void destroyPrivateBrowsingSession(WebCore::SessionID);
 
+    void fetchWebsiteData(WebCore::SessionID, uint64_t websiteDataTypes, uint64_t callbackID);
     void deleteWebsiteData(WebCore::SessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
+    void deleteWebsiteDataForOrigins(WebCore::SessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, uint64_t callbackID);
 
     // FIXME: This should take a session ID so we can identify which disk cache to delete.
     void clearDiskCache(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler);

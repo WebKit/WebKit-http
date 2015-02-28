@@ -48,6 +48,7 @@
 #include "Element.h"
 #include "EventHandler.h"
 #include "ExceptionCode.h"
+#include "File.h"
 #include "FontCache.h"
 #include "FormController.h"
 #include "FrameLoader.h"
@@ -80,6 +81,7 @@
 #include "MemoryInfo.h"
 #include "MockPageOverlayClient.h"
 #include "Page.h"
+#include "PageCache.h"
 #include "PageOverlay.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
@@ -106,6 +108,7 @@
 #include "WebConsoleAgent.h"
 #include "WorkerThread.h"
 #include "XMLHttpRequest.h"
+#include <JavaScriptCore/Profile.h>
 #include <bytecode/CodeBlock.h>
 #include <inspector/InspectorAgentBase.h>
 #include <inspector/InspectorValues.h>
@@ -422,6 +425,16 @@ void Internals::pruneMemoryCacheToSize(unsigned size)
 unsigned Internals::memoryCacheSize() const
 {
     return MemoryCache::singleton().size();
+}
+
+void Internals::clearPageCache()
+{
+    PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
+}
+
+unsigned Internals::pageCacheSize() const
+{
+    return PageCache::singleton().pageCount();
 }
 
 Node* Internals::treeScopeRootNode(Node* node, ExceptionCode& ec)
@@ -884,7 +897,7 @@ void Internals::setMarkedTextMatchesAreHighlighted(bool flag, ExceptionCode& ec)
 
 void Internals::invalidateFontCache()
 {
-    fontCache().invalidate();
+    FontCache::singleton().invalidate();
 }
 
 void Internals::setScrollViewPosition(long x, long y, ExceptionCode& ec)
@@ -2114,7 +2127,8 @@ void Internals::forceReload(bool endToEnd)
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 void Internals::initializeMockCDM()
 {
-    CDM::registerCDMFactory(MockCDM::create, MockCDM::supportsKeySystem, MockCDM::supportsKeySystemAndMimeType);
+    CDM::registerCDMFactory([](CDM* cdm) { return std::make_unique<MockCDM>(cdm); },
+        MockCDM::supportsKeySystem, MockCDM::supportsKeySystemAndMimeType);
 }
 #endif
 
@@ -2403,8 +2417,10 @@ void Internals::setMediaSessionRestrictions(const String& mediaTypeString, const
         restrictions += MediaSessionManager::MetadataPreloadingNotPermitted;
     if (equalIgnoringCase(restrictionsString, "AutoPreloadingNotPermitted"))
         restrictions += MediaSessionManager::AutoPreloadingNotPermitted;
-    if (equalIgnoringCase(restrictionsString, "BackgroundPlaybackNotPermitted"))
-        restrictions += MediaSessionManager::BackgroundPlaybackNotPermitted;
+    if (equalIgnoringCase(restrictionsString, "BackgroundProcessPlaybackRestricted"))
+        restrictions += MediaSessionManager::BackgroundProcessPlaybackRestricted;
+    if (equalIgnoringCase(restrictionsString, "BackgroundTabPlaybackRestricted"))
+        restrictions += MediaSessionManager::BackgroundTabPlaybackRestricted;
 
     MediaSessionManager::sharedManager().addRestriction(mediaType, restrictions);
 }
@@ -2501,6 +2517,19 @@ bool Internals::isPagePlayingAudio()
         return false;
 
     return document->page()->isPlayingAudio();
+}
+
+RefPtr<File> Internals::createFile(const String& path)
+{
+    Document* document = contextDocument();
+    if (!document)
+        return nullptr;
+
+    URL url = document->completeURL(path);
+    if (!url.isLocalFile())
+        return nullptr;
+
+    return File::create(url.fileSystemPath());
 }
 
 }

@@ -86,6 +86,14 @@ RegisterSet RegisterSet::calleeSaveRegisters()
     result.set(ARMRegisters::r5);
     result.set(ARMRegisters::r6);
     result.set(ARMRegisters::r8);
+    result.set(ARMRegisters::r10);
+    result.set(ARMRegisters::r11);
+#elif CPU(ARM_TRADITIONAL)
+    result.set(ARMRegisters::r4);
+    result.set(ARMRegisters::r5);
+    result.set(ARMRegisters::r6);
+    result.set(ARMRegisters::r7);
+    result.set(ARMRegisters::r8);
     result.set(ARMRegisters::r9);
     result.set(ARMRegisters::r10);
     result.set(ARMRegisters::r11);

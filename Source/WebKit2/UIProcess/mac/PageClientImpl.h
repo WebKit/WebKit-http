@@ -98,6 +98,7 @@ private:
     virtual void updateSecureInputState() override;
     virtual void resetSecureInputState() override;
     virtual void notifyInputContextAboutDiscardedComposition() override;
+    virtual void selectionDidChange() override;
 #if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
     virtual void notifyApplicationAboutInputContextChange() override;
 #endif
@@ -147,7 +148,7 @@ private:
     virtual String dismissCorrectionPanelSoon(WebCore::ReasonForDismissingAlternativeText) override;
     virtual void recordAutocorrectionResponse(WebCore::AutocorrectionResponseType, const String& replacedString, const String& replacementString) override;
 
-    virtual void recommendedScrollbarStyleDidChange(int32_t newStyle) override;
+    virtual void recommendedScrollbarStyleDidChange(WebCore::ScrollbarStyle) override;
 
     virtual WKView* wkView() const override { return m_wkView; }
     virtual void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize) override;

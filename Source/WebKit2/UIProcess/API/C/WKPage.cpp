@@ -34,7 +34,9 @@
 #include "APIFindClient.h"
 #include "APIFrameInfo.h"
 #include "APILoaderClient.h"
+#include "APINavigationAction.h"
 #include "APINavigationClient.h"
+#include "APINavigationResponse.h"
 #include "APIPolicyClient.h"
 #include "APISessionState.h"
 #include "APIUIClient.h"
@@ -70,6 +72,10 @@
 
 #if ENABLE(CONTEXT_MENUS)
 #include "WebContextMenuItem.h"
+#endif
+
+#if ENABLE(VIBRATION)
+#include "WebVibrationProxy.h"
 #endif
 
 using namespace WebCore;

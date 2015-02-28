@@ -73,32 +73,32 @@ function test()
         InspectorTest.log("-----------------------------------------------------");
         InspectorTest.log("EXPRESSION: " + step.expression);
 
-        WebInspector.runtimeManager.evaluateInInspectedWindow(step.expression, "test", false, true, false, false, function(remoteObject, wasThrown) {
+        WebInspector.runtimeManager.evaluateInInspectedWindow(step.expression, "test", false, true, false, false, false, function(remoteObject, wasThrown) {
             InspectorTest.assert(remoteObject instanceof WebInspector.RemoteObject);
             InspectorTest.log("type: " + remoteObject.type);
             if (remoteObject.subtype)
                 InspectorTest.log("subtype: " + remoteObject.subtype);
             InspectorTest.log("description: " + remoteObject.description);
-            remoteObject.getOwnProperties(function(properties) {
+            remoteObject.getOwnPropertyDescriptors(function(properties) {
                 InspectorTest.log("\nOWN PROPERTIES:");
                 for (var property of properties) {
-                    InspectorTest.assert(property instanceof WebInspector.RemoteObjectProperty);
+                    InspectorTest.assert(property instanceof WebInspector.PropertyDescriptor);
                     InspectorTest.log("    " + property.name);
                 }
             });
 
-            remoteObject.getOwnAndGetterProperties(function(properties) {
-                InspectorTest.log("\nOWN AND GETTER PROPERTIES:");
+            remoteObject.getDisplayablePropertyDescriptors(function(properties) {
+                InspectorTest.log("\nDISPLAYABLE PROPERTIES:");
                 for (var property of properties) {
-                    InspectorTest.assert(property instanceof WebInspector.RemoteObjectProperty);
+                    InspectorTest.assert(property instanceof WebInspector.PropertyDescriptor);
                     InspectorTest.log("    " + property.name);
                 }
             });
 
-            remoteObject.getAllProperties(function(properties) {
+            remoteObject.getAllPropertyDescriptors(function(properties) {
                 InspectorTest.log("\nALL PROPERTIES:");
                 for (var property of properties) {
-                    InspectorTest.assert(property instanceof WebInspector.RemoteObjectProperty);
+                    InspectorTest.assert(property instanceof WebInspector.PropertyDescriptor);
                     InspectorTest.log("    " + property.name);
                 }
 

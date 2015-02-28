@@ -28,6 +28,7 @@
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
+#include "File.h"
 #include "HTMLNames.h"
 #include "RenderAttachment.h"
 
@@ -41,6 +42,10 @@ HTMLAttachmentElement::HTMLAttachmentElement(const QualifiedName& tagName, Docum
     ASSERT(hasTagName(attachmentTag));
 }
 
+HTMLAttachmentElement::~HTMLAttachmentElement()
+{
+}
+
 Ref<HTMLAttachmentElement> HTMLAttachmentElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(*new HTMLAttachmentElement(tagName, document));
@@ -49,6 +54,22 @@ Ref<HTMLAttachmentElement> HTMLAttachmentElement::create(const QualifiedName& ta
 RenderPtr<RenderElement> HTMLAttachmentElement::createElementRenderer(Ref<RenderStyle>&& style)
 {
     return createRenderer<RenderAttachment>(*this, WTF::move(style));
+}
+
+File* HTMLAttachmentElement::file() const
+{
+    return m_file.get();
+}
+
+void HTMLAttachmentElement::setFile(File* file)
+{
+    m_file = file;
+
+    auto* renderer = this->renderer();
+    if (!is<RenderAttachment>(renderer))
+        return;
+
+    downcast<RenderAttachment>(*renderer).representedFileChanged();
 }
 
 } // namespace WebCore

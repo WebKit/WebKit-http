@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
+#include <wtf/WeakPtr.h>
 
 #if PLATFORM(IOS)
 #ifdef __OBJC__
@@ -200,6 +201,10 @@ public:
     void platformRecordWheelEvent(const PlatformWheelEvent&);
     bool platformCompleteWheelEvent(const PlatformWheelEvent&, Element* eventTarget, ContainerNode* scrollableContainer, ScrollableArea*);
     bool platformCompletePlatformWidgetWheelEvent(const PlatformWheelEvent&, const Widget&, ContainerNode* scrollableContainer);
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    void platformNotifySnapIfNecessary(const PlatformWheelEvent&, ScrollableArea&);
+#endif
 
 #if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(IOS_GESTURE_EVENTS)
     typedef Vector<RefPtr<Touch>> TouchArray;
@@ -496,7 +501,7 @@ private:
     RefPtr<Element> m_elementUnderMouse;
     RefPtr<Element> m_lastElementUnderMouse;
     RefPtr<Frame> m_lastMouseMoveEventSubframe;
-    RefPtr<Scrollbar> m_lastScrollbarUnderMouse;
+    WeakPtr<Scrollbar> m_lastScrollbarUnderMouse;
     Cursor m_currentMouseCursor;
 
     int m_clickCount;

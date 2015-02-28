@@ -62,7 +62,6 @@ editing/spelling/context-menu-suggestions.html
 editing/spelling/spellcheck-paste.html
 editing/spelling/spellcheck-paste-disabled.html
 editing/spelling/spellcheck-paste-continuous-disabled.html
-fast/dom/Window/window-postmessage-clone.html
 fast/dom/vertical-scrollbar-in-rtl.html
 fast/events/5056619.html
 fast/events/autoscroll-in-textfield.html
@@ -87,7 +86,6 @@ fast/events/mouse-click-events.html
 fast/events/mouseup-from-button2.html
 fast/events/node-event-anchor-lock.html
 fast/events/ondragenter.html
-fast/events/only-valid-drop-targets-receive-file-drop.html
 fast/events/right-click-focus.html
 fast/events/selectstart-prevent-selection-on-right-click.html
 fast/events/standalone-image-drag-to-editable.html
@@ -100,14 +98,11 @@ fast/forms/file/input-file-value.html
 fast/forms/listbox-typeahead-cyrillic.html
 fast/forms/listbox-typeahead-greek.html
 fast/forms/select-type-ahead-non-latin.html
-fast/forms/file/input-file-write-files.html
 fast/history/window-open.html
 fast/lists/drag-into-marker.html
 fast/repaint/japanese-rl-selection-repaint.html
 fast/repaint/repaint-across-writing-mode-boundary.html
-http/tests/local/blob/send-hybrid-blob.html
 http/tests/local/drag-over-remote-content.html
-http/tests/local/fileapi/send-sliced-dragged-file.html
 http/tests/misc/bubble-drag-events.html
 http/tests/security/drag-drop-same-unique-origin.html
 http/tests/security/drag-over-remote-content-iframe.html
@@ -311,6 +306,9 @@ webkit.org/b/140084 [ Yosemite+ ] js/dom/dfg-inline-resolve.html [ Pass Timeout 
 
 webkit.org/b/141364 [ Yosemite ] fullscreen/full-screen-plugin.html [ Pass Timeout ]
 
+webkit.org/b/139828 svg/animations/animateMotion-additive-2a.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/139828 svg/animations/animateMotion-additive-2b.svg [ Pass ImageOnlyFailure ]
+
 ### END OF (3) Unclassified failures
 ########################################
 
@@ -450,10 +448,6 @@ http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 ########################################
 ### START OF (6) Features that are not supported when NetworkProcess is enabled (i.e. they only work on Mountain Lion, and not on newer OS versions).
 
-fast/dom/call-a-constructor-as-a-function.html [ Failure ]
-js/dom/constructor-length.html [ Failure ]
-js/dom/global-constructors-attributes.html [ Failure ]
-
 # https://bugs.webkit.org/show_bug.cgi?id=115274
 # PPT: testRunner.setPrivateBrowsingEnabled doesn't work with NetworkProcess
 http/tests/security/appcache-in-private-browsing.html [ Skip ]
@@ -502,6 +496,7 @@ webkit.org/b/138736 http/tests/appcache/auth.html [ Skip ]
 [ Yosemite+ ] fast/events/page-visibility-iframe-move-test.html [ Timeout ]
 [ Yosemite+ ] fast/events/page-visibility-iframe-propagation-test.html [ Timeout ]
 [ Yosemite+ ] fast/events/page-visibility-transition-test.html [ Timeout ]
+media/video-background-tab-playback.html [ Failure ]
 
 webkit.org/b/138097 [ Yosemite ] inspector-protocol/debugger/setPauseOnExceptions-uncaught.html [ Pass Failure Timeout ]
 
@@ -517,3 +512,5 @@ webkit.org/b/141085 [ Yosemite ] http/tests/media/video-query-url.html [ Pass Ti
 
 ### END OF (7) New WebKit2-only failures in Yosemite
 ########################################
+
+http/tests/usercontentfilter [ Pass ]

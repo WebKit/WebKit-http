@@ -29,6 +29,7 @@
 #include "COMPropertyBag.h"
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/MemoryStatistics.h>
+#include <JavaScriptCore/Profile.h>
 #include <WebCore/FontCache.h>
 #include <WebCore/GCController.h>
 #include <WebCore/GlyphPage.h>
@@ -215,7 +216,7 @@ HRESULT STDMETHODCALLTYPE WebCoreStatistics::cachedFontDataCount(
 {
     if (!count)
         return E_POINTER;
-    *count = (UINT) fontCache().fontCount();
+    *count = (UINT) FontCache::singleton().fontCount();
     return S_OK;
 }
 
@@ -224,13 +225,13 @@ HRESULT STDMETHODCALLTYPE WebCoreStatistics::cachedFontDataInactiveCount(
 {
     if (!count)
         return E_POINTER;
-    *count = (UINT) fontCache().inactiveFontCount();
+    *count = (UINT) FontCache::singleton().inactiveFontCount();
     return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE WebCoreStatistics::purgeInactiveFontData(void)
 {
-    fontCache().purgeInactiveFontData();
+    FontCache::singleton().purgeInactiveFontData();
     return S_OK;
 }
 

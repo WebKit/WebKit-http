@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,7 +44,9 @@ enum ExitKind : uint8_t {
     OutOfBounds, // We had an out-of-bounds access to an array.
     InadequateCoverage, // We exited because we ended up in code that didn't have profiling coverage.
     ArgumentsEscaped, // We exited because arguments escaped but we didn't expect them to.
+    ExoticObjectMode, // We exited because some exotic object that we were accessing was in an exotic mode (like Arguments with slow arguments).
     NotStringObject, // We exited because we shouldn't have attempted to optimize string object access.
+    VarargsOverflow, // We exited because a varargs call passed more arguments than we expected.
     Uncountable, // We exited for none of the above reasons, and we should not count it. Most uses of this should be viewed as a FIXME.
     UncountableInvalidation, // We exited because the code block was invalidated; this means that we've already counted the reasons why the code block was invalidated.
     WatchdogTimerFired, // We exited because we need to service the watchdog timer.

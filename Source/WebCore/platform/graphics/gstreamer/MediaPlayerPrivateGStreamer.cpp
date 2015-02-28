@@ -142,15 +142,11 @@ void MediaPlayerPrivateGStreamer::setAudioStreamProperties(GObject* object)
     LOG_MEDIA_MESSAGE("Set media.role as %s at %s", role, elementName.get());
 }
 
-PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateGStreamer::create(MediaPlayer* player)
-{
-    return adoptPtr(new MediaPlayerPrivateGStreamer(player));
-}
-
 void MediaPlayerPrivateGStreamer::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-        registrar(create, getSupportedTypes, supportsType, 0, 0, 0, 0);
+        registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateGStreamer>(player); },
+            getSupportedTypes, supportsType, 0, 0, 0, 0);
 }
 
 bool initializeGStreamerAndRegisterWebKitElements()
@@ -217,7 +213,7 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_totalBytes(0)
     , m_preservesPitch(false)
 #if ENABLE(WEB_AUDIO)
-    , m_audioSourceProvider(AudioSourceProviderGStreamer::create())
+    , m_audioSourceProvider(std::make_unique<AudioSourceProviderGStreamer>())
 #endif
     , m_requestedState(GST_STATE_VOID_PENDING)
     , m_missingPlugins(false)
@@ -272,10 +268,6 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_webkitVideoSink.get(), "sink"));
         g_signal_handlers_disconnect_by_func(videoSinkPad.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoSinkCapsChangedCallback), this);
     }
-
-#if ENABLE(WEB_AUDIO)
-    m_audioSourceProvider.release();
-#endif
 }
 
 void MediaPlayerPrivateGStreamer::load(const String& urlString)
@@ -871,7 +863,7 @@ void MediaPlayerPrivateGStreamer::setPreservesPitch(bool preservesPitch)
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamer::buffered() const
 {
-    auto timeRanges = PlatformTimeRanges::create();
+    auto timeRanges = std::make_unique<PlatformTimeRanges>();
     if (m_errorOccured || isLiveStream())
         return timeRanges;
 

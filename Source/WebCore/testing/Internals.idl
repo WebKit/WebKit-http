@@ -47,6 +47,9 @@ enum PageOverlayType {
     void pruneMemoryCacheToSize(long size);
     long memoryCacheSize();
 
+    void clearPageCache();
+    unsigned int pageCacheSize();
+
     [RaisesException] CSSStyleDeclaration computedStyleIncludingVisitedInfo(Node node);
 
     [RaisesException] Node ensureShadowRoot(Element host);
@@ -317,4 +320,6 @@ enum PageOverlayType {
 
     void setPageMuted(boolean muted);
     boolean isPagePlayingAudio();
+    
+    File createFile(DOMString url);
 };

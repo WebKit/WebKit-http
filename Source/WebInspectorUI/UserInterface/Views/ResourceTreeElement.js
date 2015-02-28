@@ -76,6 +76,7 @@ WebInspector.ResourceTreeElement.compareFolderAndResourceTreeElements = function
 
 WebInspector.ResourceTreeElement.prototype = {
     constructor: WebInspector.ResourceTreeElement,
+    __proto__: WebInspector.SourceCodeTreeElement.prototype,
 
     // Public
 
@@ -168,7 +169,7 @@ WebInspector.ResourceTreeElement.prototype = {
             if (this._resource.isMainResource() && frame && frame.isMainFrame() && this instanceof WebInspector.FrameTreeElement)
                 this.updateStatusForMainFrame();
             else
-                this.status = null;
+                this.status = "";
         } else {
             var spinner = new WebInspector.IndeterminateProgressSpinner;
             this.status = spinner.element;
@@ -194,5 +195,3 @@ WebInspector.ResourceTreeElement.prototype = {
         this.callFirstAncestorFunction("descendantResourceTreeElementTypeDidChange", [this, event.data.oldType]);
     }
 };
-
-WebInspector.ResourceTreeElement.prototype.__proto__ = WebInspector.SourceCodeTreeElement.prototype;

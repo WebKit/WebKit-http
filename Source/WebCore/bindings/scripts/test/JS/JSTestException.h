@@ -24,10 +24,11 @@
 #include "JSDOMWrapper.h"
 #include "TestException.h"
 #include <runtime/ErrorPrototype.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-class JSTestException : public JSDOMWrapper {
+class WEBCORE_EXPORT JSTestException : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSTestException* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestException>&& impl)
@@ -39,7 +40,7 @@ public:
 
     static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
     static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    WEBCORE_EXPORT static TestException* toWrapped(JSC::JSValue);
+    static TestException* toWrapped(JSC::JSValue);
     static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
     static void destroy(JSC::JSCell*);
     ~JSTestException();
@@ -85,8 +86,8 @@ public:
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestException*)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(JSTestExceptionOwner, jsTestExceptionOwner, ());
-    return &jsTestExceptionOwner;
+    static NeverDestroyed<JSTestExceptionOwner> owner;
+    return &owner.get();
 }
 
 WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestException*);

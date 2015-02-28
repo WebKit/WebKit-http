@@ -172,11 +172,6 @@ void CodeBlock::dump(PrintStream& out) const
     dumpAssumingJITType(out, jitType());
 }
 
-static CString constantName(int k, JSValue value)
-{
-    return toCString(value, "(", VirtualRegister(k), ")");
-}
-
 static CString idName(int id0, const Identifier& ident)
 {
     return toCString(ident.impl(), "(@id", id0, ")");
@@ -185,9 +180,15 @@ static CString idName(int id0, const Identifier& ident)
 CString CodeBlock::registerName(int r) const
 {
     if (isConstantRegisterIndex(r))
-        return constantName(r, getConstant(r));
+        return constantName(r);
 
     return toCString(VirtualRegister(r));
+}
+
+CString CodeBlock::constantName(int index) const
+{
+    JSValue value = getConstant(index);
+    return toCString(value, "(", VirtualRegister(index), ")");
 }
 
 static CString regexpToSourceString(RegExp* regExp)
@@ -606,7 +607,19 @@ void CodeBlock::dumpBytecode(PrintStream& out)
         out.printf("\nConstants:\n");
         size_t i = 0;
         do {
-            out.printf("   k%u = %s\n", static_cast<unsigned>(i), toCString(m_constantRegisters[i].get()).data());
+            const char* sourceCodeRepresentationDescription;
+            switch (m_constantsSourceCodeRepresentation[i]) {
+            case SourceCodeRepresentation::Double:
+                sourceCodeRepresentationDescription = ": in source as double";
+                break;
+            case SourceCodeRepresentation::Integer:
+                sourceCodeRepresentationDescription = ": in source as integer";
+                break;
+            case SourceCodeRepresentation::Other:
+                sourceCodeRepresentationDescription = "";
+                break;
+            }
+            out.printf("   k%u = %s%s\n", static_cast<unsigned>(i), toCString(m_constantRegisters[i].get()).data(), sourceCodeRepresentationDescription);
             ++i;
         } while (i < m_constantRegisters.size());
     }
@@ -1006,6 +1019,10 @@ void CodeBlock::dumpBytecode(
         }
         case op_is_object: {
             printUnaryOp(out, exec, location, it, "is_object");
+            break;
+        }
+        case op_is_object_or_null: {
+            printUnaryOp(out, exec, location, it, "is_object_or_null");
             break;
         }
         case op_is_function: {
@@ -1441,12 +1458,11 @@ void CodeBlock::dumpBytecode(
         }
         case op_push_name_scope: {
             int dst = (++it)->u.operand;
-            int id0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
-            unsigned attributes = (++it)->u.operand;
+            int k0 = (++it)->u.operand;
             JSNameScope::Type scopeType = (JSNameScope::Type)(++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "push_name_scope");
-            out.printf("%s, %s, %s, %u %s", registerName(dst).data(), idName(id0, identifier(id0)).data(), registerName(r1).data(), attributes, (scopeType == JSNameScope::FunctionNameScope) ? "functionScope" : ((scopeType == JSNameScope::CatchScope) ? "catchScope" : "unknownScopeType"));
+            out.printf("%s, %s, %s, %s", registerName(dst).data(), registerName(r1).data(), constantName(k0).data(), (scopeType == JSNameScope::FunctionNameScope) ? "functionScope" : ((scopeType == JSNameScope::CatchScope) ? "catchScope" : "unknownScopeType"));
             break;
         }
         case op_catch: {
@@ -1463,7 +1479,7 @@ void CodeBlock::dumpBytecode(
             int k0 = (++it)->u.operand;
             int k1 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "throw_static_error");
-            out.printf("%s, %s", constantName(k0, getConstant(k0)).data(), k1 ? "true" : "false");
+            out.printf("%s, %s", constantName(k0).data(), k1 ? "true" : "false");
             break;
         }
         case op_debug: {
@@ -1636,6 +1652,7 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_firstLineColumnOffset(other.m_firstLineColumnOffset)
     , m_codeType(other.m_codeType)
     , m_constantRegisters(other.m_constantRegisters)
+    , m_constantsSourceCodeRepresentation(other.m_constantsSourceCodeRepresentation)
     , m_functionDecls(other.m_functionDecls)
     , m_functionExprs(other.m_functionExprs)
     , m_osrExitCounter(0)
@@ -1727,7 +1744,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     if (vm()->typeProfiler() || vm()->controlFlowProfiler())
         vm()->functionHasExecutedCache()->removeUnexecutedRange(m_ownerExecutable->sourceID(), m_ownerExecutable->typeProfilingStartOffset(), m_ownerExecutable->typeProfilingEndOffset());
 
-    setConstantRegisters(unlinkedCodeBlock->constantRegisters());
+    setConstantRegisters(unlinkedCodeBlock->constantRegisters(), unlinkedCodeBlock->constantsSourceCodeRepresentation());
     if (unlinkedCodeBlock->usesGlobalObject())
         m_constantRegisters[unlinkedCodeBlock->globalObjectRegister().toConstantIndex()].set(*m_vm, ownerExecutable, m_globalObject.get());
     m_functionDecls.resizeToFit(unlinkedCodeBlock->numberOfFunctionDecls());
@@ -2977,6 +2994,7 @@ void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
     
     if (shrinkMode == EarlyShrink) {
         m_constantRegisters.shrinkToFit();
+        m_constantsSourceCodeRepresentation.shrinkToFit();
         
         if (m_rareData) {
             m_rareData->m_switchJumpTables.shrinkToFit();
@@ -4052,7 +4070,7 @@ void CodeBlock::insertBasicBlockBoundariesForControlFlowProfiler(Vector<Instruct
         if (i + 1 < offsetsLength) {
             size_t endIdx = bytecodeOffsets[i + 1];
             RELEASE_ASSERT(vm()->interpreter->getOpcodeID(instructions[endIdx].u.opcode) == op_profile_control_flow);
-            basicBlockEndOffset = instructions[endIdx + 1].u.operand;
+            basicBlockEndOffset = instructions[endIdx + 1].u.operand - 1;
         } else {
             basicBlockEndOffset = m_sourceOffset + m_ownerExecutable->source().length() - 1; // Offset before the closing brace.
             basicBlockStartOffset = std::min(basicBlockStartOffset, basicBlockEndOffset); // Some start offsets may be at the closing brace, ensure it is the offset before.

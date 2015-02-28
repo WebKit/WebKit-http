@@ -38,6 +38,11 @@ String DiagnosticLoggingKeys::mediaLoadingFailedKey()
     return ASCIILiteral("mediaFailedLoading");
 }
 
+String DiagnosticLoggingKeys::missingValidatorFieldsKey()
+{
+    return ASCIILiteral("missingValidatorFields");
+}
+
 String DiagnosticLoggingKeys::mustRevalidateIsExpiredKey()
 {
     return ASCIILiteral("mustRevalidateIsExpired");
@@ -138,9 +143,9 @@ String DiagnosticLoggingKeys::noDocumentLoaderKey()
     return ASCIILiteral("noDocumentLoader");
 }
 
-String DiagnosticLoggingKeys::noLongerInCacheFailureKey()
+String DiagnosticLoggingKeys::noLongerInCacheKey()
 {
-    return ASCIILiteral("noLongerInCacheFailure");
+    return ASCIILiteral("noLongerInCache");
 }
 
 String DiagnosticLoggingKeys::otherKey()
@@ -173,6 +178,11 @@ String DiagnosticLoggingKeys::isExpiredKey()
     return ASCIILiteral("isExpired");
 }
 
+String DiagnosticLoggingKeys::isReloadIgnoringCacheDataKey()
+{
+    return ASCIILiteral("isReloadIgnoringCacheData");
+}
+
 String DiagnosticLoggingKeys::loadedKey()
 {
     return ASCIILiteral("loaded");
@@ -203,9 +213,14 @@ String DiagnosticLoggingKeys::inMemoryCacheKey()
     return ASCIILiteral("inMemoryCache");
 }
 
-String DiagnosticLoggingKeys::hasOpenDatabasesKey()
+String DiagnosticLoggingKeys::isAttachmentKey()
 {
-    return ASCIILiteral("hasOpenDatabases");
+    return ASCIILiteral("isAttachment");
+}
+
+String DiagnosticLoggingKeys::isConditionalRequestKey()
+{
+    return ASCIILiteral("isConditionalRequest");
 }
 
 String DiagnosticLoggingKeys::noCurrentHistoryItemKey()
@@ -251,6 +266,11 @@ String DiagnosticLoggingKeys::applicationCacheKey()
 String DiagnosticLoggingKeys::audioKey()
 {
     return ASCIILiteral("audio");
+}
+
+String DiagnosticLoggingKeys::cacheControlNoStoreKey()
+{
+    return ASCIILiteral("cacheControlNoStore");
 }
 
 String DiagnosticLoggingKeys::cachedResourceRevalidationKey()
@@ -348,14 +368,24 @@ String DiagnosticLoggingKeys::svgDocumentKey()
     return ASCIILiteral("svgDocument");
 }
 
-String DiagnosticLoggingKeys::unhandledRequestFailureKey()
+String DiagnosticLoggingKeys::uncacheableStatusCodeKey()
 {
-    return ASCIILiteral("unhandledRequestFailure");
+    return ASCIILiteral("uncacheableStatusCode");
 }
 
-String DiagnosticLoggingKeys::unusableCachedEntryFailureKey()
+String DiagnosticLoggingKeys::unsupportedHTTPMethodKey()
 {
-    return ASCIILiteral("unusableCachedEntryFailure");
+    return ASCIILiteral("unsupportedHTTPMethod");
+}
+
+String DiagnosticLoggingKeys::unsuspendableDOMObjectKey()
+{
+    return ASCIILiteral("unsuspendableDOMObject");
+}
+
+String DiagnosticLoggingKeys::unusableCachedEntryKey()
+{
+    return ASCIILiteral("unusableCachedEntry");
 }
 
 String DiagnosticLoggingKeys::unusedKey()
@@ -408,6 +438,11 @@ String DiagnosticLoggingKeys::userKey()
     return ASCIILiteral("user");
 }
 
+String DiagnosticLoggingKeys::varyingHeaderMismatchKey()
+{
+    return ASCIILiteral("varyingHeaderMismatch");
+}
+
 String DiagnosticLoggingKeys::videoKey()
 {
     return ASCIILiteral("video");
@@ -446,6 +481,16 @@ String DiagnosticLoggingKeys::prunedDueToMaxSizeReached()
 String DiagnosticLoggingKeys::prunedDueToProcessSuspended()
 {
     return ASCIILiteral("pruned.processSuspended");
+}
+
+String WebCore::DiagnosticLoggingKeys::notHTTPFamilyKey()
+{
+    return ASCIILiteral("notHTTPFamily");
+}
+
+String DiagnosticLoggingKeys::notInCacheKey()
+{
+    return ASCIILiteral("notInCache");
 }
 
 } // namespace WebCore

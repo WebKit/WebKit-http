@@ -25,10 +25,11 @@
 
 #include "JSDOMWrapper.h"
 #include "TestInterface.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-class JSTestInterface : public JSDOMWrapper {
+class WEBCORE_EXPORT JSTestInterface : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSTestInterface* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestInterface>&& impl)
@@ -40,7 +41,7 @@ public:
 
     static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
     static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    WEBCORE_EXPORT static TestInterface* toWrapped(JSC::JSValue);
+    static TestInterface* toWrapped(JSC::JSValue);
     static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
     static void put(JSC::JSCell*, JSC::ExecState*, JSC::PropertyName, JSC::JSValue, JSC::PutPropertySlot&);
     static void putByIndex(JSC::JSCell*, JSC::ExecState*, unsigned propertyName, JSC::JSValue, bool shouldThrow);
@@ -111,8 +112,8 @@ public:
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestInterface*)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(JSTestInterfaceOwner, jsTestInterfaceOwner, ());
-    return &jsTestInterfaceOwner;
+    static NeverDestroyed<JSTestInterfaceOwner> owner;
+    return &owner.get();
 }
 
 WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestInterface*);

@@ -384,6 +384,9 @@
     <ClCompile Include="..\Modules\geolocation\Geolocation.cpp">
       <Filter>Modules\geolocation</Filter>
     </ClCompile>
+    <ClCompile Include="..\Modules\geolocation\GeoNotifier.cpp">
+      <Filter>Modules\geolocation</Filter>
+    </ClCompile>
     <ClCompile Include="..\Modules\geolocation\GeolocationController.cpp">
       <Filter>Modules\geolocation</Filter>
     </ClCompile>
@@ -1264,9 +1267,6 @@
       <Filter>platform\win</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\win\PopupMenuWin.cpp">
-      <Filter>platform\win</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\win\ScrollbarThemeSafari.cpp">
       <Filter>platform\win</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\win\ScrollbarThemeWin.cpp">
@@ -2668,9 +2668,6 @@
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\RenderTheme.cpp">
-      <Filter>rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="..\rendering\RenderThemeSafari.cpp">
       <Filter>rendering</Filter>
     </ClCompile>
     <ClCompile Include="..\rendering\RenderThemeWin.cpp">
@@ -4824,9 +4821,6 @@
     <ClCompile Include="..\platform\graphics\FontGenericFamilies.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\FontGlyphs.cpp">
-      <Filter>platform\graphics</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\graphics\FontFeatureSettings.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
@@ -5318,6 +5312,9 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLAreaElement.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLAttachmentElement.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLAudioElement.cpp">
@@ -7222,6 +7219,18 @@
     <ClCompile Include="..\platform\graphics\Font.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
+    <ClCompile Include="..\platform\cf\CoreMediaSoftLink.cpp">
+      <Filter>platform\cf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\FontCascadeFonts.cpp">
+      <Filter>platform\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\HTMLAttachmentElement.cpp">
+      <Filter>html</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rendering\RenderAttachment.cpp">
+      <Filter>rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Modules\geolocation\Coordinates.h">
@@ -8325,9 +8334,6 @@
     <ClInclude Include="..\platform\win\PopupMenuWin.h">
       <Filter>platform\win</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\win\ScrollbarThemeSafari.h">
-      <Filter>platform\win</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\win\ScrollbarThemeWin.h">
       <Filter>platform\win</Filter>
     </ClInclude>
@@ -8689,9 +8695,6 @@
       <Filter>platform\graphics\avfoundation</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\avfoundation\cf\AVFoundationCFSoftLinking.h">
-      <Filter>platform\graphics\avfoundation\cf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\avfoundation\cf\CoreMediaSoftLinking.h">
       <Filter>platform\graphics\avfoundation\cf</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\avfoundation\cf\MediaPlayerPrivateAVFoundationCF.h">
@@ -11628,6 +11631,9 @@
     <ClInclude Include="..\ForwardingHeaders\runtime\Protect.h">
       <Filter>ForwardingHeaders\runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\ForwardingHeaders\runtime\RuntimeFlags.h">
+      <Filter>ForwardingHeaders\runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\ForwardingHeaders\runtime\StringObject.h">
       <Filter>ForwardingHeaders\runtime</Filter>
     </ClInclude>
@@ -12169,6 +12175,9 @@
     <ClInclude Include="..\platform\cf\CFURLExtras.h">
       <Filter>platform\cf</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\cf\CoreMediaSoftLink.h">
+      <Filter>platform\cf</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\cf\win\CertificateCFWin.h">
       <Filter>platform\cf\win</Filter>
     </ClInclude>
@@ -12194,9 +12203,6 @@
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\FontGenericFamilies.h">
-      <Filter>platform\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\FontGlyphs.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\FontFeatureSettings.h">
@@ -12666,6 +12672,9 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLAreaElement.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLAttachmentElement.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLAudioElement.h">
@@ -15164,6 +15173,21 @@
     <ClInclude Include="..\platform\graphics\Font.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\graphics\FontCascadeFonts.h">
+      <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\streams\ReadableStreamSource.h">
+      <Filter>Modules\streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\streams\ReadableStream.h">
+      <Filter>Modules\streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\HTMLAttachmentElement.h">
+      <Filter>html</Filter>
+    </ClInclude>
+    <ClInclude Include="..\rendering\RenderAttachment.h">
+      <Filter>rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\css\CSSGrammar.y.in">
@@ -15360,9 +15384,6 @@
       <Filter>rendering</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\rendering\RenderMediaControls.h">
-      <Filter>rendering</Filter>
-    </CustomBuildStep>
-    <CustomBuildStep Include="..\rendering\RenderThemeSafari.h">
       <Filter>rendering</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\rendering\RenderThemeWin.h">

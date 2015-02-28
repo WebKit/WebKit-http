@@ -228,6 +228,7 @@ typedef GenericCallback<const WebCore::IntRect&, const EditingRange&> RectForCha
 
 #if PLATFORM(MAC)
 typedef GenericCallback<const AttributedString&, const EditingRange&> AttributedStringForCharacterRangeCallback;
+typedef GenericCallback<const String&, double, bool> FontAtSelectionCallback;
 #endif
 
 #if PLATFORM(IOS)
@@ -538,6 +539,8 @@ public:
 #if PLATFORM(MAC)
     void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>& dictationAlternatives, bool registerUndoGroup);
     void attributedSubstringForCharacterRangeAsync(const EditingRange&, std::function<void (const AttributedString&, const EditingRange&, CallbackBase::Error)>);
+    void setFont(const String& fontFamily, double fontSize, uint64_t fontTraits);
+    void fontAtSelection(std::function<void (const String&, double, bool, CallbackBase::Error)>);
 
 #if !USE(ASYNC_NSTEXTINPUTCLIENT)
     bool insertText(const String& text, const EditingRange& replacementRange);
@@ -990,9 +993,9 @@ public:
     void setShouldDispatchFakeMouseMoveEvents(bool);
 
     // Diagnostic messages logging.
-    void logDiagnosticMessage(const String& message, const String& description);
-    void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result);
-    void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value);
+    void logDiagnosticMessage(const String& message, const String& description, bool shouldSample);
+    void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result, bool shouldSample);
+    void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, bool shouldSample);
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
@@ -1262,6 +1265,7 @@ private:
     void rectForCharacterRangeCallback(const WebCore::IntRect&, const EditingRange&, uint64_t);
 #if PLATFORM(MAC)
     void attributedStringForCharacterRangeCallback(const AttributedString&, const EditingRange&, uint64_t);
+    void fontAtSelectionCallback(const String&, double, bool, uint64_t);
 #endif
 #if PLATFORM(IOS)
     void gestureCallback(const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, uint64_t);

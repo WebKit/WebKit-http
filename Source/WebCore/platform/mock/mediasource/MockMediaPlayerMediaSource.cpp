@@ -40,12 +40,8 @@ namespace WebCore {
 // MediaPlayer Enigne Support
 void MockMediaPlayerMediaSource::registerMediaEngine(MediaEngineRegistrar registrar)
 {
-    registrar(create, getSupportedTypes, supportsType, 0, 0, 0, 0);
-}
-
-PassOwnPtr<MediaPlayerPrivateInterface> MockMediaPlayerMediaSource::create(MediaPlayer* player)
-{
-    return adoptPtr(new MockMediaPlayerMediaSource(player));
+    registrar([](MediaPlayer* player) { return std::make_unique<MockMediaPlayerMediaSource>(player); }, getSupportedTypes,
+        supportsType, 0, 0, 0, 0);
 }
 
 static HashSet<String> mimeTypeCache()
@@ -171,7 +167,7 @@ std::unique_ptr<PlatformTimeRanges> MockMediaPlayerMediaSource::buffered() const
     if (m_mediaSourcePrivate)
         return m_mediaSourcePrivate->buffered();
 
-    return PlatformTimeRanges::create();
+    return std::make_unique<PlatformTimeRanges>();
 }
 
 bool MockMediaPlayerMediaSource::didLoadingProgress() const

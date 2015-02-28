@@ -442,9 +442,8 @@ namespace JSC {
         void emitProfileControlFlow(int);
 
         RegisterID* emitLoad(RegisterID* dst, bool);
-        RegisterID* emitLoad(RegisterID* dst, double);
         RegisterID* emitLoad(RegisterID* dst, const Identifier&);
-        RegisterID* emitLoad(RegisterID* dst, JSValue);
+        RegisterID* emitLoad(RegisterID* dst, JSValue, SourceCodeRepresentation = SourceCodeRepresentation::Other);
         RegisterID* emitLoadGlobalObject(RegisterID* dst);
 
         RegisterID* emitUnaryOp(OpcodeID, RegisterID* dst, RegisterID* src);
@@ -614,16 +613,8 @@ namespace JSC {
 
         // Adds a var slot and maps it to the name ident in symbolTable().
         enum WatchMode { IsWatchable, NotWatchable };
-        RegisterID* addVar(const Identifier& ident, ConstantMode constantMode, WatchMode watchMode)
-        {
-            RegisterID* local;
-            addVar(ident, constantMode, watchMode, local);
-            return local;
-        }
+        RegisterID* addVar(const Identifier&, ConstantMode, WatchMode);
 
-        // Ditto. Returns true if a new RegisterID was added, false if a pre-existing RegisterID was re-used.
-        bool addVar(const Identifier&, ConstantMode, WatchMode, RegisterID*&);
-        
         // Adds an anonymous var slot. To give this slot a name, add it to symbolTable().
         RegisterID* addVar()
         {
@@ -655,7 +646,7 @@ namespace JSC {
 
         bool hasConstant(const Identifier&) const;
         unsigned addConstant(const Identifier&);
-        RegisterID* addConstantValue(JSValue);
+        RegisterID* addConstantValue(JSValue, SourceCodeRepresentation = SourceCodeRepresentation::Other);
         RegisterID* addConstantEmptyValue();
         unsigned addRegExp(RegExp*);
 
@@ -668,7 +659,7 @@ namespace JSC {
 
         RegisterID* emitInitLazyRegister(RegisterID*);
         
-        RegisterID* emitConstructVarargs(RegisterID* dst, RegisterID* func, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
+        RegisterID* emitConstructVarargs(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
         RegisterID* emitCallVarargs(OpcodeID, RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
         RegisterID* initializeCapturedVariable(RegisterID* dst, const Identifier&, RegisterID*);
 
@@ -801,8 +792,9 @@ namespace JSC {
         
         // Constant pool
         IdentifierMap m_identifierMap;
+
+        typedef HashMap<EncodedJSValueWithRepresentation, unsigned, EncodedJSValueWithRepresentationHash, EncodedJSValueWithRepresentationHashTraits> JSValueMap;
         JSValueMap m_jsValueMap;
-        NumberMap m_numberMap;
         IdentifierStringMap m_stringMap;
 
         StaticPropertyAnalyzer m_staticPropertyAnalyzer { &m_instructions };

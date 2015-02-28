@@ -29,7 +29,8 @@
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "ContentExtensionsDebugging.h"
-#include "DFACompiler.h"
+#include "DFABytecodeCompiler.h"
+#include "DFABytecodeInterpreter.h"
 #include "NFA.h"
 #include "NFAToDFA.h"
 #include "URL.h"
@@ -42,11 +43,6 @@
 namespace WebCore {
 
 namespace ContentExtensions {
-
-ContentExtensionsBackend::ContentExtensionsBackend()
-    : m_vm(JSC::VM::sharedInstance())
-{
-}
 
 void ContentExtensionsBackend::setRuleList(const String& identifier, const Vector<ContentExtensionRule>& ruleList)
 {
@@ -98,17 +94,16 @@ void ContentExtensionsBackend::setRuleList(const String& identifier, const Vecto
     dataLogF("    Time spent building the DFA: %f\n", (dfaBuildTimeEnd - dfaBuildTimeStart));
 #endif
 
-    JSC::MacroAssemblerCodeRef compiledDfa;
-    {
-        JSC::JSLockHolder locker(m_vm.get());
-        compiledDfa = compileDFA(dfa, m_vm.get());
-    }
+    // FIXME: never add a DFA that only matches the empty set.
 
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
     dfa.debugPrintDot();
 #endif
 
-    CompiledContentExtension compiledContentExtension = { compiledDfa, ruleList };
+    Vector<DFABytecode> bytecode;
+    DFABytecodeCompiler compiler(dfa, bytecode);
+    compiler.compile();
+    CompiledContentExtension compiledContentExtension = { bytecode, ruleList };
     m_ruleLists.set(identifier, compiledContentExtension);
 }
 
@@ -122,40 +117,32 @@ void ContentExtensionsBackend::removeAllRuleLists()
     m_ruleLists.clear();
 }
 
-static void addActionToHashSet(TriggeredActionSet* triggeredActionSet, unsigned actionId)
-{
-    triggeredActionSet->add(actionId);
-}
-
-bool ContentExtensionsBackend::shouldBlockURL(const URL& url)
+ContentFilterAction ContentExtensionsBackend::actionForURL(const URL& url)
 {
     const String& urlString = url.string();
     ASSERT_WITH_MESSAGE(urlString.containsOnlyASCII(), "A decoded URL should only contain ASCII characters. The matching algorithm assumes the input is ASCII.");
+    const CString& urlCString = urlString.utf8();
 
     for (auto& ruleListSlot : m_ruleLists) {
-        CompiledContentExtension& compiledContentExtension = ruleListSlot.value;
-
-        CString urlCString = urlString.utf8();
-        PotentialPageLoadDescriptor potentialPageLoadDescriptor;
-        potentialPageLoadDescriptor.urlBuffer = urlCString.data();
-        potentialPageLoadDescriptor.urlBufferSize = urlCString.length();
-
-        TriggeredActionSet triggeredActions;
-
-        void* compiledMatcher = compiledContentExtension.compiledMatcher.code().executableAddress();
-        reinterpret_cast<CompiledRuleMatcher>(compiledMatcher)(&potentialPageLoadDescriptor, addActionToHashSet, &triggeredActions);
-
+        const CompiledContentExtension& compiledContentExtension = ruleListSlot.value;
+        DFABytecodeInterpreter interpreter(compiledContentExtension.bytecode);
+        DFABytecodeInterpreter::Actions triggeredActions = interpreter.interpret(urlCString);
+        // FIXME: We should eventually do something with each action rather than just returning a bool.
         if (!triggeredActions.isEmpty()) {
             Vector<uint64_t> sortedActions;
             copyToVector(triggeredActions, sortedActions);
             std::sort(sortedActions.begin(), sortedActions.end());
             size_t lastAction = static_cast<size_t>(sortedActions.last());
-            if (compiledContentExtension.ruleList[lastAction].action().type == ExtensionActionType::BlockLoad)
-                return true;
+            ExtensionActionType type = compiledContentExtension.ruleList[lastAction].action().type;
+
+            if (type == ExtensionActionType::BlockLoad)
+                return ContentFilterAction::Block;
+            if (type == ExtensionActionType::BlockCookies)
+                return ContentFilterAction::BlockCookies;
         }
     }
 
-    return false;
+    return ContentFilterAction::Load;
 }
 
 } // namespace ContentExtensions

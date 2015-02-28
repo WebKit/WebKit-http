@@ -58,12 +58,6 @@ RenderMultiColumnFlowThread::~RenderMultiColumnFlowThread()
 {
 }
 
-void RenderMultiColumnFlowThread::removeFlowChildInfo(RenderObject* child)
-{
-    RenderFlowThread::removeFlowChildInfo(child);
-    flowThreadRelativeWillBeRemoved(child);
-}
-
 const char* RenderMultiColumnFlowThread::renderName() const
 {    
     return "RenderMultiColumnFlowThread";
@@ -735,7 +729,7 @@ RenderRegion* RenderMultiColumnFlowThread::physicalTranslationFromFlowToRegion(L
 bool RenderMultiColumnFlowThread::isPageLogicalHeightKnown() const
 {
     if (RenderMultiColumnSet* columnSet = lastMultiColumnSet())
-        return columnSet->computedColumnHeight();
+        return columnSet->columnHeightComputed();
     return false;
 }
 

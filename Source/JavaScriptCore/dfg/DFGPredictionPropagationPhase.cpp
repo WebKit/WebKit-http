@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -148,6 +148,11 @@ private:
             changed |= setPrediction(type);
             break;
         }
+        case DoubleConstant: {
+            SpeculatedType type = speculationFromValue(node->asJSValue());
+            changed |= setPrediction(type);
+            break;
+        }
             
         case GetLocal: {
             VariableAccessData* variable = node->variableAccessData();
@@ -188,6 +193,9 @@ private:
         case GetDirectPname:
         case Call:
         case Construct:
+        case CallVarargs:
+        case ConstructVarargs:
+        case CallForwardVarargs:
         case NativeCall:
         case NativeConstruct:
         case GetGlobalVar:
@@ -355,6 +363,7 @@ private:
         case IsNumber:
         case IsString:
         case IsObject:
+        case IsObjectOrNull:
         case IsFunction: {
             changed |= setPrediction(SpecBoolean);
             break;
@@ -528,7 +537,6 @@ private:
         case DoubleRep:
         case ValueRep:
         case Int52Rep:
-        case DoubleConstant:
         case Int52Constant:
         case Identity:
         case BooleanToNumber:
@@ -537,8 +545,9 @@ private:
         case CheckStructureImmediate:
         case PutStructureHint:
         case MaterializeNewObject:
-        case PutLocal:
-        case KillLocal: {
+        case PutStack:
+        case KillStack:
+        case GetStack: {
             // This node should never be visible at this stage of compilation. It is
             // inserted by fixup(), which follows this phase.
             RELEASE_ASSERT_NOT_REACHED();
@@ -635,6 +644,7 @@ private:
         case ConstantStoragePointer:
         case MovHint:
         case ZombieHint:
+        case LoadVarargs:
             break;
             
         // This gets ignored because it only pretends to produce a value.

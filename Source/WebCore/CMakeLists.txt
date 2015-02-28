@@ -449,6 +449,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/HTMLAnchorElement.idl
     html/HTMLAppletElement.idl
     html/HTMLAreaElement.idl
+    html/HTMLAttachmentElement.idl
     html/HTMLAudioElement.idl
     html/HTMLBRElement.idl
     html/HTMLBaseElement.idl
@@ -809,6 +810,7 @@ set(WebCore_SOURCES
     Modules/gamepad/deprecated/NavigatorGamepad.cpp
 
     Modules/geolocation/Coordinates.cpp
+    Modules/geolocation/GeoNotifier.cpp
     Modules/geolocation/Geolocation.cpp
     Modules/geolocation/GeolocationController.cpp
     Modules/geolocation/NavigatorGeolocation.cpp
@@ -2075,10 +2077,10 @@ set(WebCore_SOURCES
     platform/graphics/Font.cpp
     platform/graphics/FontCache.cpp
     platform/graphics/FontCascade.cpp
+    platform/graphics/FontCascadeFonts.cpp
     platform/graphics/FontDescription.cpp
     platform/graphics/FontFeatureSettings.cpp
     platform/graphics/FontGenericFamilies.cpp
-    platform/graphics/FontGlyphs.cpp
     platform/graphics/FontRanges.cpp
     platform/graphics/GeneratedImage.cpp
     platform/graphics/GeometryUtilities.cpp

@@ -49,6 +49,12 @@ namespace ContentExtensions {
 class ContentExtensionsBackend;
 }
 
+enum class ContentFilterAction {
+    Load,
+    Block,
+    BlockCookies
+};
+
 class UserContentController : public RefCounted<UserContentController> {
 public:
     WEBCORE_EXPORT static RefPtr<UserContentController> create();
@@ -81,10 +87,11 @@ public:
 #if ENABLE(CONTENT_EXTENSIONS)
     // FIXME: This should really take a pointer to a compiled UserContentFilter.
     WEBCORE_EXPORT void addUserContentFilter(const String& name, const String& ruleList);
+    WEBCORE_EXPORT void removeUserContentFilter(const String& name);
     WEBCORE_EXPORT void removeAllUserContentFilters();
     
     // FIXME: Consider putting this (and other future content filter predicates) in its own class.
-    bool contentFilterBlocksURL(const URL&);
+    ContentFilterAction actionForURL(const URL&);
 #endif
 
 private:

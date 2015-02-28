@@ -67,7 +67,9 @@ public:
         
         for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex)
             injectTypeConversionsInBlock(m_graph.block(blockIndex));
-        
+
+        m_graph.m_planStage = PlanStage::AfterFixup;
+
         return true;
     }
 
@@ -919,18 +921,25 @@ private:
         case GetByIdFlush: {
             if (!node->child1()->shouldSpeculateCell())
                 break;
-            StringImpl* impl = m_graph.identifiers()[node->identifierNumber()];
-            if (impl == vm().propertyNames->length.impl()) {
-                attemptToMakeGetArrayLength(node);
-                break;
-            }
-            if (impl == vm().propertyNames->byteLength.impl()) {
-                attemptToMakeGetTypedArrayByteLength(node);
-                break;
-            }
-            if (impl == vm().propertyNames->byteOffset.impl()) {
-                attemptToMakeGetTypedArrayByteOffset(node);
-                break;
+
+            // If we hadn't exited because of BadCache, BadIndexingType, or ExoticObjectMode, then
+            // leave this as a GetById.
+            if (!m_graph.hasExitSite(node->origin.semantic, BadCache)
+                && !m_graph.hasExitSite(node->origin.semantic, BadIndexingType)
+                && !m_graph.hasExitSite(node->origin.semantic, ExoticObjectMode)) {
+                StringImpl* impl = m_graph.identifiers()[node->identifierNumber()];
+                if (impl == vm().propertyNames->length.impl()) {
+                    attemptToMakeGetArrayLength(node);
+                    break;
+                }
+                if (impl == vm().propertyNames->byteLength.impl()) {
+                    attemptToMakeGetTypedArrayByteLength(node);
+                    break;
+                }
+                if (impl == vm().propertyNames->byteOffset.impl()) {
+                    attemptToMakeGetTypedArrayByteOffset(node);
+                    break;
+                }
             }
             fixEdge<CellUse>(node->child1());
             break;
@@ -1049,7 +1058,6 @@ private:
         case DoubleRep:
         case ValueRep:
         case Int52Rep:
-        case DoubleConstant:
         case Int52Constant:
         case Identity: // This should have been cleaned up.
         case BooleanToNumber:
@@ -1058,8 +1066,9 @@ private:
         case CheckStructureImmediate:
         case PutStructureHint:
         case MaterializeNewObject:
-        case PutLocal:
-        case KillLocal:
+        case PutStack:
+        case KillStack:
+        case GetStack:
             // These are just nodes that we don't currently expect to see during fixup.
             // If we ever wanted to insert them prior to fixup, then we just have to create
             // fixup rules for them.
@@ -1086,6 +1095,16 @@ private:
                     Edge(node->child1().node(), StringUse));
                 m_graph.convertToConstant(node, jsBoolean(true));
                 observeUseKindOnNode<StringUse>(node);
+            }
+            break;
+
+        case IsObject:
+            if (node->child1()->shouldSpeculateObject()) {
+                m_insertionSet.insertNode(
+                    m_indexInBlock, SpecNone, Phantom, node->origin,
+                    Edge(node->child1().node(), ObjectUse));
+                m_graph.convertToConstant(node, jsBoolean(true));
+                observeUseKindOnNode<ObjectUse>(node);
             }
             break;
 
@@ -1201,6 +1220,7 @@ private:
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
         case SetArgument:
         case JSConstant:
+        case DoubleConstant:
         case GetLocal:
         case GetCallee:
         case Flush:
@@ -1214,6 +1234,10 @@ private:
         case AllocationProfileWatchpoint:
         case Call:
         case Construct:
+        case CallVarargs:
+        case ConstructVarargs:
+        case CallForwardVarargs:
+        case LoadVarargs:
         case ProfileControlFlow:
         case NativeCall:
         case NativeConstruct:
@@ -1226,7 +1250,7 @@ private:
         case IsUndefined:
         case IsBoolean:
         case IsNumber:
-        case IsObject:
+        case IsObjectOrNull:
         case IsFunction:
         case CreateArguments:
         case PhantomArguments:

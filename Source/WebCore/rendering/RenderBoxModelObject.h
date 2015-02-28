@@ -67,46 +67,27 @@ class StickyPositionViewportConstraints;
 
 class BackgroundImageGeometry {
 public:
-    BackgroundImageGeometry()
-        : m_hasNonLocalGeometry(false)
-    { }
+    BackgroundImageGeometry(const LayoutRect& destinationRect, const LayoutSize& tile, const LayoutSize& phase, const LayoutSize& space, bool fixedAttachment)
+        : m_destRect(destinationRect)
+        , m_tileSize(tile)
+        , m_phase(phase)
+        , m_space(space)
+        , m_hasNonLocalGeometry(fixedAttachment)
+    {
+    }
 
-    LayoutPoint destOrigin() const { return m_destOrigin; }
-    void setDestOrigin(const LayoutPoint& destOrigin) { m_destOrigin = destOrigin; }
-    
     LayoutRect destRect() const { return m_destRect; }
-    void setDestRect(const LayoutRect& destRect) { m_destRect = destRect; }
-    
-    // Returns the phase relative to the destination rectangle.
-    LayoutPoint relativePhase() const;
-    
-    LayoutPoint phase() const { return m_phase; }
-    void setPhase(const LayoutPoint& phase) { m_phase = phase; }
-    
+    LayoutSize phase() const { return m_phase; }
     LayoutSize tileSize() const { return m_tileSize; }
-    void setTileSize(const LayoutSize& tileSize) { m_tileSize = tileSize; }
-    
     LayoutSize spaceSize() const { return m_space; }
-    void setSpaceSize(const LayoutSize& space) { m_space = space; }
-    
-    void setPhaseX(LayoutUnit  x) { m_phase.setX(x); }
-    void setPhaseY(LayoutUnit y) { m_phase.setY(y); }
-    
-    void setNoRepeatX(LayoutUnit xOffset);
-    void setNoRepeatY(LayoutUnit yOffset);
-    
-    void useFixedAttachment(const LayoutPoint& attachmentPoint);
-    
-    void clip(const LayoutRect&);
-    
-    void setHasNonLocalGeometry(bool hasNonLocalGeometry = true) { m_hasNonLocalGeometry = hasNonLocalGeometry; }
     bool hasNonLocalGeometry() const { return m_hasNonLocalGeometry; }
-    
+
+    void clip(const LayoutRect& clipRect) { m_destRect.intersect(clipRect); }
+
 private:
     LayoutRect m_destRect;
-    LayoutPoint m_destOrigin;
-    LayoutPoint m_phase;
     LayoutSize m_tileSize;
+    LayoutSize m_phase;
     LayoutSize m_space;
     bool m_hasNonLocalGeometry; // Has background-attachment: fixed. Implies that we can't always cheaply compute destRect.
 };
@@ -236,7 +217,7 @@ public:
 
     bool canHaveBoxInfoInRegion() const { return !isFloating() && !isReplaced() && !isInline() && !isTableCell() && isRenderBlock() && !isRenderSVGBlock(); }
 
-    void getGeometryForBackgroundImage(const RenderLayerModelObject* paintContainer, FloatRect& destRect, FloatPoint& phase, FloatSize& tileSize) const;
+    void getGeometryForBackgroundImage(const RenderLayerModelObject* paintContainer, FloatRect& destRect, FloatSize& phase, FloatSize& tileSize) const;
     void contentChanged(ContentChangeType);
     bool hasAcceleratedCompositing() const;
 
@@ -259,7 +240,7 @@ protected:
     LayoutPoint adjustedPositionRelativeToOffsetParent(const LayoutPoint&) const;
 
     bool hasBoxDecorationStyle() const;
-    void calculateBackgroundImageGeometry(const RenderLayerModelObject* paintContainer, const FillLayer*, const LayoutRect& paintRect, BackgroundImageGeometry&, RenderElement* = 0) const;
+    BackgroundImageGeometry calculateBackgroundImageGeometry(const RenderLayerModelObject* paintContainer, const FillLayer&, const LayoutRect& paintRect, RenderElement* = 0) const;
     bool borderObscuresBackgroundEdge(const FloatSize& contextScale) const;
     bool borderObscuresBackground() const;
     RoundedRect backgroundRoundedRectAdjustedForBleedAvoidance(const GraphicsContext&, const LayoutRect&, BackgroundBleedAvoidance, InlineFlowBox*, const LayoutSize&, bool includeLogicalLeftEdge, bool includeLogicalRightEdge) const;
@@ -314,7 +295,7 @@ private:
     
     virtual LayoutRect frameRectForStickyPositioning() const = 0;
 
-    LayoutSize calculateFillTileSize(const FillLayer*, const LayoutSize& scaledPositioningAreaSize) const;
+    LayoutSize calculateFillTileSize(const FillLayer&, const LayoutSize& scaledPositioningAreaSize) const;
 
     RoundedRect getBackgroundRoundedRect(const LayoutRect&, InlineFlowBox*, LayoutUnit inlineBoxWidth, LayoutUnit inlineBoxHeight,
         bool includeLogicalLeftEdge, bool includeLogicalRightEdge) const;
@@ -336,8 +317,6 @@ private:
         float thickness, float drawThickness, BoxSide, const RenderStyle&,
         Color, EBorderStyle, BackgroundBleedAvoidance, bool includeLogicalLeftEdge, bool includeLogicalRightEdge);
     void paintMaskForTextFillBox(ImageBuffer*, const IntRect&, InlineFlowBox*, const LayoutRect&);
-
-    void pixelSnapBackgroundImageGeometryForPainting(BackgroundImageGeometry&) const;
 };
 
 } // namespace WebCore

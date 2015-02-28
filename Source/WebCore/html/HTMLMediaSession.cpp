@@ -58,7 +58,7 @@ static const char* restrictionName(HTMLMediaSession::BehaviorRestrictions restri
     CASE(RequireUserGestureForFullscreen);
     CASE(RequirePageConsentToLoadMedia);
     CASE(RequirePageConsentToResumeMedia);
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     CASE(RequireUserGestureToShowPlaybackTargetPicker);
     CASE(WirelessVideoPlaybackDisabled);
 #endif
@@ -68,11 +68,6 @@ static const char* restrictionName(HTMLMediaSession::BehaviorRestrictions restri
     return "";
 }
 #endif
-
-std::unique_ptr<HTMLMediaSession> HTMLMediaSession::create(MediaSessionClient& client)
-{
-    return std::make_unique<HTMLMediaSession>(client);
-}
 
 HTMLMediaSession::HTMLMediaSession(MediaSessionClient& client)
     : MediaSession(client)
@@ -145,7 +140,7 @@ bool HTMLMediaSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement& e
     return true;
 }
 
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
 bool HTMLMediaSession::showingPlaybackTargetPickerPermitted(const HTMLMediaElement& element) const
 {
     if (m_restrictions & RequireUserGestureToShowPlaybackTargetPicker && !ScriptController::processingUserGesture()) {
@@ -293,7 +288,7 @@ void HTMLMediaSession::applyMediaPlayerRestrictions(const HTMLMediaElement& elem
 {
     LOG(Media, "HTMLMediaSession::applyMediaPlayerRestrictions");
 
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     setWirelessVideoPlaybackDisabled(element, m_restrictions & WirelessVideoPlaybackDisabled);
 #else
     UNUSED_PARAM(element);

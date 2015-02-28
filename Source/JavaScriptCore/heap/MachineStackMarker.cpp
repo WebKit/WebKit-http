@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2009, 2015 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  *  Copyright (C) 2009 Acision BV. All rights reserved.
  *
@@ -94,13 +94,71 @@ static void pthreadSignalHandlerSuspendResume(int)
 #endif
 #endif
 
+class ActiveMachineThreadsManager;
+static ActiveMachineThreadsManager& activeMachineThreadsManager();
+
+class ActiveMachineThreadsManager {
+    WTF_MAKE_NONCOPYABLE(ActiveMachineThreadsManager);
+public:
+
+    class Locker {
+    public:
+        Locker(ActiveMachineThreadsManager& manager)
+            : m_locker(manager.m_lock)
+        {
+        }
+
+    private:
+        MutexLocker m_locker;
+    };
+
+    void add(MachineThreads* machineThreads)
+    {
+        MutexLocker managerLock(m_lock);
+        m_set.add(machineThreads);
+    }
+
+    void remove(MachineThreads* machineThreads)
+    {
+        MutexLocker managerLock(m_lock);
+        auto recordedMachineThreads = m_set.take(machineThreads);
+        RELEASE_ASSERT(recordedMachineThreads = machineThreads);
+    }
+
+    bool contains(MachineThreads* machineThreads)
+    {
+        return m_set.contains(machineThreads);
+    }
+
+private:
+    typedef HashSet<MachineThreads*> MachineThreadsSet;
+
+    ActiveMachineThreadsManager() { }
+    
+    Mutex m_lock;
+    MachineThreadsSet m_set;
+
+    friend ActiveMachineThreadsManager& activeMachineThreadsManager();
+};
+
+static ActiveMachineThreadsManager& activeMachineThreadsManager()
+{
+    static std::once_flag initializeManagerOnceFlag;
+    static ActiveMachineThreadsManager* manager = nullptr;
+
+    std::call_once(initializeManagerOnceFlag, [] {
+        manager = new ActiveMachineThreadsManager();
+    });
+    return *manager;
+}
+    
+
 class MachineThreads::Thread {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    Thread(PassRefPtr<MachineThreads> machineThreads, const PlatformThread& platThread, void* base)
+    Thread(const PlatformThread& platThread, void* base)
         : platformThread(platThread)
         , stackBase(base)
-        , m_machineThreads(machineThreads)
     {
 #if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(HAIKU) && defined(SA_RESTART)
         // if we have SA_RESTART, enable SIGUSR2 debugging mechanism
@@ -120,7 +178,6 @@ public:
     Thread* next;
     PlatformThread platformThread;
     void* stackBase;
-    RefPtr<MachineThreads> m_machineThreads;
 };
 
 MachineThreads::MachineThreads(Heap* heap)
@@ -128,15 +185,16 @@ MachineThreads::MachineThreads(Heap* heap)
     , m_threadSpecific(0)
 #if !ASSERT_DISABLED
     , m_heap(heap)
-    , m_magicNumber(0x1234567890abcdef)
 #endif
 {
     UNUSED_PARAM(heap);
     threadSpecificKeyCreate(&m_threadSpecific, removeThread);
+    activeMachineThreadsManager().add(this);
 }
 
 MachineThreads::~MachineThreads()
 {
+    activeMachineThreadsManager().remove(this);
     threadSpecificKeyDelete(m_threadSpecific);
 
     MutexLocker registeredThreadsLock(m_registeredThreadsMutex);
@@ -145,9 +203,6 @@ MachineThreads::~MachineThreads()
         delete t;
         t = next;
     }
-#if !ASSERT_DISABLED
-    m_magicNumber = 0xbaddbeefdeadbeef;
-#endif
 }
 
 static inline PlatformThread getCurrentPlatformThread()
@@ -184,7 +239,7 @@ void MachineThreads::addCurrentThread()
     }
 
     threadSpecificSet(m_threadSpecific, this);
-    Thread* thread = new Thread(this, getCurrentPlatformThread(), wtfThreadData().stack().origin());
+    Thread* thread = new Thread(getCurrentPlatformThread(), wtfThreadData().stack().origin());
 
     MutexLocker lock(m_registeredThreadsMutex);
 
@@ -194,31 +249,24 @@ void MachineThreads::addCurrentThread()
 
 void MachineThreads::removeThread(void* p)
 {
-    ASSERT(static_cast<MachineThreads*>(p)->m_magicNumber == 0x1234567890abcdef);
-    static_cast<MachineThreads*>(p)->removeCurrentThread();
+    auto& manager = activeMachineThreadsManager();
+    ActiveMachineThreadsManager::Locker lock(manager);
+    auto machineThreads = static_cast<MachineThreads*>(p);
+    if (manager.contains(machineThreads)) {
+        // There's a chance that the MachineThreads registry that this thread
+        // was registered with was already destructed, and another one happened
+        // to be instantiated at the same address. Hence, this thread may or
+        // may not be found in this MachineThreads registry. We only need to
+        // do a removal if this thread is found in it.
+        machineThreads->removeThreadIfFound(getCurrentPlatformThread());
+    }
 }
 
-void MachineThreads::removeCurrentThread()
+template<typename PlatformThread>
+void MachineThreads::removeThreadIfFound(PlatformThread platformThread)
 {
-    PlatformThread currentPlatformThread = getCurrentPlatformThread();
-
-    // This thread could be the last entity that holds a RefPtr to the
-    // MachineThreads registry. We don't want the registry to be deleted while
-    // we're deleting the the Thread entry, because:
-    //
-    // 1. ~MachineThread() will attempt to lock its m_registeredThreadsMutex
-    //    and we already hold it here. m_registeredThreadsMutex is not
-    //    re-entrant.
-    // 2. The MutexLocker will unlock m_registeredThreadsMutex at the end of
-    //    this function. We can't let it be destructed until before then.
-    //
-    // Using this RefPtr here will defer destructing the registry till after
-    // MutexLocker releases its m_registeredThreadsMutex.
-    RefPtr<MachineThreads> retainMachineThreadsRegistryUntilDoneRemovingThread = this;
-
-    ASSERT(m_magicNumber == 0x1234567890abcdef);
     MutexLocker lock(m_registeredThreadsMutex);
-    if (equalThread(currentPlatformThread, m_registeredThreads->platformThread)) {
+    if (equalThread(platformThread, m_registeredThreads->platformThread)) {
         Thread* t = m_registeredThreads;
         m_registeredThreads = m_registeredThreads->next;
         delete t;
@@ -226,13 +274,12 @@ void MachineThreads::removeCurrentThread()
         Thread* last = m_registeredThreads;
         Thread* t;
         for (t = m_registeredThreads->next; t; t = t->next) {
-            if (equalThread(t->platformThread, currentPlatformThread)) {
+            if (equalThread(t->platformThread, platformThread)) {
                 last->next = t->next;
                 break;
             }
             last = t;
         }
-        ASSERT(t); // If t is NULL, we never found ourselves in the list.
         delete t;
     }
 }
@@ -463,6 +510,26 @@ static std::pair<void*, size_t> otherThreadStack(void* stackBase, const Platform
         std::swap(begin, end);
     return std::make_pair(begin, static_cast<char*>(end) - static_cast<char*>(begin));
 }
+
+#if ASAN_ENABLED
+void asanUnsafeMemcpy(void* dst, const void* src, size_t);
+void asanUnsafeMemcpy(void* dst, const void* src, size_t size)
+{
+    size_t dstAsSize = reinterpret_cast<size_t>(dst);
+    size_t srcAsSize = reinterpret_cast<size_t>(src);
+    RELEASE_ASSERT(dstAsSize == WTF::roundUpToMultipleOf<sizeof(intptr_t)>(dstAsSize));
+    RELEASE_ASSERT(srcAsSize == WTF::roundUpToMultipleOf<sizeof(intptr_t)>(srcAsSize));
+    RELEASE_ASSERT(size == WTF::roundUpToMultipleOf<sizeof(intptr_t)>(size));
+
+    intptr_t* dstPtr = reinterpret_cast<intptr_t*>(dst);
+    const intptr_t* srcPtr = reinterpret_cast<const intptr_t*>(src);
+    size /= sizeof(intptr_t);
+    while (size--)
+        *dstPtr++ = *srcPtr++;
+}
+    
+#define memcpy asanUnsafeMemcpy
+#endif
 
 // This function must not call malloc(), free(), or any other function that might
 // acquire a lock. Since 'thread' is suspended, trying to acquire a lock

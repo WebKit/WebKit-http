@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -134,7 +134,7 @@ bool ScrollView::setHasVerticalScrollbar(bool hasBar, bool* contentSizeAffected)
 
 PassRefPtr<Scrollbar> ScrollView::createScrollbar(ScrollbarOrientation orientation)
 {
-    return Scrollbar::createNativeScrollbar(this, orientation, RegularScrollbar);
+    return Scrollbar::createNativeScrollbar(*this, orientation, RegularScrollbar);
 }
 
 void ScrollView::setScrollbarModes(ScrollbarMode horizontalMode, ScrollbarMode verticalMode,
@@ -346,7 +346,7 @@ void ScrollView::setFixedLayoutSize(const IntSize& newSize)
         return;
     m_fixedLayoutSize = newSize;
     if (m_useFixedLayout)
-        fixedLayoutSizeChanged();
+        availableContentSizeChanged(AvailableSizeChangeReason::AreaSizeChanged);
 }
 
 bool ScrollView::useFixedLayout() const
@@ -360,13 +360,14 @@ void ScrollView::setUseFixedLayout(bool enable)
         return;
     m_useFixedLayout = enable;
     if (!m_fixedLayoutSize.isEmpty())
-        fixedLayoutSizeChanged();
+        availableContentSizeChanged(AvailableSizeChangeReason::AreaSizeChanged);
 }
 
-void ScrollView::fixedLayoutSizeChanged()
+void ScrollView::availableContentSizeChanged(AvailableSizeChangeReason reason)
 {
-    updateScrollbars(scrollOffset());
-    contentsResized();
+    ScrollableArea::availableContentSizeChanged(reason);
+    if (reason != AvailableSizeChangeReason::ScrollbarsChanged)
+        updateScrollbars(scrollOffset());
 }
 
 IntSize ScrollView::contentsSize() const
@@ -600,11 +601,11 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
     bool hasOverlayScrollbars = (!m_horizontalScrollbar || m_horizontalScrollbar->isOverlayScrollbar()) && (!m_verticalScrollbar || m_verticalScrollbar->isOverlayScrollbar());
 
     // If we came in here with the view already needing a layout, then go ahead and do that
-    // first.  (This will be the common case, e.g., when the page changes due to window resizing for example).
+    // first. (This will be the common case, e.g., when the page changes due to window resizing for example).
     // This layout will not re-enter updateScrollbars and does not count towards our max layout pass total.
     if (!m_scrollbarsSuppressed && !hasOverlayScrollbars) {
         m_inUpdateScrollbars = true;
-        visibleContentsResized();
+        updateContentsSize();
         m_inUpdateScrollbars = false;
     }
 
@@ -696,8 +697,8 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
         const unsigned cMaxUpdateScrollbarsPass = 2;
         if ((sendContentResizedNotification || needAnotherPass) && m_updateScrollbarsPass < cMaxUpdateScrollbarsPass) {
             m_updateScrollbarsPass++;
-            contentsResized();
-            visibleContentsResized();
+            availableContentSizeChanged(AvailableSizeChangeReason::ScrollbarsChanged);
+            updateContentsSize();
             IntSize newDocSize = totalContentsSize();
             if (newDocSize == docSize) {
                 // The layout with the new scroll state had no impact on
@@ -1047,13 +1048,10 @@ void ScrollView::setFrameRect(const IntRect& newRect)
         return;
 
     Widget::setFrameRect(newRect);
-
     frameRectsChanged();
-
-    updateScrollbars(scrollOffset());
-
+    
     if (!m_useFixedLayout && oldRect.size() != newRect.size())
-        contentsResized();
+        availableContentSizeChanged(AvailableSizeChangeReason::AreaSizeChanged);
 }
 
 void ScrollView::frameRectsChanged()
@@ -1162,12 +1160,12 @@ bool ScrollView::isScrollCornerVisible() const
     return !scrollCornerRect().isEmpty();
 }
 
-void ScrollView::scrollbarStyleChanged(int, bool forceUpdate)
+void ScrollView::scrollbarStyleChanged(ScrollbarStyle newStyle, bool forceUpdate)
 {
+    ScrollableArea::scrollbarStyleChanged(newStyle, forceUpdate);
     if (!forceUpdate)
         return;
 
-    contentsResized();
     updateScrollbars(scrollOffset());
     positionScrollbarLayers();
 }

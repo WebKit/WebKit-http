@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2010, 2012, 2013, 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2010, 2012-2015 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -134,7 +134,7 @@ JSValue eval(CallFrame* callFrame)
     return interpreter->execute(eval, callFrame, thisValue, callerScopeChain);
 }
 
-unsigned sizeFrameForVarargs(CallFrame* callFrame, JSStack* stack, JSValue arguments, unsigned numUsedStackSlots, uint32_t firstVarArgOffset)
+unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVarArgOffset)
 {
     unsigned length;
     if (!arguments)
@@ -155,6 +155,13 @@ unsigned sizeFrameForVarargs(CallFrame* callFrame, JSStack* stack, JSValue argum
         length -= firstVarArgOffset;
     else
         length = 0;
+    
+    return length;
+}
+
+unsigned sizeFrameForVarargs(CallFrame* callFrame, JSStack* stack, JSValue arguments, unsigned numUsedStackSlots, uint32_t firstVarArgOffset)
+{
+    unsigned length = sizeOfVarargs(callFrame, arguments, firstVarArgOffset);
     
     CallFrame* calleeFrame = calleeFrameForVarargs(callFrame, numUsedStackSlots, length + 1);
     if (length > Arguments::MaxArguments || !stack->ensureCapacityFor(calleeFrame->registers())) {
@@ -823,7 +830,7 @@ failedJSONP:
     if (JSObject* error = program->initializeGlobalProperties(vm, callFrame, scope))
         return checkedReturn(callFrame->vm().throwException(callFrame, error));
 
-    if (JSObject* error = program->prepareForExecution(callFrame, nullptr, &scope, CodeForCall))
+    if (JSObject* error = program->prepareForExecution(callFrame, nullptr, scope, CodeForCall))
         return checkedReturn(callFrame->vm().throwException(callFrame, error));
 
     ProgramCodeBlock* codeBlock = program->codeBlock();
@@ -883,7 +890,7 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
 
     if (isJSCall) {
         // Compile the callee:
-        JSObject* compileError = callData.js.functionExecutable->prepareForExecution(callFrame, jsCast<JSFunction*>(function), &scope, CodeForCall);
+        JSObject* compileError = callData.js.functionExecutable->prepareForExecution(callFrame, jsCast<JSFunction*>(function), scope, CodeForCall);
         if (UNLIKELY(!!compileError)) {
             return checkedReturn(callFrame->vm().throwException(callFrame, compileError));
         }
@@ -954,7 +961,7 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
 
     if (isJSConstruct) {
         // Compile the callee:
-        JSObject* compileError = constructData.js.functionExecutable->prepareForExecution(callFrame, jsCast<JSFunction*>(constructor), &scope, CodeForConstruct);
+        JSObject* compileError = constructData.js.functionExecutable->prepareForExecution(callFrame, jsCast<JSFunction*>(constructor), scope, CodeForConstruct);
         if (UNLIKELY(!!compileError)) {
             return checkedReturn(callFrame->vm().throwException(callFrame, compileError));
         }
@@ -968,7 +975,7 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
         return throwTerminatedExecutionException(callFrame);
 
     ProtoCallFrame protoCallFrame;
-    protoCallFrame.init(newCodeBlock, constructor, jsUndefined(), argsCount, args.data());
+    protoCallFrame.init(newCodeBlock, constructor, constructor, argsCount, args.data());
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->willExecute(callFrame, constructor);
@@ -1007,7 +1014,7 @@ CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionE
         return CallFrameClosure();
 
     // Compile the callee:
-    JSObject* error = functionExecutable->prepareForExecution(callFrame, function, &scope, CodeForCall);
+    JSObject* error = functionExecutable->prepareForExecution(callFrame, function, scope, CodeForCall);
     if (error) {
         callFrame->vm().throwException(callFrame, error);
         return CallFrameClosure();
@@ -1082,14 +1089,15 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     } else {
         for (JSScope* node = scope; ; node = node->next()) {
             RELEASE_ASSERT(node);
-            if (node->isVariableObject() && !node->isNameScopeObject()) {
+            if (node->isVariableObject()) {
+                ASSERT(!node->isNameScopeObject());
                 variableObject = node;
                 break;
             }
         }
     }
 
-    JSObject* compileError = eval->prepareForExecution(callFrame, nullptr, &scope, CodeForCall);
+    JSObject* compileError = eval->prepareForExecution(callFrame, nullptr, scope, CodeForCall);
     if (UNLIKELY(!!compileError))
         return checkedReturn(callFrame->vm().throwException(callFrame, compileError));
     EvalCodeBlock* codeBlock = eval->codeBlock();

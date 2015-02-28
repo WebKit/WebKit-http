@@ -28,6 +28,10 @@
 
 #if WK_API_ENABLED
 
+#import "APIArray.h"
+#import "WKNSArray.h"
+#import "_WKWebsiteDataRecordInternal.h"
+
 @implementation _WKWebsiteDataStore
 
 + (instancetype)defaultDataStore
@@ -52,22 +56,6 @@
     return _websiteDataStore->isNonPersistent();
 }
 
-static WebKit::WebsiteDataTypes toWebsiteDataTypes(WKWebsiteDataTypes wkWebsiteDataTypes)
-{
-    using WebsiteDataTypes = WebKit::WebsiteDataTypes;
-
-    int websiteDataTypes = 0;
-
-    if (wkWebsiteDataTypes & WKWebsiteDataTypeCookies)
-        websiteDataTypes |= WebsiteDataTypes::WebsiteDataTypeCookies;
-    if (wkWebsiteDataTypes & WKWebsiteDataTypeDiskCache)
-        websiteDataTypes |= WebsiteDataTypes::WebsiteDataTypeDiskCache;
-    if (wkWebsiteDataTypes & WKWebsiteDataTypeLocalStorage)
-        websiteDataTypes |= WebsiteDataTypes::WebsiteDataTypeLocalStorage;
-
-    return static_cast<WebsiteDataTypes>(websiteDataTypes);
-}
-
 static std::chrono::system_clock::time_point toSystemClockTime(NSDate *date)
 {
     ASSERT(date);
@@ -76,10 +64,47 @@ static std::chrono::system_clock::time_point toSystemClockTime(NSDate *date)
     return system_clock::time_point(duration_cast<system_clock::duration>(duration<double>(date.timeIntervalSince1970)));
 }
 
+- (void)fetchDataRecordsOfTypes:(WKWebsiteDataTypes)websiteDataTypes completionHandler:(void (^)(NSArray *))completionHandler
+{
+    auto completionHandlerCopy = Block_copy(completionHandler);
+
+    _websiteDataStore->websiteDataStore().fetchData(WebKit::toWebsiteDataTypes(websiteDataTypes), [completionHandlerCopy](Vector<WebKit::WebsiteDataRecord> websiteDataRecords) {
+        Vector<RefPtr<API::Object>> elements;
+        elements.reserveInitialCapacity(websiteDataRecords.size());
+
+        for (auto& websiteDataRecord : websiteDataRecords)
+            elements.uncheckedAppend(API::WebsiteDataRecord::create(WTF::move(websiteDataRecord)));
+
+        completionHandlerCopy(wrapper(*API::Array::create(WTF::move(elements))));
+
+        Block_release(completionHandlerCopy);
+    });
+}
+
 - (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes modifiedSince:(NSDate *)date completionHandler:(void (^)())completionHandler
 {
     auto completionHandlerCopy = Block_copy(completionHandler);
-    _websiteDataStore->websiteDataStore().removeData(toWebsiteDataTypes(websiteDataTypes), toSystemClockTime(date ? date : [NSDate distantPast]), [completionHandlerCopy] {
+    _websiteDataStore->websiteDataStore().removeData(WebKit::toWebsiteDataTypes(websiteDataTypes), toSystemClockTime(date ? date : [NSDate distantPast]), [completionHandlerCopy] {
+        completionHandlerCopy();
+        Block_release(completionHandlerCopy);
+    });
+}
+
+static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecords)
+{
+    Vector<WebKit::WebsiteDataRecord> result;
+
+    for (_WKWebsiteDataRecord *dataRecord in dataRecords)
+        result.append(dataRecord->_websiteDataRecord->websiteDataRecord());
+
+    return result;
+}
+
+- (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes forDataRecords:(NSArray *)dataRecords completionHandler:(void (^)())completionHandler
+{
+    auto completionHandlerCopy = Block_copy(completionHandler);
+
+    _websiteDataStore->websiteDataStore().removeData(WebKit::toWebsiteDataTypes(websiteDataTypes), toWebsiteDataRecords(dataRecords), [completionHandlerCopy] {
         completionHandlerCopy();
         Block_release(completionHandlerCopy);
     });

@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2002 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2015 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *
@@ -36,7 +36,6 @@
 #include "JSBoundFunction.h"
 #include "JSFunctionInlines.h"
 #include "JSGlobalObject.h"
-#include "JSNameScope.h" 
 #include "JSNotAnObject.h"
 #include "Interpreter.h"
 #include "ObjectConstructor.h"
@@ -107,16 +106,6 @@ void JSFunction::finishCreation(VM& vm, NativeExecutable* executable, int length
     m_executable.set(vm, this, executable);
     putDirect(vm, vm.propertyNames->name, jsString(&vm, name), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(length), DontDelete | ReadOnly | DontEnum);
-}
-
-void JSFunction::addNameScopeIfNeeded(VM& vm)
-{
-    FunctionExecutable* executable = jsCast<FunctionExecutable*>(m_executable.get());
-    if (!functionNameIsInScope(executable->name(), executable->functionMode()))
-        return;
-    if (!functionNameScopeIsDynamic(executable->usesEval(), executable->isStrictMode()))
-        return;
-    setScope(vm, JSNameScope::create(vm, scope()->globalObject(), executable->name(), this, ReadOnly | DontDelete, scope(), JSNameScope::FunctionNameScope));
 }
 
 JSFunction* JSFunction::createBuiltinFunction(VM& vm, FunctionExecutable* executable, JSGlobalObject* globalObject)

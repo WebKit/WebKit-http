@@ -443,9 +443,9 @@ static inline void logMemoryCacheResourceRequest(Frame* frame, const String& des
     if (!frame)
         return;
     if (value.isNull())
-        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::resourceRequestKey(), description);
+        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::resourceRequestKey(), description, ShouldSample::Yes);
     else
-        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceRequestKey(), description, value);
+        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceRequestKey(), description, value, ShouldSample::Yes);
 }
 
 CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(CachedResource::Type type, CachedResourceRequest& request)
@@ -464,8 +464,16 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         return nullptr;
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    if (frame() && frame()->page() && frame()->page()->userContentController() && frame()->page()->userContentController()->contentFilterBlocksURL(url))
-        return nullptr;
+    ContentFilterAction action = ContentFilterAction::Load;
+
+    if (frame() && frame()->page() && frame()->page()->userContentController()) {
+        action = frame()->page()->userContentController()->actionForURL(url);
+        if (action == ContentFilterAction::Block)
+            return nullptr;
+    }
+
+    if (action == ContentFilterAction::BlockCookies)
+        request.mutableResourceRequest().setAllowCookies(false);
 #endif
 
     auto& memoryCache = MemoryCache::singleton();

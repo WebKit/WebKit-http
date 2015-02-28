@@ -23,12 +23,13 @@
 
 #include "JSDOMWrapper.h"
 #include "TestEventConstructor.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
 class JSDictionary;
 
-class JSTestEventConstructor : public JSDOMWrapper {
+class WEBCORE_EXPORT JSTestEventConstructor : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSTestEventConstructor* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestEventConstructor>&& impl)
@@ -40,7 +41,7 @@ public:
 
     static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
     static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    WEBCORE_EXPORT static TestEventConstructor* toWrapped(JSC::JSValue);
+    static TestEventConstructor* toWrapped(JSC::JSValue);
     static void destroy(JSC::JSCell*);
     ~JSTestEventConstructor();
 
@@ -84,8 +85,8 @@ public:
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestEventConstructor*)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(JSTestEventConstructorOwner, jsTestEventConstructorOwner, ());
-    return &jsTestEventConstructorOwner;
+    static NeverDestroyed<JSTestEventConstructorOwner> owner;
+    return &owner.get();
 }
 
 WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestEventConstructor*);

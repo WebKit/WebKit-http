@@ -61,6 +61,7 @@
 #import "_WKFrameHandleInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 #import "_WKVisitedLinkProviderInternal.h"
+#import "_WKWebsiteDataRecordInternal.h"
 #import "_WKWebsiteDataStoreInternal.h"
 #import <objc/objc-auto.h>
 
@@ -193,6 +194,10 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [_WKVisitedLinkProvider alloc];
         break;
 
+    case Type::WebsiteDataRecord:
+        wrapper = [_WKWebsiteDataRecord alloc];
+        break;
+
     case Type::WebsiteDataStore:
         wrapper = [_WKWebsiteDataStore alloc];
         break;
@@ -231,6 +236,25 @@ void* Object::newObject(size_t size, Type type)
 #endif
 
     return &object;
+}
+
+void* Object::wrap(API::Object* object)
+{
+    if (!object)
+        return nullptr;
+
+    return static_cast<void*>(object->wrapper());
+}
+
+API::Object* Object::unwrap(void* object)
+{
+    if (!object)
+        return nullptr;
+
+    ASSERT([(id)object conformsToProtocol:@protocol(WKObject)]);
+    ASSERT([(id)object respondsToSelector:@selector(_apiObject)]);
+
+    return &static_cast<id <WKObject>>(object)._apiObject;
 }
 
 } // namespace API

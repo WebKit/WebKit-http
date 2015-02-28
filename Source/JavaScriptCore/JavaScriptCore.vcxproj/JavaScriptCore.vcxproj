@@ -451,7 +451,7 @@
     <ClCompile Include="..\dfg\DFGPredictionPropagationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGPromotedHeapLocation.cpp" />
     <ClCompile Include="..\dfg\DFGPureValue.cpp" />
-    <ClCompile Include="..\dfg\DFGPutLocalSinkingPhase.cpp" />
+    <ClCompile Include="..\dfg\DFGPutStackSinkingPhase.cpp" />
     <ClCompile Include="..\dfg\DFGResurrectionForValidationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGSafepoint.cpp" />
     <ClCompile Include="..\dfg\DFGSpeculativeJIT.cpp" />
@@ -511,6 +511,7 @@
     <ClCompile Include="..\ftl\FTLJITFinalizer.cpp" />
     <ClCompile Include="..\ftl\FTLJSCall.cpp" />
     <ClCompile Include="..\ftl\FTLJSCallBase.cpp" />
+    <ClCompile Include="..\ftl\FTLJSCallVarargs.cpp" />
     <ClCompile Include="..\ftl\FTLLink.cpp" />
     <ClCompile Include="..\ftl\FTLLocation.cpp" />
     <ClCompile Include="..\ftl\FTLLowerDFGToLLVM.cpp" />
@@ -729,12 +730,14 @@
     <ClCompile Include="..\runtime\JSBoundFunction.cpp" />
     <ClCompile Include="..\runtime\JSCJSValue.cpp" />
     <ClCompile Include="..\runtime\JSCallee.cpp" />
+    <ClCompile Include="..\runtime\JSCatchScope.cpp" />
     <ClCompile Include="..\runtime\JSCell.cpp" />
     <ClCompile Include="..\runtime\JSConsole.cpp" />
     <ClCompile Include="..\runtime\JSDataView.cpp" />
     <ClCompile Include="..\runtime\JSDataViewPrototype.cpp" />
     <ClCompile Include="..\runtime\JSDateMath.cpp" />
     <ClCompile Include="..\runtime\JSFunction.cpp" />
+    <ClCompile Include="..\runtime\JSFunctionNameScope.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObject.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObjectFunctions.cpp" />
     <ClCompile Include="..\runtime\JSLock.cpp" />
@@ -1120,7 +1123,7 @@
     <ClInclude Include="..\dfg\DFGPromoteHeapAccess.h" />
     <ClInclude Include="..\dfg\DFGPromotedHeapLocation.h" />
     <ClInclude Include="..\dfg\DFGPureValue.h" />
-    <ClInclude Include="..\dfg\DFGPutLocalSinkingPhase.h" />
+    <ClInclude Include="..\dfg\DFGPutStackSinkingPhase.h" />
     <ClInclude Include="..\dfg\DFGRegisterBank.h" />
     <ClInclude Include="..\dfg\DFGRegisterSet.h" />
     <ClInclude Include="..\dfg\DFGResurrectionForValidationPhase.h" />
@@ -1195,6 +1198,7 @@
     <ClInclude Include="..\ftl\FTLJITFinalizer.h" />
     <ClInclude Include="..\ftl\FTLJSCall.h" />
     <ClInclude Include="..\ftl\FTLJSCallBase.h" />
+    <ClInclude Include="..\ftl\FTLJSCallVarargs.h" />
     <ClInclude Include="..\ftl\FTLLink.h" />
     <ClInclude Include="..\ftl\FTLLocation.h" />
     <ClInclude Include="..\ftl\FTLLowerDFGToLLVM.h" />
@@ -1503,6 +1507,7 @@
     <ClInclude Include="..\runtime\JSCJSValue.h" />
     <ClInclude Include="..\runtime\JSCJSValueInlines.h" />
     <ClInclude Include="..\runtime\JSCallee.h" />
+    <ClInclude Include="..\runtime\JSCatchScope.h" />
     <ClInclude Include="..\runtime\JSCell.h" />
     <ClInclude Include="..\runtime\JSConsole.h" />
     <ClInclude Include="..\runtime\JSDataView.h" />
@@ -1513,6 +1518,7 @@
     <ClInclude Include="..\runtime\JSFloat32Array.h" />
     <ClInclude Include="..\runtime\JSFloat64Array.h" />
     <ClInclude Include="..\runtime\JSFunction.h" />
+    <ClInclude Include="..\runtime\JSFunctionNameScope.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayView.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewConstructor.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewConstructorInlines.h" />
@@ -1605,6 +1611,7 @@
     <ClInclude Include="..\runtime\RegExpObject.h" />
     <ClInclude Include="..\runtime\RegExpPrototype.h" />
     <ClInclude Include="..\runtime\Reject.h" />
+    <ClInclude Include="..\runtime\RuntimeFlags.h" />
     <ClInclude Include="..\runtime\SamplingCounter.h" />
     <ClInclude Include="..\runtime\SetConstructor.h" />
     <ClInclude Include="..\runtime\SetIteratorConstructor.h" />

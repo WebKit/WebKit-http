@@ -38,6 +38,7 @@ namespace WebCore {
 
 class RenderProgress;
 class RenderStyle;
+struct AttachmentLayout;
 
 class RenderThemeMac final : public RenderTheme {
 public:
@@ -80,8 +81,6 @@ public:
     virtual int popupInternalPaddingTop(RenderStyle&) const override;
     virtual int popupInternalPaddingBottom(RenderStyle&) const override;
     virtual PopupMenuStyle::PopupMenuSize popupMenuSize(const RenderStyle&, IntRect&) const override;
-
-    virtual bool paintCapsLockIndicator(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
     virtual bool popsMenuByArrowKeys() const override { return true; }
 
@@ -165,8 +164,15 @@ protected:
 #endif
 
     virtual bool shouldShowPlaceholderWhenFocused() const override;
+    virtual bool shouldHaveCapsLockIndicator(HTMLInputElement&) const override;
 
     virtual bool paintSnapshottedPluginOverlay(const RenderObject&, const PaintInfo&, const IntRect&) override;
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    virtual LayoutSize attachmentIntrinsicSize(const RenderAttachment&) const override;
+    virtual int attachmentBaseline(const RenderAttachment&) const override;
+    virtual bool paintAttachment(const RenderObject&, const PaintInfo&, const IntRect&) override;
+#endif
 
 private:
     virtual String fileListNameForWidth(const FileList*, const FontCascade&, int width, bool multipleFilesAllowed) const override;
@@ -225,6 +231,11 @@ private:
     virtual IntSize imageControlsButtonPositionOffset() const override;
 
     NSServicesRolloverButtonCell *servicesRolloverButtonCell() const;
+#endif
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    void paintAttachmentLabelBackground(const RenderAttachment&, GraphicsContext&, AttachmentLayout&) const;
+    void paintAttachmentLabel(const RenderAttachment&, GraphicsContext&, AttachmentLayout&, bool useSelectedStyle) const;
 #endif
 
     mutable RetainPtr<NSPopUpButtonCell> m_popupButton;

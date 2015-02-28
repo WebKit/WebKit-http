@@ -39,11 +39,12 @@
 #include "NetworkProcessProxyMessages.h"
 #include "NetworkResourceLoader.h"
 #include "RemoteNetworkingContext.h"
+#include "SecurityOriginData.h"
 #include "SessionTracker.h"
 #include "StatisticsData.h"
 #include "WebCookieManager.h"
 #include "WebProcessPoolMessages.h"
-#include "WebsiteDataTypes.h"
+#include "WebsiteData.h"
 #include <WebCore/Logging.h>
 #include <WebCore/MemoryPressureHandler.h>
 #include <WebCore/PlatformCookieJar.h>
@@ -240,7 +241,15 @@ void NetworkProcess::destroyPrivateBrowsingSession(SessionID sessionID)
     SessionTracker::destroySession(sessionID);
 }
 
-void NetworkProcess::deleteWebsiteData(WebCore::SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
+void NetworkProcess::fetchWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, uint64_t callbackID)
+{
+    // FIXME: Actually return data.
+    WebsiteData websiteData;
+
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidFetchWebsiteData(callbackID, websiteData), 0);
+}
+
+void NetworkProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
 {
     if (websiteDataTypes & WebsiteDataTypeCookies) {
         if (auto* networkStorageSession = SessionTracker::session(sessionID))
@@ -255,6 +264,17 @@ void NetworkProcess::deleteWebsiteData(WebCore::SessionID sessionID, uint64_t we
         clearDiskCache(modifiedSince, WTF::move(completionHandler));
         return;
     }
+
+    completionHandler();
+}
+
+void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, uint64_t callbackID)
+{
+    // FIXME: Actually delete something.
+
+    auto completionHandler = [this, callbackID] {
+        parentProcessConnection()->send(Messages::NetworkProcessProxy::DidDeleteWebsiteDataForOrigins(callbackID), 0);
+    };
 
     completionHandler();
 }
@@ -305,19 +325,19 @@ void NetworkProcess::getNetworkProcessStatistics(uint64_t callbackID)
     parentProcessConnection()->send(Messages::WebProcessPool::DidGetStatistics(data, callbackID), 0);
 }
 
-void NetworkProcess::logDiagnosticMessage(uint64_t webPageID, const String& message, const String& description)
+void NetworkProcess::logDiagnosticMessage(uint64_t webPageID, const String& message, const String& description, WebCore::ShouldSample shouldSample)
 {
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::LogDiagnosticMessage(webPageID, message, description), 0);
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::LogDiagnosticMessage(webPageID, message, description, shouldSample == ShouldSample::Yes), 0);
 }
 
-void NetworkProcess::logDiagnosticMessageWithResult(uint64_t webPageID, const String& message, const String& description, WebCore::DiagnosticLoggingResultType result)
+void NetworkProcess::logDiagnosticMessageWithResult(uint64_t webPageID, const String& message, const String& description, WebCore::DiagnosticLoggingResultType result, WebCore::ShouldSample shouldSample)
 {
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::LogDiagnosticMessageWithResult(webPageID, message, description, result), 0);
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::LogDiagnosticMessageWithResult(webPageID, message, description, result, shouldSample == ShouldSample::Yes), 0);
 }
 
-void NetworkProcess::logDiagnosticMessageWithValue(uint64_t webPageID, const String& message, const String& description, const String& value)
+void NetworkProcess::logDiagnosticMessageWithValue(uint64_t webPageID, const String& message, const String& description, const String& value, WebCore::ShouldSample shouldSample)
 {
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::LogDiagnosticMessageWithValue(webPageID, message, description, value), 0);
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::LogDiagnosticMessageWithValue(webPageID, message, description, value, shouldSample == ShouldSample::Yes), 0);
 }
 
 void NetworkProcess::terminate()

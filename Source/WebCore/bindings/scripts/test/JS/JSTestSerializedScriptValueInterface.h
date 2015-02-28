@@ -25,10 +25,11 @@
 
 #include "JSDOMWrapper.h"
 #include "TestSerializedScriptValueInterface.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-class JSTestSerializedScriptValueInterface : public JSDOMWrapper {
+class WEBCORE_EXPORT JSTestSerializedScriptValueInterface : public JSDOMWrapper {
 public:
     typedef JSDOMWrapper Base;
     static JSTestSerializedScriptValueInterface* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestSerializedScriptValueInterface>&& impl)
@@ -40,7 +41,7 @@ public:
 
     static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
     static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    WEBCORE_EXPORT static TestSerializedScriptValueInterface* toWrapped(JSC::JSValue);
+    static TestSerializedScriptValueInterface* toWrapped(JSC::JSValue);
     static void destroy(JSC::JSCell*);
     ~JSTestSerializedScriptValueInterface();
 
@@ -88,8 +89,8 @@ public:
 
 inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestSerializedScriptValueInterface*)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(JSTestSerializedScriptValueInterfaceOwner, jsTestSerializedScriptValueInterfaceOwner, ());
-    return &jsTestSerializedScriptValueInterfaceOwner;
+    static NeverDestroyed<JSTestSerializedScriptValueInterfaceOwner> owner;
+    return &owner.get();
 }
 
 WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestSerializedScriptValueInterface*);

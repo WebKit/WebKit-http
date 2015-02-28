@@ -112,12 +112,21 @@ public:
 
     WEBCORE_EXPORT virtual void contentsResized();
 
+    // Force the contents to recompute their size (i.e. do layout).
+    virtual void updateContentsSize() { }
+
+    enum class AvailableSizeChangeReason {
+        ScrollbarsChanged,
+        AreaSizeChanged
+    };
+    WEBCORE_EXPORT virtual void availableContentSizeChanged(AvailableSizeChangeReason);
+
     bool hasOverlayScrollbars() const;
     WEBCORE_EXPORT virtual void setScrollbarOverlayStyle(ScrollbarOverlayStyle);
     ScrollbarOverlayStyle scrollbarOverlayStyle() const { return static_cast<ScrollbarOverlayStyle>(m_scrollbarOverlayStyle); }
 
     // This getter will create a ScrollAnimator if it doesn't already exist.
-    WEBCORE_EXPORT ScrollAnimator* scrollAnimator() const;
+    WEBCORE_EXPORT ScrollAnimator& scrollAnimator() const;
 
     // This getter will return null if the ScrollAnimator hasn't been created yet.
     ScrollAnimator* existingScrollAnimator() const { return m_scrollAnimator.get(); }
@@ -201,7 +210,7 @@ public:
     WEBCORE_EXPORT IntSize totalContentsSize() const;
 
     virtual bool shouldSuspendScrollAnimations() const { return true; }
-    virtual void scrollbarStyleChanged(int /*newStyle*/, bool /*forceUpdate*/) { }
+    WEBCORE_EXPORT virtual void scrollbarStyleChanged(ScrollbarStyle /*newStyle*/, bool /*forceUpdate*/);
     virtual void setVisibleScrollerThumbRect(const IntRect&) { }
     
     // Note that this only returns scrollable areas that can actually be scrolled.

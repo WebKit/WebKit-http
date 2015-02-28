@@ -89,6 +89,7 @@
 #include "WebKitCSSRegionRule.h"
 #include "WebKitCSSResourceValue.h"
 #include "WebKitCSSTransformValue.h"
+#include <JavaScriptCore/Profile.h>
 #include <bitset>
 #include <limits.h>
 #include <wtf/HexNumber.h>
@@ -807,7 +808,7 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
             return true;
         break;
     case CSSPropertyWebkitAppearance:
-        if ((valueID >= CSSValueCheckbox && valueID <= CSSValueTextarea) || valueID == CSSValueNone)
+        if ((valueID >= CSSValueCheckbox && valueID <= CSSValueCapsLockIndicator) || valueID == CSSValueNone)
             return true;
         break;
     case CSSPropertyWebkitBackfaceVisibility:
@@ -1033,6 +1034,12 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueNormal || valueID == CSSValueBreakAll || valueID == CSSValueBreakWord)
             return true;
         break;
+#if ENABLE(CSS_TRAILING_WORD)
+    case CSSPropertyAppleTrailingWord: // auto | -apple-partially-balanced
+        if (valueID == CSSValueAuto || valueID == CSSValueWebkitPartiallyBalanced)
+            return true;
+        break;
+#endif
     default:
         ASSERT_NOT_REACHED();
         return false;
@@ -1159,6 +1166,9 @@ static inline bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWordWrap:
 #if ENABLE(CSS_SCROLL_SNAP)
     case CSSPropertyWebkitScrollSnapType:
+#endif
+#if ENABLE(CSS_TRAILING_WORD)
+    case CSSPropertyAppleTrailingWord:
 #endif
         return true;
     default:
@@ -3131,6 +3141,9 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 #if ENABLE(CSS_SCROLL_SNAP)
     case CSSPropertyWebkitScrollSnapType:
 #endif
+#if ENABLE(CSS_TRAILING_WORD)
+    case CSSPropertyAppleTrailingWord:
+#endif
         // These properties should be handled before in isValidKeywordPropertyAndValue().
         ASSERT_NOT_REACHED();
         return false;
@@ -3158,6 +3171,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitScrollSnapCoordinate:
         return parseScrollSnapCoordinate(propId, important);
 #endif
+
     default:
         return parseSVGValue(propId, important);
     }
@@ -11642,18 +11656,6 @@ restartAfterComment:
         if (*currentCharacter<SrcCharacterType>() == '=') {
             ++currentCharacter<SrcCharacterType>();
             m_token = CONTAINS;
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-        } else if (*currentCharacter<SrcCharacterType>() == '-' && isIdentifierStart<SrcCharacterType>()) {
-            result = currentCharacter<SrcCharacterType>();
-
-            CSSParserString parsedIdentifier;
-            parseIdentifier(result, parsedIdentifier, hasEscape);
-
-            if (parsedIdentifier.length()) {
-                m_token = LANGRANGE;
-                yylval->string.init(tokenStart<SrcCharacterType>(), parsedIdentifier.length() + 1);
-            }
-#endif
         }
         break;
 
@@ -12502,6 +12504,7 @@ static CSSValueID cssValueKeywordID(const CharacterType* valueKeyword, unsigned 
         // If the prefix is -apple- or -khtml-, change it to -webkit-.
         // This makes the string one character longer.
         // On iOS we don't want to change values starting with -apple-system to -webkit-system.
+        // FIXME: Remove this mangling without breaking the web.
         if ((hasPrefix(buffer, length, "-apple-") && !hasPrefix(buffer, length, "-apple-system")) || hasPrefix(buffer, length, "-khtml-")) {
             memmove(buffer + 7, buffer + 6, length + 1 - 6);
             memcpy(buffer, "-webkit", 7);

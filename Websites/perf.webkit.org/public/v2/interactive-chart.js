@@ -197,6 +197,8 @@ App.InteractiveChartComponent = Ember.Component.extend({
     _updateDomain: function ()
     {
         var xDomain = this.get('domain');
+        if (!xDomain || !this._currentTimeSeriesData)
+            return null;
         var intrinsicXDomain = this._computeXAxisDomain(this._currentTimeSeriesData);
         if (!xDomain)
             xDomain = intrinsicXDomain;
@@ -206,7 +208,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
         var currentYDomain = this._y.domain();
         if (currentXDomain && App.domainsAreEqual(currentXDomain, xDomain)
             && currentYDomain && App.domainsAreEqual(currentYDomain, yDomain))
-            return currentDomain;
+            return currentXDomain;
 
         this._x.domain(xDomain);
         this._y.domain(yDomain);
@@ -341,6 +343,16 @@ App.InteractiveChartComponent = Ember.Component.extend({
         var range = this._minMaxForAllTimeSeries(startTime, endTime, !shouldShowFullYAxis);
         var min = range[0];
         var max = range[1];
+
+        var highlightedItems = this.get('highlightedItems');
+        if (highlightedItems) {
+            var data = this._currentTimeSeriesData
+                .filter(function (point) { return startTime <= point.time && point.time <= endTime && highlightedItems[point.measurement.id()]; })
+                .map(function (point) { return point.value });
+            min = Math.min(min, Statistics.min(data));
+            max = Math.max(max, Statistics.max(data));
+        }
+
         if (max < min)
             min = max = 0;
         else if (shouldShowFullYAxis)
@@ -373,6 +385,8 @@ App.InteractiveChartComponent = Ember.Component.extend({
     {
         var selection = this._currentSelection() || this.get('sharedSelection');
         var newXDomain = this._updateDomain();
+        if (!newXDomain)
+            return;
 
         if (selection && newXDomain && selection[0] <= newXDomain[0] && newXDomain[1] <= selection[1])
             selection = null; // Otherwise the user has no way of clearing the selection.
@@ -611,7 +625,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
                 .attr("class", "highlight")
                 .attr("r", (this.get('chartPointRadius') || 1) * 1.8);
 
-        this._updateHighlightPositions();
+        this._domainChanged();
     }.observes('highlightedItems'),
     _rangesChanged: function ()
     {
@@ -753,7 +767,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
     },
     _updateSelectionToolbar: function ()
     {
-        if (!this.get('interactive'))
+        if (!this.get('zoomable'))
             return;
 
         var selection = this._currentSelection();

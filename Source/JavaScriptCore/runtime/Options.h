@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -211,6 +211,8 @@ typedef const char* optionString;
     /* from super long compiles that take a lot of memory. */\
     v(unsigned, maximumInliningCallerSize, 10000) \
     \
+    v(unsigned, maximumVarargsForInlining, 100) \
+    \
     v(bool, enablePolyvariantCallInlining, true) \
     v(bool, enablePolyvariantByIdInlining, true) \
     \
@@ -234,6 +236,7 @@ typedef const char* optionString;
     v(unsigned, ftlOSREntryRetryThreshold, 100) \
     \
     v(int32, evalThresholdMultiplier, 10) \
+    v(unsigned, maximumEvalCacheableSourceLength, 256) \
     \
     v(bool, randomizeExecutionCountsBetweenCheckpoints, false) \
     v(int32, maximumExecutionCountsBetweenCheckpointsForBaseline, 1000) \

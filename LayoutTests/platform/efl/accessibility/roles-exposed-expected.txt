@@ -631,6 +631,9 @@ div[role=scrollbar]
 div[role=search]
       AXRole: AXLandmarkSearch
       
+div[role=searchbox]
+      AXRole: AXTextField
+      
 div[role=separator]
       AXRole: AXSeparator
       
@@ -642,6 +645,9 @@ div[role=spinbutton]
       
 div[role=status]
       AXRole: AXStatusBar
+      
+div[role=switch]
+      AXRole: AXToggleButton
       
 div[role=tablist]
       AXRole: AXTabGroup

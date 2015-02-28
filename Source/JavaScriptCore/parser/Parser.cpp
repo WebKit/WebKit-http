@@ -629,7 +629,8 @@ template <class TreeBuilder> TreeDeconstructionPattern Parser<LexerType>::parseD
             } else {
                 JSTokenType tokenType = m_token.m_type;
                 switch (m_token.m_type) {
-                case NUMBER:
+                case DOUBLE:
+                case INTEGER:
                     propertyName = Identifier::from(m_vm, m_token.m_data.doubleValue);
                     break;
                 case STRING:
@@ -1115,21 +1116,24 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseBlockStatemen
 {
     ASSERT(match(OPENBRACE));
     JSTokenLocation location(tokenLocation());
+    int startOffset = m_token.m_data.offset;
     int start = tokenLine();
     next();
     if (match(CLOSEBRACE)) {
-        unsigned endOffset = m_lexer->currentOffset();
+        int endOffset = m_token.m_data.offset;
         next();
         TreeStatement result = context.createBlockStatement(location, 0, start, m_lastTokenEndPosition.line);
+        context.setStartOffset(result, startOffset);
         context.setEndOffset(result, endOffset);
         return result;
     }
     TreeSourceElements subtree = parseSourceElements(context, DontCheckForStrictMode);
     failIfFalse(subtree, "Cannot parse the body of the block statement");
     matchOrFail(CLOSEBRACE, "Expected a closing '}' at the end of a block statement");
-    unsigned endOffset = m_lexer->currentOffset();
+    int endOffset = m_token.m_data.offset;
     next();
     TreeStatement result = context.createBlockStatement(location, subtree, start, m_lastTokenEndPosition.line);
+    context.setStartOffset(result, startOffset);
     context.setEndOffset(result, endOffset);
     return result;
 }
@@ -1143,9 +1147,11 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseStatement(Tre
     int nonTrivialExpressionCount = 0;
     failIfStackOverflow();
     TreeStatement result = 0;
+    bool shouldSetEndOffset = true;
     switch (m_token.m_type) {
     case OPENBRACE:
         result = parseBlockStatement(context);
+        shouldSetEndOffset = false;
         break;
     case VAR:
         result = parseVarDeclaration(context);
@@ -1228,7 +1234,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseStatement(Tre
         break;
     }
 
-    if (result)
+    if (result && shouldSetEndOffset)
         context.setEndOffset(result, m_lastTokenEndPosition.offset);
     return result;
 }
@@ -1940,7 +1946,8 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseProperty(TreeB
             failWithMessage("Expected a ':' following the property name '", ident->impl(), "'");
         return parseGetterSetter(context, complete, type, getterOrSetterStartOffset);
     }
-    case NUMBER: {
+    case DOUBLE:
+    case INTEGER: {
         double propertyName = m_token.m_data.doubleValue;
         next();
         consumeOrFail(COLON, "Expected ':' after property name");
@@ -1974,7 +1981,7 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseGetterSetter(T
     double numericPropertyName = 0;
     if (m_token.m_type == IDENT || m_token.m_type == STRING)
         stringPropertyName = m_token.m_data.ident;
-    else if (m_token.m_type == NUMBER)
+    else if (m_token.m_type == DOUBLE || m_token.m_type == INTEGER)
         numericPropertyName = m_token.m_data.doubleValue;
     else
         failDueToUnexpectedToken();
@@ -2216,11 +2223,17 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
         next();
         return context.createString(location, ident);
     }
-    case NUMBER: {
+    case DOUBLE: {
         double d = m_token.m_data.doubleValue;
         JSTokenLocation location(tokenLocation());
         next();
-        return context.createNumberExpr(location, d);
+        return context.createDoubleExpr(location, d);
+    }
+    case INTEGER: {
+        double d = m_token.m_data.doubleValue;
+        JSTokenLocation location(tokenLocation());
+        next();
+        return context.createIntegerExpr(location, d);
     }
     case NULLTOKEN: {
         JSTokenLocation location(tokenLocation());
@@ -2312,6 +2325,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
     TreeExpression base = 0;
     JSTextPosition expressionStart = tokenStartPosition();
     int newCount = 0;
+    JSTokenLocation startLocation = tokenLocation();
     JSTokenLocation location;
     while (match(NEW)) {
         next();
@@ -2350,7 +2364,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
                 JSTextPosition expressionEnd = lastTokenEndPosition();
                 TreeArguments arguments = parseArguments(context, AllowSpread);
                 failIfFalse(arguments, "Cannot parse call arguments");
-                base = context.makeFunctionCallNode(location, base, arguments, expressionStart, expressionEnd, lastTokenEndPosition());
+                base = context.makeFunctionCallNode(startLocation, base, arguments, expressionStart, expressionEnd, lastTokenEndPosition());
             }
             m_nonLHSCount = nonLHSCount;
             break;
@@ -2571,7 +2585,8 @@ template <typename LexerType> void Parser<LexerType>::printUnexpectedTokenText(W
     case STRING:
         out.print("Unexpected string literal ", getToken());
         return;
-    case NUMBER:
+    case INTEGER:
+    case DOUBLE:
         out.print("Unexpected number '", getToken(), "'");
         return;
     

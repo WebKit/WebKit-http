@@ -183,6 +183,39 @@ struct SwitchData {
     bool didUseJumpTable;
 };
 
+struct CallVarargsData {
+    int firstVarArgOffset;
+};
+
+struct LoadVarargsData {
+    VirtualRegister start; // Local for the first element.
+    VirtualRegister count; // Local for the count.
+    VirtualRegister machineStart;
+    VirtualRegister machineCount;
+    unsigned offset; // Which array element to start with. Usually this is 0.
+    unsigned mandatoryMinimum; // The number of elements on the stack that must be initialized; if the array is too short then the missing elements must get undefined. Does not include "this".
+    unsigned limit; // Maximum number of elements to load. Includes "this".
+};
+
+struct StackAccessData {
+    StackAccessData()
+        : format(DeadFlush)
+    {
+    }
+    
+    StackAccessData(VirtualRegister local, FlushFormat format)
+        : local(local)
+        , format(format)
+    {
+    }
+    
+    VirtualRegister local;
+    VirtualRegister machineLocal;
+    FlushFormat format;
+    
+    FlushedAt flushedAt() { return FlushedAt(format, machineLocal); }
+};
+
 // This type used in passing an immediate argument to Node constructor;
 // distinguishes an immediate value (typically an index into a CodeBlock data structure - 
 // a constant index, argument, or identifier) from a Node*.
@@ -470,6 +503,23 @@ struct Node {
         children.reset();
     }
     
+    void convertToPutStack(StackAccessData* data)
+    {
+        m_op = PutStack;
+        m_flags |= NodeMustGenerate;
+        m_opInfo = bitwise_cast<uintptr_t>(data);
+        m_opInfo2 = 0;
+    }
+    
+    void convertToGetStack(StackAccessData* data)
+    {
+        m_op = GetStack;
+        m_flags &= ~NodeMustGenerate;
+        m_opInfo = bitwise_cast<uintptr_t>(data);
+        m_opInfo2 = 0;
+        children.reset();
+    }
+    
     void convertToGetByOffset(StorageAccessData& data, Edge storage)
     {
         ASSERT(m_op == GetById || m_op == GetByIdFlush || m_op == MultiGetByOffset);
@@ -703,7 +753,7 @@ struct Node {
         case ExtractOSREntryLocal:
         case MovHint:
         case ZombieHint:
-        case KillLocal:
+        case KillStack:
             return true;
         default:
             return false;
@@ -731,6 +781,23 @@ struct Node {
     {
         ASSERT(hasUnlinkedMachineLocal());
         return VirtualRegister(m_opInfo2);
+    }
+    
+    bool hasStackAccessData()
+    {
+        switch (op()) {
+        case PutStack:
+        case GetStack:
+            return true;
+        default:
+            return false;
+        }
+    }
+    
+    StackAccessData* stackAccessData()
+    {
+        ASSERT(hasStackAccessData());
+        return bitwise_cast<StackAccessData*>(m_opInfo);
     }
     
     bool hasPhi()
@@ -895,6 +962,35 @@ struct Node {
         return bitwise_cast<WriteBarrier<Unknown>*>(m_opInfo);
     }
     
+    bool hasCallVarargsData()
+    {
+        switch (op()) {
+        case CallVarargs:
+        case CallForwardVarargs:
+        case ConstructVarargs:
+            return true;
+        default:
+            return false;
+        }
+    }
+    
+    CallVarargsData* callVarargsData()
+    {
+        ASSERT(hasCallVarargsData());
+        return bitwise_cast<CallVarargsData*>(m_opInfo);
+    }
+    
+    bool hasLoadVarargsData()
+    {
+        return op() == LoadVarargs;
+    }
+    
+    LoadVarargsData* loadVarargsData()
+    {
+        ASSERT(hasLoadVarargsData());
+        return bitwise_cast<LoadVarargsData*>(m_opInfo);
+    }
+    
     bool hasResult()
     {
         return !!result();
@@ -1049,6 +1145,9 @@ struct Node {
         case GetMyArgumentByValSafe:
         case Call:
         case Construct:
+        case CallVarargs:
+        case ConstructVarargs:
+        case CallForwardVarargs:
         case NativeCall:
         case NativeConstruct:
         case GetByOffset:
@@ -1070,14 +1169,7 @@ struct Node {
         ASSERT(hasHeapPrediction());
         return static_cast<SpeculatedType>(m_opInfo2);
     }
-    
-    bool predictHeap(SpeculatedType prediction)
-    {
-        ASSERT(hasHeapPrediction());
-        
-        return mergeSpeculation(m_opInfo2, prediction);
-    }
-    
+
     void setHeapPrediction(SpeculatedType prediction)
     {
         ASSERT(hasHeapPrediction());
@@ -1389,8 +1481,6 @@ struct Node {
     {
         switch (op()) {
         case SetLocal:
-        case PutLocal:
-        case KillLocal:
         case MovHint:
         case ZombieHint:
         case PhantomArguments:

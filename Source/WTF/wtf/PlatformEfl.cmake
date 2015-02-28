@@ -1,6 +1,7 @@
 list(APPEND WTF_SOURCES
     efl/MainThreadEfl.cpp
     efl/RunLoopEfl.cpp
+    efl/WorkQueueEfl.cpp
 
     gobject/GMainLoopSource.cpp
     gobject/GRefPtr.cpp
@@ -22,6 +23,7 @@ list(APPEND WTF_LIBRARIES
 )
 
 list(APPEND WTF_INCLUDE_DIRECTORIES
+    "${WEBKIT2_DIR}/Platform/efl"
     ${ECORE_EVAS_INCLUDE_DIRS}
     ${ECORE_INCLUDE_DIRS}
     ${ECORE_IMF_INCLUDE_DIRS}

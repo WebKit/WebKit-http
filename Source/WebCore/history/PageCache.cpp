@@ -31,7 +31,6 @@
 #include "MemoryCache.h"
 #include "CachedPage.h"
 #include "DOMWindow.h"
-#include "DatabaseManager.h"
 #include "DeviceMotionController.h"
 #include "DeviceOrientationController.h"
 #include "DiagnosticLoggingClient.h"
@@ -83,7 +82,7 @@ enum ReasonFrameCannotBeInPageCache {
     IsErrorPage,
     HasPlugins,
     IsHttpsAndCacheControlled,
-    HasDatabaseHandles,
+    HasDatabaseHandles, // FIXME: Remove.
     HasSharedWorkers, // FIXME: Remove.
     NoHistoryItem,
     QuickRedirectComing,
@@ -98,7 +97,7 @@ COMPILE_ASSERT(NumberOfReasonsFramesCannotBeInPageCache <= sizeof(unsigned)*8, R
 
 static inline void logPageCacheFailureDiagnosticMessage(DiagnosticLoggingClient& client, const String& reason)
 {
-    client.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::pageCacheKey(), DiagnosticLoggingKeys::failureKey(), reason);
+    client.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::pageCacheKey(), DiagnosticLoggingKeys::failureKey(), reason, ShouldSample::Yes);
 }
 
 static inline void logPageCacheFailureDiagnosticMessage(Page* page, const String& reason)
@@ -153,11 +152,6 @@ static unsigned logCanCacheFrameDecision(Frame& frame, DiagnosticLoggingClient& 
         logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::httpsNoStoreKey());
         rejectReasons |= 1 << IsHttpsAndCacheControlled;
     }
-    if (DatabaseManager::manager().hasOpenDatabases(frame.document())) {
-        PCLOG("   -Frame has open database handles");
-        logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::hasOpenDatabasesKey());
-        rejectReasons |= 1 << HasDatabaseHandles;
-    }
     if (!frame.loader().history().currentItem()) {
         PCLOG("   -No current history item");
         logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::noCurrentHistoryItemKey());
@@ -184,6 +178,7 @@ static unsigned logCanCacheFrameDecision(Frame& frame, DiagnosticLoggingClient& 
         PCLOG("   -The document cannot suspend its active DOM Objects");
         for (auto* activeDOMObject : unsuspendableObjects) {
             PCLOG("    - Unsuspendable: ", activeDOMObject->activeDOMObjectName());
+            diagnosticLoggingClient.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::pageCacheKey(), DiagnosticLoggingKeys::unsuspendableDOMObjectKey(), activeDOMObject->activeDOMObjectName(), ShouldSample::Yes);
             UNUSED_PARAM(activeDOMObject);
         }
         logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::cannotSuspendActiveDOMObjectsKey());
@@ -288,7 +283,7 @@ static void logCanCachePageDecision(Page& page)
     else
         PCLOG(" Page CAN be cached\n--------");
 
-    diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageCacheKey(), emptyString(), rejectReasons ? DiagnosticLoggingResultFail : DiagnosticLoggingResultPass);
+    diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageCacheKey(), emptyString(), rejectReasons ? DiagnosticLoggingResultFail : DiagnosticLoggingResultPass, ShouldSample::Yes);
 }
 
 PageCache& PageCache::singleton()
@@ -318,7 +313,6 @@ bool PageCache::canCachePageContainingThisFrame(Frame& frame)
         && !(documentLoader->substituteData().isValid() && !documentLoader->substituteData().failingURL().isEmpty())
         && (!frameLoader.subframeLoader().containsPlugins() || frame.page()->settings().pageCacheSupportsPlugins())
         && !(frame.isMainFrame() && document->url().protocolIs("https") && documentLoader->response().cacheControlContainsNoStore())
-        && !DatabaseManager::manager().hasOpenDatabases(document)
         && frameLoader.history().currentItem()
         && !frameLoader.quickRedirectComing()
         && !documentLoader->isLoadingInAPISense()
@@ -365,7 +359,7 @@ bool PageCache::canCache(Page* page) const
 
 void PageCache::pruneToSizeNow(unsigned size, PruningReason pruningReason)
 {
-    TemporaryChange<unsigned>(m_maxSize, size);
+    TemporaryChange<unsigned> change(m_maxSize, size);
     prune(pruningReason);
 }
 

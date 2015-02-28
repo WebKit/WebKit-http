@@ -102,6 +102,7 @@ class ImageSource;
 class ImageData;
 class IntRect;
 class IntSize;
+class WebGLRenderingContextBase;
 #if USE(CAIRO)
 class PlatformContextCairo;
 #endif
@@ -784,6 +785,7 @@ public:
 #endif
 
     bool makeContextCurrent();
+    void setWebGLContext(WebGLRenderingContextBase* base) { m_webglContext = base; }
 
     // With multisampling on, blit from multisampleFBO to regular FBO.
     void prepareTexture();
@@ -1135,6 +1137,7 @@ public:
     void markContextChanged();
     void markLayerComposited();
     bool layerComposited() const;
+    void forceContextLost();
 
     void paintRenderingResultsToCanvas(ImageBuffer*, DrawingBuffer*);
     PassRefPtr<ImageData> paintRenderingResultsToImageData(DrawingBuffer*);
@@ -1263,6 +1266,7 @@ public:
 private:
     GraphicsContext3D(Attributes, HostWindow*, RenderStyle = RenderOffscreen);
     static int numActiveContexts;
+    static int GPUCheckCounter;
 
     // Helper for packImageData/extractImageData/extractTextureData which implement packing of pixel
     // data into the specified OpenGL destination format and type.
@@ -1277,6 +1281,9 @@ private:
     // implementation.
     void validateDepthStencil(const char* packedDepthStencilExtension);
     void validateAttributes();
+    
+    // Call to make during draw calls to check on the GPU's status.
+    void checkGPUStatusIfNecessary();
 
     // Read rendering results into a pixel array with the same format as the
     // backbuffer.
@@ -1445,6 +1452,8 @@ private:
 
     friend class GraphicsContext3DPrivate;
     std::unique_ptr<GraphicsContext3DPrivate> m_private;
+    
+    WebGLRenderingContextBase* m_webglContext;
 };
 
 } // namespace WebCore

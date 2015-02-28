@@ -49,6 +49,7 @@
 #include "WebProcessPool.h"
 #include "WebProcessProxyMessages.h"
 #include "WebUserContentControllerProxy.h"
+#include "WebsiteData.h"
 #include <WebCore/SuddenTermination.h>
 #include <WebCore/URL.h>
 #include <stdio.h>
@@ -79,6 +80,13 @@ static uint64_t generatePageID()
     return ++uniquePageID;
 }
 
+static uint64_t generateCallbackID()
+{
+    static uint64_t callbackID;
+
+    return ++callbackID;
+}
+
 static WebProcessProxy::WebPageProxyMap& globalPageMap()
 {
     ASSERT(RunLoop::isMain());
@@ -106,6 +114,10 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool)
 
 WebProcessProxy::~WebProcessProxy()
 {
+    ASSERT(m_pendingFetchWebsiteDataCallbacks.isEmpty());
+    ASSERT(m_pendingDeleteWebsiteDataCallbacks.isEmpty());
+    ASSERT(m_pendingDeleteWebsiteDataForOriginsCallbacks.isEmpty());
+
     if (m_webConnection)
         m_webConnection->invalidate();
 
@@ -136,6 +148,18 @@ void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
 void WebProcessProxy::connectionDidClose(IPC::Connection& connection)
 {
     ASSERT(this->connection() == &connection);
+
+    for (const auto& callback : m_pendingFetchWebsiteDataCallbacks.values())
+        callback(WebsiteData());
+    m_pendingFetchWebsiteDataCallbacks.clear();
+
+    for (const auto& callback : m_pendingDeleteWebsiteDataCallbacks.values())
+        callback();
+    m_pendingDeleteWebsiteDataCallbacks.clear();
+
+    for (const auto& callback : m_pendingDeleteWebsiteDataForOriginsCallbacks.values())
+        callback();
+    m_pendingDeleteWebsiteDataForOriginsCallbacks.clear();
 
     for (auto& page : m_pageMap.values())
         page->connectionDidClose(connection);
@@ -566,6 +590,9 @@ bool WebProcessProxy::canTerminateChildProcess()
     if (m_downloadProxyMap && !m_downloadProxyMap->isEmpty())
         return false;
 
+    if (!m_pendingDeleteWebsiteDataCallbacks.isEmpty())
+        return false;
+
     if (!m_processPool->shouldTerminate(this))
         return false;
 
@@ -579,6 +606,24 @@ void WebProcessProxy::shouldTerminate(bool& shouldTerminate)
         // We know that the web process is going to terminate so disconnect it from the process pool.
         disconnect();
     }
+}
+
+void WebProcessProxy::didFetchWebsiteData(uint64_t callbackID, const WebsiteData& websiteData)
+{
+    auto callback = m_pendingFetchWebsiteDataCallbacks.take(callbackID);
+    callback(websiteData);
+}
+
+void WebProcessProxy::didDeleteWebsiteData(uint64_t callbackID)
+{
+    auto callback = m_pendingDeleteWebsiteDataCallbacks.take(callbackID);
+    callback();
+}
+
+void WebProcessProxy::didDeleteWebsiteDataForOrigins(uint64_t callbackID)
+{
+    auto callback = m_pendingDeleteWebsiteDataForOriginsCallbacks.take(callbackID);
+    callback();
 }
 
 void WebProcessProxy::updateTextCheckerState()
@@ -614,6 +659,40 @@ void WebProcessProxy::windowServerConnectionStateChanged()
 {
     for (const auto& page : m_pageMap.values())
         page->viewStateDidChange(ViewState::IsVisuallyIdle);
+}
+
+void WebProcessProxy::fetchWebsiteData(SessionID sessionID, WebsiteDataTypes dataTypes, std::function<void (WebsiteData)> completionHandler)
+{
+    ASSERT(canSendMessage());
+
+    uint64_t callbackID = generateCallbackID();
+    m_pendingFetchWebsiteDataCallbacks.add(callbackID, WTF::move(completionHandler));
+
+    send(Messages::WebProcess::FetchWebsiteData(sessionID, dataTypes, callbackID), 0);
+}
+
+void WebProcessProxy::deleteWebsiteData(SessionID sessionID, WebsiteDataTypes dataTypes, std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+{
+    ASSERT(canSendMessage());
+
+    uint64_t callbackID = generateCallbackID();
+
+    m_pendingDeleteWebsiteDataCallbacks.add(callbackID, WTF::move(completionHandler));
+    send(Messages::WebProcess::DeleteWebsiteData(sessionID, dataTypes, modifiedSince, callbackID), 0);
+}
+
+void WebProcessProxy::deleteWebsiteDataForOrigins(SessionID sessionID, WebsiteDataTypes dataTypes, const Vector<RefPtr<WebCore::SecurityOrigin>>& origins, std::function<void ()> completionHandler)
+{
+    ASSERT(canSendMessage());
+
+    uint64_t callbackID = generateCallbackID();
+    m_pendingDeleteWebsiteDataForOriginsCallbacks.add(callbackID, WTF::move(completionHandler));
+
+    Vector<SecurityOriginData> originData;
+    for (auto& origin : origins)
+        originData.append(SecurityOriginData::fromSecurityOrigin(*origin));
+
+    send(Messages::WebProcess::DeleteWebsiteDataForOrigins(sessionID, dataTypes, originData, callbackID), 0);
 }
 
 void WebProcessProxy::requestTermination()

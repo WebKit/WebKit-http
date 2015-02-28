@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -256,6 +256,11 @@ inline KillStatus killStatusForDoesKill(bool doesKill)
     return doesKill ? DoesKill : DoesNotKill;
 }
 
+enum class PlanStage {
+    Initial,
+    AfterFixup
+};
+
 template<typename T, typename U>
 bool checkAndSet(T& left, U right)
 {
@@ -292,7 +297,6 @@ namespace JSC { namespace DFG {
 
 enum CapabilityLevel {
     CannotCompile,
-    CanInline,
     CanCompile,
     CanCompileAndInline,
     CapabilityLevelNotSet
@@ -312,7 +316,6 @@ inline bool canCompile(CapabilityLevel level)
 inline bool canInline(CapabilityLevel level)
 {
     switch (level) {
-    case CanInline:
     case CanCompileAndInline:
         return true;
     default:
@@ -325,14 +328,6 @@ inline CapabilityLevel leastUpperBound(CapabilityLevel a, CapabilityLevel b)
     switch (a) {
     case CannotCompile:
         return CannotCompile;
-    case CanInline:
-        switch (b) {
-        case CanInline:
-        case CanCompileAndInline:
-            return CanInline;
-        default:
-            return CannotCompile;
-        }
     case CanCompile:
         switch (b) {
         case CanCompile:
@@ -363,6 +358,12 @@ inline bool shouldShowDisassembly(CompilationMode mode = DFGMode)
 }
 
 } } // namespace JSC::DFG
+
+namespace WTF {
+
+void printInternal(PrintStream&, JSC::DFG::CapabilityLevel);
+
+} // namespace WTF
 
 #endif // DFGCommon_h
 

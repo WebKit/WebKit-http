@@ -28,13 +28,11 @@ __ZTVNSt3__119basic_ostringstreamIcNS_11char_traitsIcEENS_9allocatorIcEEEE
 # Source/WebCore/platform/graphics/avfoundation/AudioSourceProviderAVFObjC.mm
 _AudioConverterConvertComplexBuffer
 _AudioConverterNew
-_CMTimebaseGetTime
 _MTAudioProcessingTapGetSourceAudio
 _MTAudioProcessingTapGetStorage
 
 # Source/WebCore/platform/mac/PlatformClockCM.mm
 _CMAudioDeviceClockCreate
-_CMTimeGetSeconds
 _CMTimebaseCreateWithMasterClock
 _CMTimebaseSetRate
 _CMTimebaseSetTime
@@ -46,14 +44,6 @@ _CMFormatDescriptionGetExtensions
 _CMSampleBufferGetDataBuffer
 _CMSampleBufferGetFormatDescription
 _CMSampleBufferGetSampleTimingInfo
-
-# Source/WebCore/platform/mediastream/mac/AVVideoCaptureSource.mm
-_CMTimeCompare
-_CMTimeMake
-
-# Source/WebCore/platform/ios/WebVideoFullscreenInterfaceAVKit.mm
-_CMTimeMakeWithSeconds
-_CMTimeRangeGetEnd
 
 # Source/WebCore/page/CaptionUserPreferencesMediaAF.cpp
 _MACaptionAppearanceAddSelectedLanguage
@@ -87,8 +77,22 @@ _VTPixelTransferSessionTransferImage
 # Function marked ALWAYS_INLINE in header, but may not be inlined in a
 # Debug build.
 
-# Source/WebCore/bindings/js/JSNodeListCustom.h
-__ZN7WebCore4toJSEPN3JSC9ExecStateEPNS_17JSDOMGlobalObjectEPNS_8NodeListE
+# Source/WebCore/platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm
+_CMFormatDescriptionGetMediaSubType
+_CMFormatDescriptionGetMediaType
+_CMSampleBufferCreateCopy
+_CMSampleBufferCreateCopyWithNewTiming
+_CMSampleBufferGetDecodeTimeStamp
+_CMSampleBufferGetDuration
+_CMSampleBufferGetPresentationTimeStamp
+_CMSampleBufferGetSampleAttachmentsArray
+_CMSampleBufferGetSampleTimingInfoArray
+_CMSampleBufferGetTotalSampleSize
+_CMVideoFormatDescriptionGetPresentationDimensions
+
+# Source/WebCore/platform/cocoa/TelephoneNumberDetectorCocoa.cpp
+_DDDFAScannerCreateFromCache
+_DDDFAScannerFirstResultInUnicharArray
 
 # Subclasses of an exported C++ class in JavaScriptCore.
 

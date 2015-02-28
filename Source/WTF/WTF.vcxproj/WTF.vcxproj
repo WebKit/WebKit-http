@@ -128,7 +128,6 @@
     <ClCompile Include="..\wtf\SizeLimits.cpp" />
     <ClCompile Include="..\wtf\StackBounds.cpp" />
     <ClCompile Include="..\wtf\StringPrintStream.cpp" />
-    <ClCompile Include="..\wtf\TCSystemAlloc.cpp" />
     <ClCompile Include="..\wtf\text\AtomicString.cpp" />
     <ClCompile Include="..\wtf\text\AtomicStringTable.cpp" />
     <ClCompile Include="..\wtf\text\Base64.cpp" />
@@ -253,7 +252,6 @@
     <ClInclude Include="..\wtf\PassRef.h" />
     <ClInclude Include="..\wtf\PassRefPtr.h" />
     <ClInclude Include="..\wtf\Platform.h" />
-    <ClInclude Include="..\wtf\PossiblyNull.h" />
     <ClInclude Include="..\wtf\PrintStream.h" />
     <ClInclude Include="..\wtf\RAMSize.h" />
     <ClInclude Include="..\wtf\RandomNumber.h" />
@@ -279,10 +277,7 @@
     <ClInclude Include="..\wtf\StringExtras.h" />
     <ClInclude Include="..\wtf\StringHasher.h" />
     <ClInclude Include="..\wtf\StringPrintStream.h" />
-    <ClInclude Include="..\wtf\TCPackedCache.h" />
-    <ClInclude Include="..\wtf\TCPageMap.h" />
     <ClInclude Include="..\wtf\TCSpinLock.h" />
-    <ClInclude Include="..\wtf\TCSystemAlloc.h" />
     <ClInclude Include="..\wtf\TemporaryChange.h" />
     <ClInclude Include="..\wtf\text\ASCIIFastPath.h" />
     <ClInclude Include="..\wtf\text\AtomicString.h" />

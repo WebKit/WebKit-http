@@ -689,7 +689,7 @@ void WebChromeClient::exceededDatabaseQuota(Frame* frame, const String& database
     
     SecurityOrigin* origin = frame->document()->securityOrigin();
 
-    DatabaseManager& dbManager = DatabaseManager::manager();
+    DatabaseManager& dbManager = DatabaseManager::singleton();
     uint64_t currentQuota = dbManager.quotaForOrigin(origin);
     uint64_t currentOriginUsage = dbManager.usageForOrigin(origin);
     uint64_t newQuota = 0;
@@ -971,9 +971,9 @@ void WebChromeClient::notifyScrollerThumbIsVisibleInRect(const IntRect& scroller
     m_page->send(Messages::WebPageProxy::NotifyScrollerThumbIsVisibleInRect(scrollerThumb));
 }
 
-void WebChromeClient::recommendedScrollbarStyleDidChange(int32_t newStyle)
+void WebChromeClient::recommendedScrollbarStyleDidChange(ScrollbarStyle newStyle)
 {
-    m_page->send(Messages::WebPageProxy::RecommendedScrollbarStyleDidChange(newStyle));
+    m_page->send(Messages::WebPageProxy::RecommendedScrollbarStyleDidChange(static_cast<int32_t>(newStyle)));
 }
 
 Color WebChromeClient::underlayColor() const

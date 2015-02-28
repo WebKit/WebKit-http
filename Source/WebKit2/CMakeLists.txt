@@ -184,7 +184,6 @@ set(WebKit2_SOURCES
 
     Platform/Logging.cpp
     Platform/Module.cpp
-    Platform/WorkQueue.cpp
 
     Platform/IPC/ArgumentCoders.cpp
     Platform/IPC/ArgumentDecoder.cpp
@@ -319,6 +318,8 @@ set(WebKit2_SOURCES
     Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp
     Shared/Plugins/Netscape/PluginInformation.cpp
 
+    Shared/WebsiteData/WebsiteData.cpp
+
     UIProcess/API/APINavigationData.cpp
     UIProcess/API/APIProcessPoolConfiguration.cpp
     UIProcess/API/APISession.cpp
@@ -385,6 +386,7 @@ set(WebKit2_SOURCES
     UIProcess/WebVibrationProvider.cpp
     UIProcess/WebVibrationProxy.cpp
     UIProcess/WebViewportAttributes.cpp
+    UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp
 
     UIProcess/API/APIFrameInfo.cpp
     UIProcess/API/APINavigation.cpp
@@ -477,6 +479,7 @@ set(WebKit2_SOURCES
     UIProcess/UserContent/WebScriptMessageHandler.cpp
     UIProcess/UserContent/WebUserContentControllerProxy.cpp
 
+    UIProcess/WebsiteData/WebsiteDataRecord.cpp
     UIProcess/WebsiteData/WebsiteDataStore.cpp
 
     WebProcess/WebConnectionToUIProcess.cpp
@@ -510,7 +513,6 @@ set(WebKit2_SOURCES
     WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp
     WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp
     WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.cpp
-    WebProcess/InjectedBundle/InjectedBundlePageDiagnosticLoggingClient.cpp
     WebProcess/InjectedBundle/InjectedBundlePageEditorClient.cpp
     WebProcess/InjectedBundle/InjectedBundlePageFormClient.cpp
     WebProcess/InjectedBundle/InjectedBundlePageFullScreenClient.cpp
@@ -536,6 +538,7 @@ set(WebKit2_SOURCES
     WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.cpp
 
     WebProcess/InjectedBundle/DOM/InjectedBundleCSSStyleDeclarationHandle.cpp
+    WebProcess/InjectedBundle/DOM/InjectedBundleFileHandle.cpp
     WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp
     WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -118,8 +118,9 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case GetCallee:
     case GetLocal:
     case SetLocal:
-    case PutLocal:
-    case KillLocal:
+    case PutStack:
+    case KillStack:
+    case GetStack:
     case MovHint:
     case ZombieHint:
     case Phantom:
@@ -189,6 +190,10 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CompareStrictEq:
     case Call:
     case Construct:
+    case CallVarargs:
+    case ConstructVarargs:
+    case LoadVarargs:
+    case CallForwardVarargs:
     case NewObject:
     case NewArray:
     case NewArrayWithSize:
@@ -206,6 +211,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case IsNumber:
     case IsString:
     case IsObject:
+    case IsObjectOrNull:
     case IsFunction:
     case TypeOf:
     case LogicalNot:

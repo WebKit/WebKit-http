@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,33 +23,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "BoundaryTagInlines.h"
-#include "LargeChunk.h"
+#include "LargeObject.h"
 #include "Line.h"
 #include "PerProcess.h"
+#include "SuperChunk.h"
 #include "VMHeap.h"
 #include <thread>
 
 namespace bmalloc {
 
 VMHeap::VMHeap()
+    : m_largeObjects(Owner::VMHeap)
 {
 }
 
-void VMHeap::allocateSuperChunk()
+void VMHeap::grow()
 {
-    char* superChunk = static_cast<char*>(vmAllocate(superChunkSize, superChunkSize));
+    SuperChunk* superChunk = SuperChunk::create();
+#if BPLATFORM(DARWIN)
+    m_zone.addSuperChunk(superChunk);
+#endif
 
-    SmallChunk* smallChunk = new (superChunk + smallChunkOffset) SmallChunk;
+    SmallChunk* smallChunk = superChunk->smallChunk();
     for (auto* it = smallChunk->begin(); it != smallChunk->end(); ++it)
         m_smallPages.push(it);
 
-    MediumChunk* mediumChunk = new (superChunk + mediumChunkOffset) MediumChunk;
+    MediumChunk* mediumChunk = superChunk->mediumChunk();
     for (auto* it = mediumChunk->begin(); it != mediumChunk->end(); ++it)
         m_mediumPages.push(it);
 
-    LargeChunk* largeChunk = new (superChunk + largeChunkOffset) LargeChunk;
-    m_largeRanges.insert(BoundaryTag::init(largeChunk));
+    LargeChunk* largeChunk = superChunk->largeChunk();
+    m_largeObjects.insert(LargeObject(LargeObject::init(largeChunk).begin()));
 }
 
 } // namespace bmalloc

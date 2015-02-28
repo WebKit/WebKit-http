@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,7 +56,7 @@ public:
         BitVector usedLocals;
         
         // Collect those variables that are used from IR.
-        bool hasGetLocalUnlinked = false;
+        bool hasNodesThatNeedFixup = false;
         for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
             BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
@@ -66,7 +66,6 @@ public:
                 switch (node->op()) {
                 case GetLocal:
                 case SetLocal:
-                case PutLocal:
                 case Flush:
                 case PhantomLocal: {
                     VariableAccessData* variable = node->variableAccessData();
@@ -81,7 +80,31 @@ public:
                     if (operand.isArgument())
                         break;
                     usedLocals.set(operand.toLocal());
-                    hasGetLocalUnlinked = true;
+                    hasNodesThatNeedFixup = true;
+                    break;
+                }
+                    
+                case LoadVarargs: {
+                    LoadVarargsData* data = node->loadVarargsData();
+                    if (data->count.isLocal())
+                        usedLocals.set(data->count.toLocal());
+                    if (data->start.isLocal()) {
+                        // This part really relies on the contiguity of stack layout
+                        // assignments.
+                        ASSERT(VirtualRegister(data->start.offset() + data->limit - 1).isLocal());
+                        for (unsigned i = data->limit; i--;) 
+                            usedLocals.set(VirtualRegister(data->start.offset() + i).toLocal());
+                    } // the else case shouldn't happen.
+                    hasNodesThatNeedFixup = true;
+                    break;
+                }
+                    
+                case PutStack:
+                case GetStack: {
+                    StackAccessData* stack = node->stackAccessData();
+                    if (stack->local.isArgument())
+                        break;
+                    usedLocals.set(stack->local.toLocal());
                     break;
                 }
                     
@@ -112,6 +135,11 @@ public:
             VirtualRegister argumentsRegister = m_graph.argumentsRegisterFor(inlineCallFrame);
             usedLocals.set(argumentsRegister.toLocal());
             usedLocals.set(unmodifiedArgumentsRegister(argumentsRegister).toLocal());
+            
+            if (inlineCallFrame->isVarargs()) {
+                usedLocals.set(VirtualRegister(
+                    JSStack::ArgumentCount + inlineCallFrame->stackOffset).toLocal());
+            }
             
             for (unsigned argument = inlineCallFrame->arguments.size(); argument-- > 1;) {
                 usedLocals.set(VirtualRegister(
@@ -148,24 +176,35 @@ public:
             if (allocation[local] == UINT_MAX)
                 continue;
             
-            variable->machineLocal() = virtualRegisterForLocal(
-                allocation[variable->local().toLocal()]);
+            variable->machineLocal() = assign(allocation, variable->local());
+        }
+        
+        for (StackAccessData* data : m_graph.m_stackAccessData) {
+            if (!data->local.isLocal()) {
+                data->machineLocal = data->local;
+                continue;
+            }
+            
+            if (static_cast<size_t>(data->local.toLocal()) >= allocation.size())
+                continue;
+            if (allocation[data->local.toLocal()] == UINT_MAX)
+                continue;
+            
+            data->machineLocal = assign(allocation, data->local);
         }
         
         if (codeBlock()->usesArguments()) {
-            VirtualRegister argumentsRegister = virtualRegisterForLocal(
-                allocation[codeBlock()->argumentsRegister().toLocal()]);
+            VirtualRegister argumentsRegister =
+                assign(allocation, codeBlock()->argumentsRegister());
             RELEASE_ASSERT(
-                virtualRegisterForLocal(allocation[
-                    unmodifiedArgumentsRegister(
-                        codeBlock()->argumentsRegister()).toLocal()])
+                assign(allocation, unmodifiedArgumentsRegister(codeBlock()->argumentsRegister()))
                 == unmodifiedArgumentsRegister(argumentsRegister));
             codeBlock()->setArgumentsRegister(argumentsRegister);
         }
         
         if (codeBlock()->uncheckedActivationRegister().isValid()) {
             codeBlock()->setActivationRegister(
-                virtualRegisterForLocal(allocation[codeBlock()->activationRegister().toLocal()]));
+                assign(allocation, codeBlock()->activationRegister()));
         }
         
         // This register is never valid for DFG code blocks.
@@ -176,13 +215,17 @@ public:
             InlineCallFrame* inlineCallFrame = data.inlineCallFrame;
             
             if (m_graph.usesArguments(inlineCallFrame)) {
-                inlineCallFrame->argumentsRegister = virtualRegisterForLocal(
-                    allocation[m_graph.argumentsRegisterFor(inlineCallFrame).toLocal()]);
+                inlineCallFrame->argumentsRegister = assign(
+                    allocation, m_graph.argumentsRegisterFor(inlineCallFrame));
 
                 RELEASE_ASSERT(
-                    virtualRegisterForLocal(allocation[unmodifiedArgumentsRegister(
-                        m_graph.argumentsRegisterFor(inlineCallFrame)).toLocal()])
+                    assign(allocation, unmodifiedArgumentsRegister(m_graph.argumentsRegisterFor(inlineCallFrame)))
                     == unmodifiedArgumentsRegister(inlineCallFrame->argumentsRegister));
+            }
+            
+            if (inlineCallFrame->isVarargs()) {
+                inlineCallFrame->argumentCountRegister = assign(
+                    allocation, VirtualRegister(inlineCallFrame->stackOffset + JSStack::ArgumentCount));
             }
             
             for (unsigned argument = inlineCallFrame->arguments.size(); argument-- > 1;) {
@@ -227,9 +270,7 @@ public:
                     symbolTable->parameterCount());
                 for (size_t i = symbolTable->parameterCount(); i--;) {
                     newSlowArguments[i] = slowArguments[i];
-                    VirtualRegister reg = VirtualRegister(slowArguments[i].index);
-                    if (reg.isLocal())
-                        newSlowArguments[i].index = virtualRegisterForLocal(allocation[reg.toLocal()]).offset();
+                    newSlowArguments[i].index = assign(allocation, VirtualRegister(slowArguments[i].index)).offset();
                 }
             
                 m_graph.m_slowArguments = WTF::move(newSlowArguments);
@@ -237,7 +278,7 @@ public:
         }
         
         // Fix GetLocalUnlinked's variable references.
-        if (hasGetLocalUnlinked) {
+        if (hasNodesThatNeedFixup) {
             for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
                 BasicBlock* block = m_graph.block(blockIndex);
                 if (!block)
@@ -246,10 +287,14 @@ public:
                     Node* node = block->at(nodeIndex);
                     switch (node->op()) {
                     case GetLocalUnlinked: {
-                        VirtualRegister operand = node->unlinkedLocal();
-                        if (operand.isLocal())
-                            operand = virtualRegisterForLocal(allocation[operand.toLocal()]);
-                        node->setUnlinkedMachineLocal(operand);
+                        node->setUnlinkedMachineLocal(assign(allocation, node->unlinkedLocal()));
+                        break;
+                    }
+                        
+                    case LoadVarargs: {
+                        LoadVarargsData* data = node->loadVarargsData();
+                        data->machineCount = assign(allocation, data->count);
+                        data->machineStart = assign(allocation, data->start);
                         break;
                     }
                         
@@ -261,6 +306,20 @@ public:
         }
         
         return true;
+    }
+
+private:
+    VirtualRegister assign(const Vector<unsigned>& allocation, VirtualRegister src)
+    {
+        VirtualRegister result = src;
+        if (result.isLocal()) {
+            unsigned myAllocation = allocation[result.toLocal()];
+            if (myAllocation == UINT_MAX)
+                result = VirtualRegister();
+            else
+                result = virtualRegisterForLocal(myAllocation);
+        }
+        return result;
     }
 };
 

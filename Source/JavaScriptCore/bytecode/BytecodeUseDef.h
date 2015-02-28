@@ -133,6 +133,7 @@ void computeUsesForBytecodeOffset(
     case op_is_number:
     case op_is_string:
     case op_is_object:
+    case op_is_object_or_null:
     case op_is_function:
     case op_to_number:
     case op_negate:
@@ -217,7 +218,7 @@ void computeUsesForBytecodeOffset(
         int argCount = instruction[3].u.operand;
         int registerOffset = -instruction[4].u.operand;
         int lastArg = registerOffset + CallFrame::thisArgumentOffset();
-        for (int i = opcodeID == op_construct ? 1 : 0; i < argCount; i++)
+        for (int i = 0; i < argCount; i++)
             functor(codeBlock, instruction, opcodeID, lastArg + i);
         return;
     }
@@ -332,6 +333,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, unsigned bytecodeOffset,
     case op_is_number:
     case op_is_string:
     case op_is_object:
+    case op_is_object_or_null:
     case op_is_function:
     case op_in:
     case op_to_number:

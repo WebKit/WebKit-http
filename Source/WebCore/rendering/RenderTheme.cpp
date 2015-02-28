@@ -250,6 +250,12 @@ void RenderTheme::adjustStyle(StyleResolver& styleResolver, RenderStyle& style, 
     case ImageControlsButtonPart:
         break;
 #endif
+    case CapsLockIndicatorPart:
+        return adjustCapsLockIndicatorStyle(styleResolver, style, e);
+#if ENABLE(ATTACHMENT_ELEMENT)
+    case AttachmentPart:
+        return adjustAttachmentStyle(styleResolver, style, e);
+#endif
     default:
         break;
     }
@@ -385,6 +391,12 @@ bool RenderTheme::paint(const RenderObject& o, ControlStates* controlStates, con
 #if ENABLE(SERVICE_CONTROLS)
     case ImageControlsButtonPart:
         return paintImageControlsButton(o, paintInfo, integralSnappedRect);
+#endif
+    case CapsLockIndicatorPart:
+        return paintCapsLockIndicator(o, paintInfo, integralSnappedRect);
+#if ENABLE(ATTACHMENT_ELEMENT)
+    case AttachmentPart:
+        return paintAttachment(o, paintInfo, integralSnappedRect);
 #endif
     default:
         break;
@@ -960,7 +972,26 @@ bool RenderTheme::paintMeter(const RenderObject&, const PaintInfo&, const IntRec
 {
     return true;
 }
+#endif
 
+void RenderTheme::adjustCapsLockIndicatorStyle(StyleResolver&, RenderStyle&, Element*) const
+{
+}
+
+bool RenderTheme::paintCapsLockIndicator(const RenderObject&, const PaintInfo&, const IntRect&)
+{
+    return false;
+}
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+void RenderTheme::adjustAttachmentStyle(StyleResolver&, RenderStyle&, Element*) const
+{
+}
+
+bool RenderTheme::paintAttachment(const RenderObject&, const PaintInfo&, const IntRect&)
+{
+    return false;
+}
 #endif
 
 #if ENABLE(DATALIST_ELEMENT)
@@ -1074,6 +1105,11 @@ IntRect RenderTheme::progressBarRectForBounds(const RenderObject&, const IntRect
 bool RenderTheme::shouldHaveSpinButton(HTMLInputElement& inputElement) const
 {
     return inputElement.isSteppable() && !inputElement.isRangeControl();
+}
+
+bool RenderTheme::shouldHaveCapsLockIndicator(HTMLInputElement&) const
+{
+    return false;
 }
 
 void RenderTheme::adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const

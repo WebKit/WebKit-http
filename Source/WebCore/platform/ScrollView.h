@@ -73,7 +73,7 @@ public:
     virtual int scrollPosition(Scrollbar*) const override;
     WEBCORE_EXPORT virtual void setScrollOffset(const IntPoint&) override;
     virtual bool isScrollCornerVisible() const override;
-    virtual void scrollbarStyleChanged(int newStyle, bool forceUpdate) override;
+    virtual void scrollbarStyleChanged(ScrollbarStyle, bool forceUpdate) override;
 
     virtual void notifyPageThatContentAreaWillPaint() const;
 
@@ -389,10 +389,9 @@ protected:
 
     virtual void paintOverhangAreas(GraphicsContext*, const IntRect& horizontalOverhangArea, const IntRect& verticalOverhangArea, const IntRect& dirtyRect);
 
-    virtual void visibleContentsResized() = 0;
+    virtual void availableContentSizeChanged(AvailableSizeChangeReason) override;
     virtual void addedOrRemovedScrollbar() = 0;
     virtual void delegatesScrollingDidChange() { }
-    virtual void fixedLayoutSizeChanged();
 
     // These functions are used to create/destroy scrollbars.
     // They return true if the scrollbar was added or removed.

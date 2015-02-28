@@ -31,7 +31,6 @@
 #include "FontCache.h"
 
 #include "FontCascade.h"
-#include "FontGlyphs.h"
 #include "FontPlatformData.h"
 #include "FontSelector.h"
 #include "MemoryPressureHandler.h"
@@ -86,7 +85,7 @@ using namespace WTF;
 
 namespace WebCore {
 
-FontCache& fontCache()
+FontCache& FontCache::singleton()
 {
     static NeverDestroyed<FontCache> globalFontCache;
     return globalFontCache;
@@ -426,7 +425,7 @@ void FontCache::purgeInactiveFontDataIfNeeded()
 
 void FontCache::purgeInactiveFontData(int purgeCount)
 {
-    pruneUnreferencedEntriesFromFontGlyphsCache();
+    pruneUnreferencedEntriesFromFontCascadeCache();
     pruneSystemFallbackFonts();
 
 #if PLATFORM(IOS)
@@ -535,7 +534,7 @@ void FontCache::invalidate()
     }
 
     fontPlatformDataCache().clear();
-    invalidateFontGlyphsCache();
+    invalidateFontCascadeCache();
 
     gGeneration++;
 

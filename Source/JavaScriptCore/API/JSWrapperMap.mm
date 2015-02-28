@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -108,7 +108,7 @@ static bool constructorHasInstance(JSContextRef ctx, JSObjectRef constructorRef,
     return JSC::JSObject::defaultHasInstance(exec, instance, constructor->get(exec, exec->propertyNames().prototype));
 }
 
-static JSObjectRef makeWrapper(JSContextRef ctx, JSClassRef jsClass, id wrappedObject)
+static JSC::JSObject* makeWrapper(JSContextRef ctx, JSClassRef jsClass, id wrappedObject)
 {
     JSC::ExecState* exec = toJS(ctx);
     JSC::JSLockHolder locker(exec);
@@ -119,33 +119,33 @@ static JSObjectRef makeWrapper(JSContextRef ctx, JSClassRef jsClass, id wrappedO
     if (JSC::JSObject* prototype = jsClass->prototype(exec))
         object->setPrototype(exec->vm(), prototype);
 
-    return toRef(object);
+    return object;
 }
 
 // Make an object that is in all ways a completely vanilla JavaScript object,
 // other than that it has a native brand set that will be displayed by the default
 // Object.prototype.toString conversion.
-static JSValue *objectWithCustomBrand(JSContext *context, NSString *brand, Class cls = 0)
+static JSC::JSObject *objectWithCustomBrand(JSContext *context, NSString *brand, Class cls = 0)
 {
     JSClassDefinition definition;
     definition = kJSClassDefinitionEmpty;
     definition.className = [brand UTF8String];
     JSClassRef classRef = JSClassCreate(&definition);
-    JSObjectRef result = makeWrapper([context JSGlobalContextRef], classRef, cls);
+    JSC::JSObject* result = makeWrapper([context JSGlobalContextRef], classRef, cls);
     JSClassRelease(classRef);
-    return [JSValue valueWithJSValueRef:result inContext:context];
+    return result;
 }
 
-static JSValue *constructorWithCustomBrand(JSContext *context, NSString *brand, Class cls)
+static JSC::JSObject *constructorWithCustomBrand(JSContext *context, NSString *brand, Class cls)
 {
     JSClassDefinition definition;
     definition = kJSClassDefinitionEmpty;
     definition.className = [brand UTF8String];
     definition.hasInstance = constructorHasInstance;
     JSClassRef classRef = JSClassCreate(&definition);
-    JSObjectRef result = makeWrapper([context JSGlobalContextRef], classRef, cls);
+    JSC::JSObject* result = makeWrapper([context JSGlobalContextRef], classRef, cls);
     JSClassRelease(classRef);
-    return [JSValue valueWithJSValueRef:result inContext:context];
+    return result;
 }
 
 // Look for @optional properties in the prototype containing a selector to property
@@ -364,15 +364,16 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
     JSC::Weak<JSC::JSObject> m_constructor;
 }
 
-- (id)initWithContext:(JSContext *)context forClass:(Class)cls superClassInfo:(JSObjCClassInfo*)superClassInfo;
-- (JSValue *)wrapperForObject:(id)object;
-- (JSValue *)constructor;
+- (id)initWithContext:(JSContext *)context forClass:(Class)cls;
+- (JSC::JSObject *)wrapperForObject:(id)object;
+- (JSC::JSObject *)constructor;
+- (JSC::JSObject *)prototype;
 
 @end
 
 @implementation JSObjCClassInfo
 
-- (id)initWithContext:(JSContext *)context forClass:(Class)cls superClassInfo:(JSObjCClassInfo*)superClassInfo
+- (id)initWithContext:(JSContext *)context forClass:(Class)cls
 {
     self = [super init];
     if (!self)
@@ -387,8 +388,6 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
     definition.className = className;
     m_classRef = JSClassCreate(&definition);
 
-    [self allocateConstructorAndPrototypeWithSuperClassInfo:superClassInfo];
-
     return self;
 }
 
@@ -398,7 +397,7 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
     [super dealloc];
 }
 
-static JSValue *allocateConstructorForCustomClass(JSContext *context, const char* className, Class cls)
+static JSC::JSObject* allocateConstructorForCustomClass(JSContext *context, const char* className, Class cls)
 {
     if (!supportsInitMethodConstructors())
         return constructorWithCustomBrand(context, [NSString stringWithFormat:@"%sConstructor", className], cls);
@@ -445,50 +444,45 @@ static JSValue *allocateConstructorForCustomClass(JSContext *context, const char
         }
 
         JSObjectRef method = objCCallbackFunctionForInit(context, cls, initProtocol, initMethod, types);
-        return [JSValue valueWithJSValueRef:method inContext:context];
+        return toJS(method);
     }
     return constructorWithCustomBrand(context, [NSString stringWithFormat:@"%sConstructor", className], cls);
 }
 
-- (void)allocateConstructorAndPrototypeWithSuperClassInfo:(JSObjCClassInfo*)superClassInfo
+typedef std::pair<JSC::JSObject*, JSC::JSObject*> ConstructorPrototypePair;
+
+- (ConstructorPrototypePair)allocateConstructorAndPrototype
 {
+    JSObjCClassInfo* superClassInfo = [m_context.wrapperMap classInfoForClass:class_getSuperclass(m_class)];
+
     ASSERT(!m_constructor || !m_prototype);
     ASSERT((m_class == [NSObject class]) == !superClassInfo);
+
+    JSC::JSObject* jsPrototype = m_prototype.get();
+    JSC::JSObject* jsConstructor = m_constructor.get();
+
     if (!superClassInfo) {
         JSContextRef cContext = [m_context JSGlobalContextRef];
         JSValue *constructor = m_context[@"Object"];
-        if (!m_constructor)
-            m_constructor = toJS(JSValueToObject(cContext, valueInternalValue(constructor), 0));
+        if (!jsConstructor)
+            jsConstructor = toJS(JSValueToObject(cContext, valueInternalValue(constructor), 0));
 
-        if (!m_prototype) {
+        if (!jsPrototype) {
             JSValue *prototype = constructor[@"prototype"];
-            m_prototype = toJS(JSValueToObject(cContext, valueInternalValue(prototype), 0));
+            jsPrototype = toJS(JSValueToObject(cContext, valueInternalValue(prototype), 0));
         }
     } else {
-        // We need to hold a reference to the superclass prototype here on the stack
-        // to that it won't get GC'ed while we do allocations between now and when we
-        // set it in this class' prototype below.
-        JSC::JSObject* superClassPrototype = superClassInfo->m_prototype.get();
-
         const char* className = class_getName(m_class);
 
         // Create or grab the prototype/constructor pair.
-        JSValue *prototype;
-        JSValue *constructor;
-        if (m_prototype)
-            prototype = [JSValue valueWithJSValueRef:toRef(m_prototype.get()) inContext:m_context];
-        else
-            prototype = objectWithCustomBrand(m_context, [NSString stringWithFormat:@"%sPrototype", className]);
+        if (!jsPrototype)
+            jsPrototype = objectWithCustomBrand(m_context, [NSString stringWithFormat:@"%sPrototype", className]);
 
-        if (m_constructor)
-            constructor = [JSValue valueWithJSValueRef:toRef(m_constructor.get()) inContext:m_context];
-        else
-            constructor = allocateConstructorForCustomClass(m_context, className, m_class);
+        if (!jsConstructor)
+            jsConstructor = allocateConstructorForCustomClass(m_context, className, m_class);
 
-        JSContextRef cContext = [m_context JSGlobalContextRef];
-        m_prototype = toJS(JSValueToObject(cContext, valueInternalValue(prototype), 0));
-        m_constructor = toJS(JSValueToObject(cContext, valueInternalValue(constructor), 0));
-
+        JSValue* prototype = [JSValue valueWithJSValueRef:toRef(jsPrototype) inContext:m_context];
+        JSValue* constructor = [JSValue valueWithJSValueRef:toRef(jsConstructor) inContext:m_context];
         putNonEnumerable(prototype, @"constructor", constructor);
         putNonEnumerable(constructor, @"prototype", prototype);
 
@@ -499,18 +493,16 @@ static JSValue *allocateConstructorForCustomClass(JSContext *context, const char
         });
 
         // Set [Prototype].
-        JSObjectSetPrototype([m_context JSGlobalContextRef], toRef(m_prototype.get()), toRef(superClassPrototype));
+        JSC::JSObject* superClassPrototype = [superClassInfo prototype];
+        JSObjectSetPrototype([m_context JSGlobalContextRef], toRef(jsPrototype), toRef(superClassPrototype));
     }
+
+    m_prototype = jsPrototype;
+    m_constructor = jsConstructor;
+    return ConstructorPrototypePair(jsConstructor, jsPrototype);
 }
 
-- (void)reallocateConstructorAndOrPrototype
-{
-    [self allocateConstructorAndPrototypeWithSuperClassInfo:[m_context.wrapperMap classInfoForClass:class_getSuperclass(m_class)]];
-    // We should not add any code here that can trigger a GC or the prototype and
-    // constructor that we just created may be collected before they can be used.
-}
-
-- (JSValue *)wrapperForObject:(id)object
+- (JSC::JSObject*)wrapperForObject:(id)object
 {
     ASSERT([object isKindOfClass:m_class]);
     ASSERT(m_block == [object isKindOfClass:getNSBlockClass()]);
@@ -520,31 +512,33 @@ static JSValue *allocateConstructorForCustomClass(JSContext *context, const char
             JSValue *prototype = [JSValue valueWithNewObjectInContext:m_context];
             putNonEnumerable(constructor, @"prototype", prototype);
             putNonEnumerable(prototype, @"constructor", constructor);
-            return constructor;
+            return toJS(method);
         }
     }
 
-    if (!m_prototype)
-        [self reallocateConstructorAndOrPrototype];
-    ASSERT(!!m_prototype);
-    // We need to hold a reference to the prototype here on the stack to that it won't
-    // get GC'ed while we create the wrapper below.
-    JSC::JSObject* prototype = m_prototype.get();
+    JSC::JSObject* prototype = [self prototype];
 
-    JSObjectRef wrapper = makeWrapper([m_context JSGlobalContextRef], m_classRef, object);
-    JSObjectSetPrototype([m_context JSGlobalContextRef], wrapper, toRef(prototype));
-    return [JSValue valueWithJSValueRef:wrapper inContext:m_context];
+    JSC::JSObject* wrapper = makeWrapper([m_context JSGlobalContextRef], m_classRef, object);
+    JSObjectSetPrototype([m_context JSGlobalContextRef], toRef(wrapper), toRef(prototype));
+    return wrapper;
 }
 
-- (JSValue *)constructor
+- (JSC::JSObject*)constructor
 {
-    if (!m_constructor)
-        [self reallocateConstructorAndOrPrototype];
-    ASSERT(!!m_constructor);
-    // If we need to add any code here in the future that can trigger a GC, we should
-    // cache the constructor pointer in a stack local var first so that it is protected
-    // from the GC until it gets used below.
-    return [JSValue valueWithJSValueRef:toRef(m_constructor.get()) inContext:m_context];
+    JSC::JSObject* constructor = m_constructor.get();
+    if (!constructor)
+        constructor = [self allocateConstructorAndPrototype].first;
+    ASSERT(!!constructor);
+    return constructor;
+}
+
+- (JSC::JSObject*)prototype
+{
+    JSC::JSObject* prototype = m_prototype.get();
+    if (!prototype)
+        prototype = [self allocateConstructorAndPrototype].second;
+    ASSERT(!!prototype);
+    return prototype;
 }
 
 @end
@@ -591,7 +585,7 @@ static JSValue *allocateConstructorForCustomClass(JSContext *context, const char
     if ('_' == *class_getName(cls))
         return m_classMap[cls] = [self classInfoForClass:class_getSuperclass(cls)];
 
-    return m_classMap[cls] = [[[JSObjCClassInfo alloc] initWithContext:m_context forClass:cls superClassInfo:[self classInfoForClass:class_getSuperclass(cls)]] autorelease];
+    return m_classMap[cls] = [[[JSObjCClassInfo alloc] initWithContext:m_context forClass:cls] autorelease];
 }
 
 - (JSValue *)jsWrapperForObject:(id)object
@@ -600,12 +594,11 @@ static JSValue *allocateConstructorForCustomClass(JSContext *context, const char
     if (jsWrapper)
         return [JSValue valueWithJSValueRef:toRef(jsWrapper) inContext:m_context];
 
-    JSValue *wrapper;
     if (class_isMetaClass(object_getClass(object)))
-        wrapper = [[self classInfoForClass:(Class)object] constructor];
+        jsWrapper = [[self classInfoForClass:(Class)object] constructor];
     else {
         JSObjCClassInfo* classInfo = [self classInfoForClass:[object class]];
-        wrapper = [classInfo wrapperForObject:object];
+        jsWrapper = [classInfo wrapperForObject:object];
     }
 
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=105891
@@ -613,10 +606,8 @@ static JSValue *allocateConstructorForCustomClass(JSContext *context, const char
     // (1) For immortal objects JSValues will effectively leak and this results in error output being logged - we should avoid adding associated objects to immortal objects.
     // (2) A long lived object may rack up many JSValues. When the contexts are released these will unprotect the associated JavaScript objects,
     //     but still, would probably nicer if we made it so that only one associated object was required, broadcasting object dealloc.
-    JSC::ExecState* exec = toJS([m_context JSGlobalContextRef]);
-    jsWrapper = toJS(exec, valueInternalValue(wrapper)).toObject(exec);
     m_cachedJSWrappers.set(object, jsWrapper);
-    return wrapper;
+    return [JSValue valueWithJSValueRef:toRef(jsWrapper) inContext:m_context];
 }
 
 - (JSValue *)objcWrapperForJSValueRef:(JSValueRef)value

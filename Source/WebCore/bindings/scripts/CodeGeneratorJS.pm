@@ -219,6 +219,23 @@ sub SkipIncludeHeader
     return $typesWithoutHeader{$type};
 }
 
+my %testSupportClasses = (
+    "JSInternals" => 1,
+    "JSInternalSettings" => 1,
+    "JSInternalSettingsGenerated" => 1,
+    "JSMallocStatistics" => 1,
+    "JSMemoryInfo" => 1,
+    "JSTypeConversions" => 1,
+);
+
+sub ExportLabelForClass
+{
+    my $class = shift;
+
+    return "WEBCORE_TESTSUPPORT_EXPORT" if $testSupportClasses{$class};
+    return "WEBCORE_EXPORT"
+}
+
 sub AddIncludesForType
 {
     my $type = shift;
@@ -800,8 +817,10 @@ sub GenerateHeader
     AddClassForwardIfNeeded("JSDOMWindowShell") if $interfaceName eq "DOMWindow";
     AddClassForwardIfNeeded("JSDictionary") if $codeGenerator->IsConstructorTemplate($interface, "Event");
 
+    my $exportLabel = ExportLabelForClass($className);
+
     # Class declaration
-    push(@headerContent, "class $className : public $parentClassName {\n");
+    push(@headerContent, "class $exportLabel $className : public $parentClassName {\n");
 
     # Static create methods
     push(@headerContent, "public:\n");
@@ -858,7 +877,7 @@ sub GenerateHeader
         } elsif ($interfaceName eq "DOMStringList") {
             push(@headerContent, "    static PassRefPtr<DOMStringList> toWrapped(JSC::ExecState*, JSC::JSValue);\n");
         } else {
-            push(@headerContent, "    WEBCORE_EXPORT static $implType* toWrapped(JSC::JSValue);\n");
+            push(@headerContent, "    static $implType* toWrapped(JSC::JSValue);\n");
         }
     }
 
@@ -915,7 +934,7 @@ sub GenerateHeader
     if ($interfaceName eq "Node") {
         push(@headerContent, "\n");
         push(@headerContent, "protected:\n");
-        push(@headerContent, "    WEBCORE_EXPORT static const JSC::ClassInfo s_info;\n");
+        push(@headerContent, "    static const JSC::ClassInfo s_info;\n");
         push(@headerContent, "public:\n");
         push(@headerContent, "    static const JSC::ClassInfo* info() { return &s_info; }\n\n");
     } else {
@@ -1136,6 +1155,7 @@ sub GenerateHeader
         } else {
             push(@headerContent, "class JS${interfaceName}Owner : public JSC::WeakHandleOwner {\n");
         }
+        $headerIncludes{"<wtf/NeverDestroyed.h>"} = 1;
         push(@headerContent, "public:\n");
         push(@headerContent, "    virtual bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&);\n");
         push(@headerContent, "    virtual void finalize(JSC::Handle<JSC::Unknown>, void* context);\n");
@@ -1143,17 +1163,18 @@ sub GenerateHeader
         push(@headerContent, "\n");
         push(@headerContent, "inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, $implType*)\n");
         push(@headerContent, "{\n");
-        push(@headerContent, "    DEPRECATED_DEFINE_STATIC_LOCAL(JS${interfaceName}Owner, js${interfaceName}Owner, ());\n");
-        push(@headerContent, "    return &js${interfaceName}Owner;\n");
+        push(@headerContent, "    static NeverDestroyed<JS${interfaceName}Owner> owner;\n");
+        push(@headerContent, "    return &owner.get();\n");
         push(@headerContent, "}\n");
         push(@headerContent, "\n");
     }
     if (ShouldGenerateToJSDeclaration($hasParent, $interface)) {
-        # Node needs to not be exported, others need to be exported.
-        if ($implType eq "Node") {
+        # Node and NodeList have custom inline implementations which thus cannot be exported.
+        # FIXME: The special case for Node and NodeList should probably be implemented via an IDL attribute.
+        if ($implType eq "Node" or $implType eq "NodeList") {
             push(@headerContent, "JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $implType*);\n");
         } else {
-            push(@headerContent, "WEBCORE_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $implType*);\n");
+            push(@headerContent, "$exportLabel JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $implType*);\n");
         }
         push(@headerContent, "inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, $implType& impl) { return toJS(exec, globalObject, &impl); }\n");
     }
@@ -1936,9 +1957,9 @@ sub GenerateImplementation
                                \%conditionals, $justGenerateValueArray);
 
     if ($justGenerateValueArray) {
-        push(@implContent, "WEBCORE_EXPORT const ClassInfo ${className}Prototype::s_info = { \"${visibleInterfaceName}Prototype\", &Base::s_info, 0, CREATE_METHOD_TABLE(${className}Prototype) };\n\n");
+        push(@implContent, "const ClassInfo ${className}Prototype::s_info = { \"${visibleInterfaceName}Prototype\", &Base::s_info, 0, CREATE_METHOD_TABLE(${className}Prototype) };\n\n");
     } else {
-        push(@implContent, "WEBCORE_EXPORT const ClassInfo ${className}Prototype::s_info = { \"${visibleInterfaceName}Prototype\", &Base::s_info, &${className}PrototypeTable, CREATE_METHOD_TABLE(${className}Prototype) };\n\n");
+        push(@implContent, "const ClassInfo ${className}Prototype::s_info = { \"${visibleInterfaceName}Prototype\", &Base::s_info, &${className}PrototypeTable, CREATE_METHOD_TABLE(${className}Prototype) };\n\n");
     }
 
     if (PrototypeOverridesGetOwnPropertySlot($interface)) {
@@ -1999,7 +2020,7 @@ sub GenerateImplementation
     }
 
     # - Initialize static ClassInfo object
-    push(@implContent, "WEBCORE_EXPORT const ClassInfo $className" . "::s_info = { \"${visibleInterfaceName}\", &Base::s_info, ");
+    push(@implContent, "const ClassInfo $className" . "::s_info = { \"${visibleInterfaceName}\", &Base::s_info, ");
 
     if ($numInstanceAttributes > 0) {
         push(@implContent, "&${className}Table");

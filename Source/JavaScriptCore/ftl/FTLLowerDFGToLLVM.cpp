@@ -93,7 +93,6 @@ public:
     LowerDFGToLLVM(State& state)
         : m_graph(state.graph)
         , m_ftlState(state)
-        , m_loweringSucceeded(true)
         , m_heaps(state.context)
         , m_out(state.context)
         , m_state(state.graph)
@@ -103,12 +102,8 @@ public:
         , m_tbaaStructKind(mdKindID(state.context, "tbaa.struct"))
     {
     }
-
-
-#define LOWERING_FAILED(node, reason)                                  \
-    loweringFailed((node), __FILE__, __LINE__, WTF_PRETTY_FUNCTION, (reason));
-
-    bool lower()
+    
+    void lower()
     {
         CString name;
         if (verboseCompilationEnabled()) {
@@ -192,6 +187,30 @@ public:
             m_out.stackmapIntrinsic(), m_out.constInt64(m_ftlState.capturedStackmapID),
             m_out.int32Zero, capturedAlloca);
         
+        // If we have any CallVarargs then we nee to have a spill slot for it.
+        bool hasVarargs = false;
+        for (BasicBlock* block : preOrder) {
+            for (Node* node : *block) {
+                switch (node->op()) {
+                case CallVarargs:
+                case CallForwardVarargs:
+                case ConstructVarargs:
+                    hasVarargs = true;
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+        if (hasVarargs) {
+            LValue varargsSpillSlots = m_out.alloca(
+                arrayType(m_out.int64, JSCallVarargs::numSpillSlotsNeeded()));
+            m_ftlState.varargsSpillSlotsStackmapID = m_stackmapIDs++;
+            m_out.call(
+                m_out.stackmapIntrinsic(), m_out.constInt64(m_ftlState.varargsSpillSlotsStackmapID),
+                m_out.int32Zero, varargsSpillSlots);
+        }
+        
         m_callFrame = m_out.ptrToInt(
             m_out.call(m_out.frameAddressIntrinsic(), m_out.int32Zero), m_out.intPtr);
         m_tagTypeNumber = m_out.constInt64(TagTypeNumber);
@@ -234,7 +253,7 @@ public:
             LValue jsValue = m_out.load64(addressFor(operand));
             
             if (node) {
-                DFG_ASSERT(m_graph, node, operand == node->variableAccessData()->machineLocal());
+                DFG_ASSERT(m_graph, node, operand == node->stackAccessData()->machineLocal);
                 
                 // This is a hack, but it's an effective one. It allows us to do CSE on the
                 // primordial load of arguments. This assumes that the GetLocal that got put in
@@ -256,22 +275,14 @@ public:
             case FlushedJSValue:
                 break;
             default:
-                LOWERING_FAILED(node, "Bad flush format for argument");
+                DFG_CRASH(m_graph, node, "Bad flush format for argument");
                 break;
             }
         }
-
-        if (!m_loweringSucceeded)
-            return m_loweringSucceeded;
-
         m_out.jump(lowBlock(m_graph.block(0)));
         
-        for (BasicBlock* block : preOrder) {
+        for (BasicBlock* block : preOrder)
             compileBlock(block);
-
-            if (!m_loweringSucceeded)
-                return m_loweringSucceeded;
-        }
         
         if (Options::dumpLLVMIR())
             dumpModule(m_ftlState.module);
@@ -280,8 +291,6 @@ public:
             m_ftlState.dumpState("after lowering");
         if (validationEnabled())
             verifyModule(m_ftlState.module);
-
-        return m_loweringSucceeded;
     }
 
 private:
@@ -314,8 +323,8 @@ private:
                     type = m_out.int64;
                     break;
                 default:
-                    LOWERING_FAILED(node, "Bad Phi node result type");
-                    return;
+                    DFG_CRASH(m_graph, node, "Bad Phi node result type");
+                    break;
                 }
                 m_phis.add(node, buildAlloca(m_out.m_builder, type));
             }
@@ -446,11 +455,11 @@ private:
         case ExtractOSREntryLocal:
             compileExtractOSREntryLocal();
             break;
-        case GetLocal:
-            compileGetLocal();
+        case GetStack:
+            compileGetStack();
             break;
-        case PutLocal:
-            compilePutLocal();
+        case PutStack:
+            compilePutStack();
             break;
         case GetMyArgumentsLength:
             compileGetMyArgumentsLength();
@@ -698,6 +707,14 @@ private:
         case Construct:
             compileCallOrConstruct();
             break;
+        case CallVarargs:
+        case CallForwardVarargs:
+        case ConstructVarargs:
+            compileCallOrConstructVarargs();
+            break;
+        case LoadVarargs:
+            compileLoadVarargs();
+            break;
 #if ENABLE(FTL_NATIVE_CALL_INLINING)
         case NativeCall:
         case NativeConstruct:
@@ -743,6 +760,9 @@ private:
             break;
         case IsObject:
             compileIsObject();
+            break;
+        case IsObjectOrNull:
+            compileIsObjectOrNull();
             break;
         case IsFunction:
             compileIsFunction();
@@ -808,15 +828,12 @@ private:
         case PutByOffsetHint:
         case PutStructureHint:
         case BottomValue:
-        case KillLocal:
+        case KillStack:
             break;
         default:
-            LOWERING_FAILED(m_node, "Unrecognized node in FTL backend");
+            DFG_CRASH(m_graph, m_node, "Unrecognized node in FTL backend");
             break;
         }
-
-        if (!m_loweringSucceeded)
-            return false;
 
         if (!m_state.isValid()) {
             safelyInvalidateAfterTermination();
@@ -853,7 +870,7 @@ private:
             m_out.set(lowJSValue(m_node->child1()), destination);
             break;
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -879,7 +896,7 @@ private:
             setJSValue(m_out.get(source));
             break;
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -917,7 +934,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
         }
     }
     
@@ -942,7 +959,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
         }
     }
     
@@ -1005,7 +1022,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -1050,7 +1067,7 @@ private:
         setJSValue(m_out.load64(m_out.absolute(buffer + m_node->unlinkedLocal().toLocal())));
     }
     
-    void compileGetLocal()
+    void compileGetStack()
     {
         // GetLocals arise only for captured variables and arguments. For arguments, we might have
         // already loaded it.
@@ -1059,47 +1076,50 @@ private:
             return;
         }
         
-        VariableAccessData* variable = m_node->variableAccessData();
-        AbstractValue& value = m_state.variables().operand(variable->local());
+        StackAccessData* data = m_node->stackAccessData();
+        AbstractValue& value = m_state.variables().operand(data->local);
+        
+        DFG_ASSERT(m_graph, m_node, isConcrete(data->format));
+        DFG_ASSERT(m_graph, m_node, data->format != FlushedDouble); // This just happens to not arise for GetStacks, right now. It would be trivial to support.
         
         if (isInt32Speculation(value.m_type))
-            setInt32(m_out.load32(payloadFor(variable->machineLocal())));
+            setInt32(m_out.load32(payloadFor(data->machineLocal)));
         else
-            setJSValue(m_out.load64(addressFor(variable->machineLocal())));
+            setJSValue(m_out.load64(addressFor(data->machineLocal)));
     }
     
-    void compilePutLocal()
+    void compilePutStack()
     {
-        VariableAccessData* variable = m_node->variableAccessData();
-        switch (variable->flushFormat()) {
+        StackAccessData* data = m_node->stackAccessData();
+        switch (data->format) {
         case FlushedJSValue:
         case FlushedArguments: {
             LValue value = lowJSValue(m_node->child1());
-            m_out.store64(value, addressFor(variable->machineLocal()));
+            m_out.store64(value, addressFor(data->machineLocal));
             break;
         }
             
         case FlushedDouble: {
             LValue value = lowDouble(m_node->child1());
-            m_out.storeDouble(value, addressFor(variable->machineLocal()));
+            m_out.storeDouble(value, addressFor(data->machineLocal));
             break;
         }
             
         case FlushedInt32: {
             LValue value = lowInt32(m_node->child1());
-            m_out.store32(value, payloadFor(variable->machineLocal()));
+            m_out.store32(value, payloadFor(data->machineLocal));
             break;
         }
             
         case FlushedInt52: {
             LValue value = lowInt52(m_node->child1());
-            m_out.store64(value, addressFor(variable->machineLocal()));
+            m_out.store64(value, addressFor(data->machineLocal));
             break;
         }
             
         case FlushedCell: {
             LValue value = lowCell(m_node->child1());
-            m_out.store64(value, addressFor(variable->machineLocal()));
+            m_out.store64(value, addressFor(data->machineLocal));
             break;
         }
             
@@ -1107,12 +1127,12 @@ private:
             speculateBoolean(m_node->child1());
             m_out.store64(
                 lowJSValue(m_node->child1(), ManualOperandSpeculation),
-                addressFor(variable->machineLocal()));
+                addressFor(data->machineLocal));
             break;
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad flush format");
+            DFG_CRASH(m_graph, m_node, "Bad flush format");
             break;
         }
     }
@@ -1272,7 +1292,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -1346,7 +1366,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -1449,7 +1469,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -1547,7 +1567,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -1598,7 +1618,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -1624,7 +1644,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -1645,44 +1665,52 @@ private:
 
             LBasicBlock integerExponentIsSmallBlock = FTL_NEW_BLOCK(m_out, ("ArithPow test integer exponent is small."));
             LBasicBlock integerExponentPowBlock = FTL_NEW_BLOCK(m_out, ("ArithPow pow(double, (int)double)."));
-            LBasicBlock doubleExponentPowBlock = FTL_NEW_BLOCK(m_out, ("ArithPow pow(double, double)."));
+            LBasicBlock doubleExponentPowBlockEntry = FTL_NEW_BLOCK(m_out, ("ArithPow pow(double, double)."));
+            LBasicBlock nanExceptionExponentIsInfinity = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception, check exponent is infinity."));
+            LBasicBlock nanExceptionBaseIsOne = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception, check base is one."));
             LBasicBlock powBlock = FTL_NEW_BLOCK(m_out, ("ArithPow regular pow"));
-            LBasicBlock nanException = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception"));
+            LBasicBlock nanExceptionResultIsNaN = FTL_NEW_BLOCK(m_out, ("ArithPow NaN Exception, result is NaN."));
             LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithPow continuation"));
 
             LValue integerExponent = m_out.fpToInt32(exponent);
             LValue integerExponentConvertedToDouble = m_out.intToDouble(integerExponent);
             LValue exponentIsInteger = m_out.doubleEqual(exponent, integerExponentConvertedToDouble);
-            m_out.branch(exponentIsInteger, unsure(integerExponentIsSmallBlock), unsure(doubleExponentPowBlock));
+            m_out.branch(exponentIsInteger, unsure(integerExponentIsSmallBlock), unsure(doubleExponentPowBlockEntry));
 
             LBasicBlock lastNext = m_out.appendTo(integerExponentIsSmallBlock, integerExponentPowBlock);
             LValue integerExponentBelow1000 = m_out.below(integerExponent, m_out.constInt32(1000));
-            m_out.branch(integerExponentBelow1000, usually(integerExponentPowBlock), rarely(doubleExponentPowBlock));
+            m_out.branch(integerExponentBelow1000, usually(integerExponentPowBlock), rarely(doubleExponentPowBlockEntry));
 
-            m_out.appendTo(integerExponentPowBlock, doubleExponentPowBlock);
+            m_out.appendTo(integerExponentPowBlock, doubleExponentPowBlockEntry);
             ValueFromBlock powDoubleIntResult = m_out.anchor(m_out.doublePowi(base, integerExponent));
             m_out.jump(continuation);
 
-            m_out.appendTo(doubleExponentPowBlock, powBlock);
             // If y is NaN, the result is NaN.
-            // FIXME: shouldn't we only check that if the type of child2() might have NaN?
-            LValue exponentIsNaN = m_out.doubleNotEqualOrUnordered(exponent, exponent);
+            m_out.appendTo(doubleExponentPowBlockEntry, nanExceptionExponentIsInfinity);
+            LValue exponentIsNaN;
+            if (m_state.forNode(m_node->child2()).m_type & SpecDoubleNaN)
+                exponentIsNaN = m_out.doubleNotEqualOrUnordered(exponent, exponent);
+            else
+                exponentIsNaN = m_out.booleanFalse;
+            m_out.branch(exponentIsNaN, rarely(nanExceptionResultIsNaN), usually(nanExceptionExponentIsInfinity));
 
             // If abs(x) is 1 and y is +infinity, the result is NaN.
             // If abs(x) is 1 and y is -infinity, the result is NaN.
+            m_out.appendTo(nanExceptionExponentIsInfinity, nanExceptionBaseIsOne);
             LValue absoluteExponent = m_out.doubleAbs(exponent);
             LValue absoluteExponentIsInfinity = m_out.doubleEqual(absoluteExponent, m_out.constDouble(std::numeric_limits<double>::infinity()));
+            m_out.branch(absoluteExponentIsInfinity, rarely(nanExceptionBaseIsOne), usually(powBlock));
+
+            m_out.appendTo(nanExceptionBaseIsOne, powBlock);
             LValue absoluteBase = m_out.doubleAbs(base);
             LValue absoluteBaseIsOne = m_out.doubleEqual(absoluteBase, m_out.constDouble(1));
-            LValue oneBaseInfiniteExponent = m_out.bitAnd(absoluteExponentIsInfinity, absoluteBaseIsOne);
+            m_out.branch(absoluteBaseIsOne, unsure(nanExceptionResultIsNaN), unsure(powBlock));
 
-            m_out.branch(m_out.bitOr(exponentIsNaN, oneBaseInfiniteExponent), rarely(nanException), usually(powBlock));
-
-            m_out.appendTo(powBlock, nanException);
+            m_out.appendTo(powBlock, nanExceptionResultIsNaN);
             ValueFromBlock powResult = m_out.anchor(m_out.doublePow(base, exponent));
             m_out.jump(continuation);
 
-            m_out.appendTo(nanException, continuation);
+            m_out.appendTo(nanExceptionResultIsNaN, continuation);
             ValueFromBlock pureNan = m_out.anchor(m_out.constDouble(PNaN));
             m_out.jump(continuation);
 
@@ -1749,7 +1777,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
     }
@@ -1887,8 +1915,8 @@ private:
             vmCall(m_out.operation(operationEnsureArrayStorage), m_callFrame, cell);
             break;
         default:
-            LOWERING_FAILED(m_node, "Bad array type");
-            return;
+            DFG_CRASH(m_graph, m_node, "Bad array type");
+            break;
         }
         
         structureID = m_out.load32(cell, m_heaps.JSCell_structureID);
@@ -1956,7 +1984,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             return;
         }
     }
@@ -2082,8 +2110,22 @@ private:
     {
         checkArgumentsNotCreated();
 
-        DFG_ASSERT(m_graph, m_node, !m_node->origin.semantic.inlineCallFrame);
-        setInt32(m_out.add(m_out.load32NonNegative(payloadFor(JSStack::ArgumentCount)), m_out.constInt32(-1)));
+        if (m_node->origin.semantic.inlineCallFrame
+            && !m_node->origin.semantic.inlineCallFrame->isVarargs()) {
+            setInt32(
+                m_out.constInt32(
+                    m_node->origin.semantic.inlineCallFrame->arguments.size() - 1));
+        } else {
+            VirtualRegister argumentCountRegister;
+            if (!m_node->origin.semantic.inlineCallFrame)
+                argumentCountRegister = VirtualRegister(JSStack::ArgumentCount);
+            else
+                argumentCountRegister = m_node->origin.semantic.inlineCallFrame->argumentCountRegister;
+            setInt32(
+                m_out.add(
+                    m_out.load32NonNegative(payloadFor(argumentCountRegister)),
+                    m_out.constInt32(-1)));
+        }
     }
     
     void compileGetMyArgumentByVal()
@@ -2095,10 +2137,17 @@ private:
         LValue index = lowInt32(m_node->child1());
         
         LValue limit;
-        if (codeOrigin.inlineCallFrame)
+        if (codeOrigin.inlineCallFrame
+            && !codeOrigin.inlineCallFrame->isVarargs())
             limit = m_out.constInt32(codeOrigin.inlineCallFrame->arguments.size() - 1);
-        else
-            limit = m_out.sub(m_out.load32(payloadFor(JSStack::ArgumentCount)), m_out.int32One);
+        else {
+            VirtualRegister argumentCountRegister;
+            if (!codeOrigin.inlineCallFrame)
+                argumentCountRegister = VirtualRegister(JSStack::ArgumentCount);
+            else
+                argumentCountRegister = codeOrigin.inlineCallFrame->argumentCountRegister;
+            limit = m_out.sub(m_out.load32(payloadFor(argumentCountRegister)), m_out.int32One);
+        }
         
         speculate(Uncountable, noValue(), 0, m_out.aboveOrEqual(index, limit));
         
@@ -2107,8 +2156,7 @@ private:
             // FIXME: FTL should support activations.
             // https://bugs.webkit.org/show_bug.cgi?id=129576
             
-            LOWERING_FAILED(m_node, "Unimplemented");
-            return;
+            DFG_CRASH(m_graph, m_node, "Unimplemented");
         }
         
         TypedPointer base;
@@ -2154,7 +2202,7 @@ private:
                 return;
             }
             
-            LOWERING_FAILED(m_node, "Bad array type");
+            DFG_CRASH(m_graph, m_node, "Bad array type");
             return;
         }
     }
@@ -2304,8 +2352,7 @@ private:
                         result = m_out.load32(pointer);
                         break;
                     default:
-                        LOWERING_FAILED(m_node, "Bad element size");
-                        return;
+                        DFG_CRASH(m_graph, m_node, "Bad element size");
                     }
                     
                     if (elementSize(type) < 4) {
@@ -2349,15 +2396,14 @@ private:
                     result = m_out.loadDouble(pointer);
                     break;
                 default:
-                    LOWERING_FAILED(m_node, "Bad typed array type");
-                    return;
+                    DFG_CRASH(m_graph, m_node, "Bad typed array type");
                 }
                 
                 setDouble(result);
                 return;
             }
             
-            LOWERING_FAILED(m_node, "Bad array type");
+            DFG_CRASH(m_graph, m_node, "Bad array type");
             return;
         } }
     }
@@ -2461,10 +2507,9 @@ private:
                 m_out.storeDouble(value, elementPointer);
                 break;
             }
-
+                
             default:
-                LOWERING_FAILED(m_node, "Bad array type");
-                return;
+                DFG_CRASH(m_graph, m_node, "Bad array type");
             }
 
             m_out.jump(continuation);
@@ -2557,8 +2602,7 @@ private:
                     }
                         
                     default:
-                        LOWERING_FAILED(m_node, "Bad use kind");
-                        return;
+                        DFG_CRASH(m_graph, m_node, "Bad use kind");
                     }
                     
                     switch (elementSize(type)) {
@@ -2575,8 +2619,7 @@ private:
                         refType = m_out.ref32;
                         break;
                     default:
-                        LOWERING_FAILED(m_node, "Bad element size");
-                        return;
+                        DFG_CRASH(m_graph, m_node, "Bad element size");
                     }
                 } else /* !isInt(type) */ {
                     LValue value = lowDouble(child3);
@@ -2590,8 +2633,7 @@ private:
                         refType = m_out.refDouble;
                         break;
                     default:
-                        LOWERING_FAILED(m_node, "Bad typed array type");
-                        return;
+                        DFG_CRASH(m_graph, m_node, "Bad typed array type");
                     }
                 }
                 
@@ -2615,8 +2657,8 @@ private:
                 return;
             }
             
-            LOWERING_FAILED(m_node, "Bad array type");
-            return;
+            DFG_CRASH(m_graph, m_node, "Bad array type");
+            break;
         }
     }
     
@@ -2687,7 +2729,7 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad array type");
+            DFG_CRASH(m_graph, m_node, "Bad array type");
             return;
         }
     }
@@ -2745,7 +2787,7 @@ private:
         }
 
         default:
-            LOWERING_FAILED(m_node, "Bad array type");
+            DFG_CRASH(m_graph, m_node, "Bad array type");
             return;
         }
     }
@@ -2782,8 +2824,8 @@ private:
                 switch (m_node->indexingType()) {
                 case ALL_BLANK_INDEXING_TYPES:
                 case ALL_UNDECIDED_INDEXING_TYPES:
-                    LOWERING_FAILED(m_node, "Bad indexing type");
-                    return;
+                    DFG_CRASH(m_graph, m_node, "Bad indexing type");
+                    break;
                     
                 case ALL_DOUBLE_INDEXING_TYPES:
                     m_out.storeDouble(
@@ -2800,8 +2842,8 @@ private:
                     break;
                     
                 default:
-                    LOWERING_FAILED(m_node, "Corrupt indexing type");
-                    return;
+                    DFG_CRASH(m_graph, m_node, "Corrupt indexing type");
+                    break;
                 }
             }
             
@@ -3060,9 +3102,7 @@ private:
             ValueFromBlock simpleResult = m_out.anchor(value);
             LValue isStringPredicate;
             if (m_node->child1()->prediction() & SpecString) {
-                isStringPredicate = m_out.equal(
-                    m_out.load32(value, m_heaps.JSCell_structureID),
-                    m_out.constInt32(vm().stringStructure->id()));
+                isStringPredicate = isString(value);
             } else
                 isStringPredicate = m_out.booleanFalse;
             m_out.branch(isStringPredicate, unsure(continuation), unsure(notString));
@@ -3082,8 +3122,8 @@ private:
         }
             
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
-            return;
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
+            break;
         }
     }
     
@@ -3174,8 +3214,8 @@ private:
                 m_out.operation(operationMakeRope3), m_callFrame, kids[0], kids[1], kids[2]));
             break;
         default:
-            LOWERING_FAILED(m_node, "Bad number of children");
-            return;
+            DFG_CRASH(m_graph, m_node, "Bad number of children");
+            break;
         }
         m_out.jump(continuation);
         
@@ -3595,8 +3635,8 @@ private:
             nonSpeculativeCompare(LLVMIntEQ, operationCompareEq);
             return;
         }
-
-        LOWERING_FAILED(m_node, "Bad use kinds");
+        
+        DFG_CRASH(m_graph, m_node, "Bad use kinds");
     }
     
     void compileCompareEqConstant()
@@ -3689,7 +3729,7 @@ private:
             return;
         }
         
-        LOWERING_FAILED(m_node, "Bad use kinds");
+        DFG_CRASH(m_graph, m_node, "Bad use kinds");
     }
     
     void compileCompareStrictEqConstant()
@@ -3729,9 +3769,8 @@ private:
 #if ENABLE(FTL_NATIVE_CALL_INLINING)
     void compileNativeCallOrConstruct() 
     {
-        int dummyThisArgument = m_node->op() == NativeCall ? 0 : 1;
         int numPassedArgs = m_node->numChildren() - 1;
-        int numArgs = numPassedArgs + dummyThisArgument;
+        int numArgs = numPassedArgs;
 
         JSFunction* knownFunction = jsCast<JSFunction*>(m_node->cellOperand()->value().asCell());
         NativeFunction function = knownFunction->nativeFunction();
@@ -3752,12 +3791,9 @@ private:
 
         m_out.store64(m_out.constInt64(numArgs), addressFor(m_execStorage, JSStack::ArgumentCount));
 
-        if (dummyThisArgument) 
-            m_out.storePtr(getUndef(m_out.int64), addressFor(m_execStorage, JSStack::ThisArgument));
-        
         for (int i = 0; i < numPassedArgs; ++i) {
             m_out.storePtr(lowJSValue(m_graph.varArgChild(m_node, 1 + i)),
-                addressFor(m_execStorage, dummyThisArgument ? JSStack::FirstArgument : JSStack::ThisArgument, i * sizeof(Register)));
+                addressFor(m_execStorage, JSStack::ThisArgument, i * sizeof(Register)));
         }
 
         LValue calleeCallFrame = m_out.address(m_execState, m_heaps.CallFrame_callerFrame).value();
@@ -3780,9 +3816,8 @@ private:
 
     void compileCallOrConstruct()
     {
-        int dummyThisArgument = m_node->op() == Call ? 0 : 1;
         int numPassedArgs = m_node->numChildren() - 1;
-        int numArgs = numPassedArgs + dummyThisArgument;
+        int numArgs = numPassedArgs;
 
         LValue jsCallee = lowJSValue(m_graph.varArgChild(m_node, 0));
 
@@ -3797,8 +3832,6 @@ private:
         arguments.append(getUndef(m_out.int64)); // code block
         arguments.append(jsCallee); // callee -> stack
         arguments.append(m_out.constInt64(numArgs)); // argument count and zeros for the tag
-        if (dummyThisArgument)
-            arguments.append(getUndef(m_out.int64));
         for (int i = 0; i < numPassedArgs; ++i)
             arguments.append(lowJSValue(m_graph.varArgChild(m_node, 1 + i)));
         
@@ -3810,6 +3843,88 @@ private:
         m_ftlState.jsCalls.append(JSCall(stackmapID, m_node));
         
         setJSValue(call);
+    }
+    
+    void compileCallOrConstructVarargs()
+    {
+        LValue jsCallee = lowJSValue(m_node->child1());
+        
+        LValue jsArguments = nullptr;
+        LValue thisArg = nullptr;
+        
+        switch (m_node->op()) {
+        case CallVarargs:
+            jsArguments = lowJSValue(m_node->child2());
+            thisArg = lowJSValue(m_node->child3());
+            break;
+        case CallForwardVarargs:
+            thisArg = lowJSValue(m_node->child2());
+            break;
+        case ConstructVarargs:
+            jsArguments = lowJSValue(m_node->child2());
+            thisArg = lowJSValue(m_node->child3());
+            break;
+        default:
+            DFG_CRASH(m_graph, m_node, "bad node type");
+            break;
+        }
+        
+        unsigned stackmapID = m_stackmapIDs++;
+        
+        Vector<LValue> arguments;
+        arguments.append(m_out.constInt64(stackmapID));
+        arguments.append(m_out.constInt32(sizeOfICFor(m_node)));
+        arguments.append(constNull(m_out.ref8));
+        arguments.append(m_out.constInt32(2 + !!jsArguments));
+        arguments.append(jsCallee);
+        if (jsArguments)
+            arguments.append(jsArguments);
+        ASSERT(thisArg);
+        arguments.append(thisArg);
+        
+        callPreflight();
+        
+        LValue call = m_out.call(m_out.patchpointInt64Intrinsic(), arguments);
+        setInstructionCallingConvention(call, LLVMCCallConv);
+        
+        m_ftlState.jsCallVarargses.append(JSCallVarargs(stackmapID, m_node));
+        
+        setJSValue(call);
+    }
+    
+    void compileLoadVarargs()
+    {
+        LoadVarargsData* data = m_node->loadVarargsData();
+        LValue jsArguments = lowJSValue(m_node->child1());
+        
+        LValue length = vmCall(
+            m_out.operation(operationSizeOfVarargs), m_callFrame, jsArguments,
+            m_out.constInt32(data->offset));
+        
+        // FIXME: There is a chance that we will call an effectful length property twice. This is safe
+        // from the standpoint of the VM's integrity, but it's subtly wrong from a spec compliance
+        // standpoint. The best solution would be one where we can exit *into* the op_call_varargs right
+        // past the sizing.
+        // https://bugs.webkit.org/show_bug.cgi?id=141448
+        
+        LValue lengthIncludingThis = m_out.add(length, m_out.int32One);
+        speculate(
+            VarargsOverflow, noValue(), nullptr,
+            m_out.above(lengthIncludingThis, m_out.constInt32(data->limit)));
+        
+        m_out.store32(lengthIncludingThis, payloadFor(data->machineCount));
+        
+        // FIXME: This computation is rather silly. If operationLaodVarargs just took a pointer instead
+        // of a VirtualRegister, we wouldn't have to do this.
+        // https://bugs.webkit.org/show_bug.cgi?id=141660
+        LValue machineStart = m_out.lShr(
+            m_out.sub(addressFor(data->machineStart.offset()).value(), m_callFrame),
+            m_out.constIntPtr(3));
+        
+        vmCall(
+            m_out.operation(operationLoadVarargs), m_callFrame,
+            m_out.castToInt32(machineStart), jsArguments, m_out.constInt32(data->offset),
+            length, m_out.constInt32(data->mandatoryMinimum));
     }
 
     void compileJump()
@@ -3875,8 +3990,8 @@ private:
             }
                 
             default:
-                LOWERING_FAILED(m_node, "Bad use kind");
-                return;
+                DFG_CRASH(m_graph, m_node, "Bad use kind");
+                break;
             }
             
             m_out.appendTo(switchOnInts, lastNext);
@@ -3921,8 +4036,8 @@ private:
             }
                 
             default:
-                LOWERING_FAILED(m_node, "Bad use kind");
-                return;
+                DFG_CRASH(m_graph, m_node, "Bad use kind");
+                break;
             }
             
             LBasicBlock lengthIs1 = FTL_NEW_BLOCK(m_out, ("Switch/SwitchChar length is 1"));
@@ -3974,7 +4089,7 @@ private:
         }
         
         case SwitchString: {
-            LOWERING_FAILED(m_node, "Unimplemented");
+            DFG_CRASH(m_graph, m_node, "Unimplemented");
             return;
         }
             
@@ -3997,7 +4112,7 @@ private:
             }
                 
             default:
-                LOWERING_FAILED(m_node, "Bad use kind");
+                DFG_CRASH(m_graph, m_node, "Bad use kind");
                 return;
             }
             
@@ -4005,7 +4120,7 @@ private:
             return;
         } }
         
-        LOWERING_FAILED(m_node, "Bad switch kind");
+        DFG_CRASH(m_graph, m_node, "Bad switch kind");
     }
     
     void compileReturn()
@@ -4087,11 +4202,29 @@ private:
         m_out.appendTo(continuation, lastNext);
         setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
     }
-    
+
     void compileIsObject()
     {
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = FTL_NEW_BLOCK(m_out, ("IsObject cell case"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("IsObject continuation"));
+
+        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
+        m_out.branch(isCell(value), unsure(isCellCase), unsure(continuation));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, continuation);
+        ValueFromBlock cellResult = m_out.anchor(isObject(value));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
+    }
+
+    void compileIsObjectOrNull()
+    {
         LValue pointerResult = vmCall(
-            m_out.operation(operationIsObject), m_callFrame, lowJSValue(m_node->child1()));
+            m_out.operation(operationIsObjectOrNull), m_callFrame, lowJSValue(m_node->child1()));
         setBoolean(m_out.notNull(pointerResult));
     }
     
@@ -4115,7 +4248,7 @@ private:
             
                 LValue call = m_out.call(
                     m_out.patchpointInt64Intrinsic(),
-                    m_out.constInt64(stackmapID), m_out.constInt32(sizeOfCheckIn()),
+                    m_out.constInt64(stackmapID), m_out.constInt32(sizeOfIn()),
                     constNull(m_out.ref8), m_out.constInt32(1), cell);
 
                 setInstructionCallingConvention(call, LLVMAnyRegCallConv);
@@ -4975,7 +5108,7 @@ private:
             return;
         }
         
-        LOWERING_FAILED(m_node, "Bad use kinds");
+        DFG_CRASH(m_graph, m_node, "Bad use kinds");
     }
     
     void compareEqObjectOrOtherToObject(Edge leftChild, Edge rightChild)
@@ -5013,10 +5146,7 @@ private:
             return;
         }
         
-        LValue structureID = m_out.load32(cell, m_heaps.JSCell_structureID);
-        FTL_TYPE_CHECK(
-            jsValueValue(cell), edge, filter,
-            m_out.equal(structureID, m_out.constInt32(vm().stringStructure->id())));
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, filter, isNotObject(cell));
         speculate(
             BadType, jsValueValue(cell), edge.node(),
             m_out.testNonZero8(
@@ -5288,7 +5418,7 @@ private:
             return m_out.phi(m_out.boolean, fastResult, slowResult);
         }
         default:
-            LOWERING_FAILED(m_node, "Bad use kind");
+            DFG_CRASH(m_graph, m_node, "Bad use kind");
             return 0;
         }
     }
@@ -5326,10 +5456,7 @@ private:
             break;
         case CellCaseSpeculatesObject:
             FTL_TYPE_CHECK(
-                jsValueValue(value), edge, (~SpecCell) | SpecObject,
-                m_out.equal(
-                    m_out.load32(value, m_heaps.JSCell_structureID),
-                    m_out.constInt32(vm().stringStructure->id())));
+                jsValueValue(value), edge, (~SpecCell) | SpecObject, isNotObject(value));
             break;
         }
         
@@ -5667,7 +5794,7 @@ private:
         case StrictInt52:
             return Int52;
         }
-        LOWERING_FAILED(m_node, "Bad use kind");
+        DFG_CRASH(m_graph, m_node, "Bad use kind");
         return Int52;
     }
     
@@ -5811,7 +5938,7 @@ private:
             return result;
         }
         
-        LOWERING_FAILED(m_node, "Value not defined");
+        DFG_CRASH(m_graph, m_node, "Value not defined");
         return 0;
     }
     
@@ -6126,8 +6253,7 @@ private:
             speculateMisc(edge);
             break;
         default:
-            LOWERING_FAILED(m_node, "Unsupported speculation use kind");
-            return;
+            DFG_CRASH(m_graph, m_node, "Unsupported speculation use kind");
         }
     }
     
@@ -6156,14 +6282,23 @@ private:
     
     LValue isObject(LValue cell)
     {
+        return m_out.aboveOrEqual(
+            m_out.load8(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt8(ObjectType));
+    }
+
+    LValue isNotObject(LValue cell)
+    {
+        return m_out.below(
+            m_out.load8(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt8(ObjectType));
+    }
+
+    LValue isNotString(LValue cell)
+    {
         return m_out.notEqual(
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().stringStructure->id()));
-    }
-    
-    LValue isNotString(LValue cell)
-    {
-        return isObject(cell);
     }
     
     LValue isString(LValue cell)
@@ -6171,11 +6306,6 @@ private:
         return m_out.equal(
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().stringStructure->id()));
-    }
-    
-    LValue isNotObject(LValue cell)
-    {
-        return isString(cell);
     }
     
     LValue isArrayType(LValue cell, ArrayMode arrayMode)
@@ -6188,7 +6318,7 @@ private:
             
             switch (arrayMode.arrayClass()) {
             case Array::OriginalArray:
-                LOWERING_FAILED(m_node, "Unexpected original array");
+                DFG_CRASH(m_graph, m_node, "Unexpected original array");
                 return 0;
                 
             case Array::Array:
@@ -6208,8 +6338,7 @@ private:
                     m_out.constInt8(arrayMode.shapeMask()));
             }
             
-            LOWERING_FAILED(m_node, "Corrupt array class");
-            return 0;
+            DFG_CRASH(m_graph, m_node, "Corrupt array class");
         }
             
         default:
@@ -6375,11 +6504,7 @@ private:
     
     void speculateNonNullObject(Edge edge, LValue cell)
     {
-        FTL_TYPE_CHECK(
-            jsValueValue(cell), edge, SpecObject, 
-            m_out.equal(
-                m_out.load32(cell, m_heaps.JSCell_structureID),
-                m_out.constInt32(vm().stringStructure->id())));
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecObject, isNotObject(cell));
         if (masqueradesAsUndefinedWatchpointIsStillValid())
             return;
         
@@ -6510,7 +6635,7 @@ private:
 
         // Buffer is out of space, flush it.
         m_out.appendTo(bufferIsFull, continuation);
-        vmCall(m_out.operation(operationFlushWriteBarrierBuffer), m_callFrame, base, NoExceptions);
+        vmCallNoExceptions(m_out.operation(operationFlushWriteBarrierBuffer), m_callFrame, base);
         m_out.jump(continuation);
 
         m_out.appendTo(continuation, lastNext);
@@ -6519,44 +6644,23 @@ private:
 #endif
     }
 
-    enum ExceptionCheckMode { NoExceptions, CheckExceptions };
-    
-    LValue vmCall(LValue function, ExceptionCheckMode mode = CheckExceptions)
+    template<typename... Args>
+    LValue vmCall(LValue function, Args... args)
     {
         callPreflight();
-        LValue result = m_out.call(function);
-        callCheck(mode);
-        return result;
-    }
-    LValue vmCall(LValue function, LValue arg1, ExceptionCheckMode mode = CheckExceptions)
-    {
-        callPreflight();
-        LValue result = m_out.call(function, arg1);
-        callCheck(mode);
-        return result;
-    }
-    LValue vmCall(LValue function, LValue arg1, LValue arg2, ExceptionCheckMode mode = CheckExceptions)
-    {
-        callPreflight();
-        LValue result = m_out.call(function, arg1, arg2);
-        callCheck(mode);
-        return result;
-    }
-    LValue vmCall(LValue function, LValue arg1, LValue arg2, LValue arg3, ExceptionCheckMode mode = CheckExceptions)
-    {
-        callPreflight();
-        LValue result = m_out.call(function, arg1, arg2, arg3);
-        callCheck(mode);
-        return result;
-    }
-    LValue vmCall(LValue function, LValue arg1, LValue arg2, LValue arg3, LValue arg4, ExceptionCheckMode mode = CheckExceptions)
-    {
-        callPreflight();
-        LValue result = m_out.call(function, arg1, arg2, arg3, arg4);
-        callCheck(mode);
+        LValue result = m_out.call(function, args...);
+        callCheck();
         return result;
     }
     
+    template<typename... Args>
+    LValue vmCallNoExceptions(LValue function, Args... args)
+    {
+        callPreflight();
+        LValue result = m_out.call(function, args...);
+        return result;
+    }
+
     void callPreflight(CodeOrigin codeOrigin)
     {
         m_out.store32(
@@ -6570,11 +6674,8 @@ private:
         callPreflight(m_node->origin.semantic);
     }
     
-    void callCheck(ExceptionCheckMode mode = CheckExceptions)
+    void callCheck()
     {
-        if (mode == NoExceptions)
-            return;
-        
         if (Options::enableExceptionFuzz())
             m_out.call(m_out.operation(operationExceptionFuzz));
         
@@ -6743,7 +6844,7 @@ private:
             return ExitValue::argumentsObjectThatWasNotCreated();
         }
         
-        LOWERING_FAILED(m_node, "Invalid flush format");
+        DFG_CRASH(m_graph, m_node, "Invalid flush format");
         return ExitValue::dead();
     }
     
@@ -6816,7 +6917,7 @@ private:
         if (isValid(value))
             return exitArgument(arguments, ValueFormatDouble, value.value());
 
-        LOWERING_FAILED(m_node, toCString("Cannot find value for node: ", node).data());
+        DFG_CRASH(m_graph, m_node, toCString("Cannot find value for node: ", node).data());
         return ExitValue::dead();
     }
     
@@ -6874,7 +6975,7 @@ private:
             return;
         }
         
-        LOWERING_FAILED(m_node, "Corrupt int52 kind");
+        DFG_CRASH(m_graph, m_node, "Corrupt int52 kind");
     }
     void setJSValue(Node* node, LValue value)
     {
@@ -7029,20 +7130,6 @@ private:
         m_out.unreachable();
     }
 
-    NO_RETURN_DUE_TO_ASSERT void loweringFailed(Node* node, const char* file, int line, const char* function, const char* assertion)
-    {
-#ifndef NDEBUG
-        m_graph.handleAssertionFailure(node, file, line, function, (assertion));
-#else
-        UNUSED_PARAM(node);
-        UNUSED_PARAM(file);
-        UNUSED_PARAM(line);
-        UNUSED_PARAM(function);
-        UNUSED_PARAM(assertion);
-#endif
-        m_loweringSucceeded = false;
-    }
-
     AvailabilityMap& availabilityMap() { return m_availabilityCalculator.m_availability; }
     
     VM& vm() { return m_graph.m_vm; }
@@ -7050,7 +7137,6 @@ private:
     
     Graph& m_graph;
     State& m_ftlState;
-    bool m_loweringSucceeded;
     AbstractHeapRepository m_heaps;
     Output m_out;
     
@@ -7098,14 +7184,12 @@ private:
     uint32_t m_stackmapIDs;
     unsigned m_tbaaKind;
     unsigned m_tbaaStructKind;
-
-#undef LOWERING_FAILED
 };
 
-bool lowerDFGToLLVM(State& state)
+void lowerDFGToLLVM(State& state)
 {
     LowerDFGToLLVM lowering(state);
-    return lowering.lower();
+    lowering.lower();
 }
 
 } } // namespace JSC::FTL

@@ -37,7 +37,6 @@
 #include "PlatformLayer.h"
 #include <runtime/Uint8ClampedArray.h>
 #include <wtf/Forward.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
@@ -153,7 +152,6 @@ private:
     IntSize m_size;
     IntSize m_logicalSize;
     float m_resolutionScale;
-    OwnPtr<GraphicsContext> m_context;
     FloatSize m_space;
 
     // This constructor will place its success into the given out-variable

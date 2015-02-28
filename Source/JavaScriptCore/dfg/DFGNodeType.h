@@ -57,8 +57,11 @@ namespace JSC { namespace DFG {
     /* better names for a lot of these. https://bugs.webkit.org/show_bug.cgi?id=137307 */\
     macro(GetLocal, NodeResultJS) \
     macro(SetLocal, 0) \
-    macro(PutLocal, NodeMustGenerate) \
-    macro(KillLocal, NodeMustGenerate) \
+    \
+    macro(PutStack, NodeMustGenerate) \
+    macro(KillStack, NodeMustGenerate) \
+    macro(GetStack, NodeResultJS) \
+    \
     macro(MovHint, 0) \
     macro(ZombieHint, 0) \
     macro(Phantom, NodeMustGenerate) \
@@ -147,6 +150,7 @@ namespace JSC { namespace DFG {
     /* this must be the directly subsequent property put. Note that PutByVal */\
     /* opcodes use VarArgs beause they may have up to 4 children. */\
     macro(GetByVal, NodeResultJS | NodeMustGenerate) \
+    macro(LoadVarargs, NodeMustGenerate) \
     macro(PutByValDirect, NodeMustGenerate | NodeHasVarArgs) \
     macro(PutByVal, NodeMustGenerate | NodeHasVarArgs) \
     macro(PutByValAlias, NodeMustGenerate | NodeHasVarArgs) \
@@ -217,6 +221,9 @@ namespace JSC { namespace DFG {
     /* Calls. */\
     macro(Call, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
     macro(Construct, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(CallVarargs, NodeResultJS | NodeMustGenerate) \
+    macro(CallForwardVarargs, NodeResultJS | NodeMustGenerate) \
+    macro(ConstructVarargs, NodeResultJS | NodeMustGenerate) \
     macro(NativeCall, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
     macro(NativeConstruct, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
     \
@@ -246,6 +253,7 @@ namespace JSC { namespace DFG {
     macro(IsNumber, NodeResultBoolean) \
     macro(IsString, NodeResultBoolean) \
     macro(IsObject, NodeResultBoolean) \
+    macro(IsObjectOrNull, NodeResultBoolean) \
     macro(IsFunction, NodeResultBoolean) \
     macro(TypeOf, NodeResultJS) \
     macro(LogicalNot, NodeResultBoolean) \

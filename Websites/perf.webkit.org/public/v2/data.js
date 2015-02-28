@@ -152,13 +152,18 @@ function Measurement(rawData)
     this._formattedRevisions = undefined;
 }
 
+Measurement.prototype.revisionForRepository = function (repositoryId)
+{
+    var revisions = this._raw['revisions'];
+    var rawData = revisions[repositoryId];
+    return rawData ? rawData[0] : null;
+}
+
 Measurement.prototype.commitTimeForRepository = function (repositoryId)
 {
     var revisions = this._raw['revisions'];
     var rawData = revisions[repositoryId];
-    if (!rawData)
-        return null;
-    return new Date(rawData[1]);
+    return rawData ? new Date(rawData[1]) : null;
 }
 
 Measurement.prototype.formattedRevisions = function (previousMeasurement)
@@ -169,14 +174,14 @@ Measurement.prototype.formattedRevisions = function (previousMeasurement)
     for (var repositoryId in revisions) {
         var currentRevision = revisions[repositoryId][0];
         var previousRevision = previousRevisions ? previousRevisions[repositoryId][0] : null;
-        var formatttedRevision = this._formatRevisionRange(previousRevision, currentRevision);
+        var formatttedRevision = Measurement.formatRevisionRange(currentRevision, previousRevision);
         formattedRevisions[repositoryId] = formatttedRevision;
     }
 
     return formattedRevisions;
 }
 
-Measurement.prototype._formatRevisionRange = function (previousRevision, currentRevision)
+Measurement.formatRevisionRange = function (currentRevision, previousRevision)
 {
     var revisionChanged = false;
     if (previousRevision == currentRevision)
@@ -320,27 +325,35 @@ RunsData.prototype.timeSeriesByBuildTime = function ()
 
 // FIXME: We need to devise a way to fetch runs in multiple chunks so that
 // we don't have to fetch the entire time series to just show the last 3 days.
-RunsData.fetchRuns = function (platformId, metricId, testGroupId)
+RunsData.fetchRuns = function (platformId, metricId, testGroupId, useCache)
 {
-    var filename = platformId + '-' + metricId + '.json';
+    var url = useCache ? '../data/' : '../api/runs/';
 
+    url += platformId + '-' + metricId + '.json';
     if (testGroupId)
-        filename += '?testGroup=' + testGroupId;
+        url += '?testGroup=' + testGroupId;
 
     return new Ember.RSVP.Promise(function (resolve, reject) {
-        $.getJSON('../api/runs/' + filename, function (data) {
-            if (data.status != 'OK') {
-                reject(data.status);
+        $.getJSON(url, function (response) {
+            if (response.status != 'OK') {
+                reject(response.status);
                 return;
             }
-            delete data.status;
+            delete response.status;
 
+            var data = response.configurations;
             for (var config in data)
                 data[config] = new RunsData(data[config]);
+            
+            if (response.lastModified)
+                response.lastModified = new Date(response.lastModified);
 
-            resolve(data);
+            resolve(response);
         }).fail(function (xhr, status, error) {
-            reject(xhr.status + (error ? ', ' + error : ''));
+            if (xhr.status == 404 && useCache)
+                resolve(null);
+            else
+                reject(xhr.status + (error ? ', ' + error : ''));
         })
     });
 }
@@ -366,6 +379,17 @@ function TimeSeries(series)
 TimeSeries.prototype.findPointByBuild = function (buildId)
 {
     return this._series.find(function (point) { return point.measurement.buildId() == buildId; })
+}
+
+TimeSeries.prototype.findPointByRevisions = function (revisions)
+{
+    return this._series.find(function (point, index) {
+        for (var repositoryId in revisions) {
+            if (point.measurement.revisionForRepository(repositoryId) != revisions[repositoryId])
+                return false;
+        }
+        return true;
+    });
 }
 
 TimeSeries.prototype.findPointByMeasurementId = function (measurementId)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2011, 2012, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -641,7 +641,7 @@ const PluginView* PDFPlugin::pluginView() const
 
 PassRefPtr<Scrollbar> PDFPlugin::createScrollbar(ScrollbarOrientation orientation)
 {
-    RefPtr<Scrollbar> widget = Scrollbar::createNativeScrollbar(this, orientation, RegularScrollbar);
+    RefPtr<Scrollbar> widget = Scrollbar::createNativeScrollbar(*this, orientation, RegularScrollbar);
     if (orientation == HorizontalScrollbar) {
         m_horizontalScrollbarLayer = adoptNS([[WKPDFPluginScrollbarLayer alloc] initWithPDFPlugin:this]);
         [m_containerLayer addSublayer:m_horizontalScrollbarLayer.get()];
@@ -662,8 +662,7 @@ void PDFPlugin::destroyScrollbar(ScrollbarOrientation orientation)
 
     willRemoveScrollbar(scrollbar.get(), orientation);
     scrollbar->removeFromParent();
-    scrollbar->disconnectFromScrollableArea();
-    scrollbar = 0;
+    scrollbar = nullptr;
 
     if (orientation == HorizontalScrollbar) {
         [m_horizontalScrollbarLayer removeFromSuperlayer];
@@ -725,7 +724,7 @@ IntRect PDFPlugin::scrollCornerRect() const
 ScrollableArea* PDFPlugin::enclosingScrollableArea() const
 {
     // FIXME: Walk up the frame tree and look for a scrollable parent frame or RenderLayer.
-    return 0;
+    return nullptr;
 }
 
 IntRect PDFPlugin::scrollableAreaBoundingBox() const
@@ -789,7 +788,7 @@ IntPoint PDFPlugin::maximumScrollPosition() const
     return maximumOffset;
 }
 
-void PDFPlugin::scrollbarStyleChanged(int, bool forceUpdate)
+void PDFPlugin::scrollbarStyleChanged(ScrollbarStyle style, bool forceUpdate)
 {
     if (!forceUpdate)
         return;
@@ -798,10 +797,9 @@ void PDFPlugin::scrollbarStyleChanged(int, bool forceUpdate)
     IntPoint newScrollOffset = IntPoint(m_scrollOffset).shrunkTo(maximumScrollPosition());
     setScrollOffset(newScrollOffset);
     
+    ScrollableArea::scrollbarStyleChanged(style, forceUpdate);
     // As size of the content area changes, scrollbars may need to appear or to disappear.
     updateScrollbars();
-    
-    ScrollableArea::contentsResized();
 }
 
 void PDFPlugin::addArchiveResource()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -122,6 +122,7 @@ void JITCompiler::compileExceptionHandlers()
         // lookupExceptionHandlerFromCallerFrame is passed two arguments, the VM and the exec (the CallFrame*).
         move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
+        addPtr(TrustedImm32(m_graph.stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, stackPointerRegister);
 
 #if CPU(X86)
         // FIXME: should use the call abstraction, but this is currently in the SpeculativeJIT layer!
@@ -247,7 +248,7 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
         JSCallRecord& record = m_jsCalls[i];
         CallLinkInfo& info = *record.m_info;
         ThunkGenerator generator = linkThunkGeneratorFor(
-            info.callType == CallLinkInfo::Construct ? CodeForConstruct : CodeForCall,
+            info.specializationKind(),
             RegisterPreservationNotRequired);
         linkBuffer.link(record.m_slowCall, FunctionPtr(m_vm->getCTIStub(generator).code().executableAddress()));
         info.callReturnLocation = linkBuffer.locationOfNearCall(record.m_slowCall);
@@ -292,10 +293,28 @@ void JITCompiler::compile()
     setStartOfCode();
     compileEntry();
     m_speculative = std::make_unique<SpeculativeJIT>(*this);
+
+    // Plant a check that sufficient space is available in the JSStack.
+    addPtr(TrustedImm32(virtualRegisterForLocal(m_graph.requiredRegisterCountForExecutionAndExit() - 1).offset() * sizeof(Register)), GPRInfo::callFrameRegister, GPRInfo::regT1);
+    Jump stackOverflow = branchPtr(Above, AbsoluteAddress(m_vm->addressOfStackLimit()), GPRInfo::regT1);
+
     addPtr(TrustedImm32(m_graph.stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, stackPointerRegister);
     checkStackPointerAlignment();
     compileBody();
     setEndOfMainPath();
+
+    // === Footer code generation ===
+    //
+    // Generate the stack overflow handling; if the stack check in the entry head fails,
+    // we need to call out to a helper function to throw the StackOverflowError.
+    stackOverflow.link(this);
+
+    emitStoreCodeOrigin(CodeOrigin(0));
+
+    if (maxFrameExtentForSlowPathCall)
+        addPtr(TrustedImm32(-maxFrameExtentForSlowPathCall), stackPointerRegister);
+
+    m_speculative->callOperationWithCallFrameRollbackOnException(operationThrowStackOverflowError, m_codeBlock);
 
     // Generate slow path code.
     m_speculative->runSlowPathGenerators();

@@ -29,15 +29,20 @@
 #if ENABLE(ATTACHMENT_ELEMENT)
 
 #include "FloatRect.h"
+#include "FloatRoundedRect.h"
+#include "FrameSelection.h"
 #include "HTMLAttachmentElement.h"
+#include "Page.h"
 #include "PaintInfo.h"
+#include "RenderTheme.h"
+#include "URL.h"
 
 namespace WebCore {
 
 using namespace HTMLNames;
 
 RenderAttachment::RenderAttachment(HTMLAttachmentElement& element, Ref<RenderStyle>&& style)
-    : RenderReplaced(element, WTF::move(style), LayoutSize(200, 200))
+    : RenderReplaced(element, WTF::move(style), LayoutSize())
 {
 }
 
@@ -46,13 +51,28 @@ HTMLAttachmentElement& RenderAttachment::attachmentElement() const
     return downcast<HTMLAttachmentElement>(nodeForNonAnonymous());
 }
 
-void RenderAttachment::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
+bool RenderAttachment::isSelected() const
 {
-    // FIXME: Implement
+    RefPtr<Range> selectionRange = frame().selection().selection().firstRange();
+    return selectionRange && selectionRange->intersectsNode(&nodeForNonAnonymous(), ASSERT_NO_EXCEPTION);
+}
 
-    paintInfo.context->save();
-    paintInfo.context->fillRect(FloatRect(paintOffset.x(), paintOffset.y(), 200, 200), Color::cyan, ColorSpaceSRGB);
-    paintInfo.context->restore();
+void RenderAttachment::layout()
+{
+    setIntrinsicSize(document().page()->theme().attachmentIntrinsicSize(*this));
+
+    RenderReplaced::layout();
+}
+
+void RenderAttachment::representedFileChanged()
+{
+    setNeedsLayout();
+    repaint();
+}
+
+int RenderAttachment::baselinePosition(FontBaseline, bool, LineDirectionMode, LinePositionMode) const
+{
+    return document().page()->theme().attachmentBaseline(*this);
 }
 
 } // namespace WebCore

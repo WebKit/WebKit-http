@@ -41,21 +41,16 @@
 }
 
 .console-user-command,
-.console-user-command-result,
-.console-formatted-object {
+.console-user-command-result {
     font-family: Menlo, monospace;
     font-size: 11px;
-}
-
-.expandable.source-code {
-    display: block;
 }
 
 .console-messages > :first-child {
     margin-top: auto;
 }
 
-.console-message {
+.console-item {
     border-top: 1px solid rgb(240, 240, 240);
 }
 
@@ -68,10 +63,11 @@
     display: block;
     content: "";
     left: 0;
-    top: 0;
-    bottom: 0;
+    top: -1px;
+    bottom: -1px;
     background: hsl(0, 0%, 60%);
     width: 2px;
+    z-index: 10;
 }
 
 .console-messages:focus .console-item.selected .data-grid tr.selected {
@@ -80,6 +76,15 @@
 
 .console-item .data-grid tr.selected {
     background-color: hsl(210, 0%, 90%) !important;
+}
+
+.console-messages:focus .console-item.selected {
+    background-color: hsl(210, 98%, 96%);
+    border-color: hsl(210, 90%, 93%);
+}
+
+.console-messages:focus .console-item.selected + .console-item {
+    border-top-color: hsl(210, 90%, 93%);
 }
 
 .console-messages:focus .console-item.selected::after {
@@ -92,13 +97,13 @@
 
 .console-user-command-result.console-log-level::before {
     content: url(../Images/UserInputResult.svg);
-    margin-top: 1px; /* align with 11px Menlo */
+    margin-left: 1px;
 }
 
 .console-message, .console-user-command {
     position: relative;
-    padding: 2px 12px 2px 18px;
-    min-height: 16px;
+    padding: 4px 12px 2px 20px;
+    min-height: 21px;
 }
 
 .console-item::before {
@@ -106,7 +111,8 @@
 
     position: absolute;
     left: 4px;
-    width: 10px;
+    height: 12px;
+    width: 12px;
 }
 
 .console-message .bubble {
@@ -174,9 +180,13 @@
     border-color: hsl(0, 100%, 92%);
 }
 
+.console-error-level + .console-item {
+    border-top-color: hsl(0, 100%, 92%);
+}
+
 .console-error-level .console-message-text,
 .console-error-level .section .header .title {
-    color: hsl(0, 75%, 50%);
+    color: hsl(0, 75%, 45%);
 }
 
 .console-debug-level .console-message-text {
@@ -193,7 +203,11 @@
 
 .console-warning-level {
     background-color: hsl(50, 100%, 94%);
-    border-color: hsl(50, 100%, 86%);
+    border-color: hsl(40, 100%, 90%);
+}
+
+.console-warning-level + .console-item {
+    border-top-color: hsl(40, 100%, 90%);
 }
 
 .console-warning-level .console-message-text {
@@ -211,11 +225,25 @@
 
 .console-user-command::before {
     content: url(../Images/UserInputPromptPrevious.svg);
-    margin-top: 1px; /* align with 11px Menlo */
+}
+
+:matches(.console-warning-level, .console-error-level, .console-log-level).console-message {
+ /* Move non-monospace log/warning/error text up a bit. */
+    padding: 3px 12px 3px 20px;
+}
+
+:matches(.console-warning-level, .console-error-level, .console-log-level)::before {
+ /* Re-center log/warning/error icons. */
+    padding-top: 1px;
 }
 
 .console-user-command > .console-message-text {
     color: rgb(0, 128, 255);
+}
+
+.console-saved-variable {
+    font-style: normal;
+    color: hsl(0, 0%, 67%);
 }
 
 .console-messages a {
@@ -281,76 +309,6 @@
 
 .console-group-messages .add-attribute {
     display: none;
-}
-
-.console-object-preview {
-    font-style: italic;
-}
-
-.console-object-preview-lossless,
-.console-formatted-array .console-object-preview,
-.expanded .console-object-preview {
-    font-style: normal;
-}
-
-.console-object-preview .name {
- /* Match ObjectPropertiesSection name styles */
-    color: rgb(136, 19, 145);
-}
-
-.expanded .console-object-preview > .console-object-preview-body {
-    display: none;
-}
-
-.console-object-preview > .console-object-preview-name.console-object-preview-name-Object {
-    display: none;
-}
-
-.console-object-preview-body .console-object-preview-name.console-object-preview-name-Object { 
-    display: none;
-}
-
-.expanded .console-object-preview > .console-object-preview-name.console-object-preview-name-Object {
-    display: inline;
-}
-
-.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap {
-    position: relative;
-    display: inline-block;
-    vertical-align: baseline;
-    color: black;
-}
-
-:matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .section {
-    position: static;
-}
-
-:matches(.console-formatted-object, .console-formatted-node, .console-formatted-error, .console-formatted-map, .console-formatted-set, .console-formatted-weakmap) .properties {
-    padding-left: 0 !important;
-}
-
-.console-formatted-number {
-    color: rgb(28, 0, 207);
-}
-
-.console-formatted-string, .console-formatted-regexp {
-    white-space: pre;
-}
-
-.console-formatted-string {
-    color: rgb(196, 26, 22);
-}
-
-.console-formatted-regexp {
-    color: rgb(255, 88, 0);
-}
-
-.console-formatted-symbol {
-    color: rgb(63, 169, 156);
-}
-
-.console-formatted-null, .console-formatted-undefined {
-    color: rgb(128, 128, 128);
 }
 
 .error-message {
@@ -430,9 +388,13 @@
 .outline-disclosure li {
     padding: 0 0 0 14px;
     margin-top: 0;
-    margin-bottom: 2px;
+    margin-bottom: 0;
     margin-left: -2px;
     word-wrap: break-word;
+}
+
+.outline-disclosure .expanded li {
+    margin-bottom: 2px;
 }
 
 .outline-disclosure li.parent {

@@ -39,6 +39,7 @@ namespace WebKit {
 
 class StorageManager;
 class WebPageProxy;
+struct WebsiteDataRecord;
 
 class WebsiteDataStore : public RefCounted<WebsiteDataStore>, public WebProcessLifetimeObserver {
 public:
@@ -56,7 +57,11 @@ public:
 
     static void cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage);
 
+    void fetchData(WebsiteDataTypes, std::function<void (Vector<WebsiteDataRecord>)> completionHandler);
     void removeData(WebsiteDataTypes, std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler);
+    void removeData(WebsiteDataTypes, const Vector<WebsiteDataRecord>&, std::function<void ()> completionHandler);
+
+    StorageManager* storageManager() { return m_storageManager.get(); }
 
 private:
     explicit WebsiteDataStore(WebCore::SessionID);
@@ -69,6 +74,9 @@ private:
     virtual void webPageWillOpenConnection(WebPageProxy&, IPC::Connection&) override;
     virtual void webPageDidCloseConnection(WebPageProxy&, IPC::Connection&) override;
     virtual void webProcessDidCloseConnection(WebProcessProxy&, IPC::Connection&) override;
+
+    void platformInitialize();
+    void platformDestroy();
 
     const uint64_t m_identifier;
     const WebCore::SessionID m_sessionID;

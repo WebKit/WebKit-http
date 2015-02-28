@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2015 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Alexey Proskuryakov (ap@webkit.org)
  * Copyright (C) 2012 Digia Plc. and/or its subsidiary(-ies)
  *
@@ -81,7 +81,6 @@
 #include "RuntimeApplicationChecks.h"
 #include "SVGDocument.h"
 #include "SVGNames.h"
-#include "ScrollAnimator.h"
 #include "ScrollLatchingState.h"
 #include "Scrollbar.h"
 #include "Settings.h"
@@ -99,6 +98,7 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/TemporaryChange.h>
+#include <wtf/WeakPtr.h>
 
 #if ENABLE(CSS_IMAGE_SET)
 #include "StyleCachedImageSet.h"
@@ -2607,6 +2607,12 @@ bool EventHandler::platformCompletePlatformWidgetWheelEvent(const PlatformWheelE
     return true;
 }
 
+#if ENABLE(CSS_SCROLL_SNAP)
+void EventHandler::platformNotifySnapIfNecessary(const PlatformWheelEvent&, ScrollableArea&)
+{
+}
+#endif
+
 #endif
 
 bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
@@ -2670,6 +2676,11 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
                 clearLatchedState();
                 scrollableArea->setScrolledProgrammatically(false);
             }
+
+#if ENABLE(CSS_SCROLL_SNAP)
+            if (scrollableArea)
+                platformNotifySnapIfNecessary(adjustedEvent, *scrollableArea);
+#endif
             return true;
         }
     }
@@ -3635,10 +3646,8 @@ void EventHandler::capsLockStateMayHaveChanged()
 {
     Document* document = m_frame.document();
     if (auto* element = document->focusedElement()) {
-        if (auto* renderer = element->renderer()) {
-            if (is<RenderTextControlSingleLine>(*renderer))
-                downcast<RenderTextControlSingleLine>(*renderer).capsLockStateMayHaveChanged();
-        }
+        if (is<HTMLInputElement>(*element))
+            downcast<HTMLInputElement>(*element).capsLockStateMayHaveChanged();
     }
 }
 
@@ -3665,10 +3674,10 @@ bool EventHandler::passMousePressEventToScrollbar(MouseEventWithHitTestResults& 
 }
 
 // If scrollbar (under mouse) is different from last, send a mouse exited. Set
-// last to scrollbar if setLast is true; else set last to 0.
+// last to scrollbar if setLast is true; else set last to nullptr.
 void EventHandler::updateLastScrollbarUnderMouse(Scrollbar* scrollbar, bool setLast)
 {
-    if (m_lastScrollbarUnderMouse != scrollbar) {
+    if (m_lastScrollbarUnderMouse.get() != scrollbar) {
         // Send mouse exited to the old scrollbar.
         if (m_lastScrollbarUnderMouse)
             m_lastScrollbarUnderMouse->mouseExited();
@@ -3677,7 +3686,10 @@ void EventHandler::updateLastScrollbarUnderMouse(Scrollbar* scrollbar, bool setL
         if (scrollbar && setLast)
             scrollbar->mouseEntered();
 
-        m_lastScrollbarUnderMouse = setLast ? scrollbar : 0;
+        if (setLast && scrollbar)
+            m_lastScrollbarUnderMouse = scrollbar->createWeakPtr();
+        else
+            m_lastScrollbarUnderMouse = nullptr;
     }
 }
 

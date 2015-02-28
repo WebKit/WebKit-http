@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #define BoundaryTag_h
 
 #include "BAssert.h"
+#include "Owner.h"
 #include "Range.h"
 #include "Sizes.h"
 #include <cstring>
@@ -41,9 +42,7 @@ class Range;
 class BoundaryTag {
 public:
     static Range init(LargeChunk*);
-    static Range deallocate(void*);
-    static void allocate(const Range&, size_t, Range& leftover, bool& hasPhysicalPages);
-    static unsigned compactBegin(const Range&);
+    static unsigned compactBegin(void*);
 
     bool isFree() { return m_isFree; }
     void setFree(bool isFree) { m_isFree = isFree; }
@@ -51,8 +50,11 @@ public:
     bool isEnd() { return m_isEnd; }
     void setEnd(bool isEnd) { m_isEnd = isEnd; }
 
-    bool hasPhysicalPages() { return m_hasPhysicalPages; }
-    void setHasPhysicalPages(bool hasPhysicalPages) { m_hasPhysicalPages = hasPhysicalPages; }
+    Owner owner() { return m_ownerIsHeap ? Owner::Heap : Owner::VMHeap; }
+    void setOwner(Owner owner) { m_ownerIsHeap = (owner == Owner::Heap); }
+    
+    bool isMarked() { return m_isMarked; }
+    void setMarked(bool isMarked) { m_isMarked = isMarked; }
 
     bool isNull() { return !m_size; }
     void clear() { std::memset(this, 0, sizeof(*this)); }
@@ -62,40 +64,44 @@ public:
 
     void setRange(const Range&);
     
+    bool isSentinel() { return !m_compactBegin; }
+    void initSentinel();
+    
     EndTag* prev();
     BeginTag* next();
 
 private:
-    static const size_t flagBits = 3;
-    static const size_t compactBeginBits = 5;
+    static const size_t flagBits = 4;
+    static const size_t compactBeginBits = 4;
     static const size_t sizeBits = bitCount<unsigned>() - flagBits - compactBeginBits;
 
-    static_assert((1 << compactBeginBits) - 1 >= largeMin / largeAlignment, "compactBegin must be encodable in a BoundaryTag.");
-    static_assert((1 << sizeBits) - 1 >= largeMax, "largeMax must be encodable in a BoundaryTag.");
+    static_assert(
+        (1 << compactBeginBits) - 1 >= (largeMin - 1) / largeAlignment,
+        "compactBegin must be encodable in a BoundaryTag.");
 
-    static void split(const Range&, size_t, BeginTag*, EndTag*&, Range& leftover);
-    static Range mergeLeft(const Range&, BeginTag*&, EndTag* prev, bool& hasPhysicalPages);
-    static Range mergeRight(const Range&, EndTag*&, BeginTag* next, bool& hasPhysicalPages);
-    static Range merge(const Range&, BeginTag*&, EndTag*&);
+    static_assert(
+        (1 << sizeBits) - 1 >= largeMax,
+        "largeMax must be encodable in a BoundaryTag.");
 
     bool m_isFree: 1;
     bool m_isEnd: 1;
-    bool m_hasPhysicalPages: 1;
+    bool m_ownerIsHeap: 1;
+    bool m_isMarked: 1;
     unsigned m_compactBegin: compactBeginBits;
     unsigned m_size: sizeBits;
 };
 
-inline unsigned BoundaryTag::compactBegin(const Range& range)
+inline unsigned BoundaryTag::compactBegin(void* object)
 {
     return static_cast<unsigned>(
-        reinterpret_cast<uintptr_t>(
-            rightShift(
-                mask(range.begin(), largeMin - 1), largeAlignmentShift)));
+        reinterpret_cast<uintptr_t>(mask(object, largeMin - 1)) / largeAlignment);
 }
 
 inline void BoundaryTag::setRange(const Range& range)
 {
-    m_compactBegin = compactBegin(range);
+    m_compactBegin = compactBegin(range.begin());
+    BASSERT(this->compactBegin() == compactBegin(range.begin()));
+
     m_size = static_cast<unsigned>(range.size());
     BASSERT(this->size() == range.size());
 }
@@ -110,6 +116,13 @@ inline BeginTag* BoundaryTag::next()
 {
     BoundaryTag* next = this + 1;
     return reinterpret_cast<BeginTag*>(next);
+}
+
+inline void BoundaryTag::initSentinel()
+{
+    setRange(Range(nullptr, largeMin));
+    setFree(false);
+    setOwner(Owner::VMHeap);
 }
 
 } // namespace bmalloc

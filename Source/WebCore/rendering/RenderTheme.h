@@ -43,6 +43,7 @@ class FileList;
 class HTMLInputElement;
 class Icon;
 class PopupMenu;
+class RenderAttachment;
 class RenderMenuList;
 #if ENABLE(METER_ELEMENT)
 class RenderMeter;
@@ -188,9 +189,6 @@ public:
 
     virtual ScrollbarControlSize scrollbarControlSizeForPart(ControlPart) { return RegularScrollbar; }
 
-    // Method for painting the caps lock indicator
-    virtual bool paintCapsLockIndicator(const RenderObject&, const PaintInfo&, const IntRect&) { return 0; };
-
     // Returns the repeat interval of the animation for the progress bar.
     virtual double animationRepeatIntervalForProgressBar(RenderProgress&) const;
     // Returns the duration of the animation for the progress bar.
@@ -232,6 +230,7 @@ public:
 
     virtual bool shouldShowPlaceholderWhenFocused() const { return false; }
     virtual bool shouldHaveSpinButton(HTMLInputElement&) const;
+    virtual bool shouldHaveCapsLockIndicator(HTMLInputElement&) const;
 
     // Functions for <select> elements.
     virtual bool delegatesMenuListRendering() const { return false; }
@@ -250,6 +249,11 @@ public:
 #endif
 
     virtual bool defaultButtonHasAnimation() const { return false; }
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    virtual LayoutSize attachmentIntrinsicSize(const RenderAttachment&) const { return LayoutSize(); }
+    virtual int attachmentBaseline(const RenderAttachment&) const { return -1; }
+#endif
 
 protected:
     virtual FontDescription& cachedSystemFontDescription(CSSValueID systemFontID) const;
@@ -312,6 +316,14 @@ protected:
 #if ENABLE(METER_ELEMENT)
     virtual void adjustMeterStyle(StyleResolver&, RenderStyle&, Element*) const;
     virtual bool paintMeter(const RenderObject&, const PaintInfo&, const IntRect&);
+#endif
+
+    virtual void adjustCapsLockIndicatorStyle(StyleResolver&, RenderStyle&, Element*) const;
+    virtual bool paintCapsLockIndicator(const RenderObject&, const PaintInfo&, const IntRect&);
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    virtual void adjustAttachmentStyle(StyleResolver&, RenderStyle&, Element*) const;
+    virtual bool paintAttachment(const RenderObject&, const PaintInfo&, const IntRect&);
 #endif
 
     virtual void adjustProgressBarStyle(StyleResolver&, RenderStyle&, Element*) const;

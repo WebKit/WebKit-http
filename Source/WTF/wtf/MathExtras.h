@@ -102,21 +102,6 @@ inline bool isinf(double x) { return !finite(x) && !isnand(x); }
 
 #endif
 
-#if OS(OPENBSD)
-
-namespace std {
-
-#ifndef isfinite
-inline bool isfinite(double x) { return finite(x); }
-#endif
-#ifndef signbit
-inline bool signbit(double x) { struct ieee_double *p = (struct ieee_double *)&x; return p->dbl_sign; }
-#endif
-
-} // namespace std
-
-#endif
-
 #if OS(HAIKU)
     // It seems the C99 version somehow gets redefined after cmath include (which undefines them)
     #undef isinf

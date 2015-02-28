@@ -31,7 +31,6 @@
 #include "MediaPlayer.h"
 #include "PlatformTimeRanges.h"
 #include <wtf/Forward.h>
-#include <wtf/OwnPtr.h>
 
 namespace WebCore {
 
@@ -126,7 +125,7 @@ public:
     virtual MediaPlayer::NetworkState networkState() const = 0;
     virtual MediaPlayer::ReadyState readyState() const = 0;
 
-    virtual std::unique_ptr<PlatformTimeRanges> seekable() const { return maxMediaTimeSeekable() == MediaTime::zeroTime() ? PlatformTimeRanges::create() : PlatformTimeRanges::create(minMediaTimeSeekable(), maxMediaTimeSeekable()); }
+    virtual std::unique_ptr<PlatformTimeRanges> seekable() const { return maxMediaTimeSeekable() == MediaTime::zeroTime() ? std::make_unique<PlatformTimeRanges>() : std::make_unique<PlatformTimeRanges>(minMediaTimeSeekable(), maxMediaTimeSeekable()); }
     virtual float maxTimeSeekable() const { return 0; }
     virtual MediaTime maxMediaTimeSeekable() const { return MediaTime::createWithDouble(maxTimeSeekable()); }
     virtual double minTimeSeekable() const { return 0; }
@@ -156,15 +155,11 @@ public:
     virtual void exitFullscreen() { }
 #endif
 
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual bool isCurrentPlaybackTargetWireless() const { return false; }
 
     virtual String wirelessPlaybackTargetName() const { return emptyString(); }
     virtual MediaPlayer::WirelessPlaybackTargetType wirelessPlaybackTargetType() const { return MediaPlayer::TargetTypeNone; }
-
-    virtual void showPlaybackTargetPicker() { }
-
-    virtual bool hasWirelessPlaybackTargets() const { return false; }
 
     virtual bool wirelessVideoPlaybackDisabled() const { return false; }
     virtual void setWirelessVideoPlaybackDisabled(bool) { }

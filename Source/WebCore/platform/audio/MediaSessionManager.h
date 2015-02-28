@@ -62,7 +62,8 @@ public:
         InlineVideoPlaybackRestricted = 1 << 1,
         MetadataPreloadingNotPermitted = 1 << 2,
         AutoPreloadingNotPermitted = 1 << 3,
-        BackgroundPlaybackNotPermitted = 1 << 4,
+        BackgroundProcessPlaybackRestricted = 1 << 4,
+        BackgroundTabPlaybackRestricted = 1 << 5,
     };
     typedef unsigned SessionRestrictions;
 
@@ -80,7 +81,7 @@ public:
 
     virtual void configureWireLessTargetMonitoring() { }
 
-#if ENABLE(IOS_AIRPLAY)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual bool hasWirelessTargetsAvailable() { return false; }
 #endif
 
