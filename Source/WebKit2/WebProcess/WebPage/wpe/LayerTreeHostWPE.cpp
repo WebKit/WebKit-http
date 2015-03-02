@@ -303,10 +303,6 @@ void LayerTreeHostWPE::flushAndRenderLayers()
     if (!flushPendingLayerChanges())
         return;
 
-    ASSERT(m_frameRequestState == FrameRequestState::Completed);
-    m_frameRequestState = FrameRequestState::InProgress;
-    wl_callback_add_listener(m_waylandSurface->requestFrame(), &m_frameListener, this);
-
     // Our model is very simple. We always composite and render the tree immediately after updating it.
     compositeLayersToContext();
 
