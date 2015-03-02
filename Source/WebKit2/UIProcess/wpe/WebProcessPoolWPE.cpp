@@ -37,6 +37,7 @@
 #include <WebCore/FileSystem.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SchemeRegistry.h>
+#include <cstdlib>
 #include <wtf/gobject/GUniquePtr.h>
 
 #if ENABLE(NETWORK_PROCESS)
