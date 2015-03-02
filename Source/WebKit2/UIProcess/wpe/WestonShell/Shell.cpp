@@ -105,19 +105,19 @@ const struct weston_touch_grab_interface Shell::m_tgInterface = {
     [](struct weston_touch_grab*, uint32_t time, int id, wl_fixed_t x, wl_fixed_t y)
     {
         WKInputHandlerNotifyTouchDown(Shell::instance().m_inputHandler.get(),
-            WKTouchDown{ time, id, x, y});
+            WKTouchDown{ time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) });
     },
     // up
     [](struct weston_touch_grab*, uint32_t time, int id)
     {
         WKInputHandlerNotifyTouchUp(Shell::instance().m_inputHandler.get(),
-            WKTouchUp{ time, id});
+            WKTouchUp{ time, id });
     },
     // motion
     [](struct weston_touch_grab*, uint32_t time, int id, wl_fixed_t x, wl_fixed_t y)
     {
         WKInputHandlerNotifyTouchMotion(Shell::instance().m_inputHandler.get(),
-            WKTouchMotion{ time, id, x, y });
+            WKTouchMotion{ time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) });
     },
     // frame
     [](struct weston_touch_grab*) { },
