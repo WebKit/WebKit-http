@@ -400,6 +400,7 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(HTM
             renderingContext = std::unique_ptr<WebGL2RenderingContext>(new WebGL2RenderingContext(canvas, attributes));
         else
             renderingContext = std::unique_ptr<WebGLRenderingContext>(new WebGLRenderingContext(canvas, attributes));
+        return renderingContext;
     }
 
     HostWindow* hostWindow = document.view()->root()->hostWindow();
@@ -3245,7 +3246,7 @@ PassRefPtr<Image> WebGLRenderingContextBase::videoFrameToImage(HTMLVideoElement*
         synthesizeGLError(GraphicsContext3D::OUT_OF_MEMORY, "texImage2D", "out of memory");
         return nullptr;
     }
-    IntRect destRect(0, 0, size.width(), size.height());
+    FloatRect destRect(0, 0, size.width(), size.height());
     // FIXME: Turn this into a GPU-GPU texture copy instead of CPU readback.
     video->paintCurrentFrameInContext(buf->context(), destRect);
     return buf->copyImage(backingStoreCopy);
@@ -3931,6 +3932,17 @@ void WebGLRenderingContextBase::stop()
         forceLostContext(SyntheticLostContext);
         destroyGraphicsContext3D();
     }
+}
+
+const char* WebGLRenderingContextBase::activeDOMObjectName() const
+{
+    return "WebGLRenderingContext";
+}
+
+bool WebGLRenderingContextBase::canSuspend() const
+{
+    // FIXME: We should try and do better here.
+    return false;
 }
 
 WebGLGetInfo WebGLRenderingContextBase::getBooleanParameter(GC3Denum pname)

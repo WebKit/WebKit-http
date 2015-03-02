@@ -745,6 +745,9 @@ rating-level-indicator
 image-controls-button
 #endif
 textarea
+#if defined(ENABLE_ATTACHMENT_ELEMENT) && ENABLE_ATTACHMENT_ELEMENT
+attachment
+#endif
 caps-lock-indicator
 
 //
@@ -1096,3 +1099,8 @@ balance
 // -webkit-aspect-ratio
 from-dimensions
 from-intrinsic
+
+#if defined(ENABLE_CSS_TRAILING_WORD) && ENABLE_CSS_TRAILING_WORD
+// -apple-trailing-word
+-webkit-partially-balanced
+#endif

@@ -170,6 +170,17 @@ void Notification::contextDestroyed()
         m_notificationCenter->client()->notificationObjectDestroyed(this);
 }
 
+const char* Notification::activeDOMObjectName() const
+{
+    return "Notification";
+}
+
+bool Notification::canSuspend() const
+{
+    // We can suspend if the Notification is not shown yet or after it is closed.
+    return m_state == Idle || m_state == Closed;
+}
+
 void Notification::finalize()
 {
     if (m_state == Closed)

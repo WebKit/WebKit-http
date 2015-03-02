@@ -1,3 +1,539 @@
+2015-03-01  Filip Pizlo  <fpizlo@apple.com>
+
+        BytecodeGenerator shouldn't emit op_resolve_scope as a roundabout way of returning the scopeRegister
+        https://bugs.webkit.org/show_bug.cgi?id=142153
+
+        Reviewed by Michael Saboff.
+        
+        We don't need a op_resolve_scope if we know that it will simply return the scope register.
+        This changes the BytecodeGenerator to use the scope register directly in those cases where
+        we know statically that we would just have returned that from op_resolve_scope.
+        
+        This doesn't appear to have a significant impact on performance.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitReturn):
+        (JSC::BytecodeGenerator::emitGetOwnScope): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ResolveNode::emitBytecode):
+        (JSC::EvalFunctionCallNode::emitBytecode):
+        (JSC::FunctionCallResolveNode::emitBytecode):
+        (JSC::PostfixNode::emitResolve):
+        (JSC::DeleteResolveNode::emitBytecode):
+        (JSC::TypeOfResolveNode::emitBytecode):
+        (JSC::PrefixNode::emitResolve):
+        (JSC::ReadModifyResolveNode::emitBytecode):
+        (JSC::AssignResolveNode::emitBytecode):
+        (JSC::ConstDeclNode::emitCodeSingle):
+        (JSC::EmptyVarExpression::emitBytecode):
+        (JSC::ForInNode::emitLoopHeader):
+        (JSC::ForOfNode::emitBytecode):
+        (JSC::BindingNode::bindValue):
+
+2015-02-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Use the way number constants are written to help type speculation
+        https://bugs.webkit.org/show_bug.cgi?id=142072
+
+        Reviewed by Filip Pizlo.
+
+        This patch changes how we interpret numeric constant based on how they appear
+        in the source.
+
+        Constants that are integers but written with a decimal point now carry that information
+        to the optimizating tiers. From there, we use that to be more aggressive about typing
+        math operations toward double operations.
+
+        For example, in:
+            var a = x + 1.0;
+            var b = y + 1;
+        The Add for a would be biased toward doubles, the Add for b would speculate
+        integer as usual.
+
+
+        The gains are tiny but this is a prerequisite to make my next patch useful:
+        -SunSpider's access-fannkuch: definitely 1.0661x faster
+        -SunSpider's math-cordic: definitely 1.0266x slower
+            overal: might be 1.0066x slower.
+        -Kraken's imaging-darkroom: definitely 1.0333x faster.
+
+        * parser/Lexer.cpp:
+        (JSC::tokenTypeForIntegerLikeToken):
+        (JSC::Lexer<T>::lex):
+        The lexer now create two types of tokens for number: INTEGER and DOUBLE.
+        Those token types only carry information about how the values were
+        entered, an INTEGER does not have to be an integer, it is only written like one.
+        Large integer still end up represented as double in memory.
+
+        One trap I fell into was typing numbers like 12e3 as double. This kind of literal
+        is frequently used in integer-typed code, while 12.e3 would appear in double-typed
+        code.
+        Because of that, the only signals for double are: decimal point, negative zero,
+        and ridiculously large values.
+
+        * parser/NodeConstructors.h:
+        (JSC::DoubleNode::DoubleNode):
+        (JSC::IntegerNode::IntegerNode):
+        * parser/Nodes.h:
+        (JSC::NumberNode::value):
+        (JSC::NumberNode::setValue): Deleted.
+        Number get specialized in two new kind of nodes in the AST: IntegerNode and DoubleNode.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::NumberNode::emitBytecode):
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createDoubleExpr):
+        (JSC::ASTBuilder::createIntegerExpr):
+        (JSC::ASTBuilder::createIntegerLikeNumber):
+        (JSC::ASTBuilder::createDoubleLikeNumber):
+        (JSC::ASTBuilder::createNumberFromBinaryOperation):
+        (JSC::ASTBuilder::createNumberFromUnaryOperation):
+        (JSC::ASTBuilder::makeNegateNode):
+        (JSC::ASTBuilder::makeBitwiseNotNode):
+        (JSC::ASTBuilder::makeMultNode):
+        (JSC::ASTBuilder::makeDivNode):
+        (JSC::ASTBuilder::makeModNode):
+        (JSC::ASTBuilder::makeAddNode):
+        (JSC::ASTBuilder::makeSubNode):
+        (JSC::ASTBuilder::makeLeftShiftNode):
+        (JSC::ASTBuilder::makeRightShiftNode):
+        (JSC::ASTBuilder::makeURightShiftNode):
+        (JSC::ASTBuilder::makeBitOrNode):
+        (JSC::ASTBuilder::makeBitAndNode):
+        (JSC::ASTBuilder::makeBitXOrNode):
+        (JSC::ASTBuilder::createNumberExpr): Deleted.
+        (JSC::ASTBuilder::createNumber): Deleted.
+        The AST has some optimization to resolve constants before emitting bytecode.
+        In the new code, the intger representation is kept if both operands where
+        also represented as integers.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseDeconstructionPattern):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parseGetterSetter):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::printUnexpectedTokenText):
+        * parser/ParserTokens.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createDoubleExpr):
+        (JSC::SyntaxChecker::createIntegerExpr):
+        (JSC::SyntaxChecker::createNumberExpr): Deleted.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::registerName):
+        (JSC::CodeBlock::constantName):
+        Change constantName(r, getConstant(r)) -> constantName(r) to simplify
+        the dump code.
+
+        (JSC::CodeBlock::dumpBytecode):
+        Dump thre soure representation information we have with each constant.
+
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::shrinkToFit):
+        (JSC::constantName): Deleted.
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::constantsSourceCodeRepresentation):
+        (JSC::CodeBlock::addConstant):
+        (JSC::CodeBlock::addConstantLazily):
+        (JSC::CodeBlock::constantSourceCodeRepresentation):
+        (JSC::CodeBlock::setConstantRegisters):
+
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addConstant):
+        (JSC::UnlinkedCodeBlock::constantsSourceCodeRepresentation):
+        (JSC::UnlinkedCodeBlock::shrinkToFit):
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::addConstantValue):
+        (JSC::BytecodeGenerator::emitLoad):
+        * bytecompiler/BytecodeGenerator.h:
+        We have to differentiate between constants that have the same values but are
+        represented differently in the source. Values like 1.0 and 1 now end up
+        as different constants.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::get):
+        (JSC::DFG::ByteCodeParser::addConstantToGraph):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::registerFrozenValues):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::addSpeculationMode):
+        (JSC::DFG::Graph::addImmediateShouldSpeculateInt32):
+        ArithAdd is very aggressive toward using Int52, which is quite useful
+        in many benchmarks.
+
+        Here we need to specialize to make sure we don't force our literals
+        to Int52 if there were represented as double.
+
+        There is one exception to that rule: when the other operand is guaranteed
+        to come from a NodeResultInt32. This is because there is some weird code
+        doing stuff like:
+            var b = a|0;
+            var c = b*2.0;
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::Node):
+        (JSC::DFG::Node::setOpAndDefaultFlags):
+        (JSC::DFG::Node::sourceCodeRepresentation):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * runtime/JSCJSValue.h:
+        (JSC::EncodedJSValueWithRepresentationHashTraits::emptyValue):
+        (JSC::EncodedJSValueWithRepresentationHashTraits::constructDeletedValue):
+        (JSC::EncodedJSValueWithRepresentationHashTraits::isDeletedValue):
+        (JSC::EncodedJSValueWithRepresentationHash::hash):
+        (JSC::EncodedJSValueWithRepresentationHash::equal):
+        * tests/stress/arith-add-with-constants.js: Added.
+        * tests/stress/arith-mul-with-constants.js: Added.
+
+2015-02-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out r180723. It broke a bunch of tests.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::constLocal):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ConstDeclNode::emitCodeSingle):
+        * tests/stress/const-arguments.js: Removed.
+
+2015-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Assertion fix for r180711: The bool returning form of BytecodeGenerator::addVar() can be removed.
+        <https://webkit.org/b/142064>
+
+        Reviewed by Joseph Pecoraro.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::addVar):
+
+2015-02-26  Mark Lam  <mark.lam@apple.com>
+
+        MachineThreads::Thread clean up has a use after free race condition.
+        <https://webkit.org/b/141990>
+
+        Reviewed by Filip Pizlo.
+
+        MachineThreads::Thread clean up relies on the clean up mechanism
+        implemented in _pthread_tsd_cleanup_key(), which looks like this:
+
+        void _pthread_tsd_cleanup_key(pthread_t self, pthread_key_t key)
+        {
+            void (*destructor)(void *);
+            if (_pthread_key_get_destructor(key, &destructor)) {
+                void **ptr = &self->tsd[key];
+                void *value = *ptr;
+
+            // === Start of window for the bug to manifest =================
+
+                // At this point, this thread has cached "destructor" and "value"
+                // (which is a MachineThreads*).  If the VM gets destructed (along
+                // with its MachineThreads registry) by another thread, then this
+                // thread will have no way of knowing that the MachineThreads* is
+                // now pointing to freed memory.  Calling the destructor below will
+                // therefore result in a use after free scenario when it tries to
+                // access the MachineThreads' data members.
+
+                if (value) {
+                    *ptr = NULL;
+                    if (destructor) {
+
+            // === End of window for the bug to manifest ==================
+
+                        destructor(value);
+                    }
+                }
+            }
+        }
+
+        The fix is to add each active MachineThreads to an ActiveMachineThreadsManager,
+        and always check if the manager still contains that MachineThreads object
+        before we call removeCurrentThread() on it.  When MachineThreads is destructed,
+        it will remove itself from the manager.  The add, remove, and checking
+        operations are all synchronized on the manager's lock, thereby ensuring that
+        the MachineThreads object, if found in the manager, will remain alive for the
+        duration of time we call removeCurrentThread() on it.
+
+        There's also possible for the MachineThreads object to already be destructed
+        and another one happened to have been instantiated at the same address.
+        Hence, we should only remove the exiting thread if it is found in the
+        MachineThreads object.
+
+        There is no test for this issue because this bug requires a race condition
+        between 2 threads where:
+        1. Thread B, which had previously used the VM, exiting and
+           getting to the bug window shown in _pthread_tsd_cleanup_key() above.
+        2. Thread A destructing the VM (and its MachineThreads object)
+           within that window of time before Thread B calls the destructor.
+
+        It is not possible to get a reliable test case without invasively
+        instrumenting _pthread_tsd_cleanup_key() or MachineThreads::removeCurrentThread()
+        to significantly increase that window of opportunity.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::ActiveMachineThreadsManager::Locker::Locker):
+        (JSC::ActiveMachineThreadsManager::add):
+        (JSC::ActiveMachineThreadsManager::remove):
+        (JSC::ActiveMachineThreadsManager::contains):
+        (JSC::ActiveMachineThreadsManager::ActiveMachineThreadsManager):
+        (JSC::activeMachineThreadsManager):
+        (JSC::MachineThreads::MachineThreads):
+        (JSC::MachineThreads::~MachineThreads):
+        (JSC::MachineThreads::removeThread):
+        (JSC::MachineThreads::removeThreadIfFound):
+        (JSC::MachineThreads::removeCurrentThread): Deleted.
+        * heap/MachineStackMarker.h:
+
+2015-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Save Console Evaluations into Command Line variables $1-$99 ($n)
+        https://bugs.webkit.org/show_bug.cgi?id=142061
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Debugger.json:
+        * inspector/protocol/Runtime.json:
+        Input flag "saveResult" on whether we should try to save a result.
+        Output int "savedResultIndex" to tell the frontend the saved state.
+
+        * inspector/InjectedScriptSource.js:
+        Handle saving and clearing $1-$99 values.
+        Include in BasicCommandLineAPI for JSContext inspection.
+
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeEvalCall):
+        * inspector/InjectedScriptBase.h:
+        Allow an optional "savedResultIndex" out value on evals.
+
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::evaluate):
+        (Inspector::InjectedScript::evaluateOnCallFrame):
+        * inspector/InjectedScript.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::evaluateOnCallFrame):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::evaluate):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        Plumbing for new in and out parameters.
+
+2015-02-26  Filip Pizlo  <fpizlo@apple.com>
+
+        The bool returning form of BytecodeGenerator::addVar() can be removed
+        https://bugs.webkit.org/show_bug.cgi?id=142064
+
+        Reviewed by Mark Lam.
+        
+        It's easier to implement addVar() when you don't have to return whether it's a new
+        variable or not.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::addVar):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::addVar): Deleted.
+
+2015-02-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Various array access corner cases should take OSR exit feedback
+        https://bugs.webkit.org/show_bug.cgi?id=142056
+
+        Reviewed by Geoffrey Garen.
+        
+        Two major changes here:
+        
+        - Don't keep converting GetById into GetArrayLength if we exited due to any kind of array
+          type check.
+        
+        - Use a generic form of GetByVal/PutByVal if we exited due to any kind of exotic checks,
+          like the Arguments safety checks. We use the "ExoticObjectMode" for out-of-bounds on
+          arguments for now, since it's a convenient way of forcing out-of-bounds to be handled by
+          the Generic array mode.
+
+        * bytecode/ExitKind.cpp:
+        (JSC::exitKindToString):
+        * bytecode/ExitKind.h:
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::refine):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnArguments):
+        (JSC::DFG::SpeculativeJIT::compileGetArgumentsLength):
+        * tests/stress/array-length-array-storage-plain-object.js: Added.
+        (foo):
+        * tests/stress/array-length-plain-object.js: Added.
+        (foo):
+
+2015-02-25  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG SSA stack accesses shouldn't speak of VariableAccessDatas
+        https://bugs.webkit.org/show_bug.cgi?id=142036
+
+        Reviewed by Michael Saboff.
+        
+        VariableAccessData is a useful thing in LoadStore and ThreadedCPS, but it's purely harmful in
+        SSA because you can't cook up new VariableAccessDatas. So, if you know that you want to load
+        or store to the stack, and you know what format to use as well as the location, then prior to
+        this patch you couldn't do it unless you found some existing VariableAccessData that matched
+        your requirements. That can be a hard task.
+        
+        It's better if SSA doesn't speak of VariableAccessDatas but instead just has stack accesses
+        that speak of the things that a stack access needs: local, machineLocal, and format. This
+        patch changes the SSA way of accessing the stack to do just that.
+        
+        Also add more IR validation.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGFlushFormat.h:
+        (JSC::DFG::isConcrete):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGGraph.h:
+        * dfg/DFGMayExit.cpp:
+        (JSC::DFG::mayExit):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::hasVariableAccessData):
+        * dfg/DFGNode.h:
+        (JSC::DFG::StackAccessData::StackAccessData):
+        (JSC::DFG::StackAccessData::flushedAt):
+        (JSC::DFG::Node::convertToPutStack):
+        (JSC::DFG::Node::convertToGetStack):
+        (JSC::DFG::Node::hasUnlinkedLocal):
+        (JSC::DFG::Node::hasStackAccessData):
+        (JSC::DFG::Node::stackAccessData):
+        (JSC::DFG::Node::willHaveCodeGenOrOSR):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGPutLocalSinkingPhase.cpp: Removed.
+        * dfg/DFGPutLocalSinkingPhase.h: Removed.
+        * dfg/DFGPutStackSinkingPhase.cpp: Copied from Source/JavaScriptCore/dfg/DFGPutLocalSinkingPhase.cpp.
+        (JSC::DFG::performPutStackSinking):
+        (JSC::DFG::performPutLocalSinking): Deleted.
+        * dfg/DFGPutStackSinkingPhase.h: Copied from Source/JavaScriptCore/dfg/DFGPutLocalSinkingPhase.h.
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validate):
+        (JSC::DFG::Validate::validateCPS):
+        (JSC::DFG::Validate::validateSSA):
+        * dfg/DFGVirtualRegisterAllocationPhase.cpp:
+        (JSC::DFG::VirtualRegisterAllocationPhase::run):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::lower):
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileGetStack):
+        (JSC::FTL::LowerDFGToLLVM::compilePutStack):
+        (JSC::FTL::LowerDFGToLLVM::compileGetLocal): Deleted.
+        (JSC::FTL::LowerDFGToLLVM::compilePutLocal): Deleted.
+        * ftl/FTLOSRExit.h:
+        * tests/stress/many-sunken-locals.js: Added. This failure mode was caught by some miscellaneous test, so I figured I should write an explicit test for it.
+        (foo):
+        (bar):
+        (baz):
+        (fuzz):
+        (buzz):
+
+2015-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r180602, r180608, r180613, r180617, r180671.
+        <https://webkit.org/b/141990>
+
+        Not reviewed.
+
+        The r180602 solution does result in more work for GC when worker
+        threads are in use.  Filip is uncomfortable with that.
+        The EFL and GTK ports also seem to be unhappy with this change.
+        Rolling out while we investigate.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::gatherStackRoots):
+        (JSC::Heap::machineThreads): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::machineThreads):
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThreads):
+        (JSC::MachineThreads::~MachineThreads):
+        (JSC::MachineThreads::addCurrentThread):
+        * heap/MachineStackMarker.h:
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::didAcquireLock):
+
+2015-02-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Mac] [iOS] Parsing support for -apple-trailing-word
+        https://bugs.webkit.org/show_bug.cgi?id=141939
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-02-26  Michael Saboff  <msaboff@apple.com>
+
+        [Win] Debug-only JavaScriptCore failures
+        https://bugs.webkit.org/show_bug.cgi?id=142045
+
+        Rubber stamped by Filip Pizlo.
+
+        Reduced loop count to a more reasonable value of 10,000.  This still gets us to tier up
+        to the FTL, but doesn't take too long to run.
+
+        * tests/stress/repeated-arity-check-fail.js:
+
+2015-02-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Make build logs more legible by reducing noise
+        https://bugs.webkit.org/show_bug.cgi?id=142034
+
+        Reviewed by Alexey Proskuryakov.
+
+        Modify batch files, makefiles, and DOS commands to remove
+        uninteresting/unhelpful output.
+
+        * JavaScriptCore.vcxproj/JavaScriptCoreGenerated.make:
+        * JavaScriptCore.vcxproj/JavaScriptCorePreBuild.cmd:
+        * JavaScriptCore.vcxproj/copy-files.cmd:
+        * JavaScriptCore.vcxproj/jsc/jscLauncherPreBuild.cmd:
+        * JavaScriptCore.vcxproj/jsc/jscPreBuild.cmd:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpLauncherPreBuild.cmd:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpPreBuild.cmd:
+        * JavaScriptCore.vcxproj/testapi/testapiLauncherPostBuild.cmd:
+        * JavaScriptCore.vcxproj/testapi/testapiLauncherPreBuild.cmd:
+        * JavaScriptCore.vcxproj/testapi/testapiPostBuild.cmd:
+        * JavaScriptCore.vcxproj/testapi/testapiPreBuild.cmd:
+
 2015-02-26  Csaba Osztrogonác  <ossy@webkit.org>
 
         Add calleeSaveRegisters() implementation for ARM Traditional

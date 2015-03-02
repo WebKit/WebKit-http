@@ -56,7 +56,7 @@ RenderPtr<RenderElement> HTMLAttachmentElement::createElementRenderer(Ref<Render
     return createRenderer<RenderAttachment>(*this, WTF::move(style));
 }
 
-File* HTMLAttachmentElement::file()
+File* HTMLAttachmentElement::file() const
 {
     return m_file.get();
 }
@@ -64,20 +64,12 @@ File* HTMLAttachmentElement::file()
 void HTMLAttachmentElement::setFile(File* file)
 {
     m_file = file;
-}
 
-void HTMLAttachmentElement::setFocus(bool shouldBeFocused)
-{
-    if (focused() == shouldBeFocused)
-        return;
-    
-    HTMLElement::setFocus(shouldBeFocused);
-    
     auto* renderer = this->renderer();
     if (!is<RenderAttachment>(renderer))
         return;
-    
-    downcast<RenderAttachment>(*renderer).focusChanged();
+
+    downcast<RenderAttachment>(*renderer).representedFileChanged();
 }
 
 } // namespace WebCore

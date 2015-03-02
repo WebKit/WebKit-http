@@ -1,3 +1,71 @@
+2015-03-01  Chris Dumez  <cdumez@apple.com>
+
+        Make NotificationCenter / Notification suspendable
+        https://bugs.webkit.org/show_bug.cgi?id=142117
+        <rdar://problem/19923085>
+
+        Reviewed by Andreas Kling.
+
+        Provide implementation for NotificationClient::hasPendingPermissionRequests().
+        The implementation is very simplistic. it will only return false if no
+        request for permission for ever made. This is because there is currently no
+        easy way to figure out if a permission request is pending or not.
+
+        * WebCoreSupport/WebNotificationClient.h:
+        * WebCoreSupport/WebNotificationClient.mm:
+        (WebNotificationClient::requestPermission):
+        (WebNotificationClient::hasPendingPermissionRequests):
+
+2015-02-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Viewport units should not dirty style just before we do layout
+        https://bugs.webkit.org/show_bug.cgi?id=141682
+
+        Reviewed by Zalan Bujtas.
+
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView _frameSizeChanged]):
+
+2015-02-26  Chris Dumez  <cdumez@apple.com>
+
+        Rename DatabaseManager::manager() to DatabaseManager::singleton()
+        https://bugs.webkit.org/show_bug.cgi?id=142054
+
+        Reviewed by Ryosuke Niwa.
+
+        Rename DatabaseManager::manager() to DatabaseManager::singleton() as
+        per coding style and use WTF::NeverDestroyed.
+
+        * Storage/WebDatabaseManager.mm:
+        (-[WebDatabaseManager init]):
+        (-[WebDatabaseManager origins]):
+        (-[WebDatabaseManager databasesWithOrigin:]):
+        (-[WebDatabaseManager detailsForDatabase:withOrigin:]):
+        (-[WebDatabaseManager deleteAllDatabases]):
+        (-[WebDatabaseManager deleteOrigin:]):
+        (-[WebDatabaseManager deleteDatabase:withOrigin:]):
+        * Storage/WebDatabaseQuotaManager.mm:
+        (-[WebDatabaseQuotaManager usage]):
+        (-[WebDatabaseQuotaManager quota]):
+        (-[WebDatabaseQuotaManager setQuota:]):
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin usage]):
+        (-[WebSecurityOrigin quota]):
+        (-[WebSecurityOrigin setQuota:]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _cacheabilityDictionary]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2015-02-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Mac] [iOS] Parsing support for -apple-trailing-word
+        https://bugs.webkit.org/show_bug.cgi?id=141939
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2015-02-24  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r180599.

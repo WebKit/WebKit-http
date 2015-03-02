@@ -328,7 +328,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #if ENABLE(WEB_AUDIO)
     , m_audioSourceNode(0)
 #endif
-    , m_mediaSession(HTMLMediaSession::create(*this))
+    , m_mediaSession(std::make_unique<HTMLMediaSession>(*this))
     , m_reportedExtraMemoryCost(0)
 #if ENABLE(MEDIA_STREAM)
     , m_mediaStreamSrcObject(nullptr)
@@ -4711,6 +4711,11 @@ void HTMLMediaElement::clearMediaPlayer(int flags)
 bool HTMLMediaElement::canSuspend() const
 {
     return true; 
+}
+
+const char* HTMLMediaElement::activeDOMObjectName() const
+{
+    return "HTMLMediaElement";
 }
 
 void HTMLMediaElement::stop()

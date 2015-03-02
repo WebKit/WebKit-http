@@ -1,3 +1,611 @@
+2015-03-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Make clip-path work on <video>, <canvas> etc.
+        https://bugs.webkit.org/show_bug.cgi?id=138684
+
+        Reviewed by Darin Adler.
+        
+        Tests for various combinations of clip-path and mask, and dynamic changes
+        thereof.
+
+        * compositing/masks/compositing-clip-path-and-mask-expected.html: Added.
+        * compositing/masks/compositing-clip-path-and-mask.html: Added.
+        * compositing/masks/compositing-clip-path-expected.html: Added.
+        * compositing/masks/compositing-clip-path-mask-change-expected.html: Added.
+        * compositing/masks/compositing-clip-path-mask-change.html: Added.
+        * compositing/masks/compositing-clip-path.html: Added.
+        * compositing/masks/reference-clip-path-on-composited-expected.html: Added.
+        * compositing/masks/reference-clip-path-on-composited.html: Added.
+
+2015-03-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening. Mark crash tests of webgl to CRASH.
+        WebGL isn't supported by EFL port now.
+
+        * platform/efl/TestExpectations:
+
+2015-03-01  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening on 2nd March.
+
+        Mark css3 shape tests to flaky. Unskip passing tests and so on.
+
+        * platform/efl/TestExpectations:
+        
+
+2015-03-01  Chris Dumez  <cdumez@apple.com>
+
+        Make NotificationCenter / Notification suspendable
+        https://bugs.webkit.org/show_bug.cgi?id=142117
+        <rdar://problem/19923085>
+
+        Reviewed by Andreas Kling.
+
+        Add layout tests to cover cases where notifications should prevent
+        entering the PageCache or not.
+
+        * fast/history/page-cache-notification-non-suspendable-expected.txt: Added.
+        * fast/history/page-cache-notification-non-suspendable.html: Added.
+        * fast/history/page-cache-notification-suspendable-expected.txt: Added.
+        * fast/history/page-cache-notification-suspendable.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2015-03-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        EFL, GTK+, and Windows rebaselines after r180867.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/editing/execCommand/5142012-1-expected.txt:
+        * platform/efl/editing/execCommand/nsresponder-outdent-expected.txt:
+        * platform/efl/editing/inserting/insert-at-end-02-expected.txt:
+        * platform/gtk/editing/execCommand/5142012-1-expected.txt:
+        * platform/gtk/editing/execCommand/nsresponder-outdent-expected.txt:
+        * platform/gtk/editing/inserting/insert-at-end-02-expected.txt:
+        * platform/gtk/editing/pasteboard/4989774-expected.txt:
+        * platform/win/editing/execCommand/5142012-1-expected.txt:
+        * platform/win/editing/execCommand/nsresponder-outdent-expected.txt:
+        * platform/win/editing/inserting/insert-at-end-02-expected.txt:
+
+2015-03-01  Alexey Proskuryakov  <ap@apple.com>
+
+        media/track/track-in-band-cues-added-once.html flakily fails
+        https://bugs.webkit.org/show_bug.cgi?id=142152
+
+        * platform/mac/TestExpectations: Marked it as such.
+
+2015-03-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        isContentEditable shouldn't trigger synchronous style recalc in most cases
+        https://bugs.webkit.org/show_bug.cgi?id=129034
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test to update the editability of elements dynamically. Also rebaselined
+        tests per style recalc timing changes.
+
+        * fast/dom/HTMLElement/dynamic-editability-change-expected.txt: Added.
+        * fast/dom/HTMLElement/dynamic-editability-change.html: Added.
+        * platform/mac/editing/execCommand/5142012-1-expected.txt: anonymous render block differences.
+        * platform/mac/editing/execCommand/nsresponder-outdent-expected.txt: Ditto.
+        * platform/mac/editing/inserting/insert-at-end-02-expected.txt: Empty render text differences.
+        * platform/mac/editing/pasteboard/4989774-expected.txt: Ditto.
+
+2015-03-01  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Document some more debug assertions.
+
+        * platform/win/TestExpectations:
+
+2015-02-28  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r85798): Lists of crashing/timeouting/stderr tests aren't sorted
+        https://bugs.webkit.org/show_bug.cgi?id=142081
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/harness/results.html:
+
+2015-02-28  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening 1st Mar.
+
+        * platform/efl/TestExpectations:
+        - Unskip tests which have been passed since r180672.
+        - Skip compositing/webgl.
+
+2015-02-27  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel-layout: width: max-content; property might cause unnecessary scrollbar.
+        https://bugs.webkit.org/show_bug.cgi?id=142065
+
+        Reviewed by Simon Fraser.
+
+        Rebaseline. Scroll layer shrinks in certain cases.
+
+        * platform/mac-mavericks/editing/input/caret-at-the-edge-of-input-expected.txt:
+        * platform/mac-mavericks/fast/css/text-overflow-input-expected.txt:
+        * platform/mac-mavericks/fast/forms/basic-inputs-expected.txt:
+        * platform/mac-mavericks/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/mac-mavericks/fast/forms/input-disabled-color-expected.txt:
+        * platform/mac-mavericks/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/mac-mavericks/http/tests/navigation/javascriptlink-frames-expected.txt:
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/mac/fast/forms/input-appearance-selection-expected.txt:
+        * platform/mac/fast/forms/input-text-scroll-left-on-blur-expected.txt:
+        * platform/mac/fast/forms/input-type-text-min-width-expected.txt:
+        * platform/mac/fast/forms/minWidthPercent-expected.txt:
+        * platform/mac/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug96334-expected.txt:
+
+2015-02-27  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening: rebaseline fast/attachment results
+
+        * platform/ios-simulator/fast/attachment/attachment-disabled-dom-expected.txt: Add.
+        * platform/ios-simulator/fast/attachment/attachment-disabled-rendering-expected.txt: Update.
+        * platform/ios-simulator/fast/attachment/attachment-dom-expected.txt: Add.
+        * platform/ios-simulator/fast/attachment/attachment-rendering-expected.txt: Update.
+
+2015-02-27  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening: Unskip fast/history/page-cache-webdatabase-opened-db.html
+
+        * platform/ios-simulator/TestExpectations: Unskip test.  It
+        passes on iOS WK1 and WK2 because WebSQL != IndexedDB.
+
+2015-02-27  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening: Skip some new page-cache tests
+
+        * platform/ios-simulator/TestExpectations:
+        - Skip MediaSource tests:
+          fast/history/page-cache-media-source-closed-2.html
+          fast/history/page-cache-media-source-closed.html
+          fast/history/page-cache-media-source-opened.html
+        - Skip test that uses drag-and-drop:
+          fast/history/page-cache-createObjectURL.html
+
+2015-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening for Windows after r180796.
+
+        Unreviewed.
+
+        * platform/win/TestExpectations:
+
+2015-02-27  Dean Jackson  <dino@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=142119
+
+        Unreviewed. Add fast/canvas/canvas-ellipse-zero-lineto.html
+        to list of failing tests on Windows.
+
+        * platform/win/TestExpectations:
+
+2015-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Updating more tests after r177774
+
+        Unreviewed.
+
+        Most of these tests simply need to be updated. However, I found two real bugs while
+        going through these!
+
+        * fast/css-generated-content/after-with-inline-continuation-expected.html:
+        * fast/css-generated-content/after-with-inline-continuation.html:
+        * fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines-expected.html:
+        * fast/inline/hidpi-select-inline-on-subpixel-position-expected.html:
+        * fast/inline/hidpi-select-inline-on-subpixel-position.html:
+        * fast/lists/rtl-marker-expected.html:
+        * fast/lists/rtl-marker.html:
+        * fast/multicol/cell-shrinkback-expected.html:
+        * fast/multicol/cell-shrinkback.html:
+        * fast/multicol/newmulticol/breaks-3-columns-3-expected.html:
+        * fast/multicol/newmulticol/breaks-3-columns-3.html:
+        * fast/regions/last-region-border-radius-expected.html:
+        * fast/regions/last-region-border-radius.html:
+        * fast/regions/overflow/overflow-first-and-last-regions.html:
+        * fast/regions/overflow/overflow-in-uniform-regions-dynamic-expected.html:
+        * fast/regions/overflow/overflow-in-uniform-regions-dynamic.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-large-radius-expected.html:
+        * fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-large-radius.html:
+        * fast/shapes/shape-outside-floats/shape-outside-rounded-inset-expected.html:
+        * fast/shapes/shape-outside-floats/shape-outside-rounded-inset.html:
+        * fast/table/td-width-fifty-percent-regression-expected.html:
+        * fast/table/td-width-fifty-percent-regression.html:
+        * fast/text/complex-initial-advance-expected.html:
+        * fast/text/complex-initial-advance.html:
+        * platform/mac/TestExpectations:
+
+2015-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Subpixel] Subpixelize RenderListMarker
+        https://bugs.webkit.org/show_bug.cgi?id=142093
+
+        Reviewed by Zalan Bujtas.
+
+        * platform/mac/TestExpectations: Unskip fast/lists/rtl-marker.html
+
+2015-02-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Test gardening, unmark now passing tests.
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Some MathML tests crash in RenderMathMLOperator::advanceForGlyph() or boundsForGlyph()
+        https://bugs.webkit.org/show_bug.cgi?id=141371
+
+        Reviewed by David Kilzer.
+
+        Updating expected results and TestExpectations
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/mathml/opentype/horizontal-munderover-expected.txt:
+        * platform/ios-simulator/mathml/opentype/large-operators-expected.txt:
+        * platform/ios-simulator/mathml/opentype/vertical-expected.txt:
+
+2015-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Make SourceBuffer ActiveDOMObject suspendable
+        https://bugs.webkit.org/show_bug.cgi?id=142108
+        <rdar://problem/19923085>
+
+        Reviewed by Jer Noble.
+
+        Add a layout tests to check that a SourceBuffer removed from its
+        MediaSource does not prevent a Page from entering PageCache.
+
+        * fast/history/page-cache-removed-source-buffer-expected.txt: Added.
+        * fast/history/page-cache-removed-source-buffer.html: Added.
+
+2015-02-26  Sam Weinig  <sam@webkit.org>
+
+        Add support for canvas ellipse method
+        https://bugs.webkit.org/show_bug.cgi?id=82791
+        <rdar://problem/11159172>
+
+        Reviewed by Dirk Schulze.
+
+        * fast/canvas/canvas-ellipse-360-winding-expected.txt: Added.
+        * fast/canvas/canvas-ellipse-360-winding.html: Added.
+        * fast/canvas/canvas-ellipse-circumference-expected.txt: Added.
+        * fast/canvas/canvas-ellipse-circumference-fill-expected.txt: Added.
+        * fast/canvas/canvas-ellipse-circumference-fill.html: Added.
+        * fast/canvas/canvas-ellipse-circumference.html: Added.
+        * fast/canvas/canvas-ellipse-connecting-line-expected.html: Added.
+        * fast/canvas/canvas-ellipse-connecting-line.html: Added.
+        * fast/canvas/canvas-ellipse-expected.txt: Added.
+        * fast/canvas/canvas-ellipse-negative-radius-expected.txt: Added.
+        * fast/canvas/canvas-ellipse-negative-radius.html: Added.
+        * fast/canvas/canvas-ellipse-zero-lineto-expected.txt: Added.
+        * fast/canvas/canvas-ellipse-zero-lineto.html: Added.
+        * fast/canvas/canvas-ellipse.html: Added.
+        * fast/canvas/script-tests/canvas-ellipse-360-winding.js: Added.
+        * fast/canvas/script-tests/canvas-ellipse.js: Added.
+        * fast/canvas/script-tests/js-ellipse-implementation.js: Added.
+        * platform/mac/fast/canvas/canvas-ellipse-circumference-expected.png: Added.
+        * platform/mac/fast/canvas/canvas-ellipse-circumference-fill-expected.png: Added.
+
+2015-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        Test more features of content extensions.
+        https://bugs.webkit.org/show_bug.cgi?id=142100
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/usercontentfilter/basic-filter.html:
+        * http/tests/usercontentfilter/basic-filter.html.json:
+        * platform/mac/http/tests/usercontentfilter/basic-filter-expected.txt:
+
+2015-02-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Some WebGL tests fail on ATI hardware
+        https://bugs.webkit.org/show_bug.cgi?id=93560
+        rdar://problem/19991477
+
+        * platform/mac/TestExpectations: Updating expectations, as this is not limited to
+        Mavericks.
+
+2015-02-27  Enrica Casucci  <enrica@apple.com>
+
+        Adding support for serializing HTMLAttachment elements.
+        https://bugs.webkit.org/show_bug.cgi?id=142026
+
+        Reviewed by Tim Horton.
+
+        * editing/pasteboard/copy-paste-attachment-expected.txt: Added.
+        * editing/pasteboard/copy-paste-attachment.html: Added.
+
+2015-02-27  Brady Eidson  <beidson@apple.com>
+
+        Add a "block-cookies" rule to the user content filter.
+        https://bugs.webkit.org/show_bug.cgi?id=142105
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/cookies/resources/echo-cookies.php: Added.
+        * http/tests/usercontentfilter/block-cookies-basic-expected.txt: Added.
+        * http/tests/usercontentfilter/block-cookies-basic.html: Added.
+        * http/tests/usercontentfilter/block-cookies-basic.html.json: Added.
+        * http/tests/usercontentfilter/block-cookies-send-expected.txt: Added.
+        * http/tests/usercontentfilter/block-cookies-send.html: Added.
+        * http/tests/usercontentfilter/block-cookies-send.html.json: Added.
+
+2015-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS, GTK, and EFL rebaselines after r180726.
+
+        * platform/efl/editing/inserting/5058163-1-expected.txt:
+        * platform/gtk/editing/inserting/5058163-1-expected.txt:
+        * platform/ios-simulator-wk2/editing/inserting/5058163-1-expected.txt:
+
+2015-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip tests added in r180771 on platforms that don't support IndexedDB.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2015-02-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Skip IndexDB tests on Windows since it's not implemented.
+
+        * platform/win/TestExpectations:
+
+2015-02-27  Chris Dumez  <cdumez@apple.com>
+
+        MediaSource should be suspendable when closed
+        https://bugs.webkit.org/show_bug.cgi?id=142089
+        <rdar://problem/19923085>
+
+        Reviewed by Jer Noble.
+
+        Add layout tests to check that:
+        - Pages with an open MediaSource do not enter the PageCache
+        - Pages with an initially closed MediaSource enter the PageCache
+        - Pages with a MediaSource that changed state from opened to closed
+          enter the PageCache.
+
+2015-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Make IDBDatabase / IDBRequest suspendable
+        https://bugs.webkit.org/show_bug.cgi?id=142076
+        <rdar://problem/19923085>
+
+        Reviewed by Andreas Kling.
+
+        Add layout tests to make sure that:
+        - A page with an open indexeddb database is not page-cacheable
+        - A page with a closed indexeddb database is page-cacheable
+
+        * fast/history/page-cache-indexed-closed-db-expected.txt: Added.
+        * fast/history/page-cache-indexed-closed-db.html: Added.
+        * fast/history/page-cache-indexed-opened-db-expected.txt: Added.
+        * fast/history/page-cache-indexed-opened-db.html: Added.
+
+2015-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Drop unnecessary DatabaseManager::hasOpenDatabases() in PageCache::canCachePageContainingThisFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=142052
+
+        Reviewed by Andreas Kling.
+
+        Add a layout test to check that a page with an open WebDatabase does
+        not enter the PageCache.
+
+        * fast/history/page-cache-webdatabase-opened-db-expected.txt: Added.
+        * fast/history/page-cache-webdatabase-opened-db.html: Added.
+
+2015-02-27  Zalan Bujtas  <zalan@apple.com>
+
+        Use after free in WebCore::RenderNamedFlowFragment::restoreRegionObjectsOriginalStyle
+        https://bugs.webkit.org/show_bug.cgi?id=138366
+
+        Reviewed by Dave Hyatt.
+
+        This patch ensures that we clean up RenderNamedFlowFragment::m_renderObjectRegionStyle when embedded flow content is getting destroyed.
+
+        In m_renderObjectRegionStyle hash map, we store style information about the named flow's descendant children.
+        When a child is being detached from the tree, it removes itself from this hashmap.
+        We do it by traversing up on the ancestor chain and call removeFlowChildInfo() on the parent flow.
+        However in case of embedded flows (for example multicolumn content inside a region), we need to check whether the parent flow
+        is inside a flow too and continue the cleanup accordingly.
+
+        * fast/regions/region-with-multicolumn-embedded-crash-expected.txt: Added.
+        * fast/regions/region-with-multicolumn-embedded-crash.html: Added.
+
+2015-02-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Add another batch of debug assert failures.
+
+        * platform/win/TestExpectations:
+
+2015-02-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Rebaseline test after r180726.
+
+        * platform/win/TestExpectations: Mark a flaky test.
+        * platform/win/editing/inserting/5058163-1-expected.txt:
+
+2015-02-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        isEditablePosition and related functions shouldn't move position out of table
+        https://bugs.webkit.org/show_bug.cgi?id=129200
+
+        Reviewed by Darin Adler.
+
+        Rebaselined a test. There is no visual difference.
+
+        * platform/mac/editing/inserting/5058163-1-expected.txt:
+
+2015-02-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More test expectation updates.
+
+        * platform/win/TestExpectations:
+
+2015-02-26  Timothy Horton  <timothy_horton@apple.com>
+
+        Implement <attachment> element appearance on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=142023
+
+        Reviewed by Dean Jackson.
+
+        * fast/attachment/attachment-rendering-expected.txt:
+        * platform/mac/fast/attachment/attachment-disabled-rendering-expected.png: Added.
+        * platform/mac/fast/attachment/attachment-rendering-expected.png: Added.
+        * platform/mac/fast/attachment/attachment-rendering-expected.txt: Added.
+        Add Mac overrides for <attachment> tests (and pixel results).
+
+2015-02-26  Doug Russell  <d_russell@apple.com>
+
+        AX: Expose caret browsing preference to accessibility API
+        https://bugs.webkit.org/show_bug.cgi?id=141862
+
+        Reviewed by Chris Fleizach.
+
+        Exposing the caret browsing setting on WebCore::Frame via the accessibility API would allow assistive tech apps to enable it contextually (for example, when the assistive tech app is running).
+        Enabling caret browsing when assistive tech apps are running greatly improves the reliability of keyboard navigation on the web. Most especially in cases where selection would be disrupted by focus events.
+
+        * accessibility/parent-delete-expected.txt:
+        * platform/mac/accessibility/caret-browsing-arrow-nav-expected.txt: Added.
+        * platform/mac/accessibility/caret-browsing-arrow-nav.html: Added.
+        * platform/mac/accessibility/caret-browsing-attribute-expected.txt: Added.
+        * platform/mac/accessibility/caret-browsing-attribute.html: Added.
+        * platform/mac/accessibility/caret-browsing-tab-selection-expected.txt: Added.
+        * platform/mac/accessibility/caret-browsing-tab-selection.html: Added.
+        * platform/mac/accessibility/document-attributes-expected.txt:
+        * platform/mac/accessibility/resources/accessibility-helper.js: Added.
+        (clearSelectionAndFocusOnWebArea):
+        (elementAtStartMarkerOfSelectedTextMarkerRange):
+        (caretBrowsingEnabled):
+        (setCaretBrowsingEnabled):
+
+2015-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Save Console Evaluations into Command Line variables $1-$99 ($n)
+        https://bugs.webkit.org/show_bug.cgi?id=142061
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/command-line-api-exception-nested-catch.html:
+        * inspector/debugger/command-line-api-exception.html:
+        * inspector/model/remote-object-get-properties.html:
+        * inspector/model/remote-object-weak-collection.html:
+        * inspector/model/remote-object.html:
+        Update evaluateInInspectedWindow call sites for new parameter.
+
+2015-02-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] More Debug assertion updates.
+
+        * platform/win/TestExpectations:
+
+2015-02-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Various array access corner cases should take OSR exit feedback
+        https://bugs.webkit.org/show_bug.cgi?id=142056
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress/arguments-out-of-bounds-expected.txt: Added.
+        * js/regress/arguments-out-of-bounds.html: Added.
+        * js/regress/exit-length-on-plain-object-expected.txt: Added.
+        * js/regress/exit-length-on-plain-object.html: Added.
+        * js/regress/script-tests/arguments-out-of-bounds.js: Added.
+        (foo):
+        (bar):
+        * js/regress/script-tests/exit-length-on-plain-object.js: Added.
+        (foo):
+        * js/regress/script-tests/string-out-of-bounds.js: Added.
+        (bar):
+        * js/regress/string-out-of-bounds-expected.txt: Added.
+        * js/regress/string-out-of-bounds.html: Added.
+
+2015-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r180602, r180608, r180613, r180617, r180671.
+        <https://webkit.org/b/141990>
+
+        Not reviewed.
+
+        The r180602 solution does result in more work for GC when worker
+        threads are in use.  Filip is uncomfortable with that.
+        The EFL and GTK ports also seem to be unhappy with this change.
+        Rolling out while we investigate.
+
+        * platform/efl/TestExpectations:
+
+2015-02-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Parsing support for -webkit-trailing-word
+        https://bugs.webkit.org/show_bug.cgi?id=141939
+
+        Reviewed by Andreas Kling.
+
+        Test parsing using getComputedStyle().
+
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-roundtrip.html: Updated.
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-roundtrip-expected.txt: Updated.
+        * platform/mac/fast/text/trailing-word-parse-expected.txt: Added.
+        * platform/mac/fast/text/trailing-word-parse.html: Added.
+
+2015-02-26  Brady Eidson  <beidson@apple.com>
+
+        Make WKPageGroupRemoveAllUserContentFilters actually remove all user content filters
+        https://bugs.webkit.org/show_bug.cgi?id=142047
+
+        Reviewed by Geoff Garen.
+
+        * platform/mac-wk2/TestExpectations: Renable content filter tests, as they should no longer interfere with others.
+
+2015-02-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Cleanup RenderSVGResourceClipper class.
+        https://bugs.webkit.org/show_bug.cgi?id=142032.
+
+        Reviewed by Darin Adler.
+
+        * svg/clip-path/clip-path-line-use-before-defined-expected.svg:
+        * svg/clip-path/clip-path-line-use-before-defined.svg: Simplify the test
+        and make separate drawings for different cases.
+
+2015-02-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Setting any of the <object> element plugin controlling attributes does not have any affect.
+        https://bugs.webkit.org/show_bug.cgi?id=141936.
+
+        Reviewed by Zalan Bujtas.
+
+        * svg/as-object/resources/lime100x100.html: Added.
+        * svg/as-object/resources/lime100x100.png: Added.
+        * svg/as-object/resources/lime100x100.svg: Added.
+        * svg/as-object/resources/red100x100.svg: Added.
+        * svg/as-object/svg-in-object-dynamic-attribute-change-expected.html: Added.
+        * svg/as-object/svg-in-object-dynamic-attribute-change.html: Added.
+        Ensure that changing the 'type' and the 'data' attributes of the <object>
+        element will have the expected outcome. Also make sure that the <object>
+        element renderer falls back correctly when setting any of the attributes
+        to some unexpected value.
+
+2015-02-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test updates for Debug bots.
+
+        * platform/win/TestExpectations:
+
 2015-02-26  Csaba Osztrogonác  <ossy@webkit.org>
 
         [WK2] Unreviewed gardening, skip failing tests related to missing

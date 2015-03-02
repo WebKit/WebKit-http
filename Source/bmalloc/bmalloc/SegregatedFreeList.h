@@ -26,15 +26,14 @@
 #ifndef SegregatedFreeList_h
 #define SegregatedFreeList_h
 
-#include "LargeObject.h"
-#include "Vector.h"
+#include "FreeList.h"
 #include <array>
 
 namespace bmalloc {
 
 class SegregatedFreeList {
 public:
-    SegregatedFreeList();
+    SegregatedFreeList(Owner);
 
     void insert(const LargeObject&);
 
@@ -55,17 +54,13 @@ public:
     // fit is found. Never returns LargeObject() spuriously. Incrementally
     // removes stale items from the free list while searching. Eagerly removes
     // the returned object from the free list.
-    LargeObject takeGreedy(size_t);
-    
+    LargeObject takeGreedy();
+
 private:
-    typedef Vector<Range> List;
+    FreeList& select(size_t);
 
-    List& select(size_t);
-    LargeObject take(List&, size_t);
-    LargeObject take(List&, size_t alignment, size_t, size_t unalignedSize);
-    LargeObject takeGreedy(List&, size_t);
-
-    std::array<List, 19> m_lists;
+    Owner m_owner;
+    std::array<FreeList, 19> m_freeLists;
 };
 
 } // namespace bmalloc

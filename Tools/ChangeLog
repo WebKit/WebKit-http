@@ -1,3 +1,219 @@
+2015-03-01  David Kilzer  <ddkilzer@apple.com>
+
+        LayoutTestRealy: Prepend __XPC_ to the key, not the value!
+
+        Follow-up fix for:
+
+        LayoutTestRelay: App environment variables not set for --guard-malloc or --leaks
+        <http://webkit.org/b/142145>
+
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        (-[LTRelayController _environmentVariables]): Fix think-o.
+
+2015-03-01  David Kilzer  <ddkilzer@apple.com>
+
+        LayoutTestRelay: App environment variables not set for --guard-malloc or --leaks
+        <http://webkit.org/b/142145>
+
+        Reviewed by Simon Fraser.
+
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        (-[LTRelayController _environmentVariables]): Add.
+        (-[LTRelayController launchApp]): Use -_environmentVariables.
+
+2015-02-28  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Stop running webkit-build-directory on every layout test
+
+        This was originally fixed by David Farler for Bug 135409 in
+        r172602.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.relay_path): Mark as @memoized so it doesn't
+        run webkit-build-directory every time it's called.
+
+2015-02-28  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C importer should use filesystem instead of shutil/host
+        https://bugs.webkit.org/show_bug.cgi?id=142012
+
+        Reviewed by Bem Jones-Bey.
+
+        Removed direct use of python shutil and os, except for os.walk which will require its own fix.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (main):
+        (TestImporter.do_import):
+        (TestImporter.find_importable_tests):
+        (TestImporter.import_tests):
+        (TestImporter.remove_deleted_files):
+        (TestImporter.write_import_log):
+
+2015-02-28  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should use filesystem to read and write files
+        https://bugs.webkit.org/show_bug.cgi?id=142084
+
+        Reviewed by Bem Jones-Bey.
+
+        Use of FileSystem.write_binary_file, read_text_file and write_text_file in lieu of open().
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.import_tests):
+        (TestImporter.remove_deleted_files):
+        (TestImporter.write_import_log):
+
+2015-02-27  Sam Weinig  <sam@webkit.org>
+
+        Add WebKit2 SPI to create a DOM File object
+        https://bugs.webkit.org/show_bug.cgi?id=142109
+
+        Reviewed by Tim Horton.
+
+        Add a test for WKBundleFileHandleRef.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/WKBundleFileHandle.cpp: Added.
+        (TestWebKitAPI::didReceiveMessageFromInjectedBundle):
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/WKBundleFileHandle_Bundle.cpp: Added.
+        (TestWebKitAPI::WKBundleFileHandleTest::WKBundleFileHandleTest):
+        * TestWebKitAPI/Tests/WebKit2/bundle-file.html: Added.
+
+2015-02-27  Michael Saboff  <msaboff@apple.com>
+
+        Add ability for run-jsc-benchmarks to set library path from test binary when run on a build bot
+        https://bugs.webkit.org/show_bug.cgi?id=142112
+
+        Reviewed by Filip Pizlo.
+
+        Added check for VMs in the form of <someDir>/{DumpRenderTree,webkitTestRunner,jsc} and use
+        <someDir> as the library path.
+
+        * Scripts/run-jsc-benchmarks:
+
+2015-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        [WinCairo] Unreviewed build fix.
+
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPICommonWinCairo.props:
+        Use TestWebKitAPIPrefix.h like in TestWebKitAPICommon.props.
+
+2015-02-27  Anders Carlsson  <andersca@apple.com>
+
+        Add infrastructure for handling website data in the network process
+        https://bugs.webkit.org/show_bug.cgi?id=142092
+
+        Reviewed by Andreas Kling.
+
+        Add a menu item that will fetch all website data, delete the returned data records, and
+        fetch all website data again so we can confirm that it's all empty.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController fetchAndClearWebsiteData:]):
+
+2015-02-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove remaining SafariTheme cruft
+        https://bugs.webkit.org/show_bug.cgi?id=142075
+
+        Reviewed by Anders Carlsson.
+
+        Remove reference to SafariTheme-switching preference.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+        (prepareConsistentTestingEnvironment):
+
+2015-02-26  Doug Russell  <d_russell@apple.com>
+
+        AX: Expose caret browsing preference to accessibility API
+        https://bugs.webkit.org/show_bug.cgi?id=141862
+
+        Reviewed by Chris Fleizach.
+
+        Exposing the caret browsing setting on WebCore::Frame via the accessibility API would allow assistive tech apps to enable it contextually (for example, when the assistive tech app is running).
+        Enabling caret browsing when assistive tech apps are running greatly improves the reliability of keyboard navigation on the web. Most especially in cases where selection would be disrupted by focus events.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (setBoolAttributeValueCallback):
+        (selectedTextMarkerRangeCallback):
+        (resetSelectedTextMarkerRangeCallback):
+        (AccessibilityUIElement::setBoolAttributeValue):
+        (AccessibilityUIElement::selectedTextMarkerRange):
+        (AccessibilityUIElement::resetSelectedTextMarkerRange):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::setBoolAttributeValue):
+        (AccessibilityUIElement::selectedTextMarkerRange):
+        (AccessibilityUIElement::resetSelectedTextMarkerRange):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::selectedTextMarkerRange):
+        (WTR::AccessibilityUIElement::resetSelectedTextMarkerRange):
+        (WTR::AccessibilityUIElement::setBoolAttributeValue):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::setBoolAttributeValue):
+        (WTR::AccessibilityUIElement::selectedTextMarkerRange):
+        (WTR::AccessibilityUIElement::resetSelectedTextMarkerRange):
+
+2015-02-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Remove WebKitExportGenerator project (and related)
+        https://bugs.webkit.org/show_bug.cgi?id=142035
+
+        Reviewed by Dean Jackson.
+
+        * win/AssembleBuildLogs/AssembleLogs.cmd: Don't look for a
+        build log from WebKitExportGenerator.
+
+2015-02-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump EFL version to 1.13.0
+        https://bugs.webkit.org/show_bug.cgi?id=141708
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2015-02-26  Sam Weinig  <sam@webkit.org>
+
+        Check in missing WebEditingTester.xcconfig file.
+
+        * WebEditingTester/Configurations/WebEditingTester.xcconfig: Added.
+
+2015-02-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [webkitpy] Remove skipped file related crufts
+        https://bugs.webkit.org/show_bug.cgi?id=142046
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.skipped_layout_tests):
+        (Port._tests_from_skipped_file_contents): Deleted.
+        (Port): Deleted.
+        (Port._expectations_from_skipped_files): Deleted.
+        * Scripts/webkitpy/port/mac_unittest.py:
+        (MacTest.test_default_timeout_ms):
+        (MacTest): Deleted.
+        (test_tests_from_skipped_file_contents): Deleted.
+
+2015-02-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed WinCairo build fix after r180653.
+
+        TestWebKitAPI should know about proper WEBCORE_EXPORT definitions.
+
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPICommon.props:
+        * TestWebKitAPI/win/TestWebKitAPIPrefix.cpp: Added.
+        * TestWebKitAPI/win/TestWebKitAPIPrefix.h: Added.
+
 2015-02-25  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Use WEBCORE_EXPORT instead of Definition file

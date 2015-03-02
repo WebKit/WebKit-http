@@ -1264,14 +1264,19 @@ void WebView::frameRect(RECT* rect)
     ::GetWindowRect(m_viewWindow, rect);
 }
 
-class WindowCloseTimer : public WebCore::SuspendableTimer {
+class WindowCloseTimer final : public WebCore::SuspendableTimer {
 public:
     static WindowCloseTimer* create(WebView*);
 
 private:
     WindowCloseTimer(ScriptExecutionContext&, WebView*);
-    virtual void contextDestroyed();
-    virtual void fired();
+
+    // ActiveDOMObject API.
+    void contextDestroyed() override;
+    const char* activeDOMObjectName() const override { return "WindowCloseTimer"; }
+
+    // SuspendableTimer API.
+    void fired() override;
 
     WebView* m_webView;
 };
@@ -2787,12 +2792,6 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
 
         didOneTimeInitialization = true;
      }
-
-#if USE(SAFARI_THEME)
-    BOOL shouldPaintNativeControls;
-    if (SUCCEEDED(m_preferences->shouldPaintNativeControls(&shouldPaintNativeControls)))
-        Settings::setShouldPaintNativeControls(shouldPaintNativeControls);
-#endif
 
     BOOL useHighResolutionTimer;
     if (SUCCEEDED(m_preferences->shouldUseHighResolutionTimers(&useHighResolutionTimer)))
@@ -4996,7 +4995,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     hr = prefsPrivate->databasesEnabled(&enabled);
     if (FAILED(hr))
         return hr;
-    DatabaseManager::manager().setIsAvailable(enabled);
+    DatabaseManager::singleton().setIsAvailable(enabled);
 
     hr = prefsPrivate->localStorageEnabled(&enabled);
     if (FAILED(hr))
@@ -5032,13 +5031,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     settings.setXSSAuditorEnabled(!!enabled);
-
-#if USE(SAFARI_THEME)
-    hr = prefsPrivate->shouldPaintNativeControls(&enabled);
-    if (FAILED(hr))
-        return hr;
-    settings.setShouldPaintNativeControls(!!enabled);
-#endif
 
     hr = prefsPrivate->shouldUseHighResolutionTimers(&enabled);
     if (FAILED(hr))

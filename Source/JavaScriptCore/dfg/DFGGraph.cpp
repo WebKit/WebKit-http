@@ -282,6 +282,13 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
                 out.print(comma, "machine:", operand);
         }
     }
+    if (node->hasStackAccessData()) {
+        StackAccessData* data = node->stackAccessData();
+        out.print(comma, data->local);
+        if (data->machineLocal.isValid())
+            out.print(comma, "machine:", data->machineLocal);
+        out.print(comma, data->format);
+    }
     if (node->hasUnlinkedLocal()) 
         out.print(comma, node->unlinkedLocal());
     if (node->hasUnlinkedMachineLocal()) {
@@ -1046,6 +1053,7 @@ JSArrayBufferView* Graph::tryGetFoldableViewForChild1(Node* node)
 void Graph::registerFrozenValues()
 {
     m_codeBlock->constants().resize(0);
+    m_codeBlock->constantsSourceCodeRepresentation().resize(0);
     for (FrozenValue* value : m_frozenValues) {
         if (value->structure())
             ASSERT(m_plan.weakReferences.contains(value->structure()));
@@ -1071,6 +1079,7 @@ void Graph::registerFrozenValues()
         } }
     }
     m_codeBlock->constants().shrinkToFit();
+    m_codeBlock->constantsSourceCodeRepresentation().shrinkToFit();
 }
 
 void Graph::visitChildren(SlotVisitor& visitor)

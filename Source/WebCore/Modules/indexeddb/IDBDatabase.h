@@ -80,9 +80,6 @@ public:
     virtual void onAbort(int64_t, PassRefPtr<IDBDatabaseError>);
     virtual void onComplete(int64_t);
 
-    // ActiveDOMObject
-    virtual bool hasPendingActivity() const override;
-
     // EventTarget
     virtual EventTargetInterface eventTargetInterface() const override final { return IDBDatabaseEventTargetInterfaceType; }
     virtual ScriptExecutionContext* scriptExecutionContext() const override final { return ActiveDOMObject::scriptExecutionContext(); }
@@ -108,12 +105,16 @@ public:
     using RefCounted<IDBDatabase>::ref;
     using RefCounted<IDBDatabase>::deref;
 
+    // ActiveDOMObject API.
+    bool hasPendingActivity() const override;
+
 private:
     IDBDatabase(ScriptExecutionContext*, PassRefPtr<IDBDatabaseBackend>, PassRefPtr<IDBDatabaseCallbacks>);
 
-    // ActiveDOMObject
-    virtual void stop() override;
-    virtual const char* activeDOMObjectName() const override { return "IDBDatabase"; }
+    // ActiveDOMObject API.
+    void stop() override;
+    const char* activeDOMObjectName() const override;
+    bool canSuspend() const override;
 
     // EventTarget
     virtual void refEventTarget() override final { ref(); }
@@ -128,6 +129,7 @@ private:
     TransactionMap m_transactions;
 
     bool m_closePending;
+    bool m_isClosed;
     bool m_contextStopped;
 
     // Keep track of the versionchange events waiting to be fired on this

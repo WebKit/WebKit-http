@@ -122,6 +122,15 @@ JSValue StringNode::jsValue(BytecodeGenerator& generator) const
     return generator.addStringConstant(m_value);
 }
 
+// ------------------------------ NumberNode ----------------------------------
+
+RegisterID* NumberNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
+{
+    if (dst == generator.ignoredResult())
+        return nullptr;
+    return generator.emitLoad(dst, jsValue(generator), isIntegerNode() ? SourceCodeRepresentation::Integer : SourceCodeRepresentation::Double);
+}
+
 // ------------------------------ RegExpNode -----------------------------------
 
 RegisterID* RegExpNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
@@ -169,7 +178,7 @@ RegisterID* ResolveNode::emitBytecode(BytecodeGenerator& generator, RegisterID* 
     JSTextPosition divot = m_start + m_ident.length();
     generator.emitExpressionInfo(divot, m_start, divot);
     ResolveScopeInfo resolveScopeInfo;
-    RefPtr<RegisterID> scope = generator.emitResolveScope(generator.tempDestination(dst), m_ident, resolveScopeInfo);
+    RefPtr<RegisterID> scope = generator.emitResolveScope(dst, m_ident, resolveScopeInfo);
     RegisterID* finalDest = generator.finalDestination(dst);
     RegisterID* result = generator.emitGetFromScope(finalDest, scope.get(), m_ident, ThrowIfNotFound, resolveScopeInfo);
     if (generator.vm()->typeProfiler()) {
@@ -498,7 +507,9 @@ RegisterID* EvalFunctionCallNode::emitBytecode(BytecodeGenerator& generator, Reg
     JSTextPosition newDivot = divotStart() + 4;
     generator.emitExpressionInfo(newDivot, divotStart(), newDivot);
     ResolveScopeInfo resolveScopeInfo;
-    generator.emitResolveScope(callArguments.thisRegister(), generator.propertyNames().eval, resolveScopeInfo);
+    generator.moveToDestinationIfNeeded(
+        callArguments.thisRegister(),
+        generator.emitResolveScope(callArguments.thisRegister(), generator.propertyNames().eval, resolveScopeInfo));
     generator.emitGetFromScope(func.get(), callArguments.thisRegister(), generator.propertyNames().eval, ThrowIfNotFound, resolveScopeInfo);
     return generator.emitCallEval(generator.finalDestination(dst, func.get()), func.get(), callArguments, divot(), divotStart(), divotEnd());
 }
@@ -547,7 +558,9 @@ RegisterID* FunctionCallResolveNode::emitBytecode(BytecodeGenerator& generator, 
     JSTextPosition newDivot = divotStart() + m_ident.length();
     generator.emitExpressionInfo(newDivot, divotStart(), newDivot);
     ResolveScopeInfo resolveScopeInfo;
-    generator.emitResolveScope(callArguments.thisRegister(), m_ident, resolveScopeInfo);
+    generator.moveToDestinationIfNeeded(
+        callArguments.thisRegister(),
+        generator.emitResolveScope(callArguments.thisRegister(), m_ident, resolveScopeInfo));
     generator.emitGetFromScope(func.get(), callArguments.thisRegister(), m_ident, ThrowIfNotFound, resolveScopeInfo);
     RegisterID* ret = generator.emitCall(returnValue.get(), func.get(), expectedFunction, callArguments, divot(), divotStart(), divotEnd());
     if (generator.vm()->typeProfiler()) {
@@ -829,7 +842,7 @@ RegisterID* PostfixNode::emitResolve(BytecodeGenerator& generator, RegisterID* d
 
     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     ResolveScopeInfo resolveScopeInfo;
-    RefPtr<RegisterID> scope = generator.emitResolveScope(generator.newTemporary(), ident, resolveScopeInfo);
+    RefPtr<RegisterID> scope = generator.emitResolveScope(nullptr, ident, resolveScopeInfo);
     RefPtr<RegisterID> value = generator.emitGetFromScope(generator.newTemporary(), scope.get(), ident, ThrowIfNotFound, resolveScopeInfo);
     RefPtr<RegisterID> oldValue = emitPostIncOrDec(generator, generator.finalDestination(dst), value.get(), m_operator);
     generator.emitPutToScope(scope.get(), ident, value.get(), ThrowIfNotFound, resolveScopeInfo);
@@ -915,7 +928,7 @@ RegisterID* DeleteResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
 
     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     ResolveScopeInfo resolveScopeInfo;
-    RefPtr<RegisterID> base = generator.emitResolveScope(generator.tempDestination(dst), m_ident, resolveScopeInfo);
+    RefPtr<RegisterID> base = generator.emitResolveScope(dst, m_ident, resolveScopeInfo);
     return generator.emitDeleteById(generator.finalDestination(dst, base.get()), base.get(), m_ident);
 }
 
@@ -973,7 +986,7 @@ RegisterID* TypeOfResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
     }
 
     ResolveScopeInfo resolveScopeInfo;
-    RefPtr<RegisterID> scope = generator.emitResolveScope(generator.tempDestination(dst), m_ident, resolveScopeInfo);
+    RefPtr<RegisterID> scope = generator.emitResolveScope(dst, m_ident, resolveScopeInfo);
     RefPtr<RegisterID> value = generator.emitGetFromScope(generator.newTemporary(), scope.get(), m_ident, DoNotThrowIfNotFound, resolveScopeInfo);
     if (dst == generator.ignoredResult())
         return 0;
@@ -1020,7 +1033,7 @@ RegisterID* PrefixNode::emitResolve(BytecodeGenerator& generator, RegisterID* ds
 
     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     ResolveScopeInfo resolveScopeInfo;
-    RefPtr<RegisterID> scope = generator.emitResolveScope(generator.tempDestination(dst), ident, resolveScopeInfo);
+    RefPtr<RegisterID> scope = generator.emitResolveScope(dst, ident, resolveScopeInfo);
     RefPtr<RegisterID> value = generator.emitGetFromScope(generator.newTemporary(), scope.get(), ident, ThrowIfNotFound, resolveScopeInfo);
     emitIncOrDec(generator, value.get(), m_operator);
     generator.emitPutToScope(scope.get(), ident, value.get(), ThrowIfNotFound, resolveScopeInfo);
@@ -1542,7 +1555,7 @@ RegisterID* ReadModifyResolveNode::emitBytecode(BytecodeGenerator& generator, Re
 
     generator.emitExpressionInfo(newDivot, divotStart(), newDivot);
     ResolveScopeInfo resolveScopeInfo;
-    RefPtr<RegisterID> scope = generator.emitResolveScope(generator.newTemporary(), m_ident, resolveScopeInfo);
+    RefPtr<RegisterID> scope = generator.emitResolveScope(nullptr, m_ident, resolveScopeInfo);
     RefPtr<RegisterID> value = generator.emitGetFromScope(generator.newTemporary(), scope.get(), m_ident, ThrowIfNotFound, resolveScopeInfo);
     RefPtr<RegisterID> result = emitReadModifyAssignment(generator, generator.finalDestination(dst, value.get()), value.get(), m_right, m_operator, OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()), this);
     RegisterID* returnResult = generator.emitPutToScope(scope.get(), m_ident, result.get(), ThrowIfNotFound, resolveScopeInfo);
@@ -1579,7 +1592,7 @@ RegisterID* AssignResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
     if (generator.isStrictMode())
         generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     ResolveScopeInfo resolveScopeInfo;
-    RefPtr<RegisterID> scope = generator.emitResolveScope(generator.newTemporary(), m_ident, resolveScopeInfo);
+    RefPtr<RegisterID> scope = generator.emitResolveScope(nullptr, m_ident, resolveScopeInfo);
     if (dst == generator.ignoredResult())
         dst = 0;
     RefPtr<RegisterID> result = generator.emitNode(dst, m_right);
@@ -1725,7 +1738,7 @@ RegisterID* ConstDeclNode::emitCodeSingle(BytecodeGenerator& generator)
 
     // FIXME: This will result in incorrect assignment if m_ident exists in an intervening with scope.
     ResolveScopeInfo resolveScopeInfo;
-    RefPtr<RegisterID> scope = generator.emitResolveScope(generator.newTemporary(), m_ident, resolveScopeInfo);
+    RefPtr<RegisterID> scope = generator.emitResolveScope(nullptr, m_ident, resolveScopeInfo);
     return generator.emitPutToScope(scope.get(), m_ident, value.get(), DoNotThrowIfNotFound, resolveScopeInfo);
 }
 
@@ -1822,7 +1835,7 @@ RegisterID* EmptyVarExpression::emitBytecode(BytecodeGenerator& generator, Regis
         generator.emitProfileType(local.get(), ProfileTypeBytecodeHasGlobalID, nullptr);
     else {
         ResolveScopeInfo resolveScopeInfo;
-        RefPtr<RegisterID> scope = generator.emitResolveScope(generator.newTemporary(), m_ident, resolveScopeInfo);
+        RefPtr<RegisterID> scope = generator.emitResolveScope(nullptr, m_ident, resolveScopeInfo);
         RefPtr<RegisterID> value = generator.emitGetFromScope(generator.newTemporary(), scope.get(), m_ident, DoNotThrowIfNotFound, resolveScopeInfo);
         generator.emitProfileType(value.get(), resolveScopeInfo.isLocal() ? ProfileTypeBytecodeGetFromLocalScope : ProfileTypeBytecodeGetFromScope, &m_ident);
     }
@@ -2026,7 +2039,7 @@ void ForInNode::emitLoopHeader(BytecodeGenerator& generator, RegisterID* propert
             if (generator.isStrictMode())
                 generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
             ResolveScopeInfo resolveScopeInfo;
-            RegisterID* scope = generator.emitResolveScope(generator.newTemporary(), ident, resolveScopeInfo);
+            RegisterID* scope = generator.emitResolveScope(nullptr, ident, resolveScopeInfo);
             generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
             generator.emitPutToScope(scope, ident, propertyName, generator.isStrictMode() ? ThrowIfNotFound : DoNotThrowIfNotFound, resolveScopeInfo);
             if (generator.vm()->typeProfiler())
@@ -2250,7 +2263,7 @@ void ForOfNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
                 if (generator.isStrictMode())
                     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
                 ResolveScopeInfo resolveScopeInfo;
-                RegisterID* scope = generator.emitResolveScope(generator.newTemporary(), ident, resolveScopeInfo);
+                RegisterID* scope = generator.emitResolveScope(nullptr, ident, resolveScopeInfo);
                 generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
                 generator.emitPutToScope(scope, ident, value, generator.isStrictMode() ? ThrowIfNotFound : DoNotThrowIfNotFound, resolveScopeInfo);
                 if (generator.vm()->typeProfiler())
@@ -2959,7 +2972,7 @@ void BindingNode::bindValue(BytecodeGenerator& generator, RegisterID* value) con
     if (generator.isStrictMode())
         generator.emitExpressionInfo(divotEnd(), divotStart(), divotEnd());
     ResolveScopeInfo resolveScopeInfo;
-    RegisterID* scope = generator.emitResolveScope(generator.newTemporary(), m_boundProperty, resolveScopeInfo);
+    RegisterID* scope = generator.emitResolveScope(nullptr, m_boundProperty, resolveScopeInfo);
     generator.emitExpressionInfo(divotEnd(), divotStart(), divotEnd());
     generator.emitPutToScope(scope, m_boundProperty, value, generator.isStrictMode() ? ThrowIfNotFound : DoNotThrowIfNotFound, resolveScopeInfo);
     if (generator.vm()->typeProfiler()) {

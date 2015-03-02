@@ -510,6 +510,16 @@ void SourceBuffer::stop()
     m_removeTimer.stop();
 }
 
+bool SourceBuffer::canSuspend() const
+{
+    return !hasPendingActivity();
+}
+
+const char* SourceBuffer::activeDOMObjectName() const
+{
+    return "SourceBuffer";
+}
+
 bool SourceBuffer::isRemoved() const
 {
     return !m_source;

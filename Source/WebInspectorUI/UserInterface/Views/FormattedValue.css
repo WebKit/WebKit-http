@@ -30,6 +30,10 @@
     color: black;
 }
 
+.formatted-node > ol {
+    display: block !important;
+}
+
 .formatted-number {
     color: rgb(28, 0, 207);
 }

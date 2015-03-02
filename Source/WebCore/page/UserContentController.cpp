@@ -187,6 +187,14 @@ void UserContentController::addUserContentFilter(const String& name, const Strin
     m_contentExtensionBackend->setRuleList(name, ContentExtensions::ExtensionsManager::createRuleList(ruleList));
 }
 
+void UserContentController::removeUserContentFilter(const String& name)
+{
+    if (!m_contentExtensionBackend)
+        return;
+
+    m_contentExtensionBackend->removeRuleList(name);
+}
+
 void UserContentController::removeAllUserContentFilters()
 {
     if (!m_contentExtensionBackend)
@@ -195,12 +203,12 @@ void UserContentController::removeAllUserContentFilters()
     m_contentExtensionBackend->removeAllRuleLists();
 }
 
-bool UserContentController::contentFilterBlocksURL(const URL& url)
+ContentFilterAction UserContentController::actionForURL(const URL& url)
 {
     if (!m_contentExtensionBackend)
-        return false;
+        return ContentFilterAction::Load;
 
-    return m_contentExtensionBackend->shouldBlockURL(url);
+    return m_contentExtensionBackend->actionForURL(url);
 }
 
 #endif

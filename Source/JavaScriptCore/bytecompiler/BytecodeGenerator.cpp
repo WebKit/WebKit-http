@@ -123,8 +123,8 @@ ParserError BytecodeGenerator::generate()
     return ParserError(ParserError::ErrorNone);
 }
 
-bool BytecodeGenerator::addVar(
-    const Identifier& ident, ConstantMode constantMode, WatchMode watchMode, RegisterID*& r0)
+RegisterID* BytecodeGenerator::addVar(
+    const Identifier& ident, ConstantMode constantMode, WatchMode watchMode)
 {
     ASSERT(static_cast<size_t>(m_codeBlock->m_numVars) == m_calleeRegisters.size());
     
@@ -133,10 +133,8 @@ bool BytecodeGenerator::addVar(
     SymbolTableEntry newEntry(index, constantMode == IsConstant ? ReadOnly : 0);
     SymbolTable::Map::AddResult result = symbolTable().add(locker, ident.impl(), newEntry);
 
-    if (!result.isNewEntry) {
-        r0 = &registerFor(result.iterator->value.getIndex());
-        return false;
-    }
+    if (!result.isNewEntry)
+        return &registerFor(result.iterator->value.getIndex());
     
     if (watchMode == IsWatchable) {
         while (m_watchableVariables.size() < static_cast<size_t>(m_codeBlock->m_numVars))
@@ -144,11 +142,10 @@ bool BytecodeGenerator::addVar(
         m_watchableVariables.append(ident);
     }
     
-    r0 = addVar();
-    
+    RegisterID* regID = addVar();
     ASSERT(watchMode == NotWatchable || static_cast<size_t>(m_codeBlock->m_numVars) == m_watchableVariables.size());
     
-    return true;
+    return regID;
 }
 
 BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedProgramCodeBlock* codeBlock, DebuggerMode debuggerMode, ProfilerMode profilerMode)
@@ -982,17 +979,19 @@ RegisterID* BytecodeGenerator::addConstantEmptyValue()
     return m_emptyValueRegister;
 }
 
-RegisterID* BytecodeGenerator::addConstantValue(JSValue v)
+RegisterID* BytecodeGenerator::addConstantValue(JSValue v, SourceCodeRepresentation sourceCodeRepresentation)
 {
     if (!v)
         return addConstantEmptyValue();
 
     int index = m_nextConstantOffset;
-    JSValueMap::AddResult result = m_jsValueMap.add(JSValue::encode(v), m_nextConstantOffset);
+
+    EncodedJSValueWithRepresentation valueMapKey { JSValue::encode(v), sourceCodeRepresentation };
+    JSValueMap::AddResult result = m_jsValueMap.add(valueMapKey, m_nextConstantOffset);
     if (result.isNewEntry) {
         m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
         ++m_nextConstantOffset;
-        m_codeBlock->addConstant(v);
+        m_codeBlock->addConstant(v, sourceCodeRepresentation);
     } else
         index = result.iterator->value;
     return &m_constantPoolRegisters[index];
@@ -1165,9 +1164,9 @@ RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, const Identifier& ident
     return emitLoad(dst, JSValue(stringInMap));
 }
 
-RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, JSValue v)
+RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, JSValue v, SourceCodeRepresentation sourceCodeRepresentation)
 {
-    RegisterID* constantID = addConstantValue(v);
+    RegisterID* constantID = addConstantValue(v, sourceCodeRepresentation);
     if (dst)
         return emitMove(dst, constantID);
     return constantID;
@@ -1258,27 +1257,21 @@ ResolveType BytecodeGenerator::resolveType()
 
 RegisterID* BytecodeGenerator::emitResolveScope(RegisterID* dst, const Identifier& identifier, ResolveScopeInfo& info)
 {
-    m_codeBlock->addPropertyAccessInstruction(instructions().size());
-
     if (m_symbolTable && m_codeType == FunctionCode && !m_localScopeDepth) {
         SymbolTableEntry entry = m_symbolTable->get(identifier.impl());
         if (!entry.isNull()) {
-            emitOpcode(op_resolve_scope);
-            instructions().append(kill(dst));
-            instructions().append(scopeRegister()->index());
-            instructions().append(addConstant(identifier));
-            instructions().append(LocalClosureVar);
-            instructions().append(0);
-            instructions().append(0);
             info = ResolveScopeInfo(entry.getIndex());
-            return dst;
+            return scopeRegister();
         }
     }
 
     ASSERT(!m_symbolTable || !m_symbolTable->contains(identifier.impl()) || resolveType() == Dynamic);
 
+    m_codeBlock->addPropertyAccessInstruction(instructions().size());
+
     // resolve_scope dst, id, ResolveType, depth
     emitOpcode(op_resolve_scope);
+    dst = tempDestination(dst);
     instructions().append(kill(dst));
     instructions().append(scopeRegister()->index());
     instructions().append(addConstant(identifier));
@@ -1288,20 +1281,6 @@ RegisterID* BytecodeGenerator::emitResolveScope(RegisterID* dst, const Identifie
     return dst;
 }
 
-
-RegisterID* BytecodeGenerator::emitGetOwnScope(RegisterID* dst, const Identifier& identifier, OwnScopeLookupRules)
-{
-    emitOpcode(op_resolve_scope);
-    instructions().append(kill(dst));
-    instructions().append(scopeRegister()->index());
-    instructions().append(addConstant(identifier));
-    instructions().append(LocalClosureVar);
-    // This should be m_localScopeDepth if we aren't doing
-    // resolution during emitReturn()
-    instructions().append(0);
-    instructions().append(0);
-    return dst;
-}
 
 RegisterID* BytecodeGenerator::emitResolveConstantLocal(RegisterID* dst, const Identifier& identifier, ResolveScopeInfo& info)
 {
@@ -1915,9 +1894,8 @@ RegisterID* BytecodeGenerator::emitReturn(RegisterID* src)
         int argumentsIndex = unmodifiedArgumentsRegister(m_codeBlock->argumentsRegister()).offset();
         if (m_lexicalEnvironmentRegister && m_codeType == FunctionCode) {
             scratchRegister = newTemporary();
-            emitGetOwnScope(scratchRegister.get(), propertyNames().arguments, OwnScopeForReturn);
             ResolveScopeInfo scopeInfo(unmodifiedArgumentsRegister(m_codeBlock->argumentsRegister()).offset());
-            emitGetFromScope(scratchRegister.get(), scratchRegister.get(), propertyNames().arguments, ThrowIfNotFound, scopeInfo);
+            emitGetFromScope(scratchRegister.get(), scopeRegister(), propertyNames().arguments, ThrowIfNotFound, scopeInfo);
             argumentsIndex = scratchRegister->index();
         }
         emitOpcode(op_tear_off_arguments);

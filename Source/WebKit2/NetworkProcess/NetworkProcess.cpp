@@ -39,11 +39,13 @@
 #include "NetworkProcessProxyMessages.h"
 #include "NetworkResourceLoader.h"
 #include "RemoteNetworkingContext.h"
+#include "SecurityOriginData.h"
 #include "SessionTracker.h"
 #include "StatisticsData.h"
 #include "WebCookieManager.h"
 #include "WebProcessPoolMessages.h"
-#include "WebsiteDataTypes.h"
+#include "WebResourceCacheManager.h"
+#include "WebsiteData.h"
 #include <WebCore/Logging.h>
 #include <WebCore/MemoryPressureHandler.h>
 #include <WebCore/PlatformCookieJar.h>
@@ -240,7 +242,83 @@ void NetworkProcess::destroyPrivateBrowsingSession(SessionID sessionID)
     SessionTracker::destroySession(sessionID);
 }
 
-void NetworkProcess::deleteWebsiteData(WebCore::SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
+#if USE(CFURLCACHE)
+static Vector<RefPtr<SecurityOrigin>> cfURLCacheOrigins()
+{
+    Vector<RefPtr<SecurityOrigin>> result;
+
+    WebResourceCacheManager::cfURLCacheHostNamesWithCallback([&result](RetainPtr<CFArrayRef> cfURLHosts) {
+        for (CFIndex i = 0, size = CFArrayGetCount(cfURLHosts.get()); i < size; ++i) {
+            CFStringRef host = static_cast<CFStringRef>(CFArrayGetValueAtIndex(cfURLHosts.get(), i));
+
+            result.append(SecurityOrigin::create("http", host, 0));
+        }
+    });
+
+    return result;
+}
+#endif
+
+static void fetchDiskCacheEntries(SessionID sessionID, std::function<void (Vector<WebsiteData::Entry>)> completionHandler)
+{
+#if ENABLE(NETWORK_CACHE)
+    if (NetworkCache::singleton().isEnabled()) {
+        // FIXME: Handle this.
+        RunLoop::main().dispatch([completionHandler] {
+            completionHandler({ });
+        });
+
+        return;
+    }
+#endif
+
+    Vector<WebsiteData::Entry> entries;
+
+#if USE(CFURLCACHE)
+    auto origins = cfURLCacheOrigins();
+    for (auto& origin : cfURLCacheOrigins())
+        entries.append(WebsiteData::Entry { WTF::move(origin), WebsiteDataTypeDiskCache });
+#endif
+
+    RunLoop::main().dispatch([completionHandler, entries] {
+        completionHandler(entries);
+    });
+}
+
+void NetworkProcess::fetchWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, uint64_t callbackID)
+{
+    struct CallbackAggregator final : public RefCounted<CallbackAggregator> {
+        explicit CallbackAggregator(std::function<void (WebsiteData)> completionHandler)
+            : m_completionHandler(WTF::move(completionHandler))
+        {
+        }
+
+        ~CallbackAggregator()
+        {
+            auto completionHandler = WTF::move(m_completionHandler);
+            auto websiteData = WTF::move(m_websiteData);
+
+            RunLoop::main().dispatch([completionHandler, websiteData] {
+                completionHandler(websiteData);
+            });
+        }
+
+        std::function<void (WebsiteData)> m_completionHandler;
+        WebsiteData m_websiteData;
+    };
+
+    RefPtr<CallbackAggregator> callbackAggregator = adoptRef(new CallbackAggregator([this, callbackID](WebsiteData websiteData) {
+        parentProcessConnection()->send(Messages::NetworkProcessProxy::DidFetchWebsiteData(callbackID, websiteData), 0);
+    }));
+
+    if (websiteDataTypes & WebsiteDataTypeDiskCache) {
+        fetchDiskCacheEntries(sessionID, [callbackAggregator](Vector<WebsiteData::Entry> entries) {
+            callbackAggregator->m_websiteData.entries.appendVector(entries);
+        });
+    }
+}
+
+void NetworkProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
 {
     if (websiteDataTypes & WebsiteDataTypeCookies) {
         if (auto* networkStorageSession = SessionTracker::session(sessionID))
@@ -255,6 +333,17 @@ void NetworkProcess::deleteWebsiteData(WebCore::SessionID sessionID, uint64_t we
         clearDiskCache(modifiedSince, WTF::move(completionHandler));
         return;
     }
+
+    completionHandler();
+}
+
+void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, uint64_t callbackID)
+{
+    // FIXME: Actually delete something.
+
+    auto completionHandler = [this, callbackID] {
+        parentProcessConnection()->send(Messages::NetworkProcessProxy::DidDeleteWebsiteDataForOrigins(callbackID), 0);
+    };
 
     completionHandler();
 }
