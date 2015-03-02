@@ -90,6 +90,15 @@ WTF::String WebProcessPool::platformDefaultApplicationCacheDirectory() const
     return WebCore::filenameToString(cacheDirectory.get());
 }
 
+void WebProcessPool::platformInitialize()
+{
+    static bool useNetworkProcess = !!std::getenv("WPE_NETWORK_PROCESS");
+    if (useNetworkProcess) {
+        setUsesNetworkProcess(true);
+        setProcessModel(ProcessModelMultipleSecondaryProcesses);
+    }
+}
+
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
 #if ENABLE(INSPECTOR_SERVER)

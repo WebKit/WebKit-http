@@ -228,7 +228,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 #endif
 }
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) && !PLATFORM(WPE)
 void WebProcessPool::platformInitialize()
 {
 }
