@@ -48,9 +48,10 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #if GST_CHECK_VERSION(1, 3, 0)
+#define GST_USE_UNSTABLE_API
 #include <gst/gl/egl/gsteglimagememory.h>
 #include <gst/gl/gstglutils.h>
-
+#undef GST_USE_UNSTABLE_API
 #endif
 #endif
 

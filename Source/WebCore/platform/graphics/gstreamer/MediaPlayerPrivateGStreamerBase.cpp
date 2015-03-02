@@ -48,23 +48,18 @@
 #include "TextureMapperGL.h"
 #endif
 
-#if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER_GL) && PLATFORM(QT)
-#define GL_GLEXT_PROTOTYPES
-#include "OpenGLShims.h"
-#endif
-
 #define WL_EGL_PLATFORM
 
 #if USE(OPENGL_ES_2)
-#define GL_GLEXT_PROTOTYPES
+#if GST_CHECK_VERSION(1, 3, 0)
+#define GST_USE_UNSTABLE_API
+#include <gst/gl/egl/gsteglimagememory.h>
+#undef GST_USE_UNSTABLE_API
+#endif
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
-#if GST_CHECK_VERSION(1, 3, 0)
-#include <gst/gl/egl/gsteglimagememory.h>
-#endif
 #endif
 
-#define EGL_EGLEXT_PROTOTYPES
 #include <EGL/egl.h>
 
 struct _EGLDetails {
