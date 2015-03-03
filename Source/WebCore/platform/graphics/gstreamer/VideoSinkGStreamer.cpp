@@ -176,8 +176,13 @@ static gboolean _ensure_gl_setup(WebKitVideoSink* gl_sink)
 {
     GError* error = NULL;
 
+#if GST_CHECK_VERSION(1, 5, 0)
+    if (!gst_gl_ensure_element_data(gl_sink, &gl_sink->priv->display, &gl_sink->priv->other_context))
+        return FALSE;
+#else
     if (!gst_gl_ensure_display(gl_sink, &gl_sink->priv->display))
         return FALSE;
+#endif
 
     if (!gl_sink->priv->context) {
         gl_sink->priv->context = gst_gl_context_new(gl_sink->priv->display);
@@ -509,8 +514,12 @@ static gboolean webkitVideoSinkQuery(GstBaseSink* baseSink, GstQuery* query)
     }
     case GST_QUERY_CONTEXT:
     {
+#if GST_CHECK_VERSION(1, 5, 0)
+        return gst_gl_handle_context_query(GST_ELEMENT(sink), query, &priv->display, &priv->other_context);
+#else
         return gst_gl_handle_context_query(GST_ELEMENT(sink), query, &priv->display);
-      break;
+#endif
+        break;
     }
     default:
         return GST_CALL_PARENT_WITH_DEFAULT(GST_BASE_SINK_CLASS, query, (baseSink, query), TRUE);
@@ -524,7 +533,11 @@ webkitVideoSinkSetContext(GstElement* element, GstContext* context)
 {
     WebKitVideoSink* sink =  WEBKIT_VIDEO_SINK(element);
 
+#if GST_CHECK_VERSION(1, 5, 0)
+    gst_gl_handle_set_context(element, context, &sink->priv->display, &sink->priv->other_context);
+#else
     gst_gl_handle_set_context(element, context, &sink->priv->display);
+#endif
 }
 #endif
 
