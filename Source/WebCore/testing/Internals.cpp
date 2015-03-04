@@ -79,6 +79,8 @@
 #include "MediaSessionManager.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
+#include "MicroTask.h"
+#include "MicroTaskTest.h"
 #include "MockPageOverlayClient.h"
 #include "Page.h"
 #include "PageCache.h"
@@ -302,7 +304,7 @@ void Internals::resetToConsistentState(Page* page)
         page->mainFrame().editor().toggleContinuousSpellChecking();
     if (page->mainFrame().editor().isOverwriteModeEnabled())
         page->mainFrame().editor().toggleOverwriteModeEnabled();
-    cacheStorage().setDefaultOriginQuota(ApplicationCacheStorage::noQuota());
+    ApplicationCacheStorage::singleton().setDefaultOriginQuota(ApplicationCacheStorage::noQuota());
 #if ENABLE(VIDEO)
     MediaSessionManager::sharedManager().resetRestrictions();
 #endif
@@ -1928,7 +1930,7 @@ void Internals::setApplicationCacheOriginQuota(unsigned long long quota)
     Document* document = contextDocument();
     if (!document)
         return;
-    cacheStorage().storeUpdatedQuotaForOrigin(document->securityOrigin(), quota);
+    ApplicationCacheStorage::singleton().storeUpdatedQuotaForOrigin(document->securityOrigin(), quota);
 }
 
 void Internals::registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme)
@@ -2530,6 +2532,12 @@ RefPtr<File> Internals::createFile(const String& path)
         return nullptr;
 
     return File::create(url.fileSystemPath());
+}
+
+void Internals::queueMicroTask(int testNumber)
+{
+    if (contextDocument())
+        MicroTaskQueue::singleton().queueMicroTask(MicroTaskTest::create(contextDocument()->createWeakPtr(), testNumber));
 }
 
 }

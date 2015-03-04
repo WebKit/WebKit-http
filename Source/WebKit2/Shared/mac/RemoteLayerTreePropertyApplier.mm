@@ -37,6 +37,7 @@
 
 #if PLATFORM(IOS)
 #import <UIKit/UIView.h>
+#import <UIKitSPI.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -112,6 +113,8 @@ static void updateCustomAppearance(CALayer *layer, GraphicsLayer::CustomAppearan
 #if ENABLE(RUBBER_BANDING)
     switch (customAppearance) {
     case GraphicsLayer::NoCustomAppearance:
+    case GraphicsLayer::DarkBackdropAppearance:
+    case GraphicsLayer::LightBackdropAppearance:
         ScrollbarThemeMac::removeOverhangAreaBackground(layer);
         ScrollbarThemeMac::removeOverhangAreaShadow(layer);
         break;
@@ -197,6 +200,11 @@ static void applyPropertiesToLayer(CALayer *layer, RemoteLayerTreeHost* layerTre
         [(CAShapeLayer *)layer setPath:path.platformPath()];
     }
 
+    if (properties.changedProperties & RemoteLayerTreeTransaction::ShapePathChanged) {
+        ASSERT([layer isKindOfClass:[CAShapeLayer class]]);
+        [(CAShapeLayer *)layer setPath:properties.shapePath.platformPath()];
+    }
+
     if (properties.changedProperties & RemoteLayerTreeTransaction::MinificationFilterChanged)
         layer.minificationFilter = toCAFilterType(properties.minificationFilter);
 
@@ -205,6 +213,19 @@ static void applyPropertiesToLayer(CALayer *layer, RemoteLayerTreeHost* layerTre
 
     if (properties.changedProperties & RemoteLayerTreeTransaction::BlendModeChanged)
         PlatformCAFilters::setBlendingFiltersOnLayer(layer, properties.blendMode);
+
+    if (properties.changedProperties & RemoteLayerTreeTransaction::WindRuleChanged) {
+        ASSERT([layer isKindOfClass:[CAShapeLayer class]]);
+        CAShapeLayer *shapeLayer = (CAShapeLayer *)layer;
+        switch (properties.windRule) {
+        case RULE_NONZERO:
+            shapeLayer.fillRule = @"non-zero";
+            break;
+        case RULE_EVENODD:
+            shapeLayer.fillRule = @"even-odd";
+            break;
+        }
+    }
 
     if (properties.changedProperties & RemoteLayerTreeTransaction::SpeedChanged)
         layer.speed = properties.speed;
@@ -283,7 +304,12 @@ void RemoteLayerTreePropertyApplier::applyProperties(UIView *view, RemoteLayerTr
             [children addObject:relatedLayers.get(child)];
         }
 
-        [view _web_setSubviews:children.get()];
+        if (properties.customAppearance == GraphicsLayer::LightBackdropAppearance || properties.customAppearance == GraphicsLayer::DarkBackdropAppearance) {
+            // This is a UIBackdropView, which should have children attached to
+            // its content view, not directly on its layers.
+            [[(_UIBackdropView*)view contentView] _web_setSubviews:children.get()];
+        } else
+            [view _web_setSubviews:children.get()];
     }
 
     if (properties.changedProperties & RemoteLayerTreeTransaction::MaskLayerChanged) {

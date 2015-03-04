@@ -1,3 +1,155 @@
+2015-03-03  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: selecting overview timeline tree elements without source locations doesn't update selection components
+        https://bugs.webkit.org/show_bug.cgi?id=142248
+
+        Reviewed by Timothy Hatcher.
+
+        Add a missing event dispatch to trigger recalculation of path components when showing the overview timeline view.
+
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype._treeElementSelected):
+
+2015-03-03  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Refactoring: separate ConsoleSession from ConsoleGroup
+        https://bugs.webkit.org/show_bug.cgi?id=142141
+
+        ConsoleSession doesn't have a title and it's not collapsible either.
+        Simplify ConsoleSession by removing excessive markup.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController):
+        (WebInspector.JavaScriptLogViewController.prototype.startNewSession):
+        (WebInspector.JavaScriptLogViewController.prototype._appendConsoleMessage):
+        (WebInspector.JavaScriptLogViewController.prototype.get topConsoleGroup): Deleted.
+        * UserInterface/Main.html:
+        * UserInterface/Views/ConsoleGroup.js:
+        (WebInspector.ConsoleGroup):
+        (WebInspector.ConsoleGroup.prototype.render):
+        (WebInspector.ConsoleGroup.prototype.addMessage):
+        (WebInspector.ConsoleGroup.prototype.append):
+        (WebInspector.ConsoleGroup.prototype.hasMessages): Deleted.
+        * UserInterface/Views/ConsoleSession.js: Added.
+        (WebInspector.ConsoleSession):
+        (WebInspector.ConsoleSession.prototype.addMessage):
+        (WebInspector.ConsoleSession.prototype.append):
+        (WebInspector.ConsoleSession.prototype.hasMessages):
+        * UserInterface/Views/LogContentView.css:
+        (.console-session + .console-session):
+        (.console-group.new-session .console-group-messages .console-item:first-child): Deleted.
+        (.console-group.new-session): Deleted.
+
+2015-03-03  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: popover should use requestAnimationFrame to drive move/resize animations
+        https://bugs.webkit.org/show_bug.cgi?id=142218
+
+        Reviewed by Timothy Hatcher.
+
+        Remove setTimeout workaround now that Inspector runs in its own process.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover.prototype.drawBackground):
+        (WebInspector.Popover.prototype._animateFrame):
+
+2015-03-03  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: Console log level selector loses selection on reload
+        https://bugs.webkit.org/show_bug.cgi?id=142199
+
+        Reviewed by Timothy Hatcher.
+
+        The selected items in the console scope bar were being saved as settings,
+        but the "All" scope is forcibly selected on reload due to a logic bug.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.showFullHeightConsole):
+        The scope bar may already have selected items restored from WebInspector.Settings.
+        Don't select a scope unless explicitly requested (i.e., clicking on dashboard buttons)
+        or if no scopes are selected at all. (In the latter case, "All" is the default scope.)
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView): Don't specify a default value here to avoid trampling
+        settings. The "All" scope is selected by default in showFullHeightConsole if
+        nothing else is selected.
+
+2015-03-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove native extensions now built-in
+        https://bugs.webkit.org/show_bug.cgi?id=142203
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+
+2015-03-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Context Menu to Log a Particular Object
+        https://bugs.webkit.org/show_bug.cgi?id=142198
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.saveResultCallback):
+        (WebInspector.JavaScriptLogViewController.prototype.appendImmediateExecutionWithResult):
+        Add a way to show an execution and result immediately in the Log View.
+
+        * UserInterface/Views/ConsolePrompt.js:
+        (WebInspector.ConsolePrompt.prototype.pushHistoryItem):
+        (WebInspector.ConsolePrompt.prototype.commitTextOrInsertNewLine):
+        (WebInspector.ConsolePrompt.prototype._handleEnterKey):
+        (WebInspector.ConsolePrompt.prototype._commitHistoryEntry):
+        Add a way to append a history item to the console prompt history.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype):
+        Add a context menu item to object tree properties to log the value.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.createCallArgument):
+        (WebInspector.RemoteObject.prototype.callFunction):
+        (WebInspector.RemoteObject.prototype.asCallArgument):
+        Simplify CallArgument creation.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WebInspector.RuntimeManager.prototype.mycallback):
+        (WebInspector.RuntimeManager.prototype.saveResult):
+        Wrap RuntimeAgent.saveResult. If supported, run the backend command
+        and fetch a saved result index from the backend for the given value.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.get logViewController):
+        Misc.
+
+2015-03-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Context Menus to Object Tree properties
+        https://bugs.webkit.org/show_bug.cgi?id=142125
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/ObjectPropertiesSection.js:
+        (WebInspector.ObjectPropertyTreeElement.prototype._functionContextMenuEventFired):
+        (WebInspector.ObjectPropertyTreeElement.prototype._functionContextMenuEventFired.revealFunction):
+        Fix legacy implementation.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.js:
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitlePrototype):
+        Give prototype buttons a tooltip.
+
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.oncontextmenu):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._contextMenuHandler):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._appendMenusItemsForObject):
+        Context Menus based on the selected object.
+
 2015-02-27  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Use Maps in ResourceCollection instead of objects

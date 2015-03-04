@@ -1,3 +1,522 @@
+2015-03-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG IR should refer to FunctionExecutables directly and not via the CodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=142229
+
+        Reviewed by Mark Lam and Benjamin Poulain.
+        
+        Anytime a DFG IR node refers to something in CodeBlock, it has three effects:
+
+        - Cumbersome API for accessing the thing that the node refers to.
+        
+        - Not obvious how to create a new such node after bytecode parsing, especially if the
+          thing it refers to isn't already in the CodeBlock. We have done this in the past, but
+          it usually involves subtle changes to CodeBlock.
+        
+        - Not obvious how to inline code that ends up using such nodes. Again, when we have done
+          this, it involved subtle changes to CodeBlock.
+        
+        Prior to this change, the NewFunction* node types used an index into tables in CodeBlock.
+        For this reason, those operations were not inlineable. But the functin tables in CodeBlock
+        just point to FunctionExecutables, which are cells; this means that we can just abstract
+        these operands in DFG IR as cellOperands. cellOperands use DFG::FrozenValue, which means
+        that GC registration happens automagically. Even better, our dumping for cellOperand
+        already did FunctionExecutable dumping - so that functionality gets to be deduplicated.
+        
+        Because this change increases the number of users of cellOperand, it also adds some
+        convenience methods for using it. For example, whereas before you'd say things like:
+        
+            jsCast<Foo*>(node->cellOperand()->value())
+        
+        you can now just say:
+        
+            node->castOperand<Foo*>()
+        
+        This change also changes existing cellOperand users to use the new conveniance API when
+        applicable.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::jettisonFunctionDeclsAndExprs):
+        * bytecode/CodeBlock.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGFrozenValue.h:
+        (JSC::DFG::FrozenValue::cell):
+        (JSC::DFG::FrozenValue::dynamicCast):
+        (JSC::DFG::FrozenValue::cast):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::registerFrozenValues):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasCellOperand):
+        (JSC::DFG::Node::castOperand):
+        (JSC::DFG::Node::hasFunctionDeclIndex): Deleted.
+        (JSC::DFG::Node::functionDeclIndex): Deleted.
+        (JSC::DFG::Node::hasFunctionExprIndex): Deleted.
+        (JSC::DFG::Node::functionExprIndex): Deleted.
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewFunctionNoCheck):
+        (JSC::DFG::SpeculativeJIT::compileNewFunctionExpression):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGWatchpointCollectionPhase.cpp:
+        (JSC::DFG::WatchpointCollectionPhase::handle):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileCheckCell):
+        (JSC::FTL::LowerDFGToLLVM::compileNativeCallOrConstruct):
+
+2015-03-03  Michael Saboff  <msaboff@apple.com>
+
+        DelayedReleaseScope drops locks during GC which can cause a thread switch and code reentry
+        https://bugs.webkit.org/show_bug.cgi?id=141275
+
+        Reviewed by Geoffrey Garen.
+
+        The original issue is that the CodeCache uses an unsafe method to add new UnlinkedCodeBlocks.
+        It basically adds a null UnlinkedCodeBlock if there isn't a cached entry and then later
+        updates the null entry to the result of the compilation.  If during that compilation and
+        related processing we need to garbage collect, the DelayedReleaseScope would drop locks
+        possibly allowing another thread to try to get the same source out of the CodeCache.
+        This second thread would find the null entry and crash.  The fix is to move the processing of
+        DelayedReleaseScope to when we drop locks and not drop locks during GC.  That was done in
+        the original patch with the new function releaseDelayedReleasedObjects().
+
+        Updated releaseDelayedReleasedObjects() so that objects are released with all locks
+        dropped.  Now its processing follows these steps
+            Increment recursion counter and do recursion check and exit if recursing
+            While there are objects to release
+                ASSERT that lock is held by current thread
+                Take all items from delayed release Vector and put into temporary Vector
+                Release API lock
+                Release and clear items from temporary vector
+                Reaquire API lock
+        This meets the requirement that we release while the API lock is released and it is
+        safer processing of the delayed release Vector.
+
+        Added new regression test to testapi.
+
+        Also added comment describing how recursion into releaseDelayedReleasedObjects() is
+        prevented.
+
+        * API/tests/Regress141275.h: Added.
+        * API/tests/Regress141275.mm: Added.
+        (+[JSTEvaluatorTask evaluatorTaskWithEvaluateBlock:completionHandler:]):
+        (-[JSTEvaluator init]):
+        (-[JSTEvaluator initWithScript:]):
+        (-[JSTEvaluator _accessPendingTasksWithBlock:]):
+        (-[JSTEvaluator insertSignPostWithCompletion:]):
+        (-[JSTEvaluator evaluateScript:completion:]):
+        (-[JSTEvaluator evaluateBlock:completion:]):
+        (-[JSTEvaluator waitForTasksDoneAndReportResults]):
+        (__JSTRunLoopSourceScheduleCallBack):
+        (__JSTRunLoopSourcePerformCallBack):
+        (__JSTRunLoopSourceCancelCallBack):
+        (-[JSTEvaluator _jsThreadMain]):
+        (-[JSTEvaluator _sourceScheduledOnRunLoop:]):
+        (-[JSTEvaluator _setupEvaluatorThreadContextIfNeeded]):
+        (-[JSTEvaluator _callCompletionHandler:ifNeededWithError:]):
+        (-[JSTEvaluator _sourcePerform]):
+        (-[JSTEvaluator _sourceCanceledOnRunLoop:]):
+        (runRegress141275):
+        * API/tests/testapi.mm:
+        (testObjectiveCAPI):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/Heap.cpp:
+        (JSC::Heap::releaseDelayedReleasedObjects):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::unlock):
+
+2015-03-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should constant fold GetScope, and accesses to the scope register in the ByteCodeParser should not pretend that it's a constant as that breaks OSR exit liveness tracking
+        https://bugs.webkit.org/show_bug.cgi?id=106202
+
+        Rubber stamped by Benjamin Poulain.
+        
+        This fixes a bug discovered by working on https://bugs.webkit.org/show_bug.cgi?id=142229,
+        which was in turn discovered by working on https://bugs.webkit.org/show_bug.cgi?id=141174.
+        Our way of dealing with scopes known to be constant is very sketchy, and only really works
+        when a function is inlined. When it is, we pretend that every load of the scopeRegister sees
+        a constant. But this breaks the DFG's tracking of the liveness of the scopeRegister. The way
+        this worked made us miss oppportunities for optimizing based on a constant scope, and it also
+        meant that in some cases - particularly like when we inline code that uses NewFuction and
+        friends, as I do in bug 142229 - it makes OSR exit think that the scope is dead even though
+        it's most definitely alive and it's a constant.
+        
+        The problem here is that we were doing too many optimizations in the ByteCodeParser, and not
+        later. Later optimization phases know how to preserve OSR exit liveness. They're actually
+        really good at it. Also, later phases know how to infer that any variable is a constant no
+        matter how that constant arose - rather than the inlining-specific thing in ByteCodeParser.
+        
+        This changes the ByteCodeParser to largely avoid doing constant folding on the scope, except
+        making the GetScope operation itself a constant. This is a compilation-time hack for small
+        functions, and it doesn't break the loads of local variables - so OSR exit liveness still
+        sees that the scopeRegister is in use. This then adds a vastly more powerful GetScope and
+        GetClosureVar constant folder in the AbstractInterpreter. This handles most general cases
+        including those that arise in complex control flow. This will catch cases where the scope
+        is constant for any number of reasons. Basically anytime that the callee is inferred constant
+        this will give us a constant scope. Also, we still have the parse-time constant folding of
+        ResolveScope based on the reentry watchpoint, which luckily did the right thing with respect
+        to OSR exit liveness (it splats a Phantom on its inputs, and it produces a constant result
+        which is then set() normally).
+        
+        This appears to be a broad speed-up, albeit a small one. But mainly it unblocks bug 142229,
+        which then should unblock bug 141174.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::get):
+        (JSC::DFG::ByteCodeParser::getLocal):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::parse):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::tryGetConstantClosureVar):
+        (JSC::DFG::Graph::tryGetRegisters):
+        (JSC::DFG::Graph::tryGetActivation): Deleted.
+        * dfg/DFGGraph.h:
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasVariableWatchpointSet):
+        (JSC::DFG::Node::hasSymbolTable): Deleted.
+        (JSC::DFG::Node::symbolTable): Deleted.
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGWatchpointCollectionPhase.cpp:
+        (JSC::DFG::WatchpointCollectionPhase::handle):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileGetClosureVar):
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTable::visitChildren):
+        (JSC::SymbolTable::localToEntry):
+        (JSC::SymbolTable::entryFor):
+        * runtime/SymbolTable.h:
+        (JSC::SymbolTable::add):
+        (JSC::SymbolTable::set):
+        * tests/stress/function-expression-exit.js: Added.
+        * tests/stress/function-reentry-infer-on-self.js: Added.
+        (thingy):
+        * tests/stress/goofy-function-reentry-incorrect-inference.js: Added.
+
+2015-03-03  Anders Carlsson  <andersca@apple.com>
+
+        Remove unused compression code
+        https://bugs.webkit.org/show_bug.cgi?id=142237
+
+        Reviewed by Geoffrey Garen.
+
+        * bytecode/UnlinkedCodeBlock.h:
+
+2015-03-03  Filip Pizlo  <fpizlo@apple.com>
+
+        JIT debugging features that selectively disable the JITs for code blocks need to stay out of the way of the critical path of JIT management
+        https://bugs.webkit.org/show_bug.cgi?id=142234
+
+        Reviewed by Mark Lam and Benjamin Poulain.
+        
+        Long ago, we used to selectively disable compilation of CodeBlocks for debugging purposes by
+        adding hacks to DFGDriver.cpp.  This was all well and good.  It used the existing
+        CompilationFailed mode of the DFG driver to signal failure of CodeBlocks that we didn't want
+        to compile.  That's great because CompilationFailed is a well-supported return value on the
+        critical path, usually used for when we run out of JIT memory.
+
+        Later, this was moved into DFGCapabilities. This was basically incorrect. It introduced a bug
+        where disabling compiling of a CodeBlock meant that we stopped inlining it as well.  So if
+        you had a compiler bug that arose if foo was inlined into bar, and you bisected down to bar,
+        then foo would no longer get inlined and you wouldn't see the bug.  That's busted.
+
+        So then we changed the code in DFGCapabilities to mark bar as CanCompile and foo as
+        CanInline. Now, foo wouldn't get compiled alone but it would get inlined.
+
+        But then we removed CanCompile because that capability mode only existed for the purpose of
+        our old varargs hacks.  After that removal, "CanInline" became CannotCompile.  This means
+        that if you bisect down on bar in the "foo inlined into bar" case, you'll crash in the DFG
+        because the baseline JIT wouldn't have known to insert profiling on foo.
+
+        We could fix this by bringing back CanInline.
+
+        But this is all a pile of nonsense.  The debug support to selectively disable compilation of
+        some CodeBlocks shouldn't cross-cut our entire engine and should most certainly never involve
+        adding new capability modes.  This support is a hack at best and is for use by JSC hackers
+        only.  It should be as unintrusive as possible.
+
+        So, as in the ancient times, the only proper place to put this hack is in DFGDriver.cpp, and
+        return CompilationFailed.  This is correct not just because it takes capability modes out of
+        the picture (and obviates the need to introduce new ones), but also because it means that
+        disabling compilation doesn't change the profiling mode of other CodeBlocks in the Baseline
+        JIT.  Capability mode influences profiling mode which in turn influences code generation in
+        the Baseline JIT, sometimes in very significant ways - like, we sometimes do additional
+        double-to-int conversions in Baseline if we know that we might tier-up into the DFG, since
+        this buys us more precise profiling.
+        
+        This change reduces the intrusiveness of debugging hacks by making them use the very simple
+        CompilationFailed mechanism rather than trying to influence capability modes. Capability
+        modes have very subtle effects on the whole engine, while CompilationFailed just makes the
+        engine pretend like the DFG compilation will happen at timelike infinity. That makes these
+        hacks much more likely to continue working as we make other changes to the system.
+        
+        This brings back the ability to bisect down onto a function bar when bar inlines foo. Prior
+        to this change, we would crash in that case.
+
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::isSupported):
+        (JSC::DFG::mightCompileEval):
+        (JSC::DFG::mightCompileProgram):
+        (JSC::DFG::mightCompileFunctionForCall):
+        (JSC::DFG::mightCompileFunctionForConstruct):
+        * dfg/DFGCapabilities.h:
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+
+2015-03-03  peavo@outlook.com  <peavo@outlook.com>
+
+        [Win64] JSC compile error.
+        https://bugs.webkit.org/show_bug.cgi?id=142216
+
+        Reviewed by Mark Lam.
+
+        There is missing a version of setupArgumentsWithExecState when NUMBER_OF_ARGUMENT_REGISTERS == 4.
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+
+2015-03-02  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG compile time measurements should really report milliseconds
+        https://bugs.webkit.org/show_bug.cgi?id=142209
+
+        Reviewed by Benjamin Poulain.
+        
+        Fix this to record milliseconds instead of seconds.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThread):
+        (JSC::DFG::Plan::compileInThreadImpl):
+
+2015-03-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove op_get_callee, it's unused
+        https://bugs.webkit.org/show_bug.cgi?id=142206
+
+        Reviewed by Andreas Kling.
+        
+        It's a bit of a shame that we stopped using this opcode since it gives us same-callee
+        profiling. But, if we were to add this functionality back in, we would almost certainly do
+        it by adding a JSFunction allocation watchpoint on FunctionExecutable.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::finalizeUnconditionally):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_get_callee): Deleted.
+        (JSC::JIT::emitSlow_op_get_callee): Deleted.
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_get_callee): Deleted.
+        (JSC::JIT::emitSlow_op_get_callee): Deleted.
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL): Deleted.
+
+2015-03-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Context Menu to Log a Particular Object
+        https://bugs.webkit.org/show_bug.cgi?id=142198
+
+        Reviewed by Timothy Hatcher.
+
+        Add a protocol method to assign a $n index to a value. For an object
+        use the injected script context for that object. For a value, use
+        the execution context to know where to save the value.
+
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::saveResult):
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScriptSource.js:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::saveResult):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/protocol/Debugger.json:
+        * inspector/protocol/Runtime.json:
+
+2015-03-02  Filip Pizlo  <fpizlo@apple.com>
+
+        SpeculativeJIT::emitAllocateArguments() should be a bit faster, and shouldn't do destructor initialization
+        https://bugs.webkit.org/show_bug.cgi?id=142197
+
+        Reviewed by Geoffrey Garen.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitAllocateArguments): Use shift instead of mul, since mul doesn't automatically strength-reduce to shift. Also pass the structure as a TrustedImmPtr.
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::emitAllocateVariableSizedJSObject): Rationalize this a bit. The other emitAllocate... methods take a templated structure so that it can be either a TrustedImmPtr or a register. Also don't do destructor initialization, since its one client doesn't need it, and it's actually probably wrong.
+
+2015-03-02  Mark Lam  <mark.lam@apple.com>
+
+        Exception stack unwinding in JSC hangs while the Timeline Profiler is enabled.
+        <https://webkit.org/b/142191>
+
+        Reviewed by Geoffrey Garen.
+
+        Imagine a scenario where the Inspector is paused / suspended at a breakpoint or
+        while the user is stepping through JS code. The user then tries to evaluate an
+        expression in the console, and that evaluation results in an exception being
+        thrown. Currently, if the Timeline Profiler is enabled while this exception is
+        being thrown, the WebProcess will hang while trying to handle that exception.
+
+        The issue is that the Timeline Profiler's ProfileGenerator::didExecute() will
+        return early and decline to process ProfileNodes if the Inspector is paused.
+        This is proper because it does not want to count work done for injected scripts
+        (e.g. from the console) towards the timeline profile of the webpage being run.
+        However, this is in conflict with ProfileGenerator::exceptionUnwind()'s
+        expectation that didExecute() will process ProfileNodes in order to do the stack
+        unwinding for the exception handling. As a result,
+        ProfileGenerator::exceptionUnwind() hangs.
+
+        ProfileGenerator::exceptionUnwind() is in error. While the Inspector is paused,
+        there will not be any ProfileNodes that it needs to "unwind". Hence, the fix is
+        simply to return early also in ProfileGenerator::exceptionUnwind() if the
+        Inspector is paused.
+
+        * profiler/ProfileGenerator.cpp:
+        (JSC::ProfileGenerator::exceptionUnwind):
+
+2015-03-02  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should correctly document where it puts the argument count for inlined varargs frames
+        https://bugs.webkit.org/show_bug.cgi?id=142187
+
+        Reviewed by Geoffrey Garn.
+        
+        After LLVM tells us where the captured variables alloca landed in the frame, we need to
+        tell all of our meta-data about it. We were forgetting to do so for the argument count
+        register, which is used by inlined varargs calls.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * tests/stress/inline-varargs-get-arguments.js: Added.
+        (foo):
+        (bar):
+        (baz):
+
+2015-03-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Deduplicate slow path calling code in JITOpcodes.cpp/JITOpcodes32_64.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=142184
+
+        Reviewed by Michael Saboff.
+
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_get_enumerable_length):
+        (JSC::JIT::emitSlow_op_has_structure_property):
+        (JSC::JIT::emit_op_has_generic_property):
+        (JSC::JIT::emit_op_get_structure_property_enumerator):
+        (JSC::JIT::emit_op_get_generic_property_enumerator):
+        (JSC::JIT::emit_op_to_index_string):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_get_enumerable_length): Deleted.
+        (JSC::JIT::emitSlow_op_has_structure_property): Deleted.
+        (JSC::JIT::emit_op_has_generic_property): Deleted.
+        (JSC::JIT::emit_op_get_structure_property_enumerator): Deleted.
+        (JSC::JIT::emit_op_get_generic_property_enumerator): Deleted.
+        (JSC::JIT::emit_op_to_index_string): Deleted.
+        (JSC::JIT::emit_op_profile_control_flow): Deleted.
+
+2015-03-02  Antti Koivisto  <antti@apple.com>
+
+        Add way to dump cache meta data to file
+        https://bugs.webkit.org/show_bug.cgi?id=142183
+
+        Reviewed by Andreas Kling.
+
+        Export appendQuotedJSONStringToBuilder.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ObjectPatternNode::toString):
+        * runtime/JSONObject.cpp:
+        (JSC::appendQuotedJSONStringToBuilder):
+        (JSC::Stringifier::appendQuotedString):
+        (JSC::escapeStringToBuilder): Deleted.
+        * runtime/JSONObject.h:
+
+2015-03-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Context Menus to Object Tree properties
+        https://bugs.webkit.org/show_bug.cgi?id=142125
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::functionDetails):
+        Update to include columnNumber.
+
+2015-03-01  Filip Pizlo  <fpizlo@apple.com>
+
+        BytecodeGenerator shouldn't emit op_resolve_scope as a roundabout way of returning the scopeRegister
+        https://bugs.webkit.org/show_bug.cgi?id=142153
+
+        Reviewed by Michael Saboff.
+        
+        We don't need a op_resolve_scope if we know that it will simply return the scope register.
+        This changes the BytecodeGenerator to use the scope register directly in those cases where
+        we know statically that we would just have returned that from op_resolve_scope.
+        
+        This doesn't appear to have a significant impact on performance.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitReturn):
+        (JSC::BytecodeGenerator::emitGetOwnScope): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ResolveNode::emitBytecode):
+        (JSC::EvalFunctionCallNode::emitBytecode):
+        (JSC::FunctionCallResolveNode::emitBytecode):
+        (JSC::PostfixNode::emitResolve):
+        (JSC::DeleteResolveNode::emitBytecode):
+        (JSC::TypeOfResolveNode::emitBytecode):
+        (JSC::PrefixNode::emitResolve):
+        (JSC::ReadModifyResolveNode::emitBytecode):
+        (JSC::AssignResolveNode::emitBytecode):
+        (JSC::ConstDeclNode::emitCodeSingle):
+        (JSC::EmptyVarExpression::emitBytecode):
+        (JSC::ForInNode::emitLoopHeader):
+        (JSC::ForOfNode::emitBytecode):
+        (JSC::BindingNode::bindValue):
+
 2015-02-27  Benjamin Poulain  <bpoulain@apple.com>
 
         [JSC] Use the way number constants are written to help type speculation

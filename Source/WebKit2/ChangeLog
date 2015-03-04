@@ -1,3 +1,641 @@
+2015-03-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove WK_AVAILABLE and related macros when we cannot determine iOS/Mac version
+        https://bugs.webkit.org/show_bug.cgi?id=142252
+        rdar://problem/19983833
+
+        Reviewed by David Kilzer.
+
+        When mac / ios version was unable to be determined strip the WK_AVAILABLE
+        and WK_DEPRECATED macros to avoid outputing a broken macro.
+
+        * mac/postprocess-framework-headers.sh:
+
+2015-03-04  Debarshi Ray  <debarshir@gnome.org>
+
+        [GTK] WebView should hold a reference on WebContext because non-default contexts are a reality
+        https://bugs.webkit.org/show_bug.cgi?id=142225
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewRequestFavicon):
+        (webkitWebViewWatchForChangesInFavicon):
+        (webkitWebViewDisconnectFaviconDatabaseSignalHandlers):
+        (webkitWebViewConstructed):
+        (webkitWebViewGetProperty):
+        (webkitWebViewDispose):
+        (webkitWebViewLoadChanged):
+        (webkitWebViewLoadFailedWithTLSErrors):
+        (webkit_web_view_get_context):
+        (webkit_web_view_download_uri):
+
+2015-03-03  Shivakumar JM  <shiva.jm@samsung.com>
+
+        Fix build warning in WebKit2/Shared module.
+        https://bugs.webkit.org/show_bug.cgi?id=142213
+
+        Reviewed by Simon Fraser.
+
+        Fix build warning by removing argument name from function.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::pathPointCountApplierFunction):
+
+2015-03-03  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Separate unblock handling into its own class
+        https://bugs.webkit.org/show_bug.cgi?id=142251
+
+        Reviewed by Andreas Kling.
+
+        Adopted ContentFilterUnblockHandler.
+
+        * Shared/WebCoreArgumentCoders.h:
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        (IPC::ArgumentCoder<ContentFilterUnblockHandler>::encode):
+        (IPC::ArgumentCoder<ContentFilterUnblockHandler>::decode):
+        (IPC::ArgumentCoder<ContentFilter>::encode): Deleted.
+        (IPC::ArgumentCoder<ContentFilter>::decode): Deleted.
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        (WebKit::WebPageProxy::contentFilterDidBlockLoadForFrame):
+        * UIProcess/WebFrameProxy.cpp:
+        (WebKit::WebFrameProxy::didStartProvisionalLoad):
+        (WebKit::WebFrameProxy::contentFilterDidHandleNavigationAction):
+        * UIProcess/WebFrameProxy.h:
+        (WebKit::WebFrameProxy::setContentFilterUnblockHandler):
+        (WebKit::WebFrameProxy::setContentFilterForBlockedLoad): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::contentFilterDidBlockLoad):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+
+2015-03-03  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Fix memory leak in _getCookieHeadersForTask
+        https://bugs.webkit.org/show_bug.cgi?id=142245
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fix memory leak in _getCookieHeadersForTask. We are leaking the CFDictionary
+        returned by webKitCookieStorageCopyRequestHeaderFieldsForURL().
+
+        This patch addresses the issue by storing the return CFDictionary in a
+        RetainPtr<CFDictionaryRef>.
+
+        * Shared/mac/CookieStorageShim.mm:
+        (-[WKNSURLSessionLocal _getCookieHeadersForTask:completionHandler:]):
+
+2015-03-03  Enrica Casucci  <enrica@apple.com>
+
+        Incomplete dictation results in text fields in a web page.
+        https://bugs.webkit.org/show_bug.cgi?id=142240
+        rdar://problem/19953432
+
+        Reviewed by Tim Horton.
+
+        The empty stub for insertDictationResult:withCorrectionIdentifier
+        must be removed. This way UIKit will call insertText and do the right thing.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView insertDictationResult:withCorrectionIdentifier:]): Deleted.
+
+2015-03-03  Dean Jackson  <dino@apple.com>
+
+        Controls panel should have system blurry background
+        https://bugs.webkit.org/show_bug.cgi?id=142154
+        <rdar://problem/20000964>
+
+        Reviewed by Simon Fraser.
+
+        In order to replicate the system style of media controls
+        on OS X and iOS, we need to expose a special -webkit-appearance.
+        This patch adds the new property value, and implements
+        the iOS part of the appearance, which is a blurry shaded
+        background.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::drawInContext): Add entries for
+        the new layer types, even though they are not correct yet.
+
+        * Shared/mac/RemoteLayerTreePropertyApplier.mm:
+        (WebKit::updateCustomAppearance):
+        (WebKit::RemoteLayerTreePropertyApplier::applyProperties): UIBackdropViews
+        have a defined hierarchy that we don't create. We need to make sure we add our
+        children to the right subview.
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::description): Logging.
+
+        * UIProcess/ios/RemoteLayerTreeHostIOS.mm: Rename existing WKBackdropView
+        to WKSimpleBackdropView, and add a new WKBackdropView that inherits
+        from UIBackdropView.
+        (-[WKBackdropView hitTest:withEvent:]):
+        (-[WKBackdropView description]):
+        (WebKit::RemoteLayerTreeHost::createLayer): Handle the new LayerTypes.
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::createLayer):
+
+2015-03-03  Chris Dumez  <cdumez@apple.com>
+
+        Access ApplicationCacheStorage global instance via singleton() static member function
+        https://bugs.webkit.org/show_bug.cgi?id=142239
+
+        Reviewed by Anders Carlsson.
+
+        Access ApplicationCacheStorage global instance via singleton() static
+        member function as per WebKit coding style.
+
+2015-03-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Build Fix: Add fall back handling in postprocess script for missing/unknown platform name.
+
+        Rubber-stamped by David Kilzer.
+
+        * mac/postprocess-framework-headers.sh:
+
+2015-03-03  Enrica Casucci  <enrica@apple.com>
+
+        Build fix for iOS.
+
+        Unreviewed.
+
+        * UIProcess/ios/WKContentViewInteraction.mm: Adding forward declaration.
+
+2015-03-03  Antti Koivisto  <antti@apple.com>
+
+        Include key to NetworkCacheStorage::Entry
+        https://bugs.webkit.org/show_bug.cgi?id=142215
+
+        Reviewed by Chris Dumez.
+
+        This simplified code. The key is saved as part of the entry so it makes logical sense too.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::makeCacheKey):
+        (WebKit::encodeStorageEntry):
+        (WebKit::NetworkCache::retrieve):
+        (WebKit::NetworkCache::store):
+        (WebKit::NetworkCache::update):
+        (WebKit::NetworkCache::traverse):
+        (WebKit::entryAsJSON):
+        (WebKit::NetworkCache::dumpContentsToFile):
+        * NetworkProcess/cache/NetworkCacheKey.cpp:
+        (WebKit::NetworkCacheKey::operator=):
+        * NetworkProcess/cache/NetworkCacheKey.h:
+        (WebKit::NetworkCacheKey::isNull):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        * NetworkProcess/cache/NetworkCacheStorageCocoa.mm:
+        (WebKit::decodeEntry):
+        (WebKit::encodeEntryHeader):
+        (WebKit::retrieveFromMemory):
+        (WebKit::NetworkCacheStorage::retrieve):
+        (WebKit::NetworkCacheStorage::store):
+        (WebKit::NetworkCacheStorage::update):
+        (WebKit::NetworkCacheStorage::traverse):
+        (WebKit::NetworkCacheStorage::dispatchPendingWriteOperations):
+        (WebKit::NetworkCacheStorage::dispatchFullWriteOperation):
+        (WebKit::NetworkCacheStorage::dispatchHeaderWriteOperation):
+
+2015-03-03  Antti Koivisto  <antti@apple.com>
+
+        Cache shrink leaves behind empty partition directories
+        https://bugs.webkit.org/show_bug.cgi?id=142217
+
+        Reviewed by Andreas Kling.
+
+        * NetworkProcess/cache/NetworkCacheFileSystemPosix.h:
+        (WebKit::traverseCacheFiles):
+
+            No need for std::function.
+
+        * NetworkProcess/cache/NetworkCacheStorageCocoa.mm:
+        (WebKit::NetworkCacheStorage::shrinkIfNeeded):
+
+            After shrink traverse through the partition directories and try to delete them.
+            System knows if they are actually empty.
+
+2015-03-03  Anders Carlsson  <andersca@apple.com>
+
+        Use the correct display name for website data for local files
+        https://bugs.webkit.org/show_bug.cgi?id=142228
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/WebsiteData/WebsiteDataRecord.cpp:
+        (displayNameForLocalFiles):
+        Add new helper function.
+
+        (WebKit::WebsiteDataRecord::displayNameForCookieHostName):
+        Check if the hostname is kCFHTTPCookieLocalFileDomain.
+
+        (WebKit::WebsiteDataRecord::displayNameForOrigin):
+        Handle file URLs as well.
+
+2015-03-03  Enrica Casucci  <enrica@apple.com>
+
+        Fixed typo in platform guard in http://trac.webkit.org/changeset/180939.
+
+        Unreviewed.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+
+2015-03-03  Enrica Casucci  <enrica@apple.com>
+
+        Adopt new API for keyboard interaction.
+        https://bugs.webkit.org/show_bug.cgi?id=142201
+        rdar://problem/19924949
+
+        Reviewed by Joseph Pecoraro.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView inputAssistantItem]):
+        (-[WKContentView _inputAssistantItem]):
+
+2015-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r177075): WebProcess crashes when entering accelerating compositing mode before the WebView is realized
+        https://bugs.webkit.org/show_bug.cgi?id=142079
+
+        Reviewed by Žan Doberšek.
+
+        The problem is that the texture mapper and native window handler
+        are initialized when the LayerTreeHost is initialized, assuming
+        the UI process has already sent the native window handler to the
+        web process, but that doesn't always happen since we moved the
+        redirected window creation to realize in r177075.
+
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::nativeSurfaceHandleForCompositing): Deleted.
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::enterAcceleratedCompositingMode): Call
+        LayerTreeHost::setNativeSurfaceHandleForCompositing if we
+        already have a native window handle at this point.
+        (WebKit::DrawingAreaImpl::setNativeSurfaceHandleForCompositing):
+        Call LayerTreeHost::setNativeSurfaceHandleForCompositing also when
+        not using threaded compositing.
+        * WebProcess/WebPage/LayerTreeHost.h:
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::makeContextCurrent): Helper function to
+        ensure a context and making it current.
+        (WebKit::LayerTreeHostGtk::ensureTextureMapper): Ensure a texture
+        is created for the current context.
+        (WebKit::LayerTreeHostGtk::initialize): Use makeContextCurrent()
+        and ensureTextureMapper(), and remove the LayerTreeContext
+        initialization since that's is now always initialized in
+        setNativeSurfaceHandleForCompositing().
+        (WebKit::LayerTreeHostGtk::compositeLayersToContext): Use
+        makeContextCurrent() helper function and also call
+        ensureTextureMapper() just in case the texture could not be
+        created during initialization because the native window handle was
+        not yet available.
+        (WebKit::LayerTreeHostGtk::flushAndRenderLayers): Use makeContextCurrent().
+        (WebKit::LayerTreeHostGtk::setNativeSurfaceHandleForCompositing):
+        Initialize the LayerTreeContext.
+        (WebKit::LayerTreeHostGtk::glContext): Deleted.
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.h:
+
+2015-03-02  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [WK2] Remove unnecessary create() factory functions.
+        https://bugs.webkit.org/show_bug.cgi?id=142161
+
+        Reviewed by Chris Dumez.
+
+        We can replace some create() factory functions with std::make_unique(). Because
+        it just returns new instance. Even some of those functions have used std::unique_ptr<>
+        instead of std::make_unique<>. Fixed all.
+
+        * DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.h:
+        (WebKit::SQLiteIDBTransaction::create): Deleted.
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::establishTransaction):
+        * Platform/efl/DispatchQueueWorkItemEfl.h:
+        (WorkItem::dispatch):
+        (WorkItem::create): Deleted.
+        * UIProcess/API/gtk/PageClientImpl.h:
+        (WebKit::PageClientImpl::create): Deleted.
+        * UIProcess/API/gtk/WebKitTextChecker.h:
+        (WebKitTextChecker::create): Deleted.
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkitWebContextConstructed):
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseConstructed):
+
+2015-03-02  Brady Eidson  <beidson@apple.com>
+
+        Lots of: ERROR: Unhandled web process message WebPageGroupProxy:RemoveAllUserContentFilters
+        https://bugs.webkit.org/show_bug.cgi?id=142155
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::didReceiveMessage): Return after handling WebPageGroupProxy messages
+          instead of logging an error.
+
+2015-03-02  Antti Koivisto  <antti@apple.com>
+
+        Add way to dump cache meta data to file
+        https://bugs.webkit.org/show_bug.cgi?id=142183
+
+        Add a missing return so we don't try to decode a null entry.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::dumpContentsToFile):
+
+2015-03-02  Anders Carlsson  <andersca@apple.com>
+
+        Return disk cache entries from the new disk cache
+        https://bugs.webkit.org/show_bug.cgi?id=142190
+
+        Reviewed by Antti Koivisto.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::fetchDiskCacheEntries):
+        Call NetworkCache::traverse() to get all the cache entries, unique their origins and pass them back with the completion handler.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::traverse):
+        New helper function that traverses network cache entries.
+
+        * NetworkProcess/cache/NetworkCache.h:
+
+2015-03-02  Antti Koivisto  <antti@apple.com>
+
+        Add way to dump cache meta data to file
+        https://bugs.webkit.org/show_bug.cgi?id=142183
+
+        Reviewed by Andreas Kling.
+
+        Dump goes to WebKitCache/dump.json. On OSX it can be triggered with
+
+        notifyutil -p com.apple.WebKit.Cache.dump
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::initialize):
+        (WebKit::NetworkCache::dumpFilePath):
+        (WebKit::entryAsJSON):
+        (WebKit::NetworkCache::dumpContentsToFile):
+        (WebKit::NetworkCache::clear):
+
+            Also clear any dumps.
+
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        (WebKit::NetworkCacheStorage::baseDirectoryPath):
+        * NetworkProcess/cache/NetworkCacheStorageCocoa.mm:
+        (WebKit::fileNameForKey):
+        (WebKit::filePathForKey):
+        (WebKit::openFile):
+        (WebKit::openFileForKey):
+        (WebKit::decodeEntryHeader):
+
+            Separate header decoding.
+
+        (WebKit::decodeEntry):
+        (WebKit::NetworkCacheStorage::traverse):
+
+            Add asynchronous cache traversal inteface.
+
+2015-03-02  Anders Carlsson  <andersca@apple.com>
+
+        WebsiteDataStore should handle deleting cookies
+        https://bugs.webkit.org/show_bug.cgi?id=142185
+
+        Reviewed by Beth Dakin.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::deleteWebsiteDataForOrigins):
+        When asked to delete cookies, do so.
+
+        * NetworkProcess/NetworkProcess.h:
+        Update the deleteWebsiteDataForOrigins signature.
+
+        * NetworkProcess/NetworkProcess.messages.in:
+        Add cookieHostNames to DeleteWebsiteDataForOrigins.
+
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::deleteWebsiteDataForOrigins):
+        * UIProcess/Network/NetworkProcessProxy.h:
+        Update to take a vector of cookie host names.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::removeData):
+        Figure out if we need to ask the network process to delete data.
+
+2015-03-02  Anders Carlsson  <andersca@apple.com>
+
+        WebsiteDataStore should support getting cookie host names
+        https://bugs.webkit.org/show_bug.cgi?id=142178
+
+        Reviewed by Dan Bernstein.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::fetchWebsiteData):
+        Assert that we're destroyed from the main thread since we end up copying the website data struct.
+
+        * Shared/WebsiteData/WebsiteData.cpp:
+        (WebKit::WebsiteData::encode):
+        (WebKit::WebsiteData::decode):
+        * Shared/WebsiteData/WebsiteData.h:
+        Add a hostnamesWithCookies member.
+
+        * UIProcess/WebsiteData/WebsiteDataRecord.cpp:
+        (WebKit::WebsiteDataRecord::displayNameForCookieHostName):
+        Add a new function that will return the display name for a cookie host name.
+
+        (WebKit::WebsiteDataRecord::addCookieHostName):
+        * UIProcess/WebsiteData/WebsiteDataRecord.h:
+        Add a hash set of cookie host names.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::fetchData):
+        Create data records for each host name with cookies.
+
+2015-03-02  Jer Noble  <jer.noble@apple.com>
+
+        [WK2][Mac] WebPageProxy::supressVisibilityUpdates() should suppress visibility updates.
+        https://bugs.webkit.org/show_bug.cgi?id=141907
+
+        Reviewed by Tim Horton.
+
+        At some point, the window/view/page visibility update code was refactored such that setting
+        WebPageProxy::setSuppressVisibilityUpdate() no longer suppressed visibility updates. This causes
+        full screen animations to become "flashy" when moving the WebView between the regular and full
+        screen window, as a HTMLMediaElement in the full screen animation will receive a "!visible"
+        notification and disconnect its rendering pipeline.
+
+        In WebPageProxy::viewStateDidChange(), respect m_suppressVisibilityUpdates and bail out early
+        if set. In WebPageProxy::setSuppressVisibilityUpdates(), trigger an explicit update after
+        clearing m_suppressVisibilityUpdates.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setSuppressVisibilityUpdates):
+        (WebKit::WebPageProxy::viewStateDidChange):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::setSuppressVisibilityUpdates): Deleted.
+
+2015-03-02  Jer Noble  <jer.noble@apple.com>
+
+        [WK1][WK2][Mac] Fullscreen animation is incorrect when page is scaled.
+        https://bugs.webkit.org/show_bug.cgi?id=142121
+
+        Reviewed by Simon Fraser.
+
+        Change the order of operations when entering or exiting fullscreen. Change the page scale to
+        1 before entering, so the final screen rect takes that scale into account, and vice-versa on
+        exiting.
+
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController enterFullScreen:]):
+        (-[WKFullScreenWindowController exitFullScreen]):
+
+2015-03-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Make clip-path work on <video>, <canvas> etc.
+        https://bugs.webkit.org/show_bug.cgi?id=138684
+
+        Reviewed by Darin Adler.
+        
+        Support encode/decode for WebCore Path objects, which is done by traversing
+        the path.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::pathPointCountApplierFunction):
+        (IPC::pathEncodeApplierFunction):
+        (IPC::ArgumentCoder<Path>::encode):
+        (IPC::ArgumentCoder<Path>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        * Shared/mac/RemoteLayerTreePropertyApplier.mm:
+        (WebKit::applyPropertiesToLayer): Actually apply the path and wind rule to the shape layer.
+        * Shared/mac/RemoteLayerTreeTransaction.h: Include path and wind rule in the layer properties.
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::LayerProperties):
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::encode): Encode shape and wind rule.
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::decode): Decode shape and wind rule.
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::shapePath):
+        (WebKit::PlatformCALayerRemote::setShapePath):
+        (WebKit::PlatformCALayerRemote::shapeWindRule):
+        (WebKit::PlatformCALayerRemote::setShapeWindRule):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+
+2015-03-01  Chris Dumez  <cdumez@apple.com>
+
+        Make NotificationCenter / Notification suspendable
+        https://bugs.webkit.org/show_bug.cgi?id=142117
+        <rdar://problem/19923085>
+
+        Reviewed by Andreas Kling.
+
+        Provide implementation for NotificationClient::hasPendingPermissionRequests().
+
+        * WebProcess/Notifications/NotificationPermissionRequestManager.cpp:
+        (WebKit::NotificationPermissionRequestManager::hasPendingPermissionRequests):
+        * WebProcess/Notifications/NotificationPermissionRequestManager.h:
+        * WebProcess/WebCoreSupport/WebNotificationClient.cpp:
+        (WebKit::WebNotificationClient::hasPendingPermissionRequests):
+        * WebProcess/WebCoreSupport/WebNotificationClient.h:
+
+2015-03-01  Antti Koivisto  <antti@apple.com>
+
+        Enable new disk cache on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=142148
+
+        Reviewed by Sam Weinig.
+
+        * NetworkProcess/cache/NetworkCacheStorageCocoa.mm:
+
+            iOS build fix.
+
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+
+            Disable the efficacy logging by default for now. It has significant performance impact.
+
+        * config.h:
+
+            Enable it.
+
+2015-02-28  Anders Carlsson  <andersca@apple.com>
+
+        WebsiteDataStore should handle fetching and deleting local storage data
+        https://bugs.webkit.org/show_bug.cgi?id=142137
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::deleteEntriesForOrigins):
+        Add a new function that deletes entries from multiple origins.
+
+        * UIProcess/Storage/StorageManager.h:
+        Add new members.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::fetchData):
+        Fetch local storage data as well.
+
+        (WebKit::WebsiteDataStore::removeData):
+        Delete local storage data as well.
+
+2015-02-28  Anders Carlsson  <andersca@apple.com>
+
+        Fetch cache origins from the network process
+        https://bugs.webkit.org/show_bug.cgi?id=142135
+
+        Reviewed by Dan Bernstein.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::cfURLCacheOrigins):
+        Add a new helper function that returns a vector of CFURL cache origins.
+
+        (WebKit::fetchDiskCacheOrigins):
+        Fetch the disk cache origins and pass them along to the completion handler. Currently we don't handle the new disk cache.
+
+        (WebKit::NetworkProcess::fetchWebsiteData):
+        Create a callback aggregator and fetch disk cache origins if we're asked for it.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::computeNetworkProcessAccessTypeForDataFetch):
+        New helper function that computes if we need to launch the network process in order to fetch data.
+
+        (WebKit::WebsiteDataStore::fetchData):
+        Fetch website data from the network process as well.
+
+2015-02-28  Anders Carlsson  <andersca@apple.com>
+
+        Simplify WebResourceCacheManagerCFNet.mm code
+        https://bugs.webkit.org/show_bug.cgi?id=142134
+
+        Reviewed by Dan Bernstein.
+
+        - ENABLE(CACHE_PARTITIONING) is always true on Mac and iOS, so remove those #ifdefs.
+        - Make cfURLCacheHostNamesWithCallback and clearCFURLCacheForHostNames public
+          so they can be used by the new WebsiteDataStore code in an upcoming patch.
+        - Change cfURLCacheHostNamesWithCallback to take an std::function instead of a block.
+
+        * WebProcess/ResourceCache/WebResourceCacheManager.cpp:
+        (WebKit::WebResourceCacheManager::getCacheOrigins):
+        * WebProcess/ResourceCache/WebResourceCacheManager.h:
+        * WebProcess/ResourceCache/cf/WebResourceCacheManagerCFNet.mm:
+        (WebKit::partitionName):
+        (WebKit::WebResourceCacheManager::cfURLCacheHostNamesWithCallback):
+        (WebKit::WebResourceCacheManager::clearCFURLCacheForHostNames):
+        (WebKit::WebResourceCacheManager::cfURLCacheHostNames): Deleted.
+
+2015-02-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r180804.
+        https://bugs.webkit.org/show_bug.cgi?id=142131
+
+        Broke nightlies (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[WK2] Drop legacy WKBundlePageDiagnosticLoggingClient API"
+        https://bugs.webkit.org/show_bug.cgi?id=141176
+        http://trac.webkit.org/changeset/180804
+
 2015-02-27  Hunseop Jeong  <hs85.jeong@samsung.com>
 
         [EFL][GTK] Fix build break after r180790,180798 

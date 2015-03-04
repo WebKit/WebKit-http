@@ -141,8 +141,10 @@ ControllerIOS.prototype = {
             this.controls.inlinePlaybackPlaceholder.setAttribute('aria-label', deviceType + ", " + deviceName);
 
             this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
+            this.controls.wirelessTargetPicker.classList.add(this.ClassNames.playing);
         } else {
             this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
+            this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.playing);
         }
     },
 
@@ -290,17 +292,6 @@ ControllerIOS.prototype = {
     updateTime: function(forceUpdate) {
         Controller.prototype.updateTime.call(this, forceUpdate);
         this.updateProgress();
-    },
-
-    addRoundedRect: function(ctx, x, y, width, height, radius) {
-        ctx.moveTo(x + radius, y);
-        ctx.arcTo(x + width, y, x + width, y + radius, radius);
-        ctx.lineTo(x + width, y + height - radius);
-        ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
-        ctx.lineTo(x + radius, y + height);
-        ctx.arcTo(x, y + height, x, y + height - radius, radius);
-        ctx.lineTo(x, y + radius);
-        ctx.arcTo(x, y, x + radius, y, radius);
     },
 
     drawTimelineBackground: function() {

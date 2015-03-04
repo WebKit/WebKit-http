@@ -1,3 +1,274 @@
+2015-03-03  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Split parsing and compiling of content extensions into their own files
+        https://bugs.webkit.org/show_bug.cgi?id=142259
+
+        Reviewed by Anders Carlsson.
+
+        Add basic unit test for the content filter compiler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/ContentFilter.cpp: Added.
+        (WebCore::ContentExtensions::operator<<):
+        (TestWebKitAPI::ContentFilterTest::SetUp):
+        (TestWebKitAPI::TEST_F):
+
+2015-03-04  Matthew Mirman  <mmirman@apple.com>
+
+        Cleaned up BuildAndTestFactory to not be a near duplicate of TestFactory
+        https://bugs.webkit.org/show_bug.cgi?id=142230
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (TestFactory):
+        (TestFactory.getProduct): Added
+        (TestFactory.__init__): moved downloader to getProduct
+        (BuildAndTestFactory):        
+        (BuildAndTestFactory.getProduct): Added
+        (BuildAndTestFactory.__init__): made to call TestFactory.__init__ and append steps to the end.
+        (BuildAndTestWebKit2Factory): Deleted.  Wasn't used anywhere.
+
+2015-03-04  Debarshi Ray  <debarshir@gnome.org>
+
+        [GTK] WebView should hold a reference on WebContext because non-default contexts are a reality
+        https://bugs.webkit.org/show_bug.cgi?id=142225
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewWebContextLifetime):
+        (beforeAll):
+
+2015-03-03  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Crash logs can't be found on ios-simulator because WebKitTestRunner returns the wrong process name
+        <http://webkit.org/b/142243>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::webProcessName):
+        (WTR::TestController::networkProcessName):
+        - Return the same process name on iOS and Mac because they both
+          use the same process name for local engineering builds.
+
+2015-03-03  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style: Add exception for FrameworkSoftLink.h header order
+        <http://webkit.org/b/141872>
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/style/checkers/cpp.py: Remove unneeded
+        semi-colons in various places and fix whitespace.
+        (_IncludeState): Add _SOFT_LINK_HEADER and _SOFT_LINK_SECTION
+        constants.
+        (_IncludeState.__init__): Add self._visited_soft_link_section
+        boolean state variable.
+        (_IncludeState.visited_soft_link_section): Getter for
+        self._visited_soft_link_section.
+        (_IncludeState.check_next_include_order): Update state machine
+        for soft-link headers.  Add check that soft-link headers always
+        appear last.
+        (_classify_include): Add check for soft-link header type.
+        (check_include_line): Return early if there is a soft-link
+        header error.
+
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (OrderOfIncludesTest.test_public_primary_header): Add tests for
+        including soft-link headers.
+        (OrderOfIncludesTest.test_classify_include): Add test for
+        _SOFT_LINK_HEADER type.
+
+2015-03-03  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Don't repeatedly handle each test type
+        https://bugs.webkit.org/show_bug.cgi?id=142211
+
+        Reviewed by Tim Horton and Matt Hanson.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot.prototype.javascriptTestResultsURLForIteration): Deleted.
+        (Buildbot.prototype.apiTestResultsURLForIteration): Deleted.
+        (Buildbot.prototype.platformAPITestResultsURLForIteration): Deleted.
+        (Buildbot.prototype.webkitpyTestResultsURLForIteration): Deleted.
+        (Buildbot.prototype.webkitperlTestResultsURLForIteration): Deleted.
+        (Buildbot.prototype.bindingsTestResultsURLForIteration): Deleted.
+        Removed functions that build a link to test step results. The buildbot provides
+        these links in JSON.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration): Put failing tests into an array, instead of named variables.
+        (BuildbotIteration.ProductiveSteps): Removed step names that are not used on build.webkit.org.
+        We can easily add them to the map as needed.
+        (BuildbotIteration.TestSteps): Added a list of test steps to be displayed by test queues.
+        (BuildbotIteration.prototype._parseData): Moved code for parsing step results away
+        to BuildbotTestResults class. We used to parse here, build an intermediate data structure,
+        and then build a BuildbotTestResults object, which was strange.
+        (BuildbotIteration.prototype.loadLayoutTestResults): Ditto.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        Corrected an unrelated assertion that was buggy, and kept firing.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTestResults.js:
+        (BuildbotTestResults):
+        (BuildbotTestResults.prototype._parseResults.resultSummarizer):
+        (BuildbotTestResults.prototype._parseResults):
+        (BuildbotTestResults.prototype.addFullLayoutTestResults):
+        Moved the code for parsing JSON results for a single step here.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype._testStepFailureDescription):
+        (BuildbotTesterQueueView.prototype._testStepFailureDescriptionWithCount):
+        (BuildbotTesterQueueView.prototype._presentPopoverForGenericTestFailures):
+        (BuildbotTesterQueueView.prototype.update.appendBuilderQueueStatus): Deleted.
+        (BuildbotTesterQueueView.prototype.update): Deleted.
+        (BuildbotTesterQueueView.prototype._presentPopoverForMultipleFailureKinds): Deleted.
+        Updated for the new data structures. One behavior change is that we now display individual
+        counts when multiple test kinds fail, e.g. "1 javascript test failure, 83+ layout
+        test failures, 3 platform api test failures".
+
+2015-03-03  Matthew Mirman  <mmirman@apple.com>
+
+        JSC tests should not be repeated twice for each branch builder, and should if possible have their own queue.
+        https://bugs.webkit.org/show_bug.cgi?id=142094
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json: Added bots 155 and 157
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (TestFactory):
+        (TestFactory.__init__): Made running of JSC tests conditional.
+        (TestAllButJSCFactory):
+        (TestJSCFactory): Added.
+        (TestJSCFactory.__init__):
+        (TestWebKit2AndJSCFactory): Added factory to not run JSC tests on WebKit2.
+
+2015-03-03  David Kilzer  <ddkilzer@apple.com>
+
+        `build-webkit --help` is wrong about how to build for the iOS simulator
+        <http://webkit.org/b/142223>
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/build-webkit: Fix help.
+
+2015-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Bump libsoup version to 2.49.91.1 to fix 32 bit build.
+
+        * gtk/jhbuild.modules:
+
+2015-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Synchronous XMLHttpRequests can time out when we reach the max connections limit
+        https://bugs.webkit.org/show_bug.cgi?id=141508
+
+        Reviewed by Sergio Villar Senin.
+
+        Add a unit test to check that synchronous XHRs load even if the
+        maximum connection limits are reached.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (testWebViewSyncRequestOnMaxConns):
+        (serverCallback):
+        (beforeAll):
+        * gtk/jhbuild.modules: Bump libsoup version to 2.49.91.
+
+2015-03-02  Alexey Proskuryakov  <ap@apple.com>
+
+        Update the name of ASan build step.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+
+2015-03-02  Jer Noble  <jer.noble@apple.com>
+
+        [WK1][WK2][Mac] Fullscreen animation is incorrect when page is scaled.
+        https://bugs.webkit.org/show_bug.cgi?id=142121
+
+        Reviewed by Simon Fraser.
+
+        Add a test which changes the WebView's page scale, then enters fullscreen mode, and verifies
+        that the initial and final screen rects for the web content are as expected.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/FullscreenZoomInitialFrame.html: Added.
+        * TestWebKitAPI/Tests/mac/FullscreenZoomInitialFrame.mm: Added.
+        (-[FullscreenStateDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:]):
+        (runJavaScriptAlert):
+        (TestWebKitAPI::FullscreenZoomInitialFrame::initializeView):
+        (TestWebKitAPI::FullscreenZoomInitialFrame::teardownView):
+        (TestWebKitAPI::FullscreenZoomInitialFrame::setPageScale):
+        (TestWebKitAPI::FullscreenZoomInitialFrame::sendMouseDownEvent):
+        (TestWebKitAPI::FullscreenZoomInitialFrame::runTest):
+        (TestWebKitAPI::TEST_F):
+
+2015-03-01  David Kilzer  <ddkilzer@apple.com>
+
+        LayoutTestRealy: Prepend __XPC_ to the key, not the value!
+
+        Follow-up fix for:
+
+        LayoutTestRelay: App environment variables not set for --guard-malloc or --leaks
+        <http://webkit.org/b/142145>
+
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        (-[LTRelayController _environmentVariables]): Fix think-o.
+
+2015-03-01  David Kilzer  <ddkilzer@apple.com>
+
+        LayoutTestRelay: App environment variables not set for --guard-malloc or --leaks
+        <http://webkit.org/b/142145>
+
+        Reviewed by Simon Fraser.
+
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        (-[LTRelayController _environmentVariables]): Add.
+        (-[LTRelayController launchApp]): Use -_environmentVariables.
+
+2015-02-28  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Stop running webkit-build-directory on every layout test
+
+        This was originally fixed by David Farler for Bug 135409 in
+        r172602.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.relay_path): Mark as @memoized so it doesn't
+        run webkit-build-directory every time it's called.
+
+2015-02-28  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C importer should use filesystem instead of shutil/host
+        https://bugs.webkit.org/show_bug.cgi?id=142012
+
+        Reviewed by Bem Jones-Bey.
+
+        Removed direct use of python shutil and os, except for os.walk which will require its own fix.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (main):
+        (TestImporter.do_import):
+        (TestImporter.find_importable_tests):
+        (TestImporter.import_tests):
+        (TestImporter.remove_deleted_files):
+        (TestImporter.write_import_log):
+
+2015-02-28  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should use filesystem to read and write files
+        https://bugs.webkit.org/show_bug.cgi?id=142084
+
+        Reviewed by Bem Jones-Bey.
+
+        Use of FileSystem.write_binary_file, read_text_file and write_text_file in lieu of open().
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.import_tests):
+        (TestImporter.remove_deleted_files):
+        (TestImporter.write_import_log):
+
 2015-02-27  Sam Weinig  <sam@webkit.org>
 
         Add WebKit2 SPI to create a DOM File object

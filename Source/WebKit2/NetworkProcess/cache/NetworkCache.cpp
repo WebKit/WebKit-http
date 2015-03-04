@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,13 +34,19 @@
 #include "NetworkCacheStorage.h"
 #include "NetworkResourceLoader.h"
 #include "WebCoreArgumentCoders.h"
+#include <JavaScriptCore/JSONObject.h>
 #include <WebCore/CacheValidation.h>
+#include <WebCore/FileSystem.h>
 #include <WebCore/HTTPHeaderNames.h>
 #include <WebCore/ResourceResponse.h>
 #include <WebCore/SharedBuffer.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StringHasher.h>
 #include <wtf/text/StringBuilder.h>
+
+#if PLATFORM(COCOA)
+#include <notify.h>
+#endif
 
 namespace WebKit {
 
@@ -57,6 +63,16 @@ bool NetworkCache::initialize(const String& cachePath, bool enableEfficacyLoggin
     if (enableEfficacyLogging)
         m_statistics = NetworkCacheStatistics::open(cachePath);
 
+#if PLATFORM(COCOA)
+    // Triggers with "notifyutil -p com.apple.WebKit.Cache.dump".
+    if (m_storage) {
+        int token;
+        notify_register_dispatch("com.apple.WebKit.Cache.dump", &token, dispatch_get_main_queue(), ^(int) {
+            dumpContentsToFile();
+        });
+    }
+#endif
+
     LOG(NetworkCache, "(NetworkProcess) opened cache storage, success %d", !!m_storage);
     return !!m_storage;
 }
@@ -66,6 +82,18 @@ void NetworkCache::setMaximumSize(size_t maximumSize)
     if (!m_storage)
         return;
     m_storage->setMaximumSize(maximumSize);
+}
+
+static NetworkCacheKey makeCacheKey(const WebCore::ResourceRequest& request)
+{
+#if ENABLE(CACHE_PARTITIONING)
+    String partition = request.cachePartition();
+#else
+    String partition;
+#endif
+    if (partition.isEmpty())
+        partition = ASCIILiteral("No partition");
+    return NetworkCacheKey(request.httpMethod(), partition, request.url().string());
 }
 
 static NetworkCacheStorage::Entry encodeStorageEntry(const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response, PassRefPtr<WebCore::SharedBuffer> responseData)
@@ -97,7 +125,7 @@ static NetworkCacheStorage::Entry encodeStorageEntry(const WebCore::ResourceRequ
     if (responseData)
         body = NetworkCacheStorage::Data(reinterpret_cast<const uint8_t*>(responseData->data()), responseData->size());
 
-    return NetworkCacheStorage::Entry { timeStamp, header, body };
+    return NetworkCacheStorage::Entry { makeCacheKey(request), timeStamp, header, body };
 }
 
 static bool verifyVaryingRequestHeaders(const Vector<std::pair<String, String>>& varyingRequestHeaders, const WebCore::ResourceRequest& request)
@@ -215,18 +243,6 @@ static NetworkCache::RetrieveDecision canRetrieve(const WebCore::ResourceRequest
     return NetworkCache::RetrieveDecision::Yes;
 }
 
-static NetworkCacheKey makeCacheKey(const WebCore::ResourceRequest& request)
-{
-#if ENABLE(CACHE_PARTITIONING)
-    String partition = request.cachePartition();
-#else
-    String partition;
-#endif
-    if (partition.isEmpty())
-        partition = ASCIILiteral("No partition");
-    return NetworkCacheKey(request.httpMethod(), partition, request.url().string());
-}
-
 void NetworkCache::retrieve(const WebCore::ResourceRequest& originalRequest, uint64_t webPageID, std::function<void (std::unique_ptr<Entry>)> completionHandler)
 {
     ASSERT(isEnabled());
@@ -256,6 +272,8 @@ void NetworkCache::retrieve(const WebCore::ResourceRequest& originalRequest, uin
             completionHandler(nullptr);
             return false;
         }
+        ASSERT(entry->key == storageKey);
+
         CachedEntryReuseFailure failure = CachedEntryReuseFailure::None;
         auto decodedEntry = decodeStorageEntry(*entry, originalRequest, failure);
         bool success = !!decodedEntry;
@@ -313,18 +331,19 @@ void NetworkCache::store(const WebCore::ResourceRequest& originalRequest, const 
 
     LOG(NetworkCache, "(NetworkProcess) storing %s, partition %s", originalRequest.url().string().latin1().data(), originalRequest.cachePartition().latin1().data());
 
-    auto key = makeCacheKey(originalRequest);
     StoreDecision storeDecision = canStore(originalRequest, response);
     if (storeDecision != StoreDecision::Yes) {
         LOG(NetworkCache, "(NetworkProcess) didn't store");
-        if (m_statistics)
+        if (m_statistics) {
+            auto key = makeCacheKey(originalRequest);
             m_statistics->recordNotCachingResponse(key, storeDecision);
+        }
         return;
     }
 
     auto storageEntry = encodeStorageEntry(originalRequest, response, WTF::move(responseData));
 
-    m_storage->store(key, storageEntry, [completionHandler](bool success, const NetworkCacheStorage::Data& bodyData) {
+    m_storage->store(storageEntry, [completionHandler](bool success, const NetworkCacheStorage::Data& bodyData) {
         MappedBody mappedBody;
 #if ENABLE(SHAREABLE_RESOURCE)
         if (bodyData.isMap()) {
@@ -346,19 +365,110 @@ void NetworkCache::update(const WebCore::ResourceRequest& originalRequest, const
     WebCore::ResourceResponse response = entry.response;
     WebCore::updateResponseHeadersAfterRevalidation(response, validatingResponse);
 
-    auto key = makeCacheKey(originalRequest);
     auto updateEntry = encodeStorageEntry(originalRequest, response, entry.buffer);
 
-    m_storage->update(key, updateEntry, entry.storageEntry, [](bool success, const NetworkCacheStorage::Data&) {
+    m_storage->update(updateEntry, entry.storageEntry, [](bool success, const NetworkCacheStorage::Data&) {
         LOG(NetworkCache, "(NetworkProcess) updated, success=%d", success);
+    });
+}
+
+void NetworkCache::traverse(std::function<void (const Entry*)>&& traverseHandler)
+{
+    ASSERT(isEnabled());
+
+    m_storage->traverse([traverseHandler](const NetworkCacheStorage::Entry* entry) {
+        if (!entry) {
+            traverseHandler(nullptr);
+            return;
+        }
+
+        NetworkCache::Entry cacheEntry;
+        cacheEntry.storageEntry = *entry;
+
+        NetworkCacheDecoder decoder(cacheEntry.storageEntry.header.data(), cacheEntry.storageEntry.header.size());
+        if (!decoder.decode(cacheEntry.response))
+            return;
+
+        traverseHandler(&cacheEntry);
+    });
+}
+
+String NetworkCache::dumpFilePath() const
+{
+    return WebCore::pathByAppendingComponent(m_storage->baseDirectoryPath(), "dump.json");
+}
+
+static bool entryAsJSON(StringBuilder& json, const NetworkCacheStorage::Entry& entry)
+{
+    NetworkCacheDecoder decoder(entry.header.data(), entry.header.size());
+    WebCore::ResourceResponse cachedResponse;
+    if (!decoder.decode(cachedResponse))
+        return false;
+    json.append("{\n");
+    json.append("\"hash\": ");
+    JSC::appendQuotedJSONStringToBuilder(json, entry.key.hashAsString());
+    json.append(",\n");
+    json.append("\"partition\": ");
+    JSC::appendQuotedJSONStringToBuilder(json, entry.key.partition());
+    json.append(",\n");
+    json.append("\"timestamp\": ");
+    json.appendNumber(entry.timeStamp.count());
+    json.append(",\n");
+    json.append("\"URL\": ");
+    JSC::appendQuotedJSONStringToBuilder(json, cachedResponse.url().string());
+    json.append(",\n");
+    json.append("\"headers\": {\n");
+    bool firstHeader = true;
+    for (auto& header : cachedResponse.httpHeaderFields()) {
+        if (!firstHeader)
+            json.append(",\n");
+        firstHeader = false;
+        json.append("    ");
+        JSC::appendQuotedJSONStringToBuilder(json, header.key);
+        json.append(": ");
+        JSC::appendQuotedJSONStringToBuilder(json, header.value);
+    }
+    json.append("\n}\n");
+    json.append("}");
+    return true;
+}
+
+void NetworkCache::dumpContentsToFile()
+{
+    if (!m_storage)
+        return;
+    auto dumpFileHandle = WebCore::openFile(dumpFilePath(), WebCore::OpenForWrite);
+    if (!dumpFileHandle)
+        return;
+    WebCore::writeToFile(dumpFileHandle, "[\n", 2);
+    m_storage->traverse([dumpFileHandle](const NetworkCacheStorage::Entry* entry) {
+        if (!entry) {
+            WebCore::writeToFile(dumpFileHandle, "{}\n]\n", 5);
+            auto handle = dumpFileHandle;
+            WebCore::closeFile(handle);
+            return;
+        }
+        StringBuilder json;
+        if (!entryAsJSON(json, *entry))
+            return;
+        json.append(",\n");
+        auto writeData = json.toString().utf8();
+        WebCore::writeToFile(dumpFileHandle, writeData.data(), writeData.length());
     });
 }
 
 void NetworkCache::clear()
 {
     LOG(NetworkCache, "(NetworkProcess) clearing cache");
-    if (m_storage)
+    if (m_storage) {
         m_storage->clear();
+
+        auto queue = WorkQueue::create("com.apple.WebKit.Cache.delete");
+        StringCapture dumpFilePathCapture(dumpFilePath());
+        queue->dispatch([dumpFilePathCapture] {
+            WebCore::deleteFile(dumpFilePathCapture.string());
+        });
+    }
     if (m_statistics)
         m_statistics->clear();
 }

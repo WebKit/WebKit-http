@@ -28,17 +28,12 @@
 
 #if ENABLE(CONTENT_FILTERING)
 
+#include "ContentFilterUnblockHandler.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RetainPtr.h>
 
-#if PLATFORM(IOS)
-#include <functional>
-#endif
-
 #if PLATFORM(COCOA)
 OBJC_CLASS NSData;
-OBJC_CLASS NSKeyedArchiver;
-OBJC_CLASS NSKeyedUnarchiver;
 OBJC_CLASS WebFilterEvaluator;
 #endif
 
@@ -67,16 +62,7 @@ public:
     bool needsMoreData() const;
     bool didBlockData() const;
     const char* getReplacementData(int& length) const;
-
-#if PLATFORM(COCOA)
-    WEBCORE_EXPORT ContentFilter();
-    WEBCORE_EXPORT void encode(NSKeyedArchiver *) const;
-    WEBCORE_EXPORT static bool decode(NSKeyedUnarchiver *, ContentFilter&);
-#endif
-
-#if PLATFORM(IOS)
-    WEBCORE_EXPORT bool handleUnblockRequestAndDispatchIfSuccessful(const ResourceRequest&, std::function<void()>);
-#endif
+    ContentFilterUnblockHandler unblockHandler() const;
 
 private:
 #if PLATFORM(COCOA)

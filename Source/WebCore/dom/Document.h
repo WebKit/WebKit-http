@@ -601,6 +601,7 @@ public:
 
     void recalcStyle(Style::Change = Style::NoChange);
     WEBCORE_EXPORT void updateStyleIfNeeded();
+    bool needsStyleRecalc() const { return !inPageCache() && (m_pendingStyleRecalcShouldForce || childNeedsStyleRecalc() || m_optimizedStyleSheetUpdateTimer.isActive()); }
 
     WEBCORE_EXPORT void updateLayout();
     
@@ -693,6 +694,7 @@ public:
     Frame* findUnsafeParentScrollPropagationBoundary();
 
     CSSStyleSheet& elementSheet();
+    bool usesStyleBasedEditability() const;
     
     virtual Ref<DocumentParser> createParser();
     DocumentParser* parser() const { return m_parser.get(); }
@@ -1260,7 +1262,7 @@ public:
     void addDisabledFieldsetElement() { m_disabledFieldsetElementsCount++; }
     void removeDisabledFieldsetElement() { ASSERT(m_disabledFieldsetElementsCount); m_disabledFieldsetElementsCount--; }
 
-    virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) override final;
+    WEBCORE_EXPORT virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) override final;
 
     WEBCORE_EXPORT virtual SecurityOrigin* topOrigin() const override final;
 
@@ -1286,6 +1288,7 @@ public:
     bool isPlayingAudio() const { return m_isPlayingAudio; }
     WEBCORE_EXPORT void updateIsPlayingAudio();
     void pageMutedStateDidChange();
+    WeakPtr<Document> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };

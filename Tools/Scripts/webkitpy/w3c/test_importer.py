@@ -68,17 +68,15 @@
        The script removes these files accordingly.
 """
 
-# FIXME: Change this file to use the Host abstractions rather that os, sys, shutils, etc.
-
 import argparse
 import datetime
 import logging
 import mimetypes
 import os
-import shutil
 import sys
 
 from webkitpy.common.host import Host
+from webkitpy.common.system.filesystem import FileSystem
 from webkitpy.common.webkit_finder import WebKitFinder
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.w3c.test_parser import TestParser
@@ -92,8 +90,8 @@ _log = logging.getLogger(__name__)
 def main(_argv, _stdout, _stderr):
     options, args = parse_args(_argv)
     import_dir = args[0]
-
-    if not os.path.exists(import_dir):
+    filesystem = FileSystem()
+    if not filesystem.exists(import_dir):
         sys.exit('Source directory %s not found!' % import_dir)
 
     configure_logging()
@@ -160,7 +158,7 @@ class TestImporter(object):
             self.find_importable_tests(self.source_directory)
         else:
             for test_path in self.options.test_paths:
-                self.find_importable_tests(os.path.join(self.source_directory, test_path))
+                self.find_importable_tests(self.filesystem.join(self.source_directory, test_path))
         self.import_tests()
 
     def should_keep_subdir(self, root, subdir):
@@ -194,7 +192,7 @@ class TestImporter(object):
                 if self.should_skip_file(filename):
                     continue
 
-                fullpath = os.path.join(root, filename)
+                fullpath = self.filesystem.join(root, filename)
 
                 mimetype = mimetypes.guess_type(fullpath)
                 if not 'html' in str(mimetype[0]) and not 'application/xhtml+xml' in str(mimetype[0]) and not 'application/xml' in str(mimetype[0]):
@@ -205,22 +203,22 @@ class TestImporter(object):
                 test_info = test_parser.analyze_test()
                 if test_info is None:
                     # If html file is in a "resources" folder, it should be copied anyway
-                    if os.path.basename(os.path.dirname(fullpath)) == "resources":
+                    if self.filesystem.basename(self.filesystem.dirname(fullpath)) == "resources":
                         copy_list.append({'src': fullpath, 'dest': filename})
                     continue
 
                 if 'reference' in test_info.keys():
                     reftests += 1
                     total_tests += 1
-                    test_basename = os.path.basename(test_info['test'])
+                    test_basename = self.filesystem.basename(test_info['test'])
 
                     # Add the ref file, following WebKit style.
                     # FIXME: Ideally we'd support reading the metadata
                     # directly rather than relying  on a naming convention.
                     # Using a naming convention creates duplicate copies of the
                     # reference files.
-                    ref_file = os.path.splitext(test_basename)[0] + '-expected'
-                    ref_file += os.path.splitext(test_basename)[1]
+                    ref_file = self.filesystem.splitext(test_basename)[0] + '-expected'
+                    ref_file += self.filesystem.splitext(test_basename)[1]
 
                     copy_list.append({'src': test_info['reference'], 'dest': ref_file, 'reference_support_info': test_info['reference_support_info']})
                     copy_list.append({'src': test_info['test'], 'dest': filename})
@@ -260,37 +258,37 @@ class TestImporter(object):
 
             orig_path = dir_to_copy['dirname']
 
-            subpath = os.path.relpath(orig_path, self.source_directory)
-            new_path = os.path.join(self.destination_directory, subpath)
+            subpath = self.filesystem.relpath(orig_path, self.source_directory)
+            new_path = self.filesystem.join(self.destination_directory, subpath)
 
-            if not(os.path.exists(new_path)):
-                os.makedirs(new_path)
+            if not(self.filesystem.exists(new_path)):
+                self.filesystem.maybe_make_directory(new_path)
 
             copied_files = []
 
             for file_to_copy in dir_to_copy['copy_list']:
                 # FIXME: Split this block into a separate function.
-                orig_filepath = os.path.normpath(file_to_copy['src'])
+                orig_filepath = self.filesystem.normpath(file_to_copy['src'])
 
-                if os.path.isdir(orig_filepath):
+                if self.filesystem.isdir(orig_filepath):
                     # FIXME: Figure out what is triggering this and what to do about it.
                     _log.error('%s refers to a directory' % orig_filepath)
                     continue
 
-                if not(os.path.exists(orig_filepath)):
+                if not(self.filesystem.exists(orig_filepath)):
                     _log.warning('%s not found. Possible error in the test.', orig_filepath)
                     continue
 
-                new_filepath = os.path.join(new_path, file_to_copy['dest'])
+                new_filepath = self.filesystem.join(new_path, file_to_copy['dest'])
                 if 'reference_support_info' in file_to_copy.keys() and file_to_copy['reference_support_info'] != {}:
                     reference_support_info = file_to_copy['reference_support_info']
                 else:
                     reference_support_info = None
 
-                if not(os.path.exists(os.path.dirname(new_filepath))):
-                    os.makedirs(os.path.dirname(new_filepath))
+                if not(self.filesystem.exists(self.filesystem.dirname(new_filepath))):
+                    self.filesystem.maybe_make_directory(self.filesystem.dirname(new_filepath))
 
-                if not self.options.overwrite and os.path.exists(new_filepath):
+                if not self.options.overwrite and self.filesystem.exists(new_filepath):
                     _log.info('Skipping import of existing file ' + new_filepath)
                 else:
                     # FIXME: Maybe doing a file diff is in order here for existing files?
@@ -311,7 +309,7 @@ class TestImporter(object):
                         converted_file = None
 
                     if not converted_file:
-                        shutil.copyfile(orig_filepath, new_filepath)  # The file was unmodified.
+                        self.filesystem.copyfile(orig_filepath, new_filepath)  # The file was unmodified.
                     else:
                         for prefixed_property in converted_file[0]:
                             total_prefixed_properties.setdefault(prefixed_property, 0)
@@ -325,14 +323,12 @@ class TestImporter(object):
 
                         prefixed_property_values.extend(set(converted_file[1]) - set(prefixed_property_values))
 
-                        outfile = open(new_filepath, 'wb')
-                        outfile.write(converted_file[2])
-                        outfile.close()
+                        self.filesystem.write_binary_file(new_filepath, converted_file[2])
                 elif orig_filepath.endswith('__init__.py') and not self.filesystem.getsize(orig_filepath):
                     # Some bots dislike empty __init__.py.
                     self.filesystem.write_text_file(new_filepath, '# This file is required for Python to search this directory for modules.')
                 else:
-                    shutil.copyfile(orig_filepath, new_filepath)
+                    self.filesystem.copyfile(orig_filepath, new_filepath)
 
                 copied_files.append(new_filepath.replace(self._webkit_root, ''))
 
@@ -363,12 +359,11 @@ class TestImporter(object):
 
         previous_file_list = []
 
-        import_log_file = os.path.join(import_directory, 'w3c-import.log')
-        if not os.path.exists(import_log_file):
+        import_log_file = self.filesystem.join(import_directory, 'w3c-import.log')
+        if not self.filesystem.exists(import_log_file):
             return
 
-        import_log = open(import_log_file, 'r')
-        contents = import_log.readlines()
+        contents = self.filesystem.read_text_file(import_log_file).split('\n')
 
         if 'List of files\n' in contents:
             list_index = contents.index('List of files:\n') + 1
@@ -377,39 +372,37 @@ class TestImporter(object):
         deleted_files = set(previous_file_list) - set(new_file_list)
         for deleted_file in deleted_files:
             _log.info('Deleting file removed from the W3C repo: %s', deleted_file)
-            deleted_file = os.path.join(self._webkit_root, deleted_file)
-            os.remove(deleted_file)
-
-        import_log.close()
+            deleted_file = self.filesystem.join(self._webkit_root, deleted_file)
+            self.filesystem.remove(deleted_file)
 
     def write_import_log(self, import_directory, file_list, prop_list, property_values_list):
         """ Writes a w3c-import.log file in each directory with imported files. """
 
-        import_log = open(os.path.join(import_directory, 'w3c-import.log'), 'w')
-        import_log.write('The tests in this directory were imported from the W3C repository.\n')
-        import_log.write('Do NOT modify these tests directly in Webkit.\n')
-        import_log.write('Instead, push changes to the W3C CSS repo:\n')
-        import_log.write('\thttp://hg.csswg.org/test\n')
-        import_log.write('Or create a pull request on the W3C CSS github:\n')
-        import_log.write('\thttps://github.com/w3c/csswg-test\n\n')
-        import_log.write('Then run the Tools/Scripts/import-w3c-tests in Webkit to reimport\n\n')
-        import_log.write('Do NOT modify or remove this file\n\n')
-        import_log.write('------------------------------------------------------------------------\n')
-        import_log.write('Properties requiring vendor prefixes:\n')
+        import_log = []
+        import_log.append('The tests in this directory were imported from the W3C repository.\n')
+        import_log.append('Do NOT modify these tests directly in Webkit.\n')
+        import_log.append('Instead, push changes to the W3C CSS repo:\n')
+        import_log.append('\thttp://hg.csswg.org/test\n')
+        import_log.append('Or create a pull request on the W3C CSS github:\n')
+        import_log.append('\thttps://github.com/w3c/csswg-test\n\n')
+        import_log.append('Then run the Tools/Scripts/import-w3c-tests in Webkit to reimport\n\n')
+        import_log.append('Do NOT modify or remove this file\n\n')
+        import_log.append('------------------------------------------------------------------------\n')
+        import_log.append('Properties requiring vendor prefixes:\n')
         if prop_list:
             for prop in prop_list:
-                import_log.write(prop + '\n')
+                import_log.append(prop + '\n')
         else:
-            import_log.write('None\n')
-        import_log.write('Property values requiring vendor prefixes:\n')
+            import_log.append('None\n')
+        import_log.append('Property values requiring vendor prefixes:\n')
         if property_values_list:
             for value in property_values_list:
-                import_log.write(value + '\n')
+                import_log.append(value + '\n')
         else:
-            import_log.write('None\n')
-        import_log.write('------------------------------------------------------------------------\n')
-        import_log.write('List of files:\n')
+            import_log.append('None\n')
+        import_log.append('------------------------------------------------------------------------\n')
+        import_log.append('List of files:\n')
         for item in sorted(file_list):
-            import_log.write(item + '\n')
+            import_log.append(item + '\n')
 
-        import_log.close()
+        self.filesystem.write_text_file(self.filesystem.join(import_directory, 'w3c-import.log'), ''.join(import_log))

@@ -38,6 +38,10 @@
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
+#if ENABLE(CONTENT_FILTERING)
+#include "ContentFilterUnblockHandler.h"
+#endif
+
 #if PLATFORM(COCOA)
 #ifdef __OBJC__ 
 #import <Foundation/Foundation.h>
@@ -97,10 +101,6 @@ namespace WebCore {
 
 #if USE(QUICK_LOOK)
     class QuickLookHandle;
-#endif
-
-#if ENABLE(CONTENT_FILTERING)
-    class ContentFilter;
 #endif
 
     typedef std::function<void (PolicyAction)> FramePolicyFunction;
@@ -341,7 +341,7 @@ namespace WebCore {
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
-        virtual void contentFilterDidBlockLoad(std::unique_ptr<ContentFilter>) { }
+        virtual void contentFilterDidBlockLoad(ContentFilterUnblockHandler) { }
 #endif
     };
 

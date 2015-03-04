@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -57,15 +57,15 @@ protected:
     virtual ~AxisScrollSnapAnimatorClient() { }
 
 public:
-    virtual LayoutUnit scrollOffsetInAxis(ScrollEventAxis) = 0;
-    virtual void immediateScrollInAxis(ScrollEventAxis, float velocity) = 0;
+    virtual LayoutUnit scrollOffsetOnAxis(ScrollEventAxis) = 0;
+    virtual void immediateScrollOnAxis(ScrollEventAxis, float velocity) = 0;
     virtual void startScrollSnapTimer(ScrollEventAxis) = 0;
     virtual void stopScrollSnapTimer(ScrollEventAxis) = 0;
 };
 
 class AxisScrollSnapAnimator {
 public:
-    AxisScrollSnapAnimator(AxisScrollSnapAnimatorClient*, const Vector<LayoutUnit>* snapOffsets, ScrollEventAxis);
+    AxisScrollSnapAnimator(AxisScrollSnapAnimatorClient*, const Vector<LayoutUnit>&, ScrollEventAxis);
     void handleWheelEvent(const PlatformWheelEvent&);
     bool shouldOverrideWheelEvent(const PlatformWheelEvent&) const;
     void scrollSnapAnimationUpdate();
@@ -85,7 +85,7 @@ private:
     static const int wheelDeltaWindowSize = 3;
 
     AxisScrollSnapAnimatorClient* m_client;
-    const Vector<LayoutUnit>* m_snapOffsets;
+    Vector<LayoutUnit> m_snapOffsets;
     ScrollEventAxis m_axis;
     // Used to track both snapping and gliding behaviors.
     ScrollSnapState m_currentState;

@@ -818,8 +818,6 @@ private:
 
         case PhantomLocal:
         case LoopHint:
-        case VariableWatchpoint:
-        case FunctionReentryWatchpoint:
         case TypedArrayWatchpoint:
         case AllocationProfileWatchpoint:
         case MovHint:
@@ -1852,7 +1850,7 @@ private:
         
         speculate(
             BadCell, jsValueValue(cell), m_node->child1().node(),
-            m_out.notEqual(cell, weakPointer(m_node->cellOperand()->value().asCell())));
+            m_out.notEqual(cell, weakPointer(m_node->cellOperand()->cell())));
     }
     
     void compileCheckBadCell()
@@ -3599,7 +3597,7 @@ private:
     void compileGetClosureVar()
     {
         setJSValue(m_out.load64(
-            addressFor(lowStorage(m_node->child1()), m_node->varNumber())));
+            addressFor(lowStorage(m_node->child2()), m_node->varNumber())));
     }
     
     void compilePutClosureVar()
@@ -3772,7 +3770,7 @@ private:
         int numPassedArgs = m_node->numChildren() - 1;
         int numArgs = numPassedArgs;
 
-        JSFunction* knownFunction = jsCast<JSFunction*>(m_node->cellOperand()->value().asCell());
+        JSFunction* knownFunction = m_node->castOperand<JSFunction*>();
         NativeFunction function = knownFunction->nativeFunction();
 
         Dl_info info;
