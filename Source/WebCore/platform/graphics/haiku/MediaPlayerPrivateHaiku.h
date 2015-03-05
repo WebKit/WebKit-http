@@ -52,7 +52,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         void play() override;
         void pause() override;
 
-        IntSize naturalSize() const override;
+        FloatSize naturalSize() const override;
         bool hasAudio() const override;
         bool hasVideo() const override;
 
@@ -77,7 +77,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
 
         void setSize(const IntSize&) override;
 
-        void paint(GraphicsContext*, const IntRect&) override;
+        void paint(GraphicsContext*, const FloatRect&) override;
 
         // BUrlProtocolListener API
 	    void DataReceived(BUrlRequest* caller, const char* data, off_t position, ssize_t size) override;

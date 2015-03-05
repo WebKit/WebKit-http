@@ -57,6 +57,7 @@ public:
         callback->handleEvent(Notification::permissionString(PermissionAllowed));
     }
     void cancelRequestsForPermission(ScriptExecutionContext*) override {}
+    bool hasPendingPermissionRequests(WebCore::ScriptExecutionContext*) const override { return false; }
 
     Permission checkPermission(ScriptExecutionContext*) override {
         notImplemented();

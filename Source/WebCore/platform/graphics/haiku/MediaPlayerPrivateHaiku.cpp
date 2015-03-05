@@ -216,13 +216,13 @@ void MediaPlayerPrivate::pause()
     m_paused = true;
 }
 
-IntSize MediaPlayerPrivate::naturalSize() const
+FloatSize MediaPlayerPrivate::naturalSize() const
 {
     if (!m_frameBuffer)
-        return IntSize(0,0);
+        return FloatSize(0,0);
 
     BRect r(m_frameBuffer->Bounds());
-    return IntSize(r.Width() + 1, r.Height() + 1);
+    return FloatSize(r.Width() + 1, r.Height() + 1);
 }
 
 bool MediaPlayerPrivate::hasAudio() const
@@ -321,7 +321,7 @@ void MediaPlayerPrivate::setSize(const IntSize&)
     notImplemented();
 }
 
-void MediaPlayerPrivate::paint(GraphicsContext* context, const IntRect& r)
+void MediaPlayerPrivate::paint(GraphicsContext* context, const FloatRect& r)
 {
     if (context->paintingDisabled())
         return;
