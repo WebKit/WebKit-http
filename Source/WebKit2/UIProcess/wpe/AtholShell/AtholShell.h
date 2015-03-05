@@ -48,6 +48,9 @@ private:
 
     API::Compositor* m_compositor;
 
+    uint32_t width() { return m_compositor->width(); }
+    uint32_t height() { return m_compositor->height(); }
+
     WKRetainPtr<WKViewRef> m_view;
     WKRetainPtr<WKInputHandlerRef> m_inputHandler;
 };
