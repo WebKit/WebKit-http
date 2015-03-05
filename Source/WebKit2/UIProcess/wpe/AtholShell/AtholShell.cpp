@@ -106,7 +106,7 @@ gpointer AtholShell::launchWPE(gpointer data)
 
     shell.m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
     auto* view = shell.m_view.get();
-    WKViewResize(view, WKSizeMake(1280, 720));
+    WKViewResize(view, WKSizeMake(shell.width(), shell.height()));
 
     shell.m_inputHandler = adoptWK(WKInputHandlerCreate(view));
 
