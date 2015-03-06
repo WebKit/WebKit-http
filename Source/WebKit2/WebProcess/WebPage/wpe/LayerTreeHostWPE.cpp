@@ -105,6 +105,7 @@ void LayerTreeHostWPE::initialize()
     m_waylandSurface = WaylandDisplay::instance()->createSurface(m_webPage->size());
     if (!m_waylandSurface)
         return;
+    WaylandDisplay::instance()->registerSurface(m_waylandSurface->surface());
 
     m_layerTreeContext.contextID = m_webPage->pageID();
 

@@ -50,6 +50,7 @@ public:
     EGLDisplay eglDisplay() const { return m_eglDisplay; }
 
     std::unique_ptr<WaylandSurface> createSurface(const IntSize&);
+    void registerSurface(struct wl_surface*) const;
 
     std::unique_ptr<GLContextEGL> createOffscreenGLContext(GLContext*);
 

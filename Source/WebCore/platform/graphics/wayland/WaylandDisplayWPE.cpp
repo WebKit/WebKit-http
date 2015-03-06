@@ -181,9 +181,12 @@ std::unique_ptr<WaylandSurface> WaylandDisplay::createSurface(const IntSize& siz
     struct wl_surface* wlSurface = wl_compositor_create_surface(m_compositor);
     // We keep the minimum size at 1x1px since Mesa returns null values in wl_egl_window_create() for zero width or height.
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, std::max(1, size.width()), std::max(1, size.height()));
-
-    wl_wpe_register_surface(m_wpe, wlSurface);
     return std::make_unique<WaylandSurface>(wlSurface, nativeWindow);
+}
+
+void WaylandDisplay::registerSurface(struct wl_surface* surface) const
+{
+    wl_wpe_register_surface(m_wpe, surface);
 }
 
 std::unique_ptr<GLContextEGL> WaylandDisplay::createOffscreenGLContext(GLContext* sharingContext)
