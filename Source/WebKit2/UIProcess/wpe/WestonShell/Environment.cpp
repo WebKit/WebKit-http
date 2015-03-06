@@ -113,7 +113,7 @@ void Environment::createOutput(struct weston_output* output)
     m_outputSize = WKSizeMake(output->width, output->height);
 
     struct weston_surface* surface = weston_surface_create(m_compositor);
-    weston_surface_set_color(surface, 0.0f, 0.75f, 0.0f, 1.0f);
+    weston_surface_set_color(surface, 0, 0, 0, 1);
 	pixman_region32_fini(&surface->opaque);
 	pixman_region32_init_rect(&surface->opaque, 0, 0, output->width, output->height);
 	pixman_region32_fini(&surface->input);
@@ -135,7 +135,7 @@ void Environment::outputCreated(struct wl_listener*, void*)
 void Environment::createCursor()
 {
     struct weston_surface* surface = weston_surface_create(m_compositor);
-    weston_surface_set_color(surface, 1.0f, 0.0f, 0.0f, 1.0f);
+    weston_surface_set_color(surface, 1, 0, 0, 1);
     pixman_region32_fini(&surface->opaque);
     pixman_region32_init_rect(&surface->opaque, 0, 0, c_cursorSize, c_cursorSize);
     weston_surface_set_size(surface, c_cursorSize, c_cursorSize);
