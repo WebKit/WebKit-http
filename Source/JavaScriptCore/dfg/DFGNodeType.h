@@ -57,8 +57,11 @@ namespace JSC { namespace DFG {
     /* better names for a lot of these. https://bugs.webkit.org/show_bug.cgi?id=137307 */\
     macro(GetLocal, NodeResultJS) \
     macro(SetLocal, 0) \
-    macro(PutLocal, NodeMustGenerate) \
-    macro(KillLocal, NodeMustGenerate) \
+    \
+    macro(PutStack, NodeMustGenerate) \
+    macro(KillStack, NodeMustGenerate) \
+    macro(GetStack, NodeResultJS) \
+    \
     macro(MovHint, 0) \
     macro(ZombieHint, 0) \
     macro(Phantom, NodeMustGenerate) \
@@ -137,6 +140,7 @@ namespace JSC { namespace DFG {
     macro(ArithSqrt, NodeResultNumber) \
     macro(ArithSin, NodeResultNumber) \
     macro(ArithCos, NodeResultNumber) \
+    macro(ArithLog, NodeResultNumber) \
     \
     /* Add of values may either be arithmetic, or result in string concatenation. */\
     macro(ValueAdd, NodeResultJS | NodeMustGenerate) \
@@ -185,9 +189,7 @@ namespace JSC { namespace DFG {
     macro(GetGlobalVar, NodeResultJS) \
     macro(PutGlobalVar, NodeMustGenerate) \
     macro(NotifyWrite, NodeMustGenerate) \
-    macro(VariableWatchpoint, NodeMustGenerate) \
     macro(VarInjectionWatchpoint, NodeMustGenerate) \
-    macro(FunctionReentryWatchpoint, NodeMustGenerate) \
     macro(CheckCell, NodeMustGenerate) \
     macro(CheckBadCell, NodeMustGenerate) \
     macro(AllocationProfileWatchpoint, NodeMustGenerate) \

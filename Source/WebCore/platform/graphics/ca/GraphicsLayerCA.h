@@ -120,6 +120,9 @@ public:
     WEBCORE_EXPORT virtual void setContentsClippingRect(const FloatRoundedRect&) override;
     WEBCORE_EXPORT virtual bool setMasksToBoundsRect(const FloatRoundedRect&) override;
 
+    WEBCORE_EXPORT virtual void setShapeLayerPath(const Path&) override;
+    WEBCORE_EXPORT virtual void setShapeLayerWindRule(WindRule) override;
+
     WEBCORE_EXPORT virtual void suspendAnimations(double time) override;
     WEBCORE_EXPORT virtual void resumeAnimations() override;
 
@@ -203,13 +206,6 @@ private:
     WEBCORE_EXPORT virtual bool shouldRepaintOnSizeChange() const override;
 
     WEBCORE_EXPORT void layerDidDisplay(PlatformCALayer*);
-    void updateOpacityOnLayer();
-    void updateFilters();
-    void updateBackdropFilters();
-
-#if ENABLE(CSS_COMPOSITING)
-    void updateBlendMode();
-#endif
 
     virtual PassRefPtr<PlatformCALayer> createPlatformCALayer(PlatformCALayer::LayerType, PlatformCALayerClient* owner);
     virtual PassRefPtr<PlatformCALayer> createPlatformCALayer(PlatformLayer*, PlatformCALayerClient* owner);
@@ -260,7 +256,7 @@ private:
     FloatPoint computePositionRelativeToBase(float& pageScale) const;
 
     bool requiresTiledLayer(float pageScaleFactor) const;
-    void swapFromOrToTiledLayer(bool useTiledLayer);
+    void changeLayerTypeTo(PlatformCALayer::LayerType);
 
     CompositingCoordinatesOrientation defaultContentsOrientation() const;
 
@@ -384,6 +380,17 @@ private:
     void updateContentsScale(float pageScaleFactor);
     void updateCustomAppearance();
 
+    void updateOpacityOnLayer();
+    void updateFilters();
+    void updateBackdropFilters();
+
+#if ENABLE(CSS_COMPOSITING)
+    void updateBlendMode();
+#endif
+
+    void updateShape();
+    void updateWindRule();
+
     enum StructuralLayerPurpose {
         NoStructuralLayer = 0,
         StructuralLayerForPreserves3D,
@@ -448,6 +455,8 @@ private:
         DebugIndicatorsChanged =        1LLU << 31,
         CustomAppearanceChanged =       1LLU << 32,
         BlendModeChanged =              1LLU << 33,
+        ShapeChanged =                  1LLU << 34,
+        WindRuleChanged =               1LLU << 35,
     };
     typedef uint64_t LayerChangeFlags;
     enum ScheduleFlushOrNot { ScheduleFlush, DontScheduleFlush };
@@ -484,6 +493,7 @@ private:
     ContentsLayerPurpose m_contentsLayerPurpose;
     bool m_isPageTiledBackingLayer : 1;
     bool m_needsFullRepaint : 1;
+    bool m_usingBackdropLayerType : 1;
 
     Color m_contentsSolidColor;
 

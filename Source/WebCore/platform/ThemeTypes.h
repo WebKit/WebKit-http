@@ -32,10 +32,14 @@ namespace WebCore {
 enum ControlPart {
     NoControlPart, CheckboxPart, RadioPart, PushButtonPart, SquareButtonPart, ButtonPart,
     ButtonBevelPart, DefaultButtonPart, InnerSpinButtonPart, ListboxPart, ListItemPart,
-    MediaEnterFullscreenButtonPart, MediaExitFullscreenButtonPart, MediaFullScreenVolumeSliderPart, MediaFullScreenVolumeSliderThumbPart, MediaMuteButtonPart, MediaPlayButtonPart,
-    MediaOverlayPlayButtonPart, MediaSeekBackButtonPart, MediaSeekForwardButtonPart, MediaRewindButtonPart, MediaReturnToRealtimeButtonPart, MediaToggleClosedCaptionsButtonPart,
-    MediaSliderPart, MediaSliderThumbPart, MediaVolumeSliderContainerPart, MediaVolumeSliderPart, MediaVolumeSliderThumbPart,
-    MediaVolumeSliderMuteButtonPart, MediaControlsBackgroundPart, MediaControlsFullscreenBackgroundPart, MediaCurrentTimePart, MediaTimeRemainingPart,
+    MediaControlsBackgroundPart, MediaControlsDarkBarBackgroundPart, MediaControlsFullscreenBackgroundPart,
+    MediaControlsLightBarBackgroundPart, MediaCurrentTimePart, MediaEnterFullscreenButtonPart,
+    MediaExitFullscreenButtonPart, MediaFullScreenVolumeSliderPart,
+    MediaFullScreenVolumeSliderThumbPart, MediaMuteButtonPart, MediaOverlayPlayButtonPart,
+    MediaPlayButtonPart, MediaReturnToRealtimeButtonPart, MediaRewindButtonPart, MediaSeekBackButtonPart,
+    MediaSeekForwardButtonPart, MediaSliderPart, MediaSliderThumbPart, MediaTimeRemainingPart,
+    MediaToggleClosedCaptionsButtonPart, MediaVolumeSliderContainerPart, MediaVolumeSliderMuteButtonPart,
+    MediaVolumeSliderPart, MediaVolumeSliderThumbPart,
     MenulistPart, MenulistButtonPart, MenulistTextPart, MenulistTextFieldPart, MeterPart, ProgressBarPart, ProgressBarValuePart,
     SliderHorizontalPart, SliderVerticalPart, SliderThumbHorizontalPart,
     SliderThumbVerticalPart, CaretPart, SearchFieldPart, SearchFieldDecorationPart,
@@ -45,7 +49,11 @@ enum ControlPart {
 #if ENABLE(SERVICE_CONTROLS)
     ImageControlsButtonPart,
 #endif
-    TextAreaPart, CapsLockIndicatorPart
+    TextAreaPart,
+#if ENABLE(ATTACHMENT_ELEMENT)
+    AttachmentPart,
+#endif
+    CapsLockIndicatorPart
 };
 
 enum SelectionPart {

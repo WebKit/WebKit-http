@@ -329,6 +329,7 @@ standby
 start
 step
 style
+subtitle
 summary
 tabindex
 tableborder
@@ -349,6 +350,7 @@ version
 vlink
 vspace
 webkitallowfullscreen
+webkitattachmentpath
 width
 wrap
 

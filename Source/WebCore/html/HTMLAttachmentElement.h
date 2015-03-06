@@ -37,9 +37,10 @@ class File;
 class HTMLAttachmentElement final : public HTMLElement {
 public:
     static Ref<HTMLAttachmentElement> create(const QualifiedName&, Document&);
-
-    File* file();
+    File* file() const;
     void setFile(File*);
+
+    String attachmentTitle() const;
 
 private:
     HTMLAttachmentElement(const QualifiedName&, Document&);
@@ -47,8 +48,8 @@ private:
 
     virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 
-    virtual bool isFocusable() const override { return true; }
-    virtual void setFocus(bool shouldBeFocused) override;
+    virtual bool canContainRangeEndPoint() const override { return false; }
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
     
     RefPtr<File> m_file;
 };

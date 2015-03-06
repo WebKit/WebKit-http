@@ -309,10 +309,10 @@ webkit.org/b/78801 touchadjustment
 # <rdar://problem/11059777>
 webkit.org/b/81289 canvas/philip/tests/2d.line.cap.round.html [ Failure ]
 
-# Needs BatteryClient implementation.
+# BatteryClient is not supported
 webkit.org/b/62698 batterystatus/
 
-# Proximity Events is not supported.
+# Proximity Events are not supported.
 proximity
 fast/events/constructors/device-proximity-event-constructor.html
 
@@ -439,8 +439,8 @@ webkit.org/b/112620 [ Debug ] svg/custom/image-with-attr-change-after-delete-cra
 
 # Assorted failures that need investigation
 
-# https://bugs.webkit.org/show_bug.cgi?id=107118
-fast/canvas/canvas-quadratic-same-endpoint.html
+webkit.org/b/107118 fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
+webkit.org/b/142258 fast/css/object-fit/object-fit-canvas.html [ Pass ImageOnlyFailure ]
 
 # --- Compositing ----
 css3/filters/composited-during-transition-layertree.html
@@ -952,6 +952,10 @@ webkit.org/b/137368 media/video-controls-no-scripting.html [ Pass Failure ]
 # Mavericks and prior do not support Media Source.
 [ Mavericks ] media/media-source [ WontFix ]
 [ Mavericks ] http/tests/media/media-source/ [ WontFix ]
+[ Mavericks ] fast/history/page-cache-media-source-closed.html [ WontFix ]
+[ Mavericks ] fast/history/page-cache-media-source-closed-2.html [ WontFix ]
+[ Mavericks ] fast/history/page-cache-media-source-opened.html [ WontFix ]
+[ Mavericks ] fast/history/page-cache-removed-source-buffer.html [ WontFix ]
 ## --- End media tests failing on Mavericks and earlier ---
 
 ## --- Start flaky media tests ---
@@ -993,6 +997,7 @@ webkit.org/b/139789 media/media-controls-timeline-updates.html [ Pass Failure ]
 webkit.org/b/139825 media/video-seek-past-end-paused.html [ Pass Timeout ]
 webkit.org/b/141084 [ Yosemite ] http/tests/media/video-preload.html [ Pass Timeout ]
 webkit.org/b/141294 compositing/reflections/masked-reflection-on-composited.html [ Pass Crash ]
+webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Failure ]
 ## --- End flaky media tests
 
 # Skipped while Eric Carlson works on a fix.
@@ -1071,14 +1076,13 @@ webkit.org/b/121995 media/video-controls-captions-trackmenu-hide-on-click-outsid
 webkit.org/b/121995 media/video-controls-captions-trackmenu-hide-on-click.html [ Timeout Failure ]
 webkit.org/b/121995 media/video-controls-captions-trackmenu-includes-enabled-track.html [ Timeout Failure ]
 
-# REGRESSION(r156546): 7 media tests broken (122021)
+# REGRESSION(r156546): 6 media tests broken (122021)
 webkit.org/b/122021 media/track/track-cue-mutable-text.html [ Pass Failure ]
 webkit.org/b/122021 media/track/track-cue-rendering-mode-changed.html [ Timeout ]
 webkit.org/b/122021 media/track/track-in-band-mode.html [ Failure ]
 webkit.org/b/122021 media/video-controls-captions-trackmenu.html [ Timeout ]
 webkit.org/b/122021 media/video-controls-fullscreen-volume.html [ Failure ]
 webkit.org/b/116266 media/video-controls-toggling.html [ Timeout ]
-webkit.org/b/122021 media/video-controls-visible-exiting-fullscreen.html [ Failure ]
 
 webkit.org/b/139708 http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Timeout ]
 # --- End media tests ---
@@ -1091,7 +1095,7 @@ webkit.org/b/137157 [ Release ] inspector/page/main-frame-resource.html [ Pass F
 
 # FIXME: Needs bugzilla (<rdar://problem/15393179>)
 [ Yosemite+ ] webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
-[ Yosemite+ ] webaudio/oscillator-sawtooth.html [ Failure ]
+[ Yosemite+ ] webaudio/oscillator-sawtooth.html [ Pass Failure ]
 
 webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pass ]
 
@@ -1198,52 +1202,31 @@ webkit.org/b/138115 css3/line-break/line-break-auto-sound-marks.html [ ImageOnly
 
 webkit.org/b/137589 compositing/hidpi-compositing-vs-non-compositing-check-on-testing-framework.html [ Pass ImageOnlyFailure ]
 
-# They used to fail on 10.8 EWS, and they still fail on 10.9 EWS, presumably also on ATI graphics only.
-webkit.org/b/93560 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-array-buffer-view.html [ Pass Failure ]
-webkit.org/b/93560 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgb565.html [ Pass Failure ]
-webkit.org/b/93560 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgba4444.html [ Pass Failure ]
-webkit.org/b/93560 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgba5551.html [ Pass Failure ]
-webkit.org/b/93560 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data.html [ Pass Failure ]
+# These tests fail on machines with AMD (ATI) graphics cards - that is, on EWS and locally.
+webkit.org/b/93560 fast/canvas/webgl/tex-image-and-sub-image-2d-with-array-buffer-view.html [ Pass Failure ]
+webkit.org/b/93560 fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgb565.html [ Pass Failure ]
+webkit.org/b/93560 fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgba4444.html [ Pass Failure ]
+webkit.org/b/93560 fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data-rgba5551.html [ Pass Failure ]
+webkit.org/b/93560 fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data.html [ Pass Failure ]
 
 # These seem to be like the above, but they fail locally on Yosemite with AMD graphics (Mac Pro Late 2013).
 fast/canvas/canvas-draw-canvas-on-canvas-shadow.html [ Pass Failure ]
 fast/canvas/canvas-fillRect-gradient-shadow.html [ Pass Failure ]
 
-# Kerning, Ligatures, and Printer Fonts caused these tests to fail
-# The following tests are reftests
-webkit.org/b/139968 fast/css-generated-content/after-with-inline-continuation.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/css-intrinsic-dimensions/width-avoid-floats.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/css/object-fit/object-fit-canvas.html [ Pass ImageOnlyFailure ]
-webkit.org/b/139968 fast/css/word-spacing-between-blocks.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/css/word-spacing-between-inlines.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/css/word-spacing-characters.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/css3-text/css3-text-decoration/no-gap-between-two-rounded-textboxes.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-inherit.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/inline/hidpi-select-inline-on-subpixel-position.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/lists/rtl-marker.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/multicol/cell-shrinkback.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/multicol/newmulticol/breaks-3-columns-3.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/regions/last-region-border-radius.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/regions/overflow/overflow-first-and-last-regions.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/regions/overflow/overflow-in-uniform-regions-dynamic.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-large-radius.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/shapes/shape-outside-floats/shape-outside-rounded-inset.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/table/td-width-fifty-percent-regression.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/text/complex-initial-advance.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/text/font-kerning.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/text/font-variant-ligatures.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/text/whitespace/inline-whitespace-wrapping-7.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/text/word-space-between-inlines.html [ ImageOnlyFailure ]
-webkit.org/b/139968 imported/mozilla/svg/dynamic-text-07.svg [ ImageOnlyFailure ]
-webkit.org/b/139968 mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
-webkit.org/b/139968 platform/mac/fast/text/multiple-codeunit-vertical-upright.html [ ImageOnlyFailure ]
-webkit.org/b/139968 svg/text/svg-font-word-rounding-hacks-spaces.html [ ImageOnlyFailure ]
-webkit.org/b/139968 svg/text/tspan-outline.html [ ImageOnlyFailure ]
-webkit.org/b/139968 svg/transforms/transformed-text-fill-gradient.html [ ImageOnlyFailure ]
+# SVG gradients are not bit-for-bit equivalent through a scale.
+webkit.org/b/142192 svg/transforms/transformed-text-fill-gradient.html [ ImageOnlyFailure ]
+
+# Word-spacing is incorrectly applied
+webkit.org/b/142086 fast/css/word-spacing-between-blocks.html [ ImageOnlyFailure ]
+webkit.org/b/142086 fast/css/word-spacing-between-inlines.html [ ImageOnlyFailure ]
+webkit.org/b/142086 fast/css/word-spacing-characters.html [ ImageOnlyFailure ]
+webkit.org/b/142086 fast/text/word-space-between-inlines.html [ ImageOnlyFailure ]
+
+# Underlines' starting and ending positions need to be pixel-snapped
+webkit.org/b/142087 fast/css3-text/css3-text-decoration/no-gap-between-two-rounded-textboxes.html [ ImageOnlyFailure ]
+webkit.org/b/142087 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-inherit.html [ ImageOnlyFailure ]
 
 # Tests that fail with the SVG -> OTF font converter, but are lower priority than live-on
-webkit.org/b/140537 fast/css/ex-unit-with-no-x-height.html [ Failure ]
 webkit.org/b/140588 svg/W3C-SVG-1.1/fonts-desc-02-t.svg [ Failure ]
 webkit.org/b/137096 svg/W3C-SVG-1.1/text-altglyph-01-b.svg [ Failure ]
 webkit.org/b/137096 svg/custom/altglyph.svg [ Failure ]
@@ -1262,6 +1245,7 @@ webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-stretch-1.svg [ 
 webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-stretch-2.svg [ Failure ]
 webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-stretch-3.svg [ Failure ]
 webkit.org/b/139968 svg/custom/svg-fonts-without-missing-glyph.xhtml [ Pass Failure ]
+webkit.org/b/140537 fast/css/ex-unit-with-no-x-height.html [ Failure ]
 
 # Sometimes has an extra space at the end
 fast/forms/focus-selection-textarea.html [ Pass Failure ]
@@ -1278,3 +1262,26 @@ webkit.org/b/141118 inspector/css/selector-dynamic-specificity.html [ Skip ]
 webkit.org/b/141601 inspector/css/stylesheet-with-mutations.html [ Skip ]
 
 webkit.org/b/141534 [ Yosemite ] media/video-load-networkState.html [ Pass Crash ]
+
+# Skip media control tests until new controls are finalized
+webkit.org/b/142142 media/video-no-audio.html [ Skip ]
+webkit.org/b/142142 media/controls-strict.html [ Skip ]
+webkit.org/b/142142 media/video-volume-slider.html [ Skip ]
+webkit.org/b/142142 media/controls-styling.html [ Skip ]
+webkit.org/b/142142 media/video-display-toggle.html [ Skip ]
+webkit.org/b/142142 media/audio-controls-rendering.html [ Skip ]
+webkit.org/b/142142 media/video-zoom-controls.html [ Skip ]
+webkit.org/b/142142 fast/hidpi/video-controls-in-hidpi.html [ Skip ]
+webkit.org/b/142142 media/video-controls-rendering.html [ Skip ]
+webkit.org/b/142142 accessibility/media-element.html [ Skip ]
+webkit.org/b/142142 media/controls-without-preload.html [ Skip ]
+webkit.org/b/142142 media/media-controls-clone.html [ Skip ]
+webkit.org/b/142142 fast/layers/video-layer.html [ Skip ]
+webkit.org/b/142142 media/video-empty-source.html [ Skip ]
+webkit.org/b/142142 media/audio-delete-while-slider-thumb-clicked.html [ Skip ]
+webkit.org/b/142142 media/controls-after-reload.html [ Skip ]
+webkit.org/b/142142 media/nodesFromRect-shadowContent.html [ Skip ]
+webkit.org/b/142142 media/video-initially-hidden-volume-slider-up.html [ Skip ]
+
+# Test uses Yosemite blurs
+[ Mavericks ] compositing/media-controls-bar-appearance.html [ Skip ]

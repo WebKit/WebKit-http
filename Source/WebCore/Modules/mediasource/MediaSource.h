@@ -99,10 +99,6 @@ public:
     void removeSourceBuffer(SourceBuffer*, ExceptionCode&);
     static bool isTypeSupported(const String& type);
 
-    // ActiveDOMObject interface
-    virtual bool hasPendingActivity() const override;
-    virtual void stop() override;
-
     // EventTarget interface
     virtual ScriptExecutionContext* scriptExecutionContext() const override final;
     virtual void refEventTarget() override final { ref(); }
@@ -115,10 +111,16 @@ public:
     using RefCounted<MediaSourcePrivateClient>::ref;
     using RefCounted<MediaSourcePrivateClient>::deref;
 
+    // ActiveDOMObject API.
+    bool hasPendingActivity() const override;
+
 protected:
     explicit MediaSource(ScriptExecutionContext&);
 
-    virtual const char* activeDOMObjectName() const override { return "MediaSource"; }
+    // ActiveDOMObject API.
+    void stop() override;
+    bool canSuspend() const override;
+    const char* activeDOMObjectName() const override;
 
     void onReadyStateChange(const AtomicString& oldState, const AtomicString& newState);
     Vector<PlatformTimeRanges> activeRanges() const;

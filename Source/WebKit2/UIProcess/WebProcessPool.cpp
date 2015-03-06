@@ -228,7 +228,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 #endif
 }
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) && !PLATFORM(WPE)
 void WebProcessPool::platformInitialize()
 {
 }
@@ -701,7 +701,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     process->send(Messages::WebProcess::SetQOS(webProcessLatencyQOS(), webProcessThroughputQOS()), 0);
 #endif
 #if PLATFORM(IOS)
-    cacheStorage().setDefaultOriginQuota(25ULL * 1024 * 1024);
+    ApplicationCacheStorage::singleton().setDefaultOriginQuota(25ULL * 1024 * 1024);
 #endif
 
     if (WebPreferences::anyPagesAreUsingPrivateBrowsing())

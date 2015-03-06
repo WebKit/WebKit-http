@@ -270,8 +270,8 @@ public:
     template<unsigned matchLength>
     bool startsWith(const char (&prefix)[matchLength], bool caseSensitive = true) const
         { return m_impl ? m_impl->startsWith<matchLength>(prefix, caseSensitive) : !matchLength; }
-    bool startsWith(String& prefix, unsigned startOffset, bool caseSensitive) const
-        { return m_impl && prefix.impl() ? m_impl->startsWith(*prefix.impl(), startOffset, caseSensitive) : false; }
+    bool hasInfixStartingAt(const String& prefix, unsigned startOffset) const
+        { return m_impl && prefix.impl() ? m_impl->hasInfixStartingAt(*prefix.impl(), startOffset) : false; }
 
     bool endsWith(const String& s, bool caseSensitive = true) const
         { return m_impl ? m_impl->endsWith(s.impl(), caseSensitive) : s.isEmpty(); }
@@ -281,8 +281,8 @@ public:
     template<unsigned matchLength>
     bool endsWith(const char (&prefix)[matchLength], bool caseSensitive = true) const
         { return m_impl ? m_impl->endsWith<matchLength>(prefix, caseSensitive) : !matchLength; }
-    bool endsWith(String& suffix, unsigned endOffset, bool caseSensitive) const
-        { return m_impl && suffix.impl() ? m_impl->endsWith(*suffix.impl(), endOffset, caseSensitive) : false; }
+    bool hasInfixEndingAt(const String& suffix, unsigned endOffset) const
+        { return m_impl && suffix.impl() ? m_impl->hasInfixEndingAt(*suffix.impl(), endOffset) : false; }
 
     WTF_EXPORT_STRING_API void append(const String&);
     WTF_EXPORT_STRING_API void append(LChar);
@@ -638,14 +638,16 @@ private:
 // FIXME: Remove when we can use C++14 initialized lambda capture: [string = string.isolatedCopy()].
 class StringCapture {
 public:
-    explicit StringCapture(const String& string) : m_string(string) { }
+    StringCapture() { }
+    StringCapture(const String& string) : m_string(string) { }
     explicit StringCapture(String&& string) : m_string(string) { }
     StringCapture(const StringCapture& other) : m_string(other.m_string.isolatedCopy()) { }
     const String& string() const { return m_string; }
     String releaseString() { return WTF::move(m_string); }
 
+    void operator=(const StringCapture& other) { m_string = other.m_string.isolatedCopy(); }
+
 private:
-    void operator=(const StringCapture&) = delete;
     String m_string;
 };
 

@@ -172,11 +172,6 @@ void CodeBlock::dump(PrintStream& out) const
     dumpAssumingJITType(out, jitType());
 }
 
-static CString constantName(int k, JSValue value)
-{
-    return toCString(value, "(", VirtualRegister(k), ")");
-}
-
 static CString idName(int id0, const Identifier& ident)
 {
     return toCString(ident.impl(), "(@id", id0, ")");
@@ -185,9 +180,15 @@ static CString idName(int id0, const Identifier& ident)
 CString CodeBlock::registerName(int r) const
 {
     if (isConstantRegisterIndex(r))
-        return constantName(r, getConstant(r));
+        return constantName(r);
 
     return toCString(VirtualRegister(r));
+}
+
+CString CodeBlock::constantName(int index) const
+{
+    JSValue value = getConstant(index);
+    return toCString(value, "(", VirtualRegister(index), ")");
 }
 
 static CString regexpToSourceString(RegExp* regExp)
@@ -606,7 +607,19 @@ void CodeBlock::dumpBytecode(PrintStream& out)
         out.printf("\nConstants:\n");
         size_t i = 0;
         do {
-            out.printf("   k%u = %s\n", static_cast<unsigned>(i), toCString(m_constantRegisters[i].get()).data());
+            const char* sourceCodeRepresentationDescription;
+            switch (m_constantsSourceCodeRepresentation[i]) {
+            case SourceCodeRepresentation::Double:
+                sourceCodeRepresentationDescription = ": in source as double";
+                break;
+            case SourceCodeRepresentation::Integer:
+                sourceCodeRepresentationDescription = ": in source as integer";
+                break;
+            case SourceCodeRepresentation::Other:
+                sourceCodeRepresentationDescription = "";
+                break;
+            }
+            out.printf("   k%u = %s%s\n", static_cast<unsigned>(i), toCString(m_constantRegisters[i].get()).data(), sourceCodeRepresentationDescription);
             ++i;
         } while (i < m_constantRegisters.size());
     }
@@ -757,12 +770,6 @@ void CodeBlock::dumpBytecode(
         case op_init_lazy_reg: {
             int r0 = (++it)->u.operand;
             printLocationOpAndRegisterOperand(out, exec, location, it, "init_lazy_reg", r0);
-            break;
-        }
-        case op_get_callee: {
-            int r0 = (++it)->u.operand;
-            printLocationOpAndRegisterOperand(out, exec, location, it, "get_callee", r0);
-            ++it;
             break;
         }
         case op_create_this: {
@@ -1449,7 +1456,7 @@ void CodeBlock::dumpBytecode(
             int k0 = (++it)->u.operand;
             JSNameScope::Type scopeType = (JSNameScope::Type)(++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "push_name_scope");
-            out.printf("%s, %s, %s, %s", registerName(dst).data(), registerName(r1).data(), constantName(k0, getConstant(k0)).data(), (scopeType == JSNameScope::FunctionNameScope) ? "functionScope" : ((scopeType == JSNameScope::CatchScope) ? "catchScope" : "unknownScopeType"));
+            out.printf("%s, %s, %s, %s", registerName(dst).data(), registerName(r1).data(), constantName(k0).data(), (scopeType == JSNameScope::FunctionNameScope) ? "functionScope" : ((scopeType == JSNameScope::CatchScope) ? "catchScope" : "unknownScopeType"));
             break;
         }
         case op_catch: {
@@ -1466,7 +1473,7 @@ void CodeBlock::dumpBytecode(
             int k0 = (++it)->u.operand;
             int k1 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "throw_static_error");
-            out.printf("%s, %s", constantName(k0, getConstant(k0)).data(), k1 ? "true" : "false");
+            out.printf("%s, %s", constantName(k0).data(), k1 ? "true" : "false");
             break;
         }
         case op_debug: {
@@ -1639,6 +1646,7 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_firstLineColumnOffset(other.m_firstLineColumnOffset)
     , m_codeType(other.m_codeType)
     , m_constantRegisters(other.m_constantRegisters)
+    , m_constantsSourceCodeRepresentation(other.m_constantsSourceCodeRepresentation)
     , m_functionDecls(other.m_functionDecls)
     , m_functionExprs(other.m_functionExprs)
     , m_osrExitCounter(0)
@@ -1730,7 +1738,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     if (vm()->typeProfiler() || vm()->controlFlowProfiler())
         vm()->functionHasExecutedCache()->removeUnexecutedRange(m_ownerExecutable->sourceID(), m_ownerExecutable->typeProfilingStartOffset(), m_ownerExecutable->typeProfilingEndOffset());
 
-    setConstantRegisters(unlinkedCodeBlock->constantRegisters());
+    setConstantRegisters(unlinkedCodeBlock->constantRegisters(), unlinkedCodeBlock->constantsSourceCodeRepresentation());
     if (unlinkedCodeBlock->usesGlobalObject())
         m_constantRegisters[unlinkedCodeBlock->globalObjectRegister().toConstantIndex()].set(*m_vm, ownerExecutable, m_globalObject.get());
     m_functionDecls.resizeToFit(unlinkedCodeBlock->numberOfFunctionDecls());
@@ -1941,10 +1949,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         case op_resolve_scope: {
             const Identifier& ident = identifier(pc[3].u.operand);
             ResolveType type = static_cast<ResolveType>(pc[4].u.operand);
-            if (type == LocalClosureVar) {
-                instructions[i + 4].u.operand = ClosureVar;
-                break;
-            }
+            RELEASE_ASSERT(type != LocalClosureVar);
 
             ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), needsActivation(), scope, ident, Get, type);
             instructions[i + 4].u.operand = op.type;
@@ -2555,13 +2560,6 @@ void CodeBlock::finalizeUnconditionally()
                 curInstruction[3].u.toThisStatus = merge(
                     curInstruction[3].u.toThisStatus, ToThisClearedByGC);
                 break;
-            case op_get_callee:
-                if (!curInstruction[2].u.jsCell || Heap::isMarked(curInstruction[2].u.jsCell.get()))
-                    break;
-                if (Options::verboseOSR())
-                    dataLogF("Clearing LLInt get callee with function %p.\n", curInstruction[2].u.jsCell.get());
-                curInstruction[2].u.jsCell.clear();
-                break;
             case op_resolve_scope: {
                 WriteBarrierBase<JSLexicalEnvironment>& lexicalEnvironment = curInstruction[6].u.lexicalEnvironment;
                 if (!lexicalEnvironment || Heap::isMarked(lexicalEnvironment.get()))
@@ -2980,6 +2978,7 @@ void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
     
     if (shrinkMode == EarlyShrink) {
         m_constantRegisters.shrinkToFit();
+        m_constantsSourceCodeRepresentation.shrinkToFit();
         
         if (m_rareData) {
             m_rareData->m_switchJumpTables.shrinkToFit();
@@ -3007,6 +3006,12 @@ bool CodeBlock::findConstant(JSValue v, unsigned& index)
     }
     index = numberOfConstants;
     return false;
+}
+
+void CodeBlock::jettisonFunctionDeclsAndExprs()
+{
+    m_functionDecls.clear();
+    m_functionExprs.clear();
 }
 
 #if ENABLE(JIT)

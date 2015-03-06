@@ -25,6 +25,7 @@
 #import "CSSValueKeywords.h"
 #import "CSSValueList.h"
 #import "ColorMac.h"
+#import "CoreGraphicsSPI.h"
 #import "Document.h"
 #import "Element.h"
 #import "ExceptionCodePlaceholder.h"
@@ -32,13 +33,16 @@
 #import "FloatRoundedRect.h"
 #import "FocusController.h"
 #import "Frame.h"
+#import "FrameSelection.h"
 #import "FrameView.h"
 #import "GraphicsContextCG.h"
+#import "HTMLAttachmentElement.h"
 #import "HTMLAudioElement.h"
 #import "HTMLInputElement.h"
 #import "HTMLMediaElement.h"
 #import "HTMLNames.h"
 #import "HTMLPlugInImageElement.h"
+#import "Icon.h"
 #import "Image.h"
 #import "ImageBuffer.h"
 #import "LocalCurrentGraphicsContext.h"
@@ -47,6 +51,7 @@
 #import "NSSharingServicePickerSPI.h"
 #import "Page.h"
 #import "PaintInfo.h"
+#import "RenderAttachment.h"
 #import "RenderLayer.h"
 #import "RenderMedia.h"
 #import "RenderMediaControlElements.h"
@@ -2065,6 +2070,503 @@ IntSize RenderThemeMac::imageControlsButtonPositionOffset() const
 #endif
 }
 #endif
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+const CGFloat attachmentIconSize = 48;
+const CGFloat attachmentIconBackgroundPadding = 6;
+const CGFloat attachmentIconBackgroundSize = attachmentIconSize + attachmentIconBackgroundPadding;
+const CGFloat attachmentIconSelectionBorderThickness = 1;
+const CGFloat attachmentIconBackgroundRadius = 3;
+const CGFloat attachmentIconToTitleMargin = 2;
+
+static Color attachmentIconBackgroundColor() { return Color(0, 0, 0, 30); }
+static Color attachmentIconBorderColor() { return Color(255, 255, 255, 125); }
+
+const CGFloat attachmentTitleFontSize = 12;
+const CGFloat attachmentTitleBackgroundRadius = 3;
+const CGFloat attachmentTitleBackgroundPadding = 3;
+const CGFloat attachmentTitleMaximumWidth = 100 - (attachmentTitleBackgroundPadding * 2);
+const CFIndex attachmentTitleMaximumLineCount = 2;
+
+static Color attachmentTitleInactiveBackgroundColor() { return Color(204, 204, 204, 255); }
+static Color attachmentTitleInactiveTextColor() { return Color(100, 100, 100, 255); }
+
+const CGFloat attachmentSubtitleFontSize = 10;
+static Color attachmentSubtitleTextColor() { return Color(82, 145, 214, 255); }
+
+const CGFloat attachmentProgressBarWidth = 30;
+const CGFloat attachmentProgressBarHeight = 5;
+const CGFloat attachmentProgressBarOffset = -9;
+const CGFloat attachmentProgressBarBorderWidth = 1;
+static Color attachmentProgressBarBackgroundColor() { return Color(0, 0, 0, 89); }
+static Color attachmentProgressBarFillColor() { return Color(Color::white); }
+static Color attachmentProgressBarBorderColor() { return Color(0, 0, 0, 128); }
+
+const CGFloat attachmentMargin = 3;
+
+struct AttachmentLayout {
+    explicit AttachmentLayout(const RenderAttachment&);
+
+    struct LabelLine {
+        FloatRect backgroundRect;
+        FloatPoint origin;
+        RetainPtr<CTLineRef> line;
+    };
+
+    Vector<LabelLine> lines;
+
+    FloatRect iconRect;
+    FloatRect iconBackgroundRect;
+    FloatRect attachmentRect;
+
+    int baseline;
+
+    RetainPtr<CTLineRef> subtitleLine;
+    FloatRect subtitleTextRect;
+
+private:
+    void layOutTitle(const RenderAttachment&);
+    void layOutSubtitle(const RenderAttachment&);
+
+    void addTitleLine(CTLineRef, CGFloat& yOffset, Vector<CGPoint> origins, CFIndex lineIndex, const RenderAttachment&);
+};
+
+static NSColor *titleTextColorForAttachment(const RenderAttachment& attachment)
+{
+    if (attachment.selectionState() != RenderObject::SelectionNone) {
+        if (attachment.frame().selection().isFocusedAndActive())
+            return [NSColor alternateSelectedControlTextColor];    
+        return (NSColor *)cachedCGColor(attachmentTitleInactiveTextColor(), ColorSpaceDeviceRGB);
+    }
+
+    return [NSColor blackColor];
+}
+
+void AttachmentLayout::addTitleLine(CTLineRef line, CGFloat& yOffset, Vector<CGPoint> origins, CFIndex lineIndex, const RenderAttachment& attachment)
+{
+    CGRect lineBounds = CTLineGetBoundsWithOptions(line, 0);
+    CGFloat trailingWhitespaceWidth = CTLineGetTrailingWhitespaceWidth(line);
+    CGFloat lineWidthIgnoringTrailingWhitespace = lineBounds.size.width - trailingWhitespaceWidth;
+    CGFloat lineHeight = CGCeiling(lineBounds.size.height);
+
+    // Center the line relative to the icon.
+    CGFloat xOffset = (attachmentIconBackgroundSize / 2) - (lineWidthIgnoringTrailingWhitespace / 2);
+
+    if (lineIndex)
+        yOffset += origins[lineIndex - 1].y - origins[lineIndex].y;
+
+    LabelLine labelLine;
+    labelLine.origin = FloatPoint(xOffset, yOffset + lineHeight - origins.last().y);
+    labelLine.line = line;
+    labelLine.backgroundRect = FloatRect(xOffset, yOffset, lineWidthIgnoringTrailingWhitespace, lineHeight);
+    labelLine.backgroundRect.inflateX(attachmentTitleBackgroundPadding);
+    labelLine.backgroundRect = encloseRectToDevicePixels(labelLine.backgroundRect, attachment.document().deviceScaleFactor());
+
+    // If the text rects are close in size, the curved enclosing background won't
+    // look right, so make them the same exact size.
+    if (!lines.isEmpty()) {
+        float previousBackgroundRectWidth = lines.last().backgroundRect.width();
+        if (fabs(labelLine.backgroundRect.width() - previousBackgroundRectWidth) < attachmentTitleBackgroundRadius * 4) {
+            float newBackgroundRectWidth = std::max(previousBackgroundRectWidth, labelLine.backgroundRect.width());
+            labelLine.backgroundRect.inflateX((newBackgroundRectWidth - labelLine.backgroundRect.width()) / 2);
+            lines.last().backgroundRect.inflateX((newBackgroundRectWidth - previousBackgroundRectWidth) / 2);
+        }
+    }
+
+    lines.append(labelLine);
+}
+
+void AttachmentLayout::layOutTitle(const RenderAttachment& attachment)
+{
+    RetainPtr<CTFontRef> font = adoptCF(CTFontCreateUIFontForLanguage(kCTFontSystemFontType, attachmentTitleFontSize, nullptr));
+    baseline = CGRound(attachmentIconBackgroundSize + attachmentIconToTitleMargin + CTFontGetAscent(font.get()));
+
+    String title = attachment.attachmentElement().attachmentTitle();
+    if (title.isEmpty())
+        return;
+
+    NSDictionary *textAttributes = @{
+        (id)kCTFontAttributeName: (id)font.get(),
+        (id)kCTForegroundColorAttributeName: titleTextColorForAttachment(attachment)
+    };
+    RetainPtr<NSAttributedString> attributedTitle = adoptNS([[NSAttributedString alloc] initWithString:title attributes:textAttributes]);
+    RetainPtr<CTFramesetterRef> titleFramesetter = adoptCF(CTFramesetterCreateWithAttributedString((CFAttributedStringRef)attributedTitle.get()));
+
+    CFRange fitRange;
+    CGSize titleTextSize = CTFramesetterSuggestFrameSizeWithConstraints(titleFramesetter.get(), CFRangeMake(0, 0), nullptr, CGSizeMake(attachmentTitleMaximumWidth, CGFLOAT_MAX), &fitRange);
+
+    RetainPtr<CGPathRef> titlePath = adoptCF(CGPathCreateWithRect(CGRectMake(0, 0, titleTextSize.width, titleTextSize.height), nullptr));
+    RetainPtr<CTFrameRef> titleFrame = adoptCF(CTFramesetterCreateFrame(titleFramesetter.get(), fitRange, titlePath.get(), nullptr));
+
+    CFArrayRef ctLines = CTFrameGetLines(titleFrame.get());
+    CFIndex lineCount = CFArrayGetCount(ctLines);
+    if (!lineCount)
+        return;
+
+    Vector<CGPoint> origins(lineCount);
+    CTFrameGetLineOrigins(titleFrame.get(), CFRangeMake(0, 0), origins.data());
+
+    // Lay out and record the first (attachmentTitleMaximumLineCount - 1) lines.
+    CFIndex lineIndex = 0;
+    CGFloat yOffset = attachmentIconBackgroundSize + attachmentIconToTitleMargin;
+    for (; lineIndex < std::min(attachmentTitleMaximumLineCount - 1, lineCount); ++lineIndex) {
+        CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(ctLines, lineIndex);
+        addTitleLine(line, yOffset, origins, lineIndex, attachment);
+    }
+
+    if (lineIndex == lineCount)
+        return;
+
+    // We had text that didn't fit in the first (attachmentTitleMaximumLineCount - 1) lines.
+    // Combine it into one last line, and center-truncate it.
+    CTLineRef firstRemainingLine = (CTLineRef)CFArrayGetValueAtIndex(ctLines, lineIndex);
+    CFIndex remainingRangeStart = CTLineGetStringRange(firstRemainingLine).location;
+    NSRange remainingRange = NSMakeRange(remainingRangeStart, [attributedTitle length] - remainingRangeStart);
+    NSAttributedString *remainingString = [attributedTitle attributedSubstringFromRange:remainingRange];
+    RetainPtr<CTLineRef> remainingLine = adoptCF(CTLineCreateWithAttributedString((CFAttributedStringRef)remainingString));
+    RetainPtr<NSAttributedString> ellipsisString = adoptNS([[NSAttributedString alloc] initWithString:@"\u2026" attributes:textAttributes]);
+    RetainPtr<CTLineRef> ellipsisLine = adoptCF(CTLineCreateWithAttributedString((CFAttributedStringRef)ellipsisString.get()));
+    RetainPtr<CTLineRef> truncatedLine = adoptCF(CTLineCreateTruncatedLine(remainingLine.get(), attachmentTitleMaximumWidth, kCTLineTruncationMiddle, ellipsisLine.get()));
+
+    if (!truncatedLine)
+        truncatedLine = remainingLine;
+
+    addTitleLine(truncatedLine.get(), yOffset, origins, lineIndex, attachment);
+}
+
+void AttachmentLayout::layOutSubtitle(const RenderAttachment& attachment)
+{
+    String subtitleText = attachment.attachmentElement().fastGetAttribute(subtitleAttr);
+
+    if (subtitleText.isEmpty())
+        return;
+
+    RetainPtr<CTFontRef> font = adoptCF(CTFontCreateUIFontForLanguage(kCTFontSystemFontType, attachmentSubtitleFontSize, nullptr));
+    NSDictionary *textAttributes = @{
+        (id)kCTFontAttributeName: (id)font.get(),
+        (id)kCTForegroundColorAttributeName: (NSColor *)cachedCGColor(attachmentSubtitleTextColor(), ColorSpaceDeviceRGB)
+    };
+    RetainPtr<NSAttributedString> attributedSubtitleText = adoptNS([[NSAttributedString alloc] initWithString:subtitleText attributes:textAttributes]);
+    subtitleLine = adoptCF(CTLineCreateWithAttributedString((CFAttributedStringRef)attributedSubtitleText.get()));
+
+    CGRect lineBounds = CTLineGetBoundsWithOptions(subtitleLine.get(), 0);
+
+    // Center the line relative to the icon.
+    CGFloat xOffset = (attachmentIconBackgroundSize / 2) - (lineBounds.size.width / 2);
+    CGFloat yOffset = 0;
+
+    if (!lines.isEmpty())
+        yOffset = lines.last().backgroundRect.maxY();
+    else
+        yOffset = attachmentIconBackgroundSize + attachmentIconToTitleMargin;
+
+    LabelLine labelLine;
+    subtitleTextRect = FloatRect(xOffset, yOffset, lineBounds.size.width, lineBounds.size.height);
+}
+
+AttachmentLayout::AttachmentLayout(const RenderAttachment& attachment)
+{
+    layOutTitle(attachment);
+    layOutSubtitle(attachment);
+
+    iconBackgroundRect = FloatRect(0, 0, attachmentIconBackgroundSize, attachmentIconBackgroundSize);
+
+    iconRect = iconBackgroundRect;
+    iconRect.setSize(FloatSize(attachmentIconSize, attachmentIconSize));
+    iconRect.move(attachmentIconBackgroundPadding / 2, attachmentIconBackgroundPadding / 2);
+
+    attachmentRect = iconBackgroundRect;
+    for (const auto& line : lines)
+        attachmentRect.unite(line.backgroundRect);
+    attachmentRect.unite(subtitleTextRect);
+    attachmentRect.inflate(attachmentMargin);
+    attachmentRect = encloseRectToDevicePixels(attachmentRect, attachment.document().deviceScaleFactor());
+}
+
+LayoutSize RenderThemeMac::attachmentIntrinsicSize(const RenderAttachment& attachment) const
+{
+    AttachmentLayout layout(attachment);
+    return LayoutSize(layout.attachmentRect.size());
+}
+
+int RenderThemeMac::attachmentBaseline(const RenderAttachment& attachment) const
+{
+    AttachmentLayout layout(attachment);
+    return layout.baseline;
+}
+
+static void paintAttachmentIconBackground(const RenderAttachment&, GraphicsContext& context, AttachmentLayout& layout)
+{
+    // FIXME: Finder has a discontinuous behavior here when you have a background color other than white,
+    // where it switches into 'bordered mode' and the border pops in on top of the background.
+    bool paintBorder = true;
+
+    FloatRect backgroundRect = layout.iconBackgroundRect;
+    if (paintBorder)
+        backgroundRect.inflate(-attachmentIconSelectionBorderThickness);
+
+    context.fillRoundedRect(FloatRoundedRect(backgroundRect, FloatRoundedRect::Radii(attachmentIconBackgroundRadius)), attachmentIconBackgroundColor(), ColorSpaceDeviceRGB);
+
+    if (paintBorder) {
+        FloatRect borderRect = layout.iconBackgroundRect;
+        borderRect.inflate(-attachmentIconSelectionBorderThickness / 2);
+
+        FloatSize iconBackgroundRadiusSize(attachmentIconBackgroundRadius, attachmentIconBackgroundRadius);
+        Path borderPath;
+        borderPath.addRoundedRect(borderRect, iconBackgroundRadiusSize);
+        context.setStrokeColor(attachmentIconBorderColor(), ColorSpaceDeviceRGB);
+        context.setStrokeThickness(attachmentIconSelectionBorderThickness);
+        context.strokePath(borderPath);
+    }
+}
+
+static void paintAttachmentIcon(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
+{
+    Vector<String> filenames;
+    if (File* file = attachment.attachmentElement().file())
+        filenames.append(file->path());
+    RefPtr<Icon> icon = Icon::createIconForFiles(filenames);
+    if (!icon)
+        return;
+    icon->paint(context, layout.iconRect);
+}
+
+static void addAttachmentTitleBackgroundRightCorner(Path& path, const FloatRect* fromRect, const FloatRect* toRect)
+{
+    FloatSize horizontalRadius(attachmentTitleBackgroundRadius, 0);
+    FloatSize verticalRadius(0, attachmentTitleBackgroundRadius);
+
+    if (!fromRect) {
+        // For the first (top) rect:
+
+        path.moveTo(toRect->minXMinYCorner() + horizontalRadius);
+
+        // Across the top, towards the right.
+        path.addLineTo(toRect->maxXMinYCorner() - horizontalRadius);
+
+        // Arc the top corner.
+        path.addArcTo(toRect->maxXMinYCorner(), toRect->maxXMinYCorner() + verticalRadius, attachmentTitleBackgroundRadius);
+
+        // Down the right.
+        path.addLineTo(toRect->maxXMaxYCorner() - verticalRadius);
+    } else if (!toRect) {
+        // For the last rect:
+
+        // Arc the bottom corner.
+        path.addArcTo(fromRect->maxXMaxYCorner(), fromRect->maxXMaxYCorner() - horizontalRadius, attachmentTitleBackgroundRadius);
+    } else {
+        // For middle rects:
+
+        float widthDifference = toRect->width() - fromRect->width();
+
+        // Skip over very similar-width rects, because we can't make
+        // sensible curves between them.
+        if (fabs(widthDifference) < std::numeric_limits<float>::epsilon())
+            return;
+
+        if (widthDifference < 0) {
+            // Arc the outer corner.
+            path.addArcTo(FloatPoint(fromRect->maxX(), toRect->y()), FloatPoint(fromRect->maxX(), toRect->y()) - horizontalRadius, attachmentTitleBackgroundRadius);
+
+            // Across the bottom, towards the left.
+            path.addLineTo(toRect->maxXMinYCorner() + horizontalRadius);
+
+            // Arc the inner corner.
+            path.addArcTo(toRect->maxXMinYCorner(), toRect->maxXMinYCorner() + verticalRadius, attachmentTitleBackgroundRadius);
+        } else {
+            // Arc the inner corner.
+            path.addArcTo(FloatPoint(fromRect->maxX(), toRect->y()), FloatPoint(fromRect->maxX(), toRect->y()) + horizontalRadius, attachmentTitleBackgroundRadius);
+
+            // Across the bottom, towards the right.
+            path.addLineTo(toRect->maxXMinYCorner() - horizontalRadius);
+
+            // Arc the outer corner.
+            path.addArcTo(toRect->maxXMinYCorner(), toRect->maxXMinYCorner() + verticalRadius, attachmentTitleBackgroundRadius);
+        }
+
+        // Down the right.
+        path.addLineTo(toRect->maxXMaxYCorner() - verticalRadius);
+    }
+}
+
+static void addAttachmentTitleBackgroundLeftCorner(Path& path, const FloatRect* fromRect, const FloatRect* toRect)
+{
+    FloatSize horizontalRadius(attachmentTitleBackgroundRadius, 0);
+    FloatSize verticalRadius(0, attachmentTitleBackgroundRadius);
+
+    if (!fromRect) {
+        // For the first (bottom) rect:
+
+        // Across the bottom, towards the left.
+        path.addLineTo(toRect->minXMaxYCorner() + horizontalRadius);
+
+        // Arc the bottom corner.
+        path.addArcTo(toRect->minXMaxYCorner(), toRect->minXMaxYCorner() - verticalRadius, attachmentTitleBackgroundRadius);
+
+        // Up the left.
+        path.addLineTo(toRect->minXMinYCorner() + verticalRadius);
+    } else if (!toRect) {
+        // For the last (top) rect:
+
+        // Arc the top corner.
+        path.addArcTo(fromRect->minXMinYCorner(), fromRect->minXMinYCorner() + horizontalRadius, attachmentTitleBackgroundRadius);
+    } else {
+        // For middle rects:
+        float widthDifference = toRect->width() - fromRect->width();
+
+        // Skip over very similar-width rects, because we can't make
+        // sensible curves between them.
+        if (fabs(widthDifference) < std::numeric_limits<float>::epsilon())
+            return;
+
+        if (widthDifference < 0) {
+            // Arc the inner corner.
+            path.addArcTo(FloatPoint(fromRect->x(), toRect->maxY()), FloatPoint(fromRect->x(), toRect->maxY()) + horizontalRadius, attachmentTitleBackgroundRadius);
+
+            // Across the bottom, towards the right.
+            path.addLineTo(toRect->minXMaxYCorner() - horizontalRadius);
+
+            // Arc the outer corner.
+            path.addArcTo(toRect->minXMaxYCorner(), toRect->minXMaxYCorner() - verticalRadius, attachmentTitleBackgroundRadius);
+        } else {
+            // Arc the outer corner.
+            path.addArcTo(FloatPoint(fromRect->x(), toRect->maxY()), FloatPoint(fromRect->x(), toRect->maxY()) - horizontalRadius, attachmentTitleBackgroundRadius);
+
+            // Across the bottom, towards the left.
+            path.addLineTo(toRect->minXMaxYCorner() + horizontalRadius);
+
+            // Arc the inner corner.
+            path.addArcTo(toRect->minXMaxYCorner(), toRect->minXMaxYCorner() - verticalRadius, attachmentTitleBackgroundRadius);
+        }
+        
+        // Up the right.
+        path.addLineTo(toRect->minXMinYCorner() + verticalRadius);
+    }
+}
+
+static void paintAttachmentTitleBackground(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
+{
+    if (layout.lines.isEmpty())
+        return;
+
+    Path backgroundPath;
+
+    for (size_t i = 0; i <= layout.lines.size(); ++i)
+        addAttachmentTitleBackgroundRightCorner(backgroundPath, i ? &layout.lines[i - 1].backgroundRect : nullptr, i < layout.lines.size() ? &layout.lines[i].backgroundRect : nullptr);
+
+    for (size_t i = 0; i <= layout.lines.size(); ++i) {
+        size_t reverseIndex = layout.lines.size() - i;
+        addAttachmentTitleBackgroundLeftCorner(backgroundPath, reverseIndex < layout.lines.size() ? &layout.lines[reverseIndex].backgroundRect : nullptr, reverseIndex ? &layout.lines[reverseIndex - 1].backgroundRect : nullptr);
+    }
+
+    backgroundPath.closeSubpath();
+
+    Color backgroundColor;
+    if (attachment.frame().selection().isFocusedAndActive())
+        backgroundColor = convertNSColorToColor([NSColor alternateSelectedControlColor]);
+    else
+        backgroundColor = attachmentTitleInactiveBackgroundColor();
+
+    context.setFillColor(backgroundColor, ColorSpaceDeviceRGB);
+    context.fillPath(backgroundPath);
+}
+
+static void paintAttachmentTitle(const RenderAttachment&, GraphicsContext& context, AttachmentLayout& layout)
+{
+    for (const auto& line : layout.lines) {
+        GraphicsContextStateSaver saver(context);
+
+        context.translate(toFloatSize(line.origin));
+        context.scale(FloatSize(1, -1));
+
+        CGContextSetTextMatrix(context.platformContext(), CGAffineTransformIdentity);
+        CTLineDraw(line.line.get(), context.platformContext());
+    }
+}
+
+static void paintAttachmentSubtitle(const RenderAttachment&, GraphicsContext& context, AttachmentLayout& layout)
+{
+    GraphicsContextStateSaver saver(context);
+
+    context.translate(toFloatSize(layout.subtitleTextRect.minXMaxYCorner()));
+    context.scale(FloatSize(1, -1));
+
+    CGContextSetTextMatrix(context.platformContext(), CGAffineTransformIdentity);
+    CTLineDraw(layout.subtitleLine.get(), context.platformContext());
+}
+
+static void paintAttachmentProgress(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
+{
+    String progressString = attachment.attachmentElement().fastGetAttribute(progressAttr);
+    if (progressString.isEmpty())
+        return;
+    bool validProgress;
+    float progress = progressString.toFloat(&validProgress);
+    if (!validProgress)
+        return;
+
+    GraphicsContextStateSaver saver(context);
+
+    FloatRect progressBounds((attachmentIconBackgroundSize - attachmentProgressBarWidth) / 2, layout.iconBackgroundRect.maxY() + attachmentProgressBarOffset - attachmentProgressBarHeight, attachmentProgressBarWidth, attachmentProgressBarHeight);
+
+    FloatRect borderRect = progressBounds;
+    borderRect.inflate(-0.5);
+    FloatRect backgroundRect = borderRect;
+    backgroundRect.inflate(-attachmentProgressBarBorderWidth / 2);
+
+    FloatRoundedRect backgroundRoundedRect(backgroundRect, FloatRoundedRect::Radii(backgroundRect.height() / 2));
+    context.fillRoundedRect(backgroundRoundedRect, attachmentProgressBarBackgroundColor(), ColorSpaceDeviceRGB);
+
+    {
+        GraphicsContextStateSaver clipSaver(context);
+        context.clipRoundedRect(backgroundRoundedRect);
+
+        FloatRect progressRect = progressBounds;
+        progressRect.setWidth(progressRect.width() * progress);
+        progressRect = encloseRectToDevicePixels(progressRect, attachment.document().deviceScaleFactor());
+
+        context.fillRect(progressRect, attachmentProgressBarFillColor(), ColorSpaceDeviceRGB);
+    }
+
+    Path borderPath;
+    float borderRadius = borderRect.height() / 2;
+    borderPath.addRoundedRect(borderRect, FloatSize(borderRadius, borderRadius));
+    context.setStrokeColor(attachmentProgressBarBorderColor(), ColorSpaceDeviceRGB);
+    context.setStrokeThickness(attachmentProgressBarBorderWidth);
+    context.strokePath(borderPath);
+}
+
+bool RenderThemeMac::paintAttachment(const RenderObject& renderer, const PaintInfo& paintInfo, const IntRect& paintRect)
+{
+    if (!is<RenderAttachment>(renderer))
+        return false;
+
+    const RenderAttachment& attachment = downcast<RenderAttachment>(renderer);
+
+    AttachmentLayout layout(attachment);
+
+    GraphicsContext& context = *paintInfo.context;
+    LocalCurrentGraphicsContext localContext(&context);
+    GraphicsContextStateSaver saver(context);
+
+    context.translate(toFloatSize(paintRect.location()));
+    context.translate(FloatSize((layout.attachmentRect.width() - attachmentIconBackgroundSize) / 2, 0));
+
+    bool useSelectedStyle = attachment.selectionState() != RenderObject::SelectionNone;
+
+    if (useSelectedStyle)
+        paintAttachmentIconBackground(attachment, context, layout);
+    paintAttachmentIcon(attachment, context, layout);
+    if (useSelectedStyle)
+        paintAttachmentTitleBackground(attachment, context, layout);
+    paintAttachmentTitle(attachment, context, layout);
+    paintAttachmentSubtitle(attachment, context, layout);
+    paintAttachmentProgress(attachment, context, layout);
+
+    return true;
+}
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
 
 } // namespace WebCore
 

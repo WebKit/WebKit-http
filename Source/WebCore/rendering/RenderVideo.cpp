@@ -106,7 +106,7 @@ LayoutSize RenderVideo::calculateIntrinsicSize()
     // height of the poster frame, if that is available; otherwise it is 150 CSS pixels.
     MediaPlayer* player = videoElement().player();
     if (player && videoElement().readyState() >= HTMLVideoElement::HAVE_METADATA) {
-        LayoutSize size = player->naturalSize();
+        LayoutSize size(player->naturalSize());
         if (!size.isEmpty())
             return size;
     }
@@ -188,10 +188,12 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
 
     if (displayingPoster)
         paintIntoRect(context, rect);
-    else if (view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers)
-        mediaPlayer->paintCurrentFrameInContext(context, snappedIntRect(rect));
-    else
-        mediaPlayer->paint(context, snappedIntRect(rect));
+    else if (!videoElement().isFullscreen()) {
+        if (view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers)
+            mediaPlayer->paintCurrentFrameInContext(context, rect);
+        else
+            mediaPlayer->paint(context, rect);
+    }
 }
 
 void RenderVideo::layout()

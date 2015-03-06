@@ -118,8 +118,9 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case GetCallee:
     case GetLocal:
     case SetLocal:
-    case PutLocal:
-    case KillLocal:
+    case PutStack:
+    case KillStack:
+    case GetStack:
     case MovHint:
     case ZombieHint:
     case Phantom:
@@ -154,6 +155,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithFRound:
     case ArithSin:
     case ArithCos:
+    case ArithLog:
     case ValueAdd:
     case GetById:
     case GetByIdFlush:
@@ -173,7 +175,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PutClosureVar:
     case GetGlobalVar:
     case PutGlobalVar:
-    case VariableWatchpoint:
     case VarInjectionWatchpoint:
     case CheckCell:
     case CheckBadCell:
@@ -252,7 +253,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case StoreBarrierWithNullCheck:
     case InvalidationPoint:
     case NotifyWrite:
-    case FunctionReentryWatchpoint:
     case TypedArrayWatchpoint:
     case CheckInBounds:
     case ConstantStoragePointer:

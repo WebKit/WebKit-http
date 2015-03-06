@@ -27,6 +27,7 @@
 #define BoundaryTag_h
 
 #include "BAssert.h"
+#include "Owner.h"
 #include "Range.h"
 #include "Sizes.h"
 #include <cstring>
@@ -49,8 +50,11 @@ public:
     bool isEnd() { return m_isEnd; }
     void setEnd(bool isEnd) { m_isEnd = isEnd; }
 
-    bool hasPhysicalPages() { return m_hasPhysicalPages; }
-    void setHasPhysicalPages(bool hasPhysicalPages) { m_hasPhysicalPages = hasPhysicalPages; }
+    Owner owner() { return static_cast<Owner>(m_owner); }
+    void setOwner(Owner owner) { m_owner = static_cast<unsigned>(owner); }
+    
+    bool isMarked() { return m_isMarked; }
+    void setMarked(bool isMarked) { m_isMarked = isMarked; }
 
     bool isNull() { return !m_size; }
     void clear() { std::memset(this, 0, sizeof(*this)); }
@@ -67,16 +71,22 @@ public:
     BeginTag* next();
 
 private:
-    static const size_t flagBits = 3;
-    static const size_t compactBeginBits = 5;
+    static const size_t flagBits = 4;
+    static const size_t compactBeginBits = 4;
     static const size_t sizeBits = bitCount<unsigned>() - flagBits - compactBeginBits;
 
-    static_assert((1 << compactBeginBits) - 1 >= largeMin / largeAlignment, "compactBegin must be encodable in a BoundaryTag.");
-    static_assert((1 << sizeBits) - 1 >= largeMax, "largeMax must be encodable in a BoundaryTag.");
+    static_assert(
+        (1 << compactBeginBits) - 1 >= (largeMin - 1) / largeAlignment,
+        "compactBegin must be encodable in a BoundaryTag.");
+
+    static_assert(
+        (1 << sizeBits) - 1 >= largeMax,
+        "largeMax must be encodable in a BoundaryTag.");
 
     bool m_isFree: 1;
     bool m_isEnd: 1;
-    bool m_hasPhysicalPages: 1;
+    unsigned m_owner: 1;
+    bool m_isMarked: 1;
     unsigned m_compactBegin: compactBeginBits;
     unsigned m_size: sizeBits;
 };
@@ -84,14 +94,14 @@ private:
 inline unsigned BoundaryTag::compactBegin(void* object)
 {
     return static_cast<unsigned>(
-        reinterpret_cast<uintptr_t>(
-            rightShift(
-                mask(object, largeMin - 1), largeAlignmentShift)));
+        reinterpret_cast<uintptr_t>(mask(object, largeMin - 1)) / largeAlignment);
 }
 
 inline void BoundaryTag::setRange(const Range& range)
 {
     m_compactBegin = compactBegin(range.begin());
+    BASSERT(this->compactBegin() == compactBegin(range.begin()));
+
     m_size = static_cast<unsigned>(range.size());
     BASSERT(this->size() == range.size());
 }
@@ -112,6 +122,7 @@ inline void BoundaryTag::initSentinel()
 {
     setRange(Range(nullptr, largeMin));
     setFree(false);
+    setOwner(Owner::VMHeap);
 }
 
 } // namespace bmalloc

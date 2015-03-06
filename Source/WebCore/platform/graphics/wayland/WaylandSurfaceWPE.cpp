@@ -33,8 +33,6 @@
 #include "WaylandDisplayWPE.h"
 #include <EGL/egl.h>
 
-#include <cstdio>
-
 namespace WebCore {
 
 WaylandSurface::WaylandSurface(struct wl_surface* wlSurface, EGLNativeWindowType nativeWindow)
@@ -58,14 +56,9 @@ void WaylandSurface::resize(const IntSize& size)
     wl_egl_window_resize(m_nativeWindow, size.width(), size.height(), 0, 0);
 }
 
-std::unique_ptr<GLContextEGL> WaylandSurface::createGLContext()
+std::unique_ptr<GLContextEGL> WaylandSurface::createGLContext() const
 {
     return GLContextEGL::createWindowContext(m_nativeWindow, GLContext::sharingContext());
-}
-
-struct wl_callback* WaylandSurface::requestFrame()
-{
-    return wl_surface_frame(m_wlSurface);
 }
 
 } // namespace WebCore

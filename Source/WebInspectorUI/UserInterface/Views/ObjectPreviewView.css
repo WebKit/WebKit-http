@@ -24,15 +24,22 @@
  */
 
 .object-preview {
+    color: black;
     font-style: italic;
     font-family: Menlo, monospace;
     font-size: 11px;
 }
 
+.object-preview-name,
 .object-preview.lossless {
     font-style: normal;
 }
 
 .object-preview .name {
     color: rgb(136, 19, 145);
+}
+
+.object-preview > .size {
+    font-style: normal;
+    color: hsl(0, 0%, 67%);
 }

@@ -86,13 +86,13 @@ private:
 
     void splitLarge(BeginTag*, size_t, EndTag*&, Range&);
     void mergeLarge(BeginTag*&, EndTag*&, Range&);
-    void mergeLargeLeft(EndTag*&, BeginTag*&, Range&, bool& hasPhysicalPages);
-    void mergeLargeRight(EndTag*&, BeginTag*&, Range&, bool& hasPhysicalPages);
+    void mergeLargeLeft(EndTag*&, BeginTag*&, Range&, bool& inVMHeap);
+    void mergeLargeRight(EndTag*&, BeginTag*&, Range&, bool& inVMHeap);
     
     void concurrentScavenge();
     void scavengeSmallPages(std::unique_lock<StaticMutex>&, std::chrono::milliseconds);
     void scavengeMediumPages(std::unique_lock<StaticMutex>&, std::chrono::milliseconds);
-    void scavengeLargeRanges(std::unique_lock<StaticMutex>&, std::chrono::milliseconds);
+    void scavengeLargeObjects(std::unique_lock<StaticMutex>&, std::chrono::milliseconds);
 
     std::array<std::array<LineMetadata, SmallPage::lineCount>, smallMax / alignment> m_smallLineMetadata;
     std::array<std::array<LineMetadata, MediumPage::lineCount>, mediumMax / alignment> m_mediumLineMetadata;

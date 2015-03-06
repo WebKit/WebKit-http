@@ -194,9 +194,11 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 + (BOOL)_addCompletion:(void(^)(BOOL))completion;
 @end
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
 @interface UIWebFormAccessory (StagingToRemove)
-@property(nonatomic,retain) NSArray *buttonItems;
+- (UITextInputAssistantItem *)inputAssistantItem;
 @end
+#endif
 
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
 
@@ -1223,14 +1225,21 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     return _formAccessoryView.get();
 }
 
-- (NSArray *)inputAssistantButtonItems
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+- (UITextInputAssistantItem *)inputAssistantItem
 {
     if (!_formAccessoryView) {
         _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
         [_formAccessoryView setDelegate:self];
     }
-    return ([_formAccessoryView respondsToSelector:@selector(buttonItems)]) ? [_formAccessoryView buttonItems] : nil;
+    return ([_formAccessoryView respondsToSelector:@selector(inputAssistantItem)]) ? [_formAccessoryView inputAssistantItem] : nil;
 }
+
+- (UITextInputAssistantItem *)_inputAssistantItem
+{
+    return [self inputAssistantItem];
+}
+#endif
 
 - (NSArray *)supportedPasteboardTypesForCurrentSelection
 {
@@ -2341,18 +2350,6 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     return _traits.get();
 }
 
-#if (__IPHONE_OS_VERSION_MIN_REQUIRED >= 80300)
-- (UITextInputAssistantItem *)inputAssistantItem
-{
-    return nil;
-}
-
-- (UITextInputAssistantItem *)_inputAssistantItem
-{
-    return nil;
-}
-#endif
-
 - (UITextInteractionAssistant *)interactionAssistant
 {
     return _textSelectionAssistant.get();
@@ -2608,10 +2605,6 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 - (UITextGranularity)selectionGranularity
 {
     return UITextGranularityCharacter;
-}
-
-- (void)insertDictationResult:(NSArray *)dictationResult withCorrectionIdentifier:(id)correctionIdentifier
-{
 }
 
 // Should return an array of NSDictionary objects that key/value paries for the final text, correction identifier and

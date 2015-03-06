@@ -543,6 +543,39 @@ void MemoryCache::removeResourcesWithOrigin(SecurityOrigin& origin)
         remove(*resource);
 }
 
+void MemoryCache::removeResourcesWithOrigins(SessionID sessionID, const HashSet<RefPtr<SecurityOrigin>>& origins)
+{
+    auto* resourceMap = sessionResourceMap(sessionID);
+    if (!resourceMap)
+        return;
+
+#if ENABLE(CACHE_PARTITIONING)
+    HashSet<String> originPartitions;
+
+    for (auto& origin : origins)
+        originPartitions.add(ResourceRequest::partitionName(origin->host()));
+#endif
+
+    Vector<CachedResource*> resourcesToRemove;
+    for (auto& keyValuePair : *resourceMap) {
+        auto& resource = *keyValuePair.value;
+
+#if ENABLE(CACHE_PARTITIONING)
+        auto& partitionName = keyValuePair.key.second;
+        if (originPartitions.contains(partitionName)) {
+            resourcesToRemove.append(&resource);
+            continue;
+        }
+#endif
+
+        if (origins.contains(SecurityOrigin::create(resource.url()).ptr()))
+            resourcesToRemove.append(&resource);
+    }
+
+    for (auto& resource : resourcesToRemove)
+        remove(*resource);
+}
+
 void MemoryCache::getOriginsWithCache(SecurityOriginSet& origins)
 {
 #if ENABLE(CACHE_PARTITIONING)
@@ -568,7 +601,6 @@ HashSet<RefPtr<SecurityOrigin>> MemoryCache::originsWithCache(SessionID sessionI
 
     auto it = m_sessionResources.find(sessionID);
     if (it != m_sessionResources.end()) {
-
         for (auto& keyValue : *it->value) {
             auto& resource = *keyValue.value;
 #if ENABLE(CACHE_PARTITIONING)
@@ -622,9 +654,9 @@ void MemoryCache::adjustSize(bool live, int delta)
 void MemoryCache::removeRequestFromSessionCaches(ScriptExecutionContext& context, const ResourceRequest& request)
 {
     if (is<WorkerGlobalScope>(context)) {
-        CrossThreadResourceRequestData* requestData = request.copyData().leakPtr();
+        CrossThreadResourceRequestData* requestData = request.copyData().release();
         downcast<WorkerGlobalScope>(context).thread().workerLoaderProxy().postTaskToLoader([requestData] (ScriptExecutionContext& context) {
-            OwnPtr<ResourceRequest> request(ResourceRequest::adopt(adoptPtr(requestData)));
+            auto request(ResourceRequest::adopt(std::unique_ptr<CrossThreadResourceRequestData>(requestData)));
             MemoryCache::removeRequestFromSessionCaches(context, *request);
         });
         return;

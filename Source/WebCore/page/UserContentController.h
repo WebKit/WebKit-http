@@ -47,6 +47,7 @@ class UserMessageHandlerDescriptor;
 
 namespace ContentExtensions {
 class ContentExtensionsBackend;
+struct Action;
 }
 
 class UserContentController : public RefCounted<UserContentController> {
@@ -81,10 +82,11 @@ public:
 #if ENABLE(CONTENT_EXTENSIONS)
     // FIXME: This should really take a pointer to a compiled UserContentFilter.
     WEBCORE_EXPORT void addUserContentFilter(const String& name, const String& ruleList);
+    WEBCORE_EXPORT void removeUserContentFilter(const String& name);
     WEBCORE_EXPORT void removeAllUserContentFilters();
     
     // FIXME: Consider putting this (and other future content filter predicates) in its own class.
-    bool contentFilterBlocksURL(const URL&);
+    Vector<ContentExtensions::Action> actionsForURL(const URL&);
 #endif
 
 private:

@@ -38,7 +38,7 @@ use Digest::MD5 qw(md5_hex);
 use FindBin;
 use File::Basename;
 use File::Find;
-use File::Path qw(mkpath rmtree);
+use File::Path qw(make_path mkpath rmtree);
 use File::Spec;
 use File::stat;
 use List::Util;
@@ -126,6 +126,7 @@ my $xcodeVersion;
 my $programFilesPath;
 my $vcBuildPath;
 my $vsInstallDir;
+my $msBuildInstallDir;
 my $vsVersion;
 my $windowsSourceDir;
 my $winVersion;
@@ -516,6 +517,16 @@ sub visualStudioInstallDir
     return $vsInstallDir;
 }
 
+sub msBuildInstallDir
+{
+    return $msBuildInstallDir if defined $msBuildInstallDir;
+
+    $msBuildInstallDir = File::Spec->catdir(programFilesPath(), "MSBuild", "12.0", "Bin");
+    chomp($msBuildInstallDir = `cygpath "$msBuildInstallDir"`) if isCygwin();
+
+    return $msBuildInstallDir;
+}
+
 sub visualStudioVersion
 {
     return $vsVersion if defined $vsVersion;
@@ -532,7 +543,7 @@ sub determineConfigurationForVisualStudio
     return if defined $configurationForVisualStudio;
     determineConfiguration();
     # FIXME: We should detect when Debug_All or Production has been chosen.
-    $configurationForVisualStudio = $configuration . (isWin64() ? "|x64" : "|Win32");
+    $configurationForVisualStudio = "/p:Configuration=" . $configuration;
 }
 
 sub usesPerConfigurationBuildDirectory
@@ -1580,18 +1591,18 @@ sub setupCygwinEnv()
     return if $vcBuildPath;
 
     my $programFilesPath = programFilesPath();
-    $vcBuildPath = File::Spec->catfile(visualStudioInstallDir(), qw(Common7 IDE devenv.com));
-    if (-e $vcBuildPath) {
+    my $visualStudioPath = File::Spec->catfile(visualStudioInstallDir(), qw(Common7 IDE devenv.com));
+    if (-e $visualStudioPath) {
         # Visual Studio is installed;
         if (visualStudioVersion() eq "12") {
-            $vcBuildPath = File::Spec->catfile(visualStudioInstallDir(), qw(Common7 IDE devenv.exe));
+            $visualStudioPath = File::Spec->catfile(visualStudioInstallDir(), qw(Common7 IDE devenv.exe));
         }
     } else {
         # Visual Studio not found, try VC++ Express
-        $vcBuildPath = File::Spec->catfile(visualStudioInstallDir(), qw(Common7 IDE WDExpress.exe));
-        if (! -e $vcBuildPath) {
+        $visualStudioPath = File::Spec->catfile(visualStudioInstallDir(), qw(Common7 IDE WDExpress.exe));
+        if (! -e $visualStudioPath) {
             print "*************************************************************\n";
-            print "Cannot find '$vcBuildPath'\n";
+            print "Cannot find '$visualStudioPath'\n";
             print "Please execute the file 'vcvars32.bat' from\n";
             print "'$programFilesPath\\Microsoft Visual Studio 12.0\\VC\\bin\\'\n";
             print "to setup the necessary environment variables.\n";
@@ -1606,6 +1617,18 @@ sub setupCygwinEnv()
     print "WEBKIT_LIBRARIES is set to: ", $ENV{"WEBKIT_LIBRARIES"}, "\n";
     # FIXME (125180): Remove the following temporary 64-bit support once official support is available.
     print "WEBKIT_64_SUPPORT is set to: ", $ENV{"WEBKIT_64_SUPPORT"}, "\n" if isWin64();
+
+    # We will actually use MSBuild to build WebKit, but we need to find the Visual Studio install (above) to make
+    # sure we use the right options.
+    $vcBuildPath = File::Spec->catfile(msBuildInstallDir(), qw(MSBuild.exe));
+    if (! -e $vcBuildPath) {
+        print "*************************************************************\n";
+        print "Cannot find '$vcBuildPath'\n";
+        print "Please make sure execute that the Microsoft .NET Framework SDK\n";
+        print "is installed on this machine.\n";
+        print "*************************************************************\n";
+        die;
+    }
 }
 
 sub dieIfWindowsPlatformSDKNotInstalled
@@ -1671,12 +1694,24 @@ sub buildVisualStudioProject
 
     chomp($project = `cygpath -w "$project"`) if isCygwin();
 
-    my $action = "/build";
+    my $action = "/t:build";
     if ($clean) {
-        $action = "/clean";
+        $action = "/t:clean";
     }
 
-    my @command = ($vcBuildPath, $project, $action, $config);
+    my $platform = "/p:Platform=" . (isWin64() ? "x64" : "Win32");
+    my $logPath = File::Spec->catdir($baseProductDir, $configuration);
+    File::Path->make_path($logPath) unless -d $logPath;
+
+    my $errorLogFile = File::Spec->catfile($logPath, "webkit_errors.log");
+    chomp($errorLogFile = `cygpath -w "$errorLogFile"`) if isCygwin();
+    my $errorLogging = "/flp:LogFile=" . $errorLogFile . ";ErrorsOnly";
+
+    my $warningLogFile = File::Spec->catfile($logPath, "webkit_warnings.log");
+    chomp($warningLogFile = `cygpath -w "$warningLogFile"`) if isCygwin();
+    my $warningLogging = "/flp1:LogFile=" . $warningLogFile . ";WarningsOnly";
+
+    my @command = ($vcBuildPath, "/verbosity:minimal", $project, $action, $config, $platform, "/fl", $errorLogging, "/fl1", $warningLogging);
 
     print join(" ", @command), "\n";
     return system @command;

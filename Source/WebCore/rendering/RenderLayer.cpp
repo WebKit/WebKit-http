@@ -4023,6 +4023,32 @@ static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const
     return referenceBox;
 }
 
+Path RenderLayer::computeClipPath(const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, WindRule& windRule) const
+{
+    const RenderStyle& style = renderer().style();
+
+    if (is<ShapeClipPathOperation>(*style.clipPath())) {
+        auto& clipPath = downcast<ShapeClipPathOperation>(*style.clipPath());
+        LayoutRect referenceBox = computeReferenceBox(renderer(), clipPath, offsetFromRoot, rootRelativeBounds);
+
+        windRule = clipPath.windRule();
+        return clipPath.pathForReferenceRect(referenceBox);
+    }
+    
+    if (is<BoxClipPathOperation>(*style.clipPath()) && is<RenderBox>(renderer())) {
+
+        auto& clipPath = downcast<BoxClipPathOperation>(*style.clipPath());
+
+        RoundedRect shapeRect = computeRoundedRectForBoxShape(clipPath.referenceBox(), downcast<RenderBox>(renderer()));
+        shapeRect.move(offsetFromRoot);
+
+        windRule = RULE_NONZERO;
+        return clipPath.pathForReferenceRect(shapeRect);
+    }
+    
+    return Path();
+}
+
 bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInfo& paintingInfo, const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed)
 {
     if (!renderer().hasClipPath() || context->paintingDisabled())
@@ -4035,23 +4061,11 @@ bool RenderLayer::setupClipPath(GraphicsContext* context, const LayerPaintingInf
 
     RenderStyle& style = renderer().style();
     ASSERT(style.clipPath());
-    if (is<ShapeClipPathOperation>(*style.clipPath())) {
-        auto& clipPath = downcast<ShapeClipPathOperation>(*style.clipPath());
-
-        LayoutRect referenceBox = computeReferenceBox(renderer(), clipPath, offsetFromRoot, rootRelativeBounds);
+    if (is<ShapeClipPathOperation>(*style.clipPath()) || (is<BoxClipPathOperation>(*style.clipPath()) && is<RenderBox>(renderer()))) {
+        WindRule windRule;
+        Path path = computeClipPath(offsetFromRoot, rootRelativeBounds, windRule);
         context->save();
-        context->clipPath(clipPath.pathForReferenceRect(referenceBox), clipPath.windRule());
-        return true;
-    }
-
-    if (is<BoxClipPathOperation>(*style.clipPath()) && is<RenderBox>(renderer())) {
-        auto& clipPath = downcast<BoxClipPathOperation>(*style.clipPath());
-
-        RoundedRect shapeRect = computeRoundedRectForBoxShape(clipPath.referenceBox(), downcast<RenderBox>(renderer()));
-        shapeRect.move(offsetFromRoot);
-
-        context->save();
-        context->clipPath(clipPath.pathForReferenceRect(shapeRect), RULE_NONZERO);
+        context->clipPath(path, windRule);
         return true;
     }
 
@@ -4218,7 +4232,10 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     LayoutSize columnAwareOffsetFromRoot = offsetFromRoot;
     if (renderer().flowThreadContainingBlock() && (renderer().hasClipPath() || hasFilterThatIsPainting(context, paintFlags)))
         columnAwareOffsetFromRoot = toLayoutSize(convertToLayerCoords(paintingInfo.rootLayer, LayoutPoint(), AdjustForColumns));
-    bool hasClipPath = setupClipPath(context, paintingInfo, columnAwareOffsetFromRoot, rootRelativeBounds, rootRelativeBoundsComputed);
+
+    bool hasClipPath = false;
+    if (shouldApplyClipPath(paintingInfo.paintBehavior, localPaintFlags))
+        hasClipPath = setupClipPath(context, paintingInfo, columnAwareOffsetFromRoot, rootRelativeBounds, rootRelativeBoundsComputed);
 
     LayerPaintingInfo localPaintingInfo(paintingInfo);
 
@@ -4314,14 +4331,21 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     // Make sure that we now use the original transparency context.
     ASSERT(transparencyLayerContext == context);
 
-    if ((localPaintFlags & PaintLayerPaintingCompositingMaskPhase) && shouldPaintContent && renderer().hasMask() && !selectionOnly) {
-        // Paint the mask for the fragments.
-        paintMaskForFragments(layerFragments, context, localPaintingInfo, subtreePaintRootForRenderer);
-    }
+    if (shouldPaintContent && !selectionOnly) {
+        if (shouldPaintMask(paintingInfo.paintBehavior, localPaintFlags)) {
+            // Paint the mask for the fragments.
+            paintMaskForFragments(layerFragments, context, localPaintingInfo, subtreePaintRootForRenderer);
+        }
 
-    if ((localPaintFlags & PaintLayerPaintingChildClippingMaskPhase) && shouldPaintContent && !selectionOnly) {
-        // Paint the border radius mask for the fragments.
-        paintChildClippingMaskForFragments(layerFragments, context, localPaintingInfo, subtreePaintRootForRenderer);
+        if (!(paintFlags & PaintLayerPaintingCompositingMaskPhase) && (paintFlags & PaintLayerPaintingCompositingClipPathPhase)) {
+            // Re-use paintChildClippingMaskForFragments to paint black for the compositing clipping mask.
+            paintChildClippingMaskForFragments(layerFragments, context, localPaintingInfo, subtreePaintRootForRenderer);
+        }
+        
+        if ((localPaintFlags & PaintLayerPaintingChildClippingMaskPhase)) {
+            // Paint the border radius mask for the fragments.
+            paintChildClippingMaskForFragments(layerFragments, context, localPaintingInfo, subtreePaintRootForRenderer);
+        }
     }
 
     // End our transparency layer
@@ -6035,6 +6059,30 @@ bool RenderLayer::paintsWithTransform(PaintBehavior paintBehavior) const
     return transform() && ((paintBehavior & PaintBehaviorFlattenCompositingLayers) || paintsToWindow);
 }
 
+bool RenderLayer::shouldPaintMask(PaintBehavior paintBehavior, PaintLayerFlags paintFlags) const
+{
+    if (!renderer().hasMask())
+        return false;
+
+    bool paintsToWindow = !isComposited() || backing()->paintsIntoWindow();
+    if (paintsToWindow || (paintBehavior & PaintBehaviorFlattenCompositingLayers))
+        return true;
+
+    return (paintFlags & PaintLayerPaintingCompositingMaskPhase);
+}
+
+bool RenderLayer::shouldApplyClipPath(PaintBehavior paintBehavior, PaintLayerFlags paintFlags) const
+{
+    if (!renderer().hasClipPath())
+        return false;
+
+    bool paintsToWindow = !isComposited() || backing()->paintsIntoWindow();
+    if (paintsToWindow || (paintBehavior & PaintBehaviorFlattenCompositingLayers))
+        return true;
+
+    return (paintFlags & PaintLayerPaintingCompositingClipPathPhase);
+}
+
 bool RenderLayer::backgroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect) const
 {
     if (!isSelfPaintingLayer() && !hasSelfPaintingLayerDescendant())
@@ -6999,7 +7047,7 @@ RenderNamedFlowFragment* RenderLayer::currentRenderNamedFlowFragment() const
 
 } // namespace WebCore
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 
 void showLayerTree(const WebCore::RenderLayer* layer)
 {

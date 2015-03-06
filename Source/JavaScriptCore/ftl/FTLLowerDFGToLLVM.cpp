@@ -253,7 +253,7 @@ public:
             LValue jsValue = m_out.load64(addressFor(operand));
             
             if (node) {
-                DFG_ASSERT(m_graph, node, operand == node->variableAccessData()->machineLocal());
+                DFG_ASSERT(m_graph, node, operand == node->stackAccessData()->machineLocal);
                 
                 // This is a hack, but it's an effective one. It allows us to do CSE on the
                 // primordial load of arguments. This assumes that the GetLocal that got put in
@@ -455,11 +455,11 @@ private:
         case ExtractOSREntryLocal:
             compileExtractOSREntryLocal();
             break;
-        case GetLocal:
-            compileGetLocal();
+        case GetStack:
+            compileGetStack();
             break;
-        case PutLocal:
-            compilePutLocal();
+        case PutStack:
+            compilePutStack();
             break;
         case GetMyArgumentsLength:
             compileGetMyArgumentsLength();
@@ -509,6 +509,9 @@ private:
             break;
         case ArithSqrt:
             compileArithSqrt();
+            break;
+        case ArithLog:
+            compileArithLog();
             break;
         case ArithFRound:
             compileArithFRound();
@@ -818,8 +821,6 @@ private:
 
         case PhantomLocal:
         case LoopHint:
-        case VariableWatchpoint:
-        case FunctionReentryWatchpoint:
         case TypedArrayWatchpoint:
         case AllocationProfileWatchpoint:
         case MovHint:
@@ -828,7 +829,7 @@ private:
         case PutByOffsetHint:
         case PutStructureHint:
         case BottomValue:
-        case KillLocal:
+        case KillStack:
             break;
         default:
             DFG_CRASH(m_graph, m_node, "Unrecognized node in FTL backend");
@@ -1067,7 +1068,7 @@ private:
         setJSValue(m_out.load64(m_out.absolute(buffer + m_node->unlinkedLocal().toLocal())));
     }
     
-    void compileGetLocal()
+    void compileGetStack()
     {
         // GetLocals arise only for captured variables and arguments. For arguments, we might have
         // already loaded it.
@@ -1076,47 +1077,50 @@ private:
             return;
         }
         
-        VariableAccessData* variable = m_node->variableAccessData();
-        AbstractValue& value = m_state.variables().operand(variable->local());
+        StackAccessData* data = m_node->stackAccessData();
+        AbstractValue& value = m_state.variables().operand(data->local);
+        
+        DFG_ASSERT(m_graph, m_node, isConcrete(data->format));
+        DFG_ASSERT(m_graph, m_node, data->format != FlushedDouble); // This just happens to not arise for GetStacks, right now. It would be trivial to support.
         
         if (isInt32Speculation(value.m_type))
-            setInt32(m_out.load32(payloadFor(variable->machineLocal())));
+            setInt32(m_out.load32(payloadFor(data->machineLocal)));
         else
-            setJSValue(m_out.load64(addressFor(variable->machineLocal())));
+            setJSValue(m_out.load64(addressFor(data->machineLocal)));
     }
     
-    void compilePutLocal()
+    void compilePutStack()
     {
-        VariableAccessData* variable = m_node->variableAccessData();
-        switch (variable->flushFormat()) {
+        StackAccessData* data = m_node->stackAccessData();
+        switch (data->format) {
         case FlushedJSValue:
         case FlushedArguments: {
             LValue value = lowJSValue(m_node->child1());
-            m_out.store64(value, addressFor(variable->machineLocal()));
+            m_out.store64(value, addressFor(data->machineLocal));
             break;
         }
             
         case FlushedDouble: {
             LValue value = lowDouble(m_node->child1());
-            m_out.storeDouble(value, addressFor(variable->machineLocal()));
+            m_out.storeDouble(value, addressFor(data->machineLocal));
             break;
         }
             
         case FlushedInt32: {
             LValue value = lowInt32(m_node->child1());
-            m_out.store32(value, payloadFor(variable->machineLocal()));
+            m_out.store32(value, payloadFor(data->machineLocal));
             break;
         }
             
         case FlushedInt52: {
             LValue value = lowInt52(m_node->child1());
-            m_out.store64(value, addressFor(variable->machineLocal()));
+            m_out.store64(value, addressFor(data->machineLocal));
             break;
         }
             
         case FlushedCell: {
             LValue value = lowCell(m_node->child1());
-            m_out.store64(value, addressFor(variable->machineLocal()));
+            m_out.store64(value, addressFor(data->machineLocal));
             break;
         }
             
@@ -1124,7 +1128,7 @@ private:
             speculateBoolean(m_node->child1());
             m_out.store64(
                 lowJSValue(m_node->child1(), ManualOperandSpeculation),
-                addressFor(variable->machineLocal()));
+                addressFor(data->machineLocal));
             break;
         }
             
@@ -1717,6 +1721,8 @@ private:
     }
 
     void compileArithSqrt() { setDouble(m_out.doubleSqrt(lowDouble(m_node->child1()))); }
+
+    void compileArithLog() { setDouble(m_out.doubleLog(lowDouble(m_node->child1()))); }
     
     void compileArithFRound()
     {
@@ -1849,7 +1855,7 @@ private:
         
         speculate(
             BadCell, jsValueValue(cell), m_node->child1().node(),
-            m_out.notEqual(cell, weakPointer(m_node->cellOperand()->value().asCell())));
+            m_out.notEqual(cell, weakPointer(m_node->cellOperand()->cell())));
     }
     
     void compileCheckBadCell()
@@ -3596,7 +3602,7 @@ private:
     void compileGetClosureVar()
     {
         setJSValue(m_out.load64(
-            addressFor(lowStorage(m_node->child1()), m_node->varNumber())));
+            addressFor(lowStorage(m_node->child2()), m_node->varNumber())));
     }
     
     void compilePutClosureVar()
@@ -3769,7 +3775,7 @@ private:
         int numPassedArgs = m_node->numChildren() - 1;
         int numArgs = numPassedArgs;
 
-        JSFunction* knownFunction = jsCast<JSFunction*>(m_node->cellOperand()->value().asCell());
+        JSFunction* knownFunction = m_node->castOperand<JSFunction*>();
         NativeFunction function = knownFunction->nativeFunction();
 
         Dl_info info;
@@ -5224,14 +5230,8 @@ private:
     template<typename ClassType>
     LValue allocateObject(Structure* structure, LValue butterfly, LBasicBlock slowPath)
     {
-        MarkedAllocator* allocator;
         size_t size = ClassType::allocationSize(0);
-        if (ClassType::needsDestruction && ClassType::hasImmortalStructure)
-            allocator = &vm().heap.allocatorForObjectWithImmortalStructureDestructor(size);
-        else if (ClassType::needsDestruction)
-            allocator = &vm().heap.allocatorForObjectWithNormalDestructor(size);
-        else
-            allocator = &vm().heap.allocatorForObjectWithoutDestructor(size);
+        MarkedAllocator* allocator = &vm().heap.allocatorForObjectOfType<ClassType>(size);
         return allocateObject(m_out.constIntPtr(allocator), structure, butterfly, slowPath);
     }
     

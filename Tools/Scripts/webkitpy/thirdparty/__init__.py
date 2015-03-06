@@ -87,8 +87,6 @@ class AutoinstallImportHook(object):
             self._install_coverage()
         elif '.eliza' in fullname:
             self._install_eliza()
-        elif '.irc' in fullname:
-            self._install_irc()
         elif '.buildbot' in fullname:
             self._install_buildbot()
         elif '.keyring' in fullname:
@@ -137,6 +135,10 @@ class AutoinstallImportHook(object):
         installer.install(url="http://pypi.python.org/packages/source/S/SQLAlchemy/SQLAlchemy-0.7.7.tar.gz#md5=ddf6df7e014cea318fa981364f3f93b9",
                                                  url_subpath="SQLAlchemy-0.7.7/lib/sqlalchemy")
 
+        twisted_dir = self._fs.join(_AUTOINSTALLED_DIR, "twisted")
+        installer = AutoInstaller(prepend_to_search_path=True, target_dir=twisted_dir)
+        installer.install(url="https://pypi.python.org/packages/source/T/Twisted/Twisted-12.1.0.tar.bz2#md5=f396f1d6f5321e869c2f89b2196a9eb5", url_subpath="Twisted-12.1.0/twisted")
+
         self._install("http://pypi.python.org/packages/source/b/buildbot/buildbot-0.8.6p1.tar.gz#md5=b6727d2810c692062c657492bcbeac6a", "buildbot-0.8.6p1/buildbot")
 
     def _install_coverage(self):
@@ -145,17 +147,6 @@ class AutoinstallImportHook(object):
 
     def _install_eliza(self):
         self._install(url="http://www.adambarth.com/webkit/eliza", target_name="eliza.py")
-
-    def _install_irc(self):
-        # Since irclib and ircbot are two top-level packages, we need to import
-        # them separately.  We group them into an irc package for better
-        # organization purposes.
-        irc_dir = self._fs.join(_AUTOINSTALLED_DIR, "irc")
-        installer = AutoInstaller(target_dir=irc_dir)
-        installer.install(url="http://downloads.sourceforge.net/project/python-irclib/python-irclib/0.4.8/python-irclib-0.4.8.tar.gz",
-                                                url_subpath="python-irclib-0.4.8/irclib.py")
-        installer.install(url="http://downloads.sourceforge.net/project/python-irclib/python-irclib/0.4.8/python-irclib-0.4.8.tar.gz",
-                          url_subpath="python-irclib-0.4.8/ircbot.py")
 
     def _install(self, url, url_subpath=None, target_name=None):
         installer = AutoInstaller(target_dir=_AUTOINSTALLED_DIR)

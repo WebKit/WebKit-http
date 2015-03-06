@@ -49,16 +49,11 @@ class PageClientImpl : public PageClient
 #endif
 {
 public:
-    static std::unique_ptr<PageClientImpl> create(GtkWidget* viewWidget)
-    {
-        return std::unique_ptr<PageClientImpl>(new PageClientImpl(viewWidget));
-    }
+    explicit PageClientImpl(GtkWidget*);
 
     GtkWidget* viewWidget() { return m_viewWidget; }
 
 private:
-    explicit PageClientImpl(GtkWidget*);
-
     // PageClient
     virtual std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy() override;
     virtual void setViewNeedsDisplay(const WebCore::IntRect&) override;
@@ -106,6 +101,7 @@ private:
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
 
     virtual void handleDownloadRequest(DownloadProxy*) override;
+    virtual void didChangeContentSize(const WebCore::IntSize&) override { }
     virtual void didCommitLoadForMainFrame(const String& mimeType, bool useCustomContentProvider) override;
 
     // Auxiliary Client Creation

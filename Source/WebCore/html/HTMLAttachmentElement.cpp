@@ -56,7 +56,7 @@ RenderPtr<RenderElement> HTMLAttachmentElement::createElementRenderer(Ref<Render
     return createRenderer<RenderAttachment>(*this, WTF::move(style));
 }
 
-File* HTMLAttachmentElement::file()
+File* HTMLAttachmentElement::file() const
 {
     return m_file.get();
 }
@@ -64,20 +64,30 @@ File* HTMLAttachmentElement::file()
 void HTMLAttachmentElement::setFile(File* file)
 {
     m_file = file;
-}
 
-void HTMLAttachmentElement::setFocus(bool shouldBeFocused)
-{
-    if (focused() == shouldBeFocused)
-        return;
-    
-    HTMLElement::setFocus(shouldBeFocused);
-    
     auto* renderer = this->renderer();
     if (!is<RenderAttachment>(renderer))
         return;
-    
-    downcast<RenderAttachment>(*renderer).focusChanged();
+
+    downcast<RenderAttachment>(*renderer).invalidate();
+}
+
+void HTMLAttachmentElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+{
+    if ((name == progressAttr || name == titleAttr || name == subtitleAttr) && is<RenderAttachment>(renderer())) {
+        downcast<RenderAttachment>(*renderer()).invalidate();
+        return;
+    }
+
+    HTMLElement::parseAttribute(name, value);
+}
+
+String HTMLAttachmentElement::attachmentTitle() const
+{
+    String title = fastGetAttribute(titleAttr);
+    if (!title.isEmpty())
+        return title;
+    return m_file ? m_file->name() : String();
 }
 
 } // namespace WebCore

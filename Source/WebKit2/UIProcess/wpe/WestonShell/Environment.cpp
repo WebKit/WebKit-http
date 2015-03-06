@@ -57,7 +57,7 @@ Surface::Surface(struct weston_surface* surface)
 
 void Surface::configure(struct weston_surface* surface, int32_t sx, int32_t sy)
 {
-    auto shellSurface = static_cast<Surface*>(surface->configure_private);
+    auto* shellSurface = static_cast<Surface*>(surface->configure_private);
     weston_view_set_position(shellSurface->m_view, sx, sy);
 }
 
@@ -83,7 +83,7 @@ Environment::Environment(struct weston_compositor* compositor)
         &wl_wpe_interface, wl_wpe_interface.version, this,
         [](struct wl_client* client, void* data, uint32_t version, uint32_t id) {
             ASSERT(version == wl_wpe_interface.version);
-            auto environment = static_cast<Environment*>(data);
+            auto* environment = static_cast<Environment*>(data);
             struct wl_resource* resource = wl_resource_create(client, &wl_wpe_interface, version, id);
             wl_resource_set_implementation(resource, &m_wpeInterface, environment, nullptr);
         });
@@ -102,8 +102,8 @@ const struct wl_wpe_interface Environment::m_wpeInterface = {
     // register_surface
     [](struct wl_client*, struct wl_resource* shellResource, struct wl_resource* surfaceResource)
     {
-        auto shell = static_cast<Environment*>(wl_resource_get_user_data(shellResource));
-        auto surface = static_cast<struct weston_surface*>(wl_resource_get_user_data(surfaceResource));
+        auto* shell = static_cast<Environment*>(wl_resource_get_user_data(shellResource));
+        auto* surface = static_cast<struct weston_surface*>(wl_resource_get_user_data(surfaceResource));
         shell->registerSurface(surface);
     },
 };
@@ -113,7 +113,7 @@ void Environment::createOutput(struct weston_output* output)
     m_outputSize = WKSizeMake(output->width, output->height);
 
     struct weston_surface* surface = weston_surface_create(m_compositor);
-    weston_surface_set_color(surface, 0.0f, 0.75f, 0.0f, 1.0f);
+    weston_surface_set_color(surface, 0, 0, 0, 1);
 	pixman_region32_fini(&surface->opaque);
 	pixman_region32_init_rect(&surface->opaque, 0, 0, output->width, output->height);
 	pixman_region32_fini(&surface->input);
@@ -124,7 +124,7 @@ void Environment::createOutput(struct weston_output* output)
     weston_view_set_position(baseView, output->x, output->y);
     weston_layer_entry_insert(&m_layer.view_list, &baseView->layer_link);
 
-    auto shellOutput = new Output(output, baseView);
+    auto* shellOutput = new Output(output, baseView);
     wl_list_insert(&m_outputList, &shellOutput->m_link);
 }
 
@@ -135,7 +135,7 @@ void Environment::outputCreated(struct wl_listener*, void*)
 void Environment::createCursor()
 {
     struct weston_surface* surface = weston_surface_create(m_compositor);
-    weston_surface_set_color(surface, 1.0f, 0.0f, 0.0f, 1.0f);
+    weston_surface_set_color(surface, 1, 0, 0, 1);
     pixman_region32_fini(&surface->opaque);
     pixman_region32_init_rect(&surface->opaque, 0, 0, c_cursorSize, c_cursorSize);
     weston_surface_set_size(surface, c_cursorSize, c_cursorSize);
@@ -147,7 +147,7 @@ void Environment::createCursor()
 
 void Environment::registerSurface(struct weston_surface* surface)
 {
-    auto shellSurface = new Surface(surface);
+    auto* shellSurface = new Surface(surface);
     weston_layer_entry_insert(&m_layer.view_list, &shellSurface->m_view->layer_link);
 
     weston_compositor_schedule_repaint(m_compositor);

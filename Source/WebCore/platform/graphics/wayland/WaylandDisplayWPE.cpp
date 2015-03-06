@@ -33,8 +33,6 @@
 #include <cstring>
 #include <glib.h>
 
-#include <stdio.h>
-
 namespace WebCore {
 
 class EventSource {
@@ -125,6 +123,7 @@ WaylandDisplay* WaylandDisplay::instance()
     source->pfd.revents = 0;
     g_source_add_poll(baseSource, &source->pfd);
 
+    g_source_set_name(baseSource, "[WebKit] WaylandDisplay");
     g_source_set_priority(baseSource, G_PRIORITY_DEFAULT);
     g_source_set_can_recurse(baseSource, TRUE);
     g_source_attach(baseSource, g_main_context_get_thread_default());
@@ -148,8 +147,6 @@ WaylandDisplay::WaylandDisplay(struct wl_display* wlDisplay)
         EGL_ALPHA_SIZE, 1,
         EGL_DEPTH_SIZE, 24,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        EGL_SAMPLE_BUFFERS, 1,
-        EGL_SAMPLES, 4,
         EGL_NONE
     };
 
@@ -184,9 +181,13 @@ std::unique_ptr<WaylandSurface> WaylandDisplay::createSurface(const IntSize& siz
     // We keep the minimum size at 1x1px since Mesa returns null values in wl_egl_window_create() for zero width or height.
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, std::max(1, size.width()), std::max(1, size.height()));
 
-    wl_wpe_register_surface(m_wpe, wlSurface);
     wl_display_roundtrip(m_display);
     return std::make_unique<WaylandSurface>(wlSurface, nativeWindow);
+}
+
+void WaylandDisplay::registerSurface(struct wl_surface* surface) const
+{
+    wl_wpe_register_surface(m_wpe, surface);
 }
 
 std::unique_ptr<GLContextEGL> WaylandDisplay::createOffscreenGLContext(GLContext* sharingContext)

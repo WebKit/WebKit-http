@@ -167,6 +167,17 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
+    case GetStack: {
+        StackAccessData* data = node->stackAccessData();
+        AbstractValue value = m_state.variables().operand(data->local);
+        // The value in the local should already be checked.
+        DFG_ASSERT(m_graph, node, value.isType(typeFilterFor(data->format)));
+        if (value.value())
+            m_state.setFoundConstants(true);
+        forNode(node) = value;
+        break;
+    }
+        
     case GetLocalUnlinked: {
         AbstractValue value = m_state.variables().operand(node->unlinkedLocal().offset());
         if (value.value())
@@ -175,9 +186,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
-    case SetLocal:
-    case PutLocal: {
-        m_state.variables().operand(node->local().offset()) = forNode(node->child1());
+    case SetLocal: {
+        m_state.variables().operand(node->local()) = forNode(node->child1());
+        break;
+    }
+        
+    case PutStack: {
+        m_state.variables().operand(node->stackAccessData()->local) = forNode(node->child1());
         break;
     }
         
@@ -188,7 +203,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
-    case KillLocal: {
+    case KillStack: {
         // This is just a hint telling us that the OSR state of the local is no longer inside the
         // flushed data.
         break;
@@ -779,6 +794,16 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(typeOfDoubleUnaryOp(forNode(node->child1()).m_type));
         break;
     }
+
+    case ArithLog: {
+        JSValue child = forNode(node->child1()).value();
+        if (child && child.isNumber()) {
+            setConstant(node, jsDoubleNumber(log(child.asNumber())));
+            break;
+        }
+        forNode(node).setType(typeOfDoubleUnaryOp(forNode(node->child1()).m_type));
+        break;
+    }
             
     case LogicalNot: {
         switch (booleanResult(node, forNode(node->child1()))) {
@@ -1314,7 +1339,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->activationStructure());
         break;
         
-    case FunctionReentryWatchpoint:
     case TypedArrayWatchpoint:
         break;
     
@@ -1435,7 +1459,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
-    case GetScope: // FIXME: We could get rid of these if we know that the JSFunction is a constant. https://bugs.webkit.org/show_bug.cgi?id=106202
+    case GetScope:
+        if (JSValue base = forNode(node->child1()).m_value) {
+            if (JSFunction* function = jsDynamicCast<JSFunction*>(base)) {
+                setConstant(node, *m_graph.freeze(function->scope()));
+                break;
+            }
+        }
         forNode(node).setType(SpecObjectOther);
         break;
 
@@ -1454,6 +1484,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case GetClosureVar:
+        if (JSValue value = m_graph.tryGetConstantClosureVar(forNode(node->child1()), VirtualRegister(node->varNumber()))) {
+            setConstant(node, *m_graph.freeze(value));
+            break;
+        }
         forNode(node).makeHeapTop();
         break;
             
@@ -1953,7 +1987,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).makeHeapTop();
         break;
         
-    case VariableWatchpoint:
     case VarInjectionWatchpoint:
     case PutGlobalVar:
     case NotifyWrite:

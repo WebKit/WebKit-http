@@ -26,19 +26,43 @@
 #include "config.h"
 #include "WebsiteDataRecord.h"
 
+#include <WebCore/LocalizedStrings.h>
 #include <WebCore/PublicSuffix.h>
 #include <WebCore/SecurityOrigin.h>
 
+#if PLATFORM(COCOA)
+#import <WebCore/CFNetworkSPI.h>
+#endif
+
+static String displayNameForLocalFiles()
+{
+    return WEB_UI_STRING("Local documents on your computer", "'Website' name displayed when local documents have stored local data");
+}
+
 namespace WebKit {
+
+String WebsiteDataRecord::displayNameForCookieHostName(const String& hostName)
+{
+#if PLATFORM(COCOA)
+    if (hostName == String(kCFHTTPCookieLocalFileDomain))
+        return displayNameForLocalFiles();
+#endif
+
+    // FIXME: This needs to handle the local file domain for cookies.
+
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    return WebCore::topPrivatelyControlledDomain(hostName.startsWith('.') ? hostName.substring(1) : hostName);
+#endif
+
+    return String();
+}
 
 String WebsiteDataRecord::displayNameForOrigin(const WebCore::SecurityOrigin& securityOrigin)
 {
     const auto& protocol = securityOrigin.protocol();
 
-    if (protocol == "file") {
-        // FIXME: Handle this. Return a localized display name.
-        ASSERT_NOT_REACHED();
-    }
+    if (protocol == "file")
+        return displayNameForLocalFiles();
 
 #if ENABLE(PUBLIC_SUFFIX_LIST)
     if (protocol == "http" || protocol == "https")
@@ -53,6 +77,13 @@ void WebsiteDataRecord::add(WebsiteDataTypes type, RefPtr<WebCore::SecurityOrigi
     types |= type;
 
     origins.add(WTF::move(origin));
+}
+
+void WebsiteDataRecord::addCookieHostName(const String& hostName)
+{
+    types |= WebsiteDataTypeCookies;
+
+    cookieHostNames.add(hostName);
 }
 
 }

@@ -39,6 +39,7 @@ Controller.FullScreenControls = 1;
 
 Controller.PlayAfterSeeking = 0;
 Controller.PauseAfterSeeking = 1;
+Controller.gLastTimelineId = 0;
 
 Controller.prototype = {
 
@@ -75,7 +76,10 @@ Controller.prototype = {
         failed: 'failed',
         hidden: 'hidden',
         hiding: 'hiding',
-        hourLongTime: 'hour-long-time',
+        threeDigitTime: 'three-digit-time',
+        fourDigitTime: 'four-digit-time',
+        fiveDigitTime: 'five-digit-time',
+        sixDigitTime: 'six-digit-time',
         list: 'list',
         muteBox: 'mute-box',
         muted: 'muted',
@@ -344,6 +348,9 @@ Controller.prototype = {
         this.listenFor(timeline, 'mouseup', this.handleTimelineMouseUp);
         timeline.step = .01;
 
+        this.timelineContextName = "_webkit-media-controls-timeline-" + Controller.gLastTimelineId;
+        timeline.style.backgroundImage = '-webkit-canvas(' + this.timelineContextName + ')';
+        
         var thumbnailTrack = this.controls.thumbnailTrack = document.createElement('div');
         thumbnailTrack.classList.add(this.ClassNames.thumbnailTrack);
 
@@ -389,6 +396,10 @@ Controller.prototype = {
         volume.step = .01;
         this.listenFor(volume, 'input', this.handleVolumeSliderInput);
 
+        this.volumeContextName = "_webkit-media-controls-volume-" + Controller.gLastTimelineId;
+        volume.style.backgroundImage = '-webkit-canvas(' + this.volumeContextName + ')';
+        Controller.gLastTimelineId++;
+        
         var captionButton = this.controls.captionButton = document.createElement('button');
         captionButton.setAttribute('pseudo', '-webkit-media-controls-toggle-closed-captions-button');
         captionButton.setAttribute('aria-label', this.UIString('Captions'));
@@ -450,9 +461,9 @@ Controller.prototype = {
 
     configureInlineControls: function()
     {
+        this.controls.panel.appendChild(this.controls.playButton);
         if (!this.isLive)
             this.controls.panel.appendChild(this.controls.rewindButton);
-        this.controls.panel.appendChild(this.controls.playButton);
         this.controls.panel.appendChild(this.controls.statusDisplay);
         if (!this.isLive) {
             this.controls.panel.appendChild(this.controls.timelineBox);
@@ -707,10 +718,15 @@ Controller.prototype = {
     handlePanelTransitionEnd: function(event)
     {
         var opacity = window.getComputedStyle(this.controls.panel).opacity;
-        if (parseInt(opacity) > 0)
+        if (parseInt(opacity) > 0) {
             this.controls.panel.classList.remove(this.ClassNames.hidden);
-        else
+            if (this.controls.panelBackground)
+                this.controls.panelBackground.classList.remove(this.ClassNames.hidden);
+        } else {
             this.controls.panel.classList.add(this.ClassNames.hidden);
+            if (this.controls.panelBackground)
+                this.controls.panelBackground.classList.add(this.ClassNames.hidden);
+        }
     },
 
     handlePanelClick: function(event)
@@ -824,6 +840,7 @@ Controller.prototype = {
         this.video.muted = !this.video.muted;
         if (this.video.muted)
             this.controls.muteButton.setAttribute('aria-label', this.UIString('Unmute'));
+        this.drawVolumeBackground();
         return true;
     },
 
@@ -853,6 +870,7 @@ Controller.prototype = {
             this.controls.muteButton.setAttribute('aria-label', this.UIString('Mute'));
         }
         this.video.volume = this.controls.volume.value;
+        this.drawVolumeBackground();
     },
 
     handleCaptionButtonClicked: function(event)
@@ -956,8 +974,29 @@ Controller.prototype = {
 
         this.setIsLive(duration === Number.POSITIVE_INFINITY);
 
-        this.controls.currentTime.classList.toggle(this.ClassNames.hourLongTime, duration >= 60*60);
-        this.controls.remainingTime.classList.toggle(this.ClassNames.hourLongTime, duration >= 60*60);
+        // Reset existing style.
+        this.controls.currentTime.classList.remove(this.ClassNames.threeDigitTime);
+        this.controls.currentTime.classList.remove(this.ClassNames.fourDigitTime);
+        this.controls.currentTime.classList.remove(this.ClassNames.fiveDigitTime);
+        this.controls.currentTime.classList.remove(this.ClassNames.sixDigitTime);
+        this.controls.remainingTime.classList.remove(this.ClassNames.threeDigitTime);
+        this.controls.remainingTime.classList.remove(this.ClassNames.fourDigitTime);
+        this.controls.remainingTime.classList.remove(this.ClassNames.fiveDigitTime);
+        this.controls.remainingTime.classList.remove(this.ClassNames.sixDigitTime);
+
+        if (duration >= 60*60*10) {
+            this.controls.currentTime.classList.add(this.ClassNames.sixDigitTime);
+            this.controls.remainingTime.classList.add(this.ClassNames.sixDigitTime);
+        } else if (duration >= 60*60) {
+            this.controls.currentTime.classList.add(this.ClassNames.fiveDigitTime);
+            this.controls.remainingTime.classList.add(this.ClassNames.fiveDigitTime);
+        } else if (duration >= 60*10) {
+            this.controls.currentTime.classList.add(this.ClassNames.fourDigitTime);
+            this.controls.remainingTime.classList.add(this.ClassNames.fourDigitTime);
+        } else {
+            this.controls.currentTime.classList.add(this.ClassNames.threeDigitTime);
+            this.controls.remainingTime.classList.add(this.ClassNames.threeDigitTime);
+        }
     },
 
     progressFillStyle: function(context)
@@ -978,24 +1017,149 @@ Controller.prototype = {
         this.drawTimelineBackground();
     },
 
-    drawTimelineBackground: function() {
-        var background = 'url(\'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none"><linearGradient id="gradient" x2="0" y2="100%" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="rgb(2, 2, 2)"/><stop offset="1" stop-color="rgb(23, 23, 23)"/></linearGradient><g style="fill:url(#gradient)">'
-
-        var duration = this.video.duration;
-        var buffered = this.video.buffered;
-        for (var i = 0, end = buffered.length; i < end; ++i) {
-            var startTime = buffered.start(i);
-            var endTime = buffered.end(i);
-
-            var startX = startTime / duration;
-            var widthX = (endTime - startTime) / duration;
-            background += '<rect x="' + startX + '" y="0" width="' + widthX + '" height="1"/>';
-        }
-
-        background += '</g></svg>\')'
-        this.controls.timeline.style.backgroundImage = background;
+    addRoundedRect: function(ctx, x, y, width, height, radius) {
+        ctx.moveTo(x + radius, y);
+        ctx.arcTo(x + width, y, x + width, y + radius, radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+        ctx.lineTo(x + radius, y + height);
+        ctx.arcTo(x, y + height, x, y + height - radius, radius);
+        ctx.lineTo(x, y + radius);
+        ctx.arcTo(x, y, x + radius, y, radius);
     },
 
+    drawTimelineBackground: function() {
+        var dpr = window.devicePixelRatio;
+        var width = this.controls.timeline.offsetWidth * dpr;
+        var height = this.controls.timeline.offsetHeight * dpr;
+        
+        if (!width || !height)
+            return;
+        
+        var played = this.video.currentTime / this.video.duration;
+        var buffered = 0;
+        for (var i = 0, end = this.video.buffered.length; i < end; ++i)
+            buffered = Math.max(this.video.buffered.end(i), buffered);
+        
+        buffered /= this.video.duration;
+        
+        var ctx = document.getCSSCanvasContext('2d', this.timelineContextName, width, height);
+        
+        width /= dpr;
+        height /= dpr;
+        
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, width, height);
+        
+        var timelineHeight = 3;
+        var trackHeight = 1;
+        var scrubberWidth = 3;
+        var scrubberHeight = 15;
+        var borderSize = 2;
+        var scrubberPosition = Math.max(0, Math.min(width - scrubberWidth, Math.round(width * played)));
+        
+        // Draw buffered section.
+        ctx.save();
+        ctx.fillStyle = "rgb(100, 100, 100)";
+        ctx.fillRect(1, 8, Math.round(width * buffered) - borderSize, trackHeight);
+        ctx.restore();
+        
+        // Draw timeline border.
+        ctx.save();
+        ctx.beginPath();
+        this.addRoundedRect(ctx, scrubberPosition, 7, width - scrubberPosition, timelineHeight, timelineHeight / 2.0);
+        this.addRoundedRect(ctx, scrubberPosition + 1, 8, width - scrubberPosition - borderSize , trackHeight, trackHeight / 2.0);
+        ctx.closePath();
+        ctx.clip("evenodd");
+        ctx.fillStyle = "rgb(50, 50, 50)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+        
+        // Draw played section.
+        ctx.save(); 
+        ctx.beginPath();
+        this.addRoundedRect(ctx, 0, 7, width, timelineHeight, timelineHeight / 2.0);
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle = "rgb(75, 75, 75)";
+        ctx.fillRect(0, 0, width * played, height);
+        ctx.restore();
+        
+        // Draw the scrubber.
+        ctx.save();
+        ctx.clearRect(scrubberPosition - 1, 0, scrubberWidth + borderSize, height, 0);
+        ctx.beginPath();
+        this.addRoundedRect(ctx, scrubberPosition, 1, scrubberWidth, scrubberHeight, 1);
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle = "rgb(140, 140, 140)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+        
+        ctx.restore();
+    },
+
+    drawVolumeBackground: function() {
+        var dpr = window.devicePixelRatio;
+        var width = this.controls.volume.offsetWidth * dpr;
+        var height = this.controls.volume.offsetHeight * dpr;
+
+        if (!width || !height)
+            return;
+            
+        var ctx = document.getCSSCanvasContext('2d', this.volumeContextName, width, height);
+        
+        width /= dpr;
+        height /= dpr;
+        
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, width, height);
+        
+        var seekerPosition = this.controls.volume.value;
+        var trackHeight = 1;
+        var timelineHeight = 3;
+        var scrubberRadius = 3.5;
+        var scrubberDiameter = 2 * scrubberRadius;
+        var borderSize = 2;
+        
+        var scrubberPosition = Math.round(seekerPosition * (width - scrubberDiameter - borderSize));
+        
+        // Draw volume track border.
+        ctx.save();
+        ctx.beginPath();
+        this.addRoundedRect(ctx, 0, 3, width, timelineHeight, timelineHeight / 2.0);
+        this.addRoundedRect(ctx, 1, 4, width - borderSize, trackHeight, trackHeight / 2.0);
+        ctx.closePath();
+        ctx.clip("evenodd");
+        ctx.fillStyle = "rgb(50, 50, 50)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+        
+        // Clear a hole in the slider for the scrubber.
+        ctx.save();
+        ctx.beginPath();
+        this.addRoundedRect(ctx, scrubberPosition, 0, scrubberDiameter + borderSize, height, (scrubberDiameter + borderSize) / 2.0);
+        ctx.closePath();
+        ctx.clip();
+        ctx.clearRect(0, 0, width, height);
+        ctx.restore();
+        
+        // Draw scrubber.
+        ctx.save();
+        ctx.beginPath();
+        this.addRoundedRect(ctx, scrubberPosition + 1, 1, scrubberDiameter, scrubberDiameter, scrubberRadius);
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle = "rgb(140, 140, 140)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+        
+        ctx.restore();
+        
+    },
+    
     formatTime: function(time)
     {
         if (isNaN(time))
@@ -1009,7 +1173,7 @@ Controller.prototype = {
         if (intHours > 0)
             return sign + intHours + ':' + String('00' + intMinutes).slice(-2) + ":" + String('00' + intSeconds).slice(-2);
 
-        return (time < 0 ? '-' : String()) + String('00' + intMinutes).slice(-2) + ":" + String('00' + intSeconds).slice(-2)
+        return sign + String('00' + intMinutes).slice(-2) + ":" + String('00' + intSeconds).slice(-2)
     },
 
     updatePlaying: function()
@@ -1025,10 +1189,14 @@ Controller.prototype = {
 
         if (!isPlaying) {
             this.controls.panel.classList.add(this.ClassNames.paused);
+            if (this.controls.panelBackground)
+                this.controls.panelBackground.classList.add(this.ClassNames.paused);
             this.controls.playButton.classList.add(this.ClassNames.paused);
             this.controls.playButton.setAttribute('aria-label', this.UIString('Play'));
         } else {
             this.controls.panel.classList.remove(this.ClassNames.paused);
+            if (this.controls.panelBackground)
+                this.controls.panelBackground.classList.remove(this.ClassNames.paused);
             this.controls.playButton.classList.remove(this.ClassNames.paused);
             this.controls.playButton.setAttribute('aria-label', this.UIString('Pause'));
             this.resetHideControlsTimer();
@@ -1041,14 +1209,22 @@ Controller.prototype = {
 
         this.updateTime();
         this.updateProgress(true);
+        this.drawVolumeBackground();
 
         this.controls.panel.classList.add(this.ClassNames.show);
         this.controls.panel.classList.remove(this.ClassNames.hidden);
+
+        if (this.controls.panelBackground) {
+            this.controls.panelBackground.classList.add(this.ClassNames.show);
+            this.controls.panelBackground.classList.remove(this.ClassNames.hidden);
+        }
     },
 
     hideControls: function()
     {
         this.controls.panel.classList.remove(this.ClassNames.show);
+        if (this.controls.panelBackground)
+            this.controls.panelBackground.classList.remove(this.ClassNames.show);
     },
 
     controlsAreHidden: function()
@@ -1426,6 +1602,7 @@ Controller.prototype = {
             this.controls.muteButton.classList.remove(this.ClassNames.muted);
             this.controls.volume.value = this.video.volume;
         }
+        this.drawVolumeBackground();
     },
 
     isAudio: function()

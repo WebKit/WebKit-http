@@ -412,8 +412,10 @@ void DocumentLoader::finishedLoading(double finishTime)
         if (data)
             dataReceived(m_mainResource.get(), data, length);
 
-        if (m_contentFilter->didBlockData())
-            frameLoader()->client().contentFilterDidBlockLoad(WTF::move(m_contentFilter));
+        if (m_contentFilter->didBlockData()) {
+            frameLoader()->client().contentFilterDidBlockLoad(m_contentFilter->unblockHandler());
+            m_contentFilter = nullptr;
+        }
     }
 #endif
 
@@ -540,7 +542,7 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
 
     Frame& topFrame = m_frame->tree().top();
     if (&topFrame != m_frame) {
-        if (!frameLoader()->mixedContentChecker().canDisplayInsecureContent(topFrame.document()->securityOrigin(), newRequest.url())) {
+        if (!frameLoader()->mixedContentChecker().canDisplayInsecureContent(topFrame.document()->securityOrigin(), MixedContentChecker::ContentType::Active, newRequest.url())) {
             cancelMainResourceLoad(frameLoader()->cancelledError(newRequest));
             return;
         }
@@ -664,8 +666,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
-    if (ContentFilter::canHandleResponse(response))
-        m_contentFilter = std::make_unique<ContentFilter>(response);
+    m_contentFilter = ContentFilter::createIfNeeded(response);
 #endif
 
     frameLoader()->policyChecker().checkContentPolicy(m_response, [this](PolicyAction policy) {
@@ -874,8 +875,10 @@ void DocumentLoader::dataReceived(CachedResource* resource, const char* data, in
         data = m_contentFilter->getReplacementData(length);
         loadWasBlockedBeforeFinishing = m_contentFilter->didBlockData();
 
-        if (loadWasBlockedBeforeFinishing)
-            frameLoader()->client().contentFilterDidBlockLoad(WTF::move(m_contentFilter));
+        if (loadWasBlockedBeforeFinishing) {
+            frameLoader()->client().contentFilterDidBlockLoad(m_contentFilter->unblockHandler());
+            m_contentFilter = nullptr;
+        }
     }
 #endif
 

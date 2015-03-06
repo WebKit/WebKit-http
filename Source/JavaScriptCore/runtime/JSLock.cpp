@@ -144,7 +144,7 @@ void JSLock::didAcquireLock()
     m_entryAtomicStringTable = threadData.setCurrentAtomicStringTable(m_vm->atomicStringTable());
     ASSERT(m_entryAtomicStringTable);
 
-    m_vm->heap.machineThreads().addCurrentThread(m_vm);
+    m_vm->heap.machineThreads().addCurrentThread();
 }
 
 void JSLock::unlock()
@@ -157,10 +157,14 @@ void JSLock::unlock(intptr_t unlockCount)
     RELEASE_ASSERT(currentThreadIsHoldingLock());
     ASSERT(m_lockCount >= unlockCount);
 
+    // Maintain m_lockCount while calling willReleaseLock() so that its callees know that
+    // they still have the lock.
+    if (unlockCount == m_lockCount)
+        willReleaseLock();
+
     m_lockCount -= unlockCount;
 
     if (!m_lockCount) {
-        willReleaseLock();
 
         if (!m_hasExclusiveThread) {
             m_ownerThreadID = std::thread::id();

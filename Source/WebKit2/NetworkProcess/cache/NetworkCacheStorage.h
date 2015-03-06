@@ -28,151 +28,65 @@
 
 #if ENABLE(NETWORK_CACHE)
 
+#include "NetworkCacheData.h"
 #include "NetworkCacheKey.h"
 #include <wtf/BloomFilter.h>
 #include <wtf/Deque.h>
 #include <wtf/HashSet.h>
 #include <wtf/Optional.h>
+#include <wtf/WorkQueue.h>
 #include <wtf/text/WTFString.h>
 
-namespace WebCore {
-class SharedBuffer;
-}
-
-namespace IPC {
-class ArgumentEncoder;
-class ArgumentDecoder;
-}
-
 namespace WebKit {
+namespace NetworkCache {
 
-#if PLATFORM(COCOA)
-template <typename T> class DispatchPtr;
-template <typename T> DispatchPtr<T> adoptDispatch(T dispatchObject);
-
-// FIXME: Use OSObjectPtr instead when it works with dispatch_data_t on all platforms.
-template<typename T> class DispatchPtr {
+class Storage {
+    WTF_MAKE_NONCOPYABLE(Storage);
 public:
-    DispatchPtr()
-        : m_ptr(nullptr)
-    {
-    }
-    DispatchPtr(T ptr)
-        : m_ptr(ptr)
-    {
-        if (m_ptr)
-            dispatch_retain(m_ptr);
-    }
-    DispatchPtr(const DispatchPtr& other)
-        : m_ptr(other.m_ptr)
-    {
-        if (m_ptr)
-            dispatch_retain(m_ptr);
-    }
-    ~DispatchPtr()
-    {
-        if (m_ptr)
-            dispatch_release(m_ptr);
-    }
-
-    DispatchPtr& operator=(const DispatchPtr& other)
-    {
-        auto copy = other;
-        std::swap(m_ptr, copy.m_ptr);
-        return *this;
-    }
-
-    T get() const { return m_ptr; }
-    explicit operator bool() const { return m_ptr; }
-
-    friend DispatchPtr adoptDispatch<T>(T);
-
-private:
-    struct Adopt { };
-    DispatchPtr(Adopt, T data)
-        : m_ptr(data)
-    {
-    }
-
-    T m_ptr;
-};
-
-template <typename T> DispatchPtr<T> adoptDispatch(T dispatchObject)
-{
-    return DispatchPtr<T>(typename DispatchPtr<T>::Adopt { }, dispatchObject);
-}
-#endif
-
-class NetworkCacheStorage {
-    WTF_MAKE_NONCOPYABLE(NetworkCacheStorage);
-public:
-    static std::unique_ptr<NetworkCacheStorage> open(const String& cachePath);
-
-    class Data {
-    public:
-        Data() { }
-        Data(const uint8_t*, size_t);
-
-        enum class Backing { Buffer, Map };
-#if PLATFORM(COCOA)
-        explicit Data(DispatchPtr<dispatch_data_t>, Backing = Backing::Buffer);
-#endif
-        bool isNull() const;
-
-        const uint8_t* data() const;
-        size_t size() const { return m_size; }
-        bool isMap() const { return m_isMap; }
-
-#if PLATFORM(COCOA)
-        dispatch_data_t dispatchData() const { return m_dispatchData.get(); }
-#endif
-    private:
-#if PLATFORM(COCOA)
-        mutable DispatchPtr<dispatch_data_t> m_dispatchData;
-#endif
-        mutable const uint8_t* m_data { nullptr };
-        size_t m_size { 0 };
-        bool m_isMap { false };
-    };
+    static std::unique_ptr<Storage> open(const String& cachePath);
 
     struct Entry {
+        Key key;
         std::chrono::milliseconds timeStamp;
         Data header;
         Data body;
     };
     // This may call completion handler synchronously on failure.
     typedef std::function<bool (std::unique_ptr<Entry>)> RetrieveCompletionHandler;
-    void retrieve(const NetworkCacheKey&, unsigned priority, RetrieveCompletionHandler&&);
+    void retrieve(const Key&, unsigned priority, RetrieveCompletionHandler&&);
 
     typedef std::function<void (bool success, const Data& mappedBody)> StoreCompletionHandler;
-    void store(const NetworkCacheKey&, const Entry&, StoreCompletionHandler&&);
-    void update(const NetworkCacheKey&, const Entry& updateEntry, const Entry& existingEntry, StoreCompletionHandler&&);
+    void store(const Entry&, StoreCompletionHandler&&);
+    void update(const Entry& updateEntry, const Entry& existingEntry, StoreCompletionHandler&&);
+
+    // Null entry signals end.
+    void traverse(std::function<void (const Entry*)>&&);
 
     void setMaximumSize(size_t);
     void clear();
 
     static const unsigned version = 2;
 
+    const String& baseDirectoryPath() const { return m_baseDirectoryPath; }
     const String& directoryPath() const { return m_directoryPath; }
 
 private:
-    NetworkCacheStorage(const String& directoryPath);
+    Storage(const String& directoryPath);
 
     void initialize();
     void deleteOldVersions();
     void shrinkIfNeeded();
 
-    void removeEntry(const NetworkCacheKey&);
+    void removeEntry(const Key&);
 
     struct ReadOperation {
-        NetworkCacheKey key;
+        Key key;
         RetrieveCompletionHandler completionHandler;
     };
     void dispatchReadOperation(const ReadOperation&);
     void dispatchPendingReadOperations();
 
     struct WriteOperation {
-        NetworkCacheKey key;
         Entry entry;
         Optional<Entry> existingEntry;
         StoreCompletionHandler completionHandler;
@@ -180,6 +94,9 @@ private:
     void dispatchFullWriteOperation(const WriteOperation&);
     void dispatchHeaderWriteOperation(const WriteOperation&);
     void dispatchPendingWriteOperations();
+
+    WorkQueue& ioQueue() { return m_ioQueue.get(); }
+    WorkQueue& backgroundIOQueue() { return m_backgroundIOQueue.get(); }
 
     const String m_baseDirectoryPath;
     const String m_directoryPath;
@@ -197,12 +114,11 @@ private:
     Deque<std::unique_ptr<const WriteOperation>> m_pendingWriteOperations;
     HashSet<std::unique_ptr<const WriteOperation>> m_activeWriteOperations;
 
-#if PLATFORM(COCOA)
-    mutable DispatchPtr<dispatch_queue_t> m_ioQueue;
-    mutable DispatchPtr<dispatch_queue_t> m_backgroundIOQueue;
-#endif
+    Ref<WorkQueue> m_ioQueue;
+    Ref<WorkQueue> m_backgroundIOQueue;
 };
 
+}
 }
 #endif
 #endif

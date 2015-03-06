@@ -54,6 +54,7 @@ class IntSize;
 class KeyframeValueList;
 class LinearTimingFunction;
 class Notification;
+class Path;
 class ProtectionSpace;
 class Region;
 class ResourceError;
@@ -110,7 +111,7 @@ struct ViewportArguments;
 
 #if ENABLE(CONTENT_FILTERING)
 namespace WebCore {
-class ContentFilter;
+class ContentFilterUnblockHandler;
 }
 #endif
 
@@ -196,6 +197,11 @@ template<> struct ArgumentCoder<WebCore::IntRect> {
 template<> struct ArgumentCoder<WebCore::IntSize> {
     static void encode(ArgumentEncoder&, const WebCore::IntSize&);
     static bool decode(ArgumentDecoder&, WebCore::IntSize&);
+};
+
+template<> struct ArgumentCoder<WebCore::Path> {
+    static void encode(ArgumentEncoder&, const WebCore::Path&);
+    static bool decode(ArgumentDecoder&, WebCore::Path&);
 };
 
 template<> struct ArgumentCoder<WebCore::Region> {
@@ -437,9 +443,9 @@ template<> struct ArgumentCoder<WebCore::BlobPart> {
 };
 
 #if ENABLE(CONTENT_FILTERING)
-template<> struct ArgumentCoder<WebCore::ContentFilter> {
-    static void encode(ArgumentEncoder&, const WebCore::ContentFilter&);
-    static bool decode(ArgumentDecoder&, WebCore::ContentFilter&);
+template<> struct ArgumentCoder<WebCore::ContentFilterUnblockHandler> {
+    static void encode(ArgumentEncoder&, const WebCore::ContentFilterUnblockHandler&);
+    static bool decode(ArgumentDecoder&, WebCore::ContentFilterUnblockHandler&);
 };
 #endif
 

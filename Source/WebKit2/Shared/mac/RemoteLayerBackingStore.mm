@@ -37,15 +37,12 @@
 #import <WebCore/GraphicsContextCG.h>
 #import <WebCore/IOSurface.h>
 #import <WebCore/IOSurfacePool.h>
+#import <WebCore/MachSendRight.h>
 #import <WebCore/QuartzCoreSPI.h>
-#import <WebCore/SoftLinking.h>
 #import <WebCore/WebLayer.h>
 
 #if USE(IOSURFACE)
 #import <mach/mach_port.h>
-
-SOFT_LINK_FRAMEWORK(QuartzCore);
-SOFT_LINK_MAY_FAIL(QuartzCore, CAMachPortCreate, CAMachPortRef, (mach_port_t port), (port));
 #endif
 
 using namespace WebCore;
@@ -141,12 +138,7 @@ bool RemoteLayerBackingStore::decode(IPC::ArgumentDecoder& decoder, RemoteLayerB
         MachSendRight sendRight;
         if (!decoder.decode(sendRight))
             return false;
-
-        if (canLoadCAMachPortCreate())
-            result.m_frontBufferSendRight = WTF::move(sendRight);
-        else
-            result.m_frontBuffer.surface = IOSurface::createFromSendRight(sendRight, ColorSpaceDeviceRGB);
-
+        result.m_frontBuffer.surface = IOSurface::createFromSendRight(sendRight, ColorSpaceDeviceRGB);
         return true;
     }
 #endif
@@ -338,6 +330,13 @@ void RemoteLayerBackingStore::drawInContext(GraphicsContext& context, CGImageRef
         m_layer->owner()->platformCALayerPaintContents(m_layer, context, dirtyBounds);
         break;
     case PlatformCALayer::LayerTypeWebLayer:
+    case PlatformCALayer::LayerTypeBackdropLayer:
+        PlatformCALayer::drawLayerContents(cgContext, m_layer, m_paintingRects);
+        break;
+    case PlatformCALayer::LayerTypeDarkSystemBackdropLayer:
+    case PlatformCALayer::LayerTypeLightSystemBackdropLayer:
+        // FIXME: These have a more complicated layer hierarchy. We need to paint into
+        // a child layer in order to see the rendered results.
         PlatformCALayer::drawLayerContents(cgContext, m_layer, m_paintingRects);
         break;
     case PlatformCALayer::LayerTypeLayer:
@@ -348,7 +347,6 @@ void RemoteLayerBackingStore::drawInContext(GraphicsContext& context, CGImageRef
     case PlatformCALayer::LayerTypeRootLayer:
     case PlatformCALayer::LayerTypeAVPlayerLayer:
     case PlatformCALayer::LayerTypeWebGLLayer:
-    case PlatformCALayer::LayerTypeBackdropLayer:
     case PlatformCALayer::LayerTypeShapeLayer:
     case PlatformCALayer::LayerTypeScrollingLayer:
     case PlatformCALayer::LayerTypeCustom:
@@ -383,12 +381,7 @@ void RemoteLayerBackingStore::applyBackingStoreToLayer(CALayer *layer)
 
 #if USE(IOSURFACE)
     if (acceleratesDrawing()) {
-        if (canLoadCAMachPortCreate()) {
-            ASSERT(m_frontBufferSendRight);
-            RetainPtr<CAMachPortRef> port = adoptCF(CAMachPortCreate(m_frontBufferSendRight.leakSendRight()));
-            layer.contents = (id)port.get();
-        } else
-            layer.contents = (id)m_frontBuffer.surface->surface();
+        layer.contents = (id)m_frontBuffer.surface->surface();
         return;
     }
 #endif
@@ -405,7 +398,7 @@ RetainPtr<CGContextRef> RemoteLayerBackingStore::takeFrontContextPendingFlush()
 #if USE(IOSURFACE)
 bool RemoteLayerBackingStore::setBufferVolatility(BufferType type, bool isVolatile)
 {
-    switch (type) {
+    switch(type) {
     case BufferType::Front:
         if (m_frontBuffer.surface && m_frontBuffer.isVolatile != isVolatile) {
             if (isVolatile)

@@ -116,10 +116,6 @@ typedef float CGFloat;
 #endif
 #endif /* USE(CG) */
 
-#if PLATFORM(WIN) && USE(CG)
-#define WTF_USE_SAFARI_THEME 1
-#endif
-
 #if PLATFORM(IOS)
 #define WEBCORE_NAVIGATOR_PLATFORM wkGetPlatformNameForNavigator();
 #define WEBCORE_NAVIGATOR_VENDOR wkGetVendorNameForNavigator();
@@ -139,3 +135,8 @@ typedef float CGFloat;
 
 #endif
 
+#ifdef NDEBUG
+#define ENABLE_TREE_DEBUGGING 0
+#else
+#define ENABLE_TREE_DEBUGGING 1
+#endif

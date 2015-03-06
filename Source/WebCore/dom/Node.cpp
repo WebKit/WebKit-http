@@ -71,6 +71,7 @@
 #include "Settings.h"
 #include "StorageEvent.h"
 #include "StyleResolver.h"
+#include "StyleSheetContents.h"
 #include "TemplateContentDocumentFragment.h"
 #include "TextEvent.h"
 #include "TouchEvent.h"
@@ -537,16 +538,14 @@ const AtomicString& Node::namespaceURI() const
     return nullAtom;
 }
 
-bool Node::isContentEditable(UserSelectAllTreatment treatment)
+bool Node::isContentEditable()
 {
-    document().updateStyleIfNeeded();
-    return hasEditableStyle(Editable, treatment);
+    return computeEditability(UserSelectAllDoesNotAffectEditability, ShouldUpdateStyle::Update) != Editability::ReadOnly;
 }
 
 bool Node::isContentRichlyEditable()
 {
-    document().updateStyleIfNeeded();
-    return hasEditableStyle(RichlyEditable, UserSelectAllIsAlwaysNonEditable);
+    return computeEditability(UserSelectAllIsAlwaysNonEditable, ShouldUpdateStyle::Update) == Editability::CanEditRichly;
 }
 
 void Node::inspect()
@@ -555,21 +554,13 @@ void Node::inspect()
         document().page()->inspectorController().inspect(this);
 }
 
-bool Node::hasEditableStyle(EditableLevel editableLevel, UserSelectAllTreatment treatment) const
+static Node::Editability computeEditabilityFromComputedStyle(const Node& startNode, Node::UserSelectAllTreatment treatment)
 {
-    if (!document().hasLivingRenderTree())
-        return false;
-    if (document().frame() && document().frame()->page() && document().frame()->page()->isEditable() && !containingShadowRoot())
-        return true;
-
-    if (isPseudoElement())
-        return false;
-
     // Ideally we'd call ASSERT(!needsStyleRecalc()) here, but
     // ContainerNode::setFocus() calls setNeedsStyleRecalc(), so the assertion
     // would fire in the middle of Document::setFocusedElement().
 
-    for (const Node* node = this; node; node = node->parentNode()) {
+    for (const Node* node = &startNode; node; node = node->parentNode()) {
         RenderStyle* style = node->isDocumentNode() ? node->renderStyle() : const_cast<Node*>(node)->computedStyle();
         if (!style)
             continue;
@@ -578,41 +569,39 @@ bool Node::hasEditableStyle(EditableLevel editableLevel, UserSelectAllTreatment 
 #if ENABLE(USERSELECT_ALL)
         // Elements with user-select: all style are considered atomic
         // therefore non editable.
-        if (treatment == UserSelectAllIsAlwaysNonEditable && style->userSelect() == SELECT_ALL)
-            return false;
+        if (treatment == Node::UserSelectAllIsAlwaysNonEditable && style->userSelect() == SELECT_ALL)
+            return Node::Editability::ReadOnly;
 #else
         UNUSED_PARAM(treatment);
 #endif
         switch (style->userModify()) {
         case READ_ONLY:
-            return false;
+            return Node::Editability::ReadOnly;
         case READ_WRITE:
-            return true;
+            return Node::Editability::CanEditRichly;
         case READ_WRITE_PLAINTEXT_ONLY:
-            return editableLevel != RichlyEditable;
+            return Node::Editability::CanEditPlainText;
         }
         ASSERT_NOT_REACHED();
-        return false;
+        return Node::Editability::ReadOnly;
     }
-    return false;
+    return Node::Editability::ReadOnly;
 }
 
-bool Node::isEditableToAccessibility(EditableLevel editableLevel) const
+Node::Editability Node::computeEditability(UserSelectAllTreatment treatment, ShouldUpdateStyle shouldUpdateStyle) const
 {
-    if (hasEditableStyle(editableLevel))
-        return true;
+    if (!document().hasLivingRenderTree() || isPseudoElement())
+        return Editability::ReadOnly;
 
-    // FIXME: Respect editableLevel for ARIA editable elements.
-    if (editableLevel == RichlyEditable)
-        return false;
+    if (document().frame() && document().frame()->page() && document().frame()->page()->isEditable() && !containingShadowRoot())
+        return Editability::CanEditRichly;
 
-    ASSERT(AXObjectCache::accessibilityEnabled());
-    ASSERT(document().existingAXObjectCache());
-
-    if (AXObjectCache* cache = document().existingAXObjectCache())
-        return cache->rootAXEditableElement(this);
-
-    return false;
+    if (shouldUpdateStyle == ShouldUpdateStyle::Update && document().needsStyleRecalc()) {
+        if (!document().usesStyleBasedEditability())
+            return HTMLElement::editabilityFromContentEditableAttr(*this);
+        document().updateStyleIfNeeded();
+    }
+    return computeEditabilityFromComputedStyle(*this, treatment);
 }
 
 RenderBox* Node::renderBox() const
@@ -1028,16 +1017,6 @@ bool Node::isRootEditableElement() const
 {
     return hasEditableStyle() && isElementNode() && (!parentNode() || !parentNode()->hasEditableStyle()
         || !parentNode()->isElementNode() || hasTagName(bodyTag));
-}
-
-Element* Node::rootEditableElement(EditableType editableType) const
-{
-    if (editableType == HasEditableAXRole) {
-        if (AXObjectCache* cache = document().existingAXObjectCache())
-            return const_cast<Element*>(cache->rootAXEditableElement(this));
-    }
-    
-    return rootEditableElement();
 }
 
 Element* Node::rootEditableElement() const
@@ -1507,7 +1486,7 @@ FloatPoint Node::convertFromPage(const FloatPoint& p) const
     return p;
 }
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 
 static void appendAttributeDesc(const Node* node, StringBuilder& stringBuilder, const QualifiedName& name, const char* attrDesc)
 {
@@ -1675,7 +1654,7 @@ void Node::showTreeForThisAcrossFrame() const
     showSubTreeAcrossFrame(rootNode, this, "");
 }
 
-#endif
+#endif // ENABLE(TREE_DEBUGGING)
 
 // --------
 
@@ -2163,7 +2142,8 @@ bool Node::willRespondToMouseClickEvents()
         return false;
     if (downcast<Element>(*this).isDisabledFormControl())
         return false;
-    return isContentEditable(UserSelectAllIsAlwaysNonEditable) || hasEventListeners(eventNames().mouseupEvent) || hasEventListeners(eventNames().mousedownEvent) || hasEventListeners(eventNames().clickEvent) || hasEventListeners(eventNames().DOMActivateEvent);
+    return computeEditability(UserSelectAllIsAlwaysNonEditable, ShouldUpdateStyle::Update) != Editability::ReadOnly
+        || hasEventListeners(eventNames().mouseupEvent) || hasEventListeners(eventNames().mousedownEvent) || hasEventListeners(eventNames().clickEvent) || hasEventListeners(eventNames().DOMActivateEvent);
 #endif
 }
 
@@ -2242,7 +2222,7 @@ bool Node::inRenderedDocument() const
 
 } // namespace WebCore
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 
 void showTree(const WebCore::Node* node)
 {
@@ -2256,4 +2236,4 @@ void showNodePath(const WebCore::Node* node)
         node->showNodePathForThis();
 }
 
-#endif
+#endif // ENABLE(TREE_DEBUGGING)

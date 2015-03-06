@@ -38,8 +38,8 @@
 #endif
 
 #if ENABLE(CONTENT_EXTENSIONS)
+#include "ContentExtensionCompiler.h"
 #include "ContentExtensionsBackend.h"
-#include "ContentExtensionsManager.h"
 #endif
 
 namespace WebCore {
@@ -184,7 +184,15 @@ void UserContentController::addUserContentFilter(const String& name, const Strin
     if (!m_contentExtensionBackend)
         m_contentExtensionBackend = std::make_unique<ContentExtensions::ContentExtensionsBackend>();
     
-    m_contentExtensionBackend->setRuleList(name, ContentExtensions::ExtensionsManager::createRuleList(ruleList));
+    m_contentExtensionBackend->addContentExtension(name, ContentExtensions::compileRuleList(ruleList));
+}
+
+void UserContentController::removeUserContentFilter(const String& name)
+{
+    if (!m_contentExtensionBackend)
+        return;
+
+    m_contentExtensionBackend->removeContentExtension(name);
 }
 
 void UserContentController::removeAllUserContentFilters()
@@ -192,15 +200,15 @@ void UserContentController::removeAllUserContentFilters()
     if (!m_contentExtensionBackend)
         return;
 
-    m_contentExtensionBackend->removeAllRuleLists();
+    m_contentExtensionBackend->removeAllContentExtensions();
 }
 
-bool UserContentController::contentFilterBlocksURL(const URL& url)
+Vector<ContentExtensions::Action> UserContentController::actionsForURL(const URL& url)
 {
     if (!m_contentExtensionBackend)
-        return false;
+        return Vector<ContentExtensions::Action>();
 
-    return m_contentExtensionBackend->shouldBlockURL(url);
+    return m_contentExtensionBackend->actionsForURL(url);
 }
 
 #endif

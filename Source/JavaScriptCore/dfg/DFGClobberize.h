@@ -133,6 +133,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithFRound:
     case ArithSin:
     case ArithCos:
+    case ArithLog:
     case GetScope:
     case SkipScope:
     case StringCharCodeAt:
@@ -260,7 +261,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
          
     case MovHint:
     case ZombieHint:
-    case KillLocal:
+    case KillStack:
     case Upsilon:
     case Phi:
     case PhantomLocal:
@@ -300,7 +301,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(SideState);
         return;
 
-    case VariableWatchpoint:
     case TypedArrayWatchpoint:
         read(Watchpoint_fire);
         write(SideState);
@@ -324,10 +324,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         write(SideState);
         write(Watchpoint_fire);
-        return;
-
-    case FunctionReentryWatchpoint:
-        read(Watchpoint_fire);
         return;
 
     case ToThis:
@@ -406,10 +402,23 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
         
     case SetLocal:
-    case PutLocal:
         write(AbstractHeap(Variables, node->local()));
         def(HeapLocation(VariableLoc, AbstractHeap(Variables, node->local())), node->child1().node());
         return;
+        
+    case GetStack: {
+        AbstractHeap heap(Variables, node->stackAccessData()->local);
+        read(heap);
+        def(HeapLocation(VariableLoc, heap), node);
+        return;
+    }
+        
+    case PutStack: {
+        AbstractHeap heap(Variables, node->stackAccessData()->local);
+        write(heap);
+        def(HeapLocation(VariableLoc, heap), node->child1().node());
+        return;
+    }
         
     case LoadVarargs:
         // This actually writes to local variables as well. But when it reads the array, it does
@@ -773,7 +782,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         
     case PutClosureVar:
         write(AbstractHeap(Variables, node->varNumber()));
-        def(HeapLocation(ClosureVariableLoc, AbstractHeap(Variables, node->varNumber()), node->child2()), node->child3().node());
+        def(HeapLocation(ClosureVariableLoc, AbstractHeap(Variables, node->varNumber()), node->child1()), node->child3().node());
         return;
         
     case GetGlobalVar:

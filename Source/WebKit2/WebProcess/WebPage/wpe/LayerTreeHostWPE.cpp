@@ -105,6 +105,7 @@ void LayerTreeHostWPE::initialize()
     m_waylandSurface = WaylandDisplay::instance()->createSurface(m_webPage->size());
     if (!m_waylandSurface)
         return;
+    WaylandDisplay::instance()->registerSurface(m_waylandSurface->surface());
 
     m_layerTreeContext.contextID = m_webPage->pageID();
 
@@ -280,7 +281,7 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
 
     ASSERT(m_frameRequestState == FrameRequestState::Completed);
     m_frameRequestState = FrameRequestState::InProgress;
-    wl_callback_add_listener(m_waylandSurface->requestFrame(), &m_frameListener, this);
+    wl_callback_add_listener(wl_surface_frame(m_waylandSurface->surface()), &m_frameListener, this);
 
     context->swapBuffers();
 }

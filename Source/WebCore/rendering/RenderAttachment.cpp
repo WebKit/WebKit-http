@@ -29,16 +29,20 @@
 #if ENABLE(ATTACHMENT_ELEMENT)
 
 #include "FloatRect.h"
+#include "FloatRoundedRect.h"
 #include "FrameSelection.h"
 #include "HTMLAttachmentElement.h"
+#include "Page.h"
 #include "PaintInfo.h"
+#include "RenderTheme.h"
+#include "URL.h"
 
 namespace WebCore {
 
 using namespace HTMLNames;
 
 RenderAttachment::RenderAttachment(HTMLAttachmentElement& element, Ref<RenderStyle>&& style)
-    : RenderReplaced(element, WTF::move(style), LayoutSize(200, 200))
+    : RenderReplaced(element, WTF::move(style), LayoutSize())
 {
 }
 
@@ -47,22 +51,22 @@ HTMLAttachmentElement& RenderAttachment::attachmentElement() const
     return downcast<HTMLAttachmentElement>(nodeForNonAnonymous());
 }
 
-void RenderAttachment::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
+void RenderAttachment::layout()
 {
-    // FIXME: Implement
+    setIntrinsicSize(document().page()->theme().attachmentIntrinsicSize(*this));
 
-    RefPtr<Range> selectionRange = frame().selection().selection().firstRange();
-    bool selected = selectionRange && selectionRange->intersectsNode(&nodeForNonAnonymous(), ASSERT_NO_EXCEPTION);
-    bool focused = frame().selection().isFocusedAndActive() && document().focusedElement() == &attachmentElement();
-
-    paintInfo.context->save();
-    paintInfo.context->fillRect(FloatRect(paintOffset.x(), paintOffset.y(), 200, 200), selected || focused ? Color::cyan : Color::lightGray, ColorSpaceSRGB);
-    paintInfo.context->restore();
+    RenderReplaced::layout();
 }
 
-void RenderAttachment::focusChanged()
+void RenderAttachment::invalidate()
 {
+    setNeedsLayout();
     repaint();
+}
+
+int RenderAttachment::baselinePosition(FontBaseline, bool, LineDirectionMode, LinePositionMode) const
+{
+    return document().page()->theme().attachmentBaseline(*this);
 }
 
 } // namespace WebCore

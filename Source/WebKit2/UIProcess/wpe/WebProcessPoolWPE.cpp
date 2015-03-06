@@ -37,6 +37,7 @@
 #include <WebCore/FileSystem.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SchemeRegistry.h>
+#include <cstdlib>
 #include <wtf/gobject/GUniquePtr.h>
 
 #if ENABLE(NETWORK_PROCESS)
@@ -88,6 +89,15 @@ WTF::String WebProcessPool::platformDefaultApplicationCacheDirectory() const
 {
     GUniquePtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "appcache", nullptr));
     return WebCore::filenameToString(cacheDirectory.get());
+}
+
+void WebProcessPool::platformInitialize()
+{
+    static bool useNetworkProcess = !!std::getenv("WPE_NETWORK_PROCESS");
+    if (useNetworkProcess) {
+        setUsesNetworkProcess(true);
+        setProcessModel(ProcessModelMultipleSecondaryProcesses);
+    }
 }
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)

@@ -54,7 +54,7 @@ WebInspector.LogContentView = function(representedObject)
     this._searchBar.addEventListener(WebInspector.SearchBar.Event.TextChanged, this._searchTextDidChange, this);
 
     var scopeBarItems = [
-        new WebInspector.ScopeBarItem(WebInspector.LogContentView.Scopes.All, WebInspector.UIString("All"), true),
+        new WebInspector.ScopeBarItem(WebInspector.LogContentView.Scopes.All, WebInspector.UIString("All")),
         new WebInspector.ScopeBarItem(WebInspector.LogContentView.Scopes.Errors, WebInspector.UIString("Errors")),
         new WebInspector.ScopeBarItem(WebInspector.LogContentView.Scopes.Warnings, WebInspector.UIString("Warnings")),
         new WebInspector.ScopeBarItem(WebInspector.LogContentView.Scopes.Logs, WebInspector.UIString("Logs"))
@@ -123,6 +123,11 @@ WebInspector.LogContentView.prototype = {
     get scopeBar()
     {
         return this._scopeBar;
+    },
+
+    get logViewController()
+    {
+        return this._logViewController;
     },
 
     updateLayout: function()
@@ -303,8 +308,10 @@ WebInspector.LogContentView.prototype = {
 
     _sessionStarted: function(event)
     {
-        if (this._clearLogOnReloadSetting.value) 
+        if (this._clearLogOnReloadSetting.value)  {
             this._clearLog();
+            return;
+        }
 
         this._logViewController.startNewSession();
     },
@@ -638,7 +645,9 @@ WebInspector.LogContentView.prototype = {
 
     _clearLog: function()
     {
+        this._ignoreDidClearMessages = true;
         this._logViewController.clear();
+        this._ignoreDidClearMessages = false;
     },
 
     _scopeBarSelectionDidChange: function(event)
@@ -664,6 +673,7 @@ WebInspector.LogContentView.prototype = {
                         visible = showsErrors;
                         break;
                     case WebInspector.ConsoleMessage.MessageLevel.Log:
+                    case WebInspector.ConsoleMessage.MessageLevel.Debug:
                         visible = showsLogs;
                         break;
                 }

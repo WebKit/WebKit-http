@@ -150,8 +150,8 @@ private:
     virtual MediaTime currentMediaTime() const override;
     virtual void setVolume(float);
     virtual void setClosedCaptionsVisible(bool);
-    virtual void paint(GraphicsContext*, const IntRect&);
-    virtual void paintCurrentFrameInContext(GraphicsContext*, const IntRect&);
+    virtual void paint(GraphicsContext*, const FloatRect&);
+    virtual void paintCurrentFrameInContext(GraphicsContext*, const FloatRect&);
     virtual PlatformLayer* platformLayer() const;
 #if PLATFORM(IOS)
     virtual void setVideoFullscreenLayer(PlatformLayer*);
@@ -178,6 +178,7 @@ private:
     virtual void checkPlayability();
     virtual void setRateDouble(double) override;
     virtual double rate() const;
+    void setPreservesPitch(bool) override;
     virtual void seekToTime(const MediaTime&, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance);
     virtual unsigned long long totalBytes() const;
     virtual std::unique_ptr<PlatformTimeRanges> platformBufferedTimeRanges() const;
@@ -217,8 +218,8 @@ private:
 
     void createImageGenerator();
     void destroyImageGenerator();
-    RetainPtr<CGImageRef> createImageForTimeInRect(float, const IntRect&);
-    void paintWithImageGenerator(GraphicsContext*, const IntRect&);
+    RetainPtr<CGImageRef> createImageForTimeInRect(float, const FloatRect&);
+    void paintWithImageGenerator(GraphicsContext*, const FloatRect&);
 
 #if HAVE(AVFOUNDATION_VIDEO_OUTPUT)
     void createVideoOutput();
@@ -226,7 +227,7 @@ private:
     RetainPtr<CVPixelBufferRef> createPixelBuffer();
     void updateLastImage();
     bool videoOutputHasAvailableFrame();
-    void paintWithVideoOutput(GraphicsContext*, const IntRect&);
+    void paintWithVideoOutput(GraphicsContext*, const FloatRect&);
     virtual PassNativeImagePtr nativeImageForCurrentTime() override;
     void waitForVideoOutputMediaDataWillChange();
 #endif

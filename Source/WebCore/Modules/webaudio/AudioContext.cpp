@@ -138,6 +138,7 @@ AudioContext::AudioContext(Document& document)
     , m_isOfflineContext(false)
     , m_activeSourceCount(0)
     , m_restrictions(NoRestrictions)
+    , m_state(State::Suspended)
 {
     constructCommon();
 
@@ -161,6 +162,7 @@ AudioContext::AudioContext(Document& document, unsigned numberOfChannels, size_t
     , m_isOfflineContext(true)
     , m_activeSourceCount(0)
     , m_restrictions(NoRestrictions)
+    , m_state(State::Suspended)
 {
     constructCommon();
 
@@ -273,6 +275,9 @@ void AudioContext::uninitialize()
 
         ASSERT(s_hardwareContextCount);
         --s_hardwareContextCount;
+
+        // Offline contexts move to 'Closed' state when dispatching the completion event.
+        m_state = State::Closed;
     }
 
     // Get rid of the sources which may still be playing.
@@ -311,6 +316,17 @@ void AudioContext::stop()
     // ActiveDOMObjects so let's schedule uninitialize() to be called later.
     // FIXME: see if there's a more direct way to handle this issue.
     callOnMainThread(stopDispatch, this);
+}
+
+bool AudioContext::canSuspend() const
+{
+    // FIXME: We should be able to suspend while rendering as well with some more code.
+    return m_state == State::Suspended || m_state == State::Closed;
+}
+
+const char* AudioContext::activeDOMObjectName() const
+{
+    return "AudioContext";
 }
 
 Document* AudioContext::document() const
@@ -964,6 +980,7 @@ void AudioContext::startRendering()
             removeBehaviorRestriction(AudioContext::RequirePageConsentForAudioStartRestriction);
     }
     destination()->startRendering();
+    m_state = State::Running;
 }
 
 void AudioContext::mediaCanStart()
@@ -994,6 +1011,7 @@ void AudioContext::fireCompletionEvent()
         return;
         
     AudioBuffer* renderedBuffer = m_renderTarget.get();
+    m_state = State::Closed;
 
     ASSERT(renderedBuffer);
     if (!renderedBuffer)

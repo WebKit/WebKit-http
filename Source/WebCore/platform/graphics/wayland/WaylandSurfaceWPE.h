@@ -44,14 +44,12 @@ public:
     WaylandSurface(struct wl_surface*, EGLNativeWindowType);
     ~WaylandSurface();
 
-    struct wl_surface* surface() { return m_wlSurface; }
-    EGLNativeWindowType nativeWindowHandle() { return m_nativeWindow; }
+    struct wl_surface* surface() const { return m_wlSurface; }
+    EGLNativeWindowType nativeWindowHandle() const { return m_nativeWindow; }
 
     void resize(const IntSize&);
 
-    std::unique_ptr<GLContextEGL> createGLContext();
-
-    struct wl_callback* requestFrame();
+    std::unique_ptr<GLContextEGL> createGLContext() const;
 
 private:
     struct wl_surface* m_wlSurface;

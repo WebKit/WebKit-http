@@ -265,7 +265,10 @@ webkit.org/b/87661 http/tests/security/cross-origin-worker-indexeddb-allowed.htm
 webkit.org/b/87661 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 webkit.org/b/87661 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
 webkit.org/b/87661 crypto/subtle/rsa-indexeddb.html [ Skip ]
-inspector-protocol/indexeddb/basics.html
+webkit.org/b/87661 inspector-protocol/indexeddb/basics.html [ Skip ]
+webkit.org/b/87661 fast/history/page-cache-indexed-closed-db.html [ Skip ]
+webkit.org/b/87661 fast/history/page-cache-indexed-opened-db.html [ Skip ]
+webkit.org/b/87661 fast/history/page-cache-webdatabase-opened-db.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # TESTS EXPECTED TO FAIL
@@ -372,7 +375,6 @@ editing/style/5065910.html [ Missing ]
 editing/style/font-family-with-space.html [ Missing ]
 editing/style/smoosh-styles-001.html [ Missing ]
 editing/style/style-boundary-005.html [ Missing ]
-fast/borders/mixed-border-style2.html [ Missing ]
 fast/css/css2-system-fonts.html [ Missing ]
 fast/text/tatechuyoko.html [ Missing ]
 
@@ -459,6 +461,11 @@ webkit.org/b/141894 fast/attachment/attachment-rendering.html [ Failure ]
 # EFL port doesn't fully support EME yet.
 webkit.org/b/141959 http/tests/media/clearkey/clear-key-hls-aes128.html [ Timeout ]
 
+# Need to have baseline since r181114.
+Bug(EFL) fast/attachment/attachment-progress.html [ Missing ]
+Bug(EFL) fast/attachment/attachment-subtitle.html [ Missing ]
+Bug(EFL) fast/attachment/attachment-title.html [ Missing ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -515,6 +522,12 @@ webkit.org/b/131729 fast/events/touch [ Skip ]
 fast/canvas/webgl [ Skip ]
 webgl [ Skip ]
 http/tests/webgl [ Skip ]
+compositing/webgl [ Skip ]
+fast/images/webgl-teximage2d.html [ Skip ]
+http/tests/canvas/webgl/origin-clean-conformance.html [ Skip ]
+http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html [ Skip ]
+http/tests/security/webgl-remote-read-remote-image-allowed.html [ Skip ]
+http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # Old WebGL expectations before skipping all of them
@@ -614,7 +627,6 @@ webkit.org/b/131729 http/tests/globalhistory/history-delegate-basic-title.html [
 webkit.org/b/131729 http/tests/globalhistory/history-delegate-pushstate.html [ Failure ]
 webkit.org/b/131729 http/tests/globalhistory/history-delegate-replacestate.html [ Failure ]
 webkit.org/b/131729 http/tests/loading/sizes/preload-image-sizes-2x.html [ Failure ]
-webkit.org/b/131729 http/tests/local/file-url-sent-as-referer.html [ Failure ]
 webkit.org/b/131729 http/tests/misc/acid3.html [ Failure Pass ]
 webkit.org/b/131729 http/tests/misc/image-blocked-src-change.html [ Failure Pass ]
 webkit.org/b/131729 http/tests/misc/slow-loading-image-in-pattern.html [ Failure ]
@@ -639,6 +651,8 @@ webkit.org/b/136099 fast/events/scroll-event-during-modal-dialog.html [ Crash Ti
 webkit.org/b/136099 fast/harness/show-modal-dialog.html [ Crash Timeout ]
 
 webkit.org/b/136227 mathml/very-large-stretchy-operators.html [ Crash Timeout Pass ]
+
+webkit.org/b/142158 inspector-protocol/dom/remove-multiple-nodes.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FLAKY TESTS
@@ -810,9 +824,9 @@ webkit.org/b/124925 fast/css/hover-display-block-none.html [ Failure Pass ]
 webkit.org/b/124926 fast/events/popup-allowed-from-gesture-initiated-event.html [ Failure Pass ]
 
 # Fail after r139145 on MAC, EFL, QT, GTK.
-# webkit.org/b/106415 fast/workers/worker-close-more.html [ Timeout ]
-# webkit.org/b/106415 fast/workers/worker-document-leak.html [ Pass Failure ]
-# webkit.org/b/106415 fast/workers/worker-lifecycle.html [ Pass Failure ]
+webkit.org/b/106415 fast/workers/worker-close-more.html [ Timeout ]
+webkit.org/b/106415 fast/workers/worker-document-leak.html [ Pass Failure ]
+webkit.org/b/106415 fast/workers/worker-lifecycle.html [ Pass Failure ]
 
 webkit.org/b/124929 http/tests/w3c/webperf/approved/navigation-timing/html/test_timing_attributes_order.html [ Failure Pass ]
 
@@ -878,6 +892,13 @@ webkit.org/b/137138 svg/W3C-SVG-1.1 [ Failure ImageOnlyFailure Pass ]
 
 # EFL port doesn't support Khmer and Lao fallback fonts, this test has added since r170207.
 Bug(EFL) fast/text/khmer-lao-font.html [ Skip ]
+
+webkit.org/b/142156 css3/shapes/spec-examples/shape-outside-011.html [ Failure Pass ]
+webkit.org/b/142156 css3/shapes/spec-examples/shape-outside-012.html [ Failure Pass ]
+webkit.org/b/142156 css3/shapes/spec-examples/shape-outside-019.html [ Failure Pass ]
+
+webkit.org/b/142157 fast/profiler/dead-time.html [ Failure Pass ]
+webkit.org/b/142157 fast/profiler/stop-profiling-after-setTimeout.html [ Failure Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS WITH INCORRECT EXPECTATIONS
@@ -957,8 +978,6 @@ webkit.org/b/98644 svg/W3C-SVG-1.1/pservers-grad-13-b.svg [ Skip ]
 
 webkit.org/b/98653 svg/text/lengthAdjust-text-metrics.html [ Failure ]
 
-webkit.org/b/99893 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure ]
-
 webkit.org/b/98718 svg/animations/animate-css-xml-attributeType.html [ Failure Pass ]
 
 # EFL's TestRunner does not implement enableAutoResizeMode
@@ -981,7 +1000,7 @@ webkit.org/b/106507 storage/storageinfo-query-usage.html
 webkit.org/b/106507 storage/storageinfo-request-quota.html
 webkit.org/b/106507 storage/storagequota-query-usage.html
 webkit.org/b/106507 storage/storagequota-request-quota.html
-# webkit.org/b/106507 fast/workers/worker-storagequota-query-usage.html
+webkit.org/b/106507 fast/workers/worker-storagequota-query-usage.html
 
 # JSC does not support setIsolatedWorldSecurityOrigin.
 webkit.org/b/61540 http/tests/security/isolatedWorld/cross-origin-xhr.html [ Timeout ]
@@ -1046,6 +1065,10 @@ Bug(EFL) fast/images/webp-color-profile-lossy.html [ Skip ]
 # Requires MEDIA_SOURCE support.
 webkit.org/b/95296 http/tests/media/media-source [ Skip ]
 webkit.org/b/95296 media/media-source [ Skip ]
+webkit.org/b/95296 fast/history/page-cache-media-source-opened.html [ Skip ]
+webkit.org/b/95296 fast/history/page-cache-media-source-closed.html [ Skip ]
+webkit.org/b/95296 fast/history/page-cache-media-source-closed-2.html [ Skip ]
+webkit.org/b/95296 fast/history/page-cache-removed-source-buffer.html [ Skip ]
 
 # Requires ENCRYPTED_MEDIA support.
 webkit.org/b/95297 media/encrypted-media [ Pass ]
@@ -1067,6 +1090,8 @@ webkit.org/b/111446 indieui [ Skip ]
 # Requires support for Web notifications
 webkit.org/b/73544 fast/notifications [ Skip ]
 webkit.org/b/73544 http/tests/notifications [ Skip ]
+webkit.org/b/73544 fast/history/page-cache-notification-non-suspendable.html [ Skip ]
+webkit.org/b/73544 fast/history/page-cache-notification-suspendable.html [ Skip ]
 
 # The test is too slow on Debug bot and randomly fails
 webkit.org/b/61932 [ Debug ] jquery/manipulation.html [ Failure Pass Timeout ]
@@ -1105,10 +1130,6 @@ webkit.org/b/85689 fast/animation/request-animation-frame-disabled.html [ Skip ]
 
 # DRT doesn't check for isPrinting().
 webkit.org/b/87226 printing/iframe-print.html [ Failure ]
-
-webkit.org/b/108507 printing/quirks-percentage-height-body.html [ ImageOnlyFailure ]
-webkit.org/b/108507 printing/quirks-percentage-height.html [ ImageOnlyFailure ]
-webkit.org/b/108507 printing/standards-percentage-heights.html [ ImageOnlyFailure ]
 
 webkit.org/b/79757 fast/selectors/selection-window-inactive.html [ ImageOnlyFailure ]
 
@@ -1861,9 +1882,6 @@ webkit.org/b/130020 webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure
 
 webkit.org/b/130340 fast/css/cascade/box-shadow-and-webkit-box-shadow-cascade-order.html [ ImageOnlyFailure ]
 
-# Need HighDPI support
-webkit.org/b/131987 fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure ]
-webkit.org/b/131987 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/131987 fast/borders/hidpi-border-image-gradient-on-subpixels.html [ ImageOnlyFailure ]
 webkit.org/b/131987 fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line.html [ ImageOnlyFailure ]
 webkit.org/b/131987 fast/borders/hidpi-simple-hairline-border-painting.html [ ImageOnlyFailure ]
@@ -1876,13 +1894,7 @@ webkit.org/b/131987 fast/repaint/hidpi-absolute-positioned-element-wrong-cliprec
 webkit.org/b/131987 fast/repaint/hidpi-transform-on-subpixel-repaintrect.html [ Failure ]
 webkit.org/b/131987 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
 webkit.org/b/131987 fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ ImageOnlyFailure ]
-webkit.org/b/131987 svg/text/hidpi-text-selection-rect-position.html [ ImageOnlyFailure ]
-
 webkit.org/b/132049 fast/css3-text/css3-text-decoration/text-decoration-skip/glyph-inside-underline.html [ ImageOnlyFailure ]
-
-# Failing after r169048
-webkit.org/b/133302 fast/shapes/shape-outside-floats/shape-outside-floats-inset-rounded-large-radius.html [ ImageOnlyFailure ]
-webkit.org/b/133302 fast/shapes/shape-outside-floats/shape-outside-rounded-inset.html [ ImageOnlyFailure ]
 
 # Failures EFL WK2 since the inception
 webkit.org/b/133484 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Timeout ]
@@ -1910,9 +1922,6 @@ svg/transforms/text-with-pattern-inside-transformed-html.xhtml [ Failure ]
 
 webkit.org/b/133220 fast/events/shadow-event-path.html [ Failure ]
 webkit.org/b/133220 fast/events/shadow-event-path-2.html [ Failure ]
-
-# Failing after r168868
-webkit.org/b/133307 fast/forms/number/number-spinbutton-in-multi-column.html [ Failure ]
 
 webkit.org/b/133308 fast/selectors/hover-quirks.html [ Failure ]
 
@@ -2013,11 +2022,6 @@ webkit.org/b/141458 imported/mozilla/svg/blend-multiply.svg [ ImageOnlyFailure ]
 webkit.org/b/141458 imported/mozilla/svg/blend-overlay.svg [ ImageOnlyFailure ]
 webkit.org/b/141458 imported/mozilla/svg/blend-screen.svg [ ImageOnlyFailure ]
 webkit.org/b/141458 imported/mozilla/svg/dynamic-small-object-scaled-up-01.svg [ ImageOnlyFailure ]
-webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01a.svg [ ImageOnlyFailure ]
-webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01b.svg [ ImageOnlyFailure ]
-webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01c.svg [ ImageOnlyFailure ]
-webkit.org/b/141458 imported/mozilla/svg/stroke-width-percentage-02a.svg [ ImageOnlyFailure ]
-webkit.org/b/141458 imported/mozilla/svg/symbol-01.svg [ ImageOnlyFailure ]
 
 # Started failing since r167808
 webkit.org/b/141496 fast/multicol/client-rects-spanners-complex.html [ Failure ]
@@ -2096,6 +2100,3 @@ webkit.org/b/141896 fast/borders/border-radius-on-html.html [ ImageOnlyFailure ]
 # Need to investigate why these security tests have been failed since r144338.
 webkit.org/b/141958 http/tests/security/XFrameOptions/x-frame-options-deny-multiple-clients.html [ Failure ]
 webkit.org/b/141958 http/tests/security/cross-frame-access-callback-explicit-domain-ALLOW.html [ Failure ]
-
-# [EFL][GTK] REGRESSION(180602): It made fast/workers test timeout
-webkit.org/b/142041 fast/workers [ Skip ]

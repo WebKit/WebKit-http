@@ -29,6 +29,7 @@
 #if ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
 
 #import "BlockExceptions.h"
+#import "CDMSessionMediaSourceAVFObjC.h"
 #import "ExceptionCodePlaceholder.h"
 #import "Logging.h"
 #import "MediaDescription.h"
@@ -44,7 +45,6 @@
 #import "VideoTrackPrivateMediaSourceAVFObjC.h"
 #import "InbandTextTrackPrivateAVFObjC.h"
 #import <AVFoundation/AVAssetTrack.h>
-#import <CoreMedia/CMSampleBuffer.h>
 #import <QuartzCore/CALayer.h>
 #import <objc/runtime.h>
 #import <wtf/text/AtomicString.h>
@@ -53,11 +53,11 @@
 #import <wtf/WeakPtr.h>
 #import <map>
 
-#pragma mark -
-#pragma mark Soft Linking
+#pragma mark - Soft Linking
+
+#import "CoreMediaSoftLink.h"
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-SOFT_LINK_FRAMEWORK_OPTIONAL(CoreMedia)
 
 SOFT_LINK_CLASS(AVFoundation, AVAssetTrack)
 SOFT_LINK_CLASS(AVFoundation, AVStreamDataParser)
@@ -69,50 +69,17 @@ SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVMediaTypeVideo, NSString *)
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVMediaTypeAudio, NSString *)
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVMediaTypeText, NSString *)
 
-SOFT_LINK_CONSTANT(CoreMedia, kCMTimeZero, CMTime);
-SOFT_LINK_CONSTANT(CoreMedia, kCMTimeInvalid, CMTime);
-SOFT_LINK_CONSTANT(CoreMedia, kCMSampleAttachmentKey_DoNotDisplay, CFStringRef)
-SOFT_LINK_CONSTANT(CoreMedia, kCMSampleAttachmentKey_NotSync, CFStringRef)
-SOFT_LINK_CONSTANT(CoreMedia, kCMSampleBufferAttachmentKey_DrainAfterDecoding, CFStringRef)
-SOFT_LINK_CONSTANT(CoreMedia, kCMSampleBufferAttachmentKey_ResetDecoderBeforeDecoding, CFStringRef)
-SOFT_LINK_CONSTANT(CoreMedia, kCMSampleBufferAttachmentKey_EmptyMedia, CFStringRef)
-SOFT_LINK_CONSTANT(CoreMedia, kCMSampleBufferAttachmentKey_DisplayEmptyMediaImmediately, CFStringRef)
-
 SOFT_LINK_CONSTANT(AVFoundation, AVMediaCharacteristicVisual, NSString*)
 SOFT_LINK_CONSTANT(AVFoundation, AVMediaCharacteristicAudible, NSString*)
 SOFT_LINK_CONSTANT(AVFoundation, AVMediaCharacteristicLegible, NSString*)
 SOFT_LINK_CONSTANT(AVFoundation, AVSampleBufferDisplayLayerFailedToDecodeNotification, NSString*)
 SOFT_LINK_CONSTANT(AVFoundation, AVSampleBufferDisplayLayerFailedToDecodeNotificationErrorKey, NSString*)
 
-SOFT_LINK(CoreMedia, CMFormatDescriptionGetMediaType, CMMediaType, (CMFormatDescriptionRef desc), (desc))
-SOFT_LINK(CoreMedia, CMSampleBufferCreate, OSStatus, (CFAllocatorRef allocator, CMBlockBufferRef dataBuffer, Boolean dataReady, CMSampleBufferMakeDataReadyCallback makeDataReadyCallback, void *makeDataReadyRefcon, CMFormatDescriptionRef formatDescription, CMItemCount numSamples, CMItemCount numSampleTimingEntries, const CMSampleTimingInfo *sampleTimingArray, CMItemCount numSampleSizeEntries, const size_t *sampleSizeArray, CMSampleBufferRef *sBufOut), (allocator, dataBuffer, dataReady, makeDataReadyCallback, makeDataReadyRefcon, formatDescription, numSamples, numSampleTimingEntries, sampleTimingArray, numSampleSizeEntries, sampleSizeArray, sBufOut))
-SOFT_LINK(CoreMedia, CMSampleBufferCreateCopy, OSStatus, (CFAllocatorRef allocator, CMSampleBufferRef sbuf, CMSampleBufferRef *sbufCopyOut), (allocator, sbuf, sbufCopyOut))
-SOFT_LINK(CoreMedia, CMSampleBufferCreateCopyWithNewTiming, OSStatus, (CFAllocatorRef allocator, CMSampleBufferRef originalSBuf, CMItemCount numSampleTimingEntries, const CMSampleTimingInfo *sampleTimingArray, CMSampleBufferRef *sBufCopyOut), (allocator, originalSBuf, numSampleTimingEntries, sampleTimingArray, sBufCopyOut))
-SOFT_LINK(CoreMedia, CMSampleBufferCallForEachSample, OSStatus, (CMSampleBufferRef sbuf, OSStatus (*callback)( CMSampleBufferRef sampleBuffer, CMItemCount index, void *refcon), void *refcon), (sbuf, callback, refcon))
-SOFT_LINK(CoreMedia, CMSampleBufferGetDecodeTimeStamp, CMTime, (CMSampleBufferRef sbuf), (sbuf))
-SOFT_LINK(CoreMedia, CMSampleBufferGetDuration, CMTime, (CMSampleBufferRef sbuf), (sbuf))
-SOFT_LINK(CoreMedia, CMSampleBufferGetFormatDescription, CMFormatDescriptionRef, (CMSampleBufferRef sbuf), (sbuf))
-SOFT_LINK(CoreMedia, CMSampleBufferGetPresentationTimeStamp, CMTime, (CMSampleBufferRef sbuf), (sbuf))
-SOFT_LINK(CoreMedia, CMSampleBufferGetSampleAttachmentsArray, CFArrayRef, (CMSampleBufferRef sbuf, Boolean createIfNecessary), (sbuf, createIfNecessary))
-SOFT_LINK(CoreMedia,  CMSampleBufferGetSampleTimingInfoArray, OSStatus, (CMSampleBufferRef sbuf, CMItemCount timingArrayEntries, CMSampleTimingInfo *timingArrayOut, CMItemCount *timingArrayEntriesNeededOut), (sbuf, timingArrayEntries, timingArrayOut, timingArrayEntriesNeededOut))
-SOFT_LINK(CoreMedia, CMSampleBufferGetTotalSampleSize, size_t, (CMSampleBufferRef sbuf), (sbuf))
-SOFT_LINK(CoreMedia, CMFormatDescriptionGetMediaSubType, FourCharCode, (CMFormatDescriptionRef desc), (desc))
-SOFT_LINK(CoreMedia, CMSetAttachment, void, (CMAttachmentBearerRef target, CFStringRef key, CFTypeRef value, CMAttachmentMode attachmentMode), (target, key, value, attachmentMode))
-SOFT_LINK(CoreMedia, CMVideoFormatDescriptionGetPresentationDimensions, CGSize, (CMVideoFormatDescriptionRef videoDesc, Boolean usePixelAspectRatio, Boolean useCleanAperture), (videoDesc, usePixelAspectRatio, useCleanAperture))
-
 #define AVMediaTypeVideo getAVMediaTypeVideo()
 #define AVMediaTypeAudio getAVMediaTypeAudio()
 #define AVMediaTypeText getAVMediaTypeText()
 #define AVSampleBufferDisplayLayerFailedToDecodeNotification getAVSampleBufferDisplayLayerFailedToDecodeNotification()
 #define AVSampleBufferDisplayLayerFailedToDecodeNotificationErrorKey getAVSampleBufferDisplayLayerFailedToDecodeNotificationErrorKey()
-#define kCMTimeZero getkCMTimeZero()
-#define kCMTimeInvalid getkCMTimeInvalid()
-#define kCMSampleAttachmentKey_NotSync getkCMSampleAttachmentKey_NotSync()
-#define kCMSampleAttachmentKey_DoNotDisplay getkCMSampleAttachmentKey_DoNotDisplay()
-#define kCMSampleBufferAttachmentKey_ResetDecoderBeforeDecoding getkCMSampleBufferAttachmentKey_ResetDecoderBeforeDecoding()
-#define kCMSampleBufferAttachmentKey_DrainAfterDecoding getkCMSampleBufferAttachmentKey_DrainAfterDecoding()
-#define kCMSampleBufferAttachmentKey_EmptyMedia getkCMSampleBufferAttachmentKey_EmptyMedia()
-#define kCMSampleBufferAttachmentKey_DisplayEmptyMediaImmediately getkCMSampleBufferAttachmentKey_DisplayEmptyMediaImmediately()
 
 #define AVMediaCharacteristicVisual getAVMediaCharacteristicVisual()
 #define AVMediaCharacteristicAudible getAVMediaCharacteristicAudible()
@@ -149,6 +116,7 @@ SOFT_LINK(CoreMedia, CMVideoFormatDescriptionGetPresentationDimensions, CGSize, 
 - (NSError*)error;
 - (void)enqueueSampleBuffer:(CMSampleBufferRef)sampleBuffer;
 - (void)flush;
+- (void)flushAndRemoveImage;
 - (BOOL)isReadyForMoreMediaData;
 - (void)requestMediaDataWhenReadyOnQueue:(dispatch_queue_t)queue usingBlock:(void (^)(void))block;
 - (void)stopRequestingMediaData;
@@ -452,12 +420,12 @@ SOFT_LINK(CoreMedia, CMVideoFormatDescriptionGetPresentationDimensions, CGSize, 
 - (void)layerFailedToDecode:(NSNotification*)note
 {
     RetainPtr<AVSampleBufferDisplayLayer> layer = (AVSampleBufferDisplayLayer *)[note object];
-    ASSERT(_layers.contains(layer.get()));
-
     RetainPtr<NSError> error = [[note userInfo] valueForKey:AVSampleBufferDisplayLayerFailedToDecodeNotificationErrorKey];
 
     RetainPtr<WebAVSampleBufferErrorListener> strongSelf = self;
     callOnMainThread([strongSelf, layer, error] {
+        if (!strongSelf->_parent || !strongSelf->_layers.contains(layer.get()))
+            return;
         strongSelf->_parent->layerDidReceiveError(layer.get(), error.get());
     });
 }
@@ -829,13 +797,12 @@ void SourceBufferPrivateAVFObjC::destroyRenderers()
         m_displayLayer = nullptr;
     }
 
-    for (auto it = m_audioRenderers.begin(), end = m_audioRenderers.end(); it != end; ++it) {
-        AVSampleBufferAudioRenderer* renderer = it->second.get();
+    for (auto& renderer : m_audioRenderers.values()) {
         if (m_mediaSource)
-            m_mediaSource->player()->removeAudioRenderer(renderer);
+            m_mediaSource->player()->removeAudioRenderer(renderer.get());
         [renderer flush];
         [renderer stopRequestingMediaData];
-        [m_errorListener stopObservingRenderer:renderer];
+        [m_errorListener stopObservingRenderer:renderer.get()];
     }
 
     m_audioRenderers.clear();
@@ -890,6 +857,9 @@ void SourceBufferPrivateAVFObjC::trackDidChangeEnabled(VideoTrackPrivateMediaSou
         [m_parser setShouldProvideMediaData:YES forTrackID:trackID];
         if (!m_displayLayer) {
             m_displayLayer = adoptNS([allocAVSampleBufferDisplayLayerInstance() init]);
+#ifndef NDEBUG
+            [m_displayLayer setName:@"SourceBufferPrivateAVFObjC AVSampleBufferDisplayLayer"];
+#endif
             [m_displayLayer requestMediaDataWhenReadyOnQueue:dispatch_get_main_queue() usingBlock:^{
                 didBecomeReadyForMoreSamples(trackID);
             }];
@@ -905,26 +875,35 @@ void SourceBufferPrivateAVFObjC::trackDidChangeEnabled(AudioTrackPrivateMediaSou
     int trackID = track->trackID();
 
     if (!track->enabled()) {
-        AVSampleBufferAudioRenderer* renderer = m_audioRenderers[trackID].get();
+        RetainPtr<AVSampleBufferAudioRenderer> renderer = m_audioRenderers.get(trackID);
         [m_parser setShouldProvideMediaData:NO forTrackID:trackID];
         if (m_mediaSource)
-            m_mediaSource->player()->removeAudioRenderer(renderer);
+            m_mediaSource->player()->removeAudioRenderer(renderer.get());
     } else {
         [m_parser setShouldProvideMediaData:YES forTrackID:trackID];
         RetainPtr<AVSampleBufferAudioRenderer> renderer;
-        if (!m_audioRenderers.count(trackID)) {
+        if (!m_audioRenderers.contains(trackID)) {
             renderer = adoptNS([allocAVSampleBufferAudioRendererInstance() init]);
             [renderer requestMediaDataWhenReadyOnQueue:dispatch_get_main_queue() usingBlock:^{
                 didBecomeReadyForMoreSamples(trackID);
             }];
-            m_audioRenderers[trackID] = renderer;
+            m_audioRenderers.set(trackID, renderer);
             [m_errorListener beginObservingRenderer:renderer.get()];
         } else
-            renderer = m_audioRenderers[trackID].get();
+            renderer = m_audioRenderers.get(trackID);
 
         if (m_mediaSource)
             m_mediaSource->player()->addAudioRenderer(renderer.get());
     }
+}
+
+void SourceBufferPrivateAVFObjC::flush()
+{
+    if (m_displayLayer)
+        [m_displayLayer flushAndRemoveImage];
+
+    for (auto& renderer : m_audioRenderers.values())
+        [renderer flush];
 }
 
 void SourceBufferPrivateAVFObjC::registerForErrorNotifications(SourceBufferPrivateAVFObjCErrorClient* client)
@@ -942,8 +921,16 @@ void SourceBufferPrivateAVFObjC::unregisterForErrorNotifications(SourceBufferPri
 void SourceBufferPrivateAVFObjC::layerDidReceiveError(AVSampleBufferDisplayLayer *layer, NSError *error)
 {
     LOG(MediaSource, "SourceBufferPrivateAVFObjC::layerDidReceiveError(%p): layer(%p), error(%@)", this, layer, [error description]);
-    for (auto& client : m_errorClients)
-        client->layerDidReceiveError(layer, error);
+
+    // FIXME(142246): Remove the following once <rdar://problem/20027434> is resolved.
+    bool anyIgnored = false;
+    for (auto& client : m_errorClients) {
+        bool shouldIgnore = false;
+        client->layerDidReceiveError(layer, error, shouldIgnore);
+        anyIgnored |= shouldIgnore;
+    }
+    if (anyIgnored)
+        return;
 
     int errorCode = [[[error userInfo] valueForKey:@"OSStatus"] intValue];
 
@@ -954,8 +941,16 @@ void SourceBufferPrivateAVFObjC::layerDidReceiveError(AVSampleBufferDisplayLayer
 void SourceBufferPrivateAVFObjC::rendererDidReceiveError(AVSampleBufferAudioRenderer *renderer, NSError *error)
 {
     LOG(MediaSource, "SourceBufferPrivateAVFObjC::rendererDidReceiveError(%p): renderer(%p), error(%@)", this, renderer, [error description]);
-    for (auto& client : m_errorClients)
-        client->rendererDidReceiveError(renderer, error);
+
+    // FIXME(142246): Remove the following once <rdar://problem/20027434> is resolved.
+    bool anyIgnored = false;
+    for (auto& client : m_errorClients) {
+        bool shouldIgnore = false;
+        client->rendererDidReceiveError(renderer, error, shouldIgnore);
+        anyIgnored |= shouldIgnore;
+    }
+    if (anyIgnored)
+        return;
 }
 
 static RetainPtr<CMSampleBufferRef> createNonDisplayingCopy(CMSampleBufferRef sampleBuffer)
@@ -981,8 +976,8 @@ void SourceBufferPrivateAVFObjC::flushAndEnqueueNonDisplayingSamples(Vector<RefP
 
     if (trackID == m_enabledVideoTrackID)
         flushAndEnqueueNonDisplayingSamples(mediaSamples, m_displayLayer.get());
-    else if (m_audioRenderers.count(trackID))
-        flushAndEnqueueNonDisplayingSamples(mediaSamples, m_audioRenderers[trackID].get());
+    else if (m_audioRenderers.contains(trackID))
+        flushAndEnqueueNonDisplayingSamples(mediaSamples, m_audioRenderers.get(trackID).get());
 }
 
 void SourceBufferPrivateAVFObjC::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>> mediaSamples, AVSampleBufferAudioRenderer* renderer)
@@ -1025,7 +1020,7 @@ void SourceBufferPrivateAVFObjC::flushAndEnqueueNonDisplayingSamples(Vector<RefP
 void SourceBufferPrivateAVFObjC::enqueueSample(PassRefPtr<MediaSample> prpMediaSample, AtomicString trackIDString)
 {
     int trackID = trackIDString.toInt();
-    if (trackID != m_enabledVideoTrackID && !m_audioRenderers.count(trackID))
+    if (trackID != m_enabledVideoTrackID && !m_audioRenderers.contains(trackID))
         return;
 
     RefPtr<MediaSample> mediaSample = prpMediaSample;
@@ -1041,7 +1036,7 @@ void SourceBufferPrivateAVFObjC::enqueueSample(PassRefPtr<MediaSample> prpMediaS
         if (m_mediaSource)
             m_mediaSource->player()->setHasAvailableVideoFrame(true);
     } else
-        [m_audioRenderers[trackID] enqueueSampleBuffer:platformSample.sample.cmSampleBuffer];
+        [m_audioRenderers.get(trackID) enqueueSampleBuffer:platformSample.sample.cmSampleBuffer];
 }
 
 bool SourceBufferPrivateAVFObjC::isReadyForMoreSamples(AtomicString trackIDString)
@@ -1049,8 +1044,8 @@ bool SourceBufferPrivateAVFObjC::isReadyForMoreSamples(AtomicString trackIDStrin
     int trackID = trackIDString.toInt();
     if (trackID == m_enabledVideoTrackID)
         return [m_displayLayer isReadyForMoreMediaData];
-    else if (m_audioRenderers.count(trackID))
-        return [m_audioRenderers[trackID] isReadyForMoreMediaData];
+    else if (m_audioRenderers.contains(trackID))
+        return [m_audioRenderers.get(trackID) isReadyForMoreMediaData];
     else
         ASSERT_NOT_REACHED();
 
@@ -1076,17 +1071,17 @@ void SourceBufferPrivateAVFObjC::seekToTime(MediaTime time)
         m_client->sourceBufferPrivateSeekToTime(this, time);
 }
 
-IntSize SourceBufferPrivateAVFObjC::naturalSize()
+FloatSize SourceBufferPrivateAVFObjC::naturalSize()
 {
-    return roundedIntSize(m_cachedSize);
+    return m_cachedSize;
 }
 
 void SourceBufferPrivateAVFObjC::didBecomeReadyForMoreSamples(int trackID)
 {
     if (trackID == m_enabledVideoTrackID)
         [m_displayLayer stopRequestingMediaData];
-    else if (m_audioRenderers.count(trackID))
-        [m_audioRenderers[trackID] stopRequestingMediaData];
+    else if (m_audioRenderers.contains(trackID))
+        [m_audioRenderers.get(trackID) stopRequestingMediaData];
     else {
         ASSERT_NOT_REACHED();
         return;
@@ -1103,8 +1098,8 @@ void SourceBufferPrivateAVFObjC::notifyClientWhenReadyForMoreSamples(AtomicStrin
         [m_displayLayer requestMediaDataWhenReadyOnQueue:dispatch_get_main_queue() usingBlock:^{
             didBecomeReadyForMoreSamples(trackID);
         }];
-    } else if (m_audioRenderers.count(trackID)) {
-        [m_audioRenderers[trackID] requestMediaDataWhenReadyOnQueue:dispatch_get_main_queue() usingBlock:^{
+    } else if (m_audioRenderers.contains(trackID)) {
+        [m_audioRenderers.get(trackID) requestMediaDataWhenReadyOnQueue:dispatch_get_main_queue() usingBlock:^{
             didBecomeReadyForMoreSamples(trackID);
         }];
     } else

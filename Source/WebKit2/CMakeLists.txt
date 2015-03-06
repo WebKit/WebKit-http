@@ -536,6 +536,7 @@ set(WebKit2_SOURCES
     WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.cpp
 
     WebProcess/InjectedBundle/DOM/InjectedBundleCSSStyleDeclarationHandle.cpp
+    WebProcess/InjectedBundle/DOM/InjectedBundleFileHandle.cpp
     WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp
     WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp
 

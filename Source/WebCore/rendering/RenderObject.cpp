@@ -1351,7 +1351,7 @@ void RenderObject::computeFloatRectForRepaint(const RenderLayerModelObject*, Flo
     ASSERT_NOT_REACHED();
 }
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 
 static void showRenderTreeLegend()
 {
@@ -1950,10 +1950,18 @@ void RenderObject::removeFromRenderFlowThreadIncludingDescendants(bool shouldUpd
 
     // We have to ask for our containing flow thread as it may be above the removed sub-tree.
     RenderFlowThread* flowThreadContainingBlock = this->flowThreadContainingBlock();
-    if (flowThreadContainingBlock)
+    while (flowThreadContainingBlock) {
         flowThreadContainingBlock->removeFlowChildInfo(this);
+        if (flowThreadContainingBlock->flowThreadState() == NotInsideFlowThread)
+            break;
+        RenderObject* parent = flowThreadContainingBlock->parent();
+        if (!parent)
+            break;
+        flowThreadContainingBlock = parent->flowThreadContainingBlock();
+    }
     if (is<RenderBlock>(*this))
         downcast<RenderBlock>(*this).setCachedFlowThreadContainingBlockNeedsUpdate();
+
     if (shouldUpdateState)
         setFlowThreadState(NotInsideFlowThread);
 }
@@ -2489,7 +2497,7 @@ void RenderObject::calculateBorderStyleColor(const EBorderStyle& style, const Bo
 
 } // namespace WebCore
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 
 void showNodeTree(const WebCore::RenderObject* object)
 {

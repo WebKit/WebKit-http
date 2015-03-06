@@ -301,7 +301,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #endif
 
     if (!parameters.applicationCacheDirectory.isEmpty())
-        cacheStorage().setCacheDirectory(parameters.applicationCacheDirectory);
+        ApplicationCacheStorage::singleton().setCacheDirectory(parameters.applicationCacheDirectory);
 
     m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
     setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
@@ -628,6 +628,7 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDeco
             return;
         
         pageGroupProxy->didReceiveMessage(connection, decoder);
+        return;
     }
 
     LOG_ERROR("Unhandled web process message '%s:%s'", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data());
@@ -728,7 +729,7 @@ void WebProcess::clearResourceCaches(ResourceCachesToClear resourceCachesToClear
 void WebProcess::clearApplicationCache()
 {
     // Empty the application cache.
-    cacheStorage().empty();
+    ApplicationCacheStorage::singleton().empty();
 }
 
 static inline void addCaseFoldedCharacters(StringHasher& hasher, const String& string)
@@ -1160,9 +1161,15 @@ void WebProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataType
     parentProcessConnection()->send(Messages::WebProcessProxy::DidDeleteWebsiteData(callbackID), 0);
 }
 
-void WebProcess::deleteWebsiteDataForOrigins(WebCore::SessionID sessionID, uint64_t websiteDataTypes, const Vector<WebKit::SecurityOriginData>& origins, uint64_t callbackID)
+void WebProcess::deleteWebsiteDataForOrigins(WebCore::SessionID sessionID, uint64_t websiteDataTypes, const Vector<WebKit::SecurityOriginData>& originDatas, uint64_t callbackID)
 {
-    // FIXME: Actually delete something here.
+    if (websiteDataTypes & WebsiteDataTypeMemoryCache) {
+        HashSet<RefPtr<SecurityOrigin>> origins;
+        for (auto& originData : originDatas)
+            origins.add(originData.securityOrigin());
+
+        MemoryCache::singleton().removeResourcesWithOrigins(sessionID, origins);
+    }
 
     parentProcessConnection()->send(Messages::WebProcessProxy::DidDeleteWebsiteDataForOrigins(callbackID), 0);
 }

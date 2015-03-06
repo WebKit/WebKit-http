@@ -634,19 +634,15 @@ enum FeatureToAnimate {
 
 namespace WebCore {
 
-PassOwnPtr<ScrollAnimator> ScrollAnimator::create(ScrollableArea& scrollableArea)
+std::unique_ptr<ScrollAnimator> ScrollAnimator::create(ScrollableArea& scrollableArea)
 {
-    return adoptPtr(new ScrollAnimatorMac(scrollableArea));
+    return std::make_unique<ScrollAnimatorMac>(scrollableArea);
 }
 
 ScrollAnimatorMac::ScrollAnimatorMac(ScrollableArea& scrollableArea)
     : ScrollAnimator(scrollableArea)
     , m_initialScrollbarPaintTimer(*this, &ScrollAnimatorMac::initialScrollbarPaintTimerFired)
     , m_sendContentAreaScrolledTimer(*this, &ScrollAnimatorMac::sendContentAreaScrolledTimerFired)
-#if ENABLE(RUBBER_BANDING)
-    , m_scrollController(this)
-    , m_snapRubberBandTimer(*this, &ScrollAnimatorMac::snapRubberBandTimerFired)
-#endif
     , m_haveScrolledSincePageLoad(false)
     , m_needsScrollerStyleUpdate(false)
 {
@@ -1106,19 +1102,19 @@ bool ScrollAnimatorMac::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
     return didHandleEvent;
 }
 
-bool ScrollAnimatorMac::pinnedInDirection(float deltaX, float deltaY)
+bool ScrollAnimatorMac::pinnedInDirection(const FloatSize& direction)
 {
     FloatSize limitDelta;
-    if (std::fabsf(deltaY) >= fabsf(deltaX)) {
-        if (deltaY < 0) {
+    if (fabsf(direction.height()) >= fabsf(direction.width())) {
+        if (direction.height() < 0) {
             // We are trying to scroll up.  Make sure we are not pinned to the top
             limitDelta.setHeight(m_scrollableArea.visibleContentRect().y() + m_scrollableArea.scrollOrigin().y());
         } else {
             // We are trying to scroll down.  Make sure we are not pinned to the bottom
             limitDelta.setHeight(m_scrollableArea.totalContentsSize().height() - (m_scrollableArea.visibleContentRect().maxY() + m_scrollableArea.scrollOrigin().y()));
         }
-    } else if (deltaX != 0) {
-        if (deltaX < 0) {
+    } else if (direction.width()) {
+        if (direction.width() < 0) {
             // We are trying to scroll left.  Make sure we are not pinned to the left
             limitDelta.setWidth(m_scrollableArea.visibleContentRect().x() + m_scrollableArea.scrollOrigin().x());
         } else {
@@ -1127,7 +1123,7 @@ bool ScrollAnimatorMac::pinnedInDirection(float deltaX, float deltaY)
         }
     }
     
-    if ((deltaX != 0 || deltaY != 0) && (limitDelta.width() < 1 && limitDelta.height() < 1))
+    if ((direction.width() || direction.height()) && (limitDelta.width() < 1 && limitDelta.height() < 1))
         return true;
     return false;
 }
@@ -1220,11 +1216,6 @@ IntSize ScrollAnimatorMac::stretchAmount()
     return m_scrollableArea.overhangAmount();
 }
 
-bool ScrollAnimatorMac::pinnedInDirection(const FloatSize& direction)
-{
-    return pinnedInDirection(direction.width(), direction.height());
-}
-
 bool ScrollAnimatorMac::canScrollHorizontally()
 {
     Scrollbar* scrollbar = m_scrollableArea.horizontalScrollbar();
@@ -1269,21 +1260,6 @@ void ScrollAnimatorMac::immediateScrollBy(const FloatSize& delta)
     m_currentPosX = newPos.x();
     m_currentPosY = newPos.y();
     notifyPositionChanged(adjustedDelta);
-}
-
-void ScrollAnimatorMac::startSnapRubberbandTimer()
-{
-    m_snapRubberBandTimer.startRepeating(1.0 / 60.0);
-}
-
-void ScrollAnimatorMac::stopSnapRubberbandTimer()
-{
-    m_snapRubberBandTimer.stop();
-}
-
-void ScrollAnimatorMac::snapRubberBandTimerFired()
-{
-    m_scrollController.snapRubberBandTimerFired();
 }
 #endif
 

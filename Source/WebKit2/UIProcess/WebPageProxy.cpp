@@ -1228,6 +1228,21 @@ void WebPageProxy::requestScroll(const FloatPoint& scrollPosition, bool isProgra
     m_pageClient.requestScroll(scrollPosition, isProgrammaticScroll);
 }
 
+void WebPageProxy::setSuppressVisibilityUpdates(bool flag)
+{
+    if (m_suppressVisibilityUpdates == flag)
+        return;
+    m_suppressVisibilityUpdates = flag;
+
+    if (!m_suppressVisibilityUpdates) {
+#if PLATFORM(COCOA)
+        m_viewStateChangeDispatcher->schedule();
+#else
+        dispatchViewStateChange();
+#endif
+    }
+}
+
 void WebPageProxy::updateViewState(ViewState::Flags flagsToUpdate)
 {
     m_viewState &= ~flagsToUpdate;
@@ -1251,6 +1266,9 @@ void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, bool want
 {
     m_potentiallyChangedViewStateFlags |= mayHaveChanged;
     m_viewStateChangeWantsSynchronousReply = m_viewStateChangeWantsSynchronousReply || wantsSynchronousReply;
+
+    if (m_suppressVisibilityUpdates && dispatchMode != ViewStateChangeDispatchMode::Immediate)
+        return;
 
 #if PLATFORM(COCOA)
     bool isNewlyInWindow = !isInWindow() && (mayHaveChanged & ViewState::IsInWindow) && m_pageClient.isViewInWindow();
@@ -3642,12 +3660,10 @@ void WebPageProxy::handleDownloadRequest(DownloadProxy* download)
     m_pageClient.handleDownloadRequest(download);
 }
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
 void WebPageProxy::didChangeContentSize(const IntSize& size)
 {
     m_pageClient.didChangeContentSize(size);
 }
-#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
 void WebPageProxy::showColorPicker(const WebCore::Color& initialColor, const IntRect& elementRect)

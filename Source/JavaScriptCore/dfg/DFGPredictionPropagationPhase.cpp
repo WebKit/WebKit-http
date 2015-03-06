@@ -148,6 +148,11 @@ private:
             changed |= setPrediction(type);
             break;
         }
+        case DoubleConstant: {
+            SpeculatedType type = speculationFromValue(node->asJSValue());
+            changed |= setPrediction(type);
+            break;
+        }
             
         case GetLocal: {
             VariableAccessData* variable = node->variableAccessData();
@@ -329,7 +334,8 @@ private:
         case ArithSqrt:
         case ArithFRound:
         case ArithSin:
-        case ArithCos: {
+        case ArithCos:
+        case ArithLog: {
             changed |= setPrediction(SpecBytecodeDouble);
             break;
         }
@@ -532,7 +538,6 @@ private:
         case DoubleRep:
         case ValueRep:
         case Int52Rep:
-        case DoubleConstant:
         case Int52Constant:
         case Identity:
         case BooleanToNumber:
@@ -541,8 +546,9 @@ private:
         case CheckStructureImmediate:
         case PutStructureHint:
         case MaterializeNewObject:
-        case PutLocal:
-        case KillLocal: {
+        case PutStack:
+        case KillStack:
+        case GetStack: {
             // This node should never be visible at this stage of compilation. It is
             // inserted by fixup(), which follows this phase.
             RELEASE_ASSERT_NOT_REACHED();
@@ -624,7 +630,6 @@ private:
         case PutStructure:
         case TearOffArguments:
         case CheckArgumentsNotCreated:
-        case VariableWatchpoint:
         case VarInjectionWatchpoint:
         case AllocationProfileWatchpoint:
         case Phantom:
@@ -634,7 +639,6 @@ private:
         case Unreachable:
         case LoopHint:
         case NotifyWrite:
-        case FunctionReentryWatchpoint:
         case TypedArrayWatchpoint:
         case ConstantStoragePointer:
         case MovHint:
@@ -780,6 +784,7 @@ private:
         case ArithSqrt:
         case ArithCos:
         case ArithSin:
+        case ArithLog:
             if (node->child1()->shouldSpeculateNumber())
                 m_graph.voteNode(node->child1(), VoteDouble, weight);
             else

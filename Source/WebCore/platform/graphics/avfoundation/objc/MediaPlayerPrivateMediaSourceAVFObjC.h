@@ -115,7 +115,7 @@ private:
 
     virtual bool supportsScanning() const override;
 
-    virtual IntSize naturalSize() const override;
+    virtual FloatSize naturalSize() const override;
 
     virtual bool hasVideo() const override;
     virtual bool hasAudio() const override;
@@ -131,6 +131,8 @@ private:
     virtual bool seeking() const override;
     virtual void setRateDouble(double) override;
 
+    void setPreservesPitch(bool) override;
+
     virtual std::unique_ptr<PlatformTimeRanges> seekable() const override;
     virtual MediaTime maxMediaTimeSeekable() const override;
     virtual MediaTime minMediaTimeSeekable() const override;
@@ -140,8 +142,8 @@ private:
 
     virtual void setSize(const IntSize&) override;
 
-    virtual void paint(GraphicsContext*, const IntRect&) override;
-    virtual void paintCurrentFrameInContext(GraphicsContext*, const IntRect&) override;
+    virtual void paint(GraphicsContext*, const FloatRect&) override;
+    virtual void paintCurrentFrameInContext(GraphicsContext*, const FloatRect&) override;
 
     virtual bool hasAvailableVideoFrame() const override;
 

@@ -1333,6 +1333,8 @@ fast/dom/Geolocation
 # This port doesn't support Notifications.
 fast/notifications
 http/tests/notifications
+fast/history/page-cache-notification-non-suspendable.html
+fast/history/page-cache-notification-suspendable.html
 
 # These media tests regressed on the bots.  Skipping to make the bots green again.
 # https://bugs.webkit.org/show_bug.cgi?id=28281
@@ -1574,6 +1576,9 @@ http/tests/security/cross-origin-worker-indexeddb-allowed.html
 http/tests/security/cross-origin-worker-indexeddb.html
 http/tests/security/no-indexeddb-from-sandbox.html
 crypto/subtle/rsa-indexeddb.html
+fast/history/page-cache-indexed-closed-db.html
+fast/history/page-cache-indexed-opened-db.html
+fast/history/page-cache-webdatabase-opened-db.html
 
 # This port doesn't support DeviceMotion or DeviceOrientation.
 fast/dom/DeviceMotion
@@ -1995,6 +2000,10 @@ http/tests/security/text-track-crossorigin.html
 # Tests for MediaSource API. Feature is not yet functional.
 # https://bugs.webkit.org/show_bug.cgi?id=64731
 http/tests/media/media-source/
+fast/history/page-cache-media-source-opened.html
+fast/history/page-cache-media-source-closed.html
+fast/history/page-cache-media-source-closed-2.html
+fast/history/page-cache-removed-source-buffer.html
 
 # Encrypted Media Extensions are not enabled.
 media/encrypted-media/

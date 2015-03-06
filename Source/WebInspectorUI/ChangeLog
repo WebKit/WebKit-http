@@ -1,3 +1,683 @@
+2015-03-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Follow-up fixes to ObjectTreeBaseTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=142367
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreeMapEntryTreeElement.js:
+        (WebInspector.ObjectTreeMapEntryTreeElement.prototype.propertyPathType):
+        * UserInterface/Views/ObjectTreeSetIndexTreeElement.js:
+        (WebInspector.ObjectTreeSetIndexTreeElement.prototype.resolvedValuePropertyPath):
+        (WebInspector.ObjectTreeSetIndexTreeElement.prototype._titleFragment):
+
+2015-03-05  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: console.debug/info should show up in Log Console Filter
+        https://bugs.webkit.org/show_bug.cgi?id=142300
+
+        Reviewed by Joseph Pecoraro.
+
+        Add WebInspector.ConsoleMessage.MessageLevel.Debug case that allows console.debug/info
+        to show up in Log Console Filter.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._filterMessages):
+
+2015-03-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add ObjectTreeBaseTreeElement to share functionality
+        https://bugs.webkit.org/show_bug.cgi?id=142323
+
+        Reviewed by Timothy Hatcher.
+
+        By making this change:
+
+          - Share lots of duplicated code.
+          - Array / Set / Map tree elements get context menu support
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js: Added.
+        (WebInspector.ObjectTreeBaseTreeElement):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.get property):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.get propertyPath):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.oncontextmenu):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.resolvedValue):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.resolvedValuePropertyPath):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.thisPropertyPath):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.hadError):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.propertyPathType):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.propertyPathString):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.createInteractiveGetterElement):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.createReadOnlyIconElement):
+        New file, copying most of the code from PropertyTreeElement so it can be shared.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.js:
+        (WebInspector.ObjectTreeArrayIndexTreeElement):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype.invokedGetter):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._titleFragment):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype.get property): Deleted.
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._resolvedValue): Deleted.
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._propertyPathType): Deleted.
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._resolvedValuePropertyPath): Deleted.
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._thisPropertyPath): Deleted.
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._propertyPathString): Deleted.
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._updateTitle): Deleted.
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._createInteractiveGetterElement.): Deleted.
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._createReadOnlyIconElement): Deleted.
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.invokedGetter):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateHasChildren):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTooltips):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._titleFragment):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitlePrototype):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitlePropertyStyle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitleAPIStyle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._alwaysDisplayAsProperty):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateChildren):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateChildrenInternal):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateEntries):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateProperties):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.get property): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.oncontextmenu): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._resolvedValue): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._propertyPathType): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._resolvedValuePropertyPath): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._thisPropertyPath): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateTitleAndIcon): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createInteractiveGetterElement.): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createReadOnlyIconElement): Deleted.
+        (WebInspector.ObjectTreePropertyTreeElement.prototype): Deleted.
+        Subclass ObjectTreeBaseTreeElement and eliminate the code now
+        automatically handled by the base class.
+
+        * UserInterface/Views/ObjectTreeMapEntryTreeElement.js:
+        (WebInspector.ObjectTreeMapEntryTreeElement):
+        (WebInspector.ObjectTreeMapEntryTreeElement.prototype.resolvedValue):
+        (WebInspector.ObjectTreeMapEntryTreeElement.prototype._titleFragment):
+        (WebInspector.ObjectTreeMapEntryTreeElement.prototype._propertyPathString): Deleted.
+        * UserInterface/Views/ObjectTreeSetIndexTreeElement.js:
+        (WebInspector.ObjectTreeSetIndexTreeElement):
+        (WebInspector.ObjectTreeSetIndexTreeElement.prototype.resolvedValue):
+        (WebInspector.ObjectTreeSetIndexTreeElement.prototype._titleFragment):
+        (WebInspector.ObjectTreeSetIndexTreeElement.prototype._resolvedValuePropertyPath): Deleted.
+        Override resolved value since these are not about PropertyDescriptors.
+        This will make context menus work automatically.
+
+2015-03-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve display of previews with overflow
+        https://bugs.webkit.org/show_bug.cgi?id=142321
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendEntryPreviews):
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+
+2015-03-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Array/Collection Sizes should be visible and distinct
+        https://bugs.webkit.org/show_bug.cgi?id=142254
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/ObjectPreview.js:
+        (WebInspector.ObjectPreview):
+        (WebInspector.ObjectPreview.fromPayload):
+        (WebInspector.ObjectPreview.prototype.get size):
+        (WebInspector.ObjectPreview.prototype.hasSize):
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.fromPrimitiveValue):
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.prototype.get size):
+        (WebInspector.RemoteObject.prototype.hasSize):
+        Check if this type has a size and get the size.
+        Gracefully handle construction for legacy protocols.
+
+        * UserInterface/Views/ObjectPreviewView.css:
+        (.object-preview > .size):
+        * UserInterface/Views/FormattedValue.css:
+        (:matches(.formatted-array, .formatted-map, .formatted-set, .formatted-weakmap) > .size):
+        Style the array/collection size.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView):
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForTypesAndValue):
+        (WebInspector.FormattedValue.createElementForRemoteObject):
+        (WebInspector.FormattedValue.createElementForObjectPreview):
+        (WebInspector.FormattedValue.createElementForPropertyPreview):
+        Add an element showing the array/collection size.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype):
+        Remove special handling for Array sizes now that this is handled earlier.
+
+        * UserInterface/Controllers/StorageManager.js:
+        (WebInspector.StorageManager.prototype.processData):
+        (WebInspector.StorageManager.prototype.requestIndexedDatabaseData):
+        Fix what looks like broken RemoteObject construction.
+
+2015-03-04  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: TimelineViews should be displayed in a ContentViewContainer
+        https://bugs.webkit.org/show_bug.cgi?id=142290
+
+        Reviewed by Timothy Hatcher.
+
+        TimelineRecordingContentView has a bunch of logic to manage the currently visible TimelineView.
+        This could be delegated to a ContentViewContainer to simplify the logic. It also opens the possibility
+        for other views to be displayed beneath the timeline overview graphs when it makes sense to do so.
+
+        In order to be displayable in the container, TimelineView and its subclasses have been upgraded to
+        be ContentView subclasses. This also reduces some code duplication for basic view management.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView): Move base class instantiation pattern from TimelineView to here.
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/Views/LayoutTimelineView.js: Use ContentView events and base methods.
+        (WebInspector.LayoutTimelineView.prototype.shown):
+        (WebInspector.LayoutTimelineView.prototype.hidden):
+        (WebInspector.LayoutTimelineView.prototype._dataGridNodeSelected):
+        * UserInterface/Views/NetworkTimelineView.js: Use ContentView events and base methods.
+        (WebInspector.NetworkTimelineView.prototype.shown):
+        (WebInspector.NetworkTimelineView.prototype.hidden):
+        (WebInspector.NetworkTimelineView.prototype._dataGridNodeSelected):
+        * UserInterface/Views/OverviewTimelineView.js: Use ContentView events and base methods.
+        (WebInspector.OverviewTimelineView.prototype.shown):
+        (WebInspector.OverviewTimelineView.prototype._dataGridNodeSelected):
+        (WebInspector.OverviewTimelineView.prototype._treeElementSelected):
+        * UserInterface/Views/ScriptTimelineView.js: Use ContentView events and base methods.
+        (WebInspector.ScriptTimelineView.prototype.shown):
+        (WebInspector.ScriptTimelineView.prototype.hidden):
+        (WebInspector.ScriptTimelineView.prototype._dataGridNodeSelected):
+        * UserInterface/Views/TimelineRecordingContentView.css: Use WebInspector.ContentViewContainer class.
+        (.content-view.timeline-recording > .content-view-container):
+        (.content-view.timeline-recording > .content-view-container > .timeline-view > .data-grid td):
+        (.content-view.timeline-recording > .content-view-container > .timeline-view > .data-grid table.data):
+        (.content-view.timeline-recording > .view-container): Deleted.
+        (.content-view.timeline-recording > .view-container > .timeline-view > .data-grid td): Deleted.
+        (.content-view.timeline-recording > .view-container > .timeline-view > .data-grid table.data): Deleted.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        Many of the changes here mirror the implementation of ClusterContentView. Searching is disabled since
+        none of the timeline views are currently searchable using ContentViewContainer's full-text search.
+
+        In cases where we update the current timeline view, the currentTimelineView accessor returns the
+        content view if a TimelineView is shown in the content view container, otherwise null.
+
+        (WebInspector.TimelineRecordingContentView):
+        (WebInspector.TimelineRecordingContentView.prototype.showOverviewTimelineView):
+        (WebInspector.TimelineRecordingContentView.prototype.showTimelineViewForTimeline):
+        (WebInspector.TimelineRecordingContentView.prototype.get supplementalRepresentedObjects):
+        (WebInspector.TimelineRecordingContentView.prototype.get handleCopyEvent):
+        (WebInspector.TimelineRecordingContentView.prototype.get supportsSave):
+        (WebInspector.TimelineRecordingContentView.prototype.get saveData):
+        (WebInspector.TimelineRecordingContentView.prototype.get currentTimelineView):
+        (WebInspector.TimelineRecordingContentView.prototype.shown):
+        (WebInspector.TimelineRecordingContentView.prototype.hidden):
+        (WebInspector.TimelineRecordingContentView.prototype.closed):
+        (WebInspector.TimelineRecordingContentView.prototype.canGoBack):
+        (WebInspector.TimelineRecordingContentView.prototype.canGoForward):
+        (WebInspector.TimelineRecordingContentView.prototype.goBack):
+        (WebInspector.TimelineRecordingContentView.prototype.goForward):
+        (WebInspector.TimelineRecordingContentView.prototype.updateLayout):
+        (WebInspector.TimelineRecordingContentView.prototype.saveToCookie):
+        (WebInspector.TimelineRecordingContentView.prototype.get filterDidChange):
+        (WebInspector.TimelineRecordingContentView.prototype._currentContentViewDidChange):
+        (WebInspector.TimelineRecordingContentView.prototype._contentViewSelectionPathComponentDidChange):
+        (WebInspector.TimelineRecordingContentView.prototype._contentViewSupplementalRepresentedObjectsDidChange):
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimes):
+        (WebInspector.TimelineRecordingContentView.prototype._timelineRemoved):
+        (WebInspector.TimelineRecordingContentView.prototype._timelineCountChanged):
+        (WebInspector.TimelineRecordingContentView.prototype._timeRangeSelectionChanged):
+        (WebInspector.TimelineRecordingContentView.prototype.filterDidChange): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype._timelineViewSelectionPathComponentsDidChange): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype._showTimelineView): Deleted.
+        * UserInterface/Views/TimelineView.js: Remove duplicated functionality and use ContentView equivalents instead.
+        (WebInspector.TimelineView):
+        (WebInspector.TimelineView.prototype.filterUpdated):
+        (WebInspector.TimelineView.prototype.needsLayout):
+        (WebInspector.TimelineView.prototype.get representedObject): Deleted.
+        (WebInspector.TimelineView.prototype.get visible): Deleted.
+        (WebInspector.TimelineView.prototype.shown): Deleted.
+        (WebInspector.TimelineView.prototype.hidden): Deleted.
+
+2015-03-03  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: selecting overview timeline tree elements without source locations doesn't update selection components
+        https://bugs.webkit.org/show_bug.cgi?id=142248
+
+        Reviewed by Timothy Hatcher.
+
+        Add a missing event dispatch to trigger recalculation of path components when showing the overview timeline view.
+
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype._treeElementSelected):
+
+2015-03-03  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Refactoring: separate ConsoleSession from ConsoleGroup
+        https://bugs.webkit.org/show_bug.cgi?id=142141
+
+        ConsoleSession doesn't have a title and it's not collapsible either.
+        Simplify ConsoleSession by removing excessive markup.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController):
+        (WebInspector.JavaScriptLogViewController.prototype.startNewSession):
+        (WebInspector.JavaScriptLogViewController.prototype._appendConsoleMessage):
+        (WebInspector.JavaScriptLogViewController.prototype.get topConsoleGroup): Deleted.
+        * UserInterface/Main.html:
+        * UserInterface/Views/ConsoleGroup.js:
+        (WebInspector.ConsoleGroup):
+        (WebInspector.ConsoleGroup.prototype.render):
+        (WebInspector.ConsoleGroup.prototype.addMessage):
+        (WebInspector.ConsoleGroup.prototype.append):
+        (WebInspector.ConsoleGroup.prototype.hasMessages): Deleted.
+        * UserInterface/Views/ConsoleSession.js: Added.
+        (WebInspector.ConsoleSession):
+        (WebInspector.ConsoleSession.prototype.addMessage):
+        (WebInspector.ConsoleSession.prototype.append):
+        (WebInspector.ConsoleSession.prototype.hasMessages):
+        * UserInterface/Views/LogContentView.css:
+        (.console-session + .console-session):
+        (.console-group.new-session .console-group-messages .console-item:first-child): Deleted.
+        (.console-group.new-session): Deleted.
+
+2015-03-03  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: popover should use requestAnimationFrame to drive move/resize animations
+        https://bugs.webkit.org/show_bug.cgi?id=142218
+
+        Reviewed by Timothy Hatcher.
+
+        Remove setTimeout workaround now that Inspector runs in its own process.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover.prototype.drawBackground):
+        (WebInspector.Popover.prototype._animateFrame):
+
+2015-03-03  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: Console log level selector loses selection on reload
+        https://bugs.webkit.org/show_bug.cgi?id=142199
+
+        Reviewed by Timothy Hatcher.
+
+        The selected items in the console scope bar were being saved as settings,
+        but the "All" scope is forcibly selected on reload due to a logic bug.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.showFullHeightConsole):
+        The scope bar may already have selected items restored from WebInspector.Settings.
+        Don't select a scope unless explicitly requested (i.e., clicking on dashboard buttons)
+        or if no scopes are selected at all. (In the latter case, "All" is the default scope.)
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView): Don't specify a default value here to avoid trampling
+        settings. The "All" scope is selected by default in showFullHeightConsole if
+        nothing else is selected.
+
+2015-03-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove native extensions now built-in
+        https://bugs.webkit.org/show_bug.cgi?id=142203
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+
+2015-03-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Context Menu to Log a Particular Object
+        https://bugs.webkit.org/show_bug.cgi?id=142198
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.saveResultCallback):
+        (WebInspector.JavaScriptLogViewController.prototype.appendImmediateExecutionWithResult):
+        Add a way to show an execution and result immediately in the Log View.
+
+        * UserInterface/Views/ConsolePrompt.js:
+        (WebInspector.ConsolePrompt.prototype.pushHistoryItem):
+        (WebInspector.ConsolePrompt.prototype.commitTextOrInsertNewLine):
+        (WebInspector.ConsolePrompt.prototype._handleEnterKey):
+        (WebInspector.ConsolePrompt.prototype._commitHistoryEntry):
+        Add a way to append a history item to the console prompt history.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype):
+        Add a context menu item to object tree properties to log the value.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.createCallArgument):
+        (WebInspector.RemoteObject.prototype.callFunction):
+        (WebInspector.RemoteObject.prototype.asCallArgument):
+        Simplify CallArgument creation.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WebInspector.RuntimeManager.prototype.mycallback):
+        (WebInspector.RuntimeManager.prototype.saveResult):
+        Wrap RuntimeAgent.saveResult. If supported, run the backend command
+        and fetch a saved result index from the backend for the given value.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.get logViewController):
+        Misc.
+
+2015-03-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Context Menus to Object Tree properties
+        https://bugs.webkit.org/show_bug.cgi?id=142125
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/ObjectPropertiesSection.js:
+        (WebInspector.ObjectPropertyTreeElement.prototype._functionContextMenuEventFired):
+        (WebInspector.ObjectPropertyTreeElement.prototype._functionContextMenuEventFired.revealFunction):
+        Fix legacy implementation.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.js:
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitlePrototype):
+        Give prototype buttons a tooltip.
+
+        (WebInspector.ObjectTreePropertyTreeElement.prototype.oncontextmenu):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._contextMenuHandler):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._appendMenusItemsForObject):
+        Context Menus based on the selected object.
+
+2015-02-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use Maps in ResourceCollection instead of objects
+        https://bugs.webkit.org/show_bug.cgi?id=142101
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/ResourceCollection.js:
+        (WebInspector.ResourceCollection):
+        (WebInspector.ResourceCollection.prototype.resourcesWithType):
+        (WebInspector.ResourceCollection.prototype.removeAllResources):
+        (WebInspector.ResourceCollection.prototype.resourceForURL):
+        (WebInspector.ResourceCollection.prototype._associateWithResource):
+        (WebInspector.ResourceCollection.prototype._disassociateWithResource):
+        (WebInspector.ResourceCollection.prototype._resourceURLDidChange):
+        (WebInspector.ResourceCollection.prototype._resourceTypeDidChange):
+        Use Maps instead of objects.
+
+2015-02-26  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Add a subtle blue background for selected console messages
+        https://bugs.webkit.org/show_bug.cgi?id=142073
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-item.selected::after):
+        (.console-messages:focus .console-item.selected):
+        (.console-messages:focus .console-item.selected + .console-item):
+        (.console-error-level + .console-item):
+        (.console-error-level .section .header .title):
+        (.console-warning-level):
+        (.console-warning-level + .console-item):
+
+2015-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Colored console messages apply text color to object tree properties
+        https://bugs.webkit.org/show_bug.cgi?id=142051
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.css:
+        (.object-preview):
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree):
+        Default the color to black within Object Tree and Object Preview views.
+
+2015-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Clear Log on Reload clears some logs that were after reload
+        https://bugs.webkit.org/show_bug.cgi?id=142070
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._sessionStarted):
+        We can bail after calling clearLog, since that will already start
+        a new session for us.
+
+        (WebInspector.LogContentView.prototype._clearLog):
+        Don't trigger a backend clear messages, since that will cause us to
+        clear messages received between the request and response.
+
+2015-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Save Console Evaluations into Command Line variables $1-$99 ($n)
+        https://bugs.webkit.org/show_bug.cgi?id=142061
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WebInspector.RuntimeManager.prototype.evalCallback):
+        (WebInspector.RuntimeManager.prototype.evaluateInInspectedWindow):
+        Add a saveResult parameter for the new protocol command in parameter.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatMessage):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsObject):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsArray):
+        (WebInspector.ConsoleMessageImpl.prototype._rootPropertyPathForObject):
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.prototype.appendTitleSuffix):
+        For console evaluation results, show a "= $n" when the evaluation was
+        given a saved result index.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-saved-variable):
+        * UserInterface/Views/ObjectPreviewView.css:
+        (.object-preview-name):
+        Make $n and class names in previews always non-italics.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.printResult):
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted):
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (get WebInspector.JavaScriptRuntimeCompletionProvider.prototype.):
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager.prototype.messagesCleared):
+        (WebInspector.LogManager.prototype._mainResourceDidChange):
+        Try to provide better autocompletion for $n, by populating autocompletion menus
+        from $1-$n where n is the maximum saved result index seen. Clear the maximum
+        when we clear the console.
+
+        * UserInterface/Views/ConsoleCommandResult.js:
+        (WebInspector.ConsoleCommandResult):
+        (WebInspector.ConsoleCommandResult.clearMaximumSavedResultIndex):
+        Keep track of the maximum savedResultIndex for console evaluation results.
+
+2015-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Set/Map appear as lossless when they have lossy entries
+        https://bugs.webkit.org/show_bug.cgi?id=142050
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendEntryPreviews):
+        Take into account the lossless states of entry keys and values.
+
+2015-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: New ObjectTree UI for Arrays / Maps / Sets
+        https://bugs.webkit.org/show_bug.cgi?id=142037
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        Miscellaneous changes.
+
+        * UserInterface/Models/PropertyDescriptor.js:
+        (WebInspector.PropertyDescriptor.prototype.isIndexProperty):
+        Useful for quickly checking if this property is numeric and possibly
+        an array index.
+
+        * UserInterface/Models/PropertyPath.js:
+        (WebInspector.PropertyPath.prototype.appendMapKey):
+        (WebInspector.PropertyPath.prototype.appendMapValue):
+        (WebInspector.PropertyPath.prototype.appendSetIndex):
+        Be specific about property paths into maps / sets. Note that a map
+        value may be displayable if the key is simple.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.hasValue):
+        A simple value RemoteObject may have the value "undefined". So provide
+        a falsey proof helper that actually checks if we have a value.
+
+        (WebInspector.RemoteObject.prototype.isArray):
+        (WebInspector.RemoteObject.prototype.backendGetOwnPropertyDescriptor):
+        (WebInspector.RemoteObject.prototype.wrappedCallback):
+        (WebInspector.RemoteObject.prototype.getOwnPropertyDescriptor):
+        Currently backend APIs exist only to get all properties. In the case
+        of collections, we often want to get only one property (__proto__).
+        This is a simple implementation on top of callFunctionOn.
+
+        * UserInterface/Views/ConsoleMessageImpl.js:
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsObject):
+        (WebInspector.ConsoleMessageImpl.prototype._formatParameterAsArray):
+        (WebInspector.ConsoleMessageImpl.prototype.appendUndefined): Deleted.
+        (WebInspector.ConsoleMessageImpl.prototype._printArray): Deleted.
+        (WebInspector.ConsoleMessageImpl.prototype._formatAsArrayEntry): Deleted.
+        Simplify array formatted to just use an ObjectTreeView. Add fixmes
+        that we should seed the ObjectTreeView with a starting property path.
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-node > ol):
+        Sometimes, a node's display was getting overridden by various console styles.
+        Force a node to always display block. We may be able to remove this later.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject):
+        Helper for formatting a node / object / value more easily. This
+        is used by all collection types.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        We lost the nice sparse array support when switching to the new preview path,
+        we should add it back.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.css:
+        (.object-tree-array-index):
+        (.object-tree-array-index > .titles):
+        (.object-tree-array-index > .icon):
+        (.object-tree-array-index .index-name):
+        (.object-tree-array-index .index-value .object-tree):
+        (.object-tree-array-index .index-value .object-tree .object-tree-outline):
+        (.object-tree-property + ol .object-tree-array-index):
+        New styles specific to array index tree elements.
+
+        * UserInterface/Views/ObjectTreeMapEntryTreeElement.css:
+        (.object-tree-array-index.object-tree-map-entry > .titles > .title > .index-name):
+        (.object-tree-map-entry.key):
+        (.object-tree-map-entry.key:first-of-type):
+        (.object-tree-map-entry):
+        New styles specific to map key/value tree elements.
+
+        * UserInterface/Views/ObjectTreeCollectionTreeElement.js: Removed.
+        Remove old collection implementation.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.js: Added.
+        (WebInspector.ObjectTreeArrayIndexTreeElement):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype.get property):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._resolvedValue):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._propertyPathType):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._resolvedValuePropertyPath):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._thisPropertyPath):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._propertyPathString):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._updateTitle):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._titleFragment):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._createInteractiveGetterElement.):
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._createReadOnlyIconElement):
+        Index followed by formatted value. Unfortunately a page can hack up an array
+        with getter properties, so also support getter values in an array. This ends
+        up copying a lot of ObjectTreePropertyTreeElement as a result.
+
+        * UserInterface/Views/ObjectTreeMapEntryTreeElement.js: Added.
+        (WebInspector.ObjectTreeMapEntryTreeElement):
+        (WebInspector.ObjectTreeMapEntryTreeElement.prototype.get object):
+        (WebInspector.ObjectTreeMapEntryTreeElement.prototype._propertyPathString):
+        (WebInspector.ObjectTreeMapEntryTreeElement.prototype._titleFragment):
+        (WebInspector.ObjectTreeMapKeyTreeElement):
+        (WebInspector.ObjectTreeMapKeyTreeElement.prototype.displayPropertyName):
+        (WebInspector.ObjectTreeMapKeyTreeElement.prototype.resolvedValuePropertyPath):
+        (WebInspector.ObjectTreeMapValueTreeElement):
+        (WebInspector.ObjectTreeMapValueTreeElement.prototype.displayPropertyName):
+        (WebInspector.ObjectTreeMapValueTreeElement.prototype.resolvedValuePropertyPath):
+        Key/value followed by formatted value.
+
+        * UserInterface/Views/ObjectTreeSetIndexTreeElement.js: Added.
+        (WebInspector.ObjectTreeSetIndexTreeElement):
+        (WebInspector.ObjectTreeSetIndexTreeElement.prototype.get object):
+        (WebInspector.ObjectTreeSetIndexTreeElement.prototype._resolvedValuePropertyPath):
+        (WebInspector.ObjectTreeSetIndexTreeElement.prototype._titleFragment):
+        Dot followed by formatted value.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property > .titles):
+        Reformat.
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree-property :matches(.formatted-string, .formatted-regexp)):
+        Upgrade generic styles.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._resolvedValue):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._resolvedValuePropertyPath):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateChildren):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateChildrenInternal):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateEntries):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateProperties):
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView):
+        (WebInspector.ObjectTreeView.emptyMessageElement):
+        (WebInspector.ObjectTreeView.prototype.expand):
+        (WebInspector.ObjectTreeView.prototype.collapse):
+        (WebInspector.ObjectTreeView.prototype.update):
+        (WebInspector.ObjectTreeView.prototype._updateChildren):
+        (WebInspector.ObjectTreeView.prototype._updateEntries):
+        (WebInspector.ObjectTreeView.prototype._updateProperties):
+        (WebInspector.ObjectTreeView.prototype._handlePreviewOrTitleElementClick):
+        Both ObjectTreeView and ObjectTreePropertyTreeElement will fetch only collection
+        entries or properties depending on the type of the object being expanded.
+
+        (WebInspector.ObjectTreeView.prototype._trackWeakEntries):
+        (WebInspector.ObjectTreeView.prototype._untrackWeakEntries):
+        Allow WeakMap entries to be Garbage Collected when the ObjectTreeView
+        collapses or the console is cleared. FIXME for handling sub-tree WeakMaps.
+
+2015-02-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Make build logs more legible by reducing noise
+        https://bugs.webkit.org/show_bug.cgi?id=142034
+
+        Reviewed by Alexey Proskuryakov.
+
+        Modify batch files, makefiles, and DOS commands to remove
+        uninteresting/unhelpful output.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.make:
+
 2015-02-25  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Improve Regex/Error output in Object Tree and Previews

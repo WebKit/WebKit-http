@@ -56,6 +56,7 @@ typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
 typedef const struct _CFCachedURLResponse* CFCachedURLResponseRef;
 typedef const struct _CFURLCache* CFURLCacheRef;
 typedef const struct _CFURLRequest *CFURLRequestRef;
+typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 
 #ifdef __BLOCKS__
 typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
@@ -86,6 +87,8 @@ EXTERN_C void _CFCachedURLResponseSetBecameFileBackedCallBackBlock(CFCachedURLRe
 #endif // PLATFORM(COCOA)
 
 EXTERN_C void CFURLConnectionInvalidateConnectionCache();
+
+EXTERN_C CFStringRef const kCFHTTPCookieLocalFileDomain;
 
 // FIXME: We should only forward declare this SPI when building for iOS without the Apple Internal SDK.
 // As a workaround for <rdar://problem/19025016>, we must forward declare this SPI regardless of whether

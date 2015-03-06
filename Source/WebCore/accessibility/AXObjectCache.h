@@ -146,7 +146,6 @@ public:
     void removeAXID(AccessibilityObject*);
     bool isIDinUse(AXID id) const { return m_idsInUse.contains(id); }
 
-    Element* rootAXEditableElement(Node*);
     const Element* rootAXEditableElement(const Node*);
     bool nodeIsTextControl(const Node*);
 
@@ -285,7 +284,6 @@ inline AccessibilityObject* AXObjectCache::getOrCreate(Node*) { return nullptr; 
 inline AccessibilityObject* AXObjectCache::getOrCreate(Widget*) { return nullptr; }
 inline AccessibilityObject* AXObjectCache::rootObject() { return nullptr; }
 inline AccessibilityObject* AXObjectCache::rootObjectForFrame(Frame*) { return nullptr; }
-inline Element* AXObjectCache::rootAXEditableElement(Node*) { return nullptr; }
 inline bool nodeHasRole(Node*, const String&) { return false; }
 inline void AXObjectCache::startCachingComputedObjectAttributesUntilTreeMutates() { }
 inline void AXObjectCache::stopCachingComputedObjectAttributes() { }

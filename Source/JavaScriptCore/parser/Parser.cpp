@@ -629,7 +629,8 @@ template <class TreeBuilder> TreeDeconstructionPattern Parser<LexerType>::parseD
             } else {
                 JSTokenType tokenType = m_token.m_type;
                 switch (m_token.m_type) {
-                case NUMBER:
+                case DOUBLE:
+                case INTEGER:
                     propertyName = Identifier::from(m_vm, m_token.m_data.doubleValue);
                     break;
                 case STRING:
@@ -1868,7 +1869,6 @@ int Parser<LexerType>::isBinaryOperator(JSTokenType token)
 template <typename LexerType>
 template <class TreeBuilder> TreeExpression Parser<LexerType>::parseBinaryExpression(TreeBuilder& context)
 {
-    
     int operandStackDepth = 0;
     int operatorStackDepth = 0;
     typename TreeBuilder::BinaryExprContext binaryExprContext(context);
@@ -1927,7 +1927,7 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseProperty(TreeB
             nextExpectIdentifier(LexerFlagsIgnoreReservedWords);
         else
             nextExpectIdentifier(LexerFlagsIgnoreReservedWords | TreeBuilder::DontBuildKeywords);
-        
+
         if (match(COLON)) {
             next();
             TreeExpression node = parseAssignmentExpression(context);
@@ -1935,7 +1935,17 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseProperty(TreeB
             context.setEndOffset(node, m_lexer->currentOffset());
             return context.createProperty(ident, node, PropertyNode::Constant, complete);
         }
+
         failIfFalse(wasIdent, "Expected an identifier as property name");
+
+        if (match(COMMA) || match(CLOSEBRACE)) {
+            JSTextPosition start = tokenStartPosition();
+            JSTokenLocation location(tokenLocation());
+            currentScope()->useVariable(ident, m_vm->propertyNames->eval == *ident);
+            TreeExpression node = context.createResolve(location, ident, start);
+            return context.createProperty(ident, node, PropertyNode::Constant, complete);
+        }
+
         PropertyNode::Type type;
         if (*ident == m_vm->propertyNames->get)
             type = PropertyNode::Getter;
@@ -1945,7 +1955,8 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseProperty(TreeB
             failWithMessage("Expected a ':' following the property name '", ident->impl(), "'");
         return parseGetterSetter(context, complete, type, getterOrSetterStartOffset);
     }
-    case NUMBER: {
+    case DOUBLE:
+    case INTEGER: {
         double propertyName = m_token.m_data.doubleValue;
         next();
         consumeOrFail(COLON, "Expected ':' after property name");
@@ -1979,7 +1990,7 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseGetterSetter(T
     double numericPropertyName = 0;
     if (m_token.m_type == IDENT || m_token.m_type == STRING)
         stringPropertyName = m_token.m_data.ident;
-    else if (m_token.m_type == NUMBER)
+    else if (m_token.m_type == DOUBLE || m_token.m_type == INTEGER)
         numericPropertyName = m_token.m_data.doubleValue;
     else
         failDueToUnexpectedToken();
@@ -2221,11 +2232,17 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
         next();
         return context.createString(location, ident);
     }
-    case NUMBER: {
+    case DOUBLE: {
         double d = m_token.m_data.doubleValue;
         JSTokenLocation location(tokenLocation());
         next();
-        return context.createNumberExpr(location, d);
+        return context.createDoubleExpr(location, d);
+    }
+    case INTEGER: {
+        double d = m_token.m_data.doubleValue;
+        JSTokenLocation location(tokenLocation());
+        next();
+        return context.createIntegerExpr(location, d);
     }
     case NULLTOKEN: {
         JSTokenLocation location(tokenLocation());
@@ -2577,7 +2594,8 @@ template <typename LexerType> void Parser<LexerType>::printUnexpectedTokenText(W
     case STRING:
         out.print("Unexpected string literal ", getToken());
         return;
-    case NUMBER:
+    case INTEGER:
+    case DOUBLE:
         out.print("Unexpected number '", getToken(), "'");
         return;
     

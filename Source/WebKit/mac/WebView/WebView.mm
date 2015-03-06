@@ -740,7 +740,7 @@ static void WebKitInitializeApplicationCachePathIfNecessary()
 
     NSString* cacheDir = [NSString _webkit_localCacheDirectoryWithBundleIdentifier:appName];
 
-    cacheStorage().setCacheDirectory(cacheDir);
+    ApplicationCacheStorage::singleton().setCacheDirectory(cacheDir);
     initialized = YES;
 }
 
@@ -2363,7 +2363,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setQTKitEnabled([preferences isQTKitEnabled]);
 #endif // PLATFORM(MAC)
 
-    DatabaseManager::manager().setIsAvailable([preferences databasesEnabled]);
+    DatabaseManager::singleton().setIsAvailable([preferences databasesEnabled]);
 
 #if ENABLE(MEDIA_SOURCE)
     settings.setMediaSourceEnabled([preferences mediaSourceEnabled]);
@@ -8434,7 +8434,7 @@ bool LayerFlushController::flushLayers()
 #if ENABLE(FULLSCREEN_API) && !PLATFORM(IOS)
 - (BOOL)_supportsFullScreenForElement:(const WebCore::Element*)element withKeyboard:(BOOL)withKeyboard
 {
-    if (![[WebPreferences standardPreferences] fullScreenEnabled])
+    if (![[self preferences] fullScreenEnabled])
         return NO;
 
     return !withKeyboard;
