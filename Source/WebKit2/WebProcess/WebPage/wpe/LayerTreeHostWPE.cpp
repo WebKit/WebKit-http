@@ -281,7 +281,7 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
 
     ASSERT(m_frameRequestState == FrameRequestState::Completed);
     m_frameRequestState = FrameRequestState::InProgress;
-    wl_callback_add_listener(m_waylandSurface->requestFrame(), &m_frameListener, this);
+    wl_callback_add_listener(wl_surface_frame(m_waylandSurface->surface()), &m_frameListener, this);
 
     context->swapBuffers();
 }
