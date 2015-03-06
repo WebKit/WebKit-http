@@ -442,7 +442,7 @@ public:
         PaintLayerPaintingRootBackgroundOnly            = 1 << 11,
         PaintLayerPaintingSkipRootBackground            = 1 << 12,
         PaintLayerPaintingChildClippingMaskPhase        = 1 << 13,
-        PaintLayerPaintingCompositingAllPhases          = PaintLayerPaintingCompositingBackgroundPhase | PaintLayerPaintingCompositingForegroundPhase | PaintLayerPaintingCompositingMaskPhase
+        PaintLayerPaintingCompositingAllPhases          = PaintLayerPaintingCompositingBackgroundPhase | PaintLayerPaintingCompositingForegroundPhase
     };
     
     typedef unsigned PaintLayerFlags;
@@ -605,6 +605,8 @@ public:
     }
 
     bool paintsWithTransform(PaintBehavior) const;
+    bool shouldPaintMask(PaintBehavior, PaintLayerFlags) const;
+    bool shouldApplyClipPath(PaintBehavior, PaintLayerFlags) const;
 
     // Returns true if background phase is painted opaque in the given rect.
     // The query rect is given in local coordinates.
@@ -753,8 +755,6 @@ private:
     void updateCompositingAndLayerListsIfNeeded();
 
     bool setupFontSubpixelQuantization(GraphicsContext*, bool& didQuantizeFonts);
-
-    bool paintsWithClipPath() const;
 
     Path computeClipPath(const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, WindRule&) const;
 
@@ -1172,7 +1172,7 @@ void makeMatrixRenderable(TransformationMatrix&, bool has3DRendering);
 
 } // namespace WebCore
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 // Outside the WebCore namespace for ease of invocation from gdb.
 void showLayerTree(const WebCore::RenderLayer*);
 void showLayerTree(const WebCore::RenderObject*);

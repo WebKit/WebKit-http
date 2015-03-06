@@ -1,3 +1,149 @@
+2015-03-03  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Don't branch when setting the owner of a large object
+        https://bugs.webkit.org/show_bug.cgi?id=142241
+
+        Reviewed by Andreas Kling.
+
+        * bmalloc/BoundaryTag.h:
+        (bmalloc::BoundaryTag::owner):
+        (bmalloc::BoundaryTag::setOwner):
+
+2015-03-03  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc should implement malloc introspection (to stop false-positive leaks when MallocStackLogging is off)
+        https://bugs.webkit.org/show_bug.cgi?id=141802
+
+        Reviewed by Andreas Kling.
+
+        Re-enabled this feature on iOS, now that the iOS crash should be fixed.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+        * bmalloc/VMHeap.h:
+
+2015-03-03  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Added missing features to the malloc zone introspection API
+        https://bugs.webkit.org/show_bug.cgi?id=142235
+
+        Reviewed by Andreas Kling.
+
+        This should fix the crash we saw on the iOS PLT bot
+        (c.f. http://trac.webkit.org/changeset/180604).
+
+        * bmalloc/Zone.cpp:
+        (bmalloc::good_size):
+        (bmalloc::check):
+        (bmalloc::print):
+        (bmalloc::log):
+        (bmalloc::force_lock):
+        (bmalloc::force_unlock):
+        (bmalloc::statistics):
+        (bmalloc::size):
+        (bmalloc::enumerator): Provide all of these functions since they are called
+        indiscriminately on all zones.
+
+        (bmalloc::Zone::Zone):
+        (bmalloc::Zone::size): Deleted.
+        (bmalloc::Zone::enumerator): Deleted. Moved these functions out of the
+        Zone class since they can stand alone.
+
+        * bmalloc/Zone.h:
+
+2015-03-03  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc should implement malloc introspection (to stop false-positive leaks when MallocStackLogging is off)
+        https://bugs.webkit.org/show_bug.cgi?id=141802
+
+        Reviewed by Andreas Kling.
+
+        Rolling back in but disabled on iOS until I can debug why the iOS PLT crashes.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::grow):
+        * bmalloc/VMHeap.h:
+        * bmalloc/Zone.cpp:
+        (bmalloc::Zone::size):
+        (bmalloc::Zone::Zone):
+        * bmalloc/Zone.h:
+
+2015-03-03  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Miscellaneous cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=142231
+
+        Reviewed by Andreas Kling.
+
+        No performance change -- maybe a tiny reduction in memory use.
+
+        * bmalloc/Heap.cpp: Moved the sleep function into StaticMutex, since
+        it's a helper for working with mutexes.
+
+        (bmalloc::Heap::scavenge): Make sure to wait before we start any
+        scavenging, since individual scavenging functions now always scavenge
+        at least one page before waiting themselves.
+
+        (bmalloc::Heap::scavengeSmallPages):
+        (bmalloc::Heap::scavengeMediumPages):
+        (bmalloc::Heap::scavengeLargeObjects): Use the new wait helper to
+        simplify this code. Also, we now require our caller to wait until at
+        least one deallocation is desirable. This simplifies our loop.
+
+        (bmalloc::Heap::allocateSmallPage):
+        (bmalloc::Heap::allocateMediumPage):
+        (bmalloc::Heap::allocateXLarge):
+        (bmalloc::Heap::allocateLarge): Don't freak out any time the heap does
+        an allocation. Only consider the heap to be growing if it actually needs
+        to allocate new VM. This allows us to shrink the heap back down from a
+        high water mark more reliably even if heap activity continues.
+
+        (bmalloc::sleep): Deleted.
+        (bmalloc::Heap::scavengeLargeRanges): Renamed to match our use of
+        "LargeObject".
+
+        * bmalloc/Heap.h:
+
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::operator bool): Added to simplify a while loop.
+
+        * bmalloc/StaticMutex.h:
+        (bmalloc::sleep):
+        (bmalloc::waitUntilFalse): New helper for waiting until a condition
+        becomes reliably false.
+
+        * bmalloc/Vector.h:
+        (bmalloc::Vector<T>::~Vector): Oops! Don't deallocate the null pointer.
+        We don't actually run any Vector destructors, but an iteration of this
+        patch did, and then crashed. So, let's fix that.
+
+2015-03-02  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Eagerly remove allocated objects from the free list
+        https://bugs.webkit.org/show_bug.cgi?id=142194
+
+        Reviewed by Andreas Kling.
+
+        This reduces the pressure to garbage collect the free list.
+
+        Might be a 1% speedup on MallocBench.
+
+        * bmalloc/FreeList.cpp: Put this comment at the top of the file instead
+        of repeating it inside of each function. Tried to clarify the details.
+
+        (bmalloc::FreeList::takeGreedy): Matched the other iteration code in this
+        file for consistency -- even though either direction works fine in this
+        function.
+
+        (bmalloc::FreeList::take): Change to iterate from low to high so that we
+        can maintain an index into the vector that is not disturbed even if we
+        pop from the middle (which invalidates the last index in the vector).
+
+        Decrement i when popping from the middle to make sure that we don't
+        skip the next item after popping.
+
+        (bmalloc::FreeList::removeInvalidAndDuplicateEntries): Ditto.
+
 2015-02-27  Ryosuke Niwa  <rniwa@webkit.org>
 
         Fixed a typo in the previous commit.

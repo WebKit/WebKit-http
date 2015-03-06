@@ -112,9 +112,9 @@ void SpeculativeJIT::emitAllocateArguments(GPRReg resultGPR, GPRReg scratchGPR1,
     Structure* structure = m_jit.graph().globalObjectFor(m_currentNode->origin.semantic)->argumentsStructure();
 
     m_jit.load32(JITCompiler::payloadFor(JSStack::ArgumentCount), scratchGPR1);
-    m_jit.mul32(TrustedImm32(sizeof(JSValue)), scratchGPR1, scratchGPR1);
+    m_jit.lshift32(TrustedImm32(3), scratchGPR1);
     m_jit.add32(TrustedImm32(Arguments::offsetOfInlineRegisterArray()), scratchGPR1);
-    emitAllocateVariableSizedJSObject<Arguments>(resultGPR, structure, scratchGPR1, scratchGPR1, scratchGPR2, slowPath);
+    emitAllocateVariableSizedJSObject<Arguments>(resultGPR, TrustedImmPtr(structure), scratchGPR1, scratchGPR1, scratchGPR2, slowPath);
 
     m_jit.storePtr(TrustedImmPtr(0), MacroAssembler::Address(resultGPR, Arguments::offsetOfActivation()));
 
@@ -3626,6 +3626,16 @@ void SpeculativeJIT::compileArithPow(Node* node)
     doubleResult(resultFpr, node);
 }
 
+void SpeculativeJIT::compileArithLog(Node* node)
+{
+    SpeculateDoubleOperand op1(this, node->child1());
+    FPRReg op1FPR = op1.fpr();
+    flushRegisters();
+    FPRResult result(this);
+    callOperation(log, result.fpr(), op1FPR);
+    doubleResult(result.fpr(), node);
+}
+
 // Returns true if the compare is fused with a subsequent branch.
 bool SpeculativeJIT::compare(Node* node, MacroAssembler::RelationalCondition condition, MacroAssembler::DoubleCondition doubleCondition, S_JITOperation_EJJ operation)
 {
@@ -4256,7 +4266,8 @@ void SpeculativeJIT::compileNewFunctionNoCheck(Node* node)
     GPRReg scopeGPR = scope.gpr();
     flushRegisters();
     callOperation(
-        operationNewFunctionNoCheck, resultGPR, scopeGPR, m_jit.codeBlock()->functionDecl(node->functionDeclIndex()));
+        operationNewFunctionNoCheck, resultGPR, scopeGPR,
+        node->castOperand<FunctionExecutable*>());
     cellResult(resultGPR, node);
 }
 
@@ -4269,8 +4280,7 @@ void SpeculativeJIT::compileNewFunctionExpression(Node* node)
     flushRegisters();
     callOperation(
         operationNewFunctionNoCheck,
-        resultGPR, scopeGPR, 
-        m_jit.codeBlock()->functionExpr(node->functionExprIndex()));
+        resultGPR, scopeGPR,  node->castOperand<FunctionExecutable*>());
     cellResult(resultGPR, node);
 }
 

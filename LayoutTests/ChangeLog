@@ -1,3 +1,632 @@
+2015-03-06  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening on 6th Mar.
+
+        Skip tests regardening attachment download progress and unskip a passing test.
+
+        * platform/efl/TestExpectations:
+
+2015-03-06  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] ASSERTION FAILED !track.growthLimitIsInfinite() in RenderGrid::computeUsedBreadthOfGridTracks
+        https://bugs.webkit.org/show_bug.cgi?id=142265
+
+        Reviewed by Darin Adler.
+
+        New test that crashes on Debug builds if we don't handle the case
+        of computeUsedBreadthOfGridTracks() returning -1.
+
+        * fast/css-grid-layout/grid-indefinite-calculated-height-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-indefinite-calculated-height-crash.html: Added.
+
+2015-03-05  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Give up on Attachment testing.
+
+        Just skip Attachments until they settle down. Also document more debug assertions.
+
+        * platform/win/TestExpectations:
+
+2015-03-05  Oliver Hunt  <oliver@apple.com>
+
+        Block mixed mode content
+        https://bugs.webkit.org/show_bug.cgi?id=142378
+
+        Reviewed by Darin Adler.
+
+        Update test results to reflect the new reality.
+
+        * http/tests/security/mixedContent/insecure-css-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/insecure-css-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/insecure-iframe-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/insecure-image-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/insecure-plugin-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/insecure-script-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/insecure-xhr-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/insecure-xhr-in-main-frame.html:
+        * http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame.html:
+        * http/tests/security/mixedContent/redirect-http-to-https-script-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame.html:
+        * http/tests/security/mixedContent/redirect-https-to-http-script-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/resources/frame-with-insecure-frame.html:
+        * http/tests/security/mixedContent/resources/frame-with-redirect-http-to-https-frame.html:
+        * http/tests/security/mixedContent/resources/frame-with-redirect-https-to-http-frame.html:
+        * http/tests/xmlhttprequest/access-control-response-with-body.html:
+
+2015-03-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        new layout test http/tests/usercontentfilter/character-set-basic-support.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=142376
+
+        * http/tests/contentextensions/character-set-basic-support-expected.txt: Copied from LayoutTests/http/tests/usercontentfilter/character-set-basic-support-expected.txt.
+        * http/tests/contentextensions/character-set-basic-support.html: Copied from LayoutTests/http/tests/usercontentfilter/character-set-basic-support.html.
+        * http/tests/contentextensions/character-set-basic-support.html.json: Copied from LayoutTests/http/tests/usercontentfilter/character-set-basic-support.html.json.
+        * http/tests/contentextensions/resources: Copied from LayoutTests/http/tests/usercontentfilter/resources.
+        * http/tests/usercontentfilter: Removed.
+        * http/tests/usercontentfilter/character-set-basic-support-expected.txt: Removed.
+        * http/tests/usercontentfilter/character-set-basic-support.html: Removed.
+        * http/tests/usercontentfilter/character-set-basic-support.html.json: Removed.
+        * http/tests/usercontentfilter/resources: Removed.
+        * http/tests/usercontentfilter/resources/url-blocking-test.js: Removed.
+
+2015-03-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed Test Fix: Remove unnecessary reference to "window" causing test failure.
+
+        * js/object-literal-shorthand-construction-expected.txt:
+        * js/script-tests/object-literal-shorthand-construction.js:
+
+2015-03-05  Stephanie Lewis  <slewis@apple.com>
+
+        Mark http/tests/usercontentfilter/character-set-basic-support.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=142376
+
+        Unreviewed.
+
+        * TestExpectations:
+
+2015-03-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Follow-up fixes to ObjectTreeBaseTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=142367
+
+        Reviewed by Geoffrey Garen.
+
+        * js/object-literal-shorthand-construction-expected.txt: Added.
+        * js/object-literal-shorthand-construction.html: Added.
+        * js/script-tests/object-literal-shorthand-construction.js: Added.
+        (equivalent):
+        (testShorthandConstructionEquivalent):
+        (testShorthandConstructionNotEquivalent):
+        Tests specifically for new literal construction with shorthands.
+
+        * sputnik/Conformance/12_Statement/12.1_Block/S12.1_A4_T1-expected.txt:
+        * sputnik/Conformance/12_Statement/12.1_Block/S12.1_A4_T2-expected.txt:
+        * sputnik/Conformance/12_Statement/12.6_Iteration_Statements/12.6.4_The_for_in_Statement/S12.6.4_A15-expected.txt:
+        These tests use object literal shorthand construction syntax and expected
+        failures. The tests now fail differently, so just rebase their results.
+
+2015-03-05  Timothy Horton  <timothy_horton@apple.com>
+
+        <attachment> should allow the title property to override its title
+        https://bugs.webkit.org/show_bug.cgi?id=142369
+
+        Reviewed by Anders Carlsson.
+
+        * fast/attachment/attachment-title.html: Added.
+        * platform/mac/fast/attachment/attachment-title-expected.png: Added.
+        * platform/mac/fast/attachment/attachment-title-expected.txt: Added.
+        Add a test for the title property.
+
+2015-03-05  Timothy Horton  <timothy_horton@apple.com>
+
+        <attachment> should support indication of download progress
+        https://bugs.webkit.org/show_bug.cgi?id=142336
+        <rdar://problem/19982504>
+
+        Reviewed by Anders Carlsson.
+
+        * fast/attachment/attachment-progress.html: Added.
+        * platform/mac/fast/attachment/attachment-progress-expected.png: Added.
+        * platform/mac/fast/attachment/attachment-progress-expected.txt: Added.
+        * platform/mac-mavericks/fast/attachment/attachment-progress-expected.txt: Added.
+        Add a test for the <attachment> progress attribute.
+
+        * platform/mac/fast/attachment/attachment-rendering-expected.png:
+        Rebaseline a test that changed in r181058 (and will change again!), but
+        which didn't start failing because the pixel test tolerance is such that
+        it only fails the hash check and not the test itself.
+
+2015-03-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add basic support for character sets to the URL Filter parser
+        https://bugs.webkit.org/show_bug.cgi?id=142257
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/usercontentfilter/character-set-basic-support-expected.txt: Added.
+        * http/tests/usercontentfilter/character-set-basic-support.html: Added.
+        * http/tests/usercontentfilter/character-set-basic-support.html.json: Added.
+        * http/tests/usercontentfilter/resources/url-blocking-test.js: Added.
+
+2015-03-05  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r173761): ASSERTION FAILED: !is8Bit() in StringImpl::characters16()
+        https://bugs.webkit.org/show_bug.cgi?id=142350
+
+        Reviewed by Michael Saboff and Benjamin Poulain.
+
+        Update String.startsWith() / endsWith() test to cover cases where the
+        input string is 8-bit and the pattern is 16-bit, and vice-versa.
+
+        * js/script-tests/string-includes.js:
+        * js/string-includes-expected.txt:
+
+2015-03-05  Roger Fong  <roger_fong@apple.com>
+
+        Update inline media control icons for OSX.
+        https://bugs.webkit.org/show_bug.cgi?id=142305.
+        <rdar://problem/19997484>
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac/TestExpectations: Skip two failing tests caused by this patch.
+        See https://bugs.webkit.org/show_bug.cgi?id=142142
+
+2015-03-05  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Reneable aria 'switch' tests after r18078.
+
+        Add a Windows rebaseline. Also document another batch of debug assertions.
+
+        * platform/win/TestExpectations:
+        * platform/win/accessibility/aria-toggle-button-with-title-expected.txt: Added.
+        * platform/win/fast/attachment/attachment-subtitle-expected.txt: Added.
+
+2015-03-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r181013
+
+        Unreviewed.
+
+        * platform/mac/fast/text/trailing-word-expected.html: Renamed from LayoutTests/fast/text/trailing-word-expected.html.
+        * platform/mac/fast/text/trailing-word.html: Renamed from LayoutTests/fast/text/trailing-word.html.
+
+2015-03-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Array/Collection Sizes should be visible and distinct
+        https://bugs.webkit.org/show_bug.cgi?id=142254
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector-protocol/runtime/getProperties-expected.txt:
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        Update tests now that RemoteObjects and Previews may have an explicit size.
+
+2015-03-04  Timothy Horton  <timothy_horton@apple.com>
+
+        <attachment> should show the file size as detail text below the icon
+        https://bugs.webkit.org/show_bug.cgi?id=142261
+        <rdar://problem/20009570>
+
+        Reviewed by Dean Jackson.
+
+        * fast/attachment/attachment-subtitle.html: Added.
+        * platform/mac/fast/attachment/attachment-subtitle-expected.png: Added.
+        * platform/mac/fast/attachment/attachment-subtitle-expected.txt: Added.
+        Add a test of the rendering of attachment subtitles, and results for Mac.
+
+        * platform/mac-mavericks/fast/attachment/attachment-subtitle-expected.txt: Added.
+        Add Mavericks baselines.
+
+2015-03-04  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed gardening.
+
+        * http/tests/contentextensions/basic-filter.html.hson: Removed.
+        * http/tests/contentextensions/basic-filter.html.json: Copied from http/tests/contentextensions/basic-filter.html.hson.
+        Spell json correctly.  Does not start with h.
+
+2015-03-04  Alex Christensen  <achristensen@webkit.org>
+
+        Move content extensions test to properly named directory.
+        https://bugs.webkit.org/show_bug.cgi?id=142299
+
+        Reviewed by Tim Horton.
+
+        * TestExpectations:
+        * http/tests/contentextensions: Added.
+        * http/tests/contentextensions/basic-filter-expected.txt: Copied from platform/mac/http/tests/usercontentfilter/basic-filter-expected.txt.
+        * http/tests/contentextensions/basic-filter.html: Copied from http/tests/usercontentfilter/basic-filter.html.
+        * http/tests/contentextensions/basic-filter.html.hson: Copied from http/tests/usercontentfilter/basic-filter.html.json.
+        * http/tests/contentextensions/block-cookies-basic-expected.txt: Copied from http/tests/usercontentfilter/block-cookies-basic-expected.txt.
+        * http/tests/contentextensions/block-cookies-basic.html: Copied from http/tests/usercontentfilter/block-cookies-basic.html.
+        * http/tests/contentextensions/block-cookies-basic.html.json: Copied from http/tests/usercontentfilter/block-cookies-basic.html.json.
+        * http/tests/contentextensions/block-cookies-send-expected.txt: Copied from http/tests/usercontentfilter/block-cookies-send-expected.txt.
+        * http/tests/contentextensions/block-cookies-send.html: Copied from http/tests/usercontentfilter/block-cookies-send.html.
+        * http/tests/contentextensions/block-cookies-send.html.json: Copied from http/tests/usercontentfilter/block-cookies-send.html.json.
+        * http/tests/contentextensions/css-display-none-expected.txt: Copied from http/tests/usercontentfilter/css-display-none-expected.txt.
+        * http/tests/contentextensions/css-display-none.html: Copied from http/tests/usercontentfilter/css-display-none.html.
+        * http/tests/contentextensions/css-display-none.html.json: Copied from http/tests/usercontentfilter/css-display-none.html.json.
+        * http/tests/usercontentfilter/basic-filter.html: Removed.
+        * http/tests/usercontentfilter/basic-filter.html.json: Removed.
+        * http/tests/usercontentfilter/block-cookies-basic-expected.txt: Removed.
+        * http/tests/usercontentfilter/block-cookies-basic.html: Removed.
+        * http/tests/usercontentfilter/block-cookies-basic.html.json: Removed.
+        * http/tests/usercontentfilter/block-cookies-send-expected.txt: Removed.
+        * http/tests/usercontentfilter/block-cookies-send.html: Removed.
+        * http/tests/usercontentfilter/block-cookies-send.html.json: Removed.
+        * http/tests/usercontentfilter/css-display-none-expected.txt: Removed.
+        * http/tests/usercontentfilter/css-display-none.html: Removed.
+        * http/tests/usercontentfilter/css-display-none.html.json: Removed.
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/http/tests/usercontentfilter/basic-filter-expected.txt: Removed.
+
+2015-03-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Rebaseline a few tests. Mark some failures.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/attachment/attachment-disabled-rendering-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2015-03-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement -apple-trailing-word: -apple-partially-balanced
+        https://bugs.webkit.org/show_bug.cgi?id=142253
+
+        Reviewed by David Hyatt.
+
+        * fast/text/trailing-word-expected.html: Added.
+        * fast/text/trailing-word.html: Added.
+
+2015-03-04  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        Unreviewed Gardening 4th March
+
+        https://bugs.webkit.org/show_bug.cgi?id=142271 
+
+        * platform/gtk/TestExpectations:
+
+2015-03-03   Yoav Weiss  <yoav@yoav.ws>
+
+        Add a microtask abstraction
+        https://bugs.webkit.org/show_bug.cgi?id=137496
+
+        Reviewed by Sam Weinig.
+
+        Adding a test for microtask abstraction.
+        A similar patch was rolled back in r180914.
+
+        * fast/dom/microtask-detach.html: Added.
+        * fast/dom/microtask-detach-expected.txt: Added.
+        * fast/dom/microtask-inorder.html: Added.
+        * fast/dom/microtask-inorder-expected.txt: Added.
+        * fast/dom/microtask-reverse.html: Added.
+        * fast/dom/microtask-reverse-expected.txt: Added.
+
+2015-03-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Mark fast/css/object-fit/object-fit-canvas.html as a flakey
+        image failure, since it keeps breaking EWS.
+
+        * platform/mac/TestExpectations:
+
+2015-03-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] [Attachment] New Tests fail on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=142017
+
+        Unreviewed. Rebaseline tests for Windows display metrics.
+
+        * platform/win/fast/attachment/attachment-disabled-rendering-expected.txt:
+        * platform/win/fast/attachment/attachment-rendering-expected.txt:
+
+2015-03-03  Stephanie Lewis  <slewis@apple.com>
+
+        Update TestExpectations after http://trac.webkit.org/changeset/180965 to skip new test on Mavericks.
+
+        Unreviewed.
+
+        * platform/mac/TestExpectations:
+
+2015-03-03  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Track localized name follows locale instead of primary language
+        https://bugs.webkit.org/show_bug.cgi?id=142242
+        rdar://problem/20000365
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/media/video-controls-captions-trackmenu-sorted-expected.txt: This
+        test now successfully switches to Japanese, as originally intended.
+
+2015-03-03  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare to use CSS selectors in content extensions.
+        https://bugs.webkit.org/show_bug.cgi?id=142227
+
+        Reviewed by Benjamin Poulain.
+
+        * http/tests/usercontentfilter/css-display-none-expected.txt: Added.
+        * http/tests/usercontentfilter/css-display-none.html: Added.
+        * http/tests/usercontentfilter/css-display-none.html.json: Added.
+
+2015-03-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Add baseline for new legacy-event-handler test.
+
+        * platform/win/fast/dom/legacy-event-handler-attributes-expected.txt: Added.
+
+2015-03-03  Timothy Horton  <timothy_horton@apple.com>
+
+        <attachment> label can get very wide, doesn't wrap/truncate
+        https://bugs.webkit.org/show_bug.cgi?id=142214
+        <rdar://problem/19982499>
+
+        * fast/attachment/attachment-label-highlight-expected.png: Added.
+        * fast/attachment/attachment-label-highlight-expected.txt: Added.
+        Add (empty) platform independent baselines.
+
+2015-03-03  Brent Fulgham  <bfulgham@apple.com>
+
+        Move scroll animating functions from ScrollAnimator to ScrollController
+        https://bugs.webkit.org/show_bug.cgi?id=142102
+        <rdar://problem/20007161>
+
+        Reviewed by Simon Fraser.
+
+        Add a new test that confirms that rubberband snap animations work properly when combined
+        with text zooming.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-mainframe-zoom-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-mainframe-zoom.html: Added.
+
+2015-03-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r180683.
+        https://bugs.webkit.org/show_bug.cgi?id=142249
+
+        Broke fast/css/acid2-pixel.html (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Setting any of the <object> element plugin controlling
+        attributes does not have any affect."
+        https://bugs.webkit.org/show_bug.cgi?id=141936
+        http://trac.webkit.org/changeset/180683
+
+2015-03-03  Dean Jackson  <dino@apple.com>
+
+        Controls panel should have system blurry background
+        https://bugs.webkit.org/show_bug.cgi?id=142154
+        <rdar://problem/20000964>
+
+        Reviewed by Simon Fraser.
+
+        Make sure content with a -webkit-appearance of
+        media-controls-light-bar-background or
+        media-controls-dark-bar-background doesn't get composited
+        unless explicitly requested. This avoids a
+        performance hit for a rarely used feature.
+
+        * compositing/media-controls-bar-appearance-expected.txt: Added.
+        * compositing/media-controls-bar-appearance.html: Added.
+
+2015-03-03  Daniel Bates  <dabates@apple.com>
+
+        Convert ManualTests/svg-tooltip.svg to a DRT test
+        https://bugs.webkit.org/show_bug.cgi?id=140480
+
+        Reviewed by Alex Christensen.
+
+        * svg/hittest/svg-tooltip-expected.txt: Added.
+        * svg/hittest/svg-tooltip.svg: Added.
+
+2015-03-03  Timothy Horton  <timothy_horton@apple.com>
+
+        <attachment> label can get very wide, doesn't wrap/truncate
+        https://bugs.webkit.org/show_bug.cgi?id=142214
+        <rdar://problem/19982499>
+
+        * platform/mac-mavericks/fast/attachment: Added.
+        * platform/mac-mavericks/fast/attachment/attachment-label-highlight-expected.txt: Added.
+        Add a Mavericks result because text metrics differ.
+
+2015-03-03  Darin Adler  <darin@apple.com>
+
+        Test legacy event handler attributes (ones with names like "onclick")
+        https://bugs.webkit.org/show_bug.cgi?id=142221
+
+        Reviewed by Anders Carlsson.
+
+        * fast/dom/legacy-event-handler-attributes-expected.txt: Added.
+        * fast/dom/legacy-event-handler-attributes.html: Added.
+
+2015-03-03  Timothy Horton  <timothy_horton@apple.com>
+
+        <attachment> label can get very wide, doesn't wrap/truncate
+        https://bugs.webkit.org/show_bug.cgi?id=142214
+        <rdar://problem/19982499>
+
+        Reviewed by Simon Fraser.
+
+        * fast/attachment/attachment-label-highlight.html: Added.
+        * platform/mac/fast/attachment/attachment-label-highlight-expected.png: Added.
+        * platform/mac/fast/attachment/attachment-label-highlight-expected.txt: Added.
+        Add a test for various <attachment> highlight cases.
+
+        * platform/mac/fast/attachment/attachment-rendering-expected.txt:
+        Update expected result for attachment-rendering, which changed size
+        because we now bail from text layout if we don't have any text.
+
+2015-03-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Document more debug assertions.
+
+        * platform/win/TestExpectations:
+
+2015-03-03  Chris Dumez  <cdumez@apple.com>
+
+        Make AudioContext suspendable when it is not rendering
+        https://bugs.webkit.org/show_bug.cgi?id=142210
+        <rdar://problem/19923085>
+
+        Reviewed by Eric Carlson.
+
+        Add layout tests to check cases where an AudioContext should or should
+        not prevent pages from entering the page cache.
+
+        * fast/history/page-cache-closed-audiocontext-expected.txt: Added.
+        * fast/history/page-cache-closed-audiocontext.html: Added.
+        * fast/history/page-cache-running-audiocontext-expected.txt: Added.
+        * fast/history/page-cache-running-audiocontext.html: Added.
+        * fast/history/page-cache-suspended-audiocontext-expected.txt: Added.
+        * fast/history/page-cache-suspended-audiocontext.html: Added.
+
+2015-03-02  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: skipping inspector/timeline tests since they are still flaky.
+        <https://webkit.org/b/142208>
+
+        Not reviewed.
+
+        * TestExpectations:
+        - Restore skipping of inspector/timeline tests.
+        * platform/win/TestExpectations:
+        - Removing the skipping here since the general TestExpectations has it covered.
+
+2015-03-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] inspector/timeline always times out.
+        https://bugs.webkit.org/show_bug.cgi?id=142208
+
+        * platform/win/TestExpectations: Skipping.)
+
+2015-03-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r180911.
+        https://bugs.webkit.org/show_bug.cgi?id=142204
+
+        The tests it added are crashing (Requested by bdash on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add a microtask abstraction"
+        https://bugs.webkit.org/show_bug.cgi?id=137496
+        http://trac.webkit.org/changeset/180911
+
+2015-03-02   Yoav Weiss  <yoav@yoav.ws>
+
+        Add a microtask abstraction
+        https://bugs.webkit.org/show_bug.cgi?id=137496
+
+        Reviewed by Sam Weinig.
+
+        Adding a test for microtask abstraction.
+
+        * fast/dom/microtask-detach.html: Added.
+        * fast/dom/microtask-detach-expected.txt: Added.
+        * fast/dom/microtask-inorder.html: Added.
+        * fast/dom/microtask-inorder-expected.txt: Added.
+        * fast/dom/microtask-reverse.html: Added.
+        * fast/dom/microtask-reverse-expected.txt: Added.
+
+2015-03-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Last gardening after r177774
+
+        Unreviewed.
+
+        * fast/text/font-kerning-expected.html:
+        * fast/text/font-variant-ligatures-expected.html:
+        * fast/text/whitespace/inline-whitespace-wrapping-7-expected.html:
+        * fast/text/whitespace/inline-whitespace-wrapping-7.html:
+        * mathml/presentation/scripts-subsup-expected.html:
+        * mathml/presentation/scripts-subsup.html:
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/text/multiple-codeunit-vertical-upright-expected.html:
+        * platform/mac/fast/text/multiple-codeunit-vertical-upright.html:
+        * platform/mac/fast/text/resources/multiple-codeunit-vertical-upright.otf: Removed.
+        * svg/text/svg-font-word-rounding-hacks-spaces-expected.html:
+        * svg/text/svg-font-word-rounding-hacks-spaces.html:
+        * svg/text/tspan-outline-expected.svg:
+        * svg/text/tspan-outline.html:
+
+2015-03-02  Mark Lam  <mark.lam@apple.com>
+
+        Exception stack unwinding in JSC hangs while the Timeline Profiler is enabled.
+        <https://webkit.org/b/142191>
+
+        Reviewed by Geoffrey Garen.
+
+        * inspector/timeline/exception-in-injected-script-while-recording-expected.txt: Added.
+        * inspector/timeline/exception-in-injected-script-while-recording.html: Added.
+
+2015-03-02  Mark Lam  <mark.lam@apple.com>
+
+        The InspectorTimelineAgent should gracefully handle attempts to start more than once.
+        <https://webkit.org/b/142189>
+
+        Reviewed by Joseph Pecoraro.
+
+        * TestExpectations:
+        - Unskipped inspector/timeline tests.
+
+2015-03-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Skip media control test after r180893.
+
+        * platform/win/TestExpectations:
+
+2015-03-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Document more debug assertions.
+
+        * platform/win/TestExpectations:
+
+2015-02-28  Roger Fong  <roger_fong@apple.com>
+
+        Skip media control tests for now while new look is being finalized.
+        https://bugs.webkit.org/show_bug.cgi?id=142138.
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac/TestExpectations:
+
+2015-03-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Rebaseline canvas-ellipse-zero-lineto test.
+
+        Rebaseline this test since this is due to differences in the drawing libraries used on the
+        Windows and reference Mac platforms, and is not due to a bug in WebKit itself.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/canvas/canvas-ellipse-zero-lineto-expected.txt: Added.
+
+2015-03-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Document more debug assertions.
+
+        * platform/win/TestExpectations:
+
+2015-03-02  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix a typo in TestExpectations.
+
+        * platform/mac/TestExpectations: Faiure - > Failure.
+
+2015-03-02  Alexey Proskuryakov  <ap@apple.com>
+
+        js/promises-tests/promises-tests-2-1-2.html sometimes times out
+        https://bugs.webkit.org/show_bug.cgi?id=142175
+
+        * TestExpectations: Marking as flaky.
+
 2015-03-01  Simon Fraser  <simon.fraser@apple.com>
 
         Make clip-path work on <video>, <canvas> etc.

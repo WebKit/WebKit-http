@@ -246,14 +246,6 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
             }
         }
     }
-    if (node->hasFunctionDeclIndex()) {
-        FunctionExecutable* executable = m_codeBlock->functionDecl(node->functionDeclIndex());
-        out.print(comma, FunctionExecutableDump(executable));
-    }
-    if (node->hasFunctionExprIndex()) {
-        FunctionExecutable* executable = m_codeBlock->functionExpr(node->functionExprIndex());
-        out.print(comma, FunctionExecutableDump(executable));
-    }
     if (node->hasStorageAccessData()) {
         StorageAccessData& storageAccessData = node->storageAccessData();
         out.print(comma, "id", storageAccessData.identifierNumber, "{", identifiers()[storageAccessData.identifierNumber], "}");
@@ -1014,14 +1006,54 @@ JSValue Graph::tryGetConstantProperty(const AbstractValue& base, PropertyOffset 
     return tryGetConstantProperty(base.m_value, base.m_structure, offset);
 }
 
-JSLexicalEnvironment* Graph::tryGetActivation(Node* node)
+JSValue Graph::tryGetConstantClosureVar(JSValue base, VirtualRegister reg)
 {
-    return node->dynamicCastConstant<JSLexicalEnvironment*>();
+    if (!base)
+        return JSValue();
+    
+    JSLexicalEnvironment* activation = jsDynamicCast<JSLexicalEnvironment*>(base);
+    if (!activation)
+        return JSValue();
+    
+    SymbolTable* symbolTable = activation->symbolTable();
+    ConcurrentJITLocker locker(symbolTable->m_lock);
+    
+    if (symbolTable->m_functionEnteredOnce.hasBeenInvalidated())
+        return JSValue();
+    
+    SymbolTableEntry* entry = symbolTable->entryFor(locker, reg);
+    if (!entry)
+        return JSValue();
+    
+    VariableWatchpointSet* set = entry->watchpointSet();
+    if (!set)
+        return JSValue();
+    
+    JSValue value = set->inferredValue();
+    if (!value)
+        return JSValue();
+    
+    watchpoints().addLazily(symbolTable->m_functionEnteredOnce);
+    watchpoints().addLazily(set);
+    
+    return value;
+}
+
+JSValue Graph::tryGetConstantClosureVar(const AbstractValue& value, VirtualRegister reg)
+{
+    return tryGetConstantClosureVar(value.m_value, reg);
+}
+
+JSValue Graph::tryGetConstantClosureVar(Node* node, VirtualRegister reg)
+{
+    if (!node->hasConstant())
+        return JSValue();
+    return tryGetConstantClosureVar(node->asJSValue(), reg);
 }
 
 WriteBarrierBase<Unknown>* Graph::tryGetRegisters(Node* node)
 {
-    JSLexicalEnvironment* lexicalEnvironment = tryGetActivation(node);
+    JSLexicalEnvironment* lexicalEnvironment = node->dynamicCastConstant<JSLexicalEnvironment*>();
     if (!lexicalEnvironment)
         return 0;
     return lexicalEnvironment->registers();
@@ -1080,6 +1112,10 @@ void Graph::registerFrozenValues()
     }
     m_codeBlock->constants().shrinkToFit();
     m_codeBlock->constantsSourceCodeRepresentation().shrinkToFit();
+    
+    // We have no use DFG IR have no need for FunctionExecutable*'s in the CodeBlock, since we
+    // use frozen values to refer to them.
+    m_codeBlock->jettisonFunctionDeclsAndExprs();
 }
 
 void Graph::visitChildren(SlotVisitor& visitor)

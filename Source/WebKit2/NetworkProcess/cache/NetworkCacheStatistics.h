@@ -32,39 +32,45 @@
 #include "NetworkCacheKey.h"
 #include "NetworkCacheStorage.h"
 #include <WebCore/SQLiteDatabase.h>
+#include <WebCore/Timer.h>
 
 namespace WebCore {
 class ResourceRequest;
 }
 
 namespace WebKit {
+namespace NetworkCache {
 
-class NetworkCacheStatistics {
+class Statistics {
 public:
-    static std::unique_ptr<NetworkCacheStatistics> open(const String& cachePath);
+    static std::unique_ptr<Statistics> open(const String& cachePath);
 
     void clear();
 
-    void recordNotCachingResponse(const NetworkCacheKey&, NetworkCache::StoreDecision);
-    void recordNotUsingCacheForRequest(uint64_t webPageID, const NetworkCacheKey&, const WebCore::ResourceRequest&, NetworkCache::RetrieveDecision);
-    void recordRetrievalFailure(uint64_t webPageID, const NetworkCacheKey&, const WebCore::ResourceRequest&);
-    void recordRetrievedCachedEntry(uint64_t webPageID, const NetworkCacheKey&, const WebCore::ResourceRequest&, NetworkCache::CachedEntryReuseFailure);
+    void recordNotCachingResponse(const Key&, StoreDecision);
+    void recordNotUsingCacheForRequest(uint64_t webPageID, const Key&, const WebCore::ResourceRequest&, RetrieveDecision);
+    void recordRetrievalFailure(uint64_t webPageID, const Key&, const WebCore::ResourceRequest&);
+    void recordRetrievedCachedEntry(uint64_t webPageID, const Key&, const WebCore::ResourceRequest&, CachedEntryReuseFailure);
 
 private:
-    explicit NetworkCacheStatistics(const String& databasePath);
+    explicit Statistics(const String& databasePath);
 
     void initialize(const String& databasePath);
     void bootstrapFromNetworkCache(const String& networkCachePath);
     void shrinkIfNeeded();
 
-    void addHashToDatabase(const String& hash);
+    void addHashesToDatabase(const Vector<StringCapture>& hashes);
+    void addStoreDecisionsToDatabase(const Vector<std::pair<StringCapture, NetworkCache::StoreDecision>>&);
+    void writeTimerFired();
 
-    typedef std::function<void (bool wasEverRequested, const Optional<NetworkCache::StoreDecision>&)> RequestedCompletionHandler;
-    void queryWasEverRequested(const String&, const RequestedCompletionHandler&);
+    typedef std::function<void (bool wasEverRequested, const Optional<StoreDecision>&)> RequestedCompletionHandler;
+    enum class NeedUncachedReason { No, Yes };
+    void queryWasEverRequested(const String&, NeedUncachedReason, const RequestedCompletionHandler&);
     void markAsRequested(const String& hash);
 
     struct EverRequestedQuery {
         String hash;
+        bool needUncachedReason;
         RequestedCompletionHandler completionHandler;
     };
 
@@ -75,9 +81,13 @@ private:
 #endif
     mutable HashSet<std::unique_ptr<const EverRequestedQuery>> m_activeQueries;
     WebCore::SQLiteDatabase m_database;
+    HashSet<String> m_hashesToAdd;
+    HashMap<String, NetworkCache::StoreDecision> m_storeDecisionsToAdd;
+    WebCore::Timer m_writeTimer;
 };
 
-} // namespace WebKit
+}
+}
 
 #endif // ENABLE(NETWORK_CACHE)
 

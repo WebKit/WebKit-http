@@ -356,7 +356,8 @@ private:
         case ArithSqrt:
         case ArithFRound:
         case ArithSin:
-        case ArithCos: {
+        case ArithCos:
+        case ArithLog: {
             fixDoubleOrBooleanEdge(node->child1());
             node->setResult(NodeResultDouble);
             break;
@@ -895,6 +896,11 @@ private:
             break;
         }
 
+        case GetClosureVar: {
+            fixEdge<KnownCellUse>(node->child1());
+            break;
+        }
+
         case PutClosureVar: {
             fixEdge<KnownCellUse>(node->child1());
             insertStoreBarrier(m_indexInBlock, node->child1(), node->child3());
@@ -1226,10 +1232,8 @@ private:
         case Flush:
         case PhantomLocal:
         case GetLocalUnlinked:
-        case GetClosureVar:
         case GetGlobalVar:
         case NotifyWrite:
-        case VariableWatchpoint:
         case VarInjectionWatchpoint:
         case AllocationProfileWatchpoint:
         case Call:
@@ -1271,7 +1275,6 @@ private:
         case LoopHint:
         case StoreBarrier:
         case StoreBarrierWithNullCheck:
-        case FunctionReentryWatchpoint:
         case TypedArrayWatchpoint:
         case MovHint:
         case ZombieHint:

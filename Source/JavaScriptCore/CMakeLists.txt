@@ -438,7 +438,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ErrorInstance.cpp
     runtime/ErrorPrototype.cpp
     runtime/ExceptionFuzz.cpp
-    runtime/ExceptionHelpers.cpp 
+    runtime/ExceptionHelpers.cpp
     runtime/Executable.cpp
     runtime/FunctionConstructor.cpp
     runtime/FunctionExecutableDump.cpp
@@ -450,6 +450,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/InitializeThreading.cpp
     runtime/IntendedStructureChain.cpp
     runtime/InternalFunction.cpp
+    runtime/IteratorOperations.cpp
     runtime/JSAPIValueWrapper.cpp
     runtime/JSLexicalEnvironment.cpp
     runtime/JSArgumentsIterator.cpp
@@ -494,6 +495,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSSet.cpp
     runtime/JSSetIterator.cpp
     runtime/JSString.cpp
+    runtime/JSStringIterator.cpp
     runtime/JSStringJoiner.cpp
     runtime/JSSymbolTableObject.cpp
     runtime/JSTypedArrayConstructors.cpp
@@ -545,6 +547,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/SparseArrayValueMap.cpp
     runtime/StrictEvalActivation.cpp
     runtime/StringConstructor.cpp
+    runtime/StringIteratorConstructor.cpp
+    runtime/StringIteratorPrototype.cpp
     runtime/StringObject.cpp
     runtime/StringPrototype.cpp
     runtime/StringRecursionChecker.cpp
@@ -579,6 +583,7 @@ list(APPEND JavaScriptCore_SOURCES
 
 set(JavaScriptCore_LUT_FILES
     runtime/ArrayConstructor.cpp
+    runtime/ArrayIteratorPrototype.cpp
     runtime/ArrayPrototype.cpp
     runtime/BooleanPrototype.cpp
     runtime/DateConstructor.cpp
@@ -596,6 +601,7 @@ set(JavaScriptCore_LUT_FILES
     runtime/RegExpObject.cpp
     runtime/RegExpPrototype.cpp
     runtime/StringConstructor.cpp
+    runtime/StringIteratorPrototype.cpp
     runtime/SymbolPrototype.cpp
 )
 

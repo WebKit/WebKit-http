@@ -99,8 +99,9 @@ messages -> WebPageProxy {
     PageDidRequestScroll(WebCore::IntPoint point)
     PageTransitionViewportReady()
     DidFindZoomableArea(WebCore::IntPoint target, WebCore::IntRect area)
-    DidChangeContentSize(WebCore::IntSize newSize)
 #endif
+
+    DidChangeContentSize(WebCore::IntSize newSize)
 
 #if ENABLE(INPUT_TYPE_COLOR)
     ShowColorPicker(WebCore::Color initialColor, WebCore::IntRect elementRect);
@@ -414,7 +415,7 @@ messages -> WebPageProxy {
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
-    ContentFilterDidBlockLoadForFrame(WebCore::ContentFilter contentFilter, uint64_t frameID)
+    ContentFilterDidBlockLoadForFrame(WebCore::ContentFilterUnblockHandler unblockHandler, uint64_t frameID)
 #endif
 
     IsPlayingAudioDidChange(bool newIsPlayingAudio)

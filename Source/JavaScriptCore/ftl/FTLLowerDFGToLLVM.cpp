@@ -510,6 +510,9 @@ private:
         case ArithSqrt:
             compileArithSqrt();
             break;
+        case ArithLog:
+            compileArithLog();
+            break;
         case ArithFRound:
             compileArithFRound();
             break;
@@ -818,8 +821,6 @@ private:
 
         case PhantomLocal:
         case LoopHint:
-        case VariableWatchpoint:
-        case FunctionReentryWatchpoint:
         case TypedArrayWatchpoint:
         case AllocationProfileWatchpoint:
         case MovHint:
@@ -1720,6 +1721,8 @@ private:
     }
 
     void compileArithSqrt() { setDouble(m_out.doubleSqrt(lowDouble(m_node->child1()))); }
+
+    void compileArithLog() { setDouble(m_out.doubleLog(lowDouble(m_node->child1()))); }
     
     void compileArithFRound()
     {
@@ -1852,7 +1855,7 @@ private:
         
         speculate(
             BadCell, jsValueValue(cell), m_node->child1().node(),
-            m_out.notEqual(cell, weakPointer(m_node->cellOperand()->value().asCell())));
+            m_out.notEqual(cell, weakPointer(m_node->cellOperand()->cell())));
     }
     
     void compileCheckBadCell()
@@ -3599,7 +3602,7 @@ private:
     void compileGetClosureVar()
     {
         setJSValue(m_out.load64(
-            addressFor(lowStorage(m_node->child1()), m_node->varNumber())));
+            addressFor(lowStorage(m_node->child2()), m_node->varNumber())));
     }
     
     void compilePutClosureVar()
@@ -3772,7 +3775,7 @@ private:
         int numPassedArgs = m_node->numChildren() - 1;
         int numArgs = numPassedArgs;
 
-        JSFunction* knownFunction = jsCast<JSFunction*>(m_node->cellOperand()->value().asCell());
+        JSFunction* knownFunction = m_node->castOperand<JSFunction*>();
         NativeFunction function = knownFunction->nativeFunction();
 
         Dl_info info;
@@ -5227,14 +5230,8 @@ private:
     template<typename ClassType>
     LValue allocateObject(Structure* structure, LValue butterfly, LBasicBlock slowPath)
     {
-        MarkedAllocator* allocator;
         size_t size = ClassType::allocationSize(0);
-        if (ClassType::needsDestruction && ClassType::hasImmortalStructure)
-            allocator = &vm().heap.allocatorForObjectWithImmortalStructureDestructor(size);
-        else if (ClassType::needsDestruction)
-            allocator = &vm().heap.allocatorForObjectWithNormalDestructor(size);
-        else
-            allocator = &vm().heap.allocatorForObjectWithoutDestructor(size);
+        MarkedAllocator* allocator = &vm().heap.allocatorForObjectOfType<ClassType>(size);
         return allocateObject(m_out.constIntPtr(allocator), structure, butterfly, slowPath);
     }
     

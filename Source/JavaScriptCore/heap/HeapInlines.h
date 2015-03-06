@@ -205,6 +205,36 @@ inline void* Heap::allocateWithoutDestructor(size_t bytes)
     return m_objectSpace.allocateWithoutDestructor(bytes);
 }
 
+template<typename ClassType>
+void* Heap::allocateObjectOfType(size_t bytes)
+{
+    if (ClassType::needsDestruction && ClassType::hasImmortalStructure)
+        return allocateWithImmortalStructureDestructor(bytes);
+    if (ClassType::needsDestruction)
+        return allocateWithNormalDestructor(bytes);
+    return allocateWithoutDestructor(bytes);
+}
+
+template<typename ClassType>
+MarkedSpace::Subspace& Heap::subspaceForObjectOfType()
+{
+    if (ClassType::needsDestruction && ClassType::hasImmortalStructure)
+        return subspaceForObjectsWithImmortalStructure();
+    if (ClassType::needsDestruction)
+        return subspaceForObjectNormalDestructor();
+    return subspaceForObjectWithoutDestructor();
+}
+
+template<typename ClassType>
+MarkedAllocator& Heap::allocatorForObjectOfType(size_t bytes)
+{
+    if (ClassType::needsDestruction && ClassType::hasImmortalStructure)
+        return allocatorForObjectWithImmortalStructureDestructor(bytes);
+    if (ClassType::needsDestruction)
+        return allocatorForObjectWithNormalDestructor(bytes);
+    return allocatorForObjectWithoutDestructor(bytes);
+}
+
 inline CheckedBoolean Heap::tryAllocateStorage(JSCell* intendedOwner, size_t bytes, void** outPtr)
 {
     CheckedBoolean result = m_storageSpace.tryAllocate(bytes, outPtr);
@@ -288,6 +318,16 @@ inline HashSet<MarkedArgumentBuffer*>& Heap::markListSet()
     if (!m_markListSet)
         m_markListSet = std::make_unique<HashSet<MarkedArgumentBuffer*>>();
     return *m_markListSet;
+}
+
+inline void Heap::registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback)
+{
+    m_weakGCMaps.add(weakGCMap, WTF::move(pruningCallback));
+}
+
+inline void Heap::unregisterWeakGCMap(void* weakGCMap)
+{
+    m_weakGCMaps.remove(weakGCMap);
 }
     
 } // namespace JSC

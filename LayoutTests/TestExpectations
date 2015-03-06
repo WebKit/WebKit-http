@@ -97,7 +97,7 @@ webkit.org/b/131919 inspector/dom [ Skip ]
 # These tests still mysteriously flake and/or time out.
 webkit.org/b/137131 inspector/debugger [ Skip ]
 webkit.org/b/137130 inspector/replay [ Skip ]
-webkit.org/b/137131 inspector/timeline [ Skip ]
+webkit.org/b/142208 inspector/timeline [ Skip ]
 inspector/model/remote-object-get-properties.html [ Skip ]
 inspector/model/remote-object-weak-collection.html [ Skip ]
 inspector/model/remote-object.html [ Skip ]
@@ -465,6 +465,7 @@ webkit.org/b/135053 [ Debug ] html5lib/webkit-resumer.html [ Slow ]
 [ Debug ] editing/selection/move-by-character-brute-force.html [ Slow ]
 [ Debug ] fast/workers/dedicated-worker-lifecycle.html [ Slow ]
 
+webkit.org/b/142175 js/promises-tests/promises-tests-2-1-2.html [ Pass Timeout ]
 webkit.org/b/139865 js/promises-tests/promises-tests-2-3-3.html [ Skip ]
 
 webkit.org/b/139840 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html [ Pass Failure ]
@@ -484,5 +485,6 @@ webkit.org/b/141488 fast/replaced/pdf-as-object-and-embed.html [ Skip ]
 
 webkit.org/b/141695 [ Debug ] fast/selectors/nth-last-child-of-register-requirement.html [ Slow ]
 
-# UserContentFilters are Mac-WK2-only for now
-http/tests/usercontentfilter [ Skip ]
+# Content extensions are Mac-WK2-only for now
+http/tests/contentextensions [ Skip ]
+

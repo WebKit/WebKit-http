@@ -355,6 +355,7 @@ void TestController::initialize(int argc, const char* argv[])
         WKContextConfigurationSetIndexedDBDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "IndexedDB").get());
         WKContextConfigurationSetLocalStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "LocalStorage").get());
         WKContextConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "WebSQL").get());
+        WKContextConfigurationSetMediaKeysStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "MediaKeys").get());
     }
 
     m_context = adoptWK(WKContextCreateWithConfiguration(configuration.get()));
@@ -694,9 +695,7 @@ void TestController::reattachPageToWebProcess()
 const char* TestController::webProcessName()
 {
     // FIXME: Find a way to not hardcode the process name.
-#if PLATFORM(IOS)
-    return "com.apple.WebKit.WebContent";
-#elif PLATFORM(MAC)
+#if PLATFORM(COCOA)
     return "com.apple.WebKit.WebContent.Development";
 #else
     return "WebProcess";
@@ -706,9 +705,7 @@ const char* TestController::webProcessName()
 const char* TestController::networkProcessName()
 {
     // FIXME: Find a way to not hardcode the process name.
-#if PLATFORM(IOS)
-    return "com.apple.WebKit.Networking";
-#elif PLATFORM(MAC)
+#if PLATFORM(COCOA)
     return "com.apple.WebKit.Networking.Development";
 #else
     return "NetworkProcess";

@@ -38,8 +38,6 @@ public:
     // Enough capacity to track a 64GB heap, so probably enough for anything.
     static const size_t capacity = 2048;
 
-    static kern_return_t enumerator(task_t, void* context, unsigned type_mask, vm_address_t, memory_reader_t, vm_range_recorder_t);
-
     Zone();
 
     void addSuperChunk(SuperChunk*);

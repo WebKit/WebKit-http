@@ -28,7 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.RemoteObject = function(objectId, type, subtype, value, description, preview)
+WebInspector.RemoteObject = function(objectId, type, subtype, value, description, size, preview)
 {
     // No superclass.
 
@@ -47,6 +47,7 @@ WebInspector.RemoteObject = function(objectId, type, subtype, value, description
         this._objectId = objectId;
         this._description = description;
         this._hasChildren = type !== "symbol";
+        this._size = size;
         this._preview = preview;
     } else {
         // Primitive or null.
@@ -61,12 +62,22 @@ WebInspector.RemoteObject = function(objectId, type, subtype, value, description
 
 WebInspector.RemoteObject.fromPrimitiveValue = function(value)
 {
-    return new WebInspector.RemoteObject(undefined, typeof value, undefined, value);
+    return new WebInspector.RemoteObject(undefined, typeof value, undefined, undefined, value);
 };
 
 WebInspector.RemoteObject.fromPayload = function(payload)
 {
     console.assert(typeof payload === "object", "Remote object payload should only be an object");
+
+    if (payload.subtype === "array") {
+        // COMPATIBILITY (iOS 8): Runtime.RemoteObject did not have size property,
+        // instead it was tacked onto the end of the description, like "Array[#]".
+        var match = payload.description.match(/\[(\d+)\]$/);
+        if (match) {
+            payload.size = parseInt(match[1]);
+            payload.description = payload.description.replace(/\[\d+\]$/, "");
+        }
+    }
 
     if (payload.preview) {
         // COMPATIBILITY (iOS 8): iOS 7 and 8 did not have type/subtype/description on
@@ -75,11 +86,23 @@ WebInspector.RemoteObject.fromPayload = function(payload)
             payload.preview.type = payload.type;
             payload.preview.subtype = payload.subtype;
             payload.preview.description = payload.description;
+            payload.preview.size = payload.size;
         }
         payload.preview = WebInspector.ObjectPreview.fromPayload(payload.preview);
     }
 
-    return new WebInspector.RemoteObject(payload.objectId, payload.type, payload.subtype, payload.value, payload.description, payload.preview);
+    return new WebInspector.RemoteObject(payload.objectId, payload.type, payload.subtype, payload.value, payload.description, payload.size, payload.preview);
+};
+
+WebInspector.RemoteObject.createCallArgument = function(valueOrObject)
+{
+    if (valueOrObject instanceof WebInspector.RemoteObject) {
+        if (valueOrObject.objectId)
+            return {objectId: valueOrObject.objectId};
+        return {value: valueOrObject.value};
+    }
+
+    return {value: valueOrObject};
 };
 
 WebInspector.RemoteObject.resolveNode = function(node, objectGroup, callback)
@@ -140,9 +163,19 @@ WebInspector.RemoteObject.prototype = {
         return this._value;
     },
 
+    get size()
+    {
+        return this._size || 0;
+    },
+
     get preview()
     {
         return this._preview;
+    },
+
+    hasSize: function()
+    {
+        return this.isArray() || this.isCollectionType();
     },
 
     hasValue: function()
@@ -413,16 +446,8 @@ WebInspector.RemoteObject.prototype = {
             callback(error, result, wasThrown);
         }
 
-        if (args) {
-            args = args.map(function(arg) {
-                if (arg instanceof WebInspector.RemoteObject) {
-                    if (arg.objectId)
-                        return {objectId: arg.objectId};
-                    return {value: arg.value};
-                }
-                return {value: arg};
-            });
-        }
+        if (args)
+            args = args.map(WebInspector.RemoteObject.createCallArgument);
 
         RuntimeAgent.callFunctionOn(this._objectId, functionDeclaration.toString(), args, true, undefined, generatePreview, mycallback);
     },
@@ -490,6 +515,11 @@ WebInspector.RemoteObject.prototype = {
             return 0;
 
         return parseInt(matches[1], 10);
+    },
+
+    asCallArgument: function()
+    {
+        return WebInspector.RemoteObject.createCallArgument(this);
     },
 
     // Private

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,12 +50,18 @@
 #include <WebCore/MemoryPressureHandler.h>
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/ResourceRequest.h>
+#include <WebCore/SecurityOriginHash.h>
 #include <WebCore/SessionID.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
 
 #if ENABLE(SEC_ITEM_SHIM)
 #include "SecItemShim.h"
+#endif
+
+#if ENABLE(NETWORK_CACHE)
+#include "NetworkCache.h"
+#include "NetworkCacheCoders.h"
 #endif
 
 using namespace WebCore;
@@ -263,9 +269,25 @@ static void fetchDiskCacheEntries(SessionID sessionID, std::function<void (Vecto
 {
 #if ENABLE(NETWORK_CACHE)
     if (NetworkCache::singleton().isEnabled()) {
-        // FIXME: Handle this.
-        RunLoop::main().dispatch([completionHandler] {
-            completionHandler({ });
+        auto* origins = new HashSet<RefPtr<SecurityOrigin>>();
+
+        NetworkCache::singleton().traverse([completionHandler, origins](const NetworkCache::Entry *entry) {
+            if (!entry) {
+                Vector<WebsiteData::Entry> entries;
+
+                for (auto& origin : *origins)
+                    entries.append(WebsiteData::Entry { origin, WebsiteDataTypeDiskCache });
+
+                delete origins;
+
+                RunLoop::main().dispatch([completionHandler, entries] {
+                    completionHandler(entries);
+                });
+
+                return;
+            }
+
+            origins->add(SecurityOrigin::create(entry->response.url()));
         });
 
         return;
@@ -295,6 +317,8 @@ void NetworkProcess::fetchWebsiteData(SessionID sessionID, uint64_t websiteDataT
 
         ~CallbackAggregator()
         {
+            ASSERT(RunLoop::isMain());
+
             auto completionHandler = WTF::move(m_completionHandler);
             auto websiteData = WTF::move(m_websiteData);
 
@@ -310,6 +334,11 @@ void NetworkProcess::fetchWebsiteData(SessionID sessionID, uint64_t websiteDataT
     RefPtr<CallbackAggregator> callbackAggregator = adoptRef(new CallbackAggregator([this, callbackID](WebsiteData websiteData) {
         parentProcessConnection()->send(Messages::NetworkProcessProxy::DidFetchWebsiteData(callbackID, websiteData), 0);
     }));
+
+    if (websiteDataTypes & WebsiteDataTypeCookies) {
+        if (auto* networkStorageSession = SessionTracker::session(sessionID))
+            getHostnamesWithCookies(*networkStorageSession, callbackAggregator->m_websiteData.hostNamesWithCookies);
+    }
 
     if (websiteDataTypes & WebsiteDataTypeDiskCache) {
         fetchDiskCacheEntries(sessionID, [callbackAggregator](Vector<WebsiteData::Entry> entries) {
@@ -337,9 +366,14 @@ void NetworkProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteData
     completionHandler();
 }
 
-void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, uint64_t callbackID)
+void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, const Vector<String>& cookieHostNames, uint64_t callbackID)
 {
-    // FIXME: Actually delete something.
+    if (websiteDataTypes & WebsiteDataTypeCookies) {
+        if (auto* networkStorageSession = SessionTracker::session(sessionID)) {
+            for (const auto& cookieHostName : cookieHostNames)
+                deleteCookiesForHostname(*networkStorageSession, cookieHostName);
+        }
+    }
 
     auto completionHandler = [this, callbackID] {
         parentProcessConnection()->send(Messages::NetworkProcessProxy::DidDeleteWebsiteDataForOrigins(callbackID), 0);

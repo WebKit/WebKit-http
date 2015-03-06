@@ -120,8 +120,8 @@ public:
     WEBCORE_EXPORT virtual void setContentsClippingRect(const FloatRoundedRect&) override;
     WEBCORE_EXPORT virtual bool setMasksToBoundsRect(const FloatRoundedRect&) override;
 
-    WEBCORE_EXPORT virtual void setShapeLayerPath(const Path&);
-    WEBCORE_EXPORT virtual void setShapeLayerWindRule(WindRule);
+    WEBCORE_EXPORT virtual void setShapeLayerPath(const Path&) override;
+    WEBCORE_EXPORT virtual void setShapeLayerWindRule(WindRule) override;
 
     WEBCORE_EXPORT virtual void suspendAnimations(double time) override;
     WEBCORE_EXPORT virtual void resumeAnimations() override;
@@ -256,7 +256,7 @@ private:
     FloatPoint computePositionRelativeToBase(float& pageScale) const;
 
     bool requiresTiledLayer(float pageScaleFactor) const;
-    void swapFromOrToTiledLayer(bool useTiledLayer);
+    void changeLayerTypeTo(PlatformCALayer::LayerType);
 
     CompositingCoordinatesOrientation defaultContentsOrientation() const;
 
@@ -493,6 +493,7 @@ private:
     ContentsLayerPurpose m_contentsLayerPurpose;
     bool m_isPageTiledBackingLayer : 1;
     bool m_needsFullRepaint : 1;
+    bool m_usingBackdropLayerType : 1;
 
     Color m_contentsSolidColor;
 

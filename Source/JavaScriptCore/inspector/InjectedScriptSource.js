@@ -295,6 +295,19 @@ InjectedScript.prototype = {
         });
     },
 
+    saveResult: function(callArgumentJSON)
+    {
+        this._savedResultIndex = 0;
+
+        try {
+            var callArgument = InjectedScriptHost.evaluate("(" + callArgumentJSON + ")");
+            var value = this._resolveCallArgument(callArgument);
+            this._saveResult(value);
+        } catch (e) {}
+
+        return this._savedResultIndex;
+    },
+
     getFunctionDetails: function(functionId)
     {
         var parsedFunctionId = this._parseObjectId(functionId);
@@ -367,8 +380,12 @@ InjectedScript.prototype = {
         }
     },
 
-    _resolveCallArgument: function(callArgumentJson) {
-        var objectId = callArgumentJson.objectId;
+    _resolveCallArgument: function(callArgumentJSON)
+    {
+        if ("value" in callArgumentJSON)
+            return callArgumentJSON.value;
+
+        var objectId = callArgumentJSON.objectId;
         if (objectId) {
             var parsedArgId = this._parseObjectId(objectId);
             if (!parsedArgId || parsedArgId["injectedScriptId"] !== injectedScriptId)
@@ -379,15 +396,15 @@ InjectedScript.prototype = {
                 throw "Could not find object with given id";
 
             return resolvedArg;
-        } else if ("value" in callArgumentJson)
-            return callArgumentJson.value;
+        }
+
         return undefined;
     },
 
     _evaluateAndWrap: function(evalFunction, object, expression, objectGroup, isEvalOnCallFrame, injectCommandLineAPI, returnByValue, generatePreview, saveResult)
     {
         try {
-            this._savedResultIndex = undefined;
+            this._savedResultIndex = 0;
 
             var returnObject = {
                 wasThrown: false,
@@ -751,11 +768,8 @@ InjectedScript.prototype = {
         }
 
         var className = InjectedScriptHost.internalConstructorName(obj);
-        if (subtype === "array") {
-            if (typeof obj.length === "number")
-                className += "[" + obj.length + "]";
+        if (subtype === "array")
             return className;
-        }
 
         // NodeList in JSC is a function, check for array prior to this.
         if (typeof obj === "function")
@@ -887,6 +901,13 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
     this.className = InjectedScriptHost.internalConstructorName(object);
     this.description = injectedScript._describe(object);
 
+    if (subtype === "array")
+        this.size = typeof object.length === "number" ? object.length : 0;
+    else if (subtype === "set" || subtype === "map")
+        this.size = object.size;
+    else if (subtype === "weakmap")
+        this.size = InjectedScriptHost.weakMapSize(object);
+
     if (generatePreview && this.type === "object")
         this.preview = this._generatePreview(object, undefined, columnNames);
 }
@@ -907,6 +928,9 @@ InjectedScript.RemoteObject.prototype = {
                 preview.properties = [];
             }
         }
+
+        if ("size" in this)
+            preview.size = this.size;
 
         return preview;
     },

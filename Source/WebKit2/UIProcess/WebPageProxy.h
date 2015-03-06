@@ -894,7 +894,7 @@ public:
     // WebPopupMenuProxy::Client
     virtual NativeWebMouseEvent* currentlyProcessedMouseDownEvent() override;
 
-    void setSuppressVisibilityUpdates(bool flag) { m_suppressVisibilityUpdates = flag; }
+    void setSuppressVisibilityUpdates(bool flag);
     bool suppressVisibilityUpdates() { return m_suppressVisibilityUpdates; }
 
 #if PLATFORM(IOS)
@@ -1148,8 +1148,9 @@ private:
     void pageDidRequestScroll(const WebCore::IntPoint&);
     void pageTransitionViewportReady();
     void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&);
-    void didChangeContentSize(const WebCore::IntSize&);
 #endif
+
+    void didChangeContentSize(const WebCore::IntSize&);
 
 #if ENABLE(INPUT_TYPE_COLOR)
     void showColorPicker(const WebCore::Color& initialColor, const WebCore::IntRect&);
@@ -1366,7 +1367,7 @@ private:
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
-    void contentFilterDidBlockLoadForFrame(const WebCore::ContentFilter&, uint64_t frameID);
+    void contentFilterDidBlockLoadForFrame(const WebCore::ContentFilterUnblockHandler&, uint64_t frameID);
 #endif
 
     uint64_t generateNavigationID();

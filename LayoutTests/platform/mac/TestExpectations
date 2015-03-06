@@ -309,10 +309,10 @@ webkit.org/b/78801 touchadjustment
 # <rdar://problem/11059777>
 webkit.org/b/81289 canvas/philip/tests/2d.line.cap.round.html [ Failure ]
 
-# Needs BatteryClient implementation.
+# BatteryClient is not supported
 webkit.org/b/62698 batterystatus/
 
-# Proximity Events is not supported.
+# Proximity Events are not supported.
 proximity
 fast/events/constructors/device-proximity-event-constructor.html
 
@@ -439,8 +439,8 @@ webkit.org/b/112620 [ Debug ] svg/custom/image-with-attr-change-after-delete-cra
 
 # Assorted failures that need investigation
 
-# https://bugs.webkit.org/show_bug.cgi?id=107118
-fast/canvas/canvas-quadratic-same-endpoint.html
+webkit.org/b/107118 fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
+webkit.org/b/142258 fast/css/object-fit/object-fit-canvas.html [ Pass ImageOnlyFailure ]
 
 # --- Compositing ----
 css3/filters/composited-during-transition-layertree.html
@@ -997,7 +997,7 @@ webkit.org/b/139789 media/media-controls-timeline-updates.html [ Pass Failure ]
 webkit.org/b/139825 media/video-seek-past-end-paused.html [ Pass Timeout ]
 webkit.org/b/141084 [ Yosemite ] http/tests/media/video-preload.html [ Pass Timeout ]
 webkit.org/b/141294 compositing/reflections/masked-reflection-on-composited.html [ Pass Crash ]
-webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Faiure ]
+webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Failure ]
 ## --- End flaky media tests
 
 # Skipped while Eric Carlson works on a fix.
@@ -1213,22 +1213,14 @@ webkit.org/b/93560 fast/canvas/webgl/tex-image-and-sub-image-2d-with-image-data.
 fast/canvas/canvas-draw-canvas-on-canvas-shadow.html [ Pass Failure ]
 fast/canvas/canvas-fillRect-gradient-shadow.html [ Pass Failure ]
 
-# Kerning, Ligatures, and Printer Fonts caused these tests to fail
-webkit.org/b/139968 fast/text/font-kerning.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/text/font-variant-ligatures.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/text/whitespace/inline-whitespace-wrapping-7.html [ ImageOnlyFailure ]
-webkit.org/b/139968 fast/text/word-space-between-inlines.html [ ImageOnlyFailure ]
-webkit.org/b/139968 imported/mozilla/svg/dynamic-text-07.svg [ ImageOnlyFailure ]
-webkit.org/b/139968 mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
-webkit.org/b/139968 platform/mac/fast/text/multiple-codeunit-vertical-upright.html [ ImageOnlyFailure ]
-webkit.org/b/139968 svg/text/svg-font-word-rounding-hacks-spaces.html [ ImageOnlyFailure ]
-webkit.org/b/139968 svg/text/tspan-outline.html [ ImageOnlyFailure ]
-webkit.org/b/139968 svg/transforms/transformed-text-fill-gradient.html [ ImageOnlyFailure ]
+# SVG gradients are not bit-for-bit equivalent through a scale.
+webkit.org/b/142192 svg/transforms/transformed-text-fill-gradient.html [ ImageOnlyFailure ]
 
 # Word-spacing is incorrectly applied
 webkit.org/b/142086 fast/css/word-spacing-between-blocks.html [ ImageOnlyFailure ]
 webkit.org/b/142086 fast/css/word-spacing-between-inlines.html [ ImageOnlyFailure ]
 webkit.org/b/142086 fast/css/word-spacing-characters.html [ ImageOnlyFailure ]
+webkit.org/b/142086 fast/text/word-space-between-inlines.html [ ImageOnlyFailure ]
 
 # Underlines' starting and ending positions need to be pixel-snapped
 webkit.org/b/142087 fast/css3-text/css3-text-decoration/no-gap-between-two-rounded-textboxes.html [ ImageOnlyFailure ]
@@ -1270,3 +1262,26 @@ webkit.org/b/141118 inspector/css/selector-dynamic-specificity.html [ Skip ]
 webkit.org/b/141601 inspector/css/stylesheet-with-mutations.html [ Skip ]
 
 webkit.org/b/141534 [ Yosemite ] media/video-load-networkState.html [ Pass Crash ]
+
+# Skip media control tests until new controls are finalized
+webkit.org/b/142142 media/video-no-audio.html [ Skip ]
+webkit.org/b/142142 media/controls-strict.html [ Skip ]
+webkit.org/b/142142 media/video-volume-slider.html [ Skip ]
+webkit.org/b/142142 media/controls-styling.html [ Skip ]
+webkit.org/b/142142 media/video-display-toggle.html [ Skip ]
+webkit.org/b/142142 media/audio-controls-rendering.html [ Skip ]
+webkit.org/b/142142 media/video-zoom-controls.html [ Skip ]
+webkit.org/b/142142 fast/hidpi/video-controls-in-hidpi.html [ Skip ]
+webkit.org/b/142142 media/video-controls-rendering.html [ Skip ]
+webkit.org/b/142142 accessibility/media-element.html [ Skip ]
+webkit.org/b/142142 media/controls-without-preload.html [ Skip ]
+webkit.org/b/142142 media/media-controls-clone.html [ Skip ]
+webkit.org/b/142142 fast/layers/video-layer.html [ Skip ]
+webkit.org/b/142142 media/video-empty-source.html [ Skip ]
+webkit.org/b/142142 media/audio-delete-while-slider-thumb-clicked.html [ Skip ]
+webkit.org/b/142142 media/controls-after-reload.html [ Skip ]
+webkit.org/b/142142 media/nodesFromRect-shadowContent.html [ Skip ]
+webkit.org/b/142142 media/video-initially-hidden-volume-slider-up.html [ Skip ]
+
+# Test uses Yosemite blurs
+[ Mavericks ] compositing/media-controls-bar-appearance.html [ Skip ]

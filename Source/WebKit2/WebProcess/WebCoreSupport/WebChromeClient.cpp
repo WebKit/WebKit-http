@@ -523,9 +523,7 @@ void WebChromeClient::contentsSizeChanged(Frame* frame, const IntSize& size) con
         m_page->drawingArea()->layerTreeHost()->sizeDidChange(size);
 #endif
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     m_page->send(Messages::WebPageProxy::DidChangeContentSize(size));
-#endif
 
     m_page->drawingArea()->mainFrameContentSizeChanged(size);
 
@@ -724,8 +722,9 @@ void WebChromeClient::reachedApplicationCacheOriginQuota(SecurityOrigin* origin,
     if (WebPage::synchronousMessagesShouldSpinRunLoop())
         syncSendFlags |= IPC::SpinRunLoopWhileWaitingForReply;
 
+    auto& cacheStorage = ApplicationCacheStorage::singleton();
     int64_t currentQuota = 0;
-    if (!cacheStorage().calculateQuotaForOrigin(origin, currentQuota))
+    if (!cacheStorage.calculateQuotaForOrigin(origin, currentQuota))
         return;
 
     uint64_t newQuota = 0;
@@ -733,7 +732,7 @@ void WebChromeClient::reachedApplicationCacheOriginQuota(SecurityOrigin* origin,
         Messages::WebPageProxy::ReachedApplicationCacheOriginQuota(origin->databaseIdentifier(), currentQuota, totalBytesNeeded),
         Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::Reply(newQuota), m_page->pageID(), std::chrono::milliseconds::max(), syncSendFlags);
 
-    cacheStorage().storeUpdatedQuotaForOrigin(origin, newQuota);
+    cacheStorage.storeUpdatedQuotaForOrigin(origin, newQuota);
 }
 
 #if ENABLE(DASHBOARD_SUPPORT)

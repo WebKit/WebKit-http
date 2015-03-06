@@ -40,6 +40,8 @@ public:
     File* file() const;
     void setFile(File*);
 
+    String attachmentTitle() const;
+
 private:
     HTMLAttachmentElement(const QualifiedName&, Document&);
     virtual ~HTMLAttachmentElement();
@@ -47,6 +49,7 @@ private:
     virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 
     virtual bool canContainRangeEndPoint() const override { return false; }
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
     
     RefPtr<File> m_file;
 };

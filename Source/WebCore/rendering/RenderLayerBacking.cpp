@@ -169,7 +169,7 @@ std::unique_ptr<GraphicsLayer> RenderLayerBacking::createGraphicsLayer(const Str
 
     std::unique_ptr<GraphicsLayer> graphicsLayer = GraphicsLayer::create(graphicsLayerFactory, *this, layerType);
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
     graphicsLayer->setName(name);
 #else
     UNUSED_PARAM(name);
@@ -275,7 +275,7 @@ void RenderLayerBacking::updateDebugIndicators(bool showBorder, bool showRepaint
 void RenderLayerBacking::createPrimaryGraphicsLayer()
 {
     String layerName;
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
     layerName = m_owningLayer.name();
 #endif
     
@@ -311,6 +311,7 @@ void RenderLayerBacking::createPrimaryGraphicsLayer()
 #if ENABLE(CSS_COMPOSITING)
     updateBlendMode(renderer().style());
 #endif
+    updateCustomAppearance(renderer().style());
 }
 
 #if PLATFORM(IOS)
@@ -402,6 +403,17 @@ void RenderLayerBacking::updateBlendMode(const RenderStyle& style)
         m_graphicsLayer->setBlendMode(style.blendMode());
 }
 #endif
+
+void RenderLayerBacking::updateCustomAppearance(const RenderStyle& style)
+{
+    ControlPart appearance = style.appearance();
+    if (appearance == MediaControlsLightBarBackgroundPart)
+        m_graphicsLayer->setCustomAppearance(GraphicsLayer::LightBackdropAppearance);
+    else if (appearance == MediaControlsDarkBarBackgroundPart)
+        m_graphicsLayer->setCustomAppearance(GraphicsLayer::DarkBackdropAppearance);
+    else
+        m_graphicsLayer->setCustomAppearance(GraphicsLayer::NoCustomAppearance);
+}
 
 // FIXME: the hasAcceleratedTouchScrolling()/needsCompositedScrolling() concepts need to be merged.
 static bool layerOrAncestorIsTransformedOrUsingCompositedScrolling(RenderLayer& layer)
@@ -1354,7 +1366,7 @@ bool RenderLayerBacking::updateForegroundLayer(bool needsForegroundLayer)
     if (needsForegroundLayer) {
         if (!m_foregroundLayer) {
             String layerName;
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
             layerName = m_owningLayer.name() + " (foreground)";
 #endif
             m_foregroundLayer = createGraphicsLayer(layerName);
@@ -1383,7 +1395,7 @@ bool RenderLayerBacking::updateBackgroundLayer(bool needsBackgroundLayer)
     if (needsBackgroundLayer) {
         if (!m_backgroundLayer) {
             String layerName;
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
             layerName = m_owningLayer.name() + " (background)";
 #endif
             m_backgroundLayer = createGraphicsLayer(layerName);
@@ -1395,7 +1407,7 @@ bool RenderLayerBacking::updateBackgroundLayer(bool needsBackgroundLayer)
         
         if (!m_contentsContainmentLayer) {
             String layerName;
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
             layerName = m_owningLayer.name() + " (contents containment)";
 #endif
             m_contentsContainmentLayer = createGraphicsLayer(layerName);
@@ -1438,8 +1450,8 @@ void RenderLayerBacking::updateMaskingLayer(bool hasMask, bool hasClipPath)
             maskPhases = GraphicsLayerPaintMask;
         
         if (hasClipPath) {
-            bool clipNeedsPainting = renderer().style().clipPath()->type() == ClipPathOperation::Reference;
-            if (clipNeedsPainting || !GraphicsLayer::supportsLayerType(GraphicsLayer::Type::Shape))
+            // If we have a mask, we need to paint the combined clip-path and mask into the mask layer.
+            if (hasMask || renderer().style().clipPath()->type() == ClipPathOperation::Reference || !GraphicsLayer::supportsLayerType(GraphicsLayer::Type::Shape))
                 maskPhases |= GraphicsLayerPaintClipPath;
         }
 

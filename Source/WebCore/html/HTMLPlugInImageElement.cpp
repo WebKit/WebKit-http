@@ -223,7 +223,7 @@ RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(Ref<Rende
 
 bool HTMLPlugInImageElement::childShouldCreateRenderer(const Node& child) const
 {
-    if (is<RenderSnapshottedPlugIn>(renderer()) && !partOfSnapshotOverlay(&child))
+    if (is<RenderSnapshottedPlugIn>(renderer()) && !hasShadowRootParent(child))
         return false;
 
     return HTMLPlugInElement::childShouldCreateRenderer(child);
@@ -237,7 +237,7 @@ bool HTMLPlugInImageElement::willRecalcStyle(Style::Change change)
 
     // FIXME: There shoudn't be need to force render tree reconstruction here.
     // It is only done because loading and load event dispatching is tied to render tree construction.
-    if (!useFallbackContent() && needsWidgetUpdate() && renderer() && (displayState() != DisplayingSnapshot))
+    if (!useFallbackContent() && needsWidgetUpdate() && renderer() && !isImageType() && (displayState() != DisplayingSnapshot))
         setNeedsStyleRecalc(ReconstructRenderTree);
     return true;
 }

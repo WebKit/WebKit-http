@@ -1,3 +1,113 @@
+2015-03-05  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r173761): ASSERTION FAILED: !is8Bit() in StringImpl::characters16()
+        https://bugs.webkit.org/show_bug.cgi?id=142350
+
+        Reviewed by Michael Saboff and Benjamin Poulain.
+
+        Fix ASSERTION FAILED: !is8Bit() in StringImpl::characters16() from
+        WTF::equalInner() after r173761. The code was incorrectly assuming that
+        if stringImpl is 16-bit, then matchString is 16-bit too, which is not
+        correct.
+
+        Also rename WTFString::startsWith() / endsWith() taking an offset to
+        hasInfixStartingAt() / hasInfixEndingAt() for clarity. It seems odd
+        to call it startsWith even though it won't technically *start* with
+        the pattern if the input offset is greater than zero.
+
+        Also drop the caseSensitive argument as it is never used (always true
+        at call sites.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::equalInner):
+        (WTF::StringImpl::hasInfixStartingAt):
+        (WTF::StringImpl::hasInfixEndingAt):
+        (WTF::StringImpl::startsWith): Deleted.
+        (WTF::StringImpl::endsWith): Deleted.
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::hasInfixStartingAt):
+        (WTF::String::hasInfixEndingAt):
+        (WTF::String::startsWith): Deleted.
+        (WTF::String::endsWith): Deleted.
+
+2015-03-05  Chris Dumez  <cdumez@apple.com>
+
+        NetworkCache efficacy logging is using too much CPU
+        https://bugs.webkit.org/show_bug.cgi?id=142186
+        <rdar://problem/19632080>
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/HashMap.h:
+        (WTF::copyToVector):
+        Add copyToVector() utility function for HashMap that uses an std::pair<key, value>
+        as element type.
+
+        * wtf/text/WTFString.h:
+        (WTF::StringCapture::StringCapture):
+        (WTF::StringCapture::operator=):
+        Add default constructor and assignment operator to StringCapture so that
+        it can be used in a Vector.
+
+2015-03-05  Antti Koivisto  <antti@apple.com>
+
+        Support WorkQueue QOS classes on Mavericks
+        https://bugs.webkit.org/show_bug.cgi?id=142328
+
+        Reviewed by Anders Carlsson.
+
+        "The priority of a dispatch queue is inherited from its target queue.  In order to
+        change the priority of a queue created with dispatch_queue_create(), use the
+        dispatch_get_global_queue() function to obtain a target queue of the desired prior-
+        ity."
+
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::targetQueueForQOSClass):
+        (WTF::WorkQueue::platformInitialize):
+
+2015-03-03  Anders Carlsson  <andersca@apple.com>
+
+        Remove unused compression code
+        https://bugs.webkit.org/show_bug.cgi?id=142237
+
+        Reviewed by Geoffrey Garen.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Compression.cpp: Removed.
+        * wtf/Compression.h: Removed.
+
+2015-03-02  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [WK2] Remove unnecessary create() factory functions.
+        https://bugs.webkit.org/show_bug.cgi?id=142161
+
+        Reviewed by Chris Dumez.
+
+        We can replace some create() factory functions with std::make_unique(). Because
+        it just returns new instance. Even some of those functions have used std::unique_ptr<>
+        instead of std::make_unique<>. Fixed all.
+
+        * wtf/efl/WorkQueueEfl.cpp:
+        (WorkQueue::dispatch):
+
+2015-03-02  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG compile time measurements should really report milliseconds
+        https://bugs.webkit.org/show_bug.cgi?id=142209
+
+        Reviewed by Benjamin Poulain.
+        
+        This bug was introduced because currentTimeMS() calls were converted to
+        monotonicallyIncreasingTime() calls. Perhaps this bug would be less likely if there was a
+        monotonicallyIncreasingTimeMS() function available, so this patch adds it.
+
+        * wtf/CurrentTime.h:
+        (WTF::monotonicallyIncreasingTimeMS):
+
 2015-02-27  Darin Adler  <darin@apple.com>
 
         Remove unused PossiblyNull

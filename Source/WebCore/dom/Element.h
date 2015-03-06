@@ -310,6 +310,8 @@ public:
 
     virtual void copyNonAttributePropertiesFromElement(const Element&) { }
 
+    void lazyReattach();
+
     virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&);
     virtual bool rendererIsNeeded(const RenderStyle&);
 
@@ -623,7 +625,7 @@ private:
     void addAttributeInternal(const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
     void removeAttributeInternal(unsigned index, SynchronizationOfLazyAttribute);
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
     virtual void formatForDebugger(char* buffer, unsigned length) const override;
 #endif
 

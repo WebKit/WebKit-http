@@ -1183,6 +1183,9 @@ struct Node {
         case CheckCell:
         case NativeConstruct:
         case NativeCall:
+        case NewFunctionNoCheck:
+        case NewFunction:
+        case NewFunctionExpression:
             return true;
         default:
             return false;
@@ -1195,6 +1198,12 @@ struct Node {
         return reinterpret_cast<FrozenValue*>(m_opInfo);
     }
     
+    template<typename T>
+    T castOperand()
+    {
+        return cellOperand()->cast<T>();
+    }
+    
     void setCellOperand(FrozenValue* value)
     {
         ASSERT(hasCellOperand());
@@ -1203,7 +1212,7 @@ struct Node {
     
     bool hasVariableWatchpointSet()
     {
-        return op() == NotifyWrite || op() == VariableWatchpoint;
+        return op() == NotifyWrite;
     }
     
     VariableWatchpointSet* variableWatchpointSet()
@@ -1339,40 +1348,6 @@ struct Node {
         default:
             return false;
         }
-    }
-    
-    bool hasFunctionDeclIndex()
-    {
-        return op() == NewFunction
-            || op() == NewFunctionNoCheck;
-    }
-    
-    unsigned functionDeclIndex()
-    {
-        ASSERT(hasFunctionDeclIndex());
-        return m_opInfo;
-    }
-    
-    bool hasFunctionExprIndex()
-    {
-        return op() == NewFunctionExpression;
-    }
-    
-    unsigned functionExprIndex()
-    {
-        ASSERT(hasFunctionExprIndex());
-        return m_opInfo;
-    }
-    
-    bool hasSymbolTable()
-    {
-        return op() == FunctionReentryWatchpoint;
-    }
-    
-    SymbolTable* symbolTable()
-    {
-        ASSERT(hasSymbolTable());
-        return reinterpret_cast<SymbolTable*>(m_opInfo);
     }
     
     bool hasArrayMode()

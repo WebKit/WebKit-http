@@ -40,9 +40,7 @@ public:
 
     HTMLAttachmentElement& attachmentElement() const;
 
-    void representedFileChanged();
-
-    bool isSelected() const;
+    void invalidate();
 
 private:
     void element() const = delete;
