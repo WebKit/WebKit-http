@@ -33,8 +33,6 @@
 #include "WaylandDisplayWPE.h"
 #include <EGL/egl.h>
 
-#include <cstdio>
-
 namespace WebCore {
 
 WaylandSurface::WaylandSurface(struct wl_surface* wlSurface, EGLNativeWindowType nativeWindow)

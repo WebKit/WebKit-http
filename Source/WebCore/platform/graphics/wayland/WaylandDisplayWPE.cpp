@@ -33,8 +33,6 @@
 #include <cstring>
 #include <glib.h>
 
-#include <stdio.h>
-
 namespace WebCore {
 
 class EventSource {
