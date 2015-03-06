@@ -61,6 +61,8 @@ private:
     virtual void didCommitLoadForMainFrame(const String&, bool) override;
     virtual void handleDownloadRequest(DownloadProxy*) override;
 
+    virtual void didChangeContentSize(const WebCore::IntSize&) override;
+
     virtual void setCursor(const WebCore::Cursor&) override;
     virtual void setCursorHiddenUntilMouseMoves(bool) override;
     virtual void didChangeViewportProperties(const WebCore::ViewportAttributes&) override;

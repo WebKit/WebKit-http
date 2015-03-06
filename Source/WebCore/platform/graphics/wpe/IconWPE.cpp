@@ -32,7 +32,7 @@ Icon::~Icon()
 {
 }
 
-void Icon::paint(GraphicsContext*, const IntRect&)
+void Icon::paint(GraphicsContext&, const FloatRect&)
 {
 }
 
