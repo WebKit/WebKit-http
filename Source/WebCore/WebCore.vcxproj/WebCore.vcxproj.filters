@@ -7225,6 +7225,9 @@
     <ClCompile Include="..\platform\cf\CoreMediaSoftLink.cpp">
       <Filter>platform\cf</Filter>
     </ClCompile>
+    <ClCompile Include="..\platform\cf\MediaAccessibilitySoftLink.cpp">
+      <Filter>platform\cf</Filter>
+    </ClCompile>
     <ClCompile Include="..\platform\graphics\FontCascadeFonts.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
@@ -12184,6 +12187,9 @@
     <ClInclude Include="..\platform\cf\CoreMediaSoftLink.h">
       <Filter>platform\cf</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\cf\MediaAccessibilitySoftLink.h">
+      <Filter>platform\cf</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\cf\win\CertificateCFWin.h">
       <Filter>platform\cf\win</Filter>
     </ClInclude>
@@ -14408,7 +14414,7 @@
     <ClInclude Include="..\rendering\BorderEdge.h">
       <Filter>rendering</Filter>
     </ClInclude>
-    <ClInclude Include="..\rendering\line\BreakingContextInlineHeaders.h">
+    <ClInclude Include="..\rendering\line\BreakingContext.h">
       <Filter>rendering\line</Filter>
     </ClInclude>
     <ClInclude Include="..\page\ContextMenuContext.h">

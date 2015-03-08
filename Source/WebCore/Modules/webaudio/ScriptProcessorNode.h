@@ -65,9 +65,6 @@ public:
 
     size_t bufferSize() const { return m_bufferSize; }
 
-    EventListener* onaudioprocess() { return getAttributeEventListener(eventNames().audioprocessEvent); }
-    void setOnaudioprocess(PassRefPtr<EventListener>);
-    
 private:
     virtual double tailTime() const override;
     virtual double latencyTime() const override;
@@ -76,6 +73,10 @@ private:
 
     static void fireProcessEventDispatch(void* userData);
     void fireProcessEvent();
+
+    bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
+    bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) override;
+    void removeAllEventListeners() override;
 
     // Double buffering
     unsigned doubleBufferIndex() const { return m_doubleBufferIndex; }

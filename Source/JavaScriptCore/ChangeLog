@@ -1,3 +1,302 @@
+2015-03-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the removal of BlockAllocator, which is now unused.
+
+        * API/JSBase.cpp:
+        * CMakeLists.txt:
+        * JavaScriptCore.order:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/BlockAllocator.cpp: Removed.
+        * heap/BlockAllocator.h: Removed.
+        * heap/GCThreadSharedData.h:
+        * heap/HandleBlockInlines.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::Heap::blockAllocator): Deleted.
+        * heap/HeapTimer.cpp:
+        * heap/MarkedBlock.h:
+        * heap/MarkedSpace.h:
+        * heap/Region.h: Removed.
+        * heap/SuperRegion.cpp: Removed.
+        * heap/SuperRegion.h: Removed.
+
+2015-03-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181010.
+        https://bugs.webkit.org/show_bug.cgi?id=142442
+
+        Broke media/video-src-invalid-poster.html (Requested by kling
+        on #webkit).
+
+        Reverted changeset:
+
+        "Stale entries in WeakGCMaps are keeping tons of WeakBlocks
+        alive unnecessarily."
+        https://bugs.webkit.org/show_bug.cgi?id=142115
+        http://trac.webkit.org/changeset/181010
+
+2015-03-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The code to link FunctionExecutable is duplicated everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=142436
+
+        Reviewed by Darin Adler.
+
+        Reduced code duplication by factoring out linkInsideExecutable and linkGlobalCode.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock): Calls linkInsideExecutable.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::linkInsideExecutable): Renamed from link. Now takes care of startOffset.
+        This change was needed to use this function in CodeBlock::CodeBlock. Also, this function no longer takes
+        lineOffset since this information is already stored in the source code.
+        (JSC::UnlinkedFunctionExecutable::linkGlobalCode): Extracted from FunctionExecutable::fromGlobalCode.
+
+        * bytecode/UnlinkedCodeBlock.h:
+
+        * generate-js-builtins: Calls linkGlobalCode.
+
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties): Calls linkGlobalCode.
+        (JSC::FunctionExecutable::fromGlobalCode): Calls linkGlobalCode.
+
+2015-03-06  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the MarkedBlock piece of this patch.
+
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::allocateBlock):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::create):
+        (JSC::MarkedBlock::destroy):
+        (JSC::MarkedBlock::MarkedBlock):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::capacity):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::freeBlock):
+
+2015-03-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        fromGlobalCode has an unused Debugger* argument
+        https://bugs.webkit.org/show_bug.cgi?id=142430
+
+        Reviewed by Darin Adler.
+
+        Removed the debugger argument from UnlinkedFunctionExecutable::fromGlobalCode and
+        FunctionExecutable::fromGlobalCode since it's not used in either function.
+
+        Also use reference in other arguments.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::fromGlobalCode):
+        * bytecode/UnlinkedCodeBlock.h:
+        * runtime/Executable.cpp:
+        (JSC::FunctionExecutable::fromGlobalCode):
+        * runtime/Executable.h:
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Turn off a warning on Windows.
+
+        Reduce build logging noise on Windows.
+
+        * JavaScriptCore.vcxproj/JavaScriptCoreCommon.props:
+
+2015-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Support for Iterator Objects
+        https://bugs.webkit.org/show_bug.cgi?id=142420
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Runtime.json:
+        Add new object subtype "iterator" for built-in iterator objects.
+
+        * inspector/InjectedScriptSource.js:
+        Return iterator values as Entry objects.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::subtype):
+        Identify "iterator" typed objects.
+
+        (Inspector::JSInjectedScriptHost::getInternalProperties):
+        Provide internal properties for the different Iterator objects.
+
+        (Inspector::JSInjectedScriptHost::iteratorEntries):
+        Fetch the next few iterator entries of a built-in iterator object.
+
+        * inspector/JSInjectedScriptHost.h:
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        (Inspector::jsInjectedScriptHostPrototypeFunctionIteratorEntries):
+        Call through to JSInjectedScriptHost.
+
+        * runtime/JSArgumentsIterator.cpp:
+        (JSC::JSArgumentsIterator::clone):
+        * runtime/JSArgumentsIterator.h:
+        (JSC::JSArgumentsIterator::iteratedValue):
+        * runtime/JSArrayIterator.cpp:
+        (JSC::JSArrayIterator::kind):
+        (JSC::JSArrayIterator::iteratedValue):
+        (JSC::JSArrayIterator::clone):
+        * runtime/JSArrayIterator.h:
+        * runtime/JSMapIterator.cpp:
+        (JSC::JSMapIterator::finishCreation):
+        (JSC::JSMapIterator::clone):
+        * runtime/JSMapIterator.h:
+        (JSC::JSMapIterator::kind):
+        (JSC::JSMapIterator::iteratedValue):
+        * runtime/JSSetIterator.cpp:
+        (JSC::JSSetIterator::finishCreation):
+        (JSC::JSSetIterator::clone):
+        * runtime/JSSetIterator.h:
+        (JSC::JSSetIterator::kind):
+        (JSC::JSSetIterator::iteratedValue):
+        * runtime/JSStringIterator.cpp:
+        (JSC::JSStringIterator::iteratedValue):
+        (JSC::JSStringIterator::clone):
+        * runtime/JSStringIterator.h:
+        Add accessors for internal properties and provide a way to clone the
+        iterator so we can be at the same index and peek at the next few
+        objects without modifying the original iterator object.
+
+2015-03-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r180595): construct varargs fails in FTL
+        https://bugs.webkit.org/show_bug.cgi?id=142030
+
+        Reviewed by Michael Saboff.
+
+        Increase sizeOfCallVarargs as done for sizeOfConstructVarargs in r180651.
+
+        * ftl/FTLInlineCacheSize.cpp:
+        (JSC::FTL::sizeOfCallVarargs):
+
+2015-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Adopt Object Literal Shorthand Property Construction Syntax
+        https://bugs.webkit.org/show_bug.cgi?id=142374
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+
+2015-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6: Object Literal Extensions - Methods
+        https://bugs.webkit.org/show_bug.cgi?id=142390
+
+        Reviewed by Geoffrey Garen.
+
+        Support method syntax in object literals.
+
+        * parser/Parser.h:
+        * parser/Parser.cpp:
+        (JSC::stringForFunctionMode):
+        (JSC::Parser<LexerType>::parseProperty):
+        Methods are allowed for identifier, string, and numeric names,
+        and computed property names.
+
+        (JSC::Parser<LexerType>::parsePropertyMethod):
+        Helper for parsing a property method.
+
+2015-03-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        __proto__ shorthand property should not modify prototype in Object Literal construction
+        https://bugs.webkit.org/show_bug.cgi?id=142382
+
+        Reviewed by Geoffrey Garen.
+
+        When parsing shorthand property syntax we know we will do a
+        put direct, even if the property name is __proto__. Pass that
+        information through to bytecode generation.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitDirectPutById):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitPutConstantProperty):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createGetterOrSetterProperty):
+        (JSC::ASTBuilder::createProperty):
+        * parser/NodeConstructors.h:
+        (JSC::PropertyNode::PropertyNode):
+        * parser/Nodes.h:
+        (JSC::PropertyNode::putType):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseProperty):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createProperty):
+
+2015-03-06  Geoffrey Garen  <ggaren@apple.com>
+
+        Fix crashes seen on the the 32-bit buildbots after my last patch.
+
+        Unreviewed.
+
+        * heap/CopiedBlock.h:
+        (JSC::CopiedBlock::payload):
+        * heap/CopiedSpace.cpp:
+        (JSC::CopiedSpace::tryAllocateOversize): Round up to the right alignment,
+        since the size of the CopiedBlock class is not guaranteed to be the
+        right alignment, and is in fact the wrong alignment on 32-bit.
+
+2015-03-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Use FastMalloc (bmalloc) instead of BlockAllocator for GC pages
+        https://bugs.webkit.org/show_bug.cgi?id=140900
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-landing just the CopiedBlock piece of this patch.
+
+        * heap/CopiedBlock.h:
+        (JSC::CopiedBlock::createNoZeroFill):
+        (JSC::CopiedBlock::destroy):
+        (JSC::CopiedBlock::create):
+        (JSC::CopiedBlock::CopiedBlock):
+        (JSC::CopiedBlock::isOversize):
+        (JSC::CopiedBlock::payloadEnd):
+        (JSC::CopiedBlock::capacity):
+        * heap/CopiedSpace.cpp:
+        (JSC::CopiedSpace::~CopiedSpace):
+        (JSC::CopiedSpace::tryAllocateOversize):
+        (JSC::CopiedSpace::tryReallocateOversize):
+        * heap/CopiedSpaceInlines.h:
+        (JSC::CopiedSpace::recycleEvacuatedBlock):
+        (JSC::CopiedSpace::recycleBorrowedBlock):
+        (JSC::CopiedSpace::allocateBlockForCopyingPhase):
+        (JSC::CopiedSpace::allocateBlock):
+        (JSC::CopiedSpace::startedCopying):
+        * heap/CopyWorkList.h:
+
+2015-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] SVG fonts are garbled
+        https://bugs.webkit.org/show_bug.cgi?id=142377
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2015-03-05  Joseph Pecoraro  <pecoraro@apple.com>
 
         ES6: Object Literal Extensions - Shorthand Properties (Identifiers)

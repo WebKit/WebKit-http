@@ -26,6 +26,7 @@
 #ifndef WebPageGroupData_h
 #define WebPageGroupData_h
 
+#include "WebCompiledContentExtensionData.h"
 #include <WebCore/UserScript.h>
 #include <WebCore/UserStyleSheet.h>
 #include <wtf/HashMap.h>
@@ -52,7 +53,7 @@ struct WebPageGroupData {
     Vector<WebCore::UserScript> userScripts;
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    HashMap<String, String> userContentFilters;
+    HashMap<String, WebCompiledContentExtensionData> userContentExtensions;
 #endif
 };
 

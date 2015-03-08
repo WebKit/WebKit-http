@@ -71,14 +71,8 @@ public:
 
     PassRefPtr<MediaStream> clone();
 
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(addtrack);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(removetrack);
-
     bool active() const;
     void setActive(bool);
-
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(active);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(inactive);
 
     MediaStreamPrivate* privateStream() const { return m_private.get(); }
 
@@ -109,22 +103,22 @@ private:
     // MediaStreamPrivateClient
     virtual void trackDidEnd() override final;
     virtual void setStreamIsActive(bool) override final;
-    virtual void addRemoteSource(MediaStreamSource*) override final;
-    virtual void removeRemoteSource(MediaStreamSource*) override final;
+    virtual void addRemoteSource(RealtimeMediaSource*) override final;
+    virtual void removeRemoteSource(RealtimeMediaSource*) override final;
     virtual void addRemoteTrack(MediaStreamTrackPrivate*) override final;
     virtual void removeRemoteTrack(MediaStreamTrackPrivate*) override final;
 
     bool removeTrack(PassRefPtr<MediaStreamTrack>);
     bool addTrack(PassRefPtr<MediaStreamTrack>);
 
-    bool haveTrackWithSource(PassRefPtr<MediaStreamSource>);
+    bool haveTrackWithSource(PassRefPtr<RealtimeMediaSource>);
 
     void scheduleDispatchEvent(PassRefPtr<Event>);
     void scheduledEventTimerFired();
 
     void cloneMediaStreamTrackVector(Vector<RefPtr<MediaStreamTrack>>&, const Vector<RefPtr<MediaStreamTrack>>&);
 
-    Vector<RefPtr<MediaStreamTrack>>* trackVectorForType(MediaStreamSource::Type);
+    Vector<RefPtr<MediaStreamTrack>>* trackVectorForType(RealtimeMediaSource::Type);
 
     RefPtr<MediaStreamPrivate> m_private;
     Vector<RefPtr<MediaStreamTrack>> m_audioTracks;

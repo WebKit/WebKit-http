@@ -307,7 +307,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_totalBytesVisited(0)
     , m_totalBytesCopied(0)
     , m_operationInProgress(NoOperation)
-    , m_blockAllocator()
     , m_objectSpace(this)
     , m_storageSpace(this)
     , m_extraMemoryUsage(0)
@@ -1066,7 +1065,6 @@ NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOri
         vm()->typeProfiler()->invalidateTypeSetCache();
 
     reapWeakHandles();
-    pruneStaleEntriesFromWeakGCMaps();
     sweepArrayBuffers();
     snapshotMarkedSpace();
 
@@ -1178,15 +1176,6 @@ void Heap::reapWeakHandles()
 {
     GCPHASE(ReapingWeakHandles);
     m_objectSpace.reapWeakSets();
-}
-
-void Heap::pruneStaleEntriesFromWeakGCMaps()
-{
-    GCPHASE(PruningStaleEntriesFromWeakGCMaps);
-    if (m_operationInProgress != FullCollection)
-        return;
-    for (auto& pruneCallback : m_weakGCMaps.values())
-        pruneCallback();
 }
 
 void Heap::sweepArrayBuffers()

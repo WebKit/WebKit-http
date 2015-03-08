@@ -1,3 +1,290 @@
+2015-03-08  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening to skip new tests, rebaseline existing tests
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        - Mark test as flakey.
+
+        * platform/ios-simulator-wk2/fast/css/text-overflow-input-expected.txt: Remove.
+        * platform/ios-simulator-wk2/fast/forms/input-disabled-color-expected.txt: Remove.
+        * platform/ios-simulator-wk2/fast/forms/input-text-word-wrap-expected.txt: Remove.
+        * platform/ios-simulator-wk2/fast/forms/minWidthPercent-expected.txt: Remove.
+        - Superceded by new platform/ios-simulator results.
+
+        * platform/ios-simulator/TestExpectations:
+        - Skip two tests that will always time out on iOS.
+        - Mark two tests as ImageOnlyFailure that fail consistently.
+
+        * platform/ios-simulator/compositing/media-controls-bar-appearance-expected.txt: Add.
+        - Add result for new test from r180965.
+
+        * platform/ios-simulator/fast/attachment/attachment-label-highlight-expected.txt: Add.
+        * platform/ios-simulator/fast/attachment/attachment-progress-expected.txt: Add.
+        * platform/ios-simulator/fast/attachment/attachment-subtitle-expected.txt: Add.
+        * platform/ios-simulator/fast/attachment/attachment-title-expected.txt: Add.
+        - Add results for new attachment tests.
+
+        * platform/ios-simulator/fast/css/text-overflow-input-expected.txt: Update.
+        * platform/ios-simulator/fast/forms/input-disabled-color-expected.txt: Update.
+        * platform/ios-simulator/fast/forms/input-text-scroll-left-on-blur-expected.txt: Update.
+        * platform/ios-simulator/fast/forms/input-text-word-wrap-expected.txt: Update.
+        * platform/ios-simulator/fast/forms/minWidthPercent-expected.txt: Update.
+        * platform/ios-simulator/tables/mozilla/bugs/bug59354-expected.txt: Update.
+        * platform/ios-simulator/tables/mozilla/bugs/bug96334-expected.txt: Update.
+        * platform/ios-simulator/tables/mozilla/other/move_row-expected.txt: Update.
+        - Rebaseline after other bug fixes like r180815.
+
+2015-03-07  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening on 8th Mar.
+
+        Mark emphasis text test, writing mode test, whitespace test to failure.
+        Besides update new failure tests to existing bugs.
+
+        * platform/efl/TestExpectations:
+
+2015-03-07  Darin Adler  <darin@apple.com>
+
+        Improve the event handler test
+        https://bugs.webkit.org/show_bug.cgi?id=142439
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/event-handler-attributes-expected.txt: Renamed from legacy-event-handler-attributes-expected.txt.
+        Also updated to reflect changes in the test.
+
+        * fast/dom/event-handler-attributes.html: Renamed from legacy-event-handler-attributes.html.
+        Fixed bug in the test that was making document event handler tests falsely report failure.
+        Removed testing of some HTMLMediaElement attributes that are conditionally present; this test
+        is intended to test only unconditionally available event handler attributes at this time.
+
+        * platform/win/fast/dom/legacy-event-handler-attributes-expected.txt: Removed. The conditional HTMLMediaElement
+        attributes are the reason the Windows-specific results were needed.
+
+2015-03-06  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening on 7th Mar.
+
+        Remove duplicated css nap scroll skip.
+        Mark printing, compositing mask, svg pattern, and webgl visibility tests to failures.
+
+        * platform/efl/TestExpectations:
+
+2015-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Support for Iterator Objects
+        https://bugs.webkit.org/show_bug.cgi?id=142420
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object.html:
+        Update tests to include iterator objects.
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Mark svg/fonts/svg-font-horiz-orig.html as Image-only failing.
+
+        * platform/win/TestExpectations:
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Mark svg/fonts/svg-font-horiz-orig.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=142423
+
+        * platform/win/TestExpectations:
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Add inherit support from scroll snap CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=136344
+        <rdar://problem/18162329>
+
+        Reviewed by Dean Jackson.
+
+        * css3/scroll-snap/scroll-snap-inherit.html: Added.
+        * css3/scroll-snap/scroll-snap-inherit-expected.txt: Added.
+
+2015-03-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r180595): construct varargs fails in FTL
+        https://bugs.webkit.org/show_bug.cgi?id=142030
+
+        Reviewed by Michael Saboff.
+
+        Re-enable the test on 64-bit iOS.
+
+        * js/regress/script-tests/deltablue-varargs.js:
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Setting scroll-snap-desination to (100% 100%) locks up WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=142414
+        <rdar://problem/20077275>
+
+        Reviewed by Dean Jackson.
+
+        * css3/scroll-snap/scroll-snap-desination-lock-up.html: Added.
+        * css3/scroll-snap/scroll-snap-desination-lock-up-expected.txt: Added.
+
+2015-03-06  Dean Jackson  <dino@apple.com>
+
+        Support "plus-lighter" in mix-blend mode
+        https://bugs.webkit.org/show_bug.cgi?id=142416
+        <rdar://problem/19993979>
+
+        Reviewed by Darin Adler and Sam Weinig.
+
+        Add tests and new expected results for plus-lighter.
+
+        * css3/blending/blend-mode-property-parsing-expected.txt:
+        * css3/blending/blend-mode-simple-composited.html:
+        * css3/blending/blend-mode-simple.html:
+        * css3/blending/script-tests/blend-mode-property-parsing.js:
+        * css3/blending/svg-blend-plus-lighter.html: Added.
+        * platform/mac/css3/blending/blend-mode-simple-composited-expected.png:
+        * platform/mac/css3/blending/blend-mode-simple-composited-expected.txt:
+        * platform/mac/css3/blending/blend-mode-simple-expected.png:
+        * platform/mac/css3/blending/blend-mode-simple-expected.txt:
+        * platform/mac/css3/blending/svg-blend-plus-lighter-expected.txt: Added.
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Add 'initial' keyword support for scroll snap CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=136345
+        <rdar://problem/18162325>
+
+        Reviewed by Dean Jackson.
+
+        * css3/scroll-snap/scroll-snap-property-computed-style.js: Update for corrected 'initial' behavior.
+        * css3/scroll-snap/scroll-snap-property-computed-style-expected.txt: Rebaselined.
+        * css3/scroll-snap/scroll-snap-initial.html: Added.
+        * css3/scroll-snap/scroll-snap-initial-expected.txt: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6: Object Literal Extensions - Methods
+        https://bugs.webkit.org/show_bug.cgi?id=142390
+
+        Reviewed by Geoffrey Garen.
+
+        * js/object-literal-computed-methods-expected.txt: Added.
+        * js/object-literal-computed-methods.html: Added.
+        * js/object-literal-methods-expected.txt: Added.
+        * js/object-literal-methods.html: Added.
+        * js/script-tests/object-literal-computed-methods.js: Added.
+        * js/script-tests/object-literal-methods.js: Added.
+
+2015-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        __proto__ shorthand property should not modify prototype in Object Literal construction
+        https://bugs.webkit.org/show_bug.cgi?id=142382
+
+        Reviewed by Geoffrey Garen.
+
+        * js/object-literal-shorthand-construction-expected.txt:
+        * js/script-tests/object-literal-shorthand-construction.js:
+        Update test to cover the __proto__ shorthand case which is
+        different from longhand case.
+
+2015-03-06  Antti Koivisto  <antti@apple.com>
+
+        Enable disk cache validation test on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=142405
+
+        Reviewed by Andreas Kling.
+
+        The features is enabled.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2015-03-06  Jer Noble  <jer.noble@apple.com>
+
+        [Web Audio] Decoding specific .m4a file crashes tab
+        https://bugs.webkit.org/show_bug.cgi?id=139545
+
+        Reviewed by Eric Carlson.
+
+        * webaudio/decode-audio-data-too-short-expected.txt: Added.
+        * webaudio/decode-audio-data-too-short.html: Added.
+        * webaudio/resources/media/too-short.m4a: Added.
+
+2015-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Crash in -[WebCascadeList objectAtIndex:] + 195
+        https://bugs.webkit.org/show_bug.cgi?id=141274
+
+        Reviewed by David Kilzer.
+
+        * platform/mac/fast/text/crash-complextextcontroller-custom-cascade-list-expected.txt: Added.
+        * platform/mac/fast/text/crash-complextextcontroller-custom-cascade-list.html: Added.
+
+2015-03-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Setting any of the <object> element plugin controlling attributes does not have any affect.
+        https://bugs.webkit.org/show_bug.cgi?id=141936.
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/image-object-hover-inherit-expected.html: Added.
+        * fast/css/image-object-hover-inherit.html: Added.
+        A guarding test to catch the case of reconstructing the image <object>
+        renderer while performing a synchronous resolveTree() followed by page
+        rendering or dump render tree.
+        
+        * svg/as-object/resources/lime100x100.html: Added.
+        * svg/as-object/resources/lime100x100.png: Added.
+        * svg/as-object/resources/lime100x100.svg: Added.
+        * svg/as-object/resources/red100x100.svg: Added.
+        * svg/as-object/svg-in-object-dynamic-attribute-change-expected.html: Added.
+        * svg/as-object/svg-in-object-dynamic-attribute-change.html: Added.
+        Ensure that changing the 'type' and the 'data' attributes of the <object>
+        element will have the expected outcome. Also make sure that the <object>
+        element renderer falls back correctly when setting any of the attributes
+        to some unexpected value.
+
+2015-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test horiz-origin-x and horiz-origin-y in SVG fonts
+        https://bugs.webkit.org/show_bug.cgi?id=142403
+
+        Simply moving to the origin in glyph-space at the beginning
+        of path parsing won't work if subsequent coordinates are absolute.
+
+        Reviewed by Simon Fraser.
+
+        * svg/fonts/resources/svg-font-horiz-origin-font.svg: Added.
+        * svg/fonts/svg-font-horiz-origin-expected.html: Added.
+        * svg/fonts/svg-font-horiz-origin.html: Added.
+
+2015-03-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        An SVG element without intrinsic size inherits the container size as its viewport instead of inheriting the container viewport.
+        https://bugs.webkit.org/show_bug.cgi?id=141725.
+
+        Reviewed by Darin Adler.
+
+        * svg/css/svg-css-different-intrinsic-sizes-expected.html: Added.
+        * svg/css/svg-css-different-intrinsic-sizes.html: Added.
+        The intrinsic size of the <svg> element is overridden by CSS. The elements
+        inside the <svg> should consider the css size (which is equal to the <svg>
+        element viewport) instead of the <svg> element intrinsic size.
+
+2015-03-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow composited clip-path to be updated without a layer repaint
+        https://bugs.webkit.org/show_bug.cgi?id=142384
+
+        Reviewed by Zalan Bujtas.
+        
+        Test repaint with a clip-path change.
+
+        * compositing/masks/compositing-clip-path-change-no-repaint-expected.txt: Added.
+        * compositing/masks/compositing-clip-path-change-no-repaint.html: Added.
+
 2015-03-06  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         Unreviewed EFL gardening on 6th Mar.

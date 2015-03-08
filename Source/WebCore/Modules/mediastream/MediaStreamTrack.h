@@ -32,8 +32,8 @@
 
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
-#include "MediaStreamSource.h"
 #include "MediaStreamTrackPrivate.h"
+#include "RealtimeMediaSource.h"
 #include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -84,13 +84,7 @@ public:
     RefPtr<MediaStreamTrack> clone();
     void stopProducingData();
 
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(mute);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(unmute);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(started);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(ended);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(overconstrained);
-
-    MediaStreamSource* source() const { return m_privateTrack->source(); }
+    RealtimeMediaSource* source() const { return m_privateTrack->source(); }
     MediaStreamTrackPrivate& privateTrack() { return m_privateTrack.get(); }
 
     bool ended() const;
@@ -109,7 +103,7 @@ protected:
     explicit MediaStreamTrack(MediaStreamTrack&);
     MediaStreamTrack(ScriptExecutionContext&, MediaStreamTrackPrivate&, const Dictionary*);
 
-    void setSource(PassRefPtr<MediaStreamSource>);
+    void setSource(PassRefPtr<RealtimeMediaSource>);
 
 private:
     void configureTrackRendering();

@@ -270,11 +270,6 @@ inline void Heap::ascribeOwner(JSCell* intendedOwner, void* storage)
 #endif
 }
 
-inline BlockAllocator& Heap::blockAllocator()
-{
-    return m_blockAllocator;
-}
-
 #if USE(CF)
 template <typename T>
 inline void Heap::releaseSoon(RetainPtr<T>&& object)
@@ -318,16 +313,6 @@ inline HashSet<MarkedArgumentBuffer*>& Heap::markListSet()
     if (!m_markListSet)
         m_markListSet = std::make_unique<HashSet<MarkedArgumentBuffer*>>();
     return *m_markListSet;
-}
-
-inline void Heap::registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback)
-{
-    m_weakGCMaps.add(weakGCMap, WTF::move(pruningCallback));
-}
-
-inline void Heap::unregisterWeakGCMap(void* weakGCMap)
-{
-    m_weakGCMaps.remove(weakGCMap);
 }
     
 } // namespace JSC

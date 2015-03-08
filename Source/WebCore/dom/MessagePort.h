@@ -82,13 +82,6 @@ namespace WebCore {
 
         bool hasPendingActivity();
 
-        void setOnmessage(PassRefPtr<EventListener> listener)
-        {
-            setAttributeEventListener(eventNames().messageEvent, listener);
-            start();
-        }
-        EventListener* onmessage() { return getAttributeEventListener(eventNames().messageEvent); }
-
         // Returns null if there is no entangled port, or if the entangled port is run by a different thread.
         // This is used solely to enable a GC optimization. Some platforms may not be able to determine ownership
         // of the remote port (since it may live cross-process) - those platforms may always return null.
@@ -99,6 +92,8 @@ namespace WebCore {
 
         // A port gets neutered when it is transferred to a new owner via postMessage().
         bool isNeutered() { return !m_entangledChannel; }
+
+        bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
 
     private:
         explicit MessagePort(ScriptExecutionContext&);

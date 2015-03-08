@@ -23,7 +23,6 @@
 #define Heap_h
 
 #include "ArrayBuffer.h"
-#include "BlockAllocator.h"
 #include "CodeBlockSet.h"
 #include "CopyVisitor.h"
 #include "GCIncomingRefCountedSet.h"
@@ -218,7 +217,6 @@ public:
     
     bool isDeferred() const { return !!m_deferralDepth || Options::disableGC(); }
 
-    BlockAllocator& blockAllocator();
     StructureIDTable& structureIDTable() { return m_structureIDTable; }
 
 #if USE(CF)
@@ -228,9 +226,6 @@ public:
     void removeCodeBlock(CodeBlock* cb) { m_codeBlocks.remove(cb); }
 
     static bool isZombified(JSCell* cell) { return *(void**)cell == zombifiedBits; }
-
-    void registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback);
-    void unregisterWeakGCMap(void* weakGCMap);
 
 private:
     friend class CodeBlock;
@@ -306,7 +301,6 @@ private:
     void resetVisitors();
 
     void reapWeakHandles();
-    void pruneStaleEntriesFromWeakGCMaps();
     void sweepArrayBuffers();
     void snapshotMarkedSpace();
     void deleteSourceProviderCaches();
@@ -351,7 +345,6 @@ private:
     size_t m_totalBytesCopied;
     
     HeapOperation m_operationInProgress;
-    BlockAllocator m_blockAllocator;
     StructureIDTable m_structureIDTable;
     MarkedSpace m_objectSpace;
     CopiedSpace m_storageSpace;
@@ -400,8 +393,6 @@ private:
     Vector<RetainPtr<CFTypeRef>> m_delayedReleaseObjects;
     unsigned m_delayedReleaseRecursionCount;
 #endif
-
-    HashMap<void*, std::function<void()>> m_weakGCMaps;
 };
 
 } // namespace JSC

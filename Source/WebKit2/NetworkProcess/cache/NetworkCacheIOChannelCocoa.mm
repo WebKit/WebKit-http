@@ -75,7 +75,7 @@ Ref<IOChannel> IOChannel::open(const String& filePath, IOChannel::Type type)
     return adoptRef(*new IOChannel(fd));
 }
 
-void IOChannel::read(size_t offset, size_t size, std::function<void ( Data&, int error)> completionHandler)
+void IOChannel::read(size_t offset, size_t size, std::function<void (Data&, int error)> completionHandler)
 {
     RefPtr<IOChannel> channel(this);
     bool didCallCompletionHandler = false;
@@ -88,10 +88,22 @@ void IOChannel::read(size_t offset, size_t size, std::function<void ( Data&, int
             return;
         }
         ASSERT(!didCallCompletionHandler);
-        Data data(fileData);
+        DispatchPtr<dispatch_data_t> fileDataPtr(fileData);
+        Data data(fileDataPtr);
         completionHandler(data, error);
         didCallCompletionHandler = true;
     });
+}
+
+// FIXME: It would be better to do without this.
+void IOChannel::readSync(size_t offset, size_t size, std::function<void (Data&, int error)> completionHandler)
+{
+    auto semaphore = adoptDispatch(dispatch_semaphore_create(0));
+    read(offset, size, [semaphore, &completionHandler](Data& data, int error) {
+        completionHandler(data, error);
+        dispatch_semaphore_signal(semaphore.get());
+    });
+    dispatch_semaphore_wait(semaphore.get(), DISPATCH_TIME_FOREVER);
 }
 
 void IOChannel::write(size_t offset, const Data& data, std::function<void (int error)> completionHandler)

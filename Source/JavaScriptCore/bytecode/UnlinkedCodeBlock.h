@@ -117,8 +117,6 @@ public:
         return JSParseNormal;
     }
 
-    unsigned firstLineOffset() const { return m_firstLineOffset; }
-    unsigned lineCount() const { return m_lineCount; }
     unsigned unlinkedFunctionNameStart() const { return m_unlinkedFunctionNameStart; }
     unsigned unlinkedBodyStartColumn() const { return m_unlinkedBodyStartColumn; }
     unsigned unlinkedBodyEndColumn() const { return m_unlinkedBodyEndColumn; }
@@ -131,9 +129,10 @@ public:
 
     UnlinkedFunctionCodeBlock* codeBlockFor(VM&, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, bool bodyIncludesBraces, ParserError&);
 
-    static UnlinkedFunctionExecutable* fromGlobalCode(const Identifier&, ExecState*, Debugger*, const SourceCode&, JSObject** exception);
+    static UnlinkedFunctionExecutable* fromGlobalCode(const Identifier&, ExecState&, const SourceCode&, JSObject*& exception);
 
-    FunctionExecutable* link(VM&, const SourceCode&, size_t lineOffset);
+    FunctionExecutable* linkInsideExecutable(VM&, const SourceCode&);
+    FunctionExecutable* linkGlobalCode(VM&, const SourceCode&);
 
     void clearCodeForRecompilation()
     {

@@ -1,3 +1,296 @@
+2015-03-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Remove willDestroyFrame in WKBundlePageLoaderClient
+        https://bugs.webkit.org/show_bug.cgi?id=142389
+
+        Reviewed by Anders Carlsson.
+
+        I added willDestroyFrame in r154540 but I realized recently that
+        it has never actually worked. Adding the callback to
+        WKBundlePageLoaderClient was the first mistake, since frames are
+        handled by WebProcess and DidDestroyFrame message is indeed a
+        WebProcessProxy not a WebPageProxy one. Second mistake was calling
+        the callback from WebFrameLoaderClient::frameLoaderDestroyed(),
+        since at that point the frame has already been detached from the
+        page and so WebFrame::page() always returns nullptr. So, this in
+        fact dead code and since r180211 nobody is using it.
+
+        * WebProcess/InjectedBundle/API/c/WKBundlePageLoaderClient.h:
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebPage.cpp:
+        (webkitWebPageCreate): Use verion 6 instead of version 7 of loader client.
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.cpp:
+        (WebKit::InjectedBundlePageLoaderClient::willDestroyFrame): Deleted.
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::frameLoaderDestroyed):
+
+2015-03-06  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Move compiling of content extensions to the UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=142402
+
+        Reviewed by Benjamin Poulain.
+
+        * Shared/API/APIObject.h:
+        Rename UserContentFilter type to UserContentExtension to match new unified naming.
+
+        * Shared/WebCompiledContentExtension.cpp: Added.
+        (WebKit::WebCompiledContentExtension::create):
+        (WebKit::WebCompiledContentExtension::WebCompiledContentExtension):
+        (WebKit::WebCompiledContentExtension::~WebCompiledContentExtension):
+        (WebKit::WebCompiledContentExtension::bytecode):
+        (WebKit::WebCompiledContentExtension::bytecodeLength):
+        (WebKit::WebCompiledContentExtension::actions):
+        (WebKit::WebCompiledContentExtension::actionsLength):
+        * Shared/WebCompiledContentExtension.h: Added.
+        Add new WebKit2 implementation of CompiledContentExtension. Right now it is the same as the old
+        WebCore based CompiledContentExtension, but in subsequent patches, it will use shared/file backed
+        memory.
+
+        * Shared/WebCompiledContentExtensionData.cpp: Added.
+        (WebKit::WebCompiledContentExtensionData::encode):
+        (WebKit::WebCompiledContentExtensionData::decode):
+        * Shared/WebCompiledContentExtensionData.h: Added.
+        Add encodable/decodable holder for the compiled content extension data for use in IPC. Right
+        now it is doing the naive thing and always copying the data, but in subsequent patches, it will
+        use shared/file backed memory.
+
+        * Shared/WebPageGroupData.cpp:
+        (WebKit::WebPageGroupData::encode):
+        (WebKit::WebPageGroupData::decode):
+        * Shared/WebPageGroupData.h:
+        Rename member to match new unification on the name userContentExtension. Change the value from
+        the serialized JSON (as a String) to WebCompiledContentExtensionData.
+
+        * UIProcess/API/APIUserContentExtension.cpp: Copied from Source/WebKit2/UIProcess/API/APIUserContentFilter.cpp.
+        (API::UserContentExtension::UserContentExtension):
+        (API::UserContentExtension::~UserContentExtension):
+        (API::UserContentFilter::UserContentFilter): Deleted.
+        (API::UserContentFilter::~UserContentFilter): Deleted.
+        * UIProcess/API/APIUserContentExtension.h: Copied from Source/WebKit2/UIProcess/API/APIUserContentFilter.h.
+        * UIProcess/API/APIUserContentFilter.cpp: Removed.
+        * UIProcess/API/APIUserContentFilter.h: Removed.
+        Renamed UserContentFilter to APIUserContentExtension. Updated to store the compiled extension (as a WebCompiledContentExtension)
+        rather than the serialized JSON.
+
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKPageGroup.cpp:
+        (WKPageGroupAddUserContentFilter):
+        (WKPageGroupRemoveUserContentFilter):
+        (WKPageGroupRemoveAllUserContentFilters):
+        * UIProcess/API/C/WKUserContentControllerRef.cpp:
+        (WKUserContentControllerAddUserContentFilter):
+        (WKUserContentControllerRemoveAllUserContentFilters):
+        * UIProcess/API/Cocoa/WKUserContentController.mm:
+        (-[WKUserContentController _addUserContentFilter:]):
+        (-[WKUserContentController _removeUserContentFilter:]):
+        (-[WKUserContentController _removeAllUserContentFilters]):
+        Update for rename of APIUserContentFilter -> UserContentExtension.
+
+        * UIProcess/API/C/WKUserContentFilterRef.cpp:
+        (WKUserContentFilterGetTypeID):
+        (WKUserContentFilterCreate):
+        Update for rename of APIUserContentFilter -> UserContentExtension. Also make WKUserContentFilterCreate eagerly
+        compile rule list to a WebCompiledContentExtensionData.
+
+        * UIProcess/API/Cocoa/_WKUserContentFilter.mm:
+        (-[_WKUserContentFilter initWithName:serializedRules:]):
+        (-[_WKUserContentFilter dealloc]):
+        (-[_WKUserContentFilter _apiObject]):
+        Update for rename of APIUserContentFilter -> UserContentExtension. Also make initWithName:serializedRules: eagerly
+        compile rule list to a WebCompiledContentExtensionData.
+
+        * UIProcess/API/Cocoa/_WKUserContentFilterInternal.h:
+        (WebKit::wrapper):
+        Update for rename of APIUserContentFilter -> UserContentExtension.
+
+        * UIProcess/UserContent/WebUserContentControllerProxy.cpp:
+        (WebKit::WebUserContentControllerProxy::addProcess):
+        (WebKit::WebUserContentControllerProxy::addUserContentExtension):
+        (WebKit::WebUserContentControllerProxy::removeUserContentExtension):
+        (WebKit::WebUserContentControllerProxy::removeAllUserContentExtensions):
+        (WebKit::WebUserContentControllerProxy::addUserContentFilter): Deleted.
+        (WebKit::WebUserContentControllerProxy::removeUserContentFilter): Deleted.
+        (WebKit::WebUserContentControllerProxy::removeAllUserContentFilters): Deleted.
+        * UIProcess/UserContent/WebUserContentControllerProxy.h:
+        * UIProcess/WebPageGroup.cpp:
+        (WebKit::WebPageGroup::addUserContentExtension):
+        (WebKit::WebPageGroup::removeUserContentExtension):
+        (WebKit::WebPageGroup::removeAllUserContentExtensions):
+        (WebKit::WebPageGroup::addUserContentFilter): Deleted.
+        (WebKit::WebPageGroup::removeUserContentFilter): Deleted.
+        (WebKit::WebPageGroup::removeAllUserContentFilters): Deleted.
+        * UIProcess/WebPageGroup.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/UserContent/WebUserContentController.cpp:
+        (WebKit::WebUserContentController::addUserContentExtensions):
+        (WebKit::WebUserContentController::removeUserContentExtension):
+        (WebKit::WebUserContentController::removeAllUserContentExtensions):
+        (WebKit::WebUserContentController::addUserContentFilters): Deleted.
+        (WebKit::WebUserContentController::removeUserContentFilter): Deleted.
+        (WebKit::WebUserContentController::removeAllUserContentFilters): Deleted.
+        * WebProcess/UserContent/WebUserContentController.h:
+        * WebProcess/UserContent/WebUserContentController.messages.in:
+        * WebProcess/WebPage/WebPageGroupProxy.cpp:
+        (WebKit::WebPageGroupProxy::WebPageGroupProxy):
+        (WebKit::WebPageGroupProxy::addUserContentExtension):
+        (WebKit::WebPageGroupProxy::removeUserContentExtension):
+        (WebKit::WebPageGroupProxy::removeAllUserContentExtensions):
+        (WebKit::WebPageGroupProxy::addUserContentFilter): Deleted.
+        (WebKit::WebPageGroupProxy::removeUserContentFilter): Deleted.
+        (WebKit::WebPageGroupProxy::removeAllUserContentFilters): Deleted.
+        * WebProcess/WebPage/WebPageGroupProxy.h:
+        * WebProcess/WebPage/WebPageGroupProxy.messages.in:
+        Pipe the compiled extension from the UIProcess to the WebProcess.
+
+2015-03-06  Dean Jackson  <dino@apple.com>
+
+        Support "plus-lighter" in mix-blend mode
+        https://bugs.webkit.org/show_bug.cgi?id=142416
+        <rdar://problem/19993979>
+
+        Reviewed by Darin Adler and Sam Weinig.
+
+        Output the appropriate blending type when logging.
+
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTextStream::operator<<):
+
+2015-03-06  Beth Dakin  <bdakin@apple.com>
+
+        REGRESSION (r180782): Data Detector popovers are not dismissed on scroll or zoom
+        https://bugs.webkit.org/show_bug.cgi?id=142371
+        -and corresponding-
+        rdar://problem/20059224
+
+        Reviewed by Tim Horton.
+
+        This patch has the WKImmediateActionController keep track of whether or not it has 
+        an active immediate action. Then we only call into Lookup and DD if the window is 
+        key OR if the WKView’s immediateActionController has an active action.
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _dismissContentRelativeChildWindows]):
+        * UIProcess/mac/WKImmediateActionController.h:
+        * UIProcess/mac/WKImmediateActionController.mm:
+        (-[WKImmediateActionController initWithPage:view:recognizer:]):
+        (-[WKImmediateActionController willDestroyView:]):
+        (-[WKImmediateActionController _clearImmediateActionState]):
+        (-[WKImmediateActionController hasActiveImmediateAction]):
+        (-[WKImmediateActionController immediateActionRecognizerWillBeginAnimation:]):
+
+2015-03-06  Jeremy Jones  <jeremyj@apple.com>
+
+        Scroll to make the video element visible when exiting fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=141439
+
+        Reviewed by Simon Fraser.
+
+        This patch will restore interface state when exiting fullscreen.
+        Adds preparedToReturnToInline to continue exiting once the interface is updated.
+
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.h:
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.messages.in:
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::setupFullscreenWithID):
+        (WebKit::WebVideoFullscreenManagerProxy::fullscreenMayReturnToInline):
+        (WebKit::WebVideoFullscreenManagerProxy::preparedToReturnToInline): added.
+        * WebProcess/ios/WebVideoFullscreenManager.h:
+        * WebProcess/ios/WebVideoFullscreenManager.messages.in:
+        * WebProcess/ios/WebVideoFullscreenManager.mm:
+        (WebKit::WebVideoFullscreenManager::fullscreenMayReturnToInline):
+
+2015-03-06  Antti Koivisto  <antti@apple.com>
+
+        Rename NetworkCacheStorageCocoa.mm to NetworkCacheStorage.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=142401
+
+        Rubber-stamped by Anders Carlsson.
+
+        It is now fully cross-platform.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp: Copied from Source/WebKit2/NetworkProcess/cache/NetworkCacheStorageCocoa.mm.
+        (WebKit::NetworkCache::Storage::shrinkIfNeeded):
+        * NetworkProcess/cache/NetworkCacheStorageCocoa.mm: Removed.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-03-06  Antti Koivisto  <antti@apple.com>
+
+        Don't use dispatch_semaphore in NetworkCacheStorage
+        https://bugs.webkit.org/show_bug.cgi?id=142395
+
+        Reviewed by Anders Carlsson.
+
+        * NetworkProcess/cache/NetworkCacheIOChannel.h:
+        * NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm:
+        (WebKit::NetworkCache::IOChannel::read):
+        (WebKit::NetworkCache::IOChannel::readSync):
+
+            Add readSync to encapsulate the semaphore.
+
+        * NetworkProcess/cache/NetworkCacheStorageCocoa.mm:
+        (WebKit::NetworkCache::Storage::traverse):
+
+2015-03-06  Antti Koivisto  <antti@apple.com>
+
+        Move dispatch_data use behind NetworkCache::Data abstraction
+        https://bugs.webkit.org/show_bug.cgi?id=142392
+
+        Reviewed by Anders Carlsson.
+
+        * NetworkProcess/cache/NetworkCacheData.h:
+        (WebKit::NetworkCache::DispatchPtr::DispatchPtr):
+        * NetworkProcess/cache/NetworkCacheDataCocoa.mm:
+        (WebKit::NetworkCache::Data::Data):
+        (WebKit::NetworkCache::Data::apply):
+        (WebKit::NetworkCache::Data::subrange):
+        (WebKit::NetworkCache::concatenate):
+        (WebKit::NetworkCache::mapFile):
+        * NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm:
+        (WebKit::NetworkCache::IOChannel::read):
+        * NetworkProcess/cache/NetworkCacheStorageCocoa.mm:
+        (WebKit::NetworkCache::hashData):
+        (WebKit::NetworkCache::decodeEntryMetaData):
+        (WebKit::NetworkCache::decodeEntryHeader):
+        (WebKit::NetworkCache::decodeEntry):
+        (WebKit::NetworkCache::encodeEntryMetaData):
+        (WebKit::NetworkCache::encodeEntryHeader):
+        (WebKit::NetworkCache::Storage::dispatchFullWriteOperation):
+        (WebKit::NetworkCache::mapFile): Deleted.
+
+2015-03-06  Antti Koivisto  <antti@apple.com>
+
+        Use WTF abstraction for page size in NetworkCacheStorage
+        https://bugs.webkit.org/show_bug.cgi?id=142396
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/cache/NetworkCacheStorageCocoa.mm:
+        (WebKit::NetworkCache::decodeEntryMetaData):
+        (WebKit::NetworkCache::Storage::dispatchFullWriteOperation):
+
+2015-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] SVG fonts are garbled
+        https://bugs.webkit.org/show_bug.cgi?id=142377
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unguarded GTK-specific member and method usage in DrawingAreaImpl
+        https://bugs.webkit.org/show_bug.cgi?id=142391
+
+        Reviewed by Carlos Garcia Campos.
+
+        r180924 introduced unguarded use of m_nativeSurfaceHandleForCompositing
+        and LayerTreeHost::setNativeSurfaceHandleForCompositing() in DrawingAreaImpl.
+        Definitions for both of these are guarded with USE(TEXTURE_MAPPER_GL) and PLATFORM(GTK),
+        so their use should be as well.
+
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::enterAcceleratedCompositingMode):
+
 2015-03-06  David Kilzer  <ddkilzer@apple.com>
 
         REGRESSION (r181140): WebKit2 fails to build on Mavericks buildbot
