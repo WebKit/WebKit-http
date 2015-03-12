@@ -313,6 +313,7 @@
     <ClCompile Include="..\Tests\WTF\cf\RetainPtrHashing.cpp" />
     <ClCompile Include="..\Tests\WTF\CheckedArithmeticOperations.cpp" />
     <ClCompile Include="..\Tests\WTF\CString.cpp" />
+    <ClCompile Include="..\Tests\WTF\DateMath.cpp" />
     <ClCompile Include="..\Tests\WTF\Deque.cpp" />
     <ClCompile Include="..\Tests\WTF\Functional.cpp" />
     <ClCompile Include="..\Tests\WTF\HashMap.cpp" />
@@ -338,6 +339,7 @@
     <ClCompile Include="..\Tests\WTF\TemporaryChange.cpp" />
     <ClCompile Include="..\Tests\WTF\Vector.cpp" />
     <ClCompile Include="..\Tests\WTF\WeakPtr.cpp" />
+    <ClCompile Include="..\Tests\WTF\WorkQueue.cpp" />
     <ClCompile Include="..\Tests\WTF\WTFString.cpp" />
     <ClCompile Include="..\win\HostWindow.cpp" />
     <ClCompile Include="..\win\main.cpp" />

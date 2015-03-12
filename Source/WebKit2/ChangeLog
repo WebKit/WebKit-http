@@ -1,3 +1,483 @@
+2015-03-11  Antti Koivisto  <antti@apple.com>
+
+        Cache traversal missing large entries
+        https://bugs.webkit.org/show_bug.cgi?id=142601
+
+        Reviewed by Andreas Kling.
+
+        When traversing cache entries we only read the header data from disk. This didn't work
+        correctly for entries larger than the read size.
+
+        * NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm:
+        (WebKit::NetworkCache::IOChannel::read):
+
+            Partial reads only receive one callback with 'done' set to true.
+            Ensure we actually return data in this case.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::decodeEntryHeader):
+
+            Add some logging.
+
+2015-03-11  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Update AirPlay handling
+        https://bugs.webkit.org/show_bug.cgi?id=142541
+
+        Reviewed by Sam Weinig.
+
+        * Shared/WebCoreArgumentCoders.h:
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        (IPC::ArgumentCoder<AVPlaybackTarget>::encode):
+        (IPC::ArgumentCoder<AVPlaybackTarget>::decode):
+        * UIProcess/PageClient.h:
+        * UIProcess/WebAVPlaybackTargetPickerProxy.cpp: Added.
+        (WebKit::WebAVPlaybackTargetPickerProxy::WebAVPlaybackTargetPickerProxy):
+        (WebKit::WebAVPlaybackTargetPickerProxy::~WebAVPlaybackTargetPickerProxy):
+        (WebKit::WebAVPlaybackTargetPickerProxy::showPlaybackTargetPicker):
+        (WebKit::WebAVPlaybackTargetPickerProxy::startingMonitoringPlaybackTargets):
+        (WebKit::WebAVPlaybackTargetPickerProxy::stopMonitoringPlaybackTargets):
+        * UIProcess/WebAVPlaybackTargetPickerProxy.h: Added.
+        (WebKit::WebAVPlaybackTargetPickerProxy::Client::~Client):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::devicePickerProxy):
+        (WebKit::WebPageProxy::showPlaybackTargetPicker):
+        (WebKit::WebPageProxy::startingMonitoringPlaybackTargets):
+        (WebKit::WebPageProxy::stopMonitoringPlaybackTargets):
+        (WebKit::WebPageProxy::didChoosePlaybackTarget):
+        (WebKit::WebPageProxy::externalOutputDeviceAvailableDidChange):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::createPlaybackTargetPicker):
+        * UIProcess/mac/WebAVPlaybackTargetPickerProxyMac.h: Added.
+        * UIProcess/mac/WebAVPlaybackTargetPickerProxyMac.mm: Added.
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::create):
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::WebAVPlaybackTargetPickerProxyMac):
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::~WebAVPlaybackTargetPickerProxyMac):
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::outputeDeviceAvailabilityChangedTimerFired):
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::availableDevicesDidChange):
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::devicePicker):
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::showPlaybackTargetPicker):
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::currentDeviceDidChange):
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::startingMonitoringPlaybackTargets):
+        (WebKit::WebAVPlaybackTargetPickerProxyMac::stopMonitoringPlaybackTargets):
+        (-[WebAVOutputDevicePickerMenuControllerHelper initWithCallback:]):
+        (-[WebAVOutputDevicePickerMenuControllerHelper clearCallback]):
+        (-[WebAVOutputDevicePickerMenuControllerHelper observeValueForKeyPath:ofObject:change:context:]):
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebAVPlaybackTargetPicker.cpp: Added.
+        (WebKit::WebAVPlaybackTargetPicker::WebAVPlaybackTargetPicker):
+        (WebKit::WebAVPlaybackTargetPicker::showPlaybackDevicePicker):
+        (WebKit::WebAVPlaybackTargetPicker::configureWireLessTargetMonitoring):
+        (WebKit::WebAVPlaybackTargetPicker::addClient):
+        (WebKit::WebAVPlaybackTargetPicker::removeClient):
+        (WebKit::WebAVPlaybackTargetPicker::didChoosePlaybackTarget):
+        (WebKit::WebAVPlaybackTargetPicker::playbackTargetAvailabilityDidChange):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::showPlaybackTargetPicker):
+        (WebKit::WebChromeClient::startingMonitoringPlaybackTargets):
+        (WebKit::WebChromeClient::stopMonitoringPlaybackTargets):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::playbackTargetSelected):
+        (WebKit::WebPage::playbackTargetAvailabilityDidChange):
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2015-03-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Fix the build
+
+        Unreviewed.
+
+        * Shared/Downloads/mac/DownloadMac.mm:
+        (WebKit::Download::start):
+        (WebKit::Download::resume):
+
+2015-03-10  Sam Weinig  <sam@webkit.org>
+
+        Allow adding a button in input elements for auto fill related functionality
+        <rdar://problem/19782066>
+        https://bugs.webkit.org/show_bug.cgi?id=142564
+
+        Reviewed by Anders Carlsson.
+
+        - Adds new SPI to respond to clicks on the AutoFill button (both bundle and UIProcess).
+        - Adds new SPI to enable/disable the display of the AutoFill button on an element.
+        - Adds new SPI to get the bounds of the AutoFill button.
+        - Updates spelling of AutoFill to be consistent.
+
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::didClickAutoFillButton):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageUIClient):
+        * UIProcess/API/C/WKPageUIClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::handleAutoFillButtonClick):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageUIClient.h:
+        (API::InjectedBundle::PageUIClient::didClickAutoFillButton):
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.cpp:
+        (WebKit::InjectedBundlePageUIClient::didClickAutoFillButton):
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.h:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::handleAutoFillButtonClick):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/InjectedBundle/API/c/WKBundlePageUIClient.h:
+        Pipe the didClickAutoFillButton to the SPI layer.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm:
+        (-[WKWebProcessPlugInNodeHandle HTMLInputElementIsAutoFilled]):
+        (-[WKWebProcessPlugInNodeHandle setHTMLInputElementIsAutoFilled:]):
+        Update for new spelling of AutoFill.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandlePrivate.h:
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp:
+        (WKBundleNodeHandleGetHTMLInputElementAutoFilled):
+        (WKBundleNodeHandleSetHTMLInputElementAutoFilled):
+        Added. Replaces WKBundleNodeHandleGetHTMLInputElementAutofilled/WKBundleNodeHandleSetHTMLInputElementAutofilled
+        which are now deprecated due to inconsistent spelling of AutoFill.
+
+        (WKBundleNodeHandleGetHTMLInputElementAutoFillButtonEnabled):
+        (WKBundleNodeHandleSetHTMLInputElementAutoFillButtonEnabled):
+        (WKBundleNodeHandleGetHTMLInputElementAutoFillButtonBounds):
+        Added.
+
+        (WKBundleNodeHandleGetHTMLInputElementAutofilled):
+        (WKBundleNodeHandleSetHTMLInputElementAutofilled):
+        Deprecated.
+
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::InjectedBundleNodeHandle::getOrCreate):
+        (WebKit::InjectedBundleNodeHandle::create):
+        (WebKit::InjectedBundleNodeHandle::InjectedBundleNodeHandle):
+        (WebKit::InjectedBundleNodeHandle::~InjectedBundleNodeHandle):
+        (WebKit::InjectedBundleNodeHandle::coreNode):
+        (WebKit::InjectedBundleNodeHandle::document):
+        (WebKit::InjectedBundleNodeHandle::elementBounds):
+        (WebKit::InjectedBundleNodeHandle::renderRect):
+        (WebKit::InjectedBundleNodeHandle::renderedImage):
+        (WebKit::InjectedBundleNodeHandle::visibleRange):
+        (WebKit::InjectedBundleNodeHandle::setHTMLInputElementValueForUser):
+        (WebKit::InjectedBundleNodeHandle::isHTMLInputElementAutoFilled):
+        (WebKit::InjectedBundleNodeHandle::setHTMLInputElementAutoFilled):
+        (WebKit::InjectedBundleNodeHandle::isHTMLInputElementAutoFillButtonEnabled):
+        (WebKit::InjectedBundleNodeHandle::setHTMLInputElementAutoFillButtonEnabled):
+        (WebKit::InjectedBundleNodeHandle::htmlInputElementAutoFillButtonBounds):
+        (WebKit::InjectedBundleNodeHandle::htmlInputElementLastChangeWasUserEdit):
+        (WebKit::InjectedBundleNodeHandle::htmlTextAreaElementLastChangeWasUserEdit):
+        (WebKit::InjectedBundleNodeHandle::isTextField):
+        (WebKit::InjectedBundleNodeHandle::htmlTableCellElementCellAbove):
+        (WebKit::InjectedBundleNodeHandle::documentFrame):
+        (WebKit::InjectedBundleNodeHandle::htmlFrameElementContentFrame):
+        (WebKit::InjectedBundleNodeHandle::htmlIFrameElementContentFrame):
+        (WebKit::InjectedBundleNodeHandle::isHTMLInputElementAutofilled): Deleted.
+        (WebKit::InjectedBundleNodeHandle::setHTMLInputElementAutofilled): Deleted.
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h:
+        Fix-up InjectedBundleNodeHandle to store its underlying Node in a Ref, rather than a RefPtr.
+        Add helpers to implement the new SPI for WKBundleNodeHandleRef.
+
+2015-03-11  Timothy Horton  <timothy_horton@apple.com>
+
+        Make it possible to zoom on pages that claim to lay out to device size and then fail to do so
+        https://bugs.webkit.org/show_bug.cgi?id=142549
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+        Flip the pref on by default.
+
+2015-03-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not look for child processes in the UI process binary path
+        https://bugs.webkit.org/show_bug.cgi?id=135752
+
+        Reviewed by Gustavo Noronha Silva.
+
+        It's only useful for internal tools and tests, but never when
+        installed, since we don't install the processes in the bin dir but
+        in the libexec dir.
+
+        * Shared/gtk/ProcessExecutablePathGtk.cpp:
+        (WebKit::findWebKitProcess): Only look or the executables in the
+        UI process binary path or WEBKIT_EXEC_PATH for development builds.
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (injectedBundleDirectory): Only check
+        WEBKIT_INJECTED_BUNDLE_PATH env var for development builds.
+
+2015-03-10  Antti Koivisto  <antti@apple.com>
+
+        Add interface to delete disk cache entries
+        https://bugs.webkit.org/show_bug.cgi?id=142546
+
+        Reviewed by Anders Carlsson.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::remove):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::Storage):
+        (WebKit::NetworkCache::Storage::remove):
+
+            Move deletion to a serial queue so we can't create large number of threads.
+
+        (WebKit::NetworkCache::Storage::dispatchReadOperation):
+        (WebKit::NetworkCache::Storage::dispatchHeaderWriteOperation):
+        (WebKit::NetworkCache::Storage::removeEntry): Deleted.
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        (WebKit::NetworkCache::Storage::deleteQueue):
+
+2015-03-10  Chris Dumez  <cdumez@apple.com>
+
+        5 tests fail on Apple Mac WK2 performance bots
+        https://bugs.webkit.org/show_bug.cgi?id=142485
+
+        Reviewed by Andreas Kling.
+
+        Only log errors in debug builds if SandboxExtension::createHandle() fails
+        so that performance tests don't fail because of it. Such error is not
+        fatal and is expected under certain circumstances. In particular,
+        SandboxExtension::createHandle() is sometimes called for non-existing
+        files (e.g. from NetworkResourceLoadParameters::encode()).
+
+        * Shared/mac/SandboxExtensionMac.mm:
+        (WebKit::SandboxExtension::createHandle):
+
+2015-03-10  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build
+
+        * Shared/Downloads/ios/DownloadIOS.mm:
+        (WebKit::Download::startWithHandle):
+        * UIProcess/Network/CustomProtocols/mac/CustomProtocolManagerProxyMac.mm:
+        (-[WKCustomProtocolLoader initWithCustomProtocolManagerProxy:customProtocolID:request:connection:]):
+
+2015-03-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Contents not shown when entering AC mode unless the window is resized
+        https://bugs.webkit.org/show_bug.cgi?id=142347
+
+        Reviewed by Žan Doberšek.
+
+        The problem is once again that we are now creating the redirected
+        X window in realize method. When entering AC mode we resize the
+        redirected window to the drawing area size. Since the size hasn't
+        changed from the drawing area point of view, the web process is
+        not notified. The WebProcess always uses the window size, instead
+        of the root layer size, to make sure it's in sync, see the comment
+        in LayerTreeHostGtk::compositeLayersToContext(). So, we need to
+        enforce a resize when we change the size of the redirected window
+        when entering AC mode.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseEnterAcceleratedCompositingMode):
+        * UIProcess/DrawingAreaProxyImpl.h:
+        (WebKit::DrawingAreaProxyImpl::forceResize):
+
+2015-03-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Handle unused parameter warnings as build errors except in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=142338
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt:
+
+2015-03-10  Dan Bernstein  <mitz@apple.com>
+
+        WebKit2 part of <rdar://problem/20086546> [Cocoa] Add an option to treat certificate chains with SHA1-signed certificates as insecure
+        https://bugs.webkit.org/show_bug.cgi?id=142461
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]): Initialize
+        webPageConfiguration.treatsSHA1SignedCertificatesAsInsecure from the WKWebViewConfiguration.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        Added _treatsSHA1SignedCertificatesAsInsecure ivar.
+        (-[WKWebViewConfiguration copyWithZone:]): Copy _treatsSHA1SignedCertificatesAsInsecure.
+        (-[WKWebViewConfiguration _treatsSHA1SignedCertificatesAsInsecure]): Added this getter.
+        (-[WKWebViewConfiguration _setTreatsSHA1SignedCertificatesAsInsecure:]): Added this setter.
+
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h: Declared new
+        _treatsSHA1SignedCertificatesAsInsecure property.
+
+        * UIProcess/PageLoadState.cpp:
+        (WebKit::PageLoadState::didCommitLoad): Use new hasInsecureContent parameter to initialize
+        hasInsecureContent parameter in the uncommitted state.
+        * UIProcess/PageLoadState.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy): Initialize new m_treatsSHA1CertificatesAsInsecure
+        member variable from the WebPageConfiguration.
+        (WebKit::WebPageProxy::didCommitLoadForFrame): Pass true for the new hasInsecureContent to
+        PageLoadState::didCommitLoad if we are treating SHA1-signed certificates as insecure and
+        the certificate info contains a non-root SHA1-signed certificate.
+        * UIProcess/WebPageProxy.h: Added m_treatsSHA1CertificatesAsInsecure member variable.
+
+2015-03-09  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: tryFastMalloc shouldn't crash
+        https://bugs.webkit.org/show_bug.cgi?id=142443
+
+        Reviewed by Anders Carlsson.
+
+        Part 1: Stop using tryFastRealloc.
+
+        * Shared/ShareableBitmap.cpp:
+        (WebKit::ShareableBitmap::resize): Deleted.
+        * Shared/ShareableBitmap.h: Removed the resize function because it has
+        no clients.
+
+        * WebProcess/Plugins/PluginProxy.cpp:
+        (WebKit::PluginProxy::updateBackingStore): Changed to allocate a new
+        backing store instead of resizing the old one. This has three advantages:
+
+        (1) Might be more memory-efficient, since you don't have to keep the old
+        one around while allocating the new one.
+
+        (2) Avoids the overhead of realloc() copying the contents of the old
+        backing store even though we only want uninitialized memory.
+
+        (3) Makes resize failure consistent with initial allocation failure.
+        Previously, while initial allocation failure would set the backing store
+        to null, resize failure would keep the old wrong backing store and then
+        tell it not to paint. Now, resize failure also sets the backing store to
+        null.
+
+2015-03-09  Martin Robinson  <mrobinson@igalia.com>
+
+        [EFL] Move DispatchQueue to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=142493
+
+        Reviewed by Csaba Osztrogonác.
+
+        * PlatformEfl.cmake: Remove DispatchQueue from the source list.
+
+2015-03-08  Dean Jackson  <dino@apple.com>
+
+        [iOS Media] Video buffer progress missing on iPhones
+        https://bugs.webkit.org/show_bug.cgi?id=142462
+
+        Reviewed by Eric Carlson.
+
+        Coordinate the SetBufferedTime message between the Web and UI
+        processes.
+
+        * UIProcess/ios/WebVideoFullscreenManagerProxy.messages.in: New message SetBufferedTime.
+        * WebProcess/ios/WebVideoFullscreenManager.h:
+        * WebProcess/ios/WebVideoFullscreenManager.mm:
+        (WebKit::WebVideoFullscreenManager::setBufferedTime):
+
+2015-03-08  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Add scaffolding for the WKUserContentExtensionStore
+        https://bugs.webkit.org/show_bug.cgi?id=142464
+
+        Reviewed by Dan Bernstein.
+
+        * Shared/API/APIObject.h:
+        Add a UserContentExtensionStore type and move the UserContentExtension type into the correct section (UIProcess).
+
+        * Shared/API/c/WKBase.h:
+        Add the WKUserContentExtensionStoreRef C-SPI type.
+
+        * Shared/Cocoa/APIObject.mm:
+        (API::Object::newObject):
+        Add allocation support for UserContentExtensionStore (and UserContentExtension while we are there, it will be
+        needed shortly).
+
+        * UIProcess/API/APIUserContentExtensionStore.cpp: Added.
+        (API::UserContentExtensionStore::UserContentExtensionStore):
+        (API::UserContentExtensionStore::~UserContentExtensionStore):
+        * UIProcess/API/APIUserContentExtensionStore.h: Added.
+        Stub out the UserContentExtensionStore.
+
+        * UIProcess/API/C/WKAPICast.h:
+        Add casting for the UserContentExtensionStore.
+
+        * UIProcess/API/C/WKUserContentExtensionStoreRef.cpp: Added.
+        (WKUserContentExtensionStoreGetTypeID):
+        * UIProcess/API/C/WKUserContentExtensionStoreRef.h: Added.
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStore.h: Added.
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStore.mm: Added.
+        (-[_WKUserContentExtensionStore init]):
+        (-[_WKUserContentExtensionStore dealloc]):
+        (-[_WKUserContentExtensionStore _apiObject]):
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStoreInternal.h: Added.
+        (WebKit::wrapper):
+        Stub out SPI for the UserContentExtensionStore.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * CMakeLists.txt:
+        Add new files.
+
+2015-03-08  Sam Weinig  <sam@webkit.org>
+
+        AX: Expose a frame's accessible name through WK2 C SPI
+        <rdar://problem/19653068>
+        https://bugs.webkit.org/show_bug.cgi?id=142468
+
+        Reviewed by Dan Bernstein.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleFrame.cpp:
+        (WKBundleFrameSetAccessibleName):
+        * WebProcess/InjectedBundle/API/c/WKBundleFrame.h:
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::setAccessibleName):
+        * WebProcess/WebPage/WebFrame.h:
+        Add SPI to set a frame's accessible name. This matches the Legacy WebKit SPI -[WebFrame setAccessibleName:]. 
+
+2015-03-08  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Pass compiled content extensions as read-only shared memory rather than copying them
+        https://bugs.webkit.org/show_bug.cgi?id=142458
+
+        Reviewed by Dan Bernstein.
+
+        * Shared/WebCompiledContentExtensionData.cpp:
+        (WebKit::WebCompiledContentExtensionData::encode):
+        (WebKit::WebCompiledContentExtensionData::decode):
+        * Shared/WebCompiledContentExtensionData.h:
+        (WebKit::WebCompiledContentExtensionData::WebCompiledContentExtensionData):
+        Store the compiled data as a SharedMemory block with offset/size pairs for the
+        bytecode and actions. While the bytecode offset is currently always 0, this won't
+        be the case when we map these in from files due to metadata that will be placed
+        at the top of the files.
+
+        * Shared/WebCompiledContentExtension.h:
+        * Shared/WebCompiledContentExtension.cpp:
+        (WebKit::WebCompiledContentExtension::createFromCompiledContentExtensionData):
+        Temporary creation helper. In subsequent patches, this will be removed and replaced
+        by always passing in shared/mapped data.
+
+        (WebKit::WebCompiledContentExtension::create):
+        (WebKit::WebCompiledContentExtension::WebCompiledContentExtension):
+        (WebKit::WebCompiledContentExtension::bytecode):
+        (WebKit::WebCompiledContentExtension::bytecodeLength):
+        (WebKit::WebCompiledContentExtension::actions):
+        (WebKit::WebCompiledContentExtension::actionsLength):
+        Convert to work with the new WebCompiledContentExtension format.
+        
+        * UIProcess/API/C/WKUserContentFilterRef.cpp:
+        (WKUserContentFilterCreate):
+        * UIProcess/API/Cocoa/_WKUserContentFilter.mm:
+        (-[_WKUserContentFilter initWithName:serializedRules:]):
+        Switch to using WebCompiledContentExtension::createFromCompiledContentExtensionData().
+
+        * WebProcess/UserContent/WebUserContentController.cpp:
+        (WebKit::WebUserContentController::addUserContentExtensions):
+        * WebProcess/WebPage/WebPageGroupProxy.cpp:
+        (WebKit::WebPageGroupProxy::addUserContentExtension):
+        Update to pass the WebCompiledContentExtensionData directly to the WebCompiledContentExtension.
+
 2015-03-08  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Remove willDestroyFrame in WKBundlePageLoaderClient

@@ -124,6 +124,8 @@ class LiveNodeList;
 class JSNode;
 class Locale;
 class MediaCanStartListener;
+class MediaPlaybackTarget;
+class MediaPlaybackTargetPickerClient;
 class MediaQueryList;
 class MediaQueryMatcher;
 class MouseEventWithHitTestResults;
@@ -257,6 +259,8 @@ enum class DocumentCompatibilityMode : unsigned char {
     QuirksMode = 1 << 1,
     LimitedQuirksMode = 1 << 2
 };
+
+enum DimensionsCheck { WidthDimensionsCheck = 0x1, HeightDimensionsCheck = 0x2, AllDimensionsCheck = 0x3 };
 
 class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext, public FontSelectorClient {
 public:
@@ -564,7 +568,9 @@ public:
 
     bool renderTreeBeingDestroyed() const { return m_renderTreeBeingDestroyed; }
     bool hasLivingRenderTree() const { return renderView() && !renderTreeBeingDestroyed(); }
-
+    
+    bool updateLayoutIfDimensionsOutOfDate(Element*, DimensionsCheck = AllDimensionsCheck);
+    
     AXObjectCache* existingAXObjectCache() const;
     WEBCORE_EXPORT AXObjectCache* axObjectCache() const;
     void clearAXObjectCache();
@@ -1214,6 +1220,16 @@ public:
     void pageMutedStateDidChange();
     WeakPtr<Document> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    void showPlaybackTargetPicker(const HTMLMediaElement&);
+    void didChoosePlaybackTarget(MediaPlaybackTarget&);
+    void addPlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
+    void removePlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
+    bool requiresPlaybackTargetRouteMonitoring();
+    void configurePlaybackTargetMonitoring();
+    void playbackTargetAvailabilityDidChange(bool);
+#endif
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1651,6 +1667,11 @@ private:
 
     HashSet<AudioProducer*> m_audioProducers;
     bool m_isPlayingAudio;
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    HashSet<WebCore::MediaPlaybackTargetPickerClient*> m_playbackTargetClients;
+    bool m_playbackTargetsAvailable { false };
+#endif
 };
 
 inline void Document::notifyRemovePendingSheetIfNeeded()

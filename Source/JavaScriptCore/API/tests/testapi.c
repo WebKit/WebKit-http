@@ -45,6 +45,7 @@
 #include <windows.h>
 #endif
 
+#include "CompareAndSwapTest.h"
 #include "CustomGlobalObjectClassTest.h"
 
 #if JSC_OBJC_API_ENABLED
@@ -1191,6 +1192,8 @@ int main(int argc, char* argv[])
     // error mode here to work around Cygwin's behavior. See <http://webkit.org/b/55222>.
     ::SetErrorMode(0);
 #endif
+
+    testCompareAndSwap();
 
 #if JSC_OBJC_API_ENABLED
     testObjectiveCAPI();

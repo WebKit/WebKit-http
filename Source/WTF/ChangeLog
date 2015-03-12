@@ -1,3 +1,214 @@
+2015-03-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM][Linux] GC sometimes stuck in an infinite loop if parallel GC is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=141290
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/Platform.h: Enable parallel GC after r181319.
+
+2015-03-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use out-of-band messaging for RenderBox::firstLineBaseline() and RenderBox::inlineBlockBaseline()
+        https://bugs.webkit.org/show_bug.cgi?id=142569
+
+        Reviewed by David Hyatt.
+
+        Provide a callback to Optional::valueOrCompute() which is evaluated only if necessary.
+
+        * wtf/Optional.h:
+        (WTF::Optional::valueOrCompute):
+
+2015-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] 17 different JSC tests started to fail in DST
+        https://bugs.webkit.org/show_bug.cgi?id=142531
+
+        Reviewed by Chris Dumez.
+
+        The stock 'GetTimeZoneInformation' call does not always match the actual Daylight
+        Savings calendar. This results in a period of time when these tests fail.
+
+        If available, we should take advantage of the new 'GetTimeZoneInformationForYear',
+        which accesses a dynamic calendar of DST dates, which is presumbably updated by
+        Microsoft from year-to-year.
+
+        * wtf/DateMath.cpp:
+        (WTF::timeZoneInformationForYearFunction): New function to conditionally access
+        some Vista (and newer) functionality.
+        (WTF::calculateUTCOffset): Call new function (if available) to calculate proper UTC
+        time offset.
+
+2015-03-10  Alex Christensen  <achristensen@webkit.org>
+
+        Use unsigned for HashSet size.
+        https://bugs.webkit.org/show_bug.cgi?id=142518
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/HashCountedSet.h:
+        (WTF::Traits>::size):
+        (WTF::Traits>::capacity):
+        * wtf/HashMap.h:
+        (WTF::X>::size):
+        (WTF::X>::capacity):
+        * wtf/HashSet.h:
+        (WTF::V>::size):
+        (WTF::V>::capacity):
+        * wtf/HashTable.h:
+        (WTF::HashTable::Stats::recordCollisionAtCount):
+        (WTF::HashTable::Stats::dumpStats):
+        (WTF::HashTable::size):
+        (WTF::HashTable::capacity):
+        (WTF::KeyTraits>::deallocateTable):
+        (WTF::KeyTraits>::checkTableConsistencyExceptSize):
+        * wtf/HashTraits.h:
+        * wtf/ListHashSet.h:
+        (WTF::U>::size):
+        (WTF::U>::capacity):
+
+2015-03-10  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove PassRefPtr from svg/properties classes.
+        https://bugs.webkit.org/show_bug.cgi?id=142063.
+
+        Reviewed by Darin Adler.
+
+        * wtf/Ref.h:
+        (WTF::static_reference_cast): Add a stat_cast function to Ref<>.
+
+2015-03-10  Mark Lam  <mark.lam@apple.com>
+
+        [Win] JSC Build Warnings Need to be Resolved.
+        <https://webkit.org/b/142366>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Compiler.h:
+        - MSVC also does not have the CONSIDERS_UNREACHABLE_CODE quirk.
+
+2015-03-10  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: tryFastMalloc shouldn't crash
+        https://bugs.webkit.org/show_bug.cgi?id=142443
+
+        Reviewed by Sam Weinig.
+
+        Rolling back in r181307 with a check for whether bmalloc is enabled, to
+        avoid crashes when running with ASan and GuardMalloc.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMalloc):
+        (WTF::fastRealloc):
+        (WTF::fastAlignedMalloc):
+        (WTF::tryFastMalloc):
+        (WTF::tryFastRealloc): Deleted.
+        * wtf/FastMalloc.h:
+
+2015-03-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        GCC: CRASH() should be annotated with NORETURN
+        https://bugs.webkit.org/show_bug.cgi?id=142524
+
+        Reviewed by Anders Carlsson.
+
+        Add COMPILER(GCC) to #ifdefs that already exist for Clang.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2015-03-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181307.
+        https://bugs.webkit.org/show_bug.cgi?id=142525
+
+        Broke ASan tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "bmalloc: tryFastMalloc shouldn't crash"
+        https://bugs.webkit.org/show_bug.cgi?id=142443
+        http://trac.webkit.org/changeset/181307
+
+2015-03-09  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: tryFastMalloc shouldn't crash
+        https://bugs.webkit.org/show_bug.cgi?id=142443
+
+        Reviewed by Darin Adler.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMalloc):
+        (WTF::fastRealloc):
+        (WTF::fastAlignedMalloc): Don't check for null. bmalloc automatically
+        crashes on allocation failure, and we'd rather not pay for an extra check.
+
+        (WTF::tryFastMalloc): Added an opt-out API to return null rather than
+        crashing, since some clients need this.
+
+        (WTF::tryFastRealloc): Deleted. Unused.
+
+        * wtf/FastMalloc.h:
+
+2015-03-09  Mark Lam  <mark.lam@apple.com>
+
+        8-bit version of weakCompareAndSwap() can cause an infinite loop.
+        https://webkit.org/b/142513>
+
+        Reviewed by Filip Pizlo.
+
+        Presently, Bitmap::concurrentTestAndSet() uses the 8-bit version of
+        weakCompareAndSwap() (which compares and swaps an uint8_t value).
+        Bitmap::concurrentTestAndSet() has a loop that checks if a bit in the
+        byte of interest has been set.  If not, it will call the 8-bit CAS
+        function to set the bit.
+
+        Under the covers, for ARM, the 8-bit CAS function actually works with a
+        32-bit CAS.  The 8-bit CAS will first fetch the 32-bit value in memory
+        that should contain the 8-bit value, and check if it contains the
+        expected byte.  If the value in memory doesn't have the expected byte,
+        it will return early to its caller.  The expectation is that the caller
+        will reload the byte from memory and call the 8-bit CAS again.
+
+        Unfortunately, this code path that returns early does not have a
+        compiler fence.  Without a compiler fence, the C++ compiler can
+        optimize away the reloading of the expected byte value, leaving it
+        unchanged.  As a result, we'll have a infinite loop here that checks a
+        value that will never change, and the loop will not terminate until the
+        value changes.
+
+        The fix is to eliminate the early return check in the 8-bit CAS, and
+        have it always call down to the 32-bit CAS.  The 32-bit CAS has a
+        compiler fence which will prevent this issue.
+
+        * wtf/Atomics.h:
+        (WTF::weakCompareAndSwap):
+
+2015-03-09  Martin Robinson  <mrobinson@igalia.com>
+
+        [EFL] Move DispatchQueue to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=142493
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/PlatformEfl.cmake: Add DispatchQueue to the source list.
+        * wtf/efl/DispatchQueueEfl.cpp: Renamed from Source/WebKit2/Platform/efl/DispatchQueueEfl.cpp.
+        * wtf/efl/DispatchQueueEfl.h: Renamed from Source/WebKit2/Platform/efl/DispatchQueueEfl.h.
+        * wtf/efl/DispatchQueueWorkItemEfl.h: Renamed from Source/WebKit2/Platform/efl/DispatchQueueWorkItemEfl.h.
+
+2015-03-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] WTF::WorkQueue does not balance ref/deref properly
+        https://bugs.webkit.org/show_bug.cgi?id=142471
+
+        Reviewed by Antti Koivisto.
+
+        Make sure we deref the count when we execute a function in the
+        WorkQueue.
+
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::performWorkOnRegisteredWorkThread):
+
 2015-03-07  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Revive WTF::WorkQueue on Windows

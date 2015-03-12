@@ -52,6 +52,7 @@ private:
     void compileNode(unsigned);
 
     void emitAppendAction(unsigned);
+    void emitTestFlagsAndAppendAction(uint16_t flags, unsigned);
     void emitJump(unsigned destinationNodeIndex);
     void emitCheckValue(uint8_t value, unsigned destinationNodeIndex);
     void emitTerminate();

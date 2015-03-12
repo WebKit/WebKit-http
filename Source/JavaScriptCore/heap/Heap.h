@@ -161,13 +161,21 @@ public:
     JS_EXPORT_PRIVATE void collect(HeapOperation collectionType = AnyCollection);
     bool collectIfNecessaryOrDefer(); // Returns true if it did collect.
 
-    void reportExtraMemoryCost(size_t cost);
+    // Use this API to report non-GC memory referenced by GC objects. Be sure to
+    // call both of these functions: Calling only one may trigger catastropic
+    // memory growth.
+    void reportExtraMemoryAllocated(size_t);
+    void reportExtraMemoryVisited(JSCell*, size_t);
+
+    // Use this API to report non-GC memory if you can't use the better API above.
+    void deprecatedReportExtraMemory(size_t);
+
     JS_EXPORT_PRIVATE void reportAbandonedObjectGraph();
 
     JS_EXPORT_PRIVATE void protect(JSValue);
     JS_EXPORT_PRIVATE bool unprotect(JSValue); // True when the protect count drops to 0.
     
-    size_t extraSize(); // extra memory usage outside of pages allocated by the heap
+    size_t extraMemorySize(); // Non-GC memory referenced by GC objects.
     JS_EXPORT_PRIVATE size_t size();
     JS_EXPORT_PRIVATE size_t capacity();
     JS_EXPORT_PRIVATE size_t objectCount();
@@ -227,6 +235,9 @@ public:
 
     static bool isZombified(JSCell* cell) { return *(void**)cell == zombifiedBits; }
 
+    void registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback);
+    void unregisterWeakGCMap(void* weakGCMap);
+
 private:
     friend class CodeBlock;
     friend class CopiedBlock;
@@ -258,15 +269,15 @@ private:
     void* allocateWithoutDestructor(size_t); // For use with objects without destructors.
     template<typename ClassType> void* allocateObjectOfType(size_t); // Chooses one of the methods above based on type.
 
-    static const size_t minExtraCost = 256;
-    static const size_t maxExtraCost = 1024 * 1024;
+    static const size_t minExtraMemory = 256;
     
     class FinalizerOwner : public WeakHandleOwner {
         virtual void finalize(Handle<Unknown>, void* context) override;
     };
 
     JS_EXPORT_PRIVATE bool isValidAllocation(size_t);
-    JS_EXPORT_PRIVATE void reportExtraMemoryCostSlowCase(size_t);
+    JS_EXPORT_PRIVATE void reportExtraMemoryAllocatedSlowCase(size_t);
+    JS_EXPORT_PRIVATE void deprecatedReportExtraMemorySlowCase(size_t);
 
     void collectImpl(HeapOperation, void* stackOrigin, void* stackTop, MachineThreads::RegisterState&);
 
@@ -301,6 +312,7 @@ private:
     void resetVisitors();
 
     void reapWeakHandles();
+    void pruneStaleEntriesFromWeakGCMaps();
     void sweepArrayBuffers();
     void snapshotMarkedSpace();
     void deleteSourceProviderCaches();
@@ -349,7 +361,8 @@ private:
     MarkedSpace m_objectSpace;
     CopiedSpace m_storageSpace;
     GCIncomingRefCountedSet<ArrayBuffer> m_arrayBuffers;
-    size_t m_extraMemoryUsage;
+    size_t m_extraMemorySize;
+    size_t m_deprecatedExtraMemorySize;
 
     HashSet<const JSCell*> m_copyingRememberedSet;
 
@@ -393,6 +406,8 @@ private:
     Vector<RetainPtr<CFTypeRef>> m_delayedReleaseObjects;
     unsigned m_delayedReleaseRecursionCount;
 #endif
+
+    HashMap<void*, std::function<void()>> m_weakGCMaps;
 };
 
 } // namespace JSC

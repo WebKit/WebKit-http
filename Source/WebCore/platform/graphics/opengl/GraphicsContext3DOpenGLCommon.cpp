@@ -378,7 +378,7 @@ bool GraphicsContext3D::checkVaryingsPacking(Platform3DObject vertexShader, Plat
     }
 
     GC3Dint maxVaryingVectors = 0;
-#if !PLATFORM(IOS) && !((PLATFORM(WIN) || PLATFORM(WPE)) && USE(OPENGL_ES_2))
+#if !PLATFORM(IOS) && !((PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(WPE)) && USE(OPENGL_ES_2))
     GC3Dint maxVaryingFloats = 0;
     ::glGetIntegerv(GL_MAX_VARYING_FLOATS, &maxVaryingFloats);
     maxVaryingVectors = maxVaryingFloats / 4;
@@ -1769,8 +1769,10 @@ bool GraphicsContext3D::layerComposited() const
 
 void GraphicsContext3D::forceContextLost()
 {
+#if ENABLE(WEBGL)
     if (m_webglContext)
         m_webglContext->forceLostContext(WebGLRenderingContextBase::RealLostContext);
+#endif
 }
 
 void GraphicsContext3D::texImage2DDirect(GC3Denum target, GC3Dint level, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height, GC3Dint border, GC3Denum format, GC3Denum type, const void* pixels)

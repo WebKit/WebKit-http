@@ -30,19 +30,23 @@
 #include <wtf/Compiler.h>
 #include <wtf/RetainPtr.h>
 
+#define HAVE_NE_FILTER_SOURCE TARGET_OS_EMBEDDED || (!TARGET_OS_IPHONE && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000 && CPU(X86_64))
+
 OBJC_CLASS NEFilterSource;
 OBJC_CLASS NSMutableData;
 
 namespace WebCore {
 
 class NetworkExtensionContentFilter final : public ContentFilter {
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(NetworkExtensionContentFilter);
+    friend std::unique_ptr<NetworkExtensionContentFilter> std::make_unique<NetworkExtensionContentFilter>(const ResourceResponse&);
+
 public:
     static bool canHandleResponse(const ResourceResponse&);
     static std::unique_ptr<NetworkExtensionContentFilter> create(const ResourceResponse&);
 
-    explicit NetworkExtensionContentFilter(const ResourceResponse&);
     ~NetworkExtensionContentFilter() override;
-
     void addData(const char* data, int length) override;
     void finishedAddingData() override;
     bool needsMoreData() const override;
@@ -51,6 +55,8 @@ public:
     ContentFilterUnblockHandler unblockHandler() const override;
 
 private:
+    explicit NetworkExtensionContentFilter(const ResourceResponse&);
+
     long m_neFilterSourceStatus;
     RetainPtr<NEFilterSource> m_neFilterSource;
     dispatch_queue_t m_neFilterSourceQueue;

@@ -161,7 +161,7 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-#include "MockMediaStreamCenter.h"
+#include "MockRealtimeMediaSourceCenter.h"
 #include "RTCPeerConnection.h"
 #include "RTCPeerConnectionHandlerMock.h"
 #include "UserMediaClientMock.h"
@@ -173,6 +173,10 @@
 
 #if PLATFORM(MAC)
 #include "DictionaryLookup.h"
+#endif
+
+#if ENABLE(CONTENT_FILTERING)
+#include "MockContentFilter.h"
 #endif
 
 using JSC::CodeBlock;
@@ -314,6 +318,10 @@ void Internals::resetToConsistentState(Page* page)
 #endif
 
     MockPageOverlayClient::singleton().uninstallAllOverlays();
+
+#if ENABLE(CONTENT_FILTERING)
+    MockContentFilterSettings::reset();
+#endif
 }
 
 Internals::Internals(Document* document)
@@ -325,9 +333,13 @@ Internals::Internals(Document* document)
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    MockMediaStreamCenter::registerMockMediaStreamCenter();
+    MockRealtimeMediaSourceCenter::registerMockRealtimeMediaSourceCenter();
     enableMockRTCPeerConnectionHandler();
     WebCore::provideUserMediaTo(document->page(), new UserMediaClientMock());
+#endif
+
+#if ENABLE(CONTENT_FILTERING)
+    MockContentFilter::ensureInstalled();
 #endif
 }
 
@@ -1024,8 +1036,19 @@ void Internals::setAutofilled(Element* element, bool enabled, ExceptionCode& ec)
         ec = INVALID_ACCESS_ERR;
         return;
     }
-    inputElement->setAutofilled(enabled);
+    inputElement->setAutoFilled(enabled);
 }
+
+void Internals::setShowAutoFillButton(Element* element, bool show, ExceptionCode& ec)
+{
+    HTMLInputElement* inputElement = element->toInputElement();
+    if (!inputElement) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    inputElement->setShowAutoFillButton(show);
+}
+
 
 void Internals::scrollElementToRect(Element* element, long x, long y, long w, long h, ExceptionCode& ec)
 {
@@ -2537,7 +2560,14 @@ RefPtr<File> Internals::createFile(const String& path)
 void Internals::queueMicroTask(int testNumber)
 {
     if (contextDocument())
-        MicroTaskQueue::singleton().queueMicroTask(MicroTaskTest::create(contextDocument()->createWeakPtr(), testNumber));
+        MicroTaskQueue::singleton().queueMicroTask(std::make_unique<MicroTaskTest>(contextDocument()->createWeakPtr(), testNumber));
 }
+
+#if ENABLE(CONTENT_FILTERING)
+MockContentFilterSettings& Internals::mockContentFilterSettings()
+{
+    return MockContentFilterSettings::singleton();
+}
+#endif
 
 }

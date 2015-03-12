@@ -366,7 +366,6 @@ webkit.org/b/86623 http/tests/security/drag-drop-different-origin.html
 webkit.org/b/86623 http/tests/security/drag-over-remote-content-iframe.html
 
 # Needs baselines
-editing/inserting/before-after-input-element.html [ Missing ]
 editing/selection/contains-boundaries.html [ Missing ]
 editing/selection/designmode-no-caret.html [ Timeout ]
 editing/selection/replaced-boundaries-3.html [ Missing ]
@@ -375,8 +374,6 @@ editing/style/5065910.html [ Missing ]
 editing/style/font-family-with-space.html [ Missing ]
 editing/style/smoosh-styles-001.html [ Missing ]
 editing/style/style-boundary-005.html [ Missing ]
-fast/css/css2-system-fonts.html [ Missing ]
-fast/text/tatechuyoko.html [ Missing ]
 
 # Test is failing due to a scrolling problem on second iteration.
 webkit.org/b/106240 fast/events/mouse-cursor-image-set.html [ Failure ]
@@ -465,6 +462,9 @@ webkit.org/b/141959 http/tests/media/clearkey/clear-key-hls-aes128.html [ Timeou
 Bug(EFL) fast/attachment/attachment-progress.html [ Missing ]
 Bug(EFL) fast/attachment/attachment-subtitle.html [ Missing ]
 Bug(EFL) fast/attachment/attachment-title.html [ Missing ]
+
+# Need a new baseline for EFL port. It was added by r72173.
+Bug(EFL) fast/css/line-height-determined-by-primary-font.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
@@ -665,6 +665,7 @@ Bug(EFL) fast/loader/child-frame-add-after-back-forward.html [ Failure Pass ]
 Bug(EFL) fast/events/backspace-navigates-back.html [ Failure Pass ]
 Bug(EFL) http/tests/loading/fire-error-event-empty-404-script.html [ Crash Failure Pass ]
 Bug(EFL) js/dom/create-lots-of-workers.html [ Crash Failure Pass ]
+Bug(EFL) media/track/track-cues-pause-on-exit.html [ Failure Timeout Pass ]
 Bug(EFL) media/track/track-element-load-event.html [ Crash Failure Pass ]
 
 webkit.org/b/85603 fast/forms/textarea-placeholder-set-attribute.html [ Failure ImageOnlyFailure Pass ]
@@ -809,6 +810,8 @@ webkit.org/b/108355 storage/websql/sql-error-codes.html [ Failure ]
 
 # Libsoup 2.42.0 regressions
 webkit.org/b/114918 http/tests/xmlhttprequest/cache-override.html [ Failure Pass ]
+webkit.org/b/114918 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html [ Failure Timeout Pass ]
+webkit.org/b/114918 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-mixed-case.html [ Timeout Pass ]
 
 webkit.org/b/115440 svg/stroke/animated-non-scaling-stroke.html [ ImageOnlyFailure Pass ]
 
@@ -1959,6 +1962,7 @@ webkit.org/b/134153 mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
 webkit.org/b/134712 svg/masking/mask-transformed-text-missing.svg [ ImageOnlyFailure ]
 
 webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-2x.html [ Failure ]
+webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-js-change.html [ Failure ]
 
 webkit.org/b/135504 svg/css/parse-height.html [ Failure ]
 webkit.org/b/135504 svg/css/parse-length.html [ Failure ]
@@ -2139,3 +2143,28 @@ webkit.org/b/142451 fast/text/emphasis-vertical.html [ Failure ]
 
 webkit.org/b/142452 fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure ]
 webkit.org/b/142452 fast/writing-mode/broken-ideographic-font.html [ Failure ]
+
+# Need new baseline since r181260.
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-1.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-2.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-3.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-4.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-stretch-1.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-stretch-2.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-stretch-3.svg [ Failure ]
+
+webkit.org/b/142483 fast/css/font-face-default-font.html [ Failure ]
+webkit.org/b/142483 fast/css/font-face-in-media-rule.html [ Failure ]
+
+# This feature is only enabled on Mac and iOS right now
+contentfiltering [ Skip ]
+
+# small-leak-foo tests have been failed since r181345
+webkit.org/b/142561 svg/animations/smil-leak-dynamically-added-element-instances.svg [ Failure ]
+webkit.org/b/142561 svg/animations/smil-leak-element-instances-noBaseValRef.svg [ Failure ]
+webkit.org/b/142561 svg/animations/smil-leak-element-instances.svg [ Failure ]
+webkit.org/b/142561 svg/animations/smil-leak-elements.svg [ Failure ]
+
+webkit.org/b/142570 fast/css/outline-auto-empty-rects.html [ Failure ]
+
+webkit.org/b/142571 fast/css/vertical-text-overflow-ellipsis-text-align-center.html [ Failure ]

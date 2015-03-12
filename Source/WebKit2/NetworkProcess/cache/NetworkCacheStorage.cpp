@@ -64,7 +64,8 @@ Storage::Storage(const String& baseDirectoryPath)
     : m_baseDirectoryPath(baseDirectoryPath)
     , m_directoryPath(makeVersionedDirectoryPath(baseDirectoryPath))
     , m_ioQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage", WorkQueue::Type::Concurrent))
-    , m_backgroundIOQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage", WorkQueue::Type::Concurrent, WorkQueue::QOS::Background))
+    , m_backgroundIOQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage.background", WorkQueue::Type::Concurrent, WorkQueue::QOS::Background))
+    , m_deleteQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage.delete", WorkQueue::Type::Serial, WorkQueue::QOS::Background))
 {
     deleteOldVersions();
     initialize();
@@ -178,12 +179,19 @@ static bool decodeEntryMetaData(EntryMetaData& metaData, const Data& fileData)
 
 static bool decodeEntryHeader(const Data& fileData, EntryMetaData& metaData, Data& data)
 {
-    if (!decodeEntryMetaData(metaData, fileData))
+    if (!decodeEntryMetaData(metaData, fileData)) {
+        LOG(NetworkCacheStorage, "(NetworkProcess) meta data decode failure");
         return false;
-    if (metaData.cacheStorageVersion != Storage::version)
+    }
+
+    if (metaData.cacheStorageVersion != Storage::version) {
+        LOG(NetworkCacheStorage, "(NetworkProcess) version mismatch");
         return false;
-    if (metaData.headerOffset + metaData.headerSize > metaData.bodyOffset)
+    }
+    if (metaData.headerOffset + metaData.headerSize > metaData.bodyOffset) {
+        LOG(NetworkCacheStorage, "(NetworkProcess) body offset mismatch");
         return false;
+    }
 
     auto headerData = fileData.subrange(metaData.headerOffset, metaData.headerSize);
     if (metaData.headerChecksum != hashData(headerData)) {
@@ -263,18 +271,18 @@ static Data encodeEntryHeader(const Storage::Entry& entry)
     return concatenate(headerData, alignmentData);
 }
 
-void Storage::removeEntry(const Key& key)
+void Storage::remove(const Key& key)
 {
     ASSERT(RunLoop::isMain());
 
-    // For simplicity we don't reduce m_approximateSize on removals caused by load or decode errors.
+    // For simplicity we don't reduce m_approximateSize on removals.
     // The next cache shrink will update the size.
 
     if (m_contentsFilter.mayContain(key.shortHash()))
         m_contentsFilter.remove(key.shortHash());
 
     StringCapture filePathCapture(filePathForKey(key, m_directoryPath));
-    backgroundIOQueue().dispatch([this, filePathCapture] {
+    deleteQueue().dispatch([this, filePathCapture] {
         WebCore::deleteFile(filePathCapture.string());
     });
 }
@@ -290,13 +298,13 @@ void Storage::dispatchReadOperation(const ReadOperation& read)
         int fd = channel->fileDescriptor();
         channel->read(0, std::numeric_limits<size_t>::max(), [this, &read, fd](Data& fileData, int error) {
             if (error) {
-                removeEntry(read.key);
+                remove(read.key);
                 read.completionHandler(nullptr);
             } else {
                 auto entry = decodeEntry(fileData, fd, read.key);
                 bool success = read.completionHandler(WTF::move(entry));
                 if (!success)
-                    removeEntry(read.key);
+                    remove(read.key);
             }
 
             ASSERT(m_activeReadOperations.contains(&read));
@@ -520,7 +528,7 @@ void Storage::dispatchHeaderWriteOperation(const WriteOperation& write)
             LOG(NetworkCacheStorage, "(NetworkProcess) update complete error=%d", error);
 
             if (error)
-                removeEntry(write.entry.key);
+                remove(write.entry.key);
 
             write.completionHandler(!error, { });
 

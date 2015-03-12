@@ -41,13 +41,14 @@ static inline IntType getBits(const DFABytecode* bytecode, unsigned bytecodeLeng
     return *reinterpret_cast<const IntType*>(&bytecode[index]);
 }
 
-DFABytecodeInterpreter::Actions DFABytecodeInterpreter::interpret(const CString& urlCString)
+DFABytecodeInterpreter::Actions DFABytecodeInterpreter::interpret(const CString& urlCString, uint16_t flags)
 {
     const char* url = urlCString.data();
     ASSERT(url);
     
     unsigned programCounter = 0;
     unsigned urlIndex = 0;
+    bool urlIndexIsAfterEndOfString = false;
     Actions actions;
     
     // This should always terminate if interpreting correctly compiled bytecode.
@@ -59,17 +60,23 @@ DFABytecodeInterpreter::Actions DFABytecodeInterpreter::interpret(const CString&
             return actions;
 
         case DFABytecodeInstruction::CheckValue:
+            if (urlIndexIsAfterEndOfString)
+                return actions;
+
             // Check to see if the next character in the url is the value stored with the bytecode.
-            if (!url[urlIndex])
-                return actions; // Reached null character at end.
             if (url[urlIndex] == getBits<uint8_t>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode))) {
                 programCounter = getBits<unsigned>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode) + sizeof(uint8_t));
+                if (!url[urlIndex])
+                    urlIndexIsAfterEndOfString = true;
                 urlIndex++; // This represents an edge in the DFA.
             } else
                 programCounter += instructionSizeWithArguments(DFABytecodeInstruction::CheckValue);
             break;
 
         case DFABytecodeInstruction::Jump:
+            if (!url[urlIndex] || urlIndexIsAfterEndOfString)
+                return actions;
+
             programCounter = getBits<unsigned>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode));
             urlIndex++; // This represents an edge in the DFA.
             break;
@@ -79,10 +86,17 @@ DFABytecodeInterpreter::Actions DFABytecodeInterpreter::interpret(const CString&
             programCounter += instructionSizeWithArguments(DFABytecodeInstruction::AppendAction);
             break;
 
+        case DFABytecodeInstruction::TestFlagsAndAppendAction:
+            if (flags & getBits<uint16_t>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode)))
+                actions.add(static_cast<uint64_t>(getBits<unsigned>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode) + sizeof(uint16_t))));
+            programCounter += instructionSizeWithArguments(DFABytecodeInstruction::TestFlagsAndAppendAction);
+            break;
+
         default:
             RELEASE_ASSERT_NOT_REACHED(); // Invalid bytecode.
         }
-        ASSERT(urlIndex <= urlCString.length()); // We should always terminate at a null character at the end of a String.
+        // We should always terminate before or at a null character at the end of a String.
+        ASSERT(urlIndex <= urlCString.length() || (urlIndexIsAfterEndOfString && urlIndex <= urlCString.length() + 1));
     }
     RELEASE_ASSERT_NOT_REACHED();
 }

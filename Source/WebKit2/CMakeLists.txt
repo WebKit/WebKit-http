@@ -392,6 +392,7 @@ set(WebKit2_SOURCES
     UIProcess/API/APISessionState.cpp
     UIProcess/API/APIWebsiteDataStore.cpp
     UIProcess/API/APIUserContentExtension.cpp
+    UIProcess/API/APIUserContentExtensionStore.cpp
 
     UIProcess/API/C/WKApplicationCacheManager.cpp
     UIProcess/API/C/WKAuthenticationChallenge.cpp
@@ -758,6 +759,10 @@ macro(ADD_WEBKIT2_PREFIX_HEADER _target)
         set_target_properties(${_target} PROPERTIES COMPILE_FLAGS "${OLD_COMPILE_FLAGS} -include ${WEBKIT2_DIR}/WebKit2Prefix.h")
     endif ()
 endmacro()
+
+# Suppress unused parameter warnings for sources in WebKit2.
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 

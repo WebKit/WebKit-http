@@ -29,8 +29,7 @@
 #if ENABLE(CONTENT_FILTERING)
 
 #include "ContentFilterUnblockHandler.h"
-
-#define HAVE_NE_FILTER_SOURCE TARGET_OS_EMBEDDED || (!TARGET_OS_IPHONE && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000 && CPU(X86_64))
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -38,16 +37,25 @@ class ResourceResponse;
 
 class ContentFilter {
 public:
+    template <typename T> static void addType() { types().append(type<T>()); }
+
     static std::unique_ptr<ContentFilter> createIfNeeded(const ResourceResponse&);
 
     virtual ~ContentFilter() { }
-
     virtual void addData(const char* data, int length) = 0;
     virtual void finishedAddingData() = 0;
     virtual bool needsMoreData() const = 0;
     virtual bool didBlockData() const = 0;
     virtual const char* getReplacementData(int& length) const = 0;
     virtual ContentFilterUnblockHandler unblockHandler() const = 0;
+
+private:
+    struct Type {
+        const std::function<bool(const ResourceResponse&)> canHandleResponse;
+        const std::function<std::unique_ptr<ContentFilter>(const ResourceResponse&)> create;
+    };
+    template <typename T> static Type type() { return { T::canHandleResponse, T::create }; }
+    WEBCORE_EXPORT static Vector<Type>& types();
 };
 
 } // namespace WebCore

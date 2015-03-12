@@ -90,6 +90,16 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_autoscrollForDragAndDropEnabled(settings.autoscrollForDragAndDropEnabled())
     , m_pluginReplacementEnabled(RuntimeEnabledFeatures::sharedFeatures().pluginReplacementEnabled())
     , m_shouldConvertPositionStyleOnCopy(settings.shouldConvertPositionStyleOnCopy())
+    , m_fontFallbackPrefersPictographs(settings.fontFallbackPrefersPictographs())
+    , m_backgroundShouldExtendBeyondPage(settings.backgroundShouldExtendBeyondPage())
+    , m_storageBlockingPolicy(settings.storageBlockingPolicy())
+    , m_scrollingTreeIncludesFrames(settings.scrollingTreeIncludesFrames())
+#if ENABLE(TOUCH_EVENTS)
+    , m_touchEventEmulationEnabled(settings.isTouchEventEmulationEnabled())
+#endif
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    , m_mediaPlaybackAllowsAirPlay(settings.mediaPlaybackAllowsAirPlay())
+#endif
 {
 }
 
@@ -146,6 +156,13 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setUseLegacyBackgroundSizeShorthandBehavior(m_useLegacyBackgroundSizeShorthandBehavior);
     settings.setAutoscrollForDragAndDropEnabled(m_autoscrollForDragAndDropEnabled);
     settings.setShouldConvertPositionStyleOnCopy(m_shouldConvertPositionStyleOnCopy);
+    settings.setFontFallbackPrefersPictographs(m_fontFallbackPrefersPictographs);
+    settings.setBackgroundShouldExtendBeyondPage(m_backgroundShouldExtendBeyondPage);
+    settings.setStorageBlockingPolicy(m_storageBlockingPolicy);
+    settings.setScrollingTreeIncludesFrames(m_scrollingTreeIncludesFrames);
+#if ENABLE(TOUCH_EVENTS)
+    settings.setTouchEventEmulationEnabled(m_touchEventEmulationEnabled);
+#endif
     RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(m_pluginReplacementEnabled);
 }
 
@@ -187,6 +204,9 @@ InternalSettings::InternalSettings(Page* page)
     , m_page(page)
     , m_backup(page->settings())
 {
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    page->settings().setMediaPlaybackAllowsAirPlay(false);
+#endif
 }
 
 void InternalSettings::resetToConsistentState()
@@ -485,5 +505,7 @@ void InternalSettings::setScrollingTreeIncludesFrames(bool enabled, ExceptionCod
     InternalSettingsGuardForSettings();
     settings()->setScrollingTreeIncludesFrames(enabled);
 }
+
+// If you add to this list, make sure that you update the Backup class for test reproducability!
 
 }

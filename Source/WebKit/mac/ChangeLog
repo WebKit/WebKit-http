@@ -1,3 +1,44 @@
+2015-03-10  Sam Weinig  <sam@webkit.org>
+
+        Allow adding a button in input elements for auto fill related functionality
+        <rdar://problem/19782066>
+        https://bugs.webkit.org/show_bug.cgi?id=142564
+
+        Reviewed by Anders Carlsson.
+
+        * DOM/WebDOMOperations.mm:
+        (-[DOMHTMLInputElement _setAutofilled:]):
+        Update for consistent spelling of AutoFill.
+
+2015-03-10  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate loadHistoryGutsFromURL:savedItemsCount:collectDiscardedItemsInto:error:]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload):
+
+2015-03-10  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the Mac build with a newer compiler
+
+        * Plugins/WebPluginController.mm:
+        (WebKit_TSUpdateCheck_alertDidEnd_returnCode_contextInfo_):
+        (WebKit_NSAlert_beginSheetModalForWindow_modalDelegate_didEndSelector_contextInfo_):
+
+2015-03-09  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Fix build when compiling with dead code stripping disabled
+        <http://webkit.org/b/142467>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        (EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*]): Disable mig code
+        generation and compilation for out-of-process plugin support.
+        This was never used on iOS.
+
 2015-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
 
         [iOS] SVG fonts are garbled
