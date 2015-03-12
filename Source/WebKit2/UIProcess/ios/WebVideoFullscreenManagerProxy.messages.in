@@ -24,6 +24,7 @@
 messages -> WebVideoFullscreenManagerProxy {
     ResetMediaState()
     SetCurrentTime(double currentTime, double hostTime)
+    SetBufferedTime(double bufferedTime)
     SetVideoDimensions(bool hasVideo, unsigned width, unsigned height)
     SetSeekableRangesVector(Vector<std::pair<double, double>> ranges);
     SetCanPlayFastReverse(bool value);
@@ -36,5 +37,6 @@ messages -> WebVideoFullscreenManagerProxy {
     EnterFullscreen()
     ExitFullscreen(WebCore::IntRect finalRect)
     CleanupFullscreen()
+    PreparedToReturnToInline(bool visible, WebCore::IntRect inlineRect)
 }
 #endif

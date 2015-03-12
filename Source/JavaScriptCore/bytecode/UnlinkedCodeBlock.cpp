@@ -61,7 +61,8 @@ static UnlinkedFunctionCodeBlock* generateFunctionCodeBlock(VM& vm, UnlinkedFunc
     function->finishParsing(executable->parameters(), executable->name(), executable->functionMode());
     executable->recordParse(function->features(), function->hasCapturedVariables());
     
-    UnlinkedFunctionCodeBlock* result = UnlinkedFunctionCodeBlock::create(&vm, FunctionCode, ExecutableInfo(function->needsActivation(), function->usesEval(), function->isStrictMode(), kind == CodeForConstruct, functionKind == UnlinkedBuiltinFunction));
+    UnlinkedFunctionCodeBlock* result = UnlinkedFunctionCodeBlock::create(&vm, FunctionCode,
+        ExecutableInfo(function->needsActivation(), function->usesEval(), function->isStrictMode(), kind == CodeForConstruct, functionKind == UnlinkedBuiltinFunction, executable->constructorKindIsDerived()));
     auto generator(std::make_unique<BytecodeGenerator>(vm, function.get(), result, debuggerMode, profilerMode));
     error = generator->generate();
     if (error.isValid())
@@ -84,6 +85,7 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     , m_isInStrictContext(node->isInStrictContext())
     , m_hasCapturedVariables(false)
     , m_isBuiltinFunction(kind == UnlinkedBuiltinFunction)
+    , m_constructorKindIsDerived(node->constructorKindIsDerived())
     , m_name(node->ident())
     , m_inferredName(node->inferredName())
     , m_parameters(node->parameters())
@@ -118,29 +120,53 @@ void UnlinkedFunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visito
     visitor.append(&thisObject->m_symbolTableForConstruct);
 }
 
-FunctionExecutable* UnlinkedFunctionExecutable::link(VM& vm, const SourceCode& source, size_t lineOffset)
+FunctionExecutable* UnlinkedFunctionExecutable::linkInsideExecutable(VM& vm, const SourceCode& source)
 {
-    unsigned firstLine = lineOffset + m_firstLineOffset;
+    unsigned firstLine = source.firstLine() + m_firstLineOffset;
+    unsigned startOffset = source.startOffset() + m_startOffset;
+
     bool startColumnIsOnFirstSourceLine = !m_firstLineOffset;
     unsigned startColumn = m_unlinkedBodyStartColumn + (startColumnIsOnFirstSourceLine ? source.startColumn() : 1);
     bool endColumnIsOnStartLine = !m_lineCount;
     unsigned endColumn = m_unlinkedBodyEndColumn + (endColumnIsOnStartLine ? startColumn : 1);
-    SourceCode code(source.provider(), m_startOffset, m_startOffset + m_sourceLength, firstLine, startColumn);
+
+    SourceCode code(source.provider(), startOffset, startOffset + m_sourceLength, firstLine, startColumn);
     return FunctionExecutable::create(vm, code, this, firstLine, firstLine + m_lineCount, startColumn, endColumn);
 }
 
-UnlinkedFunctionExecutable* UnlinkedFunctionExecutable::fromGlobalCode(const Identifier& name, ExecState* exec, Debugger*, const SourceCode& source, JSObject** exception)
+FunctionExecutable* UnlinkedFunctionExecutable::linkGlobalCode(VM& vm, const SourceCode& source)
+{
+    unsigned firstLine = source.firstLine() + m_firstLineOffset;
+    unsigned startOffset = source.startOffset() + m_startOffset;
+
+    // We don't have any owner executable. The source string is effectively like a global
+    // string (like in the handling of eval). Hence, the startColumn is always 1.
+    unsigned startColumn = 1;
+    bool endColumnIsOnStartLine = !m_lineCount;
+    // The unlinkedBodyEndColumn is 0-based. Hence, we need to add 1 to it. But if the
+    // endColumn is on the startLine, then we need to subtract back the adjustment for
+    // the open brace resulting in an adjustment of 0.
+    unsigned endColumnExcludingBraces = m_unlinkedBodyEndColumn + (endColumnIsOnStartLine ? 0 : 1);
+    unsigned startOffsetExcludingOpenBrace = startOffset + 1;
+    unsigned endOffsetExcludingCloseBrace = startOffset + m_sourceLength - 1;
+    SourceCode code(source.provider(), startOffsetExcludingOpenBrace, endOffsetExcludingCloseBrace, firstLine, startColumn);
+
+    return FunctionExecutable::create(vm, code, this, firstLine, firstLine + m_lineCount, startColumn, endColumnExcludingBraces, false);
+}
+
+UnlinkedFunctionExecutable* UnlinkedFunctionExecutable::fromGlobalCode(const Identifier& name, ExecState& exec, const SourceCode& source, JSObject*& exception)
 {
     ParserError error;
-    VM& vm = exec->vm();
+    VM& vm = exec.vm();
     CodeCache* codeCache = vm.codeCache();
     UnlinkedFunctionExecutable* executable = codeCache->getFunctionExecutableFromGlobalCode(vm, name, source, error);
 
-    if (exec->lexicalGlobalObject()->hasDebugger())
-        exec->lexicalGlobalObject()->debugger()->sourceParsed(exec, source.provider(), error.line(), error.message());
+    auto& globalObject = *exec.lexicalGlobalObject();
+    if (globalObject.hasDebugger())
+        globalObject.debugger()->sourceParsed(&exec, source.provider(), error.line(), error.message());
 
     if (error.isValid()) {
-        *exception = error.toErrorObject(exec->lexicalGlobalObject(), source);
+        exception = error.toErrorObject(&globalObject, source);
         return nullptr;
     }
 
@@ -205,6 +231,7 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_isConstructor(info.m_isConstructor)
     , m_hasCapturedVariables(false)
     , m_isBuiltinFunction(info.m_isBuiltinFunction)
+    , m_constructorKindIsDerived(info.m_constructorKindIsDerived)
     , m_firstLine(0)
     , m_lineCount(0)
     , m_endColumn(UINT_MAX)

@@ -1,3 +1,778 @@
+2015-03-12  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Unreviewed EFL gardening on 13th Mar.  
+        https://bugs.webkit.org/show_bug.cgi?id=142624
+
+        Rebaseline the missing test result.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/editing/inserting/before-after-input-element-expected.png: Added.
+        * platform/efl/editing/inserting/before-after-input-element-expected.txt: Added.
+        * platform/efl/fast/css/css2-system-fonts-expected.txt: Added.
+        * platform/efl/fast/text/tatechuyoko-expected.png: Added.
+        * platform/efl/fast/text/tatechuyoko-expected.txt: Added.
+
+2015-03-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update test expectations after r181408.
+
+        Also update with more debug assertions.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/forms/input-auto-fill-button-expected.txt: Added.
+
+2015-03-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CSS parser errors in the console should include column numbers
+        https://bugs.webkit.org/show_bug.cgi?id=114313
+
+        Reviewed by Darin Adler.
+
+        Test errors in both external and inline CSS and Scripts to ensure they have
+        expected line:column information.
+
+        * inspector-protocol/console/warnings-errors-expected.txt: Added.
+        * inspector-protocol/console/warnings-errors.html: Added.
+        * inspector-protocol/resources/errors.css: Added.
+        * inspector-protocol/resources/errors.js: Added.
+
+2015-03-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename the Mavericks result for input-auto-fill-button.html to use the
+        correct name.
+
+        * platform/mac-mavericks/fast/forms/input-auto-fill-button-expected.txt: Renamed from LayoutTests/platform/mac-mavericks/fast/forms/input-auto-fill-button.txt.
+
+2015-03-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Mark compositing/backgrounds/background-image-with-negative-zindex.html as
+        an image failure, since r179871 was rolled out.
+
+        * platform/mac/TestExpectations:
+
+2015-03-11  Timothy Horton  <timothy_horton@apple.com>
+
+        <attachment> shouldn't use "user-select: all"
+        https://bugs.webkit.org/show_bug.cgi?id=142453
+
+        Reviewed by Darin Adler.
+
+        * fast/attachment/attachment-select-on-click-inside-user-select-all.html: Added.
+        * fast/attachment/attachment-select-on-click.html: Added.
+        * platform/mac/fast/attachment/attachment-select-on-click-expected.png: Added.
+        * platform/mac/fast/attachment/attachment-select-on-click-expected.txt: Added.
+        * platform/mac/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.png: Added.
+        * platform/mac/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt: Added.
+        * platform/mac-mavericks/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt: Added.
+        * platform/mac-mavericks/fast/attachment/attachment-select-on-click-expected.txt: Added.
+        Add two tests. One, for the basic functionality of clicking on an
+        <attachment> to select it. The second, to test that clicking on an
+        <attachment> inside a larger "user-select: all" element still selects
+        the whole "user-select: all" element.
+
+2015-03-11  Matthew Mirman  <mmirman@apple.com>
+
+        Update windows test results
+
+        Unreviewed followup to r181353
+
+        * platform/win/fast/events/event-attribute-expected.txt: update windows test results.
+
+2015-03-10  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r180985): contentfiltering/block-after-add-data.html crashes with GuardMalloc
+        https://bugs.webkit.org/show_bug.cgi?id=142526
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations: Un-skipped contentfiltering/block-after-add-data.html.
+
+2015-03-10  Sam Weinig  <sam@webkit.org>
+
+        Allow adding a button in input elements for auto fill related functionality
+        <rdar://problem/19782066>
+        https://bugs.webkit.org/show_bug.cgi?id=142564
+
+        Reviewed by Anders Carlsson.
+
+        * fast/forms/input-auto-fill-button-expected.txt: Added.
+        * fast/forms/input-auto-fill-button.html: Added.
+
+2015-03-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Calling super() in a base class results in a crash
+        https://bugs.webkit.org/show_bug.cgi?id=142563
+
+        Reviewed by Filip Pizlo.
+
+        Added more test cases to an existing test.
+
+        * js/class-syntax-super-expected.txt:
+        * js/script-tests/class-syntax-super.js:
+
+2015-03-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        svg/animations/smil-leak-*.svg tests are flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=114280
+
+        Unreviewed.
+
+        Some svg tests were flaky on mac only but they became flaky on all ports
+        after r181345. They pass locally and on EWS but not on bots. Mark them to
+        be flaky on all ports till we figure out the problem with these tests.
+
+        * TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-03-11  Tim Horton  <timothy_horton@apple.com>
+
+        <attachment>s should be created when dropping files onto contentEditable areas
+        https://bugs.webkit.org/show_bug.cgi?id=142494
+        <rdar://problem/19982553>
+
+        Reviewed by Anders Carlsson.
+
+        * editing/pasteboard/drag-files-to-editable-element-expected.txt:
+        * editing/pasteboard/drag-files-to-editable-element.html:
+        Update the test to expect <attachment>s instead of filenames.
+
+2015-03-11  David Hyatt  <hyatt@apple.com>
+
+        Optimize offsetWidth and offsetHeight to avoid doing layouts.
+        https://bugs.webkit.org/show_bug.cgi?id=142544
+
+        Reviewed by Beth Dakin.
+
+        * fast/images/repaint-subrect-grid.html:
+        Patch this test to use the window.internals update layout method rather than
+        relying on document.body.offsetWidth.
+
+2015-03-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] Test gardening after r181260
+
+        Unreviewed.
+
+        * platform/win/svg/text/select-textLength-spacingAndGlyphs-squeeze-1-expected.txt: Added.
+        * platform/win/svg/text/select-textLength-spacingAndGlyphs-squeeze-2-expected.txt: Added.
+        * platform/win/svg/text/select-textLength-spacingAndGlyphs-squeeze-3-expected.txt: Added.
+        * platform/win/svg/text/select-textLength-spacingAndGlyphs-squeeze-4-expected.txt: Added.
+        * platform/win/svg/text/select-textLength-spacingAndGlyphs-stretch-1-expected.txt: Added.
+        * platform/win/svg/text/select-textLength-spacingAndGlyphs-stretch-2-expected.txt: Added.
+        * platform/win/svg/text/select-textLength-spacingAndGlyphs-stretch-3-expected.txt: Added.
+
+2015-03-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r181278
+
+        Unreviewed.
+
+        Until Windows adopts the SVG -> OTF Converter, we should mark this test as Mac-only.
+
+        * platform/mac/svg/fonts/resources/svg-font-general.svg: Renamed from LayoutTests/svg/fonts/resources/svg-font-general.svg.
+        * platform/mac/svg/fonts/svg-font-general-expected.html: Renamed from LayoutTests/svg/fonts/svg-font-general-expected.html.
+        * platform/mac/svg/fonts/svg-font-general.html: Renamed from LayoutTests/svg/fonts/svg-font-general.html.
+
+2015-03-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181367.
+        https://bugs.webkit.org/show_bug.cgi?id=142581
+
+        Caused crashes on the debug bots (Requested by cdumez on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: CSS parser errors in the console should
+        include column numbers"
+        https://bugs.webkit.org/show_bug.cgi?id=114313
+        http://trac.webkit.org/changeset/181367
+
+2015-03-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Inline block children do not have correct baselines if their children are also block elements
+        https://bugs.webkit.org/show_bug.cgi?id=142559
+
+        Reviewed by Darin Adler.
+
+        * fast/text/baseline-inline-block-block-children-expected.html: Added.
+        * fast/text/baseline-inline-block-block-children.html: Added.
+
+2015-03-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CSS parser errors in the console should include column numbers
+        https://bugs.webkit.org/show_bug.cgi?id=114313
+
+        Reviewed by Benjamin Poulain.
+
+        Test errors in both external and inline CSS and Scripts to ensure they have
+        expected line:column information.
+
+        * inspector-protocol/console/warnings-errors-expected.txt: Added.
+        * inspector-protocol/console/warnings-errors.html: Added.
+        * inspector-protocol/resources/errors.css: Added.
+        * inspector-protocol/resources/errors.js: Added.
+
+2015-03-10  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening on 10th Mar.
+
+        Mark smil-leak-foo tests, 3 tests of fast/css to failure.
+
+        * platform/efl/TestExpectations:
+
+2015-03-09  Darin Adler  <darin@apple.com>
+
+        Some event handler fixes
+        https://bugs.webkit.org/show_bug.cgi?id=142474
+
+        Reviewed by Anders Carlsson.
+
+        * fast/dom/event-handler-attributes-expected.txt: Updated for new tests and to
+        expect more tests to pass.
+
+        * fast/dom/event-handler-attributes.html: Added testing of event handlers on
+        non-HTML, non-SVG elements, and on SVG elements. Also removed
+        webkitpresentationmodechanged from the test, for now at least.
+
+        * fast/events/event-attribute-expected.txt: Updated to expect more tests to pass.
+
+2015-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        CSS scroll-snap-destination and scroll-snap-coordinate are not honoring position values
+        https://bugs.webkit.org/show_bug.cgi?id=142411
+
+        Reviewed by Simon Fraser.
+
+        Add a test for <position> types in scroll snap operations. Also update the test expectations
+        for computed styles now that double-precision math is being used for calculated values.
+
+        * css3/scroll-snap/scroll-snap-position-values-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-position-values.html: Added.
+        * css3/scroll-snap/scroll-snap-property-computed-style-expected.txt: Updated
+        * css3/scroll-snap/scroll-snap-property-computed-style.js: Updated
+
+
+2015-03-10  Enrica Casucci  <enrica@apple.com>
+
+        Add support for more emoji with variation.
+        https://bugs.webkit.org/show_bug.cgi?id=142548
+        rdar://problem/20105008
+
+        Reviewed by Tim Horton.
+
+        * editing/selection/extend-by-character-007-expected.txt: Added.
+        * editing/selection/extend-by-character-007.html: Added.
+
+2015-03-10  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Refactor media controls code
+        https://bugs.webkit.org/show_bug.cgi?id=142455
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac/http/tests/media/hls/video-controls-live-stream-expected.txt:
+
+2015-03-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Upgrade Map, Set and WeakMap constructor interface
+        https://bugs.webkit.org/show_bug.cgi?id=142348
+
+        Reviewed by Filip Pizlo.
+
+        Constructor semantics is changed.
+
+        * js/basic-map-expected.txt:
+        * js/basic-set-expected.txt:
+        * js/dom/basic-weakmap-expected.txt:
+        * js/script-tests/basic-map.js:
+        * js/script-tests/basic-set.js:
+        (set new):
+
+2015-03-10  Gabor Rapcsanyi  <rgabor@webkit.org>
+
+        Too large plugins are crashing.
+        https://bugs.webkit.org/show_bug.cgi?id=139856
+
+        Reviewed by Darin Adler.
+
+        Add layout test to cover this crash.
+
+        * plugins/large-plugin-crash-expected.txt: Added.
+        * plugins/large-plugin-crash.html: Added.
+
+2015-03-09  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip contentfiltering/block-after-add-data.html for now.
+        https://bugs.webkit.org/show_bug.cgi?id=142526
+
+        * TestExpectations:
+
+2015-03-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Rebaseline tests afer r181292.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/forms/search-vertical-alignment-expected.txt:
+        * platform/win/fast/forms/textfield-overflow-by-value-update-expected.txt:
+
+2015-03-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Support extends and super keywords
+        https://bugs.webkit.org/show_bug.cgi?id=142200
+
+        Reviewed by Filip Pizlo.
+
+        Added tests for "extends" and "super" keywords.
+
+        * TestExpectations:
+        * js/class-syntax-extends-expected.txt: Added.
+        * js/class-syntax-extends.html: Added.
+        * js/class-syntax-super-expected.txt: Added.
+        * js/class-syntax-super.html: Added.
+        * js/script-tests/class-syntax-extends.js: Added.
+        * js/script-tests/class-syntax-super.js: Added.
+
+2015-03-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r176978): Inline-blocks with overflowing contents have ascents that are too large
+        https://bugs.webkit.org/show_bug.cgi?id=141783
+
+        Reviewed by David Hyatt.
+
+        Update expected results.
+
+        * css3/flexbox/child-overflow-expected.html:
+        * css3/flexbox/child-overflow.html:
+        * fast/css/inline-block-tricky-baselines-expected.html: Added.
+        * fast/css/inline-block-tricky-baselines.html: Added.
+        * fast/forms/textfield-overflow-by-value-update-expected.txt:
+        * fast/text/baseline-inline-block-expected.html: Added.
+        * fast/text/baseline-inline-block.html: Added.
+        * platform/mac/fast/forms/search-vertical-alignment-expected.txt:
+
+2015-03-09  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Add tests
+        https://bugs.webkit.org/show_bug.cgi?id=142475
+
+        Reviewed by Andreas Kling.
+
+        * contentfiltering/allow-after-add-data-expected.html: Added.
+        * contentfiltering/allow-after-add-data.html: Added.
+        * contentfiltering/allow-after-finished-adding-data-expected.html: Added.
+        * contentfiltering/allow-after-finished-adding-data.html: Added.
+        * contentfiltering/allow-after-response-expected.html: Added.
+        * contentfiltering/allow-after-response.html: Added.
+        * contentfiltering/block-after-add-data-expected.html: Added.
+        * contentfiltering/block-after-add-data.html: Added.
+        * contentfiltering/block-after-finished-adding-data-expected.html: Added.
+        * contentfiltering/block-after-finished-adding-data.html: Added.
+        * contentfiltering/block-after-response-expected.html: Added.
+        * contentfiltering/block-after-response.html: Added.
+
+2015-03-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        svg/custom/svg-fonts-without-missing-glyph.xhtml fails after fonts/font-fallback-prefers-pictographs.html
+        https://bugs.webkit.org/show_bug.cgi?id=142470
+
+        Reviewed by Anders Carlsson.
+
+        * platform/mac/TestExpectations:
+
+2015-03-09  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS JIT: add aliases between :nth-child()/:nth-last-child() and :first-child/:last-child
+        https://bugs.webkit.org/show_bug.cgi?id=142472
+
+        Reviewed by Andreas Kling.
+
+        * fast/selectors/nth-child-matching-first-expected.txt: Added.
+        * fast/selectors/nth-child-matching-first-on-root-expected.txt: Added.
+        * fast/selectors/nth-child-matching-first-on-root.html: Added.
+        * fast/selectors/nth-child-matching-first.html: Added.
+        * fast/selectors/nth-last-child-matching-first-expected.txt: Added.
+        * fast/selectors/nth-last-child-matching-first-on-root-expected.txt: Added.
+        * fast/selectors/nth-last-child-matching-first-on-root.html: Added.
+        * fast/selectors/nth-last-child-matching-first.html: Added.
+
+2015-03-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Work around a Cocoa font parsing bug
+        https://bugs.webkit.org/show_bug.cgi?id=142446
+
+        Reviewed by Simon Fraser.
+
+        Adding a few extra tests for bits of SVG fonts that could use some more tests.
+
+        * svg/fonts/resources/svg-font-general.svg: Updated and moved from svg-font-horiz-origin-font.svg
+        * svg/fonts/svg-font-general.html: Updated and moved from svg-font-horiz-origin.html
+        * svg/fonts/svg-font-general-expected.html: Updated and moved from svg-font-horiz-origin-expected.html
+
+2015-03-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [SVG -> OTF Converter] x-height cannot be specified
+        https://bugs.webkit.org/show_bug.cgi?id=142465
+
+        Reviewed by Simon Fraser.
+
+        For all non-system fonts, OS X disregards the font's reported x-height. Therefore,
+        it is impossible to satisfy this test.
+
+        * fast/css/ex-unit-with-no-x-height-expected.txt: Removed.
+        * fast/css/ex-unit-with-no-x-height.html: Removed.
+        * platform/mac/TestExpectations:
+
+2015-03-09  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        Unreviewed GTK+ Gardening
+
+        https://bugs.webkit.org/show_bug.cgi?id=142499 
+
+        * platform/gtk/TestExpectations:
+
+2015-03-09  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening on 9th Mar.
+
+        Mark svg/text/select-textLength-spacingAndGlyphs-foo.html to failure.
+        Update new failling tests to existing bugs.
+
+        * platform/efl/TestExpectations:
+
+2015-03-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Last test gardening after r177774 (for reals this time)
+        https://bugs.webkit.org/show_bug.cgi?id=139968
+
+        Unreviewed.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/svg/text/select-textLength-spacingAndGlyphs-squeeze-1-expected.txt:
+        * platform/mac/svg/text/select-textLength-spacingAndGlyphs-squeeze-2-expected.txt:
+        * platform/mac/svg/text/select-textLength-spacingAndGlyphs-squeeze-3-expected.txt:
+        * platform/mac/svg/text/select-textLength-spacingAndGlyphs-squeeze-4-expected.txt:
+        * platform/mac/svg/text/select-textLength-spacingAndGlyphs-stretch-1-expected.txt:
+        * platform/mac/svg/text/select-textLength-spacingAndGlyphs-stretch-2-expected.txt:
+        * platform/mac/svg/text/select-textLength-spacingAndGlyphs-stretch-3-expected.txt:
+        * svg/text/select-textLength-spacingAndGlyphs-squeeze-1.svg:
+        * svg/text/select-textLength-spacingAndGlyphs-squeeze-2.svg:
+        * svg/text/select-textLength-spacingAndGlyphs-squeeze-3.svg:
+        * svg/text/select-textLength-spacingAndGlyphs-squeeze-4.svg:
+        * svg/text/select-textLength-spacingAndGlyphs-stretch-1.svg:
+        * svg/text/select-textLength-spacingAndGlyphs-stretch-2.svg:
+        * svg/text/select-textLength-spacingAndGlyphs-stretch-3.svg:
+
+2015-03-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix the tests for the new double-child descendant in css-set-selector-text
+        https://bugs.webkit.org/show_bug.cgi?id=141882
+
+        Reviewed by Andreas Kling.
+
+        In 178592, I copied the rules from css-selector-text.html without removing
+        the declarations.
+
+        Kudos to Dhi Aurrahman for catching this.
+
+        * fast/css/css-set-selector-text-expected.txt:
+        * fast/css/css-set-selector-text.html:
+
+2015-03-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Change bug number for svg/custom/svg-fonts-without-missing-glyph.xhtml
+
+        Unreviewed.
+
+        * platform/mac/TestExpectations:
+
+2015-03-08  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Gardening to skip new tests, rebaseline existing tests
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        - Mark test as flakey.
+
+        * platform/ios-simulator-wk2/fast/css/text-overflow-input-expected.txt: Remove.
+        * platform/ios-simulator-wk2/fast/forms/input-disabled-color-expected.txt: Remove.
+        * platform/ios-simulator-wk2/fast/forms/input-text-word-wrap-expected.txt: Remove.
+        * platform/ios-simulator-wk2/fast/forms/minWidthPercent-expected.txt: Remove.
+        - Superceded by new platform/ios-simulator results.
+
+        * platform/ios-simulator/TestExpectations:
+        - Skip two tests that will always time out on iOS.
+        - Mark two tests as ImageOnlyFailure that fail consistently.
+
+        * platform/ios-simulator/compositing/media-controls-bar-appearance-expected.txt: Add.
+        - Add result for new test from r180965.
+
+        * platform/ios-simulator/fast/attachment/attachment-label-highlight-expected.txt: Add.
+        * platform/ios-simulator/fast/attachment/attachment-progress-expected.txt: Add.
+        * platform/ios-simulator/fast/attachment/attachment-subtitle-expected.txt: Add.
+        * platform/ios-simulator/fast/attachment/attachment-title-expected.txt: Add.
+        - Add results for new attachment tests.
+
+        * platform/ios-simulator/fast/css/text-overflow-input-expected.txt: Update.
+        * platform/ios-simulator/fast/forms/input-disabled-color-expected.txt: Update.
+        * platform/ios-simulator/fast/forms/input-text-scroll-left-on-blur-expected.txt: Update.
+        * platform/ios-simulator/fast/forms/input-text-word-wrap-expected.txt: Update.
+        * platform/ios-simulator/fast/forms/minWidthPercent-expected.txt: Update.
+        * platform/ios-simulator/tables/mozilla/bugs/bug59354-expected.txt: Update.
+        * platform/ios-simulator/tables/mozilla/bugs/bug96334-expected.txt: Update.
+        * platform/ios-simulator/tables/mozilla/other/move_row-expected.txt: Update.
+        - Rebaseline after other bug fixes like r180815.
+
+2015-03-07  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening on 8th Mar.
+
+        Mark emphasis text test, writing mode test, whitespace test to failure.
+        Besides update new failure tests to existing bugs.
+
+        * platform/efl/TestExpectations:
+
+2015-03-07  Darin Adler  <darin@apple.com>
+
+        Improve the event handler test
+        https://bugs.webkit.org/show_bug.cgi?id=142439
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/event-handler-attributes-expected.txt: Renamed from legacy-event-handler-attributes-expected.txt.
+        Also updated to reflect changes in the test.
+
+        * fast/dom/event-handler-attributes.html: Renamed from legacy-event-handler-attributes.html.
+        Fixed bug in the test that was making document event handler tests falsely report failure.
+        Removed testing of some HTMLMediaElement attributes that are conditionally present; this test
+        is intended to test only unconditionally available event handler attributes at this time.
+
+        * platform/win/fast/dom/legacy-event-handler-attributes-expected.txt: Removed. The conditional HTMLMediaElement
+        attributes are the reason the Windows-specific results were needed.
+
+2015-03-06  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed EFL gardening on 7th Mar.
+
+        Remove duplicated css nap scroll skip.
+        Mark printing, compositing mask, svg pattern, and webgl visibility tests to failures.
+
+        * platform/efl/TestExpectations:
+
+2015-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Improved Support for Iterator Objects
+        https://bugs.webkit.org/show_bug.cgi?id=142420
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object.html:
+        Update tests to include iterator objects.
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Mark svg/fonts/svg-font-horiz-orig.html as Image-only failing.
+
+        * platform/win/TestExpectations:
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Mark svg/fonts/svg-font-horiz-orig.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=142423
+
+        * platform/win/TestExpectations:
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Add inherit support from scroll snap CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=136344
+        <rdar://problem/18162329>
+
+        Reviewed by Dean Jackson.
+
+        * css3/scroll-snap/scroll-snap-inherit.html: Added.
+        * css3/scroll-snap/scroll-snap-inherit-expected.txt: Added.
+
+2015-03-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r180595): construct varargs fails in FTL
+        https://bugs.webkit.org/show_bug.cgi?id=142030
+
+        Reviewed by Michael Saboff.
+
+        Re-enable the test on 64-bit iOS.
+
+        * js/regress/script-tests/deltablue-varargs.js:
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Setting scroll-snap-desination to (100% 100%) locks up WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=142414
+        <rdar://problem/20077275>
+
+        Reviewed by Dean Jackson.
+
+        * css3/scroll-snap/scroll-snap-desination-lock-up.html: Added.
+        * css3/scroll-snap/scroll-snap-desination-lock-up-expected.txt: Added.
+
+2015-03-06  Dean Jackson  <dino@apple.com>
+
+        Support "plus-lighter" in mix-blend mode
+        https://bugs.webkit.org/show_bug.cgi?id=142416
+        <rdar://problem/19993979>
+
+        Reviewed by Darin Adler and Sam Weinig.
+
+        Add tests and new expected results for plus-lighter.
+
+        * css3/blending/blend-mode-property-parsing-expected.txt:
+        * css3/blending/blend-mode-simple-composited.html:
+        * css3/blending/blend-mode-simple.html:
+        * css3/blending/script-tests/blend-mode-property-parsing.js:
+        * css3/blending/svg-blend-plus-lighter.html: Added.
+        * platform/mac/css3/blending/blend-mode-simple-composited-expected.png:
+        * platform/mac/css3/blending/blend-mode-simple-composited-expected.txt:
+        * platform/mac/css3/blending/blend-mode-simple-expected.png:
+        * platform/mac/css3/blending/blend-mode-simple-expected.txt:
+        * platform/mac/css3/blending/svg-blend-plus-lighter-expected.txt: Added.
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Add 'initial' keyword support for scroll snap CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=136345
+        <rdar://problem/18162325>
+
+        Reviewed by Dean Jackson.
+
+        * css3/scroll-snap/scroll-snap-property-computed-style.js: Update for corrected 'initial' behavior.
+        * css3/scroll-snap/scroll-snap-property-computed-style-expected.txt: Rebaselined.
+        * css3/scroll-snap/scroll-snap-initial.html: Added.
+        * css3/scroll-snap/scroll-snap-initial-expected.txt: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6: Object Literal Extensions - Methods
+        https://bugs.webkit.org/show_bug.cgi?id=142390
+
+        Reviewed by Geoffrey Garen.
+
+        * js/object-literal-computed-methods-expected.txt: Added.
+        * js/object-literal-computed-methods.html: Added.
+        * js/object-literal-methods-expected.txt: Added.
+        * js/object-literal-methods.html: Added.
+        * js/script-tests/object-literal-computed-methods.js: Added.
+        * js/script-tests/object-literal-methods.js: Added.
+
+2015-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        __proto__ shorthand property should not modify prototype in Object Literal construction
+        https://bugs.webkit.org/show_bug.cgi?id=142382
+
+        Reviewed by Geoffrey Garen.
+
+        * js/object-literal-shorthand-construction-expected.txt:
+        * js/script-tests/object-literal-shorthand-construction.js:
+        Update test to cover the __proto__ shorthand case which is
+        different from longhand case.
+
+2015-03-06  Antti Koivisto  <antti@apple.com>
+
+        Enable disk cache validation test on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=142405
+
+        Reviewed by Andreas Kling.
+
+        The features is enabled.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2015-03-06  Jer Noble  <jer.noble@apple.com>
+
+        [Web Audio] Decoding specific .m4a file crashes tab
+        https://bugs.webkit.org/show_bug.cgi?id=139545
+
+        Reviewed by Eric Carlson.
+
+        * webaudio/decode-audio-data-too-short-expected.txt: Added.
+        * webaudio/decode-audio-data-too-short.html: Added.
+        * webaudio/resources/media/too-short.m4a: Added.
+
+2015-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Crash in -[WebCascadeList objectAtIndex:] + 195
+        https://bugs.webkit.org/show_bug.cgi?id=141274
+
+        Reviewed by David Kilzer.
+
+        * platform/mac/fast/text/crash-complextextcontroller-custom-cascade-list-expected.txt: Added.
+        * platform/mac/fast/text/crash-complextextcontroller-custom-cascade-list.html: Added.
+
+2015-03-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Setting any of the <object> element plugin controlling attributes does not have any affect.
+        https://bugs.webkit.org/show_bug.cgi?id=141936.
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/image-object-hover-inherit-expected.html: Added.
+        * fast/css/image-object-hover-inherit.html: Added.
+        A guarding test to catch the case of reconstructing the image <object>
+        renderer while performing a synchronous resolveTree() followed by page
+        rendering or dump render tree.
+        
+        * svg/as-object/resources/lime100x100.html: Added.
+        * svg/as-object/resources/lime100x100.png: Added.
+        * svg/as-object/resources/lime100x100.svg: Added.
+        * svg/as-object/resources/red100x100.svg: Added.
+        * svg/as-object/svg-in-object-dynamic-attribute-change-expected.html: Added.
+        * svg/as-object/svg-in-object-dynamic-attribute-change.html: Added.
+        Ensure that changing the 'type' and the 'data' attributes of the <object>
+        element will have the expected outcome. Also make sure that the <object>
+        element renderer falls back correctly when setting any of the attributes
+        to some unexpected value.
+
+2015-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test horiz-origin-x and horiz-origin-y in SVG fonts
+        https://bugs.webkit.org/show_bug.cgi?id=142403
+
+        Simply moving to the origin in glyph-space at the beginning
+        of path parsing won't work if subsequent coordinates are absolute.
+
+        Reviewed by Simon Fraser.
+
+        * svg/fonts/resources/svg-font-horiz-origin-font.svg: Added.
+        * svg/fonts/svg-font-horiz-origin-expected.html: Added.
+        * svg/fonts/svg-font-horiz-origin.html: Added.
+
+2015-03-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        An SVG element without intrinsic size inherits the container size as its viewport instead of inheriting the container viewport.
+        https://bugs.webkit.org/show_bug.cgi?id=141725.
+
+        Reviewed by Darin Adler.
+
+        * svg/css/svg-css-different-intrinsic-sizes-expected.html: Added.
+        * svg/css/svg-css-different-intrinsic-sizes.html: Added.
+        The intrinsic size of the <svg> element is overridden by CSS. The elements
+        inside the <svg> should consider the css size (which is equal to the <svg>
+        element viewport) instead of the <svg> element intrinsic size.
+
+2015-03-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow composited clip-path to be updated without a layer repaint
+        https://bugs.webkit.org/show_bug.cgi?id=142384
+
+        Reviewed by Zalan Bujtas.
+        
+        Test repaint with a clip-path change.
+
+        * compositing/masks/compositing-clip-path-change-no-repaint-expected.txt: Added.
+        * compositing/masks/compositing-clip-path-change-no-repaint.html: Added.
+
 2015-03-06  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         Unreviewed EFL gardening on 6th Mar.

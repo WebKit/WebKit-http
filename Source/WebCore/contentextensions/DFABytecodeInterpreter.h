@@ -39,17 +39,19 @@ namespace ContentExtensions {
 
 class DFABytecodeInterpreter {
 public:
-    DFABytecodeInterpreter(const Vector<DFABytecode>& bytecode)
-        : bytecode(bytecode)
+    DFABytecodeInterpreter(const DFABytecode* bytecode, unsigned bytecodeLength)
+        : m_bytecode(bytecode)
+        , m_bytecodeLength(bytecodeLength)
     {
     }
     
     typedef HashSet<uint64_t, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> Actions;
     
-    Actions interpret(const CString&);
+    Actions interpret(const CString&, uint16_t flags);
 
 private:
-    const Vector<DFABytecode>& bytecode;
+    const DFABytecode* m_bytecode;
+    const unsigned m_bytecodeLength;
 };
 
 } // namespace ContentExtensions

@@ -1746,6 +1746,7 @@ set(WebCore_SOURCES
     html/parser/XSSAuditor.cpp
     html/parser/XSSAuditorDelegate.cpp
 
+    html/shadow/AutoFillButtonElement.cpp
     html/shadow/ContentDistributor.cpp
     html/shadow/DetailsMarkerControl.cpp
     html/shadow/InsertionPoint.cpp
@@ -2169,11 +2170,11 @@ set(WebCore_SOURCES
     platform/graphics/transforms/TransformationMatrix.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
 
-    platform/mediastream/MediaStreamCenter.cpp
     platform/mediastream/MediaStreamPrivate.cpp
     platform/mediastream/MediaStreamTrackPrivate.cpp
-    platform/mediastream/MediaStreamSource.cpp
-    platform/mediastream/MediaStreamSourceStates.cpp
+    platform/mediastream/RealtimeMediaSource.cpp
+    platform/mediastream/RealtimeMediaSourceCenter.cpp
+    platform/mediastream/RealtimeMediaSourceStates.cpp
     platform/mediastream/RTCIceCandidateDescriptor.cpp
     platform/mediastream/RTCPeerConnectionHandler.cpp
     platform/mediastream/RTCSessionDescriptionDescriptor.cpp
@@ -2182,7 +2183,7 @@ set(WebCore_SOURCES
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
     platform/mock/MediaConstraintsMock.cpp
-    platform/mock/MockMediaStreamCenter.cpp
+    platform/mock/MockRealtimeMediaSourceCenter.cpp
     platform/mock/RTCDataChannelHandlerMock.cpp
     platform/mock/RTCDTMFSenderHandlerMock.cpp
     platform/mock/RTCNotifiersMock.cpp

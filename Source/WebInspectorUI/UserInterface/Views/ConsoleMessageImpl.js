@@ -45,6 +45,7 @@ WebInspector.ConsoleMessageImpl = function(source, level, message, linkifier, ty
         "map": this._formatParameterAsObject,
         "set": this._formatParameterAsObject,
         "weakmap": this._formatParameterAsObject,
+        "iterator": this._formatParameterAsObject,
         "array":  this._formatParameterAsArray,
         "node":   this._formatParameterAsNode,
         "string": this._formatParameterAsString
@@ -198,6 +199,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
     {
         // ConsoleMessage stack trace line numbers are one-based.
         lineNumber = lineNumber ? lineNumber - 1 : 0;
+        columnNumber = columnNumber ? columnNumber - 1 : 0;
 
         return WebInspector.linkifyLocation(url, lineNumber, columnNumber, "console-message-url");
     },

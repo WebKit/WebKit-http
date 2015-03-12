@@ -32,6 +32,7 @@
 #include <wtf/DoublyLinkedList.h>
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -158,6 +159,8 @@ public:
 #if USE(CF)
     template<typename T> void releaseSoon(RetainPtr<T>&&);
 #endif
+
+    const Vector<MarkedBlock*>& blocksWithNewObjects() const { return m_blocksWithNewObjects; }
 
 private:
     friend class LLIntOffsetsExtractor;

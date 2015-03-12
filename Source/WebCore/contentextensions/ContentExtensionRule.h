@@ -29,6 +29,7 @@
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "ContentExtensionActions.h"
+#include "ResourceLoadInfo.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -43,6 +44,7 @@ namespace ContentExtensions {
 struct Trigger {
     String urlFilter;
     bool urlFilterIsCaseSensitive { false };
+    ResourceFlags flags { 0 };
 };
     
 struct Action {
@@ -66,7 +68,7 @@ struct Action {
         return m_type == other.m_type
             && m_cssSelector == other.m_cssSelector;
     }
-    static Action deserialize(const Vector<SerializedActionByte>&, unsigned location);
+    static Action deserialize(const SerializedActionByte* actions, const unsigned actionsLength, unsigned location);
 
     ActionType type() const { return m_type; }
     const String& cssSelector() const { return m_cssSelector; }

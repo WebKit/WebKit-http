@@ -330,7 +330,11 @@ CSSParser::CSSParser(const CSSParserContext& context)
     , m_token(0)
     , m_lineNumber(0)
     , m_tokenStartLineNumber(0)
+    , m_tokenStartColumnNumber(0)
     , m_lastSelectorLineNumber(0)
+    , m_columnOffsetForLine(0)
+    , m_sheetStartLineNumber(0)
+    , m_sheetStartColumnNumber(0)
     , m_allowImportRules(true)
     , m_allowNamespaceDeclarations(true)
 #if ENABLE(CSS_DEVICE_ADAPTATION)
@@ -429,7 +433,7 @@ void CSSParser::setupParser(const char* prefix, unsigned prefixLength, StringVie
     m_lexFunc = &CSSParser::realLex<UChar>;
 }
 
-void CSSParser::parseSheet(StyleSheetContents* sheet, const String& string, int startLineNumber, RuleSourceDataList* ruleSourceDataResult, bool logErrors)
+void CSSParser::parseSheet(StyleSheetContents* sheet, const String& string, const TextPosition& textPosition, RuleSourceDataList* ruleSourceDataResult, bool logErrors)
 {
     setStyleSheet(sheet);
     m_defaultNamespace = starAtom; // Reset the default namespace.
@@ -439,7 +443,10 @@ void CSSParser::parseSheet(StyleSheetContents* sheet, const String& string, int 
 
     m_logErrors = logErrors && sheet->singleOwnerDocument() && !sheet->baseURL().isEmpty() && sheet->singleOwnerDocument()->page();
     m_ignoreErrorsInDeclaration = false;
-    m_lineNumber = startLineNumber;
+    m_sheetStartLineNumber = textPosition.m_line.zeroBasedInt();
+    m_sheetStartColumnNumber = textPosition.m_column.zeroBasedInt();
+    m_lineNumber = m_sheetStartLineNumber;
+    m_columnOffsetForLine = 0;
     setupParser("", string, "");
     cssyyparse(this);
     sheet->shrinkToFit();
@@ -820,7 +827,7 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (parserContext.isCSSCompositingEnabled && (valueID == CSSValueNormal || valueID == CSSValueMultiply || valueID == CSSValueScreen
             || valueID == CSSValueOverlay || valueID == CSSValueDarken || valueID == CSSValueLighten ||  valueID == CSSValueColorDodge
             || valueID == CSSValueColorBurn || valueID == CSSValueHardLight || valueID == CSSValueSoftLight || valueID == CSSValueDifference
-            || valueID == CSSValueExclusion || valueID == CSSValuePlusDarker))
+            || valueID == CSSValueExclusion || valueID == CSSValuePlusDarker || valueID == CSSValuePlusLighter))
             return true;
         break;
     case CSSPropertyIsolation:
@@ -3319,20 +3326,33 @@ bool CSSParser::parseNonElementSnapPoints(CSSPropertyID propId, bool important)
     return false;
 }
 
+bool CSSParser::parseScrollSnapPositions(RefPtr<CSSValue>& cssValueX, RefPtr<CSSValue>& cssValueY)
+{
+    cssValueX = parsePositionX(*m_valueList);
+    if (!cssValueX)
+        return false;
+
+    // Don't accept odd-length lists of positions (must always have an X and a Y):
+    if (!m_valueList->next())
+        return false;
+
+    cssValueY = parsePositionY(*m_valueList);
+    if (!cssValueY)
+        return false;
+
+    return true;
+}
+
 bool CSSParser::parseScrollSnapDestination(CSSPropertyID propId, bool important)
 {
     RefPtr<CSSValueList> position = CSSValueList::createSpaceSeparated();
     if (m_valueList->size() != 2)
         return false;
-    ValueWithCalculation valueXWithCalculation(*m_valueList->current());
-    if (!validateUnit(valueXWithCalculation, FPercent | FLength))
-        return false;
-    RefPtr<CSSValue> cssValueX = createPrimitiveNumericValue(valueXWithCalculation);
 
-    ValueWithCalculation valueYWithCalculation(*m_valueList->next());
-    if (!validateUnit(valueYWithCalculation, FPercent | FLength))
+    RefPtr<CSSValue> cssValueX, cssValueY;
+    if (!parseScrollSnapPositions(cssValueX, cssValueY))
         return false;
-    RefPtr<CSSValue> cssValueY = createPrimitiveNumericValue(valueYWithCalculation);
+
     position->append(cssValueX.releaseNonNull());
     position->append(cssValueY.releaseNonNull());
     addProperty(propId, position, important);
@@ -3344,17 +3364,15 @@ bool CSSParser::parseScrollSnapCoordinate(CSSPropertyID propId, bool important)
 {
     RefPtr<CSSValueList> positions = CSSValueList::createSpaceSeparated();
     while (m_valueList->current()) {
-        ValueWithCalculation valueXWithCalculation(*m_valueList->current());
-        // Don't accept odd-length lists of coordinates.
-        if (!m_valueList->next())
+        RefPtr<CSSValue> cssValueX, cssValueY;
+        if (!parseScrollSnapPositions(cssValueX, cssValueY))
             return false;
-        ValueWithCalculation valueYWithCalculation(*m_valueList->current());
-        if (!validateUnit(valueXWithCalculation, FPercent | FLength) || !validateUnit(valueYWithCalculation, FPercent | FLength))
-            return false;
-        positions->append(createPrimitiveNumericValue(valueXWithCalculation));
-        positions->append(createPrimitiveNumericValue(valueYWithCalculation));
+
+        positions->append(cssValueX.releaseNonNull());
+        positions->append(cssValueY.releaseNonNull());
         m_valueList->next();
     }
+
     if (positions->length()) {
         addProperty(propId, positions.release(), important);
         return true;
@@ -4037,7 +4055,7 @@ bool CSSParser::parseFillImage(CSSParserValueList& valueList, RefPtr<CSSValue>& 
     return false;
 }
 
-PassRefPtr<CSSValue> CSSParser::parseFillPositionX(CSSParserValueList& valueList)
+PassRefPtr<CSSValue> CSSParser::parsePositionX(CSSParserValueList& valueList)
 {
     int id = valueList.current()->id;
     if (id == CSSValueLeft || id == CSSValueRight || id == CSSValueCenter) {
@@ -4054,7 +4072,7 @@ PassRefPtr<CSSValue> CSSParser::parseFillPositionX(CSSParserValueList& valueList
     return nullptr;
 }
 
-PassRefPtr<CSSValue> CSSParser::parseFillPositionY(CSSParserValueList& valueList)
+PassRefPtr<CSSValue> CSSParser::parsePositionY(CSSParserValueList& valueList)
 {
     int id = valueList.current()->id;
     if (id == CSSValueTop || id == CSSValueBottom || id == CSSValueCenter) {
@@ -4564,14 +4582,14 @@ bool CSSParser::parseFillProperty(CSSPropertyID propId, CSSPropertyID& propId1, 
                     break;
                 case CSSPropertyBackgroundPositionX:
                 case CSSPropertyWebkitMaskPositionX: {
-                    currValue = parseFillPositionX(*m_valueList);
+                    currValue = parsePositionX(*m_valueList);
                     if (currValue)
                         m_valueList->next();
                     break;
                 }
                 case CSSPropertyBackgroundPositionY:
                 case CSSPropertyWebkitMaskPositionY: {
-                    currValue = parseFillPositionY(*m_valueList);
+                    currValue = parsePositionY(*m_valueList);
                     if (currValue)
                         m_valueList->next();
                     break;
@@ -9714,13 +9732,13 @@ bool CSSParser::parseTransformOrigin(CSSPropertyID propId, CSSPropertyID& propId
             // parseTransformOriginShorthand advances the m_valueList pointer
             break;
         case CSSPropertyWebkitTransformOriginX: {
-            value = parseFillPositionX(*m_valueList);
+            value = parsePositionX(*m_valueList);
             if (value)
                 m_valueList->next();
             break;
         }
         case CSSPropertyWebkitTransformOriginY: {
-            value = parseFillPositionY(*m_valueList);
+            value = parsePositionY(*m_valueList);
             if (value)
                 m_valueList->next();
             break;
@@ -9757,13 +9775,13 @@ bool CSSParser::parsePerspectiveOrigin(CSSPropertyID propId, CSSPropertyID& prop
             parse2ValuesFillPosition(*m_valueList, value, value2);
             break;
         case CSSPropertyWebkitPerspectiveOriginX: {
-            value = parseFillPositionX(*m_valueList);
+            value = parsePositionX(*m_valueList);
             if (value)
                 m_valueList->next();
             break;
         }
         case CSSPropertyWebkitPerspectiveOriginY: {
-            value = parseFillPositionY(*m_valueList);
+            value = parsePositionY(*m_valueList);
             if (value)
                 m_valueList->next();
             break;
@@ -10472,10 +10490,19 @@ CSSParser::Location CSSParser::currentLocation()
 {
     Location location;
     location.lineNumber = m_tokenStartLineNumber;
+    location.columnNumber = m_tokenStartColumnNumber;
+
+    ASSERT(location.lineNumber >= 0);
+    ASSERT(location.columnNumber >= 0);
+
+    if (location.lineNumber == m_sheetStartLineNumber)
+        location.columnNumber += m_sheetStartColumnNumber;
+
     if (is8BitSource())
         location.token.init(tokenStart<LChar>(), currentCharacter<LChar>() - tokenStart<LChar>());
     else
         location.token.init(tokenStart<UChar>(), currentCharacter<UChar>() - tokenStart<UChar>());
+
     return location;
 }
 
@@ -10872,11 +10899,11 @@ inline bool CSSParser::detectFunctionTypeToken(int length)
             m_token = CALCFUNCTION;
             return true;
         }
-#if ENABLE(CSS_SELECTORS_LEVEL4)
         if (isEqualToCSSIdentifier(name, "lang")) {
             m_token = LANGFUNCTION;
             return true;
         }
+#if ENABLE(CSS_SELECTORS_LEVEL4)
         if (isEqualToCSSIdentifier(name, "role")) {
             m_token = ROLEFUNCTION;
             return true;
@@ -11347,6 +11374,7 @@ restartAfterComment:
     result = currentCharacter<SrcCharacterType>();
     setTokenStart(result);
     m_tokenStartLineNumber = m_lineNumber;
+    m_tokenStartColumnNumber = tokenStartOffset() - m_columnOffsetForLine;
     m_token = *currentCharacter<SrcCharacterType>();
     ++currentCharacter<SrcCharacterType>();
 
@@ -11569,8 +11597,10 @@ restartAfterComment:
         // Might start with a '\n'.
         --currentCharacter<SrcCharacterType>();
         do {
-            if (*currentCharacter<SrcCharacterType>() == '\n')
+            if (*currentCharacter<SrcCharacterType>() == '\n') {
                 ++m_lineNumber;
+                m_columnOffsetForLine = currentCharacterOffset() + 1;
+            }
             ++currentCharacter<SrcCharacterType>();
         } while (*currentCharacter<SrcCharacterType>() <= ' ' && (typesOfASCIICharacters[*currentCharacter<SrcCharacterType>()] == CharacterWhiteSpace));
         break;
@@ -11639,9 +11669,10 @@ restartAfterComment:
         if (*currentCharacter<SrcCharacterType>() == '*') {
             ++currentCharacter<SrcCharacterType>();
             while (currentCharacter<SrcCharacterType>()[0] != '*' || currentCharacter<SrcCharacterType>()[1] != '/') {
-                if (*currentCharacter<SrcCharacterType>() == '\n')
+                if (*currentCharacter<SrcCharacterType>() == '\n') {
                     ++m_lineNumber;
-                if (*currentCharacter<SrcCharacterType>() == '\0') {
+                    m_columnOffsetForLine = currentCharacterOffset() + 1;
+                } else if (*currentCharacter<SrcCharacterType>() == '\0') {
                     // Unterminated comments are simply ignored.
                     currentCharacter<SrcCharacterType>() -= 2;
                     break;
@@ -11858,14 +11889,15 @@ void CSSParser::syntaxError(const Location& location, SyntaxErrorType error)
 {
     if (!isLoggingErrors())
         return;
+
     StringBuilder builder;
     switch (error) {
     case PropertyDeclarationError:
         builder.appendLiteral("Invalid CSS property declaration at: ");
         break;
-
     default:
         builder.appendLiteral("Unexpected CSS token: ");
+        break;
     }
 
     if (location.token.is8Bit())
@@ -11873,7 +11905,7 @@ void CSSParser::syntaxError(const Location& location, SyntaxErrorType error)
     else
         builder.append(location.token.characters16(), location.token.length());
 
-    logError(builder.toString(), location.lineNumber);
+    logError(builder.toString(), location.lineNumber, location.columnNumber);
 
     m_ignoreErrorsInDeclaration = true;
 }
@@ -11883,11 +11915,10 @@ bool CSSParser::isLoggingErrors()
     return m_logErrors && !m_ignoreErrorsInDeclaration;
 }
 
-void CSSParser::logError(const String& message, int lineNumber)
+void CSSParser::logError(const String& message, int lineNumber, int columnNumber)
 {
-    // FIXME: <http://webkit.org/b/114313> CSS parser console message errors should include column numbers.
     PageConsoleClient& console = m_styleSheet->singleOwnerDocument()->page()->console();
-    console.addMessage(MessageSource::CSS, MessageLevel::Warning, message, m_styleSheet->baseURL().string(), lineNumber + 1, 0);
+    console.addMessage(MessageSource::CSS, MessageLevel::Warning, message, m_styleSheet->baseURL().string(), lineNumber + 1, columnNumber + 1);
 }
 
 PassRefPtr<StyleRuleKeyframes> CSSParser::createKeyframesRule(const String& name, std::unique_ptr<Vector<RefPtr<StyleKeyframe>>> popKeyframes)

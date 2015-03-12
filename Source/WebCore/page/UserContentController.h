@@ -44,8 +44,10 @@ class URL;
 class UserScript;
 class UserStyleSheet;
 class UserMessageHandlerDescriptor;
+struct ResourceLoadInfo;
 
 namespace ContentExtensions {
+class CompiledContentExtension;
 class ContentExtensionsBackend;
 struct Action;
 }
@@ -80,13 +82,11 @@ public:
 #endif
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    // FIXME: This should really take a pointer to a compiled UserContentFilter.
-    WEBCORE_EXPORT void addUserContentFilter(const String& name, const String& ruleList);
-    WEBCORE_EXPORT void removeUserContentFilter(const String& name);
-    WEBCORE_EXPORT void removeAllUserContentFilters();
+    WEBCORE_EXPORT void addUserContentExtension(const String& name, RefPtr<ContentExtensions::CompiledContentExtension>);
+    WEBCORE_EXPORT void removeUserContentExtension(const String& name);
+    WEBCORE_EXPORT void removeAllUserContentExtensions();
     
-    // FIXME: Consider putting this (and other future content filter predicates) in its own class.
-    Vector<ContentExtensions::Action> actionsForURL(const URL&);
+    Vector<ContentExtensions::Action> actionsForResourceLoad(const ResourceLoadInfo&);
 #endif
 
 private:

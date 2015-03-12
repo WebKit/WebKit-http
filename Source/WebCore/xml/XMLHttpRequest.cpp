@@ -913,7 +913,9 @@ void XMLHttpRequest::dropProtection()
     // report the extra cost at that point.
     JSC::VM& vm = scriptExecutionContext()->vm();
     JSC::JSLockHolder lock(vm);
-    vm.heap.reportExtraMemoryCost(m_responseBuilder.length() * 2);
+    // FIXME: Adopt reportExtraMemoryVisited, and switch to reportExtraMemoryAllocated.
+    // https://bugs.webkit.org/show_bug.cgi?id=142595
+    vm.heap.deprecatedReportExtraMemory(m_responseBuilder.length() * 2);
 
     unsetPendingActivity(this);
 }

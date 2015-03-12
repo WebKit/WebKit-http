@@ -286,7 +286,7 @@ InjectedScript.prototype = {
         if (typeof object !== "object")
             return;
 
-        var entries = this._getCollectionEntries(object, InjectedScriptHost.subtype(object), startIndex, numberToFetch);
+        var entries = this._entries(object, InjectedScriptHost.subtype(object), startIndex, numberToFetch);
         return entries.map(function(entry) {
             entry.value = injectedScript._wrapObject(entry.value, objectGroupName, false, true);
             if ("key" in entry)
@@ -605,12 +605,12 @@ InjectedScript.prototype = {
         function createFakeValueDescriptor(name, descriptor, isOwnProperty, possibleNativeBindingGetter)
         {
             try {
-                var descriptor = {name: name, value: object[name], writable: descriptor.writable || false, configurable: descriptor.configurable || false, enumerable: descriptor.enumerable || false};
+                var descriptor = {name, value: object[name], writable: descriptor.writable || false, configurable: descriptor.configurable || false, enumerable: descriptor.enumerable || false};
                 if (possibleNativeBindingGetter)
                     descriptor.nativeGetter = true;
                 return descriptor;
             } catch (e) {
-                var errorDescriptor = {name: name, value: e, wasThrown: true};
+                var errorDescriptor = {name, value: e, wasThrown: true};
                 if (isOwnProperty)
                     errorDescriptor.isOwn = true;
                 return errorDescriptor;
@@ -795,7 +795,7 @@ InjectedScript.prototype = {
                 continue;
             }
 
-            entries.push({value: value});
+            entries.push({value});
 
             if (numberToFetch && entries.length === numberToFetch)
                 break;
@@ -814,7 +814,7 @@ InjectedScript.prototype = {
                 continue;
             }
 
-            entries.push({key: key, value: value});
+            entries.push({key, value});
 
             if (numberToFetch && entries.length === numberToFetch)
                 break;
@@ -828,7 +828,12 @@ InjectedScript.prototype = {
         return InjectedScriptHost.weakMapEntries(object, numberToFetch);
     },
 
-    _getCollectionEntries: function(object, subtype, startIndex, numberToFetch)
+    _getIteratorEntries: function(object, numberToFetch)
+    {
+        return InjectedScriptHost.iteratorEntries(object, numberToFetch);
+    },
+
+    _entries: function(object, subtype, startIndex, numberToFetch)
     {
         if (subtype === "set")
             return this._getSetEntries(object, startIndex, numberToFetch);
@@ -836,6 +841,8 @@ InjectedScript.prototype = {
             return this._getMapEntries(object, startIndex, numberToFetch);
         if (subtype === "weakmap")
             return this._getWeakMapEntries(object, numberToFetch);
+        if (subtype === "iterator")
+            return this._getIteratorEntries(object, numberToFetch);
 
         throw "unexpected type";
     },
@@ -961,8 +968,8 @@ InjectedScript.RemoteObject.prototype = {
         };
 
         try {
-            // Maps and Sets have entries.
-            if (this.subtype === "map" || this.subtype === "set" || this.subtype === "weakmap")
+            // Maps, Sets, and Iterators have entries.
+            if (this.subtype === "map" || this.subtype === "set" || this.subtype === "weakmap" || this.subtype === "iterator")
                 this._appendEntryPreviews(object, preview);
 
             preview.properties = [];
@@ -1022,14 +1029,14 @@ InjectedScript.RemoteObject.prototype = {
             // Getter/setter.
             if (!("value" in descriptor)) {
                 preview.lossless = false;
-                this._appendPropertyPreview(preview, internal, {name: name, type: "accessor"}, propertiesThreshold);
+                this._appendPropertyPreview(preview, internal, {name, type: "accessor"}, propertiesThreshold);
                 continue;
             }
 
             // Null value.
             var value = descriptor.value;
             if (value === null) {
-                this._appendPropertyPreview(preview, internal, {name: name, type: "object", subtype: "null", value: "null"}, propertiesThreshold);
+                this._appendPropertyPreview(preview, internal, {name, type: "object", subtype: "null", value: "null"}, propertiesThreshold);
                 continue;
             }
 
@@ -1049,7 +1056,7 @@ InjectedScript.RemoteObject.prototype = {
                     value = this._abbreviateString(value, maxLength, true);
                     preview.lossless = false;
                 }
-                this._appendPropertyPreview(preview, internal, {name: name, type: type, value: toString(value)}, propertiesThreshold);
+                this._appendPropertyPreview(preview, internal, {name, type, value: toString(value)}, propertiesThreshold);
                 continue;
             }
 
@@ -1060,12 +1067,12 @@ InjectedScript.RemoteObject.prototype = {
                     symbolString = this._abbreviateString(symbolString, maxLength, true);
                     preview.lossless = false;
                 }
-                this._appendPropertyPreview(preview, internal, {name: name, type: type, value: symbolString}, propertiesThreshold);
+                this._appendPropertyPreview(preview, internal, {name, type, value: symbolString}, propertiesThreshold);
                 return;
             }
 
             // Object.
-            var property = {name: name, type: type};
+            var property = {name, type};
             var subtype = injectedScript._subtype(value);
             if (subtype)
                 property.subtype = subtype;
@@ -1112,7 +1119,7 @@ InjectedScript.RemoteObject.prototype = {
     _appendEntryPreviews: function(object, preview)
     {
         // Fetch 6, but only return 5, so we can tell if we overflowed.
-        var entries = injectedScript._getCollectionEntries(object, this.subtype, 0, 6);
+        var entries = injectedScript._entries(object, this.subtype, 0, 6);
         if (!entries)
             return;
 

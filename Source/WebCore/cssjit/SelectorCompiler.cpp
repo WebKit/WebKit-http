@@ -194,11 +194,7 @@ struct SelectorFragment {
     // the min/max/average of the vectors and pick better inline capacity.
     const CSSSelector* tagNameSelector = nullptr;
     const AtomicString* id = nullptr;
-#if ENABLE(CSS_SELECTORS_LEVEL4)
     Vector<const Vector<AtomicString>*> languageArgumentsList;
-#else
-    const AtomicString* langFilter = nullptr;
-#endif
     Vector<const AtomicStringImpl*, 8> classNames;
     HashSet<unsigned> pseudoClasses;
     Vector<JSC::FunctionPtr, 4> unoptimizedPseudoClasses;
@@ -298,12 +294,8 @@ private:
     void generateElementIsEmpty(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsFirstChild(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsHovered(Assembler::JumpList& failureCases, const SelectorFragment&);
-#if ENABLE(CSS_SELECTORS_LEVEL4)
     void generateElementIsInLanguage(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsInLanguage(Assembler::JumpList& failureCases, const Vector<AtomicString>*);
-#else
-    void generateElementIsInLanguage(Assembler::JumpList& failureCases, const AtomicString&);
-#endif
     void generateElementIsLastChild(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementIsOnlyChild(Assembler::JumpList& failureCases, const SelectorFragment&);
     void generateElementHasPlaceholderShown(Assembler::JumpList& failureCases, const SelectorFragment&);
@@ -479,7 +471,7 @@ static inline FunctionType addScrollbarPseudoClassType(const CSSSelector& select
 }
 
 // Handle the forward :nth-child() and backward :nth-last-child().
-static FunctionType addNthChildType(const CSSSelector& selector, SelectorContext selectorContext, FragmentPositionInRootFragments positionInRootFragments, bool visitedMatchEnabled, Vector<std::pair<int, int>, 2>& simpleCases, Vector<NthChildOfSelectorInfo>& filteredCases, unsigned& internalSpecificity)
+static FunctionType addNthChildType(const CSSSelector& selector, SelectorContext selectorContext, FragmentPositionInRootFragments positionInRootFragments, CSSSelector::PseudoClassType firstMatchAlternative, bool visitedMatchEnabled, Vector<std::pair<int, int>, 2>& simpleCases, Vector<NthChildOfSelectorInfo>& filteredCases, HashSet<unsigned>& pseudoClasses, unsigned& internalSpecificity)
 {
     if (!selector.parseNth())
         return FunctionType::CannotMatchAnything;
@@ -548,7 +540,11 @@ static FunctionType addNthChildType(const CSSSelector& selector, SelectorContext
         filteredCases.append(nthChildOfSelectorInfo);
         return globalFunctionType;
     }
-    simpleCases.append(std::pair<int, int>(a, b));
+
+    if (b == 1 && a <= 0)
+        pseudoClasses.add(firstMatchAlternative);
+    else
+        simpleCases.append(std::pair<int, int>(a, b));
     if (selectorContext == SelectorContext::QuerySelector)
         return FunctionType::SimpleSelectorChecker;
     return FunctionType::SelectorCheckerWithCheckingContext;
@@ -706,10 +702,10 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
         return FunctionType::SelectorCheckerWithCheckingContext;
 
     case CSSSelector::PseudoClassNthChild:
-        return addNthChildType(selector, selectorContext, positionInRootFragments, visitedMatchEnabled, fragment.nthChildFilters, fragment.nthChildOfFilters, internalSpecificity);
+        return addNthChildType(selector, selectorContext, positionInRootFragments, CSSSelector::PseudoClassFirstChild, visitedMatchEnabled, fragment.nthChildFilters, fragment.nthChildOfFilters, fragment.pseudoClasses, internalSpecificity);
 
     case CSSSelector::PseudoClassNthLastChild:
-        return addNthChildType(selector, selectorContext, positionInRootFragments, visitedMatchEnabled, fragment.nthLastChildFilters, fragment.nthLastChildOfFilters, internalSpecificity);
+        return addNthChildType(selector, selectorContext, positionInRootFragments, CSSSelector::PseudoClassLastChild, visitedMatchEnabled, fragment.nthLastChildFilters, fragment.nthLastChildOfFilters, fragment.pseudoClasses, internalSpecificity);
 
     case CSSSelector::PseudoClassNot:
         {
@@ -789,30 +785,10 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
 
     case CSSSelector::PseudoClassLang:
         {
-#if ENABLE(CSS_SELECTORS_LEVEL4)
             const Vector<AtomicString>* selectorLangArgumentList = selector.langArgumentList();
             ASSERT(selectorLangArgumentList && !selectorLangArgumentList->isEmpty());
             fragment.languageArgumentsList.append(selectorLangArgumentList);
             return FunctionType::SimpleSelectorChecker;
-#else
-            const AtomicString& argument = selector.argument();
-
-            if (argument.isEmpty())
-                return FunctionType::CannotMatchAnything;
-
-            if (!fragment.langFilter)
-                fragment.langFilter = &argument;
-            else if (*fragment.langFilter != argument) {
-                // If there are multiple definition, we only care about the most restrictive one.
-                if (argument.startsWith(*fragment.langFilter, false))
-                    fragment.langFilter = &argument;
-                else if (fragment.langFilter->startsWith(argument, false))
-                    { } // The existing filter is more restrictive.
-                else
-                    return FunctionType::CannotMatchAnything;
-            }
-            return FunctionType::SimpleSelectorChecker;
-#endif
         }
 
     case CSSSelector::PseudoClassMatches:
@@ -2577,13 +2553,8 @@ void SelectorCodeGenerator::generateElementMatching(Assembler::JumpList& matchin
         generateElementMatchesAnyPseudoClass(matchingPostTagNameFailureCases, fragment);
     if (!fragment.matchesFilters.isEmpty())
         generateElementMatchesMatchesPseudoClass(matchingPostTagNameFailureCases, fragment);
-#if ENABLE(CSS_SELECTORS_LEVEL4)
     if (!fragment.languageArgumentsList.isEmpty())
         generateElementIsInLanguage(matchingPostTagNameFailureCases, fragment);
-#else
-    if (fragment.langFilter)
-        generateElementIsInLanguage(matchingPostTagNameFailureCases, *fragment.langFilter);
-#endif
     if (!fragment.nthChildOfFilters.isEmpty())
         generateElementIsNthChildOf(matchingPostTagNameFailureCases, fragment);
     if (!fragment.nthLastChildOfFilters.isEmpty())
@@ -3291,7 +3262,7 @@ void SelectorCodeGenerator::generateElementIsHovered(Assembler::JumpList& failur
         failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
     }
 }
-#if ENABLE(CSS_SELECTORS_LEVEL4)
+
 void SelectorCodeGenerator::generateElementIsInLanguage(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
 {
     for (const Vector<AtomicString>* languageArguments : fragment.languageArgumentsList)
@@ -3309,19 +3280,7 @@ void SelectorCodeGenerator::generateElementIsInLanguage(Assembler::JumpList& fai
     functionCall.setTwoArguments(elementAddress, langRangeRegister);
     failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
 }
-#else
-void SelectorCodeGenerator::generateElementIsInLanguage(Assembler::JumpList& failureCases, const AtomicString& langFilter)
-{
-    LocalRegisterWithPreference langFilterRegister(m_registerAllocator, JSC::GPRInfo::argumentGPR1);
-    m_assembler.move(Assembler::TrustedImmPtr(langFilter.impl()), langFilterRegister);
 
-    Assembler::RegisterID elementAddress = elementAddressRegister;
-    FunctionCall functionCall(m_assembler, m_registerAllocator, m_stackAllocator, m_functionCalls);
-    functionCall.setFunctionAddress(matchesLangPseudoClassDeprecated);
-    functionCall.setTwoArguments(elementAddress, langFilterRegister);
-    failureCases.append(functionCall.callAndBranchOnBooleanReturnValue(Assembler::Zero));
-}
-#endif
 static void setLastChildState(Element* element)
 {
     if (RenderStyle* style = element->renderStyle())

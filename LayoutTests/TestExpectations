@@ -69,6 +69,8 @@ webkit.org/b/127860 [ Debug ] js/function-apply-aliased.html [ Skip ]
 # ES6 class syntax hasn't been enabled yet.
 webkit.org/b/140491 js/class-syntax-declaration.html [ Failure ]
 webkit.org/b/140491 js/class-syntax-expression.html [ Failure ]
+webkit.org/b/140491 js/class-syntax-extends.html [ Failure ]
+webkit.org/b/140491 js/class-syntax-super.html [ Failure ]
 
 # This test verifies dynamic manipulation of the mroot and msqrt elements.
 mathml/roots-removeChild.html [ ImageOnlyFailure ]
@@ -124,6 +126,7 @@ webkit.org/b/132791 svg/as-object/sizing/svg-in-object-placeholder-height-auto.h
 webkit.org/b/133057 fast/table/border-collapsing/collapsed-borders-adjoining-sections.html [ ImageOnlyFailure ]
 
 webkit.org/b/141661 fast/text/emoji.html [ Failure ]
+webkit.org/b/142548 editing/selection/extend-by-character-007.html [ Failure ]
 
 webkit.org/b/128736 inspector-protocol/debugger/setBreakpoint-dfg.html [ Failure Pass ]
 webkit.org/b/134982 inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local.html [ Failure Pass ]
@@ -488,3 +491,8 @@ webkit.org/b/141695 [ Debug ] fast/selectors/nth-last-child-of-register-requirem
 # Content extensions are Mac-WK2-only for now
 http/tests/contentextensions [ Skip ]
 
+# These tests were flaky on Mac only but they became flaky on all ports after r181345
+webkit.org/b/114280 svg/animations/smil-leak-dynamically-added-element-instances.svg [ Pass Failure ]
+webkit.org/b/114280 svg/animations/smil-leak-element-instances-noBaseValRef.svg [ Pass Failure ]
+webkit.org/b/114280 svg/animations/smil-leak-element-instances.svg [ Pass Failure ]
+webkit.org/b/114280 svg/animations/smil-leak-elements.svg [ Pass Failure ]

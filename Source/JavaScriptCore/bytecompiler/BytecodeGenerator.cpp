@@ -388,7 +388,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
             continue;
         }
         auto simpleParameter = static_cast<const BindingNode*>(pattern);
-        if (capturedArguments.size() && capturedArguments[i]) {
+        if (capturedArguments.size() && capturedArguments[i] && !m_functions.contains(simpleParameter->boundProperty().impl())) {
             ASSERT((functionNode->hasCapturedVariables() && functionNode->captures(simpleParameter->boundProperty())) || shouldCaptureAllTheThings);
             index = capturedArguments[i]->index();
             RegisterID original(nextParameterIndex);
@@ -401,7 +401,12 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     addCallee(functionNode, calleeRegister);
 
     if (isConstructor()) {
-        emitCreateThis(&m_thisRegister);
+        if (constructorKindIsDerived()) {
+            m_newTargetRegister = addVar();
+            emitMove(m_newTargetRegister, &m_thisRegister);
+            emitLoad(&m_thisRegister, jsNull());
+        } else
+            emitCreateThis(&m_thisRegister);
     } else if (functionNode->usesThis() || codeBlock->usesEval()) {
         m_codeBlock->addPropertyAccessInstruction(instructions().size());
         emitOpcode(op_to_this);
@@ -1402,7 +1407,7 @@ RegisterID* BytecodeGenerator::emitPutById(RegisterID* base, const Identifier& p
     return value;
 }
 
-RegisterID* BytecodeGenerator::emitDirectPutById(RegisterID* base, const Identifier& property, RegisterID* value)
+RegisterID* BytecodeGenerator::emitDirectPutById(RegisterID* base, const Identifier& property, RegisterID* value, PropertyNode::PutType putType)
 {
     unsigned propertyIndex = addConstant(property);
 
@@ -1418,9 +1423,7 @@ RegisterID* BytecodeGenerator::emitDirectPutById(RegisterID* base, const Identif
     instructions().append(0);
     instructions().append(0);
     instructions().append(0);
-    instructions().append(
-        property != m_vm->propertyNames->underscoreProto
-        && PropertyName(property).asIndex() == PropertyName::NotAnIndex);
+    instructions().append(putType == PropertyNode::KnownDirect || (property != m_vm->propertyNames->underscoreProto && PropertyName(property).asIndex() == PropertyName::NotAnIndex));
     return value;
 }
 
@@ -1903,14 +1906,19 @@ RegisterID* BytecodeGenerator::emitReturn(RegisterID* src)
         instructions().append(m_lexicalEnvironmentRegister ? m_lexicalEnvironmentRegister->index() : emitLoad(0, JSValue())->index());
     }
 
-    if (isConstructor() && src->index() != m_thisRegister.index()) {
-        RefPtr<Label> isObjectLabel = newLabel();
+    bool thisMightBeUninitialized = constructorKindIsDerived();
+    if (isConstructor() && (src->index() != m_thisRegister.index() || thisMightBeUninitialized)) {
+        RefPtr<Label> isObjectOrUndefinedLabel = newLabel();
 
-        emitJumpIfTrue(emitIsObject(newTemporary(), src), isObjectLabel.get());
+        emitJumpIfTrue(emitIsObject(newTemporary(), src), isObjectOrUndefinedLabel.get());
 
-        emitUnaryNoDstOp(op_ret, &m_thisRegister);
+        if (constructorKindIsDerived()) {
+            emitJumpIfTrue(emitIsUndefined(newTemporary(), src), isObjectOrUndefinedLabel.get());
+            emitThrowTypeError("Cannot return a non-object type in the constructor of a derived class.");
+        } else
+            emitUnaryNoDstOp(op_ret, &m_thisRegister);
 
-        emitLabel(isObjectLabel.get());
+        emitLabel(isObjectOrUndefinedLabel.get());
     }
     return emitUnaryNoDstOp(op_ret, src);
 }

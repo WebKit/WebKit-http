@@ -285,6 +285,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_websiteDataStore(*configuration.websiteDataStore)
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
+    , m_treatsSHA1CertificatesAsInsecure(configuration.treatsSHA1SignedCertificatesAsInsecure)
 #if PLATFORM(IOS)
     , m_hasReceivedLayerTreeTransactionAfterDidCommitLoad(true)
     , m_firstLayerTreeTransactionIdAfterDidCommitLoad(0)
@@ -2818,8 +2819,10 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
 
     auto transaction = m_pageLoadState.transaction();
 
-    if (frame->isMainFrame())
-        m_pageLoadState.didCommitLoad(transaction);
+    if (frame->isMainFrame()) {
+        bool hasInsecureCertificateChain = m_treatsSHA1CertificatesAsInsecure && certificateInfo.containsNonRootSHA1SignedCertificate();
+        m_pageLoadState.didCommitLoad(transaction, hasInsecureCertificateChain);
+    }
 
 #if USE(APPKIT)
     // FIXME (bug 59111): didCommitLoadForFrame comes too late when restoring a page from b/f cache, making us disable secure event mode in password fields.
@@ -5588,5 +5591,53 @@ void WebPageProxy::setShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeM
 {
     m_process->send(Messages::WebPage::SetShouldDispatchFakeMouseMoveEvents(shouldDispatchFakeMouseMoveEvents), m_pageID);
 }
+
+void WebPageProxy::handleAutoFillButtonClick(const UserData& userData)
+{
+    m_uiClient->didClickAutoFillButton(*this, m_process->transformHandlesToObjects(userData.object()).get());
+}
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+
+WebMediaPlaybackTargetPickerProxy& WebPageProxy::devicePickerProxy()
+{
+    if (!m_playbackTargetPicker)
+        m_playbackTargetPicker = m_pageClient.createPlaybackTargetPicker(this);
+
+    return *m_playbackTargetPicker.get();
+}
+
+void WebPageProxy::showPlaybackTargetPicker(const WebCore::FloatRect& rect, bool hasVideo)
+{
+    devicePickerProxy().showPlaybackTargetPicker(m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo);
+}
+
+void WebPageProxy::startingMonitoringPlaybackTargets()
+{
+    devicePickerProxy().startingMonitoringPlaybackTargets();
+}
+
+void WebPageProxy::stopMonitoringPlaybackTargets()
+{
+    devicePickerProxy().stopMonitoringPlaybackTargets();
+}
+
+void WebPageProxy::didChoosePlaybackTarget(const WebCore::MediaPlaybackTarget& target)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::PlaybackTargetSelected(target), m_pageID);
+}
+
+void WebPageProxy::externalOutputDeviceAvailableDidChange(bool available)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::PlaybackTargetAvailabilityDidChange(available), m_pageID);
+}
+
+#endif
 
 } // namespace WebKit

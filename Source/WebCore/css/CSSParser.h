@@ -40,6 +40,7 @@
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
+#include <wtf/text/TextPosition.h>
 
 #if ENABLE(CSS_GRID_LAYOUT)
 #include "CSSGridTemplateAreasValue.h"
@@ -101,11 +102,11 @@ public:
         RefPtr<CSSCalcValue> m_calculation;
     };
 
-    CSSParser(const CSSParserContext&);
+    WEBCORE_EXPORT CSSParser(const CSSParserContext&);
 
-    ~CSSParser();
+    WEBCORE_EXPORT ~CSSParser();
 
-    void parseSheet(StyleSheetContents*, const String&, int startLineNumber = 0, RuleSourceDataList* = nullptr, bool = false);
+    void parseSheet(StyleSheetContents*, const String&, const TextPosition&, RuleSourceDataList*, bool logErrors);
     PassRefPtr<StyleRuleBase> parseRule(StyleSheetContents*, const String&);
     PassRefPtr<StyleKeyframe> parseKeyframeRule(StyleSheetContents*, const String&);
     bool parseSupportsCondition(const String&);
@@ -114,7 +115,7 @@ public:
     static bool parseSystemColor(RGBA32& color, const String&, Document*);
     static PassRefPtr<CSSValueList> parseFontFaceValue(const AtomicString&);
     PassRefPtr<CSSPrimitiveValue> parseValidPrimitive(CSSValueID ident, ValueWithCalculation&);
-    bool parseDeclaration(MutableStyleProperties*, const String&, PassRefPtr<CSSRuleSourceData>, StyleSheetContents* contextStyleSheet);
+    WEBCORE_EXPORT bool parseDeclaration(MutableStyleProperties*, const String&, PassRefPtr<CSSRuleSourceData>, StyleSheetContents* contextStyleSheet);
     static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
     std::unique_ptr<MediaQuery> parseMediaQuery(const String&);
 
@@ -154,8 +155,8 @@ public:
     enum FillPositionFlag { InvalidFillPosition = 0, AmbiguousFillPosition = 1, XFillPosition = 2, YFillPosition = 4 };
     enum FillPositionParsingMode { ResolveValuesAsPercent = 0, ResolveValuesAsKeyword = 1 };
     PassRefPtr<CSSPrimitiveValue> parseFillPositionComponent(CSSParserValueList&, unsigned& cumulativeFlags, FillPositionFlag& individualFlag, FillPositionParsingMode = ResolveValuesAsPercent);
-    PassRefPtr<CSSValue> parseFillPositionX(CSSParserValueList&);
-    PassRefPtr<CSSValue> parseFillPositionY(CSSParserValueList&);
+    PassRefPtr<CSSValue> parsePositionX(CSSParserValueList&);
+    PassRefPtr<CSSValue> parsePositionY(CSSParserValueList&);
     void parse2ValuesFillPosition(CSSParserValueList&, RefPtr<CSSValue>&, RefPtr<CSSValue>&);
     bool isPotentialPositionValue(CSSParserValue&);
     void parseFillPosition(CSSParserValueList&, RefPtr<CSSValue>&, RefPtr<CSSValue>&);
@@ -464,6 +465,8 @@ private:
     inline unsigned tokenStartOffset();
     inline UChar tokenStartChar();
 
+    inline unsigned currentCharacterOffset();
+
     template <typename CharacterType>
     inline bool isIdentifierStart();
 
@@ -559,6 +562,7 @@ private:
     bool parseNonElementSnapPoints(CSSPropertyID propId, bool important);
     bool parseScrollSnapDestination(CSSPropertyID propId, bool important);
     bool parseScrollSnapCoordinate(CSSPropertyID propId, bool important);
+    bool parseScrollSnapPositions(RefPtr<CSSValue>& cssValueX, RefPtr<CSSValue>& cssValueY);
 #endif
 
     bool parseFontFaceSrcURI(CSSValueList&);
@@ -591,7 +595,12 @@ private:
     int m_token;
     int m_lineNumber;
     int m_tokenStartLineNumber;
+    int m_tokenStartColumnNumber;
     int m_lastSelectorLineNumber;
+    int m_columnOffsetForLine;
+
+    int m_sheetStartLineNumber;
+    int m_sheetStartColumnNumber;
 
     bool m_allowImportRules;
     bool m_allowNamespaceDeclarations;
@@ -641,7 +650,7 @@ private:
     };
 
     bool isLoggingErrors();
-    void logError(const String& message, int lineNumber);
+    void logError(const String& message, int lineNumber, int columnNumber);
 
     bool validateCalculationUnit(ValueWithCalculation&, Units);
 
@@ -685,6 +694,7 @@ private:
 
 struct CSSParser::Location {
     int lineNumber;
+    int columnNumber;
     CSSParserString token;
 };
 
@@ -711,6 +721,13 @@ inline unsigned CSSParser::tokenStartOffset()
     if (is8BitSource())
         return m_tokenStart.ptr8 - m_dataStart8.get();
     return m_tokenStart.ptr16 - m_dataStart16.get();
+}
+
+unsigned CSSParser::currentCharacterOffset()
+{
+    if (is8BitSource())
+        return m_currentCharacter8 - m_dataStart8.get();
+    return m_currentCharacter16 - m_dataStart16.get();
 }
 
 inline UChar CSSParser::tokenStartChar()

@@ -60,16 +60,6 @@ public:
         return m_map.set(key, WTF::move(value));
     }
 
-    ALWAYS_INLINE AddResult add(const KeyType& key, ValueType value)
-    {
-        AddResult addResult = m_map.fastAdd(key, nullptr);
-        if (!addResult.iterator->value) { // New value or found a zombie value.
-            addResult.isNewEntry = true;
-            addResult.iterator->value = WTF::move(value);
-        }
-        return addResult;
-    }
-
     bool remove(const KeyType& key)
     {
         return m_map.remove(key);

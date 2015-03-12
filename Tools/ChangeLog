@@ -1,3 +1,337 @@
+2015-03-11  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Add resource type and load type triggers.
+        https://bugs.webkit.org/show_bug.cgi?id=142422
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testRequest):
+        (TestWebKitAPI::mainDocumentRequest):
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::testURL): Deleted.
+
+2015-03-10  Sam Weinig  <sam@webkit.org>
+
+        Allow adding a button in input elements for auto fill related functionality
+        <rdar://problem/19782066>
+        https://bugs.webkit.org/show_bug.cgi?id=142564
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+        Update for new callback.
+
+2015-03-11  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add basic support for BOL and EOL assertions to the URL Filter parser
+        https://bugs.webkit.org/show_bug.cgi?id=142568
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2015-03-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add support for handling TLS errors to MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=142576
+
+        Reviewed by Sergio Villar Senin.
+
+        It's useful for testing TLS errors handling itself, but also to
+        allow ignoring TLS errors when testing.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (webViewLoadFailedWithTLSerrors):
+        (browserWindowConstructed):
+
+2015-03-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use out-of-band messaging for RenderBox::firstLineBaseline() and RenderBox::inlineBlockBaseline()
+        https://bugs.webkit.org/show_bug.cgi?id=142569
+
+        Reviewed by David Hyatt.
+
+        Test Optional::valueOrCompute().
+
+        * TestWebKitAPI/Tests/WTF/Optional.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-03-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add an option to enable MiniBrowser for non developer builds and always install it
+        https://bugs.webkit.org/show_bug.cgi?id=126688
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * CMakeLists.txt: Build testing tools only for developer builds,
+        but MiniBrowser when ENABLE_MINIBROWSER option is ON.
+        * MiniBrowser/gtk/CMakeLists.txt: Only add
+        -DWEBKIT_INJECTED_BUNDLE_PATH to the build for developer builds,
+        and add a rule to install the MiniBrowser.
+        * MiniBrowser/gtk/main.c:
+        (main): Only set WEBKIT_INJECTED_BUNDLE_PATH env var for developer
+        builds.
+
+2015-03-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Add some DateMath tests to TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=142565
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/CMakeLists.txt: Add new DateMath.cpp file.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj: Ditto.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters: Ditto.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Ditto."
+        * TestWebKitAPI/Tests/WTF/DateMath.cpp: Added.
+
+2015-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Regression(r181257): WTF_WorkQueue.Simple is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=142560
+
+        Unreviewed attempt to improve test stability.
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp: Check the reference count for
+        the WorkQueue a little later to redue flakiness.
+
+2015-03-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Migrate from SystemUIFontSelect to AppleSystemFontOSSubversion
+        https://bugs.webkit.org/show_bug.cgi?id=142555
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        (WTR::InjectedBundle::platformInitialize):
+
+2015-03-10  Alex Christensen  <achristensen@webkit.org>
+
+        Use unsigned for HashSet size.
+        https://bugs.webkit.org/show_bug.cgi?id=142518
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp:
+        (TestWebKitAPI::testInitialCapacity):
+        * TestWebKitAPI/Tests/WTF/ListHashSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-03-10  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Add WebKitSystemInterface for iOS 8.2
+        https://bugs.webkit.org/show_bug.cgi?id=142505
+
+        Rubber-stamped by Anders Carlsson.
+
+        Make copy-webkitlibraries-to-product-directory install libWebKitSystemInterfaceIOS{Device, Simulator}8.2.a.
+        I inadvertently forgot to add libWebKitSystemInterfaceIOS{Device, Simulator}8.2.a to script
+        copy-webkitlibraries-to-product-directory in r181286.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2015-03-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        Extend URL filter's Term definition to support groups/subpatterns
+        https://bugs.webkit.org/show_bug.cgi?id=142519
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testURL):
+
+2015-03-06  Jer Noble  <jer.noble@apple.com>
+
+        Add an option to run-webkit-tests to override the LayoutTests/ directory
+        https://bugs.webkit.org/show_bug.cgi?id=142418
+
+        Reviewed by David Kilzer.
+
+        Add an arugment to run-webkit-tests which, when set, overrides the port's default LayoutTests
+        directory. The base port will parse the options during initialization and store the override
+        location if present. layout_tests_dir() will return this overridden location if set.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args):
+        * Scripts/webkitpy/port/base.py:
+        (Port.__init__):
+        (Port.layout_tests_dir):
+
+2015-03-09  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] Enable WorkQueue tests for CMake ports
+        https://bugs.webkit.org/show_bug.cgi?id=142473
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/CMakeLists.txt: Add the WorkQueue tests source file to
+        the list of source files.
+        * Tools/TestWebKitAPI/PlatformEfl.cmake: Add the DispatchQueueEfl directory
+        to the list of include directories for EFL.
+
+2015-03-09  David Kilzer  <ddkilzer@apple.com>
+
+        Attempt to fix timeouts on iOS Simulator layout tests
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_test_run): Most layout test runs on iOS
+        Simulator end after the first 50 tests time out.  Some analysis
+        this past weekend shows that the 'Booted' status in the output
+        of `xcrun simctl list` is not sufficient (and watching the test
+        run shows that SpringBoard hasn't fully started to the point
+        where it's displaying icons on the home screen).  The workaround
+        until we have a better fix is to add an arbitrary timeout to let
+        SpringBoard finish launching.  In practice, 15 seconds is
+        probably enough, but 30 seconds should nearly always work.
+
+2015-03-09  Per Arne Vollan  <peavo@outlook.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-03-09  David Kilzer  <ddkilzer@apple.com>
+
+        Attempt to fix WTF_WorkQueue.TwoQueues timeout test failure
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST): Change delay from 50ns to 50ms, and add
+        an expectation that will fail if we hit the race condition.
+        This test is inherently racy and will deadlock if the first job
+        for queue2 takes the mutex lock before the second job for
+        queue1.
+
+2015-03-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] WTF::WorkQueue does not balance ref/deref properly
+        https://bugs.webkit.org/show_bug.cgi?id=142471
+
+        Reviewed by Antti Koivisto.
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST): Check that the refcount is correct.
+
+2015-03-08  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Do not show passing test result on output of EFL layout test
+        https://bugs.webkit.org/show_bug.cgi?id=142380
+
+        Reviewed by Darin Adler.
+
+        To show passing tests has caused inconvenience when we detect problem tests
+        in output of layout test. So this patch applies '--debug-rwt-logging' except for EFL port
+        in order not to show passing tests in the output of EFL layout test.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunWebKitTests.start):
+
+2015-03-08  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix.
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST): Remove two unused variables.
+
+2015-03-08  Brent Fulgham  <bfulgham@apple.com>
+
+        Add some WorkQueue tests to TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=142447
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp: Added.
+        (TestWebKitAPI::simpleTest):
+        (TestWebKitAPI::longTest):
+        (TestWebKitAPI::thirdTest):
+        (TestWebKitAPI::finishedTests):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::longTest2):
+
+2015-03-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Remove willDestroyFrame in WKBundlePageLoaderClient
+        https://bugs.webkit.org/show_bug.cgi?id=142389
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::InjectedBundlePage):
+
+2015-03-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Increase TestWebKitAPI Test Coverage[Win] Increase TestWebKitAPI Test Coverage
+        https://bugs.webkit.org/show_bug.cgi?id=142433
+
+        Reviewed by Darin Adler.
+
+        Include more TestWebKitAPI tests when building for Windows. Also
+        fix a build error in MetaAllocator.cpp caused by one of the
+        Microsoft headers #defining 'small'.
+
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters:
+        * TestWebKitAPI/Tests/WTF/MetaAllocator.cpp:
+
+2015-03-06  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Move compiling of content extensions to the UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=142402
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp: Copied from Tools/TestWebKitAPI/Tests/WebCore/ContentFilter.cpp.
+        (TestWebKitAPI::InMemoryCompiledContentExtension::create):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::~InMemoryCompiledContentExtension):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::InMemoryCompiledContentExtension):
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/ContentFilter.cpp: Removed.
+        Update test for new name (ContentFilter -> ContentExtensions) and API (CompiledContentExtension
+        is now abstract).
+
+2015-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct Windows build.
+
+        Rubberstamped by Michael Saboff
+
+        * win/AssembleBuildLogs/AssembleLogs.cmd: Correct cut/paste error
+        in the GOTO labels.
+
+2015-03-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test /webkit2/WebKitWebView/sync-request-on-max-conns might fail after finished
+        https://bugs.webkit.org/show_bug.cgi?id=142385
+
+        Reviewed by Sergio Villar Senin.
+
+        Use stack allocated GMainLoopSources to make sure they are
+        cancelled automatically if the test finishes before they have
+        been processed.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (testWebViewSyncRequestOnMaxConns):
+
+2015-03-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove Mountain Lion libraries since ML isn't supported
+        https://bugs.webkit.org/show_bug.cgi?id=142332
+
+        Reviewed by Darin Adler.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
 2015-03-06  Carlos Alberto Lopez Perez <clopez@igalia.com> and Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         Layout tests imported/w3c/web-platform-tests certificates should not be tracked on WebKit VCS

@@ -8105,6 +8105,7 @@
     <ClCompile Include="..\platform\win\WindowMessageBroadcaster.cpp" />
     <ClCompile Include="..\platform\cf\CFURLExtras.cpp" />
     <ClCompile Include="..\platform\cf\CoreMediaSoftLink.cpp" />
+    <ClCompile Include="..\platform\cf\MediaAccessibilitySoftLink.cpp" />
     <ClCompile Include="..\platform\cf\FileSystemCF.cpp" />
     <ClCompile Include="..\platform\cf\URLCF.cpp" />
     <ClCompile Include="..\platform\cf\SharedBufferCF.cpp" />
@@ -16207,6 +16208,7 @@
     <ClCompile Include="..\html\parser\TextDocumentParser.cpp" />
     <ClCompile Include="..\html\parser\XSSAuditor.cpp" />
     <ClCompile Include="..\html\parser\XSSAuditorDelegate.cpp" />
+    <ClCompile Include="..\html\shadow\AutoFillButtonElement.cpp" />
     <ClCompile Include="..\html\shadow\ContentDistributor.cpp" />
     <ClCompile Include="..\html\shadow\DetailsMarkerControl.cpp" />
     <ClCompile Include="..\html\shadow\InsertionPoint.cpp" />
@@ -19609,6 +19611,7 @@
     <ClInclude Include="..\platform\win\WindowsTouch.h" />
     <ClInclude Include="..\platform\cf\CFURLExtras.h" />
     <ClInclude Include="..\platform\cf\CoreMediaSoftLink.h" />
+    <ClInclude Include="..\platform\cf\MediaAccessibilitySoftLink.h" />
     <ClInclude Include="..\platform\cf\win\CertificateCFWin.h" />
     <ClInclude Include="..\platform\graphics\BitmapImage.h" />
     <ClInclude Include="..\platform\graphics\Color.h" />
@@ -20345,7 +20348,7 @@
     <ClInclude Include="..\rendering\RenderSelectionInfo.h" />
     <ClInclude Include="..\rendering\RenderSlider.h" />
     <ClInclude Include="..\rendering\RenderSnapshottedPlugIn.h" />
-    <ClInclude Include="..\rendering\line\BreakingContextInlineHeaders.h" />
+    <ClInclude Include="..\rendering\line\BreakingContext.h" />
     <ClInclude Include="..\rendering\line\LineBreaker.h" />
     <ClInclude Include="..\rendering\line\LineInfo.h" />
     <ClInclude Include="..\rendering\line\LineInlineHeaders.h" />
@@ -20968,6 +20971,7 @@
     <ClInclude Include="..\html\parser\TextDocumentParser.h" />
     <ClInclude Include="..\html\parser\XSSAuditor.h" />
     <ClInclude Include="..\html\parser\XSSAuditorDelegate.h" />
+    <ClInclude Include="..\html\shadow\AutoFillButtonElement.h" />
     <ClInclude Include="..\html\shadow\ContentDistributor.h" />
     <ClInclude Include="..\html\shadow\DetailsMarkerControl.h" />
     <ClInclude Include="..\html\shadow\InsertionPoint.h" />

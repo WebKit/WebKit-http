@@ -98,7 +98,7 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
 }
 
 
-Ref<CompiledContentExtension> compileRuleList(const String& ruleList)
+CompiledContentExtensionData compileRuleList(const String& ruleList)
 {
     auto parsedRuleList = parseRuleList(ruleList);
 
@@ -116,7 +116,8 @@ Ref<CompiledContentExtension> compileRuleList(const String& ruleList)
         const Trigger& trigger = contentExtensionRule.trigger();
         ASSERT(trigger.urlFilter.length());
 
-        String error = urlFilterParser.addPattern(trigger.urlFilter, trigger.urlFilterIsCaseSensitive, actionLocations[ruleIndex]);
+        // High bits are used for flags. This should match how they are used in DFABytecodeCompiler::compileNode.
+        String error = urlFilterParser.addPattern(trigger.urlFilter, trigger.urlFilterIsCaseSensitive, (static_cast<uint64_t>(trigger.flags) << 32) | static_cast<uint64_t>(actionLocations[ruleIndex]));
 
         if (!error.isNull()) {
             dataLogF("Error while parsing %s: %s\n", trigger.urlFilter.utf8().data(), error.utf8().data());
@@ -154,7 +155,7 @@ Ref<CompiledContentExtension> compileRuleList(const String& ruleList)
     DFABytecodeCompiler compiler(dfa, bytecode);
     compiler.compile();
 
-    return CompiledContentExtension::create(WTF::move(bytecode), WTF::move(actions));
+    return { WTF::move(bytecode), WTF::move(actions) };
 }
 
 } // namespace ContentExtensions

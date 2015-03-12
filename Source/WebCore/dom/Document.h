@@ -124,6 +124,8 @@ class LiveNodeList;
 class JSNode;
 class Locale;
 class MediaCanStartListener;
+class MediaPlaybackTarget;
+class MediaPlaybackTargetPickerClient;
 class MediaQueryList;
 class MediaQueryMatcher;
 class MouseEventWithHitTestResults;
@@ -258,6 +260,8 @@ enum class DocumentCompatibilityMode : unsigned char {
     LimitedQuirksMode = 1 << 2
 };
 
+enum DimensionsCheck { WidthDimensionsCheck = 0x1, HeightDimensionsCheck = 0x2, AllDimensionsCheck = 0x3 };
+
 class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext, public FontSelectorClient {
 public:
     static Ref<Document> create(Frame* frame, const URL& url)
@@ -323,82 +327,6 @@ public:
     void clearSelectorQueryCache();
 
     // DOM methods & attributes for Document
-
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(abort);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(change);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(click);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(contextmenu);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(dblclick);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(dragenter);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(dragover);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(dragleave);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(drop);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(dragstart);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(drag);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(dragend);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(input);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(invalid);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(keydown);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(keypress);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(keyup);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(mousedown);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseenter);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseleave);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(mousemove);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseout);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseover);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseup);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(mousewheel);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(scroll);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(select);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(submit);
-#if ENABLE(WILL_REVEAL_EDGE_EVENTS)
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitwillrevealbottom);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitwillrevealleft);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitwillrevealright);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitwillrevealtop);
-#endif
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(wheel);
-
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(blur);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(focus);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(load);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(readystatechange);
-
-    // WebKit extensions
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(beforecut);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(cut);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(beforecopy);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(copy);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(beforepaste);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(paste);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(reset);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(search);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(selectstart);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(selectionchange);
-#if ENABLE(TOUCH_EVENTS)
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(touchstart);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(touchmove);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(touchend);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(touchcancel);
-#endif
-#if ENABLE(IOS_GESTURE_EVENTS)
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(gesturestart);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(gesturechange);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(gestureend);
-#endif
-#if ENABLE(FULLSCREEN_API)
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitfullscreenchange);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitfullscreenerror);
-#endif
-#if ENABLE(POINTER_LOCK)
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(pointerlockchange);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(pointerlockerror);
-#endif
-#if ENABLE(CSP_NEXT)
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(securitypolicyviolation);
-#endif
 
     void setViewportArguments(const ViewportArguments& viewportArguments) { m_viewportArguments = viewportArguments; }
     ViewportArguments viewportArguments() const { return m_viewportArguments; }
@@ -640,7 +568,9 @@ public:
 
     bool renderTreeBeingDestroyed() const { return m_renderTreeBeingDestroyed; }
     bool hasLivingRenderTree() const { return renderView() && !renderTreeBeingDestroyed(); }
-
+    
+    bool updateLayoutIfDimensionsOutOfDate(Element*, DimensionsCheck = AllDimensionsCheck);
+    
     AXObjectCache* existingAXObjectCache() const;
     WEBCORE_EXPORT AXObjectCache* axObjectCache() const;
     void clearAXObjectCache();
@@ -1290,6 +1220,16 @@ public:
     void pageMutedStateDidChange();
     WeakPtr<Document> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    void showPlaybackTargetPicker(const HTMLMediaElement&);
+    void didChoosePlaybackTarget(MediaPlaybackTarget&);
+    void addPlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
+    void removePlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
+    bool requiresPlaybackTargetRouteMonitoring();
+    void configurePlaybackTargetMonitoring();
+    void playbackTargetAvailabilityDidChange(bool);
+#endif
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1727,6 +1667,11 @@ private:
 
     HashSet<AudioProducer*> m_audioProducers;
     bool m_isPlayingAudio;
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    HashSet<WebCore::MediaPlaybackTargetPickerClient*> m_playbackTargetClients;
+    bool m_playbackTargetsAvailable { false };
+#endif
 };
 
 inline void Document::notifyRemovePendingSheetIfNeeded()

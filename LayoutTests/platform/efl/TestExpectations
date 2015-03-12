@@ -59,6 +59,9 @@ media/media-captions.html
 fast/dom/Window/slow-unload-handler.html
 fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html
 
+# Need a scroll snap point implementation
+css3/scroll-snap [ Skip ]
+
 # ----------------------------------------
 # Tests which also fail in other platforms
 # ----------------------------------------
@@ -251,9 +254,6 @@ fast/frames/transparent-scrollbar.html
 fast/events/drag-and-drop-subframe-dataTransfer.html
 fast/events/drag-dataTransferItemList-file-handling.html
 
-# ENABLE(CSS_SCROLL_SNAP) is disabled.
-css3/scroll-snap
-
 # ENABLE(DRAGGABLE_REGION) is disabled
 fast/css/draggable-region-parser.html
 
@@ -366,7 +366,6 @@ webkit.org/b/86623 http/tests/security/drag-drop-different-origin.html
 webkit.org/b/86623 http/tests/security/drag-over-remote-content-iframe.html
 
 # Needs baselines
-editing/inserting/before-after-input-element.html [ Missing ]
 editing/selection/contains-boundaries.html [ Missing ]
 editing/selection/designmode-no-caret.html [ Timeout ]
 editing/selection/replaced-boundaries-3.html [ Missing ]
@@ -375,8 +374,6 @@ editing/style/5065910.html [ Missing ]
 editing/style/font-family-with-space.html [ Missing ]
 editing/style/smoosh-styles-001.html [ Missing ]
 editing/style/style-boundary-005.html [ Missing ]
-fast/css/css2-system-fonts.html [ Missing ]
-fast/text/tatechuyoko.html [ Missing ]
 
 # Test is failing due to a scrolling problem on second iteration.
 webkit.org/b/106240 fast/events/mouse-cursor-image-set.html [ Failure ]
@@ -466,6 +463,9 @@ Bug(EFL) fast/attachment/attachment-progress.html [ Missing ]
 Bug(EFL) fast/attachment/attachment-subtitle.html [ Missing ]
 Bug(EFL) fast/attachment/attachment-title.html [ Missing ]
 
+# Need a new baseline for EFL port. It was added by r72173.
+Bug(EFL) fast/css/line-height-determined-by-primary-font.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -523,6 +523,8 @@ fast/canvas/webgl [ Skip ]
 webgl [ Skip ]
 http/tests/webgl [ Skip ]
 compositing/webgl [ Skip ]
+compositing/backface-visibility/backface-visibility-webgl.html [ Skip ]
+compositing/visibility/visibility-simple-webgl-layer.html [ Skip ]
 fast/images/webgl-teximage2d.html [ Skip ]
 http/tests/canvas/webgl/origin-clean-conformance.html [ Skip ]
 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html [ Skip ]
@@ -663,6 +665,7 @@ Bug(EFL) fast/loader/child-frame-add-after-back-forward.html [ Failure Pass ]
 Bug(EFL) fast/events/backspace-navigates-back.html [ Failure Pass ]
 Bug(EFL) http/tests/loading/fire-error-event-empty-404-script.html [ Crash Failure Pass ]
 Bug(EFL) js/dom/create-lots-of-workers.html [ Crash Failure Pass ]
+Bug(EFL) media/track/track-cues-pause-on-exit.html [ Failure Timeout Pass ]
 Bug(EFL) media/track/track-element-load-event.html [ Crash Failure Pass ]
 
 webkit.org/b/85603 fast/forms/textarea-placeholder-set-attribute.html [ Failure ImageOnlyFailure Pass ]
@@ -807,6 +810,8 @@ webkit.org/b/108355 storage/websql/sql-error-codes.html [ Failure ]
 
 # Libsoup 2.42.0 regressions
 webkit.org/b/114918 http/tests/xmlhttprequest/cache-override.html [ Failure Pass ]
+webkit.org/b/114918 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html [ Failure Timeout Pass ]
+webkit.org/b/114918 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-mixed-case.html [ Timeout Pass ]
 
 webkit.org/b/115440 svg/stroke/animated-non-scaling-stroke.html [ ImageOnlyFailure Pass ]
 
@@ -852,6 +857,7 @@ webkit.org/b/125517 compositing/regions/z-index-update.html [ Crash Pass ]
 
 webkit.org/b/141897 fast/regions/overflow/overflow-region-float.html [ ImageOnlyFailure ]
 webkit.org/b/141897 fast/regions/overflow/overflow-region-inline.html [ ImageOnlyFailure ]
+webkit.org/b/141897 fast/regions/overflow/overflow-first-and-last-regions.html [ ImageOnlyFailure ]
 
 webkit.org/b/125573 compositing/backgrounds/fixed-backgrounds.html [ Crash Pass ]
 
@@ -1293,6 +1299,8 @@ Bug(EFL) fast/layers/layer-visibility-sublayer.html [ Failure ]
 Bug(EFL) fast/layers/layer-visibility.html [ Failure ]
 Bug(EFL) fast/repaint/invisible-objects.html [ Failure ]
 Bug(EFL) fast/repaint/layer-hide-when-needs-layout.html [ Failure ]
+Bug(EFL) fast/text/whitespace/019.html [ Failure ]
+Bug(EFL) fast/text/whitespace/023.html [ Failure ]
 Bug(EFL) fast/text/whitespace/028.html [ Failure ]
 Bug(EFL) fullscreen/full-screen-iframe-legacy.html [ Failure Pass ]
 Bug(EFL) media/track/track-cues-pause-on-exit.html [ Failure Pass ]
@@ -1472,6 +1480,10 @@ webkit.org/b/115419 media/track/track-automatic-subtitles.html [ Timeout ]
 
 webkit.org/b/115439 fast/text/complex-initial-advance.html [ ImageOnlyFailure ]
 
+webkit.org/b/142450 fast/text/font-kerning.html [ ImageOnlyFailure ]
+webkit.org/b/142450 fast/text/narrow-non-breaking-space.html [ ImageOnlyFailure ]
+webkit.org/b/142450 fast/text/space-width.html [ ImageOnlyFailure ]
+
 # Synthesized italics not supported
 fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
 
@@ -1481,6 +1493,7 @@ webkit.org/b/118378 vibration/cancelVibration-after-pagevisibility-changed-to-hi
 # Some tests will fail after the visual overflow patch, they will be fixed shortly.
 webkit.org/b/118665 fast/regions/hover-in-second-region.html [ ImageOnlyFailure Pass ]
 webkit.org/b/118665 fast/regions/webkit-flow-float-unable-to-push.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/region-overflow-break.html [ ImageOnlyFailure ]
 
 webkit.org/b/119782 fast/forms/search-styled.html [ Failure ]
 
@@ -1502,9 +1515,12 @@ webkit.org/b/122963 fast/regions/repaint/region-painting-via-layout.html [ Missi
 
 # EFL port doesn't fully support printing
 webkit.org/b/123561 printing/media-queries-print.html [ Missing ]
+webkit.org/b/123561 printing/quirks-percentage-height-body.html [ ImageOnlyFailure ]
+webkit.org/b/123561 printing/quirks-percentage-height.html [ ImageOnlyFailure ]
 webkit.org/b/123561 printing/setPrinting.html [ Missing ]
 webkit.org/b/123561 printing/simultaneous-position-float-change.html [ Missing ]
 webkit.org/b/123561 printing/single-line-must-not-be-split-into-two-pages.html [ Missing ]
+webkit.org/b/123561 printing/standards-percentage-heights.html [ ImageOnlyFailure ]
 webkit.org/b/123561 printing/width-overflow.html [ Missing ]
 
 # crypto.subtle is not yet enabled, but digest algorithms are already implemented
@@ -1831,7 +1847,11 @@ webkit.org/b/128670 js/dom/dom-static-property-for-in-iteration.html [ Failure ]
 
 webkit.org/b/128973 fast/multicol/span/span-as-immediate-columns-child-dynamic.html [ Failure ]
 
+# HIDPI-related tests do not work
+webkit.org/b/102097 compositing/hidpi-transform-with-render-layer-on-fractional-pixel-value.html [ ImageOnlyFailure ]
+webkit.org/b/102097 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/102097 fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html [ Failure ]
+webkit.org/b/102097 svg/text/hidpi-text-selection-rect-position.html [ ImageOnlyFailure ]
 
 # Failing after r150802
 webkit.org/b/125577 compositing/overlap-blending/reflection-opacity-huge.html [ ImageOnlyFailure ]
@@ -1937,10 +1957,12 @@ webkit.org/b/133974 fast/css3-text/css3-text-decoration/text-decoration-skip/tex
 
 # Difference invisible at the naked eye with Latin Modern Math.
 webkit.org/b/134153 mathml/presentation/mo-stacked-glyphs.html [ ImageOnlyFailure ]
+webkit.org/b/134153 mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
 
 webkit.org/b/134712 svg/masking/mask-transformed-text-missing.svg [ ImageOnlyFailure ]
 
 webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-2x.html [ Failure ]
+webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-js-change.html [ Failure ]
 
 webkit.org/b/135504 svg/css/parse-height.html [ Failure ]
 webkit.org/b/135504 svg/css/parse-length.html [ Failure ]
@@ -1969,6 +1991,7 @@ webkit.org/b/136221 css3/shapes/shape-outside/values/shape-outside-polygon-004.h
 webkit.org/b/136221 css3/shapes/shape-outside/values/shape-outside-shape-arguments-000.html [ Failure ]
 
 webkit.org/b/136223 fast/ruby/ruby-base-merge-block-children-crash-2.html [ Failure ]
+webkit.org/b/136223 fast/ruby/ruby-justification.html [ ImageOnlyFailure ]
 
 # Started failing after r172835
 webkit.org/b/136226 fast/events/constructors/mouse-event-constructor.html [ Failure ]
@@ -1982,6 +2005,7 @@ webkit.org/b/136406 compositing/backing/backface-visibility-in-transformed.html 
 webkit.org/b/136406 compositing/backing/backface-visibility.html [ Failure ]
 webkit.org/b/136406 compositing/contents-opaque/control-layer.html [ Failure ]
 webkit.org/b/136406 compositing/contents-opaque/hidden-with-visible-text.html [ Failure ]
+webkit.org/b/136406 compositing/contents-opaque/opaque-with-clip-path.html [ ImageOnlyFailure ]
 webkit.org/b/136406 compositing/contents-scale/animating.html [ Failure ]
 webkit.org/b/136406 compositing/contents-scale/rounded-contents-scale.html [ Failure ]
 webkit.org/b/136406 compositing/contents-scale/scaled-ancestor.html [ Failure ]
@@ -2022,6 +2046,11 @@ webkit.org/b/141458 imported/mozilla/svg/blend-multiply.svg [ ImageOnlyFailure ]
 webkit.org/b/141458 imported/mozilla/svg/blend-overlay.svg [ ImageOnlyFailure ]
 webkit.org/b/141458 imported/mozilla/svg/blend-screen.svg [ ImageOnlyFailure ]
 webkit.org/b/141458 imported/mozilla/svg/dynamic-small-object-scaled-up-01.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01a.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01b.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01c.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/stroke-width-percentage-02a.svg [ ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/symbol-01.svg [ ImageOnlyFailure ]
 
 # Started failing since r167808
 webkit.org/b/141496 fast/multicol/client-rects-spanners-complex.html [ Failure ]
@@ -2100,3 +2129,42 @@ webkit.org/b/141896 fast/borders/border-radius-on-html.html [ ImageOnlyFailure ]
 # Need to investigate why these security tests have been failed since r144338.
 webkit.org/b/141958 http/tests/security/XFrameOptions/x-frame-options-deny-multiple-clients.html [ Failure ]
 webkit.org/b/141958 http/tests/security/cross-frame-access-callback-explicit-domain-ALLOW.html [ Failure ]
+
+webkit.org/b/142426 compositing/masks/compositing-clip-path-and-mask.html [ ImageOnlyFailure ]
+webkit.org/b/142426 compositing/masks/compositing-clip-path-mask-change.html [ ImageOnlyFailure ]
+webkit.org/b/142426 compositing/masks/compositing-clip-path.html [ ImageOnlyFailure ]
+webkit.org/b/142426 compositing/masks/reference-clip-path-on-composited.html [ ImageOnlyFailure ]
+
+webkit.org/b/142427 fast/regions/scrolling/wheel-scroll-abspos.html [ ImageOnlyFailure ]
+webkit.org/b/142427 fast/regions/scrolling/wheel-scroll.html [ ImageOnlyFailure ]
+
+webkit.org/b/142451 fast/text/emphasis-combined-text.html [ Failure ]
+webkit.org/b/142451 fast/text/emphasis-vertical.html [ Failure ]
+
+webkit.org/b/142452 fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure ]
+webkit.org/b/142452 fast/writing-mode/broken-ideographic-font.html [ Failure ]
+
+# Need new baseline since r181260.
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-1.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-2.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-3.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-4.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-stretch-1.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-stretch-2.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-stretch-3.svg [ Failure ]
+
+webkit.org/b/142483 fast/css/font-face-default-font.html [ Failure ]
+webkit.org/b/142483 fast/css/font-face-in-media-rule.html [ Failure ]
+
+# This feature is only enabled on Mac and iOS right now
+contentfiltering [ Skip ]
+
+# small-leak-foo tests have been failed since r181345
+webkit.org/b/142561 svg/animations/smil-leak-dynamically-added-element-instances.svg [ Failure ]
+webkit.org/b/142561 svg/animations/smil-leak-element-instances-noBaseValRef.svg [ Failure ]
+webkit.org/b/142561 svg/animations/smil-leak-element-instances.svg [ Failure ]
+webkit.org/b/142561 svg/animations/smil-leak-elements.svg [ Failure ]
+
+webkit.org/b/142570 fast/css/outline-auto-empty-rects.html [ Failure ]
+
+webkit.org/b/142571 fast/css/vertical-text-overflow-ellipsis-text-align-center.html [ Failure ]

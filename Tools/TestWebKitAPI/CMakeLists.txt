@@ -77,6 +77,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/AtomicString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CheckedArithmeticOperations.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/DateMath.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Deque.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Functional.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashMap.cpp
@@ -100,6 +101,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/TemporaryChange.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Vector.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/WTFString.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/WorkQueue.cpp
 )
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()

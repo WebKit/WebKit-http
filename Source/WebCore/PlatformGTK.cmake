@@ -65,7 +65,6 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
-    platform/graphics/OpenGLShims.cpp
     platform/graphics/WOFFFileFormat.cpp
 
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
@@ -116,10 +115,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
     platform/graphics/harfbuzz/HarfBuzzShaper.cpp
 
-    platform/graphics/opengl/Extensions3DOpenGL.cpp
     platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
-    platform/graphics/opengl/Extensions3DOpenGLES.cpp
-    platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
     platform/graphics/opengl/TemporaryOpenGLSetting.cpp
 
@@ -325,6 +321,7 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         ${GSTREAMER_BASE_LIBRARIES}
         ${GSTREAMER_LIBRARIES}
         ${GSTREAMER_PBUTILS_LIBRARIES}
+        ${GSTREAMER_AUDIO_LIBRARIES}
     )
     # Avoiding a GLib deprecation warning due to GStreamer API using deprecated classes.
     set_source_files_properties(platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp PROPERTIES COMPILE_DEFINITIONS "GLIB_DISABLE_DEPRECATION_WARNINGS=1")
@@ -358,7 +355,6 @@ if (ENABLE_WEB_AUDIO)
         ${GSTREAMER_FFT_INCLUDE_DIRS}
     )
     list(APPEND WebCore_LIBRARIES
-        ${GSTREAMER_AUDIO_LIBRARIES}
         ${GSTREAMER_FFT_LIBRARIES}
     )
 endif ()
@@ -402,6 +398,22 @@ endif ()
 if (WTF_USE_EGL)
     list(APPEND WebCore_LIBRARIES
         ${EGL_LIBRARY}
+    )
+endif ()
+
+if (WTF_USE_OPENGL_ES_2)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/opengl/Extensions3DOpenGLES.cpp
+        platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
+    )
+endif ()
+
+if (WTF_USE_OPENGL)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/OpenGLShims.cpp
+
+        platform/graphics/opengl/Extensions3DOpenGL.cpp
+        platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
     )
 endif ()
 

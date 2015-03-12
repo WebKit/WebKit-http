@@ -115,6 +115,8 @@ SOFT_LINK_CLASS(UIKit, UIColor)
 @property AVPlayerControllerExternalPlaybackType externalPlaybackType;
 @property (retain) NSString *externalPlaybackAirPlayDeviceLocalizedName;
 
+@property (copy) void (^exitOptimizedCallback)(BOOL restored);
+
 - (BOOL)playerViewController:(AVPlayerViewController *)playerViewController shouldExitFullScreenWithReason:(AVPlayerViewControllerExitFullScreenReason)reason;
 @end
 
@@ -201,13 +203,15 @@ SOFT_LINK_CLASS(UIKit, UIColor)
 - (void)playerViewController:(AVPlayerViewController *)playerViewController restoreUserInterfaceForOptimizedFullscreenStopWithCompletionHandler:(void (^)(BOOL restored))completionHandler
 {
     UNUSED_PARAM(playerViewController);
-    completionHandler(self.fullscreenInterface->fullscreenMayReturnToInline());
+    self.exitOptimizedCallback = completionHandler;
+    self.fullscreenInterface->fullscreenMayReturnToInline();
 }
 
 - (void)playerViewControllerWillCancelOptimizedFullscree:(AVPlayerViewController *)playerViewController
 {
     UNUSED_PARAM(playerViewController);
-    ASSERT(self.delegate);
+    if (!self.delegate)
+        return
     self.delegate->requestExitFullscreen();
 }
 
@@ -717,8 +721,7 @@ void WebVideoFullscreenInterfaceAVKit::setDuration(double duration)
         playerController.contentDuration = duration;
         playerController.maxTime = duration;
         playerController.contentDurationWithinEndTimes = duration;
-        playerController.loadedTimeRanges = @[@0, @(duration)];
-        
+
         // FIXME: we take this as an indication that playback is ready.
         playerController.canPlay = YES;
         playerController.canPause = YES;
@@ -739,6 +742,22 @@ void WebVideoFullscreenInterfaceAVKit::setCurrentTime(double currentTime, double
         AVValueTiming *timing = [getAVValueTimingClass() valueTimingWithAnchorValue:currentTime
             anchorTimeStamp:anchorTimeStamp rate:0];
         [strongThis->m_playerController setTiming:timing];
+    });
+}
+
+void WebVideoFullscreenInterfaceAVKit::setBufferedTime(double bufferedTime)
+{
+    RefPtr<WebVideoFullscreenInterfaceAVKit> strongThis(this);
+
+    dispatch_async(dispatch_get_main_queue(), [strongThis, bufferedTime] {
+        WebAVPlayerController* playerController = strongThis->m_playerController.get();
+        double duration = playerController.contentDuration;
+        double normalizedBufferedTime;
+        if (!duration)
+            normalizedBufferedTime = 0;
+        else
+            normalizedBufferedTime = bufferedTime / duration;
+        playerController.loadedTimeRanges = @[@0, @(normalizedBufferedTime)];
     });
 }
 
@@ -844,7 +863,7 @@ void WebVideoFullscreenInterfaceAVKit::setExternalPlayback(bool enabled, Externa
     });
 }
 
-void WebVideoFullscreenInterfaceAVKit::setupFullscreen(PlatformLayer& videoLayer, WebCore::IntRect initialRect, UIView* parentView, HTMLMediaElement::VideoFullscreenMode mode, bool allowOptimizedFullscreen)
+void WebVideoFullscreenInterfaceAVKit::setupFullscreen(PlatformLayer& videoLayer, const WebCore::IntRect& initialRect, UIView* parentView, HTMLMediaElement::VideoFullscreenMode mode, bool allowOptimizedFullscreen)
 {
     RefPtr<WebVideoFullscreenInterfaceAVKit> strongThis(this);
 
@@ -858,7 +877,7 @@ void WebVideoFullscreenInterfaceAVKit::setupFullscreen(PlatformLayer& videoLayer
     });
 }
 
-void WebVideoFullscreenInterfaceAVKit::setupFullscreenInternal(PlatformLayer& videoLayer, WebCore::IntRect initialRect, UIView* parentView, HTMLMediaElement::VideoFullscreenMode mode, bool allowOptimizedFullscreen)
+void WebVideoFullscreenInterfaceAVKit::setupFullscreenInternal(PlatformLayer& videoLayer, const WebCore::IntRect& initialRect, UIView* parentView, HTMLMediaElement::VideoFullscreenMode mode, bool allowOptimizedFullscreen)
 {
     UNUSED_PARAM(videoLayer);
     UNUSED_PARAM(mode);
@@ -992,7 +1011,7 @@ void WebVideoFullscreenInterfaceAVKit::enterFullscreenStandard()
     }];
 }
 
-void WebVideoFullscreenInterfaceAVKit::exitFullscreen(WebCore::IntRect finalRect)
+void WebVideoFullscreenInterfaceAVKit::exitFullscreen(const WebCore::IntRect& finalRect)
 {
     RefPtr<WebVideoFullscreenInterfaceAVKit> strongThis(this);
 
@@ -1012,7 +1031,7 @@ void WebVideoFullscreenInterfaceAVKit::exitFullscreen(WebCore::IntRect finalRect
     });
 }
 
-void WebVideoFullscreenInterfaceAVKit::exitFullscreenInternal(WebCore::IntRect finalRect)
+void WebVideoFullscreenInterfaceAVKit::exitFullscreenInternal(const WebCore::IntRect& finalRect)
 {
     [m_playerViewController setShowsPlaybackControls:NO];
     if (m_viewController)
@@ -1143,6 +1162,22 @@ void WebVideoFullscreenInterfaceAVKit::requestHideAndExitFullscreen()
         m_videoFullscreenModel->requestExitFullscreen();
 }
 
+void WebVideoFullscreenInterfaceAVKit::preparedToReturnToInline(bool visible, const IntRect& inlineRect)
+{
+    RefPtr<WebVideoFullscreenInterfaceAVKit> strongThis(this);
+    dispatch_async(dispatch_get_main_queue(), [strongThis, visible, inlineRect] {
+        if (strongThis->m_playerController.get().exitOptimizedCallback) {
+            
+            if (strongThis->m_viewController)
+                [strongThis->m_playerViewController view].frame = [strongThis->m_parentView convertRect:inlineRect toView:nil];
+            else
+                [strongThis->m_playerViewController view].frame = inlineRect;
+            
+            strongThis->m_playerController.get().exitOptimizedCallback(visible);
+        }
+    });
+}
+
 void WebVideoFullscreenInterfaceAVKit::setIsOptimized(bool active)
 {
     if (m_mode & HTMLMediaElement::VideoFullscreenModeStandard) {
@@ -1181,10 +1216,10 @@ bool WebVideoFullscreenInterfaceAVKit::mayAutomaticallyShowVideoOptimized()
     return [m_playerController isPlaying] && m_mode == HTMLMediaElement::VideoFullscreenModeStandard && wkIsOptimizedFullscreenSupported();
 }
 
-bool WebVideoFullscreenInterfaceAVKit::fullscreenMayReturnToInline()
+void WebVideoFullscreenInterfaceAVKit::fullscreenMayReturnToInline()
 {
-    m_fullscreenChangeObserver->fullscreenMayReturnToInline();
-    return true;
+    if (m_fullscreenChangeObserver)
+        m_fullscreenChangeObserver->fullscreenMayReturnToInline();
 }
 
 #endif

@@ -58,6 +58,7 @@
 #include "PingLoader.h"
 #include "PlatformStrategies.h"
 #include "RenderElement.h"
+#include "ResourceLoadInfo.h"
 #include "ResourceLoadScheduler.h"
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
@@ -507,13 +508,20 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
 #if ENABLE(CONTENT_EXTENSIONS)
     Vector<ContentExtensions::Action> actions;
 
-    if (frame() && frame()->page() && frame()->page()->userContentController())
-        actions = frame()->page()->userContentController()->actionsForURL(url);
+    URL mainDocumentURL;
+    if (frame() && frame()->mainFrame().document())
+        mainDocumentURL = frame()->mainFrame().document()->url();
+    
+    ResourceLoadInfo resourceLoadInfo = { url, mainDocumentURL, toResourceType(type) };
+    
+    if (frame() && frame()->mainFrame().page() && frame()->mainFrame().page()->userContentController())
+        actions = frame()->mainFrame().page()->userContentController()->actionsForResourceLoad(resourceLoadInfo);
 
+    bool willBlockLoad = false;
     for (const auto& action : actions) {
         if (action.type() == ContentExtensions::ActionType::BlockLoad)
-            return nullptr;
-        if (action.type() == ContentExtensions::ActionType::BlockCookies)
+            willBlockLoad = true;
+        else if (action.type() == ContentExtensions::ActionType::BlockCookies)
             request.mutableResourceRequest().setAllowCookies(false);
         else if (action.type() == ContentExtensions::ActionType::CSSDisplayNone) {
             // action.cssSelector() is the css to use here.
@@ -521,6 +529,8 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         } else
             RELEASE_ASSERT_NOT_REACHED();
     }
+    if (willBlockLoad)
+        return nullptr;
 #endif
 
     auto& memoryCache = MemoryCache::singleton();

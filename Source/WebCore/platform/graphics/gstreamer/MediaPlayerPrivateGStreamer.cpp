@@ -376,6 +376,13 @@ void MediaPlayerPrivateGStreamer::load(const String& url, MediaSourcePrivateClie
 }
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+void MediaPlayerPrivateGStreamer::load(MediaStreamPrivate*)
+{
+    notImplemented();
+}
+#endif
+
 void MediaPlayerPrivateGStreamer::commitLoad()
 {
     ASSERT(!m_delayingLoad);

@@ -85,9 +85,7 @@ enum FunctionParseMode {
     FunctionMode,
     GetterMode,
     SetterMode,
-#if ENABLE(ES6_CLASS_SYNTAX)
-    MethodMode
-#endif
+    MethodMode,
 };
 enum DeconstructionKind {
     DeconstructToVariables,
@@ -115,6 +113,8 @@ struct Scope {
         , m_shadowsArguments(false)
         , m_usesEval(false)
         , m_needsFullActivation(false)
+        , m_hasDirectSuper(false)
+        , m_needsSuperBinding(false)
         , m_allowsNewDecls(true)
         , m_strictMode(strictMode)
         , m_isFunction(isFunction)
@@ -130,6 +130,8 @@ struct Scope {
         , m_shadowsArguments(rhs.m_shadowsArguments)
         , m_usesEval(rhs.m_usesEval)
         , m_needsFullActivation(rhs.m_needsFullActivation)
+        , m_hasDirectSuper(rhs.m_hasDirectSuper)
+        , m_needsSuperBinding(rhs.m_needsSuperBinding)
         , m_allowsNewDecls(rhs.m_allowsNewDecls)
         , m_strictMode(rhs.m_strictMode)
         , m_isFunction(rhs.m_isFunction)
@@ -265,6 +267,20 @@ struct Scope {
 
     void setNeedsFullActivation() { m_needsFullActivation = true; }
 
+#if ENABLE(ES6_CLASS_SYNTAX)
+    bool hasDirectSuper() { return m_hasDirectSuper; }
+#else
+    bool hasDirectSuper() { return false; }
+#endif
+    void setHasDirectSuper() { m_hasDirectSuper = true; }
+
+#if ENABLE(ES6_CLASS_SYNTAX)
+    bool needsSuperBinding() { return m_needsSuperBinding; }
+#else
+    bool needsSuperBinding() { return false; }
+#endif
+    void setNeedsSuperBinding() { m_needsSuperBinding = true; }
+
     bool collectFreeVariables(Scope* nestedScope, bool shouldTrackClosedVariables)
     {
         if (nestedScope->m_usesEval)
@@ -358,6 +374,8 @@ private:
     bool m_shadowsArguments : 1;
     bool m_usesEval : 1;
     bool m_needsFullActivation : 1;
+    bool m_hasDirectSuper : 1;
+    bool m_needsSuperBinding : 1;
     bool m_allowsNewDecls : 1;
     bool m_strictMode : 1;
     bool m_isFunction : 1;
@@ -739,8 +757,9 @@ private:
     enum SpreadMode { AllowSpread, DontAllowSpread };
     template <class TreeBuilder> ALWAYS_INLINE TreeArguments parseArguments(TreeBuilder&, SpreadMode);
     template <class TreeBuilder> TreeProperty parseProperty(TreeBuilder&, bool strict);
-    template <class TreeBuilder> TreeProperty parseGetterSetter(TreeBuilder&, bool strict, PropertyNode::Type, unsigned getterOrSetterStartOffset);
-    template <class TreeBuilder> ALWAYS_INLINE TreeFunctionBody parseFunctionBody(TreeBuilder&);
+    template <class TreeBuilder> TreeExpression parsePropertyMethod(TreeBuilder& context, const Identifier* methodName);
+    template <class TreeBuilder> TreeProperty parseGetterSetter(TreeBuilder&, bool strict, PropertyNode::Type, unsigned getterOrSetterStartOffset, ConstructorKind = ConstructorKind::Base, SuperBinding = SuperBinding::NotNeeded);
+    template <class TreeBuilder> ALWAYS_INLINE TreeFunctionBody parseFunctionBody(TreeBuilder&, ConstructorKind);
     template <class TreeBuilder> ALWAYS_INLINE TreeFormalParameterList parseFormalParameters(TreeBuilder&);
     enum VarDeclarationListContext { ForLoopContext, VarDeclarationContext };
     template <class TreeBuilder> TreeExpression parseVarDeclarationList(TreeBuilder&, int& declarations, TreeDeconstructionPattern& lastPattern, TreeExpression& lastInitializer, JSTextPosition& identStart, JSTextPosition& initStart, JSTextPosition& initEnd, VarDeclarationListContext);
@@ -750,7 +769,7 @@ private:
     template <class TreeBuilder> NEVER_INLINE TreeDeconstructionPattern parseDeconstructionPattern(TreeBuilder&, DeconstructionKind, int depth = 0);
     template <class TreeBuilder> NEVER_INLINE TreeDeconstructionPattern tryParseDeconstructionPatternExpression(TreeBuilder&);
 
-    template <class TreeBuilder> NEVER_INLINE bool parseFunctionInfo(TreeBuilder&, FunctionRequirements, FunctionParseMode, bool nameIsInContainingScope, ParserFunctionInfo<TreeBuilder>&);
+    template <class TreeBuilder> NEVER_INLINE bool parseFunctionInfo(TreeBuilder&, FunctionRequirements, FunctionParseMode, bool nameIsInContainingScope, ConstructorKind, ParserFunctionInfo<TreeBuilder>&);
 #if ENABLE(ES6_CLASS_SYNTAX)
     template <class TreeBuilder> NEVER_INLINE TreeClassExpression parseClass(TreeBuilder&, FunctionRequirements);
 #endif

@@ -607,7 +607,7 @@ void CodeBlock::dumpBytecode(PrintStream& out)
         out.printf("\nConstants:\n");
         size_t i = 0;
         do {
-            const char* sourceCodeRepresentationDescription;
+            const char* sourceCodeRepresentationDescription = nullptr;
             switch (m_constantsSourceCodeRepresentation[i]) {
             case SourceCodeRepresentation::Double:
                 sourceCodeRepresentationDescription = ": in source as double";
@@ -1677,7 +1677,7 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     }
     
     m_heap->m_codeBlocks.add(this);
-    m_heap->reportExtraMemoryCost(sizeof(CodeBlock));
+    m_heap->reportExtraMemoryAllocated(sizeof(CodeBlock));
 }
 
 CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlinkedCodeBlock, JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
@@ -1746,17 +1746,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionDecl(i);
         if (vm()->typeProfiler() || vm()->controlFlowProfiler())
             vm()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
-        unsigned lineCount = unlinkedExecutable->lineCount();
-        unsigned firstLine = ownerExecutable->lineNo() + unlinkedExecutable->firstLineOffset();
-        bool startColumnIsOnOwnerStartLine = !unlinkedExecutable->firstLineOffset();
-        unsigned startColumn = unlinkedExecutable->unlinkedBodyStartColumn() + (startColumnIsOnOwnerStartLine ? ownerExecutable->startColumn() : 1);
-        bool endColumnIsOnStartLine = !lineCount;
-        unsigned endColumn = unlinkedExecutable->unlinkedBodyEndColumn() + (endColumnIsOnStartLine ? startColumn : 1);
-        unsigned startOffset = sourceOffset + unlinkedExecutable->startOffset();
-        unsigned sourceLength = unlinkedExecutable->sourceLength();
-        SourceCode code(m_source, startOffset, startOffset + sourceLength, firstLine, startColumn);
-        FunctionExecutable* executable = FunctionExecutable::create(*m_vm, code, unlinkedExecutable, firstLine, firstLine + lineCount, startColumn, endColumn);
-        m_functionDecls[i].set(*m_vm, ownerExecutable, executable);
+        m_functionDecls[i].set(*m_vm, ownerExecutable, unlinkedExecutable->linkInsideExecutable(*m_vm, ownerExecutable->source()));
     }
 
     m_functionExprs.resizeToFit(unlinkedCodeBlock->numberOfFunctionExprs());
@@ -1764,17 +1754,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionExpr(i);
         if (vm()->typeProfiler() || vm()->controlFlowProfiler())
             vm()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
-        unsigned lineCount = unlinkedExecutable->lineCount();
-        unsigned firstLine = ownerExecutable->lineNo() + unlinkedExecutable->firstLineOffset();
-        bool startColumnIsOnOwnerStartLine = !unlinkedExecutable->firstLineOffset();
-        unsigned startColumn = unlinkedExecutable->unlinkedBodyStartColumn() + (startColumnIsOnOwnerStartLine ? ownerExecutable->startColumn() : 1);
-        bool endColumnIsOnStartLine = !lineCount;
-        unsigned endColumn = unlinkedExecutable->unlinkedBodyEndColumn() + (endColumnIsOnStartLine ? startColumn : 1);
-        unsigned startOffset = sourceOffset + unlinkedExecutable->startOffset();
-        unsigned sourceLength = unlinkedExecutable->sourceLength();
-        SourceCode code(m_source, startOffset, startOffset + sourceLength, firstLine, startColumn);
-        FunctionExecutable* executable = FunctionExecutable::create(*m_vm, code, unlinkedExecutable, firstLine, firstLine + lineCount, startColumn, endColumn);
-        m_functionExprs[i].set(*m_vm, ownerExecutable, executable);
+        m_functionExprs[i].set(*m_vm, ownerExecutable, unlinkedExecutable->linkInsideExecutable(*m_vm, ownerExecutable->source()));
     }
 
     if (unlinkedCodeBlock->hasRareData()) {
@@ -2151,7 +2131,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         dumpBytecode();
     
     m_heap->m_codeBlocks.add(this);
-    m_heap->reportExtraMemoryCost(sizeof(CodeBlock) + m_instructions.size() * sizeof(Instruction));
+    m_heap->reportExtraMemoryAllocated(sizeof(CodeBlock) + m_instructions.size() * sizeof(Instruction));
 }
 
 CodeBlock::~CodeBlock()
@@ -2243,15 +2223,15 @@ void CodeBlock::visitAggregate(SlotVisitor& visitor)
     if (CodeBlock* otherBlock = specialOSREntryBlockOrNull())
         otherBlock->visitAggregate(visitor);
 
-    visitor.reportExtraMemoryUsage(ownerExecutable(), sizeof(CodeBlock));
+    visitor.reportExtraMemoryVisited(ownerExecutable(), sizeof(CodeBlock));
     if (m_jitCode)
-        visitor.reportExtraMemoryUsage(ownerExecutable(), m_jitCode->size());
+        visitor.reportExtraMemoryVisited(ownerExecutable(), m_jitCode->size());
     if (m_instructions.size()) {
         // Divide by refCount() because m_instructions points to something that is shared
         // by multiple CodeBlocks, and we only want to count it towards the heap size once.
         // Having each CodeBlock report only its proportional share of the size is one way
         // of accomplishing this.
-        visitor.reportExtraMemoryUsage(ownerExecutable(), m_instructions.size() * sizeof(Instruction) / m_instructions.refCount());
+        visitor.reportExtraMemoryVisited(ownerExecutable(), m_instructions.size() * sizeof(Instruction) / m_instructions.refCount());
     }
 
     visitor.append(&m_unlinkedCode);

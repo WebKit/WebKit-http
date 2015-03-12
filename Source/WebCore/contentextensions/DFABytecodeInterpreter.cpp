@@ -35,52 +35,68 @@ namespace WebCore {
 namespace ContentExtensions {
 
 template <typename IntType>
-static inline IntType getBits(const Vector<DFABytecode>& bytecode, unsigned index)
+static inline IntType getBits(const DFABytecode* bytecode, unsigned bytecodeLength, unsigned index)
 {
+    ASSERT_UNUSED(bytecodeLength, index + sizeof(IntType) <= bytecodeLength);
     return *reinterpret_cast<const IntType*>(&bytecode[index]);
 }
 
-DFABytecodeInterpreter::Actions DFABytecodeInterpreter::interpret(const CString& urlCString)
+DFABytecodeInterpreter::Actions DFABytecodeInterpreter::interpret(const CString& urlCString, uint16_t flags)
 {
     const char* url = urlCString.data();
     ASSERT(url);
     
     unsigned programCounter = 0;
     unsigned urlIndex = 0;
+    bool urlIndexIsAfterEndOfString = false;
     Actions actions;
     
     // This should always terminate if interpreting correctly compiled bytecode.
     while (true) {
-        switch (static_cast<DFABytecodeInstruction>(bytecode[programCounter])) {
+        ASSERT(programCounter <= m_bytecodeLength);
+        switch (static_cast<DFABytecodeInstruction>(m_bytecode[programCounter])) {
 
         case DFABytecodeInstruction::Terminate:
             return actions;
 
         case DFABytecodeInstruction::CheckValue:
+            if (urlIndexIsAfterEndOfString)
+                return actions;
+
             // Check to see if the next character in the url is the value stored with the bytecode.
-            if (!url[urlIndex])
-                return actions; // Reached null character at end.
-            if (url[urlIndex] == getBits<uint8_t>(bytecode, programCounter + sizeof(DFABytecode))) {
-                programCounter = getBits<unsigned>(bytecode, programCounter + sizeof(DFABytecode) + sizeof(uint8_t));
+            if (url[urlIndex] == getBits<uint8_t>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode))) {
+                programCounter = getBits<unsigned>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode) + sizeof(uint8_t));
+                if (!url[urlIndex])
+                    urlIndexIsAfterEndOfString = true;
                 urlIndex++; // This represents an edge in the DFA.
             } else
                 programCounter += instructionSizeWithArguments(DFABytecodeInstruction::CheckValue);
             break;
 
         case DFABytecodeInstruction::Jump:
-            programCounter = getBits<unsigned>(bytecode, programCounter + sizeof(DFABytecode));
+            if (!url[urlIndex] || urlIndexIsAfterEndOfString)
+                return actions;
+
+            programCounter = getBits<unsigned>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode));
             urlIndex++; // This represents an edge in the DFA.
             break;
 
         case DFABytecodeInstruction::AppendAction:
-            actions.add(static_cast<uint64_t>(getBits<unsigned>(bytecode, programCounter + sizeof(DFABytecode))));
+            actions.add(static_cast<uint64_t>(getBits<unsigned>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode))));
             programCounter += instructionSizeWithArguments(DFABytecodeInstruction::AppendAction);
+            break;
+
+        case DFABytecodeInstruction::TestFlagsAndAppendAction:
+            if (flags & getBits<uint16_t>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode)))
+                actions.add(static_cast<uint64_t>(getBits<unsigned>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecode) + sizeof(uint16_t))));
+            programCounter += instructionSizeWithArguments(DFABytecodeInstruction::TestFlagsAndAppendAction);
             break;
 
         default:
             RELEASE_ASSERT_NOT_REACHED(); // Invalid bytecode.
         }
-        ASSERT(urlIndex <= urlCString.length()); // We should always terminate at a null character at the end of a String.
+        // We should always terminate before or at a null character at the end of a String.
+        ASSERT(urlIndex <= urlCString.length() || (urlIndexIsAfterEndOfString && urlIndex <= urlCString.length() + 1));
     }
     RELEASE_ASSERT_NOT_REACHED();
 }

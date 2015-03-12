@@ -100,9 +100,16 @@ void NotificationCenter::stop()
 {
     if (!m_client)
         return;
-    m_client->cancelRequestsForPermission(scriptExecutionContext());
-    m_client->clearNotifications(scriptExecutionContext());
+
+    // Clear m_client now because the call to NotificationClient::clearNotifications() below potentially
+    // destroy the NotificationCenter. This is because the notifications will be destroyed and unref the
+    // NotificationCenter.
+    auto& client = *m_client;
     m_client = nullptr;
+
+    client.cancelRequestsForPermission(scriptExecutionContext());
+    client.clearNotifications(scriptExecutionContext());
+    // Do not attempt the access |this|, the NotificationCenter may be destroyed at this point.
 }
 
 const char* NotificationCenter::activeDOMObjectName() const

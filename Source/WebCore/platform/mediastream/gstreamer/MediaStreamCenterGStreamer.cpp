@@ -37,14 +37,14 @@
 
 #include "MediaStreamCreationClient.h"
 #include "MediaStreamPrivate.h"
-#include "MediaStreamSourceCapabilities.h"
 #include "MediaStreamTrackSourcesRequestClient.h"
 #include "NotImplemented.h"
+#include "RealtimeMediaSourceCapabilities.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
 
-MediaStreamCenter& MediaStreamCenter::platformCenter()
+RealtimeMediaSourceCenter& RealtimeMediaSourceCenter::platformCenter()
 {
     ASSERT(isMainThread());
     DEPRECATED_DEFINE_STATIC_LOCAL(MediaStreamCenterGStreamer, center, ());
@@ -73,8 +73,8 @@ void MediaStreamCenterGStreamer::createMediaStream(PassRefPtr<MediaStreamCreatio
     RefPtr<MediaStreamCreationClient> client = prpQueryClient;
     ASSERT(client);
 
-    Vector<RefPtr<MediaStreamSource>> audioSources;
-    Vector<RefPtr<MediaStreamSource>> videoSources;
+    Vector<RefPtr<RealtimeMediaSource>> audioSources;
+    Vector<RefPtr<RealtimeMediaSource>> videoSources;
     // FIXME: fill source vectors, see bug #110150.
     client->didCreateStream(MediaStreamPrivate::create(audioSources, videoSources));
 
