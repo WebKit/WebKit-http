@@ -437,22 +437,23 @@ GraphicsContext3D::~GraphicsContext3D()
     if (!m_private)
         return;
 
-    makeContextCurrent();
-    m_functions->glDeleteTextures(1, &m_texture);
-    m_functions->glDeleteFramebuffers(1, &m_fbo);
-    if (m_attrs.antialias) {
-        m_functions->glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
-        m_functions->glDeleteFramebuffers(1, &m_multisampleFBO);
-        if (m_attrs.stencil || m_attrs.depth)
-            m_functions->glDeleteRenderbuffers(1, &m_multisampleDepthStencilBuffer);
-    } else if (m_attrs.stencil || m_attrs.depth) {
-        if (isGLES2Compliant()) {
-            if (m_attrs.depth)
-                m_functions->glDeleteRenderbuffers(1, &m_depthBuffer);
-            if (m_attrs.stencil)
-                m_functions->glDeleteRenderbuffers(1, &m_stencilBuffer);
+    if (makeContextCurrent()) {
+        m_functions->glDeleteTextures(1, &m_texture);
+        m_functions->glDeleteFramebuffers(1, &m_fbo);
+        if (m_attrs.antialias) {
+            m_functions->glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
+            m_functions->glDeleteFramebuffers(1, &m_multisampleFBO);
+            if (m_attrs.stencil || m_attrs.depth)
+                m_functions->glDeleteRenderbuffers(1, &m_multisampleDepthStencilBuffer);
+        } else if (m_attrs.stencil || m_attrs.depth) {
+            if (isGLES2Compliant()) {
+                if (m_attrs.depth)
+                    m_functions->glDeleteRenderbuffers(1, &m_depthBuffer);
+                if (m_attrs.stencil)
+                    m_functions->glDeleteRenderbuffers(1, &m_stencilBuffer);
+            }
+            m_functions->glDeleteRenderbuffers(1, &m_depthStencilBuffer);
         }
-        m_functions->glDeleteRenderbuffers(1, &m_depthStencilBuffer);
     }
 
     m_functions = 0;
