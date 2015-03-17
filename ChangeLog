@@ -1,3 +1,76 @@
+2015-03-17  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] basic OpenWebRTC build support
+        https://bugs.webkit.org/show_bug.cgi?id=142393
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/FindOpenWebRTC.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake: Look for OpenWebRTC library if
+        mediastream build is enabled.
+
+2015-03-17  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMake][EFL] Build test tools only for developer mode
+        https://bugs.webkit.org/show_bug.cgi?id=142761
+
+        Reviewed by Csaba Osztrogonác.
+
+        Do not build EFL MiniBrowser, WebKitTestRunner, and ImageDiff on production mode.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake: Move ENABLE_MINIBROWSER to common place.
+        * Source/cmake/WebKitFeatures.cmake: Define ENABLE_MINIBROWSER variable.
+        * Source/cmakeconfig.h.cmake:
+
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable ES6 classes by default
+        https://bugs.webkit.org/show_bug.cgi?id=142774
+
+        Reviewed by Gavin Barraclough.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-03-16  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMake][EFL] Rearrange OptionEFL.cmake to improve readability 
+        https://bugs.webkit.org/show_bug.cgi?id=142722
+
+        Reviewed by Csaba Osztrogonác.
+
+        Categorize to define cmake variables, to find necessary packages,
+        use upper case for "glib_conponents" cmake variable name, re-arrange
+        wrong alphabet sorting, and so on.
+
+        * CMakeLists.txt: Remove WinCE port.
+        * Source/cmake/OptionsEfl.cmake:
+
+2015-03-14  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        [GStreamer] share GL context in pipeline
+        https://bugs.webkit.org/show_bug.cgi?id=142693
+
+        Reviewed by Philippe Normand.
+
+        Add search of gstreamer-gl library in the GStreamer installation. If
+        it is found, WTF_USE_GSTREAMER_GL macro is defined.
+
+        * Source/cmake/FindGStreamer.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-03-13  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=142680
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt:
+        * Source/PlatformMac.cmake: Added stub.
+        * Source/cmake/OptionsMac.cmake:
+        Change defines to get CMake working.
+
 2015-03-11  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Add an option to enable MiniBrowser for non developer builds and always install it

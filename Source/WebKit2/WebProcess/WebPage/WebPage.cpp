@@ -2696,6 +2696,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     
     settings.setAggressiveTileRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::aggressiveTileRetentionEnabledKey()));
     settings.setTemporaryTileCohortRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::temporaryTileCohortRetentionEnabledKey()));
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    RuntimeEnabledFeatures::sharedFeatures().setAnimationTriggersEnabled(store.getBoolValueForKey(WebPreferencesKey::cssAnimationTriggersEnabledKey()));
+#endif
     RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(store.getBoolValueForKey(WebPreferencesKey::cssRegionsEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(store.getBoolValueForKey(WebPreferencesKey::cssCompositingEnabledKey()));
     settings.setWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::webGLEnabledKey()));
@@ -4426,11 +4429,11 @@ bool WebPage::canShowMIMEType(const String& MIMEType) const
         return true;
 
     const PluginData& pluginData = m_page->pluginData();
-    if (pluginData.supportsMimeType(MIMEType, PluginData::AllPlugins) && corePage()->mainFrame().loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
+    if (pluginData.supportsWebVisibleMimeType(MIMEType, PluginData::AllPlugins) && corePage()->mainFrame().loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
         return true;
 
     // We can use application plugins even if plugins aren't enabled.
-    if (pluginData.supportsMimeType(MIMEType, PluginData::OnlyApplicationPlugins))
+    if (pluginData.supportsWebVisibleMimeType(MIMEType, PluginData::OnlyApplicationPlugins))
         return true;
 
     return false;

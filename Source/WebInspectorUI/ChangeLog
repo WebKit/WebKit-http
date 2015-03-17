@@ -1,3 +1,392 @@
+2015-03-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Show rendering frames (and FPS) in Layout and Rendering timeline
+        https://bugs.webkit.org/show_bug.cgi?id=142029
+
+        Reviewed by Timothy Hatcher.
+
+        Add UI for showing runloop records and their child records as a frame histogram,
+        with the recording time on the x-axis and the frame duration on the y-axis. Each frame
+        is comprised of colored regions representing the time spent in various activities (script,
+        layout, etc).
+
+        Eventually the Frames timeline will replace the Layout & Rendering timeline. Until the views
+        for the new timeline are finalized the Layout & Rendering timeline will remain in place.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        New string and files.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        (WebInspector.TimelineManager.prototype.pageDidLoad):
+        (WebInspector.TimelineManager.prototype._processNestedRecords):
+        (WebInspector.TimelineManager.prototype._processRecord):
+        (WebInspector.TimelineManager.prototype._processEvent):
+        (WebInspector.TimelineManager.prototype._loadNewRecording):
+        (WebInspector.TimelineManager.prototype.eventRecorded.processRecord): Deleted.
+        Added support for new runloop record type and nested record handling.
+
+        * UserInterface/Images/Frames.png: Added.
+        * UserInterface/Images/Frames@2x.png: Added.
+        * UserInterface/Images/FramesLarge.png: Added.
+        * UserInterface/Images/FramesLarge@2x.png: Added.
+        New images for runloop timeline overview graph and runloop tree records.
+
+        * UserInterface/Models/RunLoopTimelineRecord.js: Added.
+        (WebInspector.RunLoopTimelineRecord):
+        (WebInspector.RunLoopTimelineRecord.prototype.get children):
+        (WebInspector.RunLoopTimelineRecord.prototype.get durationRemainder):
+        (WebInspector.RunLoopTimelineRecord.prototype.durationForRecords.get var):
+        Extends TimelineRecord to add child records and subframe duration details.
+
+        * UserInterface/Models/Timeline.js:
+        (WebInspector.Timeline.prototype.get displayName):
+        (WebInspector.Timeline.prototype.get iconClassName):
+        New UI strings and icons.
+
+        * UserInterface/Models/TimelineRecord.js:
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.prototype._layoutTimelineRecordAdded):
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+        Added support for new runloop record type.
+
+        * UserInterface/Views/RunLoopTimelineOverviewGraph.css: Added.
+        (.timeline-overview-graph.runloop > .divider):
+        (.timeline-overview-graph.runloop > .divider > span):
+        New styles for runloop timeline graph.
+
+        * UserInterface/Views/RunLoopTimelineOverviewGraph.js: Added.
+        (WebInspector.RunLoopTimelineOverviewGraph):
+        (WebInspector.RunLoopTimelineOverviewGraph.prototype.updateLayout.createFrame):
+        (WebInspector.RunLoopTimelineOverviewGraph.prototype.get graphHeightSeconds.this):
+        (WebInspector.RunLoopTimelineOverviewGraph.prototype.get graphHeightSeconds):
+        (WebInspector.RunLoopTimelineOverviewGraph.prototype._updateDividers.createDividerAtPosition.get if):
+        New overview graph for displaying TimelineRecordFrames and horizontal frame budget dividers.
+
+        * UserInterface/Views/TimelineIcons.css:
+        (.runloop-icon .icon):
+        (.runloop-icon.large .icon):
+        (.runloop-record .icon):
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        New runloop icon styles.
+
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WebInspector.TimelineOverviewGraph):
+        Updated factory to support creation of the new overview graph.
+
+        * UserInterface/Views/TimelineRecordFrame.css: Added.
+        (.timeline-record-frame):
+        (.timeline-record-frame > .frame):
+        (.timeline-record-frame > .dropped):
+        (.timeline-record-frame > .frame > .duration):
+        (.timeline-record-frame > .frame > .duration:first-child):
+        (.timeline-record-frame > .frame > .duration:last-child):
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-network):
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-layout):
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-script):
+        New styles for frame bars in the runloop timeline graph.
+
+        * UserInterface/Views/TimelineRecordFrame.js: Added.
+        (WebInspector.TimelineRecordFrame):
+        (WebInspector.TimelineRecordFrame.createCombinedFrames):
+        (WebInspector.TimelineRecordFrame.prototype.get element):
+        (WebInspector.TimelineRecordFrame.prototype.get duration):
+        (WebInspector.TimelineRecordFrame.prototype.get records):
+        (WebInspector.TimelineRecordFrame.prototype.set records):
+        (WebInspector.TimelineRecordFrame.prototype._updateChildElements.createDurationElement):
+        New view representing a single frame within the runloop overview graph.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+        New files.
+
+2015-03-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add more DOM Native Function parameter strings
+        https://bugs.webkit.org/show_bug.cgi?id=142760
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        Add native parameter strings generated and hand modified
+        for DOM built-in classes.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        For native constructors "FooConstructor" the description is just
+        the name of the Constructor not the function string.
+
+2015-03-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Object Previews in Indexed DB tables
+        https://bugs.webkit.org/show_bug.cgi?id=140813
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject):
+        Add a boolean param for ObjectTree construction if it should force allowing object expansion.
+
+        * UserInterface/Views/IndexedDatabaseEntryDataGridNode.js:
+        (WebInspector.IndexedDatabaseEntryDataGridNode.prototype.createCellContent):
+        Switch to creating an ObjectTree or FormattedValue.
+
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.css:
+        (.content-view.indexed-database-object-store > .data-grid tr.selected):
+        Change row selection color to match the console's lighter blue instead of dark blue.
+
+        (.content-view.indexed-database-object-store > .data-grid .object-tree > :matches(.title, .object-preview)::before):
+        Adjust object tree disclosure triangle placement for larger line heights.
+
+        (.content-view.indexed-database-object-store > .data-grid td .section .header): Deleted.
+        (.content-view.indexed-database-object-store > .data-grid td .section .header::before): Deleted.
+        (.content-view.indexed-database-object-store > .data-grid td .section .header .title): Deleted.
+        (.content-view.indexed-database-object-store > .data-grid:focus tr.selected td .section .header::before): Deleted.
+        (.content-view.indexed-database-object-store > .data-grid:focus tr.selected td .section.expanded .header::before): Deleted.
+        (.content-view.indexed-database-object-store > .data-grid:focus tr.selected td .properties-tree li.parent::before): Deleted.
+        (.content-view.indexed-database-object-store > .data-grid:focus tr.selected td .properties-tree li.parent.expanded::before): Deleted.
+        (.content-view.indexed-database-object-store > .data-grid:focus tr.selected td .properties-tree li *): Deleted.
+        Remove now unnecessary styles.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.css:
+        (.object-tree .object-tree-array-index > .icon):
+        Increase the specificity to override ".data-grid td .icon" styles.
+
+2015-03-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Better Console Previews for Arrays / Small Objects
+        https://bugs.webkit.org/show_bug.cgi?id=142322
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        If there is a sub-preview, show the sub-preview.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView):
+        For an ObjectTree that is not a root (e.g. one inside of
+        an array/set/map property tree element) allow it to be
+        expanded even if the preview is lossless.
+
+2015-03-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Rename ConsoleMessage and ConsoleMessageImpl to LegacyConsoleMessage and LegacyConsoleMessageImpl respectively
+        https://bugs.webkit.org/show_bug.cgi?id=142712
+
+        As a first step of ConsoleMessage refactoring (https://bugs.webkit.org/show_bug.cgi?id=142599):
+
+          - Rename WebInspector.ConsoleMessage class to WebInspector.LegacyConsoleMessage
+          - Rename WebInspector.ConsoleMessageImpl class to WebInspector.LegacyConsoleMessageImpl
+          - Rename ConsoleMessage.js file to LegacyConsoleMessage.js
+          - Rename ConsoleMessageImpl file to LegacyConsoleMessageImpl.js
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype._appendConsoleMessage):
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager.prototype.messageWasAdded):
+        * UserInterface/Main.html:
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard.prototype._incrementConsoleMessageType):
+        * UserInterface/Views/ConsoleCommandResult.js:
+        (WebInspector.ConsoleCommandResult):
+        (WebInspector.ConsoleCommandResult.prototype.toMessageElement):
+        * UserInterface/Views/ConsoleGroup.js:
+        (WebInspector.ConsoleGroup.prototype.render):
+        * UserInterface/Views/LegacyConsoleMessage.js: Renamed from Source/WebInspectorUI/UserInterface/Views/ConsoleMessage.js.
+        (WebInspector.LegacyConsoleMessage):
+        (WebInspector.LegacyConsoleMessage.prototype.isErrorOrWarning):
+        (WebInspector.LegacyConsoleMessage.prototype.updateRepeatCount):
+        (WebInspector.LegacyConsoleMessage.prototype.clone):
+        (WebInspector.LegacyConsoleMessage.create):
+        * UserInterface/Views/LegacyConsoleMessageImpl.js: Renamed from Source/WebInspectorUI/UserInterface/Views/ConsoleMessageImpl.js.
+        (WebInspector.LegacyConsoleMessageImpl):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatMessage):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._shouldDumpStackTrace):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._shouldHideURL):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._firstNonNativeCallFrame):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get message):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get formattedMessage):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._linkifyLocation):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._linkifyCallFrame):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.isErrorOrWarning):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._format):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._isExpandable):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsValue):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsObject):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsNode):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsArray):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._rootPropertyPathForObject):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._userProvidedColumnNames):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsTable):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.stringFormatter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.floatFormatter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.integerFormatter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.styleFormatter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.isWhitelistedProperty):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.append):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatWithSubstitutionString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.decorateMessageElement):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.toMessageElement):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._populateStackTraceTreeElement):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.updateRepeatCount):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.toString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get text):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.isEqual):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get stackTrace):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.clone):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get levelString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get clipboardPrefixString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.toClipboardString):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessage):
+        (WebInspector.LogContentView.prototype._messageAdded):
+        (WebInspector.LogContentView.prototype._filterMessages):
+        (WebInspector.LogContentView.prototype._reappendProvisionalMessages):
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+
+2015-03-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181517.
+        https://bugs.webkit.org/show_bug.cgi?id=142718
+
+        This patch broke GTK+ build (Requested by NVI on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Rename ConsoleMessage and ConsoleMessageImpl
+        to LegacyConsoleMessage and LegacyConsoleMessageImpl
+        respectively"
+        https://bugs.webkit.org/show_bug.cgi?id=142712
+        http://trac.webkit.org/changeset/181517
+
+2015-03-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Console Scrolls Unexpectedly when Clicking inside un-selected Expanding Object
+        https://bugs.webkit.org/show_bug.cgi?id=142655
+
+        Don't scroll when selection change is triggered by clicking, e.g.
+        only scroll on arrow up and down key press events.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._mousemove):
+        (WebInspector.LogContentView.prototype._updateMessagesSelection):
+        (WebInspector.LogContentView.prototype._upArrowWasPressed):
+        (WebInspector.LogContentView.prototype._downArrowWasPressed):
+
+2015-03-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Rename ConsoleMessage and ConsoleMessageImpl to LegacyConsoleMessage and LegacyConsoleMessageImpl respectively
+        https://bugs.webkit.org/show_bug.cgi?id=142712
+
+        As a first step of ConsoleMessage refactoring (https://bugs.webkit.org/show_bug.cgi?id=142599):
+
+          - Rename WebInspector.ConsoleMessage class to WebInspector.LegacyConsoleMessage
+          - Rename WebInspector.ConsoleMessageImpl class to WebInspector.LegacyConsoleMessageImpl
+          - Rename ConsoleMessage.js file to LegacyConsoleMessage.js
+          - Rename ConsoleMessageImpl file to LegacyConsoleMessageImpl.js
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype._appendConsoleMessage):
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager.prototype.messageWasAdded):
+        * UserInterface/Main.html:
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard.prototype._incrementConsoleMessageType):
+        * UserInterface/Views/ConsoleCommandResult.js:
+        (WebInspector.ConsoleCommandResult):
+        (WebInspector.ConsoleCommandResult.prototype.toMessageElement):
+        * UserInterface/Views/ConsoleGroup.js:
+        (WebInspector.ConsoleGroup.prototype.render):
+        * UserInterface/Views/LegacyConsoleMessage.js: Renamed from Source/WebInspectorUI/UserInterface/Views/ConsoleMessage.js.
+        (WebInspector.LegacyConsoleMessage):
+        (WebInspector.LegacyConsoleMessage.prototype.isErrorOrWarning):
+        (WebInspector.LegacyConsoleMessage.prototype.updateRepeatCount):
+        (WebInspector.LegacyConsoleMessage.prototype.clone):
+        (WebInspector.LegacyConsoleMessage.create):
+        * UserInterface/Views/LegacyConsoleMessageImpl.js: Renamed from Source/WebInspectorUI/UserInterface/Views/ConsoleMessageImpl.js.
+        (WebInspector.LegacyConsoleMessageImpl):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatMessage):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._shouldDumpStackTrace):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._shouldHideURL):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._firstNonNativeCallFrame):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get message):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get formattedMessage):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._linkifyLocation):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._linkifyCallFrame):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.isErrorOrWarning):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._format):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._isExpandable):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsValue):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsObject):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsNode):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsArray):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._rootPropertyPathForObject):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._userProvidedColumnNames):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsTable):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.stringFormatter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.floatFormatter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.integerFormatter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.styleFormatter):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.isWhitelistedProperty):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.append):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatWithSubstitutionString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.decorateMessageElement):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.toMessageElement):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._populateStackTraceTreeElement):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.updateRepeatCount):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.toString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get text):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.isEqual):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get stackTrace):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.clone):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get levelString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.get clipboardPrefixString):
+        (WebInspector.LegacyConsoleMessageImpl.prototype.toClipboardString):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessage):
+        (WebInspector.LogContentView.prototype._messageAdded):
+        (WebInspector.LogContentView.prototype._filterMessages):
+        (WebInspector.LogContentView.prototype._reappendProvisionalMessages):
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+
+2015-03-12  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Debugger sidebar should group global breakpoints together
+        https://bugs.webkit.org/show_bug.cgi?id=142607
+
+        Reviewed by Timothy Hatcher.
+
+        Update the DebuggerSidebarPanel class to hold global breakpoints such as "All Exceptions" in one container. This
+        will be the place future such breakpoints are added.
+
+        * Localizations/en.lproj/localizedStrings.js: Added string.
+        * UserInterface/Main.html: Small rearrangement.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js: Change how exception breaking options are displayed.
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._treeElementSelected):
+        (WebInspector.DebuggerSidebarPanel.prototype._compareTopLevelTreeElements):
+
+        * UserInterface/Views/FolderTreeElement.js: Support additional classes for icons.
+        * UserInterface/Views/ResourceSidebarPanel.js: Change call to FolderTreeElement constructor.
+
 2015-03-12  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Console Errors during provisional document loads get lost with "Clear Log on Reload"

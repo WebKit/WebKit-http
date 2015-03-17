@@ -290,7 +290,7 @@ public:
     virtual GraphicsLayerFactory* graphicsLayerFactory() const { return nullptr; }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    virtual PassRefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const { return nullptr; }
+    virtual Optional<RefPtr<DisplayRefreshMonitor>> createDisplayRefreshMonitor(PlatformDisplayID) const { return Nullopt; }
 #endif
 
     // Pass 0 as the GraphicsLayer to detatch the root layer.
@@ -448,7 +448,7 @@ public:
     virtual void handleAutoFillButtonClick(HTMLInputElement&) { }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    virtual void showPlaybackTargetPicker(const WebCore::IntPoint&, bool) { }
+    virtual void showPlaybackTargetPicker(const WebCore::IntPoint&, bool /* isVideo */) { }
     virtual void startingMonitoringPlaybackTargets() { }
     virtual void stopMonitoringPlaybackTargets() { }
 #endif

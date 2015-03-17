@@ -1,3 +1,152 @@
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable ES6 classes by default
+        https://bugs.webkit.org/show_bug.cgi?id=142774
+
+        Reviewed by Gavin Barraclough.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-16  Brent Fulgham  <bfulgham@apple.com>
+
+        WebKit1 Clients Are Not Reliably Repainted
+        https://bugs.webkit.org/show_bug.cgi?id=142750
+        <rdar://problem/20042453>
+
+        Reviewed by Simon Fraser.
+
+        Check with the FrameView to see if we are in an immediately paintable state. If we are not,
+        mark the view as dirty once the _immediateScrollToPoint operation is complete so that the
+        region will be painted properly.
+
+        * WebView/WebClipView.mm:
+        (-[WebClipView _immediateScrollToPoint:]): 
+
+2015-03-16  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Allow clients to selectively disable plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=142506
+
+        Reviewed by Anders Carlsson.
+
+        Add new functionality allow clients to declaratively disable individual plug-ins (in a manner that conceals them
+        from the page). As part of this:
+
+        1) Introduce the concept of web-visible plug-ins and related concepts, as distinct from the real underlying
+           set of plug-ins.
+
+        2) Where applicable, plumb additional information about plug-ins (specifically, bundle identification) deeper
+           down the stack.
+
+        3) Add generic functionality to PluginStrategy to support filtering plug-ins for visibility and introduce
+           a concrete implementation thereof in WebPlatformStrategies in WebKit2.
+
+        4) Add messaging infrastructure to allow clients to set and clear plug-in policies.
+
+        While currently only used in a very limited manner, the new declarative plug-in policies are written generically
+        so that they could be easily used in the future to reduce synchronous messaging to the client when loading plug-ins.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]):
+        Set new members in PluginInfo.
+
+        * Plugins/WebNetscapePluginPackage.mm:
+        (-[WebNetscapePluginPackage getPluginInfoFromResources]):
+        Set new members in PluginInfo.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getWebVisiblePluginInfo):
+        Override to wrap getPluginInfo().
+        (WebPlatformStrategies::setPluginLoadClientPolicy):
+        Override to do nothing.
+        (WebPlatformStrategies::clearPluginClientPolicies):
+        Ditto.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _canProvideDocumentSource]):
+        Update to reflect function rename.
+
+2015-03-14  Dean Jackson  <dino@apple.com>
+
+        Feature flag for Animations Level 2
+        https://bugs.webkit.org/show_bug.cgi?id=142699
+        <rdar://problem/20165097>
+
+        Reviewed by Brent Fulgham.
+
+        Add ENABLE_CSS_ANIMATIONS_LEVEL_2 and a runtime flag animationTriggersEnabled.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181483.
+        https://bugs.webkit.org/show_bug.cgi?id=142688
+
+        Caused use-after-free on many tests (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Allow clients to selectively disable plug-ins"
+        https://bugs.webkit.org/show_bug.cgi?id=142506
+        http://trac.webkit.org/changeset/181483
+
+2015-03-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Enable WIRELESS_PLAYBACK_TARGET
+        https://bugs.webkit.org/show_bug.cgi?id=142635
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-10  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Allow clients to selectively disable plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=142506
+
+        Reviewed by Anders Carlsson.
+
+        Add new functionality allow clients to declaratively disable individual plug-ins (in a manner that conceals them
+        from the page). As part of this:
+
+        1) Introduce the concept of web-visible plug-ins and related concepts, as distinct from the real underlying
+           set of plug-ins.
+
+        2) Where applicable, plumb additional information about plug-ins (specifically, bundle identification) deeper
+           down the stack.
+
+        3) Add generic functionality to PluginStrategy to support filtering plug-ins for visibility and introduce
+           a concrete implementation thereof in WebPlatformStrategies in WebKit2.
+
+        4) Add messaging infrastructure to allow clients to set and clear plug-in policies.
+
+        While currently only used in a very limited manner, the new declarative plug-in policies are written generically
+        so that they could be easily used in the future to reduce synchronous messaging to the client when loading plug-ins.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]):
+        Set new members in PluginInfo.
+
+        * Plugins/WebNetscapePluginPackage.mm:
+        (-[WebNetscapePluginPackage getPluginInfoFromResources]):
+        Set new members in PluginInfo.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getWebVisiblePluginInfo):
+        Override to wrap getPluginInfo().
+        (WebPlatformStrategies::setPluginLoadClientPolicy):
+        Override to do nothing.
+        (WebPlatformStrategies::clearPluginClientPolicies):
+        Ditto.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _canProvideDocumentSource]):
+        Update to reflect function rename.
+
 2015-03-10  Sam Weinig  <sam@webkit.org>
 
         Allow adding a button in input elements for auto fill related functionality

@@ -3758,6 +3758,14 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case CheckNotEmpty: {
+        JSValueOperand operand(this, node->child1());
+        GPRReg tagGPR = operand.tagGPR();
+        speculationCheck(TDZFailure, JSValueSource(), nullptr, m_jit.branch32(JITCompiler::Equal, tagGPR, TrustedImm32(JSValue::EmptyValueTag)));
+        noResult(node);
+        break;
+    }
+
     case GetExecutable: {
         SpeculateCellOperand function(this, node->child1());
         GPRTemporary result(this, Reuse, function);
@@ -5084,9 +5092,8 @@ void SpeculativeJIT::compile(Node* node)
     case CheckBadCell:
     case BottomValue:
     case PhantomNewObject:
-    case PutByOffsetHint:
+    case PutHint:
     case CheckStructureImmediate:
-    case PutStructureHint:
     case MaterializeNewObject:
     case PutStack:
     case KillStack:

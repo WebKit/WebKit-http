@@ -105,6 +105,7 @@ bool doesGC(Graph& graph, Node* node)
     case PutGlobalVar:
     case VarInjectionWatchpoint:
     case CheckCell:
+    case CheckNotEmpty:
     case AllocationProfileWatchpoint:
     case RegExpExec:
     case RegExpTest:
@@ -203,9 +204,8 @@ bool doesGC(Graph& graph, Node* node)
     case CheckBadCell:
     case BottomValue:
     case PhantomNewObject:
-    case PutByOffsetHint:
+    case PutHint:
     case CheckStructureImmediate:
-    case PutStructureHint:
     case PutStack:
     case KillStack:
     case GetStack:

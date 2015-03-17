@@ -116,7 +116,6 @@ my $isWin64;
 my $isEfl;
 my $isWPE;
 my $isInspectorFrontend;
-my $isWK2;
 my $shouldTargetWebProcess;
 my $shouldUseXPCServiceForWebProcess;
 my $shouldUseGuardMalloc;
@@ -978,19 +977,6 @@ sub checkForArgumentAndRemoveFromArrayRef
         splice(@$arrayRef, $index - $removeOffset++, 1);
     }
     return scalar @indicesToRemove > 0;
-}
-
-sub isWK2()
-{
-    if (defined($isWK2)) {
-        return $isWK2;
-    }
-    if (checkForArgumentAndRemoveFromARGV("-2")) {
-        $isWK2 = 1;
-    } else {
-        $isWK2 = 0;
-    }
-    return $isWK2;
 }
 
 sub determineIsEfl()

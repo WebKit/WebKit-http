@@ -71,7 +71,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/BackingStoreBackendCairoX11.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp
-    platform/graphics/cairo/DrawingBufferCairo.cpp
     platform/graphics/cairo/FloatRectCairo.cpp
     platform/graphics/cairo/FontCairo.cpp
     platform/graphics/cairo/FontCairoHarfbuzzNG.cpp
@@ -346,6 +345,16 @@ if (ENABLE_VIDEO)
             ${GSTREAMER_MPEGTS_LIBRARIES}
         )
     endif ()
+
+    if (USE_GSTREAMER_GL)
+        list(APPEND WebCore_INCLUDE_DIRECTORIES
+            ${GSTREAMER_GL_INCLUDE_DIRS}
+        )
+
+        list(APPEND WebCore_LIBRARIES
+            ${GSTREAMER_GL_LIBRARIES}
+        )
+    endif ()
 endif ()
 
 if (ENABLE_WEB_AUDIO)
@@ -356,6 +365,15 @@ if (ENABLE_WEB_AUDIO)
     )
     list(APPEND WebCore_LIBRARIES
         ${GSTREAMER_FFT_LIBRARIES}
+    )
+endif ()
+
+if (ENABLE_MEDIA_STREAM)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${OPENWEBRTC_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${OPENWEBRTC_LIBRARIES}
     )
 endif ()
 

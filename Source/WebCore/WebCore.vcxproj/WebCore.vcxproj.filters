@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="DerivedSources">
@@ -6511,9 +6511,6 @@
     <ClCompile Include="..\platform\graphics\OpenGLShims.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\gpu\DrawingBuffer.cpp">
-      <Filter>platform\graphics\gpu</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\graphics\gpu\Texture.cpp">
       <Filter>platform\graphics\gpu</Filter>
     </ClCompile>
@@ -7202,6 +7199,9 @@
       <Filter>html\canvas</Filter>
     </ClCompile>
     <ClCompile Include="..\html\canvas\WebGLTransformFeedback.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLVertexArrayObjectBase.cpp">
       <Filter>html\canvas</Filter>
     </ClCompile>
     <ClCompile Include="..\html\canvas\WebGLVertexArrayObject.cpp">
@@ -13889,9 +13889,6 @@
     <ClInclude Include="..\platform\graphics\OpenGLShims.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\gpu\DrawingBuffer.h">
-      <Filter>platform\graphics\gpu</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\graphics\gpu\Texture.h">
       <Filter>platform\graphics\gpu</Filter>
     </ClInclude>
@@ -15171,6 +15168,9 @@
       <Filter>html\canvas</Filter>
     </ClInclude>
     <ClInclude Include="..\html\canvas\WebGLVertexArrayObject.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLVertexArrayObjectBase.h”>
       <Filter>html\canvas</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebGLQuery.h">

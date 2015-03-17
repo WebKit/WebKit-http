@@ -2239,7 +2239,7 @@ void Document::prepareForDestruction()
 
 #if ENABLE(TOUCH_EVENTS)
     if (m_touchEventTargets && m_touchEventTargets->size() && parentDocument())
-        parentDocument()->didRemoveEventTargetNode(this);
+        parentDocument()->didRemoveEventTargetNode(*this);
 #endif
 
     if (m_mediaQueryMatcher)
@@ -5995,27 +5995,27 @@ static void wheelEventHandlerCountChanged(Document* document)
     scrollingCoordinator->frameViewWheelEventHandlerCountChanged(frameView);
 }
 
-void Document::didAddWheelEventHandler()
+void Document::didAddWheelEventHandler(Node&)
 {
     ++m_wheelEventHandlerCount;
     wheelEventHandlerCountChanged(this);
 }
 
-void Document::didRemoveWheelEventHandler()
+void Document::didRemoveWheelEventHandler(Node&)
 {
     ASSERT(m_wheelEventHandlerCount > 0);
     --m_wheelEventHandlerCount;
     wheelEventHandlerCountChanged(this);
 }
 
-void Document::didAddTouchEventHandler(Node* handler)
+void Document::didAddTouchEventHandler(Node& handler)
 {
 #if ENABLE(TOUCH_EVENTS)
     if (!m_touchEventTargets.get())
-        m_touchEventTargets = std::make_unique<TouchEventTargetSet>();
-    m_touchEventTargets->add(handler);
+        m_touchEventTargets = std::make_unique<EventTargetSet>();
+    m_touchEventTargets->add(&handler);
     if (Document* parent = parentDocument()) {
-        parent->didAddTouchEventHandler(this);
+        parent->didAddTouchEventHandler(*this);
         return;
     }
     if (Page* page = this->page()) {
@@ -6027,15 +6027,15 @@ void Document::didAddTouchEventHandler(Node* handler)
 #endif
 }
 
-void Document::didRemoveTouchEventHandler(Node* handler)
+void Document::didRemoveTouchEventHandler(Node& handler)
 {
 #if ENABLE(TOUCH_EVENTS)
     if (!m_touchEventTargets.get())
         return;
-    ASSERT(m_touchEventTargets->contains(handler));
-    m_touchEventTargets->remove(handler);
+    ASSERT(m_touchEventTargets->contains(&handler));
+    m_touchEventTargets->remove(&handler);
     if (Document* parent = parentDocument()) {
-        parent->didRemoveTouchEventHandler(this);
+        parent->didRemoveTouchEventHandler(*this);
         return;
     }
 
@@ -6054,16 +6054,19 @@ void Document::didRemoveTouchEventHandler(Node* handler)
 #endif
 }
 
-#if ENABLE(TOUCH_EVENTS)
-void Document::didRemoveEventTargetNode(Node* handler)
+void Document::didRemoveEventTargetNode(Node& handler)
 {
+#if ENABLE(TOUCH_EVENTS)
     if (m_touchEventTargets) {
-        m_touchEventTargets->removeAll(handler);
-        if ((handler == this || m_touchEventTargets->isEmpty()) && parentDocument())
-            parentDocument()->didRemoveEventTargetNode(this);
+        m_touchEventTargets->removeAll(&handler);
+        if ((&handler == this || m_touchEventTargets->isEmpty()) && parentDocument())
+            parentDocument()->didRemoveEventTargetNode(*this);
     }
-}
+#else
+    UNUSED_PARAM(handler);
 #endif
+}
+
 void Document::updateLastHandledUserGestureTimestamp()
 {
     m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
@@ -6527,6 +6530,9 @@ void Document::didChoosePlaybackTarget(MediaPlaybackTarget& device)
         client->didChoosePlaybackTarget(device);
     }
 
+    // Notify the client that requested the chooser last because if more than one
+    // is playing, only the last one to set the context will actually get to play
+    //  to the external device.
     if (clientThatRequestedPicker)
         clientThatRequestedPicker->didChoosePlaybackTarget(device);
 }

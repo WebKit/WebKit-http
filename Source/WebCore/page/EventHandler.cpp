@@ -423,6 +423,7 @@ EventHandler::EventHandler(Frame& frame)
 #if ENABLE(CURSOR_VISIBILITY)
     , m_autoHideCursorTimer(*this, &EventHandler::autoHideCursorTimerFired)
 #endif
+    , m_immediateActionStage(ImmediateActionStage::None)
 {
 }
 
@@ -763,6 +764,9 @@ bool EventHandler::handleMousePressEvent(const MouseEventWithHitTestResults& eve
     m_mouseDownWasSingleClickInSelection = false;
 
     m_mouseDown = event.event();
+
+    if (m_immediateActionStage != ImmediateActionStage::PerformedHitTest)
+        m_immediateActionStage = ImmediateActionStage::None;
 
     if (event.isOverWidget() && passWidgetMouseDownEventToWidget(event))
         return true;
@@ -2057,6 +2061,14 @@ bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& platformMou
     if (m_frameSetBeingResized)
         return !dispatchMouseEvent(eventNames().mouseupEvent, m_frameSetBeingResized.get(), true, m_clickCount, platformMouseEvent, false);
 
+    // If an immediate action was completed using this series of mouse events, then we should send mouseup to
+    // the DOM and return now so that we don't perform our own default behaviors.
+    if (m_immediateActionStage == ImmediateActionStage::ActionCompleted) {
+        m_immediateActionStage = ImmediateActionStage::None;
+        return !dispatchMouseEvent(eventNames().mouseupEvent, m_lastElementUnderMouse.get(), true, m_clickCount, platformMouseEvent, false);
+    }
+    m_immediateActionStage = ImmediateActionStage::None;
+
     if (m_lastScrollbarUnderMouse) {
         invalidateClick();
         m_lastScrollbarUnderMouse->mouseUp(platformMouseEvent);
@@ -3087,6 +3099,9 @@ bool EventHandler::keyEvent(const PlatformKeyboardEvent& initialKeyEvent)
         keydown->setTarget(element);
         keydown->setDefaultHandled();
     }
+    
+    if (accessibilityPreventsEventPropogation(keydown.get()))
+        keydown->stopPropagation();
 
     element->dispatchEvent(keydown, IGNORE_EXCEPTION);
     // If frame changed as a result of keydown dispatch, then return early to avoid sending a subsequent keypress message to the new frame.
@@ -3228,6 +3243,27 @@ void EventHandler::handleKeyboardSelectionMovementForAccessibility(KeyboardEvent
         if (AXObjectCache::accessibilityEnhancedUserInterfaceEnabled())
             handleKeyboardSelectionMovement(m_frame, event);
     }
+}
+
+bool EventHandler::accessibilityPreventsEventPropogation(KeyboardEvent* event)
+{
+#if PLATFORM(COCOA)
+    if (!AXObjectCache::accessibilityEnhancedUserInterfaceEnabled())
+        return false;
+
+    if (!m_frame.settings().preventKeyboardDOMEventDispatch())
+        return false;
+
+    // Check for key events that are relevant to accessibility: tab and arrows keys that change focus
+    if (event->keyIdentifier() == "U+0009")
+        return true;
+    FocusDirection direction = focusDirectionForKey(event->keyIdentifier());
+    if (direction != FocusDirectionNone)
+        return true;
+#else
+    UNUSED_PARAM(event);
+#endif
+    return false;
 }
 
 void EventHandler::defaultKeyboardEventHandler(KeyboardEvent* event)

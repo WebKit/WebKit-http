@@ -59,7 +59,7 @@ EXPRESSION: 0
 EXPRESSION: -0
 {
   "_type": "number",
-  "_description": "0",
+  "_description": "-0",
   "_value": 0
 }
 
@@ -132,6 +132,14 @@ EXPRESSION: Infinity
 {
   "_type": "number",
   "_description": "Infinity",
+  "_value": null
+}
+
+-----------------------------------------------------
+EXPRESSION: -Infinity
+{
+  "_type": "number",
+  "_description": "-Infinity",
   "_value": null
 }
 
@@ -532,28 +540,38 @@ EXPRESSION: []
 }
 
 -----------------------------------------------------
-EXPRESSION: [1, 2]
+EXPRESSION: [0, -0, 1, 2]
 {
   "_type": "object",
   "_subtype": "array",
   "_objectId": "<filtered>",
   "_description": "Array",
-  "_size": 2,
+  "_size": 4,
   "_preview": {
     "_type": "object",
     "_subtype": "array",
     "_description": "Array",
     "_lossless": true,
     "_overflow": false,
-    "_size": 2,
+    "_size": 4,
     "_properties": [
       {
         "_name": "0",
         "_type": "number",
-        "_value": "1"
+        "_value": "0"
       },
       {
         "_name": "1",
+        "_type": "number",
+        "_value": "0"
+      },
+      {
+        "_name": "2",
+        "_type": "number",
+        "_value": "1"
+      },
+      {
+        "_name": "3",
         "_type": "number",
         "_value": "2"
       }
@@ -574,7 +592,7 @@ EXPRESSION: [[1],[2],[3]]
     "_type": "object",
     "_subtype": "array",
     "_description": "Array",
-    "_lossless": false,
+    "_lossless": true,
     "_overflow": false,
     "_size": 3,
     "_properties": [
@@ -582,19 +600,64 @@ EXPRESSION: [[1],[2],[3]]
         "_name": "0",
         "_type": "object",
         "_subtype": "array",
-        "_value": "Array"
+        "_valuePreview": {
+          "_type": "object",
+          "_subtype": "array",
+          "_description": "Array",
+          "_lossless": true,
+          "_overflow": false,
+          "_size": 1,
+          "_properties": [
+            {
+              "_name": "0",
+              "_type": "number",
+              "_value": "1"
+            }
+          ],
+          "_entries": null
+        }
       },
       {
         "_name": "1",
         "_type": "object",
         "_subtype": "array",
-        "_value": "Array"
+        "_valuePreview": {
+          "_type": "object",
+          "_subtype": "array",
+          "_description": "Array",
+          "_lossless": true,
+          "_overflow": false,
+          "_size": 1,
+          "_properties": [
+            {
+              "_name": "0",
+              "_type": "number",
+              "_value": "2"
+            }
+          ],
+          "_entries": null
+        }
       },
       {
         "_name": "2",
         "_type": "object",
         "_subtype": "array",
-        "_value": "Array"
+        "_valuePreview": {
+          "_type": "object",
+          "_subtype": "array",
+          "_description": "Array",
+          "_lossless": true,
+          "_overflow": false,
+          "_size": 1,
+          "_properties": [
+            {
+              "_name": "0",
+              "_type": "number",
+              "_value": "3"
+            }
+          ],
+          "_entries": null
+        }
       }
     ],
     "_entries": null
@@ -660,24 +723,63 @@ EXPRESSION: [{a:1}, {b:2}, {c:2}]
     "_type": "object",
     "_subtype": "array",
     "_description": "Array",
-    "_lossless": false,
+    "_lossless": true,
     "_overflow": false,
     "_size": 3,
     "_properties": [
       {
         "_name": "0",
         "_type": "object",
-        "_value": "Object"
+        "_valuePreview": {
+          "_type": "object",
+          "_description": "Object",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": [
+            {
+              "_name": "a",
+              "_type": "number",
+              "_value": "1"
+            }
+          ],
+          "_entries": null
+        }
       },
       {
         "_name": "1",
         "_type": "object",
-        "_value": "Object"
+        "_valuePreview": {
+          "_type": "object",
+          "_description": "Object",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": [
+            {
+              "_name": "b",
+              "_type": "number",
+              "_value": "2"
+            }
+          ],
+          "_entries": null
+        }
       },
       {
         "_name": "2",
         "_type": "object",
-        "_value": "Object"
+        "_valuePreview": {
+          "_type": "object",
+          "_description": "Object",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": [
+            {
+              "_name": "c",
+              "_type": "number",
+              "_value": "2"
+            }
+          ],
+          "_entries": null
+        }
       }
     ],
     "_entries": null
@@ -696,7 +798,7 @@ EXPRESSION: [[{a:1}, {b:2}, {c:2}]]
     "_type": "object",
     "_subtype": "array",
     "_description": "Array",
-    "_lossless": false,
+    "_lossless": true,
     "_overflow": false,
     "_size": 1,
     "_properties": [
@@ -704,7 +806,71 @@ EXPRESSION: [[{a:1}, {b:2}, {c:2}]]
         "_name": "0",
         "_type": "object",
         "_subtype": "array",
-        "_value": "Array"
+        "_valuePreview": {
+          "_type": "object",
+          "_subtype": "array",
+          "_description": "Array",
+          "_lossless": true,
+          "_overflow": false,
+          "_size": 3,
+          "_properties": [
+            {
+              "_name": "0",
+              "_type": "object",
+              "_valuePreview": {
+                "_type": "object",
+                "_description": "Object",
+                "_lossless": true,
+                "_overflow": false,
+                "_properties": [
+                  {
+                    "_name": "a",
+                    "_type": "number",
+                    "_value": "1"
+                  }
+                ],
+                "_entries": null
+              }
+            },
+            {
+              "_name": "1",
+              "_type": "object",
+              "_valuePreview": {
+                "_type": "object",
+                "_description": "Object",
+                "_lossless": true,
+                "_overflow": false,
+                "_properties": [
+                  {
+                    "_name": "b",
+                    "_type": "number",
+                    "_value": "2"
+                  }
+                ],
+                "_entries": null
+              }
+            },
+            {
+              "_name": "2",
+              "_type": "object",
+              "_valuePreview": {
+                "_type": "object",
+                "_description": "Object",
+                "_lossless": true,
+                "_overflow": false,
+                "_properties": [
+                  {
+                    "_name": "c",
+                    "_type": "number",
+                    "_value": "2"
+                  }
+                ],
+                "_entries": null
+              }
+            }
+          ],
+          "_entries": null
+        }
       }
     ],
     "_entries": null
@@ -1466,6 +1632,38 @@ EXPRESSION: ({a: 1})
 }
 
 -----------------------------------------------------
+EXPRESSION: ({a: 1, b: 0, c: -0})
+{
+  "_type": "object",
+  "_objectId": "<filtered>",
+  "_description": "Object",
+  "_preview": {
+    "_type": "object",
+    "_description": "Object",
+    "_lossless": true,
+    "_overflow": false,
+    "_properties": [
+      {
+        "_name": "a",
+        "_type": "number",
+        "_value": "1"
+      },
+      {
+        "_name": "b",
+        "_type": "number",
+        "_value": "0"
+      },
+      {
+        "_name": "c",
+        "_type": "number",
+        "_value": "0"
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
 EXPRESSION: ({a: 1, b: "string", c: /regex/, d: Symbol('sym')})
 {
   "_type": "object",
@@ -1497,6 +1695,33 @@ EXPRESSION: ({a: 1, b: "string", c: /regex/, d: Symbol('sym')})
         "_name": "d",
         "_type": "symbol",
         "_value": "Symbol(sym)"
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: o = {a:1}; o.b = o; o
+{
+  "_type": "object",
+  "_objectId": "<filtered>",
+  "_description": "Object",
+  "_preview": {
+    "_type": "object",
+    "_description": "Object",
+    "_lossless": false,
+    "_overflow": false,
+    "_properties": [
+      {
+        "_name": "a",
+        "_type": "number",
+        "_value": "1"
+      },
+      {
+        "_name": "b",
+        "_type": "object",
+        "_value": "Object"
       }
     ],
     "_entries": null
@@ -2898,14 +3123,23 @@ EXPRESSION: [][Symbol.iterator]()
     "_type": "object",
     "_subtype": "iterator",
     "_description": "ArrayIterator",
-    "_lossless": false,
+    "_lossless": true,
     "_overflow": false,
     "_properties": [
       {
         "_name": "array",
         "_type": "object",
         "_subtype": "array",
-        "_value": "Array",
+        "_valuePreview": {
+          "_type": "object",
+          "_subtype": "array",
+          "_description": "Array",
+          "_lossless": true,
+          "_overflow": false,
+          "_size": 0,
+          "_properties": [],
+          "_entries": null
+        },
         "_internal": true
       },
       {
@@ -2930,14 +3164,29 @@ EXPRESSION: [1][Symbol.iterator]()
     "_type": "object",
     "_subtype": "iterator",
     "_description": "ArrayIterator",
-    "_lossless": false,
+    "_lossless": true,
     "_overflow": false,
     "_properties": [
       {
         "_name": "array",
         "_type": "object",
         "_subtype": "array",
-        "_value": "Array",
+        "_valuePreview": {
+          "_type": "object",
+          "_subtype": "array",
+          "_description": "Array",
+          "_lossless": true,
+          "_overflow": false,
+          "_size": 1,
+          "_properties": [
+            {
+              "_name": "0",
+              "_type": "number",
+              "_value": "1"
+            }
+          ],
+          "_entries": null
+        },
         "_internal": true
       },
       {
@@ -3634,14 +3883,34 @@ EXPRESSION: x = undefined; (function() { x = arguments; })(1, 'two'); x[Symbol.i
     "_type": "object",
     "_subtype": "iterator",
     "_description": "ArgumentsIterator",
-    "_lossless": false,
+    "_lossless": true,
     "_overflow": false,
     "_properties": [
       {
         "_name": "arguments",
         "_type": "object",
         "_subtype": "array",
-        "_value": "Arguments",
+        "_valuePreview": {
+          "_type": "object",
+          "_subtype": "array",
+          "_description": "Arguments",
+          "_lossless": true,
+          "_overflow": false,
+          "_size": 2,
+          "_properties": [
+            {
+              "_name": "0",
+              "_type": "number",
+              "_value": "1"
+            },
+            {
+              "_name": "1",
+              "_type": "string",
+              "_value": "two"
+            }
+          ],
+          "_entries": null
+        },
         "_internal": true
       }
     ],
@@ -3789,7 +4058,7 @@ EXPRESSION: Promise.resolve({result:1})
   "_preview": {
     "_type": "object",
     "_description": "Promise",
-    "_lossless": false,
+    "_lossless": true,
     "_overflow": false,
     "_properties": [
       {
@@ -3801,7 +4070,20 @@ EXPRESSION: Promise.resolve({result:1})
       {
         "_name": "result",
         "_type": "object",
-        "_value": "Object",
+        "_valuePreview": {
+          "_type": "object",
+          "_description": "Object",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": [
+            {
+              "_name": "result",
+              "_type": "number",
+              "_value": "1"
+            }
+          ],
+          "_entries": null
+        },
         "_internal": true
       }
     ],

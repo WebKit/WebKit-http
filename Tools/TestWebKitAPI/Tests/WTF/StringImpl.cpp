@@ -99,4 +99,217 @@ TEST(WTF, StringImplReplaceWithLiteral)
     ASSERT_TRUE(equal(testStringImpl.get(), "r555sum555"));
 }
 
+TEST(WTF, StringImplEqualIgnoringASCIICaseBasic)
+{
+    RefPtr<StringImpl> a = StringImpl::createFromLiteral("aBcDeFG");
+    RefPtr<StringImpl> b = StringImpl::createFromLiteral("ABCDEFG");
+    RefPtr<StringImpl> c = StringImpl::createFromLiteral("abcdefg");
+    RefPtr<StringImpl> empty = StringImpl::create(reinterpret_cast<const LChar*>(""));
+    RefPtr<StringImpl> shorter = StringImpl::createFromLiteral("abcdef");
+
+    // Identity.
+    ASSERT_TRUE(equalIgnoringASCIICase(a.get(), a.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(b.get(), b.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(c.get(), c.get()));
+
+    // Transitivity.
+    ASSERT_TRUE(equalIgnoringASCIICase(a.get(), b.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(b.get(), c.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(a.get(), c.get()));
+
+    // Negative cases.
+    ASSERT_FALSE(equalIgnoringASCIICase(a.get(), empty.get()));
+    ASSERT_FALSE(equalIgnoringASCIICase(b.get(), empty.get()));
+    ASSERT_FALSE(equalIgnoringASCIICase(c.get(), empty.get()));
+    ASSERT_FALSE(equalIgnoringASCIICase(a.get(), shorter.get()));
+    ASSERT_FALSE(equalIgnoringASCIICase(b.get(), shorter.get()));
+    ASSERT_FALSE(equalIgnoringASCIICase(c.get(), shorter.get()));
+}
+
+TEST(WTF, StringImplEqualIgnoringASCIICaseWithNull)
+{
+    RefPtr<StringImpl> reference = StringImpl::createFromLiteral("aBcDeFG");
+    ASSERT_FALSE(equalIgnoringASCIICase(nullptr, reference.get()));
+    ASSERT_FALSE(equalIgnoringASCIICase(reference.get(), nullptr));
+    ASSERT_TRUE(equalIgnoringASCIICase(nullptr, nullptr));
+}
+
+TEST(WTF, StringImplEqualIgnoringASCIICaseWithEmpty)
+{
+    RefPtr<StringImpl> a = StringImpl::create(reinterpret_cast<const LChar*>(""));
+    RefPtr<StringImpl> b = StringImpl::create(reinterpret_cast<const LChar*>(""));
+    ASSERT_TRUE(equalIgnoringASCIICase(a.get(), b.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(b.get(), a.get()));
+}
+
+TEST(WTF, StringImplEqualIgnoringASCIICaseWithLatin1Characters)
+{
+    RefPtr<StringImpl> a = StringImpl::create(reinterpret_cast<const LChar*>("aBcéeFG"));
+    RefPtr<StringImpl> b = StringImpl::create(reinterpret_cast<const LChar*>("ABCÉEFG"));
+    RefPtr<StringImpl> c = StringImpl::create(reinterpret_cast<const LChar*>("ABCéEFG"));
+    RefPtr<StringImpl> d = StringImpl::create(reinterpret_cast<const LChar*>("abcéefg"));
+
+    // Identity.
+    ASSERT_TRUE(equalIgnoringASCIICase(a.get(), a.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(b.get(), b.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(c.get(), c.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(d.get(), d.get()));
+
+    // All combination.
+    ASSERT_FALSE(equalIgnoringASCIICase(a.get(), b.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(a.get(), c.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(a.get(), d.get()));
+    ASSERT_FALSE(equalIgnoringASCIICase(b.get(), c.get()));
+    ASSERT_FALSE(equalIgnoringASCIICase(b.get(), d.get()));
+    ASSERT_TRUE(equalIgnoringASCIICase(c.get(), d.get()));
+}
+
+TEST(WTF, StringImplStartsWithIgnoringASCIICaseBasic)
+{
+    RefPtr<StringImpl> reference = StringImpl::create(reinterpret_cast<const LChar*>("aBcéX"));
+    RefPtr<StringImpl> referenceEquivalent = StringImpl::create(reinterpret_cast<const LChar*>("AbCéx"));
+
+    // Identity.
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(reference.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(*reference.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(referenceEquivalent.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(*referenceEquivalent.get()));
+    ASSERT_TRUE(referenceEquivalent->startsWithIgnoringASCIICase(reference.get()));
+    ASSERT_TRUE(referenceEquivalent->startsWithIgnoringASCIICase(*reference.get()));
+    ASSERT_TRUE(referenceEquivalent->startsWithIgnoringASCIICase(referenceEquivalent.get()));
+    ASSERT_TRUE(referenceEquivalent->startsWithIgnoringASCIICase(*referenceEquivalent.get()));
+
+    // Proper prefixes.
+    RefPtr<StringImpl> aLower = StringImpl::createFromLiteral("a");
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(aLower.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(*aLower.get()));
+    RefPtr<StringImpl> aUpper = StringImpl::createFromLiteral("A");
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(aUpper.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(*aUpper.get()));
+
+    RefPtr<StringImpl> abcLower = StringImpl::createFromLiteral("abc");
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(abcLower.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(*abcLower.get()));
+    RefPtr<StringImpl> abcUpper = StringImpl::createFromLiteral("ABC");
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(abcUpper.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(*abcUpper.get()));
+
+    RefPtr<StringImpl> abcAccentLower = StringImpl::create(reinterpret_cast<const LChar*>("abcé"));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(abcAccentLower.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(*abcAccentLower.get()));
+    RefPtr<StringImpl> abcAccentUpper = StringImpl::create(reinterpret_cast<const LChar*>("ABCé"));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(abcAccentUpper.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(*abcAccentUpper.get()));
+
+    // Negative cases.
+    RefPtr<StringImpl> differentFirstChar = StringImpl::create(reinterpret_cast<const LChar*>("bBcéX"));
+    RefPtr<StringImpl> differentFirstCharProperPrefix = StringImpl::create(reinterpret_cast<const LChar*>("CBcé"));
+    ASSERT_FALSE(reference->startsWithIgnoringASCIICase(differentFirstChar.get()));
+    ASSERT_FALSE(reference->startsWithIgnoringASCIICase(*differentFirstChar.get()));
+    ASSERT_FALSE(reference->startsWithIgnoringASCIICase(differentFirstCharProperPrefix.get()));
+    ASSERT_FALSE(reference->startsWithIgnoringASCIICase(*differentFirstCharProperPrefix.get()));
+
+    RefPtr<StringImpl> uppercaseAccent = StringImpl::create(reinterpret_cast<const LChar*>("aBcÉX"));
+    RefPtr<StringImpl> uppercaseAccentProperPrefix = StringImpl::create(reinterpret_cast<const LChar*>("aBcÉX"));
+    ASSERT_FALSE(reference->startsWithIgnoringASCIICase(uppercaseAccent.get()));
+    ASSERT_FALSE(reference->startsWithIgnoringASCIICase(*uppercaseAccent.get()));
+    ASSERT_FALSE(reference->startsWithIgnoringASCIICase(uppercaseAccentProperPrefix.get()));
+    ASSERT_FALSE(reference->startsWithIgnoringASCIICase(*uppercaseAccentProperPrefix.get()));
+}
+
+TEST(WTF, StringImplStartsWithIgnoringASCIICaseWithNull)
+{
+    RefPtr<StringImpl> reference = StringImpl::createFromLiteral("aBcDeFG");
+    ASSERT_FALSE(reference->startsWithIgnoringASCIICase(nullptr));
+
+    RefPtr<StringImpl> empty = StringImpl::create(reinterpret_cast<const LChar*>(""));
+    ASSERT_FALSE(empty->startsWithIgnoringASCIICase(nullptr));
+}
+
+TEST(WTF, StringImplStartsWithIgnoringASCIICaseWithEmpty)
+{
+    RefPtr<StringImpl> reference = StringImpl::createFromLiteral("aBcDeFG");
+    RefPtr<StringImpl> empty = StringImpl::create(reinterpret_cast<const LChar*>(""));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(empty.get()));
+    ASSERT_TRUE(reference->startsWithIgnoringASCIICase(*empty.get()));
+    ASSERT_TRUE(empty->startsWithIgnoringASCIICase(empty.get()));
+    ASSERT_TRUE(empty->startsWithIgnoringASCIICase(*empty.get()));
+    ASSERT_FALSE(empty->startsWithIgnoringASCIICase(reference.get()));
+    ASSERT_FALSE(empty->startsWithIgnoringASCIICase(*reference.get()));
+}
+
+TEST(WTF, StringImplEndsWithIgnoringASCIICaseBasic)
+{
+    RefPtr<StringImpl> reference = StringImpl::create(reinterpret_cast<const LChar*>("XÉCbA"));
+    RefPtr<StringImpl> referenceEquivalent = StringImpl::create(reinterpret_cast<const LChar*>("xÉcBa"));
+
+    // Identity.
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(reference.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(*reference.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(referenceEquivalent.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(*referenceEquivalent.get()));
+    ASSERT_TRUE(referenceEquivalent->endsWithIgnoringASCIICase(reference.get()));
+    ASSERT_TRUE(referenceEquivalent->endsWithIgnoringASCIICase(*reference.get()));
+    ASSERT_TRUE(referenceEquivalent->endsWithIgnoringASCIICase(referenceEquivalent.get()));
+    ASSERT_TRUE(referenceEquivalent->endsWithIgnoringASCIICase(*referenceEquivalent.get()));
+
+    // Proper suffixes.
+    RefPtr<StringImpl> aLower = StringImpl::createFromLiteral("a");
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(aLower.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(*aLower.get()));
+    RefPtr<StringImpl> aUpper = StringImpl::createFromLiteral("a");
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(aUpper.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(*aUpper.get()));
+
+    RefPtr<StringImpl> abcLower = StringImpl::createFromLiteral("cba");
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(abcLower.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(*abcLower.get()));
+    RefPtr<StringImpl> abcUpper = StringImpl::createFromLiteral("CBA");
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(abcUpper.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(*abcUpper.get()));
+
+    RefPtr<StringImpl> abcAccentLower = StringImpl::create(reinterpret_cast<const LChar*>("Écba"));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(abcAccentLower.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(*abcAccentLower.get()));
+    RefPtr<StringImpl> abcAccentUpper = StringImpl::create(reinterpret_cast<const LChar*>("ÉCBA"));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(abcAccentUpper.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(*abcAccentUpper.get()));
+
+    // Negative cases.
+    RefPtr<StringImpl> differentLastChar = StringImpl::create(reinterpret_cast<const LChar*>("XÉCbB"));
+    RefPtr<StringImpl> differentLastCharProperSuffix = StringImpl::create(reinterpret_cast<const LChar*>("ÉCbb"));
+    ASSERT_FALSE(reference->endsWithIgnoringASCIICase(differentLastChar.get()));
+    ASSERT_FALSE(reference->endsWithIgnoringASCIICase(*differentLastChar.get()));
+    ASSERT_FALSE(reference->endsWithIgnoringASCIICase(differentLastCharProperSuffix.get()));
+    ASSERT_FALSE(reference->endsWithIgnoringASCIICase(*differentLastCharProperSuffix.get()));
+
+    RefPtr<StringImpl> lowercaseAccent = StringImpl::create(reinterpret_cast<const LChar*>("aBcéX"));
+    RefPtr<StringImpl> loweraseAccentProperSuffix = StringImpl::create(reinterpret_cast<const LChar*>("aBcéX"));
+    ASSERT_FALSE(reference->endsWithIgnoringASCIICase(lowercaseAccent.get()));
+    ASSERT_FALSE(reference->endsWithIgnoringASCIICase(*lowercaseAccent.get()));
+    ASSERT_FALSE(reference->endsWithIgnoringASCIICase(loweraseAccentProperSuffix.get()));
+    ASSERT_FALSE(reference->endsWithIgnoringASCIICase(*loweraseAccentProperSuffix.get()));
+}
+
+TEST(WTF, StringImplEndsWithIgnoringASCIICaseWithNull)
+{
+    RefPtr<StringImpl> reference = StringImpl::createFromLiteral("aBcDeFG");
+    ASSERT_FALSE(reference->endsWithIgnoringASCIICase(nullptr));
+
+    RefPtr<StringImpl> empty = StringImpl::create(reinterpret_cast<const LChar*>(""));
+    ASSERT_FALSE(empty->endsWithIgnoringASCIICase(nullptr));
+}
+
+TEST(WTF, StringImplEndsWithIgnoringASCIICaseWithEmpty)
+{
+    RefPtr<StringImpl> reference = StringImpl::createFromLiteral("aBcDeFG");
+    RefPtr<StringImpl> empty = StringImpl::create(reinterpret_cast<const LChar*>(""));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(empty.get()));
+    ASSERT_TRUE(reference->endsWithIgnoringASCIICase(*empty.get()));
+    ASSERT_TRUE(empty->endsWithIgnoringASCIICase(empty.get()));
+    ASSERT_TRUE(empty->endsWithIgnoringASCIICase(*empty.get()));
+    ASSERT_FALSE(empty->endsWithIgnoringASCIICase(reference.get()));
+    ASSERT_FALSE(empty->endsWithIgnoringASCIICase(*reference.get()));
+}
+
 } // namespace TestWebKitAPI

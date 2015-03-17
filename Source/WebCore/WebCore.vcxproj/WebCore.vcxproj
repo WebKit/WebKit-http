@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
@@ -6681,6 +6681,7 @@
     <ClCompile Include="..\html\canvas\WebGLTransformFeedback.cpp" />
     <ClCompile Include="..\html\canvas\WebGLUniformLocation.cpp" />
     <ClCompile Include="..\html\canvas\WebGLVertexArrayObject.cpp" />
+    <ClCompile Include="..\html\canvas\WebGLVertexArrayObjectBase.cpp" />
     <ClCompile Include="..\html\canvas\WebGLVertexArrayObjectOES.cpp" />
     <ClCompile Include="..\html\track\AudioTrack.cpp" />
     <ClCompile Include="..\html\track\AudioTrackList.cpp" />
@@ -7432,7 +7433,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\egl\GLContextEGL.cpp" />
-    <ClCompile Include="..\platform\graphics\gpu\DrawingBuffer.cpp" />
     <ClCompile Include="..\platform\graphics\gpu\Texture.cpp" />
     <ClCompile Include="..\platform\graphics\gpu\TilingData.cpp" />
     <ClCompile Include="..\platform\graphics\FormatConverter.cpp" />
@@ -19042,6 +19042,7 @@
     <ClInclude Include="..\html\canvas\WebGLTransformFeedback.h" />
     <ClInclude Include="..\html\canvas\WebGLUniformLocation.h" />
     <ClInclude Include="..\html\canvas\WebGLVertexArrayObject.h" />
+    <ClInclude Include="..\html\canvas\WebGLVertexArrayObjectBase.h" />
     <ClInclude Include="..\html\canvas\WebGLVertexArrayObjectOES.h" />
     <ClInclude Include="..\html\track\AudioTrack.h" />
     <ClInclude Include="..\html\track\AudioTrackList.h" />
@@ -19449,7 +19450,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\egl\GLContextEGL.h" />
-    <ClInclude Include="..\platform\graphics\gpu\DrawingBuffer.h" />
     <ClInclude Include="..\platform\graphics\gpu\Texture.h" />
     <ClInclude Include="..\platform\graphics\gpu\TilingData.h" />
     <ClInclude Include="..\platform\graphics\FormatConverter.h" />

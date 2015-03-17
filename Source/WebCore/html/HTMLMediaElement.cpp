@@ -633,14 +633,13 @@ void HTMLMediaElement::removedFrom(ContainerNode& insertionPoint)
             exitFullscreen();
 
         if (m_player) {
-            JSC::VM& vm = JSDOMWindowBase::commonVM();
-            JSC::JSLockHolder lock(vm);
-
             size_t extraMemoryCost = m_player->extraMemoryCost();
-            size_t extraMemoryCostDelta = extraMemoryCost - m_reportedExtraMemoryCost;
-            m_reportedExtraMemoryCost = extraMemoryCost;
+            if (extraMemoryCost > m_reportedExtraMemoryCost) {
+                JSC::VM& vm = JSDOMWindowBase::commonVM();
+                JSC::JSLockHolder lock(vm);
 
-            if (extraMemoryCostDelta > 0) {
+                size_t extraMemoryCostDelta = extraMemoryCost - m_reportedExtraMemoryCost;
+                m_reportedExtraMemoryCost = extraMemoryCost;
                 // FIXME: Adopt reportExtraMemoryVisited, and switch to reportExtraMemoryAllocated.
                 // https://bugs.webkit.org/show_bug.cgi?id=142595
                 vm.heap.deprecatedReportExtraMemory(extraMemoryCostDelta);
@@ -2475,7 +2474,7 @@ void HTMLMediaElement::refreshCachedTime() const
 
 void HTMLMediaElement::invalidateCachedTime() const
 {
-    if (!m_player->maximumDurationToCacheMediaTime())
+    if (!m_player || !m_player->maximumDurationToCacheMediaTime())
         return;
 
 #if !LOG_DISABLED

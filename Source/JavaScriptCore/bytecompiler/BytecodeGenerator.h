@@ -271,9 +271,9 @@ namespace JSC {
 
         bool isConstructor() const { return m_codeBlock->isConstructor(); }
 #if ENABLE(ES6_CLASS_SYNTAX)
-        bool constructorKindIsDerived() const { return m_codeBlock->constructorKindIsDerived(); }
+        ConstructorKind constructorKind() const { return m_codeBlock->constructorKind(); }
 #else
-        bool constructorKindIsDerived() const { return false; }
+        ConstructorKind constructorKind() const { return ConstructorKind::None; }
 #endif
 
         ParserError generate();
@@ -458,6 +458,7 @@ namespace JSC {
         RegisterID* emitUnaryNoDstOp(OpcodeID, RegisterID* src);
 
         RegisterID* emitCreateThis(RegisterID* dst);
+        void emitTDZCheck(RegisterID* target);
         RegisterID* emitNewObject(RegisterID* dst);
         RegisterID* emitNewArray(RegisterID* dst, ElementNode*, unsigned length); // stops at first elision
 
@@ -465,6 +466,7 @@ namespace JSC {
         RegisterID* emitLazyNewFunction(RegisterID* dst, FunctionBodyNode* body);
         RegisterID* emitNewFunctionInternal(RegisterID* dst, unsigned index, bool shouldNullCheck);
         RegisterID* emitNewFunctionExpression(RegisterID* dst, FuncExprNode* func);
+        RegisterID* emitNewDefaultConstructor(RegisterID* dst, ConstructorKind, const Identifier& name);
         RegisterID* emitNewRegExp(RegisterID* dst, RegExp*);
 
         RegisterID* emitMove(RegisterID* dst, RegisterID* src);

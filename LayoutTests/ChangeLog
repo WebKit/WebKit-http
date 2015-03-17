@@ -1,3 +1,642 @@
+2015-03-17  Dean Jackson  <dino@apple.com>
+
+        Implement Scroll Container Animation Triggers
+        https://bugs.webkit.org/show_bug.cgi?id=142732
+
+        Unreviewed attempt to make the test reproducible. Also skip the tests
+        on the platforms that do not support animation triggers.
+
+        * animations/trigger-container-scroll-simple.html: Add a step-start timing
+        function so the animation instantly moves to the end position.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+
+2015-03-17  Timothy Horton  <timothy_horton@apple.com>
+
+        Reproducible null deref under ScriptedAnimationController::createDisplayRefreshMonitor
+        https://bugs.webkit.org/show_bug.cgi?id=142776
+        <rdar://problem/18921338>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/animation/request-animation-frame-unparented-iframe-crash-expected.txt: Added.
+        * fast/animation/request-animation-frame-unparented-iframe-crash.html: Added.
+        Add a test that ensures that calling requestAnimationFrame on a recently-unparented
+        frame doesn't crash.
+
+2015-03-17  Dean Jackson  <dino@apple.com>
+
+        Implement Scroll Container Animation Triggers
+        https://bugs.webkit.org/show_bug.cgi?id=142732
+
+        Reviewed by Simon Fraser.
+
+        Test that checks if an animation only triggers when the page
+        is scrolled.
+
+        * animations/trigger-container-scroll-simple-expected.txt: Added.
+        * animations/trigger-container-scroll-simple.html: Added.
+
+2015-03-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Skip some IndexDB tests that don't apply on Windows.
+
+        * platform/win/TestExpectations:
+
+2015-03-17  Antti Koivisto  <antti@apple.com>
+
+        Disk cache should support Vary: Cookie
+        https://bugs.webkit.org/show_bug.cgi?id=142770
+
+        Reviewed by Anders Carlsson.
+
+        * http/tests/cache/disk-cache-vary-cookie-expected.txt: Added.
+        * http/tests/cache/disk-cache-vary-cookie.html: Added.
+
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable ES6 classes by default
+        https://bugs.webkit.org/show_bug.cgi?id=142774
+
+        Reviewed by Gavin Barraclough.
+
+        Unskipped tests and also fixed tests so that they can run under run-javascript-tests.
+
+        * TestExpectations: Unskipped tests.
+        * js/class-syntax-call-expected.txt:
+        * js/class-syntax-declaration-expected.txt:
+        * js/class-syntax-default-constructor-expected.txt:
+        * js/class-syntax-expression-expected.txt:
+        * js/class-syntax-extends-expected.txt:
+        * js/class-syntax-super-expected.txt:
+        * js/dom/reserved-words-as-property-expected.txt: Rebaselined now that "class" is a non-reserved keyword.
+        * js/script-tests/class-syntax-call.js: Don't refer to "window" object as it doesn't exit when ran inside jsc.
+        * js/script-tests/class-syntax-declaration.js: Rebaselined after r181611, which added default constructor support.
+        * js/script-tests/class-syntax-default-constructor.js: Don't refer to "window" object. Also replaced shouldNotBe
+        by an explicit !== check as the former is not supported when ran inside jsc.
+        * js/script-tests/class-syntax-expression.js: Rebaselined after r181611.
+        * js/script-tests/class-syntax-extends.js: Ditto. Also replaced evalAndLog by shouldNotThrow as the former is not
+        supported inside jsc.
+        * js/script-tests/class-syntax-super.js: Don't refer to "window" object as it doesn't exist inside jsc.
+        * sputnik/Conformance/07_Lexical_Conventions/7.5_Tokens/7.5.3_Future_Reserved_Words/S7.5.3_A1.11-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.5_Tokens/7.5.3_Future_Reserved_Words/S7.5.3_A1.27-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.5_Tokens/7.5.3_Future_Reserved_Words/S7.5.3_A1.5-expected.txt:
+
+2015-03-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Better Console Previews for Arrays / Small Objects
+        https://bugs.webkit.org/show_bug.cgi?id=142322
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        Include a test with cyclic values, and update
+        results which now have sub-previews.
+
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Implement default constructor
+
+        Add support for default constructor
+        https://bugs.webkit.org/show_bug.cgi?id=142388
+
+        Reviewed by Filip Pizlo.
+
+        Added tests for default constructors.
+
+        * TestExpectations: Skipped the test since ES6 class syntax isn't enabled by default.
+        * js/class-syntax-default-constructor-expected.txt: Added.
+        * js/class-syntax-default-constructor.html: Added.
+        * js/script-tests/class-syntax-default-constructor.js: Added.
+
+2015-03-16  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] fast/css/outline-auto-empty-rects.html is failing 
+        https://bugs.webkit.org/show_bug.cgi?id=142570
+
+        Unreviewed EFL Gardening. Rebaseline the fast/css/outline-auto-empty-rects.html.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/fast/css/outline-auto-empty-rects-expected.txt: Added.
+
+2015-03-16  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Unreviewed EFL gardening on 17th Mar.
+
+        Register new crash, flaky, and timeout tests to EFL TestExpectations files.
+        Additionally some test related to video, form, accessibility tests are marked as failure.
+
+        * platform/efl/TestExpectations:
+
+2015-03-16  Dean Jackson  <dino@apple.com>
+
+        Parsing and Style Resolution of Container-based Animation Triggers
+        https://bugs.webkit.org/show_bug.cgi?id=142687
+        <rdar://problem/20170007>
+
+        Reviewed by Simon Fraser.
+
+        Take 2.
+
+        New tests that exercise the parser and computed style
+        of -webkit-animation-trigger.
+
+        * animations/script-tests/trigger-computed-style.js: Added.
+        (testComputedTriggerRule):
+        * animations/script-tests/trigger-parsing.js: Added.
+        (testTriggerRule):
+        * animations/trigger-computed-style-expected.txt: Added.
+        * animations/trigger-computed-style.html: Added.
+        * animations/trigger-parsing-expected.txt: Added.
+        * animations/trigger-parsing.html: Added.
+
+2015-03-16  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Crash viewing http://www.last.fm/
+        https://bugs.webkit.org/show_bug.cgi?id=142309
+
+        Reviewed by Chris Fleizach.
+
+        This test doesn't verify the absence of the crash because the crash seems
+        to require that an assistive technology is listening for events, and that
+        AT-SPI2 is caching the tree for that assistive technology -- something we
+        cannot count on being the case on our bots. (I suspect that the reason non-
+        assistive technology users of Epiphany were getting hit by this is because
+        Caribou was listening for events in the background, thus they were AT users
+        without realizing it. That Caribou issue is in theory now resolved.) What
+        this test does verify is the absence of children-changed:add accessibility
+        signals for non-rendered objects, which is the source of the crash given
+        the aforementioned environment.
+
+        * platform/gtk/accessibility/no-notification-for-unrendered-iframe-children-expected.txt: Added.
+        * platform/gtk/accessibility/no-notification-for-unrendered-iframe-children.html: Added.
+
+2015-03-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181572.
+        https://bugs.webkit.org/show_bug.cgi?id=142755
+
+        Caused weird test failures in transitions and animations
+        (Requested by dino on #webkit).
+
+        Reverted changeset:
+
+        "Parsing and Style Resolution of Container-based Animation
+        Triggers"
+        https://bugs.webkit.org/show_bug.cgi?id=142687
+        http://trac.webkit.org/changeset/181572
+
+2015-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip inspector-protocol/dom-debugger/node-removed.html.
+
+        It looks like it was an actual failure caused by a patch being
+        processed by EWS.
+
+        * TestExpectations:
+
+2015-03-16  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector-protocol/dom-debugger/node-removed.html crashes on EWS
+        https://bugs.webkit.org/show_bug.cgi?id=142753
+
+        * TestExpectations: Skiped it.
+
+2015-03-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Update results of fast/text/international/bidi-mirror-he-ar.html after <http://trac.webkit.org/changeset/181569>
+
+        Yosemite results now match Mavericks. I'm not 100% sure why the results changed
+        (probably different order of font fallback), but the test clearly still passes.
+
+        * platform/mac-mavericks/fast/text/international/bidi-mirror-he-ar-expected.txt: Removed.
+        * platform/mac/fast/text/international/bidi-mirror-he-ar-expected.txt:
+
+2015-03-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Add tolerance to WebAudio tests
+        https://bugs.webkit.org/show_bug.cgi?id=142676
+
+        Reviewed by Tim Horton.
+
+        * fast/harness/results.html: Display a diff link for audio tests, as we now have the diff.
+
+        * platform/mac/TestExpectations: Unmark tests that should now pass everywhere.
+
+2015-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Make DatabaseContext suspendable if there is no pending database activity
+        https://bugs.webkit.org/show_bug.cgi?id=142716
+        <rdar://problem/19923085>
+
+        Reviewed by Andreas Kling.
+
+        Add layout tests to check page-cacheability when WebSQL is used,
+        depending if there is pending database activity or not.
+
+        * fast/history/page-cache-webdatabase-no-transaction-db-expected.txt: Added.
+        * fast/history/page-cache-webdatabase-no-transaction-db.html: Copied from LayoutTests/fast/history/page-cache-webdatabase-opened-db.html.
+        * fast/history/page-cache-webdatabase-pending-transaction-expected.txt: Renamed from LayoutTests/fast/history/page-cache-webdatabase-opened-db-expected.txt.
+        * fast/history/page-cache-webdatabase-pending-transaction.html: Renamed from LayoutTests/fast/history/page-cache-webdatabase-opened-db.html.
+
+2015-03-16  Dean Jackson  <dino@apple.com>
+
+        Parsing and Style Resolution of Container-based Animation Triggers
+        https://bugs.webkit.org/show_bug.cgi?id=142687
+        <rdar://problem/20170007>
+
+        Reviewed by Simon Fraser.
+
+        New tests that exercise the parser and computed style
+        of -webkit-animation-trigger.
+
+        * animations/script-tests/trigger-computed-style.js: Added.
+        (testComputedTriggerRule):
+        * animations/script-tests/trigger-parsing.js: Added.
+        (testTriggerRule):
+        * animations/trigger-computed-style-expected.txt: Added.
+        * animations/trigger-computed-style.html: Added.
+        * animations/trigger-parsing-expected.txt: Added.
+        * animations/trigger-parsing.html: Added.
+
+2015-03-16  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] fast/forms/text-control-intrinsic-widths.html fails when MS Office is installed
+        https://bugs.webkit.org/show_bug.cgi?id=142720
+
+        Reviewed by Myles C. Maxfield.
+
+        * platform/mac-mavericks/fast/forms/text-control-intrinsic-widths-expected.txt: Removed.
+        Mavericks result is no different from Yosemite.
+
+2015-03-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Document more debug assertions.
+
+        * platform/win/TestExpectations:
+
+2015-03-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] APNG is not supported on Windows (but it IS supported on WinCairo)
+
+        * platform/win/TestExpectations:
+
+2015-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Mark fast/images/animated-png.html as [ Crash ImageOnlyFailure ]
+
+        It seems to fail instead of crash on Yosemite WK1.
+
+        * platform/mac/TestExpectations:
+
+2015-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark fast/images/animated-png.html as crashing
+
+        Mark fast/images/animated-png.html as crashing on Yosemite. This test
+        was introduced in r181553.
+
+        * platform/mac/TestExpectations:
+
+2015-03-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Update Map/Set to treat -0 and 0 as the same value
+        https://bugs.webkit.org/show_bug.cgi?id=142709
+
+        Reviewed by Csaba Osztrogonác.
+
+        * js/basic-map-expected.txt:
+        * js/basic-set-expected.txt:
+        * js/script-tests/basic-map.js:
+        * js/script-tests/basic-set.js:
+        Update tests now that -0 and 0 are treated the same.
+
+2015-03-16  Max Stepin  <maxstepin@gmail.com>
+
+        Add APNG support
+        https://bugs.webkit.org/show_bug.cgi?id=17022
+
+        Reviewed by Carlos Garcia Campos.
+
+        * fast/images/animated-png-expected.html: Added.
+        * fast/images/animated-png.html: Added.
+        * fast/images/resources/apng00-ref.png: Added.
+        * fast/images/resources/apng00.png: Added.
+        * fast/images/resources/apng01-ref.png: Added.
+        * fast/images/resources/apng01.png: Added.
+        * fast/images/resources/apng02-ref.png: Added.
+        * fast/images/resources/apng02.png: Added.
+        * fast/images/resources/apng04-ref.png: Added.
+        * fast/images/resources/apng04.png: Added.
+        * fast/images/resources/apng08-ref.png: Added.
+        * fast/images/resources/apng08.png: Added.
+        * fast/images/resources/apng10-ref.png: Added.
+        * fast/images/resources/apng10.png: Added.
+        * fast/images/resources/apng11-ref.png: Added.
+        * fast/images/resources/apng11.png: Added.
+        * fast/images/resources/apng12-ref.png: Added.
+        * fast/images/resources/apng12.png: Added.
+        * fast/images/resources/apng14-ref.png: Added.
+        * fast/images/resources/apng14.png: Added.
+        * fast/images/resources/apng18-ref.png: Added.
+        * fast/images/resources/apng18.png: Added.
+        * fast/images/resources/apng24-ref.png: Added.
+        * fast/images/resources/apng24.png: Added.
+        * fast/images/resources/apng26-ref.png: Added.
+        * fast/images/resources/apng26.png: Added.
+        * platform/mac/TestExpectations:
+
+2015-03-16  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Unreviewed EFL gardening on 16th Mar.
+
+        Mark attachment tests to missing, Set writing mode tests to failure.
+        Unskip fast/forms/textfield-overflow-by-value-update.html which is
+        passing on EFL bot.
+
+        * platform/efl/TestExpectations:
+
+2015-03-15  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS: fix the case-insensitive matching of the attribute selectors Begin, End and Hyphen
+        https://bugs.webkit.org/show_bug.cgi?id=142715
+
+        Reviewed by Brent Fulgham.
+
+        * fast/selectors/attribute-endswith-value-matching-is-ascii-case-insensitive-expected.txt: Added.
+        * fast/selectors/attribute-endswith-value-matching-is-ascii-case-insensitive.html: Added.
+        * fast/selectors/attribute-hyphen-value-matching-is-ascii-case-insensitive-expected.txt: Added.
+        * fast/selectors/attribute-hyphen-value-matching-is-ascii-case-insensitive.html: Added.
+        * fast/selectors/attribute-startswith-value-matching-is-ascii-case-insensitive-expected.txt: Added.
+        * fast/selectors/attribute-startswith-value-matching-is-ascii-case-insensitive.html: Added.
+
+2015-03-15  Brent Fulgham  <bfulgham@apple.com>
+
+        Scroll snap points are not supported on iframe content
+        https://bugs.webkit.org/show_bug.cgi?id=142582
+        <rdar://problem/20121319>
+
+        Reviewed by Simon Fraser.
+
+        * css3/scroll-snap/resources: Added.
+        * css3/scroll-snap/resources/iframe-content.html: Added.
+        * css3/scroll-snap/scroll-snap-iframe-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-iframe.html: Added.
+
+2015-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Better handle displaying -0
+        https://bugs.webkit.org/show_bug.cgi?id=142708
+
+        Reviewed by Timothy Hatcher.
+
+        Add tests for -0 in different places.
+        I don't understand yet why the test says "0" for
+        the property previews of "-0". Everything behaves
+        correctly, but I can't see to make the test show
+        the right value appear in the test. That is worth
+        investigating separately though.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+
+2015-03-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Reduce the side-effects of animations turning off overlap testing
+        https://bugs.webkit.org/show_bug.cgi?id=92791
+
+        Reviewed by Dean Jackson.
+        
+        These test overlay an animated element with a grid of position: relative squares.
+        These reveal the overlap area by selectively getting composited.
+
+        * compositing/layer-creation/animation-overlap-with-children-expected.txt:
+        * compositing/layer-creation/mismatched-rotated-transform-animation-overlap-expected.txt: Added.
+        * compositing/layer-creation/mismatched-rotated-transform-animation-overlap.html: Added.
+        * compositing/layer-creation/mismatched-rotated-transform-transition-overlap-expected.txt: Added.
+        * compositing/layer-creation/mismatched-rotated-transform-transition-overlap.html: Added.
+        * compositing/layer-creation/mismatched-transform-transition-overlap-expected.txt: Added.
+        * compositing/layer-creation/mismatched-transform-transition-overlap.html: Added.
+        * compositing/layer-creation/multiple-keyframes-animation-overlap-expected.txt: Added.
+        * compositing/layer-creation/multiple-keyframes-animation-overlap.html: Added.
+        * compositing/layer-creation/scale-rotation-animation-overlap-expected.txt: Added.
+        * compositing/layer-creation/scale-rotation-animation-overlap.html: Added.
+        * compositing/layer-creation/scale-rotation-transition-overlap-expected.txt: Added.
+        * compositing/layer-creation/scale-rotation-transition-overlap.html: Added.
+        * compositing/layer-creation/translate-animation-overlap-expected.txt: Added.
+        * compositing/layer-creation/translate-animation-overlap.html: Added.
+        * compositing/layer-creation/translate-scale-animation-overlap-expected.txt: Added.
+        * compositing/layer-creation/translate-scale-animation-overlap.html: Added.
+        * compositing/layer-creation/translate-scale-transition-overlap-expected.txt: Added.
+        * compositing/layer-creation/translate-scale-transition-overlap.html: Added.
+        * compositing/layer-creation/translate-transition-overlap-expected.txt: Added.
+        * compositing/layer-creation/translate-transition-overlap.html: Added.
+
+2015-03-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        Change the exact attribute matching to be ASCII case-insensitive
+        https://bugs.webkit.org/show_bug.cgi?id=142609
+
+        Reviewed by Darin Adler.
+
+        * fast/selectors/attribute-exact-value-match-is-ascii-case-insensitive-expected.txt: Added.
+        * fast/selectors/attribute-exact-value-match-is-ascii-case-insensitive.html: Added.
+
+2015-03-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Document more debug assertions for later review.
+
+        * platform/win/TestExpectations:
+
+2015-03-14  Darin Adler  <darin@apple.com>
+
+        More event handler improvements
+        https://bugs.webkit.org/show_bug.cgi?id=142701
+
+        Reviewed by Anders Carlsson.
+
+        * fast/dom/event-handler-attributes-expected.txt: Updated to expect more passing tests,
+        and to accomodate some changes to what's tested and expected.
+
+        * fast/dom/event-handler-attributes.html: Update test to cover more events since we
+        no longer compile the event handlers conditionally; it's OK to have some handlers for
+        events even if the features in question aren't turned on.
+
+2015-03-15  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] REGRESSION (r181191): Add results for css3/blending/svg-blend-plus-lighter.html
+
+        Regressed with:
+
+        Support "plus-lighter" in mix-blend mode
+        <https://bugs.webkit.org/show_bug.cgi?id=142416>
+        <rdar://problem/19993979>
+
+        * platform/ios-simulator/css3/blending/svg-blend-plus-lighter-expected.txt: Add.
+
+2015-03-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        parseClass should popScope after pushScope
+        https://bugs.webkit.org/show_bug.cgi?id=142689
+
+        Reviewed by Benjamin Poulain.
+
+        Added a regression test for the test case that caught this bug.
+
+        * TestExpectations: Skipped the test since ES6 class syntax isn't enabled by default.
+        * js/class-syntax-scoping-expected.txt: Added.
+        * js/class-syntax-scoping.html: Added.
+        * js/script-tests/class-syntax-scoping.js: Added.
+        (test):
+
+2015-03-14  Michael Saboff  <msaboff@apple.com>
+
+        ES6: Add binary and octal literal support
+        https://bugs.webkit.org/show_bug.cgi?id=142681
+
+        Reviewed by Ryosuke Niwa.
+
+        New tests.
+
+        * js/binary-literals-expected.txt: Added.
+        * js/binary-literals.html: Added.
+        * js/octal-literals-expected.txt: Added.
+        * js/octal-literals.html: Added.
+        * js/script-tests/binary-literals.js: Added.
+        * js/script-tests/octal-literals.js: Added.
+
+2015-03-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Class constructor should throw TypeError when "called"
+        https://bugs.webkit.org/show_bug.cgi?id=142566
+
+        Reviewed by Michael Saboff.
+
+        Added tests for calling class constructors.
+
+        * TestExpectations: Skipped the test since ES6 class syntax isn't enabled by default.
+        * js/class-syntax-call-expected.txt: Added.
+        * js/class-syntax-call.html: Added.
+        * js/script-tests/class-syntax-call.js: Added.
+
+2015-03-13  Doug Russell  <d_russell@apple.com>
+
+        AX: Provide API for assistive tech to ignore DOM key event handlers
+        https://bugs.webkit.org/show_bug.cgi?id=142059
+
+        Reviewed by Beth Dakin.
+
+        Assistive technology applications on the desktop are heavily dependent on keyboard navigation being reliable. This is greatly hindered by sites that handle key events without updating keyboard selection and then consume the event. It is important for assistive technology apps to allow users to decide to ignore these handlers that are incorrect for their purposes.
+
+        This can be fixed by exposing, via a new accessibility attribute, a way to decide, for a given WebCore::Frame, to pre-empt DOM dispatch and instead let accessibility caret browsing take place.
+
+        * accessibility/parent-delete-expected.txt:
+        * platform/mac/accessibility/document-attributes-expected.txt:
+        * platform/mac/accessibility/prevent-keyboard-event-dispatch-expected.txt: Added.
+        * platform/mac/accessibility/prevent-keyboard-event-dispatch.html: Added.
+
+2015-03-13  Chris Dumez  <cdumez@apple.com>
+
+        XMLHttpRequests should not prevent a page from entering PageCache
+        https://bugs.webkit.org/show_bug.cgi?id=142612
+        <rdar://problem/19923085>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a tests to make sure that loading XMLHttpRequests do not prevent a
+        page from entering PageCache.
+
+        * http/tests/navigation/page-cache-xhr-expected.txt: Added.
+        * http/tests/navigation/page-cache-xhr.html: Added.
+        * http/tests/navigation/resources/page-cache-helper.html: Added.
+
+2015-03-13  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        Unreviewed Gardening 13th March.
+        https://bugs.webkit.org/show_bug.cgi?id=142665
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/borders/mixed-border-style2-expected.txt: Added. The result was missing.
+
+2015-03-13  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        Rebaseline accessibility/color-well.html
+        https://bugs.webkit.org/show_bug.cgi?id=141697
+
+        Reviewed by Chris Fleizach.
+
+        The revision (r179922) which makes this test fail, implements a color
+        picker for GTK+ platform. So now we have different accessibility
+        information for a color input and we could update the expected file.
+
+        TestExpectations has also been updated.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/color-well-expected.txt:
+
+2015-03-13  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Unreviewed GTK+ Gardening
+        https://bugs.webkit.org/show_bug.cgi?id=142620
+
+        Rebaseline the missing test result
+
+        * platform/gtk/fast/borders/mixed-border-style2-expected.png: Added.
+        * platform/gtk/fast/css/css2-system-fonts-expected.txt: Added.
+        * platform/gtk/fast/text/tatechuyoko-expected.txt: Added.
+
+2015-03-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r180726): Removing an empty line at the end of textarea clears the entire texture
+        https://bugs.webkit.org/show_bug.cgi?id=142646
+
+        Reviewed by Darin Adler.
+
+        Added a regression test for deleting empty lines at the end of a textarea element.
+
+        * editing/deleting/delete-empty-line-breaks-at-end-of-textarea-expected.txt: Added.
+        * editing/deleting/delete-empty-line-breaks-at-end-of-textarea.html: Added.
+
+2015-03-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Integrate MapData into JSMap and JSSet
+        https://bugs.webkit.org/show_bug.cgi?id=142556
+
+        Reviewed by Filip Pizlo.
+
+        Test structure-clone implementation that becomes aware of the difference between Map and Set.
+
+        * fast/storage/serialized-script-value.html:
+
+2015-03-12  Simon Fraser  <simon.fraser@apple.com>
+
+        These hidpi filter tests pass sometimes.
+
+        * platform/mac/TestExpectations:
+
+2015-03-12  Alexey Proskuryakov  <ap@apple.com>
+
+        testRunner.setAlwaysAcceptCookies does not work with NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=138687
+
+        Unreviewed (only code changes were reviewed).
+
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        Unskip tests that used to be affected.
+
+2015-03-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up after JoePeck.
+
+        * http/tests/security/contentSecurityPolicy/injected-inline-style-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/inline-style-allowed-while-cloning-objects-expected.txt:
+
 2015-03-12  Hunseop Jeong  <hs85.jeong@samsung.com>
 
         Unreviewed EFL gardening on 13th Mar.  

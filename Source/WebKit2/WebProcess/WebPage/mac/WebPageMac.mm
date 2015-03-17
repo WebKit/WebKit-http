@@ -87,6 +87,10 @@
 #import <WebCore/htmlediting.h>
 #import <WebKitSystemInterface.h>
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+#include <WebCore/MediaPlaybackTarget.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -1020,6 +1024,9 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     IntPoint locationInContentCoordinates = mainFrame.view()->rootViewToContents(roundedIntPoint(locationInViewCooordinates));
     HitTestResult hitTestResult = mainFrame.eventHandler().hitTestResultAtPoint(locationInContentCoordinates);
 
+    if (forImmediateAction)
+        mainFrame.eventHandler().setImmediateActionStage(ImmediateActionStage::PerformedHitTest);
+
     ActionMenuHitTestResult actionMenuResult;
     actionMenuResult.hitTestLocationInViewCooordinates = locationInViewCooordinates;
     actionMenuResult.hitTestResult = WebHitTestResult::Data(hitTestResult);
@@ -1141,6 +1148,16 @@ void WebPage::focusAndSelectLastActionMenuHitTestResult()
     frame->selection().setSelection(position);
 }
 
+void WebPage::immediateActionDidCancel()
+{
+    m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCancelled);
+}
+
+void WebPage::immediateActionDidComplete()
+{
+    m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCompleted);
+}
+
 void WebPage::dataDetectorsDidPresentUI(PageOverlay::PageOverlayID overlayID)
 {
     MainFrame& mainFrame = corePage()->mainFrame();
@@ -1186,6 +1203,20 @@ void WebPage::setFont(const String& fontFamily, double fontSize, uint64_t fontTr
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     frame.editor().applyFontStyles(fontFamily, fontSize, fontTraits);
 }
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+void WebPage::playbackTargetSelected(const WebCore::MediaPlaybackTarget& playbackTarget) const
+{
+    MediaPlaybackTarget nonConstTarget(playbackTarget.devicePickerContext());
+    m_page->didChoosePlaybackTarget(nonConstTarget);
+}
+
+void WebPage::playbackTargetAvailabilityDidChange(bool changed)
+{
+    m_page->playbackTargetAvailabilityDidChange(changed);
+}
+#endif
+
 
 } // namespace WebKit
 

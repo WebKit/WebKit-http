@@ -77,7 +77,6 @@
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "InspectorInstrumentation.h"
-#include "LogicalSelectionOffsetCaches.h"
 #include "OverflowEvent.h"
 #include "OverlapTestRequestClient.h"
 #include "Page.h"
@@ -1434,7 +1433,7 @@ static inline bool isContainerForPositioned(RenderLayer& layer, EPosition positi
         return layer.renderer().canContainFixedPositionObjects();
 
     case AbsolutePosition:
-        return isContainingBlockCandidateForAbsolutelyPositionedObject(layer.renderer());
+        return layer.renderer().canContainAbsolutelyPositionedObjects();
     
     default:
         ASSERT_NOT_REACHED();
@@ -2460,7 +2459,7 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignm
         // This will prevent us from revealing text hidden by the slider in Safari RSS.
         RenderBox* box = renderBox();
         ASSERT(box);
-        LayoutRect localExposeRect(box->absoluteToLocalQuad(FloatQuad(FloatRect(rect)), UseTransforms).boundingBox());
+        LayoutRect localExposeRect(box->absoluteToLocalQuad(FloatQuad(FloatRect(rect))).boundingBox());
         LayoutRect layerBounds(0, 0, box->clientWidth(), box->clientHeight());
         LayoutRect r = getRectToExpose(layerBounds, layerBounds, localExposeRect, alignX, alignY);
 
@@ -5830,6 +5829,7 @@ LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, const Layo
     PaginationInclusionMode inclusionMode = ExcludeCompositedPaginatedLayers;
     if (flags & UseFragmentBoxesIncludingCompositing)
         inclusionMode = IncludeCompositedPaginatedLayers;
+
     const RenderLayer* paginationLayer = nullptr;
     if (flags & UseFragmentBoxesExcludingCompositing || flags & UseFragmentBoxesIncludingCompositing)
         paginationLayer = enclosingPaginationLayerInSubtree(ancestorLayer, inclusionMode);
@@ -5855,6 +5855,22 @@ LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, const Layo
     
     result.move(offsetFromRoot);
     return result;
+}
+
+bool RenderLayer::getOverlapBoundsIncludingChildrenAccountingForTransformAnimations(LayoutRect& bounds) const
+{
+    // The animation will override the display transform, so don't include it.
+    CalculateLayerBoundsFlags boundsFlags = DefaultCalculateLayerBoundsFlags & ~IncludeSelfTransform;
+    
+    bounds = calculateLayerBounds(this, LayoutSize(), boundsFlags);
+    
+    LayoutRect animatedBounds = bounds;
+    if (renderer().animation().computeExtentOfAnimation(renderer(), animatedBounds)) {
+        bounds = animatedBounds;
+        return true;
+    }
+    
+    return false;
 }
 
 IntRect RenderLayer::absoluteBoundingBox() const

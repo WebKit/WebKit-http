@@ -617,7 +617,6 @@ webaudio/mediastreamaudiodestinationnode.html [ Failure ]
 webaudio/mediastreamaudiosourcenode.html [ Failure ]
 webaudio/codec-tests/vorbis/ [ WontFix ]
 webkit.org/b/119467 webaudio/audiobuffersource-loop-points.html [ Skip ]
-[ Mavericks ] webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
 
 # Text Autosizing is not enabled.
 webkit.org/b/84186 fast/text-autosizing
@@ -759,13 +758,9 @@ webkit.org/b/123369 svg/css/root-shadow-offscreen.svg [ Pass ImageOnlyFailure ]
 # webkit.org/b/100846, webkit.org/b/136715
 inspector-protocol/debugger
 
-webkit.org/b/123490 [ Mavericks ] webaudio/oscillator-sawtooth.html [ Pass Failure ]
-
 webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure ]
 
 webkit.org/b/124321 [ Mavericks ] animations/resume-after-page-cache.html [ Pass Failure ]
-
-webkit.org/b/121646 webaudio/delaynode-max-default-delay.html [ Pass Failure ]
 
 # These fast/forms/select tests open a pop-up menu (visible on screen even when using run-webkit-tests), and get stuck in its nested event loop.
 webkit.org/b/87748 fast/forms/select/optgroup-clicking.html [ Skip ]
@@ -1090,10 +1085,6 @@ webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
 webkit.org/b/137157 [ Release ] inspector/page/main-frame-resource.html [ Pass Failure ]
 [ Debug ] inspector/page/main-frame-resource.html [ Pass Failure Slow ]
 
-# FIXME: Needs bugzilla (<rdar://problem/15393179>)
-[ Yosemite+ ] webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
-[ Yosemite+ ] webaudio/oscillator-sawtooth.html [ Pass Failure ]
-
 webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pass ]
 
 # FIXME: Needs bugzilla (<rdar://problem/15971968>)
@@ -1152,11 +1143,11 @@ webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pa
 [ Yosemite+ ] media/media-source/media-source-seek-complete.html [ Timeout ]
 
 # These tests used to only fail with WK2, but on Yosemite, they also fail with WK1.
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-blur.html [ ImageOnlyFailure ]
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-hue-rotate.html [ ImageOnlyFailure ]
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-invert.html [ ImageOnlyFailure ]
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-multiple.html [ ImageOnlyFailure ]
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-reference.html [ ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-blur.html [ Pass ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-hue-rotate.html [ Pass ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-invert.html [ Pass ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-multiple.html [ Pass ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-reference.html [ Pass ImageOnlyFailure ]
 
 # FIXME: Needs bugzilla
 platform/mac/editing/input/undo-grouping-on-text-insertion.html [ Skip ]
@@ -1251,6 +1242,9 @@ webkit.org/b/141601 inspector/css/stylesheet-with-mutations.html [ Skip ]
 
 webkit.org/b/141534 [ Yosemite ] media/video-load-networkState.html [ Pass Crash ]
 
+# Introduced in r181553 and crashing / failing on Yosemite.
+webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Crash ImageOnlyFailure ]
+
 # Skip media control tests until new controls are finalized
 webkit.org/b/142142 media/video-no-audio.html [ Skip ]
 webkit.org/b/142142 media/controls-strict.html [ Skip ]
@@ -1273,3 +1267,6 @@ webkit.org/b/142142 media/video-initially-hidden-volume-slider-up.html [ Skip ]
 
 # Test uses Yosemite blurs
 [ Mavericks ] compositing/media-controls-bar-appearance.html [ Skip ]
+
+# Mavericks and prior do not support APNG.
+webkit.org/b/17022 [ MountainLion Mavericks ] fast/images/animated-png.html [ Skip ]

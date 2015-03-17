@@ -1,3 +1,788 @@
+2015-03-17  Beth Dakin  <bdakin@apple.com>
+
+        DOM mouse events have weird timing for force clickable elements in Safari 8.0.3 on 
+        10.10.2
+        https://bugs.webkit.org/show_bug.cgi?id=142700
+        -and corresponding-
+        rdar://problem/20165168
+
+        Reviewed by Tim Horton.
+
+        No need to tell the WKImmediateActionController about mouse down any more since we 
+        are expecting it at the beginning of an immediate action interaction.
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView mouseDown:]):
+
+        Set the delaysPrimaryMouseButtonEvents to NO for the 
+        _immediateActionGestureRecognizer. This will cause AppKit to send up the mouse 
+        events at the expected time.
+        (-[WKView initWithFrame:processPool:configuration:webView:]):
+
+        WebCore::EventHandler now needs to know if an immediate action cancelled or 
+        completed. This plumbs that information down.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::immediateActionDidCancel):
+        (WebKit::WebPageProxy::immediateActionDidComplete):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/mac/WKImmediateActionController.h:
+        * UIProcess/mac/WKImmediateActionController.mm:
+        (-[WKImmediateActionController immediateActionRecognizerDidCancelAnimation:]):
+        (-[WKImmediateActionController immediateActionRecognizerDidCompleteAnimation:]):
+        (-[WKImmediateActionController wkView:willHandleMouseDown:]): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+        Call EventHandler::setImmediateActionStage() with the appropriate stage.
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::performActionMenuHitTestAtLocation):
+        (WebKit::WebPage::immediateActionDidCancel):
+        (WebKit::WebPage::immediateActionDidComplete):
+
+2015-03-17  Timothy Horton  <timothy_horton@apple.com>
+
+        Reproducible null deref under ScriptedAnimationController::createDisplayRefreshMonitor
+        https://bugs.webkit.org/show_bug.cgi?id=142776
+        <rdar://problem/18921338>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::createDisplayRefreshMonitor):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        Adjust to the new signature.
+
+2015-03-17  Antti Koivisto  <antti@apple.com>
+
+        Disk cache should support Vary: Cookie
+        https://bugs.webkit.org/show_bug.cgi?id=142770
+        rdar://problem/19764945
+
+        Reviewed by Anders Carlsson.
+
+        Cookies are not part of the original request but are added by the networking layer when submitting the request.
+        Fetch them explicitly when resolving Vary: Cookie.
+
+        The implementation is not perfect as it fetches the cookie for the cache entry when saving a Vary:Cookie response,
+        not when making the request. In principle the cookie may have changed in-between. This should be enough to handle
+        reasonable cases though. Fetching cookies for every request might be too expensive for this rarely used feature.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::headerValueForVary):
+        (WebKit::NetworkCache::encodeStorageEntry):
+        (WebKit::NetworkCache::verifyVaryingRequestHeaders):
+
+2015-03-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WK2] Use C++ lambdas in IPC::Connection
+        https://bugs.webkit.org/show_bug.cgi?id=138018
+
+        Reviewed by Anders Carlsson.
+
+        Replace uses of WTF::bind() in the IPC::Connection class with C++ lambdas.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::dispatchWorkQueueMessageReceiverMessage):
+        (IPC::Connection::invalidate):
+        (IPC::Connection::sendMessage):
+        (IPC::Connection::processIncomingMessage): Simplify the error messages so we
+        don't have to format strings on-the-fly, removing the issues of cross-thread
+        string copying altogether.
+        (IPC::Connection::dispatchDidReceiveInvalidMessage): The parameters are now
+        of the StringReference type.
+        (IPC::Connection::enqueueIncomingMessage):
+        * Platform/IPC/Connection.h:
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::receiveSourceEventHandler):
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+        (IPC::Connection::open):
+
+2015-03-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Use a forwarding header for ANGLE's ShaderLang.h to avoid picking up ANGLE's EGL headers
+        https://bugs.webkit.org/show_bug.cgi?id=142530
+
+        Reviewed by Darin Adler.
+
+        * CMakeLists.txt: Replace the Source/ThirdParty/ANGLE/include/GLSLANG entry
+        in the list of inclusion directories for WebKit2 with Source/ThirdParty/ANGLE,
+        possible due to the new forwarding header for ANGLE's ShaderLang.h.
+
+2015-03-17  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        REGRESSION(r180924): Unable to build WebKitGTK+ with threaded compositor
+
+        Unreviewed build fix.
+
+        * WebProcess/WebPage/LayerTreeHost.h:
+        Remove duplicated declaration of setNativeSurfaceHandleForCompositing.
+
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable ES6 classes by default
+        https://bugs.webkit.org/show_bug.cgi?id=142774
+
+        Reviewed by Gavin Barraclough.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-16  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Don't pass nil as a fireDate for NSTimer
+        https://bugs.webkit.org/show_bug.cgi?id=142765
+
+        Reviewed by Dan Bernstein.
+
+        While we're here, switch to a selector that conforms to documented NSTimer API.
+
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController cancelOperation:]):
+        Set the timer's fireDate as the future date matching the former interval; update the selector.
+        (-[WKFullScreenWindowController _watchdogTimerFired:]):
+        Timer callback; wrap -exitFullScreen.
+
+2015-03-16  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=142747
+
+        Reviewed by Chris Dumez.
+
+        * PlatformMac.cmake:
+        Started adding Mac-specific directories and headers.
+
+2015-03-16  Alexey Proskuryakov  <ap@apple.com>
+
+        ASSERT(m_plugin) on plugins/snapshotting/snapshot-plugin-not-quite-blocked-by-image.html
+        https://bugs.webkit.org/show_bug.cgi?id=142637
+
+        Reviewed by Dean Jackson.
+
+        * WebProcess/Plugins/PluginView.cpp: (WebKit::PluginView::pluginSnapshotTimerFired):
+        m_plugin can be legitimately null.
+
+2015-03-16  Csaba Osztrogonác  <ossy@webkit.org>
+
+        One more URTBF after r181578.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2015-03-16  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r181578.
+
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::setCSSAnimationTriggersEnabled): Copy/paste error fixed.
+
+2015-03-16  Dean Jackson  <dino@apple.com>
+
+        Expose WK2 preference for Animation Triggers runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=142744
+
+        Reviewed by Anders Carlsson.
+
+        Expose CSSAnimationTriggersEnabled, linking it to the runtime enabled
+        feature flag.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetCSSAnimationTriggersEnabled):
+        (WKPreferencesGetCSSAnimationTriggersEnabled):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        (WebKit::InjectedBundle::setCSSAnimationTriggersEnabled):
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2015-03-16  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Allow clients to selectively disable plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=142506
+
+        Reviewed by Anders Carlsson.
+
+        Add new functionality allow clients to declaratively disable individual plug-ins (in a manner that conceals them
+        from the page). As part of this:
+
+        1) Introduce the concept of web-visible plug-ins and related concepts, as distinct from the real underlying
+           set of plug-ins.
+
+        2) Where applicable, plumb additional information about plug-ins (specifically, bundle identification) deeper
+           down the stack.
+
+        3) Add generic functionality to PluginStrategy to support filtering plug-ins for visibility and introduce
+           a concrete implementation thereof in WebPlatformStrategies in WebKit2.
+
+        4) Add messaging infrastructure to allow clients to set and clear plug-in policies.
+
+        While currently only used in a very limited manner, the new declarative plug-in policies are written generically
+        so that they could be easily used in the future to reduce synchronous messaging to the client when loading plug-ins.
+
+        * Shared/Plugins/Netscape/mac/NetscapePluginModuleMac.mm:
+        (WebKit::NetscapePluginModule::getPluginInfo):
+        Set new PluginInfo members.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<PluginInfo>::encode):
+        Handle new PluginInfo members.
+        (IPC::ArgumentCoder<PluginInfo>::decode):
+        Ditto.
+
+        * Shared/WebProcessCreationParameters.h:
+        Declare a member to store client plug-in policies.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        Encode the policies.
+        (WebKit::WebProcessCreationParameters::decode):
+        Decode the policies.
+
+        * UIProcess/API/C/WKAPICast.h:
+        (WebKit::toWKPluginLoadClientPolicy):
+        Teach how to cast between WebCore and WebKit2 policy definitions.
+        (WebKit::toPluginLoadClientPolicy):
+        Ditto.
+
+        * UIProcess/API/C/WKPluginLoadPolicy.h:
+        Declare WKPluginLoadClientPolicy, matching PluginLoadClientPolicy in WebCore.
+
+        * UIProcess/API/C/mac/WKContextPrivateMac.h:
+        * UIProcess/API/C/mac/WKContextPrivateMac.mm:
+        (WKContextSetPluginLoadClientPolicy):
+        New function; wrap WebProcessPool::setPluginLoadClientPolicy().
+        (WKContextClearPluginClientPolicies):
+        New function; wrap WebProcessPool::clearPluginClientPolicies().
+
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+        Copy any client plug-in policies to the new process' creation parameters.
+        (WebKit::WebProcessPool::setPluginLoadClientPolicy):
+        Send SetPluginLoadClientPolicy to all processes and stash the passed-in policy info.
+        (WebKit::WebProcessPool::clearPluginClientPolicies):
+        Send ClearPluginClientPolicies to all processes and clear any stashed policy info.
+
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::pluginInfo):
+        Set new PluginInfo member.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::pluginSupportsExtension):
+        Adopt getWebVisibleMimesAndPluginIndices().
+        (WebKit::WebFrameLoaderClient::objectContentType):
+        Update to reflect reflect function rename.
+
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::getPluginInfo):
+        Pass the Page to populatePluginCache().
+        (WebKit::WebPlatformStrategies::getWebVisiblePluginInfo):
+        New member function; wrap getPluginInfo(); if appropriate, filter out plug-ins the client has asked
+        to block on the current page.
+        (WebKit::WebPlatformStrategies::setPluginLoadClientPolicy):
+        New member function; map empty inputs to a wildcard character and insert the new policy into the nested map.
+        (WebKit::WebPlatformStrategies::clearPluginClientPolicies):
+        New member function; empty m_hostsToPluginIdentifierData.
+        (WebKit::WebPlatformStrategies::pluginLoadClientPolicyForHost):
+        New member function; look up the most specific policy for the given plug-in and host.
+        (WebKit::WebPlatformStrategies::populatePluginCache):
+        If appropriate, set the client load policy on the plug-ins; do this irrespective of whether the cache has
+        been populated since the Page, and therefore host, may change.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::canShowMIMEType):
+        Update to reflect function rename.
+
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+        Enumerate and process the client plug-in policies in the creation parameters.
+        (WebKit::WebProcess::setPluginLoadClientPolicy):
+        New member function; wrap PluginStrategy::setPluginLoadClientPolicy.
+        (WebKit::WebProcess::clearPluginClientPolicies):
+        New member function; wrap PluginStrategy::clearPluginClientPolicies().
+
+        * WebProcess/WebProcess.messages.in:
+        Add messages for setting and clearing policies.
+
+2015-03-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Add new Notification classes to GTK+ API documentation.
+
+        Add WebKitNotification and WebKitNotificationPermissionRequest to
+        the documentation and fix some other typos causing warnings when
+        generating HTML documentation.
+
+        * UIProcess/API/gtk/WebKitUserContent.cpp:
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkit_web_view_class_init):
+        * UIProcess/API/gtk/docs/webkit2gtk-docs.sgml:
+
+2015-03-16  Przemyslaw Piorkowski  <p.piorkowski@samsung.com>
+
+        [EFL][WK2] REGRESSION(r178526): test_ewk2_storage_manager has been failed for a long time
+        https://bugs.webkit.org/show_bug.cgi?id=141249
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake: Enable test_ewk2_storage_manager for EFL port - it is passing now.
+
+2015-03-16  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] REGRESSION (r181511): Most layout tests crash with a NULL deref
+
+        Follow-up fix for:
+        [iOS] Presenting a modal sheet on top of a WKWebView causes it to lose focused, active state
+        <http://webkit.org/b/142702>
+
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::isViewWindowActive): Add NULL check for m_webView.
+        (WebKit::PageClientImpl::isViewFocused): Ditto.
+
+2015-03-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up related to wheelEvent names
+        https://bugs.webkit.org/show_bug.cgi?id=142713
+
+        Reviewed by Anders Carlsson.
+
+        Add EventNames::isWheelEventType() and use it in places that test for the
+        two wheel event names.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::handleEvent):
+
+2015-03-15  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Presenting a modal sheet on top of a WKWebView causes it to lose focused, active state
+        https://bugs.webkit.org/show_bug.cgi?id=142702
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView becomeFirstResponder]): Override to delegate first responder status to the
+        WKContentView if possible.
+        (-[WKWebView _retainActiveFocusedState]): New SPI that prevents view hierarchy changes from
+        affecting the active and focused state of the view. Increments a counter ivar and returns a
+        completion block (which callers must call when they’re done) that decrements it back.
+        * UIProcess/API/Cocoa/WKWebViewInternal.h: Declared new _activeFocusedStateRetainCount ivar
+        with @package access.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h: Declared new method.
+
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::isViewWindowActive): Return true if active/focused state is to be
+        maintained despite not being visible.
+        (WebKit::PageClientImpl::isViewFocused): Return true if active/focused state is to be
+        maintained despite not being active.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView resignFirstResponder]): Don’t blur the assisted node if active/focused
+        state is to be maintained.
+
+2015-03-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up use of flags in localToContainer-type functions
+        https://bugs.webkit.org/show_bug.cgi?id=142704
+
+        Reviewed by Alexey Proskuryakov.
+        
+        Pass UseTransforms explicitly to localToContainerPoint()
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getAssistedNodeInformation):
+
+2015-03-14  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS] scroll snap points are animating to the wrong positions.
+        https://bugs.webkit.org/show_bug.cgi?id=142705
+        <rdar://problem/20136946>
+
+        Reviewed by Simon Fraser.
+
+        Scroll snapping was landing in the wrong place on iOS because of two problems:
+        (1) It was searching for the closest snap offset point using unscaled 'screen' pixels,
+        which caused it to always choose one of the earliest snap point options.
+        (2) It was then selecting a scaled snap point coordinate and passing it back to UIKit
+        to animate the snap. This caused it to select a target point beyond the 'screen' pixel
+        we want to hit.
+        
+        The solution to both problems are to scale the scroll destination UIKit suggests so that
+        we search among the scaled points with a valid value. Then, we need to scale the returned
+        value back to screen units before handing it back to UIKit to process.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView scrollViewWillBeginDragging:]): Drive-by fix. Get rid of extra ';' at
+        the end of the line.
+        * UIProcess/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::closestSnapOffsetForMainFrameScrolling):
+
+2015-03-14  Dean Jackson  <dino@apple.com>
+
+        Feature flag for Animations Level 2
+        https://bugs.webkit.org/show_bug.cgi?id=142699
+        <rdar://problem/20165097>
+
+        Reviewed by Brent Fulgham.
+
+        Add ENABLE_CSS_ANIMATIONS_LEVEL_2 and a runtime flag animationTriggersEnabled.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-14  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        [GStreamer] share GL context in pipeline
+        https://bugs.webkit.org/show_bug.cgi?id=142693
+
+        Reviewed by Philippe Normand.
+
+        * WebProcess/gtk/WebProcessMainGtk.cpp: Enable XInitThreads() if
+        GSTREAMER_GL is used, since GstGL elements use another thread for
+        queuing GL operations.
+
+2015-03-13  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=142680
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformMac.cmake: Added.
+
+2015-03-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181483.
+        https://bugs.webkit.org/show_bug.cgi?id=142688
+
+        Caused use-after-free on many tests (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Allow clients to selectively disable plug-ins"
+        https://bugs.webkit.org/show_bug.cgi?id=142506
+        http://trac.webkit.org/changeset/181483
+
+2015-03-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Enable WIRELESS_PLAYBACK_TARGET
+        https://bugs.webkit.org/show_bug.cgi?id=142635
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-13  Timothy Horton  <timothy_horton@apple.com>
+
+        Sites that use a device-width viewport but don't have enough height to fill the view are scaled up
+        https://bugs.webkit.org/show_bug.cgi?id=142664
+        <rdar://problem/18859470>
+
+        Reviewed by Benjamin Poulain.
+
+        * UIProcess/ios/WKScrollView.mm:
+        (-[WKScrollView _rubberBandOffsetForOffset:maxOffset:minOffset:range:outside:]):
+        Now that the WKContentView can (without pinching) be smaller than the unobscured
+        region of the WKWebView, we need to take that into account when deciding where
+        to retarget scrolling.
+
+2015-03-13  Mark Lam  <mark.lam@apple.com>
+
+        Replace TCSpinLock with a new WTF::SpinLock based on WTF::Atomic.
+        <https://webkit.org/b/142674>
+
+        Reviewed by Filip Pizlo.
+
+        * WebProcess/WebPage/EventDispatcher.cpp:
+        (WebKit::EventDispatcher::EventDispatcher):
+        * WebProcess/WebPage/EventDispatcher.h:
+        * WebProcess/WebPage/ViewUpdateDispatcher.cpp:
+        (WebKit::ViewUpdateDispatcher::ViewUpdateDispatcher):
+        * WebProcess/WebPage/ViewUpdateDispatcher.h:
+
+2015-03-10  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Allow clients to selectively disable plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=142506
+
+        Reviewed by Anders Carlsson.
+
+        Add new functionality allow clients to declaratively disable individual plug-ins (in a manner that conceals them
+        from the page). As part of this:
+
+        1) Introduce the concept of web-visible plug-ins and related concepts, as distinct from the real underlying
+           set of plug-ins.
+
+        2) Where applicable, plumb additional information about plug-ins (specifically, bundle identification) deeper
+           down the stack.
+
+        3) Add generic functionality to PluginStrategy to support filtering plug-ins for visibility and introduce
+           a concrete implementation thereof in WebPlatformStrategies in WebKit2.
+
+        4) Add messaging infrastructure to allow clients to set and clear plug-in policies.
+
+        While currently only used in a very limited manner, the new declarative plug-in policies are written generically
+        so that they could be easily used in the future to reduce synchronous messaging to the client when loading plug-ins.
+
+        * Shared/Plugins/Netscape/mac/NetscapePluginModuleMac.mm:
+        (WebKit::NetscapePluginModule::getPluginInfo):
+        Set new PluginInfo members.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<PluginInfo>::encode):
+        Handle new PluginInfo members.
+        (IPC::ArgumentCoder<PluginInfo>::decode):
+        Ditto.
+
+        * Shared/WebProcessCreationParameters.h:
+        Declare a member to store client plug-in policies.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        Encode the policies.
+        (WebKit::WebProcessCreationParameters::decode):
+        Decode the policies.
+
+        * UIProcess/API/C/WKAPICast.h:
+        (WebKit::toWKPluginLoadClientPolicy):
+        Teach how to cast between WebCore and WebKit2 policy definitions.
+        (WebKit::toPluginLoadClientPolicy):
+        Ditto.
+
+        * UIProcess/API/C/WKPluginLoadPolicy.h:
+        Declare WKPluginLoadClientPolicy, matching PluginLoadClientPolicy in WebCore.
+
+        * UIProcess/API/C/mac/WKContextPrivateMac.h:
+        * UIProcess/API/C/mac/WKContextPrivateMac.mm:
+        (WKContextSetPluginLoadClientPolicy):
+        New function; wrap WebProcessPool::setPluginLoadClientPolicy().
+        (WKContextClearPluginClientPolicies):
+        New function; wrap WebProcessPool::clearPluginClientPolicies().
+
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+        Copy any client plug-in policies to the new process' creation parameters.
+        (WebKit::WebProcessPool::setPluginLoadClientPolicy):
+        Send SetPluginLoadClientPolicy to all processes and stash the passed-in policy info.
+        (WebKit::WebProcessPool::clearPluginClientPolicies):
+        Send ClearPluginClientPolicies to all processes and clear any stashed policy info.
+
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::pluginInfo):
+        Set new PluginInfo member.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::pluginSupportsExtension):
+        Adopt getWebVisibleMimesAndPluginIndices().
+        (WebKit::WebFrameLoaderClient::objectContentType):
+        Update to reflect reflect function rename.
+
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::getPluginInfo):
+        Pass the Page to populatePluginCache().
+        (WebKit::WebPlatformStrategies::getWebVisiblePluginInfo):
+        New member function; wrap getPluginInfo(); if appropriate, filter out plug-ins the client has asked
+        to block on the current page.
+        (WebKit::WebPlatformStrategies::setPluginLoadClientPolicy):
+        New member function; map empty inputs to a wildcard character and insert the new policy into the nested map.
+        (WebKit::WebPlatformStrategies::clearPluginClientPolicies):
+        New member function; empty m_hostsToPluginIdentifierData.
+        (WebKit::WebPlatformStrategies::pluginLoadClientPolicyForHost):
+        New member function; look up the most specific policy for the given plug-in and host.
+        (WebKit::WebPlatformStrategies::populatePluginCache):
+        If appropriate, set the client load policy on the plug-ins; do this irrespective of whether the cache has
+        been populated since the Page, and therefore host, may change.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::canShowMIMEType):
+        Update to reflect function rename.
+
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+        Enumerate and process the client plug-in policies in the creation parameters.
+        (WebKit::WebProcess::setPluginLoadClientPolicy):
+        New member function; wrap PluginStrategy::setPluginLoadClientPolicy.
+        (WebKit::WebProcess::clearPluginClientPolicies):
+        New member function; wrap PluginStrategy::clearPluginClientPolicies().
+
+        * WebProcess/WebProcess.messages.in:
+        Add messages for setting and clearing policies.
+
+2015-03-12  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Use UIDocumentMenuViewController to allow selection of files from
+        iCloud Drive in WKFileUploadPanel
+
+        Part of <https://bugs.webkit.org/show_bug.cgi?id=142596> WebKit on
+        iOS should support file upload from iCloud Drive
+        <rdar://problem/12178991>
+
+        Reviewed by Andy Estes.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        Include UIDocumentMenuViewController_Private.h if it exists. If not,
+        declare this new SPI.
+
+        * UIProcess/ios/forms/WKFileUploadPanel.mm:
+        (fallbackIconForFile):
+        Create a UIDocumentInteractionController for the file, and return a
+        thumbnail image from its smallest icon.
+
+        (iconForImageFile):
+        If we can get a UIImage from the file, create a thumbnail from it.
+        Otherwise, call fallbackIconForFile().
+
+        (iconForVideoFile):
+        Code moved from -[_WKVideoFileUploadItem displayImage].
+
+        (iconForFile):
+        Get the file's extension, and get the extension's preferred UTI. If the
+        UTI is an image type, call iconForImageFile(). If it's a video type,
+        call iconForVideoFile(). Otherwise, return the fallback icon.
+
+        (-[_WKFileUploadItem initWithFileURL:]):
+        Added an initializer that takes a file URL.
+
+        (-[_WKFileUploadItem fileURL]):
+        (-[_WKImageFileUploadItem initWithFileURL:originalImage:]):
+        (-[_WKVideoFileUploadItem displayImage]):
+        (WKFileUploadPanel):
+        Inherit from UIDocumentPickerDelegate and UIDocumentMenuDelegate. Add
+        an ivar for the document menu controller.
+
+        (-[WKFileUploadPanel dealloc]):
+        (-[WKFileUploadPanel presentWithParameters:resultListener:]):
+        If instances of UIDocumentMenuViewController respond to
+        -_setIgnoreApplicationEntitlementForImport:, meaning we can disable the
+        assertion that the current app has the iCloud Documents entitlement,
+        then show the document picker menu. Otherwise, show the current source
+        selection UI. The runtime check will be removed when a newer UIKit is
+        available.
+
+        (UTIsForMIMETypes):
+        Return the UTIs for the <input> element's "accept" attribute's MIME
+        type list.
+
+        (-[WKFileUploadPanel _mediaTypesForPickerSourceType:]):
+        Call UTIsForMIMETypes(). Fall back to available source types for this
+        picker type.
+
+        (-[WKFileUploadPanel _documentPickerMenuMediaTypes]):
+        Call UTIsForMIMETypes(). Fall back to the all-encompassing
+        "public.item" UTI.
+
+        (-[WKFileUploadPanel _photoLibraryButtonLabel]):
+        (-[WKFileUploadPanel _cameraButtonLabel]):
+        Factored out of -_showMediaSourceSelectionSheet. Return the
+        appropriate label for the camera button, based on whether it can take a
+        photo or video, or return nil if the camera is not available.
+
+        (-[WKFileUploadPanel _showMediaSourceSelectionSheet]):
+        Changed to use -_cameraButtonLabel and
+        -_presentForCurrentInterfaceIdiom:.
+
+        (-[WKFileUploadPanel _showDocumentPickerMenu]):
+        Create a UIDocumentMenuViewController, and populate it with options to
+        open the photo library or take a picture or video. If iCloud Drive or
+        other document sources are available, they will be added automatically.
+
+        (-[WKFileUploadPanel _presentForCurrentInterfaceIdiom:]):
+        (-[WKFileUploadPanel documentMenu:didPickDocumentPicker:]):
+        (-[WKFileUploadPanel documentMenuWasCancelled:]):
+        (-[WKFileUploadPanel documentPicker:didPickDocumentAtURL:]):
+        (-[WKFileUploadPanel documentPickerWasCancelled:]):
+        (-[WKFileUploadPanel _uploadItemFromMediaInfo:successBlock:failureBlock:]):
+
+        (-[_WKImageFileUploadItem initWithFilePath:originalImage:]): Deleted.
+        (-[_WKImageFileUploadItem fileURL]): Deleted.
+        (-[_WKVideoFileUploadItem initWithFilePath:mediaURL:]): Deleted.
+        (-[_WKVideoFileUploadItem fileURL]): Deleted.
+
+2015-03-11  Enrica Casucci  <enrica@apple.com>
+
+        Adopt new API for keyboard event handling.
+        https://bugs.webkit.org/show_bug.cgi?id=142602
+        rdar://problem/19966087
+
+        Reviewed by Sam Weinig.
+
+        Adopts the new API.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _didHandleKeyEvent:]):
+
+2015-03-12  Alexey Proskuryakov  <ap@apple.com>
+
+        testRunner.setAlwaysAcceptCookies does not work with NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=138687
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/WebCookieManagerProxy.cpp:
+        (WebKit::WebCookieManagerProxy::setHTTPCookieAcceptPolicy): Don't change system-wide
+        cookie accept policy when in testing mode. Also, update the policy in WebProcesses too,
+        as we still do some networking there.
+
+        * UIProcess/WebProcessPool.h:
+        * WebProcess/InjectedBundle/API/c/WKBundle.cpp:
+        (WKBundleSetAlwaysAcceptCookies): Deleted.
+        * WebProcess/InjectedBundle/API/c/WKBundlePrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::setAlwaysAcceptCookies): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+        Remove WKBundleSetAlwaysAcceptCookies SPI, as WKTR now uses an API in UI process.
+
+2015-03-12  Anders Carlsson  <andersca@apple.com>
+
+        WKErrorDomain should be declared nonnull
+        https://bugs.webkit.org/show_bug.cgi?id=142628
+
+        Reviewed by Antti Koivisto.
+
+        Add WK_ASSUME_NONNULL_BEGIN and WK_ASSUME_NONNULL_END so everything will be implicitly nonnull.
+
+        * UIProcess/API/Cocoa/WKError.h:
+
+2015-03-12  Ian Henderson  <ian@ianhenderson.org>
+
+        PDFs don't snapshot properly in iOS Safari
+        https://bugs.webkit.org/show_bug.cgi?id=142623
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _snapshotRect:intoImageOfWidth:completionHandler:]):
+        If we have a _customContentView, use UIView snapshotting instead of
+        trying to snapshot the web page.
+
+2015-03-12  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Update AirPlay handling
+        https://bugs.webkit.org/show_bug.cgi?id=142541
+
+        Unreviewed, respond to post-review comments and add previously reviewed changes
+        missed by a bungled merge.
+
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        * UIProcess/WebMediaPlaybackTargetPickerProxy.cpp:
+        (WebKit::WebMediaPlaybackTargetPickerProxy::~WebMediaPlaybackTargetPickerProxy):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::createPlaybackTargetPicker):
+        * UIProcess/mac/WebMediaPlaybackTargetPickerProxyMac.h: Added.
+        * UIProcess/mac/WebMediaPlaybackTargetPickerProxyMac.mm: Added.
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        * WebProcess/com.apple.WebProcess.sb.in:
+
 2015-03-11  Antti Koivisto  <antti@apple.com>
 
         Cache traversal missing large entries

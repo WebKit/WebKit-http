@@ -41,7 +41,7 @@ include(WebKitFeatures)
 # -----------------------------------------------------------------------------
 # Determine which port will be built
 # -----------------------------------------------------------------------------
-set(ALL_PORTS Efl WinCE GTK AppleWin WinCairo Mac WPE)
+set(ALL_PORTS Efl GTK AppleWin WinCairo Mac WPE)
 set(PORT "NOPORT" CACHE STRING "choose which WebKit port to build (one of ${ALL_PORTS})")
 
 list(FIND ALL_PORTS ${PORT} RET)
@@ -132,6 +132,7 @@ else ()
     set(WebCore_LIBRARY_TYPE STATIC)
 endif ()
 
+set(WebKit_LIBRARY_TYPE SHARED)
 set(WebKit2_LIBRARY_TYPE SHARED)
 set(WebCoreTestSupport_LIBRARY_TYPE STATIC)
 

@@ -145,7 +145,7 @@ bool GraphicsContext3D::isResourceSafe()
     return false;
 }
 
-void GraphicsContext3D::paintRenderingResultsToCanvas(ImageBuffer* imageBuffer, DrawingBuffer*)
+void GraphicsContext3D::paintRenderingResultsToCanvas(ImageBuffer* imageBuffer)
 {
     int rowBytes = m_currentWidth * 4;
     int totalBytes = rowBytes * m_currentHeight;
@@ -184,7 +184,7 @@ bool GraphicsContext3D::paintCompositedResultsToCanvas(ImageBuffer*)
     return false;
 }
 
-PassRefPtr<ImageData> GraphicsContext3D::paintRenderingResultsToImageData(DrawingBuffer*)
+PassRefPtr<ImageData> GraphicsContext3D::paintRenderingResultsToImageData()
 {
     // Reading premultiplied alpha would involve unpremultiplying, which is
     // lossy.
@@ -1355,6 +1355,57 @@ void GraphicsContext3D::viewport(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsize
 {
     makeContextCurrent();
     ::glViewport(x, y, width, height);
+}
+
+Platform3DObject GraphicsContext3D::createVertexArray()
+{
+    makeContextCurrent();
+    GLuint array = 0;
+#if (PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN) || PLATFORM(IOS))
+    glGenVertexArrays(1, &array);
+#elif defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
+    glGenVertexArraysAPPLE(1, &array);
+#endif
+    return array;
+}
+
+void GraphicsContext3D::deleteVertexArray(Platform3DObject array)
+{
+    if (!array)
+        return;
+    
+    makeContextCurrent();
+#if (PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN) || PLATFORM(IOS))
+    glDeleteVertexArrays(1, &array);
+#elif defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
+    glDeleteVertexArraysAPPLE(1, &array);
+#endif
+}
+
+GC3Dboolean GraphicsContext3D::isVertexArray(Platform3DObject array)
+{
+    if (!array)
+        return GL_FALSE;
+    
+    makeContextCurrent();
+#if (PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN) || PLATFORM(IOS))
+    return glIsVertexArray(array);
+#elif defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
+    return glIsVertexArrayAPPLE(array);
+#endif
+    return GL_FALSE;
+}
+
+void GraphicsContext3D::bindVertexArray(Platform3DObject array)
+{
+    makeContextCurrent();
+#if (PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN) || PLATFORM(IOS))
+    glBindVertexArray(array);
+#elif defined(GL_APPLE_vertex_array_object) && GL_APPLE_vertex_array_object
+    glBindVertexArrayAPPLE(array);
+#else
+    UNUSED_PARAM(array);
+#endif
 }
 
 void GraphicsContext3D::getBooleanv(GC3Denum pname, GC3Dboolean* value)

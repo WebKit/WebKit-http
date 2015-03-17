@@ -95,6 +95,8 @@ public:
 
     PassRefPtr<RenderStyle> getAnimatedStyleForRenderer(RenderElement&);
 
+    bool computeExtentOfAnimation(RenderElement&, LayoutRect&) const;
+
     double beginAnimationUpdateTime();
     void setBeginAnimationUpdateTime(double t) { m_beginAnimationUpdateTime = t; }
     
@@ -114,6 +116,10 @@ public:
 
     bool allowsNewAnimationsWhileSuspended() const { return m_allowsNewAnimationsWhileSuspended; }
     void setAllowsNewAnimationsWhileSuspended(bool);
+
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    void scrollWasUpdated();
+#endif
 
 private:
     void animationTimerFired();

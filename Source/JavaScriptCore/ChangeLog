@@ -1,3 +1,884 @@
+2015-03-16  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG IR shouldn't have a separate node for every kind of put hint that could be described using PromotedLocationDescriptor
+        https://bugs.webkit.org/show_bug.cgi?id=142769
+
+        Reviewed by Michael Saboff.
+        
+        When we sink an object allocation, we need to have some way of tracking what stores would
+        have happened had the allocation not been sunk, so that we know how to rematerialize the
+        object on OSR exit. Prior to this change, trunk had two ways of describing such a "put
+        hint":
+        
+        - The PutStrutureHint and PutByOffsetHint node types.
+        - The PromotedLocationDescriptor class, which has an enum with cases StructurePLoc and
+          NamedPropertyPLoc.
+        
+        We also had ways of converting from a Node with those two node types to a
+        PromotedLocationDescriptor, and we had a way of converting a PromotedLocationDescriptor to
+        a Node.
+        
+        This change removes the redundancy. We now have just one node type that corresponds to a
+        put hint, and it's called PutHint. It has a PromotedLocationDescriptor as metadata.
+        Converting between a PutHint node and a PromotedLocationDescriptor and vice-versa is now
+        trivial.
+        
+        This means that if we add new kinds of sunken objects, we'll have less pro-forma to write
+        for the put hints to those objects. This is mainly to simplify the implementation of
+        arguments elimination in bug 141174.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::mergeRelevantToOSR):
+        * dfg/DFGMayExit.cpp:
+        (JSC::DFG::mayExit):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::convertToPutHint):
+        (JSC::DFG::Node::convertToPutStructureHint):
+        (JSC::DFG::Node::convertToPutByOffsetHint):
+        (JSC::DFG::Node::promotedLocationDescriptor):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasIdentifier):
+        (JSC::DFG::Node::hasPromotedLocationDescriptor):
+        (JSC::DFG::Node::convertToPutByOffsetHint): Deleted.
+        (JSC::DFG::Node::convertToPutStructureHint): Deleted.
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::run):
+        (JSC::DFG::ObjectAllocationSinkingPhase::lowerNonReadingOperationsOnPhantomAllocations):
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGPromoteHeapAccess.h:
+        (JSC::DFG::promoteHeapAccess):
+        * dfg/DFGPromotedHeapLocation.cpp:
+        (JSC::DFG::PromotedHeapLocation::createHint):
+        * dfg/DFGPromotedHeapLocation.h:
+        (JSC::DFG::PromotedLocationDescriptor::imm1):
+        (JSC::DFG::PromotedLocationDescriptor::imm2):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validateCPS):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+
+2015-03-17  Michael Saboff  <msaboff@apple.com>
+
+        Windows X86-64 should use the fixed executable allocator
+        https://bugs.webkit.org/show_bug.cgi?id=142749
+
+        Reviewed by Filip Pizlo.
+
+        Added jit/ExecutableAllocatorFixedVMPool.cpp to Windows build.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * jit/ExecutableAllocatorFixedVMPool.cpp: Don't include unistd.h on Windows.
+
+2015-03-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Show rendering frames (and FPS) in Layout and Rendering timeline
+        https://bugs.webkit.org/show_bug.cgi?id=142029
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Timeline.json:
+        Added new event type for runloop timeline records.
+
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable ES6 classes by default
+        https://bugs.webkit.org/show_bug.cgi?id=142774
+
+        Reviewed by Gavin Barraclough.
+
+        Enabled the feature and unskipped tests.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * tests/stress/class-syntax-no-loop-tdz.js:
+        * tests/stress/class-syntax-no-tdz-in-catch.js:
+        * tests/stress/class-syntax-no-tdz-in-conditional.js:
+        * tests/stress/class-syntax-no-tdz-in-loop-no-inline-super.js:
+        * tests/stress/class-syntax-no-tdz-in-loop.js:
+        * tests/stress/class-syntax-no-tdz.js:
+        * tests/stress/class-syntax-tdz-in-catch.js:
+        * tests/stress/class-syntax-tdz-in-conditional.js:
+        * tests/stress/class-syntax-tdz-in-loop.js:
+        * tests/stress/class-syntax-tdz.js:
+
+2015-03-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Better Console Previews for Arrays / Small Objects
+        https://bugs.webkit.org/show_bug.cgi?id=142322
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        Create deep valuePreviews for simple previewable objects,
+        such as arrays with 5 values, or basic objects with
+        3 properties.
+
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add support for default constructor
+        https://bugs.webkit.org/show_bug.cgi?id=142388
+
+        Reviewed by Filip Pizlo.
+
+        Added the support for default constructors. They're generated by ClassExprNode::emitBytecode
+        via BuiltinExecutables::createDefaultConstructor.
+
+        UnlinkedFunctionExecutable now has the ability to override SourceCode provided by the owner
+        executable. We can't make store SourceCode in UnlinkedFunctionExecutable since CodeCache can use
+        the same UnlinkedFunctionExecutable to generate code blocks for multiple functions.
+
+        Parser now has the ability to treat any function expression as a constructor of the kind specified
+        by m_defaultConstructorKind member variable.
+
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createDefaultConstructor): Added.
+        (JSC::BuiltinExecutables::createExecutableInternal): Generalized from createBuiltinExecutable.
+        Parse default constructors as normal non-builtin functions. Override SourceCode in the unlinked
+        function executable since the Miranda function's code is definitely not in the owner executable's
+        source code. That's the whole point.
+        * builtins/BuiltinExecutables.h:
+        (UnlinkedFunctionExecutable::createBuiltinExecutable): Added. Wraps createExecutableInternal.
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        (JSC::UnlinkedFunctionExecutable::linkInsideExecutable):
+        (JSC::UnlinkedFunctionExecutable::linkGlobalCode):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedFunctionExecutable::create):
+        (JSC::UnlinkedFunctionExecutable::symbolTable): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewDefaultConstructor): Added.
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ClassExprNode::emitBytecode): Generate the default constructor if needed.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::parseFunctionInfo): Override ownerClassKind and assume the function as
+        a constructor if we're parsing a default constructor.
+        (JSC::Parser<LexerType>::parseClass): Allow omission of the class constructor.
+        * parser/Parser.h:
+        (JSC::parse):
+
+2015-03-16  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=142747
+
+        Reviewed by Chris Dumez.
+
+        * CMakeLists.txt:
+        Include AugmentableInspectorController.h in CMake build.
+
+2015-03-16  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Enable generating idiv instructions if it is supported
+        https://bugs.webkit.org/show_bug.cgi?id=142725
+
+        Reviewed by Michael Saboff.
+
+        * assembler/ARMAssembler.h: Added sdiv and udiv implementation for ARM Traditional instruction set.
+        (JSC::ARMAssembler::sdiv):
+        (JSC::ARMAssembler::udiv):
+        * assembler/ARMv7Assembler.h: Use HAVE(ARM_IDIV_INSTRUCTIONS) instead of CPU(APPLE_ARMV7S).
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::isARMv7IDIVSupported):
+        (JSC::optimizeForARMv7IDIVSupported):
+        (JSC::isARMv7s): Renamed to isARMv7IDIVSupported().
+        (JSC::optimizeForARMv7s): Renamed to optimizeForARMv7IDIVSupported().
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithDiv):
+        (JSC::DFG::SpeculativeJIT::compileArithMod):
+
+2015-03-15  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::PutStackSinkingPhase should eliminate GetStacks that have an obviously known source, and emit GetStacks when the stack's value is needed and none is deferred
+        https://bugs.webkit.org/show_bug.cgi?id=141624
+
+        Reviewed by Geoffrey Garen.
+
+        Not eliminating GetStacks was an obvious omission from the original PutStackSinkingPhase.
+        Previously, we would treat GetStacks conservatively and assume that the stack slot
+        escaped. That's pretty dumb, since a GetStack is a local load of the stack. This change
+        makes GetStack a no-op from the standpoint of this phase's deferral analysis. At the end
+        we either keep the GetStack (if there was no concrete deferral) or we replace it with an
+        identity over the value that would have been stored by the deferred PutStack. Note that
+        this might be a Phi that the phase creates, so this is strictly stronger than what GCSE
+        could do.
+        
+        But this change revealed the fact that this phase never correctly handled side effects in
+        case that we had done a GetStack, then a side-effect, and then found ourselves wanting the
+        value on the stack due to (for example) a Phi on a deferred PutStack and that GetStack.
+        Basically, it's only correct to use the SSA converter's incoming value mapping if we have
+        a concrete deferral - since anything but a concrete deferral may imply that the value has
+        been clobbered.
+        
+        This has no performance change. I believe that the bug was previously benign because we
+        have so few operations that clobber the stack anymore, and most of those get used in a
+        very idiomatic way. The GetStack elimination will be very useful for the varargs
+        simplification that is part of bug 141174.
+        
+        This includes a test for the case that Speedometer hit, plus tests for the other cases I
+        thought of once I realized the deeper issue.
+
+        * dfg/DFGPutStackSinkingPhase.cpp:
+        * tests/stress/get-stack-identity-due-to-sinking.js: Added.
+        (foo):
+        (bar):
+        * tests/stress/get-stack-mapping-with-dead-get-stack.js: Added.
+        (bar):
+        (foo):
+        * tests/stress/get-stack-mapping.js: Added.
+        (bar):
+        (foo):
+        * tests/stress/weird-put-stack-varargs.js: Added.
+        (baz):
+        (foo):
+        (fuzz):
+        (bar):
+
+2015-03-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Update Map/Set to treat -0 and 0 as the same value
+        https://bugs.webkit.org/show_bug.cgi?id=142709
+
+        Reviewed by Csaba Osztrogonác.
+
+        * runtime/MapData.h:
+        (JSC::MapDataImpl<Entry>::KeyType::KeyType):
+        No longer special case -0. It will be treated as the same as 0.
+
+2015-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Better handle displaying -0
+        https://bugs.webkit.org/show_bug.cgi?id=142708
+
+        Reviewed by Timothy Hatcher.
+
+        Modeled after a blink change:
+
+        Patch by <aandrey@chromium.org>
+        DevTools: DevTools: Show -0 for negative zero in console
+        https://src.chromium.org/viewvc/blink?revision=162605&view=revision
+
+        * inspector/InjectedScriptSource.js:
+        When creating a description string, or preview value string
+        for -0, be sure the string is "-0" and not "0".
+
+2015-03-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        parseClass should popScope after pushScope
+        https://bugs.webkit.org/show_bug.cgi?id=142689
+
+        Reviewed by Benjamin Poulain.
+
+        Pop the parser scope as needed.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+
+2015-03-14  Dean Jackson  <dino@apple.com>
+
+        Feature flag for Animations Level 2
+        https://bugs.webkit.org/show_bug.cgi?id=142699
+        <rdar://problem/20165097>
+
+        Reviewed by Brent Fulgham.
+
+        Add ENABLE_CSS_ANIMATIONS_LEVEL_2 and a runtime flag animationTriggersEnabled.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181487.
+        https://bugs.webkit.org/show_bug.cgi?id=142695
+
+        Caused Speedometer/Full.html to fail (Requested by smfr on
+        #webkit).
+
+        Reverted changeset:
+
+        "DFG::PutStackSinkingPhase should eliminate GetStacks that
+        have an obviously known source"
+        https://bugs.webkit.org/show_bug.cgi?id=141624
+        http://trac.webkit.org/changeset/181487
+
+2015-03-14  Michael Saboff  <msaboff@apple.com>
+
+        ES6: Add binary and octal literal support
+        https://bugs.webkit.org/show_bug.cgi?id=142681
+
+        Reviewed by Ryosuke Niwa.
+
+        Added a binary literal parser function, parseBinary(), to Lexer patterned after the octal parser.
+        Refactored the parseBinary, parseOctal and parseDecimal to use a constant size for the number of
+        characters to try and handle directly. Factored out the shifting past any prefix to be handled by
+        the caller. Added binary and octal parsing to toDouble() via helper functions.
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::parseHex):
+        (JSC::Lexer<T>::parseBinary):
+        (JSC::Lexer<T>::parseOctal):
+        (JSC::Lexer<T>::parseDecimal):
+        (JSC::Lexer<T>::lex):
+        * parser/Lexer.h:
+        * parser/ParserTokens.h:
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::jsBinaryIntegerLiteral):
+        (JSC::jsOctalIntegerLiteral):
+        (JSC::toDouble):
+
+2015-03-13  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=142680
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformMac.cmake:
+        Generate TracingDtrace.h based on project.pbxproj.
+
+2015-03-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Object allocation sinking phase shouldn't re-decorate previously sunken allocations on each fixpoint operation
+        https://bugs.webkit.org/show_bug.cgi?id=142686
+
+        Reviewed by Oliver Hunt.
+        
+        Just because promoteHeapAccess() notifies us of an effect to a heap location in a node doesn't
+        mean that we should handle it as if it was for one of our sinking candidates. Instead we should
+        prune based on m_sinkCandidates.
+        
+        This fixes a benign bug where we would generate a lot of repeated IR for some pathological
+        tests.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::promoteSunkenFields):
+
+2015-03-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Enable WIRELESS_PLAYBACK_TARGET
+        https://bugs.webkit.org/show_bug.cgi?id=142635
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Class constructor should throw TypeError when "called"
+        https://bugs.webkit.org/show_bug.cgi?id=142566
+
+        Reviewed by Michael Saboff.
+
+        Added ConstructorKind::None to denote code that doesn't belong to an ES6 class.
+        This allows BytecodeGenerator to emit code to throw TypeError when generating code block
+        to call ES6 class constructors.
+
+        Most of changes are about increasing the number of bits to store ConstructorKind from one
+        bit to two bits.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::ExecutableInfo::ExecutableInfo):
+        (JSC::ExecutableInfo::needsActivation):
+        (JSC::ExecutableInfo::usesEval):
+        (JSC::ExecutableInfo::isStrictMode):
+        (JSC::ExecutableInfo::isConstructor):
+        (JSC::ExecutableInfo::isBuiltinFunction):
+        (JSC::ExecutableInfo::constructorKind):
+        (JSC::UnlinkedFunctionExecutable::constructorKind):
+        (JSC::UnlinkedCodeBlock::constructorKind):
+        (JSC::UnlinkedFunctionExecutable::constructorKindIsDerived): Deleted.
+        (JSC::UnlinkedCodeBlock::constructorKindIsDerived): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate): Don't emit bytecode when we had already emitted code
+        to throw TypeError.
+        (JSC::BytecodeGenerator::BytecodeGenerator): Emit code to throw TypeError when generating
+        code to call.
+        (JSC::BytecodeGenerator::emitReturn):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::constructorKind):
+        (JSC::BytecodeGenerator::constructorKindIsDerived): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ThisNode::emitBytecode):
+        (JSC::FunctionCallValueNode::emitBytecode):
+        * parser/Nodes.cpp:
+        (JSC::FunctionBodyNode::FunctionBodyNode):
+        * parser/Nodes.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo): Renamed the incoming function argument to
+        ownerClassKind. Set constructorKind to Base or Derived only if we're parsing a constructor.
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseClass): Don't parse static methods using MethodMode since that
+        would result in BytecodeGenerator erroneously treating static method named "constructor" as
+        a class constructor.
+        (JSC::Parser<LexerType>::parsePropertyMethod):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        * parser/Parser.h:
+        * parser/ParserModes.h:
+        * runtime/Executable.h:
+        (JSC::EvalExecutable::executableInfo):
+        (JSC::ProgramExecutable::executableInfo):
+
+2015-03-13  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::PutStackSinkingPhase should eliminate GetStacks that have an obviously known source
+        https://bugs.webkit.org/show_bug.cgi?id=141624
+
+        Reviewed by Oliver Hunt.
+        
+        This was an obvious omission from the original PutStackSinkingPhase. Previously, we would treat
+        GetStacks conservatively and assume that the stack slot escaped. That's pretty dumb, since a
+        GetStack is a local load of the stack. This change makes GetStack a no-op from the standpoint of
+        this phase's deferral analysis. At the end we either keep the GetStack (if there was no concrete
+        deferral) or we replace it with an identity over the value that would have been stored by the
+        deferred PutStack. Note that this might be a Phi that the phase creates, so this is strictly
+        stronger than what GCSE could do.
+        
+        This is probably not a speed-up now, but it will be very useful for the varargs simplification
+        done in bug 141174.
+
+        * dfg/DFGPutStackSinkingPhase.cpp:
+
+2015-03-12  Geoffrey Garen  <ggaren@apple.com>
+
+        Prohibit GC while sweeping
+        https://bugs.webkit.org/show_bug.cgi?id=142638
+
+        Reviewed by Andreas Kling.
+
+        I noticed in https://bugs.webkit.org/show_bug.cgi?id=142636 that a GC
+        could trigger a sweep which could trigger another GC. Yo Dawg.
+
+        I tried to figure out whether this could cause problems or not and it
+        made me cross-eyed.
+
+        (Some clients like to report extra memory cost during deallocation as a
+        way to indicate that the GC now owns something exclusively. It's
+        arguably a bug to communicate with the GC in this way, but we shouldn't
+        do crazy when this happens.)
+
+        This patch makes explicit the fact that we don't allow GC while sweeping.
+
+        Usually, sweeping implicitly defers GC by virtue of happening during
+        allocation. But not always.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::collectAllGarbage): Defer GC while sweeping due to an
+        explicit GC request.
+
+        (JSC::Heap::didFinishCollection): Make sure that zombifying sweep
+        defers GC by not returning to the non-GC state until we're all done.
+
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::sweepNextBlock): Defer GC while sweeping due
+        to a timer.
+
+2015-03-13  Mark Lam  <mark.lam@apple.com>
+
+        Replace TCSpinLock with a new WTF::SpinLock based on WTF::Atomic.
+        <https://webkit.org/b/142674>
+
+        Reviewed by Filip Pizlo.
+
+        * API/JSValue.mm:
+        (handerForStructTag):
+        * API/JSWrapperMap.mm:
+        * dfg/DFGCommon.cpp:
+        (JSC::DFG::startCrashing):
+        (JSC::DFG::isCrashing):
+        - Changed to use a StaticSpinLock since that's what this code was trying to do
+          anyway.
+        * heap/CopiedBlock.h:
+        (JSC::CopiedBlock::CopiedBlock):
+        * heap/CopiedSpace.cpp:
+        (JSC::CopiedSpace::CopiedSpace):
+        * heap/CopiedSpace.h:
+        * heap/GCThreadSharedData.cpp:
+        (JSC::GCThreadSharedData::GCThreadSharedData):
+        * heap/GCThreadSharedData.h:
+        * heap/ListableHandler.h:
+        (JSC::ListableHandler::List::List):
+        * parser/SourceProvider.cpp:
+        * profiler/ProfilerDatabase.cpp:
+        (JSC::Profiler::Database::addDatabaseToAtExit):
+        (JSC::Profiler::Database::removeDatabaseFromAtExit):
+        (JSC::Profiler::Database::removeFirstAtExitDatabase):
+
+2015-03-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        BytecodeGenerator needs to be re-entrant to support miranda functions
+        https://bugs.webkit.org/show_bug.cgi?id=142627
+
+        Reviewed by Filip Pizlo.
+
+        Made CodeCache::getGlobalCodeBlock and CodeCache::getFunctionExecutableFromGlobalCode re-entrant
+        by not keeping AddResult while invoking BytecodeGenerator::generate.
+
+        This is needed to support Miranda functions since they need to be lazily initialized.
+
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode):
+        * runtime/CodeCache.h:
+        (JSC::CodeCacheMap::findCacheAndUpdateAge): Extracted from add.
+        (JSC::CodeCacheMap::addCache): Extracted from add.
+        (JSC::CodeCacheMap::add): Deleted.
+
+2015-03-13  Mark Lam  <mark.lam@apple.com>
+
+        Introduce WTF::Atomic to wrap std::atomic for a friendlier CAS.
+        <https://webkit.org/b/142661>
+
+        Reviewed by Filip Pizlo.
+
+        Changed CodeBlock, and the DFG's crashLock to use WTF::Atomic instead of
+        std::atomic.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::visitAggregate):
+        * bytecode/CodeBlock.h:
+        * dfg/DFGCommon.cpp:
+        (JSC::DFG::startCrashing):
+
+2015-03-12  Mark Lam  <mark.lam@apple.com>
+
+        Change the DFG crashLock to use std::atomic.
+        <https://webkit.org/b/142649>
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGCommon.cpp:
+        (JSC::DFG::startCrashing):
+        (JSC::DFG::isCrashing):
+
+2015-03-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Bytecode liveness analysis should have more lambdas and fewer sets
+        https://bugs.webkit.org/show_bug.cgi?id=142647
+
+        Reviewed by Mark Lam.
+        
+        In bug 141174 I'll need to identify all of the bytecode kill sites. This requires hooking into
+        the bytecode analysis' stepOverFunction method, except in such a way that we observe uses that
+        are not in outs. This refactors stepOverFunction so that you can pass it use/def functors that
+        can either be used to propagate outs (as we do right now) or to additionally detect kills or
+        whatever else.
+        
+        In order to achieve this, the liveness analysis was moved off of maintaining uses/defs
+        bitvectors. This wasn't helping the abstraction and was probably inefficient. The new code
+        should be a bit faster since we don't have to clear uses/defs bitvectors on each instruction. On
+        the other hand, being able to intercept each use means that our code for exception handlers is
+        no longer a bitwise-merge; it requires finding set bits. Fortunately, this code only kicks in
+        for instructions inside a try, and its performance is O(live at catch), so that's probably not
+        bad.
+
+        * bytecode/BytecodeLivenessAnalysis.cpp:
+        (JSC::indexForOperand):
+        (JSC::stepOverInstruction):
+        (JSC::computeLocalLivenessForBytecodeOffset):
+        (JSC::BytecodeLivenessAnalysis::computeFullLiveness):
+        (JSC::setForOperand): Deleted.
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+
+2015-03-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        "this" should be in TDZ until super is called in the constructor of a derived class
+        https://bugs.webkit.org/show_bug.cgi?id=142527
+
+        Reviewed by Mark Hahnenberg.
+
+        DFG and FTL implementations co-authored by Filip Pizlo.
+
+        In ES6 class syntax, "this" register must be in the "temporal dead zone" (TDZ) and throw ReferenceError until
+        super() is called inside the constructor of a derived class.
+
+        Added op_check_tdz, a new OP code, which throws a reference error when the first operand is an empty value
+        to all tiers of JIT and LLint. The op code throws in the slow path on the basis that a TDZ error should be
+        a programming error and not a part of the programs' normal control flow. In DFG, this op code is represented
+        by a no-op must-generate node CheckNotEmpty modeled after CheckCell.
+
+        Also made the constructor of a derived class assign the empty value to "this" register rather than undefined
+        so that ThisNode can emit the op_check_tdz to check the initialized-ness of "this" in such a constructor.
+
+        * bytecode/BytecodeList.json: Added op_check_tdz.
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset): Ditto.
+        (JSC::computeDefsForBytecodeOffset): Ditto.
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode): Ditto.
+        * bytecode/ExitKind.cpp:
+        (JSC::exitKindToString): Added TDZFailure.
+        * bytecode/ExitKind.h: Ditto.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator): Assign the empty value to "this" register to indicate it's in TDZ.
+        (JSC::BytecodeGenerator::emitTDZCheck): Added.
+        (JSC::BytecodeGenerator::emitReturn): Emit the TDZ check since "this" can still be in TDZ if super() was never
+        called. e.g. class B extends A { constructor() { } }
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ThisNode::emitBytecode): Always emit the TDZ check if we're inside the constructor of a derived class.
+        We can't omit this check even if the result was ignored per spec.
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects): Previously, empty value could never appear
+        in a local variable. This is no longer true so generalize this code. Also added the support for CheckNotEmpty.
+        Like CheckCell, we phantomize this DFG node in the constant folding phase if the type of the operand is already
+        found to be not empty. Otherwise filter out SpecEmpty.
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock): Added op_check_tdz.
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel): op_check_tdz can be compiled and inlined.
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize): CheckNotEmpty doesn't read or write values.
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants): Convert CheckNotEmpty to a phantom if non-emptiness had already
+        been proven for the operand prior to this node.
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC): CheckNotEmpty does not trigger GC.
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode): CheckNotEmpty is a no-op in the fixup phase.
+        * dfg/DFGNodeType.h: CheckNotEmpty cannot be removed even if the result was ignored. See ThisNode::emitBytecode.
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate): CheckNotEmpty doesn't return any value.
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute): CheckNotEmpty doesn't load from heap so it's safe.
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile): Speculative the operand to be not empty. OSR exit if the speculation fails.
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile): Ditto.
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile): CheckNotEmpty can be compiled in FTL.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode): Calls compileCheckNotEmpty for CheckNotEmpty.
+        (JSC::FTL::LowerDFGToLLVM::compileCheckNotEmpty): OSR exit with "TDZFailure" if the operand is not empty.
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass): Added op_check_tdz.
+        (JSC::JIT::privateCompileSlowCases): Ditto.
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_check_tdz): Implements op_check_tdz in Baseline JIT.
+        (JSC::JIT::emitSlow_op_check_tdz): Ditto.
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_check_tdz): Ditto.
+        (JSC::JIT::emitSlow_op_check_tdz): Ditto.
+        * llint/LowLevelInterpreter32_64.asm: Implements op_check_tdz in LLint.
+        * llint/LowLevelInterpreter64.asm: Ditto.
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL): Throws a reference error for op_check_tdz. Shared by LLint and Baseline JIT.
+        * runtime/CommonSlowPaths.h:
+        * tests/stress/class-syntax-no-loop-tdz.js: Added.
+        * tests/stress/class-syntax-no-tdz-in-catch.js: Added.
+        * tests/stress/class-syntax-no-tdz-in-conditional.js: Added.
+        * tests/stress/class-syntax-no-tdz-in-loop-no-inline-super.js: Added.
+        * tests/stress/class-syntax-no-tdz-in-loop.js: Added.
+        * tests/stress/class-syntax-no-tdz.js: Added.
+        * tests/stress/class-syntax-tdz-in-catch.js: Added.
+        * tests/stress/class-syntax-tdz-in-conditional.js: Added.
+        * tests/stress/class-syntax-tdz-in-loop.js: Added.
+        * tests/stress/class-syntax-tdz.js: Added.
+
+2015-03-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Integrate MapData into JSMap and JSSet
+        https://bugs.webkit.org/show_bug.cgi?id=142556
+
+        Reviewed by Filip Pizlo.
+
+        This patch integrates MapData into JSMap and JSSet.
+        This removes 2 object allocation per one JSMap / JSSet.
+
+        MapDataImpl is specialized into MapData and SetData.
+        In the case of SetData, it does not have the dummy values
+        previously stored in the MapDataImpl. So the storage size of SetData
+        becomes the half of the previous implementation.
+
+        And now MapData and SetData are completely integrated into JSMap and JSSet,
+        these structures are not exposed to the other code even in WebCore world.
+
+        And at the same time, this patch fixes missing destroy functions
+        in JSMapIterator and JSSetIterator.
+        They are needed because MapData::const_iterator is a non-trivial destructor.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/JSMap.cpp:
+        (JSC::JSMap::destroy):
+        (JSC::JSMap::visitChildren):
+        (JSC::JSMap::copyBackingStore):
+        (JSC::JSMap::has):
+        (JSC::JSMap::size):
+        (JSC::JSMap::get):
+        (JSC::JSMap::set):
+        (JSC::JSMap::clear):
+        (JSC::JSMap::remove):
+        (JSC::JSMap::finishCreation): Deleted.
+        * runtime/JSMap.h:
+        (JSC::JSMap::Entry::key):
+        (JSC::JSMap::Entry::value):
+        (JSC::JSMap::Entry::visitChildren):
+        (JSC::JSMap::Entry::setKey):
+        (JSC::JSMap::Entry::setKeyWithoutWriteBarrier):
+        (JSC::JSMap::Entry::setValue):
+        (JSC::JSMap::Entry::clear):
+        (JSC::JSMap::begin):
+        (JSC::JSMap::end):
+        (JSC::JSMap::JSMap):
+        (JSC::JSMap::mapData): Deleted.
+        * runtime/JSMapIterator.cpp:
+        (JSC::JSMapIterator::finishCreation):
+        (JSC::JSMapIterator::destroy):
+        (JSC::JSMapIterator::visitChildren):
+        * runtime/JSMapIterator.h:
+        (JSC::JSMapIterator::JSMapIterator):
+        * runtime/JSSet.cpp:
+        (JSC::JSSet::destroy):
+        (JSC::JSSet::visitChildren):
+        (JSC::JSSet::copyBackingStore):
+        (JSC::JSSet::has):
+        (JSC::JSSet::size):
+        (JSC::JSSet::add):
+        (JSC::JSSet::clear):
+        (JSC::JSSet::remove):
+        (JSC::JSSet::finishCreation): Deleted.
+        * runtime/JSSet.h:
+        (JSC::JSSet::Entry::key):
+        (JSC::JSSet::Entry::value):
+        (JSC::JSSet::Entry::visitChildren):
+        (JSC::JSSet::Entry::setKey):
+        (JSC::JSSet::Entry::setKeyWithoutWriteBarrier):
+        (JSC::JSSet::Entry::setValue):
+        (JSC::JSSet::Entry::clear):
+        (JSC::JSSet::begin):
+        (JSC::JSSet::end):
+        (JSC::JSSet::JSSet):
+        (JSC::JSSet::mapData): Deleted.
+        * runtime/JSSetIterator.cpp:
+        (JSC::JSSetIterator::finishCreation):
+        (JSC::JSSetIterator::visitChildren):
+        (JSC::JSSetIterator::destroy):
+        * runtime/JSSetIterator.h:
+        (JSC::JSSetIterator::JSSetIterator):
+        * runtime/MapConstructor.cpp:
+        (JSC::constructMap):
+        * runtime/MapData.h:
+        (JSC::MapDataImpl::const_iterator::key):
+        (JSC::MapDataImpl::const_iterator::value):
+        (JSC::MapDataImpl::size):
+        (JSC::MapDataImpl<Entry>::MapDataImpl):
+        (JSC::MapDataImpl<Entry>::clear):
+        (JSC::MapDataImpl<Entry>::KeyType::KeyType):
+        (JSC::MapDataImpl<Entry>::const_iterator::internalIncrement):
+        (JSC::MapDataImpl<Entry>::const_iterator::ensureSlot):
+        (JSC::MapDataImpl<Entry>::const_iterator::const_iterator):
+        (JSC::MapDataImpl<Entry>::const_iterator::~const_iterator):
+        (JSC::MapDataImpl<Entry>::const_iterator::operator):
+        (JSC::=):
+        (JSC::MapData::const_iterator::key): Deleted.
+        (JSC::MapData::const_iterator::value): Deleted.
+        (JSC::MapData::create): Deleted.
+        (JSC::MapData::createStructure): Deleted.
+        (JSC::MapData::size): Deleted.
+        (JSC::MapData::clear): Deleted.
+        (JSC::MapData::KeyType::KeyType): Deleted.
+        (JSC::MapData::const_iterator::internalIncrement): Deleted.
+        (JSC::MapData::const_iterator::ensureSlot): Deleted.
+        (JSC::MapData::const_iterator::const_iterator): Deleted.
+        (JSC::MapData::const_iterator::~const_iterator): Deleted.
+        (JSC::MapData::const_iterator::operator*): Deleted.
+        (JSC::MapData::const_iterator::end): Deleted.
+        (JSC::MapData::const_iterator::operator!=): Deleted.
+        (JSC::MapData::const_iterator::operator==): Deleted.
+        * runtime/MapDataInlines.h: Renamed from Source/JavaScriptCore/runtime/MapData.cpp.
+        (JSC::MapDataImpl<Entry>::find):
+        (JSC::MapDataImpl<Entry>::contains):
+        (JSC::MapDataImpl<Entry>::add):
+        (JSC::MapDataImpl<Entry>::set):
+        (JSC::MapDataImpl<Entry>::get):
+        (JSC::MapDataImpl<Entry>::remove):
+        (JSC::MapDataImpl<Entry>::replaceAndPackBackingStore):
+        (JSC::MapDataImpl<Entry>::replaceBackingStore):
+        (JSC::MapDataImpl<Entry>::ensureSpaceForAppend):
+        (JSC::MapDataImpl<Entry>::visitChildren):
+        (JSC::MapDataImpl<Entry>::copyBackingStore):
+        * runtime/MapPrototype.cpp:
+        (JSC::getMap):
+        (JSC::mapProtoFuncClear):
+        (JSC::mapProtoFuncDelete):
+        (JSC::mapProtoFuncForEach):
+        (JSC::mapProtoFuncGet):
+        (JSC::mapProtoFuncHas):
+        (JSC::mapProtoFuncSet):
+        (JSC::mapProtoFuncSize):
+        (JSC::getMapData): Deleted.
+        * runtime/SetPrototype.cpp:
+        (JSC::getSet):
+        (JSC::setProtoFuncAdd):
+        (JSC::setProtoFuncClear):
+        (JSC::setProtoFuncDelete):
+        (JSC::setProtoFuncForEach):
+        (JSC::setProtoFuncHas):
+        (JSC::setProtoFuncSize):
+        (JSC::getMapData): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2015-03-12  Mark Lam  <mark.lam@apple.com>
+
+        Use std::atomic for CodeBlock::m_visitAggregateHasBeenCalled.
+        <https://webkit.org/b/142640>
+
+        Reviewed by Mark Hahnenberg.
+
+        We used to spin our own compare and swap on a uint8_t.  Now that we can
+        use C++11, let's use std::atomic instead.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::visitAggregate):
+        - The CAS here needs std::memory_order_acquire ordering because it
+          requires lock acquisition semantics to visit the CodeBlock.
+
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlockSet::mark):
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::clearMarksForFullCollection):
+        (JSC::CodeBlockSet::clearMarksForEdenCollection):
+        - These can go with relaxed ordering because they are all done before
+          the GC starts parallel marking.
+
 2015-03-12  Csaba Osztrogonác  <ossy@webkit.org>
 
         [cmake] Fix the incremental build issue revealed by r181419

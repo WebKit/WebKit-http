@@ -334,6 +334,10 @@
 #define WTF_CPU_APPLE_ARMV7S 1
 #endif
 
+#if defined(__ARM_ARCH_EXT_IDIV__) || CPU(APPLE_ARMV7S)
+#define HAVE_ARM_IDIV_INSTRUCTIONS 1
+#endif
+
 #endif /* ARM */
 
 #if CPU(ARM) || CPU(MIPS) || CPU(SH4)
@@ -658,7 +662,7 @@
 #endif
 #endif /* !defined(WTF_USE_JSVALUE64) && !defined(WTF_USE_JSVALUE32_64) */
 
-/* The JIT is enabled by default on all x86, x86-64, ARM & MIPS platforms except ARMv7k and Windows. */
+/* The JIT is enabled by default on all x86, x86-64, ARM & MIPS platforms except ARMv7k. */
 #if !defined(ENABLE_JIT) \
     && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)) \
     && !CPU(APPLE_ARMV7K)
@@ -822,7 +826,7 @@
 #define ENABLE_REGEXP_TRACING 0
 
 /* Yet Another Regex Runtime - turned on by default for JIT enabled ports. */
-#if !defined(ENABLE_YARR_JIT)
+#if !defined(ENABLE_YARR_JIT) && ENABLE(JIT)
 #define ENABLE_YARR_JIT 1
 
 /* Setting this flag compares JIT results with interpreter results. */
@@ -859,7 +863,7 @@
 /* Pick which allocator to use; we only need an executable allocator if the assembler is compiled in.
    On non-Windows x86-64, iOS, and ARM64 we use a single fixed mmap, on other platforms we mmap on demand. */
 #if ENABLE(ASSEMBLER)
-#if CPU(X86_64) && !OS(WINDOWS) || PLATFORM(IOS) || CPU(ARM64)
+#if CPU(X86_64) || PLATFORM(IOS) || CPU(ARM64)
 #define ENABLE_EXECUTABLE_ALLOCATOR_FIXED 1
 #else
 #define ENABLE_EXECUTABLE_ALLOCATOR_DEMAND 1
