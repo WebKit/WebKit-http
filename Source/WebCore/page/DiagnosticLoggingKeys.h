@@ -69,6 +69,7 @@ public:
     static String navigationKey();
     WEBCORE_EXPORT static String networkCacheKey();
     static String networkKey();
+    WEBCORE_EXPORT static String neverSeenBeforeKey();
     static String noCacheKey();
     static String noCurrentHistoryItemKey();
     static String noDocumentLoaderKey();
@@ -95,10 +96,12 @@ public:
     static String reasonKey();
     static String reloadFromOriginKey();
     static String reloadKey();
+    WEBCORE_EXPORT static String requestKey();
     static String resourceKey();
     static String resourceRequestKey();
     static String resourceResponseKey();
     WEBCORE_EXPORT static String retrievalKey();
+    WEBCORE_EXPORT static String retrievalRequestKey();
     static String revalidatingKey();
     static String sameLoadKey();
     static String scriptKey();

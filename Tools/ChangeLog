@@ -1,3 +1,130 @@
+2015-03-18  Alex Christensen  <achristensen@webkit.org>
+
+        [ContentExtensions] Prepare for compiling stylesheets of selectors to be used on every page.
+        https://bugs.webkit.org/show_bug.cgi?id=142799
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testPattern):
+        (TestWebKitAPI::TEST_F):
+        Start testing regex failures.
+
+2015-03-18  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Fix StringView typos after r181525 and r181558
+        https://bugs.webkit.org/show_bug.cgi?id=142772
+
+        Reviewed by Darin Adler.
+
+        Add some tests in [1] to cover the StringView::startsWith, 
+        StringView::startsWithIgnoringASCIICase, StringView::endsWith and 
+        StringView::endsWithIgnoringASCIICase implementations.
+
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-03-18  Dana Burkart  <dburkart@apple.com>
+
+        Remove extraneous import to fix the build.
+
+        Unreviewed.
+
+        * Scripts/webkitpy/port/driver.py:
+
+2015-03-18  Dana Burkart  <dburkart@apple.com>
+
+        ASAN_OPTIONS=allocator_may_return_null=1 needs to be set 
+        https://bugs.webkit.org/show_bug.cgi?id=142547
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._setup_environ_for_driver):
+
+2015-03-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Tweak how AppleSystemFontOSSubversion default is added
+        https://bugs.webkit.org/show_bug.cgi?id=142835
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+
+2015-03-18  Dan Bernstein  <mitz@apple.com>
+
+        prepare-ChangeLog doesn't understand C string literals split across multiple lines with \
+        https://bugs.webkit.org/show_bug.cgi?id=142815
+
+        Reviewed by Darin Adler.
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_cpp): If the line ends with a backslash instead of a matching
+        quotation mark, use new variable $quotation_mark to remember what we are looking for, and
+        keep consuming the quoted text until the matching quotation mark is reached. Emit the
+        warning only if a line ends without a backslash before the matching quotation mark was found.
+
+2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused "preprocessor" parameter to sub-CodeGenerators
+        https://bugs.webkit.org/show_bug.cgi?id=142793
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/CodeGeneratorTestRunner.pm:
+        (new):
+
+2015-03-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump gstreamer version to 1.4.4
+        https://bugs.webkit.org/show_bug.cgi?id=142782
+
+        Reviewed by Philippe Normand.
+
+        * efl/jhbuild.modules:
+        * efl/patches/gst-libav.patch:
+        * efl/patches/gst-plugins-bad-remove-gnustep-support.patch: Added.
+        * efl/patches/gst-prevent-neon-check-in-configure-from-passing-under-aarch64.patch: Removed.
+
+2015-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the iOS build.
+
+        * WebKitTestRunner/InjectedBundle/ios/InjectedBundleIOS.mm:
+        (WTR::InjectedBundle::platformInitialize):
+
+2015-03-17  Dean Jackson  <dino@apple.com>
+
+        check-webkit-style should allow "bool a : 1"
+        https://bugs.webkit.org/show_bug.cgi?id=142794
+
+        Reviewed by Brent Fulgham.
+
+        We should allow member bitfields of the form:
+
+        bool m_var : 1;
+
+        It seems that Visual Studio 8 was the last compiler that
+        wasn't happy about not using unsigned here. We already have
+        about 500 cases (in WebCore) where people were ignoring this rule.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_language): Allow "bool".
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py: Add tests.
+        (CppStyleTest.test_enum_bitfields):
+        (CppStyleTest.test_plain_integral_bitfields):
+
+2015-03-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        Compile character ranges targeting the same state as range check in the bytecode
+        https://bugs.webkit.org/show_bug.cgi?id=142759
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+
 2015-03-17  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         W3C test parser and converter should use test importer host

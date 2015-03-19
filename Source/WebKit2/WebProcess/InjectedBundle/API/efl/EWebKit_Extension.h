@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Ryuan Choi <ryuan.choi@gmail.com>.  All rights reserved.
+ * Copyright (C) 2014-2015 Ryuan Choi <ryuan.choi@gmail.com>.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -57,5 +57,6 @@
 #define EWebKit_Extension_h
 
 #include "ewk_extension.h"
+#include "ewk_page.h"
 
 #endif // EWebKit_Extension_h

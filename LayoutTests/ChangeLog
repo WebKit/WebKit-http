@@ -1,3 +1,217 @@
+2015-03-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Windows gardening for debug bots.
+
+        * platform/win/TestExpectations:
+
+2015-03-18  Antti Koivisto  <antti@apple.com>
+
+        Test disk cache behavior when using back navigation cache policy
+        https://bugs.webkit.org/show_bug.cgi?id=142848
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/cache/disk-cache-validation-back-navigation-policy-expected.txt: Added.
+        * http/tests/cache/disk-cache-validation-back-navigation-policy.html: Added.
+
+            Test permutations of cache headers on reload including Cache-control: must-revalidate.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6 Classes: Extends should accept an expression without parenthesis
+        https://bugs.webkit.org/show_bug.cgi?id=142840
+
+        Reviewed by Ryosuke Niwa.
+
+        * js/class-syntax-extends-expected.txt:
+        * js/script-tests/class-syntax-extends.js:
+        Extend the test to test cases of extends with different types of expressions.
+
+2015-03-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Switching between two SVG images with no intrinsic sizes causes them to get the default SVG size instead of the container size.
+        https://bugs.webkit.org/show_bug.cgi?id=142805.
+
+        Reviewed by Darin Adler.
+
+        * svg/as-image/svg-no-intrinsic-size-switching-expected.html: Added.
+        * svg/as-image/svg-no-intrinsic-size-switching.html: Added.
+        Ensure that switching the source of an <img> element between two SVG images,
+        which have no intrinsic sizes, gets the image the size of the container and
+        not the default SVG intrinsic size which is 300x150 pixels.
+
+2015-03-18  Alexey Proskuryakov  <ap@apple.com>
+
+        webaudio/convolution-mono-mono.html fails on some machines
+        rdar://problem/19996807
+
+        Rubber-stampted by Jer Noble.
+
+        * webaudio/resources/convolution-testing.js: (checkTriangularPulse): Slightly increase
+        the tolerance. It's still extremely low.
+
+2015-03-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid repaints when changing transform on an element with multiple background images
+        https://bugs.webkit.org/show_bug.cgi?id=142841
+
+        Reviewed by Zalan Bujtas.
+        
+        Test that changes transform on a composited element with 2 background images,
+        and tests for no repaints.
+
+        * fast/repaint/multiple-backgrounds-style-change-expected.txt: Added.
+        * fast/repaint/multiple-backgrounds-style-change.html: Added.
+
+2015-03-18  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        Unreviewed GTK Gardening 18th March
+        https://bugs.webkit.org/show_bug.cgi?id=142824
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+
+2015-03-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use filterRootId in SelectorQuery even if CSS JIT is not enabled
+        https://bugs.webkit.org/show_bug.cgi?id=142703
+
+        Reviewed by Benjamin Poulain.
+
+        This is covered by the following layout-tests.
+        CompilableSingleWithRootFilter and CompilableSingle are covered by them.
+
+        - fast/selectors/filter-root-node-with-selector-contains-adjacents.html
+        - fast/selectors/querySelector-id-filtering.html
+        - fast/selectors/querySelector-scope-filtered-root.html
+
+        And add tests to cover the following cases.
+
+        - Failures on selectorForIdLookup()'s rootNode.inDocument().
+        - Failures on selectorForIdLookup()'s rootNode.document().inQuirksMode().
+
+        * fast/selectors/querySelector-with-id-for-detached-element-expected.txt: Added.
+        * fast/selectors/querySelector-with-id-for-detached-element.html: Added.
+        * fast/selectors/querySelector-with-id-in-quirks-mode-expected.txt: Added.
+        * fast/selectors/querySelector-with-id-in-quirks-mode.html: Added.
+
+2015-03-18  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Split fragments on renderer boundary on the fly.
+        https://bugs.webkit.org/show_bug.cgi?id=142579
+
+        Reviewed by Antti Koivisto.
+
+        Fragment splitting at renderers' boundary at the end of the line is no longer needed.
+        This patch ensures that TextFragmentIterator::nextTextFragment() does not concatenate
+        fragments across renderer boundary.
+
+        * fast/text/simple-line-with-multiple-renderers-expected.html: Added.
+        * fast/text/simple-line-with-multiple-renderers.html: Added.
+
+2015-03-18  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Flex and grid items should be painted as inline-blocks
+        https://bugs.webkit.org/show_bug.cgi?id=142266
+
+        Reviewed by Darin Adler.
+
+        * css3/flexbox/flex-item-text-background-not-interleaved-expected.html: Added.
+        * css3/flexbox/flex-item-text-background-not-interleaved.html: Added.
+        * fast/css-grid-layout/float-not-protruding-into-next-grid-item-expected.html:
+        Add some vertical space to avoid issues with backgrounds.
+        * fast/css-grid-layout/float-not-protruding-into-next-grid-item.html:
+        Ditto.
+        * fast/css-grid-layout/grid-item-text-background-not-interleaved-expected.html: Added.
+        * fast/css-grid-layout/grid-item-text-background-not-interleaved.html: Added.
+
+2015-03-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181667, r181682, and r181683.
+        https://bugs.webkit.org/show_bug.cgi?id=142812
+
+        Broke multiple tests with ASan, plus dependent commits
+        (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Simple line layout: Split fragments on renderer boundary on
+        the fly."
+        https://bugs.webkit.org/show_bug.cgi?id=142579
+        http://trac.webkit.org/changeset/181667
+
+        "Simple line layout: Change FlowContents::segmentForPosition()
+        to segmentForRun()."
+        https://bugs.webkit.org/show_bug.cgi?id=142785
+        http://trac.webkit.org/changeset/181682
+
+        "Simple line layout: Use Vector<>::const_iterator instead of
+        custom FlowContents::Iterator."
+        https://bugs.webkit.org/show_bug.cgi?id=142809
+        http://trac.webkit.org/changeset/181683
+
+2015-03-17  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/images/animated-png.html is crashing / failing on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=142726
+
+        Further tweaked test expectations.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-03-17  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        Tracked down the tests that were leaving the page cache in a bad state.
+        By skipping those tests, we can run all the others. These bugs are being
+        investigated in Bug 140871.
+
+        * platform/win/TestExpectations:
+
+2015-03-17  Geoffrey Garen  <ggaren@apple.com>
+
+        Function bodies should always include braces
+        https://bugs.webkit.org/show_bug.cgi?id=142795
+
+        Reviewed by Michael Saboff.
+
+        Updated these test results to reflect the fact that JavaScriptCore now
+        honors the source code text positions provided by WebCore, even for 
+        attribute event handlers.
+
+        Unfortunately, the column numbers we used to report were wrong, and they
+        are still wrong now. The old column numbers were wrong because we would
+        always pretend that they started on column 1. The new column numbers
+        are wrong because WebCore records the column number after it finishes
+        parsing the element, rather than while it is parsing the event listener
+        attribute.
+
+        * fast/events/window-onerror2-expected.txt:
+        * fast/profiler/dead-time-expected.txt:
+        * fast/profiler/inline-event-handler-expected.txt:
+        * fast/profiler/stop-profiling-after-setTimeout-expected.txt:
+        * js/dom/script-start-end-locations-expected.txt:
+
+2015-03-17  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Split fragments on renderer boundary on the fly.
+        https://bugs.webkit.org/show_bug.cgi?id=142579
+
+        Reviewed by Antti Koivisto.
+
+        Fragment splitting at renderers' boundary at the end of the line is no longer needed.
+        This patch ensures that TextFragmentIterator::nextTextFragment() does not concatenate
+        fragments across renderer boundary.
+
+        * fast/text/simple-line-with-multiple-renderers-expected.html: Added.
+        * fast/text/simple-line-with-multiple-renderers.html: Added.
+
 2015-03-17  Dean Jackson  <dino@apple.com>
 
         Implement Scroll Container Animation Triggers

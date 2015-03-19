@@ -136,9 +136,10 @@
 #if !PLATFORM(IOS)
 #import <AppKit/NSAccessibility.h>
 #import <ApplicationServices/ApplicationServices.h>
+#import <WebCore/NSMenuSPI.h>
+#import <WebCore/PlatformEventFactoryMac.h>
 #import "WebNSEventExtras.h"
 #import "WebNSPasteboardExtras.h"
-#import <WebCore/PlatformEventFactoryMac.h>
 #endif
 
 #import <QuartzCore/QuartzCore.h>
@@ -5387,10 +5388,12 @@ static BOOL writingDirectionKeyBindingsEnabled()
 #if !PLATFORM(IOS)
 - (void)otherMouseDown:(NSEvent *)event
 {
-    if ([event buttonNumber] == 2)
-        [self mouseDown:event];
-    else
+    if ([event buttonNumber] != 2 || ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)] && [NSMenu menuTypeForEvent:event] == NSMenuTypeActionMenu)) {
         [super otherMouseDown:event];
+        return;
+    }
+
+    [self mouseDown:event];
 }
 
 - (void)otherMouseDragged:(NSEvent *)event

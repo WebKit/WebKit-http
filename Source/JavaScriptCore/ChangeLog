@@ -1,3 +1,182 @@
+2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6 Classes: Extends should accept an expression without parenthesis
+        https://bugs.webkit.org/show_bug.cgi?id=142840
+
+        Reviewed by Ryosuke Niwa.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+        "extends" allows a LeftHandExpression (new expression / call expression,
+        which includes a member expression), not a primary expression. Our
+        parseMemberExpression does all of these.
+
+2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Debugger Popovers and Probes should use FormattedValue/ObjectTreeView instead of Custom/ObjectPropertiesSection
+        https://bugs.webkit.org/show_bug.cgi?id=142830
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::breakpointActionProbe):
+        Give Probe Samples object previews.
+
+2015-03-17  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Expose JavaScript binding interface through ewk_extension
+        https://bugs.webkit.org/show_bug.cgi?id=142033
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake: Install Javascript APIs.
+
+2015-03-17  Geoffrey Garen  <ggaren@apple.com>
+
+        Function bodies should always include braces
+        https://bugs.webkit.org/show_bug.cgi?id=142795
+
+        Reviewed by Michael Saboff.
+
+        Having a mode for excluding the opening and closing braces from a function
+        body was unnecessary and confusing.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock): Adopt the new one true linking function.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        (JSC::UnlinkedFunctionExecutable::link):
+        (JSC::UnlinkedFunctionExecutable::codeBlockFor): No need to pass through
+        a boolean: there is only one kind of function now.
+
+        (JSC::UnlinkedFunctionExecutable::linkInsideExecutable): Deleted.
+        (JSC::UnlinkedFunctionExecutable::linkGlobalCode): Deleted. Let's only
+        have one way to do things. This removes the old mode that would pretend
+        that a function always started at column 1. That pretense was not true:
+        an attribute event listener does not necessarily start at column 1.
+
+        * bytecode/UnlinkedCodeBlock.h:
+        * generate-js-builtins: Adopt the new one true linking function.
+
+        * parser/Parser.h:
+        (JSC::Parser<LexerType>::parse):
+        (JSC::parse): needsReparsingAdjustment is always true now, so I removed it.
+
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        (JSC::FunctionExecutable::FunctionExecutable):
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+        (JSC::FunctionExecutable::fromGlobalCode):
+        * runtime/Executable.h:
+        (JSC::FunctionExecutable::create):
+        (JSC::FunctionExecutable::bodyIncludesBraces): Deleted. Removed unused stuff.
+
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck): Always provide a
+        leading space because that's what this function's comment says is required
+        for web compatibility. We used to fake this up after the fact when
+        stringifying, based on the bodyIncludesBraces flag, but that flag is gone now.
+
+        * runtime/FunctionPrototype.cpp:
+        (JSC::insertSemicolonIfNeeded):
+        (JSC::functionProtoFuncToString): No need to add braces and/or a space
+        after the fact -- we always have them now.
+
+2015-03-17  Mark Lam  <mark.lam@apple.com>
+
+        Refactor execution time limit tests out of testapi.c.
+        <https://webkit.org/b/142798>
+
+        Rubber stamped by Michael Saboff.
+
+        These tests were sometimes failing to time out on C loop builds.  Let's
+        refactor them out of the big monolith that is testapi.c so that we can
+        reason more easily about them and make adjustments if needed.
+
+        * API/tests/ExecutionTimeLimitTest.cpp: Added.
+        (currentCPUTime):
+        (currentCPUTimeAsJSFunctionCallback):
+        (shouldTerminateCallback):
+        (cancelTerminateCallback):
+        (extendTerminateCallback):
+        (testExecutionTimeLimit):
+        * API/tests/ExecutionTimeLimitTest.h: Added.
+        * API/tests/testapi.c:
+        (main):
+        (currentCPUTime): Deleted.
+        (currentCPUTime_callAsFunction): Deleted.
+        (shouldTerminateCallback): Deleted.
+        (cancelTerminateCallback): Deleted.
+        (extendTerminateCallback): Deleted.
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2015-03-17  Geoffrey Garen  <ggaren@apple.com>
+
+        Built-in functions should know that they use strict mode
+        https://bugs.webkit.org/show_bug.cgi?id=142788
+
+        Reviewed by Mark Lam.
+
+        Even though all of our builtin functions use strict mode, the parser
+        thinks that they don't. This is because Executable::toStrictness treats
+        builtin-ness and strict-ness as mutually exclusive.
+
+        The fix is to disambiguate builtin-ness from strict-ness.
+
+        This bug is currently unobservable because of some other parser bugs. But
+        it causes lots of test failures once those other bugs are fixed.
+
+        * API/JSScriptRef.cpp:
+        (parseScript):
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createBuiltinExecutable): Adopt the new API
+        for a separate value to indicate builtin-ness vs strict-ness.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        (JSC::UnlinkedFunctionExecutable::codeBlockFor): Ditto.
+
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedFunctionExecutable::toStrictness): Deleted. This function
+        was misleading since it pretended that no builtin function was ever
+        strict, which is the opposite of true.
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::Lexer):
+        * parser/Lexer.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        * parser/Parser.h:
+        (JSC::parse): Adopt the new API.
+
+        * parser/ParserModes.h: Added JSParserBuiltinMode, and tried to give
+        existing modes clearer names.
+
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        (JSC::CodeCache::getProgramCodeBlock):
+        (JSC::CodeCache::getEvalCodeBlock):
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode): Adopt the new API.
+
+        * runtime/CodeCache.h:
+        (JSC::SourceCodeKey::SourceCodeKey): Be sure to treat strict-ness and
+        bulitin-ness as separate pieces of the code cache key. We would not want
+        a user function to match a built-in function in the cache, even if they
+        agreed about strictness, since builtin functions have different lexing
+        rules.
+
+        * runtime/Completion.cpp:
+        (JSC::checkSyntax):
+        * runtime/Executable.cpp:
+        (JSC::FunctionExecutable::FunctionExecutable):
+        (JSC::ProgramExecutable::checkSyntax):
+        * runtime/Executable.h:
+        (JSC::FunctionExecutable::create):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::createProgramCodeBlock):
+        (JSC::JSGlobalObject::createEvalCodeBlock): Adopt the new API.
+
 2015-03-16  Filip Pizlo  <fpizlo@apple.com>
 
         DFG IR shouldn't have a separate node for every kind of put hint that could be described using PromotedLocationDescriptor

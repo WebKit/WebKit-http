@@ -121,14 +121,6 @@ public:
     size_t parameterCount() const;
     bool isInStrictContext() const { return m_isInStrictContext; }
     FunctionMode functionMode() const { return m_functionMode; }
-    JSParserStrictness toStrictness() const
-    {
-        if (m_isBuiltinFunction)
-            return JSParseBuiltin;
-        if (m_isInStrictContext)
-            return JSParseStrict;
-        return JSParseNormal;
-    }
     ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
 
     unsigned unlinkedFunctionNameStart() const { return m_unlinkedFunctionNameStart; }
@@ -141,12 +133,13 @@ public:
 
     String paramString() const;
 
-    UnlinkedFunctionCodeBlock* codeBlockFor(VM&, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, bool bodyIncludesBraces, ParserError&);
+    UnlinkedFunctionCodeBlock* codeBlockFor(
+        VM&, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, 
+        ParserError&);
 
     static UnlinkedFunctionExecutable* fromGlobalCode(const Identifier&, ExecState&, const SourceCode&, JSObject*& exception);
 
-    FunctionExecutable* linkInsideExecutable(VM&, const SourceCode&);
-    FunctionExecutable* linkGlobalCode(VM&, const SourceCode&);
+    FunctionExecutable* link(VM&, const SourceCode&);
 
     void clearCodeForRecompilation()
     {

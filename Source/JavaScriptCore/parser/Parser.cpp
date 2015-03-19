@@ -190,7 +190,11 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
 }
 
 template <typename LexerType>
-Parser<LexerType>::Parser(VM* vm, const SourceCode& source, FunctionParameters* parameters, const Identifier& name, JSParserStrictness strictness, JSParserMode parserMode, ConstructorKind defaultConstructorKind)
+Parser<LexerType>::Parser(
+    VM* vm, const SourceCode& source, FunctionParameters* parameters, 
+    const Identifier& name, JSParserBuiltinMode builtinMode, 
+    JSParserStrictMode strictMode, JSParserCodeType codeType, 
+    ConstructorKind defaultConstructorKind)
     : m_vm(vm)
     , m_source(&source)
     , m_hasStackOverflow(false)
@@ -203,10 +207,10 @@ Parser<LexerType>::Parser(VM* vm, const SourceCode& source, FunctionParameters* 
     , m_lastIdentifier(0)
     , m_lastFunctionName(nullptr)
     , m_sourceElements(0)
-    , m_parsingBuiltin(strictness == JSParseBuiltin)
+    , m_parsingBuiltin(builtinMode == JSParserBuiltinMode::Builtin)
     , m_defaultConstructorKind(defaultConstructorKind)
 {
-    m_lexer = std::make_unique<LexerType>(vm, strictness);
+    m_lexer = std::make_unique<LexerType>(vm, builtinMode);
     m_lexer->setCode(source, &m_parserArena);
     m_token.m_location.line = source.firstLine();
     m_token.m_location.startOffset = source.startOffset();
@@ -214,9 +218,9 @@ Parser<LexerType>::Parser(VM* vm, const SourceCode& source, FunctionParameters* 
     m_token.m_location.lineStartOffset = source.startOffset();
     m_functionCache = vm->addSourceProviderCache(source.provider());
     ScopeRef scope = pushScope();
-    if (parserMode == JSParseFunctionCode)
+    if (codeType == JSParserCodeType::Function)
         scope->setIsFunction();
-    if (strictness == JSParseStrict)
+    if (strictMode == JSParserStrictMode::Strict)
         scope->setStrictMode();
     if (parameters) {
         bool hadBindingParameters = false;
@@ -1481,7 +1485,7 @@ template <class TreeBuilder> TreeClassExpression Parser<LexerType>::parseClass(T
 
     TreeExpression parentClass = 0;
     if (consume(EXTENDS)) {
-        parentClass = parsePrimaryExpression(context);
+        parentClass = parseMemberExpression(context);
         failIfFalse(parentClass, "Cannot parse the parent class name");
     }
     const ConstructorKind constructorKind = parentClass ? ConstructorKind::Derived : ConstructorKind::Base;

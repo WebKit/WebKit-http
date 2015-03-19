@@ -1,3 +1,146 @@
+2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Replace last use of ObjectPropertiesSection with ObjectTreeView
+        https://bugs.webkit.org/show_bug.cgi?id=142834
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshProperties):
+        Use properties only ObjectTreeView instead of ObjectPropertiesSection.
+        This doesn't fix the functionality issues, but fixes the appearance.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .content > .group:first-child > .row.simple:first-child > *): Deleted.
+        (body.mac-platform.legacy .details-section > .content > .group:first-child > .row.simple:first-child > *): Deleted.
+        (.details-section > .content > .group > .row.properties:not(.empty)): Deleted.
+        (body.mac-platform.legacy .details-section > .content > .group > .row.properties:not(.empty)): Deleted.
+        Re-add back the small padding at the top of sections. This actually
+        broke padding in a few sections (Event Listeners) at the expense
+        of eliminating a few pixels of whitespace at the top of other sections.
+        We should focus on addressing the extra whitespace separately.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/ObjectPropertiesSection.js: Removed.
+        * UserInterface/Views/TypePropertiesSection.js:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+        Remove new unused class.
+
+2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Debugger Popovers and Probes should use FormattedValue/ObjectTreeView instead of Custom/ObjectPropertiesSection
+        https://bugs.webkit.org/show_bug.cgi?id=142830
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ProbeSetDataGrid.css:
+        (.details-section.probe-set .data-grid .object-tree > :matches(.title, .object-preview)::before):
+        Another line-height fix for object tree disclosure triangles.
+
+        * UserInterface/Views/ProbeSetDataGridNode.js:
+        (WebInspector.ProbeSetDataGridNode.prototype.createCellContent):
+        Create an ObjectTree / FormattedValue for the RemoteObject.
+
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.popover .debugger-popover-content > .title):
+        (.popover .debugger-popover-content > .body):
+        (.popover .debugger-popover-content.function > .body):
+        Be more specific and don't accidentally style ".title" within the body.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForObject):
+        Show a properties only ObjectTree instead of an ObjectPropertiesSection.
+
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForString): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForRegExp): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForNumber): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForBoolean): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForNull): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForUndefined): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverWithFormattedValue):
+        Reduce most of these to a single popover for formatted values.
+
+2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Scopes sidebar should use new ObjectTreeView and not ObjectPropertiesSection
+        https://bugs.webkit.org/show_bug.cgi?id=142808
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/PropertyPath.js:
+        (WebInspector.PropertyPath):
+        (WebInspector.PropertyPath.emptyPropertyPathForScope):
+        Allow a special property empty path for "Scopes". This way for a
+        "<scopeObject>.property" we can show just the tooltip "property".
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree.properties-only > :matches(.title, .object-preview)):
+        (.object-tree.properties-only .object-tree-outline):
+        (.object-tree.properties-only .object-tree-property .property-name):
+        Tweak styles for only properties view, which won't have a top-level
+        preview and doesn't fade out enumerable properties.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.prototype.get treeOutline):
+        Access the TreeOutline.
+
+        (WebInspector.ObjectTreeView.prototype.showOnlyProperties):
+        Properties only view modifies the display slightly.
+
+        (WebInspector.ObjectTreeView.prototype.appendExtraPropertyDescriptor):
+        (WebInspector.ObjectTreeView.prototype._updateProperties):
+        Allow the client to add its own property descriptors to display
+        as a property in this ObjectTreeView.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype.refresh):
+        Switch to using an ObjectTreeView.
+
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._propertyPathIdentifierForTreeElement):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._objectTreeAddHandler):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._objectTreeExpandHandler):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._objectTreeCollapseHandler):
+        Keep track of what properties were expanded so we can auto-expand
+        them again when the sidebar refreshes.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/ScopeVariableTreeElement.js: Removed.
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+        Remove the now unused ScopeVariableTreeElement.js.
+
+2015-03-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Debugger Sidebar Icons Misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=142654
+
+        Reviewed by Timothy Hatcher.
+
+        The debugger sidebar content was accidentally 1px too small. The
+        TreeOutline being inside of a .detail-section was getting a smaller
+        font-size. We should just have the normal font-size for the
+        debugger navigation sidebar. This matches the Resources sidebar
+        in the TreeOutline, and icons line up better.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .details-section):
+
+2015-03-17  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: Removal of multiline completion hint broken in Details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=142796
+
+        Reviewed by Joseph Pecoraro.
+
+        Prioritize CodeMirrorCompletionController over CSSStyleDeclarationTextEditor.
+        Both classes control the current CodeMirror instance of the Details Sidebar.
+        This change prevents possible race conditions during complete or delete-complete phases,
+        especially during operations on multiple styles in one line.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor):
+
 2015-03-17  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Show rendering frames (and FPS) in Layout and Rendering timeline

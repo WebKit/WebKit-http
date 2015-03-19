@@ -1,3 +1,777 @@
+2015-03-18  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Unreviewed. GTK build fix after r181720.
+
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::styleDidChange):
+
+2015-03-18  Antti Koivisto  <antti@apple.com>
+
+        Test disk cache behavior when using back navigation cache policy
+        https://bugs.webkit.org/show_bug.cgi?id=142848
+
+        Reviewed by Chris Dumez.
+
+        Add a way to override the normal cache policy so we can test reload behavior of cache without actually reloading.
+
+        Test: http/tests/cache/disk-cache-validation-back-navigation-policy.html
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::addExtraFieldsToRequest):
+        * loader/FrameLoader.h:
+        (WebCore::FrameLoader::setOverrideCachePolicyForTesting):
+        * testing/Internals.cpp:
+        (WebCore::Internals::setOverrideCachePolicy):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2015-03-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        TextFragment#start() is always >= 0 since its type is unsigned
+        https://bugs.webkit.org/show_bug.cgi?id=142860
+
+        Reviewed by Andreas Kling.
+
+        Since TextFragment::m_start is unsigned, the result of
+        TextFragment::start() is always >= 0 and assertion is not effective.
+        This patch removes this assertion to suppress warnings.
+
+        * rendering/SimpleLineLayoutTextFragmentIterator.cpp:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::revertToFragment):
+
+2015-03-18  Alex Christensen  <achristensen@webkit.org>
+
+        [ContentExtensions] Prepare for compiling stylesheets of selectors to be used on every page.
+        https://bugs.webkit.org/show_bug.cgi?id=142799
+
+        Reviewed by Brady Eidson.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        Make private headers to use with API tests.
+        * contentextensions/CompiledContentExtension.cpp:
+        (WebCore::ContentExtensions::CompiledContentExtension::globalDisplayNoneSelectors):
+        * contentextensions/CompiledContentExtension.h:
+        Added method to get only the selectors from the root of the DFA, which apply to all URLs.
+        * contentextensions/ContentExtensionCompiler.cpp:
+        (WebCore::ContentExtensions::compileRuleList):
+        Added checking if the trigger will match everything.
+        These actions can be put directly on the root of the DFA without adding extra epsilon transitions to the NFA.
+        * contentextensions/DFA.h:
+        (WebCore::ContentExtensions::DFA::nodeAt):
+        * contentextensions/DFABytecodeInterpreter.cpp:
+        (WebCore::ContentExtensions::DFABytecodeInterpreter::actionsFromDFARoot):
+        (WebCore::ContentExtensions::DFABytecodeInterpreter::interpret):
+        * contentextensions/DFABytecodeInterpreter.h:
+        * contentextensions/NFA.h:
+        * contentextensions/URLFilterParser.cpp:
+        (WebCore::ContentExtensions::Term::quantifier):
+        Sink terms to a vector then add nodes to NFA when finalizing after checking for regexes that match everything.
+        (WebCore::ContentExtensions::GraphBuilder::GraphBuilder):
+        (WebCore::ContentExtensions::GraphBuilder::finalize):
+        (WebCore::ContentExtensions::GraphBuilder::parseStatus):
+        (WebCore::ContentExtensions::GraphBuilder::atomPatternCharacter):
+        (WebCore::ContentExtensions::GraphBuilder::atomBuiltInCharacterClass):
+        (WebCore::ContentExtensions::GraphBuilder::quantifyAtom):
+        (WebCore::ContentExtensions::GraphBuilder::atomBackReference):
+        (WebCore::ContentExtensions::GraphBuilder::assertionBOL):
+        (WebCore::ContentExtensions::GraphBuilder::assertionWordBoundary):
+        (WebCore::ContentExtensions::GraphBuilder::atomCharacterClassAtom):
+        (WebCore::ContentExtensions::GraphBuilder::atomCharacterClassRange):
+        (WebCore::ContentExtensions::GraphBuilder::atomCharacterClassBuiltIn):
+        (WebCore::ContentExtensions::GraphBuilder::atomParentheticalAssertionBegin):
+        (WebCore::ContentExtensions::GraphBuilder::disjunction):
+        (WebCore::ContentExtensions::GraphBuilder::hasError):
+        (WebCore::ContentExtensions::GraphBuilder::fail):
+        (WebCore::ContentExtensions::GraphBuilder::sinkFloatingTermIfNecessary):
+        (WebCore::ContentExtensions::URLFilterParser::addPattern):
+        (WebCore::ContentExtensions::URLFilterParser::statusString):
+        (WebCore::ContentExtensions::GraphBuilder::errorMessage): Deleted.
+        * contentextensions/URLFilterParser.h:
+        Use an enum instead of strings for the status to avoid checking strings when we have a regex that matches everything.
+
+2015-03-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Fix build failure due to FALLTHROUGH in unreachable code
+        https://bugs.webkit.org/show_bug.cgi?id=142703
+
+        Reviewed by Benjamin Poulain.
+
+        FALLTHROUGH should not exist in unreachable code marked by
+        ASSERT_NOT_REACHABLE.
+
+        When !ENABLE(CSS_SELECTOR_JIT) and Debug mode is enabled,
+        both ASSERT_NOT_REACHED and FALLTHROUGH are instantiated
+        and it cause build failure.
+
+        Here, since CompiledSingle/CompiledSingleWithRootFilter are
+        not set when !ENABLE(CSS_SELECTOR_JIT). So dropping FALLTHROUGH
+        and leave ASSERT_NOT_REACHED.
+        And since ASSERT_NOT_ReACHED is stripped when Release build,
+        I've inserted FALLTHROUGH() if ASSERT_DISABLED.
+        This fix is the same to r162906.
+
+        * dom/SelectorQuery.cpp:
+        (WebCore::SelectorDataList::execute):
+
+2015-03-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Switching between two SVG images with no intrinsic sizes causes them to get the default SVG size instead of the container size.
+        https://bugs.webkit.org/show_bug.cgi?id=142805.
+
+        Reviewed by Darin Adler.
+        
+        The bug happens due to wrong logic in RenderImage::imageDimensionsChanged().
+        This function decides to setNeedsLayout() if the intrinsic size of the image
+        changes. If the size does not change, it only repaints the image rectangle.
+        When switching the src of the an image between two SVG images and both of
+        them have no intrinsic size, we do not updateInnerContentRect() and this
+        means an SVGImageForContainer is not going to be created for this image.
+        When the image is drawn, it is drawn directly from the SVGImage. And this
+        means the drawing has to be scaled by container_size / SVG_default_intrinsic_size
+        
+        After figuring out that I need to updateInnerContentRect() to fix this bug,
+        I found out Blink has already changed this code to do the same thing. But 
+        they also did more clean-up in this function. Here is the link
+        https://codereview.chromium.org/114323004. I think their change seems correct
+        although they did not say what exactly they were trying to fix.
+        
+        The plan for repaintOrMarkForLayout(), which is the new name of this function,
+        is the following:
+            -- setNeedLayout() if the intrinsic size changes and it affects the size
+               of the image.
+            -- updateInnerContentRect() if the intrinsic size did not change but the
+               image has exiting layout.
+            -- repaint the image rectangle if layout is not needed.
+            
+        This change also removes the call to computeLogicalWidthInRegion(), which is
+        almost running a layout for the image. This call figures out whether the image
+        needs to setNeedsLayout(). This call is unnecessary; the image needs to run a
+        layout if the intrinsic size has changed and it affects the size of the image.
+                    
+        Test: svg/as-image/svg-no-intrinsic-size-switching.html
+
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::styleDidChange): Change the function call.
+        (WebCore::RenderImage::imageChanged): Rename local variable and change the
+        function call.
+        
+        (WebCore::RenderImage::updateIntrinsicSizeIfNeeded): Simplify this function.
+        Call setIntrinsicSize() with the new size unless the image is in error state.
+        
+        (WebCore::RenderImage::repaintOrMarkForLayout): This a better name for this
+        function since it is called even if the intrinsic size was not changed.
+        (WebCore::RenderImage::imageDimensionsChanged): Deleted.
+        
+        * rendering/RenderImage.h: Rename imageDimensionsChanged() and change the 
+        updateIntrinsicSizeIfNeeded() to return void.
+        
+        * rendering/svg/RenderSVGForeignObject.cpp:
+        (WebCore::RenderSVGForeignObject::paint): Code cleanup. This function can
+        only handle the paint phases PaintPhaseForeground and PaintPhaseSelection.
+        Use this information to simplify the logic and order of painting there.
+
+2015-03-18  Jeremy Jones  <jeremyj@apple.com>
+
+        Fix typo in playerViewControllerWillCancelOptimizedFullscree.
+        https://bugs.webkit.org/show_bug.cgi?id=142745
+
+        Reviewed by Darin Adler.
+
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        (-[WebAVPlayerController playerViewControllerWillCancelOptimizedFullscreen:]):
+        (-[WebAVPlayerController playerViewControllerWillCancelOptimizedFullscree:]): Deleted.
+
+2015-03-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid repaints when changing transform on an element with multiple background images
+        https://bugs.webkit.org/show_bug.cgi?id=142841
+
+        Reviewed by Zalan Bujtas.
+        
+        Replace the cheap test for changed images in RenderElement::updateFillImages()
+        with an exhaustive test that walks the entire list of background images,
+        since any ensuing repaint is way more expensive than a slightly more expensive check here.
+        
+        Test: fast/repaint/multiple-backgrounds-style-change.html
+
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::updateFillImages):
+        * rendering/style/FillLayer.cpp:
+        (WebCore::layerImagesIdentical): See if both images are the same (either none
+        or both mask images, and same image pointer).
+        (WebCore::FillLayer::imagesIdentical): Walk the two FillLayer lists, checking the images
+        on each one. Returns false if we reach the end of one list before the other, or the images
+        are different.
+        * rendering/style/FillLayer.h: New static function; static because
+        it compares two FillLayer lists, and I think that makes more sense than
+        a member function.
+
+2015-03-18  Anders Carlsson  <andersca@apple.com>
+
+        Pass cookies by reference in CookieHash functions
+        https://bugs.webkit.org/show_bug.cgi?id=142839
+
+        Reviewed by Sam Weinig.
+
+        * platform/Cookie.h:
+        (WebCore::CookieHash::hash):
+        (WebCore::CookieHash::equal):
+
+2015-03-18  Tim Horton  <timothy_horton@apple.com>
+
+        Temporarily fix the !ENABLE(CSS_SELECTOR_JIT) and assertions-enabled build
+
+        * dom/SelectorQuery.cpp:
+        (WebCore::SelectorDataList::execute):
+
+2015-03-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Call CTFontSetRenderingParameters before rendering text
+        https://bugs.webkit.org/show_bug.cgi?id=142816
+
+        Reviewed by Darin Adler.
+
+        No new tests.
+
+        * platform/graphics/cocoa/FontCascadeCocoa.mm:
+        (WebCore::showGlyphsWithAdvances):
+        * platform/spi/cocoa/CoreTextSPI.h:
+
+2015-03-18  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Log the number of network cache requests that we have never seen before
+        https://bugs.webkit.org/show_bug.cgi?id=142828
+        <rdar://problem/19632130>
+
+        Reviewed by Antti Koivisto.
+
+        Add diagnostic logging key for network cache efficacy logging.
+
+        * page/DiagnosticLoggingKeys.cpp:
+        (WebCore::DiagnosticLoggingKeys::neverSeenBeforeKey):
+        (WebCore::DiagnosticLoggingKeys::requestKey):
+        * page/DiagnosticLoggingKeys.h:
+
+2015-03-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use filterRootId in SelectorQuery even if CSS JIT is not enabled
+        https://bugs.webkit.org/show_bug.cgi?id=142703
+
+        Reviewed by Benjamin Poulain.
+
+        filterRootId pruning path is not inherently related to CSS JIT.
+        This patch enables filterRootId even in the environment
+        where CSS JIT is not enabled.
+
+        * dom/SelectorQuery.cpp:
+        (WebCore::filterRootById):
+        (WebCore::SelectorDataList::executeSingleSelectorData):
+        (WebCore::SelectorDataList::execute):
+        * dom/SelectorQuery.h:
+
+2015-03-18  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Use Vector<>::const_iterator instead of custom FlowContents::Iterator.
+        https://bugs.webkit.org/show_bug.cgi?id=142809
+
+        Reviewed by Antti Koivisto.
+
+        FlowContents::Iterator simply iterates on a vector<>. No need to custom implement it.
+
+        No change in functionality.
+
+        * rendering/SimpleLineLayoutFlowContents.h:
+        (WebCore::SimpleLineLayout::FlowContents::begin):
+        (WebCore::SimpleLineLayout::FlowContents::end):
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::Iterator): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator++): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator--): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator==): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator!=): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator*): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator->): Deleted.
+        * rendering/SimpleLineLayoutTextFragmentIterator.cpp:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::skipToNextPosition):
+
+2015-03-18  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Change FlowContents::segmentForPosition() to segmentForRun().
+        https://bugs.webkit.org/show_bug.cgi?id=142785
+
+        Reviewed by Antti Koivisto.
+
+        This is in transition to support <br>. A particular position could point to multiple
+        segments when <br> is directly followed by text.
+
+        No change in functionality.
+
+        * rendering/SimpleLineLayoutFlowContents.cpp:
+        (WebCore::SimpleLineLayout::FlowContents::segmentIndexForRunSlow):
+        (WebCore::SimpleLineLayout::FlowContents::segmentIndexForPositionSlow): Deleted.
+        * rendering/SimpleLineLayoutFlowContents.h:
+        (WebCore::SimpleLineLayout::FlowContents::segmentForRun):
+        (WebCore::SimpleLineLayout::FlowContents::segmentIndexForPosition): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::segmentForPosition): Deleted.
+        * rendering/SimpleLineLayoutResolver.cpp:
+        (WebCore::SimpleLineLayout::RunResolver::Run::text):
+
+2015-03-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Skip trying to paint overlay scrollbars when there are none or they are clipped out
+        https://bugs.webkit.org/show_bug.cgi?id=142811
+        rdar://problem/20200725
+
+        Reviewed by Darin Adler.
+
+        In some content with lots of layers and overflow:scroll, we could spend 20% of
+        the time under paintOverflowControlsForFragments() setting up an (empty) clip,
+        and then trying to draw scrollbars that we don't have.
+        
+        Avoid calling paintOverflowControlsForFragments() if there are no scrollbars,
+        and don't both setting up an empty clip just to paint nothing.
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::paintLayerContents):
+        (WebCore::RenderLayer::paintOverflowControlsForFragments):
+
+2015-03-18  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Unreviewed build fix after r181665.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::setSize):
+
+2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused "preprocessor" parameter to sub-CodeGenerators
+        https://bugs.webkit.org/show_bug.cgi?id=142793
+
+        Reviewed by Darin Adler.
+
+        * bindings/scripts/CodeGenerator.pm:
+        (ProcessDocument):
+        (FileNamePrefix):
+        * bindings/scripts/CodeGeneratorObjC.pm:
+
+2015-03-18  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Split fragments on renderer boundary on the fly.
+        https://bugs.webkit.org/show_bug.cgi?id=142579
+
+        Reviewed by Antti Koivisto.
+
+        Fragment splitting at renderers' boundary at the end of the line is no longer needed.
+        This patch ensures that TextFragmentIterator::nextTextFragment() does not concatenate
+        fragments across renderer boundary.
+
+        Test: fast/text/simple-line-with-multiple-renderers.html
+
+        * rendering/SimpleLineLayout.cpp:
+        (WebCore::SimpleLineLayout::revertRuns):
+        (WebCore::SimpleLineLayout::LineState::isEmpty):
+        (WebCore::SimpleLineLayout::LineState::appendFragmentAndCreateRunIfNeeded): Check if fragments need a new run and
+        whether neighboring fragments need collapsing.
+        (WebCore::SimpleLineLayout::LineState::revertUncommitted): Revert fragments over multiple renderers if they form
+        a fragment continuation.
+        (WebCore::SimpleLineLayout::LineState::removeTrailingWhitespace):
+        (WebCore::SimpleLineLayout::forceFragmentToLine): Ensure that if a fragment has continuation across multiple renderers,
+        they all get added to the current line.
+        (WebCore::SimpleLineLayout::createLineRuns):
+        (WebCore::SimpleLineLayout::LineState::appendFragment): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::FragmentForwardIterator): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator++): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator!=): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator*): Deleted.
+        (WebCore::SimpleLineLayout::begin): Deleted.
+        (WebCore::SimpleLineLayout::end): Deleted.
+        (WebCore::SimpleLineLayout::preWrap): Deleted.
+        (WebCore::SimpleLineLayout::removeTrailingWhitespace): Deleted.
+        (WebCore::SimpleLineLayout::updateLineConstrains): Deleted.
+        (WebCore::SimpleLineLayout::splitRunsAtRendererBoundary): Deleted.
+        (WebCore::SimpleLineLayout::createTextRuns): Deleted.
+        (WebCore::SimpleLineLayout::create): Deleted.
+        (WebCore::SimpleLineLayout::Layout::create): Deleted.
+        * rendering/SimpleLineLayoutFlowContents.h:
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator+):
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator*):
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator->):
+        * rendering/SimpleLineLayoutFunctions.cpp:
+        (WebCore::SimpleLineLayout::paintFlow): Unrelated fix on non-collapsed tab position.
+        * rendering/SimpleLineLayoutTextFragmentIterator.cpp:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragmentIterator):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::nextTextFragment):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::revertToFragment):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::textWidth):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::skipToNextPosition):
+        * rendering/SimpleLineLayoutTextFragmentIterator.h:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::TextFragment):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::overlapsToNextRenderer):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::isCollapsible):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::operator==):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::isLineBreak):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::split): Deleted.
+
+2015-03-18  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Flex and grid items should be painted as inline-blocks
+        https://bugs.webkit.org/show_bug.cgi?id=142266
+
+        Reviewed by Darin Adler.
+
+        Based on Blink r157004 by <cbiesinger@chromium.org>.
+        https://src.chromium.org/viewvc/blink?revision=157004&view=revision
+
+        Both flexbox and grid specs define that the painting order of flex/grid
+        items is the same as inline blocks. See
+        http://dev.w3.org/csswg/css-flexbox/#painting and
+        http://dev.w3.org/csswg/css-grid/#z-order.
+
+        Extracted inline blocks painting code from InlineElementBox and moved to
+        a helper method that will be reused for flexboxes and grids.
+
+        Tests: css3/flexbox/flex-item-text-background-not-interleaved.html
+               fast/css-grid-layout/grid-item-text-background-not-interleaved.html
+
+        * rendering/InlineElementBox.cpp:
+        (WebCore::InlineElementBox::paint): Move code to
+        RenderElement::paintAsInlineBlock().
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::paintChild): Add new argument to paint children
+        as inline blocks.
+        * rendering/RenderBlock.h: Define PaintType enmu and modify paintChild()
+        signature to add the new argument.
+        * rendering/RenderElement.cpp:
+        (WebCore::paintPhase): Paint element in a phase.
+        (WebCore::RenderElement::paintAsInlineBlock): Code extracted from
+        InlineElementBox::paint().
+        * rendering/RenderElement.h: Add new method signature.
+        * rendering/RenderFlexibleBox.cpp:
+        (WebCore::RenderFlexibleBox::paintChildren): Call
+        RenderBlock::paintChild() with the new argument.
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::paintChildren): Ditto.
+
+2015-03-18  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Log total number of network cache queries using diagnostic logging
+        https://bugs.webkit.org/show_bug.cgi?id=142803
+        <rdar://problem/19632130>
+
+        Reviewed by Antti Koivisto.
+
+        Add diagnostic logging key needed for network efficacy logging.
+
+        * page/DiagnosticLoggingKeys.cpp:
+        (WebCore::DiagnosticLoggingKeys::retrievalRequestKey):
+        * page/DiagnosticLoggingKeys.h:
+
+2015-03-18  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build after r181660
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::setImmediateActionStage):
+        * page/EventHandler.h:
+        (WebCore::EventHandler::setImmediateActionStage):
+        Un-inline setImmediateActionStage, because it is exported to WebCore, and
+        exporting inline thing causes random weak symbol errors on some platforms.
+
+2015-03-17  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Ignore some deprecation warnings
+        https://bugs.webkit.org/show_bug.cgi?id=142813
+
+        Reviewed by Mark Rowe.
+
+        Fixing the deprecations is tracked by: <rdar://problem/20201450>
+
+        * editing/cocoa/HTMLConverter.mm:
+        (HTMLConverter::_processElement):
+
+2015-03-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181667, r181682, and r181683.
+        https://bugs.webkit.org/show_bug.cgi?id=142812
+
+        Broke multiple tests with ASan, plus dependent commits
+        (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Simple line layout: Split fragments on renderer boundary on
+        the fly."
+        https://bugs.webkit.org/show_bug.cgi?id=142579
+        http://trac.webkit.org/changeset/181667
+
+        "Simple line layout: Change FlowContents::segmentForPosition()
+        to segmentForRun()."
+        https://bugs.webkit.org/show_bug.cgi?id=142785
+        http://trac.webkit.org/changeset/181682
+
+        "Simple line layout: Use Vector<>::const_iterator instead of
+        custom FlowContents::Iterator."
+        https://bugs.webkit.org/show_bug.cgi?id=142809
+        http://trac.webkit.org/changeset/181683
+
+2015-03-17  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Use Vector<>::const_iterator instead of custom FlowContents::Iterator.
+        https://bugs.webkit.org/show_bug.cgi?id=142809
+
+        Reviewed by Antti Koivisto.
+
+        FlowContents::Iterator simply iterates on a vector<>. No need to custom implement it.
+
+        No change in functionality.
+
+        * rendering/SimpleLineLayoutFlowContents.h:
+        (WebCore::SimpleLineLayout::FlowContents::begin):
+        (WebCore::SimpleLineLayout::FlowContents::end):
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::Iterator): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator++): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator--): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator==): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator!=): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator*): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator->): Deleted.
+        * rendering/SimpleLineLayoutTextFragmentIterator.cpp:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::skipToNextPosition):
+
+2015-03-17  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Change FlowContents::segmentForPosition() to segmentForRun().
+        https://bugs.webkit.org/show_bug.cgi?id=142785
+
+        Reviewed by Antti Koivisto.
+
+        This is in transition to support <br>. A particular position could point to multiple
+        segments when <br> is directly followed by text.
+
+        No change in functionality.
+
+        * rendering/SimpleLineLayoutFlowContents.cpp:
+        (WebCore::SimpleLineLayout::FlowContents::segmentIndexForRunSlow):
+        (WebCore::SimpleLineLayout::FlowContents::segmentIndexForPositionSlow): Deleted.
+        * rendering/SimpleLineLayoutFlowContents.h:
+        (WebCore::SimpleLineLayout::FlowContents::segmentForRun):
+        (WebCore::SimpleLineLayout::FlowContents::segmentIndexForPosition): Deleted.
+        (WebCore::SimpleLineLayout::FlowContents::segmentForPosition): Deleted.
+        * rendering/SimpleLineLayoutResolver.cpp:
+        (WebCore::SimpleLineLayout::RunResolver::Run::text):
+
+2015-03-17  Chris Dumez  <cdumez@apple.com>
+
+        [Mac][iOS] setSharedTimerFireInterval() / stopSharedTimer() are expensive
+        https://bugs.webkit.org/show_bug.cgi?id=142752
+        <rdar://problem/20176731>
+
+        Reviewed by Antti Koivisto.
+
+        setSharedTimerFireInterval() / stopSharedTimer() are expensive on Mac
+        and iOS on pages using a lot of timers.
+
+        For example, on bing.com / iOS, ~15.4% of the CPU time is spent in
+        setSharedTimerFireInterval() and ~14.7% of the CPU time is spent in
+        stopSharedTimer(). The expensive calls are CFRunLoopAddTimer (11.4%),
+        CFRunLoopTimerInvalidate (14.1%), CFRunLoopTimerCreate (3.3%).
+
+        The issue is that we keep creating, adding to run loop modes, and then
+        destroying the sharedTimer for each firing event. This is very
+        expensive. In such case, the CFRunLoopTimerRef documentation advises to
+        """
+        ... create a repeating timer with an initial firing time in the distant
+        future (or the initial firing time) and a very large repeat interval—on
+        the order of decades or more—and add it to all the necessary run loop
+        modes. Then, when you know when the timer should fire next, you reset
+        the firing time with CFRunLoopTimerSetNextFireDate, perhaps from the
+        timer’s own callback function. This technique effectively produces a
+        reusable, asynchronous timer.
+        """ [1].
+
+        Doing so greatly decreases CPU time spend in:
+        - setSharedTimerFireInterval(): 15.4% -> 4.6%
+        - stopSharedTimer(): 14.6% -> 8.6%
+
+        Overall CPU time spent on bing.com in timerFired() goes down from
+        ~61.2% to ~49.5%.
+
+        This patch also refactors the SharedTimer code to share as much as
+        possible between Mac and iOS.
+
+        This patch is based in part on the following patch:
+        http://trac.webkit.org/changeset/143210
+
+        [1] https://developer.apple.com/library/prerelease/ios/documentation/CoreFoundation/Reference/CFRunLoopTimerRef/index.html#//apple_ref/c/func/CFRunLoopTimerSetNextFireDate
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/SharedTimer.h:
+        (WebCore::SharedTimer::invalidate):
+        (WebCore::MainThreadSharedTimer::setFiredFunction): Deleted.
+        (WebCore::MainThreadSharedTimer::setFireInterval): Deleted.
+        (WebCore::MainThreadSharedTimer::stop): Deleted.
+        * platform/ThreadTimers.cpp:
+        (WebCore::ThreadTimers::fireTimersInNestedEventLoop):
+        * platform/cf/SharedTimerCF.mm: Added.
+        (WebCore::applicationDidBecomeActive):
+        (WebCore::setupPowerObserver):
+        (WebCore::setSharedTimerFiredFunction):
+        (WebCore::timerFired):
+        (WebCore::restartSharedTimer):
+        (WebCore::invalidateSharedTimer):
+        (WebCore::setSharedTimerFireInterval):
+        (WebCore::stopSharedTimer):
+        * platform/efl/SharedTimerEfl.cpp:
+        (WebCore::invalidateSharedTimer):
+        * platform/gtk/SharedTimerGtk.cpp:
+        (WebCore::invalidateSharedTimer):
+        * platform/ios/SharedTimerIOS.mm: Removed.
+        * platform/mac/PowerObserverMac.h: Copied from Source/WebCore/platform/efl/SharedTimerEfl.cpp.
+        * platform/mac/PowerObserverMac.mm: Renamed from Source/WebCore/platform/mac/SharedTimerMac.mm.
+        (WebCore::PowerObserver::PowerObserver):
+        (WebCore::PowerObserver::~PowerObserver):
+        (WebCore::PowerObserver::didReceiveSystemPowerNotification):
+        * platform/win/SharedTimerWin.cpp:
+        (WebCore::removeSharedTimer):
+
+2015-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Cannot invoke action menus anymore
+        https://bugs.webkit.org/show_bug.cgi?id=142797
+        <rdar://problem/20032670>
+
+        Reviewed by Beth Dakin.
+
+        * platform/spi/mac/NSMenuSPI.h:
+        Add additional NSMenu SPI.
+
+2015-03-17  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Split fragments on renderer boundary on the fly.
+        https://bugs.webkit.org/show_bug.cgi?id=142579
+
+        Reviewed by Antti Koivisto.
+
+        Fragment splitting at renderers' boundary at the end of the line is no longer needed.
+        This patch ensures that TextFragmentIterator::nextTextFragment() does not concatenate
+        fragments across renderer boundary.
+
+        Test: fast/text/simple-line-with-multiple-renderers.html
+
+        * rendering/SimpleLineLayout.cpp:
+        (WebCore::SimpleLineLayout::revertRuns):
+        (WebCore::SimpleLineLayout::LineState::isEmpty):
+        (WebCore::SimpleLineLayout::LineState::appendFragmentAndCreateRunIfNeeded): Check if fragments need a new run and
+        whether neighboring fragments need collapsing.
+        (WebCore::SimpleLineLayout::LineState::revertUncommitted): Revert fragments over multiple renderers if they form
+        a fragment continuation.
+        (WebCore::SimpleLineLayout::LineState::removeTrailingWhitespace):
+        (WebCore::SimpleLineLayout::forceFragmentToLine): Ensure that if a fragment has continuation across multiple renderers,
+        they all get added to the current line.
+        (WebCore::SimpleLineLayout::createLineRuns):
+        (WebCore::SimpleLineLayout::LineState::appendFragment): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::FragmentForwardIterator): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator++): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator!=): Deleted.
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator*): Deleted.
+        (WebCore::SimpleLineLayout::begin): Deleted.
+        (WebCore::SimpleLineLayout::end): Deleted.
+        (WebCore::SimpleLineLayout::preWrap): Deleted.
+        (WebCore::SimpleLineLayout::removeTrailingWhitespace): Deleted.
+        (WebCore::SimpleLineLayout::updateLineConstrains): Deleted.
+        (WebCore::SimpleLineLayout::splitRunsAtRendererBoundary): Deleted.
+        (WebCore::SimpleLineLayout::createTextRuns): Deleted.
+        (WebCore::SimpleLineLayout::create): Deleted.
+        (WebCore::SimpleLineLayout::Layout::create): Deleted.
+        * rendering/SimpleLineLayoutFlowContents.h:
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator+):
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator*):
+        (WebCore::SimpleLineLayout::FlowContents::Iterator::operator->):
+        * rendering/SimpleLineLayoutFunctions.cpp:
+        (WebCore::SimpleLineLayout::paintFlow): Unrelated fix on non-collapsed tab position.
+        * rendering/SimpleLineLayoutTextFragmentIterator.cpp:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragmentIterator):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::nextTextFragment):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::revertToFragment):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::textWidth):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::skipToNextPosition):
+        * rendering/SimpleLineLayoutTextFragmentIterator.h:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::TextFragment):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::overlapsToNextRenderer):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::isCollapsible):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::operator==):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::isLineBreak):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::split): Deleted.
+
+2015-03-17  Jeremy Jones  <jeremyj@apple.com>
+
+        When tab hides, pause fullscreen and exit normally.
+        https://bugs.webkit.org/show_bug.cgi?id=142685
+
+        Reviewed by Eric Carlson.
+
+        Pause fullscreen playback when switching tabs. Exit fullscreen is not necessary and even prevents
+        the normal flow of teardown. This allows the normal exit fullscreen call to succeed and call its callback.
+
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        (WebVideoFullscreenInterfaceAVKit::requestHideAndExitFullscreen):
+
+2015-03-17  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Video position is incorrect when located inside a frame.
+        https://bugs.webkit.org/show_bug.cgi?id=142784
+
+        Reviewed by Brent Fulgham.
+
+        We need to take the enclosing frame's position into account, when finding the video position.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::setSize):
+
+2015-03-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        Compile character ranges targeting the same state as range check in the bytecode
+        https://bugs.webkit.org/show_bug.cgi?id=142759
+
+        Reviewed by Alex Christensen.
+
+        Previously, character ranges would be compiled as many individual character checks.
+        For example, a transition on "[a-z]" would do 26 character checks + jump, which leads
+        to enormous matchines.
+
+        With this patch, we find the ranges at lowering time and generate a single instruction
+        for them: "CheckValueRange". This helps making the machine denser when the input
+        use character sets.
+
+        The second part of this patch goes further in the case where the transitions out of
+        a state cover the entire alphabet. In that case, we create a fallback transition
+        on the fly and remove all the ranges made useless.
+        That case is common when ranges are used with inverse character set (e.g. [^a]+a).
+
+        * contentextensions/DFABytecode.h:
+        (WebCore::ContentExtensions::instructionSizeWithArguments):
+        * contentextensions/DFABytecodeCompiler.cpp:
+        (WebCore::ContentExtensions::DFABytecodeCompiler::emitCheckValueRange):
+        (WebCore::ContentExtensions::DFABytecodeCompiler::compileNode):
+        (WebCore::ContentExtensions::DFABytecodeCompiler::compileNodeTransitions):
+        (WebCore::ContentExtensions::DFABytecodeCompiler::compileCheckForRange):
+        * contentextensions/DFABytecodeCompiler.h:
+        Extend the compiler to detect ranges and lower them as CheckValueRange.
+
+        * contentextensions/DFABytecodeInterpreter.cpp:
+        (WebCore::ContentExtensions::DFABytecodeInterpreter::interpret):
+        Range checks in the interpreter.
+
+        * contentextensions/NFA.cpp:
+        (WebCore::ContentExtensions::NFA::setFinal):
+        This assertion does not make sense with the current codebase. Actions are "compressed",
+        it is possible to have two patterns with the same action.
+
+        * contentextensions/NFAToDFA.cpp:
+        (WebCore::ContentExtensions::simplifyTransitions):
+        A very simple DFA optimization function: it only reduce the strength of ranges.
+
+        (WebCore::ContentExtensions::NFAToDFA::convert):
+
 2015-03-17  Jer Noble  <jer.noble@apple.com>
 
         REGRESSION (r181423): Crash @ generatedcontent.org at com.apple.WebCore: WebCore::MediaPlayer::maximumDurationToCacheMediaTime const + 4

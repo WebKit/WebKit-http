@@ -1,3 +1,256 @@
+2015-03-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Don't paint PDFs on every scroll
+        https://bugs.webkit.org/show_bug.cgi?id=142857
+        rdar://problem/20130207
+
+        Reviewed by Tim Horton.
+        
+        Don't push a scale factor onto the PDF layer controller if it hasn't
+        changed, since doing so causes a repaint.
+
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::updatePageAndDeviceScaleFactors):
+
+2015-03-18  Anders Carlsson  <andersca@apple.com>
+
+        Use && instead of & when deciding if the network cache should be cleared
+        https://bugs.webkit.org/show_bug.cgi?id=142845
+
+        Reviewed by Antti Koivisto.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::deleteWebsiteData):
+
+2015-03-18  Anders Carlsson  <andersca@apple.com>
+
+        Add WKContextGetWebsiteDataStore API
+        https://bugs.webkit.org/show_bug.cgi?id=142832
+        rdar://problem/16544715
+
+        Reviewed by Sam Weinig.
+
+        Also add WKWebsiteDataStoreRef which is toll-free bridged to _WKWebsiteDataStore.
+
+        * Shared/API/c/WKBase.h:
+        Add new declaration.
+
+        * UIProcess/API/APIWebsiteDataStore.cpp:
+        (API::WebsiteDataStore::create):
+        * UIProcess/API/APIWebsiteDataStore.h:
+        Add a new function that takes a configuration.
+
+        * UIProcess/API/C/WKAPICast.h:
+        Add cast.
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetWebsiteDataStore):
+        Return the context's website data store.
+
+        * UIProcess/API/C/WKContext.h:
+        Add new declaration.
+
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp: Added.
+        * UIProcess/API/C/WKWebsiteDataStoreRef.h: Added.
+        Add new files.
+
+        * UIProcess/WebKeyValueStorageManager.cpp:
+        (WebKit::WebKeyValueStorageManager::getKeyValueStorageOrigins):
+        (WebKit::WebKeyValueStorageManager::getStorageDetailsByOrigin):
+        (WebKit::WebKeyValueStorageManager::deleteEntriesForOrigin):
+        (WebKit::WebKeyValueStorageManager::deleteAllEntries):
+        Update now that WebProcessPool holds on to an API::WebsiteDataStore.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::WebProcessPool):
+        (WebKit::WebProcessPool::createWebPage):
+        * UIProcess/WebProcessPool.h:
+        WebProcessPool should hold on to an API::WebsiteDataStore instead of a WebKit::WebsiteDataStore.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        Add new files.
+
+2015-03-18  Tim Horton  <timothy_horton@apple.com>
+
+        Cannot invoke action menus anymore
+        https://bugs.webkit.org/show_bug.cgi?id=142797
+        <rdar://problem/20032670>
+
+        * UIProcess/API/mac/WKView.mm:
+        Need one more respondsToSelector check.
+
+2015-03-18  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Log the number of network cache requests that we have never seen before
+        https://bugs.webkit.org/show_bug.cgi?id=142828
+        <rdar://problem/19632130>
+
+        Reviewed by Antti Koivisto.
+
+        Log the number of network cache requests that we have never seen before
+        using diagnostic logging.
+
+        * NetworkProcess/cache/NetworkCacheStatisticsCocoa.mm:
+        (WebKit::NetworkCache::Statistics::recordNotUsingCacheForRequest):
+        (WebKit::NetworkCache::Statistics::recordRetrievalFailure):
+
+2015-03-17  Antti Koivisto  <antti@apple.com>
+
+        Prune least valuable cache entries first
+        https://bugs.webkit.org/show_bug.cgi?id=142810
+        rdar://problem/19632130
+
+        Reviewed by Darin Adler.
+
+        When pruning the cache estimate relative value of each entry using formula
+
+        age = current time - creation time
+        accessAge = last access time - creation time
+        value = accessAge / age
+
+        That is, we value entries that have been accessed recently and survived in the cache longest.
+
+        The most valuable entries don't get deleted at all while the deletion probablity ramps up for
+        lower value entries.
+
+        * NetworkProcess/cache/NetworkCacheFileSystemPosix.h:
+        (WebKit::NetworkCache::fileTimes):
+
+            Get the creation time and access time for a file.
+
+        (WebKit::NetworkCache::updateFileAccessTimeIfNeeded):
+
+            Update access time manually if the file system doesn't do it automatically.
+
+        * NetworkProcess/cache/NetworkCacheIOChannel.h:
+        (WebKit::NetworkCache::IOChannel::path):
+        (WebKit::NetworkCache::IOChannel::type):
+        * NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm:
+        (WebKit::NetworkCache::IOChannel::IOChannel):
+        (WebKit::NetworkCache::IOChannel::open):
+
+            Remember the file path and move most of the work to constructor.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::Storage):
+        (WebKit::NetworkCache::Storage::remove):
+        (WebKit::NetworkCache::Storage::updateFileAccessTime):
+        (WebKit::NetworkCache::Storage::dispatchReadOperation):
+        (WebKit::NetworkCache::deletionProbability):
+
+            Compute the probability based on entry age and access time.
+
+        (WebKit::NetworkCache::Storage::shrinkIfNeeded):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        (WebKit::NetworkCache::Storage::serialBackgroundIOQueue):
+        (WebKit::NetworkCache::Storage::deleteQueue): Deleted.
+
+            More generic name.
+
+2015-03-18  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Log total number of network cache queries using diagnostic logging
+        https://bugs.webkit.org/show_bug.cgi?id=142803
+        <rdar://problem/19632130>
+
+        Reviewed by Antti Koivisto.
+
+        Log total number of network cache queries using diagnostic logging.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::retrieve):
+        * NetworkProcess/cache/NetworkCacheStatistics.h:
+        * NetworkProcess/cache/NetworkCacheStatisticsCocoa.mm:
+        (WebKit::NetworkCache::Statistics::recordCacheRetrievalRequest):
+
+2015-03-18  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] We should not even try the network cache for non-HTTP protocol requests
+        https://bugs.webkit.org/show_bug.cgi?id=142802
+        <rdar://problem/19632130>
+
+        Reviewed by Antti Koivisto.
+
+        We should not even try the network cache for non-HTTP protocol requests
+        and the network cache cannot handle those.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::start):
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::canRetrieve):
+        (WebKit::NetworkCache::Cache::retrieve):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheStatisticsCocoa.mm:
+        (WebKit::NetworkCache::retrieveDecisionToDiagnosticKey):
+
+2015-03-17  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Ignore some deprecation warnings
+        https://bugs.webkit.org/show_bug.cgi?id=142813
+
+        Reviewed by Mark Rowe.
+
+        Fixing the deprecations is tracked by: <rdar://problem/20201450>
+
+        * UIProcess/mac/WebPopupMenuProxyMac.mm:
+        (WebKit::WebPopupMenuProxyMac::populate):
+
+2015-03-17  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Expose JavaScript binding interface through ewk_extension
+        https://bugs.webkit.org/show_bug.cgi?id=142033
+
+        Reviewed by Gyuyoung Kim.
+
+        * PlatformEfl.cmake:
+        * UIProcess/API/efl/tests/extensions/extension_sample.cpp: Registered test object for new test case.
+        * UIProcess/API/efl/tests/test_ewk2_javascript_binding.cpp: Added simple binding API test case.
+        (EWK2ContextTestWithExtension::messageReceivedCallback):
+        (EWK2ContextTestWithExtension::EWK2ContextTestWithExtension):
+        (TEST_F):
+        * WebProcess/InjectedBundle/API/efl/EWebKit_Extension.h:
+        * WebProcess/InjectedBundle/API/efl/ewk_extension.cpp:
+        (EwkExtension::didCreatePage):
+        (EwkExtension::willDestroyPage):
+        * WebProcess/InjectedBundle/API/efl/ewk_extension.h:
+        * WebProcess/InjectedBundle/API/efl/ewk_extension_private.h:
+        * WebProcess/InjectedBundle/API/efl/ewk_page.cpp: Added.
+        (toEwkPage):
+        (EwkPage::EwkPage):
+        (EwkPage::append):
+        (EwkPage::remove):
+        (EwkPage::didFinishDocumentLoadForFrame):
+        (ewk_page_js_global_context_get):
+        (ewk_page_client_register):
+        (ewk_page_client_unregister):
+        * WebProcess/InjectedBundle/API/efl/ewk_page.h: Added.
+        * WebProcess/InjectedBundle/API/efl/ewk_page_private.h: Added.
+        (EwkPage::page):
+        * efl/ewebkit2-extension.pc.in:
+
+2015-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Cannot invoke action menus anymore
+        https://bugs.webkit.org/show_bug.cgi?id=142797
+        <rdar://problem/20032670>
+
+        * UIProcess/API/mac/WKView.mm:
+        Need a respondsToSelector check.
+
+2015-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Cannot invoke action menus anymore
+        https://bugs.webkit.org/show_bug.cgi?id=142797
+        <rdar://problem/20032670>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/API/mac/WKView.mm:
+        Don't process mouse events that would make an action menu; call super
+        and let AppKit take care of it. We have to duplicate the macro so that
+        we can avoid calling super for the internal-only methods.
+        Also, otherMouseMoved is simply not a thing, so remove it.
+
 2015-03-17  Beth Dakin  <bdakin@apple.com>
 
         DOM mouse events have weird timing for force clickable elements in Safari 8.0.3 on 
