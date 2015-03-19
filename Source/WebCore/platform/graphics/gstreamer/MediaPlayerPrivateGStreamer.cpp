@@ -119,11 +119,6 @@ static gboolean mediaPlayerPrivateMessageCallback(GstBus*, GstMessage* message, 
     return player->handleMessage(message);
 }
 
-static gboolean mediaPlayerPrivateSyncMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamer* player)
-{
-    return player->handleSyncMessage(message);
-}
-
 static void mediaPlayerPrivateSourceChangedCallback(GObject*, GParamSpec*, MediaPlayerPrivateGStreamer* player)
 {
     player->sourceChanged();
