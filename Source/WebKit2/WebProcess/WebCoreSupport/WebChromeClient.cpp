@@ -850,9 +850,9 @@ GraphicsLayerFactory* WebChromeClient::graphicsLayerFactory() const
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-PassRefPtr<WebCore::DisplayRefreshMonitor> WebChromeClient::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
+Optional<RefPtr<WebCore::DisplayRefreshMonitor>> WebChromeClient::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
 {
-    return m_page->drawingArea()->createDisplayRefreshMonitor(displayID);
+    return Optional<RefPtr<WebCore::DisplayRefreshMonitor>>(m_page->drawingArea()->createDisplayRefreshMonitor(displayID));
 }
 #endif
 
@@ -1113,5 +1113,25 @@ void WebChromeClient::handleAutoFillButtonClick(HTMLInputElement& inputElement)
     // Notify the UIProcess.
     m_page->send(Messages::WebPageProxy::HandleAutoFillButtonClick(UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+void WebChromeClient::showPlaybackTargetPicker(const WebCore::IntPoint& position, bool isVideo)
+{
+    FrameView* frameView = m_page->mainFrame()->view();
+    FloatRect rect(frameView->contentsToRootView(frameView->windowToContents(position)), FloatSize());
+    m_page->send(Messages::WebPageProxy::ShowPlaybackTargetPicker(rect, isVideo));
+}
+
+void WebChromeClient::startingMonitoringPlaybackTargets()
+{
+    m_page->send(Messages::WebPageProxy::StartingMonitoringPlaybackTargets());
+}
+
+void WebChromeClient::stopMonitoringPlaybackTargets()
+{
+    m_page->send(Messages::WebPageProxy::StopMonitoringPlaybackTargets());
+}
+#endif
+
 
 } // namespace WebKit

@@ -84,6 +84,7 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
             continue;
         TextRun textRun(run.text());
         textRun.setTabSize(!style.collapseWhiteSpace(), style.tabSize());
+        textRun.setXPos(run.rect().x());
         FloatPoint textOrigin = run.baseline() + paintOffset;
         textOrigin.setY(roundToDevicePixel(LayoutUnit(textOrigin.y()), flow.document().deviceScaleFactor()));
         context.drawText(font, textRun, textOrigin);
@@ -175,7 +176,7 @@ Vector<FloatQuad> collectAbsoluteQuads(const RenderObject& renderer, const Layou
     Vector<FloatQuad> quads;
     auto resolver = runResolver(downcast<RenderBlockFlow>(*renderer.parent()), layout);
     for (const auto& run : resolver.rangeForRenderer(renderer))
-        quads.append(renderer.localToAbsoluteQuad(FloatQuad(run.rect()), 0, wasFixed));
+        quads.append(renderer.localToAbsoluteQuad(FloatQuad(run.rect()), UseTransforms, wasFixed));
     return quads;
 }
 

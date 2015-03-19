@@ -224,8 +224,6 @@ sub new
     my $reference = { };
 
     $codeGenerator = shift;
-    shift; # $useLayerOnTop
-    shift; # $preprocessor
     $writeDependencies = shift;
 
     bless($reference, $object);
@@ -555,7 +553,7 @@ sub SkipAttribute
     return 1 if $codeGenerator->GetArrayType($type);
     return 1 if $codeGenerator->IsTypedArrayType($type);
     return 1 if $codeGenerator->IsEnumType($type);
-    return 1 if $type eq "EventListener";
+    return 1 if $type eq "EventHandler";
     return 1 if $attribute->isStatic;
 
     # This is for DynamicsCompressorNode.idl.

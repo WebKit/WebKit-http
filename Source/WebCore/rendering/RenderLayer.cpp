@@ -77,7 +77,6 @@
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "InspectorInstrumentation.h"
-#include "LogicalSelectionOffsetCaches.h"
 #include "OverflowEvent.h"
 #include "OverlapTestRequestClient.h"
 #include "Page.h"
@@ -1434,7 +1433,7 @@ static inline bool isContainerForPositioned(RenderLayer& layer, EPosition positi
         return layer.renderer().canContainFixedPositionObjects();
 
     case AbsolutePosition:
-        return isContainingBlockCandidateForAbsolutelyPositionedObject(layer.renderer());
+        return layer.renderer().canContainAbsolutelyPositionedObjects();
     
     default:
         ASSERT_NOT_REACHED();
@@ -2460,7 +2459,7 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignm
         // This will prevent us from revealing text hidden by the slider in Safari RSS.
         RenderBox* box = renderBox();
         ASSERT(box);
-        LayoutRect localExposeRect(box->absoluteToLocalQuad(FloatQuad(FloatRect(rect)), UseTransforms).boundingBox());
+        LayoutRect localExposeRect(box->absoluteToLocalQuad(FloatQuad(FloatRect(rect))).boundingBox());
         LayoutRect layerBounds(0, 0, box->clientWidth(), box->clientHeight());
         LayoutRect r = getRectToExpose(layerBounds, layerBounds, localExposeRect, alignX, alignY);
 
@@ -4320,7 +4319,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
             paintFlowThreadIfRegionForFragments(layerFragments, context, localPaintingInfo, localPaintFlags);
     }
 
-    if (isPaintingOverlayScrollbars)
+    if (isPaintingOverlayScrollbars && hasScrollbars())
         paintOverflowControlsForFragments(layerFragments, context, localPaintingInfo);
 
     if (filterPainter) {
@@ -4616,8 +4615,7 @@ void RenderLayer::paintBackgroundForFragments(const LayerFragments& layerFragmen
     const LayoutRect& transparencyPaintDirtyRect, bool haveTransparency, const LayerPaintingInfo& localPaintingInfo, PaintBehavior paintBehavior,
     RenderObject* subtreePaintRootForRenderer)
 {
-    for (size_t i = 0; i < layerFragments.size(); ++i) {
-        const LayerFragment& fragment = layerFragments.at(i);
+    for (const auto& fragment : layerFragments) {
         if (!fragment.shouldPaintContent)
             continue;
 
@@ -4647,8 +4645,7 @@ void RenderLayer::paintForegroundForFragments(const LayerFragments& layerFragmen
 {
     // Begin transparency if we have something to paint.
     if (haveTransparency) {
-        for (size_t i = 0; i < layerFragments.size(); ++i) {
-            const LayerFragment& fragment = layerFragments.at(i);
+        for (const auto& fragment : layerFragments) {
             if (fragment.shouldPaintContent && !fragment.foregroundRect.isEmpty()) {
                 beginTransparencyLayers(transparencyLayerContext, localPaintingInfo, transparencyPaintDirtyRect);
                 break;
@@ -4704,8 +4701,7 @@ void RenderLayer::paintForegroundForFragmentsWithPhase(PaintPhase phase, const L
 {
     bool shouldClip = localPaintingInfo.clipToDirtyRect && layerFragments.size() > 1;
 
-    for (size_t i = 0; i < layerFragments.size(); ++i) {
-        const LayerFragment& fragment = layerFragments.at(i);
+    for (const auto& fragment : layerFragments) {
         if (!fragment.shouldPaintContent || fragment.foregroundRect.isEmpty())
             continue;
         
@@ -4725,8 +4721,7 @@ void RenderLayer::paintForegroundForFragmentsWithPhase(PaintPhase phase, const L
 void RenderLayer::paintOutlineForFragments(const LayerFragments& layerFragments, GraphicsContext* context, const LayerPaintingInfo& localPaintingInfo,
     PaintBehavior paintBehavior, RenderObject* subtreePaintRootForRenderer)
 {
-    for (size_t i = 0; i < layerFragments.size(); ++i) {
-        const LayerFragment& fragment = layerFragments.at(i);
+    for (const auto& fragment : layerFragments) {
         if (fragment.outlineRect.isEmpty())
             continue;
     
@@ -4741,8 +4736,7 @@ void RenderLayer::paintOutlineForFragments(const LayerFragments& layerFragments,
 void RenderLayer::paintMaskForFragments(const LayerFragments& layerFragments, GraphicsContext* context, const LayerPaintingInfo& localPaintingInfo,
     RenderObject* subtreePaintRootForRenderer)
 {
-    for (size_t i = 0; i < layerFragments.size(); ++i) {
-        const LayerFragment& fragment = layerFragments.at(i);
+    for (const auto& fragment : layerFragments) {
         if (!fragment.shouldPaintContent)
             continue;
 
@@ -4762,8 +4756,7 @@ void RenderLayer::paintMaskForFragments(const LayerFragments& layerFragments, Gr
 void RenderLayer::paintChildClippingMaskForFragments(const LayerFragments& layerFragments, GraphicsContext* context, const LayerPaintingInfo& localPaintingInfo,
     RenderObject* subtreePaintRootForRenderer)
 {
-    for (size_t i = 0; i < layerFragments.size(); ++i) {
-        const LayerFragment& fragment = layerFragments.at(i);
+    for (const auto& fragment : layerFragments) {
         if (!fragment.shouldPaintContent)
             continue;
 
@@ -4781,8 +4774,9 @@ void RenderLayer::paintChildClippingMaskForFragments(const LayerFragments& layer
 
 void RenderLayer::paintOverflowControlsForFragments(const LayerFragments& layerFragments, GraphicsContext* context, const LayerPaintingInfo& localPaintingInfo)
 {
-    for (size_t i = 0; i < layerFragments.size(); ++i) {
-        const LayerFragment& fragment = layerFragments.at(i);
+    for (const auto& fragment : layerFragments) {
+        if (fragment.backgroundRect.isEmpty())
+            continue;
         clipToRect(localPaintingInfo, context, fragment.backgroundRect);
         paintOverflowControls(context, roundedIntPoint(toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelAccumulation)),
             snappedIntRect(fragment.backgroundRect.rect()), true);
@@ -5830,6 +5824,7 @@ LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, const Layo
     PaginationInclusionMode inclusionMode = ExcludeCompositedPaginatedLayers;
     if (flags & UseFragmentBoxesIncludingCompositing)
         inclusionMode = IncludeCompositedPaginatedLayers;
+
     const RenderLayer* paginationLayer = nullptr;
     if (flags & UseFragmentBoxesExcludingCompositing || flags & UseFragmentBoxesIncludingCompositing)
         paginationLayer = enclosingPaginationLayerInSubtree(ancestorLayer, inclusionMode);
@@ -5855,6 +5850,22 @@ LayoutRect RenderLayer::boundingBox(const RenderLayer* ancestorLayer, const Layo
     
     result.move(offsetFromRoot);
     return result;
+}
+
+bool RenderLayer::getOverlapBoundsIncludingChildrenAccountingForTransformAnimations(LayoutRect& bounds) const
+{
+    // The animation will override the display transform, so don't include it.
+    CalculateLayerBoundsFlags boundsFlags = DefaultCalculateLayerBoundsFlags & ~IncludeSelfTransform;
+    
+    bounds = calculateLayerBounds(this, LayoutSize(), boundsFlags);
+    
+    LayoutRect animatedBounds = bounds;
+    if (renderer().animation().computeExtentOfAnimation(renderer(), animatedBounds)) {
+        bounds = animatedBounds;
+        return true;
+    }
+    
+    return false;
 }
 
 IntRect RenderLayer::absoluteBoundingBox() const

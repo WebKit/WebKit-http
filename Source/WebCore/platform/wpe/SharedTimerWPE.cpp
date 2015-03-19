@@ -57,4 +57,8 @@ void stopSharedTimer()
     gSharedTimer.cancel();
 }
 
+void invalidateSharedTimer()
+{
+}
+
 } // namespace WebCore

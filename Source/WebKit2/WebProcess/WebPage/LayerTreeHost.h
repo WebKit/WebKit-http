@@ -86,7 +86,6 @@ public:
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    virtual void setNativeSurfaceHandleForCompositing(uint64_t) = 0;
     virtual void viewportSizeChanged(const WebCore::IntSize&) = 0;
     virtual void didChangeViewportProperties(const WebCore::ViewportAttributes&) = 0;
 #endif

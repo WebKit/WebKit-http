@@ -92,6 +92,7 @@ CompositeAnimation& AnimationControllerPrivate::ensureCompositeAnimation(RenderE
         result.iterator->value = CompositeAnimation::create(this);
         renderer.setIsCSSAnimating(true);
     }
+
     return *result.iterator->value;
 }
 
@@ -417,6 +418,18 @@ PassRefPtr<RenderStyle> AnimationControllerPrivate::getAnimatedStyleForRenderer(
     return animatingStyle.release();
 }
 
+bool AnimationControllerPrivate::computeExtentOfAnimation(RenderElement& renderer, LayoutRect& bounds) const
+{
+    ASSERT(renderer.isCSSAnimating());
+    ASSERT(m_compositeAnimations.contains(&renderer));
+
+    const CompositeAnimation& rendererAnimations = *m_compositeAnimations.get(&renderer);
+    if (!rendererAnimations.isAnimatingProperty(CSSPropertyWebkitTransform, false, AnimationBase::Running | AnimationBase::Paused))
+        return true;
+
+    return rendererAnimations.computeExtentOfTransformAnimation(bounds);
+}
+
 unsigned AnimationControllerPrivate::numberOfActiveAnimations(Document* document) const
 {
     unsigned count = 0;
@@ -502,6 +515,13 @@ void AnimationControllerPrivate::animationWillBeRemoved(AnimationBase* animation
     removeFromAnimationsWaitingForStartTimeResponse(animation);
 }
 
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+void AnimationControllerPrivate::scrollWasUpdated()
+{
+    updateAnimations(CallSetChanged);
+}
+#endif
+
 AnimationController::AnimationController(Frame& frame)
     : m_data(std::make_unique<AnimationControllerPrivate>(frame))
 {
@@ -575,6 +595,14 @@ PassRefPtr<RenderStyle> AnimationController::getAnimatedStyleForRenderer(RenderE
     if (!renderer.isCSSAnimating())
         return &renderer.style();
     return m_data->getAnimatedStyleForRenderer(renderer);
+}
+
+bool AnimationController::computeExtentOfAnimation(RenderElement& renderer, LayoutRect& bounds) const
+{
+    if (!renderer.isCSSAnimating())
+        return true;
+
+    return m_data->computeExtentOfAnimation(renderer, bounds);
 }
 
 void AnimationController::notifyAnimationStarted(RenderElement&, double startTime)
@@ -679,5 +707,12 @@ bool AnimationController::supportsAcceleratedAnimationOfProperty(CSSPropertyID p
 {
     return CSSPropertyAnimation::animationOfPropertyIsAccelerated(property);
 }
+
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+void AnimationController::scrollWasUpdated()
+{
+    m_data->scrollWasUpdated();
+}
+#endif
 
 } // namespace WebCore

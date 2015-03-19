@@ -31,6 +31,7 @@
 #include "config.h"
 #include "BytecodeGenerator.h"
 
+#include "BuiltinExecutables.h"
 #include "Interpreter.h"
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
@@ -68,7 +69,9 @@ ParserError BytecodeGenerator::generate()
         entry.second->bindValue(*this, entry.first.get());
     }
 
-    m_scopeNode->emitBytecode(*this);
+    bool callingClassConstructor = constructorKind() != ConstructorKind::None && !isConstructor();
+    if (!callingClassConstructor)
+        m_scopeNode->emitBytecode(*this);
 
     m_staticPropertyAnalyzer.kill();
 
@@ -401,12 +404,14 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     addCallee(functionNode, calleeRegister);
 
     if (isConstructor()) {
-        if (constructorKindIsDerived()) {
+        if (constructorKind() == ConstructorKind::Derived) {
             m_newTargetRegister = addVar();
             emitMove(m_newTargetRegister, &m_thisRegister);
-            emitLoad(&m_thisRegister, jsNull());
+            emitMove(&m_thisRegister, addConstantEmptyValue());
         } else
             emitCreateThis(&m_thisRegister);
+    } else if (constructorKind() != ConstructorKind::None) {
+        emitThrowTypeError("Cannot call a class constructor");
     } else if (functionNode->usesThis() || codeBlock->usesEval()) {
         m_codeBlock->addPropertyAccessInstruction(instructions().size());
         emitOpcode(op_to_this);
@@ -1556,6 +1561,12 @@ RegisterID* BytecodeGenerator::emitCreateThis(RegisterID* dst)
     return dst;
 }
 
+void BytecodeGenerator::emitTDZCheck(RegisterID* target)
+{
+    emitOpcode(op_check_tdz);
+    instructions().append(target->index());
+}
+
 RegisterID* BytecodeGenerator::emitNewObject(RegisterID* dst)
 {
     size_t begin = instructions().size();
@@ -1680,6 +1691,19 @@ RegisterID* BytecodeGenerator::emitNewFunctionExpression(RegisterID* r0, FuncExp
     instructions().append(scopeRegister()->index());
     instructions().append(index);
     return r0;
+}
+
+RegisterID* BytecodeGenerator::emitNewDefaultConstructor(RegisterID* dst, ConstructorKind constructorKind, const Identifier& name)
+{
+    UnlinkedFunctionExecutable* executable = m_vm->builtinExecutables()->createDefaultConstructor(constructorKind, name);
+
+    unsigned index = m_codeBlock->addFunctionExpr(executable);
+
+    emitOpcode(op_new_func_exp);
+    instructions().append(dst->index());
+    instructions().append(scopeRegister()->index());
+    instructions().append(index);
+    return dst;
 }
 
 RegisterID* BytecodeGenerator::emitCall(RegisterID* dst, RegisterID* func, ExpectedFunction expectedFunction, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
@@ -1906,13 +1930,17 @@ RegisterID* BytecodeGenerator::emitReturn(RegisterID* src)
         instructions().append(m_lexicalEnvironmentRegister ? m_lexicalEnvironmentRegister->index() : emitLoad(0, JSValue())->index());
     }
 
-    bool thisMightBeUninitialized = constructorKindIsDerived();
-    if (isConstructor() && (src->index() != m_thisRegister.index() || thisMightBeUninitialized)) {
+    bool thisMightBeUninitialized = constructorKind() == ConstructorKind::Derived;
+    bool srcIsThis = src->index() == m_thisRegister.index();
+    if (isConstructor() && (!srcIsThis || thisMightBeUninitialized)) {
         RefPtr<Label> isObjectOrUndefinedLabel = newLabel();
+
+        if (srcIsThis && thisMightBeUninitialized)
+            emitTDZCheck(src);
 
         emitJumpIfTrue(emitIsObject(newTemporary(), src), isObjectOrUndefinedLabel.get());
 
-        if (constructorKindIsDerived()) {
+        if (thisMightBeUninitialized) {
             emitJumpIfTrue(emitIsUndefined(newTemporary(), src), isObjectOrUndefinedLabel.get());
             emitThrowTypeError("Cannot return a non-object type in the constructor of a derived class.");
         } else

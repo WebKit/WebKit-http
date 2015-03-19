@@ -789,6 +789,11 @@ void CodeBlock::dumpBytecode(
             out.print(" ", (++it)->u.toThisStatus);
             break;
         }
+        case op_check_tdz: {
+            int r0 = (++it)->u.operand;
+            printLocationOpAndRegisterOperand(out, exec, location, it, "op_check_tdz", r0);
+            break;
+        }
         case op_new_object: {
             int r0 = (++it)->u.operand;
             unsigned inferredInlineCapacity = (++it)->u.operand;
@@ -1640,7 +1645,6 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_isStrictMode(other.m_isStrictMode)
     , m_needsActivation(other.m_needsActivation)
     , m_mayBeExecuting(false)
-    , m_visitAggregateHasBeenCalled(false)
     , m_source(other.m_source)
     , m_sourceOffset(other.m_sourceOffset)
     , m_firstLineColumnOffset(other.m_firstLineColumnOffset)
@@ -1657,6 +1661,8 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_capabilityLevelState(DFG::CapabilityLevelNotSet)
 #endif
 {
+    m_visitAggregateHasBeenCalled.store(false, std::memory_order_relaxed);
+
     ASSERT(m_heap->isDeferred());
     ASSERT(m_scopeRegister.isLocal());
 
@@ -1702,7 +1708,6 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     , m_isStrictMode(unlinkedCodeBlock->isStrictMode())
     , m_needsActivation(unlinkedCodeBlock->hasActivationRegister() && unlinkedCodeBlock->codeType() == FunctionCode)
     , m_mayBeExecuting(false)
-    , m_visitAggregateHasBeenCalled(false)
     , m_source(sourceProvider)
     , m_sourceOffset(sourceOffset)
     , m_firstLineColumnOffset(firstLineColumnOffset)
@@ -1714,6 +1719,8 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     , m_capabilityLevelState(DFG::CapabilityLevelNotSet)
 #endif
 {
+    m_visitAggregateHasBeenCalled.store(false, std::memory_order_relaxed);
+
     ASSERT(m_heap->isDeferred());
     ASSERT(m_scopeRegister.isLocal());
 
@@ -1746,7 +1753,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionDecl(i);
         if (vm()->typeProfiler() || vm()->controlFlowProfiler())
             vm()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
-        m_functionDecls[i].set(*m_vm, ownerExecutable, unlinkedExecutable->linkInsideExecutable(*m_vm, ownerExecutable->source()));
+        m_functionDecls[i].set(*m_vm, ownerExecutable, unlinkedExecutable->link(*m_vm, ownerExecutable->source()));
     }
 
     m_functionExprs.resizeToFit(unlinkedCodeBlock->numberOfFunctionExprs());
@@ -1754,7 +1761,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionExpr(i);
         if (vm()->typeProfiler() || vm()->controlFlowProfiler())
             vm()->functionHasExecutedCache()->insertUnexecutedRange(m_ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
-        m_functionExprs[i].set(*m_vm, ownerExecutable, unlinkedExecutable->linkInsideExecutable(*m_vm, ownerExecutable->source()));
+        m_functionExprs[i].set(*m_vm, ownerExecutable, unlinkedExecutable->link(*m_vm, ownerExecutable->source()));
     }
 
     if (unlinkedCodeBlock->hasRareData()) {
@@ -2195,26 +2202,11 @@ void CodeBlock::visitAggregate(SlotVisitor& visitor)
 {
 #if ENABLE(PARALLEL_GC)
     // I may be asked to scan myself more than once, and it may even happen concurrently.
-    // To this end, use a CAS loop to check if I've been called already. Only one thread
-    // may proceed past this point - whichever one wins the CAS race.
-    unsigned oldValue;
-    do {
-        oldValue = m_visitAggregateHasBeenCalled;
-        if (oldValue) {
-            // Looks like someone else won! Return immediately to ensure that we don't
-            // trace the same CodeBlock concurrently. Doing so is hazardous since we will
-            // be mutating the state of ValueProfiles, which contain JSValues, which can
-            // have word-tearing on 32-bit, leading to awesome timing-dependent crashes
-            // that are nearly impossible to track down.
-            
-            // Also note that it must be safe to return early as soon as we see the
-            // value true (well, (unsigned)1), since once a GC thread is in this method
-            // and has won the CAS race (i.e. was responsible for setting the value true)
-            // it will definitely complete the rest of this method before declaring
-            // termination.
-            return;
-        }
-    } while (!WTF::weakCompareAndSwap(&m_visitAggregateHasBeenCalled, 0, 1));
+    // To this end, use an atomic operation to check (and set) if I've been called already.
+    // Only one thread may proceed past this point - whichever one wins the atomic set race.
+    bool setByMe = m_visitAggregateHasBeenCalled.compare_exchange_strong(false, true, std::memory_order_acquire);
+    if (!setByMe)
+        return;
 #endif // ENABLE(PARALLEL_GC)
     
     if (!!m_alternative)
@@ -3890,7 +3882,7 @@ String CodeBlock::nameForRegister(VirtualRegister virtualRegister)
 namespace {
 
 struct VerifyCapturedDef {
-    void operator()(CodeBlock* codeBlock, Instruction* instruction, OpcodeID opcodeID, int operand)
+    void operator()(CodeBlock* codeBlock, Instruction* instruction, OpcodeID opcodeID, int operand) const
     {
         unsigned bytecodeOffset = instruction - codeBlock->instructions().begin();
         

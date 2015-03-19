@@ -316,6 +316,7 @@ class Driver(object):
         #environment['DUMPRENDERTREE_TEMP'] = str(self._port._driver_tempdir_for_environment())
         environment['DUMPRENDERTREE_TEMP'] = str(self._driver_tempdir)
         environment['LOCAL_RESOURCE_ROOT'] = self._port.layout_tests_dir()
+        environment['ASAN_OPTIONS'] = "allocator_may_return_null=1"
         if 'WEBKIT_OUTPUTDIR' in os.environ:
             environment['WEBKIT_OUTPUTDIR'] = os.environ['WEBKIT_OUTPUTDIR']
         if self._profiler:

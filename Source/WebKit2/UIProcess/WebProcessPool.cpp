@@ -157,7 +157,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_cacheModel(m_configuration->cacheModel())
     , m_memorySamplerEnabled(false)
     , m_memorySamplerInterval(1400.0)
-    , m_websiteDataStore(WebsiteDataStore::create(websiteDataStoreConfiguration(m_configuration.get())))
+    , m_websiteDataStore(API::WebsiteDataStore::create(websiteDataStoreConfiguration(m_configuration.get())))
 #if USE(SOUP)
     , m_initialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain)
 #endif
@@ -683,6 +683,10 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     serviceController.refreshExistingServices();
 #endif
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    parameters.pluginLoadClientPolicies = m_pluginLoadClientPolicies;
+#endif
+
 #if OS(LINUX)
     parameters.shouldEnableMemoryPressureReliefLogging = true;
 #endif
@@ -846,7 +850,7 @@ PassRefPtr<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, W
         configuration.visitedLinkProvider = m_visitedLinkProvider.ptr();
     if (!configuration.websiteDataStore) {
         ASSERT(!configuration.sessionID.isValid());
-        configuration.websiteDataStore = m_websiteDataStore.get();
+        configuration.websiteDataStore = &m_websiteDataStore->websiteDataStore();
         configuration.sessionID = configuration.preferences->privateBrowsingEnabled() ? SessionID::legacyPrivateSessionID() : SessionID::defaultSessionID();
     }
 
@@ -1417,6 +1421,33 @@ void WebProcessPool::pluginInfoStoreDidLoadPlugins(PluginInfoStore* store)
     }
 
     m_client.plugInInformationBecameAvailable(this, API::Array::create(WTF::move(plugins)).get());
+}
+
+void WebProcessPool::setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy policy, const String& host, const String& bundleIdentifier, const String& versionString)
+{
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    HashMap<String, HashMap<String, uint8_t>> policiesByIdentifier;
+    if (m_pluginLoadClientPolicies.contains(host))
+        policiesByIdentifier = m_pluginLoadClientPolicies.get(host);
+
+    HashMap<String, uint8_t> versionsToPolicies;
+    if (policiesByIdentifier.contains(bundleIdentifier))
+        versionsToPolicies = policiesByIdentifier.get(bundleIdentifier);
+
+    versionsToPolicies.set(versionString, policy);
+    policiesByIdentifier.set(bundleIdentifier, versionsToPolicies);
+    m_pluginLoadClientPolicies.set(host, policiesByIdentifier);
+#endif
+
+    sendToAllProcesses(Messages::WebProcess::SetPluginLoadClientPolicy(policy, host, bundleIdentifier, versionString));
+}
+
+void WebProcessPool::clearPluginClientPolicies()
+{
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    m_pluginLoadClientPolicies.clear();
+#endif
+    sendToAllProcesses(Messages::WebProcess::ClearPluginClientPolicies());
 }
 #endif
     

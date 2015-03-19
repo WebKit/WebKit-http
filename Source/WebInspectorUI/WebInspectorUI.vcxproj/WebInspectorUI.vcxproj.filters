@@ -195,10 +195,10 @@
     <None Include="..\UserInterface\ConsoleGroup.js">
       <Filter>UserInterface</Filter>
     </None>
-    <None Include="..\UserInterface\ConsoleMessage.js">
+    <None Include="..\UserInterface\LegacyConsoleMessage.js">
       <Filter>UserInterface</Filter>
     </None>
-    <None Include="..\UserInterface\ConsoleMessageImpl.js">
+    <None Include="..\UserInterface\LegacyConsoleMessageImpl.js">
       <Filter>UserInterface</Filter>
     </None>
     <None Include="..\UserInterface\ConsoleObserver.js">
@@ -720,9 +720,6 @@
     <None Include="..\UserInterface\Object.js">
       <Filter>UserInterface</Filter>
     </None>
-    <None Include="..\UserInterface\ObjectPropertiesSection.js">
-      <Filter>UserInterface</Filter>
-    </None>
     <None Include="..\UserInterface\PageObserver.js">
       <Filter>UserInterface</Filter>
     </None>
@@ -825,6 +822,15 @@
     <None Include="..\UserInterface\RulesStyleDetailsPanel.js">
       <Filter>UserInterface</Filter>
     </None>
+    <None Include="..\UserInterface\RunLoopTimelineOverviewGraph.css">
+      <Filter>UserInterface</Filter>
+    </None>
+    <None Include="..\UserInterface\RunLoopTimelineOverviewGraph.js">
+      <Filter>UserInterface</Filter>
+    </None>
+    <None Include="..\UserInterface\RunLoopTimelineRecord.js">
+      <Filter>UserInterface</Filter>
+    </None>
     <None Include="..\UserInterface\RuntimeObserver.js">
       <Filter>UserInterface</Filter>
     </None>
@@ -841,9 +847,6 @@
       <Filter>UserInterface</Filter>
     </None>
     <None Include="..\UserInterface\ScopeChainNode.js">
-      <Filter>UserInterface</Filter>
-    </None>
-    <None Include="..\UserInterface\ScopeVariableTreeElement.js">
       <Filter>UserInterface</Filter>
     </None>
     <None Include="..\UserInterface\Script.js">
@@ -1006,6 +1009,12 @@
       <Filter>UserInterface</Filter>
     </None>
     <None Include="..\UserInterface\TimelineRecord.js">
+      <Filter>UserInterface</Filter>
+    </None>
+    <None Include="..\UserInterface\TimelineRecordFrame.css">
+      <Filter>UserInterface</Filter>
+    </None>
+    <None Include="..\UserInterface\TimelineRecordFrame.js">
       <Filter>UserInterface</Filter>
     </None>
     <None Include="..\UserInterface\TimelinesContentView.css">

@@ -119,6 +119,11 @@ static gboolean mediaPlayerPrivateMessageCallback(GstBus*, GstMessage* message, 
     return player->handleMessage(message);
 }
 
+static gboolean mediaPlayerPrivateSyncMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamer* player)
+{
+    return player->handleSyncMessage(message);
+}
+
 static void mediaPlayerPrivateSourceChangedCallback(GObject*, GParamSpec*, MediaPlayerPrivateGStreamer* player)
 {
     player->sourceChanged();
@@ -263,6 +268,10 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
 #endif
     , m_requestedState(GST_STATE_VOID_PENDING)
     , m_missingPlugins(false)
+#if USE(GSTREAMER_GL)
+    , m_glContext(nullptr)
+    , m_glDisplay(nullptr)
+#endif
 {
 }
 

@@ -29,6 +29,7 @@
 namespace WebCore {
 
 class ControlStates;
+class RenderBlock;
 
 class RenderElement : public RenderObject {
 public:
@@ -63,6 +64,11 @@ public:
     virtual bool isEmpty() const override { return !firstChild(); }
 
     bool canContainFixedPositionObjects() const;
+    bool canContainAbsolutelyPositionedObjects() const;
+
+    RenderBlock* containingBlockForFixedPosition() const;
+    RenderBlock* containingBlockForAbsolutePosition() const;
+    RenderBlock* containingBlockForObjectInFlow() const;
 
     Color selectionColor(int colorProperty) const;
     PassRefPtr<RenderStyle> selectionPseudoStyle() const;
@@ -111,6 +117,11 @@ public:
     void setNeedsSimplifiedNormalFlowLayout();
 
     virtual void paint(PaintInfo&, const LayoutPoint&) = 0;
+
+    // inline-block elements paint all phases atomically. This function ensures that. Certain other elements
+    // (grid items, flex items) require this behavior as well, and this function exists as a helper for them.
+    // It is expected that the caller will call this function independent of the value of paintInfo.phase.
+    void paintAsInlineBlock(PaintInfo&, const LayoutPoint&);
 
     // Recursive function that computes the size and position of this object and all its descendants.
     virtual void layout();
@@ -391,6 +402,14 @@ inline bool RenderElement::canContainFixedPositionObjects() const
         || (hasTransform() && isRenderBlock())
         || isSVGForeignObject()
         || isOutOfFlowRenderFlowThread();
+}
+
+inline bool RenderElement::canContainAbsolutelyPositionedObjects() const
+{
+    return style().position() != StaticPosition
+        || (isRenderBlock() && hasTransformRelatedProperty())
+        || isSVGForeignObject()
+        || isRenderView();
 }
 
 inline bool RenderObject::isRenderLayerModelObject() const

@@ -65,21 +65,31 @@ typedef unsigned UnlinkedObjectAllocationProfile;
 typedef unsigned UnlinkedLLIntCallLinkInfo;
 
 struct ExecutableInfo {
-    ExecutableInfo(bool needsActivation, bool usesEval, bool isStrictMode, bool isConstructor, bool isBuiltinFunction, bool constructorKindIsDerived)
+    ExecutableInfo(bool needsActivation, bool usesEval, bool isStrictMode, bool isConstructor, bool isBuiltinFunction, ConstructorKind constructorKind)
         : m_needsActivation(needsActivation)
         , m_usesEval(usesEval)
         , m_isStrictMode(isStrictMode)
         , m_isConstructor(isConstructor)
         , m_isBuiltinFunction(isBuiltinFunction)
-        , m_constructorKindIsDerived(constructorKindIsDerived)
+        , m_constructorKind(static_cast<unsigned>(constructorKind))
     {
+        ASSERT(m_constructorKind == static_cast<unsigned>(constructorKind));
     }
-    bool m_needsActivation : 1;
-    bool m_usesEval : 1;
-    bool m_isStrictMode : 1;
-    bool m_isConstructor : 1;
-    bool m_isBuiltinFunction : 1;
-    bool m_constructorKindIsDerived : 1;
+
+    bool needsActivation() const { return m_needsActivation; }
+    bool usesEval() const { return m_usesEval; }
+    bool isStrictMode() const { return m_isStrictMode; }
+    bool isConstructor() const { return m_isConstructor; }
+    bool isBuiltinFunction() const { return m_isBuiltinFunction; }
+    ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
+
+private:
+    unsigned m_needsActivation : 1;
+    unsigned m_usesEval : 1;
+    unsigned m_isStrictMode : 1;
+    unsigned m_isConstructor : 1;
+    unsigned m_isBuiltinFunction : 1;
+    unsigned m_constructorKind : 2;
 };
 
 enum UnlinkedFunctionKind {
@@ -93,9 +103,10 @@ public:
     friend class CodeCache;
     friend class VM;
     typedef JSCell Base;
-    static UnlinkedFunctionExecutable* create(VM* vm, const SourceCode& source, FunctionBodyNode* node, UnlinkedFunctionKind unlinkedFunctionKind)
+    static UnlinkedFunctionExecutable* create(VM* vm, const SourceCode& source, FunctionBodyNode* node, UnlinkedFunctionKind unlinkedFunctionKind, RefPtr<SourceProvider>&& sourceOverride = nullptr)
     {
-        UnlinkedFunctionExecutable* instance = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(vm->heap)) UnlinkedFunctionExecutable(vm, vm->unlinkedFunctionExecutableStructure.get(), source, node, unlinkedFunctionKind);
+        UnlinkedFunctionExecutable* instance = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(vm->heap))
+            UnlinkedFunctionExecutable(vm, vm->unlinkedFunctionExecutableStructure.get(), source, WTF::move(sourceOverride), node, unlinkedFunctionKind);
         instance->finishCreation(*vm);
         return instance;
     }
@@ -110,15 +121,7 @@ public:
     size_t parameterCount() const;
     bool isInStrictContext() const { return m_isInStrictContext; }
     FunctionMode functionMode() const { return m_functionMode; }
-    JSParserStrictness toStrictness() const
-    {
-        if (m_isBuiltinFunction)
-            return JSParseBuiltin;
-        if (m_isInStrictContext)
-            return JSParseStrict;
-        return JSParseNormal;
-    }
-    bool constructorKindIsDerived() const { return m_constructorKindIsDerived; }
+    ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
 
     unsigned unlinkedFunctionNameStart() const { return m_unlinkedFunctionNameStart; }
     unsigned unlinkedBodyStartColumn() const { return m_unlinkedBodyStartColumn; }
@@ -130,12 +133,13 @@ public:
 
     String paramString() const;
 
-    UnlinkedFunctionCodeBlock* codeBlockFor(VM&, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, bool bodyIncludesBraces, ParserError&);
+    UnlinkedFunctionCodeBlock* codeBlockFor(
+        VM&, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, 
+        ParserError&);
 
     static UnlinkedFunctionExecutable* fromGlobalCode(const Identifier&, ExecState&, const SourceCode&, JSObject*& exception);
 
-    FunctionExecutable* linkInsideExecutable(VM&, const SourceCode&);
-    FunctionExecutable* linkGlobalCode(VM&, const SourceCode&);
+    FunctionExecutable* link(VM&, const SourceCode&);
 
     void clearCodeForRecompilation()
     {
@@ -163,14 +167,14 @@ public:
     bool isBuiltinFunction() const { return m_isBuiltinFunction; }
 
 private:
-    UnlinkedFunctionExecutable(VM*, Structure*, const SourceCode&, FunctionBodyNode*, UnlinkedFunctionKind);
+    UnlinkedFunctionExecutable(VM*, Structure*, const SourceCode&, RefPtr<SourceProvider>&& sourceOverride, FunctionBodyNode*, UnlinkedFunctionKind);
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForCall;
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForConstruct;
 
-    bool m_isInStrictContext : 1;
-    bool m_hasCapturedVariables : 1;
-    bool m_isBuiltinFunction : 1;
-    bool m_constructorKindIsDerived : 1;
+    unsigned m_isInStrictContext : 1;
+    unsigned m_hasCapturedVariables : 1;
+    unsigned m_isBuiltinFunction : 1;
+    unsigned m_constructorKind : 2;
 
     Identifier m_name;
     Identifier m_inferredName;
@@ -187,6 +191,7 @@ private:
     unsigned m_sourceLength;
     unsigned m_typeProfilingStartOffset;
     unsigned m_typeProfilingEndOffset;
+    RefPtr<SourceProvider> m_sourceOverride;
 
     CodeFeatures m_features;
 
@@ -346,7 +351,7 @@ public:
 
     bool isBuiltinFunction() const { return m_isBuiltinFunction; }
 
-    bool constructorKindIsDerived() const { return m_constructorKindIsDerived; }
+    ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
 
     void shrinkToFit()
     {
@@ -532,14 +537,15 @@ private:
     VirtualRegister m_lexicalEnvironmentRegister;
     VirtualRegister m_globalObjectRegister;
 
-    bool m_needsFullScopeChain : 1;
-    bool m_usesEval : 1;
-    bool m_isNumericCompareFunction : 1;
-    bool m_isStrictMode : 1;
-    bool m_isConstructor : 1;
-    bool m_hasCapturedVariables : 1;
-    bool m_isBuiltinFunction : 1;
-    bool m_constructorKindIsDerived : 1;
+    unsigned m_needsFullScopeChain : 1;
+    unsigned m_usesEval : 1;
+    unsigned m_isNumericCompareFunction : 1;
+    unsigned m_isStrictMode : 1;
+    unsigned m_isConstructor : 1;
+    unsigned m_hasCapturedVariables : 1;
+    unsigned m_isBuiltinFunction : 1;
+    unsigned m_constructorKind : 2;
+
     unsigned m_firstLine;
     unsigned m_lineCount;
     unsigned m_endColumn;

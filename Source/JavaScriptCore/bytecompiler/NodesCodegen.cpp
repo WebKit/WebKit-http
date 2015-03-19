@@ -144,6 +144,9 @@ RegisterID* RegExpNode::emitBytecode(BytecodeGenerator& generator, RegisterID* d
 
 RegisterID* ThisNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
+    if (generator.constructorKind() == ConstructorKind::Derived)
+        generator.emitTDZCheck(generator.thisRegister());
+
     if (dst == generator.ignoredResult())
         return 0;
 
@@ -571,7 +574,8 @@ RegisterID* FunctionCallValueNode::emitBytecode(BytecodeGenerator& generator, Re
     RefPtr<RegisterID> returnValue = generator.finalDestination(dst, func.get());
     CallArguments callArguments(generator, m_args);
     if (m_expr->isSuperNode()) {
-        ASSERT(generator.constructorKindIsDerived());
+        ASSERT(generator.isConstructor());
+        ASSERT(generator.constructorKind() == ConstructorKind::Derived);
         generator.emitMove(callArguments.thisRegister(), generator.newTarget());
         RegisterID* ret = generator.emitConstruct(returnValue.get(), func.get(), NoExpectedFunction, callArguments, divot(), divotStart(), divotEnd());
         generator.emitMove(generator.thisRegister(), ret);
@@ -2881,9 +2885,18 @@ RegisterID* ClassExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
         generator.emitNode(superclass.get(), m_classHeritage);
     }
 
-    RefPtr<RegisterID> constructor = generator.emitNode(dst, m_constructorExpression);
+    RefPtr<RegisterID> constructor;
+    RefPtr<RegisterID> prototype;
+
     // FIXME: Make the prototype non-configurable & non-writable.
-    RefPtr<RegisterID> prototype = generator.emitGetById(generator.newTemporary(), constructor.get(), generator.propertyNames().prototype);
+    if (m_constructorExpression)
+        constructor = generator.emitNode(dst, m_constructorExpression);
+    else {
+        constructor = generator.emitNewDefaultConstructor(generator.finalDestination(dst),
+            m_classHeritage ? ConstructorKind::Derived : ConstructorKind::Base, m_name);
+    }
+
+    prototype = generator.emitGetById(generator.newTemporary(), constructor.get(), generator.propertyNames().prototype);
 
     if (superclass) {
         RefPtr<RegisterID> tempRegister = generator.newTemporary();

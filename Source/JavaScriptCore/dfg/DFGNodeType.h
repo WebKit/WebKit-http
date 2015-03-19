@@ -191,6 +191,7 @@ namespace JSC { namespace DFG {
     macro(NotifyWrite, NodeMustGenerate) \
     macro(VarInjectionWatchpoint, NodeMustGenerate) \
     macro(CheckCell, NodeMustGenerate) \
+    macro(CheckNotEmpty, NodeMustGenerate) \
     macro(CheckBadCell, NodeMustGenerate) \
     macro(AllocationProfileWatchpoint, NodeMustGenerate) \
     macro(CheckInBounds, NodeMustGenerate) \
@@ -236,9 +237,8 @@ namespace JSC { namespace DFG {
     \
     /* Support for allocation sinking. */\
     macro(PhantomNewObject, NodeResultJS) \
-    macro(PutByOffsetHint, NodeMustGenerate) \
+    macro(PutHint, NodeMustGenerate) \
     macro(CheckStructureImmediate, NodeMustGenerate) \
-    macro(PutStructureHint, NodeMustGenerate) \
     macro(MaterializeNewObject, NodeResultJS | NodeHasVarArgs) \
     \
     /* Nodes for misc operations. */\

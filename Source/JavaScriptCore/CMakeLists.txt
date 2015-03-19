@@ -15,6 +15,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/debugger"
     "${JAVASCRIPTCORE_DIR}/inspector"
     "${JAVASCRIPTCORE_DIR}/inspector/agents"
+    "${JAVASCRIPTCORE_DIR}/inspector/augmentable"
     "${JAVASCRIPTCORE_DIR}/inspector/remote"
     "${JAVASCRIPTCORE_DIR}/interpreter"
     "${JAVASCRIPTCORE_DIR}/jit"
@@ -505,7 +506,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/LiteralParser.cpp
     runtime/Lookup.cpp
     runtime/MapConstructor.cpp
-    runtime/MapData.cpp
     runtime/MapIteratorConstructor.cpp
     runtime/MapIteratorPrototype.cpp
     runtime/MapPrototype.cpp
@@ -903,6 +903,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     heap
     inspector
     inspector/agents
+    inspector/augmentable
     inspector/remote
     interpreter
     jit
@@ -964,6 +965,8 @@ set(JavaScriptCore_FORWARDING_HEADERS_FILES
     assembler/MacroAssembler.h
     assembler/MacroAssemblerCodeRef.h
     assembler/MacroAssemblerCodeRef.h
+
+    inspector/augmentable/AugmentableInspectorController.h
 
     inspector/remote/RemoteInspector.h
     inspector/remote/RemoteInspectorConstants.h

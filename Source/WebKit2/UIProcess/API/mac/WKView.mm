@@ -91,6 +91,7 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LookupSPI.h>
 #import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
+#import <WebCore/NSMenuSPI.h>
 #import <WebCore/NSViewSPI.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/PlatformScreen.h>
@@ -1176,11 +1177,50 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
             }]; \
             return; \
         } \
+        if ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)] && [NSMenu menuTypeForEvent:theEvent] == NSMenuTypeActionMenu) { \
+            [super Selector:theEvent]; \
+            return; \
+        } \
+        NativeWebMouseEvent webEvent(theEvent, self); \
+        _data->_page->handleMouseEvent(webEvent); \
+    }
+#define NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(Selector) \
+    - (void)Selector:(NSEvent *)theEvent \
+    { \
+        if (_data->_ignoresNonWheelEvents) \
+            return; \
+        if (NSTextInputContext *context = [self inputContext]) { \
+            [context handleEvent:theEvent completionHandler:^(BOOL handled) { \
+                if (handled) \
+                    LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
+                else { \
+                    NativeWebMouseEvent webEvent(theEvent, self); \
+                    _data->_page->handleMouseEvent(webEvent); \
+                } \
+            }]; \
+            return; \
+        } \
         NativeWebMouseEvent webEvent(theEvent, self); \
         _data->_page->handleMouseEvent(webEvent); \
     }
 #else
 #define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
+    - (void)Selector:(NSEvent *)theEvent \
+    { \
+        if (_data->_ignoresNonWheelEvents) \
+            return; \
+        if ([[self inputContext] handleEvent:theEvent]) { \
+            LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
+            return; \
+        } \
+        if ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)] && [NSMenu menuTypeForEvent:theEvent] == NSMenuTypeActionMenu) { \
+            [super Selector:theEvent]; \
+            return; \
+        } \
+        NativeWebMouseEvent webEvent(theEvent, self); \
+        _data->_page->handleMouseEvent(webEvent); \
+    }
+#define NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(Selector) \
     - (void)Selector:(NSEvent *)theEvent \
     { \
         if (_data->_ignoresNonWheelEvents) \
@@ -1196,17 +1236,17 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 
 NATIVE_MOUSE_EVENT_HANDLER(mouseEntered)
 NATIVE_MOUSE_EVENT_HANDLER(mouseExited)
-NATIVE_MOUSE_EVENT_HANDLER(mouseMovedInternal)
-NATIVE_MOUSE_EVENT_HANDLER(mouseDownInternal)
-NATIVE_MOUSE_EVENT_HANDLER(mouseUpInternal)
-NATIVE_MOUSE_EVENT_HANDLER(mouseDraggedInternal)
 NATIVE_MOUSE_EVENT_HANDLER(otherMouseDown)
 NATIVE_MOUSE_EVENT_HANDLER(otherMouseDragged)
-NATIVE_MOUSE_EVENT_HANDLER(otherMouseMoved)
 NATIVE_MOUSE_EVENT_HANDLER(otherMouseUp)
 NATIVE_MOUSE_EVENT_HANDLER(rightMouseDown)
 NATIVE_MOUSE_EVENT_HANDLER(rightMouseDragged)
 NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
+
+NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseMovedInternal)
+NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDownInternal)
+NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseUpInternal)
+NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDraggedInternal)
 
 #undef NATIVE_MOUSE_EVENT_HANDLER
 
@@ -1274,7 +1314,6 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
     [self _dismissContentRelativeChildWindows];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [_data->_actionMenuController wkView:self willHandleMouseDown:event];
-    [_data->_immediateActionController wkView:self willHandleMouseDown:event];
 #endif
     [self mouseDownInternal:event];
 }
@@ -3666,6 +3705,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
         _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:_data->_immediateActionGestureRecognizer.get()]);
         [_data->_immediateActionGestureRecognizer setDelegate:_data->_immediateActionController.get()];
+        [_data->_immediateActionGestureRecognizer setDelaysPrimaryMouseButtonEvents:NO];
     }
 #endif
 

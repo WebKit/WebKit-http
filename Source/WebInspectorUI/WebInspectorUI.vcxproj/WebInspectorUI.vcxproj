@@ -315,8 +315,8 @@
     <None Include="..\UserInterface\ConsoleCommand.js" />
     <None Include="..\UserInterface\ConsoleCommandResult.js" />
     <None Include="..\UserInterface\ConsoleGroup.js" />
-    <None Include="..\UserInterface\ConsoleMessage.js" />
-    <None Include="..\UserInterface\ConsoleMessageImpl.js" />
+    <None Include="..\UserInterface\LegacyConsoleMessage.js" />
+    <None Include="..\UserInterface\LegacyConsoleMessageImpl.js" />
     <None Include="..\UserInterface\ConsoleObserver.js" />
     <None Include="..\UserInterface\ConsolePrompt.css" />
     <None Include="..\UserInterface\ConsolePrompt.js" />
@@ -525,6 +525,10 @@
     <None Include="..\UserInterface\Images\FolderGeneric.png" />
     <None Include="..\UserInterface\Images\ForwardArrow.svg" />
     <None Include="..\UserInterface\Images\ForwardArrowLegacy.svg" />
+    <None Include="..\UserInterface\Images\Frames.png" />
+    <None Include="..\UserInterface\Images\Frames%402x.png" />
+    <None Include="..\UserInterface\Images\FramesLarge.png" />
+    <None Include="..\UserInterface\Images\FramesLarge%402x.png" />
     <None Include="..\UserInterface\Images\Function.svg" />
     <None Include="..\UserInterface\Images\GoToArrow.svg" />
     <None Include="..\UserInterface\Images\HierarchicalNavigationItemChevron.svg" />
@@ -712,7 +716,6 @@
     <None Include="..\UserInterface\NetworkObserver.js" />
     <None Include="..\UserInterface\NetworkTimeline.css" />
     <None Include="..\UserInterface\Object.js" />
-    <None Include="..\UserInterface\ObjectPropertiesSection.js" />
     <None Include="..\UserInterface\PageObserver.js" />
     <None Include="..\UserInterface\PathComponentIcons.css" />
     <None Include="..\UserInterface\Popover.css" />
@@ -747,13 +750,15 @@
     <None Include="..\UserInterface\Revision.js" />
     <None Include="..\UserInterface\RulesStyleDetailsPanel.css" />
     <None Include="..\UserInterface\RulesStyleDetailsPanel.js" />
+    <None Include="..\UserInterface\RunLoopTimelineOverviewGraph.css" />
+    <None Include="..\UserInterface\RunLoopTimelineOverviewGraph.js" />
+    <None Include="..\UserInterface\RunLoopTimelineRecord.js" />
     <None Include="..\UserInterface\RuntimeObserver.js" />
     <None Include="..\UserInterface\ScopeBar.css" />
     <None Include="..\UserInterface\ScopeBar.js" />
     <None Include="..\UserInterface\ScopeBarItem.js" />
     <None Include="..\UserInterface\ScopeChainDetailsSidebarPanel.js" />
     <None Include="..\UserInterface\ScopeChainNode.js" />
-    <None Include="..\UserInterface\ScopeVariableTreeElement.js" />
     <None Include="..\UserInterface\Script.js" />
     <None Include="..\UserInterface\ScriptContentView.css" />
     <None Include="..\UserInterface\ScriptContentView.js" />
@@ -808,6 +813,8 @@
     <None Include="..\UserInterface\TimelineOverview.css" />
     <None Include="..\UserInterface\TimelineOverview.js" />
     <None Include="..\UserInterface\TimelineRecord.js" />
+    <None Include="..\UserInterface\TimelineRecordFrame.css" />
+    <None Include="..\UserInterface\TimelineRecordFrame.js" />
     <None Include="..\UserInterface\TimelinesContentView.css" />
     <None Include="..\UserInterface\TimelinesContentView.js" />
     <None Include="..\UserInterface\TimelinesObject.js" />

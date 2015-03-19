@@ -39,6 +39,14 @@ function toString(obj)
     return String(obj);
 }
 
+function toStringDescription(obj)
+{
+    if (obj === 0 && 1 / obj < 0)
+        return "-0";
+
+    return toString(obj);
+}
+
 function isUInt32(obj)
 {
     if (typeof obj === "number")
@@ -424,7 +432,7 @@ InjectedScript.prototype = {
     {
         var remoteObject = this._wrapObject(value, objectGroup);
         try {
-            remoteObject.description = toString(value);
+            remoteObject.description = toStringDescription(value);
         } catch (e) {}
         return {
             wasThrown: true,
@@ -895,7 +903,7 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
 
         // Provide user-friendly number values.
         if (this.type === "number")
-            this.description = object + "";
+            this.description = toStringDescription(object);
         return;
     }
 
@@ -982,13 +990,14 @@ InjectedScript.RemoteObject.prototype = {
                     return preview;
             }
 
+            if (preview.entries)
+                return preview;
+
             // Properties.
             var descriptors = injectedScript._propertyDescriptors(object, InjectedScript.CollectionMode.AllProperties);
             this._appendPropertyPreviews(preview, descriptors, false, propertiesThreshold, firstLevelKeys, secondLevelKeys);
             if (propertiesThreshold.indexes < 0 || propertiesThreshold.properties < 0)
                 return preview;
-
-            // FIXME: Iterator entries.
         } catch (e) {
             preview.lossless = false;
         }
@@ -1056,7 +1065,7 @@ InjectedScript.RemoteObject.prototype = {
                     value = this._abbreviateString(value, maxLength, true);
                     preview.lossless = false;
                 }
-                this._appendPropertyPreview(preview, internal, {name, type, value: toString(value)}, propertiesThreshold);
+                this._appendPropertyPreview(preview, internal, {name, type, value: toStringDescription(value)}, propertiesThreshold);
                 continue;
             }
 
@@ -1080,6 +1089,13 @@ InjectedScript.RemoteObject.prototype = {
             // Second level.
             if (secondLevelKeys === null || secondLevelKeys) {
                 var subPreview = this._generatePreview(value, secondLevelKeys || undefined, undefined);
+                property.valuePreview = subPreview;
+                if (!subPreview.lossless)
+                    preview.lossless = false;
+                if (subPreview.overflow)
+                    preview.overflow = true;
+            } else if (this._isPreviewableObject(value)) {
+                var subPreview = this._createObjectPreviewForValue(value);
                 property.valuePreview = subPreview;
                 if (!subPreview.lossless)
                     preview.lossless = false;
@@ -1135,6 +1151,57 @@ InjectedScript.RemoteObject.prototype = {
                 entry.key = this._createObjectPreviewForValue(entry.key);
             return entry;
         }, this);
+    },
+
+    _isPreviewableObject: function(object)
+    {
+        return this._isPreviewableObjectInternal(object, new Set, 1);
+    },
+
+    _isPreviewableObjectInternal: function(object, knownObjects, depth)
+    {
+        // Deep object.
+        if (depth > 3)
+            return false;
+
+        // Primitive.
+        if (injectedScript.isPrimitiveValue(object) || isSymbol(object))
+            return true;
+
+        // Cyclic objects.
+        if (knownObjects.has(object))
+            return false;
+
+        ++depth;
+        knownObjects.add(object);
+
+        // Arrays are simple if they have 5 or less simple objects.
+        var subtype = injectedScript._subtype(object);
+        if (subtype === "array") {
+            var length = object.length;
+            if (length > 5)
+                return false;
+            for (var i = 0; i < length; ++i) {
+                if (!this._isPreviewableObjectInternal(object[i], knownObjects, depth))
+                    return false;
+            }
+            return true;
+        }
+
+        // Not a basic object.
+        if (object.__proto__ && object.__proto__.__proto__)
+            return false;
+
+        // Objects are simple if they have 3 or less simple properties.
+        var ownPropertyNames = Object.getOwnPropertyNames(object);
+        if (ownPropertyNames.length > 3)
+            return false;
+        for (var propertyName of ownPropertyNames) {
+            if (!this._isPreviewableObjectInternal(object[propertyName], knownObjects, depth))
+                return false;
+        }
+
+        return true;
     },
 
     _abbreviateString: function(string, maxLength, middle)

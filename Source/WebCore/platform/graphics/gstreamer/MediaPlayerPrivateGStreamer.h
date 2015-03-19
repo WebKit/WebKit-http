@@ -51,6 +51,8 @@ typedef struct _GstBuffer GstBuffer;
 typedef struct _GstMessage GstMessage;
 typedef struct _GstElement GstElement;
 typedef struct _GstMpegtsSection GstMpegtsSection;
+typedef struct _GstGLContext GstGLContext;
+typedef struct _GstGLDisplay GstGLDisplay;
 
 namespace WebCore {
 

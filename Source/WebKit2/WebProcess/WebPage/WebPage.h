@@ -126,6 +126,7 @@ class HTMLPlugInElement;
 class HTMLPlugInImageElement;
 class IntPoint;
 class KeyboardEvent;
+class MediaPlaybackTarget;
 class Page;
 class PrintContext;
 class Range;
@@ -142,7 +143,6 @@ struct TextCheckingResult;
 }
 
 namespace WebKit {
-
 class DrawingArea;
 class InjectedBundleBackForwardList;
 class NotificationPermissionRequestManager;
@@ -1084,6 +1084,8 @@ private:
     PassRefPtr<WebCore::Range> lookupTextAtLocation(WebCore::FloatPoint, NSDictionary **options);
     void selectLastActionMenuRange();
     void focusAndSelectLastActionMenuHitTestResult();
+    void immediateActionDidCancel();
+    void immediateActionDidComplete();
     void setFont(const String& fontFamily, double fontSize, uint64_t fontTraits);
 
     void dataDetectorsDidPresentUI(WebCore::PageOverlay::PageOverlayID);
@@ -1092,6 +1094,11 @@ private:
 #endif
 
     void setShouldDispatchFakeMouseMoveEvents(bool dispatch) { m_shouldDispatchFakeMouseMoveEvents = dispatch; }
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    void playbackTargetSelected(const WebCore::MediaPlaybackTarget& outputDevice) const;
+    void playbackTargetAvailabilityDidChange(bool);
+#endif
 
     uint64_t m_pageID;
 

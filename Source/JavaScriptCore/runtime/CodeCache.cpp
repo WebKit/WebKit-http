@@ -75,13 +75,13 @@ template <> struct CacheTypes<UnlinkedEvalCodeBlock> {
 };
 
 template <class UnlinkedCodeBlockType, class ExecutableType>
-UnlinkedCodeBlockType* CodeCache::getGlobalCodeBlock(VM& vm, ExecutableType* executable, const SourceCode& source, JSParserStrictness strictness, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
+UnlinkedCodeBlockType* CodeCache::getGlobalCodeBlock(VM& vm, ExecutableType* executable, const SourceCode& source, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
 {
-    SourceCodeKey key = SourceCodeKey(source, String(), CacheTypes<UnlinkedCodeBlockType>::codeType, strictness);
-    CodeCacheMap::AddResult addResult = m_sourceCode.add(key, SourceCodeValue());
+    SourceCodeKey key = SourceCodeKey(source, String(), CacheTypes<UnlinkedCodeBlockType>::codeType, builtinMode, strictMode);
+    SourceCodeValue* cache = m_sourceCode.findCacheAndUpdateAge(key);
     bool canCache = debuggerMode == DebuggerOff && profilerMode == ProfilerOff && !vm.typeProfiler() && !vm.controlFlowProfiler();
-    if (!addResult.isNewEntry && canCache) {
-        UnlinkedCodeBlockType* unlinkedCodeBlock = jsCast<UnlinkedCodeBlockType*>(addResult.iterator->value.cell.get());
+    if (cache && canCache) {
+        UnlinkedCodeBlockType* unlinkedCodeBlock = jsCast<UnlinkedCodeBlockType*>(cache->cell.get());
         unsigned firstLine = source.firstLine() + unlinkedCodeBlock->firstLine();
         unsigned lineCount = unlinkedCodeBlock->lineCount();
         unsigned startColumn = unlinkedCodeBlock->startColumn() + source.startColumn();
@@ -92,11 +92,12 @@ UnlinkedCodeBlockType* CodeCache::getGlobalCodeBlock(VM& vm, ExecutableType* exe
     }
 
     typedef typename CacheTypes<UnlinkedCodeBlockType>::RootNode RootNode;
-    std::unique_ptr<RootNode> rootNode = parse<RootNode>(&vm, source, 0, Identifier(), strictness, JSParseProgramCode, error);
-    if (!rootNode) {
-        m_sourceCode.remove(addResult.iterator);
-        return 0;
-    }
+    std::unique_ptr<RootNode> rootNode = parse<RootNode>(
+        &vm, source, 0, Identifier(), builtinMode, strictMode, 
+        JSParserCodeType::Program, error);
+    if (!rootNode)
+        return nullptr;
+
     unsigned lineCount = rootNode->lastLine() - rootNode->lineNo();
     unsigned startColumn = rootNode->startColumn() + 1;
     bool endColumnIsOnStartLine = !lineCount;
@@ -109,42 +110,43 @@ UnlinkedCodeBlockType* CodeCache::getGlobalCodeBlock(VM& vm, ExecutableType* exe
 
     auto generator = std::make_unique<BytecodeGenerator>(vm, rootNode.get(), unlinkedCodeBlock, debuggerMode, profilerMode);
     error = generator->generate();
-    if (error.isValid()) {
-        m_sourceCode.remove(addResult.iterator);
+    if (error.isValid())
         return nullptr;
-    }
 
-    if (!canCache) {
-        m_sourceCode.remove(addResult.iterator);
+    if (!canCache)
         return unlinkedCodeBlock;
-    }
 
-    addResult.iterator->value = SourceCodeValue(vm, unlinkedCodeBlock, m_sourceCode.age());
+    m_sourceCode.addCache(key, SourceCodeValue(vm, unlinkedCodeBlock, m_sourceCode.age()));
     return unlinkedCodeBlock;
 }
 
-UnlinkedProgramCodeBlock* CodeCache::getProgramCodeBlock(VM& vm, ProgramExecutable* executable, const SourceCode& source, JSParserStrictness strictness, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
+UnlinkedProgramCodeBlock* CodeCache::getProgramCodeBlock(VM& vm, ProgramExecutable* executable, const SourceCode& source, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
 {
-    return getGlobalCodeBlock<UnlinkedProgramCodeBlock>(vm, executable, source, strictness, debuggerMode, profilerMode, error);
+    return getGlobalCodeBlock<UnlinkedProgramCodeBlock>(vm, executable, source, builtinMode, strictMode, debuggerMode, profilerMode, error);
 }
 
-UnlinkedEvalCodeBlock* CodeCache::getEvalCodeBlock(VM& vm, EvalExecutable* executable, const SourceCode& source, JSParserStrictness strictness, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
+UnlinkedEvalCodeBlock* CodeCache::getEvalCodeBlock(VM& vm, EvalExecutable* executable, const SourceCode& source, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
 {
-    return getGlobalCodeBlock<UnlinkedEvalCodeBlock>(vm, executable, source, strictness, debuggerMode, profilerMode, error);
+    return getGlobalCodeBlock<UnlinkedEvalCodeBlock>(vm, executable, source, builtinMode, strictMode, debuggerMode, profilerMode, error);
 }
 
 UnlinkedFunctionExecutable* CodeCache::getFunctionExecutableFromGlobalCode(VM& vm, const Identifier& name, const SourceCode& source, ParserError& error)
 {
-    SourceCodeKey key = SourceCodeKey(source, name.string(), SourceCodeKey::FunctionType, JSParseNormal);
-    CodeCacheMap::AddResult addResult = m_sourceCode.add(key, SourceCodeValue());
-    if (!addResult.isNewEntry)
-        return jsCast<UnlinkedFunctionExecutable*>(addResult.iterator->value.cell.get());
+    SourceCodeKey key = SourceCodeKey(
+        source, name.string(), SourceCodeKey::FunctionType, 
+        JSParserBuiltinMode::NotBuiltin, 
+        JSParserStrictMode::NotStrict);
+    SourceCodeValue* cache = m_sourceCode.findCacheAndUpdateAge(key);
+    if (cache)
+        return jsCast<UnlinkedFunctionExecutable*>(cache->cell.get());
 
     JSTextPosition positionBeforeLastNewline;
-    std::unique_ptr<ProgramNode> program = parse<ProgramNode>(&vm, source, 0, Identifier(), JSParseNormal, JSParseProgramCode, error, &positionBeforeLastNewline);
+    std::unique_ptr<ProgramNode> program = parse<ProgramNode>(
+        &vm, source, 0, Identifier(), JSParserBuiltinMode::NotBuiltin, 
+        JSParserStrictMode::NotStrict, JSParserCodeType::Program, 
+        error, &positionBeforeLastNewline);
     if (!program) {
         RELEASE_ASSERT(error.isValid());
-        m_sourceCode.remove(addResult.iterator);
         return nullptr;
     }
 
@@ -165,7 +167,7 @@ UnlinkedFunctionExecutable* CodeCache::getFunctionExecutableFromGlobalCode(VM& v
     UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, body, UnlinkedNormalFunction);
     functionExecutable->m_nameValue.set(vm, functionExecutable, jsString(&vm, name.string()));
 
-    addResult.iterator->value = SourceCodeValue(vm, functionExecutable, m_sourceCode.age());
+    m_sourceCode.addCache(key, SourceCodeValue(vm, functionExecutable, m_sourceCode.age()));
     return functionExecutable;
 }
 

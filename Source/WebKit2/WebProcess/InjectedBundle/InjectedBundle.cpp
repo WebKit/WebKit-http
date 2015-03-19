@@ -136,11 +136,6 @@ WebConnection* InjectedBundle::webConnectionToUIProcess() const
     return WebProcess::singleton().webConnectionToUIProcess();
 }
 
-void InjectedBundle::setAlwaysAcceptCookies(bool accept)
-{
-    WebProcess::singleton().supplement<WebCookieManager>()->setHTTPCookieAcceptPolicy(accept ? HTTPCookieAcceptPolicyAlways : HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain);
-}
-
 void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* pageGroup, const String& preference, bool enabled)
 {
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
@@ -176,6 +171,11 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
             page->settings().setImageControlsEnabled(enabled);
         return;
     }
+#endif
+
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    if (preference == "WebKitCSSAnimationTriggersEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setAnimationTriggersEnabled(enabled);
 #endif
 
 #if ENABLE(CSS_REGIONS)
@@ -608,6 +608,15 @@ void InjectedBundle::setTabKeyCyclesThroughElements(WebPage* page, bool enabled)
 void InjectedBundle::setSerialLoadingEnabled(bool enabled)
 {
     resourceLoadScheduler()->setSerialLoadingEnabled(enabled);
+}
+
+void InjectedBundle::setCSSAnimationTriggersEnabled(bool enabled)
+{
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    RuntimeEnabledFeatures::sharedFeatures().setAnimationTriggersEnabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
+#endif
 }
 
 void InjectedBundle::setCSSRegionsEnabled(bool enabled)

@@ -542,9 +542,8 @@ private:
         case Identity:
         case BooleanToNumber:
         case PhantomNewObject:
-        case PutByOffsetHint:
+        case PutHint:
         case CheckStructureImmediate:
-        case PutStructureHint:
         case MaterializeNewObject:
         case PutStack:
         case KillStack:
@@ -626,6 +625,7 @@ private:
         case SetArgument:
         case CheckStructure:
         case CheckCell:
+        case CheckNotEmpty:
         case CheckBadCell:
         case PutStructure:
         case TearOffArguments:

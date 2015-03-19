@@ -405,10 +405,18 @@ messages -> WebPage LegacyReceiver {
     PerformActionMenuHitTestAtLocation(WebCore::FloatPoint location, bool forImmediateAction)
     SelectLastActionMenuRange()
     FocusAndSelectLastActionMenuHitTestResult()
+    ImmediateActionDidCancel()
+    ImmediateActionDidComplete()
     DataDetectorsDidPresentUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
     DataDetectorsDidChangeUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
     DataDetectorsDidHideUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
 #endif
 
     SetShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    PlaybackTargetSelected(WebCore::MediaPlaybackTarget target)
+    PlaybackTargetAvailabilityDidChange(bool available)
+#endif
+
 }

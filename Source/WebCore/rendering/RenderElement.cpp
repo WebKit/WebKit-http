@@ -37,6 +37,7 @@
 #include "HTMLHtmlElement.h"
 #include "HTMLNames.h"
 #include "FlowThreadController.h"
+#include "RenderBlock.h"
 #include "RenderCounter.h"
 #include "RenderDeprecatedFlexibleBox.h"
 #include "RenderFlexibleBox.h"
@@ -336,7 +337,7 @@ inline bool RenderElement::shouldRepaintForStyleDifference(StyleDifference diff)
 void RenderElement::updateFillImages(const FillLayer* oldLayers, const FillLayer* newLayers)
 {
     // Optimize the common case
-    if (oldLayers && !oldLayers->next() && newLayers && !newLayers->next() && oldLayers->image() == newLayers->image() && oldLayers->maskImage() == newLayers->maskImage())
+    if (FillLayer::imagesIdentical(oldLayers, newLayers))
         return;
     
     // Go through the new layers and addClients first, to avoid removing all clients of an image.
@@ -1163,6 +1164,31 @@ RenderElement* RenderElement::hoverAncestor() const
     return hoverAncestor;
 }
 
+static inline void paintPhase(RenderElement& element, PaintPhase phase, PaintInfo& paintInfo, const LayoutPoint& childPoint)
+{
+    paintInfo.phase = phase;
+    element.paint(paintInfo, childPoint);
+}
+
+void RenderElement::paintAsInlineBlock(PaintInfo& paintInfo, const LayoutPoint& childPoint)
+{
+    // Paint all phases atomically, as though the element established its own stacking context.
+    // (See Appendix E.2, section 6.4 on inline block/table/replaced elements in the CSS2.1 specification.)
+    // This is also used by other elements (e.g. flex items and grid items).
+    if (paintInfo.phase == PaintPhaseSelection) {
+        paint(paintInfo, childPoint);
+    } else if (paintInfo.phase == PaintPhaseForeground) {
+        paintPhase(*this, PaintPhaseBlockBackground, paintInfo, childPoint);
+        paintPhase(*this, PaintPhaseChildBlockBackgrounds, paintInfo, childPoint);
+        paintPhase(*this, PaintPhaseFloat, paintInfo, childPoint);
+        paintPhase(*this, PaintPhaseForeground, paintInfo, childPoint);
+        paintPhase(*this, PaintPhaseOutline, paintInfo, childPoint);
+
+        // Reset |paintInfo| to the original phase.
+        paintInfo.phase = PaintPhaseForeground;
+    }
+}
+
 void RenderElement::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
@@ -1494,6 +1520,48 @@ PassRefPtr<RenderStyle> RenderElement::getUncachedPseudoStyle(const PseudoStyleR
     }
 
     return document().ensureStyleResolver().pseudoStyleForElement(element(), pseudoStyleRequest, parentStyle);
+}
+
+RenderBlock* RenderElement::containingBlockForFixedPosition() const
+{
+    const RenderElement* object = this;
+    while (object && !object->canContainFixedPositionObjects())
+        object = object->parent();
+
+    ASSERT(!object || !object->isAnonymousBlock());
+    return const_cast<RenderBlock*>(downcast<RenderBlock>(object));
+}
+
+RenderBlock* RenderElement::containingBlockForAbsolutePosition() const
+{
+    const RenderElement* object = this;
+    while (object && !object->canContainAbsolutelyPositionedObjects())
+        object = object->parent();
+
+    // For a relatively positioned inline, return its nearest non-anonymous containing block,
+    // not the inline itself, to avoid having a positioned objects list in all RenderInlines
+    // and use RenderBlock* as RenderElement::containingBlock's return type.
+    // Use RenderBlock::container() to obtain the inline.
+    if (object && !is<RenderBlock>(*object))
+        object = object->containingBlock();
+
+    while (object && object->isAnonymousBlock())
+        object = object->containingBlock();
+
+    return const_cast<RenderBlock*>(downcast<RenderBlock>(object));
+}
+
+static inline bool isNonRenderBlockInline(const RenderElement& object)
+{
+    return (object.isInline() && !object.isReplaced()) || !object.isRenderBlock();
+}
+
+RenderBlock* RenderElement::containingBlockForObjectInFlow() const
+{
+    const RenderElement* object = this;
+    while (object && isNonRenderBlockInline(*object))
+        object = object->parent();
+    return const_cast<RenderBlock*>(downcast<RenderBlock>(object));
 }
 
 Color RenderElement::selectionColor(int colorProperty) const

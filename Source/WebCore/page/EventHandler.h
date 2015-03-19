@@ -117,6 +117,13 @@ extern const float GestureUnknown;
 enum AppendTrailingWhitespace { ShouldAppendTrailingWhitespace, DontAppendTrailingWhitespace };
 enum CheckDragHysteresis { ShouldCheckDragHysteresis, DontCheckDragHysteresis };
 
+enum class ImmediateActionStage {
+    None,
+    PerformedHitTest,
+    ActionCancelled,
+    ActionCompleted
+};
+
 class EventHandler {
     WTF_MAKE_NONCOPYABLE(EventHandler);
     WTF_MAKE_FAST_ALLOCATED;
@@ -239,6 +246,7 @@ public:
     WEBCORE_EXPORT bool keyEvent(const PlatformKeyboardEvent&);
     void defaultKeyboardEventHandler(KeyboardEvent*);
 
+    bool accessibilityPreventsEventPropogation(KeyboardEvent*);
     WEBCORE_EXPORT void handleKeyboardSelectionMovementForAccessibility(KeyboardEvent*);
 
     bool handleTextInputEvent(const String& text, Event* underlyingEvent = 0, TextEventInputType = TextEventInputKeyboard);
@@ -303,6 +311,8 @@ public:
     void updateCursor();
 
     bool isHandlingWheelEvent() const { return m_isHandlingWheelEvent; }
+
+    WEBCORE_EXPORT void setImmediateActionStage(ImmediateActionStage stage);
 
 private:
 #if ENABLE(DRAG_SUPPORT)
@@ -563,6 +573,8 @@ private:
 #if ENABLE(CURSOR_VISIBILITY)
     Timer m_autoHideCursorTimer;
 #endif
+
+    ImmediateActionStage m_immediateActionStage;
 };
 
 } // namespace WebCore

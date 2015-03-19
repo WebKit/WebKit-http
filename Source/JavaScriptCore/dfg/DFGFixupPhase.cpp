@@ -273,7 +273,7 @@ private:
         case ArithMod: {
             if (Node::shouldSpeculateInt32OrBooleanForArithmetic(node->child1().node(), node->child2().node())
                 && node->canSpeculateInt32(FixupPass)) {
-                if (optimizeForX86() || optimizeForARM64() || optimizeForARMv7s()) {
+                if (optimizeForX86() || optimizeForARM64() || optimizeForARMv7IDIVSupported()) {
                     fixIntOrBooleanEdge(node->child1());
                     fixIntOrBooleanEdge(node->child2());
                     if (bytecodeCanTruncateInteger(node->arithNodeFlags()))
@@ -1068,9 +1068,8 @@ private:
         case Identity: // This should have been cleaned up.
         case BooleanToNumber:
         case PhantomNewObject:
-        case PutByOffsetHint:
+        case PutHint:
         case CheckStructureImmediate:
-        case PutStructureHint:
         case MaterializeNewObject:
         case PutStack:
         case KillStack:
@@ -1269,6 +1268,7 @@ private:
         case CountExecution:
         case ForceOSRExit:
         case CheckBadCell:
+        case CheckNotEmpty:
         case CheckWatchdogTimer:
         case Unreachable:
         case ExtractOSREntryLocal:

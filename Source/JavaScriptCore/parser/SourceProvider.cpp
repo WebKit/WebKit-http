@@ -27,8 +27,8 @@
 #include "SourceProvider.h"
 
 #include "JSCInlines.h"
+#include <wtf/SpinLock.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/TCSpinLock.h>
 
 namespace JSC {
 
@@ -44,7 +44,7 @@ SourceProvider::~SourceProvider()
 {
 }
 
-static TCMalloc_SpinLock providerIdLock = SPINLOCK_INITIALIZER;
+static StaticSpinLock providerIdLock;
 
 void SourceProvider::getID()
 {
