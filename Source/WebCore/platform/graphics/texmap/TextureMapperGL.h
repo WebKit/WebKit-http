@@ -59,11 +59,9 @@ public:
 
     virtual void bindSurface(BitmapTexture* surface) override;
     virtual void beginClip(const TransformationMatrix&, const FloatRect&) override;
-    virtual void endClip() override;
-    virtual void beginDepthTesting() override;
-    virtual void endDepthTesting() override;
     virtual void beginPainting(PaintFlags = 0) override;
     virtual void endPainting() override;
+    virtual void endClip() override;
     virtual IntRect clipBounds() override;
     virtual IntSize maxTextureSize() const override { return IntSize(2000, 2000); }
     virtual PassRefPtr<BitmapTexture> createTexture() override;

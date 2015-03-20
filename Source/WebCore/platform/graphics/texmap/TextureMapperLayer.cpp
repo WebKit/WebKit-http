@@ -33,13 +33,11 @@ class TextureMapperPaintOptions {
 public:
     RefPtr<BitmapTexture> surface;
     float opacity;
-    mutable uint32_t depthCount;
     TransformationMatrix transform;
     IntSize offset;
     TextureMapper* textureMapper;
     TextureMapperPaintOptions()
         : opacity(1)
-        , depthCount(0)
         , textureMapper(0)
     { }
 };
@@ -59,12 +57,30 @@ void TextureMapperLayer::computeTransformsRecursive()
 
     m_state.visible = m_state.backfaceVisibility || !m_currentTransform.combined().isBackFaceVisible();
 
+    if (m_parent && m_parent->m_state.preserves3D) {
+        auto& transform = m_currentTransform.combined();
+        if (!m_state.size.isEmpty()) {
+            float centerZ = std::numeric_limits<float>::max();
+            FloatQuad rectQuad(FloatRect(m_state.pos, m_state.size));
+
+            centerZ = std::min(centerZ, transform.mapPoint(FloatPoint3D(rectQuad.p1())).z());
+            centerZ = std::min(centerZ, transform.mapPoint(FloatPoint3D(rectQuad.p2())).z());
+            centerZ = std::min(centerZ, transform.mapPoint(FloatPoint3D(rectQuad.p3())).z());
+            m_centerZ = std::min(centerZ, transform.mapPoint(FloatPoint3D(rectQuad.p4())).z());
+        } else
+            m_centerZ = transform.mapPoint(FloatPoint3D()).z();
+    }
+
     if (m_state.maskLayer)
         m_state.maskLayer->computeTransformsRecursive();
     if (m_state.replicaLayer)
         m_state.replicaLayer->computeTransformsRecursive();
     for (auto* child : m_children)
         child->computeTransformsRecursive();
+
+    // Reorder children if needed on the way back up.
+    if (m_state.preserves3D)
+        sortByZOrder(m_children);
 }
 
 void TextureMapperLayer::paint()
@@ -144,6 +160,14 @@ void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
         m_contentsLayer->drawBorder(options.textureMapper, m_state.debugBorderColor, m_state.debugBorderWidth, m_state.contentsRect, transform);
 }
 
+void TextureMapperLayer::sortByZOrder(Vector<TextureMapperLayer* >& array)
+{
+    std::sort(array.begin(), array.end(),
+        [](TextureMapperLayer* a, TextureMapperLayer* b) {
+            return a->m_centerZ < b->m_centerZ;
+        });
+}
+
 void TextureMapperLayer::paintSelfAndChildren(const TextureMapperPaintOptions& options)
 {
     paintSelf(options);
@@ -151,14 +175,7 @@ void TextureMapperLayer::paintSelfAndChildren(const TextureMapperPaintOptions& o
     if (m_children.isEmpty())
         return;
 
-    bool preserves3D = m_state.preserves3D;
-    if (preserves3D) {
-        if (!options.depthCount)
-            options.textureMapper->beginDepthTesting();
-        options.depthCount++;
-    }
-
-    bool shouldClip = m_state.masksToBounds && !preserves3D;
+    bool shouldClip = m_state.masksToBounds && !m_state.preserves3D;
     if (shouldClip) {
         TransformationMatrix clipTransform;
         clipTransform.translate(options.offset.width(), options.offset.height());
@@ -172,12 +189,6 @@ void TextureMapperLayer::paintSelfAndChildren(const TextureMapperPaintOptions& o
 
     if (shouldClip)
         options.textureMapper->endClip();
-
-    if (preserves3D) {
-        options.depthCount--;
-        if (!options.depthCount)
-            options.textureMapper->endDepthTesting();
-    }
 }
 
 bool TextureMapperLayer::shouldBlend() const
