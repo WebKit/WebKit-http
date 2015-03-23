@@ -655,6 +655,7 @@ RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessForReload()
 
     auto navigation = m_navigationState->createReloadNavigation();
 
+    // We allow stale content when reloading a WebProcess that's been killed or crashed.
     m_process->send(Messages::WebPage::GoToBackForwardItem(navigation->navigationID(), m_backForwardList->currentItem()->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
 
@@ -1418,11 +1419,15 @@ IntSize WebPageProxy::viewSize() const
     return m_pageClient.viewSize();
 }
 
-void WebPageProxy::setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent& keyboardEvent)
+void WebPageProxy::setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent& keyboardEvent, std::function<void (CallbackBase::Error)> callbackFunction)
 {
-    if (!isValid())
+    if (!isValid()) {
+        callbackFunction(CallbackBase::Error::OwnerWasInvalidated);
         return;
-    m_process->send(Messages::WebPage::SetInitialFocus(forward, isKeyboardEventValid, keyboardEvent), m_pageID);
+    }
+
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::SetInitialFocus(forward, isKeyboardEventValid, keyboardEvent, callbackID), m_pageID);
 }
 
 void WebPageProxy::setWindowResizerSize(const IntSize& windowResizerSize)
@@ -3089,7 +3094,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, uint64_t na
     }
 
 #if ENABLE(CONTENT_FILTERING)
-    if (frame->contentFilterDidHandleNavigationAction(request)) {
+    if (frame->didHandleContentFilterUnblockNavigation(request)) {
         receivedPolicyAction = true;
         policyAction = PolicyIgnore;
         return;
@@ -5609,7 +5614,7 @@ void WebPageProxy::handleAutoFillButtonClick(const UserData& userData)
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
-WebMediaPlaybackTargetPickerProxy& WebPageProxy::devicePickerProxy()
+WebCore::MediaPlaybackTargetPicker& WebPageProxy::devicePickerProxy()
 {
     if (!m_playbackTargetPicker)
         m_playbackTargetPicker = m_pageClient.createPlaybackTargetPicker(this);

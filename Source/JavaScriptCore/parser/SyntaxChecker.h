@@ -168,9 +168,8 @@ public:
 #if ENABLE(ES6_CLASS_SYNTAX)
     ClassExpression createClassExpr(const JSTokenLocation&, const Identifier&, ExpressionType, ExpressionType, PropertyList, PropertyList) { return ClassExpr; }
 #endif
-    ExpressionType createFunctionExpr(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&, int) { return FunctionExpr; }
-    int createFunctionBody(const JSTokenLocation&, const JSTokenLocation&, int, int, bool, ConstructorKind) { return FunctionBodyResult; }
-    void setFunctionNameStart(int, int) { }
+    ExpressionType createFunctionExpr(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&) { return FunctionExpr; }
+    int createFunctionBody(const JSTokenLocation&, const JSTokenLocation&, int, int, bool, int, int, int, ConstructorKind) { return FunctionBodyResult; }
     int createArguments() { return ArgumentsResult; }
     int createArguments(int) { return ArgumentsResult; }
     ExpressionType createSpreadExpression(const JSTokenLocation&, ExpressionType, int, int, int) { return SpreadExpr; }
@@ -202,7 +201,7 @@ public:
     int createClause(int, int) { return ClauseResult; }
     int createClauseList(int) { return ClauseListResult; }
     int createClauseList(int, int) { return ClauseListResult; }
-    int createFuncDeclStatement(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&, int) { return StatementResult; }
+    int createFuncDeclStatement(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&) { return StatementResult; }
 #if ENABLE(ES6_CLASS_SYNTAX)
     int createClassDeclStatement(const JSTokenLocation&, ClassExpression,
         const JSTextPosition&, const JSTextPosition&, int, int) { return StatementResult; }
@@ -231,14 +230,14 @@ public:
     int createDebugger(const JSTokenLocation&, int, int) { return StatementResult; }
     int createConstStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int appendConstDecl(const JSTokenLocation&, int, const Identifier*, int) { return StatementResult; }
-    Property createGetterOrSetterProperty(const JSTokenLocation&, PropertyNode::Type type, bool strict, const Identifier* name, const ParserFunctionInfo<SyntaxChecker>&, unsigned, SuperBinding)
+    Property createGetterOrSetterProperty(const JSTokenLocation&, PropertyNode::Type type, bool strict, const Identifier* name, const ParserFunctionInfo<SyntaxChecker>&, SuperBinding)
     {
         ASSERT(name);
         if (!strict)
             return Property(type);
         return Property(name, type);
     }
-    Property createGetterOrSetterProperty(VM* vm, ParserArena& parserArena, const JSTokenLocation&, PropertyNode::Type type, bool strict, double name, const ParserFunctionInfo<SyntaxChecker>&, unsigned, SuperBinding)
+    Property createGetterOrSetterProperty(VM* vm, ParserArena& parserArena, const JSTokenLocation&, PropertyNode::Type type, bool strict, double name, const ParserFunctionInfo<SyntaxChecker>&, SuperBinding)
     {
         if (!strict)
             return Property(type);
@@ -274,7 +273,7 @@ public:
     
     void assignmentStackAppend(int, int, int, int, int, Operator) { }
     int createAssignment(const JSTokenLocation&, int, int, int, int, int) { RELEASE_ASSERT_NOT_REACHED(); return AssignmentExpr; }
-    const Identifier* getName(const Property& property) const { ASSERT(property.name); return property.name; }
+    const Identifier* getName(const Property& property) const { return property.name; }
     PropertyNode::Type getType(const Property& property) const { return property.type; }
     bool isResolve(ExpressionType expr) const { return expr == ResolveExpr || expr == ResolveEvalExpr; }
     ExpressionType createDeconstructingAssignment(const JSTokenLocation&, int, ExpressionType)

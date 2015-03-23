@@ -1,3 +1,517 @@
+2015-03-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove DFG::ValueRecoveryOverride; it's been dead since we removed forward speculations
+        https://bugs.webkit.org/show_bug.cgi?id=142956
+
+        Rubber stamped by Gyuyoung Kim.
+        
+        Just removing dead code.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGOSRExit.h:
+        * dfg/DFGOSRExitCompiler.cpp:
+        * dfg/DFGValueRecoveryOverride.h: Removed.
+
+2015-03-22  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG OSR exit shouldn't assume that the frame count for exit is greater than the frame count in DFG
+        https://bugs.webkit.org/show_bug.cgi?id=142948
+
+        Reviewed by Sam Weinig.
+        
+        It's necessary to ensure that the stack pointer accounts for the extent of our stack usage
+        since a signal may clobber the area below the stack pointer. When the DFG is executing,
+        the stack pointer accounts for the DFG's worst-case stack usage. When we OSR exit back to
+        baseline, we will use a different amount of stack. This is because baseline is a different
+        compiler. It will make different decisions. So it will use a different amount of stack.
+        
+        This gets tricky when we are in the process of doing an OSR exit, because we are sort of
+        incrementally transforming the stack from how it looked in the DFG to how it will look in
+        baseline. The most conservative approach would be to set the stack pointer to the max of
+        DFG and baseline.
+        
+        When this code was written, a reckless assumption was made: that the stack usage in
+        baseline is always at least as large as the stack usage in DFG. Based on this incorrect
+        assumption, the code first adjusts the stack pointer to account for the baseline stack
+        usage. This sort of usually works, because usually baseline does happen to use more stack.
+        But that's not an invariant. Nobody guarantees this. We will never make any changes that
+        would make this be guaranteed, because that would be antithetical to how optimizing
+        compilers work. The DFG should be allowed to use however much stack it decides that it
+        should use in order to get good performance, and it shouldn't try to guarantee that it
+        always uses less stack than baseline.
+        
+        As such, we must always assume that the frame size for DFG execution (i.e.
+        frameRegisterCount) and the frame size in baseline once we exit (i.e.
+        requiredRegisterCountForExit) are two independent quantities and they have no
+        relationship.
+        
+        Fortunately, though, this code can be made correct by just moving the stack adjustment to
+        just before we do conversions. This is because we have since changed the OSR exit
+        algorithm to first lift up all state from the DFG state into a scratch buffer, and then to
+        drop it out of the scratch buffer and into the stack according to the baseline layout. The
+        point just before conversions is the point where we have finished reading the DFG frame
+        and will not read it anymore, and we haven't started writing the baseline frame. So, at
+        this point it is safe to set the stack pointer to account for the frame size at exit.
+        
+        This is benign because baseline happens to create larger frames than DFG.
+
+        * dfg/DFGOSRExitCompiler32_64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGOSRExitCompiler64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::adjustAndJumpToTarget):
+
+2015-03-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Shorten the number of iterations to 10,000 since that's enough to test all tiers.
+
+        Rubber stamped by Sam Weinig.
+
+        * tests/stress/equals-masquerader.js:
+
+2015-03-22  Filip Pizlo  <fpizlo@apple.com>
+
+        tests/stress/*tdz* tests do 10x more iterations than necessary
+        https://bugs.webkit.org/show_bug.cgi?id=142946
+
+        Reviewed by Ryosuke Niwa.
+        
+        The stress test harness runs all of these tests in various configurations. This includes
+        no-cjit, which has tier-up heuristics locked in such a way that 10,000 iterations is
+        enough to get to the highest tier. The only exceptions are very large functions or
+        functions that have some reoptimizations. That happens rarely, and when it does happen,
+        usually 20,000 iterations is enough.
+        
+        Therefore, these tests use 10x too many iterations. This is bad, since these tests
+        allocate on each iteration, and so they run very slowly in debug mode.
+
+        * tests/stress/class-syntax-no-loop-tdz.js:
+        * tests/stress/class-syntax-no-tdz-in-catch.js:
+        * tests/stress/class-syntax-no-tdz-in-conditional.js:
+        * tests/stress/class-syntax-no-tdz-in-loop-no-inline-super.js:
+        * tests/stress/class-syntax-no-tdz-in-loop.js:
+        * tests/stress/class-syntax-no-tdz.js:
+        * tests/stress/class-syntax-tdz-in-catch.js:
+        * tests/stress/class-syntax-tdz-in-conditional.js:
+        * tests/stress/class-syntax-tdz-in-loop.js:
+        * tests/stress/class-syntax-tdz.js:
+
+2015-03-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix a typo in Parser error message
+        https://bugs.webkit.org/show_bug.cgi?id=142942
+
+        Reviewed by Alexey Proskuryakov.
+
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitSlow_op_resolve_scope):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emitSlow_op_resolve_scope):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+        Fix a common identifier typo.
+
+2015-03-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Computed Property names should allow only AssignmentExpressions not any Expression
+        https://bugs.webkit.org/show_bug.cgi?id=142902
+
+        Reviewed by Ryosuke Niwa.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseProperty):
+        Limit computed expressions to just assignment expressions instead of
+        any expression (which allowed comma expressions).
+
+2015-03-21  Andreas Kling  <akling@apple.com>
+
+        Make UnlinkedFunctionExecutable fit in a 128-byte cell.
+        <https://webkit.org/b/142939>
+
+        Reviewed by Mark Hahnenberg.
+
+        Re-arrange the members of UnlinkedFunctionExecutable so it can fit inside
+        a 128-byte heap cell instead of requiring a 256-byte one.
+
+        Threw in a static_assert to catch anyone pushing it over the limit again.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedFunctionExecutable::functionMode):
+
+2015-03-20  Mark Hahnenberg  <mhahnenb@gmail.com>
+
+        GCTimer should know keep track of nested GC phases
+        https://bugs.webkit.org/show_bug.cgi?id=142675
+
+        Reviewed by Darin Adler.
+
+        This improves the GC phase timing output in Heap.cpp by linking
+        phases nested inside other phases together, allowing tools
+        to compute how much time we're spending in various nested phases.
+
+        * heap/Heap.cpp:
+
+2015-03-20  Geoffrey Garen  <ggaren@apple.com>
+
+        FunctionBodyNode should known where its parameters started
+        https://bugs.webkit.org/show_bug.cgi?id=142926
+
+        Reviewed by Ryosuke Niwa.
+
+        This will allow us to re-parse parameters instead of keeping the
+        parameters piece of the AST around forever.
+
+        I also took the opportunity to initialize most FunctionBodyNode data
+        members at construction time, to help clarify that they are set right.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionExpr): No need to pass
+        functionKeywordStart here; we now provide it at FunctionBodyNode
+        creation time.
+
+        (JSC::ASTBuilder::createFunctionBody): Require everything we need at
+        construction time, including the start of our parameters.
+
+        (JSC::ASTBuilder::createGetterOrSetterProperty):
+        (JSC::ASTBuilder::createFuncDeclStatement):  No need to pass
+        functionKeywordStart here; we now provide it at FunctionBodyNode
+        creation time.
+
+        (JSC::ASTBuilder::setFunctionNameStart): Deleted.
+
+        * parser/Nodes.cpp:
+        (JSC::FunctionBodyNode::FunctionBodyNode): Initialize everything at
+        construction time.
+
+        * parser/Nodes.h: Added a field for the location of our parameters.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionBody):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parsePropertyMethod):
+        (JSC::Parser<LexerType>::parseGetterSetter):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        * parser/Parser.h: Refactored to match above interface changes.
+
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createFunctionExpr):
+        (JSC::SyntaxChecker::createFunctionBody):
+        (JSC::SyntaxChecker::createFuncDeclStatement):
+        (JSC::SyntaxChecker::createGetterOrSetterProperty): Refactored to match
+        above interface changes.
+
+        (JSC::SyntaxChecker::setFunctionNameStart): Deleted.
+
+2015-03-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Observably effectful nodes in DFG IR should come last in their bytecode instruction (i.e. forExit section), except for Hint nodes
+        https://bugs.webkit.org/show_bug.cgi?id=142920
+
+        Reviewed by Oliver Hunt, Geoffrey Garen, and Mark Lam.
+        
+        Observably effectful, n.: If we reexecute the bytecode instruction after this node has
+        executed, then something other than the bytecode instruction's specified outcome will
+        happen.
+
+        We almost never had observably effectful nodes except at the end of the bytecode
+        instruction.  The exception is a lowered transitioning PutById:
+
+        PutStructure(@o, S1 -> S2)
+        PutByOffset(@o, @o, @v)
+
+        The PutStructure is observably effectful: if you try to reexecute the bytecode after
+        doing the PutStructure, then we'll most likely crash.  The generic PutById handling means
+        first checking what the old structure of the object is; but if we reexecute, the old
+        structure will seem to be the new structure.  But the property ensured by the new
+        structure hasn't been stored yet, so any attempt to load it or scan it will crash.
+
+        Intriguingly, however, none of the other operations involved in the PutById are
+        observably effectful.  Consider this example:
+
+        PutByOffset(@o, @o, @v)
+        PutStructure(@o, S1 -> S2)
+
+        Note that the PutStructure node doesn't reallocate property storage; see further below
+        for an example that does that. Because no property storage is happening, we know that we
+        already had room for the new property.  This means that the PutByOffset is no observable
+        until the PutStructure executes and "reveals" the property.  Hence, PutByOffset is not
+        observably effectful.
+
+        Now consider this:
+
+        b: AllocatePropertyStorage(@o)
+        PutByOffset(@b, @o, @v)
+        PutStructure(@o, S1 -> S2)
+
+        Surprisingly, this is also safe, because the AllocatePropertyStorage is not observably
+        effectful. It *does* reallocate the property storage and the new property storage pointer
+        is stored into the object. But until the PutStructure occurs, the world will just think
+        that the reallocation didn't happen, in the sense that we'll think that the property
+        storage is using less memory than what we just allocated. That's harmless.
+
+        The AllocatePropertyStorage is safe in other ways, too. Even if we GC'd after the
+        AllocatePropertyStorage but before the PutByOffset (or before the PutStructure),
+        everything could be expected to be fine, so long as all of @o, @v and @b are on the
+        stack. If they are all on the stack, then the GC will leave the property storage alone
+        (so the extra memory we just allocated would be safe). The GC will not scan the part of
+        the property storage that contains @v, but that's fine, so long as @v is on the stack.
+        
+        The better long-term solution is probably bug 142921.
+        
+        But for now, this:
+        
+        - Fixes an object materialization bug, exemplified by the two tests, that previously
+          crashed 100% of the time with FTL enabled and concurrent JIT disabled.
+        
+        - Allows us to remove the workaround introduced in r174856.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handlePutById):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::emitPutByOffset):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::insertCheck):
+        (JSC::DFG::FixupPhase::indexOfNode): Deleted.
+        (JSC::DFG::FixupPhase::indexOfFirstNodeOfExitOrigin): Deleted.
+        * dfg/DFGInsertionSet.h:
+        (JSC::DFG::InsertionSet::insertOutOfOrder): Deleted.
+        (JSC::DFG::InsertionSet::insertOutOfOrderNode): Deleted.
+        * tests/stress/materialize-past-butterfly-allocation.js: Added.
+        (bar):
+        (foo0):
+        (foo1):
+        (foo2):
+        (foo3):
+        (foo4):
+        * tests/stress/materialize-past-put-structure.js: Added.
+        (foo):
+
+2015-03-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION (r179429): Potential Use after free in JavaScriptCore`WTF::StringImpl::ref + 83
+        https://bugs.webkit.org/show_bug.cgi?id=142410
+
+        Reviewed by Geoffrey Garen.
+
+        Before this patch, added function JSValue::toPropertyKey returns PropertyName.
+        Since PropertyName doesn't have AtomicStringImpl ownership,
+        if Identifier is implicitly converted to PropertyName and Identifier is destructed,
+        PropertyName may refer freed AtomicStringImpl*.
+
+        This patch changes the result type of JSValue::toPropertyName from PropertyName to Identifier,
+        to keep AtomicStringImpl* ownership after the toPropertyName call is done.
+        And receive the result value as Identifier type to keep ownership in the caller side.
+
+        To catch the result of toPropertyKey as is, we catch the result of toPropertyName as auto.
+
+        However, now we don't need to have both Identifier and PropertyName.
+        So we'll merge PropertyName to Identifier in the subsequent patch.
+
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::operationPutByValInternal):
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::getByVal):
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::opIn):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::toPropertyKey):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorGetOwnPropertyDescriptor):
+        (JSC::objectConstructorDefineProperty):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncPropertyIsEnumerable):
+
+2015-03-18  Geoffrey Garen  <ggaren@apple.com>
+
+        Function.prototype.toString should not decompile the AST
+        https://bugs.webkit.org/show_bug.cgi?id=142853
+
+        Reviewed by Sam Weinig.
+
+        To recover the function parameter string, Function.prototype.toString
+        decompiles the function parameters from the AST. This is bad for a few
+        reasons:
+
+        (1) It requires us to keep pieces of the AST live forever. This is an
+        awkward design and a waste of memory.
+
+        (2) It doesn't match Firefox or Chrome (because it changes whitespace
+        and ES6 destructuring expressions).
+
+        (3) It doesn't scale to ES6 default argument parameters, which require
+        arbitrarily complex decompilation.
+
+        (4) It can counterfeit all the line numbers in a function (because
+        whitespace can include newlines).
+
+        (5) It's expensive, and we've seen cases where websites invoke
+        Function.prototype.toString a lot by accident.
+
+        The fix is to do what we do for the rest of the function: Just quote the
+        original source text.
+
+        Since this change inevitably changes some function stringification, I
+        took the opportunity to make our stringification match Firefox's and
+        Chrome's.
+
+        * API/tests/testapi.c:
+        (assertEqualsAsUTF8String): Be more informative when this fails.
+
+        (main): Updated to match new stringification rules.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::paramString): Deleted. Yay!
+        * bytecode/UnlinkedCodeBlock.h:
+
+        * parser/Nodes.h:
+        (JSC::StatementNode::isFuncDeclNode): New helper for constructing
+        anonymous functions.
+
+        * parser/SourceCode.h:
+        (JSC::SourceCode::SourceCode): Allow zero because WebCore wants it.
+
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode): Updated for use
+        of function declaration over function expression.
+
+        * runtime/Executable.cpp:
+        (JSC::FunctionExecutable::paramString): Deleted. Yay!
+        * runtime/Executable.h:
+        (JSC::FunctionExecutable::parameterCount):
+
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck): Added a newline after
+        the opening brace to match Firefox and Chrome, and a space after the comma
+        to match Firefox and WebKit coding style. Added the function name to
+        the text of the function so it would look right when stringify-ing. Switched
+        from parentheses to braces to produce a function declaration instead of
+        a function expression because we are required to exclude the function's
+        name from its scope, and that's what a function declaration does.
+
+        * runtime/FunctionPrototype.cpp:
+        (JSC::functionProtoFuncToString): Removed an old workaround because the
+        library it worked around doesn't really exist anymore, and the behavior
+        doesn't match Firefox or Chrome. Use type profiling offsets instead of
+        function body offsets because we want to include the function name and
+        the parameter string, rather than stitching them in manually by
+        decompiling the AST.
+
+        (JSC::insertSemicolonIfNeeded): Deleted.
+
+        * tests/mozilla/js1_2/function/tostring-1.js:
+        * tests/mozilla/js1_5/Scope/regress-185485.js:
+        (with.g): Updated these test results for formatting changes.
+
+2015-03-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        SyntaxChecker assertion is trapped with computed property name and getter
+        https://bugs.webkit.org/show_bug.cgi?id=142863
+
+        Reviewed by Ryosuke Niwa.
+
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::getName):
+        Remove invalid assert. Computed properties will not have a name
+        and the calling code is checking for null expecting it. The
+        AST path (non-CheckingPath) already does this without the assert
+        so it is well tested.
+
+2015-03-19  Mark Lam  <mark.lam@apple.com>
+
+        JSCallbackObject<JSGlobalObject> should not destroy its JSCallbackObjectData before all its finalizers have been called.
+        <https://webkit.org/b/142846>
+
+        Reviewed by Geoffrey Garen.
+
+        Currently, JSCallbackObject<JSGlobalObject> registers weak finalizers via 2 mechanisms:
+        1. JSCallbackObject<Parent>::init() registers a weak finalizer for all JSClassRef
+           that a JSCallbackObject references.
+        2. JSCallbackObject<JSGlobalObject>::create() registers a finalizer via
+           vm.heap.addFinalizer() which destroys the JSCallbackObject.
+
+        The first finalizer is implemented as a virtual function of a JSCallbackObjectData
+        instance that will be destructed if the 2nd finalizer is called.  Hence, if the
+        2nd finalizer if called first, the later invocation of the 1st finalizer will
+        result in a crash.
+
+        This patch fixes the issue by eliminating the finalizer registration in init().
+        Instead, we'll have the JSCallbackObject destructor call all the JSClassRef finalizers
+        if needed.  This ensures that these finalizers are called before the JSCallbackObject
+        is destructor.
+
+        Also added assertions to a few Heap functions because JSCell::classInfo() expects
+        all objects that are allocated from MarkedBlock::Normal blocks to be derived from
+        JSDestructibleObject.  These assertions will help us catch violations of this
+        expectation earlier.
+
+        * API/JSCallbackObject.cpp:
+        (JSC::JSCallbackObjectData::finalize): Deleted.
+        * API/JSCallbackObject.h:
+        (JSC::JSCallbackObjectData::~JSCallbackObjectData):
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::~JSCallbackObject):
+        (JSC::JSCallbackObject<Parent>::init):
+        * API/tests/GlobalContextWithFinalizerTest.cpp: Added.
+        (finalize):
+        (testGlobalContextWithFinalizer):
+        * API/tests/GlobalContextWithFinalizerTest.h: Added.
+        * API/tests/testapi.c:
+        (main):
+        * JavaScriptCore.vcxproj/testapi/testapi.vcxproj:
+        * JavaScriptCore.vcxproj/testapi/testapi.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/HeapInlines.h:
+        (JSC::Heap::allocateObjectOfType):
+        (JSC::Heap::subspaceForObjectOfType):
+        (JSC::Heap::allocatorForObjectOfType):
+
+2015-03-19  Andreas Kling  <akling@apple.com>
+
+        JSCallee unnecessarily overrides a bunch of things in the method table.
+        <https://webkit.org/b/142855>
+
+        Reviewed by Geoffrey Garen.
+
+        Remove JSCallee method table overrides that simply call to base class.
+        This makes JSFunction property slot lookups slightly more efficient since
+        they can take the fast path when passing over JSCallee in the base class chain.
+
+        * runtime/JSCallee.cpp:
+        (JSC::JSCallee::getOwnPropertySlot): Deleted.
+        (JSC::JSCallee::getOwnNonIndexPropertyNames): Deleted.
+        (JSC::JSCallee::put): Deleted.
+        (JSC::JSCallee::deleteProperty): Deleted.
+        (JSC::JSCallee::defineOwnProperty): Deleted.
+        * runtime/JSCallee.h:
+
+2015-03-19  Andreas Kling  <akling@apple.com>
+
+        DFGAllocator should use bmalloc's aligned allocator.
+        <https://webkit.org/b/142871>
+
+        Reviewed by Geoffrey Garen.
+
+        Switch DFGAllocator to using bmalloc through fastAlignedMalloc().
+
+        * dfg/DFGAllocator.h:
+        (JSC::DFG::Allocator<T>::allocateSlow):
+        (JSC::DFG::Allocator<T>::freeRegionsStartingAt):
+        * heap/CopiedSpace.h:
+        * heap/MarkedBlock.h:
+        * heap/MarkedSpace.h:
+
 2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
 
         ES6 Classes: Extends should accept an expression without parenthesis

@@ -23,50 +23,41 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebMediaPlaybackTargetPickerProxy_h
-#define WebMediaPlaybackTargetPickerProxy_h
+#include "config.h"
+#include "MediaPlaybackTargetPicker.h"
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-
 namespace WebCore {
-class FloatRect;
-class MediaPlaybackTarget;
+
+MediaPlaybackTargetPicker::MediaPlaybackTargetPicker(Client& client)
+    : m_client(&client)
+{
 }
 
-namespace WebKit {
+MediaPlaybackTargetPicker::~MediaPlaybackTargetPicker()
+{
+    m_client = nullptr;
+}
 
-class WebPageProxy;
+void MediaPlaybackTargetPicker::showPlaybackTargetPicker(const FloatRect&, bool)
+{
+    ASSERT_NOT_REACHED();
+    return;
+}
 
-class WebMediaPlaybackTargetPickerProxy {
-public:
-    class Client {
-    protected:
-        virtual ~Client() { }
+void MediaPlaybackTargetPicker::startingMonitoringPlaybackTargets()
+{
+    ASSERT_NOT_REACHED();
+    return;
+}
 
-    public:
-        virtual void didChoosePlaybackTarget(const WebCore::MediaPlaybackTarget&) = 0;
-        virtual void externalOutputDeviceAvailableDidChange(bool) = 0;
+void MediaPlaybackTargetPicker::stopMonitoringPlaybackTargets()
+{
+    ASSERT_NOT_REACHED();
+    return;
+}
 
-        void invalidate();
-    };
-
-    virtual ~WebMediaPlaybackTargetPickerProxy();
-
-    virtual void showPlaybackTargetPicker(const WebCore::FloatRect&, bool);
-    virtual void startingMonitoringPlaybackTargets();
-    virtual void stopMonitoringPlaybackTargets();
-
-protected:
-    explicit WebMediaPlaybackTargetPickerProxy(Client&);
-
-    Client* m_client;
-};
-
-} // namespace WebKit
+} // namespace WebCore
 
 #endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
-
-#endif // WebMediaPlaybackTargetPickerProxy_h

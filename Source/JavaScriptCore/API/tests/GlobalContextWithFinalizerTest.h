@@ -23,41 +23,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WebMediaPlaybackTargetPickerProxy.h"
+#ifndef GlobalContextWithFinalizerTest_h
+#define GlobalContextWithFinalizerTest_h
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+#include "JSContextRefPrivate.h"
 
-namespace WebKit {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-WebMediaPlaybackTargetPickerProxy::WebMediaPlaybackTargetPickerProxy(Client& client)
-    : m_client(&client)
-{
-}
+/* Returns 1 if failures were encountered.  Else, returns 0. */
+int testGlobalContextWithFinalizer();
+    
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
-WebMediaPlaybackTargetPickerProxy::~WebMediaPlaybackTargetPickerProxy()
-{
-    m_client = nullptr;
-}
-
-void WebMediaPlaybackTargetPickerProxy::showPlaybackTargetPicker(const WebCore::FloatRect&, bool)
-{
-    ASSERT_NOT_REACHED();
-    return;
-}
-
-void WebMediaPlaybackTargetPickerProxy::startingMonitoringPlaybackTargets()
-{
-    ASSERT_NOT_REACHED();
-    return;
-}
-
-void WebMediaPlaybackTargetPickerProxy::stopMonitoringPlaybackTargets()
-{
-    ASSERT_NOT_REACHED();
-    return;
-}
-
-} // namespace WebKit
-
-#endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
+#endif /* GlobalContextWithFinalizerTest_h */

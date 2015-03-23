@@ -28,8 +28,12 @@
 
 #if ENABLE(CONTENT_FILTERING)
 
+#include "DocumentLoader.h"
+#include "Frame.h"
 #include "NetworkExtensionContentFilter.h"
 #include "ParentalControlsContentFilter.h"
+#include "ScriptController.h"
+#include <bindings/ScriptValue.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
 
@@ -48,26 +52,9 @@ Vector<ContentFilter::Type>& ContentFilter::types()
     return types;
 }
 
-class ContentFilterCollection final : public ContentFilter {
-public:
-    using Container = Vector<std::unique_ptr<ContentFilter>>;
-
-    explicit ContentFilterCollection(Container);
-
-    void addData(const char* data, int length) override;
-    void finishedAddingData() override;
-    bool needsMoreData() const override;
-    bool didBlockData() const override;
-    const char* getReplacementData(int& length) const override;
-    ContentFilterUnblockHandler unblockHandler() const override;
-
-private:
-    Container m_contentFilters;
-};
-
-std::unique_ptr<ContentFilter> ContentFilter::createIfNeeded(const ResourceResponse& response)
+std::unique_ptr<ContentFilter> ContentFilter::createIfNeeded(const ResourceResponse& response, DocumentLoader& documentLoader)
 {
-    ContentFilterCollection::Container filters;
+    Container filters;
     for (auto& type : types()) {
         if (type.canHandleResponse(response))
             filters.append(type.create(response));
@@ -76,16 +63,17 @@ std::unique_ptr<ContentFilter> ContentFilter::createIfNeeded(const ResourceRespo
     if (filters.isEmpty())
         return nullptr;
 
-    return std::make_unique<ContentFilterCollection>(WTF::move(filters));
+    return std::make_unique<ContentFilter>(WTF::move(filters), documentLoader);
 }
 
-ContentFilterCollection::ContentFilterCollection(Container contentFilters)
+ContentFilter::ContentFilter(Container contentFilters, DocumentLoader& documentLoader)
     : m_contentFilters { WTF::move(contentFilters) }
+    , m_documentLoader { documentLoader }
 {
     ASSERT(!m_contentFilters.isEmpty());
 }
 
-void ContentFilterCollection::addData(const char* data, int length)
+void ContentFilter::addData(const char* data, int length)
 {
     ASSERT(needsMoreData());
 
@@ -93,7 +81,7 @@ void ContentFilterCollection::addData(const char* data, int length)
         contentFilter->addData(data, length);
 }
     
-void ContentFilterCollection::finishedAddingData()
+void ContentFilter::finishedAddingData()
 {
     ASSERT(needsMoreData());
 
@@ -103,7 +91,7 @@ void ContentFilterCollection::finishedAddingData()
     ASSERT(!needsMoreData());
 }
 
-bool ContentFilterCollection::needsMoreData() const
+bool ContentFilter::needsMoreData() const
 {
     for (auto& contentFilter : m_contentFilters) {
         if (contentFilter->needsMoreData())
@@ -113,7 +101,7 @@ bool ContentFilterCollection::needsMoreData() const
     return false;
 }
 
-bool ContentFilterCollection::didBlockData() const
+bool ContentFilter::didBlockData() const
 {
     for (auto& contentFilter : m_contentFilters) {
         if (contentFilter->didBlockData())
@@ -123,7 +111,7 @@ bool ContentFilterCollection::didBlockData() const
     return false;
 }
 
-const char* ContentFilterCollection::getReplacementData(int& length) const
+const char* ContentFilter::getReplacementData(int& length) const
 {
     ASSERT(!needsMoreData());
 
@@ -135,17 +123,36 @@ const char* ContentFilterCollection::getReplacementData(int& length) const
     return m_contentFilters[0]->getReplacementData(length);
 }
 
-ContentFilterUnblockHandler ContentFilterCollection::unblockHandler() const
+ContentFilterUnblockHandler ContentFilter::unblockHandler() const
 {
     ASSERT(didBlockData());
 
+    PlatformContentFilter* blockingFilter = nullptr;
     for (auto& contentFilter : m_contentFilters) {
-        if (contentFilter->didBlockData())
-            return contentFilter->unblockHandler();
+        if (contentFilter->didBlockData()) {
+            blockingFilter = contentFilter.get();
+            break;
+        }
     }
+    ASSERT(blockingFilter);
 
-    ASSERT_NOT_REACHED();
-    return { };
+    StringCapture unblockRequestDeniedScript { blockingFilter->unblockRequestDeniedScript() };
+    if (unblockRequestDeniedScript.string().isEmpty())
+        return blockingFilter->unblockHandler();
+
+    // It would be a layering violation for the unblock handler to access its frame,
+    // so we will execute the unblock denied script on its behalf.
+    ContentFilterUnblockHandler unblockHandler { blockingFilter->unblockHandler() };
+    RefPtr<Frame> frame { m_documentLoader.frame() };
+    return ContentFilterUnblockHandler {
+        unblockHandler.unblockURLHost(), [unblockHandler, frame, unblockRequestDeniedScript](ContentFilterUnblockHandler::DecisionHandlerFunction decisionHandler) {
+            unblockHandler.requestUnblockAsync([decisionHandler, frame, unblockRequestDeniedScript](bool unblocked) {
+                decisionHandler(unblocked);
+                if (!unblocked && frame)
+                    frame->script().executeScript(unblockRequestDeniedScript.string());
+            });
+        }
+    };
 }
 
 } // namespace WebCore

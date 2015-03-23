@@ -1,3 +1,55 @@
+2015-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add a configure option to build without Redirected XComposite Window
+        https://bugs.webkit.org/show_bug.cgi?id=142865
+
+        Reviewed by Žan Doberšek.
+
+        The Redirected XComposite Window was added to support some
+        features like GtkOverlay, but in cases where we don't need such
+        features, it's more efficient to use the XID of the WebKitWebView
+        window as the native surface handle for the accelerated
+        compositing. This patch adds USE_REDIRECTED_XCOMPOSITE_WINDOW,
+        that is enabled by default for X11 target when OpenGL is enabled.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-03-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Search for the Wayland dependency when enabling Wayland target
+        https://bugs.webkit.org/show_bug.cgi?id=142876
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: The Wayland dependency isn't a public
+        requirement of either the GTK+ or GDK pkg-config files, so we have to
+        search for it ourselves when WebKitGTK+ has been configured to support
+        the Wayland windowing target.
+
+2015-03-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, kick the GTK bots to regenerate makefile.
+        https://bugs.webkit.org/show_bug.cgi?id=137394
+
+        * Source/cmake/OptionsEfl.cmake: Revert my last accidenatal change.
+        * Source/cmake/OptionsGTK.cmake: Really kick the GTK bots.
+
+2015-03-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, kick the GTK bots to regenerate makefile.
+        https://bugs.webkit.org/show_bug.cgi?id=137394
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2015-03-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Fix inspector userinterface related incremental build issue
+        https://bugs.webkit.org/show_bug.cgi?id=142849
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: Revert r181733.
+
 2015-03-18  Csaba Osztrogonác  <ossy@webkit.org>
 
         Unreviewed, kick the GTK bots to regenerate makefile.

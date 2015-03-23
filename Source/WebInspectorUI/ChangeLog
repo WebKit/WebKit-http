@@ -1,3 +1,117 @@
+2015-03-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Adopt ES6 Class Syntax for all Controller Objects
+        https://bugs.webkit.org/show_bug.cgi?id=142890
+
+        Reviewed by Joseph Pecoraro.
+
+        - Convert all UserInterface/Controllers objects to classes
+        - Convert constructor functions to constructor methods
+        - Convert "constructor.method" to class static methods where possible
+        - Convert all methods to method syntax, eliminate commas between methods
+        - Convert all superclass calls in classes to use "super"
+        - Removed FIXME from WebInspector.Object subclasses, added calls to super.
+        - Fixed strict mode issues now that classes enforce strict mode (see below).
+
+        * Tools/PrettyPrinting/Formatter.js:
+        * Tools/PrettyPrinting/FormatterContentBuilder.js:
+        Updated to match corresponding files in UserInterface/Controllers.
+
+        * UserInterface/Controllers/*.js:
+        Many files modified mostly mechanically (regex find-replace).
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        * UserInterface/Controllers/FormatterContentBuilder.js:
+        Replaced const usage with var. Use of const is prohibited in strict mode, which is implicit within a class.
+
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        * UserInterface/Controllers/DOMTreeManager.js:
+        Moved function declarations out of if statements. Strict mode does not allow function declarations in a lexically nested statement.
+
+2015-03-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Fast typing lags in the Styles sidebar or Console
+        https://bugs.webkit.org/show_bug.cgi?id=142919
+
+        Asynchronous autocomplete causes a race condition in CodeMirror,
+        which results in skipped characters in while typing. Completing immediately
+        fixes the issues.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController.prototype.hideCompletions):
+        (WebInspector.CodeMirrorCompletionController.prototype._completeAtCurrentPosition):
+        (WebInspector.CodeMirrorCompletionController.prototype.):
+
+2015-03-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Adopt ES6 Class Syntax for all Model Objects
+        https://bugs.webkit.org/show_bug.cgi?id=142858
+
+        Reviewed by Timothy Hatcher.
+
+          - Convert WebInspector.Object to a class
+          - Convert all UserInterface/Models objects to classes
+          - Convert constructor functions to constructor methods
+          - Convert "constructor.method" to class static methods where possible
+          - Convert all methods to method syntax, eliminate commas between methods
+          - Convert all superclass calls in classes to use "super"
+          - Workaround <https://webkit.org/b/142862> and add empty constructors
+          - Added "deprecated" prefix to addConstructorFunctions, since it is not needed with classes
+          - Added many missing calls to super in constructors
+          - Added FIXME to WebInspector.Object subclasses not yet moved to classes.
+          - Cleaned up SourceMap global properties, moved to constructor instead of prototype
+          - Cleaned up Timeline factory constructor to static "create" factory method
+          - Fixed any style issues noticed in the mass edit
+          - Fixed strict mode issues now that classes enforce strict mode
+              - RunLoopTimelineRecord.js was missing a `var` for a local variable
+              - "const" is not allowed, converted to "var"
+              - "arguments.callee" is not allowed in strict mode
+
+        * UserInterface/**/*.js:
+        Many files modified mostly mechanically.
+
+2015-03-19  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Debugger sidebar header should say "Scripts" instead of "Breakpoints", appear only on pause
+        https://bugs.webkit.org/show_bug.cgi?id=142847
+
+        Reviewed by Timothy Hatcher.
+
+        Add a `paused` class on the debugger sidebar panel. Use that class to adjust the sidebar styles so that, when
+        the debugger is not paused: there is no header for the scripts section, there is no border beneath the scripts
+        section, and the scripts section cannot be collapsed (which could be done while the debugger is paused). The
+        header has changed to say "Scripts" instead of "Breakpoints" when it is showing.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .details-section.scripts):
+        (.sidebar > .panel.navigation.debugger .details-section.scripts .header):
+        (.sidebar > .panel.navigation.debugger .details-section.scripts.collapsed > .content):
+        (.sidebar > .panel.navigation.debugger.paused .details-section.scripts):
+        (.sidebar > .panel.navigation.debugger.paused .details-section.scripts .header):
+        (.sidebar > .panel.navigation.debugger.paused .details-section.scripts.collapsed > .content):
+        Adjust styles to hide header and border.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerDidPause):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerDidResume):
+        Add a `paused` class to the debugger sidebar when it is paused.
+
+2015-03-19  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: FilterBar for debugger sidebar hides breakpoints for displayed resources
+        https://bugs.webkit.org/show_bug.cgi?id=142777
+
+        Reviewed by Brian Burg.
+
+        Typing into the text input on the filter bar for the debugger sidebar no longer incorrectly hides the
+        breakpoints for scripts that match the text input.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement.prototype.get filterableData): Added.
+
 2015-03-18  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Replace last use of ObjectPropertiesSection with ObjectTreeView

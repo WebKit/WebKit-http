@@ -1,3 +1,157 @@
+2015-03-22  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS Selectors: fix attribute case-insensitive matching of Contain and List
+        https://bugs.webkit.org/show_bug.cgi?id=142932
+
+        Reviewed by Darin Adler.
+
+        Add tests for the new features and fix some existing tests using the 
+        stringFromUTF8() utility recently added by Dhi.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::stringFromUTF8):
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+
+2015-03-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] install-dependencies should install orc
+        https://bugs.webkit.org/show_bug.cgi?id=142955
+
+        Reviewed by Martin Robinson.
+
+        Install orc, needed by openwebrtc
+
+        * gtk/install-dependencies:
+
+2015-03-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        Detect when url filter pattern with groups match the empty string
+        https://bugs.webkit.org/show_bug.cgi?id=142930
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+
+2015-03-22  Anders Carlsson  <andersca@apple.com>
+
+        _WKWebsiteDataStore should clear WebSQL databases
+        https://bugs.webkit.org/show_bug.cgi?id=142947
+
+        Reviewed by Sam Weinig.
+
+        Add a variable that keeps track of the types of data we want to operate on, for easier debugging.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController fetchWebsiteData:]):
+        (-[WK2BrowserWindowController fetchAndClearWebsiteData:]):
+        (-[WK2BrowserWindowController clearWebsiteData:]):
+
+2015-03-20  Mark Hahnenberg  <mhahnenb@gmail.com>
+
+        GCTimer should know keep track of nested GC phases
+        https://bugs.webkit.org/show_bug.cgi?id=142675
+
+        Reviewed by Darin Adler.
+
+        Adds a tool to aid in parsing the GC phase timing output into a
+        tree-like structure based on the parent-child relationships
+        of nested GC phases.
+
+        * Scripts/parse-gc-phase-timings: Added.
+        (Timing):
+        (Timing.__init__):
+        (Timing.__unicode__):
+        (Timing.__str__):
+        (Timing.__repr__):
+        (parse_input):
+        (print_timing_node):
+        (print_timing_tree):
+        (link_parents):
+        (main):
+
+2015-03-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Temporarily turn of EWS Windows tests while I debug the test failure.
+
+        * Scripts/webkitpy/common/config/ews.json:
+
+2015-03-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][jhbuild] Fix flakey failures due to unstable googlecode repository
+        https://bugs.webkit.org/show_bug.cgi?id=142867
+
+        Rubber-stamped by Csaba Osztrogon.
+
+        * gtk/jhbuild.modules: Use Ossy's libusrsctp Github fork. Also use
+        a fixed revision for the openwebrtc-gst-plugins.
+
+2015-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix. Don't try to report stats for all benchmarks.
+        Just report the geometric mean of preferred means.
+
+        * Scripts/run-jsc-benchmarks:
+
+2015-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-jsc-benchmarks should only report preferred mean
+        https://bugs.webkit.org/show_bug.cgi?id=142874
+
+        Reviewed by Geoffrey Garen.
+
+        Just collect statistics for the preferred mean.
+
+        * Scripts/run-jsc-benchmarks:
+
+2015-03-19  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Test regular expression parse failures.
+        https://bugs.webkit.org/show_bug.cgi?id=142872
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testPatternStatus):
+        (TestWebKitAPI::TEST_F):
+        Added tests for each parsing status.
+
+2015-03-19  Alex Christensen  <achristensen@webkit.org>
+
+        Fix API tests after r181754.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testRequest):
+
+2015-03-19  Brady Eidson  <beidson@apple.com>
+
+        Part of content extensions should apply css selectors
+        https://bugs.webkit.org/show_bug.cgi?id=142604
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (WebCore::ContentExtensions::operator<<):
+
+2015-03-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Activate tests on EWS
+        https://bugs.webkit.org/show_bug.cgi?id=142850
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/config/ews.json: Add me as
+        the EWS bot watcher, and activate tests.
+
+2015-03-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Fix inspector userinterface related incremental build issue
+        https://bugs.webkit.org/show_bug.cgi?id=142849
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitdirs.pm:
+        (shouldRemoveCMakeCache):
+
 2015-03-18  Alex Christensen  <achristensen@webkit.org>
 
         [ContentExtensions] Prepare for compiling stylesheets of selectors to be used on every page.

@@ -175,7 +175,6 @@ public:
         ASSERT_WITH_MESSAGE(m_quantifier == AtomQuantifier::One, "Transition to quantified term should only happen once.");
         m_quantifier = quantifier;
     }
-    AtomQuantifier quantifier() const { return m_quantifier; }
 
     unsigned generateGraph(NFA& nfa, uint64_t patternId, unsigned start) const
     {
@@ -224,6 +223,25 @@ public:
     bool isEndOfLineAssertion() const
     {
         return m_termType == TermType::CharacterSet && m_atomData.characterSet.characters.bitCount() == 1 && m_atomData.characterSet.characters.get(0);
+    }
+
+    bool matchesAtLeastOneCharacter() const
+    {
+        ASSERT(isValid());
+
+        if (m_quantifier == AtomQuantifier::ZeroOrOne || m_quantifier == AtomQuantifier::ZeroOrMore)
+            return false;
+        if (isEndOfLineAssertion())
+            return false;
+
+        if (m_termType == TermType::Group) {
+            for (const Term& term : m_atomData.group.terms) {
+                if (term.matchesAtLeastOneCharacter())
+                    return true;
+            }
+            return false;
+        }
+        return true;
     }
 
     Term& operator=(const Term& other)
@@ -444,7 +462,7 @@ public:
         // Check to see if there are any terms without ? or *.
         bool matchesEverything = true;
         for (const auto& term : m_sunkTerms) {
-            if (term.quantifier() == AtomQuantifier::One || term.quantifier() == AtomQuantifier::OneOrMore) {
+            if (term.matchesAtLeastOneCharacter()) {
                 matchesEverything = false;
                 break;
             }
@@ -477,15 +495,10 @@ public:
             m_subtreeEnd = m_lastPrefixTreeEntry->nfaNode;
         }
         
-        if (!m_openGroups.isEmpty()) {
-            fail(URLFilterParser::UnclosedGroups);
-            return;
-        }
-
-        if (m_subtreeStart != m_subtreeEnd)
-            m_nfa.setFinal(m_subtreeEnd, m_patternId);
-        else
-            fail(URLFilterParser::CannotMatchAnything);
+        ASSERT_WITH_MESSAGE(m_openGroups.isEmpty(), "An unclosed group should be a parsing error in YARR.");
+        ASSERT_WITH_MESSAGE(m_subtreeStart != m_subtreeEnd, "This regex cannot match anything");
+        
+        m_nfa.setFinal(m_subtreeEnd, m_patternId);
     }
 
     URLFilterParser::ParseStatus parseStatus() const
@@ -529,8 +542,7 @@ public:
         if (hasError())
             return;
 
-        if (!m_floatingTerm.isValid())
-            fail(URLFilterParser::MisplacedQuantifier);
+        ASSERT(m_floatingTerm.isValid());
 
         if (!minimum && maximum == 1)
             m_floatingTerm.quantify(AtomQuantifier::ZeroOrOne);
@@ -723,8 +735,6 @@ URLFilterParser::ParseStatus URLFilterParser::addPattern(const String& pattern, 
 {
     if (!pattern.containsOnlyASCII())
         return NonASCII;
-    ASSERT(!pattern.isEmpty());
-
     if (pattern.isEmpty())
         return EmptyPattern;
 
@@ -754,16 +764,10 @@ String URLFilterParser::statusString(ParseStatus status)
         return "Ok";
     case MatchesEverything:
         return "Matches everything.";
-    case UnclosedGroups:
-        return "The expression has unclosed groups.";
-    case CannotMatchAnything:
-        return "The pattern cannot match anything.";
     case NonASCII:
         return "Only ASCII characters are supported in pattern.";
     case UnsupportedCharacterClass:
         return "Character class is not supported.";
-    case MisplacedQuantifier:
-        return "Quantifier without corresponding term to quantify.";
     case BackReference:
         return "Patterns cannot contain backreferences.";
     case MisplacedStartOfLine:

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,48 +23,34 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PageAllocationAligned_h
-#define PageAllocationAligned_h
+#ifndef PlatformContentFilter_h
+#define PlatformContentFilter_h
 
-#include <wtf/OSAllocator.h>
-#include <wtf/PageReservation.h>
+#include "ContentFilterUnblockHandler.h"
+#include <wtf/text/WTFString.h>
 
-namespace WTF {
+namespace WebCore {
 
-class PageAllocationAligned : private PageBlock {
+class ResourceResponse;
+
+class PlatformContentFilter {
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(PlatformContentFilter);
+
+protected:
+    PlatformContentFilter() = default;
+
 public:
-    PageAllocationAligned()
-    {
-    }
-
-    using PageBlock::operator bool;
-    using PageBlock::size;
-    using PageBlock::base;
-
-    WTF_EXPORT_PRIVATE static PageAllocationAligned allocate(size_t size, size_t alignment, OSAllocator::Usage usage = OSAllocator::UnknownUsage, bool writable = true);
-
-    WTF_EXPORT_PRIVATE void deallocate();
-
-private:
-#if OS(DARWIN)
-    PageAllocationAligned(void* base, size_t size)
-        : PageBlock(base, size, false)
-    {
-    }
-#else
-    PageAllocationAligned(void* base, size_t size, void* reservationBase, size_t reservationSize)
-        : PageBlock(base, size, false)
-        , m_reservation(reservationBase, reservationSize, false)
-    {
-    }
-
-    PageBlock m_reservation;
-#endif
+    virtual ~PlatformContentFilter() { }
+    virtual void addData(const char* data, int length) = 0;
+    virtual void finishedAddingData() = 0;
+    virtual bool needsMoreData() const = 0;
+    virtual bool didBlockData() const = 0;
+    virtual const char* getReplacementData(int& length) const = 0;
+    virtual ContentFilterUnblockHandler unblockHandler() const = 0;
+    virtual String unblockRequestDeniedScript() const { return emptyString(); }
 };
 
+} // namespace WebCore
 
-} // namespace WTF
-
-using WTF::PageAllocationAligned;
-
-#endif // PageAllocationAligned_h
+#endif // PlatformContentFilter_h

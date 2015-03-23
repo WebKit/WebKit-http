@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,33 +23,36 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGValueRecoveryOverride_h
-#define DFGValueRecoveryOverride_h
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
-#if ENABLE(DFG_JIT)
+#import <WebCore/MediaPlaybackTargetPicker.h>
 
-#include "ValueRecovery.h"
-#include <wtf/RefCounted.h>
+namespace WebCore {
+class FloatRect;
+class Page;
+}
 
-namespace JSC { namespace DFG {
-
-class ValueRecoveryOverride : public RefCounted<ValueRecoveryOverride> {
+class WebMediaPlaybackTargetPicker : public WebCore::MediaPlaybackTargetPicker::Client {
 public:
-    ValueRecoveryOverride() { }
-    
-    ValueRecoveryOverride(VirtualRegister operand, const ValueRecovery& recovery)
-        : operand(operand)
-        , recovery(recovery)
-    {
-    }
-    
-    VirtualRegister operand;
-    ValueRecovery recovery;
+    static std::unique_ptr<WebMediaPlaybackTargetPicker> create(WebCore::Page&);
+
+    explicit WebMediaPlaybackTargetPicker(WebCore::Page&);
+    virtual ~WebMediaPlaybackTargetPicker() { }
+
+    void showPlaybackTargetPicker(const WebCore::FloatRect&, bool /* hasVideo */);
+    void startingMonitoringPlaybackTargets();
+    void stopMonitoringPlaybackTargets();
+
+    // WebCore::MediaPlaybackTargetPicker::Client
+    virtual void didChoosePlaybackTarget(const WebCore::MediaPlaybackTarget&) override;
+    virtual void externalOutputDeviceAvailableDidChange(bool) override;
+
+    void invalidate();
+
+private:
+    WebCore::MediaPlaybackTargetPicker& targetPicker();
+
+    WebCore::Page* m_page;
+    std::unique_ptr<WebCore::MediaPlaybackTargetPicker> m_targetPicker;
 };
-
-} } // namespace JSC::DFG
-
-#endif // ENABLE(DFG_JIT)
-
-#endif // DFGValueRecoveryOverride_h
-
+#endif

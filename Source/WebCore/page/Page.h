@@ -430,7 +430,7 @@ public:
     MediaPlaybackTarget& playbackTarget() const { return *m_playbackTarget.get(); }
     void configurePlaybackTargetMonitoring();
 
-    WEBCORE_EXPORT void didChoosePlaybackTarget(MediaPlaybackTarget&);
+    WEBCORE_EXPORT void didChoosePlaybackTarget(const MediaPlaybackTarget&);
     WEBCORE_EXPORT void playbackTargetAvailabilityDidChange(bool);
 #endif
 
@@ -453,11 +453,6 @@ private:
     unsigned findMatchesForText(const String&, FindOptions, unsigned maxMatchCount, ShouldHighlightMatches, ShouldMarkMatches);
 
     MediaCanStartListener* takeAnyMediaCanStartListener();
-
-    void setMinimumTimerInterval(double);
-    double minimumTimerInterval() const;
-
-    double timerAlignmentInterval() const { return m_timerAlignmentInterval; }
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
@@ -546,10 +541,7 @@ private:
     ViewMode m_viewMode;
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
-    double m_minimumTimerInterval;
-
     bool m_timerThrottlingEnabled;
-    double m_timerAlignmentInterval;
 
     bool m_isEditable;
     bool m_isPrerender;
