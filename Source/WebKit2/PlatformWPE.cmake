@@ -109,8 +109,6 @@ list(APPEND WebKit2_SOURCES
 )
 
 list(APPEND WebKit2_DERIVED_SOURCES
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
     ${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.c
 )
 
@@ -271,3 +269,16 @@ add_custom_command(
     COMMAND glib-compile-resources --generate --sourcedir=${WEBKIT2_DIR}/UIProcess/InspectorServer/front-end --target=${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKit2InspectorGResourceBundle.xml
     VERBATIM
 )
+
+list(APPEND WPEInspectorResources_DERIVED_SOURCES
+    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
+    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
+)
+
+list(APPEND WPEInspectorResources_LIBRARIES
+    ${GLIB_GIO_LIBRARIES}
+)
+
+add_library(WPEInspectorResources SHARED ${WPEInspectorResources_DERIVED_SOURCES})
+target_link_libraries(WPEInspectorResources ${WPEInspectorResources_LIBRARIES})
+install(TARGETS WPEInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
