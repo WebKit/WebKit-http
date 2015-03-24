@@ -1008,7 +1008,7 @@ void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
             EGLDisplay display = WaylandDisplay::instance()->eglDisplay();
             GstGLDisplayEGL* gstGLDisplay = gst_gl_display_egl_new_with_egl_display(display);
 #else
-            return FALSE;
+            return;
 #endif
 
             m_glDisplay = reinterpret_cast<GstGLDisplay*>(gstGLDisplay);
@@ -1028,14 +1028,14 @@ void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
             GstContext* displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
             gst_context_set_gl_display(displayContext, m_glDisplay);
             gst_element_set_context(GST_ELEMENT(message->src), displayContext);
-            return TRUE;
+            return;
         }
         if (!g_strcmp0(contextType, "gst.gl.app_context")) {
             GstContext* appContext = gst_context_new("gst.gl.app_context", TRUE);
             GstStructure* structure = gst_context_writable_structure(appContext);
             gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext, nullptr);
             gst_element_set_context(GST_ELEMENT(message->src), appContext);
-            return TRUE;
+            return;
         }
         break;
     }
