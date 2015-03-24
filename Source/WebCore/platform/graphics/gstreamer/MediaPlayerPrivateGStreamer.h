@@ -273,6 +273,10 @@ private:
 #else
     bool isMediaSource() const { return false; }
 #endif
+#if USE(GSTREAMER_GL)
+    GstGLContext* m_glContext;
+    GstGLDisplay* m_glDisplay;
+#endif
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     BinarySemaphore m_drmKeySemaphore;
 #endif
