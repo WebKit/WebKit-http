@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,51 +23,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPEInputHandler_h
-#define WPEInputHandler_h
+#ifndef KeyMapping_h
+#define KeyMapping_h
 
-#include "APIObject.h"
-#include "KeyInputHandler.h"
-#include "WPEInputEvents.h"
-#include <array>
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 
 namespace WPE {
+struct KeyboardEvent;
+}
 
-class View;
+namespace WebKit {
 
-class InputHandler : public API::ObjectImpl<API::Object::Type::InputHandler> {
-public:
-    static InputHandler* create(View& view)
-    {
-        return new InputHandler(view);
-    }
+namespace KeyMapping {
 
-    void handleKeyboardKey(KeyboardEvent::Raw);
+String identifierForKeyEvent(const WPE::KeyboardEvent&);
+int windowsKeyCodeForKeyEvent(const WPE::KeyboardEvent&);
+String singleCharacterStringForKeyEvent(const WPE::KeyboardEvent&);
 
-    void handlePointerEvent(PointerEvent::Raw);
+} // namespace KeyMapping
 
-    void handleAxisEvent(AxisEvent::Raw);
+} // namespace WebKit
 
-    void handleTouchDown(TouchEvent::Raw);
-    void handleTouchUp(TouchEvent::Raw);
-    void handleTouchMotion(TouchEvent::Raw);
-
-private:
-    InputHandler(View&);
-
-    View& m_view;
-    std::unique_ptr<KeyInputHandler> m_keyInputHandler;
-
-    struct Pointer {
-        uint32_t x;
-        uint32_t y;
-    } m_pointer;
-
-    void dispatchTouchEvent(int id);
-    std::array<TouchEvent::Raw, 10> m_touchEvents;
-};
-
-} // namespace WPE
-
-#endif // WPEInputHandler_h
+#endif // KeyMapping_h

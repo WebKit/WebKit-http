@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,51 +23,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPEInputHandler_h
-#define WPEInputHandler_h
+#ifndef KeyInputHandler_h
+#define KeyInputHandler_h
 
-#include "APIObject.h"
-#include "KeyInputHandler.h"
 #include "WPEInputEvents.h"
-#include <array>
-#include <wtf/Vector.h>
+#include <memory>
+#include <tuple>
 
 namespace WPE {
 
-class View;
-
-class InputHandler : public API::ObjectImpl<API::Object::Type::InputHandler> {
+class KeyInputHandler {
 public:
-    static InputHandler* create(View& view)
-    {
-        return new InputHandler(view);
-    }
+    static std::unique_ptr<KeyInputHandler> create();
 
-    void handleKeyboardKey(KeyboardEvent::Raw);
+    virtual ~KeyInputHandler() = default;
 
-    void handlePointerEvent(PointerEvent::Raw);
-
-    void handleAxisEvent(AxisEvent::Raw);
-
-    void handleTouchDown(TouchEvent::Raw);
-    void handleTouchUp(TouchEvent::Raw);
-    void handleTouchMotion(TouchEvent::Raw);
-
-private:
-    InputHandler(View&);
-
-    View& m_view;
-    std::unique_ptr<KeyInputHandler> m_keyInputHandler;
-
-    struct Pointer {
-        uint32_t x;
-        uint32_t y;
-    } m_pointer;
-
-    void dispatchTouchEvent(int id);
-    std::array<TouchEvent::Raw, 10> m_touchEvents;
+    using HandlingResult = std::tuple<uint32_t, uint32_t, uint8_t>;
+    virtual HandlingResult handleKeyInputEvent(const WPE::KeyboardEvent::Raw&) = 0;
 };
 
 } // namespace WPE
 
-#endif // WPEInputHandler_h
+#endif // KeyInputHandler_h

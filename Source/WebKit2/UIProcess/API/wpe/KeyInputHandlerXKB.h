@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,51 +23,34 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPEInputHandler_h
-#define WPEInputHandler_h
+#ifndef KeyInputHandlerXKB_h
+#define KeyInputHandlerXKB_h
 
-#include "APIObject.h"
 #include "KeyInputHandler.h"
-#include "WPEInputEvents.h"
-#include <array>
-#include <wtf/Vector.h>
+
+#include <xkbcommon/xkbcommon.h>
 
 namespace WPE {
 
-class View;
-
-class InputHandler : public API::ObjectImpl<API::Object::Type::InputHandler> {
+class KeyInputHandlerXKB final : public KeyInputHandler {
 public:
-    static InputHandler* create(View& view)
-    {
-        return new InputHandler(view);
-    }
+    KeyInputHandlerXKB();
+    virtual ~KeyInputHandlerXKB();
 
-    void handleKeyboardKey(KeyboardEvent::Raw);
-
-    void handlePointerEvent(PointerEvent::Raw);
-
-    void handleAxisEvent(AxisEvent::Raw);
-
-    void handleTouchDown(TouchEvent::Raw);
-    void handleTouchUp(TouchEvent::Raw);
-    void handleTouchMotion(TouchEvent::Raw);
+    HandlingResult handleKeyInputEvent(const WPE::KeyboardEvent::Raw&) override;
 
 private:
-    InputHandler(View&);
+    struct xkb_keymap* m_xkbKeymap;
+    struct xkb_state* m_xkbState;
 
-    View& m_view;
-    std::unique_ptr<KeyInputHandler> m_keyInputHandler;
+    struct Modifiers {
+        xkb_mod_index_t ctrl;
+        xkb_mod_index_t shift;
 
-    struct Pointer {
-        uint32_t x;
-        uint32_t y;
-    } m_pointer;
-
-    void dispatchTouchEvent(int id);
-    std::array<TouchEvent::Raw, 10> m_touchEvents;
+        uint32_t effective;
+    } m_modifiers;
 };
 
 } // namespace WPE
 
-#endif // WPEInputHandler_h
+#endif // KeyInputHandlerXKB_h
