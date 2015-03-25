@@ -26,6 +26,8 @@
 #include "config.h"
 #include "KeyInputHandlerXKB.h"
 
+#if USE(KEY_INPUT_HANDLING_XKB)
+
 namespace WPE {
 
 std::unique_ptr<KeyInputHandler> KeyInputHandler::create()
@@ -79,3 +81,5 @@ KeyInputHandler::HandlingResult KeyInputHandlerXKB::handleKeyInputEvent(const Ke
 }
 
 } // namespace WPE
+
+#endif // USE(KEY_INPUT_HANDLING_XKB)

@@ -26,6 +26,8 @@
 #include "config.h"
 #include "KeyMapping.h"
 
+#if USE(KEY_INPUT_HANDLING_XKB)
+
 #include "WindowsKeyboardCodes.h"
 #include "WPEInputEvents.h"
 #include <wtf/gobject/GUniquePtr.h>
@@ -533,3 +535,5 @@ String singleCharacterStringForKeyEvent(const WPE::KeyboardEvent& event)
 } // namespace KeyMapping
 
 } // namespace WebKit
+
+#endif // USE(KEY_INPUT_HANDLING_XKB)

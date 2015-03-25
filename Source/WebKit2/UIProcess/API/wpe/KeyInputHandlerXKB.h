@@ -26,6 +26,8 @@
 #ifndef KeyInputHandlerXKB_h
 #define KeyInputHandlerXKB_h
 
+#if USE(KEY_INPUT_HANDLING_XKB)
+
 #include "KeyInputHandler.h"
 
 #include <xkbcommon/xkbcommon.h>
@@ -52,5 +54,7 @@ private:
 };
 
 } // namespace WPE
+
+#endif // USE(KEY_INPUT_HANDLING_XKB)
 
 #endif // KeyInputHandlerXKB_h
