@@ -54,6 +54,7 @@ list(APPEND WebKit2_SOURCES
     Shared/linux/WebMemorySamplerLinux.cpp
     Shared/soup/WebCoreArgumentCodersSoup.cpp
     Shared/unix/ChildProcessMain.cpp
+    Shared/wpe/KeyMappingLinuxInput.cpp
     Shared/wpe/KeyMappingXKB.cpp
     Shared/wpe/NativeWebKeyboardEventWPE.cpp
     Shared/wpe/NativeWebMouseEventWPE.cpp
@@ -66,6 +67,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
     UIProcess/API/C/wpe/WKInputHandler.cpp
     UIProcess/API/C/wpe/WKView.cpp
+    UIProcess/API/wpe/KeyInputHandlerLinuxInput.cpp
     UIProcess/API/wpe/KeyInputHandlerXKB.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/WPEInputHandler.cpp
