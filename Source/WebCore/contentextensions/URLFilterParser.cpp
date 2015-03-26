@@ -175,7 +175,6 @@ public:
         ASSERT_WITH_MESSAGE(m_quantifier == AtomQuantifier::One, "Transition to quantified term should only happen once.");
         m_quantifier = quantifier;
     }
-    AtomQuantifier quantifier() const { return m_quantifier; }
 
     unsigned generateGraph(NFA& nfa, uint64_t patternId, unsigned start) const
     {
@@ -224,6 +223,69 @@ public:
     bool isEndOfLineAssertion() const
     {
         return m_termType == TermType::CharacterSet && m_atomData.characterSet.characters.bitCount() == 1 && m_atomData.characterSet.characters.get(0);
+    }
+
+    bool matchesAtLeastOneCharacter() const
+    {
+        ASSERT(isValid());
+
+        if (m_quantifier == AtomQuantifier::ZeroOrOne || m_quantifier == AtomQuantifier::ZeroOrMore)
+            return false;
+        if (isEndOfLineAssertion())
+            return false;
+
+        if (m_termType == TermType::Group) {
+            for (const Term& term : m_atomData.group.terms) {
+                if (term.matchesAtLeastOneCharacter())
+                    return true;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    // Matches any string, the empty string included.
+    // This is very conservative. Patterns matching any string can return false here.
+    bool isKnownToMatchAnyString() const
+    {
+        ASSERT(isValid());
+
+        switch (m_termType) {
+        case TermType::Empty:
+        case TermType::Deleted:
+            ASSERT_NOT_REACHED();
+            break;
+        case TermType::CharacterSet:
+            // ".*" is the only simple term matching any string.
+            return isUniversalTransition() && m_quantifier == AtomQuantifier::ZeroOrMore;
+            break;
+        case TermType::Group: {
+            // There are infinitely many ways to match anything with groups, we just handle simple cases
+            if (m_atomData.group.terms.size() != 1)
+                return false;
+
+            const Term& firstTermInGroup = m_atomData.group.terms.first();
+            // -(.*) with any quantifier.
+            if (firstTermInGroup.isKnownToMatchAnyString())
+                return true;
+
+            if (firstTermInGroup.isUniversalTransition()) {
+                // -(.)*, (.+)*, (.?)* etc.
+                if (m_quantifier == AtomQuantifier::ZeroOrMore)
+                    return true;
+
+                // -(.+)?.
+                if (m_quantifier == AtomQuantifier::ZeroOrOne && firstTermInGroup.m_quantifier == AtomQuantifier::OneOrMore)
+                    return true;
+
+                // -(.?)+.
+                if (m_quantifier == AtomQuantifier::OneOrMore && firstTermInGroup.m_quantifier == AtomQuantifier::ZeroOrOne)
+                    return true;
+            }
+            break;
+        }
+        }
+        return false;
     }
 
     Term& operator=(const Term& other)
@@ -290,11 +352,24 @@ public:
     }
 
 private:
+    // This is exact for character sets but conservative for groups.
+    // The return value can be false for a group equivalent to a universal transition.
     bool isUniversalTransition() const
     {
-        return m_termType == TermType::CharacterSet
-            && ((m_atomData.characterSet.inverted && !m_atomData.characterSet.characters.bitCount())
-                || (!m_atomData.characterSet.inverted && m_atomData.characterSet.characters.bitCount() == 128));
+        ASSERT(isValid());
+
+        switch (m_termType) {
+        case TermType::Empty:
+        case TermType::Deleted:
+            ASSERT_NOT_REACHED();
+            break;
+        case TermType::CharacterSet:
+            return (m_atomData.characterSet.inverted && !m_atomData.characterSet.characters.bitCount())
+                || (!m_atomData.characterSet.inverted && m_atomData.characterSet.characters.bitCount() == 128);
+        case TermType::Group:
+            return m_atomData.group.terms.size() == 1 && m_atomData.group.terms.first().isUniversalTransition();
+        }
+        return false;
     }
 
     unsigned generateSubgraphForAtom(NFA& nfa, uint64_t patternId, unsigned source) const
@@ -441,16 +516,20 @@ public:
 
         sinkFloatingTermIfNecessary();
 
+        simplifySunkTerms();
+
         // Check to see if there are any terms without ? or *.
         bool matchesEverything = true;
         for (const auto& term : m_sunkTerms) {
-            if (term.quantifier() == AtomQuantifier::One || term.quantifier() == AtomQuantifier::OneOrMore) {
+            if (term.matchesAtLeastOneCharacter()) {
                 matchesEverything = false;
                 break;
             }
         }
-        if (matchesEverything)
+        if (matchesEverything) {
             fail(URLFilterParser::MatchesEverything);
+            return;
+        }
 
         for (const auto& term : m_sunkTerms) {
             ASSERT(m_lastPrefixTreeEntry);
@@ -466,26 +545,16 @@ public:
                 
                 auto addResult = m_lastPrefixTreeEntry->nextPattern.set(term, WTF::move(nextPrefixTreeEntry));
                 ASSERT(addResult.isNewEntry);
-                
-                if (!m_newPrefixSubtreeRoot) {
-                    m_newPrefixSubtreeRoot = m_lastPrefixTreeEntry;
-                    m_newPrefixStaringPoint = term;
-                }
-                
+
                 m_lastPrefixTreeEntry = addResult.iterator->value.get();
             }
             m_subtreeEnd = m_lastPrefixTreeEntry->nfaNode;
         }
         
-        if (!m_openGroups.isEmpty()) {
-            fail(URLFilterParser::UnclosedGroups);
-            return;
-        }
-
-        if (m_subtreeStart != m_subtreeEnd)
-            m_nfa.setFinal(m_subtreeEnd, m_patternId);
-        else
-            fail(URLFilterParser::CannotMatchAnything);
+        ASSERT_WITH_MESSAGE(m_openGroups.isEmpty(), "An unclosed group should be a parsing error in YARR.");
+        ASSERT_WITH_MESSAGE(m_subtreeStart != m_subtreeEnd, "This regex cannot match anything");
+        
+        m_nfa.setFinal(m_subtreeEnd, m_patternId);
     }
 
     URLFilterParser::ParseStatus parseStatus() const
@@ -529,8 +598,7 @@ public:
         if (hasError())
             return;
 
-        if (!m_floatingTerm.isValid())
-            fail(URLFilterParser::MisplacedQuantifier);
+        ASSERT(m_floatingTerm.isValid());
 
         if (!minimum && maximum == 1)
             m_floatingTerm.quantify(AtomQuantifier::ZeroOrOne);
@@ -552,8 +620,12 @@ public:
         if (hasError())
             return;
 
-        if (m_subtreeStart != m_subtreeEnd || m_floatingTerm.isValid() || !m_openGroups.isEmpty())
+        if (m_subtreeStart != m_subtreeEnd || m_floatingTerm.isValid() || !m_openGroups.isEmpty()) {
             fail(URLFilterParser::MisplacedStartOfLine);
+            return;
+        }
+
+        m_hasBeginningOfLineAssertion = true;
     }
 
     void assertionEOL()
@@ -659,9 +731,6 @@ private:
         if (hasError())
             return;
 
-        if (m_newPrefixSubtreeRoot)
-            m_newPrefixSubtreeRoot->nextPattern.remove(m_newPrefixStaringPoint);
-
         m_parseStatus = reason;
     }
 
@@ -689,6 +758,50 @@ private:
         m_floatingTerm = Term();
     }
 
+    void simplifySunkTerms()
+    {
+        ASSERT(!m_floatingTerm.isValid());
+
+        if (m_sunkTerms.isEmpty())
+            return;
+
+        Term canonicalDotStar(Term::UniversalTransition);
+        canonicalDotStar.quantify(AtomQuantifier::ZeroOrMore);
+
+        // Replace every ".*"-like terms by our canonical version. Remove any duplicate ".*".
+        {
+            unsigned termIndex = 0;
+            bool isAfterDotStar = false;
+            while (termIndex < m_sunkTerms.size()) {
+                if (isAfterDotStar && m_sunkTerms[termIndex].isKnownToMatchAnyString()) {
+                    m_sunkTerms.remove(termIndex);
+                    continue;
+                }
+                isAfterDotStar = false;
+
+                if (m_sunkTerms[termIndex].isKnownToMatchAnyString()) {
+                    m_sunkTerms[termIndex] = canonicalDotStar;
+                    isAfterDotStar = true;
+                }
+                ++termIndex;
+            }
+        }
+
+        // Add our ".*" in front if needed.
+        if (!m_hasBeginningOfLineAssertion && !m_sunkTerms.first().isKnownToMatchAnyString())
+            m_sunkTerms.insert(0, canonicalDotStar);
+
+        // Remove trailing ".*$".
+        if (m_sunkTerms.size() > 2 && m_sunkTerms.last().isEndOfLineAssertion() && m_sunkTerms[m_sunkTerms.size() - 2].isKnownToMatchAnyString())
+            m_sunkTerms.shrink(m_sunkTerms.size() - 2);
+
+        // Remove irrelevant terms that can match empty. For example in "foob?", matching "b" is irrelevant.
+        if (m_sunkTerms.last().isEndOfLineAssertion())
+            return;
+        while (!m_sunkTerms.isEmpty() && !m_sunkTerms.last().matchesAtLeastOneCharacter())
+            m_sunkTerms.removeLast();
+    }
+
     NFA& m_nfa;
     bool m_patternIsCaseSensitive;
     const uint64_t m_patternId;
@@ -700,9 +813,9 @@ private:
     Deque<Term> m_openGroups;
     Vector<Term> m_sunkTerms;
     Term m_floatingTerm;
+    bool m_hasBeginningOfLineAssertion { false };
     bool m_hasProcessedEndOfLineAssertion { false };
 
-    PrefixTreeEntry* m_newPrefixSubtreeRoot = nullptr;
     Term m_newPrefixStaringPoint;
 
     URLFilterParser::ParseStatus m_parseStatus;
@@ -723,8 +836,6 @@ URLFilterParser::ParseStatus URLFilterParser::addPattern(const String& pattern, 
 {
     if (!pattern.containsOnlyASCII())
         return NonASCII;
-    ASSERT(!pattern.isEmpty());
-
     if (pattern.isEmpty())
         return EmptyPattern;
 
@@ -754,16 +865,10 @@ String URLFilterParser::statusString(ParseStatus status)
         return "Ok";
     case MatchesEverything:
         return "Matches everything.";
-    case UnclosedGroups:
-        return "The expression has unclosed groups.";
-    case CannotMatchAnything:
-        return "The pattern cannot match anything.";
     case NonASCII:
         return "Only ASCII characters are supported in pattern.";
     case UnsupportedCharacterClass:
         return "Character class is not supported.";
-    case MisplacedQuantifier:
-        return "Quantifier without corresponding term to quantify.";
     case BackReference:
         return "Patterns cannot contain backreferences.";
     case MisplacedStartOfLine:

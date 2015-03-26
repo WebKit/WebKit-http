@@ -111,6 +111,7 @@ bool AnimationControllerPrivate::clear(RenderElement& renderer)
 
 double AnimationControllerPrivate::updateAnimations(SetChanged callSetChanged/* = DoNotCallSetChanged*/)
 {
+    AnimationPrivateUpdateBlock updateBlock(*this);
     double timeToNextService = -1;
     bool calledSetChanged = false;
 
@@ -424,7 +425,7 @@ bool AnimationControllerPrivate::computeExtentOfAnimation(RenderElement& rendere
     ASSERT(m_compositeAnimations.contains(&renderer));
 
     const CompositeAnimation& rendererAnimations = *m_compositeAnimations.get(&renderer);
-    if (!rendererAnimations.isAnimatingProperty(CSSPropertyWebkitTransform, false, AnimationBase::Running | AnimationBase::Paused))
+    if (!rendererAnimations.isAnimatingProperty(CSSPropertyTransform, false, AnimationBase::Running | AnimationBase::Paused))
         return true;
 
     return rendererAnimations.computeExtentOfTransformAnimation(bounds);
@@ -518,6 +519,8 @@ void AnimationControllerPrivate::animationWillBeRemoved(AnimationBase* animation
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
 void AnimationControllerPrivate::scrollWasUpdated()
 {
+    m_scrollPosition = m_frame.view()->scrollOffsetForFixedPosition().height().toFloat();
+
     updateAnimations(CallSetChanged);
 }
 #endif

@@ -122,7 +122,9 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncDefineGetter(ExecState* exec)
     descriptor.setGetter(get);
     descriptor.setEnumerable(true);
     descriptor.setConfigurable(true);
-    thisObject->methodTable(exec->vm())->defineOwnProperty(thisObject, exec, exec->argument(0).toPropertyKey(exec), descriptor, false);
+
+    bool shouldThrow = true;
+    thisObject->methodTable(exec->vm())->defineOwnProperty(thisObject, exec, exec->argument(0).toPropertyKey(exec), descriptor, shouldThrow);
 
     return JSValue::encode(jsUndefined());
 }
@@ -142,7 +144,9 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncDefineSetter(ExecState* exec)
     descriptor.setSetter(set);
     descriptor.setEnumerable(true);
     descriptor.setConfigurable(true);
-    thisObject->methodTable(exec->vm())->defineOwnProperty(thisObject, exec, exec->argument(0).toPropertyKey(exec), descriptor, false);
+
+    bool shouldThrow = true;
+    thisObject->methodTable(exec->vm())->defineOwnProperty(thisObject, exec, exec->argument(0).toPropertyKey(exec), descriptor, shouldThrow);
 
     return JSValue::encode(jsUndefined());
 }
@@ -182,7 +186,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncLookupSetter(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL objectProtoFuncPropertyIsEnumerable(ExecState* exec)
 {
     JSObject* thisObject = exec->thisValue().toThis(exec, StrictMode).toObject(exec);
-    PropertyName propertyName = exec->argument(0).toPropertyKey(exec);
+    auto propertyName = exec->argument(0).toPropertyKey(exec);
 
     PropertyDescriptor descriptor;
     bool enumerable = thisObject->getOwnPropertyDescriptor(exec, propertyName, descriptor) && descriptor.enumerable();

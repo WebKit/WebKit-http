@@ -27,10 +27,10 @@
 #define WPEInputHandler_h
 
 #include "APIObject.h"
+#include "KeyInputHandler.h"
 #include "WPEInputEvents.h"
 #include <array>
 #include <wtf/Vector.h>
-#include <xkbcommon/xkbcommon.h>
 
 namespace WPE {
 
@@ -42,7 +42,6 @@ public:
     {
         return new InputHandler(view);
     }
-    ~InputHandler();
 
     void handleKeyboardKey(KeyboardEvent::Raw);
 
@@ -58,16 +57,7 @@ private:
     InputHandler(View&);
 
     View& m_view;
-
-    struct xkb_keymap* m_xkbKeymap;
-    struct xkb_state* m_xkbState;
-
-    struct Modifiers {
-        xkb_mod_index_t ctrl;
-        xkb_mod_index_t shift;
-
-        uint32_t effective;
-    } m_modifiers;
+    std::unique_ptr<KeyInputHandler> m_keyInputHandler;
 
     struct Pointer {
         uint32_t x;

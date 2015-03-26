@@ -1,3 +1,153 @@
+2015-03-24  Anders Carlsson  <andersca@apple.com>
+
+        Fix designated initializer violations
+        https://bugs.webkit.org/show_bug.cgi?id=143016
+        rdar://problem/20268858
+
+        Reviewed by Dan Bernstein.
+
+        Move -[WebBackForwardList initWithBackForwardList:] to the implementation instead of a category since
+        nobody calls it outside of WebBackForwardList.mm.
+
+        * History/WebBackForwardList.mm:
+        * History/WebBackForwardListInternal.h:
+
+2015-03-23  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (Yosemite): WKView visibility notifications are messed up
+        https://bugs.webkit.org/show_bug.cgi?id=142945
+
+        Reviewed by Tim Horton.
+
+        As these notifications cannot be used by NSView subclasses, create a separate
+        object for observing them.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView addWindowObserversForWindow:]):
+        (-[WebView removeWindowObservers]):
+        (-[WebView viewWillMoveToWindow:]): Make sure that observers are removed even
+        if -[WebView close] is called manually.
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebWindowVisibilityObserver initWithView:]):
+        (-[WebWindowVisibilityObserver startObserving:]):
+        (-[WebWindowVisibilityObserver stopObserving:]):
+        (-[WebWindowVisibilityObserver _windowVisibilityChanged:]):
+
+2015-03-23  Tim Horton  <timothy_horton@apple.com>
+
+        Add a share item to the link action menu
+        https://bugs.webkit.org/show_bug.cgi?id=142961
+        <rdar://problem/19198374>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForImage]):
+        (-[WebActionMenuController _defaultMenuItemsForVideo]):
+        (-[WebActionMenuController _createActionMenuItemForTag:]):
+        (-[WebActionMenuController _createShareActionMenuItemForTag:withItems:]):
+        Adopt -[NSMenuItem standardShareMenuItemWithItems].
+        All of the null-checking is unnecessary as it's impossible to enter
+        these functions with a null image/etc.
+        Also, remove a duplicate isDownloadableMedia check for the 'save to downloads' item.
+
+        (-[WebActionMenuController _defaultMenuItemsForLink]):
+        * WebView/WebUIDelegatePrivate.h:
+        Add a 'Share' item to the link menu.
+
+2015-03-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        * WebView/WebView.mm: (-[WebView _showPlaybackTargetPicker:hasVideo:]):
+
+2015-03-22  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Enable WIRELESS_PLAYBACK_TARGET for WK1
+        https://bugs.webkit.org/show_bug.cgi?id=142940
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::showPlaybackTargetPicker): New.
+        (WebChromeClient::startingMonitoringPlaybackTargets): New.
+        (WebChromeClient::stopMonitoringPlaybackTargets): New.
+
+        * WebView/WebView.mm:
+        (-[WebView _close]): Invalidate and free the target picker.
+        (-[WebView _devicePicker]): New.
+        (-[WebView _showPlaybackTargetPicker:hasVideo:]): New.
+        (-[WebView _startingMonitoringPlaybackTargets]): New.
+        (-[WebView _stopMonitoringPlaybackTargets]): New.
+
+        * WebView/WebMediaPlaybackTargetPicker.h:
+        * WebView/WebMediaPlaybackTargetPicker.mm:
+        (WebMediaPlaybackTargetPicker::create): New.
+        (WebMediaPlaybackTargetPicker::WebMediaPlaybackTargetPicker): New.
+        (WebMediaPlaybackTargetPicker::showPlaybackTargetPicker): New.
+        (WebMediaPlaybackTargetPicker::startingMonitoringPlaybackTargets): New.
+        (WebMediaPlaybackTargetPicker::stopMonitoringPlaybackTargets): New.
+        (WebMediaPlaybackTargetPicker::didChoosePlaybackTarget): New.
+        (WebMediaPlaybackTargetPicker::externalOutputDeviceAvailableDidChange): New.
+        (WebMediaPlaybackTargetPicker::invalidate): New.
+        (WebMediaPlaybackTargetPicker::targetPicker): New.
+
+        * WebView/WebViewData.h:
+        (WebMediaPlaybackTargetPicker::~WebMediaPlaybackTargetPicker):
+        * WebView/WebViewData.mm:
+        * WebView/WebViewInternal.h:
+
+2015-03-19  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Add tests for unblock requests
+        https://bugs.webkit.org/show_bug.cgi?id=142900
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidStartProvisionalLoad): This now happens in PolicyChecker.
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction): Ditto.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _contentFilterDidHandleNavigationAction:]): Deleted.
+        * WebView/WebFrameInternal.h: Removed contentFilterUnblockHandler from WebFramePrivate.
+
+2015-03-19  Enrica Casucci  <enrica@apple.com>
+
+        <attachment> should put URLs on the pasteboard so that Finder can accept drops.
+        https://bugs.webkit.org/show_bug.cgi?id=142801
+        rdar://problem/19982527
+
+        Reviewed by Tim Horton.
+
+        This patch adds all the necessary support to write attachment elements into
+        the pasteboard, including the promised type in WK1.
+
+        * Misc/WebNSPasteboardExtras.mm:
+        (-[NSPasteboard _web_declareAndWriteDragImageForElement:URL:title:archive:source:]):
+        * WebCoreSupport/WebDragClient.h:
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::declareAndWriteAttachment):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView namesOfPromisedFilesDroppedAtDestination:]):
+        * WebView/WebUIDelegate.h:
+
+2015-03-19  Chris Dumez  <cdumez@apple.com>
+
+        Clean up DOMTimer related settings
+        https://bugs.webkit.org/show_bug.cgi?id=142837
+
+        Reviewed by Darin Adler.
+
+        Stop setting the DOMTimers' default minimum interval to 4ms as this
+        is now the default.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
 2015-03-17  Conrad Shultz  <conrad_shultz@apple.com>
 
         Ignore some deprecation warnings

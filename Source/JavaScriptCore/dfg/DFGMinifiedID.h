@@ -26,8 +26,6 @@
 #ifndef DFGMinifiedID_h
 #define DFGMinifiedID_h
 
-#if ENABLE(DFG_JIT)
-
 #include "DFGCommon.h"
 #include <wtf/HashMap.h>
 #include <wtf/PrintStream.h>
@@ -37,6 +35,7 @@ namespace JSC { namespace DFG {
 class Graph;
 class MinifiedNode;
 class ValueSource;
+struct Node;
 
 class MinifiedID {
 public:
@@ -98,11 +97,11 @@ template<> struct DefaultHash<JSC::DFG::MinifiedID> {
 };
 
 template<typename T> struct HashTraits;
-template<> struct HashTraits<JSC::DFG::MinifiedID> : SimpleClassHashTraits<JSC::DFG::MinifiedID> { };
+template<> struct HashTraits<JSC::DFG::MinifiedID> : SimpleClassHashTraits<JSC::DFG::MinifiedID> {
+    static const bool emptyValueIsZero = false;
+};
 
 } // namespace WTF
-
-#endif // ENABLE(DFG_JIT)
 
 #endif // DFGMinifiedID_h
 

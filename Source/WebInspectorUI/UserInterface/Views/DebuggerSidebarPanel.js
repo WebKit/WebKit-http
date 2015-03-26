@@ -53,23 +53,15 @@ WebInspector.DebuggerSidebarPanel = function()
 
     this._navigationBar = new WebInspector.NavigationBar;
     this.element.appendChild(this._navigationBar.element);
+    
+    var imageSize = WebInspector.Platform.isLegacyMacOS ? 16 : 15;
 
-    var breakpointsImage, pauseImage, resumeImage, stepOverImage, stepIntoImage, stepOutImage;
-    if (WebInspector.Platform.isLegacyMacOS) {
-        breakpointsImage = {src: "Images/Legacy/Breakpoints.svg", width: 16, height: 16};
-        pauseImage = {src: "Images/Legacy/Pause.svg", width: 16, height: 16};
-        resumeImage = {src: "Images/Legacy/Resume.svg", width: 16, height: 16};
-        stepOverImage = {src: "Images/Legacy/StepOver.svg", width: 16, height: 16};
-        stepIntoImage = {src: "Images/Legacy/StepInto.svg", width: 16, height: 16};
-        stepOutImage = {src: "Images/Legacy/StepOut.svg", width: 16, height: 16};
-    } else {
-        breakpointsImage = {src: "Images/Breakpoints.svg", width: 15, height: 15};
-        pauseImage = {src: "Images/Pause.svg", width: 15, height: 15};
-        resumeImage = {src: "Images/Resume.svg", width: 15, height: 15};
-        stepOverImage = {src: "Images/StepOver.svg", width: 15, height: 15};
-        stepIntoImage = {src: "Images/StepInto.svg", width: 15, height: 15};
-        stepOutImage = {src: "Images/StepOut.svg", width: 15, height: 15};
-    }
+    var breakpointsImage = {src: platformImagePath("Breakpoints.svg"), width: imageSize, height: imageSize};
+    var pauseImage = {src: platformImagePath("Pause.svg"), width: imageSize, height: imageSize};
+    var resumeImage = {src: platformImagePath("Resume.svg"), width: imageSize, height: imageSize};
+    var stepOverImage = {src: platformImagePath("StepOver.svg"), width: imageSize, height: imageSize};
+    var stepIntoImage = {src: platformImagePath("StepInto.svg"), width: imageSize, height: imageSize};
+    var stepOutImage = {src: platformImagePath("StepOut.svg"), width: imageSize, height: imageSize};
 
     var toolTip = WebInspector.UIString("Enable all breakpoints (%s)").format(this._toggleBreakpointsKeyboardShortcut.displayName);
     var altToolTip = WebInspector.UIString("Disable all breakpoints (%s)").format(this._toggleBreakpointsKeyboardShortcut.displayName);
@@ -109,6 +101,23 @@ WebInspector.DebuggerSidebarPanel = function()
     this._allUncaughtExceptionsBreakpointTreeElement = new WebInspector.BreakpointTreeElement(WebInspector.debuggerManager.allUncaughtExceptionsBreakpoint, WebInspector.DebuggerSidebarPanel.ExceptionIconStyleClassName, WebInspector.UIString("All Uncaught Exceptions"));
 
     this.filterBar.placeholder = WebInspector.UIString("Filter Breakpoint List");
+    var showResourcesWithBreakpointsOnlyFilterFunction = function(treeElement)
+    {
+        // Keep breakpoints and other elements that aren't resources.
+        if (!treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.BreakpointTreeElement)
+            return true;
+
+        // Keep resources with breakpoints.
+        if (treeElement.hasChildren) {
+            for (var child of treeElement.children) {
+                if (child instanceof WebInspector.BreakpointTreeElement)
+                    return true;
+            }
+        }
+        return false;
+    };
+
+    this.filterBar.addFilterBarButton("debugger-show-resources-with-children-only", showResourcesWithBreakpointsOnlyFilterFunction, true, WebInspector.UIString("Show only resources with breakpoints."), WebInspector.UIString("Show resources with and without breakpoints."), platformImagePath("Breakpoints.svg"), 15, 15);
 
     this._breakpointsContentTreeOutline = this.contentTreeOutline;
     this._breakpointsContentTreeOutline.onselect = this._treeElementSelected.bind(this);
@@ -124,7 +133,7 @@ WebInspector.DebuggerSidebarPanel = function()
     breakpointsRow.element.appendChild(this._breakpointsContentTreeOutline.element);
 
     var breakpointsGroup = new WebInspector.DetailsSectionGroup([breakpointsRow]);
-    var breakpointsSection = new WebInspector.DetailsSection("breakpoints", WebInspector.UIString("Breakpoints"), [breakpointsGroup]);
+    var breakpointsSection = new WebInspector.DetailsSection("scripts", WebInspector.UIString("Scripts"), [breakpointsGroup]);
     this.contentElement.appendChild(breakpointsSection.element);
 
     this._callStackContentTreeOutline = this.createContentTreeOutline(true);
@@ -148,6 +157,7 @@ WebInspector.DebuggerSidebarPanel = function()
 };
 
 WebInspector.DebuggerSidebarPanel.OffsetSectionsStyleClassName = "offset-sections";
+WebInspector.DebuggerSidebarPanel.DebuggerPausedStyleClassName = "paused";
 WebInspector.DebuggerSidebarPanel.ExceptionIconStyleClassName = "breakpoint-exception-icon";
 WebInspector.DebuggerSidebarPanel.PausedBreakpointIconStyleClassName = "breakpoint-paused-icon";
 WebInspector.DebuggerSidebarPanel.GlobalIconStyleClassName = "global-breakpoints-icon";
@@ -253,6 +263,8 @@ WebInspector.DebuggerSidebarPanel.prototype = {
         this._debuggerPauseResumeButtonItem.toggled = true;
         this._debuggerStepOverButtonItem.enabled = true;
         this._debuggerStepIntoButtonItem.enabled = true;
+
+        this.element.classList.add(WebInspector.DebuggerSidebarPanel.DebuggerPausedStyleClassName);
     },
 
     _debuggerDidResume: function(event)
@@ -265,6 +277,8 @@ WebInspector.DebuggerSidebarPanel.prototype = {
         this._debuggerStepOverButtonItem.enabled = false;
         this._debuggerStepIntoButtonItem.enabled = false;
         this._debuggerStepOutButtonItem.enabled = false;
+
+        this.element.classList.remove(WebInspector.DebuggerSidebarPanel.DebuggerPausedStyleClassName);
     },
 
     _breakpointsEnabledDidChange: function(event)
@@ -277,7 +291,7 @@ WebInspector.DebuggerSidebarPanel.prototype = {
         WebInspector.debuggerManager.breakpointsEnabled = !this._debuggerBreakpointsButtonItem.activated;
     },
 
-    _addBreakpoint: function(breakpoint, sourceCode)
+    _addBreakpoint: function(breakpoint)
     {
         var sourceCode = breakpoint.sourceCodeLocation.displaySourceCode;
         if (!sourceCode)

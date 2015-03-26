@@ -194,9 +194,9 @@ webkit.org/b/140526 [ Release ] fast/events/keydown-numpad-keys.html [ Failure ]
 webkit.org/b/140526 [ Debug ] fast/events/keydown-numpad-keys.html [ Skip ] # Debug Assertion
 
 # TODO The equivalent of option-tab does not exist in Boomer <rdar://problem/5137230>
-fast/events/frame-tab-focus.html [ Failure ]
-fast/events/option-tab.html [ Failure ]
-fast/forms/focus2.html [ Failure ]
+fast/events/frame-tab-focus.html [ Skip ] # Causes later tests to fail
+fast/events/option-tab.html [ Skip ]
+fast/forms/focus2.html [ Skip ]
 
 # No button tracked
 fast/events/mouseover-button.html [ Skip ]
@@ -592,6 +592,7 @@ webkit.org/b/35013 svg/zoom/text/ [ Skip ]
 
 # TODO Attachment elements do not provide a custom renderer
 webkit.org/b/142260 fast/attachment [ Skip ]
+webkit.org/b/142260 editing/pasteboard/drag-and-drop-attachment-contenteditable.html [ Skip ]
 
 # TODO APNG is not supported
 webkit.org/b/142731 fast/images/animated-png.html [ Skip ]
@@ -600,6 +601,7 @@ webkit.org/b/142731 fast/images/animated-png.html [ Skip ]
 animations/trigger-computed-style.html [ Skip ]
 animations/trigger-parsing.html [ Skip ]
 animations/trigger-container-scroll-simple.html [ Skip ]
+animations/trigger-container-scroll-boundaries.html [ Skip ]
 
 ################################################################################
 ###########    End Missing Functionality Prevents Testing         ##############
@@ -1121,10 +1123,6 @@ webkit.org/b/140783 [ Debug ] editing/pasteboard/copy-standalone-image.html [ Sk
 webkit.org/b/140786 editing/pasteboard/copy-backslash-with-euc.html [ Skip ] # Causes later tests to fail
 editing/pasteboard/paste-RTFD.html [ Failure ]
 editing/pasteboard/paste-TIFF.html [ Failure ]
-editing/pasteboard/paste-and-sanitize.html [ Failure ]
-webkit.org/b/140788 editing/pasteboard/paste-list-002.html [ Failure ]
-webkit.org/b/140788 editing/pasteboard/paste-list-004.html [ Failure ]
-webkit.org/b/140788 editing/pasteboard/simplfiying-markup-should-not-strip-content.html [ Failure ]
 webkit.org/b/29057 editing/pasteboard/files-during-page-drags.html [ Failure ]
 # TODO eventSender.contextClick() needs to return a JS array of the context menu items.
 webkit.org/b/62597 editing/pasteboard/copy-standalone-image-crash.html [ Skip ] #  [ Timeout ]
@@ -1244,8 +1242,6 @@ editing/deleting/delete-start-block.html [ Failure ]
 # TODO Need to add functionality to DumpRenderTree to test IDN <rdar://problem/5301954>
 webkit.org/b/140528 fast/encoding/idn-security.html [ Skip ]
 
-editing/style/non-inheritable-styles.html [ Failure ]
-
 # Emoji!
 editing/deleting/delete-emoji.html [ Failure ]
 ################################################################################
@@ -1260,6 +1256,9 @@ editing/deleting/delete-emoji.html [ Failure ]
 # Missing 'press' support
 accessibility/axpress-on-aria-button.html [ Skip ]
 accessibility/svg-element-press.html [ Skip ]
+
+# Missing cellForColumnAndRow implementation in DRT
+webkit.org/b/143081 accessibility/table-cell-display-block.html [ Skip ]
 
 # Accessibility tests for notifications that don't exist or aren't needed on Mac OS X (or Windows)
 accessibility/aria-checkbox-sends-notification.html [ Skip ]
@@ -1861,7 +1860,6 @@ svg/custom/inline-svg-in-xhtml.xml [ Failure ]
 svg/custom/foreign-object-skew.svg [ Failure ]
 webkit.org/b/140249 fast/css/fontloader-svg-select.svg [ Failure ]
 webkit.org/b/140770 svg/custom/scrolling-embedded-svg-file-image-repaint-problem.html [ Failure ]
-svg/custom/relative-sized-shadow-tree-content-with-symbol.xhtml	 [ Failure ]
 
 # Tiny image diff. Why!?!?
 [ Release ] svg/W3C-SVG-1.2-Tiny/struct-use-recursion-01-t.svg [ ImageOnlyFailure ]
@@ -2231,10 +2229,7 @@ webkit.org/b/29213 http/tests/security/mixedContent [ Skip ]
 webkit.org/b/60206 http/tests/navigation/response204.html [ Failure ]
 
 # Disk cache is WK2 only
-http/tests/cache/disk-cache-validation.html
-http/tests/cache/disk-cache-validation-back-navigation-policy.html
-http/tests/cache/disk-cache-disable.html
-http/tests/cache/disk-cache-vary-cookie.html
+http/tests/cache/disk-cache
 
 # The following are unreviewed:
 http/tests/cache/content-type-ignored-during-revalidation.html [ Failure ]
@@ -2311,6 +2306,10 @@ http/tests/xmlhttprequest/web-apps/013.html
 [ Debug ] http/tests/security/javascriptURL/javascriptURL-execution-context-frame-location-htmldom.html [ Skip ]
 [ Debug ] http/tests/security/listener/xss-window-onclick-shortcut.html [ Skip ]
 [ Debug ] http/tests/local/file-url-sent-as-referer.html [ Skip ]
+
+# Flaky
+http/tests/cache/network-error-during-revalidation.html [ Pass Crash ]
+http/tests/xmlhttprequest/workers/methods.html [ Pass Crash ]
 ################################################################################
 #################            End HTTP Issues             #######################
 ################################################################################
@@ -2350,6 +2349,7 @@ webkit.org/b/128979 [ Release ] inspector-protocol/dom/getAccessibilityPropertie
 [ Release ] inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html [ Failure ]
 [ Debug ] inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html [ Skip ] # Debug Assertion
 inspector-protocol/debugger/removeBreakpoint.html [ Skip ] # Crashing
+inspector-protocol/debugger/searchInContent-linebreaks.html [ Pass Crash ] # Flaky
 ################################################################################
 #################        End Inspector Issues               ####################
 ################################################################################
@@ -2375,8 +2375,6 @@ webkit.org/b/140946 js/sort-stability.html [ Failure ]
 
 # The following fails due to DOM exception 18.
 js/dom/callback-function-with-handle-event.html [ Skip ] #  [ Timeout ]
-
-webkit.org/b/141848 js/regress-141098.html [ Failure ]
 ################################################################################
 #################        End JavaScript Issues           #######################
 ################################################################################
@@ -2417,7 +2415,7 @@ webkit.org/b/35973 fast/multicol/hit-test-above-or-below.html [ Failure ]
 webkit.org/b/49769 fast/dom/HTMLProgressElement/progress-element-with-child-crash.html [ Failure ]
 webkit.org/b/50994 fast/loader/user-stylesheet-fast-path.html [ Failure ]
 webkit.org/b/59062 [ Release ] fast/images/animated-gif-restored-from-bfcache.html [ Failure ]
-webkit.org/b/59062 [ Debug ] fast/images/animated-gif-iframe-webkit-transform.html [ Skip ] # Timeout
+webkit.org/b/59062 [ Debug ] fast/images/animated-gif-restored-from-bfcache.html [ Skip ] # Timeout
 [ Debug ] fast/images/animated-gif-iframe-webkit-transform.html [ Skip ] # Timeout
 [ Debug ] fast/images/animated-gif-webkit-transform.html [ Skip ] # Timeout
 fast/images/animated-gif-window-resizing.html [ Skip ] # Timeout
@@ -2513,6 +2511,11 @@ webkit.org/b/138676 imported/w3c/canvas/2d.strokeRect.zero.5.html [ Failure ]
 [ Debug ] editing/pasteboard/drag-drop-dead-frame.html [ Skip ] # Timeout
 [ Debug ] editing/pasteboard/subframe-dragndrop-1.html [ Skip ] # Causes later tests to fail
 [ Debug ] editing/selection/4960137.html [ Skip ] # Causes later tests to fail.
+[ Debug ] editing/selection/cleared-by-relayout.html [ Skip ] # Causes later tests to fail?
+[ Debug ] editing/selection/clearselection-on-detached-subtree-crash.html [ Skip ] # Debug assertion
+[ Debug ] editing/selection/click-after-last-inline-crash.html [ Skip ] # Debug assertion
+[ Debug ] editing/selection/click-after-nested-block.html [ Skip ] # Debug assertion
+[ Debug ] editing/selection/focus-crash.html [ Skip ] # Causes later tests to fail
 [ Debug ] editing/selection/move-by-word-visually-crash-test-5.html [ Skip ] # Debug assertion
 [ Debug ] editing/selection/select-all-iframe.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/canvas/canvas-toDataURL-jpeg-crash.html [ Skip ] # Debug Assertion
@@ -2523,16 +2526,23 @@ webkit.org/b/138676 imported/w3c/canvas/2d.strokeRect.zero.5.html [ Failure ]
 [ Debug ] fast/dom/HTMLDocument/active-element-frames.html [ Skip ] # Causes later tests to fail.
 [ Debug ] fast/dom/html-link-element-activation-behavior-on-mouse-click.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/dom/htmlallcollection-detached-node-children.html [ Skip ] # Crashing
-[ Debug ] fast/events/autoscroll-in-textarea.html [ Skip ] # Debug assertion
-[ Debug ] fast/events/autoscroll-overflow-hidden-longhands.html [ Skip ] # Debug assertion
+[ Debug ] fast/events/attribute-listener-extracted-from-frameless-doc-context.html [ Skip ] # Causes later tests to fail
+[ Debug ] fast/events/autoscroll-nonscrollable-iframe-in-scrollable-div.html [ Skip ] # Causes later tests to fail
+[ Debug ] fast/events/autoscroll-overflow-hidden-longhands.html [ Skip ] # Causes later tests to fail
+[ Debug ] fast/events/autoscroll-should-not-stop-on-keypress.html [ Skip ] # Causes later tests to fail
+[ Debug ] fast/events/autoscroll-in-overflow-hidden-html.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/events/autoscroll-upwards-propagation.html [ Skip ] # Debug assertion
+[ Debug ] fast/events/autoscroll-with-non-scrollable-parent.html [ Skip ] # Debug assertion
+[ Debug ] fast/events/backspace-navigates-back.html [ Skip ] # Debug assertion
+[ Debug ] fast/events/before-unload-adopt-subframe-to-outside.html [ Skip ] # Debug assertion
+[ Debug ] fast/events/before-unload-adopt-within-subframes.html [ Skip ] # Debug assertion
 [ Debug ] fast/events/change-frame-focus.html [ Skip ] # Causes later tests to fail
+[ Debug ] fast/events/keydown-1.html [ Skip ] # Causes later tests to fail?
 [ Debug ] fast/events/keypress-focus-change.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/events/mousedown-in-subframe-scrollbar.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/events/onbeforeunload-focused-iframe.html [ Skip ] # Causes later tests to fail
+[ Debug ] fast/events/page-scaled-mouse-click-iframe.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/events/selectstart-by-arrow-keys.html # Causes later tests to fail
-[ Debug ] fast/events/selectstart-by-double-triple-clicks.html [ Failure ]
-[ Debug ] fast/events/selectstart-by-drag.html [ Failure ]
 [ Debug ] fast/forms/autofocus-in-sandbox-with-allow-scripts.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/forms/number/number-spinbutton-state.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/frames/frame-dead-region.html [ Skip ] # Causes later tests to fail
@@ -2545,12 +2555,21 @@ webkit.org/b/138676 imported/w3c/canvas/2d.strokeRect.zero.5.html [ Failure ]
 [ Debug ] fast/history/form-submit-in-frame.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/history/form-submit-in-frame-via-onclick.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/images/png-suite/test.html [ Skip ] # Debug Assertion
+[ Debug ] fast/leaks/002.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/loader/early-load-cancel.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/multicol/newmulticol/multicol-inside-multicol.html [ Skip ] # Debug Assertion
+[ Debug ] fast/overflow/scrollRevealButton.html  [ Skip ] # Causes later tests to fail
+[ Debug ] fast/overflow/scrollbar-click-retains-focus.html [ Skip ] # Debug assertion
 [ Debug ] fast/regions/hover-content-inside-iframe-in-region.html [ Skip ] # Debug Assertion
 [ Debug ] fast/repaint/4774354.html [ Skip ] # Causes later tests to fail
+[ Debug ] fast/repaint/fixed-in-page-scale.html [ Skip ] # Debug assertion
+[ Debug ] fast/repaint/fixed-move-after-keyboard-scroll.html [ Skip ] # Debug assertion
+[ Debug ] fast/repaint/fixed-move-after-scroll.html [ Skip ] # Debug assertion
+[ Debug ] fast/repaint/fixed-position-transparency-with-overflow.html [ Skip ] # Debug assertion
 [ Debug ] fast/repaint/text-selection-rect-in-overflow-2.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/workers/constructor-proto.html [ Skip ] # Causes later tests to fail
+[ Debug ] fast/workers/empty-worker-nocrash.html [ Skip ] # Debug assertion
+[ Debug ] fast/workers/stress-js-execution.html [ Skip ] # Debug assertion
 [ Debug ] fast/workers/wrapper-map-gc.html [ Skip ] # Timeout
 [ Debug ] http/tests/incremental/frame-focus-before-load.html [ Skip ] # Causes later tests to fail
 [ Debug ] http/tests/loading/post-in-iframe-with-back-navigation.html [ Skip ] # Causes later tests to fail
@@ -2563,7 +2582,7 @@ webkit.org/b/138676 imported/w3c/canvas/2d.strokeRect.zero.5.html [ Failure ]
 [ Debug ] http/tests/security/listener/xss-window-onclick-addEventListener.html [ Skip ] # Causes later tests to fail
 [ Debug ] ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
 [ Debug ] mathml/roots-removeChild.html [ ImageOnlyFailure ]
-[ Debug ] mathml/presentation/dynamic.html [ Failure ]
+[ Debug ] platform/win/fast/events/panScroll-no-iframe-jump.html [ Skip ] # Causes later tests to fail
 [ Debug ] sputnik/Unicode/Unicode_320/S7.6_A3.1.html [ Skip ] # Debug Assertion
 [ Debug ] sputnik/Unicode/Unicode_320/S7.6_A3.2.html [ Skip ] # Debug Assertion
 [ Debug ] svg/custom/list-items-with-svg-font-family.html [ Skip ] # Causes later tests to fail
@@ -2591,7 +2610,6 @@ compositing/rtl/rtl-iframe-absolute-overflow-scrolled.html [ Failure ]
 compositing/rtl/rtl-iframe-absolute-overflow.html [ Failure ]
 compositing/rtl/rtl-iframe-fixed-overflow-scrolled.html [ Failure ]
 compositing/rtl/rtl-iframe-fixed-overflow.html [ Failure ]
-compositing/text-on-large-layer.html [ Failure ]
 compositing/tiling/huge-layer-add-remove-child.html [ Failure ]
 compositing/tiling/huge-layer-resize.html [ Failure ]
 
@@ -2623,7 +2641,6 @@ fast/dynamic/window-resize-scrollbars-test.html [ Failure Timeout ]
 fast/encoding/parser-tests-110.html [ Pass Timeout ]
 
 fast/events/wheelevent-basic.html [ Failure ]
-fast/events/wheelevent-constructor.html [ Failure ]
 webkit.org/b/103043 fast/events/frame-scroll-fake-mouse-move.html [ Skip ]
 webkit.org/b/97026 [ Release ] fast/events/keydown-leftright-keys.html [ Failure ]
 webkit.org/b/97026 [ Debug ] fast/events/keydown-leftright-keys.html [ Skip ] # Debug Assertion
@@ -2951,16 +2968,10 @@ fast/replaced/border-radius-clip.html [ Failure ]
 webkit.org/b/117323 fast/replaced/invalid-object-with-fallback.html [ Failure ]
 webkit.org/b/117323 fast/replaced/no-focus-ring-embed.html [ Skip ] #  [ Timeout ]
 webkit.org/b/117323 fast/replaced/no-focus-ring-object.html [ Skip ] #  [ Timeout ]
-webkit.org/b/117323 fast/replaced/object-with-embed-url-param.html [ Failure ]
 fast/replaced/replaced-breaking.html [ Failure ]
-fast/replaced/width100percent-button.html [ Failure ]
-fast/replaced/width100percent-radio.html [ Failure ]
 webkit.org/b/138025 fast/replaced/width100percent-textfield.html [ Failure ]
 webkit.org/b/138025 fast/replaced/width100percent-textarea.html [ Failure ]
 webkit.org/b/138025 fast/replaced/width100percent-searchfield.html [ Failure ]
-webkit.org/b/138025 fast/replaced/width100percent-menulist.html [ Failure ]
-webkit.org/b/138025 fast/replaced/width100percent-checkbox.html [ Failure ]
-webkit.org/b/137962 fast/replaced/replaced-breaking-mixture.html [ Failure ]
 
 # Selection list is not in the right scroll position
 fast/scrolling/scroll-select-list.html [ ImageOnlyFailure ]
@@ -2970,7 +2981,6 @@ webkit.org/b/117322 fast/selectors/selection-window-inactive.html [ ImageOnlyFai
 webkit.org/b/140519 [ Debug ] fast/selectors/querySelector-id-with-multiple-elements-with-same-id.html [ Skip ]  # Crashing
 fast/selectors/querySelector-window-inactive.html [ Failure ]
 fast/selectors/read-only-read-write-input-basics.html [ Failure ]
-fast/selectors/several-nth-last-child.html [ Failure ]
 
 fast/shapes/shape-outside-floats/shape-outside-image-fit-002.html [ Pass ImageOnlyFailure ]
 fast/shapes/shape-outside-floats/shape-outside-floats-layout-after-initial-layout-pass.html [ ImageOnlyFailure ]
@@ -3032,3 +3042,27 @@ webkit.org/b/139968 fast/regions/overflow/overflow-first-and-last-regions.html [
 
 # This feature is only enabled on Mac and iOS right now
 contentfiltering [ Skip ]
+
+# The following are flaky on EWS bots. Revisit after next Windows update
+[ Release ] animations/trigger-container-scroll-empty.html [ Pass Failure ]
+[ Release ] css3/filters/filtered-compositing-descendant.html [ Pass Failure ]
+[ Release ] fast/images/animated-gif-iframe-webkit-transform.html [ Skip ] # Timeout
+[ Release ] fast/images/animated-gif-restored-from-bfcache.html [ Skip ] # Timeout
+[ Release ] fast/images/animated-gif-webkit-transform.html [ Skip ] # Timeout
+[ Release ] fast/regions/inline-block-inside-anonymous-overflow.html [ Pass ImageOnlyFailure ]
+[ Release ] fast/regions/repaint/fixed-in-named-flow-cb-changed.html [ Pass ImageOnlyFailure ]
+[ Release ] fast/regions/overflow/overflow-3dtransformed-region.html [ Pass Failure ]
+[ Release ] fast/regions/repaint/region-painting-composited-element.html [ Pass ImageOnlyFailure ]
+[ Release ] fast/regions/repaint/region-painting-in-composited-view.html [ Pass ImageOnlyFailure ]
+[ Release ] fast/repaint/animation-after-layer-scroll.html [ Pass Failure ]
+[ Release ] fast/text/international/float-as-only-child-of-isolate-crash.html [ Pass Failure ]
+[ Release ] js/slow-stress/emscripten-memops.html [ Pass Failure ]
+[ Release ] js/slow-stress/fold-strict-eq.html [ Skip ] # Crashes on EWS
+[ Release ] inspector-protocol/layers/layers-anonymous.html [ Skip ] # Timeouts
+[ Release ] inspector-protocol/layers/layers-blending-compositing-reasons.html [ Skip ] # Timeouts
+[ Release ] inspector-protocol/layers/layers-compositing-reasons.html [ Skip ] # Timeouts
+[ Release ] inspector-protocol/layers/layers-for-node.html [ Skip ] # Timeouts
+[ Release ] inspector-protocol/layers/layers-generated-content.html  [ Skip ] # Timeouts
+
+
+

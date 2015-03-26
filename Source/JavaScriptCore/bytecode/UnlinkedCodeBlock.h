@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2014 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012-2015 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -120,7 +120,7 @@ public:
     }
     size_t parameterCount() const;
     bool isInStrictContext() const { return m_isInStrictContext; }
-    FunctionMode functionMode() const { return m_functionMode; }
+    FunctionMode functionMode() const { return static_cast<FunctionMode>(m_functionMode); }
     ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
 
     unsigned unlinkedFunctionNameStart() const { return m_unlinkedFunctionNameStart; }
@@ -128,10 +128,9 @@ public:
     unsigned unlinkedBodyEndColumn() const { return m_unlinkedBodyEndColumn; }
     unsigned startOffset() const { return m_startOffset; }
     unsigned sourceLength() { return m_sourceLength; }
+    unsigned parametersStartOffset() const { return m_parametersStartOffset; }
     unsigned typeProfilingStartOffset() const { return m_typeProfilingStartOffset; }
     unsigned typeProfilingEndOffset() const { return m_typeProfilingEndOffset; }
-
-    String paramString() const;
 
     UnlinkedFunctionCodeBlock* codeBlockFor(
         VM&, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, 
@@ -171,17 +170,13 @@ private:
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForCall;
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForConstruct;
 
-    unsigned m_isInStrictContext : 1;
-    unsigned m_hasCapturedVariables : 1;
-    unsigned m_isBuiltinFunction : 1;
-    unsigned m_constructorKind : 2;
-
     Identifier m_name;
     Identifier m_inferredName;
     WriteBarrier<JSString> m_nameValue;
     WriteBarrier<SymbolTable> m_symbolTableForCall;
     WriteBarrier<SymbolTable> m_symbolTableForConstruct;
     RefPtr<FunctionParameters> m_parameters;
+    RefPtr<SourceProvider> m_sourceOverride;
     unsigned m_firstLineOffset;
     unsigned m_lineCount;
     unsigned m_unlinkedFunctionNameStart;
@@ -189,13 +184,17 @@ private:
     unsigned m_unlinkedBodyEndColumn;
     unsigned m_startOffset;
     unsigned m_sourceLength;
+    unsigned m_parametersStartOffset;
     unsigned m_typeProfilingStartOffset;
     unsigned m_typeProfilingEndOffset;
-    RefPtr<SourceProvider> m_sourceOverride;
 
     CodeFeatures m_features;
 
-    FunctionMode m_functionMode;
+    unsigned m_isInStrictContext : 1;
+    unsigned m_hasCapturedVariables : 1;
+    unsigned m_isBuiltinFunction : 1;
+    unsigned m_constructorKind : 2;
+    unsigned m_functionMode : 1; // FunctionMode
 
 protected:
     void finishCreation(VM& vm)
@@ -287,11 +286,6 @@ public:
     void setThisRegister(VirtualRegister thisRegister) { m_thisRegister = thisRegister; }
     void setScopeRegister(VirtualRegister scopeRegister) { m_scopeRegister = scopeRegister; }
     void setActivationRegister(VirtualRegister activationRegister) { m_lexicalEnvironmentRegister = activationRegister; }
-
-    void setArgumentsRegister(VirtualRegister argumentsRegister) { m_argumentsRegister = argumentsRegister; }
-    bool usesArguments() const { return m_argumentsRegister.isValid(); }
-    VirtualRegister argumentsRegister() const { return m_argumentsRegister; }
-
 
     bool usesGlobalObject() const { return m_globalObjectRegister.isValid(); }
     void setGlobalObjectRegister(VirtualRegister globalObjectRegister) { m_globalObjectRegister = globalObjectRegister; }
@@ -532,7 +526,6 @@ private:
     VM* m_vm;
 
     VirtualRegister m_thisRegister;
-    VirtualRegister m_argumentsRegister;
     VirtualRegister m_scopeRegister;
     VirtualRegister m_lexicalEnvironmentRegister;
     VirtualRegister m_globalObjectRegister;

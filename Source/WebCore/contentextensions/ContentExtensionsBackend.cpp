@@ -29,6 +29,7 @@
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "CompiledContentExtension.h"
+#include "ContentExtension.h"
 #include "DFABytecodeInterpreter.h"
 #include "ResourceLoadInfo.h"
 #include "URL.h"
@@ -49,7 +50,8 @@ void ContentExtensionsBackend::addContentExtension(const String& identifier, Ref
         return;
     }
 
-    m_contentExtensions.set(identifier, compiledContentExtension);
+    RefPtr<ContentExtension> extension = ContentExtension::create(identifier, adoptRef(*compiledContentExtension.leakRef()));
+    m_contentExtensions.set(identifier, WTF::move(extension));
 }
 
 void ContentExtensionsBackend::removeContentExtension(const String& identifier)
@@ -70,30 +72,42 @@ Vector<Action> ContentExtensionsBackend::actionsForResourceLoad(const ResourceLo
 
     Vector<Action> finalActions;
     ResourceFlags flags = resourceLoadInfo.getResourceFlags();
-    for (auto& compiledContentExtension : m_contentExtensions.values()) {
-        DFABytecodeInterpreter interpreter(compiledContentExtension->bytecode(), compiledContentExtension->bytecodeLength());
+    for (auto& contentExtension : m_contentExtensions.values()) {
+        const CompiledContentExtension& compiledExtension = contentExtension->compiledExtension();
+        DFABytecodeInterpreter interpreter(compiledExtension.bytecode(), compiledExtension.bytecodeLength());
         DFABytecodeInterpreter::Actions triggeredActions = interpreter.interpret(urlCString, flags);
         
-        const SerializedActionByte* actions = compiledContentExtension->actions();
-        const unsigned actionsLength = compiledContentExtension->actionsLength();
+        const SerializedActionByte* actions = compiledExtension.actions();
+        const unsigned actionsLength = compiledExtension.actionsLength();
         
+        bool sawIgnorePreviousRules = false;
         if (!triggeredActions.isEmpty()) {
             Vector<unsigned> actionLocations;
             actionLocations.reserveInitialCapacity(triggeredActions.size());
             for (auto actionLocation : triggeredActions)
                 actionLocations.append(static_cast<unsigned>(actionLocation));
             std::sort(actionLocations.begin(), actionLocations.end());
-            
+
             // Add actions in reverse order to properly deal with IgnorePreviousRules.
             for (unsigned i = actionLocations.size(); i; i--) {
                 Action action = Action::deserialize(actions, actionsLength, actionLocations[i - 1]);
-                if (action.type() == ActionType::IgnorePreviousRules)
+                if (action.type() == ActionType::IgnorePreviousRules) {
+                    sawIgnorePreviousRules = true;
                     break;
+                }
                 finalActions.append(action);
             }
         }
+        if (!sawIgnorePreviousRules)
+            finalActions.append(Action(ActionType::CSSDisplayNoneStyleSheet, contentExtension->identifier()));
     }
     return finalActions;
+}
+
+StyleSheetContents* ContentExtensionsBackend::globalDisplayNoneStyleSheet(const String& identifier) const
+{
+    const auto& contentExtension = m_contentExtensions.get(identifier);
+    return contentExtension ? contentExtension->globalDisplayNoneStyleSheet() : nullptr;
 }
 
 } // namespace ContentExtensions

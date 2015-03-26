@@ -92,6 +92,7 @@ void Storage::initialize()
             WebCore::getFileSize(filePath, fileSize);
             m_approximateSize += fileSize;
         });
+        m_hasPopulatedContentsFilter = true;
     });
 }
 
@@ -211,18 +212,22 @@ static std::unique_ptr<Storage::Entry> decodeEntry(const Data& fileData, int fd,
 
     if (metaData.key != key)
         return nullptr;
-    if (metaData.bodyOffset + metaData.bodySize != fileData.size())
-        return nullptr;
 
-    auto bodyData = mapFile(fd, metaData.bodyOffset, metaData.bodySize);
-    if (bodyData.isNull()) {
-        LOG(NetworkCacheStorage, "(NetworkProcess) map failed");
-        return nullptr;
-    }
+    Data bodyData;
+    if (metaData.bodySize) {
+        if (metaData.bodyOffset + metaData.bodySize != fileData.size())
+            return nullptr;
 
-    if (metaData.bodyChecksum != hashData(bodyData)) {
-        LOG(NetworkCacheStorage, "(NetworkProcess) data checksum mismatch");
-        return nullptr;
+        bodyData = mapFile(fd, metaData.bodyOffset, metaData.bodySize);
+        if (bodyData.isNull()) {
+            LOG(NetworkCacheStorage, "(NetworkProcess) map failed");
+            return nullptr;
+        }
+
+        if (metaData.bodyChecksum != hashData(bodyData)) {
+            LOG(NetworkCacheStorage, "(NetworkProcess) data checksum mismatch");
+            return nullptr;
+        }
     }
 
     return std::make_unique<Storage::Entry>(Storage::Entry {
@@ -372,7 +377,7 @@ void Storage::retrieve(const Key& key, unsigned priority, RetrieveCompletionHand
         return;
     }
 
-    if (!m_contentsFilter.mayContain(key.shortHash())) {
+    if (!cacheMayContain(key.shortHash())) {
         completionHandler(nullptr);
         return;
     }
@@ -460,7 +465,7 @@ void Storage::dispatchPendingWriteOperations()
         auto& write = *writeOperation;
         m_activeWriteOperations.add(WTF::move(writeOperation));
 
-        if (write.existingEntry && m_contentsFilter.mayContain(write.entry.key.shortHash())) {
+        if (write.existingEntry && cacheMayContain(write.entry.key.shortHash())) {
             dispatchHeaderWriteOperation(write);
             continue;
         }
@@ -515,7 +520,7 @@ void Storage::dispatchHeaderWriteOperation(const WriteOperation& write)
     ASSERT(RunLoop::isMain());
     ASSERT(write.existingEntry);
     ASSERT(m_activeWriteOperations.contains(&write));
-    ASSERT(m_contentsFilter.mayContain(write.entry.key.shortHash()));
+    ASSERT(cacheMayContain(write.entry.key.shortHash()));
 
     // Try to update the header of an existing entry.
     StringCapture cachePathCapture(m_directoryPath);

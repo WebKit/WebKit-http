@@ -8,6 +8,9 @@
 #include "WebInspectorProxy.h"
 #include "WebPageProxy.h"
 #include <cstdio>
+#include <gmodule.h>
+#include <mutex>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -20,6 +23,17 @@ bool WebInspectorServer::platformResourceForPath(const String& path, Vector<char
         buildPageList(data, contentType);
         return true;
     }
+
+    static std::once_flag flag;
+    std::call_once(flag, [] {
+        GModule* resourcesModule = g_module_open("libWPEInspectorResources.so", G_MODULE_BIND_LAZY);
+        if (!resourcesModule) {
+            WTFLogAlways("Error loading libWPEInspectorResources.so: %s", g_module_error());
+            return;
+        }
+
+        g_module_make_resident(resourcesModule);
+    });
 
     // Point the default path to a formatted page that queries the page list and display them.
     CString resourcePath = makeString("/org/wpe/inspector/UserInterface", (path == "/" ? "/inspectorPageIndex.html" : path)).utf8();

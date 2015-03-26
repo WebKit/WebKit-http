@@ -24,6 +24,7 @@
  */
 
 #import <QuartzCore/QuartzCore.h>
+#import <WebCore/IOSurfaceSPI.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 
@@ -114,6 +115,12 @@ typedef struct CAColorMatrix CAColorMatrix;
 
 EXTERN_C void CARenderServerCaptureLayerWithTransform(mach_port_t serverPort, uint32_t clientId, uint64_t layerId,
                                                       uint32_t slotId, int32_t ox, int32_t oy, const CATransform3D *);
+
+#if PLATFORM(IOS_SIMULATOR)
+EXTERN_C void CARenderServerRenderLayerWithTransform (mach_port_t server_port, uint32_t client_id, uint64_t layer_id, CARenderServerBufferRef buffer, int32_t ox, int32_t oy, const CATransform3D *matrix);
+#else
+EXTERN_C void CARenderServerRenderLayerWithTransform(mach_port_t server_port, uint32_t client_id, uint64_t layer_id, IOSurfaceRef iosurface, int32_t ox, int32_t oy, const CATransform3D *matrix);
+#endif
 
 EXTERN_C NSString * const kCATiledLayerRemoveImmediately;
 

@@ -35,50 +35,21 @@ namespace WPE {
 
 InputHandler::InputHandler(View& view)
     : m_view(view)
+    , m_keyInputHandler(KeyInputHandler::create())
 {
-    struct xkb_context* context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-    struct xkb_rule_names names = { "evdev", "pc105", "us", "", "" };
-
-    m_xkbKeymap = xkb_keymap_new_from_names(context, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
-    m_xkbState = xkb_state_new(m_xkbKeymap);
-
-    m_modifiers.ctrl = xkb_keymap_mod_get_index(m_xkbKeymap, XKB_MOD_NAME_CTRL);
-    m_modifiers.shift = xkb_keymap_mod_get_index(m_xkbKeymap, XKB_MOD_NAME_SHIFT);
-    m_modifiers.effective = 0;
-
     m_pointer.x = m_pointer.y = 0;
-
-    xkb_context_unref(context);
-}
-
-InputHandler::~InputHandler()
-{
-    xkb_keymap_unref(m_xkbKeymap);
-    xkb_state_unref(m_xkbState);
 }
 
 void InputHandler::handleKeyboardKey(KeyboardEvent::Raw event)
 {
-    // Keycode system starts at 8. Go figure.
-    int key = event.key + 8;
-
-    uint8_t keyModifiers = 0;
-    if (m_modifiers.effective & (1 << m_modifiers.ctrl))
-        keyModifiers |= KeyboardEvent::Control;
-    if (m_modifiers.effective & (1 << m_modifiers.shift))
-        keyModifiers |= KeyboardEvent::Shift;
-
+    KeyInputHandler::HandlingResult handledEvent = m_keyInputHandler->handleKeyInputEvent(event);
     m_view.page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent({
         event.time,
-        xkb_state_key_get_one_sym(m_xkbState, key),
-        xkb_state_key_get_utf32(m_xkbState, key),
+        std::get<0>(handledEvent),
+        std::get<1>(handledEvent),
         !!event.state,
-        keyModifiers
+        std::get<2>(handledEvent)
     }));
-
-    xkb_state_update_key(m_xkbState, key, event.state ? XKB_KEY_DOWN : XKB_KEY_UP);
-    m_modifiers.effective = xkb_state_serialize_mods(m_xkbState,
-        static_cast<xkb_state_component>(XKB_STATE_MODS_EFFECTIVE | XKB_STATE_LAYOUT_EFFECTIVE));
 }
 
 void InputHandler::handlePointerEvent(PointerEvent::Raw event)

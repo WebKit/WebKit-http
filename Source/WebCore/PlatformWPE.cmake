@@ -12,7 +12,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/wayland"
     "${WEBCORE_DIR}/platform/linux"
-    "${WEBCORE_DIR}/platform/mediastream/gstreamer"
+    "${WEBCORE_DIR}/platform/mediastream/openwebrtc"
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/icu"
@@ -107,7 +107,8 @@ list(APPEND WebCore_SOURCES
     platform/image-decoders/png/PNGImageDecoder.cpp
     platform/image-decoders/webp/WEBPImageDecoder.cpp
     platform/linux/MemoryPressureHandlerLinux.cpp
-    platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
+    platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
+    platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
     platform/network/soup/AuthenticationChallengeSoup.cpp
     platform/network/soup/CertificateInfo.cpp
     platform/network/soup/CookieJarSoup.cpp

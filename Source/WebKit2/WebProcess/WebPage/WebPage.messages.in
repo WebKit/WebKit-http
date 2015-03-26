@@ -21,7 +21,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> WebPage LegacyReceiver {
-    SetInitialFocus(bool forward, bool isKeyboardEventValid, WebKit::WebKeyboardEvent event)
+    SetInitialFocus(bool forward, bool isKeyboardEventValid, WebKit::WebKeyboardEvent event, uint64_t callbackID)
     SetViewState(unsigned viewState, bool wantsDidUpdateViewState, Vector<uint64_t> callbackIDs)
     SetLayerHostingMode(unsigned layerHostingMode)
 
@@ -143,6 +143,7 @@ messages -> WebPage LegacyReceiver {
     DidReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, uint64_t downloadID)
 
     ClearSelection()
+    RestoreSelectionInFocusedEditableElement()
 
     # Callbacks.
     GetContentsAsString(uint64_t callbackID)
@@ -405,6 +406,7 @@ messages -> WebPage LegacyReceiver {
     PerformActionMenuHitTestAtLocation(WebCore::FloatPoint location, bool forImmediateAction)
     SelectLastActionMenuRange()
     FocusAndSelectLastActionMenuHitTestResult()
+    ImmediateActionDidUpdate(float force)
     ImmediateActionDidCancel()
     ImmediateActionDidComplete()
     DataDetectorsDidPresentUI(WebCore::PageOverlay::PageOverlayID pageOverlay)

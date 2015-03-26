@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2012-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 
 #include "ArityCheckFailReturnThunks.h"
 #include "CodeBlock.h"
+#include "CodeBlockWithJITType.h"
 #include "DFGCapabilities.h"
 #include "Interpreter.h"
 #include "JITInlines.h"
@@ -201,9 +202,10 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_construct)
         DEFINE_OP(op_create_this)
         DEFINE_OP(op_to_this)
+        DEFINE_OP(op_create_direct_arguments)
+        DEFINE_OP(op_create_scoped_arguments)
+        DEFINE_OP(op_create_out_of_band_arguments)
         DEFINE_OP(op_check_tdz)
-        DEFINE_OP(op_init_lazy_reg)
-        DEFINE_OP(op_create_arguments)
         DEFINE_OP(op_debug)
         DEFINE_OP(op_del_by_id)
         DEFINE_OP(op_div)
@@ -216,9 +218,7 @@ void JIT::privateCompileMainPass()
         case op_get_by_id_out_of_line:
         case op_get_array_length:
         DEFINE_OP(op_get_by_id)
-        DEFINE_OP(op_get_arguments_length)
         DEFINE_OP(op_get_by_val)
-        DEFINE_OP(op_get_argument_by_val)
         DEFINE_OP(op_check_has_instance)
         DEFINE_OP(op_instanceof)
         DEFINE_OP(op_is_undefined)
@@ -290,7 +290,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_switch_char)
         DEFINE_OP(op_switch_imm)
         DEFINE_OP(op_switch_string)
-        DEFINE_OP(op_tear_off_arguments)
         DEFINE_OP(op_throw)
         DEFINE_OP(op_throw_static_error)
         DEFINE_OP(op_to_number)
@@ -299,15 +298,17 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_resolve_scope)
         DEFINE_OP(op_get_from_scope)
         DEFINE_OP(op_put_to_scope)
+        DEFINE_OP(op_get_from_arguments)
+        DEFINE_OP(op_put_to_arguments)
 
         DEFINE_OP(op_get_enumerable_length)
         DEFINE_OP(op_has_generic_property)
         DEFINE_OP(op_has_structure_property)
         DEFINE_OP(op_has_indexed_property)
         DEFINE_OP(op_get_direct_pname)
-        DEFINE_OP(op_get_structure_property_enumerator)
-        DEFINE_OP(op_get_generic_property_enumerator)
-        DEFINE_OP(op_next_enumerator_pname)
+        DEFINE_OP(op_get_property_enumerator)
+        DEFINE_OP(op_enumerator_structure_pname)
+        DEFINE_OP(op_enumerator_generic_pname)
         DEFINE_OP(op_to_index_string)
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -383,9 +384,7 @@ void JIT::privateCompileSlowCases()
         case op_get_by_id_out_of_line:
         case op_get_array_length:
         DEFINE_SLOWCASE_OP(op_get_by_id)
-        DEFINE_SLOWCASE_OP(op_get_arguments_length)
         DEFINE_SLOWCASE_OP(op_get_by_val)
-        DEFINE_SLOWCASE_OP(op_get_argument_by_val)
         DEFINE_SLOWCASE_OP(op_check_has_instance)
         DEFINE_SLOWCASE_OP(op_instanceof)
         DEFINE_SLOWCASE_OP(op_jfalse)
@@ -584,7 +583,9 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
 #else
         thunkReg = GPRInfo::regT5;
 #endif
-        move(TrustedImmPtr(m_vm->arityCheckFailReturnThunks->returnPCsFor(*m_vm, m_codeBlock->numParameters())), thunkReg);
+        CodeLocationLabel* failThunkLabels =
+            m_vm->arityCheckFailReturnThunks->returnPCsFor(*m_vm, m_codeBlock->numParameters());
+        move(TrustedImmPtr(failThunkLabels), thunkReg);
         loadPtr(BaseIndex(thunkReg, regT0, timesPtr()), thunkReg);
         emitNakedCall(m_vm->getCTIStub(arityFixupGenerator).code());
 
@@ -682,14 +683,18 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
     if (m_codeBlock->codeType() == FunctionCode)
         withArityCheck = patchBuffer.locationOf(arityCheck);
 
-    if (Options::showDisassembly())
+    if (Options::showDisassembly()) {
         m_disassembler->dump(patchBuffer);
+        patchBuffer.didAlreadyDisassemble();
+    }
     if (m_compilation) {
         m_disassembler->reportToProfiler(m_compilation.get(), patchBuffer);
         m_vm->m_perBytecodeProfiler->addCompilation(m_compilation);
     }
     
-    CodeRef result = patchBuffer.finalizeCodeWithoutDisassembly();
+    CodeRef result = FINALIZE_CODE(
+        patchBuffer,
+        ("Baseline JIT code for %s", toCString(CodeBlockWithJITType(m_codeBlock, JITCode::BaselineJIT)).data()));
     
     m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT.add(
         static_cast<double>(result.size()) /

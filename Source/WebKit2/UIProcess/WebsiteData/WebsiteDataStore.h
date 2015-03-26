@@ -33,6 +33,7 @@
 #include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/WorkQueue.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebKit {
@@ -44,6 +45,10 @@ struct WebsiteDataRecord;
 class WebsiteDataStore : public RefCounted<WebsiteDataStore>, public WebProcessLifetimeObserver {
 public:
     struct Configuration {
+        String networkCacheDirectory;
+        String applicationCacheDirectory;
+
+        String webSQLDatabaseDirectory;
         String localStorageDirectory;
     };
     static RefPtr<WebsiteDataStore> createNonPersistent();
@@ -81,7 +86,13 @@ private:
     const uint64_t m_identifier;
     const WebCore::SessionID m_sessionID;
 
+    const String m_networkCacheDirectory;
+    const String m_applicationCacheDirectory;
+
+    const String m_webSQLDatabaseDirectory;
     const RefPtr<StorageManager> m_storageManager;
+
+    Ref<WorkQueue> m_queue;
 };
 
 }

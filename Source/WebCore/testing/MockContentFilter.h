@@ -26,14 +26,12 @@
 #ifndef MockContentFilter_h
 #define MockContentFilter_h
 
-#include "ContentFilter.h"
 #include "MockContentFilterSettings.h"
+#include "PlatformContentFilter.h"
 
 namespace WebCore {
 
-class MockContentFilter final : public ContentFilter {
-    WTF_MAKE_FAST_ALLOCATED;
-    WTF_MAKE_NONCOPYABLE(MockContentFilter);
+class MockContentFilter final : public PlatformContentFilter {
     friend std::unique_ptr<MockContentFilter> std::make_unique<MockContentFilter>(const ResourceResponse&);
 
 public:
@@ -47,6 +45,7 @@ public:
     bool didBlockData() const override;
     const char* getReplacementData(int& length) const override;
     ContentFilterUnblockHandler unblockHandler() const override;
+    String unblockRequestDeniedScript() const override;
 
 private:
     enum class Status {

@@ -59,7 +59,17 @@ static uint8_t* mmAllocateCodeSection(
     
     RefPtr<ExecutableMemoryHandle> result =
         state.graph.m_vm.executableAllocator.allocate(
-            state.graph.m_vm, size, state.graph.m_codeBlock, JITCompilationMustSucceed);
+            state.graph.m_vm, size, state.graph.m_codeBlock, JITCompilationCanFail);
+    
+    if (!result) {
+        // Signal failure. This compilation will get tossed.
+        state.allocationFailed = true;
+        
+        // Fake an allocation, since LLVM cannot handle failures in the memory manager.
+        RefPtr<DataSection> fakeSection = adoptRef(new DataSection(size, jitAllocationGranule));
+        state.jitCode->addDataSection(fakeSection);
+        return bitwise_cast<uint8_t*>(fakeSection->base());
+    }
     
     // LLVM used to put __compact_unwind in a code section. We keep this here defensively,
     // for clients that use older LLVMs.
@@ -130,6 +140,9 @@ static void dumpDataSection(DataSection* section, const char* prefix)
 
 static int offsetOfStackRegion(StackMaps::RecordMap& recordMap, uint32_t stackmapID)
 {
+    if (stackmapID == UINT_MAX)
+        return 0;
+    
     StackMaps::RecordMap::iterator iter = recordMap.find(stackmapID);
     RELEASE_ASSERT(iter != recordMap.end());
     RELEASE_ASSERT(iter->value.size() == 1);
@@ -291,20 +304,11 @@ static void fixFunctionBasedOnStackMaps(
     VM& vm = graph.m_vm;
     StackMaps stackmaps = jitCode->stackmaps;
     
-    int localsOffset =
-        offsetOfStackRegion(recordMap, state.capturedStackmapID) + graph.m_nextMachineLocal;
-    
-    int varargsSpillSlotsOffset;
-    if (state.varargsSpillSlotsStackmapID != UINT_MAX)
-        varargsSpillSlotsOffset = offsetOfStackRegion(recordMap, state.varargsSpillSlotsStackmapID);
-    else
-        varargsSpillSlotsOffset = 0;
+    int localsOffset = offsetOfStackRegion(recordMap, state.capturedStackmapID) + graph.m_nextMachineLocal;
+    int varargsSpillSlotsOffset = offsetOfStackRegion(recordMap, state.varargsSpillSlotsStackmapID);
     
     for (unsigned i = graph.m_inlineVariableData.size(); i--;) {
         InlineCallFrame* inlineCallFrame = graph.m_inlineVariableData[i].inlineCallFrame;
-        
-        if (inlineCallFrame->argumentsRegister.isValid())
-            inlineCallFrame->argumentsRegister += localsOffset;
         
         if (inlineCallFrame->argumentCountRegister.isValid())
             inlineCallFrame->argumentCountRegister += localsOffset;
@@ -320,11 +324,6 @@ static void fixFunctionBasedOnStackMaps(
         }
     }
     
-    if (codeBlock->usesArguments()) {
-        codeBlock->setArgumentsRegister(
-            VirtualRegister(codeBlock->argumentsRegister().offset() + localsOffset));
-    }
-
     MacroAssembler::Label stackOverflowException;
 
     {
@@ -344,7 +343,11 @@ static void fixFunctionBasedOnStackMaps(
         checkJIT.jumpToExceptionHandler();
 
         auto linkBuffer = std::make_unique<LinkBuffer>(
-            vm, checkJIT, codeBlock, JITCompilationMustSucceed);
+            vm, checkJIT, codeBlock, JITCompilationCanFail);
+        if (linkBuffer->didFailToAllocate()) {
+            state.allocationFailed = true;
+            return;
+        }
         linkBuffer->link(callLookupExceptionHandler, FunctionPtr(lookupExceptionHandler));
         linkBuffer->link(callLookupExceptionHandlerFromCallerFrame, FunctionPtr(lookupExceptionHandlerFromCallerFrame));
 
@@ -358,7 +361,11 @@ static void fixFunctionBasedOnStackMaps(
         RELEASE_ASSERT(didSeeUnwindInfo);
         
         auto linkBuffer = std::make_unique<LinkBuffer>(
-            vm, exitThunkGenerator, codeBlock, JITCompilationMustSucceed);
+            vm, exitThunkGenerator, codeBlock, JITCompilationCanFail);
+        if (linkBuffer->didFailToAllocate()) {
+            state.allocationFailed = true;
+            return;
+        }
         
         RELEASE_ASSERT(state.finalizer->osrExit.size() == state.jitCode->osrExit.size());
         
@@ -378,15 +385,10 @@ static void fixFunctionBasedOnStackMaps(
             info.m_thunkAddress = linkBuffer->locationOf(info.m_thunkLabel);
             exit.m_patchableCodeOffset = linkBuffer->offsetOf(info.m_thunkJump);
             
-            for (unsigned j = exit.m_values.size(); j--;) {
-                ExitValue value = exit.m_values[j];
-                if (!value.isInJSStackSomehow())
-                    continue;
-                if (!value.virtualRegister().isLocal())
-                    continue;
-                exit.m_values[j] = value.withVirtualRegister(
-                    VirtualRegister(value.virtualRegister().offset() + localsOffset));
-            }
+            for (unsigned j = exit.m_values.size(); j--;)
+                exit.m_values[j] = exit.m_values[j].withLocalsOffset(localsOffset);
+            for (ExitTimeObjectMaterialization* materialization : exit.m_materializations)
+                materialization->accountForLocalsOffset(localsOffset);
             
             if (verboseCompilationEnabled()) {
                 DumpContext context;
@@ -516,7 +518,11 @@ static void fixFunctionBasedOnStackMaps(
         exceptionTarget.link(&slowPathJIT);
         MacroAssembler::Jump exceptionJump = slowPathJIT.jump();
         
-        state.finalizer->sideCodeLinkBuffer = std::make_unique<LinkBuffer>(vm, slowPathJIT, codeBlock, JITCompilationMustSucceed);
+        state.finalizer->sideCodeLinkBuffer = std::make_unique<LinkBuffer>(vm, slowPathJIT, codeBlock, JITCompilationCanFail);
+        if (state.finalizer->sideCodeLinkBuffer->didFailToAllocate()) {
+            state.allocationFailed = true;
+            return;
+        }
         state.finalizer->sideCodeLinkBuffer->link(
             exceptionJump, state.finalizer->handleExceptionsLinkBuffer->entrypoint());
         
@@ -566,7 +572,7 @@ static void fixFunctionBasedOnStackMaps(
         JSCallVarargs& call = state.jsCallVarargses[i];
         
         CCallHelpers fastPathJIT(&vm, codeBlock);
-        call.emit(fastPathJIT, graph, varargsSpillSlotsOffset);
+        call.emit(fastPathJIT, varargsSpillSlotsOffset);
         
         char* startOfIC = bitwise_cast<char*>(generatedFunction) + call.m_instructionOffset;
         size_t sizeOfIC = sizeOfICFor(call.node());
@@ -675,13 +681,17 @@ void compile(State& state, Safepoint::Result& safepointResult)
             dataLog("FATAL: Could not create LLVM execution engine: ", error, "\n");
             CRASH();
         }
+        
+        // At this point we no longer own the module.
+        LModule module = state.module;
+        state.module = nullptr;
 
         // The data layout also has to be set in the module. Get the data layout from the MCJIT and apply
         // it to the module.
         LLVMTargetMachineRef targetMachine = llvm->GetExecutionEngineTargetMachine(engine);
         LLVMTargetDataRef targetData = llvm->GetExecutionEngineTargetData(engine);
         char* stringRepOfTargetData = llvm->CopyStringRepOfTargetData(targetData);
-        llvm->SetDataLayout(state.module, stringRepOfTargetData);
+        llvm->SetDataLayout(module, stringRepOfTargetData);
         free(stringRepOfTargetData);
 
         LLVMPassManagerRef functionPasses = 0;
@@ -707,14 +717,14 @@ void compile(State& state, Safepoint::Result& safepointResult)
             llvm->AddCFGSimplificationPass(modulePasses);
             llvm->AddDeadStoreEliminationPass(modulePasses);
 
-            llvm->RunPassManager(modulePasses, state.module);
+            llvm->RunPassManager(modulePasses, module);
         } else {
             LLVMPassManagerBuilderRef passBuilder = llvm->PassManagerBuilderCreate();
             llvm->PassManagerBuilderSetOptLevel(passBuilder, Options::llvmOptimizationLevel());
             llvm->PassManagerBuilderUseInlinerWithThreshold(passBuilder, 275);
             llvm->PassManagerBuilderSetSizeLevel(passBuilder, Options::llvmSizeLevel());
         
-            functionPasses = llvm->CreateFunctionPassManagerForModule(state.module);
+            functionPasses = llvm->CreateFunctionPassManagerForModule(module);
             modulePasses = llvm->CreatePassManager();
         
             llvm->AddTargetData(llvm->GetExecutionEngineTargetData(engine), modulePasses);
@@ -725,16 +735,16 @@ void compile(State& state, Safepoint::Result& safepointResult)
             llvm->PassManagerBuilderDispose(passBuilder);
         
             llvm->InitializeFunctionPassManager(functionPasses);
-            for (LValue function = llvm->GetFirstFunction(state.module); function; function = llvm->GetNextFunction(function))
+            for (LValue function = llvm->GetFirstFunction(module); function; function = llvm->GetNextFunction(function))
                 llvm->RunFunctionPassManager(functionPasses, function);
             llvm->FinalizeFunctionPassManager(functionPasses);
         
-            llvm->RunPassManager(modulePasses, state.module);
+            llvm->RunPassManager(modulePasses, module);
         }
 
         if (shouldShowDisassembly() || verboseCompilationEnabled())
-            state.dumpState("after optimization");
-    
+            state.dumpState(module, "after optimization");
+        
         // FIXME: Need to add support for the case where JIT memory allocation failed.
         // https://bugs.webkit.org/show_bug.cgi?id=113620
         state.generatedFunction = reinterpret_cast<GeneratedFunction>(llvm->GetPointerToGlobal(engine, state.function));
@@ -743,9 +753,13 @@ void compile(State& state, Safepoint::Result& safepointResult)
         llvm->DisposePassManager(modulePasses);
         llvm->DisposeExecutionEngine(engine);
     }
+
     if (safepointResult.didGetCancelled())
         return;
     RELEASE_ASSERT(!state.graph.m_vm.heap.isCollecting());
+    
+    if (state.allocationFailed)
+        return;
     
     if (shouldShowDisassembly()) {
         for (unsigned i = 0; i < state.jitCode->handles().size(); ++i) {
@@ -802,26 +816,36 @@ void compile(State& state, Safepoint::Result& safepointResult)
         fixFunctionBasedOnStackMaps(
             state, state.graph.m_codeBlock, state.jitCode.get(), state.generatedFunction,
             recordMap, didSeeUnwindInfo);
+        if (state.allocationFailed)
+            return;
         
-        if (shouldShowDisassembly()) {
+        if (shouldShowDisassembly() || Options::asyncDisassembly()) {
             for (unsigned i = 0; i < state.jitCode->handles().size(); ++i) {
                 if (state.codeSectionNames[i] != SECTION_NAME("text"))
                     continue;
                 
                 ExecutableMemoryHandle* handle = state.jitCode->handles()[i].get();
-                dataLog(
+                
+                CString header = toCString(
                     "Generated LLVM code after stackmap-based fix-up for ",
                     CodeBlockWithJITType(state.graph.m_codeBlock, JITCode::FTLJIT),
                     " in ", state.graph.m_plan.mode, " #", i, ", ",
                     state.codeSectionNames[i], ":\n");
+                
+                if (Options::asyncDisassembly()) {
+                    disassembleAsynchronously(
+                        header, MacroAssemblerCodeRef(handle), handle->sizeInBytes(), "    ",
+                        LLVMSubset);
+                    continue;
+                }
+                
+                dataLog(header);
                 disassemble(
                     MacroAssemblerCodePtr(handle->start()), handle->sizeInBytes(),
                     "    ", WTF::dataFile(), LLVMSubset);
             }
         }
     }
-    
-    state.module = 0; // We no longer own the module.
 }
 
 } } // namespace JSC::FTL

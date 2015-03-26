@@ -246,7 +246,9 @@ private:
     bool m_isWaitingUntilMediaCanStart;
     bool m_isBeingDestroyed;
     bool m_pluginProcessHasCrashed;
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     bool m_didPlugInStartOffScreen;
+#endif
 
     // Pending URLRequests that the plug-in has made.
     Deque<RefPtr<URLRequest>> m_pendingURLRequests;
@@ -282,7 +284,9 @@ private:
     RefPtr<ShareableBitmap> m_transientPaintingSnapshot;
     // This timer is used when plugin snapshotting is enabled, to capture a plugin placeholder.
     WebCore::DeferrableOneShotTimer m_pluginSnapshotTimer;
+#if PLATFORM(COCOA) || ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     unsigned m_countSnapshotRetries;
+#endif
     bool m_didReceiveUserInteraction;
 
     double m_pageScaleFactor;

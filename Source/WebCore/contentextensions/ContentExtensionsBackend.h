@@ -28,6 +28,7 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
+#include "ContentExtension.h"
 #include "ContentExtensionRule.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/StringHash.h>
@@ -60,9 +61,10 @@ public:
 
     // - Internal WebCore Interface.
     WEBCORE_EXPORT Vector<Action> actionsForResourceLoad(const ResourceLoadInfo&) const;
+    StyleSheetContents* globalDisplayNoneStyleSheet(const String& identifier) const;
 
 private:
-    HashMap<String, RefPtr<CompiledContentExtension>> m_contentExtensions;
+    HashMap<String, RefPtr<ContentExtension>> m_contentExtensions;
 };
 
 } // namespace ContentExtensions

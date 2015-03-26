@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2013 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2013, 2015 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
@@ -196,6 +196,7 @@ namespace JSC {
         virtual bool isBreak() const { return false; }
         virtual bool isContinue() const { return false; }
         virtual bool isBlock() const { return false; }
+        virtual bool isFuncDeclNode() const { return false; }
 
     protected:
         StatementNode* m_next;
@@ -1469,7 +1470,8 @@ namespace JSC {
         bool hasCapturedVariables() const { return !!m_capturedVariables.size(); }
         size_t capturedVariableCount() const { return m_capturedVariables.size(); }
         const IdentifierSet& capturedVariables() const { return m_capturedVariables; }
-        bool captures(const Identifier& ident) { return m_capturedVariables.contains(ident.impl()); }
+        bool captures(StringImpl* uid) { return m_capturedVariables.contains(uid); }
+        bool captures(const Identifier& ident) { return captures(ident.impl()); }
 
         VarStack& varStack() { return m_varStack; }
         FunctionStack& functionStack() { return m_functionStack; }
@@ -1559,7 +1561,11 @@ namespace JSC {
     public:
         using ParserArenaDeletable::operator new;
 
-        FunctionBodyNode(ParserArena&, const JSTokenLocation& start, const JSTokenLocation& end, unsigned startColumn, unsigned endColumn, bool isInStrictContext, ConstructorKind);
+        FunctionBodyNode(
+            ParserArena&, const JSTokenLocation& start, const JSTokenLocation& end, 
+            unsigned startColumn, unsigned endColumn, int functionKeywordStart, 
+            int functionNameStart, int parametersStart, bool isInStrictContext, 
+            ConstructorKind);
 
         FunctionParameters* parameters() const { return m_parameters.get(); }
 
@@ -1574,10 +1580,9 @@ namespace JSC {
 
         FunctionMode functionMode() { return m_functionMode; }
 
-        void setFunctionNameStart(int functionNameStart) { m_functionNameStart = functionNameStart; }
         int functionNameStart() const { return m_functionNameStart; }
-        void setFunctionKeywordStart(int functionKeywordStart) { m_functionKeywordStart = functionKeywordStart; }
         int functionKeywordStart() const { return m_functionKeywordStart; }
+        int parametersStart() const { return m_parametersStart; }
         unsigned startColumn() const { return m_startColumn; }
         unsigned endColumn() const { return m_endColumn; }
 
@@ -1594,10 +1599,11 @@ namespace JSC {
         Identifier m_inferredName;
         FunctionMode m_functionMode;
         RefPtr<FunctionParameters> m_parameters;
-        int m_functionNameStart;
-        int m_functionKeywordStart;
         unsigned m_startColumn;
         unsigned m_endColumn;
+        int m_functionKeywordStart;
+        int m_functionNameStart;
+        int m_parametersStart;
         SourceCode m_source;
         int m_startStartOffset;
         unsigned m_isInStrictContext : 1;
@@ -1769,6 +1775,7 @@ namespace JSC {
     public:
         FuncDeclNode(const JSTokenLocation&, const Identifier&, FunctionBodyNode*, const SourceCode&, ParameterNode* = 0);
 
+        virtual bool isFuncDeclNode() const override { return true; }
         FunctionBodyNode* body() { return m_body; }
 
     private:

@@ -1262,7 +1262,7 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontD
 
     default:
         textStyle = kCTFontDescriptorTextStyleEmphasized;
-        fontDescriptor = adoptCF(CTFontDescriptorCreateForUIType(kCTFontSystemFontType, 0, nullptr));
+        fontDescriptor = adoptCF(CTFontDescriptorCreateForUIType(kCTFontUIFontSystem, 0, nullptr));
     }
 
     ASSERT(fontDescriptor);

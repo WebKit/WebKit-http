@@ -683,6 +683,7 @@ public:
 
     void replaceSelectionWithText(WebCore::Frame*, const String&);
     void clearSelection();
+    void restoreSelectionInFocusedEditableElement();
 
 #if ENABLE(DRAG_SUPPORT)
 #if PLATFORM(GTK)
@@ -928,7 +929,7 @@ private:
     void goBack(uint64_t navigationID, uint64_t);
     void goToBackForwardItem(uint64_t navigationID, uint64_t);
     void tryRestoreScrollPosition();
-    void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&);
+    void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&, uint64_t callbackID);
     void setWindowResizerSize(const WebCore::IntSize&);
     void updateIsInWindow(bool isInitialState = false);
     void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState, const Vector<uint64_t>& callbackIDs);
@@ -1084,6 +1085,7 @@ private:
     PassRefPtr<WebCore::Range> lookupTextAtLocation(WebCore::FloatPoint, NSDictionary **options);
     void selectLastActionMenuRange();
     void focusAndSelectLastActionMenuHitTestResult();
+    void immediateActionDidUpdate(float force);
     void immediateActionDidCancel();
     void immediateActionDidComplete();
     void setFont(const String& fontFamily, double fontSize, uint64_t fontTraits);
@@ -1341,6 +1343,7 @@ private:
     RefPtr<WebCore::Range> m_lastActionMenuRangeForSelection;
     WebCore::HitTestResult m_lastActionMenuHitTestResult;
     RefPtr<WebPageOverlay> m_lastActionMenuHitPageOverlay;
+    bool m_lastActionMenuHitTestPreventsDefault;
 #endif
 
     bool m_mainFrameProgressCompleted;

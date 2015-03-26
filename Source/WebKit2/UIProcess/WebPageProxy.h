@@ -112,7 +112,7 @@
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-#include "WebMediaPlaybackTargetPickerProxy.h"
+#include <WebCore/MediaPlaybackTargetPicker.h>
 #endif
 
 namespace API {
@@ -263,7 +263,7 @@ class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
     , public WebColorPicker::Client
 #endif
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    , public WebMediaPlaybackTargetPickerProxy::Client
+    , public WebCore::MediaPlaybackTargetPicker::Client
 #endif
     , public WebPopupMenuProxy::Client
     , public IPC::MessageReceiver
@@ -389,10 +389,11 @@ public:
     void viewWillStartLiveResize();
     void viewWillEndLiveResize();
 
-    void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&);
+    void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&, std::function<void (CallbackBase::Error)>);
     void setWindowResizerSize(const WebCore::IntSize&);
     
     void clearSelection();
+    void restoreSelectionInFocusedEditableElement();
 
     void setViewNeedsDisplay(const WebCore::IntRect&);
     void displayView();
@@ -769,8 +770,11 @@ public:
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
 #if PLATFORM(COCOA)
     void setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, bool isLinkDrag);
-    void setPromisedData(const String& pasteboardName, const SharedMemory::Handle& imageHandle, uint64_t imageSize, const String& filename, const String& extension,
+    void setPromisedDataForImage(const String& pasteboardName, const SharedMemory::Handle& imageHandle, uint64_t imageSize, const String& filename, const String& extension,
                          const String& title, const String& url, const String& visibleURL, const SharedMemory::Handle& archiveHandle, uint64_t archiveSize);
+#if ENABLE(ATTACHMENT_ELEMENT)
+    void setPromisedDataForAttachment(const String& pasteboardName, const String& filename, const String& extension, const String& title, const String& url, const String& visibleURL);
+#endif
 #endif
 #if PLATFORM(GTK)
     void startDrag(const WebCore::DragData&, const ShareableBitmap::Handle& dragImage);
@@ -985,6 +989,7 @@ public:
     void selectLastActionMenuRange();
     void focusAndSelectLastActionMenuHitTestResult();
 
+    void immediateActionDidUpdate(float force);
     void immediateActionDidCancel();
     void immediateActionDidComplete();
 
@@ -1010,12 +1015,12 @@ public:
     void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, bool shouldSample);
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    WebMediaPlaybackTargetPickerProxy& devicePickerProxy();
+    WebCore::MediaPlaybackTargetPicker& devicePickerProxy();
     void showPlaybackTargetPicker(const WebCore::FloatRect&, bool hasVideo);
     void startingMonitoringPlaybackTargets();
     void stopMonitoringPlaybackTargets();
 
-    // WebMediaPlaybackTargetPickerProxy::Client
+    // WebCore::MediaPlaybackTargetPicker::Client
     virtual void didChoosePlaybackTarget(const WebCore::MediaPlaybackTarget&) override;
     virtual void externalOutputDeviceAvailableDidChange(bool) override;
 #endif
@@ -1051,7 +1056,7 @@ private:
     virtual void valueChangedForPopupMenu(WebPopupMenuProxy*, int32_t newSelectedIndex) override;
     virtual void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index) override;
 #if PLATFORM(GTK)
-    virtual void failedToShowPopupMenu();
+    virtual void failedToShowPopupMenu() override;
 #endif
 
     void didCreateMainFrame(uint64_t frameID);
@@ -1686,7 +1691,7 @@ private:
     Vector<uint64_t> m_nextViewStateChangeCallbacks;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    std::unique_ptr<WebMediaPlaybackTargetPickerProxy> m_playbackTargetPicker;
+    std::unique_ptr<WebCore::MediaPlaybackTargetPicker> m_playbackTargetPicker;
 #endif
 
     bool m_isPlayingAudio;

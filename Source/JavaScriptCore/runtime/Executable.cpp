@@ -408,6 +408,7 @@ FunctionExecutable::FunctionExecutable(VM& vm, const SourceCode& source,
     ASSERT(endColumn != UINT_MAX);
     m_startColumn = startColumn;
     m_endColumn = endColumn;
+    m_parametersStartOffset = unlinkedExecutable->parametersStartOffset();
     m_typeProfilingStartOffset = unlinkedExecutable->typeProfilingStartOffset();
     m_typeProfilingEndOffset = unlinkedExecutable->typeProfilingEndOffset();
 }
@@ -613,11 +614,6 @@ FunctionExecutable* FunctionExecutable::fromGlobalCode(const Identifier& name, E
     if (!unlinkedExecutable)
         return nullptr;
     return unlinkedExecutable->link(exec.vm(), source);
-}
-
-String FunctionExecutable::paramString() const
-{
-    return m_unlinkedExecutable->paramString();
 }
 
 void ExecutableBase::dump(PrintStream& out) const

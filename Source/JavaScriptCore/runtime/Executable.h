@@ -625,7 +625,6 @@ public:
     const Identifier& inferredName() { return m_unlinkedExecutable->inferredName(); }
     JSString* nameValue() const { return m_unlinkedExecutable->nameValue(); }
     size_t parameterCount() const { return m_unlinkedExecutable->parameterCount(); } // Excluding 'this'!
-    String paramString() const;
     SymbolTable* symbolTable(CodeSpecializationKind);
 
     void clearCodeIfNotCompiling();
@@ -635,7 +634,9 @@ public:
     {
         return Structure::create(vm, globalObject, proto, TypeInfo(FunctionExecutableType, StructureFlags), info());
     }
-        
+
+    unsigned parametersStartOffset() const { return m_parametersStartOffset; }
+
     DECLARE_INFO;
         
     void unlinkCalls();
@@ -664,6 +665,7 @@ private:
     RefPtr<FunctionCodeBlock> m_codeBlockForCall;
     RefPtr<FunctionCodeBlock> m_codeBlockForConstruct;
     RefPtr<TypeSet> m_returnStatementTypeSet;
+    unsigned m_parametersStartOffset;
 };
 
 inline void ExecutableBase::clearCodeVirtual(ExecutableBase* executable)

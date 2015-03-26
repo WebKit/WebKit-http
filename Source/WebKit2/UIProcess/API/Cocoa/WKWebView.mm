@@ -77,6 +77,7 @@
 #import "_WKWebsiteDataStoreInternal.h"
 #import <JavaScriptCore/JSContext.h>
 #import <JavaScriptCore/JSValue.h>
+#import <WebCore/IOSurface.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
 #import <wtf/NeverDestroyed.h>
@@ -90,6 +91,7 @@
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteScrollingCoordinatorProxy.h"
 #import "UIKitSPI.h"
+#import "WKContentViewInteraction.h"
 #import "WKPDFView.h"
 #import "WKScrollView.h"
 #import "WKWebViewContentProviderRegistry.h"
@@ -1786,6 +1788,21 @@ static int32_t activeOrientation(WKWebView *webView)
     } copy] autorelease];
 }
 
+- (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler
+{
+    typeof(completionHandler) completionHandlerCopy = nil;
+    if (completionHandler)
+        completionHandlerCopy = Block_copy(completionHandler);
+
+    [_contentView _becomeFirstResponderWithSelectionMovingForward:selectingForward completionHandler:[completionHandlerCopy](BOOL didBecomeFirstResponder) {
+        if (!completionHandlerCopy)
+            return;
+
+        completionHandlerCopy(didBecomeFirstResponder);
+        Block_release(completionHandlerCopy);
+    }];
+}
+
 #endif
 
 - (void)_didRelaunchProcess
@@ -2486,7 +2503,27 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         UIGraphicsEndImageContext();
         return;
     }
-    
+
+#if USE(IOSURFACE)
+    // If we are parented and thus won't incur a significant penalty from paging in tiles, snapshot the view hierarchy directly.
+    if (self.window) {
+        float deviceScaleFactor = _page->deviceScaleFactor();
+
+        CGRect imageRectInPoints;
+        imageRectInPoints.size.width = imageWidth / deviceScaleFactor;
+        imageRectInPoints.size.height = imageRectInPoints.size.width / rectInViewCoordinates.size.width * rectInViewCoordinates.size.height;
+        imageRectInPoints.origin.x = rectInViewCoordinates.origin.x / deviceScaleFactor;
+        imageRectInPoints.origin.y = rectInViewCoordinates.origin.y / deviceScaleFactor;
+
+        auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebCore::ColorSpaceDeviceRGB);
+        CATransform3D transform = CATransform3DMakeScale(deviceScaleFactor, deviceScaleFactor, 1);
+        CARenderServerRenderLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, reinterpret_cast<uint64_t>(self.layer), surface->surface(), 0, 0, &transform);
+        completionHandler(surface->createImage().get());
+
+        return;
+    }
+#endif
+
     void(^copiedCompletionHandler)(CGImageRef) = [completionHandler copy];
     _page->takeSnapshot(WebCore::enclosingIntRect(snapshotRectInContentCoordinates), WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebKit::SnapshotOptionsExcludeDeviceScaleFactor, [=](const WebKit::ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error) {
         if (imageHandle.isNull()) {

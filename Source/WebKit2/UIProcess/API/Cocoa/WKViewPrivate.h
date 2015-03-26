@@ -97,7 +97,11 @@
 #endif
 
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
-@property(copy, nonatomic) NSColor *underlayColor;
+@property (copy, nonatomic) NSColor *underlayColor;
+
+#if WK_API_ENABLED
+@property (strong, nonatomic, setter=_setInspectorAttachmentView:) NSView *_inspectorAttachmentView WK_AVAILABLE(WK_MAC_TBA, NA);
+#endif
 
 - (NSView*)fullScreenPlaceholderView;
 - (NSWindow*)createFullScreenWindow;

@@ -1124,6 +1124,7 @@ void FrameLoader::started()
 
 void FrameLoader::prepareForLoadStart()
 {
+    policyChecker().prepareForLoadStart();
     m_progressTracker->progressStarted();
     m_client.dispatchDidStartProvisionalLoad();
 
@@ -3216,10 +3217,7 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem& item, FrameLoadType loa
         case FrameLoadType::Back:
         case FrameLoadType::Forward:
         case FrameLoadType::IndexedBackForward:
-            // If the first load within a frame is a navigation within a back/forward list that was attached 
-            // without any of the items being loaded then we should use the default caching policy (<rdar://problem/8131355>).
-            if (m_stateMachine.committedFirstRealDocumentLoad())
-                request.setCachePolicy(ReturnCacheDataElseLoad);
+            request.setCachePolicy(ReturnCacheDataElseLoad);
             break;
         case FrameLoadType::Standard:
         case FrameLoadType::RedirectWithLockedBackForwardList:
@@ -3256,8 +3254,6 @@ void FrameLoader::retryAfterFailedCacheOnlyMainResourceLoad()
 {
     ASSERT(m_state == FrameStateProvisional);
     ASSERT(!m_loadingFromCachedPage);
-    // We only use cache-only loads to avoid resubmitting forms.
-    ASSERT(isBackForwardLoadType(m_loadType));
     ASSERT(history().provisionalItem());
     ASSERT(history().provisionalItem()->formData());
     ASSERT(history().provisionalItem() == m_requestedHistoryItem.get());

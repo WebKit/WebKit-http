@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012, 2013, 2015 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,8 @@
 #include <wtf/DataLog.h>
 
 namespace JSC {
+
+static_assert(sizeof(UnlinkedFunctionExecutable) <= 128, "UnlinkedFunctionExecutable should fit in a 128-byte cell.");
 
 const ClassInfo UnlinkedFunctionExecutable::s_info = { "UnlinkedFunctionExecutable", 0, 0, CREATE_METHOD_TABLE(UnlinkedFunctionExecutable) };
 const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", 0, 0, CREATE_METHOD_TABLE(UnlinkedCodeBlock) };
@@ -89,13 +91,10 @@ unsigned UnlinkedCodeBlock::addOrFindConstant(JSValue v)
 
 UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* structure, const SourceCode& source, RefPtr<SourceProvider>&& sourceOverride, FunctionBodyNode* node, UnlinkedFunctionKind kind)
     : Base(*vm, structure)
-    , m_isInStrictContext(node->isInStrictContext())
-    , m_hasCapturedVariables(false)
-    , m_isBuiltinFunction(kind == UnlinkedBuiltinFunction)
-    , m_constructorKind(static_cast<unsigned>(node->constructorKind()))
     , m_name(node->ident())
     , m_inferredName(node->inferredName())
     , m_parameters(node->parameters())
+    , m_sourceOverride(WTF::move(sourceOverride))
     , m_firstLineOffset(node->firstLine() - source.firstLine())
     , m_lineCount(node->lastLine() - node->firstLine())
     , m_unlinkedFunctionNameStart(node->functionNameStart() - source.startOffset())
@@ -103,10 +102,14 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     , m_unlinkedBodyEndColumn(m_lineCount ? node->endColumn() : node->endColumn() - node->startColumn())
     , m_startOffset(node->source().startOffset() - source.startOffset())
     , m_sourceLength(node->source().length())
+    , m_parametersStartOffset(node->parametersStart())
     , m_typeProfilingStartOffset(node->functionKeywordStart())
     , m_typeProfilingEndOffset(node->startStartOffset() + node->source().length() - 1)
-    , m_sourceOverride(sourceOverride)
     , m_features(0)
+    , m_isInStrictContext(node->isInStrictContext())
+    , m_hasCapturedVariables(false)
+    , m_isBuiltinFunction(kind == UnlinkedBuiltinFunction)
+    , m_constructorKind(static_cast<unsigned>(node->constructorKind()))
     , m_functionMode(node->functionMode())
 {
     ASSERT(m_constructorKind == static_cast<unsigned>(node->constructorKind()));
@@ -200,25 +203,12 @@ UnlinkedFunctionCodeBlock* UnlinkedFunctionExecutable::codeBlockFor(
     return result;
 }
 
-String UnlinkedFunctionExecutable::paramString() const
-{
-    FunctionParameters& parameters = *m_parameters;
-    StringBuilder builder;
-    for (size_t pos = 0; pos < parameters.size(); ++pos) {
-        if (!builder.isEmpty())
-            builder.appendLiteral(", ");
-        parameters.at(pos)->toString(builder);
-    }
-    return builder.toString();
-}
-
 UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info)
     : Base(*vm, structure)
     , m_numVars(0)
     , m_numCalleeRegisters(0)
     , m_numParameters(0)
     , m_vm(vm)
-    , m_argumentsRegister(VirtualRegister())
     , m_globalObjectRegister(VirtualRegister())
     , m_needsFullScopeChain(info.needsActivation())
     , m_usesEval(info.usesEval())

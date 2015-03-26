@@ -206,6 +206,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createPixmapContext(EGLContext shari
 
     return std::make_unique<GLContextEGL>(context, surface, PixmapSurface);
 #else
+    UNUSED_PARAM(sharingContext);
     return nullptr;
 #endif
 }

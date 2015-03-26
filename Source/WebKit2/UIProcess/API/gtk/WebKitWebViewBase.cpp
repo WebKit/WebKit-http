@@ -58,9 +58,6 @@
 #include <WebCore/Region.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkkeysyms.h>
-#if defined(GDK_WINDOWING_X11)
-#include <gdk/gdkx.h>
-#endif
 #include <memory>
 #include <wtf/HashMap.h>
 #include <wtf/gobject/GRefPtr.h>
@@ -68,6 +65,14 @@
 
 #if ENABLE(FULLSCREEN_API)
 #include "WebFullScreenManagerProxy.h"
+#endif
+
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#include <gdk/gdkx.h>
+#endif
+
+#if PLATFORM(WAYLAND)
+#include <gdk/gdkwayland.h>
 #endif
 
 // gtk_widget_get_scale_factor() appeared in GTK 3.10, but we also need
@@ -110,8 +115,8 @@ public:
         }
 
         if ((event->type == GDK_2BUTTON_PRESS || event->type == GDK_3BUTTON_PRESS)
-            || ((abs(buttonEvent->x - previousClickPoint.x()) < doubleClickDistance)
-                && (abs(buttonEvent->y - previousClickPoint.y()) < doubleClickDistance)
+            || ((std::abs(buttonEvent->x - previousClickPoint.x()) < doubleClickDistance)
+                && (std::abs(buttonEvent->y - previousClickPoint.y()) < doubleClickDistance)
                 && (eventTime - previousClickTime < static_cast<unsigned>(doubleClickTime))
                 && (buttonEvent->button == previousClickButton)))
             currentClickCount++;
@@ -180,7 +185,7 @@ struct _WebKitWebViewBasePrivate {
     WebFullScreenClientGtk fullScreenClient;
 #endif
 
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
     std::unique_ptr<RedirectedXCompositeWindow> redirectedWindow;
 #endif
 
@@ -314,7 +319,7 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
     WebKitWebViewBase* webView = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webView->priv;
 
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
     GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());
     if (GDK_IS_X11_DISPLAY(display)) {
         priv->redirectedWindow = RedirectedXCompositeWindow::create(
@@ -364,6 +369,11 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
     GdkWindow* window = gdk_window_new(gtk_widget_get_parent_window(widget), &attributes, attributesMask);
     gtk_widget_set_window(widget, window);
     gdk_window_set_user_data(window, widget);
+
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
+    drawingArea->setNativeSurfaceHandleForCompositing(GDK_WINDOW_XID(window));
+#endif
 
     gtk_style_context_set_background(gtk_widget_get_style_context(widget), window);
 
@@ -513,7 +523,7 @@ static bool webkitWebViewRenderAcceleratedCompositingResults(WebKitWebViewBase* 
     if (!drawingArea->isInAcceleratedCompositingMode())
         return false;
 
-#if PLATFORM(X11)
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
     // To avoid flashes when initializing accelerated compositing for the first
     // time, we wait until we know there's a frame ready before rendering.
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
@@ -626,7 +636,7 @@ static void resizeWebKitWebViewBaseFromAllocation(WebKitWebViewBase* webViewBase
 
     DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
 
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
     if (sizeChanged && priv->redirectedWindow && drawingArea && drawingArea->isInAcceleratedCompositingMode())
         priv->redirectedWindow->resize(viewRect.size());
 #endif
@@ -907,7 +917,7 @@ static gboolean webkitWebViewBaseTouchEvent(GtkWidget* widget, GdkEventTouch* ev
 
     Vector<WebPlatformTouchPoint> touchPoints;
     webkitWebViewBaseGetTouchPointsForEvent(webViewBase, touchEvent, touchPoints);
-    priv->pageProxy->handleTouchEvent(NativeWebTouchEvent(reinterpret_cast<GdkEvent*>(event), touchPoints));
+    priv->pageProxy->handleTouchEvent(NativeWebTouchEvent(reinterpret_cast<GdkEvent*>(event), WTF::move(touchPoints)));
 
     return TRUE;
 }
@@ -1115,6 +1125,14 @@ void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebPro
 {
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
 
+#if PLATFORM(WAYLAND)
+    // FIXME: Accelerated compositing under Wayland is not yet supported.
+    // https://bugs.webkit.org/show_bug.cgi?id=115803
+    GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());
+    if (GDK_IS_WAYLAND_DISPLAY(display))
+        preferences->setAcceleratedCompositingEnabled(false);
+#endif
+
     WebPageConfiguration webPageConfiguration;
     webPageConfiguration.preferences = preferences;
     webPageConfiguration.pageGroup = pageGroup;
@@ -1311,7 +1329,7 @@ void webkitWebViewBaseResetClickCounter(WebKitWebViewBase* webkitWebViewBase)
 
 void webkitWebViewBaseEnterAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase)
 {
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
     if (!priv->redirectedWindow)
         return;
@@ -1329,7 +1347,7 @@ void webkitWebViewBaseEnterAcceleratedCompositingMode(WebKitWebViewBase* webkitW
 
 void webkitWebViewBaseExitAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase)
 {
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11)
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
     if (priv->redirectedWindow)
         priv->redirectedWindow->resize(IntSize());

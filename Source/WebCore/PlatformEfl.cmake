@@ -18,7 +18,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
     "${WEBCORE_DIR}/platform/linux"
-    "${WEBCORE_DIR}/platform/mediastream/gstreamer"
+    "${WEBCORE_DIR}/platform/mediastream/openwebrtc"
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/efl"
@@ -213,7 +213,8 @@ list(APPEND WebCore_SOURCES
     platform/linux/GamepadDeviceLinux.cpp
     platform/linux/MemoryPressureHandlerLinux.cpp
 
-    platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
+    platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
+    platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
 
     platform/network/efl/NetworkStateNotifierEfl.cpp
 
@@ -330,6 +331,15 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${ZLIB_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
 )
+
+if (ENABLE_MEDIA_STREAM)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${OPENWEBRTC_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${OPENWEBRTC_LIBRARIES}
+    )
+endif ()
 
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     list(APPEND WebCore_INCLUDE_DIRECTORIES

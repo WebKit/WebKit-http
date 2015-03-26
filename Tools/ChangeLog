@@ -1,3 +1,339 @@
+2015-03-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Update prepare-ChangeLog to work with ES6 Class syntax
+        https://bugs.webkit.org/show_bug.cgi?id=143069
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_javascript):
+        Better handle ES6 Class syntax.
+
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/resources/javascript_unittests-expected.txt:
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/resources/javascript_unittests.js:
+        (BaseClass):
+        (DerivedClass):
+        (DerivedClass.staticMethod):
+        (DerivedClass.prototype.method.nestedFunctionInsideMethod):
+        (DerivedClass.prototype.method):
+        (DerivedClass.prototype.get getter):
+        (namespace.MyClass):
+        (namespace.MyClass.staticMethod):
+        (namespace.MyClass.prototype.method.nestedFunctionInsideMethod):
+        (namespace.MyClass.prototype.method):
+        (namespace.MyClass.prototype.get getter):
+        Proof!
+
+2015-03-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Use JITCompilationCanFail in more places, and make the fail path of JITCompilationMustSucceed a crash instead of attempting GC
+        https://bugs.webkit.org/show_bug.cgi?id=142993
+
+        Reviewed by Mark Lam.
+        
+        Bunch of support for testing executable allocation failure.
+
+        * Scripts/jsc-stress-test-helpers/js-executable-allocation-fuzz: Added.
+        (fail):
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+        * Scripts/run-jsc-stress-tests:
+
+2015-03-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Fix Windows build from r181977.
+
+        Unreviewed.
+
+        * Scripts/update-webkit-dependency:
+
+2015-03-25  Sam Weinig  <sam@webkit.org>
+
+        Address additional review feedback from https://bugs.webkit.org/show_bug.cgi?id=143059.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::InMemoryCompiledContentExtension::createFromFilter):
+
+2015-03-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Migrate update-webkit for Windows to not require Cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=143040
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/update-webkit-dependency:
+        (wanted):
+        (toUnixPath): Deleted.
+        * Scripts/webkitdirs.pm:
+        (fontExists):
+        (checkInstalledTools):
+        (setupAppleWinEnv):
+
+2015-03-25  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Convert content extension compiling to return error codes and write its output using a client
+        https://bugs.webkit.org/show_bug.cgi?id=143059
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::InMemoryCompiledContentExtension::createFromFilter):
+        Update for new interface of compileRuleList().
+
+2015-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Add multi-DFA compiling and interpreting.
+        https://bugs.webkit.org/show_bug.cgi?id=143010
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testRequest):
+        (TestWebKitAPI::TEST_F):
+        Add some tests for ignore-previous-rules and large rulesets.
+
+2015-03-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Mavericks WK1 still runs JSC tests
+        https://bugs.webkit.org/show_bug.cgi?id=143035
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json: Bring Mavericks WK1 in line
+        with other bots.
+
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py: Updated the tests
+        accordingly.
+
+2015-03-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181932.
+        https://bugs.webkit.org/show_bug.cgi?id=143041
+
+        The test fails most of the time on bots (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Content Extensions] Add multi-DFA compiling and
+        interpreting."
+        https://bugs.webkit.org/show_bug.cgi?id=143010
+        http://trac.webkit.org/changeset/181932
+
+2015-03-24  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Add multi-DFA compiling and interpreting.
+        https://bugs.webkit.org/show_bug.cgi?id=143010
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testRequest):
+        (TestWebKitAPI::TEST_F):
+        Add some tests for ignore-previous-rules and large rulesets.
+
+2015-03-24  Benjamin Poulain  <bpoulain@apple.com>
+
+        Make URL filter patterns matching consistent and add a simple canonicalization step
+        https://bugs.webkit.org/show_bug.cgi?id=142998
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+
+2015-03-24  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Add OpenWebRTC in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=142778
+
+        Reviewed by Gyuyoung Kim.
+
+        Original patch by Philippe Normand <pnormand@igalia.com>
+
+        * efl/install-dependencies: Dependencies for OpenWebRTC.
+        * efl/jhbuild.modules: build OpenWebRTC, libusrsctp, libnice and
+        the openwebrtc gst plugins.
+
+2015-03-23  Brent Fulgham  <bfulgham@apple.com>
+
+        Regression(r181257): WTF_WorkQueue.Simple is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=142560
+
+        Remove the check that the refCount has returned to one after the
+        individual tasks have completed. It's too nondeterministic when
+        the reference count will be reduced.
+
+        Reviewed by Alexey Proskuryakov
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST): Remove test that refCount is back to 1.
+
+2015-03-23  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMake][EFL] Put failure API test excutables into failure directory
+        https://bugs.webkit.org/show_bug.cgi?id=142965
+
+        Reviewed by Csaba Osztrogonác.
+
+        Move failing WK2 API test executables to *bin/TestWebKitAPI/WebKit2/failure* directory.
+
+        * TestWebKitAPI/CMakeLists.txt: Fix a typo. Change *testBaseName* with *testName*.
+        * TestWebKitAPI/PlatformEfl.cmake: Additionally remove unnecessary SHARED_CORE and comment for SeccompFilters test.
+
+2015-03-22  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS Selectors: fix attribute case-insensitive matching of Contain and List
+        https://bugs.webkit.org/show_bug.cgi?id=142932
+
+        Reviewed by Darin Adler.
+
+        Add tests for the new features and fix some existing tests using the 
+        stringFromUTF8() utility recently added by Dhi.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::stringFromUTF8):
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+
+2015-03-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] install-dependencies should install orc
+        https://bugs.webkit.org/show_bug.cgi?id=142955
+
+        Reviewed by Martin Robinson.
+
+        Install orc, needed by openwebrtc
+
+        * gtk/install-dependencies:
+
+2015-03-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        Detect when url filter pattern with groups match the empty string
+        https://bugs.webkit.org/show_bug.cgi?id=142930
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+
+2015-03-22  Anders Carlsson  <andersca@apple.com>
+
+        _WKWebsiteDataStore should clear WebSQL databases
+        https://bugs.webkit.org/show_bug.cgi?id=142947
+
+        Reviewed by Sam Weinig.
+
+        Add a variable that keeps track of the types of data we want to operate on, for easier debugging.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController fetchWebsiteData:]):
+        (-[WK2BrowserWindowController fetchAndClearWebsiteData:]):
+        (-[WK2BrowserWindowController clearWebsiteData:]):
+
+2015-03-20  Mark Hahnenberg  <mhahnenb@gmail.com>
+
+        GCTimer should know keep track of nested GC phases
+        https://bugs.webkit.org/show_bug.cgi?id=142675
+
+        Reviewed by Darin Adler.
+
+        Adds a tool to aid in parsing the GC phase timing output into a
+        tree-like structure based on the parent-child relationships
+        of nested GC phases.
+
+        * Scripts/parse-gc-phase-timings: Added.
+        (Timing):
+        (Timing.__init__):
+        (Timing.__unicode__):
+        (Timing.__str__):
+        (Timing.__repr__):
+        (parse_input):
+        (print_timing_node):
+        (print_timing_tree):
+        (link_parents):
+        (main):
+
+2015-03-20  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Temporarily turn of EWS Windows tests while I debug the test failure.
+
+        * Scripts/webkitpy/common/config/ews.json:
+
+2015-03-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][jhbuild] Fix flakey failures due to unstable googlecode repository
+        https://bugs.webkit.org/show_bug.cgi?id=142867
+
+        Rubber-stamped by Csaba Osztrogon.
+
+        * gtk/jhbuild.modules: Use Ossy's libusrsctp Github fork. Also use
+        a fixed revision for the openwebrtc-gst-plugins.
+
+2015-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix. Don't try to report stats for all benchmarks.
+        Just report the geometric mean of preferred means.
+
+        * Scripts/run-jsc-benchmarks:
+
+2015-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-jsc-benchmarks should only report preferred mean
+        https://bugs.webkit.org/show_bug.cgi?id=142874
+
+        Reviewed by Geoffrey Garen.
+
+        Just collect statistics for the preferred mean.
+
+        * Scripts/run-jsc-benchmarks:
+
+2015-03-19  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Test regular expression parse failures.
+        https://bugs.webkit.org/show_bug.cgi?id=142872
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testPatternStatus):
+        (TestWebKitAPI::TEST_F):
+        Added tests for each parsing status.
+
+2015-03-19  Alex Christensen  <achristensen@webkit.org>
+
+        Fix API tests after r181754.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testRequest):
+
+2015-03-19  Brady Eidson  <beidson@apple.com>
+
+        Part of content extensions should apply css selectors
+        https://bugs.webkit.org/show_bug.cgi?id=142604
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (WebCore::ContentExtensions::operator<<):
+
+2015-03-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Activate tests on EWS
+        https://bugs.webkit.org/show_bug.cgi?id=142850
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/config/ews.json: Add me as
+        the EWS bot watcher, and activate tests.
+
+2015-03-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Fix inspector userinterface related incremental build issue
+        https://bugs.webkit.org/show_bug.cgi?id=142849
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitdirs.pm:
+        (shouldRemoveCMakeCache):
+
 2015-03-18  Alex Christensen  <achristensen@webkit.org>
 
         [ContentExtensions] Prepare for compiling stylesheets of selectors to be used on every page.

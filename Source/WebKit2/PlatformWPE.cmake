@@ -54,6 +54,8 @@ list(APPEND WebKit2_SOURCES
     Shared/linux/WebMemorySamplerLinux.cpp
     Shared/soup/WebCoreArgumentCodersSoup.cpp
     Shared/unix/ChildProcessMain.cpp
+    Shared/wpe/KeyMappingLinuxInput.cpp
+    Shared/wpe/KeyMappingXKB.cpp
     Shared/wpe/NativeWebKeyboardEventWPE.cpp
     Shared/wpe/NativeWebMouseEventWPE.cpp
     Shared/wpe/NativeWebTouchEventWPE.cpp
@@ -65,6 +67,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
     UIProcess/API/C/wpe/WKInputHandler.cpp
     UIProcess/API/C/wpe/WKView.cpp
+    UIProcess/API/wpe/KeyInputHandlerLinuxInput.cpp
+    UIProcess/API/wpe/KeyInputHandlerXKB.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/WPEInputHandler.cpp
     UIProcess/API/wpe/WPEView.cpp
@@ -109,8 +113,6 @@ list(APPEND WebKit2_SOURCES
 )
 
 list(APPEND WebKit2_DERIVED_SOURCES
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
     ${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.c
 )
 
@@ -271,3 +273,16 @@ add_custom_command(
     COMMAND glib-compile-resources --generate --sourcedir=${WEBKIT2_DIR}/UIProcess/InspectorServer/front-end --target=${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKit2InspectorGResourceBundle.xml
     VERBATIM
 )
+
+list(APPEND WPEWebInspectorResources_DERIVED_SOURCES
+    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
+    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
+)
+
+list(APPEND WPEWebInspectorResources_LIBRARIES
+    ${GLIB_GIO_LIBRARIES}
+)
+
+add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_SOURCES})
+target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
+install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")

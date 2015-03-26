@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,12 +25,14 @@
 
 #include "config.h"
 #include "CommonSlowPaths.h"
-#include "Arguments.h"
 #include "ArityCheckFailReturnThunks.h"
 #include "ArrayConstructor.h"
 #include "CallFrame.h"
+#include "ClonedArguments.h"
 #include "CodeProfiling.h"
 #include "CommonSlowPathsExceptions.h"
+#include "DirectArguments.h"
+#include "Error.h"
 #include "ErrorHandlingScope.h"
 #include "ExceptionFuzz.h"
 #include "GetterSetter.h"
@@ -38,6 +40,7 @@
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITStubs.h"
+#include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSLexicalEnvironment.h"
@@ -49,7 +52,7 @@
 #include "LLIntExceptions.h"
 #include "LowLevelInterpreter.h"
 #include "ObjectConstructor.h"
-#include "JSCInlines.h"
+#include "ScopedArguments.h"
 #include "StructureRareDataInlines.h"
 #include "TypeProfilerLog.h"
 #include "VariableWatchpointSetInlines.h"
@@ -210,17 +213,24 @@ SLOW_PATH_DECL(slow_path_touch_entry)
     END();
 }
 
-SLOW_PATH_DECL(slow_path_create_arguments)
+SLOW_PATH_DECL(slow_path_create_direct_arguments)
 {
     BEGIN();
-    int lexicalEnvironmentReg = pc[2].u.operand;
-    JSLexicalEnvironment* lexicalEnvironment = VirtualRegister(lexicalEnvironmentReg).isValid() ?
-        exec->uncheckedR(lexicalEnvironmentReg).lexicalEnvironment() : nullptr;
-    JSValue arguments = JSValue(Arguments::create(vm, exec, lexicalEnvironment));
-    CHECK_EXCEPTION();
-    exec->uncheckedR(pc[1].u.operand) = arguments;
-    exec->uncheckedR(unmodifiedArgumentsRegister(VirtualRegister(pc[1].u.operand)).offset()) = arguments;
-    END();
+    RETURN(DirectArguments::createByCopying(exec));
+}
+
+SLOW_PATH_DECL(slow_path_create_scoped_arguments)
+{
+    BEGIN();
+    JSLexicalEnvironment* scope = jsCast<JSLexicalEnvironment*>(OP(2).jsValue());
+    ScopedArgumentsTable* table = exec->codeBlock()->symbolTable()->arguments();
+    RETURN(ScopedArguments::createByCopying(exec, table, scope));
+}
+
+SLOW_PATH_DECL(slow_path_create_out_of_band_arguments)
+{
+    BEGIN();
+    RETURN(ClonedArguments::createWithMachineFrame(exec, exec, ArgumentsMode::Cloned));
 }
 
 SLOW_PATH_DECL(slow_path_create_this)
@@ -486,7 +496,7 @@ SLOW_PATH_DECL(slow_path_del_by_val)
         couldDelete = baseObject->methodTable()->deletePropertyByIndex(baseObject, exec, i);
     else {
         CHECK_EXCEPTION();
-        PropertyName property = subscript.toPropertyKey(exec);
+        auto property = subscript.toPropertyKey(exec);
         CHECK_EXCEPTION();
         couldDelete = baseObject->methodTable()->deleteProperty(baseObject, exec, property);
     }
@@ -520,12 +530,13 @@ SLOW_PATH_DECL(slow_path_enter)
 SLOW_PATH_DECL(slow_path_get_enumerable_length)
 {
     BEGIN();
-    JSValue baseValue = OP(2).jsValue();
-    if (baseValue.isUndefinedOrNull())
+    JSValue enumeratorValue = OP(2).jsValue();
+    if (enumeratorValue.isUndefinedOrNull())
         RETURN(jsNumber(0));
 
-    JSObject* base = baseValue.toObject(exec);
-    RETURN(jsNumber(base->methodTable(vm)->getEnumerableLength(exec, base)));
+    JSPropertyNameEnumerator* enumerator = jsCast<JSPropertyNameEnumerator*>(enumeratorValue.asCell());
+
+    RETURN(jsNumber(enumerator->indexedLength()));
 }
 
 SLOW_PATH_DECL(slow_path_has_indexed_property)
@@ -574,39 +585,39 @@ SLOW_PATH_DECL(slow_path_get_direct_pname)
     RETURN(baseValue.get(exec, property.toPropertyKey(exec)));
 }
 
-SLOW_PATH_DECL(slow_path_get_structure_property_enumerator)
+SLOW_PATH_DECL(slow_path_get_property_enumerator)
 {
     BEGIN();
     JSValue baseValue = OP(2).jsValue();
     if (baseValue.isUndefinedOrNull())
         RETURN(JSPropertyNameEnumerator::create(vm));
-        
-    JSObject* base = baseValue.toObject(exec);
-    uint32_t length = OP(3).jsValue().asUInt32();
 
-    RETURN(structurePropertyNameEnumerator(exec, base, length));
+    JSObject* base = baseValue.toObject(exec);
+
+    RETURN(propertyNameEnumerator(exec, base));
 }
 
-SLOW_PATH_DECL(slow_path_get_generic_property_enumerator)
-{
-    BEGIN();
-    JSValue baseValue = OP(2).jsValue();
-    if (baseValue.isUndefinedOrNull())
-        RETURN(JSPropertyNameEnumerator::create(vm));
-    
-    JSObject* base = baseValue.toObject(exec);
-    uint32_t length = OP(3).jsValue().asUInt32();
-    JSPropertyNameEnumerator* structureEnumerator = jsCast<JSPropertyNameEnumerator*>(OP(4).jsValue().asCell());
-
-    RETURN(genericPropertyNameEnumerator(exec, base, length, structureEnumerator));
-}
-
-SLOW_PATH_DECL(slow_path_next_enumerator_pname)
+SLOW_PATH_DECL(slow_path_next_structure_enumerator_pname)
 {
     BEGIN();
     JSPropertyNameEnumerator* enumerator = jsCast<JSPropertyNameEnumerator*>(OP(2).jsValue().asCell());
     uint32_t index = OP(3).jsValue().asUInt32();
-    JSString* propertyName = enumerator->propertyNameAtIndex(index);
+
+    JSString* propertyName = nullptr;
+    if (index < enumerator->endStructurePropertyIndex())
+        propertyName = enumerator->propertyNameAtIndex(index);
+    RETURN(propertyName ? propertyName : jsNull());
+}
+
+SLOW_PATH_DECL(slow_path_next_generic_enumerator_pname)
+{
+    BEGIN();
+    JSPropertyNameEnumerator* enumerator = jsCast<JSPropertyNameEnumerator*>(OP(2).jsValue().asCell());
+    uint32_t index = OP(3).jsValue().asUInt32();
+
+    JSString* propertyName = nullptr;
+    if (enumerator->endStructurePropertyIndex() <= index && index < enumerator->endGenericPropertyIndex())
+        propertyName = enumerator->propertyNameAtIndex(index);
     RETURN(propertyName ? propertyName : jsNull());
 }
 

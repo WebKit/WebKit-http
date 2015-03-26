@@ -80,6 +80,14 @@ class TextIndicatorWindow;
 @class WebFixedPositionContent;
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+class WebMediaPlaybackTargetPicker;
+#endif
+
+#if PLATFORM(MAC)
+@class WebWindowVisibilityObserver;
+#endif
+
 extern BOOL applicationIsTerminating;
 extern int pluginDatabaseClientCount;
 
@@ -121,6 +129,15 @@ private:
     WebViewLayerFlushScheduler m_layerFlushScheduler;
 };
 
+@interface WebWindowVisibilityObserver : NSObject {
+    WebView *_view;
+}
+
+- (instancetype)initWithView:(WebView *)view;
+- (void)startObserving:(NSWindow *)window;
+- (void)stopObserving:(NSWindow *)window;
+@end
+
 // FIXME: This should be renamed to WebViewData.
 @interface WebViewPrivate : NSObject {
 @public
@@ -155,6 +172,7 @@ private:
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     std::unique_ptr<WebCore::TextIndicatorWindow> textIndicatorWindow;
     BOOL hasInitializedLookupObserver;
+    RetainPtr<WebWindowVisibilityObserver> windowVisibilityObserver;
 #endif // PLATFORM(MAC)
 
     BOOL shouldMaintainInactiveSelection;
@@ -303,5 +321,9 @@ private:
     RetainPtr<NSData> sourceApplicationAuditData;
 
     BOOL _didPerformFirstNavigation;
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    std::unique_ptr<WebMediaPlaybackTargetPicker> m_playbackTargetPicker;
+#endif
 }
 @end
