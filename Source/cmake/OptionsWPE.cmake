@@ -45,6 +45,7 @@ endif ()
 set(WTF_LIBRARY_TYPE STATIC)
 set(JavaScriptCore_LIBRARY_TYPE STATIC)
 set(WebCore_LIBRARY_TYPE STATIC)
+set(WebKit2_OUTPUT_NAME WPEWebKit)
 set(WebKit2_WebProcess_OUTPUT_NAME WPEWebProcess)
 set(WebKit2_NetworkProcess_OUTPUT_NAME WPENetworkProcess)
 
