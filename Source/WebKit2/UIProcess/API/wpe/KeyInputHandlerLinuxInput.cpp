@@ -143,7 +143,7 @@ KeyInputHandler::HandlingResult KeyInputHandlerLinuxInput::handleKeyInputEvent(c
 
     // TODO: Range check.
 
-    return { event.key, keyCodeToUTF32(event.key, m_modifiers.shift), keyModifiers };
+    return HandlingResult{ event.key, keyCodeToUTF32(event.key, m_modifiers.shift), keyModifiers };
 }
 
 } // namespace WPE
