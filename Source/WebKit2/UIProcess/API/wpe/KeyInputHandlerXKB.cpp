@@ -67,7 +67,7 @@ KeyInputHandler::HandlingResult KeyInputHandlerXKB::handleKeyInputEvent(const Ke
     if (m_modifiers.effective & (1 << m_modifiers.shift))
         keyModifiers |= KeyboardEvent::Shift;
 
-    HandlingResult result = {
+    HandlingResult result{
         xkb_state_key_get_one_sym(m_xkbState, key),
         xkb_state_key_get_utf32(m_xkbState, key),
         keyModifiers
