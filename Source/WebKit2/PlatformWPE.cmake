@@ -274,15 +274,15 @@ add_custom_command(
     VERBATIM
 )
 
-list(APPEND WPEInspectorResources_DERIVED_SOURCES
+list(APPEND WPEWebInspectorResources_DERIVED_SOURCES
     ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
     ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
 )
 
-list(APPEND WPEInspectorResources_LIBRARIES
+list(APPEND WPEWebInspectorResources_LIBRARIES
     ${GLIB_GIO_LIBRARIES}
 )
 
-add_library(WPEInspectorResources SHARED ${WPEInspectorResources_DERIVED_SOURCES})
-target_link_libraries(WPEInspectorResources ${WPEInspectorResources_LIBRARIES})
-install(TARGETS WPEInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
+add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_SOURCES})
+target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
+install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
