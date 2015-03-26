@@ -54,6 +54,7 @@ struct ActionMenuHitTestResult {
 
     String lookupText;
     RefPtr<SharedMemory> imageSharedMemory;
+    uint64_t imageSize;
     String imageExtension;
 
     RetainPtr<DDActionContext> actionContext;
@@ -64,6 +65,8 @@ struct ActionMenuHitTestResult {
     DictionaryPopupInfo dictionaryPopupInfo;
 
     RefPtr<WebCore::TextIndicator> linkTextIndicator;
+
+    bool contentPreventsDefault;
 };
 
 } // namespace WebKit

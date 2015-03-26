@@ -1,3 +1,957 @@
+2015-03-25  Dean Jackson  <dino@apple.com>
+
+        CSS blend modes do not parse when in the shadow tree
+        https://bugs.webkit.org/show_bug.cgi?id=143067
+        <rdar://problem/20302662>
+
+        Reviewed by Anders Carlson.
+
+        The media controls style sheets are injected as UA stylesheets
+        when we come across a <video> or <audio> element. These stylesheets
+        have a different parsing context than the document stylesheets -
+        one that uses the default constructor, which initializes some
+        features like cssCompositingEnabled to false without checking
+        the runtime state.
+
+        The easy fix is to use the global state to initialize the context.
+
+        Unfortunately we can't test this since it only occurs in the shadow
+        tree.
+
+        * css/CSSParser.cpp:
+        (WebCore::CSSParserContext::CSSParserContext): Check the state
+        of RuntimeEnabledFeatures to initialize CSS Regions and
+        CSS Compositing (Blending).
+
+2015-03-25  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: table cells that use display:block render the table inaccessible to VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=143007
+
+        Reviewed by Mario Sanchez Prada.
+
+        When display:block is used on a table cell, it was being ignored because it was anonymous.
+        This is still a valid scenario however if it's still inside of a valid table.
+
+        Test: accessibility/table-cell-display-block.html
+
+        * accessibility/AccessibilityTableCell.cpp:
+        (WebCore::AccessibilityTableCell::computeAccessibilityIsIgnored):
+
+2015-03-25  Tim Horton  <timothy_horton@apple.com>
+
+        Add a preference to prevent "user-scalable=no" from having any effect
+        https://bugs.webkit.org/show_bug.cgi?id=143032
+
+        Reviewed by Sam Weinig.
+
+        * page/ViewportConfiguration.cpp:
+        (WebCore::ViewportConfiguration::ViewportConfiguration):
+        (WebCore::ViewportConfiguration::allowsUserScaling):
+        * page/ViewportConfiguration.h:
+        (WebCore::ViewportConfiguration::setForceAlwaysUserScalable):
+        If forceAlwaysUserScalable is set to true, force "user-scalable=yes".
+
+2015-03-25  Dan Bernstein  <mitz@apple.com>
+
+        Another attempt to get the iOS EWS building again.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2015-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        Add case-insensitive checks to DFA bytecode.
+        https://bugs.webkit.org/show_bug.cgi?id=142977
+
+        Reviewed by Benjamin Poulain.
+
+        * contentextensions/DFABytecode.h:
+        (WebCore::ContentExtensions::instructionSizeWithArguments):
+        * contentextensions/DFABytecodeCompiler.cpp:
+        (WebCore::ContentExtensions::DFABytecodeCompiler::emitCheckValue):
+        (WebCore::ContentExtensions::DFABytecodeCompiler::emitCheckValueRange):
+        Add case-insensitive bytecode.
+        (WebCore::ContentExtensions::DFABytecodeCompiler::compileNodeTransitions):
+        Check to see if case-insensitive bytecodes can be used.
+        (WebCore::ContentExtensions::DFABytecodeCompiler::compileCheckForRange):
+        * contentextensions/DFABytecodeCompiler.h:
+        (WebCore::ContentExtensions::DFABytecodeCompiler::Range::Range):
+        Added Range structure to be able to count the ranges in a future patch deciding if we want to use jump tables.
+        * contentextensions/DFABytecodeInterpreter.cpp:
+        (WebCore::ContentExtensions::DFABytecodeInterpreter::interpret):
+        Interpret case-insensitive bytecodes.
+
+2015-03-25  Sam Weinig  <sam@webkit.org>
+
+        Address additional review feedback from https://bugs.webkit.org/show_bug.cgi?id=143059.
+
+        * contentextensions/ContentExtensionCompiler.cpp:
+        (WebCore::ContentExtensions::compileRuleList):
+        * contentextensions/ContentExtensionCompiler.h:
+        * contentextensions/ContentExtensionParser.cpp:
+        (WebCore::ContentExtensions::getTypeFlags):
+
+2015-03-25  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Convert content extension compiling to return error codes and write its output using a client
+        https://bugs.webkit.org/show_bug.cgi?id=143059
+
+        Reviewed by Alex Christensen.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        Add ContentExtensionError.h/cpp.
+
+        * contentextensions/ContentExtensionError.cpp: Added.
+        (WebCore::ContentExtensions::contentExtensionErrorCategory):
+        * contentextensions/ContentExtensionError.h: Added.
+        (WebCore::ContentExtensions::make_error_code):
+        Add ContentExtensionError enum and std::error_code adaptor.
+
+        * contentextensions/ContentExtensionCompiler.h:
+        Instead of returning CompiledContentExtensionData, use a client interface
+        to pass data. Eventually, this should be turned into a direct streaming 
+        interface so we can write directly to a file.
+
+        * contentextensions/ContentExtensionCompiler.cpp:
+        (WebCore::ContentExtensions::compileRuleList):
+        * contentextensions/ContentExtensionParser.cpp:
+        (WebCore::ContentExtensions::getTypeFlags):
+        (WebCore::ContentExtensions::loadTrigger):
+        (WebCore::ContentExtensions::loadAction):
+        (WebCore::ContentExtensions::loadRule):
+        (WebCore::ContentExtensions::loadEncodedRules):
+        (WebCore::ContentExtensions::parseRuleList):
+        * contentextensions/ContentExtensionParser.h:
+        Convert to return an error.
+
+2015-03-25  Beth Dakin  <bdakin@apple.com>
+
+        REGRESSION (r181660): Safari navigates to link after a starting and canceling a 
+        force preview
+        https://bugs.webkit.org/show_bug.cgi?id=143057
+        -and corresponding-
+        rdar://problem/20251436
+
+        Reviewed by Tim Horton.
+
+        This patch adds a value for ActionUpdated to the ImmediateActionStage enum. Now if 
+        m_immediateActionStage indicates that an immediate action has either begun or 
+        completed then we can have the same behavior.
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleMouseReleaseEvent):
+        * page/EventHandler.h:
+
+2015-03-25  Dean Jackson  <dino@apple.com>
+
+        MediaControls: Use font with fixed number width
+        https://bugs.webkit.org/show_bug.cgi?id=143018
+        <rdar://problem/20245415>
+
+        Reviewed by Eric Carlson.
+
+        Add a new font-family, specific to Apple platforms,
+        called -apple-system-font-monospaced-numbers. This is
+        a special variant of the system font which uses monospaced
+        forms for the number glyphs - allowing a time reading that
+        doesn't bounce around as the time changes.
+
+        * Modules/mediacontrols/mediaControlsApple.css: Media controls should
+        use the new font.
+        (audio::-webkit-media-controls-time-remaining-display):
+        * Modules/mediacontrols/mediaControlsiOS.css:
+        (audio::-webkit-media-controls-time-remaining-display):
+
+        * platform/graphics/ios/FontCacheIOS.mm: Request a new CTFontRef with
+        the appropriate attributes.
+        (WebCore::createCTFontWithFamilyNameAndWeight):
+        * platform/graphics/mac/FontCacheMac.mm: Ditto, but NSFont.
+        (WebCore::fontWithFamily):
+        * platform/spi/cocoa/CoreTextSPI.h: Expose the constants for
+        the new form so that the public SDK can build.
+
+2015-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Add multi-DFA compiling and interpreting.
+        https://bugs.webkit.org/show_bug.cgi?id=143010
+
+        Reviewed by Benjamin Poulain.
+
+        * contentextensions/ContentExtensionCompiler.cpp:
+        (WebCore::ContentExtensions::compileRuleList):
+        Compile multiple NFAs to DFAs.
+        * contentextensions/ContentExtensionsBackend.cpp:
+        (WebCore::ContentExtensions::ContentExtensionsBackend::actionsForResourceLoad):
+        Fixed a bug when there are no non-universal actions.
+        We still need to report that no ignore-previous-rules was hit to apply the
+        universal actions which are now accessed through DFABytecodeInterpreter::actionsFromDFARoot
+        and skipped in DFABytecodeInterpreter::interpret.
+        * contentextensions/DFABytecodeCompiler.cpp:
+        (WebCore::ContentExtensions::DFABytecodeCompiler::compile):
+        Add a header for each DFA.
+        * contentextensions/DFABytecodeInterpreter.cpp:
+        (WebCore::ContentExtensions::DFABytecodeInterpreter::actionsFromDFARoot):
+        (WebCore::ContentExtensions::DFABytecodeInterpreter::interpret):
+        Interpret as many DFAs as there are in the bytecode.
+
+2015-03-25  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Illegal character in project file.
+        https://bugs.webkit.org/show_bug.cgi?id=143051
+
+        Reviewed by Brent Fulgham.
+
+        There is an illegal character in the WebCore project filter.
+        WebCore files are shown unfiltered.
+
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+
+2015-03-25  David Hyatt  <hyatt@apple.com>
+
+        Add a pref to enable the new block-inside-inline model
+        https://bugs.webkit.org/show_bug.cgi?id=143050
+
+        Reviewed by Sam Weinig.
+
+        * page/Settings.in:
+
+2015-03-25  Dan Bernstein  <mitz@apple.com>
+
+        iOS Simulator build fix.
+
+        * platform/spi/cocoa/IOSurfaceSPI.h:
+
+2015-03-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181932.
+        https://bugs.webkit.org/show_bug.cgi?id=143041
+
+        The test fails most of the time on bots (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Content Extensions] Add multi-DFA compiling and
+        interpreting."
+        https://bugs.webkit.org/show_bug.cgi?id=143010
+        http://trac.webkit.org/changeset/181932
+
+2015-03-24  Dean Jackson  <dino@apple.com>
+
+        Source/WebCore/rendering/RenderThemeMac.mm:2181:118: error: null passed to a callee that requires a non-null argument [-Werror,-Wnonnull]
+        https://bugs.webkit.org/show_bug.cgi?id=143039
+
+        Unreviewed build fix for newer versions of OS X.
+
+        * rendering/RenderThemeMac.mm: Define a null language parameter. This
+        seemed better than turning the clang warning off for just that
+        function.
+        (WebCore::AttachmentLayout::layOutTitle):
+        (WebCore::AttachmentLayout::layOutSubtitle):
+
+2015-03-24  Dan Bernstein  <mitz@apple.com>
+
+        Another attempt to fix the build.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/spi/cocoa/QuartzCoreSPI.h:
+
+2015-03-24  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Add multi-DFA compiling and interpreting.
+        https://bugs.webkit.org/show_bug.cgi?id=143010
+
+        Reviewed by Benjamin Poulain.
+
+        * contentextensions/ContentExtensionCompiler.cpp:
+        (WebCore::ContentExtensions::compileRuleList):
+        Compile multiple NFAs to DFAs.
+        * contentextensions/ContentExtensionsBackend.cpp:
+        (WebCore::ContentExtensions::ContentExtensionsBackend::actionsForResourceLoad):
+        Fixed a bug when there are no non-universal actions.
+        We still need to report that no ignore-previous-rules was hit to apply the
+        universal actions which are now accessed through DFABytecodeInterpreter::actionsFromDFARoot
+        and skipped in DFABytecodeInterpreter::interpret.
+        * contentextensions/DFABytecodeCompiler.cpp:
+        (WebCore::ContentExtensions::DFABytecodeCompiler::compile):
+        Add a header for each DFA.
+        * contentextensions/DFABytecodeInterpreter.cpp:
+        (WebCore::ContentExtensions::DFABytecodeInterpreter::actionsFromDFARoot):
+        (WebCore::ContentExtensions::DFABytecodeInterpreter::interpret):
+        Interpret as many DFAs as there are in the bytecode.
+
+2015-03-24  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the EWS build.
+
+        * platform/spi/cocoa/QuartzCoreSPI.h:
+
+2015-03-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181898 and r181909.
+        https://bugs.webkit.org/show_bug.cgi?id=143034
+
+        Broke fast/regions/auto-size/autoheight-two-pass-layout-
+        complex-002.html (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Improve the offsetWidth/Height layout optimization"
+        https://bugs.webkit.org/show_bug.cgi?id=143008
+        http://trac.webkit.org/changeset/181898
+
+        "Disable layout dimensions optimization for RenderRegions"
+        https://bugs.webkit.org/show_bug.cgi?id=143017
+        http://trac.webkit.org/changeset/181909
+
+2015-03-24  Zhuo Li  <zachli@apple.com>
+
+        Scripts running in isolated world should not subject to a page's CSP about 'eval'.
+        https://bugs.webkit.org/show_bug.cgi?id=141316.
+
+        Reviewed by Geoffrey Garen.
+
+        * bindings/js/ScriptController.cpp:
+        (WebCore::ScriptController::initScript):
+        We should not impose the main world Content Security Policy onto the isolated world.
+
+2015-03-24  Chris Dumez  <cdumez@apple.com>
+
+        [Mac] Use .cpp file extension instead of .mm for SharedTimerCF and PowerObserverMac
+        https://bugs.webkit.org/show_bug.cgi?id=143026
+
+        Reviewed by Andy Estes.
+
+        Use .cpp file extension instead of .mm for SharedTimerCF and
+        PowerObserverMac.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/cf/SharedTimerCF.cpp: Renamed from Source/WebCore/platform/cf/SharedTimerCF.mm.
+        (WebCore::timerFired):
+        Use WTF::AutodrainedPool instead of @autoreleasepool {}.
+
+        * platform/mac/PowerObserverMac.cpp: Renamed from Source/WebCore/platform/mac/PowerObserverMac.mm.
+
+2015-03-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION (r181458): Heap use-after-free in JSSetIterator destructor
+        https://bugs.webkit.org/show_bug.cgi?id=142696
+
+        Reviewed and tweaked by Geoffrey Garen.
+
+        Use JSSetIterator/JSMapIterator to iterate over JSSet and JSMap.
+
+        * ForwardingHeaders/runtime/JSMapIterator.h: Added.
+        * ForwardingHeaders/runtime/JSSetIterator.h: Added.
+        * bindings/js/SerializedScriptValue.cpp:
+        (WebCore::CloneSerializer::serialize):
+
+2015-03-24  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the iOS Simulator build.
+
+        * platform/spi/cocoa/QuartzCoreSPI.h:
+
+2015-03-24  Benjamin Poulain  <bpoulain@apple.com>
+
+        Make URL filter patterns matching consistent and add a simple canonicalization step
+        https://bugs.webkit.org/show_bug.cgi?id=142998
+
+        Reviewed by Alex Christensen.
+
+        This patch makes two changes to the url filter input:
+        -Make the matching "Search" by default, the pattern can now appear anywhere
+         in the URL by default.
+        -Make the input a little less fragile: do not explode on valid input
+         that is not formatted in a certain way.
+
+        To implement the search behavior, I simply add an implict ".*" in front of the patterns
+        when that make sense.
+
+        To make the input more solid, we do some little modification on the input:
+        -Remove duplicated ".*".
+        -Remove matching suffixes that do not bring new information.
+        -Unify all the ".*" in the same format.
+
+        Why do that here? That should be done through a graph analysis on the machine.
+
+        The reason is this is incredibly cheap compared to the graph analysis. Any state
+        removed upfront will save the handling of several hundred nodes in the deterministic
+        graph.
+
+        * contentextensions/URLFilterParser.cpp:
+        (WebCore::ContentExtensions::Term::isKnownToMatchAnyString):
+        (WebCore::ContentExtensions::Term::isUniversalTransition):
+        (WebCore::ContentExtensions::GraphBuilder::finalize):
+        (WebCore::ContentExtensions::GraphBuilder::assertionBOL):
+        (WebCore::ContentExtensions::GraphBuilder::fail):
+        (WebCore::ContentExtensions::GraphBuilder::simplifySunkTerms):
+
+2015-03-24  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r181671): Caused Timer-related crashes on iOS / WK1
+        https://bugs.webkit.org/show_bug.cgi?id=143025
+
+        Reviewed by Andy Estes.
+
+        Call CFRunLoopAddTimer() on WebThreadRunLoop() instead of
+        CFRunLoopGetCurrent() for iOS, as we did before r181671.
+
+        I inadvertently changed this in r181671 when merging the Mac
+        and iOS implementations.
+
+        No new tests, already covered by existing tests.
+
+        * platform/cf/SharedTimerCF.mm:
+        (WebCore::setSharedTimerFireInterval):
+
+2015-03-24  Dan Bernstein  <mitz@apple.com>
+
+        WebCore part of <rdar://problem/20282863> Transforms are flattened in snapshots of on-screen WKWebViews
+        https://bugs.webkit.org/show_bug.cgi?id=143023
+
+        Reviewed by Tim Horton.
+
+        * platform/spi/cocoa/QuartzCoreSPI.h: Added the declaration of
+        CARenderServerRenderLayerWithTransform.
+
+2015-03-24  David Hyatt  <hyatt@apple.com>
+
+        Disable layout dimensions optimization for RenderRegions
+        https://bugs.webkit.org/show_bug.cgi?id=143017
+
+        Reviewed by Dean Jackson.
+
+        * dom/Document.cpp:
+        (WebCore::Document::updateLayoutIfDimensionsOutOfDate):
+        Turn off the optimization for regions, since auto height regions can change size
+        without needing a layout.
+
+2015-03-24  Beth Dakin  <bdakin@apple.com>
+
+        Add events related to force click gesture
+        https://bugs.webkit.org/show_bug.cgi?id=142836
+        -and corresponding-
+        rdar://problem/20210239
+
+        Reviewed by Dean Jackson.
+
+        This patch adds six new events for the force click gesture:
+
+        webkitmouseforcewillbegin -> Event is sent just before mousedown to indicate that 
+        force can be perceived if the user presses any harder. The author should prevent 
+        default on this event to both prevent the user agent’s default force click 
+        features and to receive the other 5 events.
+
+        webkitmouseforcechanged -> This event fires whenever force changes between the 
+        mousedown and mouseup. It is a new type of mouse event that includes a force 
+        variable which is a normalized number between 0 (corresponds to click) and 1 
+        (corresponds to force click). In this patch, I have only added code to send this 
+        event between mousedown and mouseforcedown, but as a followup patch, we plan to 
+        send it through mouseup.
+
+        webkitmouseforcecancelled -> If the user releases their finger from the trackpad 
+        after pressing hard enough to send webkitmouseforcewillbegin events but not hard 
+        enough to force click, this event will be sent to indicate that the user bailed 
+        out on the gesture.
+
+        webkitmouseforcedown -> The down part of the force click.
+
+        webkitmouseforceup -> The up part of the force click. This event is added in this 
+        patch, but does not yet fire. That is work for a follow-up patch.
+
+        webkitmouseforceclick -> The equivalent of the click event for the force click. 
+        Should fire just after webkitmouseforceup. This event is added in this patch, but 
+        does not yet fire. That is work for a follow-up patch.
+
+        Add new files for WebKitMouseForceEvent to build systems.
+        * DerivedSources.cpp:
+        * DerivedSources.make:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        * WebCore.xcodeproj/project.pbxproj:
+        * WebCore.xcodeproj/project.pbxproj:
+
+        Plumbing for new events.
+        * dom/Document.idl:
+
+        Code to dispatch the new events. Currently the code that calls these functions is 
+        in WebKit2.
+        * dom/Element.cpp:
+        (WebCore::Element::dispatchMouseForceWillBegin):
+        (WebCore::Element::dispatchMouseForceChanged):
+        (WebCore::Element::dispatchMouseForceDown):
+        (WebCore::Element::dispatchMouseForceUp):
+        (WebCore::Element::dispatchMouseForceClick):
+        (WebCore::Element::dispatchMouseForceCancelled):
+        * dom/Element.h:
+
+        More plumbing.
+        * dom/Element.idl:
+        * dom/EventNames.h:
+        * dom/EventNames.in:
+
+        Our new type of mouse event that includes force.
+        * dom/WebKitMouseForceEvent.cpp: Added.
+        (WebCore::WebKitMouseForceEventInit::WebKitMouseForceEventInit):
+        (WebCore::WebKitMouseForceEvent::WebKitMouseForceEvent):
+        (WebCore::WebKitMouseForceEvent::~WebKitMouseForceEvent):
+        (WebCore::WebKitMouseForceEvent::eventInterface):
+        * dom/WebKitMouseForceEvent.h: Added.
+        * dom/WebKitMouseForceEvent.idl: Added.
+
+        More plumbing.
+        * html/HTMLAttributeNames.in:
+        * html/HTMLBodyElement.cpp:
+        (WebCore::HTMLBodyElement::createWindowEventHandlerNameMap):
+        * html/HTMLBodyElement.idl:
+        * html/HTMLElement.cpp:
+        (WebCore::HTMLElement::createEventHandlerNameMap):
+        * page/DOMWindow.idl:
+        * page/EventHandler.h:
+        (WebCore::EventHandler::lastMouseDownEvent):
+
+2015-03-24  Anders Carlsson  <andersca@apple.com>
+
+        Fix designated initializer violations
+        https://bugs.webkit.org/show_bug.cgi?id=143016
+        rdar://problem/20268858
+
+        Reviewed by Dan Bernstein.
+
+        Mark -[DOMObject init] as unavailable.
+
+        * bindings/objc/DOMObject.h:
+        * bindings/objc/DOMObject.mm:
+        (-[DOMObject init]):
+
+2015-03-24  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS Selectors Level 4: enable case-insensitive attribute matching by default
+        https://bugs.webkit.org/show_bug.cgi?id=142960
+
+        Reviewed by Andreas Kling.
+
+        All open issues have been resolved, enable the feature by default.
+
+        Test: fast/css/attribute-selector-case-insensitive.html
+
+        * css/CSSGrammar.y.in:
+
+2015-03-24  Dean Jackson  <dino@apple.com>
+
+        MediaControls: Scrubber and Time displays have the incorrect blending
+        https://bugs.webkit.org/show_bug.cgi?id=143011
+        <rdar://problem/20245251>
+
+        Reviewed by Eric Carlson.
+
+        The scrubber in media controls should use plus-darker blending. Then
+        the scrubber itself should use a slightly transparent black (55% opacity)
+        when drawing.
+
+        * Modules/mediacontrols/mediaControlsiOS.css:
+        (audio::-webkit-media-controls-timeline): Add the blend mode.
+        * Modules/mediacontrols/mediaControlsiOS.js:
+        (ControllerIOS.prototype.drawTimelineBackground): Start drawing with
+        transparency. I changed the order of rendering to make it
+        more clear we draw the three parts in left to right order.
+
+2015-03-24  David Hyatt  <hyatt@apple.com>
+
+        Improve the offsetWidth/Height layout optimization
+        https://bugs.webkit.org/show_bug.cgi?id=143008
+
+        Reviewed by Dean Jackson.
+
+        * dom/Document.cpp:
+        (WebCore::Document::updateLayoutIfDimensionsOutOfDate):
+        * dom/Document.h:
+        Change Element* to Element&. Clean up the dimension bits to use shifting. Remove both the inline and
+        the positioning restrictions on the optimization check.
+
+        * dom/Element.cpp:
+        (WebCore::Element::offsetWidth):
+        (WebCore::Element::offsetHeight):
+        Change to use Element& instead of Element*.
+
+        (WebCore::Element::clientWidth):
+        (WebCore::Element::clientHeight):
+        (WebCore::Element::scrollWidth):
+        (WebCore::Element::scrollHeight):
+        Turn on the optimization for clientWidth/Height and scrollWidth/Height.
+
+2015-03-24  Yoav Weiss  <yoav@yoav.ws>
+
+        Stop image from displaying when src attribute is removed or emptied
+        https://bugs.webkit.org/show_bug.cgi?id=142677
+
+        Reviewed by Chris Dumez.
+
+        Previously, we ignored empty attribute as failed URL, and didn't update the
+        renderer when an image was removed. This patch fixes that.
+
+        Tests: fast/dom/HTMLImageElement/image-empty-src.html
+               fast/dom/HTMLImageElement/image-remove-src.html
+
+        * loader/ImageLoader.cpp:
+        (WebCore::ImageLoader::updateFromElement):
+
+2015-03-17  Philippe Normand  <pnormand@igalia.com>
+
+        [OpenWebRTC] RealtimeMediaSourceCenter implementation
+        https://bugs.webkit.org/show_bug.cgi?id=142476
+
+        Reviewed by Eric Carlson.
+
+        The old GStreamer MediaStreamCenter is replaced by the OpenWebRTC
+        RealtimeMediaSourceCenter. It is not yet able to correctly assess
+        MediaConstraints so it selects the first audio/video sources
+        available through OpenWebRTC.
+
+        * PlatformEfl.cmake: Add new files to the build.
+        * PlatformGTK.cmake: Ditto.
+        * platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp: Removed.
+        * platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp: Added.
+        (WebCore::initializeOpenWebRTC): Simple function to initialize the
+        framework, it is going to be used by the PeerConnection backend as well.
+        * platform/mediastream/openwebrtc/OpenWebRTCUtilities.h: Added.
+        * platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp: Added.
+        (WebCore::mediaSourcesAvailableCallback): Function invoked once
+        the media sources discovery succeeded within OpenWebRTC.
+        (WebCore::RealtimeMediaSourceCenter::platformCenter): Instantiate
+        the OpenWebRTC RealtimeMediaSourceCenter.
+        (WebCore::RealtimeMediaSourceCenterOwr::RealtimeMediaSourceCenterOwr):
+        (WebCore::RealtimeMediaSourceCenterOwr::~RealtimeMediaSourceCenterOwr):
+        (WebCore::RealtimeMediaSourceCenterOwr::validateRequestConstraints):
+        Schedule a discovery process for the capture sources.
+        (WebCore::RealtimeMediaSourceCenterOwr::createMediaStream): Pick
+        the first audio/video sources and create a MediaStream accordingly.
+        (WebCore::RealtimeMediaSourceCenterOwr::getMediaStreamTrackSources):
+        Not yet implemented.
+        (WebCore::RealtimeMediaSourceCenterOwr::mediaSourcesAvailable):
+        Method invoked once the capture sources process succeeded. Parse
+        them and create an internal cache of RealtimeMediaSources accordingly.
+        (WebCore::RealtimeMediaSourceCenterOwr::firstSource): Utility
+        function to fetch the first source of the given type from the
+        RealtimeMediaSources cache.
+        * platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.h: Renamed from Source/WebCore/platform/mediastream/gstreamer/MediaStreamCenterGStreamer.h.
+        * platform/mediastream/openwebrtc/RealtimeMediaSourceOwr.h: Added.
+
+2015-03-24  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Add OpenWebRTC in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=142778
+
+        Reviewed by Gyuyoung Kim.
+
+        Original patch by Philippe Normand <pnormand@igalia.com>
+
+        * PlatformEfl.cmake: Add OpenWebRTC CFLAGS and LDFLAGS.
+
+2015-03-23 Yoav Weiss  <yoav@yoav.ws>
+
+        Update empty image canvas tests and fix a related bug
+        https://bugs.webkit.org/show_bug.cgi?id=142694
+
+        Reviewed by Chris Dumez.
+
+        During the work on https://bugs.webkit.org/show_bug.cgi?id=142677
+        we encountered an issue with canvas tests related to empty image handling
+        when drawn or used as a pattern. After updating these tests, an issue with
+        pattern handling was encountered.
+
+        The spec, as well as Chrome's implementation, say that when an empty image
+        is used as a pattern, createPattern should return null. See
+        https://html.spec.whatwg.org/multipage/scripting.html#fill-and-stroke-styles:check-the-usability-of-the-image-argument
+        Instead, createPattern returned an exception in this case.
+        This patch fixes that and makes sure that it returns a null when image loading hasn't started.
+
+        Tests: canvas/philip/tests/2d.drawImage.incomplete.emptysrc.html
+               canvas/philip/tests/2d.drawImage.incomplete.nosrc.html
+               canvas/philip/tests/2d.drawImage.incomplete.removedsrc.html
+               canvas/philip/tests/2d.pattern.image.incomplete.emptysrc.html
+               canvas/philip/tests/2d.pattern.image.incomplete.removedsrc.html
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::createPattern): Return "null" if image is not fully decodeable.
+
+2015-03-23  Alex Christensen  <achristensen@webkit.org>
+
+        Fix api tests after r181876.
+
+        * contentextensions/ContentExtensionsBackend.cpp:
+        (WebCore::ContentExtensions::ContentExtensionsBackend::actionsForResourceLoad):
+        Always append a CSSDisplayNoneStyleSheet action if no ignore-previous-rules is seen.
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::requestResource):
+        Changed an assertion to a null check.
+
+2015-03-23  Dean Jackson  <dino@apple.com>
+
+        Timelines are sharing the same canvas background
+        https://bugs.webkit.org/show_bug.cgi?id=142994
+        <rdar://problem/20209466>
+
+        Reviewed by Brent Fulgham.
+
+        Since each MediaControl lives in an isolated world, we
+        can't rely on a global variable to provide a unique
+        identifier for a named canvas. The fix is to expose
+        WebCore's UUID generator, and have each canvas use
+        that for a name.
+
+        * Modules/mediacontrols/MediaControlsHost.cpp:
+        (WebCore::MediaControlsHost::generateUUID): New method on the
+        MediaControlsHost that generates a UUID.
+        * Modules/mediacontrols/MediaControlsHost.h:
+        * Modules/mediacontrols/MediaControlsHost.idl:
+
+        * Modules/mediacontrols/mediaControlsApple.js: Remove the global
+        variable unique ID that wasn't working, and instead get
+        an ID from the MediaControlsHost.
+        (Controller.prototype.createControls):
+        * Modules/mediacontrols/mediaControlsiOS.js:
+        (ControllerIOS):
+
+2015-03-23  Brent Fulgham  <bfulgham@apple.com>
+
+        Scroll latching logic can get stuck in 'scrollable="no"' iframes
+        https://bugs.webkit.org/show_bug.cgi?id=142789
+        <rdar://problem/20129494>
+
+        Reviewed by Dean Jackson.
+
+        Clean up the EventHandler and latching code as follows:
+        (1) Do not handle iframe elements as part of the normal latching logic. Instead, iframes should
+            be evaluated during the 'platformCompleteWheelEvent' phase of processing as top-level scrolling
+            frames.
+        (2) Get rid of the ill-conceived notation that we should process non-mainframe and main-frame frames
+            different.
+        (3) Modify code to reflect that the scroll latching code really deals with overflow scrolling. Consequently,
+            the 'findEnclosingScrollableContainer' was renamed to 'findEnclosingOverflowScroll' and does not
+            treat iframe as a suitable target.
+        (4) Do not create a latching state object when the container being evaluated is already scrolled to the
+            extreme position in the direction of the mouse gesture. In this case, we want the enclosing frame
+            to be the latching target.
+        (5) Do not treat the state where the mouse wheel gesture has ended manual scrolling, but has not ended
+            momentum scrolling, as an appropriate time to select a latching target.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::platformCompleteWheelEvent): Modify signature to remove unneeded argument.
+        (WebCore::EventHandler::handleWheelEvent): Modify call to 'platformCompleteWheelEvent' to remove unused argument.
+        * page/EventHandler.h:
+        * page/mac/EventHandlerMac.mm:
+        (WebCore::findEnclosingOverflowScroll): Renamed from 'findEnclosingScrollableContainer' and revised per the
+        notes above.
+        (WebCore::EventHandler::platformPrepareForWheelEvents): Remove mainFrame vs. non-mainFrame code paths and
+        consolidate logic.
+        (WebCore::EventHandler::platformCompleteWheelEvent): Remove unused argument. The wheel event target is no
+        longer needed here, now that iframes are not processed by this code.
+        (WebCore::findEnclosingScrollableContainer): Deleted.
+        * page/scrolling/ScrollLatchingState.cpp:
+        (WebCore::ScrollLatchingState::setPreviousWheelScrolledElement:) Switch to move operator for passing
+        a temporary RefPtr to the the function.
+        * page/scrolling/ScrollLatchingState.h:
+        * platform/PlatformWheelEvent.h:
+        (WebCore::PlatformWheelEvent::useLatchedEventElement): Recognize 'phase=ended, momentum=none' as a state
+        that should not cause latching state to be revised.
+
+2015-03-23  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the iOS build.
+
+        * platform/network/mac/CookieJarMac.mm:
+
+2015-03-23  Brady Eidson  <beidson@apple.com>
+
+        Content extensions should apply css selectors
+        https://bugs.webkit.org/show_bug.cgi?id=142604
+
+        Reviewed by Alex Christensen.
+
+        Tests: http/tests/contentextensions/css-display-none.html
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+        * contentextensions/ContentExtension.cpp:
+        (WebCore::ContentExtensions::ContentExtension::create):
+        (WebCore::ContentExtensions::ContentExtension::ContentExtension):
+        (WebCore::ContentExtensions::ContentExtension::globalDisplayNoneStyleSheet):
+        * contentextensions/ContentExtension.h:
+        (WebCore::ContentExtensions::ContentExtension::identifier):
+        (WebCore::ContentExtensions::ContentExtension::compiledExtension):
+
+        * contentextensions/ContentExtensionsBackend.cpp:
+        (WebCore::ContentExtensions::ContentExtensionsBackend::addContentExtension):
+        (WebCore::ContentExtensions::ContentExtensionsBackend::actionsForResourceLoad):
+        (WebCore::ContentExtensions::ContentExtensionsBackend::globalDisplayNoneStyleSheet):
+        * contentextensions/ContentExtensionsBackend.h:
+
+        * contentextensions/DFABytecodeInterpreter.cpp:
+        (WebCore::ContentExtensions::DFABytecodeInterpreter::interpret):
+
+        * dom/DocumentStyleSheetCollection.cpp:
+        (WebCore::DocumentStyleSheetCollection::maybeAddContentExtensionSheet):
+        * dom/DocumentStyleSheetCollection.h:
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::commitData):
+        (WebCore::DocumentLoader::startLoadingMainResource):
+        (WebCore::DocumentLoader::addPendingContentExtensionSheet):
+        * loader/DocumentLoader.h:
+
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::requestResource):
+
+        * loader/cache/CachedResourceRequest.cpp:
+        (WebCore::CachedResourceRequest::setInitiator):
+        * loader/cache/CachedResourceRequest.h:
+        (WebCore::CachedResourceRequest::initiatingDocumentLoader):
+
+        * page/UserContentController.cpp:
+        (WebCore::UserContentController::globalDisplayNoneStyleSheet):
+        (WebCore::UserContentController::displayNoneCSSRule):
+        * page/UserContentController.h:
+
+2015-03-23  Anders Carlsson  <andersca@apple.com>
+
+        -[_WKWebsiteDataStore removeDataOfTypes:modifiedSince:completionHandler:] doesn't remove cookies
+        https://bugs.webkit.org/show_bug.cgi?id=142990
+        rdar://problem/20241645
+
+        Reviewed by Andreas Kling.
+
+        Use the Mac version of deleteAllCookiesModifiedSince on iOS as well.
+
+        * platform/network/cf/CookieJarCFNet.cpp:
+        * platform/network/mac/CookieJarMac.mm:
+
+2015-03-23  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Replace uses of kCTFontSystemFontType
+        https://bugs.webkit.org/show_bug.cgi?id=142984
+
+        Reviewed by Tim Horton.
+
+        * rendering/RenderThemeMac.mm:
+        (WebCore::AttachmentLayout::layOutTitle):
+        (WebCore::AttachmentLayout::layOutSubtitle):
+
+2015-03-23  Dean Jackson  <dino@apple.com>
+
+        kCTFontSystemFontType is deprecated in CoreText
+        https://bugs.webkit.org/show_bug.cgi?id=142981
+        <rdar://problem/20261171>
+
+        Reviewed by Beth Dakin.
+
+        Update to the non-deprecated version.
+
+        * rendering/RenderThemeIOS.mm: kCTFontSystemFontType -> kCTFontUIFontSystem
+        (WebCore::RenderThemeIOS::updateCachedSystemFontDescription):
+
+2015-03-23  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Enable fullscreen for MSE-based videos
+        https://bugs.webkit.org/show_bug.cgi?id=142971
+
+        Reviewed by Jer Noble.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.h:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::supportsFullscreen): Return true;
+
+2015-03-23  Alex Christensen  <achristensen@webkit.org>
+
+        [MediaFoundation] Implement seek.
+        https://bugs.webkit.org/show_bug.cgi?id=142594
+
+        Reviewed by Darin Adler.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::seeking):
+        (WebCore::MediaPlayerPrivateMediaFoundation::seekDouble):
+        (WebCore::MediaPlayerPrivateMediaFoundation::durationDouble):
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.h:
+
+2015-03-23  Dan Bernstein  <mitz@apple.com>
+
+        Fixed the build.
+
+        * platform/graphics/cocoa/FontCocoa.mm:
+        (WebCore::Font::platformBoundsForGlyph): Switched to non-deprecated CTFontOrientation values.
+        (WebCore::Font::platformWidthForGlyph): Ditto.
+
+2015-03-23  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] Accessibility crashing because MediaPlayer is laying out UI off the main thread
+        https://bugs.webkit.org/show_bug.cgi?id=142970
+
+        Reviewed by Eric Carlson.
+
+        Return early after synchronously calling to the main thread to allocate the volume
+        view, to avoid re-allocating the volume view again on the web thread.
+
+        * platform/audio/ios/MediaSessionManagerIOS.mm:
+        (-[WebMediaSessionHelper allocateVolumeView]):
+
+2015-03-23  Tim Horton  <timothy_horton@apple.com>
+
+        Add a share item to the link action menu
+        https://bugs.webkit.org/show_bug.cgi?id=142961
+        <rdar://problem/19198374>
+
+        Reviewed by Beth Dakin.
+
+        * English.lproj/Localizable.strings:
+        Remove some now-unused strings.
+
+        * platform/spi/mac/NSMenuSPI.h:
+        Add some SPI.
+
+2015-03-23  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Build fix: CoreText deprecated kCTFontSystemFontType
+
+        Fix tracked by:  <rdar://problem/20261171>
+
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::RenderThemeIOS::updateCachedSystemFontDescription):
+        Add clang pragmas.
+
+2015-03-23  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix.
+
+        * css/CSSParser.cpp:
+        (WebCore::CSSParser::parseScrollSnapDestination): Remove new assertion.
+
+2015-03-23  Brent Fulgham  <bfulgham@apple.com>
+
+        scroll-snap-destination and scroll-snap-coordinate do not seem to work together properly
+        https://bugs.webkit.org/show_bug.cgi?id=142552
+        <rdar://problem/20114743>
+
+        Reviewed by Dean Jackson.
+
+        Revise the snap point logic as follows:
+        (1) Put the snap point destination handling in a helper function to make the rest of the code
+            easier to read.
+        (2) Make sure we always have a left-hand snap point (i.e., position 0), but don't add multiple
+            left-hand snap points.
+        (3) Create a helper function to determine if we should be working with the scroll snap 'elements'
+            behavior. We want to use this for scroll-snap-destination/scroll-snap-coordinate markup.
+        (4) Create per-element snap point offsets when using scroll-snap-destination/scroll-snap-coordinate.
+
+        * css/CSSParser.cpp:
+        (WebCore::CSSParser::parseScrollSnapDestination): Add assertion to try to catch bad parser state.
+        * page/scrolling/AxisScrollSnapOffsets.cpp:
+        (WebCore::destinationOffsetForViewSize): Added helper function to consolidate logic for handling
+        destination coordinates.
+        (WebCore::updateFromStyle): Make sure a left-hand snap point is always provided.
+        (WebCore::styleUsesElements): Added helper function.
+        (WebCore::updateSnapOffsetsForScrollableArea): Revise logic to generate 'per-element' snap point
+        offsets.
+
 2015-03-23  Yoav Weiss  <yoav@yoav.ws>
 
         Refactor ImageLoader's setting of CachedImage

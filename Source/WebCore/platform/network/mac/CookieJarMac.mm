@@ -26,13 +26,20 @@
 #import "config.h"
 #import "PlatformCookieJar.h"
 
+#import "NetworkStorageSession.h"
+
+@interface NSHTTPCookieStorage (Details)
+- (void)removeCookiesSinceDate:(NSDate *)date;
+- (id)_initWithCFHTTPCookieStorage:(CFHTTPCookieStorageRef)cfStorage;
+- (CFHTTPCookieStorageRef)_cookieStorage;
+@end
+
 #if !USE(CFNETWORK)
 
 #import "BlockExceptions.h"
 #import "Cookie.h"
 #import "CookieStorage.h"
 #import "URL.h"
-#import "NetworkStorageSession.h"
 #import "WebCoreSystemInterface.h"
 #import <wtf/text/StringBuilder.h>
 
@@ -40,11 +47,6 @@ enum {
     NSHTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain = 3
 };
 
-@interface NSHTTPCookieStorage (Details)
-- (void)removeCookiesSinceDate:(NSDate *)date;
-- (id)_initWithCFHTTPCookieStorage:(CFHTTPCookieStorageRef)cfStorage;
-- (CFHTTPCookieStorageRef)_cookieStorage;
-@end
 
 namespace WebCore {
 
@@ -217,6 +219,12 @@ void deleteAllCookies(const NetworkStorageSession& session)
     wkDeleteAllHTTPCookies(session.cookieStorage().get());
 }
 
+}
+
+#endif // !USE(CFNETWORK)
+
+namespace WebCore {
+
 static NSHTTPCookieStorage *cookieStorage(const NetworkStorageSession& session)
 {
     auto cookieStorage = session.cookieStorage();
@@ -238,5 +246,3 @@ void deleteAllCookiesModifiedSince(const NetworkStorageSession& session, std::ch
 }
 
 }
-
-#endif // !USE(CFNETWORK)

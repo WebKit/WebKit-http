@@ -194,6 +194,7 @@
     macro(ServiceControlsEnabled, serviceControlsEnabled, Bool, bool, false) \
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, false) \
     macro(LongMousePressEnabled, longMousePressEnabled, Bool, bool, false) \
+    macro(NewBlockInsideInlineModelEnabled, newBlockInsideInlineModelEnabled, Bool, bool, false) \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
     macro(IncrementalRenderingSuppressionTimeout, incrementalRenderingSuppressionTimeout, Double, double, 5) \
@@ -229,6 +230,7 @@
     macro(DeveloperExtrasEnabled, developerExtrasEnabled, Bool, bool, false) \
     macro(LogsPageMessagesToSystemConsoleEnabled, logsPageMessagesToSystemConsoleEnabled, Bool, bool, false) \
     macro(IgnoreViewportScalingConstraints, ignoreViewportScalingConstraints, Bool, bool, true) \
+    macro(ForceAlwaysUserScalable, forceAlwaysUserScalable, Bool, bool, false) \
     \
 
 #define FOR_EACH_WEBKIT_DEBUG_UINT32_PREFERENCE(macro) \

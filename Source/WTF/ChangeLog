@@ -1,3 +1,58 @@
+2015-03-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, we have edited this file in 2015.
+
+        * wtf/Platform.h:
+
+2015-03-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Heap variables shouldn't end up in the stack frame
+        https://bugs.webkit.org/show_bug.cgi?id=141174
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::resize): Small change: don't resize if you don't have to resize.
+
+2015-03-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Change Atomic methods from using the_wrong_naming_conventions to using theRightNamingConventions. Also make seq_cst the default.
+
+        Rubber stamped by Geoffrey Garen.
+
+        * wtf/Atomics.h:
+        (WTF::Atomic::load):
+        (WTF::Atomic::store):
+        (WTF::Atomic::compareExchangeWeak):
+        (WTF::Atomic::compareExchangeStrong):
+        (WTF::Atomic::compare_exchange_weak): Deleted.
+        (WTF::Atomic::compare_exchange_strong): Deleted.
+        * wtf/ByteSpinLock.h:
+        (WTF::ByteSpinLock::lock):
+        * wtf/SpinLock.h:
+        (WTF::SpinLockBase::lock):
+
+2015-03-24  Beth Dakin  <bdakin@apple.com>
+
+        Add events related to force click gesture
+        https://bugs.webkit.org/show_bug.cgi?id=142836
+        -and corresponding-
+        rdar://problem/20210239
+
+        Reviewed by Dean Jackson.
+
+        New enable flag for the events.
+        * wtf/FeatureDefines.h:
+
+2015-03-23  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should have a low-cost asynchronous disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=142997
+
+        Reviewed by Mark Lam.
+
+        * wtf/StringPrintStream.h:
+
 2015-03-22  Benjamin Poulain  <benjamin@webkit.org>
 
         CSS Selectors: fix attribute case-insensitive matching of Contain and List

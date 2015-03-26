@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2015 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -21,9 +21,9 @@
 #include "config.h"
 #include "FunctionPrototype.h"
 
-#include "Arguments.h"
 #include "BuiltinExecutables.h"
 #include "BuiltinNames.h"
+#include "Error.h"
 #include "JSArray.h"
 #include "JSBoundFunction.h"
 #include "JSFunction.h"
@@ -89,9 +89,9 @@ EncodedJSValue JSC_HOST_CALL functionProtoFuncToString(ExecState* exec)
 
         FunctionExecutable* executable = function->jsExecutable();
         String source = executable->source().provider()->getRange(
-            executable->typeProfilingStartOffset(),
+            executable->parametersStartOffset(),
             executable->typeProfilingEndOffset() + 1); // Type profiling end offset is the character before the '}'.
-        return JSValue::encode(jsMakeNontrivialString(exec, source));
+        return JSValue::encode(jsMakeNontrivialString(exec, "function ", function->name(exec), source));
     }
 
     if (thisValue.inherits(InternalFunction::info())) {

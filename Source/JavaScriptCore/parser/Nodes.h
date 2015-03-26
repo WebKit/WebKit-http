@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2013 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2013, 2015 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
@@ -1470,7 +1470,8 @@ namespace JSC {
         bool hasCapturedVariables() const { return !!m_capturedVariables.size(); }
         size_t capturedVariableCount() const { return m_capturedVariables.size(); }
         const IdentifierSet& capturedVariables() const { return m_capturedVariables; }
-        bool captures(const Identifier& ident) { return m_capturedVariables.contains(ident.impl()); }
+        bool captures(StringImpl* uid) { return m_capturedVariables.contains(uid); }
+        bool captures(const Identifier& ident) { return captures(ident.impl()); }
 
         VarStack& varStack() { return m_varStack; }
         FunctionStack& functionStack() { return m_functionStack; }
@@ -1581,6 +1582,7 @@ namespace JSC {
 
         int functionNameStart() const { return m_functionNameStart; }
         int functionKeywordStart() const { return m_functionKeywordStart; }
+        int parametersStart() const { return m_parametersStart; }
         unsigned startColumn() const { return m_startColumn; }
         unsigned endColumn() const { return m_endColumn; }
 

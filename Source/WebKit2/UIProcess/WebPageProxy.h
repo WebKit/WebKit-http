@@ -393,6 +393,7 @@ public:
     void setWindowResizerSize(const WebCore::IntSize&);
     
     void clearSelection();
+    void restoreSelectionInFocusedEditableElement();
 
     void setViewNeedsDisplay(const WebCore::IntRect&);
     void displayView();
@@ -988,6 +989,7 @@ public:
     void selectLastActionMenuRange();
     void focusAndSelectLastActionMenuHitTestResult();
 
+    void immediateActionDidUpdate(float force);
     void immediateActionDidCancel();
     void immediateActionDidComplete();
 
@@ -1054,7 +1056,7 @@ private:
     virtual void valueChangedForPopupMenu(WebPopupMenuProxy*, int32_t newSelectedIndex) override;
     virtual void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index) override;
 #if PLATFORM(GTK)
-    virtual void failedToShowPopupMenu();
+    virtual void failedToShowPopupMenu() override;
 #endif
 
     void didCreateMainFrame(uint64_t frameID);

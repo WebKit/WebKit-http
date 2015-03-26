@@ -1024,12 +1024,19 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     IntPoint locationInContentCoordinates = mainFrame.view()->rootViewToContents(roundedIntPoint(locationInViewCooordinates));
     HitTestResult hitTestResult = mainFrame.eventHandler().hitTestResultAtPoint(locationInContentCoordinates);
 
-    if (forImmediateAction)
+    m_lastActionMenuHitTestPreventsDefault = false;
+    Element* element = hitTestResult.innerElement();
+
+    if (forImmediateAction) {
         mainFrame.eventHandler().setImmediateActionStage(ImmediateActionStage::PerformedHitTest);
+        if (element)
+            m_lastActionMenuHitTestPreventsDefault = element->dispatchMouseForceWillBegin();
+    }
 
     ActionMenuHitTestResult actionMenuResult;
     actionMenuResult.hitTestLocationInViewCooordinates = locationInViewCooordinates;
     actionMenuResult.hitTestResult = WebHitTestResult::Data(hitTestResult);
+    actionMenuResult.contentPreventsDefault = m_lastActionMenuHitTestPreventsDefault;
 
     RefPtr<Range> selectionRange = corePage()->focusController().focusedOrMainFrame().selection().selection().firstRange();
 
@@ -1062,6 +1069,7 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
                 actionMenuResult.imageSharedMemory = SharedMemory::create(buffer->size());
                 memcpy(actionMenuResult.imageSharedMemory->data(), buffer->data(), buffer->size());
                 actionMenuResult.imageExtension = imageExtension;
+                actionMenuResult.imageSize = buffer->size();
             }
         }
     }
@@ -1148,14 +1156,46 @@ void WebPage::focusAndSelectLastActionMenuHitTestResult()
     frame->selection().setSelection(position);
 }
 
+void WebPage::immediateActionDidUpdate(float force)
+{
+    m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionUpdated);
+
+    Element* element = m_lastActionMenuHitTestResult.innerElement();
+    if (!element)
+        return;
+
+    if (!m_lastActionMenuHitTestPreventsDefault)
+        return;
+
+    element->dispatchMouseForceChanged(force, m_page->mainFrame().eventHandler().lastMouseDownEvent());
+}
+
 void WebPage::immediateActionDidCancel()
 {
     m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCancelled);
+
+    Element* element = m_lastActionMenuHitTestResult.innerElement();
+    if (!element)
+        return;
+
+    if (!m_lastActionMenuHitTestPreventsDefault)
+        return;
+
+    element->dispatchMouseForceCancelled(m_page->mainFrame().eventHandler().lastMouseDownEvent());
 }
 
 void WebPage::immediateActionDidComplete()
 {
     m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCompleted);
+
+    Element* element = m_lastActionMenuHitTestResult.innerElement();
+    if (!element)
+        return;
+
+    if (!m_lastActionMenuHitTestPreventsDefault)
+        return;
+
+    element->dispatchMouseForceDown(m_page->mainFrame().eventHandler().lastMouseDownEvent());
 }
 
 void WebPage::dataDetectorsDidPresentUI(PageOverlay::PageOverlayID overlayID)

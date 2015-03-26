@@ -828,15 +828,6 @@ PropertyMapStatisticsExitLogger::~PropertyMapStatisticsExitLogger()
 
 #endif
 
-#if !DO_PROPERTYMAP_CONSTENCY_CHECK
-
-inline void Structure::checkConsistency()
-{
-    checkOffsetConsistency();
-}
-
-#endif
-
 PropertyTable* Structure::copyPropertyTable(VM& vm)
 {
     if (!propertyTable())
@@ -1133,7 +1124,6 @@ void Structure::dumpContextHeader(PrintStream& out)
 
 void PropertyTable::checkConsistency()
 {
-    checkOffsetConsistency();
     ASSERT(m_indexSize >= PropertyTable::MinimumTableSize);
     ASSERT(m_indexMask);
     ASSERT(m_indexSize == m_indexMask + 1);
@@ -1191,6 +1181,8 @@ void PropertyTable::checkConsistency()
 
 void Structure::checkConsistency()
 {
+    checkOffsetConsistency();
+
     if (!propertyTable())
         return;
 
@@ -1202,6 +1194,13 @@ void Structure::checkConsistency()
     }
 
     propertyTable()->checkConsistency();
+}
+
+#else
+
+inline void Structure::checkConsistency()
+{
+    checkOffsetConsistency();
 }
 
 #endif // DO_PROPERTYMAP_CONSTENCY_CHECK
@@ -1217,46 +1216,24 @@ bool ClassInfo::hasStaticSetterOrReadonlyProperties() const
     return false;
 }
 
-void Structure::setCachedStructurePropertyNameEnumerator(VM& vm, JSPropertyNameEnumerator* enumerator)
+void Structure::setCachedPropertyNameEnumerator(VM& vm, JSPropertyNameEnumerator* enumerator)
 {
     ASSERT(!isDictionary());
     if (!hasRareData())
         allocateRareData(vm);
-    rareData()->setCachedStructurePropertyNameEnumerator(vm, enumerator);
+    rareData()->setCachedPropertyNameEnumerator(vm, enumerator);
 }
 
-JSPropertyNameEnumerator* Structure::cachedStructurePropertyNameEnumerator() const
+JSPropertyNameEnumerator* Structure::cachedPropertyNameEnumerator() const
 {
     if (!hasRareData())
         return nullptr;
-    return rareData()->cachedStructurePropertyNameEnumerator();
+    return rareData()->cachedPropertyNameEnumerator();
 }
 
-void Structure::setCachedGenericPropertyNameEnumerator(VM& vm, JSPropertyNameEnumerator* enumerator)
-{
-    ASSERT(!isDictionary());
-    if (!hasRareData())
-        allocateRareData(vm);
-    rareData()->setCachedGenericPropertyNameEnumerator(vm, enumerator);
-}
-
-JSPropertyNameEnumerator* Structure::cachedGenericPropertyNameEnumerator() const
-{
-    if (!hasRareData())
-        return nullptr;
-    return rareData()->cachedGenericPropertyNameEnumerator();
-}
-
-bool Structure::canCacheStructurePropertyNameEnumerator() const
+bool Structure::canCachePropertyNameEnumerator() const
 {
     if (isDictionary())
-        return false;
-    return true;
-}
-
-bool Structure::canCacheGenericPropertyNameEnumerator() const
-{
-    if (!canCacheStructurePropertyNameEnumerator())
         return false;
 
     if (hasIndexedProperties(indexingType()))
@@ -1275,10 +1252,10 @@ bool Structure::canCacheGenericPropertyNameEnumerator() const
             return false;
         structure++;
     }
-
+    
     return true;
 }
-
+    
 bool Structure::canAccessPropertiesQuickly() const
 {
     if (hasNonEnumerableProperties())

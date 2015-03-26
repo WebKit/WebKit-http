@@ -68,6 +68,7 @@
 #import "WKViewPrivate.h"
 #import "WebBackForwardList.h"
 #import "WebEventFactory.h"
+#import "WebInspectorProxy.h"
 #import "WebKit2Initialize.h"
 #import "WebPage.h"
 #import "WebPageGroup.h"
@@ -170,6 +171,8 @@ struct WKViewInterpretKeyEventsParameters {
 };
 #endif
 
+@class WKWindowVisibilityObserver;
+
 @interface WKViewData : NSObject {
 @public
     std::unique_ptr<PageClientImpl> _pageClient;
@@ -177,6 +180,7 @@ struct WKViewInterpretKeyEventsParameters {
 
 #if WK_API_ENABLED
     RetainPtr<WKBrowsingContextController> _browsingContextController;
+    RetainPtr<NSView> _inspectorAttachmentView;
 #endif
 
     RetainPtr<NSTrackingArea> _primaryTrackingArea;
@@ -189,7 +193,7 @@ struct WKViewInterpretKeyEventsParameters {
     RetainPtr<NSView> _layerHostingView;
 
     RetainPtr<id> _remoteAccessibilityChild;
-    
+
     // For asynchronous validation.
     ValidationMap _validationMap;
 
@@ -252,6 +256,8 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _useContentPreparationRectForVisibleRect;
     BOOL _windowOcclusionDetectionEnabled;
 
+    RetainPtr<WKWindowVisibilityObserver> _windowVisibilityObserver;
+
     std::unique_ptr<ViewGestureController> _gestureController;
     BOOL _allowsMagnification;
     BOOL _ignoresNonWheelEvents;
@@ -281,6 +287,54 @@ struct WKViewInterpretKeyEventsParameters {
 @end
 
 @implementation WKViewData
+@end
+
+@interface WKWindowVisibilityObserver : NSObject {
+    WKView *_view;
+}
+
+- (instancetype)initWithView:(WKView *)view;
+- (void)startObserving:(NSWindow *)window;
+- (void)stopObserving:(NSWindow *)window;
+@end
+
+@implementation WKWindowVisibilityObserver
+
+- (instancetype)initWithView:(WKView *)view
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _view = view;
+    return self;
+}
+
+- (void)startObserving:(NSWindow *)window
+{
+    // An NSView derived object such as WKView cannot observe these notifications, because NSView itself observes them.
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOffScreen:)
+                                                 name:@"NSWindowDidOrderOffScreenNotification" object:window];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOnScreen:) 
+                                                 name:@"_NSWindowDidBecomeVisible" object:window];
+}
+
+- (void)stopObserving:(NSWindow *)window
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowDidOrderOffScreenNotification" object:window];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidBecomeVisible" object:window];
+}
+
+- (void)_windowDidOrderOnScreen:(NSNotification *)notification
+{
+    [_view _windowDidOrderOnScreen:notification];
+}
+
+- (void)_windowDidOrderOffScreen:(NSNotification *)notification
+{
+    [_view _windowDidOrderOffScreen:notification];
+}
+
 @end
 
 @interface WKResponderChainSink : NSResponder {
@@ -393,6 +447,8 @@ struct WKViewInterpretKeyEventsParameters {
     
     [self _updateSecureInputState];
     _data->_page->viewStateDidChange(ViewState::IsFocused);
+    // Restore the selection in the editable region if resigning first responder cleared selection.
+    _data->_page->restoreSelectionInFocusedEditableElement();
 
     _data->_inBecomeFirstResponder = false;
     
@@ -1311,7 +1367,6 @@ NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDraggedInternal)
     [self _setMouseDownEvent:event];
     _data->_ignoringMouseDraggedEvents = NO;
 
-    [self _dismissContentRelativeChildWindows];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [_data->_actionMenuController wkView:self willHandleMouseDown:event];
 #endif
@@ -2546,10 +2601,6 @@ static void* keyValueObservingContext = &keyValueObservingContext;
                                                      name:NSWindowDidMoveNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidResize:) 
                                                      name:NSWindowDidResizeNotification object:window];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOffScreen:) 
-                                                     name:@"NSWindowDidOrderOffScreenNotification" object:window];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOnScreen:) 
-                                                     name:@"_NSWindowDidBecomeVisible" object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeBackingProperties:)
                                                      name:NSWindowDidChangeBackingPropertiesNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeScreen:)
@@ -2566,6 +2617,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         [window addObserver:self forKeyPath:@"contentLayoutRect" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
         [window addObserver:self forKeyPath:@"titlebarAppearsTransparent" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
 #endif
+        [_data->_windowVisibilityObserver startObserving:window];
     }
 }
 
@@ -2581,9 +2633,6 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidDeminiaturizeNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidMoveNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidResizeNotification object:window];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowWillOrderOffScreenNotification" object:window];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowDidOrderOffScreenNotification" object:window];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidBecomeVisible" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeBackingPropertiesNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeScreenNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
@@ -2593,6 +2642,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     [window removeObserver:self forKeyPath:@"contentLayoutRect" context:keyValueObservingContext];
     [window removeObserver:self forKeyPath:@"titlebarAppearsTransparent" context:keyValueObservingContext];
 #endif
+    [_data->_windowVisibilityObserver stopObserving:window];
 }
 
 - (void)viewWillMoveToWindow:(NSWindow *)window
@@ -3696,10 +3746,12 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_useContentPreparationRectForVisibleRect = NO;
     _data->_windowOcclusionDetectionEnabled = YES;
 
+    _data->_windowVisibilityObserver = adoptNS([[WKWindowVisibilityObserver alloc] initWithView:self]);
+
     _data->_intrinsicContentSize = NSMakeSize(NSViewNoInstrinsicMetric, NSViewNoInstrinsicMetric);
 
     _data->_needsViewFrameInWindowCoordinates = _data->_page->preferences().pluginsEnabled();
-    
+
     [self _registerDraggedTypes];
 
     self.wantsLayer = YES;
@@ -4082,6 +4134,24 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 {
     _data->_page->setUnderlayColor(colorFromNSColor(underlayColor));
 }
+
+#if WK_API_ENABLED
+- (NSView *)_inspectorAttachmentView
+{
+    NSView *attachmentView = _data->_inspectorAttachmentView.get();
+    return attachmentView ? attachmentView : self;
+}
+
+- (void)_setInspectorAttachmentView:(NSView *)newView
+{
+    NSView *oldView = _data->_inspectorAttachmentView.get();
+    if (oldView == newView)
+        return;
+
+    _data->_inspectorAttachmentView = newView;
+    _data->_page->inspector()->attachmentViewDidChange(oldView ? oldView : self, newView ? newView : self);
+}
+#endif
 
 - (NSView *)fullScreenPlaceholderView
 {

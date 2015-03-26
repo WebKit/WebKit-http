@@ -340,6 +340,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
 #endif
+#if PLATFORM(MAC)
+    , m_lastActionMenuHitTestPreventsDefault(false)
+#endif
     , m_mainFrameProgressCompleted(false)
     , m_shouldDispatchFakeMouseMoveEvents(true)
 {
@@ -2809,7 +2812,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setLowPowerVideoAudioBufferSizeEnabled(store.getBoolValueForKey(WebPreferencesKey::lowPowerVideoAudioBufferSizeEnabledKey()));
     settings.setSimpleLineLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutEnabledKey()));
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
-
+    
+    settings.setNewBlockInsideInlineModelEnabled(store.getBoolValueForKey(WebPreferencesKey::newBlockInsideInlineModelEnabledKey()));
+    
     settings.setSubpixelCSSOMElementMetricsEnabled(store.getBoolValueForKey(WebPreferencesKey::subpixelCSSOMElementMetricsEnabledKey()));
 
     settings.setUseLegacyTextAlignPositionedElementBehavior(store.getBoolValueForKey(WebPreferencesKey::useLegacyTextAlignPositionedElementBehaviorKey()));
@@ -2862,6 +2867,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if PLATFORM(IOS)
     m_viewportConfiguration.setCanIgnoreScalingConstraints(store.getBoolValueForKey(WebPreferencesKey::ignoreViewportScalingConstraintsKey()));
+    m_viewportConfiguration.setForceAlwaysUserScalable(store.getBoolValueForKey(WebPreferencesKey::forceAlwaysUserScalableKey()));
 #endif
 }
 
@@ -3360,6 +3366,18 @@ void WebPage::clearSelection()
     m_page->focusController().focusedOrMainFrame().selection().clear();
 }
 #endif
+
+void WebPage::restoreSelectionInFocusedEditableElement()
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (!frame.selection().isNone())
+        return;
+
+    if (auto document = frame.document()) {
+        if (auto element = document->focusedElement())
+            element->updateFocusAppearance(true /* restoreSelection */);
+    }
+}
 
 bool WebPage::mainFrameHasCustomContentProvider() const
 {

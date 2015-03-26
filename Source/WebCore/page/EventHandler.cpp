@@ -2061,9 +2061,9 @@ bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& platformMou
     if (m_frameSetBeingResized)
         return !dispatchMouseEvent(eventNames().mouseupEvent, m_frameSetBeingResized.get(), true, m_clickCount, platformMouseEvent, false);
 
-    // If an immediate action was completed using this series of mouse events, then we should send mouseup to
+    // If an immediate action began or was completed using this series of mouse events, then we should send mouseup to
     // the DOM and return now so that we don't perform our own default behaviors.
-    if (m_immediateActionStage == ImmediateActionStage::ActionCompleted) {
+    if (m_immediateActionStage == ImmediateActionStage::ActionCompleted || m_immediateActionStage == ImmediateActionStage::ActionUpdated) {
         m_immediateActionStage = ImmediateActionStage::None;
         return !dispatchMouseEvent(eventNames().mouseupEvent, m_lastElementUnderMouse.get(), true, m_clickCount, platformMouseEvent, false);
     }
@@ -2612,7 +2612,7 @@ void EventHandler::platformRecordWheelEvent(const PlatformWheelEvent& event)
     m_frame.mainFrame().wheelEventDeltaTracker()->recordWheelEventDelta(event);
 }
 
-bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& event, Element*, ContainerNode*, ScrollableArea*)
+bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& event, ContainerNode*, ScrollableArea*)
 {
     // We do another check on the frame view because the event handler can run JS which results in the frame getting destroyed.
     FrameView* view = m_frame.view();
@@ -2708,7 +2708,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
     if (scrollableArea)
         scrollableArea->setScrolledProgrammatically(false);
 
-    return platformCompleteWheelEvent(event, element.get(), scrollableContainer.get(), scrollableArea);
+    return platformCompleteWheelEvent(event, scrollableContainer.get(), scrollableArea);
 }
 
 void EventHandler::clearLatchedState()
@@ -4020,6 +4020,11 @@ void EventHandler::setLastKnownMousePosition(const PlatformMouseEvent& event)
     m_mousePositionIsUnknown = false;
     m_lastKnownMousePosition = event.position();
     m_lastKnownMouseGlobalPosition = event.globalPosition();
+}
+
+const PlatformMouseEvent& EventHandler::lastMouseDownEvent() const
+{
+    return m_mouseDown;
 }
 
 void EventHandler::setImmediateActionStage(ImmediateActionStage stage)

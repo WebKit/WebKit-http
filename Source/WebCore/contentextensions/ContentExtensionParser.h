@@ -28,6 +28,7 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
+#include <system_error>
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
@@ -37,7 +38,7 @@ namespace ContentExtensions {
 
 class ContentExtensionRule;
 
-Vector<ContentExtensionRule> parseRuleList(const String& rules);
+std::error_code parseRuleList(const String& rules, Vector<ContentExtensionRule>&);
 
 } // namespace ContentExtensions
 } // namespace WebCore

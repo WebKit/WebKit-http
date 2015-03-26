@@ -1323,11 +1323,24 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
         semanticFailureDueToKeyword(stringForFunctionMode(mode), " name");
         failWithMessage("Expected an opening '(' before a ", stringForFunctionMode(mode), "'s parameter list");
     }
-    if (!match(CLOSEPAREN)) {
-        info.parameters = parseFormalParameters(context);
-        failIfFalse(info.parameters, "Cannot parse parameters for this ", stringForFunctionMode(mode));
+
+    if (mode == GetterMode)
+        consumeOrFail(CLOSEPAREN, "getter functions must have no parameters");
+    else if (mode == SetterMode) {
+        failIfTrue(match(CLOSEPAREN), "setter functions must have one parameter");
+        auto parameter = parseDeconstructionPattern(context, DeconstructToParameters);
+        failIfFalse(parameter, "setter functions must have one parameter");
+        info.parameters = context.createFormalParameterList(parameter);
+        failIfTrue(match(COMMA), "setter functions must have one parameter");
+        consumeOrFail(CLOSEPAREN, "Expected a ')' after a parameter declaration");
+    } else {
+        if (!match(CLOSEPAREN)) {
+            info.parameters = parseFormalParameters(context);
+            failIfFalse(info.parameters, "Cannot parse parameters for this ", stringForFunctionMode(mode));
+        }
+        consumeOrFail(CLOSEPAREN, "Expected a ')' or a ',' after a parameter declaration");
     }
-    consumeOrFail(CLOSEPAREN, "Expected a ')' or a ',' after a parameter declaration");
+
     matchOrFail(OPENBRACE, "Expected an opening '{' at the start of a ", stringForFunctionMode(mode), " body");
 
     // BytecodeGenerator emits code to throw TypeError when a class constructor is "call"ed.
@@ -1456,8 +1469,13 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseClassDeclarat
     JSTextPosition classStart = tokenStartPosition();
     unsigned classStartLine = tokenLine();
 
-    TreeClassExpression classExpr = parseClass(context, FunctionNeedsName);
+    ParserClassInfo<TreeBuilder> info;
+    TreeClassExpression classExpr = parseClass(context, FunctionNeedsName, info);
     failIfFalse(classExpr, "Failed to parse class");
+    declareVariable(info.className);
+
+    // FIXME: This should be like `let`, not `var`.
+    context.addVar(info.className, DeclarationStacks::HasInitializer);
 
     JSTextPosition classEnd = lastTokenEndPosition();
     unsigned classEndLine = tokenLine();
@@ -1466,7 +1484,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseClassDeclarat
 }
 
 template <typename LexerType>
-template <class TreeBuilder> TreeClassExpression Parser<LexerType>::parseClass(TreeBuilder& context, FunctionRequirements requirements)
+template <class TreeBuilder> TreeClassExpression Parser<LexerType>::parseClass(TreeBuilder& context, FunctionRequirements requirements, ParserClassInfo<TreeBuilder>& info)
 {
     ASSERT(match(CLASSTOKEN));
     JSTokenLocation location(tokenLocation());
@@ -1478,9 +1496,12 @@ template <class TreeBuilder> TreeClassExpression Parser<LexerType>::parseClass(T
     const Identifier* className = nullptr;
     if (match(IDENT)) {
         className = m_token.m_data.ident;
+        info.className = className;
         next();
         failIfFalse(classScope->declareVariable(className), "'", className->impl(), "' is not a valid class name");
     } else if (requirements == FunctionNeedsName) {
+        if (match(OPENBRACE))
+            semanticFail("Class statements must have a name");
         semanticFailureDueToKeyword("class name");
         failDueToUnexpectedToken();
     } else
@@ -2250,8 +2271,10 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
         return context.createFunctionExpr(location, info);
     }
 #if ENABLE(ES6_CLASS_SYNTAX)
-    case CLASSTOKEN:
-        return parseClass(context, FunctionNoRequirements);
+    case CLASSTOKEN: {
+        ParserClassInfo<TreeBuilder> info;
+        return parseClass(context, FunctionNoRequirements, info);
+    }
 #endif
     case OPENBRACE:
         if (strictMode())

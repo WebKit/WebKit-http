@@ -496,6 +496,9 @@ webkit.org/b/128172 fast/events/touch/touch-target.html [ Timeout ]
 webkit.org/b/128172 fast/events/touch/touch-target-limited.html [ Crash Timeout ]
 webkit.org/b/128172 fast/events/touch/send-oncancel-event.html [ Timeout ]
 
+# The WebKit network disk cache is not enabled on the GTK port.
+webkit.org/b/142821 http/tests/cache/disk-cache [ Skip ]
+
 # HighDPI support is not enabled
 webkit.org/b/131347 fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
@@ -571,8 +574,6 @@ webkit.org/b/141699 fast/attachment/attachment-rendering.html [ Failure ]
 webkit.org/b/141700 fast/dom/Element/getClientRects.html [ Failure ]
 webkit.org/b/141700 fast/dom/Range/getClientRects.html [ Failure ]
 
-webkit.org/b/141702 http/tests/cache/disk-cache-disable.html [ Failure ]
-webkit.org/b/141703 http/tests/cache/disk-cache-redirect-to-data.html [ Failure ]
 webkit.org/b/141705 media/video-fullscreeen-only-controls.html [ Failure ]
 webkit.org/b/141706 fast/forms/color/input-appearance-color.html [ Failure ]
 webkit.org/b/141709 http/tests/security/XFrameOptions/x-frame-options-deny-multiple-clients.html [ Failure ]
@@ -621,7 +622,6 @@ webkit.org/b/142289 mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
 
 webkit.org/b/141074 accessibility/auto-filled-value.html [ Missing ]
 
-webkit.org/b/142818 http/tests/cache/disk-cache-vary-cookie.html [ Failure ]
 webkit.org/b/142819 fast/text/baseline-inline-block.html [ ImageOnlyFailure ]
 
 webkit.org/b/142823 fast/attachment/attachment-progress.html [ Missing ]
@@ -629,6 +629,8 @@ webkit.org/b/142823 fast/attachment/attachment-select-on-click-inside-user-selec
 webkit.org/b/142823 fast/attachment/attachment-select-on-click.html [ Missing ]
 webkit.org/b/142823 fast/attachment/attachment-subtitle.html [ Missing ]
 webkit.org/b/142823 fast/attachment/attachment-title.html [ Missing ]
+
+webkit.org/b/142670 media/video-background-tab-playback.html [ Failure ]
 
 # TODO Scroll snap points
 css3/scroll-snap [ Skip ]
@@ -1319,9 +1321,7 @@ webkit.org/b/142489 http/tests/media/video-play-waiting.html [ Timeout ]
 webkit.org/b/142490 inspector/css/selector-dynamic-specificity.html [ Timeout ]
 webkit.org/b/142491 media/media-source/media-source-stalled-holds-sleep-assertion.html [ Timeout ]
 
-webkit.org/b/142670 media/video-background-tab-playback.html [ Timeout ]
 webkit.org/b/142820 fast/images/animated-gif-body-outside-viewport.html [ Timeout ]
-webkit.org/b/142821 http/tests/cache/disk-cache-validation.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -1590,6 +1590,9 @@ webkit.org/b/130464 fast/canvas/canvas-path-addPath.html
 webkit.org/b/73766 css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
 
 webkit.org/b/79757 fast/selectors/selection-window-inactive.html [ ImageOnlyFailure ]
+
+# Need platform specific update to test to make it run.
+webkit.org/b/143083 accessibility/table-cell-display-block.html [ Skip ]
 
 webkit.org/b/98357 accessibility/aria-readonly.html [ Failure ]
 webkit.org/b/98359 accessibility/aria-text-role.html [ Failure ]
@@ -1892,8 +1895,6 @@ webkit.org/b/102776 media/track/track-cue-rendering-horizontal.html [ Failure Ti
 webkit.org/b/102776 media/track/track-cue-rendering-vertical.html [ Failure Timeout ]
 webkit.org/b/102776 media/track/track-cue-rendering-tree-is-removed-properly.html [ Timeout Pass ]
 
-webkit.org/b/104686 http/tests/xmlhttprequest/redirect-cross-origin-tripmine.html [ Failure ]
-
 webkit.org/b/98146 accessibility/svg-bounds.html [ Failure ]
 
 # Enable when support drag-and-drop autoscrolling
@@ -1988,11 +1989,8 @@ webkit.org/b/118416 storage/websql/sql-error-codes.html [ Failure ]
 Bug(GTK) mathml/very-large-stretchy-operators.html [ Pass Timeout ]
 
 webkit.org/b/119841 fast/sub-pixel/sub-pixel-composited-layers.html [ ImageOnlyFailure ]
-webkit.org/b/119841 fast/sub-pixel/zoomed-em-border.html [ ImageOnlyFailure ]
 
 webkit.org/b/120105 http/tests/navigation/post-frames-goback1-uncached.html [ Failure ]
-
-webkit.org/b/120203 http/tests/security/cross-frame-access-getOwnPropertyDescriptor.html [ Failure ]
 
 webkit.org/b/120596 css3/background/background-repeat-space-border.html [ ImageOnlyFailure ]
 webkit.org/b/120596 css3/background/background-repeat-space-content.html [ ImageOnlyFailure ]
@@ -2354,7 +2352,6 @@ webkit.org/b/142479 svg/text/select-textLength-spacingAndGlyphs-squeeze-4.svg [ 
 webkit.org/b/142479 svg/text/select-textLength-spacingAndGlyphs-stretch-2.svg [ Failure ]
 webkit.org/b/142479 svg/text/select-textLength-spacingAndGlyphs-stretch-3.svg [ Failure ]
 
-webkit.org/b/142480 fast/dom/event-handler-attributes.html [ Failure ]
 webkit.org/b/142482 http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Failure ]
 
 webkit.org/b/142487 fast/regions/region-overflow-break.html [ ImageOnlyFailure ]
@@ -2370,6 +2367,11 @@ webkit.org/b/142669 fast/regions/overflow/overflow-region-float.html [ ImageOnly
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
+
+# This tests are passing on GTK+ but they do not in the Apple ports
+imported/mozilla/svg/image/image-filter-01.svg [ Pass ]
+imported/w3c/canvas/2d.line.cap.round.html [ Pass ]
+transitions/svg-text-shadow-transition.html [ Pass ]
 
 # This feature is only enabled on Mac and iOS right now
 contentfiltering [ Skip ]

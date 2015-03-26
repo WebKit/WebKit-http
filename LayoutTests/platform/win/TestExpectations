@@ -1257,6 +1257,9 @@ editing/deleting/delete-emoji.html [ Failure ]
 accessibility/axpress-on-aria-button.html [ Skip ]
 accessibility/svg-element-press.html [ Skip ]
 
+# Missing cellForColumnAndRow implementation in DRT
+webkit.org/b/143081 accessibility/table-cell-display-block.html [ Skip ]
+
 # Accessibility tests for notifications that don't exist or aren't needed on Mac OS X (or Windows)
 accessibility/aria-checkbox-sends-notification.html [ Skip ]
 accessibility/combo-box-collapsed-selection-changed.html [ Skip ]
@@ -2226,10 +2229,7 @@ webkit.org/b/29213 http/tests/security/mixedContent [ Skip ]
 webkit.org/b/60206 http/tests/navigation/response204.html [ Failure ]
 
 # Disk cache is WK2 only
-http/tests/cache/disk-cache-validation.html
-http/tests/cache/disk-cache-validation-back-navigation-policy.html
-http/tests/cache/disk-cache-disable.html
-http/tests/cache/disk-cache-vary-cookie.html
+http/tests/cache/disk-cache
 
 # The following are unreviewed:
 http/tests/cache/content-type-ignored-during-revalidation.html [ Failure ]

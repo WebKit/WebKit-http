@@ -42,6 +42,9 @@ else
 end
 const SlotSize = 8
 
+const JSEnvironmentRecord_variables = (sizeof JSEnvironmentRecord + SlotSize - 1) & ~(SlotSize - 1)
+const DirectArguments_storage = (sizeof DirectArguments + SlotSize - 1) & ~(SlotSize - 1)
+
 const StackAlignment = 16
 const StackAlignmentMask = StackAlignment - 1
 
@@ -930,6 +933,30 @@ _llint_op_touch_entry:
     dispatch(1)
 
 
+_llint_op_create_direct_arguments:
+    traceExecution()
+    callSlowPath(_slow_path_create_direct_arguments)
+    dispatch(2)
+
+
+_llint_op_create_scoped_arguments:
+    traceExecution()
+    callSlowPath(_slow_path_create_scoped_arguments)
+    dispatch(3)
+
+
+_llint_op_create_out_of_band_arguments:
+    traceExecution()
+    callSlowPath(_slow_path_create_out_of_band_arguments)
+    dispatch(2)
+
+
+_llint_op_new_func:
+    traceExecution()
+    callSlowPath(_llint_slow_path_new_func)
+    dispatch(4)
+
+
 _llint_op_new_array:
     traceExecution()
     callSlowPath(_llint_slow_path_new_array)
@@ -1127,12 +1154,14 @@ _llint_op_loop_hint:
     traceExecution()
     loadp CodeBlock[cfr], t1
     loadp CodeBlock::m_vm[t1], t1
-    loadb VM::watchdog+Watchdog::m_timerDidFire[t1], t0
-    btbnz t0, .handleWatchdogTimer
+    loadp VM::watchdog[t1], t0
+    btpnz t0, .handleWatchdogTimer
 .afterWatchdogTimerCheck:
     checkSwitchToJITForLoop()
     dispatch(1)
 .handleWatchdogTimer:
+    loadb Watchdog::m_timerDidFire[t0], t0
+    btbz t0, .afterWatchdogTimerCheck
     callWatchdogTimerHandler(.throwHandler)
     jmp .afterWatchdogTimerCheck
 .throwHandler:
@@ -1341,19 +1370,19 @@ _llint_op_get_direct_pname:
     callSlowPath(_slow_path_get_direct_pname)
     dispatch(7)
 
-_llint_op_get_structure_property_enumerator:
+_llint_op_get_property_enumerator:
     traceExecution()
-    callSlowPath(_slow_path_get_structure_property_enumerator)
+    callSlowPath(_slow_path_get_property_enumerator)
+    dispatch(3)
+
+_llint_op_enumerator_structure_pname:
+    traceExecution()
+    callSlowPath(_slow_path_next_structure_enumerator_pname)
     dispatch(4)
 
-_llint_op_get_generic_property_enumerator:
+_llint_op_enumerator_generic_pname:
     traceExecution()
-    callSlowPath(_slow_path_get_generic_property_enumerator)
-    dispatch(5)
-
-_llint_op_next_enumerator_pname:
-    traceExecution()
-    callSlowPath(_slow_path_next_enumerator_pname)
+    callSlowPath(_slow_path_next_generic_enumerator_pname)
     dispatch(4)
 
 _llint_op_to_index_string:

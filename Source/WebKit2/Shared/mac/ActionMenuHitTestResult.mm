@@ -45,9 +45,10 @@ void ActionMenuHitTestResult::encode(IPC::ArgumentEncoder& encoder) const
     encoder << imageExtension;
 
     SharedMemory::Handle imageHandle;
-    if (imageSharedMemory && imageSharedMemory->size())
+    if (imageSharedMemory && imageSharedMemory->data())
         imageSharedMemory->createHandle(imageHandle, SharedMemory::ReadOnly);
     encoder << imageHandle;
+    encoder << imageSize;
 
     bool hasActionContext = actionContext;
     encoder << hasActionContext;
@@ -75,6 +76,8 @@ void ActionMenuHitTestResult::encode(IPC::ArgumentEncoder& encoder) const
     encoder << hasLinkTextIndicator;
     if (hasLinkTextIndicator)
         encoder << linkTextIndicator->data();
+
+    encoder << contentPreventsDefault;
 }
 
 bool ActionMenuHitTestResult::decode(IPC::ArgumentDecoder& decoder, ActionMenuHitTestResult& actionMenuHitTestResult)
@@ -97,6 +100,9 @@ bool ActionMenuHitTestResult::decode(IPC::ArgumentDecoder& decoder, ActionMenuHi
 
     if (!imageHandle.isNull())
         actionMenuHitTestResult.imageSharedMemory = SharedMemory::create(imageHandle, SharedMemory::ReadOnly);
+
+    if (!decoder.decode(actionMenuHitTestResult.imageSize))
+        return false;
 
     bool hasActionContext;
     if (!decoder.decode(hasActionContext))
@@ -151,6 +157,9 @@ bool ActionMenuHitTestResult::decode(IPC::ArgumentDecoder& decoder, ActionMenuHi
 
         actionMenuHitTestResult.linkTextIndicator = WebCore::TextIndicator::create(indicatorData);
     }
+
+    if (!decoder.decode(actionMenuHitTestResult.contentPreventsDefault))
+        return false;
 
     return true;
 }

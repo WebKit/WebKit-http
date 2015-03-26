@@ -1,3 +1,219 @@
+2015-03-25  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: Add ESLint "Disallow Undeclared Variables" rule and enable ES6 env
+        https://bugs.webkit.org/show_bug.cgi?id=143062
+
+        Reviewed by Joseph Pecoraro.
+
+        ESLint: Add support for es6 environment and "no-undef" rule which disallows
+        use of undeclared variables unless mentioned in a /*global */ block.
+
+        * .eslintrc:
+
+2015-03-25  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: console.table with source code location look poor
+        https://bugs.webkit.org/show_bug.cgi?id=142068
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LegacyConsoleMessageImpl.js:
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsTable):
+        Remove dataGridContainer as it is an unnecessary span element.
+        * UserInterface/Views/LogContentView.css:
+        (.console-messages .data-grid):
+
+2015-03-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: IndexedDB / Databases ContentViews should have refresh button
+        https://bugs.webkit.org/show_bug.cgi?id=142996
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Remove unused strings.
+
+        * UserInterface/Images/ReloadFull.svg: Added.
+        This is the same as Reload.svg but adjusted to fill the viewbox edge to edge.
+        The only change is to the viewbox.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.release):
+        Some clients would call release not knowing if this was an object or not.
+        Act gracefully in the case that this was not an object that needs a
+        remote release.
+
+        * UserInterface/Views/DatabaseTableContentView.js:
+        (WebInspector.DatabaseTableContentView):
+        (WebInspector.DatabaseTableContentView.prototype.get navigationItems):
+        (WebInspector.DatabaseTableContentView.prototype._queryError):
+        (WebInspector.DatabaseTableContentView.prototype._refreshButtonClicked):
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.js:
+        (WebInspector.IndexedDatabaseObjectStoreContentView):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype.get navigationItems):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype._fetchMoreData):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype._refreshButtonClicked):
+        Give the storage content views a refresh button to reload the content.
+
+2015-03-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Setter should have a single formal parameter, Getter no parameters
+        https://bugs.webkit.org/show_bug.cgi?id=142903
+
+        Reviewed by Geoffrey Garen.
+
+        * UserInterface/Views/GradientSlider.js:
+        (WebInspector.GradientSliderKnob.prototype.get wellColor):
+        Fix a getter that was incorrectly taking a parameter.
+
+2015-03-24  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: REGRESSION (r179286): ReferenceError: Can't find variable: selector
+        https://bugs.webkit.org/show_bug.cgi?id=143022
+
+        Reviewed by Timothy Hatcher.
+
+        Fix a regression where a missing variable statement causes a ReferenceError.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+
+2015-03-24  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: Adopt ES6 Class Syntax for CSSStyleDeclarationTextEditor
+        https://bugs.webkit.org/show_bug.cgi?id=143019
+
+        Reviewed by Timothy Hatcher.
+
+        - Convert CSSStyleDeclarationTextEditor to use class syntax
+        - Convert constructor functions to constructor methods
+        - Convert "constructor.method" to class static methods where possible
+        - Convert all methods to method syntax, eliminate commas between methods
+        - Convert all superclass calls in classes to use "super"
+        - Removed FIXME from WebInspector.Object subclasses, added calls to super.
+        - Fixed strict mode issues now that classes enforce strict mode (see below).
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        Many function declarations modified.
+
+2015-03-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Workaround issue causing uncaught exception in Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=143015
+
+        Reviewed by Timothy Hatcher.
+
+        Workaround <https://webkit.org/b/143012> and avoid early returning in constructors.
+
+        * UserInterface/Controllers/ReplayManager.js:
+        (WebInspector.ReplayManager.class.ReplayManager):
+
+2015-03-06  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: unify resizer implementations used by DataGrid and Sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=142407
+
+        Reviewed by Timothy Hatcher.
+
+        Both of these implementations do the same thing slightly differently. Unify the code
+        and use the "glass pane" technique to preserve cursor while dragging over links or text.
+
+        This patch implements vertical and horizontal rule orientations. Further refactorings
+        to use this class may need to add "Indeterminate" orientation to support moving the inspector
+        window by its fake toolbar element.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid .resizer):
+        (.data-grid-resizer): Deleted.
+        * UserInterface/Views/DataGrid.js: Store Resizer instances rather than resizer elements.
+        Use symbols to secretly store neighbor column ids on the resizer objects. Stop using
+        WebInspector.elementDragStart, as I would like to deprecate it in favor of Resizer instances.
+
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.prototype._positionResizerElements):
+        (WebInspector.DataGrid.prototype.resizerDragStarted):
+        (WebInspector.DataGrid.prototype.resizerDragging):
+        (WebInspector.DataGrid.prototype.resizerDragEnded):
+        (WebInspector.DataGrid.prototype._startResizerDragging): Deleted.
+        (WebInspector.DataGrid.prototype._resizerDragging): Deleted.
+        (WebInspector.DataGrid.prototype._endResizerDragging): Deleted.
+        * UserInterface/Views/Resizer.css:
+        (.resizer):
+        (.resizer.vertical-rule):
+        (.resizer.horizontal-rule):
+        (.glass-pane-for-drag):
+        * UserInterface/Views/Resizer.js: Added.
+        (WebInspector.Resizer):
+        (WebInspector.Resizer.prototype.get element):
+        (WebInspector.Resizer.prototype.get orientation):
+        (WebInspector.Resizer.prototype.get initialPosition):
+        (WebInspector.Resizer.prototype._currentPosition):
+        (WebInspector.Resizer.prototype._resizerMouseDown):
+        (WebInspector.Resizer.prototype._resizerMouseMoved):
+        (WebInspector.Resizer.prototype._resizerMouseUp):
+        * UserInterface/Views/Sidebar.css:
+        (.sidebar > .resizer): Deleted.
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar):
+        (WebInspector.Sidebar.prototype.resizerDragStarted):
+        (WebInspector.Sidebar.prototype.resizerDragging):
+        (WebInspector.Sidebar.prototype.resizerDragEnded):
+        (WebInspector.Sidebar.prototype._navigationItemSelected):
+        (WebInspector.Sidebar.prototype._resizerMouseDown): Deleted.
+        (WebInspector.Sidebar.prototype._resizerMouseMoved): Deleted.
+        (WebInspector.Sidebar.prototype._resizerMouseUp): Deleted.
+
+2015-03-17  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Debugger sidebar should have a filter button for breakpoints
+        https://bugs.webkit.org/show_bug.cgi?id=142779
+
+        Reviewed by Timothy Hatcher.
+
+        Add the infrastructure for activation filter buttons that can appear next to the text filters at the bottom
+        of any navigation sidebar panel. These filter bar buttons have defined within them a function that returns
+        a boolean value that indicates whether the input, typically a tree element, should be filtered or not.
+
+        This infrastructure is then used to create a filter for the debugger sidebar that, when applied, only shows
+        scripts that have breakpoints set on them.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/Main.html: Files added.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.showResourcesWithChildrenOnlyFilterFunction):
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._addBreakpoint): Drive-by fix.
+        Add filter button to filter bar.
+
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar > .navigation-bar > .item):
+        Style filter button.
+
+        * UserInterface/Views/FilterBar.js:
+        (WebInspector.FilterBar):
+        (WebInspector.FilterBar.prototype.get filters):
+        (WebInspector.FilterBar.prototype.set filters):
+        (WebInspector.FilterBar.prototype.hasActiveFilters):
+        (WebInspector.FilterBar.prototype._handleFilterChanged):
+        (WebInspector.FilterBar.prototype._inputFieldChanged): Deleted.
+        Create space for filter bar buttons and set up event handlers to deal with them.
+
+        * UserInterface/Views/FilterBarButton.js: Copied from Source/WebInspectorUI/UserInterface/Views/FilterBar.css.
+        (WebInspector.FilterBarButton):
+        (WebInspector.FilterBarButton.prototype.get filterFunction):
+        (WebInspector.FilterBarButton.prototype.toggle):
+        Create class for a filter bar button that stores a filter function.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel):
+        (WebInspector.NavigationSidebarPanel.prototype.matchTreeElementAgainstFilterFunctions):
+        (WebInspector.NavigationSidebarPanel.prototype.applyFiltersToTreeElement):
+        (WebInspector.NavigationSidebarPanel.prototype._filterDidChange):
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        (WebInspector.NavigationSidebarPanel.prototype._textFilterDidChange): Deleted.
+        Add functionality to support button filters and process their corresponding functions correctly when filtering.
+
 2015-03-22  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Adopt ES6 Class Syntax for all Controller Objects
