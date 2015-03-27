@@ -30,6 +30,7 @@
 #if USE(KEY_INPUT_HANDLING_LINUX_INPUT)
 
 #include <linux/input.h>
+#include <mutex>
 
 namespace WPE {
 
