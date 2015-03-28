@@ -29,6 +29,7 @@
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "ContentExtensionActions.h"
+#include "ResourceLoadInfo.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -43,6 +44,7 @@ namespace ContentExtensions {
 struct Trigger {
     String urlFilter;
     bool urlFilterIsCaseSensitive { false };
+    ResourceFlags flags { 0 };
 };
     
 struct Action {
@@ -50,25 +52,34 @@ struct Action {
         : m_type(ActionType::InvalidAction)
     {
     }
-    Action(ActionType type, const String& cssSelector)
+
+    Action(ActionType type, const String& stringArgument)
         : m_type(type)
-        , m_cssSelector(cssSelector)
+        , m_stringArgument(stringArgument)
     {
-        ASSERT(type == ActionType::CSSDisplayNone);
+        ASSERT(type == ActionType::CSSDisplayNoneSelector || type == ActionType::CSSDisplayNoneStyleSheet);
     }
+
     Action(ActionType type)
         : m_type(type)
     {
-        ASSERT(type != ActionType::CSSDisplayNone);
+        ASSERT(type != ActionType::CSSDisplayNoneSelector && type != ActionType::CSSDisplayNoneStyleSheet);
     }
-    static Action deserialize(const Vector<SerializedActionByte>&, unsigned location);
+
+    bool operator==(const Action& other) const
+    {
+        return m_type == other.m_type
+            && m_stringArgument == other.m_stringArgument;
+    }
+
+    static Action deserialize(const SerializedActionByte* actions, const unsigned actionsLength, unsigned location);
 
     ActionType type() const { return m_type; }
-    const String& cssSelector() const { return m_cssSelector; }
+    const String& stringArgument() const { return m_stringArgument; }
         
 private:
     ActionType m_type;
-    String m_cssSelector;
+    String m_stringArgument;
 };
     
 class ContentExtensionRule {

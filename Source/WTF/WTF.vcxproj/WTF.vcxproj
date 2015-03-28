@@ -113,7 +113,6 @@
     <ClCompile Include="..\wtf\NumberOfCores.cpp" />
     <ClCompile Include="..\wtf\OSAllocatorWin.cpp" />
     <ClCompile Include="..\wtf\OSRandomSource.cpp" />
-    <ClCompile Include="..\wtf\PageAllocationAligned.cpp" />
     <ClCompile Include="..\wtf\PageBlock.cpp" />
     <ClCompile Include="..\wtf\ParallelJobsGeneric.cpp" />
     <ClCompile Include="..\wtf\PrintStream.cpp" />
@@ -149,7 +148,10 @@
     <ClCompile Include="..\wtf\unicode\UTF8.cpp" />
     <ClCompile Include="..\wtf\win\MainThreadWin.cpp" />
     <ClCompile Include="..\wtf\win\RunLoopWin.cpp" />
+    <ClCompile Include="..\wtf\win\WorkItemWin.cpp" />
+    <ClCompile Include="..\wtf\win\WorkQueueWin.cpp" />
     <ClCompile Include="..\wtf\win\WTFDLL.cpp" />
+    <ClCompile Include="..\wtf\WorkQueue.cpp" />
     <ClCompile Include="..\wtf\WTFThreadData.cpp" />
     <ClCompile Include="..\wtf\SchedulePairCF.cpp" />
   </ItemGroup>
@@ -239,7 +241,6 @@
     <ClInclude Include="..\wtf\OwnPtrCommon.h" />
     <ClInclude Include="..\wtf\PackedIntVector.h" />
     <ClInclude Include="..\wtf\PageAllocation.h" />
-    <ClInclude Include="..\wtf\PageAllocationAligned.h" />
     <ClInclude Include="..\wtf\PageBlock.h" />
     <ClInclude Include="..\wtf\PageReservation.h" />
     <ClInclude Include="..\wtf\ParallelJobs.h" />
@@ -268,6 +269,7 @@
     <ClInclude Include="..\wtf\SHA1.h" />
     <ClInclude Include="..\wtf\SinglyLinkedList.h" />
     <ClInclude Include="..\wtf\SixCharacterHash.h" />
+    <ClInclude Include="..\wtf\SpinLock.h" />
     <ClInclude Include="..\wtf\StackBounds.h" />
     <ClInclude Include="..\wtf\StaticConstructors.h" />
     <ClInclude Include="..\wtf\StdLibExtras.h" />
@@ -275,7 +277,6 @@
     <ClInclude Include="..\wtf\StringExtras.h" />
     <ClInclude Include="..\wtf\StringHasher.h" />
     <ClInclude Include="..\wtf\StringPrintStream.h" />
-    <ClInclude Include="..\wtf\TCSpinLock.h" />
     <ClInclude Include="..\wtf\TemporaryChange.h" />
     <ClInclude Include="..\wtf\text\ASCIIFastPath.h" />
     <ClInclude Include="..\wtf\text\AtomicString.h" />
@@ -288,6 +289,7 @@
     <ClInclude Include="..\wtf\text\LChar.h" />
     <ClInclude Include="..\wtf\text\StringBuffer.h" />
     <ClInclude Include="..\wtf\text\StringBuilder.h" />
+    <ClInclude Include="..\wtf\text\StringCommon.h" />
     <ClInclude Include="..\wtf\text\StringConcatenate.h" />
     <ClInclude Include="..\wtf\text\StringHash.h" />
     <ClInclude Include="..\wtf\text\StringImpl.h" />
@@ -306,6 +308,8 @@
     <ClInclude Include="..\wtf\Vector.h" />
     <ClInclude Include="..\wtf\VMTags.h" />
     <ClInclude Include="..\wtf\win\GDIObject.h" />
+    <ClInclude Include="..\wtf\win\WorkItemWin.h" />
+    <ClInclude Include="..\wtf\WorkQueue.h" />
     <ClInclude Include="..\wtf\WTFThreadData.h" />
   </ItemGroup>
   <ItemGroup>

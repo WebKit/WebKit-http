@@ -29,29 +29,26 @@
 #if ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
 
 #import "CDMSessionMediaSourceAVFObjC.h"
-#import "CoreMediaSoftLink.h"
 #import "FileSystem.h"
 #import "Logging.h"
 #import "MediaSourcePrivateAVFObjC.h"
 #import "MediaSourcePrivateClient.h"
 #import "MediaTimeAVFoundation.h"
 #import "PlatformClockCM.h"
-#import "SoftLinking.h"
 #import "WebCoreSystemInterface.h"
 #import <AVFoundation/AVAsset.h>
 #import <AVFoundation/AVTime.h>
-#import <CoreMedia/CMSync.h>
 #import <QuartzCore/CALayer.h>
 #import <objc_runtime.h>
 #import <wtf/Functional.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
-#pragma mark -
-#pragma mark Soft Linking
+#pragma mark - Soft Linking
+
+#import "CoreMediaSoftLink.h"
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-SOFT_LINK_FRAMEWORK_OPTIONAL(CoreMedia)
 
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVAsset)
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVURLAsset)
@@ -62,8 +59,11 @@ SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVStreamDataParser)
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVStreamSession);
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVVideoPerformanceMetrics)
 
-SOFT_LINK_CONSTANT(CoreMedia, kCMTimebaseNotification_EffectiveRateChanged, CFStringRef)
-#define kCMTimebaseNotification_EffectiveRateChanged getkCMTimebaseNotification_EffectiveRateChanged()
+SOFT_LINK_CONSTANT(AVFoundation, AVAudioTimePitchAlgorithmSpectral, NSString*)
+SOFT_LINK_CONSTANT(AVFoundation, AVAudioTimePitchAlgorithmVarispeed, NSString*)
+
+#define AVAudioTimePitchAlgorithmSpectral getAVAudioTimePitchAlgorithmSpectral()
+#define AVAudioTimePitchAlgorithmVarispeed getAVAudioTimePitchAlgorithmVarispeed()
 
 #pragma mark -
 #pragma mark AVSampleBufferDisplayLayer
@@ -91,6 +91,7 @@ SOFT_LINK_CONSTANT(CoreMedia, kCMTimebaseNotification_EffectiveRateChanged, CFSt
 @interface AVSampleBufferAudioRenderer : NSObject
 - (void)setVolume:(float)volume;
 - (void)setMuted:(BOOL)muted;
+@property (nonatomic, copy) NSString *audioTimePitchAlgorithm;
 @end
 
 #pragma mark -
@@ -203,7 +204,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine(MediaEngineRegist
 bool MediaPlayerPrivateMediaSourceAVFObjC::isAvailable()
 {
     return AVFoundationLibrary()
-        && CoreMediaLibrary()
+        && isCoreMediaFrameworkAvailable()
         && getAVStreamDataParserClass()
         && getAVSampleBufferAudioRendererClass()
         && getAVSampleBufferRenderSynchronizerClass()
@@ -468,6 +469,13 @@ void MediaPlayerPrivateMediaSourceAVFObjC::setRateDouble(double rate)
     m_rate = rate;
     if (shouldBePlaying())
         [m_synchronizer setRate:m_rate];
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::setPreservesPitch(bool preservesPitch)
+{
+    NSString *algorithm = preservesPitch ? AVAudioTimePitchAlgorithmSpectral : AVAudioTimePitchAlgorithmVarispeed;
+    for (auto& renderer : m_sampleBufferAudioRenderers)
+        [renderer setAudioTimePitchAlgorithm:algorithm];
 }
 
 MediaPlayer::NetworkState MediaPlayerPrivateMediaSourceAVFObjC::networkState() const
@@ -772,6 +780,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::addAudioRenderer(AVSampleBufferAudioR
 
     [audioRenderer setMuted:m_player->muted()];
     [audioRenderer setVolume:m_player->volume()];
+    [audioRenderer setAudioTimePitchAlgorithm:(m_player->preservesPitch() ? AVAudioTimePitchAlgorithmSpectral : AVAudioTimePitchAlgorithmVarispeed)];
 
     [m_synchronizer addRenderer:audioRenderer];
     m_player->client().mediaPlayerRenderingModeChanged(m_player);

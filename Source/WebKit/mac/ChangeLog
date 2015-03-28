@@ -1,3 +1,427 @@
+2015-03-26  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=143112
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2015-03-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Cursor doesn't change back to pointer when leaving Mail
+        https://bugs.webkit.org/show_bug.cgi?id=132038
+
+        Reviewed by Anders Carlsson.
+
+        Fixed the bug by adding a cursor rect and making the primary tracking area update the cursor so that
+        AppKit will reset the cursor as it leaves the WebView.
+
+        We use nil cursor here since we manually update the cursor by calling [NSCursor set].
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView setDataSource:]): Use NSTrackingCursorUpdate option in creating the primary tracking area.
+
+2015-03-24  Anders Carlsson  <andersca@apple.com>
+
+        Fix designated initializer violations
+        https://bugs.webkit.org/show_bug.cgi?id=143016
+        rdar://problem/20268858
+
+        Reviewed by Dan Bernstein.
+
+        Move -[WebBackForwardList initWithBackForwardList:] to the implementation instead of a category since
+        nobody calls it outside of WebBackForwardList.mm.
+
+        * History/WebBackForwardList.mm:
+        * History/WebBackForwardListInternal.h:
+
+2015-03-23  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (Yosemite): WKView visibility notifications are messed up
+        https://bugs.webkit.org/show_bug.cgi?id=142945
+
+        Reviewed by Tim Horton.
+
+        As these notifications cannot be used by NSView subclasses, create a separate
+        object for observing them.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView addWindowObserversForWindow:]):
+        (-[WebView removeWindowObservers]):
+        (-[WebView viewWillMoveToWindow:]): Make sure that observers are removed even
+        if -[WebView close] is called manually.
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebWindowVisibilityObserver initWithView:]):
+        (-[WebWindowVisibilityObserver startObserving:]):
+        (-[WebWindowVisibilityObserver stopObserving:]):
+        (-[WebWindowVisibilityObserver _windowVisibilityChanged:]):
+
+2015-03-23  Tim Horton  <timothy_horton@apple.com>
+
+        Add a share item to the link action menu
+        https://bugs.webkit.org/show_bug.cgi?id=142961
+        <rdar://problem/19198374>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForImage]):
+        (-[WebActionMenuController _defaultMenuItemsForVideo]):
+        (-[WebActionMenuController _createActionMenuItemForTag:]):
+        (-[WebActionMenuController _createShareActionMenuItemForTag:withItems:]):
+        Adopt -[NSMenuItem standardShareMenuItemWithItems].
+        All of the null-checking is unnecessary as it's impossible to enter
+        these functions with a null image/etc.
+        Also, remove a duplicate isDownloadableMedia check for the 'save to downloads' item.
+
+        (-[WebActionMenuController _defaultMenuItemsForLink]):
+        * WebView/WebUIDelegatePrivate.h:
+        Add a 'Share' item to the link menu.
+
+2015-03-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        * WebView/WebView.mm: (-[WebView _showPlaybackTargetPicker:hasVideo:]):
+
+2015-03-22  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Enable WIRELESS_PLAYBACK_TARGET for WK1
+        https://bugs.webkit.org/show_bug.cgi?id=142940
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::showPlaybackTargetPicker): New.
+        (WebChromeClient::startingMonitoringPlaybackTargets): New.
+        (WebChromeClient::stopMonitoringPlaybackTargets): New.
+
+        * WebView/WebView.mm:
+        (-[WebView _close]): Invalidate and free the target picker.
+        (-[WebView _devicePicker]): New.
+        (-[WebView _showPlaybackTargetPicker:hasVideo:]): New.
+        (-[WebView _startingMonitoringPlaybackTargets]): New.
+        (-[WebView _stopMonitoringPlaybackTargets]): New.
+
+        * WebView/WebMediaPlaybackTargetPicker.h:
+        * WebView/WebMediaPlaybackTargetPicker.mm:
+        (WebMediaPlaybackTargetPicker::create): New.
+        (WebMediaPlaybackTargetPicker::WebMediaPlaybackTargetPicker): New.
+        (WebMediaPlaybackTargetPicker::showPlaybackTargetPicker): New.
+        (WebMediaPlaybackTargetPicker::startingMonitoringPlaybackTargets): New.
+        (WebMediaPlaybackTargetPicker::stopMonitoringPlaybackTargets): New.
+        (WebMediaPlaybackTargetPicker::didChoosePlaybackTarget): New.
+        (WebMediaPlaybackTargetPicker::externalOutputDeviceAvailableDidChange): New.
+        (WebMediaPlaybackTargetPicker::invalidate): New.
+        (WebMediaPlaybackTargetPicker::targetPicker): New.
+
+        * WebView/WebViewData.h:
+        (WebMediaPlaybackTargetPicker::~WebMediaPlaybackTargetPicker):
+        * WebView/WebViewData.mm:
+        * WebView/WebViewInternal.h:
+
+2015-03-19  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Add tests for unblock requests
+        https://bugs.webkit.org/show_bug.cgi?id=142900
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidStartProvisionalLoad): This now happens in PolicyChecker.
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction): Ditto.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _contentFilterDidHandleNavigationAction:]): Deleted.
+        * WebView/WebFrameInternal.h: Removed contentFilterUnblockHandler from WebFramePrivate.
+
+2015-03-19  Enrica Casucci  <enrica@apple.com>
+
+        <attachment> should put URLs on the pasteboard so that Finder can accept drops.
+        https://bugs.webkit.org/show_bug.cgi?id=142801
+        rdar://problem/19982527
+
+        Reviewed by Tim Horton.
+
+        This patch adds all the necessary support to write attachment elements into
+        the pasteboard, including the promised type in WK1.
+
+        * Misc/WebNSPasteboardExtras.mm:
+        (-[NSPasteboard _web_declareAndWriteDragImageForElement:URL:title:archive:source:]):
+        * WebCoreSupport/WebDragClient.h:
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::declareAndWriteAttachment):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView namesOfPromisedFilesDroppedAtDestination:]):
+        * WebView/WebUIDelegate.h:
+
+2015-03-19  Chris Dumez  <cdumez@apple.com>
+
+        Clean up DOMTimer related settings
+        https://bugs.webkit.org/show_bug.cgi?id=142837
+
+        Reviewed by Darin Adler.
+
+        Stop setting the DOMTimers' default minimum interval to 4ms as this
+        is now the default.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2015-03-17  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Ignore some deprecation warnings
+        https://bugs.webkit.org/show_bug.cgi?id=142813
+
+        Reviewed by Mark Rowe.
+
+        Fixing the deprecations is tracked by: <rdar://problem/20201450>
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::populate):
+
+2015-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Cannot invoke action menus anymore
+        https://bugs.webkit.org/show_bug.cgi?id=142797
+        <rdar://problem/20032670>
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView otherMouseDown:]):
+        Need a respondsToSelector check.
+
+2015-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the iOS build
+
+        * WebView/WebHTMLView.mm:
+
+2015-03-17  Tim Horton  <timothy_horton@apple.com>
+
+        Cannot invoke action menus anymore
+        https://bugs.webkit.org/show_bug.cgi?id=142797
+        <rdar://problem/20032670>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView otherMouseDown:]):
+        Don't override otherMouseDown: if the event would make an action menu.
+
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable ES6 classes by default
+        https://bugs.webkit.org/show_bug.cgi?id=142774
+
+        Reviewed by Gavin Barraclough.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-16  Brent Fulgham  <bfulgham@apple.com>
+
+        WebKit1 Clients Are Not Reliably Repainted
+        https://bugs.webkit.org/show_bug.cgi?id=142750
+        <rdar://problem/20042453>
+
+        Reviewed by Simon Fraser.
+
+        Check with the FrameView to see if we are in an immediately paintable state. If we are not,
+        mark the view as dirty once the _immediateScrollToPoint operation is complete so that the
+        region will be painted properly.
+
+        * WebView/WebClipView.mm:
+        (-[WebClipView _immediateScrollToPoint:]): 
+
+2015-03-16  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Allow clients to selectively disable plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=142506
+
+        Reviewed by Anders Carlsson.
+
+        Add new functionality allow clients to declaratively disable individual plug-ins (in a manner that conceals them
+        from the page). As part of this:
+
+        1) Introduce the concept of web-visible plug-ins and related concepts, as distinct from the real underlying
+           set of plug-ins.
+
+        2) Where applicable, plumb additional information about plug-ins (specifically, bundle identification) deeper
+           down the stack.
+
+        3) Add generic functionality to PluginStrategy to support filtering plug-ins for visibility and introduce
+           a concrete implementation thereof in WebPlatformStrategies in WebKit2.
+
+        4) Add messaging infrastructure to allow clients to set and clear plug-in policies.
+
+        While currently only used in a very limited manner, the new declarative plug-in policies are written generically
+        so that they could be easily used in the future to reduce synchronous messaging to the client when loading plug-ins.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]):
+        Set new members in PluginInfo.
+
+        * Plugins/WebNetscapePluginPackage.mm:
+        (-[WebNetscapePluginPackage getPluginInfoFromResources]):
+        Set new members in PluginInfo.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getWebVisiblePluginInfo):
+        Override to wrap getPluginInfo().
+        (WebPlatformStrategies::setPluginLoadClientPolicy):
+        Override to do nothing.
+        (WebPlatformStrategies::clearPluginClientPolicies):
+        Ditto.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _canProvideDocumentSource]):
+        Update to reflect function rename.
+
+2015-03-14  Dean Jackson  <dino@apple.com>
+
+        Feature flag for Animations Level 2
+        https://bugs.webkit.org/show_bug.cgi?id=142699
+        <rdar://problem/20165097>
+
+        Reviewed by Brent Fulgham.
+
+        Add ENABLE_CSS_ANIMATIONS_LEVEL_2 and a runtime flag animationTriggersEnabled.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181483.
+        https://bugs.webkit.org/show_bug.cgi?id=142688
+
+        Caused use-after-free on many tests (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Allow clients to selectively disable plug-ins"
+        https://bugs.webkit.org/show_bug.cgi?id=142506
+        http://trac.webkit.org/changeset/181483
+
+2015-03-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Enable WIRELESS_PLAYBACK_TARGET
+        https://bugs.webkit.org/show_bug.cgi?id=142635
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-10  Conrad Shultz  <conrad_shultz@apple.com>
+
+        Allow clients to selectively disable plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=142506
+
+        Reviewed by Anders Carlsson.
+
+        Add new functionality allow clients to declaratively disable individual plug-ins (in a manner that conceals them
+        from the page). As part of this:
+
+        1) Introduce the concept of web-visible plug-ins and related concepts, as distinct from the real underlying
+           set of plug-ins.
+
+        2) Where applicable, plumb additional information about plug-ins (specifically, bundle identification) deeper
+           down the stack.
+
+        3) Add generic functionality to PluginStrategy to support filtering plug-ins for visibility and introduce
+           a concrete implementation thereof in WebPlatformStrategies in WebKit2.
+
+        4) Add messaging infrastructure to allow clients to set and clear plug-in policies.
+
+        While currently only used in a very limited manner, the new declarative plug-in policies are written generically
+        so that they could be easily used in the future to reduce synchronous messaging to the client when loading plug-ins.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]):
+        Set new members in PluginInfo.
+
+        * Plugins/WebNetscapePluginPackage.mm:
+        (-[WebNetscapePluginPackage getPluginInfoFromResources]):
+        Set new members in PluginInfo.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getWebVisiblePluginInfo):
+        Override to wrap getPluginInfo().
+        (WebPlatformStrategies::setPluginLoadClientPolicy):
+        Override to do nothing.
+        (WebPlatformStrategies::clearPluginClientPolicies):
+        Ditto.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _canProvideDocumentSource]):
+        Update to reflect function rename.
+
+2015-03-10  Sam Weinig  <sam@webkit.org>
+
+        Allow adding a button in input elements for auto fill related functionality
+        <rdar://problem/19782066>
+        https://bugs.webkit.org/show_bug.cgi?id=142564
+
+        Reviewed by Anders Carlsson.
+
+        * DOM/WebDOMOperations.mm:
+        (-[DOMHTMLInputElement _setAutofilled:]):
+        Update for consistent spelling of AutoFill.
+
+2015-03-10  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate loadHistoryGutsFromURL:savedItemsCount:collectDiscardedItemsInto:error:]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload):
+
+2015-03-10  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the Mac build with a newer compiler
+
+        * Plugins/WebPluginController.mm:
+        (WebKit_TSUpdateCheck_alertDidEnd_returnCode_contextInfo_):
+        (WebKit_NSAlert_beginSheetModalForWindow_modalDelegate_didEndSelector_contextInfo_):
+
+2015-03-09  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Fix build when compiling with dead code stripping disabled
+        <http://webkit.org/b/142467>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        (EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*]): Disable mig code
+        generation and compilation for out-of-process plugin support.
+        This was never used on iOS.
+
+2015-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] SVG fonts are garbled
+        https://bugs.webkit.org/show_bug.cgi?id=142377
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-03-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Hide Promise with runtime flags under Cocoa JSContext API
+        https://bugs.webkit.org/show_bug.cgi?id=141965
+
+        Reviewed by Filip Pizlo.
+
+        Add new JSC runtime flag, PromiseDisabled.
+
+        * WebView/WebPreferencesPrivate.h:
+
 2015-03-03  Andy Estes  <aestes@apple.com>
 
         [Content Filtering] Separate unblock handling into its own class

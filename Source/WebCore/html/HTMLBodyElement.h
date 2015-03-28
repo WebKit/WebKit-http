@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Simon Hausmann <hausmann@kde.org>
- * Copyright (C) 2004, 2006, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2006, 2009, 2010, 2015 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -28,33 +28,13 @@
 
 namespace WebCore {
 
-class Document;
-
 class HTMLBodyElement final : public HTMLElement {
 public:
     static Ref<HTMLBodyElement> create(Document&);
     static Ref<HTMLBodyElement> create(const QualifiedName&, Document&);
     virtual ~HTMLBodyElement();
 
-    // Declared virtual in Element
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(blur);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(error);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(focus);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(load);
-
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(beforeunload);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(hashchange);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(message);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(offline);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(online);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(popstate);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(resize);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(storage);
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(unload);
-
-#if ENABLE(ORIENTATION_EVENTS)
-    DEFINE_WINDOW_ATTRIBUTE_EVENT_LISTENER(orientationchange);
-#endif
+    static const AtomicString& eventNameForWindowEventHandlerAttribute(const QualifiedName& attributeName);
 
 private:
     HTMLBodyElement(const QualifiedName&, Document&);
@@ -79,6 +59,8 @@ private:
     virtual int scrollWidth() override;
     
     virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+
+    static EventHandlerNameMap createWindowEventHandlerNameMap();
 };
 
 } //namespace

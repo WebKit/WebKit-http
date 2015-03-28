@@ -217,7 +217,7 @@ private:
     virtual bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) override;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const override;
+    virtual Optional<RefPtr<WebCore::DisplayRefreshMonitor>> createDisplayRefreshMonitor(PlatformDisplayID) const override;
 #endif
 
     virtual CompositingTriggerFlags allowedCompositingTriggers() const override
@@ -309,6 +309,14 @@ private:
 #endif
 
     virtual bool shouldDispatchFakeMouseMoveEvents() const override;
+
+    virtual void handleAutoFillButtonClick(WebCore::HTMLInputElement&) override;
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    virtual void showPlaybackTargetPicker(const WebCore::IntPoint&, bool) override;
+    virtual void startingMonitoringPlaybackTargets() override;
+    virtual void stopMonitoringPlaybackTargets() override;
+#endif
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

@@ -45,6 +45,7 @@ maximumHTMLParserDOMTreeDepth type=unsigned, initial=defaultMaximumHTMLParserDOM
 loadsSiteIconsIgnoringImageLoadingSetting initial=false
 
 caretBrowsingEnabled initial=false
+preventKeyboardDOMEventDispatch initial=false
 localStorageEnabled initial=false
 allowUniversalAccessFromFileURLs initial=true
 allowFileAccessFromFileURLs initial=true
@@ -122,8 +123,8 @@ crossOriginCheckInGetMatchedCSSRulesDisabled initial=false
 forceCompositingMode initial=false
 shouldInjectUserScriptsInInitialEmptyDocument initial=false
 fixedElementsLayoutRelativeToFrame initial=false
-allowDisplayOfInsecureContent initial=true
-allowRunningOfInsecureContent initial=true
+allowDisplayOfInsecureContent initial=false
+allowRunningOfInsecureContent initial=false
 mediaPlaybackRequiresUserGesture initial=defaultMediaPlaybackRequiresUserGesture
 mediaPlaybackAllowsInline initial=defaultMediaPlaybackAllowsInline
 allowsAlternateFullscreen initial=defaultAllowsAlternateFullscreen
@@ -236,3 +237,6 @@ ignoreViewportScalingConstraints initial=false
 appleMailPaginationQuirkEnabled initial=false
 
 attachmentElementEnabled initial=true, conditional=ATTACHMENT_ELEMENT
+
+newBlockInsideInlineModelEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
+

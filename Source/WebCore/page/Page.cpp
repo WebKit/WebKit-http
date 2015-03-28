@@ -104,6 +104,12 @@
 #include <replay/InputCursor.h>
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+#include "HTMLVideoElement.h"
+#include "MediaPlaybackTarget.h"
+#include "MediaPlaybackTargetPickerClient.h"
+#endif
+
 namespace WebCore {
 
 static HashSet<Page*>* allPages;
@@ -181,9 +187,7 @@ Page::Page(PageConfiguration& pageConfiguration)
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
     , m_viewMode(ViewModeWindowed)
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
-    , m_minimumTimerInterval(Settings::defaultMinDOMTimerInterval())
     , m_timerThrottlingEnabled(false)
-    , m_timerAlignmentInterval(Settings::defaultDOMTimerAlignmentInterval())
     , m_isEditable(false)
     , m_isPrerender(false)
     , m_viewState(PageInitialViewState)
@@ -1122,21 +1126,6 @@ void Page::setMemoryCacheClientCallsEnabled(bool enabled)
         frame->loader().tellClientAboutPastMemoryCacheLoads();
 }
 
-void Page::setMinimumTimerInterval(double minimumTimerInterval)
-{
-    double oldTimerInterval = m_minimumTimerInterval;
-    m_minimumTimerInterval = minimumTimerInterval;
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNextWithWrap(false)) {
-        if (frame->document())
-            frame->document()->adjustMinimumTimerInterval(oldTimerInterval);
-    }
-}
-
-double Page::minimumTimerInterval() const
-{
-    return m_minimumTimerInterval;
-}
-
 void Page::hiddenPageDOMTimerThrottlingStateChanged()
 {
     setTimerThrottlingEnabled(m_viewState & ViewState::IsVisuallyIdle);
@@ -1153,9 +1142,9 @@ void Page::setTimerThrottlingEnabled(bool enabled)
         return;
 
     m_timerThrottlingEnabled = enabled;
-    m_timerAlignmentInterval = enabled ? Settings::hiddenPageDOMTimerAlignmentInterval() : Settings::defaultDOMTimerAlignmentInterval();
+    m_settings->setDOMTimerAlignmentInterval(enabled ? DOMTimer::hiddenPageAlignmentInterval() : DOMTimer::defaultAlignmentInterval());
     
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNextWithWrap(false)) {
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (frame->document())
             frame->document()->didChangeTimerAlignmentInterval();
     }
@@ -1690,5 +1679,70 @@ void Page::setSessionID(SessionID sessionID)
     for (auto& view : pluginViews())
         view->privateBrowsingStateChanged(sessionID.isEphemeral());
 }
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+void Page::showPlaybackTargetPicker(Document* document, const WebCore::IntPoint& location, bool isVideo)
+{
+    m_documentRequestingPlaybackTargetPicker = document;
+
+#if PLATFORM(IOS)
+    // FIXME: refactor iOS implementation.
+    UNUSED_PARAM(location);
+    chrome().client().showPlaybackTargetPicker(isVideo);
+#else
+    chrome().client().showPlaybackTargetPicker(location, isVideo);
+#endif
+}
+
+void Page::didChoosePlaybackTarget(const MediaPlaybackTarget& target)
+{
+    Document* documentThatRequestedPicker = nullptr;
+
+    m_playbackTarget = std::make_unique<MediaPlaybackTarget>(target.devicePickerContext());
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        Document* document = frame->document();
+        if (frame->document() == m_documentRequestingPlaybackTargetPicker) {
+            documentThatRequestedPicker = document;
+            continue;
+        }
+        frame->document()->didChoosePlaybackTarget(target);
+    }
+
+    // Notify the document that requested the chooser last because if more than one element
+    // is playing the last one to set the context will be the one that actually gets to
+    //  play to the external device.
+    if (documentThatRequestedPicker)
+        documentThatRequestedPicker->didChoosePlaybackTarget(target);
+
+    m_documentRequestingPlaybackTargetPicker = nullptr;
+}
+
+void Page::playbackTargetAvailabilityDidChange(bool available)
+{
+    m_hasWirelessPlaybackTarget = available;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
+        frame->document()->playbackTargetAvailabilityDidChange(available);
+}
+
+void Page::configurePlaybackTargetMonitoring()
+{
+    bool monitoringRequired = false;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (frame->document()->requiresPlaybackTargetRouteMonitoring()) {
+            monitoringRequired = true;
+            break;
+        }
+    }
+
+    if (m_requiresPlaybackTargetMonitoring == monitoringRequired)
+        return;
+    m_requiresPlaybackTargetMonitoring = monitoringRequired;
+
+    if (monitoringRequired)
+        chrome().client().startingMonitoringPlaybackTargets();
+    else
+        chrome().client().stopMonitoringPlaybackTargets();
+}
+#endif
 
 } // namespace WebCore

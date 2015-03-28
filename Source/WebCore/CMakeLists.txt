@@ -74,6 +74,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/image-decoders/webp"
     "${WEBCORE_DIR}/platform/mediastream"
     "${WEBCORE_DIR}/platform/mock"
+    "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network"
     "${WEBCORE_DIR}/platform/sql"
     "${WEBCORE_DIR}/platform/text/icu"
@@ -430,6 +431,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/TreeWalker.idl
     dom/UIEvent.idl
     dom/WebKitAnimationEvent.idl
+    dom/WebKitMouseForceEvent.idl
     dom/WebKitNamedFlow.idl
     dom/WebKitTransitionEvent.idl
     dom/WheelEvent.idl
@@ -578,6 +580,20 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/WebGLUniformLocation.idl
     html/canvas/WebGLVertexArrayObject.idl
     html/canvas/WebGLVertexArrayObjectOES.idl
+
+    html/track/AudioTrack.idl
+    html/track/AudioTrackList.idl
+    html/track/DataCue.idl
+    html/track/TextTrack.idl
+    html/track/TextTrackCue.idl
+    html/track/TextTrackCueList.idl
+    html/track/TextTrackList.idl
+    html/track/TrackEvent.idl
+    html/track/VTTCue.idl
+    html/track/VTTRegion.idl
+    html/track/VTTRegionList.idl
+    html/track/VideoTrack.idl
+    html/track/VideoTrackList.idl
 
     inspector/CommandLineAPIHost.idl
     inspector/InspectorFrontendHost.idl
@@ -1441,6 +1457,7 @@ set(WebCore_SOURCES
     dom/ViewportArguments.cpp
     dom/VisitedLinkState.cpp
     dom/WebKitAnimationEvent.cpp
+    dom/WebKitMouseForceEvent.cpp
     dom/WebKitNamedFlow.cpp
     dom/WebKitTransitionEvent.cpp
     dom/WheelEvent.cpp
@@ -1723,6 +1740,7 @@ set(WebCore_SOURCES
     html/canvas/WebGLTransformFeedback.cpp
     html/canvas/WebGLUniformLocation.cpp
     html/canvas/WebGLVertexArrayObject.cpp
+    html/canvas/WebGLVertexArrayObjectBase.cpp
     html/canvas/WebGLVertexArrayObjectOES.cpp
 
     html/forms/FileIconLoader.cpp
@@ -1750,6 +1768,7 @@ set(WebCore_SOURCES
     html/parser/XSSAuditor.cpp
     html/parser/XSSAuditorDelegate.cpp
 
+    html/shadow/AutoFillButtonElement.cpp
     html/shadow/ContentDistributor.cpp
     html/shadow/DetailsMarkerControl.cpp
     html/shadow/InsertionPoint.cpp
@@ -1873,7 +1892,6 @@ set(WebCore_SOURCES
     loader/cache/CachedSVGDocumentReference.cpp
     loader/cache/CachedScript.cpp
     loader/cache/CachedXSLStyleSheet.cpp
-    loader/cache/CacheValidation.cpp
     loader/cache/MemoryCache.cpp
 
     loader/icon/IconController.cpp
@@ -1983,6 +2001,7 @@ set(WebCore_SOURCES
     platform/ContextMenu.cpp
     platform/ContextMenuItem.cpp
     platform/CrossThreadCopier.cpp
+    platform/Cursor.cpp
     platform/DateComponents.cpp
     platform/Decimal.cpp
     platform/DisplaySleepDisabler.cpp
@@ -2170,11 +2189,11 @@ set(WebCore_SOURCES
     platform/graphics/transforms/TransformationMatrix.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
 
-    platform/mediastream/MediaStreamCenter.cpp
     platform/mediastream/MediaStreamPrivate.cpp
     platform/mediastream/MediaStreamTrackPrivate.cpp
-    platform/mediastream/MediaStreamSource.cpp
-    platform/mediastream/MediaStreamSourceStates.cpp
+    platform/mediastream/RealtimeMediaSource.cpp
+    platform/mediastream/RealtimeMediaSourceCenter.cpp
+    platform/mediastream/RealtimeMediaSourceStates.cpp
     platform/mediastream/RTCIceCandidateDescriptor.cpp
     platform/mediastream/RTCPeerConnectionHandler.cpp
     platform/mediastream/RTCSessionDescriptionDescriptor.cpp
@@ -2183,7 +2202,7 @@ set(WebCore_SOURCES
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
     platform/mock/MediaConstraintsMock.cpp
-    platform/mock/MockMediaStreamCenter.cpp
+    platform/mock/MockRealtimeMediaSourceCenter.cpp
     platform/mock/RTCDataChannelHandlerMock.cpp
     platform/mock/RTCDTMFSenderHandlerMock.cpp
     platform/mock/RTCNotifiersMock.cpp
@@ -2196,6 +2215,7 @@ set(WebCore_SOURCES
     platform/network/BlobRegistry.cpp
     platform/network/BlobRegistryImpl.cpp
     platform/network/BlobResourceHandle.cpp
+    platform/network/CacheValidation.cpp
     platform/network/CredentialBase.cpp
     platform/network/CredentialStorage.cpp
     platform/network/DNSResolveQueue.cpp
@@ -2827,6 +2847,7 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLTransformFeedback.cpp
         html/canvas/WebGLUniformLocation.cpp
         html/canvas/WebGLVertexArrayObject.cpp
+        html/canvas/WebGLVertexArrayObjectBase.cpp
         html/canvas/WebGLVertexArrayObjectOES.cpp
     )
     list(APPEND WebCore_IDL_FILES
@@ -2977,10 +2998,8 @@ if (WTF_USE_3D_GRAPHICS)
     endif ()
 
     list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${THIRDPARTY_DIR}/ANGLE/src"
-        "${THIRDPARTY_DIR}/ANGLE/include/"
+        "${THIRDPARTY_DIR}/ANGLE/"
         "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-        "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
         "${WEBCORE_DIR}/platform/graphics/gpu"
     )
 
@@ -3077,8 +3096,6 @@ if (WTF_USE_3D_GRAPHICS)
         platform/graphics/ANGLEWebKitBridge.cpp
         platform/graphics/GraphicsContext3D.cpp
         platform/graphics/FormatConverter.cpp
-
-        platform/graphics/gpu/DrawingBuffer.cpp
     )
 endif ()
 
@@ -3088,7 +3105,7 @@ if (ENABLE_WEB_REPLAY)
         "${JAVASCRIPTCORE_DIR}/replay"
     )
 
-    set(WebCore_WEB_REPLAY_INPUTS ${CMAKE_CURRENT_SOURCE_DIR}/replay/WebInputs.json)
+    set(WebCore_WEB_REPLAY_INPUTS ${CMAKE_CURRENT_SOURCE_DIR}/replay/WebInputs.json ${JAVASCRIPTCORE_DIR}/replay/JSInputs.json)
     add_custom_command(
         OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WebReplayInputs.h ${DERIVED_SOURCES_WEBCORE_DIR}/WebReplayInputs.cpp
         MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/replay/scripts/CodeGeneratorReplayInputs.py
@@ -3134,6 +3151,7 @@ endif ()
 set(WebCoreTestSupport_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/testing"
+    "${DERIVED_SOURCES_WEBCORE_DIR}"
 )
 
 set(WebCoreTestSupport_IDL_INCLUDES
@@ -3145,6 +3163,7 @@ set(WebCoreTestSupport_IDL_FILES
     testing/Internals.idl
     testing/MallocStatistics.idl
     testing/MemoryInfo.idl
+    testing/MockContentFilterSettings.idl
     testing/TypeConversions.idl
 )
 
@@ -3518,6 +3537,7 @@ if (WTF_USE_3D_GRAPHICS)
         APPEND
         PROPERTY INCLUDE_DIRECTORIES
             "${THIRDPARTY_DIR}/ANGLE/include"
+            "${THIRDPARTY_DIR}/ANGLE/src"
     )
     list(APPEND WebCore_LIBRARIES ANGLESupport)
     WEBKIT_SET_EXTRA_COMPILER_FLAGS(ANGLESupport IGNORECXX_WARNINGS)

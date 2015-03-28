@@ -235,7 +235,15 @@
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
     JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
-    macro(iteratorNext) \
+    macro(iteratedObject) \
+    macro(arrayIteratorNextIndex) \
+    macro(arrayIterationKind) \
+    macro(arrayIterationKindKey) \
+    macro(arrayIterationKindValue) \
+    macro(arrayIterationKindKeyValue) \
+    macro(charCodeAt) \
+    macro(iteratedString) \
+    macro(stringIteratorNextIndex) \
     macro(resolve) \
     macro(reject) \
     macro(promise) \
@@ -253,7 +261,8 @@
     macro(isFinite) \
     macro(TypeError) \
     macro(undefined) \
-    macro(BuiltinLog)
+    macro(BuiltinLog) \
+    macro(homeObject)
 
 namespace JSC {
     

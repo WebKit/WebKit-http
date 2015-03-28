@@ -36,6 +36,7 @@ VPATH = \
 .PHONY : all
 all : \
     ArrayConstructor.lut.h \
+    ArrayIteratorPrototype.lut.h \
     ArrayPrototype.lut.h \
     BooleanPrototype.lut.h \
     DateConstructor.lut.h \
@@ -56,6 +57,7 @@ all : \
     RegExpJitTables.h \
     RegExpObject.lut.h \
     StringConstructor.lut.h \
+    StringIteratorPrototype.lut.h \
     SymbolPrototype.lut.h \
     udis86_itab.h \
     Bytecodes.h \

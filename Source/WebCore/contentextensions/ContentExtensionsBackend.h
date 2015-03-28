@@ -28,6 +28,7 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
+#include "ContentExtension.h"
 #include "ContentExtensionRule.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/StringHash.h>
@@ -35,7 +36,11 @@
 
 namespace WebCore {
 
+class DocumentLoader;
+class ResourceRequest;
 class URL;
+
+struct ResourceLoadInfo;
 
 namespace ContentExtensions {
 
@@ -57,10 +62,15 @@ public:
     WEBCORE_EXPORT void removeAllContentExtensions();
 
     // - Internal WebCore Interface.
-    WEBCORE_EXPORT Vector<Action> actionsForURL(const URL&);
+    WEBCORE_EXPORT Vector<Action> actionsForResourceLoad(const ResourceLoadInfo&) const;
+    StyleSheetContents* globalDisplayNoneStyleSheet(const String& identifier) const;
+
+    void processContentExtensionRulesForLoad(ResourceRequest&, ResourceType, DocumentLoader& initiatingDocumentLoader);
+
+    static const String& displayNoneCSSRule();
 
 private:
-    HashMap<String, RefPtr<CompiledContentExtension>> m_contentExtensions;
+    HashMap<String, RefPtr<ContentExtension>> m_contentExtensions;
 };
 
 } // namespace ContentExtensions

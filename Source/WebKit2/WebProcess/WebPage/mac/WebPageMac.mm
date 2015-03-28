@@ -87,6 +87,10 @@
 #import <WebCore/htmlediting.h>
 #import <WebKitSystemInterface.h>
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+#include <WebCore/MediaPlaybackTarget.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -1020,9 +1024,19 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     IntPoint locationInContentCoordinates = mainFrame.view()->rootViewToContents(roundedIntPoint(locationInViewCooordinates));
     HitTestResult hitTestResult = mainFrame.eventHandler().hitTestResultAtPoint(locationInContentCoordinates);
 
+    m_lastActionMenuHitTestPreventsDefault = false;
+    Element* element = hitTestResult.innerElement();
+
+    if (forImmediateAction) {
+        mainFrame.eventHandler().setImmediateActionStage(ImmediateActionStage::PerformedHitTest);
+        if (element)
+            m_lastActionMenuHitTestPreventsDefault = element->dispatchMouseForceWillBegin();
+    }
+
     ActionMenuHitTestResult actionMenuResult;
     actionMenuResult.hitTestLocationInViewCooordinates = locationInViewCooordinates;
     actionMenuResult.hitTestResult = WebHitTestResult::Data(hitTestResult);
+    actionMenuResult.contentPreventsDefault = m_lastActionMenuHitTestPreventsDefault;
 
     RefPtr<Range> selectionRange = corePage()->focusController().focusedOrMainFrame().selection().selection().firstRange();
 
@@ -1055,6 +1069,7 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
                 actionMenuResult.imageSharedMemory = SharedMemory::create(buffer->size());
                 memcpy(actionMenuResult.imageSharedMemory->data(), buffer->data(), buffer->size());
                 actionMenuResult.imageExtension = imageExtension;
+                actionMenuResult.imageSize = buffer->size();
             }
         }
     }
@@ -1141,6 +1156,48 @@ void WebPage::focusAndSelectLastActionMenuHitTestResult()
     frame->selection().setSelection(position);
 }
 
+void WebPage::immediateActionDidUpdate(float force)
+{
+    m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionUpdated);
+
+    Element* element = m_lastActionMenuHitTestResult.innerElement();
+    if (!element)
+        return;
+
+    if (!m_lastActionMenuHitTestPreventsDefault)
+        return;
+
+    element->dispatchMouseForceChanged(force, m_page->mainFrame().eventHandler().lastMouseDownEvent());
+}
+
+void WebPage::immediateActionDidCancel()
+{
+    m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCancelled);
+
+    Element* element = m_lastActionMenuHitTestResult.innerElement();
+    if (!element)
+        return;
+
+    if (!m_lastActionMenuHitTestPreventsDefault)
+        return;
+
+    element->dispatchMouseForceCancelled(m_page->mainFrame().eventHandler().lastMouseDownEvent());
+}
+
+void WebPage::immediateActionDidComplete()
+{
+    m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCompleted);
+
+    Element* element = m_lastActionMenuHitTestResult.innerElement();
+    if (!element)
+        return;
+
+    if (!m_lastActionMenuHitTestPreventsDefault)
+        return;
+
+    element->dispatchMouseForceDown(m_page->mainFrame().eventHandler().lastMouseDownEvent());
+}
+
 void WebPage::dataDetectorsDidPresentUI(PageOverlay::PageOverlayID overlayID)
 {
     MainFrame& mainFrame = corePage()->mainFrame();
@@ -1186,6 +1243,19 @@ void WebPage::setFont(const String& fontFamily, double fontSize, uint64_t fontTr
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     frame.editor().applyFontStyles(fontFamily, fontSize, fontTraits);
 }
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+void WebPage::playbackTargetSelected(const WebCore::MediaPlaybackTarget& playbackTarget) const
+{
+    m_page->didChoosePlaybackTarget(playbackTarget);
+}
+
+void WebPage::playbackTargetAvailabilityDidChange(bool changed)
+{
+    m_page->playbackTargetAvailabilityDidChange(changed);
+}
+#endif
+
 
 } // namespace WebKit
 

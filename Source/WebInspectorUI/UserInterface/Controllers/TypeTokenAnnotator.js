@@ -23,22 +23,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TypeTokenAnnotator = function(sourceCodeTextEditor, script)
+WebInspector.TypeTokenAnnotator = class TypeTokenAnnotator extends WebInspector.Annotator
 {
-    WebInspector.Annotator.call(this, sourceCodeTextEditor);
+    constructor(sourceCodeTextEditor, script)
+    {
+        super(sourceCodeTextEditor);
 
-    this._script = script;
-    this._typeTokenNodes = [];
-    this._typeTokenBookmarks = [];
-};
-
-WebInspector.TypeTokenAnnotator.prototype = {
-    constructor: WebInspector.TypeTokenAnnotator,
-    __proto__: WebInspector.Annotator.prototype,
+        this._script = script;
+        this._typeTokenNodes = [];
+        this._typeTokenBookmarks = [];
+    }
 
     // Protected
 
-    insertAnnotations: function()
+    insertAnnotations()
     {
         if (!this.isActive())
             return;
@@ -62,12 +60,12 @@ WebInspector.TypeTokenAnnotator.prototype = {
 
         var startTime = Date.now();
         var allNodesInRange = scriptSyntaxTree.filterByRange(startOffset, endOffset);
-        scriptSyntaxTree.updateTypes(allNodesInRange, function afterTypeUpdates() {
+        scriptSyntaxTree.updateTypes(allNodesInRange, function afterTypeUpdates(nodesWithUpdatedTypes) {
             // Because this is an asynchronous call, we could have been deactivated before the callback function is called.
             if (!this.isActive())
                 return;
 
-            allNodesInRange.forEach(this._insertTypeTokensForEachNode, this);
+            nodesWithUpdatedTypes.forEach(this._insertTypeToken, this);
 
             var totalTime = Date.now() - startTime;
             var timeoutTime = Math.min(Math.max(7500, totalTime), 8 * totalTime);
@@ -77,59 +75,47 @@ WebInspector.TypeTokenAnnotator.prototype = {
                 this.insertAnnotations();
             }.bind(this), timeoutTime);
         }.bind(this));
-    },
+    }
 
-    clearAnnotations: function()
+    clearAnnotations()
     {
         this._clearTypeTokens();
-    },
+    }
 
     // Private
 
-    _insertTypeTokensForEachNode: function(node)
+    _insertTypeToken(node)
     {
-        var scriptSyntaxTree = this._script._scriptSyntaxTree;
-
-        switch (node.type) {
-        case WebInspector.ScriptSyntaxTree.NodeType.FunctionDeclaration:
-        case WebInspector.ScriptSyntaxTree.NodeType.FunctionExpression:
-            for (var param of node.params) {
-                if (!param.attachments.__typeToken && param.attachments.types && param.attachments.types.isValid)
-                    this._insertToken(param.range[0], param, false, WebInspector.TypeTokenView.TitleType.Variable, param.name);
-
-                if (param.attachments.__typeToken)
-                    param.attachments.__typeToken.update(param.attachments.types);
-            }
-
-            // If a function does not have an explicit return type, then don't show a return type unless we think it's a constructor.
-            var functionReturnType = node.attachments.returnTypes;
-            if (node.attachments.__typeToken || !functionReturnType || !functionReturnType.isValid)
-                break;
-
-            if (scriptSyntaxTree.containsNonEmptyReturnStatement(node.body) || !WebInspector.TypeSet.fromPayload(functionReturnType).isContainedIn(WebInspector.TypeSet.TypeBit.Undefined)) {
-                var functionName = node.id ? node.id.name : null;
-                this._insertToken(node.isGetterOrSetter ? node.getterOrSetterRange[0] : node.range[0], node, true, WebInspector.TypeTokenView.TitleType.ReturnStatement, functionName);
-            }
+        if (node.type === WebInspector.ScriptSyntaxTree.NodeType.Identifier) {
+            if (!node.attachments.__typeToken && node.attachments.types && node.attachments.types.isValid)
+                this._insertToken(node.range[0], node, false, WebInspector.TypeTokenView.TitleType.Variable, node.name);
 
             if (node.attachments.__typeToken)
-                node.attachments.__typeToken.update(node.attachments.returnTypes);
+                node.attachments.__typeToken.update(node.attachments.types);
 
-            break;
-        case WebInspector.ScriptSyntaxTree.NodeType.VariableDeclarator:
-            var identifiers = scriptSyntaxTree.gatherIdentifiersInVariableDeclaration(node);
-            for (identifier of identifiers) {
-                if (!identifier.attachments.__typeToken && identifier.attachments.types && identifier.attachments.types.isValid)
-                    this._insertToken(identifier.range[0], identifier, false, WebInspector.TypeTokenView.TitleType.Variable, identifier.name);
-
-                if (identifier.attachments.__typeToken)
-                    identifier.attachments.__typeToken.update(identifier.attachments.types);
-            }
-
-            break;
+            return;
         }
-    },
 
-    _insertToken: function(originalOffset, node, shouldTranslateOffsetToAfterParameterList, typeTokenTitleType, functionOrVariableName)
+        console.assert(node.type === WebInspector.ScriptSyntaxTree.NodeType.FunctionDeclaration || node.type === WebInspector.ScriptSyntaxTree.NodeType.FunctionExpression);
+
+        var functionReturnType = node.attachments.returnTypes;
+        if (!functionReturnType || !functionReturnType.isValid)
+            return;
+
+        // If a function does not have an explicit return statement with an argument (i.e, "return x;" instead of "return;") 
+        // then don't show a return type unless we think it's a constructor.
+        var scriptSyntaxTree = this._script._scriptSyntaxTree;
+        if (!node.attachments.__typeToken && (scriptSyntaxTree.containsNonEmptyReturnStatement(node.body) || !WebInspector.TypeSet.fromPayload(functionReturnType).isContainedIn(WebInspector.TypeSet.TypeBit.Undefined))) {
+            var functionName = node.id ? node.id.name : null;
+            var offset = node.isGetterOrSetter ? node.getterOrSetterRange[0] : node.range[0];
+            this._insertToken(offset, node, true, WebInspector.TypeTokenView.TitleType.ReturnStatement, functionName);
+        }
+
+        if (node.attachments.__typeToken)
+            node.attachments.__typeToken.update(node.attachments.returnTypes);
+    }
+
+    _insertToken(originalOffset, node, shouldTranslateOffsetToAfterParameterList, typeTokenTitleType, functionOrVariableName)
     {
         var tokenPosition = this.sourceCodeTextEditor.originalOffsetToCurrentPosition(originalOffset);
         var currentOffset = this.sourceCodeTextEditor.currentPositionToCurrentOffset(tokenPosition);
@@ -152,9 +138,9 @@ WebInspector.TypeTokenAnnotator.prototype = {
         node.attachments.__typeToken = typeToken;
         this._typeTokenNodes.push(node);
         this._typeTokenBookmarks.push(bookmark);
-    },
+    }
 
-    _translateToOffsetAfterFunctionParameterList: function(node, offset, sourceString)
+    _translateToOffsetAfterFunctionParameterList(node, offset, sourceString)
     {
         // The assumption here is that we get the offset starting at the function keyword (or after the get/set keywords).
         // We will return the offset for the closing parenthesis in the function declaration.
@@ -195,9 +181,9 @@ WebInspector.TypeTokenAnnotator.prototype = {
         }
 
         return offset + 1;
-    },
+    }
 
-    _clearTypeTokens: function()
+    _clearTypeTokens()
     {
         this._typeTokenNodes.forEach(function(node) {
             node.attachments.__typeToken = null;

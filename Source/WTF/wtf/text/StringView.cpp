@@ -31,9 +31,49 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
 
-#if CHECK_STRINGVIEW_LIFETIME
-
 namespace WTF {
+
+bool StringView::containsIgnoringASCIICase(const StringView& matchString) const
+{
+    return findIgnoringASCIICase(matchString) != notFound;
+}
+
+bool StringView::containsIgnoringASCIICase(const StringView& matchString, unsigned startOffset) const
+{
+    return findIgnoringASCIICase(matchString, startOffset) != notFound;
+}
+
+size_t StringView::findIgnoringASCIICase(const StringView& matchString) const
+{
+    return ::WTF::findIgnoringASCIICase(*this, matchString, 0);
+}
+
+size_t StringView::findIgnoringASCIICase(const StringView& matchString, unsigned startOffset) const
+{
+    return ::WTF::findIgnoringASCIICase(*this, matchString, startOffset);
+}
+
+bool StringView::startsWith(const StringView& prefix) const
+{
+    return ::WTF::startsWith(*this, prefix);
+}
+
+bool StringView::startsWithIgnoringASCIICase(const StringView& prefix) const
+{
+    return ::WTF::startsWithIgnoringASCIICase(*this, prefix);
+}
+
+bool StringView::endsWith(const StringView& suffix) const
+{
+    return ::WTF::endsWith(*this, suffix);
+}
+
+bool StringView::endsWithIgnoringASCIICase(const StringView& suffix) const
+{
+    return ::WTF::endsWithIgnoringASCIICase(*this, suffix);
+}
+
+#if CHECK_STRINGVIEW_LIFETIME
 
 // Manage reference count manually so UnderlyingString does not need to be defined in the header.
 
@@ -118,6 +158,6 @@ void StringView::setUnderlyingString(const StringView& string)
     adoptUnderlyingString(underlyingString);
 }
 
-}
+#endif // CHECK_STRINGVIEW_LIFETIME
 
-#endif
+} // namespace WTF

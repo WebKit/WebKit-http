@@ -59,6 +59,15 @@ media/media-captions.html
 fast/dom/Window/slow-unload-handler.html
 fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html
 
+# Need a scroll snap point implementation
+css3/scroll-snap [ Skip ]
+
+# TODO Animation triggers not supported
+animations/trigger-computed-style.html [ Skip ]
+animations/trigger-parsing.html [ Skip ]
+animations/trigger-container-scroll-simple.html [ Skip ]
+animations/trigger-container-scroll-boundaries.html [ Skip ]
+
 # ----------------------------------------
 # Tests which also fail in other platforms
 # ----------------------------------------
@@ -92,6 +101,7 @@ http/tests/history/back-with-fragment-change.php
 http/tests/loading/bad-scheme-subframe.html
 http/tests/media/video-play-stall-seek.html
 http/tests/media/video-play-stall.html
+http/tests/media/video-play-waiting.html
 http/tests/security/feed-urls-from-remote.html
 
 # ------------------------------
@@ -251,9 +261,6 @@ fast/frames/transparent-scrollbar.html
 fast/events/drag-and-drop-subframe-dataTransfer.html
 fast/events/drag-dataTransferItemList-file-handling.html
 
-# ENABLE(CSS_SCROLL_SNAP) is disabled.
-css3/scroll-snap
-
 # ENABLE(DRAGGABLE_REGION) is disabled
 fast/css/draggable-region-parser.html
 
@@ -268,7 +275,6 @@ webkit.org/b/87661 crypto/subtle/rsa-indexeddb.html [ Skip ]
 webkit.org/b/87661 inspector-protocol/indexeddb/basics.html [ Skip ]
 webkit.org/b/87661 fast/history/page-cache-indexed-closed-db.html [ Skip ]
 webkit.org/b/87661 fast/history/page-cache-indexed-opened-db.html [ Skip ]
-webkit.org/b/87661 fast/history/page-cache-webdatabase-opened-db.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # TESTS EXPECTED TO FAIL
@@ -366,7 +372,6 @@ webkit.org/b/86623 http/tests/security/drag-drop-different-origin.html
 webkit.org/b/86623 http/tests/security/drag-over-remote-content-iframe.html
 
 # Needs baselines
-editing/inserting/before-after-input-element.html [ Missing ]
 editing/selection/contains-boundaries.html [ Missing ]
 editing/selection/designmode-no-caret.html [ Timeout ]
 editing/selection/replaced-boundaries-3.html [ Missing ]
@@ -375,8 +380,6 @@ editing/style/5065910.html [ Missing ]
 editing/style/font-family-with-space.html [ Missing ]
 editing/style/smoosh-styles-001.html [ Missing ]
 editing/style/style-boundary-005.html [ Missing ]
-fast/css/css2-system-fonts.html [ Missing ]
-fast/text/tatechuyoko.html [ Missing ]
 
 # Test is failing due to a scrolling problem on second iteration.
 webkit.org/b/106240 fast/events/mouse-cursor-image-set.html [ Failure ]
@@ -438,6 +441,9 @@ editing/secure-input [ Failure ]
 # ATK does not support helpText/aria-help
 accessibility/aria-help.html [ Skip ]
 
+# Need platform specific update to test to make it run.
+webkit.org/b/143083 accessibility/table-cell-display-block.html [ Skip ]
+
 # ENABLE_GAMEPAD not enabled.
 webkit.org/b/134718 gamepad [ Skip ]
 
@@ -454,12 +460,20 @@ Bug(EFL) css3/filters/backdrop [ Skip ]
 Bug(EFL) editing/selection/doubleclick-crash.html [ Failure ]
 Bug(EFL) editing/selection/move-by-word-visually-mac.html [ Failure ]
 
-# EFL port doesn't support attachment feature yet. It was added by r180193.
+# EFL port doesn't support attachment feature yet. It was added by r180193, r181056, r181114, r181118 and r181418.
 webkit.org/b/141894 fast/attachment/attachment-disabled-rendering.html [ Failure ]
 webkit.org/b/141894 fast/attachment/attachment-rendering.html [ Failure ]
+webkit.org/b/141894 fast/attachment/attachment-progress.html [ Missing ]
+webkit.org/b/141894 fast/attachment/attachment-select-on-click-inside-user-select-all.html [ Missing ]
+webkit.org/b/141894 fast/attachment/attachment-select-on-click.html [ Missing ]
+webkit.org/b/141894 fast/attachment/attachment-subtitle.html [ Missing ]
+webkit.org/b/141894 fast/attachment/attachment-title.html [ Missing ]
 
 # EFL port doesn't fully support EME yet.
 webkit.org/b/141959 http/tests/media/clearkey/clear-key-hls-aes128.html [ Timeout ]
+
+# Need a new baseline for EFL port. It was added by r72173.
+Bug(EFL) fast/css/line-height-determined-by-primary-font.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
@@ -478,6 +492,7 @@ webkit.org/b/102200 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Time
 webkit.org/b/105870 webaudio/audiobuffersource.html [ Pass Crash ]
 webkit.org/b/105870 webaudio/audionode-connect-order.html [ Pass Crash ]
 webkit.org/b/105870 webaudio/audionode-channel-rules.html [ Pass Crash ]
+webkit.org/b/105870 webaudio/mediastreamaudiosourcenode.html [ Crash Timeout ]
 
 # Media regressions after updating to gstreamer 1.0.
 webkit.org/b/104809 media/video-src.html [ Crash Pass ]
@@ -512,12 +527,16 @@ webkit.org/b/131044 media [ Skip ]
 # A lot of crash happen since buildbot bagan to use Ubuntu 13.10.
 webkit.org/b/131729 fast/events/touch [ Skip ]
 
+webkit.org/b/142766 fast/overflow/overflow-height-float-not-removed-crash2.html [ Crash ]
+
 # REGRESSION(r174107): [EFL] WebGL broken
 # https://bugs.webkit.org/show_bug.cgi?id=137842
 fast/canvas/webgl [ Skip ]
 webgl [ Skip ]
 http/tests/webgl [ Skip ]
 compositing/webgl [ Skip ]
+compositing/backface-visibility/backface-visibility-webgl.html [ Skip ]
+compositing/visibility/visibility-simple-webgl-layer.html [ Skip ]
 fast/images/webgl-teximage2d.html [ Skip ]
 http/tests/canvas/webgl/origin-clean-conformance.html [ Skip ]
 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html [ Skip ]
@@ -622,18 +641,16 @@ webkit.org/b/131729 http/tests/globalhistory/history-delegate-basic-title.html [
 webkit.org/b/131729 http/tests/globalhistory/history-delegate-pushstate.html [ Failure ]
 webkit.org/b/131729 http/tests/globalhistory/history-delegate-replacestate.html [ Failure ]
 webkit.org/b/131729 http/tests/loading/sizes/preload-image-sizes-2x.html [ Failure ]
-webkit.org/b/131729 http/tests/local/file-url-sent-as-referer.html [ Failure ]
 webkit.org/b/131729 http/tests/misc/acid3.html [ Failure Pass ]
 webkit.org/b/131729 http/tests/misc/image-blocked-src-change.html [ Failure Pass ]
 webkit.org/b/131729 http/tests/misc/slow-loading-image-in-pattern.html [ Failure ]
-webkit.org/b/131729 http/tests/media/video-error-abort.html [ Crash ]
+webkit.org/b/131729 http/tests/media/video-error-abort.html [ Crash Pass ]
 webkit.org/b/131729 http/tests/media/video-load-twice.html [ Failure Pass ]
-webkit.org/b/131729 http/tests/media/video-redirect.html [ Crash ]
+webkit.org/b/131729 http/tests/media/video-redirect.html [ Crash Pass ]
 webkit.org/b/131729 http/tests/security/cross-origin-plugin-private-browsing-toggled.html [ Failure ]
 webkit.org/b/131729 http/tests/security/drag-drop-local-file.html [ Failure ]
 webkit.org/b/131729 http/tests/security/svg-image-with-cached-remote-image.html [ Failure ImageOnlyFailure Pass ]
 webkit.org/b/131729 http/tests/xmlhttprequest/simple-cross-origin-denied-events.html [ Failure Pass ]
-webkit.org/b/131729 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html [ Failure Pass ]
 
 webkit.org/b/135498 css3/device-adapt/opera/constrain-009.xhtml [ Crash Timeout ]
 webkit.org/b/135498 css3/device-adapt/opera/constrain-023.xhtml [ Crash Timeout ]
@@ -695,7 +712,6 @@ webkit.org/b/96641 media/video-seek-past-end-playing.html [ Failure Pass ]
 
 # Tests that sometimes fail on the bot (for GTK or Mac ports as well)
 webkit.org/b/127550 media/audio-concurrent-supported.html [ Failure Pass ]
-webkit.org/b/127551 media/video-duration-known-after-eos.html [ Failure Pass ]
 webkit.org/b/122507 media/track/track-cue-rendering.html [ Failure Pass ]
 webkit.org/b/76280  media/W3C/video/networkState/networkState_during_progress.html [ Failure Pass ]
 webkit.org/b/128101 media/video-loop.html [ Pass Failure ]
@@ -782,11 +798,12 @@ webkit.org/b/95428 media/video-controls-captions.html [ Timeout ]
 webkit.org/b/113106 media/track/track-prefer-captions.html [ Timeout ]
 
 # Failures after r130363.
-webkit.org/b/98573 fast/forms/multiple-form-submission-protection-mouse.html [ Failure Pass ]
+webkit.org/b/98573 fast/forms/multiple-form-submission-protection-mouse.html [ Failure Timeout Pass ]
 
 webkit.org/b/103115 http/tests/loading/remove-child-triggers-parser.html [ Failure Pass ]
 
 webkit.org/b/102201 fast/dom/Window/window-resize.html [ Failure Pass ]
+webkit.org/b/102201 fast/dom/Window/window-resize-contents.html [ Timeout Pass ]
 
 webkit.org/b/103396 [ Debug ] fast/forms/state-restore-per-form.html [ Failure Pass ]
 webkit.org/b/103399 [ Debug ] fast/forms/basic-buttons.html [ Failure Pass ]
@@ -803,6 +820,8 @@ webkit.org/b/108355 storage/websql/sql-error-codes.html [ Failure ]
 
 # Libsoup 2.42.0 regressions
 webkit.org/b/114918 http/tests/xmlhttprequest/cache-override.html [ Failure Pass ]
+webkit.org/b/114918 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html [ Failure Timeout Pass ]
+webkit.org/b/114918 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-mixed-case.html [ Timeout Pass ]
 
 webkit.org/b/115440 svg/stroke/animated-non-scaling-stroke.html [ ImageOnlyFailure Pass ]
 
@@ -811,6 +830,7 @@ webkit.org/b/119042 animations/resume-after-page-cache.html [ Failure Pass Crash
 
 webkit.org/b/124655 css3/masking/clip-path-animation.html [ Failure Pass ]
 
+webkit.org/b/124664 media/video-duration-known-after-eos.html [ Failure Timeout Pass ]
 webkit.org/b/124664 media/video-seek-with-negative-playback.html [ Failure Crash Pass ]
 
 webkit.org/b/124665 media/video-ended-event-negative-playback.html [ Failure Pass ]
@@ -848,6 +868,7 @@ webkit.org/b/125517 compositing/regions/z-index-update.html [ Crash Pass ]
 
 webkit.org/b/141897 fast/regions/overflow/overflow-region-float.html [ ImageOnlyFailure ]
 webkit.org/b/141897 fast/regions/overflow/overflow-region-inline.html [ ImageOnlyFailure ]
+webkit.org/b/141897 fast/regions/overflow/overflow-first-and-last-regions.html [ ImageOnlyFailure ]
 
 webkit.org/b/125573 compositing/backgrounds/fixed-backgrounds.html [ Crash Pass ]
 
@@ -888,6 +909,7 @@ webkit.org/b/137138 svg/W3C-SVG-1.1 [ Failure ImageOnlyFailure Pass ]
 
 # EFL port doesn't support Khmer and Lao fallback fonts, this test has added since r170207.
 Bug(EFL) fast/text/khmer-lao-font.html [ Skip ]
+Bug(EFL) fast/text/simple-lines-hover-underline.html [ Timeout Pass ]
 
 webkit.org/b/142156 css3/shapes/spec-examples/shape-outside-011.html [ Failure Pass ]
 webkit.org/b/142156 css3/shapes/spec-examples/shape-outside-012.html [ Failure Pass ]
@@ -895,6 +917,32 @@ webkit.org/b/142156 css3/shapes/spec-examples/shape-outside-019.html [ Failure P
 
 webkit.org/b/142157 fast/profiler/dead-time.html [ Failure Pass ]
 webkit.org/b/142157 fast/profiler/stop-profiling-after-setTimeout.html [ Failure Pass ]
+
+webkit.org/b/95551 fast/forms/datalist/update-range-with-datalist.html [ ImageOnlyFailure Pass ]
+
+webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-006.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-007.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-008.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-009.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-010.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/129820 svg/clip-path/mask-objectboundingbox-content-clip-transform.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/129820 svg/clip-path/mask-objectboundingbox-content-clip.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/129820 svg/clip-path/mask-userspaceonuse-content-clip-transform.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/129820 svg/clip-path/mask-userspaceonuse-content-clip.svg [ Pass ImageOnlyFailure ]
+
+webkit.org/b/102097 svg/text/hidpi-text-selection-rect-position.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/141458 imported/mozilla/svg/image/image-filter-01.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01a.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01b.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/pattern-scale-01c.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/stroke-width-percentage-02a.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/switch-01.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/symbol-01.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/text-layout-01.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/text-layout-05.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/mozilla/svg/text-white-space-01.svg [ Failure Pass ImageOnlyFailure ]
+webkit.org/b/141458 imported/w3c/canvas/2d.line.cap.round.html [ Failure Pass ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS WITH INCORRECT EXPECTATIONS
@@ -1156,7 +1204,7 @@ webkit.org/b/86187 media/media-fullscreen-not-in-document.html [ Timeout ]
 Bug(EFL) media/video-does-not-loop.html
 
 # This test fails if mixer is not at 100%
-webkit.org/b/83704 media/event-attributes.html [ Failure Crash ]
+webkit.org/b/83704 media/event-attributes.html [ Failure Crash Pass ]
 
 # EFL's LayoutTestController does not implement setAutomaticLinkDetectionEnabled
 webkit.org/b/85463 editing/inserting/typing-space-to-trigger-smart-link.html
@@ -1289,6 +1337,8 @@ Bug(EFL) fast/layers/layer-visibility-sublayer.html [ Failure ]
 Bug(EFL) fast/layers/layer-visibility.html [ Failure ]
 Bug(EFL) fast/repaint/invisible-objects.html [ Failure ]
 Bug(EFL) fast/repaint/layer-hide-when-needs-layout.html [ Failure ]
+Bug(EFL) fast/text/whitespace/019.html [ Failure ]
+Bug(EFL) fast/text/whitespace/023.html [ Failure ]
 Bug(EFL) fast/text/whitespace/028.html [ Failure ]
 Bug(EFL) fullscreen/full-screen-iframe-legacy.html [ Failure Pass ]
 Bug(EFL) media/track/track-cues-pause-on-exit.html [ Failure Pass ]
@@ -1468,6 +1518,10 @@ webkit.org/b/115419 media/track/track-automatic-subtitles.html [ Timeout ]
 
 webkit.org/b/115439 fast/text/complex-initial-advance.html [ ImageOnlyFailure ]
 
+webkit.org/b/142450 fast/text/font-kerning.html [ ImageOnlyFailure ]
+webkit.org/b/142450 fast/text/narrow-non-breaking-space.html [ ImageOnlyFailure ]
+webkit.org/b/142450 fast/text/space-width.html [ ImageOnlyFailure ]
+
 # Synthesized italics not supported
 fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
 
@@ -1477,6 +1531,7 @@ webkit.org/b/118378 vibration/cancelVibration-after-pagevisibility-changed-to-hi
 # Some tests will fail after the visual overflow patch, they will be fixed shortly.
 webkit.org/b/118665 fast/regions/hover-in-second-region.html [ ImageOnlyFailure Pass ]
 webkit.org/b/118665 fast/regions/webkit-flow-float-unable-to-push.html [ ImageOnlyFailure Pass ]
+webkit.org/b/118665 fast/regions/region-overflow-break.html [ ImageOnlyFailure ]
 
 webkit.org/b/119782 fast/forms/search-styled.html [ Failure ]
 
@@ -1498,9 +1553,12 @@ webkit.org/b/122963 fast/regions/repaint/region-painting-via-layout.html [ Missi
 
 # EFL port doesn't fully support printing
 webkit.org/b/123561 printing/media-queries-print.html [ Missing ]
+webkit.org/b/123561 printing/quirks-percentage-height-body.html [ ImageOnlyFailure ]
+webkit.org/b/123561 printing/quirks-percentage-height.html [ ImageOnlyFailure ]
 webkit.org/b/123561 printing/setPrinting.html [ Missing ]
 webkit.org/b/123561 printing/simultaneous-position-float-change.html [ Missing ]
 webkit.org/b/123561 printing/single-line-must-not-be-split-into-two-pages.html [ Missing ]
+webkit.org/b/123561 printing/standards-percentage-heights.html [ ImageOnlyFailure ]
 webkit.org/b/123561 printing/width-overflow.html [ Missing ]
 
 # crypto.subtle is not yet enabled, but digest algorithms are already implemented
@@ -1547,7 +1605,6 @@ webkit.org/b/141074 accessibility/auto-filled-value.html [ Missing ]
 webkit.org/b/141075 accessibility/math-multiscript-attributes.html [ Missing ]
 
 webkit.org/b/141072 accessibility/frame-disconnect-textmarker-cache-crash.html [ Failure ]
-webkit.org/b/141073 accessibility/content-editable-as-textarea.html [ Failure ]
 webkit.org/b/137109 accessibility/legend-children-are-visible.html [ Failure ]
 webkit.org/b/139352 accessibility/inline-block-assertion.html [ Failure ]
 
@@ -1619,7 +1676,6 @@ webkit.org/b/105766 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
 webkit.org/b/107018 svg/animations/animate-linear-discrete-additive.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-b.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-c.svg  [ ImageOnlyFailure Pass ]
-webkit.org/b/107018 svg/transforms/transformed-text-fill-pattern.html [ ImageOnlyFailure ]
 webkit.org/b/107018 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure Pass ]
 
 webkit.org/b/104656 compositing/repaint/clipped-layer-size-change.html [ Crash Pass ]
@@ -1827,6 +1883,9 @@ webkit.org/b/128670 js/dom/dom-static-property-for-in-iteration.html [ Failure ]
 
 webkit.org/b/128973 fast/multicol/span/span-as-immediate-columns-child-dynamic.html [ Failure ]
 
+# HIDPI-related tests do not work
+webkit.org/b/102097 compositing/hidpi-transform-with-render-layer-on-fractional-pixel-value.html [ ImageOnlyFailure ]
+webkit.org/b/102097 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/102097 fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html [ Failure ]
 
 # Failing after r150802
@@ -1862,19 +1921,7 @@ webkit.org/b/128734 plugins/netscape-destroy-plugin-script-objects.html [ Failur
 
 webkit.org/b/129735 fast/regions/box-decorations-over-region-padding.html [ ImageOnlyFailure ]
 
-webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-006.svg [ ImageOnlyFailure ]
-webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-007.svg [ ImageOnlyFailure ]
-webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-008.svg [ ImageOnlyFailure ]
-webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-009.svg [ ImageOnlyFailure ]
-webkit.org/b/129820 svg/clip-path/mask-nested-clip-path-010.svg [ ImageOnlyFailure ]
-webkit.org/b/129820 svg/clip-path/mask-objectboundingbox-content-clip-transform.svg [ ImageOnlyFailure ]
-webkit.org/b/129820 svg/clip-path/mask-objectboundingbox-content-clip.svg [ ImageOnlyFailure ]
-webkit.org/b/129820 svg/clip-path/mask-userspaceonuse-content-clip-transform.svg [ ImageOnlyFailure ]
-webkit.org/b/129820 svg/clip-path/mask-userspaceonuse-content-clip.svg [ ImageOnlyFailure ]
-
 webkit.org/b/129821 svg/css/svg-resource-fragment-identifier-img-src.html [ ImageOnlyFailure ]
-
-webkit.org/b/130020 webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
 
 webkit.org/b/130340 fast/css/cascade/box-shadow-and-webkit-box-shadow-cascade-order.html [ ImageOnlyFailure ]
 
@@ -1933,10 +1980,12 @@ webkit.org/b/133974 fast/css3-text/css3-text-decoration/text-decoration-skip/tex
 
 # Difference invisible at the naked eye with Latin Modern Math.
 webkit.org/b/134153 mathml/presentation/mo-stacked-glyphs.html [ ImageOnlyFailure ]
+webkit.org/b/134153 mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
 
 webkit.org/b/134712 svg/masking/mask-transformed-text-missing.svg [ ImageOnlyFailure ]
 
 webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-2x.html [ Failure ]
+webkit.org/b/134756 fast/dom/HTMLImageElement/sizes/image-sizes-js-change.html [ Failure ]
 
 webkit.org/b/135504 svg/css/parse-height.html [ Failure ]
 webkit.org/b/135504 svg/css/parse-length.html [ Failure ]
@@ -1965,6 +2014,7 @@ webkit.org/b/136221 css3/shapes/shape-outside/values/shape-outside-polygon-004.h
 webkit.org/b/136221 css3/shapes/shape-outside/values/shape-outside-shape-arguments-000.html [ Failure ]
 
 webkit.org/b/136223 fast/ruby/ruby-base-merge-block-children-crash-2.html [ Failure ]
+webkit.org/b/136223 fast/ruby/ruby-justification.html [ ImageOnlyFailure ]
 
 # Started failing after r172835
 webkit.org/b/136226 fast/events/constructors/mouse-event-constructor.html [ Failure ]
@@ -1978,6 +2028,7 @@ webkit.org/b/136406 compositing/backing/backface-visibility-in-transformed.html 
 webkit.org/b/136406 compositing/backing/backface-visibility.html [ Failure ]
 webkit.org/b/136406 compositing/contents-opaque/control-layer.html [ Failure ]
 webkit.org/b/136406 compositing/contents-opaque/hidden-with-visible-text.html [ Failure ]
+webkit.org/b/136406 compositing/contents-opaque/opaque-with-clip-path.html [ ImageOnlyFailure ]
 webkit.org/b/136406 compositing/contents-scale/animating.html [ Failure ]
 webkit.org/b/136406 compositing/contents-scale/rounded-contents-scale.html [ Failure ]
 webkit.org/b/136406 compositing/contents-scale/scaled-ancestor.html [ Failure ]
@@ -2061,7 +2112,6 @@ webkit.org/b/141631 fast/forms/basic-buttons.html [ Failure ]
 webkit.org/b/141631 fast/forms/datalist/datalist-child-validation.html [ Failure ]
 webkit.org/b/141631 fast/forms/search-vertical-alignment.html [ Failure ]
 webkit.org/b/141631 fast/forms/searchfield-heights.html [ Failure ]
-webkit.org/b/141631 fast/forms/textfield-overflow-by-value-update.html [ Failure ]
 webkit.org/b/141630 accessibility/press-targets-center-point.html [ Failure ]
 
 # Need to have new baseline
@@ -2071,15 +2121,12 @@ webkit.org/b/141594 fast/text/empty-shadow.html [ ImageOnlyFailure ]
 webkit.org/b/141592 fast/css/font-shorthand-line-height.html [ Failure ]
 
 # These tests need a rebaseline.
-webkit.org/b/139150 fast/forms/form-hides-table.html [ Failure ]
 webkit.org/b/141627 compositing/fixed-positioned-pseudo-content-no-compositing.html [ Failure ]
 webkit.org/b/141628 compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html [ Failure ]
 webkit.org/b/141628 compositing/layer-creation/fixed-position-out-of-view-scaled.html [ Failure ]
 
 # Disk cache isn't supported by EFL port yet.
-webkit.org/b/141891 http/tests/cache/disk-cache-disable.html [ Failure ]
-webkit.org/b/141891 http/tests/cache/disk-cache-redirect-to-data.html [ Failure ]
-webkit.org/b/141891 http/tests/cache/disk-cache-validation.html [ Failure ]
+webkit.org/b/141891 http/tests/cache/disk-cache [ Skip ]
 
 webkit.org/b/141892 fast/sub-pixel/client-width-height-snapping.html [ Failure ]
 webkit.org/b/141892 fast/sub-pixel/inline-block-with-padding.html [ Failure ]
@@ -2096,3 +2143,43 @@ webkit.org/b/141896 fast/borders/border-radius-on-html.html [ ImageOnlyFailure ]
 # Need to investigate why these security tests have been failed since r144338.
 webkit.org/b/141958 http/tests/security/XFrameOptions/x-frame-options-deny-multiple-clients.html [ Failure ]
 webkit.org/b/141958 http/tests/security/cross-frame-access-callback-explicit-domain-ALLOW.html [ Failure ]
+
+webkit.org/b/142426 compositing/masks/compositing-clip-path-and-mask.html [ ImageOnlyFailure ]
+webkit.org/b/142426 compositing/masks/compositing-clip-path-mask-change.html [ ImageOnlyFailure ]
+webkit.org/b/142426 compositing/masks/compositing-clip-path.html [ ImageOnlyFailure ]
+webkit.org/b/142426 compositing/masks/reference-clip-path-on-composited.html [ ImageOnlyFailure ]
+
+webkit.org/b/142427 fast/regions/scrolling/wheel-scroll-abspos.html [ ImageOnlyFailure ]
+webkit.org/b/142427 fast/regions/scrolling/wheel-scroll.html [ ImageOnlyFailure ]
+
+webkit.org/b/142451 fast/text/emphasis-combined-text.html [ Failure ]
+webkit.org/b/142451 fast/text/emphasis-vertical.html [ Failure ]
+
+webkit.org/b/142452 fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure ]
+webkit.org/b/142452 fast/writing-mode/broken-ideographic-font.html [ Failure ]
+
+# Need new baseline since r181260.
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-1.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-2.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-3.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-squeeze-4.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-stretch-1.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-stretch-2.svg [ Failure ]
+webkit.org/b/142481 svg/text/select-textLength-spacingAndGlyphs-stretch-3.svg [ Failure ]
+
+webkit.org/b/142483 fast/css/font-face-default-font.html [ Failure ]
+webkit.org/b/142483 fast/css/font-face-in-media-rule.html [ Failure ]
+
+# This feature is only enabled on Mac and iOS right now
+contentfiltering [ Skip ]
+
+# small-leak-foo tests have been failed since r181345
+webkit.org/b/142561 svg/animations/smil-leak-dynamically-added-element-instances.svg [ Failure ]
+webkit.org/b/142561 svg/animations/smil-leak-element-instances-noBaseValRef.svg [ Failure ]
+webkit.org/b/142561 svg/animations/smil-leak-element-instances.svg [ Failure ]
+webkit.org/b/142561 svg/animations/smil-leak-elements.svg [ Failure ]
+
+webkit.org/b/142571 fast/css/vertical-text-overflow-ellipsis-text-align-center.html [ Failure ]
+
+webkit.org/b/142763 fast/images/animated-gif-window-resizing.html [ Timeout ]
+webkit.org/b/142764 accessibility/content-editable-as-textarea.html [ Timeout ]

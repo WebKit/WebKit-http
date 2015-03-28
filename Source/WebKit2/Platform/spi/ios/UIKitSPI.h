@@ -37,6 +37,7 @@
 #import <UIKit/UIGestureRecognizer_Private.h>
 #import <UIKit/UIImagePickerController_Private.h>
 #import <UIKit/UIImage_Private.h>
+#import <UIKit/UIInterface_Private.h>
 #import <UIKit/UIKeyboardImpl.h>
 #import <UIKit/UIKeyboardIntl.h>
 #import <UIKit/UIKeyboard_Private.h>
@@ -68,6 +69,15 @@
 #import <UIKit/_UIHighlightView.h>
 #import <UIKit/_UINavigationInteractiveTransition.h>
 #import <UIKit/_UINavigationParallaxTransition.h>
+
+// FIXME: Unconditionally include this file when a new SDK is available. <rdar://problem/20150072>
+#if defined(__has_include) && __has_include(<UIKit/UIDocumentMenuViewController_Private.h>)
+#import <UIKit/UIDocumentMenuViewController_Private.h>
+#else
+@interface UIDocumentMenuViewController (Details)
+@property (nonatomic, assign, setter = _setIgnoreApplicationEntitlementForImport:, getter = _ignoreApplicationEntitlementForImport) BOOL _ignoreApplicationEntitlementForImport;
+@end
+#endif
 
 #else
 
@@ -658,6 +668,10 @@ typedef enum {
 @property (nonatomic) BOOL inputViewObeysDOMFocus;
 @end
 
+@interface UIDocumentMenuViewController (Details)
+@property (nonatomic, assign, setter = _setIgnoreApplicationEntitlementForImport:, getter = _ignoreApplicationEntitlementForImport) BOOL _ignoreApplicationEntitlementForImport;
+@end
+
 #endif // USE(APPLE_INTERNAL_SDK)
 
 @interface UIView (IPI)
@@ -685,6 +699,9 @@ void _UIApplicationLoadWebKit(void);
 BOOL _UIApplicationUsesLegacyUI(void);
 
 void UIImageDataWriteToSavedPhotosAlbum(NSData *imageData, id completionTarget, SEL completionSelector, void *contextInfo);
+
+UIImage* _UIImageGetWebKitPhotoLibraryIcon(void);
+UIImage* _UIImageGetWebKitTakePhotoOrVideoIcon(void);
 
 extern const float UIWebViewGrowsAndShrinksToFitHeight;
 extern const float UIWebViewScalesToFitScale;

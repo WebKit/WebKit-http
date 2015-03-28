@@ -1404,8 +1404,7 @@ void FrameView::layout(bool allowSubtree)
     }
 
     InspectorInstrumentation::didLayout(cookie, root);
-    if (frame().isMainFrame())
-        DebugPageOverlays::didLayout(frame().mainFrame());
+    DebugPageOverlays::didLayout(frame());
 
     --m_nestedLayoutCount;
 }
@@ -2440,7 +2439,6 @@ void FrameView::layoutTimerFired()
     if (!frame().document()->ownerElement())
         printf("Layout timer fired at %lld\n", frame().document()->elapsedTime().count());
 #endif
-    frame().document()->updateStyleIfNeeded();
     layout();
 }
 
@@ -2977,6 +2975,16 @@ void FrameView::performPostLayoutTasks()
 
     sendResizeEventIfNeeded();
     viewportContentsChanged();
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    if (!frame().isMainFrame()) {
+        updateSnapOffsets();
+#if PLATFORM(MAC)
+        if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
+            return scrollAnimator->updateScrollAnimatorsAndTimers();
+#endif
+    }
+#endif
 }
 
 IntSize FrameView::sizeForResizeEvent() const
@@ -3729,9 +3737,20 @@ void FrameView::updateControlTints()
     if (frame().document()->url().isEmpty())
         return;
 
+    // As noted above, this is a "fake" paint, so we should pause counting relevant repainted objects.
+    Page* page = frame().page();
+    bool isCurrentlyCountingRelevantRepaintedObject = false;
+    if (page) {
+        isCurrentlyCountingRelevantRepaintedObject = page->isCountingRelevantRepaintedObjects();
+        page->setIsCountingRelevantRepaintedObjects(false);
+    }
+
     RenderView* renderView = this->renderView();
     if ((renderView && renderView->theme().supportsControlTints()) || hasCustomScrollbars())
         paintControlTints();
+
+    if (page)
+        page->setIsCountingRelevantRepaintedObjects(isCurrentlyCountingRelevantRepaintedObject);
 }
 
 void FrameView::paintControlTints()
@@ -3840,11 +3859,6 @@ void FrameView::didPaintContents(GraphicsContext* context, const IntRect& dirtyR
 
 void FrameView::paintContents(GraphicsContext* context, const IntRect& dirtyRect)
 {
-    if (m_layoutPhase == InViewSizeAdjust)
-        return;
-
-    ASSERT(m_layoutPhase == InPostLayerPositionsUpdatedAfterLayout || m_layoutPhase == OutsideLayout);
-
 #ifndef NDEBUG
     bool fillWithRed;
     if (frame().document()->printing())
@@ -3864,6 +3878,11 @@ void FrameView::paintContents(GraphicsContext* context, const IntRect& dirtyRect
         context->fillRect(dirtyRect, Color(0xFF, 0, 0), ColorSpaceDeviceRGB);
 #endif
 
+    if (m_layoutPhase == InViewSizeAdjust)
+        return;
+    
+    ASSERT(m_layoutPhase == InPostLayerPositionsUpdatedAfterLayout || m_layoutPhase == OutsideLayout);
+    
     RenderView* renderView = this->renderView();
     if (!renderView) {
         LOG_ERROR("called FrameView::paint with nil renderer");
@@ -4366,6 +4385,9 @@ void FrameView::sendScrollEvent()
 {
     frame().eventHandler().sendScrollEvent();
     frame().eventHandler().dispatchFakeMouseMoveEventSoon();
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    frame().animation().scrollWasUpdated();
+#endif
 }
 
 void FrameView::removeChild(Widget& widget)

@@ -78,7 +78,7 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_originalMockScrollbarsEnabled(settings.mockScrollbarsEnabled())
     , m_langAttributeAwareFormControlUIEnabled(RuntimeEnabledFeatures::sharedFeatures().langAttributeAwareFormControlUIEnabled())
     , m_imagesEnabled(settings.areImagesEnabled())
-    , m_minimumTimerInterval(settings.minDOMTimerInterval())
+    , m_minimumTimerInterval(settings.minimumDOMTimerInterval())
 #if ENABLE(VIDEO_TRACK)
     , m_shouldDisplaySubtitles(settings.shouldDisplaySubtitles())
     , m_shouldDisplayCaptions(settings.shouldDisplayCaptions())
@@ -90,6 +90,16 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_autoscrollForDragAndDropEnabled(settings.autoscrollForDragAndDropEnabled())
     , m_pluginReplacementEnabled(RuntimeEnabledFeatures::sharedFeatures().pluginReplacementEnabled())
     , m_shouldConvertPositionStyleOnCopy(settings.shouldConvertPositionStyleOnCopy())
+    , m_fontFallbackPrefersPictographs(settings.fontFallbackPrefersPictographs())
+    , m_backgroundShouldExtendBeyondPage(settings.backgroundShouldExtendBeyondPage())
+    , m_storageBlockingPolicy(settings.storageBlockingPolicy())
+    , m_scrollingTreeIncludesFrames(settings.scrollingTreeIncludesFrames())
+#if ENABLE(TOUCH_EVENTS)
+    , m_touchEventEmulationEnabled(settings.isTouchEventEmulationEnabled())
+#endif
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    , m_mediaPlaybackAllowsAirPlay(settings.mediaPlaybackAllowsAirPlay())
+#endif
 {
 }
 
@@ -135,7 +145,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setCanvasUsesAcceleratedDrawing(m_originalCanvasUsesAcceleratedDrawing);
     RuntimeEnabledFeatures::sharedFeatures().setLangAttributeAwareFormControlUIEnabled(m_langAttributeAwareFormControlUIEnabled);
     settings.setImagesEnabled(m_imagesEnabled);
-    settings.setMinDOMTimerInterval(m_minimumTimerInterval);
+    settings.setMinimumDOMTimerInterval(m_minimumTimerInterval);
 #if ENABLE(VIDEO_TRACK)
     settings.setShouldDisplaySubtitles(m_shouldDisplaySubtitles);
     settings.setShouldDisplayCaptions(m_shouldDisplayCaptions);
@@ -146,6 +156,13 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setUseLegacyBackgroundSizeShorthandBehavior(m_useLegacyBackgroundSizeShorthandBehavior);
     settings.setAutoscrollForDragAndDropEnabled(m_autoscrollForDragAndDropEnabled);
     settings.setShouldConvertPositionStyleOnCopy(m_shouldConvertPositionStyleOnCopy);
+    settings.setFontFallbackPrefersPictographs(m_fontFallbackPrefersPictographs);
+    settings.setBackgroundShouldExtendBeyondPage(m_backgroundShouldExtendBeyondPage);
+    settings.setStorageBlockingPolicy(m_storageBlockingPolicy);
+    settings.setScrollingTreeIncludesFrames(m_scrollingTreeIncludesFrames);
+#if ENABLE(TOUCH_EVENTS)
+    settings.setTouchEventEmulationEnabled(m_touchEventEmulationEnabled);
+#endif
     RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(m_pluginReplacementEnabled);
 }
 
@@ -187,6 +204,9 @@ InternalSettings::InternalSettings(Page* page)
     , m_page(page)
     , m_backup(page->settings())
 {
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    page->settings().setMediaPlaybackAllowsAirPlay(false);
+#endif
 }
 
 void InternalSettings::resetToConsistentState()
@@ -430,7 +450,7 @@ void InternalSettings::setImagesEnabled(bool enabled, ExceptionCode& ec)
 void InternalSettings::setMinimumTimerInterval(double intervalInSeconds, ExceptionCode& ec)
 {
     InternalSettingsGuardForSettings();
-    settings()->setMinDOMTimerInterval(intervalInSeconds);
+    settings()->setMinimumDOMTimerInterval(intervalInSeconds);
 }
 
 void InternalSettings::setDefaultVideoPosterURL(const String& url, ExceptionCode& ec)
@@ -485,5 +505,7 @@ void InternalSettings::setScrollingTreeIncludesFrames(bool enabled, ExceptionCod
     InternalSettingsGuardForSettings();
     settings()->setScrollingTreeIncludesFrames(enabled);
 }
+
+// If you add to this list, make sure that you update the Backup class for test reproducability!
 
 }

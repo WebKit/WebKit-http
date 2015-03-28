@@ -71,18 +71,17 @@ bool mayExit(Graph& graph, Node* node)
     case HardPhantom:
     case GetLocal:
     case LoopHint:
-    case PhantomArguments:
     case Phi:
     case Upsilon:
     case ZombieHint:
     case BottomValue:
-    case PutStructureHint:
-    case PutByOffsetHint:
+    case PutHint:
     case PhantomNewObject:
     case PutStack:
     case KillStack:
     case GetStack:
     case GetCallee:
+    case GetArgumentCount:
     case GetScope:
     case PhantomLocal:
     case CountExecution:

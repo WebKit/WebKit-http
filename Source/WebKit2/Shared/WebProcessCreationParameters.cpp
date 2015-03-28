@@ -27,6 +27,9 @@
 #include "WebProcessCreationParameters.h"
 
 #include "APIData.h"
+#if PLATFORM(COCOA)
+#include "ArgumentCodersCF.h"
+#endif
 #include "WebCoreArgumentCoders.h"
 
 namespace WebKit {
@@ -143,6 +146,14 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << hasImageServices;
     encoder << hasSelectionServices;
     encoder << hasRichContentServices;
+#endif
+
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    encoder << pluginLoadClientPolicies;
+#endif
+
+#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+    IPC::encode(encoder, networkATSContext.get());
 #endif
 }
 
@@ -299,6 +310,16 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
     if (!decoder.decode(parameters.hasSelectionServices))
         return false;
     if (!decoder.decode(parameters.hasRichContentServices))
+        return false;
+#endif
+
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    if (!decoder.decode(parameters.pluginLoadClientPolicies))
+        return false;
+#endif
+
+#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+    if (!IPC::decode(decoder, parameters.networkATSContext))
         return false;
 #endif
 

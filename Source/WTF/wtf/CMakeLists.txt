@@ -59,7 +59,6 @@ set(WTF_HEADERS
     OwnPtr.h
     OwnPtrCommon.h
     PageAllocation.h
-    PageAllocationAligned.h
     PageBlock.h
     PageReservation.h
     ParallelJobs.h
@@ -87,6 +86,7 @@ set(WTF_HEADERS
     SHA1.h
     SaturatedArithmetic.h
     SegmentedVector.h
+    SpinLock.h
     StackBounds.h
     StackStats.h
     StaticConstructors.h
@@ -95,7 +95,6 @@ set(WTF_HEADERS
     StringExtras.h
     StringHasher.h
     StringPrintStream.h
-    TCSpinLock.h
     ThreadIdentifierDataPthreads.h
     ThreadSafeRefCounted.h
     ThreadSpecific.h
@@ -129,6 +128,7 @@ set(WTF_HEADERS
     text/IntegerToStringConversion.h
     text/LChar.h
     text/StringBuffer.h
+    text/StringCommon.h
     text/StringHash.h
     text/StringImpl.h
     text/StringView.h
@@ -164,7 +164,6 @@ set(WTF_SOURCES
     MetaAllocator.cpp
     NumberOfCores.cpp
     OSRandomSource.cpp
-    PageAllocationAligned.cpp
     PageBlock.cpp
     ParallelJobsGeneric.cpp
     PrintStream.cpp

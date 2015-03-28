@@ -420,7 +420,7 @@ static bool attributeValueMatches(const Attribute& attribute, CSSSelector::Match
     case CSSSelector::Set:
         break;
     case CSSSelector::Exact:
-        if (caseSensitive ? selectorValue != value : !equalIgnoringCase(selectorValue, value))
+        if (caseSensitive ? selectorValue != value : !equalIgnoringASCIICase(selectorValue, value))
             return false;
         break;
     case CSSSelector::List:
@@ -431,7 +431,11 @@ static bool attributeValueMatches(const Attribute& attribute, CSSSelector::Match
 
             unsigned startSearchAt = 0;
             while (true) {
-                size_t foundPos = value.find(selectorValue, startSearchAt, caseSensitive);
+                size_t foundPos;
+                if (caseSensitive)
+                    foundPos = value.find(selectorValue, startSearchAt);
+                else
+                    foundPos = value.findIgnoringASCIICase(selectorValue, startSearchAt);
                 if (foundPos == notFound)
                     return false;
                 if (!foundPos || isHTMLSpace(value[foundPos - 1])) {
@@ -445,23 +449,50 @@ static bool attributeValueMatches(const Attribute& attribute, CSSSelector::Match
             }
             break;
         }
-    case CSSSelector::Contain:
-        if (!value.contains(selectorValue, caseSensitive) || selectorValue.isEmpty())
+    case CSSSelector::Contain: {
+        bool valueContainsSelectorValue;
+        if (caseSensitive)
+            valueContainsSelectorValue = value.contains(selectorValue);
+        else
+            valueContainsSelectorValue = value.containsIgnoringASCIICase(selectorValue);
+
+        if (!valueContainsSelectorValue || selectorValue.isEmpty())
             return false;
+
         break;
+    }
     case CSSSelector::Begin:
-        if (!value.startsWith(selectorValue, caseSensitive) || selectorValue.isEmpty())
+        if (selectorValue.isEmpty())
             return false;
+        if (caseSensitive) {
+            if (!value.startsWith(selectorValue))
+                return false;
+        } else {
+            if (!value.startsWithIgnoringASCIICase(selectorValue))
+                return false;
+        }
         break;
     case CSSSelector::End:
-        if (!value.endsWith(selectorValue, caseSensitive) || selectorValue.isEmpty())
+        if (selectorValue.isEmpty())
             return false;
+        if (caseSensitive) {
+            if (!value.endsWith(selectorValue))
+                return false;
+        } else {
+            if (!value.endsWithIgnoringASCIICase(selectorValue))
+                return false;
+        }
         break;
     case CSSSelector::Hyphen:
         if (value.length() < selectorValue.length())
             return false;
-        if (!value.startsWith(selectorValue, caseSensitive))
-            return false;
+        if (caseSensitive) {
+            if (!value.startsWith(selectorValue))
+                return false;
+        } else {
+            if (!value.startsWithIgnoringASCIICase(selectorValue))
+                return false;
+        }
         // It they start the same, check for exact match or following '-':
         if (value.length() != selectorValue.length() && value[selectorValue.length()] != '-')
             return false;
@@ -953,15 +984,8 @@ bool SelectorChecker::checkOne(const CheckingContextWithStatus& context, PseudoI
             break;
         case CSSSelector::PseudoClassLang:
             {
-#if ENABLE(CSS_SELECTORS_LEVEL4)
                 ASSERT(selector->langArgumentList() && !selector->langArgumentList()->isEmpty());
                 return matchesLangPseudoClass(element, *selector->langArgumentList());
-#else
-                const AtomicString& argument = selector->argument();      
-                if (argument.isNull())
-                    return false;
-                return matchesLangPseudoClassDeprecated(element, argument.impl());
-#endif                          
             }
 #if ENABLE(FULLSCREEN_API)
         case CSSSelector::PseudoClassFullScreen:

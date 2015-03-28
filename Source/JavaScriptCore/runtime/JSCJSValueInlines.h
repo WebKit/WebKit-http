@@ -26,6 +26,7 @@
 #ifndef JSValueInlines_h
 #define JSValueInlines_h
 
+#include "ExceptionHelpers.h"
 #include "Identifier.h"
 #include "InternalFunction.h"
 #include "JSCJSValue.h"
@@ -610,14 +611,14 @@ ALWAYS_INLINE bool JSValue::getUInt32(uint32_t& v) const
     return false;
 }
 
-ALWAYS_INLINE PropertyName JSValue::toPropertyKey(ExecState* exec) const
+ALWAYS_INLINE Identifier JSValue::toPropertyKey(ExecState* exec) const
 {
     if (isString())
         return asString(*this)->toIdentifier(exec);
 
     JSValue primitive = toPrimitive(exec, PreferString);
     if (primitive.isSymbol())
-        return asSymbol(primitive)->privateName();
+        return Identifier::from(asSymbol(primitive)->privateName());
     return primitive.toString(exec)->toIdentifier(exec);
 }
 
@@ -914,6 +915,14 @@ inline TriState JSValue::pureToBoolean() const
     if (isCell())
         return asCell()->pureToBoolean();
     return isTrue() ? TrueTriState : FalseTriState;
+}
+
+ALWAYS_INLINE bool JSValue::requireObjectCoercible(ExecState* exec) const
+{
+    if (!isUndefinedOrNull())
+        return true;
+    exec->vm().throwException(exec, createNotAnObjectError(exec, *this));
+    return false;
 }
 
 } // namespace JSC

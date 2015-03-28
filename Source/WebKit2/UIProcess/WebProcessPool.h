@@ -28,6 +28,7 @@
 
 #include "APIDictionary.h"
 #include "APIObject.h"
+#include "APIWebsiteDataStore.h"
 #include "DownloadProxyMap.h"
 #include "GenericCallback.h"
 #include "MessageReceiver.h"
@@ -164,7 +165,7 @@ public:
     // Disconnect the process from the context.
     void disconnectProcess(WebProcessProxy*);
 
-    WebsiteDataStore& websiteDataStore() const { return *m_websiteDataStore; }
+    API::WebsiteDataStore& websiteDataStore() const { return *m_websiteDataStore; }
 
     PassRefPtr<WebPageProxy> createWebPage(PageClient&, WebPageConfiguration);
 
@@ -183,6 +184,9 @@ public:
     void setAdditionalPluginsDirectory(const String&);
 
     PluginInfoStore& pluginInfoStore() { return m_pluginInfoStore; }
+
+    void setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy, const String& host, const String& bundleIdentifier, const String& versionString);
+    void clearPluginClientPolicies();
 #endif
 
 #if ENABLE(NETWORK_PROCESS)
@@ -246,6 +250,7 @@ public:
     void setCookieStorageDirectory(const String& dir) { m_overrideCookieStorageDirectory = dir; }
 
     void useTestingNetworkSession();
+    bool isUsingTestingNetworkSession() const { return m_shouldUseTestingNetworkSession; }
 
     void allowSpecificHTTPSCertificateForHost(const WebCertificateInfo*, const String& host);
 
@@ -470,6 +475,7 @@ private:
     Vector<std::pair<String, RefPtr<API::Object>>> m_messagesToInjectedBundlePostedToEmptyContext;
 
     CacheModel m_cacheModel;
+    uint64_t m_diskCacheSizeOverride;
 
     bool m_memorySamplerEnabled;
     double m_memorySamplerInterval;
@@ -479,7 +485,7 @@ private:
     RefPtr<WebPluginSiteDataManager> m_pluginSiteDataManager;
 #endif
 
-    RefPtr<WebsiteDataStore> m_websiteDataStore;
+    RefPtr<API::WebsiteDataStore> m_websiteDataStore;
 
     typedef HashMap<const char*, RefPtr<WebContextSupplement>, PtrHash<const char*>> WebContextSupplementMap;
     WebContextSupplementMap m_supplements;
@@ -538,6 +544,10 @@ private:
 
 #if ENABLE(CONTENT_EXTENSIONS)
     HashMap<String, String> m_encodedContentExtensions;
+#endif
+
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    HashMap<String, HashMap<String, HashMap<String, uint8_t>>> m_pluginLoadClientPolicies;
 #endif
 };
 

@@ -187,6 +187,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 @interface UIKeyboardImpl (StagingToRemove)
 - (void)didHandleWebKeyEvent;
+- (void)didHandleWebKeyEvent:(WebIOSEvent *)event;
 - (void)deleteFromInputWithFlags:(NSUInteger)flags;
 @end
 
@@ -516,9 +517,13 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 {
     // FIXME: Maybe we should call resignFirstResponder on the superclass
     // and do nothing if the return value is NO.
-    // We need to complete the editing operation before we blur the element.
-    [_inputPeripheral endEditing];
-    _page->blurAssistedNode();
+
+    if (!_webView->_activeFocusedStateRetainCount) {
+        // We need to complete the editing operation before we blur the element.
+        [_inputPeripheral endEditing];
+        _page->blurAssistedNode();
+    }
+
     [self _cancelInteraction];
     [_webSelectionAssistant resignedFirstResponder];
     [_textSelectionAssistant deactivateSelection];
@@ -2048,6 +2053,16 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 }
 
+- (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler
+{
+    auto completionHandlerCopy = Block_copy(completionHandler);
+    _page->setInitialFocus(selectingForward, false, WebKit::WebKeyboardEvent(), [self, completionHandlerCopy](WebKit::CallbackBase::Error) {
+        BOOL didBecomeFirstResponder = _assistedNodeInformation.elementType != InputType::None && [self becomeFirstResponder];
+        completionHandlerCopy(didBecomeFirstResponder);
+        Block_release(completionHandlerCopy);
+    });
+}
+
 - (void)accessoryAutoFill
 {
     id <_WKFormDelegate> formDelegate = [_webView _formDelegate];
@@ -2415,7 +2430,9 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 {
     if (event.type == WebEventKeyDown) {
         // FIXME: This is only for staging purposes.
-        if ([[UIKeyboardImpl sharedInstance] respondsToSelector:@selector(didHandleWebKeyEvent)])
+        if ([[UIKeyboardImpl sharedInstance] respondsToSelector:@selector(didHandleWebKeyEvent:)])
+            [[UIKeyboardImpl sharedInstance] didHandleWebKeyEvent:event];
+        else
             [[UIKeyboardImpl sharedInstance] didHandleWebKeyEvent];
     }
 }

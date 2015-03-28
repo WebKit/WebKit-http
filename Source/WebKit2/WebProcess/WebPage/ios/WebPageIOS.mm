@@ -835,11 +835,13 @@ PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point,
 
     Node* bestChoice = currentNode;
     while (currentNode) {
-        boundingRectInScrollViewCoordinates = currentNode->renderer()->absoluteBoundingBoxRect(true);
-        boundingRectInScrollViewCoordinates.scale(m_page->pageScaleFactor());
-        if (boundingRectInScrollViewCoordinates.width() > m_blockSelectionDesiredSize.width() && boundingRectInScrollViewCoordinates.height() > m_blockSelectionDesiredSize.height())
-            break;
-        bestChoice = currentNode;
+        if (currentNode->renderer()) {
+            boundingRectInScrollViewCoordinates = currentNode->renderer()->absoluteBoundingBoxRect(true);
+            boundingRectInScrollViewCoordinates.scale(m_page->pageScaleFactor());
+            if (boundingRectInScrollViewCoordinates.width() > m_blockSelectionDesiredSize.width() && boundingRectInScrollViewCoordinates.height() > m_blockSelectionDesiredSize.height())
+                break;
+            bestChoice = currentNode;
+        }
         currentNode = currentNode->parentElement();
     }
 
@@ -2228,7 +2230,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         information.nodeFontSize = renderer->style().fontDescription().computedSize();
 
         bool inFixed = false;
-        renderer->localToContainerPoint(FloatPoint(), nullptr, 0, &inFixed);
+        renderer->localToContainerPoint(FloatPoint(), nullptr, UseTransforms, &inFixed);
         information.insideFixedPosition = inFixed;
         
         if (inFixed && elementFrame.isMainFrame()) {

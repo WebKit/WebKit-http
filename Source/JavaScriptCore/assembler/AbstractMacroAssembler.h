@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2012, 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,9 +39,9 @@
 
 namespace JSC {
 
-inline bool isARMv7s()
+inline bool isARMv7IDIVSupported()
 {
-#if CPU(APPLE_ARMV7S)
+#if HAVE(ARM_IDIV_INSTRUCTIONS)
     return true;
 #else
     return false;
@@ -66,9 +66,9 @@ inline bool isX86()
 #endif
 }
 
-inline bool optimizeForARMv7s()
+inline bool optimizeForARMv7IDIVSupported()
 {
-    return isARMv7s() && Options::enableArchitectureSpecificOptimizations();
+    return isARMv7IDIVSupported() && Options::enableArchitectureSpecificOptimizations();
 }
 
 inline bool optimizeForARM64()
@@ -205,6 +205,11 @@ public:
         RegisterID index;
         Scale scale;
         int32_t offset;
+        
+        BaseIndex withOffset(int32_t additionalOffset)
+        {
+            return BaseIndex(base, index, scale, offset + additionalOffset);
+        }
     };
 
     // AbsoluteAddress:

@@ -256,6 +256,11 @@ Connection::Connection(Identifier identifier, bool isServer, Client& client, Run
     ASSERT(m_client);
 
     platformInitialize(identifier);
+
+#if HAVE(QOS_CLASSES)
+    ASSERT(pthread_main_np());
+    m_mainThread = pthread_self();
+#endif
 }
 
 Connection::~Connection()
@@ -300,34 +305,32 @@ void Connection::removeWorkQueueMessageReceiver(StringReference messageReceiverN
     });
 }
 
-void Connection::dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceiver* workQueueMessageReceiver, MessageDecoder* incomingMessageDecoder)
+void Connection::dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceiver& workQueueMessageReceiver, MessageDecoder& decoder)
 {
-    std::unique_ptr<MessageDecoder> decoder(incomingMessageDecoder);
-
-    if (!decoder->isSyncMessage()) {
-        workQueueMessageReceiver->didReceiveMessage(*this, *decoder);
+    if (!decoder.isSyncMessage()) {
+        workQueueMessageReceiver.didReceiveMessage(*this, decoder);
         return;
     }
 
     uint64_t syncRequestID = 0;
-    if (!decoder->decode(syncRequestID) || !syncRequestID) {
+    if (!decoder.decode(syncRequestID) || !syncRequestID) {
         // We received an invalid sync message.
         // FIXME: Handle this.
-        decoder->markInvalid();
+        decoder.markInvalid();
         return;
     }
 
 #if HAVE(DTRACE)
-    auto replyEncoder = std::make_unique<MessageEncoder>("IPC", "SyncMessageReply", syncRequestID, incomingMessageDecoder->UUID());
+    auto replyEncoder = std::make_unique<MessageEncoder>("IPC", "SyncMessageReply", syncRequestID, decoder.UUID());
 #else
     auto replyEncoder = std::make_unique<MessageEncoder>("IPC", "SyncMessageReply", syncRequestID);
 #endif
 
     // Hand off both the decoder and encoder to the work queue message receiver.
-    workQueueMessageReceiver->didReceiveSyncMessage(*this, *decoder, replyEncoder);
+    workQueueMessageReceiver.didReceiveSyncMessage(*this, decoder, replyEncoder);
 
     // FIXME: If the message was invalid, we should send back a SyncMessageError.
-    ASSERT(!decoder->isInvalid());
+    ASSERT(!decoder.isInvalid());
 
     if (replyEncoder)
         sendSyncReply(WTF::move(replyEncoder));
@@ -347,10 +350,12 @@ void Connection::invalidate()
         return;
     }
     
-    // Reset the client.
-    m_client = 0;
+    m_client = nullptr;
 
-    m_connectionQueue->dispatch(WTF::bind(&Connection::platformInvalidate, this));
+    RefPtr<Connection> protectedThis(this);
+    m_connectionQueue->dispatch([protectedThis] {
+        protectedThis->platformInvalidate();
+    });
 }
 
 void Connection::markCurrentlyDispatchedMessageAsInvalid()
@@ -397,7 +402,10 @@ bool Connection::sendMessage(std::unique_ptr<MessageEncoder> encoder, unsigned m
     }
     
     // FIXME: We should add a boolean flag so we don't call this when work has already been scheduled.
-    m_connectionQueue->dispatch(WTF::bind(&Connection::sendOutgoingMessages, this));
+    RefPtr<Connection> protectedThis(this);
+    m_connectionQueue->dispatch([protectedThis] {
+        protectedThis->sendOutgoingMessages();
+    });
     return true;
 }
 
@@ -653,25 +661,36 @@ void Connection::processIncomingMessage(std::unique_ptr<MessageDecoder> message)
     }
 
     if (!m_workQueueMessageReceivers.isValidKey(message->messageReceiverName())) {
-        if (message->messageReceiverName().isEmpty() && message->messageName().isEmpty()) {
-            // Something went wrong when decoding the message. Encode the message length so we can figure out if this
-            // happens for certain message lengths.
-            CString messageReceiverName = "<unknown message>";
-            CString messageName = String::format("<message length: %zu bytes>", message->length()).utf8();
+        RefPtr<Connection> protectedThis(this);
+        StringReference messageReceiverName = message->messageReceiverName();
+        StringCapture capturedMessageReceiverName(messageReceiverName.isEmpty() ? "<unknown message receiver>" : String(messageReceiverName.data(), messageReceiverName.size()));
+        StringReference messageName = message->messageName();
+        StringCapture capturedMessageName(messageName.isEmpty() ? "<unknown message>" : String(messageName.data(), messageName.size()));
 
-            m_clientRunLoop.dispatch(bind(&Connection::dispatchDidReceiveInvalidMessage, this, messageReceiverName, messageName));
-            return;
-        }
-
-        m_clientRunLoop.dispatch(bind(&Connection::dispatchDidReceiveInvalidMessage, this, message->messageReceiverName().toString(), message->messageName().toString()));
+        m_clientRunLoop.dispatch([protectedThis, capturedMessageReceiverName, capturedMessageName] {
+            protectedThis->dispatchDidReceiveInvalidMessage(capturedMessageReceiverName.string().utf8(), capturedMessageName.string().utf8());
+        });
         return;
     }
 
     auto it = m_workQueueMessageReceivers.find(message->messageReceiverName());
     if (it != m_workQueueMessageReceivers.end()) {
-        it->value.first->dispatch(bind(&Connection::dispatchWorkQueueMessageReceiverMessage, this, it->value.second, message.release()));
+        RefPtr<Connection> protectedThis(this);
+        RefPtr<WorkQueueMessageReceiver>& workQueueMessageReceiver = it->value.second;
+        MessageDecoder* decoderPtr = message.release();
+        it->value.first->dispatch([protectedThis, workQueueMessageReceiver, decoderPtr] {
+            std::unique_ptr<MessageDecoder> decoder(decoderPtr);
+            protectedThis->dispatchWorkQueueMessageReceiverMessage(*workQueueMessageReceiver, *decoder);
+        });
         return;
     }
+
+#if HAVE(QOS_CLASSES)
+    if (message->isSyncMessage() && m_shouldBoostMainThreadOnSyncMessage) {
+        pthread_override_t override = pthread_override_qos_class_start_np(m_mainThread, QOS_CLASS_USER_INTERACTIVE, 0);
+        message->setQOSClassOverride(override);
+    }
+#endif
 
     // Check if this is a sync message or if it's a message that should be dispatched even when waiting for
     // a sync reply. If it is, and we're waiting for a sync reply this message needs to be dispatched.
@@ -829,7 +848,10 @@ void Connection::enqueueIncomingMessage(std::unique_ptr<MessageDecoder> incoming
         m_incomingMessages.append(WTF::move(incomingMessage));
     }
 
-    m_clientRunLoop.dispatch(WTF::bind(&Connection::dispatchOneMessage, this));
+    RefPtr<Connection> protectedThis(this);
+    m_clientRunLoop.dispatch([protectedThis] {
+        protectedThis->dispatchOneMessage();
+    });
 }
 
 void Connection::dispatchMessage(MessageDecoder& decoder)

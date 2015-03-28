@@ -29,6 +29,8 @@
 #include "Heap.h"
 #include "JSCell.h"
 #include "Structure.h"
+#include <type_traits>
+#include <wtf/Assertions.h>
 
 namespace JSC {
 
@@ -152,10 +154,39 @@ inline void Heap::writeBarrier(const JSCell* from)
 #endif
 }
 
-inline void Heap::reportExtraMemoryCost(size_t cost)
+inline void Heap::reportExtraMemoryAllocated(size_t size)
 {
-    if (cost > minExtraCost) 
-        reportExtraMemoryCostSlowCase(cost);
+    if (size > minExtraMemory) 
+        reportExtraMemoryAllocatedSlowCase(size);
+}
+
+inline void Heap::reportExtraMemoryVisited(JSCell* owner, size_t size)
+{
+#if ENABLE(GGC)
+    // We don't want to double-count the extra memory that was reported in previous collections.
+    if (operationInProgress() == EdenCollection && Heap::isRemembered(owner))
+        return;
+#else
+    UNUSED_PARAM(owner);
+#endif
+
+    size_t* counter = &m_extraMemorySize;
+    
+#if ENABLE(COMPARE_AND_SWAP)
+    for (;;) {
+        size_t oldSize = *counter;
+        if (WTF::weakCompareAndSwapSize(counter, oldSize, oldSize + size))
+            return;
+    }
+#else
+    (*counter) += size;
+#endif
+}
+
+inline void Heap::deprecatedReportExtraMemory(size_t size)
+{
+    if (size > minExtraMemory) 
+        deprecatedReportExtraMemorySlowCase(size);
 }
 
 template<typename Functor> inline typename Functor::ReturnType Heap::forEachProtectedCell(Functor& functor)
@@ -205,6 +236,45 @@ inline void* Heap::allocateWithoutDestructor(size_t bytes)
     return m_objectSpace.allocateWithoutDestructor(bytes);
 }
 
+template<typename ClassType>
+void* Heap::allocateObjectOfType(size_t bytes)
+{
+    // JSCell::classInfo() expects objects allocated with normal destructor to derive from JSDestructibleObject.
+    ASSERT((!ClassType::needsDestruction || ClassType::hasImmortalStructure || std::is_convertible<ClassType, JSDestructibleObject>::value));
+
+    if (ClassType::needsDestruction && ClassType::hasImmortalStructure)
+        return allocateWithImmortalStructureDestructor(bytes);
+    if (ClassType::needsDestruction)
+        return allocateWithNormalDestructor(bytes);
+    return allocateWithoutDestructor(bytes);
+}
+
+template<typename ClassType>
+MarkedSpace::Subspace& Heap::subspaceForObjectOfType()
+{
+    // JSCell::classInfo() expects objects allocated with normal destructor to derive from JSDestructibleObject.
+    ASSERT((!ClassType::needsDestruction || ClassType::hasImmortalStructure || std::is_convertible<ClassType, JSDestructibleObject>::value));
+    
+    if (ClassType::needsDestruction && ClassType::hasImmortalStructure)
+        return subspaceForObjectsWithImmortalStructure();
+    if (ClassType::needsDestruction)
+        return subspaceForObjectNormalDestructor();
+    return subspaceForObjectWithoutDestructor();
+}
+
+template<typename ClassType>
+MarkedAllocator& Heap::allocatorForObjectOfType(size_t bytes)
+{
+    // JSCell::classInfo() expects objects allocated with normal destructor to derive from JSDestructibleObject.
+    ASSERT((!ClassType::needsDestruction || ClassType::hasImmortalStructure || std::is_convertible<ClassType, JSDestructibleObject>::value));
+    
+    if (ClassType::needsDestruction && ClassType::hasImmortalStructure)
+        return allocatorForObjectWithImmortalStructureDestructor(bytes);
+    if (ClassType::needsDestruction)
+        return allocatorForObjectWithNormalDestructor(bytes);
+    return allocatorForObjectWithoutDestructor(bytes);
+}
+
 inline CheckedBoolean Heap::tryAllocateStorage(JSCell* intendedOwner, size_t bytes, void** outPtr)
 {
     CheckedBoolean result = m_storageSpace.tryAllocate(bytes, outPtr);
@@ -238,11 +308,6 @@ inline void Heap::ascribeOwner(JSCell* intendedOwner, void* storage)
     UNUSED_PARAM(intendedOwner);
     UNUSED_PARAM(storage);
 #endif
-}
-
-inline BlockAllocator& Heap::blockAllocator()
-{
-    return m_blockAllocator;
 }
 
 #if USE(CF)
@@ -288,6 +353,16 @@ inline HashSet<MarkedArgumentBuffer*>& Heap::markListSet()
     if (!m_markListSet)
         m_markListSet = std::make_unique<HashSet<MarkedArgumentBuffer*>>();
     return *m_markListSet;
+}
+
+inline void Heap::registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback)
+{
+    m_weakGCMaps.add(weakGCMap, WTF::move(pruningCallback));
+}
+
+inline void Heap::unregisterWeakGCMap(void* weakGCMap)
+{
+    m_weakGCMaps.remove(weakGCMap);
 }
     
 } // namespace JSC

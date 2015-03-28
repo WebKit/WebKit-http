@@ -175,7 +175,7 @@
 
 // See Source/WebCore/platform/cf/CoreMediaSoftLink.{cpp,h} for an example implementation.
 
-#define SOFT_LINK_FRAMEWORK_HEADER(functionNamespace, framework) \
+#define SOFT_LINK_FRAMEWORK_FOR_HEADER(functionNamespace, framework) \
     namespace functionNamespace { \
     extern HMODULE framework##Library(bool isOptional = false); \
     bool is##framework##FrameworkAvailable(); \
@@ -199,25 +199,25 @@
 #define SOFT_LINK_DEBUG_FRAMEWORK(functionNamespace, framework) SOFT_LINK_FRAMEWORK_HELPER(functionNamespace, framework, L"_debug.dll")
 
 #ifdef DEBUG_ALL
-#define SOFT_LINK_FRAMEWORK_SOURCE(functionNamespace, framework) SOFT_LINK_DEBUG_FRAMEWORK(functionNamespace, framework)
+#define SOFT_LINK_FRAMEWORK_FOR_SOURCE(functionNamespace, framework) SOFT_LINK_DEBUG_FRAMEWORK(functionNamespace, framework)
 #else
-#define SOFT_LINK_FRAMEWORK_SOURCE(functionNamespace, framework) SOFT_LINK_FRAMEWORK(functionNamespace, framework)
+#define SOFT_LINK_FRAMEWORK_FOR_SOURCE(functionNamespace, framework) SOFT_LINK_FRAMEWORK(functionNamespace, framework)
 #endif
 
-#define SOFT_LINK_CONSTANT_HEADER(functionNamespace, framework, variableName, variableType) \
+#define SOFT_LINK_CONSTANT_FOR_HEADER(functionNamespace, framework, variableName, variableType) \
     namespace functionNamespace { \
-    const variableType get_##framework##_##variableName(); \
+    variableType get_##framework##_##variableName(); \
     }
 
-#define SOFT_LINK_CONSTANT_SOURCE(functionNamespace, framework, variableName, variableType) \
+#define SOFT_LINK_CONSTANT_FOR_SOURCE(functionNamespace, framework, variableName, variableType) \
     namespace functionNamespace { \
     static void init##framework##variableName(void* context) { \
         variableType* ptr = reinterpret_cast<variableType*>(SOFT_LINK_GETPROCADDRESS(framework##Library(), #variableName)); \
-        ASSERT(ptr); \
+        RELEASE_ASSERT(ptr); \
         *static_cast<variableType*>(context) = *ptr; \
     } \
-    const variableType get_##framework##_##variableName(); \
-    const variableType get_##framework##_##variableName() \
+    variableType get_##framework##_##variableName(); \
+    variableType get_##framework##_##variableName() \
     { \
         static variableType constant##framework##variableName; \
         static dispatch_once_t once; \
@@ -226,7 +226,7 @@
     } \
     }
 
-#define SOFT_LINK_FUNCTION_HEADER(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
+#define SOFT_LINK_FUNCTION_FOR_HEADER(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
     namespace functionNamespace { \
     extern resultType(__cdecl*softLink##framework##functionName) parameterDeclarations; \
     inline resultType softLink_##framework##_##functionName parameterDeclarations \
@@ -235,14 +235,14 @@
     } \
     }
 
-#define SOFT_LINK_FUNCTION_SOURCE(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
+#define SOFT_LINK_FUNCTION_FOR_SOURCE(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
     namespace functionNamespace { \
     static resultType __cdecl init##framework##functionName parameterDeclarations; \
     resultType(__cdecl*softLink##framework##functionName) parameterDeclarations = init##framework##functionName; \
     static resultType __cdecl init##framework##functionName parameterDeclarations \
     { \
         softLink##framework##functionName = reinterpret_cast<resultType (__cdecl*)parameterDeclarations>(SOFT_LINK_GETPROCADDRESS(framework##Library(), #functionName)); \
-        ASSERT(softLink##framework##functionName); \
+        RELEASE_ASSERT(softLink##framework##functionName); \
         return softLink##framework##functionName parameterNames; \
     } \
     }

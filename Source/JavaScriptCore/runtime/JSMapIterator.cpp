@@ -29,6 +29,7 @@
 #include "JSCJSValueInlines.h"
 #include "JSCellInlines.h"
 #include "JSMap.h"
+#include "MapDataInlines.h"
 #include "SlotVisitorInlines.h"
 #include "StructureInlines.h"
 
@@ -39,15 +40,21 @@ const ClassInfo JSMapIterator::s_info = { "Map Iterator", &Base::s_info, 0, CREA
 void JSMapIterator::finishCreation(VM& vm, JSMap* iteratedObject)
 {
     Base::finishCreation(vm);
-    m_iteratedObjectData.set(vm, this, iteratedObject->mapData());
+    m_map.set(vm, this, iteratedObject);
+}
+
+void JSMapIterator::destroy(JSCell* cell)
+{
+    JSMapIterator* thisObject = jsCast<JSMapIterator*>(cell);
+    thisObject->JSMapIterator::~JSMapIterator();
 }
 
 void JSMapIterator::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSMapIterator* thisObject = jsCast<JSMapIterator*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());        
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_iteratedObjectData);
+    visitor.append(&thisObject->m_map);
 }
 
 JSValue JSMapIterator::createPair(CallFrame* callFrame, JSValue key, JSValue value)
@@ -57,6 +64,13 @@ JSValue JSMapIterator::createPair(CallFrame* callFrame, JSValue key, JSValue val
     args.append(value);
     JSGlobalObject* globalObject = callFrame->callee()->globalObject();
     return constructArray(callFrame, 0, globalObject, args);
+}
+
+JSMapIterator* JSMapIterator::clone(ExecState* exec)
+{
+    auto clone = JSMapIterator::create(exec->vm(), exec->callee()->globalObject()->mapIteratorStructure(), m_map.get(), m_kind);
+    clone->m_iterator = m_iterator;
+    return clone;
 }
 
 }

@@ -150,7 +150,7 @@ public:
 
     Client* client() const { return m_client; }
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     void setShouldCloseConnectionOnMachExceptions();
 #endif
 
@@ -200,6 +200,10 @@ public:
 
     bool isValid() const { return m_client; }
 
+#if HAVE(QOS_CLASSES)
+    void setShouldBoostMainThreadOnSyncMessage(bool b) { m_shouldBoostMainThreadOnSyncMessage = b; }
+#endif
+
 private:
     Connection(Identifier, bool isServer, Client&, WTF::RunLoop& clientRunLoop);
     void platformInitialize(Identifier);
@@ -213,7 +217,7 @@ private:
     void processIncomingMessage(std::unique_ptr<MessageDecoder>);
     void processIncomingSyncReply(std::unique_ptr<MessageDecoder>);
 
-    void dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceiver*, MessageDecoder*);
+    void dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceiver&, MessageDecoder&);
 
     bool canSendOutgoingMessages() const;
     bool platformCanSendOutgoingMessages() const;
@@ -304,6 +308,11 @@ private:
     typedef HashMap<uint64_t, SecondaryThreadPendingSyncReply*> SecondaryThreadPendingSyncReplyMap;
     SecondaryThreadPendingSyncReplyMap m_secondaryThreadPendingSyncReplyMap;
 
+#if HAVE(QOS_CLASSES)
+    pthread_t m_mainThread { 0 };
+    bool m_shouldBoostMainThreadOnSyncMessage { false };
+#endif
+
 #if OS(DARWIN)
     // Called on the connection queue.
     void receiveSourceEventHandler();
@@ -315,7 +324,7 @@ private:
     mach_port_t m_receivePort;
     dispatch_source_t m_receivePortDataAvailableSource;
 
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     void exceptionSourceEventHandler();
 
     // If setShouldCloseConnectionOnMachExceptions has been called, this has

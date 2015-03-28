@@ -33,15 +33,16 @@
 #include "WeakReferenceHarvester.h"
 #include <condition_variable>
 #include <wtf/HashSet.h>
-#include <wtf/TCSpinLock.h>
+#include <wtf/SpinLock.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
 
-class GCThread;
-class VM;
+class CopiedBlock;
 class CopiedSpace;
 class CopyVisitor;
+class GCThread;
+class VM;
 
 enum GCPhase {
     NoPhase,

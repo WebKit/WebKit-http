@@ -23,44 +23,47 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ObjectTreeSetIndexTreeElement = function(object, propertyPath)
+WebInspector.ObjectTreeSetIndexTreeElement = class ObjectTreeSetIndexTreeElement extends WebInspector.ObjectTreeBaseTreeElement
 {
-    console.assert(object instanceof WebInspector.RemoteObject);
+    constructor(object, propertyPath)
+    {
+        console.assert(object instanceof WebInspector.RemoteObject);
 
-    this._object = object;
-    this._propertyPath = propertyPath;
+        // Treat the same as an array-index just with different strings and widths.
+        super(object, propertyPath);
 
-    // Treat the same as an array-index just with a different character.
-    WebInspector.GeneralTreeElement.call(this, ["object-tree-array-index"], this._titleFragment(), null, this._object, false);
+        this._object = object;
 
-    this.small = true;
-    this.toggleOnClick = false;
-    this.selectable = false;
-    this.tooltipHandledSeparately = true;
-    this.hasChildren = false;
-};
-
-WebInspector.ObjectTreeSetIndexTreeElement.prototype = {
-    constructor: WebInspector.ObjectTreeSetIndexTreeElement,
-    __proto__: WebInspector.GeneralTreeElement.prototype,
+        this.mainTitle = this._titleFragment();
+        this.addClassName("object-tree-array-index");
+    }
 
     // Public
 
     get object()
     {
         return this._object;
-    },
+    }
+
+    // Protected
+
+    resolvedValue()
+    {
+        return this._object;
+    }
+
+    resolvedValuePropertyPath()
+    {
+        return this.propertyPath.appendSetIndex(this._object);
+    }
 
     // Private
 
-    _resolvedValuePropertyPath: function()
-    {
-        return this._propertyPath.appendSetIndex(this._object);
-    },
-
-    _titleFragment: function()
+    _titleFragment()
     {
         var container = document.createDocumentFragment();
+
+        var propertyPath = this.resolvedValuePropertyPath();
 
         // Set bullet.
         var nameElement = container.appendChild(document.createElement("span"));
@@ -71,7 +74,7 @@ WebInspector.ObjectTreeSetIndexTreeElement.prototype = {
         // Value.
         var valueElement = container.appendChild(document.createElement("span"));
         valueElement.className = "index-value";
-        valueElement.appendChild(WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject(this._object, this._resolvedValuePropertyPath()));
+        valueElement.appendChild(WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject(this._object, propertyPath));
 
         return container;
     }

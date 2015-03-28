@@ -80,8 +80,9 @@ private:
     bool isAlreadyPinnedInDirectionOfGesture(const PlatformWheelEvent&, ScrollEventAxis);
 
 #if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
-    LayoutUnit scrollOffsetOnAxis(ScrollEventAxis) override;
+    LayoutUnit scrollOffsetOnAxis(ScrollEventAxis) const override;
     void immediateScrollOnAxis(ScrollEventAxis, float delta) override;
+    float pageScaleFactor() const override;
 #endif
 
     void logExposedUnfilledArea();
@@ -99,6 +100,7 @@ private:
     RetainPtr<ScrollbarPainter> m_horizontalScrollbarPainter;
     FloatPoint m_probableMainThreadScrollPosition;
     bool m_lastScrollHadUnfilledPixels;
+    bool m_hadFirstUpdate;
 };
 
 } // namespace WebCore

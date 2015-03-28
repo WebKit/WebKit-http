@@ -1226,6 +1226,30 @@ size_t StringImpl::findIgnoringCase(StringImpl* matchString, unsigned index)
     return findIgnoringCaseInner(characters16() + index, matchString->characters16(), index, searchLength, matchLength);
 }
 
+size_t StringImpl::findIgnoringASCIICase(const StringImpl& matchString) const
+{
+    return ::WTF::findIgnoringASCIICase(*this, matchString, 0);
+}
+
+size_t StringImpl::findIgnoringASCIICase(const StringImpl& matchString, unsigned startOffset) const
+{
+    return ::WTF::findIgnoringASCIICase(*this, matchString, startOffset);
+}
+
+size_t StringImpl::findIgnoringASCIICase(const StringImpl* matchString) const
+{
+    if (!matchString)
+        return notFound;
+    return ::WTF::findIgnoringASCIICase(*this, *matchString, 0);
+}
+
+size_t StringImpl::findIgnoringASCIICase(const StringImpl* matchString, unsigned startOffset) const
+{
+    if (!matchString)
+        return notFound;
+    return ::WTF::findIgnoringASCIICase(*this, *matchString, startOffset);
+}
+
 size_t StringImpl::findNextLineStart(unsigned index)
 {
     if (is8Bit())
@@ -1357,7 +1381,7 @@ ALWAYS_INLINE static bool equalInner(const StringImpl* stringImpl, unsigned star
     return equalIgnoringCase(stringImpl->characters16() + startOffset, reinterpret_cast<const LChar*>(matchString), matchLength);
 }
 
-ALWAYS_INLINE static bool equalInner(StringImpl& stringImpl, unsigned startOffset, StringImpl& matchString, bool caseSensitive)
+ALWAYS_INLINE static bool equalInner(const StringImpl& stringImpl, unsigned startOffset, const StringImpl& matchString)
 {
     if (startOffset > stringImpl.length())
         return false;
@@ -1366,32 +1390,39 @@ ALWAYS_INLINE static bool equalInner(StringImpl& stringImpl, unsigned startOffse
     if (matchString.length() + startOffset > stringImpl.length())
         return false;
 
-    if (caseSensitive) {
-        if (stringImpl.is8Bit())
+    if (stringImpl.is8Bit()) {
+        if (matchString.is8Bit())
             return equal(stringImpl.characters8() + startOffset, matchString.characters8(), matchString.length());
-        return equal(stringImpl.characters16() + startOffset, matchString.characters16(), matchString.length());
+        return equal(stringImpl.characters8() + startOffset, matchString.characters16(), matchString.length());
     }
-    if (stringImpl.is8Bit())
-        return equalIgnoringCase(stringImpl.characters8() + startOffset, matchString.characters8(), matchString.length());
-    return equalIgnoringCase(stringImpl.characters16() + startOffset, matchString.characters16(), matchString.length());
+    if (matchString.is8Bit())
+        return equal(stringImpl.characters16() + startOffset, matchString.characters8(), matchString.length());
+    return equal(stringImpl.characters16() + startOffset, matchString.characters16(), matchString.length());
 }
 
 bool StringImpl::startsWith(const StringImpl* str) const
 {
     if (!str)
         return false;
+    return ::WTF::startsWith(*this, *str);
+}
 
-    if (str->length() > length())
+bool StringImpl::startsWith(const StringImpl& str) const
+{
+    return ::WTF::startsWith(*this, str);
+}
+
+bool StringImpl::startsWithIgnoringASCIICase(const StringImpl* prefix) const
+{
+    if (!prefix)
         return false;
 
-    if (is8Bit()) {
-        if (str->is8Bit())
-            return equal(characters8(), str->characters8(), str->length());
-        return equal(characters8(), str->characters16(), str->length());
-    }
-    if (str->is8Bit())
-        return equal(characters16(), str->characters8(), str->length());
-    return equal(characters16(), str->characters16(), str->length());
+    return ::WTF::startsWithIgnoringASCIICase(*this, *prefix);
+}
+
+bool StringImpl::startsWithIgnoringASCIICase(const StringImpl& prefix) const
+{
+    return ::WTF::startsWithIgnoringASCIICase(*this, prefix);
 }
 
 bool StringImpl::startsWith(UChar character) const
@@ -1407,9 +1438,22 @@ bool StringImpl::startsWith(const char* matchString, unsigned matchLength, bool 
     return equalInner(this, 0, matchString, matchLength, caseSensitive);
 }
 
-bool StringImpl::startsWith(StringImpl& matchString, unsigned startOffset, bool caseSensitive) const
+bool StringImpl::hasInfixStartingAt(const StringImpl& matchString, unsigned startOffset) const
 {
-    return equalInner(const_cast<StringImpl&>(*this), startOffset, matchString, caseSensitive);
+    return equalInner(*this, startOffset, matchString);
+}
+
+bool StringImpl::endsWith(StringImpl* suffix)
+{
+    if (!suffix)
+        return false;
+
+    return ::WTF::endsWith(*this, *suffix);
+}
+
+bool StringImpl::endsWith(StringImpl& suffix)
+{
+    return ::WTF::endsWith(*this, suffix);
 }
 
 bool StringImpl::endsWith(StringImpl* matchString, bool caseSensitive)
@@ -1420,6 +1464,19 @@ bool StringImpl::endsWith(StringImpl* matchString, bool caseSensitive)
         return (caseSensitive ? find(matchString, start) : findIgnoringCase(matchString, start)) == start;
     }
     return false;
+}
+
+bool StringImpl::endsWithIgnoringASCIICase(const StringImpl* suffix) const
+{
+    if (!suffix)
+        return false;
+
+    return ::WTF::endsWithIgnoringASCIICase(*this, *suffix);
+}
+
+bool StringImpl::endsWithIgnoringASCIICase(const StringImpl& suffix) const
+{
+    return ::WTF::endsWithIgnoringASCIICase(*this, suffix);
 }
 
 bool StringImpl::endsWith(UChar character) const
@@ -1436,11 +1493,11 @@ bool StringImpl::endsWith(const char* matchString, unsigned matchLength, bool ca
     return equalInner(this, startOffset, matchString, matchLength, caseSensitive);
 }
 
-bool StringImpl::endsWith(StringImpl& matchString, unsigned endOffset, bool caseSensitive) const
+bool StringImpl::hasInfixEndingAt(const StringImpl& matchString, unsigned endOffset) const
 {
     if (endOffset < matchString.length())
         return false;
-    return equalInner(const_cast<StringImpl&>(*this), endOffset - matchString.length(), matchString, caseSensitive);
+    return equalInner(*this, endOffset - matchString.length(), matchString);
 }
 
 Ref<StringImpl> StringImpl::replace(UChar oldC, UChar newC)
@@ -1824,34 +1881,9 @@ Ref<StringImpl> StringImpl::replace(StringImpl* pattern, StringImpl* replacement
     return newImpl;
 }
 
-static ALWAYS_INLINE bool stringImplContentEqual(const StringImpl& a, const StringImpl& b)
-{
-    unsigned aLength = a.length();
-    unsigned bLength = b.length();
-    if (aLength != bLength)
-        return false;
-
-    if (a.is8Bit()) {
-        if (b.is8Bit())
-            return equal(a.characters8(), b.characters8(), aLength);
-
-        return equal(a.characters8(), b.characters16(), aLength);
-    }
-
-    if (b.is8Bit())
-        return equal(a.characters16(), b.characters8(), aLength);
-
-    return equal(a.characters16(), b.characters16(), aLength);
-}
-
 bool equal(const StringImpl* a, const StringImpl* b)
 {
-    if (a == b)
-        return true;
-    if (!a || !b)
-        return false;
-
-    return stringImplContentEqual(*a, *b);
+    return equalCommon(a, b);
 }
 
 template <typename CharType>
@@ -1916,10 +1948,7 @@ bool equal(const StringImpl* a, const LChar* b)
 
 bool equal(const StringImpl& a, const StringImpl& b)
 {
-    if (&a == &b)
-        return true;
-
-    return stringImplContentEqual(a, b);
+    return equalCommon(a, b);
 }
 
 bool equalIgnoringCase(const StringImpl* a, const StringImpl* b)
@@ -2016,6 +2045,27 @@ bool equalIgnoringNullity(StringImpl* a, StringImpl* b)
     if (!b && a && !a->length())
         return true;
     return equal(a, b);
+}
+
+bool equalIgnoringASCIICase(const StringImpl& a, const StringImpl& b)
+{
+    return equalIgnoringASCIICaseCommon(a, b);
+}
+
+bool equalIgnoringASCIICase(const StringImpl* a, const StringImpl*b)
+{
+    if (a == b)
+        return true;
+    if (!a || !b)
+        return false;
+    return equalIgnoringASCIICaseCommon(*a, *b);
+}
+
+bool equalIgnoringASCIICaseNonNull(const StringImpl* a, const StringImpl* b)
+{
+    ASSERT(a);
+    ASSERT(b);
+    return equalIgnoringASCIICaseCommon(*a, *b);
 }
 
 UCharDirection StringImpl::defaultWritingDirection(bool* hasStrongDirectionality)

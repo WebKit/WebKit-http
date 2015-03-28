@@ -107,28 +107,35 @@ void HTMLObjectElement::collectStyleForPresentationAttribute(const QualifiedName
 
 void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
+    bool invalidateRenderer = false;
+
     if (name == formAttr)
         formAttributeChanged();
     else if (name == typeAttr) {
         m_serviceType = value.string().left(value.find(';')).lower();
+        invalidateRenderer = !fastHasAttribute(classidAttr);
         setNeedsWidgetUpdate(true);
     } else if (name == dataAttr) {
         m_url = stripLeadingAndTrailingHTMLSpaces(value);
-        setNeedsWidgetUpdate(true);
         document().updateStyleIfNeeded();
-        if (renderer()) {
-            if (isImageType()) {
-                if (!m_imageLoader)
-                    m_imageLoader = std::make_unique<HTMLImageLoader>(*this);
-                m_imageLoader->updateFromElementIgnoringPreviousError();
-            }
+        if (isImageType() && renderer()) {
+            if (!m_imageLoader)
+                m_imageLoader = std::make_unique<HTMLImageLoader>(*this);
+            m_imageLoader->updateFromElementIgnoringPreviousError();
         }
-    } else if (name == classidAttr)
+        invalidateRenderer = !fastHasAttribute(classidAttr);
         setNeedsWidgetUpdate(true);
-    else if (name == onbeforeloadAttr)
-        setAttributeEventListener(eventNames().beforeloadEvent, name, value);
-    else
+    } else if (name == classidAttr) {
+        invalidateRenderer = true;
+        setNeedsWidgetUpdate(true);
+    } else
         HTMLPlugInImageElement::parseAttribute(name, value);
+
+    if (!invalidateRenderer || !inDocument() || !renderer())
+        return;
+
+    clearUseFallbackContent();
+    setNeedsStyleRecalc(ReconstructRenderTree);
 }
 
 static void mapDataParamToSrc(Vector<String>* paramNames, Vector<String>* paramValues)
@@ -375,7 +382,7 @@ void HTMLObjectElement::renderFallbackContent()
         m_serviceType = loader->image()->response().mimeType();
         if (!isImageType()) {
             // If we don't think we have an image type anymore, then clear the image from the loader.
-            loader->setImage(nullptr);
+            loader->clearImage();
             return;
         }
     }

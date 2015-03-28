@@ -1,7 +1,6 @@
-CONSOLE MESSAGE: line 80: SyntaxError: Unexpected token '}'. Expected a ':' following the property name '__func'.
 S12.1_A4_T1
 
-PASS Expected parsing failure
+PASS TypeError: {__func} is not a function. (In '{__func}()', '{__func}' is an instance of Object)
 
 TEST COMPLETE
 

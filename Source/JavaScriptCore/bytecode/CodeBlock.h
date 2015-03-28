@@ -83,8 +83,6 @@ class LLIntOffsetsExtractor;
 class RepatchBuffer;
 class TypeLocation;
 
-inline VirtualRegister unmodifiedArgumentsRegister(VirtualRegister argumentsRegister) { return VirtualRegister(argumentsRegister.offset() + 1); }
-
 enum ReoptimizationMode { DontCountReoptimization, CountReoptimization };
 
 class CodeBlock : public ThreadSafeRefCounted<CodeBlock>, public UnconditionalFinalizer, public WeakReferenceHarvester {
@@ -259,11 +257,6 @@ public:
 
     unsigned instructionCount() const { return m_instructions.size(); }
 
-    int argumentIndexAfterCapture(size_t argument);
-    
-    bool hasSlowArguments();
-    const SlowArgument* machineSlowArguments();
-
     // Exactly equivalent to codeBlock->ownerExecutable()->installCode(codeBlock);
     void install();
     
@@ -273,7 +266,7 @@ public:
     void setJITCode(PassRefPtr<JITCode> code)
     {
         ASSERT(m_heap->isDeferred());
-        m_heap->reportExtraMemoryCost(code->size());
+        m_heap->reportExtraMemoryAllocated(code->size());
         ConcurrentJITLocker locker(m_lock);
         WTF::storeStoreFence(); // This is probably not needed because the lock will also do something similar, but it's good to be paranoid.
         m_jitCode = code;
@@ -327,24 +320,6 @@ public:
         return m_scopeRegister;
     }
 
-    void setArgumentsRegister(VirtualRegister argumentsRegister)
-    {
-        ASSERT(argumentsRegister.isValid());
-        m_argumentsRegister = argumentsRegister;
-        ASSERT(usesArguments());
-    }
-    VirtualRegister argumentsRegister() const
-    {
-        ASSERT(usesArguments());
-        return m_argumentsRegister;
-    }
-    VirtualRegister uncheckedArgumentsRegister()
-    {
-        if (!usesArguments())
-            return VirtualRegister();
-        return argumentsRegister();
-    }
-
     void setActivationRegister(VirtualRegister activationRegister)
     {
         m_lexicalEnvironmentRegister = activationRegister;
@@ -361,40 +336,12 @@ public:
         return m_lexicalEnvironmentRegister;
     }
 
-    bool usesArguments() const { return m_argumentsRegister.isValid(); }
-
     bool needsActivation() const
     {
         ASSERT(m_lexicalEnvironmentRegister.isValid() == m_needsActivation);
         return m_needsActivation;
     }
     
-    unsigned captureCount() const
-    {
-        if (!symbolTable())
-            return 0;
-        return symbolTable()->captureCount();
-    }
-    
-    int captureStart() const
-    {
-        if (!symbolTable())
-            return 0;
-        return symbolTable()->captureStart();
-    }
-    
-    int captureEnd() const
-    {
-        if (!symbolTable())
-            return 0;
-        return symbolTable()->captureEnd();
-    }
-    
-    bool isCaptured(VirtualRegister operand, InlineCallFrame* = 0) const;
-    
-    int framePointerOffsetToGetActivationRegisters(int machineCaptureStart);
-    int framePointerOffsetToGetActivationRegisters();
-
     CodeType codeType() const { return m_unlinkedCode->codeType(); }
     PutPropertySlot::Context putByIdContext() const
     {
@@ -1059,13 +1006,12 @@ private:
     WriteBarrier<SymbolTable> m_symbolTable;
     VirtualRegister m_thisRegister;
     VirtualRegister m_scopeRegister;
-    VirtualRegister m_argumentsRegister;
     VirtualRegister m_lexicalEnvironmentRegister;
 
     bool m_isStrictMode;
     bool m_needsActivation;
     bool m_mayBeExecuting;
-    uint8_t m_visitAggregateHasBeenCalled;
+    Atomic<bool> m_visitAggregateHasBeenCalled;
 
     RefPtr<SourceProvider> m_source;
     unsigned m_sourceOffset;
@@ -1220,24 +1166,6 @@ inline CodeBlock* baselineCodeBlockForOriginAndBaselineCodeBlock(const CodeOrigi
     return baselineCodeBlock;
 }
 
-inline int CodeBlock::argumentIndexAfterCapture(size_t argument)
-{
-    if (argument >= static_cast<size_t>(symbolTable()->parameterCount()))
-        return CallFrame::argumentOffset(argument);
-    
-    const SlowArgument* slowArguments = symbolTable()->slowArguments();
-    if (!slowArguments || slowArguments[argument].status == SlowArgument::Normal)
-        return CallFrame::argumentOffset(argument);
-    
-    ASSERT(slowArguments[argument].status == SlowArgument::Captured);
-    return slowArguments[argument].index;
-}
-
-inline bool CodeBlock::hasSlowArguments()
-{
-    return !!symbolTable()->slowArguments();
-}
-
 inline Register& ExecState::r(int index)
 {
     CodeBlock* codeBlock = this->codeBlock();
@@ -1260,17 +1188,6 @@ inline Register& ExecState::uncheckedR(int index)
 inline Register& ExecState::uncheckedR(VirtualRegister reg)
 {
     return uncheckedR(reg.offset());
-}
-
-inline JSValue ExecState::argumentAfterCapture(size_t argument)
-{
-    if (argument >= argumentCount())
-        return jsUndefined();
-    
-    if (!codeBlock())
-        return this[argumentOffset(argument)].jsValue();
-    
-    return this[codeBlock()->argumentIndexAfterCapture(argument)].jsValue();
 }
 
 inline void CodeBlockSet::mark(void* candidateCodeBlock)
@@ -1301,7 +1218,7 @@ inline void CodeBlockSet::mark(CodeBlock* codeBlock)
     
     codeBlock->m_mayBeExecuting = true;
     // We might not have cleared the marks for this CodeBlock, but we need to visit it.
-    codeBlock->m_visitAggregateHasBeenCalled = false;
+    codeBlock->m_visitAggregateHasBeenCalled.store(false, std::memory_order_relaxed);
 #if ENABLE(GGC)
     m_currentlyExecuting.append(codeBlock);
 #endif

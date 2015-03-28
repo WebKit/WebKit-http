@@ -6,16 +6,12 @@ function createControls(root, video, host)
 function ControllerIOS(root, video, host)
 {
     this.doingSetup = true;
-    this.hasWirelessPlaybackTargets = false;
     this._pageScaleFactor = 1;
-    this.isListeningForPlaybackTargetAvailabilityEvent = false;
 
-    this.timelineContextName = "_webkit-media-controls-timeline-" + ControllerIOS.gLastTimelineId++;
+    this.timelineContextName = "_webkit-media-controls-timeline-" + host.generateUUID();
 
     Controller.call(this, root, video, host);
 
-    this.updateWirelessTargetAvailable();
-    this.updateWirelessPlaybackStatus();
     this.setNeedsTimelineMetricsUpdate();
 
     this._timelineIsHidden = false;
@@ -33,11 +29,6 @@ ControllerIOS.ButtonWidth = 42;
 /* Enums */
 ControllerIOS.StartPlaybackControls = 2;
 
-/* Globals */
-ControllerIOS.gWirelessImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 245"><g fill="#1060FE"><path d="M193.6,6.3v121.6H6.4V6.3H193.6 M199.1,0.7H0.9v132.7h198.2V0.7L199.1,0.7z"/><path d="M43.5,139.3c15.8,8,35.3,12.7,56.5,12.7s40.7-4.7,56.5-12.7H43.5z"/></g><g text-anchor="middle" font-family="Helvetica Neue"><text x="100" y="204" fill="white" font-size="24">##DEVICE_TYPE##</text><text x="100" y="234" fill="#5C5C5C" font-size="21">##DEVICE_NAME##</text></g></svg>';
-ControllerIOS.gSimulateWirelessPlaybackTarget = false; // Used for testing when there are no wireless targets.
-ControllerIOS.gSimulateOptimizedFullscreenAvailable = false; // Used for testing when optimized fullscreen is not available.
-ControllerIOS.gLastTimelineId = 0;
 
 ControllerIOS.prototype = {
     addVideoListeners: function() {
@@ -45,7 +36,6 @@ ControllerIOS.prototype = {
 
         this.listenFor(this.video, 'webkitbeginfullscreen', this.handleFullscreenChange);
         this.listenFor(this.video, 'webkitendfullscreen', this.handleFullscreenChange);
-        this.listenFor(this.video, 'webkitcurrentplaybacktargetiswirelesschanged', this.handleWirelessPlaybackChange);
         this.listenFor(this.video, 'webkitpresentationmodechanged', this.handlePresentationModeChange);
     },
 
@@ -54,10 +44,7 @@ ControllerIOS.prototype = {
 
         this.stopListeningFor(this.video, 'webkitbeginfullscreen', this.handleFullscreenChange);
         this.stopListeningFor(this.video, 'webkitendfullscreen', this.handleFullscreenChange);
-        this.stopListeningFor(this.video, 'webkitcurrentplaybacktargetiswirelesschanged', this.handleWirelessPlaybackChange);
         this.stopListeningFor(this.video, 'webkitpresentationmodechanged', this.handlePresentationModeChange);
-
-        this.setShouldListenForPlaybackTargetAvailabilityEvent(false);
     },
 
     createBase: function() {
@@ -115,71 +102,23 @@ ControllerIOS.prototype = {
         return this.shouldHaveStartPlaybackButton() || Controller.prototype.shouldHaveAnyUI.call(this) || this.currentPlaybackTargetIsWireless();
     },
 
-    currentPlaybackTargetIsWireless: function() {
-        return ControllerIOS.gSimulateWirelessPlaybackTarget || (('webkitCurrentPlaybackTargetIsWireless' in this.video) && this.video.webkitCurrentPlaybackTargetIsWireless);
-    },
-
-    updateWirelessPlaybackStatus: function() {
-        if (this.currentPlaybackTargetIsWireless()) {
-            var backgroundImageSVG = "url('" + ControllerIOS.gWirelessImage + "')";
-
-            var deviceName = "";
-            var deviceType = "";
-            var type = this.host.externalDeviceType;
-            if (type == "airplay") {
-                deviceType = this.UIString('##WIRELESS_PLAYBACK_DEVICE_TYPE##');
-                deviceName = this.UIString('##WIRELESS_PLAYBACK_DEVICE_NAME##', '##DEVICE_NAME##', this.host.externalDeviceDisplayName || "Apple TV");
-            } else if (type == "tvout") {
-                deviceType = this.UIString('##TVOUT_DEVICE_TYPE##');
-                deviceName = this.UIString('##TVOUT_DEVICE_NAME##');
-            }
-
-            backgroundImageSVG = backgroundImageSVG.replace('##DEVICE_TYPE##', deviceType);
-            backgroundImageSVG = backgroundImageSVG.replace('##DEVICE_NAME##', deviceName);
-
-            this.controls.inlinePlaybackPlaceholder.style.backgroundImage = backgroundImageSVG;
-            this.controls.inlinePlaybackPlaceholder.setAttribute('aria-label', deviceType + ", " + deviceName);
-
-            this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
-            this.controls.wirelessTargetPicker.classList.add(this.ClassNames.playing);
-        } else {
-            this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
-            this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.playing);
-        }
-    },
-
-    updateWirelessTargetAvailable: function() {
-        if (ControllerIOS.gSimulateWirelessPlaybackTarget || this.hasWirelessPlaybackTargets)
-            this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.hidden);
-        else
-            this.controls.wirelessTargetPicker.classList.add(this.ClassNames.hidden);
-    },
-
     createControls: function() {
         Controller.prototype.createControls.call(this);
 
-        var panelCompositedParent = this.controls.panelCompositedParent = document.createElement('div');
-        panelCompositedParent.setAttribute('pseudo', '-webkit-media-controls-panel-composited-parent');
+        var panelContainer = this.controls.panelContainer = document.createElement('div');
+        panelContainer.setAttribute('pseudo', '-webkit-media-controls-panel-container');
+
+        var panelBackground = this.controls.panelBackground = document.createElement('div');
+        panelBackground.setAttribute('pseudo', '-webkit-media-controls-panel-background');
 
         var spacer = this.controls.spacer = document.createElement('div');
         spacer.setAttribute('pseudo', '-webkit-media-controls-spacer');
         spacer.classList.add(this.ClassNames.hidden);
 
-        var inlinePlaybackPlaceholder = this.controls.inlinePlaybackPlaceholder = document.createElement('div');
-        inlinePlaybackPlaceholder.setAttribute('pseudo', '-webkit-media-controls-inline-playback-placeholder');
-        if (!ControllerIOS.gSimulateOptimizedFullscreenAvailable)
-            inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
-        inlinePlaybackPlaceholder.setAttribute('aria-label', this.UIString('Display Optimized Full Screen'));
-
-        var wirelessTargetPicker = this.controls.wirelessTargetPicker = document.createElement('button');
-        wirelessTargetPicker.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-picker-button');
-        wirelessTargetPicker.setAttribute('aria-label', this.UIString('Choose Wireless Display'));
+        var wirelessTargetPicker = this.controls.wirelessTargetPicker
         this.listenFor(wirelessTargetPicker, 'touchstart', this.handleWirelessPickerButtonTouchStart);
         this.listenFor(wirelessTargetPicker, 'touchend', this.handleWirelessPickerButtonTouchEnd);
         this.listenFor(wirelessTargetPicker, 'touchcancel', this.handleWirelessPickerButtonTouchCancel);
-
-        if (!ControllerIOS.gSimulateWirelessPlaybackTarget)
-            wirelessTargetPicker.classList.add(this.ClassNames.hidden);
 
         this.listenFor(this.controls.startPlaybackButton, 'touchstart', this.handleStartPlaybackButtonTouchStart);
         this.listenFor(this.controls.startPlaybackButton, 'touchend', this.handleStartPlaybackButtonTouchEnd);
@@ -211,8 +150,6 @@ ControllerIOS.prototype = {
             this.addStartPlaybackControls();
         else
             this.removeStartPlaybackControls();
-
-        this.updateShouldListenForPlaybackTargetAvailabilityEvent();
     },
 
     addStartPlaybackControls: function() {
@@ -247,7 +184,7 @@ ControllerIOS.prototype = {
             // Hide the scrubber on audio until the user starts playing.
             this.controls.timelineBox.classList.add(this.ClassNames.hidden);
         } else {
-            if (ControllerIOS.gSimulateOptimizedFullscreenAvailable || ('webkitSupportsPresentationMode' in this.video && this.video.webkitSupportsPresentationMode('optimized')))
+            if (Controller.gSimulateOptimizedFullscreenAvailable || ('webkitSupportsPresentationMode' in this.video && this.video.webkitSupportsPresentationMode('optimized')))
                 this.controls.panel.appendChild(this.controls.optimizedFullscreenButton);
             this.controls.panel.appendChild(this.controls.fullscreenButton);
         }
@@ -257,23 +194,18 @@ ControllerIOS.prototype = {
         // Explicitly do nothing to override base-class behavior.
     },
 
-    hideControls: function() {
-        Controller.prototype.hideControls.call(this);
-        this.updateShouldListenForPlaybackTargetAvailabilityEvent();
-    },
-
     showControls: function() {
         this.updateLayoutForDisplayedWidth();
         this.updateTime(true);
         this.updateProgress(true);
         Controller.prototype.showControls.call(this);
-        this.updateShouldListenForPlaybackTargetAvailabilityEvent();
     },
 
     addControls: function() {
         this.base.appendChild(this.controls.inlinePlaybackPlaceholder);
-        this.base.appendChild(this.controls.panelCompositedParent);
-        this.controls.panelCompositedParent.appendChild(this.controls.panel);
+        this.base.appendChild(this.controls.panelContainer);
+        this.controls.panelContainer.appendChild(this.controls.panelBackground);
+        this.controls.panelContainer.appendChild(this.controls.panel);
         this.setNeedsTimelineMetricsUpdate();
     },
 
@@ -303,8 +235,9 @@ ControllerIOS.prototype = {
 
         var played = this.video.currentTime / this.video.duration;
         var buffered = 0;
-        for (var i = 0, end = this.video.buffered.length; i < end; ++i)
-            buffered = Math.max(this.video.buffered.end(i), buffered);
+        var bufferedRanges = this.video.buffered;
+        if (bufferedRanges && bufferedRanges.length)
+            buffered = Math.max(bufferedRanges.end(bufferedRanges.length - 1), buffered);
 
         buffered /= this.video.duration;
 
@@ -314,20 +247,7 @@ ControllerIOS.prototype = {
 
         var midY = height / 2;
 
-        // 1. Draw the outline with a clip path that subtracts the
-        // middle of a lozenge. This produces a better result than
-        // stroking when we come to filling the parts below.
-        ctx.save();
-        ctx.beginPath();
-        this.addRoundedRect(ctx, 1, midY - 3, width - 2, 6, 3);
-        this.addRoundedRect(ctx, 2, midY - 2, width - 4, 4, 2);
-        ctx.closePath();
-        ctx.clip("evenodd");
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, width, height);
-        ctx.restore();
-
-        // 2. Draw the buffered part and played parts, using
+        // 1. Draw the buffered part and played parts, using
         // solid rectangles that are clipped to the outside of
         // the lozenge.
         ctx.save();
@@ -335,10 +255,23 @@ ControllerIOS.prototype = {
         this.addRoundedRect(ctx, 1, midY - 3, width - 2, 6, 3);
         ctx.closePath();
         ctx.clip();
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, Math.round(width * buffered) + 2, height);
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, Math.round(width * played) + 2, height);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+        ctx.fillRect(Math.round(width * played) + 2, 0, Math.round(width * (buffered - played)) + 2, height);
+        ctx.restore();
+
+        // 2. Draw the outline with a clip path that subtracts the
+        // middle of a lozenge. This produces a better result than
+        // stroking.
+        ctx.save();
+        ctx.beginPath();
+        this.addRoundedRect(ctx, 1, midY - 3, width - 2, 6, 3);
+        this.addRoundedRect(ctx, 2, midY - 2, width - 4, 4, 2);
+        ctx.closePath();
+        ctx.clip("evenodd");
+        ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+        ctx.fillRect(Math.round(width * buffered) + 2, 0, width, height);
         ctx.restore();
     },
 
@@ -553,21 +486,6 @@ ControllerIOS.prototype = {
         this.updateControls();
     },
 
-    handleWirelessPlaybackChange: function(event) {
-        this.updateWirelessPlaybackStatus();
-        this.setNeedsTimelineMetricsUpdate();
-    },
-
-    handleWirelessTargetAvailableChange: function(event) {
-        var wirelessPlaybackTargetsAvailable = event.availability == "available";
-        if (this.hasWirelessPlaybackTargets === wirelessPlaybackTargetsAvailable)
-            return;
-
-        this.hasWirelessPlaybackTargets = wirelessPlaybackTargetsAvailable;
-        this.updateWirelessTargetAvailable();
-        this.setNeedsTimelineMetricsUpdate();
-    },
-
     handleWirelessPickerButtonTouchStart: function() {
         if (!this.video.error)
             this.controls.wirelessTargetPicker.classList.add('active');
@@ -575,8 +493,7 @@ ControllerIOS.prototype = {
 
     handleWirelessPickerButtonTouchEnd: function(event) {
         this.controls.wirelessTargetPicker.classList.remove('active');
-        this.video.webkitShowPlaybackTargetPicker();
-        return true;
+        return this.handleWirelessPickerButtonClicked();
     },
 
     handleWirelessPickerButtonTouchCancel: function(event) {
@@ -585,22 +502,16 @@ ControllerIOS.prototype = {
     },
 
     updateShouldListenForPlaybackTargetAvailabilityEvent: function() {
-        var shouldListen = true;
-        if (this.video.error)
-            shouldListen = false;
-        if (this.controlsType === ControllerIOS.StartPlaybackControls)
-            shouldListen = false;
-        if (!this.isAudio() && !this.video.paused && this.controlsAreHidden())
-            shouldListen = false;
-        if (document.hidden)
-            shouldListen = false;
+        if (this.controlsType === ControllerIOS.StartPlaybackControls) {
+            this.setShouldListenForPlaybackTargetAvailabilityEvent(false);
+            return;
+        }
 
-        this.setShouldListenForPlaybackTargetAvailabilityEvent(shouldListen);
+        Controller.prototype.updateShouldListenForPlaybackTargetAvailabilityEvent.call(this);
     },
 
     updateStatusDisplay: function(event)
     {
-        this.updateShouldListenForPlaybackTargetAvailabilityEvent();
         this.controls.startPlaybackButton.classList.toggle(this.ClassNames.failed, this.video.error !== null);
         Controller.prototype.updateStatusDisplay.call(this, event);
     },
@@ -624,17 +535,10 @@ ControllerIOS.prototype = {
 
     setShouldListenForPlaybackTargetAvailabilityEvent: function(shouldListen)
     {
-        if (!window.WebKitPlaybackTargetAvailabilityEvent || this.isListeningForPlaybackTargetAvailabilityEvent == shouldListen)
-            return;
-
         if (shouldListen && (this.shouldHaveStartPlaybackButton() || this.video.error))
             return;
 
-        this.isListeningForPlaybackTargetAvailabilityEvent = shouldListen;
-        if (shouldListen)
-            this.listenFor(this.video, 'webkitplaybacktargetavailabilitychanged', this.handleWirelessTargetAvailableChange);
-        else
-            this.stopListeningFor(this.video, 'webkitplaybacktargetavailabilitychanged', this.handleWirelessTargetAvailableChange);
+        Controller.prototype.setShouldListenForPlaybackTargetAvailabilityEvent.call(this, shouldListen);
     },
 
     get pageScaleFactor()
@@ -649,22 +553,11 @@ ControllerIOS.prototype = {
 
         this._pageScaleFactor = newScaleFactor;
 
-        if (newScaleFactor) {
-            var scaleValue = 1 / newScaleFactor;
-            var scaleTransform = "scale(" + scaleValue + ")";
-            if (this.controls.startPlaybackButton)
-                this.controls.startPlaybackButton.style.webkitTransform = scaleTransform;
-            if (this.controls.panel) {
-                var bottomAligment = -2 * scaleValue;
-                this.controls.panel.style.bottom = bottomAligment + "px";
-                this.controls.panel.style.paddingBottom = -(newScaleFactor * bottomAligment) + "px";
-                this.controls.panel.style.width = Math.ceil(newScaleFactor * 100) + "%";
-                this.controls.panel.style.webkitTransform = scaleTransform;
-                this.setNeedsTimelineMetricsUpdate();
-                this.updateProgress();
-                this.scheduleUpdateLayoutForDisplayedWidth();
-            }
-        }
+        // FIXME: this should react to the scale change by
+        // unscaling the controls panel. However, this
+        // hits a bug with the backdrop blur layer getting
+        // too big and moving to a tiled layer.
+        // https://bugs.webkit.org/show_bug.cgi?id=142317
     },
 
     handlePresentationModeChange: function(event)

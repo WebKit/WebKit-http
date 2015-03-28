@@ -161,7 +161,7 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-#include "MockMediaStreamCenter.h"
+#include "MockRealtimeMediaSourceCenter.h"
 #include "RTCPeerConnection.h"
 #include "RTCPeerConnectionHandlerMock.h"
 #include "UserMediaClientMock.h"
@@ -173,6 +173,10 @@
 
 #if PLATFORM(MAC)
 #include "DictionaryLookup.h"
+#endif
+
+#if ENABLE(CONTENT_FILTERING)
+#include "MockContentFilter.h"
 #endif
 
 using JSC::CodeBlock;
@@ -304,6 +308,7 @@ void Internals::resetToConsistentState(Page* page)
         page->mainFrame().editor().toggleContinuousSpellChecking();
     if (page->mainFrame().editor().isOverwriteModeEnabled())
         page->mainFrame().editor().toggleOverwriteModeEnabled();
+    page->mainFrame().loader().clearOverrideCachePolicyForTesting();
     ApplicationCacheStorage::singleton().setDefaultOriginQuota(ApplicationCacheStorage::noQuota());
 #if ENABLE(VIDEO)
     MediaSessionManager::sharedManager().resetRestrictions();
@@ -314,6 +319,10 @@ void Internals::resetToConsistentState(Page* page)
 #endif
 
     MockPageOverlayClient::singleton().uninstallAllOverlays();
+
+#if ENABLE(CONTENT_FILTERING)
+    MockContentFilterSettings::reset();
+#endif
 }
 
 Internals::Internals(Document* document)
@@ -325,9 +334,13 @@ Internals::Internals(Document* document)
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    MockMediaStreamCenter::registerMockMediaStreamCenter();
+    MockRealtimeMediaSourceCenter::registerMockRealtimeMediaSourceCenter();
     enableMockRTCPeerConnectionHandler();
     WebCore::provideUserMediaTo(document->page(), new UserMediaClientMock());
+#endif
+
+#if ENABLE(CONTENT_FILTERING)
+    MockContentFilter::ensureInstalled();
 #endif
 }
 
@@ -411,6 +424,25 @@ String Internals::xhrResponseSource(XMLHttpRequest* xhr)
     }
     ASSERT_NOT_REACHED();
     return "Error";
+}
+
+static ResourceRequestCachePolicy stringToResourceRequestCachePolicy(const String& policy)
+{
+    if (policy == "UseProtocolCachePolicy")
+        return UseProtocolCachePolicy;
+    if (policy == "ReloadIgnoringCacheData")
+        return ReloadIgnoringCacheData;
+    if (policy == "ReturnCacheDataElseLoad")
+        return ReturnCacheDataElseLoad;
+    if (policy == "ReturnCacheDataDontLoad")
+        return ReturnCacheDataDontLoad;
+    ASSERT_NOT_REACHED();
+    return UseProtocolCachePolicy;
+}
+
+void Internals::setOverrideCachePolicy(const String& policy)
+{
+    frame()->loader().setOverrideCachePolicyForTesting(stringToResourceRequestCachePolicy(policy));
 }
 
 void Internals::clearMemoryCache()
@@ -1024,8 +1056,19 @@ void Internals::setAutofilled(Element* element, bool enabled, ExceptionCode& ec)
         ec = INVALID_ACCESS_ERR;
         return;
     }
-    inputElement->setAutofilled(enabled);
+    inputElement->setAutoFilled(enabled);
 }
+
+void Internals::setShowAutoFillButton(Element* element, bool show, ExceptionCode& ec)
+{
+    HTMLInputElement* inputElement = element->toInputElement();
+    if (!inputElement) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    inputElement->setShowAutoFillButton(show);
+}
+
 
 void Internals::scrollElementToRect(Element* element, long x, long y, long w, long h, ExceptionCode& ec)
 {
@@ -1190,13 +1233,14 @@ unsigned Internals::touchEventHandlerCount(ExceptionCode& ec)
         return 0;
     }
 
-    const TouchEventTargetSet* touchHandlers = document->touchEventTargets();
+    auto touchHandlers = document->touchEventTargets();
     if (!touchHandlers)
         return 0;
 
     unsigned count = 0;
-    for (TouchEventTargetSet::const_iterator iter = touchHandlers->begin(); iter != touchHandlers->end(); ++iter)
-        count += iter->value;
+    for (auto& handler : *touchHandlers)
+        count += handler.value;
+
     return count;
 }
 
@@ -1302,7 +1346,7 @@ String Internals::parserMetaData(Deprecated::ScriptValue value)
     } else
         return String();
 
-    unsigned startLine = executable->lineNo();
+    unsigned startLine = executable->firstLine();
     unsigned startColumn = executable->startColumn();
     unsigned endLine = executable->lastLine();
     unsigned endColumn = executable->endColumn();
@@ -2537,7 +2581,14 @@ RefPtr<File> Internals::createFile(const String& path)
 void Internals::queueMicroTask(int testNumber)
 {
     if (contextDocument())
-        MicroTaskQueue::singleton().queueMicroTask(MicroTaskTest::create(contextDocument()->createWeakPtr(), testNumber));
+        MicroTaskQueue::singleton().queueMicroTask(std::make_unique<MicroTaskTest>(contextDocument()->createWeakPtr(), testNumber));
 }
+
+#if ENABLE(CONTENT_FILTERING)
+MockContentFilterSettings& Internals::mockContentFilterSettings()
+{
+    return MockContentFilterSettings::singleton();
+}
+#endif
 
 }

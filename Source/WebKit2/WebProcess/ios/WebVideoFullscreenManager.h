@@ -71,6 +71,7 @@ protected:
     virtual void resetMediaState() override;
     virtual void setDuration(double) override;
     virtual void setCurrentTime(double currentTime, double anchorTime) override;
+    virtual void setBufferedTime(double bufferedTime) override;
     virtual void setRate(bool isPlaying, float playbackRate) override;
     virtual void setVideoDimensions(bool hasVideo, float width, float height) override;
     virtual void setSeekableRanges(const WebCore::TimeRanges&) override;
@@ -86,6 +87,7 @@ protected:
     virtual void didExitFullscreen();
     virtual void didCleanupFullscreen();
     virtual void setVideoLayerGravityEnum(unsigned);
+    virtual void fullscreenMayReturnToInline(bool isPageVisible);
     void setVideoLayerFrameFenced(WebCore::FloatRect bounds, IPC::Attachment fencePort);
     
     WebPage* m_page;

@@ -15,7 +15,7 @@ span : valueOf
 [span] : toString
 String(span) : toString
 String([span]) : toString
-span.toString : function () { return "toString"; }
+span.toString : function () { return "toString" }
 span.toString() (cached in variable) : toString
 span.toString() : toString
 [span].toString() : toString
@@ -112,7 +112,7 @@ window : valueOf
 [window] : toString
 String(window) : toString
 String([window]) : toString
-window.toString : function () { return "toString"; }
+window.toString : function () { return "toString" }
 window.toString() (cached in variable) : toString
 window.toString() : toString
 [window].toString() : toString
@@ -209,7 +209,7 @@ Navigator : valueOf
 [Navigator] : toString
 String(Navigator) : toString
 String([Navigator]) : toString
-Navigator.toString : function () { return "toString"; }
+Navigator.toString : function () { return "toString" }
 Navigator.toString() (cached in variable) : toString
 Navigator.toString() : toString
 [Navigator].toString() : toString
@@ -306,7 +306,7 @@ History : valueOf
 [History] : toString
 String(History) : toString
 String([History]) : toString
-History.toString : function () { return "toString"; }
+History.toString : function () { return "toString" }
 History.toString() (cached in variable) : toString
 History.toString() : toString
 [History].toString() : toString
@@ -403,7 +403,7 @@ Selection : valueOf
 [Selection] : toString
 String(Selection) : toString
 String([Selection]) : toString
-Selection.toString : function () { return "toString"; }
+Selection.toString : function () { return "toString" }
 Selection.toString() (cached in variable) : toString
 Selection.toString() : toString
 [Selection].toString() : toString

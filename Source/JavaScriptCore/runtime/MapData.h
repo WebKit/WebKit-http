@@ -27,41 +27,65 @@
 #define MapData_h
 
 #include "JSCell.h"
-#include "Structure.h"
+#include "WeakGCMapInlines.h"
 #include <wtf/HashFunctions.h>
 #include <wtf/HashMap.h>
 #include <wtf/MathExtras.h>
+#include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
+#include <wtf/Vector.h>
 
 namespace JSC {
 
-class MapData : public JSCell {
+class ExecState;
+class VM;
+
+template<typename Entry, typename JSIterator>
+class MapDataImpl {
 public:
-    typedef JSCell Base;
+    enum : int32_t {
+        minimumMapSize = 8
+    };
 
-    struct const_iterator {
-        const_iterator(const MapData*);
-        ~const_iterator();
-        const WTF::KeyValuePair<JSValue, JSValue> operator*() const;
-        JSValue key() const { RELEASE_ASSERT(!atEnd()); return m_mapData->m_entries[m_index].key.get(); }
-        JSValue value() const { RELEASE_ASSERT(!atEnd()); return m_mapData->m_entries[m_index].value.get(); }
-        void operator++() { ASSERT(!atEnd()); internalIncrement(); }
-        static const_iterator end(const MapData*);
-        bool operator!=(const const_iterator& other);
-        bool operator==(const const_iterator& other);
-        void finish() { m_index = std::numeric_limits<int32_t>::max(); }
+    class IteratorData {
+    public:
+        friend class MapDataImpl;
 
-        bool ensureSlot();
+        IteratorData(const MapDataImpl*);
+        bool next(WTF::KeyValuePair<JSValue, JSValue>&);
+
+        // This function is called while packing a map's backing store. The
+        // passed-in index is the new index the entry would have after packing.
+        void didRemoveEntry(int32_t packedIndex)
+        {
+            if (isFinished())
+                return;
+
+            if (m_index <= packedIndex)
+                return;
+
+            --m_index;
+        }
+
+        void didRemoveAllEntries()
+        {
+            if (isFinished())
+                return;
+            m_index = 0;
+        }
+
+        void finish()
+        {
+            m_index = -1;
+        }
 
     private:
-        // This is a bit gnarly. We use an index of -1 to indicate the
-        // "end()" iterator. By casting to unsigned we can immediately
-        // test if both iterators are at the end of their iteration.
-        // We need this in order to keep the common case (eg. iter != end())
-        // fast.
-        bool atEnd() const { return static_cast<size_t>(m_index) >= static_cast<size_t>(m_mapData->m_size); }
-        void internalIncrement();
-        const MapData* m_mapData;
-        int32_t m_index;
+        bool ensureSlot() const;
+        bool isFinished() const { return m_index == -1; }
+        int32_t refreshCursor() const;
+
+        const MapDataImpl* m_mapData;
+        mutable int32_t m_index;
     };
 
     struct KeyType {
@@ -70,44 +94,23 @@ public:
         JSValue value;
     };
 
-    static MapData* create(VM& vm)
-    {
-        MapData* mapData = new (NotNull, allocateCell<MapData>(vm.heap)) MapData(vm);
-        mapData->finishCreation(vm);
-        return mapData;
-    }
+    MapDataImpl(VM&);
 
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
+    void set(ExecState*, JSCell* owner, KeyType, JSValue);
+    JSValue get(ExecState*, KeyType);
+    bool remove(ExecState*, KeyType);
+    bool contains(ExecState*, KeyType);
+    size_t size(ExecState*) const { return m_size - m_deletedCount; }
 
-    static const bool needsDestruction = true;
-    static const bool hasImmortalStructure = true;
-
-    JS_EXPORT_PRIVATE void set(CallFrame*, KeyType, JSValue);
-    JSValue get(CallFrame*, KeyType);
-    bool remove(CallFrame*, KeyType);
-    bool contains(CallFrame*, KeyType);
-    size_t size(CallFrame*) const { return m_size - m_deletedCount; }
-
-    const_iterator begin() const { return const_iterator(this); }
-    const_iterator end() const { return const_iterator::end(this); }
+    IteratorData createIteratorData(JSIterator*);
 
     void clear();
 
-    DECLARE_INFO;
-    static const unsigned StructureFlags = StructureIsImmortal | Base::StructureFlags;
+    void visitChildren(JSCell* owner, SlotVisitor&);
+    void copyBackingStore(CopyVisitor&, CopyToken);
 
 private:
     typedef WTF::UnsignedWithZeroKeyHashTraits<int32_t> IndexTraits;
-
-    // Our marking functions expect Entry to maintain this layout, and have all
-    // fields be WriteBarrier<Unknown>
-    struct Entry {
-        WriteBarrier<Unknown> key;
-        WriteBarrier<Unknown> value;
-    };
 
     typedef HashMap<JSCell*, int32_t, typename WTF::DefaultHash<JSCell*>::Hash, WTF::HashTraits<JSCell*>, IndexTraits> CellKeyedMap;
     typedef HashMap<EncodedJSValue, int32_t, EncodedJSValueHash, EncodedJSValueHashTraits, IndexTraits> ValueKeyedMap;
@@ -116,18 +119,12 @@ private:
 
     size_t capacityInBytes() { return m_capacity * sizeof(Entry); }
 
-    MapData(VM&);
-    static void destroy(JSCell*);
-    static void visitChildren(JSCell*, SlotVisitor&);
-    static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
+    ALWAYS_INLINE Entry* find(ExecState*, KeyType);
+    ALWAYS_INLINE Entry* add(ExecState*, JSCell* owner, KeyType);
+    template <typename Map, typename Key> ALWAYS_INLINE Entry* add(ExecState*, JSCell* owner, Map&, Key, KeyType);
 
-
-    ALWAYS_INLINE Entry* find(CallFrame*, KeyType);
-    ALWAYS_INLINE Entry* add(CallFrame*, KeyType);
-    template <typename Map, typename Key> ALWAYS_INLINE Entry* add(CallFrame*, Map&, Key, KeyType);
-
-    ALWAYS_INLINE bool shouldPack() const { return m_deletedCount && !m_iteratorCount; }
-    CheckedBoolean ensureSpaceForAppend(CallFrame*);
+    ALWAYS_INLINE bool shouldPack() const { return m_deletedCount; }
+    CheckedBoolean ensureSpaceForAppend(ExecState*, JSCell* owner);
 
     ALWAYS_INLINE void replaceAndPackBackingStore(Entry* destination, int32_t newSize);
     ALWAYS_INLINE void replaceBackingStore(Entry* destination, int32_t newSize);
@@ -139,30 +136,29 @@ private:
     int32_t m_capacity;
     int32_t m_size;
     int32_t m_deletedCount;
-    mutable int32_t m_iteratorCount;
     Entry* m_entries;
+    WeakGCMap<JSIterator*, JSIterator> m_iterators;
 };
 
-ALWAYS_INLINE void MapData::clear()
+template<typename Entry, typename JSIterator>
+ALWAYS_INLINE MapDataImpl<Entry, JSIterator>::MapDataImpl(VM& vm)
+    : m_capacity(0)
+    , m_size(0)
+    , m_deletedCount(0)
+    , m_entries(nullptr)
+    , m_iterators(vm)
 {
-    m_cellKeyedTable.clear();
-    m_valueKeyedTable.clear();
-    m_stringKeyedTable.clear();
-    m_symbolKeyedTable.clear();
-    m_capacity = 0;
-    m_size = 0;
-    m_deletedCount = 0;
-    m_entries = nullptr;
 }
 
-ALWAYS_INLINE MapData::KeyType::KeyType(JSValue v)
+template<typename Entry, typename JSIterator>
+ALWAYS_INLINE MapDataImpl<Entry, JSIterator>::KeyType::KeyType(JSValue v)
 {
     if (!v.isDouble()) {
         value = v;
         return;
     }
     double d = v.asDouble();
-    if (std::isnan(d) || (std::signbit(d) && d == 0.0)) {
+    if (std::isnan(d)) {
         value = v;
         return;
     }
@@ -174,65 +170,45 @@ ALWAYS_INLINE MapData::KeyType::KeyType(JSValue v)
         value = jsNumber(i);
 }
 
-ALWAYS_INLINE void MapData::const_iterator::internalIncrement()
-{
-    Entry* entries = m_mapData->m_entries;
-    size_t index = m_index + 1;
-    size_t end = m_mapData->m_size;
-    while (index < end && !entries[index].key)
-        index++;
-    m_index = index;
-}
-    
-ALWAYS_INLINE bool MapData::const_iterator::ensureSlot()
-{
-    // When an iterator exists outside of host cost it is possible for
-    // the containing map to be modified
-    Entry* entries = m_mapData->m_entries;
-    size_t index = m_index;
-    size_t end = m_mapData->m_size;
-    if (index < end && entries[index].key)
-        return true;
-    internalIncrement();
-    return static_cast<size_t>(m_index) < end;
-}
-
-ALWAYS_INLINE MapData::const_iterator::const_iterator(const MapData* mapData)
+template<typename Entry, typename JSIterator>
+ALWAYS_INLINE MapDataImpl<Entry, JSIterator>::IteratorData::IteratorData(const MapDataImpl<Entry, JSIterator>* mapData)
     : m_mapData(mapData)
-    , m_index(-1)
+    , m_index(0)
 {
-    internalIncrement();
 }
 
-ALWAYS_INLINE MapData::const_iterator::~const_iterator()
+template<typename Entry, typename JSIterator>
+ALWAYS_INLINE bool MapDataImpl<Entry, JSIterator>::IteratorData::next(WTF::KeyValuePair<JSValue, JSValue>& pair)
 {
-    m_mapData->m_iteratorCount--;
-}
-
-ALWAYS_INLINE const WTF::KeyValuePair<JSValue, JSValue> MapData::const_iterator::operator*() const
-{
-    Entry* entry = &m_mapData->m_entries[m_index];
-    return WTF::KeyValuePair<JSValue, JSValue>(entry->key.get(), entry->value.get());
-}
-
-ALWAYS_INLINE MapData::const_iterator MapData::const_iterator::end(const MapData* mapData)
-{
-    const_iterator result(mapData);
-    result.m_index = -1;
-    return result;
-}
-
-ALWAYS_INLINE bool MapData::const_iterator::operator!=(const const_iterator& other)
-{
-    ASSERT(other.m_mapData == m_mapData);
-    if (atEnd() && other.atEnd())
+    if (!ensureSlot())
         return false;
-    return m_index != other.m_index;
+    Entry* entry = &m_mapData->m_entries[m_index];
+    pair = WTF::KeyValuePair<JSValue, JSValue>(entry->key().get(), entry->value().get());
+    m_index += 1;
+    return true;
 }
 
-ALWAYS_INLINE bool MapData::const_iterator::operator==(const const_iterator& other)
+// This is a bit gnarly. We use an index of -1 to indicate the
+// finished state. By casting to unsigned we can immediately
+// test if both iterators are at the end of their iteration.
+template<typename Entry, typename JSIterator>
+ALWAYS_INLINE bool MapDataImpl<Entry, JSIterator>::IteratorData::ensureSlot() const
 {
-    return !(*this != other);
+    int32_t index = refreshCursor();
+    return static_cast<size_t>(index) < static_cast<size_t>(m_mapData->m_size);
+}
+
+template<typename Entry, typename JSIterator>
+ALWAYS_INLINE int32_t MapDataImpl<Entry, JSIterator>::IteratorData::refreshCursor() const
+{
+    if (isFinished())
+        return m_index;
+
+    Entry* entries = m_mapData->m_entries;
+    size_t end = m_mapData->m_size;
+    while (static_cast<size_t>(m_index) < end && !entries[m_index].key())
+        m_index++;
+    return m_index;
 }
 
 }

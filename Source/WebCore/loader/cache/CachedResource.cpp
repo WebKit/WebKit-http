@@ -688,7 +688,7 @@ static inline void logResourceRevalidationReason(Frame* frame, const String& rea
 
 bool CachedResource::mustRevalidateDueToCacheHeaders(const CachedResourceLoader& cachedResourceLoader, CachePolicy cachePolicy) const
 {    
-    ASSERT(cachePolicy == CachePolicyRevalidate || cachePolicy == CachePolicyCache || cachePolicy == CachePolicyVerify);
+    ASSERT(cachePolicy == CachePolicyRevalidate || cachePolicy == CachePolicyVerify);
 
     if (cachePolicy == CachePolicyRevalidate) {
         logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::reloadKey());
@@ -703,15 +703,6 @@ bool CachedResource::mustRevalidateDueToCacheHeaders(const CachedResourceLoader&
             logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::noCacheKey());
 
         return true;
-    }
-
-    if (cachePolicy == CachePolicyCache) {
-        if (m_response.cacheControlContainsMustRevalidate() && isExpired()) {
-            LOG(ResourceLoading, "CachedResource %p mustRevalidate because of cachePolicy == CachePolicyCache and m_response.cacheControlContainsMustRevalidate() && isExpired()\n", this);
-            logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::mustRevalidateIsExpiredKey());
-            return true;
-        }
-        return false;
     }
 
     // CachePolicyVerify
@@ -733,6 +724,18 @@ unsigned CachedResource::overheadSize() const
 {
     static const int kAverageClientsHashMapSize = 384;
     return sizeof(CachedResource) + m_response.memoryUsage() + kAverageClientsHashMapSize + m_resourceRequest.url().string().length() * 2;
+}
+
+bool CachedResource::areAllClientsXMLHttpRequests() const
+{
+    if (type() != RawResource)
+        return false;
+
+    for (auto& client : m_clients) {
+        if (!client.key->isXMLHttpRequest())
+            return false;
+    }
+    return true;
 }
 
 void CachedResource::setLoadPriority(const Optional<ResourceLoadPriority>& loadPriority)

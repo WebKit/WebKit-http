@@ -23,11 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.DebuggerDashboard = function() {
-    WebInspector.Object.call(this);
-};
-
-WebInspector.DebuggerDashboard.prototype = {
-    constructor: WebInspector.DebuggerDashboard,
-    __proto__: WebInspector.Object.prototype,
+WebInspector.DebuggerDashboard = class DebuggerDashboard extends WebInspector.Object
+{
 };

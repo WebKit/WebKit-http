@@ -4,12 +4,16 @@ description("Tests basic correctness of ES Set object");
 // on any non-throwing parameters
 shouldBeFalse("Set instanceof Set");
 shouldBeFalse("Set.prototype instanceof Set");
-shouldBeTrue("Set() instanceof Set");
+shouldThrow("Set() instanceof Set");
 shouldBeTrue("new Set() instanceof Set");
-shouldBeTrue("Set(null) instanceof Set");
-shouldBeTrue("Set(undefined) instanceof Set");
-shouldBeTrue("Set(undefined, undefined) instanceof Set");
-shouldBeTrue("Set(null, undefined) instanceof Set");
+shouldThrow("Set(null) instanceof Set");
+shouldThrow("Set(undefined) instanceof Set");
+shouldThrow("Set(undefined, undefined) instanceof Set");
+shouldThrow("Set(null, undefined) instanceof Set");
+shouldBeTrue("new Set(null) instanceof Set");
+shouldBeTrue("new Set(undefined) instanceof Set");
+shouldBeTrue("new Set(undefined, undefined) instanceof Set");
+shouldBeTrue("new Set(null, undefined) instanceof Set");
 
 shouldThrow("Set(1)");
 shouldThrow("Set(true)");
@@ -18,8 +22,15 @@ shouldThrow("Set({})");
 shouldThrow("Set(undefined, null)");
 shouldThrow("Set(undefined, {})");
 
+shouldThrow("new Set(1)");
+shouldThrow("new Set(true)");
+shouldNotThrow("new Set([])");
+shouldThrow("new Set({})");
+shouldNotThrow("new Set(undefined, null)");
+shouldNotThrow("new Set(undefined, {})");
+
 // Basic test for constructor
-var set = new Set(1, undefined, true, 6, true, "1", 0, {})
+var set = new Set([1, undefined, true, 6, true, "1", 0, {}])
 set.forEach(debug);
 
 var set = new Set;
@@ -37,12 +48,13 @@ shouldBe("Set.prototype.entries.length", "0")
 shouldBe("set.size", "0")
 shouldBe("set.add(-0)", "set")
 shouldBe("set.add(0)", "set")
+shouldBe("set.size", "1")
 shouldBe("set.add(Infinity)", "set")
 shouldBe("set.add(-Infinity)", "set")
 shouldBe("set.add(NaN)", "set")
 shouldBe("set.add('0')", "set")
 shouldBe("set.add(0.1)", "set")
-shouldBe("set.size", "7")
+shouldBe("set.size", "6")
 
 shouldBeTrue("set.has(-0)")
 shouldBeTrue("set.has(0)")
@@ -53,7 +65,7 @@ shouldBeTrue("set.has('0')")
 shouldBeTrue("set.has(0.1)")
 
 shouldBeTrue("set.delete(-0)")
-shouldBeTrue("set.delete(0)")
+shouldBeFalse("set.delete(0)")
 shouldBeTrue("set.delete(Infinity)")
 shouldBeTrue("set.delete(-Infinity)")
 shouldBeTrue("set.delete(NaN)")

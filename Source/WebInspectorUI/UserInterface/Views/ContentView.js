@@ -42,6 +42,18 @@ WebInspector.ContentView = function(representedObject)
         if (representedObject instanceof WebInspector.TimelineRecording)
             return new WebInspector.TimelineRecordingContentView(representedObject);
 
+        if (representedObject instanceof WebInspector.Timeline) {
+            var timelineType = representedObject.type;
+            if (timelineType === WebInspector.TimelineRecord.Type.Network)
+                return new WebInspector.NetworkTimelineView(representedObject);
+
+            if (timelineType === WebInspector.TimelineRecord.Type.Layout || timelineType === WebInspector.TimelineRecord.Type.RunLoop)
+                return new WebInspector.LayoutTimelineView(representedObject);
+
+            if (timelineType === WebInspector.TimelineRecord.Type.Script)
+                return new WebInspector.ScriptTimelineView(representedObject);
+        }
+
         if (representedObject instanceof WebInspector.DOMStorageObject)
             return new WebInspector.DOMStorageContentView(representedObject);
 
@@ -84,7 +96,8 @@ WebInspector.ContentView = function(representedObject)
     console.assert(this.constructor !== WebInspector.ContentView && this instanceof WebInspector.ContentView);
     console.assert(WebInspector.ContentView.isViewable(representedObject));
 
-    WebInspector.Object.call(this);
+    // FIXME: Convert this to a WebInspector.Object subclass, and call super().
+    // WebInspector.Object.call(this);
 
     this._representedObject = representedObject;
 
@@ -94,7 +107,8 @@ WebInspector.ContentView = function(representedObject)
     this._parentContainer = null;
 };
 
-WebInspector.Object.addConstructorFunctions(WebInspector.ContentView);
+// FIXME: Move to a WebInspector.Object subclass and we can remove this.
+WebInspector.Object.deprecatedAddConstructorFunctions(WebInspector.ContentView);
 
 WebInspector.ContentView.isViewable = function(representedObject)
 {
@@ -105,6 +119,8 @@ WebInspector.ContentView.isViewable = function(representedObject)
     if (representedObject instanceof WebInspector.Script)
         return true;
     if (representedObject instanceof WebInspector.TimelineRecording)
+        return true;
+    if (representedObject instanceof WebInspector.Timeline)
         return true;
     if (representedObject instanceof WebInspector.DOMStorageObject)
         return true;

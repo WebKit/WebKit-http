@@ -24,6 +24,7 @@
 #include "Frame.h"
 #include "JSNode.h"
 #include "ScriptController.h"
+#include <runtime/Executable.h>
 #include <runtime/FunctionConstructor.h>
 #include <runtime/IdentifierInlines.h>
 #include <wtf/NeverDestroyed.h>
@@ -103,7 +104,14 @@ JSObject* JSLazyEventListener::initializeJSFunction(ScriptExecutionContext* exec
     args.append(jsNontrivialString(exec, m_eventParameterName));
     args.append(jsStringWithCache(exec, m_code));
 
-    JSObject* jsFunction = constructFunctionSkippingEvalEnabledCheck(exec, exec->lexicalGlobalObject(), args, Identifier(exec, m_functionName), m_sourceURL, m_position); // FIXME: is globalExec ok?
+    // We want all errors to refer back to the line on which our attribute was
+    // declared, regardless of any newlines in our JavaScript source text.
+    int overrideLineNumber = m_position.m_line.oneBasedInt();
+
+    JSObject* jsFunction = constructFunctionSkippingEvalEnabledCheck(
+        exec, exec->lexicalGlobalObject(), args, Identifier(exec, m_functionName), 
+        m_sourceURL, m_position, overrideLineNumber);
+
     if (exec->hadException()) {
         reportCurrentException(exec);
         exec->clearException();
@@ -111,6 +119,7 @@ JSObject* JSLazyEventListener::initializeJSFunction(ScriptExecutionContext* exec
     }
 
     JSFunction* listenerAsFunction = jsCast<JSFunction*>(jsFunction);
+
     if (m_originalNode) {
         if (!wrapper()) {
             // Ensure that 'node' has a JavaScript wrapper to mark the event listener we're creating.

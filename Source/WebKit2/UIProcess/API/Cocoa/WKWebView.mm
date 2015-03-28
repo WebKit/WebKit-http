@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -77,6 +77,7 @@
 #import "_WKWebsiteDataStoreInternal.h"
 #import <JavaScriptCore/JSContext.h>
 #import <JavaScriptCore/JSValue.h>
+#import <WebCore/IOSurface.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
 #import <wtf/NeverDestroyed.h>
@@ -90,6 +91,7 @@
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteScrollingCoordinatorProxy.h"
 #import "UIKitSPI.h"
+#import "WKContentViewInteraction.h"
 #import "WKPDFView.h"
 #import "WKScrollView.h"
 #import "WKWebViewContentProviderRegistry.h"
@@ -291,6 +293,7 @@ static int32_t deviceOrientation()
     webPageConfiguration.visitedLinkProvider = [_configuration _visitedLinkProvider]->_visitedLinkProvider.get();
     webPageConfiguration.websiteDataStore = &[_configuration _websiteDataStore]->_websiteDataStore->websiteDataStore();
     webPageConfiguration.sessionID = webPageConfiguration.websiteDataStore->sessionID();
+    webPageConfiguration.treatsSHA1SignedCertificatesAsInsecure = [_configuration _treatsSHA1SignedCertificatesAsInsecure];
 
     RefPtr<WebKit::WebPageGroup> pageGroup;
     NSString *groupIdentifier = configuration._groupIdentifier;
@@ -647,6 +650,11 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 - (WKBrowsingContextController *)browsingContextController
 {
     return [_contentView browsingContextController];
+}
+
+- (BOOL)becomeFirstResponder
+{
+    return [_contentView becomeFirstResponder] || [super becomeFirstResponder];
 }
 
 static inline CGFloat floorToDevicePixel(CGFloat input, float deviceScaleFactor)
@@ -1338,7 +1346,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     // FIXME: We will want to detect whether snapping will occur before beginning to drag. See WebPageProxy::didCommitLayerTree.
     WebKit::RemoteScrollingCoordinatorProxy* coordinator = _page->scrollingCoordinatorProxy();
     ASSERT(scrollView == _scrollView.get());
-    scrollView.decelerationRate = (coordinator && coordinator->shouldSetScrollViewDecelerationRateFast()) ? UIScrollViewDecelerationRateFast : [_scrollView preferredScrollDecelerationFactor];;
+    scrollView.decelerationRate = (coordinator && coordinator->shouldSetScrollViewDecelerationRateFast()) ? UIScrollViewDecelerationRateFast : [_scrollView preferredScrollDecelerationFactor];
 #endif
 }
 
@@ -1651,6 +1659,9 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (void)_setEditable:(BOOL)editable
 {
     _page->setEditable(editable);
+#if !PLATFORM(IOS)
+    [_wkView _addFontPanelObserver];
+#endif
 }
 
 - (_WKRemoteObjectRegistry *)_remoteObjectRegistry
@@ -1769,6 +1780,32 @@ static int32_t activeOrientation(WKWebView *webView)
 {
     return webView->_overridesInterfaceOrientation ? deviceOrientationForUIInterfaceOrientation(webView->_interfaceOrientationOverride) : webView->_page->deviceOrientation();
 }
+
+- (void (^)(void))_retainActiveFocusedState
+{
+    ++_activeFocusedStateRetainCount;
+
+    // FIXME: Use something like CompletionHandlerCallChecker to ensure that the returned block is called before it's released.
+    return [[[self] {
+        --_activeFocusedStateRetainCount;
+    } copy] autorelease];
+}
+
+- (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler
+{
+    typeof(completionHandler) completionHandlerCopy = nil;
+    if (completionHandler)
+        completionHandlerCopy = Block_copy(completionHandler);
+
+    [_contentView _becomeFirstResponderWithSelectionMovingForward:selectingForward completionHandler:[completionHandlerCopy](BOOL didBecomeFirstResponder) {
+        if (!completionHandlerCopy)
+            return;
+
+        completionHandlerCopy(didBecomeFirstResponder);
+        Block_release(completionHandlerCopy);
+    }];
+}
+
 #endif
 
 - (void)_didRelaunchProcess
@@ -2057,16 +2094,34 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_countStringMatches:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount
 {
+#if PLATFORM(IOS)
+    if (_customContentView) {
+        [_customContentView web_countStringMatches:string options:options maxCount:maxCount];
+        return;
+    }
+#endif
     _page->countStringMatches(string, toFindOptions(options), maxCount);
 }
 
 - (void)_findString:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount
 {
+#if PLATFORM(IOS)
+    if (_customContentView) {
+        [_customContentView web_findString:string options:options maxCount:maxCount];
+        return;
+    }
+#endif
     _page->findString(string, toFindOptions(options), maxCount);
 }
 
 - (void)_hideFindUI
 {
+#if PLATFORM(IOS)
+    if (_customContentView) {
+        [_customContentView web_hideFindUI];
+        return;
+    }
+#endif
     _page->hideFindUI();
 }
 
@@ -2445,10 +2500,51 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_snapshotRect:(CGRect)rectInViewCoordinates intoImageOfWidth:(CGFloat)imageWidth completionHandler:(void(^)(CGImageRef))completionHandler
 {
-    CGRect snapshotRectInContentCoordinates = [self convertRect:rectInViewCoordinates toView:_contentView.get()];
-    CGFloat imageHeight = imageWidth / snapshotRectInContentCoordinates.size.width * snapshotRectInContentCoordinates.size.height;
+    CGRect snapshotRectInContentCoordinates = [self convertRect:rectInViewCoordinates toView:self._currentContentView];
+    CGFloat imageScale = imageWidth / snapshotRectInContentCoordinates.size.width;
+    CGFloat imageHeight = imageScale * snapshotRectInContentCoordinates.size.height;
     CGSize imageSize = CGSizeMake(imageWidth, imageHeight);
-    
+
+    if (_customContentView) {
+        UIGraphicsBeginImageContextWithOptions(imageSize, YES, 1);
+
+        UIView *customContentView = _customContentView.get();
+        [customContentView.backgroundColor set];
+        UIRectFill(CGRectMake(0, 0, imageWidth, imageHeight));
+
+        CGRect destinationRect = customContentView.bounds;
+        destinationRect.origin.x = -snapshotRectInContentCoordinates.origin.x * imageScale;
+        destinationRect.origin.y = -snapshotRectInContentCoordinates.origin.y * imageScale;
+        destinationRect.size.width *= imageScale;
+        destinationRect.size.height *= imageScale;
+        [customContentView drawViewHierarchyInRect:destinationRect afterScreenUpdates:NO];
+
+        completionHandler([UIGraphicsGetImageFromCurrentImageContext() CGImage]);
+
+        UIGraphicsEndImageContext();
+        return;
+    }
+
+#if USE(IOSURFACE)
+    // If we are parented and thus won't incur a significant penalty from paging in tiles, snapshot the view hierarchy directly.
+    if (self.window) {
+        float deviceScaleFactor = _page->deviceScaleFactor();
+
+        CGRect imageRectInPoints;
+        imageRectInPoints.size.width = imageWidth / deviceScaleFactor;
+        imageRectInPoints.size.height = imageRectInPoints.size.width / rectInViewCoordinates.size.width * rectInViewCoordinates.size.height;
+        imageRectInPoints.origin.x = rectInViewCoordinates.origin.x / deviceScaleFactor;
+        imageRectInPoints.origin.y = rectInViewCoordinates.origin.y / deviceScaleFactor;
+
+        auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebCore::ColorSpaceDeviceRGB);
+        CATransform3D transform = CATransform3DMakeScale(deviceScaleFactor, deviceScaleFactor, 1);
+        CARenderServerRenderLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, reinterpret_cast<uint64_t>(self.layer), surface->surface(), 0, 0, &transform);
+        completionHandler(surface->createImage().get());
+
+        return;
+    }
+#endif
+
     void(^copiedCompletionHandler)(CGImageRef) = [completionHandler copy];
     _page->takeSnapshot(WebCore::enclosingIntRect(snapshotRectInContentCoordinates), WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebKit::SnapshotOptionsExcludeDeviceScaleFactor, [=](const WebKit::ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error) {
         if (imageHandle.isNull()) {

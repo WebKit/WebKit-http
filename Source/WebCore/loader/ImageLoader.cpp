@@ -123,21 +123,21 @@ ImageLoader::~ImageLoader()
         element().deref();
 }
 
-void ImageLoader::setImage(CachedImage* newImage)
+void ImageLoader::clearImage()
 {
-    setImageWithoutConsideringPendingLoadEvent(newImage);
+    clearImageWithoutConsideringPendingLoadEvent();
 
     // Only consider updating the protection ref-count of the Element immediately before returning
     // from this function as doing so might result in the destruction of this ImageLoader.
     updatedHasPendingEvent();
 }
 
-void ImageLoader::setImageWithoutConsideringPendingLoadEvent(CachedImage* newImage)
+void ImageLoader::clearImageWithoutConsideringPendingLoadEvent()
 {
     ASSERT(m_failedLoadURL.isEmpty());
     CachedImage* oldImage = m_image.get();
-    if (newImage != oldImage) {
-        m_image = newImage;
+    if (oldImage) {
+        m_image = nullptr;
         if (m_hasPendingBeforeLoadEvent) {
             beforeLoadEventSender().cancelEvent(*this);
             m_hasPendingBeforeLoadEvent = false;
@@ -151,8 +151,6 @@ void ImageLoader::setImageWithoutConsideringPendingLoadEvent(CachedImage* newIma
             m_hasPendingErrorEvent = false;
         }
         m_imageComplete = true;
-        if (newImage)
-            newImage->addClient(this);
         if (oldImage)
             oldImage->removeClient(this);
     }
@@ -171,7 +169,8 @@ void ImageLoader::updateFromElement()
 
     AtomicString attr = element().imageSourceURL();
 
-    if (attr == m_failedLoadURL)
+    // Avoid loading a URL we already failed to load.
+    if (!m_failedLoadURL.isEmpty() && attr == m_failedLoadURL)
         return;
 
     // Do not load any image if the 'src' attribute is missing or if it is
@@ -254,8 +253,10 @@ void ImageLoader::updateFromElement()
             // dispatched.
             newImage->addClient(this);
         }
-        if (oldImage)
+        if (oldImage) {
             oldImage->removeClient(this);
+            updateRenderer();
+        }
     }
 
     if (RenderImageResource* imageResource = renderImageResource())
@@ -272,13 +273,10 @@ void ImageLoader::updateFromElementIgnoringPreviousError()
     updateFromElement();
 }
 
-void ImageLoader::imageChanged(CachedImage* cachedImage, const IntRect*)
+void ImageLoader::notifyFinished(CachedResource* resource)
 {
     ASSERT(m_failedLoadURL.isEmpty());
-    ASSERT(cachedImage == m_image.get());
-
-    if (!cachedImage->isLoaded())
-        return;
+    ASSERT(resource == m_image.get());
 
     m_imageComplete = true;
     if (!hasPendingBeforeLoadEvent())
@@ -289,9 +287,9 @@ void ImageLoader::imageChanged(CachedImage* cachedImage, const IntRect*)
 
     if (element().fastHasAttribute(HTMLNames::crossoriginAttr)
         && !element().document().securityOrigin()->canRequest(image()->response().url())
-        && !cachedImage->passesAccessControlCheck(element().document().securityOrigin())) {
+        && !resource->passesAccessControlCheck(element().document().securityOrigin())) {
 
-        setImageWithoutConsideringPendingLoadEvent(0);
+        clearImageWithoutConsideringPendingLoadEvent();
 
         m_hasPendingErrorEvent = true;
         errorEventSender().dispatchEventSoon(*this);
@@ -307,7 +305,7 @@ void ImageLoader::imageChanged(CachedImage* cachedImage, const IntRect*)
         return;
     }
 
-    if (cachedImage->wasCanceled()) {
+    if (resource->wasCanceled()) {
         m_hasPendingLoadEvent = false;
         // Only consider updating the protection ref-count of the Element immediately before returning
         // from this function as doing so might result in the destruction of this ImageLoader.
@@ -469,7 +467,7 @@ void ImageLoader::dispatchPendingErrorEvents()
 void ImageLoader::elementDidMoveToNewDocument()
 {
     clearFailedLoadURL();
-    setImage(0);
+    clearImage();
 }
 
 inline void ImageLoader::clearFailedLoadURL()

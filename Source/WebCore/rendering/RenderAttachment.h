@@ -40,9 +40,7 @@ public:
 
     HTMLAttachmentElement& attachmentElement() const;
 
-    void representedFileChanged();
-
-    bool isSelected() const;
+    void invalidate();
 
 private:
     void element() const = delete;
@@ -53,7 +51,7 @@ private:
 
     virtual void layout() override;
 
-    virtual int baselinePosition(FontBaseline, bool, LineDirectionMode, LinePositionMode) const;
+    virtual int baselinePosition(FontBaseline, bool, LineDirectionMode, LinePositionMode) const override;
 };
 
 } // namespace WebCore

@@ -36,6 +36,7 @@ namespace WebCore {
 
 class IntRect;
 class IntSize;
+class MediaPlaybackTarget;
 class PlatformTextTrack;
 
 class MediaPlayerPrivateInterface {
@@ -47,6 +48,9 @@ public:
     virtual void load(const String& url) = 0;
 #if ENABLE(MEDIA_SOURCE)
     virtual void load(const String& url, MediaSourcePrivateClient*) = 0;
+#endif
+#if ENABLE(MEDIA_STREAM)
+    virtual void load(MediaStreamPrivate*) = 0;
 #endif
     virtual void cancelLoad() = 0;
     
@@ -163,6 +167,8 @@ public:
 
     virtual bool wirelessVideoPlaybackDisabled() const { return false; }
     virtual void setWirelessVideoPlaybackDisabled(bool) { }
+
+    virtual void setWirelessPlaybackTarget(const MediaPlaybackTarget&) { }
 #endif
 
 #if USE(NATIVE_FULLSCREEN_VIDEO)

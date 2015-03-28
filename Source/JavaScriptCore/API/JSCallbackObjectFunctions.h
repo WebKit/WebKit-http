@@ -62,15 +62,27 @@ JSCallbackObject<Parent>::JSCallbackObject(ExecState* exec, Structure* structure
 {
 }
 
+extern const GlobalObjectMethodTable javaScriptCoreAPIGlobalObjectMethodTable;
+
 // Global object constructor.
 // FIXME: Move this into a separate JSGlobalCallbackObject class derived from this one.
 template <class Parent>
 JSCallbackObject<Parent>::JSCallbackObject(VM& vm, JSClassRef jsClass, Structure* structure)
-    : Parent(vm, structure)
+    : Parent(vm, structure, &javaScriptCoreAPIGlobalObjectMethodTable)
     , m_callbackObjectData(adoptPtr(new JSCallbackObjectData(0, jsClass)))
 {
 }
 
+template <class Parent>
+JSCallbackObject<Parent>::~JSCallbackObject()
+{
+    JSObjectRef thisRef = toRef(static_cast<JSObject*>(this));
+    for (JSClassRef jsClass = classRef(); jsClass; jsClass = jsClass->parentClass) {
+        if (JSObjectFinalizeCallback finalize = jsClass->finalize)
+            finalize(thisRef);
+    }
+}
+    
 template <class Parent>
 void JSCallbackObject<Parent>::finishCreation(ExecState* exec)
 {
@@ -106,13 +118,6 @@ void JSCallbackObject<Parent>::init(ExecState* exec)
         JSLock::DropAllLocks dropAllLocks(exec);
         JSObjectInitializeCallback initialize = initRoutines[i];
         initialize(toRef(exec), toRef(this));
-    }
-
-    for (JSClassRef jsClassPtr = classRef(); jsClassPtr; jsClassPtr = jsClassPtr->parentClass) {
-        if (jsClassPtr->finalize) {
-            WeakSet::allocate(this, m_callbackObjectData.get(), classRef());
-            break;
-        }
     }
 }
 

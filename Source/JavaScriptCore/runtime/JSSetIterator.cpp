@@ -29,6 +29,7 @@
 #include "JSCJSValueInlines.h"
 #include "JSCellInlines.h"
 #include "JSSet.h"
+#include "MapDataInlines.h"
 #include "SlotVisitorInlines.h"
 #include "StructureInlines.h"
 
@@ -39,15 +40,21 @@ const ClassInfo JSSetIterator::s_info = { "Set Iterator", &Base::s_info, 0, CREA
 void JSSetIterator::finishCreation(VM& vm, JSSet* iteratedObject)
 {
     Base::finishCreation(vm);
-    m_iteratedObjectData.set(vm, this, iteratedObject->mapData());
+    m_set.set(vm, this, iteratedObject);
 }
 
 void JSSetIterator::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSSetIterator* thisObject = jsCast<JSSetIterator*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());        
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_iteratedObjectData);
+    visitor.append(&thisObject->m_set);
+}
+
+void JSSetIterator::destroy(JSCell* cell)
+{
+    JSSetIterator* thisObject = jsCast<JSSetIterator*>(cell);
+    thisObject->JSSetIterator::~JSSetIterator();
 }
 
 JSValue JSSetIterator::createPair(CallFrame* callFrame, JSValue key, JSValue value)
@@ -57,6 +64,13 @@ JSValue JSSetIterator::createPair(CallFrame* callFrame, JSValue key, JSValue val
     args.append(value);
     JSGlobalObject* globalObject = callFrame->callee()->globalObject();
     return constructArray(callFrame, 0, globalObject, args);
+}
+
+JSSetIterator* JSSetIterator::clone(ExecState* exec)
+{
+    auto clone = JSSetIterator::create(exec->vm(), exec->callee()->globalObject()->setIteratorStructure(), m_set.get(), m_kind);
+    clone->m_iterator = m_iterator;
+    return clone;
 }
 
 }

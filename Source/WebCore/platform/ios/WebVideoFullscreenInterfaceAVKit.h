@@ -76,6 +76,7 @@ public:
     WEBCORE_EXPORT virtual void resetMediaState() override;
     WEBCORE_EXPORT virtual void setDuration(double) override;
     WEBCORE_EXPORT virtual void setCurrentTime(double currentTime, double anchorTime) override;
+    WEBCORE_EXPORT virtual void setBufferedTime(double bufferedTime) override;
     WEBCORE_EXPORT virtual void setRate(bool isPlaying, float playbackRate) override;
     WEBCORE_EXPORT virtual void setVideoDimensions(bool hasVideo, float width, float height) override;
     WEBCORE_EXPORT virtual void setSeekableRanges(const TimeRanges&) override;
@@ -84,24 +85,25 @@ public:
     WEBCORE_EXPORT virtual void setLegibleMediaSelectionOptions(const Vector<WTF::String>& options, uint64_t selectedIndex) override;
     WEBCORE_EXPORT virtual void setExternalPlayback(bool enabled, ExternalPlaybackTargetType, WTF::String localizedDeviceName) override;
     
-    WEBCORE_EXPORT virtual void setupFullscreen(PlatformLayer&, IntRect initialRect, UIView *, HTMLMediaElement::VideoFullscreenMode, bool allowOptimizedFullscreen);
+    WEBCORE_EXPORT virtual void setupFullscreen(PlatformLayer&, const IntRect& initialRect, UIView *, HTMLMediaElement::VideoFullscreenMode, bool allowOptimizedFullscreen);
     WEBCORE_EXPORT virtual void enterFullscreen();
-    WEBCORE_EXPORT virtual void exitFullscreen(IntRect finalRect);
+    WEBCORE_EXPORT virtual void exitFullscreen(const IntRect& finalRect);
     WEBCORE_EXPORT virtual void cleanupFullscreen();
     WEBCORE_EXPORT virtual void invalidate();
     WEBCORE_EXPORT virtual void requestHideAndExitFullscreen();
+    WEBCORE_EXPORT virtual void preparedToReturnToInline(bool visible, const IntRect& inlineRect);
 
     HTMLMediaElement::VideoFullscreenMode mode() const { return m_mode; }
     void setIsOptimized(bool);
     WEBCORE_EXPORT bool mayAutomaticallyShowVideoOptimized();
-    bool fullscreenMayReturnToInline();
+    void fullscreenMayReturnToInline();
 
 protected:
     void beginSession();
-    void setupFullscreenInternal(PlatformLayer&, IntRect initialRect, UIView *, HTMLMediaElement::VideoFullscreenMode, bool allowOptimizedFullscreen);
+    void setupFullscreenInternal(PlatformLayer&, const IntRect& initialRect, UIView *, HTMLMediaElement::VideoFullscreenMode, bool allowOptimizedFullscreen);
     void enterFullscreenOptimized();
     void enterFullscreenStandard();
-    void exitFullscreenInternal(IntRect finalRect);
+    void exitFullscreenInternal(const IntRect& finalRect);
     void cleanupFullscreenInternal();
 
     RetainPtr<WebAVPlayerController> m_playerController;

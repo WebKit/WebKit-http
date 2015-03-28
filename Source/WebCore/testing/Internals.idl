@@ -29,6 +29,15 @@ enum PageOverlayType {
 "document"
 };
 
+// These map to ResourceRequestCachePolicy.
+enum CachePolicy {
+    "UseProtocolCachePolicy",
+    "ReloadIgnoringCacheData",
+    "ReturnCacheDataElseLoad",
+    "ReturnCacheDataDontLoad"
+};
+
+
 [
     NoInterfaceObject,
 ] interface Internals {
@@ -46,6 +55,7 @@ enum PageOverlayType {
     void clearMemoryCache();
     void pruneMemoryCacheToSize(long size);
     long memoryCacheSize();
+    void setOverrideCachePolicy(CachePolicy policy);
 
     void clearPageCache();
     unsigned int pageCacheSize();
@@ -116,6 +126,7 @@ enum PageOverlayType {
     [RaisesException] boolean elementShouldAutoComplete(Element inputElement);
     [RaisesException] void setEditingValue(Element inputElement, DOMString value);
     [RaisesException] void setAutofilled(Element inputElement, boolean enabled);
+    [RaisesException] void setShowAutoFillButton(Element inputElement, boolean enabled);
     [RaisesException] unsigned long countMatchesForText(DOMString text, unsigned long findOptions, DOMString markMatches);
 
     [RaisesException] void paintControlTints();
@@ -323,4 +334,6 @@ enum PageOverlayType {
     
     File createFile(DOMString url);
     void queueMicroTask(long testNumber);
+
+    [Conditional=CONTENT_FILTERING] readonly attribute MockContentFilterSettings mockContentFilterSettings;
 };

@@ -23,11 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ReplayDashboard = function() {
-    WebInspector.Object.call(this);
-};
-
-WebInspector.ReplayDashboard.prototype = {
-    constructor: WebInspector.ReplayDashboard,
-    __proto__: WebInspector.Object.prototype,
+WebInspector.ReplayDashboard = class ReplayDashboard extends WebInspector.Object
+{
 };

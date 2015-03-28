@@ -43,11 +43,6 @@ String DiagnosticLoggingKeys::missingValidatorFieldsKey()
     return ASCIILiteral("missingValidatorFields");
 }
 
-String DiagnosticLoggingKeys::mustRevalidateIsExpiredKey()
-{
-    return ASCIILiteral("mustRevalidateIsExpired");
-}
-
 String DiagnosticLoggingKeys::pluginLoadedKey()
 {
     return ASCIILiteral("pluginLoaded");
@@ -116,6 +111,11 @@ String DiagnosticLoggingKeys::networkCacheKey()
 String DiagnosticLoggingKeys::networkKey()
 {
     return ASCIILiteral("network");
+}
+
+String DiagnosticLoggingKeys::neverSeenBeforeKey()
+{
+    return ASCIILiteral("neverSeenBefore");
 }
 
 String DiagnosticLoggingKeys::noCacheKey()
@@ -311,6 +311,16 @@ String DiagnosticLoggingKeys::diskCacheAfterValidationKey()
 String DiagnosticLoggingKeys::reloadKey()
 {
     return ASCIILiteral("reload");
+}
+
+String DiagnosticLoggingKeys::requestKey()
+{
+    return ASCIILiteral("request");
+}
+
+String DiagnosticLoggingKeys::retrievalRequestKey()
+{
+    return ASCIILiteral("retrievalRequest");
 }
 
 String DiagnosticLoggingKeys::resourceKey()

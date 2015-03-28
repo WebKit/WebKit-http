@@ -979,8 +979,8 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
     if (WebCore::DOMImplementation::isTextMIMEType(mimeType)
         || Image::supportsType(mimeType)
-        || (pluginData && pluginData->supportsMimeType(mimeType, PluginData::AllPlugins) && frame->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
-        || (pluginData && pluginData->supportsMimeType(mimeType, PluginData::OnlyApplicationPlugins)))
+        || (pluginData && pluginData->supportsWebVisibleMimeType(mimeType, PluginData::AllPlugins) && frame->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
+        || (pluginData && pluginData->supportsWebVisibleMimeType(mimeType, PluginData::OnlyApplicationPlugins)))
         return NO;
 
     return YES;
@@ -1000,20 +1000,6 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     document->setShouldCreateRenderers(_private->shouldCreateRenderers);
 
     _private->coreFrame->loader().documentLoader()->commitData((const char *)[data bytes], [data length]);
-}
-
-- (BOOL)_contentFilterDidHandleNavigationAction:(const WebCore::ResourceRequest &)request
-{
-#if PLATFORM(IOS)
-    RetainPtr<WebFrame> retainedMainFrame = [[self webView] mainFrame];
-    return _private->contentFilterUnblockHandler.handleUnblockRequestAndDispatchIfSuccessful(request, [retainedMainFrame] {
-        WebThreadRun(^ {
-            [retainedMainFrame reload];
-        });
-    });
-#else
-    return NO;
-#endif
 }
 
 @end

@@ -86,33 +86,37 @@ JSObject* constructFunction(ExecState* exec, JSGlobalObject* globalObject, const
     return constructFunctionSkippingEvalEnabledCheck(exec, globalObject, args, functionName, sourceURL, position);
 }
 
-JSObject* constructFunctionSkippingEvalEnabledCheck(ExecState* exec, JSGlobalObject* globalObject, const ArgList& args, const Identifier& functionName, const String& sourceURL, const TextPosition& position)
+JSObject* constructFunctionSkippingEvalEnabledCheck(
+    ExecState* exec, JSGlobalObject* globalObject, const ArgList& args, 
+    const Identifier& functionName, const String& sourceURL, 
+    const TextPosition& position, int overrideLineNumber)
 {
-    // Functions need to have a space following the opening { due to for web compatibility
-    // see https://bugs.webkit.org/show_bug.cgi?id=24350
-    // We also need \n before the closing } to handle // comments at the end of the last line
+    // How we stringify functions is sometimes important for web compatibility.
+    // See https://bugs.webkit.org/show_bug.cgi?id=24350.
     String program;
     if (args.isEmpty())
-        program = ASCIILiteral("(function() {\n})");
+        program = makeString("{function ", functionName.string(), "() {\n\n}}");
     else if (args.size() == 1)
-        program = makeString("(function() {", args.at(0).toString(exec)->value(exec), "\n})");
+        program = makeString("{function ", functionName.string(), "() {\n", args.at(0).toString(exec)->value(exec), "\n}}");
     else {
         StringBuilder builder;
-        builder.appendLiteral("(function(");
+        builder.appendLiteral("{function ");
+        builder.append(functionName.string());
+        builder.append('(');
         builder.append(args.at(0).toString(exec)->value(exec));
         for (size_t i = 1; i < args.size() - 1; i++) {
-            builder.append(',');
+            builder.appendLiteral(", ");
             builder.append(args.at(i).toString(exec)->value(exec));
         }
-        builder.appendLiteral(") {");
+        builder.appendLiteral(") {\n");
         builder.append(args.at(args.size() - 1).toString(exec)->value(exec));
-        builder.appendLiteral("\n})");
+        builder.appendLiteral("\n}}");
         program = builder.toString();
     }
 
     SourceCode source = makeSource(program, sourceURL, position);
-    JSObject* exception = 0;
-    FunctionExecutable* function = FunctionExecutable::fromGlobalCode(functionName, exec, exec->vmEntryGlobalObject()->debugger(), source, &exception);
+    JSObject* exception = nullptr;
+    FunctionExecutable* function = FunctionExecutable::fromGlobalCode(functionName, *exec, source, exception, overrideLineNumber);
     if (!function) {
         ASSERT(exception);
         return exec->vm().throwException(exec, exception);

@@ -112,7 +112,12 @@ namespace JSC {
     {
     }
 
-inline ResolveNode::ResolveNode(const JSTokenLocation& location, const Identifier& ident, const JSTextPosition& start)
+    inline SuperNode::SuperNode(const JSTokenLocation& location)
+        : ExpressionNode(location)
+    {
+    }
+
+    inline ResolveNode::ResolveNode(const JSTokenLocation& location, const Identifier& ident, const JSTextPosition& start)
         : ExpressionNode(location)
         , m_ident(ident)
         , m_start(start)
@@ -159,18 +164,22 @@ inline ResolveNode::ResolveNode(const JSTokenLocation& location, const Identifie
     {
     }
 
-    inline PropertyNode::PropertyNode(const Identifier& name, ExpressionNode* assign, Type type)
+    inline PropertyNode::PropertyNode(const Identifier& name, ExpressionNode* assign, Type type, PutType putType, SuperBinding superBinding = SuperBinding::NotNeeded)
         : m_name(&name)
         , m_assign(assign)
         , m_type(type)
+        , m_needsSuperBinding(superBinding == SuperBinding::Needed)
+        , m_putType(putType)
     {
     }
 
-    inline PropertyNode::PropertyNode(ExpressionNode* name, ExpressionNode* assign, Type type)
+    inline PropertyNode::PropertyNode(ExpressionNode* name, ExpressionNode* assign, Type type, PutType putType)
         : m_name(0)
         , m_expression(name)
         , m_assign(assign)
         , m_type(type)
+        , m_needsSuperBinding(false)
+        , m_putType(putType)
     {
     }
 
@@ -785,11 +794,11 @@ inline ResolveNode::ResolveNode(const JSTokenLocation& location, const Identifie
     {
     }
 
-    inline ClassExprNode::ClassExprNode(const JSTokenLocation& location, const Identifier& name, ExpressionNode* constructorExpression, ExpressionNode* parentClassExpression, PropertyListNode* instanceMethods, PropertyListNode* staticMethods)
+    inline ClassExprNode::ClassExprNode(const JSTokenLocation& location, const Identifier& name, ExpressionNode* constructorExpression, ExpressionNode* classHeritage, PropertyListNode* instanceMethods, PropertyListNode* staticMethods)
         : ExpressionNode(location)
         , m_name(name)
         , m_constructorExpression(constructorExpression)
-        , m_parentClassExpression(parentClassExpression)
+        , m_classHeritage(classHeritage)
         , m_instanceMethods(instanceMethods)
         , m_staticMethods(staticMethods)
     {

@@ -1124,6 +1124,7 @@ void FrameLoader::started()
 
 void FrameLoader::prepareForLoadStart()
 {
+    policyChecker().prepareForLoadStart();
     m_progressTracker->progressStarted();
     m_client.dispatchDidStartProvisionalLoad();
 
@@ -2269,8 +2270,8 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             if (AXObjectCache* cache = m_frame.document()->existingAXObjectCache())
                 cache->frameLoadingEventNotification(&m_frame, loadingEvent);
 
-            if (page)
-                page->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageLoadedKey(), emptyString(), error.isNull() ? DiagnosticLoggingResultPass : DiagnosticLoggingResultFail, ShouldSample::No);
+            if (page && m_frame.isMainFrame())
+                page->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageLoadedKey(), emptyString(), error.isNull() ? DiagnosticLoggingResultPass : DiagnosticLoggingResultFail, ShouldSample::Yes);
 
             return;
         }
@@ -2557,6 +2558,9 @@ void FrameLoader::addExtraFieldsToRequest(ResourceRequest& request, FrameLoadTyp
     // It seems better to manage it explicitly than to hide the logic inside addExtraFieldsToRequest().
     } else if (loadType == FrameLoadType::Reload || loadType == FrameLoadType::ReloadFromOrigin || request.isConditional())
         request.setCachePolicy(ReloadIgnoringCacheData);
+
+    if (m_overrideCachePolicyForTesting)
+        request.setCachePolicy(m_overrideCachePolicyForTesting.value());
 
     if (request.cachePolicy() == ReloadIgnoringCacheData) {
         if (loadType == FrameLoadType::Reload)
@@ -3213,10 +3217,7 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem& item, FrameLoadType loa
         case FrameLoadType::Back:
         case FrameLoadType::Forward:
         case FrameLoadType::IndexedBackForward:
-            // If the first load within a frame is a navigation within a back/forward list that was attached 
-            // without any of the items being loaded then we should use the default caching policy (<rdar://problem/8131355>).
-            if (m_stateMachine.committedFirstRealDocumentLoad())
-                request.setCachePolicy(ReturnCacheDataElseLoad);
+            request.setCachePolicy(ReturnCacheDataElseLoad);
             break;
         case FrameLoadType::Standard:
         case FrameLoadType::RedirectWithLockedBackForwardList:
@@ -3253,8 +3254,6 @@ void FrameLoader::retryAfterFailedCacheOnlyMainResourceLoad()
 {
     ASSERT(m_state == FrameStateProvisional);
     ASSERT(!m_loadingFromCachedPage);
-    // We only use cache-only loads to avoid resubmitting forms.
-    ASSERT(isBackForwardLoadType(m_loadType));
     ASSERT(history().provisionalItem());
     ASSERT(history().provisionalItem()->formData());
     ASSERT(history().provisionalItem() == m_requestedHistoryItem.get());

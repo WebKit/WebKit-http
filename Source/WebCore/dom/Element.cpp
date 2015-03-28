@@ -39,6 +39,7 @@
 #include "ElementIterator.h"
 #include "ElementRareData.h"
 #include "EventDispatcher.h"
+#include "EventHandler.h"
 #include "FlowThreadController.h"
 #include "FocusController.h"
 #include "FocusEvent.h"
@@ -77,6 +78,7 @@
 #include "StyleResolver.h"
 #include "TextIterator.h"
 #include "VoidCallback.h"
+#include "WebKitMouseForceEvent.h"
 #include "WheelEvent.h"
 #include "XLinkNames.h"
 #include "XMLNSNames.h"
@@ -289,6 +291,10 @@ bool Element::dispatchWheelEvent(const PlatformWheelEvent& event)
 bool Element::dispatchKeyEvent(const PlatformKeyboardEvent& platformEvent)
 {
     RefPtr<KeyboardEvent> event = KeyboardEvent::create(platformEvent, document().defaultView());
+    if (Frame* frame = document().frame()) {
+        if (frame->eventHandler().accessibilityPreventsEventPropogation(event.get()))
+            event->stopPropagation();
+    }
     return EventDispatcher::dispatchEvent(this, event) && !event->defaultHandled();
 }
 
@@ -296,11 +302,6 @@ void Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouse
 {
     EventDispatcher::dispatchSimulatedClick(this, underlyingEvent, eventOptions, visualOptions);
 }
-
-DEFINE_VIRTUAL_ATTRIBUTE_EVENT_LISTENER(Element, blur);
-DEFINE_VIRTUAL_ATTRIBUTE_EVENT_LISTENER(Element, error);
-DEFINE_VIRTUAL_ATTRIBUTE_EVENT_LISTENER(Element, focus);
-DEFINE_VIRTUAL_ATTRIBUTE_EVENT_LISTENER(Element, load);
 
 RefPtr<Node> Element::cloneNodeInternal(Document& targetDocument, CloningOperation type)
 {
@@ -616,6 +617,20 @@ void Element::scrollIntoViewIfNeeded(bool centerIfNeeded)
         renderer()->scrollRectToVisible(bounds, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
 }
 
+void Element::scrollIntoViewIfNotVisible(bool centerIfNotVisible)
+{
+    document().updateLayoutIgnorePendingStylesheets();
+    
+    if (!renderer())
+        return;
+    
+    LayoutRect bounds = renderer()->anchorRect();
+    if (centerIfNotVisible)
+        renderer()->scrollRectToVisible(bounds, ScrollAlignment::alignCenterIfNotVisible, ScrollAlignment::alignCenterIfNotVisible);
+    else
+        renderer()->scrollRectToVisible(bounds, ScrollAlignment::alignToEdgeIfNotVisible, ScrollAlignment::alignToEdgeIfNotVisible);
+}
+    
 void Element::scrollByUnits(int units, ScrollGranularity granularity)
 {
     document().updateLayoutIgnorePendingStylesheets();
@@ -714,7 +729,7 @@ double Element::offsetTop()
 
 double Element::offsetWidth()
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIfDimensionsOutOfDate(*this, WidthDimensionsCheck);
     if (RenderBoxModelObject* renderer = renderBoxModelObject()) {
         LayoutUnit offsetWidth = subpixelMetricsEnabled(renderer->document()) ? renderer->offsetWidth() : LayoutUnit(renderer->pixelSnappedOffsetWidth());
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(offsetWidth, *renderer).toDouble(), renderer->document());
@@ -724,7 +739,7 @@ double Element::offsetWidth()
 
 double Element::offsetHeight()
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIfDimensionsOutOfDate(*this, HeightDimensionsCheck);
     if (RenderBoxModelObject* renderer = renderBoxModelObject()) {
         LayoutUnit offsetHeight = subpixelMetricsEnabled(renderer->document()) ? renderer->offsetHeight() : LayoutUnit(renderer->pixelSnappedOffsetHeight());
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(offsetHeight, *renderer).toDouble(), renderer->document());
@@ -776,7 +791,7 @@ double Element::clientTop()
 
 double Element::clientWidth()
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIfDimensionsOutOfDate(*this, WidthDimensionsCheck);
 
     if (!document().hasLivingRenderTree())
         return 0;
@@ -797,8 +812,7 @@ double Element::clientWidth()
 
 double Element::clientHeight()
 {
-    document().updateLayoutIgnorePendingStylesheets();
-
+    document().updateLayoutIfDimensionsOutOfDate(*this, HeightDimensionsCheck);
     if (!document().hasLivingRenderTree())
         return 0;
     RenderView& renderView = *document().renderView();
@@ -858,7 +872,7 @@ void Element::setScrollTop(int newTop)
 
 int Element::scrollWidth()
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIfDimensionsOutOfDate(*this, WidthDimensionsCheck);
     if (RenderBox* rend = renderBox())
         return adjustForAbsoluteZoom(rend->scrollWidth(), *rend);
     return 0;
@@ -866,7 +880,7 @@ int Element::scrollWidth()
 
 int Element::scrollHeight()
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIfDimensionsOutOfDate(*this, HeightDimensionsCheck);
     if (RenderBox* rend = renderBox())
         return adjustForAbsoluteZoom(rend->scrollHeight(), *rend);
     return 0;
@@ -1685,7 +1699,7 @@ void Element::finishParsingChildren()
         styleResolver->popParentElement(this);
 }
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 void Element::formatForDebugger(char* buffer, unsigned length) const
 {
     StringBuilder result;
@@ -2092,6 +2106,86 @@ void Element::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
 
     EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, WTF::move(newFocusedElement)));
 }
+
+#if ENABLE(MOUSE_FORCE_EVENTS)
+bool Element::dispatchMouseForceWillBegin()
+{
+    Frame* frame = document().frame();
+    if (!frame)
+        return false;
+
+    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime());
+    RefPtr<Event> mouseForceWillBeginEvent =  WebKitMouseForceEvent::create(eventNames().webkitmouseforcewillbeginEvent, 0, platformMouseEvent, document().defaultView());
+    mouseForceWillBeginEvent->setTarget(this);
+    dispatchEvent(mouseForceWillBeginEvent);
+
+    if (mouseForceWillBeginEvent->defaultHandled() || mouseForceWillBeginEvent->defaultPrevented())
+        return true;
+    return false;
+}
+
+void Element::dispatchMouseForceChanged(float force, const PlatformMouseEvent& platformMouseEvent)
+{
+    RefPtr<WebKitMouseForceEvent> mouseForceChangedEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforcechangedEvent, force, platformMouseEvent, document().defaultView());
+    mouseForceChangedEvent->setTarget(this);
+    dispatchEvent(mouseForceChangedEvent);
+}
+
+void Element::dispatchMouseForceDown(const PlatformMouseEvent& platformMouseEvent)
+{
+    RefPtr<Event> mouseForceDownEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforcedownEvent, 1, platformMouseEvent, document().defaultView());
+    mouseForceDownEvent->setTarget(this);
+    dispatchEvent(mouseForceDownEvent);
+}
+
+void Element::dispatchMouseForceUp(const PlatformMouseEvent& platformMouseEvent)
+{
+    RefPtr<Event> mouseForceUpEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforceupEvent, 1, platformMouseEvent, document().defaultView());
+    mouseForceUpEvent->setTarget(this);
+    dispatchEvent(mouseForceUpEvent);
+}
+
+void Element::dispatchMouseForceClick(const PlatformMouseEvent& platformMouseEvent)
+{
+    RefPtr<Event> mouseForceClickEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforceclickEvent, 1, platformMouseEvent, document().defaultView());
+    mouseForceClickEvent->setTarget(this);
+    dispatchEvent(mouseForceClickEvent);
+}
+
+void Element::dispatchMouseForceCancelled(const PlatformMouseEvent& platformMouseEvent)
+{
+    RefPtr<Event> mouseForceCancelledEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforcecancelledEvent, 0, platformMouseEvent, document().defaultView());
+    mouseForceCancelledEvent->setTarget(this);
+    dispatchEvent(mouseForceCancelledEvent);
+}
+
+#else // #if ENABLE(MOUSE_FORCE_EVENTS)
+
+bool Element::dispatchMouseForceWillBegin()
+{
+    return false;
+}
+
+void Element::dispatchMouseForceChanged(float, const PlatformMouseEvent&)
+{
+}
+
+void Element::dispatchMouseForceDown(const PlatformMouseEvent&)
+{
+}
+
+void Element::dispatchMouseForceUp(const PlatformMouseEvent&)
+{
+}
+
+void Element::dispatchMouseForceClick(const PlatformMouseEvent&)
+{
+}
+
+void Element::dispatchMouseForceCancelled(const PlatformMouseEvent&)
+{
+}
+#endif // #if ENABLE(MOUSE_FORCE_EVENTS)
 
 void Element::mergeWithNextTextNode(Text& node, ExceptionCode& ec)
 {

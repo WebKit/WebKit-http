@@ -23,91 +23,90 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ObjectPreviewView = function(preview, mode)
+WebInspector.ObjectPreviewView = class ObjectPreviewView extends WebInspector.Object
 {
-    WebInspector.Object.call(this);
+    constructor(preview, mode)
+    {
+        console.assert(preview instanceof WebInspector.ObjectPreview);
 
-    console.assert(preview instanceof WebInspector.ObjectPreview);
+        super();
 
-    this._preview = preview;
-    this._mode = mode || WebInspector.ObjectPreviewView.Mode.Full;
+        this._preview = preview;
+        this._mode = mode || WebInspector.ObjectPreviewView.Mode.Full;
 
-    this._element = document.createElement("span");
-    this._element.className = "object-preview";
+        this._element = document.createElement("span");
+        this._element.className = "object-preview";
 
-    this._previewElement = this._element.appendChild(document.createElement("span"));
-    this._previewElement.className = "preview";
-    this._lossless = this._appendPreview(this._previewElement, this._preview);
+        this._previewElement = this._element.appendChild(document.createElement("span"));
+        this._previewElement.className = "preview";
+        this._lossless = this._appendPreview(this._previewElement, this._preview);
 
-    this._titleElement = this._element.appendChild(document.createElement("span"));
-    this._titleElement.className = "title";
-    this._titleElement.hidden = true;
-    this._initTitleElement();
+        this._titleElement = this._element.appendChild(document.createElement("span"));
+        this._titleElement.className = "title";
+        this._titleElement.hidden = true;
+        this._initTitleElement();
 
-    if (this._lossless)
-        this._element.classList.add("lossless");
-};
+        if (this._preview.hasSize()) {
+            var sizeElement = this._element.appendChild(document.createElement("span"));
+            sizeElement.className = "size";
+            sizeElement.textContent = " (" + this._preview.size + ")";
+        }
 
-WebInspector.ObjectPreviewView.Mode = {
-    Brief: Symbol("object-preview-brief"),
-    Full: Symbol("object-preview-full"),
-};
-
-WebInspector.ObjectPreviewView.prototype = {
-    constructor: WebInspector.ObjectPreviewView,
-    __proto__: WebInspector.Object.prototype,
+        if (this._lossless)
+            this._element.classList.add("lossless");
+    }
 
     // Public
 
     get preview()
     {
         return this._preview;
-    },
+    }
 
     get element()
     {
         return this._element;
-    },
+    }
 
     get mode()
     {
         return this._mode;
-    },
+    }
 
     get lossless()
     {
         return this._lossless;
-    },
+    }
 
-    showTitle: function()
+    showTitle()
     {
         this._titleElement.hidden = false;
         this._previewElement.hidden = true;
-    },
+    }
 
-    showPreview: function()
+    showPreview()
     {
         this._titleElement.hidden = true;
         this._previewElement.hidden = false;
-    },
+    }
 
     // Private
 
-    _initTitleElement: function()
+    _initTitleElement()
     {
         // Display null / regexps as simple formatted values even in title.
         if (this._preview.subtype === "regexp" || this._preview.subtype === "null")
             this._titleElement.appendChild(WebInspector.FormattedValue.createElementForObjectPreview(this._preview));
         else
             this._titleElement.textContent = this._preview.description || "";
-    },
+    }
 
-    _numberOfPropertiesToShowInMode: function()
+    _numberOfPropertiesToShowInMode()
     {
         return this._mode === WebInspector.ObjectPreviewView.Mode.Brief ? 3 : Infinity;
-    },
+    }
 
-    _appendPreview: function(element, preview)
+    _appendPreview(element, preview)
     {
         var displayObjectAsValue = false;
         if (preview.type === "object") {
@@ -132,13 +131,15 @@ WebInspector.ObjectPreviewView.prototype = {
                 return this._appendPropertyPreviews(bodyElement, preview);
         }
         return this._appendValuePreview(bodyElement, preview);
-    },
+    }
 
-    _appendEntryPreviews: function(element, preview)
+    _appendEntryPreviews(element, preview)
     {
         var lossless = preview.lossless && !preview.propertyPreviews.length;
 
-        element.appendChild(document.createTextNode("{"));
+        var isIterator = preview.subtype === "iterator";
+
+        element.appendChild(document.createTextNode(isIterator ? "[" : "{"));
 
         var limit = Math.min(preview.collectionEntryPreviews.length, this._numberOfPropertiesToShowInMode());
         for (var i = 0; i < limit; ++i) {
@@ -159,13 +160,13 @@ WebInspector.ObjectPreviewView.prototype = {
         }
 
         if (preview.overflow)
-            element.appendChild(document.createTextNode("\u2026"));
-        element.appendChild(document.createTextNode("}"));
+            element.appendChild(document.createTextNode(", \u2026"));
+        element.appendChild(document.createTextNode(isIterator ? "]" : "}"));
 
         return lossless;
-    },
+    }
 
-    _appendPropertyPreviews: function(element, preview)
+    _appendPropertyPreviews(element, preview)
     {
         // Do not show Error properties in previews. They are more useful in full views.
         if (preview.subtype === "error")
@@ -203,20 +204,28 @@ WebInspector.ObjectPreviewView.prototype = {
                 element.appendChild(document.createTextNode(": "));
             }
 
-            element.appendChild(WebInspector.FormattedValue.createElementForPropertyPreview(property));
+            if (property.valuePreview)
+                this._appendPreview(element, property.valuePreview);
+            else
+                element.appendChild(WebInspector.FormattedValue.createElementForPropertyPreview(property));
         }
 
         if (preview.overflow)
-            element.appendChild(document.createTextNode("\u2026"));
+            element.appendChild(document.createTextNode(", \u2026"));
 
         element.appendChild(document.createTextNode(isArray ? "]" : "}"));
 
         return preview.lossless;
-    },
+    }
 
-    _appendValuePreview: function(element, preview)
+    _appendValuePreview(element, preview)
     {
         element.appendChild(WebInspector.FormattedValue.createElementForObjectPreview(preview));
         return true;
     }
+};
+
+WebInspector.ObjectPreviewView.Mode = {
+    Brief: Symbol("object-preview-brief"),
+    Full: Symbol("object-preview-full"),
 };

@@ -27,6 +27,7 @@
 #ifndef ResourceResponseBase_h
 #define ResourceResponseBase_h
 
+#include "CacheValidation.h"
 #include "CertificateInfo.h"
 #include "HTTPHeaderMap.h"
 #include "URL.h"
@@ -103,10 +104,10 @@ public:
     WEBCORE_EXPORT bool cacheControlContainsNoStore() const;
     WEBCORE_EXPORT bool cacheControlContainsMustRevalidate() const;
     WEBCORE_EXPORT bool hasCacheValidatorFields() const;
-    double cacheControlMaxAge() const;
+    WEBCORE_EXPORT double cacheControlMaxAge() const;
     double date() const;
     double age() const;
-    double expires() const;
+    WEBCORE_EXPORT double expires() const;
     WEBCORE_EXPORT double lastModified() const;
 
     enum class Source { Unknown, Network, DiskCache, DiskCacheAfterValidation };
@@ -160,11 +161,11 @@ protected:
     int m_httpStatusCode;
 
 private:
-    mutable double m_cacheControlMaxAge;
     mutable double m_age;
     mutable double m_date;
     mutable double m_expires;
     mutable double m_lastModified;
+    mutable CacheControlDirectives m_cacheControlDirectives;
 
 public:
     bool m_isNull : 1;
@@ -179,10 +180,6 @@ private:
     mutable bool m_haveParsedDateHeader : 1;
     mutable bool m_haveParsedExpiresHeader : 1;
     mutable bool m_haveParsedLastModifiedHeader : 1;
-
-    mutable bool m_cacheControlContainsNoCache : 1;
-    mutable bool m_cacheControlContainsNoStore : 1;
-    mutable bool m_cacheControlContainsMustRevalidate : 1;
 
     Source m_source;
 };

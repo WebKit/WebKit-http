@@ -37,12 +37,14 @@ class WebsiteDataStore final : public ObjectImpl<Object::Type::WebsiteDataStore>
 public:
     static RefPtr<WebsiteDataStore> defaultDataStore();
     static RefPtr<WebsiteDataStore> createNonPersistentDataStore();
+    static RefPtr<WebsiteDataStore> create(WebKit::WebsiteDataStore::Configuration);
     virtual ~WebsiteDataStore();
 
     bool isNonPersistent();
 
     WebKit::WebsiteDataStore& websiteDataStore() { return *m_websiteDataStore; }
 
+    static String cacheDirectoryFileSystemRepresentation(const String& directoryName);
     static String websiteDataDirectoryFileSystemRepresentation(const String& directoryName);
 
 private:

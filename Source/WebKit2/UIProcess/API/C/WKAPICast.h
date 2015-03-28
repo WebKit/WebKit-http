@@ -47,6 +47,7 @@
 #include "WebGrammarDetail.h"
 #include <WebCore/Credential.h>
 #include <WebCore/FrameLoaderTypes.h>
+#include <WebCore/PluginData.h>
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/Settings.h>
 
@@ -59,8 +60,10 @@ class NavigationResponse;
 class PageConfiguration;
 class ProcessPoolConfiguration;
 class SessionState;
-class UserContentFilter;
+class UserContentExtension;
+class UserContentExtensionStore;
 class UserScript;
+class WebsiteDataStore;
 }
 
 namespace WebKit {
@@ -137,6 +140,7 @@ WK_ADD_API_MAPPING(WKGeolocationPositionRef, WebGeolocationPosition)
 WK_ADD_API_MAPPING(WKGrammarDetailRef, WebGrammarDetail)
 WK_ADD_API_MAPPING(WKHitTestResultRef, WebHitTestResult)
 WK_ADD_API_MAPPING(WKIconDatabaseRef, WebIconDatabase)
+WK_ADD_API_MAPPING(WKInspectorRef, WebInspectorProxy)
 WK_ADD_API_MAPPING(WKKeyValueStorageManagerRef, WebKeyValueStorageManager)
 WK_ADD_API_MAPPING(WKMediaCacheManagerRef, WebMediaCacheManagerProxy)
 WK_ADD_API_MAPPING(WKNavigationActionRef, API::NavigationAction)
@@ -161,12 +165,13 @@ WK_ADD_API_MAPPING(WKRenderObjectRef, WebRenderObject)
 WK_ADD_API_MAPPING(WKSessionStateRef, API::SessionState)
 WK_ADD_API_MAPPING(WKTextCheckerRef, WebTextChecker)
 WK_ADD_API_MAPPING(WKUserContentControllerRef, WebUserContentControllerProxy)
-WK_ADD_API_MAPPING(WKUserContentFilterRef, API::UserContentFilter)
+WK_ADD_API_MAPPING(WKUserContentExtensionStoreRef, API::UserContentExtensionStore)
+WK_ADD_API_MAPPING(WKUserContentFilterRef, API::UserContentExtension)
 WK_ADD_API_MAPPING(WKUserMediaPermissionRequestRef, UserMediaPermissionRequestProxy)
 WK_ADD_API_MAPPING(WKUserScriptRef, API::UserScript)
 WK_ADD_API_MAPPING(WKVibrationRef, WebVibrationProxy)
 WK_ADD_API_MAPPING(WKViewportAttributesRef, WebViewportAttributes)
-WK_ADD_API_MAPPING(WKInspectorRef, WebInspectorProxy)
+WK_ADD_API_MAPPING(WKWebsiteDataStoreRef, API::WebsiteDataStore)
 
 /* Enum conversions */
 
@@ -480,6 +485,25 @@ inline WKPluginLoadPolicy toWKPluginLoadPolicy(PluginModuleLoadPolicy pluginModu
     return kWKPluginLoadPolicyBlocked;
 }
 
+inline WKPluginLoadClientPolicy toWKPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy PluginLoadClientPolicy)
+{
+    switch (PluginLoadClientPolicy) {
+    case WebCore::PluginLoadClientPolicyUndefined:
+        return kWKPluginLoadClientPolicyUndefined;
+    case WebCore::PluginLoadClientPolicyBlock:
+        return kWKPluginLoadClientPolicyBlock;
+    case WebCore::PluginLoadClientPolicyAsk:
+        return kWKPluginLoadClientPolicyAsk;
+    case WebCore::PluginLoadClientPolicyAllow:
+        return kWKPluginLoadClientPolicyAllow;
+    case WebCore::PluginLoadClientPolicyAllowAlways:
+        return kWKPluginLoadClientPolicyAllowAlways;
+    }
+
+    ASSERT_NOT_REACHED();
+    return kWKPluginLoadClientPolicyBlock;
+}
+
 inline PluginModuleLoadPolicy toPluginModuleLoadPolicy(WKPluginLoadPolicy pluginLoadPolicy)
 {
     switch (pluginLoadPolicy) {
@@ -493,6 +517,25 @@ inline PluginModuleLoadPolicy toPluginModuleLoadPolicy(WKPluginLoadPolicy plugin
     
     ASSERT_NOT_REACHED();
     return PluginModuleBlocked;
+}
+
+inline WebCore::PluginLoadClientPolicy toPluginLoadClientPolicy(WKPluginLoadClientPolicy pluginLoadClientPolicy)
+{
+    switch (pluginLoadClientPolicy) {
+    case kWKPluginLoadClientPolicyUndefined:
+        return WebCore::PluginLoadClientPolicyUndefined;
+    case kWKPluginLoadClientPolicyBlock:
+        return WebCore::PluginLoadClientPolicyBlock;
+    case kWKPluginLoadClientPolicyAsk:
+        return WebCore::PluginLoadClientPolicyAsk;
+    case kWKPluginLoadClientPolicyAllow:
+        return WebCore::PluginLoadClientPolicyAllow;
+    case kWKPluginLoadClientPolicyAllowAlways:
+        return WebCore::PluginLoadClientPolicyAllowAlways;
+    }
+
+    ASSERT_NOT_REACHED();
+    return WebCore::PluginLoadClientPolicyBlock;
 }
 
 inline WebCore::WebGLLoadPolicy toWebGLLoadPolicy(WKWebGLLoadPolicy webGLLoadPolicy)

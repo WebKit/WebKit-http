@@ -161,9 +161,6 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     if (!m_graph.m_plan.inlineCallFrames->isEmpty())
         m_jitCode->common.inlineCallFrames = m_graph.m_plan.inlineCallFrames;
     
-    m_jitCode->common.machineCaptureStart = m_graph.m_machineCaptureStart;
-    m_jitCode->common.slowArguments = WTF::move(m_graph.m_slowArguments);
-
 #if USE(JSVALUE32_64)
     m_jitCode->common.doubleConstants = WTF::move(m_graph.m_doubleConstants);
 #endif
@@ -325,10 +322,7 @@ void JITCompiler::compile()
     // Create OSR entry trampolines if necessary.
     m_speculative->createOSREntries();
     setEndOfCode();
-}
 
-void JITCompiler::link()
-{
     auto linkBuffer = std::make_unique<LinkBuffer>(*m_vm, *this, m_codeBlock, JITCompilationCanFail);
     if (linkBuffer->didFailToAllocate()) {
         m_graph.m_plan.finalizer = std::make_unique<FailedFinalizer>(m_graph.m_plan);
@@ -412,7 +406,9 @@ void JITCompiler::compileFunction()
 #else
     thunkReg = GPRInfo::regT5;
 #endif
-    move(TrustedImmPtr(m_vm->arityCheckFailReturnThunks->returnPCsFor(*m_vm, m_codeBlock->numParameters())), thunkReg);
+    CodeLocationLabel* arityThunkLabels =
+        m_vm->arityCheckFailReturnThunks->returnPCsFor(*m_vm, m_codeBlock->numParameters());
+    move(TrustedImmPtr(arityThunkLabels), thunkReg);
     loadPtr(BaseIndex(thunkReg, GPRInfo::regT0, timesPtr()), thunkReg);
     m_callArityFixup = call();
     jump(fromArityCheck);
@@ -426,10 +422,7 @@ void JITCompiler::compileFunction()
     // Create OSR entry trampolines if necessary.
     m_speculative->createOSREntries();
     setEndOfCode();
-}
 
-void JITCompiler::linkFunction()
-{
     // === Link ===
     auto linkBuffer = std::make_unique<LinkBuffer>(*m_vm, *this, m_codeBlock, JITCompilationCanFail);
     if (linkBuffer->didFailToAllocate()) {
@@ -454,8 +447,10 @@ void JITCompiler::linkFunction()
 
 void JITCompiler::disassemble(LinkBuffer& linkBuffer)
 {
-    if (shouldShowDisassembly())
+    if (shouldShowDisassembly()) {
         m_disassembler->dump(linkBuffer);
+        linkBuffer.didAlreadyDisassemble();
+    }
     
     if (m_graph.m_plan.compilation)
         m_disassembler->reportToProfiler(m_graph.m_plan.compilation.get(), linkBuffer);

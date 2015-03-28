@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="DerivedSources">
@@ -3378,6 +3378,9 @@
     <ClCompile Include="..\dom\WebKitAnimationEvent.cpp">
       <Filter>dom</Filter>
     </ClCompile>
+    <ClCompile Include="..\dom\WebKitMouseForceEvent.cpp">
+      <Filter>dom</Filter>
+    </ClCompile>
     <ClCompile Include="..\dom\WebKitNamedFlow.cpp">
       <Filter>dom</Filter>
     </ClCompile>
@@ -4109,6 +4112,9 @@
     </ClCompile>
     <ClCompile Include="..\html\parser\XSSAuditorDelegate.cpp">
       <Filter>html\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\shadow\AutoFillButtonElement.cpp">
+      <Filter>html\shadow</Filter>
     </ClCompile>
     <ClCompile Include="..\html\shadow\ContentDistributor.cpp">
       <Filter>html\shadow</Filter>
@@ -6205,6 +6211,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSTransformValue.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitMouseForceEvent.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitNamedFlow.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6507,9 +6516,6 @@
     </ClCompile>
     <ClCompile Include="..\platform\graphics\OpenGLShims.cpp">
       <Filter>platform\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\graphics\gpu\DrawingBuffer.cpp">
-      <Filter>platform\graphics\gpu</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\gpu\Texture.cpp">
       <Filter>platform\graphics\gpu</Filter>
@@ -7201,6 +7207,9 @@
     <ClCompile Include="..\html\canvas\WebGLTransformFeedback.cpp">
       <Filter>html\canvas</Filter>
     </ClCompile>
+    <ClCompile Include="..\html\canvas\WebGLVertexArrayObjectBase.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
     <ClCompile Include="..\html\canvas\WebGLVertexArrayObject.cpp">
       <Filter>html\canvas</Filter>
     </ClCompile>
@@ -7223,6 +7232,9 @@
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\cf\CoreMediaSoftLink.cpp">
+      <Filter>platform\cf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\cf\MediaAccessibilitySoftLink.cpp">
       <Filter>platform\cf</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\FontCascadeFonts.cpp">
@@ -10464,6 +10476,9 @@
     <ClInclude Include="..\dom\WebKitAnimationEvent.h">
       <Filter>dom</Filter>
     </ClInclude>
+    <ClInclude Include="..\dom\WebKitMouseForceEvent.h">
+      <Filter>dom</Filter>
+    </ClInclude>
     <ClInclude Include="..\dom\WebKitNamedFlow.h">
       <Filter>dom</Filter>
     </ClInclude>
@@ -11270,6 +11285,9 @@
     </ClInclude>
     <ClInclude Include="..\html\parser\XSSAuditorDelegate.h">
       <Filter>html\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\shadow\AutoFillButtonElement.h">
+      <Filter>html\shadow</Filter>
     </ClInclude>
     <ClInclude Include="..\html\shadow\ContentDistributor.h">
       <Filter>html\shadow</Filter>
@@ -12182,6 +12200,9 @@
       <Filter>platform\cf</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\cf\CoreMediaSoftLink.h">
+      <Filter>platform\cf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\cf\MediaAccessibilitySoftLink.h">
       <Filter>platform\cf</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\cf\win\CertificateCFWin.h">
@@ -13562,6 +13583,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSTransformValue.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitMouseForceEvent.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitNamedFlow.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -13876,9 +13900,6 @@
     </ClInclude>
     <ClInclude Include="..\platform\graphics\OpenGLShims.h">
       <Filter>platform\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\gpu\DrawingBuffer.h">
-      <Filter>platform\graphics\gpu</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\gpu\Texture.h">
       <Filter>platform\graphics\gpu</Filter>
@@ -14408,7 +14429,7 @@
     <ClInclude Include="..\rendering\BorderEdge.h">
       <Filter>rendering</Filter>
     </ClInclude>
-    <ClInclude Include="..\rendering\line\BreakingContextInlineHeaders.h">
+    <ClInclude Include="..\rendering\line\BreakingContext.h">
       <Filter>rendering\line</Filter>
     </ClInclude>
     <ClInclude Include="..\page\ContextMenuContext.h">
@@ -15159,6 +15180,9 @@
       <Filter>html\canvas</Filter>
     </ClInclude>
     <ClInclude Include="..\html\canvas\WebGLVertexArrayObject.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\canvas\WebGLVertexArrayObjectBase.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebGLQuery.h">

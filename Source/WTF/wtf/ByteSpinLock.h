@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,27 +38,25 @@ class ByteSpinLock {
     WTF_MAKE_NONCOPYABLE(ByteSpinLock);
 public:
     ByteSpinLock()
-        : m_lock(0)
     {
+        m_lock.store(false, std::memory_order_relaxed);
     }
 
     void lock()
     {
-        while (!weakCompareAndSwap(&m_lock, 0, 1))
+        while (!m_lock.compareExchangeWeak(false, true, std::memory_order_acquire))
             std::this_thread::yield();
-        memoryBarrierAfterLock();
     }
     
     void unlock()
     {
-        memoryBarrierBeforeUnlock();
-        m_lock = 0;
+        m_lock.store(false, std::memory_order_release);
     }
     
-    bool isHeld() const { return !!m_lock; }
+    bool isHeld() const { return m_lock.load(std::memory_order_acquire); }
     
 private:
-    uint8_t m_lock;
+    Atomic<bool> m_lock;
 };
 
 typedef Locker<ByteSpinLock> ByteSpinLocker;

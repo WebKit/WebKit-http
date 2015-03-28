@@ -158,6 +158,15 @@ static NSFont *fontWithFamily(NSString *desiredFamily, NSFontTraitMask desiredTr
         return (desiredWeight >= 7) ? [NSFont boldSystemFontOfSize:size] : [NSFont systemFontOfSize:size];
     }
 
+    if (stringIsCaseInsensitiveEqualToString(desiredFamily, @"-apple-system-font-monospaced-numbers")) {
+        NSArray *featureArray = @[ @{ NSFontFeatureTypeIdentifierKey : @(kNumberSpacingType),
+            NSFontFeatureSelectorIdentifierKey : @(kMonospacedNumbersSelector) } ];
+
+        NSFont* systemFont = [NSFont systemFontOfSize:size];
+        NSFontDescriptor* desc = [systemFont.fontDescriptor fontDescriptorByAddingAttributes:@{ NSFontFeatureSettingsAttribute : featureArray }];
+        return [NSFont fontWithDescriptor:desc size:size];
+    }
+
     id cachedAvailableFamily = [desiredFamilyToAvailableFamilyDictionary() objectForKey:desiredFamily];
     if (cachedAvailableFamily == [NSNull null]) {
         // We already know this font is not available.
@@ -325,7 +334,7 @@ static bool shouldAutoActivateFontIfNeeded(const AtomicString& family)
 #endif
 
     static NeverDestroyed<HashSet<AtomicString>> knownFamilies;
-    static const int maxCacheSize = 128;
+    static const unsigned maxCacheSize = 128;
     ASSERT(knownFamilies.get().size() <= maxCacheSize);
     if (knownFamilies.get().size() == maxCacheSize)
         knownFamilies.get().remove(knownFamilies.get().begin());
@@ -334,7 +343,7 @@ static bool shouldAutoActivateFontIfNeeded(const AtomicString& family)
     return knownFamilies.get().add(family).isNewEntry;
 }
 
-RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font* originalFontData, bool isPlatformFont, const UChar* characters, int length)
+RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font* originalFontData, bool isPlatformFont, const UChar* characters, unsigned length)
 {
     UChar32 character;
     U16_GET(characters, 0, 0, length, character);
@@ -414,7 +423,7 @@ RefPtr<Font> FontCache::similarFont(const FontDescription& description)
             continue;
         static String* matchWords[3] = { new String("Arabic"), new String("Pashto"), new String("Urdu") };
         DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, geezaStr, ("Geeza Pro", AtomicString::ConstructFromLiteral));
-        for (int j = 0; j < 3 && !font; ++j) {
+        for (unsigned j = 0; j < 3 && !font; ++j) {
             if (family.contains(*matchWords[j], false))
                 font = fontForFamily(description, geezaStr);
         }

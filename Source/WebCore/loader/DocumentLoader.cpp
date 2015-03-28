@@ -99,19 +99,16 @@ static bool areAllLoadersPageCacheAcceptable(const ResourceLoaderMap& loaders)
     Vector<RefPtr<ResourceLoader>> loadersCopy;
     copyValuesToVector(loaders, loadersCopy);
     for (auto& loader : loadersCopy) {
-        ResourceHandle* handle = loader->handle();
-        if (!handle)
-            return false;
-
         if (!loader->frameLoader())
             return false;
 
-        CachedResource* cachedResource = MemoryCache::singleton().resourceForURL(handle->firstRequest().url(), loader->frameLoader()->frame().page()->sessionID());
+        CachedResource* cachedResource = MemoryCache::singleton().resourceForURL(loader->request().url(), loader->frameLoader()->frame().page()->sessionID());
         if (!cachedResource)
             return false;
 
+        // Only image and XHR loads do prevent the page from entering the PageCache.
         // All non-image loads will prevent the page from entering the PageCache.
-        if (!cachedResource->isImage())
+        if (!cachedResource->isImage() && !cachedResource->areAllClientsXMLHttpRequests())
             return false;
     }
     return true;
@@ -542,7 +539,7 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
 
     Frame& topFrame = m_frame->tree().top();
     if (&topFrame != m_frame) {
-        if (!frameLoader()->mixedContentChecker().canDisplayInsecureContent(topFrame.document()->securityOrigin(), newRequest.url())) {
+        if (!frameLoader()->mixedContentChecker().canDisplayInsecureContent(topFrame.document()->securityOrigin(), MixedContentChecker::ContentType::Active, newRequest.url())) {
             cancelMainResourceLoad(frameLoader()->cancelledError(newRequest));
             return;
         }
@@ -666,8 +663,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
-    if (ContentFilter::canHandleResponse(response))
-        m_contentFilter = std::make_unique<ContentFilter>(response);
+    m_contentFilter = ContentFilter::createIfNeeded(response, *this);
 #endif
 
     frameLoader()->policyChecker().checkContentPolicy(m_response, [this](PolicyAction policy) {
@@ -844,6 +840,19 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
 
         m_writer.setEncoding(encoding, userChosen);
     }
+
+#if ENABLE(CONTENT_EXTENSIONS)
+    DocumentStyleSheetCollection& styleSheetCollection = m_frame->document()->styleSheetCollection();
+
+    for (auto& pendingStyleSheet : m_pendingNamedContentExtensionStyleSheets)
+        styleSheetCollection.maybeAddContentExtensionSheet(pendingStyleSheet.key, *pendingStyleSheet.value);
+    for (auto& pendingStyleSheet : m_pendingUnnamedContentExtensionStyleSheets)
+        styleSheetCollection.addUserSheet(*pendingStyleSheet);
+
+    m_pendingNamedContentExtensionStyleSheets.clear();
+    m_pendingUnnamedContentExtensionStyleSheets.clear();
+#endif
+
     ASSERT(m_frame->document()->parsing());
     m_writer.addData(bytes, length);
 }
@@ -876,10 +885,8 @@ void DocumentLoader::dataReceived(CachedResource* resource, const char* data, in
         data = m_contentFilter->getReplacementData(length);
         loadWasBlockedBeforeFinishing = m_contentFilter->didBlockData();
 
-        if (loadWasBlockedBeforeFinishing) {
+        if (loadWasBlockedBeforeFinishing)
             frameLoader()->client().contentFilterDidBlockLoad(m_contentFilter->unblockHandler());
-            m_contentFilter = nullptr;
-        }
     }
 #endif
 
@@ -893,8 +900,10 @@ void DocumentLoader::dataReceived(CachedResource* resource, const char* data, in
         commitLoad(data, length);
 
 #if ENABLE(CONTENT_FILTERING)
-    if (loadWasBlockedBeforeFinishing)
+    if (loadWasBlockedBeforeFinishing) {
         cancelMainResourceLoad(frameLoader()->cancelledError(m_request));
+        m_contentFilter = nullptr;
+    }
 #endif
 }
 
@@ -1445,6 +1454,7 @@ void DocumentLoader::startLoadingMainResource()
     ResourceRequest request(m_request);
     static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, IncludeCertificateInfo);
     CachedResourceRequest cachedResourceRequest(request, mainResourceLoadOptions);
+    cachedResourceRequest.setInitiator(*this);
     m_mainResource = m_cachedResourceLoader->requestMainResource(cachedResourceRequest);
     if (!m_mainResource) {
         setRequest(ResourceRequest());
@@ -1575,5 +1585,19 @@ void DocumentLoader::handledOnloadEvents()
     m_wasOnloadHandled = true;
     applicationCacheHost()->stopDeferringEvents();
 }
+
+#if ENABLE(CONTENT_EXTENSIONS)
+void DocumentLoader::addPendingContentExtensionSheet(const String& identifier, StyleSheetContents& sheet)
+{
+    ASSERT(!m_gotFirstByte);
+    m_pendingNamedContentExtensionStyleSheets.set(identifier, &sheet);
+}
+
+void DocumentLoader::addPendingContentExtensionSheet(StyleSheetContents& sheet)
+{
+    ASSERT(!m_gotFirstByte);
+    m_pendingUnnamedContentExtensionStyleSheets.add(&sheet);
+}
+#endif
 
 } // namespace WebCore

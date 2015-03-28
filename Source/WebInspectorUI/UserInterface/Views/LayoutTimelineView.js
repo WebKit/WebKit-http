@@ -27,7 +27,7 @@ WebInspector.LayoutTimelineView = function(timeline)
 {
     WebInspector.TimelineView.call(this, timeline);
 
-    console.assert(timeline.type === WebInspector.TimelineRecord.Type.Layout);
+    console.assert(timeline.type === WebInspector.TimelineRecord.Type.Layout || WebInspector.TimelineRecord.Type.RunLoop);
 
     this.navigationSidebarTreeOutline.onselect = this._treeElementSelected.bind(this);
     this.navigationSidebarTreeOutline.ondeselect = this._treeElementDeselected.bind(this);
@@ -109,7 +109,7 @@ WebInspector.LayoutTimelineView.prototype = {
 
     shown: function()
     {
-        WebInspector.TimelineView.prototype.shown.call(this);
+        WebInspector.ContentView.prototype.shown.call(this);
 
         this._updateHighlight();
 
@@ -122,7 +122,7 @@ WebInspector.LayoutTimelineView.prototype = {
 
         this._dataGrid.hidden();
 
-        WebInspector.TimelineView.prototype.hidden.call(this);
+        WebInspector.ContentView.prototype.hidden.call(this);
     },
 
     filterDidChange: function()
@@ -185,7 +185,7 @@ WebInspector.LayoutTimelineView.prototype = {
     _layoutTimelineRecordAdded: function(event)
     {
         var layoutTimelineRecord = event.data.record;
-        console.assert(layoutTimelineRecord instanceof WebInspector.LayoutTimelineRecord);
+        console.assert(layoutTimelineRecord instanceof WebInspector.LayoutTimelineRecord || layoutTimelineRecord instanceof WebInspector.RunLoopTimelineRecord);
 
         this._pendingRecords.push(layoutTimelineRecord);
 
@@ -199,7 +199,7 @@ WebInspector.LayoutTimelineView.prototype = {
 
     _dataGridNodeSelected: function(event)
     {
-        this.dispatchEventToListeners(WebInspector.TimelineView.Event.SelectionPathComponentsDidChange);
+        this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
     },
 
     _treeElementDeselected: function(treeElement)

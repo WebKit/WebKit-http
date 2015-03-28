@@ -1,3 +1,761 @@
+2015-03-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Support building WTF on Windows without Cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=143084
+
+        Reviewed by Brent Fulgham.
+
+        Windows doesn't have "touch".
+
+        * WTF.vcxproj/WTFGenerated.make:
+
+2015-03-26  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=143112
+
+        Reviewed by Chris Dumez.
+
+        * wtf/PlatformMac.cmake:
+
+2015-03-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, we have edited this file in 2015.
+
+        * wtf/Platform.h:
+
+2015-03-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Heap variables shouldn't end up in the stack frame
+        https://bugs.webkit.org/show_bug.cgi?id=141174
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::resize): Small change: don't resize if you don't have to resize.
+
+2015-03-25  Filip Pizlo  <fpizlo@apple.com>
+
+        Change Atomic methods from using the_wrong_naming_conventions to using theRightNamingConventions. Also make seq_cst the default.
+
+        Rubber stamped by Geoffrey Garen.
+
+        * wtf/Atomics.h:
+        (WTF::Atomic::load):
+        (WTF::Atomic::store):
+        (WTF::Atomic::compareExchangeWeak):
+        (WTF::Atomic::compareExchangeStrong):
+        (WTF::Atomic::compare_exchange_weak): Deleted.
+        (WTF::Atomic::compare_exchange_strong): Deleted.
+        * wtf/ByteSpinLock.h:
+        (WTF::ByteSpinLock::lock):
+        * wtf/SpinLock.h:
+        (WTF::SpinLockBase::lock):
+
+2015-03-24  Beth Dakin  <bdakin@apple.com>
+
+        Add events related to force click gesture
+        https://bugs.webkit.org/show_bug.cgi?id=142836
+        -and corresponding-
+        rdar://problem/20210239
+
+        Reviewed by Dean Jackson.
+
+        New enable flag for the events.
+        * wtf/FeatureDefines.h:
+
+2015-03-23  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should have a low-cost asynchronous disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=142997
+
+        Reviewed by Mark Lam.
+
+        * wtf/StringPrintStream.h:
+
+2015-03-22  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS Selectors: fix attribute case-insensitive matching of Contain and List
+        https://bugs.webkit.org/show_bug.cgi?id=142932
+
+        Reviewed by Darin Adler.
+
+        Add some utility functions to the string classes to find substrings
+        using ASCII case-insensitive comparisons.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::contains):
+        Add the light version that only lock one register.
+
+        (WTF::AtomicString::containsIgnoringASCIICase):
+        (WTF::AtomicString::findIgnoringASCIICase):
+
+        * wtf/text/StringCommon.h:
+        (WTF::findIgnoringASCIICase):
+        This is the common implementation used by StringView and StringImpl.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::findIgnoringASCIICase):
+        * wtf/text/StringImpl.h:
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::containsIgnoringASCIICase):
+        (WTF::StringView::findIgnoringASCIICase):
+        * wtf/text/StringView.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::findIgnoringASCIICase):
+        (WTF::String::contains):
+        (WTF::String::containsIgnoringASCIICase):
+
+2015-03-19  Andreas Kling  <akling@apple.com>
+
+        DFGAllocator should use bmalloc's aligned allocator.
+        <https://webkit.org/b/142871>
+
+        Reviewed by Geoffrey Garen.
+
+        Remove PageAllocationAligned since it has no more clients.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PageAllocationAligned.cpp: Removed.
+        * wtf/PageAllocationAligned.h: Removed.
+
+2015-03-18  Dhi Aurrahman  <diorahman@rockybars.com>
+
+        Fix StringView misplaced implementations after r181525 and r181558
+        https://bugs.webkit.org/show_bug.cgi?id=142772
+
+        Reviewed by Darin Adler.
+
+        Fix misplaced implementations in StringView::startsWithIgnoringASCIICase and 
+        StringView::endsWith. 
+
+        Add some tests in [1] to cover the StringView::startsWith, 
+        StringView::startsWithIgnoringASCIICase, StringView::endsWith and 
+        StringView::endsWithIgnoringASCIICase implementations.
+
+        [1] Tools/TestWebKitAPI/Tests/WTF/StringView.cpp.
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::startsWithIgnoringASCIICase):
+        (WTF::StringView::endsWith):
+        (WTF::StringView::endsWithIgnoringASCIICase):
+
+2015-03-17  Michael Saboff  <msaboff@apple.com>
+
+        Windows X86-64 should use the fixed executable allocator
+        https://bugs.webkit.org/show_bug.cgi?id=142749
+
+        Reviewed by Filip Pizlo.
+
+        Set ENABLE_EXECUTABLE_ALLOCATOR_FIXED for Windows.
+        Needed to export MetaAllocator::currentStatistics() for use in JavaScriptCore.
+
+        * wtf/MetaAllocator.h:
+        * wtf/Platform.h:
+
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable ES6 classes by default
+        https://bugs.webkit.org/show_bug.cgi?id=142774
+
+        Reviewed by Gavin Barraclough.
+
+        * wtf/FeatureDefines.h:
+
+2015-03-16  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Enable generating idiv instructions if it is supported
+        https://bugs.webkit.org/show_bug.cgi?id=142725
+
+        Reviewed by Michael Saboff.
+
+        * wtf/Platform.h: Set HAVE_ARM_IDIV_INSTRUCTIONS based on GCC macro too.
+
+2015-03-16  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix StringView after r181525
+        Unreviewed.
+
+        Fix 2 silly mistakes I made in r181525.
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::startsWith):
+        (WTF::StringView::startsWithIgnoringASCIICase):
+        (WTF::StringView::endsWith):
+        (WTF::StringView::endsWithIgnoringASCIICase):
+        The implementation was inside the #ifdef.
+
+        * wtf/text/StringView.h:
+        The symbols were not exported.
+
+2015-03-16  Max Stepin  <maxstepin@gmail.com>
+
+        Add APNG support
+        https://bugs.webkit.org/show_bug.cgi?id=17022
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/FeatureDefines.h:
+
+2015-03-15  Benjamin Poulain  <benjamin@webkit.org>
+
+        CSS: fix the case-insensitive matching of the attribute selectors Begin, End and Hyphen
+        https://bugs.webkit.org/show_bug.cgi?id=142715
+
+        Reviewed by Brent Fulgham.
+
+        Add the necessary infrastructure to test startsWith() and endsWith() with
+        ASCII case-insentive comparisons.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::startsWith):
+        (WTF::AtomicString::startsWithIgnoringASCIICase):
+        (WTF::AtomicString::endsWith):
+        (WTF::AtomicString::endsWithIgnoringASCIICase):
+
+        * wtf/text/StringCommon.h:
+        (WTF::loadUnaligned):
+        (WTF::equal):
+        I moved the low level equal() code from StringImpl to StringCommon
+        since it is used by both StringImpl and StringView.
+
+        (WTF::equalCommon):
+        (WTF::equalIgnoringASCIICaseCommon):
+        Ideally we should drop the "Common" part of the name but StringView
+        wants this inline for some reason. I prefered keeping the current behavior
+        since I don't know how StringView's matching performance was evaluated.
+
+        (WTF::startsWith):
+        (WTF::startsWithIgnoringASCIICase):
+        (WTF::endsWith):
+        (WTF::endsWithIgnoringASCIICase):
+        Make all that code shared between StringView and Stringimpl.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::startsWith):
+        (WTF::StringImpl::startsWithIgnoringASCIICase):
+        (WTF::StringImpl::endsWith):
+        (WTF::StringImpl::endsWithIgnoringASCIICase):
+        (WTF::equal):
+        (WTF::stringImplContentEqual): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::loadUnaligned): Deleted.
+        (WTF::equal): Deleted.
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::startsWith):
+        (WTF::StringView::startsWithIgnoringASCIICase):
+        (WTF::StringView::endsWith):
+        (WTF::StringView::endsWithIgnoringASCIICase):
+        * wtf/text/StringView.h:
+        Since those are new, we can safely make them out-of-line and
+        evaluate the inlining impact as needed.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::startsWithIgnoringASCIICase):
+        (WTF::String::endsWith):
+        (WTF::String::endsWithIgnoringASCIICase):
+
+2015-03-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        Change the exact attribute matching to be ASCII case-insensitive
+        https://bugs.webkit.org/show_bug.cgi?id=142609
+
+        Reviewed by Darin Adler.
+
+        Add support for ASCII case insensitive comparisons to all the string
+        classes.
+
+        The new file StringCommon.h has the common algorithm to avoid repeating
+        the same code with different types.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * wtf/ASCIICType.h:
+        (WTF::toASCIILower):
+        * wtf/CMakeLists.txt:
+        * wtf/text/AtomicString.h:
+        (WTF::equalIgnoringASCIICase):
+        * wtf/text/StringCommon.h: Added.
+        (WTF::equalIgnoringASCIICase):
+        (WTF::equalIgnoringASCIICaseCommon):
+        * wtf/text/StringImpl.cpp:
+        (WTF::equalIgnoringASCIICase):
+        (WTF::equalIgnoringASCIICaseNonNull):
+        (WTF::StringImpl::utf8Impl):
+        (WTF::StringImpl::defaultWritingDirection): Deleted.
+        (WTF::StringImpl::adopt): Deleted.
+        (WTF::StringImpl::sizeInBytes): Deleted.
+        (WTF::putUTF8Triple): Deleted.
+        (WTF::StringImpl::utf8): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::isSubString): Deleted.
+        (WTF::find): Deleted.
+
+2015-03-14  Michael Saboff  <msaboff@apple.com>
+
+        Disable Yarr JIT for ARMv7k
+        https://bugs.webkit.org/show_bug.cgi?id=142645
+
+        Rubber stamped by Geoffrey Garen.
+
+        Changed the setting of ENABLE_YARR_JIT to be predicated on ENABLED_JIT.
+
+        * wtf/Platform.h:
+
+2015-03-14  Michael Saboff  <msaboff@apple.com>
+
+        ES6: Add binary and octal literal support
+        https://bugs.webkit.org/show_bug.cgi?id=142681
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/ASCIICType.h:
+        (WTF::isASCIIBinaryDigit): New support function.
+        (WTF::isASCIIOctalDigit): Updated to use logical and (&&) instead of binary and (&).
+
+2015-03-13  Mark Lam  <mark.lam@apple.com>
+
+        Replace TCSpinLock with a new WTF::SpinLock based on WTF::Atomic.
+        <https://webkit.org/b/142674>
+
+        Reviewed by Filip Pizlo.
+
+        We no longer use TCMalloc in our code, and we now have C++11.  This replaces the
+        TCMalloc_SpinLock with a new WTF::SpinLock based on WTF::Atomic (which is a
+        wrapper around std::atomic).
+
+        Note that there is a StaticSpinLock and a SpinLock:
+
+        1. StaticSpinLock is an alias for SpinLockBase, and its initialization relies on
+           static / global std:atomic being automatically initialized to 0 at compile time.
+           Hence, StaticSpinLock should only be used for statics / globals (including
+           static members of classes / structs).
+
+        2. SpinLock is derived from SpinLockBase, and adds a default constructor to
+           initialize its internal atomic value to 0.  Because SpinLock has a constructor,
+           it cannot be used for statics / globals.  Objects that want to embed a spin
+           lock as an instance field should use SpinLock so that it is initialized properly.
+           std::atomic will not automatically initialize instance fields to 0.  Hence,
+           StaticSpinLock will not work correctly as instance fields of a class / struct.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::~MetaAllocator):
+        (WTF::MetaAllocator::MetaAllocator):
+        * wtf/MetaAllocator.h:
+        * wtf/SpinLock.h: Added.
+        (WTF::SpinLockBase::lock):
+        (WTF::SpinLockBase::unlock):
+        (WTF::SpinLockBase::isLocked):
+        (WTF::SpinLockBase::slowLock):
+        (WTF::SpinLock::SpinLock):
+        * wtf/TCSpinLock.h: Removed.
+        * wtf/text/AtomicString.cpp:
+
+2015-03-13  Mark Lam  <mark.lam@apple.com>
+
+        Introduce WTF::Atomic to wrap std::atomic for a friendlier CAS.
+        <https://webkit.org/b/142661>
+
+        Reviewed by Filip Pizlo.
+
+        The CAS functions provided by std::atomic takes a reference to the expected
+        value and modifies it if the CAS fails.  However, in a lot of our CAS usage,
+        we don't want the expected value to change.  The solution to this is to
+        provide a WTF::Atomic struct that wraps std::atomic, and provide CAS
+        methods that won't alter the expected value if the CAS fails.
+
+        The method names in WTF::Atomic are chosen to be identical to those
+        in std::atomic so that WTF::Atomic can be a simple drop in replacement
+        for std::atomic.
+
+        Also changed ByteSpinLock to use WTF::Atomic instead of std::atomic.
+
+        * wtf/Atomics.h:
+        (WTF::Atomic::load):
+        (WTF::Atomic::store):
+        (WTF::Atomic::compare_exchange_weak):
+        (WTF::Atomic::compare_exchange_strong):
+        * wtf/ByteSpinLock.h:
+        (WTF::ByteSpinLock::ByteSpinLock):
+        (WTF::ByteSpinLock::lock):
+
+2015-03-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Bytecode liveness analysis should have more lambdas and fewer sets
+        https://bugs.webkit.org/show_bug.cgi?id=142647
+
+        Reviewed by Mark Lam.
+        
+        Add a method for iterating each set bit in a FastBitVector. Uses a functor as a callback since
+        this allows for a more efficient algorithm.
+
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::forEachSetBit):
+
+2015-03-12  Michael Saboff  <msaboff@apple.com>
+
+        Disable Yarr JIT for ARMv7k
+        https://bugs.webkit.org/show_bug.cgi?id=142645
+
+        Reviewed by Oliver Hunt.
+
+        Make the setting of ENABLE_YARR_JIT match ENABLE_JIT for ARMv7k.
+
+        * wtf/Platform.h:
+
+2015-03-12  Mark Lam  <mark.lam@apple.com>
+
+        Change WTF::ByteSpinLock to use std::atomic.
+        <https://webkit.org/b/142644>
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/ByteSpinLock.h:
+        (WTF::ByteSpinLock::ByteSpinLock):
+        (WTF::ByteSpinLock::lock):
+        (WTF::ByteSpinLock::unlock):
+        (WTF::ByteSpinLock::isHeld):
+
+2015-03-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM][Linux] GC sometimes stuck in an infinite loop if parallel GC is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=141290
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/Platform.h: Enable parallel GC after r181319.
+
+2015-03-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use out-of-band messaging for RenderBox::firstLineBaseline() and RenderBox::inlineBlockBaseline()
+        https://bugs.webkit.org/show_bug.cgi?id=142569
+
+        Reviewed by David Hyatt.
+
+        Provide a callback to Optional::valueOrCompute() which is evaluated only if necessary.
+
+        * wtf/Optional.h:
+        (WTF::Optional::valueOrCompute):
+
+2015-03-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] 17 different JSC tests started to fail in DST
+        https://bugs.webkit.org/show_bug.cgi?id=142531
+
+        Reviewed by Chris Dumez.
+
+        The stock 'GetTimeZoneInformation' call does not always match the actual Daylight
+        Savings calendar. This results in a period of time when these tests fail.
+
+        If available, we should take advantage of the new 'GetTimeZoneInformationForYear',
+        which accesses a dynamic calendar of DST dates, which is presumbably updated by
+        Microsoft from year-to-year.
+
+        * wtf/DateMath.cpp:
+        (WTF::timeZoneInformationForYearFunction): New function to conditionally access
+        some Vista (and newer) functionality.
+        (WTF::calculateUTCOffset): Call new function (if available) to calculate proper UTC
+        time offset.
+
+2015-03-10  Alex Christensen  <achristensen@webkit.org>
+
+        Use unsigned for HashSet size.
+        https://bugs.webkit.org/show_bug.cgi?id=142518
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/HashCountedSet.h:
+        (WTF::Traits>::size):
+        (WTF::Traits>::capacity):
+        * wtf/HashMap.h:
+        (WTF::X>::size):
+        (WTF::X>::capacity):
+        * wtf/HashSet.h:
+        (WTF::V>::size):
+        (WTF::V>::capacity):
+        * wtf/HashTable.h:
+        (WTF::HashTable::Stats::recordCollisionAtCount):
+        (WTF::HashTable::Stats::dumpStats):
+        (WTF::HashTable::size):
+        (WTF::HashTable::capacity):
+        (WTF::KeyTraits>::deallocateTable):
+        (WTF::KeyTraits>::checkTableConsistencyExceptSize):
+        * wtf/HashTraits.h:
+        * wtf/ListHashSet.h:
+        (WTF::U>::size):
+        (WTF::U>::capacity):
+
+2015-03-10  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove PassRefPtr from svg/properties classes.
+        https://bugs.webkit.org/show_bug.cgi?id=142063.
+
+        Reviewed by Darin Adler.
+
+        * wtf/Ref.h:
+        (WTF::static_reference_cast): Add a stat_cast function to Ref<>.
+
+2015-03-10  Mark Lam  <mark.lam@apple.com>
+
+        [Win] JSC Build Warnings Need to be Resolved.
+        <https://webkit.org/b/142366>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Compiler.h:
+        - MSVC also does not have the CONSIDERS_UNREACHABLE_CODE quirk.
+
+2015-03-10  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: tryFastMalloc shouldn't crash
+        https://bugs.webkit.org/show_bug.cgi?id=142443
+
+        Reviewed by Sam Weinig.
+
+        Rolling back in r181307 with a check for whether bmalloc is enabled, to
+        avoid crashes when running with ASan and GuardMalloc.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMalloc):
+        (WTF::fastRealloc):
+        (WTF::fastAlignedMalloc):
+        (WTF::tryFastMalloc):
+        (WTF::tryFastRealloc): Deleted.
+        * wtf/FastMalloc.h:
+
+2015-03-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        GCC: CRASH() should be annotated with NORETURN
+        https://bugs.webkit.org/show_bug.cgi?id=142524
+
+        Reviewed by Anders Carlsson.
+
+        Add COMPILER(GCC) to #ifdefs that already exist for Clang.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2015-03-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r181307.
+        https://bugs.webkit.org/show_bug.cgi?id=142525
+
+        Broke ASan tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "bmalloc: tryFastMalloc shouldn't crash"
+        https://bugs.webkit.org/show_bug.cgi?id=142443
+        http://trac.webkit.org/changeset/181307
+
+2015-03-09  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: tryFastMalloc shouldn't crash
+        https://bugs.webkit.org/show_bug.cgi?id=142443
+
+        Reviewed by Darin Adler.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMalloc):
+        (WTF::fastRealloc):
+        (WTF::fastAlignedMalloc): Don't check for null. bmalloc automatically
+        crashes on allocation failure, and we'd rather not pay for an extra check.
+
+        (WTF::tryFastMalloc): Added an opt-out API to return null rather than
+        crashing, since some clients need this.
+
+        (WTF::tryFastRealloc): Deleted. Unused.
+
+        * wtf/FastMalloc.h:
+
+2015-03-09  Mark Lam  <mark.lam@apple.com>
+
+        8-bit version of weakCompareAndSwap() can cause an infinite loop.
+        https://webkit.org/b/142513>
+
+        Reviewed by Filip Pizlo.
+
+        Presently, Bitmap::concurrentTestAndSet() uses the 8-bit version of
+        weakCompareAndSwap() (which compares and swaps an uint8_t value).
+        Bitmap::concurrentTestAndSet() has a loop that checks if a bit in the
+        byte of interest has been set.  If not, it will call the 8-bit CAS
+        function to set the bit.
+
+        Under the covers, for ARM, the 8-bit CAS function actually works with a
+        32-bit CAS.  The 8-bit CAS will first fetch the 32-bit value in memory
+        that should contain the 8-bit value, and check if it contains the
+        expected byte.  If the value in memory doesn't have the expected byte,
+        it will return early to its caller.  The expectation is that the caller
+        will reload the byte from memory and call the 8-bit CAS again.
+
+        Unfortunately, this code path that returns early does not have a
+        compiler fence.  Without a compiler fence, the C++ compiler can
+        optimize away the reloading of the expected byte value, leaving it
+        unchanged.  As a result, we'll have a infinite loop here that checks a
+        value that will never change, and the loop will not terminate until the
+        value changes.
+
+        The fix is to eliminate the early return check in the 8-bit CAS, and
+        have it always call down to the 32-bit CAS.  The 32-bit CAS has a
+        compiler fence which will prevent this issue.
+
+        * wtf/Atomics.h:
+        (WTF::weakCompareAndSwap):
+
+2015-03-09  Martin Robinson  <mrobinson@igalia.com>
+
+        [EFL] Move DispatchQueue to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=142493
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/PlatformEfl.cmake: Add DispatchQueue to the source list.
+        * wtf/efl/DispatchQueueEfl.cpp: Renamed from Source/WebKit2/Platform/efl/DispatchQueueEfl.cpp.
+        * wtf/efl/DispatchQueueEfl.h: Renamed from Source/WebKit2/Platform/efl/DispatchQueueEfl.h.
+        * wtf/efl/DispatchQueueWorkItemEfl.h: Renamed from Source/WebKit2/Platform/efl/DispatchQueueWorkItemEfl.h.
+
+2015-03-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] WTF::WorkQueue does not balance ref/deref properly
+        https://bugs.webkit.org/show_bug.cgi?id=142471
+
+        Reviewed by Antti Koivisto.
+
+        Make sure we deref the count when we execute a function in the
+        WorkQueue.
+
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::performWorkOnRegisteredWorkThread):
+
+2015-03-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Revive WTF::WorkQueue on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=142432
+
+        Reviewed by Darin Adler.
+
+        Revive the Windows implementation of WTF::WorkQueue.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * wtf/WorkQueue.h:
+        * wtf/win/WorkItemWin.cpp: Added.
+        * wtf/win/WorkItemWin.h: Added.
+        * wtf/win/WorkQueueWin.cpp: Added.
+
+2015-03-06  Geoffrey Garen  <ggaren@apple.com>
+
+        Fix crashes seen on the the Windows buildbots after my last patch.
+
+        Unreviewed.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastAlignedMalloc): Let's pass these arguments in the right order.
+
+2015-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Crash in -[WebCascadeList objectAtIndex:] + 195
+        https://bugs.webkit.org/show_bug.cgi?id=141274
+
+        Reviewed by David Kilzer.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtrFactory::createWeakPtr): WebCascadeList uses a const FontCascade,
+        and it calls createWeakPtr() on it. Therefore, createWeakPtr has to be marked
+        const.
+        (WTF::WeakPtrFactory::operator=): Removed because it was broken and had no
+        callers
+
+2015-03-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow tree dumping functions to be used in release builds by switching a flag
+        https://bugs.webkit.org/show_bug.cgi?id=142379
+
+        Reviewed by Zalan Bujtas.
+
+        There are various tree dumping functions that are useful for debugging, and sometimes
+        you want to be able to use them in release builds. Currently they are surrounded by
+        #ifndef NDEBUG. Change this to #if ENABLE(TREE_DEBUGGING), which is defined to 0 or 1
+        in wtf/Platform.h
+
+        * wtf/Platform.h:
+
+2015-03-05  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r173761): ASSERTION FAILED: !is8Bit() in StringImpl::characters16()
+        https://bugs.webkit.org/show_bug.cgi?id=142350
+
+        Reviewed by Michael Saboff and Benjamin Poulain.
+
+        Fix ASSERTION FAILED: !is8Bit() in StringImpl::characters16() from
+        WTF::equalInner() after r173761. The code was incorrectly assuming that
+        if stringImpl is 16-bit, then matchString is 16-bit too, which is not
+        correct.
+
+        Also rename WTFString::startsWith() / endsWith() taking an offset to
+        hasInfixStartingAt() / hasInfixEndingAt() for clarity. It seems odd
+        to call it startsWith even though it won't technically *start* with
+        the pattern if the input offset is greater than zero.
+
+        Also drop the caseSensitive argument as it is never used (always true
+        at call sites.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::equalInner):
+        (WTF::StringImpl::hasInfixStartingAt):
+        (WTF::StringImpl::hasInfixEndingAt):
+        (WTF::StringImpl::startsWith): Deleted.
+        (WTF::StringImpl::endsWith): Deleted.
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::hasInfixStartingAt):
+        (WTF::String::hasInfixEndingAt):
+        (WTF::String::startsWith): Deleted.
+        (WTF::String::endsWith): Deleted.
+
+2015-03-05  Chris Dumez  <cdumez@apple.com>
+
+        NetworkCache efficacy logging is using too much CPU
+        https://bugs.webkit.org/show_bug.cgi?id=142186
+        <rdar://problem/19632080>
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/HashMap.h:
+        (WTF::copyToVector):
+        Add copyToVector() utility function for HashMap that uses an std::pair<key, value>
+        as element type.
+
+        * wtf/text/WTFString.h:
+        (WTF::StringCapture::StringCapture):
+        (WTF::StringCapture::operator=):
+        Add default constructor and assignment operator to StringCapture so that
+        it can be used in a Vector.
+
+2015-03-05  Antti Koivisto  <antti@apple.com>
+
+        Support WorkQueue QOS classes on Mavericks
+        https://bugs.webkit.org/show_bug.cgi?id=142328
+
+        Reviewed by Anders Carlsson.
+
+        "The priority of a dispatch queue is inherited from its target queue.  In order to
+        change the priority of a queue created with dispatch_queue_create(), use the
+        dispatch_get_global_queue() function to obtain a target queue of the desired prior-
+        ity."
+
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::targetQueueForQOSClass):
+        (WTF::WorkQueue::platformInitialize):
+
 2015-03-03  Anders Carlsson  <andersca@apple.com>
 
         Remove unused compression code

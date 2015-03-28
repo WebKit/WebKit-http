@@ -464,6 +464,10 @@ using namespace HTMLNames;
 #define NSAccessibilityMathPrescriptsAttribute @"AXMathPrescripts"
 #define NSAccessibilityMathPostscriptsAttribute @"AXMathPostscripts"
 
+#ifndef NSAccessibilityPreventKeyboardDOMEventDispatchAttribute
+#define NSAccessibilityPreventKeyboardDOMEventDispatchAttribute @"AXPreventKeyboardDOMEventDispatch"
+#endif
+
 #ifndef NSAccessibilityCaretBrowsingEnabledAttribute
 #define NSAccessibilityCaretBrowsingEnabledAttribute @"AXCaretBrowsingEnabled"
 #endif
@@ -1187,6 +1191,9 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
     if (m_object->supportsARIAOwns())
         [additional addObject:NSAccessibilityOwnsAttribute];
     
+    if (m_object->isToggleButton())
+        [additional addObject:NSAccessibilityValueAttribute];
+    
     if (m_object->supportsARIAExpanded())
         [additional addObject:NSAccessibilityExpandedAttribute];
     
@@ -1359,6 +1366,7 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
         [tempArray addObject:NSAccessibilityLoadingProgressAttribute];
         [tempArray addObject:NSAccessibilityURLAttribute];
         [tempArray addObject:NSAccessibilityCaretBrowsingEnabledAttribute];
+        [tempArray addObject:NSAccessibilityPreventKeyboardDOMEventDispatchAttribute];
         webAreaAttrs = [[NSArray alloc] initWithArray:tempArray];
         [tempArray release];
     }
@@ -1939,7 +1947,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { FormRole, NSAccessibilityGroupRole },
         { SpinButtonRole, NSAccessibilityIncrementorRole },
         { FooterRole, NSAccessibilityGroupRole },
-        { ToggleButtonRole, NSAccessibilityButtonRole },
+        { ToggleButtonRole, NSAccessibilityCheckBoxRole },
         { CanvasRole, NSAccessibilityImageRole },
         { SVGRootRole, NSAccessibilityGroupRole },
         { LegendRole, NSAccessibilityGroupRole },
@@ -1993,13 +2001,15 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     
     if (m_object->isAttachment()) {
         NSView* attachView = [self attachmentView];
-        if ([[attachView accessibilityAttributeNames] containsObject:NSAccessibilitySubroleAttribute]) {
+        if ([[attachView accessibilityAttributeNames] containsObject:NSAccessibilitySubroleAttribute])
             return [attachView accessibilityAttributeValue:NSAccessibilitySubroleAttribute];
-        }
     }
     
-    if (m_object->roleValue() == HorizontalRuleRole)
+    AccessibilityRole role = m_object->roleValue();
+    if (role == HorizontalRuleRole)
         return NSAccessibilityContentSeparatorSubrole;
+    if (role == ToggleButtonRole)
+        return NSAccessibilityToggleSubrole;
     
     if (is<AccessibilitySpinButtonPart>(*m_object)) {
         if (downcast<AccessibilitySpinButtonPart>(*m_object).isIncrementor())
@@ -2024,7 +2034,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     }
     
     // ARIA content subroles.
-    switch (m_object->roleValue()) {
+    switch (role) {
         case LandmarkApplicationRole:
             return @"AXLandmarkApplication";
         case LandmarkBannerRole:
@@ -2080,7 +2090,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             break;
     }
     
-    if (m_object->roleValue() == MathElementRole) {
+    if (role == MathElementRole) {
         if (m_object->isMathFraction())
             return @"AXMathFraction";
         if (m_object->isMathFenced())
@@ -2117,9 +2127,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return @"AXMathMultiscript";
     }
     
-    if (m_object->roleValue() == VideoRole)
+    if (role == VideoRole)
         return @"AXVideo";
-    if (m_object->roleValue() == AudioRole)
+    if (role == AudioRole)
         return @"AXAudio";
     
     if (m_object->isMediaTimeline())
@@ -2444,7 +2454,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         if (m_object->isHeading())
             return [NSNumber numberWithInt:m_object->headingLevel()];
         
-        if (m_object->isCheckboxOrRadio() || m_object->isMenuItem() || m_object->isSwitch()) {
+        if (m_object->isCheckboxOrRadio() || m_object->isMenuItem() || m_object->isSwitch() || m_object->isToggleButton()) {
             switch (m_object->checkboxOrRadioValue()) {
                 case ButtonStateOff:
                     return [NSNumber numberWithInt:0];
@@ -2958,6 +2968,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     if ([attributeName isEqualToString:@"AXDRTElementIdAttribute"])
         return m_object->getAttribute(idAttr);
     
+    if (m_object->isWebArea() && [attributeName isEqualToString:NSAccessibilityPreventKeyboardDOMEventDispatchAttribute])
+        return [NSNumber numberWithBool:m_object->preventKeyboardDOMEventDispatch()];
+    
     if (m_object->isWebArea() && [attributeName isEqualToString:NSAccessibilityCaretBrowsingEnabledAttribute])
         return [NSNumber numberWithBool:m_object->caretBrowsingEnabled()];
     
@@ -3031,6 +3044,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         return m_object->canSetTextRangeAttributes();
     
     if ([attributeName isEqualToString:NSAccessibilityGrabbedAttribute])
+        return YES;
+    
+    if (m_object->isWebArea() && [attributeName isEqualToString:NSAccessibilityPreventKeyboardDOMEventDispatchAttribute])
         return YES;
     
     if (m_object->isWebArea() && [attributeName isEqualToString:NSAccessibilityCaretBrowsingEnabledAttribute])
@@ -3352,6 +3368,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             m_object->setSelectedRows(selectedRows);
     } else if ([attributeName isEqualToString:NSAccessibilityGrabbedAttribute])
         m_object->setARIAGrabbed([number boolValue]);
+    else if (m_object->isWebArea() && [attributeName isEqualToString:NSAccessibilityPreventKeyboardDOMEventDispatchAttribute])
+        m_object->setPreventKeyboardDOMEventDispatch([number boolValue]);
     else if (m_object->isWebArea() && [attributeName isEqualToString:NSAccessibilityCaretBrowsingEnabledAttribute])
         m_object->setCaretBrowsingEnabled([number boolValue]);
 }

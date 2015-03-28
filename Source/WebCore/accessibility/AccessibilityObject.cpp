@@ -2028,7 +2028,7 @@ bool AccessibilityObject::isValueAutofilled() const
     if (!node || !is<HTMLInputElement>(*node))
         return false;
     
-    return downcast<HTMLInputElement>(*node).isAutofilled();
+    return downcast<HTMLInputElement>(*node).isAutoFilled();
 }
 
 const AtomicString& AccessibilityObject::placeholderValue() const
@@ -2226,7 +2226,17 @@ AccessibilityButtonState AccessibilityObject::checkboxOrRadioValue() const
 {
     // If this is a real checkbox or radio button, AccessibilityRenderObject will handle.
     // If it's an ARIA checkbox, radio, or switch the aria-checked attribute should be used.
+    // If it's a toggle button, the aria-pressed attribute is consulted.
 
+    if (isToggleButton()) {
+        const AtomicString& ariaPressed = getAttribute(aria_pressedAttr);
+        if (equalIgnoringCase(ariaPressed, "true"))
+            return ButtonStateOn;
+        if (equalIgnoringCase(ariaPressed, "mixed"))
+            return ButtonStateMixed;
+        return ButtonStateOff;
+    }
+    
     const AtomicString& result = getAttribute(aria_checkedAttr);
     if (equalIgnoringCase(result, "true"))
         return ButtonStateOn;
@@ -2604,5 +2614,21 @@ void AccessibilityObject::elementsFromAttribute(Vector<Element*>& elements, cons
             elements.append(idElement);
     }
 }
+
+#if PLATFORM(COCOA)
+bool AccessibilityObject::preventKeyboardDOMEventDispatch() const
+{
+    Frame* frame = this->frame();
+    return frame && frame->settings().preventKeyboardDOMEventDispatch();
+}
+
+void AccessibilityObject::setPreventKeyboardDOMEventDispatch(bool on)
+{
+    Frame* frame = this->frame();
+    if (!frame)
+        return;
+    frame->settings().setPreventKeyboardDOMEventDispatch(on);
+}
+#endif
 
 } // namespace WebCore

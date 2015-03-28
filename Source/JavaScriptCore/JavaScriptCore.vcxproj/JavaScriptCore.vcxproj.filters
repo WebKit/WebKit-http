@@ -237,9 +237,6 @@
     <ClCompile Include="..\disassembler\Disassembler.cpp">
       <Filter>disassembler</Filter>
     </ClCompile>
-    <ClCompile Include="..\heap\BlockAllocator.cpp">
-      <Filter>heap</Filter>
-    </ClCompile>
     <ClCompile Include="..\heap\ConservativeRoots.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -307,9 +304,6 @@
       <Filter>heap</Filter>
     </ClCompile>
     <ClCompile Include="..\heap\SlotVisitor.cpp">
-      <Filter>heap</Filter>
-    </ClCompile>
-    <ClCompile Include="..\heap\SuperRegion.cpp">
       <Filter>heap</Filter>
     </ClCompile>
     <ClCompile Include="..\heap\Weak.cpp">
@@ -630,6 +624,9 @@
     <ClCompile Include="..\runtime\InternalFunction.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\IteratorOperations.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\JSLexicalEnvironment.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -702,6 +699,9 @@
     <ClCompile Include="..\runtime\JSString.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\JSStringIterator.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\JSStringJoiner.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -727,9 +727,6 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\MapPrototype.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\MapData.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\MapConstructor.cpp">
@@ -804,6 +801,9 @@
     <ClCompile Include="..\runtime\RegExpPrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\RuntimeType.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\SamplingCounter.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -832,6 +832,12 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\StringConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\StringIteratorConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\StringIteratorPrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\StringObject.cpp">
@@ -1749,9 +1755,6 @@
     <ClCompile Include="..\jit\BinarySwitch.cpp">
       <Filter>jit</Filter>
     </ClCompile>
-    <ClCompile Include="..\dfg\DFGPutLocalSinkingPhase.cpp">
-      <Filter>dfg</Filter>
-    </ClCompile>
     <ClCompile Include="..\jit\PolymorphicCallStubRoutine.cpp">
       <Filter>jit</Filter>
     </ClCompile>
@@ -1761,6 +1764,14 @@
     <ClCompile Include="..\jit\SetupVarargsFrame.cpp" />
     <ClCompile Include="JavaScriptCoreDLL.cpp">
       <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGPutStackSinkingPhase.cpp" />
+    <ClCompile Include="..\ftl\FTLJSCallBase.cpp" />
+    <ClCompile Include="..\ftl\FTLJSCallVarargs.cpp" />
+    <ClCompile Include="..\runtime\JSCatchScope.cpp" />
+    <ClCompile Include="..\runtime\JSFunctionNameScope.cpp" />
+    <ClCompile Include="..\jit\ExecutableAllocatorFixedVMPool.cpp">
+      <Filter>jit</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -2061,9 +2072,6 @@
     <ClInclude Include="..\disassembler\Disassembler.h">
       <Filter>disassembler</Filter>
     </ClInclude>
-    <ClInclude Include="..\heap\BlockAllocator.h">
-      <Filter>heap</Filter>
-    </ClInclude>
     <ClInclude Include="..\heap\ConservativeRoots.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -2202,9 +2210,6 @@
     <ClInclude Include="..\heap\RecursiveAllocationScope.h">
       <Filter>heap</Filter>
     </ClInclude>
-    <ClInclude Include="..\heap\Region.h">
-      <Filter>heap</Filter>
-    </ClInclude>
     <ClInclude Include="..\heap\SlotVisitor.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -2215,9 +2220,6 @@
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\StrongInlines.h">
-      <Filter>heap</Filter>
-    </ClInclude>
-    <ClInclude Include="..\heap\SuperRegion.h">
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\TinyBloomFilter.h">
@@ -2661,6 +2663,9 @@
     <ClInclude Include="..\runtime\Intrinsic.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\IteratorOperations.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\JSLexicalEnvironment.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2731,6 +2736,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSStringBuilder.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSStringIterator.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSStringJoiner.h">
@@ -2865,6 +2873,9 @@
     <ClInclude Include="..\runtime\RuntimeFlags.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\RuntimeType.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\SamplingCounter.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2878,6 +2889,12 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\StringConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\StringIteratorConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\StringIteratorPrototype.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\StringObject.h">
@@ -3062,6 +3079,9 @@
       <Filter>Derived Sources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\StringConstructor.lut.h">
+      <Filter>Derived Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ArrayIteratorPrototype.lut.h">
       <Filter>Derived Sources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ArrayPrototype.lut.h">
@@ -3296,6 +3316,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\MapData.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\MapDataInlines.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\SetPrototype.h">
@@ -4202,13 +4225,16 @@
     <ClInclude Include="..\dfg\DFGPreciseLocalClobberize.h">
       <Filter>dfg</Filter>
     </ClInclude>
-    <ClInclude Include="..\dfg\DFGPutLocalSinkingPhase.h">
-      <Filter>dfg</Filter>
-    </ClInclude>
     <ClInclude Include="..\jit\PolymorphicCallStubRoutine.h">
       <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\jit\SetupVarargsFrame.h" />
+    <ClInclude Include="..\dfg\DFGPutStackSinkingPhase.h" />
+    <ClInclude Include="..\ftl\FTLJSCallBase.h" />
+    <ClInclude Include="..\ftl\FTLJSCallVarargs.h" />
+    <ClInclude Include="..\runtime\JSCatchScope.h" />
+    <ClInclude Include="..\runtime\JSFunctionNameScope.h" />
+    <ClInclude Include="..\runtime\MathCommon.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="JavaScriptCorePreLink.cmd" />

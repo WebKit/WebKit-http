@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2009, 2013-2015 Apple Inc. All rights reserved.
  * Copyright (C) 2007-2009 Torch Mobile, Inc.
  * Copyright (C) 2010, 2011 Research In Motion Limited. All rights reserved.
  *
@@ -332,6 +332,10 @@
 
 #if defined(__ARM_ARCH_7S__)
 #define WTF_CPU_APPLE_ARMV7S 1
+#endif
+
+#if defined(__ARM_ARCH_EXT_IDIV__) || CPU(APPLE_ARMV7S)
+#define HAVE_ARM_IDIV_INSTRUCTIONS 1
 #endif
 
 #endif /* ARM */
@@ -695,7 +699,7 @@
 #endif
 #endif /* !defined(WTF_USE_JSVALUE64) && !defined(WTF_USE_JSVALUE32_64) */
 
-/* The JIT is enabled by default on all x86, x86-64, ARM & MIPS platforms except ARMv7k and Windows. */
+/* The JIT is enabled by default on all x86, x86-64, ARM & MIPS platforms except ARMv7k. */
 #if !defined(ENABLE_JIT) \
     && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)) \
     && !CPU(APPLE_ARMV7K)
@@ -859,7 +863,7 @@
 #define ENABLE_REGEXP_TRACING 0
 
 /* Yet Another Regex Runtime - turned on by default for JIT enabled ports. */
-#if !defined(ENABLE_YARR_JIT)
+#if !defined(ENABLE_YARR_JIT) && ENABLE(JIT)
 #define ENABLE_YARR_JIT 1
 
 /* Setting this flag compares JIT results with interpreter results. */
@@ -896,7 +900,7 @@
 /* Pick which allocator to use; we only need an executable allocator if the assembler is compiled in.
    On non-Windows x86-64, iOS, and ARM64 we use a single fixed mmap, on other platforms we mmap on demand. */
 #if ENABLE(ASSEMBLER)
-#if CPU(X86_64) && !OS(WINDOWS) || PLATFORM(IOS) || CPU(ARM64)
+#if CPU(X86_64) || PLATFORM(IOS) || CPU(ARM64)
 #define ENABLE_EXECUTABLE_ALLOCATOR_FIXED 1
 #else
 #define ENABLE_EXECUTABLE_ALLOCATOR_DEMAND 1
@@ -1000,12 +1004,6 @@
 #define ENABLE_COMPARE_AND_SWAP 1
 #endif
 
-/* [ARM] GC sometimes stuck in an infinite loop if parallel GC is enabled
- FIXME: Enable it once #141290 is fixed. */
-#if !defined(ENABLE_PARALLEL_GC) && OS(LINUX) && CPU(ARM_THUMB2)
-#define ENABLE_PARALLEL_GC 0
-#endif
-
 #if !defined(ENABLE_PARALLEL_GC) && (OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(HAIKU)) && ENABLE(COMPARE_AND_SWAP)
 #define ENABLE_PARALLEL_GC 1
 #endif
@@ -1020,6 +1018,14 @@
 
 #if PLATFORM(COCOA)
 #define WTF_USE_AVFOUNDATION 1
+#endif
+
+#if !defined(ENABLE_TREE_DEBUGGING)
+#if !defined(NDEBUG)
+#define ENABLE_TREE_DEBUGGING 1
+#else
+#define ENABLE_TREE_DEBUGGING 0
+#endif
 #endif
 
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000) || PLATFORM(MAC)

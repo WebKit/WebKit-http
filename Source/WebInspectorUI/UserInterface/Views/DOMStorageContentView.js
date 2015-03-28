@@ -80,7 +80,6 @@ WebInspector.DOMStorageContentView.prototype = {
                     continue;
                 var data = {key: entry[0], value: entry[1]};
                 var node = new WebInspector.DataGridNode(data, false);
-                node.selectable = true;
                 this._dataGrid.appendChild(node);
             }
 
@@ -122,7 +121,7 @@ WebInspector.DOMStorageContentView.prototype = {
                 return;
         }
 
-        var data = {key: key, value: value};
+        var data = {key, value};
         this._dataGrid.appendChild(new WebInspector.DataGridNode(data, false));
         this._sortDataGrid();
     },

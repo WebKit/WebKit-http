@@ -1054,7 +1054,7 @@ bool RenderThemeIOS::paintFileUploadIconDecorations(const RenderObject&, const R
 
     // Foreground picture frame and icon.
     paintInfo.context->fillRoundedRect(FloatRoundedRect(thumbnailPictureFrameRect, cornerSize, cornerSize, cornerSize, cornerSize), pictureFrameColor, ColorSpaceDeviceRGB);
-    icon->paint(paintInfo.context, thumbnailRect);
+    icon->paint(*paintInfo.context, thumbnailRect);
 
     return false;
 }
@@ -1262,7 +1262,7 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontD
 
     default:
         textStyle = kCTFontDescriptorTextStyleEmphasized;
-        fontDescriptor = adoptCF(CTFontDescriptorCreateForUIType(kCTFontSystemFontType, 0, nullptr));
+        fontDescriptor = adoptCF(CTFontDescriptorCreateForUIType(kCTFontUIFontSystem, 0, nullptr));
     }
 
     ASSERT(fontDescriptor);

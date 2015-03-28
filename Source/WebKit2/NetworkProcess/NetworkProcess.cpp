@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -60,6 +60,7 @@
 #endif
 
 #if ENABLE(NETWORK_CACHE)
+#include "NetworkCache.h"
 #include "NetworkCacheCoders.h"
 #endif
 
@@ -176,6 +177,8 @@ void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParame
     memoryPressureHandler.install();
 
     m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
+
+    m_diskCacheSizeOverride = parameters.diskCacheSizeOverride;
     setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
 
     setCanHandleHTTPSServerTrustEvaluation(parameters.canHandleHTTPSServerTrustEvaluation);
@@ -286,7 +289,7 @@ static void fetchDiskCacheEntries(SessionID sessionID, std::function<void (Vecto
                 return;
             }
 
-            origins->add(SecurityOrigin::create(entry->response.url()));
+            origins->add(SecurityOrigin::create(entry->response().url()));
         });
 
         return;
@@ -296,7 +299,6 @@ static void fetchDiskCacheEntries(SessionID sessionID, std::function<void (Vecto
     Vector<WebsiteData::Entry> entries;
 
 #if USE(CFURLCACHE)
-    auto origins = cfURLCacheOrigins();
     for (auto& origin : cfURLCacheOrigins())
         entries.append(WebsiteData::Entry { WTF::move(origin), WebsiteDataTypeDiskCache });
 #endif
@@ -357,12 +359,58 @@ void NetworkProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteData
         parentProcessConnection()->send(Messages::NetworkProcessProxy::DidDeleteWebsiteData(callbackID), 0);
     };
 
-    if ((websiteDataTypes & WebsiteDataTypeDiskCache) & !sessionID.isEphemeral()) {
+    if ((websiteDataTypes & WebsiteDataTypeDiskCache) && !sessionID.isEphemeral()) {
         clearDiskCache(modifiedSince, WTF::move(completionHandler));
         return;
     }
 
     completionHandler();
+}
+
+static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, std::function<void ()> completionHandler)
+{
+#if ENABLE(NETWORK_CACHE)
+    if (NetworkCache::singleton().isEnabled()) {
+        auto* originsToDelete = new HashSet<RefPtr<SecurityOrigin>>();
+
+        for (auto& origin : origins)
+            originsToDelete->add(origin.securityOrigin());
+
+        auto* cacheKeysToDelete = new Vector<NetworkCache::Key>;
+
+        NetworkCache::singleton().traverse([completionHandler, originsToDelete, cacheKeysToDelete](const NetworkCache::Entry *entry) {
+
+            if (entry) {
+                if (originsToDelete->contains(SecurityOrigin::create(entry->response().url())))
+                    cacheKeysToDelete->append(entry->key());
+                return;
+            }
+
+            delete originsToDelete;
+
+            for (auto& key : *cacheKeysToDelete)
+                NetworkCache::singleton().remove(key);
+
+            delete cacheKeysToDelete;
+
+            RunLoop::main().dispatch(completionHandler);
+            return;
+        });
+
+        return;
+    }
+#endif
+
+#if USE(CFURLCACHE)
+    auto hostNames = adoptCF(CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks));
+    for (auto& origin : origins)
+        CFArrayAppendValue(hostNames.get(), origin.host.createCFString().get());
+
+    CFShow(hostNames.get());
+    WebResourceCacheManager::clearCFURLCacheForHostNames(hostNames.get());
+#endif
+
+    RunLoop::main().dispatch(WTF::move(completionHandler));
 }
 
 void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, const Vector<String>& cookieHostNames, uint64_t callbackID)
@@ -377,6 +425,11 @@ void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, uint64_t w
     auto completionHandler = [this, callbackID] {
         parentProcessConnection()->send(Messages::NetworkProcessProxy::DidDeleteWebsiteDataForOrigins(callbackID), 0);
     };
+
+    if ((websiteDataTypes & WebsiteDataTypeDiskCache) && !sessionID.isEphemeral()) {
+        clearDiskCacheEntries(origins, WTF::move(completionHandler));
+        return;
+    }
 
     completionHandler();
 }

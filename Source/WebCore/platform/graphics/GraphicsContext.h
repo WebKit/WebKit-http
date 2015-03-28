@@ -77,7 +77,6 @@ namespace WebCore {
     const int cMisspellingLinePatternGapWidth = 1;
 
     class AffineTransform;
-    class DrawingBuffer;
     class FloatRoundedRect;
     class Gradient;
     class GraphicsContextPlatformPrivate;

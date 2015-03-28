@@ -161,18 +161,24 @@ static void showGlyphsWithAdvances(const FloatPoint& point, const Font* font, CG
             position.x += advances[i].width;
             position.y += advances[i].height;
         }
-        if (!platformData.isColorBitmapFont())
+        if (!platformData.isColorBitmapFont()) {
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
+            CTFontSetRenderingParameters(platformData.ctFont(), context);
+#endif
             CGContextShowGlyphsAtPositions(context, glyphs, positions.data(), count);
-        else
+        } else
             CTFontDrawGlyphs(platformData.ctFont(), glyphs, positions.data(), count, context);
         CGContextSetTextMatrix(context, savedMatrix);
     } else {
-        if (!platformData.isColorBitmapFont())
+        if (!platformData.isColorBitmapFont()) {
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
+            CTFontSetRenderingParameters(platformData.ctFont(), context);
+#endif
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
             CGContextShowGlyphsWithAdvances(context, glyphs, advances, count);
 #pragma clang diagnostic pop
-        else
+        } else
             CTFontDrawGlyphs(platformData.ctFont(), glyphs, positions.data(), count, context);
     }
 }
@@ -589,7 +595,7 @@ bool FontCascade::primaryFontIsSystemFont() const
 
 void FontCascade::adjustSelectionRectForComplexText(const TextRun& run, LayoutRect& selectionRect, int from, int to) const
 {
-    ComplexTextController controller(this, run);
+    ComplexTextController controller(*this, run);
     controller.advance(from);
     float beforeWidth = controller.runWidthSoFar();
     controller.advance(to);
@@ -606,7 +612,7 @@ float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, int fr
 {
     float initialAdvance;
 
-    ComplexTextController controller(this, run, false, 0, forTextEmphasis);
+    ComplexTextController controller(*this, run, false, 0, forTextEmphasis);
     controller.advance(from);
     float beforeWidth = controller.runWidthSoFar();
     controller.advance(to, &glyphBuffer);
@@ -656,7 +662,7 @@ void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext* context, cons
 
 float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const Font*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
 {
-    ComplexTextController controller(this, run, true, fallbackFonts);
+    ComplexTextController controller(*this, run, true, fallbackFonts);
     if (glyphOverflow) {
         glyphOverflow->top = std::max<int>(glyphOverflow->top, ceilf(-controller.minGlyphBoundingBoxY()) - (glyphOverflow->computeBounds ? 0 : fontMetrics().ascent()));
         glyphOverflow->bottom = std::max<int>(glyphOverflow->bottom, ceilf(controller.maxGlyphBoundingBoxY()) - (glyphOverflow->computeBounds ? 0 : fontMetrics().descent()));
@@ -668,7 +674,7 @@ float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const Fo
 
 int FontCascade::offsetForPositionForComplexText(const TextRun& run, float x, bool includePartialGlyphs) const
 {
-    ComplexTextController controller(this, run);
+    ComplexTextController controller(*this, run);
     return controller.offsetForPosition(x, includePartialGlyphs);
 }
 

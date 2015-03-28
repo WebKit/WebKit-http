@@ -70,6 +70,10 @@
 #import <AppKit/NSTextAlternatives.h>
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+#include <WebCore/MediaPlaybackTargetPickerMac.h>
+#endif
+
 @interface NSApplication (WebNSApplicationDetails)
 - (NSCursor *)_cursorRectCursor;
 @end
@@ -322,6 +326,11 @@ void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
 #endif
 }
 
+void PageClientImpl::didChangeContentSize(const WebCore::IntSize& newSize)
+{
+    [m_wkView _didChangeContentSize:newSize];
+}
+
 void PageClientImpl::setCursor(const WebCore::Cursor& cursor)
 {
     // FIXME: Would be nice to share this code with WebKit1's WebChromeClient.
@@ -398,12 +407,19 @@ void PageClientImpl::setDragImage(const IntPoint& clientPosition, PassRefPtr<Sha
     [m_wkView _setDragImage:dragNSImage.get() at:clientPosition linkDrag:isLinkDrag];
 }
 
-void PageClientImpl::setPromisedData(const String& pasteboardName, PassRefPtr<SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title, const String& url, const String& visibleUrl, PassRefPtr<SharedBuffer> archiveBuffer)
+void PageClientImpl::setPromisedDataForImage(const String& pasteboardName, PassRefPtr<SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title, const String& url, const String& visibleUrl, PassRefPtr<SharedBuffer> archiveBuffer)
 {
     RefPtr<Image> image = BitmapImage::create();
     image->setData(imageBuffer.get(), true);
-    [m_wkView _setPromisedData:image.get() withFileName:filename withExtension:extension withTitle:title withURL:url withVisibleURL:visibleUrl withArchive:archiveBuffer.get() forPasteboard:pasteboardName];
+    [m_wkView _setPromisedDataForImage:image.get() withFileName:filename withExtension:extension withTitle:title withURL:url withVisibleURL:visibleUrl withArchive:archiveBuffer.get() forPasteboard:pasteboardName];
 }
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+void PageClientImpl::setPromisedDataForAttachment(const String& pasteboardName, const String& filename, const String& extension, const String& title, const String& url, const String& visibleUrl)
+{
+    [m_wkView _setPromisedDataForAttachment:filename withExtension:extension withTitle:title withURL:url withVisibleURL:visibleUrl forPasteboard:pasteboardName];
+}
+#endif
 
 void PageClientImpl::updateSecureInputState()
 {
@@ -611,7 +627,7 @@ void PageClientImpl::recordAutocorrectionResponse(AutocorrectionResponseType res
 void PageClientImpl::recommendedScrollbarStyleDidChange(ScrollbarStyle newStyle)
 {
     // Now re-create a tracking area with the appropriate options given the new scrollbar style
-    NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect;
+    NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect | NSTrackingCursorUpdate;
     if (newStyle == ScrollbarStyle::AlwaysVisible)
         options |= NSTrackingActiveAlways;
     else
@@ -783,6 +799,12 @@ void PageClientImpl::showPlatformContextMenu(NSMenu *menu, IntPoint location)
     [menu popUpMenuPositioningItem:nil atLocation:location inView:m_wkView];
 }
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+std::unique_ptr<WebCore::MediaPlaybackTargetPicker> PageClientImpl::createPlaybackTargetPicker(WebPageProxy* page)
+{
+    return MediaPlaybackTargetPickerMac::create(*page);
+}
+#endif
 
 } // namespace WebKit
 

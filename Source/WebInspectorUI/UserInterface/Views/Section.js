@@ -25,7 +25,8 @@
 
 WebInspector.Section = function(title, subtitle)
 {
-    WebInspector.Object.call(this);
+    // FIXME: Convert this to a WebInspector.Object subclass, and call super().
+    // WebInspector.Object.call(this);
 
     this.element = document.createElement("div");
     this.element.className = "section";
@@ -92,18 +93,6 @@ WebInspector.Section.prototype = {
             return;
         this._subtitle = x;
         this.subtitleElement.textContent = x;
-    },
-
-    get subtitleAsTextForTest()
-    {
-        var result = this.subtitleElement.textContent;
-        var child = this.subtitleElement.querySelector("[data-uncopyable]");
-        if (child) {
-            var linkData = child.getAttribute("data-uncopyable");
-            if (linkData)
-                result += linkData;
-        }
-        return result;
     },
 
     get expanded()

@@ -54,10 +54,10 @@ namespace WebCore {
     class ResourceRequestBase {
         WTF_MAKE_FAST_ALLOCATED;
     public:
-        static PassOwnPtr<ResourceRequest> adopt(PassOwnPtr<CrossThreadResourceRequestData>);
+        static std::unique_ptr<ResourceRequest> adopt(std::unique_ptr<CrossThreadResourceRequestData>);
 
         // Gets a copy of the data suitable for passing to another thread.
-        PassOwnPtr<CrossThreadResourceRequestData> copyData() const;
+        std::unique_ptr<CrossThreadResourceRequestData> copyData() const;
 
         WEBCORE_EXPORT bool isNull() const;
         WEBCORE_EXPORT bool isEmpty() const;
@@ -79,7 +79,7 @@ namespace WebCore {
         WEBCORE_EXPORT const String& httpMethod() const;
         WEBCORE_EXPORT void setHTTPMethod(const String& httpMethod);
         
-        const HTTPHeaderMap& httpHeaderFields() const;
+        WEBCORE_EXPORT const HTTPHeaderMap& httpHeaderFields() const;
         WEBCORE_EXPORT void setHTTPHeaderFields(HTTPHeaderMap);
 
         WEBCORE_EXPORT String httpHeaderField(const String& name) const;

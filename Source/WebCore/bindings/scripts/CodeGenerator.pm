@@ -35,7 +35,6 @@ my $useGenerator = "";
 my $useOutputDir = "";
 my $useOutputHeadersDir = "";
 my $useDirectories = "";
-my $useLayerOnTop = 0;
 my $preprocessor;
 my $writeDependencies = 0;
 my $defines = "";
@@ -110,7 +109,6 @@ sub new
     $useGenerator = shift;
     $useOutputDir = shift;
     $useOutputHeadersDir = shift;
-    $useLayerOnTop = shift;
     $preprocessor = shift;
     $writeDependencies = shift;
     $verbose = shift;
@@ -132,7 +130,7 @@ sub ProcessDocument
     %enumTypeHash = map { $_->name => $_->values } @{$useDocument->enumerations};
 
     # Dynamically load external code generation perl module
-    $codeGenerator = $ifaceName->new($object, $useLayerOnTop, $preprocessor, $writeDependencies, $verbose, $targetIdlFilePath);
+    $codeGenerator = $ifaceName->new($object, $writeDependencies, $verbose, $targetIdlFilePath);
     unless (defined($codeGenerator)) {
         my $interfaces = $useDocument->interfaces;
         foreach my $interface (@$interfaces) {
@@ -157,7 +155,7 @@ sub FileNamePrefix
     require $ifaceName . ".pm";
 
     # Dynamically load external code generation perl module
-    $codeGenerator = $ifaceName->new($object, $useLayerOnTop, $preprocessor, $writeDependencies, $verbose);
+    $codeGenerator = $ifaceName->new($object, $writeDependencies, $verbose);
     return $codeGenerator->FileNamePrefix();
 }
 
@@ -686,15 +684,26 @@ sub GenerateConditionalStringFromAttributeValue
     my $generator = shift;
     my $conditional = shift;
 
-    my $operator = ($conditional =~ /&/ ? '&' : ($conditional =~ /\|/ ? '|' : ''));
-    if ($operator) {
-        # Avoid duplicated conditions.
-        my %conditions;
-        map { $conditions{$_} = 1 } split('\\' . $operator, $conditional);
-        return "ENABLE(" . join(") $operator$operator ENABLE(", sort keys %conditions) . ")";
-    } else {
-        return "ENABLE(" . $conditional . ")";
-    }
+    my %disjunction;
+    map {
+        my $expression = $_;
+        my %conjunction;
+        map { $conjunction{$_} = 1; } split(/&/, $expression);
+        $expression = "ENABLE(" . join(") && ENABLE(", sort keys %conjunction) . ")";
+        $disjunction{$expression} = 1
+    } split(/\|/, $conditional);
+
+    return "1" if keys %disjunction == 0;
+    return (%disjunction)[0] if keys %disjunction == 1;
+
+    my @parenthesized;
+    map {
+        my $expression = $_;
+        $expression = "($expression)" if $expression =~ / /;
+        push @parenthesized, $expression;
+    } sort keys %disjunction;
+
+    return join(" || ", @parenthesized);
 }
 
 sub GenerateCompileTimeCheckForEnumsIfNeeded

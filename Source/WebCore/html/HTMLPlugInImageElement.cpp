@@ -223,7 +223,7 @@ RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(Ref<Rende
 
 bool HTMLPlugInImageElement::childShouldCreateRenderer(const Node& child) const
 {
-    if (is<RenderSnapshottedPlugIn>(renderer()) && !partOfSnapshotOverlay(&child))
+    if (is<RenderSnapshottedPlugIn>(renderer()) && !hasShadowRootParent(child))
         return false;
 
     return HTMLPlugInElement::childShouldCreateRenderer(child);
@@ -402,6 +402,7 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
         return;
 
     JSC::call(exec, overlay, callType, callData, globalObject, argList);
+    exec->clearException();
 }
 
 bool HTMLPlugInImageElement::partOfSnapshotOverlay(const Node* node) const

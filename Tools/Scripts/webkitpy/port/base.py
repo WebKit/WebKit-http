@@ -50,6 +50,7 @@ from webkitpy.common.prettypatch import PrettyPatch
 from webkitpy.common.system import path
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.common.system.systemhost import SystemHost
+from webkitpy.common.wavediff import WaveDiff
 from webkitpy.common.webkit_finder import WebKitFinder
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port import config as port_config
@@ -137,6 +138,7 @@ class Port(object):
         self._results_directory = None
         self._root_was_set = hasattr(options, 'root') and options.root
         self._jhbuild_wrapper = []
+        self._layout_tests_dir = hasattr(options, 'layout_tests_dir') and options.layout_tests_dir and self._filesystem.abspath(options.layout_tests_dir)
 
     def architecture(self):
         return self.get_option('architecture')
@@ -281,7 +283,9 @@ class Port(object):
         return expected_text != actual_text
 
     def do_audio_results_differ(self, expected_audio, actual_audio):
-        return expected_audio != actual_audio
+        if expected_audio == actual_audio:
+            return False
+        return not WaveDiff(expected_audio, actual_audio).filesAreIdenticalWithinTolerance()
 
     def diff_image(self, expected_contents, actual_contents, tolerance=None):
         """Compare two images and return a tuple of an image diff, a percentage difference (0-100), and an error string.
@@ -666,6 +670,8 @@ class Port(object):
         return self._webkit_finder.path_to_script(script_name)
 
     def layout_tests_dir(self):
+        if self._layout_tests_dir:
+            return self._layout_tests_dir
         return self._webkit_finder.layout_tests_dir()
 
     def perf_tests_dir(self):
@@ -1041,6 +1047,8 @@ class Port(object):
             repository_paths += [(self._options.additional_repository_name, self._options.additional_repository_path)]
         return repository_paths
 
+    def allowed_hosts(self):
+        return self.get_option("allowed_host", [])
 
     def default_configuration(self):
         return self._config.default_configuration()

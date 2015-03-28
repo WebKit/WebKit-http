@@ -1036,7 +1036,8 @@ template <typename V>
 static void writeCFFEncodedNumber(V& vector, float number)
 {
     vector.append(0xFF);
-    append32(vector, number * 0x10000);
+    // Convert to 16.16 fixed-point
+    append32(vector, clampTo<int32_t>(number * 0x10000));
 }
 
 static const char rLineTo = 0x05;
@@ -1050,7 +1051,6 @@ public:
         : m_cffData(cffData)
         , m_hasBoundingBox(false)
     {
-        // FIXME: Moving to the origin isn't going to work for subsequent absolute coordinates
         writeCFFEncodedNumber(m_cffData, width);
         writeCFFEncodedNumber(m_cffData, origin.x());
         writeCFFEncodedNumber(m_cffData, origin.y());
@@ -1299,6 +1299,10 @@ SVGToOTFFontConverter::SVGToOTFFontConverter(const SVGFontElement& fontElement)
         if (!unicodeAttribute.isEmpty()) // If we can never actually trigger this glyph, ignore it completely
             processGlyphElement(glyphElement, &glyphElement, defaultHorizontalAdvance, defaultVerticalAdvance, unicodeAttribute, initialGlyph);
     }
+
+    // <rdar://problem/20086223> Cocoa has a bug where glyph bounding boxes are not correctly respected for frustum culling. Work around this by
+    // inflating the font's bounding box
+    m_boundingBox.extend(FloatPoint(0, 0));
 
     appendLigatureGlyphs();
 

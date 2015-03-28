@@ -30,6 +30,7 @@
 #include "APISecurityOrigin.h"
 #include "DrawingArea.h"
 #include "InjectedBundleNavigationAction.h"
+#include "InjectedBundleNodeHandle.h"
 #include "LayerTreeHost.h"
 #include "NavigationActionData.h"
 #include "PageBanner.h"
@@ -523,9 +524,7 @@ void WebChromeClient::contentsSizeChanged(Frame* frame, const IntSize& size) con
         m_page->drawingArea()->layerTreeHost()->sizeDidChange(size);
 #endif
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     m_page->send(Messages::WebPageProxy::DidChangeContentSize(size));
-#endif
 
     m_page->drawingArea()->mainFrameContentSizeChanged(size);
 
@@ -851,9 +850,9 @@ GraphicsLayerFactory* WebChromeClient::graphicsLayerFactory() const
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-PassRefPtr<WebCore::DisplayRefreshMonitor> WebChromeClient::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
+Optional<RefPtr<WebCore::DisplayRefreshMonitor>> WebChromeClient::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
 {
-    return m_page->drawingArea()->createDisplayRefreshMonitor(displayID);
+    return Optional<RefPtr<WebCore::DisplayRefreshMonitor>>(m_page->drawingArea()->createDisplayRefreshMonitor(displayID));
 }
 #endif
 
@@ -1102,5 +1101,37 @@ bool WebChromeClient::shouldDispatchFakeMouseMoveEvents() const
 {
     return m_page->shouldDispatchFakeMouseMoveEvents();
 }
+
+void WebChromeClient::handleAutoFillButtonClick(HTMLInputElement& inputElement)
+{
+    RefPtr<API::Object> userData;
+
+    // Notify the bundle client.
+    auto nodeHandle = InjectedBundleNodeHandle::getOrCreate(inputElement);
+    m_page->injectedBundleUIClient().didClickAutoFillButton(*m_page, nodeHandle.get(), userData);
+
+    // Notify the UIProcess.
+    m_page->send(Messages::WebPageProxy::HandleAutoFillButtonClick(UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+}
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+void WebChromeClient::showPlaybackTargetPicker(const WebCore::IntPoint& position, bool isVideo)
+{
+    FrameView* frameView = m_page->mainFrame()->view();
+    FloatRect rect(frameView->contentsToRootView(frameView->windowToContents(position)), FloatSize());
+    m_page->send(Messages::WebPageProxy::ShowPlaybackTargetPicker(rect, isVideo));
+}
+
+void WebChromeClient::startingMonitoringPlaybackTargets()
+{
+    m_page->send(Messages::WebPageProxy::StartingMonitoringPlaybackTargets());
+}
+
+void WebChromeClient::stopMonitoringPlaybackTargets()
+{
+    m_page->send(Messages::WebPageProxy::StopMonitoringPlaybackTargets());
+}
+#endif
+
 
 } // namespace WebKit

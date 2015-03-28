@@ -39,6 +39,14 @@ function toString(obj)
     return String(obj);
 }
 
+function toStringDescription(obj)
+{
+    if (obj === 0 && 1 / obj < 0)
+        return "-0";
+
+    return toString(obj);
+}
+
 function isUInt32(obj)
 {
     if (typeof obj === "number")
@@ -286,7 +294,7 @@ InjectedScript.prototype = {
         if (typeof object !== "object")
             return;
 
-        var entries = this._getCollectionEntries(object, InjectedScriptHost.subtype(object), startIndex, numberToFetch);
+        var entries = this._entries(object, InjectedScriptHost.subtype(object), startIndex, numberToFetch);
         return entries.map(function(entry) {
             entry.value = injectedScript._wrapObject(entry.value, objectGroupName, false, true);
             if ("key" in entry)
@@ -424,7 +432,7 @@ InjectedScript.prototype = {
     {
         var remoteObject = this._wrapObject(value, objectGroup);
         try {
-            remoteObject.description = toString(value);
+            remoteObject.description = toStringDescription(value);
         } catch (e) {}
         return {
             wasThrown: true,
@@ -605,12 +613,12 @@ InjectedScript.prototype = {
         function createFakeValueDescriptor(name, descriptor, isOwnProperty, possibleNativeBindingGetter)
         {
             try {
-                var descriptor = {name: name, value: object[name], writable: descriptor.writable || false, configurable: descriptor.configurable || false, enumerable: descriptor.enumerable || false};
+                var descriptor = {name, value: object[name], writable: descriptor.writable || false, configurable: descriptor.configurable || false, enumerable: descriptor.enumerable || false};
                 if (possibleNativeBindingGetter)
                     descriptor.nativeGetter = true;
                 return descriptor;
             } catch (e) {
-                var errorDescriptor = {name: name, value: e, wasThrown: true};
+                var errorDescriptor = {name, value: e, wasThrown: true};
                 if (isOwnProperty)
                     errorDescriptor.isOwn = true;
                 return errorDescriptor;
@@ -768,11 +776,11 @@ InjectedScript.prototype = {
         }
 
         var className = InjectedScriptHost.internalConstructorName(obj);
-        if (subtype === "array") {
-            if (typeof obj.length === "number")
-                className += "[" + obj.length + "]";
+        if (subtype === "array")
             return className;
-        }
+
+        if (subtype === "class")
+            return obj.name;
 
         // NodeList in JSC is a function, check for array prior to this.
         if (typeof obj === "function")
@@ -798,7 +806,7 @@ InjectedScript.prototype = {
                 continue;
             }
 
-            entries.push({value: value});
+            entries.push({value});
 
             if (numberToFetch && entries.length === numberToFetch)
                 break;
@@ -817,7 +825,7 @@ InjectedScript.prototype = {
                 continue;
             }
 
-            entries.push({key: key, value: value});
+            entries.push({key, value});
 
             if (numberToFetch && entries.length === numberToFetch)
                 break;
@@ -831,7 +839,12 @@ InjectedScript.prototype = {
         return InjectedScriptHost.weakMapEntries(object, numberToFetch);
     },
 
-    _getCollectionEntries: function(object, subtype, startIndex, numberToFetch)
+    _getIteratorEntries: function(object, numberToFetch)
+    {
+        return InjectedScriptHost.iteratorEntries(object, numberToFetch);
+    },
+
+    _entries: function(object, subtype, startIndex, numberToFetch)
     {
         if (subtype === "set")
             return this._getSetEntries(object, startIndex, numberToFetch);
@@ -839,6 +852,8 @@ InjectedScript.prototype = {
             return this._getMapEntries(object, startIndex, numberToFetch);
         if (subtype === "weakmap")
             return this._getWeakMapEntries(object, numberToFetch);
+        if (subtype === "iterator")
+            return this._getIteratorEntries(object, numberToFetch);
 
         throw "unexpected type";
     },
@@ -891,7 +906,7 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
 
         // Provide user-friendly number values.
         if (this.type === "number")
-            this.description = object + "";
+            this.description = toStringDescription(object);
         return;
     }
 
@@ -903,6 +918,15 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
 
     this.className = InjectedScriptHost.internalConstructorName(object);
     this.description = injectedScript._describe(object);
+
+    if (subtype === "array")
+        this.size = typeof object.length === "number" ? object.length : 0;
+    else if (subtype === "set" || subtype === "map")
+        this.size = object.size;
+    else if (subtype === "weakmap")
+        this.size = InjectedScriptHost.weakMapSize(object);
+    else if (subtype === "class")
+        this.classPrototype = injectedScript._wrapObject(object.prototype, objectGroupName);
 
     if (generatePreview && this.type === "object")
         this.preview = this._generatePreview(object, undefined, columnNames);
@@ -925,6 +949,9 @@ InjectedScript.RemoteObject.prototype = {
             }
         }
 
+        if ("size" in this)
+            preview.size = this.size;
+
         return preview;
     },
 
@@ -933,6 +960,8 @@ InjectedScript.RemoteObject.prototype = {
         var remoteObject = new InjectedScript.RemoteObject(value, undefined, false, true, undefined);
         if (remoteObject.objectId)
             injectedScript.releaseObject(remoteObject.objectId);
+        if (remoteObject.classPrototype && remoteObject.classPrototype.objectId)
+            injectedScript.releaseObject(remoteObject.classPrototype.objectId);
 
         return remoteObject.preview || remoteObject._emptyPreview();
     },
@@ -954,8 +983,8 @@ InjectedScript.RemoteObject.prototype = {
         };
 
         try {
-            // Maps and Sets have entries.
-            if (this.subtype === "map" || this.subtype === "set" || this.subtype === "weakmap")
+            // Maps, Sets, and Iterators have entries.
+            if (this.subtype === "map" || this.subtype === "set" || this.subtype === "weakmap" || this.subtype === "iterator")
                 this._appendEntryPreviews(object, preview);
 
             preview.properties = [];
@@ -968,13 +997,14 @@ InjectedScript.RemoteObject.prototype = {
                     return preview;
             }
 
+            if (preview.entries)
+                return preview;
+
             // Properties.
             var descriptors = injectedScript._propertyDescriptors(object, InjectedScript.CollectionMode.AllProperties);
             this._appendPropertyPreviews(preview, descriptors, false, propertiesThreshold, firstLevelKeys, secondLevelKeys);
             if (propertiesThreshold.indexes < 0 || propertiesThreshold.properties < 0)
                 return preview;
-
-            // FIXME: Iterator entries.
         } catch (e) {
             preview.lossless = false;
         }
@@ -1015,14 +1045,14 @@ InjectedScript.RemoteObject.prototype = {
             // Getter/setter.
             if (!("value" in descriptor)) {
                 preview.lossless = false;
-                this._appendPropertyPreview(preview, internal, {name: name, type: "accessor"}, propertiesThreshold);
+                this._appendPropertyPreview(preview, internal, {name, type: "accessor"}, propertiesThreshold);
                 continue;
             }
 
             // Null value.
             var value = descriptor.value;
             if (value === null) {
-                this._appendPropertyPreview(preview, internal, {name: name, type: "object", subtype: "null", value: "null"}, propertiesThreshold);
+                this._appendPropertyPreview(preview, internal, {name, type: "object", subtype: "null", value: "null"}, propertiesThreshold);
                 continue;
             }
 
@@ -1042,7 +1072,7 @@ InjectedScript.RemoteObject.prototype = {
                     value = this._abbreviateString(value, maxLength, true);
                     preview.lossless = false;
                 }
-                this._appendPropertyPreview(preview, internal, {name: name, type: type, value: toString(value)}, propertiesThreshold);
+                this._appendPropertyPreview(preview, internal, {name, type, value: toStringDescription(value)}, propertiesThreshold);
                 continue;
             }
 
@@ -1053,12 +1083,12 @@ InjectedScript.RemoteObject.prototype = {
                     symbolString = this._abbreviateString(symbolString, maxLength, true);
                     preview.lossless = false;
                 }
-                this._appendPropertyPreview(preview, internal, {name: name, type: type, value: symbolString}, propertiesThreshold);
+                this._appendPropertyPreview(preview, internal, {name, type, value: symbolString}, propertiesThreshold);
                 return;
             }
 
             // Object.
-            var property = {name: name, type: type};
+            var property = {name, type};
             var subtype = injectedScript._subtype(value);
             if (subtype)
                 property.subtype = subtype;
@@ -1071,9 +1101,16 @@ InjectedScript.RemoteObject.prototype = {
                     preview.lossless = false;
                 if (subPreview.overflow)
                     preview.overflow = true;
+            } else if (this._isPreviewableObject(value)) {
+                var subPreview = this._createObjectPreviewForValue(value);
+                property.valuePreview = subPreview;
+                if (!subPreview.lossless)
+                    preview.lossless = false;
+                if (subPreview.overflow)
+                    preview.overflow = true;
             } else {
                 var description = "";
-                if (type !== "function")
+                if (type !== "function" || subtype === "class")
                     description = this._abbreviateString(injectedScript._describe(value), maxLength, subtype === "regexp");
                 property.value = description;
                 preview.lossless = false;
@@ -1105,7 +1142,7 @@ InjectedScript.RemoteObject.prototype = {
     _appendEntryPreviews: function(object, preview)
     {
         // Fetch 6, but only return 5, so we can tell if we overflowed.
-        var entries = injectedScript._getCollectionEntries(object, this.subtype, 0, 6);
+        var entries = injectedScript._entries(object, this.subtype, 0, 6);
         if (!entries)
             return;
 
@@ -1121,6 +1158,57 @@ InjectedScript.RemoteObject.prototype = {
                 entry.key = this._createObjectPreviewForValue(entry.key);
             return entry;
         }, this);
+    },
+
+    _isPreviewableObject: function(object)
+    {
+        return this._isPreviewableObjectInternal(object, new Set, 1);
+    },
+
+    _isPreviewableObjectInternal: function(object, knownObjects, depth)
+    {
+        // Deep object.
+        if (depth > 3)
+            return false;
+
+        // Primitive.
+        if (injectedScript.isPrimitiveValue(object) || isSymbol(object))
+            return true;
+
+        // Cyclic objects.
+        if (knownObjects.has(object))
+            return false;
+
+        ++depth;
+        knownObjects.add(object);
+
+        // Arrays are simple if they have 5 or less simple objects.
+        var subtype = injectedScript._subtype(object);
+        if (subtype === "array") {
+            var length = object.length;
+            if (length > 5)
+                return false;
+            for (var i = 0; i < length; ++i) {
+                if (!this._isPreviewableObjectInternal(object[i], knownObjects, depth))
+                    return false;
+            }
+            return true;
+        }
+
+        // Not a basic object.
+        if (object.__proto__ && object.__proto__.__proto__)
+            return false;
+
+        // Objects are simple if they have 3 or less simple properties.
+        var ownPropertyNames = Object.getOwnPropertyNames(object);
+        if (ownPropertyNames.length > 3)
+            return false;
+        for (var propertyName of ownPropertyNames) {
+            if (!this._isPreviewableObjectInternal(object[propertyName], knownObjects, depth))
+                return false;
+        }
+
+        return true;
     },
 
     _abbreviateString: function(string, maxLength, middle)

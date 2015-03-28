@@ -215,6 +215,7 @@ onload
 onloadeddata
 onloadedmetadata
 onloadstart
+onmessage
 onmousedown
 onmouseenter
 onmouseleave
@@ -269,6 +270,12 @@ onwebkitfullscreenerror
 onwebkitkeyadded
 onwebkitkeyerror
 onwebkitkeymessage
+onwebkitmouseforcecancelled
+onwebkitmouseforcechanged
+onwebkitmouseforceclick
+onwebkitmouseforcedown
+onwebkitmouseforceup
+onwebkitmouseforcewillbegin
 onwebkitneedkey
 onwebkitsourceclose
 onwebkitsourceended
@@ -329,6 +336,7 @@ standby
 start
 step
 style
+subtitle
 summary
 tabindex
 tableborder

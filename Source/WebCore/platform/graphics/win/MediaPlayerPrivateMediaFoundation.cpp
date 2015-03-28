@@ -75,6 +75,7 @@ MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation(MediaPlayer
 
 MediaPlayerPrivateMediaFoundation::~MediaPlayerPrivateMediaFoundation()
 {
+    notifyDeleted();
     destroyVideoWindow();
     endSession();
 }
@@ -165,8 +166,39 @@ void MediaPlayerPrivateMediaFoundation::setVisible(bool visible)
 
 bool MediaPlayerPrivateMediaFoundation::seeking() const
 {
-    notImplemented();
+    // We assume seeking is immediately complete.
     return false;
+}
+
+void MediaPlayerPrivateMediaFoundation::seekDouble(double time)
+{
+    const double tenMegahertz = 10000000;
+    PROPVARIANT propVariant;
+    PropVariantInit(&propVariant);
+    propVariant.vt = VT_I8;
+    propVariant.hVal.QuadPart = static_cast<__int64>(time * tenMegahertz);
+    
+    HRESULT hr = m_mediaSession->Start(&GUID_NULL, &propVariant);
+    ASSERT(SUCCEEDED(hr));
+    PropVariantClear(&propVariant);
+}
+
+double MediaPlayerPrivateMediaFoundation::durationDouble() const
+{
+    const double tenMegahertz = 10000000;
+    if (!m_mediaSource)
+        return 0;
+
+    IMFPresentationDescriptor* descriptor;
+    if (!SUCCEEDED(m_mediaSource->CreatePresentationDescriptor(&descriptor)))
+        return 0;
+    
+    UINT64 duration;
+    if (!SUCCEEDED(descriptor->GetUINT64(MF_PD_DURATION, &duration)))
+        duration = 0;
+    descriptor->Release();
+    
+    return static_cast<double>(duration) / tenMegahertz;
 }
 
 bool MediaPlayerPrivateMediaFoundation::paused() const
@@ -204,18 +236,21 @@ void MediaPlayerPrivateMediaFoundation::setSize(const IntSize& size)
         return;
 
     LayoutSize scrollOffset;
+    IntPoint positionInWindow(m_lastPaintRect.location());
 
     FrameView* view = nullptr;
     if (m_player && m_player->cachedResourceLoader() && m_player->cachedResourceLoader()->document())
         view = m_player->cachedResourceLoader()->document()->view();
-    if (view)
-        scrollOffset = view->scrollOffsetForFixedPosition();
 
-    int xPos = -scrollOffset.width().toInt() + m_lastPaintRect.x();
-    int yPos = -scrollOffset.height().toInt() + m_lastPaintRect.y();
+    if (view) {
+        scrollOffset = view->scrollOffsetForFixedPosition();
+        positionInWindow = view->convertToContainingWindow(IntPoint(m_lastPaintRect.location()));
+    }
+
+    positionInWindow.move(-scrollOffset.width().toInt(), -scrollOffset.height().toInt());
 
     if (m_hwndVideo && !m_lastPaintRect.isEmpty())
-        ::MoveWindow(m_hwndVideo, xPos, yPos, m_size.width(), m_size.height(), FALSE);
+        ::MoveWindow(m_hwndVideo, positionInWindow.x(), positionInWindow.y(), m_size.width(), m_size.height(), FALSE);
 
     RECT rc = { 0, 0, m_size.width(), m_size.height() };
     m_videoDisplay->SetVideoPosition(nullptr, &rc);
@@ -477,6 +512,28 @@ void MediaPlayerPrivateMediaFoundation::destroyVideoWindow()
     }
 }
 
+void MediaPlayerPrivateMediaFoundation::addListener(MediaPlayerListener* listener)
+{
+    MutexLocker locker(m_mutexListeners);
+
+    m_listeners.add(listener);
+}
+
+void MediaPlayerPrivateMediaFoundation::removeListener(MediaPlayerListener* listener)
+{
+    MutexLocker locker(m_mutexListeners);
+
+    m_listeners.remove(listener);
+}
+
+void MediaPlayerPrivateMediaFoundation::notifyDeleted()
+{
+    MutexLocker locker(m_mutexListeners);
+
+    for (HashSet<MediaPlayerListener*>::const_iterator it = m_listeners.begin(); it != m_listeners.end(); ++it)
+        (*it)->onMediaPlayerDeleted();
+}
+
 bool MediaPlayerPrivateMediaFoundation::createOutputNode(COMPtr<IMFStreamDescriptor> sourceSD, COMPtr<IMFTopologyNode>& node)
 {
     if (!MFCreateTopologyNodePtr() || !MFCreateAudioRendererActivatePtr() || !MFCreateVideoRendererActivatePtr())
@@ -593,10 +650,14 @@ MediaPlayerPrivateMediaFoundation::AsyncCallback::AsyncCallback(MediaPlayerPriva
     , m_mediaPlayer(mediaPlayer)
     , m_event(event)
 {
+    if (m_mediaPlayer)
+        m_mediaPlayer->addListener(this);
 }
 
 MediaPlayerPrivateMediaFoundation::AsyncCallback::~AsyncCallback()
 {
+    if (m_mediaPlayer)
+        m_mediaPlayer->removeListener(this);
 }
 
 HRESULT MediaPlayerPrivateMediaFoundation::AsyncCallback::QueryInterface(REFIID riid, __RPC__deref_out void __RPC_FAR *__RPC_FAR *ppvObject)
@@ -633,12 +694,24 @@ HRESULT STDMETHODCALLTYPE MediaPlayerPrivateMediaFoundation::AsyncCallback::GetP
 
 HRESULT STDMETHODCALLTYPE MediaPlayerPrivateMediaFoundation::AsyncCallback::Invoke(__RPC__in_opt IMFAsyncResult *pAsyncResult)
 {
+    MutexLocker locker(m_mutex);
+
+    if (!m_mediaPlayer)
+        return S_OK;
+
     if (m_event)
         m_mediaPlayer->endGetEvent(pAsyncResult);
     else
         m_mediaPlayer->endCreatedMediaSource(pAsyncResult);
 
     return S_OK;
+}
+
+void MediaPlayerPrivateMediaFoundation::AsyncCallback::onMediaPlayerDeleted()
+{
+    MutexLocker locker(m_mutex);
+
+    m_mediaPlayer = nullptr;
 }
 
 }

@@ -415,6 +415,11 @@ RefPtr<Font> Font::systemFallbackFontForCharacter(UChar32 character, const FontD
 {
     auto fontAddResult = systemFallbackCache().add(this, CharacterFallbackMap());
 
+    if (!character) {
+        UChar codeUnit = 0;
+        return FontCache::singleton().systemFallbackForCharacters(description, this, isForPlatformFont, &codeUnit, 1);
+    }
+
     auto key = std::make_pair(character, isForPlatformFont);
     auto characterAddResult = fontAddResult.iterator->value.add(key, nullptr);
 
@@ -422,7 +427,7 @@ RefPtr<Font> Font::systemFallbackFontForCharacter(UChar32 character, const FontD
 
     if (!fallbackFont) {
         UChar codeUnits[2];
-        int codeUnitsLength;
+        unsigned codeUnitsLength;
         if (U_IS_BMP(character)) {
             codeUnits[0] = FontCascade::normalizeSpaces(character);
             codeUnitsLength = 1;

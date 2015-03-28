@@ -69,7 +69,7 @@ struct NetworkResourceLoader::SynchronousLoadData {
     WebCore::ResourceError error;
 };
 
-static void sendReplyToSynchronousRequest(NetworkResourceLoader::SynchronousLoadData& data, WebCore::SharedBuffer* buffer)
+static void sendReplyToSynchronousRequest(NetworkResourceLoader::SynchronousLoadData& data, const WebCore::SharedBuffer* buffer)
 {
     ASSERT(data.delayedReply);
     ASSERT(!data.response.isNull() || !data.error.isNull());
@@ -135,7 +135,7 @@ void NetworkResourceLoader::start()
     m_currentRequest = originalRequest();
 
 #if ENABLE(NETWORK_CACHE)
-    if (!NetworkCache::singleton().isEnabled() || sessionID().isEphemeral()) {
+    if (!NetworkCache::singleton().isEnabled() || sessionID().isEphemeral() || !originalRequest().url().protocolIsInHTTPFamily()) {
         startNetworkLoad();
         return;
     }
@@ -150,11 +150,11 @@ void NetworkResourceLoader::start()
             loader->startNetworkLoad();
             return;
         }
-        if (loader->m_parameters.needsCertificateInfo && !entry->response.containsCertificateInfo()) {
+        if (loader->m_parameters.needsCertificateInfo && !entry->response().containsCertificateInfo()) {
             loader->startNetworkLoad();
             return;
         }
-        if (entry->needsRevalidation) {
+        if (entry->needsValidation()) {
             loader->validateCacheEntry(WTF::move(entry));
             return;
         }
@@ -228,17 +228,6 @@ void NetworkResourceLoader::abort()
     cleanup();
 }
 
-#if ENABLE(NETWORK_CACHE)
-static bool isConditionalRequest(const WebCore::ResourceRequest& request)
-{
-    if (!request.httpHeaderField(WebCore::HTTPHeaderName::IfNoneMatch).isEmpty())
-        return true;
-    if (!request.httpHeaderField(WebCore::HTTPHeaderName::IfModifiedSince).isEmpty())
-        return true;
-    return false;
-}
-#endif
-
 void NetworkResourceLoader::didReceiveResponseAsync(ResourceHandle* handle, const ResourceResponse& receivedResponse)
 {
     ASSERT_UNUSED(handle, handle == m_handle);
@@ -258,7 +247,7 @@ void NetworkResourceLoader::didReceiveResponseAsync(ResourceHandle* handle, cons
         bool validationSucceeded = m_response.httpStatusCode() == 304; // 304 Not Modified
         if (validationSucceeded)
             NetworkCache::singleton().update(originalRequest(), *m_cacheEntryForValidation, m_response);
-        if (!validationSucceeded || isConditionalRequest(originalRequest()))
+        else
             m_cacheEntryForValidation = nullptr;
     }
     shouldSendDidReceiveResponse = !m_cacheEntryForValidation;
@@ -529,13 +518,13 @@ void NetworkResourceLoader::bufferingTimerFired()
     sendAbortingOnFailure(Messages::WebResourceLoader::DidReceiveData(dataReference, encodedLength));
 }
 
-bool NetworkResourceLoader::sendBufferMaybeAborting(WebCore::SharedBuffer& buffer, size_t encodedDataLength)
+bool NetworkResourceLoader::sendBufferMaybeAborting(const WebCore::SharedBuffer& buffer, size_t encodedDataLength)
 {
     ASSERT(!isSynchronous());
 
 #if PLATFORM(COCOA)
     ShareableResource::Handle shareableResourceHandle;
-    NetworkResourceLoader::tryGetShareableHandleFromSharedBuffer(shareableResourceHandle, buffer);
+    NetworkResourceLoader::tryGetShareableHandleFromSharedBuffer(shareableResourceHandle, const_cast<WebCore::SharedBuffer&>(buffer));
     if (!shareableResourceHandle.isNull()) {
         send(Messages::WebResourceLoader::DidReceiveResource(shareableResourceHandle, currentTime()));
         abort();
@@ -543,7 +532,7 @@ bool NetworkResourceLoader::sendBufferMaybeAborting(WebCore::SharedBuffer& buffe
     }
 #endif
 
-    IPC::SharedBufferDataReference dataReference(&buffer);
+    IPC::SharedBufferDataReference dataReference(&const_cast<WebCore::SharedBuffer&>(buffer));
     return sendAbortingOnFailure(Messages::WebResourceLoader::DidReceiveData(dataReference, encodedDataLength));
 }
 
@@ -551,17 +540,17 @@ bool NetworkResourceLoader::sendBufferMaybeAborting(WebCore::SharedBuffer& buffe
 void NetworkResourceLoader::didRetrieveCacheEntry(std::unique_ptr<NetworkCache::Entry> entry)
 {
     if (isSynchronous()) {
-        m_synchronousLoadData->response = entry->response;
-        sendReplyToSynchronousRequest(*m_synchronousLoadData, entry->buffer.get());
+        m_synchronousLoadData->response = entry->response();
+        sendReplyToSynchronousRequest(*m_synchronousLoadData, entry->buffer());
     } else {
-        sendAbortingOnFailure(Messages::WebResourceLoader::DidReceiveResponse(entry->response, m_parameters.isMainResource));
+        sendAbortingOnFailure(Messages::WebResourceLoader::DidReceiveResponse(entry->response(), m_parameters.isMainResource));
 
 #if ENABLE(SHAREABLE_RESOURCE)
-        if (!entry->shareableResourceHandle.isNull())
-            send(Messages::WebResourceLoader::DidReceiveResource(entry->shareableResourceHandle, currentTime()));
+        if (!entry->shareableResourceHandle().isNull())
+            send(Messages::WebResourceLoader::DidReceiveResource(entry->shareableResourceHandle(), currentTime()));
         else {
 #endif
-            bool shouldContinue = sendBufferMaybeAborting(*entry->buffer, entry->buffer->size());
+            bool shouldContinue = sendBufferMaybeAborting(*entry->buffer(), entry->buffer()->size());
             if (!shouldContinue)
                 return;
             send(Messages::WebResourceLoader::DidFinishResourceLoad(currentTime()));
@@ -577,8 +566,8 @@ void NetworkResourceLoader::validateCacheEntry(std::unique_ptr<NetworkCache::Ent
 {
     ASSERT(!m_handle);
 
-    String eTag = entry->response.httpHeaderField(WebCore::HTTPHeaderName::ETag);
-    String lastModified = entry->response.httpHeaderField(WebCore::HTTPHeaderName::LastModified);
+    String eTag = entry->response().httpHeaderField(WebCore::HTTPHeaderName::ETag);
+    String lastModified = entry->response().httpHeaderField(WebCore::HTTPHeaderName::LastModified);
     if (!eTag.isEmpty())
         m_currentRequest.setHTTPHeaderField(WebCore::HTTPHeaderName::IfNoneMatch, eTag);
     if (!lastModified.isEmpty())

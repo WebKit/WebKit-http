@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
- *  Copyright (C) 2007, 2008, 2009, 2014 Apple Inc. All rights reserved.
+ *  Copyright (C) 2007, 2008, 2009, 2014, 2015 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -109,6 +109,7 @@ struct HashTable;
     DEFINE_STANDARD_BUILTIN(macro, ArgumentsIterator, argumentsIterator) \
     DEFINE_STANDARD_BUILTIN(macro, MapIterator, mapIterator) \
     DEFINE_STANDARD_BUILTIN(macro, SetIterator, setIterator) \
+    DEFINE_STANDARD_BUILTIN(macro, StringIterator, stringIterator) \
 
 
 #define DECLARE_SIMPLE_BUILTIN_TYPE(capitalName, lowerName, properName, instanceType, jsName) \
@@ -203,7 +204,9 @@ protected:
     WriteBarrier<Structure> m_lexicalEnvironmentStructure;
     WriteBarrier<Structure> m_catchScopeStructure;
     WriteBarrier<Structure> m_functionNameScopeStructure;
-    WriteBarrier<Structure> m_argumentsStructure;
+    WriteBarrier<Structure> m_directArgumentsStructure;
+    WriteBarrier<Structure> m_scopedArgumentsStructure;
+    WriteBarrier<Structure> m_outOfBandArgumentsStructure;
         
     // Lists the actual structures used for having these particular indexing shapes.
     WriteBarrier<Structure> m_originalArrayStructureForIndexingShape[NumberOfIndexingShapes];
@@ -293,9 +296,9 @@ protected:
 public:
     typedef JSSegmentedVariableObject Base;
 
-    static JSGlobalObject* create(VM& vm, Structure* structure)
+    static JSGlobalObject* create(VM& vm, Structure* structure, const GlobalObjectMethodTable* globalObjectMethodTable = nullptr)
     {
-        JSGlobalObject* globalObject = new (NotNull, allocateCell<JSGlobalObject>(vm.heap)) JSGlobalObject(vm, structure);
+        JSGlobalObject* globalObject = new (NotNull, allocateCell<JSGlobalObject>(vm.heap)) JSGlobalObject(vm, structure, globalObjectMethodTable);
         globalObject->finishCreation(vm);
         vm.heap.addFinalizer(globalObject, destroy);
         return globalObject;
@@ -328,7 +331,7 @@ protected:
     }
 
     struct NewGlobalVar {
-        int registerNumber;
+        ScopeOffset offset;
         VariableWatchpointSet* set;
     };
     NewGlobalVar addGlobalVar(const Identifier&, ConstantMode);
@@ -415,7 +418,9 @@ public:
     Structure* activationStructure() const { return m_lexicalEnvironmentStructure.get(); }
     Structure* catchScopeStructure() const { return m_catchScopeStructure.get(); }
     Structure* functionNameScopeStructure() const { return m_functionNameScopeStructure.get(); }
-    Structure* argumentsStructure() const { return m_argumentsStructure.get(); }
+    Structure* directArgumentsStructure() const { return m_directArgumentsStructure.get(); }
+    Structure* scopedArgumentsStructure() const { return m_scopedArgumentsStructure.get(); }
+    Structure* outOfBandArgumentsStructure() const { return m_outOfBandArgumentsStructure.get(); }
     Structure* originalArrayStructureForIndexingType(IndexingType indexingType) const
     {
         ASSERT(indexingType & IsArray);

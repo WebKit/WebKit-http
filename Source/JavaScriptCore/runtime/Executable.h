@@ -357,7 +357,10 @@ public:
     const SourceCode& source() const { return m_source; }
     intptr_t sourceID() const { return m_source.providerID(); }
     const String& sourceURL() const { return m_source.provider()->url(); }
-    int lineNo() const { return m_firstLine; }
+    int firstLine() const { return m_firstLine; }
+    void setOverrideLineNumber(int overrideLineNumber) { m_overrideLineNumber = overrideLineNumber; }
+    bool hasOverrideLineNumber() const { return m_overrideLineNumber != -1; }
+    int overrideLineNumber() const { return m_overrideLineNumber; }
     int lastLine() const { return m_lastLine; }
     unsigned startColumn() const { return m_startColumn; }
     unsigned endColumn() const { return m_endColumn; }
@@ -429,6 +432,7 @@ protected:
     bool m_hasCapturedVariables;
     bool m_neverInline;
     bool m_didTryToEnterInLoop;
+    int m_overrideLineNumber;
     int m_firstLine;
     int m_lastLine;
     unsigned m_startColumn;
@@ -467,7 +471,7 @@ public:
 
     void clearCode();
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false, ConstructorKind::None); }
 
     unsigned numVariables() { return m_unlinkedEvalCodeBlock->numVariables(); }
     unsigned numberOfFunctionDecls() { return m_unlinkedEvalCodeBlock->numberOfFunctionDecls(); }
@@ -522,7 +526,7 @@ public:
 
     void clearCode();
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false, ConstructorKind::None); }
 
 private:
     friend class ScriptExecutable;
@@ -541,13 +545,17 @@ class FunctionExecutable : public ScriptExecutable {
 public:
     typedef ScriptExecutable Base;
 
-    static FunctionExecutable* create(VM& vm, const SourceCode& source, UnlinkedFunctionExecutable* unlinkedExecutable, unsigned firstLine, unsigned lastLine, unsigned startColumn, unsigned endColumn, bool bodyIncludesBraces = true)
+    static FunctionExecutable* create(
+        VM& vm, const SourceCode& source, UnlinkedFunctionExecutable* unlinkedExecutable, 
+        unsigned firstLine, unsigned lastLine, unsigned startColumn, unsigned endColumn)
     {
-        FunctionExecutable* executable = new (NotNull, allocateCell<FunctionExecutable>(vm.heap)) FunctionExecutable(vm, source, unlinkedExecutable, firstLine, lastLine, startColumn, endColumn, bodyIncludesBraces);
+        FunctionExecutable* executable = new (NotNull, allocateCell<FunctionExecutable>(vm.heap)) FunctionExecutable(vm, source, unlinkedExecutable, firstLine, lastLine, startColumn, endColumn);
         executable->finishCreation(vm);
         return executable;
     }
-    static FunctionExecutable* fromGlobalCode(const Identifier& name, ExecState*, Debugger*, const SourceCode&, JSObject** exception);
+    static FunctionExecutable* fromGlobalCode(
+        const Identifier& name, ExecState&, const SourceCode&, 
+        JSObject*& exception, int overrideLineNumber);
 
     static void destroy(JSCell*);
         
@@ -619,11 +627,11 @@ public:
         
     FunctionMode functionMode() { return m_unlinkedExecutable->functionMode(); }
     bool isBuiltinFunction() const { return m_unlinkedExecutable->isBuiltinFunction(); }
+    bool isClassConstructorFunction() const { return m_unlinkedExecutable->isClassConstructorFunction(); }
     const Identifier& name() { return m_unlinkedExecutable->name(); }
     const Identifier& inferredName() { return m_unlinkedExecutable->inferredName(); }
     JSString* nameValue() const { return m_unlinkedExecutable->nameValue(); }
     size_t parameterCount() const { return m_unlinkedExecutable->parameterCount(); } // Excluding 'this'!
-    String paramString() const;
     SymbolTable* symbolTable(CodeSpecializationKind);
 
     void clearCodeIfNotCompiling();
@@ -633,17 +641,19 @@ public:
     {
         return Structure::create(vm, globalObject, proto, TypeInfo(FunctionExecutableType, StructureFlags), info());
     }
-        
+
+    unsigned parametersStartOffset() const { return m_parametersStartOffset; }
+
     DECLARE_INFO;
         
     void unlinkCalls();
 
     void clearCode();
 
-    bool bodyIncludesBraces() const { return m_bodyIncludesBraces; }
-
 private:
-    FunctionExecutable(VM&, const SourceCode&, UnlinkedFunctionExecutable*, unsigned firstLine, unsigned lastLine, unsigned startColumn, unsigned endColumn, bool bodyIncludesBraces);
+    FunctionExecutable(
+        VM&, const SourceCode&, UnlinkedFunctionExecutable*, unsigned firstLine, 
+        unsigned lastLine, unsigned startColumn, unsigned endColumn);
 
     bool isCompiling()
     {
@@ -661,8 +671,8 @@ private:
     WriteBarrier<UnlinkedFunctionExecutable> m_unlinkedExecutable;
     RefPtr<FunctionCodeBlock> m_codeBlockForCall;
     RefPtr<FunctionCodeBlock> m_codeBlockForConstruct;
-    bool m_bodyIncludesBraces;
     RefPtr<TypeSet> m_returnStatementTypeSet;
+    unsigned m_parametersStartOffset;
 };
 
 inline void ExecutableBase::clearCodeVirtual(ExecutableBase* executable)

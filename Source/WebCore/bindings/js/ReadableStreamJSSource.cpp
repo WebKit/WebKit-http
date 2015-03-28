@@ -55,7 +55,7 @@ JSValue getInternalSlotFromObject(ExecState* exec, JSValue objectValue, PrivateN
     JSObject* object = objectValue.toObject(exec);
     PropertySlot propertySlot(objectValue);
 
-    PropertyName propertyName = Identifier::from(name);
+    Identifier propertyName = Identifier::from(name);
     if (!object->getOwnPropertySlot(object, exec, propertyName, propertySlot))
         return JSValue();
     return propertySlot.getValue(exec, propertyName);
@@ -67,7 +67,6 @@ Ref<ReadableStreamJSSource> ReadableStreamJSSource::create(JSC::ExecState* exec)
 }
 
 ReadableStreamJSSource::ReadableStreamJSSource(JSC::ExecState* exec)
-    : m_error(exec->vm(), jsUndefined())
 {
     if (!exec->argumentCount())
         return;

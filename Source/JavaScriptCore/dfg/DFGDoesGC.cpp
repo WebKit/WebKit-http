@@ -49,6 +49,7 @@ bool doesGC(Graph& graph, Node* node)
     case Int52Constant:
     case Identity:
     case GetCallee:
+    case GetArgumentCount:
     case GetLocal:
     case SetLocal:
     case MovHint:
@@ -85,6 +86,7 @@ bool doesGC(Graph& graph, Node* node)
     case ArithFRound:
     case ArithSin:
     case ArithCos:
+    case ArithLog:
     case ValueAdd:
     case GetById:
     case GetByIdFlush:
@@ -97,13 +99,13 @@ bool doesGC(Graph& graph, Node* node)
     case CheckArray:
     case GetScope:
     case SkipScope:
-    case GetClosureRegisters:
     case GetClosureVar:
     case PutClosureVar:
     case GetGlobalVar:
     case PutGlobalVar:
     case VarInjectionWatchpoint:
     case CheckCell:
+    case CheckNotEmpty:
     case AllocationProfileWatchpoint:
     case RegExpExec:
     case RegExpTest:
@@ -120,6 +122,7 @@ bool doesGC(Graph& graph, Node* node)
     case ConstructVarargs:
     case LoadVarargs:
     case CallForwardVarargs:
+    case ConstructForwardVarargs:
     case NativeCall:
     case NativeConstruct:
     case Breakpoint:
@@ -141,13 +144,6 @@ bool doesGC(Graph& graph, Node* node)
     case ToPrimitive:
     case ToString:
     case In:
-    case PhantomArguments:
-    case TearOffArguments:
-    case GetMyArgumentsLength:
-    case GetMyArgumentByVal:
-    case GetMyArgumentsLengthSafe:
-    case GetMyArgumentByValSafe:
-    case CheckArgumentsNotCreated:
     case Jump:
     case Branch:
     case Switch:
@@ -202,16 +198,23 @@ bool doesGC(Graph& graph, Node* node)
     case CheckBadCell:
     case BottomValue:
     case PhantomNewObject:
-    case PutByOffsetHint:
+    case PhantomDirectArguments:
+    case PhantomClonedArguments:
+    case GetMyArgumentByVal:
+    case ForwardVarargs:
+    case PutHint:
     case CheckStructureImmediate:
-    case PutStructureHint:
     case PutStack:
     case KillStack:
     case GetStack:
+    case GetFromArguments:
+    case PutToArguments:
         return false;
 
     case CreateActivation:
-    case CreateArguments:
+    case CreateDirectArguments:
+    case CreateScopedArguments:
+    case CreateClonedArguments:
     case ToThis:
     case CreateThis:
     case AllocatePropertyStorage:
@@ -225,14 +228,12 @@ bool doesGC(Graph& graph, Node* node)
     case NewRegexp:
     case NewStringObject:
     case MakeRope:
-    case NewFunctionNoCheck:
     case NewFunction:
-    case NewFunctionExpression:
     case NewTypedArray:
     case ThrowReferenceError:
-    case GetStructurePropertyEnumerator:
-    case GetGenericPropertyEnumerator:
-    case GetEnumeratorPname:
+    case GetPropertyEnumerator:
+    case GetEnumeratorStructurePname:
+    case GetEnumeratorGenericPname:
     case ToIndexString:
     case MaterializeNewObject:
         return true;

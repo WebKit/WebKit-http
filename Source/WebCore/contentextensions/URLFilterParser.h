@@ -37,22 +37,34 @@ namespace ContentExtensions {
 
 class NFA;
 
-typedef uint16_t TrivialAtom;
+struct PrefixTreeEntry;
 
-struct PrefixTreeEntry {
-    unsigned nfaNode;
-    HashMap<TrivialAtom, std::unique_ptr<PrefixTreeEntry>> nextPattern;
-};
-
-
-class URLFilterParser {
+class WEBCORE_EXPORT URLFilterParser {
 public:
+    enum ParseStatus {
+        Ok,
+        MatchesEverything,
+        NonASCII,
+        UnsupportedCharacterClass,
+        BackReference,
+        MisplacedStartOfLine,
+        WordBoundary,
+        AtomCharacter,
+        Group,
+        Disjunction,
+        MisplacedEndOfLine,
+        EmptyPattern,
+        YarrError,
+        InvalidQuantifier,
+    };
+    static String statusString(ParseStatus);
     explicit URLFilterParser(NFA&);
-    String addPattern(const String& pattern, bool patternIsCaseSensitive, uint64_t patternId);
+    ~URLFilterParser();
+    ParseStatus addPattern(const String& pattern, bool patternIsCaseSensitive, uint64_t patternId);
 
 private:
     NFA& m_nfa;
-    PrefixTreeEntry m_prefixTreeRoot;
+    std::unique_ptr<PrefixTreeEntry> m_prefixTreeRoot;
 };
 
 } // namespace ContentExtensions

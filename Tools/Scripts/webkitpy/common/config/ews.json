@@ -12,7 +12,10 @@
         ]
     },
     "Win EWS": {
-        "port": "win"
+        "port": "win",
+        "watchers": [
+            "bfulgham@apple.com"
+        ]
     },
     "iOS EWS": {
         "port": "ios",

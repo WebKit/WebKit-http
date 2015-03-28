@@ -23,100 +23,83 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TimelineRecord = function(type, startTime, endTime, callFrames, sourceCodeLocation)
+WebInspector.TimelineRecord = class TimelineRecord extends WebInspector.Object
 {
-    WebInspector.Object.call(this);
+    constructor(type, startTime, endTime, callFrames, sourceCodeLocation)
+    {
+        super();
 
-    console.assert(type);
+        console.assert(type);
 
-    if (type in WebInspector.TimelineRecord.Type)
-        type = WebInspector.TimelineRecord.Type[type];
+        if (type in WebInspector.TimelineRecord.Type)
+            type = WebInspector.TimelineRecord.Type[type];
 
-    this._type = type;
-    this._startTime = startTime || NaN;
-    this._endTime = endTime || NaN;
-    this._callFrames = callFrames || null;
-    this._sourceCodeLocation = sourceCodeLocation || null;
-};
-
-WebInspector.TimelineRecord.Event = {
-    Updated: "timeline-record-updated"
-};
-
-WebInspector.TimelineRecord.Type = {
-    Network: "timeline-record-type-network",
-    Layout: "timeline-record-type-layout",
-    Script: "timeline-record-type-script"
-};
-
-WebInspector.TimelineRecord.TypeIdentifier = "timeline-record";
-WebInspector.TimelineRecord.SourceCodeURLCookieKey = "timeline-record-source-code-url";
-WebInspector.TimelineRecord.SourceCodeLocationLineCookieKey = "timeline-record-source-code-location-line";
-WebInspector.TimelineRecord.SourceCodeLocationColumnCookieKey = "timeline-record-source-code-location-column";
-WebInspector.TimelineRecord.TypeCookieKey = "timeline-record-type";
-
-WebInspector.TimelineRecord.prototype = {
-    constructor: WebInspector.TimelineRecord,
+        this._type = type;
+        this._startTime = startTime || NaN;
+        this._endTime = endTime || NaN;
+        this._callFrames = callFrames || null;
+        this._sourceCodeLocation = sourceCodeLocation || null;
+    }
 
     // Public
 
     get type()
     {
         return this._type;
-    },
+    }
 
     get startTime()
     {
         // Implemented by subclasses if needed.
         return this._startTime;
-    },
+    }
 
     get activeStartTime()
     {
         // Implemented by subclasses if needed.
         return this._startTime;
-    },
+    }
 
     get endTime()
     {
         // Implemented by subclasses if needed.
         return this._endTime;
-    },
+    }
 
     get duration()
     {
         // Use the getters instead of the properties so this works for subclasses that override the getters.
         return this.endTime - this.startTime;
-    },
+    }
 
     get inactiveDuration()
     {
         // Use the getters instead of the properties so this works for subclasses that override the getters.
         return this.activeStartTime - this.startTime;
-    },
+    }
 
     get activeDuration()
     {
         // Use the getters instead of the properties so this works for subclasses that override the getters.
         return this.endTime - this.activeStartTime;
-    },
+    }
 
     get updatesDynamically()
     {
         // Implemented by subclasses if needed.
         return false;
-    },
+    }
 
     get usesActiveStartTime()
     {
         // Implemented by subclasses if needed.
         return false;
-    },
+    }
 
     get callFrames()
     {
         return this._callFrames;
-    },
+    }
 
     get initiatorCallFrame()
     {
@@ -131,14 +114,14 @@ WebInspector.TimelineRecord.prototype = {
         }
 
         return null;
-    },
+    }
 
     get sourceCodeLocation()
     {
         return this._sourceCodeLocation;
-    },
+    }
 
-    saveIdentityToCookie: function(cookie)
+    saveIdentityToCookie(cookie)
     {
         cookie[WebInspector.TimelineRecord.SourceCodeURLCookieKey] = this._sourceCodeLocation ? this._sourceCodeLocation.sourceCode.url ? this._sourceCodeLocation.sourceCode.url.hash : null : null;
         cookie[WebInspector.TimelineRecord.SourceCodeLocationLineCookieKey] = this._sourceCodeLocation ? this._sourceCodeLocation.lineNumber : null;
@@ -147,4 +130,19 @@ WebInspector.TimelineRecord.prototype = {
     }
 };
 
-WebInspector.TimelineRecord.prototype.__proto__ = WebInspector.Object.prototype;
+WebInspector.TimelineRecord.Event = {
+    Updated: "timeline-record-updated"
+};
+
+WebInspector.TimelineRecord.Type = {
+    Network: "timeline-record-type-network",
+    Layout: "timeline-record-type-layout",
+    Script: "timeline-record-type-script",
+    RunLoop: "timeline-record-type-runloop"
+};
+
+WebInspector.TimelineRecord.TypeIdentifier = "timeline-record";
+WebInspector.TimelineRecord.SourceCodeURLCookieKey = "timeline-record-source-code-url";
+WebInspector.TimelineRecord.SourceCodeLocationLineCookieKey = "timeline-record-source-code-location-line";
+WebInspector.TimelineRecord.SourceCodeLocationColumnCookieKey = "timeline-record-source-code-location-column";
+WebInspector.TimelineRecord.TypeCookieKey = "timeline-record-type";

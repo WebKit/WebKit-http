@@ -83,6 +83,7 @@ private:
     virtual void didCommitLoadForMainFrame(const String& mimeType, bool useCustomContentProvider) override;
     virtual void didFinishLoadingDataForCustomContentProvider(const String& suggestedFilename, const IPC::DataReference&) override;
     virtual void handleDownloadRequest(DownloadProxy*) override;
+    virtual void didChangeContentSize(const WebCore::IntSize&) override;
     virtual void setCursor(const WebCore::Cursor&) override;
     virtual void setCursorHiddenUntilMouseMoves(bool) override;
     virtual void didChangeViewportProperties(const WebCore::ViewportAttributes&) override;
@@ -93,8 +94,11 @@ private:
     virtual void executeUndoRedo(WebPageProxy::UndoOrRedo) override;
     virtual bool executeSavedCommandBySelector(const String& selector) override;
     virtual void setDragImage(const WebCore::IntPoint& clientPosition, PassRefPtr<ShareableBitmap> dragImage, bool isLinkDrag) override;
-    virtual void setPromisedData(const String& pasteboardName, PassRefPtr<WebCore::SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title,
+    virtual void setPromisedDataForImage(const String& pasteboardName, PassRefPtr<WebCore::SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title,
         const String& url, const String& visibleUrl, PassRefPtr<WebCore::SharedBuffer> archiveBuffer) override;
+#if ENABLE(ATTACHMENT_ELEMENT)
+    virtual void setPromisedDataForAttachment(const String& pasteboardName, const String& filename, const String& extension, const String& title, const String& url, const String& visibleUrl) override;
+#endif
     virtual void updateSecureInputState() override;
     virtual void resetSecureInputState() override;
     virtual void notifyInputContextAboutDiscardedComposition() override;
@@ -202,6 +206,10 @@ private:
 #endif
 #if USE(DICTATION_ALTERNATIVES)
     std::unique_ptr<WebCore::AlternativeTextUIController> m_alternativeTextUIController;
+#endif
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    virtual std::unique_ptr<WebCore::MediaPlaybackTargetPicker> createPlaybackTargetPicker(WebPageProxy*) override;
 #endif
 };
 

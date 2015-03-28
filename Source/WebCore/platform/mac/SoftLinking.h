@@ -293,7 +293,7 @@
 
 // See Source/WebCore/platform/cf/CoreMediaSoftLink.{cpp,h} for an example implementation.
 
-#define SOFT_LINK_FRAMEWORK_HEADER(functionNamespace, framework) \
+#define SOFT_LINK_FRAMEWORK_FOR_HEADER(functionNamespace, framework) \
     namespace functionNamespace { \
     extern void* framework##Library(bool isOptional = false); \
     bool is##framework##FrameworkAvailable(); \
@@ -302,7 +302,7 @@
     } \
     }
 
-#define SOFT_LINK_FRAMEWORK_SOURCE(functionNamespace, framework) \
+#define SOFT_LINK_FRAMEWORK_FOR_SOURCE(functionNamespace, framework) \
     namespace functionNamespace { \
     void* framework##Library(bool isOptional = false); \
     void* framework##Library(bool isOptional) \
@@ -317,34 +317,34 @@
     } \
     }
 
-#define SOFT_LINK_CONSTANT_HEADER(functionNamespace, framework, variableName, variableType) \
+#define SOFT_LINK_CONSTANT_FOR_HEADER(functionNamespace, framework, variableName, variableType) \
     WTF_EXTERN_C_BEGIN \
     extern const variableType variableName; \
     WTF_EXTERN_C_END \
     namespace functionNamespace { \
-    const variableType get_##framework##_##variableName(); \
+    variableType get_##framework##_##variableName(); \
     }
 
-#define SOFT_LINK_CONSTANT_SOURCE(functionNamespace, framework, variableName, variableType) \
+#define SOFT_LINK_CONSTANT_FOR_SOURCE(functionNamespace, framework, variableName, variableType) \
     WTF_EXTERN_C_BEGIN \
     extern const variableType variableName; \
     WTF_EXTERN_C_END \
     namespace functionNamespace { \
-    const variableType get_##framework##_##variableName(); \
-    const variableType get_##framework##_##variableName() \
+    variableType get_##framework##_##variableName(); \
+    variableType get_##framework##_##variableName() \
     { \
         static variableType constant##framework##variableName; \
         static dispatch_once_t once; \
         dispatch_once(&once, ^{ \
             void* constant = dlsym(framework##Library(), #variableName); \
-            ASSERT_WITH_MESSAGE(constant, "%s", dlerror()); \
+            RELEASE_ASSERT_WITH_MESSAGE(constant, "%s", dlerror()); \
             constant##framework##variableName = *static_cast<variableType*>(constant); \
         }); \
         return constant##framework##variableName; \
     } \
     }
 
-#define SOFT_LINK_FUNCTION_HEADER(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
+#define SOFT_LINK_FUNCTION_FOR_HEADER(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
     WTF_EXTERN_C_BEGIN \
     resultType functionName parameterDeclarations; \
     WTF_EXTERN_C_END \
@@ -356,7 +356,7 @@
     } \
     }
 
-#define SOFT_LINK_FUNCTION_SOURCE(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
+#define SOFT_LINK_FUNCTION_FOR_SOURCE(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \
     WTF_EXTERN_C_BEGIN \
     resultType functionName parameterDeclarations; \
     WTF_EXTERN_C_END \
@@ -368,7 +368,7 @@
         static dispatch_once_t once; \
         dispatch_once(&once, ^{ \
             softLink##framework##functionName = (resultType (*) parameterDeclarations) dlsym(framework##Library(), #functionName); \
-            ASSERT_WITH_MESSAGE(softLink##framework##functionName, "%s", dlerror()); \
+            RELEASE_ASSERT_WITH_MESSAGE(softLink##framework##functionName, "%s", dlerror()); \
         }); \
         return softLink##framework##functionName parameterNames; \
     } \

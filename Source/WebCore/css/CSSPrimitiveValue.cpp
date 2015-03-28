@@ -217,11 +217,7 @@ unsigned short CSSPrimitiveValue::primitiveType() const
 
 static const AtomicString& propertyName(CSSPropertyID propertyID)
 {
-    ASSERT_ARG(propertyID, propertyID >= 0);
     ASSERT_ARG(propertyID, (propertyID >= firstCSSProperty && propertyID < firstCSSProperty + numCSSProperties));
-
-    if (propertyID < 0)
-        return nullAtom;
 
     return getPropertyNameAtomicString(propertyID);
 }

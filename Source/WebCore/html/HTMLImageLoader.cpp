@@ -73,22 +73,21 @@ String HTMLImageLoader::sourceURI(const AtomicString& attr) const
     return stripLeadingAndTrailingHTMLSpaces(attr);
 }
 
-void HTMLImageLoader::imageChanged(CachedImage* cachedImage, const IntRect*)
+void HTMLImageLoader::notifyFinished(CachedResource*)
 {
-    ASSERT(cachedImage == image());
-
-    if (!cachedImage->isLoaded())
-        return;
+    CachedImage* cachedImage = image();
 
     Ref<Element> protect(element());
-    ImageLoader::imageChanged(cachedImage);
+    ImageLoader::notifyFinished(cachedImage);
 
     bool loadError = cachedImage->errorOccurred() || cachedImage->response().httpStatusCode() >= 400;
     if (!loadError) {
         if (!element().inDocument()) {
             JSC::VM& vm = JSDOMWindowBase::commonVM();
             JSC::JSLockHolder lock(vm);
-            vm.heap.reportExtraMemoryCost(cachedImage->encodedSize());
+            // FIXME: Adopt reportExtraMemoryVisited, and switch to reportExtraMemoryAllocated.
+            // https://bugs.webkit.org/show_bug.cgi?id=142595
+            vm.heap.deprecatedReportExtraMemory(cachedImage->encodedSize());
         }
     }
 

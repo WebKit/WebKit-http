@@ -68,6 +68,7 @@
 #import "WKViewPrivate.h"
 #import "WebBackForwardList.h"
 #import "WebEventFactory.h"
+#import "WebInspectorProxy.h"
 #import "WebKit2Initialize.h"
 #import "WebPage.h"
 #import "WebPageGroup.h"
@@ -91,6 +92,7 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LookupSPI.h>
 #import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
+#import <WebCore/NSMenuSPI.h>
 #import <WebCore/NSViewSPI.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/PlatformScreen.h>
@@ -169,6 +171,8 @@ struct WKViewInterpretKeyEventsParameters {
 };
 #endif
 
+@class WKWindowVisibilityObserver;
+
 @interface WKViewData : NSObject {
 @public
     std::unique_ptr<PageClientImpl> _pageClient;
@@ -176,6 +180,7 @@ struct WKViewInterpretKeyEventsParameters {
 
 #if WK_API_ENABLED
     RetainPtr<WKBrowsingContextController> _browsingContextController;
+    RetainPtr<NSView> _inspectorAttachmentView;
 #endif
 
     RetainPtr<NSTrackingArea> _primaryTrackingArea;
@@ -188,7 +193,7 @@ struct WKViewInterpretKeyEventsParameters {
     RetainPtr<NSView> _layerHostingView;
 
     RetainPtr<id> _remoteAccessibilityChild;
-    
+
     // For asynchronous validation.
     ValidationMap _validationMap;
 
@@ -251,6 +256,8 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _useContentPreparationRectForVisibleRect;
     BOOL _windowOcclusionDetectionEnabled;
 
+    RetainPtr<WKWindowVisibilityObserver> _windowVisibilityObserver;
+
     std::unique_ptr<ViewGestureController> _gestureController;
     BOOL _allowsMagnification;
     BOOL _ignoresNonWheelEvents;
@@ -280,6 +287,54 @@ struct WKViewInterpretKeyEventsParameters {
 @end
 
 @implementation WKViewData
+@end
+
+@interface WKWindowVisibilityObserver : NSObject {
+    WKView *_view;
+}
+
+- (instancetype)initWithView:(WKView *)view;
+- (void)startObserving:(NSWindow *)window;
+- (void)stopObserving:(NSWindow *)window;
+@end
+
+@implementation WKWindowVisibilityObserver
+
+- (instancetype)initWithView:(WKView *)view
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _view = view;
+    return self;
+}
+
+- (void)startObserving:(NSWindow *)window
+{
+    // An NSView derived object such as WKView cannot observe these notifications, because NSView itself observes them.
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOffScreen:)
+                                                 name:@"NSWindowDidOrderOffScreenNotification" object:window];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOnScreen:) 
+                                                 name:@"_NSWindowDidBecomeVisible" object:window];
+}
+
+- (void)stopObserving:(NSWindow *)window
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowDidOrderOffScreenNotification" object:window];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidBecomeVisible" object:window];
+}
+
+- (void)_windowDidOrderOnScreen:(NSNotification *)notification
+{
+    [_view _windowDidOrderOnScreen:notification];
+}
+
+- (void)_windowDidOrderOffScreen:(NSNotification *)notification
+{
+    [_view _windowDidOrderOffScreen:notification];
+}
+
 @end
 
 @interface WKResponderChainSink : NSResponder {
@@ -392,6 +447,8 @@ struct WKViewInterpretKeyEventsParameters {
     
     [self _updateSecureInputState];
     _data->_page->viewStateDidChange(ViewState::IsFocused);
+    // Restore the selection in the editable region if resigning first responder cleared selection.
+    _data->_page->restoreSelectionInFocusedEditableElement();
 
     _data->_inBecomeFirstResponder = false;
     
@@ -400,7 +457,7 @@ struct WKViewInterpretKeyEventsParameters {
         NSEvent *keyboardEvent = nil;
         if ([event type] == NSKeyDown || [event type] == NSKeyUp)
             keyboardEvent = event;
-        _data->_page->setInitialFocus(direction == NSSelectingNext, keyboardEvent != nil, NativeWebKeyboardEvent(keyboardEvent, false, Vector<KeypressCommand>()));
+        _data->_page->setInitialFocus(direction == NSSelectingNext, keyboardEvent != nil, NativeWebKeyboardEvent(keyboardEvent, false, Vector<KeypressCommand>()), [](CallbackBase::Error) { });
     }
     return YES;
 }
@@ -1176,11 +1233,50 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
             }]; \
             return; \
         } \
+        if ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)] && [NSMenu menuTypeForEvent:theEvent] == NSMenuTypeActionMenu) { \
+            [super Selector:theEvent]; \
+            return; \
+        } \
+        NativeWebMouseEvent webEvent(theEvent, self); \
+        _data->_page->handleMouseEvent(webEvent); \
+    }
+#define NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(Selector) \
+    - (void)Selector:(NSEvent *)theEvent \
+    { \
+        if (_data->_ignoresNonWheelEvents) \
+            return; \
+        if (NSTextInputContext *context = [self inputContext]) { \
+            [context handleEvent:theEvent completionHandler:^(BOOL handled) { \
+                if (handled) \
+                    LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
+                else { \
+                    NativeWebMouseEvent webEvent(theEvent, self); \
+                    _data->_page->handleMouseEvent(webEvent); \
+                } \
+            }]; \
+            return; \
+        } \
         NativeWebMouseEvent webEvent(theEvent, self); \
         _data->_page->handleMouseEvent(webEvent); \
     }
 #else
 #define NATIVE_MOUSE_EVENT_HANDLER(Selector) \
+    - (void)Selector:(NSEvent *)theEvent \
+    { \
+        if (_data->_ignoresNonWheelEvents) \
+            return; \
+        if ([[self inputContext] handleEvent:theEvent]) { \
+            LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
+            return; \
+        } \
+        if ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)] && [NSMenu menuTypeForEvent:theEvent] == NSMenuTypeActionMenu) { \
+            [super Selector:theEvent]; \
+            return; \
+        } \
+        NativeWebMouseEvent webEvent(theEvent, self); \
+        _data->_page->handleMouseEvent(webEvent); \
+    }
+#define NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(Selector) \
     - (void)Selector:(NSEvent *)theEvent \
     { \
         if (_data->_ignoresNonWheelEvents) \
@@ -1196,17 +1292,17 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 
 NATIVE_MOUSE_EVENT_HANDLER(mouseEntered)
 NATIVE_MOUSE_EVENT_HANDLER(mouseExited)
-NATIVE_MOUSE_EVENT_HANDLER(mouseMovedInternal)
-NATIVE_MOUSE_EVENT_HANDLER(mouseDownInternal)
-NATIVE_MOUSE_EVENT_HANDLER(mouseUpInternal)
-NATIVE_MOUSE_EVENT_HANDLER(mouseDraggedInternal)
 NATIVE_MOUSE_EVENT_HANDLER(otherMouseDown)
 NATIVE_MOUSE_EVENT_HANDLER(otherMouseDragged)
-NATIVE_MOUSE_EVENT_HANDLER(otherMouseMoved)
 NATIVE_MOUSE_EVENT_HANDLER(otherMouseUp)
 NATIVE_MOUSE_EVENT_HANDLER(rightMouseDown)
 NATIVE_MOUSE_EVENT_HANDLER(rightMouseDragged)
 NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
+
+NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseMovedInternal)
+NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDownInternal)
+NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseUpInternal)
+NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDraggedInternal)
 
 #undef NATIVE_MOUSE_EVENT_HANDLER
 
@@ -1271,10 +1367,8 @@ NATIVE_MOUSE_EVENT_HANDLER(rightMouseUp)
     [self _setMouseDownEvent:event];
     _data->_ignoringMouseDraggedEvents = NO;
 
-    [self _dismissContentRelativeChildWindows];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     [_data->_actionMenuController wkView:self willHandleMouseDown:event];
-    [_data->_immediateActionController wkView:self willHandleMouseDown:event];
 #endif
     [self mouseDownInternal:event];
 }
@@ -2507,10 +2601,6 @@ static void* keyValueObservingContext = &keyValueObservingContext;
                                                      name:NSWindowDidMoveNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidResize:) 
                                                      name:NSWindowDidResizeNotification object:window];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOffScreen:) 
-                                                     name:@"NSWindowDidOrderOffScreenNotification" object:window];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOnScreen:) 
-                                                     name:@"_NSWindowDidBecomeVisible" object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeBackingProperties:)
                                                      name:NSWindowDidChangeBackingPropertiesNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeScreen:)
@@ -2519,15 +2609,19 @@ static void* keyValueObservingContext = &keyValueObservingContext;
                                                      name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeOcclusionState:)
                                                      name:NSWindowDidChangeOcclusionStateNotification object:window];
-        [[NSFontPanel sharedFontPanel] addObserver:self
-                                        forKeyPath:@"visible"
-                                           options:NSKeyValueObservingOptionNew
-                                           context:nil];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         [window addObserver:self forKeyPath:@"contentLayoutRect" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
         [window addObserver:self forKeyPath:@"titlebarAppearsTransparent" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
 #endif
+        [_data->_windowVisibilityObserver startObserving:window];
     }
+}
+
+- (void)_addFontPanelObserver
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [[NSFontPanel sharedFontPanel] addObserver:self forKeyPath:@"visible" options:0 context:keyValueObservingContext];
+#endif
 }
 
 - (void)removeWindowObservers
@@ -2542,18 +2636,17 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidDeminiaturizeNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidMoveNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidResizeNotification object:window];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowWillOrderOffScreenNotification" object:window];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowDidOrderOffScreenNotification" object:window];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidBecomeVisible" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeBackingPropertiesNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeScreenNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeOcclusionStateNotification object:window];
-    [[NSFontPanel sharedFontPanel] removeObserver:self forKeyPath:@"visible" context:nil];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    if (_data->_page->isEditable())
+        [[NSFontPanel sharedFontPanel] removeObserver:self forKeyPath:@"visible" context:keyValueObservingContext];
     [window removeObserver:self forKeyPath:@"contentLayoutRect" context:keyValueObservingContext];
     [window removeObserver:self forKeyPath:@"titlebarAppearsTransparent" context:keyValueObservingContext];
 #endif
+    [_data->_windowVisibilityObserver stopObserving:window];
 }
 
 - (void)viewWillMoveToWindow:(NSWindow *)window
@@ -3340,7 +3433,21 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
                                                                      && hasCaseInsensitiveSuffix(filename, @".jpg"));
 }
 
-- (void)_setPromisedData:(WebCore::Image *)image withFileName:(NSString *)filename withExtension:(NSString *)extension withTitle:(NSString *)title withURL:(NSString *)url withVisibleURL:(NSString *)visibleUrl withArchive:(WebCore::SharedBuffer*) archiveBuffer forPasteboard:(NSString *)pasteboardName
+- (void)_setFileAndURLTypes:(NSString *)filename withExtension:(NSString *)extension withTitle:(NSString *)title withURL:(NSString *)url withVisibleURL:(NSString *)visibleUrl forPasteboard:(NSPasteboard *)pasteboard
+{
+    if (!matchesExtensionOrEquivalent(filename, extension))
+        filename = [[filename stringByAppendingString:@"."] stringByAppendingString:extension];
+    
+    [pasteboard setString:visibleUrl forType:NSStringPboardType];
+    [pasteboard setString:visibleUrl forType:PasteboardTypes::WebURLPboardType];
+    [pasteboard setString:title forType:PasteboardTypes::WebURLNamePboardType];
+    [pasteboard setPropertyList:[NSArray arrayWithObjects:[NSArray arrayWithObject:visibleUrl], [NSArray arrayWithObject:title], nil] forType:PasteboardTypes::WebURLsWithTitlesPboardType];
+    [pasteboard setPropertyList:[NSArray arrayWithObject:extension] forType:NSFilesPromisePboardType];
+    _data->_promisedFilename = filename;
+    _data->_promisedURL = url;
+}
+
+- (void)_setPromisedDataForImage:(WebCore::Image *)image withFileName:(NSString *)filename withExtension:(NSString *)extension withTitle:(NSString *)title withURL:(NSString *)url withVisibleURL:(NSString *)visibleUrl withArchive:(WebCore::SharedBuffer*) archiveBuffer forPasteboard:(NSString *)pasteboardName
 
 {
     NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:pasteboardName];
@@ -3348,22 +3455,31 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
     
     [types addObjectsFromArray:archiveBuffer ? PasteboardTypes::forImagesWithArchive() : PasteboardTypes::forImages()];
     [pasteboard declareTypes:types.get() owner:self];
-    if (!matchesExtensionOrEquivalent(filename, extension))
-        filename = [[filename stringByAppendingString:@"."] stringByAppendingString:extension];
-
-    [pasteboard setString:visibleUrl forType:NSStringPboardType];
-    [pasteboard setString:visibleUrl forType:PasteboardTypes::WebURLPboardType];
-    [pasteboard setString:title forType:PasteboardTypes::WebURLNamePboardType];
-    [pasteboard setPropertyList:[NSArray arrayWithObjects:[NSArray arrayWithObject:visibleUrl], [NSArray arrayWithObject:title], nil] forType:PasteboardTypes::WebURLsWithTitlesPboardType];
-    [pasteboard setPropertyList:[NSArray arrayWithObject:extension] forType:NSFilesPromisePboardType];
+    [self _setFileAndURLTypes:filename withExtension:extension withTitle:title withURL:url withVisibleURL:visibleUrl forPasteboard:pasteboard];
 
     if (archiveBuffer)
         [pasteboard setData:archiveBuffer->createNSData().get() forType:PasteboardTypes::WebArchivePboardType];
 
     _data->_promisedImage = image;
-    _data->_promisedFilename = filename;
-    _data->_promisedURL = url;
 }
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+- (void)_setPromisedDataForAttachment:(NSString *)filename withExtension:(NSString *)extension withTitle:(NSString *)title withURL:(NSString *)url withVisibleURL:(NSString *)visibleUrl forPasteboard:(NSString *)pasteboardName
+
+{
+    NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:pasteboardName];
+    RetainPtr<NSMutableArray> types = adoptNS([[NSMutableArray alloc] initWithObjects:NSFilesPromisePboardType, nil]);
+    [types addObjectsFromArray:PasteboardTypes::forURL()];
+    [pasteboard declareTypes:types.get() owner:self];
+    [self _setFileAndURLTypes:filename withExtension:extension withTitle:title withURL:url withVisibleURL:visibleUrl forPasteboard:pasteboard];
+
+    RetainPtr<NSMutableArray> paths = adoptNS([[NSMutableArray alloc] init]);
+    [paths addObject:title];
+    [pasteboard setPropertyList:paths.get() forType:NSFilenamesPboardType];
+
+    _data->_promisedImage = nullptr;
+}
+#endif
 
 - (void)pasteboardChangedOwner:(NSPasteboard *)pasteboard
 {
@@ -3428,10 +3544,12 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     if (_data->_promisedImage) {
         data = _data->_promisedImage->data()->createNSData();
         wrapper = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:data.get()]);
-        [wrapper setPreferredFilename:_data->_promisedFilename];
-    }
+    } else
+        wrapper = adoptNS([[NSFileWrapper alloc] initWithURL:[NSURL URLWithString:_data->_promisedURL] options:NSFileWrapperReadingImmediate error:nil]);
     
-    if (!wrapper) {
+    if (wrapper)
+        [wrapper setPreferredFilename:_data->_promisedFilename];
+    else {
         LOG_ERROR("Failed to create image file.");
         return nil;
     }
@@ -3609,7 +3727,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     InitializeWebKit2();
 
     // Legacy style scrollbars have design details that rely on tracking the mouse all the time.
-    NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect;
+    NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect | NSTrackingCursorUpdate;
     if (WKRecommendedScrollerStyle() == NSScrollerStyleLegacy)
         options |= NSTrackingActiveAlways;
     else
@@ -3632,10 +3750,12 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_useContentPreparationRectForVisibleRect = NO;
     _data->_windowOcclusionDetectionEnabled = YES;
 
+    _data->_windowVisibilityObserver = adoptNS([[WKWindowVisibilityObserver alloc] initWithView:self]);
+
     _data->_intrinsicContentSize = NSMakeSize(NSViewNoInstrinsicMetric, NSViewNoInstrinsicMetric);
 
     _data->_needsViewFrameInWindowCoordinates = _data->_page->preferences().pluginsEnabled();
-    
+
     [self _registerDraggedTypes];
 
     self.wantsLayer = YES;
@@ -3660,12 +3780,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         self._actionMenu.autoenablesItems = NO;
     }
 
-    // FIXME: We should not permanently disable this for iBooks. rdar://problem/19585689
-    Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer");
-    if (gestureClass && !applicationIsIBooks()) {
+    if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
         _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
         _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:_data->_immediateActionGestureRecognizer.get()]);
         [_data->_immediateActionGestureRecognizer setDelegate:_data->_immediateActionController.get()];
+        [_data->_immediateActionGestureRecognizer setDelaysPrimaryMouseButtonEvents:NO];
     }
 #endif
 
@@ -3733,18 +3852,18 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    if ([NSFontPanel sharedFontPanelExists] && object == [NSFontPanel sharedFontPanel]) {
-        [self updateFontPanelIfNeeded];
-        return;
-    }
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    if (context == keyValueObservingContext) {
-        if ([keyPath isEqualToString:@"contentLayoutRect"] || [keyPath isEqualToString:@"titlebarAppearsTransparent"])
-            [self _updateContentInsetsIfAutomatic];
+    if (context != keyValueObservingContext) {
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
         return;
     }
 
-    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    if ([keyPath isEqualToString:@"visible"] && [NSFontPanel sharedFontPanelExists] && object == [NSFontPanel sharedFontPanel]) {
+        [self updateFontPanelIfNeeded];
+        return;
+    }
+    if ([keyPath isEqualToString:@"contentLayoutRect"] || [keyPath isEqualToString:@"titlebarAppearsTransparent"])
+        [self _updateContentInsetsIfAutomatic];
 #endif
 }
 
@@ -4019,6 +4138,24 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 {
     _data->_page->setUnderlayColor(colorFromNSColor(underlayColor));
 }
+
+#if WK_API_ENABLED
+- (NSView *)_inspectorAttachmentView
+{
+    NSView *attachmentView = _data->_inspectorAttachmentView.get();
+    return attachmentView ? attachmentView : self;
+}
+
+- (void)_setInspectorAttachmentView:(NSView *)newView
+{
+    NSView *oldView = _data->_inspectorAttachmentView.get();
+    if (oldView == newView)
+        return;
+
+    _data->_inspectorAttachmentView = newView;
+    _data->_page->inspector()->attachmentViewDidChange(oldView ? oldView : self, newView ? newView : self);
+}
+#endif
 
 - (NSView *)fullScreenPlaceholderView
 {
@@ -4405,10 +4542,19 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 {
 }
 
+- (void)_didChangeContentSize:(NSSize)newSize
+{
+
+}
+
 - (void)_dismissContentRelativeChildWindows
 {
     // FIXME: We don't know which panel we are dismissing, it may not even be in the current page (see <rdar://problem/13875766>).
-    if ([[self window] isKeyWindow]) {
+    if ([[self window] isKeyWindow]
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    || [_data->_immediateActionController hasActiveImmediateAction]
+#endif
+    ) {
         if (Class lookupDefinitionModuleClass = getLULookupDefinitionModuleClass())
             [lookupDefinitionModuleClass hideDefinition];
 

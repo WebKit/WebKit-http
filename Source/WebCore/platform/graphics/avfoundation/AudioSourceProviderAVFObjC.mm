@@ -32,10 +32,8 @@
 #import "AudioChannel.h"
 #import "AudioSourceProviderClient.h"
 #import "CARingBuffer.h"
-#import "CoreMediaSoftLink.h"
 #import "Logging.h"
 #import "MediaTimeAVFoundation.h"
-#import "SoftLinking.h"
 #import <AVFoundation/AVAssetTrack.h>
 #import <AVFoundation/AVAudioMix.h>
 #import <AVFoundation/AVMediaFormat.h>
@@ -45,22 +43,18 @@
 #import <wtf/MainThread.h>
 
 #if !LOG_DISABLED
-#include <wtf/StringPrintStream.h>
+#import <wtf/StringPrintStream.h>
 #endif
+
+#import "CoreMediaSoftLink.h"
 
 SOFT_LINK_FRAMEWORK(AVFoundation)
 SOFT_LINK_FRAMEWORK(MediaToolbox)
 SOFT_LINK_FRAMEWORK(AudioToolbox)
-SOFT_LINK_FRAMEWORK(CoreMedia)
 
 SOFT_LINK_CLASS(AVFoundation, AVPlayerItem)
 SOFT_LINK_CLASS(AVFoundation, AVMutableAudioMix)
 SOFT_LINK_CLASS(AVFoundation, AVMutableAudioMixInputParameters)
-
-SOFT_LINK_CONSTANT(CoreMedia, kCMTimebaseNotification_EffectiveRateChanged, CFStringRef)
-SOFT_LINK_CONSTANT(CoreMedia, kCMTimebaseNotification_TimeJumped, CFStringRef)
-#define kCMTimebaseNotification_EffectiveRateChanged getkCMTimebaseNotification_EffectiveRateChanged()
-#define kCMTimebaseNotification_TimeJumped getkCMTimebaseNotification_TimeJumped()
 
 SOFT_LINK(AudioToolbox, AudioConverterConvertComplexBuffer, OSStatus, (AudioConverterRef inAudioConverter, UInt32 inNumberPCMFrames, const AudioBufferList* inInputData, AudioBufferList* outOutputData), (inAudioConverter, inNumberPCMFrames, inInputData, outOutputData))
 SOFT_LINK(AudioToolbox, AudioConverterNew, OSStatus, (const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat, AudioConverterRef* outAudioConverter), (inSourceFormat, inDestinationFormat, outAudioConverter))
@@ -303,7 +297,7 @@ void AudioSourceProviderAVFObjC::prepare(CMItemCount maxFrames, const AudioStrea
     // Make the ringbuffer large enough to store at least two callbacks worth of audio, or 1s, whichever is larger.
     size_t capacity = std::max(static_cast<size_t>(2 * maxFrames), static_cast<size_t>(kRingBufferDuration * sampleRate));
 
-    m_ringBuffer = CARingBuffer::create();
+    m_ringBuffer = std::make_unique<CARingBuffer>();
     m_ringBuffer->allocate(numberOfChannels, bytesPerFrame, capacity);
 
     // AudioBufferList is a variable-length struct, so create on the heap with a generic new() operator

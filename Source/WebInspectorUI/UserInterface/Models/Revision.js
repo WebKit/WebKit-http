@@ -23,33 +23,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Revision = function()
+WebInspector.Revision = class Revision extends WebInspector.Object
 {
-    WebInspector.Object.call(this);
-};
-
-WebInspector.Revision.prototype = {
-    constructor: WebInspector.Revision,
-
     // Public
 
-    apply: function()
+    apply()
     {
         // Implemented by subclasses.
         console.error("Needs to be implemented by a subclass.");
-    },
+    }
 
-    revert: function()
+    revert()
     {
         // Implemented by subclasses.
         console.error("Needs to be implemented by a subclass.");
-    },
+    }
 
-    copy: function()
+    copy()
     {
         // Override by subclasses.
         return this;
     }
 };
-
-WebInspector.Revision.prototype.__proto__ = WebInspector.Object.prototype;

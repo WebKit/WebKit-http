@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@ class MediaSession;
 class RemoteCommandListener;
 
 class MediaSessionManager : private RemoteCommandListenerClient, private SystemSleepListener::Client, private AudioHardwareListener::Client {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     WEBCORE_EXPORT static MediaSessionManager& sharedManager();
     virtual ~MediaSessionManager() { }
@@ -54,7 +55,6 @@ public:
 
     WEBCORE_EXPORT void applicationWillEnterForeground() const;
     WEBCORE_EXPORT void applicationWillEnterBackground() const;
-    void wirelessRoutesAvailableChanged();
 
     enum SessionRestrictionFlags {
         NoRestrictions = 0,
@@ -79,9 +79,8 @@ public:
 
     virtual bool sessionCanLoadMedia(const MediaSession&) const;
 
+#if PLATFORM(IOS)
     virtual void configureWireLessTargetMonitoring() { }
-
-#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual bool hasWirelessTargetsAvailable() { return false; }
 #endif
 

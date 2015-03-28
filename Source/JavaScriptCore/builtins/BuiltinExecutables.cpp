@@ -31,6 +31,7 @@
 #include "Executable.h"
 #include "JSCInlines.h"
 #include "Parser.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace JSC {
 
@@ -42,11 +43,36 @@ BuiltinExecutables::BuiltinExecutables(VM& vm)
 {
 }
 
-UnlinkedFunctionExecutable* BuiltinExecutables::createBuiltinExecutable(const SourceCode& source, const Identifier& name)
+UnlinkedFunctionExecutable* BuiltinExecutables::createDefaultConstructor(ConstructorKind constructorKind, const Identifier& name)
+{
+    static NeverDestroyed<const String> baseConstructorCode(ASCIILiteral("(function () { })"));
+    static NeverDestroyed<const String> derivedConstructorCode(ASCIILiteral("(function () { super(...arguments); })"));
+
+    switch (constructorKind) {
+    case ConstructorKind::None:
+        break;
+    case ConstructorKind::Base:
+        return createExecutableInternal(makeSource(baseConstructorCode), name, constructorKind);
+    case ConstructorKind::Derived:
+        return createExecutableInternal(makeSource(derivedConstructorCode), name, constructorKind);
+    }
+    ASSERT_NOT_REACHED();
+    return nullptr;
+}
+
+UnlinkedFunctionExecutable* BuiltinExecutables::createExecutableInternal(const SourceCode& source, const Identifier& name, ConstructorKind constructorKind)
 {
     JSTextPosition positionBeforeLastNewline;
     ParserError error;
-    std::unique_ptr<ProgramNode> program = parse<ProgramNode>(&m_vm, source, 0, Identifier(), JSParseBuiltin, JSParseProgramCode, error, &positionBeforeLastNewline);
+    bool isParsingDefaultConstructor = constructorKind != ConstructorKind::None;
+    JSParserBuiltinMode builtinMode = isParsingDefaultConstructor ? JSParserBuiltinMode::NotBuiltin : JSParserBuiltinMode::Builtin;
+    UnlinkedFunctionKind kind = isParsingDefaultConstructor ? UnlinkedNormalFunction : UnlinkedBuiltinFunction;
+    RefPtr<SourceProvider> sourceOverride = isParsingDefaultConstructor ? source.provider() : nullptr;
+    std::unique_ptr<ProgramNode> program = parse<ProgramNode>(
+        &m_vm, source, 0, Identifier(), builtinMode, 
+        JSParserStrictMode::NotStrict, 
+        JSParserCodeType::Program,
+        error, &positionBeforeLastNewline, constructorKind);
 
     if (!program) {
         dataLog("Fatal error compiling builtin function '", name.string(), "': ", error.message());
@@ -71,23 +97,28 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createBuiltinExecutable(const So
     RELEASE_ASSERT(body);
     for (const auto& closedVariable : program->closedVariables()) {
         if (closedVariable == m_vm.propertyNames->arguments.impl())
-        continue;
+            continue;
         
         if (closedVariable == m_vm.propertyNames->undefinedKeyword.impl())
             continue;
         RELEASE_ASSERT(closedVariable->isUnique());
     }
     body->overrideName(name);
-    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&m_vm, source, body, UnlinkedBuiltinFunction);
+    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&m_vm, source, body, kind, WTF::move(sourceOverride));
     functionExecutable->m_nameValue.set(m_vm, functionExecutable, jsString(&m_vm, name.string()));
     return functionExecutable;
+}
+
+void BuiltinExecutables::finalize(Handle<Unknown>, void* context)
+{
+    static_cast<Weak<UnlinkedFunctionExecutable>*>(context)->clear();
 }
 
 #define DEFINE_BUILTIN_EXECUTABLES(name, functionName, length) \
 UnlinkedFunctionExecutable* BuiltinExecutables::name##Executable() \
 {\
     if (!m_##name##Executable)\
-        m_##name##Executable = createBuiltinExecutable(m_##name##Source, m_vm.propertyNames->builtinNames().functionName##PublicName());\
+        m_##name##Executable = Weak<UnlinkedFunctionExecutable>(createBuiltinExecutable(m_##name##Source, m_vm.propertyNames->builtinNames().functionName##PublicName()), this, &m_##name##Executable);\
     return m_##name##Executable.get();\
 }
 JSC_FOREACH_BUILTIN(DEFINE_BUILTIN_EXECUTABLES)

@@ -37,6 +37,7 @@
 #include "HTMLHtmlElement.h"
 #include "HTMLNames.h"
 #include "FlowThreadController.h"
+#include "RenderBlock.h"
 #include "RenderCounter.h"
 #include "RenderDeprecatedFlexibleBox.h"
 #include "RenderFlexibleBox.h"
@@ -263,37 +264,43 @@ StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsig
 {
     // If transform changed, and we are not composited, need to do a layout.
     if (contextSensitiveProperties & ContextSensitivePropertyTransform) {
-        // Text nodes share style with their parents but transforms don't apply to them,
-        // hence the !isText() check.
         // FIXME: when transforms are taken into account for overflow, we will need to do a layout.
         if (!hasLayer() || !downcast<RenderLayerModelObject>(*this).layer()->isComposited()) {
-            // We need to set at least SimplifiedLayout, but if PositionedMovementOnly is already set
-            // then we actually need SimplifiedLayoutAndPositionedMovement.
             if (!hasLayer())
-                diff = StyleDifferenceLayout; // FIXME: Do this for now since SimplifiedLayout cannot handle updating floating objects lists.
-            else if (diff < StyleDifferenceLayoutPositionedMovementOnly)
-                diff = StyleDifferenceSimplifiedLayout;
-            else if (diff < StyleDifferenceSimplifiedLayout)
-                diff = StyleDifferenceSimplifiedLayoutAndPositionedMovement;
-        } else if (diff < StyleDifferenceRecompositeLayer)
-            diff = StyleDifferenceRecompositeLayer;
+                diff = std::max(diff, StyleDifferenceLayout);
+            else {
+                // We need to set at least SimplifiedLayout, but if PositionedMovementOnly is already set
+                // then we actually need SimplifiedLayoutAndPositionedMovement.
+                diff = std::max(diff, (diff == StyleDifferenceLayoutPositionedMovementOnly) ? StyleDifferenceSimplifiedLayoutAndPositionedMovement : StyleDifferenceSimplifiedLayout);
+            }
+        
+        } else
+            diff = std::max(diff, StyleDifferenceRecompositeLayer);
     }
 
-    // If opacity changed, and we are not composited, need to repaint (also
-    // ignoring text nodes)
     if (contextSensitiveProperties & ContextSensitivePropertyOpacity) {
         if (!hasLayer() || !downcast<RenderLayerModelObject>(*this).layer()->isComposited())
-            diff = StyleDifferenceRepaintLayer;
-        else if (diff < StyleDifferenceRecompositeLayer)
-            diff = StyleDifferenceRecompositeLayer;
+            diff = std::max(diff, StyleDifferenceRepaintLayer);
+        else
+            diff = std::max(diff, StyleDifferenceRecompositeLayer);
     }
 
+    if (contextSensitiveProperties & ContextSensitivePropertyClipPath) {
+        if (hasLayer()
+            && downcast<RenderLayerModelObject>(*this).layer()->isComposited()
+            && hasClipPath()
+            && RenderLayerCompositor::canCompositeClipPath(*downcast<RenderLayerModelObject>(*this).layer()))
+            diff = std::max(diff, StyleDifferenceRecompositeLayer);
+        else
+            diff = std::max(diff, StyleDifferenceRepaint);
+    }
+    
     if ((contextSensitiveProperties & ContextSensitivePropertyFilter) && hasLayer()) {
         RenderLayer* layer = downcast<RenderLayerModelObject>(*this).layer();
         if (!layer->isComposited() || layer->paintsWithFilters())
-            diff = StyleDifferenceRepaintLayer;
-        else if (diff < StyleDifferenceRecompositeLayer)
-            diff = StyleDifferenceRecompositeLayer;
+            diff = std::max(diff, StyleDifferenceRepaintLayer);
+        else
+            diff = std::max(diff, StyleDifferenceRecompositeLayer);
     }
     
     // The answer to requiresLayer() for plugins, iframes, and canvas can change without the actual
@@ -330,7 +337,7 @@ inline bool RenderElement::shouldRepaintForStyleDifference(StyleDifference diff)
 void RenderElement::updateFillImages(const FillLayer* oldLayers, const FillLayer* newLayers)
 {
     // Optimize the common case
-    if (oldLayers && !oldLayers->next() && newLayers && !newLayers->next() && oldLayers->image() == newLayers->image() && oldLayers->maskImage() == newLayers->maskImage())
+    if (FillLayer::imagesIdentical(oldLayers, newLayers))
         return;
     
     // Go through the new layers and addClients first, to avoid removing all clients of an image.
@@ -1157,6 +1164,31 @@ RenderElement* RenderElement::hoverAncestor() const
     return hoverAncestor;
 }
 
+static inline void paintPhase(RenderElement& element, PaintPhase phase, PaintInfo& paintInfo, const LayoutPoint& childPoint)
+{
+    paintInfo.phase = phase;
+    element.paint(paintInfo, childPoint);
+}
+
+void RenderElement::paintAsInlineBlock(PaintInfo& paintInfo, const LayoutPoint& childPoint)
+{
+    // Paint all phases atomically, as though the element established its own stacking context.
+    // (See Appendix E.2, section 6.4 on inline block/table/replaced elements in the CSS2.1 specification.)
+    // This is also used by other elements (e.g. flex items and grid items).
+    if (paintInfo.phase == PaintPhaseSelection) {
+        paint(paintInfo, childPoint);
+    } else if (paintInfo.phase == PaintPhaseForeground) {
+        paintPhase(*this, PaintPhaseBlockBackground, paintInfo, childPoint);
+        paintPhase(*this, PaintPhaseChildBlockBackgrounds, paintInfo, childPoint);
+        paintPhase(*this, PaintPhaseFloat, paintInfo, childPoint);
+        paintPhase(*this, PaintPhaseForeground, paintInfo, childPoint);
+        paintPhase(*this, PaintPhaseOutline, paintInfo, childPoint);
+
+        // Reset |paintInfo| to the original phase.
+        paintInfo.phase = PaintPhaseForeground;
+    }
+}
+
 void RenderElement::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
@@ -1488,6 +1520,48 @@ PassRefPtr<RenderStyle> RenderElement::getUncachedPseudoStyle(const PseudoStyleR
     }
 
     return document().ensureStyleResolver().pseudoStyleForElement(element(), pseudoStyleRequest, parentStyle);
+}
+
+RenderBlock* RenderElement::containingBlockForFixedPosition() const
+{
+    const RenderElement* object = this;
+    while (object && !object->canContainFixedPositionObjects())
+        object = object->parent();
+
+    ASSERT(!object || !object->isAnonymousBlock());
+    return const_cast<RenderBlock*>(downcast<RenderBlock>(object));
+}
+
+RenderBlock* RenderElement::containingBlockForAbsolutePosition() const
+{
+    const RenderElement* object = this;
+    while (object && !object->canContainAbsolutelyPositionedObjects())
+        object = object->parent();
+
+    // For a relatively positioned inline, return its nearest non-anonymous containing block,
+    // not the inline itself, to avoid having a positioned objects list in all RenderInlines
+    // and use RenderBlock* as RenderElement::containingBlock's return type.
+    // Use RenderBlock::container() to obtain the inline.
+    if (object && !is<RenderBlock>(*object))
+        object = object->containingBlock();
+
+    while (object && object->isAnonymousBlock())
+        object = object->containingBlock();
+
+    return const_cast<RenderBlock*>(downcast<RenderBlock>(object));
+}
+
+static inline bool isNonRenderBlockInline(const RenderElement& object)
+{
+    return (object.isInline() && !object.isReplaced()) || !object.isRenderBlock();
+}
+
+RenderBlock* RenderElement::containingBlockForObjectInFlow() const
+{
+    const RenderElement* object = this;
+    while (object && isNonRenderBlockInline(*object))
+        object = object->parent();
+    return const_cast<RenderBlock*>(downcast<RenderBlock>(object));
 }
 
 Color RenderElement::selectionColor(int colorProperty) const

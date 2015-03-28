@@ -23,46 +23,44 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ObjectTreeMapEntryTreeElement = function(object, propertyPath)
+WebInspector.ObjectTreeMapEntryTreeElement = class ObjectTreeMapEntryTreeElement extends WebInspector.ObjectTreeBaseTreeElement
 {
-    console.assert(object instanceof WebInspector.RemoteObject);
-    console.assert(propertyPath instanceof WebInspector.PropertyPath);
+    constructor(object, propertyPath)
+    {
+        console.assert(object instanceof WebInspector.RemoteObject);
 
-    this._object = object;
-    this._propertyPath = propertyPath;
+        // Treat the same as an array-index just with different strings and widths.
+        super(this._object, propertyPath);
 
-    // Treat the same as an array-index just with different strings and widths.
-    WebInspector.GeneralTreeElement.call(this, ["object-tree-array-index", "object-tree-map-entry"], this._titleFragment(), null, this._object, false);
+        this._object = object;
 
-    this.small = true;
-    this.toggleOnClick = false;
-    this.selectable = false;
-    this.tooltipHandledSeparately = true;
-    this.hasChildren = false;
-};
-
-WebInspector.ObjectTreeMapEntryTreeElement.prototype = {
-    constructor: WebInspector.ObjectTreeMapEntryTreeElement,
-    __proto__: WebInspector.GeneralTreeElement.prototype,
+        this.mainTitle = this._titleFragment();
+        this.addClassName("object-tree-array-index");
+        this.addClassName("object-tree-map-entry");
+    }
 
     // Public
 
     get object()
     {
         return this._object;
-    },
+    }
+
+    // Protected
+
+    resolvedValue()
+    {
+        return this._object;
+    }
+
+    propertyPathType()
+    {
+        return WebInspector.PropertyPath.Type.Value;
+    }
 
     // Private
 
-    _propertyPathString: function(propertyPath)
-    {
-        if (propertyPath.isFullPathImpossible())
-            return WebInspector.UIString("Unable to determine path to property from root");
-
-        return propertyPath.displayPath(WebInspector.PropertyPath.Type.Value);
-    },
-
-    _titleFragment: function()
+    _titleFragment()
     {
         var container = document.createDocumentFragment();
 
@@ -72,7 +70,7 @@ WebInspector.ObjectTreeMapEntryTreeElement.prototype = {
         var nameElement = container.appendChild(document.createElement("span"));
         nameElement.className = "index-name";
         nameElement.textContent = this.displayPropertyName();
-        nameElement.title = this._propertyPathString(propertyPath);
+        nameElement.title = this.propertyPathString(propertyPath);
 
         // Value.
         var valueElement = container.appendChild(document.createElement("span"));
@@ -83,50 +81,47 @@ WebInspector.ObjectTreeMapEntryTreeElement.prototype = {
     }
 };
 
-
-WebInspector.ObjectTreeMapKeyTreeElement = function(object, propertyPath)
+WebInspector.ObjectTreeMapKeyTreeElement = class ObjectTreeMapKeyTreeElement extends WebInspector.ObjectTreeMapEntryTreeElement
 {
-    WebInspector.ObjectTreeMapEntryTreeElement.call(this, object, propertyPath);
-    this.addClassName("key");
-}
+    constructor(object, propertyPath)
+    {
+        super(object, propertyPath);
 
-WebInspector.ObjectTreeMapKeyTreeElement.prototype = {
-    constructor: WebInspector.ObjectTreeMapKeyTreeElement,
-    __proto__: WebInspector.ObjectTreeMapEntryTreeElement.prototype,
-
+        this.addClassName("key");
+    }
+    
     // Protected
 
-    displayPropertyName: function()
+    displayPropertyName()
     {
         return WebInspector.UIString("key");
-    },
+    }
 
-    resolvedValuePropertyPath: function()
+    resolvedValuePropertyPath()
     {
         return this._propertyPath.appendMapKey(this._object);
     }
 };
 
-
-WebInspector.ObjectTreeMapValueTreeElement = function(object, propertyPath, key)
+WebInspector.ObjectTreeMapValueTreeElement = class ObjectTreeMapValueTreeElement extends WebInspector.ObjectTreeMapEntryTreeElement
 {
-    this._key = key;
-    WebInspector.ObjectTreeMapEntryTreeElement.call(this, object, propertyPath);
-    this.addClassName("value");
-}
+    constructor(object, propertyPath, key)
+    {
+        super(object, propertyPath);
 
-WebInspector.ObjectTreeMapValueTreeElement.prototype = {
-    constructor: WebInspector.ObjectTreeMapValueTreeElement,
-    __proto__: WebInspector.ObjectTreeMapEntryTreeElement.prototype,
+        this._key = key;
 
+        this.addClassName("value");
+    }
+    
     // Protected
 
-    displayPropertyName: function()
+    displayPropertyName()
     {
         return WebInspector.UIString("value");
-    },
+    }
 
-    resolvedValuePropertyPath: function()
+    resolvedValuePropertyPath()
     {
         return this._propertyPath.appendMapValue(this._object, this._key);
     }

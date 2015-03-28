@@ -35,6 +35,7 @@
 #include "JSGlobalObject.h"
 #include "JSObject.h"
 #include "JSCInlines.h"
+#include "RuntimeFlags.h"
 #include "SourceProvider.h"
 #include "StackVisitor.h"
 #include <wtf/text/StringBuilder.h>
@@ -56,6 +57,15 @@ static const int32_t webkitFirstVersionWithConcurrentGlobalContexts = 0x2100500;
 #endif
 
 using namespace JSC;
+
+static RuntimeFlags javaScriptRuntimeFlags(const JSGlobalObject* globalObject)
+{
+    RuntimeFlags runtimeFlags = JSGlobalObject::javaScriptRuntimeFlags(globalObject);
+    runtimeFlags.setPromiseDisabled(true);
+    return runtimeFlags;
+}
+
+const GlobalObjectMethodTable JSC::javaScriptCoreAPIGlobalObjectMethodTable = { &JSGlobalObject::allowsAccessFrom, &JSGlobalObject::supportsProfiling, &JSGlobalObject::supportsRichSourceInfo, &JSGlobalObject::shouldInterruptScript, &javaScriptRuntimeFlags, nullptr, &JSGlobalObject::shouldInterruptScriptBeforeTimeout };
 
 // From the API's perspective, a context group remains alive iff
 //     (a) it has been JSContextGroupRetained
@@ -90,12 +100,23 @@ static bool internalScriptTimeoutCallback(ExecState* exec, void* callbackPtr, vo
     return callback(contextRef, callbackData);
 }
 
+static void createWatchdogIfNeeded(VM& vm)
+{
+    if (!vm.watchdog) {
+        vm.watchdog = std::make_unique<Watchdog>();
+
+        // The LLINT peeks into the Watchdog object directly. In order to do that,
+        // the LLINT assumes that the internal shape of a std::unique_ptr is the
+        // same as a plain C++ pointer, and loads the address of Watchdog from it.
+        RELEASE_ASSERT(*reinterpret_cast<Watchdog**>(&vm.watchdog) == vm.watchdog.get());
+    }
+}
+
 void JSContextGroupSetExecutionTimeLimit(JSContextGroupRef group, double limit, JSShouldTerminateCallback callback, void* callbackData)
 {
     VM& vm = *toJS(group);
     JSLockHolder locker(&vm);
-    if (!vm.watchdog)
-        vm.watchdog = std::make_unique<Watchdog>();
+    createWatchdogIfNeeded(vm);
     Watchdog& watchdog = *vm.watchdog;
     if (callback) {
         void* callbackPtr = reinterpret_cast<void*>(callback);
@@ -108,8 +129,7 @@ void JSContextGroupClearExecutionTimeLimit(JSContextGroupRef group)
 {
     VM& vm = *toJS(group);
     JSLockHolder locker(&vm);
-    if (!vm.watchdog)
-        vm.watchdog = std::make_unique<Watchdog>();
+    createWatchdogIfNeeded(vm);
     Watchdog& watchdog = *vm.watchdog;
     watchdog.setTimeLimit(vm, std::chrono::microseconds::max());
 }
@@ -140,7 +160,7 @@ JSGlobalContextRef JSGlobalContextCreateInGroup(JSContextGroupRef group, JSClass
     JSLockHolder locker(vm.get());
 
     if (!globalObjectClass) {
-        JSGlobalObject* globalObject = JSGlobalObject::create(*vm, JSGlobalObject::createStructure(*vm, jsNull()));
+        JSGlobalObject* globalObject = JSGlobalObject::create(*vm, JSGlobalObject::createStructure(*vm, jsNull()), &javaScriptCoreAPIGlobalObjectMethodTable);
 #if ENABLE(REMOTE_INSPECTOR)
         globalObject->setRemoteDebuggingEnabled(true);
 #endif

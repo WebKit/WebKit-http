@@ -307,6 +307,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_ACCELERATED_OVERFLOW_SCROLLING 0
 #endif
 
+#if !defined(ENABLE_APNG)
+#define ENABLE_APNG 1
+#endif
+
 #if !defined(ENABLE_BATTERY_STATUS)
 #define ENABLE_BATTERY_STATUS 0
 #endif
@@ -324,7 +328,7 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #endif
 
 #if !defined(ENABLE_ES6_CLASS_SYNTAX)
-#define ENABLE_ES6_CLASS_SYNTAX 0
+#define ENABLE_ES6_CLASS_SYNTAX 1
 #endif
 
 #if !defined(ENABLE_CONTENT_EXTENSIONS)
@@ -563,6 +567,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_MOUSE_CURSOR_SCALE)
 #define ENABLE_MOUSE_CURSOR_SCALE 0
+#endif
+
+#if !defined(ENABLE_MOUSE_FORCE_EVENTS)
+#define ENABLE_MOUSE_FORCE_EVENTS 1
 #endif
 
 #if !defined(ENABLE_NAVIGATOR_CONTENT_UTILS)

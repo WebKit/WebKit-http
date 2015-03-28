@@ -58,12 +58,15 @@
 #include "PingLoader.h"
 #include "PlatformStrategies.h"
 #include "RenderElement.h"
+#include "ResourceLoadInfo.h"
 #include "ResourceLoadScheduler.h"
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "SessionID.h"
 #include "Settings.h"
+#include "StyleSheetContents.h"
 #include "UserContentController.h"
+#include "UserStyleSheet.h"
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -271,6 +274,46 @@ CachedResourceHandle<CachedRawResource> CachedResourceLoader::requestMainResourc
     return downcast<CachedRawResource>(requestResource(CachedResource::MainResource, request).get());
 }
 
+static MixedContentChecker::ContentType contentTypeFromResourceType(CachedResource::Type type)
+{
+    switch (type) {
+    case CachedResource::ImageResource:
+            return MixedContentChecker::ContentType::ActiveCanWarn;
+
+    case CachedResource::CSSStyleSheet:
+    case CachedResource::Script:
+    case CachedResource::FontResource:
+        return MixedContentChecker::ContentType::Active;
+
+#if ENABLE(SVG_FONTS)
+    case CachedResource::SVGFontResource:
+        return MixedContentChecker::ContentType::Active;
+#endif
+
+    case CachedResource::RawResource:
+    case CachedResource::SVGDocumentResource:
+        return MixedContentChecker::ContentType::Active;
+#if ENABLE(XSLT)
+    case CachedResource::XSLStyleSheet:
+        return MixedContentChecker::ContentType::Active;
+#endif
+
+#if ENABLE(LINK_PREFETCH)
+    case CachedResource::LinkPrefetch:
+    case CachedResource::LinkSubresource:
+        return MixedContentChecker::ContentType::Active;
+#endif
+
+#if ENABLE(VIDEO_TRACK)
+    case CachedResource::TextTrackResource:
+        return MixedContentChecker::ContentType::Active;
+#endif
+    default:
+        ASSERT_NOT_REACHED();
+        return MixedContentChecker::ContentType::Active;
+    }
+}
+
 bool CachedResourceLoader::checkInsecureContent(CachedResource::Type type, const URL& url) const
 {
     switch (type) {
@@ -298,7 +341,7 @@ bool CachedResourceLoader::checkInsecureContent(CachedResource::Type type, const
         // These resources can corrupt only the frame's pixels.
         if (Frame* f = frame()) {
             Frame& topFrame = f->tree().top();
-            if (!topFrame.loader().mixedContentChecker().canDisplayInsecureContent(topFrame.document()->securityOrigin(), url))
+            if (!topFrame.loader().mixedContentChecker().canDisplayInsecureContent(topFrame.document()->securityOrigin(), contentTypeFromResourceType(type), url))
                 return false;
         }
         break;
@@ -465,22 +508,11 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         return nullptr;
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    Vector<ContentExtensions::Action> actions;
+    if (frame() && frame()->mainFrame().page() && frame()->mainFrame().page()->userContentController() && m_documentLoader)
+        frame()->mainFrame().page()->userContentController()->processContentExtensionRulesForLoad(request.mutableResourceRequest(), toResourceType(type), *m_documentLoader);
 
-    if (frame() && frame()->page() && frame()->page()->userContentController())
-        actions = frame()->page()->userContentController()->actionsForURL(url);
-
-    for (const auto& action : actions) {
-        if (action.type() == ContentExtensions::ActionType::BlockLoad)
-            return nullptr;
-        if (action.type() == ContentExtensions::ActionType::BlockCookies)
-            request.mutableResourceRequest().setAllowCookies(false);
-        else if (action.type() == ContentExtensions::ActionType::CSSDisplayNone) {
-            // action.cssSelector() is the css to use here.
-            // FIXME: That css selector should be used to apply display:none.
-        } else
-            RELEASE_ASSERT_NOT_REACHED();
-    }
+    if (request.mutableResourceRequest().isNull())
+        return nullptr;
 #endif
 
     auto& memoryCache = MemoryCache::singleton();

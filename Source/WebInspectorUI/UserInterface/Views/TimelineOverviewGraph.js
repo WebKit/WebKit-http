@@ -40,13 +40,17 @@ WebInspector.TimelineOverviewGraph = function(timeline)
         if (timelineType === WebInspector.TimelineRecord.Type.Script)
             return new WebInspector.ScriptTimelineOverviewGraph(timeline);
 
+        if (timelineType === WebInspector.TimelineRecord.Type.RunLoop)
+            return new WebInspector.RunLoopTimelineOverviewGraph(timeline);
+
         throw Error("Can't make a graph for an unknown timeline.");
     }
 
     // Concrete object instantiation.
     console.assert(this.constructor !== WebInspector.TimelineOverviewGraph && this instanceof WebInspector.TimelineOverviewGraph);
 
-    WebInspector.Object.call(this);
+    // FIXME: Convert this to a WebInspector.Object subclass, and call super().
+    // WebInspector.Object.call(this);
 
     this.element = document.createElement("div");
     this.element.classList.add(WebInspector.TimelineOverviewGraph.StyleClassName);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,57 +23,54 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.FilterBar = function(element) {
-    WebInspector.Object.call(this);
+WebInspector.FilterBar = class FilterBar extends WebInspector.Object
+{
+    constructor(element)
+    {
+        super();
 
-    this._element = element || document.createElement("div");
-    this._element.classList.add(WebInspector.FilterBar.StyleClassName);
+        this._element = element || document.createElement("div");
+        this._element.classList.add("filter-bar");
 
-    this._inputField = document.createElement("input");
-    this._inputField.type = "search";
-    this._inputField.spellcheck = false;
-    this._inputField.incremental = true;
-    this._inputField.addEventListener("search", this._inputFieldChanged.bind(this), false);
-    this._element.appendChild(this._inputField);
-};
+        this._filtersNavigationBar = new WebInspector.NavigationBar;
+        this._element.appendChild(this._filtersNavigationBar.element);
 
-WebInspector.Object.addConstructorFunctions(WebInspector.FilterBar);
+        this._filterFunctionsMap = new Map;
 
-WebInspector.FilterBar.StyleClassName = "filter-bar";
-
-WebInspector.FilterBar.Event = {
-    TextFilterDidChange: "filter-bar-text-filter-did-change"
-};
-
-WebInspector.FilterBar.prototype = {
-    constructor: WebInspector.FilterBar,
+        this._inputField = document.createElement("input");
+        this._inputField.type = "search";
+        this._inputField.spellcheck = false;
+        this._inputField.incremental = true;
+        this._inputField.addEventListener("search", this._handleFilterChanged.bind(this), false);
+        this._element.appendChild(this._inputField);
+    }
 
     // Public
 
     get element()
     {
         return this._element;
-    },
+    }
 
     get placeholder()
     {
         return this._inputField.getAttribute("placeholder");
-    },
+    }
 
     set placeholder(text)
     {
         this._inputField.setAttribute("placeholder", text);
-    },
+    }
 
     get inputField()
     {
         return this._inputField;
-    },
+    }
 
     get filters()
     {
-        return {text: this._inputField.value};
-    },
+        return {text: this._inputField.value, functions: [...this._filterFunctionsMap.values()]};
+    }
 
     set filters(filters)
     {
@@ -82,22 +79,50 @@ WebInspector.FilterBar.prototype = {
         var oldTextValue = this._inputField.value;
         this._inputField.value = filters.text || "";
         if (oldTextValue !== this._inputField.value)
-            this._inputFieldChanged();
-    },
+            this._handleFilterChanged();
+    }
 
-    hasActiveFilters: function()
+    addFilterBarButton(identifier, filterFunction, activatedByDefault, defaultToolTip, activatedToolTip, image, imageWidth, imageHeight, suppressEmboss)
     {
-        if (this._inputField.value)
-            return true;
-        return false;
-    },
+        var filterBarButton = new WebInspector.FilterBarButton(identifier, filterFunction, activatedByDefault, defaultToolTip, activatedToolTip, image, imageWidth, imageHeight, suppressEmboss);
+        filterBarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._handleFilterBarButtonClicked, this);
+        filterBarButton.addEventListener(WebInspector.FilterBarButton.Event.ActivatedStateToggled, this._handleFilterButtonToggled, this);
+        this._filtersNavigationBar.addNavigationItem(filterBarButton);
+        if (filterBarButton.activated) {
+            this._filterFunctionsMap.set(filterBarButton.identifier, filterBarButton.filterFunction);
+            this._handleFilterChanged();
+        }
+    }
+
+    hasActiveFilters()
+    {
+        return !!this._inputField.value || !!this._filterFunctionsMap.size;
+    }
 
     // Private
 
-    _inputFieldChanged: function(event)
+    _handleFilterBarButtonClicked(event)
     {
-        this.dispatchEventToListeners(WebInspector.FilterBar.Event.TextFilterDidChange);
+        var filterBarButton = event.target;
+        filterBarButton.toggle();
+    }
+
+    _handleFilterButtonToggled(event)
+    {
+        var filterBarButton = event.target;
+        if (filterBarButton.activated)
+            this._filterFunctionsMap.set(filterBarButton.identifier, filterBarButton.filterFunction);
+        else
+            this._filterFunctionsMap.delete(filterBarButton.identifier);
+        this._handleFilterChanged();
+    }
+
+    _handleFilterChanged()
+    {
+        this.dispatchEventToListeners(WebInspector.FilterBar.Event.FilterDidChange);
     }
 };
 
-WebInspector.FilterBar.prototype.__proto__ = WebInspector.Object.prototype;
+WebInspector.FilterBar.Event = {
+    FilterDidChange: "filter-bar-text-filter-did-change"
+};

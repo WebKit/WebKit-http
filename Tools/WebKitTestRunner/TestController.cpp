@@ -256,6 +256,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
         0, // didCancelTrackingPotentialLongMousePress
         0, // isPlayingAudioDidChange
         decidePolicyForUserMediaPermissionRequest,
+        0, // didClickAutofillButton
     };
     WKPageSetPageUIClient(newPage, &otherPageUIClient.base);
     
@@ -324,6 +325,7 @@ void TestController::initialize(int argc, const char* argv[])
     m_shouldUseAcceleratedDrawing = options.shouldUseAcceleratedDrawing;
     m_shouldUseRemoteLayerTree = options.shouldUseRemoteLayerTree;
     m_paths = options.paths;
+    m_allowedHosts = options.allowedHosts;
 
     if (options.printSupportedFeatures) {
         // FIXME: On Windows, DumpRenderTree uses this to expose whether it supports 3d
@@ -355,6 +357,7 @@ void TestController::initialize(int argc, const char* argv[])
         WKContextConfigurationSetIndexedDBDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "IndexedDB").get());
         WKContextConfigurationSetLocalStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "LocalStorage").get());
         WKContextConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "WebSQL").get());
+        WKContextConfigurationSetMediaKeysStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "MediaKeys").get());
     }
 
     m_context = adoptWK(WKContextCreateWithConfiguration(configuration.get()));
@@ -492,6 +495,7 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
         0, // didCancelTrackingPotentialLongMousePress
         0, // isPlayingAudioDidChange
         decidePolicyForUserMediaPermissionRequest,
+        0, // didClickAutofillButton
     };
     WKPageSetPageUIClient(m_mainWebView->page(), &pageUIClient.base);
 
@@ -608,6 +612,14 @@ bool TestController::resetStateToConsistentValues()
     WKRetainPtr<WKStringRef> shouldGCKey = adoptWK(WKStringCreateWithUTF8CString("ShouldGC"));
     WKRetainPtr<WKBooleanRef> shouldGCValue = adoptWK(WKBooleanCreate(m_gcBetweenTests));
     WKDictionarySetItem(resetMessageBody.get(), shouldGCKey.get(), shouldGCValue.get());
+
+    WKRetainPtr<WKStringRef> allowedHostsKey = adoptWK(WKStringCreateWithUTF8CString("AllowedHosts"));
+    WKRetainPtr<WKMutableArrayRef> allowedHostsValue = adoptWK(WKMutableArrayCreate());
+    for (auto& host : m_allowedHosts) {
+        WKRetainPtr<WKStringRef> wkHost = adoptWK(WKStringCreateWithUTF8CString(host.c_str()));
+        WKArrayAppendItem(allowedHostsValue.get(), wkHost.get());
+    }
+    WKDictionarySetItem(resetMessageBody.get(), allowedHostsKey.get(), allowedHostsValue.get());
 
     WKContextPostMessageToInjectedBundle(TestController::singleton().context(), messageName.get(), resetMessageBody.get());
 

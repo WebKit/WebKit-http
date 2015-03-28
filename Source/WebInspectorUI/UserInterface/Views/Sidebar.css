@@ -60,17 +60,6 @@ body.mac-platform.legacy.window-inactive .sidebar {
     display: block;
 }
 
-.sidebar > .resizer {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 5px;
-
-    z-index: 100;
-
-    cursor: col-resize;
-}
-
 .sidebar.right > .resizer {
     left: -3px;
 }

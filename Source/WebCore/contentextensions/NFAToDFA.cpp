@@ -41,7 +41,7 @@ namespace ContentExtensions {
 
 // FIXME: set a better initial size.
 // FIXME: include the hash inside NodeIdSet.
-typedef HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> NodeIdSet;
+typedef NFANodeIndexSet NodeIdSet;
 
 static inline void epsilonClosureExcludingSelf(const Vector<NFANode>& nfaGraph, unsigned nodeId, unsigned epsilonTransitionCharacter, Vector<unsigned>& output)
 {
@@ -322,7 +322,8 @@ static inline void populateTransitions(SetTransitions& setTransitions, NodeIdSet
                 targetSet.add(targetNodId);
                 extendSetWithClosure(nfaNodeclosures, targetNodId, targetSet);
             }
-            targetSet.add(setFallbackTransition.begin(), setFallbackTransition.end());
+            if (transitionSlot.key)
+                targetSet.add(setFallbackTransition.begin(), setFallbackTransition.end());
         }
     }
 }
@@ -335,6 +336,49 @@ static ALWAYS_INLINE unsigned getOrCreateDFANode(const NodeIdSet& nfaNodeSet, co
         unprocessedNodes.append(uniqueNodeIdAddResult.iterator->impl());
 
     return uniqueNodeIdAddResult.iterator->impl()->m_dfaNodeId;
+}
+
+static void simplifyTransitions(Vector<DFANode>& dfaGraph)
+{
+    for (DFANode& dfaNode : dfaGraph) {
+        if (!dfaNode.hasFallbackTransition
+            && ((dfaNode.transitions.size() == 126 && !dfaNode.transitions.contains(0))
+                || (dfaNode.transitions.size() == 127 && dfaNode.transitions.contains(0)))) {
+            unsigned bestTarget = std::numeric_limits<unsigned>::max();
+            unsigned bestTargetScore = 0;
+            HashMap<unsigned, unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> targetHistogram;
+            for (const auto transition : dfaNode.transitions) {
+                if (!transition.key)
+                    continue;
+
+                unsigned transitionTarget = transition.value;
+                auto addResult = targetHistogram.add(transitionTarget, 1);
+                if (!addResult.isNewEntry)
+                    addResult.iterator->value++;
+
+                if (addResult.iterator->value > bestTargetScore) {
+                    bestTargetScore = addResult.iterator->value;
+                    bestTarget = transitionTarget;
+                }
+            }
+            ASSERT_WITH_MESSAGE(bestTargetScore, "There should be at least one valid target since having transitions is a precondition to enter this path.");
+
+            dfaNode.hasFallbackTransition = true;
+            dfaNode.fallbackTransition = bestTarget;
+        }
+
+        if (dfaNode.hasFallbackTransition) {
+            Vector<uint16_t, 128> keys;
+            DFANodeTransitions& transitions = dfaNode.transitions;
+            copyKeysToVector(transitions, keys);
+
+            for (uint16_t key : keys) {
+                auto transitionIterator = transitions.find(key);
+                if (transitionIterator->value == dfaNode.fallbackTransition)
+                    transitions.remove(transitionIterator);
+            }
+        }
+    }
 }
 
 DFA NFAToDFA::convert(NFA& nfa)
@@ -365,7 +409,6 @@ DFA NFAToDFA::convert(NFA& nfa)
         NodeIdSet setFallbackTransition;
         populateTransitions(transitionsFromClosedSet, setFallbackTransition, *uniqueNodeIdSetImpl, nfaGraph, nfaNodeClosures);
 
-        // FIXME: there should not be any transition on key 0.
         for (unsigned key = 0; key < transitionsFromClosedSet.size(); ++key) {
             NodeIdSet& targetNodeSet = transitionsFromClosedSet[key];
 
@@ -387,6 +430,7 @@ DFA NFAToDFA::convert(NFA& nfa)
         }
     } while (!unprocessedNodes.isEmpty());
 
+    simplifyTransitions(dfaGraph);
     return DFA(WTF::move(dfaGraph), 0);
 }
 

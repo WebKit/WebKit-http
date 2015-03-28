@@ -18,7 +18,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
     "${WEBCORE_DIR}/platform/linux"
-    "${WEBCORE_DIR}/platform/mediastream/gstreamer"
+    "${WEBCORE_DIR}/platform/mediastream/openwebrtc"
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/efl"
@@ -66,7 +66,6 @@ list(APPEND WebCore_SOURCES
 
     platform/ContextMenuItemNone.cpp
     platform/ContextMenuNone.cpp
-    platform/Cursor.cpp
 
     platform/audio/efl/AudioBusEfl.cpp
 
@@ -113,7 +112,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp
-    platform/graphics/cairo/DrawingBufferCairo.cpp
     platform/graphics/cairo/FontCairo.cpp
     platform/graphics/cairo/FontCairoHarfbuzzNG.cpp
     platform/graphics/cairo/GradientCairo.cpp
@@ -181,6 +179,10 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/surfaces/glx/X11Helper.cpp
 
+    platform/graphics/texmap/BitmapTexture.cpp
+    platform/graphics/texmap/BitmapTextureGL.cpp
+    platform/graphics/texmap/BitmapTextureImageBuffer.cpp
+    platform/graphics/texmap/BitmapTexturePool.cpp
     platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
     platform/graphics/texmap/TextureMapperGL.cpp
     platform/graphics/texmap/TextureMapperShaderProgram.cpp
@@ -214,7 +216,8 @@ list(APPEND WebCore_SOURCES
     platform/linux/GamepadDeviceLinux.cpp
     platform/linux/MemoryPressureHandlerLinux.cpp
 
-    platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
+    platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
+    platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
 
     platform/network/efl/NetworkStateNotifierEfl.cpp
 
@@ -332,6 +335,15 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${HARFBUZZ_INCLUDE_DIRS}
 )
 
+if (ENABLE_MEDIA_STREAM)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${OPENWEBRTC_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${OPENWEBRTC_LIBRARIES}
+    )
+endif ()
+
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/gstreamer"
@@ -347,6 +359,7 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         ${GSTREAMER_BASE_LIBRARIES}
         ${GSTREAMER_LIBRARIES}
         ${GSTREAMER_PBUTILS_LIBRARIES}
+        ${GSTREAMER_AUDIO_LIBRARIES}
     )
     # Avoiding a GLib deprecation warning due to GStreamer API using deprecated classes.
     set_source_files_properties(platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp PROPERTIES COMPILE_DEFINITIONS "GLIB_DISABLE_DEPRECATION_WARNINGS=1")
@@ -428,7 +441,6 @@ if (ENABLE_WEB_AUDIO)
         ${GSTREAMER_FFT_INCLUDE_DIRS}
     )
     list(APPEND WebCore_LIBRARIES
-        ${GSTREAMER_AUDIO_LIBRARIES}
         ${GSTREAMER_FFT_LIBRARIES}
     )
     set(WEB_AUDIO_DIR ${CMAKE_INSTALL_PREFIX}/${DATA_INSTALL_DIR}/webaudio/resources)

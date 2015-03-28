@@ -29,7 +29,8 @@
 
 WebInspector.ConsoleGroup = function(parentGroup)
 {
-    WebInspector.Object.call(this);
+    // FIXME: Convert this to a WebInspector.Object subclass, and call super().
+    // WebInspector.Object.call(this);
 
     this.parentGroup = parentGroup;
 };
@@ -50,7 +51,7 @@ WebInspector.ConsoleGroup.prototype = {
         titleElement.classList.add(WebInspector.LogContentView.ItemWrapperStyleClassName);
         titleElement.addEventListener("click", this._titleClicked.bind(this));
         titleElement.addEventListener("mousedown", this._titleMouseDown.bind(this));
-        if (groupElement && message.type === WebInspector.ConsoleMessage.MessageType.StartGroupCollapsed)
+        if (groupElement && message.type === WebInspector.LegacyConsoleMessage.MessageType.StartGroupCollapsed)
             groupElement.classList.add("collapsed");
 
         groupElement.appendChild(titleElement);

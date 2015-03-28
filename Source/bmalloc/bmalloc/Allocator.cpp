@@ -51,6 +51,18 @@ Allocator::~Allocator()
     scavenge();
 }
 
+void* Allocator::tryAllocate(size_t size)
+{
+    if (!m_isBmallocEnabled)
+        return malloc(size);
+
+    if (size <= largeMax)
+        return allocate(size);
+
+    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+    return PerProcess<Heap>::get()->tryAllocateXLarge(lock, superChunkSize, roundUpToMultipleOf<xLargeAlignment>(size));
+}
+
 void* Allocator::allocate(size_t alignment, size_t size)
 {
     BASSERT(isPowerOfTwo(alignment));
@@ -117,6 +129,7 @@ void* Allocator::reallocate(void* object, size_t newSize)
         break;
     }
     case Large: {
+        std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
         LargeObject largeObject(object);
         oldSize = largeObject.size();
         break;

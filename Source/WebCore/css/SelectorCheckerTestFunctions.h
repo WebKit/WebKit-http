@@ -45,7 +45,7 @@ ALWAYS_INLINE bool isAutofilled(const Element* element)
 {
     if (is<HTMLFormControlElement>(*element)) {
         if (const HTMLInputElement* inputElement = element->toInputElement())
-            return inputElement->isAutofilled();
+            return inputElement->isAutoFilled();
     }
     return false;
 }
@@ -118,18 +118,6 @@ ALWAYS_INLINE bool isValid(const Element* element)
 ALWAYS_INLINE bool isWindowInactive(const Element* element)
 {
     return !element->document().page()->focusController().isActive();
-}
-
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-ALWAYS_INLINE bool equalIgnoringASCIICase(const String& a, const String& b)
-{
-    if (a.length() != b.length()) 
-        return false;
-    for (size_t i = 0; i < a.length(); ++i) {
-        if (toASCIILower(a[i]) != toASCIILower(b[i]))
-            return false;
-    }
-    return true;
 }
 
 ALWAYS_INLINE bool containslanguageSubtagMatchingRange(StringView language, StringView range, unsigned languageLength, unsigned& position)
@@ -213,31 +201,6 @@ ALWAYS_INLINE bool matchesLangPseudoClass(const Element* element, const Vector<A
         } while (rangeSubtagsStartIndex < rangeLength);
         if (matchedRange)
             return true;
-    }
-    return false;
-}
-#endif
-    
-inline bool matchesLangPseudoClassDeprecated(const Element* element, AtomicStringImpl* filter)
-{
-    AtomicString value;
-#if ENABLE(VIDEO_TRACK)
-    if (is<WebVTTElement>(*element))
-        value = downcast<WebVTTElement>(*element).language();
-    else
-#endif
-        value = element->computeInheritedLanguage();
-
-    if (value.isNull())
-        return false;
-
-    if (value.impl() == filter)
-        return true;
-
-    if (value.impl()->startsWith(filter, false)) {
-        if (value.length() == filter->length())
-            return true;
-        return value[filter->length()] == '-';
     }
     return false;
 }

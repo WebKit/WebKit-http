@@ -24,8 +24,9 @@
 
 #include "IntSize.h"
 
-#include <gst/audio/audio.h>
+#include <gst/audio/audio-info.h>
 #include <gst/gst.h>
+#include <gst/video/video-info.h>
 #include <wtf/MathExtras.h>
 #include <wtf/gobject/GUniquePtr.h>
 
@@ -131,14 +132,6 @@ bool initializeGStreamer()
 {
     if (gst_is_initialized())
         return true;
-
-#if ENABLE(SECCOMP_FILTERS)
-    // The gst-plugin-scanner helper binary will receive SIGSYS and dump core
-    // when it attempts to open a file. Disable it so that plugin scanning
-    // occurs in-process. The disadvantage is that a plugin that crashes while
-    // loading will now crash the web process.
-    gst_registry_fork_set_enabled(FALSE);
-#endif
 
     GUniqueOutPtr<GError> error;
     // FIXME: We should probably pass the arguments from the command line.

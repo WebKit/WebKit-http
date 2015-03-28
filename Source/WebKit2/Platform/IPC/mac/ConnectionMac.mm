@@ -119,7 +119,7 @@ void Connection::platformInvalidate()
     m_receivePortDataAvailableSource = 0;
     m_receivePort = MACH_PORT_NULL;
 
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     if (m_exceptionPort) {
         dispatch_source_cancel(m_exceptionPortDataAvailableSource);
         dispatch_release(m_exceptionPortDataAvailableSource);
@@ -139,7 +139,7 @@ void Connection::terminateSoon(double intervalInSeconds)
     
 void Connection::platformInitialize(Identifier identifier)
 {
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     m_exceptionPort = MACH_PORT_NULL;
     m_exceptionPortDataAvailableSource = nullptr;
 #endif
@@ -210,8 +210,7 @@ bool Connection::open()
         connection->receiveSourceEventHandler();
     });
 
-#if !PLATFORM(IOS)
-    // If we have an exception port, register the data available handler and send over the port to the other end.
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     if (m_exceptionPort) {
         m_exceptionPortDataAvailableSource = createDataAvailableSource(m_exceptionPort, m_connectionQueue, [connection] {
             connection->exceptionSourceEventHandler();
@@ -230,7 +229,7 @@ bool Connection::open()
 
         if (m_deadNameSource)
             dispatch_resume(m_deadNameSource);
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
         if (m_exceptionPortDataAvailableSource)
             dispatch_resume(m_exceptionPortDataAvailableSource);
 #endif
@@ -510,7 +509,14 @@ void Connection::receiveSourceEventHandler()
     if (decoder->messageReceiverName() == "IPC" && decoder->messageName() == "SetExceptionPort") {
         if (m_isServer) {
             // Server connections aren't supposed to have their exception ports overriden. Treat this as an invalid message.
-            m_clientRunLoop.dispatch(bind(&Connection::dispatchDidReceiveInvalidMessage, this, decoder->messageReceiverName().toString(), decoder->messageName().toString()));
+            RefPtr<Connection> protectedThis(this);
+            StringReference messageReceiverName = decoder->messageReceiverName();
+            StringCapture capturedMessageReceiverName(String(messageReceiverName.data(), messageReceiverName.size()));
+            StringReference messageName = decoder->messageName();
+            StringCapture capturedMessageName(String(messageName.data(), messageName.size()));
+            m_clientRunLoop.dispatch([protectedThis, capturedMessageReceiverName, capturedMessageName] {
+                protectedThis->dispatchDidReceiveInvalidMessage(capturedMessageReceiverName.string().utf8(), capturedMessageName.string().utf8());
+            });
             return;
         }
         MachPort exceptionPort;
@@ -525,7 +531,7 @@ void Connection::receiveSourceEventHandler()
     processIncomingMessage(WTF::move(decoder));
 }    
 
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
 void Connection::exceptionSourceEventHandler()
 {
     ReceiveBuffer buffer;

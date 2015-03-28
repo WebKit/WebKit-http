@@ -97,6 +97,7 @@ public:
     void vertexAttribIPointer(GC3Duint index, GC3Dint size, GC3Denum type, GC3Dsizei stride, GC3Dint64 offset);
     
     /* Writing to the drawing buffer */
+    virtual void clear(GC3Dbitfield mask) override;
     void vertexAttribDivisor(GC3Duint index, GC3Duint divisor);
     void drawArraysInstanced(GC3Denum mode, GC3Dint first, GC3Dsizei count, GC3Dsizei instanceCount);
     void drawElementsInstanced(GC3Denum mode, GC3Dsizei count, GC3Denum type, GC3Dint64 offset, GC3Dsizei instanceCount);
@@ -189,8 +190,10 @@ public:
 #endif
 
 protected:
+    virtual void initializeVertexArrayObjects() override;
+    virtual GC3Dint getMaxDrawBuffers() override;
+    virtual GC3Dint getMaxColorAttachments() override;
     virtual bool validateIndexArrayConservative(GC3Denum type, unsigned& numElementsRequired) override;
-    virtual bool validateDrawElements(const char* functionName, GC3Denum mode, GC3Dsizei count, GC3Denum type, long long offset, unsigned& numElements, GC3Dsizei primitiveCount) override;
     virtual bool validateBlendEquation(const char* functionName, GC3Denum mode) override;
     virtual bool validateTexFuncFormatAndType(const char* functionName, GC3Denum internalformat, GC3Denum format, GC3Denum type, GC3Dint level) override;
     virtual bool validateTexFuncParameters(const char* functionName,
@@ -205,9 +208,11 @@ protected:
         ArrayBufferView* pixels,
         NullDisposition) override;
     virtual bool validateCapability(const char* functionName, GC3Denum cap) override;
+    virtual bool validateFramebufferFuncParameters(const char* functionName, GC3Denum target, GC3Denum attachment) override;
     
 private:
     GC3Denum baseInternalFormatFromInternalFormat(GC3Denum internalformat);
+    bool isIntegerFormat(GC3Denum internalformat);
     void initializeShaderExtensions();
 };
 

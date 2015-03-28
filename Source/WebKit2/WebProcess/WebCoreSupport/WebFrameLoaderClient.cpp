@@ -102,9 +102,6 @@ WebFrameLoaderClient::~WebFrameLoaderClient()
     
 void WebFrameLoaderClient::frameLoaderDestroyed()
 {
-    if (WebPage* webPage = m_frame->page())
-        webPage->injectedBundleLoaderClient().willDestroyFrame(webPage, m_frame);
-
     m_frame->invalidate();
 
     // Balances explicit ref() in WebFrame::create().
@@ -662,8 +659,10 @@ void WebFrameLoaderClient::dispatchShow()
 void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, FramePolicyFunction function)
 {
     WebPage* webPage = m_frame->page();
-    if (!webPage)
+    if (!webPage) {
+        function(PolicyIgnore);
         return;
+    }
 
     if (!request.url().string()) {
         function(PolicyUse);
@@ -689,8 +688,10 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
     unsigned syncSendFlags = IPC::InformPlatformProcessWillSuspend;
     if (WebPage::synchronousMessagesShouldSpinRunLoop())
         syncSendFlags |= IPC::SpinRunLoopWhileWaitingForReply;
-    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForResponseSync(m_frame->frameID(), response, request, canShowMIMEType, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForResponseSync::Reply(receivedPolicyAction, policyAction, downloadID), std::chrono::milliseconds::max(), syncSendFlags))
+    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForResponseSync(m_frame->frameID(), response, request, canShowMIMEType, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForResponseSync::Reply(receivedPolicyAction, policyAction, downloadID), std::chrono::milliseconds::max(), syncSendFlags)) {
+        function(PolicyIgnore);
         return;
+    }
 
     // We call this synchronously because CFNetwork can only convert a loading connection to a download from its didReceiveResponse callback.
     if (receivedPolicyAction)
@@ -700,8 +701,10 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
 void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& navigationAction, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName, FramePolicyFunction function)
 {
     WebPage* webPage = m_frame->page();
-    if (!webPage)
+    if (!webPage) {
+        function(PolicyIgnore);
         return;
+    }
 
     RefPtr<API::Object> userData;
 
@@ -730,8 +733,10 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
 void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& navigationAction, const ResourceRequest& request, PassRefPtr<FormState> prpFormState, FramePolicyFunction function)
 {
     WebPage* webPage = m_frame->page();
-    if (!webPage)
+    if (!webPage) {
+        function(PolicyIgnore);
         return;
+    }
 
     // Always ignore requests with empty URLs. 
     if (request.isEmpty()) {
@@ -791,8 +796,10 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
         documentLoader = static_cast<WebDocumentLoader*>(coreFrame->loader().documentLoader());
 
     // Notify the UIProcess.
-    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationAction(m_frame->frameID(), documentLoader->navigationID(), navigationActionData, originatingFrame ? originatingFrame->frameID() : 0, navigationAction.resourceRequest(), request, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForNavigationAction::Reply(receivedPolicyAction, newNavigationID, policyAction, downloadID)))
+    if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationAction(m_frame->frameID(), documentLoader->navigationID(), navigationActionData, originatingFrame ? originatingFrame->frameID() : 0, navigationAction.resourceRequest(), request, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForNavigationAction::Reply(receivedPolicyAction, newNavigationID, policyAction, downloadID))) {
+        function(PolicyIgnore);
         return;
+    }
 
     // We call this synchronously because WebCore cannot gracefully handle a frame load without a synchronous navigation policy reply.
     if (receivedPolicyAction)
@@ -1450,8 +1457,11 @@ static bool pluginSupportsExtension(const PluginData& pluginData, const String& 
 {
     ASSERT(extension.lower() == extension);
 
-    for (size_t i = 0; i < pluginData.mimes().size(); ++i) {
-        const MimeClassInfo& mimeClassInfo = pluginData.mimes()[i];
+    Vector<MimeClassInfo> mimes;
+    Vector<size_t> mimePluginIndices;
+    pluginData.getWebVisibleMimesAndPluginIndices(mimes, mimePluginIndices);
+    for (size_t i = 0; i < mimes.size(); ++i) {
+        const MimeClassInfo& mimeClassInfo = mimes[i];
 
         if (mimeClassInfo.extensions.contains(extension))
             return true;
@@ -1486,9 +1496,9 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
     bool plugInSupportsMIMEType = false;
     if (WebPage* webPage = m_frame->page()) {
         const PluginData& pluginData = webPage->corePage()->pluginData();
-        if (pluginData.supportsMimeType(mimeType, PluginData::AllPlugins) && webFrame()->coreFrame()->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
+        if (pluginData.supportsWebVisibleMimeType(mimeType, PluginData::AllPlugins) && webFrame()->coreFrame()->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
             plugInSupportsMIMEType = true;
-        else if (pluginData.supportsMimeType(mimeType, PluginData::OnlyApplicationPlugins))
+        else if (pluginData.supportsWebVisibleMimeType(mimeType, PluginData::OnlyApplicationPlugins))
             plugInSupportsMIMEType = true;
     }
     
@@ -1648,7 +1658,12 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
 #if ENABLE(CONTENT_FILTERING)
 void WebFrameLoaderClient::contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler unblockHandler)
 {
-    if (WebPage* webPage = m_frame->page())
+    if (!unblockHandler.needsUIProcess()) {
+        m_frame->coreFrame()->loader().policyChecker().setContentFilterUnblockHandler(WTF::move(unblockHandler));
+        return;
+    }
+
+    if (WebPage* webPage { m_frame->page() })
         webPage->send(Messages::WebPageProxy::ContentFilterDidBlockLoadForFrame(unblockHandler, m_frame->frameID()));
 }
 #endif

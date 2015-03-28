@@ -81,7 +81,6 @@ public:
         URLRequest,
         URLResponse,
         UserContentURLPattern,
-        UserContentFilter,
         UserScript,
         WebArchive,
         WebArchiveResource,
@@ -141,6 +140,8 @@ public:
         Session,
         TextChecker,
         UserContentController,
+        UserContentExtension,
+        UserContentExtensionStore,
         UserMediaPermissionRequest,
         Vibration,
         ViewportAttributes,
@@ -244,7 +245,7 @@ protected:
 
 #if DELEGATE_REF_COUNTING_TO_COCOA
     void* operator new(size_t size) { return newObject(size, APIType); }
-    void* operator new(size_t size, void* value) { return value; }
+    void* operator new(size_t, void* value) { return value; }
 #endif
 };
 

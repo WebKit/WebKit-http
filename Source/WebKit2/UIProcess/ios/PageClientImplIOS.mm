@@ -171,13 +171,13 @@ IntSize PageClientImpl::viewSize()
 bool PageClientImpl::isViewWindowActive()
 {
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=133098
-    return isViewVisible();
+    return isViewVisible() || (m_webView && m_webView->_activeFocusedStateRetainCount);
 }
 
 bool PageClientImpl::isViewFocused()
 {
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=133098
-    return isViewWindowActive();
+    return isViewWindowActive() || (m_webView && m_webView->_activeFocusedStateRetainCount);
 }
 
 bool PageClientImpl::isViewVisible()
@@ -258,6 +258,11 @@ void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
     ASSERT_ARG(download, download);
     ASSERT([download->wrapper() isKindOfClass:[_WKDownload class]]);
     [static_cast<_WKDownload *>(download->wrapper()) setOriginatingWebView:m_webView];
+}
+
+void PageClientImpl::didChangeContentSize(const WebCore::IntSize&)
+{
+    notImplemented();
 }
 
 void PageClientImpl::didChangeViewportMetaTagWidth(float newWidth)

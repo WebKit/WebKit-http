@@ -23,6 +23,7 @@ editing/pasteboard/copy-standalone-image-crash.html
 editing/pasteboard/drag-and-drop-image-contenteditable.html
 editing/pasteboard/drag-and-drop-inputimage-contenteditable.html
 editing/pasteboard/drag-and-drop-objectimage-contenteditable.html
+editing/pasteboard/drag-and-drop-attachment-contenteditable.html
 editing/pasteboard/drag-drop-dead-frame.html
 editing/pasteboard/drag-drop-input-textarea.html
 editing/pasteboard/drag-drop-list.html
@@ -239,8 +240,6 @@ webkit.org/b/134550 [ Mavericks Yosemite ] http/tests/cache/iframe-304-crash.htm
 # testRunner.setUseDeferredFrameLoading is not implemented.
 webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Skip ]
 
-webkit.org/b/133692 platform/mac-wk2/plugins/destroy-during-async-npp-new.html [ Skip ]
-
 webkit.org/b/136554 platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html [ Pass Failure ]
 webkit.org/b/139901 platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-frame-scrollability.html [ Pass Failure ]
 
@@ -308,6 +307,9 @@ webkit.org/b/141364 [ Yosemite ] fullscreen/full-screen-plugin.html [ Pass Timeo
 
 webkit.org/b/139828 svg/animations/animateMotion-additive-2a.svg [ Pass ImageOnlyFailure ]
 webkit.org/b/139828 svg/animations/animateMotion-additive-2b.svg [ Pass ImageOnlyFailure ]
+
+# This test crashes every time in WebKit2 on Yosemite
+webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Skip ]
 
 ### END OF (3) Unclassified failures
 ########################################
@@ -468,10 +470,6 @@ storage/domstorage/localstorage/private-browsing-affects-storage.html [ Skip ]
 storage/domstorage/sessionstorage/private-browsing-affects-storage.html [ Skip ]
 storage/websql/private-browsing-noread-nowrite.html [ Skip ]
 
-# testRunner.setAlwaysAcceptCookies does not work with NetworkProcess
-webkit.org/b/138687 http/tests/cookies/third-party-cookie-relaxing.html [ Skip ]
-webkit.org/b/138687 http/tests/xmlhttprequest/cross-origin-cookie-storage.html [ Skip ]
-
 # FIXME: Needs bugzilla (<rdar://problem/12829991>)
 # PPT: PingLoader is still in WebProcess. As a result, this test fails and also fails to delete its cookie, breaking many other cookie tests.
 webkit.org/b/138688 http/tests/navigation/ping-cookie.html [ Skip ]
@@ -513,4 +511,4 @@ webkit.org/b/141085 [ Yosemite ] http/tests/media/video-query-url.html [ Pass Ti
 ### END OF (7) New WebKit2-only failures in Yosemite
 ########################################
 
-http/tests/usercontentfilter [ Pass ]
+http/tests/contentextensions [ Pass ]

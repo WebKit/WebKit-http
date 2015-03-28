@@ -147,6 +147,8 @@ if ($wksi) {
         push(@librariesToCopy, (
             "libWebKitSystemInterfaceIOSDevice8.1.a",
             "libWebKitSystemInterfaceIOSSimulator8.1.a",
+            "libWebKitSystemInterfaceIOSDevice8.2.a",
+            "libWebKitSystemInterfaceIOSSimulator8.2.a",
         ));
     } else {
         push(@librariesToCopy, (
@@ -197,9 +199,6 @@ if ($llvm) {
     } elsif ($preferSystemLLVMOverDrops) {
         # Don't fall through to drop detection.
         print "Using system LLVM.\n";
-    } elsif ($osxVersion eq "10.8") {
-        $llvmLibraryPackage = "WebKitLibraries/LLVMLibrariesMountainLion.tar.bz2";
-        $llvmIncludePackage = "WebKitLibraries/LLVMIncludesMountainLion.tar.bz2";
     } elsif ($osxVersion eq "10.9") {
         $llvmLibraryPackage = "WebKitLibraries/LLVMLibrariesMavericks.tar.bz2";
         $llvmIncludePackage = "WebKitLibraries/LLVMIncludesMavericks.tar.bz2";

@@ -43,6 +43,9 @@ namespace WebCore {
 
 CompositeAnimation::CompositeAnimation(AnimationControllerPrivate* animationController)
     : m_animationController(animationController)
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    , m_hasScrollTriggeredAnimation(false)
+#endif
 {
     m_suspended = animationController->isSuspended() && !animationController->allowsNewAnimationsWhileSuspended();
 }
@@ -222,7 +225,11 @@ void CompositeAnimation::updateKeyframeAnimations(RenderElement* renderer, Rende
         // Mark all existing animations as no longer active.
         for (AnimationNameMap::const_iterator it = m_keyframeAnimations.begin(); it != kfend; ++it)
             it->value->setIndex(-1);
-            
+
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+        m_hasScrollTriggeredAnimation = false;
+#endif
+
         // Toss the animation order map.
         m_keyframeAnimationOrderMap.clear();
 
@@ -245,7 +252,12 @@ void CompositeAnimation::updateKeyframeAnimations(RenderElement* renderer, Rende
                     // If this animation is postActive, skip it so it gets removed at the end of this function.
                     if (keyframeAnim->postActive())
                         continue;
-                    
+
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+                    if (animation.trigger()->isScrollAnimationTrigger())
+                        m_hasScrollTriggeredAnimation = true;
+#endif
+
                     // This one is still active.
 
                     // Animations match, but play states may differ. Update if needed.
@@ -265,6 +277,12 @@ void CompositeAnimation::updateKeyframeAnimations(RenderElement* renderer, Rende
                     for (auto it = keyframeAnim->keyframes().beginProperties(), end = keyframeAnim->keyframes().endProperties(); it != end; ++it)
                         LOG(Animations, "  property %s", getPropertyName(*it));
 #endif
+
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+                    if (animation.trigger()->isScrollAnimationTrigger())
+                        m_hasScrollTriggeredAnimation = true;
+#endif
+
                     m_keyframeAnimations.set(keyframeAnim->name().impl(), keyframeAnim);
                 }
                 
@@ -397,6 +415,42 @@ PassRefPtr<KeyframeAnimation> CompositeAnimation::getAnimationForProperty(CSSPro
     }
     
     return retval;
+}
+
+bool CompositeAnimation::computeExtentOfTransformAnimation(LayoutRect& bounds) const
+{
+    // If more than one transition and animation affect transform, give up.
+    bool seenTransformAnimation = false;
+    
+    for (auto& it : m_keyframeAnimations) {
+        if (KeyframeAnimation* anim = it.value.get()) {
+            if (!anim->hasAnimationForProperty(CSSPropertyTransform))
+                continue;
+
+            if (seenTransformAnimation)
+                return false;
+
+            seenTransformAnimation = true;
+
+            if (!anim->computeExtentOfTransformAnimation(bounds))
+                return false;
+        }
+    }
+
+    for (auto& it : m_transitions) {
+        if (ImplicitAnimation* anim = it.value.get()) {
+            if (anim->animatingProperty() != CSSPropertyTransform || !anim->hasStyle())
+                continue;
+
+            if (seenTransformAnimation)
+                return false;
+
+            if (!anim->computeExtentOfTransformAnimation(bounds))
+                return false;
+        }
+    }
+    
+    return true;
 }
 
 void CompositeAnimation::suspendAnimations()

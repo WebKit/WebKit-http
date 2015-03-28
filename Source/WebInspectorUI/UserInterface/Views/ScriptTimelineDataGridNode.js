@@ -33,7 +33,8 @@ WebInspector.ScriptTimelineDataGridNode = function(scriptTimelineRecord, baseSta
     this._rangeEndTime = typeof rangeEndTime === "number" ? rangeEndTime : Infinity;
 };
 
-WebInspector.Object.addConstructorFunctions(WebInspector.ScriptTimelineDataGridNode);
+// FIXME: Move to a WebInspector.Object subclass and we can remove this.
+WebInspector.Object.deprecatedAddConstructorFunctions(WebInspector.ScriptTimelineDataGridNode);
 
 WebInspector.ScriptTimelineDataGridNode.IconStyleClassName = "icon";
 
@@ -74,7 +75,7 @@ WebInspector.ScriptTimelineDataGridNode.prototype = {
         var duration = Math.min(this._record.startTime + this._record.duration, this._rangeEndTime) - startTime;
         var callFrameOrSourceCodeLocation = this._record.initiatorCallFrame || this._record.sourceCodeLocation;
 
-        return {eventType: this._record.eventType, startTime: startTime, selfTime: duration, totalTime: duration,
+        return {eventType: this._record.eventType, startTime, selfTime: duration, totalTime: duration,
             averageTime: duration, callCount: 1, location: callFrameOrSourceCodeLocation};
     },
 

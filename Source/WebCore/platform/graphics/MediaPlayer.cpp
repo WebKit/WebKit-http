@@ -47,6 +47,10 @@
 #include "MediaSourcePrivateClient.h"
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+#include "MediaStreamPrivate.h"
+#endif
+
 #if USE(GSTREAMER)
 #include "MediaPlayerPrivateGStreamer.h"
 #define PlatformMediaEngineClassName MediaPlayerPrivateGStreamer
@@ -87,6 +91,9 @@ public:
     virtual void load(const String&) { }
 #if ENABLE(MEDIA_SOURCE)
     virtual void load(const String&, MediaSourcePrivateClient*) { }
+#endif
+#if ENABLE(MEDIA_STREAM)
+    virtual void load(MediaStreamPrivate*) { }
 #endif
     virtual void cancelLoad() { }
 
@@ -312,6 +319,9 @@ bool MediaPlayer::load(const URL& url, const ContentType& contentType, const Str
 #if ENABLE(MEDIA_SOURCE)
     m_mediaSource = 0;
 #endif
+#if ENABLE(MEDIA_STREAM)
+    m_mediaStream = 0;
+#endif
 
     // If the MIME type is missing or is not meaningful, try to figure it out from the URL.
     if (m_contentMIMEType.isEmpty() || m_contentMIMEType == applicationOctetStream() || m_contentMIMEType == textPlain()) {
@@ -350,6 +360,18 @@ bool MediaPlayer::load(const URL& url, const ContentType& contentType, MediaSour
 }
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+bool MediaPlayer::load(MediaStreamPrivate* mediaStream)
+{
+    ASSERT(mediaStream);
+    m_mediaStream = mediaStream;
+    m_keySystem = "";
+    m_contentMIMETypeWasInferredFromExtension = false;
+    loadWithNextMediaEngine(0);
+    return m_currentMediaEngine;
+}
+#endif
+
 const MediaPlayerFactory* MediaPlayer::nextBestMediaEngine(const MediaPlayerFactory* current) const
 {
     MediaEngineSupportParameters parameters;
@@ -361,6 +383,9 @@ const MediaPlayerFactory* MediaPlayer::nextBestMediaEngine(const MediaPlayerFact
 #endif
 #if ENABLE(MEDIA_SOURCE)
     parameters.isMediaSource = !!m_mediaSource;
+#endif
+#if ENABLE(MEDIA_STREAM)
+    parameters.isMediaStream = !!m_mediaStream;
 #endif
 
     return bestMediaEngineForSupportParameters(parameters, current);
@@ -397,6 +422,11 @@ void MediaPlayer::loadWithNextMediaEngine(const MediaPlayerFactory* current)
 #if ENABLE(MEDIA_SOURCE)
         if (m_mediaSource)
             m_private->load(m_url.string(), m_mediaSource.get());
+        else
+#endif
+#if ENABLE(MEDIA_STREAM)
+        if (m_mediaStream)
+            m_private->load(m_mediaStream.get());
         else
 #endif
         m_private->load(m_url.string());
@@ -839,6 +869,11 @@ void MediaPlayer::setWirelessVideoPlaybackDisabled(bool disabled)
 void MediaPlayer::currentPlaybackTargetIsWirelessChanged()
 {
     m_client.mediaPlayerCurrentPlaybackTargetIsWirelessChanged(this);
+}
+
+void MediaPlayer::setWirelessPlaybackTarget(const MediaPlaybackTarget& device)
+{
+    m_private->setWirelessPlaybackTarget(device);
 }
 #endif
 

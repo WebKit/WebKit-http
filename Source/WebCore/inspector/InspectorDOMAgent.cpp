@@ -108,13 +108,13 @@ static Color parseColor(const RefPtr<InspectorObject>&& colorObject)
     if (!colorObject)
         return Color::transparent;
 
-    int r;
-    int g;
-    int b;
+    int r = 0;
+    int g = 0;
+    int b = 0;
     if (!colorObject->getInteger("r", r) || !colorObject->getInteger("g", g) || !colorObject->getInteger("b", b))
         return Color::transparent;
 
-    double a;
+    double a = 1.0;
     if (!colorObject->getDouble("a", a))
         return Color(r, g, b);
 
@@ -1375,7 +1375,7 @@ Ref<Inspector::Protocol::DOM::EventListener> InspectorDOMAgent::buildObjectForEv
             if (auto function = JSC::jsDynamicCast<JSC::JSFunction*>(handler)) {
                 if (!function->isHostOrBuiltinFunction()) {
                     if (auto executable = function->jsExecutable()) {
-                        lineNumber = executable->lineNo() - 1;
+                        lineNumber = executable->firstLine() - 1;
                         scriptID = executable->sourceID() == JSC::SourceProvider::nullID ? emptyString() : String::number(executable->sourceID());
                         sourceName = executable->sourceURL();
                     }

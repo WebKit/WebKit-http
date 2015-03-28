@@ -202,6 +202,7 @@ static int useAcceleratedDrawing;
 static int gcBetweenTests;
 static BOOL printSeparators;
 static RetainPtr<CFStringRef> persistentUserStyleSheetLocation;
+static std::set<std::string> allowedHosts;
 
 static WebHistoryItem *prevTestBFItem = nil;  // current b/f item at the end of the previous test
 
@@ -473,6 +474,48 @@ static void swizzleNSFontManagerMethods()
     appKitAvailableFontsIMP = method_setImplementation(availableFontsMethod, (IMP)drt_NSFontManager_availableFonts);
 }
 
+// Activating system copies of these fonts overrides any others that could be preferred, such as ones
+// in /Library/Fonts/Microsoft, and which don't always have the same metrics.
+// FIXME: Switch to a solution from <rdar://problem/19553550> once it's available.
+static void activateSystemCoreWebFonts()
+{
+    NSArray *coreWebFontNames = @[
+        @"Andale Mono",
+        @"Arial",
+        @"Arial Black",
+        @"Comic Sans MS",
+        @"Courier New",
+        @"Georgia",
+        @"Impact",
+        @"Times New Roman",
+        @"Trebuchet MS",
+        @"Verdana",
+        @"Webdings"
+    ];
+
+    NSArray *fontFiles = [[NSFileManager defaultManager] contentsOfDirectoryAtURL:[NSURL fileURLWithPath:@"/Library/Fonts" isDirectory:YES]
+        includingPropertiesForKeys:@[NSURLFileResourceTypeKey, NSURLNameKey] options:0 error:0];
+
+    for (NSURL *fontURL in fontFiles) {
+        NSString *resourceType;
+        NSString *fileName;
+        if (![fontURL getResourceValue:&resourceType forKey:NSURLFileResourceTypeKey error:0]
+            || ![fontURL getResourceValue:&fileName forKey:NSURLNameKey error:0])
+            continue;
+        if (![resourceType isEqualToString:NSURLFileResourceTypeRegular])
+            continue;
+
+        // Activate all font variations, such as Arial Bold Italic.ttf. This algorithm is not 100% precise, as it
+        // also activates e.g. Arial Unicode, which is not a variation of Arial.
+        for (NSString *coreWebFontName in coreWebFontNames) {
+            if ([fileName hasPrefix:coreWebFontName]) {
+                CTFontManagerRegisterFontsForURL((CFURLRef)fontURL, kCTFontManagerScopeProcess, 0);
+                break;
+            }
+        }
+    }
+}
+
 static void activateTestingFonts()
 {
     static const char* fontFileNames[] = {
@@ -508,6 +551,7 @@ static void activateTestingFonts()
 static void adjustFonts()
 {
     swizzleNSFontManagerMethods();
+    activateSystemCoreWebFonts();
     activateTestingFonts();
 }
 #else
@@ -935,14 +979,26 @@ static void setDefaultsToConsistentValuesForTesting()
         @"NSOverlayScrollersEnabled": @NO,
         @"AppleShowScrollBars": @"Always",
         @"NSButtonAnimationsEnabled": @NO, // Ideally, we should find a way to test animations, but for now, make sure that the dumped snapshot matches actual state.
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
+        @"AppleSystemFontOSSubversion": @(10),
+#endif
     };
 
     [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:dict];
 
+#if PLATFORM(MAC)
+    // Make NSFont use the new defaults.
+    [NSFont initialize];
+#endif
+
     NSDictionary *processInstanceDefaults = @{
         WebDatabaseDirectoryDefaultsKey: [libraryPath stringByAppendingPathComponent:@"Databases"],
         WebStorageDirectoryDefaultsKey: [libraryPath stringByAppendingPathComponent:@"LocalStorage"],
-        WebKitLocalCacheDefaultsKey: [libraryPath stringByAppendingPathComponent:@"LocalCache"]
+        WebKitLocalCacheDefaultsKey: [libraryPath stringByAppendingPathComponent:@"LocalCache"],
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
+        // This needs to also be added to argument domain because of <rdar://problem/20210002>.
+        @"AppleSystemFontOSSubversion": @(10),
+#endif
     };
 
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:processInstanceDefaults forName:NSArgumentDomain];
@@ -1025,6 +1081,7 @@ static void initializeGlobalsFromCommandLineOptions(int argc, const char *argv[]
         {"accelerated-drawing", no_argument, &useAcceleratedDrawing, YES},
         {"gc-between-tests", no_argument, &gcBetweenTests, YES},
         {"no-timeout", no_argument, &useTimeoutWatchdog, NO},
+        {"allowed-host", required_argument, nullptr, 'a'},
         {nullptr, 0, nullptr, 0}
     };
     
@@ -1034,6 +1091,9 @@ static void initializeGlobalsFromCommandLineOptions(int argc, const char *argv[]
             case '?':   // unknown or ambiguous option
             case ':':   // missing argument
                 exit(1);
+                break;
+            case 'a': // "allowed-host"
+                allowedHosts.insert(optarg);
                 break;
         }
     }
@@ -1825,6 +1885,7 @@ static void runTest(const string& inputLine)
 #endif
 
     gTestRunner = TestRunner::create(testURL, command.expectedPixelHash);
+    gTestRunner->setAllowedHosts(allowedHosts);
     gTestRunner->setCustomTimeout(command.timeout);
     topLoadingFrame = nil;
 #if !PLATFORM(IOS)

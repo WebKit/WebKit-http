@@ -693,11 +693,11 @@ RenderBlock* RenderObject::containingBlock() const
 
     const RenderStyle& style = this->style();
     if (!is<RenderText>(*this) && style.position() == FixedPosition)
-        parent = containingBlockForFixedPosition(parent);
+        parent = parent->containingBlockForFixedPosition();
     else if (!is<RenderText>(*this) && style.position() == AbsolutePosition)
-        parent = containingBlockForAbsolutePosition(parent);
+        parent = parent->containingBlockForAbsolutePosition();
     else
-        parent = containingBlockForObjectInFlow(parent);
+        parent = parent->containingBlockForObjectInFlow();
 
     if (!is<RenderBlock>(parent))
         return nullptr; // This can still happen in case of an orphaned tree
@@ -1351,7 +1351,7 @@ void RenderObject::computeFloatRectForRepaint(const RenderLayerModelObject*, Flo
     ASSERT_NOT_REACHED();
 }
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 
 static void showRenderTreeLegend()
 {
@@ -1696,7 +1696,7 @@ FloatQuad RenderObject::localToContainerQuad(const FloatQuad& localQuad, const R
     // Track the point at the center of the quad's bounding box. As mapLocalToContainer() calls offsetFromContainer(),
     // it will use that point as the reference point to decide which column's transform to apply in multiple-column blocks.
     TransformState transformState(TransformState::ApplyTransformDirection, localQuad.boundingBox().center(), localQuad);
-    mapLocalToContainer(repaintContainer, transformState, mode | ApplyContainerFlip | UseTransforms, wasFixed);
+    mapLocalToContainer(repaintContainer, transformState, mode | ApplyContainerFlip, wasFixed);
     transformState.flatten();
     
     return transformState.lastPlanarQuad();
@@ -1705,7 +1705,7 @@ FloatQuad RenderObject::localToContainerQuad(const FloatQuad& localQuad, const R
 FloatPoint RenderObject::localToContainerPoint(const FloatPoint& localPoint, const RenderLayerModelObject* repaintContainer, MapCoordinatesFlags mode, bool* wasFixed) const
 {
     TransformState transformState(TransformState::ApplyTransformDirection, localPoint);
-    mapLocalToContainer(repaintContainer, transformState, mode | ApplyContainerFlip | UseTransforms, wasFixed);
+    mapLocalToContainer(repaintContainer, transformState, mode | ApplyContainerFlip, wasFixed);
     transformState.flatten();
 
     return transformState.lastPlanarPoint();
@@ -2497,7 +2497,7 @@ void RenderObject::calculateBorderStyleColor(const EBorderStyle& style, const Bo
 
 } // namespace WebCore
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 
 void showNodeTree(const WebCore::RenderObject* object)
 {

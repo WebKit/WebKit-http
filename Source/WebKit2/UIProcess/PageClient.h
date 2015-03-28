@@ -34,6 +34,10 @@
 #include <WebCore/EditorClient.h>
 #include <wtf/Forward.h>
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+#include <WebCore/MediaPlaybackTargetPicker.h>
+#endif
+
 #if PLATFORM(COCOA)
 #include "PluginComplexTextInputState.h"
 
@@ -153,9 +157,7 @@ public:
 
     virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters*, WebOpenPanelResultListenerProxy*) { return false; }
 
-#if PLATFORM(EFL) || PLATFORM(HAIKU)
     virtual void didChangeContentSize(const WebCore::IntSize&) = 0;
-#endif
 
 #if PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
     virtual void startDrag(const WebCore::DragData&, PassRefPtr<ShareableBitmap> dragImage) = 0;
@@ -189,8 +191,13 @@ public:
 #endif
 
 #if USE(APPKIT)
-    virtual void setPromisedData(const String& pasteboardName, PassRefPtr<WebCore::SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title,
+    virtual void setPromisedDataForImage(const String& pasteboardName, PassRefPtr<WebCore::SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title,
                                  const String& url, const String& visibleUrl, PassRefPtr<WebCore::SharedBuffer> archiveBuffer) = 0;
+#if ENABLE(ATTACHMENT_ELEMENT)
+    virtual void setPromisedDataForAttachment(const String& pasteboardName, const String& filename, const String& extension, const String& title,
+                                         const String& url, const String& visibleUrl) = 0;
+
+#endif
 #endif
 
 #if PLATFORM(GTK)
@@ -315,6 +322,11 @@ public:
 #if PLATFORM(MAC)
     virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, bool forImmediateAction, API::Object*) = 0;
 #endif
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    virtual std::unique_ptr<WebCore::MediaPlaybackTargetPicker> createPlaybackTargetPicker(WebPageProxy*) = 0;
+#endif
+
 };
 
 } // namespace WebKit

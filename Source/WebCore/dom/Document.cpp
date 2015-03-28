@@ -228,6 +228,10 @@
 #include <replay/InputCursor.h>
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+#include "HTMLVideoElement.h"
+#endif
+
 using namespace WTF;
 using namespace Unicode;
 
@@ -1790,8 +1794,10 @@ void Document::recalcStyle(Style::Change change)
     InspectorInstrumentation::didRecalculateStyle(cookie);
 
     // Some animated images may now be inside the viewport due to style recalc,
-    // resume them if necessary.
-    frameView.viewportContentsChanged();
+    // resume them if necessary if there is no layout pending. Otherwise, we'll
+    // check if they need to be resumed after layout.
+    if (!frameView.needsLayout())
+        frameView.viewportContentsChanged();
 
     // As a result of the style recalculation, the currently hovered element might have been
     // detached (for example, by setting display:none in the :hover style), schedule another mouseMove event
@@ -1888,6 +1894,106 @@ Ref<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element* el
 
     TemporaryChange<bool> change(m_ignorePendingStylesheets, true);
     return ensureStyleResolver().styleForElement(element, element->parentNode() ? element->parentNode()->computedStyle() : nullptr);
+}
+
+bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsCheck dimensionsCheck)
+{
+    ASSERT(isMainThread());
+    
+    // If the stylesheets haven't loaded, just give up and do a full layout ignoring pending stylesheets.
+    if (!haveStylesheetsLoaded()) {
+        updateLayoutIgnorePendingStylesheets();
+        return true;
+    }
+    
+    // Check for re-entrancy and assert (same code that is in updateLayout()).
+    FrameView* frameView = view();
+    if (frameView && frameView->isInLayout()) {
+        // View layout should not be re-entrant.
+        ASSERT_NOT_REACHED();
+        return true;
+    }
+    
+    RenderView::RepaintRegionAccumulator repaintRegionAccumulator(renderView());
+    
+    // Mimic the structure of updateLayout(), but at each step, see if we have been forced into doing a full
+    // layout.
+    bool requireFullLayout = false;
+    if (HTMLFrameOwnerElement* owner = ownerElement()) {
+        if (owner->document().updateLayoutIfDimensionsOutOfDate(*owner))
+            requireFullLayout = true;
+    }
+    
+    updateStyleIfNeeded();
+
+    RenderObject* renderer = element.renderer();
+    if (!renderer || renderer->needsLayout() || element.renderNamedFlowFragment()) {
+        // If we don't have a renderer or if the renderer needs layout for any reason, give up.
+        // Named flows can have auto height, so don't try to enforce the optimization in this case.
+        // The 2-pass nature of auto height named flow layout means the region may not be dirty yet.
+        requireFullLayout = true;
+    }
+
+    bool isVertical = renderer && !renderer->isHorizontalWritingMode();
+    bool checkingLogicalWidth = ((dimensionsCheck & WidthDimensionsCheck) && !isVertical) || ((dimensionsCheck & HeightDimensionsCheck) && isVertical);
+    bool checkingLogicalHeight = ((dimensionsCheck & HeightDimensionsCheck) && !isVertical) || ((dimensionsCheck & WidthDimensionsCheck) && !isVertical);
+    bool hasSpecifiedLogicalHeight = renderer && renderer->style().logicalMinHeight() == Length(0, Fixed) && renderer->style().logicalHeight().isFixed() && renderer->style().logicalMaxHeight().isAuto();
+    
+    if (!requireFullLayout) {
+        RenderBox* previousBox = nullptr;
+        RenderBox* currentBox = nullptr;
+        
+        // Check our containing block chain. If anything in the chain needs a layout, then require a full layout.
+        for (RenderObject* currRenderer = element.renderer(); currRenderer && !currRenderer->isRenderView(); currRenderer = currRenderer->container()) {
+            
+            // Require the entire container chain to be boxes.
+            if (!is<RenderBox>(currRenderer)) {
+                requireFullLayout = true;
+                break;
+            }
+            
+            previousBox = currentBox;
+            currentBox = downcast<RenderBox>(currRenderer);
+            
+            // If a box needs layout for itself or if a box has changed children and sizes its width to
+            // its content, then require a full layout.
+            if (currentBox->selfNeedsLayout() ||
+                (checkingLogicalWidth && currRenderer->needsLayout() && currentBox->sizesLogicalWidthToFitContent(MainOrPreferredSize))) {
+                requireFullLayout = true;
+                break;
+            }
+            
+            // If a block contains floats and the child's height isn't specified, then
+            // give up also, since our height could end up being influenced by the floats.
+            if (checkingLogicalHeight && !hasSpecifiedLogicalHeight && currentBox->isRenderBlockFlow()) {
+                RenderBlockFlow* currentBlockFlow = downcast<RenderBlockFlow>(currentBox);
+                if (currentBlockFlow->containsFloats() && previousBox && !previousBox->isFloatingOrOutOfFlowPositioned()) {
+                    requireFullLayout = true;
+                    break;
+                }
+            }
+            
+            if (!currentBox->isRenderBlockFlow() || currentBox->flowThreadContainingBlock() || currentBox->isWritingModeRoot()) {
+                // FIXME: For now require only block flows all the way back to the root. This limits the optimization
+                // for now, and we'll expand it in future patches to apply to more and more scenarios.
+                // Disallow regions/columns from having the optimization.
+                // Give up if the writing mode changes at all in the containing block chain.
+                requireFullLayout = true;
+                break;
+            }
+            
+            if (currRenderer == frameView->layoutRoot())
+                break;
+        }
+    }
+    
+    StackStats::LayoutCheckPoint layoutCheckPoint;
+
+    // Only do a layout if changes have occurred that make it necessary.      
+    if (requireFullLayout && frameView && renderView() && (frameView->layoutPending() || renderView()->needsLayout()))
+        frameView->layout();
+    
+    return requireFullLayout;
 }
 
 bool Document::isPageBoxVisible(int pageIndex)
@@ -2136,7 +2242,7 @@ void Document::prepareForDestruction()
 
 #if ENABLE(TOUCH_EVENTS)
     if (m_touchEventTargets && m_touchEventTargets->size() && parentDocument())
-        parentDocument()->didRemoveEventTargetNode(this);
+        parentDocument()->didRemoveEventTargetNode(*this);
 #endif
 
     if (m_mediaQueryMatcher)
@@ -2625,18 +2731,18 @@ void Document::writeln(const String& text, Document* ownerDocument)
 
 double Document::minimumTimerInterval() const
 {
-    Page* p = page();
-    if (!p)
+    Page* page = this->page();
+    if (!page)
         return ScriptExecutionContext::minimumTimerInterval();
-    return p->settings().minDOMTimerInterval();
+    return page->settings().minimumDOMTimerInterval();
 }
 
 double Document::timerAlignmentInterval() const
 {
-    Page* p = page();
-    if (!p)
+    Page* page = this->page();
+    if (!page)
         return ScriptExecutionContext::timerAlignmentInterval();
-    return p->settings().domTimerAlignmentInterval();
+    return page->settings().domTimerAlignmentInterval();
 }
 
 EventTarget* Document::errorEventTarget()
@@ -5892,27 +5998,27 @@ static void wheelEventHandlerCountChanged(Document* document)
     scrollingCoordinator->frameViewWheelEventHandlerCountChanged(frameView);
 }
 
-void Document::didAddWheelEventHandler()
+void Document::didAddWheelEventHandler(Node&)
 {
     ++m_wheelEventHandlerCount;
     wheelEventHandlerCountChanged(this);
 }
 
-void Document::didRemoveWheelEventHandler()
+void Document::didRemoveWheelEventHandler(Node&)
 {
     ASSERT(m_wheelEventHandlerCount > 0);
     --m_wheelEventHandlerCount;
     wheelEventHandlerCountChanged(this);
 }
 
-void Document::didAddTouchEventHandler(Node* handler)
+void Document::didAddTouchEventHandler(Node& handler)
 {
 #if ENABLE(TOUCH_EVENTS)
     if (!m_touchEventTargets.get())
-        m_touchEventTargets = std::make_unique<TouchEventTargetSet>();
-    m_touchEventTargets->add(handler);
+        m_touchEventTargets = std::make_unique<EventTargetSet>();
+    m_touchEventTargets->add(&handler);
     if (Document* parent = parentDocument()) {
-        parent->didAddTouchEventHandler(this);
+        parent->didAddTouchEventHandler(*this);
         return;
     }
     if (Page* page = this->page()) {
@@ -5924,15 +6030,15 @@ void Document::didAddTouchEventHandler(Node* handler)
 #endif
 }
 
-void Document::didRemoveTouchEventHandler(Node* handler)
+void Document::didRemoveTouchEventHandler(Node& handler)
 {
 #if ENABLE(TOUCH_EVENTS)
     if (!m_touchEventTargets.get())
         return;
-    ASSERT(m_touchEventTargets->contains(handler));
-    m_touchEventTargets->remove(handler);
+    ASSERT(m_touchEventTargets->contains(&handler));
+    m_touchEventTargets->remove(&handler);
     if (Document* parent = parentDocument()) {
-        parent->didRemoveTouchEventHandler(this);
+        parent->didRemoveTouchEventHandler(*this);
         return;
     }
 
@@ -5951,16 +6057,19 @@ void Document::didRemoveTouchEventHandler(Node* handler)
 #endif
 }
 
-#if ENABLE(TOUCH_EVENTS)
-void Document::didRemoveEventTargetNode(Node* handler)
+void Document::didRemoveEventTargetNode(Node& handler)
 {
+#if ENABLE(TOUCH_EVENTS)
     if (m_touchEventTargets) {
-        m_touchEventTargets->removeAll(handler);
-        if ((handler == this || m_touchEventTargets->isEmpty()) && parentDocument())
-            parentDocument()->didRemoveEventTargetNode(this);
+        m_touchEventTargets->removeAll(&handler);
+        if ((&handler == this || m_touchEventTargets->isEmpty()) && parentDocument())
+            parentDocument()->didRemoveEventTargetNode(*this);
     }
-}
+#else
+    UNUSED_PARAM(handler);
 #endif
+}
+
 void Document::updateLastHandledUserGestureTimestamp()
 {
     m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
@@ -6350,6 +6459,87 @@ void Document::setInputCursor(PassRefPtr<InputCursor> cursor)
 {
     m_inputCursor = cursor;
 }
+#endif
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+void Document::showPlaybackTargetPicker(const HTMLMediaElement& element)
+{
+    Page* page = this->page();
+    if (!page)
+        return;
+
+    page->showPlaybackTargetPicker(this, view()->lastKnownMousePosition(), is<HTMLVideoElement>(element));
+}
+
+void Document::addPlaybackTargetPickerClient(MediaPlaybackTargetPickerClient& client)
+{
+    Page* page = this->page();
+    if (!page)
+        return;
+
+    m_playbackTargetClients.add(&client);
+
+    client.didChoosePlaybackTarget(page->playbackTarget());
+    client.externalOutputDeviceAvailableDidChange(page->hasWirelessPlaybackTarget());
+}
+
+void Document::removePlaybackTargetPickerClient(MediaPlaybackTargetPickerClient& client)
+{
+    m_playbackTargetClients.remove(&client);
+    configurePlaybackTargetMonitoring();
+}
+
+void Document::configurePlaybackTargetMonitoring()
+{
+    Page* page = this->page();
+    if (!page)
+        return;
+
+    page->configurePlaybackTargetMonitoring();
+}
+
+bool Document::requiresPlaybackTargetRouteMonitoring()
+{
+    for (auto* client : m_playbackTargetClients) {
+        if (client->requiresPlaybackTargetRouteMonitoring()) {
+            return true;
+            break;
+        }
+    }
+
+    return false;
+}
+
+void Document::playbackTargetAvailabilityDidChange(bool available)
+{
+    if (m_playbackTargetsAvailable == available)
+        return;
+    m_playbackTargetsAvailable = available;
+
+    for (auto* client : m_playbackTargetClients)
+        client->externalOutputDeviceAvailableDidChange(available);
+}
+
+void Document::didChoosePlaybackTarget(const MediaPlaybackTarget& device)
+{
+    MediaPlaybackTargetPickerClient* clientThatRequestedPicker = nullptr;
+
+    for (auto* client : m_playbackTargetClients) {
+        if (client->requestedPlaybackTargetPicker()) {
+            clientThatRequestedPicker = client;
+            continue;
+        }
+
+        client->didChoosePlaybackTarget(device);
+    }
+
+    // Notify the client that requested the chooser last because if more than one
+    // is playing, only the last one to set the context will actually get to play
+    //  to the external device.
+    if (clientThatRequestedPicker)
+        clientThatRequestedPicker->didChoosePlaybackTarget(device);
+}
+
 #endif
 
 } // namespace WebCore

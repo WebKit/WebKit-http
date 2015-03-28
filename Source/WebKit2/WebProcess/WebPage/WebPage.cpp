@@ -167,6 +167,7 @@
 #include <runtime/JSCJSValue.h>
 #include <runtime/JSLock.h>
 #include <wtf/RunLoop.h>
+#include <wtf/TemporaryChange.h>
 
 #if ENABLE(MHTML)
 #include <WebCore/MHTMLArchive.h>
@@ -339,13 +340,13 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
 #endif
+#if PLATFORM(MAC)
+    , m_lastActionMenuHitTestPreventsDefault(false)
+#endif
     , m_mainFrameProgressCompleted(false)
     , m_shouldDispatchFakeMouseMoveEvents(true)
 {
     ASSERT(m_pageID);
-    // FIXME: This is a non-ideal location for this Setting and
-    // 4ms should be adopted project-wide now, https://bugs.webkit.org/show_bug.cgi?id=61214
-    Settings::setDefaultMinDOMTimerInterval(0.004);
 
     m_pageGroup = WebProcess::singleton().webPageGroup(parameters.pageGroupData);
 
@@ -2210,10 +2211,14 @@ void WebPage::viewWillEndLiveResize()
         view->willEndLiveResize();
 }
 
-void WebPage::setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent& event)
+void WebPage::setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent& event, uint64_t callbackID)
 {
     if (!m_page)
         return;
+
+#if PLATFORM(IOS)
+    TemporaryChange<bool> userIsInteractingChange { m_userIsInteracting, true };
+#endif
 
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     frame.document()->setFocusedElement(0);
@@ -2222,10 +2227,13 @@ void WebPage::setInitialFocus(bool forward, bool isKeyboardEventValid, const Web
         PlatformKeyboardEvent platformEvent(platform(event));
         platformEvent.disambiguateKeyDownEvent(PlatformEvent::RawKeyDown);
         m_page->focusController().setInitialFocus(forward ? FocusDirectionForward : FocusDirectionBackward, &KeyboardEvent::create(platformEvent, frame.document()->defaultView()).get());
+
+        send(Messages::WebPageProxy::VoidCallback(callbackID));
         return;
     }
 
     m_page->focusController().setInitialFocus(forward ? FocusDirectionForward : FocusDirectionBackward, 0);
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
 void WebPage::setWindowResizerSize(const IntSize& windowResizerSize)
@@ -2696,6 +2704,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     
     settings.setAggressiveTileRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::aggressiveTileRetentionEnabledKey()));
     settings.setTemporaryTileCohortRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::temporaryTileCohortRetentionEnabledKey()));
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    RuntimeEnabledFeatures::sharedFeatures().setAnimationTriggersEnabled(store.getBoolValueForKey(WebPreferencesKey::cssAnimationTriggersEnabledKey()));
+#endif
     RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(store.getBoolValueForKey(WebPreferencesKey::cssRegionsEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(store.getBoolValueForKey(WebPreferencesKey::cssCompositingEnabledKey()));
     settings.setWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::webGLEnabledKey()));
@@ -2801,7 +2812,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setLowPowerVideoAudioBufferSizeEnabled(store.getBoolValueForKey(WebPreferencesKey::lowPowerVideoAudioBufferSizeEnabledKey()));
     settings.setSimpleLineLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutEnabledKey()));
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
-
+    
+    settings.setNewBlockInsideInlineModelEnabled(store.getBoolValueForKey(WebPreferencesKey::newBlockInsideInlineModelEnabledKey()));
+    
     settings.setSubpixelCSSOMElementMetricsEnabled(store.getBoolValueForKey(WebPreferencesKey::subpixelCSSOMElementMetricsEnabledKey()));
 
     settings.setUseLegacyTextAlignPositionedElementBehavior(store.getBoolValueForKey(WebPreferencesKey::useLegacyTextAlignPositionedElementBehaviorKey()));
@@ -2853,7 +2866,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
         m_drawingArea->updatePreferences(store);
 
 #if PLATFORM(IOS)
-    m_viewportConfiguration.setIgnoreScalingConstraints(store.getBoolValueForKey(WebPreferencesKey::ignoreViewportScalingConstraintsKey()));
+    m_viewportConfiguration.setCanIgnoreScalingConstraints(store.getBoolValueForKey(WebPreferencesKey::ignoreViewportScalingConstraintsKey()));
+    m_viewportConfiguration.setForceAlwaysUserScalable(store.getBoolValueForKey(WebPreferencesKey::forceAlwaysUserScalableKey()));
 #endif
 }
 
@@ -3352,6 +3366,18 @@ void WebPage::clearSelection()
     m_page->focusController().focusedOrMainFrame().selection().clear();
 }
 #endif
+
+void WebPage::restoreSelectionInFocusedEditableElement()
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (!frame.selection().isNone())
+        return;
+
+    if (auto document = frame.document()) {
+        if (auto element = document->focusedElement())
+            element->updateFocusAppearance(true /* restoreSelection */);
+    }
+}
 
 bool WebPage::mainFrameHasCustomContentProvider() const
 {
@@ -4426,11 +4452,11 @@ bool WebPage::canShowMIMEType(const String& MIMEType) const
         return true;
 
     const PluginData& pluginData = m_page->pluginData();
-    if (pluginData.supportsMimeType(MIMEType, PluginData::AllPlugins) && corePage()->mainFrame().loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
+    if (pluginData.supportsWebVisibleMimeType(MIMEType, PluginData::AllPlugins) && corePage()->mainFrame().loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
         return true;
 
     // We can use application plugins even if plugins aren't enabled.
-    if (pluginData.supportsMimeType(MIMEType, PluginData::OnlyApplicationPlugins))
+    if (pluginData.supportsWebVisibleMimeType(MIMEType, PluginData::OnlyApplicationPlugins))
         return true;
 
     return false;

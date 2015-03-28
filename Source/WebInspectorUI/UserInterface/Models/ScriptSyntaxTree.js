@@ -23,97 +23,44 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ScriptSyntaxTree = function(sourceText, script)
+WebInspector.ScriptSyntaxTree = class ScriptSyntaxTree extends WebInspector.Object
 {
-    console.assert(script && script instanceof WebInspector.Script, script);
+    constructor(sourceText, script)
+    {
+        super();
 
-    WebInspector.Object.call(this);
-    this._script = script;
+        console.assert(script && script instanceof WebInspector.Script, script);
 
-    try {
-        var esprimaSyntaxTree = esprima.parse(sourceText, {range: true});
-        this._syntaxTree = this._createInternalSyntaxTree(esprimaSyntaxTree);
-        this._parsedSuccessfully = true;
-    } catch (error) {
-        this._parsedSuccessfully = false;
-        this._syntaxTree = null;
-        console.error("Couldn't parse JavaScript File: " + script.url, error);
+        this._script = script;
+
+        try {
+            var esprimaSyntaxTree = esprima.parse(sourceText, {range: true});
+            this._syntaxTree = this._createInternalSyntaxTree(esprimaSyntaxTree);
+            this._parsedSuccessfully = true;
+        } catch (error) {
+            this._parsedSuccessfully = false;
+            this._syntaxTree = null;
+            console.error("Couldn't parse JavaScript File: " + script.url, error);
+        }
     }
-};
-
-// This should be kept in sync with an enum in JavaSciptCore/runtime/TypeProfiler.h
-WebInspector.ScriptSyntaxTree.TypeProfilerSearchDescriptor = {
-    NormalExpression: 1,
-    FunctionReturn: 2
-};
-
-WebInspector.ScriptSyntaxTree.NodeType = {
-    AssignmentExpression: Symbol("assignment-expression"),
-    ArrayExpression: Symbol("array-expression"),
-    ArrayPattern: Symbol("array-pattern"),
-    BlockStatement: Symbol("block-statement"),
-    BinaryExpression: Symbol("binary-expression"),
-    BreakStatement: Symbol("break-statement"),
-    CallExpression: Symbol("call-expression"),
-    CatchClause: Symbol("catch-clause"),
-    ConditionalExpression: Symbol("conditional-expression"),
-    ContinueStatement: Symbol("continue-statement"),
-    DoWhileStatement: Symbol("do-while-statement"),
-    DebuggerStatement: Symbol("debugger-statement"),
-    EmptyStatement: Symbol("empty-statement"),
-    ExpressionStatement: Symbol("expression-statement"),
-    ForStatement: Symbol("for-statement"),
-    ForInStatement: Symbol("for-in-statement"),
-    ForOfStatement: Symbol("for-of-statement"),
-    FunctionDeclaration: Symbol("function-declaration"),
-    FunctionExpression: Symbol("function-expression"),
-    Identifier: Symbol("identifier"),
-    IfStatement: Symbol("if-statement"),
-    Literal: Symbol("literal"),
-    LabeledStatement: Symbol("labeled-statement"),
-    LogicalExpression: Symbol("logical-expression"),
-    MemberExpression: Symbol("member-expression"),
-    NewExpression: Symbol("new-expression"),
-    ObjectExpression: Symbol("object-expression"),
-    ObjectPattern: Symbol("object-pattern"),
-    Program: Symbol("program"),
-    Property: Symbol("property"),
-    ReturnStatement: Symbol("return-statement"),
-    SequenceExpression: Symbol("sequence-expression"),
-    SwitchStatement: Symbol("switch-statement"),
-    SwitchCase: Symbol("switch-case"),
-    ThisExpression: Symbol("this-expression"),
-    ThrowStatement: Symbol("throw-statement"),
-    TryStatement: Symbol("try-statement"),
-    UnaryExpression: Symbol("unary-expression"),
-    UpdateExpression: Symbol("update-expression"),
-    VariableDeclaration: Symbol("variable-declaration"),
-    VariableDeclarator: Symbol("variable-declarator"),
-    WhileStatement: Symbol("while-statement"),
-    WithStatement: Symbol("with-statement")
-};
-
-WebInspector.ScriptSyntaxTree.prototype = {
-    constructor: WebInspector.ScriptSyntaxTree,
-    __proto__: WebInspector.Object.prototype,
 
     // Public
     
     get parsedSuccessfully()
     {
         return this._parsedSuccessfully;
-    },
+    }
 
-    forEachNode: function(callback)
+    forEachNode(callback)
     {
         console.assert(this._parsedSuccessfully);
         if (!this._parsedSuccessfully)
             return;
 
         this._recurse(this._syntaxTree, callback, this._defaultParserState());
-    },
+    }
 
-    filter: function(predicate, startNode) 
+    filter(predicate, startNode) 
     {
         console.assert(startNode && this._parsedSuccessfully);
         if (!this._parsedSuccessfully)
@@ -131,17 +78,17 @@ WebInspector.ScriptSyntaxTree.prototype = {
         this._recurse(startNode, filter, this._defaultParserState());
 
         return nodes;
-    },
+    }
 
-    filterByRange: function(startOffset, endOffset)
+    filterByRange(startOffset, endOffset)
     {
         console.assert(this._parsedSuccessfully);
         if (!this._parsedSuccessfully)
             return [];
         
         var allNodes = [];
-        const start = 0;
-        const end = 1;
+        var start = 0;
+        var end = 1;
         function filterForNodesInRange(node, state)
         {
             // program start        range            program end
@@ -167,9 +114,9 @@ WebInspector.ScriptSyntaxTree.prototype = {
         this.forEachNode(filterForNodesInRange);
 
         return allNodes;
-    },
+    }
 
-    containsNonEmptyReturnStatement: function(startNode)
+    containsNonEmptyReturnStatement(startNode)
     {
         console.assert(startNode && this._parsedSuccessfully);
         if (!this._parsedSuccessfully)
@@ -197,9 +144,9 @@ WebInspector.ScriptSyntaxTree.prototype = {
         startNode.attachments._hasNonEmptyReturnStatement = hasNonEmptyReturnStatement;
 
         return hasNonEmptyReturnStatement;
-    },
+    }
 
-    updateTypes: function(nodesToUpdate, callback)
+    updateTypes(nodesToUpdate, callback)
     {
         console.assert(RuntimeAgent.getRuntimeTypesForVariablesAtOffsets);
         console.assert(Array.isArray(nodesToUpdate) && this._parsedSuccessfully);
@@ -216,26 +163,28 @@ WebInspector.ScriptSyntaxTree.prototype = {
             case WebInspector.ScriptSyntaxTree.NodeType.FunctionDeclaration:
             case WebInspector.ScriptSyntaxTree.NodeType.FunctionExpression:
                 for (var param of node.params) {
-                    allRequests.push({
-                        typeInformationDescriptor: WebInspector.ScriptSyntaxTree.TypeProfilerSearchDescriptor.NormalExpression,
-                        sourceID: sourceID,
-                        divot: param.range[0]
-                    });
-                    allRequestNodes.push(param);
+                    for (var identifier of this._gatherIdentifiersInDeclaration(param)) {
+                        allRequests.push({
+                            typeInformationDescriptor: WebInspector.ScriptSyntaxTree.TypeProfilerSearchDescriptor.NormalExpression,
+                            sourceID,
+                            divot: identifier.range[0]
+                        });
+                        allRequestNodes.push(identifier);
+                    }
                 }
 
                 allRequests.push({
                     typeInformationDescriptor: WebInspector.ScriptSyntaxTree.TypeProfilerSearchDescriptor.FunctionReturn,
-                    sourceID: sourceID,
+                    sourceID,
                     divot: node.body.range[0]
                 });
                 allRequestNodes.push(node);
                 break;
             case WebInspector.ScriptSyntaxTree.NodeType.VariableDeclarator:
-                for (var identifier of this.gatherIdentifiersInVariableDeclaration(node)) {
+                for (var identifier of this._gatherIdentifiersInDeclaration(node.id)) {
                     allRequests.push({
                         typeInformationDescriptor: WebInspector.ScriptSyntaxTree.TypeProfilerSearchDescriptor.NormalExpression,
-                        sourceID: sourceID,
+                        sourceID,
                         divot: identifier.range[0]
                     });
                     allRequestNodes.push(identifier);
@@ -262,13 +211,16 @@ WebInspector.ScriptSyntaxTree.prototype = {
                     node.attachments.types = typeInformation;
             }
 
-            callback();
+            callback(allRequestNodes);
         }
 
         RuntimeAgent.getRuntimeTypesForVariablesAtOffsets(allRequests, handleTypes);
-    },
+    }
 
-    gatherIdentifiersInVariableDeclaration: function (node) {
+    // Private
+
+    _gatherIdentifiersInDeclaration(node)
+    {
         function gatherIdentifiers(node) 
         {
             switch (node.type) {
@@ -291,26 +243,25 @@ WebInspector.ScriptSyntaxTree.prototype = {
                     }
                     return identifiers;
                 default:
-                    console.assert(false, "Unexecpted node type in variable declarator: " + node.type);
+                    console.assert(false, "Unexpected node type in variable declarator: " + node.type);
                     return [];
             }
         }
 
-        console.assert(node.type === WebInspector.ScriptSyntaxTree.NodeType.VariableDeclarator);
-        return gatherIdentifiers(node.id);
-    },
+        console.assert(node.type === WebInspector.ScriptSyntaxTree.NodeType.Identifier || node.type === WebInspector.ScriptSyntaxTree.NodeType.ObjectPattern || node.type === WebInspector.ScriptSyntaxTree.NodeType.ArrayPattern);
 
-    // Private
+        return gatherIdentifiers(node);
+    }
 
-    _defaultParserState: function() 
+    _defaultParserState() 
     {
         return {
             shouldStopEarly: false,
             skipChildNodes: false
         };
-    },
+    }
 
-    _recurse: function(node, callback, state) 
+    _recurse(node, callback, state) 
     {
         if (!node)
             return;
@@ -351,6 +302,20 @@ WebInspector.ScriptSyntaxTree.prototype = {
             callback(node, state);
             this._recurse(node.callee, callback, state);
             this._recurseArray(node.arguments, callback, state);
+            break;
+        case WebInspector.ScriptSyntaxTree.NodeType.ClassBody:
+            callback(node, state);
+            this._recurseArray(node.body, callback, state);
+            break;
+        case WebInspector.ScriptSyntaxTree.NodeType.ClassDeclaration:
+            callback(node, state);
+            this._recurse(node.superClass, callback, state);
+            this._recurse(node.body, callback, state);
+            break;
+        case WebInspector.ScriptSyntaxTree.NodeType.ClassExpression:
+            callback(node, state);
+            this._recurse(node.superClass, callback, state);
+            this._recurse(node.body, callback, state);
             break;
         case WebInspector.ScriptSyntaxTree.NodeType.ContinueStatement:
             callback(node, state);
@@ -424,6 +389,11 @@ WebInspector.ScriptSyntaxTree.prototype = {
             this._recurse(node.object, callback, state);
             this._recurse(node.property, callback, state);
             break;
+        case WebInspector.ScriptSyntaxTree.NodeType.MethodDefinition:
+            callback(node, state);
+            this._recurse(node.key, callback, state);
+            this._recurse(node.value, callback, state);
+            break;
         case WebInspector.ScriptSyntaxTree.NodeType.NewExpression:
             callback(node, state);
             this._recurse(node.callee, callback, state);
@@ -450,6 +420,10 @@ WebInspector.ScriptSyntaxTree.prototype = {
         case WebInspector.ScriptSyntaxTree.NodeType.SequenceExpression:
             callback(node, state);
             this._recurseArray(node.expressions, callback, state);
+            break;
+        case WebInspector.ScriptSyntaxTree.NodeType.SpreadElement:
+            callback(node, state);
+            this._recurse(node.argument, callback, state);
             break;
         case WebInspector.ScriptSyntaxTree.NodeType.SwitchStatement:
             callback(node, state);
@@ -511,19 +485,19 @@ WebInspector.ScriptSyntaxTree.prototype = {
         }
 
         state.skipChildNodes = false;
-    },
+    }
 
-    _recurseArray: function(array, callback, state) 
+    _recurseArray(array, callback, state) 
     {
         for (var node of array)
             this._recurse(node, callback, state);
-    },
+    }
     
     // This function translates from esprima's Abstract Syntax Tree to ours. 
     // Mostly, this is just the identity function. We've added an extra isGetterOrSetter property for functions.
     // Our AST complies with the Mozilla parser API:
     // https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Parser_API
-    _createInternalSyntaxTree: function(node) 
+    _createInternalSyntaxTree(node) 
     {
         if (!node)
             return null;
@@ -584,6 +558,28 @@ WebInspector.ScriptSyntaxTree.prototype = {
                 body: this._createInternalSyntaxTree(node.body)
             };
             break;
+        case "ClassBody":
+            result = {
+                type: WebInspector.ScriptSyntaxTree.NodeType.ClassBody,
+                body: node.body.map(this._createInternalSyntaxTree.bind(this))
+            };
+            break;
+        case "ClassDeclaration":
+            result = {
+                type: WebInspector.ScriptSyntaxTree.NodeType.ClassDeclaration,
+                id: this._createInternalSyntaxTree(node.id),
+                superClass: this._createInternalSyntaxTree(node.superClass),
+                body: this._createInternalSyntaxTree(node.body),
+            };
+            break;
+        case "ClassExpression":
+            result = {
+                type: WebInspector.ScriptSyntaxTree.NodeType.ClassExpression,
+                id: this._createInternalSyntaxTree(node.id),
+                superClass: this._createInternalSyntaxTree(node.superClass),
+                body: this._createInternalSyntaxTree(node.body),
+            };
+            break;            
         case "ConditionalExpression":
             result = {
                 type: WebInspector.ScriptSyntaxTree.NodeType.ConditionalExpression,
@@ -708,6 +704,19 @@ WebInspector.ScriptSyntaxTree.prototype = {
                 computed: node.computed
             };
             break;
+        case "MethodDefinition":
+            result = {
+                type: WebInspector.ScriptSyntaxTree.NodeType.MethodDefinition,
+                key: this._createInternalSyntaxTree(node.key),
+                value: this._createInternalSyntaxTree(node.value),
+                computed: node.computed,
+                kind: node.kind,
+                static: node.static
+            };
+            // FIXME: <https://webkit.org/b/143171> Web Inspector: Improve Type Profiler Support for ES6 Syntax
+            result.value.isGetterOrSetter = true;
+            result.value.getterOrSetterRange = result.key.range;
+            break;
         case "NewExpression":
             result = {
                 type: WebInspector.ScriptSyntaxTree.NodeType.NewExpression,
@@ -755,6 +764,12 @@ WebInspector.ScriptSyntaxTree.prototype = {
             result = {
                 type: WebInspector.ScriptSyntaxTree.NodeType.SequenceExpression,
                 expressions: node.expressions.map(this._createInternalSyntaxTree.bind(this))
+            };
+            break;
+        case "SpreadElement":
+            result = {
+                type: WebInspector.ScriptSyntaxTree.NodeType.SpreadElement,
+                argument: this._createInternalSyntaxTree(node.argument),
             };
             break;
         case "SwitchStatement":
@@ -836,6 +851,7 @@ WebInspector.ScriptSyntaxTree.prototype = {
             break;
         default:
             console.error("Unsupported Syntax Tree Node: " + node.type, node);
+            return null;
         }
         
         result.range = node.range;
@@ -844,4 +860,61 @@ WebInspector.ScriptSyntaxTree.prototype = {
 
         return result;
     }
+};
+
+// This should be kept in sync with an enum in JavaSciptCore/runtime/TypeProfiler.h
+WebInspector.ScriptSyntaxTree.TypeProfilerSearchDescriptor = {
+    NormalExpression: 1,
+    FunctionReturn: 2
+};
+
+WebInspector.ScriptSyntaxTree.NodeType = {
+    ArrayExpression: Symbol("array-expression"),
+    ArrayPattern: Symbol("array-pattern"),
+    AssignmentExpression: Symbol("assignment-expression"),
+    BinaryExpression: Symbol("binary-expression"),
+    BlockStatement: Symbol("block-statement"),
+    BreakStatement: Symbol("break-statement"),
+    CallExpression: Symbol("call-expression"),
+    CatchClause: Symbol("catch-clause"),
+    ClassBody: Symbol("class-body"),
+    ClassDeclaration: Symbol("class-declaration"),
+    ClassExpression: Symbol("class-expression"),
+    ConditionalExpression: Symbol("conditional-expression"),
+    ContinueStatement: Symbol("continue-statement"),
+    DebuggerStatement: Symbol("debugger-statement"),
+    DoWhileStatement: Symbol("do-while-statement"),
+    EmptyStatement: Symbol("empty-statement"),
+    ExpressionStatement: Symbol("expression-statement"),
+    ForInStatement: Symbol("for-in-statement"),
+    ForOfStatement: Symbol("for-of-statement"),
+    ForStatement: Symbol("for-statement"),
+    FunctionDeclaration: Symbol("function-declaration"),
+    FunctionExpression: Symbol("function-expression"),
+    Identifier: Symbol("identifier"),
+    IfStatement: Symbol("if-statement"),
+    LabeledStatement: Symbol("labeled-statement"),
+    Literal: Symbol("literal"),
+    LogicalExpression: Symbol("logical-expression"),
+    MemberExpression: Symbol("member-expression"),
+    MethodDefinition: Symbol("method-definition"),
+    NewExpression: Symbol("new-expression"),
+    ObjectExpression: Symbol("object-expression"),
+    ObjectPattern: Symbol("object-pattern"),
+    Program: Symbol("program"),
+    Property: Symbol("property"),
+    ReturnStatement: Symbol("return-statement"),
+    SequenceExpression: Symbol("sequence-expression"),
+    SpreadElement: Symbol("spread-element"),
+    SwitchCase: Symbol("switch-case"),
+    SwitchStatement: Symbol("switch-statement"),
+    ThisExpression: Symbol("this-expression"),
+    ThrowStatement: Symbol("throw-statement"),
+    TryStatement: Symbol("try-statement"),
+    UnaryExpression: Symbol("unary-expression"),
+    UpdateExpression: Symbol("update-expression"),
+    VariableDeclaration: Symbol("variable-declaration"),
+    VariableDeclarator: Symbol("variable-declarator"),
+    WhileStatement: Symbol("while-statement"),
+    WithStatement: Symbol("with-statement"),
 };

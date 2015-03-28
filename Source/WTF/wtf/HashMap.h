@@ -81,8 +81,8 @@ public:
 
     void swap(HashMap&);
 
-    int size() const;
-    int capacity() const;
+    unsigned size() const;
+    unsigned capacity() const;
     bool isEmpty() const;
 
     // iterators iterate over pairs of keys and values
@@ -195,13 +195,13 @@ inline void HashMap<T, U, V, W, X>::swap(HashMap& other)
 }
 
 template<typename T, typename U, typename V, typename W, typename X>
-inline int HashMap<T, U, V, W, X>::size() const
+inline unsigned HashMap<T, U, V, W, X>::size() const
 {
     return m_impl.size(); 
 }
 
 template<typename T, typename U, typename V, typename W, typename X>
-inline int HashMap<T, U, V, W, X>::capacity() const
+inline unsigned HashMap<T, U, V, W, X>::capacity() const
 { 
     return m_impl.capacity(); 
 }
@@ -497,6 +497,19 @@ template<typename T, typename U, typename V, typename W, typename X>
 inline bool operator!=(const HashMap<T, U, V, W, X>& a, const HashMap<T, U, V, W, X>& b)
 {
     return !(a == b);
+}
+
+template<typename T, typename U, typename V, typename W, typename X, typename Y>
+inline void copyToVector(const HashMap<T, U, V, W, X>& collection, Y& vector)
+{
+    typedef typename HashMap<T, U, V, W, X>::const_iterator iterator;
+
+    vector.resize(collection.size());
+
+    iterator it = collection.begin();
+    iterator end = collection.end();
+    for (unsigned i = 0; it != end; ++it, ++i)
+        vector[i] = { (*it).key, (*it).value };
 }
 
 template<typename T, typename U, typename V, typename W, typename X, typename Y>

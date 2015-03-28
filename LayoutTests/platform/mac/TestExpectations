@@ -45,6 +45,8 @@ webkit.org/b/129039 accessibility/select-element-at-index.html [ Skip ]
 # ariaControlsElementAtIndex is not implemented in mac
 webkit.org/b/127908 accessibility/aria-controls.html [ Skip ]
 
+webkit.org/b/142976 accessibility/textarea-selected-text-range.html [ Pass Failure ]
+
 # Need to add functionality to DumpRenderTree to handle error pages
 fast/history/back-forward-reset-after-error-handling.html
 
@@ -617,7 +619,6 @@ webaudio/mediastreamaudiodestinationnode.html [ Failure ]
 webaudio/mediastreamaudiosourcenode.html [ Failure ]
 webaudio/codec-tests/vorbis/ [ WontFix ]
 webkit.org/b/119467 webaudio/audiobuffersource-loop-points.html [ Skip ]
-[ Mavericks ] webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
 
 # Text Autosizing is not enabled.
 webkit.org/b/84186 fast/text-autosizing
@@ -735,11 +736,6 @@ webkit.org/b/120387 svg/animations/svglengthlist-animation-3.html [ Pass Failure
 
 webkit.org/b/120923 animations/cross-fade-background-image.html [ ImageOnlyFailure ]
 
-webkit.org/b/114280 svg/animations/smil-leak-dynamically-added-element-instances.svg [ Pass Failure ]
-webkit.org/b/114280 svg/animations/smil-leak-element-instances-noBaseValRef.svg [ Pass Failure ]
-webkit.org/b/114280 svg/animations/smil-leak-element-instances.svg [ Pass Failure ]
-webkit.org/b/114280 svg/animations/smil-leak-elements.svg [ Pass Failure ]
-
 webkit.org/b/131244 svg/as-image/svg-as-image-canvas.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/117427 compositing/reflections/load-video-in-reflection.html [ Pass Failure Crash Timeout ]
@@ -764,13 +760,9 @@ webkit.org/b/123369 svg/css/root-shadow-offscreen.svg [ Pass ImageOnlyFailure ]
 # webkit.org/b/100846, webkit.org/b/136715
 inspector-protocol/debugger
 
-webkit.org/b/123490 [ Mavericks ] webaudio/oscillator-sawtooth.html [ Pass Failure ]
-
 webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure ]
 
 webkit.org/b/124321 [ Mavericks ] animations/resume-after-page-cache.html [ Pass Failure ]
-
-webkit.org/b/121646 webaudio/delaynode-max-default-delay.html [ Pass Failure ]
 
 # These fast/forms/select tests open a pop-up menu (visible on screen even when using run-webkit-tests), and get stuck in its nested event loop.
 webkit.org/b/87748 fast/forms/select/optgroup-clicking.html [ Skip ]
@@ -838,6 +830,8 @@ webkit.org/b/119038 mathml/presentation/roots.xhtml [ Failure ]
 
 webkit.org/b/128255 compositing/columns/composited-lr-paginated-repaint.html [ Pass Failure ]
 webkit.org/b/128255 compositing/columns/composited-rl-paginated-repaint.html [ Pass Failure ]
+
+webkit.org/b/140183 compositing/backgrounds/background-image-with-negative-zindex.html [ ImageOnlyFailure ]
 
 webkit.org/b/130972 transitions/3d/interrupted-transition.html [ Pass Failure Timeout ]
 
@@ -1093,10 +1087,6 @@ webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
 webkit.org/b/137157 [ Release ] inspector/page/main-frame-resource.html [ Pass Failure ]
 [ Debug ] inspector/page/main-frame-resource.html [ Pass Failure Slow ]
 
-# FIXME: Needs bugzilla (<rdar://problem/15393179>)
-[ Yosemite+ ] webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
-[ Yosemite+ ] webaudio/oscillator-sawtooth.html [ Pass Failure ]
-
 webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pass ]
 
 # FIXME: Needs bugzilla (<rdar://problem/15971968>)
@@ -1155,11 +1145,11 @@ webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pa
 [ Yosemite+ ] media/media-source/media-source-seek-complete.html [ Timeout ]
 
 # These tests used to only fail with WK2, but on Yosemite, they also fail with WK1.
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-blur.html [ ImageOnlyFailure ]
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-hue-rotate.html [ ImageOnlyFailure ]
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-invert.html [ ImageOnlyFailure ]
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-multiple.html [ ImageOnlyFailure ]
-webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-reference.html [ ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-blur.html [ Pass ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-hue-rotate.html [ Pass ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-invert.html [ Pass ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-multiple.html [ Pass ImageOnlyFailure ]
+webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-reference.html [ Pass ImageOnlyFailure ]
 
 # FIXME: Needs bugzilla
 platform/mac/editing/input/undo-grouping-on-text-insertion.html [ Skip ]
@@ -1237,15 +1227,6 @@ webkit.org/b/140589 svg/W3C-SVG-1.1/text-text-06-t.svg [ Failure ]
 webkit.org/b/140589 svg/text/text-text-06-t.svg [ Failure ]
 webkit.org/b/137098 svg/text/text-hkern.svg [ Failure ]
 webkit.org/b/137100 svg/text/text-vkern.svg [ Failure ]
-webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-squeeze-1.svg [ Failure ]
-webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-squeeze-2.svg [ Failure ]
-webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-squeeze-3.svg [ Failure ]
-webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-squeeze-4.svg [ Failure ]
-webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-stretch-1.svg [ Failure ]
-webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-stretch-2.svg [ Failure ]
-webkit.org/b/139968 svg/text/select-textLength-spacingAndGlyphs-stretch-3.svg [ Failure ]
-webkit.org/b/139968 svg/custom/svg-fonts-without-missing-glyph.xhtml [ Pass Failure ]
-webkit.org/b/140537 fast/css/ex-unit-with-no-x-height.html [ Failure ]
 
 # Sometimes has an extra space at the end
 fast/forms/focus-selection-textarea.html [ Pass Failure ]
@@ -1262,6 +1243,8 @@ webkit.org/b/141118 inspector/css/selector-dynamic-specificity.html [ Skip ]
 webkit.org/b/141601 inspector/css/stylesheet-with-mutations.html [ Skip ]
 
 webkit.org/b/141534 [ Yosemite ] media/video-load-networkState.html [ Pass Crash ]
+
+webkit.org/b/142726 [ Yosemite+ ] fast/images/animated-png.html [ ImageOnlyFailure ]
 
 # Skip media control tests until new controls are finalized
 webkit.org/b/142142 media/video-no-audio.html [ Skip ]
@@ -1280,6 +1263,14 @@ webkit.org/b/142142 fast/layers/video-layer.html [ Skip ]
 webkit.org/b/142142 media/video-empty-source.html [ Skip ]
 webkit.org/b/142142 media/audio-delete-while-slider-thumb-clicked.html [ Skip ]
 webkit.org/b/142142 media/controls-after-reload.html [ Skip ]
+webkit.org/b/142142 media/nodesFromRect-shadowContent.html [ Skip ]
+webkit.org/b/142142 media/video-initially-hidden-volume-slider-up.html [ Skip ]
+webkit.org/b/142142 fullscreen/video-controls-override.html [ Skip ]
+webkit.org/b/142142 http/tests/media/hls/video-controls-live-stream.html [ Skip ]
+webkit.org/b/142142 media/video-volume-slider-drag.html [ Skip ]
 
 # Test uses Yosemite blurs
 [ Mavericks ] compositing/media-controls-bar-appearance.html [ Skip ]
+
+# Mavericks and prior do not support APNG.
+webkit.org/b/17022 [ MountainLion Mavericks ] fast/images/animated-png.html [ Skip ]

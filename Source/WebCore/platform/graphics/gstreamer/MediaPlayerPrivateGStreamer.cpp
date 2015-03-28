@@ -68,6 +68,28 @@
 #include "AudioSourceProviderGStreamer.h"
 #endif
 
+#if USE(GSTREAMER_GL)
+#include "GLContext.h"
+
+#define GST_USE_UNSTABLE_API
+#include <gst/gl/gl.h>
+#undef GST_USE_UNSTABLE_API
+
+#if USE(GLX)
+#include "GLContextGLX.h"
+#include <gst/gl/x11/gstgldisplay_x11.h>
+#elif USE(EGL)
+#include "GLContextEGL.h"
+#include <gst/gl/egl/gstgldisplay_egl.h>
+#endif
+
+// gstglapi.h may include eglplatform.h and it includes X.h, which
+// defines None, breaking MediaPlayer::None enum
+#if PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
+#undef None
+#endif
+#endif // USE(GSTREAMER_GL)
+
 // Max interval in seconds to stay in the READY state on manual
 // state change requests.
 static const unsigned gReadyStateTimerInterval = 60;
@@ -82,6 +104,11 @@ namespace WebCore {
 static gboolean mediaPlayerPrivateMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamer* player)
 {
     return player->handleMessage(message);
+}
+
+static void mediaPlayerPrivateSyncMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamer* player)
+{
+    player->handleSyncMessage(message);
 }
 
 static void mediaPlayerPrivateSourceChangedCallback(GObject*, GParamSpec*, MediaPlayerPrivateGStreamer* player)
@@ -317,6 +344,13 @@ void MediaPlayerPrivateGStreamer::load(const String& url, MediaSourcePrivateClie
     String mediasourceUri = String::format("mediasource%s", url.utf8().data());
     m_mediaSource = mediaSource;
     load(mediasourceUri);
+}
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+void MediaPlayerPrivateGStreamer::load(MediaStreamPrivate*)
+{
+    notImplemented();
 }
 #endif
 
@@ -896,6 +930,74 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamer::buffered() cons
 
     return timeRanges;
 }
+
+void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
+{
+    switch (GST_MESSAGE_TYPE(message)) {
+#if USE(GSTREAMER_GL)
+    case GST_MESSAGE_NEED_CONTEXT: {
+        const gchar* contextType;
+        gst_message_parse_context_type(message, &contextType);
+
+        if (!ensureGstGLContext())
+            return;
+
+        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
+            GstContext* displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+            gst_context_set_gl_display(displayContext, m_glDisplay.get());
+            gst_element_set_context(GST_ELEMENT(message->src), displayContext);
+            return;
+        }
+
+        if (!g_strcmp0(contextType, "gst.gl.app_context")) {
+            GstContext* appContext = gst_context_new("gst.gl.app_context", TRUE);
+            GstStructure* structure = gst_context_writable_structure(appContext);
+            gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext.get(), nullptr);
+            gst_element_set_context(GST_ELEMENT(message->src), appContext);
+            return;
+        }
+        break;
+    }
+#endif // USE(GSTREAMER_GL)
+    default:
+        break;
+    }
+}
+
+#if USE(GSTREAMER_GL)
+bool MediaPlayerPrivateGStreamer::ensureGstGLContext()
+{
+    if (m_glContext)
+        return true;
+
+    if (!m_glDisplay) {
+#if PLATFORM(X11)
+        Display* display = GLContext::sharedX11Display();
+        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(display));
+#elif PLATFORM(WAYLAND)
+        EGLDisplay display = WaylandDisplay::instance()->eglDisplay();
+        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(display));
+#endif
+    }
+
+    PlatformGraphicsContext3D contextHandle = GLContext::sharingContext()->platformContext();
+    if (!contextHandle)
+        return false;
+#if USE(EGL)
+    GstGLPlatform glPlatform = GST_GL_PLATFORM_EGL;
+#else
+    GstGLPlatform glPlatform = GST_GL_PLATFORM_GLX;
+#endif
+#if USE(GLES2)
+    GstGLAPI glAPI = GST_GL_API_GLES2;
+#else
+    GstGLAPI glAPI = GST_GL_API_OPENGL;
+#endif
+    m_glContext = gst_gl_context_new_wrapped(m_glDisplay.get(), reinterpret_cast<guintptr>(contextHandle), glPlatform, glAPI);
+
+    return true;
+}
+#endif // USE(GSTREAMER_GL)
 
 gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
 {
@@ -1928,6 +2030,8 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_playBin.get())));
     gst_bus_add_signal_watch(bus.get());
     g_signal_connect(bus.get(), "message", G_CALLBACK(mediaPlayerPrivateMessageCallback), this);
+    gst_bus_enable_sync_message_emission(bus.get());
+    g_signal_connect(bus.get(), "sync-message", G_CALLBACK(mediaPlayerPrivateSyncMessageCallback), this);
 
     g_object_set(m_playBin.get(), "mute", m_player->muted(), NULL);
 

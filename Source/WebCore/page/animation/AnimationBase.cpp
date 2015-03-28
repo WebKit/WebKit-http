@@ -36,9 +36,11 @@
 #include "Document.h"
 #include "EventNames.h"
 #include "FloatConversion.h"
+#include "GeometryUtilities.h"
 #include "Logging.h"
 #include "RenderBox.h"
 #include "RenderStyle.h"
+#include "RenderView.h"
 #include "UnitBezier.h"
 #include <algorithm>
 #include <wtf/CurrentTime.h>
@@ -197,6 +199,7 @@ void AnimationBase::updateStateMachine(AnimationStateInput input, double param)
     switch (m_animationState) {
         case AnimationState::New:
             ASSERT(input == AnimationStateInput::StartAnimation || input == AnimationStateInput::PlayStateRunning || input == AnimationStateInput::PlayStatePaused);
+
             if (input == AnimationStateInput::StartAnimation || input == AnimationStateInput::PlayStateRunning) {
                 m_requestedStartTime = beginAnimationUpdateTime();
                 LOG(Animations, "%p AnimationState %s -> StartWaitTimer", this, nameForState(m_animationState));
@@ -456,12 +459,31 @@ void AnimationBase::fireAnimationEventsIfNeeded()
     
     // Check for start timeout
     if (m_animationState == AnimationState::StartWaitTimer) {
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+        if (m_animation->trigger() && m_animation->trigger()->isScrollAnimationTrigger()) {
+            if (m_object) {
+                float offset = m_compositeAnimation->animationController()->scrollPosition();
+                ScrollAnimationTrigger& scrollTrigger = downcast<ScrollAnimationTrigger>(*m_animation->trigger().get());
+                if (offset > scrollTrigger.startValue().value())
+                    updateStateMachine(AnimationStateInput::StartTimerFired, 0);
+            }
+
+            return;
+        }
+#endif
         if (beginAnimationUpdateTime() - m_requestedStartTime >= m_animation->delay())
             updateStateMachine(AnimationStateInput::StartTimerFired, 0);
         return;
     }
-    
+
     double elapsedDuration = beginAnimationUpdateTime() - m_startTime;
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    // If we are a triggered animation that depends on scroll, our elapsed
+    // time is determined by the scroll position.
+    if (m_animation->trigger() && m_animation->trigger()->isScrollAnimationTrigger())
+        elapsedDuration = getElapsedTime();
+#endif
+
     // FIXME: we need to ensure that elapsedDuration is never < 0. If it is, this suggests that
     // we had a recalcStyle() outside of beginAnimationUpdate()/endAnimationUpdate().
     // Also check in getTimeToNextEvent().
@@ -520,6 +542,17 @@ double AnimationBase::timeToNextService()
         return -1;
     
     if (m_animationState == AnimationState::StartWaitTimer) {
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+        if (m_animation->trigger()->isScrollAnimationTrigger()) {
+            if (m_object) {
+                float currentScrollOffset = m_object->view().frameView().scrollOffsetForFixedPosition().height().toFloat();
+                ScrollAnimationTrigger& scrollTrigger = downcast<ScrollAnimationTrigger>(*m_animation->trigger().get());
+                if (currentScrollOffset >= scrollTrigger.startValue().value() && (!scrollTrigger.hasEndValue() || currentScrollOffset <= scrollTrigger.endValue().value()))
+                    return 0;
+            }
+            return -1;
+        }
+#endif
         double timeFromNow = m_animation->delay() - (beginAnimationUpdateTime() - m_requestedStartTime);
         return std::max(timeFromNow, 0.0);
     }
@@ -651,7 +684,7 @@ void AnimationBase::freezeAtTime(double t)
         onAnimationStartResponse(monotonicallyIncreasingTime());
     }
 
-    ASSERT(m_startTime);        // if m_startTime is zero, we haven't started yet, so we'll get a bad pause time.
+    ASSERT(m_startTime); // If m_startTime is zero, we haven't started yet, so we'll get a bad pause time.
     if (t <= m_animation->delay())
         m_pauseTime = m_startTime;
     else
@@ -671,7 +704,23 @@ double AnimationBase::beginAnimationUpdateTime() const
 
 double AnimationBase::getElapsedTime() const
 {
-    if (paused())    
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    if (m_animation->trigger() && m_animation->trigger()->isScrollAnimationTrigger()) {
+        ScrollAnimationTrigger& scrollTrigger = downcast<ScrollAnimationTrigger>(*m_animation->trigger().get());
+        if (scrollTrigger.hasEndValue() && m_object) {
+            float offset = m_compositeAnimation->animationController()->scrollPosition();
+            float startValue = scrollTrigger.startValue().value();
+            if (offset < startValue)
+                return 0;
+            float endValue = scrollTrigger.endValue().value();
+            if (offset > endValue)
+                return m_animation->duration();
+            return m_animation->duration() * (offset - startValue) / (endValue - startValue);
+        }
+    }
+#endif
+
+    if (paused())
         return m_pauseTime - m_startTime;
     if (m_startTime <= 0)
         return 0;
@@ -695,6 +744,79 @@ void AnimationBase::play()
 void AnimationBase::pause()
 {
     // FIXME: implement this method
+}
+
+static bool containsRotation(const Vector<RefPtr<TransformOperation>>& operations)
+{
+    for (const auto& operation : operations) {
+        if (operation->type() == TransformOperation::ROTATE)
+            return true;
+    }
+    return false;
+}
+
+bool AnimationBase::computeTransformedExtentViaTransformList(const FloatRect& rendererBox, const RenderStyle& style, LayoutRect& bounds) const
+{
+    FloatRect floatBounds = bounds;
+    FloatPoint transformOrigin;
+    
+    bool applyTransformOrigin = containsRotation(style.transform().operations()) || style.transform().affectedByTransformOrigin();
+    if (applyTransformOrigin) {
+        float offsetX = style.transformOriginX().isPercentNotCalculated() ? rendererBox.x() : 0;
+        float offsetY = style.transformOriginY().isPercentNotCalculated() ? rendererBox.y() : 0;
+
+        transformOrigin.setX(floatValueForLength(style.transformOriginX(), rendererBox.width()) + offsetX);
+        transformOrigin.setY(floatValueForLength(style.transformOriginY(), rendererBox.height()) + offsetY);
+        // Ignore transformOriginZ because we'll bail if we encounter any 3D transforms.
+        
+        floatBounds.moveBy(-transformOrigin);
+    }
+
+    for (const auto& operation : style.transform().operations()) {
+        if (operation->type() == TransformOperation::ROTATE) {
+            // For now, just treat this as a full rotation. This could take angle into account to reduce inflation.
+            floatBounds = boundsOfRotatingRect(floatBounds);
+        } else {
+            TransformationMatrix transform;
+            operation->apply(transform, rendererBox.size());
+            if (!transform.isAffine())
+                return false;
+
+            if (operation->type() == TransformOperation::MATRIX || operation->type() == TransformOperation::MATRIX_3D) {
+                TransformationMatrix::Decomposed2Type toDecomp;
+                transform.decompose2(toDecomp);
+                // Any rotation prevents us from using a simple start/end rect union.
+                if (toDecomp.angle)
+                    return false;
+            }
+
+            floatBounds = transform.mapRect(floatBounds);
+        }
+    }
+
+    if (applyTransformOrigin)
+        floatBounds.moveBy(transformOrigin);
+
+    bounds = LayoutRect(floatBounds);
+    return true;
+}
+
+bool AnimationBase::computeTransformedExtentViaMatrix(const FloatRect& rendererBox, const RenderStyle& style, LayoutRect& bounds) const
+{
+    TransformationMatrix transform;
+    style.applyTransform(transform, rendererBox, RenderStyle::IncludeTransformOrigin);
+    if (!transform.isAffine())
+        return false;
+
+    TransformationMatrix::Decomposed2Type fromDecomp;
+    transform.decompose2(fromDecomp);
+    // Any rotation prevents us from using a simple start/end rect union.
+    if (fromDecomp.angle)
+        return false;
+
+    bounds = LayoutRect(transform.mapRect(bounds));
+    return true;
+
 }
 
 } // namespace WebCore

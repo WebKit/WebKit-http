@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.InspectorObserver = function()
+WebInspector.InspectorObserver = class InspectorObserver
 {
-    WebInspector.Object.call(this);
-};
-
-WebInspector.InspectorObserver.prototype = {
-    constructor: WebInspector.InspectorObserver,
-
     // Events defined by the "Inspector" domain.
 
-    evaluateForTestInFrontend: function(script)
+    evaluateForTestInFrontend(script)
     {
         if (!InspectorFrontendHost.isUnderTest())
             return;
@@ -41,9 +35,9 @@ WebInspector.InspectorObserver.prototype = {
         InspectorBackend.runAfterPendingDispatches(function() {
             window.eval(script);
         });
-    },
+    }
 
-    inspect: function(payload, hints)
+    inspect(payload, hints)
     {
         var remoteObject = WebInspector.RemoteObject.fromPayload(payload);
         if (remoteObject.subtype === "node") {
@@ -60,17 +54,15 @@ WebInspector.InspectorObserver.prototype = {
         WebInspector.navigationSidebar.selectedSidebarPanel = WebInspector.resourceSidebarPanel;
 
         remoteObject.release();
-    },
+    }
 
-    detached: function(reason)
+    detached(reason)
     {
         // FIXME: Not implemented.
-    },
+    }
 
-    activateExtraDomains: function(domains)
+    activateExtraDomains(domains)
     {
         WebInspector.activateExtraDomains(domains);
     }
 };
-
-WebInspector.InspectorObserver.prototype.__proto__ = WebInspector.Object.prototype;

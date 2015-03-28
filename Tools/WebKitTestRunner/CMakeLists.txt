@@ -94,7 +94,7 @@ GENERATE_BINDINGS(WebKitTestRunnerInjectedBundle_SOURCES
     ${DERIVED_SOURCES_DIR}/InjectedBundle JS TestRunner cpp
     ${WEBCORE_DIR}/bindings/scripts/IDLAttributes.txt)
 
-INCLUDE_IF_EXISTS(${WEBKIT_TESTRUNNER_DIR}/Platform${PORT}.cmake)
+WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 foreach(inc ${WebKitTestRunner_LOCAL_INCLUDE_DIRECTORIES})
     ADD_DEFINITIONS(-iquote ${inc})

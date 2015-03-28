@@ -117,6 +117,14 @@ extern const float GestureUnknown;
 enum AppendTrailingWhitespace { ShouldAppendTrailingWhitespace, DontAppendTrailingWhitespace };
 enum CheckDragHysteresis { ShouldCheckDragHysteresis, DontCheckDragHysteresis };
 
+enum class ImmediateActionStage {
+    None,
+    PerformedHitTest,
+    ActionUpdated,
+    ActionCancelled,
+    ActionCompleted
+};
+
 class EventHandler {
     WTF_MAKE_NONCOPYABLE(EventHandler);
     WTF_MAKE_FAST_ALLOCATED;
@@ -173,6 +181,7 @@ public:
     void resizeLayerDestroyed();
 
     IntPoint lastKnownMousePosition() const;
+    IntPoint lastKnownMouseGlobalPosition() const { return m_lastKnownMouseGlobalPosition; }
     Cursor currentMouseCursor() const { return m_currentMouseCursor; }
 
     static Frame* subframeForTargetNode(Node*);
@@ -199,7 +208,7 @@ public:
 
     void platformPrepareForWheelEvents(const PlatformWheelEvent&, const HitTestResult&, RefPtr<Element>& eventTarget, RefPtr<ContainerNode>& scrollableContainer, ScrollableArea*&, bool& isOverWidget);
     void platformRecordWheelEvent(const PlatformWheelEvent&);
-    bool platformCompleteWheelEvent(const PlatformWheelEvent&, Element* eventTarget, ContainerNode* scrollableContainer, ScrollableArea*);
+    bool platformCompleteWheelEvent(const PlatformWheelEvent&, ContainerNode* scrollableContainer, ScrollableArea*);
     bool platformCompletePlatformWidgetWheelEvent(const PlatformWheelEvent&, const Widget&, ContainerNode* scrollableContainer);
 
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -239,6 +248,7 @@ public:
     WEBCORE_EXPORT bool keyEvent(const PlatformKeyboardEvent&);
     void defaultKeyboardEventHandler(KeyboardEvent*);
 
+    bool accessibilityPreventsEventPropogation(KeyboardEvent*);
     WEBCORE_EXPORT void handleKeyboardSelectionMovementForAccessibility(KeyboardEvent*);
 
     bool handleTextInputEvent(const String& text, Event* underlyingEvent = 0, TextEventInputType = TextEventInputKeyboard);
@@ -303,6 +313,9 @@ public:
     void updateCursor();
 
     bool isHandlingWheelEvent() const { return m_isHandlingWheelEvent; }
+
+    WEBCORE_EXPORT void setImmediateActionStage(ImmediateActionStage stage);
+    WEBCORE_EXPORT const PlatformMouseEvent& lastMouseDownEvent() const;
 
 private:
 #if ENABLE(DRAG_SUPPORT)
@@ -563,6 +576,8 @@ private:
 #if ENABLE(CURSOR_VISIBILITY)
     Timer m_autoHideCursorTimer;
 #endif
+
+    ImmediateActionStage m_immediateActionStage;
 };
 
 } // namespace WebCore

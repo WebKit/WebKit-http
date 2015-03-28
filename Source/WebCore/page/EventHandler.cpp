@@ -423,6 +423,7 @@ EventHandler::EventHandler(Frame& frame)
 #if ENABLE(CURSOR_VISIBILITY)
     , m_autoHideCursorTimer(*this, &EventHandler::autoHideCursorTimerFired)
 #endif
+    , m_immediateActionStage(ImmediateActionStage::None)
 {
 }
 
@@ -522,22 +523,30 @@ static inline bool dispatchSelectStart(Node* node)
     return node->dispatchEvent(Event::create(eventNames().selectstartEvent, true, true));
 }
 
-static VisibleSelection expandSelectionToRespectUserSelectAll(Node* targetNode, const VisibleSelection& selection)
+static Node* nodeToSelectOnMouseDownForNode(Node& targetNode)
 {
 #if ENABLE(USERSELECT_ALL)
-    Node* rootUserSelectAll = Position::rootUserSelectAllForNode(targetNode);
-    if (!rootUserSelectAll)
+    if (Node* rootUserSelectAll = Position::rootUserSelectAllForNode(&targetNode))
+        return rootUserSelectAll;
+#endif
+
+    if (targetNode.shouldSelectOnMouseDown())
+        return &targetNode;
+
+    return nullptr;
+}
+
+static VisibleSelection expandSelectionToRespectSelectOnMouseDown(Node& targetNode, const VisibleSelection& selection)
+{
+    Node* nodeToSelect = nodeToSelectOnMouseDownForNode(targetNode);
+    if (!nodeToSelect)
         return selection;
 
     VisibleSelection newSelection(selection);
-    newSelection.setBase(positionBeforeNode(rootUserSelectAll).upstream(CanCrossEditingBoundary));
-    newSelection.setExtent(positionAfterNode(rootUserSelectAll).downstream(CanCrossEditingBoundary));
+    newSelection.setBase(positionBeforeNode(nodeToSelect).upstream(CanCrossEditingBoundary));
+    newSelection.setExtent(positionAfterNode(nodeToSelect).downstream(CanCrossEditingBoundary));
 
     return newSelection;
-#else
-    UNUSED_PARAM(targetNode);
-    return selection;
-#endif
 }
 
 bool EventHandler::updateSelectionForMouseDownDispatchingSelectStart(Node* targetNode, const VisibleSelection& selection, TextGranularity granularity)
@@ -575,7 +584,7 @@ void EventHandler::selectClosestWordFromHitTestResult(const HitTestResult& resul
         if (appendTrailingWhitespace == ShouldAppendTrailingWhitespace && newSelection.isRange())
             newSelection.appendTrailingWhitespace();
 
-        updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectUserSelectAll(targetNode, newSelection), WordGranularity);
+        updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectSelectOnMouseDown(*targetNode, newSelection), WordGranularity);
     }
 }
 
@@ -601,7 +610,7 @@ void EventHandler::selectClosestWordOrLinkFromMouseEvent(const MouseEventWithHit
         if (pos.isNotNull() && pos.deepEquivalent().deprecatedNode()->isDescendantOf(URLElement))
             newSelection = VisibleSelection::selectionFromContentsOfNode(URLElement);
 
-        updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectUserSelectAll(targetNode, newSelection), WordGranularity);
+        updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectSelectOnMouseDown(*targetNode, newSelection), WordGranularity);
     }
 }
 
@@ -639,7 +648,7 @@ bool EventHandler::handleMousePressEventTripleClick(const MouseEventWithHitTestR
         newSelection.expandUsingGranularity(ParagraphGranularity);
     }
 
-    return updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectUserSelectAll(targetNode, newSelection), ParagraphGranularity);
+    return updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectSelectOnMouseDown(*targetNode, newSelection), ParagraphGranularity);
 }
 
 static int textDistance(const Position& start, const Position& end)
@@ -677,7 +686,7 @@ bool EventHandler::handleMousePressEventSingleClick(const MouseEventWithHitTestR
     TextGranularity granularity = CharacterGranularity;
 
     if (extendSelection && newSelection.isCaretOrRange()) {
-        VisibleSelection selectionInUserSelectAll = expandSelectionToRespectUserSelectAll(targetNode, VisibleSelection(pos));
+        VisibleSelection selectionInUserSelectAll = expandSelectionToRespectSelectOnMouseDown(*targetNode, VisibleSelection(pos));
         if (selectionInUserSelectAll.isRange()) {
             if (comparePositions(selectionInUserSelectAll.start(), newSelection.start()) < 0)
                 pos = selectionInUserSelectAll.start();
@@ -704,7 +713,7 @@ bool EventHandler::handleMousePressEventSingleClick(const MouseEventWithHitTestR
             newSelection.expandUsingGranularity(m_frame.selection().granularity());
         }
     } else
-        newSelection = expandSelectionToRespectUserSelectAll(targetNode, visiblePos);
+        newSelection = expandSelectionToRespectSelectOnMouseDown(*targetNode, visiblePos);
 
     bool handled = updateSelectionForMouseDownDispatchingSelectStart(targetNode, newSelection, granularity);
 
@@ -755,6 +764,9 @@ bool EventHandler::handleMousePressEvent(const MouseEventWithHitTestResults& eve
     m_mouseDownWasSingleClickInSelection = false;
 
     m_mouseDown = event.event();
+
+    if (m_immediateActionStage != ImmediateActionStage::PerformedHitTest)
+        m_immediateActionStage = ImmediateActionStage::None;
 
     if (event.isOverWidget() && passWidgetMouseDownEventToWidget(event))
         return true;
@@ -2049,6 +2061,14 @@ bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& platformMou
     if (m_frameSetBeingResized)
         return !dispatchMouseEvent(eventNames().mouseupEvent, m_frameSetBeingResized.get(), true, m_clickCount, platformMouseEvent, false);
 
+    // If an immediate action began or was completed using this series of mouse events, then we should send mouseup to
+    // the DOM and return now so that we don't perform our own default behaviors.
+    if (m_immediateActionStage == ImmediateActionStage::ActionCompleted || m_immediateActionStage == ImmediateActionStage::ActionUpdated) {
+        m_immediateActionStage = ImmediateActionStage::None;
+        return !dispatchMouseEvent(eventNames().mouseupEvent, m_lastElementUnderMouse.get(), true, m_clickCount, platformMouseEvent, false);
+    }
+    m_immediateActionStage = ImmediateActionStage::None;
+
     if (m_lastScrollbarUnderMouse) {
         invalidateClick();
         m_lastScrollbarUnderMouse->mouseUp(platformMouseEvent);
@@ -2592,7 +2612,7 @@ void EventHandler::platformRecordWheelEvent(const PlatformWheelEvent& event)
     m_frame.mainFrame().wheelEventDeltaTracker()->recordWheelEventDelta(event);
 }
 
-bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& event, Element*, ContainerNode*, ScrollableArea*)
+bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& event, ContainerNode*, ScrollableArea*)
 {
     // We do another check on the frame view because the event handler can run JS which results in the frame getting destroyed.
     FrameView* view = m_frame.view();
@@ -2688,7 +2708,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
     if (scrollableArea)
         scrollableArea->setScrolledProgrammatically(false);
 
-    return platformCompleteWheelEvent(event, element.get(), scrollableContainer.get(), scrollableArea);
+    return platformCompleteWheelEvent(event, scrollableContainer.get(), scrollableArea);
 }
 
 void EventHandler::clearLatchedState()
@@ -3079,6 +3099,9 @@ bool EventHandler::keyEvent(const PlatformKeyboardEvent& initialKeyEvent)
         keydown->setTarget(element);
         keydown->setDefaultHandled();
     }
+    
+    if (accessibilityPreventsEventPropogation(keydown.get()))
+        keydown->stopPropagation();
 
     element->dispatchEvent(keydown, IGNORE_EXCEPTION);
     // If frame changed as a result of keydown dispatch, then return early to avoid sending a subsequent keypress message to the new frame.
@@ -3222,6 +3245,27 @@ void EventHandler::handleKeyboardSelectionMovementForAccessibility(KeyboardEvent
     }
 }
 
+bool EventHandler::accessibilityPreventsEventPropogation(KeyboardEvent* event)
+{
+#if PLATFORM(COCOA)
+    if (!AXObjectCache::accessibilityEnhancedUserInterfaceEnabled())
+        return false;
+
+    if (!m_frame.settings().preventKeyboardDOMEventDispatch())
+        return false;
+
+    // Check for key events that are relevant to accessibility: tab and arrows keys that change focus
+    if (event->keyIdentifier() == "U+0009")
+        return true;
+    FocusDirection direction = focusDirectionForKey(event->keyIdentifier());
+    if (direction != FocusDirectionNone)
+        return true;
+#else
+    UNUSED_PARAM(event);
+#endif
+    return false;
+}
+
 void EventHandler::defaultKeyboardEventHandler(KeyboardEvent* event)
 {
     if (event->type() == eventNames().keydownEvent) {
@@ -3264,6 +3308,9 @@ bool EventHandler::dragHysteresisExceeded(const FloatPoint& dragViewportLocation
         threshold = TextDragHysteresis;
         break;
     case DragSourceActionImage:
+#if ENABLE(ATTACHMENT_ELEMENT)
+    case DragSourceActionAttachment:
+#endif
         threshold = ImageDragHysteresis;
         break;
     case DragSourceActionLink:
@@ -3384,9 +3431,16 @@ bool EventHandler::handleDrag(const MouseEventWithHitTestResults& event, CheckDr
     
     if (!ExactlyOneBitSet(dragState().type)) {
         ASSERT((dragState().type & DragSourceActionSelection));
+#if ENABLE(ATTACHMENT_ELEMENT)
+        ASSERT((dragState().type & ~DragSourceActionSelection) == DragSourceActionDHTML
+               || (dragState().type & ~DragSourceActionSelection) == DragSourceActionImage
+               || (dragState().type & ~DragSourceActionSelection) == DragSourceActionAttachment
+               || (dragState().type & ~DragSourceActionSelection) == DragSourceActionLink);
+#else
         ASSERT((dragState().type & ~DragSourceActionSelection) == DragSourceActionDHTML
             || (dragState().type & ~DragSourceActionSelection) == DragSourceActionImage
             || (dragState().type & ~DragSourceActionSelection) == DragSourceActionLink);
+#endif
         dragState().type = DragSourceActionSelection;
     }
 
@@ -3966,6 +4020,16 @@ void EventHandler::setLastKnownMousePosition(const PlatformMouseEvent& event)
     m_mousePositionIsUnknown = false;
     m_lastKnownMousePosition = event.position();
     m_lastKnownMouseGlobalPosition = event.globalPosition();
+}
+
+const PlatformMouseEvent& EventHandler::lastMouseDownEvent() const
+{
+    return m_mouseDown;
+}
+
+void EventHandler::setImmediateActionStage(ImmediateActionStage stage)
+{
+    m_immediateActionStage = stage;
 }
 
 } // namespace WebCore

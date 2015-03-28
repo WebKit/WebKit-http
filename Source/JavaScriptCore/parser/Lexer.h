@@ -71,7 +71,7 @@ class Lexer {
     WTF_MAKE_FAST_ALLOCATED;
 
 public:
-    Lexer(VM*, JSParserStrictness);
+    Lexer(VM*, JSParserBuiltinMode);
     ~Lexer();
 
     // Character manipulation functions.
@@ -203,6 +203,7 @@ private:
     template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseString(JSTokenData*, bool strictMode);
     template <bool shouldBuildStrings> NEVER_INLINE StringParseResult parseStringSlowCase(JSTokenData*, bool strictMode);
     ALWAYS_INLINE void parseHex(double& returnValue);
+    ALWAYS_INLINE bool parseBinary(double& returnValue);
     ALWAYS_INLINE bool parseOctal(double& returnValue);
     ALWAYS_INLINE bool parseDecimal(double& returnValue);
     ALWAYS_INLINE void parseNumberAfterDecimalPoint();

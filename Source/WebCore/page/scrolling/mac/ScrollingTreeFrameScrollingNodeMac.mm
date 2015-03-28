@@ -61,6 +61,7 @@ ScrollingTreeFrameScrollingNodeMac::ScrollingTreeFrameScrollingNodeMac(Scrolling
     , m_verticalScrollbarPainter(0)
     , m_horizontalScrollbarPainter(0)
     , m_lastScrollHadUnfilledPixels(false)
+    , m_hadFirstUpdate(false)
 {
 }
 
@@ -111,6 +112,7 @@ void ScrollingTreeFrameScrollingNodeMac::updateBeforeChildren(const ScrollingSta
         m_horizontalScrollbarPainter = scrollingStateNode.horizontalScrollbarPainter();
     }
 
+    bool logScrollingMode = !m_hadFirstUpdate;
     if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::ReasonsForSynchronousScrolling)) {
         if (shouldUpdateScrollLayerPositionSynchronously()) {
             // We're transitioning to the slow "update scroll layer position on the main thread" mode.
@@ -123,6 +125,10 @@ void ScrollingTreeFrameScrollingNodeMac::updateBeforeChildren(const ScrollingSta
             }
         }
 
+        logScrollingMode = true;
+    }
+
+    if (logScrollingMode) {
         if (scrollingTree().scrollingPerformanceLoggingEnabled())
             logThreadedScrollingMode(synchronousScrollingReasons());
     }
@@ -139,6 +145,8 @@ void ScrollingTreeFrameScrollingNodeMac::updateBeforeChildren(const ScrollingSta
     if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::VerticalSnapOffsets))
         m_scrollController.updateScrollSnapPoints(ScrollEventAxis::Vertical, convertToLayoutUnits(scrollingStateNode.verticalSnapOffsets()));
 #endif
+
+    m_hadFirstUpdate = true;
 }
 
 void ScrollingTreeFrameScrollingNodeMac::updateAfterChildren(const ScrollingStateNode& stateNode)
@@ -541,7 +549,7 @@ void logWheelEventHandlerCountChanged(unsigned count)
 }
 
 #if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
-LayoutUnit ScrollingTreeFrameScrollingNodeMac::scrollOffsetOnAxis(ScrollEventAxis axis)
+LayoutUnit ScrollingTreeFrameScrollingNodeMac::scrollOffsetOnAxis(ScrollEventAxis axis) const
 {
     const FloatPoint& currentPosition = scrollPosition();
     return axis == ScrollEventAxis::Horizontal ? currentPosition.x() : currentPosition.y();
@@ -557,6 +565,11 @@ void ScrollingTreeFrameScrollingNodeMac::immediateScrollOnAxis(ScrollEventAxis a
         change = FloatPoint(currentPosition.x(), currentPosition.y() + delta);
 
     immediateScrollBy(change - currentPosition);
+}
+
+float ScrollingTreeFrameScrollingNodeMac::pageScaleFactor() const
+{
+    return frameScaleFactor();
 }
 #endif
 

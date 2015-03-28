@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,20 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.RuntimeObserver = function()
+WebInspector.RuntimeObserver = class RuntimeObserver
 {
-    WebInspector.Object.call(this);
-};
-
-WebInspector.RuntimeObserver.prototype = {
-    constructor: WebInspector.RuntimeObserver,
-
     // Events defined by the "Runtime" domain.
 
-    executionContextCreated: function(contextPayload)
+    executionContextCreated(contextPayload)
     {
         WebInspector.frameResourceManager.executionContextCreated(contextPayload);
     }
 };
-
-WebInspector.RuntimeObserver.prototype.__proto__ = WebInspector.Object.prototype;

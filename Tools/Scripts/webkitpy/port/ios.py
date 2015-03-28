@@ -193,7 +193,7 @@ class IOSSimulatorPort(Port):
 
     def default_baseline_search_path(self):
         if self.get_option('webkit_test_runner'):
-            fallback_names = [self._wk2_port_name(), 'wk2'] + [self.port_name]
+            fallback_names = [self._wk2_port_name()] + [self.port_name] + ['wk2']
         else:
             fallback_names = [self.port_name + '-wk1'] + [self.port_name]
 
@@ -208,6 +208,11 @@ class IOSSimulatorPort(Port):
             'open', '-a', os.path.join(self.developer_dir, 'Applications', 'iOS Simulator.app'),
             '--args', '-CurrentDeviceUDID', device_udid])
         Simulator.wait_until_device_is_in_state(device_udid, Simulator.DeviceState.BOOTED)
+
+        # FIXME: Pause here until SpringBoard finishes launching to workaround <rdar://problem/20000383>.
+        boot_delay = 30
+        _log.debug('Waiting {seconds} seconds for iOS Simulator to finish booting ...'.format(seconds=boot_delay))
+        time.sleep(boot_delay)
 
     def clean_up_test_run(self):
         super(IOSSimulatorPort, self).clean_up_test_run()

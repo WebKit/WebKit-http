@@ -34,7 +34,7 @@ from webkitpy.common.host_mock import MockHost
 from webkitpy.common.system.filesystem_mock import MockFileSystem
 from webkitpy.common.system.executive_mock import MockExecutive2, ScriptError
 from webkitpy.common.system.outputcapture import OutputCapture
-from webkitpy.w3c.test_importer import TestImporter
+from webkitpy.w3c.test_importer import parse_args, TestImporter
 
 
 FAKE_SOURCE_DIR = '/tests/csswg'
@@ -73,5 +73,47 @@ class TestImporterTest(unittest.TestCase):
             importer.do_import()
         finally:
             oc.restore_output()
+
+    def test_import_dir_with_empty_init_py(self):
+        FAKE_FILES = {
+            '/tests/csswg/test1/__init__.py': '',
+            '/tests/csswg/test2/__init__.py': 'NOTEMPTY',
+        }
+
+        host = MockHost()
+        host.filesystem = MockFileSystem(files=FAKE_FILES)
+
+        importer = TestImporter(host, FAKE_SOURCE_DIR, optparse.Values({"overwrite": False, 'destination': 'w3c', 'test_paths': ['/tests/csswg']}))
+        importer.do_import()
+
+        self.assertTrue(host.filesystem.exists("/mock-checkout/LayoutTests/w3c/test1/__init__.py"))
+        self.assertTrue(host.filesystem.exists("/mock-checkout/LayoutTests/w3c/test2/__init__.py"))
+        self.assertTrue(host.filesystem.getsize("/mock-checkout/LayoutTests/w3c/test1/__init__.py") > 0)
+
+    def import_downloaded_tests(self, args, files):
+        # files are passed as parameter as we cannot clone/fetch/checkout a repo in mock system.
+        host = MockHost()
+        host.executive = MockExecutive2()
+        host.filesystem = MockFileSystem(files=files)
+
+        options, args = parse_args(args)
+        importer = TestImporter(host, None, options)
+        importer.do_import()
+        return host.filesystem
+
+    def test_harnesslinks_conversion(self):
+        FAKE_FILES = {
+            '/mock-checkout/WebKitBuild/w3c-tests/csswg-tests/t/test.html': '<!doctype html><script src="/resources/testharness.js"></script><script src="/resources/testharnessreport.js"></script>',
+            '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/t/test.html': '<!doctype html><script src="/resources/testharness.js"></script><script src="/resources/testharnessreport.js"></script>',
+            '/mock-checkout/Source/WebCore/css/CSSPropertyNames.in': '',
+            '/mock-checkout/Source/WebCore/css/CSSValueKeywords.in': '',
+        }
+
+        fs = self.import_downloaded_tests(['--no-fetch', '--import-all', '-d', 'w3c'], FAKE_FILES)
+
+        self.assertTrue(fs.exists('/mock-checkout/LayoutTests/w3c/csswg-tests/t/test.html'))
+        self.assertTrue(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.html'))
+        self.assertTrue('src="/resources/testharness.js"' in fs.read_text_file('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.html'))
+        self.assertTrue('src="../' in fs.read_text_file('/mock-checkout/LayoutTests/w3c/csswg-tests/t/test.html'))
 
     # FIXME: Needs more tests.

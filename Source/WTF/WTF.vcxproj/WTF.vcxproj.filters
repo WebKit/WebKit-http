@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="win">
-      <UniqueIdentifier>{b7d787cb-2b2b-4898-8d03-b94115e596d1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="dtoa">
       <UniqueIdentifier>{eaa36939-1976-495f-b9ed-90074ee4f2be}</UniqueIdentifier>
     </Filter>
@@ -27,6 +24,9 @@
     </Filter>
     <Filter Include="wtf\gobject">
       <UniqueIdentifier>{edd6ccc8-e6ee-41ec-a58d-9404a30c0c7e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="wtf\win">
+      <UniqueIdentifier>{b7d787cb-2b2b-4898-8d03-b94115e596d1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -94,7 +94,7 @@
       <Filter>text</Filter>
     </ClCompile>
     <ClCompile Include="..\wtf\win\MainThreadWin.cpp">
-      <Filter>win</Filter>
+      <Filter>wtf\win</Filter>
     </ClCompile>
     <ClCompile Include="..\wtf\threads\win\BinarySemaphoreWin.cpp">
       <Filter>threads\win</Filter>
@@ -168,9 +168,6 @@
     <ClCompile Include="..\wtf\OSRandomSource.cpp">
       <Filter>wtf</Filter>
     </ClCompile>
-    <ClCompile Include="..\wtf\PageAllocationAligned.cpp">
-      <Filter>wtf</Filter>
-    </ClCompile>
     <ClCompile Include="..\wtf\PageBlock.cpp">
       <Filter>wtf</Filter>
     </ClCompile>
@@ -235,7 +232,7 @@
       <Filter>wtf</Filter>
     </ClCompile>
     <ClCompile Include="..\wtf\win\RunLoopWin.cpp">
-      <Filter>win</Filter>
+      <Filter>wtf\win</Filter>
     </ClCompile>
     <ClCompile Include="..\wtf\gobject\GMainLoopSource.cpp">
       <Filter>wtf\gobject</Filter>
@@ -248,7 +245,16 @@
     </ClCompile>
     <ClCompile Include="..\wtf\RefCounter.cpp" />
     <ClCompile Include="..\wtf\win\WTFDLL.cpp">
-      <Filter>win</Filter>
+      <Filter>wtf\win</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wtf\WorkQueue.cpp">
+      <Filter>wtf</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wtf\win\WorkQueueWin.cpp">
+      <Filter>wtf\win</Filter>
+    </ClCompile>
+    <ClCompile Include="..\wtf\win\WorkItemWin.cpp">
+      <Filter>wtf\win</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -316,6 +322,9 @@
       <Filter>text</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\text\StringBuilder.h">
+      <Filter>text</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\text\StringCommon.h">
       <Filter>text</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\text\StringConcatenate.h">
@@ -528,9 +537,6 @@
     <ClInclude Include="..\wtf\PageAllocation.h">
       <Filter>wtf</Filter>
     </ClInclude>
-    <ClInclude Include="..\wtf\PageAllocationAligned.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
     <ClInclude Include="..\wtf\PageBlock.h">
       <Filter>wtf</Filter>
     </ClInclude>
@@ -603,6 +609,9 @@
     <ClInclude Include="..\wtf\SinglyLinkedList.h">
       <Filter>wtf</Filter>
     </ClInclude>
+    <ClInclude Include="..\wtf\SpinLock.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
     <ClInclude Include="..\wtf\StackBounds.h">
       <Filter>wtf</Filter>
     </ClInclude>
@@ -622,9 +631,6 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\StringPrintStream.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\TCSpinLock.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\TemporaryChange.h">
@@ -671,7 +677,7 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\win\GDIObject.h">
-      <Filter>win</Filter>
+      <Filter>wtf\win</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\gobject\GlibUtilities.h">
       <Filter>wtf\gobject</Filter>
@@ -707,6 +713,12 @@
       <Filter>wtf\gobject</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\RefCounter.h" />
+    <ClInclude Include="..\wtf\WorkQueue.h">
+      <Filter>wtf</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wtf\win\WorkItemWin.h">
+      <Filter>wtf\win</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="WTFPostBuild.cmd" />

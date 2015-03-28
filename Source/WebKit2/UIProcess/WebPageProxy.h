@@ -111,6 +111,10 @@
 #include "ArgumentCodersGtk.h"
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#include <WebCore/MediaPlaybackTargetPicker.h>
+#endif
+
 namespace API {
 class ContextMenuClient;
 class FindClient;
@@ -249,12 +253,17 @@ struct WebPageConfiguration {
 
     WebPageProxy* relatedPage = nullptr;
 
+    bool treatsSHA1SignedCertificatesAsInsecure = false;
+
     WebPreferencesStore::ValueMap preferenceValues;
 };
 
 class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
 #if ENABLE(INPUT_TYPE_COLOR)
     , public WebColorPicker::Client
+#endif
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    , public WebCore::MediaPlaybackTargetPicker::Client
 #endif
     , public WebPopupMenuProxy::Client
     , public IPC::MessageReceiver
@@ -380,10 +389,11 @@ public:
     void viewWillStartLiveResize();
     void viewWillEndLiveResize();
 
-    void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&);
+    void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&, std::function<void (CallbackBase::Error)>);
     void setWindowResizerSize(const WebCore::IntSize&);
     
     void clearSelection();
+    void restoreSelectionInFocusedEditableElement();
 
     void setViewNeedsDisplay(const WebCore::IntRect&);
     void displayView();
@@ -760,8 +770,11 @@ public:
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
 #if PLATFORM(COCOA)
     void setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, bool isLinkDrag);
-    void setPromisedData(const String& pasteboardName, const SharedMemory::Handle& imageHandle, uint64_t imageSize, const String& filename, const String& extension,
+    void setPromisedDataForImage(const String& pasteboardName, const SharedMemory::Handle& imageHandle, uint64_t imageSize, const String& filename, const String& extension,
                          const String& title, const String& url, const String& visibleURL, const SharedMemory::Handle& archiveHandle, uint64_t archiveSize);
+#if ENABLE(ATTACHMENT_ELEMENT)
+    void setPromisedDataForAttachment(const String& pasteboardName, const String& filename, const String& extension, const String& title, const String& url, const String& visibleURL);
+#endif
 #endif
 #if PLATFORM(GTK)
     void startDrag(const WebCore::DragData&, const ShareableBitmap::Handle& dragImage);
@@ -976,6 +989,10 @@ public:
     void selectLastActionMenuRange();
     void focusAndSelectLastActionMenuHitTestResult();
 
+    void immediateActionDidUpdate(float force);
+    void immediateActionDidCancel();
+    void immediateActionDidComplete();
+
     void installViewStateChangeCompletionHandler(void(^completionHandler)());
 #endif
 
@@ -996,6 +1013,17 @@ public:
     void logDiagnosticMessage(const String& message, const String& description, bool shouldSample);
     void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result, bool shouldSample);
     void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, bool shouldSample);
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    WebCore::MediaPlaybackTargetPicker& devicePickerProxy();
+    void showPlaybackTargetPicker(const WebCore::FloatRect&, bool hasVideo);
+    void startingMonitoringPlaybackTargets();
+    void stopMonitoringPlaybackTargets();
+
+    // WebCore::MediaPlaybackTargetPicker::Client
+    virtual void didChoosePlaybackTarget(const WebCore::MediaPlaybackTarget&) override;
+    virtual void externalOutputDeviceAvailableDidChange(bool) override;
+#endif
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
@@ -1028,7 +1056,7 @@ private:
     virtual void valueChangedForPopupMenu(WebPopupMenuProxy*, int32_t newSelectedIndex) override;
     virtual void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index) override;
 #if PLATFORM(GTK)
-    virtual void failedToShowPopupMenu();
+    virtual void failedToShowPopupMenu() override;
 #endif
 
     void didCreateMainFrame(uint64_t frameID);
@@ -1148,8 +1176,9 @@ private:
     void pageDidRequestScroll(const WebCore::IntPoint&);
     void pageTransitionViewportReady();
     void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&);
-    void didChangeContentSize(const WebCore::IntSize&);
 #endif
+
+    void didChangeContentSize(const WebCore::IntSize&);
 
 #if ENABLE(INPUT_TYPE_COLOR)
     void showColorPicker(const WebCore::Color& initialColor, const WebCore::IntRect&);
@@ -1381,6 +1410,8 @@ private:
     void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, bool forImmediateAction, const UserData&);
 #endif
 
+    void handleAutoFillButtonClick(const UserData&);
+
     PageClient& m_pageClient;
     std::unique_ptr<API::LoaderClient> m_loaderClient;
     std::unique_ptr<API::PolicyClient> m_policyClient;
@@ -1423,6 +1454,8 @@ private:
     String m_applicationNameForUserAgent;
     String m_customUserAgent;
     String m_customTextEncodingName;
+
+    bool m_treatsSHA1CertificatesAsInsecure;
 
     RefPtr<WebInspectorProxy> m_inspector;
 
@@ -1656,6 +1689,10 @@ private:
     WebCore::ViewState::Flags m_potentiallyChangedViewStateFlags;
     bool m_viewStateChangeWantsSynchronousReply;
     Vector<uint64_t> m_nextViewStateChangeCallbacks;
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    std::unique_ptr<WebCore::MediaPlaybackTargetPicker> m_playbackTargetPicker;
+#endif
 
     bool m_isPlayingAudio;
 };

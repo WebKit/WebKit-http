@@ -28,7 +28,6 @@
 
 #if ENABLE(JIT)
 
-#include "Arguments.h"
 #include "ArrayConstructor.h"
 #include "DFGCompilationMode.h"
 #include "DFGDriver.h"
@@ -47,6 +46,7 @@
 #include "JSCatchScope.h"
 #include "JSFunctionNameScope.h"
 #include "JSGlobalObjectFunctions.h"
+#include "JSLexicalEnvironment.h"
 #include "JSNameScope.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSStackInlines.h"
@@ -200,7 +200,7 @@ EncodedJSValue JIT_OPERATION operationInOptimize(ExecState* exec, StructureStubI
     NativeCallFrameTracer tracer(vm, exec);
     
     if (!base->isObject()) {
-        vm->throwException(exec, createInvalidParameterError(exec, "in", base));
+        vm->throwException(exec, createInvalidInParameterError(exec, base));
         return JSValue::encode(jsUndefined());
     }
     
@@ -226,7 +226,7 @@ EncodedJSValue JIT_OPERATION operationIn(ExecState* exec, StructureStubInfo*, JS
     NativeCallFrameTracer tracer(vm, exec);
 
     if (!base->isObject()) {
-        vm->throwException(exec, createInvalidParameterError(exec, "in", base));
+        vm->throwException(exec, createInvalidInParameterError(exec, base));
         return JSValue::encode(jsUndefined());
     }
 
@@ -487,7 +487,7 @@ static void putByVal(CallFrame* callFrame, JSValue baseValue, JSValue subscript,
         } else
             baseValue.putByIndex(callFrame, i, value, callFrame->codeBlock()->isStrictMode());
     } else {
-        PropertyName property = subscript.toPropertyKey(callFrame);
+        auto property = subscript.toPropertyKey(callFrame);
         if (!callFrame->vm().exception()) { // Don't put to an object if toString threw an exception.
             PutPropertySlot slot(baseValue, callFrame->codeBlock()->isStrictMode());
             baseValue.put(callFrame, property, value, slot);
@@ -501,7 +501,7 @@ static void directPutByVal(CallFrame* callFrame, JSObject* baseObject, JSValue s
         uint32_t i = subscript.asUInt32();
         baseObject->putDirectIndex(callFrame, i, value);
     } else {
-        PropertyName property = subscript.toPropertyKey(callFrame);
+        auto property = subscript.toPropertyKey(callFrame);
         if (!callFrame->vm().exception()) { // Don't put to an object if toString threw an exception.
             PutPropertySlot slot(baseObject, callFrame->codeBlock()->isStrictMode());
             baseObject->putDirect(callFrame->vm(), property, value, slot);
@@ -530,7 +530,7 @@ void JIT_OPERATION operationPutByVal(ExecState* exec, EncodedJSValue encodedBase
         if (hasOptimizableIndexing(object->structure(vm))) {
             // Attempt to optimize.
             JITArrayMode arrayMode = jitArrayModeForStructure(object->structure(vm));
-            if (arrayMode != byValInfo.arrayMode) {
+            if (jitArrayModePermitsPut(arrayMode) && arrayMode != byValInfo.arrayMode) {
                 JIT::compilePutByVal(&vm, exec->codeBlock(), &byValInfo, ReturnAddressPtr(OUR_RETURN_ADDRESS), arrayMode);
                 didOptimize = true;
             }
@@ -575,7 +575,7 @@ void JIT_OPERATION operationDirectPutByVal(ExecState* callFrame, EncodedJSValue 
         if (hasOptimizableIndexing(object->structure(vm))) {
             // Attempt to optimize.
             JITArrayMode arrayMode = jitArrayModeForStructure(object->structure(vm));
-            if (arrayMode != byValInfo.arrayMode) {
+            if (jitArrayModePermitsPut(arrayMode) && arrayMode != byValInfo.arrayMode) {
                 JIT::compileDirectPutByVal(&vm, callFrame->codeBlock(), &byValInfo, ReturnAddressPtr(OUR_RETURN_ADDRESS), arrayMode);
                 didOptimize = true;
             }
@@ -732,6 +732,7 @@ inline char* linkFor(
         callLinkInfo->setSeen();
     else
         linkFor(execCallee, *callLinkInfo, codeBlock, callee, codePtr, kind, registers);
+    
     return reinterpret_cast<char*>(codePtr.executableAddress());
 }
 
@@ -966,12 +967,13 @@ void JIT_OPERATION operationThrowStaticError(ExecState* exec, EncodedJSValue enc
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-
-    String message = errorDescriptionForValue(exec, JSValue::decode(encodedValue))->value(exec);
+    JSValue errorMessageValue = JSValue::decode(encodedValue);
+    RELEASE_ASSERT(errorMessageValue.isString());
+    String errorMessage = asString(errorMessageValue)->value(exec);
     if (referenceErrorFlag)
-        vm.throwException(exec, createReferenceError(exec, message));
+        vm.throwException(exec, createReferenceError(exec, errorMessage));
     else
-        vm.throwException(exec, createTypeError(exec, message));
+        vm.throwException(exec, createTypeError(exec, errorMessage));
 }
 
 void JIT_OPERATION operationDebug(ExecState* exec, int32_t debugHookID)
@@ -1348,53 +1350,16 @@ EncodedJSValue JIT_OPERATION operationCheckHasInstance(ExecState* exec, EncodedJ
         }
     }
 
-    vm.throwException(exec, createInvalidParameterError(exec, "instanceof", baseVal));
+    vm.throwException(exec, createInvalidInstanceofParameterError(exec, baseVal));
     return JSValue::encode(JSValue());
 }
 
-JSCell* JIT_OPERATION operationCreateActivation(ExecState* exec, JSScope* currentScope, int32_t offset)
+JSCell* JIT_OPERATION operationCreateActivation(ExecState* exec, JSScope* currentScope)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    JSLexicalEnvironment* lexicalEnvironment = JSLexicalEnvironment::create(vm, exec, exec->registers() + offset, currentScope, exec->codeBlock());
+    JSLexicalEnvironment* lexicalEnvironment = JSLexicalEnvironment::create(vm, exec, currentScope, exec->codeBlock());
     return lexicalEnvironment;
-}
-
-// FIXME: This is a temporary thunk for the DFG until we add the lexicalEnvironment operand to the DFG CreateArguments node.
-JSCell* JIT_OPERATION operationCreateArgumentsForDFG(ExecState* exec)
-{
-    JSLexicalEnvironment* lexicalEnvironment = exec->lexicalEnvironmentOrNullptr();
-    return operationCreateArguments(exec, lexicalEnvironment);
-}
-    
-JSCell* JIT_OPERATION operationCreateArguments(ExecState* exec, JSLexicalEnvironment* lexicalEnvironment)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-    // NB: This needs to be exceedingly careful with top call frame tracking, since it
-    // may be called from OSR exit, while the state of the call stack is bizarre.
-    Arguments* result = Arguments::create(vm, exec, lexicalEnvironment);
-    ASSERT(!vm.exception());
-    return result;
-}
-
-JSCell* JIT_OPERATION operationCreateArgumentsDuringOSRExit(ExecState* exec)
-{
-    DeferGCForAWhile(exec->vm().heap);
-    JSLexicalEnvironment* lexicalEnvironment = exec->lexicalEnvironmentOrNullptr();
-    return operationCreateArguments(exec, lexicalEnvironment);
-}
-
-EncodedJSValue JIT_OPERATION operationGetArgumentsLength(ExecState* exec, int32_t argumentsRegister)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-    // Here we can assume that the argumernts were created. Because otherwise the JIT code would
-    // have not made this call.
-    Identifier ident(&vm, "length");
-    JSValue baseValue = exec->uncheckedR(argumentsRegister).jsValue();
-    PropertySlot slot(baseValue);
-    return JSValue::encode(baseValue.get(exec, ident, slot));
 }
 
 }
@@ -1421,7 +1386,12 @@ static JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript, R
         return baseValue.get(exec, i);
     }
 
-    PropertyName property = subscript.toPropertyKey(exec);
+    baseValue.requireObjectCoercible(exec);
+    if (exec->hadException())
+        return jsUndefined();
+    auto property = subscript.toPropertyKey(exec);
+    if (exec->hadException())
+        return jsUndefined();
     return baseValue.get(exec, property);
 }
 
@@ -1557,17 +1527,16 @@ EncodedJSValue JIT_OPERATION operationGetByValString(ExecState* exec, EncodedJSV
                 ctiPatchCallByReturnAddress(exec->codeBlock(), ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationGetByValDefault));
         }
     } else {
-        PropertyName property = subscript.toPropertyKey(exec);
+        baseValue.requireObjectCoercible(exec);
+        if (exec->hadException())
+            return JSValue::encode(jsUndefined());
+        auto property = subscript.toPropertyKey(exec);
+        if (exec->hadException())
+            return JSValue::encode(jsUndefined());
         result = baseValue.get(exec, property);
     }
 
     return JSValue::encode(result);
-}
-
-void JIT_OPERATION operationTearOffArguments(ExecState* exec, JSCell* argumentsCell, JSCell*)
-{
-    ASSERT(exec->codeBlock()->usesArguments());
-    jsCast<Arguments*>(argumentsCell)->tearOff(exec);
 }
 
 EncodedJSValue JIT_OPERATION operationDeleteById(ExecState* exec, EncodedJSValue encodedBase, const Identifier* identifier)
@@ -1733,7 +1702,7 @@ void JIT_OPERATION operationPutToScope(ExecState* exec, Instruction* bytecodePC)
     ResolveModeAndType modeAndType = ResolveModeAndType(pc[4].u.operand);
     if (modeAndType.type() == LocalClosureVar) {
         JSLexicalEnvironment* environment = jsCast<JSLexicalEnvironment*>(scope);
-        environment->registerAt(pc[6].u.operand).set(vm, environment, value);
+        environment->variableAt(ScopeOffset(pc[6].u.operand)).set(vm, environment, value);
         if (VariableWatchpointSet* set = pc[5].u.watchpointSet)
             set->notifyWrite(vm, value, "Executed op_put_scope<LocalClosureVar>");
         return;
@@ -1794,7 +1763,7 @@ void JIT_OPERATION operationInitGlobalConst(ExecState* exec, Instruction* pc)
     NativeCallFrameTracer tracer(vm, exec);
 
     JSValue value = exec->r(pc[2].u.operand).jsValue();
-    pc[1].u.registerPointer->set(*vm, exec->codeBlock()->globalObject(), value);
+    pc[1].u.variablePointer->set(*vm, exec->codeBlock()->globalObject(), value);
 }
 
 void JIT_OPERATION lookupExceptionHandler(VM* vm, ExecState* exec)
@@ -1846,14 +1815,6 @@ void JIT_OPERATION operationExceptionFuzz()
 #endif // COMPILER(CLANG)
 }
 
-int32_t JIT_OPERATION operationGetEnumerableLength(ExecState* exec, JSCell* baseCell)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-    JSObject* base = baseCell->toObject(exec, exec->lexicalGlobalObject());
-    return base->methodTable(vm)->getEnumerableLength(exec, base);
-}
-
 EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState* exec, EncodedJSValue encodedBaseValue, JSCell* propertyName)
 {
     VM& vm = exec->vm();
@@ -1874,26 +1835,14 @@ EncodedJSValue JIT_OPERATION operationHasIndexedProperty(ExecState* exec, JSCell
     return JSValue::encode(jsBoolean(object->hasProperty(exec, subscript)));
 }
     
-JSCell* JIT_OPERATION operationGetStructurePropertyEnumerator(ExecState* exec, JSCell* cell, int32_t length)
+JSCell* JIT_OPERATION operationGetPropertyEnumerator(ExecState* exec, JSCell* cell)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-        
+
     JSObject* base = cell->toObject(exec, exec->lexicalGlobalObject());
-    ASSERT(length >= 0);
 
-    return structurePropertyNameEnumerator(exec, base, static_cast<uint32_t>(length));
-}
-
-JSCell* JIT_OPERATION operationGetGenericPropertyEnumerator(ExecState* exec, JSCell* baseCell, int32_t length, JSCell* structureEnumeratorCell)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-    
-    JSObject* base = baseCell->toObject(exec, exec->lexicalGlobalObject());
-    ASSERT(length >= 0);
-
-    return genericPropertyNameEnumerator(exec, base, length, jsCast<JSPropertyNameEnumerator*>(structureEnumeratorCell));
+    return propertyNameEnumerator(exec, base);
 }
 
 EncodedJSValue JIT_OPERATION operationNextEnumeratorPname(ExecState* exec, JSCell* enumeratorCell, int32_t index)

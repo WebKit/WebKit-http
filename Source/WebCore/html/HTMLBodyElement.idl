@@ -26,31 +26,39 @@ interface HTMLBodyElement : HTMLElement {
     [Reflect] attribute DOMString text;
     [Reflect] attribute DOMString vLink;
 
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
-    // Event handler attributes
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onbeforeunload;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onhashchange;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onmessage;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onoffline;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener ononline;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onpopstate;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onresize;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onstorage;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onunload;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onbeforeunload;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onblur;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onerror;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onfocus;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onfocusin;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onfocusout;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onhashchange;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onload;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onmessage;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onoffline;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler ononline;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onpagehide;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onpageshow;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onpopstate;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onresize;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onscroll;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onstorage;
+    [NotEnumerable, WindowEventHandler] attribute EventHandler onunload;
 
-    [Conditional=ORIENTATION_EVENTS, NotEnumerable, JSWindowEventListener] attribute EventListener onorientationchange;
+    [NotEnumerable, WindowEventHandler, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcecancelled;
+    [NotEnumerable, WindowEventHandler, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcechanged;
+    [NotEnumerable, WindowEventHandler, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforceclick;
+    [NotEnumerable, WindowEventHandler, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcedown;
+    [NotEnumerable, WindowEventHandler, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcewillbegin;
+    [NotEnumerable, WindowEventHandler, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforceup;
 
-    // Overrides of Element attributes (with different implementation in bindings).
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onblur;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onerror;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onfocus;
-    [NotEnumerable, JSWindowEventListener] attribute EventListener onload;
+    [NotEnumerable, WindowEventHandler, Conditional=ORIENTATION_EVENTS] attribute EventHandler onorientationchange;
 
-    // Not implemented yet.
-    // [NotEnumerable, JSWindowEventListener] attribute EventListener onafterprint;
-    // [NotEnumerable, JSWindowEventListener] attribute EventListener onbeforeprint;
-    // [NotEnumerable, JSWindowEventListener] attribute EventListener onredo;
-    // [NotEnumerable, JSWindowEventListener] attribute EventListener onundo;
-#endif
+    [NotEnumerable, WindowEventHandler, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealbottom;
+    [NotEnumerable, WindowEventHandler, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealleft;
+    [NotEnumerable, WindowEventHandler, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealright;
+    [NotEnumerable, WindowEventHandler, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealtop;
+
+    [NotEnumerable, DocumentEventHandler] attribute EventHandler onselectionchange;
 };
 

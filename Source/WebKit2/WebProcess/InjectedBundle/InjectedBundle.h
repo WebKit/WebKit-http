@@ -103,7 +103,6 @@ public:
     WebConnection* webConnectionToUIProcess() const;
 
     // TestRunner only SPI
-    void setAlwaysAcceptCookies(bool);
     void overrideBoolPreferenceForTestRunner(WebPageGroupProxy*, const String& preference, bool enabled);
     void overrideXSSAuditorEnabledForTestRunner(WebPageGroupProxy* pageGroup, bool enabled);
     void setAllowUniversalAccessFromFileURLs(WebPageGroupProxy*, bool);
@@ -170,6 +169,7 @@ public:
 
     void setTabKeyCyclesThroughElements(WebPage*, bool enabled);
     void setSerialLoadingEnabled(bool);
+    void setCSSAnimationTriggersEnabled(bool);
     void setCSSRegionsEnabled(bool);
     void setCSSCompositingEnabled(bool);
     void dispatchPendingLoadRequests();

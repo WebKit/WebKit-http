@@ -99,8 +99,9 @@ messages -> WebPageProxy {
     PageDidRequestScroll(WebCore::IntPoint point)
     PageTransitionViewportReady()
     DidFindZoomableArea(WebCore::IntPoint target, WebCore::IntRect area)
-    DidChangeContentSize(WebCore::IntSize newSize)
 #endif
+
+    DidChangeContentSize(WebCore::IntSize newSize)
 
 #if ENABLE(INPUT_TYPE_COLOR)
     ShowColorPicker(WebCore::Color initialColor, WebCore::IntRect elementRect);
@@ -296,7 +297,10 @@ messages -> WebPageProxy {
 #endif
 #if PLATFORM(COCOA) && ENABLE(DRAG_SUPPORT)
     SetDragImage(WebCore::IntPoint clientPosition, WebKit::ShareableBitmap::Handle dragImage, bool linkDrag)
-    SetPromisedData(String pasteboardName, WebKit::SharedMemory::Handle imageHandle, uint64_t imageSize, String filename, String extension, String title, String url, String visibleURL, WebKit::SharedMemory::Handle archiveHandle, uint64_t archiveSize)
+    SetPromisedDataForImage(String pasteboardName, WebKit::SharedMemory::Handle imageHandle, uint64_t imageSize, String filename, String extension, String title, String url, String visibleURL, WebKit::SharedMemory::Handle archiveHandle, uint64_t archiveSize)
+#if ENABLE(ATTACHMENT_ELEMENT)
+    SetPromisedDataForAttachment(String pasteboardName, String filename, String extension, String title, String url, String visibleURL)
+#endif
 #endif
 #if PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
     StartDrag(WebCore::DragData dragData, WebKit::ShareableBitmap::Handle dragImage)
@@ -422,4 +426,13 @@ messages -> WebPageProxy {
 #if PLATFORM(MAC)
     DidPerformActionMenuHitTest(struct WebKit::ActionMenuHitTestResult result, bool forImmediateAction, WebKit::UserData userData)
 #endif
+
+    HandleAutoFillButtonClick(WebKit::UserData userData);
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    ShowPlaybackTargetPicker(WebCore::FloatRect pickerLocation, bool hasVideo)
+    StartingMonitoringPlaybackTargets()
+    StopMonitoringPlaybackTargets()
+#endif
+
 }

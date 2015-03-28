@@ -28,6 +28,7 @@
 #include "CodeBlock.h"
 #include "Completion.h"
 #include "CopiedSpaceInlines.h"
+#include "Disassembler.h"
 #include "ExceptionHelpers.h"
 #include "HeapStatistics.h"
 #include "InitializeThreading.h"
@@ -104,6 +105,8 @@ namespace {
 
 NO_RETURN_WITH_VALUE static void jscExit(int status)
 {
+    waitForAsynchronousDisassembly();
+    
 #if ENABLE(DFG_JIT)
     if (DFG::isCrashing()) {
         for (;;) {
@@ -363,9 +366,6 @@ public:
     static NO_RETURN_DUE_TO_CRASH bool deleteProperty(JSCell*, ExecState*, PropertyName)
     {
         RELEASE_ASSERT_NOT_REACHED();
-#if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
-        return true;
-#endif
     }
 
     unsigned getLength() const { return m_vector.size(); }
@@ -1498,6 +1498,10 @@ int jscmain(int argc, char** argv)
 #if ENABLE(JIT)
         if (Options::enableExceptionFuzz())
             printf("JSC EXCEPTION FUZZ: encountered %u checks.\n", numberOfExceptionFuzzChecks());
+        bool fireAtEnabled =
+            Options::fireExecutableAllocationFuzzAt() || Options::fireExecutableAllocationFuzzAtOrAfter();
+        if (Options::enableExecutableAllocationFuzz() && (!fireAtEnabled || Options::verboseExecutableAllocationFuzz()))
+            printf("JSC EXECUTABLE ALLOCATION FUZZ: encountered %u checks.\n", numberOfExecutableAllocationFuzzChecks());
 #endif
     }
     

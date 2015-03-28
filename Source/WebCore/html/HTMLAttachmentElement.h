@@ -40,13 +40,17 @@ public:
     File* file() const;
     void setFile(File*);
 
+    String attachmentTitle() const;
+
 private:
     HTMLAttachmentElement(const QualifiedName&, Document&);
     virtual ~HTMLAttachmentElement();
 
     virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
 
+    virtual bool shouldSelectOnMouseDown() override { return true; }
     virtual bool canContainRangeEndPoint() const override { return false; }
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
     
     RefPtr<File> m_file;
 };

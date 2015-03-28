@@ -71,6 +71,9 @@ public:
     
     void resize(size_t numBits)
     {
+        if (numBits == m_numBits)
+            return;
+        
         // Use fastCalloc instead of fastRealloc because we expect the common
         // use case for this method to be initializing the size of the bitvector.
         
@@ -175,6 +178,22 @@ public:
         for (unsigned i = arrayLength(); i--;)
             result += WTF::bitCount(m_array[i]);
         return result;
+    }
+    
+    template<typename Functor>
+    void forEachSetBit(const Functor& functor)
+    {
+        unsigned n = arrayLength();
+        for (unsigned i = 0; i < n; ++i) {
+            uint32_t word = m_array[i];
+            unsigned j = i << 5;
+            while (word) {
+                if (word & 1)
+                    functor(j);
+                word >>= 1;
+                j++;
+            }
+        }
     }
     
     WTF_EXPORT_PRIVATE void dump(PrintStream&) const;

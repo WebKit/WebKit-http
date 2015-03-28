@@ -36,6 +36,7 @@
 #import <WebKit/WKWebView.h>
 #import <WebKit/WKWebViewConfigurationPrivate.h>
 #import <WebKit/WKWebViewPrivate.h>
+#import <WebKit/WebNSURLExtras.h>
 #import <WebKit/_WKWebsiteDataStore.h>
 
 static void* keyValueObservingContext = &keyValueObservingContext;
@@ -102,7 +103,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 {
     [urlText setStringValue:[self addProtocolIfNecessary:[urlText stringValue]]];
 
-    [_webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[[urlText stringValue] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]]]];
+    [_webView loadRequest:[NSURLRequest requestWithURL:[NSURL _web_URLWithUserTypedString:[urlText stringValue]]]];
 }
 
 - (IBAction)showHideWebView:(id)sender
@@ -388,7 +389,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     if (!URL.absoluteString.length)
         return;
 
-    urlText.stringValue = [[URL absoluteString] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    urlText.stringValue = [URL _web_userVisibleString];
 }
 
 - (void)loadURLString:(NSString *)urlString
@@ -407,18 +408,20 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 {
 }
 
+static const WKWebsiteDataTypes dataTypes = WKWebsiteDataTypeAll;
+
 - (IBAction)fetchWebsiteData:(id)sender
 {
-    [_configuration._websiteDataStore fetchDataRecordsOfTypes:WKWebsiteDataTypeAll completionHandler:^(NSArray *websiteDataRecords) {
+    [_configuration._websiteDataStore fetchDataRecordsOfTypes:dataTypes completionHandler:^(NSArray *websiteDataRecords) {
         NSLog(@"did fetch website data %@.", websiteDataRecords);
     }];
 }
 
 - (IBAction)fetchAndClearWebsiteData:(id)sender
 {
-    [_configuration._websiteDataStore fetchDataRecordsOfTypes:WKWebsiteDataTypeAll completionHandler:^(NSArray *websiteDataRecords) {
-        [_configuration._websiteDataStore removeDataOfTypes:WKWebsiteDataTypeAll forDataRecords:websiteDataRecords completionHandler:^{
-            [_configuration._websiteDataStore fetchDataRecordsOfTypes:WKWebsiteDataTypeAll completionHandler:^(NSArray *websiteDataRecords) {
+    [_configuration._websiteDataStore fetchDataRecordsOfTypes:dataTypes completionHandler:^(NSArray *websiteDataRecords) {
+        [_configuration._websiteDataStore removeDataOfTypes:dataTypes forDataRecords:websiteDataRecords completionHandler:^{
+            [_configuration._websiteDataStore fetchDataRecordsOfTypes:dataTypes completionHandler:^(NSArray *websiteDataRecords) {
                 NSLog(@"did clear website data, after clearing data is %@.", websiteDataRecords);
             }];
         }];
@@ -427,7 +430,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
 - (IBAction)clearWebsiteData:(id)sender
 {
-    [_configuration._websiteDataStore removeDataOfTypes:WKWebsiteDataTypeAll modifiedSince:[NSDate distantPast] completionHandler:^{
+    [_configuration._websiteDataStore removeDataOfTypes:dataTypes modifiedSince:[NSDate distantPast] completionHandler:^{
         NSLog(@"Did clear website data.");
     }];
 }

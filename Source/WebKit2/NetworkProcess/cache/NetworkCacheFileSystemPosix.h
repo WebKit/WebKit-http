@@ -31,9 +31,12 @@
 #include "NetworkCacheKey.h"
 #include <WebCore/FileSystem.h>
 #include <dirent.h>
+#include <sys/stat.h>
+#include <sys/time.h>
 #include <wtf/text/CString.h>
 
 namespace WebKit {
+namespace NetworkCache {
 
 template <typename Function>
 static void traverseDirectory(const String& path, uint8_t type, const Function& function)
@@ -59,14 +62,40 @@ inline void traverseCacheFiles(const String& cachePath, const Function& function
     traverseDirectory(cachePath, DT_DIR, [&cachePath, &function](const String& subdirName) {
         String partitionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
         traverseDirectory(partitionPath, DT_REG, [&function, &partitionPath](const String& fileName) {
-            if (fileName.length() != NetworkCacheKey::hashStringLength())
+            if (fileName.length() != Key::hashStringLength())
                 return;
             function(fileName, partitionPath);
         });
     });
 }
 
-} // namespace WebKit
+struct FileTimes {
+    std::chrono::system_clock::time_point creation;
+    std::chrono::system_clock::time_point access;
+};
+
+inline FileTimes fileTimes(const String& path)
+{
+    struct stat fileInfo;
+    if (stat(WebCore::fileSystemRepresentation(path).data(), &fileInfo))
+        return { };
+    return { std::chrono::system_clock::from_time_t(fileInfo.st_birthtime), std::chrono::system_clock::from_time_t(fileInfo.st_atime) };
+}
+
+inline void updateFileAccessTimeIfNeeded(const String& path)
+{
+    auto times = fileTimes(path);
+    if (times.creation != times.access) {
+        // Don't update more than once per hour;
+        if (std::chrono::system_clock::now() - times.access < std::chrono::hours(1))
+            return;
+    }
+    // This really updates both access time and modification time.
+    utimes(WebCore::fileSystemRepresentation(path).data(), 0);
+}
+
+}
+}
 
 #endif // ENABLE(NETWORK_CACHE)
 

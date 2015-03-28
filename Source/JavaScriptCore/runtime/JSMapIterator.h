@@ -57,16 +57,27 @@ public:
 
     bool next(CallFrame* callFrame, JSValue& value)
     {
-        if (!m_iterator.ensureSlot())
+        WTF::KeyValuePair<JSValue, JSValue> pair;
+        if (!m_iterator.next(pair))
             return false;
 
         if (m_kind == MapIterateValue)
-            value = m_iterator.value();
+            value = pair.value;
         else if (m_kind == MapIterateKey)
-            value = m_iterator.key();
+            value = pair.key;
         else
-            value = createPair(callFrame, m_iterator.key(), m_iterator.value());
-        ++m_iterator;
+            value = createPair(callFrame, pair.key, pair.value);
+        return true;
+    }
+
+    bool nextKeyValue(JSValue& key, JSValue& value)
+    {
+        WTF::KeyValuePair<JSValue, JSValue> pair;
+        if (!m_iterator.next(pair))
+            return false;
+
+        key = pair.key;
+        value = pair.value;
         return true;
     }
 
@@ -75,20 +86,30 @@ public:
         m_iterator.finish();
     }
 
+    MapIterationKind kind() const { return m_kind; }
+    JSValue iteratedValue() const { return m_map.get(); }
+    JSMapIterator* clone(ExecState*);
+
+    JSMap::MapData::IteratorData* iteratorData()
+    {
+        return &m_iterator;
+    }
+
 private:
     JSMapIterator(VM& vm, Structure* structure, JSMap* iteratedObject, MapIterationKind kind)
         : Base(vm, structure)
-        , m_iterator(iteratedObject->mapData()->begin())
+        , m_iterator(iteratedObject->m_mapData.createIteratorData(this))
         , m_kind(kind)
     {
     }
 
-    void finishCreation(VM&, JSMap*);
+    static void destroy(JSCell*);
+    JS_EXPORT_PRIVATE void finishCreation(VM&, JSMap*);
     JSValue createPair(CallFrame*, JSValue, JSValue);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-    WriteBarrier<MapData> m_iteratedObjectData;
-    MapData::const_iterator m_iterator;
+    WriteBarrier<JSMap> m_map;
+    JSMap::MapData::IteratorData m_iterator;
     MapIterationKind m_kind;
 };
 

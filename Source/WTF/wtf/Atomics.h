@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2010, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2008, 2010, 2012-2013, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Justin Haygood (jhaygood@reaktix.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,6 +59,7 @@
 #ifndef Atomics_h
 #define Atomics_h
 
+#include <atomic>
 #include <wtf/StdLibExtras.h>
 
 #if OS(WINDOWS)
@@ -70,6 +71,38 @@ extern "C" void _ReadWriteBarrier(void);
 #endif
 
 namespace WTF {
+
+// Atomic wraps around std::atomic with the sole purpose of making the compare_exchange
+// operations not alter the expected value. This is more in line with how we typically
+// use CAS in our code.
+//
+// Atomic is a struct without explicitly defined constructors so that it can be
+// initialized at compile time.
+
+template<typename T>
+struct Atomic {
+    // Don't pass a non-default value for the order parameter unless you really know
+    // what you are doing and have thought about it very hard. The cost of seq_cst
+    // is usually not high enough to justify the risk.
+
+    T load(std::memory_order order = std::memory_order_seq_cst) const { return value.load(order); }
+
+    void store(T desired, std::memory_order order = std::memory_order_seq_cst) { value.store(desired, order); }
+
+    bool compareExchangeWeak(T expected, T desired, std::memory_order order = std::memory_order_seq_cst)
+    {
+        T expectedOrActual = expected;
+        return value.compare_exchange_weak(expectedOrActual, desired, order);
+    }
+
+    bool compareExchangeStrong(T expected, T desired, std::memory_order order = std::memory_order_seq_cst)
+    {
+        T expectedOrActual = expected;
+        return value.compare_exchange_strong(expectedOrActual, desired, order);
+    }
+
+    std::atomic<T> value;
+};
 
 #if OS(WINDOWS)
 inline bool weakCompareAndSwap(volatile unsigned* location, unsigned expected, unsigned newValue)
@@ -315,16 +348,24 @@ inline bool weakCompareAndSwap(uint8_t* location, uint8_t expected, uint8_t newV
     unsigned* alignedLocation = bitwise_cast<unsigned*>(alignedLocationValue);
     // Make sure that this load is always issued and never optimized away.
     unsigned oldAlignedValue = *const_cast<volatile unsigned*>(alignedLocation);
-    union {
-        uint8_t bytes[sizeof(unsigned)];
-        unsigned word;
-    } u;
-    u.word = oldAlignedValue;
-    if (u.bytes[locationOffset] != expected)
-        return false;
-    u.bytes[locationOffset] = newValue;
-    unsigned newAlignedValue = u.word;
-    return weakCompareAndSwap(alignedLocation, oldAlignedValue, newAlignedValue);
+
+    struct Splicer {
+        static unsigned splice(unsigned value, uint8_t byte, uintptr_t byteIndex)
+        {
+            union {
+                unsigned word;
+                uint8_t bytes[sizeof(unsigned)];
+            } u;
+            u.word = value;
+            u.bytes[byteIndex] = byte;
+            return u.word;
+        }
+    };
+    
+    unsigned expectedAlignedValue = Splicer::splice(oldAlignedValue, expected, locationOffset);
+    unsigned newAlignedValue = Splicer::splice(oldAlignedValue, newValue, locationOffset);
+
+    return weakCompareAndSwap(alignedLocation, expectedAlignedValue, newAlignedValue);
 #endif
 #else
     UNUSED_PARAM(location);
@@ -336,5 +377,7 @@ inline bool weakCompareAndSwap(uint8_t* location, uint8_t expected, uint8_t newV
 }
 
 } // namespace WTF
+
+using WTF::Atomic;
 
 #endif // Atomics_h

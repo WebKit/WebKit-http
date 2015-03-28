@@ -30,6 +30,7 @@
 
 #include "CompiledContentExtension.h"
 #include "ContentExtensionActions.h"
+#include "ContentExtensionError.h"
 #include "ContentExtensionParser.h"
 #include "ContentExtensionRule.h"
 #include "ContentExtensionsDebugging.h"
@@ -52,9 +53,16 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
         
     for (unsigned ruleIndex = 0; ruleIndex < ruleList.size(); ++ruleIndex) {
         const ContentExtensionRule& rule = ruleList[ruleIndex];
+        
+        // Identical sequential actions should not be rewritten.
+        if (ruleIndex && rule.action() == ruleList[ruleIndex - 1].action()) {
+            actionLocations.append(actionLocations[ruleIndex - 1]);
+            continue;
+        }
         actionLocations.append(actions.size());
         
         switch (rule.action().type()) {
+        case ActionType::CSSDisplayNoneStyleSheet:
         case ActionType::InvalidAction:
             RELEASE_ASSERT_NOT_REACHED();
 
@@ -64,10 +72,10 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
             actions.append(static_cast<SerializedActionByte>(rule.action().type()));
             break;
 
-        case ActionType::CSSDisplayNone: {
-            const String& selector = rule.action().cssSelector();
+        case ActionType::CSSDisplayNoneSelector: {
+            const String& selector = rule.action().stringArgument();
             // Append action type (1 byte).
-            actions.append(static_cast<SerializedActionByte>(ActionType::CSSDisplayNone));
+            actions.append(static_cast<SerializedActionByte>(ActionType::CSSDisplayNoneSelector));
             // Append Selector length (4 bytes).
             unsigned selectorLength = selector.length();
             actions.resize(actions.size() + sizeof(unsigned));
@@ -92,9 +100,12 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
 }
 
 
-Ref<CompiledContentExtension> compileRuleList(const String& ruleList)
+std::error_code compileRuleList(ContentExtensionCompilationClient& client, const String& ruleList)
 {
-    auto parsedRuleList = parseRuleList(ruleList);
+    Vector<ContentExtensionRule> parsedRuleList;
+    auto parserError = parseRuleList(ruleList, parsedRuleList);
+    if (parserError)
+        return parserError;
 
 #if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
     double nfaBuildTimeStart = monotonicallyIncreasingTime();
@@ -102,18 +113,36 @@ Ref<CompiledContentExtension> compileRuleList(const String& ruleList)
 
     Vector<SerializedActionByte> actions;
     Vector<unsigned> actionLocations = serializeActions(parsedRuleList, actions);
+    Vector<uint64_t> universalActionLocations;
 
-    NFA nfa;
-    URLFilterParser urlFilterParser(nfa);
+    Vector<NFA> nfas;
+    nfas.append(NFA());
+    bool nonUniversalActionSeen = false;
     for (unsigned ruleIndex = 0; ruleIndex < parsedRuleList.size(); ++ruleIndex) {
+
+        // FIXME: Tune this better and adjust ContentExtensionTest.MultiDFA accordingly.
+        if (nfas[nfas.size() - 1].graphSize() > 400)
+            nfas.append(NFA());
+
+        NFA& lastNFA = nfas[nfas.size() - 1];
+        URLFilterParser urlFilterParser(lastNFA);
         const ContentExtensionRule& contentExtensionRule = parsedRuleList[ruleIndex];
         const Trigger& trigger = contentExtensionRule.trigger();
         ASSERT(trigger.urlFilter.length());
 
-        String error = urlFilterParser.addPattern(trigger.urlFilter, trigger.urlFilterIsCaseSensitive, actionLocations[ruleIndex]);
+        // High bits are used for flags. This should match how they are used in DFABytecodeCompiler::compileNode.
+        uint64_t actionLocationAndFlags = (static_cast<uint64_t>(trigger.flags) << 32) | static_cast<uint64_t>(actionLocations[ruleIndex]);
+        URLFilterParser::ParseStatus status = urlFilterParser.addPattern(trigger.urlFilter, trigger.urlFilterIsCaseSensitive, actionLocationAndFlags);
 
-        if (!error.isNull()) {
-            dataLogF("Error while parsing %s: %s\n", trigger.urlFilter.utf8().data(), error.utf8().data());
+        if (status == URLFilterParser::MatchesEverything) {
+            if (nonUniversalActionSeen)
+                dataLogF("Trigger matching everything found not at beginning.  This may cause incorrect behavior with ignore-previous-rules");
+            universalActionLocations.append(actionLocationAndFlags);
+        } else
+            nonUniversalActionSeen = true;
+        
+        if (status != URLFilterParser::Ok && status != URLFilterParser::MatchesEverything) {
+            dataLogF("Error while parsing %s: %s\n", trigger.urlFilter.utf8().data(), URLFilterParser::statusString(status).utf8().data());
             continue;
         }
     }
@@ -124,31 +153,42 @@ Ref<CompiledContentExtension> compileRuleList(const String& ruleList)
 #endif
 
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
-    nfa.debugPrintDot();
+    for (size_t i = 0; i < nfas.size(); ++i) {
+        WTFLogAlways("NFA %zu", i);
+        const NFA& nfa = nfas[i];
+        nfa.debugPrintDot();
+    }
 #endif
 
 #if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
     double dfaBuildTimeStart = monotonicallyIncreasingTime();
 #endif
+    Vector<DFABytecode> bytecode;
+    for (size_t i = 0; i < nfas.size(); ++i) {
+        DFA dfa = NFAToDFA::convert(nfas[i]);
 
-    const DFA dfa = NFAToDFA::convert(nfa);
-
-#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
-    double dfaBuildTimeEnd = monotonicallyIncreasingTime();
-    dataLogF("    Time spent building the DFA: %f\n", (dfaBuildTimeEnd - dfaBuildTimeStart));
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+        WTFLogAlways("DFA %zu", i);
+        dfa.debugPrintDot();
 #endif
 
-    // FIXME: never add a DFA that only matches the empty set.
+        if (!i) {
+            // Put all the universal actions on the first DFA.
+            for (uint64_t actionLocation : universalActionLocations)
+                dfa.nodeAt(dfa.root()).actions.append(actionLocation);
+        }
+        DFABytecodeCompiler compiler(dfa, bytecode);
+        compiler.compile();
+    }
 
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
     dfa.debugPrintDot();
 #endif
 
-    Vector<DFABytecode> bytecode;
-    DFABytecodeCompiler compiler(dfa, bytecode);
-    compiler.compile();
+    client.writeBytecode(WTF::move(bytecode));
+    client.writeActions(WTF::move(actions));
 
-    return CompiledContentExtension::create(WTF::move(bytecode), WTF::move(actions));
+    return { };
 }
 
 } // namespace ContentExtensions

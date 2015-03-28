@@ -285,6 +285,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_websiteDataStore(*configuration.websiteDataStore)
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
+    , m_treatsSHA1CertificatesAsInsecure(configuration.treatsSHA1SignedCertificatesAsInsecure)
 #if PLATFORM(IOS)
     , m_hasReceivedLayerTreeTransactionAfterDidCommitLoad(true)
     , m_firstLayerTreeTransactionIdAfterDidCommitLoad(0)
@@ -654,6 +655,7 @@ RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessForReload()
 
     auto navigation = m_navigationState->createReloadNavigation();
 
+    // We allow stale content when reloading a WebProcess that's been killed or crashed.
     m_process->send(Messages::WebPage::GoToBackForwardItem(navigation->navigationID(), m_backForwardList->currentItem()->itemID()), m_pageID);
     m_process->responsivenessTimer()->start();
 
@@ -1417,11 +1419,15 @@ IntSize WebPageProxy::viewSize() const
     return m_pageClient.viewSize();
 }
 
-void WebPageProxy::setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent& keyboardEvent)
+void WebPageProxy::setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent& keyboardEvent, std::function<void (CallbackBase::Error)> callbackFunction)
 {
-    if (!isValid())
+    if (!isValid()) {
+        callbackFunction(CallbackBase::Error::OwnerWasInvalidated);
         return;
-    m_process->send(Messages::WebPage::SetInitialFocus(forward, isKeyboardEventValid, keyboardEvent), m_pageID);
+    }
+
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::SetInitialFocus(forward, isKeyboardEventValid, keyboardEvent, callbackID), m_pageID);
 }
 
 void WebPageProxy::setWindowResizerSize(const IntSize& windowResizerSize)
@@ -1436,6 +1442,13 @@ void WebPageProxy::clearSelection()
     if (!isValid())
         return;
     m_process->send(Messages::WebPage::ClearSelection(), m_pageID);
+}
+
+void WebPageProxy::restoreSelectionInFocusedEditableElement()
+{
+    if (!isValid())
+        return;
+    m_process->send(Messages::WebPage::RestoreSelectionInFocusedEditableElement(), m_pageID);
 }
 
 void WebPageProxy::validateCommand(const String& commandName, std::function<void (const String&, bool, int32_t, CallbackBase::Error)> callbackFunction)
@@ -2818,8 +2831,10 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
 
     auto transaction = m_pageLoadState.transaction();
 
-    if (frame->isMainFrame())
-        m_pageLoadState.didCommitLoad(transaction);
+    if (frame->isMainFrame()) {
+        bool hasInsecureCertificateChain = m_treatsSHA1CertificatesAsInsecure && certificateInfo.containsNonRootSHA1SignedCertificate();
+        m_pageLoadState.didCommitLoad(transaction, hasInsecureCertificateChain);
+    }
 
 #if USE(APPKIT)
     // FIXME (bug 59111): didCommitLoadForFrame comes too late when restoring a page from b/f cache, making us disable secure event mode in password fields.
@@ -3086,7 +3101,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, uint64_t na
     }
 
 #if ENABLE(CONTENT_FILTERING)
-    if (frame->contentFilterDidHandleNavigationAction(request)) {
+    if (frame->didHandleContentFilterUnblockNavigation(request)) {
         receivedPolicyAction = true;
         policyAction = PolicyIgnore;
         return;
@@ -3660,12 +3675,10 @@ void WebPageProxy::handleDownloadRequest(DownloadProxy* download)
     m_pageClient.handleDownloadRequest(download);
 }
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
 void WebPageProxy::didChangeContentSize(const IntSize& size)
 {
     m_pageClient.didChangeContentSize(size);
 }
-#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
 void WebPageProxy::showColorPicker(const WebCore::Color& initialColor, const IntRect& elementRect)
@@ -5112,6 +5125,7 @@ void WebPageProxy::didFinishLoadingDataForCustomContentProvider(const String& su
 
 void WebPageProxy::backForwardRemovedItem(uint64_t itemID)
 {
+    m_process->removeBackForwardItem(itemID);
     m_process->send(Messages::WebPage::DidRemoveBackForwardItem(itemID), m_pageID);
 }
 
@@ -5564,6 +5578,21 @@ void WebPageProxy::focusAndSelectLastActionMenuHitTestResult()
     m_process->send(Messages::WebPage::FocusAndSelectLastActionMenuHitTestResult(), m_pageID);
 }
 
+void WebPageProxy::immediateActionDidUpdate(float force)
+{
+    m_process->send(Messages::WebPage::ImmediateActionDidUpdate(force), m_pageID);
+}
+
+void WebPageProxy::immediateActionDidCancel()
+{
+    m_process->send(Messages::WebPage::ImmediateActionDidCancel(), m_pageID);
+}
+
+void WebPageProxy::immediateActionDidComplete()
+{
+    m_process->send(Messages::WebPage::ImmediateActionDidComplete(), m_pageID);
+}
+
 void WebPageProxy::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result, bool forImmediateAction, const UserData& userData)
 {
     m_pageClient.didPerformActionMenuHitTest(result, forImmediateAction, m_process->transformHandlesToObjects(userData.object()).get());
@@ -5590,5 +5619,53 @@ void WebPageProxy::setShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeM
 {
     m_process->send(Messages::WebPage::SetShouldDispatchFakeMouseMoveEvents(shouldDispatchFakeMouseMoveEvents), m_pageID);
 }
+
+void WebPageProxy::handleAutoFillButtonClick(const UserData& userData)
+{
+    m_uiClient->didClickAutoFillButton(*this, m_process->transformHandlesToObjects(userData.object()).get());
+}
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+
+WebCore::MediaPlaybackTargetPicker& WebPageProxy::devicePickerProxy()
+{
+    if (!m_playbackTargetPicker)
+        m_playbackTargetPicker = m_pageClient.createPlaybackTargetPicker(this);
+
+    return *m_playbackTargetPicker.get();
+}
+
+void WebPageProxy::showPlaybackTargetPicker(const WebCore::FloatRect& rect, bool hasVideo)
+{
+    devicePickerProxy().showPlaybackTargetPicker(m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo);
+}
+
+void WebPageProxy::startingMonitoringPlaybackTargets()
+{
+    devicePickerProxy().startingMonitoringPlaybackTargets();
+}
+
+void WebPageProxy::stopMonitoringPlaybackTargets()
+{
+    devicePickerProxy().stopMonitoringPlaybackTargets();
+}
+
+void WebPageProxy::didChoosePlaybackTarget(const WebCore::MediaPlaybackTarget& target)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::PlaybackTargetSelected(target), m_pageID);
+}
+
+void WebPageProxy::externalOutputDeviceAvailableDidChange(bool available)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::PlaybackTargetAvailabilityDidChange(available), m_pageID);
+}
+
+#endif
 
 } // namespace WebKit

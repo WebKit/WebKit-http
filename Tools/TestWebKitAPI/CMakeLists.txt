@@ -22,6 +22,7 @@ include_directories(${CMAKE_BINARY_DIR}
     ${WEBCORE_DIR}/css
     ${WEBCORE_DIR}/dom
     ${WEBCORE_DIR}/editing
+    ${WEBCORE_DIR}/loader/cache
     ${WEBCORE_DIR}/platform
     ${WEBCORE_DIR}/platform/animation
     ${WEBCORE_DIR}/platform/graphics
@@ -77,6 +78,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/AtomicString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CheckedArithmeticOperations.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/DateMath.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Deque.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Functional.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashMap.cpp
@@ -100,6 +102,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/TemporaryChange.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Vector.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/WTFString.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/WorkQueue.cpp
 )
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
@@ -211,11 +214,10 @@ endforeach ()
 # We don't run tests that are expected to fail. We could use the WILL_FAIL
 # property, but it reports failure when the test crashes or timeouts and would
 # make the bot red.
-
 foreach (testName ${test_webkit2_api_fail_BINARIES})
     add_executable(${testName} ${TESTWEBKITAPI_DIR}/Tests/WebKit2/${testName}.cpp)
     target_link_libraries(${testName} ${test_webkit2_api_LIBRARIES})
-    set_target_properties(${testBaseName} PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2
+    set_target_properties(${testName} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2/failure
     )
 endforeach ()

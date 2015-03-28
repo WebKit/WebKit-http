@@ -46,6 +46,7 @@ class VM;
 class JSGlobalObject;
 class JSObject;
 class JSString;
+class Identifier;
 class PropertyName;
 class PropertySlot;
 class PutPropertySlot;
@@ -250,7 +251,7 @@ public:
     // been set in the ExecState already.
     double toNumber(ExecState*) const;
     JSString* toString(ExecState*) const;
-    PropertyName toPropertyKey(ExecState*) const;
+    Identifier toPropertyKey(ExecState*) const;
     WTF::String toWTFString(ExecState*) const;
     WTF::String toWTFStringInline(ExecState*) const;
     JSObject* toObject(ExecState*) const;
@@ -301,6 +302,7 @@ public:
     void dumpForBacktrace(PrintStream&) const;
 
     JS_EXPORT_PRIVATE JSObject* synthesizePrototype(ExecState*) const;
+    bool requireObjectCoercible(ExecState*) const;
 
     // Constants used for Int52. Int52 isn't part of JSValue right now, but JSValues may be
     // converted to Int52s and back again.

@@ -25,43 +25,43 @@
  */
 
 
-WebInspector.ReplaySession = function(identifier)
+WebInspector.ReplaySession = class ReplaySession extends WebInspector.Object
 {
-    WebInspector.Object.call(this);
+    constructor(identifier)
+    {
+        super();
 
-    this.identifier = identifier;
-    this._segments = [];
-    this._timestamp = null;
-};
+        this.identifier = identifier;
+        this._segments = [];
+        this._timestamp = null;
+    }
 
-WebInspector.ReplaySession.fromPayload = function(identifier, payload)
-{
-    var session = new WebInspector.ReplaySession(identifier);
-    session._updateFromPayload(payload);
-    return session;
-}
+    // Static
 
-WebInspector.ReplaySession.Event = {
-    SegmentsChanged: "replay-session-segments-changed",
-};
+    static fromPayload(identifier, payload)
+    {
+        var session = new WebInspector.ReplaySession(identifier);
+        session._updateFromPayload(payload);
+        return session;
+    }
 
-WebInspector.ReplaySession.prototype = {
-    constructor: WebInspector.ReplaySession,
-    __proto__: WebInspector.Object.prototype,
+    // Public
 
     get segments()
     {
         return this._segments.slice();
-    },
+    }
 
-    segmentsChanged: function()
+    segmentsChanged()
     {
         // The replay manager won't update the session's list of segments nor create a new session.
         ReplayAgent.getSessionData.promise(this.identifier)
             .then(this._updateFromPayload.bind(this));
-    },
+    }
 
-    _updateFromPayload: function(payload)
+    // Private
+
+    _updateFromPayload(payload)
     {
         var session = payload.session;
         console.assert(session.id === this.identifier);
@@ -76,11 +76,15 @@ WebInspector.ReplaySession.prototype = {
         Promise.all(pendingSegments).then(
             function(segmentsArray) {
                 session._segments = segmentsArray;
-                session.dispatchEventToListeners(WebInspector.ReplaySession.Event.SegmentsChanged, {oldSegments: oldSegments});
+                session.dispatchEventToListeners(WebInspector.ReplaySession.Event.SegmentsChanged, {oldSegments});
             },
             function(error) {
                 console.error("Problem resolving segments: ", error);
             }
         );
     }
+};
+
+WebInspector.ReplaySession.Event = {
+    SegmentsChanged: "replay-session-segments-changed",
 };

@@ -9,6 +9,7 @@ set(ForwardingHeadersForTestWebKitAPI_NAME forwarding-headersEflForTestWebKitAPI
 
 include_directories(
     ${DERIVED_SOURCES_WEBKIT2_DIR}/include
+    ${WTF_DIR}/wtf/efl
     ${WEBKIT2_DIR}/UIProcess/API/C/CoordinatedGraphics
     ${WEBKIT2_DIR}/UIProcess/API/C/soup
     ${WEBKIT2_DIR}/UIProcess/API/C/efl
@@ -127,10 +128,7 @@ set(test_webkit2_api_fail_BINARIES
     WillLoad
 )
 
-# Seccomp filters is an internal API and its symbols
-# are not (and should not) be exposed by default. We
-# can only test it when building shared core.
-if (ENABLE_SECCOMP_FILTERS AND SHARED_CORE)
+if (ENABLE_SECCOMP_FILTERS)
     list(APPEND test_webkit2_api_fail_BINARIES
         SeccompFilters
     )

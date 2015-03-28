@@ -31,6 +31,7 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/LChar.h>
+#include <wtf/text/StringCommon.h>
 
 // FIXME: Enabling the StringView lifetime checking causes the MSVC build to fail. Figure out why.
 // FIXME: Enable StringView lifetime checking once the underlying assertions have been fixed.
@@ -103,7 +104,18 @@ public:
     StringView substring(unsigned start, unsigned length = std::numeric_limits<unsigned>::max()) const;
 
     size_t find(UChar, unsigned start = 0) const;
+    WTF_EXPORT_STRING_API size_t findIgnoringASCIICase(const StringView&) const;
+    WTF_EXPORT_STRING_API size_t findIgnoringASCIICase(const StringView&, unsigned startOffset) const;
+
     bool contains(UChar) const;
+    WTF_EXPORT_STRING_API bool containsIgnoringASCIICase(const StringView&) const;
+    WTF_EXPORT_STRING_API bool containsIgnoringASCIICase(const StringView&, unsigned startOffset) const;
+
+    WTF_EXPORT_STRING_API bool startsWith(const StringView&) const;
+    WTF_EXPORT_STRING_API bool startsWithIgnoringASCIICase(const StringView&) const;
+
+    WTF_EXPORT_STRING_API bool endsWith(const StringView&) const;
+    WTF_EXPORT_STRING_API bool endsWithIgnoringASCIICase(const StringView&) const;
 
     int toInt(bool& isValid) const;
     float toFloat(bool& isValid) const;
@@ -468,22 +480,7 @@ template<typename CharacterType, size_t inlineCapacity> void append(Vector<Chara
 
 inline bool equal(StringView a, StringView b)
 {
-    unsigned aLength = a.length();
-    unsigned bLength = b.length();
-    if (aLength != bLength)
-        return false;
-
-    if (a.is8Bit()) {
-        if (b.is8Bit())
-            return equal(a.characters8(), b.characters8(), aLength);
-
-        return equal(a.characters8(), b.characters16(), aLength);
-    }
-
-    if (b.is8Bit())
-        return equal(a.characters16(), b.characters8(), aLength);
-
-    return equal(a.characters16(), b.characters16(), aLength);
+    return equalCommon(a, b);
 }
 
 inline bool equal(StringView a, const LChar* b)
@@ -505,14 +502,7 @@ inline bool equal(StringView a, const char* b)
 
 inline bool equalIgnoringASCIICase(StringView a, StringView b)
 {
-    unsigned aLength = a.length();
-    if (aLength != b.length()) 
-        return false;
-    for (size_t i = 0; i < aLength; ++i) {
-        if (toASCIILower(a[i]) != toASCIILower(b[i]))
-            return false;
-    }
-    return true;
+    return equalIgnoringASCIICaseCommon(a, b);
 }
 
 class StringView::CodePoints {

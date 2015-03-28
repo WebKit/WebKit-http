@@ -1,3 +1,232 @@
+2015-03-27  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMake] Remove unnecessary INCLUDE_IF_EXISTS macro
+        https://bugs.webkit.org/show_bug.cgi?id=143138
+
+        Reviewed by Csaba Osztrogonác.
+
+        INCLUDE_IF_EXISTS isn't used except for 2 places. However those uses can
+        be replaced with WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS.
+
+        * Source/cmake/OptionsWindows.cmake:
+        Set "PORT" instead of "PORT_FALLBACK" because there is no benefit to define PORT_FALLBACK.
+        * Source/cmake/WebKitMacros.cmake:
+
+2015-03-27  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        [GStreamer] share GL context in pipeline, part 2
+        https://bugs.webkit.org/show_bug.cgi?id=143049
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: USE_GSTREAMER_GL is set only if
+        OpenGL/ES2 is found and GLX/EGL is found too.
+
+2015-03-26  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=143112
+
+        Reviewed by Chris Dumez.
+
+        * Source/cmake/OptionsMac.cmake:
+
+2015-03-24  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Add OpenWebRTC in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=142778
+
+        Reviewed by Gyuyoung Kim.
+
+        Original patch by Philippe Normand <pnormand@igalia.com>
+
+        * Source/cmake/OptionsEfl.cmake: Look for OpenWebRTC library if
+        mediastream build is enabled.
+
+2015-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add a configure option to build without Redirected XComposite Window
+        https://bugs.webkit.org/show_bug.cgi?id=142865
+
+        Reviewed by Žan Doberšek.
+
+        The Redirected XComposite Window was added to support some
+        features like GtkOverlay, but in cases where we don't need such
+        features, it's more efficient to use the XID of the WebKitWebView
+        window as the native surface handle for the accelerated
+        compositing. This patch adds USE_REDIRECTED_XCOMPOSITE_WINDOW,
+        that is enabled by default for X11 target when OpenGL is enabled.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-03-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Search for the Wayland dependency when enabling Wayland target
+        https://bugs.webkit.org/show_bug.cgi?id=142876
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: The Wayland dependency isn't a public
+        requirement of either the GTK+ or GDK pkg-config files, so we have to
+        search for it ourselves when WebKitGTK+ has been configured to support
+        the Wayland windowing target.
+
+2015-03-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, kick the GTK bots to regenerate makefile.
+        https://bugs.webkit.org/show_bug.cgi?id=137394
+
+        * Source/cmake/OptionsEfl.cmake: Revert my last accidenatal change.
+        * Source/cmake/OptionsGTK.cmake: Really kick the GTK bots.
+
+2015-03-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, kick the GTK bots to regenerate makefile.
+        https://bugs.webkit.org/show_bug.cgi?id=137394
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2015-03-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Fix inspector userinterface related incremental build issue
+        https://bugs.webkit.org/show_bug.cgi?id=142849
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: Revert r181733.
+
+2015-03-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, kick the GTK bots to regenerate makefile.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-03-17  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Expose JavaScript binding interface through ewk_extension
+        https://bugs.webkit.org/show_bug.cgi?id=142033
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake: Added HEADER_INSTALL_DIR variable.
+
+2015-03-17  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] basic OpenWebRTC build support
+        https://bugs.webkit.org/show_bug.cgi?id=142393
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/FindOpenWebRTC.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake: Look for OpenWebRTC library if
+        mediastream build is enabled.
+
+2015-03-17  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMake][EFL] Build test tools only for developer mode
+        https://bugs.webkit.org/show_bug.cgi?id=142761
+
+        Reviewed by Csaba Osztrogonác.
+
+        Do not build EFL MiniBrowser, WebKitTestRunner, and ImageDiff on production mode.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake: Move ENABLE_MINIBROWSER to common place.
+        * Source/cmake/WebKitFeatures.cmake: Define ENABLE_MINIBROWSER variable.
+        * Source/cmakeconfig.h.cmake:
+
+2015-03-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable ES6 classes by default
+        https://bugs.webkit.org/show_bug.cgi?id=142774
+
+        Reviewed by Gavin Barraclough.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-03-16  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMake][EFL] Rearrange OptionEFL.cmake to improve readability 
+        https://bugs.webkit.org/show_bug.cgi?id=142722
+
+        Reviewed by Csaba Osztrogonác.
+
+        Categorize to define cmake variables, to find necessary packages,
+        use upper case for "glib_conponents" cmake variable name, re-arrange
+        wrong alphabet sorting, and so on.
+
+        * CMakeLists.txt: Remove WinCE port.
+        * Source/cmake/OptionsEfl.cmake:
+
+2015-03-14  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        [GStreamer] share GL context in pipeline
+        https://bugs.webkit.org/show_bug.cgi?id=142693
+
+        Reviewed by Philippe Normand.
+
+        Add search of gstreamer-gl library in the GStreamer installation. If
+        it is found, WTF_USE_GSTREAMER_GL macro is defined.
+
+        * Source/cmake/FindGStreamer.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-03-13  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=142680
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt:
+        * Source/PlatformMac.cmake: Added stub.
+        * Source/cmake/OptionsMac.cmake:
+        Change defines to get CMake working.
+
+2015-03-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add an option to enable MiniBrowser for non developer builds and always install it
+        https://bugs.webkit.org/show_bug.cgi?id=126688
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add ENABLE_MINIBROWSER option, enabled by default for development
+        builds and disabled for production builds unless explicilty enabled.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-03-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not look for child processes in the UI process binary path
+        https://bugs.webkit.org/show_bug.cgi?id=135752
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/cmake/OptionsGTK.cmake: Add -DDEVELOPMENT_BUILD=1 to the
+        build for development builds.
+
+2015-03-10  Carlos Garcia Campos  <cgarcia@igalia.com> and José Dapena Paz  <jdapena@igalia.com>
+
+        [GTK] Add a configure option to build with OpenGL ES 2
+        https://bugs.webkit.org/show_bug.cgi?id=142498
+
+        Reviewed by Martin Robinson.
+
+        Add ENABLE_GLES2 option. It's disabled by default, but if passed
+        GLES2 is required and OpenGL is not even searched. Otherwise we
+        search for OpenGL as usual, using it only if present.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-03-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Handle unused parameter warnings as build errors except in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=142338
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/WebKitHelpers.cmake:
+
 2015-03-03  Daniel Bates  <dabates@apple.com>
 
         Convert ManualTests/svg-tooltip.svg to a DRT test

@@ -144,17 +144,6 @@ public:
 
     const ResourceResponse& resourceResponse() const { return m_response; }
 
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(readystatechange);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(abort);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(load);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(loadend);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(loadstart);
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(progress);
-#if ENABLE(XHR_TIMEOUT)
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(timeout);
-#endif
-
     using RefCounted<XMLHttpRequest>::ref;
     using RefCounted<XMLHttpRequest>::deref;
 
@@ -216,6 +205,8 @@ private:
 
     void dispatchErrorEvents(const AtomicString&);
 
+    void resumeTimerFired();
+
     std::unique_ptr<XMLHttpRequestUpload> m_upload;
 
     URL m_url;
@@ -265,6 +256,9 @@ private:
     // An enum corresponding to the allowed string values for the responseType attribute.
     ResponseTypeCode m_responseTypeCode;
     bool m_responseCacheIsValid;
+
+    Timer m_resumeTimer;
+    bool m_dispatchErrorOnResuming;
 };
 
 } // namespace WebCore

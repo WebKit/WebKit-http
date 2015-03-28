@@ -173,6 +173,8 @@ public:
 
     void layerStyleChanged(RenderLayer&, const RenderStyle* oldStyle);
 
+    static bool canCompositeClipPath(const RenderLayer&);
+
     // Get the nearest ancestor layer that has overflow or clip, but is not a stacking context
     RenderLayer* enclosingNonStackingClippingLayer(const RenderLayer&) const;
 
@@ -291,7 +293,7 @@ public:
 
     void setShouldReevaluateCompositingAfterLayout() { m_reevaluateCompositingAfterLayout = true; }
 
-    bool viewHasTransparentBackground(Color* backgroundColor = 0) const;
+    bool viewHasTransparentBackground(Color* backgroundColor = nullptr) const;
 
     bool hasNonMainLayersWithTiledBacking() const { return m_layersWithTiledBackingCount; }
 
@@ -307,6 +309,8 @@ public:
 
 private:
     class OverlapMap;
+    struct CompositingState;
+    struct OverlapExtent;
 
     // GraphicsLayerClient implementation
     virtual void notifyFlushRequired(const GraphicsLayer*) override;
@@ -318,14 +322,15 @@ private:
     virtual void flushLayersSoon(GraphicsLayerUpdater*) override;
 
     // Whether the given RL needs a compositing layer.
-    bool needsToBeComposited(const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = 0) const;
+    bool needsToBeComposited(const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = nullptr) const;
     // Whether the layer has an intrinsic need for compositing layer.
-    bool requiresCompositingLayer(const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = 0) const;
+    bool requiresCompositingLayer(const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = nullptr) const;
     // Whether the layer could ever be composited.
     bool canBeComposited(const RenderLayer&) const;
 
     // Make or destroy the backing for this layer; returns true if backing changed.
-    bool updateBacking(RenderLayer&, CompositingChangeRepaint shouldRepaint);
+    enum class BackingRequired { No, Yes, Unknown };
+    bool updateBacking(RenderLayer&, CompositingChangeRepaint shouldRepaint, BackingRequired = BackingRequired::Unknown);
 
     void clearBackingForLayerIncludingDescendants(RenderLayer&);
     void setIsInWindowForLayerIncludingDescendants(RenderLayer&, bool isInWindow);
@@ -333,13 +338,14 @@ private:
     // Repaint this and its child layers.
     void recursiveRepaintLayer(RenderLayer&);
 
-    void addToOverlapMap(OverlapMap&, RenderLayer&, LayoutRect& layerBounds, bool& boundsComputed);
-    void addToOverlapMapRecursive(OverlapMap&, RenderLayer&, RenderLayer* ancestorLayer = nullptr);
+    void computeExtent(const OverlapMap&, const RenderLayer&, OverlapExtent&) const;
+    void addToOverlapMap(OverlapMap&, const RenderLayer&, OverlapExtent&);
+    void addToOverlapMapRecursive(OverlapMap&, const RenderLayer&, const RenderLayer* ancestorLayer = nullptr);
 
     void updateCompositingLayersTimerFired();
 
     // Returns true if any layer's compositing changed
-    void computeCompositingRequirements(RenderLayer* ancestorLayer, RenderLayer&, OverlapMap&, struct CompositingState&, bool& layersChanged, bool& descendantHas3DTransform);
+    void computeCompositingRequirements(RenderLayer* ancestorLayer, RenderLayer&, OverlapMap&, CompositingState&, bool& layersChanged, bool& descendantHas3DTransform);
 
     void computeRegionCompositingRequirements(RenderNamedFlowFragment*, OverlapMap&, CompositingState&, bool& layersChanged, bool& anyDescendantHas3DTransform);
 
@@ -362,7 +368,7 @@ private:
     void removeCompositedChildren(RenderLayer&);
 
     bool layerHas3DContent(const RenderLayer&) const;
-    bool isRunningAcceleratedTransformAnimation(RenderLayerModelObject&) const;
+    bool isRunningTransformAnimation(RenderLayerModelObject&) const;
 
     void appendDocumentOverlayLayers(Vector<GraphicsLayer*>&);
     bool hasAnyAdditionalCompositedLayers(const RenderLayer& rootLayer) const;
@@ -393,7 +399,7 @@ private:
     ScrollingCoordinator* scrollingCoordinator() const;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    PassRefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const override;
+    Optional<RefPtr<DisplayRefreshMonitor>> createDisplayRefreshMonitor(PlatformDisplayID) const override;
 #endif
 
     bool requiresCompositingForAnimation(RenderLayerModelObject&) const;
@@ -405,7 +411,7 @@ private:
     bool requiresCompositingForFrame(RenderLayerModelObject&) const;
     bool requiresCompositingForFilters(RenderLayerModelObject&) const;
     bool requiresCompositingForScrollableFrame() const;
-    bool requiresCompositingForPosition(RenderLayerModelObject&, const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = 0) const;
+    bool requiresCompositingForPosition(RenderLayerModelObject&, const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = nullptr) const;
     bool requiresCompositingForOverflowScrolling(const RenderLayer&) const;
     bool requiresCompositingForIndirectReason(RenderLayerModelObject&, bool hasCompositedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason&) const;
 

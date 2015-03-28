@@ -479,6 +479,16 @@ bool WKPreferencesGetAccelerated2DCanvasEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->accelerated2dCanvasEnabled();
 }
 
+void WKPreferencesSetCSSAnimationTriggersEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setCSSAnimationTriggersEnabled(flag);
+}
+
+bool WKPreferencesGetCSSAnimationTriggersEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->cssAnimationTriggersEnabled();
+}
+
 void WKPreferencesSetCSSRegionsEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setCSSRegionsEnabled(flag);
@@ -1175,6 +1185,16 @@ void WKPreferencesSetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef prefer
 bool WKPreferencesGetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->simpleLineLayoutDebugBordersEnabled();
+}
+
+void WKPreferencesSetNewBlockInsideInlineModelEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setNewBlockInsideInlineModelEnabled(flag);
+}
+
+bool WKPreferencesGetNewBlockInsideInlineModelEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->newBlockInsideInlineModelEnabled();
 }
 
 void WKPreferencesSetSubpixelCSSOMElementMetricsEnabled(WKPreferencesRef preferencesRef, bool flag)

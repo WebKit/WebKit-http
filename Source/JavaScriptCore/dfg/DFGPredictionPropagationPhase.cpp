@@ -57,6 +57,8 @@ public:
         ASSERT(m_graph.m_form == ThreadedCPS);
         ASSERT(m_graph.m_unificationState == GloballyUnified);
 
+        propagateThroughArgumentPositions();
+
         m_pass = PrimaryPass;
         propagateToFixpoint();
         
@@ -187,7 +189,6 @@ private:
         case RegExpTest:
         case GetById:
         case GetByIdFlush:
-        case GetMyArgumentByValSafe:
         case GetByOffset:
         case MultiGetByOffset:
         case GetDirectPname:
@@ -196,10 +197,12 @@ private:
         case CallVarargs:
         case ConstructVarargs:
         case CallForwardVarargs:
+        case ConstructForwardVarargs:
         case NativeCall:
         case NativeConstruct:
         case GetGlobalVar:
-        case GetClosureVar: {
+        case GetClosureVar:
+        case GetFromArguments: {
             changed |= setPrediction(node->getHeapPrediction());
             break;
         }
@@ -213,9 +216,13 @@ private:
         case GetGetter:
         case GetSetter:
         case GetCallee:
-        case NewFunctionNoCheck:
-        case NewFunctionExpression: {
+        case NewFunction: {
             changed |= setPrediction(SpecFunction);
+            break;
+        }
+            
+        case GetArgumentCount: {
+            changed |= setPrediction(SpecInt32);
             break;
         }
 
@@ -334,7 +341,8 @@ private:
         case ArithSqrt:
         case ArithFRound:
         case ArithSin:
-        case ArithCos: {
+        case ArithCos:
+        case ArithLog: {
             changed |= setPrediction(SpecBytecodeDouble);
             break;
         }
@@ -417,12 +425,6 @@ private:
             break;
         }
             
-        case GetMyArgumentsLengthSafe: {
-            changed |= setPrediction(SpecInt32);
-            break;
-        }
-
-        case GetClosureRegisters:            
         case GetButterfly: 
         case GetIndexedPropertyStorage:
         case AllocatePropertyStorage:
@@ -496,17 +498,18 @@ private:
             break;
         }
             
-        case CreateArguments: {
-            changed |= setPrediction(SpecArguments);
+        case CreateDirectArguments: {
+            changed |= setPrediction(SpecDirectArguments);
             break;
         }
             
-        case NewFunction: {
-            SpeculatedType child = node->child1()->prediction();
-            if (child & SpecEmpty)
-                changed |= mergePrediction((child & ~SpecEmpty) | SpecFunction);
-            else
-                changed |= mergePrediction(child);
+        case CreateScopedArguments: {
+            changed |= setPrediction(SpecScopedArguments);
+            break;
+        }
+            
+        case CreateClonedArguments: {
+            changed |= setPrediction(SpecObjectOther);
             break;
         }
             
@@ -521,9 +524,6 @@ private:
         case GetTypedArrayByteOffset:
         case DoubleAsInt32:
         case GetLocalUnlinked:
-        case GetMyArgumentsLength:
-        case GetMyArgumentByVal:
-        case PhantomArguments:
         case CheckArray:
         case Arrayify:
         case ArrayifyToStructure:
@@ -541,9 +541,12 @@ private:
         case Identity:
         case BooleanToNumber:
         case PhantomNewObject:
-        case PutByOffsetHint:
+        case PhantomDirectArguments:
+        case PhantomClonedArguments:
+        case GetMyArgumentByVal:
+        case ForwardVarargs:
+        case PutHint:
         case CheckStructureImmediate:
-        case PutStructureHint:
         case MaterializeNewObject:
         case PutStack:
         case KillStack:
@@ -583,12 +586,15 @@ private:
             changed |= setPrediction(SpecBoolean);
             break;
         }
-        case GetStructurePropertyEnumerator:
-        case GetGenericPropertyEnumerator: {
+        case GetPropertyEnumerator: {
             changed |= setPrediction(SpecCell);
             break;
         }
-        case GetEnumeratorPname: {
+        case GetEnumeratorStructurePname: {
+            changed |= setPrediction(SpecCell | SpecOther);
+            break;
+        }
+        case GetEnumeratorGenericPname: {
             changed |= setPrediction(SpecCell | SpecOther);
             break;
         }
@@ -604,6 +610,7 @@ private:
         case PutByValDirect:
         case PutByVal:
         case PutClosureVar:
+        case PutToArguments:
         case Return:
         case Throw:
         case PutById:
@@ -625,10 +632,9 @@ private:
         case SetArgument:
         case CheckStructure:
         case CheckCell:
+        case CheckNotEmpty:
         case CheckBadCell:
         case PutStructure:
-        case TearOffArguments:
-        case CheckArgumentsNotCreated:
         case VarInjectionWatchpoint:
         case AllocationProfileWatchpoint:
         case Phantom:
@@ -783,6 +789,7 @@ private:
         case ArithSqrt:
         case ArithCos:
         case ArithSin:
+        case ArithLog:
             if (node->child1()->shouldSpeculateNumber())
                 m_graph.voteNode(node->child1(), VoteDouble, weight);
             else
@@ -849,14 +856,19 @@ private:
                 continue;
             m_changed |= variableAccessData->tallyVotesForShouldUseDoubleFormat();
         }
-        for (unsigned i = 0; i < m_graph.m_argumentPositions.size(); ++i)
-            m_changed |= m_graph.m_argumentPositions[i].mergeArgumentPredictionAwareness();
+        propagateThroughArgumentPositions();
         for (unsigned i = 0; i < m_graph.m_variableAccessData.size(); ++i) {
             VariableAccessData* variableAccessData = &m_graph.m_variableAccessData[i];
             if (!variableAccessData->isRoot())
                 continue;
             m_changed |= variableAccessData->makePredictionForDoubleFormat();
         }
+    }
+    
+    void propagateThroughArgumentPositions()
+    {
+        for (unsigned i = 0; i < m_graph.m_argumentPositions.size(); ++i)
+            m_changed |= m_graph.m_argumentPositions[i].mergeArgumentPredictionAwareness();
     }
     
     Node* m_currentNode;

@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2013 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2013, 2015 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
@@ -126,7 +126,7 @@ namespace JSC {
     public:
         virtual ~Node() { }
 
-        int lineNo() const { return m_position.line; }
+        int firstLine() const { return m_position.line; }
         int startOffset() const { return m_position.offset; }
         int endOffset() const { return m_endOffset; }
         int lineStartOffset() const { return m_position.lineStartOffset; }
@@ -164,6 +164,7 @@ namespace JSC {
         virtual bool isSubtract() const { return false; }
         virtual bool isBoolean() const { return false; }
         virtual bool isSpreadExpression() const { return false; }
+        virtual bool isSuperNode() const { return false; }
 
         virtual void emitBytecodeInConditionContext(BytecodeGenerator&, Label*, Label*, FallThroughMode);
 
@@ -183,7 +184,6 @@ namespace JSC {
         virtual void emitBytecode(BytecodeGenerator&, RegisterID* destination = 0) = 0;
 
         void setLoc(unsigned firstLine, unsigned lastLine, int startOffset, int lineStartOffset);
-        unsigned firstLine() const { return lineNo(); }
         unsigned lastLine() const { return m_lastLine; }
 
         StatementNode* next() { return m_next; }
@@ -195,6 +195,7 @@ namespace JSC {
         virtual bool isBreak() const { return false; }
         virtual bool isContinue() const { return false; }
         virtual bool isBlock() const { return false; }
+        virtual bool isFuncDeclNode() const { return false; }
 
     protected:
         StatementNode* m_next;
@@ -445,6 +446,15 @@ namespace JSC {
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
     };
 
+    class SuperNode final : public ExpressionNode {
+    public:
+        SuperNode(const JSTokenLocation&);
+
+    private:
+        virtual bool isSuperNode() const override { return true; }
+        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+    };
+
     class ResolveNode : public ExpressionNode {
     public:
         ResolveNode(const JSTokenLocation&, const Identifier&, const JSTextPosition& start);
@@ -499,21 +509,26 @@ namespace JSC {
     class PropertyNode : public ParserArenaFreeable {
     public:
         enum Type { Constant = 1, Getter = 2, Setter = 4 };
+        enum PutType { Unknown, KnownDirect };
 
-        PropertyNode(const Identifier&, ExpressionNode*, Type);
-        PropertyNode(ExpressionNode* propertyName, ExpressionNode*, Type);
-        
+        PropertyNode(const Identifier&, ExpressionNode*, Type, PutType, SuperBinding);
+        PropertyNode(ExpressionNode* propertyName, ExpressionNode*, Type, PutType);
+
         ExpressionNode* expressionName() const { return m_expression; }
         const Identifier* name() const { return m_name; }
 
-        Type type() const { return m_type; }
+        Type type() const { return static_cast<Type>(m_type); }
+        bool needsSuperBinding() const { return m_needsSuperBinding; }
+        PutType putType() const { return static_cast<PutType>(m_putType); }
 
     private:
         friend class PropertyListNode;
         const Identifier* m_name;
         ExpressionNode* m_expression;
         ExpressionNode* m_assign;
-        Type m_type;
+        unsigned m_type : 3;
+        unsigned m_needsSuperBinding : 1;
+        unsigned m_putType : 1;
     };
 
     class PropertyListNode : public ExpressionNode {
@@ -1454,7 +1469,8 @@ namespace JSC {
         bool hasCapturedVariables() const { return !!m_capturedVariables.size(); }
         size_t capturedVariableCount() const { return m_capturedVariables.size(); }
         const IdentifierSet& capturedVariables() const { return m_capturedVariables; }
-        bool captures(const Identifier& ident) { return m_capturedVariables.contains(ident.impl()); }
+        bool captures(StringImpl* uid) { return m_capturedVariables.contains(uid); }
+        bool captures(const Identifier& ident) { return captures(ident.impl()); }
 
         VarStack& varStack() { return m_varStack; }
         FunctionStack& functionStack() { return m_functionStack; }
@@ -1544,7 +1560,11 @@ namespace JSC {
     public:
         using ParserArenaDeletable::operator new;
 
-        FunctionBodyNode(ParserArena&, const JSTokenLocation& start, const JSTokenLocation& end, unsigned startColumn, unsigned endColumn, bool isInStrictContext);
+        FunctionBodyNode(
+            ParserArena&, const JSTokenLocation& start, const JSTokenLocation& end, 
+            unsigned startColumn, unsigned endColumn, int functionKeywordStart, 
+            int functionNameStart, int parametersStart, bool isInStrictContext, 
+            ConstructorKind);
 
         FunctionParameters* parameters() const { return m_parameters.get(); }
 
@@ -1559,10 +1579,9 @@ namespace JSC {
 
         FunctionMode functionMode() { return m_functionMode; }
 
-        void setFunctionNameStart(int functionNameStart) { m_functionNameStart = functionNameStart; }
         int functionNameStart() const { return m_functionNameStart; }
-        void setFunctionKeywordStart(int functionKeywordStart) { m_functionKeywordStart = functionKeywordStart; }
         int functionKeywordStart() const { return m_functionKeywordStart; }
+        int parametersStart() const { return m_parametersStart; }
         unsigned startColumn() const { return m_startColumn; }
         unsigned endColumn() const { return m_endColumn; }
 
@@ -1572,19 +1591,22 @@ namespace JSC {
 
         int startStartOffset() const { return m_startStartOffset; }
         bool isInStrictContext() const { return m_isInStrictContext; }
+        ConstructorKind constructorKind() { return static_cast<ConstructorKind>(m_constructorKind); }
 
     protected:
         Identifier m_ident;
         Identifier m_inferredName;
         FunctionMode m_functionMode;
         RefPtr<FunctionParameters> m_parameters;
-        int m_functionNameStart;
-        int m_functionKeywordStart;
         unsigned m_startColumn;
         unsigned m_endColumn;
+        int m_functionKeywordStart;
+        int m_functionNameStart;
+        int m_parametersStart;
         SourceCode m_source;
         int m_startStartOffset;
-        bool m_isInStrictContext;
+        unsigned m_isInStrictContext : 1;
+        unsigned m_constructorKind : 2;
     };
 
     class FunctionNode final : public ScopeNode {
@@ -1641,7 +1663,7 @@ namespace JSC {
 
         const Identifier& m_name;
         ExpressionNode* m_constructorExpression;
-        ExpressionNode* m_parentClassExpression;
+        ExpressionNode* m_classHeritage;
         PropertyListNode* m_instanceMethods;
         PropertyListNode* m_staticMethods;
     };
@@ -1752,6 +1774,7 @@ namespace JSC {
     public:
         FuncDeclNode(const JSTokenLocation&, const Identifier&, FunctionBodyNode*, const SourceCode&, ParameterNode* = 0);
 
+        virtual bool isFuncDeclNode() const override { return true; }
         FunctionBodyNode* body() { return m_body; }
 
     private:

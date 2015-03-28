@@ -367,6 +367,9 @@ alt [NameForMethods=ContentAltText, Custom=Value]
 -webkit-animation-name [AnimationProperty, NameForMethods=Name]
 -webkit-animation-play-state [AnimationProperty, NameForMethods=PlayState]
 -webkit-animation-timing-function [AnimationProperty, NameForMethods=TimingFunction]
+#if defined(ENABLE_CSS_ANIMATIONS_LEVEL_2) && ENABLE_CSS_ANIMATIONS_LEVEL_2
+-webkit-animation-trigger [AnimationProperty, NameForMethods=Trigger]
+#endif
 -webkit-appearance
 -webkit-aspect-ratio [Inherited, Custom=All]
 -webkit-backface-visibility
@@ -553,15 +556,19 @@ order
 -webkit-padding-before [SkipBuilder]
 -webkit-padding-end [SkipBuilder]
 -webkit-padding-start [SkipBuilder]
--webkit-perspective [ConditionalConverter=Perspective]
--webkit-perspective-origin [Longhands=-webkit-perspective-origin-x|-webkit-perspective-origin-y]
--webkit-perspective-origin-x [Converter=Length]
--webkit-perspective-origin-y [Converter=Length]
+perspective [ConditionalConverter=Perspective]
+-webkit-perspective = perspective
+perspective-origin [Longhands=perspective-origin-x|perspective-origin-y]
+-webkit-perspective-origin = perspective-origin
+perspective-origin-x [Converter=Length]
+-webkit-perspective-origin-x = perspective-origin-x
+perspective-origin-y [Converter=Length]
+-webkit-perspective-origin-y = perspective-origin-y
 -webkit-print-color-adjust [Inherited]
 -webkit-rtl-ordering [Inherited, Setter=setRTLOrdering, Initial=initialRTLOrdering]
 #if defined(ENABLE_CSS_SCROLL_SNAP)
--webkit-scroll-snap-points-x [Converter=ScrollSnapPoints]
--webkit-scroll-snap-points-y [Converter=ScrollSnapPoints]
+-webkit-scroll-snap-points-x [Converter=ScrollSnapPoints, Custom=Initial|Inherit]
+-webkit-scroll-snap-points-y [Converter=ScrollSnapPoints, Custom=Initial|Inherit]
 -webkit-scroll-snap-type
 -webkit-scroll-snap-destination [Converter=SnapCoordinatePair]
 -webkit-scroll-snap-coordinate [Converter=ScrollSnapCoordinates, NameForMethods=ScrollSnapCoordinates]
@@ -596,11 +603,18 @@ text-emphasis-style = -webkit-text-emphasis-style
 -webkit-text-stroke [Inherited, Longhands=-webkit-text-stroke-width|-webkit-text-stroke-color]
 -webkit-text-stroke-color [Inherited, VisitedLinkColorSupport, Initial=invalidColor]
 -webkit-text-stroke-width [Inherited, Converter=TextStrokeWidth]
--webkit-transform [Converter=Transform]
--webkit-transform-origin [Longhands=-webkit-transform-origin-x|-webkit-transform-origin-y|-webkit-transform-origin-z]
--webkit-transform-origin-x [Converter=Length]
--webkit-transform-origin-y [Converter=Length]
--webkit-transform-origin-z [Converter=ComputedLength<float>]
+transform [Converter=Transform]
+-webkit-transform = transform
+transform-origin [Longhands=transform-origin-x|transform-origin-y|transform-origin-z]
+-webkit-transform-origin = transform-origin
+transform-origin-x [Converter=Length]
+-webkit-transform-origin-x = transform-origin-x
+transform-origin-y [Converter=Length]
+-webkit-transform-origin-y = transform-origin-y
+transform-origin-z [Converter=ComputedLength<float>]
+-webkit-transform-origin-z = transform-origin-z
+transform-style [NameForMethods=TransformStyle3D]
+// Keeping -webkit-transform-style around is how we'll detect legacy content. At that point we'll have to add a custom builder and a new ETransformStyle3D type.
 -webkit-transform-style [NameForMethods=TransformStyle3D]
 -webkit-transition [Longhands=-webkit-transition-property|-webkit-transition-duration|-webkit-transition-timing-function|-webkit-transition-delay]
 -webkit-transition-delay [AnimationProperty, NameForMethods=Delay]

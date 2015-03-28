@@ -35,10 +35,9 @@
 #include <wtf/DoublyLinkedList.h>
 #include <wtf/HashSet.h>
 #include <wtf/OSAllocator.h>
-#include <wtf/PageAllocationAligned.h>
 #include <wtf/PageBlock.h>
+#include <wtf/SpinLock.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/TCSpinLock.h>
 #include <wtf/ThreadingPrimitives.h>
 
 namespace JSC {

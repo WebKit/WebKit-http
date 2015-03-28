@@ -26,15 +26,63 @@
 #ifndef JSSet_h
 #define JSSet_h
 
+#include "JSDestructibleObject.h"
 #include "JSObject.h"
+#include "MapData.h"
 
 namespace JSC {
 
-class MapData;
+class JSSetIterator;
 
-class JSSet : public JSNonFinalObject {
+class JSSet : public JSDestructibleObject {
 public:
-    typedef JSNonFinalObject Base;
+    typedef JSDestructibleObject Base;
+
+    friend class JSSetIterator;
+
+    // Our marking functions expect Entry to maintain this layout, and have all
+    // fields be WriteBarrier<Unknown>
+    class Entry {
+    private:
+        WriteBarrier<Unknown> m_key;
+
+    public:
+        const WriteBarrier<Unknown>& key() const
+        {
+            return m_key;
+        }
+
+        const WriteBarrier<Unknown>& value() const
+        {
+            return m_key;
+        }
+
+        void visitChildren(SlotVisitor& visitor)
+        {
+            visitor.append(&m_key);
+        }
+
+        void setKey(VM& vm, const JSCell* owner, JSValue key)
+        {
+            m_key.set(vm, owner, key);
+        }
+
+        void setKeyWithoutWriteBarrier(JSValue key)
+        {
+            m_key.setWithoutWriteBarrier(key);
+        }
+
+        void setValue(VM&, const JSCell*, JSValue)
+        {
+        }
+
+        void clear()
+        {
+            m_key.clear();
+        }
+    };
+
+    typedef MapDataImpl<Entry, JSSetIterator> SetData;
 
     DECLARE_EXPORT_INFO;
 
@@ -55,19 +103,24 @@ public:
         return create(exec->vm(), structure);
     }
 
-    MapData* mapData() { return m_mapData.get(); }
+    bool has(ExecState*, JSValue);
+    size_t size(ExecState*);
+    JS_EXPORT_PRIVATE void add(ExecState*, JSValue);
+    void clear(ExecState*);
+    bool remove(ExecState*, JSValue);
 
 private:
     JSSet(VM& vm, Structure* structure)
         : Base(vm, structure)
+        , m_setData(vm)
     {
     }
 
-    JS_EXPORT_PRIVATE void finishCreation(VM&);
-    
+    static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
-    
-    WriteBarrier<MapData> m_mapData;
+    static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
+
+    SetData m_setData;
 };
 
 }

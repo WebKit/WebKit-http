@@ -65,9 +65,25 @@ CGSize CTRunGetInitialAdvance(CTRunRef run);
 CTLineRef CTLineCreateWithUniCharProvider(CTUniCharProviderCallback provide, CTUniCharDisposeCallback dispose, void* refCon);
 CTTypesetterRef CTTypesetterCreateWithUniCharProviderAndOptions(CTUniCharProviderCallback provide, CTUniCharDisposeCallback dispose, void* refCon, CFDictionaryRef options);
 bool CTFontGetVerticalGlyphsForCharacters(CTFontRef, const UniChar characters[], CGGlyph glyphs[], CFIndex count);
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
+void CTFontSetRenderingParameters(CTFontRef, CGContextRef);
+#endif
 
 CTFontDescriptorRef CTFontDescriptorCreateForUIType(CTFontUIFontType, CGFloat size, CFStringRef language);
 CTFontDescriptorRef CTFontDescriptorCreateWithTextStyle(CFStringRef style, CFStringRef size, CFStringRef language);
+
+#if PLATFORM(COCOA)
+#if !USE(APPLE_INTERNAL_SDK)
+typedef CF_OPTIONS(uint32_t, CTFontDescriptorOptions)
+{
+    kCTFontDescriptorOptionSystemUIFont = 1 << 1,
+    kCTFontDescriptorOptionPreferAppleSystemFont = kCTFontOptionsPreferSystemFont
+};
+
+CTFontDescriptorRef CTFontDescriptorCreateWithAttributesAndOptions(CFDictionaryRef attributes, CTFontDescriptorOptions);
+#endif
+#endif
+
 bool CTFontDescriptorIsSystemUIFont(CTFontDescriptorRef);
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100

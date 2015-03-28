@@ -349,18 +349,6 @@ void JIT::emit_op_is_object(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_tear_off_arguments(Instruction* currentInstruction)
-{
-    VirtualRegister arguments = VirtualRegister(currentInstruction[1].u.operand);
-    int lexicalEnvironment = currentInstruction[2].u.operand;
-
-    Jump argsNotCreated = branch32(Equal, tagFor(arguments.offset()), TrustedImm32(JSValue::EmptyValueTag));
-    emitLoadPayload(arguments.offset(), regT0);
-    emitLoadPayload(lexicalEnvironment, regT1);
-    callOperation(operationTearOffArguments, regT0, regT1);
-    argsNotCreated.link(this);
-}
-
 void JIT::emit_op_to_primitive(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -909,7 +897,7 @@ void JIT::emit_op_create_lexical_environment(Instruction* currentInstruction)
     int scope = currentInstruction[2].u.operand;
 
     emitLoadPayload(currentInstruction[2].u.operand, regT0);
-    callOperation(operationCreateActivation, regT0, 0);
+    callOperation(operationCreateActivation, regT0);
     emitStoreCell(lexicalEnvironment, returnValueGPR);
     emitStoreCell(scope, returnValueGPR);
 }
@@ -920,31 +908,6 @@ void JIT::emit_op_get_scope(Instruction* currentInstruction)
     emitGetFromCallFrameHeaderPtr(JSStack::Callee, regT0);
     loadPtr(Address(regT0, JSFunction::offsetOfScopeChain()), regT0);
     emitStoreCell(dst, regT0);
-}
-
-void JIT::emit_op_create_arguments(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    int lexicalEnvironment = currentInstruction[2].u.operand;
-
-    Jump argsCreated = branch32(NotEqual, tagFor(dst), TrustedImm32(JSValue::EmptyValueTag));
-
-    if (VirtualRegister(lexicalEnvironment).isValid()) {
-        emitLoadPayload(lexicalEnvironment, regT0);
-        callOperation(operationCreateArguments, regT0);
-    } else
-        callOperation(operationCreateArguments, TrustedImmPtr(nullptr));
-    emitStoreCell(dst, returnValueGPR);
-    emitStoreCell(unmodifiedArgumentsRegister(VirtualRegister(dst)).offset(), returnValueGPR);
-
-    argsCreated.link(this);
-}
-
-void JIT::emit_op_init_lazy_reg(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-
-    emitStore(dst, JSValue());
 }
 
 void JIT::emit_op_create_this(Instruction* currentInstruction)
@@ -997,6 +960,19 @@ void JIT::emitSlow_op_to_this(Instruction* currentInstruction, Vector<SlowCaseEn
     slowPathCall.call();
 }
 
+void JIT::emit_op_check_tdz(Instruction* currentInstruction)
+{
+    emitLoadTag(currentInstruction[1].u.operand, regT0);
+    addSlowCase(branch32(Equal, regT0, TrustedImm32(JSValue::EmptyValueTag)));
+}
+
+void JIT::emitSlow_op_check_tdz(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+{
+    linkSlowCase(iter);
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_throw_tdz_error);
+    slowPathCall.call();
+}
+
 void JIT::emit_op_profile_will_call(Instruction* currentInstruction)
 {
     load32(m_vm->enabledProfilerAddress(), regT0);
@@ -1013,70 +989,6 @@ void JIT::emit_op_profile_did_call(Instruction* currentInstruction)
     emitLoad(currentInstruction[1].u.operand, regT1, regT0);
     callOperation(operationProfileDidCall, regT1, regT0);
     profilerDone.link(this);
-}
-
-void JIT::emit_op_get_arguments_length(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    int argumentsRegister = currentInstruction[2].u.operand;
-    addSlowCase(branch32(NotEqual, tagFor(argumentsRegister), TrustedImm32(JSValue::EmptyValueTag)));
-    load32(payloadFor(JSStack::ArgumentCount), regT0);
-    sub32(TrustedImm32(1), regT0);
-    emitStoreInt32(dst, regT0);
-}
-
-void JIT::emitSlow_op_get_arguments_length(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    linkSlowCase(iter);
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    callOperation(operationGetArgumentsLength, dst, base);
-}
-
-void JIT::emit_op_get_argument_by_val(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    int argumentsRegister = currentInstruction[2].u.operand;
-    int property = currentInstruction[3].u.operand;
-    addSlowCase(branch32(NotEqual, tagFor(argumentsRegister), TrustedImm32(JSValue::EmptyValueTag)));
-    emitLoad(property, regT1, regT2);
-    addSlowCase(branch32(NotEqual, regT1, TrustedImm32(JSValue::Int32Tag)));
-    // regT2 now contains the integer index of the argument we want, including this
-    load32(payloadFor(JSStack::ArgumentCount), regT3);
-    sub32(TrustedImm32(1), regT3);
-    addSlowCase(branch32(AboveOrEqual, regT2, regT3));
-    
-    loadPtr(BaseIndex(callFrameRegister, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.payload) + CallFrame::argumentOffset(0) * static_cast<int>(sizeof(Register))), regT0);
-    loadPtr(BaseIndex(callFrameRegister, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.tag) + CallFrame::argumentOffset(0) * static_cast<int>(sizeof(Register))), regT1);
-    emitValueProfilingSite();
-    emitStore(dst, regT1, regT0);
-}
-
-void JIT::emitSlow_op_get_argument_by_val(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    int dst = currentInstruction[1].u.operand;
-    int arguments = currentInstruction[2].u.operand;
-    int property = currentInstruction[3].u.operand;
-    int lexicalEnvironment = currentInstruction[4].u.operand;
-
-    linkSlowCase(iter);
-    Jump skipArgumentsCreation = jump();
-
-    linkSlowCase(iter);
-    linkSlowCase(iter);
-
-    if (VirtualRegister(lexicalEnvironment).isValid()) {
-        emitLoadPayload(lexicalEnvironment, regT0);
-        callOperation(operationCreateArguments, regT0);
-    } else
-        callOperation(operationCreateArguments, TrustedImmPtr(nullptr));
-    emitStoreCell(arguments, returnValueGPR);
-    emitStoreCell(unmodifiedArgumentsRegister(VirtualRegister(arguments)).offset(), returnValueGPR);
-    
-    skipArgumentsCreation.link(this);
-    emitLoad(arguments, regT1, regT0);
-    emitLoad(property, regT3, regT2);
-    callOperation(WithProfile, operationGetByValGeneric, dst, regT1, regT0, regT3, regT2);
 }
 
 void JIT::emit_op_has_structure_property(Instruction* currentInstruction)
@@ -1246,7 +1158,7 @@ void JIT::emitSlow_op_get_direct_pname(Instruction* currentInstruction, Vector<S
     slowPathCall.call();
 }
 
-void JIT::emit_op_next_enumerator_pname(Instruction* currentInstruction)
+void JIT::emit_op_enumerator_structure_pname(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
     int enumerator = currentInstruction[2].u.operand;
@@ -1254,7 +1166,7 @@ void JIT::emit_op_next_enumerator_pname(Instruction* currentInstruction)
 
     emitLoadPayload(index, regT0);
     emitLoadPayload(enumerator, regT1);
-    Jump inBounds = branch32(Below, regT0, Address(regT1, JSPropertyNameEnumerator::cachedPropertyNamesLengthOffset()));
+    Jump inBounds = branch32(Below, regT0, Address(regT1, JSPropertyNameEnumerator::endStructurePropertyIndexOffset()));
 
     move(TrustedImm32(JSValue::NullTag), regT2);
     move(TrustedImm32(0), regT0);
@@ -1266,6 +1178,30 @@ void JIT::emit_op_next_enumerator_pname(Instruction* currentInstruction)
     loadPtr(BaseIndex(regT1, regT0, timesPtr()), regT0);
     move(TrustedImm32(JSValue::CellTag), regT2);
 
+    done.link(this);
+    emitStore(dst, regT2, regT0);
+}
+
+void JIT::emit_op_enumerator_generic_pname(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    int enumerator = currentInstruction[2].u.operand;
+    int index = currentInstruction[3].u.operand;
+
+    emitLoadPayload(index, regT0);
+    emitLoadPayload(enumerator, regT1);
+    Jump inBounds = branch32(Below, regT0, Address(regT1, JSPropertyNameEnumerator::endGenericPropertyIndexOffset()));
+
+    move(TrustedImm32(JSValue::NullTag), regT2);
+    move(TrustedImm32(0), regT0);
+
+    Jump done = jump();
+    inBounds.link(this);
+
+    loadPtr(Address(regT1, JSPropertyNameEnumerator::cachedPropertyNamesVectorOffset()), regT1);
+    loadPtr(BaseIndex(regT1, regT0, timesPtr()), regT0);
+    move(TrustedImm32(JSValue::CellTag), regT2);
+    
     done.link(this);
     emitStore(dst, regT2, regT0);
 }

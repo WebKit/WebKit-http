@@ -137,11 +137,13 @@ typedef const struct OpaqueWKTextChecker* WKTextCheckerRef;
 typedef const struct OpaqueWKSession* WKSessionRef;
 typedef const struct OpaqueWKSessionState* WKSessionStateRef;
 typedef const struct OpaqueWKUserContentController* WKUserContentControllerRef;
+typedef const struct OpaqueWKUserContentExtensionStore* WKUserContentExtensionStoreRef;
 typedef const struct OpaqueWKUserContentFilter* WKUserContentFilterRef;
 typedef const struct OpaqueWKUserMediaPermissionRequest* WKUserMediaPermissionRequestRef;
 typedef const struct OpaqueWKUserScript* WKUserScriptRef;
 typedef const struct OpaqueWKVibration* WKVibrationRef;
 typedef const struct OpaqueWKViewportAttributes* WKViewportAttributesRef;
+typedef const struct OpaqueWKWebsiteDataStore* WKWebsiteDataStoreRef;
 
 /* WebKit2 Bundle types */
 

@@ -72,9 +72,6 @@ public:
     bool isPlayingOrScheduled() const { return m_playbackState == PLAYING_STATE || m_playbackState == SCHEDULED_STATE; }
     bool hasFinished() const { return m_playbackState == FINISHED_STATE; }
 
-    EventListener* onended() { return getAttributeEventListener(eventNames().endedEvent); }
-    void setOnended(PassRefPtr<EventListener> listener);
-
 protected:
     // Get frame information for the current time quantum.
     // We handle the transition into PLAYING_STATE and FINISHED_STATE here,
@@ -91,9 +88,6 @@ protected:
     // Called when we have no more sound to play or the noteOff() time has been reached.
     virtual void finish();
 
-    static void notifyEndedDispatch(void*);
-    void notifyEnded();
-
     PlaybackState m_playbackState;
 
     // m_startTime is the time to start playing based on the context's timeline (0 or a time less than the context's current time means "now").
@@ -107,6 +101,11 @@ protected:
     bool m_hasEndedListener;
 
     static const double UnknownTime;
+
+private:
+    bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
+    bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) override;
+    void removeAllEventListeners() override;
 };
 
 } // namespace WebCore

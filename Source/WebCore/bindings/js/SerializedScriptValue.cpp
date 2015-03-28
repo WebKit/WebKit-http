@@ -61,9 +61,12 @@
 #include <runtime/JSCInlines.h>
 #include <runtime/JSDataView.h>
 #include <runtime/JSMap.h>
+#include <runtime/JSMapIterator.h>
 #include <runtime/JSSet.h>
+#include <runtime/JSSetIterator.h>
 #include <runtime/JSTypedArrays.h>
 #include <runtime/MapData.h>
+#include <runtime/MapDataInlines.h>
 #include <runtime/ObjectConstructor.h>
 #include <runtime/PropertyNameArray.h>
 #include <runtime/RegExp.h>
@@ -87,7 +90,8 @@ static const unsigned maximumFilterRecursion = 40000;
 
 enum WalkerState { StateUnknown, ArrayStartState, ArrayStartVisitMember, ArrayEndVisitMember,
     ObjectStartState, ObjectStartVisitMember, ObjectEndVisitMember,
-    MapDataStartVisitEntry, MapDataEndVisitKey, MapDataEndVisitValue };
+    MapDataStartVisitEntry, MapDataEndVisitKey, MapDataEndVisitValue,
+    SetDataStartVisitEntry, SetDataEndVisitKey };
 
 // These can't be reordered, and any new types must be added to the end of the list
 enum SerializationTag {
@@ -122,8 +126,9 @@ enum SerializationTag {
     SetObjectTag = 29,
     MapObjectTag = 30,
     NonMapPropertiesTag = 31,
+    NonSetPropertiesTag = 32,
 #if ENABLE(SUBTLE_CRYPTO)
-    CryptoKeyTag = 32,
+    CryptoKeyTag = 33,
 #endif
     ErrorTag = 255
 };
@@ -266,9 +271,10 @@ static const unsigned NonIndexPropertiesTag = 0xFFFFFFFD;
  *
  * Map :- MapObjectTag MapData
  *
- * Set :- SetObjectTag MapData
+ * Set :- SetObjectTag SetData
  *
- * MapData :- (<key:Value><value:Value>) NonMapPropertiesTag (<name:StringData><value:Value>)* TerminatorTag
+ * MapData :- (<key:Value><value:Value>)* NonMapPropertiesTag (<name:StringData><value:Value>)* TerminatorTag
+ * SetData :- (<key:Value>)* NonSetPropertiesTag (<name:StringData><value:Value>)* TerminatorTag
  *
  * Terminal :-
  *      UndefinedTag
@@ -575,7 +581,7 @@ private:
         // Handle duplicate references
         if (found != m_objectPool.end()) {
             write(ObjectReferenceTag);
-            ASSERT(static_cast<int32_t>(found->value) < m_objectPool.size());
+            ASSERT(found->value < m_objectPool.size());
             writeObjectIndex(found->value);
             return true;
         }
@@ -965,7 +971,7 @@ private:
 
     template <class T> void writeConstantPoolIndex(const T& constantPool, unsigned i)
     {
-        ASSERT(static_cast<int32_t>(i) < constantPool.size());
+        ASSERT(i < constantPool.size());
         if (constantPool.size() <= 0xFF)
             write(static_cast<uint8_t>(i));
         else if (constantPool.size() <= 0xFFFF)
@@ -1216,9 +1222,9 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
     Vector<uint32_t, 16> lengthStack;
     Vector<PropertyNameArray, 16> propertyStack;
     Vector<JSObject*, 32> inputObjectStack;
-    Vector<MapData*, 4> mapDataStack;
-    Vector<MapData::const_iterator, 4> iteratorStack;
-    Vector<JSValue, 4> iteratorValueStack;
+    Vector<JSMapIterator*, 4> mapIteratorStack;
+    Vector<JSSetIterator*, 4> setIteratorStack;
+    Vector<JSValue, 4> mapIteratorValueStack;
     Vector<WalkerState, 16> stateStack;
     WalkerState state = StateUnknown;
     JSValue inValue = in;
@@ -1350,13 +1356,43 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 JSMap* inMap = jsCast<JSMap*>(inValue);
                 if (!startMap(inMap))
                     break;
-                MapData* mapData = inMap->mapData();
-                m_gcBuffer.append(mapData);
-                mapDataStack.append(mapData);
-                iteratorStack.append(mapData->begin());
+                JSMapIterator* iterator = JSMapIterator::create(m_exec->vm(), m_exec->lexicalGlobalObject()->mapIteratorStructure(), inMap, MapIterateKeyValue);
+                m_gcBuffer.append(inMap);
+                m_gcBuffer.append(iterator);
+                mapIteratorStack.append(iterator);
                 inputObjectStack.append(inMap);
                 goto mapDataStartVisitEntry;
             }
+            mapDataStartVisitEntry:
+            case MapDataStartVisitEntry: {
+                JSMapIterator* iterator = mapIteratorStack.last();
+                JSValue key, value;
+                if (!iterator->nextKeyValue(key, value)) {
+                    mapIteratorStack.removeLast();
+                    JSObject* object = inputObjectStack.last();
+                    ASSERT(jsDynamicCast<JSMap*>(object));
+                    propertyStack.append(PropertyNameArray(m_exec));
+                    object->methodTable()->getOwnPropertyNames(object, m_exec, propertyStack.last(), ExcludeDontEnumProperties);
+                    write(NonMapPropertiesTag);
+                    indexStack.append(0);
+                    goto objectStartVisitMember;
+                }
+                inValue = key;
+                m_gcBuffer.append(value);
+                mapIteratorValueStack.append(value);
+                stateStack.append(MapDataEndVisitKey);
+                goto stateUnknown;
+            }
+            case MapDataEndVisitKey: {
+                inValue = mapIteratorValueStack.last();
+                mapIteratorValueStack.removeLast();
+                stateStack.append(MapDataEndVisitValue);
+                goto stateUnknown;
+            }
+            case MapDataEndVisitValue: {
+                goto mapDataStartVisitEntry;
+            }
+
             setStartState: {
                 ASSERT(inValue.isObject());
                 if (inputObjectStack.size() > maximumFilterRecursion)
@@ -1364,44 +1400,33 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
                 JSSet* inSet = jsCast<JSSet*>(inValue);
                 if (!startSet(inSet))
                     break;
-                MapData* mapData = inSet->mapData();
-                m_gcBuffer.append(mapData);
-                mapDataStack.append(mapData);
-                iteratorStack.append(mapData->begin());
+                JSSetIterator* iterator = JSSetIterator::create(m_exec->vm(), m_exec->lexicalGlobalObject()->setIteratorStructure(), inSet, SetIterateKey);
+                m_gcBuffer.append(inSet);
+                m_gcBuffer.append(iterator);
+                setIteratorStack.append(iterator);
                 inputObjectStack.append(inSet);
-                goto mapDataStartVisitEntry;
+                goto setDataStartVisitEntry;
             }
-            mapDataStartVisitEntry:
-            case MapDataStartVisitEntry: {
-                MapData::const_iterator& ptr = iteratorStack.last();
-                MapData* mapData = mapDataStack.last();
-                if (ptr == mapData->end()) {
-                    iteratorStack.removeLast();
-                    mapDataStack.removeLast();
+            setDataStartVisitEntry:
+            case SetDataStartVisitEntry: {
+                JSSetIterator* iterator = setIteratorStack.last();
+                JSValue key;
+                if (!iterator->next(m_exec, key)) {
+                    setIteratorStack.removeLast();
                     JSObject* object = inputObjectStack.last();
-                    ASSERT(jsDynamicCast<JSSet*>(object) || jsDynamicCast<JSMap*>(object));
+                    ASSERT(jsDynamicCast<JSSet*>(object));
                     propertyStack.append(PropertyNameArray(m_exec));
                     object->methodTable()->getOwnPropertyNames(object, m_exec, propertyStack.last(), ExcludeDontEnumProperties);
-                    write(NonMapPropertiesTag);
+                    write(NonSetPropertiesTag);
                     indexStack.append(0);
                     goto objectStartVisitMember;
                 }
-                inValue = ptr.key();
-                m_gcBuffer.append(ptr.value());
-                iteratorValueStack.append(ptr.value());
-                stateStack.append(MapDataEndVisitKey);
+                inValue = key;
+                stateStack.append(SetDataEndVisitKey);
                 goto stateUnknown;
             }
-            case MapDataEndVisitKey: {
-                inValue = iteratorValueStack.last();
-                iteratorValueStack.removeLast();
-                stateStack.append(MapDataEndVisitValue);
-                goto stateUnknown;
-            }
-            case MapDataEndVisitValue: {
-                if (iteratorStack.last() != mapDataStack.last()->end())
-                    ++iteratorStack.last();
-                goto mapDataStartVisitEntry;
+            case SetDataEndVisitKey: {
+                goto setDataStartVisitEntry;
             }
 
             stateUnknown:
@@ -2360,9 +2385,10 @@ private:
         }
     }
 
-    bool consumeMapDataTerminationIfPossible()
+    template<SerializationTag Tag>
+    bool consumeCollectionDataTerminationIfPossible()
     {
-        if (readTag() == NonMapPropertiesTag)
+        if (readTag() == Tag)
             return true;
         m_ptr--;
         return false;
@@ -2384,8 +2410,9 @@ DeserializationResult CloneDeserializer::deserialize()
     Vector<uint32_t, 16> indexStack;
     Vector<Identifier, 16> propertyNameStack;
     Vector<JSObject*, 32> outputObjectStack;
-    Vector<JSValue, 4> keyStack;
-    Vector<MapData*, 4> mapDataStack;
+    Vector<JSValue, 4> mapKeyStack;
+    Vector<JSMap*, 4> mapStack;
+    Vector<JSSet*, 4> setStack;
     Vector<WalkerState, 16> stateStack;
     WalkerState state = StateUnknown;
     JSValue outValue;
@@ -2478,41 +2505,53 @@ DeserializationResult CloneDeserializer::deserialize()
             JSMap* map = JSMap::create(m_exec->vm(), m_globalObject->mapStructure());
             m_gcBuffer.append(map);
             outputObjectStack.append(map);
-            MapData* mapData = map->mapData();
-            mapDataStack.append(mapData);
+            mapStack.append(map);
             goto mapDataStartVisitEntry;
         }
+        mapDataStartVisitEntry:
+        case MapDataStartVisitEntry: {
+            if (consumeCollectionDataTerminationIfPossible<NonMapPropertiesTag>()) {
+                mapStack.removeLast();
+                goto objectStartVisitMember;
+            }
+            stateStack.append(MapDataEndVisitKey);
+            goto stateUnknown;
+        }
+        case MapDataEndVisitKey: {
+            mapKeyStack.append(outValue);
+            stateStack.append(MapDataEndVisitValue);
+            goto stateUnknown;
+        }
+        case MapDataEndVisitValue: {
+            mapStack.last()->set(m_exec, mapKeyStack.last(), outValue);
+            mapKeyStack.removeLast();
+            goto mapDataStartVisitEntry;
+        }
+
         setObjectStartState: {
             if (outputObjectStack.size() > maximumFilterRecursion)
                 return std::make_pair(JSValue(), StackOverflowError);
             JSSet* set = JSSet::create(m_exec->vm(), m_globalObject->setStructure());
             m_gcBuffer.append(set);
             outputObjectStack.append(set);
-            MapData* mapData = set->mapData();
-            mapDataStack.append(mapData);
-            goto mapDataStartVisitEntry;
+            setStack.append(set);
+            goto setDataStartVisitEntry;
         }
-        mapDataStartVisitEntry:
-        case MapDataStartVisitEntry: {
-            if (consumeMapDataTerminationIfPossible()) {
-                mapDataStack.removeLast();
+        setDataStartVisitEntry:
+        case SetDataStartVisitEntry: {
+            if (consumeCollectionDataTerminationIfPossible<NonSetPropertiesTag>()) {
+                setStack.removeLast();
                 goto objectStartVisitMember;
             }
-            stateStack.append(MapDataEndVisitKey);
+            stateStack.append(SetDataEndVisitKey);
             goto stateUnknown;
         }
-
-        case MapDataEndVisitKey: {
-            keyStack.append(outValue);
-            stateStack.append(MapDataEndVisitValue);
-            goto stateUnknown;
+        case SetDataEndVisitKey: {
+            JSSet* set = setStack.last();
+            set->add(m_exec, outValue);
+            goto setDataStartVisitEntry;
         }
 
-        case MapDataEndVisitValue: {
-            mapDataStack.last()->set(m_exec, keyStack.last(), outValue);
-            keyStack.removeLast();
-            goto mapDataStartVisitEntry;
-        }
         stateUnknown:
         case StateUnknown:
             if (JSValue terminal = readTerminal()) {

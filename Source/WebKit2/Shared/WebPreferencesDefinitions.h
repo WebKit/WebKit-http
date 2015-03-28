@@ -106,6 +106,7 @@
     macro(WebGLEnabled, webGLEnabled, Bool, bool, true) \
     macro(ForceSoftwareWebGLRendering, forceSoftwareWebGLRendering, Bool, bool, false) \
     macro(Accelerated2dCanvasEnabled, accelerated2dCanvasEnabled, Bool, bool, false) \
+    macro(CSSAnimationTriggersEnabled, cssAnimationTriggersEnabled, Bool, bool, true) \
     macro(CSSRegionsEnabled, cssRegionsEnabled, Bool, bool, true) \
     macro(CSSCompositingEnabled, cssCompositingEnabled, Bool, bool, true) \
     macro(ForceFTPDirectoryListings, forceFTPDirectoryListings, Bool, bool, false) \
@@ -193,6 +194,7 @@
     macro(ServiceControlsEnabled, serviceControlsEnabled, Bool, bool, false) \
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, false) \
     macro(LongMousePressEnabled, longMousePressEnabled, Bool, bool, false) \
+    macro(NewBlockInsideInlineModelEnabled, newBlockInsideInlineModelEnabled, Bool, bool, false) \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
     macro(IncrementalRenderingSuppressionTimeout, incrementalRenderingSuppressionTimeout, Double, double, 5) \
@@ -227,7 +229,8 @@
     macro(SimpleLineLayoutDebugBordersEnabled, simpleLineLayoutDebugBordersEnabled, Bool, bool, false) \
     macro(DeveloperExtrasEnabled, developerExtrasEnabled, Bool, bool, false) \
     macro(LogsPageMessagesToSystemConsoleEnabled, logsPageMessagesToSystemConsoleEnabled, Bool, bool, false) \
-    macro(IgnoreViewportScalingConstraints, ignoreViewportScalingConstraints, Bool, bool, false) \
+    macro(IgnoreViewportScalingConstraints, ignoreViewportScalingConstraints, Bool, bool, true) \
+    macro(ForceAlwaysUserScalable, forceAlwaysUserScalable, Bool, bool, false) \
     \
 
 #define FOR_EACH_WEBKIT_DEBUG_UINT32_PREFERENCE(macro) \

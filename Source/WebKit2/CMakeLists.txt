@@ -152,22 +152,12 @@ set(WebKit2_LOCAL_INCLUDE_DIRECTORIES
 
 if (WTF_USE_3D_GRAPHICS)
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
+        "${THIRDPARTY_DIR}/ANGLE"
         "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-        "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
     )
 endif ()
 
-set(WebKit2_SOURCES
-    DatabaseProcess/DatabaseToWebProcessConnection.cpp
-    DatabaseProcess/DatabaseProcess.cpp
-    DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp
-    DatabaseProcess/IndexedDB/IDBSerialization.cpp
-    DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp
-    DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.cpp
-    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp
-    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp
-    DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp
-
+set(NetworkProcess_SOURCES
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkProcess.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
@@ -181,6 +171,18 @@ set(WebKit2_SOURCES
     NetworkProcess/cache/NetworkCacheEncoder.cpp
     NetworkProcess/cache/NetworkCacheDecoder.cpp
     NetworkProcess/cache/NetworkCacheKey.cpp
+)
+
+set(WebKit2_SOURCES
+    DatabaseProcess/DatabaseToWebProcessConnection.cpp
+    DatabaseProcess/DatabaseProcess.cpp
+    DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp
+    DatabaseProcess/IndexedDB/IDBSerialization.cpp
+    DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp
+    DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.cpp
+    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp
+    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp
+    DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp
 
     Platform/Logging.cpp
     Platform/Module.cpp
@@ -241,6 +243,8 @@ set(WebKit2_SOURCES
     Shared/VisitedLinkTable.cpp
     Shared/WebBackForwardListItem.cpp
     Shared/WebBatteryStatus.cpp
+    Shared/WebCompiledContentExtension.cpp
+    Shared/WebCompiledContentExtensionData.cpp
     Shared/WebConnection.cpp
     Shared/WebConnectionClient.cpp
     Shared/WebContextMenuItem.cpp
@@ -320,9 +324,6 @@ set(WebKit2_SOURCES
 
     Shared/WebsiteData/WebsiteData.cpp
 
-    UIProcess/API/APINavigationData.cpp
-    UIProcess/API/APIProcessPoolConfiguration.cpp
-    UIProcess/API/APISession.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DrawingAreaProxy.cpp
     UIProcess/FrameLoadState.cpp
@@ -390,9 +391,13 @@ set(WebKit2_SOURCES
 
     UIProcess/API/APIFrameInfo.cpp
     UIProcess/API/APINavigation.cpp
+    UIProcess/API/APINavigationData.cpp
+    UIProcess/API/APIProcessPoolConfiguration.cpp
+    UIProcess/API/APISession.cpp
     UIProcess/API/APISessionState.cpp
     UIProcess/API/APIWebsiteDataStore.cpp
-    UIProcess/API/APIUserContentFilter.cpp
+    UIProcess/API/APIUserContentExtension.cpp
+    UIProcess/API/APIUserContentExtensionStore.cpp
 
     UIProcess/API/C/WKApplicationCacheManager.cpp
     UIProcess/API/C/WKAuthenticationChallenge.cpp
@@ -620,6 +625,8 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/WebPageOverlay.cpp
     WebProcess/WebPage/VisitedLinkTableController.cpp
     WebProcess/WebPage/WebUndoStep.cpp
+
+    ${NetworkProcess_SOURCES}
 )
 
 set(WebKit2_MESSAGES_IN_FILES
@@ -760,19 +767,21 @@ macro(ADD_WEBKIT2_PREFIX_HEADER _target)
     endif ()
 endmacro()
 
+# Suppress unused parameter warnings for sources in WebKit2.
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 GENERATE_WEBKIT2_MESSAGE_SOURCES(WebKit2_DERIVED_SOURCES "${WebKit2_MESSAGES_IN_FILES}")
 
-add_definitions(-DBUILDING_WEBKIT)
 include_directories(${WebKit2_INCLUDE_DIRECTORIES})
 foreach(inc ${WebKit2_LOCAL_INCLUDE_DIRECTORIES})
     add_definitions(-iquote ${inc})
 endforeach(inc)
 add_library(WebKit2 ${WebKit2_LIBRARY_TYPE} ${WebKit2_SOURCES} ${WebKit2_DERIVED_SOURCES})
 
-add_dependencies(WebKit2 WebCore)
-add_dependencies(WebKit2 ${WEBKIT2_EXTRA_DEPENDENCIES})
+add_dependencies(WebKit2 WebCore ${WEBKIT2_EXTRA_DEPENDENCIES})
 add_webkit2_prefix_header(WebKit2)
 target_link_libraries(WebKit2 ${WebKit2_LIBRARIES})
 set_target_properties(WebKit2 PROPERTIES FOLDER "WebKit")
@@ -835,5 +844,7 @@ endif ()
 POPULATE_LIBRARY_VERSION(WEBKIT2)
 set_target_properties(WebKit2 PROPERTIES VERSION ${WEBKIT2_VERSION} SOVERSION ${WEBKIT2_VERSION_MAJOR})
 
-install(TARGETS WebKit2 DESTINATION "${LIB_INSTALL_DIR}")
-install(TARGETS WebProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
+install(TARGETS WebKit2 WebProcess
+        LIBRARY DESTINATION "${LIB_INSTALL_DIR}"
+        RUNTIME DESTINATION "${LIBEXEC_INSTALL_DIR}"
+)

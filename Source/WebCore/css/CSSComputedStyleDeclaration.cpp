@@ -28,6 +28,7 @@
 #include "AnimationController.h"
 #include "BasicShapeFunctions.h"
 #include "BasicShapes.h"
+#include "CSSAnimationTriggerScrollValue.h"
 #include "CSSAspectRatioValue.h"
 #include "CSSBasicShapes.h"
 #include "CSSBorderImage.h"
@@ -85,6 +86,10 @@
 #if ENABLE(CSS_SCROLL_SNAP)
 #include "LengthRepeat.h"
 #include "StyleScrollSnapPoints.h"
+#endif
+
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+#include "AnimationTrigger.h"
 #endif
 
 namespace WebCore {
@@ -210,6 +215,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyTextOverflow,
     CSSPropertyTextTransform,
     CSSPropertyTop,
+    CSSPropertyTransform,
+    CSSPropertyTransformOrigin,
+    CSSPropertyTransformStyle,
     CSSPropertyTransitionDelay,
     CSSPropertyTransitionDuration,
     CSSPropertyTransitionProperty,
@@ -240,6 +248,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitAnimationName,
     CSSPropertyWebkitAnimationPlayState,
     CSSPropertyWebkitAnimationTimingFunction,
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    CSSPropertyWebkitAnimationTrigger,
+#endif
     CSSPropertyWebkitAppearance,
     CSSPropertyWebkitBackfaceVisibility,
     CSSPropertyWebkitBackgroundClip,
@@ -354,8 +365,8 @@ static const CSSPropertyID computedProperties[] = {
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     CSSPropertyWebkitOverflowScrolling,
 #endif
-    CSSPropertyWebkitPerspective,
-    CSSPropertyWebkitPerspectiveOrigin,
+    CSSPropertyPerspective,
+    CSSPropertyPerspectiveOrigin,
     CSSPropertyWebkitPrintColorAdjust,
     CSSPropertyWebkitRtlOrdering,
 #if PLATFORM(IOS)
@@ -380,8 +391,6 @@ static const CSSPropertyID computedProperties[] = {
 #endif
     CSSPropertyWebkitTextStrokeColor,
     CSSPropertyWebkitTextStrokeWidth,
-    CSSPropertyWebkitTransform,
-    CSSPropertyWebkitTransformOrigin,
     CSSPropertyWebkitTransformStyle,
     CSSPropertyWebkitTransitionDelay,
     CSSPropertyWebkitTransitionDuration,
@@ -1106,24 +1115,26 @@ static Ref<CSSValueList> getTransitionPropertyValue(const AnimationList* animLis
 }
 
 #if ENABLE(CSS_SCROLL_SNAP)
-
 static Ref<CSSValueList> scrollSnapDestination(RenderStyle& style, const LengthSize& destination)
 {
     auto list = CSSValueList::createSpaceSeparated();
-    list.get().append(percentageOrZoomAdjustedValue(destination.width(), &style));
-    list.get().append(percentageOrZoomAdjustedValue(destination.height(), &style));
+    list.get().append(zoomAdjustedPixelValueForLength(destination.width(), &style));
+    list.get().append(zoomAdjustedPixelValueForLength(destination.height(), &style));
     return list;
 }
 
-static Ref<CSSValue> scrollSnapPoints(RenderStyle& style, const ScrollSnapPoints& points)
+static Ref<CSSValue> scrollSnapPoints(RenderStyle& style, const ScrollSnapPoints* points)
 {
-    if (points.usesElements)
+    if (!points)
+        return cssValuePool().createIdentifierValue(CSSValueNone);
+
+    if (points->usesElements)
         return cssValuePool().createIdentifierValue(CSSValueElements);
     auto list = CSSValueList::createSpaceSeparated();
-    for (auto& point : points.offsets)
-        list.get().append(percentageOrZoomAdjustedValue(point, &style));
-    if (points.hasRepeat)
-        list.get().append(cssValuePool().createValue(LengthRepeat::create(percentageOrZoomAdjustedValue(points.repeatOffset, &style))));
+    for (auto& point : points->offsets)
+        list.get().append(zoomAdjustedPixelValueForLength(point, &style));
+    if (points->hasRepeat)
+        list.get().append(cssValuePool().createValue(LengthRepeat::create(zoomAdjustedPixelValueForLength(points->repeatOffset, &style))));
     return WTF::move(list);
 }
 
@@ -1136,14 +1147,13 @@ static Ref<CSSValue> scrollSnapCoordinates(RenderStyle& style, const Vector<Leng
 
     for (auto& coordinate : coordinates) {
         auto pair = CSSValueList::createSpaceSeparated();
-        pair.get().append(percentageOrZoomAdjustedValue(coordinate.width(), &style));
-        pair.get().append(percentageOrZoomAdjustedValue(coordinate.height(), &style));
+        pair.get().append(zoomAdjustedPixelValueForLength(coordinate.width(), &style));
+        pair.get().append(zoomAdjustedPixelValueForLength(coordinate.height(), &style));
         list.get().append(WTF::move(pair));
     }
 
     return WTF::move(list);
 }
-
 #endif
 
 static Ref<CSSValueList> getDelayValue(const AnimationList* animList)
@@ -1219,6 +1229,36 @@ static Ref<CSSValueList> getTimingFunctionValue(const AnimationList* animList)
         list.get().append(createTimingFunctionValue(Animation::initialTimingFunction().get()));
     return list;
 }
+
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+static Ref<CSSValue> createAnimationTriggerValue(const AnimationTrigger* trigger, const RenderStyle* style)
+{
+    switch (trigger->type()) {
+    case AnimationTrigger::AnimationTriggerType::ScrollAnimationTriggerType: {
+        auto& scrollAnimationTrigger = downcast<ScrollAnimationTrigger>(*trigger);
+        if (scrollAnimationTrigger.endValue().isAuto())
+            return CSSAnimationTriggerScrollValue::create(zoomAdjustedPixelValueForLength(scrollAnimationTrigger.startValue(), style));
+        return CSSAnimationTriggerScrollValue::create(zoomAdjustedPixelValueForLength(scrollAnimationTrigger.startValue(), style),
+                                                      zoomAdjustedPixelValueForLength(scrollAnimationTrigger.endValue(), style));
+    }
+    default:
+        ASSERT(trigger->type() == AnimationTrigger::AnimationTriggerType::AutoAnimationTriggerType);
+        return cssValuePool().createIdentifierValue(CSSValueAuto);
+    }
+}
+
+static Ref<CSSValueList> getAnimationTriggerValue(const AnimationList* animList, const RenderStyle* style)
+{
+    auto list = CSSValueList::createCommaSeparated();
+    if (animList) {
+        for (size_t i = 0; i < animList->size(); ++i)
+            list.get().append(createAnimationTriggerValue(animList->animation(i).trigger().get(), style));
+    } else
+        list.get().append(createAnimationTriggerValue(Animation::initialTrigger().get(), style));
+
+    return list;
+}
+#endif
 
 static Ref<CSSValue> createLineBoxContainValue(unsigned lineBoxContain)
 {
@@ -1598,9 +1638,9 @@ static bool isLayoutDependent(CSSPropertyID propertyID, RenderStyle* style, Rend
     case CSSPropertyWebkitGridTemplateColumns:
     case CSSPropertyWebkitGridTemplateRows:
 #endif
-    case CSSPropertyWebkitPerspectiveOrigin:
-    case CSSPropertyWebkitTransformOrigin:
-    case CSSPropertyWebkitTransform:
+    case CSSPropertyPerspectiveOrigin:
+    case CSSPropertyTransformOrigin:
+    case CSSPropertyTransform:
     case CSSPropertyWebkitFilter:
 #if ENABLE(FILTERS_LEVEL_2)
     case CSSPropertyWebkitBackdropFilter:
@@ -2719,6 +2759,10 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyAnimationTimingFunction:
         case CSSPropertyWebkitAnimationTimingFunction:
             return getTimingFunctionValue(style->animations());
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+        case CSSPropertyWebkitAnimationTrigger:
+            return getAnimationTriggerValue(style->animations(), style.get());
+#endif
         case CSSPropertyWebkitAppearance:
             return cssValuePool().createValue(style->appearance());
         case CSSPropertyWebkitAspectRatio:
@@ -2775,11 +2819,11 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
             return cssValuePool().createIdentifierValue(CSSValueTouch);
 #endif
-        case CSSPropertyWebkitPerspective:
+        case CSSPropertyPerspective:
             if (!style->hasPerspective())
                 return cssValuePool().createIdentifierValue(CSSValueNone);
             return zoomAdjustedPixelValue(style->perspective(), style.get());
-        case CSSPropertyWebkitPerspectiveOrigin: {
+        case CSSPropertyPerspectiveOrigin: {
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             if (renderer) {
                 LayoutRect box;
@@ -2830,9 +2874,9 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         }
         case CSSPropertySpeak:
             return cssValuePool().createValue(style->speak());
-        case CSSPropertyWebkitTransform:
+        case CSSPropertyTransform:
             return computedTransform(renderer, style.get());
-        case CSSPropertyWebkitTransformOrigin: {
+        case CSSPropertyTransformOrigin: {
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             if (renderer) {
                 LayoutRect box;
@@ -2851,6 +2895,7 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             }
             return list.release();
         }
+        case CSSPropertyTransformStyle:
         case CSSPropertyWebkitTransformStyle:
             return cssValuePool().createIdentifierValue((style->transformStyle3D() == TransformStyle3DPreserve3D) ? CSSValuePreserve3d : CSSValueFlat);
         case CSSPropertyTransitionDelay:
@@ -3142,12 +3187,12 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyWebkitMask:
         case CSSPropertyWebkitMaskRepeatX:
         case CSSPropertyWebkitMaskRepeatY:
-        case CSSPropertyWebkitPerspectiveOriginX:
-        case CSSPropertyWebkitPerspectiveOriginY:
+        case CSSPropertyPerspectiveOriginX:
+        case CSSPropertyPerspectiveOriginY:
         case CSSPropertyWebkitTextStroke:
-        case CSSPropertyWebkitTransformOriginX:
-        case CSSPropertyWebkitTransformOriginY:
-        case CSSPropertyWebkitTransformOriginZ:
+        case CSSPropertyTransformOriginX:
+        case CSSPropertyTransformOriginY:
+        case CSSPropertyTransformOriginZ:
             break;
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)

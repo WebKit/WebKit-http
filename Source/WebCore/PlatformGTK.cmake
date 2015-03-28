@@ -16,7 +16,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/wayland"
     "${WEBCORE_DIR}/platform/linux"
-    "${WEBCORE_DIR}/platform/mediastream/gstreamer"
+    "${WEBCORE_DIR}/platform/mediastream/openwebrtc"
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/gtk"
     "${WEBCORE_DIR}/platform/network/soup"
@@ -49,7 +49,6 @@ list(APPEND WebCore_SOURCES
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
 
-    platform/Cursor.cpp
     platform/PlatformStrategies.cpp
 
     platform/audio/gtk/AudioBusGtk.cpp
@@ -65,14 +64,12 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
-    platform/graphics/OpenGLShims.cpp
     platform/graphics/WOFFFileFormat.cpp
 
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BackingStoreBackendCairoX11.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp
-    platform/graphics/cairo/DrawingBufferCairo.cpp
     platform/graphics/cairo/FloatRectCairo.cpp
     platform/graphics/cairo/FontCairo.cpp
     platform/graphics/cairo/FontCairoHarfbuzzNG.cpp
@@ -116,10 +113,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
     platform/graphics/harfbuzz/HarfBuzzShaper.cpp
 
-    platform/graphics/opengl/Extensions3DOpenGL.cpp
     platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
-    platform/graphics/opengl/Extensions3DOpenGLES.cpp
-    platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
     platform/graphics/opengl/TemporaryOpenGLSetting.cpp
 
@@ -158,7 +152,8 @@ list(APPEND WebCore_SOURCES
     platform/linux/GamepadDeviceLinux.cpp
     platform/linux/MemoryPressureHandlerLinux.cpp
 
-    platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
+    platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
+    platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
 
     platform/network/soup/AuthenticationChallengeSoup.cpp
     platform/network/soup/CertificateInfo.cpp
@@ -325,6 +320,7 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         ${GSTREAMER_BASE_LIBRARIES}
         ${GSTREAMER_LIBRARIES}
         ${GSTREAMER_PBUTILS_LIBRARIES}
+        ${GSTREAMER_AUDIO_LIBRARIES}
     )
     # Avoiding a GLib deprecation warning due to GStreamer API using deprecated classes.
     set_source_files_properties(platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp PROPERTIES COMPILE_DEFINITIONS "GLIB_DISABLE_DEPRECATION_WARNINGS=1")
@@ -349,6 +345,16 @@ if (ENABLE_VIDEO)
             ${GSTREAMER_MPEGTS_LIBRARIES}
         )
     endif ()
+
+    if (USE_GSTREAMER_GL)
+        list(APPEND WebCore_INCLUDE_DIRECTORIES
+            ${GSTREAMER_GL_INCLUDE_DIRS}
+        )
+
+        list(APPEND WebCore_LIBRARIES
+            ${GSTREAMER_GL_LIBRARIES}
+        )
+    endif ()
 endif ()
 
 if (ENABLE_WEB_AUDIO)
@@ -358,8 +364,16 @@ if (ENABLE_WEB_AUDIO)
         ${GSTREAMER_FFT_INCLUDE_DIRS}
     )
     list(APPEND WebCore_LIBRARIES
-        ${GSTREAMER_AUDIO_LIBRARIES}
         ${GSTREAMER_FFT_LIBRARIES}
+    )
+endif ()
+
+if (ENABLE_MEDIA_STREAM)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${OPENWEBRTC_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${OPENWEBRTC_LIBRARIES}
     )
 endif ()
 
@@ -368,8 +382,13 @@ if (ENABLE_TEXTURE_MAPPER)
         "${WEBCORE_DIR}/platform/graphics/texmap"
     )
     list(APPEND WebCore_SOURCES
+        platform/graphics/texmap/BitmapTexture.cpp
+        platform/graphics/texmap/BitmapTextureGL.cpp
+        platform/graphics/texmap/BitmapTextureImageBuffer.cpp
+        platform/graphics/texmap/BitmapTexturePool.cpp
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
         platform/graphics/texmap/TextureMapperGL.cpp
+        platform/graphics/texmap/TextureMapperImageBuffer.cpp
         platform/graphics/texmap/TextureMapperShaderProgram.cpp
     )
 endif ()
@@ -402,6 +421,22 @@ endif ()
 if (WTF_USE_EGL)
     list(APPEND WebCore_LIBRARIES
         ${EGL_LIBRARY}
+    )
+endif ()
+
+if (WTF_USE_OPENGL_ES_2)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/opengl/Extensions3DOpenGLES.cpp
+        platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
+    )
+endif ()
+
+if (WTF_USE_OPENGL)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/OpenGLShims.cpp
+
+        platform/graphics/opengl/Extensions3DOpenGL.cpp
+        platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
     )
 endif ()
 

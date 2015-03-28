@@ -95,11 +95,16 @@ private:
     // MediaPlayerPrivateInterface
     virtual void load(const String& url) override;
     virtual void load(const String& url, MediaSourcePrivateClient*) override;
+#if ENABLE(MEDIA_STREAM)
+    virtual void load(MediaStreamPrivate*) { }
+#endif
     virtual void cancelLoad() override;
 
     virtual void prepareToPlay() override;
     virtual PlatformMedia platformMedia() const override;
     virtual PlatformLayer* platformLayer() const override;
+
+    virtual bool supportsFullscreen() const { return true; }
 
     virtual void play() override;
     void playInternal();
@@ -130,6 +135,8 @@ private:
     virtual void seekWithTolerance(const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold) override;
     virtual bool seeking() const override;
     virtual void setRateDouble(double) override;
+
+    void setPreservesPitch(bool) override;
 
     virtual std::unique_ptr<PlatformTimeRanges> seekable() const override;
     virtual MediaTime maxMediaTimeSeekable() const override;

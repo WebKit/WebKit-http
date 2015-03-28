@@ -1486,7 +1486,7 @@ FloatPoint Node::convertFromPage(const FloatPoint& p) const
     return p;
 }
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 
 static void appendAttributeDesc(const Node* node, StringBuilder& stringBuilder, const QualifiedName& name, const char* attrDesc)
 {
@@ -1654,7 +1654,7 @@ void Node::showTreeForThisAcrossFrame() const
     showSubTreeAcrossFrame(rootNode, this, "");
 }
 
-#endif
+#endif // ENABLE(TREE_DEBUGGING)
 
 // --------
 
@@ -1700,47 +1700,40 @@ void Node::didMoveToNewDocument(Document* oldDocument)
 {
     TreeScopeAdopter::ensureDidMoveToNewDocumentWasCalled(oldDocument);
 
-    if (const EventTargetData* eventTargetData = this->eventTargetData()) {
-        const EventListenerMap& listenerMap = eventTargetData->eventListenerMap;
-        if (!listenerMap.isEmpty()) {
-            Vector<AtomicString> types = listenerMap.eventTypes();
-            for (unsigned i = 0; i < types.size(); ++i)
-                document().addListenerTypeIfNeeded(types[i]);
+    if (auto* eventTargetData = this->eventTargetData()) {
+        if (!eventTargetData->eventListenerMap.isEmpty()) {
+            for (auto& type : eventTargetData->eventListenerMap.eventTypes())
+                document().addListenerTypeIfNeeded(type);
         }
     }
 
-    if (AXObjectCache::accessibilityEnabled() && oldDocument)
-        if (AXObjectCache* cache = oldDocument->existingAXObjectCache())
+    if (AXObjectCache::accessibilityEnabled() && oldDocument) {
+        if (auto* cache = oldDocument->existingAXObjectCache())
             cache->remove(this);
-
-    const EventListenerVector& mousewheelListeners = getEventListeners(eventNames().mousewheelEvent);
-    for (size_t i = 0; i < mousewheelListeners.size(); ++i) {
-        oldDocument->didRemoveWheelEventHandler();
-        document().didAddWheelEventHandler();
     }
 
-    const EventListenerVector& wheelListeners = getEventListeners(eventNames().wheelEvent);
-    for (size_t i = 0; i < wheelListeners.size(); ++i) {
-        oldDocument->didRemoveWheelEventHandler();
-        document().didAddWheelEventHandler();
+    unsigned numWheelEventHandlers = getEventListeners(eventNames().mousewheelEvent).size() + getEventListeners(eventNames().wheelEvent).size();
+    for (unsigned i = 0; i < numWheelEventHandlers; ++i) {
+        oldDocument->didRemoveWheelEventHandler(*this);
+        document().didAddWheelEventHandler(*this);
     }
 
-    Vector<AtomicString> touchEventNames = eventNames().touchEventNames();
-    for (size_t i = 0; i < touchEventNames.size(); ++i) {
-        const EventListenerVector& listeners = getEventListeners(touchEventNames[i]);
-        for (size_t j = 0; j < listeners.size(); ++j) {
-            oldDocument->didRemoveTouchEventHandler(this);
-            document().didAddTouchEventHandler(this);
-        }
+    unsigned numTouchEventHandlers = 0;
+    for (auto& name : eventNames().touchEventNames())
+        numTouchEventHandlers += getEventListeners(name).size();
+
+    for (unsigned i = 0; i < numTouchEventHandlers; ++i) {
+        oldDocument->didRemoveTouchEventHandler(*this);
+        document().didAddTouchEventHandler(*this);
     }
 
-    if (Vector<std::unique_ptr<MutationObserverRegistration>>* registry = mutationObserverRegistry()) {
-        for (const auto& registration : *registry)
+    if (auto* registry = mutationObserverRegistry()) {
+        for (auto& registration : *registry)
             document().addMutationObserverTypes(registration->mutationTypes());
     }
 
-    if (HashSet<MutationObserverRegistration*>* transientRegistry = transientMutationObserverRegistry()) {
-        for (const auto& registration : *transientRegistry)
+    if (auto* transientRegistry = transientMutationObserverRegistry()) {
+        for (auto& registration : *transientRegistry)
             document().addMutationObserverTypes(registration->mutationTypes());
     }
 }
@@ -1753,10 +1746,10 @@ static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eve
         return false;
 
     targetNode->document().addListenerTypeIfNeeded(eventType);
-    if (eventType == eventNames().wheelEvent || eventType == eventNames().mousewheelEvent)
-        targetNode->document().didAddWheelEventHandler();
+    if (eventNames().isWheelEventType(eventType))
+        targetNode->document().didAddWheelEventHandler(*targetNode);
     else if (eventNames().isTouchEventType(eventType))
-        targetNode->document().didAddTouchEventHandler(targetNode);
+        targetNode->document().didAddTouchEventHandler(*targetNode);
 
 #if PLATFORM(IOS)
     if (targetNode == &targetNode->document() && eventType == eventNames().scrollEvent)
@@ -1795,10 +1788,10 @@ static inline bool tryRemoveEventListener(Node* targetNode, const AtomicString& 
 
     // FIXME: Notify Document that the listener has vanished. We need to keep track of a number of
     // listeners for each type, not just a bool - see https://bugs.webkit.org/show_bug.cgi?id=33861
-    if (eventType == eventNames().wheelEvent || eventType == eventNames().mousewheelEvent)
-        targetNode->document().didRemoveWheelEventHandler();
+    if (eventNames().isWheelEventType(eventType))
+        targetNode->document().didRemoveWheelEventHandler(*targetNode);
     else if (eventNames().isTouchEventType(eventType))
-        targetNode->document().didRemoveTouchEventHandler(targetNode);
+        targetNode->document().didRemoveTouchEventHandler(*targetNode);
 
 #if PLATFORM(IOS)
     if (targetNode == &targetNode->document() && eventType == eventNames().scrollEvent)
@@ -2093,8 +2086,7 @@ void Node::defaultEventHandler(Event* event)
             }
         }
 #endif
-    } else if ((eventType == eventNames().wheelEvent || eventType == eventNames().mousewheelEvent) && is<WheelEvent>(*event)) {
-
+    } else if (eventNames().isWheelEventType(eventType) && is<WheelEvent>(*event)) {
         // If we don't have a renderer, send the wheel event to the first node we find with a renderer.
         // This is needed for <option> and <optgroup> elements so that <select>s get a wheel scroll.
         Node* startNode = this;
@@ -2222,7 +2214,7 @@ bool Node::inRenderedDocument() const
 
 } // namespace WebCore
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 
 void showTree(const WebCore::Node* node)
 {
@@ -2236,4 +2228,4 @@ void showNodePath(const WebCore::Node* node)
         node->showNodePathForThis();
 }
 
-#endif
+#endif // ENABLE(TREE_DEBUGGING)

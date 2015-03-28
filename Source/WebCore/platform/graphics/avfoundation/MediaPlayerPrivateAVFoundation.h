@@ -153,6 +153,9 @@ protected:
 #if ENABLE(MEDIA_SOURCE)
     virtual void load(const String&, MediaSourcePrivateClient*);
 #endif
+#if ENABLE(MEDIA_STREAM)
+    virtual void load(MediaStreamPrivate*) { }
+#endif
     virtual void cancelLoad() = 0;
 
     virtual void prepareToPlay() override;
@@ -267,6 +270,8 @@ protected:
     void setIgnoreLoadStateChanges(bool delay) { m_ignoreLoadStateChanges = delay; }
     void setNaturalSize(FloatSize);
     bool isLiveStream() const { return std::isinf(duration()); }
+    void setNetworkState(MediaPlayer::NetworkState);
+    void setReadyState(MediaPlayer::ReadyState);
 
     enum MediaRenderingMode { MediaRenderingNone, MediaRenderingToContext, MediaRenderingToLayer };
     MediaRenderingMode currentRenderingMode() const;

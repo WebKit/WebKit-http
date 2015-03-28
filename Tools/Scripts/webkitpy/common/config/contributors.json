@@ -2070,6 +2070,16 @@
             "diegoyam"
          ]
       },
+      "Nikita Vasilyev" : {
+         "emails" : [
+            "nvasilyev@apple.com"
+         ],
+         "expertise" : "Web Inspector",
+         "nicks" : [
+            "NVI",
+            "nvasilyev"
+         ]
+      },
       "Nima Ghanavatian" : {
          "emails" : [
             "nghanavatian@blackberry.com",
@@ -2124,6 +2134,14 @@
          ],
          "nicks" : [
             "podivilov"
+         ]
+      },
+      "Per Arne Vollan" : {
+         "emails" : [
+            "peavo@outlook.com"
+         ],
+         "nicks" : [
+            "peavo"
          ]
       },
       "Peter Beverloo" : {

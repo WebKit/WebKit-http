@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,36 +23,33 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ConsoleObserver = function()
+WebInspector.ConsoleObserver = class ConsoleObserver
 {
-    WebInspector.Object.call(this);
-};
-
-WebInspector.ConsoleObserver.prototype = {
-    constructor: WebInspector.ConsoleObserver,
-
     // Events defined by the "Console" domain.
 
-    messageAdded: function(message)
+    messageAdded(message)
     {
-        if (message.level === "warning" || message.level === "error")
-            WebInspector.issueManager.issueWasAdded(message.source, message.level, message.text, message.url, message.line, message.column || 0, message.parameters);
+        if (message.type === "assert" && !message.text)
+            message.text = WebInspector.UIString("Assertion");
+
+        if (message.level === "warning" || message.level === "error") {
+            // FIXME: <https://webkit.org/b/142553> Web Inspector: Merge IssueMessage/ConsoleMessage - both attempt to modify the Console Messages parameter independently
+            WebInspector.issueManager.issueWasAdded(message.source, message.level, message.text, message.url, message.line, message.column || 0);
+        }
 
         if (message.source === "console-api" && message.type === "clear")
             return;
 
         WebInspector.logManager.messageWasAdded(message.source, message.level, message.text, message.type, message.url, message.line, message.column || 0, message.repeatCount, message.parameters, message.stackTrace, message.networkRequestId);
-    },
+    }
 
-    messageRepeatCountUpdated: function(count)
+    messageRepeatCountUpdated(count)
     {
         WebInspector.logManager.messageRepeatCountUpdated(count);
-    },
+    }
 
-    messagesCleared: function()
+    messagesCleared()
     {
         WebInspector.logManager.messagesCleared();
     }
 };
-
-WebInspector.ConsoleObserver.prototype.__proto__ = WebInspector.Object.prototype;

@@ -26,7 +26,6 @@
 
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
-#include "JSTestObj.h"
 #include "ScriptExecutionContext.h"
 #include "TestInterface.h"
 #include "TestObj.h"
@@ -36,12 +35,10 @@
 
 #if ENABLE(Condition11) || ENABLE(Condition12) || ENABLE(Condition22) || ENABLE(Condition23)
 #include "JSNode.h"
+#include "JSTestObj.h"
+#include "Node.h"
 #include "URL.h"
 #include <runtime/JSString.h>
-#endif
-
-#if ENABLE(Condition11) || ENABLE(Condition12) || ENABLE(Condition22) || ENABLE(Condition23)
-#include "Node.h"
 #endif
 
 using namespace JSC;
@@ -654,7 +651,7 @@ void JSTestInterface::putByIndex(JSCell* cell, ExecState* exec, unsigned index, 
 {
     auto* thisObject = jsCast<JSTestInterface*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    PropertyName propertyName = Identifier::from(exec, index);
+    Identifier propertyName = Identifier::from(exec, index);
     PutPropertySlot slot(thisObject, shouldThrow);
     if (thisObject->putDelegate(exec, propertyName, value, slot))
         return;

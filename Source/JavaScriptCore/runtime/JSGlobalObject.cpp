@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2009, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2009, 2014, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,6 @@
 #include "config.h"
 #include "JSGlobalObject.h"
 
-#include "Arguments.h"
 #include "ArgumentsIteratorConstructor.h"
 #include "ArgumentsIteratorPrototype.h"
 #include "ArrayConstructor.h"
@@ -39,6 +38,7 @@
 #include "ArrayPrototype.h"
 #include "BooleanConstructor.h"
 #include "BooleanPrototype.h"
+#include "ClonedArguments.h"
 #include "CodeBlock.h"
 #include "CodeCache.h"
 #include "ConsolePrototype.h"
@@ -46,6 +46,7 @@
 #include "DatePrototype.h"
 #include "Debugger.h"
 #include "DebuggerScope.h"
+#include "DirectArguments.h"
 #include "Error.h"
 #include "ErrorConstructor.h"
 #include "ErrorPrototype.h"
@@ -82,6 +83,7 @@
 #include "JSONObject.h"
 #include "JSSet.h"
 #include "JSSetIterator.h"
+#include "JSStringIterator.h"
 #include "JSTypedArrayConstructors.h"
 #include "JSTypedArrayPrototypes.h"
 #include "JSTypedArrays.h"
@@ -109,17 +111,21 @@
 #include "RegExpMatchesArray.h"
 #include "RegExpObject.h"
 #include "RegExpPrototype.h"
+#include "ScopedArguments.h"
 #include "SetConstructor.h"
 #include "SetIteratorConstructor.h"
 #include "SetIteratorPrototype.h"
 #include "SetPrototype.h"
 #include "StrictEvalActivation.h"
 #include "StringConstructor.h"
+#include "StringIteratorConstructor.h"
+#include "StringIteratorPrototype.h"
 #include "StringPrototype.h"
 #include "Symbol.h"
 #include "SymbolConstructor.h"
 #include "SymbolPrototype.h"
 #include "VariableWatchpointSetInlines.h"
+#include "WeakGCMapInlines.h"
 #include "WeakMapConstructor.h"
 #include "WeakMapPrototype.h"
 
@@ -276,7 +282,9 @@ void JSGlobalObject::init(VM& vm)
     m_nullPrototypeObjectStructure.set(vm, this, JSFinalObject::createStructure(vm, this, jsNull(), JSFinalObject::defaultInlineCapacity()));
     
     m_callbackFunctionStructure.set(vm, this, JSCallbackFunction::createStructure(vm, this, m_functionPrototype.get()));
-    m_argumentsStructure.set(vm, this, Arguments::createStructure(vm, this, m_objectPrototype.get()));
+    m_directArgumentsStructure.set(vm, this, DirectArguments::createStructure(vm, this, m_objectPrototype.get()));
+    m_scopedArgumentsStructure.set(vm, this, ScopedArguments::createStructure(vm, this, m_objectPrototype.get()));
+    m_outOfBandArgumentsStructure.set(vm, this, ClonedArguments::createStructure(vm, this, m_objectPrototype.get()));
     m_callbackConstructorStructure.set(vm, this, JSCallbackConstructor::createStructure(vm, this, m_objectPrototype.get()));
     m_callbackObjectStructure.set(vm, this, JSCallbackObject<JSDestructibleObject>::createStructure(vm, this, m_objectPrototype.get()));
 #if JSC_OBJC_API_ENABLED
@@ -365,7 +373,8 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     putDirectWithoutTransition(vm, vm.propertyNames->TypeError, m_typeErrorConstructor.get(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->URIError, m_URIErrorConstructor.get(), DontEnum);
 #if ENABLE(PROMISES)
-    putDirectWithoutTransition(vm, vm.propertyNames->Promise, m_promiseConstructor.get(), DontEnum);
+    if (!m_runtimeFlags.isPromiseDisabled())
+        putDirectWithoutTransition(vm, vm.propertyNames->Promise, m_promiseConstructor.get(), DontEnum);
 #endif
     
     
@@ -427,6 +436,9 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->absPrivateName, privateFuncAbs, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->floorPrivateName, privateFuncFloor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->isFinitePrivateName, privateFuncIsFinite, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->arrayIterationKindKeyPrivateName, jsNumber(ArrayIterateKey), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->arrayIterationKindValuePrivateName, jsNumber(ArrayIterateValue), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->arrayIterationKindKeyValuePrivateName, jsNumber(ArrayIterateKeyValue), DontEnum | DontDelete | ReadOnly),
     };
     addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));
     
@@ -466,18 +478,28 @@ bool JSGlobalObject::defineOwnProperty(JSObject* object, ExecState* exec, Proper
 JSGlobalObject::NewGlobalVar JSGlobalObject::addGlobalVar(const Identifier& ident, ConstantMode constantMode)
 {
     ConcurrentJITLocker locker(symbolTable()->m_lock);
-    int index = symbolTable()->size(locker);
-    SymbolTableEntry newEntry(index, (constantMode == IsConstant) ? ReadOnly : 0);
+    SymbolTableEntry entry = symbolTable()->get(locker, ident.impl());
+    if (!entry.isNull()) {
+        NewGlobalVar result;
+        result.offset = entry.scopeOffset();
+        result.set = entry.watchpointSet();
+        return result;
+    }
+    
+    ScopeOffset offset = symbolTable()->takeNextScopeOffset(locker);
+    SymbolTableEntry newEntry(VarOffset(offset), (constantMode == IsConstant) ? ReadOnly : 0);
     if (constantMode == IsVariable)
         newEntry.prepareToWatch(symbolTable());
-    SymbolTable::Map::AddResult result = symbolTable()->add(locker, ident.impl(), newEntry);
-    if (result.isNewEntry)
-        addRegisters(1);
     else
-        index = result.iterator->value.getIndex();
+        newEntry.disableWatching();
+    symbolTable()->add(locker, ident.impl(), newEntry);
+    
+    ScopeOffset offsetForAssert = addVariables(1);
+    RELEASE_ASSERT(offsetForAssert == offset);
+
     NewGlobalVar var;
-    var.registerNumber = index;
-    var.set = result.iterator->value.watchpointSet();
+    var.offset = offset;
+    var.set = newEntry.watchpointSet();
     return var;
 }
 
@@ -486,7 +508,7 @@ void JSGlobalObject::addFunction(ExecState* exec, const Identifier& propertyName
     VM& vm = exec->vm();
     removeDirect(vm, propertyName); // Newly declared functions overwrite existing properties.
     NewGlobalVar var = addGlobalVar(propertyName, IsVariable);
-    registerAt(var.registerNumber).set(exec->vm(), this, value);
+    variableAt(var.offset).set(exec->vm(), this, value);
     if (var.set)
         var.set->notifyWrite(vm, value, VariableWriteFireDetail(this, propertyName));
 }
@@ -683,7 +705,9 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_lexicalEnvironmentStructure);
     visitor.append(&thisObject->m_catchScopeStructure);
     visitor.append(&thisObject->m_functionNameScopeStructure);
-    visitor.append(&thisObject->m_argumentsStructure);
+    visitor.append(&thisObject->m_directArgumentsStructure);
+    visitor.append(&thisObject->m_scopedArgumentsStructure);
+    visitor.append(&thisObject->m_outOfBandArgumentsStructure);
     for (unsigned i = 0; i < NumberOfIndexingShapes; ++i)
         visitor.append(&thisObject->m_originalArrayStructureForIndexingShape[i]);
     for (unsigned i = 0; i < NumberOfIndexingShapes; ++i)
@@ -740,16 +764,21 @@ ExecState* JSGlobalObject::globalExec()
 
 void JSGlobalObject::addStaticGlobals(GlobalPropertyInfo* globals, int count)
 {
-    addRegisters(count);
+    ScopeOffset startOffset = addVariables(count);
 
     for (int i = 0; i < count; ++i) {
         GlobalPropertyInfo& global = globals[i];
         ASSERT(global.attributes & DontDelete);
         
-        int index = symbolTable()->size();
-        SymbolTableEntry newEntry(index, global.attributes);
-        symbolTable()->add(global.identifier.impl(), newEntry);
-        registerAt(index).set(vm(), this, global.value);
+        ScopeOffset offset;
+        {
+            ConcurrentJITLocker locker(symbolTable()->m_lock);
+            offset = symbolTable()->takeNextScopeOffset(locker);
+            RELEASE_ASSERT(offset = startOffset + i);
+            SymbolTableEntry newEntry(VarOffset(offset), global.attributes);
+            symbolTable()->add(locker, global.identifier.impl(), newEntry);
+        }
+        variableAt(offset).set(vm(), this, global.value);
     }
 }
 
@@ -775,10 +804,12 @@ void slowValidateCell(JSGlobalObject* globalObject)
 UnlinkedProgramCodeBlock* JSGlobalObject::createProgramCodeBlock(CallFrame* callFrame, ProgramExecutable* executable, JSObject** exception)
 {
     ParserError error;
-    JSParserStrictness strictness = executable->isStrictMode() ? JSParseStrict : JSParseNormal;
+    JSParserStrictMode strictMode = executable->isStrictMode() ? JSParserStrictMode::Strict : JSParserStrictMode::NotStrict;
     DebuggerMode debuggerMode = hasDebugger() ? DebuggerOn : DebuggerOff;
     ProfilerMode profilerMode = hasProfiler() ? ProfilerOn : ProfilerOff;
-    UnlinkedProgramCodeBlock* unlinkedCodeBlock = vm().codeCache()->getProgramCodeBlock(vm(), executable, executable->source(), strictness, debuggerMode, profilerMode, error);
+    UnlinkedProgramCodeBlock* unlinkedCodeBlock = vm().codeCache()->getProgramCodeBlock(
+        vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, strictMode, 
+        debuggerMode, profilerMode, error);
 
     if (hasDebugger())
         debugger()->sourceParsed(callFrame, executable->source().provider(), error.line(), error.message());
@@ -794,10 +825,12 @@ UnlinkedProgramCodeBlock* JSGlobalObject::createProgramCodeBlock(CallFrame* call
 UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame, EvalExecutable* executable)
 {
     ParserError error;
-    JSParserStrictness strictness = executable->isStrictMode() ? JSParseStrict : JSParseNormal;
+    JSParserStrictMode strictMode = executable->isStrictMode() ? JSParserStrictMode::Strict : JSParserStrictMode::NotStrict;
     DebuggerMode debuggerMode = hasDebugger() ? DebuggerOn : DebuggerOff;
     ProfilerMode profilerMode = hasProfiler() ? ProfilerOn : ProfilerOff;
-    UnlinkedEvalCodeBlock* unlinkedCodeBlock = vm().codeCache()->getEvalCodeBlock(vm(), executable, executable->source(), strictness, debuggerMode, profilerMode, error);
+    UnlinkedEvalCodeBlock* unlinkedCodeBlock = vm().codeCache()->getEvalCodeBlock(
+        vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, strictMode, 
+        debuggerMode, profilerMode, error);
 
     if (hasDebugger())
         debugger()->sourceParsed(callFrame, executable->source().provider(), error.line(), error.message());

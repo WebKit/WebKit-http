@@ -88,7 +88,6 @@ const PlatformGraphicsContext3D NullPlatformGraphicsContext3D = 0;
 const Platform3DObject NullPlatform3DObject = 0;
 
 namespace WebCore {
-class DrawingBuffer;
 class Extensions3D;
 #if USE(OPENGL_ES_2)
 class Extensions3DOpenGLES;
@@ -1123,6 +1122,12 @@ public:
     void drawElementsInstanced(GC3Denum mode, GC3Dsizei count, GC3Denum type, GC3Dintptr offset, GC3Dsizei primcount);
     void vertexAttribDivisor(GC3Duint index, GC3Duint divisor);
 
+    // VertexArrayOject calls
+    Platform3DObject createVertexArray();
+    void deleteVertexArray(Platform3DObject);
+    GC3Dboolean isVertexArray(Platform3DObject);
+    void bindVertexArray(Platform3DObject);
+
 #if PLATFORM(GTK) || PLATFORM(EFL) || USE(CAIRO)
     void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
                        int canvasWidth, int canvasHeight, PlatformContextCairo* context);
@@ -1139,8 +1144,8 @@ public:
     bool layerComposited() const;
     void forceContextLost();
 
-    void paintRenderingResultsToCanvas(ImageBuffer*, DrawingBuffer*);
-    PassRefPtr<ImageData> paintRenderingResultsToImageData(DrawingBuffer*);
+    void paintRenderingResultsToCanvas(ImageBuffer*);
+    PassRefPtr<ImageData> paintRenderingResultsToImageData();
     bool paintCompositedResultsToCanvas(ImageBuffer*);
 
 #if PLATFORM(IOS)

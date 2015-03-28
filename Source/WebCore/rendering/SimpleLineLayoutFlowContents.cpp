@@ -51,18 +51,19 @@ FlowContents::FlowContents(const RenderBlockFlow& flow)
 {
 }
 
-unsigned FlowContents::segmentIndexForPositionSlow(unsigned position) const
+unsigned FlowContents::segmentIndexForRunSlow(unsigned start, unsigned end) const
 {
-    auto it = std::lower_bound(m_segments.begin(), m_segments.end(), position, [](const Segment& segment, unsigned position) {
-        return segment.end <= position;
+    auto it = std::lower_bound(m_segments.begin(), m_segments.end(), start, [](const Segment& segment, unsigned start) {
+        return segment.end <= start;
     });
     ASSERT(it != m_segments.end());
+    ASSERT_UNUSED(end, end <= it->end);
     auto index = it - m_segments.begin();
     m_lastSegmentIndex = index;
     return index;
 }
 
-const FlowContents::Segment& FlowContents::segmentForRenderer(const RenderText& renderer) const
+const FlowContents::Segment& FlowContents::segmentForRenderer(const RenderObject& renderer) const
 {
     for (auto& segment : m_segments) {
         if (&segment.renderer == &renderer)

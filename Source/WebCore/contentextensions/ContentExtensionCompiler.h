@@ -29,13 +29,27 @@
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "CompiledContentExtension.h"
+#include <system_error>
 #include <wtf/Forward.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
 namespace ContentExtensions {
 
-WEBCORE_EXPORT Ref<CompiledContentExtension> compileRuleList(const String&);
+struct CompiledContentExtensionData {
+    Vector<DFABytecode> bytecode;
+    Vector<SerializedActionByte> actions;
+};
+
+class ContentExtensionCompilationClient {
+public:
+    virtual ~ContentExtensionCompilationClient() { }
+    
+    virtual void writeBytecode(Vector<DFABytecode>&&) = 0;
+    virtual void writeActions(Vector<SerializedActionByte>&&) = 0;
+};
+
+WEBCORE_EXPORT std::error_code compileRuleList(ContentExtensionCompilationClient&, const String&);
 
 } // namespace ContentExtensions
 } // namespace WebCore

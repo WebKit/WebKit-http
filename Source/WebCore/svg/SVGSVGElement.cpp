@@ -199,10 +199,8 @@ void SVGSVGElement::updateCurrentTranslate()
 void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (!nearestViewportElement()) {
-        // Since we only handle events if we're the outermost <svg> element, set listeners only
-        // if we are. Set the listeners directly on the window attribute.
-        // FIXME: This strategy is wrong. It won't work if we an existing <svg> element becomes
-        // the outermost or if an existing <svg> element later becomes no longer outmost.
+        // For these events, the outermost <svg> element works like a <body> element does,
+        // setting certain event handlers directly on the window object.
         if (name == HTMLNames::onunloadAttr) {
             document().setWindowAttributeEventListener(eventNames().unloadEvent, name, value);
             return;
@@ -221,13 +219,21 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
         }
     }
 
+    // For these events, any <svg> element works like a <body> element does,
+    // setting certain event handlers directly on the window object.
+    // FIXME: Why different from the events above that work only on the outermost <svg> element?
+    if (name == HTMLNames::onabortAttr) {
+        document().setWindowAttributeEventListener(eventNames().abortEvent, name, value);
+        return;
+    }
+    if (name == HTMLNames::onerrorAttr) {
+        document().setWindowAttributeEventListener(eventNames().errorEvent, name, value);
+        return;
+    }
+
     SVGParsingError parseError = NoError;
 
-    if (name == HTMLNames::onabortAttr)
-        document().setWindowAttributeEventListener(eventNames().abortEvent, name, value);
-    else if (name == HTMLNames::onerrorAttr)
-        document().setWindowAttributeEventListener(eventNames().errorEvent, name, value);
-    else if (name == SVGNames::xAttr)
+    if (name == SVGNames::xAttr)
         setXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
         setYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
@@ -526,18 +532,23 @@ FloatRect SVGSVGElement::currentViewBoxRect() const
 
 FloatSize SVGSVGElement::currentViewportSize() const
 {
-    if (hasIntrinsicWidth() && hasIntrinsicHeight())
-        return FloatSize(floatValueForLength(intrinsicWidth(), 0), floatValueForLength(intrinsicHeight(), 0));
+    FloatSize viewportSize;
 
-    if (!renderer())
-        return { };
-
-    if (is<RenderSVGRoot>(*renderer())) {
-        auto& root = downcast<RenderSVGRoot>(*renderer());
-        return root.contentBoxRect().size() / root.style().effectiveZoom();
+    if (renderer()) {
+        if (is<RenderSVGRoot>(*renderer())) {
+            auto& root = downcast<RenderSVGRoot>(*renderer());
+            viewportSize = root.contentBoxRect().size() / root.style().effectiveZoom();
+        } else
+            viewportSize = downcast<RenderSVGViewportContainer>(*renderer()).viewport().size();
     }
 
-    return downcast<RenderSVGViewportContainer>(*renderer()).viewport().size();
+    if (!viewportSize.isEmpty())
+        return viewportSize;
+
+    if (!(hasIntrinsicWidth() && hasIntrinsicHeight()))
+        return { };
+
+    return FloatSize(floatValueForLength(intrinsicWidth(), 0), floatValueForLength(intrinsicHeight(), 0));
 }
 
 bool SVGSVGElement::hasIntrinsicWidth() const

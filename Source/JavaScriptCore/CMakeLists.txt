@@ -15,6 +15,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/debugger"
     "${JAVASCRIPTCORE_DIR}/inspector"
     "${JAVASCRIPTCORE_DIR}/inspector/agents"
+    "${JAVASCRIPTCORE_DIR}/inspector/augmentable"
     "${JAVASCRIPTCORE_DIR}/inspector/remote"
     "${JAVASCRIPTCORE_DIR}/interpreter"
     "${JAVASCRIPTCORE_DIR}/jit"
@@ -117,8 +118,9 @@ set(JavaScriptCore_SOURCES
 
     dfg/DFGAbstractHeap.cpp
     dfg/DFGAbstractValue.cpp
-    dfg/DFGArgumentsSimplificationPhase.cpp
     dfg/DFGArithMode.cpp
+    dfg/DFGArgumentsEliminationPhase.cpp
+    dfg/DFGArgumentsUtilities.cpp
     dfg/DFGArrayMode.cpp
     dfg/DFGAtTailAbstractState.cpp
     dfg/DFGAvailability.cpp
@@ -231,6 +233,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGValidate.cpp
     dfg/DFGValueSource.cpp
     dfg/DFGValueStrength.cpp
+    dfg/DFGVarargsForwardingPhase.cpp
     dfg/DFGVariableAccessData.cpp
     dfg/DFGVariableAccessDataDump.cpp
     dfg/DFGVariableEvent.cpp
@@ -247,7 +250,6 @@ set(JavaScriptCore_SOURCES
     disassembler/LLVMDisassembler.cpp
     disassembler/X86Disassembler.cpp
 
-    heap/BlockAllocator.cpp
     heap/CodeBlockSet.cpp
     heap/ConservativeRoots.cpp
     heap/CopiedSpace.cpp
@@ -273,7 +275,6 @@ set(JavaScriptCore_SOURCES
     heap/MarkedBlock.cpp
     heap/MarkedSpace.cpp
     heap/SlotVisitor.cpp
-    heap/SuperRegion.cpp
     heap/Weak.cpp
     heap/WeakBlock.cpp
     heap/WeakHandleOwner.cpp
@@ -327,6 +328,7 @@ set(JavaScriptCore_SOURCES
     jit/AssemblyHelpers.cpp
     jit/ArityCheckFailReturnThunks.cpp
     jit/BinarySwitch.cpp
+    jit/ExecutableAllocationFuzz.cpp
     jit/ExecutableAllocator.cpp
     jit/ExecutableAllocatorFixedVMPool.cpp
     jit/GCAwareJITStubRoutine.cpp
@@ -398,7 +400,6 @@ set(JavaScriptCore_SOURCES
 
 set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ArgList.cpp
-    runtime/Arguments.cpp
     runtime/ArgumentsIteratorConstructor.cpp
     runtime/ArgumentsIteratorPrototype.cpp
     runtime/ArrayBuffer.cpp
@@ -414,6 +415,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/BooleanPrototype.cpp
     runtime/BundlePath.cpp
     runtime/CallData.cpp
+    runtime/ClonedArguments.cpp
     runtime/CodeCache.cpp
     runtime/CodeSpecializationKind.cpp
     runtime/CommonIdentifiers.cpp
@@ -423,6 +425,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/Completion.cpp
     runtime/ConsoleClient.cpp
     runtime/ConsolePrototype.cpp
+    runtime/ConstantMode.cpp
     runtime/ConstructData.cpp
     runtime/ControlFlowProfiler.cpp
     runtime/CustomGetterSetter.cpp
@@ -431,6 +434,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/DateConversion.cpp
     runtime/DateInstance.cpp
     runtime/DatePrototype.cpp
+    runtime/DirectArguments.cpp
+    runtime/DirectArgumentsOffset.cpp
     runtime/DumpContext.cpp
     runtime/Error.cpp
     runtime/ErrorConstructor.cpp
@@ -438,7 +443,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ErrorInstance.cpp
     runtime/ErrorPrototype.cpp
     runtime/ExceptionFuzz.cpp
-    runtime/ExceptionHelpers.cpp 
+    runtime/ExceptionHelpers.cpp
     runtime/Executable.cpp
     runtime/FunctionConstructor.cpp
     runtime/FunctionExecutableDump.cpp
@@ -450,6 +455,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/InitializeThreading.cpp
     runtime/IntendedStructureChain.cpp
     runtime/InternalFunction.cpp
+    runtime/IteratorOperations.cpp
     runtime/JSAPIValueWrapper.cpp
     runtime/JSLexicalEnvironment.cpp
     runtime/JSArgumentsIterator.cpp
@@ -494,6 +500,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSSet.cpp
     runtime/JSSetIterator.cpp
     runtime/JSString.cpp
+    runtime/JSStringIterator.cpp
     runtime/JSStringJoiner.cpp
     runtime/JSSymbolTableObject.cpp
     runtime/JSTypedArrayConstructors.cpp
@@ -505,7 +512,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/LiteralParser.cpp
     runtime/Lookup.cpp
     runtime/MapConstructor.cpp
-    runtime/MapData.cpp
     runtime/MapIteratorConstructor.cpp
     runtime/MapIteratorPrototype.cpp
     runtime/MapPrototype.cpp
@@ -535,7 +541,11 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/RegExpMatchesArray.cpp
     runtime/RegExpObject.cpp
     runtime/RegExpPrototype.cpp
+    runtime/RuntimeType.cpp
     runtime/SamplingCounter.cpp
+    runtime/ScopeOffset.cpp
+    runtime/ScopedArguments.cpp
+    runtime/ScopedArgumentsTable.cpp
     runtime/SetConstructor.cpp
     runtime/SetIteratorConstructor.cpp
     runtime/SetIteratorPrototype.cpp
@@ -545,6 +555,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/SparseArrayValueMap.cpp
     runtime/StrictEvalActivation.cpp
     runtime/StringConstructor.cpp
+    runtime/StringIteratorConstructor.cpp
+    runtime/StringIteratorPrototype.cpp
     runtime/StringObject.cpp
     runtime/StringPrototype.cpp
     runtime/StringRecursionChecker.cpp
@@ -566,6 +578,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/TypedArrayType.cpp
     runtime/VM.cpp
     runtime/VMEntryScope.cpp
+    runtime/VarOffset.cpp
     runtime/Watchdog.cpp
     runtime/WatchdogNone.cpp
     runtime/WeakMapConstructor.cpp
@@ -579,6 +592,7 @@ list(APPEND JavaScriptCore_SOURCES
 
 set(JavaScriptCore_LUT_FILES
     runtime/ArrayConstructor.cpp
+    runtime/ArrayIteratorPrototype.cpp
     runtime/ArrayPrototype.cpp
     runtime/BooleanPrototype.cpp
     runtime/DateConstructor.cpp
@@ -596,6 +610,7 @@ set(JavaScriptCore_LUT_FILES
     runtime/RegExpObject.cpp
     runtime/RegExpPrototype.cpp
     runtime/StringConstructor.cpp
+    runtime/StringIteratorPrototype.cpp
     runtime/SymbolPrototype.cpp
 )
 
@@ -899,6 +914,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     heap
     inspector
     inspector/agents
+    inspector/augmentable
     inspector/remote
     interpreter
     jit
@@ -961,6 +977,8 @@ set(JavaScriptCore_FORWARDING_HEADERS_FILES
     assembler/MacroAssemblerCodeRef.h
     assembler/MacroAssemblerCodeRef.h
 
+    inspector/augmentable/AugmentableInspectorController.h
+
     inspector/remote/RemoteInspector.h
     inspector/remote/RemoteInspectorConstants.h
     inspector/remote/RemoteInspectorDebuggable.h
@@ -993,6 +1011,7 @@ ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/yarr/YarrPattern.cpp ${DERIV
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/KeywordLookup.h
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/KeywordLookupGenerator.py
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/parser/Keywords.table
     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/KeywordLookupGenerator.py ${CMAKE_CURRENT_SOURCE_DIR}/parser/Keywords.table > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/KeywordLookup.h
     VERBATIM)
 ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/parser/Lexer.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/KeywordLookup.h)

@@ -30,6 +30,7 @@
 #include "APICast.h"
 #include "CallFrame.h"
 #include "Completion.h"
+#include "GCActivityCallback.h"
 #include "InitializeThreading.h"
 #include "JSGlobalObject.h"
 #include "JSLock.h"
@@ -138,7 +139,8 @@ void JSReportExtraMemoryCost(JSContextRef ctx, size_t size)
     }
     ExecState* exec = toJS(ctx);
     JSLockHolder locker(exec);
-    exec->vm().heap.reportExtraMemoryCost(size);
+
+    exec->vm().heap.deprecatedReportExtraMemory(size);
 }
 
 extern "C" JS_EXPORT void JSSynchronousGarbageCollectForDebugging(JSContextRef);

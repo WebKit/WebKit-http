@@ -46,13 +46,13 @@
 #import "OutOfBandTextTrackPrivateAVF.h"
 #import "URL.h"
 #import "Logging.h"
+#import "MediaPlaybackTarget.h"
 #import "MediaSelectionGroupAVFObjC.h"
 #import "MediaTimeAVFoundation.h"
 #import "PlatformTimeRanges.h"
 #import "QuartzCoreSPI.h"
 #import "SecurityOrigin.h"
 #import "SerializedPlatformRepresentationMac.h"
-#import "SoftLinking.h"
 #import "TextEncoding.h"
 #import "TextTrackRepresentation.h"
 #import "UUID.h"
@@ -136,6 +136,14 @@ template <> struct iterator_traits<HashSet<RefPtr<WebCore::MediaSelectionOptionA
 @property (nonatomic, readonly) NSURL *resolvedURL;
 @end
 
+#if PLATFORM(MAC) && ENABLE(WIRELESS_PLAYBACK_TARGET)
+typedef AVOutputDevicePickerContext AVOutputDevicePickerContextType;
+
+@interface AVPlayer (WebKitExtensions)
+@property (nonatomic) AVOutputDevicePickerContext *outputDevicePickerContext;
+@end
+#endif
+
 typedef AVPlayer AVPlayerType;
 typedef AVPlayerItem AVPlayerItemType;
 typedef AVPlayerItemLegibleOutput AVPlayerItemLegibleOutputType;
@@ -182,6 +190,8 @@ SOFT_LINK_CLASS(AVFoundation, AVMetadataItem)
 SOFT_LINK_CLASS(CoreImage, CIContext)
 SOFT_LINK_CLASS(CoreImage, CIImage)
 
+SOFT_LINK_POINTER(AVFoundation, AVAudioTimePitchAlgorithmSpectral, NSString*)
+SOFT_LINK_POINTER(AVFoundation, AVAudioTimePitchAlgorithmVarispeed, NSString*)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicVisual, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicAudible, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVMediaTypeClosedCaption, NSString *)
@@ -206,6 +216,8 @@ SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetClientBundleIdentifierKey, NS
 #define AVAssetImageGenerator getAVAssetImageGeneratorClass()
 #define AVMetadataItem getAVMetadataItemClass()
 
+#define AVAudioTimePitchAlgorithmSpectral getAVAudioTimePitchAlgorithmSpectral()
+#define AVAudioTimePitchAlgorithmVarispeed getAVAudioTimePitchAlgorithmVarispeed()
 #define AVMediaCharacteristicVisual getAVMediaCharacteristicVisual()
 #define AVMediaCharacteristicAudible getAVMediaCharacteristicAudible()
 #define AVMediaTypeClosedCaption getAVMediaTypeClosedCaption()
@@ -543,6 +555,7 @@ void MediaPlayerPrivateAVFoundationObjC::cancelLoad()
         [m_avPlayer.get() removeObserver:m_objcObserver.get() forKeyPath:@"rate"];
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
         [m_avPlayer.get() removeObserver:m_objcObserver.get() forKeyPath:@"externalPlaybackActive"];
+        [m_avPlayer.get() removeObserver:m_objcObserver.get() forKeyPath:@"outputDevicePickerContext"];
 #endif
         m_avPlayer = nil;
     }
@@ -924,6 +937,10 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayer()
     [m_avPlayer.get() addObserver:m_objcObserver.get() forKeyPath:@"rate" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextPlayer];
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     [m_avPlayer.get() addObserver:m_objcObserver.get() forKeyPath:@"externalPlaybackActive" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextPlayer];
+    [m_avPlayer.get() addObserver:m_objcObserver.get() forKeyPath:@"outputDevicePickerContext" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextPlayer];
+#endif
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     updateDisableExternalPlayback();
 #endif
 
@@ -933,6 +950,11 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayer()
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     [m_avPlayer.get() setAllowsExternalPlayback:m_allowsWirelessVideoPlayback];
+#endif
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    if (m_outputDevicePickerContext)
+        m_avPlayer.get().outputDevicePickerContext = m_outputDevicePickerContext.get();
 #endif
 
     if (player()->client().mediaPlayerIsVideo())
@@ -962,6 +984,8 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerItem()
     for (NSString *keyName in itemKVOProperties())
         [m_avPlayerItem.get() addObserver:m_objcObserver.get() forKeyPath:keyName options:options context:(void *)MediaPlayerAVFoundationObservationContextPlayerItem];
 
+    [m_avPlayerItem setAudioTimePitchAlgorithm:(player()->preservesPitch() ? AVAudioTimePitchAlgorithmSpectral : AVAudioTimePitchAlgorithmVarispeed)];
+
     if (m_avPlayer)
         setAVPlayerItem(m_avPlayerItem.get());
 
@@ -969,7 +993,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerItem()
     AtomicString value;
     if (player()->doesHaveAttribute("data-youtube-id", &value))
         [m_avPlayerItem.get() setDataYouTubeID: value];
- #endif
+#endif
 
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP) && HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
     const NSTimeInterval legibleOutputAdvanceInterval = 2;
@@ -1129,9 +1153,8 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenLayer(PlatformLayer* 
         syncTextTrackBounds();
         [m_videoFullscreenLayer addSublayer:m_textTrackRepresentationLayer.get()];
     }
-#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+
     updateDisableExternalPlayback();
-#endif
 }
 
 void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenFrame(FloatRect frame)
@@ -1320,7 +1343,6 @@ void MediaPlayerPrivateAVFoundationObjC::setClosedCaptionsVisible(bool closedCap
 }
 
 void MediaPlayerPrivateAVFoundationObjC::setRateDouble(double rate)
-
 {
     setDelayCallbacks(true);
     m_cachedRate = rate;
@@ -1334,6 +1356,12 @@ double MediaPlayerPrivateAVFoundationObjC::rate() const
         return 0;
 
     return m_cachedRate;
+}
+
+void MediaPlayerPrivateAVFoundationObjC::setPreservesPitch(bool preservesPitch)
+{
+    if (m_avPlayerItem)
+        [m_avPlayerItem setAudioTimePitchAlgorithm:(preservesPitch ? AVAudioTimePitchAlgorithmSpectral : AVAudioTimePitchAlgorithmVarispeed)];
 }
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateAVFoundationObjC::platformBufferedTimeRanges() const
@@ -2677,8 +2705,9 @@ bool MediaPlayerPrivateAVFoundationObjC::isCurrentPlaybackTargetWireless() const
     if (!m_avPlayer)
         return false;
 
-    bool wirelessTarget = [m_avPlayer.get() isExternalPlaybackActive];
+    bool wirelessTarget = m_avPlayer.get().externalPlaybackActive;
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::isCurrentPlaybackTargetWireless(%p) - returning %s", this, boolString(wirelessTarget));
+
     return wirelessTarget;
 }
 
@@ -2687,6 +2716,7 @@ MediaPlayer::WirelessPlaybackTargetType MediaPlayerPrivateAVFoundationObjC::wire
     if (!m_avPlayer)
         return MediaPlayer::TargetTypeNone;
 
+#if PLATFORM(IOS)
     switch (wkExernalDeviceTypeForPlayer(m_avPlayer.get())) {
     case wkExternalPlaybackTypeNone:
         return MediaPlayer::TargetTypeNone;
@@ -2698,6 +2728,10 @@ MediaPlayer::WirelessPlaybackTargetType MediaPlayerPrivateAVFoundationObjC::wire
 
     ASSERT_NOT_REACHED();
     return MediaPlayer::TargetTypeNone;
+
+#else
+    return MediaPlayer::TargetTypeAirPlay;
+#endif
 }
 
 String MediaPlayerPrivateAVFoundationObjC::wirelessPlaybackTargetName() const
@@ -2715,7 +2749,7 @@ bool MediaPlayerPrivateAVFoundationObjC::wirelessVideoPlaybackDisabled() const
 {
     if (!m_avPlayer)
         return !m_allowsWirelessVideoPlayback;
-    
+
     m_allowsWirelessVideoPlayback = [m_avPlayer.get() allowsExternalPlayback];
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::wirelessVideoPlaybackDisabled(%p) - returning %s", this, boolString(!m_allowsWirelessVideoPlayback));
 
@@ -2728,16 +2762,32 @@ void MediaPlayerPrivateAVFoundationObjC::setWirelessVideoPlaybackDisabled(bool d
     m_allowsWirelessVideoPlayback = !disabled;
     if (!m_avPlayer)
         return;
-    
+
     [m_avPlayer.get() setAllowsExternalPlayback:!disabled];
 }
+
+#if !PLATFORM(IOS)
+void MediaPlayerPrivateAVFoundationObjC::setWirelessPlaybackTarget(const MediaPlaybackTarget& target)
+{
+    m_outputDevicePickerContext = target.devicePickerContext();
+
+    LOG(Media, "MediaPlayerPrivateAVFoundationObjC::setWirelessPlaybackTarget(%p) - target = %p", this, m_outputDevicePickerContext.get());
+
+    if (!m_avPlayer)
+        return;
+
+    m_avPlayer.get().outputDevicePickerContext = m_outputDevicePickerContext.get();
+}
+#endif
 
 void MediaPlayerPrivateAVFoundationObjC::updateDisableExternalPlayback()
 {
     if (!m_avPlayer)
         return;
 
+#if PLATFORM(IOS)
     [m_avPlayer setUsesExternalPlaybackWhileExternalScreenIsActive:m_videoFullscreenLayer != nil];
+#endif
 }
 #endif
 
@@ -3158,6 +3208,8 @@ NSArray* assetTrackMetadataKeyNames()
             function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::rateDidChange, m_callback, [newValue doubleValue]);
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
         else if ([keyPath isEqualToString:@"externalPlaybackActive"])
+            function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::playbackTargetIsWirelessDidChange, m_callback);
+        else if ([keyPath isEqualToString:@"outputDevicePickerContext"])
             function = WTF::bind(&MediaPlayerPrivateAVFoundationObjC::playbackTargetIsWirelessDidChange, m_callback);
 #endif
     }
