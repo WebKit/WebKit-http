@@ -56,16 +56,16 @@ KeyInputHandlerXKB::~KeyInputHandlerXKB()
     xkb_state_unref(m_xkbState);
 }
 
-KeyInputHandler::HandlingResult KeyInputHandlerXKB::handleKeyInputEvent(const KeyboardEvent::Raw& event)
+KeyInputHandler::HandlingResult KeyInputHandlerXKB::handleKeyInputEvent(const WPE::Input::KeyboardEvent::Raw& event)
 {
     // Keycode system starts at 8. Go figure.
     int key = event.key + 8;
 
     uint8_t keyModifiers = 0;
     if (m_modifiers.effective & (1 << m_modifiers.ctrl))
-        keyModifiers |= KeyboardEvent::Control;
+        keyModifiers |= WPE::Input::KeyboardEvent::Control;
     if (m_modifiers.effective & (1 << m_modifiers.shift))
-        keyModifiers |= KeyboardEvent::Shift;
+        keyModifiers |= WPE::Input::KeyboardEvent::Shift;
 
     HandlingResult result{
         xkb_state_key_get_one_sym(m_xkbState, key),

@@ -40,7 +40,7 @@ InputHandler::InputHandler(View& view)
     m_pointer.x = m_pointer.y = 0;
 }
 
-void InputHandler::handleKeyboardKey(KeyboardEvent::Raw event)
+void InputHandler::handleKeyboardKey(WPE::Input::KeyboardEvent::Raw event)
 {
     WPE::KeyInputHandler::HandlingResult handledEvent = m_keyInputHandler->handleKeyInputEvent(event);
     m_view.page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent({
@@ -52,9 +52,9 @@ void InputHandler::handleKeyboardKey(KeyboardEvent::Raw event)
     }));
 }
 
-void InputHandler::handlePointerEvent(PointerEvent::Raw event)
+void InputHandler::handlePointerEvent(WPE::Input::PointerEvent::Raw event)
 {
-    if (event.type == PointerEvent::Motion) {
+    if (event.type == WPE::Input::PointerEvent::Motion) {
         const WebCore::IntSize& viewSize = m_view.size();
         m_pointer.x = std::max(0, std::min(event.x, viewSize.width() - 1));
         m_pointer.y = std::max(0, std::min(event.y, viewSize.height() - 1));
@@ -70,9 +70,9 @@ void InputHandler::handlePointerEvent(PointerEvent::Raw event)
     }));
 }
 
-void InputHandler::handleAxisEvent(AxisEvent::Raw event)
+void InputHandler::handleAxisEvent(WPE::Input::AxisEvent::Raw event)
 {
-    ASSERT(event.type == AxisEvent::Motion);
+    ASSERT(event.type == WPE::Input::AxisEvent::Motion);
     m_view.page().handleWheelEvent(WebKit::NativeWebWheelEvent({
         event.type,
         event.time,
@@ -83,70 +83,42 @@ void InputHandler::handleAxisEvent(AxisEvent::Raw event)
     }));
 }
 
-void InputHandler::handleTouchDown(TouchEvent::Raw event)
+void InputHandler::handleTouchDown(WPE::Input::TouchEvent::Raw event)
 {
-    ASSERT(m_touchEvents[event.id].type == TouchEvent::Null);
-    m_touchEvents[event.id] = TouchEvent::Raw{ TouchEvent::Down, event.time, event.id, event.x, event.y };
+    ASSERT(m_touchEvents[event.id].type == WPE::Input::TouchEvent::Null);
+    m_touchEvents[event.id] = WPE::Input::TouchEvent::Raw{ WPE::Input::TouchEvent::Down, event.time, event.id, event.x, event.y };
     dispatchTouchEvent(event.id);
 }
 
-void InputHandler::handleTouchUp(TouchEvent::Raw event)
+void InputHandler::handleTouchUp(WPE::Input::TouchEvent::Raw event)
 {
-    ASSERT(m_touchEvents[event.id].type == TouchEvent::Down || m_touchEvents[event.id].type == TouchEvent::Motion);
+    ASSERT(m_touchEvents[event.id].type == WPE::Input::TouchEvent::Down || m_touchEvents[event.id].type == WPE::Input::TouchEvent::Motion);
     auto& previousEvent = m_touchEvents[event.id];
     int x = previousEvent.x;
     int y = previousEvent.y;
-    m_touchEvents[event.id] = TouchEvent::Raw{ TouchEvent::Up, event.time, event.id, x, y };
+    m_touchEvents[event.id] = WPE::Input::TouchEvent::Raw{ WPE::Input::TouchEvent::Up, event.time, event.id, x, y };
     dispatchTouchEvent(event.id);
 }
 
-void InputHandler::handleTouchMotion(TouchEvent::Raw event)
+void InputHandler::handleTouchMotion(WPE::Input::TouchEvent::Raw event)
 {
-    ASSERT(m_touchEvents[event.id].type == TouchEvent::Down || m_touchEvents[event.id].type == TouchEvent::Motion);
-    m_touchEvents[event.id] = TouchEvent::Raw{ TouchEvent::Motion, event.time, event.id, event.x, event.y };
+    ASSERT(m_touchEvents[event.id].type == WPE::Input::TouchEvent::Down || m_touchEvents[event.id].type == WPE::Input::TouchEvent::Motion);
+    m_touchEvents[event.id] = WPE::Input::TouchEvent::Raw{ WPE::Input::TouchEvent::Motion, event.time, event.id, event.x, event.y };
     dispatchTouchEvent(event.id);
-}
-
-static WebKit::WebPlatformTouchPoint::TouchPointState stateForTouchEvent(int mainEventId, const TouchEvent::Raw& event)
-{
-    if (event.id != mainEventId)
-        return WebKit::WebPlatformTouchPoint::TouchStationary;
-
-    switch (event.type) {
-    case TouchEvent::Down:
-        return WebKit::WebPlatformTouchPoint::TouchPressed;
-    case TouchEvent::Motion:
-        return WebKit::WebPlatformTouchPoint::TouchMoved;
-    case TouchEvent::Up:
-        return WebKit::WebPlatformTouchPoint::TouchReleased;
-    case TouchEvent::Null:
-        ASSERT_NOT_REACHED();
-        return WebKit::WebPlatformTouchPoint::TouchStationary;
-    };
 }
 
 void InputHandler::dispatchTouchEvent(int id)
 {
-    Vector<WebKit::WebPlatformTouchPoint> touchPoints;
-    touchPoints.reserveCapacity(m_touchEvents.size());
-
-    for (auto& event : m_touchEvents) {
-        if (event.type == TouchEvent::Null)
-            continue;
-
-        touchPoints.uncheckedAppend(WebKit::WebPlatformTouchPoint(event.id, stateForTouchEvent(id, event),
-            WebCore::IntPoint(event.x, event.y), WebCore::IntPoint(event.x, event.y)));
-    }
-
     auto& event = m_touchEvents[id];
-    m_view.page().handleTouchEvent(WebKit::NativeWebTouchEvent(WPE::TouchEvent{
-        WTF::move(touchPoints),
+    m_view.page().handleTouchEvent(WebKit::NativeWebTouchEvent(WPE::Input::TouchEvent{
+        m_touchEvents,
         event.type,
+        id,
         event.time
     }));
 
-    if (event.type == TouchEvent::Up)
-        event = TouchEvent::Raw{ TouchEvent::Null, 0, -1, -1, -1 };
+    if (event.type == WPE::Input::TouchEvent::Up)
+        event = WPE::Input::TouchEvent::Raw{ WPE::Input::TouchEvent::Null, 0, -1, -1, -1 };
 }
 
 } // namespace WPE

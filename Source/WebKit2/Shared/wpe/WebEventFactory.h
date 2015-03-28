@@ -27,22 +27,16 @@
 #define WebEventFactory_h
 
 #include "WebEvent.h"
-
-namespace WPE {
-struct AxisEvent;
-struct KeyboardEvent;
-struct PointerEvent;
-struct TouchEvent;
-};
+#include <WPE/Input/Events.h>
 
 namespace WebKit {
 
 class WebEventFactory {
 public:
-    static WebKeyboardEvent createWebKeyboardEvent(WPE::KeyboardEvent&&);
-    static WebMouseEvent createWebMouseEvent(WPE::PointerEvent&&);
-    static WebWheelEvent createWebWheelEvent(WPE::AxisEvent&&);
-    static WebTouchEvent createWebTouchEvent(WPE::TouchEvent&&);
+    static WebKeyboardEvent createWebKeyboardEvent(WPE::Input::KeyboardEvent&&);
+    static WebMouseEvent createWebMouseEvent(WPE::Input::PointerEvent&&);
+    static WebWheelEvent createWebWheelEvent(WPE::Input::AxisEvent&&);
+    static WebTouchEvent createWebTouchEvent(WPE::Input::TouchEvent&&);
 };
 
 } // namespace WebKit

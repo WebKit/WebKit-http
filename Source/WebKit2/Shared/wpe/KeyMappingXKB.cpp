@@ -29,7 +29,6 @@
 #if USE(KEY_INPUT_HANDLING_XKB)
 
 #include "WindowsKeyboardCodes.h"
-#include "WPEInputEvents.h"
 #include <wtf/gobject/GUniquePtr.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
@@ -37,7 +36,7 @@ namespace WebKit {
 
 namespace KeyMapping {
 
-String identifierForKeyEvent(const WPE::KeyboardEvent& event)
+String identifierForKeyEvent(const WPE::Input::KeyboardEvent& event)
 {
     switch (event.keyCode) {
         case XKB_KEY_Menu:
@@ -141,7 +140,7 @@ String identifierForKeyEvent(const WPE::KeyboardEvent& event)
     }
 }
 
-int windowsKeyCodeForKeyEvent(const WPE::KeyboardEvent& event)
+int windowsKeyCodeForKeyEvent(const WPE::Input::KeyboardEvent& event)
 {
     switch (event.keyCode) {
         case XKB_KEY_KP_0:
@@ -512,7 +511,7 @@ int windowsKeyCodeForKeyEvent(const WPE::KeyboardEvent& event)
     }
 }
 
-String singleCharacterStringForKeyEvent(const WPE::KeyboardEvent& event)
+String singleCharacterStringForKeyEvent(const WPE::Input::KeyboardEvent& event)
 {
     switch (event.keyCode) {
         case XKB_KEY_ISO_Enter:

@@ -28,9 +28,9 @@
 
 #include "APIObject.h"
 #include "KeyInputHandler.h"
-#include "WPEInputEvents.h"
 #include <array>
 #include <wtf/Vector.h>
+#include <WPE/Input/Events.h>
 
 namespace WKWPE {
 
@@ -43,21 +43,21 @@ public:
         return new InputHandler(view);
     }
 
-    void handleKeyboardKey(KeyboardEvent::Raw);
+    void handleKeyboardKey(WPE::Input::KeyboardEvent::Raw);
 
-    void handlePointerEvent(PointerEvent::Raw);
+    void handlePointerEvent(WPE::Input::PointerEvent::Raw);
 
-    void handleAxisEvent(AxisEvent::Raw);
+    void handleAxisEvent(WPE::Input::AxisEvent::Raw);
 
-    void handleTouchDown(TouchEvent::Raw);
-    void handleTouchUp(TouchEvent::Raw);
-    void handleTouchMotion(TouchEvent::Raw);
+    void handleTouchDown(WPE::Input::TouchEvent::Raw);
+    void handleTouchUp(WPE::Input::TouchEvent::Raw);
+    void handleTouchMotion(WPE::Input::TouchEvent::Raw);
 
 private:
     InputHandler(View&);
 
     View& m_view;
-    std::unique_ptr<KeyInputHandler> m_keyInputHandler;
+    std::unique_ptr<WPE::KeyInputHandler> m_keyInputHandler;
 
     struct Pointer {
         uint32_t x;
@@ -65,7 +65,7 @@ private:
     } m_pointer;
 
     void dispatchTouchEvent(int id);
-    std::array<TouchEvent::Raw, 10> m_touchEvents;
+    std::array<WPE::Input::TouchEvent::Raw, 10> m_touchEvents;
 };
 
 } // namespace WPE

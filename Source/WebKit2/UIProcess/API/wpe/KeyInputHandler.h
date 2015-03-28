@@ -26,7 +26,7 @@
 #ifndef KeyInputHandler_h
 #define KeyInputHandler_h
 
-#include "WPEInputEvents.h"
+#include <WPE/Input/Events.h>
 #include <memory>
 #include <tuple>
 
@@ -39,7 +39,7 @@ public:
     virtual ~KeyInputHandler() = default;
 
     using HandlingResult = std::tuple<uint32_t, uint32_t, uint8_t>;
-    virtual HandlingResult handleKeyInputEvent(const WPE::KeyboardEvent::Raw&) = 0;
+    virtual HandlingResult handleKeyInputEvent(const WPE::Input::KeyboardEvent::Raw&) = 0;
 };
 
 } // namespace WPE

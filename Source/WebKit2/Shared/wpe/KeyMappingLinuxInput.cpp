@@ -30,7 +30,6 @@
 #if USE(KEY_INPUT_HANDLING_LINUX_INPUT)
 
 #include "WindowsKeyboardCodes.h"
-#include "WPEInputEvents.h"
 #include <linux/input.h>
 #include <wtf/gobject/GUniquePtr.h>
 
@@ -38,7 +37,7 @@ namespace WebKit {
 
 namespace KeyMapping {
 
-String identifierForKeyEvent(const WPE::KeyboardEvent& event)
+String identifierForKeyEvent(const WPE::Input::KeyboardEvent& event)
 {
     switch (event.keyCode) {
 // "Accept" The Accept (Commit) key.
@@ -288,7 +287,7 @@ String identifierForKeyEvent(const WPE::KeyboardEvent& event)
     }
 }
 
-int windowsKeyCodeForKeyEvent(const WPE::KeyboardEvent& event)
+int windowsKeyCodeForKeyEvent(const WPE::Input::KeyboardEvent& event)
 {
 
     switch (event.keyCode) {
@@ -557,7 +556,7 @@ int windowsKeyCodeForKeyEvent(const WPE::KeyboardEvent& event)
     }
 }
 
-String singleCharacterStringForKeyEvent(const WPE::KeyboardEvent& event)
+String singleCharacterStringForKeyEvent(const WPE::Input::KeyboardEvent& event)
 {
     switch (event.keyCode) {
         case KEY_KPENTER:

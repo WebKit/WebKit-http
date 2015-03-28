@@ -45,7 +45,7 @@ typedef union _GdkEvent GdkEvent;
 #endif
 
 #if PLATFORM(WPE)
-#include "WPEInputEvents.h"
+#include <WPE/Input/Events.h>
 #endif
 
 namespace WebKit {
@@ -61,7 +61,7 @@ public:
     template <typename EvasEventMouse>
     NativeWebMouseEvent(const EvasEventMouse*, const WebCore::AffineTransform&, const WebCore::AffineTransform&);
 #elif PLATFORM(WPE)
-    NativeWebMouseEvent(WPE::PointerEvent&&);
+    NativeWebMouseEvent(WPE::Input::PointerEvent&&);
 #endif
 
 #if USE(APPKIT)

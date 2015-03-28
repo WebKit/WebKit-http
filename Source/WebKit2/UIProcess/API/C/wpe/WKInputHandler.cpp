@@ -29,6 +29,7 @@
 #include "WKAPICast.h"
 #include "WPEInputHandler.h"
 #include "WPEView.h"
+#include <WPE/Input/Events.h>
 
 using namespace WebKit;
 
@@ -39,7 +40,7 @@ WKInputHandlerRef WKInputHandlerCreate(WKViewRef view)
 
 void WKInputHandlerNotifyKeyboardKey(WKInputHandlerRef handler, WKKeyboardKey event)
 {
-    toImpl(handler)->handleKeyboardKey(WPE::KeyboardEvent::Raw{
+    toImpl(handler)->handleKeyboardKey(WPE::Input::KeyboardEvent::Raw{
         event.time,
         event.key,
         event.state
@@ -48,8 +49,8 @@ void WKInputHandlerNotifyKeyboardKey(WKInputHandlerRef handler, WKKeyboardKey ev
 
 void WKInputHandlerNotifyPointerMotion(WKInputHandlerRef handler, WKPointerMotion event)
 {
-    toImpl(handler)->handlePointerEvent(WPE::PointerEvent::Raw{
-        WPE::PointerEvent::Motion,
+    toImpl(handler)->handlePointerEvent(WPE::Input::PointerEvent::Raw{
+        WPE::Input::PointerEvent::Motion,
         event.time,
         event.x,
         event.y,
@@ -59,8 +60,8 @@ void WKInputHandlerNotifyPointerMotion(WKInputHandlerRef handler, WKPointerMotio
 
 void WKInputHandlerNotifyPointerButton(WKInputHandlerRef handler, WKPointerButton event)
 {
-    toImpl(handler)->handlePointerEvent(WPE::PointerEvent::Raw{
-        WPE::PointerEvent::Button,
+    toImpl(handler)->handlePointerEvent(WPE::Input::PointerEvent::Raw{
+        WPE::Input::PointerEvent::Button,
         event.time,
         0, 0,
         event.button,
@@ -70,8 +71,8 @@ void WKInputHandlerNotifyPointerButton(WKInputHandlerRef handler, WKPointerButto
 
 void WKInputHandlerNotifyAxisMotion(WKInputHandlerRef handler, WKAxisMotion event)
 {
-    toImpl(handler)->handleAxisEvent(WPE::AxisEvent::Raw{
-        WPE::AxisEvent::Motion,
+    toImpl(handler)->handleAxisEvent(WPE::Input::AxisEvent::Raw{
+        WPE::Input::AxisEvent::Motion,
         event.time,
         event.axis,
         event.value
@@ -80,8 +81,8 @@ void WKInputHandlerNotifyAxisMotion(WKInputHandlerRef handler, WKAxisMotion even
 
 void WKInputHandlerNotifyTouchDown(WKInputHandlerRef handler, WKTouchDown event)
 {
-    toImpl(handler)->handleTouchDown(WPE::TouchEvent::Raw{
-        WPE::TouchEvent::Down,
+    toImpl(handler)->handleTouchDown(WPE::Input::TouchEvent::Raw{
+        WPE::Input::TouchEvent::Down,
         event.time,
         event.id,
         event.x,
@@ -91,8 +92,8 @@ void WKInputHandlerNotifyTouchDown(WKInputHandlerRef handler, WKTouchDown event)
 
 void WKInputHandlerNotifyTouchUp(WKInputHandlerRef handler, WKTouchUp event)
 {
-    toImpl(handler)->handleTouchUp(WPE::TouchEvent::Raw{
-        WPE::TouchEvent::Up,
+    toImpl(handler)->handleTouchUp(WPE::Input::TouchEvent::Raw{
+        WPE::Input::TouchEvent::Up,
         event.time,
         event.id,
         -1, -1
@@ -101,8 +102,8 @@ void WKInputHandlerNotifyTouchUp(WKInputHandlerRef handler, WKTouchUp event)
 
 void WKInputHandlerNotifyTouchMotion(WKInputHandlerRef handler, WKTouchMotion event)
 {
-    toImpl(handler)->handleTouchMotion(WPE::TouchEvent::Raw{
-        WPE::TouchEvent::Motion,
+    toImpl(handler)->handleTouchMotion(WPE::Input::TouchEvent::Raw{
+        WPE::Input::TouchEvent::Motion,
         event.time,
         event.id,
         event.x,

@@ -26,19 +26,16 @@
 #ifndef KeyMapping_h
 #define KeyMapping_h
 
-#include <wtf/Forward.h>
-
-namespace WPE {
-struct KeyboardEvent;
-}
+#include <WPE/Input/Events.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebKit {
 
 namespace KeyMapping {
 
-String identifierForKeyEvent(const WPE::KeyboardEvent&);
-int windowsKeyCodeForKeyEvent(const WPE::KeyboardEvent&);
-String singleCharacterStringForKeyEvent(const WPE::KeyboardEvent&);
+String identifierForKeyEvent(const WPE::Input::KeyboardEvent&);
+int windowsKeyCodeForKeyEvent(const WPE::Input::KeyboardEvent&);
+String singleCharacterStringForKeyEvent(const WPE::Input::KeyboardEvent&);
 
 } // namespace KeyMapping
 

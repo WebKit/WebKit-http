@@ -27,27 +27,26 @@
 #include "WebEventFactory.h"
 
 #include "KeyMapping.h"
-#include "WPEInputEvents.h"
 
 namespace WebKit {
 
-static WebEvent::Modifiers modifiersForEvent(const WPE::KeyboardEvent& event)
+static WebEvent::Modifiers modifiersForEvent(const WPE::Input::KeyboardEvent& event)
 {
     unsigned modifiers = 0;
 
-    if (event.modifiers & WPE::KeyboardEvent::Control)
+    if (event.modifiers & WPE::Input::KeyboardEvent::Control)
         modifiers |= WebEvent::ControlKey;
-    if (event.modifiers & WPE::KeyboardEvent::Shift)
+    if (event.modifiers & WPE::Input::KeyboardEvent::Shift)
         modifiers |= WebEvent::ShiftKey;
-    if (event.modifiers & WPE::KeyboardEvent::Alt)
+    if (event.modifiers & WPE::Input::KeyboardEvent::Alt)
         modifiers |= WebEvent::AltKey;
-    if (event.modifiers & WPE::KeyboardEvent::Meta)
+    if (event.modifiers & WPE::Input::KeyboardEvent::Meta)
         modifiers |= WebEvent::MetaKey;
 
     return static_cast<WebEvent::Modifiers>(modifiers);
 }
 
-WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(WPE::KeyboardEvent&& event)
+WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(WPE::Input::KeyboardEvent&& event)
 {
     String singleCharacterString = KeyMapping::singleCharacterStringForKeyEvent(event);
     return WebKeyboardEvent(event.pressed ? WebEvent::KeyDown : WebEvent::KeyUp,
@@ -58,17 +57,17 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(WPE::KeyboardEvent&& ev
         modifiersForEvent(event), event.time);
 }
 
-WebMouseEvent WebEventFactory::createWebMouseEvent(WPE::PointerEvent&& event)
+WebMouseEvent WebEventFactory::createWebMouseEvent(WPE::Input::PointerEvent&& event)
 {
     WebEvent::Type type = WebEvent::NoType;
     switch (event.type) {
-    case WPE::PointerEvent::Motion:
+    case WPE::Input::PointerEvent::Motion:
         type = WebEvent::MouseMove;
         break;
-    case WPE::PointerEvent::Button:
+    case WPE::Input::PointerEvent::Button:
         type = event.state ? WebEvent::MouseDown : WebEvent::MouseUp;
         break;
-    case WPE::PointerEvent::Null:
+    case WPE::Input::PointerEvent::Null:
         ASSERT_NOT_REACHED();
     }
 
@@ -79,7 +78,7 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(WPE::PointerEvent&& event)
         0, 0, 0, 1, static_cast<WebEvent::Modifiers>(0), event.time);
 }
 
-WebWheelEvent WebEventFactory::createWebWheelEvent(WPE::AxisEvent&& event)
+WebWheelEvent WebEventFactory::createWebWheelEvent(WPE::Input::AxisEvent&& event)
 {
     // FIXME: We shouldn't hard-code this.
     enum Axis {
@@ -107,24 +106,53 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(WPE::AxisEvent&& event)
         delta, wheelTicks, WebWheelEvent::ScrollByPixelWheelEvent, static_cast<WebEvent::Modifiers>(0), event.time);
 }
 
-WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::TouchEvent&& event)
+static WebKit::WebPlatformTouchPoint::TouchPointState stateForTouchPoint(int mainEventId, const WPE::Input::TouchEvent::Raw& point)
+{
+    if (point.id != mainEventId)
+        return WebKit::WebPlatformTouchPoint::TouchStationary;
+
+    switch (point.type) {
+    case WPE::Input::TouchEvent::Down:
+        return WebKit::WebPlatformTouchPoint::TouchPressed;
+    case WPE::Input::TouchEvent::Motion:
+        return WebKit::WebPlatformTouchPoint::TouchMoved;
+    case WPE::Input::TouchEvent::Up:
+        return WebKit::WebPlatformTouchPoint::TouchReleased;
+    case WPE::Input::TouchEvent::Null:
+        ASSERT_NOT_REACHED();
+        return WebKit::WebPlatformTouchPoint::TouchStationary;
+    };
+}
+
+WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::Input::TouchEvent&& event)
 {
     WebEvent::Type type = WebEvent::NoType;
     switch (event.type) {
-    case WPE::TouchEvent::Down:
+    case WPE::Input::TouchEvent::Down:
         type = WebEvent::TouchStart;
         break;
-    case WPE::TouchEvent::Motion:
+    case WPE::Input::TouchEvent::Motion:
         type = WebEvent::TouchMove;
         break;
-    case WPE::TouchEvent::Up:
+    case WPE::Input::TouchEvent::Up:
         type = WebEvent::TouchEnd;
         break;
-    case WPE::TouchEvent::Null:
+    case WPE::Input::TouchEvent::Null:
         ASSERT_NOT_REACHED();
     }
 
-    return WebTouchEvent(type, WTF::move(event.touchPoints), WebEvent::Modifiers(0), event.time);
+    Vector<WebKit::WebPlatformTouchPoint> touchPoints;
+    touchPoints.reserveCapacity(event.touchPoints.size());
+
+    for (auto& point : event.touchPoints) {
+        if (point.type == WPE::Input::TouchEvent::Null)
+            continue;
+
+        touchPoints.uncheckedAppend(WebKit::WebPlatformTouchPoint(point.id, stateForTouchPoint(event.id, point),
+            WebCore::IntPoint(point.x, point.y), WebCore::IntPoint(point.x, point.y)));
+    }
+
+    return WebTouchEvent(type, WTF::move(touchPoints), WebEvent::Modifiers(0), event.time);
 }
 
 } // namespace WebKit

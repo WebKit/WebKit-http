@@ -39,7 +39,7 @@ public:
     KeyInputHandlerXKB();
     virtual ~KeyInputHandlerXKB();
 
-    HandlingResult handleKeyInputEvent(const WPE::KeyboardEvent::Raw&) override;
+    HandlingResult handleKeyInputEvent(const WPE::Input::KeyboardEvent::Raw&) override;
 
 private:
     struct xkb_keymap* m_xkbKeymap;
