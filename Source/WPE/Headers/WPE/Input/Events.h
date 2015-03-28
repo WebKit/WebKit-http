@@ -23,13 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPEInputEvents_h
-#define WPEInputEvents_h
+#ifndef WPE_Input_Events_h
+#define WPE_Input_Events_h
 
-#include "WebEvent.h"
-#include <wtf/Vector.h>
+#include <array>
 
 namespace WPE {
+
+namespace Input {
 
 struct KeyboardEvent {
     struct Raw {
@@ -113,11 +114,14 @@ struct TouchEvent {
         int32_t y;
     };
 
-    Vector<WebKit::WebPlatformTouchPoint> touchPoints;
+    std::array<Raw, 10> touchPoints;
     Type type;
+    int32_t id;
     uint32_t time;
 };
 
-} // namespace WPE;
+} // namespace Input
 
-#endif // WPEInputEvents_h
+} // namespace WPE
+
+#endif // WPE_Input_Events_h
