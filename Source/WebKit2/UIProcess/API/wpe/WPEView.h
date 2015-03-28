@@ -37,7 +37,7 @@ class WebPageGroup;
 class WebProcessPool;
 }
 
-namespace WPE {
+namespace WKWPE {
 
 class View : public API::ObjectImpl<API::Object::Type::View> {
 public:
@@ -62,6 +62,6 @@ private:
     WebCore::IntSize m_size;
 };
 
-} // namespace WPE
+} // namespace WKWPE
 
 #endif // WPEView_h

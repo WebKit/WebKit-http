@@ -30,15 +30,15 @@
 #error "Please #include \"WKAPICast.h\" instead of this file directly."
 #endif
 
-namespace WPE {
+namespace WKWPE {
 class InputHandler;
 class View;
 }
 
 namespace WebKit {
 
-WK_ADD_API_MAPPING(WKInputHandlerRef, WPE::InputHandler)
-WK_ADD_API_MAPPING(WKViewRef, WPE::View)
+WK_ADD_API_MAPPING(WKInputHandlerRef, WKWPE::InputHandler)
+WK_ADD_API_MAPPING(WKViewRef, WKWPE::View)
 
 }
 

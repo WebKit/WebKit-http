@@ -31,18 +31,18 @@
 #include "NativeWebWheelEvent.h"
 #include "WPEView.h"
 
-namespace WPE {
+namespace WKWPE {
 
 InputHandler::InputHandler(View& view)
     : m_view(view)
-    , m_keyInputHandler(KeyInputHandler::create())
+    , m_keyInputHandler(WPE::KeyInputHandler::create())
 {
     m_pointer.x = m_pointer.y = 0;
 }
 
 void InputHandler::handleKeyboardKey(KeyboardEvent::Raw event)
 {
-    KeyInputHandler::HandlingResult handledEvent = m_keyInputHandler->handleKeyInputEvent(event);
+    WPE::KeyInputHandler::HandlingResult handledEvent = m_keyInputHandler->handleKeyInputEvent(event);
     m_view.page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent({
         event.time,
         std::get<0>(handledEvent),

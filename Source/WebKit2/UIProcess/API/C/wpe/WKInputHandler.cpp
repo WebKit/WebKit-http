@@ -34,7 +34,7 @@ using namespace WebKit;
 
 WKInputHandlerRef WKInputHandlerCreate(WKViewRef view)
 {
-    return toAPI(WPE::InputHandler::create(*toImpl(view)));
+    return toAPI(WKWPE::InputHandler::create(*toImpl(view)));
 }
 
 void WKInputHandlerNotifyKeyboardKey(WKInputHandlerRef handler, WKKeyboardKey event)

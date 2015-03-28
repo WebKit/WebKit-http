@@ -31,7 +31,7 @@
 
 using namespace WebKit;
 
-namespace WPE {
+namespace WKWPE {
 
 View::View(WebProcessPool* pool, WebPageGroup* pageGroup)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
@@ -61,4 +61,4 @@ void View::setSize(const WebCore::IntSize& size)
         m_pageProxy->drawingArea()->setSize(size, WebCore::IntSize(), WebCore::IntSize());
 }
 
-} // namespace WPE
+} // namespace WKWPE

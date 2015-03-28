@@ -32,7 +32,7 @@
 #include <array>
 #include <wtf/Vector.h>
 
-namespace WPE {
+namespace WKWPE {
 
 class View;
 
