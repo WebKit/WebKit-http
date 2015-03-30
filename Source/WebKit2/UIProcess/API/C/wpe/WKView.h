@@ -36,6 +36,7 @@ extern "C" {
 WK_EXPORT WKViewRef WKViewCreate(WKContextRef, WKPageGroupRef);
 WK_EXPORT WKPageRef WKViewGetPage(WKViewRef);
 WK_EXPORT void WKViewResize(WKViewRef, WKSize);
+WK_EXPORT void WKViewMakeWPEInputTarget(WKViewRef);
 
 #ifdef __cplusplus
 }

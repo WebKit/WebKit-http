@@ -63,12 +63,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
-    UIProcess/API/C/wpe/WKInputHandler.cpp
     UIProcess/API/C/wpe/WKView.cpp
-    UIProcess/API/wpe/KeyInputHandlerLinuxInput.cpp
-    UIProcess/API/wpe/KeyInputHandlerXKB.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
-    UIProcess/API/wpe/WPEInputHandler.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/DefaultUndoController.cpp
     UIProcess/DrawingAreaProxyImpl.cpp

@@ -4,9 +4,13 @@ set(WPE_INCLUDE_DIRECTORIES
 )
 
 set(WPE_SOURCES
+    Source/Input/Handling.cpp
+
     Source/Input/LinuxInput/KeyMappingLinuxInput.cpp
+    Source/Input/LinuxInput/KeyboardEventHandlerLinuxInput.cpp
 
     Source/Input/XKB/KeyMappingXKB.cpp
+    Source/Input/XKB/KeyboardEventHandlerXKB.cpp
 )
 
 add_definitions(-DKEY_INPUT_HANDLING_XKB=1)

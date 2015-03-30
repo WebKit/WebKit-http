@@ -26,7 +26,6 @@
 #include <glib.h>
 #include <weston/compositor.h>
 #include <WebKit/WKRetainPtr.h>
-#include <WebKit/WKInputHandler.h>
 #include <WebKit/WKView.h>
 
 namespace WPE {
@@ -51,7 +50,6 @@ private:
 
     Environment& m_environment;
 
-    WKRetainPtr<WKInputHandlerRef> m_inputHandler;
     WKRetainPtr<WKViewRef> m_view;
 };
 

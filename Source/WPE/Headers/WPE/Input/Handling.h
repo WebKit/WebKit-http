@@ -23,51 +23,57 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPEInputHandler_h
-#define WPEInputHandler_h
+#ifndef WPE_Input_Handling_h
+#define WPE_Input_Handling_h
 
-#include "APIObject.h"
-#include "KeyInputHandler.h"
-#include <array>
-#include <wtf/Vector.h>
 #include <WPE/Input/Events.h>
+#include <array>
 
-namespace WKWPE {
+namespace WPE {
 
-class View;
+namespace Input {
 
-class InputHandler : public API::ObjectImpl<API::Object::Type::InputHandler> {
+class KeyboardEventHandler;
+
+class Client {
 public:
-    static InputHandler* create(View& view)
-    {
-        return new InputHandler(view);
-    }
+    virtual ~Client() = default;
 
-    void handleKeyboardKey(WPE::Input::KeyboardEvent::Raw);
+    virtual void handleKeyboardEvent(KeyboardEvent&&) = 0;
+    virtual void handlePointerEvent(PointerEvent&&) = 0;
+    virtual void handleAxisEvent(AxisEvent&&) = 0;
+    virtual void handleTouchEvent(TouchEvent&&) = 0;
+};
 
-    void handlePointerEvent(WPE::Input::PointerEvent::Raw);
+class Server {
+public:
+    static Server& singleton();
 
-    void handleAxisEvent(WPE::Input::AxisEvent::Raw);
+    void setTarget(Client* target) { m_target = target; }
 
-    void handleTouchDown(WPE::Input::TouchEvent::Raw);
-    void handleTouchUp(WPE::Input::TouchEvent::Raw);
-    void handleTouchMotion(WPE::Input::TouchEvent::Raw);
+    void serveKeyboardEvent(KeyboardEvent::Raw&&);
+    void servePointerEvent(PointerEvent::Raw&&);
+    void serveAxisEvent(AxisEvent::Raw&&);
+    void serveTouchEvent(TouchEvent::Raw&&);
 
 private:
-    InputHandler(View&);
+    Server();
 
-    View& m_view;
-    std::unique_ptr<WPE::KeyInputHandler> m_keyInputHandler;
+    Client* m_target { nullptr };
+
+    std::unique_ptr<KeyboardEventHandler> m_keyboardEventHandler;
 
     struct Pointer {
         uint32_t x;
         uint32_t y;
-    } m_pointer;
+    } m_pointer { 0, 0 };
 
     void dispatchTouchEvent(int id);
-    std::array<WPE::Input::TouchEvent::Raw, 10> m_touchEvents;
+    std::array<TouchEvent::Raw, 10> m_touchEvents;
 };
 
 } // namespace WPE
 
-#endif // WPEInputHandler_h
+} // namespace WPE
+
+#endif // WPE_Input_Handling_h

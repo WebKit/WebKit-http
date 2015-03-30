@@ -29,6 +29,7 @@
 #include "APIObject.h"
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
+#include <WPE/Input/Handling.h>
 #include <memory>
 #include <wtf/RefPtr.h>
 
@@ -39,7 +40,7 @@ class WebProcessPool;
 
 namespace WKWPE {
 
-class View : public API::ObjectImpl<API::Object::Type::View> {
+class View : public API::ObjectImpl<API::Object::Type::View>, public WPE::Input::Client {
 public:
     static View* create(WebKit::WebProcessPool* pool, WebKit::WebPageGroup* pageGroup)
     {
@@ -53,6 +54,14 @@ public:
 
     const WebCore::IntSize& size() const { return m_size; }
     void setSize(const WebCore::IntSize& size);
+
+    void makeWPEInputTarget();
+
+    // WPE::Input::Client
+    void handleKeyboardEvent(WPE::Input::KeyboardEvent&&) override;
+    void handlePointerEvent(WPE::Input::PointerEvent&&) override;
+    void handleAxisEvent(WPE::Input::AxisEvent&&) override;
+    void handleTouchEvent(WPE::Input::TouchEvent&&) override;
 
 private:
     View(WebKit::WebProcessPool*, WebKit::WebPageGroup*);

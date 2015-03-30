@@ -23,8 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef KeyInputHandler_h
-#define KeyInputHandler_h
+#ifndef KeyboardEventHandler_h
+#define KeyboardEventHandler_h
 
 #include <WPE/Input/Events.h>
 #include <memory>
@@ -32,16 +32,20 @@
 
 namespace WPE {
 
-class KeyInputHandler {
+namespace Input {
+
+class KeyboardEventHandler {
 public:
-    static std::unique_ptr<KeyInputHandler> create();
+    static std::unique_ptr<KeyboardEventHandler> create();
 
-    virtual ~KeyInputHandler() = default;
+    virtual ~KeyboardEventHandler() = default;
 
-    using HandlingResult = std::tuple<uint32_t, uint32_t, uint8_t>;
-    virtual HandlingResult handleKeyInputEvent(const WPE::Input::KeyboardEvent::Raw&) = 0;
+    using Result = std::tuple<uint32_t, uint32_t, uint8_t>;
+    virtual Result handleKeyboardEvent(const KeyboardEvent::Raw&) = 0;
 };
+
+} // namespace Input
 
 } // namespace WPE
 
-#endif // KeyInputHandler_h
+#endif // KeyboardEventHandler_h

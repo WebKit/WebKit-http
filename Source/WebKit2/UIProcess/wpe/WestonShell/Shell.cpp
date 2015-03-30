@@ -27,6 +27,7 @@
 #include "Shell.h"
 
 #include "Environment.h"
+#include <WPE/Input/Handling.h>
 #include <WebKit/WKContextConfigurationRef.h>
 #include <WebKit/WKContext.h>
 #include <WebKit/WKPageGroup.h>
@@ -59,15 +60,19 @@ const struct weston_pointer_grab_interface Shell::m_pgInterface = {
         int newY = wl_fixed_to_int(pointer->y);
 
         Shell::instance().m_environment.updateCursorPosition(newX, newY);
-        WKInputHandlerNotifyPointerMotion(Shell::instance().m_inputHandler.get(),
-            WKPointerMotion{ time, newX, newY });
+        WPE::Input::Server::singleton().servePointerEvent({
+            WPE::Input::PointerEvent::Motion,
+            time, newX, newY, 0, 0
+        });
     },
 
     // button
     [](struct weston_pointer_grab* grab, uint32_t time, uint32_t button, uint32_t state)
     {
-        WKInputHandlerNotifyPointerButton(Shell::instance().m_inputHandler.get(),
-            WKPointerButton{ time, button, state });
+        WPE::Input::Server::singleton().servePointerEvent({
+            WPE::Input::PointerEvent::Button,
+            time, 0, 0, button, state
+        });
     },
 
     // axis
@@ -75,8 +80,10 @@ const struct weston_pointer_grab_interface Shell::m_pgInterface = {
     {
         // Multiply the delta value by -4 to turn it into a more acceptable direction,
         // and to increase the pixel step into something more ... efficient.
-        WKInputHandlerNotifyAxisMotion(Shell::instance().m_inputHandler.get(),
-            WKAxisMotion{ time, axis, -4 * wl_fixed_to_int(value) });
+        WPE::Input::Server::singleton().serveAxisEvent({
+            WPE::Input::AxisEvent::Motion,
+            time, axis, -4 * wl_fixed_to_int(value)
+        });
     },
 
     // cancel
@@ -87,8 +94,7 @@ const struct weston_keyboard_grab_interface Shell::m_kgInterface = {
     // key
     [](struct weston_keyboard_grab*, uint32_t time, uint32_t key, uint32_t state)
     {
-        WKInputHandlerNotifyKeyboardKey(Shell::instance().m_inputHandler.get(),
-            WKKeyboardKey{ time, key, state });
+        WPE::Input::Server::singleton().serveKeyboardEvent({ time, key, state });
     },
 
     // modifiers
@@ -104,20 +110,26 @@ const struct weston_touch_grab_interface Shell::m_tgInterface = {
     // down
     [](struct weston_touch_grab*, uint32_t time, int id, wl_fixed_t x, wl_fixed_t y)
     {
-        WKInputHandlerNotifyTouchDown(Shell::instance().m_inputHandler.get(),
-            WKTouchDown{ time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) });
+        WPE::Input::Server::singleton().serveTouchEvent({
+            WPE::Input::TouchEvent::Down,
+            time, id, wl_fixed_to_int(x), wl_fixed_to_int(y)
+        });
     },
     // up
     [](struct weston_touch_grab*, uint32_t time, int id)
     {
-        WKInputHandlerNotifyTouchUp(Shell::instance().m_inputHandler.get(),
-            WKTouchUp{ time, id });
+        WPE::Input::Server::singleton().serveTouchEvent({
+            WPE::Input::TouchEvent::Up,
+            time, id, 0, 0
+        });
     },
     // motion
     [](struct weston_touch_grab*, uint32_t time, int id, wl_fixed_t x, wl_fixed_t y)
     {
-        WKInputHandlerNotifyTouchMotion(Shell::instance().m_inputHandler.get(),
-            WKTouchMotion{ time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) });
+        WPE::Input::Server::singleton().serveTouchEvent({
+            WPE::Input::TouchEvent::Motion,
+            time, id, wl_fixed_to_int(x), wl_fixed_to_int(y)
+        });
     },
     // frame
     [](struct weston_touch_grab*) { },
@@ -144,8 +156,7 @@ gpointer Shell::launchWPE(gpointer data)
     Shell::instance().m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
     auto view = Shell::instance().m_view.get();
     WKViewResize(view, Shell::instance().m_environment.outputSize());
-
-    Shell::instance().m_inputHandler = adoptWK(WKInputHandlerCreate(view));
+    WKViewMakeWPEInputTarget(view);
 
     const char* url = g_getenv("WPE_SHELL_URL");
     if (!url)

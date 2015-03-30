@@ -26,6 +26,10 @@
 #include "config.h"
 #include "WPEView.h"
 
+#include "NativeWebKeyboardEvent.h"
+#include "NativeWebMouseEvent.h"
+#include "NativeWebTouchEvent.h"
+#include "NativeWebWheelEvent.h"
 #include "WebPageGroup.h"
 #include "WebProcessPool.h"
 
@@ -59,6 +63,31 @@ void View::setSize(const WebCore::IntSize& size)
     m_size = size;
     if (m_pageProxy->drawingArea())
         m_pageProxy->drawingArea()->setSize(size, WebCore::IntSize(), WebCore::IntSize());
+}
+
+void View::makeWPEInputTarget()
+{
+    WPE::Input::Server::singleton().setTarget(this);
+}
+
+void View::handleKeyboardEvent(WPE::Input::KeyboardEvent&& event)
+{
+    page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(WTF::move(event)));
+}
+
+void View::handlePointerEvent(WPE::Input::PointerEvent&& event)
+{
+    page().handleMouseEvent(WebKit::NativeWebMouseEvent(WTF::move(event)));
+}
+
+void View::handleAxisEvent(WPE::Input::AxisEvent&& event)
+{
+    page().handleWheelEvent(WebKit::NativeWebWheelEvent(WTF::move(event)));
+}
+
+void View::handleTouchEvent(WPE::Input::TouchEvent&& event)
+{
+    page().handleTouchEvent(WebKit::NativeWebTouchEvent(WTF::move(event)));
 }
 
 } // namespace WKWPE

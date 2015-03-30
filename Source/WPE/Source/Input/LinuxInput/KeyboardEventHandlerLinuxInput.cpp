@@ -24,15 +24,37 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "KeyInputHandlerLinuxInput.h"
+#if defined(KEY_INPUT_HANDLING_LINUX_INPUT) && KEY_INPUT_HANDLING_LINUX_INPUT
 
-#if USE(KEY_INPUT_HANDLING_LINUX_INPUT)
+#include "KeyboardEventHandler.h"
 
 #include <linux/input.h>
 #include <mutex>
 
 namespace WPE {
+
+namespace Input {
+
+class KeyboardEventHandlerLinuxInput final : public KeyboardEventHandler {
+public:
+    KeyboardEventHandlerLinuxInput() = default;
+    virtual ~KeyboardEventHandlerLinuxInput() = default;
+
+    Result handleKeyboardEvent(const KeyboardEvent::Raw&) override;
+
+private:
+    struct Modifiers {
+        bool ctrl;
+        bool shift;
+        bool alt;
+        bool meta;
+    } m_modifiers { false, false, false, false };
+};
+
+std::unique_ptr<KeyboardEventHandler> KeyboardEventHandler::create()
+{
+    return std::unique_ptr<KeyboardEventHandlerLinuxInput>(new KeyboardEventHandlerLinuxInput);
+}
 
 static uint32_t keyCodeToUTF32(uint32_t key, bool state)
 {
@@ -103,20 +125,7 @@ static uint32_t keyCodeToUTF32(uint32_t key, bool state)
     return state ? entry.uppercase : entry.lowercase;
 };
 
-std::unique_ptr<KeyInputHandler> KeyInputHandler::create()
-{
-    return std::make_unique<KeyInputHandlerLinuxInput>();
-}
-
-KeyInputHandlerLinuxInput::KeyInputHandlerLinuxInput()
-{
-    m_modifiers.ctrl = false;
-    m_modifiers.shift = false;
-    m_modifiers.alt = false;
-    m_modifiers.meta = false;
-}
-
-KeyInputHandler::HandlingResult KeyInputHandlerLinuxInput::handleKeyInputEvent(const WPE::KeyboardEvent::Raw& event)
+KeyboardEventHandler::Result KeyboardEventHandlerLinuxInput::handleKeyboardEvent(const KeyboardEvent::Raw& event)
 {
     uint8_t keyModifiers = 0;
 
@@ -151,9 +160,11 @@ KeyInputHandler::HandlingResult KeyInputHandlerLinuxInput::handleKeyInputEvent(c
 
     // TODO: Range check.
 
-    return HandlingResult{ event.key, keyCodeToUTF32(event.key, m_modifiers.shift), keyModifiers };
+    return Result{ event.key, keyCodeToUTF32(event.key, m_modifiers.shift), keyModifiers };
 }
+
+} // namespace Input
 
 } // namespace WPE
 
-#endif // USE(KEY_INPUT_HANDLING_LINUX_INPUT)
+#endif // defined(KEY_INPUT_HANDLING_LINUX_INPUT) && KEY_INPUT_HANDLING_LINUX_INPUT

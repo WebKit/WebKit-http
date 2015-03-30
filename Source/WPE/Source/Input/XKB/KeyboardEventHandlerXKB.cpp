@@ -23,19 +23,40 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "KeyInputHandlerXKB.h"
+#if defined(KEY_INPUT_HANDLING_XKB) && KEY_INPUT_HANDLING_XKB
 
-#if USE(KEY_INPUT_HANDLING_XKB)
+#include "KeyboardEventHandler.h"
+#include <xkbcommon/xkbcommon.h>
 
 namespace WPE {
 
-std::unique_ptr<KeyInputHandler> KeyInputHandler::create()
+namespace Input {
+
+class KeyboardEventHandlerXKB final : public KeyboardEventHandler {
+public:
+    KeyboardEventHandlerXKB();
+    virtual ~KeyboardEventHandlerXKB();
+
+    Result handleKeyboardEvent(const KeyboardEvent::Raw&) override;
+
+private:
+    struct xkb_keymap* m_xkbKeymap;
+    struct xkb_state* m_xkbState;
+
+    struct Modifiers {
+        xkb_mod_index_t ctrl;
+        xkb_mod_index_t shift;
+
+        uint32_t effective;
+    } m_modifiers;
+};
+
+std::unique_ptr<KeyboardEventHandler> KeyboardEventHandler::create()
 {
-    return std::make_unique<KeyInputHandlerXKB>();
+    return std::unique_ptr<KeyboardEventHandlerXKB>(new KeyboardEventHandlerXKB);
 }
 
-KeyInputHandlerXKB::KeyInputHandlerXKB()
+KeyboardEventHandlerXKB::KeyboardEventHandlerXKB()
 {
     struct xkb_context* context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     struct xkb_rule_names names = { "evdev", "pc105", "us", "", "" };
@@ -50,13 +71,13 @@ KeyInputHandlerXKB::KeyInputHandlerXKB()
     xkb_context_unref(context);
 }
 
-KeyInputHandlerXKB::~KeyInputHandlerXKB()
+KeyboardEventHandlerXKB::~KeyboardEventHandlerXKB()
 {
     xkb_keymap_unref(m_xkbKeymap);
     xkb_state_unref(m_xkbState);
 }
 
-KeyInputHandler::HandlingResult KeyInputHandlerXKB::handleKeyInputEvent(const WPE::Input::KeyboardEvent::Raw& event)
+KeyboardEventHandler::Result KeyboardEventHandlerXKB::handleKeyboardEvent(const KeyboardEvent::Raw& event)
 {
     // Keycode system starts at 8. Go figure.
     int key = event.key + 8;
@@ -67,7 +88,7 @@ KeyInputHandler::HandlingResult KeyInputHandlerXKB::handleKeyInputEvent(const WP
     if (m_modifiers.effective & (1 << m_modifiers.shift))
         keyModifiers |= WPE::Input::KeyboardEvent::Shift;
 
-    HandlingResult result{
+    Result result{
         xkb_state_key_get_one_sym(m_xkbState, key),
         xkb_state_key_get_utf32(m_xkbState, key),
         keyModifiers
@@ -80,6 +101,8 @@ KeyInputHandler::HandlingResult KeyInputHandlerXKB::handleKeyInputEvent(const WP
     return result;
 }
 
+} // namespace Input
+
 } // namespace WPE
 
-#endif // USE(KEY_INPUT_HANDLING_XKB)
+#endif // defined(KEY_INPUT_HANDLING_XKB) && KEY_INPUT_HANDLING_XKB
