@@ -24,20 +24,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "KeyMapping.h"
+#if defined(KEY_INPUT_HANDLING_LINUX_INPUT) && KEY_INPUT_HANDLING_LINUX_INPUT
 
-#if USE(KEY_INPUT_HANDLING_LINUX_INPUT)
+#include <WPE/Input/KeyMapping.h>
 
 #include "WindowsKeyboardCodes.h"
+#include <WPE/Input/Events.h>
 #include <linux/input.h>
-#include <wtf/gobject/GUniquePtr.h>
 
-namespace WebKit {
+namespace WPE {
 
-namespace KeyMapping {
+namespace Input {
 
-String identifierForKeyEvent(const WPE::Input::KeyboardEvent& event)
+const char* identifierForKeyEvent(const KeyboardEvent& event)
 {
     switch (event.keyCode) {
 // "Accept" The Accept (Commit) key.
@@ -283,11 +282,11 @@ String identifierForKeyEvent(const WPE::Input::KeyboardEvent& event)
 // "U+3099" The Combining Katakana-Hiragana Voiced Sound Mark (Dead Voiced Sound) key.
 // "U+309A" The Combining Katakana-Hiragana Semi-Voiced Sound Mark (Dead Semivoiced Sound) key.
         default:
-            return String::format("U+%04X", event.unicode);
+            return nullptr;
     }
 }
 
-int windowsKeyCodeForKeyEvent(const WPE::Input::KeyboardEvent& event)
+int windowsKeyCodeForKeyEvent(const KeyboardEvent& event)
 {
 
     switch (event.keyCode) {
@@ -556,7 +555,7 @@ int windowsKeyCodeForKeyEvent(const WPE::Input::KeyboardEvent& event)
     }
 }
 
-String singleCharacterStringForKeyEvent(const WPE::Input::KeyboardEvent& event)
+const char* singleCharacterForKeyEvent(const KeyboardEvent& event)
 {
     switch (event.keyCode) {
         case KEY_KPENTER:
@@ -567,16 +566,12 @@ String singleCharacterStringForKeyEvent(const WPE::Input::KeyboardEvent& event)
         case KEY_TAB:
             return "\t";
         default:
-            glong length;
-            GUniquePtr<gunichar2> uchar16(g_ucs4_to_utf16(&event.unicode, 1, 0, &length, nullptr));
-            if (uchar16)
-                return String(uchar16.get());
-            return String();
+            return nullptr;
     }
 }
 
-} // namespace KeyMapping
+} // namespace Input
 
-} // namespace WebKit
+} // namespace WPE
 
-#endif // USE(KEY_INPUT_HANDLING_LINUX_INPUT)
+#endif // defined(KEY_INPUT_HANDLING_LINUX_INPUT) && KEY_INPUT_HANDLING_LINUX_INPUT

@@ -23,20 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "KeyMapping.h"
+#if defined(KEY_INPUT_HANDLING_XKB) && KEY_INPUT_HANDLING_XKB
 
-#if USE(KEY_INPUT_HANDLING_XKB)
+#include <WPE/Input/KeyMapping.h>
 
 #include "WindowsKeyboardCodes.h"
-#include <wtf/gobject/GUniquePtr.h>
+#include <WPE/Input/Events.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-namespace WebKit {
+namespace WPE {
 
-namespace KeyMapping {
+namespace Input {
 
-String identifierForKeyEvent(const WPE::Input::KeyboardEvent& event)
+const char* identifierForKeyEvent(const KeyboardEvent& event)
 {
     switch (event.keyCode) {
         case XKB_KEY_Menu:
@@ -136,11 +135,11 @@ String identifierForKeyEvent(const WPE::Input::KeyboardEvent& event)
         case XKB_KEY_Tab:
             return "U+0009";
         default:
-            return String::format("U+%04X", event.unicode);
+            return nullptr;
     }
 }
 
-int windowsKeyCodeForKeyEvent(const WPE::Input::KeyboardEvent& event)
+int windowsKeyCodeForKeyEvent(const KeyboardEvent& event)
 {
     switch (event.keyCode) {
         case XKB_KEY_KP_0:
@@ -511,7 +510,7 @@ int windowsKeyCodeForKeyEvent(const WPE::Input::KeyboardEvent& event)
     }
 }
 
-String singleCharacterStringForKeyEvent(const WPE::Input::KeyboardEvent& event)
+const char* singleCharacterForKeyEvent(const KeyboardEvent& event)
 {
     switch (event.keyCode) {
         case XKB_KEY_ISO_Enter:
@@ -523,16 +522,12 @@ String singleCharacterStringForKeyEvent(const WPE::Input::KeyboardEvent& event)
         case XKB_KEY_Tab:
             return "\t";
         default:
-            glong length;
-            GUniquePtr<gunichar2> uchar16(g_ucs4_to_utf16(&event.unicode, 1, 0, &length, nullptr));
-            if (uchar16)
-                return String(uchar16.get());
-            return String();
+            return nullptr;
     }
 }
 
-} // namespace KeyMapping
+} // namespace Input
 
-} // namespace WebKit
+} // namespace WPE
 
-#endif // USE(KEY_INPUT_HANDLING_XKB)
+#endif // defined(KEY_INPUT_HANDLING_XKB) && KEY_INPUT_HANDLING_XKB

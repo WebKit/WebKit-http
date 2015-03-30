@@ -26,7 +26,8 @@
 #include "config.h"
 #include "WebEventFactory.h"
 
-#include "KeyMapping.h"
+#include <WPE/Input/KeyMapping.h>
+#include <wtf/gobject/GUniquePtr.h>
 
 namespace WebKit {
 
@@ -46,13 +47,36 @@ static WebEvent::Modifiers modifiersForEvent(const WPE::Input::KeyboardEvent& ev
     return static_cast<WebEvent::Modifiers>(modifiers);
 }
 
+static String singleCharacterStringForKeyEvent(const WPE::Input::KeyboardEvent& event)
+{
+    const char* singleCharacter = WPE::Input::singleCharacterForKeyEvent(event);
+    if (singleCharacter)
+        return String(singleCharacter);
+
+    glong length;
+    GUniquePtr<gunichar2> uchar16(g_ucs4_to_utf16(&event.unicode, 1, 0, &length, nullptr));
+    if (uchar16)
+        return String(uchar16.get());
+    return String();
+}
+
+static String identifierStringForKeyEvent(const WPE::Input::KeyboardEvent& event)
+{
+    const char* identifier = WPE::Input::identifierForKeyEvent(event);
+    if (identifier)
+        return String(identifier);
+
+    return String::format("U+%04X", event.unicode);
+}
+
 WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(WPE::Input::KeyboardEvent&& event)
 {
-    String singleCharacterString = KeyMapping::singleCharacterStringForKeyEvent(event);
+    String singleCharacterString = singleCharacterStringForKeyEvent(event);
+    String identifierString = identifierStringForKeyEvent(event);
+
     return WebKeyboardEvent(event.pressed ? WebEvent::KeyDown : WebEvent::KeyUp,
-        singleCharacterString, singleCharacterString,
-        KeyMapping::identifierForKeyEvent(event),
-        KeyMapping::windowsKeyCodeForKeyEvent(event),
+        singleCharacterString, singleCharacterString, identifierString,
+        WPE::Input::windowsKeyCodeForKeyEvent(event),
         event.keyCode, 0, false, false, false,
         modifiersForEvent(event), event.time);
 }

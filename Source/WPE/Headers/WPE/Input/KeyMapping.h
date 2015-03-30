@@ -23,22 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef KeyMapping_h
-#define KeyMapping_h
+#ifndef WPE_Input_KeyMapping_h
+#define WPE_Input_KeyMapping_h
 
-#include <WPE/Input/Events.h>
-#include <wtf/text/WTFString.h>
+namespace WPE {
 
-namespace WebKit {
+namespace Input {
 
-namespace KeyMapping {
+struct KeyboardEvent;
 
-String identifierForKeyEvent(const WPE::Input::KeyboardEvent&);
-int windowsKeyCodeForKeyEvent(const WPE::Input::KeyboardEvent&);
-String singleCharacterStringForKeyEvent(const WPE::Input::KeyboardEvent&);
+const char* identifierForKeyEvent(const KeyboardEvent&);
+int windowsKeyCodeForKeyEvent(const KeyboardEvent&);
+const char* singleCharacterForKeyEvent(const KeyboardEvent&);
 
-} // namespace KeyMapping
+} // namespace Input
 
-} // namespace WebKit
+} // namespace WPE
 
-#endif // KeyMapping_h
+#endif // WPE_Input_KeyMapping_h

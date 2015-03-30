@@ -54,8 +54,6 @@ list(APPEND WebKit2_SOURCES
     Shared/linux/WebMemorySamplerLinux.cpp
     Shared/soup/WebCoreArgumentCodersSoup.cpp
     Shared/unix/ChildProcessMain.cpp
-    Shared/wpe/KeyMappingLinuxInput.cpp
-    Shared/wpe/KeyMappingXKB.cpp
     Shared/wpe/NativeWebKeyboardEventWPE.cpp
     Shared/wpe/NativeWebMouseEventWPE.cpp
     Shared/wpe/NativeWebTouchEventWPE.cpp
@@ -183,6 +181,7 @@ list(APPEND WebKit2_LIBRARIES
     ${HARFBUZZ_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
+    WPE
 )
 
 if (ENABLE_WESTON_SHELL)
