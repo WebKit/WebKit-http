@@ -25,7 +25,6 @@
 
 #include <Athol/Interfaces.h>
 #include <DerivedSources/WebCore/WaylandWPEProtocolServer.h>
-#include <WebKit/WKInputHandler.h>
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKView.h>
 #include <glib.h>
@@ -49,7 +48,6 @@ private:
     API::Compositor* m_compositor;
 
     WKRetainPtr<WKViewRef> m_view;
-    WKRetainPtr<WKInputHandlerRef> m_inputHandler;
 };
 
 } // namespace WPE
