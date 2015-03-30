@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,59 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_Input_Handling_h
-#define WPE_Input_Handling_h
+#ifndef WPE_WPE_h
+#define WPE_WPE_h
 
-#include <WPE/WPE.h>
-#include <WPE/Input/Events.h>
-#include <array>
-#include <memory>
+#define WPE_EXPORT __attribute__((visibility("default")))
 
-namespace WPE {
-
-namespace Input {
-
-class KeyboardEventHandler;
-
-class Client {
-public:
-    virtual ~Client() = default;
-
-    virtual void handleKeyboardEvent(KeyboardEvent&&) = 0;
-    virtual void handlePointerEvent(PointerEvent&&) = 0;
-    virtual void handleAxisEvent(AxisEvent&&) = 0;
-    virtual void handleTouchEvent(TouchEvent&&) = 0;
-};
-
-class Server {
-public:
-    static WPE_EXPORT Server& singleton();
-
-    WPE_EXPORT void setTarget(Client*);
-
-    WPE_EXPORT void serveKeyboardEvent(KeyboardEvent::Raw&&);
-    WPE_EXPORT void servePointerEvent(PointerEvent::Raw&&);
-    WPE_EXPORT void serveAxisEvent(AxisEvent::Raw&&);
-    WPE_EXPORT void serveTouchEvent(TouchEvent::Raw&&);
-
-private:
-    Server();
-
-    Client* m_target { nullptr };
-
-    std::unique_ptr<KeyboardEventHandler> m_keyboardEventHandler;
-
-    struct Pointer {
-        uint32_t x;
-        uint32_t y;
-    } m_pointer { 0, 0 };
-
-    void dispatchTouchEvent(int id);
-    std::array<TouchEvent::Raw, 10> m_touchEvents;
-};
-
-} // namespace WPE
-
-} // namespace WPE
-
-#endif // WPE_Input_Handling_h
+#endif // WPE_WPE_h

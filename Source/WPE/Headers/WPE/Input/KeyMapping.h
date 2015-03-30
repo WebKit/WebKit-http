@@ -26,15 +26,17 @@
 #ifndef WPE_Input_KeyMapping_h
 #define WPE_Input_KeyMapping_h
 
+#include <WPE/WPE.h>
+
 namespace WPE {
 
 namespace Input {
 
 struct KeyboardEvent;
 
-const char* identifierForKeyEvent(const KeyboardEvent&);
-int windowsKeyCodeForKeyEvent(const KeyboardEvent&);
-const char* singleCharacterForKeyEvent(const KeyboardEvent&);
+WPE_EXPORT const char* identifierForKeyEvent(const KeyboardEvent&);
+WPE_EXPORT int windowsKeyCodeForKeyEvent(const KeyboardEvent&);
+WPE_EXPORT const char* singleCharacterForKeyEvent(const KeyboardEvent&);
 
 } // namespace Input
 

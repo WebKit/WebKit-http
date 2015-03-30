@@ -42,6 +42,11 @@ Server::Server()
 {
 }
 
+void Server::setTarget(Client* target)
+{
+    m_target = target;
+}
+
 void Server::serveKeyboardEvent(KeyboardEvent::Raw&& event)
 {
     KeyboardEventHandler::Result handlingResult = m_keyboardEventHandler->handleKeyboardEvent(event);
