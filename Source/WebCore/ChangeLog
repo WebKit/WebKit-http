@@ -1,3 +1,22 @@
+2015-03-31  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [TexMap] Clean up BitmapTexture and BitmapTextureGL.
+        https://bugs.webkit.org/show_bug.cgi?id=143298
+
+        Reviewed by NOBODY (OOPS!).
+
+        No new tests, this is just a refactor.
+
+        * platform/graphics/texmap/BitmapTexture.h:
+        BitmapTexture::Flag is used for checking the texture supports alpha or
+        not. This patch replaces BitmapTexture::Flag to a single boolean to
+        improve readability.
+
+        * platform/graphics/texmap/BitmapTextureGL.h:
+        We do not have to check a suitable texture format in every
+        update/reset. It is enough to store the formats in construction time
+        and reuse them.
+
 2015-01-08  Gwang Yoon Hwang  <yoon@igalia.com>
 
         [CoordinatedGraphics] Non-overlay scrollbar is not rendered

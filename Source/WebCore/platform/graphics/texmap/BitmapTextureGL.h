@@ -39,7 +39,7 @@ public:
 
     virtual IntSize size() const;
     virtual bool isValid() const;
-    virtual bool canReuseWith(const IntSize& contentsSize, Flags = 0);
+    virtual bool canReuseWith(const IntSize& contentsSize, bool hasAlpha = true);
     virtual void didReset();
     void bindAsSurface(GraphicsContext3D*);
     void initializeStencil();
@@ -86,6 +86,10 @@ private:
     void createFboIfNeeded();
 
     FilterInfo m_filterInfo;
+
+    GC3Dint m_internalFormat;
+    GC3Denum m_format;
+    GC3Denum m_type;
 };
 
 BitmapTextureGL* toBitmapTextureGL(BitmapTexture*);

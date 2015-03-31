@@ -31,10 +31,10 @@
 
 namespace WebCore {
 
-PassRefPtr<BitmapTexture> TextureMapper::acquireTextureFromPool(const IntSize& size, const BitmapTexture::Flags flags)
+PassRefPtr<BitmapTexture> TextureMapper::acquireTextureFromPool(const IntSize& size, bool hasAlpha)
 {
     RefPtr<BitmapTexture> selectedTexture = m_texturePool->acquireTexture(size);
-    selectedTexture->reset(size, flags);
+    selectedTexture->reset(size, hasAlpha);
     return selectedTexture.release();
 }
 

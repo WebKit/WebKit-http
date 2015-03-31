@@ -120,7 +120,7 @@ void TextureMapperTiledBackingStore::createOrDestroyTilesIfNeeded(const FloatSiz
             tile.setRect(rect);
 
             if (tile.texture())
-                tile.texture()->reset(enclosingIntRect(tile.rect()).size(), hasAlpha ? BitmapTexture::SupportsAlpha : 0);
+                tile.texture()->reset(enclosingIntRect(tile.rect()).size(), hasAlpha);
             continue;
         }
 
