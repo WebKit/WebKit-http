@@ -41,6 +41,10 @@
 #include <texmap/TextureMapperGL.h>
 #endif
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+#include "TextureMapperPlatformLayerBuffer.h"
+#endif
+
 using namespace std;
 
 namespace WebCore {
@@ -48,6 +52,10 @@ namespace WebCore {
 GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, GraphicsContext3D::RenderStyle renderStyle)
     : m_context(context)
     , m_renderStyle(renderStyle)
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    , m_runLoop(RunLoop::current())
+    , m_swapTextureTimer(m_runLoop, this, &GraphicsContext3DPrivate::swapPlatformTexture)
+#endif
 {
     switch (renderStyle) {
     case GraphicsContext3D::RenderOffscreen:
@@ -59,6 +67,11 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, G
         ASSERT_NOT_REACHED();
         break;
     }
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    if (m_renderStyle == GraphicsContext3D::RenderOffscreen)
+        m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
+#endif
 }
 
 GraphicsContext3DPrivate::~GraphicsContext3DPrivate()
@@ -82,10 +95,30 @@ PlatformGraphicsContext3D GraphicsContext3DPrivate::platformContext()
 #if USE(COORDINATED_GRAPHICS_THREADED)
 RefPtr<TextureMapperPlatformLayerProxy> GraphicsContext3DPrivate::proxy() const
 {
-    notImplemented();
-    return RefPtr<TextureMapperPlatformLayerProxy>();
+    return m_platformLayerProxy.copyRef();
 }
-#elif USE(TEXTURE_MAPPER)
+
+void GraphicsContext3DPrivate::swapBufferIfNeeded()
+{
+    ASSERT(m_renderStyle == GraphicsContext3D::RenderOffscreen);
+    if (m_swapTextureTimer.isActive())
+        return;
+
+    m_swapTextureTimer.startOneShot(0);
+}
+
+void GraphicsContext3DPrivate::swapPlatformTexture()
+{
+    ASSERT(m_renderStyle == GraphicsContext3D::RenderOffscreen);
+    m_context->prepareTexture();
+    IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
+    unique_ptr<TextureMapperPlatformLayerBuffer> buffer = make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, m_context->m_attrs.alpha, true);
+
+    m_platformLayerProxy->pushNextBuffer(WTF::move(buffer));
+
+    m_context->markLayerComposited();
+}
+#elif USE(TEXTURE_MAPPER) && !USE(COORDINATED_GRAPHICS_THREADED)
 void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     if (!m_glContext)

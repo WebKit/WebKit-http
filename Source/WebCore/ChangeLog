@@ -1,3 +1,38 @@
+2015-04-01  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [ThreadedCompositor] Support WebGL for OpenGL.
+        https://bugs.webkit.org/show_bug.cgi?id=143300
+
+        Reviewed by NOBODY (OOPS!).
+
+        To remove pixel transfer operation, this patch adds m_compositorFBO which uses same depth and stencil
+        buffer with m_fbo but uses m_compositorTexture as a color attachment in GraphicsContext3D.
+        Because switching target framebuffer is cheaper than pixel transfer operation and switching color
+        attachment of m_fbo. In Threaded Compositor, when WebGL renders a scene, prepareTexture swaps
+        m_fbo with m_compositorFBO and send the color attachment to the compositor thread.
+        This patch only supports WebGL for OpenGL. OpenGLES will be covered in following-up patches.
+
+        No new tests needed.
+
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/GraphicsContext3DPrivate.cpp:
+        (WebCore::GraphicsContext3DPrivate::GraphicsContext3DPrivate):
+        (WebCore::GraphicsContext3DPrivate::proxy):
+        (WebCore::GraphicsContext3DPrivate::swapBufferIfNeeded):
+        (WebCore::GraphicsContext3DPrivate::swapPlatformTexture):
+        (WebCore::GraphicsContext3DPrivate::paintToTextureMapper): Deleted.
+        * platform/graphics/GraphicsContext3DPrivate.h:
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        (WebCore::GraphicsContext3D::swapBufferIfNeeded):
+        * platform/graphics/opengl/GraphicsContext3DOpenGL.cpp:
+        (WebCore::GraphicsContext3D::reshapeFBOs):
+        (WebCore::GraphicsContext3D::attachDepthAndStencilBufferIfNeeded):
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::prepareTexture):
+        (WebCore::GraphicsContext3D::markContextChanged):
+
 2015-03-31  Gwang Yoon Hwang  <yoon@igalia.com>
 
         [ThreadedCompositor] Add support for PlatformLayer.
