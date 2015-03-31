@@ -36,14 +36,20 @@
 #include "TextureMapperPlatformLayer.h"
 #endif
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+#include "TextureMapperPlatformLayerProxy.h"
+#endif
+
 typedef struct _GstSample GstSample;
 typedef struct _GstElement GstElement;
 typedef struct _GstMessage GstMessage;
 typedef struct _GstStreamVolume GstStreamVolume;
+typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _WebKitVideoSink WebKitVideoSink;
 
 namespace WebCore {
 
+class BitmapTextureGL;
 class GraphicsContext;
 class IntSize;
 class IntRect;
@@ -51,6 +57,8 @@ class IntRect;
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     , public TextureMapperPlatformLayer
+#elif USE(COORDINATED_GRAPHICS_THREADED)
+    , public TextureMapperPlatformLayerProxyProvider
 #endif
 {
 
@@ -107,6 +115,11 @@ public:
     virtual void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix&, float);
 #endif
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    virtual PlatformLayer* platformLayer() const { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
+    virtual bool supportsAcceleratedRendering() const { return true; }
+#endif
+
 protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
     virtual GstElement* createVideoSink();
@@ -130,8 +143,14 @@ protected:
     unsigned long m_volumeSignalHandler;
     unsigned long m_muteSignalHandler;
     mutable FloatSize m_videoSize;
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
-    PassRefPtr<BitmapTexture> updateTexture(TextureMapper*);
+#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
+    void updateTexture(BitmapTextureGL&, GstVideoInfo&);
+#endif
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
+    RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
+    RefPtr<GraphicsContext3D> m_context3D;
 #endif
 };
 }

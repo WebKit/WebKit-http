@@ -97,6 +97,9 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_muteSignalHandler(0)
 {
     g_mutex_init(&m_sampleMutex);
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
+#endif
 }
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
@@ -278,35 +281,20 @@ void MediaPlayerPrivateGStreamerBase::muteChanged()
     m_muteTimerHandler.schedule("[WebKit] MediaPlayerPrivateGStreamerBase::muteChanged", std::function<void()>(std::bind(&MediaPlayerPrivateGStreamerBase::notifyPlayerOfMute, this)));
 }
 
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
-PassRefPtr<BitmapTexture> MediaPlayerPrivateGStreamerBase::updateTexture(TextureMapper* textureMapper)
+#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
+void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, GstVideoInfo& videoInfo)
 {
-    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    if (!m_sample)
-        return nullptr;
-
-    GstCaps* caps = gst_sample_get_caps(m_sample);
-    if (!caps)
-        return nullptr;
-
-    GstVideoInfo videoInfo;
-    gst_video_info_init(&videoInfo);
-    if (!gst_video_info_from_caps(&videoInfo, caps))
-        return nullptr;
-
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
-    RefPtr<BitmapTexture> texture = textureMapper->acquireTextureFromPool(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo));
     GstBuffer* buffer = gst_sample_get_buffer(m_sample);
 
 #if GST_CHECK_VERSION(1, 1, 0)
     GstVideoGLTextureUploadMeta* meta;
     if ((meta = gst_buffer_get_video_gl_texture_upload_meta(buffer))) {
         if (meta->n_textures == 1) { // BRGx & BGRA formats use only one texture.
-            const BitmapTextureGL* textureGL = static_cast<const BitmapTextureGL*>(texture.get());
-            guint ids[4] = { textureGL->id(), 0, 0, 0 };
+            guint ids[4] = { texture.id(), 0, 0, 0 };
 
             if (gst_video_gl_texture_upload_meta_upload(meta, ids))
-                return texture;
+                return;
         }
     }
 #endif
@@ -316,14 +304,12 @@ PassRefPtr<BitmapTexture> MediaPlayerPrivateGStreamerBase::updateTexture(Texture
 
     GstVideoFrame videoFrame;
     if (!gst_video_frame_map(&videoFrame, &videoInfo, buffer, GST_MAP_READ))
-        return nullptr;
+        return;
 
     int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&videoFrame, 0);
     const void* srcData = GST_VIDEO_FRAME_PLANE_DATA(&videoFrame, 0);
-    texture->updateContents(srcData, WebCore::IntRect(WebCore::IntPoint(0, 0), size), WebCore::IntPoint(0, 0), stride, BitmapTexture::UpdateCannotModifyOriginalImageData);
+    texture.updateContents(srcData, WebCore::IntRect(WebCore::IntPoint(0, 0), size), WebCore::IntPoint(0, 0), stride, BitmapTexture::UpdateCannotModifyOriginalImageData);
     gst_video_frame_unmap(&videoFrame);
-
-    return texture;
 }
 #endif
 
@@ -337,6 +323,32 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
             gst_sample_unref(m_sample);
         m_sample = gst_sample_ref(sample);
     }
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    GstCaps* caps = gst_sample_get_caps(m_sample);
+    if (UNLIKELY(!caps))
+        return;
+
+    GstVideoInfo videoInfo;
+    gst_video_info_init(&videoInfo);
+    if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps)))
+        return;
+
+    IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+
+    unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(size);
+    if (UNLIKELY(!buffer)) {
+        if (UNLIKELY(!m_context3D))
+            m_context3D = GraphicsContext3D::create(GraphicsContext3D::Attributes(), nullptr);
+
+        RefPtr<BitmapTexture> texture = adoptRef(new BitmapTextureGL(m_context3D));
+        texture->reset(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo));
+        buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTF::move(texture));
+    }
+    updateTexture(buffer->textureGL(), videoInfo);
+    m_platformLayerProxy->pushNextBuffer(WTF::move(buffer));
+    return;
+#endif
 
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     if (supportsAcceleratedRendering() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player) && client()) {
@@ -355,7 +367,9 @@ void MediaPlayerPrivateGStreamerBase::setSize(const IntSize& size)
 
 void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext* context, const FloatRect& rect)
 {
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
+#if USE(COORDINATED_GRAPHICS_THREADED)
+        return;
+#elif USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     if (client())
         return;
 #endif
@@ -387,9 +401,27 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper* textur
     if (!m_player->visible())
         return;
 
-    RefPtr<BitmapTexture> texture = updateTexture(textureMapper);
-    if (texture)
-        textureMapper->drawTexture(*texture.get(), targetRect, matrix, opacity);
+    RefPtr<BitmapTexture> texture;
+    {
+        WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+
+        if (!m_sample)
+            return;
+
+        GstCaps* caps = gst_sample_get_caps(m_sample);
+        if (UNLIKELY(!caps))
+            return;
+
+        GstVideoInfo videoInfo;
+        gst_video_info_init(&videoInfo);
+        if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps)))
+            return;
+
+        IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+        texture = textureMapper->acquireTextureFromPool(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo));
+        updateTexture(static_cast<BitmapTextureGL&>(*texture), videoInfo);
+    }
+    textureMapper->drawTexture(*texture.get(), targetRect, matrix, opacity);
 }
 #endif
 
