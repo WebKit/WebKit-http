@@ -407,6 +407,8 @@ if (ENABLE_THREADED_COMPOSITOR)
         page/scrolling/ScrollingTreeNode.cpp
         page/scrolling/ScrollingTreeScrollingNode.cpp
         platform/graphics/TiledBackingStore.cpp
+        platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
+        platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
         platform/graphics/texmap/coordinated/AreaAllocator.cpp
         platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
         platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp

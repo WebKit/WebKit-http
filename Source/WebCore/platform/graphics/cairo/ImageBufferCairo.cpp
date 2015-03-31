@@ -52,6 +52,9 @@
 #include "OpenGLShims.h"
 #include "TextureMapperGL.h"
 #include <cairo-gl.h>
+#if USE(COORDINATED_GRAPHICS_THREADED)
+#include "TextureMapperPlatformLayerProxy.h"
+#endif
 #endif
 
 using namespace std;
@@ -394,6 +397,13 @@ String ImageBuffer::toDataURL(const String& mimeType, const double*, CoordinateS
 #endif
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
+#if USE(COORDINATED_GRAPHICS_THREADED)
+RefPtr<TextureMapperPlatformLayerProxy> ImageBufferData::proxy() const
+{
+    notImplemented();
+    return RefPtr<TextureMapperPlatformLayerProxy>();
+}
+#else
 void ImageBufferData::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     if (textureMapper->accelerationMode() != TextureMapper::OpenGLMode) {
@@ -410,6 +420,7 @@ void ImageBufferData::paintToTextureMapper(TextureMapper* textureMapper, const F
 
     static_cast<TextureMapperGL*>(textureMapper)->drawTexture(m_texture, TextureMapperGL::ShouldBlend, m_size, targetRect, matrix, opacity);
 }
+#endif
 #endif
 
 PlatformLayer* ImageBuffer::platformLayer() const

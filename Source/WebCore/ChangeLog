@@ -1,5 +1,41 @@
 2015-03-31  Gwang Yoon Hwang  <yoon@igalia.com>
 
+        [ThreadedCompositor] Add support for PlatformLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=143299
+
+        Reviewed by NOBODY (OOPS!).
+
+        This patch implements TextureMapperPlatformLayerProxy and TextureMapperPlatformLayerBuffer to
+        send a texture (actual texture or BitmapTexture) to the compositing thread directly.
+        TextureMapperPlatformLayerBuffer can be reused after swapped by new buffer.
+        Because PlatformLayers (Canvas, Video) draw its contents using same size and format usually, we don't
+        have to re-allocate texture. Whenever Canvas and Video renderer needs to display new content, the
+        renderer updates used buffer and push it to the compositor via TextureMapperPlatformLayerProxy.
+
+        No new tests needed.
+
+        * PlatformGTK.cmake:
+        Adds TextureMapperPlatformLayerBuffer and TextureMapperPlaytformLayerProxy.
+        * platform/graphics/GraphicsContext3DPrivate.cpp:
+        * platform/graphics/cairo/ImageBufferCairo.cpp:
+        Adds mock implementation.
+        * platform/graphics/PlatformLayer.h:
+        Modified to use TextureMapperPlatformLayerProxyProvider as a PlatformLayer in Threaded Compositor
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.cpp:
+        * platform/graphics/texmap/TextureMapperLayer.cpp:
+        Exclude GraphicsLayerTextureMapper when we are using Coordinated Graphics.
+
+        * platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp: Added.
+        * platform/graphics/texmap/TextureMapperPlatformLayerBuffer.h: Added.
+        * platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp: Added.
+        * platform/graphics/texmap/TextureMapperPlatformLayerProxy.h: Added.
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        (WebCore::CoordinatedGraphicsLayerState::CoordinatedGraphicsLayerState):
+
+2015-03-31  Gwang Yoon Hwang  <yoon@igalia.com>
+
         [TexMap] Clean up BitmapTexture and BitmapTextureGL.
         https://bugs.webkit.org/show_bug.cgi?id=143298
 
