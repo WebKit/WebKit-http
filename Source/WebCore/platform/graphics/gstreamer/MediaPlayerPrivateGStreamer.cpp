@@ -2175,7 +2175,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     unsigned flagAudio = getGstPlayFlag("audio");
     unsigned flagVideo = getGstPlayFlag("video");
     unsigned flagNativeVideo = getGstPlayFlag("native-video");
-    g_object_set(m_playBin.get(), "flags", flagText | flagAudio | flagVideo | flagNativeVideo, nullptr);
+    g_object_set(m_pipeline.get(), "flags", flagText | flagAudio | flagVideo | flagNativeVideo, nullptr);
 
     GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
     gst_bus_add_signal_watch(bus.get());
