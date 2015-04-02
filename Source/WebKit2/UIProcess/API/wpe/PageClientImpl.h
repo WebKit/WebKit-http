@@ -101,6 +101,8 @@ private:
     virtual void didFinishLoadForMainFrame() override;
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
 
+    virtual void didChangeBackgroundColor() override;
+
     WKWPE::View& m_view;
 };
 
