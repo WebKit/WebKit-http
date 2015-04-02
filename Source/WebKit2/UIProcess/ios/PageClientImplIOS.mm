@@ -705,11 +705,17 @@ void PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame()
 
 void PageClientImpl::didFinishLoadForMainFrame()
 {
+    [m_webView _didFinishLoadForMainFrame];
 }
 
 void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType navigationType)
 {
     [m_webView _didSameDocumentNavigationForMainFrame:navigationType];
+}
+
+void PageClientImpl::didChangeBackgroundColor()
+{
+    [m_webView _updateScrollViewBackground];
 }
 
 } // namespace WebKit

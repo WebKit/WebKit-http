@@ -1,4 +1,5 @@
-macro(INCLUDE_IF_EXISTS _file)
+macro(WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS)
+    set(_file ${CMAKE_CURRENT_SOURCE_DIR}/Platform${PORT}.cmake)
     if (EXISTS ${_file})
         message(STATUS "Using platform-specific CMakeLists: ${_file}")
         include(${_file})
@@ -6,7 +7,6 @@ macro(INCLUDE_IF_EXISTS _file)
         message(STATUS "Platform-specific CMakeLists not found: ${_file}")
     endif ()
 endmacro()
-
 
 # Append the given dependencies to the source file
 macro(ADD_SOURCE_DEPENDENCIES _source _deps)
@@ -23,6 +23,20 @@ macro(ADD_SOURCE_DEPENDENCIES _source _deps)
     set_source_files_properties(${_source} PROPERTIES OBJECT_DEPENDS "${_tmp}")
 endmacro()
 
+macro(ADD_PRECOMPILED_HEADER _name _output_source)
+    if (MSVC)
+        set_source_files_properties(${_name}.cpp
+            PROPERTIES COMPILE_FLAGS "/Yc\"${_name}.h\" /Fp\"${_name}.pch\""
+            OBJECT_OUTPUTS "${_name}.pch")
+        foreach (_file ${_input_files})
+            set_source_files_properties(${_file}
+                PROPERTIES COMPILE_FLAGS "/Yu\"${_name}.h\" /FI\"${_name}.h\" /Fp\"${_name}.pch\""
+                OBJECT_DEPENDS "${PrecompiledBinary}")
+        endforeach ()
+    endif ()
+    #FIXME: Add Xcode precompiled header support.
+    list(APPEND ${_output_source} ${PrecompiledSource})
+endmacro()
 
 # Helper macro which wraps generate-bindings.pl script.
 #   _output_source is a list name which will contain generated sources.(eg. WebCore_SOURCES)
@@ -188,13 +202,6 @@ macro(MAKE_HASH_TOOLS _source)
 
     unset(_name)
     unset(_hash_tools_h)
-endmacro()
-
-macro(WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS)
-    if (PORT_FALLBACK)
-        INCLUDE_IF_EXISTS(${CMAKE_CURRENT_SOURCE_DIR}/Platform${PORT_FALLBACK}.cmake)
-    endif ()
-    INCLUDE_IF_EXISTS(${CMAKE_CURRENT_SOURCE_DIR}/Platform${PORT}.cmake)
 endmacro()
 
 macro(WEBKIT_WRAP_SOURCELIST)

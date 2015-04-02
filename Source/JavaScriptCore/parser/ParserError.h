@@ -85,13 +85,18 @@ public:
     const String& message() const { return m_message; }
     int line() const { return m_line; }
 
-    JSObject* toErrorObject(JSGlobalObject* globalObject, const SourceCode& source)
+    JSObject* toErrorObject(
+        JSGlobalObject* globalObject, const SourceCode& source, 
+        int overrideLineNumber = -1)
     {
         switch (m_type) {
         case ErrorNone:
             return nullptr;
         case SyntaxError:
-            return addErrorInfo(globalObject->globalExec(), createSyntaxError(globalObject, m_message), m_line, source);
+            return addErrorInfo(
+                globalObject->globalExec(), 
+                createSyntaxError(globalObject, m_message), 
+                overrideLineNumber == -1 ? m_line : overrideLineNumber, source);
         case EvalError:
             return createSyntaxError(globalObject, m_message);
         case StackOverflow: {

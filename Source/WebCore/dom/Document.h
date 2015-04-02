@@ -41,6 +41,7 @@
 #include "PageVisibilityState.h"
 #include "PlatformScreen.h"
 #include "ReferrerPolicy.h"
+#include "Region.h"
 #include "RenderPtr.h"
 #include "ScriptExecutionContext.h"
 #include "StringWithDirection.h"
@@ -260,7 +261,7 @@ enum class DocumentCompatibilityMode : unsigned char {
     LimitedQuirksMode = 1 << 2
 };
 
-enum DimensionsCheck { WidthDimensionsCheck = 0x1, HeightDimensionsCheck = 0x2, AllDimensionsCheck = 0x3 };
+enum DimensionsCheck { WidthDimensionsCheck = 1 << 0, HeightDimensionsCheck = 1 << 1, AllDimensionsCheck = 1 << 2 };
 
 class Document : public ContainerNode, public TreeScope, public ScriptExecutionContext, public FontSelectorClient {
 public:
@@ -569,7 +570,7 @@ public:
     bool renderTreeBeingDestroyed() const { return m_renderTreeBeingDestroyed; }
     bool hasLivingRenderTree() const { return renderView() && !renderTreeBeingDestroyed(); }
     
-    bool updateLayoutIfDimensionsOutOfDate(Element*, DimensionsCheck = AllDimensionsCheck);
+    bool updateLayoutIfDimensionsOutOfDate(Element&, DimensionsCheck = AllDimensionsCheck);
     
     AXObjectCache* existingAXObjectCache() const;
     WEBCORE_EXPORT AXObjectCache* axObjectCache() const;
@@ -1121,7 +1122,6 @@ public:
 
     void initDNSPrefetch();
 
-    unsigned wheelEventHandlerCount() const { return m_wheelEventHandlerCount; }
     void didAddWheelEventHandler(Node&);
     void didRemoveWheelEventHandler(Node&);
 
@@ -1133,6 +1133,10 @@ public:
 #else
     bool hasTouchEventHandlers() const { return false; }
 #endif
+
+    // Used for testing. Count handlers in the main document, and one per frame which contains handlers.
+    WEBCORE_EXPORT unsigned wheelEventHandlerCount() const;
+    WEBCORE_EXPORT unsigned touchEventHandlerCount() const;
 
     void didAddTouchEventHandler(Node&);
     void didRemoveTouchEventHandler(Node&);
@@ -1147,6 +1151,13 @@ public:
         return nullptr;
 #endif
     }
+
+    const EventTargetSet* wheelEventTargets() const { return m_wheelEventTargets.get(); }
+
+    typedef std::pair<Region, bool> RegionFixedPair;
+    RegionFixedPair absoluteRegionForEventTargets(const EventTargetSet*);
+
+    LayoutRect absoluteEventHandlerBounds(bool&) override final;
 
     bool visualUpdatesAllowed() const { return m_visualUpdatesAllowed; }
 
@@ -1312,6 +1323,8 @@ private:
     void addListenerType(ListenerType listenerType) { m_listenerTypes |= listenerType; }
 
     void didAssociateFormControlsTimerFired();
+
+    void wheelEventHandlersChanged();
 
     // DOM Cookies caching.
     const String& cachedDOMCookies() const { return m_cachedDOMCookies; }
@@ -1557,10 +1570,10 @@ private:
     bool m_writeRecursionIsTooDeep;
     unsigned m_writeRecursionDepth;
     
-    unsigned m_wheelEventHandlerCount;
 #if ENABLE(TOUCH_EVENTS)
     std::unique_ptr<EventTargetSet> m_touchEventTargets;
 #endif
+    std::unique_ptr<EventTargetSet> m_wheelEventTargets;
 
     double m_lastHandledUserGestureTimestamp;
 

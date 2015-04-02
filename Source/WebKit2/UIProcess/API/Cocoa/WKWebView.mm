@@ -620,6 +620,11 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
     _page->setCustomUserAgent(customUserAgent);
 }
 
+- (WKPageRef)_pageForTesting
+{
+    return toAPI(_page.get());
+}
+
 #pragma mark iOS-specific methods
 
 #if PLATFORM(IOS)
@@ -740,17 +745,26 @@ static CGFloat contentZoomScale(WKWebView *webView)
     return scale;
 }
 
+static WebCore::Color baseScrollViewBackgroundColor(WKWebView *webView)
+{
+    if (webView->_customContentView)
+        return [webView->_customContentView backgroundColor].CGColor;
+
+    if (webView->_gestureController) {
+        WebCore::Color color = webView->_gestureController->backgroundColorForCurrentSnapshot();
+        if (color.isValid())
+            return color;
+    }
+
+    return webView->_page->pageExtendedBackgroundColor();
+}
+
 static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 {
     if (!webView.opaque)
         return WebCore::Color::transparent;
 
-    WebCore::Color color;
-
-    if (webView->_customContentView)
-        color = [webView->_customContentView backgroundColor].CGColor;
-    else
-        color = webView->_page->pageExtendedBackgroundColor();
+    WebCore::Color color = baseScrollViewBackgroundColor(webView);
 
     if (!color.isValid())
         color = WebCore::Color::white;
@@ -907,7 +921,9 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         [self _updateVisibleContentRects];
     }
 
-    if (_needsToRestoreExposedRect && layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore) {
+    bool isTransactionAfterPageRestore = layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore;
+
+    if (_needsToRestoreExposedRect && isTransactionAfterPageRestore) {
         _needsToRestoreExposedRect = NO;
 
         if (areEssentiallyEqualAsFloat(contentZoomScale(self), _scaleToRestore)) {
@@ -915,11 +931,12 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
             exposedPosition.scale(_scaleToRestore, _scaleToRestore);
 
             changeContentOffsetBoundedInValidRange(_scrollView.get(), exposedPosition);
+            _gestureController->didRestoreScrollPosition();
         }
         [self _updateVisibleContentRects];
     }
 
-    if (_needsToRestoreUnobscuredCenter && layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore) {
+    if (_needsToRestoreUnobscuredCenter && isTransactionAfterPageRestore) {
         _needsToRestoreUnobscuredCenter = NO;
 
         if (areEssentiallyEqualAsFloat(contentZoomScale(self), _scaleToRestore)) {
@@ -931,6 +948,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
             topLeftInDocumentCoordinate.moveBy(WebCore::FloatPoint(-_obscuredInsets.left, -_obscuredInsets.top));
 
             changeContentOffsetBoundedInValidRange(_scrollView.get(), topLeftInDocumentCoordinate);
+            _gestureController->didRestoreScrollPosition();
         }
         [self _updateVisibleContentRects];
     }
@@ -1496,9 +1514,18 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         inStableState:isStableState isChangingObscuredInsetsInteractively:_isChangingObscuredInsetsInteractively];
 }
 
+- (void)_didFinishLoadForMainFrame
+{
+    if (_gestureController)
+        _gestureController->didFinishLoadForMainFrame();
+}
+
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)navigationType
 {
     [_customContentView web_didSameDocumentNavigation:toAPI(navigationType)];
+
+    if (_gestureController)
+        _gestureController->didSameDocumentNavigationForMainFrame(navigationType);
 }
 
 - (void)_keyboardChangedWithInfo:(NSDictionary *)keyboardInfo adjustScrollView:(BOOL)adjustScrollView
@@ -1659,6 +1686,9 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (void)_setEditable:(BOOL)editable
 {
     _page->setEditable(editable);
+#if !PLATFORM(IOS)
+    [_wkView _addFontPanelObserver];
+#endif
 }
 
 - (_WKRemoteObjectRegistry *)_remoteObjectRegistry
@@ -2091,16 +2121,34 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_countStringMatches:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount
 {
+#if PLATFORM(IOS)
+    if (_customContentView) {
+        [_customContentView web_countStringMatches:string options:options maxCount:maxCount];
+        return;
+    }
+#endif
     _page->countStringMatches(string, toFindOptions(options), maxCount);
 }
 
 - (void)_findString:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount
 {
+#if PLATFORM(IOS)
+    if (_customContentView) {
+        [_customContentView web_findString:string options:options maxCount:maxCount];
+        return;
+    }
+#endif
     _page->findString(string, toFindOptions(options), maxCount);
 }
 
 - (void)_hideFindUI
 {
+#if PLATFORM(IOS)
+    if (_customContentView) {
+        [_customContentView web_hideFindUI];
+        return;
+    }
+#endif
     _page->hideFindUI();
 }
 

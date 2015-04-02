@@ -46,6 +46,8 @@
 #define WK_WEB_VIEW_PROTOCOLS
 #endif
 
+typedef const struct OpaqueWKPage* WKPageRef;
+
 namespace WebKit {
 class ViewSnapshot;
 class WebPageProxy;
@@ -93,15 +95,20 @@ struct PrintInfo;
 
 - (void)_updateVisibleContentRects;
 
+- (void)_didFinishLoadForMainFrame;
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)navigationType;
 
 - (BOOL)_isShowingVideoOptimized;
 - (BOOL)_mayAutomaticallyShowVideoOptimized;
 
+- (void)_updateScrollViewBackground;
+
 @property (nonatomic, readonly) UIEdgeInsets _computedContentInset;
 #else
 @property (nonatomic, setter=_setIgnoresNonWheelEvents:) BOOL _ignoresNonWheelEvents;
 #endif
+
+- (WKPageRef)_pageForTesting;
 
 @end
 

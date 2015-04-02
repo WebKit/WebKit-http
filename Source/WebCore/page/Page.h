@@ -193,7 +193,7 @@ public:
 
     WEBCORE_EXPORT String scrollingStateTreeAsText();
     WEBCORE_EXPORT String synchronousScrollingReasonsAsText();
-    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects(const Frame*);
+    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects(const Frame&);
 
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
@@ -359,6 +359,7 @@ public:
     WEBCORE_EXPORT Color pageExtendedBackgroundColor() const;
 
     bool isCountingRelevantRepaintedObjects() const;
+    void setIsCountingRelevantRepaintedObjects(bool isCounting) { m_isCountingRelevantRepaintedObjects = isCounting; }
     void startCountingRelevantRepaintedObjects();
     void resetRelevantPaintedObjectCounter();
     void addRelevantRepaintedObject(RenderObject*, const LayoutRect& objectPaintRect);
@@ -425,7 +426,7 @@ public:
     WEBCORE_EXPORT void setMuted(bool);
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    void showPlaybackTargetPicker(Document*, const WebCore::IntPoint&, bool);
+    void showPlaybackTargetPicker(const WebCore::IntPoint&, bool);
     bool hasWirelessPlaybackTarget() const { return m_hasWirelessPlaybackTarget; }
     MediaPlaybackTarget& playbackTarget() const { return *m_playbackTarget.get(); }
     void configurePlaybackTargetMonitoring();
@@ -586,9 +587,7 @@ private:
     SessionID m_sessionID;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    Document* m_documentRequestingPlaybackTargetPicker { nullptr };
     std::unique_ptr<MediaPlaybackTarget> m_playbackTarget;
-    bool m_requiresPlaybackTargetMonitoring { false };
     bool m_hasWirelessPlaybackTarget { false };
 #endif
 

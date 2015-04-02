@@ -56,11 +56,9 @@ WebInspector.FormattedValue.createElementForNode = function(object)
             return;
         }
 
-        // FIXME: Extract the styles for a formatted-node outline-disclosure from the LogContentView.
         var treeOutline = new WebInspector.DOMTreeOutline(false, false, true);
         treeOutline.setVisible(true);
         treeOutline.rootDOMNode = WebInspector.domTreeManager.nodeForId(nodeId);
-        treeOutline.element.classList.add("outline-disclosure");
         if (!treeOutline.children[0].hasChildren)
             treeOutline.element.classList.add("single-node");
         span.appendChild(treeOutline.element);
@@ -86,9 +84,12 @@ WebInspector.FormattedValue.createElementForTypesAndValue = function(type, subty
         return span;
     }
 
-    // Function: ellided in previews.
+    // Function: if class, show the description, otherwise ellide in previews.
     if (type === "function") {
-        span.textContent = isPreview ? "function" : displayString;
+        if (subtype === "class")
+            span.textContent = displayString;
+        else
+            span.textContent = isPreview ? "function" : displayString;
         return span;
     }
 
@@ -125,8 +126,11 @@ WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject = fu
     if (object.subtype === "node")
         return WebInspector.FormattedValue.createElementForNode(object);
 
-    if (object.type === "object") {
-        var objectTree = new WebInspector.ObjectTreeView(object, WebInspector.ObjectTreeView.Mode.Properties, propertyPath, forceExpanding);
+    if (object.subtype === "null")
+        return WebInspector.FormattedValue.createElementForRemoteObject(object);
+
+    if (object.type === "object" || object.subtype === "class") {
+        var objectTree = new WebInspector.ObjectTreeView(object, null, propertyPath, forceExpanding);
         return objectTree.element;
     }
 

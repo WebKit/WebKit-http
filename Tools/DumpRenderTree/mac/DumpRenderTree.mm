@@ -202,6 +202,7 @@ static int useAcceleratedDrawing;
 static int gcBetweenTests;
 static BOOL printSeparators;
 static RetainPtr<CFStringRef> persistentUserStyleSheetLocation;
+static std::set<std::string> allowedHosts;
 
 static WebHistoryItem *prevTestBFItem = nil;  // current b/f item at the end of the previous test
 
@@ -981,6 +982,7 @@ static void setDefaultsToConsistentValuesForTesting()
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
         @"AppleSystemFontOSSubversion": @(10),
 #endif
+        @"NSWindowDisplayWithRunLoopObserver": @YES, // Temporary workaround, see <rdar://problem/20351297>.
     };
 
     [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:dict];
@@ -1080,6 +1082,7 @@ static void initializeGlobalsFromCommandLineOptions(int argc, const char *argv[]
         {"accelerated-drawing", no_argument, &useAcceleratedDrawing, YES},
         {"gc-between-tests", no_argument, &gcBetweenTests, YES},
         {"no-timeout", no_argument, &useTimeoutWatchdog, NO},
+        {"allowed-host", required_argument, nullptr, 'a'},
         {nullptr, 0, nullptr, 0}
     };
     
@@ -1089,6 +1092,9 @@ static void initializeGlobalsFromCommandLineOptions(int argc, const char *argv[]
             case '?':   // unknown or ambiguous option
             case ':':   // missing argument
                 exit(1);
+                break;
+            case 'a': // "allowed-host"
+                allowedHosts.insert(optarg);
                 break;
         }
     }
@@ -1880,6 +1886,7 @@ static void runTest(const string& inputLine)
 #endif
 
     gTestRunner = TestRunner::create(testURL, command.expectedPixelHash);
+    gTestRunner->setAllowedHosts(allowedHosts);
     gTestRunner->setCustomTimeout(command.timeout);
     topLoadingFrame = nil;
 #if !PLATFORM(IOS)

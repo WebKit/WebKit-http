@@ -77,6 +77,10 @@ public:
     DownloadManager& downloadManager();
     bool canHandleHTTPSServerTrustEvaluation() const { return m_canHandleHTTPSServerTrustEvaluation; }
 
+    void processWillSuspend();
+    void cancelProcessWillSuspend();
+    void processDidResume();
+
     // Diagnostic messages logging.
     void logDiagnosticMessage(uint64_t webPageID, const String& message, const String& description, WebCore::ShouldSample);
     void logDiagnosticMessageWithResult(uint64_t webPageID, const String& message, const String& description, WebCore::DiagnosticLoggingResultType, WebCore::ShouldSample);
@@ -153,6 +157,7 @@ private:
     String m_diskCacheDirectory;
     bool m_hasSetCacheModel;
     CacheModel m_cacheModel;
+    int64_t m_diskCacheSizeOverride { -1 };
     bool m_diskCacheIsDisabledForTesting;
     bool m_canHandleHTTPSServerTrustEvaluation;
 

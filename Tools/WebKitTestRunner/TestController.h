@@ -146,6 +146,10 @@ private:
     // WKContextInjectedBundleClient
     static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messageName, WKTypeRef messageBody, const void*);
     static void didReceiveSynchronousMessageFromInjectedBundle(WKContextRef, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData, const void*);
+
+    // WKPageInjectedBundleClient
+    static void didReceivePageMessageFromInjectedBundle(WKPageRef, WKStringRef messageName, WKTypeRef messageBody, const void*);
+    static void didReceiveSynchronousPageMessageFromInjectedBundle(WKPageRef, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData, const void*);
     void didReceiveMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody);
     WKRetainPtr<WKTypeRef> didReceiveSynchronousMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody);
 
@@ -214,6 +218,7 @@ private:
     bool m_gcBetweenTests;
     bool m_shouldDumpPixelsForAllTests;
     std::vector<std::string> m_paths;
+    std::vector<std::string> m_allowedHosts;
     WKRetainPtr<WKStringRef> m_injectedBundlePath;
     WKRetainPtr<WKStringRef> m_testPluginDirectory;
 

@@ -100,6 +100,7 @@ ScriptExecutable::ScriptExecutable(Structure* structure, VM& vm, const SourceCod
     , m_hasCapturedVariables(false)
     , m_neverInline(false)
     , m_didTryToEnterInLoop(false)
+    , m_overrideLineNumber(-1)
     , m_firstLine(-1)
     , m_lastLine(-1)
     , m_startColumn(UINT_MAX)
@@ -238,7 +239,7 @@ PassRefPtr<CodeBlock> ScriptExecutable::newCodeBlockFor(
     UnlinkedFunctionCodeBlock* unlinkedCodeBlock =
         executable->m_unlinkedExecutable->codeBlockFor(
             *vm, executable->m_source, kind, debuggerMode, profilerMode, error);
-    recordParse(executable->m_unlinkedExecutable->features(), executable->m_unlinkedExecutable->hasCapturedVariables(), lineNo(), lastLine(), startColumn(), endColumn()); 
+    recordParse(executable->m_unlinkedExecutable->features(), executable->m_unlinkedExecutable->hasCapturedVariables(), firstLine(), lastLine(), startColumn(), endColumn()); 
     if (!unlinkedCodeBlock) {
         exception = vm->throwException(
             globalObject->globalExec(),
@@ -346,7 +347,7 @@ JSObject* ScriptExecutable::prepareForExecutionImpl(
 
 const ClassInfo EvalExecutable::s_info = { "EvalExecutable", &ScriptExecutable::s_info, 0, CREATE_METHOD_TABLE(EvalExecutable) };
 
-EvalExecutable* EvalExecutable::create(ExecState* exec, const SourceCode& source, bool isInStrictContext) 
+EvalExecutable* EvalExecutable::create(ExecState* exec, const SourceCode& source, bool isInStrictContext, ThisTDZMode thisTDZMode)
 {
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     if (!globalObject->evalEnabled()) {
@@ -357,7 +358,7 @@ EvalExecutable* EvalExecutable::create(ExecState* exec, const SourceCode& source
     EvalExecutable* executable = new (NotNull, allocateCell<EvalExecutable>(*exec->heap())) EvalExecutable(exec, source, isInStrictContext);
     executable->finishCreation(exec->vm());
 
-    UnlinkedEvalCodeBlock* unlinkedEvalCode = globalObject->createEvalCodeBlock(exec, executable);
+    UnlinkedEvalCodeBlock* unlinkedEvalCode = globalObject->createEvalCodeBlock(exec, executable, thisTDZMode);
     if (!unlinkedEvalCode)
         return 0;
 
@@ -608,12 +609,17 @@ void FunctionExecutable::unlinkCalls()
 #endif
 }
 
-FunctionExecutable* FunctionExecutable::fromGlobalCode(const Identifier& name, ExecState& exec, const SourceCode& source, JSObject*& exception)
+FunctionExecutable* FunctionExecutable::fromGlobalCode(
+    const Identifier& name, ExecState& exec, const SourceCode& source, 
+    JSObject*& exception, int overrideLineNumber)
 {
-    UnlinkedFunctionExecutable* unlinkedExecutable = UnlinkedFunctionExecutable::fromGlobalCode(name, exec, source, exception);
+    UnlinkedFunctionExecutable* unlinkedExecutable = 
+        UnlinkedFunctionExecutable::fromGlobalCode(
+            name, exec, source, exception, overrideLineNumber);
     if (!unlinkedExecutable)
         return nullptr;
-    return unlinkedExecutable->link(exec.vm(), source);
+
+    return unlinkedExecutable->link(exec.vm(), source, overrideLineNumber);
 }
 
 void ExecutableBase::dump(PrintStream& out) const

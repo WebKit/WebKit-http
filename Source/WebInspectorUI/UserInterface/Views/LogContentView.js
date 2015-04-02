@@ -374,11 +374,8 @@ WebInspector.LogContentView.prototype = {
             return;
         }
 
-        if (!this._focused) {
+        if (!this._focused)
             this.messagesElement.focus();
-            if (this._selectedMessages.length)
-                return;
-        }
 
         this._mouseDownWrapper = event.target.enclosingNodeOrSelfWithClass(WebInspector.LogContentView.ItemWrapperStyleClassName);
         this._mouseDownShiftKey = event.shiftKey;
@@ -485,7 +482,7 @@ WebInspector.LogContentView.prototype = {
 
     _updateMessagesSelection: function(message, multipleSelection, rangeSelection, shouldScrollIntoView)
     {
-        var alreadySelectedMessage = this._selectedMessages.contains(message);
+        var alreadySelectedMessage = this._selectedMessages.includes(message);
         if (alreadySelectedMessage && this._selectedMessages.length && multipleSelection) {
             message.classList.remove(WebInspector.LogContentView.SelectedStyleClassName);
             this._selectedMessages.remove(message);

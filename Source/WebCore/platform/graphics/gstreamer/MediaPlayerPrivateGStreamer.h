@@ -47,8 +47,6 @@ typedef struct _GstBuffer GstBuffer;
 typedef struct _GstMessage GstMessage;
 typedef struct _GstElement GstElement;
 typedef struct _GstMpegtsSection GstMpegtsSection;
-typedef struct _GstGLContext GstGLContext;
-typedef struct _GstGLDisplay GstGLDisplay;
 
 namespace WebCore {
 
@@ -68,7 +66,6 @@ public:
     ~MediaPlayerPrivateGStreamer();
 
     static void registerMediaEngine(MediaEngineRegistrar);
-    gboolean handleSyncMessage(GstMessage*);
     gboolean handleMessage(GstMessage*);
     void handlePluginInstallerResult(GstInstallPluginsReturn);
 
@@ -189,7 +186,6 @@ private:
 #endif
 
 private:
-    GRefPtr<GstElement> m_playBin;
     GRefPtr<GstElement> m_source;
 #if ENABLE(VIDEO_TRACK)
     GRefPtr<GstElement> m_textAppSink;
@@ -253,10 +249,6 @@ private:
     bool isMediaSource() const { return m_mediaSource; }
 #else
     bool isMediaSource() const { return false; }
-#endif
-#if USE(GSTREAMER_GL)
-    GstGLContext* m_glContext;
-    GstGLDisplay* m_glDisplay;
 #endif
 };
 }

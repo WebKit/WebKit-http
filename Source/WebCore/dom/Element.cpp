@@ -63,6 +63,7 @@
 #include "NodeRenderStyle.h"
 #include "PlatformWheelEvent.h"
 #include "PointerLockController.h"
+#include "RenderFlowThread.h"
 #include "RenderLayer.h"
 #include "RenderNamedFlowFragment.h"
 #include "RenderRegion.h"
@@ -281,10 +282,16 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
 
 bool Element::dispatchWheelEvent(const PlatformWheelEvent& event)
 {
-    if (!event.deltaX() && !event.deltaY())
-        return true;
-
     RefPtr<WheelEvent> wheelEvent = WheelEvent::create(event, document().defaultView());
+
+    // Events with no deltas are important because they convey platform information about scroll gestures
+    // and momentum beginning or ending. However, those events should not be sent to the DOM since some
+    // websites will break. They need to be dispatched because dispatching them will call into the default
+    // event handler, and our platform code will correctly handle the phase changes. Calling stopPropogation()
+    // will prevent the event from being sent to the DOM, but will still call the default event handler.
+    if (!event.deltaX() && !event.deltaY())
+        wheelEvent->stopPropagation();
+
     return EventDispatcher::dispatchEvent(this, wheelEvent) && !wheelEvent->defaultHandled();
 }
 
@@ -729,7 +736,7 @@ double Element::offsetTop()
 
 double Element::offsetWidth()
 {
-    document().updateLayoutIfDimensionsOutOfDate(this, WidthDimensionsCheck);
+    document().updateLayoutIfDimensionsOutOfDate(*this, WidthDimensionsCheck);
     if (RenderBoxModelObject* renderer = renderBoxModelObject()) {
         LayoutUnit offsetWidth = subpixelMetricsEnabled(renderer->document()) ? renderer->offsetWidth() : LayoutUnit(renderer->pixelSnappedOffsetWidth());
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(offsetWidth, *renderer).toDouble(), renderer->document());
@@ -739,7 +746,7 @@ double Element::offsetWidth()
 
 double Element::offsetHeight()
 {
-    document().updateLayoutIfDimensionsOutOfDate(this, HeightDimensionsCheck);
+    document().updateLayoutIfDimensionsOutOfDate(*this, HeightDimensionsCheck);
     if (RenderBoxModelObject* renderer = renderBoxModelObject()) {
         LayoutUnit offsetHeight = subpixelMetricsEnabled(renderer->document()) ? renderer->offsetHeight() : LayoutUnit(renderer->pixelSnappedOffsetHeight());
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(offsetHeight, *renderer).toDouble(), renderer->document());
@@ -791,7 +798,7 @@ double Element::clientTop()
 
 double Element::clientWidth()
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIfDimensionsOutOfDate(*this, WidthDimensionsCheck);
 
     if (!document().hasLivingRenderTree())
         return 0;
@@ -812,8 +819,7 @@ double Element::clientWidth()
 
 double Element::clientHeight()
 {
-    document().updateLayoutIgnorePendingStylesheets();
-
+    document().updateLayoutIfDimensionsOutOfDate(*this, HeightDimensionsCheck);
     if (!document().hasLivingRenderTree())
         return 0;
     RenderView& renderView = *document().renderView();
@@ -873,7 +879,7 @@ void Element::setScrollTop(int newTop)
 
 int Element::scrollWidth()
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIfDimensionsOutOfDate(*this, WidthDimensionsCheck);
     if (RenderBox* rend = renderBox())
         return adjustForAbsoluteZoom(rend->scrollWidth(), *rend);
     return 0;
@@ -881,7 +887,7 @@ int Element::scrollWidth()
 
 int Element::scrollHeight()
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    document().updateLayoutIfDimensionsOutOfDate(*this, HeightDimensionsCheck);
     if (RenderBox* rend = renderBox())
         return adjustForAbsoluteZoom(rend->scrollHeight(), *rend);
     return 0;
@@ -918,6 +924,126 @@ IntRect Element::boundsInRootViewSpace()
 
     result = view->contentsToRootView(result);
     return result;
+}
+
+static bool layoutOverflowRectContainsAllDescendants(const RenderElement& renderer)
+{
+    if (renderer.isRenderView())
+        return true;
+
+    if (!renderer.element())
+        return false;
+
+    // If there are any position:fixed inside of us, game over.
+    if (auto viewPositionedObjects = renderer.view().positionedObjects()) {
+        for (RenderBox* it : *viewPositionedObjects) {
+            if (it != &renderer && it->style().position() == FixedPosition && renderer.element()->contains(it->element()))
+                return false;
+        }
+    }
+
+    if (renderer.canContainAbsolutelyPositionedObjects()) {
+        // Our layout overflow will include all descendant positioned elements.
+        return true;
+    }
+
+    // This renderer may have positioned descendants whose containing block is some ancestor.
+    if (auto containingBlock = renderer.containingBlockForAbsolutePosition()) {
+        if (auto positionedObjects = containingBlock->positionedObjects()) {
+            for (RenderBox* it : *positionedObjects) {
+                if (it != &renderer && renderer.element()->contains(it->element()))
+                    return false;
+            }
+        }
+    }
+    
+    return false;
+}
+
+LayoutRect Element::absoluteEventBounds(bool& boundsIncludeAllDescendantElements, bool& includesFixedPositionElements)
+{
+    boundsIncludeAllDescendantElements = false;
+    includesFixedPositionElements = false;
+
+    if (!renderer())
+        return LayoutRect();
+
+    LayoutRect result;
+    if (isSVGElement()) {
+        // Get the bounding rectangle from the SVG model.
+        SVGElement& svgElement = downcast<SVGElement>(*this);
+        FloatRect localRect;
+        if (svgElement.getBoundingBox(localRect))
+            result = LayoutRect(renderer()->localToAbsoluteQuad(localRect, UseTransforms, &includesFixedPositionElements).boundingBox());
+    } else {
+        if (is<RenderBox>(renderer())) {
+            RenderBox& box = *downcast<RenderBox>(renderer());
+
+            bool computedBounds = false;
+            
+            if (RenderFlowThread* flowThread = box.flowThreadContainingBlock()) {
+                bool wasFixed = false;
+                Vector<FloatQuad> quads;
+                FloatRect localRect(0, 0, box.width(), box.height());
+                if (flowThread->absoluteQuadsForBox(quads, &wasFixed, &box, localRect.y(), localRect.maxY())) {
+                    FloatRect quadBounds = quads[0].boundingBox();
+                    for (size_t i = 1; i < quads.size(); ++i)
+                        quadBounds.unite(quads[i].boundingBox());
+                    
+                    result = LayoutRect(quadBounds);
+                    computedBounds = true;
+                } else {
+                    // Probably columns. Just return the bounds of the multicol block for now.
+                    // FIXME: this doesn't handle nested columns.
+                    RenderElement* multicolContainer = flowThread->parent();
+                    if (multicolContainer && is<RenderBox>(multicolContainer)) {
+                        LayoutRect overflowRect = downcast<RenderBox>(multicolContainer)->layoutOverflowRect();
+                        result = LayoutRect(multicolContainer->localToAbsoluteQuad(FloatRect(overflowRect), UseTransforms, &includesFixedPositionElements).boundingBox());
+                        computedBounds = true;
+                    }
+                }
+            }
+
+            if (!computedBounds) {
+                LayoutRect overflowRect = box.layoutOverflowRect();
+                result = LayoutRect(box.localToAbsoluteQuad(FloatRect(overflowRect), UseTransforms, &includesFixedPositionElements).boundingBox());
+                boundsIncludeAllDescendantElements = layoutOverflowRectContainsAllDescendants(box);
+            }
+        } else
+            result = LayoutRect(renderer()->absoluteBoundingBoxRect(true /* useTransforms */, &includesFixedPositionElements));
+    }
+
+    return result;
+}
+
+LayoutRect Element::absoluteEventBoundsOfElementAndDescendants(bool& includesFixedPositionElements)
+{
+    bool boundsIncludeDescendants;
+    LayoutRect result = absoluteEventBounds(boundsIncludeDescendants, includesFixedPositionElements);
+    if (boundsIncludeDescendants)
+        return result;
+
+    for (auto& child : childrenOfType<Element>(*this)) {
+        bool includesFixedPosition = false;
+        LayoutRect childBounds = child.absoluteEventBoundsOfElementAndDescendants(includesFixedPosition);
+        includesFixedPositionElements |= includesFixedPosition;
+        result.unite(childBounds);
+    }
+
+    return result;
+}
+
+LayoutRect Element::absoluteEventHandlerBounds(bool& includesFixedPositionElements)
+{
+    // This is not web-exposed, so don't call the FOUC-inducing updateLayoutIgnorePendingStylesheets().
+    FrameView* frameView = document().view();
+    if (!frameView)
+        return LayoutRect();
+
+    if (frameView->needsLayout())
+        frameView->layout();
+
+    return absoluteEventBoundsOfElementAndDescendants(includesFixedPositionElements);
 }
 
 Ref<ClientRectList> Element::getClientRects()

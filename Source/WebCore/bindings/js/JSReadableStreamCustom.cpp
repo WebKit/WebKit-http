@@ -33,9 +33,13 @@
 #include "JSReadableStream.h"
 
 #include "ExceptionCode.h"
+#include "JSDOMBinding.h"
 #include "JSDOMPromise.h"
+#include "JSReadableStreamReader.h"
 #include "ReadableStream.h"
 #include "ReadableStreamJSSource.h"
+#include "ReadableStreamReader.h"
+#include <runtime/Error.h>
 #include <wtf/NeverDestroyed.h>
 
 using namespace JSC;
@@ -50,8 +54,9 @@ JSValue JSReadableStream::cancel(ExecState* exec)
 
 JSValue JSReadableStream::getReader(ExecState* exec)
 {
-    JSValue error = createError(exec, ASCIILiteral("getReader is not implemented"));
-    return exec->vm().throwException(exec, error);
+    if (impl().reader())
+        return exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("ReadableStream is locked")));
+    return toJS(exec, globalObject(), impl().createReader());
 }
 
 JSValue JSReadableStream::pipeTo(ExecState* exec)
@@ -68,22 +73,22 @@ JSValue JSReadableStream::pipeThrough(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL constructJSReadableStream(ExecState* exec)
 {
+    if (exec->argumentCount() && !exec->argument(0).isObject())
+        return throwVMError(exec, createTypeError(exec, ASCIILiteral("ReadableStream constructor should get an object as argument.")));
+
     DOMConstructorObject* jsConstructor = jsCast<DOMConstructorObject*>(exec->callee());
     ASSERT(jsConstructor);
     ScriptExecutionContext* scriptExecutionContext = jsConstructor->scriptExecutionContext();
 
-    Ref<ReadableStreamJSSource> source = ReadableStreamJSSource::create(exec);
-    if (source->isErrored())
-        return throwVMError(exec, source->error());
 
+    Ref<ReadableStreamJSSource> source = ReadableStreamJSSource::create(exec);
     RefPtr<ReadableStream> readableStream = ReadableStream::create(*scriptExecutionContext, Ref<ReadableStreamSource>(source.get()));
 
     VM& vm = exec->vm();
     JSGlobalObject* globalObject = exec->callee()->globalObject();
     JSReadableStream* jsReadableStream = JSReadableStream::create(JSReadableStream::createStructure(vm, globalObject, JSReadableStream::createPrototype(vm, globalObject)), jsCast<JSDOMGlobalObject*>(globalObject), readableStream.releaseNonNull());
 
-    if (!source->start())
-        return throwVMError(exec, source->error());
+    source->start(exec);
 
     return JSValue::encode(jsReadableStream);
 }

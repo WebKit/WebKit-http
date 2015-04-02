@@ -100,6 +100,9 @@ public:
 
     void setInitialAdvance(GlyphBufferAdvance initialAdvance) { m_initialAdvance = initialAdvance; }
     const GlyphBufferAdvance& initialAdvance() const { return m_initialAdvance; }
+
+    void setLeadingExpansion(float leadingExpansion) { m_leadingExpansion = leadingExpansion; }
+    float leadingExpansion() const { return m_leadingExpansion; }
     
     Glyph glyphAt(int index) const
     {
@@ -202,6 +205,18 @@ public:
         return (*m_offsetsInString)[index];
     }
 
+    void shrink(int truncationPoint)
+    {
+        m_font.shrink(truncationPoint);
+        m_glyphs.shrink(truncationPoint);
+        m_advances.shrink(truncationPoint);
+        if (m_offsetsInString)
+            m_offsetsInString->shrink(truncationPoint);
+#if PLATFORM(WIN)
+        m_offsets.shrink(truncationPoint);
+#endif
+    }
+
 private:
     void swap(int index1, int index2)
     {
@@ -232,6 +247,7 @@ private:
 #if PLATFORM(WIN)
     Vector<FloatSize, 2048> m_offsets;
 #endif
+    float m_leadingExpansion;
 };
 
 }

@@ -23,54 +23,52 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ObjectTreePropertyTreeElement = function(property, propertyPath, mode, prototypeName)
+WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement extends WebInspector.ObjectTreeBaseTreeElement
 {
-    this._mode = mode || WebInspector.ObjectTreeView.Mode.Properties;
-    this._prototypeName = prototypeName;
+    constructor(property, propertyPath, mode, prototypeName)
+    {
+        super(property, propertyPath, property);
 
-    WebInspector.ObjectTreeBaseTreeElement.call(this, property, propertyPath, property);
+        this._mode = mode || WebInspector.ObjectTreeView.Mode.Properties;
+        this._prototypeName = prototypeName;
 
-    this.mainTitle = this._titleFragment();
-    this.addClassName("object-tree-property");
+        this.mainTitle = this._titleFragment();
+        this.addClassName("object-tree-property");
 
-    if (this.property.hasValue()) {
-        this.addClassName(this.property.value.type);
-        if (this.property.value.subtype)
-            this.addClassName(this.property.value.subtype);
-    } else
-        this.addClassName("accessor");
+        if (this.property.hasValue()) {
+            this.addClassName(this.property.value.type);
+            if (this.property.value.subtype)
+                this.addClassName(this.property.value.subtype);
+        } else
+            this.addClassName("accessor");
 
-    if (this.property.wasThrown)
-        this.addClassName("had-error");
-    if (this.property.name === "__proto__")
-        this.addClassName("prototype-property");
+        if (this.property.wasThrown)
+            this.addClassName("had-error");
+        if (this.property.name === "__proto__")
+            this.addClassName("prototype-property");
 
-    this._updateTooltips();
-    this._updateHasChildren();
-};
-
-WebInspector.ObjectTreePropertyTreeElement.prototype = {
-    constructor: WebInspector.ObjectTreePropertyTreeElement,
-    __proto__: WebInspector.ObjectTreeBaseTreeElement.prototype,
+        this._updateTooltips();
+        this._updateHasChildren();
+    }
 
     // Protected
 
     onpopulate()
     {
         this._updateChildren();
-    },
+    }
 
     onexpand()
     {
         if (this._previewView)
             this._previewView.showTitle();
-    },
+    }
 
     oncollapse()
     {
         if (this._previewView)
             this._previewView.showPreview();
-    },
+    }
 
     invokedGetter()
     {
@@ -85,7 +83,7 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
         this.removeClassName("accessor");
 
         this._updateHasChildren();
-    },
+    }
 
     // Private
 
@@ -99,7 +97,7 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
             this.hasChildren = !wasThrown && valueHasChildren;
         else
             this.hasChildren = !wasThrown && valueHasChildren && (this.property.name === "__proto__" || this._alwaysDisplayAsProperty());
-    },
+    }
 
     _updateTooltips()
     {
@@ -113,7 +111,7 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
             attributes.push("writable");
 
         this.iconElement.title = attributes.join(" ");
-    },
+    }
 
     _titleFragment()
     {
@@ -124,7 +122,7 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
             return this._createTitlePropertyStyle();
         else
             return this._createTitleAPIStyle();
-    },
+    }
 
     _createTitlePrototype()
     {
@@ -136,7 +134,7 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
         nameElement.textContent = WebInspector.UIString("%s Prototype").format(this._sanitizedPrototypeString(this.property.value));
         nameElement.title = this.propertyPathString(this.thisPropertyPath());
         return nameElement;
-    },
+    }
 
     _createTitlePropertyStyle()
     {
@@ -171,10 +169,9 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
         } else {
             valueOrGetterElement = document.createElement("span");
             if (this.property.hasGetter())
-                valueOrGetterElement.appendChild(this.createInteractiveGetterElement());
-            if (!this.property.hasSetter())
-                valueOrGetterElement.appendChild(this.createReadOnlyIconElement());
-            // FIXME: What if just a setter?
+                valueOrGetterElement.appendChild(this.createGetterElement(this._mode !== WebInspector.ObjectTreeView.Mode.ClassAPI));
+            if (this.property.hasSetter())
+                valueOrGetterElement.appendChild(this.createSetterElement());
         }
 
         valueOrGetterElement.classList.add("value");
@@ -184,7 +181,7 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
         container.appendChild(nameElement);
         container.appendChild(valueOrGetterElement);
         return container;
-    },
+    }
 
     _createTitleAPIStyle()
     {
@@ -212,15 +209,16 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
             paramElement.textContent = this._functionParameterString();
             container.appendChild(paramElement);
         } else {
+            var spacer = container.appendChild(document.createElement("span"));
+            spacer.className = "spacer";
             if (this.property.hasGetter())
-                container.appendChild(this.createInteractiveGetterElement());
-            if (!this.property.hasSetter())
-                container.appendChild(this.createReadOnlyIconElement());
-            // FIXME: What if just a setter?
+                container.appendChild(this.createGetterElement(this._mode !== WebInspector.ObjectTreeView.Mode.ClassAPI));
+            if (this.property.hasSetter())
+                container.appendChild(this.createSetterElement());
         }
 
         return container;
-    },
+    }
 
     _alwaysDisplayAsProperty()
     {
@@ -237,12 +235,12 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
             return true;
 
         return false;
-    },
+    }
 
     _functionPropertyString()
     {
         return "function" + this._functionParameterString();
-    },
+    }
 
     _functionParameterString()
     {
@@ -283,7 +281,7 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
 
         var match = resolvedValue.description.match(/^function.*?(\([^)]+?\))/);
         return match ? match[1] : "()";
-    },
+    }
 
     _sanitizedPrototypeString(value)
     {
@@ -296,7 +294,7 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
             return "RegExp";
 
         return value.description.replace(/Prototype$/, "");
-    },
+    }
 
     _updateChildren()
     {
@@ -306,24 +304,26 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
         var resolvedValue = this.resolvedValue();
         if (resolvedValue.isCollectionType() && this._mode === WebInspector.ObjectTreeView.Mode.Properties)
             resolvedValue.getCollectionEntries(0, 100, this._updateChildrenInternal.bind(this, this._updateEntries, this._mode));
+        else if (this._mode === WebInspector.ObjectTreeView.Mode.ClassAPI)
+            resolvedValue.getOwnPropertyDescriptors(this._updateChildrenInternal.bind(this, this._updateProperties, WebInspector.ObjectTreeView.Mode.ClassAPI));
         else if (this.property.name === "__proto__")
-            resolvedValue.getOwnPropertyDescriptors(this._updateChildrenInternal.bind(this, this._updateProperties, WebInspector.ObjectTreeView.Mode.API));
+            resolvedValue.getOwnPropertyDescriptors(this._updateChildrenInternal.bind(this, this._updateProperties, WebInspector.ObjectTreeView.Mode.PrototypeAPI));
         else
             resolvedValue.getDisplayablePropertyDescriptors(this._updateChildrenInternal.bind(this, this._updateProperties, this._mode));
-    },
+    }
 
     _updateChildrenInternal(handler, mode, list)
     {
         this.removeChildren();
 
         if (!list) {
-            var errorMessageElement = WebInspector.ObjectTreeView.emptyMessageElement(WebInspector.UIString("Could not fetch properties. Object may no longer exist."));
-            this.appendChild(new TreeElement(errorMessageElement, null, false));
+            var errorMessageElement = WebInspector.ObjectTreeView.createEmptyMessageElement(WebInspector.UIString("Could not fetch properties. Object may no longer exist."));
+            this.appendChild(new WebInspector.TreeElement(errorMessageElement, null, false));
             return;
         }
 
         handler.call(this, list, this.resolvedValuePropertyPath(), mode);
-    },
+    }
 
     _updateEntries(entries, propertyPath, mode)
     {
@@ -336,8 +336,8 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
         }
 
         if (!this.children.length) {
-            var emptyMessageElement = WebInspector.ObjectTreeView.emptyMessageElement(WebInspector.UIString("No Entries."));
-            this.appendChild(new TreeElement(emptyMessageElement, null, false));
+            var emptyMessageElement = WebInspector.ObjectTreeView.createEmptyMessageElement(WebInspector.UIString("No Entries."));
+            this.appendChild(new WebInspector.TreeElement(emptyMessageElement, null, false));
         }
 
         // Show the prototype so users can see the API.
@@ -346,18 +346,18 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
             if (propertyDescriptor)
                 this.appendChild(new WebInspector.ObjectTreePropertyTreeElement(propertyDescriptor, propertyPath, mode));
         }.bind(this));
-    },
+    }
 
     _updateProperties(properties, propertyPath, mode)
     {
-        properties.sort(WebInspector.ObjectTreeView.ComparePropertyDescriptors);
+        properties.sort(WebInspector.ObjectTreeView.comparePropertyDescriptors);
 
         var resolvedValue = this.resolvedValue();
         var isArray = resolvedValue.isArray();
         var isPropertyMode = mode === WebInspector.ObjectTreeView.Mode.Properties || this._getterValue;
-        var isAPI = mode === WebInspector.ObjectTreeView.Mode.API;
+        var isAPI = mode !== WebInspector.ObjectTreeView.Mode.Prototype;
 
-        var prototypeName = undefined;
+        var prototypeName;
         if (this.property.name === "__proto__") {
             if (resolvedValue.description)
                 prototypeName = this._sanitizedPrototypeString(resolvedValue);
@@ -369,7 +369,7 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
             // already showed them in the Properties section.
             if (isAPI && propertyDescriptor.nativeGetter)
                 continue;
-            
+
             if (isArray && isPropertyMode) {
                 if (propertyDescriptor.isIndexProperty())
                     this.appendChild(new WebInspector.ObjectTreeArrayIndexTreeElement(propertyDescriptor, propertyPath));
@@ -380,8 +380,8 @@ WebInspector.ObjectTreePropertyTreeElement.prototype = {
         }
 
         if (!this.children.length) {
-            var emptyMessageElement = WebInspector.ObjectTreeView.emptyMessageElement(WebInspector.UIString("No Properties."));
-            this.appendChild(new TreeElement(emptyMessageElement, null, false));
+            var emptyMessageElement = WebInspector.ObjectTreeView.createEmptyMessageElement(WebInspector.UIString("No Properties."));
+            this.appendChild(new WebInspector.TreeElement(emptyMessageElement, null, false));
         }
     }
 };

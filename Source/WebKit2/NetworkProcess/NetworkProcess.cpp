@@ -177,6 +177,8 @@ void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParame
     memoryPressureHandler.install();
 
     m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
+
+    m_diskCacheSizeOverride = parameters.diskCacheSizeOverride;
     setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
 
     setCanHandleHTTPSServerTrustEvaluation(parameters.canHandleHTTPSServerTrustEvaluation);
@@ -497,6 +499,21 @@ void NetworkProcess::terminate()
 {
     platformTerminate();
     ChildProcess::terminate();
+}
+
+void NetworkProcess::processWillSuspend()
+{
+    MemoryPressureHandler::singleton().releaseMemory(true);
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::ProcessReadyToSuspend(), 0);
+}
+
+void NetworkProcess::cancelProcessWillSuspend()
+{
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidCancelProcessSuspension(), 0);
+}
+
+void NetworkProcess::processDidResume()
+{
 }
 
 #if !PLATFORM(COCOA)

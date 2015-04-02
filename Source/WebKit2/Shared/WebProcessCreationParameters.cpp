@@ -27,6 +27,9 @@
 #include "WebProcessCreationParameters.h"
 
 #include "APIData.h"
+#if PLATFORM(COCOA)
+#include "ArgumentCodersCF.h"
+#endif
 #include "WebCoreArgumentCoders.h"
 
 namespace WebKit {
@@ -73,9 +76,8 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << cookieStorageDirectory;
 #if PLATFORM(IOS)
     encoder << cookieStorageDirectoryExtensionHandle;
-    encoder << openGLCacheDirectoryExtensionHandle;
+    encoder << containerCachesDirectoryExtensionHandle;
     encoder << containerTemporaryDirectoryExtensionHandle;
-    encoder << hstsDatabasePathExtensionHandle;
 #endif
     encoder << mediaKeyStorageDirectory;
     encoder << mediaKeyStorageDirectoryExtensionHandle;
@@ -148,6 +150,10 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
 #if ENABLE(NETSCAPE_PLUGIN_API)
     encoder << pluginLoadClientPolicies;
 #endif
+
+#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+    IPC::encode(encoder, networkATSContext.get());
+#endif
 }
 
 bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProcessCreationParameters& parameters)
@@ -175,11 +181,9 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
 #if PLATFORM(IOS)
     if (!decoder.decode(parameters.cookieStorageDirectoryExtensionHandle))
         return false;
-    if (!decoder.decode(parameters.openGLCacheDirectoryExtensionHandle))
+    if (!decoder.decode(parameters.containerCachesDirectoryExtensionHandle))
         return false;
     if (!decoder.decode(parameters.containerTemporaryDirectoryExtensionHandle))
-        return false;
-    if (!decoder.decode(parameters.hstsDatabasePathExtensionHandle))
         return false;
 #endif
     if (!decoder.decode(parameters.mediaKeyStorageDirectory))
@@ -308,6 +312,11 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     if (!decoder.decode(parameters.pluginLoadClientPolicies))
+        return false;
+#endif
+
+#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+    if (!IPC::decode(decoder, parameters.networkATSContext))
         return false;
 #endif
 

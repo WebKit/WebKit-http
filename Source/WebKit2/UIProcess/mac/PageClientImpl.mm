@@ -627,7 +627,7 @@ void PageClientImpl::recordAutocorrectionResponse(AutocorrectionResponseType res
 void PageClientImpl::recommendedScrollbarStyleDidChange(ScrollbarStyle newStyle)
 {
     // Now re-create a tracking area with the appropriate options given the new scrollbar style
-    NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect;
+    NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect | NSTrackingCursorUpdate;
     if (newStyle == ScrollbarStyle::AlwaysVisible)
         options |= NSTrackingActiveAlways;
     else
@@ -777,6 +777,11 @@ void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigatio
 void PageClientImpl::removeNavigationGestureSnapshot()
 {
     [m_wkView _removeNavigationGestureSnapshot];
+}
+
+void PageClientImpl::didChangeBackgroundColor()
+{
+    notImplemented();
 }
 
 CGRect PageClientImpl::boundsOfLayerInLayerBackedWindowCoordinates(CALayer *layer) const

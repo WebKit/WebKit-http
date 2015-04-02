@@ -144,7 +144,7 @@ RegisterID* RegExpNode::emitBytecode(BytecodeGenerator& generator, RegisterID* d
 
 RegisterID* ThisNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    if (generator.constructorKind() == ConstructorKind::Derived)
+    if (m_shouldAlwaysEmitTDZCheck || generator.constructorKind() == ConstructorKind::Derived)
         generator.emitTDZCheck(generator.thisRegister());
 
     if (dst == generator.ignoredResult())
@@ -1987,7 +1987,7 @@ void WhileNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
     LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
     RefPtr<Label> topOfLoop = generator.newLabel();
 
-    generator.emitDebugHook(WillExecuteStatement, m_expr->lineNo(), m_expr->startOffset(), m_expr->lineStartOffset());
+    generator.emitDebugHook(WillExecuteStatement, m_expr->firstLine(), m_expr->startOffset(), m_expr->lineStartOffset());
     generator.emitNodeInConditionContext(m_expr, topOfLoop.get(), scope->breakTarget(), FallThroughMeansTrue);
 
     generator.emitLabel(topOfLoop.get());
@@ -2287,9 +2287,7 @@ void ForOfNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
         emitThrowReferenceError(generator, ASCIILiteral("Left side of for-of statement is not a reference."));
         return;
     }
-    
-    LabelScopePtr scope = generator.newLabelScope(LabelScope::Loop);
-    
+
     generator.emitDebugHook(WillExecuteStatement, firstLine(), startOffset(), lineStartOffset());
     auto extractor = [this, dst](BytecodeGenerator& generator, RegisterID* value)
     {
@@ -2865,6 +2863,9 @@ RegisterID* ClassExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
     prototype = generator.emitGetById(generator.newTemporary(), constructor.get(), generator.propertyNames().prototype);
 
     if (superclass) {
+        RefPtr<RegisterID> protoParent = generator.newTemporary();
+        generator.emitLoad(protoParent.get(), jsNull());
+
         RefPtr<RegisterID> tempRegister = generator.newTemporary();
         RefPtr<Label> superclassIsNullLabel = generator.newLabel();
         generator.emitJumpIfTrue(generator.emitUnaryOp(op_eq_null, tempRegister.get(), superclass.get()), superclassIsNullLabel.get());
@@ -2874,8 +2875,6 @@ RegisterID* ClassExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
         generator.emitJumpIfTrue(generator.emitIsObject(tempRegister.get(), superclass.get()), superclassIsObjectLabel.get());
         generator.emitThrowTypeError(ASCIILiteral("The superclass is not an object."));
         generator.emitLabel(superclassIsObjectLabel.get());
-
-        RefPtr<RegisterID> protoParent = generator.newTemporary();
         generator.emitGetById(protoParent.get(), superclass.get(), generator.propertyNames().prototype);
 
         RefPtr<Label> protoParentIsObjectOrNullLabel = generator.newLabel();
@@ -2884,9 +2883,9 @@ RegisterID* ClassExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
         generator.emitLabel(protoParentIsObjectOrNullLabel.get());
 
         generator.emitDirectPutById(constructor.get(), generator.propertyNames().underscoreProto, superclass.get(), PropertyNode::Unknown);
+        generator.emitLabel(superclassIsNullLabel.get());
         generator.emitDirectPutById(prototype.get(), generator.propertyNames().underscoreProto, protoParent.get(), PropertyNode::Unknown);
 
-        generator.emitLabel(superclassIsNullLabel.get());
         emitPutHomeObject(generator, constructor.get(), prototype.get());
     }
 

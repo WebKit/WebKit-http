@@ -123,7 +123,7 @@ enum RuleMatchingBehavior {
 
 class PseudoStyleRequest {
 public:
-    PseudoStyleRequest(PseudoId pseudoId, RenderScrollbar* scrollbar = 0, ScrollbarPart scrollbarPart = NoPart)
+    PseudoStyleRequest(PseudoId pseudoId, RenderScrollbar* scrollbar = nullptr, ScrollbarPart scrollbarPart = NoPart)
         : pseudoId(pseudoId)
         , scrollbarPart(scrollbarPart)
         , scrollbar(scrollbar)
@@ -277,12 +277,15 @@ public:
 
     struct MatchResult {
         MatchResult() : isCacheable(true) { }
-        Vector<MatchedProperties, 64> matchedProperties;
         Vector<StyleRule*, 64> matchedRules;
         MatchRanges ranges;
         bool isCacheable;
 
-        void addMatchedProperties(const StyleProperties&, StyleRule* = 0, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone);
+        const Vector<MatchedProperties, 64>& matchedProperties() const { return m_matchedProperties; }
+
+        void addMatchedProperties(const StyleProperties&, StyleRule* = nullptr, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone);
+    private:
+        Vector<MatchedProperties, 64> m_matchedProperties;
     };
 
 private:
@@ -573,7 +576,7 @@ class StyleResolverParentPusher {
 public:
     StyleResolverParentPusher(Element* parent)
         : m_parent(parent)
-        , m_pushedStyleResolver(0)
+        , m_pushedStyleResolver(nullptr)
     { }
     void push()
     {

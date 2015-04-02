@@ -164,10 +164,10 @@ public:
         incConstants();
         return new (m_parserArena) VoidNode(location, expr);
     }
-    ExpressionNode* thisExpr(const JSTokenLocation& location)
+    ExpressionNode* thisExpr(const JSTokenLocation& location, ThisTDZMode thisTDZMode)
     {
         usesThis();
-        return new (m_parserArena) ThisNode(location);
+        return new (m_parserArena) ThisNode(location, thisTDZMode);
     }
     ExpressionNode* superExpr(const JSTokenLocation& location)
     {
@@ -571,7 +571,7 @@ public:
     {
         if (m_vm->propertyNames->arguments == *ident)
             usesArguments();
-        ASSERT(ident->impl()->isAtomic());
+        ASSERT(ident->impl()->isAtomic() || ident->impl()->isSymbol());
         m_scope.m_varDeclarations.append(std::make_pair(*ident, attrs));
     }
 

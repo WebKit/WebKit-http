@@ -44,6 +44,8 @@ namespace NetworkCache {
 static const char networkCacheSubdirectory[] = "WebKitCache";
 static const char versionDirectoryPrefix[] = "Version ";
 
+static double computeRecordWorth(FileTimes);
+
 std::unique_ptr<Storage> Storage::open(const String& cachePath)
 {
     ASSERT(RunLoop::isMain());
@@ -131,9 +133,9 @@ static unsigned hashData(const Data& data)
     return hasher.hash();
 }
 
-struct EntryMetaData {
-    EntryMetaData() { }
-    explicit EntryMetaData(const Key& key)
+struct RecordMetaData {
+    RecordMetaData() { }
+    explicit RecordMetaData(const Key& key)
         : cacheStorageVersion(Storage::version)
         , key(key)
     { }
@@ -149,7 +151,7 @@ struct EntryMetaData {
     uint64_t bodySize;
 };
 
-static bool decodeEntryMetaData(EntryMetaData& metaData, const Data& fileData)
+static bool decodeRecordMetaData(RecordMetaData& metaData, const Data& fileData)
 {
     bool success = false;
     fileData.apply([&metaData, &success](const uint8_t* data, size_t size) {
@@ -178,9 +180,9 @@ static bool decodeEntryMetaData(EntryMetaData& metaData, const Data& fileData)
     return success;
 }
 
-static bool decodeEntryHeader(const Data& fileData, EntryMetaData& metaData, Data& data)
+static bool decodeRecordHeader(const Data& fileData, RecordMetaData& metaData, Data& data)
 {
-    if (!decodeEntryMetaData(metaData, fileData)) {
+    if (!decodeRecordMetaData(metaData, fileData)) {
         LOG(NetworkCacheStorage, "(NetworkProcess) meta data decode failure");
         return false;
     }
@@ -203,11 +205,11 @@ static bool decodeEntryHeader(const Data& fileData, EntryMetaData& metaData, Dat
     return true;
 }
 
-static std::unique_ptr<Storage::Entry> decodeEntry(const Data& fileData, int fd, const Key& key)
+static std::unique_ptr<Storage::Record> decodeRecord(const Data& fileData, int fd, const Key& key)
 {
-    EntryMetaData metaData;
+    RecordMetaData metaData;
     Data headerData;
-    if (!decodeEntryHeader(fileData, metaData, headerData))
+    if (!decodeRecordHeader(fileData, metaData, headerData))
         return nullptr;
 
     if (metaData.key != key)
@@ -230,7 +232,7 @@ static std::unique_ptr<Storage::Entry> decodeEntry(const Data& fileData, int fd,
         }
     }
 
-    return std::make_unique<Storage::Entry>(Storage::Entry {
+    return std::make_unique<Storage::Record>(Storage::Record {
         metaData.key,
         metaData.timeStamp,
         headerData,
@@ -238,35 +240,35 @@ static std::unique_ptr<Storage::Entry> decodeEntry(const Data& fileData, int fd,
     });
 }
 
-static Data encodeEntryMetaData(const EntryMetaData& entry)
+static Data encodeRecordMetaData(const RecordMetaData& metaData)
 {
     Encoder encoder;
 
-    encoder << entry.cacheStorageVersion;
-    encoder << entry.key;
-    encoder << entry.timeStamp;
-    encoder << entry.headerChecksum;
-    encoder << entry.headerSize;
-    encoder << entry.bodyChecksum;
-    encoder << entry.bodySize;
+    encoder << metaData.cacheStorageVersion;
+    encoder << metaData.key;
+    encoder << metaData.timeStamp;
+    encoder << metaData.headerChecksum;
+    encoder << metaData.headerSize;
+    encoder << metaData.bodyChecksum;
+    encoder << metaData.bodySize;
 
     encoder.encodeChecksum();
 
     return Data(encoder.buffer(), encoder.bufferSize());
 }
 
-static Data encodeEntryHeader(const Storage::Entry& entry)
+static Data encodeRecordHeader(const Storage::Record& record)
 {
-    EntryMetaData metaData(entry.key);
-    metaData.timeStamp = entry.timeStamp;
-    metaData.headerChecksum = hashData(entry.header);
-    metaData.headerSize = entry.header.size();
-    metaData.bodyChecksum = hashData(entry.body);
-    metaData.bodySize = entry.body.size();
+    RecordMetaData metaData(record.key);
+    metaData.timeStamp = record.timeStamp;
+    metaData.headerChecksum = hashData(record.header);
+    metaData.headerSize = record.header.size();
+    metaData.bodyChecksum = hashData(record.body);
+    metaData.bodySize = record.body.size();
 
-    auto encodedMetaData = encodeEntryMetaData(metaData);
-    auto headerData = concatenate(encodedMetaData, entry.header);
-    if (!entry.body.size())
+    auto encodedMetaData = encodeRecordMetaData(metaData);
+    auto headerData = concatenate(encodedMetaData, record.header);
+    if (!record.body.size())
         return { headerData };
 
     size_t dataOffset = WTF::roundUpToMultipleOf(pageSize(), headerData.size());
@@ -292,11 +294,11 @@ void Storage::remove(const Key& key)
     });
 }
 
-void Storage::updateFileAccessTime(IOChannel& channel)
+void Storage::updateFileModificationTime(IOChannel& channel)
 {
     StringCapture filePathCapture(channel.path());
     serialBackgroundIOQueue().dispatch([filePathCapture] {
-        updateFileAccessTimeIfNeeded(filePathCapture.string());
+        updateFileModificationTimeIfNeeded(filePathCapture.string());
     });
 }
 
@@ -313,10 +315,10 @@ void Storage::dispatchReadOperation(const ReadOperation& read)
                 remove(read.key);
                 read.completionHandler(nullptr);
             } else {
-                auto entry = decodeEntry(fileData, channel->fileDescriptor(), read.key);
-                bool success = read.completionHandler(WTF::move(entry));
+                auto record = decodeRecord(fileData, channel->fileDescriptor(), read.key);
+                bool success = read.completionHandler(WTF::move(record));
                 if (success)
-                    updateFileAccessTime(*channel);
+                    updateFileModificationTime(*channel);
                 else
                     remove(read.key);
             }
@@ -354,11 +356,11 @@ void Storage::dispatchPendingReadOperations()
 template <class T> bool retrieveFromMemory(const T& operations, const Key& key, Storage::RetrieveCompletionHandler& completionHandler)
 {
     for (auto& operation : operations) {
-        if (operation->entry.key == key) {
+        if (operation->record.key == key) {
             LOG(NetworkCacheStorage, "(NetworkProcess) found write operation in progress");
-            auto entry = operation->entry;
-            RunLoop::main().dispatch([entry, completionHandler] {
-                completionHandler(std::make_unique<Storage::Entry>(entry));
+            auto record = operation->record;
+            RunLoop::main().dispatch([record, completionHandler] {
+                completionHandler(std::make_unique<Storage::Record>(record));
             });
             return true;
         }
@@ -391,61 +393,67 @@ void Storage::retrieve(const Key& key, unsigned priority, RetrieveCompletionHand
     dispatchPendingReadOperations();
 }
 
-void Storage::store(const Entry& entry, StoreCompletionHandler&& completionHandler)
+void Storage::store(const Record& record, StoreCompletionHandler&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
-    ASSERT(!entry.key.isNull());
+    ASSERT(!record.key.isNull());
 
     if (!m_maximumSize) {
         completionHandler(false, { });
         return;
     }
 
-    m_pendingWriteOperations.append(new WriteOperation { entry, { }, WTF::move(completionHandler) });
+    m_pendingWriteOperations.append(new WriteOperation { record, { }, WTF::move(completionHandler) });
 
     // Add key to the filter already here as we do lookups from the pending operations too.
-    m_contentsFilter.add(entry.key.shortHash());
+    m_contentsFilter.add(record.key.shortHash());
 
     dispatchPendingWriteOperations();
 }
 
-void Storage::update(const Entry& updateEntry, const Entry& existingEntry, StoreCompletionHandler&& completionHandler)
+void Storage::update(const Record& updateRecord, const Record& existingRecord, StoreCompletionHandler&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
-    ASSERT(!existingEntry.key.isNull());
-    ASSERT(existingEntry.key == updateEntry.key);
+    ASSERT(!existingRecord.key.isNull());
+    ASSERT(existingRecord.key == updateRecord.key);
 
     if (!m_maximumSize) {
         completionHandler(false, { });
         return;
     }
 
-    m_pendingWriteOperations.append(new WriteOperation { updateEntry, existingEntry, WTF::move(completionHandler) });
+    m_pendingWriteOperations.append(new WriteOperation { updateRecord, existingRecord, WTF::move(completionHandler) });
 
     dispatchPendingWriteOperations();
 }
 
-void Storage::traverse(std::function<void (const Entry*)>&& traverseHandler)
+void Storage::traverse(TraverseFlags flags, std::function<void (const Record*, const RecordInfo&)>&& traverseHandler)
 {
     StringCapture cachePathCapture(m_directoryPath);
-    ioQueue().dispatch([this, cachePathCapture, traverseHandler] {
+    ioQueue().dispatch([this, flags, cachePathCapture, traverseHandler] {
         String cachePath = cachePathCapture.string();
-        traverseCacheFiles(cachePath, [this, &traverseHandler](const String& fileName, const String& partitionPath) {
+        traverseCacheFiles(cachePath, [this, flags, &traverseHandler](const String& fileName, const String& partitionPath) {
             auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+
+            RecordInfo info;
+            if (flags & TraverseFlag::ComputeWorth)
+                info.worth = computeRecordWorth(fileTimes(filePath));
+
             auto channel = IOChannel::open(filePath, IOChannel::Type::Read);
             const size_t headerReadSize = 16 << 10;
             // FIXME: Traversal is slower than it should be due to lack of parallelism.
-            channel->readSync(0, headerReadSize, [this, &traverseHandler](Data& fileData, int) {
-                EntryMetaData metaData;
+            channel->readSync(0, headerReadSize, [this, &traverseHandler, &info](Data& fileData, int) {
+                RecordMetaData metaData;
                 Data headerData;
-                if (decodeEntryHeader(fileData, metaData, headerData)) {
-                    Entry entry { metaData.key, metaData.timeStamp, headerData, { } };
-                    traverseHandler(&entry);
+                if (decodeRecordHeader(fileData, metaData, headerData)) {
+                    Record record { metaData.key, metaData.timeStamp, headerData, { } };
+                    info.bodySize = metaData.bodySize;
+                    traverseHandler(&record, info);
                 }
             });
         });
         RunLoop::main().dispatch([this, traverseHandler] {
-            traverseHandler(nullptr);
+            traverseHandler(nullptr, { });
         });
     });
 }
@@ -465,7 +473,7 @@ void Storage::dispatchPendingWriteOperations()
         auto& write = *writeOperation;
         m_activeWriteOperations.add(WTF::move(writeOperation));
 
-        if (write.existingEntry && cacheMayContain(write.entry.key.shortHash())) {
+        if (write.existingRecord && cacheMayContain(write.record.key.shortHash())) {
             dispatchHeaderWriteOperation(write);
             continue;
         }
@@ -478,25 +486,25 @@ void Storage::dispatchFullWriteOperation(const WriteOperation& write)
     ASSERT(RunLoop::isMain());
     ASSERT(m_activeWriteOperations.contains(&write));
 
-    if (!m_contentsFilter.mayContain(write.entry.key.shortHash()))
-        m_contentsFilter.add(write.entry.key.shortHash());
+    if (!m_contentsFilter.mayContain(write.record.key.shortHash()))
+        m_contentsFilter.add(write.record.key.shortHash());
 
     StringCapture cachePathCapture(m_directoryPath);
     backgroundIOQueue().dispatch([this, &write, cachePathCapture] {
-        auto encodedHeader = encodeEntryHeader(write.entry);
-        auto headerAndBodyData = concatenate(encodedHeader, write.entry.body);
+        auto encodedHeader = encodeRecordHeader(write.record);
+        auto headerAndBodyData = concatenate(encodedHeader, write.record.body);
 
-        auto channel = openFileForKey(write.entry.key, IOChannel::Type::Create, cachePathCapture.string());
+        auto channel = openFileForKey(write.record.key, IOChannel::Type::Create, cachePathCapture.string());
         int fd = channel->fileDescriptor();
         size_t bodyOffset = encodedHeader.size();
 
         channel->write(0, headerAndBodyData, [this, &write, bodyOffset, fd](int error) {
             LOG(NetworkCacheStorage, "(NetworkProcess) write complete error=%d", error);
             if (error) {
-                if (m_contentsFilter.mayContain(write.entry.key.shortHash()))
-                    m_contentsFilter.remove(write.entry.key.shortHash());
+                if (m_contentsFilter.mayContain(write.record.key.shortHash()))
+                    m_contentsFilter.remove(write.record.key.shortHash());
             }
-            size_t bodySize = write.entry.body.size();
+            size_t bodySize = write.record.body.size();
             size_t totalSize = bodyOffset + bodySize;
 
             m_approximateSize += totalSize;
@@ -518,15 +526,15 @@ void Storage::dispatchFullWriteOperation(const WriteOperation& write)
 void Storage::dispatchHeaderWriteOperation(const WriteOperation& write)
 {
     ASSERT(RunLoop::isMain());
-    ASSERT(write.existingEntry);
+    ASSERT(write.existingRecord);
     ASSERT(m_activeWriteOperations.contains(&write));
-    ASSERT(cacheMayContain(write.entry.key.shortHash()));
+    ASSERT(cacheMayContain(write.record.key.shortHash()));
 
     // Try to update the header of an existing entry.
     StringCapture cachePathCapture(m_directoryPath);
     backgroundIOQueue().dispatch([this, &write, cachePathCapture] {
-        auto headerData = encodeEntryHeader(write.entry);
-        auto existingHeaderData = encodeEntryHeader(write.existingEntry.value());
+        auto headerData = encodeRecordHeader(write.record);
+        auto existingHeaderData = encodeRecordHeader(write.existingRecord.value());
 
         bool pageRoundedHeaderSizeChanged = headerData.size() != existingHeaderData.size();
         if (pageRoundedHeaderSizeChanged) {
@@ -537,12 +545,12 @@ void Storage::dispatchHeaderWriteOperation(const WriteOperation& write)
             return;
         }
 
-        auto channel = openFileForKey(write.entry.key, IOChannel::Type::Write, cachePathCapture.string());
+        auto channel = openFileForKey(write.record.key, IOChannel::Type::Write, cachePathCapture.string());
         channel->write(0, headerData, [this, &write](int error) {
             LOG(NetworkCacheStorage, "(NetworkProcess) update complete error=%d", error);
 
             if (error)
-                remove(write.entry.key);
+                remove(write.record.key);
 
             write.completionHandler(!error, { });
 
@@ -583,25 +591,32 @@ void Storage::clear()
     });
 }
 
+static double computeRecordWorth(FileTimes times)
+{
+    using namespace std::chrono;
+    auto age = system_clock::now() - times.creation;
+    // File modification time is updated manually on cache read. We don't use access time since OS may update it automatically.
+    auto accessAge = times.modification - times.creation;
+
+    // For sanity.
+    if (age <= seconds::zero() || accessAge < seconds::zero() || accessAge > age)
+        return 0;
+
+    // We like old entries that have been accessed recently.
+    return duration<double>(accessAge) / age;
+}
+
+
 static double deletionProbability(FileTimes times)
 {
     static const double maximumProbability { 0.33 };
 
-    using namespace std::chrono;
-    auto age = system_clock::now() - times.creation;
-    auto accessAge = times.access - times.creation;
-
-    // For sanity.
-    if (age <= seconds::zero() || accessAge < seconds::zero() || accessAge > age)
-        return maximumProbability;
-
-    // We like old entries that have been accessed recently.
-    auto relativeValue = duration<double>(accessAge) / age;
+    auto worth = computeRecordWorth(times);
 
     // Adjust a bit so the most valuable entries don't get deleted at all.
-    auto effectiveValue = std::min(1.1 * relativeValue, 1.);
+    auto effectiveWorth = std::min(1.1 * worth, 1.);
 
-    return (1 - effectiveValue) * maximumProbability;
+    return (1 - effectiveWorth) * maximumProbability;
 }
 
 void Storage::shrinkIfNeeded()

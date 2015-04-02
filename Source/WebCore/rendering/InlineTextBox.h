@@ -40,8 +40,8 @@ class InlineTextBox : public InlineBox {
 public:
     explicit InlineTextBox(RenderText& renderer)
         : InlineBox(renderer)
-        , m_prevTextBox(0)
-        , m_nextTextBox(0)
+        , m_prevTextBox(nullptr)
+        , m_nextTextBox(nullptr)
         , m_start(0)
         , m_len(0)
         , m_truncation(cNoTruncation)
@@ -77,6 +77,12 @@ public:
     using InlineBox::setHasHyphen;
     using InlineBox::canHaveLeadingExpansion;
     using InlineBox::setCanHaveLeadingExpansion;
+    using InlineBox::canHaveTrailingExpansion;
+    using InlineBox::setCanHaveTrailingExpansion;
+    using InlineBox::forceTrailingExpansion;
+    using InlineBox::setForceTrailingExpansion;
+    using InlineBox::forceLeadingExpansion;
+    using InlineBox::setForceLeadingExpansion;
 
     static inline bool compareByStart(const InlineTextBox* first, const InlineTextBox* second) { return first->start() < second->start(); }
 
@@ -160,10 +166,10 @@ private:
 
     void computeRectForReplacementMarker(RenderedDocumentMarker&, const RenderStyle&, const FontCascade&);
 
-    TextRun::ExpansionBehavior expansionBehavior() const
+    ExpansionBehavior expansionBehavior() const
     {
-        return (canHaveLeadingExpansion() ? TextRun::AllowLeadingExpansion : TextRun::ForbidLeadingExpansion)
-            | (renderer().contentIsKnownToFollow() || (expansion() && nextLeafChild() && !nextLeafChild()->isLineBreak()) ? TextRun::AllowTrailingExpansion : TextRun::ForbidTrailingExpansion);
+        return (canHaveLeadingExpansion() ? AllowLeadingExpansion : ForbidLeadingExpansion)
+            | (renderer().contentIsKnownToFollow() || (expansion() && nextLeafChild() && !nextLeafChild()->isLineBreak()) ? AllowTrailingExpansion : ForbidTrailingExpansion);
     }
 
     void behavesLikeText() const = delete;

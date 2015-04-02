@@ -414,7 +414,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     
     for (unsigned typedArrayIndex = NUMBER_OF_TYPED_ARRAY_TYPES; typedArrayIndex--;) {
         m_typedArrays[typedArrayIndex].prototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, typedArrayConstructors[typedArrayIndex], DontEnum);
-        putDirectWithoutTransition(vm, Identifier(exec, typedArrayConstructors[typedArrayIndex]->name(exec)), typedArrayConstructors[typedArrayIndex], DontEnum);
+        putDirectWithoutTransition(vm, Identifier::fromString(exec, typedArrayConstructors[typedArrayIndex]->name(exec)), typedArrayConstructors[typedArrayIndex], DontEnum);
     }
     
     JSFunction* builtinLog = JSFunction::create(vm, this, 1, vm.propertyNames->emptyIdentifier.string(), globalFuncBuiltinLog);
@@ -450,7 +450,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     ConsolePrototype* consolePrototype = ConsolePrototype::create(vm, this, ConsolePrototype::createStructure(vm, this, m_objectPrototype.get()));
     m_consoleStructure.set(vm, this, JSConsole::createStructure(vm, this, consolePrototype));
     JSConsole* consoleObject = JSConsole::create(vm, m_consoleStructure.get());
-    putDirectWithoutTransition(vm, Identifier(exec, "console"), consoleObject, DontEnum);
+    putDirectWithoutTransition(vm, Identifier::fromString(exec, "console"), consoleObject, DontEnum);
 
     resetPrototype(vm, prototype());
 }
@@ -822,15 +822,14 @@ UnlinkedProgramCodeBlock* JSGlobalObject::createProgramCodeBlock(CallFrame* call
     return unlinkedCodeBlock;
 }
 
-UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame, EvalExecutable* executable)
+UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame, EvalExecutable* executable, ThisTDZMode thisTDZMode)
 {
     ParserError error;
     JSParserStrictMode strictMode = executable->isStrictMode() ? JSParserStrictMode::Strict : JSParserStrictMode::NotStrict;
     DebuggerMode debuggerMode = hasDebugger() ? DebuggerOn : DebuggerOff;
     ProfilerMode profilerMode = hasProfiler() ? ProfilerOn : ProfilerOff;
     UnlinkedEvalCodeBlock* unlinkedCodeBlock = vm().codeCache()->getEvalCodeBlock(
-        vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, strictMode, 
-        debuggerMode, profilerMode, error);
+        vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, strictMode, thisTDZMode, debuggerMode, profilerMode, error);
 
     if (hasDebugger())
         debugger()->sourceParsed(callFrame, executable->source().provider(), error.line(), error.message());

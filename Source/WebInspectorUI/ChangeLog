@@ -1,3 +1,783 @@
+2015-03-31  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: console.error(object) has double disclosure triangles
+        https://bugs.webkit.org/show_bug.cgi?id=142069
+
+        Use inline-block instead of "float: left" or "position: absolute" to
+        make layout more predictable and easier to understand.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.outline-disclosure, .outline-disclosure ol):
+        (.outline-disclosure > li.parent):
+        (.outline-disclosure > li.parent::before):
+        (.outline-disclosure li.parent): Deleted.
+        (.outline-disclosure li.parent::before): Deleted.
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property > .titles):
+        (.object-tree-property > .disclosure-button):
+        (.object-tree-property > .icon):
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree > :matches(.title, .object-preview)::before):
+        (.object-tree:not(.lossless-preview) > :matches(.title, .object-preview)):
+
+2015-03-31  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: REGRESSION: Filtering no longer works
+        https://bugs.webkit.org/show_bug.cgi?id=143099
+
+        Reviewed by Brian Burg.
+
+        Add a check for an empty array of filter functions and return true in this case to ensure text
+        and timeline filters work correctly.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.matchTreeElementAgainstFilterFunctions):
+
+2015-03-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r182186.
+        https://bugs.webkit.org/show_bug.cgi?id=143270
+
+        it crashes all the WebGL tests on the Debug bots (Requested by
+        dino on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: add 2D/WebGL canvas instrumentation
+        infrastructure"
+        https://bugs.webkit.org/show_bug.cgi?id=137278
+        http://trac.webkit.org/changeset/182186
+
+2015-03-31  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: add 2D/WebGL canvas instrumentation infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=137278
+
+        Reviewed by Timothy Hatcher.
+
+        Added models, views, and controller classes for 2D and WebGL canvas inspection. Each canvas is shown in the
+        Resources navigation sidebar under its parent frame. Shader programs are displayed as child nodes of
+        their respective canvas. Canvases will get an associated content view and details sidebar in a later patch
+        (see https://bugs.webkit.org/show_bug.cgi?id=138941).
+
+        Shader programs will get an associated content view for editing shader source in a later patch (see
+        https://bugs.webkit.org/show_bug.cgi?id=138593). Individual shaders are not shown in the Resource navigation
+        sidebar, and at this time there are no plans to instrument shaders that aren't attached to a program.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.sidebarPanelForRepresentedObject):
+        * UserInterface/Base/Test.js:
+        (WebInspector.loaded):
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        Updated for new canvas/shader program types.
+
+        * UserInterface/Controllers/CanvasManager.js: Added.
+        (WebInspector.CanvasManager):
+        (WebInspector.CanvasManager.prototype.canvasesForFrame):
+        (WebInspector.CanvasManager.prototype.canvasAdded.set this):
+        (WebInspector.CanvasManager.prototype.canvasAdded):
+        (WebInspector.CanvasManager.prototype.canvasRemoved):
+        (WebInspector.CanvasManager.programDeleted.get console):
+        (WebInspector.CanvasManager.prototype.programCreated.get console):
+        (WebInspector.CanvasManager.prototype.programCreated):
+        (WebInspector.CanvasManager.prototype._mainResourceDidChange):
+        Frontend controller for canvases and their shader programs.
+
+        * UserInterface/Images/Canvas.svg: Added.
+        * UserInterface/Images/DocumentGL.png: Added.
+        * UserInterface/Images/DocumentGL@2x.png: Added.
+        New art for canvas and shader program tree elements.
+
+        * UserInterface/Models/Canvas.js: Added.
+        (WebInspector.Canvas):
+        (WebInspector.Canvas.prototype.set fromPayload):
+        (WebInspector.Canvas.displayNameForContextType):
+        (WebInspector.Canvas.resetUniqueDisplayNameNumbers):
+        (WebInspector.Canvas.prototype.get id):
+        (WebInspector.Canvas.prototype.get parentFrame):
+        (WebInspector.Canvas.prototype.get name):
+        (WebInspector.Canvas.prototype.get cssCanvas):
+        (WebInspector.Canvas.prototype.get contextType):
+        (WebInspector.Canvas.prototype.get contextAttributes):
+        (WebInspector.Canvas.prototype.get programs):
+        (WebInspector.Canvas.prototype.get displayName):
+        (WebInspector.Canvas.programForId):
+        (WebInspector.Canvas.get programWasCreated.set this):
+        (WebInspector.Canvas.prototype.get programWasCreated):
+        (WebInspector.Canvas.prototype.programWasDeleted):
+        (WebInspector.Canvas.prototype.saveIdentityToCookie):
+        Model for DOM or CSS canvas (2D or WebGL).
+
+        * UserInterface/Models/ShaderProgram.js: Added.
+        (WebInspector.ShaderProgram):
+        (WebInspector.ShaderProgram.prototype.get id):
+        (WebInspector.ShaderProgram.prototype.get canvas):
+        (WebInspector.ShaderProgram.prototype.get displayName):
+        (WebInspector.ShaderProgram.prototype.saveIdentityToCookie):
+        (WebInspector.ShaderProgram.prototype.updateCanvas):
+        * UserInterface/Models/WebGLContextAttributes.js: Added.
+        (WebInspector.WebGLContextAttributes):
+        (WebInspector.WebGLContextAttributes.fromPayload):
+        (WebInspector.WebGLContextAttributes.prototype.get alpha):
+        (WebInspector.WebGLContextAttributes.prototype.get depth):
+        (WebInspector.WebGLContextAttributes.prototype.get stencil):
+        (WebInspector.WebGLContextAttributes.prototype.get antialias):
+        (WebInspector.WebGLContextAttributes.prototype.get premultipliedAlpha):
+        (WebInspector.WebGLContextAttributes.prototype.get preserveDrawingBuffer):
+        Model for WebGL canvas context attributes.
+
+        * UserInterface/Protocol/CanvasObserver.js: Added.
+        (WebInspector.CanvasObserver.prototype.canvasAdded):
+        (WebInspector.CanvasObserver.prototype.canvasRemoved):
+        (WebInspector.CanvasObserver.prototype.programCreated):
+        (WebInspector.CanvasObserver.prototype.programDeleted):
+        (WebInspector.CanvasObserver):
+        Model for WebGL canvas shader program.
+
+        * UserInterface/Views/CanvasTreeElement.js: Added.
+        (WebInspector.CanvasTreeElement.validateRepresentedObject):
+        (WebInspector.CanvasTreeElement.countChildren):
+        (WebInspector.CanvasTreeElement):
+        (WebInspector.CanvasTreeElement.prototype.onexpand):
+        (WebInspector.CanvasTreeElement.prototype.oncollapse):
+        (WebInspector.CanvasTreeElement.prototype.onpopulate):
+        (WebInspector.CanvasTreeElement.prototype._programWasCreated):
+        (WebInspector.CanvasTreeElement.prototype._programWasDeleted):
+        Folderized tree element for canvases and their child objects (shader programs).
+
+        * UserInterface/Views/FrameTreeElement.js:
+        (WebInspector.FrameTreeElement.prototype.onattach):
+        (WebInspector.FrameTreeElement.prototype.ondetach):
+        (WebInspector.FrameTreeElement.prototype.onpopulate):
+        (WebInspector.FrameTreeElement.prototype._canvasesAvailable):
+        (WebInspector.FrameTreeElement.prototype._canvasWasAdded):
+        (WebInspector.FrameTreeElement.prototype._canvasWasRemoved):
+        Updated to support canvas tree elements.
+
+        * UserInterface/Views/ResourceIcons.css:
+        (.canvas-icon .icon):
+        (.shader-program-icon .icon):
+        Styles for new canvas and shader program icons.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._treeElementSelected):
+        Updated for new tree element types.
+
+        * UserInterface/Views/ShaderProgramTreeElement.js: Added.
+        (WebInspector.ShaderProgramTreeElement):
+        Tree element for shader programs. Shown as children of CanvasTreeElement.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+
+2015-03-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Regression: null shouldn't be expandable in object outline
+        https://bugs.webkit.org/show_bug.cgi?id=143209
+
+        Reviewed by Mark Lam.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject):
+        When creating an object tree or formatted value, choose just a formatted value
+        for "null", since it does not have properties.
+
+2015-03-30  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: Add more ESLint rules that reflect the current state of the code base
+        https://bugs.webkit.org/show_bug.cgi?id=143212
+
+        Reviewed by Timothy Hatcher.
+
+        * .eslintrc:
+        Define some utilities as globals.
+        Replace "no-comma-dangle" with "comma-dangle". "no-comma-dangle" is deprecated and does not trigger in ESLint v.0.17.1
+        Set "new-cap" to 0 due to the usage of "WebInspector.UIString".
+        Disable "no-redeclare" for now and enable it back as soon as block scoped `let` is used.
+        Disable "dot-notation", "no-shadow" and "no-use-before-define" due to a lot of hits.
+        Disable "no-inner-declarations" as this is a common pattern to save memory.
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        * UserInterface/Models/SourceCodeLocation.js:
+        It's not necessary to initialize x to undefined.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        * UserInterface/Views/TextEditor.js:
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        Remove unused variable x.
+        * UserInterface/Views/ObjectTreeMapEntryTreeElement.js:
+        * UserInterface/Models/PropertyPath.js:
+        * UserInterface/Views/RadioButtonNavigationItem.js:
+        * UserInterface/Views/ReplayDashboardView.js:
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        Remove trailing and unexpected whitespace.
+        * UserInterface/Views/ProbeSetDataGrid.js:
+        * UserInterface/Views/TimelineRuler.js:
+        Add missing semicolon.
+        * UserInterface/Views/TimelineDataGrid.js:
+        * UserInterface/Views/TimelineRecordFrame.js:
+        Add missing var statement.
+        * UserInterface/Views/TypeTokenView.js:
+        Remove unnecessary `bind`.
+
+2015-03-28  Saam Barati  <saambarati1@gmail.com>
+
+        Web Inspector: ES6: Better support for Symbol types in Type Profiler
+        https://bugs.webkit.org/show_bug.cgi?id=141257
+
+        Reviewed by Joseph Pecoraro.
+
+        The Web Inspector's visualization of JSC's type profiler
+        should have support for the Symbol type.
+
+        * UserInterface/Models/TypeSet.js:
+        (WebInspector.TypeSet):
+        (WebInspector.TypeSet.prototype.get primitiveTypeNames):
+        * UserInterface/Views/TypeTokenView.css:
+        TypeTokenView will display Symbol type tokens using the same color that 
+        Symbol values are displayed as formatted values.
+
+        (.type-token-symbol):
+        * UserInterface/Views/TypeTokenView.js:
+        (WebInspector.TypeTokenView.prototype._displayTypeName):
+        (WebInspector.TypeTokenView):
+
+2015-03-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Adopt Array.prototype.includes and String.prototype.includes
+        https://bugs.webkit.org/show_bug.cgi?id=143176
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        Remove our custom implementations of Array/String contains functions.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._updateContentViewForCurrentNavigationSidebar):
+        (WebInspector._contentBrowserCurrentContentViewDidChange):
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController.prototype._generateJavaScriptCompletions.):
+        (WebInspector.CodeMirrorCompletionController.prototype._generateJavaScriptCompletions):
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._updateHoveredTokenInfo):
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._processJavaScriptExpression):
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype._extraDomainsActivated):
+        (WebInspector.FrameResourceManager):
+        * UserInterface/Controllers/LayerTreeManager.js:
+        (WebInspector.LayerTreeManager.prototype.layerTreeMutations):
+        * UserInterface/Controllers/StorageManager.js:
+        (WebInspector.StorageManager.prototype._extraDomainsActivated):
+        (WebInspector.StorageManager):
+        * UserInterface/Models/Branch.js:
+        (WebInspector.Branch.prototype.addRevision):
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WebInspector.CSSKeywordCompletions.forProperty):
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.get matchedSelectors):
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        * UserInterface/Models/Color.js:
+        (WebInspector.Color.fromString):
+        * UserInterface/Models/DOMNode.js:
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseStyleDeclarationPayload):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._updatePseudoClassCheckboxes):
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser.prototype._updateContentViewSelectionPathNavigationItem):
+        * UserInterface/Views/DOMTreeElement.js:
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._resourceAdded):
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.addClassName):
+        (WebInspector.GeneralTreeElement.prototype.removeClassName):
+        * UserInterface/Views/LegacyConsoleMessageImpl.js:
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsTable):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._updateMessagesSelection):
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar.prototype._findNavigationItem):
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype.findSidebarPanel):
+        Replace contains with includes where appropriate.
+
+2015-03-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Tweak node styles in ObjectTreeView
+        https://bugs.webkit.org/show_bug.cgi?id=143179
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-group-messages .outline-disclosure.single-node li):
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline.single-node li):
+        This style makes sense as a generic DOMTreeOutline style.
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-node > .dom-tree-outline):
+        (.formatted-node > .dom-tree-outline ol):
+        (.formatted-node > .dom-tree-outline li.hovered:not(.selected) .selection):
+        Style for nodes in ObjectTreeView.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.css:
+        (.object-tree-array-index .index-value .formatted-node .dom-tree-outline):
+        Styles for node in Array value.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForNode):
+        Address the FIXME.
+
+2015-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: TypeProfiler doesn't work on files with ES6 Class Syntax
+        https://bugs.webkit.org/show_bug.cgi?id=143169
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype._recurse):
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        (WebInspector.ScriptSyntaxTree):
+        Add basic support for Esprima's ES6 Class/Method/Spread nodes.
+        There are more ES6 features that should be covered, but this
+        covers all the features we use in Web Inspector source, so
+        Type Profiling can work with our own source.
+
+        Treat Methods like getters / setters right now because their
+        syntax is very similiar to getters/setters. There is a bug
+        handling generic ES6 cleanup to better name things.
+
+2015-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught TDZ Exception with Type Profiler
+        https://bugs.webkit.org/show_bug.cgi?id=143167
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TypePropertiesSection.js:
+        (WebInspector.TypePropertyTreeElement):
+        Avoid TDZ issue by not using "this" before "super".
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        (WebInspector.ScriptSyntaxTree):
+        Better handle unsupported node types by returning null and avoiding an exception.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        Fix an issue I saw once where the sourceCode was a Script itself.
+
+2015-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception while debugging, after performSearch callback line does not exists
+        https://bugs.webkit.org/show_bug.cgi?id=143172
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.customPerformSearch.searchResultCallback):
+        (WebInspector.SourceCodeTextEditor.prototype.customPerformSearch):
+        Gracefully handle if the line does not exist.
+
+2015-03-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ES6 Classes: Runtime error in JIT'd class calling super() with arguments and superclass has default constructor
+        https://bugs.webkit.org/show_bug.cgi?id=142862
+
+        Reviewed by Benjamin Poulain.
+
+        Removed the workaround for the bug since it has been fixed by r181993.
+
+        * UserInterface/Base/Object.js:
+        * UserInterface/Models/DebuggerDashboard.js:
+        * UserInterface/Models/NetworkTimeline.js:
+        * UserInterface/Models/ReplayDashboard.js:
+        * UserInterface/Models/Revision.js:
+
+2015-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Setter Icon for ObjectTreeView
+        https://bugs.webkit.org/show_bug.cgi?id=143129
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Images/Pencil.svg: Added.
+        New icon used to indicate setter properties.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Remove "Read only" and replace with "Setter".
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.js:
+        (WebInspector.ObjectTreeArrayIndexTreeElement.prototype._titleFragment):
+        (WebInspector.ObjectTreeArrayIndexTreeElement):
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitlePropertyStyle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitleAPIStyle):
+        Update cases that created setter / getter elements.
+        
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.createGetterElement):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.createInteractiveGetterElement): Deleted.
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property :matches(.getter, .setter)):
+        (.object-tree-property .spacer):
+        (.object-tree-property .getter):
+        (.object-tree-property .setter):
+        (.object-tree-property .getter + .setter):
+        New setter element and styles. Setters are always non-interactable right now.
+
+2015-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exceptions with Context Menus
+        https://bugs.webkit.org/show_bug.cgi?id=143162
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.contextMenuCleared):
+
+2015-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Disable editing in Metrics section while it is not working
+        https://bugs.webkit.org/show_bug.cgi?id=143165
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        (WebInspector.BoxModelDetailsSectionRow.prototype._updateMetrics.createElement):
+        (WebInspector.BoxModelDetailsSectionRow.prototype._applyUserInput):
+        Disable double click to edit while it is not working. The value setter
+        and add methods no longer exist.
+
+2015-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exceptions evaluating code while paused
+        https://bugs.webkit.org/show_bug.cgi?id=143163
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CallFrame.js:
+        (WebInspector.CallFrame.prototype.collectScopeChainVariableNames):
+        We define a property named "valueForCaseInsensitiveKey" on Object.prototype
+        that is readonly. So we should avoid Object.prototype when building our
+        result list. This should probably move to a Map object eventually.
+
+2015-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused testing properties
+        https://bugs.webkit.org/show_bug.cgi?id=143156
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LegacyConsoleMessageImpl.js:
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatMessage):
+        * UserInterface/Views/Section.js:
+        (WebInspector.Section.prototype.get subtitleAsTextForTest): Deleted.
+
+2015-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exception: TypeError: Attempted to assign to readonly - DOMNodeDetailsSidebarPanel.js
+        https://bugs.webkit.org/show_bug.cgi?id=143139
+
+        Reviewed by Timothy Hatcher.
+
+        DataGridNodes do not have a selectable setter. TreeElements do.
+        DataGridNodes are always selectable. Match current behavior by
+        removing all instances of attempting to set the selectability
+        which would, under strict mode, result in an error.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        (WebInspector.ApplicationCacheFrameContentView.prototype._populateDataGrid):
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype._rebuildTable):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._createAttributesDataGrid):
+        (WebInspector.DOMNodeDetailsSidebarPanel):
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView.prototype.reset):
+        * UserInterface/Views/DataGrid.js:
+
+2015-03-26  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Convert more misc View classes to ES6
+        https://bugs.webkit.org/show_bug.cgi?id=143128
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CompletionSuggestionsView.js:
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        * UserInterface/Views/DashboardContainerView.js:
+        * UserInterface/Views/DashboardView.js:
+        * UserInterface/Views/DebuggerDashboardView.js:
+        * UserInterface/Views/DefaultDashboardView.js:
+        * UserInterface/Views/FilterBarButton.js:
+        * UserInterface/Views/MetricsStyleDetailsPanel.js:
+        * UserInterface/Views/ObjectPreviewView.js:
+        * UserInterface/Views/ObjectTreeView.js:
+        * UserInterface/Views/QuickConsole.js:
+        * UserInterface/Views/ReplayDashboardView.js:
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        * UserInterface/Views/StyleDetailsPanel.js:
+        Converted to ES6 classes.
+
+2015-03-26  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Convert TextEditor classes to ES6
+        https://bugs.webkit.org/show_bug.cgi?id=143127
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        Removed a comment about const, we can't use it in strict mode / classes.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        * UserInterface/Views/TextEditor.js:
+        Converted to ES6 classes.
+
+2015-03-26  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: clicking on console record while REPL is focused does not select a new record
+        https://bugs.webkit.org/show_bug.cgi?id=142171
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._mousedown):
+
+2015-03-26  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: New Images for Console Types
+        https://bugs.webkit.org/show_bug.cgi?id=142301
+
+        Reviewed by Joseph Pecoraro.
+
+        Add more free icons and for the Web Inspector in GTK+.
+
+        * UserInterface/Images/gtk/Eye.svg: Added.
+        * UserInterface/Images/gtk/Frames.png: Added.
+        * UserInterface/Images/gtk/Frames@2x.png: Added.
+        * UserInterface/Images/gtk/FramesLarge.png: Added.
+        * UserInterface/Images/gtk/FramesLarge@2x.png: Added.
+        * UserInterface/Images/gtk/Reload.svg:
+        * UserInterface/Images/gtk/ReloadFull.svg: Added.
+        * UserInterface/Images/gtk/TypeBoolean.svg: Added.
+        * UserInterface/Images/gtk/TypeNull.svg: Added.
+        * UserInterface/Images/gtk/TypeNumber.svg: Added.
+        * UserInterface/Images/gtk/TypeObject.svg: Added.
+        * UserInterface/Images/gtk/TypeRegex.svg: Added.
+        * UserInterface/Images/gtk/TypeString.svg: Added.
+        * UserInterface/Images/gtk/TypeSymbol.svg: Added.
+        * UserInterface/Images/gtk/TypeUndefined.svg: Added.
+
+2015-03-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Provide a better view for Classes in the console
+        https://bugs.webkit.org/show_bug.cgi?id=142999
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.fromPrimitiveValue):
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.prototype.get classPrototype):
+        (WebInspector.RemoteObject.prototype.isClass):
+        Update our RemoteObject model object for the new subtype
+        and its unique properties.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForTypesAndValue):
+        (WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject):
+        Better handle "class", as it is a new function subtype.
+
+        * UserInterface/Views/LegacyConsoleMessageImpl.js:
+        (WebInspector.LegacyConsoleMessageImpl):
+        (WebInspector.LegacyConsoleMessageImpl.prototype._formatParameterAsObject):
+        Format a "class" with ObjectTreeView.
+
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.js:
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property .getter.disabled):
+        (.object-tree-property .getter:not(.disabled):hover):
+        (.object-tree-property .getter:hover): Deleted.
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        In ClassAPI mode, you cannot invoke a getter since we don't have
+        an instance to invoke it on. So disable interactivity with getters.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView):
+        Update the modes to include an API mode for instances and classes.
+
+        (WebInspector.ObjectTreeView.defaultModeForObject):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForObject):
+        Simplify ObjectTree construction to automatically determine mode based
+        on the RemoteObject that was provided.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        "Getter" tooltip.
+
+2015-03-26  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Convert TreeElement classes to ES6
+        https://bugs.webkit.org/show_bug.cgi?id=143111
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ApplicationCacheFrameTreeElement.js:
+        * UserInterface/Views/ApplicationCacheManifestTreeElement.js:
+        * UserInterface/Views/BreakpointTreeElement.js:
+        * UserInterface/Views/CallFrameTreeElement.js:
+        * UserInterface/Views/ContentFlowTreeElement.js:
+        * UserInterface/Views/CookieStorageTreeElement.js:
+        * UserInterface/Views/DOMStorageTreeElement.js:
+        * UserInterface/Views/DOMTreeElement.js:
+        * UserInterface/Views/DOMTreeOutline.js:
+        * UserInterface/Views/DatabaseHostTreeElement.js:
+        * UserInterface/Views/DatabaseTableTreeElement.js:
+        * UserInterface/Views/DatabaseTreeElement.js:
+        * UserInterface/Views/FolderTreeElement.js:
+        * UserInterface/Views/FolderizedTreeElement.js:
+        * UserInterface/Views/FrameTreeElement.js:
+        * UserInterface/Views/GeneralTreeElement.js:
+        * UserInterface/Views/IndexedDatabaseHostTreeElement.js:
+        * UserInterface/Views/IndexedDatabaseObjectStoreIndexTreeElement.js:
+        * UserInterface/Views/IndexedDatabaseObjectStoreTreeElement.js:
+        * UserInterface/Views/IndexedDatabaseTreeElement.js:
+        * UserInterface/Views/LegacyConsoleMessageImpl.js:
+        * UserInterface/Views/LogTreeElement.js:
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.js:
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        * UserInterface/Views/ObjectTreeMapEntryTreeElement.js:
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        * UserInterface/Views/ObjectTreeSetIndexTreeElement.js:
+        * UserInterface/Views/ObjectTreeView.js:
+        * UserInterface/Views/ProfileNodeTreeElement.js:
+        * UserInterface/Views/PropertiesSection.js:
+        * UserInterface/Views/ResourceTreeElement.js:
+        * UserInterface/Views/ScriptTreeElement.js:
+        * UserInterface/Views/SearchResultTreeElement.js:
+        * UserInterface/Views/SourceCodeTimelineTreeElement.js:
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        * UserInterface/Views/SourceMapResourceTreeElement.js:
+        * UserInterface/Views/StorageTreeElement.js:
+        * UserInterface/Views/TimelineDataGrid.js:
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        * UserInterface/Views/TreeElementStatusButton.js:
+        * UserInterface/Views/TreeOutline.js:
+        * UserInterface/Views/TreeOutlineDataGridSynchronizer.js:
+        * UserInterface/Views/TypePropertiesSection.js:
+        Converted to ES6 classes where possible.
+
+2015-03-26  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Convert sidebar classes to ES6
+        https://bugs.webkit.org/show_bug.cgi?id=143108
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/KeyboardShortcut.js:
+        (WebInspector.KeyboardShortcut._handleKeyDown): Continue if callback is null.
+        (WebInspector.KeyboardShortcut.prototype.set callback): Added.
+
+        * UserInterface/Views/ApplicationCacheDetailsSidebarPanel.js:
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        * UserInterface/Views/DOMDetailsSidebarPanel.js:
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        * UserInterface/Views/DetailsSidebarPanel.js:
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        * UserInterface/Views/Sidebar.js:
+        * UserInterface/Views/SidebarPanel.js:
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        Converted to ES6 classes.
+
+2015-03-26  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Convert some View classes to ES6 classes
+        https://bugs.webkit.org/show_bug.cgi?id=143107
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.contextMenuItemSelected): Updated to the right function path.
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        * UserInterface/Views/BreakpointActionView.js:
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        * UserInterface/Views/ColorPicker.js:
+        * UserInterface/Views/ColorWheel.js:
+        * UserInterface/Views/ContextMenu.js:
+        * UserInterface/Views/DOMTreeElementPathComponent.js:
+        * UserInterface/Views/DetailsSection.js:
+        * UserInterface/Views/DetailsSectionDataGridRow.js:
+        * UserInterface/Views/DetailsSectionGroup.js:
+        * UserInterface/Views/DetailsSectionPropertiesRow.js:
+        * UserInterface/Views/DetailsSectionRow.js:
+        * UserInterface/Views/DetailsSectionSimpleRow.js:
+        * UserInterface/Views/DetailsSectionTextRow.js:
+        * UserInterface/Views/EditingSupport.js:
+        * UserInterface/Views/EventListenerSection.js:
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        * UserInterface/Views/FilterBar.js:
+        * UserInterface/Views/FindBanner.js:
+        * UserInterface/Views/GeneralTreeElementPathComponent.js:
+        * UserInterface/Views/GoToLineDialog.js:
+        * UserInterface/Views/GradientSlider.js:
+        * UserInterface/Views/HierarchicalPathComponent.js:
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        * UserInterface/Views/HoverMenu.js:
+        * UserInterface/Views/Popover.js:
+        * UserInterface/Views/ProbeSetDetailsSection.js:
+        * UserInterface/Views/ResourceTimelineDataGridNodePathComponent.js:
+        * UserInterface/Views/SearchBar.js:
+        * UserInterface/Views/Slider.js:
+        Converted to ES6 classes.
+
+2015-03-26  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Convert Base and Protocol files to ES6 classes
+        https://bugs.webkit.org/show_bug.cgi?id=143106
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/EventListener.js:
+        * UserInterface/Base/EventListenerSet.js:
+        * UserInterface/Protocol/ApplicationCacheObserver.js:
+        * UserInterface/Protocol/CSSObserver.js:
+        * UserInterface/Protocol/ConsoleObserver.js:
+        * UserInterface/Protocol/DOMObserver.js:
+        * UserInterface/Protocol/DOMStorageObserver.js:
+        * UserInterface/Protocol/DatabaseObserver.js:
+        * UserInterface/Protocol/DebuggerObserver.js:
+        * UserInterface/Protocol/InspectorBackend.js:
+        * UserInterface/Protocol/InspectorObserver.js:
+        * UserInterface/Protocol/LayerTreeObserver.js:
+        * UserInterface/Protocol/MessageDispatcher.js:
+        * UserInterface/Protocol/NetworkObserver.js:
+        * UserInterface/Protocol/PageObserver.js:
+        * UserInterface/Protocol/RemoteObject.js:
+        * UserInterface/Protocol/ReplayObserver.js:
+        * UserInterface/Protocol/RuntimeObserver.js:
+        * UserInterface/Protocol/TimelineObserver.js:
+        Converted to ES6 classes where possible.
+
 2015-03-25  Tobias Reiss  <tobi+webkit@basecode.de>
 
         Web Inspector: Add ESLint "Disallow Undeclared Variables" rule and enable ES6 env

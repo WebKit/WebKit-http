@@ -86,7 +86,7 @@ void ScrollingCoordinatorMac::commitTreeStateIfNeeded()
     m_scrollingStateTreeCommitterTimer.stop();
 }
 
-bool ScrollingCoordinatorMac::handleWheelEvent(FrameView*, const PlatformWheelEvent& wheelEvent)
+bool ScrollingCoordinatorMac::handleWheelEvent(FrameView&, const PlatformWheelEvent& wheelEvent)
 {
     ASSERT(isMainThread());
     ASSERT(m_page);
@@ -144,8 +144,6 @@ void ScrollingCoordinatorMac::updateTiledScrollingIndicator()
     ScrollingModeIndication indicatorMode;
     if (shouldUpdateScrollLayerPositionSynchronously())
         indicatorMode = SynchronousScrollingBecauseOfStyleIndication;
-    else if (scrollingStateTree()->rootStateNode() && scrollingStateTree()->rootStateNode()->wheelEventHandlerCount())
-        indicatorMode =  SynchronousScrollingBecauseOfEventHandlersIndication;
     else
         indicatorMode = AsyncScrollingIndication;
     

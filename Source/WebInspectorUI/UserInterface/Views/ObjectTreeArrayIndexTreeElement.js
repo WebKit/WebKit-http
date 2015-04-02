@@ -23,23 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ObjectTreeArrayIndexTreeElement = function(property, propertyPath)
+WebInspector.ObjectTreeArrayIndexTreeElement = class ObjectTreeArrayIndexTreeElement extends WebInspector.ObjectTreeBaseTreeElement
 {
-    console.assert(property.isIndexProperty(), "ArrayIndexTreeElement expects numeric property names");
+    constructor(property, propertyPath)
+    {
+        console.assert(property.isIndexProperty(), "ObjectTreeArrayIndexTreeElement expects numeric property names");
 
-    WebInspector.ObjectTreeBaseTreeElement.call(this, property, propertyPath, property);
+        super(property, propertyPath, property);
 
-    this.mainTitle = this._titleFragment();
-    this.addClassName("object-tree-property");
-    this.addClassName("object-tree-array-index");
+        this.mainTitle = this._titleFragment();
+        this.addClassName("object-tree-property");
+        this.addClassName("object-tree-array-index");
 
-    if (!this.property.hasValue())
-        this.addClassName("accessor");
-};
-
-WebInspector.ObjectTreeArrayIndexTreeElement.prototype = {
-    constructor: WebInspector.ObjectTreeArrayIndexTreeElement,
-    __proto__: WebInspector.ObjectTreeBaseTreeElement.prototype,
+        if (!this.property.hasValue())
+            this.addClassName("accessor");
+    }
 
     // Protected
 
@@ -48,7 +46,7 @@ WebInspector.ObjectTreeArrayIndexTreeElement.prototype = {
         this.mainTitle = this._titleFragment();
 
         this.removeClassName("accessor");
-    },
+    }
 
     // Private
 
@@ -71,10 +69,9 @@ WebInspector.ObjectTreeArrayIndexTreeElement.prototype = {
             valueElement.appendChild(WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject(resolvedValue, this.resolvedValuePropertyPath()));
         else {
             if (this.property.hasGetter())
-                container.appendChild(this.createInteractiveGetterElement());
-            if (!this.property.hasSetter())
-                container.appendChild(this.createReadOnlyIconElement());
-            // FIXME: What if just a setter?
+                container.appendChild(this.createGetterElement(true));
+            if (this.property.hasSetter())
+                container.appendChild(this.createSetterElement());
         }
 
         valueElement.classList.add("value");

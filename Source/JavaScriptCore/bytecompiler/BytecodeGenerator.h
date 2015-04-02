@@ -82,6 +82,8 @@ namespace JSC {
 
     struct FinallyContext {
         StatementNode* finallyBlock;
+        RegisterID* iterator;
+        ThrowableExpressionData* enumerationNode;
         unsigned scopeContextStackSize;
         unsigned switchContextStackSize;
         unsigned forInContextStackSize;
@@ -456,6 +458,7 @@ namespace JSC {
         RegisterID* emitNewDefaultConstructor(RegisterID* dst, ConstructorKind, const Identifier& name);
         RegisterID* emitNewRegExp(RegisterID* dst, RegExp*);
 
+        RegisterID* emitMoveEmptyValue(RegisterID* dst);
         RegisterID* emitMove(RegisterID* dst, RegisterID* src);
 
         RegisterID* emitToNumber(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_to_number, dst, src); }
@@ -525,6 +528,8 @@ namespace JSC {
         RegisterID* emitIsObject(RegisterID* dst, RegisterID* src);
         RegisterID* emitIsUndefined(RegisterID* dst, RegisterID* src);
 
+        void emitIteratorClose(RegisterID* iterator, ThrowableExpressionData* node);
+
         void emitReadOnlyExceptionIfNeeded();
 
         // Start a try block. 'start' must have been emitted.
@@ -555,6 +560,8 @@ namespace JSC {
 
         void pushFinallyContext(StatementNode* finallyBlock);
         void popFinallyContext();
+        void pushIteratorCloseContext(RegisterID* iterator, ThrowableExpressionData* enumerationNode);
+        void popIteratorCloseContext();
 
         void pushIndexedForInScope(RegisterID* local, RegisterID* index);
         void popIndexedForInScope(RegisterID* local);

@@ -117,12 +117,15 @@ public:
 
     bool isHidden() const;
 
+    bool canPlayToWirelessPlaybackTarget() const;
+    void startPlayingToPlaybackTarget();
+    void stopPlayingToPlaybackTarget();
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     // MediaPlaybackTargetPickerClient
     virtual void didChoosePlaybackTarget(const MediaPlaybackTarget&) override { }
     virtual void externalOutputDeviceAvailableDidChange(bool) const override { }
     virtual bool requiresPlaybackTargetRouteMonitoring() const override { return false; }
-    virtual bool requestedPlaybackTargetPicker() const override { return false; }
 #endif
 
 protected:
@@ -149,8 +152,8 @@ public:
     virtual MediaSession::MediaType presentationType() const = 0;
     virtual MediaSession::DisplayType displayType() const { return MediaSession::Normal; }
 
-    virtual void resumePlayback() = 0;
-    virtual void pausePlayback() = 0;
+    virtual void mayResumePlayback(bool shouldResume) = 0;
+    virtual void suspendPlayback() = 0;
 
     virtual String mediaSessionTitle() const;
     virtual double mediaSessionDuration() const;
@@ -164,10 +167,11 @@ public:
 
     virtual bool overrideBackgroundPlaybackRestriction() const = 0;
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual void wirelessRoutesAvailableDidChange() { }
     virtual void setWirelessPlaybackTarget(const MediaPlaybackTarget&) { }
-#endif
+    virtual bool canPlayToWirelessPlaybackTarget() { return false; }
+    virtual void startPlayingToPlaybackTarget() { }
+    virtual void stopPlayingToPlaybackTarget() { }
 
 protected:
     virtual ~MediaSessionClient() { }

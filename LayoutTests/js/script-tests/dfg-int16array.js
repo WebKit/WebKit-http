@@ -1,5 +1,3 @@
-//@ skip if $architecture == "arm64" and $hostOS == "darwin"
-
 description(
 "This tests that int16 arrays work in the DFG."
 );

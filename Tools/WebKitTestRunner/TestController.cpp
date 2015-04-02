@@ -44,6 +44,7 @@
 #include <WebKit/WKNotificationPermissionRequest.h>
 #include <WebKit/WKNumber.h>
 #include <WebKit/WKPageGroup.h>
+#include <WebKit/WKPageInjectedBundleClient.h>
 #include <WebKit/WKPagePrivate.h>
 #include <WebKit/WKPreferencesRefPrivate.h>
 #include <WebKit/WKProtectionSpace.h>
@@ -325,6 +326,7 @@ void TestController::initialize(int argc, const char* argv[])
     m_shouldUseAcceleratedDrawing = options.shouldUseAcceleratedDrawing;
     m_shouldUseRemoteLayerTree = options.shouldUseRemoteLayerTree;
     m_paths = options.paths;
+    m_allowedHosts = options.allowedHosts;
 
     if (options.printSupportedFeatures) {
         // FIXME: On Windows, DumpRenderTree uses this to expose whether it supports 3d
@@ -520,6 +522,15 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
     };
     WKPageSetPageNavigationClient(m_mainWebView->page(), &pageNavigationClient.base);
 
+
+    // this should just be done on the page?
+    WKPageInjectedBundleClientV0 injectedBundleClient = {
+        { 0, this },
+        didReceivePageMessageFromInjectedBundle,
+        didReceiveSynchronousPageMessageFromInjectedBundle
+    };
+    WKPageSetPageInjectedBundleClient(m_mainWebView->page(), &injectedBundleClient.base);
+
     m_mainWebView->didInitializeClients();
 
     // Generally, the tests should default to running at 1x. updateWindowScaleForTest() will adjust the scale to
@@ -612,7 +623,15 @@ bool TestController::resetStateToConsistentValues()
     WKRetainPtr<WKBooleanRef> shouldGCValue = adoptWK(WKBooleanCreate(m_gcBetweenTests));
     WKDictionarySetItem(resetMessageBody.get(), shouldGCKey.get(), shouldGCValue.get());
 
-    WKContextPostMessageToInjectedBundle(TestController::singleton().context(), messageName.get(), resetMessageBody.get());
+    WKRetainPtr<WKStringRef> allowedHostsKey = adoptWK(WKStringCreateWithUTF8CString("AllowedHosts"));
+    WKRetainPtr<WKMutableArrayRef> allowedHostsValue = adoptWK(WKMutableArrayCreate());
+    for (auto& host : m_allowedHosts) {
+        WKRetainPtr<WKStringRef> wkHost = adoptWK(WKStringCreateWithUTF8CString(host.c_str()));
+        WKArrayAppendItem(allowedHostsValue.get(), wkHost.get());
+    }
+    WKDictionarySetItem(resetMessageBody.get(), allowedHostsKey.get(), allowedHostsValue.get());
+
+    WKPagePostMessageToInjectedBundle(TestController::singleton().mainWebView()->page(), messageName.get(), resetMessageBody.get());
 
     WKContextSetShouldUseFontSmoothing(TestController::singleton().context(), false);
 
@@ -934,6 +953,18 @@ void TestController::didReceiveMessageFromInjectedBundle(WKContextRef context, W
 }
 
 void TestController::didReceiveSynchronousMessageFromInjectedBundle(WKContextRef context, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData, const void* clientInfo)
+{
+    *returnData = static_cast<TestController*>(const_cast<void*>(clientInfo))->didReceiveSynchronousMessageFromInjectedBundle(messageName, messageBody).leakRef();
+}
+
+// WKPageInjectedBundleClient
+
+void TestController::didReceivePageMessageFromInjectedBundle(WKPageRef page, WKStringRef messageName, WKTypeRef messageBody, const void* clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->didReceiveMessageFromInjectedBundle(messageName, messageBody);
+}
+
+void TestController::didReceiveSynchronousPageMessageFromInjectedBundle(WKPageRef page, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData, const void* clientInfo)
 {
     *returnData = static_cast<TestController*>(const_cast<void*>(clientInfo))->didReceiveSynchronousMessageFromInjectedBundle(messageName, messageBody).leakRef();
 }

@@ -424,7 +424,13 @@ App.Pane = Ember.Object.extend({
             label = formatter(Math.abs(diffFromTarget)) + ' until target';
 
         var valueDelta = previousPoint ? chartData.deltaFormatter(currentPoint.value - previousPoint.value) : null;
-        return {className: className, label: label, currentValue: chartData.formatter(currentPoint.value), valueDelta: valueDelta};
+        return {
+            className: className,
+            label: label,
+            currentValue: chartData.formatter(currentPoint.value),
+            valueDelta: valueDelta,
+            relativeDelta: d3.format('+.2p')((currentPoint.value - previousPoint.value) / previousPoint.value),
+        };
     },
     _relativeDifferentToLaterPointInTimeSeries: function (currentPoint, timeSeries)
     {
@@ -500,6 +506,18 @@ App.Pane = Ember.Object.extend({
         this._updateStrategyConfigIfNeeded(envelopingStrategy, 'envelopingConfig');
 
         chartData.movingAverage = this._computeMovingAverageAndOutliers(chartData, movingAverageStrategy, envelopingStrategy);
+    },
+    _movingAverageOrEnvelopeStrategyDidChange: function () {
+        this._updateMovingAverageAndEnvelope();
+
+        var newChartData = {};
+        var chartData = this.get('chartData');
+        if (!chartData)
+            return;
+        for (var property in chartData)
+            newChartData[property] = chartData[property];
+        this.set('chartData', newChartData);
+
     }.observes('chosenMovingAverageStrategy', 'chosenMovingAverageStrategy.parameterList.@each.value',
         'chosenEnvelopingStrategy', 'chosenEnvelopingStrategy.parameterList.@each.value'),
     _computeMovingAverageAndOutliers: function (chartData, movingAverageStrategy, envelopingStrategy)

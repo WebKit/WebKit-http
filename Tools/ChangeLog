@@ -1,3 +1,477 @@
+2015-04-01  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Run test-webkitpy as part of EWS (just like we do on other platforms)
+        https://bugs.webkit.org/show_bug.cgi?id=143321
+
+        Reviewed by Alexey Proskuryakov.
+
+        * EWSTools/start-queue-win.sh: Add commands to run 'test-webkitpy' during processing loop.
+
+2015-04-01  Enrica Casucci  <enrica@apple.com>
+
+        Injected bundle messages should be at the page level.
+        https://bugs.webkit.org/show_bug.cgi?id=143283
+
+        Reviewed by Alexey Proskuryakov.
+
+        Updating WebKitTestRunner to use the new page level messaging.
+        The author of this patch is Tim Horton, I just finished it.
+
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::mouseDown):
+        (WTR::EventSendingController::mouseUp):
+        (WTR::EventSendingController::mouseMoveTo):
+        (WTR::EventSendingController::leapForward):
+        (WTR::EventSendingController::scheduleAsynchronousClick):
+        (WTR::EventSendingController::keyDown):
+        (WTR::EventSendingController::scheduleAsynchronousKeyDown):
+        (WTR::EventSendingController::mouseScrollBy):
+        (WTR::EventSendingController::mouseScrollByWithWheelAndMomentumPhases):
+        (WTR::EventSendingController::continuousMouseScrollBy):
+        (WTR::EventSendingController::addTouchPoint):
+        (WTR::EventSendingController::updateTouchPoint):
+        (WTR::EventSendingController::setTouchModifier):
+        (WTR::EventSendingController::setTouchPointRadius):
+        (WTR::EventSendingController::touchStart):
+        (WTR::EventSendingController::touchMove):
+        (WTR::EventSendingController::touchEnd):
+        (WTR::EventSendingController::touchCancel):
+        (WTR::EventSendingController::clearTouchPoints):
+        (WTR::EventSendingController::releaseTouchPoint):
+        (WTR::EventSendingController::cancelTouchPoint):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessage):
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        (WTR::InjectedBundle::done):
+        (WTR::InjectedBundle::outputText):
+        (WTR::InjectedBundle::postNewBeforeUnloadReturnValue):
+        (WTR::InjectedBundle::postAddChromeInputField):
+        (WTR::InjectedBundle::postRemoveChromeInputField):
+        (WTR::InjectedBundle::postFocusWebView):
+        (WTR::InjectedBundle::postSetBackingScaleFactor):
+        (WTR::InjectedBundle::postSetWindowIsKey):
+        (WTR::InjectedBundle::postSimulateWebNotificationClick):
+        (WTR::InjectedBundle::postSetAddsVisitedLinks):
+        (WTR::InjectedBundle::setGeolocationPermission):
+        (WTR::InjectedBundle::setMockGeolocationPosition):
+        (WTR::InjectedBundle::setMockGeolocationPositionUnavailableError):
+        (WTR::InjectedBundle::setUserMediaPermission):
+        (WTR::InjectedBundle::setCustomPolicyDelegate):
+        (WTR::InjectedBundle::setHidden):
+        (WTR::InjectedBundle::setCacheModel):
+        (WTR::InjectedBundle::shouldProcessWorkQueue):
+        (WTR::InjectedBundle::processWorkQueue):
+        (WTR::InjectedBundle::queueBackNavigation):
+        (WTR::InjectedBundle::queueForwardNavigation):
+        (WTR::InjectedBundle::queueLoad):
+        (WTR::InjectedBundle::queueLoadHTMLString):
+        (WTR::InjectedBundle::queueReload):
+        (WTR::InjectedBundle::queueLoadingScript):
+        (WTR::InjectedBundle::queueNonLoadingScript):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setHandlesAuthenticationChallenges):
+        (WTR::TestRunner::setAuthenticationUsername):
+        (WTR::TestRunner::setAuthenticationPassword):
+        (WTR::TestRunner::secureEventInputIsEnabled):
+        (WTR::TestRunner::setBlockAllPlugins):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::didReceivePageMessageFromInjectedBundle):
+        (WTR::TestController::didReceiveSynchronousPageMessageFromInjectedBundle):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke):
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2015-04-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r182174 and r182177.
+        https://bugs.webkit.org/show_bug.cgi?id=143314
+
+        Try to correct EWS failures (Requested by bfulgham on
+        #webkit).
+
+        Reverted changesets:
+
+        "Python SCM should be able to retrieve untracked files"
+        https://bugs.webkit.org/show_bug.cgi?id=143135
+        http://trac.webkit.org/changeset/182174
+
+        "[buildbot] clean-build script should remove untracked files
+        and revert local changes too"
+        https://bugs.webkit.org/show_bug.cgi?id=142400
+        http://trac.webkit.org/changeset/182177
+
+2015-04-01  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Properly handle regexes that match everything.
+        https://bugs.webkit.org/show_bug.cgi?id=143281
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::testRequest):
+        (TestWebKitAPI::makeBackend):
+        (TestWebKitAPI::TEST_F):
+        Removed duplicate code and added test.
+
+2015-03-31  Benjamin Poulain  <bpoulain@apple.com>
+
+        Content Extensions: split the state machines to minimize prefix states
+        https://bugs.webkit.org/show_bug.cgi?id=143253
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::testPatternStatus):
+
+2015-03-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Clean up Identifier factories to clarify the meaning of StringImpl*
+        https://bugs.webkit.org/show_bug.cgi?id=143146
+
+        Reviewed by Filip Pizlo.
+
+        Simple API tests for StringImpl are added.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-03-31  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Add AArch64 builder and tester bot to build.webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=143092
+
+        Reviewed by Gyuyoung Kim.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (Factory.__init__):
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+
+2015-03-31  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [buildbot] clean-build script should remove untracked files and revert local changes too
+        https://bugs.webkit.org/show_bug.cgi?id=142400
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch cleans the WebKit folder by reverting tracked files changes and deleting SCM untracked files, including SCM ignored files.
+        A helper routine SCM.discard_untracked_files is added for that purpose.
+
+        * BuildSlaveSupport/clean-build:
+        (main): Making call to Scripts/clean-webkit
+        * Scripts/clean-webkit: Added.
+        (main): Revert changes and delete untracked files.
+        * Scripts/webkitpy/common/checkout/scm/scm.py:
+        (SCM.discard_untracked_files): Helper function to discard untracked files or folders found by SCM.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (SCMTest._shared_test_discard_untracked_files):
+        (test_discard_untracked_files): Tests that untracked file and untracked folder get discarded correctly.
+
+2015-03-31  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Python SCM should be able to retrieve untracked files
+        https://bugs.webkit.org/show_bug.cgi?id=143135
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch introduces SCM.untracked_files to retrieve a list of untracked files.
+        Ignored files may be included or not in this list according boolean passed to the function.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.untracked_files):
+        * Scripts/webkitpy/common/checkout/scm/scm.py:
+        (SCM.untracked_files):
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (SCMTest._shared_test_untracked_files):
+        (test_untracked_files):
+        (GitSVNTest.test_untracked_files):
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.untracked_files):
+
+2015-03-30  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Correctly handle regular expressions matching everything
+        https://bugs.webkit.org/show_bug.cgi?id=143235
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::checkCompilerError):
+        (TestWebKitAPI::TEST_F):
+        Test ContentExtensionErrors.
+
+2015-03-30  Alexey Proskuryakov  <ap@apple.com>
+
+        DumpRenderTree should set NSWindowDisplayWithRunLoopObserver
+        https://bugs.webkit.org/show_bug.cgi?id=143241
+        rdar://problem/20351297
+
+        Reviewed by Mark Lam.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm: (setDefaultsToConsistentValuesForTesting):
+
+2015-03-30  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMake][EFL] Remove redundant library link and include path
+        https://bugs.webkit.org/show_bug.cgi?id=143221
+
+        Reviewed by Csaba Osztrogonác.
+
+        * ImageDiff/PlatformEfl.cmake: Remove unnecessary library link and include path.
+
+2015-03-30  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Flesh out the UserContentExtensionStore
+        https://bugs.webkit.org/show_bug.cgi?id=143123
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/_WKUserContentExtensionStore.mm: Added.
+        Add tests for _WKUserContentExtensionStore.
+
+2015-03-30  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        Update install-dependencies Fedora packages after r181624
+        https://bugs.webkit.org/show_bug.cgi?id=143215
+
+        Add json-glib, libv4l, openssl and pulseaudio development packages to
+        the Fedora list providing we need them to build WebKit dependencies
+        for this distribution.
+
+        Reviewed by Philippe Normand.
+
+        * gtk/install-dependencies:
+
+2015-03-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r182119.
+        https://bugs.webkit.org/show_bug.cgi?id=143196
+
+        problem with syntax (Requested by youenn on #webkit).
+
+        Reverted changeset:
+
+        "[buildbot] clean-build script should remove untracked files
+        and revert local changes too"
+        https://bugs.webkit.org/show_bug.cgi?id=142400
+        http://trac.webkit.org/changeset/182119
+
+2015-03-30  Benjamin Poulain  <benjamin@webkit.org>
+
+        Start the features.json files
+        https://bugs.webkit.org/show_bug.cgi?id=143207
+
+        Reviewed by Darin Adler.
+
+        I kept the style checking light. We'll have to figure
+        what is the best format for each field.
+
+        * Scripts/webkitpy/style/checker.py:
+        (CheckerDispatcher._create_checker):
+        * Scripts/webkitpy/style/checkers/jsonchecker.py:
+        (JSONContributorsChecker.check):
+        (JSONFeaturesChecker):
+        (JSONFeaturesChecker.check):
+
+2015-03-29  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [buildbot] clean-build script should remove untracked files and revert local changes too
+        https://bugs.webkit.org/show_bug.cgi?id=142400
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch cleans the WebKit folder by deleting SCM untracked files and reverting changes for tracked files.
+
+        * BuildSlaveSupport/clean-build:
+        (main): Adding call to Tools/Scripts/clean-webkit.
+        * Scripts/clean-webkit: Added.
+        (main): Removes untracked and changed files.
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.untracked_files): Retrieves GIT untracked files.
+        * Scripts/webkitpy/common/checkout/scm/scm.py:
+        (SCM.untracked_files): Retrieves SVN untracked files.
+        (SCM):
+        (SCM.discard_untracked_files): Deletes untracked files/folders.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (SCMTest._shared_test_untracked_files): Unit testing for untracked files.
+        (test_untracked_files):
+        (GitSVNTest.test_untracked_files):
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.untracked_files):
+
+2015-03-27  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMake] Remove unnecessary INCLUDE_IF_EXISTS macro 
+        https://bugs.webkit.org/show_bug.cgi?id=143138
+
+        Reviewed by Csaba Osztrogonác.
+
+        INCLUDE_IF_EXISTS isn't used except for 2 places. However those uses can
+        be replaced with WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS.
+
+        * ImageDiff/CMakeLists.txt:
+        Use WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS() instead of INCLUDE_IF_EXISTS.
+        * WebKitTestRunner/CMakeLists.txt: ditto.
+
+2015-03-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Support building WTF on Windows without Cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=143084
+
+        Reviewed by Brent Fulgham.
+
+        Windows without Cygwin doesn't have curl, unzip, or grep. Luckily, Perl does all of these things.
+        This patch also migrates to using File::Spec->catfile() for directory separators.
+
+        * Scripts/update-webkit-dependency:
+        (wanted):
+        * Scripts/update-webkit-support-libs:
+        (wanted):
+        (downloadExpectedVersionNumber):
+        (zipFileVersion):
+        (toUnixPath): Deleted.
+        * Scripts/webkitdirs.pm:
+        (determineSourceDir):
+        (windowsSourceSourceDir):
+        (windowsLibrariesDir):
+        (windowsOutputDir):
+        (checkInstalledTools):
+        (buildVisualStudioProject):
+
+2015-03-27  Alex Christensen  <achristensen@webkit.org>
+
+        Fix WinCairo bot.
+        https://bugs.webkit.org/show_bug.cgi?id=143086
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitdirs.pm:
+        (buildVisualStudioProject):
+        (runSvnUpdateAndResolveChangeLogs):
+        Use ActivePerl-friendly perl.
+
+2015-03-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r182059 to fix the EFL build.
+
+        * TestWebKitAPI/CMakeLists.txt:
+
+2015-03-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Layout test results URL loads in WK1 but not WK2 minibrowser
+        https://bugs.webkit.org/show_bug.cgi?id=143117
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController fetch:]): Fix this, international domain names, and
+        everything.
+        (-[WK2BrowserWindowController updateTextFieldFromURL:]): Ditto.
+
+2015-03-26  Jer Noble  <jer.noble@apple.com>
+
+        Add --allowed-host support to run-webkit-tests
+        https://bugs.webkit.org/show_bug.cgi?id=142938
+
+        Reviewed by Brent Fulgham.
+
+        Accept --allowed-host arguments from run-webkit-tests and pass them through to
+        DumpRenderTree and WebKitTestRunner.
+
+        Drive-by fix: Depending on the value of the --layout-test-dir parameter, layout test results
+        are placed in the wrong location. The argument is compared with each tests's path, and if a
+        relative path or a path with '..' was used, results are placed alongside the test. Take the
+        absolute path of the --layout-test-dir argument, collapsing path components like '..'.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args):
+        * Scripts/webkitpy/port/base.py:
+        (Port.__init__):
+        (Port.allowed_hosts):
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.cmd_line):
+
+2015-03-26  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Add an --allowed-host argument to DRT and WKTR to allow tests to connect to non-localhost servers
+        https://bugs.webkit.org/show_bug.cgi?id=142931
+
+        Reviewed by Brent Fulgham.
+
+        Currently, both DRT and WKTR will refuse to allow network connections to non-localhost servers
+        over HTTP/HTTPS. For certain testing scenarios, however, it would be useful if both DRT and
+        WKTR could be allowed to make HTTP/HTTPS connections to certain, specific servers defined at
+        runtime.
+
+        To allow this, add an optional argument to DRT and WKTR, --allowed-host, which will add the specified
+        hostname to a whitelist; requests to these hosts will allowed to proceed normally.
+
+        Drive-by fix: in InjectedBundlePage::willSendRequestForFrame, we get the top loading frame from the
+        injected bundle. But after the main resource load completes, the bundle nulls out it's pointer to the
+        top loading frame, which causes a subsequent crash when further resources are requested. Instead, get
+        the top loading frame from the page, as we do elsewhere in this class.
+
+        * DumpRenderTree/TestRunner.h:
+        (TestRunner::allowedHosts):
+        (TestRunner::setAllowedHosts):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (initializeGlobalsFromCommandLineOptions):
+        (runTest):
+        * DumpRenderTree/mac/ResourceLoadDelegate.mm:
+        (isAllowedHost):
+        (-[ResourceLoadDelegate webView:resource:willSendRequest:redirectResponse:fromDataSource:]):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessage):
+        (WTR::InjectedBundle::isAllowedHost):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::isAllowedHost):
+        (WTR::InjectedBundlePage::willSendRequestForFrame):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/Options.cpp:
+        (WTR::handleOptionAllowedHost):
+        (WTR::OptionsHandler::OptionsHandler):
+        * WebKitTestRunner/Options.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        (WTR::TestController::resetStateToConsistentValues):
+        * WebKitTestRunner/TestController.h:
+
+2015-03-26  Brady Eidson  <beidson@apple.com>
+
+        Apply ContentExtension actions after redirects.
+        <rdar://problem/20062613> and https://bugs.webkit.org/show_bug.cgi?id=143055
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didFailProvisionalLoadWithErrorForFrame): Dump the fact that the load error is kWKErrorCodeCannotShowURL
+          which is specifically interesting to a new test.
+
+2015-03-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Disable building libseccomp on AArch64
+        https://bugs.webkit.org/show_bug.cgi?id=143094
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuildrc:
+
+2015-03-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [jhbuild] git should use only 1 thread for cloning jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=143095
+
+        Reviewed by Gyuyoung Kim.
+
+        * jhbuild/jhbuild-wrapper:
+        (clone_jhbuild):
+
 2015-03-25  Joseph Pecoraro  <pecoraro@apple.com>
 
         Update prepare-ChangeLog to work with ES6 Class syntax

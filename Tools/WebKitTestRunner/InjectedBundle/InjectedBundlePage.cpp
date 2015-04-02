@@ -685,14 +685,17 @@ void InjectedBundlePage::didReceiveServerRedirectForProvisionalLoadForFrame(WKBu
     dumpLoadEvent(frame, "didReceiveServerRedirectForProvisionalLoadForFrame");
 }
 
-void InjectedBundlePage::didFailProvisionalLoadWithErrorForFrame(WKBundleFrameRef frame, WKErrorRef)
+void InjectedBundlePage::didFailProvisionalLoadWithErrorForFrame(WKBundleFrameRef frame, WKErrorRef error)
 {
     auto& injectedBundle = InjectedBundle::singleton();
     if (!injectedBundle.isTestRunning())
         return;
 
-    if (injectedBundle.testRunner()->shouldDumpFrameLoadCallbacks())
+    if (injectedBundle.testRunner()->shouldDumpFrameLoadCallbacks()) {
         dumpLoadEvent(frame, "didFailProvisionalLoadWithError");
+        if (WKErrorGetErrorCode(error) == kWKErrorCodeCannotShowURL)
+            dumpLoadEvent(frame, "(kWKErrorCodeCannotShowURL)");
+    }
 
     frameDidChangeLocation(frame);
 }
@@ -1074,6 +1077,11 @@ static inline bool isHTTPOrHTTPSScheme(WKStringRef scheme)
     return WKStringIsEqualToUTF8CStringIgnoringCase(scheme, "http") || WKStringIsEqualToUTF8CStringIgnoringCase(scheme, "https");
 }
 
+static inline bool isAllowedHost(WKStringRef host)
+{
+    return InjectedBundle::singleton().isAllowedHost(host);
+}
+
 WKURLRequestRef InjectedBundlePage::willSendRequestForFrame(WKBundlePageRef page, WKBundleFrameRef frame, uint64_t identifier, WKURLRequestRef request, WKURLResponseRef response)
 {
     auto& injectedBundle = InjectedBundle::singleton();
@@ -1108,7 +1116,7 @@ WKURLRequestRef InjectedBundlePage::willSendRequestForFrame(WKBundlePageRef page
         && !isLocalHost(host.get())) {
         bool mainFrameIsExternal = false;
         if (injectedBundle.isTestRunning()) {
-            WKBundleFrameRef mainFrame = injectedBundle.topLoadingFrame();
+            WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(m_page);
             WKRetainPtr<WKURLRef> mainFrameURL = adoptWK(WKBundleFrameCopyURL(mainFrame));
             if (!mainFrameURL || WKStringIsEqualToUTF8CString(adoptWK(WKURLCopyString(mainFrameURL.get())).get(), "about:blank"))
                 mainFrameURL = adoptWK(WKBundleFrameCopyProvisionalURL(mainFrame));
@@ -1117,7 +1125,7 @@ WKURLRequestRef InjectedBundlePage::willSendRequestForFrame(WKBundlePageRef page
             WKRetainPtr<WKStringRef> mainFrameScheme = adoptWK(WKURLCopyScheme(mainFrameURL.get()));
             mainFrameIsExternal = isHTTPOrHTTPSScheme(mainFrameScheme.get()) && !isLocalHost(mainFrameHost.get());
         }
-        if (!mainFrameIsExternal) {
+        if (!mainFrameIsExternal && !isAllowedHost(host.get())) {
             StringBuilder stringBuilder;
             stringBuilder.appendLiteral("Blocked access to external URL ");
             stringBuilder.append(toWTFString(urlString));
