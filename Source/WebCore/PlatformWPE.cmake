@@ -225,6 +225,9 @@ if (ENABLE_TEXTURE_MAPPER)
         "${WEBCORE_DIR}/platform/graphics/texmap"
     )
     list(APPEND WebCore_SOURCES
+        platform/graphics/texmap/BitmapTexture.cpp
+        platform/graphics/texmap/BitmapTextureGL.cpp
+        platform/graphics/texmap/BitmapTexturePool.cpp
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
         platform/graphics/texmap/TextureMapperGL.cpp
         platform/graphics/texmap/TextureMapperShaderProgram.cpp
