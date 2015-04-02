@@ -136,9 +136,11 @@ public:
         VM&, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, 
         ParserError&);
 
-    static UnlinkedFunctionExecutable* fromGlobalCode(const Identifier&, ExecState&, const SourceCode&, JSObject*& exception);
+    static UnlinkedFunctionExecutable* fromGlobalCode(
+        const Identifier&, ExecState&, const SourceCode&, JSObject*& exception, 
+        int overrideLineNumber);
 
-    FunctionExecutable* link(VM&, const SourceCode&);
+    FunctionExecutable* link(VM&, const SourceCode&, int overrideLineNumber = -1);
 
     void clearCodeForRecompilation()
     {
@@ -164,6 +166,7 @@ public:
     static void destroy(JSCell*);
 
     bool isBuiltinFunction() const { return m_isBuiltinFunction; }
+    bool isClassConstructorFunction() const { return constructorKind() != ConstructorKind::None; }
 
 private:
     UnlinkedFunctionExecutable(VM*, Structure*, const SourceCode&, RefPtr<SourceProvider>&& sourceOverride, FunctionBodyNode*, UnlinkedFunctionKind);

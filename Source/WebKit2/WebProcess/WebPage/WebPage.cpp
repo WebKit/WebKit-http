@@ -304,7 +304,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_cachedMainFrameIsPinnedToTopSide(true)
     , m_cachedMainFrameIsPinnedToBottomSide(true)
     , m_canShortCircuitHorizontalWheelEvents(false)
-    , m_numWheelEventHandlers(0)
+    , m_hasWheelEventHandlers(false)
     , m_cachedPageCount(0)
     , m_autoSizingShouldExpandToViewHeight(false)
 #if ENABLE(CONTEXT_MENUS)
@@ -4055,12 +4055,12 @@ void WebPage::confirmCompositionForTesting(const String& compositionString)
     frame.editor().confirmComposition(compositionString);
 }
 
-void WebPage::numWheelEventHandlersChanged(unsigned numWheelEventHandlers)
+void WebPage::wheelEventHandlersChanged(bool hasHandlers)
 {
-    if (m_numWheelEventHandlers == numWheelEventHandlers)
+    if (m_hasWheelEventHandlers == hasHandlers)
         return;
 
-    m_numWheelEventHandlers = numWheelEventHandlers;
+    m_hasWheelEventHandlers = hasHandlers;
     recomputeShortCircuitHorizontalWheelEventsState();
 }
 
@@ -4103,7 +4103,7 @@ static bool pageContainsAnyHorizontalScrollbars(Frame* mainFrame)
 
 void WebPage::recomputeShortCircuitHorizontalWheelEventsState()
 {
-    bool canShortCircuitHorizontalWheelEvents = !m_numWheelEventHandlers;
+    bool canShortCircuitHorizontalWheelEvents = !m_hasWheelEventHandlers;
 
     if (canShortCircuitHorizontalWheelEvents) {
         // Check if we have any horizontal scroll bars on the page.
@@ -4830,6 +4830,22 @@ void WebPage::didChangeScrollOffsetForFrame(Frame* frame)
         return;
 
     updateMainFrameScrollOffsetPinning();
+}
+
+void WebPage::postMessage(const String& messageName, API::Object* messageBody)
+{
+    send(Messages::WebPageProxy::HandleMessage(messageName, UserData(WebProcess::singleton().transformObjectsToHandles(messageBody))));
+}
+
+void WebPage::postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData)
+{
+    UserData returnUserData;
+
+    auto& webProcess = WebProcess::singleton();
+    if (!sendSync(Messages::WebPageProxy::HandleSynchronousMessage(messageName, UserData(webProcess.transformObjectsToHandles(messageBody))), Messages::WebPageProxy::HandleSynchronousMessage::Reply(returnUserData)))
+        returnData = nullptr;
+    else
+        returnData = webProcess.transformHandlesToObjects(returnUserData.object());
 }
 
 } // namespace WebKit

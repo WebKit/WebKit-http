@@ -49,7 +49,7 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
 {
 #if PLATFORM(IOS)
     SandboxExtension::consumePermanently(parameters.cookieStorageDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.hstsDatabasePathExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.containerCachesDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.parentBundleDirectoryExtensionHandle);
 #endif
     m_diskCacheDirectory = parameters.diskCacheDirectory;
@@ -88,6 +88,9 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
         return;
 
     _CFURLCacheSetMinSizeForVMCachedResource(cache.get(), NetworkResourceLoader::fileBackedResourceMinimumSize());
+#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+    _CFNetworkSetATSContext(parameters.networkATSContext.get());
+#endif
 }
 
 static uint64_t memorySize()
@@ -132,6 +135,9 @@ void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
     calculateCacheSizes(cacheModel, memSize, diskFreeSize,
         cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval,
         pageCacheCapacity, urlCacheMemoryCapacity, urlCacheDiskCapacity);
+
+    if (m_diskCacheSizeOverride >= 0)
+        urlCacheDiskCapacity = m_diskCacheSizeOverride;
 
 #if ENABLE(NETWORK_CACHE)
     auto& networkCache = NetworkCache::singleton();

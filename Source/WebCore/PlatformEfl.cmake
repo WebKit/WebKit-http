@@ -66,7 +66,6 @@ list(APPEND WebCore_SOURCES
 
     platform/ContextMenuItemNone.cpp
     platform/ContextMenuNone.cpp
-    platform/Cursor.cpp
 
     platform/audio/efl/AudioBusEfl.cpp
 
@@ -180,6 +179,10 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/surfaces/glx/X11Helper.cpp
 
+    platform/graphics/texmap/BitmapTexture.cpp
+    platform/graphics/texmap/BitmapTextureGL.cpp
+    platform/graphics/texmap/BitmapTextureImageBuffer.cpp
+    platform/graphics/texmap/BitmapTexturePool.cpp
     platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
     platform/graphics/texmap/TextureMapperGL.cpp
     platform/graphics/texmap/TextureMapperShaderProgram.cpp

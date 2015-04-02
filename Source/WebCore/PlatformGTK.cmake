@@ -49,7 +49,6 @@ list(APPEND WebCore_SOURCES
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
 
-    platform/Cursor.cpp
     platform/PlatformStrategies.cpp
 
     platform/audio/glib/AudioBusGlib.cpp
@@ -214,7 +213,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/CursorGtk.cpp
     platform/gtk/DataObjectGtk.cpp
     platform/gtk/DragDataGtk.cpp
-    platform/gtk/DragIcon.cpp
     platform/gtk/DragImageGtk.cpp
     platform/gtk/GRefPtrGtk.cpp
     platform/gtk/GtkUtilities.cpp
@@ -383,8 +381,13 @@ if (ENABLE_TEXTURE_MAPPER)
         "${WEBCORE_DIR}/platform/graphics/texmap"
     )
     list(APPEND WebCore_SOURCES
+        platform/graphics/texmap/BitmapTexture.cpp
+        platform/graphics/texmap/BitmapTextureGL.cpp
+        platform/graphics/texmap/BitmapTextureImageBuffer.cpp
+        platform/graphics/texmap/BitmapTexturePool.cpp
         platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
         platform/graphics/texmap/TextureMapperGL.cpp
+        platform/graphics/texmap/TextureMapperImageBuffer.cpp
         platform/graphics/texmap/TextureMapperShaderProgram.cpp
     )
 endif ()
@@ -481,7 +484,7 @@ if (ENABLE_WAYLAND_TARGET)
     )
 
     list(APPEND WebCore_INCLUDE_DIRECTORIES
-        ${WAYLAND_INCLUDE_DIRECTORIES}
+        ${WAYLAND_INCLUDE_DIRS}
     )
     list(APPEND WebCore_LIBRARIES
         ${WAYLAND_LIBRARIES}

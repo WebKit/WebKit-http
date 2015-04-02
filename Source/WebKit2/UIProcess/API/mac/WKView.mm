@@ -2609,16 +2609,19 @@ static void* keyValueObservingContext = &keyValueObservingContext;
                                                      name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeOcclusionState:)
                                                      name:NSWindowDidChangeOcclusionStateNotification object:window];
-        [[NSFontPanel sharedFontPanel] addObserver:self
-                                        forKeyPath:@"visible"
-                                           options:NSKeyValueObservingOptionNew
-                                           context:nil];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         [window addObserver:self forKeyPath:@"contentLayoutRect" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
         [window addObserver:self forKeyPath:@"titlebarAppearsTransparent" options:NSKeyValueObservingOptionInitial context:keyValueObservingContext];
 #endif
         [_data->_windowVisibilityObserver startObserving:window];
     }
+}
+
+- (void)_addFontPanelObserver
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    [[NSFontPanel sharedFontPanel] addObserver:self forKeyPath:@"visible" options:0 context:keyValueObservingContext];
+#endif
 }
 
 - (void)removeWindowObservers
@@ -2637,8 +2640,9 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeScreenNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidChangeContentsHostedInLayerSurfaceNotification" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidChangeOcclusionStateNotification object:window];
-    [[NSFontPanel sharedFontPanel] removeObserver:self forKeyPath:@"visible" context:nil];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    if (_data->_page->isEditable())
+        [[NSFontPanel sharedFontPanel] removeObserver:self forKeyPath:@"visible" context:keyValueObservingContext];
     [window removeObserver:self forKeyPath:@"contentLayoutRect" context:keyValueObservingContext];
     [window removeObserver:self forKeyPath:@"titlebarAppearsTransparent" context:keyValueObservingContext];
 #endif
@@ -3723,7 +3727,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     InitializeWebKit2();
 
     // Legacy style scrollbars have design details that rely on tracking the mouse all the time.
-    NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect;
+    NSTrackingAreaOptions options = NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingInVisibleRect | NSTrackingCursorUpdate;
     if (WKRecommendedScrollerStyle() == NSScrollerStyleLegacy)
         options |= NSTrackingActiveAlways;
     else
@@ -3848,18 +3852,18 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    if ([NSFontPanel sharedFontPanelExists] && object == [NSFontPanel sharedFontPanel]) {
-        [self updateFontPanelIfNeeded];
-        return;
-    }
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    if (context == keyValueObservingContext) {
-        if ([keyPath isEqualToString:@"contentLayoutRect"] || [keyPath isEqualToString:@"titlebarAppearsTransparent"])
-            [self _updateContentInsetsIfAutomatic];
+    if (context != keyValueObservingContext) {
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
         return;
     }
 
-    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    if ([keyPath isEqualToString:@"visible"] && [NSFontPanel sharedFontPanelExists] && object == [NSFontPanel sharedFontPanel]) {
+        [self updateFontPanelIfNeeded];
+        return;
+    }
+    if ([keyPath isEqualToString:@"contentLayoutRect"] || [keyPath isEqualToString:@"titlebarAppearsTransparent"])
+        [self _updateContentInsetsIfAutomatic];
 #endif
 }
 
@@ -4415,6 +4419,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [self _ensureGestureController];
 
     _data->_gestureController->handleMagnificationGesture(event.magnification, [self convertPoint:event.locationInWindow fromView:nil]);
+
+    if (event.phase == NSEventPhaseEnded || event.phase == NSEventPhaseCancelled)
+        _data->_gestureController->endMagnificationGesture();
 }
 
 - (void)smartMagnifyWithEvent:(NSEvent *)event
@@ -4429,16 +4436,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [self _ensureGestureController];
 
     _data->_gestureController->handleSmartMagnificationGesture([self convertPoint:event.locationInWindow fromView:nil]);
-}
-
--(void)endGestureWithEvent:(NSEvent *)event
-{
-    if (!_data->_gestureController) {
-        [super endGestureWithEvent:event];
-        return;
-    }
-
-    _data->_gestureController->endActiveGesture();
 }
 
 - (void)setMagnification:(double)magnification centeredAtPoint:(NSPoint)point

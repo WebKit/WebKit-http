@@ -706,7 +706,7 @@ bool MediaPlayerPrivateQTKit::seeking() const
 {
     if (!metaDataAvailable())
         return false;
-    return m_seekTo >= MediaTime::zeroTime();
+    return m_seekTo.isValid() && m_seekTo >= MediaTime::zeroTime();
 }
 
 FloatSize MediaPlayerPrivateQTKit::naturalSize() const
@@ -1539,6 +1539,42 @@ bool MediaPlayerPrivateQTKit::canSaveMediaData() const
     
     return false;
 }
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+bool MediaPlayerPrivateQTKit::isCurrentPlaybackTargetSupported() const
+{
+    if (!m_playbackTarget)
+        return true;
+
+    return !m_playbackTarget->hasActiveRoute();
+}
+
+void MediaPlayerPrivateQTKit::setWirelessPlaybackTarget(const MediaPlaybackTarget& target)
+{
+    if (!m_playbackTarget)
+        m_playbackTarget = std::make_unique<MediaPlaybackTarget>();
+    m_playbackTarget->setDevicePickerContext(target.devicePickerContext());
+}
+
+void MediaPlayerPrivateQTKit::togglePlayingToPlaybackTarget()
+{
+    bool oldSupported = m_currentPlaybackTargetIsSupported;
+    m_currentPlaybackTargetIsSupported = !m_playbackTarget || !m_playbackTarget->hasActiveRoute();
+
+    if (m_player && oldSupported != m_currentPlaybackTargetIsSupported)
+        m_player->currentPlaybackTargetIsWirelessChanged();
+}
+
+void MediaPlayerPrivateQTKit::startPlayingToPlaybackTarget()
+{
+    togglePlayingToPlaybackTarget();
+}
+
+void MediaPlayerPrivateQTKit::stopPlayingToPlaybackTarget()
+{
+    togglePlayingToPlaybackTarget();
+}
+#endif
 
 } // namespace WebCore
 

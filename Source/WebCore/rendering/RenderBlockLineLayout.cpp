@@ -283,6 +283,8 @@ RootInlineBox* RenderBlockFlow::constructLine(BidiRunList<BidiRun>& bidiRuns, co
     bool rootHasSelectedChildren = false;
     InlineFlowBox* parentBox = 0;
     int runCount = bidiRuns.runCount() - lineInfo.runsFromLeadingWhitespace();
+    
+    bool isAnonymousInlineBlock = false;
     for (BidiRun* r = bidiRuns.firstRun(); r; r = r->next()) {
         // Create a box for our object.
         bool isOnlyRun = (runCount == 1);
@@ -297,14 +299,19 @@ RootInlineBox* RenderBlockFlow::constructLine(BidiRunList<BidiRun>& bidiRuns, co
 
         if (!rootHasSelectedChildren && box->renderer().selectionState() != RenderObject::SelectionNone)
             rootHasSelectedChildren = true;
-
+    
+        isAnonymousInlineBlock = r->renderer().isAnonymousInlineBlock();
+        
         // If we have no parent box yet, or if the run is not simply a sibling,
         // then we need to construct inline boxes as necessary to properly enclose the
         // run's inline box. Segments can only be siblings at the root level, as
         // they are positioned separately.
         if (!parentBox || &parentBox->renderer() != r->renderer().parent()) {
             // Create new inline boxes all the way back to the appropriate insertion point.
-            parentBox = createLineBoxes(r->renderer().parent(), lineInfo, box);
+            // For anonymous inline blocks, we never create intermediate line boxes for the inlines, since
+            // we want to pretend like they don't exist on the line.
+            RenderObject* parentToUse = isAnonymousInlineBlock ? this : r->renderer().parent();
+            parentBox = createLineBoxes(parentToUse, lineInfo, box);
         } else {
             // Append the inline box to this line.
             parentBox->addToLine(box);
@@ -341,6 +348,8 @@ RootInlineBox* RenderBlockFlow::constructLine(BidiRunList<BidiRun>& bidiRuns, co
 
     // Now mark the line boxes as being constructed.
     lastRootBox()->setConstructed();
+    
+    lastRootBox()->setHasAnonymousInlineBlock(isAnonymousInlineBlock);
 
     // Return the last line.
     return lastRootBox();
@@ -676,11 +685,17 @@ void RenderBlockFlow::updateLogicalWidthForAlignment(const ETextAlign& textAlign
     }
 }
 
-static void updateLogicalInlinePositions(RenderBlockFlow& block, float& lineLogicalLeft, float& lineLogicalRight, float& availableLogicalWidth, bool firstLine, IndentTextOrNot shouldIndentText, LayoutUnit boxLogicalHeight)
+static void updateLogicalInlinePositions(RenderBlockFlow& block, float& lineLogicalLeft, float& lineLogicalRight, float& availableLogicalWidth, bool firstLine, IndentTextOrNot shouldIndentText, LayoutUnit boxLogicalHeight,
+    RootInlineBox* rootBox)
 {
     LayoutUnit lineLogicalHeight = block.minLineHeightForReplacedRenderer(firstLine, boxLogicalHeight);
-    lineLogicalLeft = block.logicalLeftOffsetForLine(block.logicalHeight(), shouldIndentText == IndentText, lineLogicalHeight);
-    lineLogicalRight = block.logicalRightOffsetForLine(block.logicalHeight(), shouldIndentText == IndentText, lineLogicalHeight);
+    if (rootBox->hasAnonymousInlineBlock()) {
+        lineLogicalLeft = block.logicalLeftOffsetForContent(block.logicalHeight());
+        lineLogicalRight = block.logicalRightOffsetForContent(block.logicalHeight());
+    } else {
+        lineLogicalLeft = block.logicalLeftOffsetForLine(block.logicalHeight(), shouldIndentText == IndentText, lineLogicalHeight);
+        lineLogicalRight = block.logicalRightOffsetForLine(block.logicalHeight(), shouldIndentText == IndentText, lineLogicalHeight);
+    }
     availableLogicalWidth = lineLogicalRight - lineLogicalLeft;
 }
 
@@ -698,12 +713,12 @@ void RenderBlockFlow::computeInlineDirectionPositionsForLine(RootInlineBox* line
     float lineLogicalLeft;
     float lineLogicalRight;
     float availableLogicalWidth;
-    updateLogicalInlinePositions(*this, lineLogicalLeft, lineLogicalRight, availableLogicalWidth, isFirstLine, shouldIndentText, 0);
+    updateLogicalInlinePositions(*this, lineLogicalLeft, lineLogicalRight, availableLogicalWidth, isFirstLine, shouldIndentText, 0, lineBox);
     bool needsWordSpacing;
 
     if (firstRun && firstRun->renderer().isReplaced()) {
         RenderBox& renderBox = downcast<RenderBox>(firstRun->renderer());
-        updateLogicalInlinePositions(*this, lineLogicalLeft, lineLogicalRight, availableLogicalWidth, isFirstLine, shouldIndentText, renderBox.logicalHeight());
+        updateLogicalInlinePositions(*this, lineLogicalLeft, lineLogicalRight, availableLogicalWidth, isFirstLine, shouldIndentText, renderBox.logicalHeight(), lineBox);
     }
 
     computeInlineDirectionPositionsForSegment(lineBox, lineInfo, textAlign, lineLogicalLeft, availableLogicalWidth, firstRun, trailingSpaceRun, textBoxDataMap, verticalPositionCache, wordMeasurements);
@@ -711,6 +726,45 @@ void RenderBlockFlow::computeInlineDirectionPositionsForLine(RootInlineBox* line
     // compute accurate widths for the inline flow boxes).
     needsWordSpacing = false;
     lineBox->placeBoxesInInlineDirection(lineLogicalLeft, needsWordSpacing);
+}
+
+static inline ExpansionBehavior expansionBehaviorForInlineTextBox(bool isAfterExpansion)
+{
+    ExpansionBehavior result = AllowTrailingExpansion;
+    result |= isAfterExpansion ? ForbidLeadingExpansion : AllowLeadingExpansion;
+    return result;
+}
+
+static inline void applyExpansionBehavior(InlineTextBox& textBox, ExpansionBehavior expansionBehavior)
+{
+    switch (expansionBehavior & LeadingExpansionMask) {
+    case ForceLeadingExpansion:
+        textBox.setForceLeadingExpansion();
+        break;
+    case ForbidLeadingExpansion:
+        textBox.setCanHaveLeadingExpansion(false);
+        break;
+    case AllowLeadingExpansion:
+        textBox.setCanHaveLeadingExpansion(true);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        break;
+    }
+    switch (expansionBehavior & TrailingExpansionMask) {
+    case ForceTrailingExpansion:
+        textBox.setForceTrailingExpansion();
+        break;
+    case ForbidTrailingExpansion:
+        textBox.setCanHaveTrailingExpansion(false);
+        break;
+    case AllowTrailingExpansion:
+        textBox.setCanHaveTrailingExpansion(true);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        break;
+    }
 }
 
 BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBox* lineBox, const LineInfo& lineInfo, ETextAlign textAlign, float& logicalLeft, 
@@ -733,10 +787,12 @@ BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBo
         }
         if (is<RenderText>(run->renderer())) {
             auto& renderText = downcast<RenderText>(run->renderer());
+            auto& textBox = downcast<InlineTextBox>(*run->box());
             if (textAlign == JUSTIFY && run != trailingSpaceRun) {
-                if (!isAfterExpansion)
-                    downcast<InlineTextBox>(*run->box()).setCanHaveLeadingExpansion(true);
-                unsigned opportunitiesInRun = FontCascade::expansionOpportunityCount(renderText.stringView(run->m_start, run->m_stop), run->box()->direction(), isAfterExpansion);
+                ExpansionBehavior expansionBehavior = expansionBehaviorForInlineTextBox(isAfterExpansion);
+                applyExpansionBehavior(textBox, expansionBehavior);
+                unsigned opportunitiesInRun;
+                std::tie(opportunitiesInRun, isAfterExpansion) = FontCascade::expansionOpportunityCount(renderText.stringView(run->m_start, run->m_stop), run->box()->direction(), expansionBehavior);
                 expansionOpportunities.append(opportunitiesInRun);
                 expansionOpportunityCount += opportunitiesInRun;
             }
@@ -757,11 +813,13 @@ BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBo
                     for (auto* leafChild = rubyBase->firstRootBox()->firstLeafChild(); leafChild; leafChild = leafChild->nextLeafChild()) {
                         if (!is<InlineTextBox>(*leafChild))
                             continue;
-                        if (!isAfterExpansion)
-                            downcast<InlineTextBox>(*leafChild).setCanHaveLeadingExpansion(true);
+                        auto& textBox = downcast<InlineTextBox>(*leafChild);
                         encounteredJustifiedRuby = true;
                         auto& renderText = downcast<RenderText>(leafChild->renderer());
-                        unsigned opportunitiesInRun = FontCascade::expansionOpportunityCount(renderText.stringView(), leafChild->direction(), isAfterExpansion);
+                        ExpansionBehavior expansionBehavior = expansionBehaviorForInlineTextBox(isAfterExpansion);
+                        applyExpansionBehavior(textBox, expansionBehavior);
+                        unsigned opportunitiesInRun;
+                        std::tie(opportunitiesInRun, isAfterExpansion) = FontCascade::expansionOpportunityCount(renderText.stringView(), leafChild->direction(), expansionBehavior);
                         expansionOpportunities.append(opportunitiesInRun);
                         expansionOpportunityCount += opportunitiesInRun;
                     }
@@ -1515,10 +1573,12 @@ void RenderBlockFlow::layoutLineBoxes(bool relayoutChildren, LayoutUnit& repaint
                 else if (isFullLayout || box.needsLayout()) {
                     // Replaced element.
                     box.dirtyLineBoxes(isFullLayout);
-                    if (isFullLayout)
-                        replacedChildren.append(&box);
-                    else
-                        box.layoutIfNeeded();
+                    if (!o.isAnonymousInlineBlock()) {
+                        if (isFullLayout)
+                            replacedChildren.append(&box);
+                        else
+                            box.layoutIfNeeded();
+                    }
                 }
             } else if (o.isTextOrLineBreak() || (is<RenderInline>(o) && !walker.atEndOfInline())) {
                 if (is<RenderInline>(o))

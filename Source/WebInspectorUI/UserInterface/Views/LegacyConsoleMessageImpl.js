@@ -46,6 +46,7 @@ WebInspector.LegacyConsoleMessageImpl = function(source, level, message, linkifi
         "set": this._formatParameterAsObject,
         "weakmap": this._formatParameterAsObject,
         "iterator": this._formatParameterAsObject,
+        "class": this._formatParameterAsObject,
         "array":  this._formatParameterAsArray,
         "node":   this._formatParameterAsNode,
         "string": this._formatParameterAsString
@@ -139,11 +140,10 @@ WebInspector.LegacyConsoleMessageImpl.prototype = {
         if (this._shouldDumpStackTrace()) {
             var ol = document.createElement("ol");
             ol.className = "outline-disclosure";
-            var treeOutline = new TreeOutline(ol);
+            var treeOutline = new WebInspector.TreeOutline(ol);
 
             var content = this._formattedMessage;
-            var root = new TreeElement(content, null, true);
-            content.treeElementForTest = root;
+            var root = new WebInspector.TreeElement(content, null, true);
             treeOutline.appendChild(root);
             if (this.type === WebInspector.LegacyConsoleMessage.MessageType.Trace)
                 root.expand();
@@ -308,7 +308,8 @@ WebInspector.LegacyConsoleMessageImpl.prototype = {
 
     _formatParameterAsObject: function(obj, elem, forceExpansion)
     {
-        this._objectTree = new WebInspector.ObjectTreeView(obj, WebInspector.ObjectTreeView.Mode.Properties, this._rootPropertyPathForObject(obj), forceExpansion);
+        // FIXME: Should have a better ObjectTreeView mode for classes (static methods and methods).
+        this._objectTree = new WebInspector.ObjectTreeView(obj, null, this._rootPropertyPathForObject(obj), forceExpansion);
         elem.appendChild(this._objectTree.element);
     },
 
@@ -395,7 +396,7 @@ WebInspector.LegacyConsoleMessageImpl.prototype = {
                 const maxColumnsToRender = 10;
                 for (var j = 0; j < rowPreview.propertyPreviews.length; ++j) {
                     var cellProperty = rowPreview.propertyPreviews[j];
-                    var columnRendered = columnNames.contains(cellProperty.name);
+                    var columnRendered = columnNames.includes(cellProperty.name);
                     if (!columnRendered) {
                         if (userProvidedColumnNames || columnNames.length === maxColumnsToRender)
                             continue;
@@ -620,7 +621,7 @@ WebInspector.LegacyConsoleMessageImpl.prototype = {
                 content.appendChild(urlElement);
             }
 
-            var treeElement = new TreeElement(content);
+            var treeElement = new WebInspector.TreeElement(content);
             parentTreeElement.appendChild(treeElement);
         }
     },

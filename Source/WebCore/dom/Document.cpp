@@ -47,6 +47,7 @@
 #include "DOMNamedFlowCollection.h"
 #include "DOMWindow.h"
 #include "DateComponents.h"
+#include "DebugPageOverlays.h"
 #include "Dictionary.h"
 #include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
@@ -489,7 +490,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_writingModeSetOnDocumentElement(false)
     , m_writeRecursionIsTooDeep(false)
     , m_writeRecursionDepth(0)
-    , m_wheelEventHandlerCount(0)
     , m_lastHandledUserGestureTimestamp(0)
 #if PLATFORM(IOS)
 #if ENABLE(DEVICE_ORIENTATION)
@@ -1896,7 +1896,7 @@ Ref<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element* el
     return ensureStyleResolver().styleForElement(element, element->parentNode() ? element->parentNode()->computedStyle() : nullptr);
 }
 
-bool Document::updateLayoutIfDimensionsOutOfDate(Element* element, DimensionsCheck dimensionsCheck)
+bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsCheck dimensionsCheck)
 {
     ASSERT(isMainThread());
     
@@ -1920,15 +1920,19 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element* element, DimensionsChe
     // layout.
     bool requireFullLayout = false;
     if (HTMLFrameOwnerElement* owner = ownerElement()) {
-        if (owner->document().updateLayoutIfDimensionsOutOfDate(owner))
+        if (owner->document().updateLayoutIfDimensionsOutOfDate(*owner))
             requireFullLayout = true;
     }
     
     updateStyleIfNeeded();
-    
-    RenderObject* renderer = element->renderer();
-    if (!renderer || renderer->needsLayout())
+
+    RenderObject* renderer = element.renderer();
+    if (!renderer || renderer->needsLayout() || element.renderNamedFlowFragment()) {
+        // If we don't have a renderer or if the renderer needs layout for any reason, give up.
+        // Named flows can have auto height, so don't try to enforce the optimization in this case.
+        // The 2-pass nature of auto height named flow layout means the region may not be dirty yet.
         requireFullLayout = true;
+    }
 
     bool isVertical = renderer && !renderer->isHorizontalWritingMode();
     bool checkingLogicalWidth = ((dimensionsCheck & WidthDimensionsCheck) && !isVertical) || ((dimensionsCheck & HeightDimensionsCheck) && isVertical);
@@ -1940,7 +1944,7 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element* element, DimensionsChe
         RenderBox* currentBox = nullptr;
         
         // Check our containing block chain. If anything in the chain needs a layout, then require a full layout.
-        for (RenderObject* currRenderer = element->renderer(); currRenderer && !currRenderer->isRenderView(); currRenderer = currRenderer->container()) {
+        for (RenderObject* currRenderer = element.renderer(); currRenderer && !currRenderer->isRenderView(); currRenderer = currRenderer->container()) {
             
             // Require the entire container chain to be boxes.
             if (!is<RenderBox>(currRenderer)) {
@@ -1969,9 +1973,8 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element* element, DimensionsChe
                 }
             }
             
-            if (!currentBox->isRenderBlockFlow() || currentBox->isInline() || currentBox->isOutOfFlowPositioned() || currentBox->flowThreadContainingBlock() || currentBox->isWritingModeRoot()) {
-                // FIXME: For now require only block-level non-positioned
-                // block flows all the way back to the root. This limits the optimization
+            if (!currentBox->isRenderBlockFlow() || currentBox->flowThreadContainingBlock() || currentBox->isWritingModeRoot()) {
+                // FIXME: For now require only block flows all the way back to the root. This limits the optimization
                 // for now, and we'll expand it in future patches to apply to more and more scenarios.
                 // Disallow regions/columns from having the optimization.
                 // Give up if the writing mode changes at all in the containing block chain.
@@ -2094,16 +2097,6 @@ void Document::createRenderTree()
     recalcStyle(Style::Force);
 }
 
-static void pageWheelEventHandlerCountChanged(Page& page)
-{
-    unsigned count = 0;
-    for (const Frame* frame = &page.mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (Document* document = frame->document())
-            count += document->wheelEventHandlerCount();
-    }
-    page.chrome().client().numWheelEventHandlersChanged(count);
-}
-
 void Document::didBecomeCurrentDocumentInFrame()
 {
     // FIXME: Are there cases where the document can be dislodged from the frame during the event handling below?
@@ -2124,7 +2117,7 @@ void Document::didBecomeCurrentDocumentInFrame()
     // subframes' documents have no wheel event handlers, then the count did not change,
     // unless the documents they are replacing had wheel event handlers.
     if (page() && m_frame->isMainFrame())
-        pageWheelEventHandlerCountChanged(*page());
+        wheelEventHandlersChanged();
 
 #if ENABLE(TOUCH_EVENTS)
     // FIXME: Doing this only for the main frame is insufficient.
@@ -2241,6 +2234,9 @@ void Document::prepareForDestruction()
     if (m_touchEventTargets && m_touchEventTargets->size() && parentDocument())
         parentDocument()->didRemoveEventTargetNode(*this);
 #endif
+
+    if (m_wheelEventTargets && m_wheelEventTargets->size() && parentDocument())
+        parentDocument()->didRemoveEventTargetNode(*this);
 
     if (m_mediaQueryMatcher)
         m_mediaQueryMatcher->documentDestroyed();
@@ -5975,49 +5971,83 @@ RefPtr<Touch> Document::createTouch(DOMWindow* window, EventTarget* target, int 
 #endif
 #endif // !PLATFORM(IOS)
 
-static void wheelEventHandlerCountChanged(Document* document)
+void Document::wheelEventHandlersChanged()
 {
-    Page* page = document->page();
+    Page* page = this->page();
     if (!page)
         return;
 
-    pageWheelEventHandlerCountChanged(*page);
+    if (FrameView* frameView = view()) {
+        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
+            scrollingCoordinator->frameViewNonFastScrollableRegionChanged(*frameView);
+    }
 
-    ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator();
-    if (!scrollingCoordinator)
-        return;
-
-    FrameView* frameView = document->view();
-    if (!frameView)
-        return;
-
-    // FIXME: Why doesn't this need to be called in didBecomeCurrentDocumentInFrame?
-    scrollingCoordinator->frameViewWheelEventHandlerCountChanged(frameView);
+    bool haveHandlers = m_wheelEventTargets && !m_wheelEventTargets->isEmpty();
+    page->chrome().client().wheelEventHandlersChanged(haveHandlers);
 }
 
-void Document::didAddWheelEventHandler(Node&)
+void Document::didAddWheelEventHandler(Node& node)
 {
-    ++m_wheelEventHandlerCount;
-    wheelEventHandlerCountChanged(this);
+    if (!m_wheelEventTargets)
+        m_wheelEventTargets = std::make_unique<EventTargetSet>();
+
+    m_wheelEventTargets->add(&node);
+
+    if (Document* parent = parentDocument()) {
+        parent->didAddWheelEventHandler(*this);
+        return;
+    }
+
+    wheelEventHandlersChanged();
+
+    if (Frame* frame = this->frame())
+        DebugPageOverlays::didChangeEventHandlers(*frame);
 }
 
-void Document::didRemoveWheelEventHandler(Node&)
+void Document::didRemoveWheelEventHandler(Node& node)
 {
-    ASSERT(m_wheelEventHandlerCount > 0);
-    --m_wheelEventHandlerCount;
-    wheelEventHandlerCountChanged(this);
+    if (!m_wheelEventTargets)
+        return;
+
+    ASSERT(m_wheelEventTargets->contains(&node));
+    m_wheelEventTargets->remove(&node);
+
+    if (Document* parent = parentDocument()) {
+        parent->didRemoveWheelEventHandler(*this);
+        return;
+    }
+
+    wheelEventHandlersChanged();
+
+    if (Frame* frame = this->frame())
+        DebugPageOverlays::didChangeEventHandlers(*frame);
+}
+
+unsigned Document::wheelEventHandlerCount() const
+{
+    if (!m_wheelEventTargets)
+        return 0;
+
+    unsigned count = 0;
+    for (auto& handler : *m_wheelEventTargets)
+        count += handler.value;
+
+    return count;
 }
 
 void Document::didAddTouchEventHandler(Node& handler)
 {
 #if ENABLE(TOUCH_EVENTS)
-    if (!m_touchEventTargets.get())
+    if (!m_touchEventTargets)
         m_touchEventTargets = std::make_unique<EventTargetSet>();
+
     m_touchEventTargets->add(&handler);
+
     if (Document* parent = parentDocument()) {
         parent->didAddTouchEventHandler(*this);
         return;
     }
+
     if (Page* page = this->page()) {
         if (m_touchEventTargets->size() == 1)
             page->chrome().client().needTouchEvents(true);
@@ -6030,10 +6060,12 @@ void Document::didAddTouchEventHandler(Node& handler)
 void Document::didRemoveTouchEventHandler(Node& handler)
 {
 #if ENABLE(TOUCH_EVENTS)
-    if (!m_touchEventTargets.get())
+    if (!m_touchEventTargets)
         return;
+
     ASSERT(m_touchEventTargets->contains(&handler));
     m_touchEventTargets->remove(&handler);
+
     if (Document* parent = parentDocument()) {
         parent->didRemoveTouchEventHandler(*this);
         return;
@@ -6044,6 +6076,8 @@ void Document::didRemoveTouchEventHandler(Node& handler)
         return;
     if (m_touchEventTargets->size())
         return;
+
+    // FIXME: why can't we trust m_touchEventTargets?
     for (const Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (frame->document() && frame->document()->hasTouchEventHandlers())
             return;
@@ -6062,9 +6096,67 @@ void Document::didRemoveEventTargetNode(Node& handler)
         if ((&handler == this || m_touchEventTargets->isEmpty()) && parentDocument())
             parentDocument()->didRemoveEventTargetNode(*this);
     }
-#else
-    UNUSED_PARAM(handler);
 #endif
+
+    if (m_wheelEventTargets) {
+        m_wheelEventTargets->removeAll(&handler);
+        if ((&handler == this || m_wheelEventTargets->isEmpty()) && parentDocument())
+            parentDocument()->didRemoveEventTargetNode(*this);
+    }
+}
+
+unsigned Document::touchEventHandlerCount() const
+{
+#if ENABLE(TOUCH_EVENTS)
+    if (!m_touchEventTargets)
+        return 0;
+
+    unsigned count = 0;
+    for (auto& handler : *m_touchEventTargets)
+        count += handler.value;
+
+    return count;
+#else
+    return 0;
+#endif
+}
+
+LayoutRect Document::absoluteEventHandlerBounds(bool& includesFixedPositionElements)
+{
+    includesFixedPositionElements = false;
+    if (RenderView* renderView = this->renderView())
+        return renderView->documentRect();
+    
+    return LayoutRect();
+}
+
+Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTargetSet* targets)
+{
+    if (!targets)
+        return RegionFixedPair(Region(), false);
+
+    Region targetRegion;
+    bool insideFixedPosition = false;
+
+    for (auto it : *targets) {
+        LayoutRect rootRelativeBounds;
+        
+        if (is<Document>(it.key)) {
+            Document* document = downcast<Document>(it.key);
+            if (document == this)
+                rootRelativeBounds = absoluteEventHandlerBounds(insideFixedPosition);
+            else if (Element* element = document->ownerElement())
+                rootRelativeBounds = element->absoluteEventHandlerBounds(insideFixedPosition);
+        } else if (is<Element>(it.key)) {
+            Element* element = downcast<Element>(it.key);
+            rootRelativeBounds = element->absoluteEventHandlerBounds(insideFixedPosition);
+        }
+        
+        if (!rootRelativeBounds.isEmpty())
+            targetRegion.unite(Region(enclosingIntRect(rootRelativeBounds)));
+    }
+
+    return RegionFixedPair(targetRegion, insideFixedPosition);
 }
 
 void Document::updateLastHandledUserGestureTimestamp()
@@ -6465,7 +6557,7 @@ void Document::showPlaybackTargetPicker(const HTMLMediaElement& element)
     if (!page)
         return;
 
-    page->showPlaybackTargetPicker(this, view()->lastKnownMousePosition(), is<HTMLVideoElement>(element));
+    page->showPlaybackTargetPicker(view()->lastKnownMousePosition(), is<HTMLVideoElement>(element));
 }
 
 void Document::addPlaybackTargetPickerClient(MediaPlaybackTargetPickerClient& client)
@@ -6519,22 +6611,8 @@ void Document::playbackTargetAvailabilityDidChange(bool available)
 
 void Document::didChoosePlaybackTarget(const MediaPlaybackTarget& device)
 {
-    MediaPlaybackTargetPickerClient* clientThatRequestedPicker = nullptr;
-
-    for (auto* client : m_playbackTargetClients) {
-        if (client->requestedPlaybackTargetPicker()) {
-            clientThatRequestedPicker = client;
-            continue;
-        }
-
+    for (auto* client : m_playbackTargetClients)
         client->didChoosePlaybackTarget(device);
-    }
-
-    // Notify the client that requested the chooser last because if more than one
-    // is playing, only the last one to set the context will actually get to play
-    //  to the external device.
-    if (clientThatRequestedPicker)
-        clientThatRequestedPicker->didChoosePlaybackTarget(device);
 }
 
 #endif

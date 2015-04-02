@@ -56,7 +56,7 @@ OBJC_CLASS WebIOSEvent;
 #endif
 
 #if PLATFORM(WPE)
-#include "WPEInputEvents.h"
+#include <WPE/Input/Events.h>
 #endif
 
 namespace WebKit {
@@ -74,7 +74,7 @@ public:
 #elif PLATFORM(IOS)
     NativeWebKeyboardEvent(WebIOSEvent *);
 #elif PLATFORM(WPE)
-    NativeWebKeyboardEvent(WPE::KeyboardEvent&&);
+    NativeWebKeyboardEvent(WPE::Input::KeyboardEvent&&);
 #endif
 
 #if USE(APPKIT)

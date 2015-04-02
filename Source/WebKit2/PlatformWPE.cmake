@@ -54,8 +54,6 @@ list(APPEND WebKit2_SOURCES
     Shared/linux/WebMemorySamplerLinux.cpp
     Shared/soup/WebCoreArgumentCodersSoup.cpp
     Shared/unix/ChildProcessMain.cpp
-    Shared/wpe/KeyMappingLinuxInput.cpp
-    Shared/wpe/KeyMappingXKB.cpp
     Shared/wpe/NativeWebKeyboardEventWPE.cpp
     Shared/wpe/NativeWebMouseEventWPE.cpp
     Shared/wpe/NativeWebTouchEventWPE.cpp
@@ -65,12 +63,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
-    UIProcess/API/C/wpe/WKInputHandler.cpp
     UIProcess/API/C/wpe/WKView.cpp
-    UIProcess/API/wpe/KeyInputHandlerLinuxInput.cpp
-    UIProcess/API/wpe/KeyInputHandlerXKB.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
-    UIProcess/API/wpe/WPEInputHandler.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/DefaultUndoController.cpp
     UIProcess/DrawingAreaProxyImpl.cpp
@@ -173,7 +167,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
-    ${LIBXKBCOMMON_INCLUDE_DIRS}
+    ${WPE_DIR}
 )
 
 list(APPEND WebKit2_LIBRARIES
@@ -181,7 +175,7 @@ list(APPEND WebKit2_LIBRARIES
     ${GLIB_LIBRARIES}
     ${HARFBUZZ_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
-    ${LIBXKBCOMMON_LIBRARIES}
+    WPE
 )
 
 if (ENABLE_WESTON_SHELL)
@@ -248,7 +242,7 @@ file(GLOB InspectorFiles
 
 list(APPEND InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js
 )
 
 add_custom_command(

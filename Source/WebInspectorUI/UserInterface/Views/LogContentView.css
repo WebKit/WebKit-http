@@ -298,10 +298,6 @@
     padding: 0 0 0 12px !important;
 }
 
-.console-group-messages .outline-disclosure.single-node li {
-    padding-left: 2px;
-}
-
 .console-group-messages .outline-disclosure li .selection {
     margin-left: -6px;
     margin-right: -6px;
@@ -381,7 +377,7 @@
 
 .outline-disclosure, .outline-disclosure ol {
     list-style-type: none;
-    -webkit-padding-start: 12px;
+    -webkit-padding-start: 0;
     margin: 0;
 }
 
@@ -397,7 +393,7 @@
     margin-bottom: 2px;
 }
 
-.outline-disclosure li.parent {
+.outline-disclosure > li.parent {
     margin-left: -12px
 }
 
@@ -405,7 +401,7 @@
     margin-left: -12px;
 }
 
-.outline-disclosure li.parent::before {
+.outline-disclosure > li.parent::before {
     float: left;
 
     content: "";
@@ -417,7 +413,7 @@
     width: 8px;
     height: 8px;
 
-    margin-top: 4px;
+    margin-top: 3px;
     padding-right: 2px;
 }
 

@@ -69,6 +69,10 @@ webkit.org/b/127860 [ Debug ] js/function-apply-aliased.html [ Skip ]
 # This test verifies dynamic manipulation of the mroot and msqrt elements.
 mathml/roots-removeChild.html [ ImageOnlyFailure ]
 
+webkit.org/b/133359 mathml/presentation/style-changed.html [ ImageOnlyFailure ]
+webkit.org/b/136291 platform/mac/accessibility/webkit-alt-for-css-content.html [ Failure ]
+webkit.org/b/136291 platform/mac/accessibility/alt-for-css-content.html [ Failure ]
+
 # This test verifies that a mismatch reftest will fail as intended if both results are same. (introduced in r93187)
 fast/harness/sample-fail-mismatch-reftest.html [ WontFix ImageOnlyFailure ]
 
@@ -179,6 +183,9 @@ webkit.org/b/136754 css3/flexbox/csswg/ttwf-reftest-flex-wrap.html [ ImageOnlyFa
 
 # nth-child tests takes long time and Debug build sometimes timeouts because there are many test cases.
 webkit.org/b/137149 fast/selectors/nth-child-of-basics.html [ Slow ]
+
+# Promises/A+ 2.3.3 has many tests and it sometimes exceeds the time limit. 
+webkit.org/b/136878 js/promises-tests/promises-tests-2-3-3.html [ Slow ] 
 
 # @supports W3C Failures
 webkit.org/b/137566 css3/conditional/w3c/at-supports-010.html [ ImageOnlyFailure ]
@@ -463,7 +470,6 @@ webkit.org/b/135053 [ Debug ] html5lib/webkit-resumer.html [ Slow ]
 [ Debug ] fast/workers/dedicated-worker-lifecycle.html [ Slow ]
 
 webkit.org/b/142175 js/promises-tests/promises-tests-2-1-2.html [ Pass Timeout ]
-webkit.org/b/139865 js/promises-tests/promises-tests-2-3-3.html [ Skip ]
 
 webkit.org/b/139840 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html [ Pass Failure ]
 
@@ -495,3 +501,17 @@ webkit.org/b/114280 svg/animations/smil-leak-elements.svg [ Pass Failure ]
 webkit.org/b/142894 contentfiltering/block-after-add-data.html [ Skip ]
 
 webkit.org/b/143085 media/track/track-mode.html [ Pass Timeout ]
+
+# In ES6, Object type restrictions on a first parameter of several Object.* functions are relaxed.
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.2-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.3-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.4-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.8-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.9-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.10-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.11-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.12-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.13-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-2.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-3.html [ Failure ]

@@ -33,7 +33,7 @@
 
 namespace WebKit {
 
-PageClientImpl::PageClientImpl(WPE::View& view)
+PageClientImpl::PageClientImpl(WKWPE::View& view)
     : m_view(view)
 {
 }
@@ -236,6 +236,10 @@ void PageClientImpl::didFinishLoadForMainFrame()
 }
 
 void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType)
+{
+}
+
+void PageClientImpl::didChangeBackgroundColor()
 {
 }
 

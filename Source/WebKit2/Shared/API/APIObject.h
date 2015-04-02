@@ -184,9 +184,6 @@ public:
         TouchEvent,
 #endif
 #endif
-#if PLATFORM(WPE)
-        InputHandler,
-#endif
     };
 
     virtual ~Object()

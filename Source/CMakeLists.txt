@@ -1,14 +1,17 @@
 # -----------------------------------------------------------------------------
 # Add module directories
 # -----------------------------------------------------------------------------
-add_subdirectory(bmalloc)
+# FIXME: Port bmalloc to Windows. https://bugs.webkit.org/show_bug.cgi?id=143310
+if (NOT WIN32)
+    add_subdirectory(bmalloc)
+endif ()
 
 add_subdirectory(WTF)
 
 add_subdirectory(JavaScriptCore)
 
 if (ENABLE_API_TESTS)
-    add_subdirectory(cmake/gtest)
+    add_subdirectory(ThirdParty/gtest)
 endif ()
 
 if (ENABLE_WEBCORE)

@@ -44,12 +44,12 @@ public:
     {
     }
     
-    WebCompiledContentExtensionData(RefPtr<SharedMemory> data, unsigned bytecodeOffset, unsigned bytecodeSize, unsigned actionsOffset, unsigned actionsSize)
+    WebCompiledContentExtensionData(RefPtr<SharedMemory> data, unsigned actionsOffset, unsigned actionsSize, unsigned bytecodeOffset, unsigned bytecodeSize)
         : data(data)
-        , bytecodeOffset(bytecodeOffset)
-        , bytecodeSize(bytecodeSize)
         , actionsOffset(actionsOffset)
         , actionsSize(actionsSize)
+        , bytecodeOffset(bytecodeOffset)
+        , bytecodeSize(bytecodeSize)
     {
     }
 
@@ -57,10 +57,10 @@ public:
     static bool decode(IPC::ArgumentDecoder&, WebCompiledContentExtensionData&);
 
     RefPtr<SharedMemory> data;
-    unsigned bytecodeOffset { 0 };
-    unsigned bytecodeSize { 0 };
     unsigned actionsOffset { 0 };
     unsigned actionsSize { 0 };
+    unsigned bytecodeOffset { 0 };
+    unsigned bytecodeSize { 0 };
 };
 
 }

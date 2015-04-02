@@ -760,7 +760,7 @@ public:
 
     void wheelEvent(const WebWheelEvent&);
 
-    void numWheelEventHandlersChanged(unsigned);
+    void wheelEventHandlersChanged(bool);
     void recomputeShortCircuitHorizontalWheelEventsState();
 
     void updateVisibilityState(bool isInitialState = false);
@@ -864,6 +864,9 @@ public:
     bool shouldDispatchFakeMouseMoveEvents() const { return m_shouldDispatchFakeMouseMoveEvents; }
 
     void setPageActivityState(WebCore::PageActivityState::Flags);
+
+    void postMessage(const String& messageName, API::Object* messageBody);
+    void postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
 
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
@@ -1263,7 +1266,7 @@ private:
     bool m_cachedMainFrameIsPinnedToTopSide;
     bool m_cachedMainFrameIsPinnedToBottomSide;
     bool m_canShortCircuitHorizontalWheelEvents;
-    unsigned m_numWheelEventHandlers;
+    bool m_hasWheelEventHandlers;
 
     unsigned m_cachedPageCount;
 

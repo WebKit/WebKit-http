@@ -291,7 +291,7 @@ public:
     bool usesNetworkProcess() const;
 
 #if ENABLE(NETWORK_PROCESS)
-    void ensureNetworkProcess();
+    NetworkProcessProxy& ensureNetworkProcess();
     NetworkProcessProxy* networkProcess() { return m_networkProcess.get(); }
     void networkProcessCrashed(NetworkProcessProxy*);
 
@@ -402,10 +402,9 @@ private:
     String platformDefaultCookieStorageDirectory() const;
 
 #if PLATFORM(IOS)
-    String openGLCacheDirectory() const;
     String parentBundleDirectory() const;
-    String networkingHSTSDatabasePath() const;
-    String webContentHSTSDatabasePath() const;
+    String networkingCachesDirectory() const;
+    String webContentCachesDirectory() const;
     String containerTemporaryDirectory() const;
 #endif
 
@@ -475,6 +474,7 @@ private:
     Vector<std::pair<String, RefPtr<API::Object>>> m_messagesToInjectedBundlePostedToEmptyContext;
 
     CacheModel m_cacheModel;
+    uint64_t m_diskCacheSizeOverride;
 
     bool m_memorySamplerEnabled;
     double m_memorySamplerInterval;

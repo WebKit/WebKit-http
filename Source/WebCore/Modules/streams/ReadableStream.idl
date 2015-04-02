@@ -27,15 +27,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-enum ReadableStreamStateType { "readable", "waiting", "closed", "errored" };
-
 [
     CustomConstructor(any properties),
     Conditional=STREAMS_API
 ] interface ReadableStream {
     // FIXME: Remove RaisesException once methods are actually implemented.
     [Custom, RaisesException] Promise cancel(DOMString reason);
-    [Custom, RaisesException] Object getReader();
+    [Custom, RaisesException] ReadableStreamReader getReader();
     [Custom, RaisesException] Promise pipeTo(any streams, any options);
     [Custom, RaisesException] Object pipeThrough(any dest, any options);
 };

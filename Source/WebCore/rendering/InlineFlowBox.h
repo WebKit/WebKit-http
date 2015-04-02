@@ -42,10 +42,10 @@ class InlineFlowBox : public InlineBox {
 public:
     explicit InlineFlowBox(RenderBoxModelObject& renderer)
         : InlineBox(renderer)
-        , m_firstChild(0)
-        , m_lastChild(0)
-        , m_prevLineBox(0)
-        , m_nextLineBox(0)
+        , m_firstChild(nullptr)
+        , m_lastChild(nullptr)
+        , m_prevLineBox(nullptr)
+        , m_nextLineBox(nullptr)
         , m_includeLogicalLeftEdge(false)
         , m_includeLogicalRightEdge(false)
         , m_descendantsHaveSameLineHeightAndBaseline(true)
@@ -53,6 +53,7 @@ public:
         , m_hasAnnotationsBefore(false)
         , m_hasAnnotationsAfter(false)
         , m_isFirstAfterPageBreak(false)
+        , m_hasAnonymousInlineBlock(false)
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
         , m_hasBadChildList(false)
 #endif
@@ -92,7 +93,7 @@ public:
     InlineBox* lastLeafChild() const;
 
     typedef void (*CustomInlineBoxRangeReverse)(void* userData, Vector<InlineBox*>::iterator first, Vector<InlineBox*>::iterator last);
-    void collectLeafBoxesInLogicalOrder(Vector<InlineBox*>&, CustomInlineBoxRangeReverse customReverseImplementation = 0, void* userData = 0) const;
+    void collectLeafBoxesInLogicalOrder(Vector<InlineBox*>&, CustomInlineBoxRangeReverse customReverseImplementation = nullptr, void* userData = nullptr) const;
 
     virtual void setConstructed() override final
     {
@@ -211,6 +212,9 @@ public:
     void setHasTextChildren() { m_hasTextChildren = true; setHasTextDescendants(); }
     void setHasTextDescendants() { m_hasTextDescendants = true; }
     
+    bool hasAnonymousInlineBlock() const { return m_hasAnonymousInlineBlock; }
+    void setHasAnonymousInlineBlock(bool b) { m_hasAnonymousInlineBlock = b; }
+
     void checkConsistency() const;
     void setHasBadChildList();
 
@@ -338,6 +342,7 @@ protected:
     unsigned m_lineBreakBidiStatusLast : 5; // UCharDirection
 
     unsigned m_isFirstAfterPageBreak : 1;
+    unsigned m_hasAnonymousInlineBlock : 1;
 
     // End of RootInlineBox-specific members.
 

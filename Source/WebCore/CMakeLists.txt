@@ -274,6 +274,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/speech/SpeechSynthesisVoice.idl
 
     Modules/streams/ReadableStream.idl
+    Modules/streams/ReadableStreamReader.idl
 
     Modules/vibration/NavigatorVibration.idl
 
@@ -923,6 +924,7 @@ set(WebCore_SOURCES
     Modules/speech/SpeechSynthesisVoice.cpp
 
     Modules/streams/ReadableStream.cpp
+    Modules/streams/ReadableStreamReader.cpp
 
     Modules/vibration/NavigatorVibration.cpp
     Modules/vibration/Vibration.cpp
@@ -1152,6 +1154,7 @@ set(WebCore_SOURCES
     bindings/js/JSRTCSessionDescriptionCustom.cpp
     bindings/js/JSRTCStatsResponseCustom.cpp
     bindings/js/JSReadableStreamCustom.cpp
+    bindings/js/JSReadableStreamReaderCustom.cpp
     bindings/js/ReadableStreamJSSource.cpp
     bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
@@ -1888,7 +1891,6 @@ set(WebCore_SOURCES
     loader/cache/CachedSVGDocumentReference.cpp
     loader/cache/CachedScript.cpp
     loader/cache/CachedXSLStyleSheet.cpp
-    loader/cache/CacheValidation.cpp
     loader/cache/MemoryCache.cpp
 
     loader/icon/IconController.cpp
@@ -1998,6 +2000,7 @@ set(WebCore_SOURCES
     platform/ContextMenu.cpp
     platform/ContextMenuItem.cpp
     platform/CrossThreadCopier.cpp
+    platform/Cursor.cpp
     platform/DateComponents.cpp
     platform/Decimal.cpp
     platform/DisplaySleepDisabler.cpp
@@ -2214,6 +2217,7 @@ set(WebCore_SOURCES
     platform/network/BlobRegistry.cpp
     platform/network/BlobRegistryImpl.cpp
     platform/network/BlobResourceHandle.cpp
+    platform/network/CacheValidation.cpp
     platform/network/CredentialBase.cpp
     platform/network/CredentialStorage.cpp
     platform/network/DNSResolveQueue.cpp
@@ -3149,6 +3153,7 @@ endif ()
 set(WebCoreTestSupport_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/testing"
+    "${DERIVED_SOURCES_WEBCORE_DIR}"
 )
 
 set(WebCoreTestSupport_IDL_INCLUDES

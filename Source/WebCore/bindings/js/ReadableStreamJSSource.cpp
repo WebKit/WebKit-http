@@ -32,8 +32,10 @@
 #if ENABLE(STREAMS_API)
 #include "ReadableStreamJSSource.h"
 
+#include "DOMWrapperWorld.h"
 #include "JSDOMPromise.h"
 #include "JSReadableStream.h"
+#include "NotImplemented.h"
 #include <runtime/Error.h>
 #include <runtime/JSCJSValueInlines.h>
 #include <runtime/JSString.h>
@@ -47,7 +49,7 @@ void setInternalSlotToObject(ExecState* exec, JSValue objectValue, PrivateName& 
 {
     JSObject* object = objectValue.toObject(exec);
     PutPropertySlot propertySlot(objectValue);
-    object->put(object, exec, Identifier::from(name), value, propertySlot);
+    object->put(object, exec, Identifier::fromUid(name), value, propertySlot);
 }
 
 JSValue getInternalSlotFromObject(ExecState* exec, JSValue objectValue, PrivateName& name)
@@ -55,7 +57,7 @@ JSValue getInternalSlotFromObject(ExecState* exec, JSValue objectValue, PrivateN
     JSObject* object = objectValue.toObject(exec);
     PropertySlot propertySlot(objectValue);
 
-    Identifier propertyName = Identifier::from(name);
+    Identifier propertyName = Identifier::fromUid(name);
     if (!object->getOwnPropertySlot(object, exec, propertyName, propertySlot))
         return JSValue();
     return propertySlot.getValue(exec, propertyName);
@@ -68,21 +70,15 @@ Ref<ReadableStreamJSSource> ReadableStreamJSSource::create(JSC::ExecState* exec)
 
 ReadableStreamJSSource::ReadableStreamJSSource(JSC::ExecState* exec)
 {
-    if (!exec->argumentCount())
-        return;
-
-    if (!exec->argument(0).isObject()) {
-        setInternalError(exec, ASCIILiteral("ReadableStream constructor should get an object as argument."));
-        return;
+    if (exec->argumentCount()) {
+        ASSERT_WITH_MESSAGE(exec->argument(0).isObject(), "Caller of ReadableStreamJSSource constructor should ensure that passed argument is an object.");
+        // FIXME: Implement parameters support;
     }
-
-    // FIXME: Implement parameters support
-    setInternalError(exec, ASCIILiteral("ReadableStream constructor does not support parameter yet."));
 }
 
-void ReadableStreamJSSource::setInternalError(JSC::ExecState* exec, const String& message)
+void ReadableStreamJSSource::start(JSC::ExecState*)
 {
-    m_error.set(exec->vm(), createTypeError(exec, message));
+    notImplemented();
 }
 
 } // namespace WebCore

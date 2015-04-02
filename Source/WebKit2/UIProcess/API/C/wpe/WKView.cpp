@@ -31,14 +31,12 @@
 #include "WPEView.h"
 #include "WebPageGroup.h"
 #include "WebProcessPool.h"
-#include <memory>
-#include <wtf/RefPtr.h>
 
 using namespace WebKit;
 
 WKViewRef WKViewCreate(WKContextRef context, WKPageGroupRef pageGroup)
 {
-    return toAPI(WPE::View::create(toImpl(context), toImpl(pageGroup)));
+    return toAPI(WKWPE::View::create(toImpl(context), toImpl(pageGroup)));
 }
 
 WKPageRef WKViewGetPage(WKViewRef view)
@@ -49,4 +47,9 @@ WKPageRef WKViewGetPage(WKViewRef view)
 void WKViewResize(WKViewRef view, WKSize size)
 {
     toImpl(view)->setSize(toIntSize(size));
+}
+
+void WKViewMakeWPEInputTarget(WKViewRef view)
+{
+    toImpl(view)->makeWPEInputTarget();
 }

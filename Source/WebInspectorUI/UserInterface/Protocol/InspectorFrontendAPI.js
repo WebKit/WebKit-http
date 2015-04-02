@@ -98,12 +98,12 @@ InspectorFrontendAPI = {
 
     contextMenuItemSelected: function(id)
     {
-        WebInspector.contextMenuItemSelected(id);
+        WebInspector.ContextMenu.contextMenuItemSelected(id);
     },
 
     contextMenuCleared: function()
     {
-        WebInspector.contextMenuCleared();
+        WebInspector.ContextMenu.contextMenuCleared();
     },
 
     dispatchMessageAsync: function(messageObject)

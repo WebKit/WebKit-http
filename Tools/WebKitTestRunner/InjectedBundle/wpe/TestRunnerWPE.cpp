@@ -39,6 +39,8 @@ void TestRunner::invalidateWaitToDumpWatchdogTimer()
 
 void TestRunner::platformInitialize()
 {
+    // FIXME: Properly initialize (and use) this timer.
+    m_waitToDumpWatchdogTimer.initialize("[WTR] waitToDumpWatchdogTimerCallback", [] { });
 }
 
 void TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded()

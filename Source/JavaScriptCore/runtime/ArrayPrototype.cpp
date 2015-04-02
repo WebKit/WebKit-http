@@ -35,6 +35,7 @@
 #include "JSStringBuilder.h"
 #include "JSStringJoiner.h"
 #include "Lookup.h"
+#include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
 #include "JSCInlines.h"
 #include "StringRecursionChecker.h"
@@ -139,7 +140,23 @@ void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
     vm.prototypeMap.addPrototype(this);
-    JSC_NATIVE_FUNCTION(vm.propertyNames->iteratorPrivateName, arrayProtoFuncValues, DontEnum, 0);
+    JSC_NATIVE_FUNCTION(vm.propertyNames->iteratorSymbol, arrayProtoFuncValues, DontEnum, 0);
+
+    if (globalObject->runtimeFlags().isSymbolEnabled()) {
+        JSObject* unscopables = constructEmptyObject(globalObject->globalExec(), globalObject->nullPrototypeObjectStructure());
+        const char* unscopableNames[] = {
+            "copyWithin",
+            "entries",
+            "fill",
+            "find",
+            "findIndex",
+            "keys",
+            "values"
+        };
+        for (const char* unscopableName : unscopableNames)
+            unscopables->putDirect(vm, Identifier::fromString(&vm, unscopableName), jsBoolean(true));
+        putDirectWithoutTransition(vm, vm.propertyNames->unscopablesSymbol, unscopables, DontEnum | ReadOnly);
+    }
 }
 
 bool ArrayPrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -531,7 +548,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncPush(ExecState* exec)
             thisObj->methodTable()->putByIndex(thisObj, exec, length + n, exec->uncheckedArgument(n), true);
         else {
             PutPropertySlot slot(thisObj);
-            Identifier propertyName(exec, JSValue(static_cast<int64_t>(length) + static_cast<int64_t>(n)).toWTFString(exec));
+            Identifier propertyName = Identifier::fromString(exec, JSValue(static_cast<int64_t>(length) + static_cast<int64_t>(n)).toWTFString(exec));
             thisObj->methodTable()->put(thisObj, exec, propertyName, exec->uncheckedArgument(n), slot);
         }
         if (exec->hadException())

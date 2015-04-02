@@ -308,7 +308,7 @@ void Internals::resetToConsistentState(Page* page)
         page->mainFrame().editor().toggleContinuousSpellChecking();
     if (page->mainFrame().editor().isOverwriteModeEnabled())
         page->mainFrame().editor().toggleOverwriteModeEnabled();
-    page->mainFrame().loader().clearOverrideCachePolicyForTesting();
+    page->mainFrame().loader().clearTestingOverrides();
     ApplicationCacheStorage::singleton().setDefaultOriginQuota(ApplicationCacheStorage::noQuota());
 #if ENABLE(VIDEO)
     MediaSessionManager::sharedManager().resetRestrictions();
@@ -443,6 +443,27 @@ static ResourceRequestCachePolicy stringToResourceRequestCachePolicy(const Strin
 void Internals::setOverrideCachePolicy(const String& policy)
 {
     frame()->loader().setOverrideCachePolicyForTesting(stringToResourceRequestCachePolicy(policy));
+}
+
+static ResourceLoadPriority stringToResourceLoadPriority(const String& policy)
+{
+    if (policy == "ResourceLoadPriorityVeryLow")
+        return ResourceLoadPriorityVeryLow;
+    if (policy == "ResourceLoadPriorityLow")
+        return ResourceLoadPriorityLow;
+    if (policy == "ResourceLoadPriorityMedium")
+        return ResourceLoadPriorityMedium;
+    if (policy == "ResourceLoadPriorityHigh")
+        return ResourceLoadPriorityHigh;
+    if (policy == "ResourceLoadPriorityVeryHigh")
+        return ResourceLoadPriorityVeryHigh;
+    ASSERT_NOT_REACHED();
+    return ResourceLoadPriorityLow;
+}
+
+void Internals::setOverrideResourceLoadPriority(const String& priority)
+{
+    frame()->loader().setOverrideResourceLoadPriorityForTesting(stringToResourceLoadPriority(priority));
 }
 
 void Internals::clearMemoryCache()
@@ -1233,15 +1254,7 @@ unsigned Internals::touchEventHandlerCount(ExceptionCode& ec)
         return 0;
     }
 
-    auto touchHandlers = document->touchEventTargets();
-    if (!touchHandlers)
-        return 0;
-
-    unsigned count = 0;
-    for (auto& handler : *touchHandlers)
-        count += handler.value;
-
-    return count;
+    return document->touchEventHandlerCount();
 }
 
 // FIXME: Remove the document argument. It is almost always the same as
@@ -1346,7 +1359,7 @@ String Internals::parserMetaData(Deprecated::ScriptValue value)
     } else
         return String();
 
-    unsigned startLine = executable->lineNo();
+    unsigned startLine = executable->firstLine();
     unsigned startColumn = executable->startColumn();
     unsigned endLine = executable->lastLine();
     unsigned endColumn = executable->endColumn();
@@ -1771,7 +1784,7 @@ RefPtr<ClientRectList> Internals::nonFastScrollableRects(ExceptionCode& ec) cons
     if (!page)
         return nullptr;
 
-    return page->nonFastScrollableRects(document->frame());
+    return page->nonFastScrollableRects(*document->frame());
 }
 
 void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
@@ -2467,6 +2480,8 @@ void Internals::setMediaSessionRestrictions(const String& mediaTypeString, const
         restrictions += MediaSessionManager::BackgroundProcessPlaybackRestricted;
     if (equalIgnoringCase(restrictionsString, "BackgroundTabPlaybackRestricted"))
         restrictions += MediaSessionManager::BackgroundTabPlaybackRestricted;
+    if (equalIgnoringCase(restrictionsString, "InterruptedPlaybackNotPermitted"))
+        restrictions += MediaSessionManager::InterruptedPlaybackNotPermitted;
 
     MediaSessionManager::sharedManager().addRestriction(mediaType, restrictions);
 }

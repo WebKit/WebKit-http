@@ -48,9 +48,6 @@ public:
     NFANodeIndexSet transitionsOnAnyCharacter;
 
     Vector<uint64_t> finalRuleIds;
-#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
-    Vector<uint64_t> ruleIds;
-#endif
 };
 
 }

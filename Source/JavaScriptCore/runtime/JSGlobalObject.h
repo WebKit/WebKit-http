@@ -83,6 +83,7 @@ class RegExpPrototype;
 class SourceCode;
 class NullGetterFunction;
 class NullSetterFunction;
+enum class ThisTDZMode;
 struct ActivationStackNode;
 struct HashTable;
 
@@ -308,6 +309,7 @@ public:
 
     bool hasDebugger() const { return m_debugger; }
     bool hasProfiler() const { return globalObjectMethodTable()->supportsProfiling(this); }
+    const RuntimeFlags& runtimeFlags() const { return m_runtimeFlags; }
 
 protected:
     JS_EXPORT_PRIVATE explicit JSGlobalObject(VM&, Structure*, const GlobalObjectMethodTable* = 0);
@@ -599,7 +601,7 @@ public:
     unsigned weakRandomInteger() { return m_weakRandom.getUint32(); }
 
     UnlinkedProgramCodeBlock* createProgramCodeBlock(CallFrame*, ProgramExecutable*, JSObject** exception);
-    UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*);
+    UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*, ThisTDZMode);
 
 protected:
 

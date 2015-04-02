@@ -232,17 +232,20 @@ void RenderBlockFlow::rebuildFloatingObjectSetFromIntrudingFloats()
     // We should not process floats if the parent node is not a RenderBlock. Otherwise, we will add 
     // floats in an invalid context. This will cause a crash arising from a bad cast on the parent.
     // See <rdar://problem/8049753>, where float property is applied on a text node in a SVG.
-    if (!is<RenderBlockFlow>(parent()))
+    bool isBlockInsideInline = isAnonymousInlineBlock();
+    if (!is<RenderBlockFlow>(parent()) && !isBlockInsideInline)
         return;
 
     // First add in floats from the parent. Self-collapsing blocks let their parent track any floats that intrude into
     // them (as opposed to floats they contain themselves) so check for those here too.
-    RenderBlockFlow& parentBlock = downcast<RenderBlockFlow>(*parent());
-    bool parentHasFloats = false;
-    RenderBlockFlow* previousBlock = previousSiblingWithOverhangingFloats(parentHasFloats);
+    RenderBlockFlow& parentBlock = downcast<RenderBlockFlow>(isBlockInsideInline ? *containingBlock() : *parent());
+    bool parentHasFloats = isBlockInsideInline ? parentBlock.containsFloats() : false;
+    RenderBlockFlow* previousBlock = nullptr;
+    if (!isBlockInsideInline)
+        previousBlock = previousSiblingWithOverhangingFloats(parentHasFloats);
     LayoutUnit logicalTopOffset = logicalTop();
     if (parentHasFloats || (parentBlock.lowestFloatLogicalBottom() > logicalTopOffset && previousBlock && previousBlock->isSelfCollapsingBlock()))
-        addIntrudingFloats(&parentBlock, parentBlock.logicalLeftOffsetForContent(), logicalTopOffset);
+        addIntrudingFloats(&parentBlock, &parentBlock, parentBlock.logicalLeftOffsetForContent(), logicalTopOffset);
     
     LayoutUnit logicalLeftOffset = 0;
     if (previousBlock)
@@ -254,7 +257,7 @@ void RenderBlockFlow::rebuildFloatingObjectSetFromIntrudingFloats()
 
     // Add overhanging floats from the previous RenderBlock, but only if it has a float that intrudes into our space.    
     if (previousBlock->m_floatingObjects && previousBlock->lowestFloatLogicalBottom() > logicalTopOffset)
-        addIntrudingFloats(previousBlock, logicalLeftOffset, logicalTopOffset);
+        addIntrudingFloats(previousBlock, &parentBlock, logicalLeftOffset, logicalTopOffset);
 
     if (childrenInline()) {
         LayoutUnit changeLogicalTop = LayoutUnit::max();
@@ -2681,7 +2684,7 @@ bool RenderBlockFlow::hasOverhangingFloat(RenderBox& renderer)
     return logicalBottomForFloat(it->get()) > logicalHeight();
 }
 
-void RenderBlockFlow::addIntrudingFloats(RenderBlockFlow* prev, LayoutUnit logicalLeftOffset, LayoutUnit logicalTopOffset)
+void RenderBlockFlow::addIntrudingFloats(RenderBlockFlow* prev, RenderBlockFlow* container, LayoutUnit logicalLeftOffset, LayoutUnit logicalTopOffset)
 {
     ASSERT(!avoidsFloats());
 
@@ -2711,8 +2714,8 @@ void RenderBlockFlow::addIntrudingFloats(RenderBlockFlow* prev, LayoutUnit logic
                 // into account. Only apply this code if prev is the parent, since otherwise the left margin
                 // will get applied twice.
                 LayoutSize offset = isHorizontalWritingMode()
-                    ? LayoutSize(logicalLeftOffset - (prev != parent() ? prev->marginLeft() : LayoutUnit()), logicalTopOffset)
-                    : LayoutSize(logicalTopOffset, logicalLeftOffset - (prev != parent() ? prev->marginTop() : LayoutUnit()));
+                    ? LayoutSize(logicalLeftOffset - (prev != container ? prev->marginLeft() : LayoutUnit()), logicalTopOffset)
+                    : LayoutSize(logicalTopOffset, logicalLeftOffset - (prev != container ? prev->marginTop() : LayoutUnit()));
 
                 m_floatingObjects->add(floatingObject->copyToNewContainer(offset));
             }
@@ -4024,7 +4027,8 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
     while (RenderObject* child = childIterator.next()) {
         bool autoWrap = child->isReplaced() ? child->parent()->style().autoWrap() :
             child->style().autoWrap();
-
+        bool isAnonymousInlineBlock = child->isAnonymousInlineBlock();
+        
         if (!child->isBR()) {
             // Step One: determine whether or not we need to go ahead and
             // terminate our current line. Each discrete chunk can become
@@ -4114,19 +4118,21 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                     clearPreviousFloat = false;
 
                 bool canBreakReplacedElement = !child->isImage() || allowImagesToBreak;
-                if ((canBreakReplacedElement && (autoWrap || oldAutoWrap) && (!isPrevChildInlineFlow || shouldBreakLineAfterText)) || clearPreviousFloat) {
+                if (((canBreakReplacedElement && (autoWrap || oldAutoWrap) && (!isPrevChildInlineFlow || shouldBreakLineAfterText)) || clearPreviousFloat) || isAnonymousInlineBlock) {
+                    if (child->isAnonymousInlineBlock() && styleToUse.collapseWhiteSpace())
+                        stripTrailingSpace(inlineMax, inlineMin, trailingSpaceChild);
                     minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);
                     inlineMin = 0;
                 }
 
                 // If we're supposed to clear the previous float, then terminate maxwidth as well.
-                if (clearPreviousFloat) {
+                if (clearPreviousFloat || isAnonymousInlineBlock) {
                     maxLogicalWidth = preferredWidth(maxLogicalWidth, inlineMax);
                     inlineMax = 0;
                 }
 
                 // Add in text-indent. This is added in only once.
-                if (!addedTextIndent && !child->isFloating()) {
+                if (!addedTextIndent && !child->isFloating() && !isAnonymousInlineBlock) {
                     LayoutUnit ceiledIndent = textIndent.ceilToFloat();
                     childMin += ceiledIndent;
                     childMax += ceiledIndent;
@@ -4140,7 +4146,7 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                 // Add our width to the max.
                 inlineMax += std::max<float>(0, childMax);
 
-                if (!autoWrap || !canBreakReplacedElement || (isPrevChildInlineFlow && !shouldBreakLineAfterText)) {
+                if ((!autoWrap || !canBreakReplacedElement || (isPrevChildInlineFlow && !shouldBreakLineAfterText)) && !isAnonymousInlineBlock) {
                     if (child->isFloating())
                         minLogicalWidth = preferredWidth(minLogicalWidth, childMin);
                     else
@@ -4151,6 +4157,12 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
 
                     // Now start a new line.
                     inlineMin = 0;
+                    
+                    if (child->isAnonymousInlineBlock()) {
+                        // Terminate max width as well.
+                        maxLogicalWidth = preferredWidth(maxLogicalWidth, childMax);
+                        inlineMax = 0;
+                    }
                 }
 
                 if (autoWrap && canBreakReplacedElement && isPrevChildInlineFlow) {
@@ -4261,8 +4273,8 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                     inlineMax += std::max<float>(0, childMax);
             }
 
-            // Ignore spaces after a list marker.
-            if (child->isListMarker())
+            // Ignore spaces after a list marker and also after an anonymous inline block.
+            if (child->isListMarker() || isAnonymousInlineBlock)
                 stripFrontSpaces = true;
         } else {
             minLogicalWidth = preferredWidth(minLogicalWidth, inlineMin);

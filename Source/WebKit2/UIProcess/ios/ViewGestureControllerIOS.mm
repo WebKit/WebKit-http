@@ -60,10 +60,12 @@ using namespace WebCore;
     WebKit::ViewGestureController *_gestureController;
     RetainPtr<_UINavigationInteractiveTransitionBase> _backTransitionController;
     RetainPtr<_UINavigationInteractiveTransitionBase> _forwardTransitionController;
+    WebKit::WeakObjCPtr<UIView> _gestureRecognizerView;
 }
 
 static const float swipeSnapshotRemovalRenderTreeSizeTargetFraction = 0.5;
 static const std::chrono::seconds swipeSnapshotRemovalWatchdogDuration = 3_s;
+static const std::chrono::milliseconds swipeSnapshotRemovalActiveLoadMonitoringInterval = 250_ms;
 
 // The key in this map is the associated page ID.
 static HashMap<uint64_t, WebKit::ViewGestureController*>& viewGestureControllersForAllPages()
@@ -77,6 +79,7 @@ static HashMap<uint64_t, WebKit::ViewGestureController*>& viewGestureControllers
     self = [super init];
     if (self) {
         _gestureController = gestureController;
+        _gestureRecognizerView = gestureRecognizerView;
 
         _backTransitionController = adoptNS([_UINavigationInteractiveTransitionBase alloc]);
         _backTransitionController = [_backTransitionController initWithGestureRecognizerView:gestureRecognizerView animator:nil delegate:self];
@@ -95,7 +98,7 @@ static HashMap<uint64_t, WebKit::ViewGestureController*>& viewGestureControllers
 
 - (WebKit::ViewGestureController::SwipeDirection)directionForTransition:(_UINavigationInteractiveTransitionBase *)transition
 {
-    return transition == _backTransitionController ? WebKit::ViewGestureController::SwipeDirection::Left : WebKit::ViewGestureController::SwipeDirection::Right;
+    return transition == _backTransitionController ? WebKit::ViewGestureController::SwipeDirection::Back : WebKit::ViewGestureController::SwipeDirection::Forward;
 }
 
 - (void)startInteractiveTransition:(_UINavigationInteractiveTransitionBase *)transition
@@ -121,12 +124,19 @@ static HashMap<uint64_t, WebKit::ViewGestureController*>& viewGestureControllers
 - (UIPanGestureRecognizer *)gestureRecognizerForInteractiveTransition:(_UINavigationInteractiveTransitionBase *)transition WithTarget:(id)target action:(SEL)action
 {
     UIScreenEdgePanGestureRecognizer *recognizer = [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:target action:action];
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+    bool isLTR = [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:[_gestureRecognizerView.get() semanticContentAttribute]] == UIUserInterfaceLayoutDirectionLeftToRight;
+#else
+    bool isLTR = true;
+#endif
+
     switch ([self directionForTransition:transition]) {
-    case WebKit::ViewGestureController::SwipeDirection::Left:
-        [recognizer setEdges:UIRectEdgeLeft];
+    case WebKit::ViewGestureController::SwipeDirection::Back:
+        [recognizer setEdges:isLTR ? UIRectEdgeLeft : UIRectEdgeRight];
         break;
-    case WebKit::ViewGestureController::SwipeDirection::Right:
-        [recognizer setEdges:UIRectEdgeRight];
+    case WebKit::ViewGestureController::SwipeDirection::Forward:
+        [recognizer setEdges:isLTR ? UIRectEdgeRight : UIRectEdgeLeft];
         break;
     }
     return [recognizer autorelease];
@@ -138,11 +148,8 @@ namespace WebKit {
 
 ViewGestureController::ViewGestureController(WebPageProxy& webPageProxy)
     : m_webPageProxy(webPageProxy)
-    , m_activeGestureType(ViewGestureType::None)
     , m_swipeWatchdogTimer(RunLoop::main(), this, &ViewGestureController::swipeSnapshotWatchdogTimerFired)
-    , m_snapshotRemovalTargetRenderTreeSize(0)
-    , m_shouldRemoveSnapshotWhenTargetRenderTreeSizeHit(false)
-    , m_gesturePendingSnapshotRemoval(0)
+    , m_swipeActiveLoadMonitoringTimer(RunLoop::main(), this, &ViewGestureController::activeLoadMonitoringTimerFired)
 {
     viewGestureControllersForAllPages().add(webPageProxy.pageID(), this);
 }
@@ -185,7 +192,7 @@ void ViewGestureController::beginSwipeGesture(_UINavigationInteractiveTransition
     if (m_webPageProxyForBackForwardListForCurrentSwipe != &m_webPageProxy)
         backForwardList.currentItem()->setSnapshot(m_webPageProxy.backForwardList().currentItem()->snapshot());
 
-    RefPtr<WebBackForwardListItem> targetItem = direction == SwipeDirection::Left ? backForwardList.backItem() : backForwardList.forwardItem();
+    RefPtr<WebBackForwardListItem> targetItem = direction == SwipeDirection::Back ? backForwardList.backItem() : backForwardList.forwardItem();
 
     CGRect liveSwipeViewFrame = [m_liveSwipeView frame];
 
@@ -220,7 +227,7 @@ void ViewGestureController::beginSwipeGesture(_UINavigationInteractiveTransition
     RetainPtr<UIViewController> targettedViewController = adoptNS([[UIViewController alloc] init]);
     [targettedViewController setView:m_liveSwipeViewClippingView.get()];
 
-    UINavigationControllerOperation transitionOperation = direction == SwipeDirection::Left ? UINavigationControllerOperationPop : UINavigationControllerOperationPush;
+    UINavigationControllerOperation transitionOperation = direction == SwipeDirection::Back ? UINavigationControllerOperationPop : UINavigationControllerOperationPush;
     RetainPtr<_UINavigationParallaxTransition> animationController = adoptNS([[_UINavigationParallaxTransition alloc] initWithCurrentOperation:transitionOperation]);
 
     m_swipeTransitionContext = adoptNS([[_UIViewControllerOneToOneTransitionContext alloc] init]);
@@ -255,7 +262,7 @@ void ViewGestureController::beginSwipeGesture(_UINavigationInteractiveTransition
 bool ViewGestureController::canSwipeInDirection(SwipeDirection direction)
 {
     auto& backForwardList = m_alternateBackForwardListSourceView.get() ? m_alternateBackForwardListSourceView.get()->_page->backForwardList() : m_webPageProxy.backForwardList();
-    if (direction == SwipeDirection::Left)
+    if (direction == SwipeDirection::Back)
         return !!backForwardList.backItem();
     return !!backForwardList.forwardItem();
 }
@@ -296,12 +303,24 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
             if (gestureControllerIter != viewGestureControllersForAllPages().end() && gestureControllerIter->value->m_gesturePendingSnapshotRemoval == gesturePendingSnapshotRemoval)
                 gestureControllerIter->value->willCommitPostSwipeTransitionLayerTree(error == CallbackBase::Error::None);
         });
+        drawingArea->hideContentUntilNextUpdate();
     } else {
         removeSwipeSnapshot();
         return;
     }
 
+    m_swipeWaitingForRenderTreeSizeThreshold = true;
+    m_swipeWaitingForRepaint = true;
+    m_swipeWaitingForDidFinishLoad = true;
+    m_swipeWaitingForSubresourceLoads = true;
+    m_swipeWaitingForScrollPositionRestoration = true;
+
     m_swipeWatchdogTimer.startOneShot(swipeSnapshotRemovalWatchdogDuration.count());
+
+    if (ViewSnapshot* snapshot = targetItem->snapshot()) {
+        m_backgroundColorForCurrentSnapshot = snapshot->backgroundColor();
+        m_webPageProxy.didChangeBackgroundColor();
+    }
 }
 
 void ViewGestureController::willCommitPostSwipeTransitionLayerTree(bool successful)
@@ -314,7 +333,11 @@ void ViewGestureController::willCommitPostSwipeTransitionLayerTree(bool successf
         return;
     }
 
-    m_shouldRemoveSnapshotWhenTargetRenderTreeSizeHit = true;
+    if (!m_swipeWaitingForRepaint)
+        return;
+
+    m_swipeWaitingForRepaint = false;
+    removeSwipeSnapshotIfReady();
 }
 
 void ViewGestureController::setRenderTreeSize(uint64_t renderTreeSize)
@@ -322,11 +345,67 @@ void ViewGestureController::setRenderTreeSize(uint64_t renderTreeSize)
     if (m_activeGestureType != ViewGestureType::Swipe)
         return;
 
-    if (!m_shouldRemoveSnapshotWhenTargetRenderTreeSizeHit)
+    if (!m_swipeWaitingForRenderTreeSizeThreshold)
         return;
 
-    if (!m_snapshotRemovalTargetRenderTreeSize || renderTreeSize > m_snapshotRemovalTargetRenderTreeSize)
-        removeSwipeSnapshot();
+    if (!m_snapshotRemovalTargetRenderTreeSize || renderTreeSize > m_snapshotRemovalTargetRenderTreeSize) {
+        m_swipeWaitingForRenderTreeSizeThreshold = false;
+        removeSwipeSnapshotIfReady();
+    }
+}
+
+void ViewGestureController::didRestoreScrollPosition()
+{
+    if (m_activeGestureType != ViewGestureType::Swipe)
+        return;
+
+    if (!m_swipeWaitingForScrollPositionRestoration)
+        return;
+
+    m_swipeWaitingForScrollPositionRestoration = false;
+    removeSwipeSnapshotIfReady();
+}
+
+void ViewGestureController::didFinishLoadForMainFrame()
+{
+    if (m_activeGestureType != ViewGestureType::Swipe)
+        return;
+
+    if (!m_swipeWaitingForDidFinishLoad)
+        return;
+
+    m_swipeWaitingForDidFinishLoad = false;
+
+    if (m_webPageProxy.pageLoadState().isLoading()) {
+        m_swipeActiveLoadMonitoringTimer.startRepeating(swipeSnapshotRemovalActiveLoadMonitoringInterval);
+        return;
+    }
+
+    m_swipeWaitingForSubresourceLoads = false;
+    removeSwipeSnapshotIfReady();
+}
+
+void ViewGestureController::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType type)
+{
+    if (m_activeGestureType != ViewGestureType::Swipe)
+        return;
+
+    // This is nearly equivalent to didFinishLoad in the same document navigation case.
+    m_swipeWaitingForDidFinishLoad = false;
+
+    if (type != SameDocumentNavigationSessionStateReplace && type != SameDocumentNavigationSessionStatePop)
+        return;
+
+    m_swipeActiveLoadMonitoringTimer.startRepeating(swipeSnapshotRemovalActiveLoadMonitoringInterval);
+}
+
+void ViewGestureController::activeLoadMonitoringTimerFired()
+{
+    if (m_webPageProxy.pageLoadState().isLoading())
+        return;
+
+    m_swipeWaitingForSubresourceLoads = false;
+    removeSwipeSnapshotIfReady();
 }
 
 void ViewGestureController::swipeSnapshotWatchdogTimerFired()
@@ -334,11 +413,24 @@ void ViewGestureController::swipeSnapshotWatchdogTimerFired()
     removeSwipeSnapshot();
 }
 
+void ViewGestureController::removeSwipeSnapshotIfReady()
+{
+    if (m_swipeWaitingForRenderTreeSizeThreshold || m_swipeWaitingForRepaint || m_swipeWaitingForDidFinishLoad || m_swipeWaitingForSubresourceLoads || m_swipeWaitingForScrollPositionRestoration)
+        return;
+
+    removeSwipeSnapshot();
+}
+
 void ViewGestureController::removeSwipeSnapshot()
 {
-    m_shouldRemoveSnapshotWhenTargetRenderTreeSizeHit = false;
+    m_swipeWaitingForRenderTreeSizeThreshold = false;
+    m_swipeWaitingForRepaint = false;
+    m_swipeWaitingForDidFinishLoad = false;
+    m_swipeWaitingForSubresourceLoads = false;
+    m_swipeWaitingForScrollPositionRestoration = false;
 
     m_swipeWatchdogTimer.stop();
+    m_swipeActiveLoadMonitoringTimer.stop();
 
     if (m_activeGestureType != ViewGestureType::Swipe)
         return;
@@ -355,6 +447,8 @@ void ViewGestureController::removeSwipeSnapshot()
     m_webPageProxyForBackForwardListForCurrentSwipe = nullptr;
 
     m_swipeTransitionContext = nullptr;
+
+    m_backgroundColorForCurrentSnapshot = Color();
 }
 
 } // namespace WebKit

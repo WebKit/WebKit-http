@@ -28,7 +28,7 @@
 
 #include "PageClient.h"
 
-namespace WPE {
+namespace WKWPE {
 class View;
 }
 
@@ -36,7 +36,7 @@ namespace WebKit {
 
 class PageClientImpl final : public PageClient {
 public:
-    PageClientImpl(WPE::View&);
+    PageClientImpl(WKWPE::View&);
 
 private:
     // PageClient
@@ -101,7 +101,9 @@ private:
     virtual void didFinishLoadForMainFrame() override;
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
 
-    WPE::View& m_view;
+    virtual void didChangeBackgroundColor() override;
+
+    WKWPE::View& m_view;
 };
 
 } // namespace WebKit

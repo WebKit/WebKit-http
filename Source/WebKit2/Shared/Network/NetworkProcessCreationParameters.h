@@ -52,6 +52,7 @@ struct NetworkProcessCreationParameters {
 
     bool privateBrowsingEnabled;
     CacheModel cacheModel;
+    int64_t diskCacheSizeOverride { -1 };
     bool canHandleHTTPSServerTrustEvaluation;
 
     String diskCacheDirectory;
@@ -66,8 +67,7 @@ struct NetworkProcessCreationParameters {
 #if PLATFORM(IOS)
     SandboxExtension::Handle cookieStorageDirectoryExtensionHandle;
 
-    // FIXME: Remove this once <rdar://problem/17726660> is fixed.
-    SandboxExtension::Handle hstsDatabasePathExtensionHandle;
+    SandboxExtension::Handle containerCachesDirectoryExtensionHandle;
 
     SandboxExtension::Handle parentBundleDirectoryExtensionHandle;
 #endif
@@ -83,6 +83,9 @@ struct NetworkProcessCreationParameters {
 
     String httpProxy;
     String httpsProxy;
+#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+    RetainPtr<CFDataRef> networkATSContext;
+#endif
 #endif
 
 #if USE(SOUP)

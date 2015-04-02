@@ -82,8 +82,7 @@ JSObject* createStackOverflowError(JSGlobalObject* globalObject)
 
 JSObject* createUndefinedVariableError(ExecState* exec, const Identifier& ident)
 {
-    
-    if (ident.impl()->isUnique()) {
+    if (ident.impl()->isSymbol()) {
         String message(makeString("Can't find private variable: @", exec->propertyNames().getPublicName(ident).string()));
         return createReferenceError(exec, message);
     }
@@ -206,8 +205,10 @@ static String notAFunctionSourceAppender(const String& originalMessage, const St
     return builder.toString();
 }
 
-static String invalidParameterInSourceAppender(const String& originalMessage, const String& sourceText, RuntimeType, ErrorInstance::SourceTextWhereErrorOccurred occurrence)
+static String invalidParameterInSourceAppender(const String& originalMessage, const String& sourceText, RuntimeType type, ErrorInstance::SourceTextWhereErrorOccurred occurrence)
 {
+    ASSERT_UNUSED(type, type != TypeObject);
+
     if (occurrence == ErrorInstance::FoundApproximateSource)
         return defaultApproximateSourceError(originalMessage, sourceText);
 

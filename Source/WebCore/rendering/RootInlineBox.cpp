@@ -872,6 +872,14 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox& box, GlyphOverflowAndFallb
     // Replaced boxes will return 0 for the line-height if line-box-contain says they are
     // not to be included.
     if (box.renderer().isReplaced()) {
+        if (hasAnonymousInlineBlock()) {
+            ascent = box.logicalHeight(); // Margins exist "outside" the line, since they have to collapse.
+            descent = 0;
+            affectsAscent = true;
+            affectsDescent = true;
+            return;
+        }
+            
         if (lineStyle().lineBoxContain() & LineBoxContainReplaced) {
             ascent = box.baselinePosition(baselineType());
             descent = box.lineHeight() - ascent;
@@ -882,6 +890,9 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox& box, GlyphOverflowAndFallb
         }
         return;
     }
+    
+    if (hasAnonymousInlineBlock())
+        return;
 
     Vector<const Font*>* usedFonts = nullptr;
     GlyphOverflow* glyphOverflow = nullptr;
@@ -1134,8 +1145,8 @@ Node* RootInlineBox::getLogicalStartBoxWithNode(InlineBox*& startBox) const
             return startBox->renderer().node();
         }
     }
-    startBox = 0;
-    return 0;
+    startBox = nullptr;
+    return nullptr;
 }
     
 Node* RootInlineBox::getLogicalEndBoxWithNode(InlineBox*& endBox) const
@@ -1148,8 +1159,8 @@ Node* RootInlineBox::getLogicalEndBoxWithNode(InlineBox*& endBox) const
             return endBox->renderer().node();
         }
     }
-    endBox = 0;
-    return 0;
+    endBox = nullptr;
+    return nullptr;
 }
 
 #if ENABLE(TREE_DEBUGGING)

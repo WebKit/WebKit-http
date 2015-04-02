@@ -162,9 +162,8 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     SandboxExtension::consumePermanently(parameters.mediaKeyStorageDirectoryExtensionHandle);
 #if PLATFORM(IOS)
     SandboxExtension::consumePermanently(parameters.cookieStorageDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.openGLCacheDirectoryExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.containerCachesDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.containerTemporaryDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.hstsDatabasePathExtensionHandle);
 #endif
 #endif
 
@@ -206,6 +205,9 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     // no window in WK2, NSApplication needs to use the focused page's focused element.
     Method methodToPatch = class_getInstanceMethod([NSApplication class], @selector(accessibilityFocusedUIElement));
     method_setImplementation(methodToPatch, (IMP)NSApplicationAccessibilityFocusedUIElement);
+#endif
+#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+    _CFNetworkSetATSContext(parameters.networkATSContext.get());
 #endif
 }
 

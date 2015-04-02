@@ -26,6 +26,7 @@
 #include "config.h"
 #include "AtholShell.h"
 
+#include <WPE/Input/Handling.h>
 #include <WebKit/WKContextConfigurationRef.h>
 #include <WebKit/WKContext.h>
 #include <WebKit/WKPageGroup.h>
@@ -54,20 +55,23 @@ InputClient::InputClient(AtholShell& shell)
 
 void InputClient::handleKeyboardEvent(uint32_t time, uint32_t key, uint32_t state)
 {
-    WKInputHandlerNotifyKeyboardKey(m_shell.m_inputHandler.get(),
-        WKKeyboardKey{ time, key, state });
+    WPE::Input::Server::singleton().serveKeyboardEvent({ time, key, state });
 }
 
 void InputClient::handlePointerMotion(uint32_t time, double dx, double dy)
 {
-    WKInputHandlerNotifyPointerMotion(m_shell.m_inputHandler.get(),
-        WKPointerMotion{ time, dx, dy});
+    WPE::Input::Server::singleton().servePointerEvent({
+        WPE::Input::PointerEvent::Motion,
+        time, static_cast<int>(dx), static_cast<int>(dy), 0, 0
+    });
 }
 
 void InputClient::handlePointerButton(uint32_t time, uint32_t button, uint32_t state)
 {
-    WKInputHandlerNotifyPointerButton(m_shell.m_inputHandler.get(),
-        WKPointerButton{ time, button, state });
+    WPE::Input::Server::singleton().servePointerEvent({
+        WPE::Input::PointerEvent::Button,
+        time, 0, 0, button, state
+    });
 }
 
 AtholShell::AtholShell(API::Compositor* compositor)
@@ -107,8 +111,7 @@ gpointer AtholShell::launchWPE(gpointer data)
     shell.m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
     auto* view = shell.m_view.get();
     WKViewResize(view, WKSizeMake(shell.width(), shell.height()));
-
-    shell.m_inputHandler = adoptWK(WKInputHandlerCreate(view));
+    WKViewMakeWPEInputTarget(view);
 
     const char* url = g_getenv("WPE_SHELL_URL");
     if (!url)

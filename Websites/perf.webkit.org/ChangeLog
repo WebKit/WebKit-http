@@ -1,3 +1,60 @@
+2015-03-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION: Searching commits can highlight wrong data points
+        https://bugs.webkit.org/show_bug.cgi?id=143272
+
+        Reviewed by Antti Koivisto.
+
+        The bug was caused by /api/commits returning commit times with millisecond precision whereas /api/runs
+        return commit times with only second precision. This resulted in the frontend code to match a commit
+        with the data point that included the next commit when the millisecond component of commit's timestamp
+        wasn't identically 0.
+
+        This discrepancy was caused by the fact PHP's strtotime only ignores milliseconds and /api/commits
+        was returning timestamp as string instead of parsing via Database::to_js_time as done in /api/runs
+        so miliseconds component was only preserved in /api/commits.
+
+        Fixed the bug by always using Database::to_js_time to return commit time. Also fixed to_js_time so that
+        it returns time in milisecond precision.
+
+        * public/api/commits.php:
+        (fetch_commits_between): Use Database::to_js_time for format commit times.
+        (format_commit): Ditto.
+        * public/include/db.php:
+        (Database::to_js_time): Parse and append millisecond component. Ignore sub-milliseconds for simplicity.
+        * public/v2/data.js:
+        (CommitLogs.fetchForTimeRange): The commit time is now an integer so don't call "replace" on it.
+
+2015-03-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should show relative change in values
+        https://bugs.webkit.org/show_bug.cgi?id=143252
+
+        Reviewed by Antti Koivisto.
+
+        When a range of values are selected, show the percentage difference between the start and the end
+        in addition to the absolute value difference. When a single point is selected, show the relative
+        difference with respect to the previous point. Use two significant figures and always show plus sign
+        when the difference is positive.
+
+        * public/v2/app.js: Compute and format the relative difference.
+        * public/v2/chart-pane.css: Don't let commits view shrink itself when they're all collapsed.
+        * public/v2/index.html: Show the relative difference.
+
+2015-03-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r180000): Changing moving average or enveloping strategy doesn't update the graph
+        https://bugs.webkit.org/show_bug.cgi?id=143254
+
+        Reviewed by Antti Koivisto.
+        
+        The bug was caused by App.Pane no longer replacing 'chartData' property when updating the moving average
+        or the enveloping values. Fixed the bug by creating a new chartData object when the strategy is changed
+        so that the interactive chart component will observe a change to 'chartData'.
+
+        * public/v2/app.js:
+        (App.Pane._movingAverageOrEnvelopeStrategyDidChange): Added.
+
 2015-03-19  Ryosuke Niwa  <rniwa@webkit.org>
 
         Unreviewed build fixes.
