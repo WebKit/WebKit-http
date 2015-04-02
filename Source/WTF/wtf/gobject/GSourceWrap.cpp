@@ -18,6 +18,15 @@ static void destroyBoolCallback(gpointer data)
     delete function;
 }
 
+static gint64 targetTimeForDelay(std::chrono::microseconds delay)
+{
+    gint64 currentTime = g_get_monotonic_time();
+    gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, delay.count());
+    ASSERT(targetTime >= currentTime);
+
+    return targetTime;
+}
+
 GSourceWrap::Base::Base()
 {
 }
@@ -59,14 +68,7 @@ void GSourceWrap::Base::schedule(std::chrono::microseconds delay)
     ASSERT(m_source);
     source()->delay = delay;
 
-    gint64 readyTime = g_source_get_ready_time(m_source.get());
-    gint64 targetTime = g_get_monotonic_time() + delay.count();
-    if (readyTime == -1)
-        readyTime = targetTime;
-    else
-        readyTime = std::min<gint64>(readyTime, targetTime);
-
-    g_source_set_ready_time(m_source.get(), readyTime);
+    g_source_set_ready_time(m_source.get(), targetTimeForDelay(delay));
 }
 
 void GSourceWrap::Base::cancel()
@@ -127,7 +129,7 @@ gboolean GSourceWrap::Base::dynamicBoolCallback(gpointer data)
 
     auto& function = *reinterpret_cast<std::function<bool ()>*>(context.data);
     if (function())
-        g_source_set_ready_time(&context.source.baseSource, g_get_monotonic_time() + context.source.delay.count());
+        g_source_set_ready_time(&context.source.baseSource, targetTimeForDelay(context.source.delay));
     else
         g_source_set_callback(&context.source.baseSource, nullptr, nullptr, nullptr);
 
