@@ -49,7 +49,12 @@ void setSharedTimerFiredFunction(void (*f)())
 void setSharedTimerFireInterval(double interval)
 {
     ASSERT(sharedTimerFiredFunction);
-    gSharedTimer.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(interval)));
+
+    auto intervalDuration = std::chrono::duration<double>(interval);
+    auto delay = std::chrono::microseconds::max();
+    if (intervalDuration < delay)
+        delay = std::chrono::duration_cast<std::chrono::microseconds>(intervalDuration);
+    gSharedTimer.schedule(delay);
 }
 
 void stopSharedTimer()
