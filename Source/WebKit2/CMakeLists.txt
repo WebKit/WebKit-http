@@ -154,7 +154,17 @@ if (WTF_USE_3D_GRAPHICS)
     )
 endif ()
 
-set(NetworkProcess_SOURCES
+set(WebKit2_SOURCES
+    DatabaseProcess/DatabaseToWebProcessConnection.cpp
+    DatabaseProcess/DatabaseProcess.cpp
+    DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp
+    DatabaseProcess/IndexedDB/IDBSerialization.cpp
+    DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp
+    DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.cpp
+    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp
+    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp
+    DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp
+
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkProcess.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
@@ -168,18 +178,6 @@ set(NetworkProcess_SOURCES
     NetworkProcess/cache/NetworkCacheEncoder.cpp
     NetworkProcess/cache/NetworkCacheDecoder.cpp
     NetworkProcess/cache/NetworkCacheKey.cpp
-)
-
-set(WebKit2_SOURCES
-    DatabaseProcess/DatabaseToWebProcessConnection.cpp
-    DatabaseProcess/DatabaseProcess.cpp
-    DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp
-    DatabaseProcess/IndexedDB/IDBSerialization.cpp
-    DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp
-    DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.cpp
-    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp
-    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp
-    DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp
 
     Platform/Logging.cpp
     Platform/Module.cpp
@@ -623,8 +621,6 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/WebPageOverlay.cpp
     WebProcess/WebPage/VisitedLinkTableController.cpp
     WebProcess/WebPage/WebUndoStep.cpp
-
-    ${NetworkProcess_SOURCES}
 )
 
 set(WebKit2_MESSAGES_IN_FILES
