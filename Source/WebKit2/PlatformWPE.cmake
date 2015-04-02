@@ -242,7 +242,7 @@ file(GLOB InspectorFiles
 
 list(APPEND InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js
 )
 
 add_custom_command(
