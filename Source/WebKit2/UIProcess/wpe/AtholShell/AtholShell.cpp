@@ -29,10 +29,14 @@
 #include <WPE/Input/Handling.h>
 #include <WebKit/WKContextConfigurationRef.h>
 #include <WebKit/WKContext.h>
+#include <WebKit/WKFramePolicyListener.h>
 #include <WebKit/WKPageGroup.h>
 #include <WebKit/WKPage.h>
 #include <WebKit/WKString.h>
 #include <WebKit/WKURL.h>
+#include <cstdio>
+#include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 namespace WPE {
 
@@ -94,6 +98,14 @@ const struct wl_wpe_interface AtholShell::m_wpeInterface = {
     [](struct wl_client*, struct wl_resource* shellResource, struct wl_resource* surfaceResource) { }
 };
 
+// Taken from WebKitTestRunner.
+static WTF::String getWTFString(WKStringRef string) {
+    size_t bufferSize = WKStringGetMaximumUTF8CStringSize(string);
+    auto buffer = std::make_unique<char[]>(bufferSize);
+    size_t stringLength = WKStringGetUTF8CString(string, buffer.get(), bufferSize);
+    return WTF::String::fromUTF8WithLatin1Fallback(buffer.get(), stringLength - 1);
+}
+
 gpointer AtholShell::launchWPE(gpointer data)
 {
     auto& shell = *static_cast<AtholShell*>(data);
@@ -112,6 +124,39 @@ gpointer AtholShell::launchWPE(gpointer data)
     auto* view = shell.m_view.get();
     WKViewResize(view, WKSizeMake(shell.width(), shell.height()));
     WKViewMakeWPEInputTarget(view);
+
+    WKPageNavigationClientV0 pageNavigationClient = {
+        { 0, nullptr },
+        // decidePolicyForNavigationAction
+        [](WKPageRef, WKNavigationActionRef, WKFramePolicyListenerRef listener, WKTypeRef, const void*) {
+            WKFramePolicyListenerUse(listener);
+        },
+        nullptr, // decidePolicyForNavigationResponse
+        nullptr, // decidePolicyForPluginLoad
+        nullptr, // didStartProvisionalNavigation
+        nullptr, // didReceiveServerRedirectForProvisionalNavigation
+        nullptr, // didFailProvisionalNavigation
+        nullptr, // didCommitNavigation
+        nullptr, // didFinishNavigation
+        nullptr, // didFailNavigation
+        nullptr, // didFailProvisionalLoadInSubframe
+        nullptr, // didFinishDocumentLoad
+        nullptr, // didSameDocumentNavigation
+        nullptr, // renderingProgressDidChange
+        nullptr, // canAuthenticateAgainstProtectionSpace
+        nullptr, // didReceiveAuthenticationChallenge
+        // webProcessDidCrash
+        [](WKPageRef page, const void*) {
+            auto url = adoptWK(WKPageCopyActiveURL(page));
+            auto urlString = adoptWK(WKURLCopyString(url.get()));
+            auto wtfString = getWTFString(urlString.get());
+
+            std::fprintf(stderr, "[AtholShell] Crashed on '%s', reloading.\n", wtfString.utf8().data());
+            WKPageReload(page);
+        },
+        nullptr, // copyWebCryptoMasterKey
+    };
+    WKPageSetPageNavigationClient(WKViewGetPage(view), &pageNavigationClient.base);
 
     const char* url = g_getenv("WPE_SHELL_URL");
     if (!url)
