@@ -93,7 +93,7 @@ void LayerTreeHostWPE::initialize()
     if (m_webPage->corePage()->settings().acceleratedDrawingEnabled())
         m_nonCompositedContentLayer->setAcceleratesDrawing(true);
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
     m_rootLayer->setName("LayerTreeHost root layer");
     m_nonCompositedContentLayer->setName("LayerTreeHost non-composited content");
 #endif
