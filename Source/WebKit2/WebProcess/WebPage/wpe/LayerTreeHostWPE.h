@@ -81,9 +81,7 @@ private:
     // GraphicsLayerClient
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect);
 
-    enum CompositePurpose { ForResize, NotForResize };
-    void compositeLayersToContext(CompositePurpose = NotForResize);
-
+    void compositeLayersToContext();
     void flushAndRenderLayers();
     void cancelPendingLayerFlush();
 

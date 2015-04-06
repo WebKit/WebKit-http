@@ -208,8 +208,6 @@ void LayerTreeHostWPE::sizeDidChange(const IntSize& newSize)
     if (newSize.height() > oldSize.height())
         m_nonCompositedContentLayer->setNeedsDisplayInRect(FloatRect(0, oldSize.height(), newSize.width(), newSize.height() - oldSize.height()));
     m_nonCompositedContentLayer->setNeedsDisplay();
-
-    compositeLayersToContext(ForResize);
 }
 
 void LayerTreeHostWPE::deviceOrPageScaleFactorChanged()
@@ -258,7 +256,7 @@ bool LayerTreeHostWPE::flushPendingLayerChanges()
     return true;
 }
 
-void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
+void LayerTreeHostWPE::compositeLayersToContext()
 {
     GLContext* context = glContext();
     if (!context || !context->makeContextCurrent())
@@ -270,10 +268,8 @@ void LayerTreeHostWPE::compositeLayersToContext(CompositePurpose purpose)
     IntSize contextSize = context->defaultFrameBufferSize();
     glViewport(0, 0, contextSize.width(), contextSize.height());
 
-    if (purpose == ForResize) {
-        glClearColor(1, 1, 1, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
-    }
+    glClearColor(1, 1, 1, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     m_textureMapper->beginPainting();
     downcast<GraphicsLayerTextureMapper>(*m_rootLayer).layer().paint();
