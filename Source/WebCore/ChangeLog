@@ -1,3 +1,139 @@
+2015-04-01  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [ThreadedCompositor] Support HTML5 Video
+        https://bugs.webkit.org/show_bug.cgi?id=143301
+
+        Reviewed by NOBODY (OOPS!).
+
+        This patch implements HTML5 Video supports in Threaded Compositor. Unlike previous rendering
+        pipeline, rendering thread of GStreamer (VideoSinkGStreamer) creates or updates a texture and
+        send a buffer with the updated texture to the compositor thread directly.
+
+        No new tests needed.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase):
+        (WebCore::MediaPlayerPrivateGStreamerBase::updateTexture):
+        (WebCore::MediaPlayerPrivateGStreamerBase::triggerRepaint):
+        (WebCore::MediaPlayerPrivateGStreamerBase::paint):
+        (WebCore::MediaPlayerPrivateGStreamerBase::paintToTextureMapper):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h:
+        (WebCore::MediaPlayerPrivateGStreamerBase::platformLayer):
+        (WebCore::MediaPlayerPrivateGStreamerBase::supportsAcceleratedRendering):
+        * platform/graphics/gstreamer/VideoSinkGStreamer.cpp:
+        (webkitVideoSinkRender):
+
+2015-04-01  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [ThreadedCompositor] Support WebGL for OpenGL.
+        https://bugs.webkit.org/show_bug.cgi?id=143300
+
+        Reviewed by NOBODY (OOPS!).
+
+        To remove pixel transfer operation, this patch adds m_compositorFBO which uses same depth and stencil
+        buffer with m_fbo but uses m_compositorTexture as a color attachment in GraphicsContext3D.
+        Because switching target framebuffer is cheaper than pixel transfer operation and switching color
+        attachment of m_fbo. In Threaded Compositor, when WebGL renders a scene, prepareTexture swaps
+        m_fbo with m_compositorFBO and send the color attachment to the compositor thread.
+        This patch only supports WebGL for OpenGL. OpenGLES will be covered in following-up patches.
+
+        No new tests needed.
+
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/GraphicsContext3DPrivate.cpp:
+        (WebCore::GraphicsContext3DPrivate::GraphicsContext3DPrivate):
+        (WebCore::GraphicsContext3DPrivate::proxy):
+        (WebCore::GraphicsContext3DPrivate::swapBufferIfNeeded):
+        (WebCore::GraphicsContext3DPrivate::swapPlatformTexture):
+        (WebCore::GraphicsContext3DPrivate::paintToTextureMapper): Deleted.
+        * platform/graphics/GraphicsContext3DPrivate.h:
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        (WebCore::GraphicsContext3D::swapBufferIfNeeded):
+        * platform/graphics/opengl/GraphicsContext3DOpenGL.cpp:
+        (WebCore::GraphicsContext3D::reshapeFBOs):
+        (WebCore::GraphicsContext3D::attachDepthAndStencilBufferIfNeeded):
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::prepareTexture):
+        (WebCore::GraphicsContext3D::markContextChanged):
+
+2015-03-31  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [ThreadedCompositor] Add support for PlatformLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=143299
+
+        Reviewed by NOBODY (OOPS!).
+
+        This patch implements TextureMapperPlatformLayerProxy and TextureMapperPlatformLayerBuffer to
+        send a texture (actual texture or BitmapTexture) to the compositing thread directly.
+        TextureMapperPlatformLayerBuffer can be reused after swapped by new buffer.
+        Because PlatformLayers (Canvas, Video) draw its contents using same size and format usually, we don't
+        have to re-allocate texture. Whenever Canvas and Video renderer needs to display new content, the
+        renderer updates used buffer and push it to the compositor via TextureMapperPlatformLayerProxy.
+
+        No new tests needed.
+
+        * PlatformGTK.cmake:
+        Adds TextureMapperPlatformLayerBuffer and TextureMapperPlaytformLayerProxy.
+        * platform/graphics/GraphicsContext3DPrivate.cpp:
+        * platform/graphics/cairo/ImageBufferCairo.cpp:
+        Adds mock implementation.
+        * platform/graphics/PlatformLayer.h:
+        Modified to use TextureMapperPlatformLayerProxyProvider as a PlatformLayer in Threaded Compositor
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.cpp:
+        * platform/graphics/texmap/TextureMapperLayer.cpp:
+        Exclude GraphicsLayerTextureMapper when we are using Coordinated Graphics.
+
+        * platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp: Added.
+        * platform/graphics/texmap/TextureMapperPlatformLayerBuffer.h: Added.
+        * platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp: Added.
+        * platform/graphics/texmap/TextureMapperPlatformLayerProxy.h: Added.
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        (WebCore::CoordinatedGraphicsLayerState::CoordinatedGraphicsLayerState):
+
+2015-03-31  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [TexMap] Clean up BitmapTexture and BitmapTextureGL.
+        https://bugs.webkit.org/show_bug.cgi?id=143298
+
+        Reviewed by NOBODY (OOPS!).
+
+        No new tests, this is just a refactor.
+
+        * platform/graphics/texmap/BitmapTexture.h:
+        BitmapTexture::Flag is used for checking the texture supports alpha or
+        not. This patch replaces BitmapTexture::Flag to a single boolean to
+        improve readability.
+
+        * platform/graphics/texmap/BitmapTextureGL.h:
+        We do not have to check a suitable texture format in every
+        update/reset. It is enough to store the formats in construction time
+        and reuse them.
+
+2015-01-08  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [CoordinatedGraphics] Non-overlay scrollbar is not rendered
+        https://bugs.webkit.org/show_bug.cgi?id=140243
+
+        Reviewed by NOBODY (OOPS!).
+
+        Current Coordinated Graphics, doesn't support non-overlay scrollbars properly.
+        Because Coordinated Graphics uses TILED_BACKING_STORE, all of scrollbars
+        should be composited, but it only composite overlay scrollbars.
+
+        RenderLayerCompositor::mainFrameBackingIsTiled is checking the
+        RenderLayerBacking uses tiledbacking dynamically.  In the Coordinated
+        Graphics, the main frame backing is always uses tiled backing store. So
+        it should return true.
+
+        No new tests. No change in functionality.
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::mainFrameBackingIsTiled):
+
 2015-04-01  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r182247.

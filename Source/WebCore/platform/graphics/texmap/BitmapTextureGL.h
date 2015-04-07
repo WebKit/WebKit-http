@@ -39,7 +39,7 @@ public:
 
     virtual IntSize size() const;
     virtual bool isValid() const;
-    virtual bool canReuseWith(const IntSize& contentsSize, Flags = 0);
+    virtual bool canReuseWith(const IntSize& contentsSize, bool hasAlpha = true);
     virtual void didReset();
     void bindAsSurface(GraphicsContext3D*);
     void initializeStencil();
@@ -68,6 +68,8 @@ public:
     const FilterInfo* filterInfo() const { return &m_filterInfo; }
     TextureMapperGL::ClipStack& clipStack() { return m_clipStack; }
 
+    GC3Dint internalFormat() const { return m_internalFormat; }
+
 private:
 
     Platform3DObject m_id;
@@ -86,6 +88,10 @@ private:
     void createFboIfNeeded();
 
     FilterInfo m_filterInfo;
+
+    GC3Dint m_internalFormat;
+    GC3Denum m_format;
+    GC3Denum m_type;
 };
 
 BitmapTextureGL* toBitmapTextureGL(BitmapTexture*);
