@@ -33,6 +33,7 @@
 #include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/TransformationMatrix.h>
+#include <WebCore/WaylandSurfaceWPE.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
@@ -102,6 +103,7 @@ private:
     RefPtr<CoordinatedGraphicsScene> m_scene;
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
+    std::unique_ptr<WebCore::WaylandSurface> m_waylandSurface;
     std::unique_ptr<WebCore::GLContext> m_context;
 
     WebCore::IntSize m_viewportSize;
@@ -114,6 +116,8 @@ private:
     Mutex m_initializeRunLoopConditionMutex;
     ThreadCondition m_terminateRunLoopCondition;
     Mutex m_terminateRunLoopConditionMutex;
+
+    static const struct wl_callback_listener m_frameListener;
 };
 
 } // namespace WebKit

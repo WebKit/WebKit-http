@@ -28,7 +28,11 @@
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #include "ThreadedCompositor.h"
 
+#include <WebCore/GLContextEGL.h>
 #include <WebCore/TransformationMatrix.h>
+#include <WebCore/WaylandDisplayWPE.h>
+#include <cstdio>
+#include <cstdlib>
 #include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
 #include <wtf/StdLibExtras.h>
@@ -227,10 +231,14 @@ GLContext* ThreadedCompositor::glContext()
     if (m_context)
         return m_context.get();
 
-    if (!m_nativeSurfaceHandle)
+    RELEASE_ASSERT(WaylandDisplay::instance());
+    m_waylandSurface = WaylandDisplay::instance()->createSurface(IntSize(800, 600));
+    if (!m_waylandSurface)
         return 0;
+    WaylandDisplay::instance()->registerSurface(m_waylandSurface->surface());
+    setNativeSurfaceHandleForCompositing(0);
 
-    m_context = GLContext::createContextForWindow(m_nativeSurfaceHandle, GLContext::sharingContext());
+    m_context = m_waylandSurface->createGLContext();
     return m_context.get();
 }
 
@@ -247,6 +255,8 @@ void ThreadedCompositor::didChangeVisibleRect()
         m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
 
+    if (m_waylandSurface)
+        m_waylandSurface->resize(enclosingIntRect(visibleRect).size());
     scheduleDisplayImmediately();
 }
 
@@ -267,6 +277,7 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
+    wl_callback_add_listener(wl_surface_frame(m_waylandSurface->surface()), &m_frameListener, this);
     glContext()->swapBuffers();
 }
 
@@ -339,6 +350,31 @@ void ThreadedCompositor::terminateCompositingThread()
 
     m_terminateRunLoopCondition.wait(m_terminateRunLoopConditionMutex);
 }
+
+static void debugThreadedCompositorFPS()
+{
+    static double lastTime = currentTime();
+    static unsigned frameCount = 0;
+
+    double ct = currentTime();
+    frameCount++;
+
+    if (ct - lastTime >= 5.0) {
+        fprintf(stderr, "ThreadedCompositor: frame callbacks %.2f FPS\n", frameCount / (ct - lastTime));
+        lastTime = ct;
+        frameCount = 0;
+    }
+}
+
+const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
+    // frame
+    [](void*, struct wl_callback* callback, uint32_t) {
+        static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
+        if (reportFPS)
+            debugThreadedCompositorFPS();
+        wl_callback_destroy(callback);
+    }
+};
 
 }
 #endif // USE(COORDINATED_GRAPHICS_THREADED)
