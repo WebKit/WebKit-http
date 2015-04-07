@@ -101,7 +101,10 @@ public:
         Ecore_Timer* m_timer;
         bool m_isRepeating;
 #elif USE(GLIB)
-        GSourceWrap::Dynamic m_timerSource;
+        void timerFired();
+        double m_fireInterval;
+        bool m_repeating;
+        GSourceWrap::Static m_timerSource;
 #endif
     };
 
