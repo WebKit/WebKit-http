@@ -40,7 +40,9 @@ void initializeMainThreadPlatform()
 
 void scheduleDispatchFunctionsOnMainThread()
 {
-    static GSourceWrap::Static dispatcher("[WebKit] dispatchFunctionsFromMainThread", std::function<void ()>(dispatchFunctionsFromMainThread));
+    static GSourceWrap::Static dispatcher("[WebKit] dispatchFunctionsFromMainThread",
+        std::function<void ()>(dispatchFunctionsFromMainThread), G_PRIORITY_DEFAULT_IDLE,
+        g_main_context_default());
     dispatcher.schedule();
 }
 
