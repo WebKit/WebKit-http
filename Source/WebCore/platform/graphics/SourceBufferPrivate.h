@@ -54,6 +54,10 @@ public:
     virtual void abort() = 0;
     virtual void removedFromMediaSource() = 0;
 
+#if !ENABLE(VIDEO_TRACK)
+    virtual PassRefPtr<TimeRanges> buffered() = 0;
+#endif
+
     virtual MediaPlayer::ReadyState readyState() const = 0;
     virtual void setReadyState(MediaPlayer::ReadyState) = 0;
 

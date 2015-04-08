@@ -23,11 +23,12 @@
 #define WebKitMediaSourceGStreamer_h
 #if ENABLE(VIDEO) && ENABLE(MEDIA_SOURCE) && USE(GSTREAMER)
 
-#include "GRefPtrGStreamer.h"
 #include "MediaPlayer.h"
 #include "MediaSource.h"
-#include "SourceBufferPrivate.h"
 #include "SourceBufferPrivateClient.h"
+#include "SourceBufferPrivate.h"
+
+#include "GRefPtrGStreamer.h"
 
 #include <gst/gst.h>
 
@@ -66,22 +67,32 @@ template<> void derefGPtr<WebKitMediaSrc>(WebKitMediaSrc* ptr);
 namespace WebCore {
 
 class ContentType;
+class SourceBufferPrivateGStreamer;
+class MediaSourceGStreamer;
 
 class MediaSourceClientGStreamer: public RefCounted<MediaSourceClientGStreamer> {
     public:
-        MediaSourceClientGStreamer(WebKitMediaSrc*);
+        static PassRefPtr<MediaSourceClientGStreamer> create(WebKitMediaSrc*);
         virtual ~MediaSourceClientGStreamer();
 
         // From MediaSourceGStreamer
-        MediaSourcePrivate::AddStatus addSourceBuffer(PassRefPtr<SourceBufferPrivate>, const ContentType&);
+        MediaSourcePrivate::AddStatus addSourceBuffer(PassRefPtr<SourceBufferPrivateGStreamer>, const ContentType&);
         void durationChanged(const MediaTime&);
         void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
         // From SourceBufferPrivateGStreamer
-        SourceBufferPrivateClient::AppendResult append(PassRefPtr<SourceBufferPrivate>, const unsigned char*, unsigned);
-        void removedFromMediaSource(PassRefPtr<SourceBufferPrivate>);
+        bool append(PassRefPtr<SourceBufferPrivateGStreamer>, const unsigned char*, unsigned);
+        void removedFromMediaSource(PassRefPtr<SourceBufferPrivateGStreamer>);
+
+        // From our WebKitMediaSrc
+#if ENABLE(VIDEO_TRACK)
+        void didReceiveInitializationSegment(SourceBufferPrivateGStreamer*, const SourceBufferPrivateClient::InitializationSegment&);
+        void didReceiveSample(SourceBufferPrivateGStreamer* sourceBuffer, PassRefPtr<MediaSample> sample);
+        void didReceiveAllPendingSamples(SourceBufferPrivateGStreamer* sourceBuffer);
+#endif
 
     private:
+        MediaSourceClientGStreamer(WebKitMediaSrc*);
         GRefPtr<WebKitMediaSrc> m_src;
 };
 

@@ -35,9 +35,11 @@
 namespace WebCore {
 
 class SourceBufferPrivate;
+#if ENABLE(VIDEO_TRACK)
 class AudioTrackPrivate;
 class VideoTrackPrivate;
 class InbandTextTrackPrivate;
+#endif
 class MediaSample;
 class MediaDescription;
 
@@ -47,6 +49,7 @@ public:
 
     virtual void sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const WTF::AtomicString&) = 0;
 
+#if ENABLE(VIDEO_TRACK)
     struct InitializationSegment {
         MediaTime duration;
 
@@ -74,6 +77,7 @@ public:
     virtual bool sourceBufferPrivateHasVideo(const SourceBufferPrivate*) const = 0;
 
     virtual void sourceBufferPrivateDidBecomeReadyForMoreSamples(SourceBufferPrivate*, AtomicString trackID) = 0;
+#endif
 
     virtual MediaTime sourceBufferPrivateFastSeekTimeForMediaTime(SourceBufferPrivate*, const MediaTime& time, const MediaTime&, const MediaTime&) { return time; }
     virtual void sourceBufferPrivateSeekToTime(SourceBufferPrivate*, const MediaTime&) { };

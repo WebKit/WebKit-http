@@ -552,6 +552,15 @@ float MediaPlayerPrivateGStreamer::duration() const
     gint64 timeLength = 0;
 
     bool failure = !gst_element_query_duration(m_pipeline.get(), timeFormat, &timeLength) || static_cast<guint64>(timeLength) == GST_CLOCK_TIME_NONE;
+
+    if (failure && m_source)
+        failure = !gst_element_query_duration(m_source.get(), timeFormat, &timeLength) || static_cast<guint64>(timeLength) == GST_CLOCK_TIME_NONE;
+
+#if ENABLE(MEDIA_SOURCE)
+    if (failure && m_mediaSource)
+        return m_mediaSource->duration().toFloat();
+#endif
+
     if (failure) {
         LOG_MEDIA_MESSAGE("Time duration query failed for %s", m_url.string().utf8().data());
         return numeric_limits<float>::infinity();
@@ -766,6 +775,15 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
 
         RefPtr<VideoTrackPrivateGStreamer> track = VideoTrackPrivateGStreamer::create(m_pipeline, i, pad);
         m_videoTracks.append(track);
+#if ENABLE(MEDIA_SOURCE)
+        if (isMediaSource()) {
+            // TODO: This will leak if the event gets freed without arriving in
+            // the source, e.g. when we go flushing here
+            RefPtr<VideoTrackPrivateGStreamer>* trackCopy = new RefPtr<VideoTrackPrivateGStreamer>(track);
+            GstStructure* videoEventStructure = gst_structure_new("webKitVideoTrack", "track", G_TYPE_POINTER, trackCopy, nullptr);
+            gst_pad_push_event(pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, videoEventStructure));
+        }
+#endif
         m_player->addVideoTrack(track.release());
     }
 
@@ -814,6 +832,15 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
 
         RefPtr<AudioTrackPrivateGStreamer> track = AudioTrackPrivateGStreamer::create(m_pipeline, i, pad);
         m_audioTracks.insert(i, track);
+#if ENABLE(MEDIA_SOURCE)
+        if (isMediaSource()) {
+            // TODO: This will leak if the event gets freed without arriving in
+            // the source, e.g. when we go flushing here
+            RefPtr<AudioTrackPrivateGStreamer>* trackCopy = new RefPtr<AudioTrackPrivateGStreamer>(track);
+            GstStructure* audioEventStructure = gst_structure_new("webKitAudioTrack", "track", G_TYPE_POINTER, trackCopy, nullptr);
+            gst_pad_push_event(pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, audioEventStructure));
+        }
+#endif
         m_player->addAudioTrack(track.release());
     }
 
@@ -1497,7 +1524,7 @@ void MediaPlayerPrivateGStreamer::sourceChanged()
         webKitWebSrcSetMediaPlayer(WEBKIT_WEB_SRC(m_source.get()), m_player);
 #if ENABLE(MEDIA_SOURCE)
     if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
-        MediaSourceGStreamer::open(m_mediaSource.get(), WEBKIT_MEDIA_SRC(m_source.get()));
+        MediaSourceGStreamer::open(m_mediaSource.get(), WEBKIT_MEDIA_SRC(m_source.get()), this);
     }
 #endif
 }

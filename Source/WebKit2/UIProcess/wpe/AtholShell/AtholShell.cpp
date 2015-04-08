@@ -147,6 +147,8 @@ gpointer AtholShell::launchWPE(gpointer data)
         nullptr, // didReceiveAuthenticationChallenge
         // webProcessDidCrash
         [](WKPageRef page, const void*) {
+            if (g_getenv("WPE_DISABLE_ATHOL_RELOAD"))
+                return;
             auto url = adoptWK(WKPageCopyActiveURL(page));
             auto urlString = adoptWK(WKURLCopyString(url.get()));
             auto wtfString = getWTFString(urlString.get());
