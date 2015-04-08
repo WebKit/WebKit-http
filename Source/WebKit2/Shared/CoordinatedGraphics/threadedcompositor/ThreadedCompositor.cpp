@@ -60,6 +60,7 @@ public:
         : m_runLoop(RunLoop::current())
         , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
         , m_updateFunction(WTF::move(updateFunction))
+        , m_updateState(UpdateState::Completed)
         , m_lastUpdateTime(0)
     {
     }
@@ -76,21 +77,30 @@ public:
 
     void setUpdateTimer(UpdateTiming timing = Immediate)
     {
-        if (m_updateTimer.isActive())
-            return;
-
-        const static double targetFPS = 60;
-        double nextUpdateTime = 0;
-        if (timing == WaitUntilNextFrame)
-            nextUpdateTime = std::max((1 / targetFPS) - (monotonicallyIncreasingTime() - m_lastUpdateTime), 0.0);
-
-        m_updateTimer.startOneShot(nextUpdateTime);
+        m_updateTimer.startOneShot(0);
     }
 
-    void stopUpdateTimer()
+    void stopUpdates()
     {
-        if (m_updateTimer.isActive())
-            m_updateTimer.stop();
+        m_updateState = UpdateState::Completed;
+        m_updateTimer.stop();
+    }
+
+    void updateCompleted()
+    {
+        RELEASE_ASSERT(&RunLoop::current() == &m_runLoop);
+        switch (m_updateState) {
+        case UpdateState::Completed:
+            ASSERT_NOT_REACHED();
+            break;
+        case UpdateState::InProgress:
+            m_updateState = UpdateState::Completed;
+            break;
+        case UpdateState::UpdateOnCompletion:
+            m_updateState = UpdateState::Completed;
+            updateTimerFired();
+            break;
+        }
     }
 
     RunLoop& runLoop()
@@ -99,9 +109,20 @@ public:
     }
 
 private:
+    enum class UpdateState {
+        Completed,
+        InProgress,
+        UpdateOnCompletion,
+    };
 
     void updateTimerFired()
     {
+        if (m_updateState > UpdateState::Completed) {
+            m_updateState = UpdateState::UpdateOnCompletion;
+            return;
+        }
+
+        m_updateState = UpdateState::InProgress;
         m_updateFunction();
         m_lastUpdateTime = monotonicallyIncreasingTime();
     }
@@ -109,6 +130,7 @@ private:
     RunLoop& m_runLoop;
     RunLoop::Timer<CompositingRunLoop> m_updateTimer;
     std::function<void()> m_updateFunction;
+    UpdateState m_updateState;
 
     double m_lastUpdateTime;
 };
@@ -328,7 +350,7 @@ void ThreadedCompositor::runCompositingThread()
 
     m_compositingRunLoop->runLoop().run();
 
-    m_compositingRunLoop->stopUpdateTimer();
+    m_compositingRunLoop->stopUpdates();
     m_scene->purgeGLResources();
 
     {
@@ -368,11 +390,14 @@ static void debugThreadedCompositorFPS()
 
 const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
     // frame
-    [](void*, struct wl_callback* callback, uint32_t) {
+    [](void* data, struct wl_callback* callback, uint32_t) {
         static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
         if (reportFPS)
             debugThreadedCompositorFPS();
         wl_callback_destroy(callback);
+
+        auto& threadedCompositor = *static_cast<ThreadedCompositor*>(data);
+        threadedCompositor.m_compositingRunLoop->updateCompleted();
     }
 };
 
