@@ -77,7 +77,8 @@ public:
 
     void setUpdateTimer(UpdateTiming timing = Immediate)
     {
-        m_updateTimer.startOneShot(0);
+        if (!m_updateTimer.isActive())
+            m_updateTimer.startOneShot(0);
     }
 
     void stopUpdates()

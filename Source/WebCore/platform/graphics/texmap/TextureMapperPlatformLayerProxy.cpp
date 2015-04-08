@@ -53,6 +53,7 @@ void TextureMapperPlatformLayerProxy::setCompositor(Compositor* compositor)
     ASSERT(compositor);
     MutexLocker locker(m_pushMutex);
     m_compositor = compositor;
+    m_compositorThreadUpdateTimer = std::make_unique<RunLoop::Timer<TextureMapperPlatformLayerProxy>>(RunLoop::current(), this, &TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired);
     m_pushCondition.signal();
 }
 
@@ -62,10 +63,10 @@ void TextureMapperPlatformLayerProxy::setTargetLayer(TextureMapperLayer* layer)
     m_targetLayer = layer;
 }
 
-void TextureMapperPlatformLayerProxy::pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
+void TextureMapperPlatformLayerProxy::pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer, PushOnThread pushOnThread)
 {
     MutexLocker locker(m_pushMutex);
-    if (m_pendingBuffer)
+    if (m_pendingBuffer && pushOnThread != PushOnCompositionThread)
         m_pushCondition.wait(m_pushMutex);
 
     m_pendingBuffer = WTF::move(newBuffer);
@@ -129,6 +130,29 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
     }
 
     m_targetLayer->setContentsLayer(m_currentBuffer.get());
+}
+
+void TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::function<void()>&& updateFunction)
+{
+    MutexLocker locker(m_pushMutex);
+    if (!m_compositorThreadUpdateTimer)
+        return;
+
+    m_compositorThreadUpdateFunction = WTF::move(updateFunction);
+    m_compositorThreadUpdateTimer->startOneShot(0);
+}
+
+void TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired()
+{
+    std::function<void()> updateFunction;
+    {
+        MutexLocker locker(m_pushMutex);
+        if (!m_compositorThreadUpdateFunction)
+            return;
+        updateFunction = WTF::move(m_compositorThreadUpdateFunction);
+    }
+
+    updateFunction();
 }
 
 };

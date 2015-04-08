@@ -174,6 +174,8 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
     m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
+    g_cond_init(&m_updateCondition);
+    g_mutex_init(&m_updateMutex);
 #endif
 }
 
@@ -205,6 +207,11 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 #if USE(GSTREAMER_GL)
     g_cond_clear(&m_drawCondition);
     g_mutex_clear(&m_drawMutex);
+#endif
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    g_cond_clear(&m_updateCondition);
+    g_mutex_clear(&m_updateMutex);
 #endif
 
     if (m_pipeline) {
@@ -538,6 +545,45 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
     GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
 
+#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 1, 2)
+    GstMemory *mem;
+    if (gst_buffer_n_memory (buffer) >= 1) {
+        if ((mem = gst_buffer_peek_memory (buffer, 0)) && gst_is_egl_image_memory (mem)) {
+            guint n, i;
+
+            n = gst_buffer_n_memory (buffer);
+
+            n = 1; // FIXME
+
+            for (i = 0; i < n; i++) {
+                mem = gst_buffer_peek_memory (buffer, i);
+
+                g_assert (gst_is_egl_image_memory (mem));
+
+                if (i == 0)
+                    glActiveTexture (GL_TEXTURE0);
+                else if (i == 1)
+                    glActiveTexture (GL_TEXTURE1);
+                else if (i == 2)
+                    glActiveTexture (GL_TEXTURE2);
+
+                glBindTexture (GL_TEXTURE_2D, texture.id());
+                glEGLImageTargetTexture2DOES (GL_TEXTURE_2D,
+                    gst_egl_image_memory_get_image (mem));
+
+                m_orientation = gst_egl_image_memory_get_orientation (mem);
+                if (m_orientation != GST_VIDEO_GL_TEXTURE_ORIENTATION_X_NORMAL_Y_NORMAL
+                    && m_orientation != GST_VIDEO_GL_TEXTURE_ORIENTATION_X_NORMAL_Y_FLIP) {
+                    LOG_ERROR("MediaPlayerPrivateGStreamerBase::updateTexture: invalid GstEGLImage orientation");
+                }
+            }
+
+            return;
+        }
+    }
+
+    return;
+#endif
 #if GST_CHECK_VERSION(1, 1, 0)
     GstVideoGLTextureUploadMeta* meta;
     if ((meta = gst_buffer_get_video_gl_texture_upload_meta(buffer))) {
@@ -564,6 +610,51 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
 }
 #endif
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
+{
+    WTF::GMutexLocker<GMutex> lock(m_updateMutex);
+
+    {
+        WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+        if (!GST_IS_SAMPLE(m_sample.get())) {
+            g_cond_signal(&m_updateCondition);
+            return;
+        }
+
+        GstCaps* caps = gst_sample_get_caps(m_sample.get());
+        if (UNLIKELY(!caps)) {
+            g_cond_signal(&m_updateCondition);
+            return;
+        }
+
+        GstVideoInfo videoInfo;
+        gst_video_info_init(&videoInfo);
+        if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps))) {
+            g_cond_signal(&m_updateCondition);
+            return;
+        }
+
+        IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+
+        unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(size);
+        if (UNLIKELY(!buffer)) {
+            if (UNLIKELY(!m_context3D))
+                m_context3D = GraphicsContext3D::create(GraphicsContext3D::Attributes(), nullptr, GraphicsContext3D::RenderToCurrentGLContext);
+
+            RefPtr<BitmapTexture> texture = adoptRef(new BitmapTextureGL(m_context3D));
+            texture->reset(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo));
+            buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTF::move(texture));
+        }
+
+        updateTexture(buffer->textureGL(), videoInfo);
+        m_platformLayerProxy->pushNextBuffer(WTF::move(buffer), TextureMapperPlatformLayerProxy::PushOnCompositionThread);
+    }
+
+    g_cond_signal(&m_updateCondition);
+}
+#endif
+
 void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 {
     {
@@ -572,29 +663,13 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
     }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    GstCaps* caps = gst_sample_get_caps(m_sample.get());
-    if (UNLIKELY(!caps))
-        return;
-
-    GstVideoInfo videoInfo;
-    gst_video_info_init(&videoInfo);
-    if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps)))
-        return;
-
-    IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
-
-    unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(size);
-    if (UNLIKELY(!buffer)) {
-        if (UNLIKELY(!m_context3D))
-            m_context3D = GraphicsContext3D::create(GraphicsContext3D::Attributes(), nullptr);
-
-        RefPtr<BitmapTexture> texture = adoptRef(new BitmapTextureGL(m_context3D));
-        texture->reset(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo));
-        buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTF::move(texture));
+    {
+        WTF::GMutexLocker<GMutex> lock(m_updateMutex);
+        m_platformLayerProxy->scheduleUpdateOnCompositorThread([this] {
+            this->updateOnCompositorThread();
+        });
+        g_cond_wait(&m_updateCondition, &m_updateMutex);
     }
-
-    updateTexture(buffer->textureGL(), videoInfo);
-    m_platformLayerProxy->pushNextBuffer(WTF::move(buffer));
     return;
 #endif
 
@@ -750,7 +825,6 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
     if (!m_videoSink) {
         m_usingFallbackVideoSink = true;
         m_videoSink = webkitVideoSinkNew();
-        m_repaintHandler = g_signal_connect(m_videoSink.get(), "repaint-requested", G_CALLBACK(mediaPlayerPrivateRepaintCallback), this);
     }
 
     m_repaintHandler = g_signal_connect(m_videoSink.get(), "repaint-requested", G_CALLBACK(mediaPlayerPrivateRepaintCallback), this);

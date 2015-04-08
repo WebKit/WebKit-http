@@ -209,7 +209,10 @@ static void webkitVideoSinkTimeoutCallback(WebKitVideoSink* sink)
 {
     WebKitVideoSinkPrivate* priv = sink->priv;
 
+#if !USE(COORDINATED_GRAPHICS_THREADED)
     WTF::GMutexLocker<GMutex> lock(priv->sampleMutex);
+#endif
+
     GstSample* sample = priv->sample;
     priv->sample = 0;
 
@@ -228,9 +231,7 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     WebKitVideoSink* sink = WEBKIT_VIDEO_SINK(baseSink);
     WebKitVideoSinkPrivate* priv = sink->priv;
 
-#if !USE(COORDINATED_GRAPHICS_THREADED)
     WTF::GMutexLocker<GMutex> lock(priv->sampleMutex);
-#endif
 
     if (priv->unlocked)
         return GST_FLOW_OK;
@@ -244,7 +245,7 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
         return GST_FLOW_ERROR;
     }
 
-#if !(USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS))
+#if !(USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)) && 0
     // Cairo's ARGB has pre-multiplied alpha while GStreamer's doesn't.
     // Here we convert to Cairo's ARGB.
     if (format == GST_VIDEO_FORMAT_ARGB || format == GST_VIDEO_FORMAT_BGRA) {
@@ -310,7 +311,6 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
 #endif
 
     GstSample* currentSample = gst_sample_ref(priv->sample);
-
 #if USE(COORDINATED_GRAPHICS_THREADED)
     webkitVideoSinkTimeoutCallback(sink);
 #else
@@ -326,7 +326,6 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     if (priv->previousSample)
         gst_sample_unref(priv->previousSample);
     priv->previousSample = currentSample;
-
     return GST_FLOW_OK;
 }
 
