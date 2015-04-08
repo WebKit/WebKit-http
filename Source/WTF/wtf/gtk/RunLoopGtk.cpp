@@ -42,7 +42,12 @@ static GMainContext* threadDefaultContext()
 RunLoop::RunLoop()
 {
     // g_main_context_default() doesn't add an extra reference.
-    m_runLoopContext = isMainThread() ? threadDefaultContext() : adoptGRef(g_main_context_new());
+    if (!isMainThread()) {
+        m_runLoopContext = adoptGRef(g_main_context_new());
+        g_main_context_push_thread_default(m_runLoopContext.get());
+    } else
+        m_runLoopContext = threadDefaultContext();
+
     ASSERT(m_runLoopContext);
     GRefPtr<GMainLoop> innermostLoop = adoptGRef(g_main_loop_new(m_runLoopContext.get(), FALSE));
     ASSERT(innermostLoop);
