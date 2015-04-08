@@ -42,7 +42,12 @@ static GMainContext* threadDefaultContext()
 RunLoop::RunLoop()
 {
     // g_main_context_default() doesn't add an extra reference.
-    m_runLoopContext = isMainThread() ? threadDefaultContext() : adoptGRef(g_main_context_new());
+    if (!isMainThread()) {
+        m_runLoopContext = adoptGRef(g_main_context_new());
+        g_main_context_push_thread_default(m_runLoopContext.get());
+    } else
+        m_runLoopContext = threadDefaultContext();
+
     ASSERT(m_runLoopContext);
     GRefPtr<GMainLoop> innermostLoop = adoptGRef(g_main_loop_new(m_runLoopContext.get(), FALSE));
     ASSERT(innermostLoop);
@@ -115,7 +120,9 @@ void RunLoop::wakeUp()
 
 RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
     : m_runLoop(runLoop)
-    , m_timerSource("[WebKit] RunLoop::Timer", G_PRIORITY_DEFAULT, m_runLoop.m_runLoopContext.get())
+    , m_fireInterval(0)
+    , m_repeating(false)
+    , m_timerSource("[WebKit] RunLoop::Timer", std::bind(&RunLoop::TimerBase::timerFired, this), G_PRIORITY_DEFAULT, m_runLoop.m_runLoopContext.get())
 {
 }
 
@@ -124,19 +131,30 @@ RunLoop::TimerBase::~TimerBase()
     stop();
 }
 
-void RunLoop::TimerBase::start(double fireInterval, bool repeat)
+void RunLoop::TimerBase::start(double fireInterval, bool repeating)
 {
-    m_timerSource.schedule(std::function<bool ()>([this, repeat] { fired(); return repeat; }), std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(fireInterval)));
+    m_fireInterval = fireInterval;
+    m_repeating = repeating;
+    m_timerSource.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(m_fireInterval)));
 }
 
 void RunLoop::TimerBase::stop()
 {
+    m_fireInterval = 0;
+    m_repeating = false;
     m_timerSource.cancel();
 }
 
 bool RunLoop::TimerBase::isActive() const
 {
     return m_timerSource.isScheduled();
+}
+
+void RunLoop::TimerBase::timerFired()
+{
+    fired();
+    if (m_repeating)
+        m_timerSource.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(m_fireInterval)));
 }
 
 } // namespace WTF

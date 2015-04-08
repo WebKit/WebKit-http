@@ -47,20 +47,13 @@ class TextureMapper;
 // A 2D texture that can be the target of software or GL rendering.
 class BitmapTexture : public RefCounted<BitmapTexture> {
 public:
-    enum Flag {
-        NoFlag = 0,
-        SupportsAlpha = 0x01
-    };
-
     enum UpdateContentsFlag {
         UpdateCanModifyOriginalImageData,
         UpdateCannotModifyOriginalImageData
     };
 
-    typedef unsigned Flags;
-
     BitmapTexture()
-        : m_flags(0)
+        : m_hasAlpha(false)
     {
     }
 
@@ -72,13 +65,12 @@ public:
     virtual void updateContents(TextureMapper*, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag);
     virtual void updateContents(const void*, const IntRect& target, const IntPoint& offset, int bytesPerLine, UpdateContentsFlag) = 0;
     virtual bool isValid() const = 0;
-    inline Flags flags() const { return m_flags; }
 
     virtual int bpp() const { return 32; }
-    virtual bool canReuseWith(const IntSize& /* contentsSize */, Flags = 0) { return false; }
-    void reset(const IntSize& size, Flags flags = 0)
+    virtual bool canReuseWith(const IntSize& /* contentsSize */, bool /* hasAlpha */ = 0) { return false; }
+    void reset(const IntSize& size, bool hasAlpha = false)
     {
-        m_flags = flags;
+        m_hasAlpha = hasAlpha;
         m_contentSize = size;
         didReset();
     }
@@ -86,7 +78,7 @@ public:
 
     inline IntSize contentSize() const { return m_contentSize; }
     inline int numberOfBytes() const { return size().width() * size().height() * bpp() >> 3; }
-    inline bool isOpaque() const { return !(m_flags & SupportsAlpha); }
+    inline bool isOpaque() const { return !m_hasAlpha; }
 
     virtual PassRefPtr<BitmapTexture> applyFilters(TextureMapper*, const FilterOperations&) { return this; }
 
@@ -94,7 +86,7 @@ protected:
     IntSize m_contentSize;
 
 private:
-    Flags m_flags;
+    bool m_hasAlpha;
 };
 
 }

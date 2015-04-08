@@ -28,7 +28,11 @@
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #include "ThreadedCompositor.h"
 
+#include <WebCore/GLContextEGL.h>
 #include <WebCore/TransformationMatrix.h>
+#include <WebCore/WaylandDisplayWPE.h>
+#include <cstdio>
+#include <cstdlib>
 #include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
 #include <wtf/StdLibExtras.h>
@@ -56,6 +60,7 @@ public:
         : m_runLoop(RunLoop::current())
         , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
         , m_updateFunction(WTF::move(updateFunction))
+        , m_updateState(UpdateState::Completed)
         , m_lastUpdateTime(0)
     {
     }
@@ -72,21 +77,30 @@ public:
 
     void setUpdateTimer(UpdateTiming timing = Immediate)
     {
-        if (m_updateTimer.isActive())
-            return;
-
-        const static double targetFPS = 60;
-        double nextUpdateTime = 0;
-        if (timing == WaitUntilNextFrame)
-            nextUpdateTime = std::max((1 / targetFPS) - (monotonicallyIncreasingTime() - m_lastUpdateTime), 0.0);
-
-        m_updateTimer.startOneShot(nextUpdateTime);
+        m_updateTimer.startOneShot(0);
     }
 
-    void stopUpdateTimer()
+    void stopUpdates()
     {
-        if (m_updateTimer.isActive())
-            m_updateTimer.stop();
+        m_updateState = UpdateState::Completed;
+        m_updateTimer.stop();
+    }
+
+    void updateCompleted()
+    {
+        RELEASE_ASSERT(&RunLoop::current() == &m_runLoop);
+        switch (m_updateState) {
+        case UpdateState::Completed:
+            ASSERT_NOT_REACHED();
+            break;
+        case UpdateState::InProgress:
+            m_updateState = UpdateState::Completed;
+            break;
+        case UpdateState::UpdateOnCompletion:
+            m_updateState = UpdateState::Completed;
+            updateTimerFired();
+            break;
+        }
     }
 
     RunLoop& runLoop()
@@ -95,9 +109,20 @@ public:
     }
 
 private:
+    enum class UpdateState {
+        Completed,
+        InProgress,
+        UpdateOnCompletion,
+    };
 
     void updateTimerFired()
     {
+        if (m_updateState > UpdateState::Completed) {
+            m_updateState = UpdateState::UpdateOnCompletion;
+            return;
+        }
+
+        m_updateState = UpdateState::InProgress;
         m_updateFunction();
         m_lastUpdateTime = monotonicallyIncreasingTime();
     }
@@ -105,6 +130,7 @@ private:
     RunLoop& m_runLoop;
     RunLoop::Timer<CompositingRunLoop> m_updateTimer;
     std::function<void()> m_updateFunction;
+    UpdateState m_updateState;
 
     double m_lastUpdateTime;
 };
@@ -227,10 +253,14 @@ GLContext* ThreadedCompositor::glContext()
     if (m_context)
         return m_context.get();
 
-    if (!m_nativeSurfaceHandle)
+    RELEASE_ASSERT(WaylandDisplay::instance());
+    m_waylandSurface = WaylandDisplay::instance()->createSurface(IntSize(800, 600));
+    if (!m_waylandSurface)
         return 0;
+    WaylandDisplay::instance()->registerSurface(m_waylandSurface->surface());
+    setNativeSurfaceHandleForCompositing(0);
 
-    m_context = GLContext::createContextForWindow(m_nativeSurfaceHandle, GLContext::sharingContext());
+    m_context = m_waylandSurface->createGLContext();
     return m_context.get();
 }
 
@@ -247,6 +277,8 @@ void ThreadedCompositor::didChangeVisibleRect()
         m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
 
+    if (m_waylandSurface)
+        m_waylandSurface->resize(enclosingIntRect(visibleRect).size());
     scheduleDisplayImmediately();
 }
 
@@ -267,6 +299,7 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
+    wl_callback_add_listener(wl_surface_frame(m_waylandSurface->surface()), &m_frameListener, this);
     glContext()->swapBuffers();
 }
 
@@ -317,7 +350,7 @@ void ThreadedCompositor::runCompositingThread()
 
     m_compositingRunLoop->runLoop().run();
 
-    m_compositingRunLoop->stopUpdateTimer();
+    m_compositingRunLoop->stopUpdates();
     m_scene->purgeGLResources();
 
     {
@@ -339,6 +372,34 @@ void ThreadedCompositor::terminateCompositingThread()
 
     m_terminateRunLoopCondition.wait(m_terminateRunLoopConditionMutex);
 }
+
+static void debugThreadedCompositorFPS()
+{
+    static double lastTime = currentTime();
+    static unsigned frameCount = 0;
+
+    double ct = currentTime();
+    frameCount++;
+
+    if (ct - lastTime >= 5.0) {
+        fprintf(stderr, "ThreadedCompositor: frame callbacks %.2f FPS\n", frameCount / (ct - lastTime));
+        lastTime = ct;
+        frameCount = 0;
+    }
+}
+
+const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
+    // frame
+    [](void* data, struct wl_callback* callback, uint32_t) {
+        static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
+        if (reportFPS)
+            debugThreadedCompositorFPS();
+        wl_callback_destroy(callback);
+
+        auto& threadedCompositor = *static_cast<ThreadedCompositor*>(data);
+        threadedCompositor.m_compositingRunLoop->updateCompleted();
+    }
+};
 
 }
 #endif // USE(COORDINATED_GRAPHICS_THREADED)

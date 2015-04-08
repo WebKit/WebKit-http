@@ -26,7 +26,7 @@
 #include "TextureMapperAnimation.h"
 #include <wtf/CurrentTime.h>
 
-#if USE(TEXTURE_MAPPER)
+#if USE(TEXTURE_MAPPER) && !USE(COORDINATED_GRAPHICS)
 
 namespace WebCore {
 
@@ -605,6 +605,9 @@ void GraphicsLayerTextureMapper::removeAnimation(const String& animationName)
 
 bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
 {
+    if (m_filters == filters)
+        return true;
+
     TextureMapper* textureMapper = m_layer.textureMapper();
     // TextureMapperImageBuffer does not support CSS filters.
     if (!textureMapper || textureMapper->accelerationMode() == TextureMapper::SoftwareMode)

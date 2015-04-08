@@ -42,17 +42,17 @@
 #include <WebCore/PageOverlay.h>
 #include <WebCore/Timer.h>
 #include <wtf/OwnPtr.h>
-#include <wtf/RunLoop.h>
 #include <wtf/Threading.h>
+#include <wtf/gobject/GSourceWrap.h>
 
 namespace WebCore {
-class CoordinatedGraphicsLayerState;
-class CoordinatedGraphicsState;
 class CoordinatedSurface;
 class GraphicsContext;
 class GraphicsLayer;
 class GraphicsLayerFactory;
 class GraphicsLayerFactory;
+struct CoordinatedGraphicsLayerState;
+struct CoordinatedGraphicsState;
 }
 
 namespace WebKit {
@@ -146,7 +146,7 @@ private:
     float m_lastScaleFactor;
     WebCore::IntPoint m_lastScrollPosition;
 
-    RunLoop::Timer<ThreadedCoordinatedLayerTreeHost> m_layerFlushTimer;
+    GSourceWrap::Static m_layerFlushTimer;
     bool m_layerFlushSchedulingEnabled;
 };
 

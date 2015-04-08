@@ -26,9 +26,9 @@ bool WebInspectorServer::platformResourceForPath(const String& path, Vector<char
 
     static std::once_flag flag;
     std::call_once(flag, [] {
-        GModule* resourcesModule = g_module_open("libWPEInspectorResources.so", G_MODULE_BIND_LAZY);
+        GModule* resourcesModule = g_module_open("libWPEWebInspectorResources.so", G_MODULE_BIND_LAZY);
         if (!resourcesModule) {
-            WTFLogAlways("Error loading libWPEInspectorResources.so: %s", g_module_error());
+            WTFLogAlways("Error loading libWPEWebInspectorResources.so: %s", g_module_error());
             return;
         }
 

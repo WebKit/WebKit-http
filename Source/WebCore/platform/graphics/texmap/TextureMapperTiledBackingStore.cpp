@@ -23,6 +23,7 @@
 #include "TextureMapperTiledBackingStore.h"
 
 #include "ImageBuffer.h"
+#include "ImageObserver.h"
 #include "TextureMapper.h"
 
 namespace WebCore {
@@ -39,6 +40,9 @@ void TextureMapperTiledBackingStore::updateContentsFromImageIfNeeded(TextureMapp
         return;
 
     updateContents(textureMapper, m_image.get(), m_image->size(), enclosingIntRect(m_image->rect()), BitmapTexture::UpdateCannotModifyOriginalImageData);
+
+    if (m_image->imageObserver())
+        m_image->imageObserver()->didDraw(m_image.get());
     m_image.clear();
 }
 
@@ -120,7 +124,7 @@ void TextureMapperTiledBackingStore::createOrDestroyTilesIfNeeded(const FloatSiz
             tile.setRect(rect);
 
             if (tile.texture())
-                tile.texture()->reset(enclosingIntRect(tile.rect()).size(), hasAlpha ? BitmapTexture::SupportsAlpha : 0);
+                tile.texture()->reset(enclosingIntRect(tile.rect()).size(), hasAlpha);
             continue;
         }
 

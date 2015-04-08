@@ -65,7 +65,7 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
     , m_notifyAfterScheduledLayerFlush(false)
     , m_isSuspended(false)
     , m_isWaitingForRenderer(false)
-    , m_layerFlushTimer(RunLoop::main(), this, &ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush)
+    , m_layerFlushTimer("[WebKit2] ThreadedCoordinatedLayerTreeHost layerFlushTimer", std::bind(&ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush, this), G_PRIORITY_HIGH_IDLE + 20)
     , m_layerFlushSchedulingEnabled(true)
 {
     m_coordinator = std::make_unique<CompositingCoordinator>(m_webPage->corePage(), this);
@@ -89,7 +89,7 @@ void ThreadedCoordinatedLayerTreeHost::scheduleLayerFlush()
         return;
 
     if (!m_layerFlushTimer.isActive())
-        m_layerFlushTimer.startOneShot(0);
+        m_layerFlushTimer.schedule();
 }
 
 void ThreadedCoordinatedLayerTreeHost::setLayerFlushSchedulingEnabled(bool layerFlushingEnabled)
@@ -221,8 +221,7 @@ void ThreadedCoordinatedLayerTreeHost::scheduleAnimation()
     if (m_layerFlushTimer.isActive())
         return;
 
-    m_layerFlushTimer.startOneShot(m_coordinator->nextAnimationServiceTime());
-    scheduleLayerFlush();
+    m_layerFlushTimer.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(m_coordinator->nextAnimationServiceTime())));
 }
 #endif
 
@@ -246,7 +245,7 @@ void ThreadedCoordinatedLayerTreeHost::setVisibleContentsRect(const FloatRect& r
 
 void ThreadedCoordinatedLayerTreeHost::cancelPendingLayerFlush()
 {
-    m_layerFlushTimer.stop();
+    m_layerFlushTimer.cancel();
 }
 
 void ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush()
