@@ -28,7 +28,6 @@
 
 #if PLATFORM(MAC)
 
-#import "ActionMenuHitTestResult.h"
 #import "AttributedString.h"
 #import "DataReference.h"
 #import "DictionaryPopupInfo.h"
@@ -45,6 +44,7 @@
 #import "WebEvent.h"
 #import "WebEventConversion.h"
 #import "WebFrame.h"
+#import "WebHitTestResult.h"
 #import "WebImage.h"
 #import "WebInspector.h"
 #import "WebPageOverlay.h"
@@ -1017,26 +1017,24 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
 
     MainFrame& mainFrame = corePage()->mainFrame();
     if (!mainFrame.view() || !mainFrame.view()->renderView()) {
-        send(Messages::WebPageProxy::DidPerformActionMenuHitTest(ActionMenuHitTestResult(), forImmediateAction, UserData()));
+        send(Messages::WebPageProxy::DidPerformActionMenuHitTest(WebHitTestResult::Data(), forImmediateAction, false, UserData()));
         return;
     }
 
     IntPoint locationInContentCoordinates = mainFrame.view()->rootViewToContents(roundedIntPoint(locationInViewCooordinates));
     HitTestResult hitTestResult = mainFrame.eventHandler().hitTestResultAtPoint(locationInContentCoordinates);
 
-    m_lastActionMenuHitTestPreventsDefault = false;
+    bool actionMenuHitTestPreventsDefault = false;
     Element* element = hitTestResult.innerElement();
 
     if (forImmediateAction) {
         mainFrame.eventHandler().setImmediateActionStage(ImmediateActionStage::PerformedHitTest);
         if (element)
-            m_lastActionMenuHitTestPreventsDefault = element->dispatchMouseForceWillBegin();
+            actionMenuHitTestPreventsDefault = element->dispatchMouseForceWillBegin();
     }
 
-    ActionMenuHitTestResult actionMenuResult;
+    WebHitTestResult::Data actionMenuResult(hitTestResult, !forImmediateAction);
     actionMenuResult.hitTestLocationInViewCooordinates = locationInViewCooordinates;
-    actionMenuResult.hitTestResult = WebHitTestResult::Data(hitTestResult);
-    actionMenuResult.contentPreventsDefault = m_lastActionMenuHitTestPreventsDefault;
 
     RefPtr<Range> selectionRange = corePage()->focusController().focusedOrMainFrame().selection().selection().firstRange();
 
@@ -1061,19 +1059,6 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     m_lastActionMenuRangeForSelection = lookupRange;
     m_lastActionMenuHitTestResult = hitTestResult;
 
-    if (!forImmediateAction) {
-        if (Image* image = hitTestResult.image()) {
-            RefPtr<SharedBuffer> buffer = image->data();
-            String imageExtension = image->filenameExtension();
-            if (!imageExtension.isEmpty() && buffer) {
-                actionMenuResult.imageSharedMemory = SharedMemory::create(buffer->size());
-                memcpy(actionMenuResult.imageSharedMemory->data(), buffer->data(), buffer->size());
-                actionMenuResult.imageExtension = imageExtension;
-                actionMenuResult.imageSize = buffer->size();
-            }
-        }
-    }
-
     bool pageOverlayDidOverrideDataDetectors = false;
     for (const auto& overlay : mainFrame.pageOverlayController().pageOverlays()) {
         WebPageOverlay* webOverlay = WebPageOverlay::fromCoreOverlay(*overlay);
@@ -1086,7 +1071,7 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
             continue;
 
         pageOverlayDidOverrideDataDetectors = true;
-        actionMenuResult.actionContext = actionContext;
+        actionMenuResult.detectedDataActionContext = actionContext;
 
         Vector<FloatQuad> quads;
         mainResultRange->textQuads(quads);
@@ -1107,8 +1092,8 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     if (!pageOverlayDidOverrideDataDetectors && hitTestResult.innerNode() && hitTestResult.innerNode()->isTextNode()) {
         FloatRect detectedDataBoundingBox;
         RefPtr<Range> detectedDataRange;
-        actionMenuResult.actionContext = DataDetection::detectItemAroundHitTestResult(hitTestResult, detectedDataBoundingBox, detectedDataRange);
-        if (actionMenuResult.actionContext && detectedDataRange) {
+        actionMenuResult.detectedDataActionContext = DataDetection::detectItemAroundHitTestResult(hitTestResult, detectedDataBoundingBox, detectedDataRange);
+        if (actionMenuResult.detectedDataActionContext && detectedDataRange) {
             actionMenuResult.detectedDataBoundingBox = detectedDataBoundingBox;
             actionMenuResult.detectedDataTextIndicator = TextIndicator::createWithRange(*detectedDataRange, textIndicatorTransitionForActionMenu(selectionRange.get(), *detectedDataRange, forImmediateAction, true));
             m_lastActionMenuRangeForSelection = detectedDataRange;
@@ -1118,7 +1103,7 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     RefPtr<API::Object> userData;
     injectedBundleContextMenuClient().prepareForActionMenu(*this, hitTestResult, userData);
 
-    send(Messages::WebPageProxy::DidPerformActionMenuHitTest(actionMenuResult, forImmediateAction, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+    send(Messages::WebPageProxy::DidPerformActionMenuHitTest(actionMenuResult, forImmediateAction, actionMenuHitTestPreventsDefault, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
 PassRefPtr<WebCore::Range> WebPage::lookupTextAtLocation(FloatPoint locationInViewCooordinates, NSDictionary **options)
@@ -1156,18 +1141,28 @@ void WebPage::focusAndSelectLastActionMenuHitTestResult()
     frame->selection().setSelection(position);
 }
 
-void WebPage::immediateActionDidUpdate(float force)
+void WebPage::inputDeviceForceDidChange(float force, int stage)
 {
-    m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionUpdated);
-
     Element* element = m_lastActionMenuHitTestResult.innerElement();
     if (!element)
         return;
 
-    if (!m_lastActionMenuHitTestPreventsDefault)
-        return;
+    float overallForce = stage < 1 ? force : force + stage - 1;
+    element->dispatchMouseForceChanged(overallForce, m_page->mainFrame().eventHandler().lastMouseDownEvent());
 
-    element->dispatchMouseForceChanged(force, m_page->mainFrame().eventHandler().lastMouseDownEvent());
+    if (m_lastForceStage == 1 && stage == 2)
+        element->dispatchMouseForceDown(m_page->mainFrame().eventHandler().lastMouseDownEvent());
+    else if (m_lastForceStage == 2 && stage == 1) {
+        element->dispatchMouseForceUp(m_page->mainFrame().eventHandler().lastMouseDownEvent());
+        element->dispatchMouseForceClick(m_page->mainFrame().eventHandler().lastMouseDownEvent());
+    }
+
+    m_lastForceStage = stage;
+}
+
+void WebPage::immediateActionDidUpdate()
+{
+    m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionUpdated);
 }
 
 void WebPage::immediateActionDidCancel()
@@ -1178,24 +1173,12 @@ void WebPage::immediateActionDidCancel()
     if (!element)
         return;
 
-    if (!m_lastActionMenuHitTestPreventsDefault)
-        return;
-
     element->dispatchMouseForceCancelled(m_page->mainFrame().eventHandler().lastMouseDownEvent());
 }
 
 void WebPage::immediateActionDidComplete()
 {
     m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCompleted);
-
-    Element* element = m_lastActionMenuHitTestResult.innerElement();
-    if (!element)
-        return;
-
-    if (!m_lastActionMenuHitTestPreventsDefault)
-        return;
-
-    element->dispatchMouseForceDown(m_page->mainFrame().eventHandler().lastMouseDownEvent());
 }
 
 void WebPage::dataDetectorsDidPresentUI(PageOverlay::PageOverlayID overlayID)

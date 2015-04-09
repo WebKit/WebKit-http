@@ -58,6 +58,9 @@ typedef NS_ENUM(NSInteger, NEFilterSourceDirection) {
 @end
 
 #if HAVE(MODERN_NE_FILTER_SOURCE)
+
+#define NEFilterSourceOptionsPageData @"PageData"
+
 typedef void (^NEFilterSourceDecisionHandler)(NEFilterSourceStatus, NSDictionary *);
 
 @interface NEFilterSource (WKModernDetails)
@@ -68,6 +71,7 @@ typedef void (^NEFilterSourceDecisionHandler)(NEFilterSourceStatus, NSDictionary
 - (void)finishedLoadingWithDecisionHandler:(NEFilterSourceDecisionHandler)decisionHandler;
 - (void)remediateWithDecisionHandler:(NEFilterSourceDecisionHandler)decisionHandler;
 @end
+
 #endif
 
 #endif

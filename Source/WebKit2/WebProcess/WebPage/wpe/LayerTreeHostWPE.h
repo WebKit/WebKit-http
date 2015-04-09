@@ -72,8 +72,6 @@ private:
     virtual void setNonCompositedContentsNeedDisplayInRect(const WebCore::IntRect&) override;
     virtual void scrollNonCompositedContents(const WebCore::IntRect& scrollRect);
 
-    virtual bool flushPendingLayerChanges();
-
     virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
 
     virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override;
@@ -81,9 +79,8 @@ private:
     // GraphicsLayerClient
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect);
 
-    enum CompositePurpose { ForResize, NotForResize };
-    void compositeLayersToContext(CompositePurpose = NotForResize);
-
+    bool flushPendingLayerChanges();
+    void compositeLayersToContext();
     void flushAndRenderLayers();
     void cancelPendingLayerFlush();
 

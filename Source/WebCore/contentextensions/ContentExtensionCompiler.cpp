@@ -133,7 +133,7 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, const
 
     Vector<SerializedActionByte> actions;
     Vector<unsigned> actionLocations = serializeActions(parsedRuleList, actions);
-    HashSet<uint64_t> universalActionLocations;
+    HashSet<uint64_t, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> universalActionLocations;
 
     CombinedURLFilters combinedURLFilters;
     URLFilterParser urlFilterParser(combinedURLFilters);
@@ -213,6 +213,8 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, const
 #if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
     double dfaBuildTimeEnd = monotonicallyIncreasingTime();
     dataLogF("    Time spent building and compiling the DFAs: %f\n", (dfaBuildTimeEnd - dfaBuildTimeStart));
+    dataLogF("    Bytecode size %zu\n", bytecode.size());
+    dataLogF("    DFA count %zu\n", nfas.size());
 #endif
 
     client.writeBytecode(WTF::move(bytecode));

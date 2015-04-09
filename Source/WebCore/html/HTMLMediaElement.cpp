@@ -4273,6 +4273,14 @@ void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
 
     m_mediaSession->applyMediaPlayerRestrictions(*this);
 
+#if ENABLE(WEB_AUDIO)
+    if (m_audioSourceNode && audioSourceProvider()) {
+        m_audioSourceNode->lock();
+        audioSourceProvider()->setClient(m_audioSourceNode);
+        m_audioSourceNode->unlock();
+    }
+#endif
+
 #if PLATFORM(IOS)
     if (!m_player)
         return;
@@ -4684,7 +4692,7 @@ void HTMLMediaElement::clearMediaPlayer(int flags)
     updateSleepDisabling();
 }
 
-bool HTMLMediaElement::canSuspend() const
+bool HTMLMediaElement::canSuspendForPageCache() const
 {
     return true; 
 }
@@ -4732,7 +4740,7 @@ void HTMLMediaElement::suspend(ReasonForSuspension why)
 
     switch (why)
     {
-        case DocumentWillBecomeInactive:
+        case PageCache:
             stop();
             m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequirePageConsentToResumeMedia);
             break;
@@ -4885,13 +4893,22 @@ void HTMLMediaElement::setWirelessPlaybackTarget(const MediaPlaybackTarget& devi
         m_player->setWirelessPlaybackTarget(device);
 }
 
-bool HTMLMediaElement::canPlayToWirelessPlaybackTarget()
+bool HTMLMediaElement::canPlayToWirelessPlaybackTarget() const
 {
     bool canPlay = m_player && m_player->canPlayToWirelessPlaybackTarget();
 
     LOG(Media, "HTMLMediaElement::canPlayToWirelessPlaybackTarget(%p) - returning %s", this, boolString(canPlay));
 
     return canPlay;
+}
+
+bool HTMLMediaElement::isPlayingToWirelessPlaybackTarget() const
+{
+    bool isPlaying = m_player && m_player->isPlayingToWirelessPlaybackTarget();
+
+    LOG(Media, "HTMLMediaElement::isPlayingToWirelessPlaybackTarget(%p) - returning %s", this, boolString(isPlaying));
+    
+    return isPlaying;
 }
 
 void HTMLMediaElement::startPlayingToPlaybackTarget()

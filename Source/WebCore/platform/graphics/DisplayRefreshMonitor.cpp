@@ -48,7 +48,7 @@ RefPtr<DisplayRefreshMonitor> DisplayRefreshMonitor::create(DisplayRefreshMonito
     if (Optional<RefPtr<DisplayRefreshMonitor>> monitor = client->createDisplayRefreshMonitor(displayID))
         return monitor.value();
 
-    // If ChromeClient returned Nullopt, we'll go ahead and make one of the default type.
+    // If ChromeClient returned Nullopt, we'll make one of the default type.
 
 #if PLATFORM(IOS)
     return DisplayRefreshMonitorIOS::create(displayID);

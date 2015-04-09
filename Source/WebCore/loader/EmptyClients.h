@@ -164,10 +164,6 @@ public:
     virtual std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
 #endif
 
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES) && !PLATFORM(IOS)
-    virtual PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) override;
-#endif
-
     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>) override;
     virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*) override { }
 
@@ -560,6 +556,8 @@ public:
     virtual bool isSpeaking() override { return false; }
     virtual void speak(const String&) override { }
     virtual void stopSpeaking() override { }
+
+    virtual ContextMenuItem shareMenuItem(const HitTestResult&) override { return ContextMenuItem(); }
 
 #if PLATFORM(COCOA)
     virtual void searchWithSpotlight() override { }

@@ -25,6 +25,7 @@
 
 #import "WebCache.h"
 
+#import "WebApplicationCacheInternal.h"
 #import "WebNSObjectExtras.h"
 #import "WebPreferences.h"
 #import "WebSystemInterface.h"
@@ -119,7 +120,7 @@
     [WebView _setCacheModel:cacheModel];
 
     // Empty the application cache.
-    WebCore::ApplicationCacheStorage::singleton().empty();
+    webApplicationCacheStorage().empty();
 
     // Empty the Cross-Origin Preflight cache
     WebCore::CrossOriginPreflightResultCache::singleton().empty();
@@ -201,7 +202,8 @@
     if (!url)
         return nullptr;
     
-    WebCore::CachedResource* cachedResource = WebCore::MemoryCache::singleton().resourceForURL(url);
+    WebCore::ResourceRequest request(url);
+    WebCore::CachedResource* cachedResource = WebCore::MemoryCache::singleton().resourceForRequest(request, WebCore::SessionID::defaultSessionID());
     if (!is<WebCore::CachedImage>(cachedResource))
         return nullptr;
     WebCore::CachedImage& cachedImage = downcast<WebCore::CachedImage>(*cachedResource);

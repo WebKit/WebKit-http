@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006, 2015 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,13 @@
 #if ENABLE(CONTEXT_MENUS)
 
 #include "ContextMenu.h"
+#include "Document.h"
+#include "Frame.h"
+#include "HitTestResult.h"
+#include "Image.h"
+#include "NSMenuSPI.h"
+#include "Node.h"
+#include "URL.h"
 
 namespace WebCore {
 
@@ -40,6 +47,10 @@ static NSMutableArray* menuToArray(NSMenu* menu)
         [itemsArray addObject:[menu itemAtIndex:i]];
 
     return itemsArray;
+}
+
+ContextMenuItem::ContextMenuItem()
+{
 }
 
 ContextMenuItem::ContextMenuItem(NSMenuItem* item)
@@ -95,11 +106,9 @@ ContextMenuItem::~ContextMenuItem()
 {
 }
 
-NSMenuItem* ContextMenuItem::releasePlatformDescription()
+NSMenuItem *ContextMenuItem::platformDescription() const
 {
-    NSMenuItem* item = [m_platformDescription.get() retain];
-    m_platformDescription = 0;
-    return item;
+    return m_platformDescription.get();
 }
 
 ContextMenuItemType ContextMenuItem::type() const
@@ -158,7 +167,7 @@ void ContextMenuItem::setSubMenu(Vector<ContextMenuItem>& subMenuItems)
     NSMenu* subMenu = [[NSMenu alloc] init];
     [subMenu setAutoenablesItems:NO];
     for (unsigned i = 0; i < subMenuItems.size(); ++i)
-        [subMenu addItem:subMenuItems[i].releasePlatformDescription()];
+        [subMenu addItem:subMenuItems[i].platformDescription()];
         
     [m_platformDescription.get() setSubmenu:subMenu];
     [subMenu release];
@@ -185,6 +194,36 @@ bool ContextMenuItem::enabled() const
 bool ContextMenuItem::checked() const
 {
     return [m_platformDescription.get() state] == NSOnState;
+}
+
+ContextMenuItem ContextMenuItem::shareMenuItem(const URL& absoluteLinkURL, const URL& downloadableMediaURL, Image* image, const String& selectedText)
+{
+    if (![[NSMenuItem class] respondsToSelector:@selector(standardShareMenuItemWithItems:)])
+        return ContextMenuItem();
+
+    RetainPtr<NSMutableArray> items = adoptNS([[NSMutableArray alloc] init]);
+
+    if (!absoluteLinkURL.isEmpty())
+        [items addObject:(NSURL *)absoluteLinkURL];
+
+    if (!downloadableMediaURL.isEmpty())
+        [items addObject:(NSURL *)downloadableMediaURL];
+
+    if (image) {
+        NSImage *nsImage = image->getNSImage();
+        if (nsImage)
+            [items addObject:nsImage];
+    }
+
+    if (!selectedText.isEmpty())
+        [items addObject:(NSString *)selectedText];
+
+    if (![items count])
+        return ContextMenuItem();
+
+    ContextMenuItem item([NSMenuItem standardShareMenuItemWithItems:items.get()]);
+    item.setAction(ContextMenuItemTagShareMenu);
+    return item;
 }
 
 } // namespace WebCore

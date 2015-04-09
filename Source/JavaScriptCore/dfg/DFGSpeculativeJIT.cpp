@@ -2268,7 +2268,9 @@ JITCompiler::Jump SpeculativeJIT::jumpForTypedArrayOutOfBounds(Node* node, GPRRe
 {
     if (node->op() == PutByValAlias)
         return JITCompiler::Jump();
-    if (JSArrayBufferView* view = m_jit.graph().tryGetFoldableViewForChild1(node)) {
+    JSArrayBufferView* view = m_jit.graph().tryGetFoldableView(
+        m_state.forNode(m_jit.graph().child(node, 0)).m_value, node->arrayMode());
+    if (view) {
         uint32_t length = view->length();
         Node* indexNode = m_jit.graph().child(node, 1).node();
         if (indexNode->isInt32Constant() && indexNode->asUInt32() < length)
@@ -4848,7 +4850,7 @@ GPRReg SpeculativeJIT::temporaryRegisterForPutByVal(GPRTemporary& temporary, Arr
     return temporary.gpr();
 }
 
-void SpeculativeJIT::compileToStringOnCell(Node* node)
+void SpeculativeJIT::compileToStringOrCallStringConstructorOnCell(Node* node)
 {
     SpeculateCellOperand op1(this, node->child1());
     GPRReg op1GPR = op1.gpr();
@@ -4906,7 +4908,12 @@ void SpeculativeJIT::compileToStringOnCell(Node* node)
             done = m_jit.jump();
             needCall.link(&m_jit);
         }
-        callOperation(operationToStringOnCell, resultGPR, op1GPR);
+        if (node->op() == ToString)
+            callOperation(operationToStringOnCell, resultGPR, op1GPR);
+        else {
+            ASSERT(node->op() == CallStringConstructor);
+            callOperation(operationCallStringConstructorOnCell, resultGPR, op1GPR);
+        }
         if (done.isSet())
             done.link(&m_jit);
         cellResult(resultGPR, node);

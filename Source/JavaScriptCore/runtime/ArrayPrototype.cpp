@@ -753,17 +753,18 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSort(ExecState* exec)
         return JSValue::encode(jsUndefined());
     
     PropertyNameArray nameArray(exec);
-    thisObj->methodTable(exec->vm())->getPropertyNames(thisObj, exec, nameArray, IncludeDontEnumProperties);
+    thisObj->methodTable(exec->vm())->getPropertyNames(thisObj, exec, nameArray, EnumerationMode(DontEnumPropertiesMode::Include));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
     Vector<uint32_t, 0, UnsafeVectorOverflow> keys;
     for (size_t i = 0; i < nameArray.size(); ++i) {
         PropertyName name = nameArray[i];
-        uint32_t index = name.asIndex();
-        if (index == PropertyName::NotAnIndex)
+        Optional<uint32_t> optionalIndex = parseIndex(name);
+        if (!optionalIndex)
             continue;
-        
+
+        uint32_t index = optionalIndex.value();
         JSValue value = getOrHole(thisObj, exec, index);
         if (exec->hadException())
             return JSValue::encode(jsUndefined());

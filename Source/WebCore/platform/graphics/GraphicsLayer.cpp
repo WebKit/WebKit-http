@@ -38,7 +38,7 @@
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 #include <stdio.h>
 #endif
 
@@ -867,7 +867,7 @@ String GraphicsLayer::layerTreeAsText(LayerTreeAsTextBehavior behavior) const
 
 } // namespace WebCore
 
-#ifndef NDEBUG
+#if ENABLE(TREE_DEBUGGING)
 void showGraphicsLayerTree(const WebCore::GraphicsLayer* layer)
 {
     if (!layer)
