@@ -217,94 +217,95 @@ typedef const char* optionString;
     \
     /* Maximum size of a caller for enabling inlining. This is purely to protect us */\
     /* from super long compiles that take a lot of memory. */\
-    v(unsigned, maximumInliningCallerSize, 10000) \
+    v(unsigned, maximumInliningCallerSize, 10000, nullptr) \
     \
-    v(unsigned, maximumVarargsForInlining, 100) \
+    v(unsigned, maximumVarargsForInlining, 100, nullptr) \
     \
-    v(bool, enablePolyvariantCallInlining, true) \
-    v(bool, enablePolyvariantByIdInlining, true) \
+    v(bool, enablePolyvariantCallInlining, true, nullptr) \
+    v(bool, enablePolyvariantByIdInlining, true, nullptr) \
     \
-    v(unsigned, maximumBinaryStringSwitchCaseLength, 50) \
-    v(unsigned, maximumBinaryStringSwitchTotalLength, 2000) \
+    v(unsigned, maximumBinaryStringSwitchCaseLength, 50, nullptr) \
+    v(unsigned, maximumBinaryStringSwitchTotalLength, 2000, nullptr) \
     \
-    v(int32, thresholdForJITAfterWarmUp, 500) \
-    v(int32, thresholdForJITSoon, 100) \
+    v(double, jitPolicyScale, 1.0, "scale JIT thresholds to this specified ratio between 0.0 (compile ASAP) and 1.0 (compile like normal).") \
+    v(int32, thresholdForJITAfterWarmUp, 500, nullptr) \
+    v(int32, thresholdForJITSoon, 100, nullptr) \
     \
-    v(int32, thresholdForOptimizeAfterWarmUp, 1000) \
-    v(int32, thresholdForOptimizeAfterLongWarmUp, 1000) \
-    v(int32, thresholdForOptimizeSoon, 1000) \
-    v(int32, executionCounterIncrementForLoop, 1) \
-    v(int32, executionCounterIncrementForEntry, 15) \
+    v(int32, thresholdForOptimizeAfterWarmUp, 1000, nullptr) \
+    v(int32, thresholdForOptimizeAfterLongWarmUp, 1000, nullptr) \
+    v(int32, thresholdForOptimizeSoon, 1000, nullptr) \
+    v(int32, executionCounterIncrementForLoop, 1, nullptr) \
+    v(int32, executionCounterIncrementForEntry, 15, nullptr) \
     \
-    v(int32, thresholdForFTLOptimizeAfterWarmUp, 100000) \
-    v(int32, thresholdForFTLOptimizeSoon, 1000) \
-    v(int32, ftlTierUpCounterIncrementForLoop, 1) \
-    v(int32, ftlTierUpCounterIncrementForReturn, 15) \
-    v(unsigned, ftlOSREntryFailureCountForReoptimization, 15) \
-    v(unsigned, ftlOSREntryRetryThreshold, 100) \
+    v(int32, thresholdForFTLOptimizeAfterWarmUp, 100000, nullptr) \
+    v(int32, thresholdForFTLOptimizeSoon, 1000, nullptr) \
+    v(int32, ftlTierUpCounterIncrementForLoop, 1, nullptr) \
+    v(int32, ftlTierUpCounterIncrementForReturn, 15, nullptr) \
+    v(unsigned, ftlOSREntryFailureCountForReoptimization, 15, nullptr) \
+    v(unsigned, ftlOSREntryRetryThreshold, 100, nullptr) \
     \
-    v(int32, evalThresholdMultiplier, 10) \
-    v(unsigned, maximumEvalCacheableSourceLength, 256) \
+    v(int32, evalThresholdMultiplier, 10, nullptr) \
+    v(unsigned, maximumEvalCacheableSourceLength, 256, nullptr) \
     \
-    v(bool, randomizeExecutionCountsBetweenCheckpoints, false) \
-    v(int32, maximumExecutionCountsBetweenCheckpointsForBaseline, 1000) \
-    v(int32, maximumExecutionCountsBetweenCheckpointsForUpperTiers, 50000) \
+    v(bool, randomizeExecutionCountsBetweenCheckpoints, false, nullptr) \
+    v(int32, maximumExecutionCountsBetweenCheckpointsForBaseline, 1000, nullptr) \
+    v(int32, maximumExecutionCountsBetweenCheckpointsForUpperTiers, 50000, nullptr) \
     \
-    v(unsigned, likelyToTakeSlowCaseMinimumCount, 20) \
-    v(unsigned, couldTakeSlowCaseMinimumCount, 10) \
+    v(unsigned, likelyToTakeSlowCaseMinimumCount, 20, nullptr) \
+    v(unsigned, couldTakeSlowCaseMinimumCount, 10, nullptr) \
     \
-    v(unsigned, osrExitCountForReoptimization, 100) \
-    v(unsigned, osrExitCountForReoptimizationFromLoop, 5) \
+    v(unsigned, osrExitCountForReoptimization, 100, nullptr) \
+    v(unsigned, osrExitCountForReoptimizationFromLoop, 5, nullptr) \
     \
-    v(unsigned, reoptimizationRetryCounterMax, 0)  \
+    v(unsigned, reoptimizationRetryCounterMax, 0, nullptr)  \
     \
-    v(unsigned, minimumOptimizationDelay, 1) \
-    v(unsigned, maximumOptimizationDelay, 5) \
-    v(double, desiredProfileLivenessRate, 0.75) \
-    v(double, desiredProfileFullnessRate, 0.35) \
+    v(unsigned, minimumOptimizationDelay, 1, nullptr) \
+    v(unsigned, maximumOptimizationDelay, 5, nullptr) \
+    v(double, desiredProfileLivenessRate, 0.75, nullptr) \
+    v(double, desiredProfileFullnessRate, 0.35, nullptr) \
     \
-    v(double, doubleVoteRatioForDoubleFormat, 2) \
-    v(double, structureCheckVoteRatioForHoisting, 1) \
-    v(double, checkArrayVoteRatioForHoisting, 1) \
+    v(double, doubleVoteRatioForDoubleFormat, 2, nullptr) \
+    v(double, structureCheckVoteRatioForHoisting, 1, nullptr) \
+    v(double, checkArrayVoteRatioForHoisting, 1, nullptr) \
     \
-    v(unsigned, minimumNumberOfScansBetweenRebalance, 100) \
-    v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(7)) \
-    v(unsigned, opaqueRootMergeThreshold, 1000) \
-    v(double, minHeapUtilization, 0.8) \
-    v(double, minCopiedBlockUtilization, 0.9) \
-    v(double, minMarkedBlockUtilization, 0.9) \
-    v(unsigned, slowPathAllocsBetweenGCs, 0) \
+    v(unsigned, minimumNumberOfScansBetweenRebalance, 100, nullptr) \
+    v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(7), nullptr) \
+    v(unsigned, opaqueRootMergeThreshold, 1000, nullptr) \
+    v(double, minHeapUtilization, 0.8, nullptr) \
+    v(double, minCopiedBlockUtilization, 0.9, nullptr) \
+    v(double, minMarkedBlockUtilization, 0.9, nullptr) \
+    v(unsigned, slowPathAllocsBetweenGCs, 0, "force a GC on every Nth slow path alloc, where N is specified by this option") \
     \
-    v(double, percentCPUPerMBForFullTimer, 0.0003125) \
-    v(double, percentCPUPerMBForEdenTimer, 0.0025) \
-    v(double, collectionTimerMaxPercentCPU, 0.05) \
+    v(double, percentCPUPerMBForFullTimer, 0.0003125, nullptr) \
+    v(double, percentCPUPerMBForEdenTimer, 0.0025, nullptr) \
+    v(double, collectionTimerMaxPercentCPU, 0.05, nullptr) \
     \
-    v(bool, forceWeakRandomSeed, false) \
-    v(unsigned, forcedWeakRandomSeed, 0) \
+    v(bool, forceWeakRandomSeed, false, nullptr) \
+    v(unsigned, forcedWeakRandomSeed, 0, nullptr) \
     \
-    v(bool, useZombieMode, false) \
-    v(bool, objectsAreImmortal, false) \
-    v(bool, showObjectStatistics, false) \
-    v(bool, showAllocationBacktraces, false) \
+    v(bool, useZombieMode, false, "debugging option to scribble over dead objects with 0xdeadbeef") \
+    v(bool, objectsAreImmortal, false, "debugging option to keep all objects alive forever") \
+    v(bool, showObjectStatistics, false, nullptr) \
+    v(bool, showAllocationBacktraces, false, nullptr) \
     \
-    v(gcLogLevel, logGC, GCLogging::None) \
-    v(bool, disableGC, false) \
-    v(unsigned, gcMaxHeapSize, 0) \
-    v(bool, recordGCPauseTimes, false) \
-    v(bool, logHeapStatisticsAtExit, false) \
-    v(bool, enableTypeProfiler, false) \
-    v(bool, enableControlFlowProfiler, false) \
+    v(gcLogLevel, logGC, GCLogging::None, "debugging option to log GC activity (0 = None, 1 = Basic, 2 = Verbose)") \
+    v(bool, disableGC, false, nullptr) \
+    v(unsigned, gcMaxHeapSize, 0, nullptr) \
+    v(bool, recordGCPauseTimes, false, nullptr) \
+    v(bool, logHeapStatisticsAtExit, false, nullptr) \
+    v(bool, enableTypeProfiler, false, nullptr) \
+    v(bool, enableControlFlowProfiler, false, nullptr) \
     \
-    v(bool, verifyHeap, false) \
-    v(unsigned, numberOfGCCyclesToRecordForVerification, 3) \
+    v(bool, verifyHeap, false, nullptr) \
+    v(unsigned, numberOfGCCyclesToRecordForVerification, 3, nullptr) \
     \
-    v(bool, enableExceptionFuzz, false) \
-    v(unsigned, fireExceptionFuzzAt, 0) \
+    v(bool, enableExceptionFuzz, false, nullptr) \
+    v(unsigned, fireExceptionFuzzAt, 0, nullptr) \
     \
-    v(bool, enableExecutableAllocationFuzz, false) \
-    v(unsigned, fireExecutableAllocationFuzzAt, 0) \
-    v(unsigned, fireExecutableAllocationFuzzAtOrAfter, 0) \
-    v(bool, verboseExecutableAllocationFuzz, false)
+    v(bool, enableExecutableAllocationFuzz, false, nullptr) \
+    v(unsigned, fireExecutableAllocationFuzzAt, 0, nullptr) \
+    v(unsigned, fireExecutableAllocationFuzzAtOrAfter, 0, nullptr) \
+    v(bool, verboseExecutableAllocationFuzz, false, nullptr)
 
 class Options {
 public:
