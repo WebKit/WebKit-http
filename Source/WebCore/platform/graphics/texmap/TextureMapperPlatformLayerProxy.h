@@ -56,7 +56,7 @@ public:
     };
 
     TextureMapperPlatformLayerProxy();
-    virtual ~TextureMapperPlatformLayerProxy() { }
+    virtual ~TextureMapperPlatformLayerProxy();
 
     enum PushOnThread {
         PushOnCompositionThread,

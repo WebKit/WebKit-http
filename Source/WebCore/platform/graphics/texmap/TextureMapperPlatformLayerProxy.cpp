@@ -45,6 +45,12 @@ TextureMapperPlatformLayerProxy::TextureMapperPlatformLayerProxy()
 {
 }
 
+TextureMapperPlatformLayerProxy::~TextureMapperPlatformLayerProxy()
+{
+    if (m_targetLayer)
+        m_targetLayer->setContentsLayer(nullptr);
+}
+
 void TextureMapperPlatformLayerProxy::setCompositor(Compositor* compositor)
 {
 #ifndef NDEBUG
