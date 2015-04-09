@@ -23,8 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+@class ExtensionManagerWindowController;
+
 @interface BrowserAppDelegate : NSObject <NSApplicationDelegate> {
     NSMutableSet *_browserWindowControllers;
+#if WK_API_ENABLED
+    ExtensionManagerWindowController *_extensionManagerWindowController;
+#endif
 
     IBOutlet NSMenuItem *_newWebKit1WindowItem;
     IBOutlet NSMenuItem *_newWebKit2WindowItem;
@@ -33,5 +38,9 @@
 - (void)browserWindowWillClose:(NSWindow *)window;
 
 - (void)didChangeSettings;
+
+#if WK_API_ENABLED
+@property (readonly) WKUserContentController *userContentContoller;
+#endif
 
 @end

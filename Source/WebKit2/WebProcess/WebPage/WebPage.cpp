@@ -71,6 +71,7 @@
 #include "WebEditorClient.h"
 #include "WebEvent.h"
 #include "WebEventConversion.h"
+#include "WebEventFactory.h"
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
 #include "WebFullScreenManager.h"
@@ -339,9 +340,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_pendingNavigationID(0)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
-#endif
-#if PLATFORM(MAC)
-    , m_lastActionMenuHitTestPreventsDefault(false)
 #endif
     , m_mainFrameProgressCompleted(false)
     , m_shouldDispatchFakeMouseMoveEvents(true)
@@ -1494,6 +1492,14 @@ void WebPage::setFixedLayoutSize(const IntSize& size)
     view->setFixedLayoutSize(size);
 }
 
+IntSize WebPage::fixedLayoutSize() const
+{
+    FrameView* view = mainFrameView();
+    if (!view)
+        return IntSize();
+    return view->fixedLayoutSize();
+}
+
 void WebPage::listenForLayoutMilestones(uint32_t milestones)
 {
     if (!m_page)
@@ -1817,16 +1823,11 @@ private:
 #if ENABLE(CONTEXT_MENUS)
 static bool isContextClick(const PlatformMouseEvent& event)
 {
-    if (event.button() == WebCore::RightButton)
-        return true;
-
 #if PLATFORM(COCOA)
-    // FIXME: this really should be about OSX-style UI, not about the Mac port
-    if (event.button() == WebCore::LeftButton && event.ctrlKey())
-        return true;
+    return WebEventFactory::shouldBeHandledAsContextClick(event);
+#else
+    return event.button() == WebCore::RightButton;
 #endif
-
-    return false;
 }
 
 static bool handleContextMenuEvent(const PlatformMouseEvent& platformMouseEvent, WebPage* page)
@@ -2814,6 +2815,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
     
     settings.setNewBlockInsideInlineModelEnabled(store.getBoolValueForKey(WebPreferencesKey::newBlockInsideInlineModelEnabledKey()));
+    settings.setAntialiasedFontDilationEnabled(store.getBoolValueForKey(WebPreferencesKey::antialiasedFontDilationEnabledKey()));
     
     settings.setSubpixelCSSOMElementMetricsEnabled(store.getBoolValueForKey(WebPreferencesKey::subpixelCSSOMElementMetricsEnabledKey()));
 

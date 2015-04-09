@@ -639,7 +639,8 @@ private:
             compileReallocatePropertyStorage();
             break;
         case ToString:
-            compileToString();
+        case CallStringConstructor:
+            compileToStringOrCallStringConstructor();
             break;
         case ToPrimitive:
             compileToPrimitive();
@@ -845,7 +846,6 @@ private:
 
         case PhantomLocal:
         case LoopHint:
-        case TypedArrayWatchpoint:
         case AllocationProfileWatchpoint:
         case MovHint:
         case ZombieHint:
@@ -2104,9 +2104,9 @@ private:
         LBasicBlock wastefulCase = FTL_NEW_BLOCK(m_out, ("wasteful typed array"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("continuation branch"));
         
-        LValue baseAddress = m_out.addPtr(basePtr, JSArrayBufferView::offsetOfMode());
+        LValue mode = m_out.load32(basePtr, m_heaps.JSArrayBufferView_mode);
         m_out.branch(
-            m_out.notEqual(baseAddress , m_out.constIntPtr(WastefulTypedArray)),
+            m_out.notEqual(mode, m_out.constInt32(WastefulTypedArray)),
             unsure(simpleCase), unsure(wastefulCase));
 
         // begin simple case        
@@ -2124,7 +2124,7 @@ private:
         LValue arrayBufferPtr = m_out.loadPtr(butterflyPtr, m_heaps.Butterfly_arrayBuffer);
         LValue dataPtr = m_out.loadPtr(arrayBufferPtr, m_heaps.ArrayBuffer_data);
 
-        ValueFromBlock wastefulOut = m_out.anchor(m_out.sub(dataPtr, vectorPtr));        
+        ValueFromBlock wastefulOut = m_out.anchor(m_out.sub(vectorPtr, dataPtr));
 
         m_out.jump(continuation);
         m_out.appendTo(continuation, lastNext);
@@ -3288,7 +3288,7 @@ private:
                 object, oldStorage, transition->previous, transition->next));
     }
     
-    void compileToString()
+    void compileToStringOrCallStringConstructor()
     {
         switch (m_node->child1().useKind()) {
         case StringObjectUse: {
@@ -3356,9 +3356,9 @@ private:
             m_out.appendTo(notString, continuation);
             LValue operation;
             if (m_node->child1().useKind() == CellUse)
-                operation = m_out.operation(operationToStringOnCell);
+                operation = m_out.operation(m_node->op() == ToString ? operationToStringOnCell : operationCallStringConstructorOnCell);
             else
-                operation = m_out.operation(operationToString);
+                operation = m_out.operation(m_node->op() == ToString ? operationToString : operationCallStringConstructor);
             ValueFromBlock convertedResult = m_out.anchor(vmCall(operation, m_callFrame, value));
             m_out.jump(continuation);
             
@@ -4707,9 +4707,8 @@ private:
 
             LBasicBlock lastNext = m_out.appendTo(checkHole, slowCase);
             LValue doubleValue = m_out.loadDouble(baseIndex(heap, storage, index, m_node->child2()));
-            ValueFromBlock checkHoleResult = m_out.anchor(
-                m_out.doubleNotEqualOrUnordered(doubleValue, doubleValue));
-            m_out.branch(checkHoleResult.value(), rarely(slowCase), usually(continuation));
+            ValueFromBlock checkHoleResult = m_out.anchor(m_out.doubleEqual(doubleValue, doubleValue));
+            m_out.branch(checkHoleResult.value(), usually(continuation), rarely(slowCase));
             
             m_out.appendTo(slowCase, continuation);
             ValueFromBlock slowResult = m_out.anchor(m_out.equal(
@@ -5785,7 +5784,9 @@ private:
     
     LValue typedArrayLength(Edge baseEdge, ArrayMode arrayMode, LValue base)
     {
-        if (JSArrayBufferView* view = m_graph.tryGetFoldableView(baseEdge.node(), arrayMode))
+        JSArrayBufferView* view = m_graph.tryGetFoldableView(
+            m_state.forNode(baseEdge).m_value, arrayMode);
+        if (view)
             return m_out.constInt32(view->length());
         return m_out.load32NonNegative(base, m_heaps.JSArrayBufferView_length);
     }

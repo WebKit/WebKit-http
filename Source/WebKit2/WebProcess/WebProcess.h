@@ -52,6 +52,10 @@
 #include <WebCore/MachSendRight.h>
 #endif
 
+#if PLATFORM(IOS)
+#include "WebSQLiteDatabaseTracker.h"
+#endif
+
 namespace API {
 class Object;
 }
@@ -374,6 +378,9 @@ private:
     WebCore::Timer m_nonVisibleProcessCleanupTimer;
 
     std::unique_ptr<WebOriginDataManager> m_webOriginDataManager;
+#if PLATFORM(IOS)
+    WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
+#endif
 };
 
 } // namespace WebKit

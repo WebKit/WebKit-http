@@ -128,9 +128,8 @@ bool StringObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName pr
     StringObject* thisObject = jsCast<StringObject*>(cell);
     if (propertyName == exec->propertyNames().length)
         return false;
-    unsigned i = propertyName.asIndex();
-    if (thisObject->internalValue()->canGetIndex(i)) {
-        ASSERT(i != PropertyName::NotAnIndex); // No need for an explicit check, the above test would always fail!
+    Optional<uint32_t> index = parseIndex(propertyName);
+    if (index && thisObject->internalValue()->canGetIndex(index.value())) {
         return false;
     }
     return JSObject::deleteProperty(thisObject, exec, propertyName);
@@ -150,7 +149,7 @@ void StringObject::getOwnPropertyNames(JSObject* object, ExecState* exec, Proper
     int size = thisObject->internalValue()->length();
     for (int i = 0; i < size; ++i)
         propertyNames.add(Identifier::from(exec, i));
-    if (shouldIncludeDontEnumProperties(mode))
+    if (mode.includeDontEnumProperties())
         propertyNames.add(exec->propertyNames().length);
     return JSObject::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
 }

@@ -321,12 +321,10 @@ void WebContextMenuClient::contextMenuItemSelected(ContextMenuItem* item, const 
     SEL selector = @selector(webView:contextMenuItemSelected:forElement:);
     if ([delegate respondsToSelector:selector]) {
         NSDictionary *element = [[WebElementDictionary alloc] initWithHitTestResult:[m_webView page]->contextMenuController().hitTestResult()];
-        NSMenuItem *platformItem = item->releasePlatformDescription();
 
-        CallUIDelegate(m_webView, selector, platformItem, element);
+        CallUIDelegate(m_webView, selector, item->platformDescription(), element);
 
         [element release];
-        [platformItem release];
     }
 }
 
@@ -366,6 +364,26 @@ void WebContextMenuClient::speak(const String& string)
 void WebContextMenuClient::stopSpeaking()
 {
     [NSApp stopSpeaking:nil];
+}
+
+ContextMenuItem WebContextMenuClient::shareMenuItem(const HitTestResult& hitTestResult)
+{
+    if (![[NSMenuItem class] respondsToSelector:@selector(standardShareMenuItemWithItems:)])
+        return ContextMenuItem();
+
+    Node* node = hitTestResult.innerNonSharedNode();
+    if (!node)
+        return ContextMenuItem();
+
+    Frame* frame = node->document().frame();
+    if (!frame)
+        return ContextMenuItem();
+
+    URL downloadableMediaURL;
+    if (!hitTestResult.absoluteMediaURL().isEmpty() && hitTestResult.isDownloadableMedia())
+        downloadableMediaURL = hitTestResult.absoluteMediaURL();
+
+    return ContextMenuItem::shareMenuItem(hitTestResult.absoluteLinkURL(), downloadableMediaURL, hitTestResult.image(), hitTestResult.selectedText());
 }
 
 bool WebContextMenuClient::clientFloatRectForNode(Node& node, FloatRect& rect) const

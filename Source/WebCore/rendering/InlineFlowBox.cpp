@@ -179,14 +179,6 @@ void InlineFlowBox::removeChild(InlineBox* child)
     if (!isDirty())
         dirtyLineBoxes();
 
-    if (child->prevLeafChild() && is<InlineTextBox>(child->prevLeafChild())) {
-        if (is<InlineTextBox>(child))
-            downcast<InlineTextBox>(child->prevLeafChild())->renderer().setContentIsKnownToFollow(downcast<InlineTextBox>(child)->renderer().contentIsKnownToFollow());
-        // FIXME: Handle the case where we remove the last inline box, and it's not a text box. If we're trying to share
-        // expansion opportunites both inside and outside a replaced element (such as for ruby bases), we need to search
-        // outside the current inline box tree to determine if there is content that follows the new last inline item.
-    }
-
     root().childRemoved(child);
 
     if (child == m_firstChild)
@@ -1032,8 +1024,12 @@ void InlineFlowBox::setOverflowFromLogicalRects(const LayoutRect& logicalLayoutO
     setVisualOverflow(visualOverflow, lineTop, lineBottom);
 }
 
-bool InlineFlowBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom)
+bool InlineFlowBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom, HitTestAction hitTestAction)
 {
+    // As long as we don't have an anonymous inline block on our line, we restrict our hit testing only to the foreground phase.
+    if (!hasAnonymousInlineBlock() && hitTestAction != HitTestForeground)
+        return false;
+
     LayoutRect overflowRect(visualOverflowRect(lineTop, lineBottom));
     flipForWritingMode(overflowRect);
     overflowRect.moveBy(accumulatedOffset);
@@ -1064,7 +1060,7 @@ bool InlineFlowBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
                 }
                 culledParent = newParent;
             }
-            if (child->nodeAtPoint(request, result, locationInContainer, accumulatedOffset, lineTop, lineBottom)) {
+            if (child->nodeAtPoint(request, result, locationInContainer, accumulatedOffset, lineTop, lineBottom, hitTestAction)) {
                 renderer().updateHitTestResult(result, locationInContainer.point() - toLayoutSize(accumulatedOffset));
                 return true;
             }
@@ -1125,6 +1121,10 @@ bool InlineFlowBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
 
 void InlineFlowBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, LayoutUnit lineTop, LayoutUnit lineBottom)
 {
+    // As long as we don't have an anonymous inline block on our line, we restrict our painting only to a few phases.
+    if (!hasAnonymousInlineBlock() && (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection && paintInfo.phase != PaintPhaseOutline && paintInfo.phase != PaintPhaseSelfOutline && paintInfo.phase != PaintPhaseChildOutlines && paintInfo.phase != PaintPhaseTextClip && paintInfo.phase != PaintPhaseMask))
+        return;
+
     LayoutRect overflowRect(visualOverflowRect(lineTop, lineBottom));
     overflowRect.inflate(renderer().maximalOutlineSize(paintInfo.phase));
     flipForWritingMode(overflowRect);
@@ -1168,11 +1168,13 @@ void InlineFlowBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
                     paintInfo.outlineObjects->add(&inlineFlow);
             }
         } else if (paintInfo.phase == PaintPhaseMask) {
-            paintMask(paintInfo, paintOffset);
+            if (!hasAnonymousInlineBlock())
+                paintMask(paintInfo, paintOffset);
             return;
         } else {
             // Paint our background, border and box-shadow.
-            paintBoxDecorations(paintInfo, paintOffset);
+            if (!hasAnonymousInlineBlock())
+                paintBoxDecorations(paintInfo, paintOffset);
         }
     }
 

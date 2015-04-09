@@ -62,8 +62,22 @@ ContextMenuItem::ContextMenuItem(ContextMenuAction action, const String& title, 
 {
 }
 
+ContextMenuItem::ContextMenuItem()
+    : m_type(SeparatorType)
+    , m_action(ContextMenuItemTagNoAction)
+    , m_enabled(false)
+    , m_checked(false)
+{
+}
+
 ContextMenuItem::~ContextMenuItem()
 {
+}
+
+bool ContextMenuItem::isNull() const
+{
+    // FIXME: This is a bit of a hack. Cross-platform ContextMenuItem users need a concrete way to track "isNull".
+    return m_action == ContextMenuItemTagNoAction && m_title.isNull() && m_subMenuItems.isEmpty();
 }
 
 void ContextMenuItem::setSubMenu(ContextMenu* subMenu)
@@ -115,6 +129,11 @@ void ContextMenuItem::setEnabled(bool enabled)
 bool ContextMenuItem::enabled() const
 {
     return m_enabled;
+}
+
+ContextMenuItem ContextMenuItem::shareMenuItem(const URL&, const URL&, Image*, const String&)
+{
+    return ContextMenuItem(SubmenuType, ContextMenuItemTagShareMenu, emptyString());
 }
 
 } // namespace WebCore

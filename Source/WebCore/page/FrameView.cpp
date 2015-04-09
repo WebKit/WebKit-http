@@ -1313,13 +1313,14 @@ void FrameView::layout(bool allowSubtree)
 
         root->layout();
 #if ENABLE(IOS_TEXT_AUTOSIZING)
-        float minZoomFontSize = frame().settings().minimumZoomFontSize();
-        float visWidth = frame().page()->textAutosizingWidth();
-        if (minZoomFontSize && visWidth && !root->view().printing()) {
-            root->adjustComputedFontSizesOnBlocks(minZoomFontSize, visWidth);    
-            bool needsLayout = root->needsLayout();
-            if (needsLayout)
-                root->layout();
+        if (Page* page = frame().page()) {
+            float minimumZoomFontSize = frame().settings().minimumZoomFontSize();
+            float textAutosizingWidth = page->textAutosizingWidth();
+            if (minimumZoomFontSize && textAutosizingWidth && !root->view().printing()) {
+                root->adjustComputedFontSizesOnBlocks(minimumZoomFontSize, textAutosizingWidth);
+                if (root->needsLayout())
+                    root->layout();
+            }
         }
 #endif
 #if ENABLE(TEXT_AUTOSIZING)
@@ -1489,7 +1490,7 @@ bool FrameView::useSlowRepaints(bool considerOverlap) const
     // m_contentIsOpaque, so don't take the fast path for composited layers
     // if they are a platform widget in order to get painting correctness
     // for transparent layers. See the comment in WidgetMac::paint.
-    if (contentsInCompositedLayer() && !platformWidget())
+    if (usesCompositedScrolling() && !platformWidget())
         return mustBeSlow;
 
     bool isOverlapped = m_isOverlapped && considerOverlap;
@@ -1516,7 +1517,7 @@ void FrameView::updateCanBlitOnScrollRecursively()
     }
 }
 
-bool FrameView::contentsInCompositedLayer() const
+bool FrameView::usesCompositedScrolling() const
 {
     RenderView* renderView = this->renderView();
     if (renderView && renderView->isComposited()) {
@@ -1525,6 +1526,17 @@ bool FrameView::contentsInCompositedLayer() const
             return true;
     }
 
+    return false;
+}
+
+bool FrameView::usesAsyncScrolling() const
+{
+#if ENABLE(ASYNC_SCROLLING)
+    if (Page* page = frame().page()) {
+        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
+            return scrollingCoordinator->coordinatesScrollingForFrameView(*this);
+    }
+#endif
     return false;
 }
 
@@ -1793,7 +1805,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
         return true;
     }
 
-    const bool isCompositedContentLayer = contentsInCompositedLayer();
+    const bool isCompositedContentLayer = usesCompositedScrolling();
 
     // Get the rects of the fixed objects visible in the rectToScroll
     Region regionToUpdate;
@@ -1855,7 +1867,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
 
 void FrameView::scrollContentsSlowPath(const IntRect& updateRect)
 {
-    if (contentsInCompositedLayer()) {
+    if (usesCompositedScrolling()) {
         // FIXME: respect paintsEntireContents()?
         IntRect updateRect = visibleContentRect(LegacyIOSDocumentVisibleRect);
 
@@ -2074,7 +2086,7 @@ void FrameView::setFixedVisibleContentRect(const IntRect& visibleContentRect)
     ScrollView::setFixedVisibleContentRect(visibleContentRect);
     if (offset != scrollOffset()) {
         updateLayerPositionsAfterScrolling();
-        if (frame().page()->settings().acceleratedCompositingForFixedPositionEnabled())
+        if (frame().settings().acceleratedCompositingForFixedPositionEnabled())
             updateCompositingLayersAfterScrolling();
         IntPoint newPosition = scrollPosition();
         scrollAnimator().setCurrentPosition(scrollPosition());
@@ -2113,7 +2125,8 @@ void FrameView::scrollPositionChangedViaPlatformWidgetImpl(const IntPoint& oldPo
 
 void FrameView::scrollPositionChanged(const IntPoint& oldPosition, const IntPoint& newPosition)
 {
-    std::chrono::milliseconds throttlingDelay = frame().page()->chrome().client().eventThrottlingDelay();
+    Page* page = frame().page();
+    auto throttlingDelay = page ? page->chrome().client().eventThrottlingDelay() : std::chrono::milliseconds::zero();
 
     if (throttlingDelay == std::chrono::milliseconds::zero()) {
         m_delayedScrollEventTimer.stop();
@@ -2375,13 +2388,16 @@ void FrameView::loadProgressingStatusChanged()
 
 void FrameView::updateLayerFlushThrottling()
 {
-    ASSERT(frame().isMainFrame());
-    auto& page = *frame().page();
+    Page* page = frame().page();
+    if (!page)
+        return;
 
-    LayerFlushThrottleState::Flags flags = determineLayerFlushThrottleState(page);
+    ASSERT(frame().isMainFrame());
+
+    LayerFlushThrottleState::Flags flags = determineLayerFlushThrottleState(*page);
 
     // See if the client is handling throttling.
-    if (page.chrome().client().adjustLayerFlushThrottling(flags))
+    if (page->chrome().client().adjustLayerFlushThrottling(flags))
         return;
 
     for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
@@ -2406,7 +2422,8 @@ void FrameView::adjustTiledBackingCoverage()
 
 static bool shouldEnableSpeculativeTilingDuringLoading(const FrameView& view)
 {
-    return view.isVisuallyNonEmpty() && !view.frame().page()->progress().isMainLoadProgressing();
+    Page* page = view.frame().page();
+    return page && view.isVisuallyNonEmpty() && !page->progress().isMainLoadProgressing();
 }
 
 void FrameView::enableSpeculativeTilingIfNeeded()
@@ -2940,8 +2957,10 @@ void FrameView::performPostLayoutTasks()
     // Only send layout-related delegate callbacks synchronously for the main frame to
     // avoid re-entering layout for the main frame while delivering a layout-related delegate
     // callback for a subframe.
-    if (frame().isMainFrame())
-        frame().page()->chrome().client().didLayout();
+    if (frame().isMainFrame()) {
+        if (Page* page = frame().page())
+            page->chrome().client().didLayout();
+    }
 #endif
 
 #if ENABLE(FONT_LOAD_EVENTS)
@@ -3236,8 +3255,10 @@ const Pagination& FrameView::pagination() const
     if (m_pagination != Pagination())
         return m_pagination;
 
-    if (frame().isMainFrame())
-        return frame().page()->pagination();
+    if (frame().isMainFrame()) {
+        if (Page* page = frame().page())
+            return page->pagination();
+    }
 
     return m_pagination;
 }
@@ -3385,7 +3406,11 @@ float FrameView::visibleContentScaleFactor() const
     if (!frame().isMainFrame() || !frame().settings().delegatesPageScaling())
         return 1;
 
-    return frame().page()->pageScaleFactor();
+    Page* page = frame().page();
+    if (!page)
+        return 1;
+
+    return page->pageScaleFactor();
 }
 
 void FrameView::setVisibleScrollerThumbRect(const IntRect& scrollerThumb)
@@ -3393,7 +3418,11 @@ void FrameView::setVisibleScrollerThumbRect(const IntRect& scrollerThumb)
     if (!frame().isMainFrame())
         return;
 
-    frame().page()->chrome().client().notifyScrollerThumbIsVisibleInRect(scrollerThumb);
+    Page* page = frame().page();
+    if (!page)
+        return;
+
+    page->chrome().client().notifyScrollerThumbIsVisibleInRect(scrollerThumb);
 }
 
 ScrollableArea* FrameView::enclosingScrollableArea() const
@@ -3491,7 +3520,8 @@ void FrameView::scrollbarStyleChanged(ScrollbarStyle newStyle, bool forceUpdate)
     if (!frame().isMainFrame())
         return;
 
-    frame().page()->chrome().client().recommendedScrollbarStyleDidChange(newStyle);
+    if (Page* page = frame().page())
+        page->chrome().client().recommendedScrollbarStyleDidChange(newStyle);
 
     ScrollView::scrollbarStyleChanged(newStyle, forceUpdate);
 }
@@ -4655,8 +4685,10 @@ void FrameView::setScrollPinningBehavior(ScrollPinningBehavior pinning)
 {
     m_scrollPinningBehavior = pinning;
     
-    if (ScrollingCoordinator* scrollingCoordinator = frame().page()->scrollingCoordinator())
-        scrollingCoordinator->setScrollPinningBehavior(pinning);
+    if (Page* page = frame().page()) {
+        if (auto* scrollingCoordinator = page->scrollingCoordinator())
+            scrollingCoordinator->setScrollPinningBehavior(pinning);
+    }
     
     updateScrollbars(scrollOffset());
 }

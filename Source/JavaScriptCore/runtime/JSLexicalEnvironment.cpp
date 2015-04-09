@@ -108,11 +108,11 @@ void JSLexicalEnvironment::getOwnNonIndexPropertyNames(JSObject* object, ExecSta
         ConcurrentJITLocker locker(thisObject->symbolTable()->m_lock);
         SymbolTable::Map::iterator end = thisObject->symbolTable()->end(locker);
         for (SymbolTable::Map::iterator it = thisObject->symbolTable()->begin(locker); it != end; ++it) {
-            if (it->value.getAttributes() & DontEnum && !shouldIncludeDontEnumProperties(mode))
+            if (it->value.getAttributes() & DontEnum && !mode.includeDontEnumProperties())
                 continue;
             if (!thisObject->isValid(it->value.scopeOffset()))
                 continue;
-            if (it->key->isSymbol())
+            if (it->key->isSymbol() && !mode.includeSymbolProperties())
                 continue;
             propertyNames.add(Identifier::fromUid(exec, it->key.get()));
         }
