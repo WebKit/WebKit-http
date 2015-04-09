@@ -54,6 +54,7 @@ list(APPEND WebKit2_SOURCES
     Shared/linux/WebMemorySamplerLinux.cpp
     Shared/soup/WebCoreArgumentCodersSoup.cpp
     Shared/unix/ChildProcessMain.cpp
+    Shared/wpe/NativeContextMenuItemWPE.cpp
     Shared/wpe/NativeWebKeyboardEventWPE.cpp
     Shared/wpe/NativeWebMouseEventWPE.cpp
     Shared/wpe/NativeWebTouchEventWPE.cpp

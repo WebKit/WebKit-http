@@ -32,6 +32,12 @@
 
 namespace WebCore {
 
+ContextMenuItem::ContextMenuItem()
+    : m_platformDescription(nullptr)
+{
+    notImplemented();
+}
+
 ContextMenuItem::ContextMenuItem(PlatformMenuItemDescription item)
     : m_platformDescription(item)
 {
@@ -65,13 +71,6 @@ ContextMenuItem::ContextMenuItem(ContextMenuAction, const String&, bool, bool, V
 ContextMenuItem::~ContextMenuItem()
 {
     notImplemented();
-}
-
-PlatformMenuItemDescription ContextMenuItem::releasePlatformDescription()
-{
-    PlatformMenuItemDescription platformDescription = m_platformDescription;
-    m_platformDescription = nullptr;
-    return platformDescription;
 }
 
 ContextMenuItemType ContextMenuItem::type() const
@@ -143,6 +142,11 @@ bool ContextMenuItem::enabled() const
 void ContextMenuItem::setEnabled(bool)
 {
     notImplemented();
+}
+
+ContextMenuItem ContextMenuItem::shareMenuItem(const URL&, const URL&, Image*, const String&)
+{
+    return ContextMenuItem(SubmenuType, ContextMenuItemTagShareMenu, emptyString());
 }
 
 } // namespace WebCore
