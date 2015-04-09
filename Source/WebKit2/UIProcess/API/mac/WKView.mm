@@ -35,7 +35,6 @@
 
 #import "APILegacyContextHistoryClient.h"
 #import "APIPageConfiguration.h"
-#import "ActionMenuHitTestResult.h"
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
 #import "DataReference.h"
@@ -66,8 +65,10 @@
 #import "WKTextInputWindowController.h"
 #import "WKViewInternal.h"
 #import "WKViewPrivate.h"
+#import "WKWebView.h"
 #import "WebBackForwardList.h"
 #import "WebEventFactory.h"
+#import "WebHitTestResult.h"
 #import "WebInspectorProxy.h"
 #import "WebKit2Initialize.h"
 #import "WebPage.h"
@@ -128,6 +129,7 @@
 @interface NSWindow (WKNSWindowDetails)
 - (NSRect)_intersectBottomCornersWithRect:(NSRect)viewRect;
 - (void)_maskRoundedBottomCorners:(NSRect)clipRect;
+- (id)_newFirstResponderAfterResigning;
 @end
 
 #if USE(ASYNC_NSTEXTINPUTCLIENT)
@@ -219,6 +221,7 @@ struct WKViewInterpretKeyEventsParameters {
 
     bool _inBecomeFirstResponder;
     bool _inResignFirstResponder;
+    BOOL _willBecomeFirstResponderAgain;
     NSEvent *_mouseDownEvent;
     BOOL _ignoringMouseDraggedEvents;
 
@@ -441,6 +444,13 @@ struct WKViewInterpretKeyEventsParameters {
 
 - (BOOL)becomeFirstResponder
 {
+    // If we just became first responder again, there is no need to do anything,
+    // since resignFirstResponder has correctly detected this situation.
+    if (_data->_willBecomeFirstResponderAgain) {
+        _data->_willBecomeFirstResponderAgain = NO;
+        return YES;
+    }
+
     NSSelectionDirection direction = [[self window] keyViewSelectionDirection];
 
     _data->_inBecomeFirstResponder = true;
@@ -464,6 +474,17 @@ struct WKViewInterpretKeyEventsParameters {
 
 - (BOOL)resignFirstResponder
 {
+#if WK_API_ENABLED
+    // Predict the case where we are losing first responder status only to
+    // gain it back again. We want resignFirstResponder to do nothing in that case.
+    id nextResponder = [[self window] _newFirstResponderAfterResigning];
+    if ([nextResponder isKindOfClass:[WKWebView class]] && self.superview == nextResponder) {
+        _data->_willBecomeFirstResponderAgain = YES;
+        return YES;
+    }
+#endif
+
+    _data->_willBecomeFirstResponderAgain = NO;
     _data->_inResignFirstResponder = true;
 
 #if USE(ASYNC_NSTEXTINPUTCLIENT)
@@ -1392,6 +1413,14 @@ NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDraggedInternal)
     [self mouseDraggedInternal:event];
 }
 
+- (void)pressureChangeWithEvent:(NSEvent *)event
+{
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+    if (event.phase == NSEventPhaseChanged || event.phase == NSEventPhaseBegan || event.phase == NSEventPhaseEnded)
+        _data->_page->inputDeviceForceDidChange(event.pressure, event.stage);
+#endif
+}
+
 - (BOOL)acceptsFirstMouse:(NSEvent *)event
 {
     // There's a chance that responding to this event will run a nested event loop, and
@@ -1601,7 +1630,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     // insertText can be called for several reasons:
     // - If it's from normal key event processing (including key bindings), we save the action to perform it later.
-    // - If it's from an input method, then we should go ahead and insert the text now.
+    // - If it's from an input method, then we should insert the text now.
     // - If it's sent outside of keyboard event processing (e.g. from Character Viewer, or when confirming an inline input area with a mouse),
     // then we also execute it immediately, as there will be no other chance.
     Vector<KeypressCommand>* keypressCommands = _data->_collectedKeypressCommands;
@@ -2071,7 +2100,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     // insertText can be called for several reasons:
     // - If it's from normal key event processing (including key bindings), we may need to save the action to perform it later.
-    // - If it's from an input method, then we should go ahead and insert the text now. We assume it's from the input method if we have marked text.
+    // - If it's from an input method, then we should insert the text now. We assume it's from the input method if we have marked text.
     // FIXME: In theory, this could be wrong for some input methods, so we should try to find another way to determine if the call is from the input method.
     // - If it's sent outside of keyboard event processing (e.g. from Character Viewer, or when confirming an inline input area with a mouse),
     // then we also execute it immediately, as there will be no other chance.
@@ -3387,7 +3416,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     }
 
     if (inputSourceChanged) {
-        // The input source changed, go ahead and discard any entered text.
+        // The input source changed; discard any entered text.
         [[WKTextInputWindowController sharedTextInputWindowController] unmarkText];
     }
 
@@ -3924,10 +3953,10 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [_data->_actionMenuController didCloseMenu:menu withEvent:event];
 }
 
-- (void)_didPerformActionMenuHitTest:(const ActionMenuHitTestResult&)hitTestResult forImmediateAction:(BOOL)forImmediateAction userData:(API::Object*)userData
+- (void)_didPerformActionMenuHitTest:(const WebHitTestResult::Data&)hitTestResult forImmediateAction:(BOOL)forImmediateAction contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData
 {
     if (forImmediateAction)
-        [_data->_immediateActionController didPerformActionMenuHitTest:hitTestResult userData:userData];
+        [_data->_immediateActionController didPerformActionMenuHitTest:hitTestResult contentPreventsDefault:contentPreventsDefault userData:userData];
     else
         [_data->_actionMenuController didPerformActionMenuHitTest:hitTestResult userData:userData];
 }
@@ -4312,6 +4341,26 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (CGFloat)_overrideDeviceScaleFactor
 {
     return _data->_overrideDeviceScaleFactor;
+}
+
+- (BOOL)_isFixedLayoutEnabled
+{
+    return _data->_page->useFixedLayout();
+}
+
+- (void)_setFixedLayoutEnabled:(BOOL)fixedLayoutEnabled
+{
+    _data->_page->setUseFixedLayout(fixedLayoutEnabled);
+}
+
+- (CGSize)_fixedLayoutSize
+{
+    return _data->_page->fixedLayoutSize();
+}
+
+- (void)_setFixedLayoutSize:(CGSize)fixedLayoutSize
+{
+    _data->_page->setFixedLayoutSize(expandedIntSize(FloatSize(fixedLayoutSize)));
 }
 
 - (void)_dispatchSetTopContentInset

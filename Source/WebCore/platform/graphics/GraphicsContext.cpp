@@ -257,6 +257,11 @@ void GraphicsContext::setShouldSmoothFonts(bool shouldSmoothFonts)
     setPlatformShouldSmoothFonts(shouldSmoothFonts);
 }
 
+void GraphicsContext::setAntialiasedFontDilationEnabled(bool antialiasedFontDilationEnabled)
+{
+    m_state.antialiasedFontDilationEnabled = antialiasedFontDilationEnabled;
+}
+
 void GraphicsContext::setStrokePattern(Ref<Pattern>&& pattern)
 {
     m_state.strokeGradient.clear();
@@ -562,8 +567,7 @@ void GraphicsContext::setCompositeOperation(CompositeOperator compositeOperation
 }
 
 #if !USE(CG)
-// Implement this if you want to go ahead and push the drawing mode into your native context
-// immediately.
+// Implement this if you want to go push the drawing mode into your native context immediately.
 void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags)
 {
 }

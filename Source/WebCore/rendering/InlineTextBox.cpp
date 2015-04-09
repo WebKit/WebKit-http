@@ -389,7 +389,8 @@ bool InlineTextBox::isLineBreak() const
     return renderer().style().preserveNewline() && len() == 1 && (*renderer().text())[start()] == '\n';
 }
 
-bool InlineTextBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit /* lineTop */, LayoutUnit /*lineBottom*/)
+bool InlineTextBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit /* lineTop */, LayoutUnit /*lineBottom*/,
+    HitTestAction /*hitTestAction*/)
 {
     if (!visibleToHitTesting())
         return false;
@@ -1391,6 +1392,27 @@ TextRun InlineTextBox::constructTextRun(const RenderStyle& style, const FontCasc
     run.setCharactersLength(maximumLength);
     ASSERT(run.charactersLength() >= run.length());
     return run;
+}
+
+ExpansionBehavior InlineTextBox::expansionBehavior() const
+{
+    ExpansionBehavior leadingBehavior;
+    if (forceLeadingExpansion())
+        leadingBehavior = ForceLeadingExpansion;
+    else if (canHaveLeadingExpansion())
+        leadingBehavior = AllowLeadingExpansion;
+    else
+        leadingBehavior = ForbidLeadingExpansion;
+
+    ExpansionBehavior trailingBehavior;
+    if (forceTrailingExpansion())
+        trailingBehavior = ForceTrailingExpansion;
+    else if (expansion() && nextLeafChild() && !nextLeafChild()->isLineBreak())
+        trailingBehavior = AllowTrailingExpansion;
+    else
+        trailingBehavior = ForbidTrailingExpansion;
+
+    return leadingBehavior | trailingBehavior;
 }
 
 #if ENABLE(TREE_DEBUGGING)

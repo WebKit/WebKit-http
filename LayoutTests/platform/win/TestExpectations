@@ -2310,6 +2310,8 @@ http/tests/xmlhttprequest/web-apps/013.html
 # Flaky
 http/tests/cache/network-error-during-revalidation.html [ Pass Crash ]
 http/tests/xmlhttprequest/workers/methods.html [ Pass Crash ]
+
+webkit.org/b/143460 http/tests/contentfiltering/block-after-redirect.html [ ImageOnlyFailure ]
 ################################################################################
 #################            End HTTP Issues             #######################
 ################################################################################
@@ -2350,6 +2352,11 @@ webkit.org/b/128979 [ Release ] inspector-protocol/dom/getAccessibilityPropertie
 [ Debug ] inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html [ Skip ] # Debug Assertion
 inspector-protocol/debugger/removeBreakpoint.html [ Skip ] # Crashing
 inspector-protocol/debugger/searchInContent-linebreaks.html [ Pass Crash ] # Flaky
+
+webkit.org/b/143542 inspector-protocol/debugger/setPauseOnExceptions-all.html [ Failure ]
+webkit.org/b/143542 inspector-protocol/debugger/setPauseOnExceptions-none.html [ Failure ]
+webkit.org/b/143542 inspector-protocol/debugger/setPauseOnExceptions-uncaught.html [ Failure ]
+webkit.org/b/143548 inspector/console/console-api.html [ Skip ] # Timeout
 ################################################################################
 #################        End Inspector Issues               ####################
 ################################################################################
@@ -3066,3 +3073,15 @@ contentfiltering [ Skip ]
 
 # Started failing recently.
 webkit.org/b/143275 accessibility/aria-hidden-hides-all-elements.html [ Pass Failure ]
+
+# Broken Ruby tests
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-3.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
+
+webkit.org/b/143420 fast/fixed-layout/fixed-layout.html [ Skip ]
+
+webkit.org/b/143543 fast/backgrounds/selection-background-color-of-list-style.html [ Failure ]
+webkit.org/b/143543 fast/backgrounds/selection-background-color-of-image-list-style.html [ Failure ]

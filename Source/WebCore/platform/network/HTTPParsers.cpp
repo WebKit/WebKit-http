@@ -223,7 +223,7 @@ bool parseHTTPRefresh(const String& refresh, bool fromHttpEquivMeta, double& del
             
             // https://bugs.webkit.org/show_bug.cgi?id=27868
             // Sometimes there is no closing quote for the end of the URL even though there was an opening quote.
-            // If we looped over the entire alleged URL string back to the opening quote, just go ahead and use everything
+            // If we looped over the entire alleged URL string back to the opening quote, just use everything
             // after the opening quote instead.
             if (urlEndPos == urlStartPos)
                 urlEndPos = len;
@@ -234,9 +234,14 @@ bool parseHTTPRefresh(const String& refresh, bool fromHttpEquivMeta, double& del
     }
 }
 
-double parseDate(const String& value)
+Optional<std::chrono::system_clock::time_point> parseHTTPDate(const String& value)
 {
-    return parseDateFromNullTerminatedCharacters(value.utf8().data());
+    double dateInMillisecondsSinceEpoch = parseDateFromNullTerminatedCharacters(value.utf8().data());
+    if (!std::isfinite(dateInMillisecondsSinceEpoch))
+        return { };
+    // This assumes system_clock epoch equals Unix epoch which is true for all implementations but unspecified.
+    // FIXME: The parsing function should be switched to std::chrono too.
+    return std::chrono::system_clock::time_point(std::chrono::milliseconds(static_cast<long long>(dateInMillisecondsSinceEpoch)));
 }
 
 // FIXME: This function doesn't comply with RFC 6266.

@@ -1,3 +1,443 @@
+2015-04-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Unreviewed test fix after r182584
+        https://bugs.webkit.org/show_bug.cgi?id=143452
+
+        Put both of these tests back to their original state now that the underlying
+        problem is fixed.
+
+        * TestWebKitAPI/Tests/WebKit2/MenuTypesForMouseEvents.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/mac/MenuTypesForMouseEvents.mm:
+        (TestWebKitAPI::TEST):
+
+2015-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        run-jsc-benchmarks geomean of preferred means shouldn't print the VMs header twice
+        https://bugs.webkit.org/show_bug.cgi?id=143553
+
+        Reviewed by Ryosuke Niwa.
+        
+        Remove the spurious printVMs left over from an earlier change.
+
+        * Scripts/run-jsc-benchmarks:
+
+2015-04-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Unreviewed test fix after r182581
+
+        The behavior of control-left-click is controlled by a system preference.
+        Our test bots have this turned off.
+
+        * TestWebKitAPI/Tests/WebKit2/MenuTypesForMouseEvents.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/mac/MenuTypesForMouseEvents.mm:
+        (TestWebKitAPI::TEST):
+
+2015-04-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] WebKit is not honoring OS preferences for secondary click behaviors
+        https://bugs.webkit.org/show_bug.cgi?id=143452
+        <rdar://problem/20437483>
+
+        Reviewed by Tim Horton.
+
+        Add a new API test to confirm that Cocoa mouse button press events are properly
+        tagged with the desired menu behavior (i.e., 'None', 'Context', or 'Action'.)
+
+        The WK2 test dispatches mouse down events to a PlatformWebView, and checks with
+        some registered event handlers that the expected button press and context menu
+        events are received.
+
+        The WK1 unit test creates an NSEvent with the desired button press state, and then
+        uses WebCore::PlatformEventFactory::createPlatformMouseEvent to create a WebCore event.
+        We check the resulting PlatformMouseEvent for proper state.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add new test files.
+        * TestWebKitAPI/Tests/WebKit2/MenuTypesForMouseEvents.cpp: Added.
+        (TestWebKitAPI::buildAndPerformTest): Helper function to build/run an individual test.
+        * TestWebKitAPI/Tests/WebKit2/mouse-button-listener.html: Added.
+        * TestWebKitAPI/Tests/mac/MenuTypesForMouseEvents.mm: Added.
+        (TestWebKitAPI::canCallMenuTypeForEvent): Helper function.
+        (TestWebKitAPI::buildAndPerformTest): Helper function to build/run an individual test.
+        * TestWebKitAPI/mac/PlatformWebViewMac.mm:
+        (TestWebKitAPI::PlatformWebView::simulateButtonClick): Added method to support firing
+        mouse down events.
+        * TestWebKitAPI/mac/PlatformWebViewMac.h:
+
+2015-04-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Add pango to jhbuild-optional.modules
+        https://bugs.webkit.org/show_bug.cgi?id=143537
+
+        Reviewed by Martin Robinson.
+
+        * gtk/jhbuild-optional.modules: Add pango.
+
+2015-04-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [XvfbDriver] Regular expression used to match running X servers fails on Fedora 22.
+        https://bugs.webkit.org/show_bug.cgi?id=143530
+
+        Reviewed by Žan Doberšek.
+
+        Assume that the default value for display (:0) is reserved and start checking on :1
+        Adjust webkitpy test and include two new test cases for this bug (display number not specified)
+        and for X server named Xorg.bin (previous bug 1376599)
+
+        * Scripts/webkitpy/port/xvfbdriver.py:
+        (XvfbDriver._next_free_display)
+        * Scripts/webkitpy/port/xvfbdriver_unittest.py:
+        (XvfbDriverTest.test_start_no_pixel_tests):
+        (XvfbDriverTest.test_start_pixel_tests):
+        (XvfbDriverTest.test_start_arbitrary_worker_number):
+        (XvfbDriverTest.test_next_free_display):
+        (XvfbDriverTest.test_start_next_worker):
+2015-04-08  Alex Christensen  <achristensen@webkit.org>
+
+        Block popups from content extensions.
+        https://bugs.webkit.org/show_bug.cgi?id=143497
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        Added popup test.
+
+2015-04-08  Alex Christensen  <achristensen@webkit.org> and Patrick Gansterer  <paroga@webkit.org>
+
+        Add CMake build system for WinCairo port.
+        https://bugs.webkit.org/show_bug.cgi?id=115944
+
+        Reviewed by Chris Dumez.
+
+        * CMakeLists.txt:
+        * WinLauncher/CMakeLists.txt: Added.
+
+2015-04-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Crash in DOMObjectCache when a wrapped object owned by the cache is unreffed by the user
+        https://bugs.webkit.org/show_bug.cgi?id=143521
+
+        Reviewed by Martin Robinson.
+
+        Add a way to detect unexpected web process crashes to WebViewTest,
+        and a test case to testDOMCache to trigger the crash.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMNodeTest.cpp:
+        (WebKitDOMNodeTest::testDOMCache):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebExtensions.cpp:
+        (testWebKitWebViewProcessCrashed):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::WebViewTest):
+        (WebViewTest::webProcessCrashed):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.h:
+
+2015-04-07  Alexey Proskuryakov  <ap@apple.com>
+
+        PageVisibilityStateWithWindowChanges should only be enabled on Yosemite
+        rdar://problem/20461342
+
+        * TestWebKitAPI/Tests/mac/PageVisibilityStateWithWindowChanges.mm:
+
+2015-04-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r182511.
+        https://bugs.webkit.org/show_bug.cgi?id=143507
+
+        caused debug test failures (Requested by alexchristensen on
+        #webkit).
+
+        Reverted changeset:
+
+        "Block popups from content extensions."
+        https://bugs.webkit.org/show_bug.cgi?id=143497
+        http://trac.webkit.org/changeset/182511
+
+2015-04-07  Alex Christensen  <achristensen@webkit.org>
+
+        Block popups from content extensions.
+        https://bugs.webkit.org/show_bug.cgi?id=143497
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        Added popup test.
+
+2015-04-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        Get the features.json files ready for open contributions
+        https://bugs.webkit.org/show_bug.cgi?id=143436
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checkers/jsonchecker.py:
+        (JSONFeaturesChecker.check):
+        Extend the syntax checking a bit, but leave everything non-mandatory
+        very loose until we figure what fields are important.
+
+2015-04-07  Tim Horton  <timothy_horton@apple.com>
+
+        Expose and test fixedLayoutSize via modern WebKit SPI
+        https://bugs.webkit.org/show_bug.cgi?id=143500
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FixedLayoutSize.mm: Added.
+        (-[FixedLayoutSizeNavigationDelegate webView:didFinishNavigation:]):
+        (TEST):
+        Add a test that verifies that fixedLayoutSize works at all, that
+        it persists through a navigation, and that turning it back off reverts to
+        laying out at the size of the view.
+
+2015-04-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-04-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Bots complain about missing /etc/catalog
+        https://bugs.webkit.org/show_bug.cgi?id=143484
+
+        Reviewed by Chris Dumez.
+
+        The libxml2 build on Mac, iOS, and Windows does not provide the set
+        of default catalog files. We do not actually need these for our
+        purposes, but we get warnings and some bot flakiness because they
+        are not present.
+
+        We can avoid both problems the same way the Mac and iOS ports do,
+        by setting the XML_CATALOG_FILES environment variable to 'empty string',
+        which avoid the warnings and bot problems.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.setup_environ_for_server): Added.
+
+2015-04-06  Sam Weinig  <sam@webkit.org>
+
+        Use content extensions in MiniBrowser.
+        https://bugs.webkit.org/show_bug.cgi?id=143446
+
+        Reviewed by Alex Christensen.
+
+        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj:
+        * MiniBrowser/mac/AppDelegate.h:
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate init]):
+        (-[BrowserAppDelegate showExtensionsManager:]):
+        (-[BrowserAppDelegate userContentContoller]):
+        * MiniBrowser/mac/ExtensionManagerWindowController.h: Added.
+        * MiniBrowser/mac/ExtensionManagerWindowController.m: Added.
+        (-[ExtensionManagerWindowController init]):
+        (-[ExtensionManagerWindowController windowDidLoad]):
+        (-[ExtensionManagerWindowController add:]):
+        (-[ExtensionManagerWindowController remove:]):
+        * MiniBrowser/mac/ExtensionManagerWindowController.xib: Added.
+        * MiniBrowser/mac/MainMenu.xib:
+
+2015-04-07  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        web-platform-tests server should retrieve the modules file relatively to its docroot path
+        https://bugs.webkit.org/show_bug.cgi?id=142742
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._install_modules): Compute the modules description file path according wpt server doc root path.
+
+2015-04-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r182445.
+        https://bugs.webkit.org/show_bug.cgi?id=143459
+
+        broke 32 bit build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Use content extensions in MiniBrowser."
+        https://bugs.webkit.org/show_bug.cgi?id=143446
+        http://trac.webkit.org/changeset/182445
+
+2015-04-06  Sam Weinig  <sam@webkit.org>
+
+        Use content extensions in MiniBrowser.
+        https://bugs.webkit.org/show_bug.cgi?id=143446
+
+        Reviewed by Alex Christensen.
+
+        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj:
+        * MiniBrowser/mac/AppDelegate.h:
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate init]):
+        (-[BrowserAppDelegate showExtensionsManager:]):
+        (-[BrowserAppDelegate userContentContoller]):
+        * MiniBrowser/mac/ExtensionManagerWindowController.h: Added.
+        * MiniBrowser/mac/ExtensionManagerWindowController.m: Added.
+        (-[ExtensionManagerWindowController init]):
+        (-[ExtensionManagerWindowController windowDidLoad]):
+        (-[ExtensionManagerWindowController add:]):
+        (-[ExtensionManagerWindowController remove:]):
+        * MiniBrowser/mac/ExtensionManagerWindowController.xib: Added.
+        * MiniBrowser/mac/MainMenu.xib:
+
+2015-04-06  Michael Catanzaro  <mcatanzaro@gnome.org>
+
+        [GTK] install-dependencies should prefer dnf to yum
+        https://bugs.webkit.org/show_bug.cgi?id=143441
+
+        Reviewed by Martin Robinson.
+
+        Test for the existance of dnf before yum, and only try to use yum if dnf does not exist.
+
+        * gtk/install-dependencies:
+
+2015-04-06  Andy Estes  <aestes@apple.com>
+
+        [iOS] 'make clean' fails in Tools/WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=143455
+
+        Reviewed by Dan Bernstein.
+
+        This Makefile adds '-target WebKitTestRunnerApp' to OTHER_OPTIONS during iOS builds, but the top-level
+        Makefile.shared adds '-alltargets' for clean builds, and xcodebuild does not allow both -target and -alltargets.
+
+        * WebKitTestRunner/Makefile: Don't add '-target WebKitTestRunerApp' to OTHER_OPTIONS on clean builds.
+
+2015-04-06  Alexey Proskuryakov  <ap@apple.com>
+
+        WebKit1.SetAndUpdateCacheModelPreferencesChangeMix fails on some machines
+        https://bugs.webkit.org/show_bug.cgi?id=143450
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/mac/SetAndUpdateCacheModel.mm: (TestWebKitAPI::TEST):
+        Make sure that the view is actually closed, regardless of anything else that happens beneath.
+        Also, removed unnecessary get() calls.
+
+2015-04-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Reduce the dependency on Flash in regression tests
+        https://bugs.webkit.org/show_bug.cgi?id=143391
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::decidePolicyForPluginLoad):
+        Only allow QuickTime and the test plug-in.
+
+2015-04-06  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        W3C test importer should generate the modules installed dynamically to run wpt tests
+        https://bugs.webkit.org/show_bug.cgi?id=142738
+
+        Reviewed by Ryosuke Niwa.
+
+        The test importer can now generate the submodules description file based on information extracted from the corresponding git repository.
+        The implementation is done within TestDownloader and it is activated for the WPT repository.
+        LayoutTests/imported/w3c/resources/WPTModules is renamed as LayoutTests/imported/w3c/resources/web-platform-tests-modules.json for that reason.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._install_modules): Updated to cope with path as array.
+        * Scripts/webkitpy/w3c/test_downloader.py:
+        (TestDownloader._git_submodules_status): Added so that it can be overriden for unit tests.
+        (TestDownloader):
+        (TestDownloader._git_submodules_description): Computes submodule description.
+        (TestDownloader.generate_git_submodules_description): Write submodule description in a file.
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.do_import): Added the possibility to post process the tests.
+        (TestImporter):
+        (TestImporter.generate_git_submodules_description_for_all_repositories): Enable generating module description file.
+        (TestImporter.should_convert_test_harness_links): Updated according new options format.
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (TestImporterTest.import_downloaded_tests): Making use of TestDownloaderMock. 
+        (TestImporterTest.import_downloaded_tests.TestDownloaderMock): Added to override submodule status gathering.
+        (TestImporterTest.import_downloaded_tests.TestDownloaderMock.__init__):
+        (TestImporterTest.import_downloaded_tests.TestDownloaderMock._git_submodules_status):
+        (TestImporterTest.test_submodules_generation): Added to check that modules description files works.
+
+2015-04-05  Antti Koivisto  <antti@apple.com>
+
+        Bloom filter should support longer hashes
+        https://bugs.webkit.org/show_bug.cgi?id=143419
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WTF/BloomFilter.cpp:
+        (TestWebKitAPI::generateRandomDigests):
+        (TestWebKitAPI::TEST):
+
+2015-04-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        run-jsc-stress-tests --remote should add libllvmForJSC.so to the bundle on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=143372
+
+        Reviewed by Darin Adler.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-04-03  Antti Koivisto  <antti@apple.com>
+
+        Add non-counting bloom filter class
+        https://bugs.webkit.org/show_bug.cgi?id=143366
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/BloomFilter.cpp: Added.
+        (TestWebKitAPI::generateRandomHashes):
+        (TestWebKitAPI::TEST):
+
+2015-04-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        FTL JIT tests should fail if LLVM library isn't available
+        https://bugs.webkit.org/show_bug.cgi?id=143374
+
+        Reviewed by Mark Lam.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-04-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Speedup jhbuild with disable running autogen.sh
+        https://bugs.webkit.org/show_bug.cgi?id=143369
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2015-04-01  Alexey Proskuryakov  <ap@apple.com>
+
+        filter-webkit-build should filter out "created by an unsupported XCDependencyGraph build" lines
+        https://bugs.webkit.org/show_bug.cgi?id=143282
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/filter-build-webkit: (shouldIgnoreLine): Do it.
+
+2015-04-01  Alexey Proskuryakov  <ap@apple.com>
+
+        When LayoutTestHelper fails to start, we continue to run the tests, ending up with mysterious failures
+        https://bugs.webkit.org/show_bug.cgi?id=143240
+        rdar://problem/19990425
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (colorProfileURLForDisplay):
+        (saveDisplayColorProfiles):
+        Gracefully handle it when the current profile cannot be retrieved, fixing at
+        least one case when LayoutTestHelper couldn't start.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._set_up_run):
+        (Manager._force_pixel_tests_if_needed):
+        * Scripts/webkitpy/port/base.py: (Port.to.start_helper):
+        * Scripts/webkitpy/port/mac.py: (MacPort.start_helper):
+        Return and check an error from start_helper().
+
 2015-04-01  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Run test-webkitpy as part of EWS (just like we do on other platforms)

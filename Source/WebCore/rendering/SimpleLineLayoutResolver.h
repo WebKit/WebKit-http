@@ -63,6 +63,7 @@ public:
         LayoutRect rect() const;
         FloatPoint baseline() const;
         StringView text() const;
+        bool isEndOfLine() const;
 
         unsigned lineIndex() const;
 
@@ -71,6 +72,9 @@ public:
     };
 
     class Iterator {
+    friend class Run;
+    friend class RunResolver;
+    friend class LineResolver;
     public:
         Iterator(const RunResolver&, unsigned runIndex, unsigned lineIndex);
 
@@ -81,14 +85,13 @@ public:
 
         Run operator*() const;
 
-        Iterator& advance();
-        Iterator& advanceLines(unsigned);
-
-        const RunResolver& resolver() const { return m_resolver; }
+    private:
         const SimpleLineLayout::Run& simpleRun() const;
         unsigned lineIndex() const { return m_lineIndex; }
+        Iterator& advance();
+        Iterator& advanceLines(unsigned);
+        const RunResolver& resolver() const { return m_resolver; }
 
-    private:
         const RunResolver& m_resolver;
         unsigned m_runIndex;
         unsigned m_lineIndex;
@@ -156,6 +159,11 @@ inline unsigned RunResolver::Run::start() const
 inline unsigned RunResolver::Run::end() const
 {
     return m_iterator.simpleRun().end;
+}
+
+inline bool RunResolver::Run::isEndOfLine() const
+{
+    return m_iterator.simpleRun().isEndOfLine;
 }
 
 inline unsigned RunResolver::Run::lineIndex() const

@@ -118,10 +118,6 @@
 #include "WebNotificationManager.h"
 #endif
 
-#if PLATFORM(IOS)
-#include "WebSQLiteDatabaseTracker.h"
-#endif
-
 #if ENABLE(BATTERY_STATUS)
 #include "WebBatteryManager.h"
 #endif
@@ -181,6 +177,9 @@ WebProcess::WebProcess()
 #endif
     , m_nonVisibleProcessCleanupTimer(*this, &WebProcess::nonVisibleProcessCleanupTimerFired)
     , m_webOriginDataManager(std::make_unique<WebOriginDataManager>(*this, *this))
+#if PLATFORM(IOS)
+    , m_webSQLiteDatabaseTracker(*this)
+#endif
 {
     // Initialize our platform strategies.
     WebPlatformStrategies::initialize();
@@ -195,9 +194,6 @@ WebProcess::WebProcess()
     addSupplement<WebMediaCacheManager>();
     addSupplement<AuthenticationManager>();
     addSupplement<WebDatabaseManager>();
-#if PLATFORM(IOS)
-    addSupplement<WebSQLiteDatabaseTracker>();
-#endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     addSupplement<WebNotificationManager>();

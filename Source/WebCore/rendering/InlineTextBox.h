@@ -122,7 +122,7 @@ public:
 
 protected:
     virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom);
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) override;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom, HitTestAction) override;
 
 private:
     virtual void deleteLine() override final;
@@ -166,11 +166,7 @@ private:
 
     void computeRectForReplacementMarker(RenderedDocumentMarker&, const RenderStyle&, const FontCascade&);
 
-    ExpansionBehavior expansionBehavior() const
-    {
-        return (canHaveLeadingExpansion() ? AllowLeadingExpansion : ForbidLeadingExpansion)
-            | (renderer().contentIsKnownToFollow() || (expansion() && nextLeafChild() && !nextLeafChild()->isLineBreak()) ? AllowTrailingExpansion : ForbidTrailingExpansion);
-    }
+    ExpansionBehavior expansionBehavior() const;
 
     void behavesLikeText() const = delete;
 

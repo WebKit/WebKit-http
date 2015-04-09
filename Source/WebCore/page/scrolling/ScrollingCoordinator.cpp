@@ -67,7 +67,6 @@ PassRefPtr<ScrollingCoordinator> ScrollingCoordinator::create(Page* page)
 
 ScrollingCoordinator::ScrollingCoordinator(Page* page)
     : m_page(page)
-    , m_forceSynchronousScrollLayerPositionUpdates(false)
 {
 }
 
@@ -126,6 +125,9 @@ Region ScrollingCoordinator::computeNonFastScrollableRegion(const Frame& frame, 
     if (!frameView)
         return nonFastScrollableRegion;
 
+    // FIXME: should ASSERT(!frameView->needsLayout()) here, but need to fix DebugPageOverlays
+    // to not ask for regions at bad times.
+
     IntPoint offset = frameLocation;
     offset.moveBy(frameView->frameRect().location());
     offset.move(0, frameView->topContentInset());
@@ -134,7 +136,7 @@ Region ScrollingCoordinator::computeNonFastScrollableRegion(const Frame& frame, 
         for (FrameView::ScrollableAreaSet::const_iterator it = scrollableAreas->begin(), end = scrollableAreas->end(); it != end; ++it) {
             ScrollableArea* scrollableArea = *it;
             // Composited scrollable areas can be scrolled off the main thread.
-            if (scrollableArea->usesCompositedScrolling())
+            if (scrollableArea->usesAsyncScrolling())
                 continue;
             IntRect box = scrollableArea->scrollableAreaBoundingBox();
             box.moveBy(offset);

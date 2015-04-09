@@ -39,12 +39,6 @@ namespace WebCore {
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, readableStreamReaderCounter, ("ReadableStreamReader"));
 
-Ref<ReadableStreamReader> ReadableStreamReader::create(ReadableStream& stream)
-{
-    auto readableStreamReader = adoptRef(*new ReadableStreamReader(stream));
-    return readableStreamReader;
-}
-
 ReadableStreamReader::ReadableStreamReader(ReadableStream& stream)
     : ActiveDOMObject(stream.scriptExecutionContext())
 {
@@ -63,7 +57,7 @@ ReadableStreamReader::~ReadableStreamReader()
     readableStreamReaderCounter.decrement();
 #endif
     if (m_stream) {
-        m_stream->release();
+        m_stream->releaseButKeepLocked();
         m_stream = nullptr;
     }
 }
@@ -78,7 +72,7 @@ const char* ReadableStreamReader::activeDOMObjectName() const
     return "ReadableStreamReader";
 }
 
-bool ReadableStreamReader::canSuspend() const
+bool ReadableStreamReader::canSuspendForPageCache() const
 {
     // FIXME: We should try and do better here.
     return false;

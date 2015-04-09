@@ -1,3 +1,73 @@
+2015-04-08  Alex Christensen  <achristensen@webkit.org> and Patrick Gansterer  <paroga@webkit.org>
+
+        Add CMake build system for WinCairo port.
+        https://bugs.webkit.org/show_bug.cgi?id=115944
+
+        Reviewed by Chris Dumez.
+
+        * wtf/FeatureDefines.h:
+        * wtf/PlatformWin.cmake:
+
+2015-04-05  Antti Koivisto  <antti@apple.com>
+
+        Bloom filter should support longer hashes
+        https://bugs.webkit.org/show_bug.cgi?id=143419
+
+        Reviewed by Dan Bernstein.
+
+        It currently supports 'unsigned' hash only which is inconvenient and doesn't have enough independent bits for larger filters.
+
+        Support arbitrarily sized hashes of type std::array<uint8_t, hashSize> (like SHA1::Digest and MD5::Digest).
+
+        * wtf/BloomFilter.h:
+        (WTF::BloomFilter<keyBits>::keysFromHash):
+        (WTF::BloomFilter<keyBits>::mayContain):
+        (WTF::BloomFilter<keyBits>::add):
+
+2015-04-03  Antti Koivisto  <antti@apple.com>
+
+        Add non-counting Bloom filter implementation
+        https://bugs.webkit.org/show_bug.cgi?id=143366
+
+        Reviewed by Sam Weinig.
+
+        Add a traditional single-bit-per-bucket Bloom filter in addition to the existing counting implementation.
+
+        - rename BloomFilter -> CountingBloomFilter.
+        - add a new basic BloomFilter type.
+        - update some terminology to match http://en.wikipedia.org/wiki/Bloom_filter and modernize the code a bit.
+        - add API tests.
+
+        * wtf/BloomFilter.h:
+        (WTF::BloomFilter::BloomFilter):
+        (WTF::BloomFilter::add):
+
+            Also support merging.
+
+        (WTF::BloomFilter::mayContain):
+        (WTF::BloomFilter::arrayIndex):
+        (WTF::BloomFilter::bitMask):
+        (WTF::BloomFilter<keyBits>::mayContain):
+        (WTF::BloomFilter<keyBits>::add):
+        (WTF::BloomFilter<keyBits>::isBitSet):
+        (WTF::BloomFilter<keyBits>::setBit):
+        (WTF::BloomFilter<keyBits>::clear):
+        (WTF::CountingBloomFilter::CountingBloomFilter):
+        (WTF::CountingBloomFilter::mayContain):
+        (WTF::CountingBloomFilter::firstBucket):
+        (WTF::CountingBloomFilter::secondBucket):
+        (WTF::CountingBloomFilter<keyBits>::add):
+        (WTF::CountingBloomFilter<keyBits>::remove):
+        (WTF::CountingBloomFilter<keyBits>::clear):
+        (WTF::CountingBloomFilter<keyBits>::likelyEmpty):
+        (WTF::CountingBloomFilter<keyBits>::isClear):
+        (WTF::BloomFilter::maximumCount): Deleted.
+        (WTF::BloomFilter::firstSlot): Deleted.
+        (WTF::BloomFilter::secondSlot): Deleted.
+        (WTF::BloomFilter<keyBits>::remove): Deleted.
+        (WTF::BloomFilter<keyBits>::likelyEmpty): Deleted.
+        (WTF::BloomFilter<keyBits>::isClear): Deleted.
+
 015-04-01  Antti Koivisto  <antti@apple.com>
 
         Value assignment operator of Optional should be stricter

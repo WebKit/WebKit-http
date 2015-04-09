@@ -45,6 +45,8 @@ typedef struct _GtkAction GtkAction;
 namespace WebCore {
 
     class ContextMenu;
+    class Image;
+    class URL;
 
     // This enum needs to be in sync with the WebMenuItemTag enum in WebUIDelegate.h and the
     // extra values in WebUIDelegatePrivate.h
@@ -161,6 +163,7 @@ namespace WebCore {
         ContextMenuItemTagDictationAlternative,
         ContextMenuItemTagOpenLinkInThisWindow,
         ContextMenuItemTagToggleVideoFullscreen,
+        ContextMenuItemTagShareMenu, 
         ContextMenuItemBaseCustomTag = 5000,
         ContextMenuItemCustomTagNoAction = 5998,
         ContextMenuItemLastCustomTag = 5999,
@@ -205,6 +208,8 @@ namespace WebCore {
 
         void setSubMenu(ContextMenu*);
 
+        WEBCORE_EXPORT static ContextMenuItem shareMenuItem(const URL& absoluteLinkURL, const URL& downloadableMediaURL, Image*, const String& selectedText);
+
 #if PLATFORM(GTK)
         GtkAction* gtkAction() const;
 #endif
@@ -212,6 +217,9 @@ namespace WebCore {
 #if USE(CROSS_PLATFORM_CONTEXT_MENUS)
         ContextMenuItem(ContextMenuAction, const String&, bool enabled, bool checked, const Vector<ContextMenuItem>& subMenuItems);
         explicit ContextMenuItem(const PlatformContextMenuItem&);
+        ContextMenuItem();
+
+        bool isNull() const;
 
         // On Windows, the title (dwTypeData of the MENUITEMINFO) is not set in this function. Callers can set the title themselves,
         // and handle the lifetime of the title, if they need it.
@@ -224,10 +232,17 @@ namespace WebCore {
 #else
     public:
         WEBCORE_EXPORT explicit ContextMenuItem(PlatformMenuItemDescription);
-        explicit ContextMenuItem(ContextMenu* subMenu = 0);
+        explicit ContextMenuItem(ContextMenu* subMenu);
         ContextMenuItem(ContextMenuAction, const String&, bool enabled, bool checked, Vector<ContextMenuItem>& submenuItems);
+        WEBCORE_EXPORT ContextMenuItem();
 
+        bool isNull() const { return !m_platformDescription; }
+
+#if PLATFORM(GTK)
         WEBCORE_EXPORT PlatformMenuItemDescription releasePlatformDescription();
+#endif
+
+        WEBCORE_EXPORT PlatformMenuItemDescription platformDescription() const;
 
         WEBCORE_EXPORT String title() const;
         void setTitle(const String&);

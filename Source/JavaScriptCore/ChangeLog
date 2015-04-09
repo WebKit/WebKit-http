@@ -1,3 +1,948 @@
+2015-04-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Use jsNontrivialString in more places if the string is guaranteed to be 2 or more characters
+        https://bugs.webkit.org/show_bug.cgi?id=143430
+
+        Reviewed by Darin Adler.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::errorDescriptionForValue):
+        * runtime/NumberPrototype.cpp:
+        (JSC::numberProtoFuncToExponential):
+        (JSC::numberProtoFuncToPrecision):
+        (JSC::numberProtoFuncToString):
+        * runtime/SymbolPrototype.cpp:
+        (JSC::symbolProtoFuncToString):
+
+2015-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        JSArray::sortNumeric should handle ArrayWithUndecided
+        https://bugs.webkit.org/show_bug.cgi?id=143535
+
+        Reviewed by Geoffrey Garen.
+        
+        ArrayWithUndecided is what you get if you haven't stored anything into the array yet. We need to handle it.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::sortNumeric):
+        * tests/stress/sort-array-with-undecided.js: Added.
+
+2015-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::IntegerCheckCombiningPhase's wrap-around check shouldn't trigger C++ undef behavior on wrap-around
+        https://bugs.webkit.org/show_bug.cgi?id=143532
+
+        Reviewed by Gavin Barraclough.
+        
+        Oh the irony!  We were protecting an optimization that only worked if there was no wrap-around in JavaScript.
+        But the C++ code had wrap-around, which is undef in C++.  So, if the compiler was smart enough, our compiler
+        would think that there never was wrap-around.
+        
+        This fixes a failure in stress/tricky-array-boiunds-checks.js when JSC is compiled with bleeding-edge clang.
+
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        (JSC::DFG::IntegerCheckCombiningPhase::isValid):
+
+2015-04-07  Michael Saboff  <msaboff@apple.com>
+
+        Lazily initialize LogToSystemConsole flag to reduce memory usage
+        https://bugs.webkit.org/show_bug.cgi?id=143506
+
+        Reviewed by Mark Lam.
+
+        Only call into CF preferences code when we need to in order to reduce memory usage.
+
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::logToSystemConsole):
+        (Inspector::JSGlobalObjectConsoleClient::setLogToSystemConsole):
+        (Inspector::JSGlobalObjectConsoleClient::initializeLogToSystemConsole):
+        (Inspector::JSGlobalObjectConsoleClient::JSGlobalObjectConsoleClient):
+
+2015-04-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        Get the features.json files ready for open contributions
+        https://bugs.webkit.org/show_bug.cgi?id=143436
+
+        Reviewed by Darin Adler.
+
+        * features.json:
+
+2015-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Constant folding of typed array properties should be handled by AI rather than strength reduction
+        https://bugs.webkit.org/show_bug.cgi?id=143496
+
+        Reviewed by Geoffrey Garen.
+        
+        Handling constant folding in AI is better because it precludes us from having to fixpoint the CFA
+        phase and whatever other phase did the folding in order to find all constants.
+        
+        This also removes the TypedArrayWatchpoint node type because we can just set the watchpoint
+        directly.
+        
+        This also fixes a bug in FTL lowering of GetTypedArrayByteOffset. The bug was previously not
+        found because all of the tests for it involved the property getting constant folded. I found that
+        the codegen was bad because an earlier version of the patch broke that constant folding. This
+        adds a new test for that node type, which makes constant folding impossible by allocating a new
+        typed array every type. The lesson here is: if you write a test for something, run the test with
+        full IR dumps to make sure it's actually testing the thing you want it to test.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::tryGetFoldableView):
+        (JSC::DFG::Graph::tryGetFoldableViewForChild1): Deleted.
+        * dfg/DFGGraph.h:
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasTypedArray): Deleted.
+        (JSC::DFG::Node::typedArray): Deleted.
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::jumpForTypedArrayOutOfBounds):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        (JSC::DFG::StrengthReductionPhase::foldTypedArrayPropertyToConstant): Deleted.
+        (JSC::DFG::StrengthReductionPhase::prepareToFoldTypedArray): Deleted.
+        * dfg/DFGWatchpointCollectionPhase.cpp:
+        (JSC::DFG::WatchpointCollectionPhase::handle):
+        (JSC::DFG::WatchpointCollectionPhase::addLazily):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileGetTypedArrayByteOffset):
+        (JSC::FTL::LowerDFGToLLVM::typedArrayLength):
+        * tests/stress/fold-typed-array-properties.js:
+        (foo):
+        * tests/stress/typed-array-byte-offset.js: Added.
+        (foo):
+
+2015-04-07  Matthew Mirman  <mmirman@apple.com>
+
+        Source and stack information should get appended only to native errors
+        and should be added directly after construction rather than when thrown. 
+        This fixes frozen objects being unfrozen when thrown while conforming to 
+        ecma script standard and other browser behavior.
+        rdar://problem/19927293
+        https://bugs.webkit.org/show_bug.cgi?id=141871
+        
+        Reviewed by Geoffrey Garen.
+
+        Appending stack, source, line, and column information to an object whenever that object is thrown 
+        is incorrect because it violates the ecma script standard for the behavior of throw.  Suppose for example
+        that the object being thrown already has one of these properties or is frozen.  Adding the properties 
+        would then violate the frozen contract or overwrite those properties.  Other browsers do not do this,
+        and doing this causes unnecessary performance hits in code with heavy use of the throw construct as
+        a control flow construct rather than just an error reporting mechanism.  
+        
+        Because WebCore adds "native" errors which do not inherit from any JSC native error, 
+        appending the error properties as a seperate call after construction of the error is required 
+        to avoid having to manually truncate the stack and gather local source information due to 
+        the stack being extended by a nested call to construct one of the native jsc error.
+        
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        * interpreter/Interpreter.h:
+        * parser/ParserError.h:
+        (JSC::ParserError::toErrorObject):
+        * runtime/CommonIdentifiers.h:
+        * runtime/Error.cpp:
+        (JSC::createError):
+        (JSC::createEvalError):
+        (JSC::createRangeError):
+        (JSC::createReferenceError):
+        (JSC::createSyntaxError):
+        (JSC::createTypeError):
+        (JSC::createNotEnoughArgumentsError):
+        (JSC::createURIError):
+        (JSC::createOutOfMemoryError):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::FindFirstCallerFrameWithCodeblockFunctor):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::operator()):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::foundCallFrame):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::index):
+        (JSC::addErrorInfoAndGetBytecodeOffset):  Added.
+        (JSC::addErrorInfo): Added special case for appending complete error info 
+        to a newly constructed error object.
+        * runtime/Error.h:
+        * runtime/ErrorConstructor.cpp:
+        (JSC::Interpreter::constructWithErrorConstructor):
+        (JSC::Interpreter::callErrorConstructor):
+        * runtime/ErrorInstance.cpp:
+        (JSC::appendSourceToError): Moved from VM.cpp
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::FindFirstCallerFrameWithCodeblockFunctor):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::operator()):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::foundCallFrame):
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::index):
+        (JSC::addErrorInfoAndGetBytecodeOffset):
+        (JSC::ErrorInstance::finishCreation):
+        * runtime/ErrorInstance.h:
+        (JSC::ErrorInstance::create):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::ErrorPrototype::finishCreation):
+        * runtime/ExceptionFuzz.cpp:
+        (JSC::doExceptionFuzzing):
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createError):
+        (JSC::createInvalidFunctionApplyParameterError):
+        (JSC::createInvalidInParameterError):
+        (JSC::createInvalidInstanceofParameterError):
+        (JSC::createNotAConstructorError):
+        (JSC::createNotAFunctionError):
+        (JSC::createNotAnObjectError):
+        (JSC::throwOutOfMemoryError):
+        (JSC::createStackOverflowError): Deleted.
+        (JSC::createOutOfMemoryError): Deleted.
+        * runtime/ExceptionHelpers.h:
+        * runtime/JSArrayBufferConstructor.cpp:
+        (JSC::constructArrayBuffer):
+        * runtime/JSArrayBufferPrototype.cpp:
+        (JSC::arrayBufferProtoFuncSlice):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::create):
+        (JSC::JSGenericTypedArrayView<Adaptor>::createUninitialized):
+        * runtime/NativeErrorConstructor.cpp:
+        (JSC::Interpreter::constructWithNativeErrorConstructor):
+        (JSC::Interpreter::callNativeErrorConstructor):
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        (JSC::appendSourceToError): Moved to Error.cpp
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::FindFirstCallerFrameWithCodeblockFunctor): Deleted.
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::operator()): Deleted.
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::foundCallFrame): Deleted.
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::index): Deleted.
+        * tests/stress/freeze_leek.js: Added.
+
+2015-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ES6: Show Symbol properties on Objects
+        https://bugs.webkit.org/show_bug.cgi?id=141279
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Runtime.json:
+        Give PropertyDescriptor a reference to the Symbol RemoteObject
+        if the property is a symbol property.
+
+        * inspector/InjectedScriptSource.js:
+        Enumerate symbol properties on objects.
+
+2015-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it possible to enable LLVM FastISel
+        https://bugs.webkit.org/show_bug.cgi?id=143489
+
+        Reviewed by Michael Saboff.
+
+        The decision to enable FastISel is made by Options.h|cpp, but the LLVM library can disable it if it finds that it is built
+        against a version of LLVM that doesn't support it. Thereafter, JSC::enableLLVMFastISel is the flag that tells the system
+        if we should enable it.
+
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::mmAllocateDataSection):
+        * llvm/InitializeLLVM.cpp:
+        (JSC::initializeLLVMImpl):
+        * llvm/InitializeLLVM.h:
+        * llvm/InitializeLLVMLinux.cpp:
+        (JSC::getLLVMInitializerFunction):
+        (JSC::initializeLLVMImpl): Deleted.
+        * llvm/InitializeLLVMMac.cpp:
+        (JSC::getLLVMInitializerFunction):
+        (JSC::initializeLLVMImpl): Deleted.
+        * llvm/InitializeLLVMPOSIX.cpp:
+        (JSC::getLLVMInitializerFunctionPOSIX):
+        (JSC::initializeLLVMPOSIX): Deleted.
+        * llvm/InitializeLLVMPOSIX.h:
+        * llvm/InitializeLLVMWin.cpp:
+        (JSC::getLLVMInitializerFunction):
+        (JSC::initializeLLVMImpl): Deleted.
+        * llvm/LLVMAPI.cpp:
+        * llvm/LLVMAPI.h:
+        * llvm/library/LLVMExports.cpp:
+        (initCommandLine):
+        (initializeAndGetJSCLLVMAPI):
+        * runtime/Options.cpp:
+        (JSC::Options::initialize):
+
+2015-04-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        put_by_val_direct need to check the property is index or not for using putDirect / putDirectIndex
+        https://bugs.webkit.org/show_bug.cgi?id=140426
+
+        Reviewed by Darin Adler.
+
+        In the put_by_val_direct operation, we use JSObject::putDirect.
+        However, it only accepts non-index property. For index property, we need to use JSObject::putDirectIndex.
+        This patch checks toString-ed Identifier is index or not to choose putDirect / putDirectIndex.
+
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::putByVal):
+        (JSC::DFG::operationPutByValInternal):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/Identifier.h:
+        (JSC::isIndex):
+        (JSC::parseIndex):
+        * tests/stress/dfg-put-by-val-direct-with-edge-numbers.js: Added.
+        (lookupWithKey):
+        (toStringThrowsError.toString):
+
+2015-04-06  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] Fix HPPA build
+        https://bugs.webkit.org/show_bug.cgi?id=143453
+
+        Reviewed by Darin Adler.
+
+        Add HPPA to the list of supported CPUs.
+
+        * CMakeLists.txt:
+
+2015-04-06  Mark Lam  <mark.lam@apple.com>
+
+        In the 64-bit DFG and FTL, Array::Double case for HasIndexedProperty should set its result to true when all is well.
+        <https://webkit.org/b/143396>
+
+        Reviewed by Filip Pizlo.
+
+        The DFG was neglecting to set the result boolean.  The FTL was setting it with
+        an inverted value.  Both of these are now resolved.
+
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileHasIndexedProperty):
+        * tests/stress/for-in-array-mode.js: Added.
+        (.):
+        (test):
+
+2015-04-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] DFG and FTL should be aware of that StringConstructor behavior for symbols becomes different from ToString
+        https://bugs.webkit.org/show_bug.cgi?id=143424
+
+        Reviewed by Geoffrey Garen.
+
+        In ES6, StringConstructor behavior becomes different from ToString abstract operations in the spec. (and JSValue::toString).
+
+        ToString(symbol) throws a type error.
+        However, String(symbol) produces SymbolDescriptiveString(symbol).
+
+        So, in DFG and FTL phase, they should not inline StringConstructor to ToString.
+
+        Now, in the template literals patch, ToString DFG operation is planned to be used.
+        And current ToString behavior is aligned to the spec (and JSValue::toString) and it's better.
+        So intead of changing ToString behavior, this patch adds CallStringConstructor operation into DFG and FTL.
+        In CallStringConstructor, all behavior in DFG analysis is the same.
+        Only the difference from ToString is, when calling DFG operation functions, it calls
+        operationCallStringConstructorOnCell and operationCallStringConstructor instead of
+        operationToStringOnCell and operationToString.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleConstantInternalFunction):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::fixupToStringOrCallStringConstructor):
+        (JSC::DFG::FixupPhase::attemptToMakeFastStringAdd):
+        (JSC::DFG::FixupPhase::fixupToString): Deleted.
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileToStringOrCallStringConstructorOnCell):
+        (JSC::DFG::SpeculativeJIT::compileToStringOnCell): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::StructureRegistrationPhase::run):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileToStringOrCallStringConstructor):
+        (JSC::FTL::LowerDFGToLLVM::compileToString): Deleted.
+        * runtime/StringConstructor.cpp:
+        (JSC::stringConstructor):
+        (JSC::callStringConstructor):
+        * runtime/StringConstructor.h:
+        * tests/stress/symbol-and-string-constructor.js: Added.
+        (performString):
+
+2015-04-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Return Optional<uint32_t> from PropertyName::asIndex
+        https://bugs.webkit.org/show_bug.cgi?id=143422
+
+        Reviewed by Darin Adler.
+
+        PropertyName::asIndex returns uint32_t and use UINT_MAX as NotAnIndex.
+        But it's not obvious to callers.
+
+        This patch changes
+        1. PropertyName::asIndex() to return Optional<uint32_t> and
+        2. function name `asIndex()` to `parseIndex()`.
+        It forces callers to check the value is index or not explicitly.
+
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFor):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFor):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitDirectPutById):
+        * jit/Repatch.cpp:
+        (JSC::emitPutTransitionStubAndGetOldStructure):
+        * jsc.cpp:
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSort):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::getOwnPropertySlot):
+        (JSC::GenericArguments<Type>::put):
+        (JSC::GenericArguments<Type>::deleteProperty):
+        (JSC::GenericArguments<Type>::defineOwnProperty):
+        * runtime/Identifier.h:
+        (JSC::parseIndex):
+        (JSC::Identifier::isSymbol):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::defineOwnProperty):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnPropertySlot):
+        (JSC::JSGenericTypedArrayView<Adaptor>::put):
+        (JSC::JSGenericTypedArrayView<Adaptor>::defineOwnProperty):
+        (JSC::JSGenericTypedArrayView<Adaptor>::deleteProperty):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::put):
+        (JSC::JSObject::putDirectAccessor):
+        (JSC::JSObject::putDirectCustomAccessor):
+        (JSC::JSObject::deleteProperty):
+        (JSC::JSObject::putDirectMayBeIndex):
+        (JSC::JSObject::defineOwnProperty):
+        * runtime/JSObject.h:
+        (JSC::JSObject::getOwnPropertySlot):
+        (JSC::JSObject::getPropertySlot):
+        (JSC::JSObject::putDirectInternal):
+        * runtime/JSString.cpp:
+        (JSC::JSString::getStringPropertyDescriptor):
+        * runtime/JSString.h:
+        (JSC::JSString::getStringPropertySlot):
+        * runtime/LiteralParser.cpp:
+        (JSC::LiteralParser<CharType>::parse):
+        * runtime/PropertyName.h:
+        (JSC::parseIndex):
+        (JSC::toUInt32FromCharacters): Deleted.
+        (JSC::toUInt32FromStringImpl): Deleted.
+        (JSC::PropertyName::asIndex): Deleted.
+        * runtime/PropertyNameArray.cpp:
+        (JSC::PropertyNameArray::add):
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::deleteProperty):
+        * runtime/Structure.cpp:
+        (JSC::Structure::prototypeChainMayInterceptStoreTo):
+
+2015-04-05  Andreas Kling  <akling@apple.com>
+
+        URI encoding/escaping should use efficient string building instead of calling snprintf().
+        <https://webkit.org/b/143426>
+
+        Reviewed by Gavin Barraclough.
+
+        I saw 0.5% of main thread time in snprintf() on <http://polymerlabs.github.io/benchmarks/>
+        which seemed pretty silly. This change gets that down to nothing in favor of using our
+        existing JSStringBuilder and HexNumber.h facilities.
+
+        These APIs are well-exercised by our existing test suite.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::encode):
+        (JSC::globalFuncEscape):
+
+2015-04-05  Masataka Yakura  <masataka.yakura@gmail.com>
+
+        documentation for ES Promises points to the wrong one
+        https://bugs.webkit.org/show_bug.cgi?id=143263
+
+        Reviewed by Darin Adler.
+
+        * features.json:
+
+2015-04-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove "go ahead and" from comments
+        https://bugs.webkit.org/show_bug.cgi?id=143421
+
+        Reviewed by Darin Adler, Benjamin Poulain.
+
+        Remove the phrase "go ahead and" from comments where it doesn't add
+        anything (which is almost all of them).
+
+        * interpreter/JSStack.cpp:
+        (JSC::JSStack::growSlowCase):
+
+2015-04-04  Andreas Kling  <akling@apple.com>
+
+        Logically empty WeakBlocks should not pin down their MarkedBlocks indefinitely.
+        <https://webkit.org/b/143210>
+
+        Reviewed by Geoffrey Garen.
+
+        Since a MarkedBlock cannot be destroyed until all the WeakBlocks pointing into it are gone,
+        we had a little problem where WeakBlocks with only null pointers would still keep their
+        MarkedBlock alive.
+
+        This patch fixes that by detaching WeakBlocks from their MarkedBlock once a sweep discovers
+        that the WeakBlock contains no pointers to live objects. Ownership of the WeakBlock is passed
+        to the Heap, which will sweep the list of these detached WeakBlocks as part of a full GC,
+        destroying them once they're fully dead.
+
+        This allows the garbage collector to reclaim the 64kB MarkedBlocks much sooner, and resolves
+        a mysterious issue where doing two full garbage collections back-to-back would free additional
+        memory in the second collection.
+
+        Management of detached WeakBlocks is implemented as a Vector<WeakBlock*> in Heap, along with
+        an index of the next block in that vector that needs to be swept. The IncrementalSweeper then
+        calls into Heap::sweepNextLogicallyEmptyWeakBlock() to sweep one block at a time.
+
+        * heap/Heap.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::collectAllGarbage): Add a final pass where we sweep the logically empty WeakBlocks
+        owned by Heap, after everything else has been swept.
+
+        (JSC::Heap::notifyIncrementalSweeper): Set up an incremental sweep of logically empty WeakBlocks
+        after a full garbage collection ends. Note that we don't do this after Eden collections, since
+        they are unlikely to cause entire WeakBlocks to go empty.
+
+        (JSC::Heap::addLogicallyEmptyWeakBlock): Added. Interface for passing ownership of a WeakBlock
+        to the Heap when it's detached from a WeakSet.
+
+        (JSC::Heap::sweepAllLogicallyEmptyWeakBlocks): Helper for collectAllGarbage() that sweeps all
+        of the logically empty WeakBlocks owned by Heap.
+
+        (JSC::Heap::sweepNextLogicallyEmptyWeakBlock): Sweeps one logically empty WeakBlock if needed
+        and updates the next-logically-empty-weak-block-to-sweep index.
+
+        (JSC::Heap::lastChanceToFinalize): call sweepAllLogicallyEmptyWeakBlocks() here, since there
+        won't be another chance after this.
+
+        * heap/IncrementalSweeper.h:
+        (JSC::IncrementalSweeper::hasWork): Deleted.
+
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::fullSweep):
+        (JSC::IncrementalSweeper::doSweep):
+        (JSC::IncrementalSweeper::sweepNextBlock): Restructured IncrementalSweeper a bit to simplify
+        adding a new sweeping stage for the Heap's logically empty WeakBlocks. sweepNextBlock() is
+        changed to return a bool (true if there's more work to be done.)
+
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::sweep): This now figures out if the WeakBlock is logically empty, i.e doesn't
+        contain any pointers to live objects. The answer is stored in a new SweepResult member.
+
+        * heap/WeakBlock.h:
+        (JSC::WeakBlock::isLogicallyEmptyButNotFree): Added. Can be queried after a sweep to determine
+        if the WeakBlock could be detached from the MarkedBlock.
+
+        (JSC::WeakBlock::SweepResult::SweepResult): Deleted in favor of initializing member variables
+        when declaring them.
+
+2015-04-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement ES6 Object.getOwnPropertySymbols
+        https://bugs.webkit.org/show_bug.cgi?id=141106
+
+        Reviewed by Geoffrey Garen.
+
+        This patch implements `Object.getOwnPropertySymbols`.
+        One technical issue is that, since we use private symbols (such as `@Object`) in the
+        privileged JS code in `builtins/`, they should not be exposed.
+        To distinguish them from the usual symbols, check the target `StringImpl*` is a not private name
+        before adding it into PropertyNameArray.
+
+        To check the target `StringImpl*` is a private name, we leverage privateToPublic map in `BuiltinNames`
+        since all private symbols are held in this map.
+
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createExecutableInternal):
+        * builtins/BuiltinNames.h:
+        (JSC::BuiltinNames::isPrivateName):
+        * runtime/CommonIdentifiers.cpp:
+        (JSC::CommonIdentifiers::isPrivateName):
+        * runtime/CommonIdentifiers.h:
+        * runtime/EnumerationMode.h:
+        (JSC::EnumerationMode::EnumerationMode):
+        (JSC::EnumerationMode::includeSymbolProperties):
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createUndefinedVariableError):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::getOwnNonIndexPropertyNames):
+        * runtime/JSSymbolTableObject.cpp:
+        (JSC::JSSymbolTableObject::getOwnNonIndexPropertyNames):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        (JSC::objectConstructorGetOwnPropertySymbols):
+        (JSC::defineProperties):
+        (JSC::objectConstructorSeal):
+        (JSC::objectConstructorFreeze):
+        (JSC::objectConstructorIsSealed):
+        (JSC::objectConstructorIsFrozen):
+        * runtime/ObjectConstructor.h:
+        (JSC::ObjectConstructor::create):
+        * runtime/Structure.cpp:
+        (JSC::Structure::getPropertyNamesFromStructure):
+        * tests/stress/object-get-own-property-symbols-perform-to-object.js: Added.
+        (compare):
+        * tests/stress/object-get-own-property-symbols.js: Added.
+        (forIn):
+        * tests/stress/symbol-define-property.js: Added.
+        (testSymbol):
+        * tests/stress/symbol-seal-and-freeze.js: Added.
+        * tests/stress/symbol-with-json.js: Added.
+
+2015-04-03  Mark Lam  <mark.lam@apple.com>
+
+        Add Options::jitPolicyScale() as a single knob to make all compilations happen sooner.
+        <https://webkit.org/b/143385>
+
+        Reviewed by Geoffrey Garen.
+
+        For debugging purposes, sometimes, we want to be able to make compilation happen
+        sooner to see if we can accelerate the manifestation of certain events / bugs.
+        Currently, in order to achieve this, we'll have to tweak multiple JIT thresholds
+        which make up the compilation policy.  Let's add a single knob that can tune all
+        the thresholds up / down in one go proportionately so that we can easily tweak
+        how soon compilation occurs.
+
+        * runtime/Options.cpp:
+        (JSC::scaleJITPolicy):
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2015-04-03  Geoffrey Garen  <ggaren@apple.com>
+
+        is* API methods should be @properties
+        https://bugs.webkit.org/show_bug.cgi?id=143388
+
+        Reviewed by Mark Lam.
+
+        This appears to be the preferred idiom in WebKit, CA, AppKit, and
+        Foundation.
+
+        * API/JSValue.h: Be @properties.
+
+        * API/tests/testapi.mm:
+        (testObjectiveCAPI): Use the @properties.
+
+2015-04-03  Mark Lam  <mark.lam@apple.com>
+
+        Some JSC Options refactoring and enhancements.
+        <https://webkit.org/b/143384>
+
+        Rubber stamped by Benjamin Poulain.
+
+        Create a better encapsulated Option class to make working with options easier.  This
+        is a building block towards a JIT policy scaling debugging option I will introduce later.
+
+        This work entails:
+        1. Convert Options::Option into a public class Option (who works closely with Options).
+        2. Convert Options::EntryType into an enum class Options::Type and make it public.
+        3. Renamed Options::OPT_<option name> to Options::<option name>ID because it reads better.
+        4. Add misc methods to class Option to make it more useable.
+
+        * runtime/Options.cpp:
+        (JSC::Options::dumpOption):
+        (JSC::Option::dump):
+        (JSC::Option::operator==):
+        (JSC::Options::Option::dump): Deleted.
+        (JSC::Options::Option::operator==): Deleted.
+        * runtime/Options.h:
+        (JSC::Option::Option):
+        (JSC::Option::operator!=):
+        (JSC::Option::name):
+        (JSC::Option::description):
+        (JSC::Option::type):
+        (JSC::Option::isOverridden):
+        (JSC::Option::defaultOption):
+        (JSC::Option::boolVal):
+        (JSC::Option::unsignedVal):
+        (JSC::Option::doubleVal):
+        (JSC::Option::int32Val):
+        (JSC::Option::optionRangeVal):
+        (JSC::Option::optionStringVal):
+        (JSC::Option::gcLogLevelVal):
+        (JSC::Options::Option::Option): Deleted.
+        (JSC::Options::Option::operator!=): Deleted.
+
+2015-04-03  Geoffrey Garen  <ggaren@apple.com>
+
+        JavaScriptCore API should support type checking for Array and Date
+        https://bugs.webkit.org/show_bug.cgi?id=143324
+
+        Follow-up to address a comment by Dan.
+
+        * API/WebKitAvailability.h: __MAC_OS_X_VERSION_MIN_REQUIRED <= 101100
+        is wrong, since this API is available when __MAC_OS_X_VERSION_MIN_REQUIRED
+        is equal to 101100.
+
+2015-04-03  Geoffrey Garen  <ggaren@apple.com>
+
+        JavaScriptCore API should support type checking for Array and Date
+        https://bugs.webkit.org/show_bug.cgi?id=143324
+
+        Follow-up to address a comment by Dan.
+
+        * API/WebKitAvailability.h: Do use 10.0 because it was right all along.
+        Added a comment explaining why.
+
+2015-04-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        FTL JIT tests should fail if LLVM library isn't available
+        https://bugs.webkit.org/show_bug.cgi?id=143374
+
+        Reviewed by Mark Lam.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * runtime/Options.h:
+
+2015-04-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        Fix the EFL and GTK build after r182243
+        https://bugs.webkit.org/show_bug.cgi?id=143361
+
+        Reviewed by Csaba Osztrogonác.
+
+        * CMakeLists.txt: InspectorBackendCommands.js is generated in the
+        DerivedSources/JavaScriptCore/inspector/ directory.
+
+2015-04-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed, fixing Clang builds of the GTK port on Linux.
+
+        * runtime/Options.cpp:
+        Include the <math.h> header for isnan().
+
+2015-04-02  Mark Lam  <mark.lam@apple.com>
+
+        Enhance ability to dump JSC Options.
+        <https://webkit.org/b/143357>
+
+        Reviewed by Benjamin Poulain.
+
+        Some enhancements to how the JSC options work:
+
+        1. Add a JSC_showOptions option which take values: 0 = None, 1 = Overridden only,
+           2 = All, 3 = Verbose.
+
+           The default is 0 (None).  This dumps nothing.
+           With the Overridden setting, at VM initialization time, we will dump all
+           option values that have been changed from their default.
+           With the All setting, at VM initialization time, we will dump all option values.
+           With the Verbose setting, at VM initialization time, we will dump all option
+           values along with their descriptions (if available).
+
+        2. We now store a copy of the default option values.
+
+           We later use this for comparison to tell if an option has been overridden, and
+           print the default value for reference.  As a result, we no longer need the
+           didOverride flag since we can compute whether the option is overridden at any time.
+
+        3. Added description strings to some options to be printed when JSC_showOptions=3 (Verbose).
+
+           This will come in handy later when we want to rename some of the options to more sane
+           names that are easier to remember.  For example, we can change
+           Options::dfgFunctionWhitelistFile() to Options::dfgWhiteList(), and
+           Options::slowPathAllocsBetweenGCs() to Options::forcedGcRate().  With the availability
+           of the description, we can afford to use shorter and less descriptive option names,
+           but they will be easier to remember and use for day to day debugging work.
+
+           In this patch, I did not change the names of any of the options yet.  I only added
+           description strings for options that I know about, and where I think the option name
+           isn't already descriptive enough.
+
+        4. Also deleted some unused code.
+
+        * jsc.cpp:
+        (CommandLine::parseArguments):
+        * runtime/Options.cpp:
+        (JSC::Options::initialize):
+        (JSC::Options::setOption):
+        (JSC::Options::dumpAllOptions):
+        (JSC::Options::dumpOption):
+        (JSC::Options::Option::dump):
+        (JSC::Options::Option::operator==):
+        * runtime/Options.h:
+        (JSC::OptionRange::rangeString):
+        (JSC::Options::Option::Option):
+        (JSC::Options::Option::operator!=):
+
+2015-04-02  Geoffrey Garen  <ggaren@apple.com>
+
+        JavaScriptCore API should support type checking for Array and Date
+        https://bugs.webkit.org/show_bug.cgi?id=143324
+
+        Reviewed by Darin Adler, Sam Weinig, Dan Bernstein.
+
+        * API/JSValue.h:
+        * API/JSValue.mm:
+        (-[JSValue isArray]):
+        (-[JSValue isDate]): Added an ObjC API.
+
+        * API/JSValueRef.cpp:
+        (JSValueIsArray):
+        (JSValueIsDate):
+        * API/JSValueRef.h: Added a C API.
+
+        * API/WebKitAvailability.h: Brought our availability macros up to date
+        and fixed a harmless bug where "10_10" translated to "10.0".
+
+        * API/tests/testapi.c:
+        (main): Added a test and corrected a pre-existing leak.
+
+        * API/tests/testapi.mm:
+        (testObjectiveCAPI): Added a test.
+
+2015-04-02  Mark Lam  <mark.lam@apple.com>
+
+        Add Options::dumpSourceAtDFGTime().
+        <https://webkit.org/b/143349>
+
+        Reviewed by Oliver Hunt, and Michael Saboff.
+
+        Sometimes, we will want to see the JS source code that we're compiling, and it
+        would be nice to be able to do this without having to jump thru a lot of hoops.
+        So, let's add a Options::dumpSourceAtDFGTime() option just like we have a
+        Options::dumpBytecodeAtDFGTime() option.
+
+        Also added versions of CodeBlock::dumpSource() and CodeBlock::dumpBytecode()
+        that explicitly take no arguments (instead of relying on the version that takes
+        the default argument).  These versions are friendlier to use when we want to call
+        them from an interactive debugging session.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpSource):
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecode/CodeBlock.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseCodeBlock):
+        * runtime/Options.h:
+
+2015-04-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Clean up EnumerationMode to easily extend
+        https://bugs.webkit.org/show_bug.cgi?id=143276
+
+        Reviewed by Geoffrey Garen.
+
+        To make the followings easily,
+        1. Adding new flag Include/ExcludeSymbols in the Object.getOwnPropertySymbols patch
+        2. Make ExcludeSymbols implicitly default for the existing flags
+        we encapsulate EnumerationMode flags into EnumerationMode class.
+
+        And this class manages 2 flags. Later it will be extended to 3.
+        1. DontEnumPropertiesMode (default is Exclude)
+        2. JSObjectPropertiesMode (default is Include)
+        3. SymbolPropertiesMode (default is Exclude)
+            SymbolPropertiesMode will be added in Object.getOwnPropertySymbols patch.
+
+        This patch replaces places using ExcludeDontEnumProperties
+        to EnumerationMode() value which represents default mode.
+
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::getOwnNonIndexPropertyNames):
+        * API/JSObjectRef.cpp:
+        (JSObjectCopyPropertyNames):
+        * bindings/ScriptValue.cpp:
+        (Deprecated::jsToInspectorValue):
+        * bytecode/ObjectAllocationProfile.h:
+        (JSC::ObjectAllocationProfile::possibleDefaultPropertyCount):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSort):
+        * runtime/EnumerationMode.h:
+        (JSC::EnumerationMode::EnumerationMode):
+        (JSC::EnumerationMode::includeDontEnumProperties):
+        (JSC::EnumerationMode::includeJSObjectProperties):
+        (JSC::shouldIncludeDontEnumProperties): Deleted.
+        (JSC::shouldExcludeDontEnumProperties): Deleted.
+        (JSC::shouldIncludeJSObjectPropertyNames): Deleted.
+        (JSC::modeThatSkipsJSObject): Deleted.
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::getOwnPropertyNames):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::getOwnNonIndexPropertyNames):
+        * runtime/JSArrayBuffer.cpp:
+        (JSC::JSArrayBuffer::getOwnNonIndexPropertyNames):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::getOwnNonIndexPropertyNames):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::getOwnNonIndexPropertyNames):
+        * runtime/JSFunction.h:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnNonIndexPropertyNames):
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::getOwnNonIndexPropertyNames):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::Holder::appendNextProperty):
+        (JSC::Walker::walk):
+        * runtime/JSObject.cpp:
+        (JSC::getClassPropertyNames):
+        (JSC::JSObject::getOwnPropertyNames):
+        (JSC::JSObject::getOwnNonIndexPropertyNames):
+        (JSC::JSObject::getGenericPropertyNames):
+        * runtime/JSPropertyNameEnumerator.h:
+        (JSC::propertyNameEnumerator):
+        * runtime/JSSymbolTableObject.cpp:
+        (JSC::JSSymbolTableObject::getOwnNonIndexPropertyNames):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorGetOwnPropertyNames):
+        (JSC::objectConstructorKeys):
+        (JSC::defineProperties):
+        (JSC::objectConstructorSeal):
+        (JSC::objectConstructorFreeze):
+        (JSC::objectConstructorIsSealed):
+        (JSC::objectConstructorIsFrozen):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::getOwnNonIndexPropertyNames):
+        (JSC::RegExpObject::getPropertyNames):
+        (JSC::RegExpObject::getGenericPropertyNames):
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::getOwnPropertyNames):
+        * runtime/Structure.cpp:
+        (JSC::Structure::getPropertyNamesFromStructure):
+
 2015-04-01  Alex Christensen  <achristensen@webkit.org>
 
         Progress towards CMake on Windows and Mac.
