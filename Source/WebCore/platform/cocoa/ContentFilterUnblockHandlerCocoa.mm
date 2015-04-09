@@ -29,7 +29,13 @@
 #if ENABLE(CONTENT_FILTERING)
 
 #import "BlockExceptions.h"
+#import "ContentFilter.h"
+#import "Logging.h"
 #import "ResourceRequest.h"
+
+#if !LOG_DISABLED
+#import <wtf/text/CString.h>
+#endif
 
 #if PLATFORM(IOS)
 #import "SoftLinking.h"
@@ -43,6 +49,7 @@ static NSString * const webFilterEvaluatorKey { @"webFilterEvaluator" };
 #endif
 
 static NSString * const unblockURLHostKey { @"unblockURLHost" };
+static NSString * const unreachableURLKey { @"unreachableURL" };
 
 namespace WebCore {
 
@@ -50,6 +57,7 @@ ContentFilterUnblockHandler::ContentFilterUnblockHandler(String unblockURLHost, 
     : m_unblockURLHost { WTF::move(unblockURLHost) }
     , m_unblockRequester { WTF::move(unblockRequester) }
 {
+    LOG(ContentFiltering, "Creating ContentFilterUnblockHandler with an unblock requester and unblock URL host <%s>.\n", unblockURLHost.ascii().data());
 }
 
 #if PLATFORM(IOS)
@@ -57,8 +65,24 @@ ContentFilterUnblockHandler::ContentFilterUnblockHandler(String unblockURLHost, 
     : m_unblockURLHost { WTF::move(unblockURLHost) }
     , m_webFilterEvaluator { WTF::move(evaluator) }
 {
+    LOG(ContentFiltering, "Creating ContentFilterUnblockHandler with a WebFilterEvaluator and unblock URL host <%s>.\n", unblockURLHost.ascii().data());
 }
 #endif
+
+void ContentFilterUnblockHandler::wrapWithDecisionHandler(const DecisionHandlerFunction& decisionHandler)
+{
+    ContentFilterUnblockHandler wrapped { *this };
+    UnblockRequesterFunction wrappedRequester { [wrapped, decisionHandler](DecisionHandlerFunction wrappedDecisionHandler) {
+        wrapped.requestUnblockAsync([wrappedDecisionHandler, decisionHandler](bool unblocked) {
+            wrappedDecisionHandler(unblocked);
+            decisionHandler(unblocked);
+        });
+    }};
+#if PLATFORM(IOS)
+    m_webFilterEvaluator = nullptr;
+#endif
+    std::swap(m_unblockRequester, wrappedRequester);
+}
 
 bool ContentFilterUnblockHandler::needsUIProcess() const
 {
@@ -74,6 +98,7 @@ void ContentFilterUnblockHandler::encode(NSCoder *coder) const
     ASSERT_ARG(coder, coder.allowsKeyedCoding && coder.requiresSecureCoding);
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     [coder encodeObject:m_unblockURLHost forKey:unblockURLHostKey];
+    [coder encodeObject:(NSURL *)m_unreachableURL forKey:unreachableURLKey];
 #if PLATFORM(IOS)
     [coder encodeObject:m_webFilterEvaluator.get() forKey:webFilterEvaluatorKey];
 #endif
@@ -85,6 +110,7 @@ bool ContentFilterUnblockHandler::decode(NSCoder *coder, ContentFilterUnblockHan
     ASSERT_ARG(coder, coder.allowsKeyedCoding && coder.requiresSecureCoding);
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     unblockHandler.m_unblockURLHost = [coder decodeObjectOfClass:[NSString class] forKey:unblockURLHostKey];
+    unblockHandler.m_unreachableURL = [coder decodeObjectOfClass:[NSURL class] forKey:unreachableURLKey];
 #if PLATFORM(IOS)
     unblockHandler.m_webFilterEvaluator = [coder decodeObjectOfClass:getWebFilterEvaluatorClass() forKey:webFilterEvaluatorKey];
 #endif
@@ -104,7 +130,12 @@ bool ContentFilterUnblockHandler::canHandleRequest(const ResourceRequest& reques
 #endif
     }
 
-    return request.url().protocolIs(unblockURLScheme()) && equalIgnoringCase(request.url().host(), m_unblockURLHost);
+    bool isUnblockRequest = request.url().protocolIs(ContentFilter::urlScheme()) && equalIgnoringCase(request.url().host(), m_unblockURLHost);
+#if !LOG_DISABLED
+    if (isUnblockRequest)
+        LOG(ContentFiltering, "ContentFilterUnblockHandler will handle <%s> as an unblock request.\n", request.url().string().ascii().data());
+#endif
+    return isUnblockRequest;
 }
 
 static inline void dispatchToMainThread(void (^block)())
@@ -124,6 +155,7 @@ void ContentFilterUnblockHandler::requestUnblockAsync(DecisionHandlerFunction de
     if (m_webFilterEvaluator) {
         [m_webFilterEvaluator unblockWithCompletion:[decisionHandler](BOOL unblocked, NSError *) {
             dispatchToMainThread([decisionHandler, unblocked] {
+                LOG(ContentFiltering, "WebFilterEvaluator %s the unblock request.\n", unblocked ? "allowed" : "did not allow");
                 decisionHandler(unblocked);
             });
         }];

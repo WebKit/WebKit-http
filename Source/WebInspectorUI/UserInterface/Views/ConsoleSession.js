@@ -26,36 +26,34 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ConsoleSession = function()
+WebInspector.ConsoleSession = class ConsoleSession extends WebInspector.Object
 {
-    // FIXME: Convert this to a WebInspector.Object subclass, and call super().
-    // WebInspector.Object.call(this);
-
-    var element = document.createElement("div");
-    element.className = "console-session";
-    this.element = element;
-    this._messagesElement = element;
-};
-
-WebInspector.ConsoleSession.prototype = {
-    constructor: WebInspector.ConsoleSession,
-
-    addMessage: function(message)
+    constructor()
     {
-        var messageElement = message.toMessageElement();
+        super();
+
+        var element = document.createElement("div");
+        element.className = "console-session";
+        this.element = element;
+        this._messagesElement = element;
+    }
+
+    // Public
+
+    addMessageView(messageView)
+    {
+        var messageElement = messageView.element;
         messageElement.classList.add(WebInspector.LogContentView.ItemWrapperStyleClassName);
         this._messagesElement.appendChild(messageElement);
-    },
+    }
 
-    append: function(messageElement)
+    append(messageOrGroupElement)
     {
-        this._messagesElement.appendChild(messageElement);
-    },
+        this._messagesElement.appendChild(messageOrGroupElement);
+    }
 
-    hasMessages: function()
+    hasMessages()
     {
         return !!this._messagesElement.childNodes.length;
     }
 };
-
-WebInspector.ConsoleSession.prototype.__proto__ = WebInspector.Object.prototype;

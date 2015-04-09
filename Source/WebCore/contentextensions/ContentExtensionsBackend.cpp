@@ -30,6 +30,7 @@
 
 #include "CompiledContentExtension.h"
 #include "ContentExtension.h"
+#include "ContentExtensionsDebugging.h"
 #include "DFABytecodeInterpreter.h"
 #include "Document.h"
 #include "DocumentLoader.h"
@@ -72,6 +73,12 @@ void ContentExtensionsBackend::removeAllContentExtensions()
 
 Vector<Action> ContentExtensionsBackend::actionsForResourceLoad(const ResourceLoadInfo& resourceLoadInfo) const
 {
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double addedTimeStart = monotonicallyIncreasingTime();
+#endif
+    if (resourceLoadInfo.resourceURL.protocolIsData())
+        return Vector<Action>();
+
     const String& urlString = resourceLoadInfo.resourceURL.string();
     ASSERT_WITH_MESSAGE(urlString.containsOnlyASCII(), "A decoded URL should only contain ASCII characters. The matching algorithm assumes the input is ASCII.");
     const CString& urlCString = urlString.utf8();
@@ -79,8 +86,9 @@ Vector<Action> ContentExtensionsBackend::actionsForResourceLoad(const ResourceLo
     Vector<Action> finalActions;
     ResourceFlags flags = resourceLoadInfo.getResourceFlags();
     for (auto& contentExtension : m_contentExtensions.values()) {
+        RELEASE_ASSERT(contentExtension);
         const CompiledContentExtension& compiledExtension = contentExtension->compiledExtension();
-        DFABytecodeInterpreter interpreter(compiledExtension.bytecode(), compiledExtension.bytecodeLength());
+        DFABytecodeInterpreter interpreter(compiledExtension.bytecode(), compiledExtension.bytecodeLength(), contentExtension->m_pagesUsed);
         DFABytecodeInterpreter::Actions triggeredActions = interpreter.interpret(urlCString, flags);
         
         const SerializedActionByte* actions = compiledExtension.actions();
@@ -116,6 +124,10 @@ Vector<Action> ContentExtensionsBackend::actionsForResourceLoad(const ResourceLo
             finalActions.append(Action(ActionType::CSSDisplayNoneStyleSheet, contentExtension->identifier()));
         }
     }
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    double addedTimeEnd = monotonicallyIncreasingTime();
+    WTFLogAlways("Time added: %f microseconds %s", (addedTimeEnd - addedTimeStart) * 1.0e6, resourceLoadInfo.resourceURL.string().utf8().data());
+#endif
     return finalActions;
 }
 

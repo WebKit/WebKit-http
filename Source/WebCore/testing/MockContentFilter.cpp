@@ -29,8 +29,14 @@
 #if ENABLE(CONTENT_FILTERING)
 
 #include "ContentFilter.h"
+#include "ContentFilterUnblockHandler.h"
+#include "Logging.h"
+#include "ResourceRequest.h"
+#include "ResourceResponse.h"
+#include "SharedBuffer.h"
 #include <mutex>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -50,24 +56,33 @@ static inline MockContentFilterSettings& settings()
     return MockContentFilterSettings::singleton();
 }
 
-bool MockContentFilter::canHandleResponse(const ResourceResponse&)
+bool MockContentFilter::enabled()
 {
-    return settings().enabled();
+    bool enabled = settings().enabled();
+    LOG(ContentFiltering, "MockContentFilter is %s.\n", enabled ? "enabled" : "not enabled");
+    return enabled;
 }
 
-std::unique_ptr<MockContentFilter> MockContentFilter::create(const ResourceResponse& response)
+std::unique_ptr<MockContentFilter> MockContentFilter::create()
 {
-    return std::make_unique<MockContentFilter>(response);
+    return std::make_unique<MockContentFilter>();
 }
 
-MockContentFilter::MockContentFilter(const ResourceResponse&)
+void MockContentFilter::willSendRequest(ResourceRequest&, const ResourceResponse& redirectResponse)
+{
+    if (redirectResponse.isNull())
+        maybeDetermineStatus(DecisionPoint::AfterWillSendRequest);
+    else
+        maybeDetermineStatus(DecisionPoint::AfterRedirect);
+}
+
+void MockContentFilter::responseReceived(const ResourceResponse&)
 {
     maybeDetermineStatus(DecisionPoint::AfterResponse);
 }
 
-void MockContentFilter::addData(const char* data, int length)
+void MockContentFilter::addData(const char*, int)
 {
-    m_replacementData.append(data, length);
     maybeDetermineStatus(DecisionPoint::AfterAddData);
 }
 
@@ -86,14 +101,15 @@ bool MockContentFilter::didBlockData() const
     return m_status == Status::Blocked;
 }
 
-const char* MockContentFilter::getReplacementData(int& length) const
+Ref<SharedBuffer> MockContentFilter::replacementData() const
 {
-    length = m_replacementData.size();
-    return m_replacementData.data();
+    ASSERT(didBlockData());
+    return adoptRef(*SharedBuffer::create(m_replacementData.data(), m_replacementData.size()).leakRef());
 }
 
 ContentFilterUnblockHandler MockContentFilter::unblockHandler() const
 {
+    ASSERT(didBlockData());
     using DecisionHandlerFunction = ContentFilterUnblockHandler::DecisionHandlerFunction;
 
     return ContentFilterUnblockHandler {
@@ -101,6 +117,7 @@ ContentFilterUnblockHandler MockContentFilter::unblockHandler() const
             bool shouldAllow { settings().unblockRequestDecision() == Decision::Allow };
             if (shouldAllow)
                 settings().setDecision(Decision::Allow);
+            LOG(ContentFiltering, "MockContentFilter %s the unblock request.\n", shouldAllow ? "allowed" : "did not allow");
             decisionHandler(shouldAllow);
         }
     };
@@ -115,6 +132,8 @@ void MockContentFilter::maybeDetermineStatus(DecisionPoint decisionPoint)
 {
     if (m_status != Status::NeedsMoreData || decisionPoint != settings().decisionPoint())
         return;
+
+    LOG(ContentFiltering, "MockContentFilter stopped buffering with status %u at decision point %u.\n", m_status, decisionPoint);
 
     m_status = settings().decision() == Decision::Allow ? Status::Allowed : Status::Blocked;
     if (m_status != Status::Blocked)

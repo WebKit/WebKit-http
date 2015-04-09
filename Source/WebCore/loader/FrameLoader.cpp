@@ -1124,7 +1124,6 @@ void FrameLoader::started()
 
 void FrameLoader::prepareForLoadStart()
 {
-    policyChecker().prepareForLoadStart();
     m_progressTracker->progressStarted();
     m_client.dispatchDidStartProvisionalLoad();
 
@@ -3345,11 +3344,6 @@ void FrameLoader::didChangeTitle(DocumentLoader* loader)
     if (m_frame.isMainFrame())
         m_frame.page()->remoteInspectorInformationDidChange();
 #endif
-}
-
-void FrameLoader::didChangeIcons(IconType type)
-{
-    m_client.dispatchDidChangeIcons(type);
 }
 
 void FrameLoader::dispatchDidCommitLoad()

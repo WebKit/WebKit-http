@@ -64,7 +64,6 @@ namespace WebCore {
     class ArchiveResourceCollection;
     class CachedRawResource;
     class CachedResourceLoader;
-    class ContentFilter;
     class FormState;
     class Frame;
     class FrameLoader;
@@ -72,6 +71,10 @@ namespace WebCore {
     class ResourceLoader;
     class SharedBuffer;
     class SubstituteResource;
+
+#if ENABLE(CONTENT_FILTERING)
+    class ContentFilter;
+#endif
 
     typedef HashMap<unsigned long, RefPtr<ResourceLoader>> ResourceLoaderMap;
     typedef Vector<ResourceResponse> ResponseVector;
@@ -107,12 +110,10 @@ namespace WebCore {
 
         const SubstituteData& substituteData() const { return m_substituteData; }
 
-        // FIXME: This is the same as requestURL(). We should remove one of them.
         WEBCORE_EXPORT const URL& url() const;
         WEBCORE_EXPORT const URL& unreachableURL() const;
 
         const URL& originalURL() const;
-        WEBCORE_EXPORT const URL& requestURL() const;
         WEBCORE_EXPORT const URL& responseURL() const;
         WEBCORE_EXPORT const String& responseMIMEType() const;
 #if PLATFORM(IOS)
@@ -329,6 +330,12 @@ namespace WebCore {
         void substituteResourceDeliveryTimerFired();
 
         void clearMainResource();
+
+#if ENABLE(CONTENT_FILTERING)
+        void becomeMainResourceClientIfFilterAllows();
+        void installContentFilterUnblockHandler(ContentFilter&);
+        void contentFilterDidDecide();
+#endif
 
         Frame* m_frame;
         Ref<CachedResourceLoader> m_cachedResourceLoader;

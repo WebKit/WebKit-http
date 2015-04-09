@@ -306,11 +306,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(SideState);
         return;
 
-    case TypedArrayWatchpoint:
-        read(Watchpoint_fire);
-        write(SideState);
-        return;
-        
     case NotifyWrite:
         write(Watchpoint_fire);
         write(SideState);
@@ -897,6 +892,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
         
     case ToString:
+    case CallStringConstructor:
         switch (node->child1().useKind()) {
         case StringObjectUse:
         case StringOrStringObjectUse:

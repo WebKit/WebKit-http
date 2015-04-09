@@ -939,7 +939,9 @@ void Structure::getPropertyNamesFromStructure(VM& vm, PropertyNameArray& propert
     PropertyTable::iterator end = propertyTable()->end();
     for (PropertyTable::iterator iter = propertyTable()->begin(); iter != end; ++iter) {
         ASSERT(hasNonEnumerableProperties() || !(iter->attributes & DontEnum));
-        if (!iter->key->isSymbol() && (!(iter->attributes & DontEnum) || shouldIncludeDontEnumProperties(mode))) {
+        if (!(iter->attributes & DontEnum) || mode.includeDontEnumProperties()) {
+            if (iter->key->isSymbol() && !mode.includeSymbolProperties())
+                continue;
             if (knownUnique)
                 propertyNames.addKnownUnique(iter->key);
             else
@@ -1002,8 +1004,7 @@ void Structure::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
 bool Structure::prototypeChainMayInterceptStoreTo(VM& vm, PropertyName propertyName)
 {
-    unsigned i = propertyName.asIndex();
-    if (i != PropertyName::NotAnIndex)
+    if (parseIndex(propertyName))
         return anyObjectInChainMayInterceptIndexedAccesses();
     
     for (Structure* current = this; ;) {

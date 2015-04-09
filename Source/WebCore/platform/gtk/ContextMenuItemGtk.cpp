@@ -140,6 +140,11 @@ static PlatformMenuItemDescription createPlatformMenuItemDescription(ContextMenu
     return item;
 }
 
+ContextMenuItem::ContextMenuItem()
+    : m_platformDescription(nullptr)
+{
+}
+
 // Extract the ActionType from the menu item
 ContextMenuItem::ContextMenuItem(PlatformMenuItemDescription item)
     : m_platformDescription(item)
@@ -281,6 +286,11 @@ void ContextMenuItem::setEnabled(bool shouldEnable)
 GtkAction* ContextMenuItem::gtkAction() const
 {
     return gtk_activatable_get_related_action(GTK_ACTIVATABLE(m_platformDescription));
+}
+
+ContextMenuItem ContextMenuItem::shareMenuItem(const URL&, const URL&, Image*, const String&)
+{
+    return ContextMenuItem(SubmenuType, ContextMenuItemTagShareMenu, emptyString());
 }
 
 }

@@ -1622,6 +1622,16 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 #if PLATFORM(MAC)
 
+- (BOOL)becomeFirstResponder
+{
+    return [[self window] makeFirstResponder: _wkView.get()];
+}
+
+- (BOOL)acceptsFirstResponder
+{
+    return [_wkView acceptsFirstResponder];
+}
+
 - (void)resizeSubviewsWithOldSize:(NSSize)oldSize
 {
     [_wkView setFrame:self.bounds];
@@ -2230,6 +2240,26 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (BOOL)_isShowingNavigationGestureSnapshot
 {
     return _page->isShowingNavigationGestureSnapshot();
+}
+
+- (BOOL)_isFixedLayoutEnabled
+{
+    return _page->useFixedLayout();
+}
+
+- (void)_setFixedLayoutEnabled:(BOOL)fixedLayoutEnabled
+{
+    _page->setUseFixedLayout(fixedLayoutEnabled);
+}
+
+- (CGSize)_fixedLayoutSize
+{
+    return _page->fixedLayoutSize();
+}
+
+- (void)_setFixedLayoutSize:(CGSize)fixedLayoutSize
+{
+    _page->setFixedLayoutSize(WebCore::expandedIntSize(WebCore::FloatSize(fixedLayoutSize)));
 }
 
 #pragma mark scrollperf methods

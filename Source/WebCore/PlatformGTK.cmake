@@ -649,6 +649,9 @@ list(APPEND GObjectDOMBindingsUnstable_IDL_FILES
 
     Modules/mediasource/VideoPlaybackQuality.idl
 
+    Modules/mediastream/MediaDevices.idl
+    Modules/mediastream/NavigatorMediaDevices.idl
+
     Modules/quota/StorageInfo.idl
     Modules/quota/StorageQuota.idl
 

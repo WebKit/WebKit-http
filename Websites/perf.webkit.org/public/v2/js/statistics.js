@@ -26,21 +26,21 @@ var Statistics = new (function () {
 
     this.supportedConfidenceIntervalProbabilities = function () {
         var supportedProbabilities = [];
-        for (var quantile in tDistributionQuantiles)
-            supportedProbabilities.push((1 - (1 - quantile) * 2).toFixed(2));
+        for (var probability in tDistributionByOneSidedProbability)
+            supportedProbabilities.push(oneSidedToTwoSidedProbability(probability).toFixed(2));
         return supportedProbabilities
     }
 
     // Computes the delta d s.t. (mean - d, mean + d) is the confidence interval with the specified probability in O(1).
     this.confidenceIntervalDelta = function (probability, numberOfSamples, sum, squareSum) {
-        var quantile = (1 - (1 - probability) / 2);
-        if (!(quantile in tDistributionQuantiles)) {
+        var oneSidedProbability = twoSidedToOneSidedProbability(probability);
+        if (!(oneSidedProbability in tDistributionByOneSidedProbability)) {
             throw 'We only support ' + this.supportedConfidenceIntervalProbabilities().map(function (probability)
             { return probability * 100 + '%'; } ).join(', ') + ' confidence intervals.';
         }
         if (numberOfSamples - 2 < 0)
             return NaN;
-        var deltas = tDistributionQuantiles[quantile];
+        var deltas = tDistributionByOneSidedProbability[oneSidedProbability];
         var degreesOfFreedom = numberOfSamples - 1;
         if (degreesOfFreedom > deltas.length)
             throw 'We only support up to ' + deltas.length + ' degrees of freedom';
@@ -56,7 +56,89 @@ var Statistics = new (function () {
         return [mean - delta, mean + delta];
     }
 
-    var tDistributionQuantiles = {
+    // Welch's t-test (http://en.wikipedia.org/wiki/Welch%27s_t_test)
+    this.testWelchsT = function (values1, values2, probability) {
+        return this.computeWelchsT(values1, 0, values1.length, values2, 0, values2.length, probability).significantlyDifferent;
+    }
+
+    this.probabilityRangeForWelchsT = function (values1, values2) {
+        var result = this.computeWelchsT(values1, 0, values1.length, values2, 0, values2.length);
+        if (isNaN(result.t) || isNaN(result.degreesOfFreedom))
+            return {t: NaN, degreesOfFreedom:NaN, range: [null, null]};
+
+        var lowerBound = null;
+        var upperBound = null;
+        for (var probability in tDistributionByOneSidedProbability) {
+            var twoSidedProbability = oneSidedToTwoSidedProbability(probability);
+            if (result.t > tDistributionByOneSidedProbability[probability][Math.round(result.degreesOfFreedom - 1)])
+                lowerBound = twoSidedProbability;
+            else if (lowerBound) {
+                upperBound = twoSidedProbability;
+                break;
+            }
+        }
+        return {t: result.t, degreesOfFreedom: result.degreesOfFreedom, range: [lowerBound, upperBound]};
+    }
+
+    this.computeWelchsT = function (values1, startIndex1, length1, values2, startIndex2, length2, probability) {
+        var stat1 = sampleMeanAndVarianceForValues(values1, startIndex1, length1);
+        var stat2 = sampleMeanAndVarianceForValues(values2, startIndex2, length2);
+        var sumOfSampleVarianceOverSampleSize = stat1.variance / stat1.size + stat2.variance / stat2.size;
+        var t = Math.abs((stat1.mean - stat2.mean) / Math.sqrt(sumOfSampleVarianceOverSampleSize));
+
+        // http://en.wikipedia.org/wiki/Welch–Satterthwaite_equation
+        var degreesOfFreedom = sumOfSampleVarianceOverSampleSize * sumOfSampleVarianceOverSampleSize
+            / (stat1.variance * stat1.variance / stat1.size / stat1.size / stat1.degreesOfFreedom
+                + stat2.variance * stat2.variance / stat2.size / stat2.size / stat2.degreesOfFreedom);
+        var minT = tDistributionByOneSidedProbability[twoSidedToOneSidedProbability(probability || 0.8)][Math.round(degreesOfFreedom - 1)];
+        return {
+            t: t,
+            degreesOfFreedom: degreesOfFreedom,
+            significantlyDifferent: t > minT,
+        };
+    }
+
+    function sampleMeanAndVarianceForValues(values, startIndex, length) {
+        var sum = 0;
+        for (var i = 0; i < length; i++)
+            sum += values[startIndex + i];
+        var squareSum = 0;
+        for (var i = 0; i < length; i++)
+            squareSum += values[startIndex + i] * values[startIndex + i];
+        var sampleMean = sum / length;
+        // FIXME: Maybe we should be using the biased sample variance.
+        var unbiasedSampleVariance = (squareSum - sum * sum / length) / (length - 1);
+        return {
+            mean: sampleMean,
+            variance: unbiasedSampleVariance,
+            size: length,
+            degreesOfFreedom: length - 1,
+        }
+    }
+
+    function recursivelySplitIntoTwoSegmentsAtMaxTIfSignificantlyDifferent(values, startIndex, length, minLength, segments) {
+        var tMax = 0;
+        var argTMax = null;
+        for (var i = 1; i < length - 1; i++) {
+            var firstLength = i;
+            var secondLength = length - i;
+            if (firstLength < minLength || secondLength < minLength)
+                continue;
+            var result = Statistics.computeWelchsT(values, startIndex, firstLength, values, startIndex + i, secondLength, 0.9);
+            if (result.significantlyDifferent && result.t > tMax) {
+                tMax = result.t;
+                argTMax = i;
+            }
+        }
+        if (!tMax) {
+            segments.push(values.slice(startIndex, startIndex + length));
+            return;
+        }
+        recursivelySplitIntoTwoSegmentsAtMaxTIfSignificantlyDifferent(values, startIndex, argTMax, minLength, segments);
+        recursivelySplitIntoTwoSegmentsAtMaxTIfSignificantlyDifferent(values, startIndex + argTMax, length - argTMax, minLength, segments);
+    }
+
+    var tDistributionByOneSidedProbability = {
         0.9: [
             3.077684, 1.885618, 1.637744, 1.533206, 1.475884, 1.439756, 1.414924, 1.396815, 1.383029, 1.372184,
             1.363430, 1.356217, 1.350171, 1.345030, 1.340606, 1.336757, 1.333379, 1.330391, 1.327728, 1.325341,
@@ -106,6 +188,8 @@ var Statistics = new (function () {
             2.373270, 2.372687, 2.372119, 2.371564, 2.371022, 2.370493, 2.369977, 2.369472, 2.368979, 2.368497,
             2.368026, 2.367566, 2.367115, 2.366674, 2.366243, 2.365821, 2.365407, 2.365002, 2.364606, 2.364217]
     };
+    function oneSidedToTwoSidedProbability(probability) { return 2 * probability - 1; }
+    function twoSidedToOneSidedProbability(probability) { return (1 - (1 - probability) / 2); }
 
     this.MovingAverageStrategies = [
         {
@@ -162,7 +246,189 @@ var Statistics = new (function () {
                 return averages;
             }
         },
+        {
+            id: 4,
+            label: 'Segmentation: Recursive t-test',
+            description: "Recursively split values into two segments if Welch's t-test detects a statistically significant difference.",
+            parameterList: [{label: "Minimum segment length", value: 20, min: 5}],
+            execute: function (minLength, values) {
+                if (values.length < 2)
+                    return null;
+
+                var averages = new Array(values.length);
+                var segments = new Array;
+                recursivelySplitIntoTwoSegmentsAtMaxTIfSignificantlyDifferent(values, 0, values.length, minLength, segments);
+                var averageIndex = 0;
+                for (var j = 0; j < segments.length; j++) {
+                    var values = segments[j];
+                    var mean = Statistics.sum(values) / values.length;
+                    for (var i = 0; i < values.length; i++)
+                        averages[averageIndex++] = mean;
+                }
+
+                return averages;
+            }
+        },
+        {
+            id: 5,
+            label: 'Segmentation: Schwarz criterion',
+            description: 'Adaptive algorithm that maximizes the Schwarz criterion (BIC).',
+            // Based on Detection of Multiple Change–Points in Multivariate Time Series by Marc Lavielle (July 2006).
+            execute: function (values) {
+                if (values.length < 2)
+                    return null;
+
+                var averages = new Array(values.length);
+                var averageIndex = 0;
+
+                // Split the time series into grids since splitIntoSegmentsUntilGoodEnough is O(n^2).
+                var gridLength = 500;
+                var totalSegmentation = [0];
+                for (var gridCount = 0; gridCount < Math.ceil(values.length / gridLength); gridCount++) {
+                    var gridValues = values.slice(gridCount * gridLength, (gridCount + 1) * gridLength);
+                    var segmentation = splitIntoSegmentsUntilGoodEnough(gridValues);
+
+                    if (Statistics.debuggingSegmentation)
+                        console.log('grid=' + gridCount, segmentation);
+
+                    for (var i = 1; i < segmentation.length - 1; i++)
+                        totalSegmentation.push(gridCount * gridLength + segmentation[i]);
+                }
+
+                if (Statistics.debuggingSegmentation)
+                    console.log('Final Segmentation', totalSegmentation);
+
+                totalSegmentation.push(values.length);
+
+                for (var i = 1; i < totalSegmentation.length; i++) {
+                    var segment = values.slice(totalSegmentation[i - 1], totalSegmentation[i]);
+                    var average = Statistics.sum(segment) / segment.length;
+                    for (var j = 0; j < segment.length; j++)
+                        averages[averageIndex++] = average;
+                }
+
+                return averages;
+            }
+        },
     ];
+
+    this.debuggingSegmentation = false;
+
+    function splitIntoSegmentsUntilGoodEnough(values) {
+        if (values.length < 2)
+            return [0, values.length];
+
+        var matrix = new SampleVarianceUpperTriangularMatrix(values);
+
+        var SchwarzCriterionBeta = Math.log1p(values.length - 1) / values.length;
+
+        var BirgeAndMassartC = 2.5; // Suggested by the authors.
+        var BirgeAndMassartPenalization = function (segmentCount) {
+            return segmentCount * (1 + BirgeAndMassartC * Math.log1p(values.length / segmentCount - 1));
+        }
+
+        var segmentation;
+        var minTotalCost = Infinity;
+        var maxK = 50;
+
+        for (var k = 1; k < maxK; k++) {
+            var start = Date.now();
+            var result = findOptimalSegmentation(values, matrix, k);
+            var cost = result.cost / values.length;
+            var penalty = SchwarzCriterionBeta * BirgeAndMassartPenalization(k);
+            if (cost + penalty < minTotalCost) {
+                minTotalCost = cost + penalty;
+                segmentation = result.segmentation;
+            } else
+                maxK = Math.min(maxK, k + 3);
+            if (Statistics.debuggingSegmentation)
+                console.log('splitIntoSegmentsUntilGoodEnough', k, Date.now() - start, cost + penalty);
+        }
+
+        return segmentation;
+    }
+
+    function findOptimalSegmentation(values, costMatrix, segmentCount) {
+        // Dynamic programming. cost[i][k] = The cost to segmenting values up to i into k segments.
+        var cost = new Array(values.length);
+        for (var i = 0; i < values.length; i++) {
+            cost[i] = new Float32Array(segmentCount + 1);
+        }
+
+        var previousNode = new Array(values.length);
+        for (var i = 0; i < values.length; i++)
+            previousNode[i] = new Array(segmentCount + 1);
+
+        cost[0] = [0]; // The cost of segmenting single value is always 0.
+        previousNode[0] = [-1];
+        for (var segmentStart = 0; segmentStart < values.length; segmentStart++) {
+            var costBySegment = cost[segmentStart];
+            for (var count = 0; count < segmentCount; count++) {
+                if (previousNode[segmentStart][count] === undefined)
+                    continue;
+                for (var segmentEnd = segmentStart + 1; segmentEnd < values.length; segmentEnd++) {
+                    var newCost = costBySegment[count] + costMatrix.costBetween(segmentStart, segmentEnd);
+                    if (previousNode[segmentEnd][count + 1] === undefined || newCost < cost[segmentEnd][count + 1]) {
+                        cost[segmentEnd][count + 1] = newCost;
+                        previousNode[segmentEnd][count + 1] = segmentStart;
+                    }
+                }
+            }
+        }
+
+        if (Statistics.debuggingSegmentation) {
+            console.log('findOptimalSegmentation with k=', segmentCount);
+            for (var i = 0; i < cost.length; i++) {
+                var t = cost[i];
+                var s = '';
+                for (var j = 0; j < t.length; j++) {
+                    var p = previousNode[i][j];
+                    s += '(k=' + j;
+                    if (p !== undefined)
+                        s += ' c=' + t[j] + ' p=' + p
+                    s += ')';
+                }
+                console.log(i, values[i], s);
+            }
+        }
+
+        var currentIndex = values.length - 1;
+        var segmentation = new Array(segmentCount);
+        segmentation[0] = values.length;
+        for (var i = 0; i < segmentCount; i++) {
+            currentIndex = previousNode[currentIndex][segmentCount - i];
+            segmentation[i + 1] = currentIndex;
+        }
+
+        return {segmentation: segmentation.reverse(), cost: cost[values.length - 1][segmentCount]};
+    }
+
+    function SampleVarianceUpperTriangularMatrix(values) {
+        // The cost of segment (i, j].
+        var costMatrix = new Array(values.length - 1);
+        for (var i = 0; i < values.length - 1; i++) {
+            var remainingValueCount = values.length - i - 1;
+            costMatrix[i] = new Float32Array(remainingValueCount);
+            var sum = values[i];
+            var squareSum = sum * sum;
+            costMatrix[i][0] = 0;
+            for (var j = i + 1; j < values.length; j++) {
+                var currentValue = values[j];
+                sum += currentValue;
+                squareSum += currentValue * currentValue;
+                var sampleSize = j - i + 1;
+                var stdev = Statistics.sampleStandardDeviation(sampleSize, sum, squareSum);
+                costMatrix[i][j - i - 1] = sampleSize * Math.log1p(stdev * stdev - 1);
+            }
+        }
+        this.costMatrix = costMatrix;
+    }
+
+    SampleVarianceUpperTriangularMatrix.prototype.costBetween = function(from, to) {
+        if (from >= this.costMatrix.length || from == to)
+            return 0; // The cost of the segment that starts at the last data point is 0.
+        return this.costMatrix[from][to - from - 1];
+    }
 
     this.EnvelopingStrategies = [
         {
@@ -198,6 +464,70 @@ var Statistics = new (function () {
             }
         },
     ];
+
+    function createWesternElectricRule(windowSize, minOutlinerCount, limitFactor) {
+        return function (values, movingAverages, deviation) {
+            var results = new Array(values.length);
+            var limit = limitFactor * deviation;
+            for (var i = 0; i < values.length; i++)
+                results[i] = countValuesOnSameSide(values, movingAverages, limit, i, windowSize) >= minOutlinerCount ? windowSize : 0;
+            return results;
+        }
+    }
+
+    function countValuesOnSameSide(values, movingAverages, limit, startIndex, windowSize) {
+        var valuesAboveLimit = 0;
+        var valuesBelowLimit = 0;
+        var center = movingAverages[startIndex];
+        for (var i = startIndex; i < startIndex + windowSize && i < values.length; i++) {
+            var diff = values[i] - center;
+            valuesAboveLimit += (diff > limit);
+            valuesBelowLimit += (diff < -limit);
+        }
+        return Math.max(valuesAboveLimit, valuesBelowLimit);
+    }
+    window.countValuesOnSameSide = countValuesOnSameSide;
+
+    this.AnomalyDetectionStrategy = [
+        // Western Electric rules: http://en.wikipedia.org/wiki/Western_Electric_rules
+        {
+            id: 200,
+            label: 'Western Electric: any point beyond 3σ',
+            description: 'Any single point falls outside 3σ limit from the moving average',
+            execute: createWesternElectricRule(1, 1, 3),
+        },
+        {
+            id: 201,
+            label: 'Western Electric: 2/3 points beyond 2σ',
+            description: 'Two out of three consecutive points fall outside 2σ limit from the moving average on the same side',
+            execute: createWesternElectricRule(3, 2, 2),
+        },
+        {
+            id: 202,
+            label: 'Western Electric: 4/5 points beyond σ',
+            description: 'Four out of five consecutive points fall outside 2σ limit from the moving average on the same side',
+            execute: createWesternElectricRule(5, 4, 1),
+        },
+        {
+            id: 203,
+            label: 'Western Electric: 9 points on same side',
+            description: 'Nine consecutive points on the same side of the moving average',
+            execute: createWesternElectricRule(9, 9, 0),
+        },
+        {
+            id: 210,
+            label: 'Mozilla: t-test 5 vs. 20 before that',
+            description: "Use student's t-test to determine whether the mean of the last five data points differs from the mean of the twenty values before that",
+            execute: function (values, movingAverages, deviation) {
+                var results = new Array(values.length);
+                var p = false;
+                for (var i = 20; i < values.length - 5; i++)
+                    results[i] = Statistics.testWelchsT(values.slice(i - 20, i), values.slice(i, i + 5), 0.98) ? 5 : 0;
+                return results;
+            }
+        },
+    ]
+
 })();
 
 if (typeof module != 'undefined') {

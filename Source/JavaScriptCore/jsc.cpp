@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2012, 2013, 2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2008, 2012-2013, 2015 Apple Inc. All rights reserved.
  *  Copyright (C) 2006 Bjoern Graf (bjoern.graf@gmail.com)
  *
  *  This library is free software; you can redistribute it and/or
@@ -337,10 +337,9 @@ public:
             return true;
         }
 
-        unsigned index = propertyName.asIndex();
-        if (index < thisObject->getLength()) {
-            ASSERT(index != PropertyName::NotAnIndex);
-            slot.setValue(thisObject, DontDelete | DontEnum, jsNumber(thisObject->m_vector[index]));
+        Optional<uint32_t> index = parseIndex(propertyName);
+        if (index && index.value() < thisObject->getLength()) {
+            slot.setValue(thisObject, DontDelete | DontEnum, jsNumber(thisObject->m_vector[index.value()]));
             return true;
         }
 
@@ -1462,7 +1461,7 @@ void CommandLine::parseArguments(int argc, char** argv)
         m_arguments.append(argv[i]);
 
     if (needToDumpOptions)
-        JSC::Options::dumpAllOptions(stderr);
+        JSC::Options::dumpAllOptions(JSC::Options::DumpLevel::Verbose, "All JSC runtime options:", stderr);
     if (needToExit)
         jscExit(EXIT_SUCCESS);
 }

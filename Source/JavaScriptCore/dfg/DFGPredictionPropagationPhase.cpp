@@ -480,6 +480,7 @@ private:
             break;
         }
         case StringCharAt:
+        case CallStringConstructor:
         case ToString:
         case MakeRope: {
             changed |= setPrediction(SpecString);
@@ -644,7 +645,6 @@ private:
         case Unreachable:
         case LoopHint:
         case NotifyWrite:
-        case TypedArrayWatchpoint:
         case ConstantStoragePointer:
         case MovHint:
         case ZombieHint:
