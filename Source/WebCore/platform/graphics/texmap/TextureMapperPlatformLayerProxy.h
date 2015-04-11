@@ -56,7 +56,7 @@ public:
     };
 
     TextureMapperPlatformLayerProxy();
-    virtual ~TextureMapperPlatformLayerProxy() { }
+    virtual ~TextureMapperPlatformLayerProxy();
 
     void pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer>);
     std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
