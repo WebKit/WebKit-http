@@ -50,6 +50,7 @@ private:
     // WebCore::PluginStrategy
     virtual void refreshPlugins() override;
     virtual void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
+    virtual void getWebVisiblePluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
 };
 
 #endif // PlatformStrategiesHaiku_h

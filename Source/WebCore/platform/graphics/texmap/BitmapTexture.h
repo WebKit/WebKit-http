@@ -64,7 +64,7 @@ public:
     {
     }
 
-    virtual ~BitmapTexture() { }
+    virtual ~BitmapTexture();
     virtual bool isBackedByOpenGL() const { return false; }
 
     virtual IntSize size() const = 0;

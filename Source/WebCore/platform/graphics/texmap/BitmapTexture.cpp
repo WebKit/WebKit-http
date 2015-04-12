@@ -33,6 +33,11 @@
 
 namespace WebCore {
 
+BitmapTexture::~BitmapTexture()
+{
+}
+
+
 void BitmapTexture::updateContents(TextureMapper* textureMapper, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag updateContentsFlag)
 {
     std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(targetRect.size());

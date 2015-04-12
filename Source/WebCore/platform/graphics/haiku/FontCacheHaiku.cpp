@@ -47,7 +47,7 @@ void FontCache::platformInit()
 {
 }
 
-RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font* /*originalFontData*/, bool, const UChar* /*characters*/, int /*length*/)
+RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font* /*originalFontData*/, bool, const UChar* /*characters*/, unsigned /*length*/)
 {
     FontPlatformData data(description, description.firstFamily());
         // TODO be smarter, try the other families and actually check that the

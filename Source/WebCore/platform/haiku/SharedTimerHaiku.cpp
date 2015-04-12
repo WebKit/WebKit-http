@@ -222,4 +222,8 @@ void stopSharedTimer()
     SharedTimerHaiku::instance()->stop();
 }
 
+void invalidateSharedTimer()
+{
+}
+
 } // namespace WebCore

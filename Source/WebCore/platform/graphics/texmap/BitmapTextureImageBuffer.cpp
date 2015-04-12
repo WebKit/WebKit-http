@@ -27,6 +27,7 @@
 #include "config.h"
 #include "BitmapTextureImageBuffer.h"
 
+#include "GraphicsContext.h"
 #include "GraphicsLayer.h"
 
 namespace WebCore {

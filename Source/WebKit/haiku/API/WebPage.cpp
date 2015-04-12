@@ -51,7 +51,7 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClientHaiku.h"
 #include "FrameView.h"
-#include "platform/mock/GeolocationClientMock.h"
+#include "GeolocationClientMock.h"
 #include "GraphicsContext.h"
 #include "IconDatabase.h"
 #include "InitializeThreading.h"
@@ -155,7 +155,6 @@ BMessenger BWebPage::sDownloadListener;
     ScriptController::initializeThreading();
     WTF::initializeMainThread();
     WTF::AtomicString::init();
-    Settings::setDefaultMinDOMTimerInterval(0.004);
     WebCore::UTF8Encoding();
 
     WebVisitedLinkStore::setShouldTrackVisitedLinks(true);

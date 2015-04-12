@@ -134,3 +134,10 @@ void PlatformStrategiesHaiku::getPluginInfo(const Page*, Vector<PluginInfo>& out
     UNUSED_PARAM(outPlugins);
 #endif
 }
+
+
+void PlatformStrategiesHaiku::getWebVisiblePluginInfo(const Page* page, Vector<PluginInfo>& plugins)
+{
+    getPluginInfo(page, plugins);
+}
+
