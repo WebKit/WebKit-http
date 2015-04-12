@@ -82,6 +82,7 @@
     macro(clear) \
     macro(close) \
     macro(closed) \
+    macro(column) \
     macro(compilationKind) \
     macro(compilations) \
     macro(compile) \
@@ -127,6 +128,7 @@
     macro(keys) \
     macro(lastIndex) \
     macro(length) \
+    macro(line) \
     macro(message) \
     macro(multiline) \
     macro(name) \
@@ -153,6 +155,7 @@
     macro(size) \
     macro(slice) \
     macro(source) \
+    macro(sourceURL) \
     macro(sourceCode) \
     macro(stack) \
     macro(subarray) \
@@ -220,21 +223,22 @@
     macro(with) \
     macro(yield)
 
-#define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
+#define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL_NOT_IMPLEMENTED_YET(macro)\
     macro(hasInstance) \
     macro(isConcatSpreadable) \
-    macro(iterator) \
     macro(match) \
     macro(replace) \
     macro(search) \
     macro(species) \
     macro(split) \
     macro(toPrimitive) \
-    macro(toStringTag) \
-    macro(unscopable)
+    macro(toStringTag)
+
+#define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
+    macro(iterator) \
+    macro(unscopables)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
-    JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
     macro(iteratedObject) \
     macro(arrayIteratorNextIndex) \
     macro(arrayIterationKind) \
@@ -298,7 +302,14 @@ namespace JSC {
 #define JSC_IDENTIFIER_DECLARE_PRIVATE_PROPERTY_NAME_GLOBAL(name) const Identifier name##PrivateName;
         JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(JSC_IDENTIFIER_DECLARE_PRIVATE_PROPERTY_NAME_GLOBAL)
 #undef JSC_IDENTIFIER_DECLARE_PRIVATE_PROPERTY_NAME_GLOBAL
-        
+
+#define JSC_IDENTIFIER_DECLARE_PRIVATE_WELL_KNOWN_SYMBOL_GLOBAL(name) const Identifier name##Symbol;
+        JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(JSC_IDENTIFIER_DECLARE_PRIVATE_WELL_KNOWN_SYMBOL_GLOBAL)
+#undef JSC_IDENTIFIER_DECLARE_PRIVATE_WELL_KNOWN_SYMBOL_GLOBAL
+
+        bool isPrivateName(StringImpl* uid) const;
+        bool isPrivateName(const Identifier&) const;
+
         const Identifier* getPrivateName(const Identifier&) const;
         Identifier getPublicName(const Identifier&) const;
     };

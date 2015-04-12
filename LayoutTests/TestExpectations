@@ -69,6 +69,10 @@ webkit.org/b/127860 [ Debug ] js/function-apply-aliased.html [ Skip ]
 # This test verifies dynamic manipulation of the mroot and msqrt elements.
 mathml/roots-removeChild.html [ ImageOnlyFailure ]
 
+webkit.org/b/133359 mathml/presentation/style-changed.html [ ImageOnlyFailure ]
+webkit.org/b/136291 platform/mac/accessibility/webkit-alt-for-css-content.html [ Failure ]
+webkit.org/b/136291 platform/mac/accessibility/alt-for-css-content.html [ Failure ]
+
 # This test verifies that a mismatch reftest will fail as intended if both results are same. (introduced in r93187)
 fast/harness/sample-fail-mismatch-reftest.html [ WontFix ImageOnlyFailure ]
 
@@ -123,7 +127,7 @@ webkit.org/b/141661 fast/text/emoji.html [ Failure ]
 webkit.org/b/142548 editing/selection/extend-by-character-007.html [ Failure ]
 
 webkit.org/b/128736 inspector-protocol/debugger/setBreakpoint-dfg.html [ Failure Pass ]
-webkit.org/b/143105 inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local.html [ Skip ] # Crashing
+webkit.org/b/134982 inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local.html [ Failure Pass ]
 
 # CSS Font Loading is not yet enabled on all platforms
 webkit.org/b/135390 fast/css/fontloader-download-error.html [ Skip ]
@@ -493,7 +497,18 @@ webkit.org/b/114280 svg/animations/smil-leak-element-instances-noBaseValRef.svg 
 webkit.org/b/114280 svg/animations/smil-leak-element-instances.svg [ Pass Failure ]
 webkit.org/b/114280 svg/animations/smil-leak-elements.svg [ Pass Failure ]
 
-# contentfiltering/block-after-add-data.html times out unexpectedly
-webkit.org/b/142894 contentfiltering/block-after-add-data.html [ Skip ]
-
 webkit.org/b/143085 media/track/track-mode.html [ Pass Timeout ]
+
+# In ES6, Object type restrictions on a first parameter of several Object.* functions are relaxed.
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.2-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.3-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.4-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.8-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.9-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.10-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.11-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.12-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.13-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-1.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-2.html [ Failure ]
+webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-3.html [ Failure ]

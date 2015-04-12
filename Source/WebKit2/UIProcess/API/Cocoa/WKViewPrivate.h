@@ -26,6 +26,7 @@
 #import <WebKit/WKActionMenuTypes.h>
 #import <WebKit/WKBase.h>
 #import <WebKit/WKImmediateActionTypes.h>
+#import <WebKit/WKLayoutMode.h>
 #import <WebKit/WKView.h>
 
 @interface WKView (Private)
@@ -89,6 +90,9 @@
 @property (readwrite) BOOL allowsBackForwardNavigationGestures;
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
 @property (nonatomic, setter=_setTotalHeightOfBanners:) CGFloat _totalHeightOfBanners;
+
+@property (nonatomic, setter=_setLayoutMode:) WKLayoutMode _layoutMode;
+@property (nonatomic, setter=_setFixedLayoutSize:) CGSize _fixedLayoutSize;
 
 @property (nonatomic, setter=_setOverrideDeviceScaleFactor:) CGFloat _overrideDeviceScaleFactor WK_AVAILABLE(WK_MAC_TBA, NA);
 

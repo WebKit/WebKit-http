@@ -68,18 +68,21 @@ protected:
     void updateScrollPositionAfterAsyncScroll(ScrollingNodeID, const FloatPoint&, bool programmaticScroll, SetOrSyncScrollingLayerPosition);
 
     WEBCORE_EXPORT virtual String scrollingStateTreeAsText() const override;
+    WEBCORE_EXPORT virtual void willCommitTree() override;
+
+    bool nonFastScrollableRegionDirty() const { return m_nonFastScrollableRegionDirty; }
 
 private:
     virtual bool isAsyncScrollingCoordinator() const override { return true; }
 
     virtual bool supportsFixedPositionLayers() const override { return true; }
-    virtual bool hasVisibleSlowRepaintViewportConstrainedObjects(FrameView*) const override { return false; }
+    virtual bool hasVisibleSlowRepaintViewportConstrainedObjects(const FrameView&) const override { return false; }
 
-    WEBCORE_EXPORT virtual void frameViewLayoutUpdated(FrameView*) override;
-    WEBCORE_EXPORT virtual void frameViewRootLayerDidChange(FrameView*) override;
-    WEBCORE_EXPORT virtual void frameViewNonFastScrollableRegionChanged(FrameView*) override;
+    WEBCORE_EXPORT virtual void frameViewLayoutUpdated(FrameView&) override;
+    WEBCORE_EXPORT virtual void frameViewRootLayerDidChange(FrameView&) override;
+    WEBCORE_EXPORT virtual void frameViewNonFastScrollableRegionChanged(FrameView&) override;
 
-    WEBCORE_EXPORT virtual bool requestScrollPositionUpdate(FrameView*, const IntPoint&) override;
+    WEBCORE_EXPORT virtual bool requestScrollPositionUpdate(FrameView&, const IntPoint&) override;
 
     WEBCORE_EXPORT virtual ScrollingNodeID attachToStateTree(ScrollingNodeType, ScrollingNodeID newNodeID, ScrollingNodeID parentID) override;
     WEBCORE_EXPORT virtual void detachFromStateTree(ScrollingNodeID) override;
@@ -94,17 +97,18 @@ private:
     virtual void setScrollPinningBehavior(ScrollPinningBehavior) override;
 
     WEBCORE_EXPORT virtual void syncChildPositions(const LayoutRect& viewportRect) override;
-    WEBCORE_EXPORT virtual void scrollableAreaScrollbarLayerDidChange(ScrollableArea*, ScrollbarOrientation) override;
+    WEBCORE_EXPORT virtual void scrollableAreaScrollbarLayerDidChange(ScrollableArea&, ScrollbarOrientation) override;
 
-    WEBCORE_EXPORT virtual void recomputeWheelEventHandlerCountForFrameView(FrameView*) override;
     WEBCORE_EXPORT virtual void setSynchronousScrollingReasons(SynchronousScrollingReasons) override;
 
     virtual void scheduleTreeStateCommit() = 0;
 
-    void ensureRootStateNodeForFrameView(FrameView*);
+    void ensureRootStateNodeForFrameView(FrameView&);
     void updateMainFrameScrollLayerPosition();
 
     void updateScrollPositionAfterAsyncScrollTimerFired();
+    void setNonFastScrollableRegionDirty();
+    void updateNonFastScrollableRegion();
     
     FrameView* frameViewForScrollingNode(ScrollingNodeID) const;
 
@@ -141,6 +145,8 @@ private:
 
     std::unique_ptr<ScrollingStateTree> m_scrollingStateTree;
     RefPtr<ScrollingTree> m_scrollingTree;
+
+    bool m_nonFastScrollableRegionDirty { false };
 };
 
 } // namespace WebCore

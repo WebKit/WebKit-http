@@ -473,6 +473,11 @@
 #define WTF_PLATFORM_APPLETV 1
 #endif
 
+/* PLATFORM(WATCHOS) */
+#if defined(TARGET_OS_WATCH) && TARGET_OS_WATCH
+#define WTF_PLATFORM_WATCHOS 1
+#endif
+
 /* Graphics engines */
 
 /* USE(CG) and PLATFORM(CI) */
@@ -510,6 +515,11 @@
 #define HAVE_OUT_OF_PROCESS_LAYER_HOSTING 1
 #define HAVE_DTRACE 1
 
+#if !PLATFORM(WATCHOS)
+#define HAVE_AVKIT 1
+#define HAVE_PARENTAL_CONTROLS 1
+#endif
+
 #endif
 
 #if PLATFORM(MAC)
@@ -540,6 +550,10 @@
 #define WTF_USE_UIKIT_EDITING 1
 #define WTF_USE_WEB_THREAD 1
 #define WTF_USE_QUICK_LOOK 1
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+#define HAVE_APP_LINKS 1
+#endif
 
 #if CPU(ARM64)
 #define ENABLE_JIT_CONSTANT_BLINDING 0

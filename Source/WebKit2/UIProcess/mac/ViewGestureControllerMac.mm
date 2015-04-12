@@ -86,22 +86,9 @@ namespace WebKit {
 
 ViewGestureController::ViewGestureController(WebPageProxy& webPageProxy)
     : m_webPageProxy(webPageProxy)
-    , m_activeGestureType(ViewGestureType::None)
     , m_swipeWatchdogTimer(RunLoop::main(), this, &ViewGestureController::swipeSnapshotWatchdogTimerFired)
-    , m_swipeWatchdogAfterFirstVisuallyNonEmptyLayoutTimer(RunLoop::main(), this, &ViewGestureController::swipeSnapshotWatchdogTimerFired)
     , m_swipeActiveLoadMonitoringTimer(RunLoop::main(), this, &ViewGestureController::activeLoadMonitoringTimerFired)
-    , m_lastMagnificationGestureWasSmartMagnification(false)
-    , m_visibleContentRectIsValid(false)
-    , m_frameHandlesMagnificationGesture(false)
-    , m_swipeTransitionStyle(SwipeTransitionStyle::Overlap)
-    , m_customSwipeViewsTopContentInset(0)
-    , m_pendingSwipeReason(PendingSwipeReason::None)
-    , m_didMoveSwipeSnapshotCallback(nullptr)
-    , m_shouldIgnorePinnedState(false)
-    , m_swipeWaitingForVisuallyNonEmptyLayout(false)
-    , m_swipeWaitingForRenderTreeSizeThreshold(false)
-    , m_swipeWaitingForRepaint(false)
-    , m_swipeInProgress(false)
+    , m_swipeWatchdogAfterFirstVisuallyNonEmptyLayoutTimer(RunLoop::main(), this, &ViewGestureController::swipeSnapshotWatchdogTimerFired)
 {
     m_webPageProxy.process().addMessageReceiver(Messages::ViewGestureController::messageReceiverName(), m_webPageProxy.pageID(), *this);
 }
@@ -192,7 +179,8 @@ void ViewGestureController::handleMagnificationGesture(double scale, FloatPoint 
 
 void ViewGestureController::endMagnificationGesture()
 {
-    ASSERT(m_activeGestureType == ViewGestureType::Magnification);
+    if (m_activeGestureType != ViewGestureType::Magnification)
+        return;
 
     double newMagnification = std::min(std::max(m_magnification, minMagnification), maxMagnification);
 
@@ -204,6 +192,7 @@ void ViewGestureController::endMagnificationGesture()
     }
 
     m_activeGestureType = ViewGestureType::None;
+    m_visibleContentRectIsValid = false;
 }
 
 void ViewGestureController::handleSmartMagnificationGesture(FloatPoint origin)
@@ -235,10 +224,20 @@ void ViewGestureController::didCollectGeometryForSmartMagnificationGesture(Float
 
     double targetMagnification = visibleContentRect.width() / unscaledTargetRect.width();
 
+    FloatRect unscaledVisibleContentRect = visibleContentRect;
+    unscaledVisibleContentRect.scale(1 / currentScaleFactor);
+    FloatRect viewportConstrainedUnscaledTargetRect = unscaledTargetRect;
+    viewportConstrainedUnscaledTargetRect.intersect(unscaledVisibleContentRect);
+
+    if (unscaledTargetRect.width() > viewportConstrainedUnscaledTargetRect.width())
+        viewportConstrainedUnscaledTargetRect.setX(unscaledVisibleContentRect.x() + (origin.x() / currentScaleFactor) - viewportConstrainedUnscaledTargetRect.width() / 2);
+    if (unscaledTargetRect.height() > viewportConstrainedUnscaledTargetRect.height())
+        viewportConstrainedUnscaledTargetRect.setY(unscaledVisibleContentRect.y() + (origin.y() / currentScaleFactor) - viewportConstrainedUnscaledTargetRect.height() / 2);
+
     // For replaced elements like images, we want to fit the whole element
     // in the view, so scale it down enough to make both dimensions fit if possible.
     if (isReplacedElement)
-        targetMagnification = std::min(targetMagnification, static_cast<double>(visibleContentRect.height() / unscaledTargetRect.height()));
+        targetMagnification = std::min(targetMagnification, static_cast<double>(visibleContentRect.height() / viewportConstrainedUnscaledTargetRect.height()));
 
     targetMagnification = std::min(std::max(targetMagnification, minMagnification), maxMagnification);
 
@@ -252,7 +251,7 @@ void ViewGestureController::didCollectGeometryForSmartMagnificationGesture(Float
             targetMagnification = 1;
     }
 
-    FloatRect targetRect(unscaledTargetRect);
+    FloatRect targetRect(viewportConstrainedUnscaledTargetRect);
     targetRect.scale(targetMagnification);
     FloatPoint targetOrigin(visibleContentRect.center());
     targetOrigin.moveBy(-targetRect.center());
@@ -288,7 +287,7 @@ bool ViewGestureController::scrollEventCanBecomeSwipe(NSEvent *event, ViewGestur
     if (!willSwipeLeft && !willSwipeRight)
         return false;
 
-    potentialSwipeDirection = willSwipeLeft ? ViewGestureController::SwipeDirection::Left : ViewGestureController::SwipeDirection::Right;
+    potentialSwipeDirection = willSwipeLeft ? ViewGestureController::SwipeDirection::Back : ViewGestureController::SwipeDirection::Forward;
 
     return true;
 }
@@ -384,9 +383,9 @@ void ViewGestureController::trackSwipeGesture(NSEvent *event, SwipeDirection dir
 
     m_webPageProxy.recordNavigationSnapshot();
 
-    CGFloat maxProgress = (direction == SwipeDirection::Left) ? 1 : 0;
-    CGFloat minProgress = (direction == SwipeDirection::Right) ? -1 : 0;
-    RefPtr<WebBackForwardListItem> targetItem = (direction == SwipeDirection::Left) ? m_webPageProxy.backForwardList().backItem() : m_webPageProxy.backForwardList().forwardItem();
+    CGFloat maxProgress = (direction == SwipeDirection::Back) ? 1 : 0;
+    CGFloat minProgress = (direction == SwipeDirection::Forward) ? -1 : 0;
+    RefPtr<WebBackForwardListItem> targetItem = (direction == SwipeDirection::Back) ? m_webPageProxy.backForwardList().backItem() : m_webPageProxy.backForwardList().forwardItem();
     if (!targetItem)
         return;
     
@@ -459,7 +458,7 @@ CALayer *ViewGestureController::determineSnapshotLayerParent() const
 CALayer *ViewGestureController::determineLayerAdjacentToSnapshotForParent(SwipeDirection direction, CALayer *snapshotLayerParent) const
 {
     // If we have custom swiping views, we assume that the views were passed to us in back-to-front z-order.
-    CALayer *layerAdjacentToSnapshot = direction == SwipeDirection::Left ? m_currentSwipeLiveLayers.first().get() : m_currentSwipeLiveLayers.last().get();
+    CALayer *layerAdjacentToSnapshot = direction == SwipeDirection::Back ? m_currentSwipeLiveLayers.first().get() : m_currentSwipeLiveLayers.last().get();
 
     if (m_currentSwipeLiveLayers.size() == 1)
         return layerAdjacentToSnapshot;
@@ -579,7 +578,7 @@ void ViewGestureController::beginSwipeGesture(WebBackForwardListItem* targetItem
 
     // We don't know enough about the custom views' hierarchy to apply a shadow.
     if (m_swipeTransitionStyle == SwipeTransitionStyle::Overlap && m_customSwipeViews.isEmpty()) {
-        if (direction == SwipeDirection::Left) {
+        if (direction == SwipeDirection::Back) {
             float topContentInset = m_webPageProxy.topContentInset();
             FloatRect shadowRect(FloatPoint(0, topContentInset), m_webPageProxy.viewSize() - FloatSize(0, topContentInset));
             RetainPtr<CGPathRef> shadowPath = adoptCF(CGPathCreateWithRect(shadowRect, 0));
@@ -597,7 +596,7 @@ void ViewGestureController::beginSwipeGesture(WebBackForwardListItem* targetItem
     }
 
     CALayer *layerAdjacentToSnapshot = determineLayerAdjacentToSnapshotForParent(direction, snapshotLayerParent);
-    if (direction == SwipeDirection::Left)
+    if (direction == SwipeDirection::Back)
         [snapshotLayerParent insertSublayer:m_swipeLayer.get() below:layerAdjacentToSnapshot];
     else
         [snapshotLayerParent insertSublayer:m_swipeLayer.get() above:layerAdjacentToSnapshot];
@@ -619,16 +618,16 @@ void ViewGestureController::handleSwipeGesture(WebBackForwardListItem* targetIte
     double swipingLayerOffset = floor(width * progress);
 
     if (m_swipeTransitionStyle == SwipeTransitionStyle::Overlap) {
-        if (direction == SwipeDirection::Right) {
+        if (direction == SwipeDirection::Forward) {
             [m_swipeLayer setTransform:CATransform3DMakeTranslation(width + swipingLayerOffset, 0, 0)];
             didMoveSwipeSnapshotLayer();
         }
     } else if (m_swipeTransitionStyle == SwipeTransitionStyle::Push)
-        [m_swipeLayer setTransform:CATransform3DMakeTranslation((direction == SwipeDirection::Left ? -width : width) + swipingLayerOffset, 0, 0)];
+        [m_swipeLayer setTransform:CATransform3DMakeTranslation((direction == SwipeDirection::Back ? -width : width) + swipingLayerOffset, 0, 0)];
 
     for (const auto& layer : m_currentSwipeLiveLayers) {
         if (m_swipeTransitionStyle == SwipeTransitionStyle::Overlap) {
-            if (direction == SwipeDirection::Left)
+            if (direction == SwipeDirection::Back)
                 [layer setTransform:CATransform3DMakeTranslation(swipingLayerOffset, 0, 0)];
         } else if (m_swipeTransitionStyle == SwipeTransitionStyle::Push)
             [layer setTransform:CATransform3DMakeTranslation(swipingLayerOffset, 0, 0)];
@@ -674,7 +673,12 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
     m_webPageProxy.navigationGestureDidEnd(true, *targetItem);
     m_webPageProxy.goToBackForwardItem(targetItem);
 
+    // FIXME: Like on iOS, we should ensure that even if one of the timeouts fires,
+    // we never show the old page content, instead showing white (or the snapshot background color).
     m_swipeWatchdogTimer.startOneShot(swipeSnapshotRemovalWatchdogDuration.count());
+
+    if (ViewSnapshot* snapshot = targetItem->snapshot())
+        m_backgroundColorForCurrentSnapshot = snapshot->backgroundColor();
 }
 
 void ViewGestureController::didHitRenderTreeSizeThreshold()
@@ -791,14 +795,8 @@ void ViewGestureController::removeSwipeSnapshot()
     m_activeGestureType = ViewGestureType::None;
 
     m_webPageProxy.navigationGestureSnapshotWasRemoved();
-}
 
-void ViewGestureController::endActiveGesture()
-{
-    if (m_activeGestureType == ViewGestureType::Magnification) {
-        endMagnificationGesture();
-        m_visibleContentRectIsValid = false;
-    }
+    m_backgroundColorForCurrentSnapshot = Color();
 }
 
 double ViewGestureController::magnification() const

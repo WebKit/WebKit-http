@@ -68,6 +68,7 @@ NetworkProcessProxy::NetworkProcessProxy(WebProcessPool& processPool)
     : m_processPool(processPool)
     , m_numPendingConnectionRequests(0)
     , m_customProtocolManagerProxy(this, processPool)
+    , m_throttler(std::make_unique<ProcessThrottler>(this))
 {
     connect();
 }
@@ -201,6 +202,8 @@ void NetworkProcessProxy::didClose(IPC::Connection&)
     if (m_downloadProxyMap)
         m_downloadProxyMap->processDidClose();
 
+    m_tokenForHoldingLockedFiles = nullptr;
+
     // This may cause us to be deleted.
     networkProcessCrashedOrFailedToLaunch();
 }
@@ -273,7 +276,7 @@ void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Con
     
 #if PLATFORM(IOS)
     if (xpc_connection_t connection = this->connection()->xpcConnection())
-        m_assertion = std::make_unique<ProcessAssertion>(xpc_connection_get_pid(connection), AssertionState::Foreground);
+        m_throttler->didConnectToProcess(xpc_connection_get_pid(connection));
 #endif
 }
 
@@ -308,6 +311,44 @@ void NetworkProcessProxy::logDiagnosticMessageWithValue(uint64_t pageID, const S
         return;
 
     page->logDiagnosticMessageWithValue(message, description, value, shouldSample);
+}
+
+void NetworkProcessProxy::sendProcessWillSuspend()
+{
+    if (canSendMessage())
+        send(Messages::NetworkProcess::ProcessWillSuspend(), 0);
+}
+
+void NetworkProcessProxy::sendCancelProcessWillSuspend()
+{
+    if (canSendMessage())
+        send(Messages::NetworkProcess::CancelProcessWillSuspend(), 0);
+}
+
+void NetworkProcessProxy::didCancelProcessSuspension()
+{
+    m_throttler->didCancelProcessSuspension();
+}
+
+void NetworkProcessProxy::sendProcessDidResume()
+{
+    if (canSendMessage())
+        send(Messages::NetworkProcess::ProcessDidResume(), 0);
+}
+
+void NetworkProcessProxy::processReadyToSuspend()
+{
+    m_throttler->processReadyToSuspend();
+}
+
+void NetworkProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
+{
+    if (!isHoldingLockedFiles) {
+        m_tokenForHoldingLockedFiles = nullptr;
+        return;
+    }
+    if (!m_tokenForHoldingLockedFiles)
+        m_tokenForHoldingLockedFiles = m_throttler->backgroundActivityToken();
 }
 
 } // namespace WebKit

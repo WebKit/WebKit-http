@@ -130,6 +130,7 @@ public:
     void setVideoFullscreenLayer(PlatformLayer*);
     void setVideoFullscreenFrame(FloatRect);
     void setVideoFullscreenGravity(MediaPlayer::VideoGravity);
+    MediaPlayer::VideoGravity videoFullscreenGravity() const { return m_videoFullscreenGravity; }
 #endif
 
     enum DelayedActionType {
@@ -354,12 +355,17 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void webkitShowPlaybackTargetPicker();
     bool webkitCurrentPlaybackTargetIsWireless() const;
+    bool webkitCurrentPlaybackTargetIsSupported() const;
 
     virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
     virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) override;
 
     virtual void wirelessRoutesAvailableDidChange() override;
-    virtual void setWirelessPlaybackTarget(const MediaPlaybackTarget&) override;
+    virtual bool canPlayToWirelessPlaybackTarget() const override;
+    virtual bool isPlayingToWirelessPlaybackTarget() const override;
+    virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
+    virtual void startPlayingToPlaybackTarget() override;
+    virtual void stopPlayingToPlaybackTarget() override;
 #endif
 
     // EventTarget function.
@@ -502,7 +508,7 @@ private:
 
     // ActiveDOMObject API.
     const char* activeDOMObjectName() const override;
-    bool canSuspend() const override;
+    bool canSuspendForPageCache() const override;
     void suspend(ReasonForSuspension) override;
     void resume() override;
     void stop() override;
@@ -707,8 +713,8 @@ private:
     virtual MediaSession::MediaType mediaType() const override;
     virtual MediaSession::MediaType presentationType() const override;
     virtual MediaSession::DisplayType displayType() const override;
-    virtual void pausePlayback() override;
-    virtual void resumePlayback() override;
+    virtual void suspendPlayback() override;
+    virtual void mayResumePlayback(bool shouldResume) override;
     virtual String mediaSessionTitle() const override;
     virtual double mediaSessionDuration() const override { return duration(); }
     virtual double mediaSessionCurrentTime() const override { return currentTime(); }

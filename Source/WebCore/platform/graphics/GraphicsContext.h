@@ -118,6 +118,7 @@ namespace WebCore {
         GraphicsContextState()
             : shouldAntialias(true)
             , shouldSmoothFonts(true)
+            , antialiasedFontDilationEnabled(true)
             , shouldSubpixelQuantizeFonts(true)
             , paintingDisabled(false)
             , shadowsIgnoreTransforms(false)
@@ -160,6 +161,7 @@ namespace WebCore {
 
         bool shouldAntialias : 1;
         bool shouldSmoothFonts : 1;
+        bool antialiasedFontDilationEnabled : 1;
         bool shouldSubpixelQuantizeFonts : 1;
         bool paintingDisabled : 1;
         bool shadowsIgnoreTransforms : 1;
@@ -242,6 +244,9 @@ namespace WebCore {
 
         WEBCORE_EXPORT void setShouldAntialias(bool);
         bool shouldAntialias() const { return m_state.shouldAntialias; }
+
+        WEBCORE_EXPORT void setAntialiasedFontDilationEnabled(bool);
+        bool antialiasedFontDilationEnabled() const { return m_state.antialiasedFontDilationEnabled; }
 
         WEBCORE_EXPORT void setShouldSmoothFonts(bool);
         bool shouldSmoothFonts() const { return m_state.shouldSmoothFonts; }

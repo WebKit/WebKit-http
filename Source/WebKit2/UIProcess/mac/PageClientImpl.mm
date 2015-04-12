@@ -779,6 +779,11 @@ void PageClientImpl::removeNavigationGestureSnapshot()
     [m_wkView _removeNavigationGestureSnapshot];
 }
 
+void PageClientImpl::didChangeBackgroundColor()
+{
+    notImplemented();
+}
+
 CGRect PageClientImpl::boundsOfLayerInLayerBackedWindowCoordinates(CALayer *layer) const
 {
     CALayer *windowContentLayer = static_cast<NSView *>(m_wkView.window.contentView).layer;
@@ -787,10 +792,10 @@ CGRect PageClientImpl::boundsOfLayerInLayerBackedWindowCoordinates(CALayer *laye
     return [windowContentLayer convertRect:layer.bounds fromLayer:layer];
 }
 
-void PageClientImpl::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result, bool forImmediateAction, API::Object* userData)
+void PageClientImpl::didPerformActionMenuHitTest(const WebHitTestResult::Data& result, bool forImmediateAction, bool contentPreventsDefault, API::Object* userData)
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    [m_wkView _didPerformActionMenuHitTest:result forImmediateAction:forImmediateAction userData:userData];
+    [m_wkView _didPerformActionMenuHitTest:result forImmediateAction:forImmediateAction contentPreventsDefault:contentPreventsDefault userData:userData];
 #endif
 }
 

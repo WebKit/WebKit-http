@@ -180,8 +180,9 @@ bool JSTestEventTarget::getOwnPropertySlot(JSObject* object, ExecState* exec, Pr
         slot.setCacheableCustom(thisObject, entry->attributes(), entry->propertyGetter());
         return true;
     }
-    unsigned index = propertyName.asIndex();
-    if (index != PropertyName::NotAnIndex && index < thisObject->impl().length()) {
+    Optional<uint32_t> optionalIndex = parseIndex(propertyName);
+    if (optionalIndex && optionalIndex.value() < thisObject->impl().length()) {
+        unsigned index = optionalIndex.value();
         unsigned attributes = DontDelete | ReadOnly;
         slot.setValue(thisObject, attributes, toJS(exec, thisObject->globalObject(), thisObject->impl().item(index)));
         return true;
@@ -224,7 +225,7 @@ void JSTestEventTarget::getOwnPropertyNames(JSObject* object, ExecState* exec, P
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     for (unsigned i = 0, count = thisObject->impl().length(); i < count; ++i)
         propertyNames.add(Identifier::from(exec, i));
-     Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
+    Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
 }
 
 JSValue JSTestEventTarget::getConstructor(VM& vm, JSGlobalObject* globalObject)

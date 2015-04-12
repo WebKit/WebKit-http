@@ -120,31 +120,31 @@ h1 {
     font-weight: bold
 }
 
-:-webkit-any(article,aside,nav,section) h1 {
+:matches(article, aside, nav, section) h1 {
     font-size: 1.5em;
     -webkit-margin-before: 0.83__qem;
     -webkit-margin-after: 0.83em;
 }
 
-:-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) h1 {
+:matches(article, aside, nav, section) :matches(article, aside, nav, section) h1 {
     font-size: 1.17em;
     -webkit-margin-before: 1__qem;
     -webkit-margin-after: 1em;
 }
 
-:-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) h1 {
+:matches(article, aside, nav, section) :matches(article, aside, nav, section) :matches(article, aside, nav, section) h1 {
     font-size: 1.00em;
     -webkit-margin-before: 1.33__qem;
     -webkit-margin-after: 1.33em;
 }
 
-:-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) h1 {
+:matches(article, aside, nav, section) :matches(article, aside, nav, section) :matches(article, aside, nav, section) :matches(article, aside, nav, section) h1 {
     font-size: .83em;
     -webkit-margin-before: 1.67__qem;
     -webkit-margin-after: 1.67em;
 }
 
-:-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) :-webkit-any(article,aside,nav,section) h1 {
+:matches(article, aside, nav, section) :matches(article, aside, nav, section) :matches(article, aside, nav, section) :matches(article, aside, nav, section) :matches(article, aside, nav, section) h1 {
     font-size: .67em;
     -webkit-margin-before: 2.33__qem;
     -webkit-margin-after: 2.33em;
@@ -1102,13 +1102,13 @@ input[type="file"]:focus::-webkit-file-upload-button {
     outline-offset: 0
 }
     
-a:-webkit-any-link {
+a:any-link {
     color: -webkit-link;
     text-decoration: underline;
     cursor: auto;
 }
 
-a:-webkit-any-link:active {
+a:any-link:active {
     color: -webkit-activelink
 }
 
@@ -1184,7 +1184,7 @@ bdo {
 applet, embed, object, img {
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
-:-webkit-any-link img {
+:any-link img {
     -webkit-tap-highlight-color: inherit;
 }
 #endif

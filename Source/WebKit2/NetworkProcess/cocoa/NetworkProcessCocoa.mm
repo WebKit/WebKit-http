@@ -49,10 +49,14 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
 {
 #if PLATFORM(IOS)
     SandboxExtension::consumePermanently(parameters.cookieStorageDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.hstsDatabasePathExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.containerCachesDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.parentBundleDirectoryExtensionHandle);
 #endif
     m_diskCacheDirectory = parameters.diskCacheDirectory;
+
+#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+    _CFNetworkSetATSContext(parameters.networkATSContext.get());
+#endif
 
     // FIXME: Most of what this function does for cache size gets immediately overridden by setCacheModel().
     // - memory cache size passed from UI process is always ignored;
@@ -88,9 +92,6 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
         return;
 
     _CFURLCacheSetMinSizeForVMCachedResource(cache.get(), NetworkResourceLoader::fileBackedResourceMinimumSize());
-#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
-    _CFNetworkSetATSContext(parameters.networkATSContext.get());
-#endif
 }
 
 static uint64_t memorySize()
@@ -142,7 +143,7 @@ void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
 #if ENABLE(NETWORK_CACHE)
     auto& networkCache = NetworkCache::singleton();
     if (networkCache.isEnabled()) {
-        networkCache.setMaximumSize(urlCacheDiskCapacity);
+        networkCache.setCapacity(urlCacheDiskCapacity);
         return;
     }
 #endif

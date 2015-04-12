@@ -121,9 +121,8 @@ void JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
 {
     VM& vm = exec->vm();
 
-    unsigned index = propertyName.asIndex();
-    if (index != PropertyName::NotAnIndex) {
-        putToPrimitiveByIndex(exec, index, value, slot.isStrictMode());
+    if (Optional<uint32_t> index = parseIndex(propertyName)) {
+        putToPrimitiveByIndex(exec, index.value(), value, slot.isStrictMode());
         return;
     }
 
@@ -233,8 +232,8 @@ void JSValue::dumpInContextAssumingStructure(
                     out.print(" (atomic)");
                 if (impl->isAtomic())
                     out.print(" (identifier)");
-                if (impl->isUnique())
-                    out.print(" (unique)");
+                if (impl->isSymbol())
+                    out.print(" (symbol)");
             } else
                 out.print(" (unresolved)");
             out.print(": ", impl);

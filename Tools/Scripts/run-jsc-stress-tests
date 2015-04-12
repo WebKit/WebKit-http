@@ -336,7 +336,7 @@ $numFailures = 0
 BASE_OPTIONS = ["--useFTLJIT=false", "--enableFunctionDotArguments=true"]
 EAGER_OPTIONS = ["--thresholdForJITAfterWarmUp=10", "--thresholdForJITSoon=10", "--thresholdForOptimizeAfterWarmUp=20", "--thresholdForOptimizeAfterLongWarmUp=20", "--thresholdForOptimizeSoon=20", "--thresholdForFTLOptimizeAfterWarmUp=20", "--thresholdForFTLOptimizeSoon=20", "--maximumEvalCacheableSourceLength=150000"]
 NO_CJIT_OPTIONS = ["--enableConcurrentJIT=false", "--thresholdForJITAfterWarmUp=100"]
-FTL_OPTIONS = ["--useFTLJIT=true"]
+FTL_OPTIONS = ["--useFTLJIT=true", "--ftlCrashesIfCantInitializeLLVM=true"]
 
 $runlist = []
 
@@ -1170,6 +1170,13 @@ def prepareBundle
             end
 
             if $remote and $hostOS == "linux"
+                if $enableFTL
+                    begin
+                        FileUtils.cp_r originalJSCPath + "../../lib/libllvmForJSC.so" , $jscPath.dirname
+                    rescue
+                        $stderr.puts "Warning: unable to copy libllvmForJSC.so to the bundle."
+                    end
+                end
                 begin
                     dependencies = `ldd #{source}`
                     dependencies.split(/\n/).each {

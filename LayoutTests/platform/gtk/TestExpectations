@@ -42,6 +42,7 @@
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/132275 fast/multicol/scrolling-column-rules.html [ Missing ]
+webkit.org/b/143474 fast/css/focus-ring-exists-for-search-field.html [ Missing ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # Expected failures
@@ -459,7 +460,7 @@ Bug(GTK) plugins/quicktime-plugin-replacement.html [ Skip ]
 Bug(GTK) fast/css/style-scoped [ Skip ]
 
 # ENABLE(CSS_SCROLL_SNAP) is disabled.
-css3/scroll-snap
+css3/scroll-snap [ Skip ]
 
 # TODO Animation triggers not supported
 animations/trigger-computed-style.html [ Skip ]
@@ -500,7 +501,6 @@ webkit.org/b/128172 fast/events/touch/send-oncancel-event.html [ Timeout ]
 webkit.org/b/142821 http/tests/cache/disk-cache [ Skip ]
 
 # HighDPI support is not enabled
-webkit.org/b/131347 fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/backgrounds/hidpi-generated-gradient-background-on-subpixel-position.html [ ImageOnlyFailure Pass ]
 webkit.org/b/131347 fast/borders/hidpi-border-image-gradient-on-subpixels.html [ ImageOnlyFailure ]
@@ -540,7 +540,6 @@ Bug(GTK) css3/filters/backdrop [ Skip ]
 webkit.org/b/141072 accessibility/frame-disconnect-textmarker-cache-crash.html [ Failure ]
 
 webkit.org/b/141423 css3/calc/line-height.html [ Failure ]
-webkit.org/b/141419 editing/deleting/delete-emoji.html [ Failure ]
 webkit.org/b/141423 editing/pasteboard/simplfiying-markup-should-not-strip-content.html [ Failure ]
 webkit.org/b/141423 fast/css/font-shorthand-from-longhands.html [ Failure ]
 webkit.org/b/141423 fast/css/font-shorthand-line-height.html [ Failure ]
@@ -631,9 +630,12 @@ webkit.org/b/142823 fast/attachment/attachment-subtitle.html [ Missing ]
 webkit.org/b/142823 fast/attachment/attachment-title.html [ Missing ]
 
 webkit.org/b/142670 media/video-background-tab-playback.html [ Failure ]
+webkit.org/b/143233 media/media-source/media-source-append-buffer-with-append-window.html [ Pass Failure ]
 
-# TODO Scroll snap points
-css3/scroll-snap [ Skip ]
+# This feature is only enabled on Mac and iOS right now
+contentfiltering [ Skip ]
+http/tests/contentfiltering [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1129,6 +1131,12 @@ webkit.org/b/139359 inspector-protocol/debugger/setBreakpoint-dfg-callee-and-exa
 
 webkit.org/b/139489 http/tests/css/link-css-disabled-value-with-slow-loading-sheet.html [ Failure Pass ]
 
+webkit.org/b/143472 media/track/track-cue-mutable-fragment.html [ Failure Pass ]
+webkit.org/b/143475 media/audio-repaint.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/143478 media/video-page-load-preload-none.html [ Failure Pass ]
+
+webkit.org/b/131545 media/media-event-listeners.html [ Failure Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1268,8 +1276,6 @@ Bug(GTK) fast/forms/select/optgroup-clicking.html [ Timeout ]
 
 Bug(GTK) fast/media/media-query-list-04.html [ Timeout ]
 
-webkit.org/b/131545 media/media-event-listeners.html [ Timeout ]
-
 webkit.org/b/132128 fast/text/international/embed-bidi-style-in-isolate-crash.html [ Timeout Pass ]
 
 webkit.org/b/132266 js/slow-stress/emscripten-memops.html [ Timeout ]
@@ -1322,6 +1328,10 @@ webkit.org/b/142490 inspector/css/selector-dynamic-specificity.html [ Timeout ]
 webkit.org/b/142491 media/media-source/media-source-stalled-holds-sleep-assertion.html [ Timeout ]
 
 webkit.org/b/142820 fast/images/animated-gif-body-outside-viewport.html [ Timeout ]
+webkit.org/b/142491 media/click-volume-bar-not-pausing.html [ Timeout ]
+webkit.org/b/143473 editing/pasteboard/drag-and-drop-attachment-contenteditable.html [ Timeout ]
+
+webkit.org/b/143477 fast/writing-mode/broken-ideograph-small-caps.html [ Timeout Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -1484,7 +1494,6 @@ webkit.org/b/39160 security/block-test-no-port.html [ Failure ]
 Bug(GTK) editing/selection/5136696.html [ Failure ]
 Bug(GTK) editing/selection/inactive-selection.html [ Failure ]
 Bug(GTK) fast/css/disabled-author-styles.html [ Failure ]
-Bug(GTK) fast/events/backspace-navigates-back.html [ Failure ]
 Bug(GTK) fast/events/keydown-leftright-keys.html [ Failure ]
 Bug(GTK) fast/events/keydown-numpad-keys.html [ Failure ]
 Bug(GTK) fast/events/remove-target-with-shadow-in-drag.html [ Failure ]
@@ -1710,11 +1719,9 @@ webkit.org/b/40601 fast/events/right-click-focus.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.composite.operation.clear.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.composite.operation.darker.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.drawImage.broken.html [ Failure ]
-Bug(GTK) canvas/philip/tests/2d.drawImage.image.incomplete.omitted.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.fillStyle.parse.rgb-eof.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.missingargs.html [ Failure ]
-Bug(GTK) canvas/philip/tests/2d.pattern.image.incomplete.omitted.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.text.draw.baseline.bottom.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.text.draw.baseline.hanging.html [ Failure ]
 Bug(GTK) canvas/philip/tests/2d.text.draw.baseline.ideographic.html [ Failure ]
@@ -1757,9 +1764,6 @@ Bug(GTK) fast/frames/meta-refresh-user-gesture.html [ Failure Timeout ]
 
 # Rounding color problems inside pixman
 webkit.org/b/49964 fast/canvas/canvas-fillPath-shadow.html [ Failure ]
-
-# See also https://bugs.webkit.org/show_bug.cgi?id=54926
-webkit.org/b/53707 http/tests/security/xss-DENIED-xsl-external-entity-redirect.xml [ Failure ]
 
 # Needs grammar checking implementation.
 Bug(GTK) editing/spelling/grammar.html [ Skip ]
@@ -1957,7 +1961,7 @@ webkit.org/b/113772 http/tests/w3c/webperf/submission/Google/resource-timing/htm
 webkit.org/b/115025 fast/events/constructors/mouse-event-constructor.html [ Failure ]
 webkit.org/b/115025 fast/events/constructors/wheel-event-constructor.html [ Failure ]
 
-webkit.org/b/105296 webaudio/delaynode-maxdelay.html [ Failure ]
+webkit.org/b/105296 webaudio/delaynode-maxdelay.html [ Pass Failure ]
 
 webkit.org/b/115437 fast/css/sticky/sticky-writing-mode-vertical-lr.html [ ImageOnlyFailure ]
 webkit.org/b/115437 fast/regions/region-content-flown-into-region.html [ ImageOnlyFailure ]
@@ -2124,8 +2128,7 @@ webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tree-b
 webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/cue_font_size_transition.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/voice_with_evil_timestamp.html [ Skip ]
 
-#Incorrect rebaseline
-webkit.org/b/107818 media/controls-styling.html [ Failure ]
+webkit.org/b/107818 media/controls-styling.html [ Failure Timeout ]
 
 # New chromium based controls
 webkit.org/b/107825 media/audio-delete-while-step-button-clicked.html [ Failure Timeout ]
@@ -2143,7 +2146,6 @@ webkit.org/b/107194 crypto/subtle/rsa-indexeddb.html [ Skip ]
 webkit.org/b/107194 inspector-protocol/indexeddb/basics.html [ Skip ]
 webkit.org/b/107194 fast/history/page-cache-indexed-closed-db.html [ Skip ]
 webkit.org/b/107194 fast/history/page-cache-indexed-opened-db.html [ Skip ]
-webkit.org/b/107194 fast/history/page-cache-webdatabase-opened-db.html [ Skip ]
 
 # Test marked in TestExpectations as failing on non-retina displays, passing on GTK port
 webkit.org/b/129113 fast/multicol/newmulticol/clipping.html [ Pass ]
@@ -2355,7 +2357,6 @@ webkit.org/b/142479 svg/text/select-textLength-spacingAndGlyphs-stretch-3.svg [ 
 webkit.org/b/142482 http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Failure ]
 
 webkit.org/b/142487 fast/regions/region-overflow-break.html [ ImageOnlyFailure ]
-webkit.org/b/142423 svg/fonts/svg-font-horiz-origin.html [ ImageOnlyFailure ]
 
 webkit.org/b/142666 fast/forms/input-auto-fill-button.html [ Failure ]
 webkit.org/b/142667 fast/forms/search-vertical-alignment.html [ Failure ]
@@ -2364,6 +2365,19 @@ webkit.org/b/142667 fast/forms/textfield-overflow-by-value-update.html [ Failure
 webkit.org/b/142668 fast/backgrounds/background-opaque-clipped-gradients.html [ ImageOnlyFailure ]
 webkit.org/b/142669 fast/regions/overflow/overflow-region-float.html [ ImageOnlyFailure ]
 
+webkit.org/b/143230 imported/mozilla/svg/filters/feImage-1.svg [ ImageOnlyFailure ]
+
+webkit.org/b/143468 accessibility/plugin.html [ Failure ]
+
+webkit.org/b/143469 fast/borders/border-image-fill-no-border.html [ ImageOnlyFailure ]
+
+# Broken Ruby tests
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-3.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2371,7 +2385,5 @@ webkit.org/b/142669 fast/regions/overflow/overflow-region-float.html [ ImageOnly
 # This tests are passing on GTK+ but they do not in the Apple ports
 imported/mozilla/svg/image/image-filter-01.svg [ Pass ]
 imported/w3c/canvas/2d.line.cap.round.html [ Pass ]
+mathml/presentation/style-changed.html [ Pass ]
 transitions/svg-text-shadow-transition.html [ Pass ]
-
-# This feature is only enabled on Mac and iOS right now
-contentfiltering [ Skip ]

@@ -130,6 +130,7 @@ RenderObject::~RenderObject()
     renderObjectCounter.decrement();
 #endif
     view().didDestroyRenderer();
+    ASSERT(!hasRareData());
 }
 
 RenderTheme& RenderObject::theme() const
@@ -1085,11 +1086,11 @@ void RenderObject::collectSelectionRects(Vector<SelectionRect>& rects, unsigned 
 }
 #endif
 
-IntRect RenderObject::absoluteBoundingBoxRect(bool useTransforms) const
+IntRect RenderObject::absoluteBoundingBoxRect(bool useTransforms, bool* wasFixed) const
 {
     if (useTransforms) {
         Vector<FloatQuad> quads;
-        absoluteQuads(quads);
+        absoluteQuads(quads, wasFixed);
 
         size_t n = quads.size();
         if (!n)
@@ -1101,7 +1102,7 @@ IntRect RenderObject::absoluteBoundingBoxRect(bool useTransforms) const
         return result;
     }
 
-    FloatPoint absPos = localToAbsolute();
+    FloatPoint absPos = localToAbsolute(FloatPoint(), 0 /* ignore transforms */, wasFixed);
     Vector<IntRect> rects;
     absoluteRects(rects, flooredLayoutPoint(absPos));
 
@@ -1579,10 +1580,10 @@ void RenderObject::selectionStartEnd(int& spos, int& epos) const
     selectionRoot().selectionData().selectionStartEndPositions(spos, epos);
 }
 
-FloatPoint RenderObject::localToAbsolute(const FloatPoint& localPoint, MapCoordinatesFlags mode) const
+FloatPoint RenderObject::localToAbsolute(const FloatPoint& localPoint, MapCoordinatesFlags mode, bool* wasFixed) const
 {
     TransformState transformState(TransformState::ApplyTransformDirection, localPoint);
-    mapLocalToContainer(nullptr, transformState, mode | ApplyContainerFlip);
+    mapLocalToContainer(nullptr, transformState, mode | ApplyContainerFlip, wasFixed);
     transformState.flatten();
     
     return transformState.lastPlanarPoint();
@@ -1903,6 +1904,7 @@ void RenderObject::willBeDestroyed()
     }
 
     clearLayoutRootIfNeeded();
+    removeRareData();
 }
 
 void RenderObject::insertedIntoTree()
@@ -2493,6 +2495,50 @@ void RenderObject::calculateBorderStyleColor(const EBorderStyle& style, const Bo
         if (differenceSquared(color, Color::white) > differenceSquared(baseLightColor, Color::white))
             color = color.light();
     }
+}
+
+void RenderObject::setIsDragging(bool isDragging)
+{
+    if (isDragging || hasRareData())
+        ensureRareData().setIsDragging(isDragging);
+}
+
+void RenderObject::setHasReflection(bool hasReflection)
+{
+    if (hasReflection || hasRareData())
+        ensureRareData().setHasReflection(hasReflection);
+}
+
+void RenderObject::setIsRenderFlowThread(bool isFlowThread)
+{
+    if (isFlowThread || hasRareData())
+        ensureRareData().setIsRenderFlowThread(isFlowThread);
+}
+
+RenderObject::RareDataHash& RenderObject::rareDataMap()
+{
+    static NeverDestroyed<RareDataHash> map;
+    return map;
+}
+
+RenderObject::RenderObjectRareData RenderObject::rareData() const
+{
+    if (!hasRareData())
+        return RenderObjectRareData();
+
+    return rareDataMap().get(this);
+}
+
+RenderObject::RenderObjectRareData& RenderObject::ensureRareData()
+{
+    setHasRareData(true);
+    return rareDataMap().add(this, RenderObjectRareData()).iterator->value;
+}
+
+void RenderObject::removeRareData()
+{
+    rareDataMap().remove(this);
+    setHasRareData(false);
 }
 
 } // namespace WebCore

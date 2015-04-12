@@ -712,6 +712,91 @@ EXPRESSION: [true, 1, 1.234, 'string', /regex/]
 }
 
 -----------------------------------------------------
+EXPRESSION: [[null]]
+{
+  "_type": "object",
+  "_subtype": "array",
+  "_objectId": "<filtered>",
+  "_description": "Array",
+  "_size": 1,
+  "_preview": {
+    "_type": "object",
+    "_subtype": "array",
+    "_description": "Array",
+    "_lossless": true,
+    "_overflow": false,
+    "_size": 1,
+    "_properties": [
+      {
+        "_name": "0",
+        "_type": "object",
+        "_subtype": "array",
+        "_valuePreview": {
+          "_type": "object",
+          "_subtype": "array",
+          "_description": "Array",
+          "_lossless": true,
+          "_overflow": false,
+          "_size": 1,
+          "_properties": [
+            {
+              "_name": "0",
+              "_type": "object",
+              "_subtype": "null",
+              "_value": "null"
+            }
+          ],
+          "_entries": null
+        }
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: [[undefined]]
+{
+  "_type": "object",
+  "_subtype": "array",
+  "_objectId": "<filtered>",
+  "_description": "Array",
+  "_size": 1,
+  "_preview": {
+    "_type": "object",
+    "_subtype": "array",
+    "_description": "Array",
+    "_lossless": true,
+    "_overflow": false,
+    "_size": 1,
+    "_properties": [
+      {
+        "_name": "0",
+        "_type": "object",
+        "_subtype": "array",
+        "_valuePreview": {
+          "_type": "object",
+          "_subtype": "array",
+          "_description": "Array",
+          "_lossless": true,
+          "_overflow": false,
+          "_size": 1,
+          "_properties": [
+            {
+              "_name": "0",
+              "_type": "undefined",
+              "_value": "undefined"
+            }
+          ],
+          "_entries": null
+        }
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
 EXPRESSION: [{a:1}, {b:2}, {c:2}]
 {
   "_type": "object",
@@ -1955,6 +2040,48 @@ EXPRESSION: new DataView(new ArrayBuffer(16))
         "_name": "buffer",
         "_type": "object",
         "_value": "ArrayBuffer"
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: obj = {}; obj['prop'] = 1; obj[Symbol()] = 2; obj[Symbol('sym')] = 3; obj[Symbol('sym')] = 4; obj[Symbol.iterator] = Symbol(); obj
+{
+  "_type": "object",
+  "_objectId": "<filtered>",
+  "_description": "Object",
+  "_preview": {
+    "_type": "object",
+    "_description": "Object",
+    "_lossless": true,
+    "_overflow": false,
+    "_properties": [
+      {
+        "_name": "prop",
+        "_type": "number",
+        "_value": "1"
+      },
+      {
+        "_name": "Symbol()",
+        "_type": "number",
+        "_value": "2"
+      },
+      {
+        "_name": "Symbol(sym)",
+        "_type": "number",
+        "_value": "3"
+      },
+      {
+        "_name": "Symbol(sym)",
+        "_type": "number",
+        "_value": "4"
+      },
+      {
+        "_name": "Symbol(Symbol.iterator)",
+        "_type": "symbol",
+        "_value": "Symbol()"
       }
     ],
     "_entries": null

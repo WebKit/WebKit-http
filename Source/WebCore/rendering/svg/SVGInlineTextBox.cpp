@@ -54,7 +54,7 @@ SVGInlineTextBox::SVGInlineTextBox(RenderSVGInlineText& renderer)
     , m_logicalHeight(0)
     , m_paintingResourceMode(ApplyToDefaultMode)
     , m_startsNewTextChunk(false)
-    , m_paintingResource(0)
+    , m_paintingResource(nullptr)
 {
 }
 
@@ -373,7 +373,7 @@ void SVGInlineTextBox::releasePaintingResource(GraphicsContext*& context, const 
 {
     ASSERT(m_paintingResource);
 
-    m_paintingResource->postApplyResource(parent()->renderer(), context, m_paintingResourceMode, path, /*RenderSVGShape*/ 0);
+    m_paintingResource->postApplyResource(parent()->renderer(), context, m_paintingResourceMode, path, /*RenderSVGShape*/ nullptr);
     m_paintingResource = nullptr;
 }
 
@@ -397,12 +397,12 @@ bool SVGInlineTextBox::prepareGraphicsContextForTextPainting(GraphicsContext*& c
 
 void SVGInlineTextBox::restoreGraphicsContextAfterTextPainting(GraphicsContext*& context, TextRun& textRun)
 {
-    releasePaintingResource(context, /* path */0);
+    releasePaintingResource(context, /* path */nullptr);
 
 #if ENABLE(SVG_FONTS)
     TextRun::RenderingContext* renderingContext = textRun.renderingContext();
     if (renderingContext)
-        static_cast<SVGTextRunRenderingContext*>(renderingContext)->setActivePaintingResource(0);
+        static_cast<SVGTextRunRenderingContext*>(renderingContext)->setActivePaintingResource(nullptr);
 #else
     UNUSED_PARAM(textRun);
 #endif
@@ -415,7 +415,7 @@ TextRun SVGInlineTextBox::constructTextRun(RenderStyle* style, const SVGTextFrag
     TextRun run(StringView(renderer().text()).substring(fragment.characterOffset, fragment.length)
                 , 0 /* xPos, only relevant with allowTabs=true */
                 , 0 /* padding, only relevant for justified text, not relevant for SVG */
-                , TextRun::AllowTrailingExpansion
+                , AllowTrailingExpansion
                 , direction()
                 , dirOverride() || style->rtlOrdering() == VisualOrder /* directionalOverride */);
 
@@ -671,7 +671,7 @@ FloatRect SVGInlineTextBox::calculateBoundaries() const
     return textRect;
 }
 
-bool SVGInlineTextBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit, LayoutUnit)
+bool SVGInlineTextBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit, LayoutUnit, HitTestAction)
 {
     // FIXME: integrate with InlineTextBox::nodeAtPoint better.
     ASSERT(!isLineBreak());

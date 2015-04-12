@@ -55,7 +55,7 @@ WebInspector.LayoutTimelineDataGridNode.prototype = {
 
     get data()
     {
-        return this._record;
+        return {eventType: this._record.eventType, width: this._record.width, height: this._record.height, area: this._record.width * this._record.height, startTime: this._record.startTime, totalTime: this._record.duration, location: this._record.initiatorCallFrame};
     },
 
     createCellContent: function(columnIdentifier, cell)
@@ -77,7 +77,7 @@ WebInspector.LayoutTimelineDataGridNode.prototype = {
         case "startTime":
             return isNaN(value) ? emptyValuePlaceholderString : Number.secondsToString(value - this._baseStartTime, true);
 
-        case "duration":
+        case "totalTime":
             return isNaN(value) ? emptyValuePlaceholderString : Number.secondsToString(value, true);
         }
 

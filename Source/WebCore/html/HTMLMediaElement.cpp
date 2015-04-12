@@ -1179,8 +1179,6 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     if (!m_player->load(url, contentType, keySystem))
         mediaLoadingFailed(MediaPlayer::FormatError);
 
-    m_mediaSession->applyMediaPlayerRestrictions(*this);
-
     // If there is no poster to display, allow the media engine to render video frames as soon as
     // they are available.
     updateDisplayState();
@@ -1987,6 +1985,11 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
         prepareMediaFragmentURI();
         scheduleEvent(eventNames().durationchangeEvent);
         scheduleEvent(eventNames().loadedmetadataEvent);
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+        if (hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent))
+            enqueuePlaybackTargetAvailabilityChangedEvent();
+#endif
+        
         if (hasMediaControls())
             mediaControls()->loadedMetadata();
         if (renderer())
@@ -3659,7 +3662,7 @@ static JSC::JSValue controllerJSValue(JSC::ExecState& exec, JSDOMGlobalObject& g
     if (!mediaJSWrapperObject)
         return JSC::jsNull();
     
-    JSC::Identifier controlsHost(&exec.vm(), "controlsHost");
+    JSC::Identifier controlsHost = JSC::Identifier::fromString(&exec.vm(), "controlsHost");
     JSC::JSValue controlsHostJSWrapper = mediaJSWrapperObject->get(&exec, controlsHost);
     if (exec.hadException())
         return JSC::jsNull();
@@ -3668,7 +3671,7 @@ static JSC::JSValue controllerJSValue(JSC::ExecState& exec, JSDOMGlobalObject& g
     if (!controlsHostJSWrapperObject)
         return JSC::jsNull();
 
-    JSC::Identifier controllerID(&exec.vm(), "controller");
+    JSC::Identifier controllerID = JSC::Identifier::fromString(&exec.vm(), "controller");
     JSC::JSValue controllerJSWrapper = controlsHostJSWrapperObject->get(&exec, controllerID);
     if (exec.hadException())
         return JSC::jsNull();
@@ -3710,7 +3713,7 @@ void HTMLMediaElement::updateCaptionContainer()
     //     None
     // Return value:
     //     None
-    JSC::JSValue methodValue = controllerObject->get(exec, JSC::Identifier(exec, "updateCaptionContainer"));
+    JSC::JSValue methodValue = controllerObject->get(exec, JSC::Identifier::fromString(exec, "updateCaptionContainer"));
     JSC::JSObject* methodObject = JSC::jsDynamicCast<JSC::JSObject*>(methodValue);
     if (!methodObject)
         return;
@@ -4268,6 +4271,16 @@ void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
 
     m_havePreparedToPlay = false;
 
+    m_mediaSession->applyMediaPlayerRestrictions(*this);
+
+#if ENABLE(WEB_AUDIO)
+    if (m_audioSourceNode && audioSourceProvider()) {
+        m_audioSourceNode->lock();
+        audioSourceProvider()->setClient(m_audioSourceNode);
+        m_audioSourceNode->unlock();
+    }
+#endif
+
 #if PLATFORM(IOS)
     if (!m_player)
         return;
@@ -4654,8 +4667,13 @@ void HTMLMediaElement::clearMediaPlayer(int flags)
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    if (hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent))
+    if (hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent)) {
         m_mediaSession->setHasPlaybackTargetAvailabilityListeners(*this, false);
+
+        // Send an availability event in case scripts want to hide the picker when the element
+        // doesn't support playback to a target.
+        enqueuePlaybackTargetAvailabilityChangedEvent();
+    }
 #endif
 
     m_player = nullptr;
@@ -4674,7 +4692,7 @@ void HTMLMediaElement::clearMediaPlayer(int flags)
     updateSleepDisabling();
 }
 
-bool HTMLMediaElement::canSuspend() const
+bool HTMLMediaElement::canSuspendForPageCache() const
 {
     return true; 
 }
@@ -4722,7 +4740,7 @@ void HTMLMediaElement::suspend(ReasonForSuspension why)
 
     switch (why)
     {
-        case DocumentWillBecomeInactive:
+        case PageCache:
             stop();
             m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequirePageConsentToResumeMedia);
             break;
@@ -4810,6 +4828,11 @@ bool HTMLMediaElement::webkitCurrentPlaybackTargetIsWireless() const
     return m_mediaSession->currentPlaybackTargetIsWireless(*this);
 }
 
+bool HTMLMediaElement::webkitCurrentPlaybackTargetIsSupported() const
+{
+    return m_mediaSession->currentPlaybackTargetIsSupported(*this);
+}
+
 void HTMLMediaElement::wirelessRoutesAvailableDidChange()
 {
     enqueuePlaybackTargetAvailabilityChangedEvent();
@@ -4863,11 +4886,41 @@ void HTMLMediaElement::enqueuePlaybackTargetAvailabilityChangedEvent()
     m_asyncEventQueue.enqueueEvent(event.release());
 }
 
-void HTMLMediaElement::setWirelessPlaybackTarget(const MediaPlaybackTarget& device)
+void HTMLMediaElement::setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&& device)
 {
     LOG(Media, "HTMLMediaElement::setWirelessPlaybackTarget(%p)", this);
     if (m_player)
-        m_player->setWirelessPlaybackTarget(device);
+        m_player->setWirelessPlaybackTarget(WTF::move(device));
+}
+
+bool HTMLMediaElement::canPlayToWirelessPlaybackTarget() const
+{
+    bool canPlay = m_player && m_player->canPlayToWirelessPlaybackTarget();
+
+    LOG(Media, "HTMLMediaElement::canPlayToWirelessPlaybackTarget(%p) - returning %s", this, boolString(canPlay));
+
+    return canPlay;
+}
+
+bool HTMLMediaElement::isPlayingToWirelessPlaybackTarget() const
+{
+    bool isPlaying = m_player && m_player->isPlayingToWirelessPlaybackTarget();
+
+    LOG(Media, "HTMLMediaElement::isPlayingToWirelessPlaybackTarget(%p) - returning %s", this, boolString(isPlaying));
+    
+    return isPlaying;
+}
+
+void HTMLMediaElement::startPlayingToPlaybackTarget()
+{
+    if (m_player)
+        m_player->startPlayingToPlaybackTarget();
+}
+
+void HTMLMediaElement::stopPlayingToPlaybackTarget()
+{
+    if (m_player)
+        m_player->stopPlayingToPlaybackTarget();
 }
 #endif
 
@@ -5851,7 +5904,7 @@ bool HTMLMediaElement::ensureMediaControlsInjectedScript()
     JSC::ExecState* exec = globalObject->globalExec();
     JSC::JSLockHolder lock(exec);
 
-    JSC::JSValue functionValue = globalObject->get(exec, JSC::Identifier(exec, "createControls"));
+    JSC::JSValue functionValue = globalObject->get(exec, JSC::Identifier::fromString(exec, "createControls"));
     if (functionValue.isFunction())
         return true;
 
@@ -5874,7 +5927,7 @@ static void setPageScaleFactorProperty(JSC::ExecState* exec, JSC::JSValue contro
 {
     JSC::PutPropertySlot propertySlot(controllerValue);
     JSC::JSObject* controllerObject = controllerValue.toObject(exec);
-    controllerObject->methodTable()->put(controllerObject, exec, JSC::Identifier(exec, "pageScaleFactor"), JSC::jsNumber(pageScaleFactor), propertySlot);
+    controllerObject->methodTable()->put(controllerObject, exec, JSC::Identifier::fromString(exec, "pageScaleFactor"), JSC::jsNumber(pageScaleFactor), propertySlot);
 }
 
 void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
@@ -5903,7 +5956,7 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     // Return value:
     //     A reference to the created media controller instance.
 
-    JSC::JSValue functionValue = globalObject->get(exec, JSC::Identifier(exec, "createControls"));
+    JSC::JSValue functionValue = globalObject->get(exec, JSC::Identifier::fromString(exec, "createControls"));
     if (functionValue.isUndefinedOrNull())
         return;
 
@@ -5932,7 +5985,7 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 
     // Connect the Media, MediaControllerHost, and Controller so the GC knows about their relationship
     JSC::JSObject* mediaJSWrapperObject = mediaJSWrapper.toObject(exec);
-    JSC::Identifier controlsHost(&exec->vm(), "controlsHost");
+    JSC::Identifier controlsHost = JSC::Identifier::fromString(&exec->vm(), "controlsHost");
     
     ASSERT(!mediaJSWrapperObject->hasProperty(exec, controlsHost));
 
@@ -5942,7 +5995,7 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     if (!mediaControlsHostJSWrapperObject)
         return;
     
-    JSC::Identifier controller(&exec->vm(), "controller");
+    JSC::Identifier controller = JSC::Identifier::fromString(&exec->vm(), "controller");
 
     ASSERT(!controllerObject->hasProperty(exec, controller));
 
@@ -6031,17 +6084,17 @@ size_t HTMLMediaElement::maximumSourceBufferSize(const SourceBuffer& buffer) con
 }
 #endif
 
-void HTMLMediaElement::pausePlayback()
+void HTMLMediaElement::suspendPlayback()
 {
     LOG(Media, "HTMLMediaElement::pausePlayback(%p) - paused = %s", this, boolString(paused()));
     if (!paused())
         pause();
 }
 
-void HTMLMediaElement::resumePlayback()
+void HTMLMediaElement::mayResumePlayback(bool shouldResume)
 {
     LOG(Media, "HTMLMediaElement::resumePlayback(%p) - paused = %s", this, boolString(paused()));
-    if (paused())
+    if (paused() && shouldResume)
         play();
 }
     

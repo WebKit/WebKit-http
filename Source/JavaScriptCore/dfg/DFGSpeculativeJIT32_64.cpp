@@ -868,6 +868,13 @@ GPRReg SpeculativeJIT::fillSpeculateInt32Internal(Edge edge, DataFormat& returnF
         }
 
         DataFormat spillFormat = info.spillFormat();
+
+        if (spillFormat == DataFormatCell) {
+            terminateSpeculativeExecution(BadType, JSValueRegs(), edge);
+            returnFormat = DataFormatInt32;
+            return allocate();
+        }
+
         ASSERT_UNUSED(spillFormat, (spillFormat & DataFormatJS) || spillFormat == DataFormatInt32);
 
         // If we know this was spilled as an integer we can fill without checking.
@@ -3098,7 +3105,8 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
-    case ToString: {
+    case ToString:
+    case CallStringConstructor: {
         if (node->child1().useKind() == UntypedUse) {
             JSValueOperand op1(this, node->child1());
             GPRReg op1PayloadGPR = op1.payloadGPR();
@@ -3118,14 +3126,19 @@ void SpeculativeJIT::compile(Node* node)
                 slowPath1.link(&m_jit);
                 slowPath2.link(&m_jit);
             }
-            callOperation(operationToString, resultGPR, op1TagGPR, op1PayloadGPR);
+            if (op == ToString)
+                callOperation(operationToString, resultGPR, op1TagGPR, op1PayloadGPR);
+            else {
+                ASSERT(op == CallStringConstructor);
+                callOperation(operationCallStringConstructor, resultGPR, op1TagGPR, op1PayloadGPR);
+            }
             if (done.isSet())
                 done.link(&m_jit);
             cellResult(resultGPR, node);
             break;
         }
         
-        compileToStringOnCell(node);
+        compileToStringOrCallStringConstructorOnCell(node);
         break;
     }
         
@@ -3527,8 +3540,7 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case AllocationProfileWatchpoint:
-    case TypedArrayWatchpoint: {
+    case AllocationProfileWatchpoint: {
         noResult(node);
         break;
     }

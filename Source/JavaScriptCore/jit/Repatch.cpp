@@ -684,7 +684,7 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
 #if USE(JSVALUE64)
             stubJit.or64(AssemblyHelpers::TrustedImm64(TagTypeNumber), resultGPR);
 #elif USE(JSVALUE32_64)
-            stubJit.move(AssemblyHelpers::TrustedImm32(0xffffffff), resultTagGPR); // JSValue::Int32Tag
+            stubJit.move(AssemblyHelpers::TrustedImm32(JSValue::Int32Tag), resultTagGPR);
 #endif
 
             MacroAssembler::Jump success, fail;
@@ -718,7 +718,7 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
 #if USE(JSVALUE64)
         stubJit.or64(AssemblyHelpers::TrustedImm64(TagTypeNumber), resultGPR);
 #elif USE(JSVALUE32_64)
-        stubJit.move(AssemblyHelpers::TrustedImm32(0xffffffff), resultTagGPR); // JSValue::Int32Tag
+        stubJit.move(AssemblyHelpers::TrustedImm32(JSValue::Int32Tag), resultTagGPR);
 #endif
 
         MacroAssembler::Jump success = stubJit.jump();
@@ -999,7 +999,7 @@ static Structure* emitPutTransitionStubAndGetOldStructure(ExecState* exec, VM* v
 {
     PropertyName pname(ident);
     Structure* oldStructure = structure;
-    if (!oldStructure->isObject() || oldStructure->isDictionary() || pname.asIndex() != PropertyName::NotAnIndex)
+    if (!oldStructure->isObject() || oldStructure->isDictionary() || parseIndex(pname))
         return nullptr;
 
     PropertyOffset propertyOffset;

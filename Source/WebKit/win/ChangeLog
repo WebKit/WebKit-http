@@ -1,3 +1,74 @@
+2015-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Enable Symbol in web pages
+        https://bugs.webkit.org/show_bug.cgi?id=143375
+
+        Reviewed by Ryosuke Niwa.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+
+2015-04-10  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Implement some methods in DOMHTMLDocument interface.
+        https://bugs.webkit.org/show_bug.cgi?id=143602
+
+        Reviewed by Alex Christensen.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLDocument::open):
+        (DOMHTMLDocument::close):
+        (DOMHTMLDocument::write):
+        (DOMHTMLDocument::writeln):
+
+2015-04-09  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][iOS] editorState() should not cause a synchronous layout
+        https://bugs.webkit.org/show_bug.cgi?id=142536
+        <rdar://problem/20041506>
+
+        Reviewed by Enrica Casucci.
+
+        Provide implementation for EditorClient::didChangeSelectionAndUpdateLayout().
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2015-04-08  Brady Eidson  <beidson@apple.com>
+
+        Expose the "Share" menu for links, images, and media.
+        <rdar://problem/20435340> and https://bugs.webkit.org/show_bug.cgi?id=143502
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::shareMenuItem):
+        * WebCoreSupport/WebContextMenuClient.h:
+
+2015-04-08  Anders Carlsson  <andersca@apple.com>
+
+        Add a WebApplicationCache::storage() and use it instead of the WebCore singleton
+        https://bugs.webkit.org/show_bug.cgi?id=143525
+
+        Reviewed by Antti Koivisto.
+
+        * WebApplicationCache.cpp:
+        (WebApplicationCache::storage):
+        (WebApplicationCache::maximumSize):
+        (WebApplicationCache::setMaximumSize):
+        (WebApplicationCache::defaultOriginQuota):
+        (WebApplicationCache::setDefaultOriginQuota):
+        (WebApplicationCache::diskUsageForOrigin):
+        (WebApplicationCache::deleteAllApplicationCaches):
+        (WebApplicationCache::deleteCacheForOrigin):
+        (WebApplicationCache::originsWithCache):
+        * WebApplicationCache.h:
+
+2015-04-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix Windows build.
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient::numWheelEventHandlersChanged): Deleted.
+
 2015-03-25  Per Arne Vollan  <peavo@outlook.com>
 
         [WinCairo] Crash when plugin window is destroyed.

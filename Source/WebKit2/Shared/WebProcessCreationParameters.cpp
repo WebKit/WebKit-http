@@ -76,14 +76,13 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << cookieStorageDirectory;
 #if PLATFORM(IOS)
     encoder << cookieStorageDirectoryExtensionHandle;
-    encoder << openGLCacheDirectoryExtensionHandle;
+    encoder << containerCachesDirectoryExtensionHandle;
     encoder << containerTemporaryDirectoryExtensionHandle;
-    encoder << hstsDatabasePathExtensionHandle;
 #endif
     encoder << mediaKeyStorageDirectory;
     encoder << mediaKeyStorageDirectoryExtensionHandle;
     encoder << shouldUseTestingNetworkSession;
-    encoder << urlSchemesRegistererdAsEmptyDocument;
+    encoder << urlSchemesRegisteredAsEmptyDocument;
     encoder << urlSchemesRegisteredAsSecure;
     encoder << urlSchemesRegisteredAsBypassingContentSecurityPolicy;
     encoder << urlSchemesForWhichDomainRelaxationIsForbidden;
@@ -182,11 +181,9 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
 #if PLATFORM(IOS)
     if (!decoder.decode(parameters.cookieStorageDirectoryExtensionHandle))
         return false;
-    if (!decoder.decode(parameters.openGLCacheDirectoryExtensionHandle))
+    if (!decoder.decode(parameters.containerCachesDirectoryExtensionHandle))
         return false;
     if (!decoder.decode(parameters.containerTemporaryDirectoryExtensionHandle))
-        return false;
-    if (!decoder.decode(parameters.hstsDatabasePathExtensionHandle))
         return false;
 #endif
     if (!decoder.decode(parameters.mediaKeyStorageDirectory))
@@ -195,7 +192,7 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
         return false;
     if (!decoder.decode(parameters.shouldUseTestingNetworkSession))
         return false;
-    if (!decoder.decode(parameters.urlSchemesRegistererdAsEmptyDocument))
+    if (!decoder.decode(parameters.urlSchemesRegisteredAsEmptyDocument))
         return false;
     if (!decoder.decode(parameters.urlSchemesRegisteredAsSecure))
         return false;

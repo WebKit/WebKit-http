@@ -126,7 +126,6 @@ class HTMLPlugInElement;
 class HTMLPlugInImageElement;
 class IntPoint;
 class KeyboardEvent;
-class MediaPlaybackTarget;
 class Page;
 class PrintContext;
 class Range;
@@ -139,6 +138,7 @@ class URL;
 class VisibleSelection;
 struct Highlight;
 struct KeypressCommand;
+struct MediaPlaybackTargetContext;
 struct TextCheckingResult;
 }
 
@@ -327,7 +327,9 @@ public:
     WebCore::WebGLLoadPolicy resolveWebGLPolicyForURL(WebFrame*, const String&);
 #endif // ENABLE(WEBGL)
     
-    EditorState editorState() const;
+    enum class IncludePostLayoutDataHint { No, Yes };
+    EditorState editorState(IncludePostLayoutDataHint = IncludePostLayoutDataHint::Yes) const;
+    void sendPostLayoutEditorStateIfNeeded();
 
     String renderTreeExternalRepresentation() const;
     String renderTreeExternalRepresentationForPrinting() const;
@@ -359,6 +361,7 @@ public:
     void setUseFixedLayout(bool);
     bool useFixedLayout() const { return m_useFixedLayout; }
     void setFixedLayoutSize(const WebCore::IntSize&);
+    WebCore::IntSize fixedLayoutSize() const;
 
     void listenForLayoutMilestones(uint32_t /* LayoutMilestones */);
 
@@ -760,7 +763,7 @@ public:
 
     void wheelEvent(const WebWheelEvent&);
 
-    void numWheelEventHandlersChanged(unsigned);
+    void wheelEventHandlersChanged(bool);
     void recomputeShortCircuitHorizontalWheelEventsState();
 
     void updateVisibilityState(bool isInitialState = false);
@@ -865,6 +868,9 @@ public:
 
     void setPageActivityState(WebCore::PageActivityState::Flags);
 
+    void postMessage(const String& messageName, API::Object* messageBody);
+    void postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -874,7 +880,7 @@ private:
 
     void platformInitialize();
     void platformDetach();
-    void platformEditorState(WebCore::Frame&, EditorState& result) const;
+    void platformEditorState(WebCore::Frame&, EditorState& result, IncludePostLayoutDataHint) const;
 
     void didReceiveWebPageMessage(IPC::Connection&, IPC::MessageDecoder&);
     void didReceiveSyncWebPageMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
@@ -1085,7 +1091,8 @@ private:
     PassRefPtr<WebCore::Range> lookupTextAtLocation(WebCore::FloatPoint, NSDictionary **options);
     void selectLastActionMenuRange();
     void focusAndSelectLastActionMenuHitTestResult();
-    void immediateActionDidUpdate(float force);
+    void inputDeviceForceDidChange(float force, int stage);
+    void immediateActionDidUpdate();
     void immediateActionDidCancel();
     void immediateActionDidComplete();
     void setFont(const String& fontFamily, double fontSize, uint64_t fontTraits);
@@ -1098,7 +1105,7 @@ private:
     void setShouldDispatchFakeMouseMoveEvents(bool dispatch) { m_shouldDispatchFakeMouseMoveEvents = dispatch; }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    void playbackTargetSelected(const WebCore::MediaPlaybackTarget& outputDevice) const;
+    void playbackTargetSelected(const WebCore::MediaPlaybackTargetContext& outputDevice) const;
     void playbackTargetAvailabilityDidChange(bool);
 #endif
 
@@ -1263,7 +1270,7 @@ private:
     bool m_cachedMainFrameIsPinnedToTopSide;
     bool m_cachedMainFrameIsPinnedToBottomSide;
     bool m_canShortCircuitHorizontalWheelEvents;
-    unsigned m_numWheelEventHandlers;
+    bool m_hasWheelEventHandlers;
 
     unsigned m_cachedPageCount;
 
@@ -1343,11 +1350,12 @@ private:
     RefPtr<WebCore::Range> m_lastActionMenuRangeForSelection;
     WebCore::HitTestResult m_lastActionMenuHitTestResult;
     RefPtr<WebPageOverlay> m_lastActionMenuHitPageOverlay;
-    bool m_lastActionMenuHitTestPreventsDefault;
+    int m_lastForceStage { 0 };
 #endif
 
     bool m_mainFrameProgressCompleted;
     bool m_shouldDispatchFakeMouseMoveEvents;
+    bool m_isEditorStateMissingPostLayoutData { false };
 };
 
 } // namespace WebKit

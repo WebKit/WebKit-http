@@ -86,9 +86,9 @@ public:
     PublicURLManager& publicURLManager();
 
     // Active objects are not garbage collected even if inaccessible, e.g. because their activity may result in callbacks being invoked.
-    WEBCORE_EXPORT bool canSuspendActiveDOMObjects(Vector<ActiveDOMObject*>* unsuspendableObjects = nullptr);
+    WEBCORE_EXPORT bool canSuspendActiveDOMObjectsForPageCache(Vector<ActiveDOMObject*>* unsuspendableObjects = nullptr);
 
-    // Active objects can be asked to suspend even if canSuspendActiveDOMObjects() returns 'false' -
+    // Active objects can be asked to suspend even if canSuspendActiveDOMObjectsForPageCache() returns 'false' -
     // step-by-step JS debugging is one example.
     virtual void suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension);
     virtual void resumeActiveDOMObjects(ActiveDOMObject::ReasonForSuspension);
@@ -126,6 +126,12 @@ public:
         template<typename T, typename = typename std::enable_if<!std::is_base_of<Task, T>::value && std::is_convertible<T, std::function<void (ScriptExecutionContext&)>>::value>::type>
         Task(T task)
             : m_task(WTF::move(task))
+            , m_isCleanupTask(false)
+        {
+        }
+
+        Task(std::function<void()> task)
+            : m_task([task](ScriptExecutionContext&) { task(); })
             , m_isCleanupTask(false)
         {
         }

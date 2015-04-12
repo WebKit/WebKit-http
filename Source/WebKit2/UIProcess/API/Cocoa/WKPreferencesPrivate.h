@@ -43,9 +43,9 @@ typedef NS_OPTIONS(NSUInteger, _WKDebugOverlayRegions) {
 } WK_ENUM_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 
 typedef NS_OPTIONS(NSUInteger, _WKJavaScriptRuntimeFlags) {
-    _WKJavaScriptRuntimeFlagsSymbolEnabled = 1 << 0,
+    _WKJavaScriptRuntimeFlagsSymbolDisabled = 1 << 0,
     _WKJavaScriptRuntimeFlagsPromiseDisabled = 1 << 1,
-    _WKJavaScriptRuntimeFlagsAllEnabled = _WKJavaScriptRuntimeFlagsSymbolEnabled
+    _WKJavaScriptRuntimeFlagsAllEnabled = 0
 } WK_ENUM_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 
 @interface WKPreferences (WKPrivate)
@@ -70,6 +70,8 @@ typedef NS_OPTIONS(NSUInteger, _WKJavaScriptRuntimeFlags) {
 @property (nonatomic, setter=_setStandalone:, getter=_isStandalone) BOOL _standalone WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 
 @property (nonatomic, setter=_setDiagnosticLoggingEnabled:) BOOL _diagnosticLoggingEnabled WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+
+@property (nonatomic, setter=_setAntialiasedFontDilationEnabled:) BOOL _antialiasedFontDilationEnabled WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 
 // FIXME: This should be configured on the WKWebsiteDataStore.
 // FIXME: This property should not have the verb "is" in it.

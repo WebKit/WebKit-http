@@ -54,6 +54,7 @@ list(APPEND WebKit2_SOURCES
     Shared/gtk/ArgumentCodersGtk.cpp
     Shared/gtk/KeyedEncoder.cpp
     Shared/gtk/KeyedDecoder.cpp
+    Shared/gtk/NativeContextMenuItemGtk.cpp
     Shared/gtk/NativeWebKeyboardEventGtk.cpp
     Shared/gtk/NativeWebMouseEventGtk.cpp
     Shared/gtk/NativeWebTouchEventGtk.cpp
@@ -419,6 +420,14 @@ file(GLOB InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.png
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.svg
+)
+
+# DerivedSources/JavaScriptCore/inspector/InspectorBackendCommands.js is
+# expected in DerivedSources/WebInspectorUI/UserInterface/Protocol/.
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
+    DEPENDS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js
+    COMMAND cp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
 )
 
 list(APPEND InspectorFiles
@@ -969,8 +978,7 @@ add_custom_command(
             ${PluginProcessGTK2_SOURCES}
             ${PluginProcess_SOURCES}
             ${WebKit2_HEADERS}
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${FORWARDING_HEADERS_DIR} gtk
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${FORWARDING_HEADERS_DIR} soup
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT2_DIR} --output ${FORWARDING_HEADERS_DIR} --platform gtk --platform soup
     COMMAND touch ${CMAKE_BINARY_DIR}/WebKit2-forwarding-headers.stamp
 )
 add_custom_target(WebKit2-forwarding-headers

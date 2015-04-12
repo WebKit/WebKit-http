@@ -225,10 +225,10 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/mediastream/AllAudioCapabilities.idl
     Modules/mediastream/AllVideoCapabilities.idl
-    Modules/mediastream/AudioStreamTrack.idl
     Modules/mediastream/CapabilityRange.idl
     Modules/mediastream/DOMURLMediaStream.idl
     Modules/mediastream/HTMLMediaElementMediaStream.idl
+    Modules/mediastream/MediaDevices.idl
     Modules/mediastream/MediaSourceStates.idl
     Modules/mediastream/MediaStream.idl
     Modules/mediastream/MediaStreamCapabilities.idl
@@ -239,6 +239,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/MediaTrackConstraint.idl
     Modules/mediastream/MediaTrackConstraintSet.idl
     Modules/mediastream/MediaTrackConstraints.idl
+    Modules/mediastream/NavigatorMediaDevices.idl
     Modules/mediastream/NavigatorUserMedia.idl
     Modules/mediastream/NavigatorUserMediaError.idl
     Modules/mediastream/NavigatorUserMediaErrorCallback.idl
@@ -259,7 +260,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCStatsReport.idl
     Modules/mediastream/RTCStatsResponse.idl
     Modules/mediastream/SourceInfo.idl
-    Modules/mediastream/VideoStreamTrack.idl
 
     Modules/navigatorcontentutils/NavigatorContentUtils.idl
 
@@ -278,6 +278,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/speech/SpeechSynthesisVoice.idl
 
     Modules/streams/ReadableStream.idl
+    Modules/streams/ReadableStreamReader.idl
 
     Modules/vibration/NavigatorVibration.idl
 
@@ -872,11 +873,11 @@ set(WebCore_SOURCES
     Modules/mediasource/SourceBufferList.cpp
     Modules/mediasource/VideoPlaybackQuality.cpp
 
-    Modules/mediastream/AudioStreamTrack.cpp
     Modules/mediastream/CapabilityRange.cpp
     Modules/mediastream/DOMURLMediaStream.cpp
     Modules/mediastream/HTMLMediaElementMediaStream.cpp
     Modules/mediastream/MediaConstraintsImpl.cpp
+    Modules/mediastream/MediaDevices.cpp
     Modules/mediastream/MediaSourceStates.cpp
     Modules/mediastream/MediaStream.cpp
     Modules/mediastream/MediaStreamCapabilities.cpp
@@ -888,6 +889,7 @@ set(WebCore_SOURCES
     Modules/mediastream/MediaTrackConstraint.cpp
     Modules/mediastream/MediaTrackConstraintSet.cpp
     Modules/mediastream/MediaTrackConstraints.cpp
+    Modules/mediastream/NavigatorMediaDevices.cpp
     Modules/mediastream/NavigatorUserMedia.cpp
     Modules/mediastream/NavigatorUserMediaError.cpp
     Modules/mediastream/RTCDTMFSender.cpp
@@ -907,7 +909,6 @@ set(WebCore_SOURCES
     Modules/mediastream/SourceInfo.cpp
     Modules/mediastream/UserMediaController.cpp
     Modules/mediastream/UserMediaRequest.cpp
-    Modules/mediastream/VideoStreamTrack.cpp
 
     Modules/navigatorcontentutils/NavigatorContentUtils.cpp
 
@@ -927,6 +928,7 @@ set(WebCore_SOURCES
     Modules/speech/SpeechSynthesisVoice.cpp
 
     Modules/streams/ReadableStream.cpp
+    Modules/streams/ReadableStreamReader.cpp
 
     Modules/vibration/NavigatorVibration.cpp
     Modules/vibration/Vibration.cpp
@@ -1132,6 +1134,7 @@ set(WebCore_SOURCES
     bindings/js/JSLazyEventListener.cpp
     bindings/js/JSLocationCustom.cpp
     bindings/js/JSMainThreadExecState.cpp
+    bindings/js/JSMediaDevicesCustom.cpp
     bindings/js/JSMediaSourceStatesCustom.cpp
     bindings/js/JSMediaStreamCapabilitiesCustom.cpp
     bindings/js/JSMessageChannelCustom.cpp
@@ -1156,6 +1159,7 @@ set(WebCore_SOURCES
     bindings/js/JSRTCSessionDescriptionCustom.cpp
     bindings/js/JSRTCStatsResponseCustom.cpp
     bindings/js/JSReadableStreamCustom.cpp
+    bindings/js/JSReadableStreamReaderCustom.cpp
     bindings/js/ReadableStreamJSSource.cpp
     bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
@@ -1381,7 +1385,6 @@ set(WebCore_SOURCES
     dom/ExceptionCodePlaceholder.cpp
     dom/FocusEvent.cpp
     dom/GenericEventQueue.cpp
-    dom/IconURL.cpp
     dom/IdTargetObserver.cpp
     dom/IdTargetObserverRegistry.cpp
     dom/InlineStyleSheetOwner.cpp
@@ -3513,12 +3516,20 @@ ELSE (HAIKU)
     INCLUDE_DIRECTORIES(${WebCore_LOCAL_INCLUDE_DIRECTORIES} ${WebCore_INCLUDE_DIRECTORIES} ${WebCoreTestSupport_INCLUDE_DIRECTORIES})
 ENDIF (HAIKU)
 
+if (MSVC)
+    ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCorePrefix.cpp" WebCore_SOURCES)
+endif ()
+
 add_library(WebCore ${WebCore_LIBRARY_TYPE} ${WebCore_SOURCES})
 set_target_properties(WebCore PROPERTIES COMPILE_DEFINITIONS "BUILDING_WebCore")
 set_target_properties(WebCore PROPERTIES FOLDER "WebCore")
 
 if (WebCore_OUTPUT_NAME)
     set_target_properties(WebCore PROPERTIES OUTPUT_NAME ${WebCore_OUTPUT_NAME})
+endif ()
+
+if (MSVC)
+    ADD_PRECOMPILED_HEADER("WebCoreTestSupportPrefix.h" "testing/js/WebCoreTestSupportPrefix.cpp" WebCoreTestSupport_SOURCES)
 endif ()
 
 add_library(WebCoreTestSupport ${WebCoreTestSupport_LIBRARY_TYPE} ${WebCoreTestSupport_SOURCES})

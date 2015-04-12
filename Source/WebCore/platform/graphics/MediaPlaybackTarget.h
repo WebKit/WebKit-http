@@ -28,34 +28,26 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
-#include <wtf/RetainPtr.h>
-
-#if PLATFORM(COCOA)
-OBJC_CLASS NSKeyedArchiver;
-OBJC_CLASS NSKeyedUnarchiver;
-OBJC_CLASS AVOutputDevicePickerContext;
-#endif
+#include "MediaPlaybackTargetContext.h"
+#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-class MediaPlaybackTarget {
+class MediaPlaybackTarget : public RefCounted<MediaPlaybackTarget> {
 public:
     virtual ~MediaPlaybackTarget() { }
 
-#if PLATFORM(COCOA)
-    WEBCORE_EXPORT MediaPlaybackTarget(AVOutputDevicePickerContext *context = nil) { m_devicePickerContext = context; }
+    enum TargetType {
+        None,
+        AVFoundation,
+    };
+    virtual TargetType targetType() const { return None; }
 
-    WEBCORE_EXPORT void encode(NSKeyedArchiver *) const;
-    WEBCORE_EXPORT static bool decode(NSKeyedUnarchiver *, MediaPlaybackTarget&);
-
-    void setDevicePickerContext(AVOutputDevicePickerContext *context) { m_devicePickerContext = context; }
-    AVOutputDevicePickerContext *devicePickerContext() const { return m_devicePickerContext.get(); }
-#endif
+    virtual const MediaPlaybackTargetContext& targetContext() const { return NoMediaPlaybackTargetContext; }
+    virtual bool hasActiveRoute() const { return false; }
 
 protected:
-#if PLATFORM(COCOA)
-    RetainPtr<AVOutputDevicePickerContext> m_devicePickerContext;
-#endif
+    MediaPlaybackTarget() { }
 };
 
 }

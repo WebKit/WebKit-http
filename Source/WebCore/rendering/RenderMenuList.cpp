@@ -118,10 +118,10 @@ void RenderMenuList::adjustInnerStyle()
     // Use margin:auto instead of align-items:center to get safe centering, i.e.
     // when the content overflows, treat it the same as align-items: flex-start.
     // But we only do that for the cases where html.css would otherwise use center.
-    if (style().alignItems() == AlignCenter) {
+    if (style().alignItems() == ItemPositionCenter) {
         innerStyle.setMarginTop(Length());
         innerStyle.setMarginBottom(Length());
-        innerStyle.setAlignSelf(AlignFlexStart);
+        innerStyle.setAlignSelf(ItemPositionFlexStart);
     }
 
     innerStyle.setPaddingLeft(Length(theme().popupInternalPaddingLeft(style()), Fixed));
@@ -223,13 +223,13 @@ void RenderMenuList::updateOptionsWidth()
                 optionWidth += minimumValueForLength(optionStyle->textIndent(), 0);
             if (!text.isEmpty()) {
                 const FontCascade& font = style().fontCascade();
-                TextRun run = RenderBlock::constructTextRun(this, font, text, style(), TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion, DefaultTextRunFlags);
+                TextRun run = RenderBlock::constructTextRun(this, font, text, style(), AllowTrailingExpansion | ForbidLeadingExpansion, DefaultTextRunFlags);
                 optionWidth += font.width(run);
             }
             maxOptionWidth = std::max(maxOptionWidth, optionWidth);
         } else if (!text.isEmpty()) {
             const FontCascade& font = style().fontCascade();
-            TextRun run = RenderBlock::constructTextRun(this, font, text, style(), TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion, DefaultTextRunFlags);
+            TextRun run = RenderBlock::constructTextRun(this, font, text, style(), AllowTrailingExpansion | ForbidLeadingExpansion, DefaultTextRunFlags);
             maxOptionWidth = std::max(maxOptionWidth, font.width(run));
         }
     }

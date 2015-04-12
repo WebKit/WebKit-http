@@ -33,19 +33,12 @@
 #if ENABLE(STREAMS_API)
 
 #include "NotImplemented.h"
+#include "ReadableStreamReader.h"
 #include <wtf/RefCountedLeakCounter.h>
 
 namespace WebCore {
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, readableStreamCounter, ("ReadableStream"));
-
-Ref<ReadableStream> ReadableStream::create(ScriptExecutionContext& scriptExecutionContext, Ref<ReadableStreamSource>&& source)
-{
-    auto readableStream = adoptRef(*new ReadableStream(scriptExecutionContext, WTF::move(source)));
-    readableStream.get().suspendIfNeeded();
-
-    return readableStream;
-}
 
 ReadableStream::ReadableStream(ScriptExecutionContext& scriptExecutionContext, Ref<ReadableStreamSource>&& source)
     : ActiveDOMObject(&scriptExecutionContext)
@@ -55,6 +48,7 @@ ReadableStream::ReadableStream(ScriptExecutionContext& scriptExecutionContext, R
 #ifndef NDEBUG
     readableStreamCounter.increment();
 #endif
+    suspendIfNeeded();
 }
 
 ReadableStream::~ReadableStream()
@@ -64,12 +58,17 @@ ReadableStream::~ReadableStream()
 #endif
 }
 
+void ReadableStream::start()
+{
+    notImplemented();
+}
+
 const char* ReadableStream::activeDOMObjectName() const
 {
     return "ReadableStream";
 }
 
-bool ReadableStream::canSuspend() const
+bool ReadableStream::canSuspendForPageCache() const
 {
     // FIXME: We should try and do better here.
     return false;

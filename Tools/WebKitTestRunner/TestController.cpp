@@ -44,7 +44,9 @@
 #include <WebKit/WKNotificationPermissionRequest.h>
 #include <WebKit/WKNumber.h>
 #include <WebKit/WKPageGroup.h>
+#include <WebKit/WKPageInjectedBundleClient.h>
 #include <WebKit/WKPagePrivate.h>
+#include <WebKit/WKPluginInformation.h>
 #include <WebKit/WKPreferencesRefPrivate.h>
 #include <WebKit/WKProtectionSpace.h>
 #include <WebKit/WKRetainPtr.h>
@@ -521,6 +523,15 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
     };
     WKPageSetPageNavigationClient(m_mainWebView->page(), &pageNavigationClient.base);
 
+
+    // this should just be done on the page?
+    WKPageInjectedBundleClientV0 injectedBundleClient = {
+        { 0, this },
+        didReceivePageMessageFromInjectedBundle,
+        didReceiveSynchronousPageMessageFromInjectedBundle
+    };
+    WKPageSetPageInjectedBundleClient(m_mainWebView->page(), &injectedBundleClient.base);
+
     m_mainWebView->didInitializeClients();
 
     // Generally, the tests should default to running at 1x. updateWindowScaleForTest() will adjust the scale to
@@ -621,7 +632,7 @@ bool TestController::resetStateToConsistentValues()
     }
     WKDictionarySetItem(resetMessageBody.get(), allowedHostsKey.get(), allowedHostsValue.get());
 
-    WKContextPostMessageToInjectedBundle(TestController::singleton().context(), messageName.get(), resetMessageBody.get());
+    WKPagePostMessageToInjectedBundle(TestController::singleton().mainWebView()->page(), messageName.get(), resetMessageBody.get());
 
     WKContextSetShouldUseFontSmoothing(TestController::singleton().context(), false);
 
@@ -943,6 +954,18 @@ void TestController::didReceiveMessageFromInjectedBundle(WKContextRef context, W
 }
 
 void TestController::didReceiveSynchronousMessageFromInjectedBundle(WKContextRef context, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData, const void* clientInfo)
+{
+    *returnData = static_cast<TestController*>(const_cast<void*>(clientInfo))->didReceiveSynchronousMessageFromInjectedBundle(messageName, messageBody).leakRef();
+}
+
+// WKPageInjectedBundleClient
+
+void TestController::didReceivePageMessageFromInjectedBundle(WKPageRef page, WKStringRef messageName, WKTypeRef messageBody, const void* clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->didReceiveMessageFromInjectedBundle(messageName, messageBody);
+}
+
+void TestController::didReceiveSynchronousPageMessageFromInjectedBundle(WKPageRef page, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData, const void* clientInfo)
 {
     *returnData = static_cast<TestController*>(const_cast<void*>(clientInfo))->didReceiveSynchronousMessageFromInjectedBundle(messageName, messageBody).leakRef();
 }
@@ -1292,7 +1315,22 @@ WKPluginLoadPolicy TestController::decidePolicyForPluginLoad(WKPageRef, WKPlugin
 {
     if (m_shouldBlockAllPlugins)
         return kWKPluginLoadPolicyBlocked;
+
+#if PLATFORM(MAC)
+    WKStringRef bundleIdentifier = (WKStringRef)WKDictionaryGetItemForKey(pluginInformation, WKPluginInformationBundleIdentifierKey());
+    if (!bundleIdentifier)
+        return currentPluginLoadPolicy;
+
+    if (WKStringIsEqualToUTF8CString(bundleIdentifier, "com.apple.QuickTime Plugin.plugin"))
+        return currentPluginLoadPolicy;
+
+    if (WKStringIsEqualToUTF8CString(bundleIdentifier, "com.apple.testnetscapeplugin"))
+        return currentPluginLoadPolicy;
+
+    RELEASE_ASSERT_NOT_REACHED(); // Please don't use any other plug-ins in tests, as they will not be installed on all machines.
+#else
     return currentPluginLoadPolicy;
+#endif
 }
 
 void TestController::didCommitNavigation(WKPageRef page, WKNavigationRef navigation)

@@ -238,8 +238,8 @@ App.InteractiveChartComponent = Ember.Component.extend({
             margin.left += 3 * rem;
 
         this._margin = margin;
-        this._contentWidth = this._totalWidth - margin.left - margin.right;
-        this._contentHeight = this._totalHeight - margin.top - margin.bottom;
+        this._contentWidth = Math.max(0, this._totalWidth - margin.left - margin.right);
+        this._contentHeight = Math.max(0, this._totalHeight - margin.top - margin.bottom);
 
         this._svg.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
@@ -275,7 +275,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
             .call(this._brush)
         .selectAll("rect")
             .attr("y", 1)
-            .attr("height", this._contentHeight - 2);
+            .attr("height", Math.max(0, this._contentHeight - 2));
         this._updateSelectionToolbar();
     },
     _relayoutDataAndAxes: function (selection)
@@ -524,9 +524,6 @@ App.InteractiveChartComponent = Ember.Component.extend({
             var yDiff = mY - point.y;
             return xDiff * xDiff + yDiff * yDiff / 16; // Favor horizontal affinity.
         };
-        distanceHeuristics = function (m) {
-            return Math.abs(xScale(m.time) - point.x);
-        }
 
         var newItemIndex;
         if (point && !this._currentSelection()) {
@@ -656,6 +653,7 @@ App.InteractiveChartComponent = Ember.Component.extend({
                 linkRoute: linkRoute,
                 linkId: range.get('id'),
                 label: range.get('label'),
+                status: range.get('status'),
             });
         }));
 

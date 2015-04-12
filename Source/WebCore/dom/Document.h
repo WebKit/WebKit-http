@@ -36,11 +36,11 @@
 #include "DocumentTiming.h"
 #include "FocusDirection.h"
 #include "FontSelector.h"
-#include "IconURL.h"
 #include "MutationObserver.h"
 #include "PageVisibilityState.h"
 #include "PlatformScreen.h"
 #include "ReferrerPolicy.h"
+#include "Region.h"
 #include "RenderPtr.h"
 #include "ScriptExecutionContext.h"
 #include "StringWithDirection.h"
@@ -239,6 +239,7 @@ enum NodeListInvalidationType {
 };
 const int numNodeListInvalidationTypes = InvalidateOnAnyAttrChange + 1;
 
+enum class EventHandlerRemoval { One, All };
 typedef HashCountedSet<Node*> EventTargetSet;
 
 enum DocumentClass {
@@ -769,8 +770,13 @@ public:
         ANIMATIONITERATION_LISTENER          = 1 << 9,
         TRANSITIONEND_LISTENER               = 1 << 10,
         BEFORELOAD_LISTENER                  = 1 << 11,
-        SCROLL_LISTENER                      = 1 << 12
-        // 3 bits remaining
+        SCROLL_LISTENER                      = 1 << 12,
+        FORCEWILLBEGIN_LISTENER              = 1 << 13,
+        FORCECHANGED_LISTENER                = 1 << 14,
+        FORCEDOWN_LISTENER                   = 1 << 15,
+        FORCEUP_LISTENER                     = 1 << 16,
+        FORCECLICK_LISTENER                  = 1 << 17,
+        FORCECANCELLED_LISTENER              = 1 << 18
     };
 
     bool hasListenerType(ListenerType listenerType) const { return (m_listenerTypes & listenerType); }
@@ -928,10 +934,6 @@ public:
 
     bool hasNodesWithPlaceholderStyle() const { return m_hasNodesWithPlaceholderStyle; }
     void setHasNodesWithPlaceholderStyle() { m_hasNodesWithPlaceholderStyle = true; }
-
-    WEBCORE_EXPORT const Vector<IconURL>& shortcutIconURLs();
-    WEBCORE_EXPORT const Vector<IconURL>& iconURLs(int iconTypesMask);
-    void addIconURL(const String& url, const String& mimeType, const String& size, IconType);
 
     void updateFocusAppearanceSoon(bool restorePreviousSelection);
     void cancelFocusAppearanceUpdate();
@@ -1121,9 +1123,8 @@ public:
 
     void initDNSPrefetch();
 
-    unsigned wheelEventHandlerCount() const { return m_wheelEventHandlerCount; }
     void didAddWheelEventHandler(Node&);
-    void didRemoveWheelEventHandler(Node&);
+    void didRemoveWheelEventHandler(Node&, EventHandlerRemoval = EventHandlerRemoval::One);
 
     double lastHandledUserGestureTimestamp() const { return m_lastHandledUserGestureTimestamp; }
     void updateLastHandledUserGestureTimestamp();
@@ -1134,8 +1135,12 @@ public:
     bool hasTouchEventHandlers() const { return false; }
 #endif
 
+    // Used for testing. Count handlers in the main document, and one per frame which contains handlers.
+    WEBCORE_EXPORT unsigned wheelEventHandlerCount() const;
+    WEBCORE_EXPORT unsigned touchEventHandlerCount() const;
+
     void didAddTouchEventHandler(Node&);
-    void didRemoveTouchEventHandler(Node&);
+    void didRemoveTouchEventHandler(Node&, EventHandlerRemoval = EventHandlerRemoval::One);
 
     void didRemoveEventTargetNode(Node&);
 
@@ -1147,6 +1152,13 @@ public:
         return nullptr;
 #endif
     }
+
+    const EventTargetSet* wheelEventTargets() const { return m_wheelEventTargets.get(); }
+
+    typedef std::pair<Region, bool> RegionFixedPair;
+    RegionFixedPair absoluteRegionForEventTargets(const EventTargetSet*);
+
+    LayoutRect absoluteEventHandlerBounds(bool&) override final;
 
     bool visualUpdatesAllowed() const { return m_visualUpdatesAllowed; }
 
@@ -1223,7 +1235,7 @@ public:
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void showPlaybackTargetPicker(const HTMLMediaElement&);
-    void didChoosePlaybackTarget(const MediaPlaybackTarget&);
+    void didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&&);
     void addPlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
     void removePlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
     bool requiresPlaybackTargetRouteMonitoring();
@@ -1313,6 +1325,8 @@ private:
 
     void didAssociateFormControlsTimerFired();
 
+    void wheelEventHandlersChanged();
+
     // DOM Cookies caching.
     const String& cachedDOMCookies() const { return m_cachedDOMCookies; }
     void setCachedDOMCookies(const String&);
@@ -1391,7 +1405,7 @@ private:
     HashSet<NodeIterator*> m_nodeIterators;
     HashSet<Range*> m_ranges;
 
-    unsigned short m_listenerTypes;
+    unsigned m_listenerTypes;
 
     MutationObserverOptions m_mutationObserverTypes;
 
@@ -1489,7 +1503,6 @@ private:
 
     bool m_createRenderers;
     bool m_inPageCache;
-    Vector<IconURL> m_iconURLs;
 
     HashSet<Element*> m_documentSuspensionCallbackElements;
     HashSet<Element*> m_mediaVolumeCallbackElements;
@@ -1557,10 +1570,10 @@ private:
     bool m_writeRecursionIsTooDeep;
     unsigned m_writeRecursionDepth;
     
-    unsigned m_wheelEventHandlerCount;
 #if ENABLE(TOUCH_EVENTS)
     std::unique_ptr<EventTargetSet> m_touchEventTargets;
 #endif
+    std::unique_ptr<EventTargetSet> m_wheelEventTargets;
 
     double m_lastHandledUserGestureTimestamp;
 

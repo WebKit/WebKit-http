@@ -28,6 +28,7 @@
 
 #if ENABLE(VIDEO)
 
+#include "AudioSession.h"
 #include "Logging.h"
 #include "NotImplemented.h"
 #include "MediaSession.h"
@@ -44,7 +45,6 @@ MediaSessionManager& MediaSessionManager::sharedManager()
 
 MediaSessionManager::MediaSessionManager()
     : m_systemSleepListener(SystemSleepListener::create(*this))
-    , m_interrupted(false)
 {
     resetRestrictions();
 }
@@ -166,7 +166,26 @@ MediaSessionManager::SessionRestrictions MediaSessionManager::restrictions(Media
     return m_restrictions[type];
 }
 
-void MediaSessionManager::sessionWillBeginPlayback(MediaSession& session)
+bool MediaSessionManager::sessionShouldBeginPlayingToWirelessPlaybackTarget(MediaSession& session) const
+{
+    if (!session.canPlayToWirelessPlaybackTarget())
+        return false;
+
+    if (session.isPlayingToWirelessPlaybackTarget())
+        return false;
+
+    Vector<MediaSession*> sessions = m_sessions;
+    for (auto* oneSession : sessions) {
+        if (oneSession == &session)
+            continue;
+        if (oneSession->isPlayingToWirelessPlaybackTarget())
+            return false;
+    }
+
+    return true;
+}
+
+bool MediaSessionManager::sessionWillBeginPlayback(MediaSession& session)
 {
     LOG(Media, "MediaSessionManager::sessionWillBeginPlayback - %p", &session);
     
@@ -174,20 +193,33 @@ void MediaSessionManager::sessionWillBeginPlayback(MediaSession& session)
 
     MediaSession::MediaType sessionType = session.mediaType();
     SessionRestrictions restrictions = m_restrictions[sessionType];
-    if (!restrictions & ConcurrentPlaybackNotPermitted)
-        return;
+    if (session.state() == MediaSession::Interrupted && restrictions & InterruptedPlaybackNotPermitted)
+        return false;
 
+#if USE(AUDIO_SESSION)
+    if (activeAudioSessionRequired() && !AudioSession::sharedSession().tryToSetActive(true))
+        return false;
+#endif
+
+    if (m_interrupted)
+        endInterruption(MediaSession::NoFlags);
+
+    bool shouldPlayToPlaybackTarget = sessionShouldBeginPlayingToWirelessPlaybackTarget(session);
     Vector<MediaSession*> sessions = m_sessions;
     for (auto* oneSession : sessions) {
         if (oneSession == &session)
             continue;
-        if (oneSession->mediaType() != sessionType)
-            continue;
-        if (restrictions & ConcurrentPlaybackNotPermitted)
+        if (shouldPlayToPlaybackTarget)
+            oneSession->stopPlayingToPlaybackTarget();
+        if (oneSession->mediaType() == sessionType && restrictions & ConcurrentPlaybackNotPermitted)
             oneSession->pauseSession();
     }
-    
+
+    if (shouldPlayToPlaybackTarget)
+        session.startPlayingToPlaybackTarget();
+
     updateSessionState();
+    return true;
 }
     
 void MediaSessionManager::sessionWillEndPlayback(MediaSession& session)

@@ -1433,7 +1433,7 @@ webkit.org/b/140832 [ Release ] accessibility/svg-remote-element.html [ Failure 
 webkit.org/b/140832 [ Debug ] accessibility/svg-remote-element.html [ Skip ] # Debug assertion
 webkit.org/b/140832 [ Release ] accessibility/textarea-line-for-index.html [ Failure ]
 webkit.org/b/140832 [ Debug ] accessibility/textarea-line-for-index.html [ Skip ] # Debug assertion
-webkit.org/b/140832 [ Release ] accessibility/textarea-selected-text-range.html [ Failure ]
+webkit.org/b/140832 [ Release ] accessibility/textarea-selected-text-range.html [ Skip ] # Timeout
 webkit.org/b/140832 [ Debug ] accessibility/textarea-selected-text-range.html [ Skip ] # Debug assertion
 
 # TODO Need to implement global addNotificationListener in Windows DRT
@@ -2310,6 +2310,7 @@ http/tests/xmlhttprequest/web-apps/013.html
 # Flaky
 http/tests/cache/network-error-during-revalidation.html [ Pass Crash ]
 http/tests/xmlhttprequest/workers/methods.html [ Pass Crash ]
+
 ################################################################################
 #################            End HTTP Issues             #######################
 ################################################################################
@@ -2350,6 +2351,8 @@ webkit.org/b/128979 [ Release ] inspector-protocol/dom/getAccessibilityPropertie
 [ Debug ] inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html [ Skip ] # Debug Assertion
 inspector-protocol/debugger/removeBreakpoint.html [ Skip ] # Crashing
 inspector-protocol/debugger/searchInContent-linebreaks.html [ Pass Crash ] # Flaky
+
+webkit.org/b/143548 inspector/console/console-api.html [ Skip ] # Timeout
 ################################################################################
 #################        End Inspector Issues               ####################
 ################################################################################
@@ -3042,6 +3045,7 @@ webkit.org/b/139968 fast/regions/overflow/overflow-first-and-last-regions.html [
 
 # This feature is only enabled on Mac and iOS right now
 contentfiltering [ Skip ]
+http/tests/contentfiltering [ Skip ]
 
 # The following are flaky on EWS bots. Revisit after next Windows update
 [ Release ] animations/trigger-container-scroll-empty.html [ Pass Failure ]
@@ -3064,5 +3068,14 @@ contentfiltering [ Skip ]
 [ Release ] inspector-protocol/layers/layers-for-node.html [ Skip ] # Timeouts
 [ Release ] inspector-protocol/layers/layers-generated-content.html  [ Skip ] # Timeouts
 
+# Started failing recently.
+webkit.org/b/143275 accessibility/aria-hidden-hides-all-elements.html [ Pass Failure ]
 
+# Broken Ruby tests
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-3.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
 
+webkit.org/b/143420 fast/fixed-layout/fixed-layout.html [ Skip ]

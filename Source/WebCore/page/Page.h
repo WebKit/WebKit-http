@@ -59,6 +59,7 @@ class Debugger;
 namespace WebCore {
 
 class AlternativeTextClient;
+class ApplicationCacheStorage;
 class BackForwardController;
 class BackForwardClient;
 class Chrome;
@@ -193,7 +194,7 @@ public:
 
     WEBCORE_EXPORT String scrollingStateTreeAsText();
     WEBCORE_EXPORT String synchronousScrollingReasonsAsText();
-    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects(const Frame*);
+    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects(const Frame&);
 
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
@@ -404,6 +405,7 @@ public:
     void setLastSpatialNavigationCandidateCount(unsigned count) { m_lastSpatialNavigationCandidatesCount = count; }
     unsigned lastSpatialNavigationCandidateCount() const { return m_lastSpatialNavigationCandidatesCount; }
 
+    ApplicationCacheStorage& applicationCacheStorage() { return m_applicationCacheStorage; }
     DatabaseProvider& databaseProvider() { return m_databaseProvider; }
 
     StorageNamespaceProvider& storageNamespaceProvider() { return m_storageNamespaceProvider.get(); }
@@ -426,12 +428,12 @@ public:
     WEBCORE_EXPORT void setMuted(bool);
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    void showPlaybackTargetPicker(Document*, const WebCore::IntPoint&, bool);
+    void showPlaybackTargetPicker(const WebCore::IntPoint&, bool);
     bool hasWirelessPlaybackTarget() const { return m_hasWirelessPlaybackTarget; }
-    MediaPlaybackTarget& playbackTarget() const { return *m_playbackTarget.get(); }
+    RefPtr<MediaPlaybackTarget> playbackTarget() const;
     void configurePlaybackTargetMonitoring();
 
-    WEBCORE_EXPORT void didChoosePlaybackTarget(const MediaPlaybackTarget&);
+    WEBCORE_EXPORT void didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&&);
     WEBCORE_EXPORT void playbackTargetAvailabilityDidChange(bool);
 #endif
 
@@ -577,6 +579,7 @@ private:
     unsigned m_lastSpatialNavigationCandidatesCount;
     unsigned m_framesHandlingBeforeUnloadEvent;
 
+    Ref<ApplicationCacheStorage> m_applicationCacheStorage;
     Ref<DatabaseProvider> m_databaseProvider;
     Ref<StorageNamespaceProvider> m_storageNamespaceProvider;
     RefPtr<UserContentController> m_userContentController;
@@ -587,9 +590,7 @@ private:
     SessionID m_sessionID;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    Document* m_documentRequestingPlaybackTargetPicker { nullptr };
-    std::unique_ptr<MediaPlaybackTarget> m_playbackTarget;
-    bool m_requiresPlaybackTargetMonitoring { false };
+    RefPtr<MediaPlaybackTarget> m_playbackTarget;
     bool m_hasWirelessPlaybackTarget { false };
 #endif
 

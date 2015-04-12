@@ -36,9 +36,9 @@ CompiledContentExtension::~CompiledContentExtension()
 {
 }
 
-Vector<String> CompiledContentExtension::globalDisplayNoneSelectors()
+Vector<String> CompiledContentExtension::globalDisplayNoneSelectors(Vector<bool>& pagesUsed)
 {
-    DFABytecodeInterpreter interpreter(bytecode(), bytecodeLength());
+    DFABytecodeInterpreter interpreter(bytecode(), bytecodeLength(), pagesUsed);
     DFABytecodeInterpreter::Actions actionLocations = interpreter.actionsFromDFARoot();
     
     Vector<Action> globalActions;
@@ -47,8 +47,7 @@ Vector<String> CompiledContentExtension::globalDisplayNoneSelectors()
     
     Vector<String> selectors;
     for (Action& action : globalActions) {
-        ASSERT(action.type() == ActionType::CSSDisplayNoneSelector);
-        if (action.stringArgument().length())
+        if (action.type() == ActionType::CSSDisplayNoneSelector)
             selectors.append(action.stringArgument());
     }
     

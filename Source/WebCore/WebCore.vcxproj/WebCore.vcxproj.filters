@@ -471,6 +471,9 @@
     <ClCompile Include="..\Modules\streams\ReadableStream.cpp">
       <Filter>Modules\streams</Filter>
     </ClCompile>
+    <ClCompile Include="..\Modules\streams\ReadableStreamReader.cpp">
+      <Filter>Modules\streams</Filter>
+    </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\ChangeVersionWrapper.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
@@ -3177,9 +3180,6 @@
     <ClCompile Include="..\dom\GenericEventQueue.cpp">
       <Filter>dom</Filter>
     </ClCompile>
-    <ClCompile Include="..\dom\IconURL.cpp">
-      <Filter>dom</Filter>
-    </ClCompile>
     <ClCompile Include="..\dom\IdTargetObserver.cpp">
       <Filter>dom</Filter>
     </ClCompile>
@@ -4408,6 +4408,9 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSReadableStreamCustom.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bindings\js\JSReadableStreamReaderCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\ReadableStreamJSSource.cpp">
@@ -5687,6 +5690,9 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRect.cpp">
@@ -7189,9 +7195,6 @@
     <ClCompile Include="..\html\HTMLWBRElement.cpp">
       <Filter>html</Filter>
     </ClCompile>
-    <ClCompile Include="..\loader\cache\CacheValidation.cpp">
-      <Filter>loader\cache</Filter>
-    </ClCompile>
     <ClCompile Include="..\page\PageConfiguration.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -7245,6 +7248,21 @@
     </ClCompile>
     <ClCompile Include="..\rendering\RenderAttachment.cpp">
       <Filter>rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\texmap\BitmapTextureGL.cpp">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\texmap\BitmapTextureImageBuffer.cpp">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\texmap\BitmapTexturePool.cpp">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\texmap\BitmapTexture.cpp">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\CacheValidation.cpp">
+      <Filter>platform\network</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -8964,7 +8982,7 @@
     <ClInclude Include="..\platform\text\TextCodecUTF8.h">
       <Filter>platform\text</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\text\TextDirection.h">
+    <ClInclude Include="..\platform\text\TextFlags.h">
       <Filter>platform\text</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\text\TextEncoding.h">
@@ -13616,6 +13634,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequest.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -15161,9 +15182,6 @@
     <ClInclude Include="..\html\HTMLWBRElement.h">
       <Filter>html</Filter>
     </ClInclude>
-    <ClInclude Include="..\loader\cache\CacheValidation.h">
-      <Filter>loader\cache</Filter>
-    </ClInclude>
     <ClInclude Include="..\storage\StorageNamespaceProvider.h">
       <Filter>storage</Filter>
     </ClInclude>
@@ -15212,11 +15230,29 @@
     <ClInclude Include="..\Modules\streams\ReadableStream.h">
       <Filter>Modules\streams</Filter>
     </ClInclude>
+    <ClInclude Include="..\Modules\streams\ReadableStreamReader.h">
+      <Filter>Modules\streams</Filter>
+    </ClInclude>
     <ClInclude Include="..\html\HTMLAttachmentElement.h">
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\rendering\RenderAttachment.h">
       <Filter>rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\texmap\BitmapTexture.h">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\texmap\BitmapTextureGL.h">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\texmap\BitmapTextureImageBuffer.h">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\texmap\BitmapTexturePool.h">
+      <Filter>platform\graphics\texmap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\CacheValidation.h">
+      <Filter>platform\network</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -31,11 +31,17 @@
 
 namespace JSC {
     
-#define INITIALISE_BUILTIN_NAMES(name) , m_##name(vm, #name), m_##name##PrivateName(Identifier::from(PrivateName(ASCIILiteral("Symbol." #name))))
-#define DECLARE_BUILTIN_NAMES(name) const Identifier m_##name; const Identifier m_##name##PrivateName;;
+#define INITIALISE_BUILTIN_NAMES(name) , m_##name(Identifier::fromString(vm, #name)), m_##name##PrivateName(Identifier::fromUid(PrivateName()))
+#define DECLARE_BUILTIN_NAMES(name) const Identifier m_##name; const Identifier m_##name##PrivateName;
 #define DECLARE_BUILTIN_IDENTIFIER_ACCESSOR(name) \
     const Identifier& name##PublicName() const { return m_##name; } \
     const Identifier& name##PrivateName() const { return m_##name##PrivateName; }
+
+#define INITIALISE_BUILTIN_SYMBOLS(name) INITIALISE_BUILTIN_NAMES(name), m_##name##Symbol(Identifier::fromUid(PrivateName(ASCIILiteral("Symbol." #name))))
+#define DECLARE_BUILTIN_SYMBOLS(name) DECLARE_BUILTIN_NAMES(name) const Identifier m_##name##Symbol;
+#define DECLARE_BUILTIN_SYMBOL_ACCESSOR(name) \
+    DECLARE_BUILTIN_IDENTIFIER_ACCESSOR(name) \
+    const Identifier& name##Symbol() const { return m_##name##Symbol; }
 
 #define INITIALISE_PRIVATE_TO_PUBLIC_ENTRY(name) m_privateToPublicMap.add(m_##name##PrivateName.impl(), &m_##name);
 #define INITIALISE_PUBLIC_TO_PRIVATE_ENTRY(name) m_publicToPrivateMap.add(m_##name.impl(), &m_##name##PrivateName);
@@ -48,23 +54,30 @@ public:
         : m_emptyIdentifier(commonIdentifiers->emptyIdentifier)
         JSC_FOREACH_BUILTIN_FUNCTION_NAME(INITIALISE_BUILTIN_NAMES)
         JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(INITIALISE_BUILTIN_NAMES)
+        JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(INITIALISE_BUILTIN_SYMBOLS)
     {
         JSC_FOREACH_BUILTIN_FUNCTION_NAME(INITIALISE_PRIVATE_TO_PUBLIC_ENTRY)
         JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(INITIALISE_PRIVATE_TO_PUBLIC_ENTRY)
+        JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(INITIALISE_PRIVATE_TO_PUBLIC_ENTRY)
         JSC_FOREACH_BUILTIN_FUNCTION_NAME(INITIALISE_PUBLIC_TO_PRIVATE_ENTRY)
         JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(INITIALISE_PUBLIC_TO_PRIVATE_ENTRY)
+        JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(INITIALISE_PUBLIC_TO_PRIVATE_ENTRY)
     }
 
+    bool isPrivateName(StringImpl* uid) const;
+    bool isPrivateName(const Identifier&) const;
     const Identifier* getPrivateName(const Identifier&) const;
     const Identifier& getPublicName(const Identifier&) const;
     
     JSC_FOREACH_BUILTIN_FUNCTION_NAME(DECLARE_BUILTIN_IDENTIFIER_ACCESSOR)
     JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(DECLARE_BUILTIN_IDENTIFIER_ACCESSOR)
+    JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(DECLARE_BUILTIN_SYMBOL_ACCESSOR)
 
 private:
     Identifier m_emptyIdentifier;
     JSC_FOREACH_BUILTIN_FUNCTION_NAME(DECLARE_BUILTIN_NAMES)
     JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(DECLARE_BUILTIN_NAMES)
+    JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(DECLARE_BUILTIN_SYMBOLS)
     typedef HashMap<RefPtr<StringImpl>, const Identifier*, IdentifierRepHash> BuiltinNamesMap;
     BuiltinNamesMap m_publicToPrivateMap;
     BuiltinNamesMap m_privateToPublicMap;
@@ -73,7 +86,21 @@ private:
 #undef DECLARE_BUILTIN_NAMES
 #undef INITIALISE_BUILTIN_NAMES
 #undef DECLARE_BUILTIN_IDENTIFIER_ACCESSOR
+#undef DECLARE_BUILTIN_SYMBOLS
+#undef INITIALISE_BUILTIN_SYMBOLS
+#undef DECLARE_BUILTIN_SYMBOL_ACCESSOR
 
+inline bool BuiltinNames::isPrivateName(StringImpl* uid) const
+{
+    if (!uid->isSymbol())
+        return false;
+    return m_privateToPublicMap.contains(uid);
+}
+
+inline bool BuiltinNames::isPrivateName(const Identifier& ident) const
+{
+    return isPrivateName(ident.impl());
+}
 
 inline const Identifier* BuiltinNames::getPrivateName(const Identifier& ident) const
 {
@@ -91,7 +118,7 @@ inline const Identifier& BuiltinNames::getPublicName(const Identifier& ident) co
     return m_emptyIdentifier;
 }
 
-    
+
 }
 
 #endif

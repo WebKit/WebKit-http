@@ -39,7 +39,6 @@ const char* const headersToIgnoreAfterRevalidation[] = {
     "allow",
     "connection",
     "etag",
-    "expires",
     "keep-alive",
     "last-modified"
     "proxy-authenticate",
@@ -76,8 +75,8 @@ static inline bool shouldUpdateHeaderAfterRevalidation(const String& header)
 
 void updateResponseHeadersAfterRevalidation(ResourceResponse& response, const ResourceResponse& validatingResponse)
 {
-    // RFC2616 10.3.5
-    // Update cached headers from the 304 response
+    // Freshening stored response upon validation:
+    // http://tools.ietf.org/html/rfc7234#section-4.3.4
     for (const auto& header : validatingResponse.httpHeaderFields()) {
         // Entity headers should not be sent by servers when generating a 304
         // response; misconfigured servers send them anyway. We shouldn't allow
@@ -90,49 +89,62 @@ void updateResponseHeadersAfterRevalidation(ResourceResponse& response, const Re
     }
 }
 
-double computeCurrentAge(const ResourceResponse& response, double responseTimestamp)
+std::chrono::microseconds computeCurrentAge(const ResourceResponse& response, std::chrono::system_clock::time_point responseTime)
 {
-    // RFC2616 13.2.3
-    // No compensation for latency as that is not terribly important in practice
-    double dateValue = response.date();
-    double apparentAge = std::isfinite(dateValue) ? std::max(0., responseTimestamp - dateValue) : 0;
-    double ageValue = response.age();
-    double correctedReceivedAge = std::isfinite(ageValue) ? std::max(apparentAge, ageValue) : apparentAge;
-    double residentTime = currentTime() - responseTimestamp;
-    return correctedReceivedAge + residentTime;
+    using namespace std::chrono;
+
+    // Age calculation:
+    // http://tools.ietf.org/html/rfc7234#section-4.2.3
+    // No compensation for latency as that is not terribly important in practice.
+    auto dateValue = response.date();
+    auto apparentAge = dateValue ? std::max(microseconds::zero(), duration_cast<microseconds>(responseTime - dateValue.value())) : microseconds::zero();
+    auto ageValue = response.age().valueOr(microseconds::zero());
+    auto correctedInitialAge = std::max(apparentAge, ageValue);
+    auto residentTime = duration_cast<microseconds>(system_clock::now() - responseTime);
+    return correctedInitialAge + residentTime;
 }
 
-double computeFreshnessLifetimeForHTTPFamily(const ResourceResponse& response, double responseTimestamp)
+std::chrono::microseconds computeFreshnessLifetimeForHTTPFamily(const ResourceResponse& response, std::chrono::system_clock::time_point responseTime)
 {
+    using namespace std::chrono;
     ASSERT(response.url().protocolIsInHTTPFamily());
-    // RFC2616 13.2.4
-    double maxAgeValue = response.cacheControlMaxAge();
-    if (std::isfinite(maxAgeValue))
-        return maxAgeValue;
-    double expiresValue = response.expires();
-    double dateValue = response.date();
-    double creationTime = std::isfinite(dateValue) ? dateValue : responseTimestamp;
-    if (std::isfinite(expiresValue))
-        return expiresValue - creationTime;
-    double lastModifiedValue = response.lastModified();
-    if (std::isfinite(lastModifiedValue))
-        return (creationTime - lastModifiedValue) * 0.1;
+
+    // Freshness Lifetime:
+    // http://tools.ietf.org/html/rfc7234#section-4.2.1
+    auto maxAge = response.cacheControlMaxAge();
+    if (maxAge)
+        return maxAge.value();
+    auto expires = response.expires();
+    auto date = response.date();
+    auto dateValue = date ? date.value() : responseTime;
+    if (expires)
+        return duration_cast<microseconds>(expires.value() - dateValue);
+
+    // Heuristic Freshness:
+    // http://tools.ietf.org/html/rfc7234#section-4.2.2
+    auto lastModified = response.lastModified();
+    if (lastModified)
+        return duration_cast<microseconds>((dateValue - lastModified.value()) * 0.1);
+
     // If no cache headers are present, the specification leaves the decision to the UA. Other browsers seem to opt for 0.
-    return 0;
+    return microseconds::zero();
 }
 
 void updateRedirectChainStatus(RedirectChainCacheStatus& redirectChainCacheStatus, const ResourceResponse& response)
 {
+    using namespace std::chrono;
+
     if (redirectChainCacheStatus.status == RedirectChainCacheStatus::NotCachedRedirection)
         return;
     if (response.cacheControlContainsNoStore() || response.cacheControlContainsNoCache() || response.cacheControlContainsMustRevalidate()) {
         redirectChainCacheStatus.status = RedirectChainCacheStatus::NotCachedRedirection;
         return;
     }
+
     redirectChainCacheStatus.status = RedirectChainCacheStatus::CachedRedirection;
-    double responseTimestamp = currentTime();
+    auto responseTimestamp = system_clock::now();
     // Store the nearest end of cache validity date
-    double endOfValidity = responseTimestamp + computeFreshnessLifetimeForHTTPFamily(response, responseTimestamp) - computeCurrentAge(response, responseTimestamp);
+    auto endOfValidity = responseTimestamp + computeFreshnessLifetimeForHTTPFamily(response, responseTimestamp) - computeCurrentAge(response, responseTimestamp);
     redirectChainCacheStatus.endOfValidity = std::min(redirectChainCacheStatus.endOfValidity, endOfValidity);
 }
 
@@ -144,7 +156,7 @@ bool redirectChainAllowsReuse(RedirectChainCacheStatus redirectChainCacheStatus,
     case RedirectChainCacheStatus::NotCachedRedirection:
         return false;
     case RedirectChainCacheStatus::CachedRedirection:
-        return reuseExpiredRedirection || currentTime() <= redirectChainCacheStatus.endOfValidity;
+        return reuseExpiredRedirection || std::chrono::system_clock::now() <= redirectChainCacheStatus.endOfValidity;
     }
     ASSERT_NOT_REACHED();
     return false;
@@ -152,7 +164,7 @@ bool redirectChainAllowsReuse(RedirectChainCacheStatus redirectChainCacheStatus,
 
 inline bool isCacheHeaderSeparator(UChar c)
 {
-    // See RFC 2616, Section 2.2
+    // http://tools.ietf.org/html/rfc7230#section-3.2.6
     switch (c) {
     case '(':
     case ')':
@@ -249,6 +261,8 @@ static Vector<std::pair<String, String>> parseCacheHeader(const String& header)
 
 CacheControlDirectives parseCacheControlDirectives(const HTTPHeaderMap& headers)
 {
+    using namespace std::chrono;
+
     CacheControlDirectives result;
 
     String cacheControlValue = headers.get(HTTPHeaderName::CacheControl);
@@ -257,8 +271,9 @@ CacheControlDirectives parseCacheControlDirectives(const HTTPHeaderMap& headers)
 
         size_t directivesSize = directives.size();
         for (size_t i = 0; i < directivesSize; ++i) {
-            // RFC2616 14.9.1: A no-cache directive with a value is only meaningful for proxy caches.
+            // A no-cache directive with a value is only meaningful for proxy caches.
             // It should be ignored by a browser level cache.
+            // http://tools.ietf.org/html/rfc7234#section-5.2.2.2
             if (equalIgnoringCase(directives[i].first, "no-cache") && directives[i].second.isEmpty())
                 result.noCache = true;
             else if (equalIgnoringCase(directives[i].first, "no-store"))
@@ -266,14 +281,29 @@ CacheControlDirectives parseCacheControlDirectives(const HTTPHeaderMap& headers)
             else if (equalIgnoringCase(directives[i].first, "must-revalidate"))
                 result.mustRevalidate = true;
             else if (equalIgnoringCase(directives[i].first, "max-age")) {
-                if (!std::isnan(result.maxAge)) {
+                if (result.maxAge) {
                     // First max-age directive wins if there are multiple ones.
                     continue;
                 }
                 bool ok;
                 double maxAge = directives[i].second.toDouble(&ok);
                 if (ok)
-                    result.maxAge = maxAge;
+                    result.maxAge = duration_cast<microseconds>(duration<double>(maxAge));
+            } else if (equalIgnoringCase(directives[i].first, "max-stale")) {
+                // https://tools.ietf.org/html/rfc7234#section-5.2.1.2
+                if (result.maxStale) {
+                    // First max-stale directive wins if there are multiple ones.
+                    continue;
+                }
+                if (directives[i].second.isEmpty()) {
+                    // if no value is assigned to max-stale, then the client is willing to accept a stale response of any age.
+                    result.maxStale = microseconds::max();
+                    continue;
+                }
+                bool ok;
+                double maxStale = directives[i].second.toDouble(&ok);
+                if (ok)
+                    result.maxStale = duration_cast<microseconds>(duration<double>(maxStale));
             }
         }
     }

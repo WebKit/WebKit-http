@@ -1898,7 +1898,7 @@ void setJSTestObjTestSubObjEnabledBySettingConstructor(ExecState* exec, JSObject
     UNUSED_PARAM(thisValue);
     UNUSED_PARAM(exec);
     // Shadowing a built-in constructor.
-    castedThis->putDirect(exec->vm(), Identifier(exec, "TestSubObjEnabledBySetting"), value);
+    castedThis->putDirect(exec->vm(), Identifier::fromString(exec, "TestSubObjEnabledBySetting"), value);
 }
 
 
@@ -2707,7 +2707,7 @@ void setJSTestObjConditionalAttr4Constructor(ExecState* exec, JSObject* baseObje
     UNUSED_PARAM(thisValue);
     UNUSED_PARAM(exec);
     // Shadowing a built-in constructor.
-    castedThis->putDirect(exec->vm(), Identifier(exec, "conditionalAttr4"), value);
+    castedThis->putDirect(exec->vm(), Identifier::fromString(exec, "conditionalAttr4"), value);
 }
 
 #endif
@@ -2722,7 +2722,7 @@ void setJSTestObjConditionalAttr5Constructor(ExecState* exec, JSObject* baseObje
     UNUSED_PARAM(thisValue);
     UNUSED_PARAM(exec);
     // Shadowing a built-in constructor.
-    castedThis->putDirect(exec->vm(), Identifier(exec, "conditionalAttr5"), value);
+    castedThis->putDirect(exec->vm(), Identifier::fromString(exec, "conditionalAttr5"), value);
 }
 
 #endif
@@ -2737,7 +2737,7 @@ void setJSTestObjConditionalAttr6Constructor(ExecState* exec, JSObject* baseObje
     UNUSED_PARAM(thisValue);
     UNUSED_PARAM(exec);
     // Shadowing a built-in constructor.
-    castedThis->putDirect(exec->vm(), Identifier(exec, "conditionalAttr6"), value);
+    castedThis->putDirect(exec->vm(), Identifier::fromString(exec, "conditionalAttr6"), value);
 }
 
 #endif
@@ -2875,7 +2875,7 @@ void setJSTestObjReplaceableAttribute(ExecState* exec, JSObject* baseObject, Enc
         return;
     }
     // Shadowing a built-in object.
-    castedThis->putDirect(exec->vm(), Identifier(exec, "replaceableAttribute"), value);
+    castedThis->putDirect(exec->vm(), Identifier::fromString(exec, "replaceableAttribute"), value);
 }
 
 

@@ -147,6 +147,7 @@ public:
         , m_inlineStackTop(0)
         , m_haveBuiltOperandMaps(false)
         , m_currentInstruction(0)
+        , m_hasDebuggerEnabled(graph.hasDebuggerEnabled())
     {
         ASSERT(m_profiledBlock);
     }
@@ -385,6 +386,8 @@ private:
             ArgumentPosition* argumentPosition = findArgumentPositionForLocal(operand);
             if (argumentPosition)
                 flushDirect(operand, argumentPosition);
+            else if (m_hasDebuggerEnabled && operand == m_codeBlock->scopeRegister())
+                flush(operand);
         }
 
         VariableAccessData* variableAccessData = newVariableAccessData(operand);
@@ -522,6 +525,7 @@ private:
     {
         int numArguments;
         if (InlineCallFrame* inlineCallFrame = inlineStackEntry->m_inlineCallFrame) {
+            ASSERT(!m_hasDebuggerEnabled);
             numArguments = inlineCallFrame->arguments.size();
             if (inlineCallFrame->isClosureCall)
                 flushDirect(inlineStackEntry->remapOperand(VirtualRegister(JSStack::Callee)));
@@ -531,6 +535,8 @@ private:
             numArguments = inlineStackEntry->m_codeBlock->numParameters();
         for (unsigned argument = numArguments; argument-- > 1;)
             flushDirect(inlineStackEntry->remapOperand(virtualRegisterForArgument(argument)));
+        if (m_hasDebuggerEnabled)
+            flush(m_codeBlock->scopeRegister());
     }
 
     void flushForTerminal()
@@ -997,6 +1003,7 @@ private:
     StubInfoMap m_dfgStubInfos;
     
     Instruction* m_currentInstruction;
+    bool m_hasDebuggerEnabled;
 };
 
 #define NEXT_OPCODE(name) \
@@ -1168,6 +1175,12 @@ unsigned ByteCodeParser::inliningCost(CallVariant callee, int argumentCountInclu
     if (verbose)
         dataLog("Considering inlining ", callee, " into ", currentCodeOrigin(), "\n");
     
+    if (m_hasDebuggerEnabled) {
+        if (verbose)
+            dataLog("    Failing because the debugger is in use.\n");
+        return UINT_MAX;
+    }
+
     FunctionExecutable* executable = callee.functionExecutable();
     if (!executable) {
         if (verbose)
@@ -2164,7 +2177,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
         if (argumentCountIncludingThis <= 1)
             result = jsConstant(m_vm->smallStrings.emptyString());
         else
-            result = addToGraph(ToString, get(virtualRegisterForArgument(1, registerOffset)));
+            result = addToGraph(CallStringConstructor, get(virtualRegisterForArgument(1, registerOffset)));
         
         if (kind == CodeForConstruct)
             result = addToGraph(NewStringObject, OpInfo(function->globalObject()->stringObjectStructure()), result);
@@ -3957,8 +3970,9 @@ void ByteCodeParser::parseCodeBlock()
             *m_vm->m_perBytecodeProfiler, m_inlineStackTop->m_profiledBlock);
     }
     
+    bool shouldDumpSource = Options::dumpSourceAtDFGTime();
     bool shouldDumpBytecode = Options::dumpBytecodeAtDFGTime();
-    if (shouldDumpBytecode) {
+    if (shouldDumpSource || shouldDumpBytecode) {
         dataLog("Parsing ", *codeBlock);
         if (inlineCallFrame()) {
             dataLog(
@@ -3968,8 +3982,16 @@ void ByteCodeParser::parseCodeBlock()
         dataLog(
             ": needsActivation = ", codeBlock->needsActivation(),
             ", isStrictMode = ", codeBlock->ownerExecutable()->isStrictMode(), "\n");
-        codeBlock->baselineVersion()->dumpBytecode();
     }
+
+    if (shouldDumpSource) {
+        dataLog("==== begin source ====\n");
+        codeBlock->baselineVersion()->dumpSource();
+        dataLog("\n==== end source ====\n\n");
+    }
+    
+    if (shouldDumpBytecode)
+        codeBlock->baselineVersion()->dumpBytecode();
     
     Vector<unsigned, 32> jumpTargets;
     computePreciseJumpTargets(codeBlock, jumpTargets);

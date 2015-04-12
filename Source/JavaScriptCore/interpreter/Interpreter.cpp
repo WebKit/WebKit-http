@@ -126,7 +126,8 @@ JSValue eval(CallFrame* callFrame)
         // If the literal parser bailed, it should not have thrown exceptions.
         ASSERT(!callFrame->vm().exception());
 
-        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock->ownerExecutable(), callerCodeBlock->isStrictMode(), programSource, callerScopeChain);
+        ThisTDZMode thisTDZMode = callerCodeBlock->unlinkedCodeBlock()->constructorKind() == ConstructorKind::Derived ? ThisTDZMode::AlwaysCheck : ThisTDZMode::CheckIfNeeded;
+        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock->ownerExecutable(), callerCodeBlock->isStrictMode(), thisTDZMode, programSource, callerScopeChain);
         if (!eval)
             return jsUndefined();
     }
@@ -762,7 +763,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
                         PropertySlot slot(globalObject);
                         if (!globalObject->getPropertySlot(callFrame, JSONPPath[i].m_pathEntryName, slot)) {
                             if (entry)
-                                return callFrame->vm().throwException(callFrame, createUndefinedVariableError(globalObject->globalExec(), JSONPPath[i].m_pathEntryName));
+                                return callFrame->vm().throwException(callFrame, createUndefinedVariableError(callFrame, JSONPPath[i].m_pathEntryName));
                             goto failedJSONP;
                         }
                         baseObject = slot.getValue(callFrame, JSONPPath[i].m_pathEntryName);

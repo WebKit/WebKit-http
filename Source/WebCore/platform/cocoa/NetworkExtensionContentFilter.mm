@@ -28,21 +28,23 @@
 
 #if HAVE(NETWORK_EXTENSION)
 
+#import "ContentFilterUnblockHandler.h"
+#import "Logging.h"
 #import "NEFilterSourceSPI.h"
+#import "ResourceRequest.h"
 #import "ResourceResponse.h"
+#import "SharedBuffer.h"
 #import "SoftLinking.h"
+#import "URL.h"
 #import <objc/runtime.h>
 
 SOFT_LINK_FRAMEWORK(NetworkExtension);
 SOFT_LINK_CLASS(NetworkExtension, NEFilterSource);
 
 #if HAVE(MODERN_NE_FILTER_SOURCE)
-// FIXME: <rdar://problem/20165664> Expose decisionHandler dictionary keys as NSString constants in NEFilterSource.h
-static NSString * const optionsPageData = @"PageData";
-
 static inline NSData *replacementDataFromDecisionInfo(NSDictionary *decisionInfo)
 {
-    id replacementData = decisionInfo[optionsPageData];
+    id replacementData = decisionInfo[NEFilterSourceOptionsPageData];
     ASSERT(!replacementData || [replacementData isKindOfClass:[NSData class]]);
     return replacementData;
 }
@@ -50,37 +52,83 @@ static inline NSData *replacementDataFromDecisionInfo(NSDictionary *decisionInfo
 
 namespace WebCore {
 
-bool NetworkExtensionContentFilter::canHandleResponse(const ResourceResponse& response)
+bool NetworkExtensionContentFilter::enabled()
 {
-    return response.url().protocolIsInHTTPFamily() && [getNEFilterSourceClass() filterRequired];
+    bool enabled = [getNEFilterSourceClass() filterRequired];
+    LOG(ContentFiltering, "NetworkExtensionContentFilter is %s.\n", enabled ? "enabled" : "not enabled");
+    return enabled;
 }
 
-std::unique_ptr<NetworkExtensionContentFilter> NetworkExtensionContentFilter::create(const ResourceResponse& response)
+std::unique_ptr<NetworkExtensionContentFilter> NetworkExtensionContentFilter::create()
 {
-    return std::make_unique<NetworkExtensionContentFilter>(response);
+    return std::make_unique<NetworkExtensionContentFilter>();
 }
 
-static inline RetainPtr<NEFilterSource> createNEFilterSource(const URL& url, dispatch_queue_t decisionQueue)
-{
-#if HAVE(MODERN_NE_FILTER_SOURCE)
-    UNUSED_PARAM(url);
-    return adoptNS([allocNEFilterSourceInstance() initWithDecisionQueue:decisionQueue]);
-#else
-    UNUSED_PARAM(decisionQueue);
-    return adoptNS([allocNEFilterSourceInstance() initWithURL:url direction:NEFilterSourceDirectionInbound socketIdentifier:0]);
-#endif
-}
-
-NetworkExtensionContentFilter::NetworkExtensionContentFilter(const ResourceResponse& response)
+NetworkExtensionContentFilter::NetworkExtensionContentFilter()
     : m_status { NEFilterSourceStatusNeedsMoreData }
     , m_queue { adoptOSObject(dispatch_queue_create("com.apple.WebCore.NEFilterSourceQueue", DISPATCH_QUEUE_SERIAL)) }
     , m_semaphore { adoptOSObject(dispatch_semaphore_create(0)) }
-    , m_originalData { *SharedBuffer::create() }
-    , m_neFilterSource { createNEFilterSource(response.url(), m_queue.get()) }
+#if HAVE(MODERN_NE_FILTER_SOURCE)
+    , m_neFilterSource { adoptNS([allocNEFilterSourceInstance() initWithDecisionQueue:m_queue.get()]) }
+#endif
 {
     ASSERT([getNEFilterSourceClass() filterRequired]);
+}
 
+void NetworkExtensionContentFilter::willSendRequest(ResourceRequest& request, const ResourceResponse& redirectResponse)
+{
 #if HAVE(MODERN_NE_FILTER_SOURCE)
+    ASSERT(!request.isNull());
+    if (!request.url().protocolIsInHTTPFamily()) {
+        m_status = NEFilterSourceStatusPass;
+        return;
+    }
+
+    if (!redirectResponse.isNull()) {
+        responseReceived(redirectResponse);
+        if (!needsMoreData())
+            return;
+    }
+
+    RetainPtr<NSString> modifiedRequestURLString;
+    [m_neFilterSource willSendRequest:request.nsURLRequest(DoNotUpdateHTTPBody) decisionHandler:[this, &modifiedRequestURLString](NEFilterSourceStatus status, NSDictionary *decisionInfo) {
+        modifiedRequestURLString = decisionInfo[NEFilterSourceOptionsRedirectURL];
+        ASSERT(!modifiedRequestURLString || [modifiedRequestURLString isKindOfClass:[NSString class]]);
+        handleDecision(status, replacementDataFromDecisionInfo(decisionInfo));
+    }];
+
+    // FIXME: We have to block here since DocumentLoader expects to have a
+    // blocked/not blocked answer from the filter immediately after calling
+    // addData(). We should find a way to make this asynchronous.
+    dispatch_semaphore_wait(m_semaphore.get(), DISPATCH_TIME_FOREVER);
+
+    if (!modifiedRequestURLString)
+        return;
+
+    URL modifiedRequestURL { URL(), modifiedRequestURLString.get() };
+    if (!modifiedRequestURL.isValid()) {
+        LOG(ContentFiltering, "NetworkExtensionContentFilter failed to convert modified URL string %@ to a WebCore::URL.\n", modifiedRequestURLString.get());
+        return;
+    }
+
+    request.setURL(modifiedRequestURL);
+#else
+    UNUSED_PARAM(request);
+    UNUSED_PARAM(redirectResponse);
+#endif
+}
+
+void NetworkExtensionContentFilter::responseReceived(const ResourceResponse& response)
+{
+    if (!response.url().protocolIsInHTTPFamily()) {
+        m_status = NEFilterSourceStatusPass;
+        return;
+    }
+
+#if !HAVE(MODERN_NE_FILTER_SOURCE)
+    ASSERT(!m_neFilterSource);
+    m_neFilterSource = adoptNS([allocNEFilterSourceInstance() initWithURL:response.url() direction:NEFilterSourceDirectionInbound socketIdentifier:0]);
+#else
     [m_neFilterSource receivedResponse:response.nsURLResponse() decisionHandler:[this](NEFilterSourceStatus status, NSDictionary *decisionInfo) {
         handleDecision(status, replacementDataFromDecisionInfo(decisionInfo));
     }];
@@ -95,12 +143,6 @@ NetworkExtensionContentFilter::NetworkExtensionContentFilter(const ResourceRespo
 void NetworkExtensionContentFilter::addData(const char* data, int length)
 {
     RetainPtr<NSData> copiedData { [NSData dataWithBytes:(void*)data length:length] };
-
-    // FIXME: NEFilterSource doesn't buffer data like WebFilterEvaluator does,
-    // so we need to do it ourselves so getReplacementData() can return the
-    // original bytes back to the loader. We should find a way to remove this
-    // additional copy.
-    m_originalData->append((CFDataRef)copiedData.get());
 
 #if HAVE(MODERN_NE_FILTER_SOURCE)
     [m_neFilterSource receivedData:copiedData.get() decisionHandler:[this](NEFilterSourceStatus status, NSDictionary *decisionInfo) {
@@ -148,15 +190,10 @@ bool NetworkExtensionContentFilter::didBlockData() const
     return m_status == NEFilterSourceStatusBlock;
 }
 
-const char* NetworkExtensionContentFilter::getReplacementData(int& length) const
+Ref<SharedBuffer> NetworkExtensionContentFilter::replacementData() const
 {
-    if (didBlockData()) {
-        length = [m_replacementData length];
-        return static_cast<const char*>([m_replacementData bytes]);
-    }
-
-    length = m_originalData->size();
-    return m_originalData->data();
+    ASSERT(didBlockData());
+    return adoptRef(*SharedBuffer::wrapNSData(m_replacementData.get()).leakRef());
 }
 
 ContentFilterUnblockHandler NetworkExtensionContentFilter::unblockHandler() const
@@ -168,6 +205,7 @@ ContentFilterUnblockHandler NetworkExtensionContentFilter::unblockHandler() cons
     return ContentFilterUnblockHandler {
         ASCIILiteral("nefilter-unblock"), [neFilterSource](DecisionHandlerFunction decisionHandler) {
             [neFilterSource remediateWithDecisionHandler:[decisionHandler](NEFilterSourceStatus status, NSDictionary *) {
+                LOG(ContentFiltering, "NEFilterSource %s the unblock request.\n", status == NEFilterSourceStatusPass ? "allowed" : "did not allow");
                 decisionHandler(status == NEFilterSourceStatusPass);
             }];
         }
@@ -182,6 +220,10 @@ void NetworkExtensionContentFilter::handleDecision(NEFilterSourceStatus status, 
     m_status = status;
     if (status == NEFilterSourceStatusBlock)
         m_replacementData = replacementData;
+#if !LOG_DISABLED
+    if (!needsMoreData())
+        LOG(ContentFiltering, "NetworkExtensionContentFilter stopped buffering with status %zd and replacement data length %zu.\n", status, replacementData.length);
+#endif
     dispatch_semaphore_signal(m_semaphore.get());
 }
 

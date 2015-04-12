@@ -63,6 +63,7 @@
 #include "HTMLVideoElement.h"
 #include "HistoryController.h"
 #include "HistoryItem.h"
+#include "IconController.h"
 #include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorForwarding.h"
@@ -294,6 +295,8 @@ void Internals::resetToConsistentState(Page* page)
         mainFrameView->setHeaderHeight(0);
         mainFrameView->setFooterHeight(0);
         page->setTopContentInset(0);
+        mainFrameView->setUseFixedLayout(false);
+        mainFrameView->setFixedLayoutSize(IntSize());
     }
 
     TextRun::setAllowsRoundingHacks(false);
@@ -308,7 +311,7 @@ void Internals::resetToConsistentState(Page* page)
         page->mainFrame().editor().toggleContinuousSpellChecking();
     if (page->mainFrame().editor().isOverwriteModeEnabled())
         page->mainFrame().editor().toggleOverwriteModeEnabled();
-    page->mainFrame().loader().clearOverrideCachePolicyForTesting();
+    page->mainFrame().loader().clearTestingOverrides();
     ApplicationCacheStorage::singleton().setDefaultOriginQuota(ApplicationCacheStorage::noQuota());
 #if ENABLE(VIDEO)
     MediaSessionManager::sharedManager().resetRestrictions();
@@ -402,7 +405,12 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
 {
     if (!contextDocument() || !contextDocument()->page())
         return false;
-    CachedResource* resource = MemoryCache::singleton().resourceForURL(contextDocument()->completeURL(url), contextDocument()->page()->sessionID());
+
+    ResourceRequest request(contextDocument()->completeURL(url));
+#if ENABLE(CACHE_PARTITIONING)
+    request.setDomainForCachePartition(contextDocument()->topOrigin()->domainForCachePartition());
+#endif
+    CachedResource* resource = MemoryCache::singleton().resourceForRequest(request, contextDocument()->page()->sessionID());
     return resource && resource->status() == CachedResource::Cached;
 }
 
@@ -443,6 +451,27 @@ static ResourceRequestCachePolicy stringToResourceRequestCachePolicy(const Strin
 void Internals::setOverrideCachePolicy(const String& policy)
 {
     frame()->loader().setOverrideCachePolicyForTesting(stringToResourceRequestCachePolicy(policy));
+}
+
+static ResourceLoadPriority stringToResourceLoadPriority(const String& policy)
+{
+    if (policy == "ResourceLoadPriorityVeryLow")
+        return ResourceLoadPriorityVeryLow;
+    if (policy == "ResourceLoadPriorityLow")
+        return ResourceLoadPriorityLow;
+    if (policy == "ResourceLoadPriorityMedium")
+        return ResourceLoadPriorityMedium;
+    if (policy == "ResourceLoadPriorityHigh")
+        return ResourceLoadPriorityHigh;
+    if (policy == "ResourceLoadPriorityVeryHigh")
+        return ResourceLoadPriorityVeryHigh;
+    ASSERT_NOT_REACHED();
+    return ResourceLoadPriorityLow;
+}
+
+void Internals::setOverrideResourceLoadPriority(const String& priority)
+{
+    frame()->loader().setOverrideResourceLoadPriorityForTesting(stringToResourceLoadPriority(priority));
 }
 
 void Internals::clearMemoryCache()
@@ -1233,15 +1262,7 @@ unsigned Internals::touchEventHandlerCount(ExceptionCode& ec)
         return 0;
     }
 
-    auto touchHandlers = document->touchEventTargets();
-    if (!touchHandlers)
-        return 0;
-
-    unsigned count = 0;
-    for (auto& handler : *touchHandlers)
-        count += handler.value;
-
-    return count;
+    return document->touchEventHandlerCount();
 }
 
 // FIXME: Remove the document argument. It is almost always the same as
@@ -1771,7 +1792,7 @@ RefPtr<ClientRectList> Internals::nonFastScrollableRects(ExceptionCode& ec) cons
     if (!page)
         return nullptr;
 
-    return page->nonFastScrollableRects(document->frame());
+    return page->nonFastScrollableRects(*document->frame());
 }
 
 void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
@@ -1833,26 +1854,17 @@ int Internals::pageNumber(Element* element, float pageWidth, float pageHeight)
     return PrintContext::pageNumberForElement(element, FloatSize(pageWidth, pageHeight));
 }
 
-Vector<String> Internals::iconURLs(Document* document, int iconTypesMask) const
-{
-    Vector<IconURL> iconURLs = document->iconURLs(iconTypesMask);
-    Vector<String> array;
-
-    Vector<IconURL>::const_iterator iter(iconURLs.begin());
-    for (; iter != iconURLs.end(); ++iter)
-        array.append(iter->m_iconURL.string());
-
-    return array;
-}
-
 Vector<String> Internals::shortcutIconURLs() const
 {
-    return iconURLs(contextDocument(), Favicon);
-}
+    Vector<String> vector;
 
-Vector<String> Internals::allIconURLs() const
-{
-    return iconURLs(contextDocument(), Favicon | TouchIcon | TouchPrecomposedIcon);
+    if (!frame())
+        return vector;
+
+    auto string = frame()->loader().icon().url().string();
+    if (!string.isNull())
+        vector.append(string);
+    return vector;
 }
 
 int Internals::numberOfPages(float pageWidth, float pageHeight)
@@ -1903,6 +1915,28 @@ void Internals::setPageZoomFactor(float zoomFactor, ExceptionCode& ec)
     }
     Frame* frame = document->frame();
     frame->setPageZoomFactor(zoomFactor);
+}
+
+void Internals::setUseFixedLayout(bool useFixedLayout, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->view()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    FrameView* frameView = document->view();
+    frameView->setUseFixedLayout(useFixedLayout);
+}
+
+void Internals::setFixedLayoutSize(int width, int height, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->view()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    FrameView* frameView = document->view();
+    frameView->setFixedLayoutSize(IntSize(width, height));
 }
 
 void Internals::setHeaderHeight(float height)
@@ -2467,6 +2501,8 @@ void Internals::setMediaSessionRestrictions(const String& mediaTypeString, const
         restrictions += MediaSessionManager::BackgroundProcessPlaybackRestricted;
     if (equalIgnoringCase(restrictionsString, "BackgroundTabPlaybackRestricted"))
         restrictions += MediaSessionManager::BackgroundTabPlaybackRestricted;
+    if (equalIgnoringCase(restrictionsString, "InterruptedPlaybackNotPermitted"))
+        restrictions += MediaSessionManager::InterruptedPlaybackNotPermitted;
 
     MediaSessionManager::sharedManager().addRestriction(mediaType, restrictions);
 }

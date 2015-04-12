@@ -48,6 +48,7 @@
 #include "BoxShape.h"
 #include "CSSPropertyNames.h"
 #include "Chrome.h"
+#include "DebugPageOverlays.h"
 #include "Document.h"
 #include "DocumentEventQueue.h"
 #include "Element.h"
@@ -360,7 +361,7 @@ RenderLayer::~RenderLayer()
 
     if (renderer().frame().page()) {
         if (ScrollingCoordinator* scrollingCoordinator = renderer().frame().page()->scrollingCoordinator())
-            scrollingCoordinator->willDestroyScrollableArea(this);
+            scrollingCoordinator->willDestroyScrollableArea(*this);
     }
 
     if (m_reflection)
@@ -535,7 +536,7 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, UpdateLay
     m_hasTransformedAncestor = flags & SeenTransformedLayer;
     m_has3DTransformedAncestor = flags & Seen3DTransformedLayer;
 
-    // Go ahead and update the reflection's position and size.
+    // Update the reflection's position and size.
     if (m_reflection)
         m_reflection->layout();
 
@@ -2190,6 +2191,11 @@ bool RenderLayer::usesCompositedScrolling() const
     return isComposited() && backing()->scrollingLayer();
 }
 
+bool RenderLayer::usesAsyncScrolling() const
+{
+    return hasAcceleratedTouchScrolling() && usesCompositedScrolling();
+}
+
 bool RenderLayer::needsCompositedScrolling() const
 {
     return m_needsCompositedScrolling;
@@ -2391,6 +2397,7 @@ void RenderLayer::scrollTo(int x, int y)
 #if PLATFORM(IOS) && ENABLE(TOUCH_EVENTS)
         renderer().document().dirtyTouchEventRects();
 #endif
+        DebugPageOverlays::didLayout(renderer().frame());
     }
 
     Frame& frame = renderer().frame();
@@ -4999,7 +5006,7 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
         if (parent()) {
             ClipRectsContext clipRectsContext(rootLayer, RootRelativeClipRects, IncludeOverlayScrollbarSize);
             ClipRect clipRect = backgroundClipRect(clipRectsContext);
-            // Go ahead and test the enclosing clip now.
+            // Test the enclosing clip now.
             if (!clipRect.intersects(hitTestLocation))
                 return nullptr;
         }
@@ -5596,15 +5603,14 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
         }
 
         if (renderer().hasClip()) {
-            // Clip applies to *us* as well, so go ahead and update the damageRect.
+            // Clip applies to *us* as well, so update the damageRect.
             LayoutRect newPosClip = downcast<RenderBox>(renderer()).clipRect(toLayoutPoint(offsetFromRootLocal), namedFlowFragment);
             backgroundRect.intersect(newPosClip);
             foregroundRect.intersect(newPosClip);
             outlineRect.intersect(newPosClip);
         }
 
-        // If we establish a clip at all, then go ahead and make sure our background
-        // rect is intersected with our layer's bounds including our visual overflow,
+        // If we establish a clip at all, then make sure our background rect is intersected with our layer's bounds including our visual overflow,
         // since any visual overflow like box-shadow or border-outset is not clipped by overflow:auto/hidden.
         if (renderBox()->hasVisualOverflow()) {
             // FIXME: Does not do the right thing with CSS regions yet, since we don't yet factor in the
@@ -5729,8 +5735,10 @@ bool RenderLayer::intersectsDamageRect(const LayoutRect& layerBounds, const Layo
     if (isRootLayer() || renderer().isRoot())
         return true;
 
-    // If we aren't an inline flow, and our layer bounds do intersect the damage rect, then we 
-    // can go ahead and return true.
+    if (damageRect.isEmpty())
+        return false;
+
+    // If we aren't an inline flow, and our layer bounds do intersect the damage rect, then we can return true.
     if (!renderer().isRenderInline()) {
         LayoutRect b = layerBounds;
         b.inflate(renderer().view().maximalOutlineSize());

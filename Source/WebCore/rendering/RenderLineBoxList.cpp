@@ -76,7 +76,7 @@ void RenderLineBoxList::deleteLineBoxTree()
         line->deleteLine();
         line = nextLine;
     }
-    m_firstLineBox = m_lastLineBox = 0;
+    m_firstLineBox = m_lastLineBox = nullptr;
 }
 
 void RenderLineBoxList::extractLineBox(InlineFlowBox* box)
@@ -87,8 +87,8 @@ void RenderLineBoxList::extractLineBox(InlineFlowBox* box)
     if (box == m_firstLineBox)
         m_firstLineBox = 0;
     if (box->prevLineBox())
-        box->prevLineBox()->setNextLineBox(0);
-    box->setPreviousLineBox(0);
+        box->prevLineBox()->setNextLineBox(nullptr);
+    box->setPreviousLineBox(nullptr);
     for (InlineFlowBox* curr = box; curr; curr = curr->nextLineBox())
         curr->setExtracted();
 
@@ -138,8 +138,8 @@ void RenderLineBoxList::deleteLineBoxes()
             next = curr->nextLineBox();
             delete curr;
         }
-        m_firstLineBox = 0;
-        m_lastLineBox = 0;
+        m_firstLineBox = nullptr;
+        m_lastLineBox = nullptr;
     }
 }
 
@@ -206,12 +206,6 @@ bool RenderLineBoxList::lineIntersectsDirtyRect(RenderBoxModelObject* renderer, 
 
 void RenderLineBoxList::paint(RenderBoxModelObject* renderer, PaintInfo& paintInfo, const LayoutPoint& paintOffset) const
 {
-    // Only paint during the foreground/selection phases.
-    if (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection && paintInfo.phase != PaintPhaseOutline 
-        && paintInfo.phase != PaintPhaseSelfOutline && paintInfo.phase != PaintPhaseChildOutlines && paintInfo.phase != PaintPhaseTextClip
-        && paintInfo.phase != PaintPhaseMask)
-        return;
-
     ASSERT(renderer->isRenderBlock() || (renderer->isRenderInline() && renderer->hasLayer())); // The only way an inline could paint like this is if it has a layer.
 
     // If we have no lines then we have no work to do.
@@ -279,9 +273,6 @@ void RenderLineBoxList::paint(RenderBoxModelObject* renderer, PaintInfo& paintIn
 
 bool RenderLineBoxList::hitTest(RenderBoxModelObject* renderer, const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction) const
 {
-    if (hitTestAction != HitTestForeground)
-        return false;
-
     ASSERT(renderer->isRenderBlock() || (renderer->isRenderInline() && renderer->hasLayer())); // The only way an inline could hit test like this is if it has a layer.
 
     // If we have no lines then we have no work to do.
@@ -302,7 +293,7 @@ bool RenderLineBoxList::hitTest(RenderBoxModelObject* renderer, const HitTestReq
     for (InlineFlowBox* curr = lastLineBox(); curr; curr = curr->prevLineBox()) {
         const RootInlineBox& rootBox = curr->root();
         if (rangeIntersectsRect(renderer, curr->logicalTopVisualOverflow(rootBox.lineTop()), curr->logicalBottomVisualOverflow(rootBox.lineBottom()), rect, accumulatedOffset)) {
-            bool inside = curr->nodeAtPoint(request, result, locationInContainer, accumulatedOffset, rootBox.lineTop(), rootBox.lineBottom());
+            bool inside = curr->nodeAtPoint(request, result, locationInContainer, accumulatedOffset, rootBox.lineTop(), rootBox.lineBottom(), hitTestAction);
             if (inside) {
                 renderer->updateHitTestResult(result, locationInContainer.point() - toLayoutSize(accumulatedOffset));
                 return true;
@@ -324,8 +315,7 @@ void RenderLineBoxList::dirtyLinesFromChangedChild(RenderBoxModelObject& contain
 
     // If we have no first line box, then just bail early.
     if (!firstBox) {
-        // For an empty inline, go ahead and propagate the check up to our parent, unless the parent
-        // is already dirty.
+        // For an empty inline, propagate the check up to our parent, unless the parent is already dirty.
         if (container.isInline() && !container.ancestorLineBoxDirty()) {
             container.parent()->dirtyLinesFromChangedChild(container);
             container.setAncestorLineBoxDirty(); // Mark the container to avoid dirtying the same lines again across multiple destroy() calls of the same subtree.
@@ -402,8 +392,8 @@ void RenderLineBoxList::dirtyLinesFromChangedChild(RenderBoxModelObject& contain
 void RenderLineBoxList::checkConsistency() const
 {
 #ifdef CHECK_CONSISTENCY
-    const InlineFlowBox* prev = 0;
-    for (const InlineFlowBox* child = m_firstLineBox; child != 0; child = child->nextLineBox()) {
+    const InlineFlowBox* prev = nullptr;
+    for (const InlineFlowBox* child = m_firstLineBox; child != nullptr; child = child->nextLineBox()) {
         ASSERT(child->prevLineBox() == prev);
         prev = child;
     }

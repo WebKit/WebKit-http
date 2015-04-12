@@ -32,8 +32,8 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/RunLoop.h>
 
-OBJC_CLASS AVOutputDevicePickerMenuController;
-OBJC_CLASS WebAVOutputDevicePickerMenuControllerHelper;
+OBJC_CLASS AVOutputDeviceMenuController;
+OBJC_CLASS WebAVOutputDeviceMenuControllerHelper;
 
 namespace WebCore {
 
@@ -54,11 +54,11 @@ public:
 private:
     explicit MediaPlaybackTargetPickerMac(MediaPlaybackTargetPicker::Client&);
 
-    AVOutputDevicePickerMenuController *devicePicker();
+    AVOutputDeviceMenuController *devicePicker();
     void outputeDeviceAvailabilityChangedTimerFired();
 
-    RetainPtr<AVOutputDevicePickerMenuController> m_devicePickerMenuController;
-    RetainPtr<WebAVOutputDevicePickerMenuControllerHelper> m_devicePickerMenuControllerDelegate;
+    RetainPtr<AVOutputDeviceMenuController> m_outputDeviceMenuController;
+    RetainPtr<WebAVOutputDeviceMenuControllerHelper> m_outputDeviceMenuControllerDelegate;
     RunLoop::Timer<MediaPlaybackTargetPickerMac> m_deviceChangeTimer;
 };
 

@@ -32,6 +32,8 @@
 
 #if ENABLE(STREAMS_API)
 
+#include "ReadableStream.h"
+#include "ReadableStreamReader.h"
 #include "ReadableStreamSource.h"
 #include <heap/Strong.h>
 #include <heap/StrongInlines.h>
@@ -48,18 +50,30 @@ public:
     static Ref<ReadableStreamJSSource> create(JSC::ExecState*);
     ~ReadableStreamJSSource() { }
 
-    JSC::JSValue error() { return m_error.get(); }
-    bool start() { return true; }
-
-    // ReadableStreamSource API.
-    virtual bool isErrored() { return !!m_error; }
+    void start(JSC::ExecState*, JSReadableStream*);
 
 private:
-    void setInternalError(JSC::ExecState*, const String&);
-
     ReadableStreamJSSource(JSC::ExecState*);
-    // m_error may be an error generated from ReadableStreamJSSource or from JS callbacks.
-    JSC::Strong<JSC::Unknown> m_error;
+
+    // Object passed to constructor.
+    JSC::Strong<JSC::JSObject> m_source;
+
+    JSC::Strong<JSC::JSObject> m_controller;
+};
+
+class ReadableJSStream: public ReadableStream {
+public:
+    static Ref<ReadableJSStream> create(ScriptExecutionContext&, Ref<ReadableStreamJSSource>&&);
+    virtual Ref<ReadableStreamReader> createReader() override;
+private:
+    ReadableJSStream(ScriptExecutionContext&, Ref<ReadableStreamJSSource>&&);
+};
+
+class ReadableJSStreamReader: public ReadableStreamReader {
+public:
+    static Ref<ReadableJSStreamReader> create(ReadableJSStream&);
+private:
+    ReadableJSStreamReader(ReadableJSStream&);
 };
 
 void setInternalSlotToObject(JSC::ExecState*, JSC::JSValue, JSC::PrivateName&, JSC::JSValue);

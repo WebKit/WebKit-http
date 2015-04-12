@@ -57,6 +57,7 @@
 #include "WebFrameProxy.h"
 #include "WebPageCreationParameters.h"
 #include "WebPageDiagnosticLoggingClient.h"
+#include "WebPageInjectedBundleClient.h"
 #include "WebPreferences.h"
 #include <WebCore/AlternativeTextClient.h> // FIXME: Needed by WebPageProxyMessages.h for DICTATION_ALTERNATIVES.
 #include "WebPageProxyMessages.h"
@@ -189,7 +190,6 @@ class WebProcessProxy;
 class WebUserContentControllerProxy;
 class WebWheelEvent;
 class WebsiteDataStore;
-struct ActionMenuHitTestResult;
 struct AttributedString;
 struct ColorSpaceData;
 struct DictionaryPopupInfo;
@@ -330,6 +330,8 @@ public:
     void setHistoryClient(std::unique_ptr<API::HistoryClient>);
     void setLoaderClient(std::unique_ptr<API::LoaderClient>);
     void setPolicyClient(std::unique_ptr<API::PolicyClient>);
+    void setInjectedBundleClient(const WKPageInjectedBundleClientBase*);
+    WebPageInjectedBundleClient* injectedBundleClient() { return m_injectedBundleClient.get(); }
 
     API::UIClient& uiClient() { return *m_uiClient; }
     void setUIClient(std::unique_ptr<API::UIClient>);
@@ -989,7 +991,8 @@ public:
     void selectLastActionMenuRange();
     void focusAndSelectLastActionMenuHitTestResult();
 
-    void immediateActionDidUpdate(float force);
+    void inputDeviceForceDidChange(float force, int stage);
+    void immediateActionDidUpdate();
     void immediateActionDidCancel();
     void immediateActionDidComplete();
 
@@ -1021,9 +1024,11 @@ public:
     void stopMonitoringPlaybackTargets();
 
     // WebCore::MediaPlaybackTargetPicker::Client
-    virtual void didChoosePlaybackTarget(const WebCore::MediaPlaybackTarget&) override;
+    virtual void didChoosePlaybackTarget(Ref<WebCore::MediaPlaybackTarget>&&) override;
     virtual void externalOutputDeviceAvailableDidChange(bool) override;
 #endif
+
+    void didChangeBackgroundColor();
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
@@ -1407,10 +1412,13 @@ private:
     void viewDidEnterWindow();
 
 #if PLATFORM(MAC)
-    void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, bool forImmediateAction, const UserData&);
+    void didPerformActionMenuHitTest(const WebHitTestResult::Data&, bool forImmediateAction, bool contentPreventsDefault, const UserData&);
 #endif
 
     void handleAutoFillButtonClick(const UserData&);
+
+    void handleMessage(IPC::Connection&, const String& messageName, const UserData& messageBody);
+    void handleSynchronousMessage(IPC::Connection&, const String& messageName, const UserData& messageBody, UserData& returnUserData);
 
     PageClient& m_pageClient;
     std::unique_ptr<API::LoaderClient> m_loaderClient;
@@ -1428,6 +1436,7 @@ private:
 #if ENABLE(CONTEXT_MENUS)
     std::unique_ptr<API::ContextMenuClient> m_contextMenuClient;
 #endif
+    std::unique_ptr<WebPageInjectedBundleClient> m_injectedBundleClient;
 
     std::unique_ptr<WebNavigationState> m_navigationState;
 

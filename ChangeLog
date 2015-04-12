@@ -1,3 +1,164 @@
+2015-04-11  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Miscellaneous issues in WebKitFeatures.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=143636
+
+        Reviewed by Martin Robinson.
+
+        Rename _WEBKIT_AVAILABLE_OPTIONS_INITIALVALUE_ variables to
+        _WEBKIT_AVAILABLE_OPTIONS_INITIAL_VALUE_
+
+        Rename _WEBKIT_AVAILABLE_OPTIONS_ISPUBLIC_ variables to
+        _WEBKIT_AVAILABLE_OPTIONS_IS_PUBLIC_
+
+        Rename _SHOULD_PRINT_POINTS to _SHOULD_PRINT_DOTS
+
+        Update USE_SYSTEM_MALLOC description to not mention TCmalloc
+
+        Fix ENABLE_TOUCH_SLIDER so that it can be used
+
+        Add a comment
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-11  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Print sorted feature list at the very end of the configure process
+        https://bugs.webkit.org/show_bug.cgi?id=143596
+
+        Reviewed by Martin Robinson.
+
+        * CMakeLists.txt: Call PRINT_WEBKIT_OPTIONS at the bottom of the file.
+        * Source/cmake/WebKitFeatures.cmake: Split option printing into PRINT_WEBKIT_OPTIONS macro,
+        and sort the options before printing. Reorder some code so that features still get
+        propagated to the bindings generators.
+
+2015-04-11  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Options should be marked as advanced by default
+        https://bugs.webkit.org/show_bug.cgi?id=143572
+
+        Reviewed by Gyuyoung Kim.
+
+        Options defined with WEBKIT_OPTION_DEFINE are now advanced so that they are hidden from
+        users by default, unless WEBKIT_OPTION_DEFAULT_PORT_VALUE is used. Add new macros
+        WEBKIT_OPTION_DEFINE_PUBLIC to define an option that's not hidden by default, to be used
+        for adding port-specific options, and WEBKIT_OPTION_PRIVATE_PORT_VALUE to override an
+        option without making it public.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-10  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [CMake] Remove unnecessary ENABLE_WEBCORE switch
+        https://bugs.webkit.org/show_bug.cgi?id=143584
+
+        Reviewed by Csaba Osztrogonác.
+
+        WebCore should be built for all ports. So ENABLE_WEBCORE switch looks be redundant.
+        Remove it.
+
+        * CMakeLists.txt:
+        * Source/CMakeLists.txt:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFS.cmake:
+
+2015-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, revert accidental commit.
+
+        * Makefile.shared:
+
+2015-04-08  Alex Christensen  <achristensen@webkit.org> and Patrick Gansterer  <paroga@webkit.org>
+
+        Add CMake build system for WinCairo port.
+        https://bugs.webkit.org/show_bug.cgi?id=115944
+
+        Reviewed by Chris Dumez.
+
+        * Source/cmake/OptionsWindows.cmake:
+        * Source/cmake/WebKitMacros.cmake:
+        Make ADD_PRECOMPILED_HEADER more like http://stackoverflow.com/questions/148570/using-pre-compiled-headers-with-cmake
+
+2015-04-06  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] Fix HPPA build
+        https://bugs.webkit.org/show_bug.cgi?id=143453
+
+        Reviewed by Darin Adler.
+
+        Add HPPA to the list of supported CPUs.
+
+        * CMakeLists.txt:
+
+2015-04-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, kick the GTK bots to fix an incremental build issue.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-04-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        Fix the EFL and GTK build after r182243
+        https://bugs.webkit.org/show_bug.cgi?id=143361
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/PlatformEfl.cmake: Add a custom command that copies
+        the InspectorBackendCommands.js file into the proper directory
+        under DerivedSources/WebInspectorUI/.
+
+2015-04-01  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Windows and Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=143293
+
+        Reviewed by Filip Pizlo.
+
+        * CMakeLists.txt:
+        Set DERIVED_SOURCES_WTF_DIR for Windows.
+        * Source/CMakeLists.txt:
+        Don't compile bmalloc on Windows.
+        * Source/cmake/OptionsCommon.cmake:
+        Use the absolute path of the C preprocessor.
+        * Source/cmake/OptionsWinCairo.cmake:
+        Added needed definitions.
+        * Source/cmake/OptionsWindows.cmake:
+        Set some default values and removed support for old Visual Studio versions before /MP.
+        * Source/cmake/WebKitFS.cmake:
+        Make WTF DerivedSources directory.
+        * Source/cmake/WebKitMacros.cmake:
+        Added ADD_PRECOMPILED_HEADER macro based on
+        http://stackoverflow.com/questions/148570/using-pre-compiled-headers-with-cmake
+
+2015-04-01  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        Use colored diagnostics when building with cmake + ninja + clang
+        https://bugs.webkit.org/show_bug.cgi?id=143297
+
+        Reviewed by Žan Doberšek.
+
+        Because that ninja sets subprocess stdout/stderr to a pipe, clang
+        disables colored output.
+        This patch forces clang to use colored diagnostics when we are using
+        the ninja.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2015-03-29  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMake] Update old CMakeList.txt in gtest
+        https://bugs.webkit.org/show_bug.cgi?id=143192
+
+        Reviewed by Darin Adler.
+
+        CMake ports have used cmake/gtest/CMakeLists.txt instead of ThirdParty/test/CMakeLists.txt
+        in order to build gtest. However it looks ThirdParty/test/CMakeLists.txt won't be used anymore.
+        So this patch moves cmake/gtest/CMakeLists.txt to ThirdPart/test/CMakeLists.txt, and use it.
+
+        * Source/CMakeLists.txt:
+        * Source/cmake/gtest/CMakeLists.txt: Removed.
+
 2015-03-27  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         [CMake] Remove unnecessary INCLUDE_IF_EXISTS macro

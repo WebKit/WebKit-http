@@ -67,9 +67,9 @@ void RemoteScrollingCoordinator::scheduleTreeStateCommit()
     m_webPage->drawingArea()->scheduleCompositingLayerFlush();
 }
 
-bool RemoteScrollingCoordinator::coordinatesScrollingForFrameView(FrameView* frameView) const
+bool RemoteScrollingCoordinator::coordinatesScrollingForFrameView(const FrameView& frameView) const
 {
-    RenderView* renderView = frameView->renderView();
+    RenderView* renderView = frameView.renderView();
     return renderView && renderView->usesCompositing();
 }
 
@@ -86,6 +86,7 @@ void RemoteScrollingCoordinator::setScrollPinningBehavior(ScrollPinningBehavior)
 
 void RemoteScrollingCoordinator::buildTransaction(RemoteScrollingCoordinatorTransaction& transaction)
 {
+    willCommitTree();
     transaction.setStateTreeToEncode(scrollingStateTree()->commit(LayerRepresentation::PlatformLayerIDRepresentation));
 }
 

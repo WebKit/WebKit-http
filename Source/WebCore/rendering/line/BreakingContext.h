@@ -383,15 +383,13 @@ inline LayoutUnit inlineLogicalWidth(RenderObject* child, bool checkStartEdge = 
 
 inline void BreakingContext::handleOutOfFlowPositioned(Vector<RenderBox*>& positionedObjects)
 {
-    // If our original display wasn't an inline type, then we can
-    // go ahead and determine our static inline position now.
+    // If our original display wasn't an inline type, then we can determine our static inline position now.
     auto& box = downcast<RenderBox>(*m_current.renderer());
     bool isInlineType = box.style().isOriginalDisplayInlineType();
     if (!isInlineType)
         m_block.setStaticInlinePositionForChild(box, m_block.logicalHeight(), m_block.startOffsetForContent(m_block.logicalHeight()));
     else {
-        // If our original display was an INLINE type, then we can go ahead
-        // and determine our static y position now.
+        // If our original display was an INLINE type, then we can determine our static y position now.
         box.layer()->setStaticBlockPosition(m_block.logicalHeight());
     }
 
@@ -490,10 +488,19 @@ inline void BreakingContext::handleReplaced()
         m_width.updateAvailableWidth(replacedBox.logicalHeight());
 
     // Break on replaced elements if either has normal white-space.
-    if ((m_autoWrap || RenderStyle::autoWrap(m_lastWS)) && (!m_current.renderer()->isImage() || m_allowImagesToBreak)
-        && (!m_current.renderer()->isRubyRun() || downcast<RenderRubyRun>(m_current.renderer())->canBreakBefore(m_renderTextInfo.m_lineBreakIterator))) {
+    if (((m_autoWrap || RenderStyle::autoWrap(m_lastWS)) && (!m_current.renderer()->isImage() || m_allowImagesToBreak)
+        && (!m_current.renderer()->isRubyRun() || downcast<RenderRubyRun>(m_current.renderer())->canBreakBefore(m_renderTextInfo.m_lineBreakIterator))) || replacedBox.isAnonymousInlineBlock()) {
         commitLineBreakAtCurrentWidth(*m_current.renderer());
+        if (m_width.committedWidth() && replacedBox.isAnonymousInlineBlock()) {
+            // Always force a break before an anonymous inline block if there is content on the line
+            // already.
+            m_atEnd = true;
+            return;
+        }
     }
+    
+    if (replacedBox.isAnonymousInlineBlock())
+        replacedBox.layoutIfNeeded();
 
     if (m_ignoringSpaces)
         m_lineMidpointState.stopIgnoringSpaces(InlineIterator(0, m_current.renderer(), 0));
@@ -525,6 +532,11 @@ inline void BreakingContext::handleReplaced()
     } else {
         // Update prior line break context characters, using U+FFFD (OBJECT REPLACEMENT CHARACTER) for replaced element.
         m_renderTextInfo.m_lineBreakIterator.updatePriorContext(replacementCharacter);
+    }
+    
+    if (replacedBox.isAnonymousInlineBlock()) {
+        m_atEnd = true;
+        m_lineInfo.setPreviousLineBrokeCleanly(true);
     }
 }
 
@@ -906,9 +918,8 @@ inline bool BreakingContext::handleText(WordMeasurements& wordMeasurements, bool
             }
 
             if (!m_ignoringSpaces && m_currentStyle->collapseWhiteSpace()) {
-                // If we encounter a newline, or if we encounter a
-                // second space, we need to go ahead and break up this
-                // run and enter a mode where we start collapsing spaces.
+                // If we encounter a newline, or if we encounter a second space,
+                // we need to break up this run and enter a mode where we start collapsing spaces.
                 if (m_currentCharacterIsSpace && previousCharacterIsSpace) {
                     m_ignoringSpaces = true;
 

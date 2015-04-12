@@ -39,6 +39,9 @@ namespace WebCore {
 class InlineTextBox;
 class RenderText;
 class RenderTextFragment;
+namespace SimpleLineLayout {
+class RunResolver;
+}
 
 WEBCORE_EXPORT String plainText(const Range*, TextIteratorBehavior = TextIteratorDefaultBehavior, bool isDisplayString = false);
 WEBCORE_EXPORT String plainTextReplacingNoBreakSpace(const Range*, TextIteratorBehavior = TextIteratorDefaultBehavior, bool isDisplayString = false);
@@ -162,6 +165,11 @@ private:
     Text* m_lastTextNode;
     bool m_lastTextNodeEndedWithCollapsedSpace;
     UChar m_lastCharacter;
+
+    // Used to do simple line layout run logic.
+    bool m_nextRunNeedsWhitespace { false };
+    unsigned m_previousTextLengthInFlow { 0 };
+    std::unique_ptr<SimpleLineLayout::RunResolver> m_flowRunResolverCache;
 
     // Used when text boxes are out of order (Hebrew/Arabic with embedded LTR text)
     Vector<InlineTextBox*> m_sortedTextBoxes;

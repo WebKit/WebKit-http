@@ -260,7 +260,16 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #endif
 
 #if !defined(ENABLE_WEBGL)
+// FIXME: Get WebGL working on Windows with CMake. https://bugs.webkit.org/show_bug.cgi?id=143311
+#if defined(BUILDING_WITH_CMAKE)
+#define ENABLE_WEBGL 0
+#else
 #define ENABLE_WEBGL 1
+#endif
+#endif
+
+#if !defined(ENABLE_GEOLOCATION)
+#define ENABLE_GEOLOCATION 1
 #endif
 
 #endif /* PLATFORM(WIN) && !PLATFORM(WIN_CAIRO) */
@@ -279,7 +288,16 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #endif
 
 #if !defined(ENABLE_WEBGL)
+// FIXME: Get WebGL working on Windows with CMake. https://bugs.webkit.org/show_bug.cgi?id=143311
+#if defined(BUILDING_WITH_CMAKE)
+#define ENABLE_WEBGL 0
+#else
 #define ENABLE_WEBGL 1
+#endif
+#endif
+
+#if !defined(ENABLE_GEOLOCATION)
+#define ENABLE_GEOLOCATION 1
 #endif
 
 #endif /* PLATFORM(WIN_CAIRO) */

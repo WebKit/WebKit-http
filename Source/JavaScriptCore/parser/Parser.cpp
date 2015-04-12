@@ -194,7 +194,7 @@ Parser<LexerType>::Parser(
     VM* vm, const SourceCode& source, FunctionParameters* parameters, 
     const Identifier& name, JSParserBuiltinMode builtinMode, 
     JSParserStrictMode strictMode, JSParserCodeType codeType, 
-    ConstructorKind defaultConstructorKind)
+    ConstructorKind defaultConstructorKind, ThisTDZMode thisTDZMode)
     : m_vm(vm)
     , m_source(&source)
     , m_hasStackOverflow(false)
@@ -209,6 +209,7 @@ Parser<LexerType>::Parser(
     , m_sourceElements(0)
     , m_parsingBuiltin(builtinMode == JSParserBuiltinMode::Builtin)
     , m_defaultConstructorKind(defaultConstructorKind)
+    , m_thisTDZMode(thisTDZMode)
 {
     m_lexer = std::make_unique<LexerType>(vm, builtinMode);
     m_lexer->setCode(source, &m_parserArena);
@@ -291,10 +292,10 @@ String Parser<LexerType>::parseInner()
         IdentifierSet usedVariables;
         scope->getUsedVariables(usedVariables);
         for (const auto& variable : usedVariables) {
-            if (scope->hasDeclaredVariable(Identifier(m_vm, variable.get())))
+            if (scope->hasDeclaredVariable(Identifier::fromUid(m_vm, variable.get())))
                 continue;
             
-            if (scope->hasDeclaredParameter(Identifier(m_vm, variable.get())))
+            if (scope->hasDeclaredParameter(Identifier::fromUid(m_vm, variable.get())))
                 continue;
 
             if (variable == m_vm->propertyNames->arguments.impl())
@@ -523,7 +524,7 @@ template <class TreeBuilder> TreeDeconstructionPattern Parser<LexerType>::create
     ASSERT(!name.isEmpty());
     ASSERT(!name.isNull());
     
-    ASSERT(name.impl()->isAtomic());
+    ASSERT(name.impl()->isAtomic() || name.impl()->isSymbol());
     if (depth) {
         if (kind == DeconstructToVariables)
             failIfFalseIfStrict(declareVariable(&name), "Cannot deconstruct to a variable named '", name.impl(), "' in strict mode");
@@ -1544,7 +1545,6 @@ template <class TreeBuilder> TreeClassExpression Parser<LexerType>::parseClass(T
         TreeProperty property;
         const bool alwaysStrictInsideClass = true;
         if (isGetter || isSetter) {
-            semanticFailIfTrue(isStaticMethod, "Cannot declare a static", stringForFunctionMode(isGetter ? GetterMode : SetterMode));
             nextExpectIdentifier(LexerFlagsIgnoreReservedWords);
             property = parseGetterSetter(context, alwaysStrictInsideClass, isGetter ? PropertyNode::Getter : PropertyNode::Setter, methodStart, constructorKind, SuperBinding::Needed);
             failIfFalse(property, "Cannot parse this method");
@@ -2293,7 +2293,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
     case THISTOKEN: {
         JSTokenLocation location(tokenLocation());
         next();
-        return context.thisExpr(location);
+        return context.thisExpr(location, m_thisTDZMode);
     }
     case IDENT: {
         JSTextPosition start = tokenStartPosition();

@@ -39,6 +39,10 @@
 #include <wtf/Forward.h>
 #include <wtf/NeverDestroyed.h>
 
+#if PLATFORM(IOS)
+#include "WebSQLiteDatabaseTracker.h"
+#endif
+
 namespace WebCore {
 class CertificateInfo;
 }
@@ -77,6 +81,10 @@ public:
     DownloadManager& downloadManager();
     bool canHandleHTTPSServerTrustEvaluation() const { return m_canHandleHTTPSServerTrustEvaluation; }
 
+    void processWillSuspend();
+    void cancelProcessWillSuspend();
+    void processDidResume();
+
     // Diagnostic messages logging.
     void logDiagnosticMessage(uint64_t webPageID, const String& message, const String& description, WebCore::ShouldSample);
     void logDiagnosticMessageWithResult(uint64_t webPageID, const String& message, const String& description, WebCore::DiagnosticLoggingResultType, WebCore::ShouldSample);
@@ -91,6 +99,7 @@ private:
     virtual void terminate() override;
     void platformTerminate();
 
+    void lowMemoryHandler(bool critical);
     void platformLowMemoryHandler(bool critical);
 
     // ChildProcess
@@ -167,6 +176,10 @@ private:
     // multiple requests to clear the cache can come in before previous requests complete, and we need to wait for all of them.
     // In the future using WorkQueue and a counting semaphore would work, as would WorkQueue supporting the libdispatch concept of "work groups".
     dispatch_group_t m_clearCacheDispatchGroup;
+#endif
+
+#if PLATFORM(IOS)
+    WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
 #endif
 };
 

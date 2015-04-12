@@ -106,9 +106,7 @@ namespace WebCore {
             PseudoClassLink,
             PseudoClassVisited,
             PseudoClassAny,
-#if ENABLE(CSS_SELECTORS_LEVEL4)
             PseudoClassAnyLink,
-#endif
             PseudoClassAnyLinkDeprecated,
             PseudoClassAutofill,
             PseudoClassHover,
@@ -339,7 +337,7 @@ namespace WebCore {
             AtomicString m_attributeCanonicalLocalName;
             AtomicString m_argument; // Used for :contains and :nth-*
             std::unique_ptr<Vector<AtomicString>> m_langArgumentList; // Used for :lang arguments.
-            std::unique_ptr<CSSSelectorList> m_selectorList; // Used for :-webkit-any and :not
+            std::unique_ptr<CSSSelectorList> m_selectorList; // Used for :matches() and :not().
         
         private:
             RareData(PassRefPtr<AtomicStringImpl> value);

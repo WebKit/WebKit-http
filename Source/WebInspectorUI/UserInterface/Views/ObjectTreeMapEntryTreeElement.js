@@ -30,11 +30,10 @@ WebInspector.ObjectTreeMapEntryTreeElement = class ObjectTreeMapEntryTreeElement
         console.assert(object instanceof WebInspector.RemoteObject);
 
         // Treat the same as an array-index just with different strings and widths.
-        super(this._object, propertyPath);
+        super(object, propertyPath);
 
         this._object = object;
 
-        this.mainTitle = this._titleFragment();
         this.addClassName("object-tree-array-index");
         this.addClassName("object-tree-map-entry");
     }
@@ -58,9 +57,7 @@ WebInspector.ObjectTreeMapEntryTreeElement = class ObjectTreeMapEntryTreeElement
         return WebInspector.PropertyPath.Type.Value;
     }
 
-    // Private
-
-    _titleFragment()
+    titleFragment()
     {
         var container = document.createDocumentFragment();
 
@@ -87,9 +84,11 @@ WebInspector.ObjectTreeMapKeyTreeElement = class ObjectTreeMapKeyTreeElement ext
     {
         super(object, propertyPath);
 
+        this.mainTitle = this.titleFragment();
+
         this.addClassName("key");
     }
-    
+
     // Protected
 
     displayPropertyName()
@@ -110,10 +109,12 @@ WebInspector.ObjectTreeMapValueTreeElement = class ObjectTreeMapValueTreeElement
         super(object, propertyPath);
 
         this._key = key;
+        
+        this.mainTitle = this.titleFragment();
 
         this.addClassName("value");
     }
-    
+
     // Protected
 
     displayPropertyName()

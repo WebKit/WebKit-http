@@ -213,7 +213,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/CursorGtk.cpp
     platform/gtk/DataObjectGtk.cpp
     platform/gtk/DragDataGtk.cpp
-    platform/gtk/DragIcon.cpp
     platform/gtk/DragImageGtk.cpp
     platform/gtk/GRefPtrGtk.cpp
     platform/gtk/GtkUtilities.cpp
@@ -485,7 +484,7 @@ if (ENABLE_WAYLAND_TARGET)
     )
 
     list(APPEND WebCore_INCLUDE_DIRECTORIES
-        ${WAYLAND_INCLUDE_DIRECTORIES}
+        ${WAYLAND_INCLUDE_DIRS}
     )
     list(APPEND WebCore_LIBRARIES
         ${WAYLAND_LIBRARIES}
@@ -647,6 +646,9 @@ list(APPEND GObjectDOMBindingsUnstable_IDL_FILES
     Modules/geolocation/Geolocation.idl
 
     Modules/mediasource/VideoPlaybackQuality.idl
+
+    Modules/mediastream/MediaDevices.idl
+    Modules/mediastream/NavigatorMediaDevices.idl
 
     Modules/quota/StorageInfo.idl
     Modules/quota/StorageQuota.idl

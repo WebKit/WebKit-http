@@ -69,6 +69,7 @@
 #include "WebBackForwardList.h"
 #include "WebBackForwardListItem.h"
 #include "WebCertificateInfo.h"
+#include "WebContextMenuItem.h"
 #include "WebContextMenuProxy.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebEditCommandProxy.h"
@@ -99,6 +100,7 @@
 #include "WebProtectionSpace.h"
 #include "WebUserContentControllerProxy.h"
 #include "WebsiteDataStore.h"
+#include <WebCore/BitmapImage.h>
 #include <WebCore/DragController.h>
 #include <WebCore/DragData.h>
 #include <WebCore/FloatRect.h>
@@ -148,6 +150,10 @@
 
 #if USE(CAIRO)
 #include <WebCore/CairoUtilities.h>
+#endif
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#include <WebCore/MediaPlaybackTarget.h>
 #endif
 
 // This controls what strategy we use for mouse wheel coalescing.
@@ -436,7 +442,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
-#if PLATFORM(IOS) && (__IPHONE_OS_VERSION_MIN_REQUIRED > 80200)
+#if PLATFORM(IOS)
     m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this);
 #endif
 #if ENABLE(VIBRATION)
@@ -604,6 +610,36 @@ void WebPageProxy::setContextMenuClient(std::unique_ptr<API::ContextMenuClient> 
 }
 #endif
 
+void WebPageProxy::setInjectedBundleClient(const WKPageInjectedBundleClientBase* client)
+{
+    if (!client) {
+        m_injectedBundleClient = nullptr;
+        return;
+    }
+
+    m_injectedBundleClient = std::make_unique<WebPageInjectedBundleClient>();
+    m_injectedBundleClient->initialize(client);
+}
+
+void WebPageProxy::handleMessage(IPC::Connection& connection, const String& messageName, const WebKit::UserData& messageBody)
+{
+    auto* webProcessProxy = WebProcessProxy::fromConnection(&connection);
+    if (!webProcessProxy || !m_injectedBundleClient)
+        return;
+    m_injectedBundleClient->didReceiveMessageFromInjectedBundle(this, messageName, webProcessProxy->transformHandlesToObjects(messageBody.object()).get());
+}
+
+void WebPageProxy::handleSynchronousMessage(IPC::Connection& connection, const String& messageName, const UserData& messageBody, UserData& returnUserData)
+{
+    if (!WebProcessProxy::fromConnection(&connection) || !m_injectedBundleClient)
+        return;
+
+    RefPtr<API::Object> returnData;
+    m_injectedBundleClient->didReceiveSynchronousMessageFromInjectedBundle(this, messageName, WebProcessProxy::fromConnection(&connection)->transformHandlesToObjects(messageBody.object()).get(), returnData);
+    returnUserData = UserData(WebProcessProxy::fromConnection(&connection)->transformObjectsToHandles(returnData.get()));
+}
+
+
 void WebPageProxy::reattachToWebProcess()
 {
     ASSERT(!m_isClosed);
@@ -632,7 +668,7 @@ void WebPageProxy::reattachToWebProcess()
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
-#if PLATFORM(IOS) && (__IPHONE_OS_VERSION_MIN_REQUIRED > 80200)
+#if PLATFORM(IOS)
     m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this);
 #endif
 
@@ -3998,18 +4034,47 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
     m_process->responsivenessTimer()->stop();
 
     // Unless this is an image control, give the PageContextMenuClient one last swipe at changing the menu.
-    Vector<WebContextMenuItemData> items;
-    bool useProposedItems = true;
     bool askClientToChangeMenu = clientEligibility == ContextMenuClientEligibility::EligibleForClient;
 #if ENABLE(SERVICE_CONTROLS)
     if (contextMenuContextData.controlledImage())
         askClientToChangeMenu = false;
 #endif
 
-    if (askClientToChangeMenu && m_contextMenuClient->getContextMenuFromProposedMenu(*this, proposedItems, items, contextMenuContextData.webHitTestResultData(), m_process->transformHandlesToObjects(userData.object()).get()))
+    Vector<RefPtr<WebContextMenuItem>> proposedAPIItems;
+    for (auto& item : proposedItems) {
+        if (item.action() != ContextMenuItemTagShareMenu) {
+            proposedAPIItems.append(WebContextMenuItem::create(item));
+            continue;
+        }
+
+        // Create the real Share menu item
+        URL absoluteLinkURL;
+        if (!contextMenuContextData.webHitTestResultData().absoluteLinkURL.isEmpty())
+            absoluteLinkURL = URL(ParsedURLString, contextMenuContextData.webHitTestResultData().absoluteLinkURL);
+
+        URL downloadableMediaURL;
+        if (!contextMenuContextData.webHitTestResultData().absoluteMediaURL.isEmpty() && contextMenuContextData.webHitTestResultData().isDownloadableMedia)
+            downloadableMediaURL = URL(ParsedURLString, contextMenuContextData.webHitTestResultData().absoluteMediaURL);
+
+        RefPtr<Image> image;
+        if (contextMenuContextData.webHitTestResultData().imageSharedMemory && contextMenuContextData.webHitTestResultData().imageSize) {
+            image = BitmapImage::create();
+            RefPtr<SharedBuffer> imageData = SharedBuffer::create((unsigned char*)contextMenuContextData.webHitTestResultData().imageSharedMemory->data(), contextMenuContextData.webHitTestResultData().imageSize);
+            image->setData(imageData.release(), true);
+        }
+
+        ContextMenuItem coreItem = ContextMenuItem::shareMenuItem(absoluteLinkURL, downloadableMediaURL, image.get(), contextMenuContextData.selectedText());
+        if (!coreItem.isNull())
+            proposedAPIItems.append(WebContextMenuItem::create(coreItem));
+    }
+
+    Vector<RefPtr<WebContextMenuItem>> clientItems;
+    bool useProposedItems = true;
+
+    if (askClientToChangeMenu && m_contextMenuClient->getContextMenuFromProposedMenu(*this, proposedAPIItems, clientItems, contextMenuContextData.webHitTestResultData(), m_process->transformHandlesToObjects(userData.object()).get()))
         useProposedItems = false;
 
-    const Vector<WebContextMenuItemData>& itemsToShow = useProposedItems ? proposedItems : items;
+    const Vector<RefPtr<WebContextMenuItem>>& itemsToShow = useProposedItems ? proposedAPIItems : clientItems;
     if (!m_contextMenuClient->showContextMenu(*this, menuLocation, itemsToShow))
         m_activeContextMenu->showContextMenu(menuLocation, itemsToShow, contextMenuContextData);
 
@@ -4656,6 +4721,9 @@ void WebPageProxy::processDidCrash()
 void WebPageProxy::resetState(ResetStateReason resetStateReason)
 {
     m_mainFrame = nullptr;
+#if PLATFORM(COCOA)
+    m_scrollingPerformanceData = nullptr;
+#endif
     m_drawingArea = nullptr;
 
     if (m_inspector) {
@@ -5578,9 +5646,14 @@ void WebPageProxy::focusAndSelectLastActionMenuHitTestResult()
     m_process->send(Messages::WebPage::FocusAndSelectLastActionMenuHitTestResult(), m_pageID);
 }
 
-void WebPageProxy::immediateActionDidUpdate(float force)
+void WebPageProxy::inputDeviceForceDidChange(float force, int stage)
 {
-    m_process->send(Messages::WebPage::ImmediateActionDidUpdate(force), m_pageID);
+    m_process->send(Messages::WebPage::InputDeviceForceDidChange(force, stage), m_pageID);
+}
+
+void WebPageProxy::immediateActionDidUpdate()
+{
+    m_process->send(Messages::WebPage::ImmediateActionDidUpdate(), m_pageID);
 }
 
 void WebPageProxy::immediateActionDidCancel()
@@ -5593,9 +5666,9 @@ void WebPageProxy::immediateActionDidComplete()
     m_process->send(Messages::WebPage::ImmediateActionDidComplete(), m_pageID);
 }
 
-void WebPageProxy::didPerformActionMenuHitTest(const ActionMenuHitTestResult& result, bool forImmediateAction, const UserData& userData)
+void WebPageProxy::didPerformActionMenuHitTest(const WebHitTestResult::Data& result, bool forImmediateAction, bool contentPreventsDefault, const UserData& userData)
 {
-    m_pageClient.didPerformActionMenuHitTest(result, forImmediateAction, m_process->transformHandlesToObjects(userData.object()).get());
+    m_pageClient.didPerformActionMenuHitTest(result, forImmediateAction, contentPreventsDefault, m_process->transformHandlesToObjects(userData.object()).get());
 }
 
 void WebPageProxy::installViewStateChangeCompletionHandler(void (^completionHandler)())
@@ -5650,12 +5723,12 @@ void WebPageProxy::stopMonitoringPlaybackTargets()
     devicePickerProxy().stopMonitoringPlaybackTargets();
 }
 
-void WebPageProxy::didChoosePlaybackTarget(const WebCore::MediaPlaybackTarget& target)
+void WebPageProxy::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& target)
 {
     if (!isValid())
         return;
 
-    m_process->send(Messages::WebPage::PlaybackTargetSelected(target), m_pageID);
+    m_process->send(Messages::WebPage::PlaybackTargetSelected(target->targetContext()), m_pageID);
 }
 
 void WebPageProxy::externalOutputDeviceAvailableDidChange(bool available)
@@ -5667,5 +5740,10 @@ void WebPageProxy::externalOutputDeviceAvailableDidChange(bool available)
 }
 
 #endif
+
+void WebPageProxy::didChangeBackgroundColor()
+{
+    m_pageClient.didChangeBackgroundColor();
+}
 
 } // namespace WebKit

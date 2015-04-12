@@ -143,6 +143,7 @@ bool doesGC(Graph& graph, Node* node)
     case LogicalNot:
     case ToPrimitive:
     case ToString:
+    case CallStringConstructor:
     case In:
     case Jump:
     case Branch:
@@ -163,7 +164,6 @@ bool doesGC(Graph& graph, Node* node)
     case StoreBarrierWithNullCheck:
     case InvalidationPoint:
     case NotifyWrite:
-    case TypedArrayWatchpoint:
     case CheckInBounds:
     case ConstantStoragePointer:
     case Check:

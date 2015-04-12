@@ -81,8 +81,6 @@ canvas/philip/tests/2d.fillStyle.parse.rgb-eof.html
 canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html
 canvas/philip/tests/2d.missingargs.html
 canvas/philip/tests/2d.pattern.image.broken.html
-canvas/philip/tests/2d.pattern.image.incomplete.empty.html
-canvas/philip/tests/2d.pattern.image.incomplete.omitted.html
 canvas/philip/tests/2d.text.draw.baseline.bottom.html
 canvas/philip/tests/2d.text.draw.baseline.hanging.html
 canvas/philip/tests/2d.text.draw.baseline.ideographic.html
@@ -520,9 +518,6 @@ webkit.org/b/116587 http/tests/security/contentSecurityPolicy/directive-parsing-
 webkit.org/b/116587 http/tests/websocket [ Skip ]
 
 webkit.org/b/124574 fast/css/object-fit/object-fit-embed.html [ Crash Timeout Pass ]
-
-# EFL media control has broken since r166395.
-webkit.org/b/131044 media [ Skip ]
 
 # A lot of crash happen since buildbot bagan to use Ubuntu 13.10.
 webkit.org/b/131729 fast/events/touch [ Skip ]
@@ -1470,7 +1465,7 @@ webkit.org/b/111172 compositing/overlap-blending/children-opacity-huge.html [ Im
 webkit.org/b/111172 compositing/overlap-blending/children-opacity-no-overlap.html [ ImageOnlyFailure ]
 
 # Newly added tests in r148115 is failing.
-webkit.org/b/114338 compositing/overlap-blending/nested-overlap-overflow.html [ ImageOnlyFailure ]
+#webkit.org/b/114338 compositing/overlap-blending/nested-overlap-overflow.html [ ImageOnlyFailure ]
 
 # Select element popup is not shown.
 webkit.org/b/114154 fast/forms/select/popup-closes-on-blur.html [ Pass ]
@@ -1670,7 +1665,7 @@ webkit.org/b/98741 plugins/refcount-leaks.html [ Failure ]
 
 # These ref tests are failing because the text is blurry.
 webkit.org/b/105766 compositing/text-on-scaled-layer.html [ ImageOnlyFailure ]
-webkit.org/b/105766 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
+#webkit.org/b/105766 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
 
 # Failing svg ref tests.
 webkit.org/b/107018 svg/animations/animate-linear-discrete-additive.svg [ ImageOnlyFailure Pass ]
@@ -2028,7 +2023,7 @@ webkit.org/b/136406 compositing/backing/backface-visibility-in-transformed.html 
 webkit.org/b/136406 compositing/backing/backface-visibility.html [ Failure ]
 webkit.org/b/136406 compositing/contents-opaque/control-layer.html [ Failure ]
 webkit.org/b/136406 compositing/contents-opaque/hidden-with-visible-text.html [ Failure ]
-webkit.org/b/136406 compositing/contents-opaque/opaque-with-clip-path.html [ ImageOnlyFailure ]
+#webkit.org/b/136406 compositing/contents-opaque/opaque-with-clip-path.html [ ImageOnlyFailure ]
 webkit.org/b/136406 compositing/contents-scale/animating.html [ Failure ]
 webkit.org/b/136406 compositing/contents-scale/rounded-contents-scale.html [ Failure ]
 webkit.org/b/136406 compositing/contents-scale/scaled-ancestor.html [ Failure ]
@@ -2144,10 +2139,10 @@ webkit.org/b/141896 fast/borders/border-radius-on-html.html [ ImageOnlyFailure ]
 webkit.org/b/141958 http/tests/security/XFrameOptions/x-frame-options-deny-multiple-clients.html [ Failure ]
 webkit.org/b/141958 http/tests/security/cross-frame-access-callback-explicit-domain-ALLOW.html [ Failure ]
 
-webkit.org/b/142426 compositing/masks/compositing-clip-path-and-mask.html [ ImageOnlyFailure ]
-webkit.org/b/142426 compositing/masks/compositing-clip-path-mask-change.html [ ImageOnlyFailure ]
-webkit.org/b/142426 compositing/masks/compositing-clip-path.html [ ImageOnlyFailure ]
-webkit.org/b/142426 compositing/masks/reference-clip-path-on-composited.html [ ImageOnlyFailure ]
+#webkit.org/b/142426 compositing/masks/compositing-clip-path-and-mask.html [ ImageOnlyFailure ]
+#webkit.org/b/142426 compositing/masks/compositing-clip-path-mask-change.html [ ImageOnlyFailure ]
+#webkit.org/b/142426 compositing/masks/compositing-clip-path.html [ ImageOnlyFailure ]
+#webkit.org/b/142426 compositing/masks/reference-clip-path-on-composited.html [ ImageOnlyFailure ]
 
 webkit.org/b/142427 fast/regions/scrolling/wheel-scroll-abspos.html [ ImageOnlyFailure ]
 webkit.org/b/142427 fast/regions/scrolling/wheel-scroll.html [ ImageOnlyFailure ]
@@ -2172,6 +2167,7 @@ webkit.org/b/142483 fast/css/font-face-in-media-rule.html [ Failure ]
 
 # This feature is only enabled on Mac and iOS right now
 contentfiltering [ Skip ]
+http/tests/contentfiltering [ Skip ]
 
 # small-leak-foo tests have been failed since r181345
 webkit.org/b/142561 svg/animations/smil-leak-dynamically-added-element-instances.svg [ Failure ]
@@ -2179,7 +2175,85 @@ webkit.org/b/142561 svg/animations/smil-leak-element-instances-noBaseValRef.svg 
 webkit.org/b/142561 svg/animations/smil-leak-element-instances.svg [ Failure ]
 webkit.org/b/142561 svg/animations/smil-leak-elements.svg [ Failure ]
 
-webkit.org/b/142571 fast/css/vertical-text-overflow-ellipsis-text-align-center.html [ Failure ]
-
 webkit.org/b/142763 fast/images/animated-gif-window-resizing.html [ Timeout ]
 webkit.org/b/142764 accessibility/content-editable-as-textarea.html [ Timeout ]
+
+# Broken Ruby tests
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-3.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
+webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
+
+# [EFL] r182307 broke 87 layouttests
+webkit.org/b/143364 fast/fixed-layout [ Skip ]
+
+# [EFL] Fix 18 crashing compositing tests after r182101
+# https://bugs.webkit.org/show_bug.cgi?id=143214
+compositing/clipping/border-radius-stacking-context-clip.html [ Crash ]
+compositing/contents-opaque/opaque-with-clip-path.html [ Crash ]
+compositing/masks/become-tiled-mask.html [ Crash ]
+compositing/masks/cease-tiled-mask.html [ Crash ]
+compositing/masks/compositing-clip-path-and-mask.html [ Crash ]
+compositing/masks/compositing-clip-path-change-no-repaint.html [ Crash ]
+compositing/masks/compositing-clip-path-mask-change.html [ Crash ]
+compositing/masks/compositing-clip-path.html [ Crash ]
+compositing/masks/direct-image-mask.html [ Crash ]
+compositing/masks/mask-layer-size.html [ Crash ]
+compositing/masks/masked-ancestor.html [ Crash ]
+compositing/masks/reference-clip-path-on-composited.html [ Crash ]
+compositing/masks/solid-color-masked.html [ Crash ]
+compositing/masks/tiled-mask.html [ Crash ]
+compositing/masks/toggle-mask.html [ Crash ]
+compositing/overlap-blending/nested-overlap-overflow.html [ Crash ]
+compositing/reflections/nested-reflection-on-overflow.html [ Crash ]
+compositing/text-on-scaled-surface.html [ Crash ]
+
+webkit.org/b/143415 fast/scrolling/scroll-select-list.html [ ImageOnlyFailure ]
+webkit.org/b/143416 fast/text/baseline-inline-block.html [ ImageOnlyFailure ]
+
+# Need to rebaseline since r182620.
+webkit.org/b/143626 tables/mozilla/bugs/bug106795.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug1224.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug131020.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug131020_iframe.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug1430.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug157890.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug16252.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug19599.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug20579.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug32205-3.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug82946-2.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/bugs/bug92143.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/marvin/tables_cellpadding.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/marvin/tables_cellspacing.html [ Failure ]
+webkit.org/b/143626 tables/mozilla/other/wa_table_thtd_rowspan.html [ Failure ]
+webkit.org/b/143626 tables/mozilla_expected_failures/bugs/bug1262.html [ Failure ]
+webkit.org/b/143626 tables/mozilla_expected_failures/bugs/bug56024.html [ Failure ]
+webkit.org/b/143626 tables/mozilla_expected_failures/other/test4.html [ Failure ]
+
+webkit.org/b/131044 media/audio-controls-rendering.html [ Failure ]
+webkit.org/b/131044 media/controls-right-click-on-timebar.html [ Failure ]
+webkit.org/b/131044 media/controls-strict.html [ Failure ]
+webkit.org/b/131044 media/controls-without-preload.html [ Failure ]
+webkit.org/b/131044 media/media-controls-invalid-url.html [ Failure ]
+webkit.org/b/131044 media/media-controls-timeline-updates.html [ Failure ]
+webkit.org/b/131044 media/media-preload-no-delay-loadevent.html [ Failure ]
+webkit.org/b/131044 media/media-volume-slider-rendered-below.html [ Failure ]
+webkit.org/b/131044 media/media-volume-slider-rendered-normal.html [ Failure ]
+webkit.org/b/131044 media/track/track-cue-rendering-snap-to-lines-not-set.html [ Failure ]
+webkit.org/b/131044 media/track/track-long-word-container-sizing.html [ Failure ]
+webkit.org/b/131044 media/track/video/video-track-mkv-theora-language.html [ Failure ]
+webkit.org/b/131044 media/video-controls-audiotracks-trackmenu.html [ Failure ]
+webkit.org/b/131044 media/video-controls-fullscreen-volume.html [ Failure ]
+webkit.org/b/131044 media/video-controls-no-scripting.html [ Failure ]
+webkit.org/b/131044 media/video-controls-visible-exiting-fullscreen.html [ Failure ]
+webkit.org/b/131044 media/video-display-toggle.html [ Failure ]
+webkit.org/b/131044 media/video-fullscreeen-only-controls.html [ Failure ]
+webkit.org/b/131044 media/video-page-load-preload-none.html [ Failure ]
+webkit.org/b/131044 media/video-volume-slider-drag.html [ Failure ]
+webkit.org/b/131044 media/track/track-datacue.html [ Timeout ]
+webkit.org/b/131044 media/track/track-in-band-subtitles-too-large.html [ Timeout ]
+webkit.org/b/131044 media/track/track-remove-track.html [ Timeout ]
+webkit.org/b/131044 media/video-controls-drag.html [ Timeout ]
+webkit.org/b/131044 media/video-controls-toggling.html [ Timeout ]

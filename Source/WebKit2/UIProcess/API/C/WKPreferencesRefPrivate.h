@@ -50,9 +50,9 @@ enum WKEditableLinkBehavior {
 typedef enum WKEditableLinkBehavior WKEditableLinkBehavior;
 
 enum WKJavaScriptRuntimeFlags {
-    kWKJavaScriptRuntimeFlagsSymbolEnabled = 1 << 0,
+    kWKJavaScriptRuntimeFlagsSymbolDisabled = 1 << 0,
     kWKJavaScriptRuntimeFlagsPromiseDisabled = 1 << 1,
-    kWKJavaScriptRuntimeFlagsAllEnabled = kWKJavaScriptRuntimeFlagsSymbolEnabled
+    kWKJavaScriptRuntimeFlagsAllEnabled = 0
 };
 typedef unsigned WKJavaScriptRuntimeFlagSet;
 
@@ -360,6 +360,10 @@ WK_EXPORT double WKPreferencesGetMinimumZoomFontSize(WKPreferencesRef preference
 // Not implemented, should be deleted once Safari no longer uses this function.
 WK_EXPORT void WKPreferencesSetScreenFontSubstitutionEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetScreenFontSubstitutionEnabled(WKPreferencesRef preferences);
+
+// Defaults to true.
+WK_EXPORT void WKPreferencesSetAntialiasedFontDilationEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetAntialiasedFontDilationEnabled(WKPreferencesRef preferences);
 
 // Defaults to 0.
 WK_EXPORT void WKPreferencesSetJavaScriptRuntimeFlags(WKPreferencesRef preferences, WKJavaScriptRuntimeFlagSet javascriptRuntimeFlagSet);

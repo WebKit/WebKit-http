@@ -37,7 +37,7 @@
 #include "EventTarget.h"
 #include "URL.h"
 #include "NotificationClient.h"
-#include "TextDirection.h"
+#include "TextFlags.h"
 #include "ThreadableLoaderClient.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -140,7 +140,7 @@ private:
     // ActiveDOMObject API.
     void contextDestroyed() override;
     const char* activeDOMObjectName() const override;
-    bool canSuspend() const override;
+    bool canSuspendForPageCache() const override;
 
     // EventTarget API.
     virtual void refEventTarget() override { ref(); }

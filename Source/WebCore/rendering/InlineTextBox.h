@@ -40,8 +40,8 @@ class InlineTextBox : public InlineBox {
 public:
     explicit InlineTextBox(RenderText& renderer)
         : InlineBox(renderer)
-        , m_prevTextBox(0)
-        , m_nextTextBox(0)
+        , m_prevTextBox(nullptr)
+        , m_nextTextBox(nullptr)
         , m_start(0)
         , m_len(0)
         , m_truncation(cNoTruncation)
@@ -77,6 +77,12 @@ public:
     using InlineBox::setHasHyphen;
     using InlineBox::canHaveLeadingExpansion;
     using InlineBox::setCanHaveLeadingExpansion;
+    using InlineBox::canHaveTrailingExpansion;
+    using InlineBox::setCanHaveTrailingExpansion;
+    using InlineBox::forceTrailingExpansion;
+    using InlineBox::setForceTrailingExpansion;
+    using InlineBox::forceLeadingExpansion;
+    using InlineBox::setForceLeadingExpansion;
 
     static inline bool compareByStart(const InlineTextBox* first, const InlineTextBox* second) { return first->start() < second->start(); }
 
@@ -116,7 +122,7 @@ public:
 
 protected:
     virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom);
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom) override;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom, HitTestAction) override;
 
 private:
     virtual void deleteLine() override final;
@@ -160,11 +166,7 @@ private:
 
     void computeRectForReplacementMarker(RenderedDocumentMarker&, const RenderStyle&, const FontCascade&);
 
-    TextRun::ExpansionBehavior expansionBehavior() const
-    {
-        return (canHaveLeadingExpansion() ? TextRun::AllowLeadingExpansion : TextRun::ForbidLeadingExpansion)
-            | (renderer().contentIsKnownToFollow() || (expansion() && nextLeafChild() && !nextLeafChild()->isLineBreak()) ? TextRun::AllowTrailingExpansion : TextRun::ForbidTrailingExpansion);
-    }
+    ExpansionBehavior expansionBehavior() const;
 
     void behavesLikeText() const = delete;
 

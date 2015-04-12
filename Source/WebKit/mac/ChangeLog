@@ -1,3 +1,288 @@
+2015-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Enable Symbol in web pages
+        https://bugs.webkit.org/show_bug.cgi?id=143375
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebPreferencesPrivate.h:
+
+2015-04-08  Sam Weinig  <sam@webkit.org>
+
+        Allow LaunchServices to handle URLs on link navigations
+        <rdar://problem/19446826>
+        https://bugs.webkit.org/show_bug.cgi?id=143544
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        Link MobileCoreServices.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (shouldTryAppLink):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        (WebFrameLoaderClient::setUpPolicyListener):
+        Only let LaunchServices have a crack at the URL if the navigation is:
+            1) a main frame navigation
+            2) a result of a user gesture
+
+2015-04-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        * Misc/WebNSURLExtras.mm: (-[NSString _webkit_unescapedQueryValue]): Ignore a deprecation.
+
+2015-04-10  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Refactor MediaPlaybackTarget
+        https://bugs.webkit.org/show_bug.cgi?id=143571
+
+        Reviewed by Jer Noble.
+
+        * WebView/WebMediaPlaybackTargetPicker.h:
+        * WebView/WebMediaPlaybackTargetPicker.mm:
+        (WebMediaPlaybackTargetPicker::didChoosePlaybackTarget): Take a Ref<MediaPlaybackTarget>&&.
+
+2015-04-09  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add a HAVE(AVKIT) and use it
+        https://bugs.webkit.org/show_bug.cgi?id=143593
+
+        Reviewed by David Kilzer.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Only set WebKitAVKitEnabled to YES if HAVE(AVKIT).
+        (-[WebPreferences setAVKitEnabled:]): Only set value for WebKitAVKitEnabled if HAVE(AVKIT).
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Only called Settings::setAVKitEnabled() if HAVE(AVKIT).
+
+2015-04-09  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][iOS] editorState() should not cause a synchronous layout
+        https://bugs.webkit.org/show_bug.cgi?id=142536
+        <rdar://problem/20041506>
+
+        Reviewed by Enrica Casucci.
+
+        Provide implementation for EditorClient::didChangeSelectionAndUpdateLayout().
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2015-04-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] WebKit is not honoring OS preferences for secondary click behaviors
+        https://bugs.webkit.org/show_bug.cgi?id=143452
+        <rdar://problem/20437483>
+
+        Reviewed by Tim Horton.
+
+        We were improperly intercepting contextual menu clicks and passing them through
+        the mouseDown handler, rather than processing via NSView's menu handling code.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView otherMouseDown:]): Treat context menu events the same as the action
+        menu case, and pass it to AppKit for normal menu processing. 
+
+2015-04-08  Brady Eidson  <beidson@apple.com>
+
+        Expose the "Share" menu for links, images, and media.
+        <rdar://problem/20435340> and https://bugs.webkit.org/show_bug.cgi?id=143502
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebContextMenuClient.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::shareMenuItem): 
+
+2015-04-08  Anders Carlsson  <andersca@apple.com>
+
+        Move some ApplicationCache static member functions to ApplicationCacheStorage
+        https://bugs.webkit.org/show_bug.cgi?id=143524
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebApplicationCache.mm:
+        (+[WebApplicationCache diskUsageForOrigin:]):
+        (+[WebApplicationCache deleteAllApplicationCaches]):
+        (+[WebApplicationCache deleteCacheForOrigin:]):
+
+2015-04-08  Chris Dumez  <cdumez@apple.com>
+
+        Rename ActiveDOMObject::canSuspend() to canSuspendForPageCache() for clarity
+        https://bugs.webkit.org/show_bug.cgi?id=143513
+
+        Reviewed by Andreas Kling.
+
+        Update ScriptExecutionContext::canSuspendActiveDOMObjects() to
+        canSuspendActiveDOMObjectsForPageCache() as the method was renamed.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _cacheabilityDictionary]):
+
+2015-04-07  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of uses of ApplicationCacheStorage::singleton() from WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=143504
+
+        Reviewed by Sam Weinig.
+
+        Add a webApplicationCacheStorage() function and use it throughout WebKitLegacy.
+        In the future, webApplicationCacheStorage will return a custom singleton, but for now
+        it just returns ApplicationCacheStorage::singleton().
+
+        * Misc/WebCache.mm:
+        (+[WebCache empty]):
+        * WebCoreSupport/WebApplicationCache.mm:
+        (+[WebApplicationCache maximumSize]):
+        (+[WebApplicationCache setMaximumSize:]):
+        (+[WebApplicationCache defaultOriginQuota]):
+        (+[WebApplicationCache setDefaultOriginQuota:]):
+        (+[WebApplicationCache originsWithCache]):
+        (webApplicationCacheStorage):
+        * WebCoreSupport/WebApplicationCacheInternal.h: Added.
+        * WebCoreSupport/WebApplicationCacheQuotaManager.mm:
+        (-[WebApplicationCacheQuotaManager usage]):
+        (-[WebApplicationCacheQuotaManager quota]):
+        (-[WebApplicationCacheQuotaManager setQuota:]):
+        * WebView/WebView.mm:
+        (WebKitInitializeApplicationCachePathIfNecessary):
+
+2015-04-07  Brady Eidson  <beidson@apple.com>
+
+        ContextMenuItem refactoring
+        https://bugs.webkit.org/show_bug.cgi?id=143485
+
+        Reviewed by Beth Dakin.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::contextMenuItemSelected):
+
+2015-04-06  Chris Dumez  <cdumez@apple.com>
+
+        Bing video search result pages are not PageCacheable
+        https://bugs.webkit.org/show_bug.cgi?id=143463
+        <rdar://problem/20440916>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fix the iOS / WK1 build by using MemoryCache::resourceForRequest()
+        instead of resourceForUrl().
+
+        * Misc/WebCache.mm:
+        (+[WebCache imageForURL:]):
+
+2015-04-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove "go ahead and" from comments
+        https://bugs.webkit.org/show_bug.cgi?id=143421
+
+        Reviewed by Darin Adler, Benjamin Poulain.
+
+        Remove the phrase "go ahead and" from comments where it doesn't add
+        anything (which is almost all of them).
+
+        * WebView/WebDynamicScrollBarsView.mm:
+        (-[WebDynamicScrollBarsView updateScrollers]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView insertText:]):
+
+2015-04-02  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed: Reland change after rollout.
+
+        Expose the "Share" menu for text selections on platforms where it's available.
+        rdar://problem/20034174 and https://bugs.webkit.org/show_bug.cgi?id=143318
+
+        * WebView/WebImmediateActionController.mm: Update for required #include
+
+2015-04-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r182293.
+        https://bugs.webkit.org/show_bug.cgi?id=143355
+
+        Broke GTK and EFL builds. (Requested by bfulgham on #webkit).
+
+        Reverted changeset:
+
+        "Expose the "Share" menu for text selections on platforms
+        where it's available."
+        https://bugs.webkit.org/show_bug.cgi?id=143318
+        http://trac.webkit.org/changeset/182293
+
+2015-04-02  Brady Eidson  <beidson@apple.com>
+
+        Expose the "Share" menu for text selections on platforms where it's available.
+        rdar://problem/20034174 and https://bugs.webkit.org/show_bug.cgi?id=143318
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebImmediateActionController.mm: Update for required #include
+
+2015-04-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Clean up EnumerationMode to easily extend
+        https://bugs.webkit.org/show_bug.cgi?id=143276
+
+        Reviewed by Geoffrey Garen.
+
+        Use default EnumerationMode().
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::enumerate):
+
+2015-03-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove scrolling tree dependency on wheel event handler counts, and use fast scrolling even when there are wheel handlers
+        https://bugs.webkit.org/show_bug.cgi?id=143288
+
+        Reviewed by Beth Dakin.
+
+        Remove the wheel event counting that Document does, and passes into the scrolling tree.
+        The ScrollingTree now just uses the non-fast scrollable region to determine when to
+        fast scroll on pages with wheel event handlers.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2015-03-31  Timothy Horton  <timothy_horton@apple.com>
+
+        TextIndicator for <span> inside an <a> only highlights the <span>, should highlight the whole <a>
+        https://bugs.webkit.org/show_bug.cgi?id=143287
+        <rdar://problem/20318342>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _defaultAnimationController]):
+        Instead of just highlighting the hit element, highlight the whole
+        element that the link URL comes from.
+
+2015-03-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Clean up Identifier factories to clarify the meaning of StringImpl*
+        https://bugs.webkit.org/show_bug.cgi?id=143146
+
+        Reviewed by Filip Pizlo.
+
+        Just change to Identifier::fromString.
+
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (identifierFromIdentifierRep):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::getPropertyNames):
+
+2015-03-28  Anders Carlsson  <andersca@apple.com>
+
+        Remove an unused SPI method from WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=143185
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource _transferApplicationCache:]): Deleted.
+        * WebView/WebDataSourcePrivate.h:
+
 2015-03-26  Alex Christensen  <achristensen@webkit.org>
 
         Progress towards CMake on Mac.

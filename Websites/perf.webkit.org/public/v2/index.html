@@ -31,7 +31,7 @@
             {{view App.NumberOfDaysControlView tagName="ul" numberOfDays=numberOfDays}}
             <ul class="controls">
                 <li>
-                    <a href="#" class="control-button" {{action toggleEditMode}}>
+                    <a href="javascript:false" class="control-button" {{action toggleEditMode}}>
                         {{#if controller.editMode}}
                             Finish editing
                         {{else}}
@@ -49,7 +49,7 @@
                 {{#each headerColumns}}
                     {{#if controller.editMode}}
                         <th>
-                            <a href="#" title="Remove column" {{action "removeColumn" index}}>
+                            <a href="javascript:false" title="Remove column" {{action "removeColumn" index}}>
                                 {{partial "close-button"}}
                             </a>
                             {{input value=label}}
@@ -68,7 +68,7 @@
                 <tr>
                     {{#if controller.editMode}}
                         <th>
-                            <a href="#" title="Remove row" {{action "removeRow" this}}>
+                            <a href="javascript:false" title="Remove row" {{action "removeRow" this}}>
                                 {{partial "close-button"}}
                             </a>
                             {{input value=header}}
@@ -106,7 +106,7 @@
                                     {{/if}}
                                 {{/if}}
                                 {{#if controller.editMode}}
-                                    <a href="#" title="Reset pane" class="reset" {{action "resetPane" this}}>
+                                    <a href="javascript:false" title="Reset pane" class="reset" {{action "resetPane" this}}>
                                         {{partial "close-button"}}
                                     </a>
                                 {{/if}}
@@ -146,17 +146,19 @@
             <section class="chart-pane" tabindex="0">
                 <header>
                     <h1 {{action "toggleDetails"}}>{{metric.fullName}} - {{ platform.name}}</h1>
-                    <a href="#" title="Close" class="close-button" {{action "close"}}>{{partial "close-button"}}</a>
+                    <a href="javascript:false" title="Close" class="close-button" {{action "close"}}>{{partial "close-button"}}</a>
                     {{#if movingAverageStrategies}}
-                        <a href="#" title="Statistical Tools" class="stat-button" {{action "toggleStatPane"}}>{{partial "stat-button"}}</a>
+                        <a href="javascript:false" title="Statistical Tools" class="stat-button" {{action "toggleStatPane"}}>{{partial "stat-button"}}</a>
                     {{/if}}
-                    {{#if App.Manifest.bugTrackers}}
-                        <a href="#" title="Analysis" class="bugs-button" {{action "toggleBugsPane"}}>
-                            {{partial "analysis-button"}}
-                        </a>
-                    {{/if}}
+                    <a href="javascript:false" {{bind-attr title=showOutlierTitle class=":outlier-button showOutlier:show:hide"}}
+                        {{action "toggleShowOutlier"}}>
+                        {{partial "outlier-button"}}
+                    </a>
+                    <a href="javascript:false" title="Analyze the selected range" class="analysis-button" {{action "toggleBugsPane"}}>
+                        {{partial "analysis-button"}}
+                    </a>
                     {{#if App.Manifest.repositoriesWithReportedCommits}}
-                        <a href="#" title="Search" class="search-button" {{action "toggleSearchPane"}}>{{partial "search-button"}}</a>
+                        <a href="javascript:false" title="Search commits by a keyword" class="search-button" {{action "toggleSearchPane"}}>{{partial "search-button"}}</a>
                     {{/if}}
                 </header>
 
@@ -165,7 +167,7 @@
                     {{#if chartData}}
                         {{interactive-chart
                             chartData=chartData
-                            ranges=analyticRanges
+                            ranges=ranges
                             domain=mainPlotDomain
                             interactive=true
                             chartPointRadius=2
@@ -204,8 +206,14 @@
                 </div>
 
                 <div {{bind-attr class=":popup-pane :analysis-pane showingAnalysisPane::hidden"}}>
-                    <label>Name: {{input type=text value=newAnalysisTaskName}}</label>
-                    <button {{action "createAnalysisTask"}} {{bind-attr disabled=cannotAnalyze}}>Analyze</button>
+                    <section class="analysis-option-option">
+                        <h1>Start A/B testing or associate bugs</h1>
+                        <label>Name: {{input type=text value=newAnalysisTaskName}} <button {{action "createAnalysisTask"}} {{bind-attr disabled=cannotAnalyze}}>Analyze</button></label>
+                    </section>
+                    <section class="analysis-option-option">
+                        <h1>Marking outliers</h1>
+                        <label>{{input type=checkbox checked=selectedItemIsMarkedOutlier disabled=cannotMarkOutlier}} Mark as an outlier and hide it.</label>
+                    </section>
                 </div>
 
                 <form {{bind-attr class=":popup-pane :search-pane showingSearchPane::hidden"}}>
@@ -227,7 +235,7 @@
     <script type="text/x-handlebars" data-template-name="components/interactive-chart">
         {{#if interactive}}
             <div class="selection-toolbar" style="display: none;">
-                <a href="#" class="button" {{action "zoom"}}>
+                <a href="javascript:false" class="button" {{action "zoom"}}>
                     <svg class="zoom" viewBox="0 0 100 100">
                         <g stroke-width="0" stroke="none">
                             <polygon points="25,25 5,50 25,75"/>
@@ -241,7 +249,7 @@
         <div class="rangeBarsContainerInlineStyle">
             {{#each rangeBars}}
                 {{#link-to linkRoute linkId title=label}}
-                    <span class="rangeBar" {{bind-attr style=inlineStyle}}></span>
+                    <span {{bind-attr class=":rangeBar status" style=inlineStyle}}></span>
                 {{/link-to}}
             {{/each}}
         </div>
@@ -270,7 +278,7 @@
                     <td>
                         {{details.status.currentValue}} {{chartData.unit}}
                         {{#if details.status.valueDelta}}
-                            ({{details.status.valueDelta}} {{chartData.unit}})
+                            ({{details.status.valueDelta}} {{chartData.unit}} / {{details.status.relativeDelta}})
                         {{/if}}
                         {{#if details.status.label}}
                             <br>
@@ -370,6 +378,9 @@
                     optionValuePath='content'
                     optionLabelPath='content.label'
                     selection=chosenMovingAverageStrategy}}</label>
+                    {{#if chosenMovingAverageStrategy.description}}
+                        <p class="description">{{chosenMovingAverageStrategy.description}}</p>
+                    {{/if}}
                 {{#each chosenMovingAverageStrategy.parameterList}}
                     <label>{{label}}: {{input type="number" value=value min=min max=max step=step}}</label>
                 {{/each}}
@@ -390,7 +401,48 @@
                     {{/each}}
                 </section>
             {{/if}}
+            {{#if chosenMovingAverageStrategy.isSegmentation}}
+                <section class="stat-option">
+                    <h1>A/B Test Range Selection</h1>
+                    <label>Type: {{view Ember.Select
+                        content=testRangeSelectionStrategies
+                        optionValuePath='content'
+                        optionLabelPath='content.label'
+                        selection=chosenTestRangeSelectionStrategy}}</label>
+                    {{#if chosenTestRangeSelectionStrategy.description}}
+                        <p class="description">{{chosenTestRangeSelectionStrategy.description}}</p>
+                    {{/if}}
+                </section>
+            {{/if}}
+            {{#if chosenEnvelopingStrategy.execute}}
+                <section class="stat-option">
+                    <h1>Anomaly Detection</h1>
+                    {{#each anomalyDetectionStrategies}}
+                        <label {{bind-attr title=description}}>{{input type="checkbox" name=id checked=enabled}}{{label}}</label>
+                    {{/each}}
+                </section>
+            {{/if}}
         </section>
+    </script>
+
+    <script type="text/x-handlebars" data-template-name="outlier-button">
+        <svg class="outlier-button icon-button" viewBox="0 0 100 100">
+            <g stroke="black" fill="black" stroke-width="15">
+                <line x1="0" y1="70" x2="40" y2="70"/>
+                <circle cx="15" cy="70" r="8"/>
+                <circle cx="45" cy="70" r="8"/>
+                <circle cx="85" cy="70" r="8"/>
+                <line x1="85" y1="70" x2="100" y2="70"/>
+                <g class="show-outlier-icon">
+                    <line x1="45" y1="70" x2="65" y2="20"/>
+                    <line x1="65" y1="20" x2="85" y2="70"/>
+                    <circle cx="65" cy="20" r="8"/>
+                </g>
+                <g class="hide-outlier-icon">
+                    <line x1="45" y1="70" x2="85" y2="70"/>
+                </g>
+            </g>
+        </svg>
     </script>
 
     <script type="text/x-handlebars" data-template-name="analysis-button">
@@ -448,22 +500,22 @@
 
     <script type="text/x-handlebars" data-template-name="number-of-days-controls">
         <li class="numberOfDaysIs1">
-            <a href="#" class="control-button" {{action "setNumberOfDays" 1}}>1D</a>
+            <a href="javascript:false" class="control-button" {{action "setNumberOfDays" 1}}>1D</a>
         </li>
         <li class="numberOfDaysIs7">
-            <a href="#" class="control-button" {{action "setNumberOfDays" 7}}>1W</a>
+            <a href="javascript:false" class="control-button" {{action "setNumberOfDays" 7}}>1W</a>
         </li>
         <li class="numberOfDaysIs30">
-            <a href="#" class="control-button" {{action "setNumberOfDays" 30}}>1M</a>
+            <a href="javascript:false" class="control-button" {{action "setNumberOfDays" 30}}>1M</a>
         </li>
         <li class="numberOfDaysIs90">
-            <a href="#" class="control-button" {{action "setNumberOfDays" 90}}>3M</a>
+            <a href="javascript:false" class="control-button" {{action "setNumberOfDays" 90}}>3M</a>
         </li>
         <li class="numberOfDaysIs183">
-            <a href="#" class="control-button" {{action "setNumberOfDays" 183}}>6M</a>
+            <a href="javascript:false" class="control-button" {{action "setNumberOfDays" 183}}>6M</a>
         </li>
         <li class="numberOfDaysIs365">
-            <a href="#" class="control-button" {{action "setNumberOfDays" 365}}>1Y</a>
+            <a href="javascript:false" class="control-button" {{action "setNumberOfDays" 365}}>1Y</a>
         </li>
     </script>
 
@@ -485,7 +537,7 @@
             {{else}}
                 <li>
                     {{#if actionName}}
-                        <a href="#" class="label" {{action actionName actionArgument}}>{{label}}</a>
+                        <a href="javascript:false" class="label" {{action actionName actionArgument}}>{{label}}</a>
                     {{else}}
                         <a class="label">{{label}}</a>
                     {{/if}}
@@ -502,17 +554,23 @@
         <table id="analysis-tasks">
             <thead>
                 <tr>
-                    <td>ID</td>
                     <td>Name</td>
+                    <td>Status</td>
+                    <td>Author</td>
                     <td>Created at</td>
+                    <td>Platform</td>
+                    <td>Test</td>
                 </tr>
             </thead>
             <tbody>
                 {{#each model.tasks}}
                     <tr>
-                        <td>{{#link-to 'analysisTask' id}}{{id}}{{/link-to}}</td>
-                        <td>{{name}}</td>
-                        <td>{{createdAt}}</td>
+                        <td class="task-name">{{#link-to 'analysisTask' id}}{{name}}{{/link-to}}</td>
+                        <td class="status">{{statusLabel}}</td>
+                        <td class="author">{{author}}</td>
+                        <td class="created-at">{{formattedCreatedAt}}</td>
+                        <td class="platform-name">{{platform.label}}</td>
+                        <td class="test-name">{{metric.fullName}}</td>
                     </tr>
                 {{/each}}
             </tbody>
@@ -534,7 +592,7 @@
                 <div class="svg-container">
                     {{interactive-chart
                         chartData=pane.chartData
-                        ranges=pane.analyticRanges
+                        ranges=pane.ranges
                         domain=overviewDomain
                         interactive=true
                         chartPointRadius=2
@@ -550,10 +608,10 @@
                             <tbody>
                                 {{#each bugTrackers}}
                                     <tr>
-                                        <th>{{label}}</th>
+                                        <th><label {{bind-attr for=elementId}}>{{label}}</label></th>
                                         <td>
                                             <form {{action "associateBug" this editedBugNumber on="submit"}}>
-                                                {{input type=text value=editedBugNumber}}
+                                                {{input id=elementId type=text value=editedBugNumber}}
                                             </form>
                                         </td>
                                     </tr>
@@ -576,37 +634,52 @@
     <script type="text/x-handlebars" data-template-name="testGroup">
         <section class="analysis-group">
             <h1>{{name}}</h1>
-            <table class="results">
-                <thead>
-                    <tr>
-                        <td colspan="2">Configuration</td>
-                        {{#each repositories}}
-                            <td>{{name}}</td>
-                        {{/each}}
-                        <td>Results</td>
-                        <td>Status</td>
-                    </tr>
-                </thead>
-                {{#each configurations}}
-                    <tbody {{bind-attr class="showRequestList::hideRequests"}}>
-                        <tr class="summary" {{action toggleShowRequestList this}}>
-                            <td class="config-letter" colspan="2">{{summary.configLetter}}</td>
-                            {{#with summary}}
-                                {{partial "testGroupRow"}}
-                            {{/with}}
+            <div class="table-container">
+                <table class="results">
+                    <thead>
+                        <tr>
+                            <td colspan="2">Configuration</td>
+                            {{#each repositories}}
+                                <td>{{name}}</td>
+                            {{/each}}
+                            <td>Results</td>
+                            <td>Status</td>
                         </tr>
-                        {{#each items}}
-                            <tr class="request">
-                                {{#with ../this}}
-                                    <td class="config-letter" {{action toggleShowRequestList this}}></td>
+                    </thead>
+                    {{#each configurations}}
+                        <tbody {{bind-attr class="showRequestList::hideRequests"}}>
+                            <tr class="summary" {{action toggleShowRequestList this}}>
+                                <td class="config-letter" colspan="2">{{summary.configLetter}}</td>
+                                {{#with summary}}
+                                    {{partial "testGroupRow"}}
                                 {{/with}}
-                                <td>Run {{orderLabel}}</td>
-                                {{partial "testGroupRow"}}
                             </tr>
-                        {{/each}}
-                    </tbody>
-                {{/each}}
-            </table>
+                            {{#each requests}}
+                                <tr class="request">
+                                    {{#with ../this}}
+                                        <td class="config-letter" {{action toggleShowRequestList this}}></td>
+                                    {{/with}}
+                                    <td>Run {{orderLabel}}</td>
+                                    {{partial "testGroupRow"}}
+                                </tr>
+                            {{/each}}
+                        </tbody>
+                    {{/each}}
+                    {{#each comparisons}}
+                        <tbody>
+                            <tr>
+                                <td colspan="2">{{label}}</td>
+                                {{#with ../this}}
+                                    {{#each repositories}}
+                                        <td></td>
+                                    {{/each}}
+                                {{/with}}
+                                <td colspan="2">{{result}}</td>
+                            </tr>
+                        </tbody>
+                    {{/each}}
+                </table>
+            </div>
             <div class="reference-chart">
                 {{#if referenceChart}}
                     {{interactive-chart
@@ -637,6 +710,7 @@
     </script>
 
     <script type="text/x-handlebars" data-template-name="testGroupForm">
+    {{#if rootConfigurations}}
         <form method="POST" {{action "createTestGroup" newTestGroupName repetitionCount on="submit"}}>
             <section class="analysis-group">
                 <h1>{{input name="name" value=newTestGroupName placeholder="Test group name" required=true type="text"}}</h1>
@@ -654,7 +728,7 @@
                             <tr>
                                 <th>{{name}}</th>
                                 {{#each sets}}
-                                    <td>{{view Ember.Select name=name content=options disabled=true
+                                    <td>{{view Ember.Select name=name content=options
                                         optionValuePath="content.value" optionLabelPath="content.label"
                                         selection=selection}}</td>
                                 {{/each}}
@@ -666,6 +740,7 @@
                 <button type="submit">Start A/B testing</button>
             </section>
         </form>
+    {{/if}}
     </script>
 
 </head>

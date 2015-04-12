@@ -213,29 +213,34 @@ void FontCascade::drawGlyphs(GraphicsContext* context, const Font* font, const G
 
     bool shouldSmoothFonts;
     bool changeFontSmoothing;
+    bool matchAntialiasedAndSmoothedFonts = context->antialiasedFontDilationEnabled();
     
     switch (fontDescription().fontSmoothing()) {
     case Antialiased: {
         context->setShouldAntialias(true);
         shouldSmoothFonts = false;
         changeFontSmoothing = true;
+        matchAntialiasedAndSmoothedFonts = false; // CSS has opted into strictly antialiased fonts.
         break;
     }
     case SubpixelAntialiased: {
         context->setShouldAntialias(true);
         shouldSmoothFonts = true;
         changeFontSmoothing = true;
+        matchAntialiasedAndSmoothedFonts = true;
         break;
     }
     case NoSmoothing: {
         context->setShouldAntialias(false);
         shouldSmoothFonts = false;
         changeFontSmoothing = true;
+        matchAntialiasedAndSmoothedFonts = false;
         break;
     }
     case AutoSmoothing: {
         shouldSmoothFonts = true;
         changeFontSmoothing = false;
+        matchAntialiasedAndSmoothedFonts = true;
         break;
     }
     }
@@ -243,6 +248,7 @@ void FontCascade::drawGlyphs(GraphicsContext* context, const Font* font, const G
     if (!shouldUseSmoothing()) {
         shouldSmoothFonts = false;
         changeFontSmoothing = true;
+        matchAntialiasedAndSmoothedFonts = true;
     }
 
 #if !PLATFORM(IOS)
@@ -602,7 +608,7 @@ void FontCascade::adjustSelectionRectForComplexText(const TextRun& run, LayoutRe
     float afterWidth = controller.runWidthSoFar();
 
     if (run.rtl())
-        selectionRect.move(controller.totalWidth() - afterWidth, 0);
+        selectionRect.move(controller.totalWidth() - afterWidth + controller.leadingExpansion(), 0);
     else
         selectionRect.move(beforeWidth, 0);
     selectionRect.setWidth(afterWidth - beforeWidth);
@@ -623,7 +629,7 @@ float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, int fr
     float afterWidth = controller.runWidthSoFar();
 
     if (run.rtl()) {
-        initialAdvance = controller.totalWidth() + controller.finalRoundingWidth() - afterWidth;
+        initialAdvance = controller.totalWidth() + controller.finalRoundingWidth() - afterWidth + controller.leadingExpansion();
         glyphBuffer.reverse(0, glyphBuffer.size());
     } else
         initialAdvance = beforeWidth;

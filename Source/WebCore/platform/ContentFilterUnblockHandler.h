@@ -28,6 +28,7 @@
 
 #if ENABLE(CONTENT_FILTERING)
 
+#include "URL.h"
 #include <functional>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
@@ -47,11 +48,9 @@ public:
     using DecisionHandlerFunction = std::function<void(bool unblocked)>;
     using UnblockRequesterFunction = std::function<void(DecisionHandlerFunction)>;
 
-    static const char* unblockURLScheme() { return "x-apple-content-filter"; }
-
     ContentFilterUnblockHandler() = default;
     WEBCORE_EXPORT ContentFilterUnblockHandler(String unblockURLHost, UnblockRequesterFunction);
-#if PLATFORM(IOS)
+#if HAVE(PARENTAL_CONTROLS) && PLATFORM(IOS)
     ContentFilterUnblockHandler(String unblockURLHost, RetainPtr<WebFilterEvaluator>);
 #endif
 
@@ -60,13 +59,17 @@ public:
     WEBCORE_EXPORT static bool decode(NSCoder *, ContentFilterUnblockHandler&);
     WEBCORE_EXPORT bool canHandleRequest(const ResourceRequest&) const;
     WEBCORE_EXPORT void requestUnblockAsync(DecisionHandlerFunction) const;
+    void wrapWithDecisionHandler(const DecisionHandlerFunction&);
 
     const String& unblockURLHost() const { return m_unblockURLHost; }
+    const URL& unreachableURL() const { return m_unreachableURL; }
+    void setUnreachableURL(const URL& url) { m_unreachableURL = url; }
 
 private:
     String m_unblockURLHost;
+    URL m_unreachableURL;
     UnblockRequesterFunction m_unblockRequester;
-#if PLATFORM(IOS)
+#if HAVE(PARENTAL_CONTROLS) && PLATFORM(IOS)
     RetainPtr<WebFilterEvaluator> m_webFilterEvaluator;
 #endif
 };

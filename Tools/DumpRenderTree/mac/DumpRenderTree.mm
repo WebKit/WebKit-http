@@ -964,6 +964,8 @@ static void setDefaultsToConsistentValuesForTesting()
         WebKitFullScreenEnabledPreferenceKey: @YES,
         @"UseWebKitWebInspector": @YES,
 #if !PLATFORM(IOS)
+        @"NSPreferredSpellServerLanguage": @"en_US",
+        @"NSUserDictionaryReplacementItems": @[],
         @"NSTestCorrectionDictionary": @{
             @"notationl": @"notational",
             @"mesage": @"message",
@@ -982,6 +984,7 @@ static void setDefaultsToConsistentValuesForTesting()
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
         @"AppleSystemFontOSSubversion": @(10),
 #endif
+        @"NSWindowDisplayWithRunLoopObserver": @YES, // Temporary workaround, see <rdar://problem/20351297>.
     };
 
     [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:dict];

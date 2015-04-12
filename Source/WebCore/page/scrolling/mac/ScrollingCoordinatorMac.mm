@@ -79,14 +79,11 @@ void ScrollingCoordinatorMac::pageDestroyed()
 
 void ScrollingCoordinatorMac::commitTreeStateIfNeeded()
 {
-    if (!scrollingStateTree()->hasChangedProperties())
-        return;
-
     commitTreeState();
     m_scrollingStateTreeCommitterTimer.stop();
 }
 
-bool ScrollingCoordinatorMac::handleWheelEvent(FrameView*, const PlatformWheelEvent& wheelEvent)
+bool ScrollingCoordinatorMac::handleWheelEvent(FrameView&, const PlatformWheelEvent& wheelEvent)
 {
     ASSERT(isMainThread());
     ASSERT(m_page);
@@ -103,7 +100,7 @@ bool ScrollingCoordinatorMac::handleWheelEvent(FrameView*, const PlatformWheelEv
 
 void ScrollingCoordinatorMac::scheduleTreeStateCommit()
 {
-    ASSERT(scrollingStateTree()->hasChangedProperties());
+    ASSERT(scrollingStateTree()->hasChangedProperties() || nonFastScrollableRegionDirty());
 
     if (m_scrollingStateTreeCommitterTimer.isActive())
         return;
@@ -118,7 +115,9 @@ void ScrollingCoordinatorMac::scrollingStateTreeCommitterTimerFired()
 
 void ScrollingCoordinatorMac::commitTreeState()
 {
-    ASSERT(scrollingStateTree()->hasChangedProperties());
+    willCommitTree();
+    if (!scrollingStateTree()->hasChangedProperties())
+        return;
 
     RefPtr<ThreadedScrollingTree> threadedScrollingTree = downcast<ThreadedScrollingTree>(scrollingTree());
     ScrollingStateTree* unprotectedTreeState = scrollingStateTree()->commit(LayerRepresentation::PlatformLayerRepresentation).release();
@@ -144,8 +143,6 @@ void ScrollingCoordinatorMac::updateTiledScrollingIndicator()
     ScrollingModeIndication indicatorMode;
     if (shouldUpdateScrollLayerPositionSynchronously())
         indicatorMode = SynchronousScrollingBecauseOfStyleIndication;
-    else if (scrollingStateTree()->rootStateNode() && scrollingStateTree()->rootStateNode()->wheelEventHandlerCount())
-        indicatorMode =  SynchronousScrollingBecauseOfEventHandlersIndication;
     else
         indicatorMode = AsyncScrollingIndication;
     

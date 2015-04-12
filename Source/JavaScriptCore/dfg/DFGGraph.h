@@ -692,9 +692,8 @@ public:
     JSValue tryGetConstantClosureVar(const AbstractValue&, ScopeOffset);
     JSValue tryGetConstantClosureVar(Node*, ScopeOffset);
     
-    JSArrayBufferView* tryGetFoldableView(Node*);
-    JSArrayBufferView* tryGetFoldableView(Node*, ArrayMode);
-    JSArrayBufferView* tryGetFoldableViewForChild1(Node*);
+    JSArrayBufferView* tryGetFoldableView(JSValue);
+    JSArrayBufferView* tryGetFoldableView(JSValue, ArrayMode arrayMode);
     
     void registerFrozenValues();
     
@@ -709,7 +708,9 @@ public:
     NO_RETURN_DUE_TO_CRASH void handleAssertionFailure(
         BasicBlock*, const char* file, int line, const char* function,
         const char* assertion);
-    
+
+    bool hasDebuggerEnabled() const { return m_hasDebuggerEnabled; }
+
     VM& m_vm;
     Plan& m_plan;
     CodeBlock* m_codeBlock;
@@ -791,6 +792,7 @@ public:
     UnificationState m_unificationState;
     PlanStage m_planStage { PlanStage::Initial };
     RefCountState m_refCountState;
+    bool m_hasDebuggerEnabled;
 private:
     
     void handleSuccessor(Vector<BasicBlock*, 16>& worklist, BasicBlock*, BasicBlock* successor);

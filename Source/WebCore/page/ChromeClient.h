@@ -272,10 +272,6 @@ public:
     virtual std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) = 0;
 #endif
 
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES) && !PLATFORM(IOS)
-    virtual PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) = 0;
-#endif
-
     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>) = 0;
     // Asynchronous request to load an icon for specified filenames.
     virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*) = 0;
@@ -396,7 +392,7 @@ public:
     };
     virtual bool shouldRunModalDialogDuringPageDismissal(const DialogType&, const String& dialogMessage, FrameLoader::PageDismissalType) const { UNUSED_PARAM(dialogMessage); return true; }
 
-    virtual void numWheelEventHandlersChanged(unsigned) = 0;
+    virtual void wheelEventHandlersChanged(bool hasHandlers) = 0;
         
     virtual bool isSVGImageChromeClient() const { return false; }
 

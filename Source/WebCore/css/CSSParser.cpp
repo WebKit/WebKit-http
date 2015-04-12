@@ -879,16 +879,6 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueFlexStart || valueID == CSSValueFlexEnd || valueID == CSSValueCenter || valueID == CSSValueSpaceBetween || valueID == CSSValueSpaceAround || valueID == CSSValueStretch)
             return true;
         break;
-    case CSSPropertyAlignItems:
-        // FIXME: Per CSS alignment, this property should accept the same arguments as 'justify-self' so we should share its parsing code.
-        if (valueID == CSSValueFlexStart || valueID == CSSValueFlexEnd || valueID == CSSValueCenter || valueID == CSSValueBaseline || valueID == CSSValueStretch)
-            return true;
-        break;
-    case CSSPropertyAlignSelf:
-        // FIXME: Per CSS alignment, this property should accept the same arguments as 'justify-self' so we should share its parsing code.
-        if (valueID == CSSValueAuto || valueID == CSSValueFlexStart || valueID == CSSValueFlexEnd || valueID == CSSValueCenter || valueID == CSSValueBaseline || valueID == CSSValueStretch)
-            return true;
-        break;
     case CSSPropertyFlexDirection:
         if (valueID == CSSValueRow || valueID == CSSValueRowReverse || valueID == CSSValueColumn || valueID == CSSValueColumnReverse)
             return true;
@@ -900,10 +890,6 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
     case CSSPropertyJustifyContent:
         // FIXME: Per CSS alignment, this property should accept an optional <overflow-position>. We should share this parsing code with 'justify-self'.
         if (valueID == CSSValueFlexStart || valueID == CSSValueFlexEnd || valueID == CSSValueCenter || valueID == CSSValueSpaceBetween || valueID == CSSValueSpaceAround)
-            return true;
-        break;
-    case CSSPropertyWebkitJustifySelf:
-        if (valueID == CSSValueAuto || valueID == CSSValueFlexStart || valueID == CSSValueFlexEnd || valueID == CSSValueCenter || valueID == CSSValueBaseline || valueID == CSSValueStretch)
             return true;
         break;
     case CSSPropertyWebkitFontKerning:
@@ -1135,8 +1121,6 @@ static inline bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyColumnFill:
     case CSSPropertyColumnRuleStyle:
     case CSSPropertyAlignContent:
-    case CSSPropertyAlignItems:
-    case CSSPropertyAlignSelf:
     case CSSPropertyFlexDirection:
     case CSSPropertyFlexWrap:
     case CSSPropertyJustifyContent:
@@ -2711,8 +2695,13 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         }
         return false;
     }
-    case CSSPropertyWebkitJustifySelf:
-        return parseJustifySelf(propId, important);
+    case CSSPropertyJustifySelf:
+        return parseItemPositionOverflowPosition(propId, important);
+    case CSSPropertyJustifyItems:
+        if (parseLegacyPosition(propId, important))
+            return true;
+        m_valueList->setCurrentIndex(0);
+        return parseItemPositionOverflowPosition(propId, important);
 #if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyWebkitGridAutoColumns:
     case CSSPropertyWebkitGridAutoRows:
@@ -2779,10 +2768,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
             validPrimitive = !id && validateUnit(valueWithCalculation, FNumber | FLength | FPercent);
         break;
     case CSSPropertyColumnCount:
-        if (id == CSSValueAuto)
-            validPrimitive = true;
-        else
-            validPrimitive = !id && validateUnit(valueWithCalculation, FPositiveInteger, CSSQuirksMode);
+        parsedValue = parseColumnCount();
         break;
     case CSSPropertyColumnGap: // normal | <length>
         if (id == CSSValueNormal)
@@ -2807,12 +2793,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         }
         break;
     case CSSPropertyColumnWidth: // auto | <length>
-        if (id == CSSValueAuto)
-            validPrimitive = true;
-        else {
-            // Always parse this property in strict mode, since it would be ambiguous otherwise when used in the 'columns' shorthand property.
-            validPrimitive = validateUnit(valueWithCalculation, FLength | FNonNeg, CSSStrictMode) && parsedDouble(valueWithCalculation);
-        }
+        parsedValue = parseColumnWidth();
         break;
     // End of CSS3 properties
 
@@ -2973,7 +2954,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyListStyle:
         return parseShorthand(propId, listStyleShorthand(), important);
     case CSSPropertyColumns:
-        return parseShorthand(propId, columnsShorthand(), important);
+        return parseColumnsShorthand(important);
     case CSSPropertyColumnRule:
         return parseShorthand(propId, columnRuleShorthand(), important);
     case CSSPropertyWebkitTextStroke:
@@ -3052,6 +3033,11 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         parsedValue = parseImageResolution();
         break;
 #endif
+    case CSSPropertyAlignSelf:
+        return parseItemPositionOverflowPosition(propId, important);
+
+    case CSSPropertyAlignItems:
+        return parseItemPositionOverflowPosition(propId, important);
     case CSSPropertyBorderBottomStyle:
     case CSSPropertyBorderCollapse:
     case CSSPropertyBorderLeftStyle:
@@ -3113,8 +3099,6 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyColumnFill:
     case CSSPropertyColumnRuleStyle:
     case CSSPropertyAlignContent:
-    case CSSPropertyAlignItems:
-    case CSSPropertyAlignSelf:
     case CSSPropertyFlexDirection:
     case CSSPropertyFlexWrap:
     case CSSPropertyJustifyContent:
@@ -3230,6 +3214,11 @@ void CSSParser::addFillValue(RefPtr<CSSValue>& lval, Ref<CSSValue>&& rval)
     lval = WTF::move(list);
 }
 
+static inline bool isBaselinePositionKeyword(CSSValueID id)
+{
+    return id == CSSValueBaseline || id == CSSValueLastBaseline;
+}
+
 static bool isItemPositionKeyword(CSSValueID id)
 {
     return id == CSSValueStart || id == CSSValueEnd || id == CSSValueCenter
@@ -3237,15 +3226,42 @@ static bool isItemPositionKeyword(CSSValueID id)
         || id == CSSValueFlexEnd || id == CSSValueLeft || id == CSSValueRight;
 }
 
-bool CSSParser::parseJustifySelf(CSSPropertyID propId, bool important)
+bool CSSParser::parseLegacyPosition(CSSPropertyID propId, bool important)
 {
-    // auto | baseline | stretch | [<item-position> && <overflow-position>? ]
+    // [ legacy && [ left | right | center ]
+
+    CSSParserValue* value = m_valueList->current();
+    if (!value)
+        return false;
+
+    if (value->id == CSSValueLegacy) {
+        value = m_valueList->next();
+        if (!value)
+            return false;
+        if (value->id != CSSValueCenter && value->id != CSSValueLeft && value->id != CSSValueRight)
+            return false;
+    } else if (value->id == CSSValueCenter || value->id == CSSValueLeft || value->id == CSSValueRight) {
+        if (!m_valueList->next() || m_valueList->current()->id != CSSValueLegacy)
+            return false;
+    } else
+        return false;
+
+    addProperty(propId, createPrimitiveValuePair(cssValuePool().createIdentifierValue(CSSValueLegacy), cssValuePool().createIdentifierValue(value->id)), important);
+    return !m_valueList->next();
+}
+
+bool CSSParser::parseItemPositionOverflowPosition(CSSPropertyID propId, bool important)
+{
+    // auto | stretch | <baseline-position> | [<item-position> && <overflow-position>? ]
+    // <baseline-position> = baseline | last-baseline;
     // <item-position> = center | start | end | self-start | self-end | flex-start | flex-end | left | right;
     // <overflow-position> = true | safe
 
     CSSParserValue* value = m_valueList->current();
+    if (!value)
+        return false;
 
-    if (value->id == CSSValueAuto || value->id == CSSValueBaseline || value->id == CSSValueStretch) {
+    if (value->id == CSSValueAuto || value->id == CSSValueStretch || isBaselinePositionKeyword(value->id)) {
         if (m_valueList->next())
             return false;
 
@@ -3615,6 +3631,76 @@ bool CSSParser::parseAnimationShorthand(CSSPropertyID propId, bool important)
 
         addProperty(shorthand.properties()[i], values[i].release(), important);
     }
+
+    return true;
+}
+
+RefPtr<CSSValue> CSSParser::parseColumnWidth()
+{
+    ValueWithCalculation valueWithCalculation(*m_valueList->current());
+    CSSValueID id = valueWithCalculation.value().id;
+    // Always parse this property in strict mode, since it would be ambiguous otherwise when used in the 'columns' shorthand property.
+    if (id != CSSValueAuto && !(validateUnit(valueWithCalculation, FLength | FNonNeg, CSSStrictMode) && parsedDouble(valueWithCalculation)))
+        return nullptr;
+
+    RefPtr<CSSValue> parsedValue = parseValidPrimitive(id, valueWithCalculation);
+    m_valueList->next();
+    return parsedValue;
+}
+
+RefPtr<CSSValue> CSSParser::parseColumnCount()
+{
+    ValueWithCalculation valueWithCalculation(*m_valueList->current());
+    CSSValueID id = valueWithCalculation.value().id;
+
+    if (id != CSSValueAuto && !validateUnit(valueWithCalculation, FPositiveInteger, CSSQuirksMode))
+        return nullptr;
+
+    RefPtr<CSSValue> parsedValue = parseValidPrimitive(id, valueWithCalculation);
+    m_valueList->next();
+    return parsedValue;
+}
+
+bool CSSParser::parseColumnsShorthand(bool important)
+{
+    RefPtr<CSSValue> columnWidth;
+    RefPtr<CSSValue> columnCount;
+    bool hasPendingExplicitAuto = false;
+
+    for (unsigned propertiesParsed = 0; CSSParserValue* value = m_valueList->current(); propertiesParsed++) {
+        if (propertiesParsed >= 2)
+            return false; // Too many values for this shorthand. Invalid declaration.
+        if (!propertiesParsed && value->id == CSSValueAuto) {
+            // 'auto' is a valid value for any of the two longhands, and at this point
+            // we don't know which one(s) it is meant for. We need to see if there are other values first.
+            m_valueList->next();
+            hasPendingExplicitAuto = true;
+        } else {
+            if (!columnWidth) {
+                if ((columnWidth = parseColumnWidth()))
+                    continue;
+            }
+            if (!columnCount) {
+                if ((columnCount = parseColumnCount()))
+                    continue;
+            }
+            // If we didn't find at least one match, this is an invalid shorthand and we have to ignore it.
+            return false;
+        }
+    }
+
+    // Any unassigned property at this point will become implicit 'auto'.
+    if (columnWidth)
+        addProperty(CSSPropertyColumnWidth, columnWidth, important);
+    else {
+        addProperty(CSSPropertyColumnWidth, cssValuePool().createIdentifierValue(CSSValueAuto), important, !hasPendingExplicitAuto /* implicit */);
+        hasPendingExplicitAuto = false;
+    }
+
+    if (columnCount)
+        addProperty(CSSPropertyColumnCount, columnCount, important);
+    else
+        addProperty(CSSPropertyColumnCount, cssValuePool().createIdentifierValue(CSSValueAuto), important, !hasPendingExplicitAuto /* implicit */);
 
     return true;
 }
@@ -7169,9 +7255,7 @@ bool CSSParser::isCalculation(CSSParserValue& value)
 {
     return (value.unit == CSSParserValue::Function)
         && (equalIgnoringCase(value.function->name, "calc(")
-            || equalIgnoringCase(value.function->name, "-webkit-calc(")
-            || equalIgnoringCase(value.function->name, "-webkit-min(")
-            || equalIgnoringCase(value.function->name, "-webkit-max("));
+            || equalIgnoringCase(value.function->name, "-webkit-calc("));
 }
 
 inline int CSSParser::colorIntFromValue(ValueWithCalculation& valueWithCalculation)

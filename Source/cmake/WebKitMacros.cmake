@@ -23,6 +23,22 @@ macro(ADD_SOURCE_DEPENDENCIES _source _deps)
     set_source_files_properties(${_source} PROPERTIES OBJECT_DEPENDS "${_tmp}")
 endmacro()
 
+macro(ADD_PRECOMPILED_HEADER _header _cpp _source)
+    if (MSVC)
+        get_filename_component(PrecompiledBasename ${_header} NAME_WE)
+        set(PrecompiledBinary "${CMAKE_CURRENT_BINARY_DIR}/${PrecompiledBasename}.pch")
+        set(_sources ${${_source}})
+
+        set_source_files_properties(${_cpp}
+            PROPERTIES COMPILE_FLAGS "/Yc\"${_header}\" /Fp\"${PrecompiledBinary}\""
+            OBJECT_OUTPUTS "${PrecompiledBinary}")
+        set_source_files_properties(${_sources}
+            PROPERTIES COMPILE_FLAGS "/Yu\"${_header}\" /FI\"${_header}\" /Fp\"${PrecompiledBinary}\""
+            OBJECT_DEPENDS "${PrecompiledBinary}")
+        list(APPEND ${_source} ${_cpp})
+    endif ()
+    #FIXME: Add support for Xcode.
+endmacro()
 
 # Helper macro which wraps generate-bindings.pl script.
 #   _output_source is a list name which will contain generated sources.(eg. WebCore_SOURCES)

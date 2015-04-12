@@ -95,7 +95,7 @@ private:
 
         switch (op) {
         case SetLocal: {
-            // This gets handled by fixupSetLocalsInBlock().
+            // This gets handled by fixupGetAndSetLocalsInBlock().
             return;
         }
             
@@ -767,8 +767,9 @@ private:
             break;
         }
             
-        case ToString: {
-            fixupToString(node);
+        case ToString:
+        case CallStringConstructor: {
+            fixupToStringOrCallStringConstructor(node);
             break;
         }
             
@@ -1148,7 +1149,7 @@ private:
             // (The other direction does not hold in general).
 
             RefPtr<TypeSet> typeSet = node->typeLocation()->m_instructionTypeSet;
-            uint8_t seenTypes = typeSet->seenTypes();
+            RuntimeTypeMask seenTypes = typeSet->seenTypes();
             if (typeSet->doesTypeConformTo(TypeMachineInt)) {
                 node->convertToCheck();
                 if (node->child1()->shouldSpeculateInt32())
@@ -1237,7 +1238,6 @@ private:
         case LoopHint:
         case StoreBarrier:
         case StoreBarrierWithNullCheck:
-        case TypedArrayWatchpoint:
         case MovHint:
         case ZombieHint:
         case BottomValue:
@@ -1363,7 +1363,7 @@ private:
         }
     }
     
-    void fixupToString(Node* node)
+    void fixupToStringOrCallStringConstructor(Node* node)
     {
         if (node->child1()->shouldSpeculateString()) {
             fixEdge<StringUse>(node->child1());
@@ -1424,7 +1424,7 @@ private:
                 m_indexInBlock, SpecString, ToString, node->origin, Edge(toPrimitive));
             
             fixupToPrimitive(toPrimitive);
-            fixupToString(toString);
+            fixupToStringOrCallStringConstructor(toString);
             
             right.setNode(toString);
         }

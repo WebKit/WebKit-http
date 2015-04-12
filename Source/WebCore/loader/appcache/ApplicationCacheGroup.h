@@ -38,6 +38,7 @@ namespace WebCore {
 
 class ApplicationCache;
 class ApplicationCacheResource;
+class ApplicationCacheStorage;
 class Document;
 class DocumentLoader;
 class Frame;
@@ -52,7 +53,7 @@ enum ApplicationCacheUpdateOption {
 class ApplicationCacheGroup : ResourceHandleClient {
     WTF_MAKE_NONCOPYABLE(ApplicationCacheGroup); WTF_MAKE_FAST_ALLOCATED;
 public:
-    ApplicationCacheGroup(const URL& manifestURL, bool isCopy = false);    
+    explicit ApplicationCacheGroup(Ref<ApplicationCacheStorage>&&, const URL& manifestURL);
     virtual ~ApplicationCacheGroup();
     
     enum UpdateStatus { Idle, Checking, Downloading };
@@ -92,8 +93,6 @@ public:
 
     void disassociateDocumentLoader(DocumentLoader*);
 
-    bool isCopy() const { return m_isCopy; }
-
 private:
     static void postListenerTask(ApplicationCacheHost::EventID id, const HashSet<DocumentLoader*>& set) { postListenerTask(id, 0, 0, set); }
     static void postListenerTask(ApplicationCacheHost::EventID id, DocumentLoader* loader)  { postListenerTask(id, 0, 0, loader); }
@@ -131,7 +130,9 @@ private:
     void associateDocumentLoaderWithCache(DocumentLoader*, ApplicationCache*);
     
     void stopLoading();
-    
+
+    Ref<ApplicationCacheStorage> m_storage;
+
     URL m_manifestURL;
     RefPtr<SecurityOrigin> m_origin;
     UpdateStatus m_updateStatus;
@@ -178,9 +179,6 @@ private:
         Completed
     };
     CompletionType m_completionType;
-
-    // Whether this cache group is a copy that's only used for transferring the cache to another file.
-    bool m_isCopy;
 
     // This flag is set immediately after the ChromeClient::reachedMaxAppCacheSize() callback is invoked as a result of the storage layer failing to save a cache
     // due to reaching the maximum size of the application cache database file. This flag is used by ApplicationCacheGroup::checkIfLoadIsComplete() to decide

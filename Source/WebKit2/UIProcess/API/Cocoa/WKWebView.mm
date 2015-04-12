@@ -247,7 +247,7 @@ static int32_t deviceOrientation()
 
 - (BOOL)_mayAutomaticallyShowVideoOptimized
 {
-#if (__IPHONE_OS_VERSION_MIN_REQUIRED <= 80200)
+#if (__IPHONE_OS_VERSION_MIN_REQUIRED <= 80200) || !HAVE(AVKIT)
     return false;
 #else
     if (!_page || !_page->videoFullscreenManager())
@@ -620,6 +620,11 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
     _page->setCustomUserAgent(customUserAgent);
 }
 
+- (WKPageRef)_pageForTesting
+{
+    return toAPI(_page.get());
+}
+
 #pragma mark iOS-specific methods
 
 #if PLATFORM(IOS)
@@ -740,17 +745,26 @@ static CGFloat contentZoomScale(WKWebView *webView)
     return scale;
 }
 
+static WebCore::Color baseScrollViewBackgroundColor(WKWebView *webView)
+{
+    if (webView->_customContentView)
+        return [webView->_customContentView backgroundColor].CGColor;
+
+    if (webView->_gestureController) {
+        WebCore::Color color = webView->_gestureController->backgroundColorForCurrentSnapshot();
+        if (color.isValid())
+            return color;
+    }
+
+    return webView->_page->pageExtendedBackgroundColor();
+}
+
 static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 {
     if (!webView.opaque)
         return WebCore::Color::transparent;
 
-    WebCore::Color color;
-
-    if (webView->_customContentView)
-        color = [webView->_customContentView backgroundColor].CGColor;
-    else
-        color = webView->_page->pageExtendedBackgroundColor();
+    WebCore::Color color = baseScrollViewBackgroundColor(webView);
 
     if (!color.isValid())
         color = WebCore::Color::white;
@@ -907,7 +921,9 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         [self _updateVisibleContentRects];
     }
 
-    if (_needsToRestoreExposedRect && layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore) {
+    bool isTransactionAfterPageRestore = layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore;
+
+    if (_needsToRestoreExposedRect && isTransactionAfterPageRestore) {
         _needsToRestoreExposedRect = NO;
 
         if (areEssentiallyEqualAsFloat(contentZoomScale(self), _scaleToRestore)) {
@@ -915,11 +931,12 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
             exposedPosition.scale(_scaleToRestore, _scaleToRestore);
 
             changeContentOffsetBoundedInValidRange(_scrollView.get(), exposedPosition);
+            _gestureController->didRestoreScrollPosition();
         }
         [self _updateVisibleContentRects];
     }
 
-    if (_needsToRestoreUnobscuredCenter && layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore) {
+    if (_needsToRestoreUnobscuredCenter && isTransactionAfterPageRestore) {
         _needsToRestoreUnobscuredCenter = NO;
 
         if (areEssentiallyEqualAsFloat(contentZoomScale(self), _scaleToRestore)) {
@@ -931,6 +948,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
             topLeftInDocumentCoordinate.moveBy(WebCore::FloatPoint(-_obscuredInsets.left, -_obscuredInsets.top));
 
             changeContentOffsetBoundedInValidRange(_scrollView.get(), topLeftInDocumentCoordinate);
+            _gestureController->didRestoreScrollPosition();
         }
         [self _updateVisibleContentRects];
     }
@@ -1496,9 +1514,18 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         inStableState:isStableState isChangingObscuredInsetsInteractively:_isChangingObscuredInsetsInteractively];
 }
 
+- (void)_didFinishLoadForMainFrame
+{
+    if (_gestureController)
+        _gestureController->didFinishLoadForMainFrame();
+}
+
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)navigationType
 {
     [_customContentView web_didSameDocumentNavigation:toAPI(navigationType)];
+
+    if (_gestureController)
+        _gestureController->didSameDocumentNavigationForMainFrame(navigationType);
 }
 
 - (void)_keyboardChangedWithInfo:(NSDictionary *)keyboardInfo adjustScrollView:(BOOL)adjustScrollView
@@ -1594,6 +1621,16 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 #pragma mark OS X-specific methods
 
 #if PLATFORM(MAC)
+
+- (BOOL)becomeFirstResponder
+{
+    return [[self window] makeFirstResponder: _wkView.get()];
+}
+
+- (BOOL)acceptsFirstResponder
+{
+    return [_wkView acceptsFirstResponder];
+}
 
 - (void)resizeSubviewsWithOldSize:(NSSize)oldSize
 {
@@ -2203,6 +2240,26 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (BOOL)_isShowingNavigationGestureSnapshot
 {
     return _page->isShowingNavigationGestureSnapshot();
+}
+
+- (_WKLayoutMode)_layoutMode
+{
+    return _page->useFixedLayout() ? _WKLayoutModeFixedSize : _WKLayoutModeViewSize;
+}
+
+- (void)_setLayoutMode:(_WKLayoutMode)layoutMode
+{
+    _page->setUseFixedLayout(layoutMode == _WKLayoutModeFixedSize);
+}
+
+- (CGSize)_fixedLayoutSize
+{
+    return _page->fixedLayoutSize();
+}
+
+- (void)_setFixedLayoutSize:(CGSize)fixedLayoutSize
+{
+    _page->setFixedLayoutSize(WebCore::expandedIntSize(WebCore::FloatSize(fixedLayoutSize)));
 }
 
 #pragma mark scrollperf methods

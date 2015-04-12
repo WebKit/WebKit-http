@@ -2,6 +2,8 @@ set(WebKit_SOURCES
 )
 
 set(WebKit_INCLUDE_DIRECTORIES
+    "${CMAKE_BINARY_DIR}"
+    "${CMAKE_SOURCE_DIR}/Source"
     "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore"
@@ -9,7 +11,6 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy"
     "${JAVASCRIPTCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}/disassembler"
-    "${CMAKE_SOURCE_DIR}/Source"
     "${WTF_DIR}"
 )
 
@@ -22,11 +23,15 @@ set(WebKit_LIBRARIES
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 include_directories(${WebKit_INCLUDE_DIRECTORIES})
+
+if (MSVC)
+    ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "win/WebKitPrefix.cpp" WebKit_SOURCES)
+endif ()
+
 add_library(WebKit ${WebKit_LIBRARY_TYPE} ${WebKit_SOURCES})
 add_dependencies(WebKit WebCore)
 target_link_libraries(WebKit ${WebKit_LIBRARIES})
 set_target_properties(WebKit PROPERTIES FOLDER "WebKit")
-set_target_properties(WebKit PROPERTIES LINK_INTERFACE_LIBRARIES "")
 
 if (WebKit_OUTPUT_NAME)
     set_target_properties(WebKit PROPERTIES OUTPUT_NAME ${WebKit_OUTPUT_NAME})
@@ -35,11 +40,3 @@ endif ()
 POPULATE_LIBRARY_VERSION(WEBKIT)
 set_target_properties(WebKit PROPERTIES VERSION ${WEBKIT_VERSION} SOVERSION ${WEBKIT_VERSION_MAJOR})
 install(TARGETS WebKit DESTINATION "${LIB_INSTALL_DIR}")
-
-IF(HAIKU)
-    # FIXME we should install a symlink, not a copy of the lib, in the develop dir.
-    INSTALL(TARGETS WebKit LIBRARY
-        DESTINATION develop/lib${CMAKE_HAIKU_SECONDARY_ARCH_SUBDIR}
-        COMPONENT devel
-    )
-ENDIF()

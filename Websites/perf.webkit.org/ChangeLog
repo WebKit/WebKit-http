@@ -1,3 +1,410 @@
+2015-04-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix. Updated config.json after recent changes.
+
+        * config.json:
+
+2015-04-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make the analysis page more useful
+        https://bugs.webkit.org/show_bug.cgi?id=143617
+
+        Reviewed by Chris Dumez.
+
+        * public/api/analysis-tasks.php:
+        (fetch_and_push_bugs_to_tasks): Added total and finished numbers of build requests associated
+        with the fetched analysis tasks as buildRequestCount and finishedBuildRequestCount respectively.
+        * public/v2/analysis.js:
+        (App.AnalysisTask.formattedCreatedAt): Added.
+        (App.AnalysisTask._addLeadingZero): Added.
+        (App.AnalysisTask.buildRequestCount): Added.
+        (App.AnalysisTask.finishedBuildRequestCount): Added.
+        (App.AnalysisTask.statusLabel): Added. Status total and finished numbers of build requests.
+        (App.AnalysisTask.testGroups):
+        (App.AnalysisTask.triggerable):
+        (App.AnalysisTask.label):
+
+        * public/v2/app.css: Tweaked style rules for the analysis page.
+
+        * public/v2/app.js:
+        (App.buildPopup): Sort the list of platforms by name.
+        (App.AnalysisRoute.model): Sort the list of analysis tasks by the order they are created.
+        (App.AnalysisTaskController._fetchedManifest): Added elementId to associate bug tracker names
+        such as "Bugzilla" with the corresponding text field.
+
+        * public/v2/index.html: Added a bunch of columns to the analysis page and also wrapped the table
+        showing A/B testing results in a div with overflow: scroll so that it always leaves enough space
+        for the accompanying graph.
+
+2015-04-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should automatically select ranges for A/B testing
+        https://bugs.webkit.org/show_bug.cgi?id=143580
+
+        Reviewed by Chris Dumez.
+
+        Added a new statistics option for picking a A/B test range selection strategy.
+        The selected ranges are shown in the graph using the same UI to show analysis tasks.
+
+        * public/v2/app.js:
+        (App.DashboardPaneProxyForPicker._platformOrMetricIdChanged): Updated the query parameters for
+        charts page used by the dashboard since we've added a new parameter at the end.
+        (App.Pane.ranges): Added. Merges ranges created for analysis tasks and A/B testing.
+        (App.Pane.updateStatisticsTools): Clone and set the test range selection strategies.
+        (App.Pane._cloneStrategy): Copy isSegmentation.
+        (App.Pane._updateMovingAverageAndEnvelope): Set testRangeCandidates.
+        (App.Pane._movingAverageOrEnvelopeStrategyDidChange): Update the charts when a new text range
+        selection strategy is picked by the user.
+        (App.Pane._computeMovingAverageAndOutliers): Compute the test ranges using the chosen strategy.
+        Avoid going through isAnomalyArray when no anomaly detection strategy is enabled. Also changed
+        the return value from the moving average time series to a dictionary that contains the moving
+        average time series, a dictionary of anomalies, and an array of test ranges.
+        (App.ChartsController._parsePaneList): Parse the test range selection strategy configuration.
+        (App.ChartsController._serializePaneList): Ditto for serialization.
+        (App.ChartsController._scheduleQueryStringUpdate): Update the URL hash when the user picks a new
+        test range selection strategy.
+
+        * public/v2/chart-pane.css: Fixed a typo as well as added a CSS rule for test ranges markers.
+
+        * public/v2/index.html: Added UI for selecting a test range selection strategy.
+
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._rangesChanged): Pass down "status" to be used as a class name.
+
+        * public/v2/js/statistics.js:
+        (Statistics.MovingAverageStrategies): Added isSegmentation to segmentation strategies.
+        (Statistics.TestRangeSelectionStrategies): Added.
+
+2015-04-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The results of A/B testing should state statistical significance
+        https://bugs.webkit.org/show_bug.cgi?id=143552
+
+        Reviewed by Chris Dumez.
+
+        Added statistical comparisons between results for each configuration on analysis task page using
+        Welch's t-test. The probability as well as t-statistics and the degrees of freedoms are reported.
+
+        * public/v2/app.js:
+        (App.TestGroupPane._populate): Report the list of statistical comparison between every pair of
+        root configurations in the results. e.g. if we've got A, B, C configurations then compare A/B, A/C
+        and B/C.
+        (App.TestGroupPane._computeStatisticalSignificance): Compute the statistical significance using
+        Welch's t-test. Report the probability by which two samples do not come from the same distribution.
+        (App.TestGroupPane._createConfigurationSummary): Include the array of results for this configuration.
+        Also renamed "items" to "requests" for clarity.
+
+        * public/v2/index.html: Added the template for showing statistical comparisons.
+
+        * public/v2/js/statistics.js: Renamed tDistributionQuantiles to tDistributionByOneSidedProbability
+        for clarity. Also factored out the functions to convert from one-sided probability to two-sided
+        probability and vice versa.
+        (Statistics.supportedConfidenceIntervalProbabilities):
+        (Statistics.confidenceIntervalDelta):
+        (Statistics.probabilityRangeForWelchsT): Added. Computes the lower bound and the upper bound for
+        the probability that two values are sampled from distinct distributions using Welch's t-test.
+        (Statistics.computeWelchsT): This function now takes two-sided probability like all other functions.
+        (.tDistributionByOneSidedProbability): Renamed from tDistributionQuantiles.
+        (.oneSidedToTwoSidedProbability): Extracted.
+        (.twoSidedToOneSidedProbability): Extracted.
+        (Statistics.MovingAverageStrategies): Converted the one-sided probability to the two-sided probability
+        now that computeWelchsT takes two-sided probability.
+
+2015-04-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed fix after r182496 for when the cached runs JSON doesn't exist.
+
+        * public/v2/app.js:
+        (App.Pane._fetch):
+        (App.Pane.refetchRuns):
+
+2015-04-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should have a way of marking outliers
+        https://bugs.webkit.org/show_bug.cgi?id=143466
+
+        Reviewed by Chris Dumez.
+
+        Address kling's in-person comment to notify users when the new run status is saved in the database.
+
+        * public/v2/app.js:
+        (App.PaneController._selectedItemIsMarkedOutlierDidChange)
+        * public/v2/chart-pane.css: Fixed a typo.
+
+2015-04-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should have a way of marking outliers
+        https://bugs.webkit.org/show_bug.cgi?id=143466
+
+        Reviewed by Chris Dumez.
+
+        Added UI to mark a data point as an outlier as well as a button to toggle the visibility of outliers.
+        Added a new privileged API /privileged-api/update-run-status to store this boolean flag.
+
+        * init-database.sql: Added run_marked_outlier column to test_runs table.
+
+        * public/admin/tests.php:
+
+        * public/api/runs.php:
+        (main): Only emit Cache-Control and Expires headers in v1 UI.
+        (RunsGenerator::format_run): Emit markedOutlier.
+
+        * public/include/admin-header.php:
+
+        * public/include/db.php:
+        (Database::is_true): Made it static.
+
+        * public/include/manifest.php:
+        (Manifest::platforms):
+
+        * public/index.html: Call into /api/runs/ with ?cache=true.
+
+        * public/privileged-api/update-run-status.php: Added.
+        (main): Updates the newly added column in test_runs table.
+
+        * public/v2/app.js:
+        (App.Pane._fetch):
+        (App.Pane.refetchRuns): Extracted from App.Pane._fetch.
+        (App.Pane._didFetchRuns): Renamed from _updateChartData.
+        (App.Pane._setNewChartData): Added. Pick the right time series based based on the value of showOutlier.
+        Cloning chartData is necessary when toggling the outlier visibility or using statistics tools because
+        the interactive chart component only observes changes to chartData and not individual properties of it.
+        (App.Pane._highlightPointsMarkedAsOutlier): Added. Highlight points marked as outliers.
+        (App.Pane._movingAverageOrEnvelopeStrategyDidChange): Call to _setNewChartData replaced the code to
+        clone chartData here.
+
+        (App.PaneController.actions.toggleShowOutlier): Toggle the visibility of points marked as outliers by
+        invoking App.Pane._setNewChartData.
+        (App.PaneController._detailsChanged): Don't hide the analysis pane when details changed since keep
+        opening the pane for marking points as outliers would be annoying.
+        (App.PaneController._updateCanAnalyze): Update 'cannotMarkOutlier' as well as 'cannotAnalyze'.
+        (App.PaneController.selectedMeasurement): Added.
+        (App.PaneController.showOutlierTitle): Added.
+        (App.PaneController._selectedItemIsMarkedOutlierDidChange): Added. Call out to setMarkedOutlier to
+        mark the selected point as an outlier via the newly added privileged API.
+
+        * public/v2/chart-pane.css: Updated styles.
+
+        * public/v2/data.js:
+        (PrivilegedAPI._post): Report the semantic errors.
+        (Measurement.prototype.markedOutlier): Added.
+        (Measurement.prototype.setMarkedOutlier): Added. Uses PrivilegedAPI to update the database.
+        (RunsData.prototype.timeSeriesByCommitTime): Added a new argument, includeOutliers, to indicate
+        whether the time series should include measurements marked as outliers or not.
+        (RunsData.prototype.timeSeriesByBuildTime): Ditto.
+        (RunsData.prototype._timeSeriesByTimeInternal): Extracted from timeSeriesByCommitTime and
+        timeSeriesByBuildTime to share code. Now ignores measurements marked as outliers if needed.
+
+        * public/v2/index.html: Added an icon for showing and hiding outliers. Also added a checkbox to
+        mark individual points as outliers.
+
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._selectClosestPointToMouseAsCurrentItem): Re-enable the distance
+        heuristics that takes vertical closeness into account. This heuristics is more useful when marking
+        some points as outliers. This heuristics was disabled because the behavior was unpredictable but
+        with the arrow key navigation support, this is no longer an issue.
+
+        * public/v2/manifest.js:
+        (App.Manifest._formatFetchedData): Added showOutlier to the chart data. This function dynamically
+        updates the time series in this chart data in order to include or exclude outliers.
+
+2015-04-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should be able to trigger A/B testing jobs for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=143398
+
+        Reviewed by Chris Dumez.
+
+        Fix various bugs in the perf dashboard so that it can schedule A/B testing jobs for iOS.
+
+        Also generalized sync-with-buildbot.py slightly to meet the requirements of iOS builders.
+
+        * public/api/triggerables.php:
+        (main): Avoid spitting a warning when $id_to_triggerable doesn't contain the triggerable.
+        * public/v2/analysis.js:
+        (App.AnalysisTask.triggerable): Log an error when failed to fetch triggerables for debugging purposes.
+        * public/v2/app.js:
+        (App.AnalysisTaskController.updateRootConfigurations): Show 'None' when a revision is missing from
+        some of the data points. This will happen when we modify the list of projects we build for iOS.
+        (App.AnalysisTaskController.actions.createTestGroup): Gracefully fail by showing alerts when an user
+        attempts to create an invalid test group; when there is already another test group of the same or when
+        only either configuration specifies the revision for some repository.
+        (App.AnalysisTaskController._updateRootsBySelectedPoints): Fixed a typo: sets[i] -> set.
+        * public/v2/index.html: Don't show the form to create a new test group if it's not available.
+        * tools/sync-with-buildbot.py:
+        (find_request_updates):
+        (schedule_request): iOS builders take a JSON that contains the list of roots. Generate this JSON when
+        a dictionary of the form {rootsExcluding: ["WebKit"]} is specified. Also replaced the way we refer to
+        a revision from $-based text replacements to an explicit dictionary of the form {root: "WebKit"}.
+        (request_id_from_build): Don't hard code the parameter name here. Retrieve the name from the config.
+
+2015-04-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add time series segmentation algorithms as moving averages
+        https://bugs.webkit.org/show_bug.cgi?id=143362
+
+        Reviewed by Chris Dumez.
+
+        This patch implements two preliminary time series segmentation algorithms as moving averages.
+
+        Recursive t-test: Compute Welch's t-statistic at each point in a given segment of the time series.
+        If Welch's t-test implicates a statistically significance difference, then split the segment into two
+        sub segments with the maximum t-statistic (i.e. the point at which if split would yield the highest
+        probability that two segments do not share the same "underlying" mean in classical / frequentist sense).
+        We repeat this process recursively. See [1] for the evaluation of this particular algorithm.
+
+        Schwarz criterion: Use Schwarz or Bayesian information criterion to heuristically find the optimal
+        segmentation. Intuitively, the problem of finding the best segmentation comes down to minimizing the
+        residual sum of squares in each segment as in linear regressions. That is, for a given segment with
+        values y_1 through y_n with mean y_avg, we want to minimize the sum of (y_i - y_avg)^2 over i = 1
+        through i = n. However, we also don't want to split every data point into a separate segment so we need
+        to account the "cost" of introducing new segments. We use a cost function that's loosely based on two
+        models discussed in [2] for simplicity. We will tune this cost function further in the future.
+
+        The problem of finding the best segmentation then reduces to a search problem. Unfortunately, our problem
+        space is exponential with respect to the size of the time series since we could split at each data point.
+        We workaround this problem by first splitting the time series into a manageable smaller grids, and only
+        considering segmentation of a fixed size (i.e. the number of segments is constant). Since time series
+        tend to contain a lot more data points than segments, this strategy finds the optimal solution without
+        exploring much of the problem space.
+
+        Finding the optimal segmentation of a fixed size is, itself, another search problem that is equivalent to
+        finding the shortest path of a fixed length in DAG. Here, we use dynamic programming with a matrix of size
+        n by n where n is the length of the time series (grid). Each entry in this matrix at (i, k) stores
+        the minimum cost of segmenting data points 1 through i using k segments. We start our search at i = 1.
+        Clearly C(1, 0) = 0 (note the actual code uses 0-based index). In i-th iteration, we compute the cost
+        S(i, j) of each segment starting at i and ending at another point j after i and update C(j, k + 1) by
+        min( C(j, k + 1), C(i, k) + S(i, j) ) for all values of j above i.
+
+        [1] Kensuke Fukuda, H. Eugene Stanley, and Luis A. Nunes Amaral, "Heuristic segmentation of
+        a nonstationary time series", Physical Review E 69, 021108 (2004)
+
+        [2] Marc Lavielle, Gilles Teyssi`ere, "Detection of Multiple Change–Points in Multivariate Time Series"
+        Lithuanian Mathematical Journal, vol 46, 2006
+
+        * public/v2/index.html: Show the optional description for the chosen moving average strategy.
+        * public/v2/js/statistics.js:
+        (Statistics.testWelchsT):
+        (Statistics.computeWelchsT): Extracted from testWelchsT. Generalized to take the offset and the length
+        of each value array between which Welch's t-statistic is computed. This generalization helps the
+        Schwarz criterion segmentation algorithm avoid splitting values array O(n^2) times.
+        (.sampleMeanAndVarianceForValues): Ditto for the generalization.
+        (.recursivelySplitIntoTwoSegmentsAtMaxTIfSignificantlyDifferent): Added. Implements recursive t-test.
+        (.splitIntoSegmentsUntilGoodEnough): Added. Implements Schwarz criterion.
+        (.findOptimalSegmentation): Added. Implements the algorithm to find the optimal segmentation of a fixed
+        segment count.
+        (.SampleVarianceUpperTriangularMatrix): Added. Stores S(i, j) used by findOptimalSegmentation.
+        (.SampleVarianceUpperTriangularMatrix.prototype.costBetween): Added.
+
+2015-04-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION: Perf dashboard sometimes fails to update zooming level
+        https://bugs.webkit.org/show_bug.cgi?id=143359
+
+        Reviewed by Darin Adler.
+
+        The bug was caused by various bugs that ended up in an exception.
+
+        * public/v2/app.js:
+        (App.Pane._handleFetchErrors): Removed superfluous console.log.
+        (App.Pane.computeStatus): Fixed the bug in r182185 that previousPoint could be null.
+        (App.PaneController.actions.zoomed): Update the overview when the main chart triggered a zoom.
+        * public/v2/index.html: Replaced all instances of href="#" by href="javascript:false" to avoid navigating
+        to # when Ember.js fails to attach event listeners on time.
+        * public/v2/interactive-chart.js:
+        (App.InteractiveChartComponent._updateDimensionsIfNeeded): Avoid using a negative width or height when
+        the containing element's size is 0.
+        (App.InteractiveChartComponent._updateBrush): Ditto.
+
+2015-04-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should have UI to test out anomaly detection strategies
+        https://bugs.webkit.org/show_bug.cgi?id=143290
+
+        Reviewed by Benjamin Poulain.
+
+        Added the UI to select anomaly detection strategies. The detected anomalies are highlighted in the graph.
+
+        Implemented the Western Electric Rules 1 through 4 in http://en.wikipedia.org/wiki/Western_Electric_rules
+        as well as Welch's t-test that compares the last five points to the prior twenty points.
+
+        The latter is what Mozilla uses (or at least did in the past) to detect performance regressions on their
+        performance tests although they compare medians instead of means.
+
+        All of these strategies don't quite work for us since our data points are too noisy but this is a good start.
+
+        * public/v2/app.js:
+        (App.Pane.updateStatisticsTools): Clone anomaly detection strategies.
+        (App.Pane._updateMovingAverageAndEnvelope): Highlight anomalies detected by the enabled strategies.
+        (App.Pane._movingAverageOrEnvelopeStrategyDidChange): Observe changes to anomaly detection strategies.
+        (App.Pane._computeMovingAverageAndOutliers): Detect anomalies by each strategy and aggregate results.
+        Only report the first data point when multiple consecutive data points are detected as anomalies.
+        * public/v2/chart-pane.css: Updated styles.
+        * public/v2/index.html: Added the pane for selecting anomaly detection strategies.
+        * public/v2/js/statistics.js:
+        (Statistics.testWelchsT): Added. Implements Welch's t-test.
+        (.sampleMeanAndVarianceForValues): Added.
+        (.createWesternElectricRule): Added.
+        (.countValuesOnSameSide): Added.
+        (Statistics.AnomalyDetectionStrategy): Added.
+
+2015-03-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION: Searching commits can highlight wrong data points
+        https://bugs.webkit.org/show_bug.cgi?id=143272
+
+        Reviewed by Antti Koivisto.
+
+        The bug was caused by /api/commits returning commit times with millisecond precision whereas /api/runs
+        return commit times with only second precision. This resulted in the frontend code to match a commit
+        with the data point that included the next commit when the millisecond component of commit's timestamp
+        wasn't identically 0.
+
+        This discrepancy was caused by the fact PHP's strtotime only ignores milliseconds and /api/commits
+        was returning timestamp as string instead of parsing via Database::to_js_time as done in /api/runs
+        so miliseconds component was only preserved in /api/commits.
+
+        Fixed the bug by always using Database::to_js_time to return commit time. Also fixed to_js_time so that
+        it returns time in milisecond precision.
+
+        * public/api/commits.php:
+        (fetch_commits_between): Use Database::to_js_time for format commit times.
+        (format_commit): Ditto.
+        * public/include/db.php:
+        (Database::to_js_time): Parse and append millisecond component. Ignore sub-milliseconds for simplicity.
+        * public/v2/data.js:
+        (CommitLogs.fetchForTimeRange): The commit time is now an integer so don't call "replace" on it.
+
+2015-03-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should show relative change in values
+        https://bugs.webkit.org/show_bug.cgi?id=143252
+
+        Reviewed by Antti Koivisto.
+
+        When a range of values are selected, show the percentage difference between the start and the end
+        in addition to the absolute value difference. When a single point is selected, show the relative
+        difference with respect to the previous point. Use two significant figures and always show plus sign
+        when the difference is positive.
+
+        * public/v2/app.js: Compute and format the relative difference.
+        * public/v2/chart-pane.css: Don't let commits view shrink itself when they're all collapsed.
+        * public/v2/index.html: Show the relative difference.
+
+2015-03-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r180000): Changing moving average or enveloping strategy doesn't update the graph
+        https://bugs.webkit.org/show_bug.cgi?id=143254
+
+        Reviewed by Antti Koivisto.
+        
+        The bug was caused by App.Pane no longer replacing 'chartData' property when updating the moving average
+        or the enveloping values. Fixed the bug by creating a new chartData object when the strategy is changed
+        so that the interactive chart component will observe a change to 'chartData'.
+
+        * public/v2/app.js:
+        (App.Pane._movingAverageOrEnvelopeStrategyDidChange): Added.
+
 2015-03-19  Ryosuke Niwa  <rniwa@webkit.org>
 
         Unreviewed build fixes.

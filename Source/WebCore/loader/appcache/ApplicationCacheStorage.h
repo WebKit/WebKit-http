@@ -44,8 +44,7 @@ class SecurityOrigin;
 class SharedBuffer;
 template <class T> class StorageIDJournal;
 
-class ApplicationCacheStorage {
-    WTF_MAKE_NONCOPYABLE(ApplicationCacheStorage); WTF_MAKE_FAST_ALLOCATED;
+class ApplicationCacheStorage : public RefCounted<ApplicationCacheStorage> {
 public:
     enum FailureReason {
         OriginQuotaReached,
@@ -53,7 +52,10 @@ public:
         DiskOrOperationFailure
     };
 
+    // FIXME: Migrate off of this singleton and towards a world where each page has a storage.
     WEBCORE_EXPORT static ApplicationCacheStorage& singleton();
+
+    WEBCORE_EXPORT static Ref<ApplicationCacheStorage> create(const String& cacheDirectory, const String& flatFileSubdirectoryName);
 
     WEBCORE_EXPORT void setCacheDirectory(const String&);
     const String& cacheDirectory() const;
@@ -89,8 +91,6 @@ public:
     
     WEBCORE_EXPORT void empty();
     
-    static bool WEBCORE_EXPORT storeCopyOfCache(const String& cacheDirectory, ApplicationCacheHost*);
-
     bool getManifestURLs(Vector<URL>* urls);
     bool cacheGroupSize(const String& manifestURL, int64_t* size);
     bool deleteCacheGroup(const String& manifestURL);
@@ -99,10 +99,19 @@ public:
     WEBCORE_EXPORT void getOriginsWithCache(HashSet<RefPtr<SecurityOrigin>, SecurityOriginHash>&);
     WEBCORE_EXPORT void deleteAllEntries();
 
+    // FIXME: This should be consolidated with deleteAllEntries().
+    WEBCORE_EXPORT void deleteAllCaches();
+
+    // FIXME: This should be consolidated with deleteCacheGroup().
+    WEBCORE_EXPORT void deleteCacheForOrigin(const SecurityOrigin&);
+
+    // FIXME: This should be consolidated with calculateUsageForOrigin().
+    WEBCORE_EXPORT int64_t diskUsageForOrigin(const SecurityOrigin&);
+
     static int64_t unknownQuota() { return -1; }
     static int64_t noQuota() { return std::numeric_limits<int64_t>::max(); }
 private:
-    ApplicationCacheStorage();
+    ApplicationCacheStorage(const String& cacheDirectory, const String& flatFileSubdirectoryName);
 
     PassRefPtr<ApplicationCache> loadCache(unsigned storageID);
     ApplicationCacheGroup* loadCacheGroup(const URL& manifestURL);
@@ -132,9 +141,10 @@ private:
     void checkForMaxSizeReached();
     void checkForDeletedResources();
     long long flatFileAreaSize();
-    
+
     String m_cacheDirectory;
     String m_cacheFile;
+    const String m_flatFileSubdirectoryName;
 
     int64_t m_maximumSize;
     bool m_isMaximumSizeReached;

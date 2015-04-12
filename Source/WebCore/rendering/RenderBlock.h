@@ -205,22 +205,22 @@ public:
     }
 
     static TextRun constructTextRun(RenderObject* context, const FontCascade&, const String&, const RenderStyle&,
-        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion, TextRunFlags = DefaultTextRunFlags);
+        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion, TextRunFlags = DefaultTextRunFlags);
 
     static TextRun constructTextRun(RenderObject* context, const FontCascade&, const RenderText*, const RenderStyle&,
-        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
+        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion);
 
     static TextRun constructTextRun(RenderObject* context, const FontCascade&, const RenderText*, unsigned offset, unsigned length, const RenderStyle&,
-        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
+        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion);
 
     static TextRun constructTextRun(RenderObject* context, const FontCascade&, const RenderText*, unsigned offset, const RenderStyle&,
-        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
+        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion);
 
     static TextRun constructTextRun(RenderObject* context, const FontCascade&, const LChar* characters, int length, const RenderStyle&,
-        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
+        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion);
 
     static TextRun constructTextRun(RenderObject* context, const FontCascade&, const UChar* characters, int length, const RenderStyle&,
-        TextRun::ExpansionBehavior = TextRun::AllowTrailingExpansion | TextRun::ForbidLeadingExpansion);
+        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion);
     
     LayoutUnit paginationStrut() const;
     void setPaginationStrut(LayoutUnit);
@@ -371,6 +371,9 @@ public:
     
     // Adjust from painting offsets to the local coords of this renderer
     void offsetForContents(LayoutPoint&) const;
+    // Obtains the nearest enclosing block (including this block) that contributes a first-line style to our inline
+    // children.
+    virtual RenderBlock* firstLineBlock() const override;
 
 protected:
     virtual void addOverflowFromChildren();
@@ -443,10 +446,6 @@ private:
     virtual bool isPointInOverflowControl(HitTestResult&, const LayoutPoint& locationInContainer, const LayoutPoint& accumulatedOffset);
 
     void computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const;
-
-    // Obtains the nearest enclosing block (including this block) that contributes a first-line style to our inline
-    // children.
-    virtual RenderBlock* firstLineBlock() const override;
 
     virtual LayoutRect rectWithOutlineForRepaint(const RenderLayerModelObject* repaintContainer, LayoutUnit outlineWidth) const override final;
     virtual const RenderStyle& outlineStyleForRepaint() const override final;

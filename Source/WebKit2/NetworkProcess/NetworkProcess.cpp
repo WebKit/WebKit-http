@@ -82,6 +82,9 @@ NetworkProcess::NetworkProcess()
 #if PLATFORM(COCOA)
     , m_clearCacheDispatchGroup(0)
 #endif
+#if PLATFORM(IOS)
+    , m_webSQLiteDatabaseTracker(*this)
+#endif
 {
     NetworkProcessPlatformStrategies::initialize();
 
@@ -163,6 +166,12 @@ AuthenticationManager& NetworkProcess::downloadsAuthenticationManager()
     return authenticationManager();
 }
 
+void NetworkProcess::lowMemoryHandler(bool critical)
+{
+    platformLowMemoryHandler(critical);
+    WTF::releaseFastMallocFreeMemory();
+}
+
 void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
     platformInitializeNetworkProcess(parameters);
@@ -171,8 +180,7 @@ void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParame
 
     auto& memoryPressureHandler = MemoryPressureHandler::singleton();
     memoryPressureHandler.setLowMemoryHandler([this] (bool critical) {
-        platformLowMemoryHandler(critical);
-        WTF::releaseFastMallocFreeMemory();
+        lowMemoryHandler(critical);
     });
     memoryPressureHandler.install();
 
@@ -499,6 +507,21 @@ void NetworkProcess::terminate()
 {
     platformTerminate();
     ChildProcess::terminate();
+}
+
+void NetworkProcess::processWillSuspend()
+{
+    lowMemoryHandler(true);
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::ProcessReadyToSuspend(), 0);
+}
+
+void NetworkProcess::cancelProcessWillSuspend()
+{
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidCancelProcessSuspension(), 0);
+}
+
+void NetworkProcess::processDidResume()
+{
 }
 
 #if !PLATFORM(COCOA)

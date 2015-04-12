@@ -76,6 +76,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     //   can use it for IR dumps. No promises on whether the answers are sound
     //   prior to type inference - though they probably could be if we did some
     //   small hacking.
+    //
+    // - If you do read(Stack) or read(World), then make sure that readTop() in
+    //   PreciseLocalClobberize is correct.
     
     // While read() and write() are fairly self-explanatory - they track what sorts of things the
     // node may read or write - the def() functor is more tricky. It tells you the heap locations
@@ -303,11 +306,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(SideState);
         return;
 
-    case TypedArrayWatchpoint:
-        read(Watchpoint_fire);
-        write(SideState);
-        return;
-        
     case NotifyWrite:
         write(Watchpoint_fire);
         write(SideState);
@@ -816,7 +814,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         
     case PutClosureVar:
         write(AbstractHeap(ScopeProperties, node->scopeOffset().offset()));
-        def(HeapLocation(ClosureVariableLoc, AbstractHeap(ScopeProperties, node->scopeOffset().offset()), node->child2()), node->child2().node());
+        def(HeapLocation(ClosureVariableLoc, AbstractHeap(ScopeProperties, node->scopeOffset().offset()), node->child1()), node->child2().node());
         return;
         
     case GetFromArguments: {
@@ -894,6 +892,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
         
     case ToString:
+    case CallStringConstructor:
         switch (node->child1().useKind()) {
         case StringObjectUse:
         case StringOrStringObjectUse:

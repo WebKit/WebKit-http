@@ -64,6 +64,7 @@ public:
         AutoPreloadingNotPermitted = 1 << 3,
         BackgroundProcessPlaybackRestricted = 1 << 4,
         BackgroundTabPlaybackRestricted = 1 << 5,
+        InterruptedPlaybackNotPermitted = 1 << 6,
     };
     typedef unsigned SessionRestrictions;
 
@@ -72,7 +73,7 @@ public:
     WEBCORE_EXPORT SessionRestrictions restrictions(MediaSession::MediaType);
     virtual void resetRestrictions();
 
-    virtual void sessionWillBeginPlayback(MediaSession&);
+    virtual bool sessionWillBeginPlayback(MediaSession&);
     virtual void sessionWillEndPlayback(MediaSession&);
 
     bool sessionRestrictsInlineVideoPlayback(const MediaSession&) const;
@@ -84,6 +85,9 @@ public:
     virtual bool hasWirelessTargetsAvailable() { return false; }
 #endif
 
+    void setCurrentSession(MediaSession&);
+    MediaSession* currentSession();
+
 protected:
     friend class MediaSession;
     explicit MediaSessionManager();
@@ -91,15 +95,13 @@ protected:
     void addSession(MediaSession&);
     void removeSession(MediaSession&);
 
-    void setCurrentSession(MediaSession&);
-    MediaSession* currentSession();
-
     Vector<MediaSession*> sessions() { return m_sessions; }
 
 private:
     friend class Internals;
 
     void updateSessionState();
+    bool sessionShouldBeginPlayingToWirelessPlaybackTarget(MediaSession&) const;
 
     // RemoteCommandListenerClient
     WEBCORE_EXPORT virtual void didReceiveRemoteControlCommand(MediaSession::RemoteControlCommandType) override;
@@ -116,10 +118,11 @@ private:
     SessionRestrictions m_restrictions[MediaSession::WebAudio + 1];
 
     Vector<MediaSession*> m_sessions;
+
     std::unique_ptr<RemoteCommandListener> m_remoteCommandListener;
     std::unique_ptr<SystemSleepListener> m_systemSleepListener;
     RefPtr<AudioHardwareListener> m_audioHardwareListener;
-    bool m_interrupted;
+    bool m_interrupted { false };
 };
 
 }

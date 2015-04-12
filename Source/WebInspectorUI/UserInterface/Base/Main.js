@@ -303,9 +303,10 @@ WebInspector.contentLoaded = function()
     this.applicationCacheDetailsSidebarPanel = new WebInspector.ApplicationCacheDetailsSidebarPanel;
     this.scopeChainDetailsSidebarPanel = new WebInspector.ScopeChainDetailsSidebarPanel;
     this.probeDetailsSidebarPanel = new WebInspector.ProbeDetailsSidebarPanel;
+    this.renderingFrameDetailsSidebarPanel = new WebInspector.RenderingFrameDetailsSidebarPanel;
 
     this.detailsSidebarPanels = [this.resourceDetailsSidebarPanel, this.applicationCacheDetailsSidebarPanel, this.scopeChainDetailsSidebarPanel,
-        this.domNodeDetailsSidebarPanel, this.cssStyleDetailsSidebarPanel, this.probeDetailsSidebarPanel];
+        this.domNodeDetailsSidebarPanel, this.cssStyleDetailsSidebarPanel, this.probeDetailsSidebarPanel, this.renderingFrameDetailsSidebarPanel];
 
     if (window.LayerTreeAgent) {
         this.layerTreeDetailsSidebarPanel = new WebInspector.LayerTreeDetailsSidebarPanel;
@@ -948,7 +949,7 @@ WebInspector._updateContentViewForCurrentNavigationSidebar = function()
     // Ensure the navigation sidebar panel is allowed by the current content view, if not ask the sidebar panel
     // to show the content view for the current selection.
     var allowedNavigationSidebarPanels = currentContentView.allowedNavigationSidebarPanels;
-    if (allowedNavigationSidebarPanels && (!allowedNavigationSidebarPanels.length || allowedNavigationSidebarPanels.contains(selectedSidebarPanel.identifier))) {
+    if (allowedNavigationSidebarPanels && (!allowedNavigationSidebarPanels.length || allowedNavigationSidebarPanels.includes(selectedSidebarPanel.identifier))) {
         this._revealAndSelectRepresentedObjectInNavigationSidebar(currentContentView.representedObject);
         return;
     }
@@ -958,7 +959,7 @@ WebInspector._updateContentViewForCurrentNavigationSidebar = function()
     while (index--) {
         var contentView = backForwardList[index].contentView;
         var allowedNavigationSidebarPanels = contentView.allowedNavigationSidebarPanels;
-        if (allowedNavigationSidebarPanels && (!allowedNavigationSidebarPanels.length || allowedNavigationSidebarPanels.contains(selectedSidebarPanel.identifier))) {
+        if (allowedNavigationSidebarPanels && (!allowedNavigationSidebarPanels.length || allowedNavigationSidebarPanels.includes(selectedSidebarPanel.identifier))) {
             WebInspector.contentBrowser.showContentView(contentView);
             return;
         }
@@ -1116,8 +1117,8 @@ WebInspector._contentBrowserCurrentContentViewDidChange = function(event)
     var allowedNavigationSidebarPanels = currentContentView.allowedNavigationSidebarPanels;
 
     if (allowedNavigationSidebarPanels) {
-        if (allowedNavigationSidebarPanels.length && !allowedNavigationSidebarPanels.contains(selectedSidebarPanelIdentifier)) {
-            console.assert(!currentContentView.__lastNavigationSidebarPanelIdentifier || allowedNavigationSidebarPanels.contains(currentContentView.__lastNavigationSidebarPanelIdentifier));
+        if (allowedNavigationSidebarPanels.length && !allowedNavigationSidebarPanels.includes(selectedSidebarPanelIdentifier)) {
+            console.assert(!currentContentView.__lastNavigationSidebarPanelIdentifier || allowedNavigationSidebarPanels.includes(currentContentView.__lastNavigationSidebarPanelIdentifier));
             this.navigationSidebar.selectedSidebarPanel = currentContentView.__lastNavigationSidebarPanelIdentifier || allowedNavigationSidebarPanels[0];
             console.assert(this.navigationSidebar.selectedSidebarPanel);
         }

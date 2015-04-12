@@ -846,6 +846,11 @@ bool MediaPlayer::isCurrentPlaybackTargetWireless() const
     return m_private->isCurrentPlaybackTargetWireless();
 }
 
+bool MediaPlayer::isCurrentPlaybackTargetSupported() const
+{
+    return m_private->isCurrentPlaybackTargetSupported();
+}
+
 String MediaPlayer::wirelessPlaybackTargetName() const
 {
     return m_private->wirelessPlaybackTargetName();
@@ -871,9 +876,29 @@ void MediaPlayer::currentPlaybackTargetIsWirelessChanged()
     m_client.mediaPlayerCurrentPlaybackTargetIsWirelessChanged(this);
 }
 
-void MediaPlayer::setWirelessPlaybackTarget(const MediaPlaybackTarget& device)
+bool MediaPlayer::canPlayToWirelessPlaybackTarget() const
 {
-    m_private->setWirelessPlaybackTarget(device);
+    return m_private->canPlayToWirelessPlaybackTarget();
+}
+
+bool MediaPlayer::isPlayingToWirelessPlaybackTarget() const
+{
+    return m_private->isPlayingToWirelessPlaybackTarget();
+}
+
+void MediaPlayer::setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&& device)
+{
+    m_private->setWirelessPlaybackTarget(WTF::move(device));
+}
+
+void MediaPlayer::startPlayingToPlaybackTarget()
+{
+    m_private->startPlayingToPlaybackTarget();
+}
+
+void MediaPlayer::stopPlayingToPlaybackTarget()
+{
+    m_private->stopPlayingToPlaybackTarget();
 }
 #endif
 

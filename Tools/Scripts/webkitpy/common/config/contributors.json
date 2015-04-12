@@ -1912,6 +1912,16 @@
             "mibrunin"
          ]
       },
+      "Michael Catanzaro" : {
+         "emails" : [
+            "mcatanzaro@igalia.com",
+            "mcatanzaro@gnome.org"
+         ],
+         "expertise" : "The WebKitGTK+ Port, Epiphany, TLS",
+         "nicks" : [
+            "mcatanzaro"
+         ]
+      },
       "Michael Nordman" : {
          "emails" : [
             "michaeln@google.com"
@@ -4070,10 +4080,9 @@
       },
       "Gyuyoung Kim" : {
          "emails" : [
-            "gyuyoung.kim@webkit.org",
-            "gyuyoung.kim@samsung.com"
+            "gyuyoung.kim@webkit.org"
          ],
-         "expertise" : "The EFLWebKit Port, Navigator Content Utils",
+         "expertise" : "The EFLWebKit Port, Navigator Content Utils, CMake build system",
          "nicks" : [
             "gyuyoung"
          ]

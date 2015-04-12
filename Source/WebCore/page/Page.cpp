@@ -22,6 +22,7 @@
 
 #include "AlternativeTextClient.h"
 #include "AnimationController.h"
+#include "ApplicationCacheStorage.h"
 #include "BackForwardClient.h"
 #include "BackForwardController.h"
 #include "Chrome.h"
@@ -207,6 +208,7 @@ Page::Page(PageConfiguration& pageConfiguration)
 #endif
     , m_lastSpatialNavigationCandidatesCount(0) // NOTE: Only called from Internals for Spatial Navigation testing.
     , m_framesHandlingBeforeUnloadEvent(0)
+    , m_applicationCacheStorage(pageConfiguration.applicationCacheStorage ? *WTF::move(pageConfiguration.applicationCacheStorage) : ApplicationCacheStorage::singleton())
     , m_databaseProvider(*WTF::move(pageConfiguration.databaseProvider))
     , m_storageNamespaceProvider(*WTF::move(pageConfiguration.storageNamespaceProvider))
     , m_userContentController(WTF::move(pageConfiguration.userContentController))
@@ -369,7 +371,7 @@ String Page::synchronousScrollingReasonsAsText()
     return String();
 }
 
-Ref<ClientRectList> Page::nonFastScrollableRects(const Frame* frame)
+Ref<ClientRectList> Page::nonFastScrollableRects(const Frame& frame)
 {
     if (Document* document = m_mainFrame->document())
         document->updateLayout();
@@ -1681,10 +1683,16 @@ void Page::setSessionID(SessionID sessionID)
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-void Page::showPlaybackTargetPicker(Document* document, const WebCore::IntPoint& location, bool isVideo)
+RefPtr<MediaPlaybackTarget> Page::playbackTarget() const
 {
-    m_documentRequestingPlaybackTargetPicker = document;
+    if (!m_playbackTarget)
+        return nullptr;
 
+    return m_playbackTarget.copyRef();
+}
+
+void Page::showPlaybackTargetPicker(const WebCore::IntPoint& location, bool isVideo)
+{
 #if PLATFORM(IOS)
     // FIXME: refactor iOS implementation.
     UNUSED_PARAM(location);
@@ -1694,27 +1702,11 @@ void Page::showPlaybackTargetPicker(Document* document, const WebCore::IntPoint&
 #endif
 }
 
-void Page::didChoosePlaybackTarget(const MediaPlaybackTarget& target)
+void Page::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& target)
 {
-    Document* documentThatRequestedPicker = nullptr;
-
-    m_playbackTarget = std::make_unique<MediaPlaybackTarget>(target.devicePickerContext());
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        Document* document = frame->document();
-        if (frame->document() == m_documentRequestingPlaybackTargetPicker) {
-            documentThatRequestedPicker = document;
-            continue;
-        }
-        frame->document()->didChoosePlaybackTarget(target);
-    }
-
-    // Notify the document that requested the chooser last because if more than one element
-    // is playing the last one to set the context will be the one that actually gets to
-    //  play to the external device.
-    if (documentThatRequestedPicker)
-        documentThatRequestedPicker->didChoosePlaybackTarget(target);
-
-    m_documentRequestingPlaybackTargetPicker = nullptr;
+    m_playbackTarget = WTF::move(target);
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
+        frame->document()->didChoosePlaybackTarget(*m_playbackTarget.copyRef());
 }
 
 void Page::playbackTargetAvailabilityDidChange(bool available)
@@ -1733,10 +1725,6 @@ void Page::configurePlaybackTargetMonitoring()
             break;
         }
     }
-
-    if (m_requiresPlaybackTargetMonitoring == monitoringRequired)
-        return;
-    m_requiresPlaybackTargetMonitoring = monitoringRequired;
 
     if (monitoringRequired)
         chrome().client().startingMonitoringPlaybackTargets();

@@ -42,7 +42,7 @@ namespace NetworkCache {
 
 Entry::Entry(const Key& key, const WebCore::ResourceResponse& response, RefPtr<WebCore::SharedBuffer>&& buffer, const Vector<std::pair<String, String>>& varyingRequestHeaders)
     : m_key(key)
-    , m_timeStamp(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()))
+    , m_timeStamp(std::chrono::system_clock::now())
     , m_response(response)
     , m_varyingRequestHeaders(varyingRequestHeaders)
     , m_buffer(WTF::move(buffer))
@@ -144,17 +144,23 @@ void Entry::setNeedsValidation()
     m_response.setSource(WebCore::ResourceResponse::Source::DiskCacheAfterValidation);
 }
 
-void Entry::asJSON(StringBuilder& json) const
+void Entry::asJSON(StringBuilder& json, const Storage::RecordInfo& info) const
 {
     json.appendLiteral("{\n");
     json.appendLiteral("\"hash\": ");
     JSC::appendQuotedJSONStringToBuilder(json, m_key.hashAsString());
     json.appendLiteral(",\n");
+    json.appendLiteral("\"bodySize\": ");
+    json.appendNumber(info.bodySize);
+    json.appendLiteral(",\n");
+    json.appendLiteral("\"worth\": ");
+    json.appendNumber(info.worth);
+    json.appendLiteral(",\n");
     json.appendLiteral("\"partition\": ");
     JSC::appendQuotedJSONStringToBuilder(json, m_key.partition());
     json.appendLiteral(",\n");
     json.appendLiteral("\"timestamp\": ");
-    json.appendNumber(m_timeStamp.count());
+    json.appendNumber(std::chrono::duration_cast<std::chrono::milliseconds>(m_timeStamp.time_since_epoch()).count());
     json.appendLiteral(",\n");
     json.appendLiteral("\"URL\": ");
     JSC::appendQuotedJSONStringToBuilder(json, m_response.url().string());

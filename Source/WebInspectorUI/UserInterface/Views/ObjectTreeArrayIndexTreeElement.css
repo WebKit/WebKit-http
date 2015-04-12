@@ -46,12 +46,8 @@
 
     display: inline-block;
     width: 22px;
+    margin-left: 13px;
     text-align: center;
-}
-
-/* FIXME: Should this be all the time? */
-.object-tree-array-index .index-value .object-tree {
-    display: inline-block;
 }
 
 /* An array inside an array we should reduce the padding-start. */
@@ -62,4 +58,9 @@
 /* An array inside an ObjectTreePropertyTreeElement needs more left shift */
 .object-tree-property + ol .object-tree-array-index {
     left: -18px;
+}
+
+/* A node inside an array we should reduce the padding-start. */
+.object-tree-array-index .index-value .formatted-node .dom-tree-outline {
+    -webkit-padding-start: 0px;
 }

@@ -24,7 +24,7 @@
 #ifndef TextRun_h
 #define TextRun_h
 
-#include "TextDirection.h"
+#include "TextFlags.h"
 #include <wtf/RefCounted.h>
 #include <wtf/text/StringView.h>
 
@@ -44,15 +44,6 @@ struct WidthIterator;
 class TextRun {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum ExpansionBehaviorFlags {
-        ForbidTrailingExpansion = 0 << 0,
-        AllowTrailingExpansion = 1 << 0,
-        ForbidLeadingExpansion = 0 << 1,
-        AllowLeadingExpansion = 1 << 1,
-    };
-
-    typedef unsigned ExpansionBehavior;
-
     enum RoundingHackFlags {
         NoRounding = 0,
         RunRounding = 1 << 0,
@@ -174,8 +165,7 @@ public:
     float xPos() const { return m_xpos; }
     void setXPos(float xPos) { m_xpos = xPos; }
     float expansion() const { return m_expansion; }
-    bool allowsLeadingExpansion() const { return m_expansionBehavior & AllowLeadingExpansion; }
-    bool allowsTrailingExpansion() const { return m_expansionBehavior & AllowTrailingExpansion; }
+    ExpansionBehavior expansionBehavior() const { return m_expansionBehavior; }
     TextDirection direction() const { return static_cast<TextDirection>(m_direction); }
     bool rtl() const { return m_direction == RTL; }
     bool ltr() const { return m_direction == LTR; }
@@ -228,7 +218,7 @@ private:
     float m_horizontalGlyphStretch;
 
     float m_expansion;
-    ExpansionBehavior m_expansionBehavior : 2;
+    unsigned m_expansionBehavior : 4;
     unsigned m_allowTabs : 1;
     unsigned m_direction : 1;
     unsigned m_directionalOverride : 1; // Was this direction set by an override character.

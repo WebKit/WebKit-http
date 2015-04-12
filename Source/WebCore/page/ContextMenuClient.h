@@ -58,6 +58,8 @@ namespace WebCore {
         virtual void speak(const String&) = 0;
         virtual void stopSpeaking() = 0;
 
+        virtual ContextMenuItem shareMenuItem(const HitTestResult&) = 0;
+
 #if PLATFORM(COCOA)
         virtual void searchWithSpotlight() = 0;
 #endif

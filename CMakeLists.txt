@@ -20,10 +20,9 @@ set(DERIVED_SOURCES_WEBCORE_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WebCore")
 set(DERIVED_SOURCES_WEBKIT_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WebKit")
 set(DERIVED_SOURCES_WEBKIT2_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WebKit2")
 set(DERIVED_SOURCES_WEBINSPECTORUI_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WebInspectorUI")
+set(DERIVED_SOURCES_WTF_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WTF")
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Source/cmake")
-
-set(ENABLE_WEBCORE ON)
 
 if (NOT DEFINED ENABLE_WEBKIT)
     set(ENABLE_WEBKIT ON)
@@ -96,6 +95,8 @@ elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64")
     set(WTF_CPU_PPC64 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
     set(WTF_CPU_PPC64LE 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "parisc*")
+    set(WTF_CPU_HPPA 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "s390")
     set(WTF_CPU_S390 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "s390x")
@@ -177,3 +178,8 @@ add_subdirectory(Source)
 if (ENABLE_TOOLS)
     add_subdirectory(Tools)
 endif ()
+
+# -----------------------------------------------------------------------------
+# Print the features list last, for maximum visibility.
+# -----------------------------------------------------------------------------
+PRINT_WEBKIT_OPTIONS()

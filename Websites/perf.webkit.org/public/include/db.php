@@ -60,12 +60,16 @@ class Database
         $this->connection = false;
     }
 
-    function is_true($value) {
+    static function is_true($value) {
         return $value == 't';
     }
 
     static function to_js_time($time_str) {
-        return strtotime($time_str) * 1000;
+        $timestamp_in_s = strtotime($time_str);
+        $dot_index = strrpos($time_str, '.');
+        if ($dot_index !== FALSE)
+            $timestamp_in_s += floatval(substr($time_str, $dot_index));
+        return intval($timestamp_in_s * 1000);
     }
 
     function connect() {

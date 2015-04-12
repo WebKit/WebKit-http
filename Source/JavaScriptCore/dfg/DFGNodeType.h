@@ -174,7 +174,6 @@ namespace JSC { namespace DFG {
     macro(ArrayifyToStructure, NodeMustGenerate) \
     macro(GetIndexedPropertyStorage, NodeResultStorage) \
     macro(ConstantStoragePointer, NodeResultStorage) \
-    macro(TypedArrayWatchpoint, NodeMustGenerate) \
     macro(GetGetter, NodeResultJS) \
     macro(GetSetter, NodeResultJS) \
     macro(GetByOffset, NodeResultJS) \
@@ -261,6 +260,7 @@ namespace JSC { namespace DFG {
     macro(LogicalNot, NodeResultBoolean) \
     macro(ToPrimitive, NodeResultJS | NodeMustGenerate) \
     macro(ToString, NodeResultJS | NodeMustGenerate) \
+    macro(CallStringConstructor, NodeResultJS | NodeMustGenerate) \
     macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \
     macro(In, NodeResultBoolean | NodeMustGenerate) \

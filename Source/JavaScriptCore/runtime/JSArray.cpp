@@ -158,9 +158,9 @@ bool JSArray::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName 
 
     // 4. Else if P is an array index (15.4), then
     // a. Let index be ToUint32(P).
-    unsigned index = propertyName.asIndex();
-    if (index != PropertyName::NotAnIndex) {
+    if (Optional<uint32_t> optionalIndex = parseIndex(propertyName)) {
         // b. Reject if index >= oldLen and oldLenDesc.[[Writable]] is false.
+        uint32_t index = optionalIndex.value();
         if (index >= array->length() && !array->isLengthWritable())
             return reject(exec, throwException, "Attempting to define numeric property on array with non-writable length property.");
         // c. Let succeeded be the result of calling the default [[DefineOwnProperty]] internal method (8.12.9) on A passing P, Desc, and false as arguments.
@@ -226,7 +226,7 @@ void JSArray::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, Pro
 {
     JSArray* thisObject = jsCast<JSArray*>(object);
 
-    if (shouldIncludeDontEnumProperties(mode))
+    if (mode.includeDontEnumProperties())
         propertyNames.add(exec->propertyNames().length);
 
     JSObject::getOwnNonIndexPropertyNames(thisObject, exec, propertyNames, mode);
@@ -1091,15 +1091,16 @@ void JSArray::sortNumeric(ExecState* exec, JSValue compareFunction, CallType cal
 
     switch (indexingType()) {
     case ArrayClass:
+    case ArrayWithUndecided:
         return;
         
     case ArrayWithInt32:
         sortNumericVector<ArrayWithInt32>(exec, compareFunction, callType, callData);
-        break;
+        return;
         
     case ArrayWithDouble:
         sortNumericVector<ArrayWithDouble>(exec, compareFunction, callType, callData);
-        break;
+        return;
         
     case ArrayWithContiguous:
         sortNumericVector<ArrayWithContiguous>(exec, compareFunction, callType, callData);
@@ -1110,7 +1111,8 @@ void JSArray::sortNumeric(ExecState* exec, JSValue compareFunction, CallType cal
         return;
         
     default:
-        CRASH();
+        dataLog("Indexing type: ", indexingType(), "\n");
+        RELEASE_ASSERT_NOT_REACHED();
         return;
     }
 }

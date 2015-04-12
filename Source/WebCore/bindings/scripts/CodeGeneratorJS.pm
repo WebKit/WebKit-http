@@ -373,15 +373,16 @@ sub GenerateGetOwnPropertySlotBody
     }
 
     if ($indexedGetterFunction) {
-        push(@getOwnPropertySlotImpl, "    unsigned index = propertyName.asIndex();\n");
+        push(@getOwnPropertySlotImpl, "    Optional<uint32_t> optionalIndex = parseIndex(propertyName);\n");
 
         # If the item function returns a string then we let the TreatReturnedNullStringAs handle the cases
         # where the index is out of range.
         if ($indexedGetterFunction->signature->type eq "DOMString") {
-            push(@getOwnPropertySlotImpl, "    if (index != PropertyName::NotAnIndex) {\n");
+            push(@getOwnPropertySlotImpl, "    if (optionalIndex) {\n");
         } else {
-            push(@getOwnPropertySlotImpl, "    if (index != PropertyName::NotAnIndex && index < thisObject->impl().length()) {\n");
+            push(@getOwnPropertySlotImpl, "    if (optionalIndex && optionalIndex.value() < thisObject->impl().length()) {\n");
         }
+        push(@getOwnPropertySlotImpl, "        unsigned index = optionalIndex.value();\n");
         # Assume that if there's a setter, the index will be writable
         if ($interface->extendedAttributes->{"CustomIndexedSetter"}) {
             push(@getOwnPropertySlotImpl, "        unsigned attributes = ${namespaceMaybe}DontDelete;\n");
@@ -968,16 +969,16 @@ sub GenerateHeader
 
     # Custom getPropertyNames function exists on DOMWindow
     if ($interfaceName eq "DOMWindow") {
-        push(@headerContent, "    static void getPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode mode = JSC::ExcludeDontEnumProperties);\n");
-        push(@headerContent, "    static void getGenericPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode mode = JSC::ExcludeDontEnumProperties);\n");
-        push(@headerContent, "    static void getStructurePropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode mode = JSC::ExcludeDontEnumProperties);\n");
+        push(@headerContent, "    static void getPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());\n");
+        push(@headerContent, "    static void getGenericPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());\n");
+        push(@headerContent, "    static void getStructurePropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());\n");
         push(@headerContent, "    static uint32_t getEnumerableLength(JSC::ExecState*, JSC::JSObject*);\n");
         $structureFlags{"JSC::OverridesGetPropertyNames"} = 1;
     }
 
     # Custom getOwnPropertyNames function
     if ($interface->extendedAttributes->{"CustomEnumerateProperty"} || $indexedGetterFunction) {
-        push(@headerContent, "    static void getOwnPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode mode = JSC::ExcludeDontEnumProperties);\n");
+        push(@headerContent, "    static void getOwnPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());\n");
         $structureFlags{"JSC::OverridesGetPropertyNames"} = 1;       
     }
 
@@ -1991,7 +1992,7 @@ sub GenerateImplementation
                 my $enable_function = GetRuntimeEnableFunctionName($signature);
                 my $name = $signature->name;
                 push(@implContent, "    if (!${enable_function}()) {\n");
-                push(@implContent, "        Identifier propertyName(&vm, reinterpret_cast<const LChar*>(\"$name\"), strlen(\"$name\"));\n");
+                push(@implContent, "        Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>(\"$name\"), strlen(\"$name\"));\n");
                 push(@implContent, "        removeDirect(vm, propertyName);\n");
                 push(@implContent, "    }\n");
                 push(@implContent, "#endif\n") if $conditionalString;
@@ -2463,9 +2464,8 @@ sub GenerateImplementation
             push(@implContent, "    auto* thisObject = jsCast<${className}*>(cell);\n");
             push(@implContent, "    ASSERT_GC_OBJECT_INHERITS(thisObject, info());\n");
             if ($interface->extendedAttributes->{"CustomIndexedSetter"}) {
-                push(@implContent, "    unsigned index = propertyName.asIndex();\n");
-                push(@implContent, "    if (index != PropertyName::NotAnIndex) {\n");
-                push(@implContent, "        thisObject->indexSetter(exec, index, value);\n");
+                push(@implContent, "    if (Optional<uint32_t> index = parseIndex(propertyName)) {\n");
+                push(@implContent, "        thisObject->indexSetter(exec, index.value(), value);\n");
                 push(@implContent, "        return;\n");
                 push(@implContent, "    }\n");
             }
@@ -2580,10 +2580,10 @@ sub GenerateImplementation
                     AddToImplIncludes("JS" . $constructorType . ".h", $attribute->signature->extendedAttributes->{"Conditional"});
                 }
                 push(@implContent, "    // Shadowing a built-in constructor.\n");
-                push(@implContent, "    castedThis->putDirect(exec->vm(), Identifier(exec, \"$name\"), value);\n");
+                push(@implContent, "    castedThis->putDirect(exec->vm(), Identifier::fromString(exec, \"$name\"), value);\n");
             } elsif ($attribute->signature->extendedAttributes->{"Replaceable"}) {
                 push(@implContent, "    // Shadowing a built-in object.\n");
-                push(@implContent, "    castedThis->putDirect(exec->vm(), Identifier(exec, \"$name\"), value);\n");
+                push(@implContent, "    castedThis->putDirect(exec->vm(), Identifier::fromString(exec, \"$name\"), value);\n");
             } else {
                 if (!$attribute->isStatic) {
                     push(@implContent, "    auto& impl = castedThis->impl();\n");
@@ -2692,7 +2692,7 @@ sub GenerateImplementation
         push(@implContent, "    ASSERT_GC_OBJECT_INHERITS(thisObject, info());\n");
         push(@implContent, "    for (unsigned i = 0, count = thisObject->impl().length(); i < count; ++i)\n");
         push(@implContent, "        propertyNames.add(Identifier::from(exec, i));\n");
-        push(@implContent, "     Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);\n");
+        push(@implContent, "    Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);\n");
         push(@implContent, "}\n\n");
     }
 

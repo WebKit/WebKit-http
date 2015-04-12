@@ -24,46 +24,57 @@
  */
 
 #import "config.h"
-#import "MediaPlaybackTarget.h"
+#import "MediaPlaybackTargetMac.h"
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
-#import <AVFoundation/AVOutputDevicePickerContext.h>
-#import <WebCore/MediaPlaybackTarget.h>
+#import <WebCore/AVFoundationSPI.h>
 #import <WebCore/SoftLinking.h>
 #import <objc/runtime.h>
 
-typedef AVOutputDevicePickerContext AVOutputDevicePickerContextType;
-
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-SOFT_LINK_CLASS(AVFoundation, AVOutputDevicePickerContext)
+SOFT_LINK_CLASS(AVFoundation, AVOutputContext)
 
 namespace WebCore {
 
-static NSString * const deviceContextKey = @"deviceContext";
-
-void MediaPlaybackTarget::encode(NSKeyedArchiver *archiver) const
+Ref<MediaPlaybackTarget> MediaPlaybackTargetMac::create(AVOutputContext *context)
 {
-    if ([getAVOutputDevicePickerContextClass() conformsToProtocol:@protocol(NSSecureCoding)])
-        [archiver encodeObject:m_devicePickerContext.get() forKey:deviceContextKey];
+    return adoptRef(*new MediaPlaybackTargetMac(context));
 }
 
-bool MediaPlaybackTarget::decode(NSKeyedUnarchiver *unarchiver, MediaPlaybackTarget& playbackTarget)
+MediaPlaybackTargetMac::MediaPlaybackTargetMac(AVOutputContext *context)
+    : MediaPlaybackTarget()
+    , m_outputContext(context)
 {
-    if (![getAVOutputDevicePickerContextClass() conformsToProtocol:@protocol(NSSecureCoding)])
-        return false;
+}
 
-    AVOutputDevicePickerContext *context = nil;
+MediaPlaybackTargetMac::~MediaPlaybackTargetMac()
+{
+}
 
-    @try {
-        context = [unarchiver decodeObjectOfClass:getAVOutputDevicePickerContextClass() forKey:deviceContextKey];
-    } @catch (NSException *exception) {
-        LOG_ERROR("The target picker being decoded is not a AVOutputDevicePickerContext.");
-    }
+const MediaPlaybackTargetContext& MediaPlaybackTargetMac::targetContext() const
+{
+    m_context.type = MediaPlaybackTargetContext::AVOutputContextType;
+    m_context.context.avOutputContext = m_outputContext.get();
 
-    playbackTarget.m_devicePickerContext = context;
+    return m_context;
+}
 
-    return context;
+bool MediaPlaybackTargetMac::hasActiveRoute() const
+{
+    return m_outputContext && m_outputContext.get().deviceName;
+}
+
+
+MediaPlaybackTargetMac* toMediaPlaybackTargetMac(MediaPlaybackTarget* rep)
+{
+    return const_cast<MediaPlaybackTargetMac*>(toMediaPlaybackTargetMac(const_cast<const MediaPlaybackTarget*>(rep)));
+}
+
+const MediaPlaybackTargetMac* toMediaPlaybackTargetMac(const MediaPlaybackTarget* rep)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(rep->targetType() == MediaPlaybackTarget::AVFoundation);
+    return static_cast<const MediaPlaybackTargetMac*>(rep);
 }
 
 } // namespace WebCore

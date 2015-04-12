@@ -71,6 +71,7 @@
 #include "WebEditorClient.h"
 #include "WebEvent.h"
 #include "WebEventConversion.h"
+#include "WebEventFactory.h"
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
 #include "WebFullScreenManager.h"
@@ -304,7 +305,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_cachedMainFrameIsPinnedToTopSide(true)
     , m_cachedMainFrameIsPinnedToBottomSide(true)
     , m_canShortCircuitHorizontalWheelEvents(false)
-    , m_numWheelEventHandlers(0)
+    , m_hasWheelEventHandlers(false)
     , m_cachedPageCount(0)
     , m_autoSizingShouldExpandToViewHeight(false)
 #if ENABLE(CONTEXT_MENUS)
@@ -339,9 +340,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_pendingNavigationID(0)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
-#endif
-#if PLATFORM(MAC)
-    , m_lastActionMenuHitTestPreventsDefault(false)
 #endif
     , m_mainFrameProgressCompleted(false)
     , m_shouldDispatchFakeMouseMoveEvents(true)
@@ -741,7 +739,7 @@ WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const Stri
 }
 #endif
 
-EditorState WebPage::editorState() const
+EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayoutData) const
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
 
@@ -766,7 +764,7 @@ EditorState WebPage::editorState() const
     result.hasComposition = frame.editor().hasComposition();
     result.shouldIgnoreCompositionSelectionChange = frame.editor().ignoreCompositionSelectionChange();
     
-    platformEditorState(frame, result);
+    platformEditorState(frame, result, shouldIncludePostLayoutData);
 
     return result;
 }
@@ -1494,6 +1492,14 @@ void WebPage::setFixedLayoutSize(const IntSize& size)
     view->setFixedLayoutSize(size);
 }
 
+IntSize WebPage::fixedLayoutSize() const
+{
+    FrameView* view = mainFrameView();
+    if (!view)
+        return IntSize();
+    return view->fixedLayoutSize();
+}
+
 void WebPage::listenForLayoutMilestones(uint32_t milestones)
 {
     if (!m_page)
@@ -1817,16 +1823,11 @@ private:
 #if ENABLE(CONTEXT_MENUS)
 static bool isContextClick(const PlatformMouseEvent& event)
 {
-    if (event.button() == WebCore::RightButton)
-        return true;
-
 #if PLATFORM(COCOA)
-    // FIXME: this really should be about OSX-style UI, not about the Mac port
-    if (event.button() == WebCore::LeftButton && event.ctrlKey())
-        return true;
+    return WebEventFactory::shouldBeHandledAsContextClick(event);
+#else
+    return event.button() == WebCore::RightButton;
 #endif
-
-    return false;
 }
 
 static bool handleContextMenuEvent(const PlatformMouseEvent& platformMouseEvent, WebPage* page)
@@ -2739,7 +2740,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setQTKitEnabled(store.getBoolValueForKey(WebPreferencesKey::isQTKitEnabledKey()));
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && HAVE(AVKIT)
     settings.setAVKitEnabled(true);
 #endif
 
@@ -2814,6 +2815,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
     
     settings.setNewBlockInsideInlineModelEnabled(store.getBoolValueForKey(WebPreferencesKey::newBlockInsideInlineModelEnabledKey()));
+    settings.setAntialiasedFontDilationEnabled(store.getBoolValueForKey(WebPreferencesKey::antialiasedFontDilationEnabledKey()));
     
     settings.setSubpixelCSSOMElementMetricsEnabled(store.getBoolValueForKey(WebPreferencesKey::subpixelCSSOMElementMetricsEnabledKey()));
 
@@ -4055,12 +4057,12 @@ void WebPage::confirmCompositionForTesting(const String& compositionString)
     frame.editor().confirmComposition(compositionString);
 }
 
-void WebPage::numWheelEventHandlersChanged(unsigned numWheelEventHandlers)
+void WebPage::wheelEventHandlersChanged(bool hasHandlers)
 {
-    if (m_numWheelEventHandlers == numWheelEventHandlers)
+    if (m_hasWheelEventHandlers == hasHandlers)
         return;
 
-    m_numWheelEventHandlers = numWheelEventHandlers;
+    m_hasWheelEventHandlers = hasHandlers;
     recomputeShortCircuitHorizontalWheelEventsState();
 }
 
@@ -4103,7 +4105,7 @@ static bool pageContainsAnyHorizontalScrollbars(Frame* mainFrame)
 
 void WebPage::recomputeShortCircuitHorizontalWheelEventsState()
 {
-    bool canShortCircuitHorizontalWheelEvents = !m_numWheelEventHandlers;
+    bool canShortCircuitHorizontalWheelEvents = !m_hasWheelEventHandlers;
 
     if (canShortCircuitHorizontalWheelEvents) {
         // Check if we have any horizontal scroll bars on the page.
@@ -4363,24 +4365,43 @@ void WebPage::cancelComposition()
 
 void WebPage::didChangeSelection()
 {
-#if PLATFORM(MAC) && USE(ASYNC_NSTEXTINPUTCLIENT)
     Frame& frame = m_page->focusController().focusedOrMainFrame();
+    FrameView* view = frame.view();
+    bool needsLayout = view && view->needsLayout();
+
+    // If there is a layout pending, we should avoid populating EditorState that require layout to be done or it will
+    // trigger a synchronous layout every time the selection changes. sendPostLayoutEditorStateIfNeeded() will be called
+    // to send the full editor state after layout is done if we send a partial editor state here.
+    auto editorState = this->editorState(needsLayout ? IncludePostLayoutDataHint::No : IncludePostLayoutDataHint::Yes);
+    ASSERT_WITH_MESSAGE(needsLayout == (view && view->needsLayout()), "Calling editorState() should not cause a synchronous layout.");
+    m_isEditorStateMissingPostLayoutData = editorState.isMissingPostLayoutData;
+
+#if PLATFORM(MAC) && USE(ASYNC_NSTEXTINPUTCLIENT)
     // Abandon the current inline input session if selection changed for any other reason but an input method direct action.
     // FIXME: This logic should be in WebCore.
     // FIXME: Many changes that affect composition node do not go through didChangeSelection(). We need to do something when DOM manipulation affects the composition, because otherwise input method's idea about it will be different from Editor's.
     // FIXME: We can't cancel composition when selection changes to NoSelection, but we probably should.
     if (frame.editor().hasComposition() && !frame.editor().ignoreCompositionSelectionChange() && !frame.selection().isNone()) {
         frame.editor().cancelComposition();
-        send(Messages::WebPageProxy::CompositionWasCanceled(editorState()));
+        send(Messages::WebPageProxy::CompositionWasCanceled(editorState));
     } else
-        send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+        send(Messages::WebPageProxy::EditorStateChanged(editorState));
 #else
-    send(Messages::WebPageProxy::EditorStateChanged(editorState()), pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    send(Messages::WebPageProxy::EditorStateChanged(editorState), pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
 #endif
 
 #if PLATFORM(IOS)
     m_drawingArea->scheduleCompositingLayerFlush();
 #endif
+}
+
+void WebPage::sendPostLayoutEditorStateIfNeeded()
+{
+    if (!m_isEditorStateMissingPostLayoutData)
+        return;
+
+    send(Messages::WebPageProxy::EditorStateChanged(editorState(IncludePostLayoutDataHint::Yes)), pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_isEditorStateMissingPostLayoutData = false;
 }
 
 void WebPage::discardedComposition()
@@ -4830,6 +4851,22 @@ void WebPage::didChangeScrollOffsetForFrame(Frame* frame)
         return;
 
     updateMainFrameScrollOffsetPinning();
+}
+
+void WebPage::postMessage(const String& messageName, API::Object* messageBody)
+{
+    send(Messages::WebPageProxy::HandleMessage(messageName, UserData(WebProcess::singleton().transformObjectsToHandles(messageBody))));
+}
+
+void WebPage::postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData)
+{
+    UserData returnUserData;
+
+    auto& webProcess = WebProcess::singleton();
+    if (!sendSync(Messages::WebPageProxy::HandleSynchronousMessage(messageName, UserData(webProcess.transformObjectsToHandles(messageBody))), Messages::WebPageProxy::HandleSynchronousMessage::Reply(returnUserData)))
+        returnData = nullptr;
+    else
+        returnData = webProcess.transformHandlesToObjects(returnUserData.object());
 }
 
 } // namespace WebKit

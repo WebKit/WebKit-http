@@ -40,6 +40,7 @@
 
 namespace WebCore {
 
+class ReadableStreamReader;
 class ScriptExecutionContext;
 
 // ReadableStream implements the core of the streams API ReadableStream functionality.
@@ -54,21 +55,53 @@ public:
         Errored
     };
 
-    static Ref<ReadableStream> create(ScriptExecutionContext&, Ref<ReadableStreamSource>&&);
     virtual ~ReadableStream();
+
+    ReadableStreamReader* reader() { return m_reader; }
+    virtual Ref<ReadableStreamReader> createReader() = 0;
+
+    bool isLocked() const { return m_isLocked; }
+    void lock(ReadableStreamReader&);
+    void release();
+    void releaseButKeepLocked();
 
     State internalState() { return m_state; }
 
-private:
+    void start();
+
+protected:
     ReadableStream(ScriptExecutionContext&, Ref<ReadableStreamSource>&&);
 
+private:
     // ActiveDOMObject API.
     const char* activeDOMObjectName() const override;
-    bool canSuspend() const override;
+    bool canSuspendForPageCache() const override;
 
     State m_state;
     Ref<ReadableStreamSource> m_source;
+    ReadableStreamReader* m_reader { nullptr };
+    bool m_isLocked { false };
 };
+
+inline void ReadableStream::lock(ReadableStreamReader& reader)
+{
+    m_reader = &reader;
+    m_isLocked = true;
+}
+
+inline void ReadableStream::release()
+{
+    m_reader = nullptr;
+    m_isLocked = false;
+}
+
+inline void ReadableStream::releaseButKeepLocked()
+{
+    m_reader = nullptr;
+    m_isLocked = true;
+}
+
+
 
 }
 

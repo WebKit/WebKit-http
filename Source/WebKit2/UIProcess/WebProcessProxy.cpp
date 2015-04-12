@@ -38,6 +38,7 @@
 #include "TextCheckerState.h"
 #include "UserData.h"
 #include "WebBackForwardListItem.h"
+#include "WebIconDatabase.h"
 #include "WebInspectorProxy.h"
 #include "WebNavigationDataStore.h"
 #include "WebNotificationManagerProxy.h"
@@ -117,6 +118,7 @@ WebProcessProxy::~WebProcessProxy()
     ASSERT(m_pendingFetchWebsiteDataCallbacks.isEmpty());
     ASSERT(m_pendingDeleteWebsiteDataCallbacks.isEmpty());
     ASSERT(m_pendingDeleteWebsiteDataForOriginsCallbacks.isEmpty());
+    ASSERT(m_pageURLRetainCountMap.isEmpty());
 
     if (m_webConnection)
         m_webConnection->invalidate();
@@ -128,7 +130,7 @@ WebProcessProxy::~WebProcessProxy()
 void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
 {
     launchOptions.processType = ProcessLauncher::WebProcess;
-    if (&m_processPool.get() == &WebInspectorProxy::inspectorProcessPool())
+    if (WebInspectorProxy::isInspectorProcessPool(m_processPool))
         launchOptions.extraInitializationData.add(ASCIILiteral("inspector-process"), ASCIILiteral("1"));
     platformGetLaunchOptions(launchOptions);
 }
@@ -163,6 +165,8 @@ void WebProcessProxy::connectionDidClose(IPC::Connection& connection)
 
     for (auto& page : m_pageMap.values())
         page->connectionDidClose(connection);
+
+    releaseRemainingIconsForPageURLs();
 }
 
 void WebProcessProxy::disconnect()
@@ -352,9 +356,11 @@ bool WebProcessProxy::checkURLReceivedFromWebProcess(const URL& url)
     // One case where we don't have sandbox extensions for file URLs in b/f list is if the list has been reinstated after a crash or a browser restart.
     String path = url.fileSystemPath();
     for (WebBackForwardListItemMap::iterator iter = m_backForwardListItemMap.begin(), end = m_backForwardListItemMap.end(); iter != end; ++iter) {
-        if (URL(URL(), iter->value->url()).fileSystemPath() == path)
+        URL itemURL(URL(), iter->value->url());
+        if (itemURL.isLocalFile() && itemURL.fileSystemPath() == path)
             return true;
-        if (URL(URL(), iter->value->originalURL()).fileSystemPath() == path)
+        URL itemOriginalURL(URL(), iter->value->originalURL());
+        if (itemOriginalURL.isLocalFile() && itemOriginalURL.fileSystemPath() == path)
             return true;
     }
 
@@ -430,6 +436,53 @@ void WebProcessProxy::getDatabaseProcessConnection(PassRefPtr<Messages::WebProce
     m_processPool->getDatabaseProcessConnection(reply);
 }
 #endif // ENABLE(DATABASE_PROCESS)
+
+void WebProcessProxy::retainIconForPageURL(const String& pageURL)
+{
+    WebIconDatabase* iconDatabase = processPool().iconDatabase();
+    if (!iconDatabase || pageURL.isEmpty())
+        return;
+
+    // Track retain counts so we can release them if the WebProcess terminates early.
+    auto result = m_pageURLRetainCountMap.add(pageURL, 1);
+    if (!result.isNewEntry)
+        ++result.iterator->value;
+
+    iconDatabase->retainIconForPageURL(pageURL);
+}
+
+void WebProcessProxy::releaseIconForPageURL(const String& pageURL)
+{
+    WebIconDatabase* iconDatabase = processPool().iconDatabase();
+    if (!iconDatabase || pageURL.isEmpty())
+        return;
+
+    // Track retain counts so we can release them if the WebProcess terminates early.
+    auto result = m_pageURLRetainCountMap.find(pageURL);
+    if (result == m_pageURLRetainCountMap.end())
+        return;
+
+    --result->value;
+    if (!result->value)
+        m_pageURLRetainCountMap.remove(result);
+
+    iconDatabase->releaseIconForPageURL(pageURL);
+}
+
+void WebProcessProxy::releaseRemainingIconsForPageURLs()
+{
+    WebIconDatabase* iconDatabase = processPool().iconDatabase();
+    if (!iconDatabase)
+        return;
+
+    for (auto iter : m_pageURLRetainCountMap) {
+        uint64_t count = iter.value;
+        for (uint64_t i = 0; i < count; ++i)
+            iconDatabase->releaseIconForPageURL(iter.key);
+    }
+
+    m_pageURLRetainCountMap.clear();
+}
 
 void WebProcessProxy::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
 {
@@ -535,8 +588,10 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 #if PLATFORM(IOS)
     xpc_connection_t xpcConnection = connection()->xpcConnection();
     ASSERT(xpcConnection);
-    m_throttler->didConnnectToProcess(xpc_connection_get_pid(xpcConnection));
+    m_throttler->didConnectToProcess(xpc_connection_get_pid(xpcConnection));
 #endif
+
+    initializeNetworkProcessActivityToken();
 }
 
 WebFrameProxy* WebProcessProxy::webFrame(uint64_t frameID) const
@@ -845,9 +900,19 @@ void WebProcessProxy::sendCancelProcessWillSuspend()
     if (canSendMessage())
         send(Messages::WebProcess::CancelProcessWillSuspend(), 0);
 }
-    
+
+void WebProcessProxy::initializeNetworkProcessActivityToken()
+{
+#if PLATFORM(IOS) && ENABLE(NETWORK_PROCESS)
+    if (processPool().usesNetworkProcess())
+        m_tokenForNetworkProcess = processPool().ensureNetworkProcess().throttler().foregroundActivityToken();
+#endif
+}
+
 void WebProcessProxy::sendProcessDidResume()
 {
+    initializeNetworkProcessActivityToken();
+
     if (canSendMessage())
         send(Messages::WebProcess::ProcessDidResume(), 0);
 }
@@ -855,6 +920,9 @@ void WebProcessProxy::sendProcessDidResume()
 void WebProcessProxy::processReadyToSuspend()
 {
     m_throttler->processReadyToSuspend();
+#if PLATFORM(IOS) && ENABLE(NETWORK_PROCESS)
+    m_tokenForNetworkProcess = nullptr;
+#endif
 }
 
 void WebProcessProxy::didCancelProcessSuspension()

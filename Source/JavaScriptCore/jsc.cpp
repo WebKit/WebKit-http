@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2012, 2013, 2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2008, 2012-2013, 2015 Apple Inc. All rights reserved.
  *  Copyright (C) 2006 Bjoern Graf (bjoern.graf@gmail.com)
  *
  *  This library is free software; you can redistribute it and/or
@@ -337,10 +337,9 @@ public:
             return true;
         }
 
-        unsigned index = propertyName.asIndex();
-        if (index < thisObject->getLength()) {
-            ASSERT(index != PropertyName::NotAnIndex);
-            slot.setValue(thisObject, DontDelete | DontEnum, jsNumber(thisObject->m_vector[index]));
+        Optional<uint32_t> index = parseIndex(propertyName);
+        if (index && index.value() < thisObject->getLength()) {
+            slot.setValue(thisObject, DontDelete | DontEnum, jsNumber(thisObject->m_vector[index.value()]));
             return true;
         }
 
@@ -618,11 +617,11 @@ protected:
         addFunction(vm, "getElement", functionGetElement, 1);
         addFunction(vm, "setElementRoot", functionSetElementRoot, 2);
         
-        putDirectNativeFunction(vm, this, Identifier(&vm, "DFGTrue"), 0, functionFalse1, DFGTrueIntrinsic, DontEnum | JSC::Function);
-        putDirectNativeFunction(vm, this, Identifier(&vm, "OSRExit"), 0, functionUndefined1, OSRExitIntrinsic, DontEnum | JSC::Function);
-        putDirectNativeFunction(vm, this, Identifier(&vm, "isFinalTier"), 0, functionFalse2, IsFinalTierIntrinsic, DontEnum | JSC::Function);
-        putDirectNativeFunction(vm, this, Identifier(&vm, "predictInt32"), 0, functionUndefined2, SetInt32HeapPredictionIntrinsic, DontEnum | JSC::Function);
-        putDirectNativeFunction(vm, this, Identifier(&vm, "fiatInt52"), 0, functionIdentity, FiatInt52Intrinsic, DontEnum | JSC::Function);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "DFGTrue"), 0, functionFalse1, DFGTrueIntrinsic, DontEnum | JSC::Function);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "OSRExit"), 0, functionUndefined1, OSRExitIntrinsic, DontEnum | JSC::Function);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "isFinalTier"), 0, functionFalse2, IsFinalTierIntrinsic, DontEnum | JSC::Function);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "predictInt32"), 0, functionUndefined2, SetInt32HeapPredictionIntrinsic, DontEnum | JSC::Function);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "fiatInt52"), 0, functionIdentity, FiatInt52Intrinsic, DontEnum | JSC::Function);
         
         addFunction(vm, "effectful42", functionEffectful42, 0);
         addFunction(vm, "makeMasquerader", functionMakeMasquerader, 0);
@@ -644,20 +643,20 @@ protected:
         JSArray* array = constructEmptyArray(globalExec(), 0);
         for (size_t i = 0; i < arguments.size(); ++i)
             array->putDirectIndex(globalExec(), i, jsString(globalExec(), arguments[i]));
-        putDirect(vm, Identifier(globalExec(), "arguments"), array);
+        putDirect(vm, Identifier::fromString(globalExec(), "arguments"), array);
         
-        putDirect(vm, Identifier(globalExec(), "console"), jsUndefined());
+        putDirect(vm, Identifier::fromString(globalExec(), "console"), jsUndefined());
     }
 
     void addFunction(VM& vm, const char* name, NativeFunction function, unsigned arguments)
     {
-        Identifier identifier(&vm, name);
+        Identifier identifier = Identifier::fromString(&vm, name);
         putDirect(vm, identifier, JSFunction::create(vm, this, arguments, identifier.string(), function));
     }
     
     void addConstructableFunction(VM& vm, const char* name, NativeFunction function, unsigned arguments)
     {
-        Identifier identifier(&vm, name);
+        Identifier identifier = Identifier::fromString(&vm, name);
         putDirect(vm, identifier, JSFunction::create(vm, this, arguments, identifier.string(), function, NoIntrinsic, function));
     }
 };
@@ -889,7 +888,7 @@ EncodedJSValue JSC_HOST_CALL functionRun(ExecState* exec)
     for (unsigned i = 1; i < exec->argumentCount(); ++i)
         array->putDirectIndex(globalObject->globalExec(), i - 1, exec->uncheckedArgument(i));
     globalObject->putDirect(
-        exec->vm(), Identifier(globalObject->globalExec(), "arguments"), array);
+        exec->vm(), Identifier::fromString(globalObject->globalExec(), "arguments"), array);
 
     JSValue exception;
     StopWatch stopWatch;
@@ -1270,7 +1269,7 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
             printf("End: %s\n", returnValue.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
         if (evaluationException) {
             printf("Exception: %s\n", evaluationException.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
-            Identifier stackID(globalObject->globalExec(), "stack");
+            Identifier stackID = Identifier::fromString(globalObject->globalExec(), "stack");
             JSValue stackValue = evaluationException.get(globalObject->globalExec(), stackID);
             if (!stackValue.isUndefinedOrNull())
                 printf("%s\n", stackValue.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
@@ -1462,7 +1461,7 @@ void CommandLine::parseArguments(int argc, char** argv)
         m_arguments.append(argv[i]);
 
     if (needToDumpOptions)
-        JSC::Options::dumpAllOptions(stderr);
+        JSC::Options::dumpAllOptions(JSC::Options::DumpLevel::Verbose, "All JSC runtime options:", stderr);
     if (needToExit)
         jscExit(EXIT_SUCCESS);
 }

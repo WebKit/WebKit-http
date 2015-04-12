@@ -163,21 +163,6 @@ bool HTMLMediaSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement& e
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-bool HTMLMediaSession::showingPlaybackTargetPickerPermitted(const HTMLMediaElement& element) const
-{
-    if (m_restrictions & RequireUserGestureToShowPlaybackTargetPicker && !ScriptController::processingUserGesture()) {
-        LOG(Media, "HTMLMediaSession::showingPlaybackTargetPickerPermitted - returning FALSE because of permissions");
-        return false;
-    }
-
-    if (!element.document().page()) {
-        LOG(Media, "HTMLMediaSession::showingPlaybackTargetPickerPermitted - returning FALSE because page is NULL");
-        return false;
-    }
-
-    return !wirelessVideoPlaybackDisabled(element);
-}
-
 bool HTMLMediaSession::currentPlaybackTargetIsWireless(const HTMLMediaElement& element) const
 {
     MediaPlayer* player = element.player();
@@ -192,14 +177,35 @@ bool HTMLMediaSession::currentPlaybackTargetIsWireless(const HTMLMediaElement& e
     return isWireless;
 }
 
+bool HTMLMediaSession::currentPlaybackTargetIsSupported(const HTMLMediaElement& element) const
+{
+    MediaPlayer* player = element.player();
+    if (!player) {
+        LOG(Media, "HTMLMediaSession::currentPlaybackTargetIsSupported - returning FALSE because player is NULL");
+        return false;
+    }
+
+    bool isSupported = player->isCurrentPlaybackTargetSupported();
+    LOG(Media, "HTMLMediaSession::currentPlaybackTargetIsSupported - returning %s", isSupported ? "TRUE" : "FALSE");
+    
+    return isSupported;
+}
+
 void HTMLMediaSession::showPlaybackTargetPicker(const HTMLMediaElement& element)
 {
     LOG(Media, "HTMLMediaSession::showPlaybackTargetPicker");
 
-    if (!showingPlaybackTargetPickerPermitted(element))
+    if (m_restrictions & RequireUserGestureToShowPlaybackTargetPicker && !ScriptController::processingUserGesture()) {
+        LOG(Media, "HTMLMediaSession::showPlaybackTargetPicker - returning early because of permissions");
         return;
+    }
 
-    m_haveRequestedPlaybackTargetPicker = true;
+    if (!element.document().page()) {
+        LOG(Media, "HTMLMediaSession::showingPlaybackTargetPickerPermitted - returning early because page is NULL");
+        return;
+    }
+
+    MediaSessionManager::sharedManager().setCurrentSession(*this);
     element.document().showPlaybackTargetPicker(element);
 }
 
@@ -234,11 +240,15 @@ bool HTMLMediaSession::wirelessVideoPlaybackDisabled(const HTMLMediaElement& ele
         LOG(Media, "HTMLMediaSession::wirelessVideoPlaybackDisabled - returning TRUE because of legacy attribute");
         return true;
     }
+    if (equalIgnoringCase(legacyAirplayAttributeValue, "allow")) {
+        LOG(Media, "HTMLMediaSession::wirelessVideoPlaybackDisabled - returning FALSE because of legacy attribute");
+        return false;
+    }
 #endif
 
     MediaPlayer* player = element.player();
     if (!player)
-        return false;
+        return true;
 
     bool disabled = player->wirelessVideoPlaybackDisabled();
     LOG(Media, "HTMLMediaSession::wirelessVideoPlaybackDisabled - returning %s because media engine says so", disabled ? "TRUE" : "FALSE");
@@ -275,10 +285,14 @@ void HTMLMediaSession::setHasPlaybackTargetAvailabilityListeners(const HTMLMedia
 #endif
 }
 
-void HTMLMediaSession::didChoosePlaybackTarget(const MediaPlaybackTarget& device)
+void HTMLMediaSession::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& device)
 {
-    m_haveRequestedPlaybackTargetPicker = false;
-    client().setWirelessPlaybackTarget(device);
+    m_playbackTarget = WTF::move(device);
+    client().setWirelessPlaybackTarget(*m_playbackTarget.copyRef());
+    if (m_playbackTarget->hasActiveRoute() && MediaSessionManager::sharedManager().currentSession() == this)
+        startPlayingToPlaybackTarget();
+    else
+        stopPlayingToPlaybackTarget();
 }
 
 void HTMLMediaSession::targetAvailabilityChangedTimerFired()
@@ -291,6 +305,8 @@ void HTMLMediaSession::externalOutputDeviceAvailableDidChange(bool hasTargets) c
     if (m_hasPlaybackTargets == hasTargets)
         return;
 
+    LOG(Media, "HTMLMediaSession::externalOutputDeviceAvailableDidChange - hasTargets %s", hasTargets ? "TRUE" : "FALSE");
+
     m_hasPlaybackTargets = hasTargets;
     if (!m_targetAvailabilityChangedTimer.isActive())
         m_targetAvailabilityChangedTimer.startOneShot(0);
@@ -300,6 +316,38 @@ bool HTMLMediaSession::requiresPlaybackTargetRouteMonitoring() const
 {
     return m_hasPlaybackTargetAvailabilityListeners;
 }
+
+bool HTMLMediaSession::canPlayToWirelessPlaybackTarget() const
+{
+    if (!m_playbackTarget || !m_playbackTarget->hasActiveRoute())
+        return false;
+
+    return client().canPlayToWirelessPlaybackTarget();
+}
+
+bool HTMLMediaSession::isPlayingToWirelessPlaybackTarget() const
+{
+    if (!m_playbackTarget || !m_playbackTarget->hasActiveRoute())
+        return false;
+
+    return client().isPlayingToWirelessPlaybackTarget();
+}
+
+void HTMLMediaSession::startPlayingToPlaybackTarget()
+{
+    if (!m_playbackTarget || !m_playbackTarget->hasActiveRoute())
+        return;
+
+    client().startPlayingToPlaybackTarget();
+}
+
+void HTMLMediaSession::stopPlayingToPlaybackTarget()
+{
+    if (!m_playbackTarget || !m_playbackTarget->hasActiveRoute())
+        return;
+
+    client().stopPlayingToPlaybackTarget();
+}    
 #endif
 
 MediaPlayer::Preload HTMLMediaSession::effectivePreloadForElement(const HTMLMediaElement& element) const

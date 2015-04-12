@@ -28,6 +28,7 @@
 #if WK_API_ENABLED
 
 #import <WebKit/_WKFindOptions.h>
+#import <WebKit/_WKLayoutMode.h>
 #import <WebKit/_WKRenderingProgressEvents.h>
 
 typedef NS_ENUM(NSInteger, _WKPaginationMode) {
@@ -90,6 +91,9 @@ typedef NS_ENUM(NSInteger, _WKPaginationMode) {
 @property (nonatomic, readonly, getter=_isShowingNavigationGestureSnapshot) BOOL _showingNavigationGestureSnapshot;
 
 - (void)_close;
+
+@property (nonatomic, setter=_setLayoutMode:) _WKLayoutMode _layoutMode;
+@property (nonatomic, setter=_setFixedLayoutSize:) CGSize _fixedLayoutSize;
 
 #if TARGET_OS_IPHONE
 // DERECATED: The setters of the three following function are deprecated, please use overrideLayoutParameters.

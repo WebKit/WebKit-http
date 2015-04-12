@@ -65,7 +65,6 @@ class ViewSnapshot;
 class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebPopupMenuProxy;
-struct ActionMenuHitTestResult;
 
 #if ENABLE(TOUCH_EVENTS)
 class NativeWebTouchEvent;
@@ -319,8 +318,10 @@ public:
     virtual void didFinishLoadForMainFrame() = 0;
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) = 0;
 
+    virtual void didChangeBackgroundColor() = 0;
+
 #if PLATFORM(MAC)
-    virtual void didPerformActionMenuHitTest(const ActionMenuHitTestResult&, bool forImmediateAction, API::Object*) = 0;
+    virtual void didPerformActionMenuHitTest(const WebHitTestResult::Data&, bool forImmediateAction, bool contentPreventsDefault, API::Object*) = 0;
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)

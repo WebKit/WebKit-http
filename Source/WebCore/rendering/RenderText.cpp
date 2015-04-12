@@ -180,7 +180,6 @@ inline RenderText::RenderText(Node& node, const String& text)
     , m_knownToHaveNoOverflowAndNoFallbackFonts(false)
     , m_useBackslashAsYenSymbol(false)
     , m_originalTextDiffersFromRendered(false)
-    , m_contentIsKnownToFollow(false)
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     , m_candidateComputedTextSize(0)
 #endif
@@ -299,7 +298,7 @@ String RenderText::originalText() const
 
 void RenderText::absoluteRects(Vector<IntRect>& rects, const LayoutPoint& accumulatedOffset) const
 {
-    if (auto layout = simpleLineLayout()) {
+    if (auto* layout = simpleLineLayout()) {
         rects.appendVector(SimpleLineLayout::collectAbsoluteRects(*this, *layout, accumulatedOffset));
         return;
     }
@@ -402,7 +401,7 @@ void RenderText::collectSelectionRects(Vector<SelectionRect>& rects, unsigned st
 
 Vector<FloatQuad> RenderText::absoluteQuadsClippedToEllipsis() const
 {
-    if (auto layout = simpleLineLayout()) {
+    if (auto* layout = simpleLineLayout()) {
         ASSERT(style().textOverflow() != TextOverflowEllipsis);
         return SimpleLineLayout::collectAbsoluteQuads(*this, *layout, nullptr);
     }
@@ -411,7 +410,7 @@ Vector<FloatQuad> RenderText::absoluteQuadsClippedToEllipsis() const
 
 void RenderText::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
 {
-    if (auto layout = simpleLineLayout()) {
+    if (auto* layout = simpleLineLayout()) {
         quads.appendVector(SimpleLineLayout::collectAbsoluteQuads(*this, *layout, wasFixed));
         return;
     }
@@ -1257,7 +1256,7 @@ float RenderText::width(unsigned from, unsigned len, const FontCascade& f, float
 
 IntRect RenderText::linesBoundingBox() const
 {
-    if (auto layout = simpleLineLayout())
+    if (auto* layout = simpleLineLayout())
         return SimpleLineLayout::computeBoundingBox(*this, *layout);
 
     return m_lineBoxes.boundingBox(*this);
@@ -1345,14 +1344,14 @@ LayoutRect RenderText::selectionRectForRepaint(const RenderLayerModelObject* rep
 
 int RenderText::caretMinOffset() const
 {
-    if (auto layout = simpleLineLayout())
+    if (auto* layout = simpleLineLayout())
         return SimpleLineLayout::findCaretMinimumOffset(*this, *layout);
     return m_lineBoxes.caretMinOffset();
 }
 
 int RenderText::caretMaxOffset() const
 {
-    if (auto layout = simpleLineLayout())
+    if (auto* layout = simpleLineLayout())
         return SimpleLineLayout::findCaretMaximumOffset(*this, *layout);
     return m_lineBoxes.caretMaxOffset(*this);
 }
@@ -1371,14 +1370,14 @@ bool RenderText::containsRenderedCharacterOffset(unsigned offset) const
 
 bool RenderText::containsCaretOffset(unsigned offset) const
 {
-    if (auto layout = simpleLineLayout())
+    if (auto* layout = simpleLineLayout())
         return SimpleLineLayout::containsCaretOffset(*this, *layout, offset);
     return m_lineBoxes.containsOffset(*this, offset, RenderTextLineBoxes::CaretOffset);
 }
 
 bool RenderText::hasRenderedText() const
 {
-    if (auto layout = simpleLineLayout())
+    if (auto* layout = simpleLineLayout())
         return SimpleLineLayout::isTextRendered(*this, *layout);
     return m_lineBoxes.hasRenderedText();
 }
@@ -1401,7 +1400,7 @@ int RenderText::previousOffset(int current) const
     return result;
 }
 
-#if PLATFORM(COCOA) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
 
 #define HANGUL_CHOSEONG_START (0x1100)
 #define HANGUL_CHOSEONG_END (0x115F)
@@ -1443,7 +1442,7 @@ static inline bool isRegionalIndicator(UChar32 character)
 
 int RenderText::previousOffsetForBackwardDeletion(int current) const
 {
-#if PLATFORM(COCOA) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
     ASSERT(m_text);
     StringImpl& text = *m_text.impl();
     UChar32 character;
