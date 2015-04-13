@@ -97,42 +97,29 @@ static guint webkitVideoSinkSignals[LAST_SIGNAL] = { 0, };
 
 struct _WebKitVideoSinkPrivate {
     _WebKitVideoSinkPrivate()
-        : sample(nullptr)
-        , previousSample(nullptr)
-        , timeoutSource("[WebKit] webkitVideoSinkTimeoutCallback")
+        : timeoutSource("[WebKit] webkitVideoSinkTimeoutCallback")
     {
         g_mutex_init(&sampleMutex);
         g_cond_init(&dataCondition);
         gst_video_info_init(&info);
-
-#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
-        pool = NULL;
-        last_buffer = NULL;
-
-        allocateCondition = g_new0(GCond, 1);
-        g_cond_init(allocateCondition);
-        allocateMutex = g_new0(GMutex, 1);
-        g_mutex_init(allocateMutex);
-        allocateBuffer = NULL;
-#endif
     }
 
     ~_WebKitVideoSinkPrivate()
     {
+        if (sample)
+            gst_sample_unref(sample);
+        sample = nullptr;
+
+        if (previousSample)
+            gst_sample_unref(previousSample);
+        previousSample = nullptr;
+
+        if (currentCaps)
+            gst_caps_unref(currentCaps);
+        currentCaps = nullptr;
+
         g_mutex_clear(&sampleMutex);
         g_cond_clear(&dataCondition);
-
-#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
-        if (allocateCondition) {
-            g_cond_clear(allocateCondition);
-            g_free(allocateCondition);
-        }
-
-        if (allocateMutex) {
-            g_mutex_clear(allocateMutex);
-            g_free(allocateMutex);
-        }
-#endif
     }
 
     GstSample* sample;
@@ -156,16 +143,9 @@ struct _WebKitVideoSinkPrivate {
     bool unlocked;
 
 #if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
-    GstBufferPool *pool;
-    GstBuffer *last_buffer;
-
     GstGLDisplay *display;
     GstGLContext *context;
     GstGLContext *other_context;
-
-    GCond* allocateCondition;
-    GMutex* allocateMutex;
-    GstBuffer* allocateBuffer;
 #endif
 };
 
@@ -381,8 +361,7 @@ static gboolean webkitVideoSinkStop(GstBaseSink* baseSink)
 
 static gboolean webkitVideoSinkStart(GstBaseSink* baseSink)
 {
-    WebKitVideoSink* sink = reinterpret_cast_ptr<WebKitVideoSink*>(baseSink);
-    WebKitVideoSinkPrivate* priv = sink->priv;
+    WebKitVideoSinkPrivate* priv = WEBKIT_VIDEO_SINK(baseSink)->priv;
 
     WTF::GMutexLocker<GMutex> lock(priv->sampleMutex);
     priv->unlocked = false;
@@ -411,8 +390,8 @@ static gboolean webkitVideoSinkSetCaps(GstBaseSink* baseSink, GstCaps* caps)
 static gboolean webkitVideoSinkProposeAllocation(GstBaseSink* baseSink, GstQuery* query)
 {
     WebKitVideoSink* sink = WEBKIT_VIDEO_SINK(baseSink);
-    GstCaps* caps = NULL;
-    gboolean need_pool;
+    GstCaps* caps = nullptr;
+    gboolean need_pool = false;
 
     gst_query_parse_allocation(query, &caps, &need_pool);
     if (!caps)
@@ -424,36 +403,12 @@ static gboolean webkitVideoSinkProposeAllocation(GstBaseSink* baseSink, GstQuery
 #if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
     // Code adapted from gst-plugins-bad's glimagesink.
 
-    GstBufferPool* pool;
-    GstStructure* config;
-    guint size;
-    GstAllocator* allocator = 0;
-    GstAllocationParams params;
-
     if (!_ensure_gl_setup(sink))
         return FALSE;
 
-    if ((pool = sink->priv->pool))
-        gst_object_ref(pool);
-
-    if (pool) {
-        GstCaps* pcaps;
-
-        // We had a pool, check its caps.
-        GST_DEBUG_OBJECT (sink, "check existing pool caps");
-        config = gst_buffer_pool_get_config(pool);
-        gst_buffer_pool_config_get_params(config, &pcaps, &size, 0, 0);
-
-        if (!gst_caps_is_equal(caps, pcaps)) {
-            GST_DEBUG_OBJECT(sink, "pool has different caps");
-            // Different caps, we can't use this pool.
-            gst_object_unref(pool);
-            pool = 0;
-        }
-        gst_structure_free(config);
-    }
-
-    if (need_pool && !pool) {
+    GstBufferPool* pool = nullptr;
+    guint size = 0;
+    if (need_pool) {
         GstVideoInfo info;
 
         if (!gst_video_info_from_caps(&info, caps)) {
@@ -467,7 +422,7 @@ static gboolean webkitVideoSinkProposeAllocation(GstBaseSink* baseSink, GstQuery
         // The normal size of a frame.
         size = info.size;
 
-        config = gst_buffer_pool_get_config(pool);
+        GstStructure* config = gst_buffer_pool_get_config(pool);
         gst_buffer_pool_config_set_params(config, caps, size, 0, 0);
         if (!gst_buffer_pool_set_config(pool, config)) {
             GST_DEBUG_OBJECT(sink, "failed setting config");
@@ -483,8 +438,9 @@ static gboolean webkitVideoSinkProposeAllocation(GstBaseSink* baseSink, GstQuery
 
     gst_query_add_allocation_meta(query, GST_VIDEO_META_API_TYPE, 0);
 
+    GstAllocationParams params;
     gst_allocation_params_init(&params);
-    allocator = gst_allocator_find(GST_EGL_IMAGE_MEMORY_TYPE);
+    GstAllocator* allocator = gst_allocator_find(GST_EGL_IMAGE_MEMORY_TYPE);
     gst_query_add_allocation_param(query, allocator, &params);
     gst_object_unref(allocator);
 #else
@@ -505,8 +461,6 @@ static gboolean webkitVideoSinkQuery(GstBaseSink* baseSink, GstQuery* query)
     {
 #if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
         GST_OBJECT_LOCK (sink);
-        if (priv->last_buffer)
-            gst_buffer_replace (&priv->last_buffer, NULL);
         g_signal_emit(sink, webkitVideoSinkSignals[DRAIN], 0);
         GST_OBJECT_UNLOCK (sink);
 #endif
