@@ -111,6 +111,18 @@ public:
     GraphicsSurface::Flags m_surfaceFlags;
     RefPtr<GraphicsSurface> m_graphicsSurface;
 #endif
+
+    // Register as a child of a Qt context to make the necessary when it may be destroyed before the GraphicsContext3D instance
+    class QtContextWatcher : public QObject
+    {
+        public:
+            QtContextWatcher(QObject* ctx, GraphicsContext3DPrivate* watcher): QObject(ctx), m_watcher(watcher) { }
+            ~QtContextWatcher() { m_watcher->m_platformContext = 0; m_watcher->m_platformContextWatcher = 0; }
+
+        private:
+            GraphicsContext3DPrivate* m_watcher;
+    };
+    QtContextWatcher* m_platformContextWatcher;
 };
 
 bool GraphicsContext3DPrivate::isOpenGLES() const
@@ -149,11 +161,16 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
     , m_surface(0)
     , m_platformContext(0)
     , m_surfaceOwner(0)
+    , m_platformContextWatcher(0)
 {
     if (renderStyle == GraphicsContext3D::RenderToCurrentGLContext) {
         m_platformContext = QOpenGLContext::currentContext();
         if (m_platformContext)
             m_surface = m_platformContext->surface();
+
+        // Watcher needed to invalidate the GL context if destroyed before this instance
+        m_platformContextWatcher = new QtContextWatcher(m_platformContext, this);
+
         initializeOpenGLFunctions();
         return;
     }
@@ -256,6 +273,9 @@ GraphicsContext3DPrivate::~GraphicsContext3DPrivate()
 {
     delete m_surfaceOwner;
     m_surfaceOwner = 0;
+
+    delete m_platformContextWatcher;
+    m_platformContextWatcher = 0;
 }
 
 #if USE(ACCELERATED_COMPOSITING)
