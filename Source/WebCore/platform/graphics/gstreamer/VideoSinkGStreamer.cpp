@@ -544,8 +544,10 @@ webkitVideoSinkSetContext(GstElement* element, GstContext* context)
 gboolean webkitVideoSinkPostMessage(GstElement* element, GstMessage* message)
 {
     // Don't send tag message towards the media player.
-    if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_TAG)
+    if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_TAG) {
+        gst_message_unref(message);
         return FALSE;
+    }
 
     return GST_CALL_PARENT_WITH_DEFAULT(GST_ELEMENT_CLASS, post_message, (element, message), TRUE);
 }
