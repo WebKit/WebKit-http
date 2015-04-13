@@ -72,13 +72,14 @@ public:
     bool shouldMoveRangeAfterDelete(Range*, Range*) override;
 
     void didBeginEditing() override;
-    void respondToChangedContents() override;
-    void respondToChangedSelection(Frame*) override;
     void didEndEditing() override;
     void willWriteSelectionToPasteboard(WebCore::Range*) override;
     void didWriteSelectionToPasteboard() override;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData) override;
 
+    void respondToChangedContents() override;
+    void respondToChangedSelection(Frame*) override;
+    void didChangeSelectionAndUpdateLayout() override { }
     void discardedComposition(Frame*) override;
 
     void registerUndoStep(PassRefPtr<UndoStep>) override;

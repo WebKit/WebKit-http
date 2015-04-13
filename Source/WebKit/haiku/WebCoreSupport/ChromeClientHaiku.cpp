@@ -292,15 +292,6 @@ std::unique_ptr<ColorChooser> ChromeClientHaiku::createColorChooser(
 }
 
 
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
-PassRefPtr<DateTimeChooser> ChromeClientHaiku::openDateTimeChooser(
-    DateTimeChooserClient* client, const DateTimeChooserParameters& params)
-{
-    return adoptRef(new DateTimeChooserHaiku(client, params));
-}
-#endif
-
-
 void ChromeClientHaiku::setStatusbarText(const String& message)
 {
     m_webPage->setStatusMessage(BString(message));

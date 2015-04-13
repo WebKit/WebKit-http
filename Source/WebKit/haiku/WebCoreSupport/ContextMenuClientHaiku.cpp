@@ -28,6 +28,7 @@
 #include "ContextMenuClientHaiku.h"
 
 #include "ContextMenu.h"
+#include "Document.h"
 #include "Editor.h"
 #include "Event.h"
 #include "Frame.h"
@@ -123,6 +124,23 @@ bool ContextMenuClientHaiku::isSpeaking()
 void ContextMenuClientHaiku::stopSpeaking()
 {
     notImplemented();
+}
+
+ContextMenuItem ContextMenuClientHaiku::shareMenuItem(const HitTestResult& hitTestResult)
+{
+    Node* node = hitTestResult.innerNonSharedNode();
+    if (!node)
+        return ContextMenuItem();
+
+    Frame* frame = node->document().frame();
+    if (!frame)
+        return ContextMenuItem();
+
+    URL downloadableMediaURL;
+    if (!hitTestResult.absoluteMediaURL().isEmpty() && hitTestResult.isDownloadableMedia())
+        downloadableMediaURL = hitTestResult.absoluteMediaURL();
+
+    return ContextMenuItem::shareMenuItem(hitTestResult.absoluteLinkURL(), downloadableMediaURL, hitTestResult.image(), hitTestResult.selectedText());
 }
 
 } // namespace WebCore

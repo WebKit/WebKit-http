@@ -54,6 +54,7 @@ public:
     void speak(const String&) override;
     bool isSpeaking() override;
     void stopSpeaking() override;
+    WebCore::ContextMenuItem shareMenuItem(const WebCore::HitTestResult&) override;
     void searchWithGoogle(const Frame*) override;
 
 private:

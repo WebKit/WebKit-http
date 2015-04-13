@@ -98,9 +98,6 @@ namespace WebCore {
         bool runJavaScriptConfirm(Frame*, const String&) override;
         bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) override;
         std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
-        PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) override;
-#endif
 
         bool shouldInterruptJavaScript() override;
         KeyboardUIMode keyboardUIMode() override;
@@ -157,7 +154,7 @@ namespace WebCore {
         PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const override;
         PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const override;
 
-        void numWheelEventHandlersChanged(unsigned) override { }
+        void wheelEventHandlersChanged(bool) override { }
 
 #if ENABLE(POINTER_LOCK)
         bool requestPointerLock() override;
