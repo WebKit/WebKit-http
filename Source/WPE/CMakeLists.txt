@@ -10,15 +10,18 @@ endif ()
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
+    ${GLIB_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
 )
 
 set(WPE_LIBRARIES
+    ${GLIB_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
 )
 
 set(WPE_SOURCES
     Source/Input/Handling.cpp
+    Source/Input/KeyboardEventRepeating.cpp
 
     Source/Input/LinuxInput/KeyMappingLinuxInput.cpp
     Source/Input/LinuxInput/KeyboardEventHandlerLinuxInput.cpp
