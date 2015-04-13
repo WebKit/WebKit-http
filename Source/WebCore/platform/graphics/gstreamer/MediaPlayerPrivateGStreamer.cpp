@@ -2223,6 +2223,11 @@ void MediaPlayerPrivateGStreamer::setDownloadBuffering()
     if (!m_pipeline)
         return;
 
+#if ENABLE(MEDIA_SOURCE)
+    if (isMediaSource())
+        return;
+#endif
+
     unsigned flags;
     g_object_get(m_pipeline.get(), "flags", &flags, nullptr);
 
