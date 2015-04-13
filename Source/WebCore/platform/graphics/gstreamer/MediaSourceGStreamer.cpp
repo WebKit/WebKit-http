@@ -115,6 +115,7 @@ MediaPlayer::ReadyState MediaSourceGStreamer::readyState() const
 
 void MediaSourceGStreamer::setReadyState(MediaPlayer::ReadyState state)
 {
+    m_playerPrivate->setReadyState(state);
     m_readyState = state;
 }
 

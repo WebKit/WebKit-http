@@ -129,6 +129,8 @@ protected:
 
     void setPipeline(GstElement*);
 
+    virtual GRefPtr<GstCaps> currentDemuxerCaps() const { return nullptr; }
+
     MediaPlayer* m_player;
     GRefPtr<GstElement> m_pipeline;
     GRefPtr<GstStreamVolume> m_volumeElement;

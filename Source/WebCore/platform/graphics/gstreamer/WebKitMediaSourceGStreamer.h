@@ -52,9 +52,20 @@ struct _WebKitMediaSrc {
 
 struct _WebKitMediaSrcClass {
     GstBinClass parentClass;
+
+    /* notify app that number of audio/video/text streams changed */
+    void (*video_changed) (WebKitMediaSrc* webKitMediaSrc);
+    void (*audio_changed) (WebKitMediaSrc* webKitMediaSrc);
+    void (*text_changed) (WebKitMediaSrc* webKitMediaSrc);
 };
 
 GType webkit_media_src_get_type(void);
+
+GstPad* webkit_media_src_get_audio_pad(WebKitMediaSrc* src, guint i);
+GstPad* webkit_media_src_get_video_pad(WebKitMediaSrc* src, guint i);
+GstPad* webkit_media_src_get_text_pad(WebKitMediaSrc* src, guint i);
+
+void webkit_media_src_track_added(WebKitMediaSrc*, GstPad* pad, GstEvent* event);
 
 G_END_DECLS
 

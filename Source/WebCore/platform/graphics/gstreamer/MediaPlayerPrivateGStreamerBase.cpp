@@ -303,13 +303,23 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
         return m_videoSize;
 
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    if (!GST_IS_SAMPLE(m_sample.get()))
-        return FloatSize();
 
-    GstCaps* caps = gst_sample_get_caps(m_sample.get());
+    GstCaps* caps = nullptr;
+    // We may not have enough data available for the video sink yet,
+    // but the demuxer might haver it already.
+    if (!GST_IS_SAMPLE(m_sample.get())) {
+#if ENABLE(MEDIA_SOURCE)
+        caps = currentDemuxerCaps().leakRef();
+#else
+        return FloatSize();
+#endif
+    }
+
+    if (GST_IS_SAMPLE(m_sample.get()) && !caps)
+        caps = gst_sample_get_caps(m_sample.get());
+
     if (!caps)
         return FloatSize();
-
 
     // TODO: handle possible clean aperture data. See
     // https://bugzilla.gnome.org/show_bug.cgi?id=596571

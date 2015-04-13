@@ -53,7 +53,7 @@ SourceBufferPrivateGStreamer::SourceBufferPrivateGStreamer(MediaSourceGStreamer*
     , m_mediaSource(mediaSource)
     , m_type(contentType)
     , m_client(client)
-    , m_readyState(MediaPlayer::HaveNothing)
+    , m_aborted(false)
 {
 }
 
@@ -71,15 +71,14 @@ void SourceBufferPrivateGStreamer::append(const unsigned char* data, unsigned le
     ASSERT(m_mediaSource);
     ASSERT(m_sourceBufferPrivateClient);
 
-    if (!m_client->append(this, data, length)) {
-        if (m_sourceBufferPrivateClient)
-            m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(this, SourceBufferPrivateClient::ReadStreamFailed);
-    }
+    if (!m_client->append(this, data, length) && m_sourceBufferPrivateClient)
+        m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(this, SourceBufferPrivateClient::ReadStreamFailed);
 }
 
 void SourceBufferPrivateGStreamer::abort()
 {
-    notImplemented();
+    // This is a hint for the lower layers (WebKitMediaSrc) to force a reset when the next data is appended
+    m_aborted = true;
 }
 
 void SourceBufferPrivateGStreamer::removedFromMediaSource()
@@ -102,12 +101,12 @@ PassRefPtr<TimeRanges> SourceBufferPrivateGStreamer::buffered() {
 
 MediaPlayer::ReadyState SourceBufferPrivateGStreamer::readyState() const
 {
-    return m_readyState;
+    return m_mediaSource->readyState();
 }
 
 void SourceBufferPrivateGStreamer::setReadyState(MediaPlayer::ReadyState state)
 {
-    m_readyState = state;
+    m_mediaSource->setReadyState(state);
 }
 
 // TODO: Implement these
