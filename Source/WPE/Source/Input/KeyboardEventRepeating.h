@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
+ * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,62 +24,37 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_Input_Handling_h
-#define WPE_Input_Handling_h
+#ifndef WPE_Input_KeyboardEventRepeating_h
+#define WPE_Input_KeyboardEventRepeating_h
 
-#include <WPE/WPE.h>
 #include <WPE/Input/Events.h>
-#include <array>
-#include <memory>
+#include <glib.h>
 
 namespace WPE {
 
 namespace Input {
 
-class KeyboardEventHandler;
-class KeyboardEventRepeating;
-
-class Client {
+class KeyboardEventRepeating {
 public:
-    virtual ~Client() = default;
+    KeyboardEventRepeating();
+    ~KeyboardEventRepeating();
 
-    virtual void handleKeyboardEvent(KeyboardEvent&&) = 0;
-    virtual void handlePointerEvent(PointerEvent&&) = 0;
-    virtual void handleAxisEvent(AxisEvent&&) = 0;
-    virtual void handleTouchEvent(TouchEvent&&) = 0;
-};
-
-class Server {
-public:
-    static WPE_EXPORT Server& singleton();
-
-    WPE_EXPORT void setTarget(Client*);
-
-    WPE_EXPORT void serveKeyboardEvent(KeyboardEvent::Raw&&);
-    WPE_EXPORT void servePointerEvent(PointerEvent::Raw&&);
-    WPE_EXPORT void serveAxisEvent(AxisEvent::Raw&&);
-    WPE_EXPORT void serveTouchEvent(TouchEvent::Raw&&);
+    void schedule(const KeyboardEvent::Raw&);
+    void cancel();
 
 private:
-    Server();
+    static const unsigned s_startupDelay { 500000 };
+    static const unsigned s_repeatDelay { 100000 };
 
-    Client* m_target { nullptr };
+    void dispatch();
+    static GSourceFuncs sourceFuncs;
 
-    // FIXME: Merge the two classes?
-    std::unique_ptr<KeyboardEventHandler> m_keyboardEventHandler;
-    std::unique_ptr<KeyboardEventRepeating> m_keyboardEventRepeating;
-
-    struct Pointer {
-        uint32_t x;
-        uint32_t y;
-    } m_pointer { 0, 0 };
-
-    void dispatchTouchEvent(int id);
-    std::array<TouchEvent::Raw, 10> m_touchEvents;
+    GSource* m_source;
+    KeyboardEvent::Raw m_event { 0, 0, 0 };
 };
 
-} // namespace WPE
+} // namespace Input
 
 } // namespace WPE
 
-#endif // WPE_Input_Handling_h
+#endif // WPE_Input_KeyboardEventRepeating_h
