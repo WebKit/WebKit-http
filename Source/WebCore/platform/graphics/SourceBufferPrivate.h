@@ -34,7 +34,6 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "MediaPlayer.h"
-#include "TimeRanges.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
@@ -42,7 +41,6 @@ namespace WebCore {
 
 class MediaSample;
 class SourceBufferPrivateClient;
-class TimeRanges;
 
 class SourceBufferPrivate : public RefCounted<SourceBufferPrivate> {
 public:
@@ -53,10 +51,6 @@ public:
     virtual void append(const unsigned char* data, unsigned length) = 0;
     virtual void abort() = 0;
     virtual void removedFromMediaSource() = 0;
-
-#if !ENABLE(VIDEO_TRACK)
-    virtual PassRefPtr<TimeRanges> buffered() = 0;
-#endif
 
     virtual MediaPlayer::ReadyState readyState() const = 0;
     virtual void setReadyState(MediaPlayer::ReadyState) = 0;

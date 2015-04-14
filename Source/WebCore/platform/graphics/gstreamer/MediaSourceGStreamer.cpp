@@ -43,6 +43,7 @@
 #include <wtf/gobject/GRefPtr.h>
 #include <wtf/PassRefPtr.h>
 #include "NotImplemented.h"
+#include "TimeRanges.h"
 
 namespace WebCore {
 
@@ -138,14 +139,9 @@ void MediaSourceGStreamer::sourceBufferPrivateDidChangeActiveState(SourceBufferP
         m_activeSourceBuffers.remove(buffer);
 }
 
-#if !ENABLE(VIDEO_TRACK)
-PassRefPtr<TimeRanges> MediaSourceGStreamer::buffered() {
-  if (!m_playerPrivate)
-      return TimeRanges::create();
-  // TODO: Pass some id to buffered() to get only the ranges of this SourceBuffer
-  return TimeRanges::create(*(m_playerPrivate->buffered().get()));
+std::unique_ptr<PlatformTimeRanges> MediaSourceGStreamer::buffered() {
+    return m_mediaSource->buffered();
 }
-#endif
 
 }
 #endif

@@ -90,15 +90,6 @@ void SourceBufferPrivateGStreamer::removedFromMediaSource()
     m_client->removedFromMediaSource(this);
 }
 
-#if !ENABLE(VIDEO_TRACK)
-PassRefPtr<TimeRanges> SourceBufferPrivateGStreamer::buffered() {
-  if (!m_mediaSource)
-      return TimeRanges::create();
-  // TODO: Pass some id to buffered() to get only the ranges of this SourceBuffer
-  return m_mediaSource->buffered().get();
-}
-#endif
-
 MediaPlayer::ReadyState SourceBufferPrivateGStreamer::readyState() const
 {
     return m_mediaSource->readyState();

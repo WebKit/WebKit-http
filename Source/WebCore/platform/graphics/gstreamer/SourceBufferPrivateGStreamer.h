@@ -56,9 +56,6 @@ public:
     virtual void append(const unsigned char* data, unsigned length) override;
     virtual void abort() override;
     virtual void removedFromMediaSource() override;
-#if !ENABLE(VIDEO_TRACK)
-    virtual PassRefPtr<TimeRanges> buffered() override;
-#endif
     virtual MediaPlayer::ReadyState readyState() const override;
     virtual void setReadyState(MediaPlayer::ReadyState) override;
 

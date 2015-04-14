@@ -1066,6 +1066,11 @@ void MediaPlayerPrivateGStreamer::setPreservesPitch(bool preservesPitch)
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamer::buffered() const
 {
+#if ENABLE(MEDIA_SOURCE)
+    if (isMediaSource())
+        return m_mediaSource->buffered();
+#endif
+
     auto timeRanges = std::make_unique<PlatformTimeRanges>();
     if (m_errorOccured || isLiveStream())
         return timeRanges;

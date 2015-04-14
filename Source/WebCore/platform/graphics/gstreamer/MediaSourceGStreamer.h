@@ -46,6 +46,7 @@ namespace WebCore {
 class SourceBufferPrivateGStreamer;
 class MediaSourceClientGStreamer;
 class MediaPlayerPrivateGStreamer;
+class PlatformTimeRanges;
 
 // FIXME: Should this be called MediaSourcePrivateGStreamer?
 class MediaSourceGStreamer : public MediaSourcePrivate {
@@ -69,9 +70,7 @@ public:
 
     void sourceBufferPrivateDidChangeActiveState(SourceBufferPrivateGStreamer*, bool isActive);
 
-#if !ENABLE(VIDEO_TRACK)
-    PassRefPtr<TimeRanges> buffered();
-#endif
+    std::unique_ptr<PlatformTimeRanges> buffered();
 
 private:
     MediaSourceGStreamer(MediaSourcePrivateClient*, WebKitMediaSrc*);
