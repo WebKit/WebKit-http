@@ -1329,7 +1329,7 @@ bool MediaSourceClientGStreamer::append(PassRefPtr<SourceBufferPrivateGStreamer>
     if (aborted) {
         if (source->demuxer) {
             GstState pending;
-            gst_element_get_state(GST_ELEMENT(source->demuxer), 0, &pending, GST_CLOCK_TIME_NONE);
+            gst_element_get_state(GST_ELEMENT(source->demuxer), 0, &pending, 250 * GST_NSECOND);
             gst_element_set_state(GST_ELEMENT(source->demuxer), GST_STATE_READY);
             gst_element_set_state(GST_ELEMENT(source->demuxer), pending);
         }
