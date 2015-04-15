@@ -79,7 +79,6 @@ private:
     HashSet<SourceBufferPrivateGStreamer*> m_activeSourceBuffers;
     RefPtr<MediaSourceClientGStreamer> m_client;
     MediaSourcePrivateClient* m_mediaSource;
-    MediaPlayer::ReadyState m_readyState;
     MediaPlayerPrivateGStreamer* m_playerPrivate;
 };
 

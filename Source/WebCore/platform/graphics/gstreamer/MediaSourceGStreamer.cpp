@@ -58,7 +58,6 @@ void MediaSourceGStreamer::open(MediaSourcePrivateClient* mediaSource, WebKitMed
 MediaSourceGStreamer::MediaSourceGStreamer(MediaSourcePrivateClient* mediaSource, WebKitMediaSrc* src)
     : MediaSourcePrivate()
     , m_mediaSource(mediaSource)
-    , m_readyState(MediaPlayer::HaveNothing)
 {
     m_client = MediaSourceClientGStreamer::create(src);
 }
@@ -111,13 +110,12 @@ void MediaSourceGStreamer::unmarkEndOfStream()
 
 MediaPlayer::ReadyState MediaSourceGStreamer::readyState() const
 {
-    return m_readyState;
+    return m_playerPrivate->readyState();
 }
 
 void MediaSourceGStreamer::setReadyState(MediaPlayer::ReadyState state)
 {
     m_playerPrivate->setReadyState(state);
-    m_readyState = state;
 }
 
 void MediaSourceGStreamer::waitForSeekCompleted()
