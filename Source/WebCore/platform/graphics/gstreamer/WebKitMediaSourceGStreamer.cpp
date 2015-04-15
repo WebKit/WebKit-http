@@ -1287,6 +1287,10 @@ void MediaSourceClientGStreamer::durationChanged(const MediaTime& duration)
     GST_DEBUG_OBJECT(m_src.get(), "Received duration: %" GST_TIME_FORMAT, GST_TIME_ARGS(gstDuration));
 
     GST_OBJECT_LOCK(m_src.get());
+    if (gstDuration == priv->duration) {
+        GST_OBJECT_UNLOCK(m_src.get());
+        return;
+    }
     priv->duration = gstDuration;
     GST_OBJECT_UNLOCK(m_src.get());
     gst_element_post_message(GST_ELEMENT(m_src.get()), gst_message_new_duration_changed(GST_OBJECT(m_src.get())));
