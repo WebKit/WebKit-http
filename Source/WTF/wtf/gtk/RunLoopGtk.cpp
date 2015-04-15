@@ -76,7 +76,7 @@ void RunLoop::run()
     }
 
     // Create and run a nested loop if the innermost one was already running.
-    GMainLoop* nestedMainLoop = g_main_loop_new(0, FALSE);
+    GMainLoop* nestedMainLoop = g_main_loop_new(mainRunLoop.m_runLoopContext.get(), FALSE);
     mainRunLoop.pushNestedMainLoop(nestedMainLoop);
     g_main_loop_run(nestedMainLoop);
     mainRunLoop.popNestedMainLoop();
