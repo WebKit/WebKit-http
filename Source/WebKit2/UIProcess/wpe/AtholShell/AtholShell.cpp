@@ -64,18 +64,10 @@ void InputClient::handleKeyboardEvent(uint32_t time, uint32_t key, uint32_t stat
 
 void InputClient::handlePointerMotion(uint32_t time, double dx, double dy)
 {
-    WPE::Input::Server::singleton().servePointerEvent({
-        WPE::Input::PointerEvent::Motion,
-        time, static_cast<int>(dx), static_cast<int>(dy), 0, 0
-    });
 }
 
 void InputClient::handlePointerButton(uint32_t time, uint32_t button, uint32_t state)
 {
-    WPE::Input::Server::singleton().servePointerEvent({
-        WPE::Input::PointerEvent::Button,
-        time, 0, 0, button, state
-    });
 }
 
 AtholShell::AtholShell(API::Compositor* compositor)
