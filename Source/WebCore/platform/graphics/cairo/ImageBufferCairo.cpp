@@ -72,20 +72,23 @@ ImageBufferData::ImageBufferData(const IntSize& size)
     : m_platformContext(0)
     , m_size(size)
 #if ENABLE(ACCELERATED_2D_CANVAS)
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    , m_platformLayerProxy(adoptRef(new TextureMapperPlatformLayerProxy))
+#endif
     , m_texture(0)
 #endif
 {
 }
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t& texture)
+void ImageBufferData::createCairoGLSurface()
 {
     GLContext::sharingContext()->makeContextCurrent();
 
     // We must generate the texture ourselves, because there is no Cairo API for extracting it
     // from a pre-existing surface.
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glGenTextures(1, &m_texture);
+    glBindTexture(GL_TEXTURE_2D, m_texture);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -93,7 +96,11 @@ PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    glTexImage2D(GL_TEXTURE_2D, 0 /* level */, GL_RGBA, size.width(), size.height(), 0 /* border */, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0 /* level */, GL_RGBA, m_size.width(), m_size.height(), 0 /* border */, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_texture, m_size, false, false));
+#endif
 
     GLContext* context = GLContext::sharingContext();
     cairo_device_t* device = context->cairoDevice();
@@ -101,7 +108,7 @@ PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t
     // Thread-awareness is a huge performance hit on non-Intel drivers.
     cairo_gl_device_set_thread_aware(device, FALSE);
 
-    return adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, texture, size.width(), size.height()));
+    m_surface = adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, m_texture, m_size.width(), m_size.height()));
 }
 #endif
 
@@ -116,7 +123,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
     if (renderingMode == Accelerated)
-        m_data.m_surface = createCairoGLSurface(size, m_data.m_texture);
+        m_data.createCairoGLSurface();
     else
 #else
     ASSERT_UNUSED(renderingMode, renderingMode != Accelerated);
@@ -404,13 +411,7 @@ String ImageBuffer::toDataURL(const String& mimeType, const double*, CoordinateS
 #endif
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-#if USE(COORDINATED_GRAPHICS_THREADED)
-RefPtr<TextureMapperPlatformLayerProxy> ImageBufferData::proxy() const
-{
-    notImplemented();
-    return RefPtr<TextureMapperPlatformLayerProxy>();
-}
-#else
+#if !USE(COORDINATED_GRAPHICS_THREADED)
 void ImageBufferData::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     if (textureMapper->accelerationMode() != TextureMapper::OpenGLMode) {
