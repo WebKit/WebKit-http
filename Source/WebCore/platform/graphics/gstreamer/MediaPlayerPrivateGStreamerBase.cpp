@@ -690,10 +690,8 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
         m_usingFallbackVideoSink = true;
         m_videoSink = webkitVideoSinkNew();
         m_repaintHandler = g_signal_connect(m_videoSink.get(), "repaint-requested", G_CALLBACK(mediaPlayerPrivateRepaintCallback), this);
+        m_drainHandler = g_signal_connect(m_videoSink.get(), "drain", G_CALLBACK(mediaPlayerPrivateDrainCallback), this);
     }
-
-    m_repaintHandler = g_signal_connect(m_videoSink.get(), "repaint-requested", G_CALLBACK(mediaPlayerPrivateRepaintCallback), this);
-    m_drainHandler = g_signal_connect(m_videoSink.get(), "drain", G_CALLBACK(mediaPlayerPrivateDrainCallback), this);
 
     m_fpsSink = gst_element_factory_make("fpsdisplaysink", "sink");
     if (m_fpsSink) {
