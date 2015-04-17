@@ -382,6 +382,11 @@ void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
 #if USE(GRAPHICS_SURFACE)
     m_surfaceBackingStores.remove(layer.get());
 #endif
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    if (auto* platformLayerProxy = m_platformLayerProxies.get(layer.get()))
+        platformLayerProxy->setTargetLayer(nullptr);
+    m_platformLayerProxies.remove(layer.get());
+#endif
 }
 
 void CoordinatedGraphicsScene::setRootLayerID(CoordinatedLayerID layerID)
@@ -659,6 +664,9 @@ void CoordinatedGraphicsScene::purgeGLResources()
     m_releasedImageBackings.clear();
 #if USE(GRAPHICS_SURFACE)
     m_surfaceBackingStores.clear();
+#endif
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    m_platformLayerProxies.clear();
 #endif
     m_surfaces.clear();
 
