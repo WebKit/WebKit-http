@@ -45,6 +45,10 @@
 #include <wtf/Threading.h>
 #include <wtf/gobject/GSourceWrap.h>
 
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+#include <WebCore/DisplayRefreshMonitor.h>
+#endif
+
 namespace WebCore {
 class CoordinatedSurface;
 class GraphicsContext;
@@ -119,6 +123,7 @@ private:
     // ThreadedCompositor::Client
     virtual void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint&, float) override;
     virtual void purgeBackingStores() override;
+    virtual void frameComplete() override;
     virtual void renderNextFrame() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
@@ -127,6 +132,10 @@ private:
     virtual void notifyFlushRequired() override;
     virtual void commitSceneState(const WebCore::CoordinatedGraphicsState&) override;
     virtual void paintLayerContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, const WebCore::IntRect& clipRect) override;
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID);
+#endif
 
     LayerTreeContext m_layerTreeContext;
     uint64_t m_forceRepaintAsyncCallbackID;
@@ -148,6 +157,21 @@ private:
 
     GSourceWrap::Static m_layerFlushTimer;
     bool m_layerFlushSchedulingEnabled;
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {
+    public:
+        DisplayRefreshMonitor();
+
+        virtual bool requestRefreshCallback() override;
+        void dispatchDisplayRefreshCallback();
+
+    private:
+        void displayRefreshCallback();
+        RunLoop::Timer<DisplayRefreshMonitor> m_displayRefreshTimer;
+    };
+    RefPtr<DisplayRefreshMonitor> m_displayRefreshMonitor;
+#endif
 };
 
 } // namespace WebKit

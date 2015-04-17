@@ -799,6 +799,9 @@ void CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly()
 {
     ASSERT(m_coordinator->isFlushingLayerChanges());
 
+    if (m_animations.hasRunningAnimations())
+        client().notifyFlushBeforeDisplayRefresh(this);
+
     // When we have a transform animation, we need to update visible rect every frame to adjust the visible rect of a backing store.
     bool hasActiveTransformAnimation = selfOrAncestorHasActiveTransformAnimation();
     if (hasActiveTransformAnimation)
