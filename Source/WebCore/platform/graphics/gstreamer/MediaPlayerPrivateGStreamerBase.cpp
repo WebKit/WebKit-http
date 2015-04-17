@@ -174,8 +174,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
     m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
-    g_cond_init(&m_updateCondition);
-    g_mutex_init(&m_updateMutex);
 #endif
 }
 
@@ -207,11 +205,6 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 #if USE(GSTREAMER_GL)
     g_cond_clear(&m_drawCondition);
     g_mutex_clear(&m_drawMutex);
-#endif
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    g_cond_clear(&m_updateCondition);
-    g_mutex_clear(&m_updateMutex);
 #endif
 
     if (m_pipeline) {
@@ -620,30 +613,24 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
 }
 #endif
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
-void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
+void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 {
-    WTF::GMutexLocker<GMutex> lock(m_updateMutex);
-
+#if USE(COORDINATED_GRAPHICS_THREADED)
     {
         WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-        if (!GST_IS_SAMPLE(m_sample.get())) {
-            g_cond_signal(&m_updateCondition);
+        m_sample = sample;
+
+        if (!GST_IS_SAMPLE(m_sample.get()))
             return;
-        }
 
         GstCaps* caps = gst_sample_get_caps(m_sample.get());
-        if (UNLIKELY(!caps)) {
-            g_cond_signal(&m_updateCondition);
+        if (UNLIKELY(!caps))
             return;
-        }
 
         GstVideoInfo videoInfo;
         gst_video_info_init(&videoInfo);
-        if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps))) {
-            g_cond_signal(&m_updateCondition);
+        if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps)))
             return;
-        }
 
         IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
 
@@ -658,32 +645,17 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
         }
 
         updateTexture(buffer->textureGL(), videoInfo);
-        m_platformLayerProxy->pushNextBuffer(WTF::move(buffer), TextureMapperPlatformLayerProxy::PushOnCompositionThread);
-    }
-
-    g_cond_signal(&m_updateCondition);
-}
-#endif
-
-void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
-{
-    {
-        WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-        m_sample = sample;
-    }
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    {
-        WTF::GMutexLocker<GMutex> lock(m_updateMutex);
-        m_platformLayerProxy->scheduleUpdateOnCompositorThread([this] {
-            this->updateOnCompositorThread();
-        });
-        g_cond_wait(&m_updateCondition, &m_updateMutex);
+        m_platformLayerProxy->pushNextBuffer(WTF::move(buffer));
     }
     return;
 #endif
 
 #if USE(GSTREAMER_GL)
+    {
+        WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+        m_sample = sample;
+    }
+
     {
         ASSERT(!isMainThread());
 

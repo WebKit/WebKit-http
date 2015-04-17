@@ -58,19 +58,13 @@ public:
     TextureMapperPlatformLayerProxy();
     virtual ~TextureMapperPlatformLayerProxy();
 
-    enum PushOnThread {
-        PushOnCompositionThread,
-        PushOnNonCompositionThread
-    };
-    void pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer>, PushOnThread = PushOnNonCompositionThread);
+    void pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer>);
     std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
 
     void setCompositor(Compositor*);
     void setTargetLayer(TextureMapperLayer*);
 
     void swapBuffer();
-
-    void scheduleUpdateOnCompositorThread(std::function<void()>&&);
 
 private:
     void scheduleReleaseUnusedBuffers();
@@ -92,10 +86,6 @@ private:
 #ifndef NDEBUG
     ThreadIdentifier m_compositorThreadID;
 #endif
-
-    void compositorThreadUpdateTimerFired();
-    std::unique_ptr<RunLoop::Timer<TextureMapperPlatformLayerProxy>> m_compositorThreadUpdateTimer;
-    std::function<void()> m_compositorThreadUpdateFunction;
 };
 
 };
