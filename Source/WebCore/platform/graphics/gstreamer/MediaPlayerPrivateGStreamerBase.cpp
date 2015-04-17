@@ -307,12 +307,12 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
 
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
 
-    GstCaps* caps = nullptr;
+    GRefPtr<GstCaps> caps;
     // We may not have enough data available for the video sink yet,
     // but the demuxer might haver it already.
     if (!GST_IS_SAMPLE(m_sample.get())) {
 #if ENABLE(MEDIA_SOURCE)
-        caps = currentDemuxerCaps().leakRef();
+        caps = currentDemuxerCaps();
 #else
         return FloatSize();
 #endif
@@ -334,7 +334,7 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
     int pixelAspectRatioNumerator, pixelAspectRatioDenominator, stride;
     IntSize originalSize;
     GstVideoFormat format;
-    if (!getVideoSizeAndFormatFromCaps(caps, originalSize, format, pixelAspectRatioNumerator, pixelAspectRatioDenominator, stride))
+    if (!getVideoSizeAndFormatFromCaps(caps.get(), originalSize, format, pixelAspectRatioNumerator, pixelAspectRatioDenominator, stride))
         return FloatSize();
 
     LOG_MEDIA_MESSAGE("Original video size: %dx%d", originalSize.width(), originalSize.height());
