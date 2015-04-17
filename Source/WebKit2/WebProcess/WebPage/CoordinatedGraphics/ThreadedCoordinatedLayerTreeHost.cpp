@@ -67,6 +67,9 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
     , m_isWaitingForRenderer(false)
     , m_layerFlushTimer("[WebKit2] ThreadedCoordinatedLayerTreeHost layerFlushTimer", std::bind(&ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush, this), G_PRIORITY_HIGH_IDLE + 20)
     , m_layerFlushSchedulingEnabled(true)
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor))
+#endif
 {
     m_coordinator = std::make_unique<CompositingCoordinator>(m_webPage->corePage(), this);
 
@@ -267,6 +270,11 @@ void ThreadedCoordinatedLayerTreeHost::purgeBackingStores()
     m_coordinator->purgeBackingStores();
 }
 
+void ThreadedCoordinatedLayerTreeHost::frameComplete()
+{
+    m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
+}
+
 void ThreadedCoordinatedLayerTreeHost::renderNextFrame()
 {
     m_isWaitingForRenderer = false;
@@ -293,6 +301,36 @@ void ThreadedCoordinatedLayerTreeHost::commitSceneState(const CoordinatedGraphic
 void ThreadedCoordinatedLayerTreeHost::paintLayerContents(const GraphicsLayer*, GraphicsContext&, const IntRect&)
 {
 }
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+PassRefPtr<WebCore::DisplayRefreshMonitor> ThreadedCoordinatedLayerTreeHost::createDisplayRefreshMonitor(PlatformDisplayID)
+{
+    return m_displayRefreshMonitor;
+}
+
+ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::DisplayRefreshMonitor()
+    : WebCore::DisplayRefreshMonitor(0)
+    , m_displayRefreshTimer(RunLoop::main(), this, &ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::displayRefreshCallback)
+{
+}
+
+bool ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::requestRefreshCallback()
+{
+    setIsScheduled(true);
+    return true;
+}
+
+void ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::dispatchDisplayRefreshCallback()
+{
+    if (isScheduled())
+        m_displayRefreshTimer.startOneShot(0);
+}
+
+void ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::displayRefreshCallback()
+{
+    DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
+}
+#endif
 
 } // namespace WebKit
 

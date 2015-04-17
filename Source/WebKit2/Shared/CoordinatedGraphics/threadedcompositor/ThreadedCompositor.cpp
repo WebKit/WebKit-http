@@ -398,6 +398,7 @@ const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
         wl_callback_destroy(callback);
 
         auto& threadedCompositor = *static_cast<ThreadedCompositor*>(data);
+        threadedCompositor.m_client->frameComplete();
         threadedCompositor.m_compositingRunLoop->updateCompleted();
     }
 };

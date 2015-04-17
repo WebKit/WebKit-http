@@ -57,6 +57,7 @@ public:
     public:
         virtual void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint&, float) = 0;
         virtual void purgeBackingStores() = 0;
+        virtual void frameComplete() = 0;
         virtual void renderNextFrame() = 0;
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
     };
