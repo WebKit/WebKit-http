@@ -88,7 +88,7 @@
 #import <WebKitSystemInterface.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-#include <WebCore/MediaPlaybackTarget.h>
+#include <WebCore/MediaPlaybackTargetMac.h>
 #endif
 
 using namespace WebCore;
@@ -122,7 +122,7 @@ void WebPage::platformDetach()
     [m_mockAccessibilityElement setWebPage:nullptr];
 }
 
-void WebPage::platformEditorState(Frame& frame, EditorState& result) const
+void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePostLayoutDataHint) const
 {
 }
 
@@ -710,9 +710,9 @@ void WebPage::getDataSelectionForPasteboard(const String pasteboardType, SharedM
         return;
     }
     size = buffer->size();
-    RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(size);
+    RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::allocate(size);
     memcpy(sharedMemoryBuffer->data(), buffer->data(), size);
-    sharedMemoryBuffer->createHandle(handle, SharedMemory::ReadOnly);
+    sharedMemoryBuffer->createHandle(handle, SharedMemory::Protection::ReadOnly);
 }
 
 WKAccessibilityWebPageObject* WebPage::accessibilityRemoteObject()
@@ -1011,7 +1011,7 @@ static TextIndicatorPresentationTransition textIndicatorTransitionForActionMenu(
     return forImmediateAction ? TextIndicatorPresentationTransition::FadeIn : TextIndicatorPresentationTransition::Bounce;
 }
 
-void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInViewCooordinates, bool forImmediateAction)
+void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInViewCoordinates, bool forImmediateAction)
 {
     layoutIfNeeded();
 
@@ -1021,7 +1021,7 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
         return;
     }
 
-    IntPoint locationInContentCoordinates = mainFrame.view()->rootViewToContents(roundedIntPoint(locationInViewCooordinates));
+    IntPoint locationInContentCoordinates = mainFrame.view()->rootViewToContents(roundedIntPoint(locationInViewCoordinates));
     HitTestResult hitTestResult = mainFrame.eventHandler().hitTestResultAtPoint(locationInContentCoordinates);
 
     bool actionMenuHitTestPreventsDefault = false;
@@ -1034,7 +1034,7 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     }
 
     WebHitTestResult::Data actionMenuResult(hitTestResult, !forImmediateAction);
-    actionMenuResult.hitTestLocationInViewCooordinates = locationInViewCooordinates;
+    actionMenuResult.hitTestLocationInViewCoordinates = locationInViewCoordinates;
 
     RefPtr<Range> selectionRange = corePage()->focusController().focusedOrMainFrame().selection().selection().firstRange();
 
@@ -1046,7 +1046,7 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     }
 
     NSDictionary *options = nil;
-    RefPtr<Range> lookupRange = lookupTextAtLocation(locationInViewCooordinates, &options);
+    RefPtr<Range> lookupRange = lookupTextAtLocation(locationInViewCoordinates, &options);
     actionMenuResult.lookupText = lookupRange ? lookupRange->text() : String();
 
     if (lookupRange) {
@@ -1106,13 +1106,13 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     send(Messages::WebPageProxy::DidPerformActionMenuHitTest(actionMenuResult, forImmediateAction, actionMenuHitTestPreventsDefault, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
-PassRefPtr<WebCore::Range> WebPage::lookupTextAtLocation(FloatPoint locationInViewCooordinates, NSDictionary **options)
+PassRefPtr<WebCore::Range> WebPage::lookupTextAtLocation(FloatPoint locationInViewCoordinates, NSDictionary **options)
 {
     MainFrame& mainFrame = corePage()->mainFrame();
     if (!mainFrame.view() || !mainFrame.view()->renderView())
         return nullptr;
 
-    IntPoint point = roundedIntPoint(locationInViewCooordinates);
+    IntPoint point = roundedIntPoint(locationInViewCoordinates);
     HitTestResult result = mainFrame.eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(point));
     return rangeForDictionaryLookupAtHitTestResult(result, options);
 }
@@ -1141,25 +1141,6 @@ void WebPage::focusAndSelectLastActionMenuHitTestResult()
     frame->selection().setSelection(position);
 }
 
-void WebPage::inputDeviceForceDidChange(float force, int stage)
-{
-    Element* element = m_lastActionMenuHitTestResult.innerElement();
-    if (!element)
-        return;
-
-    float overallForce = stage < 1 ? force : force + stage - 1;
-    element->dispatchMouseForceChanged(overallForce, m_page->mainFrame().eventHandler().lastMouseDownEvent());
-
-    if (m_lastForceStage == 1 && stage == 2)
-        element->dispatchMouseForceDown(m_page->mainFrame().eventHandler().lastMouseDownEvent());
-    else if (m_lastForceStage == 2 && stage == 1) {
-        element->dispatchMouseForceUp(m_page->mainFrame().eventHandler().lastMouseDownEvent());
-        element->dispatchMouseForceClick(m_page->mainFrame().eventHandler().lastMouseDownEvent());
-    }
-
-    m_lastForceStage = stage;
-}
-
 void WebPage::immediateActionDidUpdate()
 {
     m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionUpdated);
@@ -1173,7 +1154,7 @@ void WebPage::immediateActionDidCancel()
     if (!element)
         return;
 
-    element->dispatchMouseForceCancelled(m_page->mainFrame().eventHandler().lastMouseDownEvent());
+    element->dispatchMouseForceCancelled();
 }
 
 void WebPage::immediateActionDidComplete()
@@ -1228,9 +1209,11 @@ void WebPage::setFont(const String& fontFamily, double fontSize, uint64_t fontTr
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-void WebPage::playbackTargetSelected(const WebCore::MediaPlaybackTarget& playbackTarget) const
+void WebPage::playbackTargetSelected(const WebCore::MediaPlaybackTargetContext& targetContext) const
 {
-    m_page->didChoosePlaybackTarget(playbackTarget);
+    ASSERT(targetContext.type == MediaPlaybackTargetContext::AVOutputContextType);
+
+    m_page->didChoosePlaybackTarget(WebCore::MediaPlaybackTargetMac::create(targetContext.context.avOutputContext));
 }
 
 void WebPage::playbackTargetAvailabilityDidChange(bool changed)

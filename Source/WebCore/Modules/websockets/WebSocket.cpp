@@ -471,10 +471,10 @@ void WebSocket::suspend(ReasonForSuspension reason)
     if (m_resumeTimer.isActive())
         m_resumeTimer.stop();
 
+    m_shouldDelayEventFiring = true;
+
     if (m_channel) {
         if (reason == ActiveDOMObject::PageCache) {
-            // The page will enter the page cache, close the channel but only fire the close event after resuming.
-            m_shouldDelayCloseEvent = true;
             // This will cause didClose() to be called.
             m_channel->fail("WebSocket is closed due to suspension.");
         } else
@@ -486,16 +486,24 @@ void WebSocket::resume()
 {
     if (m_channel)
         m_channel->resume();
-    else if (m_pendingCloseEvent && !m_resumeTimer.isActive()) {
-        // Fire the close event in a timer as we are not allowed to execute arbitrary JS from resume().
+    else if (!m_pendingEvents.isEmpty() && !m_resumeTimer.isActive()) {
+        // Fire the pending events in a timer as we are not allowed to execute arbitrary JS from resume().
         m_resumeTimer.startOneShot(0);
     }
+
+    m_shouldDelayEventFiring = false;
 }
 
 void WebSocket::resumeTimerFired()
 {
-    ASSERT(m_pendingCloseEvent);
-    dispatchEvent(WTF::move(m_pendingCloseEvent));
+    Ref<WebSocket> protect(*this);
+
+    ASSERT(!m_pendingEvents.isEmpty());
+
+    // Check m_shouldDelayEventFiring when iterating in case firing an event causes
+    // suspend() to be called.
+    while (!m_pendingEvents.isEmpty() && !m_shouldDelayEventFiring)
+        dispatchEvent(m_pendingEvents.takeFirst());
 }
 
 void WebSocket::stop()
@@ -505,6 +513,7 @@ void WebSocket::stop()
         m_channel->disconnect();
     m_channel = 0;
     m_state = CLOSED;
+    m_pendingEvents.clear();
     ActiveDOMObject::stop();
     if (pending)
         ActiveDOMObject::unsetPendingActivity(this);
@@ -560,7 +569,7 @@ void WebSocket::didReceiveMessageError()
     LOG(Network, "WebSocket %p didReceiveErrorMessage()", this);
     m_state = CLOSED;
     ASSERT(scriptExecutionContext());
-    dispatchEvent(Event::create(eventNames().errorEvent, false, false));
+    dispatchOrQueueEvent(Event::create(eventNames().errorEvent, false, false));
 }
 
 void WebSocket::didUpdateBufferedAmount(unsigned long bufferedAmount)
@@ -587,12 +596,7 @@ void WebSocket::didClose(unsigned long unhandledBufferedAmount, ClosingHandshake
     m_bufferedAmount = unhandledBufferedAmount;
     ASSERT(scriptExecutionContext());
 
-    RefPtr<CloseEvent> event = CloseEvent::create(wasClean, code, reason);
-    if (m_shouldDelayCloseEvent) {
-        m_pendingCloseEvent = WTF::move(event);
-        m_shouldDelayCloseEvent = false;
-    } else
-        dispatchEvent(event);
+    dispatchOrQueueEvent(CloseEvent::create(wasClean, code, reason));
 
     if (m_channel) {
         m_channel->disconnect();
@@ -614,6 +618,14 @@ size_t WebSocket::getFramingOverhead(size_t payloadSize)
     else if (payloadSize >= minimumPayloadSizeWithTwoByteExtendedPayloadLength)
         overhead += 2;
     return overhead;
+}
+
+void WebSocket::dispatchOrQueueEvent(Ref<Event>&& event)
+{
+    if (m_shouldDelayEventFiring)
+        m_pendingEvents.append(WTF::move(event));
+    else
+        dispatchEvent(WTF::move(event));
 }
 
 }  // namespace WebCore

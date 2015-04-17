@@ -38,6 +38,7 @@
 #include "FontSelector.h"
 #include "MutationObserver.h"
 #include "PageVisibilityState.h"
+#include "PlatformEvent.h"
 #include "PlatformScreen.h"
 #include "ReferrerPolicy.h"
 #include "Region.h"
@@ -780,6 +781,7 @@ public:
     };
 
     bool hasListenerType(ListenerType listenerType) const { return (m_listenerTypes & listenerType); }
+    bool hasListenerTypeForEventType(PlatformEvent::Type) const;
     void addListenerTypeIfNeeded(const AtomicString& eventType);
 
     bool hasMutationObserversOfType(MutationObserver::MutationType type) const
@@ -1229,13 +1231,13 @@ public:
     WEBCORE_EXPORT void addAudioProducer(AudioProducer*);
     WEBCORE_EXPORT void removeAudioProducer(AudioProducer*);
     bool isPlayingAudio() const { return m_isPlayingAudio; }
-    WEBCORE_EXPORT void updateIsPlayingAudio();
+    WEBCORE_EXPORT void updateIsPlayingMedia();
     void pageMutedStateDidChange();
     WeakPtr<Document> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void showPlaybackTargetPicker(const HTMLMediaElement&);
-    void didChoosePlaybackTarget(const MediaPlaybackTarget&);
+    void didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&&);
     void addPlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
     void removePlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
     bool requiresPlaybackTargetRouteMonitoring();

@@ -338,6 +338,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_processSuppressionEnabled(true)
     , m_userActivity("Process suppression disabled for page.")
     , m_pendingNavigationID(0)
+    , m_viewScaleFactor(parameters.viewScaleFactor)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
 #endif
@@ -504,6 +505,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
         m_page->settings().setMediaKeysStorageDirectory(manager->mediaKeyStorageDirectory());
 #endif
     m_page->settings().setAppleMailPaginationQuirkEnabled(parameters.appleMailPaginationQuirkEnabled);
+
+    if (m_viewScaleFactor != 1)
+        scalePage(1, IntPoint());
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -739,7 +743,7 @@ WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const Stri
 }
 #endif
 
-EditorState WebPage::editorState() const
+EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayoutData) const
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
 
@@ -764,7 +768,7 @@ EditorState WebPage::editorState() const
     result.hasComposition = frame.editor().hasComposition();
     result.shouldIgnoreCompositionSelectionChange = frame.editor().ignoreCompositionSelectionChange();
     
-    platformEditorState(frame, result);
+    platformEditorState(frame, result, shouldIncludePostLayoutData);
 
     return result;
 }
@@ -1090,7 +1094,7 @@ void WebPage::navigateToURLWithSimulatedClick(const String& url, IntPoint docume
         return;
 
     const int singleClick = 1;
-    RefPtr<MouseEvent> mouseEvent = MouseEvent::create(eventNames().clickEvent, true, true, currentTime(), nullptr, singleClick, screenPoint.x(), screenPoint.y(), documentPoint.x(), documentPoint.y(), false, false, false, false, 0, nullptr, nullptr);
+    RefPtr<MouseEvent> mouseEvent = MouseEvent::create(eventNames().clickEvent, true, true, currentTime(), nullptr, singleClick, screenPoint.x(), screenPoint.y(), documentPoint.x(), documentPoint.y(), false, false, false, false, 0, nullptr, 0, nullptr);
     mainFrame->loader().urlSelected(mainFrameDocument->completeURL(url), emptyString(), mouseEvent.release(), LockHistory::No, LockBackForwardList::No, ShouldSendReferrer::MaybeSendReferrer);
 }
 
@@ -1367,7 +1371,8 @@ void WebPage::windowScreenDidChange(uint32_t displayID)
 
 void WebPage::scalePage(double scale, const IntPoint& origin)
 {
-    bool willChangeScaleFactor = scale != pageScaleFactor();
+    double totalScale = scale * m_viewScaleFactor;
+    bool willChangeScaleFactor = totalScale != totalScaleFactor();
 
 #if PLATFORM(IOS)
     if (willChangeScaleFactor) {
@@ -1378,11 +1383,11 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
 #endif
     PluginView* pluginView = pluginViewForFrame(&m_page->mainFrame());
     if (pluginView && pluginView->handlesPageScaleFactor()) {
-        pluginView->setPageScaleFactor(scale, origin);
+        pluginView->setPageScaleFactor(totalScale, origin);
         return;
     }
 
-    m_page->setPageScaleFactor(scale, origin);
+    m_page->setPageScaleFactor(totalScale, origin);
 
     // We can't early return before setPageScaleFactor because the origin might be different.
     if (!willChangeScaleFactor)
@@ -1399,7 +1404,8 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
 
 void WebPage::scalePageInViewCoordinates(double scale, IntPoint centerInViewCoordinates)
 {
-    if (scale == pageScaleFactor())
+    double totalScale = scale * m_viewScaleFactor;
+    if (totalScale == totalScaleFactor())
         return;
 
     IntPoint scrollPositionAtNewScale = mainFrameView()->rootViewToContents(-centerInViewCoordinates);
@@ -1408,13 +1414,34 @@ void WebPage::scalePageInViewCoordinates(double scale, IntPoint centerInViewCoor
     scalePage(scale, scrollPositionAtNewScale);
 }
 
-double WebPage::pageScaleFactor() const
+double WebPage::totalScaleFactor() const
 {
     PluginView* pluginView = pluginViewForFrame(&m_page->mainFrame());
     if (pluginView && pluginView->handlesPageScaleFactor())
         return pluginView->pageScaleFactor();
 
     return m_page->pageScaleFactor();
+}
+
+double WebPage::pageScaleFactor() const
+{
+    return totalScaleFactor() / m_viewScaleFactor;
+}
+
+void WebPage::scaleView(double scale)
+{
+    float pageScale = pageScaleFactor();
+
+    double scaleRatio = scale / m_viewScaleFactor;
+
+    IntPoint scrollPositionAtNewScale;
+    if (FrameView* mainFrameView = m_page->mainFrame().view()) {
+        scrollPositionAtNewScale = mainFrameView->scrollPosition();
+        scrollPositionAtNewScale.scale(scaleRatio, scaleRatio);
+    }
+
+    m_viewScaleFactor = scale;
+    scalePage(pageScale, scrollPositionAtNewScale);
 }
 
 void WebPage::setDeviceScaleFactor(float scaleFactor)
@@ -1625,7 +1652,7 @@ void WebPage::takeSnapshot(IntRect snapshotRect, IntSize bitmapSize, uint32_t op
 
     ShareableBitmap::Handle handle;
     if (image)
-        image->bitmap()->createHandle(handle, SharedMemory::ReadOnly);
+        image->bitmap()->createHandle(handle, SharedMemory::Protection::ReadOnly);
 
     send(Messages::WebPageProxy::ImageCallback(handle, callbackID));
 }
@@ -1782,7 +1809,7 @@ WebContextMenu* WebPage::contextMenuAtPointInWindow(const IntPoint& point)
     corePage()->contextMenuController().clearContextMenu();
     
     // Simulate a mouse click to generate the correct menu.
-    PlatformMouseEvent mouseEvent(point, point, RightButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime());
+    PlatformMouseEvent mouseEvent(point, point, RightButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime(), WebCore::ForceAtClick);
     bool handled = corePage()->userInputBridge().handleContextMenuEvent(mouseEvent, &corePage()->mainFrame());
     if (!handled)
         return 0;
@@ -1876,6 +1903,12 @@ static bool handleMouseEvent(const WebMouseEvent& mouseEvent, WebPage* page, boo
             if (onlyUpdateScrollbars)
                 return page->corePage()->userInputBridge().handleMouseMoveOnScrollbarEvent(platformMouseEvent);
             return page->corePage()->userInputBridge().handleMouseMoveEvent(platformMouseEvent);
+
+        case PlatformEvent::MouseForceChanged:
+        case PlatformEvent::MouseForceDown:
+        case PlatformEvent::MouseForceUp:
+            return page->corePage()->userInputBridge().handleMouseForceEvent(platformMouseEvent);
+
         default:
             ASSERT_NOT_REACHED();
             return false;
@@ -2740,7 +2773,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setQTKitEnabled(store.getBoolValueForKey(WebPreferencesKey::isQTKitEnabledKey()));
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && HAVE(AVKIT)
     settings.setAVKitEnabled(true);
 #endif
 
@@ -3087,7 +3120,7 @@ void WebPage::dragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint glob
     if (!view)
         return;
     // FIXME: These are fake modifier keys here, but they should be real ones instead.
-    PlatformMouseEvent event(adjustedClientPosition, adjustedGlobalPosition, LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime());
+    PlatformMouseEvent event(adjustedClientPosition, adjustedGlobalPosition, LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), 0);
     m_page->mainFrame().eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
 }
 
@@ -3835,7 +3868,7 @@ void WebPage::drawRectToImage(uint64_t frameID, const PrintInfo& printInfo, cons
     ShareableBitmap::Handle handle;
 
     if (image)
-        image->bitmap()->createHandle(handle, SharedMemory::ReadOnly);
+        image->bitmap()->createHandle(handle, SharedMemory::Protection::ReadOnly);
 
     send(Messages::WebPageProxy::ImageCallback(handle, callbackID));
 }
@@ -4016,17 +4049,17 @@ void WebPage::handleAlternativeTextUIResult(const String& result)
 
 void WebPage::simulateMouseDown(int button, WebCore::IntPoint position, int clickCount, WKEventModifiers modifiers, double time)
 {
-    mouseEvent(WebMouseEvent(WebMouseEvent::MouseDown, static_cast<WebMouseEvent::Button>(button), position, position, 0, 0, 0, clickCount, static_cast<WebMouseEvent::Modifiers>(modifiers), time));
+    mouseEvent(WebMouseEvent(WebMouseEvent::MouseDown, static_cast<WebMouseEvent::Button>(button), position, position, 0, 0, 0, clickCount, static_cast<WebMouseEvent::Modifiers>(modifiers), time, WebCore::ForceAtClick));
 }
 
 void WebPage::simulateMouseUp(int button, WebCore::IntPoint position, int clickCount, WKEventModifiers modifiers, double time)
 {
-    mouseEvent(WebMouseEvent(WebMouseEvent::MouseUp, static_cast<WebMouseEvent::Button>(button), position, position, 0, 0, 0, clickCount, static_cast<WebMouseEvent::Modifiers>(modifiers), time));
+    mouseEvent(WebMouseEvent(WebMouseEvent::MouseUp, static_cast<WebMouseEvent::Button>(button), position, position, 0, 0, 0, clickCount, static_cast<WebMouseEvent::Modifiers>(modifiers), time, WebCore::ForceAtClick));
 }
 
 void WebPage::simulateMouseMotion(WebCore::IntPoint position, double time)
 {
-    mouseEvent(WebMouseEvent(WebMouseEvent::MouseMove, WebMouseEvent::NoButton, position, position, 0, 0, 0, 0, WebMouseEvent::Modifiers(), time));
+    mouseEvent(WebMouseEvent(WebMouseEvent::MouseMove, WebMouseEvent::NoButton, position, position, 0, 0, 0, 0, WebMouseEvent::Modifiers(), time, 0));
 }
 
 void WebPage::setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length)
@@ -4365,24 +4398,45 @@ void WebPage::cancelComposition()
 
 void WebPage::didChangeSelection()
 {
-#if PLATFORM(MAC) && USE(ASYNC_NSTEXTINPUTCLIENT)
     Frame& frame = m_page->focusController().focusedOrMainFrame();
+    FrameView* view = frame.view();
+    bool needsLayout = view && view->needsLayout();
+
+    // If there is a layout pending, we should avoid populating EditorState that require layout to be done or it will
+    // trigger a synchronous layout every time the selection changes. sendPostLayoutEditorStateIfNeeded() will be called
+    // to send the full editor state after layout is done if we send a partial editor state here.
+    auto editorState = this->editorState(needsLayout ? IncludePostLayoutDataHint::No : IncludePostLayoutDataHint::Yes);
+#if PLATFORM(COCOA)
+    ASSERT_WITH_MESSAGE(needsLayout == (view && view->needsLayout()), "Calling editorState() should not cause a synchronous layout.");
+#endif
+    m_isEditorStateMissingPostLayoutData = editorState.isMissingPostLayoutData;
+
+#if PLATFORM(MAC) && USE(ASYNC_NSTEXTINPUTCLIENT)
     // Abandon the current inline input session if selection changed for any other reason but an input method direct action.
     // FIXME: This logic should be in WebCore.
     // FIXME: Many changes that affect composition node do not go through didChangeSelection(). We need to do something when DOM manipulation affects the composition, because otherwise input method's idea about it will be different from Editor's.
     // FIXME: We can't cancel composition when selection changes to NoSelection, but we probably should.
     if (frame.editor().hasComposition() && !frame.editor().ignoreCompositionSelectionChange() && !frame.selection().isNone()) {
         frame.editor().cancelComposition();
-        send(Messages::WebPageProxy::CompositionWasCanceled(editorState()));
+        send(Messages::WebPageProxy::CompositionWasCanceled(editorState));
     } else
-        send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+        send(Messages::WebPageProxy::EditorStateChanged(editorState));
 #else
-    send(Messages::WebPageProxy::EditorStateChanged(editorState()), pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    send(Messages::WebPageProxy::EditorStateChanged(editorState), pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
 #endif
 
 #if PLATFORM(IOS)
     m_drawingArea->scheduleCompositingLayerFlush();
 #endif
+}
+
+void WebPage::sendPostLayoutEditorStateIfNeeded()
+{
+    if (!m_isEditorStateMissingPostLayoutData)
+        return;
+
+    send(Messages::WebPageProxy::EditorStateChanged(editorState(IncludePostLayoutDataHint::Yes)), pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_isEditorStateMissingPostLayoutData = false;
 }
 
 void WebPage::discardedComposition()

@@ -44,7 +44,8 @@ typedef HashMap<uint16_t, unsigned, DefaultHash<uint16_t>::Hash, WTF::UnsignedWi
 class DFANode {
 public:
     DFANodeTransitions transitions;
-    bool hasFallbackTransition = false;
+    bool hasFallbackTransition { false };
+    bool isKilled { false };
     unsigned fallbackTransition;
     Vector<uint64_t> actions;
 

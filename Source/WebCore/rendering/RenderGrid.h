@@ -87,14 +87,28 @@ private:
     void populateGridPositions(const GridSizingData&);
     void clearGrid();
 
-    typedef LayoutUnit (RenderGrid::* SizingFunction)(RenderBox&, GridTrackSizingDirection, Vector<GridTrack>&);
-    typedef const LayoutUnit& (GridTrack::* AccumulatorGetter)() const;
-    typedef void (GridTrack::* AccumulatorGrowFunction)(LayoutUnit);
-    typedef bool (GridTrackSize::* FilterFunction)() const;
+    enum TrackSizeRestriction {
+        AllowInfinity,
+        ForbidInfinity,
+    };
+    enum TrackSizeComputationPhase {
+        ResolveIntrinsicMinimums,
+        ResolveMaxContentMinimums,
+        ResolveIntrinsicMaximums,
+        ResolveMaxContentMaximums,
+        MaximizeTracks,
+    };
+    static const LayoutUnit& trackSizeForTrackSizeComputationPhase(TrackSizeComputationPhase, GridTrack&, TrackSizeRestriction);
+    static bool shouldProcessTrackForTrackSizeComputationPhase(TrackSizeComputationPhase, const GridTrackSize&);
+    static bool trackShouldGrowBeyondGrowthLimitsForTrackSizeComputationPhase(TrackSizeComputationPhase, const GridTrackSize&);
+    static void markAsInfinitelyGrowableForTrackSizeComputationPhase(TrackSizeComputationPhase, GridTrack&);
+    static void updateTrackSizeForTrackSizeComputationPhase(TrackSizeComputationPhase, GridTrack&);
+    LayoutUnit currentItemSizeForTrackSizeComputationPhase(TrackSizeComputationPhase, RenderBox&, GridTrackSizingDirection, Vector<GridTrack>& columnTracks);
+
     typedef struct GridItemsSpanGroupRange GridItemsSpanGroupRange;
     void resolveContentBasedTrackSizingFunctionsForNonSpanningItems(GridTrackSizingDirection, const GridCoordinate&, RenderBox& gridItem, GridTrack&, Vector<GridTrack>& columnTracks);
-    void resolveContentBasedTrackSizingFunctionsForItems(GridTrackSizingDirection, GridSizingData&, const GridItemsSpanGroupRange&, FilterFunction, SizingFunction, AccumulatorGetter trackSize, AccumulatorGetter correctedTrackSize, AccumulatorGrowFunction, FilterFunction growAboveMaxBreadthFilterFunction = nullptr);
-    void distributeSpaceToTracks(Vector<GridTrack*>&, const Vector<GridTrack*>* growBeyondGrowthLimitsTracks, AccumulatorGetter, LayoutUnit& availableLogicalSpace);
+    template <TrackSizeComputationPhase> void resolveContentBasedTrackSizingFunctionsForItems(GridTrackSizingDirection, GridSizingData&, const GridItemsSpanGroupRange&);
+    template <TrackSizeComputationPhase> void distributeSpaceToTracks(Vector<GridTrack*>&, const Vector<GridTrack*>* growBeyondGrowthLimitsTracks, LayoutUnit& availableLogicalSpace);
 
     double computeNormalizedFractionBreadth(Vector<GridTrack>&, const GridSpan& tracksSpan, GridTrackSizingDirection, LayoutUnit availableLogicalSpace) const;
 
@@ -128,6 +142,8 @@ private:
         ASSERT(gridWasPopulated());
         return m_grid.size();
     }
+
+    bool hasDefiniteLogicalSize(GridTrackSizingDirection) const;
 
     Vector<Vector<Vector<RenderBox*, 1>>> m_grid;
     Vector<LayoutUnit> m_columnPositions;

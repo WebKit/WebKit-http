@@ -33,8 +33,7 @@
 #include "CompilationResult.h"
 #include "DFGPlan.h"
 #include "HandlerInfo.h"
-#include "JSFunction.h"
-#include "Interpreter.h"
+#include "InferredValue.h"
 #include "JITCode.h"
 #include "JSGlobalObject.h"
 #include "RegisterPreservationMode.h"
@@ -84,9 +83,9 @@ protected:
 
 public:
     typedef JSCell Base;
+    static const unsigned StructureFlags = Base::StructureFlags;
 
     static const bool needsDestruction = true;
-    static const bool hasImmortalStructure = true;
     static void destroy(JSCell*);
         
     CodeBlockHash hashFor(CodeSpecializationKind) const;
@@ -117,7 +116,6 @@ public:
     DECLARE_EXPORT_INFO;
 
 protected:
-    static const unsigned StructureFlags = StructureIsImmortal;
     int m_numParametersForCall;
     int m_numParametersForConstruct;
 
@@ -278,11 +276,12 @@ protected:
     MacroAssemblerCodePtr m_jitCodeForConstructWithArityCheckAndPreserveRegs;
 };
 
-class NativeExecutable : public ExecutableBase {
+class NativeExecutable final : public ExecutableBase {
     friend class JIT;
     friend class LLIntOffsetsExtractor;
 public:
     typedef ExecutableBase Base;
+    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
     static NativeExecutable* create(VM& vm, PassRefPtr<JITCode> callThunk, NativeFunction function, PassRefPtr<JITCode> constructThunk, NativeFunction constructor, Intrinsic intrinsic)
     {
@@ -347,8 +346,7 @@ private:
 class ScriptExecutable : public ExecutableBase {
 public:
     typedef ExecutableBase Base;
-
-    ScriptExecutable(Structure* structure, VM& vm, const SourceCode& source, bool isInStrictContext);
+    static const unsigned StructureFlags = Base::StructureFlags;
 
     static void destroy(JSCell*);
         
@@ -416,6 +414,8 @@ private:
     JSObject* prepareForExecutionImpl(ExecState*, JSFunction*, JSScope*, CodeSpecializationKind);
 
 protected:
+    ScriptExecutable(Structure* structure, VM& vm, const SourceCode& source, bool isInStrictContext);
+
     void finishCreation(VM& vm)
     {
         Base::finishCreation(vm);
@@ -441,10 +441,11 @@ protected:
     unsigned m_typeProfilingEndOffset;
 };
 
-class EvalExecutable : public ScriptExecutable {
+class EvalExecutable final : public ScriptExecutable {
     friend class LLIntOffsetsExtractor;
 public:
     typedef ScriptExecutable Base;
+    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
     static void destroy(JSCell*);
 
@@ -486,10 +487,11 @@ private:
     WriteBarrier<UnlinkedEvalCodeBlock> m_unlinkedEvalCodeBlock;
 };
 
-class ProgramExecutable : public ScriptExecutable {
+class ProgramExecutable final : public ScriptExecutable {
     friend class LLIntOffsetsExtractor;
 public:
     typedef ScriptExecutable Base;
+    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
     static ProgramExecutable* create(ExecState* exec, const SourceCode& source)
     {
@@ -539,11 +541,12 @@ private:
     RefPtr<ProgramCodeBlock> m_programCodeBlock;
 };
 
-class FunctionExecutable : public ScriptExecutable {
+class FunctionExecutable final : public ScriptExecutable {
     friend class JIT;
     friend class LLIntOffsetsExtractor;
 public:
     typedef ScriptExecutable Base;
+    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
     static FunctionExecutable* create(
         VM& vm, const SourceCode& source, UnlinkedFunctionExecutable* unlinkedExecutable, 
@@ -644,16 +647,27 @@ public:
 
     unsigned parametersStartOffset() const { return m_parametersStartOffset; }
 
+    void overrideParameterAndTypeProfilingStartEndOffsets(unsigned parametersStartOffset, unsigned typeProfilingStartOffset, unsigned typeProfilingEndOffset)
+    {
+        m_parametersStartOffset = parametersStartOffset;
+        m_typeProfilingStartOffset = typeProfilingStartOffset;
+        m_typeProfilingEndOffset = typeProfilingEndOffset;
+    }
+
     DECLARE_INFO;
         
     void unlinkCalls();
 
     void clearCode();
+    
+    InferredValue* singletonFunction() { return m_singletonFunction.get(); }
 
 private:
     FunctionExecutable(
         VM&, const SourceCode&, UnlinkedFunctionExecutable*, unsigned firstLine, 
         unsigned lastLine, unsigned startColumn, unsigned endColumn);
+    
+    void finishCreation(VM&);
 
     bool isCompiling()
     {
@@ -667,12 +681,13 @@ private:
     }
 
     friend class ScriptExecutable;
-
+    
     WriteBarrier<UnlinkedFunctionExecutable> m_unlinkedExecutable;
     RefPtr<FunctionCodeBlock> m_codeBlockForCall;
     RefPtr<FunctionCodeBlock> m_codeBlockForConstruct;
     RefPtr<TypeSet> m_returnStatementTypeSet;
     unsigned m_parametersStartOffset;
+    WriteBarrier<InferredValue> m_singletonFunction;
 };
 
 inline void ExecutableBase::clearCodeVirtual(ExecutableBase* executable)

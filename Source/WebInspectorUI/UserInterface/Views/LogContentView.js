@@ -35,7 +35,7 @@ WebInspector.LogContentView = function(representedObject)
     // FIXME: Try to use a marker, instead of a list of messages that get re-added.
     this._provisionalMessages = [];
 
-    this.element.classList.add(WebInspector.LogContentView.StyleClassName);
+    this.element.classList.add("log");
 
     this.messagesElement = document.createElement("div");
     this.messagesElement.className = "console-messages";
@@ -104,7 +104,6 @@ WebInspector.LogContentView.Scopes = {
     Logs: "log-logs"
 };
 
-WebInspector.LogContentView.StyleClassName = "log";
 WebInspector.LogContentView.ItemWrapperStyleClassName = "console-item";
 WebInspector.LogContentView.FilteredOutStyleClassName = "filtered-out";
 WebInspector.LogContentView.SelectedStyleClassName = "selected";
@@ -485,6 +484,10 @@ WebInspector.LogContentView.prototype = {
 
     _updateMessagesSelection: function(message, multipleSelection, rangeSelection, shouldScrollIntoView)
     {
+        console.assert(message);
+        if (!message)
+            return;
+
         var alreadySelectedMessage = this._selectedMessages.includes(message);
         if (alreadySelectedMessage && this._selectedMessages.length && multipleSelection) {
             message.classList.remove(WebInspector.LogContentView.SelectedStyleClassName);
@@ -683,7 +686,6 @@ WebInspector.LogContentView.prototype = {
                 case WebInspector.ConsoleMessage.MessageLevel.Error:
                     visible = showsErrors;
                     break;
-                case WebInspector.ConsoleMessage.MessageLevel.Tip: // COMPATIBILITY (iOS 6): Treat Tips like Logs.
                 case WebInspector.ConsoleMessage.MessageLevel.Log:
                 case WebInspector.ConsoleMessage.MessageLevel.Debug:
                     visible = showsLogs;
@@ -799,18 +801,8 @@ WebInspector.LogContentView.prototype = {
         if (currentMessage.classList.contains("console-group-title"))
             currentMessage.parentNode.classList.add("collapsed");
         else {
-            var outlineTitle = currentMessage.querySelector("ol.outline-disclosure > li.parent");
-            if (outlineTitle) {
-                if (event.altKey)
-                    outlineTitle.treeElement.collapseRecursively();
-                else
-                    outlineTitle.treeElement.collapse();
-            } else {
-                // FIXME: <https://webkit.org/b/141949> Web Inspector: Right/Left arrow no longer works in console to expand/collapse ObjectTrees
-                var outlineSection = currentMessage.querySelector(".console-formatted-object > .section");
-                if (outlineSection)
-                    outlineSection._section.collapse();
-            }
+            // FIXME: Web Inspector: Right/Left arrow no longer works in console to expand/collapse ConsoleMessages
+            // FIXME: <https://webkit.org/b/141949> Web Inspector: Right/Left arrow no longer works in console to expand/collapse ObjectTrees
         }
     },
 
@@ -823,44 +815,9 @@ WebInspector.LogContentView.prototype = {
         if (currentMessage.classList.contains("console-group-title"))
             currentMessage.parentNode.classList.remove("collapsed");
         else {
-            var outlineTitle = currentMessage.querySelector("ol.outline-disclosure > li.parent");
-            if (outlineTitle) {
-                outlineTitle.treeElement.onexpand = function() {
-                    setTimeout(function () {
-                        this._ensureMessageIsVisible(currentMessage);
-                        this._clearFocusableChildren();
-                        delete outlineTitle.treeElement.onexpand;
-                    }.bind(this));
-                }.bind(this);
-
-                if (event.altKey)
-                    outlineTitle.treeElement.expandRecursively();
-                else
-                    outlineTitle.treeElement.expand();
-            } else {
-                // FIXME: <https://webkit.org/b/141949> Web Inspector: Right/Left arrow no longer works in console to expand/collapse ObjectTrees
-                var outlineSection = currentMessage.querySelector(".console-formatted-object > .section");
-                if (outlineSection) {
-                    outlineSection._section.addEventListener(WebInspector.Section.Event.VisibleContentDidChange, this._propertiesSectionDidUpdateContent, this);
-                    outlineSection._section.expand();
-                }
-            }
+            // FIXME: Web Inspector: Right/Left arrow no longer works in console to expand/collapse ConsoleMessages
+            // FIXME: <https://webkit.org/b/141949> Web Inspector: Right/Left arrow no longer works in console to expand/collapse ObjectTrees
         }
-    },
-
-    _propertiesSectionDidUpdateContent: function(event)
-    {
-        var section = event.target;
-        section.removeEventListener(WebInspector.Section.Event.VisibleContentDidChange, this._propertiesSectionDidUpdateContent, this);
-
-        var message = section.element.enclosingNodeOrSelfWithClass(WebInspector.LogContentView.ItemWrapperStyleClassName);
-        if (!this._isMessageSelected(message))
-            return;
-
-        setTimeout(function () {
-            this._ensureMessageIsVisible(message);
-            this._clearFocusableChildren();
-        }.bind(this));
     },
 
     _previousMessage: function(message)
@@ -927,7 +884,7 @@ WebInspector.LogContentView.prototype = {
                 this._highlightRanges(message, matchRanges);
 
             var classList = message.classList;
-            if (!isEmptyObject(matchRanges) || message.command instanceof WebInspector.ConsoleCommand || message.message instanceof WebInspector.ConsoleCommandResultMessage)
+            if (!isEmptyObject(matchRanges) || message.__commandView instanceof WebInspector.ConsoleCommandView || message.__message instanceof WebInspector.ConsoleCommandResultMessage)
                 classList.remove(WebInspector.LogContentView.FilteredOutBySearchStyleClassName);
             else
                 classList.add(WebInspector.LogContentView.FilteredOutBySearchStyleClassName);

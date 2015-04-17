@@ -152,6 +152,10 @@
 #include <WebCore/CairoUtilities.h>
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#include <WebCore/MediaPlaybackTarget.h>
+#endif
+
 // This controls what strategy we use for mouse wheel coalescing.
 #define MERGE_WHEEL_EVENTS 1
 
@@ -438,7 +442,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
-#if PLATFORM(IOS) && (__IPHONE_OS_VERSION_MIN_REQUIRED > 80200)
+#if PLATFORM(IOS)
     m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this);
 #endif
 #if ENABLE(VIBRATION)
@@ -664,7 +668,7 @@ void WebPageProxy::reattachToWebProcess()
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
-#if PLATFORM(IOS) && (__IPHONE_OS_VERSION_MIN_REQUIRED > 80200)
+#if PLATFORM(IOS)
     m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this);
 #endif
 
@@ -2212,6 +2216,8 @@ double WebPageProxy::pageScaleFactor() const
 
 void WebPageProxy::scalePage(double scale, const IntPoint& origin)
 {
+    ASSERT(scale > 0);
+
     if (!isValid())
         return;
 
@@ -2221,11 +2227,24 @@ void WebPageProxy::scalePage(double scale, const IntPoint& origin)
 
 void WebPageProxy::scalePageInViewCoordinates(double scale, const IntPoint& centerInViewCoordinates)
 {
+    ASSERT(scale > 0);
+
     if (!isValid())
         return;
 
     m_pageScaleFactor = scale;
     m_process->send(Messages::WebPage::ScalePageInViewCoordinates(scale, centerInViewCoordinates), m_pageID);
+}
+
+void WebPageProxy::scaleView(double scale)
+{
+    ASSERT(scale > 0);
+
+    if (!isValid())
+        return;
+
+    m_viewScaleFactor = scale;
+    m_process->send(Messages::WebPage::ScaleView(scale), m_pageID);
 }
 
 void WebPageProxy::setIntrinsicDeviceScaleFactor(float scaleFactor)
@@ -4060,7 +4079,10 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
         }
 
         ContextMenuItem coreItem = ContextMenuItem::shareMenuItem(absoluteLinkURL, downloadableMediaURL, image.get(), contextMenuContextData.selectedText());
-        proposedAPIItems.append(WebContextMenuItem::create(coreItem));
+        if (!coreItem.isNull()) {
+            platformInitializeShareMenuItem(coreItem);
+            proposedAPIItems.append(WebContextMenuItem::create(coreItem));
+        }
     }
 
     Vector<RefPtr<WebContextMenuItem>> clientItems;
@@ -4075,6 +4097,12 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
 
     m_contextMenuClient->contextMenuDismissed(*this);
 }
+
+#if !PLATFORM(MAC)
+void WebPageProxy::platformInitializeShareMenuItem(ContextMenuItem&)
+{
+}
+#endif
 
 void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
 {
@@ -4369,6 +4397,9 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
 
     case WebEvent::MouseDown:
     case WebEvent::MouseUp:
+    case WebEvent::MouseForceChanged:
+    case WebEvent::MouseForceDown:
+    case WebEvent::MouseForceUp:
     case WebEvent::Wheel:
     case WebEvent::KeyDown:
     case WebEvent::KeyUp:
@@ -4398,6 +4429,10 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         break;
     case WebEvent::MouseUp:
         m_currentlyProcessedMouseDownEvent = nullptr;
+        break;
+    case WebEvent::MouseForceChanged:
+    case WebEvent::MouseForceDown:
+    case WebEvent::MouseForceUp:
         break;
 
     case WebEvent::Wheel: {
@@ -4888,6 +4923,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
     parameters.deviceScaleFactor = deviceScaleFactor();
+    parameters.viewScaleFactor = m_viewScaleFactor;
     parameters.topContentInset = m_topContentInset;
     parameters.mediaVolume = m_mediaVolume;
     parameters.muted = m_muted;
@@ -5589,16 +5625,19 @@ void WebPageProxy::navigationGestureDidBegin()
 {
     m_isShowingNavigationGestureSnapshot = true;
     m_pageClient.navigationGestureDidBegin();
+    m_loaderClient->navigationGestureDidBegin(*this);
 }
 
 void WebPageProxy::navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem& item)
 {
     m_pageClient.navigationGestureWillEnd(willNavigate, item);
+    m_loaderClient->navigationGestureWillEnd(*this, willNavigate, item);
 }
 
 void WebPageProxy::navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem& item)
 {
     m_pageClient.navigationGestureDidEnd(willNavigate, item);
+    m_loaderClient->navigationGestureDidEnd(*this, willNavigate, item);
 }
 
 void WebPageProxy::willRecordNavigationSnapshot(WebBackForwardListItem& item)
@@ -5611,12 +5650,13 @@ void WebPageProxy::navigationGestureSnapshotWasRemoved()
     m_isShowingNavigationGestureSnapshot = false;
 }
 
-void WebPageProxy::isPlayingAudioDidChange(bool newIsPlayingAudio)
+void WebPageProxy::isPlayingMediaDidChange(WebCore::ChromeClient::MediaStateFlags state)
 {
-    if (m_isPlayingAudio == newIsPlayingAudio)
+    bool isPlayingAudio = state & WebCore::ChromeClient::IsPlayingAudio;
+    if (m_isPlayingAudio == isPlayingAudio)
         return;
 
-    m_isPlayingAudio = newIsPlayingAudio;
+    m_isPlayingAudio = isPlayingAudio;
     m_uiClient->isPlayingAudioDidChange(*this);
 }
 
@@ -5639,11 +5679,6 @@ void WebPageProxy::selectLastActionMenuRange()
 void WebPageProxy::focusAndSelectLastActionMenuHitTestResult()
 {
     m_process->send(Messages::WebPage::FocusAndSelectLastActionMenuHitTestResult(), m_pageID);
-}
-
-void WebPageProxy::inputDeviceForceDidChange(float force, int stage)
-{
-    m_process->send(Messages::WebPage::InputDeviceForceDidChange(force, stage), m_pageID);
 }
 
 void WebPageProxy::immediateActionDidUpdate()
@@ -5718,12 +5753,12 @@ void WebPageProxy::stopMonitoringPlaybackTargets()
     devicePickerProxy().stopMonitoringPlaybackTargets();
 }
 
-void WebPageProxy::didChoosePlaybackTarget(const WebCore::MediaPlaybackTarget& target)
+void WebPageProxy::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& target)
 {
     if (!isValid())
         return;
 
-    m_process->send(Messages::WebPage::PlaybackTargetSelected(target), m_pageID);
+    m_process->send(Messages::WebPage::PlaybackTargetSelected(target->targetContext()), m_pageID);
 }
 
 void WebPageProxy::externalOutputDeviceAvailableDidChange(bool available)

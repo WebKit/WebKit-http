@@ -68,6 +68,11 @@ animations/trigger-parsing.html [ Skip ]
 animations/trigger-container-scroll-simple.html [ Skip ]
 animations/trigger-container-scroll-boundaries.html [ Skip ]
 
+# No support for force events
+fast/events/mouse-force-changed.html [ Skip ]
+fast/events/mouse-force-down.html [ Skip ]
+fast/events/mouse-force-up.html [ Skip ]
+
 # ----------------------------------------
 # Tests which also fail in other platforms
 # ----------------------------------------
@@ -343,7 +348,7 @@ webkit.org/b/86623 fast/events/drag-customData.html
 webkit.org/b/86623 fast/events/drag-dataTransferItemList.html
 webkit.org/b/86623 fast/events/drag-image-filename.html [ Timeout ]
 webkit.org/b/86623 fast/events/drag-in-frames.html [ Failure ]
-webkit.org/b/86623 fast/events/drag-link.html [ Failure ]
+webkit.org/b/86623 fast/events/drag-and-drop-link-into-focused-contenteditable.html [ Failure ]
 webkit.org/b/86623 fast/events/drag-parent-node.html [ Failure ]
 webkit.org/b/86623 fast/events/drag-selects-image.html
 webkit.org/b/86623 fast/events/dropzone-001.html
@@ -459,13 +464,7 @@ Bug(EFL) editing/selection/doubleclick-crash.html [ Failure ]
 Bug(EFL) editing/selection/move-by-word-visually-mac.html [ Failure ]
 
 # EFL port doesn't support attachment feature yet. It was added by r180193, r181056, r181114, r181118 and r181418.
-webkit.org/b/141894 fast/attachment/attachment-disabled-rendering.html [ Failure ]
-webkit.org/b/141894 fast/attachment/attachment-rendering.html [ Failure ]
-webkit.org/b/141894 fast/attachment/attachment-progress.html [ Missing ]
-webkit.org/b/141894 fast/attachment/attachment-select-on-click-inside-user-select-all.html [ Missing ]
-webkit.org/b/141894 fast/attachment/attachment-select-on-click.html [ Missing ]
-webkit.org/b/141894 fast/attachment/attachment-subtitle.html [ Missing ]
-webkit.org/b/141894 fast/attachment/attachment-title.html [ Missing ]
+webkit.org/b/141894 fast/attachment [ Skip ]
 
 # EFL port doesn't fully support EME yet.
 webkit.org/b/141959 http/tests/media/clearkey/clear-key-hls-aes128.html [ Timeout ]
@@ -518,9 +517,6 @@ webkit.org/b/116587 http/tests/security/contentSecurityPolicy/directive-parsing-
 webkit.org/b/116587 http/tests/websocket [ Skip ]
 
 webkit.org/b/124574 fast/css/object-fit/object-fit-embed.html [ Crash Timeout Pass ]
-
-# EFL media control has broken since r166395.
-webkit.org/b/131044 media [ Skip ]
 
 # A lot of crash happen since buildbot bagan to use Ubuntu 13.10.
 webkit.org/b/131729 fast/events/touch [ Skip ]
@@ -1104,13 +1100,15 @@ Bug(EFL) fast/images/webp-color-profile-lossless.html [ Skip ]
 Bug(EFL) fast/images/webp-color-profile-lossy-alpha.html [ Skip ]
 Bug(EFL) fast/images/webp-color-profile-lossy.html [ Skip ]
 
-# Requires MEDIA_SOURCE support.
-webkit.org/b/95296 http/tests/media/media-source [ Skip ]
-webkit.org/b/95296 media/media-source [ Skip ]
-webkit.org/b/95296 fast/history/page-cache-media-source-opened.html [ Skip ]
-webkit.org/b/95296 fast/history/page-cache-media-source-closed.html [ Skip ]
-webkit.org/b/95296 fast/history/page-cache-media-source-closed-2.html [ Skip ]
-webkit.org/b/95296 fast/history/page-cache-removed-source-buffer.html [ Skip ]
+# Though MEDIA_SOURCE is enabled, below tests are still failing.
+webkit.org/b/134974 http/tests/media/media-source [ Skip ]
+webkit.org/b/134974 media/media-source/media-source-append-failed.html [ Timeout ]
+webkit.org/b/134974 media/media-source/media-source-seek-complete.html [ Timeout ]
+webkit.org/b/134974 media/media-source/media-source-stalled-holds-sleep-assertion.html [ Timeout ]
+webkit.org/b/134974 media/track/track-cues-pause-on-exit.html [ Timeout ]
+webkit.org/b/134974 media/media-source/media-source-duplicate-seeked.html [ Failure ]
+webkit.org/b/134974 media/media-source/media-source-play.html [ Failure ]
+webkit.org/b/134974 media/media-source/media-source-append-buffer-with-append-window.html [ Failure Pass ]
 
 # Requires ENCRYPTED_MEDIA support.
 webkit.org/b/95297 media/encrypted-media [ Pass ]
@@ -2170,14 +2168,13 @@ webkit.org/b/142483 fast/css/font-face-in-media-rule.html [ Failure ]
 
 # This feature is only enabled on Mac and iOS right now
 contentfiltering [ Skip ]
+http/tests/contentfiltering [ Skip ]
 
 # small-leak-foo tests have been failed since r181345
 webkit.org/b/142561 svg/animations/smil-leak-dynamically-added-element-instances.svg [ Failure ]
 webkit.org/b/142561 svg/animations/smil-leak-element-instances-noBaseValRef.svg [ Failure ]
 webkit.org/b/142561 svg/animations/smil-leak-element-instances.svg [ Failure ]
 webkit.org/b/142561 svg/animations/smil-leak-elements.svg [ Failure ]
-
-webkit.org/b/142571 fast/css/vertical-text-overflow-ellipsis-text-align-center.html [ Failure ]
 
 webkit.org/b/142763 fast/images/animated-gif-window-resizing.html [ Timeout ]
 webkit.org/b/142764 accessibility/content-editable-as-textarea.html [ Timeout ]
@@ -2215,3 +2212,31 @@ compositing/text-on-scaled-surface.html [ Crash ]
 
 webkit.org/b/143415 fast/scrolling/scroll-select-list.html [ ImageOnlyFailure ]
 webkit.org/b/143416 fast/text/baseline-inline-block.html [ ImageOnlyFailure ]
+
+webkit.org/b/131044 media/audio-controls-rendering.html [ Failure ]
+webkit.org/b/131044 media/controls-right-click-on-timebar.html [ Failure ]
+webkit.org/b/131044 media/controls-strict.html [ Failure ]
+webkit.org/b/131044 media/controls-without-preload.html [ Failure ]
+webkit.org/b/131044 media/media-controls-invalid-url.html [ Failure ]
+webkit.org/b/131044 media/media-controls-timeline-updates.html [ Failure ]
+webkit.org/b/131044 media/media-preload-no-delay-loadevent.html [ Failure ]
+webkit.org/b/131044 media/media-volume-slider-rendered-below.html [ Failure ]
+webkit.org/b/131044 media/media-volume-slider-rendered-normal.html [ Failure ]
+webkit.org/b/131044 media/track/track-cue-rendering-snap-to-lines-not-set.html [ Failure ]
+webkit.org/b/131044 media/track/track-long-word-container-sizing.html [ Failure ]
+webkit.org/b/131044 media/track/video/video-track-mkv-theora-language.html [ Failure ]
+webkit.org/b/131044 media/video-controls-audiotracks-trackmenu.html [ Failure ]
+webkit.org/b/131044 media/video-controls-fullscreen-volume.html [ Failure ]
+webkit.org/b/131044 media/video-controls-no-scripting.html [ Failure ]
+webkit.org/b/131044 media/video-controls-visible-exiting-fullscreen.html [ Failure ]
+webkit.org/b/131044 media/video-display-toggle.html [ Failure ]
+webkit.org/b/131044 media/video-fullscreeen-only-controls.html [ Failure ]
+webkit.org/b/131044 media/video-page-load-preload-none.html [ Failure ]
+webkit.org/b/131044 media/video-volume-slider-drag.html [ Failure ]
+webkit.org/b/131044 media/track/track-datacue.html [ Timeout ]
+webkit.org/b/131044 media/track/track-in-band-subtitles-too-large.html [ Timeout ]
+webkit.org/b/131044 media/track/track-remove-track.html [ Timeout ]
+webkit.org/b/131044 media/video-controls-drag.html [ Timeout ]
+webkit.org/b/131044 media/video-controls-toggling.html [ Timeout ]
+
+webkit.org/b/143663 accessibility/plugin.html [ Failure ]

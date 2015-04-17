@@ -310,7 +310,6 @@ set(WebKit2_SOURCES
     Shared/Plugins/NPObjectProxy.cpp
     Shared/Plugins/NPRemoteObjectMap.cpp
     Shared/Plugins/NPVariantData.cpp
-    Shared/Plugins/PluginModuleInfo.cpp
     Shared/Plugins/PluginProcessCreationParameters.cpp
 
     Shared/Plugins/Netscape/NetscapePluginModule.cpp
@@ -319,7 +318,6 @@ set(WebKit2_SOURCES
 
     Shared/WebsiteData/WebsiteData.cpp
 
-    UIProcess/BackingStore.cpp
     UIProcess/DrawingAreaProxy.cpp
     UIProcess/FrameLoadState.cpp
     UIProcess/GeolocationPermissionRequestManagerProxy.cpp

@@ -1,6 +1,21 @@
 {
     "specification": [
     {
+        "name": "CSS Grid Layout Level 1",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": true
+        },
+        "url": "http://dev.w3.org/csswg/css-grid/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=60731",
+        "keywords": ["css grid layout", "css grid", "grid"],
+        "category": "css",
+        "contact": {
+            "name": "Sergio Villar Senin",
+            "email": "svillar@igalia.com"
+        }
+    },
+    {
         "name": "CSS Media Queries Level 4",
         "url": "http://dev.w3.org/csswg/mediaqueries-4/",
         "keywords": ["css media queries", "media queries"],
@@ -10,6 +25,12 @@
         "name": "CSS Selectors Level 4",
         "url": "http://dev.w3.org/csswg/selectors-4/",
         "keywords": ["css selectors", "selectors"],
+        "category": "css"
+    },
+    {
+        "name": "CSS Shapes Level 1",
+        "url": "http://www.w3.org/TR/css-shapes-1/",
+        "keywords": ["css shapes", "shapes"],
         "category": "css"
     },
     {
@@ -159,6 +180,17 @@
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=138967",
         "specification": "Streams",
         "comment": "The ReadableStream and ReadableStreamReader interfaces are available but not functional."
+    },
+    {
+        "name": "Shape outside for floats",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": true
+        },
+        "url": "http://www.w3.org/TR/css-shapes-1/",
+        "specification": "CSS Shapes Level 1",
+        "description": "CSS Shapes describe geometric shapes for use in CSS. For Level 1, CSS Shapes can be applied to floats.",
+        "comment": "The implementation is feature complete and shipping, but is -webkit prefixed."
     }
     ]
 }
