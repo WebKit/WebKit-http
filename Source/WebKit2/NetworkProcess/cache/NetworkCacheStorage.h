@@ -28,6 +28,7 @@
 
 #if ENABLE(NETWORK_CACHE)
 
+#include "NetworkCacheBlobStorage.h"
 #include "NetworkCacheData.h"
 #include "NetworkCacheKey.h"
 #include <wtf/BloomFilter.h>
@@ -57,30 +58,34 @@ public:
     typedef std::function<bool (std::unique_ptr<Record>)> RetrieveCompletionHandler;
     void retrieve(const Key&, unsigned priority, RetrieveCompletionHandler&&);
 
-    typedef std::function<void (bool success, const Data& mappedBody)> StoreCompletionHandler;
-    void store(const Record&, StoreCompletionHandler&&);
-    void update(const Record& updateRecord, const Record& existingRecord, StoreCompletionHandler&&);
+    typedef std::function<void (const Data& mappedBody)> MappedBodyHandler;
+    void store(const Record&, MappedBodyHandler&&);
 
     void remove(const Key&);
 
     struct RecordInfo {
         size_t bodySize { 0 };
         double worth { -1 }; // 0-1 where 1 is the most valuable.
+        unsigned bodyShareCount { 0 };
+        String bodyHash;
     };
     enum TraverseFlag {
         ComputeWorth = 1 << 0,
+        ShareCount = 1 << 1,
     };
     typedef unsigned TraverseFlags;
     // Null record signals end.
     void traverse(TraverseFlags, std::function<void (const Record*, const RecordInfo&)>&&);
 
     void setCapacity(size_t);
+    size_t approximateSize() const;
     void clear();
 
-    static const unsigned version = 2;
+    static const unsigned version = 3;
 
-    const String& baseDirectoryPath() const { return m_baseDirectoryPath; }
-    const String& directoryPath() const { return m_directoryPath; }
+    String basePath() const;
+    String versionPath() const;
+    String recordsPath() const;
 
 private:
     Storage(const String& directoryPath);
@@ -96,17 +101,21 @@ private:
     };
     void dispatchReadOperation(const ReadOperation&);
     void dispatchPendingReadOperations();
+    void finishReadOperation(const ReadOperation&, std::unique_ptr<Record>);
 
     struct WriteOperation {
         Record record;
-        Optional<Record> existingRecord;
-        StoreCompletionHandler completionHandler;
+        MappedBodyHandler mappedBodyHandler;
     };
-    void dispatchFullWriteOperation(const WriteOperation&);
-    void dispatchHeaderWriteOperation(const WriteOperation&);
+    void dispatchWriteOperation(const WriteOperation&);
     void dispatchPendingWriteOperations();
+    void finishWriteOperation(const WriteOperation&);
 
-    void updateFileModificationTime(IOChannel&);
+    Optional<BlobStorage::Blob> storeBodyAsBlob(const Record&, const MappedBodyHandler&);
+    Data encodeRecord(const Record&, Optional<BlobStorage::Blob>);
+    std::unique_ptr<Record> decodeRecord(const Data&, const Key&);
+
+    void updateFileModificationTime(const String& path);
 
     WorkQueue& ioQueue() { return m_ioQueue.get(); }
     WorkQueue& backgroundIOQueue() { return m_backgroundIOQueue.get(); }
@@ -116,8 +125,8 @@ private:
 
     void addToContentsFilter(const Key&);
 
-    const String m_baseDirectoryPath;
-    const String m_directoryPath;
+    const String m_basePath;
+    const String m_recordsPath;
 
     size_t m_capacity { std::numeric_limits<size_t>::max() };
     size_t m_approximateSize { 0 };
@@ -141,6 +150,8 @@ private:
     Ref<WorkQueue> m_ioQueue;
     Ref<WorkQueue> m_backgroundIOQueue;
     Ref<WorkQueue> m_serialBackgroundIOQueue;
+
+    BlobStorage m_blobStorage;
 };
 
 }

@@ -79,6 +79,7 @@ public:
         Iterator(const RunResolver&, unsigned runIndex, unsigned lineIndex);
 
         Iterator& operator++();
+        Iterator& operator--();
 
         bool operator==(const Iterator&) const;
         bool operator!=(const Iterator&) const;
@@ -91,6 +92,7 @@ public:
         Iterator& advance();
         Iterator& advanceLines(unsigned);
         const RunResolver& resolver() const { return m_resolver; }
+        bool inQuirksMode() const { return m_resolver.m_inQuirksMode; }
 
         const RunResolver& m_resolver;
         unsigned m_runIndex;
@@ -99,6 +101,7 @@ public:
 
     RunResolver(const RenderBlockFlow&, const Layout&);
 
+    const RenderBlockFlow& flow() const { return m_flowRenderer; }
     Iterator begin() const;
     Iterator end() const;
 
@@ -109,6 +112,7 @@ private:
     enum class IndexType { First, Last };
     unsigned lineIndexForHeight(LayoutUnit, IndexType) const;
 
+    const RenderBlockFlow& m_flowRenderer;
     const Layout& m_layout;
     const FlowContents m_flowContents;
     const LayoutUnit m_lineHeight;
@@ -116,6 +120,7 @@ private:
     const LayoutUnit m_borderAndPaddingBefore;
     const float m_ascent;
     const float m_descent;
+    const bool m_inQuirksMode;
 };
 
 class LineResolver {
@@ -174,6 +179,14 @@ inline unsigned RunResolver::Run::lineIndex() const
 inline RunResolver::Iterator& RunResolver::Iterator::operator++()
 {
     return advance();
+}
+
+inline RunResolver::Iterator& RunResolver::Iterator::operator--()
+{
+    --m_runIndex;
+    if (simpleRun().isEndOfLine)
+        --m_lineIndex;
+    return *this;
 }
 
 inline bool RunResolver::Iterator::operator==(const Iterator& other) const

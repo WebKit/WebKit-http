@@ -34,18 +34,30 @@
 #define MediaSourceGStreamer_h
 
 #if ENABLE(MEDIA_SOURCE) && USE(GSTREAMER)
-#include "MediaSource.h"
-#include "WebKitMediaSourceGStreamer.h"
+#include "MediaSourcePrivate.h"
+
+#include <wtf/Forward.h>
+#include <wtf/HashSet.h>
+
+typedef struct _WebKitMediaSrc WebKitMediaSrc;
 
 namespace WebCore {
 
+class SourceBufferPrivateGStreamer;
+class MediaSourceClientGStreamer;
+class MediaPlayerPrivateGStreamer;
+class PlatformTimeRanges;
+
 // FIXME: Should this be called MediaSourcePrivateGStreamer?
-class MediaSourceGStreamer final : public MediaSourcePrivate {
+class MediaSourceGStreamer : public MediaSourcePrivate {
 public:
-    static void open(MediaSourcePrivateClient*, WebKitMediaSrc*);
+    static void open(MediaSourcePrivateClient*, WebKitMediaSrc*, MediaPlayerPrivateGStreamer*);
     virtual ~MediaSourceGStreamer();
 
+    MediaSourceClientGStreamer& client() const { return *m_client; }
     virtual AddStatus addSourceBuffer(const ContentType&, RefPtr<SourceBufferPrivate>&);
+    void removeSourceBuffer(SourceBufferPrivate*);
+
     virtual void durationChanged();
     virtual void markEndOfStream(EndOfStreamStatus);
     virtual void unmarkEndOfStream();
@@ -56,12 +68,18 @@ public:
     virtual void waitForSeekCompleted();
     virtual void seekCompleted();
 
+    void sourceBufferPrivateDidChangeActiveState(SourceBufferPrivateGStreamer*, bool isActive);
+
+    std::unique_ptr<PlatformTimeRanges> buffered();
+
 private:
     MediaSourceGStreamer(MediaSourcePrivateClient*, WebKitMediaSrc*);
 
+    HashSet<SourceBufferPrivateGStreamer*> m_sourceBuffers;
+    HashSet<SourceBufferPrivateGStreamer*> m_activeSourceBuffers;
     RefPtr<MediaSourceClientGStreamer> m_client;
     MediaSourcePrivateClient* m_mediaSource;
-    MediaPlayer::ReadyState m_readyState;
+    MediaPlayerPrivateGStreamer* m_playerPrivate;
 };
 
 }

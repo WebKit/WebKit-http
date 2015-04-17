@@ -83,7 +83,7 @@ using namespace WebKit;
 
 namespace API {
 template<> struct ClientTraits<WKPageLoaderClientBase> {
-    typedef std::tuple<WKPageLoaderClientV0, WKPageLoaderClientV1, WKPageLoaderClientV2, WKPageLoaderClientV3, WKPageLoaderClientV4, WKPageLoaderClientV5> Versions;
+    typedef std::tuple<WKPageLoaderClientV0, WKPageLoaderClientV1, WKPageLoaderClientV2, WKPageLoaderClientV3, WKPageLoaderClientV4, WKPageLoaderClientV5, WKPageLoaderClientV6> Versions;
 };
 
 template<> struct ClientTraits<WKPageNavigationClientBase> {
@@ -1138,6 +1138,24 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             return page.process().processPool().client().copyWebCryptoMasterKey(&page.process().processPool());
         }
 
+        virtual void navigationGestureDidBegin(WebPageProxy& page) override
+        {
+            if (m_client.navigationGestureDidBegin)
+                m_client.navigationGestureDidBegin(toAPI(&page), m_client.base.clientInfo);
+        }
+
+        virtual void navigationGestureWillEnd(WebPageProxy& page, bool willNavigate, WebBackForwardListItem& item) override
+        {
+            if (m_client.navigationGestureWillEnd)
+                m_client.navigationGestureWillEnd(toAPI(&page), willNavigate, toAPI(&item), m_client.base.clientInfo);
+        }
+
+        virtual void navigationGestureDidEnd(WebPageProxy& page, bool willNavigate, WebBackForwardListItem& item) override
+        {
+            if (m_client.navigationGestureDidEnd)
+                m_client.navigationGestureDidEnd(toAPI(&page), willNavigate, toAPI(&item), m_client.base.clientInfo);
+        }
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
         virtual void didFailToInitializePlugin(WebPageProxy& page, API::Dictionary* pluginInformation) override
         {
@@ -1933,10 +1951,10 @@ void WKPageRunJavaScriptInMainFrame_b(WKPageRef pageRef, WKStringRef scriptRef, 
 }
 #endif
 
-static std::function<void (const String&, CallbackBase::Error)> toGenericCallbackFunction(void* context, void (*callback)(WKStringRef, WKErrorRef, void*))
+static std::function<void (const String&, WebKit::CallbackBase::Error)> toGenericCallbackFunction(void* context, void (*callback)(WKStringRef, WKErrorRef, void*))
 {
-    return [context, callback](const String& returnValue, CallbackBase::Error error) {
-        callback(toAPI(API::String::create(returnValue).get()), error != CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
+    return [context, callback](const String& returnValue, WebKit::CallbackBase::Error error) {
+        callback(toAPI(API::String::create(returnValue).get()), error != WebKit::CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
     };
 }
 
@@ -1979,8 +1997,8 @@ void WKPageGetContentsAsMHTMLData(WKPageRef pageRef, bool useBinaryEncoding, voi
 
 void WKPageForceRepaint(WKPageRef pageRef, void* context, WKPageForceRepaintFunction callback)
 {
-    toImpl(pageRef)->forceRepaint(VoidCallback::create([context, callback](CallbackBase::Error error) {
-        callback(error == CallbackBase::Error::None ? nullptr : toAPI(API::Error::create().get()), context);
+    toImpl(pageRef)->forceRepaint(VoidCallback::create([context, callback](WebKit::CallbackBase::Error error) {
+        callback(error == WebKit::CallbackBase::Error::None ? nullptr : toAPI(API::Error::create().get()), context);
     }));
 }
 
@@ -2016,8 +2034,8 @@ WKStringRef WKPageCopyStandardUserAgentWithApplicationName(WKStringRef applicati
 
 void WKPageValidateCommand(WKPageRef pageRef, WKStringRef command, void* context, WKPageValidateCommandCallback callback)
 {
-    toImpl(pageRef)->validateCommand(toImpl(command)->string(), [context, callback](const String& commandName, bool isEnabled, int32_t state, CallbackBase::Error error) {
-        callback(toAPI(API::String::create(commandName).get()), isEnabled, state, error != CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
+    toImpl(pageRef)->validateCommand(toImpl(command)->string(), [context, callback](const String& commandName, bool isEnabled, int32_t state, WebKit::CallbackBase::Error error) {
+        callback(toAPI(API::String::create(commandName).get()), isEnabled, state, error != WebKit::CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
     });
 }
 
@@ -2038,11 +2056,11 @@ static PrintInfo printInfoFromWKPrintInfo(const WKPrintInfo& printInfo)
 
 void WKPageComputePagesForPrinting(WKPageRef page, WKFrameRef frame, WKPrintInfo printInfo, WKPageComputePagesForPrintingFunction callback, void* context)
 {
-    toImpl(page)->computePagesForPrinting(toImpl(frame), printInfoFromWKPrintInfo(printInfo), ComputedPagesCallback::create([context, callback](const Vector<WebCore::IntRect>& rects, double scaleFactor, CallbackBase::Error error) {
+    toImpl(page)->computePagesForPrinting(toImpl(frame), printInfoFromWKPrintInfo(printInfo), ComputedPagesCallback::create([context, callback](const Vector<WebCore::IntRect>& rects, double scaleFactor, WebKit::CallbackBase::Error error) {
         Vector<WKRect> wkRects(rects.size());
         for (size_t i = 0; i < rects.size(); ++i)
             wkRects[i] = toAPI(rects[i]);
-        callback(wkRects.data(), wkRects.size(), scaleFactor, error != CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
+        callback(wkRects.data(), wkRects.size(), scaleFactor, error != WebKit::CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
     }));
 }
 

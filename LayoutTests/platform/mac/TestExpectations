@@ -212,9 +212,6 @@ fast/events/clipboard-dataTransferItemList.html
 fast/events/drag-dataTransferItemList.html
 fast/events/drag-dataTransferItemList-file-handling.html
 
-# Replacement text for misspelling is not given from NSSpellChecker.
-webkit.org/b/77934 editing/spelling/spelling-marker-description.html [ Timeout ]
-
 # Custom MIME type support in DataTransfer is not yet implemented.
 editing/pasteboard/clipboard-customData.html
 fast/events/drag-customData.html
@@ -722,8 +719,6 @@ webkit.org/b/92749 fast/dom/NavigatorContentUtils/is-protocol-handler-registered
 
 # New test failing, needs investigation.
 webkit.org/b/103857 fast/events/mouse-cursor-change.html
-
-webkit.org/b/116244 fast/events/mouse-cursor-image-set.html [ Failure Pass ]
 
 webkit.org/b/116245 canvas/philip/tests/2d.text.draw.fontface.notinpage.html [ Pass Failure ]
 

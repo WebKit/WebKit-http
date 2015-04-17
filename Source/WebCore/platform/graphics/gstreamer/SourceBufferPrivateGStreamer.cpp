@@ -36,14 +36,24 @@
 #if ENABLE(MEDIA_SOURCE) && USE(GSTREAMER)
 
 #include "ContentType.h"
+#include "MediaSample.h"
+#include "MediaSourceGStreamer.h"
 #include "NotImplemented.h"
+#include "WebKitMediaSourceGStreamer.h"
 
 namespace WebCore {
 
-SourceBufferPrivateGStreamer::SourceBufferPrivateGStreamer(PassRefPtr<MediaSourceClientGStreamer> client, const ContentType& contentType)
-    : m_type(contentType)
+PassRefPtr<SourceBufferPrivateGStreamer> SourceBufferPrivateGStreamer::create(MediaSourceGStreamer* mediaSource, PassRefPtr<MediaSourceClientGStreamer> client, const ContentType& contentType)
+{
+    return adoptRef(new SourceBufferPrivateGStreamer(mediaSource, client, contentType));
+}
+
+SourceBufferPrivateGStreamer::SourceBufferPrivateGStreamer(MediaSourceGStreamer* mediaSource, PassRefPtr<MediaSourceClientGStreamer> client, const ContentType& contentType)
+    : SourceBufferPrivate()
+    , m_mediaSource(mediaSource)
+    , m_type(contentType)
     , m_client(client)
-    , m_readyState(MediaPlayer::HaveNothing)
+    , m_aborted(false)
 {
 }
 
@@ -58,35 +68,40 @@ void SourceBufferPrivateGStreamer::setClient(SourceBufferPrivateClient* client)
 
 void SourceBufferPrivateGStreamer::append(const unsigned char* data, unsigned length)
 {
-    ASSERT(m_client);
+    ASSERT(m_mediaSource);
     ASSERT(m_sourceBufferPrivateClient);
 
-    SourceBufferPrivateClient::AppendResult result = m_client->append(this, data, length);
-    m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(this, result);
+    if (!m_client->append(this, data, length) && m_sourceBufferPrivateClient)
+        m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(this, SourceBufferPrivateClient::ReadStreamFailed);
 }
 
 void SourceBufferPrivateGStreamer::abort()
 {
-    notImplemented();
+    // This is a hint for the lower layers (WebKitMediaSrc) to force a reset when the next data is appended
+    m_aborted = true;
 }
 
 void SourceBufferPrivateGStreamer::removedFromMediaSource()
 {
+    if (!m_mediaSource || !m_client)
+        return;
+
+    m_mediaSource->removeSourceBuffer(this);
     m_client->removedFromMediaSource(this);
 }
 
 MediaPlayer::ReadyState SourceBufferPrivateGStreamer::readyState() const
 {
-    return m_readyState;
+    return m_mediaSource->readyState();
 }
 
 void SourceBufferPrivateGStreamer::setReadyState(MediaPlayer::ReadyState state)
 {
-    m_readyState = state;
+    m_mediaSource->setReadyState(state);
 }
 
 // TODO: Implement these
-void SourceBufferPrivateGStreamer::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AtomicString)
+void SourceBufferPrivateGStreamer::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> >, AtomicString)
 {
     notImplemented();
 }
@@ -103,9 +118,10 @@ bool SourceBufferPrivateGStreamer::isReadyForMoreSamples(AtomicString)
     return false;
 }
 
-void SourceBufferPrivateGStreamer::setActive(bool)
+void SourceBufferPrivateGStreamer::setActive(bool isActive)
 {
-    notImplemented();
+    if (m_mediaSource)
+        m_mediaSource->sourceBufferPrivateDidChangeActiveState(this, isActive);
 }
 
 void SourceBufferPrivateGStreamer::stopAskingForMoreSamples(AtomicString)
@@ -117,6 +133,27 @@ void SourceBufferPrivateGStreamer::notifyClientWhenReadyForMoreSamples(AtomicStr
 {
     notImplemented();
 }
+
+#if ENABLE(VIDEO_TRACK)
+void SourceBufferPrivateGStreamer::didReceiveInitializationSegment(const SourceBufferPrivateClient::InitializationSegment& initializationSegment)
+{
+    if (m_sourceBufferPrivateClient)
+        m_sourceBufferPrivateClient->sourceBufferPrivateDidReceiveInitializationSegment(this, initializationSegment);
+}
+
+void SourceBufferPrivateGStreamer::didReceiveSample(PassRefPtr<MediaSample> sample)
+{
+    if (m_sourceBufferPrivateClient)
+        m_sourceBufferPrivateClient->sourceBufferPrivateDidReceiveSample(this, sample);
+}
+
+void SourceBufferPrivateGStreamer::didReceiveAllPendingSamples()
+{
+    if (m_sourceBufferPrivateClient) {
+        m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(this, SourceBufferPrivateClient::AppendSucceeded);
+    }
+}
+#endif
 
 }
 #endif

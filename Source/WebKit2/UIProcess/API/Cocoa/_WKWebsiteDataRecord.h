@@ -27,25 +27,10 @@
 
 #if WK_API_ENABLED
 
-#import <Foundation/Foundation.h>
+#import <WebKit/WKWebsiteDataRecord.h>
 
-typedef NS_OPTIONS(NSUInteger, WKWebsiteDataTypes) {
-    WKWebsiteDataTypeCookies = 1 << 0,
-    WKWebsiteDataTypeDiskCache = 1 << 1,
-    WKWebsiteDataTypeMemoryCache = 1 << 2,
-
-    WKWebsiteDataTypeLocalStorage = 1 << 3,
-    WKWebsiteDataTypeWebSQLDatabases = 1 << 4,
-
-    WKWebsiteDataTypeAll = NSUIntegerMax,
-} WK_ENUM_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
-
-WK_CLASS_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA)
-@interface _WKWebsiteDataRecord : NSObject
-
-@property (nonatomic, readonly, copy) NSString *displayName;
-
-@property (nonatomic, readonly) WKWebsiteDataTypes dataTypes;
+WK_CLASS_DEPRECATED(WK_MAC_TBA, WK_MAC_TBA, WK_IOS_TBA, WK_IOS_TBA, "Please use WKWebsiteDataRecord instead")
+@interface _WKWebsiteDataRecord : WKWebsiteDataRecord
 @end
 
 #endif

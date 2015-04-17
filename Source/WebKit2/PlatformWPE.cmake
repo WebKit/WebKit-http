@@ -5,7 +5,7 @@ add_definitions(-DWEBKIT2_COMPILATION)
 set(WebKit2_USE_PREFIX_HEADER ON)
 
 add_custom_target(webkit2wpe-forwarding-headers
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${FORWARDING_HEADERS_DIR} soup
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT2_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe --platform soup
 )
 
 add_custom_command(
@@ -67,6 +67,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/wpe/WKView.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/WPEView.cpp
+    UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
     UIProcess/DrawingAreaProxyImpl.cpp
     UIProcess/InspectorServer/wpe/WebInspectorServerWPE.cpp

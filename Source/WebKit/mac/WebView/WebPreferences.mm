@@ -417,6 +417,7 @@ public:
         @"0",                           WebKitMinimumFontSizePreferenceKey,
         @"9",                           WebKitMinimumLogicalFontSizePreferenceKey, 
         @"16",                          WebKitDefaultFontSizePreferenceKey,
+        @(YES),                         WebKitAntialiasedFontDilationEnabledKey,
         @"13",                          WebKitDefaultFixedFontSizePreferenceKey,
         @"ISO-8859-1",                  WebKitDefaultTextEncodingNamePreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitUsesEncodingDetectorPreferenceKey,
@@ -431,6 +432,7 @@ public:
         [NSNumber numberWithBool:YES],  WebKitJavaEnabledPreferenceKey,
 #endif
         [NSNumber numberWithBool:YES],  WebKitJavaScriptEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitJavaScriptMarkupEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitWebSecurityEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAllowUniversalAccessFromFileURLsPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAllowFileAccessFromFileURLsPreferenceKey,
@@ -527,7 +529,9 @@ public:
         [NSNumber numberWithBool:NO],   WebKitMediaPlaybackAllowsInlinePreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitMediaPlaybackAllowsAirPlayPreferenceKey,
         [NSNumber numberWithUnsignedInt:AudioSession::None],  WebKitAudioSessionCategoryOverride,
+#if HAVE(AVKIT)
         [NSNumber numberWithBool:YES],  WebKitAVKitEnabled,
+#endif
         [NSNumber numberWithLongLong:WebCore::ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
 
         // Per-Origin Quota on iOS is 25MB. When the quota is reached for a particular origin
@@ -2126,7 +2130,9 @@ static NSString *classIBCreatorID = nil;
 
 - (void)setAVKitEnabled:(bool)flag
 {
+#if HAVE(AVKIT)
     [self _setBoolValue:flag forKey:WebKitAVKitEnabled];
+#endif
 }
 
 - (BOOL)networkDataUsageTrackingEnabled
@@ -2477,6 +2483,26 @@ static NSString *classIBCreatorID = nil;
 - (void)setMediaKeysStorageDirectory:(NSString *)directory
 {
     [self _setStringValue:directory forKey:WebKitMediaKeysStorageDirectoryKey];
+}
+
+- (void)setAntialiasedFontDilationEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitAntialiasedFontDilationEnabledKey];
+}
+
+- (BOOL)antialiasedFontDilationEnabled
+{
+    return [self _boolValueForKey:WebKitAntialiasedFontDilationEnabledKey];
+}
+
+- (BOOL)javaScriptMarkupEnabled
+{
+    return [self _boolValueForKey:WebKitJavaScriptMarkupEnabledPreferenceKey];
+}
+
+- (void)setJavaScriptMarkupEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitJavaScriptMarkupEnabledPreferenceKey];
 }
 
 @end

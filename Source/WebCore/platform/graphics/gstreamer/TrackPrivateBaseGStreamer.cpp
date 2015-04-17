@@ -62,8 +62,13 @@ TrackPrivateBaseGStreamer::TrackPrivateBaseGStreamer(TrackPrivateBase* owner, gi
 {
     ASSERT(m_pad);
 
-    g_signal_connect(m_pad.get(), "notify::active", G_CALLBACK(trackPrivateActiveChangedCallback), this);
-    g_signal_connect(m_pad.get(), "notify::tags", G_CALLBACK(trackPrivateTagsChangedCallback), this);
+    // METRO FIXME: If we're using the demuxer src pads, the changes for
+    // properties below won't ever be listened.
+    if (g_object_class_find_property(G_OBJECT_GET_CLASS(m_pad.get()), "active") != NULL)
+        g_signal_connect(m_pad.get(), "notify::active", G_CALLBACK(trackPrivateActiveChangedCallback), this);
+
+    if (g_object_class_find_property(G_OBJECT_GET_CLASS(m_pad.get()), "tags") != NULL)
+        g_signal_connect(m_pad.get(), "notify::tags", G_CALLBACK(trackPrivateTagsChangedCallback), this);
 
     // We can't call notifyTrackOfTagsChanged() directly, because we need tagsChanged()
     // to setup m_tags.
@@ -80,10 +85,12 @@ void TrackPrivateBaseGStreamer::disconnect()
     if (!m_pad)
         return;
 
-    g_signal_handlers_disconnect_by_func(m_pad.get(),
-        reinterpret_cast<gpointer>(trackPrivateActiveChangedCallback), this);
-    g_signal_handlers_disconnect_by_func(m_pad.get(),
-        reinterpret_cast<gpointer>(trackPrivateTagsChangedCallback), this);
+    if (g_object_class_find_property(G_OBJECT_GET_CLASS(m_pad.get()), "active") != NULL)
+        g_signal_handlers_disconnect_by_func(m_pad.get(),
+            reinterpret_cast<gpointer>(trackPrivateActiveChangedCallback), this);
+    if (g_object_class_find_property(G_OBJECT_GET_CLASS(m_pad.get()), "tags") != NULL)
+        g_signal_handlers_disconnect_by_func(m_pad.get(),
+            reinterpret_cast<gpointer>(trackPrivateTagsChangedCallback), this);
 
     m_activeTimerHandler.cancel();
     m_tagTimerHandler.cancel();
@@ -102,7 +109,11 @@ void TrackPrivateBaseGStreamer::tagsChanged()
     m_tagTimerHandler.cancel();
 
     GRefPtr<GstTagList> tags;
-    g_object_get(m_pad.get(), "tags", &tags.outPtr(), NULL);
+    if (g_object_class_find_property(G_OBJECT_GET_CLASS(m_pad.get()), "tags") != NULL)
+        g_object_get(m_pad.get(), "tags", &tags.outPtr(), NULL);
+    else
+        tags = adoptGRef(gst_tag_list_new_empty());
+
     {
         MutexLocker lock(m_tagMutex);
         m_tags.swap(tags);
@@ -117,7 +128,7 @@ void TrackPrivateBaseGStreamer::notifyTrackOfActiveChanged()
         return;
 
     gboolean active = false;
-    if (m_pad)
+    if (m_pad && g_object_class_find_property(G_OBJECT_GET_CLASS(m_pad.get()), "active") != NULL)
         g_object_get(m_pad.get(), "active", &active, NULL);
 
     setActive(active);

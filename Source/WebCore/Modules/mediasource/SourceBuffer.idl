@@ -28,11 +28,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  
-[Conditional=MEDIA_SOURCE] enum AppendMode {
-    "segments",
-    "sequence"
-};
-
 [
     Conditional=MEDIA_SOURCE,
     NoInterfaceObject,
@@ -42,23 +37,13 @@
     JSGenerateToNativeObject,
 ] interface SourceBuffer : EventTarget {
 
-    [SetterRaisesException] attribute AppendMode mode;
-
     readonly attribute boolean updating;
   
     // Returns the time ranges buffered.
     [GetterRaisesException] readonly attribute TimeRanges buffered;
 
     // Applies an offset to media segment timestamps.
-    [SetterRaisesException] attribute unrestricted double timestampOffset;
-
-    // Track support
-    [Conditional=VIDEO_TRACK] readonly attribute AudioTrackList audioTracks;
-    [Conditional=VIDEO_TRACK] readonly attribute VideoTrackList videoTracks;
-    [Conditional=VIDEO_TRACK] readonly attribute TextTrackList textTracks;
-
-    [SetterRaisesException] attribute unrestricted double appendWindowStart;
-    [SetterRaisesException] attribute unrestricted double appendWindowEnd;
+    [SetterRaisesException] attribute double timestampOffset;
 
     // Append segment data.
     [RaisesException] void appendBuffer(ArrayBuffer data);
@@ -66,6 +51,11 @@
 
     // Abort the current segment append sequence.
     [RaisesException] void abort();
-    [RaisesException] void remove(unrestricted double start, unrestricted double end);
+    [RaisesException] void remove(double start, double end);
+    
+    // Track support
+    [Conditional=VIDEO_TRACK] readonly attribute AudioTrackList audioTracks;
+    [Conditional=VIDEO_TRACK] readonly attribute VideoTrackList videoTracks;
+    [Conditional=VIDEO_TRACK] readonly attribute TextTrackList textTracks;
 };
 

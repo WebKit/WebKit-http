@@ -891,7 +891,7 @@ std::unique_ptr<WebEvent> PluginView::createWebEvent(MouseEvent* event) const
     if (event->metaKey())
         modifiers |= WebEvent::MetaKey;
 
-    return std::make_unique<WebMouseEvent>(type, button, m_plugin->convertToRootView(IntPoint(event->offsetX(), event->offsetY())), event->screenLocation(), 0, 0, 0, clickCount, static_cast<WebEvent::Modifiers>(modifiers), 0);
+    return std::make_unique<WebMouseEvent>(type, button, m_plugin->convertToRootView(IntPoint(event->offsetX(), event->offsetY())), event->screenLocation(), 0, 0, 0, clickCount, static_cast<WebEvent::Modifiers>(modifiers), 0, 0);
 }
 
 void PluginView::handleEvent(Event* event)
@@ -1344,11 +1344,6 @@ void PluginView::pageMutedStateDidChange()
 #endif
 }
 
-bool PluginView::isPluginVisible()
-{
-    return isVisible();
-}
-
 void PluginView::invalidate(const IntRect& dirtyRect)
 {
     invalidateRect(dirtyRect);
@@ -1460,7 +1455,7 @@ void PluginView::setPluginIsPlayingAudio(bool pluginIsPlayingAudio)
         return;
 
     m_pluginIsPlayingAudio = pluginIsPlayingAudio;
-    m_pluginElement->document().updateIsPlayingAudio();
+    m_pluginElement->document().updateIsPlayingMedia();
 }
 
 bool PluginView::isMuted() const

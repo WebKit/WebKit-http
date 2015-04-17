@@ -180,6 +180,12 @@ static GstFlowReturn mediaPlayerPrivateNewTextSampleCallback(GObject*, MediaPlay
 }
 #endif
 
+static gboolean mediaPlayerPrivateNotifyDurationChanged(MediaPlayerPrivateGStreamer* player)
+{
+    player->notifyDurationChanged();
+    return G_SOURCE_REMOVE;
+}
+
 static void mediaPlayerPrivatePluginInstallerResultFunction(GstInstallPluginsReturn result, gpointer userData)
 {
     MediaPlayerPrivateGStreamer* player = reinterpret_cast<MediaPlayerPrivateGStreamer*>(userData);
@@ -285,6 +291,7 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
 #endif
     , m_requestedState(GST_STATE_VOID_PENDING)
     , m_missingPlugins(false)
+    , m_pendingAsyncOperations(nullptr)
 {
 }
 
@@ -319,10 +326,17 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
 
     m_readyTimerHandler.cancel();
 
+    if (m_source && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
+        g_signal_handlers_disconnect_by_func(m_source.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoChangedCallback), this);
+        g_signal_handlers_disconnect_by_func(m_source.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateAudioChangedCallback), this);
+        g_signal_handlers_disconnect_by_func(m_source.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateTextChangedCallback), this);
+    }
+
     if (m_pipeline) {
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
         ASSERT(bus);
         g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateMessageCallback), this);
+        g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateSyncMessageCallback), this);
         gst_bus_remove_signal_watch(bus.get());
 
         g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateSourceChangedCallback), this);
@@ -340,6 +354,14 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
         g_signal_handlers_disconnect_by_func(videoSinkPad.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoSinkCapsChangedCallback), this);
     }
+
+    // Cancel pending mediaPlayerPrivateNotifyDurationChanged() delayed calls
+    m_pendingAsyncOperationsLock.lock();
+    while (m_pendingAsyncOperations) {
+        g_source_remove(GPOINTER_TO_UINT(m_pendingAsyncOperations->data));
+        m_pendingAsyncOperations = g_list_remove(m_pendingAsyncOperations, m_pendingAsyncOperations->data);
+    }
+    m_pendingAsyncOperationsLock.unlock();
 }
 
 void MediaPlayerPrivateGStreamer::load(const String& urlString)
@@ -552,6 +574,15 @@ float MediaPlayerPrivateGStreamer::duration() const
     gint64 timeLength = 0;
 
     bool failure = !gst_element_query_duration(m_pipeline.get(), timeFormat, &timeLength) || static_cast<guint64>(timeLength) == GST_CLOCK_TIME_NONE;
+
+    if (failure && m_source)
+        failure = !gst_element_query_duration(m_source.get(), timeFormat, &timeLength) || static_cast<guint64>(timeLength) == GST_CLOCK_TIME_NONE;
+
+#if ENABLE(MEDIA_SOURCE)
+    if (failure && m_mediaSource)
+        return m_mediaSource->duration().toFloat();
+#endif
+
     if (failure) {
         LOG_MEDIA_MESSAGE("Time duration query failed for %s", m_url.string().utf8().data());
         return numeric_limits<float>::infinity();
@@ -725,7 +756,7 @@ bool MediaPlayerPrivateGStreamer::paused() const
 
     GstState state;
     gst_element_get_state(m_pipeline.get(), &state, nullptr, 0);
-    return state == GST_STATE_PAUSED;
+    return state <= GST_STATE_PAUSED;
 }
 
 bool MediaPlayerPrivateGStreamer::seeking() const
@@ -746,14 +777,27 @@ void MediaPlayerPrivateGStreamer::videoCapsChanged()
 void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
 {
     gint numTracks = 0;
-    if (m_pipeline)
+    bool useMediaSource = false;
+    if (m_pipeline) {
+#if ENABLE(MEDIA_SOURCE)
+        if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
+            g_object_get(m_source.get(), "n-video", &numTracks, NULL);
+            useMediaSource = true;
+        } else
+#endif
         g_object_get(m_pipeline.get(), "n-video", &numTracks, nullptr);
+    }
 
     m_hasVideo = numTracks > 0;
 
 #if ENABLE(VIDEO_TRACK)
     for (gint i = 0; i < numTracks; ++i) {
         GRefPtr<GstPad> pad;
+#if ENABLE(MEDIA_SOURCE)
+        if (useMediaSource)
+            pad = webkit_media_src_get_video_pad(WEBKIT_MEDIA_SRC(m_source.get()), i);
+        else
+#endif
         g_signal_emit_by_name(m_pipeline.get(), "get-video-pad", i, &pad.outPtr(), nullptr);
         ASSERT(pad);
 
@@ -766,6 +810,23 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
 
         RefPtr<VideoTrackPrivateGStreamer> track = VideoTrackPrivateGStreamer::create(m_pipeline, i, pad);
         m_videoTracks.append(track);
+#if ENABLE(MEDIA_SOURCE)
+        if (isMediaSource()) {
+            // TODO: This will leak if the event gets freed without arriving in
+            // the source, e.g. when we go flushing here
+            RefPtr<VideoTrackPrivateGStreamer>* trackCopy = new RefPtr<VideoTrackPrivateGStreamer>(track);
+            GstStructure* videoEventStructure = gst_structure_new("webKitVideoTrack", "track", G_TYPE_POINTER, trackCopy, nullptr);
+            if (useMediaSource) {
+                // Using the stream->demuxersrcpad. The GstUriDecodeBin pad
+                // may not exist at this point. Using an alternate way to
+                // notify the upper layer.
+                webkit_media_src_track_added(WEBKIT_MEDIA_SRC(m_source.get()), pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, videoEventStructure));
+            } else {
+                // Using the GstUriDecodeBin source pad
+                gst_pad_push_event(pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, videoEventStructure));
+            }
+        }
+#endif
         m_player->addVideoTrack(track.release());
     }
 
@@ -794,14 +855,27 @@ void MediaPlayerPrivateGStreamer::audioChanged()
 void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
 {
     gint numTracks = 0;
-    if (m_pipeline)
-        g_object_get(m_pipeline.get(), "n-audio", &numTracks, nullptr);
+    bool useMediaSource = false;
+    if (m_pipeline) {
+#if ENABLE(MEDIA_SOURCE)
+        if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
+            g_object_get(m_source.get(), "n-audio", &numTracks, NULL);
+            useMediaSource = true;
+        } else
+#endif
+            g_object_get(m_pipeline.get(), "n-audio", &numTracks, NULL);
+    }
 
     m_hasAudio = numTracks > 0;
 
 #if ENABLE(VIDEO_TRACK)
     for (gint i = 0; i < numTracks; ++i) {
         GRefPtr<GstPad> pad;
+#if ENABLE(MEDIA_SOURCE)
+        if (useMediaSource)
+            pad = webkit_media_src_get_audio_pad(WEBKIT_MEDIA_SRC(m_source.get()), i);
+        else
+#endif
         g_signal_emit_by_name(m_pipeline.get(), "get-audio-pad", i, &pad.outPtr(), nullptr);
         ASSERT(pad);
 
@@ -814,6 +888,23 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
 
         RefPtr<AudioTrackPrivateGStreamer> track = AudioTrackPrivateGStreamer::create(m_pipeline, i, pad);
         m_audioTracks.insert(i, track);
+#if ENABLE(MEDIA_SOURCE)
+        if (isMediaSource()) {
+            // TODO: This will leak if the event gets freed without arriving in
+            // the source, e.g. when we go flushing here
+            RefPtr<AudioTrackPrivateGStreamer>* trackCopy = new RefPtr<AudioTrackPrivateGStreamer>(track);
+            GstStructure* audioEventStructure = gst_structure_new("webKitAudioTrack", "track", G_TYPE_POINTER, trackCopy, nullptr);
+             if (useMediaSource) {
+                 // Using the stream->demuxersrcpad. The GstUriDecodeBin pad
+                 // may not exist at this point. Using an alternate way to
+                 // notify the upper layer.
+                 webkit_media_src_track_added(WEBKIT_MEDIA_SRC(m_source.get()), pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, audioEventStructure));
+             } else {
+                 // Using the GstUriDecodeBin source pad
+                 gst_pad_push_event(pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, audioEventStructure));
+             }
+        }
+#endif
         m_player->addAudioTrack(track.release());
     }
 
@@ -837,11 +928,24 @@ void MediaPlayerPrivateGStreamer::textChanged()
 void MediaPlayerPrivateGStreamer::notifyPlayerOfText()
 {
     gint numTracks = 0;
-    if (m_pipeline)
+    bool useMediaSource = false;
+    if (m_pipeline) {
+#if ENABLE(MEDIA_SOURCE)
+        if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
+            g_object_get(m_source.get(), "n-text", &numTracks, NULL);
+            useMediaSource = true;
+        } else
+#endif
         g_object_get(m_pipeline.get(), "n-text", &numTracks, nullptr);
+    }
 
     for (gint i = 0; i < numTracks; ++i) {
         GRefPtr<GstPad> pad;
+#if ENABLE(MEDIA_SOURCE)
+        if (useMediaSource)
+            pad = webkit_media_src_get_text_pad(WEBKIT_MEDIA_SRC(m_source.get()), i);
+        else
+#endif
         g_signal_emit_by_name(m_pipeline.get(), "get-text-pad", i, &pad.outPtr(), nullptr);
         ASSERT(pad);
 
@@ -895,6 +999,16 @@ void MediaPlayerPrivateGStreamer::newTextSample()
         WARN_MEDIA_MESSAGE("Unable to handle sample with no stream start event.");
 }
 #endif
+
+// METRO FIXME: GStreamer mediaplayer manages the readystate on its own. We shouldn't change it manually.
+void MediaPlayerPrivateGStreamer::setReadyState(MediaPlayer::ReadyState state)
+{
+    if (state != m_readyState) {
+        LOG_MEDIA_MESSAGE("Ready State Changed manually from %u to %u", m_readyState, state);
+        m_readyState = state;
+        m_player->readyStateChanged();
+    }
+}
 
 void MediaPlayerPrivateGStreamer::setRate(float rate)
 {
@@ -952,6 +1066,11 @@ void MediaPlayerPrivateGStreamer::setPreservesPitch(bool preservesPitch)
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamer::buffered() const
 {
+#if ENABLE(MEDIA_SOURCE)
+    if (isMediaSource())
+        return m_mediaSource->buffered();
+#endif
+
     auto timeRanges = std::make_unique<PlatformTimeRanges>();
     if (m_errorOccured || isLiveStream())
         return timeRanges;
@@ -1070,6 +1189,14 @@ void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
 #endif
             break;
         }
+        case GST_MESSAGE_DURATION_CHANGED:
+        {
+            m_pendingAsyncOperationsLock.lock();
+            guint asyncOperationId = g_timeout_add(0, (GSourceFunc)mediaPlayerPrivateNotifyDurationChanged, this);
+            m_pendingAsyncOperations = g_list_append(m_pendingAsyncOperations, GUINT_TO_POINTER(asyncOperationId));
+            m_pendingAsyncOperationsLock.unlock();
+            break;
+        }
         default:
             break;
     }
@@ -1163,8 +1290,7 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         processBufferingStats(message);
         break;
     case GST_MESSAGE_DURATION_CHANGED:
-        if (messageSourceIsPlaybin)
-            durationChanged();
+        durationChanged();
         break;
     case GST_MESSAGE_REQUEST_STATE:
         gst_message_parse_request_state(message, &requestedState);
@@ -1497,7 +1623,10 @@ void MediaPlayerPrivateGStreamer::sourceChanged()
         webKitWebSrcSetMediaPlayer(WEBKIT_WEB_SRC(m_source.get()), m_player);
 #if ENABLE(MEDIA_SOURCE)
     if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
-        MediaSourceGStreamer::open(m_mediaSource.get(), WEBKIT_MEDIA_SRC(m_source.get()));
+        MediaSourceGStreamer::open(m_mediaSource.get(), WEBKIT_MEDIA_SRC(m_source.get()), this);
+        g_signal_connect(m_source.get(), "video-changed", G_CALLBACK(mediaPlayerPrivateVideoChangedCallback), this);
+        g_signal_connect(m_source.get(), "audio-changed", G_CALLBACK(mediaPlayerPrivateAudioChangedCallback), this);
+        g_signal_connect(m_source.get(), "text-changed", G_CALLBACK(mediaPlayerPrivateTextChangedCallback), this);
     }
 #endif
 }
@@ -1702,6 +1831,22 @@ void MediaPlayerPrivateGStreamer::updateStates()
     }
 }
 
+#if ENABLE(MEDIA_SOURCE)
+GRefPtr<GstCaps> MediaPlayerPrivateGStreamer::currentDemuxerCaps() const
+{
+    GRefPtr<GstCaps> result;
+    if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
+        // METRO FIXME: Select the current demuxer pad (how to know?) instead of the first one
+        GstPad* demuxersrcpad = webkit_media_src_get_video_pad(WEBKIT_MEDIA_SRC(m_source.get()), 0);
+
+        if (demuxersrcpad) {
+            result = adoptGRef(gst_pad_get_current_caps(demuxersrcpad));
+        }
+    }
+    return result;
+}
+#endif
+
 void MediaPlayerPrivateGStreamer::mediaLocationChanged(GstMessage* message)
 {
     if (m_mediaLocations)
@@ -1847,9 +1992,25 @@ void MediaPlayerPrivateGStreamer::cacheDuration()
     m_mediaDuration = newDuration;
 }
 
+void MediaPlayerPrivateGStreamer::notifyDurationChanged()
+{
+    m_pendingAsyncOperationsLock.lock();
+    ASSERT(m_pendingAsyncOperations);
+    m_pendingAsyncOperations = g_list_remove(m_pendingAsyncOperations, m_pendingAsyncOperations->data);
+    m_pendingAsyncOperationsLock.unlock();
+
+    durationChanged();
+}
+
 void MediaPlayerPrivateGStreamer::durationChanged()
 {
     float previousDuration = m_mediaDuration;
+
+#if ENABLE(MEDIA_SOURCE)
+    // Force duration refresh.
+    if (isMediaSource())
+        m_mediaDuration = 0;
+#endif
 
     cacheDuration();
     // Avoid emiting durationchanged in the case where the previous
@@ -2049,6 +2210,10 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::extendedSupportsType(cons
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaEngineSupportParameters& parameters)
 {
+    // Disable VPX/Opus on MSE for now, mp4/avc1 seems way more reliable currently.
+    if (parameters.isMediaSource && parameters.type.endsWith("webm"))
+        return MediaPlayer::IsNotSupported;
+
     if (parameters.type.isNull() || parameters.type.isEmpty())
         return MediaPlayer::IsNotSupported;
 
@@ -2062,6 +2227,11 @@ void MediaPlayerPrivateGStreamer::setDownloadBuffering()
 {
     if (!m_pipeline)
         return;
+
+#if ENABLE(MEDIA_SOURCE)
+    if (isMediaSource())
+        return;
+#endif
 
     unsigned flags;
     g_object_get(m_pipeline.get(), "flags", &flags, nullptr);
@@ -2187,6 +2357,10 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     g_object_set(m_pipeline.get(), "mute", m_player->muted(), nullptr);
 
     g_signal_connect(m_pipeline.get(), "notify::source", G_CALLBACK(mediaPlayerPrivateSourceChangedCallback), this);
+
+    // If we load a MediaSource later, we will also listen the signals from
+    // WebKitMediaSrc, which will be connected later in sourceChanged()
+    // METRO FIXME: In that case, we shouldn't listen to these signals coming from playbin, or the callbacks will be called twice.
     g_signal_connect(m_pipeline.get(), "video-changed", G_CALLBACK(mediaPlayerPrivateVideoChangedCallback), this);
     g_signal_connect(m_pipeline.get(), "audio-changed", G_CALLBACK(mediaPlayerPrivateAudioChangedCallback), this);
 #if ENABLE(VIDEO_TRACK)

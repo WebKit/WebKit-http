@@ -37,36 +37,52 @@
 
 #include "ContentType.h"
 #include "SourceBufferPrivate.h"
+#include "SourceBufferPrivateClient.h"
 #include "WebKitMediaSourceGStreamer.h"
 
 namespace WebCore {
 
+class MediaSourceGStreamer;
+
 class SourceBufferPrivateGStreamer final : public SourceBufferPrivate {
+
 public:
-    SourceBufferPrivateGStreamer(PassRefPtr<MediaSourceClientGStreamer>, const ContentType&);
+    static PassRefPtr<SourceBufferPrivateGStreamer> create(MediaSourceGStreamer*, PassRefPtr<MediaSourceClientGStreamer>, const ContentType&);
     virtual ~SourceBufferPrivateGStreamer();
 
-    virtual void setClient(SourceBufferPrivateClient*);
+    void clearMediaSource() { m_mediaSource = 0; }
 
-    virtual void append(const unsigned char* data, unsigned length);
-    virtual void abort();
-    virtual void removedFromMediaSource();
+    virtual void setClient(SourceBufferPrivateClient*) override;
+    virtual void append(const unsigned char* data, unsigned length) override;
+    virtual void abort() override;
+    virtual void removedFromMediaSource() override;
+    virtual MediaPlayer::ReadyState readyState() const override;
+    virtual void setReadyState(MediaPlayer::ReadyState) override;
 
-    virtual MediaPlayer::ReadyState readyState() const;
-    virtual void setReadyState(MediaPlayer::ReadyState);
-
-    virtual void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AtomicString);
-    virtual void enqueueSample(PassRefPtr<MediaSample>, AtomicString);
-    virtual bool isReadyForMoreSamples(AtomicString);
-    virtual void setActive(bool);
-    virtual void stopAskingForMoreSamples(AtomicString);
-    virtual void notifyClientWhenReadyForMoreSamples(AtomicString);
+    virtual void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> >, AtomicString) override;
+    virtual void enqueueSample(PassRefPtr<MediaSample>, AtomicString) override;
+    virtual bool isReadyForMoreSamples(AtomicString) override;
+    virtual void setActive(bool) override;
+    virtual void stopAskingForMoreSamples(AtomicString) override;
+    virtual void notifyClientWhenReadyForMoreSamples(AtomicString) override;
+    virtual bool isAborted() { return m_aborted; }
+    virtual void resetAborted() { m_aborted = false; }
 
 private:
+    SourceBufferPrivateGStreamer(MediaSourceGStreamer*, PassRefPtr<MediaSourceClientGStreamer>, const ContentType&);
+    friend class MediaSourceClientGStreamer;
+
+#if ENABLE(VIDEO_TRACK)
+    void didReceiveInitializationSegment(const SourceBufferPrivateClient::InitializationSegment&);
+    void didReceiveSample(PassRefPtr<MediaSample>);
+    void didReceiveAllPendingSamples();
+#endif
+
+    MediaSourceGStreamer* m_mediaSource;
     ContentType m_type;
     RefPtr<MediaSourceClientGStreamer> m_client;
     SourceBufferPrivateClient* m_sourceBufferPrivateClient;
-    MediaPlayer::ReadyState m_readyState;
+    bool m_aborted;
 };
 
 }

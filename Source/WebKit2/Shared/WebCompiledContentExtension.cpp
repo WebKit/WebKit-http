@@ -30,38 +30,6 @@
 
 namespace WebKit {
 
-LegacyContentExtensionCompilationClient::LegacyContentExtensionCompilationClient(WebCore::ContentExtensions::CompiledContentExtensionData& data)
-    : m_data(data)
-{
-}
-
-void LegacyContentExtensionCompilationClient::writeBytecode(Vector<WebCore::ContentExtensions::DFABytecode>&& bytecode)
-{
-    m_data.bytecode = WTF::move(bytecode);
-}
-
-void LegacyContentExtensionCompilationClient::writeActions(Vector<WebCore::ContentExtensions::SerializedActionByte>&& actions)
-{
-    m_data.actions = WTF::move(actions);
-}
-
-
-Ref<WebCompiledContentExtension> WebCompiledContentExtension::createFromCompiledContentExtensionData(const WebCore::ContentExtensions::CompiledContentExtensionData& compilerData)
-{
-    RefPtr<SharedMemory> sharedMemory = SharedMemory::create(compilerData.bytecode.size() + compilerData.actions.size());
-    memcpy(static_cast<char*>(sharedMemory->data()), compilerData.actions.data(), compilerData.actions.size());
-    memcpy(static_cast<char*>(sharedMemory->data()) + compilerData.actions.size(), compilerData.bytecode.data(), compilerData.bytecode.size());
-
-    WebCompiledContentExtensionData data;
-    data.data = WTF::move(sharedMemory);
-    data.actionsOffset = 0;
-    data.actionsSize = compilerData.actions.size();
-    data.bytecodeOffset = compilerData.actions.size();
-    data.bytecodeSize = compilerData.bytecode.size();
-
-    return create(WTF::move(data));
-}
-
 Ref<WebCompiledContentExtension> WebCompiledContentExtension::create(WebCompiledContentExtensionData&& data)
 {
     return adoptRef(*new WebCompiledContentExtension(WTF::move(data)));

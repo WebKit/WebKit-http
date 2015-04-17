@@ -98,6 +98,8 @@ public:
     float currentTime() const;
     void seek(float);
 
+    void setReadyState(MediaPlayer::ReadyState state);
+
     void setRate(float);
     double rate() const override;
     void setPreservesPitch(bool);
@@ -114,6 +116,7 @@ public:
     void loadStateChanged();
     void timeChanged();
     void didEnd();
+    void notifyDurationChanged();
     void durationChanged();
     void loadingFailed(MediaPlayer::NetworkState);
 
@@ -202,6 +205,7 @@ private:
     virtual unsigned long droppedVideoFrames() { return 0; }
     virtual unsigned long corruptedVideoFrames() { return 0; }
     virtual MediaTime totalFrameDelay() { return MediaTime::zeroTime(); }
+    virtual GRefPtr<GstCaps> currentDemuxerCaps() const override;
 #endif
 
 private:
@@ -277,6 +281,8 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     BinarySemaphore m_drmKeySemaphore;
 #endif
+    Mutex m_pendingAsyncOperationsLock;
+    GList* m_pendingAsyncOperations;
 };
 }
 

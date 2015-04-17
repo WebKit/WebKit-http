@@ -8,8 +8,11 @@ pageshow - not from cache
 pagehide - entering cache
 pageshow - from cache
 PASS Page did enter and was restored from the page cache
-PASS WebSocket was closed
+PASS error event fired
 PASS wasRestoredFromPageCache is true
+PASS close event fired
+PASS wasRestoredFromPageCache is true
+PASS receivedErrorEvent is true
 PASS closeEvent.wasClean is false
 PASS closeEvent.code is 1006
 PASS successfullyParsed is true

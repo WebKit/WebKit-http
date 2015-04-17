@@ -84,7 +84,7 @@ private:
     LazyInitialized<RetainPtr<WKPreferences>> _preferences;
     LazyInitialized<RetainPtr<WKUserContentController>> _userContentController;
     LazyInitialized<RetainPtr<_WKVisitedLinkProvider>> _visitedLinkProvider;
-    LazyInitialized<RetainPtr<_WKWebsiteDataStore>> _websiteDataStore;
+    LazyInitialized<RetainPtr<WKWebsiteDataStore>> _websiteDataStore;
     WebKit::WeakObjCPtr<WKWebView> _relatedWebView;
     WebKit::WeakObjCPtr<WKWebView> _alternateWebViewForNavigationGestures;
     BOOL _treatsSHA1SignedCertificatesAsInsecure;
@@ -123,8 +123,8 @@ private:
     configuration.processPool = self.processPool;
     configuration.preferences = self.preferences;
     configuration.userContentController = self.userContentController;
+    configuration.websiteDataStore = self.websiteDataStore;
     configuration._visitedLinkProvider = self._visitedLinkProvider;
-    configuration._websiteDataStore = self._websiteDataStore;
     configuration._relatedWebView = _relatedWebView.get().get();
     configuration._alternateWebViewForNavigationGestures = _alternateWebViewForNavigationGestures.get().get();
     configuration->_treatsSHA1SignedCertificatesAsInsecure = _treatsSHA1SignedCertificatesAsInsecure;
@@ -176,6 +176,16 @@ private:
     _userContentController.set(userContentController);
 }
 
+- (WKWebsiteDataStore *)websiteDataStore
+{
+    return _websiteDataStore.get([] { return [WKWebsiteDataStore defaultDataStore]; });
+}
+
+- (void)setWebsiteDataStore:(WKWebsiteDataStore *)websiteDataStore
+{
+    _websiteDataStore.set(websiteDataStore);
+}
+
 static NSString *defaultApplicationNameForUserAgent()
 {
 #if PLATFORM(IOS)
@@ -205,15 +215,20 @@ static NSString *defaultApplicationNameForUserAgent()
     _visitedLinkProvider.set(visitedLinkProvider);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 - (_WKWebsiteDataStore *)_websiteDataStore
 {
-    return _websiteDataStore.get([] { return [_WKWebsiteDataStore defaultDataStore]; });
+    return (_WKWebsiteDataStore *)self.websiteDataStore;
 }
 
 - (void)_setWebsiteDataStore:(_WKWebsiteDataStore *)websiteDataStore
 {
-    _websiteDataStore.set(websiteDataStore);
+    self.websiteDataStore = websiteDataStore;
 }
+
+#pragma clang diagnostic pop
 
 #if PLATFORM(IOS)
 - (WKWebViewContentProviderRegistry *)_contentProviderRegistry
@@ -238,11 +253,11 @@ static NSString *defaultApplicationNameForUserAgent()
     if (!self.userContentController)
         [NSException raise:NSInvalidArgumentException format:@"configuration.userContentController is nil"];
 
+    if (!self.websiteDataStore)
+        [NSException raise:NSInvalidArgumentException format:@"configuration.websiteDataStore is nil"];
+
     if (!self._visitedLinkProvider)
         [NSException raise:NSInvalidArgumentException format:@"configuration._visitedLinkProvider is nil"];
-
-    if (!self._websiteDataStore)
-        [NSException raise:NSInvalidArgumentException format:@"configuration._websiteDataStore is nil"];
 
 #if PLATFORM(IOS)
     if (!self._contentProviderRegistry)

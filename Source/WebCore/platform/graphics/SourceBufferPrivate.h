@@ -34,7 +34,6 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "MediaPlayer.h"
-#include "TimeRanges.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
@@ -42,7 +41,6 @@ namespace WebCore {
 
 class MediaSample;
 class SourceBufferPrivateClient;
-class TimeRanges;
 
 class SourceBufferPrivate : public RefCounted<SourceBufferPrivate> {
 public:

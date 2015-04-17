@@ -59,6 +59,7 @@
 #import "WKUserContentControllerInternal.h"
 #import "WKWebViewConfigurationInternal.h"
 #import "WKWebViewContentProvider.h"
+#import "WKWebsiteDataStoreInternal.h"
 #import "WebBackForwardList.h"
 #import "WebCertificateInfo.h"
 #import "WebFormSubmissionListenerProxy.h"
@@ -74,7 +75,6 @@
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
 #import "_WKVisitedLinkProviderInternal.h"
-#import "_WKWebsiteDataStoreInternal.h"
 #import <JavaScriptCore/JSContext.h>
 #import <JavaScriptCore/JSValue.h>
 #import <WebCore/IOSurface.h>
@@ -242,12 +242,12 @@ static int32_t deviceOrientation()
     if (!_page || !_page->videoFullscreenManager())
         return false;
     
-    return _page->videoFullscreenManager()->mode() & WebCore::HTMLMediaElement::VideoFullscreenModeOptimized;
+    return _page->videoFullscreenManager()->hasMode(WebCore::HTMLMediaElement::VideoFullscreenModeOptimized);
 }
 
 - (BOOL)_mayAutomaticallyShowVideoOptimized
 {
-#if (__IPHONE_OS_VERSION_MIN_REQUIRED <= 80200)
+#if (__IPHONE_OS_VERSION_MIN_REQUIRED <= 80200) || !HAVE(AVKIT)
     return false;
 #else
     if (!_page || !_page->videoFullscreenManager())
@@ -291,7 +291,7 @@ static int32_t deviceOrientation()
 
     webPageConfiguration.userContentController = [_configuration userContentController]->_userContentControllerProxy.get();
     webPageConfiguration.visitedLinkProvider = [_configuration _visitedLinkProvider]->_visitedLinkProvider.get();
-    webPageConfiguration.websiteDataStore = &[_configuration _websiteDataStore]->_websiteDataStore->websiteDataStore();
+    webPageConfiguration.websiteDataStore = &[_configuration websiteDataStore]->_websiteDataStore->websiteDataStore();
     webPageConfiguration.sessionID = webPageConfiguration.websiteDataStore->sessionID();
     webPageConfiguration.treatsSHA1SignedCertificatesAsInsecure = [_configuration _treatsSHA1SignedCertificatesAsInsecure];
 
@@ -1548,9 +1548,18 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         [_scrollView _adjustForAutomaticKeyboardInfo:keyboardInfo animated:YES lastAdjustment:&_lastAdjustmentForScroller];
 }
 
-- (void)_keyboardWillChangeFrame:(NSNotification *)notification
+- (BOOL)_shouldUpdateKeyboardWithInfo:(NSDictionary *)keyboardInfo
 {
     if ([_contentView isAssistingNode])
+        return YES;
+
+    NSNumber *isLocalKeyboard = [keyboardInfo valueForKey:UIKeyboardIsLocalUserInfoKey];
+    return isLocalKeyboard && !isLocalKeyboard.boolValue;
+}
+
+- (void)_keyboardWillChangeFrame:(NSNotification *)notification
+{
+    if ([self _shouldUpdateKeyboardWithInfo:notification.userInfo])
         [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
 }
 
@@ -1561,7 +1570,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)_keyboardWillShow:(NSNotification *)notification
 {
-    if ([_contentView isAssistingNode])
+    if ([self _shouldUpdateKeyboardWithInfo:notification.userInfo])
         [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
 }
 
@@ -1682,6 +1691,31 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [_wkView _setIgnoresNonWheelEvents:ignoresNonWheelEvents];
 }
 
+- (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
+{
+    return [_wkView draggingEntered:sender];
+}
+
+- (NSDragOperation)draggingUpdated:(id <NSDraggingInfo>)sender
+{
+    return [_wkView draggingUpdated:sender];
+    
+}
+
+- (void)draggingExited:(id <NSDraggingInfo>)sender
+{
+    [_wkView draggingExited:sender];
+}
+
+- (BOOL)prepareForDragOperation:(id <NSDraggingInfo>)sender
+{
+    return [_wkView prepareForDragOperation:sender];
+}
+
+- (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
+{
+    return [_wkView performDragOperation:sender];
+}
 #endif
 
 @end
@@ -2242,14 +2276,25 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return _page->isShowingNavigationGestureSnapshot();
 }
 
-- (BOOL)_isFixedLayoutEnabled
+- (_WKLayoutMode)_layoutMode
 {
-    return _page->useFixedLayout();
+    if (_page->useFixedLayout()) {
+#if PLATFORM(MAC)
+        if ([_wkView _automaticallyComputesFixedLayoutSizeFromViewScale])
+            return _WKLayoutModeDynamicSizeComputedFromViewScale;
+#endif
+        return _WKLayoutModeFixedSize;
+    }
+    return _WKLayoutModeViewSize;
 }
 
-- (void)_setFixedLayoutEnabled:(BOOL)fixedLayoutEnabled
+- (void)_setLayoutMode:(_WKLayoutMode)layoutMode
 {
-    _page->setUseFixedLayout(fixedLayoutEnabled);
+    _page->setUseFixedLayout(layoutMode == _WKLayoutModeFixedSize || layoutMode == _WKLayoutModeDynamicSizeComputedFromViewScale);
+
+#if PLATFORM(MAC)
+    [_wkView _setAutomaticallyComputesFixedLayoutSizeFromViewScale:(layoutMode == _WKLayoutModeDynamicSizeComputedFromViewScale)];
+#endif
 }
 
 - (CGSize)_fixedLayoutSize
@@ -2260,6 +2305,24 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (void)_setFixedLayoutSize:(CGSize)fixedLayoutSize
 {
     _page->setFixedLayoutSize(WebCore::expandedIntSize(WebCore::FloatSize(fixedLayoutSize)));
+}
+
+- (CGFloat)_viewScale
+{
+    return _page->viewScaleFactor();
+}
+
+- (void)_setViewScale:(CGFloat)viewScale
+{
+    if (viewScale <= 0 || isnan(viewScale) || isinf(viewScale))
+        [NSException raise:NSInvalidArgumentException format:@"View scale should be a positive number"];
+
+    _page->scaleView(viewScale);
+
+#if PLATFORM(MAC)
+    if ([_wkView _automaticallyComputesFixedLayoutSizeFromViewScale])
+        [_wkView _updateAutomaticallyComputedFixedLayoutSize];
+#endif
 }
 
 #pragma mark scrollperf methods
@@ -2277,8 +2340,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (NSArray *)_scrollPerformanceData
 {
 #if PLATFORM(IOS)
-    if (WebKit::RemoteLayerTreeScrollingPerformanceData* scrollPefData = _page->scrollingPerformanceData())
-        return scrollPefData->data();
+    if (WebKit::RemoteLayerTreeScrollingPerformanceData* scrollPerfData = _page->scrollingPerformanceData())
+        return scrollPerfData->data();
 #endif
     return nil;
 }
@@ -2610,7 +2673,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
             return;
         }
 
-        RefPtr<WebKit::ShareableBitmap> bitmap = WebKit::ShareableBitmap::create(imageHandle, WebKit::SharedMemory::ReadOnly);
+        RefPtr<WebKit::ShareableBitmap> bitmap = WebKit::ShareableBitmap::create(imageHandle, WebKit::SharedMemory::Protection::ReadOnly);
 
         if (!bitmap) {
             copiedCompletionHandler(nullptr);

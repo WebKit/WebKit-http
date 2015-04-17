@@ -28,45 +28,26 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
-#include <wtf/RetainPtr.h>
-
-#if PLATFORM(COCOA)
-OBJC_CLASS NSKeyedArchiver;
-OBJC_CLASS NSKeyedUnarchiver;
-OBJC_CLASS AVOutputContext;
-#endif
+#include "MediaPlaybackTargetContext.h"
+#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-class MediaPlaybackTarget {
+class MediaPlaybackTarget : public RefCounted<MediaPlaybackTarget> {
 public:
     virtual ~MediaPlaybackTarget() { }
 
-#if PLATFORM(COCOA)
-    WEBCORE_EXPORT MediaPlaybackTarget(AVOutputContext *context = nil) { m_devicePickerContext = context; }
+    enum TargetType {
+        None,
+        AVFoundation,
+    };
+    virtual TargetType targetType() const { return None; }
 
-    WEBCORE_EXPORT void encode(NSKeyedArchiver *) const;
-    WEBCORE_EXPORT static bool decode(NSKeyedUnarchiver *, MediaPlaybackTarget&);
-
-    void setDevicePickerContext(AVOutputContext *context) { m_devicePickerContext = context; }
-    AVOutputContext *devicePickerContext() const { return m_devicePickerContext.get(); }
-
-#if PLATFORM(IOS)
-    bool hasActiveRoute() const { return false; }
-#else
-    bool hasActiveRoute() const;
-#endif
-
-#else
-    void setDevicePickerContext(AVOutputContext *) { }
-    AVOutputContext *devicePickerContext() const { return nullptr; }
-    bool hasActiveRoute() const { return false; }
-#endif
+    virtual const MediaPlaybackTargetContext& targetContext() const { return NoMediaPlaybackTargetContext; }
+    virtual bool hasActiveRoute() const { return false; }
 
 protected:
-#if PLATFORM(COCOA)
-    RetainPtr<AVOutputContext> m_devicePickerContext;
-#endif
+    MediaPlaybackTarget() { }
 };
 
 }

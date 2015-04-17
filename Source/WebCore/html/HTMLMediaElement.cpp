@@ -72,6 +72,7 @@
 #include "RenderLayerCompositor.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
+#include "ResourceLoadInfo.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "SecurityPolicy.h"
@@ -79,6 +80,7 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "TimeRanges.h"
+#include "UserContentController.h"
 #include <limits>
 #include <runtime/Uint8Array.h>
 #include <wtf/CurrentTime.h>
@@ -1090,12 +1092,31 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
         return;
     }
 
+    Page* page = frame->page();
+    if (!page) {
+        mediaLoadingFailed(MediaPlayer::FormatError);
+        return;
+    }
+
     URL url = initialURL;
     if (!frame->loader().willLoadMediaElementURL(url)) {
         mediaLoadingFailed(MediaPlayer::FormatError);
         return;
     }
-    
+
+#if ENABLE(CONTENT_EXTENSIONS)
+    ResourceRequest request(url);
+    DocumentLoader* documentLoader = frame->loader().documentLoader();
+
+    if (page->userContentController() && documentLoader)
+        page->userContentController()->processContentExtensionRulesForLoad(request, ResourceType::Media, *documentLoader);
+
+    if (request.isNull()) {
+        mediaLoadingFailed(MediaPlayer::FormatError);
+        return;
+    }
+#endif
+
     // The resource fetch algorithm 
     m_networkState = NETWORK_LOADING;
 
@@ -2995,7 +3016,7 @@ void HTMLMediaElement::setMuted(bool muted)
             }
         }
         scheduleEvent(eventNames().volumechangeEvent);
-        document().updateIsPlayingAudio();
+        document().updateIsPlayingMedia();
     }
 #endif
 }
@@ -4323,7 +4344,7 @@ void HTMLMediaElement::mediaPlayerCharacteristicChanged(MediaPlayer*)
     if (renderer())
         renderer()->updateFromElement();
 
-    document().updateIsPlayingAudio();
+    document().updateIsPlayingMedia();
 
     endProcessingMediaPlayerCallback();
 }
@@ -4578,7 +4599,7 @@ void HTMLMediaElement::setPlaying(bool playing)
         return;
     
     m_playing = playing;
-    document().updateIsPlayingAudio();
+    document().updateIsPlayingMedia();
 }
 
 void HTMLMediaElement::setPausedInternal(bool b)
@@ -4886,11 +4907,11 @@ void HTMLMediaElement::enqueuePlaybackTargetAvailabilityChangedEvent()
     m_asyncEventQueue.enqueueEvent(event.release());
 }
 
-void HTMLMediaElement::setWirelessPlaybackTarget(const MediaPlaybackTarget& device)
+void HTMLMediaElement::setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&& device)
 {
     LOG(Media, "HTMLMediaElement::setWirelessPlaybackTarget(%p)", this);
     if (m_player)
-        m_player->setWirelessPlaybackTarget(device);
+        m_player->setWirelessPlaybackTarget(WTF::move(device));
 }
 
 bool HTMLMediaElement::canPlayToWirelessPlaybackTarget() const
@@ -4978,7 +4999,7 @@ void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
     if (document().page() && is<HTMLVideoElement>(*this)) {
         HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
         if (document().page()->chrome().client().supportsVideoFullscreen()) {
-            document().page()->chrome().client().enterVideoFullscreenForVideoElement(&asVideo, m_videoFullscreenMode);
+            document().page()->chrome().client().enterVideoFullscreenForVideoElement(asVideo, m_videoFullscreenMode);
             scheduleEvent(eventNames().webkitbeginfullscreenEvent);
         }
     }
@@ -5009,7 +5030,7 @@ void HTMLMediaElement::exitFullscreen()
             pauseInternal();
 
         if (document().page()->chrome().client().supportsVideoFullscreen()) {
-            document().page()->chrome().client().exitVideoFullscreen();
+            document().page()->chrome().client().exitVideoFullscreenForVideoElement(downcast<HTMLVideoElement>(*this));
             scheduleEvent(eventNames().webkitendfullscreenEvent);
         }
     }
@@ -5302,12 +5323,12 @@ void HTMLMediaElement::configureMediaControls()
         requireControls = true;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (!requireControls || !inDocument())
+    if (!requireControls || !inDocument() || !inActiveDocument())
         return;
 
     ensureUserAgentShadowRoot();
 #else
-    if (!requireControls || !inDocument()) {
+    if (!requireControls || !inDocument() || !inActiveDocument()) {
         if (hasMediaControls())
             mediaControls()->hide();
         return;

@@ -10,6 +10,7 @@ if (window.testRunner)
     testRunner.overridePreference("WebKitUsesPageCachePreferenceKey", 1);
 
 var wasRestoredFromPageCache = false;
+var receivedErrorEvent = false;
 
 window.addEventListener("pageshow", function(event) {
     debug("pageshow - " + (event.persisted ? "" : "not ") + "from cache");
@@ -30,9 +31,15 @@ window.addEventListener("pagehide", function(event) {
 
 window.addEventListener('load', function() {
     ws = new WebSocket("ws://127.0.0.1:8880/websocket/tests/hybi/echo");
-    ws.onclose = function(ev) {
-        testPassed("WebSocket was closed");
+    ws.onerror = function(ev) {
+        receivedErrorEvent = true;
+        testPassed("error event fired");
         shouldBeTrue("wasRestoredFromPageCache");
+    }
+    ws.onclose = function(ev) {
+        testPassed("close event fired");
+        shouldBeTrue("wasRestoredFromPageCache");
+        shouldBeTrue("receivedErrorEvent");
         closeEvent = ev;
         shouldBeFalse("closeEvent.wasClean");
         shouldBe("closeEvent.code", "1006");

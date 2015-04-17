@@ -67,7 +67,7 @@ public:
     bool isOpen() const;
     bool isClosed() const;
     bool isEnded() const;
-    void sourceBufferDidChangeAcitveState(SourceBuffer*, bool);
+    void sourceBufferDidChangeActiveState(SourceBuffer*, bool);
     void streamEndedWithError(const AtomicString& error, ExceptionCode&);
 
     // MediaSourcePrivateClient

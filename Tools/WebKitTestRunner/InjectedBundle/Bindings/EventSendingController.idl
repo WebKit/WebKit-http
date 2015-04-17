@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,9 @@ interface EventSendingController {
     void mouseDown(long buttonNumber, object modifierArray);
     void mouseUp(long buttonNumber, object modifierArray);
     void mouseMoveTo(long x, long y);
+    void mouseForceDown();
+    void mouseForceUp();
+    void mouseForceChanged(double force);
     void mouseScrollBy(long x, long y);
     void mouseScrollByWithWheelAndMomentumPhases(long x, long y, DOMString phase, DOMString momentum, optional boolean asyncScrolling);
     void continuousMouseScrollBy(long x, long y, optional boolean paged);
@@ -44,6 +47,9 @@ interface EventSendingController {
     void zoomPageIn();
     void zoomPageOut();
     void scalePageBy(double scale, double x, double y);
+
+    void monitorWheelEvents();
+    void callAfterScrollingCompletes(object functionCallback);
 
 #if defined(ENABLE_TOUCH_EVENTS) && ENABLE_TOUCH_EVENTS
     // Touch events.

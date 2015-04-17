@@ -363,9 +363,6 @@
     <ClCompile Include="..\interpreter\StackVisitor.cpp">
       <Filter>interpreter</Filter>
     </ClCompile>
-    <ClCompile Include="..\interpreter\VMInspector.cpp">
-      <Filter>interpreter</Filter>
-    </ClCompile>
     <ClCompile Include="..\jit\ExecutableAllocator.cpp">
       <Filter>jit</Filter>
     </ClCompile>
@@ -607,6 +604,9 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\FunctionPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\FunctionRareData.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\GetterSetter.cpp">
@@ -895,6 +895,15 @@
       <Filter>tools</Filter>
     </ClCompile>
     <ClCompile Include="..\tools\CodeProfiling.cpp">
+      <Filter>tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tools\FunctionOverrides.cpp">
+      <Filter>tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tools\JSDollarVM.cpp">
+      <Filter>tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tools\JSDollarVMPrototype.cpp">
       <Filter>tools</Filter>
     </ClCompile>
     <ClCompile Include="..\yarr\RegularExpression.cpp">
@@ -1329,12 +1338,6 @@
     <ClCompile Include="..\runtime\ArrayIteratorPrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\ArgumentsIteratorConstructor.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\ArgumentsIteratorPrototype.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
     <ClCompile Include="..\runtime\MapIteratorConstructor.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -1345,9 +1348,6 @@
       <Filter>jit</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSArrayIterator.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\JSArgumentsIterator.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSMapIterator.cpp">
@@ -2318,9 +2318,6 @@
     <ClInclude Include="..\interpreter\StackVisitor.h">
       <Filter>interpreter</Filter>
     </ClInclude>
-    <ClInclude Include="..\interpreter\VMInspector.h">
-      <Filter>interpreter</Filter>
-    </ClInclude>
     <ClInclude Include="..\jit\CompactJITCodeMap.h">
       <Filter>jit</Filter>
     </ClInclude>
@@ -2637,6 +2634,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\FunctionPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\FunctionRareData.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\GetterSetter.h">
@@ -2973,6 +2973,15 @@
       <Filter>tools</Filter>
     </ClInclude>
     <ClInclude Include="..\tools\CodeProfiling.h">
+      <Filter>tools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\tools\FunctionOverrides.h">
+      <Filter>tools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\tools\JSDollarVM.h">
+      <Filter>tools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\tools\JSDollarVMPrototype.h">
       <Filter>tools</Filter>
     </ClInclude>
     <ClInclude Include="..\tools\ProfileTreeNode.h">
@@ -3748,9 +3757,6 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSArrayIterator.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\JSArgumentsIterator.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSMapIterator.h">

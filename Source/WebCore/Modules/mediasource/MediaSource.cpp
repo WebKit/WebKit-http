@@ -159,7 +159,7 @@ std::unique_ptr<PlatformTimeRanges> MediaSource::buffered() const
     }
 
     // Return an empty range if all ranges are empty.
-    if (!highestEndTime)
+    if (highestEndTime == MediaTime::zeroTime())
         return std::make_unique<PlatformTimeRanges>();
 
     // 4. Let intersection ranges equal a TimeRange object containing a single range from 0 to highest end time.
@@ -243,13 +243,6 @@ void MediaSource::monitorSourceBuffers()
     // Note, the behavior if activeSourceBuffers is empty is undefined.
     if (!m_activeSourceBuffers) {
         m_private->setReadyState(MediaPlayer::HaveNothing);
-        return;
-    }
-
-    // http://w3c.github.io/media-source/#buffer-monitoring, change from 11 December 2014
-    // ↳ If the the HTMLMediaElement.readyState attribute equals HAVE_NOTHING:
-    if (mediaElement()->readyState() == HTMLMediaElement::HAVE_NOTHING) {
-        // 1. Abort these steps.
         return;
     }
 
@@ -371,7 +364,7 @@ void MediaSource::setDurationInternal(const MediaTime& duration)
     // on all objects in sourceBuffers.
     if (oldDuration.isValid() && duration < oldDuration) {
         for (auto& sourceBuffer : *m_sourceBuffers)
-            sourceBuffer->rangeRemoval(duration, oldDuration);
+            sourceBuffer->remove(duration, oldDuration, IGNORE_EXCEPTION, true);
     }
 
     // 5. If a user agent is unable to partially render audio frames or text cues that start before and end after the
@@ -405,6 +398,9 @@ void MediaSource::setReadyState(const AtomicString& state)
     m_readyState = state;
 
     onReadyStateChange(oldState, state);
+
+    for (auto& sourceBuffer : *m_sourceBuffers)
+        sourceBuffer->invalidateBuffered();
 }
 
 static bool SourceBufferIsUpdating(RefPtr<SourceBuffer>& sourceBuffer)
@@ -447,10 +443,6 @@ void MediaSource::streamEndedWithError(const AtomicString& error, ExceptionCode&
 
     // 2.4.7 https://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html#end-of-stream-algorithm
 
-    // 1. Change the readyState attribute value to "ended".
-    // 2. Queue a task to fire a simple event named sourceended at the MediaSource.
-    setReadyState(endedKeyword());
-
     // 3.
     if (error.isEmpty()) {
         // ↳ If error is not set, is null, or is an empty string
@@ -466,6 +458,13 @@ void MediaSource::streamEndedWithError(const AtomicString& error, ExceptionCode&
         // 2. Notify the media element that it now has all of the media data.
         m_private->markEndOfStream(MediaSourcePrivate::EosNoError);
     }
+
+    // NOTE: Do steps 1 & 2 after step 3 (with an empty error) to avoid the MediaSource's readyState being re-opened by a
+    // remove() operation resulting from a duration change.
+    // FIXME: Re-number or update this section once <https://www.w3.org/Bugs/Public/show_bug.cgi?id=26316> is resolved.
+    // 1. Change the readyState attribute value to "ended".
+    // 2. Queue a task to fire a simple event named sourceended at the MediaSource.
+    setReadyState(endedKeyword());
 
     if (error == network) {
         // ↳ If error is set to "network"
@@ -509,9 +508,7 @@ SourceBuffer* MediaSource::addSourceBuffer(const String& type, ExceptionCode& ec
 {
     LOG(MediaSource, "MediaSource::addSourceBuffer(%s) %p", type.ascii().data(), this);
 
-    // 2.2 http://www.w3.org/TR/media-source/#widl-MediaSource-addSourceBuffer-SourceBuffer-DOMString-type
-    // When this method is invoked, the user agent must run the following steps:
-
+    // 2.2 https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#widl-MediaSource-addSourceBuffer-SourceBuffer-DOMString-type
     // 1. If type is null or an empty then throw an INVALID_ACCESS_ERR exception and
     // abort these steps.
     if (type.isNull() || type.isEmpty()) {
@@ -541,29 +538,15 @@ SourceBuffer* MediaSource::addSourceBuffer(const String& type, ExceptionCode& ec
         ASSERT(ec == NOT_SUPPORTED_ERR || ec == QUOTA_EXCEEDED_ERR);
         // 2. If type contains a MIME type that is not supported ..., then throw a NOT_SUPPORTED_ERR exception and abort these steps.
         // 3. If the user agent can't handle any more SourceBuffer objects then throw a QUOTA_EXCEEDED_ERR exception and abort these steps
-        return nullptr;
+        return 0;
     }
 
     RefPtr<SourceBuffer> buffer = SourceBuffer::create(sourceBufferPrivate.releaseNonNull(), this);
-
-    // 6. Set the generate timestamps flag on the new object to the value in the "Generate Timestamps Flag"
-    // column of the byte stream format registry [MSE-REGISTRY] entry that is associated with type.
-    // NOTE: In the current byte stream format registry <http://www.w3.org/2013/12/byte-stream-format-registry/>
-    // only the "MPEG Audio Byte Stream Format" has the "Generate Timestamps Flag" value set.
-    bool shouldGenerateTimestamps = contentType.type() == "audio/aac" || contentType.type() == "audio/mpeg";
-    buffer->setShouldGenerateTimestamps(shouldGenerateTimestamps);
-
-    // 7. If the generate timestamps flag equals true:
-    // ↳ Set the mode attribute on the new object to "sequence".
-    // Otherwise:
-    // ↳ Set the mode attribute on the new object to "segments".
-    buffer->setMode(shouldGenerateTimestamps ? SourceBuffer::sequenceKeyword() : SourceBuffer::segmentsKeyword(), IGNORE_EXCEPTION);
-
-    // 8. Add the new object to sourceBuffers and fire a addsourcebuffer on that object.
+    // 6. Add the new object to sourceBuffers and fire a addsourcebuffer on that object.
     m_sourceBuffers->add(buffer);
     regenerateActiveSourceBuffers();
 
-    // 9. Return the new object to the caller.
+    // 7. Return the new object to the caller.
     return buffer.get();
 }
 
@@ -590,6 +573,7 @@ void MediaSource::removeSourceBuffer(SourceBuffer* buffer, ExceptionCode& ec)
     // 3. If the sourceBuffer.updating attribute equals true, then run the following steps: ...
     buffer->abortIfUpdating();
 
+#if ENABLE(VIDEO_TRACK)
     // 4. Let SourceBuffer audioTracks list equal the AudioTrackList object returned by sourceBuffer.audioTracks.
     RefPtr<AudioTrackList> audioTracks = buffer->audioTracks();
 
@@ -709,7 +693,7 @@ void MediaSource::removeSourceBuffer(SourceBuffer* buffer, ExceptionCode& ec)
         if (removedEnabledTextTrack)
             mediaElement()->textTracks()->scheduleChangeEvent();
     }
-    
+#endif
     
     // 10. If sourceBuffer is in activeSourceBuffers, then remove sourceBuffer from activeSourceBuffers ...
     m_activeSourceBuffers->remove(buffer);
@@ -770,7 +754,7 @@ void MediaSource::close()
     setReadyState(closedKeyword());
 }
 
-void MediaSource::sourceBufferDidChangeAcitveState(SourceBuffer*, bool)
+void MediaSource::sourceBufferDidChangeActiveState(SourceBuffer*, bool)
 {
     regenerateActiveSourceBuffers();
 }

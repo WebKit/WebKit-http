@@ -196,7 +196,7 @@ const Dynamic = 7
 
 const ResolveModeMask = 0xffff
 
-const MarkedBlockSize = 64 * 1024
+const MarkedBlockSize = 16 * 1024
 const MarkedBlockMask = ~(MarkedBlockSize - 1)
 # Constants for checking mark bits.
 const AtomNumberShift = 3
@@ -517,6 +517,10 @@ end
 macro skipIfIsRememberedOrInEden(cell, scratch1, scratch2, continuation)
     loadb JSCell::m_gcData[cell], scratch1
     continuation(scratch1)
+end
+
+macro notifyWrite(set, slow)
+    bbneq WatchpointSet::m_state[set], IsInvalidated, slow
 end
 
 macro checkSwitchToJIT(increment, action)
@@ -927,12 +931,6 @@ end
 
 
 # Value-representation-agnostic code.
-_llint_op_touch_entry:
-    traceExecution()
-    callSlowPath(_slow_path_touch_entry)
-    dispatch(1)
-
-
 _llint_op_create_direct_arguments:
     traceExecution()
     callSlowPath(_slow_path_create_direct_arguments)

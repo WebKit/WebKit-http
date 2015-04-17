@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,12 +46,17 @@ public:
     void mouseDown(int button, JSValueRef modifierArray);
     void mouseUp(int button, JSValueRef modifierArray);
     void mouseMoveTo(int x, int y);
+    void mouseForceDown();
+    void mouseForceUp();
+    void mouseForceChanged(double force);
     void mouseScrollBy(int x, int y);
     void mouseScrollByWithWheelAndMomentumPhases(int x, int y, JSStringRef phase, JSStringRef momentum, bool asyncScrolling);
     void continuousMouseScrollBy(int x, int y, bool paged);
     JSValueRef contextClick();
     void leapForward(int milliseconds);
     void scheduleAsynchronousClick();
+    void monitorWheelEvents();
+    void callAfterScrollingCompletes(JSValueRef functionCallback);
 
     void keyDown(JSStringRef key, JSValueRef modifierArray, int location);
     void scheduleAsynchronousKeyDown(JSStringRef key);
