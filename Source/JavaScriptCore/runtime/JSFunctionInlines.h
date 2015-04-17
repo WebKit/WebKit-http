@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,10 +31,17 @@
 
 namespace JSC {
 
+inline JSFunction* JSFunction::createWithInvalidatedReallocationWatchpoint(
+    VM& vm, FunctionExecutable* executable, JSScope* scope)
+{
+    ASSERT(executable->singletonFunction()->hasBeenInvalidated());
+    return createImpl(vm, executable, scope);
+}
+
 inline JSFunction::JSFunction(VM& vm, FunctionExecutable* executable, JSScope* scope)
     : Base(vm, scope, scope->globalObject()->functionStructure())
     , m_executable(vm, this, executable)
-    , m_allocationProfileWatchpoint(ClearWatchpoint) // See comment in JSFunction.cpp concerning the reason for using ClearWatchpoint as opposed to IsWatched.
+    , m_rareData()
 {
 }
 

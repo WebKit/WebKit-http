@@ -40,7 +40,7 @@ void WebPage::platformDetach()
 {
 }
 
-void WebPage::platformEditorState(Frame&, EditorState&) const
+void WebPage::platformEditorState(Frame&, EditorState&, IncludePostLayoutDataHint) const
 {
     notImplemented();
 }

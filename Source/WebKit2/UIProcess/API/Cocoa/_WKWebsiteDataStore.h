@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,23 +27,14 @@
 
 #if WK_API_ENABLED
 
-#import <WebKit/_WKWebsiteDataRecord.h>
+#import <WebKit/WKWebsiteDataStore.h>
 
-WK_CLASS_AVAILABLE(10_10, 8_0)
-@interface _WKWebsiteDataStore : NSObject
+WK_CLASS_DEPRECATED(10_10, WK_MAC_TBA, 8_0, WK_IOS_TBA, "Please use WKWebsiteDataStore instead")
+@interface _WKWebsiteDataStore : WKWebsiteDataStore
 
-// Returns the shared default data store.
-+ (instancetype)defaultDataStore;
-
-// Returns a new non-persistent data store.
-+ (instancetype)nonPersistentDataStore;
-
-@property (readonly, getter=isNonPersistent) BOOL nonPersistent;
-
-- (void)fetchDataRecordsOfTypes:(WKWebsiteDataTypes)websiteDataTypes completionHandler:(void (^)(NSArray *))completionHandler WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
-- (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes forDataRecords:(NSArray *)dataRecords completionHandler:(void (^)())completionHandler WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
-- (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes modifiedSince:(NSDate *)date completionHandler:(void (^)())completionHandler WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
++ (_WKWebsiteDataStore *)defaultDataStore;
++ (_WKWebsiteDataStore *)nonPersistentDataStore;
 
 @end
 
-#endif // WK_API_ENABLED
+#endif

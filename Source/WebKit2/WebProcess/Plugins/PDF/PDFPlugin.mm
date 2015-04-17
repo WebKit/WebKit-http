@@ -1458,7 +1458,7 @@ bool PDFPlugin::showContextMenuAtPoint(const IntPoint& point)
 {
     FrameView* frameView = webFrame()->coreFrame()->view();
     IntPoint contentsPoint = frameView->contentsToRootView(point);
-    WebMouseEvent event(WebEvent::MouseDown, WebMouseEvent::RightButton, contentsPoint, contentsPoint, 0, 0, 0, 1, static_cast<WebEvent::Modifiers>(0), monotonicallyIncreasingTime());
+    WebMouseEvent event(WebEvent::MouseDown, WebMouseEvent::RightButton, contentsPoint, contentsPoint, 0, 0, 0, 1, static_cast<WebEvent::Modifiers>(0), monotonicallyIncreasingTime(), WebCore::ForceAtClick);
     return handleContextMenuEvent(event);
 }
 
@@ -1563,13 +1563,17 @@ bool PDFPlugin::handlesPageScaleFactor()
 
 void PDFPlugin::clickedLink(NSURL *url)
 {
+    URL coreURL = url;
+    if (protocolIsJavaScript(coreURL))
+        return;
+
     Frame* frame = webFrame()->coreFrame();
 
     RefPtr<Event> coreEvent;
     if (m_lastMouseEvent.type() != WebEvent::NoType)
         coreEvent = MouseEvent::create(eventNames().clickEvent, frame->document()->defaultView(), platform(m_lastMouseEvent), 0, 0);
 
-    frame->loader().urlSelected(url, emptyString(), coreEvent.get(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer);
+    frame->loader().urlSelected(coreURL, emptyString(), coreEvent.get(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer);
 }
 
 void PDFPlugin::setActiveAnnotation(PDFAnnotation *annotation)
@@ -1686,9 +1690,9 @@ void PDFPlugin::writeItemsToPasteboard(NSString *pasteboardName, NSArray *items,
                 continue;
 
             SharedMemory::Handle handle;
-            RefPtr<SharedMemory> sharedMemory = SharedMemory::create(buffer->size());
+            RefPtr<SharedMemory> sharedMemory = SharedMemory::allocate(buffer->size());
             memcpy(sharedMemory->data(), buffer->data(), buffer->size());
-            sharedMemory->createHandle(handle, SharedMemory::ReadOnly);
+            sharedMemory->createHandle(handle, SharedMemory::Protection::ReadOnly);
             webProcess.parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::SetPasteboardBufferForType(pasteboardName, type, handle, buffer->size()), Messages::WebPasteboardProxy::SetPasteboardBufferForType::Reply(newChangeCount), 0);
         }
     }

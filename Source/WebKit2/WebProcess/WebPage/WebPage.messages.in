@@ -46,12 +46,12 @@ messages -> WebPage LegacyReceiver {
     SetViewportConfigurationMinimumLayoutSize(WebCore::FloatSize size)
     SetMaximumUnobscuredSize(WebCore::FloatSize size)
     SetDeviceOrientation(int32_t deviceOrientation)
-    DynamicViewportSizeUpdate(WebCore::FloatSize minimumLayoutSize, WebCore::FloatSize maximumUnobscuredSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation)
+    DynamicViewportSizeUpdate(WebCore::FloatSize minimumLayoutSize, WebCore::FloatSize maximumUnobscuredSize, WebCore::FloatRect targetExposedContentRect, WebCore::FloatRect targetUnobscuredRect, WebCore::FloatRect targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation, uint64_t dynamicViewportSizeUpdateID)
     SynchronizeDynamicViewportUpdate() -> (double newTargetScale, WebCore::FloatPoint newScrollPosition, uint64_t nextValidLayerTreeTransactionID)
 
-    HandleTap(WebCore::IntPoint point, uint64_t lastLayerTreeTranscationId)
+    HandleTap(WebCore::IntPoint point, uint64_t lastLayerTreeTransactionId)
     PotentialTapAtPosition(uint64_t requestID, WebCore::FloatPoint point)
-    CommitPotentialTap(uint64_t lastLayerTreeTranscationId)
+    CommitPotentialTap(uint64_t lastLayerTreeTransactionId)
     CancelPotentialTap()
     TapHighlightAtPosition(uint64_t requestID, WebCore::FloatPoint point)
     InspectorNodeSearchMovedToPosition(WebCore::FloatPoint point)
@@ -196,6 +196,7 @@ messages -> WebPage LegacyReceiver {
 
     ScalePage(double scale, WebCore::IntPoint origin)
     ScalePageInViewCoordinates(double scale, WebCore::IntPoint centerInViewCoordinates)
+    ScaleView(double scale)
 
     SetUseFixedLayout(bool fixed)
     SetFixedLayoutSize(WebCore::IntSize size)
@@ -406,7 +407,6 @@ messages -> WebPage LegacyReceiver {
     PerformActionMenuHitTestAtLocation(WebCore::FloatPoint location, bool forImmediateAction)
     SelectLastActionMenuRange()
     FocusAndSelectLastActionMenuHitTestResult()
-    InputDeviceForceDidChange(float force, int stage)
     ImmediateActionDidUpdate()
     ImmediateActionDidCancel()
     ImmediateActionDidComplete()
@@ -418,7 +418,7 @@ messages -> WebPage LegacyReceiver {
     SetShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    PlaybackTargetSelected(WebCore::MediaPlaybackTarget target)
+    PlaybackTargetSelected(struct WebCore::MediaPlaybackTargetContext target)
     PlaybackTargetAvailabilityDidChange(bool available)
 #endif
 

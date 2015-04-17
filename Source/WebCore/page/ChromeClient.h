@@ -331,9 +331,9 @@ public:
 
     virtual bool supportsVideoFullscreen() { return false; }
 #if ENABLE(VIDEO)
-    virtual void enterVideoFullscreenForVideoElement(HTMLVideoElement*, HTMLMediaElement::VideoFullscreenMode) { }
+    virtual void enterVideoFullscreenForVideoElement(HTMLVideoElement&, HTMLMediaElement::VideoFullscreenMode) { }
 #endif
-    virtual void exitVideoFullscreen() { }
+    virtual void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) { }
     virtual bool requiresFullscreenForVideoPlayback() { return false; } 
 
 #if ENABLE(FULLSCREEN_API)
@@ -423,7 +423,15 @@ public:
 
     virtual bool shouldUseTiledBackingForFrameView(const FrameView*) const { return false; }
 
-    virtual void isPlayingAudioDidChange(bool) { }
+    enum MediaState {
+        IsNotPlaying = 0,
+        IsPlayingAudio = 1 << 0,
+        IsPlayingVideo = 1 << 1,
+        IsPlayingToExternalDevice = 1 << 2,
+    };
+    typedef unsigned MediaStateFlags;
+    virtual void isPlayingMediaDidChange(MediaStateFlags) { }
+
     virtual void setPageActivityState(PageActivityState::Flags) { }
 
 #if ENABLE(SUBTLE_CRYPTO)

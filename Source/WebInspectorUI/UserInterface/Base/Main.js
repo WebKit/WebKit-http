@@ -303,9 +303,10 @@ WebInspector.contentLoaded = function()
     this.applicationCacheDetailsSidebarPanel = new WebInspector.ApplicationCacheDetailsSidebarPanel;
     this.scopeChainDetailsSidebarPanel = new WebInspector.ScopeChainDetailsSidebarPanel;
     this.probeDetailsSidebarPanel = new WebInspector.ProbeDetailsSidebarPanel;
+    this.renderingFrameDetailsSidebarPanel = new WebInspector.RenderingFrameDetailsSidebarPanel;
 
     this.detailsSidebarPanels = [this.resourceDetailsSidebarPanel, this.applicationCacheDetailsSidebarPanel, this.scopeChainDetailsSidebarPanel,
-        this.domNodeDetailsSidebarPanel, this.cssStyleDetailsSidebarPanel, this.probeDetailsSidebarPanel];
+        this.domNodeDetailsSidebarPanel, this.cssStyleDetailsSidebarPanel, this.probeDetailsSidebarPanel, this.renderingFrameDetailsSidebarPanel];
 
     if (window.LayerTreeAgent) {
         this.layerTreeDetailsSidebarPanel = new WebInspector.LayerTreeDetailsSidebarPanel;
@@ -1873,18 +1874,16 @@ WebInspector.archiveMainFrame = function()
 {
     this.notifications.dispatchEventToListeners(WebInspector.Notification.PageArchiveStarted, event);
 
-    setTimeout(function() {
-        PageAgent.archive(function(error, data) {
-            this.notifications.dispatchEventToListeners(WebInspector.Notification.PageArchiveEnded, event);
-            if (error)
-                return;
+    PageAgent.archive(function(error, data) {
+        this.notifications.dispatchEventToListeners(WebInspector.Notification.PageArchiveEnded, event);
+        if (error)
+            return;
 
-            var mainFrame = WebInspector.frameResourceManager.mainFrame;
-            var archiveName = mainFrame.mainResource.urlComponents.host || mainFrame.mainResource.displayName || "Archive";
-            var url = "web-inspector:///" + encodeURI(archiveName) + ".webarchive";
-            InspectorFrontendHost.save(url, data, true, true);
-        }.bind(this));
-    }.bind(this), 3000);
+        var mainFrame = WebInspector.frameResourceManager.mainFrame;
+        var archiveName = mainFrame.mainResource.urlComponents.host || mainFrame.mainResource.displayName || "Archive";
+        var url = "web-inspector:///" + encodeURI(archiveName) + ".webarchive";
+        InspectorFrontendHost.save(url, data, true, true);
+    }.bind(this));
 };
 
 WebInspector.canArchiveMainFrame = function()

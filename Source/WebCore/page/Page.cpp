@@ -108,7 +108,6 @@
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include "HTMLVideoElement.h"
 #include "MediaPlaybackTarget.h"
-#include "MediaPlaybackTargetPickerClient.h"
 #endif
 
 namespace WebCore {
@@ -214,9 +213,6 @@ Page::Page(PageConfiguration& pageConfiguration)
     , m_userContentController(WTF::move(pageConfiguration.userContentController))
     , m_visitedLinkStore(*WTF::move(pageConfiguration.visitedLinkStore))
     , m_sessionID(SessionID::defaultSessionID())
-#if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    , m_playbackTarget(std::make_unique<MediaPlaybackTarget>())
-#endif
     , m_isClosing(false)
     , m_isPlayingAudio(false)
 {
@@ -1201,7 +1197,7 @@ void Page::enableLegacyPrivateBrowsing(bool privateBrowsingEnabled)
     setSessionID(privateBrowsingEnabled ? SessionID::legacyPrivateSessionID() : SessionID::defaultSessionID());
 }
 
-void Page::updateIsPlayingAudio()
+void Page::updateIsPlayingMedia()
 {
     bool isPlayingAudio = false;
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
@@ -1216,7 +1212,7 @@ void Page::updateIsPlayingAudio()
 
     m_isPlayingAudio = isPlayingAudio;
 
-    chrome().client().isPlayingAudioDidChange(m_isPlayingAudio);
+    chrome().client().isPlayingMediaDidChange(m_isPlayingAudio ? ChromeClient::IsPlayingAudio : ChromeClient::IsNotPlaying);
 }
 
 void Page::setMuted(bool muted)
@@ -1686,6 +1682,14 @@ void Page::setSessionID(SessionID sessionID)
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
+RefPtr<MediaPlaybackTarget> Page::playbackTarget() const
+{
+    if (!m_playbackTarget)
+        return nullptr;
+
+    return m_playbackTarget.copyRef();
+}
+
 void Page::showPlaybackTargetPicker(const WebCore::IntPoint& location, bool isVideo)
 {
 #if PLATFORM(IOS)
@@ -1697,11 +1701,11 @@ void Page::showPlaybackTargetPicker(const WebCore::IntPoint& location, bool isVi
 #endif
 }
 
-void Page::didChoosePlaybackTarget(const MediaPlaybackTarget& target)
+void Page::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& target)
 {
-    m_playbackTarget->setDevicePickerContext(target.devicePickerContext());
+    m_playbackTarget = WTF::move(target);
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
-        frame->document()->didChoosePlaybackTarget(target);
+        frame->document()->didChoosePlaybackTarget(*m_playbackTarget.copyRef());
 }
 
 void Page::playbackTargetAvailabilityDidChange(bool available)

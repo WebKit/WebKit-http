@@ -45,14 +45,9 @@
     top: -1px;
 
     display: inline-block;
-    width: 22px;
-    margin-left: 13px;
-    text-align: center;
-}
-
-/* FIXME: Should this be all the time? */
-.object-tree-array-index .index-value .object-tree {
-    display: inline-block;
+    width: 30px;
+    margin-right: 7px;
+    text-align: right;
 }
 
 /* An array inside an array we should reduce the padding-start. */

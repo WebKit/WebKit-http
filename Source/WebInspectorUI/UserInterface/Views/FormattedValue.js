@@ -56,7 +56,7 @@ WebInspector.FormattedValue.createElementForNode = function(object)
             return;
         }
 
-        var treeOutline = new WebInspector.DOMTreeOutline(false, false, true);
+        var treeOutline = new WebInspector.DOMTreeOutline;
         treeOutline.setVisible(true);
         treeOutline.rootDOMNode = WebInspector.domTreeManager.nodeForId(nodeId);
         if (!treeOutline.children[0].hasChildren)
@@ -119,6 +119,17 @@ WebInspector.FormattedValue.createElementForObjectPreview = function(objectPrevi
 WebInspector.FormattedValue.createElementForPropertyPreview = function(propertyPreview)
 {
     return WebInspector.FormattedValue.createElementForTypesAndValue(propertyPreview.type, propertyPreview.subtype, propertyPreview.value, undefined, true, false);
+};
+
+WebInspector.FormattedValue.createObjectPreviewOrFormattedValueForRemoteObject = function(object, previewViewMode)
+{
+    if (object.subtype === "node")
+        return WebInspector.FormattedValue.createElementForNode(object);
+
+    if (object.preview)
+        return new WebInspector.ObjectPreviewView(object.preview, previewViewMode);
+
+    return WebInspector.FormattedValue.createElementForRemoteObject(object);
 };
 
 WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject = function(object, propertyPath, forceExpanding)

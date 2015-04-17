@@ -30,7 +30,7 @@
 #import <WebKit/WKWebViewPrivate.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED
+#if WK_API_ENABLED && !PLATFORM(IOS)
 
 static bool fixedLayoutSizeDone;
 static bool fixedLayoutSizeAfterNavigationDone;
@@ -62,7 +62,7 @@ TEST(WebKit2, FixedLayoutSize)
     [webView evaluateJavaScript:@"document.body.clientWidth" completionHandler:^(id result, NSError *error) {
         EXPECT_EQ(100, [result integerValue]);
 
-        [webView _setFixedLayoutEnabled:YES];
+        [webView _setLayoutMode:_WKLayoutModeFixedSize];
         [webView _setFixedLayoutSize:NSMakeSize(200, 200)];
 
         [webView evaluateJavaScript:@"document.body.clientWidth" completionHandler:^(id result, NSError *error) {
@@ -79,7 +79,7 @@ TEST(WebKit2, FixedLayoutSize)
 
     TestWebKitAPI::Util::run(&fixedLayoutSizeAfterNavigationDone);
 
-    [webView _setFixedLayoutEnabled:NO];
+    [webView _setLayoutMode:_WKLayoutModeViewSize];
     [webView evaluateJavaScript:@"document.body.clientWidth" completionHandler:^(id result, NSError *error) {
         EXPECT_EQ(100, [result integerValue]);
         fixedLayoutSizeDisabledDone = true;

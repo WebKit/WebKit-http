@@ -740,9 +740,10 @@ _llint_op_create_this:
     traceExecution()
     loadi 8[PC], t0
     loadp PayloadOffset[cfr, t0, 8], t0
-    loadp JSFunction::m_allocationProfile + ObjectAllocationProfile::m_allocator[t0], t1
-    loadp JSFunction::m_allocationProfile + ObjectAllocationProfile::m_structure[t0], t2
-    btpz t1, .opCreateThisSlow
+    loadp JSFunction::m_rareData[t0], t4
+    btpz t4, .opCreateThisSlow
+    loadp FunctionRareData::m_allocationProfile + ObjectAllocationProfile::m_allocator[t4], t1
+    loadp FunctionRareData::m_allocationProfile + ObjectAllocationProfile::m_structure[t4], t2
     allocateJSObject(t1, t2, t0, t3, .opCreateThisSlow)
     loadi 4[PC], t1
     storei CellTag, TagOffset[cfr, t1, 8]
@@ -804,14 +805,6 @@ _llint_op_mov:
     storei t3, PayloadOffset[cfr, t0, 8]
     dispatch(3)
 
-
-macro notifyWrite(set, valueTag, valuePayload, scratch, slow)
-    loadb VariableWatchpointSet::m_state[set], scratch
-    bieq scratch, IsInvalidated, .done
-    bineq valuePayload, VariableWatchpointSet::m_inferredValue + PayloadOffset[set], slow
-    bineq valueTag, VariableWatchpointSet::m_inferredValue + TagOffset[set], slow
-.done:
-end
 
 _llint_op_not:
     traceExecution()
@@ -2204,7 +2197,7 @@ macro putGlobalVar()
     loadisFromInstruction(3, t0)
     loadConstantOrVariable(t0, t1, t2)
     loadpFromInstruction(5, t3)
-    notifyWrite(t3, t1, t2, t0, .pDynamic)
+    notifyWrite(t3, .pDynamic)
     loadpFromInstruction(6, t0)
     storei t1, TagOffset[t0]
     storei t2, PayloadOffset[t0]
@@ -2223,7 +2216,7 @@ macro putLocalClosureVar()
     loadConstantOrVariable(t1, t2, t3)
     loadpFromInstruction(5, t4)
     btpz t4, .noVariableWatchpointSet
-    notifyWrite(t4, t2, t3, t1, .pDynamic)
+    notifyWrite(t4, .pDynamic)
 .noVariableWatchpointSet:
     loadisFromInstruction(6, t1)
     storei t2, JSEnvironmentRecord_variables + TagOffset[t0, t1, 8]

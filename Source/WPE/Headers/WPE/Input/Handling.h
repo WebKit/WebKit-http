@@ -36,6 +36,7 @@ namespace WPE {
 namespace Input {
 
 class KeyboardEventHandler;
+class KeyboardEventRepeating;
 
 class Client {
 public:
@@ -63,7 +64,9 @@ private:
 
     Client* m_target { nullptr };
 
+    // FIXME: Merge the two classes?
     std::unique_ptr<KeyboardEventHandler> m_keyboardEventHandler;
+    std::unique_ptr<KeyboardEventRepeating> m_keyboardEventRepeating;
 
     struct Pointer {
         uint32_t x;
