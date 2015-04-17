@@ -43,6 +43,8 @@
 #import "StringUtilities.h"
 #import "TextChecker.h"
 #import "WKBrowsingContextControllerInternal.h"
+#import "WKSharingServicePickerDelegate.h"
+#import "WebContextMenuProxyMac.h"
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
 #import <WebCore/DictationAlternative.h>
@@ -377,7 +379,7 @@ PassRefPtr<WebCore::SharedBuffer> WebPageProxy::dataSelectionForPasteboard(const
                                                 Messages::WebPage::GetDataSelectionForPasteboard::Reply(handle, size), m_pageID, messageTimeout);
     if (handle.isNull())
         return 0;
-    RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(handle, SharedMemory::ReadOnly);
+    RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
     return SharedBuffer::create(static_cast<unsigned char *>(sharedMemoryBuffer->data()), size);
 }
 
@@ -413,12 +415,12 @@ void WebPageProxy::setPromisedDataForImage(const String& pasteboardName, const S
 {
     MESSAGE_CHECK_URL(url);
     MESSAGE_CHECK_URL(visibleURL);
-    RefPtr<SharedMemory> sharedMemoryImage = SharedMemory::create(imageHandle, SharedMemory::ReadOnly);
+    RefPtr<SharedMemory> sharedMemoryImage = SharedMemory::map(imageHandle, SharedMemory::Protection::ReadOnly);
     RefPtr<SharedBuffer> imageBuffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryImage->data()), imageSize);
     RefPtr<SharedBuffer> archiveBuffer;
     
     if (!archiveHandle.isNull()) {
-        RefPtr<SharedMemory> sharedMemoryArchive = SharedMemory::create(archiveHandle, SharedMemory::ReadOnly);;
+        RefPtr<SharedMemory> sharedMemoryArchive = SharedMemory::map(archiveHandle, SharedMemory::Protection::ReadOnly);
         archiveBuffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryArchive->data()), archiveSize);
     }
     m_pageClient.setPromisedDataForImage(pasteboardName, imageBuffer, filename, extension, title, url, visibleURL, archiveBuffer);
@@ -743,6 +745,23 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
         cancelComposition();
         m_pageClient.notifyInputContextAboutDiscardedComposition();
     }
+#endif
+}
+
+void WebPageProxy::platformInitializeShareMenuItem(ContextMenuItem& item)
+{
+#if ENABLE(SERVICE_CONTROLS)
+    NSMenuItem *nsItem = item.platformDescription();
+
+    NSSharingServicePicker *sharingServicePicker = [nsItem representedObject];
+    sharingServicePicker.delegate = [WKSharingServicePickerDelegate sharedSharingServicePickerDelegate];
+    
+    [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setFiltersEditingServices:NO];
+    [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setHandlesEditingReplacement:NO];
+    [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setMenuProxy:static_cast<WebContextMenuProxyMac*>(m_activeContextMenu.get())];
+
+    // Setting the picker lets the delegate retain it to keep it alive, but this picker is kept alive by the menu item.
+    [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setPicker:nil];
 #endif
 }
     

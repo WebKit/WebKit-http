@@ -603,6 +603,11 @@ animations/trigger-parsing.html [ Skip ]
 animations/trigger-container-scroll-simple.html [ Skip ]
 animations/trigger-container-scroll-boundaries.html [ Skip ]
 
+# No support for force events
+fast/events/mouse-force-changed.html [ Skip ]
+fast/events/mouse-force-down.html [ Skip ]
+fast/events/mouse-force-up.html [ Skip ]
+
 ################################################################################
 ###########    End Missing Functionality Prevents Testing         ##############
 ################################################################################
@@ -2034,6 +2039,7 @@ fast/dom/adopt-node-crash-2.html [ Skip ] # Debug Assertion
 ################################################################################
 # Not putting 'focused' text
 fast/forms/legend-access-key.html [ Failure ]
+webkit.org/b/143739 fast/forms/listbox-visible-size.html [ Failure ]
 
 webkit.org/b/97026 fast/forms/state-restore-broken-state.html [ Failure ]
 fast/forms/select/listbox-click-on-scrollbar.html [ Failure ]
@@ -2311,7 +2317,6 @@ http/tests/xmlhttprequest/web-apps/013.html
 http/tests/cache/network-error-during-revalidation.html [ Pass Crash ]
 http/tests/xmlhttprequest/workers/methods.html [ Pass Crash ]
 
-webkit.org/b/143460 http/tests/contentfiltering/block-after-redirect.html [ ImageOnlyFailure ]
 ################################################################################
 #################            End HTTP Issues             #######################
 ################################################################################
@@ -2331,6 +2336,7 @@ webkit.org/b/137157 [ Release ] inspector/model/remote-object-get-properties.htm
 webkit.org/b/137157 [ Debug ] inspector/model/remote-object-get-properties.html [ Skip ] # Debug Assertion
 webkit.org/b/137157 inspector/page/main-frame-resource.html [ Skip ]
 webkit.org/b/137157 inspector/protocol-promise-result.html [ Skip ]
+http/tests/inspector/css/bad-mime-type.html [ Skip ]
 inspector/test-harness-trivially-works.html [ Skip ]
 inspector/dom/content-node-region-info.html [ Crash Pass Failure Timeout ]
 inspector/css/selector-specificity.html [ Skip ]
@@ -2353,9 +2359,6 @@ webkit.org/b/128979 [ Release ] inspector-protocol/dom/getAccessibilityPropertie
 inspector-protocol/debugger/removeBreakpoint.html [ Skip ] # Crashing
 inspector-protocol/debugger/searchInContent-linebreaks.html [ Pass Crash ] # Flaky
 
-webkit.org/b/143542 inspector-protocol/debugger/setPauseOnExceptions-all.html [ Failure ]
-webkit.org/b/143542 inspector-protocol/debugger/setPauseOnExceptions-none.html [ Failure ]
-webkit.org/b/143542 inspector-protocol/debugger/setPauseOnExceptions-uncaught.html [ Failure ]
 webkit.org/b/143548 inspector/console/console-api.html [ Skip ] # Timeout
 ################################################################################
 #################        End Inspector Issues               ####################
@@ -3049,6 +3052,7 @@ webkit.org/b/139968 fast/regions/overflow/overflow-first-and-last-regions.html [
 
 # This feature is only enabled on Mac and iOS right now
 contentfiltering [ Skip ]
+http/tests/contentfiltering [ Skip ]
 
 # The following are flaky on EWS bots. Revisit after next Windows update
 [ Release ] animations/trigger-container-scroll-empty.html [ Pass Failure ]
@@ -3082,6 +3086,3 @@ webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
 webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
 
 webkit.org/b/143420 fast/fixed-layout/fixed-layout.html [ Skip ]
-
-webkit.org/b/143543 fast/backgrounds/selection-background-color-of-list-style.html [ Failure ]
-webkit.org/b/143543 fast/backgrounds/selection-background-color-of-image-list-style.html [ Failure ]

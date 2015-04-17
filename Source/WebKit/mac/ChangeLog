@@ -1,3 +1,236 @@
+2015-04-16  Sam Weinig  <sam@webkit.org>
+
+        Expose JavaScriptMarkupEnabled preference for WebKit1
+        <rdar://problem/19939450>
+        https://bugs.webkit.org/show_bug.cgi?id=143855
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        Add new key, WebKitJavaScriptMarkupEnabledPreferenceKey
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        Initialize WebKitJavaScriptMarkupEnabledPreferenceKey to YES.
+
+        (-[WebPreferences isJavaScriptMarkupEnabled]):
+        (-[WebPreferences setJavaScriptMarkupEnabled:]):
+        Implement getter/setter.
+
+        * WebView/WebPreferencesPrivate.h:
+        Add new property, javaScriptMarkupEnabled.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        Map the new preference to WebCore's scriptMarkupEnabled setting.
+
+2015-04-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Disable "Save to Downloads" option for local files
+        https://bugs.webkit.org/show_bug.cgi?id=143794
+
+        Reviewed by Tim Horton.
+
+        Disable the Image and Media download options if the download
+        target is a local file. We can only download web resources;
+        anything else is actually a no-op.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _defaultMenuItemsForImage]):
+        (-[WebActionMenuController _defaultMenuItemsForVideo]):
+
+2015-04-15  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=143785
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WebView/WebPDFDocumentExtras.mm:
+        * WebView/WebPDFView.mm:
+
+2015-04-13  Jer Noble  <jer.noble@apple.com>
+
+        [Fullscreen] ChromeClient::exitVideoFullscreen() should take a pointer to a HTMLVideoElement.
+        https://bugs.webkit.org/show_bug.cgi?id=143674
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::enterVideoFullscreenForVideoElement): Takes a reference.
+        (WebChromeClient::exitVideoFullscreenForVideoElement): Renamed from exitVideoFullscreen().
+        (WebChromeClient::exitVideoFullscreen): Deleted.
+
+2015-04-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Re-enable custom dilation for antialiased fonts
+        https://bugs.webkit.org/show_bug.cgi?id=143738
+
+        Reviewed by Tim Horton.
+        
+        Enabling custom dilation for antialised fonts broke layout tests, so re-land it,
+        but disable in WebKitTestRunner and DumpRenderTree. The latter requires adding
+        a private WebKit pref. This pref defaults to YES, enabling the feature by default
+        in WK1 as we do for WK2.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences setAntialiasedFontDilationEnabled:]):
+        (-[WebPreferences antialiasedFontDilationEnabled]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2015-04-13  Brady Eidson  <beidson@apple.com>
+
+        Share sheets from Share menus appear outside the browser window.
+        <rdar://problem/20455592> and https://bugs.webkit.org/show_bug.cgi?id=143620
+
+        Reviewed by Darin Adler.
+
+        Refactor existing Sharing Service Picker code to also be used for the Share menu NSMenuItem.
+
+        * Misc/WebSharingServicePickerController.h:
+        (WebSharingServicePickerClient::webView):
+        * Misc/WebSharingServicePickerController.mm:
+        (WebSharingServicePickerClient::WebSharingServicePickerClient):
+        (WebSharingServicePickerClient::sharingServicePickerWillBeDestroyed):
+        (WebSharingServicePickerClient::pageForSharingServicePicker):
+        (WebSharingServicePickerClient::windowForSharingServicePicker):
+        (WebSharingServicePickerClient::screenRectForCurrentSharingServicePickerItem):
+        (WebSharingServicePickerClient::imageForCurrentSharingServicePickerItem):
+        (-[WebSharingServicePickerController initWithItems:includeEditorServices:client:style:]):
+        (-[WebSharingServicePickerController initWithSharingServicePicker:client:]):
+        (-[WebSharingServicePickerController sharingService:didShareItems:]):
+
+        * WebCoreSupport/WebContextMenuClient.h:
+        (WebContextMenuClient::webView): Deleted.
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::WebContextMenuClient):
+        (WebContextMenuClient::pageForSharingServicePicker): Deleted.
+        (WebContextMenuClient::windowForSharingServicePicker): Deleted.
+
+        * WebCoreSupport/WebSelectionServiceController.h:
+        * WebCoreSupport/WebSelectionServiceController.mm:
+        (WebSelectionServiceController::WebSelectionServiceController):
+        (WebSelectionServiceController::handleSelectionServiceClick):
+        (WebSelectionServiceController::pageForSharingServicePicker): Deleted.
+        (WebSelectionServiceController::windowForSharingServicePicker): Deleted.
+        (WebSelectionServiceController::screenRectForCurrentSharingServicePickerItem): Deleted.
+        (WebSelectionServiceController::imageForCurrentSharingServicePickerItem): Deleted.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView menuForEvent:]):
+        * WebView/WebViewData.h:
+
+2015-04-13  Beth Dakin  <bdakin@apple.com>
+
+        Add force property to MouseEvents
+        https://bugs.webkit.org/show_bug.cgi?id=143569
+        -and corresponding-
+        rdar://problem/20472954
+
+        Reviewed by Darin Adler.
+
+        PlatformMouseEvent and MouseEvent now take force parameters.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _dragSourceEndedAt:operation:]):
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2015-04-12  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Localizable strings are inconsistent and need to be regenerated
+        https://bugs.webkit.org/show_bug.cgi?id=143661
+        rdar://problem/19634388
+
+        Reviewed by Dan Bernstein.
+
+        * Misc/WebLocalizableStrings.mm:
+        (LoadWebLocalizedStringsTimerCallback): Moved the comment, useful for programmers but
+        not for localization, into a C++ source code comment, and made the localizer comment
+        consistent with the place this localizable string is used for actual localization.
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction): Changed the localizer comments for Delete and Dictation
+        to match the ones in WebKit2; no need to specify that these are iOS only, and if we do
+        want to specify that, we should not be using the term PLATFORM(IOS) since there is no
+        reason for us to expect localizers to understand that terminology. Also added a comment
+        about the fact that we have two copies of all the localizable strings.
+
+2015-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Enable Symbol in web pages
+        https://bugs.webkit.org/show_bug.cgi?id=143375
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebPreferencesPrivate.h:
+
+2015-04-08  Sam Weinig  <sam@webkit.org>
+
+        Allow LaunchServices to handle URLs on link navigations
+        <rdar://problem/19446826>
+        https://bugs.webkit.org/show_bug.cgi?id=143544
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        Link MobileCoreServices.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (shouldTryAppLink):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        (WebFrameLoaderClient::setUpPolicyListener):
+        Only let LaunchServices have a crack at the URL if the navigation is:
+            1) a main frame navigation
+            2) a result of a user gesture
+
+2015-04-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        * Misc/WebNSURLExtras.mm: (-[NSString _webkit_unescapedQueryValue]): Ignore a deprecation.
+
+2015-04-10  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Refactor MediaPlaybackTarget
+        https://bugs.webkit.org/show_bug.cgi?id=143571
+
+        Reviewed by Jer Noble.
+
+        * WebView/WebMediaPlaybackTargetPicker.h:
+        * WebView/WebMediaPlaybackTargetPicker.mm:
+        (WebMediaPlaybackTargetPicker::didChoosePlaybackTarget): Take a Ref<MediaPlaybackTarget>&&.
+
+2015-04-09  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add a HAVE(AVKIT) and use it
+        https://bugs.webkit.org/show_bug.cgi?id=143593
+
+        Reviewed by David Kilzer.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Only set WebKitAVKitEnabled to YES if HAVE(AVKIT).
+        (-[WebPreferences setAVKitEnabled:]): Only set value for WebKitAVKitEnabled if HAVE(AVKIT).
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Only called Settings::setAVKitEnabled() if HAVE(AVKIT).
+
+2015-04-09  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][iOS] editorState() should not cause a synchronous layout
+        https://bugs.webkit.org/show_bug.cgi?id=142536
+        <rdar://problem/20041506>
+
+        Reviewed by Enrica Casucci.
+
+        Provide implementation for EditorClient::didChangeSelectionAndUpdateLayout().
+
+        * WebCoreSupport/WebEditorClient.h:
+
 2015-04-08  Brent Fulgham  <bfulgham@apple.com>
 
         [Mac] WebKit is not honoring OS preferences for secondary click behaviors

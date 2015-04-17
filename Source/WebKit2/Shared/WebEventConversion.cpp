@@ -38,12 +38,27 @@ public:
         switch (webEvent.type()) {
         case WebEvent::MouseDown:
             m_type = WebCore::PlatformEvent::MousePressed;
+            m_force = WebCore::ForceAtClick;
             break;
         case WebEvent::MouseUp:
             m_type = WebCore::PlatformEvent::MouseReleased;
+            m_force = WebCore::ForceAtClick;
             break;
         case WebEvent::MouseMove:
             m_type = WebCore::PlatformEvent::MouseMoved;
+            m_force = webEvent.force();
+            break;
+        case WebEvent::MouseForceChanged:
+            m_type = WebCore::PlatformEvent::MouseForceChanged;
+            m_force = webEvent.force();
+            break;
+        case WebEvent::MouseForceDown:
+            m_type = WebCore::PlatformEvent::MouseForceDown;
+            m_force = WebCore::ForceAtForceClick;
+            break;
+        case WebEvent::MouseForceUp:
+            m_type = WebCore::PlatformEvent::MouseForceUp;
+            m_force = WebCore::ForceAtForceClick;
             break;
         default:
             ASSERT_NOT_REACHED();

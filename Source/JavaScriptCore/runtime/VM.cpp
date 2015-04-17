@@ -87,13 +87,14 @@
 #include "UnlinkedCodeBlock.h"
 #include "WeakGCMapInlines.h"
 #include "WeakMapData.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/ProcessID.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/StringPrintStream.h>
 #include <wtf/Threading.h>
 #include <wtf/WTFThreadData.h>
 #include <wtf/text/AtomicStringTable.h>
-#include <wtf/CurrentTime.h>
+#include <wtf/text/SymbolRegistry.h>
 
 #if ENABLE(DFG_JIT)
 #include "ConservativeRoots.h"
@@ -126,13 +127,6 @@ static bool enableAssembler(ExecutableAllocator& executableAllocator)
             CRASH();
         return false;
     }
-
-#if USE(CF)
-    CFStringRef canUseJITKey = CFSTR("JavaScriptCoreUseJIT");
-    RetainPtr<CFTypeRef> canUseJIT = adoptCF(CFPreferencesCopyAppValue(canUseJITKey, kCFPreferencesCurrentApplication));
-    if (canUseJIT)
-        return kCFBooleanTrue == canUseJIT.get();
-#endif
 
 #if USE(CF) || OS(UNIX)
     char* canUseJITString = getenv("JavaScriptCoreUseJIT");
@@ -237,6 +231,8 @@ VM::VM(VMType vmType, HeapType heapType)
     unlinkedFunctionCodeBlockStructure.set(*this, UnlinkedFunctionCodeBlock::createStructure(*this, 0, jsNull()));
     propertyTableStructure.set(*this, PropertyTable::createStructure(*this, 0, jsNull()));
     weakMapDataStructure.set(*this, WeakMapData::createStructure(*this, 0, jsNull()));
+    inferredValueStructure.set(*this, InferredValue::createStructure(*this, 0, jsNull()));
+    functionRareDataStructure.set(*this, FunctionRareData::createStructure(*this, 0, jsNull()));
 #if ENABLE(PROMISES)
     promiseDeferredStructure.set(*this, JSPromiseDeferred::createStructure(*this, 0, jsNull()));
     promiseReactionStructure.set(*this, JSPromiseReaction::createStructure(*this, 0, jsNull()));

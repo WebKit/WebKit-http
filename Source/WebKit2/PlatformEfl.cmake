@@ -58,6 +58,7 @@ list(APPEND WebKit2_SOURCES
 
     Shared/unix/ChildProcessMain.cpp
 
+    UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
 
     UIProcess/API/C/CoordinatedGraphics/WKView.cpp
@@ -349,17 +350,11 @@ if (ENABLE_ECORE_X)
 endif ()
 
 add_custom_target(forwarding-headerEfl
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include efl
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include CoordinatedGraphics
-)
-
-add_custom_target(forwarding-headerSoup
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include soup
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT2_DIR} --output ${DERIVED_SOURCES_WEBKIT2_DIR}/include --platform efl --platform CoordinatedGraphics --platform soup
 )
 
 set(WEBKIT2_EXTRA_DEPENDENCIES
      forwarding-headerEfl
-     forwarding-headerSoup
 )
 
 configure_file(efl/ewebkit2.pc.in ${CMAKE_BINARY_DIR}/WebKit2/efl/ewebkit2.pc @ONLY)

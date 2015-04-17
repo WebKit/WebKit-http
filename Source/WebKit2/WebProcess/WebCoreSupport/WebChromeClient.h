@@ -250,8 +250,8 @@ private:
 
 #if PLATFORM(IOS)
     virtual bool supportsVideoFullscreen() override;
-    virtual void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement*, WebCore::HTMLMediaElement::VideoFullscreenMode) override;
-    virtual void exitVideoFullscreen() override;
+    virtual void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElement::VideoFullscreenMode) override;
+    virtual void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) override;
 #endif
 
 #if ENABLE(FULLSCREEN_API)
@@ -292,7 +292,7 @@ private:
 
     virtual bool shouldUseTiledBackingForFrameView(const WebCore::FrameView*) const override;
 
-    virtual void isPlayingAudioDidChange(bool) override;
+    virtual void isPlayingMediaDidChange(MediaStateFlags) override;
     virtual void setPageActivityState(WebCore::PageActivityState::Flags) override;
 
 #if ENABLE(SUBTLE_CRYPTO)

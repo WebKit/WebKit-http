@@ -17,14 +17,12 @@ set(TOOLS_DIR "${CMAKE_SOURCE_DIR}/Tools")
 set(DERIVED_SOURCES_DIR "${CMAKE_BINARY_DIR}/DerivedSources")
 set(DERIVED_SOURCES_JAVASCRIPTCORE_DIR "${CMAKE_BINARY_DIR}/DerivedSources/JavaScriptCore")
 set(DERIVED_SOURCES_WEBCORE_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WebCore")
-set(DERIVED_SOURCES_WEBKIT_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WebKit")
+set(DERIVED_SOURCES_WEBKITLEGACY_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WebKitLegacy")
 set(DERIVED_SOURCES_WEBKIT2_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WebKit2")
 set(DERIVED_SOURCES_WEBINSPECTORUI_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WebInspectorUI")
 set(DERIVED_SOURCES_WTF_DIR "${CMAKE_BINARY_DIR}/DerivedSources/WTF")
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Source/cmake")
-
-set(ENABLE_WEBCORE ON)
 
 if (NOT DEFINED ENABLE_WEBKIT)
     set(ENABLE_WEBKIT ON)
@@ -180,3 +178,8 @@ add_subdirectory(Source)
 if (ENABLE_TOOLS)
     add_subdirectory(Tools)
 endif ()
+
+# -----------------------------------------------------------------------------
+# Print the features list last, for maximum visibility.
+# -----------------------------------------------------------------------------
+PRINT_WEBKIT_OPTIONS()

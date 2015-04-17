@@ -626,9 +626,10 @@ _llint_op_create_this:
     traceExecution()
     loadisFromInstruction(2, t0)
     loadp [cfr, t0, 8], t0
-    loadp JSFunction::m_allocationProfile + ObjectAllocationProfile::m_allocator[t0], t1
-    loadp JSFunction::m_allocationProfile + ObjectAllocationProfile::m_structure[t0], t2
-    btpz t1, .opCreateThisSlow
+    loadp JSFunction::m_rareData[t0], t4
+    btpz t4, .opCreateThisSlow
+    loadp FunctionRareData::m_allocationProfile + ObjectAllocationProfile::m_allocator[t4], t1
+    loadp FunctionRareData::m_allocationProfile + ObjectAllocationProfile::m_structure[t4], t2
     allocateJSObject(t1, t2, t0, t3, .opCreateThisSlow)
     loadisFromInstruction(1, t1)
     storeq t0, [cfr, t1, 8]
@@ -689,13 +690,6 @@ _llint_op_mov:
     storeq t2, [cfr, t0, 8]
     dispatch(3)
 
-
-macro notifyWrite(set, value, scratch, slow)
-    loadb VariableWatchpointSet::m_state[set], scratch
-    bieq scratch, IsInvalidated, .done
-    bqneq value, VariableWatchpointSet::m_inferredValue[set], slow
-.done:
-end
 
 _llint_op_not:
     traceExecution()
@@ -2069,8 +2063,8 @@ macro putGlobalVar()
     loadisFromInstruction(3, t0)
     loadConstantOrVariable(t0, t1)
     loadpFromInstruction(5, t2)
-    notifyWrite(t2, t1, t0, .pDynamic)
     loadpFromInstruction(6, t0)
+    notifyWrite(t2, .pDynamic)
     storeq t1, [t0]
 end
 
@@ -2086,7 +2080,7 @@ macro putLocalClosureVar()
     loadConstantOrVariable(t1, t2)
     loadpFromInstruction(5, t3)
     btpz t3, .noVariableWatchpointSet
-    notifyWrite(t3, t2, t1, .pDynamic)
+    notifyWrite(t3, .pDynamic)
 .noVariableWatchpointSet:
     loadisFromInstruction(6, t1)
     storeq t2, JSEnvironmentRecord_variables[t0, t1, 8]

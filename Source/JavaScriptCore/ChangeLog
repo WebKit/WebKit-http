@@ -1,3 +1,1369 @@
+2015-04-16  Jordan Harband  <ljharb@gmail.com>
+
+        Number.parseInt is not === global parseInt in nightly r182673
+        https://bugs.webkit.org/show_bug.cgi?id=143799
+
+        Reviewed by Darin Adler.
+
+        Ensuring parseInt === Number.parseInt, per spec
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.parseint
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::parseIntFunction):
+        * runtime/NumberConstructor.cpp:
+        (JSC::NumberConstructor::finishCreation):
+
+2015-04-16  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fix CLOOP build after r182927.
+
+        Not reviewed.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::print):
+
+2015-04-16  Basile Clement  <basile_clement@apple.com>
+
+        Inline JSFunction allocation in FTL
+        https://bugs.webkit.org/show_bug.cgi?id=143851
+
+        Reviewed by Filip Pizlo.
+
+        JSFunction allocation is a simple operation that should be inlined when possible.
+
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNewFunction):
+        * runtime/JSFunction.h:
+        (JSC::JSFunction::allocationSize):
+
+2015-04-16  Mark Lam  <mark.lam@apple.com>
+
+        Add $vm debugging tool.
+        https://bugs.webkit.org/show_bug.cgi?id=143809
+
+        Reviewed by Geoffrey Garen.
+
+        For debugging VM bugs, it would be useful to be able to dump VM data structures
+        from JS code that we instrument.  To this end, let's introduce a
+        JS_enableDollarVM option that, if true, installs an $vm property into each JS
+        global object at creation time.  The $vm property refers to an object that
+        provides a collection of useful utility functions.  For this initial
+        implementation, $vm will have the following:
+
+            crash() - trigger an intentional crash.
+
+            dfgTrue() - returns true if the current function is DFG compiled, else returns false.
+            jitTrue() - returns true if the current function is compiled by the baseline JIT, else returns false.
+            llintTrue() - returns true if the current function is interpreted by the LLINT, else returns false.
+
+            gc() - runs a full GC.
+            edenGC() - runs an eden GC.
+
+            codeBlockForFrame(frameNumber) - gets the codeBlock at the specified frame (0 = current, 1 = caller, etc).
+            printSourceFor(codeBlock) - prints the source code for the codeBlock.
+            printByteCodeFor(codeBlock) - prints the bytecode for the codeBlock.
+
+            print(str) - prints a string to dataLog output.
+            printCallFrame() - prints the current CallFrame.
+            printStack() - prints the JS stack.
+            printInternal(value) - prints the JSC internal info for the specified value.
+
+        With JS_enableDollarVM=true, JS code can use the above functions like so:
+
+            $vm.print("Using $vm features\n");
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::printCallOp):
+        - FTL compiled functions don't like it when we try to compute the CallLinkStatus.
+          Hence, we skip this step if we're dumping an FTL codeBlock.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::collectAndSweep):
+        (JSC::Heap::collectAllGarbage): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::collectAllGarbage):
+        - Add ability to do an Eden collection and sweep.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::printIndents):
+        (JSC::log):
+        (JSC::logF):
+        (JSC::StackVisitor::Frame::print):
+        (JSC::jitTypeName): Deleted.
+        (JSC::printif): Deleted.
+        - Modernize the implementation of StackVisitor::Frame::print(), and remove some
+          now redundant code.
+        - Also fix it so that it downgrades gracefully when encountering inlined DFG
+          and compiled FTL functions.
+
+        (DebugPrintFrameFunctor::DebugPrintFrameFunctor): Deleted.
+        (DebugPrintFrameFunctor::operator()): Deleted.
+        (debugPrintCallFrame): Deleted.
+        (debugPrintStack): Deleted.
+        - these have been moved into JSDollarVMPrototype.cpp. 
+
+        * interpreter/StackVisitor.h:
+        - StackVisitor::Frame::print() is now enabled for release builds as well so that
+          we can call it from $vm.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        - Added the $vm instance to global objects conditional on the JSC_enableDollarVM
+          option.
+
+        * runtime/Options.h:
+        - Added the JSC_enableDollarVM option.
+
+        * tools/JSDollarVM.cpp: Added.
+        * tools/JSDollarVM.h: Added.
+        (JSC::JSDollarVM::createStructure):
+        (JSC::JSDollarVM::create):
+        (JSC::JSDollarVM::JSDollarVM):
+
+        * tools/JSDollarVMPrototype.cpp: Added.
+        - This file contains 2 sets of functions:
+
+          a. a C++ implementation of debugging utility functions that are callable when
+             doing debugging from lldb.  To the extent possible, these functions try to
+             be cautious and not cause unintended crashes should the user call them with
+             the wrong info.  Hence, they are designed to be robust rather than speedy.
+
+          b. the native implementations of JS functions in the $vm object.  Where there
+             is overlapping functionality, these are built on top of the C++ functions
+             above to do the work.
+
+          Note: it does not make sense for all of the $vm functions to have a C++
+          counterpart for lldb debugging.  For example, the $vm.dfgTrue() function is
+          only useful for JS code, and works via the DFG intrinsics mechanism.
+          When doing debugging via lldb, the optimization level of the currently
+          executing JS function can be gotten by dumping the current CallFrame instead.
+
+        (JSC::currentThreadOwnsJSLock):
+        (JSC::ensureCurrentThreadOwnsJSLock):
+        (JSC::JSDollarVMPrototype::addFunction):
+        (JSC::functionCrash): - $vm.crash()
+        (JSC::functionDFGTrue): - $vm.dfgTrue()
+        (JSC::CallerFrameJITTypeFunctor::CallerFrameJITTypeFunctor):
+        (JSC::CallerFrameJITTypeFunctor::operator()):
+        (JSC::CallerFrameJITTypeFunctor::jitType):
+        (JSC::functionLLintTrue): - $vm.llintTrue()
+        (JSC::functionJITTrue): - $vm.jitTrue()
+        (JSC::gc):
+        (JSC::functionGC): - $vm.gc()
+        (JSC::edenGC):
+        (JSC::functionEdenGC): - $vm.edenGC()
+        (JSC::isValidCodeBlock):
+        (JSC::codeBlockForFrame):
+        (JSC::functionCodeBlockForFrame): - $vm.codeBlockForFrame(frameNumber)
+        (JSC::codeBlockFromArg):
+        (JSC::functionPrintSourceFor): - $vm.printSourceFor(codeBlock)
+        (JSC::functionPrintByteCodeFor): - $vm.printBytecodeFor(codeBlock)
+        (JSC::functionPrint): - $vm.print(str)
+        (JSC::PrintFrameFunctor::PrintFrameFunctor):
+        (JSC::PrintFrameFunctor::operator()):
+        (JSC::printCallFrame):
+        (JSC::printStack):
+        (JSC::functionPrintCallFrame): - $vm.printCallFrame()
+        (JSC::functionPrintStack): - $vm.printStack()
+        (JSC::printValue):
+        (JSC::functionPrintValue): - $vm.printValue()
+        (JSC::JSDollarVMPrototype::finishCreation):
+        * tools/JSDollarVMPrototype.h: Added.
+        (JSC::JSDollarVMPrototype::create):
+        (JSC::JSDollarVMPrototype::createStructure):
+        (JSC::JSDollarVMPrototype::JSDollarVMPrototype):
+
+2015-04-16  Geoffrey Garen  <ggaren@apple.com>
+
+        Speculative fix after r182915
+        https://bugs.webkit.org/show_bug.cgi?id=143404
+
+        Reviewed by Alexey Proskuryakov.
+
+        * runtime/SymbolConstructor.h:
+
+2015-04-16  Mark Lam  <mark.lam@apple.com>
+
+        Fixed some typos in a comment.
+
+        Not reviewed.
+
+        * dfg/DFGGenerationInfo.h:
+
+2015-04-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement Symbol.for and Symbol.keyFor
+        https://bugs.webkit.org/show_bug.cgi?id=143404
+
+        Reviewed by Geoffrey Garen.
+
+        This patch implements Symbol.for and Symbol.keyFor.
+        SymbolRegistry maintains registered StringImpl* symbols.
+        And to make this mapping enabled over realms,
+        VM owns this mapping (not JSGlobalObject).
+
+        While there's Default AtomicStringTable per thread,
+        SymbolRegistry should not exist over VMs.
+        So everytime VM is created, SymbolRegistry is also created.
+
+        In SymbolRegistry implementation, we don't leverage WeakGCMap (or weak reference design).
+        Theres are several reasons.
+        1. StringImpl* which represents identity of Symbols is not GC-managed object.
+           So we cannot use WeakGCMap directly.
+           While Symbol* is GC-managed object, holding weak reference to Symbol* doesn't maintain JS symbols (exposed primitive values to users) liveness,
+           because distinct Symbol* can exist.
+           Distinct Symbol* means the Symbol* object that pointer value (Symbol*) is different from weakly referenced Symbol* but held StringImpl* is the same.
+
+        2. We don't use WTF::WeakPtr. If we add WeakPtrFactory into StringImpl's member, we can track StringImpl*'s liveness by WeakPtr.
+           However there's problem about when we prune staled entries in SymbolRegistry.
+           Since the memory allocated for the Symbol is typically occupied by allocated symbolized StringImpl*'s content,
+           and it is not in GC-heap.
+           While heavily registering Symbols and storing StringImpl* into SymbolRegistry, Heap's EdenSpace is not so occupied.
+           So GC typically attempt to perform EdenCollection, and it doesn't call WeakGCMap's pruleStaleEntries callback.
+           As a result, before pruning staled entries in SymbolRegistry, fast malloc-ed memory fills up the system memory.
+
+        So instead of using Weak reference, we take relatively easy design.
+        When we register symbolized StringImpl* into SymbolRegistry, symbolized StringImpl* is aware of that.
+        And when destructing it, it removes its reference from SymbolRegistry as if atomic StringImpl do so with AtomicStringTable.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * runtime/SymbolConstructor.cpp:
+        (JSC::SymbolConstructor::getOwnPropertySlot):
+        (JSC::symbolConstructorFor):
+        (JSC::symbolConstructorKeyFor):
+        * runtime/SymbolConstructor.h:
+        * runtime/VM.cpp:
+        * runtime/VM.h:
+        (JSC::VM::symbolRegistry):
+        * tests/stress/symbol-registry.js: Added.
+        (test):
+
+2015-04-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Use specific functions for @@iterator functions
+        https://bugs.webkit.org/show_bug.cgi?id=143838
+
+        Reviewed by Geoffrey Garen.
+
+        In ES6, some methods are defined with the different names.
+
+        For example,
+
+        Map.prototype[Symbol.iterator] === Map.prototype.entries
+        Set.prototype[Symbol.iterator] === Set.prototype.values
+        Array.prototype[Symbol.iterator] === Array.prototype.values
+        %Arguments%[Symbol.iterator] === Array.prototype.values
+
+        However, current implementation creates different function objects per name.
+        This patch fixes it by setting the object that is used for the other method to @@iterator.
+        e.g. Setting Array.prototype.values function object to Array.prototype[Symbol.iterator].
+
+        And we drop Arguments' iterator implementation and replace Argument[@@iterator] implementation
+        with Array.prototype.values to conform to the spec.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::subtype):
+        (Inspector::JSInjectedScriptHost::getInternalProperties):
+        (Inspector::JSInjectedScriptHost::iteratorEntries):
+        * runtime/ArgumentsIteratorConstructor.cpp: Removed.
+        * runtime/ArgumentsIteratorConstructor.h: Removed.
+        * runtime/ArgumentsIteratorPrototype.cpp: Removed.
+        * runtime/ArgumentsIteratorPrototype.h: Removed.
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        * runtime/ArrayPrototype.h:
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::getOwnPropertySlot):
+        (JSC::ClonedArguments::put):
+        (JSC::ClonedArguments::deleteProperty):
+        (JSC::ClonedArguments::defineOwnProperty):
+        (JSC::ClonedArguments::materializeSpecials):
+        * runtime/ClonedArguments.h:
+        * runtime/CommonIdentifiers.h:
+        * runtime/DirectArguments.cpp:
+        (JSC::DirectArguments::overrideThings):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::getOwnPropertySlot):
+        (JSC::GenericArguments<Type>::getOwnPropertyNames):
+        (JSC::GenericArguments<Type>::put):
+        (JSC::GenericArguments<Type>::deleteProperty):
+        (JSC::GenericArguments<Type>::defineOwnProperty):
+        * runtime/JSArgumentsIterator.cpp: Removed.
+        * runtime/JSArgumentsIterator.h: Removed.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::arrayProtoValuesFunction):
+        * runtime/MapPrototype.cpp:
+        (JSC::MapPrototype::finishCreation):
+        * runtime/ScopedArguments.cpp:
+        (JSC::ScopedArguments::overrideThings):
+        * runtime/SetPrototype.cpp:
+        (JSC::SetPrototype::finishCreation):
+        * tests/stress/arguments-iterator.js: Added.
+        (test):
+        (testArguments):
+        * tests/stress/iterator-functions.js: Added.
+        (test):
+        (argumentsTests):
+
+2015-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Add JSC_functionOverrides=<overrides file> debugging tool.
+        https://bugs.webkit.org/show_bug.cgi?id=143717
+
+        Reviewed by Geoffrey Garen.
+
+        This tool allows us to do runtime replacement of function bodies with alternatives
+        for debugging purposes.  For example, this is useful when we need to debug VM bugs
+        which manifest in scripts executing in webpages downloaded from remote servers
+        that we don't control.  The tool allows us to augment those scripts with logging
+        or test code to help isolate the bugs.
+
+        This tool works by substituting the SourceCode at FunctionExecutable creation
+        time.  It identifies which SourceCode to substitute by comparing the source
+        string against keys in a set of key value pairs.
+
+        The keys are function body strings defined by 'override' clauses in the overrides
+        file specified by in the JSC_functionOverrides option.  The values are function
+        body strings defines by 'with' clauses in the overrides file.
+        See comment blob at top of FunctionOverrides.cpp on the formatting
+        of the overrides file.
+
+        At FunctionExecutable creation time, if the SourceCode string matches one of the
+        'override' keys from the overrides file, the tool will replace the SourceCode with
+        a new one based on the corresponding 'with' value string.  The FunctionExecutable
+        will then be created with the new SourceCode instead.
+
+        Some design decisions:
+        1. We opted to require that the 'with' clause appear on a separate line than the
+           'override' clause because this makes it easier to read and write when the
+           'override' clause's function body is single lined and long.
+
+        2. The user can use any sequence of characters for the delimiter (except for '{',
+           '}' and white space characters) because this ensures that there can always be
+           some delimiter pattern that does not appear in the function body in the clause
+           e.g. in the body of strings in the JS code.
+
+           '{' and '}' are disallowed because they are used to mark the boundaries of the
+           function body string.  White space characters are disallowed because they can
+           be error prone (the user may not be able to tell between spaces and tabs).
+
+        3. The start and end delimiter must be an identical sequence of characters.
+
+           I had considered allowing the use of complementary characters like <>, [], and
+           () for making delimiter pairs like:
+               [[[[ ... ]]]]
+               <[([( ... )])]>
+
+           But in the end, decided against it because:
+           a. These sequences of complementary characters can exists in JS code.
+              In contrast, a repeating delimiter like %%%% is unlikely to appear in JS
+              code.
+           b. It can be error prone for the user to have to type the exact complement
+              character for the end delimiter in reverse order.
+              In contrast, a repeating delimiter like %%%% is much easier to type and
+              less error prone.  Even a sequence like @#$%^ is less error prone than
+              a complementary sequence because it can be copy-pasted, and need not be
+              typed in reverse order.
+           c. It is easier to parse for the same delimiter string for both start and end.
+
+        4. The tool does a lot of checks for syntax errors in the overrides file because
+           we don't want any overrides to fail silently.  If a syntax error is detected,
+           the tool will print an error message and call exit().  This avoids the user
+           wasting time doing debugging only to be surprised later that their specified
+           overrides did not take effect because of some unnoticed typo.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::link):
+        * runtime/Executable.h:
+        * runtime/Options.h:
+        * tools/FunctionOverrides.cpp: Added.
+        (JSC::FunctionOverrides::overrides):
+        (JSC::FunctionOverrides::FunctionOverrides):
+        (JSC::initializeOverrideInfo):
+        (JSC::FunctionOverrides::initializeOverrideFor):
+        (JSC::hasDisallowedCharacters):
+        (JSC::parseClause):
+        (JSC::FunctionOverrides::parseOverridesInFile):
+        * tools/FunctionOverrides.h: Added.
+
+2015-04-16  Basile Clement  <basile_clement@apple.com>
+ 
+        Extract the allocation profile from JSFunction into a rare object
+        https://bugs.webkit.org/show_bug.cgi?id=143807
+ 
+        Reviewed by Filip Pizlo.
+ 
+        The allocation profile is only needed for those functions that are used
+        to create objects with [new].
+        Extracting it into its own JSCell removes the need for JSFunction and
+        JSCallee to be JSDestructibleObjects, which should improve performances in most
+        cases at the cost of an extra pointer dereference when the allocation profile
+        is actually needed.
+ 
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_create_this):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_create_this):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/FunctionRareData.cpp: Added.
+        (JSC::FunctionRareData::create):
+        (JSC::FunctionRareData::destroy):
+        (JSC::FunctionRareData::createStructure):
+        (JSC::FunctionRareData::visitChildren):
+        (JSC::FunctionRareData::FunctionRareData):
+        (JSC::FunctionRareData::~FunctionRareData):
+        (JSC::FunctionRareData::finishCreation):
+        * runtime/FunctionRareData.h: Added.
+        (JSC::FunctionRareData::offsetOfAllocationProfile):
+        (JSC::FunctionRareData::allocationProfile):
+        (JSC::FunctionRareData::allocationStructure):
+        (JSC::FunctionRareData::allocationProfileWatchpointSet):
+        * runtime/JSBoundFunction.cpp:
+        (JSC::JSBoundFunction::destroy): Deleted.
+        * runtime/JSBoundFunction.h:
+        * runtime/JSCallee.cpp:
+        (JSC::JSCallee::destroy): Deleted.
+        * runtime/JSCallee.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::JSFunction):
+        (JSC::JSFunction::createRareData):
+        (JSC::JSFunction::visitChildren):
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::defineOwnProperty):
+        (JSC::JSFunction::destroy): Deleted.
+        (JSC::JSFunction::createAllocationProfile): Deleted.
+        * runtime/JSFunction.h:
+        (JSC::JSFunction::offsetOfRareData):
+        (JSC::JSFunction::rareData):
+        (JSC::JSFunction::allocationStructure):
+        (JSC::JSFunction::allocationProfileWatchpointSet):
+        (JSC::JSFunction::offsetOfAllocationProfile): Deleted.
+        (JSC::JSFunction::allocationProfile): Deleted.
+        * runtime/JSFunctionInlines.h:
+        (JSC::JSFunction::JSFunction):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+ 
+2015-04-16  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove the unnecessary WTF_CHANGES define
+        https://bugs.webkit.org/show_bug.cgi?id=143825
+
+        Reviewed by Andreas Kling.
+
+        * config.h:
+
+2015-04-15  Andreas Kling  <akling@apple.com>
+
+        Make MarkedBlock and WeakBlock 4x smaller.
+        <https://webkit.org/b/143802>
+
+        Reviewed by Mark Hahnenberg.
+
+        To reduce GC heap fragmentation and generally use less memory, reduce the size of MarkedBlock
+        and its buddy WeakBlock by 4x, bringing them from 64kB+4kB to 16kB+1kB.
+
+        In a sampling of cool web sites, I'm seeing ~8% average reduction in overall GC heap size.
+        Some examples:
+
+                   apple.com:  6.3MB ->  5.5MB (14.5% smaller)
+                  reddit.com:  4.5MB ->  4.1MB ( 9.7% smaller)
+                 twitter.com: 23.2MB -> 21.4MB ( 8.4% smaller)
+            cuteoverload.com: 24.5MB -> 23.6MB ( 3.8% smaller)
+
+        Benchmarks look mostly neutral.
+        Some small slowdowns on Octane, some slightly bigger speedups on Kraken and SunSpider.
+
+        * heap/MarkedBlock.h:
+        * heap/WeakBlock.h:
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LowLevelInterpreter.asm:
+
+2015-04-15  Jordan Harband  <ljharb@gmail.com>
+
+        String.prototype.startsWith/endsWith/includes have wrong length in r182673
+        https://bugs.webkit.org/show_bug.cgi?id=143659
+
+        Reviewed by Benjamin Poulain.
+
+        Fix lengths of String.prototype.{includes,startsWith,endsWith} per spec
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.includes
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.startswith
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.endswith
+
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+
+2015-04-15  Mark Lam  <mark.lam@apple.com>
+
+        Remove obsolete VMInspector debugging tool.
+        https://bugs.webkit.org/show_bug.cgi?id=143798
+
+        Reviewed by Michael Saboff.
+
+        I added the VMInspector tool 3 years ago to aid in VM hacking work.  Some of it
+        has bit rotted, and now the VM also has better ways to achieve its functionality.
+        Hence this code is now obsolete and should be removed.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * interpreter/CallFrame.h:
+        * interpreter/VMInspector.cpp: Removed.
+        * interpreter/VMInspector.h: Removed.
+        * llint/LowLevelInterpreter.cpp:
+
+2015-04-15  Jordan Harband  <ljharb@gmail.com>
+
+        Math.imul has wrong length in Safari 8.0.4
+        https://bugs.webkit.org/show_bug.cgi?id=143658
+
+        Reviewed by Benjamin Poulain.
+
+        Correcting function length from 1, to 2, to match spec
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-math.imul
+
+        * runtime/MathObject.cpp:
+        (JSC::MathObject::finishCreation):
+
+2015-04-15  Jordan Harband  <ljharb@gmail.com>
+
+        Number.parseInt in nightly r182673 has wrong length
+        https://bugs.webkit.org/show_bug.cgi?id=143657
+
+        Reviewed by Benjamin Poulain.
+
+        Correcting function length from 1, to 2, to match spec
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.parseint
+
+        * runtime/NumberConstructor.cpp:
+        (JSC::NumberConstructor::finishCreation):
+
+2015-04-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Harden DFGForAllKills
+        https://bugs.webkit.org/show_bug.cgi?id=143792
+
+        Reviewed by Geoffrey Garen.
+        
+        Unfortunately, we don't have a good way to test this yet - but it will be needed to prevent
+        bugs in https://bugs.webkit.org/show_bug.cgi?id=143734.
+        
+        Previously ForAllKills used the bytecode kill analysis. That seemed like a good idea because
+        that analysis is cheaper than the full liveness analysis. Unfortunately, it's probably wrong:
+        
+        - It looks for kill sites at forExit origin boundaries. But, something might have been killed
+          by an operation that was logically in between the forExit origins at the boundary, but was
+          removed from the DFG for whatever reason. The DFG is allowed to have bytecode instruction
+          gaps.
+        
+        - It overlooked the fact that a MovHint that addresses a local that is always live kills that
+          local. For example, storing to an argument means that the prior value of the argument is
+          killed.
+        
+        This fixes the analysis by making it handle MovHints directly, and making it define kills in
+        the most conservative way possible: it asks if you were live before but dead after. If we
+        have the compile time budget to afford this more direct approach, then it's definitel a good
+        idea since it's so fool-proof.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGForAllKills.h:
+        (JSC::DFG::forAllKilledOperands):
+        (JSC::DFG::forAllKilledNodesAtNodeIndex):
+        (JSC::DFG::forAllDirectlyKilledOperands): Deleted.
+
+2015-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Provide SPI to allow changing whether JSContexts are remote debuggable by default
+        https://bugs.webkit.org/show_bug.cgi?id=143681
+
+        Reviewed by Darin Adler.
+
+        * API/JSRemoteInspector.h:
+        * API/JSRemoteInspector.cpp:
+        (JSRemoteInspectorGetInspectionEnabledByDefault):
+        (JSRemoteInspectorSetInspectionEnabledByDefault):
+        Provide SPI to toggle the default enabled inspection state of debuggables.
+
+        * API/JSContextRef.cpp:
+        (JSGlobalContextCreateInGroup):
+        Respect the default setting.
+
+2015-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JavaScriptCore: Use kCFAllocatorDefault where possible
+        https://bugs.webkit.org/show_bug.cgi?id=143747
+
+        Reviewed by Darin Adler.
+
+        * heap/HeapTimer.cpp:
+        (JSC::HeapTimer::HeapTimer):
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorInitializeGlobalQueue):
+        (Inspector::RemoteInspectorDebuggableConnection::setupRunLoop):
+        For consistency and readability use the constant instead of
+        different representations of null.
+
+2015-04-14  Michael Saboff  <msaboff@apple.com>
+
+        Remove JavaScriptCoreUseJIT default from JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=143746
+
+        Reviewed by Mark Lam.
+
+        * runtime/VM.cpp:
+        (JSC::enableAssembler):
+
+2015-04-14  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r180020): Web Inspector crashes on pages that have a stylesheet with an invalid MIME type
+        https://bugs.webkit.org/show_bug.cgi?id=143745
+        <rdar://problem/20243916>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add assertion in ContentSearchUtilities::findMagicComment() to make
+        sure the content String is not null or we would crash in
+        JSC::Yarr::interpret() later.
+
+        * inspector/ContentSearchUtilities.cpp:
+        (Inspector::ContentSearchUtilities::findMagicComment):
+
+2015-04-14  Michael Saboff  <msaboff@apple.com>
+
+        DFG register fillSpeculate*() functions should validate incoming spill format is compatible with requested fill format
+        https://bugs.webkit.org/show_bug.cgi?id=143727
+
+        Reviewed by Geoffrey Garen.
+
+        Used the result of AbstractInterpreter<>::filter() to check that the current spill format is compatible
+        with the requested fill format.  If filter() reports a contradiction, then we force an OSR exit.
+        Removed individual checks made redundant by the new check.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt32Internal):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateCell):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateBoolean):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt32Internal):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt52):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateCell):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateBoolean):
+
+2015-04-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Replace JavaScriptCoreOutputConsoleMessagesToSystemConsole default with an SPI
+        https://bugs.webkit.org/show_bug.cgi?id=143691
+
+        Reviewed by Geoffrey Garen.
+
+        * API/JSRemoteInspector.h:
+        * API/JSRemoteInspector.cpp:
+        (JSRemoteInspectorSetLogToSystemConsole):
+        Add SPI to enable/disable logging to the system console.
+        This only affects JSContext `console` logs and warnings.
+
+        * inspector/JSGlobalObjectConsoleClient.h:
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::logToSystemConsole):
+        (Inspector::JSGlobalObjectConsoleClient::setLogToSystemConsole):
+        (Inspector::JSGlobalObjectConsoleClient::messageWithTypeAndLevel):
+        (Inspector::JSGlobalObjectConsoleClient::initializeLogToSystemConsole): Deleted.
+        Simplify access to the setting now that it doesn't need to
+        initialize its value from preferences.
+
+2015-04-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Auto-attach fails after r179562, initialization too late after dispatch
+        https://bugs.webkit.org/show_bug.cgi?id=143682
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::singleton):
+        If we are on the main thread, run the initialization immediately.
+        Otherwise dispatch to the main thread. This way if the first JSContext
+        was created on the main thread it can get auto-attached if applicable.
+
+2015-04-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed build fix for Mavericks.
+
+        Mavericks includes this file but does not enable ENABLE_REMOTE_INSPECTOR
+        so the Inspector namespace is not available when compiling this file.
+
+        * API/JSRemoteInspector.cpp:
+
+2015-04-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expose private APIs to interact with RemoteInspector instead of going through WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=143729
+
+        Reviewed by Timothy Hatcher.
+
+        * API/JSRemoteInspector.h: Added.
+        * API/JSRemoteInspector.cpp: Added.
+        (JSRemoteInspectorDisableAutoStart):
+        (JSRemoteInspectorStart):
+        (JSRemoteInspectorSetParentProcessInformation):
+        Add the new SPIs for basic remote inspection behavior.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Add the new files to Mac only, since remote inspection is only
+        enabled there anyways.
+
+2015-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Rename JSC_dfgFunctionWhitelistFile to JSC_dfgWhitelist.
+        https://bugs.webkit.org/show_bug.cgi?id=143722
+
+        Reviewed by Michael Saboff.
+
+        Renaming JSC_dfgFunctionWhitelistFile to JSC_dfgWhitelist so that it is
+        shorter, and easier to remember (without having to look it up) and to
+        type.  JSC options now support descriptions, and one can always look up
+        the description if the option's purpose is not already obvious.
+
+        * dfg/DFGFunctionWhitelist.cpp:
+        (JSC::DFG::FunctionWhitelist::ensureGlobalWhitelist):
+        (JSC::DFG::FunctionWhitelist::contains):
+        * runtime/Options.h:
+
+2015-04-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix Windows build. Windows doesn't take kindly to private classes that use FAST_ALLOCATED.
+
+        * runtime/InferredValue.h:
+
+2015-04-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix build. I introduced a new cell type at the same time as kling changed how new cell types are written.
+
+        * runtime/InferredValue.h:
+
+2015-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should detect singleton functions
+        https://bugs.webkit.org/show_bug.cgi?id=143232
+
+        Reviewed by Geoffrey Garen.
+        
+        This started out as an attempt to make constructors faster by detecting when a constructor is a
+        singleton. The idea is that each FunctionExecutable has a VariableWatchpointSet - a watchpoint
+        along with an inferred value - that detects if only one JSFunction has been allocated for that
+        executable, and if so, what that JSFunction is. Then, inside the code for the FunctionExecutable,
+        if the watchpoint set has an inferred value (i.e. it's been initialized and it is still valid),
+        we can constant-fold GetCallee.
+        
+        Unfortunately, constructors don't use GetCallee anymore, so that didn't pan out. But in the
+        process I realized a bunch of things:
+        
+        - This allows us to completely eliminate the GetCallee/GetScope sequence that we still sometimes
+          had even in code where our singleton-closure detection worked. That's because singleton-closure
+          inference worked at the op_resolve_scope, and that op_resolve_scope still needed to keep alive
+          the incoming scope in case we OSR exit. But by constant-folding GetCallee, that sequence
+          disappears. OSR exit can rematerialize the callee or the scope by just knowing their constant
+          values.
+          
+        - Singleton detection should be a reusable thing. So, I got rid of VariableWatchpointSet and
+          created InferredValue. InferredValue is a cell, so it can handle its own GC magic.
+          FunctionExecutable uses an InferredValue to tell you about singleton JSFunctions.
+        
+        - The old singleton-scope detection in op_resolve_scope is better abstracted as a SymbolTable
+          detecting a singleton JSSymbolTableObject. So, SymbolTable uses an InferredValue to tell you
+          about singleton JSSymbolTableObjects. It's curious that we want to have singleton detection in
+          SymbolTable if we already have it in FunctionExecutable. This comes into play in two ways.
+          First, it means that the DFG can realize sooner that a resolve_scope resolves to a constant
+          scope. Ths saves compile times and it allows prediction propagation to benefit from the
+          constant folding. Second, it means that we will detect a singleton scope even if it is
+          referenced from a non-singleton scope that is nearer to us in the scope chain. This refactoring
+          allows us to eliminate the function reentry watchpoint.
+        
+        - This allows us to use a normal WatchpointSet, instead of a VariableWatchpointSet, for inferring
+          constant values in scopes. Previously when the DFG inferred that a closure variable was
+          constant, it wouldn't know which closure that variable was in and so it couldn't just load that
+          value. But now we are first inferring that the function is a singleton, which means that we
+          know exactly what scope it points to, and we can load the value from the scope. Using a
+          WatchpointSet instead of a VariableWatchpointSet saves some memory and simplifies a bunch of
+          code. This also means that now, the only user of VariableWatchpointSet is FunctionExecutable.
+          I've tweaked the code of VariableWatchpointSet to reduce its power to just be what
+          FunctionExecutable wants.
+        
+        This also has the effect of simplifying the implementation of block scoping. Prior to this
+        change, block scoping would have needed to have some story for the function reentry watchpoint on
+        any nested symbol table. That's totally weird to think about; it's not really a function reentry
+        but a scope reentry. Now we don't have to think about this. Constant inference on nested scopes
+        will "just work": if we prove that we know the constant value of the scope then the machinery
+        kicks in, otherwise it doesn't.
+        
+        This is a small Octane and AsmBench speed-up. AsmBench sees 1% while Octane sees sub-1%.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::finalizeUnconditionally):
+        (JSC::CodeBlock::valueProfileForBytecodeOffset):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::valueProfileForBytecodeOffset): Deleted.
+        * bytecode/CodeOrigin.cpp:
+        (JSC::InlineCallFrame::calleeConstant):
+        (JSC::InlineCallFrame::visitAggregate):
+        * bytecode/CodeOrigin.h:
+        (JSC::InlineCallFrame::calleeConstant): Deleted.
+        (JSC::InlineCallFrame::visitAggregate): Deleted.
+        * bytecode/Instruction.h:
+        * bytecode/VariableWatchpointSet.cpp: Removed.
+        * bytecode/VariableWatchpointSet.h: Removed.
+        * bytecode/VariableWatchpointSetInlines.h: Removed.
+        * bytecode/VariableWriteFireDetail.cpp: Added.
+        (JSC::VariableWriteFireDetail::dump):
+        (JSC::VariableWriteFireDetail::touch):
+        * bytecode/VariableWriteFireDetail.h: Added.
+        (JSC::VariableWriteFireDetail::VariableWriteFireDetail):
+        * bytecode/Watchpoint.h:
+        (JSC::WatchpointSet::stateOnJSThread):
+        (JSC::WatchpointSet::startWatching):
+        (JSC::WatchpointSet::fireAll):
+        (JSC::WatchpointSet::touch):
+        (JSC::WatchpointSet::invalidate):
+        (JSC::InlineWatchpointSet::stateOnJSThread):
+        (JSC::InlineWatchpointSet::state):
+        (JSC::InlineWatchpointSet::hasBeenInvalidated):
+        (JSC::InlineWatchpointSet::invalidate):
+        (JSC::InlineWatchpointSet::touch):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::get):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::getScope): Deleted.
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDesiredWatchpoints.cpp:
+        (JSC::DFG::InferredValueAdaptor::add):
+        (JSC::DFG::DesiredWatchpoints::addLazily):
+        (JSC::DFG::DesiredWatchpoints::reallyAdd):
+        (JSC::DFG::DesiredWatchpoints::areStillValid):
+        * dfg/DFGDesiredWatchpoints.h:
+        (JSC::DFG::InferredValueAdaptor::hasBeenInvalidated):
+        (JSC::DFG::DesiredWatchpoints::isWatched):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::tryGetConstantClosureVar):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasWatchpointSet):
+        (JSC::DFG::Node::watchpointSet):
+        (JSC::DFG::Node::hasVariableWatchpointSet): Deleted.
+        (JSC::DFG::Node::variableWatchpointSet): Deleted.
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewFunction):
+        (JSC::DFG::SpeculativeJIT::compileCreateActivation):
+        (JSC::DFG::SpeculativeJIT::compileNotifyWrite):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGVarargsForwardingPhase.cpp:
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileCreateActivation):
+        (JSC::FTL::LowerDFGToLLVM::compileNewFunction):
+        (JSC::FTL::LowerDFGToLLVM::compileNotifyWrite):
+        * interpreter/Interpreter.cpp:
+        (JSC::StackFrame::friendlySourceURL):
+        (JSC::StackFrame::friendlyFunctionName):
+        * interpreter/Interpreter.h:
+        (JSC::StackFrame::friendlySourceURL): Deleted.
+        (JSC::StackFrame::friendlyFunctionName): Deleted.
+        * jit/JIT.cpp:
+        (JSC::JIT::emitNotifyWrite):
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_touch_entry): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitPutGlobalVar):
+        (JSC::JIT::emitPutClosureVar):
+        (JSC::JIT::emitNotifyWrite): Deleted.
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emitPutGlobalVar):
+        (JSC::JIT::emitPutClosureVar):
+        (JSC::JIT::emitNotifyWrite): Deleted.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL): Deleted.
+        * runtime/CommonSlowPaths.h:
+        * runtime/Executable.cpp:
+        (JSC::FunctionExecutable::finishCreation):
+        (JSC::FunctionExecutable::visitChildren):
+        * runtime/Executable.h:
+        (JSC::FunctionExecutable::singletonFunction):
+        * runtime/InferredValue.cpp: Added.
+        (JSC::InferredValue::create):
+        (JSC::InferredValue::destroy):
+        (JSC::InferredValue::createStructure):
+        (JSC::InferredValue::visitChildren):
+        (JSC::InferredValue::InferredValue):
+        (JSC::InferredValue::~InferredValue):
+        (JSC::InferredValue::notifyWriteSlow):
+        (JSC::InferredValue::ValueCleanup::ValueCleanup):
+        (JSC::InferredValue::ValueCleanup::~ValueCleanup):
+        (JSC::InferredValue::ValueCleanup::finalizeUnconditionally):
+        * runtime/InferredValue.h: Added.
+        (JSC::InferredValue::inferredValue):
+        (JSC::InferredValue::state):
+        (JSC::InferredValue::isStillValid):
+        (JSC::InferredValue::hasBeenInvalidated):
+        (JSC::InferredValue::add):
+        (JSC::InferredValue::notifyWrite):
+        (JSC::InferredValue::invalidate):
+        * runtime/JSEnvironmentRecord.cpp:
+        (JSC::JSEnvironmentRecord::visitChildren):
+        * runtime/JSEnvironmentRecord.h:
+        (JSC::JSEnvironmentRecord::isValid):
+        (JSC::JSEnvironmentRecord::finishCreation):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::create):
+        * runtime/JSFunction.h:
+        (JSC::JSFunction::createWithInvalidatedReallocationWatchpoint):
+        (JSC::JSFunction::createImpl):
+        (JSC::JSFunction::create): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::addGlobalVar):
+        (JSC::JSGlobalObject::addFunction):
+        * runtime/JSGlobalObject.h:
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::symbolTablePut):
+        * runtime/JSScope.h:
+        (JSC::ResolveOp::ResolveOp):
+        * runtime/JSSegmentedVariableObject.h:
+        (JSC::JSSegmentedVariableObject::finishCreation):
+        * runtime/JSSymbolTableObject.h:
+        (JSC::JSSymbolTableObject::JSSymbolTableObject):
+        (JSC::JSSymbolTableObject::setSymbolTable):
+        (JSC::symbolTablePut):
+        (JSC::symbolTablePutWithAttributes):
+        * runtime/PutPropertySlot.h:
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTableEntry::prepareToWatch):
+        (JSC::SymbolTable::SymbolTable):
+        (JSC::SymbolTable::finishCreation):
+        (JSC::SymbolTable::visitChildren):
+        (JSC::SymbolTableEntry::inferredValue): Deleted.
+        (JSC::SymbolTableEntry::notifyWriteSlow): Deleted.
+        (JSC::SymbolTable::WatchpointCleanup::WatchpointCleanup): Deleted.
+        (JSC::SymbolTable::WatchpointCleanup::~WatchpointCleanup): Deleted.
+        (JSC::SymbolTable::WatchpointCleanup::finalizeUnconditionally): Deleted.
+        * runtime/SymbolTable.h:
+        (JSC::SymbolTableEntry::disableWatching):
+        (JSC::SymbolTableEntry::watchpointSet):
+        (JSC::SymbolTable::singletonScope):
+        (JSC::SymbolTableEntry::notifyWrite): Deleted.
+        * runtime/TypeProfiler.cpp:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * tests/stress/infer-uninitialized-closure-var.js: Added.
+        (foo.f):
+        (foo):
+        * tests/stress/singleton-scope-then-overwrite.js: Added.
+        (foo.f):
+        (foo):
+        * tests/stress/singleton-scope-then-realloc-and-overwrite.js: Added.
+        (foo):
+        * tests/stress/singleton-scope-then-realloc.js: Added.
+        (foo):
+
+2015-04-13  Andreas Kling  <akling@apple.com>
+
+        Don't segregate heap objects based on Structure immortality.
+        <https://webkit.org/b/143638>
+
+        Reviewed by Darin Adler.
+
+        Put all objects that need a destructor call into the same MarkedBlock.
+        This reduces memory consumption in many situations, while improving locality,
+        since much more of the MarkedBlock space can be shared.
+
+        Instead of branching on the MarkedBlock type, we now check a bit in the
+        JSCell's inline type flags (StructureIsImmortal) to see whether it's safe
+        to access the cell's Structure during destruction or not.
+
+        Performance benchmarks look mostly neutral. Maybe a small regression on
+        SunSpider's date objects.
+
+        On the amazon.com landing page, this saves us 50 MarkedBlocks (3200kB) along
+        with a bunch of WeakBlocks that were hanging off of them. That's on the higher
+        end of savings we can get from this, but still a very real improvement.
+
+        Most of this patch is removing the "hasImmortalStructure" constant from JSCell
+        derived classes and passing that responsibility to the StructureIsImmortal flag.
+        StructureFlags is made public so that it's accessible from non-member functions.
+        I made sure to declare it everywhere and make classes final to try to make it
+        explicit what each class is doing to its inherited flags.
+
+        * API/JSCallbackConstructor.h:
+        * API/JSCallbackObject.h:
+        * bytecode/UnlinkedCodeBlock.h:
+        * debugger/DebuggerScope.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileMakeRope):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileMakeRope):
+        * heap/Heap.h:
+        (JSC::Heap::subspaceForObjectDestructor):
+        (JSC::Heap::allocatorForObjectWithDestructor):
+        (JSC::Heap::subspaceForObjectNormalDestructor): Deleted.
+        (JSC::Heap::subspaceForObjectsWithImmortalStructure): Deleted.
+        (JSC::Heap::allocatorForObjectWithNormalDestructor): Deleted.
+        (JSC::Heap::allocatorForObjectWithImmortalStructureDestructor): Deleted.
+        * heap/HeapInlines.h:
+        (JSC::Heap::allocateWithDestructor):
+        (JSC::Heap::allocateObjectOfType):
+        (JSC::Heap::subspaceForObjectOfType):
+        (JSC::Heap::allocatorForObjectOfType):
+        (JSC::Heap::allocateWithNormalDestructor): Deleted.
+        (JSC::Heap::allocateWithImmortalStructureDestructor): Deleted.
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::allocateBlock):
+        * heap/MarkedAllocator.h:
+        (JSC::MarkedAllocator::needsDestruction):
+        (JSC::MarkedAllocator::MarkedAllocator):
+        (JSC::MarkedAllocator::init):
+        (JSC::MarkedAllocator::destructorType): Deleted.
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::create):
+        (JSC::MarkedBlock::MarkedBlock):
+        (JSC::MarkedBlock::callDestructor):
+        (JSC::MarkedBlock::specializedSweep):
+        (JSC::MarkedBlock::sweep):
+        (JSC::MarkedBlock::sweepHelper):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::needsDestruction):
+        (JSC::MarkedBlock::destructorType): Deleted.
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::MarkedSpace):
+        (JSC::MarkedSpace::resetAllocators):
+        (JSC::MarkedSpace::forEachAllocator):
+        (JSC::MarkedSpace::isPagedOut):
+        (JSC::MarkedSpace::clearNewlyAllocated):
+        * heap/MarkedSpace.h:
+        (JSC::MarkedSpace::subspaceForObjectsWithDestructor):
+        (JSC::MarkedSpace::destructorAllocatorFor):
+        (JSC::MarkedSpace::allocateWithDestructor):
+        (JSC::MarkedSpace::forEachBlock):
+        (JSC::MarkedSpace::subspaceForObjectsWithNormalDestructor): Deleted.
+        (JSC::MarkedSpace::subspaceForObjectsWithImmortalStructure): Deleted.
+        (JSC::MarkedSpace::immortalStructureDestructorAllocatorFor): Deleted.
+        (JSC::MarkedSpace::normalDestructorAllocatorFor): Deleted.
+        (JSC::MarkedSpace::allocateWithImmortalStructureDestructor): Deleted.
+        (JSC::MarkedSpace::allocateWithNormalDestructor): Deleted.
+        * inspector/JSInjectedScriptHost.h:
+        * inspector/JSInjectedScriptHostPrototype.h:
+        * inspector/JSJavaScriptCallFrame.h:
+        * inspector/JSJavaScriptCallFramePrototype.h:
+        * jsc.cpp:
+        * runtime/ArrayBufferNeuteringWatchpoint.h:
+        * runtime/ArrayConstructor.h:
+        * runtime/ArrayIteratorPrototype.h:
+        * runtime/BooleanPrototype.h:
+        * runtime/ClonedArguments.h:
+        * runtime/CustomGetterSetter.h:
+        * runtime/DateConstructor.h:
+        * runtime/DatePrototype.h:
+        * runtime/ErrorPrototype.h:
+        * runtime/ExceptionHelpers.h:
+        * runtime/Executable.h:
+        * runtime/GenericArguments.h:
+        * runtime/GetterSetter.h:
+        * runtime/InternalFunction.h:
+        * runtime/JSAPIValueWrapper.h:
+        * runtime/JSArgumentsIterator.h:
+        * runtime/JSArray.h:
+        * runtime/JSArrayBuffer.h:
+        * runtime/JSArrayBufferView.h:
+        * runtime/JSBoundFunction.h:
+        * runtime/JSCallee.h:
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        * runtime/JSDataViewPrototype.h:
+        * runtime/JSEnvironmentRecord.h:
+        * runtime/JSFunction.h:
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGlobalObject.h:
+        * runtime/JSLexicalEnvironment.h:
+        * runtime/JSNameScope.h:
+        * runtime/JSNotAnObject.h:
+        * runtime/JSONObject.h:
+        * runtime/JSObject.h:
+        (JSC::JSFinalObject::JSFinalObject):
+        * runtime/JSPromiseConstructor.h:
+        * runtime/JSPromiseDeferred.h:
+        * runtime/JSPromisePrototype.h:
+        * runtime/JSPromiseReaction.h:
+        * runtime/JSPropertyNameEnumerator.h:
+        * runtime/JSProxy.h:
+        * runtime/JSScope.h:
+        * runtime/JSString.h:
+        * runtime/JSSymbolTableObject.h:
+        * runtime/JSTypeInfo.h:
+        (JSC::TypeInfo::structureIsImmortal):
+        * runtime/MathObject.h:
+        * runtime/NumberConstructor.h:
+        * runtime/NumberPrototype.h:
+        * runtime/ObjectConstructor.h:
+        * runtime/PropertyMapHashTable.h:
+        * runtime/RegExp.h:
+        * runtime/RegExpConstructor.h:
+        * runtime/RegExpObject.h:
+        * runtime/RegExpPrototype.h:
+        * runtime/ScopedArgumentsTable.h:
+        * runtime/SparseArrayValueMap.h:
+        * runtime/StrictEvalActivation.h:
+        * runtime/StringConstructor.h:
+        * runtime/StringIteratorPrototype.h:
+        * runtime/StringObject.h:
+        * runtime/StringPrototype.h:
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        * runtime/Structure.h:
+        * runtime/StructureChain.h:
+        * runtime/StructureRareData.h:
+        * runtime/Symbol.h:
+        * runtime/SymbolPrototype.h:
+        * runtime/SymbolTable.h:
+        * runtime/WeakMapData.h:
+
+2015-04-13  Mark Lam  <mark.lam@apple.com>
+
+        DFG inlining of op_call_varargs should keep the callee alive in case of OSR exit.
+        https://bugs.webkit.org/show_bug.cgi?id=143407
+
+        Reviewed by Filip Pizlo.
+
+        DFG inlining of a varargs call / construct needs to keep the local
+        containing the callee alive with a Phantom node because the LoadVarargs
+        node may OSR exit.  After the OSR exit, the baseline JIT executes the
+        op_call_varargs with that callee in the local.
+
+        Previously, because that callee local was not explicitly kept alive,
+        the op_call_varargs case can OSR exit a DFG function and leave an
+        undefined value in that local.  As a result, the baseline observes the
+        side effect of an op_call_varargs on an undefined value instead of the
+        function it expected.
+
+        Note: this issue does not manifest with op_construct_varargs because
+        the inlined constructor will have an op_create_this which operates on
+        the incoming callee value, thereby keeping it alive.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        * tests/stress/call-varargs-with-different-arguments-length-after-warmup.js: Added.
+        (foo):
+        (Foo):
+        (doTest):
+
+2015-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement Array.prototype.values
+        https://bugs.webkit.org/show_bug.cgi?id=143633
+
+        Reviewed by Darin Adler.
+
+        Symbol.unscopables is implemented, so we can implement Array.prototype.values
+        without largely breaking the web. The following script passes.
+
+        var array = [];
+        var values = 42;
+        with (array) {
+            assert(values, 42);
+        }
+
+        * runtime/ArrayPrototype.cpp:
+        * tests/stress/array-iterators-next.js:
+        * tests/stress/map-iterators-next.js:
+        * tests/stress/set-iterators-next.js:
+        * tests/stress/values-unscopables.js: Added.
+        (test):
+
+2015-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Run flaky conservative GC related test first before polluting stack and registers
+        https://bugs.webkit.org/show_bug.cgi?id=143634
+
+        Reviewed by Ryosuke Niwa.
+
+        After r182653, JSC API tests fail. However, it's not related to the change.
+        After investigating the cause of this failure, I've found that the failed test is flaky
+        because JSC's GC is conservative. If previously allocated JSGlobalObject is accidentally alive
+        due to conservative roots in C stack and registers, this test fails.
+
+        Since GC marks C stack and registers as roots conservatively,
+        objects not referenced logically can be accidentally marked and alive.
+        To avoid this situation as possible as we can,
+        1. run this test first before stack is polluted,
+        2. extract this test as a function to suppress stack height.
+
+        * API/tests/testapi.mm:
+        (testWeakValue):
+        (testObjectiveCAPIMain):
+        (testObjectiveCAPI):
+
+2015-04-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: create content view and details sidebar for Frames timeline
+        https://bugs.webkit.org/show_bug.cgi?id=143533
+
+        Reviewed by Timothy Hatcher.
+
+        Refactoring: RunLoop prefix changed to RenderingFrame.
+
+        * inspector/protocol/Timeline.json:
+
+2015-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Enable Symbol in web pages
+        https://bugs.webkit.org/show_bug.cgi?id=143375
+
+        Reviewed by Ryosuke Niwa.
+
+        Expose Symbol to web pages.
+        Symbol was exposed, but it was hidden since it breaks Facebook comments.
+        This is because at that time Symbol is implemented,
+        but methods for Symbol.iterator and Object.getOwnPropertySymbols are not implemented yet
+        and it breaks React.js and immutable.js.
+
+        Now methods for Symbol.iterator and Object.getOwnPropertySymbols are implemented
+        and make sure that Facebook comment input functionality is not broken with exposed Symbol.
+
+        So this patch replaces runtime flags SymbolEnabled to SymbolDisabled
+        and makes enabling symbols by default.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        * runtime/RuntimeFlags.h:
+
+2015-04-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ES6: Iterator toString names should be consistent
+        https://bugs.webkit.org/show_bug.cgi?id=142424
+
+        Reviewed by Geoffrey Garen.
+
+        Iterator Object Names in the spec right now have spaces.
+        In our implementation some do and some don't.
+        This patch aligns JSC to the spec.
+
+        * runtime/JSArrayIterator.cpp:
+        * runtime/JSStringIterator.cpp:
+        * tests/stress/iterator-names.js: Added.
+        (test):
+        (iter):
+        (check):
+
+2015-04-10  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (182567): regress/script-tests/sorting-benchmark.js fails on 32 bit dfg-eager tests
+        https://bugs.webkit.org/show_bug.cgi?id=143582
+
+        Reviewed by Mark Lam.
+
+        For 32 bit builds, we favor spilling unboxed values.  The ASSERT at the root of this bug doesn't
+        fire for 64 bit builds, because we spill an "Other" value as a full JS value (DataFormatJS).
+        For 32 bit builds however, if we are able, we spill Other values as JSCell* (DataFormatCell).
+        The fix is to add a check in fillSpeculateInt32Internal() before the ASSERT that always OSR exits
+        if the spillFormat is DataFormatCell.  Had we spilled in DataFormatJS and the value was a JSCell*,
+        we would still OSR exit after the speculation check.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode): Fixed an error in a comment while debugging.
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt32Internal):
+
+2015-04-10  Milan Crha  <mcrha@redhat.com>
+
+        Disable Linux-specific code in a Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=137973
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::appendAPIBacktrace):
+
+2015-04-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Fix calleeSaveRegisters() on non iOS platforms after r180516
+        https://bugs.webkit.org/show_bug.cgi?id=143368
+
+        Reviewed by Michael Saboff.
+
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::calleeSaveRegisters):
+
 2015-04-08  Joseph Pecoraro  <pecoraro@apple.com>
 
         Use jsNontrivialString in more places if the string is guaranteed to be 2 or more characters

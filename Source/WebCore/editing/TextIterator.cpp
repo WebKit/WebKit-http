@@ -548,24 +548,26 @@ bool TextIterator::handleTextNode()
             return true;
         // Use the simple layout runs to iterate over the text content.
         ASSERT(renderer.parent() && is<RenderBlockFlow>(renderer.parent()));
-        const auto& blockFlow = downcast<RenderBlockFlow>(*renderer.parent());
-        SimpleLineLayout::RunResolver runResolver(blockFlow, *layout);
-        auto range = runResolver.rangeForRenderer(renderer);
         unsigned endPosition = (m_node == m_endContainer) ? static_cast<unsigned>(m_endOffset) : rendererText.length();
-        // Simple line layout run positions are all absolute to the parent flow.
-        // Offsetting is required when multiple renderers are present.
-        if (previousTextNode && previousTextNode != &textNode) {
-            const RenderObject& previousRenderer = *previousTextNode->renderer();
-            if (previousRenderer.parent() != &blockFlow)
-                m_previousTextLengthInFlow = 0;
-            else
-                m_previousTextLengthInFlow += previousTextNode->renderer()->text()->length();
+        const auto& blockFlow = downcast<RenderBlockFlow>(*renderer.parent());
+        if (!m_flowRunResolverCache || &m_flowRunResolverCache->flow() != &blockFlow) {
+            m_flowRunResolverCache = std::make_unique<SimpleLineLayout::RunResolver>(blockFlow, *layout);
+            m_previousTextLengthInFlow = 0;
+        } else if (previousTextNode && previousTextNode != &textNode) {
+            // Simple line layout run positions are all absolute to the parent flow.
+            // Offsetting is required when multiple renderers are present.
+            m_previousTextLengthInFlow += previousTextNode->renderer()->text()->length();
         }
         // Skip to m_offset position.
+        auto range = m_flowRunResolverCache->rangeForRenderer(renderer);
         auto it = range.begin();
         auto end = range.end();
         while (it != end && (*it).end() <= (static_cast<unsigned>(m_offset) + m_previousTextLengthInFlow))
             ++it;
+        if (m_nextRunNeedsWhitespace && rendererText[m_offset - 1] == '\n') {
+            emitCharacter(' ', textNode, nullptr, m_offset, m_offset + 1);
+            return it == end;
+        }
         if (it == end) {
             // Collapsed trailing whitespace.
             m_offset = endPosition;
@@ -603,7 +605,7 @@ bool TextIterator::handleTextNode()
             ++stopPosition;
         }
         emitText(textNode, renderer, contentStart, contentEnd);
-        // When line ending with collapsed whitespace is present, we need to carry over one whitespace: foo\nbar -> foo bar (otherwise we would end up with foobar).
+        // When line ending with collapsed whitespace is present, we need to carry over one whitespace: foo(end of line)bar -> foo bar (otherwise we would end up with foobar).
         m_nextRunNeedsWhitespace = run.isEndOfLine() && contentEnd < endPosition && renderer.style().isCollapsibleWhiteSpace(rendererText[contentEnd]);
         m_offset = contentEnd;
         return static_cast<unsigned>(m_offset) == endPosition;

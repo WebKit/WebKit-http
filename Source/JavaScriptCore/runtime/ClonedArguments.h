@@ -37,10 +37,11 @@ namespace JSC {
 // some sophisticated ValueRecovery's if an optimizing compiler is in play) and the appropriate
 // properties of the object are populated. The only reason why we need a special class is to make
 // the object claim to be "Arguments" from a toString standpoint, and to avoid materializing the
-// caller/callee properties unless someone asks for them.
+// caller/callee/@@iterator properties unless someone asks for them.
 class ClonedArguments : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
     
 private:
     ClonedArguments(VM&, Structure*);
@@ -53,8 +54,6 @@ public:
     static ClonedArguments* createByCopyingFrom(ExecState*, Structure*, Register* argumentsStart, unsigned length, JSFunction* callee);
     
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
-
-    static const unsigned StructureFlags = OverridesGetOwnPropertySlot | OverridesGetPropertyNames | JSObject::StructureFlags;
 
     DECLARE_INFO;
 

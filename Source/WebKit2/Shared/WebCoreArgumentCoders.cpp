@@ -83,6 +83,10 @@
 #include <WebCore/SharedBuffer.h>
 #endif // PLATFORM(IOS)
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+#import <WebCore/MediaPlaybackTargetContext.h>
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 
@@ -762,6 +766,9 @@ void ArgumentCoder<Cursor>::encode(ArgumentEncoder& encoder, const Cursor& curso
     encoder << true;
     encodeImage(encoder, cursor.image());
     encoder << cursor.hotSpot();
+#if ENABLE(MOUSE_CURSOR_SCALE)
+    encoder << cursor.imageScaleFactor();
+#endif
 }
 
 bool ArgumentCoder<Cursor>::decode(ArgumentDecoder& decoder, Cursor& cursor)
@@ -803,7 +810,15 @@ bool ArgumentCoder<Cursor>::decode(ArgumentDecoder& decoder, Cursor& cursor)
     if (!image->rect().contains(hotSpot))
         return false;
 
+#if ENABLE(MOUSE_CURSOR_SCALE)
+    float scale;
+    if (!decoder.decode(scale))
+        return false;
+
+    cursor = Cursor(image.get(), hotSpot, scale);
+#else
     cursor = Cursor(image.get(), hotSpot);
+#endif
     return true;
 }
 #endif
@@ -1164,9 +1179,9 @@ static void encodeSharedBuffer(ArgumentEncoder& encoder, SharedBuffer* buffer)
     SharedMemory::Handle handle;
     encoder << (buffer ? static_cast<uint64_t>(buffer->size()): 0);
     if (buffer) {
-        RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(buffer->size());
+        RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::allocate(buffer->size());
         memcpy(sharedMemoryBuffer->data(), buffer->data(), buffer->size());
-        sharedMemoryBuffer->createHandle(handle, SharedMemory::ReadOnly);
+        sharedMemoryBuffer->createHandle(handle, SharedMemory::Protection::ReadOnly);
         encoder << handle;
     }
 }
@@ -1182,7 +1197,7 @@ static bool decodeSharedBuffer(ArgumentDecoder& decoder, RefPtr<SharedBuffer>& b
         if (!decoder.decode(handle))
             return false;
 
-        RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(handle, SharedMemory::ReadOnly);
+        RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
         buffer = SharedBuffer::create(static_cast<unsigned char*>(sharedMemoryBuffer->data()), bufferSize);
     }
 
@@ -2131,5 +2146,31 @@ bool ArgumentCoder<TextIndicatorData>::decode(ArgumentDecoder& decoder, TextIndi
 
     return true;
 }
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+void ArgumentCoder<MediaPlaybackTargetContext>::encode(ArgumentEncoder& encoder, const MediaPlaybackTargetContext& target)
+{
+    int32_t targetType = target.type;
+    encoder << targetType;
+
+    if (!target.encodingRequiresPlatformData())
+        return;
+
+    encodePlatformData(encoder, target);
+}
+
+bool ArgumentCoder<MediaPlaybackTargetContext>::decode(ArgumentDecoder& decoder, MediaPlaybackTargetContext& target)
+{
+    int32_t targetType;
+    if (!decoder.decode(targetType))
+        return false;
+
+    target.type = static_cast<MediaPlaybackTargetContext::ContextType>(targetType);
+    if (!target.encodingRequiresPlatformData())
+        return false;
+
+    return decodePlatformData(decoder, target);
+}
+#endif
 
 } // namespace IPC

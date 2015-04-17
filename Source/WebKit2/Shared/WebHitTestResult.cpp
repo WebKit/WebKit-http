@@ -84,11 +84,11 @@ WebHitTestResult::Data::Data(const WebCore::HitTestResult& hitTestResult, bool i
 
     if (Image* image = hitTestResult.image()) {
         RefPtr<SharedBuffer> buffer = image->data();
-        String imageExtension = image->filenameExtension();
-        if (!imageExtension.isEmpty() && buffer) {
-            imageSharedMemory = SharedMemory::create(buffer->size());
+        String filenameExtension = image->filenameExtension();
+        if (!filenameExtension.isEmpty() && buffer) {
+            imageSharedMemory = SharedMemory::allocate(buffer->size());
             memcpy(imageSharedMemory->data(), buffer->data(), buffer->size());
-            imageExtension = imageExtension;
+            imageExtension = filenameExtension;
             imageSize = buffer->size();
         }
     }
@@ -114,13 +114,13 @@ void WebHitTestResult::Data::encode(IPC::ArgumentEncoder& encoder) const
     encoder << isOverTextInsideFormControlElement;
     encoder << allowsCopy;
     encoder << isDownloadableMedia;
-    encoder << hitTestLocationInViewCooordinates;
+    encoder << hitTestLocationInViewCoordinates;
     encoder << lookupText;
     encoder << dictionaryPopupInfo;
 
     SharedMemory::Handle imageHandle;
     if (imageSharedMemory && imageSharedMemory->data())
-        imageSharedMemory->createHandle(imageHandle, SharedMemory::ReadOnly);
+        imageSharedMemory->createHandle(imageHandle, SharedMemory::Protection::ReadOnly);
     encoder << imageHandle;
     encoder << imageSize;
     encoder << imageExtension;
@@ -149,7 +149,7 @@ bool WebHitTestResult::Data::decode(IPC::ArgumentDecoder& decoder, WebHitTestRes
         || !decoder.decode(hitTestResultData.isOverTextInsideFormControlElement)
         || !decoder.decode(hitTestResultData.allowsCopy)
         || !decoder.decode(hitTestResultData.isDownloadableMedia)
-        || !decoder.decode(hitTestResultData.hitTestLocationInViewCooordinates)
+        || !decoder.decode(hitTestResultData.hitTestLocationInViewCoordinates)
         || !decoder.decode(hitTestResultData.lookupText)
         || !decoder.decode(hitTestResultData.dictionaryPopupInfo))
         return false;
@@ -159,7 +159,7 @@ bool WebHitTestResult::Data::decode(IPC::ArgumentDecoder& decoder, WebHitTestRes
         return false;
 
     if (!imageHandle.isNull())
-        hitTestResultData.imageSharedMemory = SharedMemory::create(imageHandle, SharedMemory::ReadOnly);
+        hitTestResultData.imageSharedMemory = SharedMemory::map(imageHandle, SharedMemory::Protection::ReadOnly);
 
     if (!decoder.decode(hitTestResultData.imageSize))
         return false;

@@ -68,6 +68,19 @@ static bool getFileSizeFromFindData(const WIN32_FIND_DATAW& findData, long long&
     return true;
 }
 
+static bool getFileSizeFromByHandleFileInformationStructure(const BY_HANDLE_FILE_INFORMATION& fileInformation, long long& size)
+{
+    ULARGE_INTEGER fileSize;
+    fileSize.HighPart = fileInformation.nFileSizeHigh;
+    fileSize.LowPart = fileInformation.nFileSizeLow;
+
+    if (fileSize.QuadPart > static_cast<ULONGLONG>(std::numeric_limits<long long>::max()))
+        return false;
+
+    size = fileSize.QuadPart;
+    return true;
+}
+
 static void getFileCreationTimeFromFindData(const WIN32_FIND_DATAW& findData, time_t& time)
 {
     ULARGE_INTEGER fileTime;
@@ -98,10 +111,13 @@ bool getFileSize(const String& path, long long& size)
     return getFileSizeFromFindData(findData, size);
 }
 
-bool getFileSize(PlatformFileHandle, long long&)
+bool getFileSize(PlatformFileHandle fileHandle, long long& size)
 {
-    notImplemented();
-    return false;
+    BY_HANDLE_FILE_INFORMATION fileInformation;
+    if (!::GetFileInformationByHandle(fileHandle, &fileInformation))
+        return false;
+
+    return getFileSizeFromByHandleFileInformationStructure(fileInformation, size);
 }
 
 bool getFileModificationTime(const String& path, time_t& time)
@@ -158,12 +174,6 @@ bool deleteEmptyDirectory(const String& path)
 {
     String filename = path;
     return !!RemoveDirectoryW(filename.charactersWithNullTermination().data());
-}
-
-bool renameFile(const String&, const String&)
-{
-    notImplemented();
-    return false;
 }
 
 String pathByAppendingComponent(const String& path, const String& component)

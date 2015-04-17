@@ -1,3 +1,2654 @@
+2015-04-16  Alex Christensen  <achristensen@webkit.org>
+
+        Use less memory when compiling content extensions
+        https://bugs.webkit.org/show_bug.cgi?id=143857
+
+        Reviewed by Benjamin Poulain.
+
+        When compiling a content extension, we convert the rule list into several intermediate forms:
+
+        1) A String.
+        2) A JSValue from JSONParse in loadEncodedRules.
+        3) A Vector of ContentExtensionRules.
+        4) A CombinedURLFilters object representing the pieces of the regular expressions from the triggers.
+        5) A Vector of NFAs.
+        6) A DFA for each NFA.
+        7) A Vector of DFABytecode.
+        
+        Each one of these contains all the information contained in the content extension,
+        so we do not need to keep them all in memory at the same time like we are doing now.
+        When we are done with one, we can free that memory to greatly reduce the maximum memory usage while compiling.
+        The next step will be to reduce the copies of the original JSON String and to generate NFAs one at a time.
+
+        * contentextensions/CombinedURLFilters.cpp:
+        (WebCore::ContentExtensions::CombinedURLFilters::clear):
+        * contentextensions/CombinedURLFilters.h:
+        * contentextensions/ContentExtensionCompiler.cpp:
+        (WebCore::ContentExtensions::compileRuleList):
+        Clear structures when finished using them.
+
+2015-04-16  Brady Eidson  <beidson@apple.com>
+
+        Compiling a content extension fails when user's home directory is on a different volume from /var/tmp.
+        https://bugs.webkit.org/show_bug.cgi?id=143834
+
+        Reviewed by Anders Carlsson.
+
+        - Add moveFile() for a WK2 call site to use.
+        - Remove renameFile() as it is now dead code.
+
+        * platform/FileSystem.h:
+
+        * platform/gtk/FileSystemGtk.cpp:
+        (WebCore::renameFile): Deleted.
+
+        * platform/mac/FileSystemMac.mm:
+        (WebCore::moveFile):
+
+        * platform/posix/FileSystemPOSIX.cpp:
+        (WebCore::renameFile): Deleted.
+
+        * platform/win/FileSystemWin.cpp:
+        (WebCore::renameFile): Deleted.
+
+2015-04-16  Roger Fong  <roger_fong@apple.com>
+
+        Media element time displays shouldn't wrap.
+        https://bugs.webkit.org/show_bug.cgi?id=143854.
+        <rdar://problem/20284766>
+
+        Reviewed by Brent Fulgham.
+
+        * Modules/mediacontrols/mediaControlsApple.css:
+        (::-webkit-media-controls): Don't wrap any text.
+        (audio::-webkit-media-controls-time-remaining-display): Also increase remaining time display width by 1.
+        (audio::-webkit-media-controls-time-remaining-display.five-digit-time): Ditto.
+        (audio::-webkit-media-controls-time-remaining-display.six-digit-time): Ditto.
+
+2015-04-16  Chris Dumez  <cdumez@apple.com>
+
+        Add assertions to make sure ActiveDOMObject::suspend() / resume() / stop() overrides don't fire events
+        https://bugs.webkit.org/show_bug.cgi?id=143850
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add assertions to make sure ActiveDOMObject::suspend() / resume() / stop()
+        overrides don't fire events as this is not allowed. This would cause
+        arbitrary JS execution which would be very dangerous in these stages.
+
+        Firing JS events from these functions is a common source of crashes.
+
+        * Modules/websockets/WebSocket.cpp:
+        (WebCore::WebSocket::suspend):
+        (WebCore::WebSocket::resume):
+        * dom/ScriptExecutionContext.cpp:
+        (WebCore::ScriptExecutionContext::suspendActiveDOMObjects):
+        (WebCore::ScriptExecutionContext::resumeActiveDOMObjects):
+        (WebCore::ScriptExecutionContext::stopActiveDOMObjects):
+        * xml/XMLHttpRequest.cpp:
+        (WebCore::XMLHttpRequest::suspend):
+        (WebCore::XMLHttpRequest::resume):
+        (WebCore::XMLHttpRequest::stop):
+
+2015-04-16  Brady Eidson  <beidson@apple.com>
+
+        Media element can manipulate DOM during Document destruction.
+        rdar://problem/20553898 and https://bugs.webkit.org/show_bug.cgi?id=143780
+
+        Reviewed by Jer Noble.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::configureMediaControls): Bail if the element has no active document.
+
+2015-04-13  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] When simultaneously exiting-and-entering fullscreen, WebVideoFullscreenManager/Proxy becomes confused about what video element it represents.
+        https://bugs.webkit.org/show_bug.cgi?id=143680
+
+        Reviewed by Simon Fraser.
+
+        Add getters for the video's fullscreen layer, and be more tolerant about the order in which setVideoElement() and 
+        setWebVideoFullscreenInterface are called.
+
+        * html/HTMLMediaElement.h:
+        (WebCore::HTMLMediaElement::videoFullscreenLayer): Added simple getter.
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.h:
+        * platform/ios/WebVideoFullscreenModelVideoElement.h:
+        (WebCore::WebVideoFullscreenModelVideoElement::videoElement): Added simple getter.
+        (WebCore::WebVideoFullscreenModelVideoElement::setWebVideoFullscreenInterface): Deleted. Moved to .mm file.
+        * platform/ios/WebVideoFullscreenModelVideoElement.mm:
+        (WebVideoFullscreenModelVideoElement::WebVideoFullscreenModelVideoElement): Initialize ivars in the .h file.
+        (WebVideoFullscreenModelVideoElement::setWebVideoFullscreenInterface): Call those methods skipped in setVideoElement()
+            if m_videoFullscreenInterface had not yet been set.
+        (WebVideoFullscreenModelVideoElement::setVideoElement): Null-check m_videoFullscreenInterface.
+
+2015-04-16  Beth Dakin  <bdakin@apple.com>
+
+        Force mouse events should go through normal mouse event handling code paths
+        https://bugs.webkit.org/show_bug.cgi?id=143749
+        -and corresponding-
+        rdar://problem/20472895
+
+        Reviewed by Dean Jackson.
+
+        This patch moves all of the code to dispatch mouseforcedown, mouseforceup, and 
+        mouseforcechanged into normal mouse event dispatching code. This patch leaves 
+        behind the cancel and click events because we plan to remove those, and it also 
+        leaves mouseforcewillbegin because that is necessarily a very different event more 
+        tied to the NSImmediateActionGestureRecognizer than these other events which are 
+        tied to NSResponder’s pressureChangeWithEvent.
+
+        New helper functions.
+        * dom/Document.cpp:
+        (WebCore::Document::hasListenerTypeForEventType):
+        * dom/Document.h:
+        * dom/Element.cpp:
+        (WebCore::isForceEvent):
+
+        Move the code to ensure the force events have listeners in order to fire to 
+        dispatchMouseEvent, and delete the old implementations.
+        (WebCore::Element::dispatchMouseEvent):
+        (WebCore::Element::dispatchMouseForceChanged): Deleted.
+        (WebCore::Element::dispatchMouseForceDown): Deleted.
+        (WebCore::Element::dispatchMouseForceUp): Deleted.
+        * dom/Element.h:
+
+        Perform a hit test and pipe the events through dispatchMouseEvent(). 
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleMouseForceEvent):
+        * page/EventHandler.h:
+
+        New types for the new events.
+        * platform/PlatformEvent.h:
+
+        Forward to EventHandler. 
+        * replay/UserInputBridge.cpp:
+        (WebCore::UserInputBridge::handleMouseForceEvent):
+        * replay/UserInputBridge.h:
+
+2015-04-16  Tim Horton  <timothy_horton@apple.com>
+
+        Sites with both width=device-width and height=device-height load zoomed out
+        https://bugs.webkit.org/show_bug.cgi?id=143795
+        <rdar://problem/20369671>
+
+        Reviewed by Ben Poulain.
+
+        * page/ViewportConfiguration.cpp:
+        (WebCore::ViewportConfiguration::shouldIgnoreVerticalScalingConstraints):
+        Some sites specify both width=device-width and height=device-height, and
+        then lay out to device width but with a large amount of vertically scrollable content
+        (so, height=device-height was a lie).
+
+        In all other cases where we use device-width and device-height, we prefer
+        width=device-width over height=device-height, but in the code to ignore scaling constraints,
+        the two paths were completely separate. On sites that specify both, this
+        resulted in us attempting to zoom out to fit the entire height of the very tall page,
+        which isn't at all what we wanted. So, ignore height=device-height if a width is specified.
+
+2015-04-16  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r182517): WebSocket::suspend() causes error event to be fired
+        https://bugs.webkit.org/show_bug.cgi?id=143806
+        <rdar://problem/20559812>
+
+        Reviewed by Alexey Proskuryakov.
+
+        WebSocket::suspend() causes an error event to be fired after r182517.
+        This is not allowed as firing the event could trigger arbitrary JS
+        execution, which is no longer allowed at this point.
+
+        This patch delays the error event firing until after
+        WebSocket::resume() is called, similarly to what we already do for
+        the close event.
+
+        Also add assertions in WebSocket::suspend() / WebSocket::resume()
+        that will be hit if JS events are fired from within these functions.
+        The pre-existing closed-when-entering-page-cache.html test is hitting
+        one of these assertions without the fix above.
+
+        Tests:
+          - http/tests/websocket/tests/hybi/closed-when-entering-page-cache.html
+          - http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html
+
+        * Modules/websockets/WebSocket.cpp:
+        (WebCore::WebSocket::suspend):
+        (WebCore::WebSocket::resume):
+        (WebCore::WebSocket::resumeTimerFired):
+        (WebCore::WebSocket::stop):
+        (WebCore::WebSocket::didReceiveMessageError):
+        (WebCore::WebSocket::didClose):
+        (WebCore::WebSocket::dispatchOrQueueEvent):
+        * Modules/websockets/WebSocket.h:
+
+2015-04-15  Roger Fong  <roger_fong@apple.com>
+
+        Adjustments to button graphics for media controls.
+        https://bugs.webkit.org/show_bug.cgi?id=143797.
+        <rdar://problem/20083708>
+
+        Reviewed by Dean Jackson.
+
+        These changes are visual in nature and mainly affect the buttons.
+        I've gotten rid of the text-shadow for all the buttons,
+        used plus-lighter blending mode and changed the button opacity to reflect the specs,
+        and made all the buttons turn opaque white when active.
+
+        * Modules/mediacontrols/mediaControlsApple.css:
+        (audio::-webkit-media-controls-panel button):
+        (audio::-webkit-media-controls-rewind-button):
+        (audio::-webkit-media-controls-play-button):
+        (audio::-webkit-media-controls-play-button.paused):
+        (video::-webkit-media-controls-volume-max-button):
+        (video::-webkit-media-controls-volume-slider):
+        (video::-webkit-media-controls-volume-min-button):
+        (audio::-webkit-media-controls-wireless-playback-picker-button):
+        (audio::-webkit-media-controls-toggle-closed-captions-button):
+        (audio::-webkit-media-controls-closed-captions-container li.selected:hover::before):
+        (audio::-webkit-media-controls-fullscreen-button):
+        (audio::-webkit-media-controls-fullscreen-button.exit):
+        (audio::-webkit-media-controls-status-display):
+        (audio::-webkit-media-controls-timeline):
+        (audio::-webkit-media-controls-time-remaining-display):
+        (video:-webkit-full-screen::-webkit-media-controls-volume-max-button):
+        (video:-webkit-full-screen::-webkit-media-controls-volume-min-button):
+        (video:-webkit-full-screen::-webkit-media-controls-play-button):
+        (video:-webkit-full-screen::-webkit-media-controls-play-button.paused):
+        (video:-webkit-full-screen::-webkit-media-controls-seek-back-button):
+        (video:-webkit-full-screen::-webkit-media-controls-seek-forward-button):
+        (video::-webkit-media-controls-volume-max-button:active):
+        (video::-webkit-media-controls-volume-min-button:active):
+        (audio::-webkit-media-controls-toggle-closed-captions-button:active):
+        (audio::-webkit-media-controls-rewind-button:active):
+        (audio::-webkit-media-controls-play-button:active):
+        (video:-webkit-full-screen::-webkit-media-controls-volume-max-button:active):
+        (video:-webkit-full-screen::-webkit-media-controls-volume-min-button:active):
+        (video:-webkit-full-screen::-webkit-media-controls-play-button:active):
+        (video:-webkit-full-screen::-webkit-media-controls-seek-back-button:active):
+        (video:-webkit-full-screen::-webkit-media-controls-seek-forward-button:active):
+        (audio::-webkit-media-controls-fullscreen-button:active):
+
+        Using the pseudo id itself here currently does not work, which is why we rely on the button.* selector for these.
+        (video:-webkit-full-screen::-webkit-media-controls-panel button.paused:active):
+        (audio::-webkit-media-controls-panel button.paused:active):
+        (audio::-webkit-media-controls-panel button.exit:active):
+ 
+        Draw volume slider knob as opaque white when active.
+        Adjust colors of timeline and volume sliders now that we are using plus-lighter blending.
+        * Modules/mediacontrols/mediaControlsApple.js:
+        (Controller):
+        (Controller.prototype.createControls):
+        (Controller.prototype.handleVolumeSliderMouseDown):
+        (Controller.prototype.handleVolumeSliderMouseUp):
+        (Controller.prototype.drawTimelineBackground):
+        (Controller.prototype.drawVolumeBackground):
+
+2015-04-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Pull emoji-position adjustment code into its own function
+        https://bugs.webkit.org/show_bug.cgi?id=143592
+
+        Reviewed by Myles C. Maxfield.
+
+        First step to cleaning up FontCascade::drawGlyphs(). Pull iOS-only code related to
+        emoji positioning into its own function.
+
+        * platform/graphics/cocoa/FontCascadeCocoa.mm:
+        (WebCore::pointAdjustedForEmoji):
+        (WebCore::FontCascade::drawGlyphs):
+
+2015-04-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Delete hardcoded font fallback tables
+        https://bugs.webkit.org/show_bug.cgi?id=143583
+
+        Reviewed by Darin Adler
+
+        Instead of hardcoding which font to use for a particular character, use
+        CTFontCreatePhysicalFontDescriptorForCharactersWithLanguage().
+
+        Updated test expected results:
+            editing/selection/vertical-rl-rtl-extend-line-backward-br.html
+            editing/selection/vertical-rl-rtl-extend-line-backward-p.html
+            editing/selection/vertical-rl-rtl-extend-line-forward-br.html
+            editing/selection/vertical-rl-rtl-extend-line-forward-p.html
+            fast/text/international/danda-space.html
+            fast/text/international/thai-baht-space.html
+
+        * platform/graphics/ios/FontCacheIOS.mm:
+        (WebCore::FontCache::getSystemFontFallbackForCharacters):
+        (WebCore::FontCache::systemFallbackForCharacters):
+        * platform/spi/cocoa/CoreTextSPI.h:
+
+2015-04-16  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Compile error when environment variable WEBKITLIBRARIESDIR is not defined.
+        https://bugs.webkit.org/show_bug.cgi?id=143828
+
+        Reviewed by Brent Fulgham.
+
+        Python throws an exception when calling os.environ['WEBKITLIBRARIESDIR'] and
+        WEBKITLIBRARIESDIR is not defined. WEBKITLIBRARIESDIR is obsolete, we can remove it.
+
+        * AVFoundationSupport.py:
+        (lookFor):
+
+2015-04-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Minor AudioContext cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=143816
+
+        Reviewed by Jer Noble.
+
+        * Modules/webaudio/AudioContext.cpp:
+        (WebCore::AudioContext::~AudioContext):
+        (WebCore::AudioContext::lazyInitialize):
+        (WebCore::AudioContext::stop):
+        (WebCore::AudioContext::derefNode):
+        (WebCore::AudioContext::scheduleNodeDeletion):
+        (WebCore::AudioContext::deleteMarkedNodes):
+        (WebCore::AudioContext::stopDispatch): Deleted.
+        (WebCore::AudioContext::deleteMarkedNodesDispatch): Deleted.
+        * Modules/webaudio/AudioContext.h:
+
+        * Modules/webaudio/AudioNode.cpp: (WebCore::AudioNode::~AudioNode):
+
+2015-04-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix Windows build after r182881.
+
+        Add missing header include.
+
+        * page/PageConsoleClient.h:
+
+2015-04-16  Chris Dumez  <cdumez@apple.com>
+
+        Tests introduced in r182877 are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=143784
+
+        Reviewed by Alexey Proskuryakov.
+
+        Tests introduced in r182877 are flaky as the line number sometimes
+        appears in the console messages. This patch updates the console
+        logging code so that no Document is provided when logging. Therefore,
+        no line number will ever be displayed. In this case, I don't think
+        having the line number is terribly useful anyway.
+
+        * css/StyleSheetContents.cpp:
+        (WebCore::StyleSheetContents::parseAuthorStyleSheet):
+
+2015-04-15  Simon Fraser  <simon.fraser@apple.com>
+
+        We should dump GraphicsLayer's anchorPoint z component
+        https://bugs.webkit.org/show_bug.cgi?id=143815
+
+        Reviewed by Tim Horton.
+
+        We didn't include the z component of a layer's anchor point when dumping.
+        Dump if it's non-zero (to avoid having to change lots of test output).
+        No test with non-zero z appears to dump layers.
+
+        * platform/graphics/GraphicsLayer.cpp:
+        (WebCore::GraphicsLayer::dumpProperties):
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::requireTransformOrigin): Remove a FIXME which, on further consideration,
+        is wrong.
+
+2015-04-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Disable "Save to Downloads" option for local files
+        https://bugs.webkit.org/show_bug.cgi?id=143794
+
+        Reviewed by Tim Horton.
+
+        Disable the Image and Media download options if the download
+        target is a local file. We can only download web resources;
+        anything else is actually a no-op.
+
+        * page/ContextMenuController.cpp:
+        (WebCore::ContextMenuController::checkOrEnableIfNeeded): Disable
+        menu item if appropriate.
+
+2015-04-15  Chris Dumez  <cdumez@apple.com>
+
+        Add a console message when a stylesheet is not parsed due to invalid MIME type
+        https://bugs.webkit.org/show_bug.cgi?id=143784
+
+        Reviewed by Joseph Pecoraro.
+
+        After r180020, we no longer have a quirks mode exception for CSS MIME
+        types. This means that we'll start rejecting stylesheets that were
+        previously accepted due to this quirk. In this case we log a console
+        message to help Web developers understand why their stylesheet is being
+        rejected.
+
+        * css/StyleRuleImport.cpp:
+        (WebCore::StyleRuleImport::setCSSStyleSheet):
+
+        * css/StyleSheetContents.cpp:
+        (WebCore::StyleSheetContents::parseAuthorStyleSheet):
+        - Initialize hasValidMIMEType to true so that it ends up being false
+          only when canUseSheet(hasValidMIMEType) is called and we've determined
+          the MIME type is indeed invalid. Otherwise, hasValidMIMEType would
+          also be false when m_data is null or empty in
+          CachedCSSStyleSheet::sheetText() and we don't want to display the MIME
+          type error in this case.
+        - If hasValidMIMEType is false, display the console message and abort
+          early. We don't need to execute the rest of the function in this case
+          as sheetText is a null String and there is no point in trying to parse
+          it.
+        - Drop handling of !hasValidMIMEType && !hasSyntacticallyValidCSSHeader()
+          as this can no longer be reached. This handling no longer makes sense
+          after r180020 as sheetText() will now always return a null String if
+          the MIME type is invalid (as we no longer support the CSS MIME type
+          quirks mode).
+
+        * css/StyleSheetContents.h:
+        * html/HTMLLinkElement.cpp:
+        (WebCore::HTMLLinkElement::setCSSStyleSheet):
+
+2015-04-15  Said Abou-Hallawa  <said@apple.com>
+
+        Minimum font size pref breaks SVG text very badly.
+        https://bugs.webkit.org/show_bug.cgi?id=143590.
+
+        Reviewed by Simon Fraser.
+
+        When enabling the minimum font size perf, the computed font size is set
+        to the minimum font size if the computed value is smaller than the minimum.
+        The bug happens because the SVG text element applies its scaling on the
+        computed value after applying the minimum fort size rule. This means the
+        final computed value for the font size will be the scaling of the minimum
+        font size and not minimum font size itself. What we need is to postpone
+        applying the minimum font size rules, till the SVG scaling is applied.
+
+        Tests: svg/text/font-small-enlarged-minimum-larger.svg
+               svg/text/font-small-enlarged-minimum-smaller.svg
+
+        * rendering/svg/RenderSVGInlineText.cpp:
+        (WebCore::RenderSVGInlineText::computeNewScaledFontForStyle): Call
+        computedFontSizeFromSpecifiedSizeForSVGInlineText() even if scalingFactor
+        is 1. We need to make sure the minimum font size rules are applied. This
+        function was assuming the mininum font size rule was applied when resolving
+        the style. This is not true anymore for the SVG text.
+
+        * style/StyleFontSizeFunctions.cpp:
+        (WebCore::Style::computedFontSizeFromSpecifiedSize): Do not apply the
+        minimum size rules for the SVG element until it applies its scaling to
+        the font size.
+
+2015-04-15  Mark Lam  <mark.lam@apple.com>
+
+        Remove obsolete VMInspector debugging tool.
+        https://bugs.webkit.org/show_bug.cgi?id=143798
+
+        Reviewed by Michael Saboff.
+
+        No new tests needed.  Just removing obsolete code.
+
+        * ForwardingHeaders/interpreter/VMInspector.h: Removed.
+
+2015-04-15  Timothy Horton  <timothy_horton@apple.com>
+
+        Custom CSS cursors do not use -webkit-image-set on retina displays
+        https://bugs.webkit.org/show_bug.cgi?id=120783
+        <rdar://problem/14921432>
+
+        Reviewed by Beth Dakin.
+        Patch by Evan Wallace <evan.exe@gmail.com>.
+
+        Scale NSCursor images correctly so custom CSS cursors work with
+        -webkit-image-set on retina displays.
+
+        * WebCore.exp.in:
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::selectCursor):
+        * platform/mac/CursorMac.mm:
+        (WebCore::createCustomCursor):
+        (WebCore::Cursor::ensurePlatformCursor):
+
+2015-04-15  Alexey Proskuryakov  <ap@apple.com>
+
+        No thread safety when passing ThreadableLoaderOptions from a worker thread
+        https://bugs.webkit.org/show_bug.cgi?id=143790
+
+        Reviewed by Geoffrey Garen.
+
+        * loader/ThreadableLoader.h:
+        * loader/ThreadableLoader.cpp: (WebCore::ThreadableLoaderOptions::isolatedCopy): Added.
+
+        * loader/WorkerThreadableLoader.cpp:
+        (WebCore::WorkerThreadableLoader::MainThreadBridge::MainThreadBridge): Don't just send
+        a structure with strings to a different thread, that's bad.
+
+        * platform/CrossThreadCopier.h: I think that this is dead code, but for this bug,
+        just removing a clearly wrong specialization.
+
+2015-04-15  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=143785
+
+        Reviewed by Csaba Osztrogonác.
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+
+2015-04-15  Daniel Bates  <dabates@apple.com>
+
+        Clean up: Have SVGTextLayoutEngine::beginTextPathLayout() take a reference to a
+        RenderSVGTextPath instead of a pointer
+        https://bugs.webkit.org/show_bug.cgi?id=143787
+
+        Reviewed by Andreas Kling.
+
+        SVGTextLayoutEngine::beginTextPathLayout() assumes that the passed RenderObject is a
+        non-null pointer to a RenderSVGTextPath object. Instead we should have this function take a
+        reference to a RenderSVGTextPath object to help callers catch bad usage and better document
+        the expectation of a valid RenderSVGTextPath object.
+
+        * rendering/svg/SVGRootInlineBox.cpp:
+        (WebCore::SVGRootInlineBox::layoutCharactersInTextBoxes): Downcast the renderer of the
+        inline box to a RenderSVGTextPath object and pass it to SVGTextLayoutEngine::beginTextPathLayout().
+        We ensured that this cast is safe earlier in this function.
+        SVGTextLayoutEngine::beginTextPathLayout().
+        * rendering/svg/SVGTextLayoutEngine.cpp:
+        (WebCore::SVGTextLayoutEngine::beginTextPathLayout): Change type of first parameter from
+        RenderObject* to RenderSVGTextPath. Remove ASSERT() that was checking for a non-null
+        RenderObject pointer since we are passing the renderer by reference and a well-formed
+        reference must refer to a valid object.
+        * rendering/svg/SVGTextLayoutEngine.h: Substitute RenderSVGTextPath& for RenderObject*.
+
+2015-04-13  Jer Noble  <jer.noble@apple.com>
+
+        [Fullscreen] ChromeClient::exitVideoFullscreen() should take a pointer to a HTMLVideoElement.
+        https://bugs.webkit.org/show_bug.cgi?id=143674
+
+        Reviewed by Darin Adler.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::enterFullscreen): Pass a reference.
+        (WebCore::HTMLMediaElement::exitFullscreen): exitVideoFullscreen() -> exitVideoFullscreenForVideoElement(...).
+        * page/ChromeClient.h:
+
+2015-04-14  Anders Carlsson  <andersca@apple.com>
+
+        Make creating send rights from shared memory more robust
+        https://bugs.webkit.org/show_bug.cgi?id=143730
+        rdar://problem/16595870
+
+        Reviewed by Darin Adler.
+
+        Add a bool conversion operator to MachSendRight and tidy up the default constructor.
+
+        * platform/cocoa/MachSendRight.h:
+        (WebCore::MachSendRight::operator bool):
+        (WebCore::MachSendRight::MachSendRight): Deleted.
+
+2015-04-15  Eric Carlson  <eric.carlson@apple.com>
+
+        Generalize "isPlayingAudio" to include other media characteristics
+        https://bugs.webkit.org/show_bug.cgi?id=143713
+
+        Reviewed by Jer Noble.
+
+        No new functionality.
+
+        * Modules/webaudio/AudioContext.cpp:
+        (WebCore::AudioContext::stop): updateIsPlayingAudio -> updateIsPlayingMedia.
+        (WebCore::AudioContext::isPlayingAudioDidChange): Ditto.
+
+        * dom/Document.cpp:
+        (WebCore::Document::addAudioProducer): Ditto.
+        (WebCore::Document::removeAudioProducer): Ditto.
+        (WebCore::Document::updateIsPlayingMedia): Renamed.
+        (WebCore::Document::updateIsPlayingAudio): Deleted.
+        * dom/Document.h:
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::setMuted): updateIsPlayingAudio -> updateIsPlayingMedia.
+        (WebCore::HTMLMediaElement::setPlaying): Ditto.
+
+        * page/ChromeClient.h:
+        * page/Page.cpp:
+        (WebCore::Page::updateIsPlayingMedia): Renamed.
+        (WebCore::Page::updateIsPlayingAudio): Deleted.
+        * page/Page.h:
+
+2015-04-15  Joonghun Park  <jh718.park@samsung.com>
+
+        Fix Debug build error 'comparison of unsigned expression >= 0 is always true [-Werror=type-limits]'
+        https://bugs.webkit.org/show_bug.cgi?id=143751
+
+        Reviewed by Csaba Osztrogonác.
+
+        No new tests, no new behaviors.
+
+        * rendering/svg/SVGTextChunk.cpp:
+        (WebCore::SVGTextChunk::SVGTextChunk):
+
+2015-04-14  Zalan Bujtas  <zalan@apple.com>
+
+        Make inline continuation style change logic consistent.
+        https://bugs.webkit.org/show_bug.cgi?id=143737
+        rdar://problem/20486596
+
+        Reviewed by Simon Fraser.
+
+        Do not force RenderBlock type-casting on the first sibling of the continuation's container.
+        The first sibling of the container of a continuation should be handled as the rest of the siblings.
+
+        Test: fast/inline/inline-with-column-span-and-remove-block-child-crash.html
+
+        * rendering/RenderInline.cpp:
+        (WebCore::updateStyleOfAnonymousBlockContinuations):
+        (WebCore::RenderInline::styleDidChange):
+
+2015-04-14  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r180020): Web Inspector crashes on pages that have a stylesheet with an invalid MIME type
+        https://bugs.webkit.org/show_bug.cgi?id=143745
+        <rdar://problem/20243916>
+
+        Reviewed by Joseph Pecoraro.
+
+        After r180020, we are stricter and no longer accept CSS resources that
+        are not served with a CSS MIME type. Showing Web inspector on a page
+        with such bad resource would crash because
+        InspectorPageAgent::cachedResourceContent() would return true but
+        the result String would be null. This null String would then later
+        be passed to the Yarr interpreter and crash on a String::is8Bit()
+        call.
+
+        cachedResourceContent() calls CachedCSSStyleSheet::sheetText(). Before
+        r180020, it would return the text, even if the MIME type was incorrect.
+        However, this is no longer the case and we now need to make sure that
+        cachedResourceContent() returns false if sheetText() returns a null
+        String.
+
+        Test: http/tests/inspector/css/bad-mime-type.html
+
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::cachedResourceContent):
+
+2015-04-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        textPath layout performance improvement.
+        https://bugs.webkit.org/show_bug.cgi?id=141570.
+
+        Reviewed by Darin Adler.
+
+        The bottleneck of the text-on-path performance is the position and angle
+        calculations for every single character. If the number of characters is
+        'n' and the number of path elements is 'm', the total number of processing
+        the path elements is O(2 x n x m). What makes it really worse is, for every
+        curve we keep splitting the curve till the split curve is almost a straight
+        line. The changes we need to do are:
+        1. Merge the position and the angle traversals in one pass since they are
+           returning info for the same length on the path. There is a degenerate
+           case for the starting point when calculating the angle. The original
+           code was solving this problem by passing an epsilon instead of zero but
+           because traversing the path for position and angle are now merged, we
+           will pass zero for the starting point as is. All we need is to move one
+           step ahead without moving the position. We need the extra step forward
+           to calculate the slope of the path at the starting point.
+        2. We need to add a new mode to traversing a path. The new mode will take
+           a vector of lengths and returns a vector of arrow vectors. Every arrow
+           vector represents a position and an angle on the path at a certain length.
+           This requires changing the SVGTextLayoutEngine to calculate the lengths
+           of the characters on the curve first and then passing all of them to the
+           path traversal function. Instead of traversing the path for every length,
+           we are going to get the required point and angle from the vector of arrow
+           vectors.
+
+        This patch is addressing the first fix only. The second one will require
+        refactoring the SVGTextLayoutEngine so I am going to address it in a
+        different patch.
+
+        * platform/graphics/Path.cpp:
+        (WebCore::pathLengthApplierFunction): It is cleaner to move the function
+        of this method to PathTraversalState::processPathElement().
+        
+        (WebCore::Path::length): Use new enum Action value and access methods.
+        
+        (WebCore::Path::traversalStateAtLength): New function which returns the
+        traversalState at a certain length on a path.
+        
+        (WebCore::Path::pointAtLength):
+        (WebCore::Path::normalAngleAtLength): Use traversalStateAtLength() to get
+        the traversalState and from it return either the position or the angle.
+        
+        * platform/graphics/Path.h: Define traversalStateAtLength().
+        
+        * platform/graphics/PathTraversalState.cpp:
+        (WebCore::distanceLine): Code clean up.
+        
+        (WebCore::curveLength): Make the setting of m_previous and m_current happens
+        only in this function.
+        
+        (WebCore::PathTraversalState::PathTraversalState): Add an optional parameter
+        for the desired length and move the initialization of the other members to
+        the class definition.
+        
+        (WebCore::PathTraversalState::closeSubpath):
+        (WebCore::PathTraversalState::moveTo):
+        (WebCore::PathTraversalState::lineTo): Add the distance to the m_totalLength
+        instead of returning it since this is what all the callers were doing.
+        
+        (WebCore::PathTraversalState::quadraticBezierTo):
+        (WebCore::PathTraversalState::cubicBezierTo): Add the distance to the
+        m_totalLength. Move the setting of m_previous and m_current to curveLength().
+        Remove unused members m_control1 and m_control2.
+
+        (WebCore::PathTraversalState::processSegment): Deleted.        
+        (WebCore::PathTraversalState::finalizeAppendPathElement): Create a new
+        name for the function. Handle the case of the angle at the starting point
+        where m_desiredLength is set to zero. The new flag m_isZeroVector will be
+        set to notify the caller that the  next iteration will be the last one and
+        it is only needed for the calculating the angle of a zero vector. m_current
+        should not change by this last iteration.
+        
+        (WebCore::PathTraversalState::appendPathElement): This code is moved from
+        pathLengthApplierFunction().
+        
+        (WebCore::PathTraversalState::processPathElement): This function is used
+        by the class Path. It is a wrapper for appendPathElement(). If m_isZeroVector
+        is set we append the new element to a copy for the PathTraversalState just
+        to get the angle for the zero vector.
+
+        * platform/graphics/PathTraversalState.h: Change the enum values to not
+        not include the class or the enum class. Make the data members private and
+        expose the needed ones through access methods. Make all the internal methods
+        to be private.
+        
+        (WebCore::PathTraversalState::processPathElement):  Another wrapper for
+        appendPathElement() which is used by SVGPathTraversalStateBuilder.
+        
+        (WebCore::PathTraversalState::action):
+        (WebCore::PathTraversalState::setAction):
+        (WebCore::PathTraversalState::desiredLength):
+        (WebCore::PathTraversalState::setDesiredLength):
+        (WebCore::PathTraversalState::success):
+        (WebCore::PathTraversalState::totalLength):
+        (WebCore::PathTraversalState::current):
+        (WebCore::PathTraversalState::normalAngle): New access methods which are now
+        needed after making the data members private.
+        
+        * rendering/svg/SVGRootInlineBox.cpp:
+        (WebCore::SVGRootInlineBox::layoutCharactersInTextBoxes): Make the casting
+        of the renderer on the caller side.
+        
+        * rendering/svg/SVGTextChunk.cpp:
+        (WebCore::SVGTextChunk::SVGTextChunk): The constructor should append the
+        elements of m_boxes instead of making this from outside the class.
+        
+        (WebCore::SVGTextChunk::totalCharacters):
+        (WebCore::SVGTextChunk::totalLength):
+        (WebCore::SVGTextChunk::calculateLength): Deleted.
+        Replace calculateLength() by totalCharacters() and totalLength() to make
+        the interface cleaner.
+        
+        (WebCore::SVGTextChunk::totalAnchorShift):
+        (WebCore::SVGTextChunk::calculateTextAnchorShift): Deleted.
+        Rename the function name.
+        
+        (WebCore::SVGTextChunk::layout):
+        (WebCore::SVGTextChunk::processTextLengthSpacingCorrection):
+        (WebCore::SVGTextChunk::buildBoxTransformations):
+        (WebCore::SVGTextChunk::boxSpacingAndGlyphsTransform):
+        (WebCore::SVGTextChunk::processTextAnchorCorrection):
+        Move the chunk layout code from SVGTextChunkBuilder::layoutTextChunks()
+        to the SVGTextChunk::layout(). Move all the helper functions as well.
+        
+        * rendering/svg/SVGTextChunk.h:
+        (WebCore::SVGTextChunk::hasTextAnchor):
+        (WebCore::SVGTextChunk::boxes): Deleted.
+        Add the new methods and change most of the public methods to be private.
+        
+        * rendering/svg/SVGTextChunkBuilder.cpp:
+        (WebCore::SVGTextChunkBuilder::totalCharacters):
+        (WebCore::SVGTextChunkBuilder::totalLength):
+        (WebCore::SVGTextChunkBuilder::totalAnchorShift): This code is moved from
+        SVGTextLayoutEngine. It scans the boxes stored in the SVGTextChunkBuilder
+        and sums up the total values.
+        
+        (WebCore::SVGTextChunkBuilder::transformationForTextBox):
+        (WebCore::SVGTextChunkBuilder::buildTextChunks):
+        (WebCore::SVGTextChunkBuilder::layoutTextChunks): Code clean up.
+        
+        (WebCore::SVGTextChunkBuilder::addTextChunk): Deleted.
+        (WebCore::SVGTextChunkBuilder::processTextChunk): Deleted.
+        (WebCore::SVGTextChunkBuilder::processTextLengthSpacingCorrection): Deleted.
+        (WebCore::SVGTextChunkBuilder::processTextAnchorCorrection): Deleted.
+        (WebCore::SVGTextChunkBuilder::buildSpacingAndGlyphsTransform): Deleted.
+        This code now lives in SVGTextChunk.
+        
+        * rendering/svg/SVGTextChunkBuilder.h: Add new methods for code which was
+        moved from SVGTextLayoutEngine and remove methods for code which was removed
+        to SVGTextChunk.
+        
+        * rendering/svg/SVGTextLayoutEngine.cpp:
+        (WebCore::SVGTextLayoutEngine::beginTextPathLayout): Use the sum up methods
+        from SVGTextChunkBuilder instead of looping through the chunks. Also get a
+        clean order for defining variables and doing the calculations.
+        
+        (WebCore::SVGTextLayoutEngine::finalizeTransformMatrices): Code clean up.
+        
+        (WebCore::SVGTextLayoutEngine::layoutTextOnLineOrPath): Do a single path
+        traversal to get the position and the angle for a length on a path.
+        
+        * svg/SVGAnimateMotionElement.cpp:
+        (WebCore::SVGAnimateMotionElement::buildTransformForProgress): Do a single
+        path traversal to get the position and the angle at a length on a path.
+        
+        * svg/SVGPathTraversalStateBuilder.cpp:
+        (WebCore::SVGPathTraversalStateBuilder::SVGPathTraversalStateBuilder):
+        (WebCore::SVGPathTraversalStateBuilder::moveTo):
+        (WebCore::SVGPathTraversalStateBuilder::lineTo):
+        (WebCore::SVGPathTraversalStateBuilder::curveToCubic):
+        (WebCore::SVGPathTraversalStateBuilder::closePath):
+        (WebCore::SVGPathTraversalStateBuilder::setDesiredLength):
+        (WebCore::SVGPathTraversalStateBuilder::continueConsuming):
+        (WebCore::SVGPathTraversalStateBuilder::totalLength):
+        (WebCore::SVGPathTraversalStateBuilder::currentPoint):
+        (WebCore::SVGPathTraversalStateBuilder::incrementPathSegmentCount): Deleted.
+        (WebCore::SVGPathTraversalStateBuilder::pathSegmentIndex): Deleted.
+        * svg/SVGPathTraversalStateBuilder.h:
+        (WebCore::SVGPathTraversalStateBuilder::pathSegmentIndex):
+        Code clean up.
+        
+        * svg/SVGPathUtilities.cpp:
+        (WebCore::getSVGPathSegAtLengthFromSVGPathByteStream):
+        (WebCore::getTotalLengthOfSVGPathByteStream):
+        (WebCore::getPointAtLengthOfSVGPathByteStream): Use new TraversalState::Action
+        enum values.
+
+2015-04-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Re-enable custom dilation for antialiased fonts
+        https://bugs.webkit.org/show_bug.cgi?id=143738
+
+        Reviewed by Tim Horton.
+        
+        Enabling custom dilation for antialised fonts broke layout tests, so re-land it,
+        but disable in WebKitTestRunner and DumpRenderTree. The latter requires adding
+        a private WebKit pref. This pref defaults to YES, enabling the feature by default
+        in WK1 as we do for WK2.
+
+        * platform/graphics/cocoa/FontCascadeCocoa.mm:
+        (WebCore::dilationSizeForTextColor):
+        (WebCore::FontCascade::drawGlyphs):
+
+2015-04-14  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Use ASSERT_WITH_SECURITY_IMPLICATION for verifying types from NEFilterSource
+        https://bugs.webkit.org/show_bug.cgi?id=143742
+
+        Reviewed by David Kilzer.
+
+        * platform/cocoa/NetworkExtensionContentFilter.mm:
+        (replacementDataFromDecisionInfo): ASSERT_WITH_SECURITY_IMPLICATION that decisionInfo is really a NSDictionary.
+        (WebCore::NetworkExtensionContentFilter::handleDecision): ASSERT_WITH_SECURITY_IMPLICATION that replacementData is really a NSData.
+
+2015-04-14  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct layering violation in DumpRenderTree Build
+        https://bugs.webkit.org/show_bug.cgi?id=143732
+
+        Reviewed by Simon Fraser.
+
+        * testing/js/WebCoreTestSupport.cpp:
+        (WebCoreTestSupport::monitorWheelEvents): Added. Provides a wrapper around
+        the internal WebCore objects needed to implement this function.
+        (WebCoreTestSupport::setTestCallbackAndStartNotificationTimer): Ditto.
+        * testing/js/WebCoreTestSupport.h:
+
+2015-04-14  Brady Eidson  <beidson@apple.com>
+
+        Make sure media element loads hit content filter extensions.
+        <rdar://problem/20014012> and https://bugs.webkit.org/show_bug.cgi?id=143731
+
+        Reviewed by Jer Noble.
+
+        Tests: http/tests/contentextensions/media-filtered.html
+               http/tests/contentextensions/text-track-blocked.html
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::parseAttribute): Skip loads that are filtered.
+
+2015-04-14  Brian Weinstein  <bweinstein@apple.com>
+
+        Add SPI to clear HSTS hosts added since a date.
+        https://bugs.webkit.org/show_bug.cgi?id=143726
+        and
+        rdar://problem/16664597
+
+        Declare _CFNetworkResetHSTSHostsSinceDate in CFNetworkSPI.h.
+
+        Reviewed by Anders Carlsson.
+
+        * platform/spi/cf/CFNetworkSPI.h:
+
+2015-04-14  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Time numbers on media controls move as they update on OSX.
+        <rdar://problem/20141790>.
+
+        * Modules/mediacontrols/mediaControlsApple.css:
+        (audio::-webkit-media-controls-current-time-display):
+        (audio::-webkit-media-controls-time-remaining-display):
+        Don't bother justifying content to end. We size the box to fit the time displays exactly anyways.
+
+2015-04-14  Roger Fong  <roger_fong@apple.com>
+
+        Insert volume control in correct place after exiting wireless play.
+        https://bugs.webkit.org/show_bug.cgi?id=143721.
+        <rdar://problem/20526106>
+
+        Reviewed by Darin Adler.
+
+        * Modules/mediacontrols/mediaControlsApple.js:
+        (Controller.prototype.updateWirelessPlaybackStatus):
+
+2015-04-14  Brady Eidson  <beidson@apple.com>
+
+        Media elements not in a page shouldn't load.
+        https://bugs.webkit.org/show_bug.cgi?id=143720
+
+        Reviewed by Jer Noble.
+
+        No new tests (Theoretical problem noticed in code review).
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::loadResource): Make sure the frame is in a page.
+
+2015-04-14  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Clean up registration of layers with the ScrollingCoordinator
+        https://bugs.webkit.org/show_bug.cgi?id=143725
+
+        Reviewed by Tim Horton.
+
+        Simplify a couple of bits of code related to the registration of layers with
+        the ScrollingCoordinator in RenderLayerCompositor.
+
+        First, RenderLayerBacking was using ScrollingNodeTypes to choose which scrolling
+        roles a layer has, which let to ambiguous code where we hardcoded a ScrollingNodeType
+        with knowledge of what RenderLayerBacking did with it. Clean up by using LayerScrollCoordinationRole,
+        which is moved to RenderLayer.h so that RenderLayerCompositor.h and RenderLayerBacking.h
+        both see it.
+
+        Secondly, avoid having both detachFromScrollingCoordinator() and detachFromScrollingCoordinatorForRole()
+        by passing in the bitmask of roles.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollLayerID):
+        * rendering/RenderLayer.h:
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::~RenderLayerBacking):
+        (WebCore::RenderLayerBacking::detachFromScrollingCoordinator):
+        (WebCore::RenderLayerBacking::detachFromScrollingCoordinatorForRole): Deleted.
+        * rendering/RenderLayerBacking.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateScrollCoordinatedStatus):
+        (WebCore::RenderLayerCompositor::removeFromScrollCoordinatedLayers):
+        (WebCore::scrollCoordinationRoleForNodeType):
+        (WebCore::RenderLayerCompositor::attachScrollingNode):
+        (WebCore::RenderLayerCompositor::detachScrollCoordinatedLayer):
+        (WebCore::RenderLayerCompositor::updateScrollCoordinatedLayer):
+        (WebCore::RenderLayerCompositor::willRemoveScrollingLayerWithBacking):
+        (WebCore::RenderLayerCompositor::detachScrollCoordinatedLayerForRole): Deleted.
+        * rendering/RenderLayerCompositor.h:
+
+2015-04-14  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add a conservative DFA minimizer for the content extension matcher
+        https://bugs.webkit.org/show_bug.cgi?id=143501
+
+        Reviewed by Alex Christensen.
+
+        This patch adds a simple minimizer for DFA graphs. It is not a perfect minimizer:
+        some indistinguishable are not merged, but no two distinguishable are merged.
+
+        The general idea of the algorithm is to put all the state into a single set
+        and partition iteratively until it is impossible to split any subset by using
+        a transition to distinguish two states.
+
+        Let's ignore fallback transition for now, and I'll explain later how they fit in
+        the big picture.
+
+
+        The first thing we do is create a partition of the transition by grouping every
+        transition by the same character in the same subset. This partition of transitions
+        is the base by which we will partition the states.
+
+        Each subset in the transition partition is a "distinguisher" by which we can
+        separate the state partition.
+
+        We also create a second partition, the state partition. This is where we keep
+        all the subsets of states that have been split so far.
+
+        Let say we have the following graph.
+
+            1 --a--> 2
+            1 --b--> 3
+            2 --c--> 4 (final)
+            3 --c--> 4 (final)
+
+        The partition of transition would start with:
+        Set 0:
+            1 --a--> 2
+        Set 1:
+            1 --b--> 3
+        Set 2:
+            2 --c--> 4
+            3 --c--> 4
+
+        The state partition would have a single set with { 1, 2, 3, 4 }.
+
+
+        Next, we split the state partition by distinguishable final states. In this case,
+        we would split it into { 1, 2, 3 }, { 4 }.
+
+        We then refine the transition partition by splitting it by the states that have
+        been distinguished. Here, the only transitions to 4 are both is the same set (set 2),
+        so the transition partition remains the same.
+
+
+        We can now execute the main loop of the algorithm:
+        1) Split the states by the transitions.
+        2) Split the transitions that are now reaching two different sets of the state partition.
+        3) Add any newly discovered "distinguisher" (the ones we split) to the list of "distinguisher"
+           to process.
+
+        In this case, we just iterate over the partition set in order, and add newly split transitions
+        to the end of the list.
+
+        In the example, we would first visit set 0. We have that state 1 is distinguishable
+        by "a", and the state partition would become { 1 }, { 2, 3 }, { 4 }.
+
+        We then visit transition set 1, it distinguishes state 1 which is already alone -> nothing to do.
+
+        Finally, we process the transition set 2, it distinguishes 2 and 3, they are already in the same
+        set -> nothing to do.
+
+        There is no more transition to process, we have 3 unique subsets and we should merge 2 and 3.
+
+        ---
+
+        Okay, now how to we fit fallback transition in this model. In this patch, I take the conservative
+        approach: we split everything assuming fallback transition do not exist, then we refine
+        by the fallback transitions.
+
+        Let's take the following example:
+            1 --a--> 3
+            2 --a--> 3
+            1 -[f]-> 4
+            2 -[f]-> 5
+
+        and at this stage in the algorithm, we have the sets { 1, 2 }, { 3 }, { 4 }, { 5 }.
+        The states 1 and 2 are together because they cannot be distinguished by 'a', but
+        the fallback transition distinguishes them.
+
+        Since we have done every other split, we have one useful property: we know that every
+        state in every set transition with the exact set of characters within that set.
+        If that was not true, there would be one "distinguisher" 'x' that could spit the set
+        into two subsets: the one with the transition 'x' and the ones without.
+
+        Since all the transitions are the same, there is no overlap between the defined transition
+        and the fallback transition. Consequently, we can use the fallback transition as a whole
+        transition and use it to distinguish the states.
+
+        The fallback transitions are handled like any other transition, we have a partition of such
+        transitions and split by each of them. BUT, we can only use them after every unique transition
+        has been covered.
+
+        This trick is also what makes the minimization imperfect: it should be possible to merge
+        states with overlap in their fallback transitions but we would split them.
+
+        ---
+
+        Antti Valmari, Petri Lehtinen, Marie-Pierre Béal and Maxime Crochemore deserve credit for their indirect
+        work on this patch. Thanks for your wonderful papers about DFA minimization.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * contentextensions/ContentExtensionCompiler.cpp:
+        (WebCore::ContentExtensions::compileRuleList):
+        * contentextensions/DFA.cpp:
+        (WebCore::ContentExtensions::DFA::minimize):
+        (WebCore::ContentExtensions::DFA::debugPrintDot):
+        * contentextensions/DFA.h:
+        * contentextensions/DFABytecodeCompiler.cpp:
+        (WebCore::ContentExtensions::DFABytecodeCompiler::compileNode):
+        * contentextensions/DFAMinimizer.cpp: Added.
+        (WebCore::ContentExtensions::DFAMinimizer::simplifyTransitions):
+        (WebCore::ContentExtensions::DFAMinimizer::Partition::initialize):
+        (WebCore::ContentExtensions::DFAMinimizer::Partition::markElementInCurrentGeneration):
+        (WebCore::ContentExtensions::DFAMinimizer::Partition::refineGeneration):
+        (WebCore::ContentExtensions::DFAMinimizer::Partition::iterateSet):
+        (WebCore::ContentExtensions::DFAMinimizer::Partition::setIndex):
+        (WebCore::ContentExtensions::DFAMinimizer::Partition::firstElementInSet):
+        (WebCore::ContentExtensions::DFAMinimizer::Partition::size):
+        (WebCore::ContentExtensions::DFAMinimizer::Partition::SetDescriptor::indexAfterMarkedElements):
+        (WebCore::ContentExtensions::DFAMinimizer::Partition::SetDescriptor::end):
+        (WebCore::ContentExtensions::DFAMinimizer::FullGraphPartition::FullGraphPartition):
+        (WebCore::ContentExtensions::DFAMinimizer::FullGraphPartition::markNode):
+        (WebCore::ContentExtensions::DFAMinimizer::FullGraphPartition::refinePartitions):
+        (WebCore::ContentExtensions::DFAMinimizer::FullGraphPartition::splitByUniqueTransitions):
+        (WebCore::ContentExtensions::DFAMinimizer::FullGraphPartition::splitByFallbackTransitions):
+        (WebCore::ContentExtensions::DFAMinimizer::FullGraphPartition::nodeReplacement):
+        (WebCore::ContentExtensions::DFAMinimizer::ActionKey::ActionKey):
+        (WebCore::ContentExtensions::DFAMinimizer::ActionKey::isEmptyValue):
+        (WebCore::ContentExtensions::DFAMinimizer::ActionKey::isDeletedValue):
+        (WebCore::ContentExtensions::DFAMinimizer::ActionKeyHash::hash):
+        (WebCore::ContentExtensions::DFAMinimizer::ActionKeyHash::equal):
+        (WebCore::ContentExtensions::DFAMinimizer::minimize):
+        * contentextensions/DFAMinimizer.h: Copied from Source/WebCore/contentextensions/DFA.h.
+        * contentextensions/DFANode.h:
+        * contentextensions/NFAToDFA.cpp:
+        (WebCore::ContentExtensions::NFAToDFA::convert):
+        (WebCore::ContentExtensions::simplifyTransitions): Deleted.
+
+2015-04-14  Chris Dumez  <cdumez@apple.com>
+
+        ASSERT(frame().view() == this) assertion hit in FrameView::windowClipRect() on Windows bots
+        https://bugs.webkit.org/show_bug.cgi?id=143723
+
+        Reviewed by Brent Fulgham.
+
+        ASSERT(frame().view() == this) in FrameView::windowClipRect() can be hit
+        if the post layout timer timer fires after the page has entered page
+        cache. Upon entering page cache, we call FrameView::unscheduleRelayout()
+        to stop the layout timer if it is active, however, we don't stop the
+        post-layout timer. Therefore, there was nothing preventing the
+        post-layout timer from firing after entering page cache.
+
+        In this patch, we unschedule the post-layout timer in
+        FrameView::unscheduleRelayout() to protect ourselves against this.
+
+        I think we were only seeing the assertion hit on Windows because this
+        timer probably gets scheduled more frequently on Windows. On Mac, I
+        rarely see it getting scheduled.
+
+        No new tests, should fix crashing tests on the bots.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::unscheduleRelayout):
+
+2015-04-14  Chris Dumez  <cdumez@apple.com>
+
+        FrameView::m_frame should be a Ref<Frame>
+        https://bugs.webkit.org/show_bug.cgi?id=143716
+
+        Reviewed by Andreas Kling.
+
+        FrameView::m_frame should be a Ref<Frame> instead of a RefPtr<Frame> as
+        it can never be null.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::FrameView):
+        (WebCore::FrameView::flushCompositingStateForThisFrame):
+        (WebCore::FrameView::hasCompositedContentIncludingDescendants):
+        (WebCore::FrameView::flushCompositingStateIncludingSubframes):
+        (WebCore::FrameView::updateCanBlitOnScrollRecursively):
+        (WebCore::FrameView::setIsOverlapped):
+        (WebCore::FrameView::shouldUpdateCompositingLayersAfterScrolling):
+        (WebCore::FrameView::renderedCharactersExceed):
+        (WebCore::FrameView::updateLayerFlushThrottling):
+        (WebCore::FrameView::serviceScriptedAnimations):
+        (WebCore::FrameView::updateBackgroundRecursively):
+        (WebCore::FrameView::adjustScrollStepForFixedContent):
+        (WebCore::FrameView::paintContentsForSnapshot):
+        (WebCore::FrameView::notifyWidgetsInAllFrames):
+        (WebCore::FrameView::setExposedRect):
+        (WebCore::FrameView::setViewportSizeForCSSViewportUnits):
+        * page/FrameView.h:
+
+2015-04-13  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Interactive elements of developer.apple.com are broken
+        https://bugs.webkit.org/show_bug.cgi?id=143692
+        rdar://problem/19320087
+
+        Reviewed by Sam Weinig.
+        
+        When a composited RenderLayer had nodes in the scrolling tree by virtue of
+        both position and overflow:scroll, and one of those reasons disappeared,
+        we'd fail to remove the corresponding node from the scrolling tree. This
+        could leave an overflow:scroll element behaving as if it were position:fixed.
+        
+        Fix by having RenderLayerCompositor::updateScrollCoordinationForThisFrame()
+        detach the layer on a per-role basis.
+
+        Test: platform/ios-simulator-wk2/scrolling/remove-scrolling-role.html
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::detachFromScrollingCoordinatorForRole):
+        * rendering/RenderLayerBacking.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::detachScrollCoordinatedLayerForRole):
+        (WebCore::RenderLayerCompositor::detachScrollCoordinatedLayer): Just moved.
+        (WebCore::RenderLayerCompositor::updateScrollCoordinatedLayer): Call detachScrollCoordinatedLayerForRole()
+        if the layer doesn't have the relevant scrolling reasons.
+        * rendering/RenderLayerCompositor.h:
+
+2015-04-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r182794.
+        https://bugs.webkit.org/show_bug.cgi?id=143714
+
+        readable-stream-templated.html fails on Debug bots (Requested
+        by youenn on #webkit).
+
+        Reverted changeset:
+
+        "[Streams API] ReadableStream constructor start function
+        should be able to close the stream"
+        https://bugs.webkit.org/show_bug.cgi?id=143363
+        http://trac.webkit.org/changeset/182794
+
+2015-04-14  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Unreviewed build fix after r182707.
+
+        * platform/network/curl/MultipartHandle.cpp:
+        (WebCore::MultipartHandle::didReceiveResponse):
+
+2015-04-14  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableStream constructor start function should be able to close the stream
+        https://bugs.webkit.org/show_bug.cgi?id=143363
+
+        Reviewed by Benjamin Poulain.
+
+        Implements https://streams.spec.whatwg.org/#close-readable-stream.
+        When the "close" JS function is called, the stream is getting closed.
+        The stream state is changed to close and if it has a reader, the reader gets closed as well:
+        The reader resolves the closed promise and release the stream.
+
+        Enabled the possibility to resolve a promise with any JS value.
+        This is used to resolve closed promise with jsUndefined and will be used for read promises.
+
+        Covered by reference tests that are now passing.
+
+        * Modules/streams/ReadableStream.cpp:
+        (WebCore::ReadableStream::changeStateToClosed): Called by the JS function 'close'.
+        * Modules/streams/ReadableStream.h:
+        * Modules/streams/ReadableStreamReader.cpp:
+        (WebCore::ReadableStreamReader::ReadableStreamReader):
+        (WebCore::ReadableStreamReader::initialize): Added to handle state change at constructor time (in particular closed/errored state).
+        (WebCore::ReadableStreamReader::releaseStream):
+        (WebCore::ReadableStreamReader::closed): Storing the closed promise callbacks.
+        (WebCore::ReadableStreamReader::changeStateToClosed): Resolution of closed promise.
+        * Modules/streams/ReadableStreamReader.h:
+        * bindings/js/JSDOMPromise.h:
+        (WebCore::DeferredWrapper::resolve<JSC::JSValue>):
+        * bindings/js/JSReadableStreamReaderCustom.cpp:
+        (WebCore::JSReadableStreamReader::closed):
+        * bindings/js/ReadableStreamJSSource.cpp:
+        (WebCore::readableStreamSlotName):
+        (WebCore::getReadableJSStream): Helper function to retrieve the stream from the exec state.
+        (WebCore::closeReadableStreamFunction):
+        (WebCore::createReadableStreamCloseFunction):
+        (WebCore::createReadableStreamController):
+        (WebCore::ReadableStreamJSSource::start):
+        (WebCore::ReadableJSStreamReader::ReadableJSStreamReader): Deleted.
+
+2015-04-13  Joonghun Park  <jh718.park@samsung.com>
+
+        Use modern for-loops in Document
+        https://bugs.webkit.org/show_bug.cgi?id=143600
+
+        Reviewed by Darin Adler.
+
+        No new tests, no behavior changes.
+
+        * dom/Document.cpp:
+        (WebCore::Document::visibilityStateChanged):
+        (WebCore::Document::processBaseElement):
+        (WebCore::Document::moveNodeIteratorsToNewDocument):
+        (WebCore::Document::updateRangesAfterChildrenChanged):
+        (WebCore::Document::nodeChildrenWillBeRemoved):
+        (WebCore::Document::nodeWillBeRemoved):
+        (WebCore::Document::textInserted):
+        (WebCore::Document::textRemoved):
+        (WebCore::Document::textNodesMerged):
+        (WebCore::Document::textNodeSplit):
+        (WebCore::Document::documentWillSuspendForPageCache):
+        (WebCore::Document::documentDidResumeFromPageCache):
+        (WebCore::Document::mediaVolumeDidChange):
+        (WebCore::Document::privateBrowsingStateDidChange):
+        (WebCore::Document::captionPreferencesChanged):
+        (WebCore::Document::validateAutoSizingNodes):
+        (WebCore::Document::resetAutoSizingNodes):
+        (WebCore::Document::webkitExitFullscreen):
+        (WebCore::Document::absoluteRegionForEventTargets):
+
+2015-04-13  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Columns set in percentages collapse to auto width
+        https://bugs.webkit.org/show_bug.cgi?id=141435
+
+        Reviewed by David Hyatt.
+
+        Based on a patch by Sergio Villar Senin  <svillar@igalia.com>.
+
+        This patch adds 2 new new methods in RenderBox to determine if the grid
+        has a definite size or not.
+
+        RenderGrid::gridTrackSize() was not checking properly if the grid has or
+        not an indefinite size.
+        The condition was including auto which is not indefinite per se. For
+        example, auto is definite if the containing block is definite.
+        As the new method is more expensive, we just call it when it's really
+        needed to avoid performance regressions.
+
+        Finally we were setting the override logical width/height to -1 (no
+        possible resolution) for all the items regardless if they've a relative
+        width/height or a fixed one.
+        Added the condition, including not only items with percentage logical
+        width/height but also relative, to avoid overriding the value for items
+        with fixed width/height as it's not needed.
+
+        Tests: fast/css-grid-layout/grid-item-with-percent-height-in-auto-height-grid-resolution.html
+               fast/css-grid-layout/percent-intrinsic-track-breadth.html
+               fast/css-grid-layout/percent-track-breadths-regarding-container-size.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::logicalWidthIsResolvable):
+        (WebCore::RenderBox::hasDefiniteLogicalWidth):
+        (WebCore::RenderBox::percentageLogicalHeightIsResolvableFromBlock):
+        (WebCore::RenderBox::hasRelativeLogicalWidth):
+        * rendering/RenderBox.h:
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::hasDefiniteLogicalSize):
+        (WebCore::RenderGrid::gridTrackSize):
+        (WebCore::RenderGrid::logicalContentHeightForChild):
+        (WebCore::RenderGrid::minContentForChild):
+        (WebCore::RenderGrid::maxContentForChild):
+        * rendering/RenderGrid.h:
+
+2015-04-13  Chris Dumez  <cdumez@apple.com>
+
+        Regression: Scrolling on popsci.com spends too much time in FrameView::viewportsContentsChanged()
+        https://bugs.webkit.org/show_bug.cgi?id=143675
+
+        Reviewed by Simon Fraser.
+
+        Optimize resumeVisibleImageAnimationsIncludingSubframes() so that the FrameViews'
+        windowClipRect gets computed less often:
+        - Cache the FrameView's windowClipRect before resuming image animations in subframes
+          as calling windowClipRect() on those subframes' view is going to call windowClipRect()
+          on their ancestors. This avoids a lot of unnecessary windowClipRect recomputations
+          in deep frame trees.
+        - Stop traversing the Frame tree if the current frame does not have a content
+          renderer, as this means the subframes won't have one either.
+        - Stop traversing the Frame tree if the current frame's view has an empty
+          windowClipRect() as this means the windowClipRect will be empty for those
+          subframes as well.
+
+        On popsci.com, this cuts down the number of uncached windowClipRect() calls by
+        approximately half. I see viewportsContentsChanged() at ~0.4% when scrolling
+        on popsci.com after this change.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::resumeVisibleImageAnimationsIncludingSubframes):
+        (WebCore::FrameView::windowClipRect):
+        * page/FrameView.h:
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::resumePausedImageAnimationsIfNeeded):
+        * rendering/RenderView.h:
+
+2015-04-13  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Set the title text of the placard added in r182631.
+        https://bugs.webkit.org/show_bug.cgi?id=143585.
+        <rdar://problem/12067439>
+
+        * Modules/mediacontrols/mediaControlsApple.js:
+        (Controller.prototype.updateWirelessPlaybackStatus):
+
+2015-04-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Expand test infrastructure to support scrolling tests
+        https://bugs.webkit.org/show_bug.cgi?id=143286
+        <rdar://problem/20375516>
+
+        Reviewed by Simon Fraser.
+
+        No new functionality.
+
+        This series of changes adds a new singleton class, 'WheelEventTestTrigger', which encapsulates a
+        function object to be fired when scroll events are finished. The object also keeps track of reasons
+        why the test should not yet fire (e.g., 'rubberbanding' is active) so that tests do not incorrectly
+        check rendering state in the middle of an animation.
+
+        This code is not yet hooked up to the rendering system, and so does not have any effect on behavior.
+
+        * CMakeLists.txt: Add new WheelEventTestTrigger files.
+        * WebCore.vcxproj/WebCore.vcxproj: Ditto.
+        * WebCore.vcxproj/WebCore.vcxproj.filters: Ditto.
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
+        * page/MainFrame.cpp:
+        (WebCore::MainFrame::MainFrame): Add new member to constructor.
+        (WebCore::MainFrame::testTrigger): Added.
+        (WebCore::MainFrame::ensureTestTrigger): Added.
+        (WebCore::MainFrame::clearTrigger): Added.
+        * page/MainFrame.h:
+        * page/WheelEventTestTrigger.cpp: Added.
+        (WebCore::WheelEventTestTrigger::WheelEventTestTrigger):
+        (WebCore::WheelEventTestTrigger::createWeakPtr):
+        (WebCore::WheelEventTestTrigger::clearAllTestDeferrals):
+        (WebCore::WheelEventTestTrigger::setTestNotificationCallback):
+        (WebCore::WheelEventTestTrigger::deferTestsForReason):
+        (WebCore::WheelEventTestTrigger::removeTestDeferralForReason):
+        (WebCore::WheelEventTestTrigger::triggerTestTimerFired):
+        * page/WheelEventTestTrigger.h: Added.
+
+2015-04-13  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] When entering optimized fullscreen, standard fullscreen view should exit.
+        https://bugs.webkit.org/show_bug.cgi?id=143615
+
+        Reviewed by Simon Fraser.
+
+        When entering optimized fullscreen from standard fullscreen, the original fullscreen
+        view should animate out.
+
+        The original method for entering optimized fullscreen is deprecated, so replace it with
+        the new method (which doesn't take completion blocks) and use delegate methods to detect
+        when the animation transition completes.
+
+        * platform/Logging.h:
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.h:
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        (boolString): Added; use for logging boolean parameters.
+        (-[WebAVPlayerController playerViewControllerWillStartOptimizedFullscreen:]): Pass to WebVideoFullscreenInterfaceAVKit.
+        (-[WebAVPlayerController playerViewControllerDidStartOptimizedFullscreen:]): Ditto.
+        (-[WebAVPlayerController playerViewControllerWillStopOptimizedFullscreen:]): Ditto.
+        (-[WebAVPlayerController playerViewControllerDidStopOptimizedFullscreen:]): Ditto.
+        (-[WebAVPlayerController playerViewControllerWillCancelOptimizedFullscreen:]): Ditto.
+        (-[WebAVPlayerController playerViewControllerDidCancelOptimizedFullscreen:]): Ditto.
+        (-[WebAVPlayerController playerViewController:restoreUserInterfaceForOptimizedFullscreenStopWithCompletionHandler:]): Ditto.
+        (-[WebAVVideoLayer setPlayerViewController:]): Remove the KVO registration; now handled by above delegate methods.
+        (WebVideoFullscreenInterfaceAVKit::setupFullscreenInternal): Add logging.
+        (WebVideoFullscreenInterfaceAVKit::enterFullscreen): Ditto.
+        (WebVideoFullscreenInterfaceAVKit::enterFullscreenOptimized): Use new -startOptimizedFullscreen method.
+        (WebVideoFullscreenInterfaceAVKit::enterFullscreenStandard): Add logging.
+        (WebVideoFullscreenInterfaceAVKit::exitFullscreenInternal): Ditto.
+        (WebVideoFullscreenInterfaceAVKit::cleanupFullscreenInternal): Use hasMode() & isMode() rather than checking m_mode directly.
+        (WebVideoFullscreenInterfaceAVKit::requestHideAndExitFullscreen): Ditto.
+        (WebVideoFullscreenInterfaceAVKit::preparedToReturnToInline): Callback now stored on this object rather than the WebAVPlayerController.
+        (WebVideoFullscreenInterfaceAVKit::mayAutomaticallyShowVideoOptimized): Moved.
+        (WebVideoFullscreenInterfaceAVKit::fullscreenMayReturnToInline): Added; store the passed callback.
+        (WebVideoFullscreenInterfaceAVKit::willStartOptimizedFullscreen): Exit out of standard fullscreen mode if necessary.
+        (WebVideoFullscreenInterfaceAVKit::didStartOptimizedFullscreen): Moved from the start lambda in enterFullscreenOptimized().
+        (WebVideoFullscreenInterfaceAVKit::willStopOptimizedFullscreen): Call the model's requestExitFullscreen() method.
+        (WebVideoFullscreenInterfaceAVKit::didStopOptimizedFullscreen): Moved from the stop lambda in enterFullscreenOptimized().
+        (WebVideoFullscreenInterfaceAVKit::willCancelOptimizedFullscreen): Call the model's requestExitFullscreen() method.
+        (WebVideoFullscreenInterfaceAVKit::didCancelOptimizedFullscreen): Moved from the stop lambda in enterFullscreenOptimized().
+        (WebVideoFullscreenInterfaceAVKit::prepareForOptimizedFullscreenStopWithCompletionHandler): Moved from -playerViewController:shouldExitFullScreenWithReason:.
+        (WebVideoFullscreenInterfaceAVKit::setMode): Added; Call fullscreenModeChanged() if necessary.
+        (WebVideoFullscreenInterfaceAVKit::clearMode): Ditto.
+        (-[WebAVVideoLayer observeValueForKeyPath:ofObject:change:context:]): Deleted.
+        (WebVideoFullscreenInterfaceAVKit::setIsOptimized): Deleted.
+
+2015-04-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed fix after r182757.
+
+        * platform/win/FileSystemWin.cpp:
+        (WebCore::renameFile): Checked in wrong version.
+
+2015-04-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed fix after r182161.
+
+        The change caused Windows to lose Media UI, since the new 'getFileSize'
+        signature was being improperly used for a 'UInt8'-based string.
+
+        Fix was to provide implementations for the two new methods, and to make
+        sure RenderThemeWin was using the proper signature.
+
+        This should actually be a little more efficient, since we have the file
+        handle when we call this new method. Previously, a Windows 'find file' was
+        being done with the requested path, which was unnecessary work.
+
+        * platform/win/FileSystemWin.cpp:
+        (WebCore::getFileSizeFromByHandleFileInformationStructure): Added helper function.
+        (WebCore::getFileSize): Provide implementation.
+        (WebCore::renameFile):
+        * rendering/RenderThemeWin.cpp:
+        (WebCore::RenderThemeWin::stringWithContentsOfFile): Use the file handle to
+        get the file size, rather than using the path-based size lookup (which involves
+        performing an unnecessary file search.
+
+2015-04-13  Brady Eidson  <beidson@apple.com>
+
+        Share sheets from Share menus appear outside the browser window.
+        <rdar://problem/20455592> and https://bugs.webkit.org/show_bug.cgi?id=143620
+
+        Reviewed by Darin Adler.
+
+        * page/ContextMenuController.h:
+        (WebCore::ContextMenuController::client):
+
+2015-04-13  Andreas Kling  <akling@apple.com>
+
+        Rebaseline bindings tests.
+
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.h:
+        * bindings/scripts/test/JS/JSTestCustomNamedGetter.h:
+        * bindings/scripts/test/JS/JSTestEventTarget.h:
+        * bindings/scripts/test/JS/JSTestException.h:
+        * bindings/scripts/test/JS/JSTestInterface.h:
+        * bindings/scripts/test/JS/JSTestObj.h:
+        * bindings/scripts/test/JS/JSTestTypedefs.h:
+
+2015-04-13  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] Treat a 'not found' media option index as the 'off' track.
+        https://bugs.webkit.org/show_bug.cgi?id=143672
+
+        Reviewed by Eric Carlson.
+
+        The UIProcess will pass in UINT64_MAX for the index of the legible option to select. Treat this
+        as if the captionOffMenuItem() had been selected to avoid a null dereference.
+
+        * platform/ios/WebVideoFullscreenModelVideoElement.mm:
+        (WebVideoFullscreenModelVideoElement::selectLegibleMediaOption):
+
+2015-04-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        list-style-image with SVG image renders at incorrect size.
+        https://bugs.webkit.org/show_bug.cgi?id=141367.
+
+        Reviewed by Darin Adler.
+        
+        This patch imports https://codereview.chromium.org/197203003.
+
+        When using an SVG as list marker image, don't unconditionally set the
+        dimensions to a square with the dimensions of ascent / 2, but rather
+        determine a suitable size using intrinsic dimensions (and ratio).
+
+        Test: svg/as-list-image/svg-list-image-intrinsic-size-1.html
+
+        * rendering/RenderListMarker.cpp:
+        (WebCore::RenderListMarker::updateContent):
+
+2015-04-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Canvas drawImage() has a security hole when the image isn't yet fully loaded.
+        https://bugs.webkit.org/show_bug.cgi?id=58681.
+
+        Reviewed by Darin Adler.
+
+        There is a race condition which may happen if an image from a different
+        origin is drawn on a canvas before it finishes loading. The check to taint
+        the canvas comes before drawing it. This check returns false if the image
+        is not completely loaded because we check the URL of the resource response.
+        If after this check and before the drawing, the image finishes loading, the
+        canvas will not be tainted but the image will be drawn.
+        
+        The fix is to move the check to taint the canvas after drawing the image.
+        The only problem with this solution is basically the opposite of this bug:
+        we will become stricter than before with images which are from a different
+        origin and before they finish loading. The image has not finished loading,
+        so we do not draw it. Before we check for tainting, the image finishes
+        loading. So we decide to taint the canvas even the image is not drawn.
+        
+        But this should not be a security issue anymore. I personally do not know
+        if it is even a correctness issue or not.
+
+        Test: http/tests/canvas/canvas-tainted-after-draw-image.html
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::drawImage):
+
+2015-04-13  Beth Dakin  <bdakin@apple.com>
+
+        Add force property to MouseEvents
+        https://bugs.webkit.org/show_bug.cgi?id=143569
+        -and corresponding-
+        rdar://problem/20472954
+
+        Reviewed by Darin Adler.
+
+        This patch removes WebKitMouseForceEvent and uses a MouseEvent everywhere that it 
+        was used. That’s possible because this patch also adds a force property to all 
+        MouseEvents and to PlatformMouseEvent.
+
+        Remove WebKitMouseForceEvent.
+        * CMakeLists.txt:
+        * DerivedSources.cpp:
+        * DerivedSources.make:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/DOMAllInOne.cpp:
+
+        Create MouseEvents with the appropriate force instead of WebKitMouseForceEvents. 
+        This patch also gets rid of the PlatformMouseEvent parameter for these events. 
+        They were re-using the cached mousedown event before, which they never should have 
+        done. Instead, we create PlatformMouseEvents inside these functions and then use 
+        that to make MouseEvents.
+        * dom/Element.cpp:
+        (WebCore::Element::dispatchMouseForceWillBegin):
+        (WebCore::Element::dispatchMouseForceChanged):
+        (WebCore::Element::dispatchMouseForceDown):
+        (WebCore::Element::dispatchMouseForceUp):
+        (WebCore::Element::dispatchMouseForceClick):
+        (WebCore::Element::dispatchMouseForceCancelled):
+        * dom/Element.h:
+
+        No More WebKitMouseForceEvent.
+        * dom/EventNames.in:
+
+        Add force to MouseEvent.
+        * dom/MouseEvent.cpp:
+        (WebCore::MouseEvent::create):
+        (WebCore::MouseEvent::MouseEvent):
+        (WebCore::MouseEvent::cloneFor):
+        (WebCore::SimulatedMouseEvent::SimulatedMouseEvent):
+        * dom/MouseEvent.h:
+        (WebCore::MouseEvent::force):
+        (WebCore::MouseEvent::setForce):
+        * dom/MouseEvent.idl:
+
+        No More WebKitMouseForceEvent.
+        * dom/WebKitMouseForceEvent.cpp: Removed.
+        * dom/WebKitMouseForceEvent.h: Removed.
+        * dom/WebKitMouseForceEvent.idl: Removed.
+
+        PlatformMouseEvent now takes a force parameter.
+        * dom/WheelEvent.cpp:
+        (WebCore::WheelEvent::WheelEvent):
+        * page/ContextMenuController.cpp:
+        (WebCore::ContextMenuController::showContextMenuAt):
+        * page/DragController.cpp:
+        (WebCore::createMouseEvent):
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::dispatchDragEvent):
+        (WebCore::EventHandler::sendContextMenuEventForKey):
+        (WebCore::EventHandler::fakeMouseMoveEventTimerFired):
+
+        We don’t need lastMouseDownEvent() anymore. We were using it to avoid creating new 
+        PlatformMouseEvents for the force events, but we fix that in this patch.
+        (WebCore::EventHandler::lastMouseDownEvent): Deleted.
+        * page/EventHandler.h:
+
+        At force to PlatformMouseEvent.
+        * platform/PlatformMouseEvent.h:
+        (WebCore::PlatformMouseEvent::PlatformMouseEvent):
+        (WebCore::PlatformMouseEvent::force):
+        * replay/SerializationMethods.cpp:
+        (JSC::EncodingTraits<PlatformMouseEvent>::encodeValue):
+        (JSC::EncodingTraits<PlatformMouseEvent>::decodeValue):
+
+2015-04-13  Andreas Kling  <akling@apple.com>
+
+        Don't segregate heap objects based on Structure immortality.
+        <https://webkit.org/b/143638>
+
+        Reviewed by Darin Adler.
+
+        * bindings/js/JSDOMBinding.h:
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        (GeneratePrototypeDeclaration):
+        * bridge/objc/objc_runtime.h:
+        * bridge/runtime_array.h:
+        * bridge/runtime_method.h:
+        * bridge/runtime_object.h:
+
+2015-04-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Fixed position element is truncated if moved onscreen by a transform
+        https://bugs.webkit.org/show_bug.cgi?id=143655
+        rdar://problem/15020044
+
+        Reviewed by Darin Adler.
+        
+        Our "don't do layout if transform changes" code was too aggressive.
+        If an element changes between having a transform and not having one, we
+        really need to do a layout since so much else depends on transforms. In
+        this particular case, we clip position:fixed elements to the viewport if
+        they are not transformed, and were failing to re-evaluate this when a
+        transform was added. Doing a layout fixes this.
+
+        Test: compositing/geometry/fixed-transformed.html
+
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::changeRequiresLayout):
+        * rendering/style/StyleTransformData.h:
+        (WebCore::StyleTransformData::hasTransform):
+
+2015-04-12  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Localizable strings are inconsistent and need to be regenerated
+        https://bugs.webkit.org/show_bug.cgi?id=143661
+        rdar://problem/19634388
+
+        Reviewed by Dan Bernstein.
+
+        * English.lproj/Localizable.strings: Updated by running the
+        update-webkit-localizable-strings script.
+
+2015-04-13  Darin Adler  <darin@apple.com>
+
+        Remove needless recreation of URL in NavigationScheduler::scheduleLocationChange
+        https://bugs.webkit.org/show_bug.cgi?id=143662
+
+        Reviewed by Sam Weinig.
+
+        * loader/NavigationScheduler.cpp:
+        (WebCore::NavigationScheduler::scheduleLocationChange): Removed unnecessary code
+        to convert a URL to a String and then back into a URL.
+
+2015-04-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Add ENABLE(ATTACHMENT_ELEMENT) to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=143664
+
+        Reviewed by Gyuyoung Kim.
+
+        * page/efl/DragControllerEfl.cpp:
+        (WebCore::DragController::declareAndWriteAttachment): Added stub implementation to fix the build.
+        * page/gtk/DragControllerGtk.cpp:
+        (WebCore::DragController::declareAndWriteAttachment): Added stub implementation to fix the build.
+
+2015-04-13  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        [Curl] Small improvements to CurlCacheEntry::parseResponseHeaders()
+        https://bugs.webkit.org/show_bug.cgi?id=143597
+
+        Reviewed by Csaba Osztrogonác.
+
+        Most lines of code in CurlCacheEntry::parseResponseHeaders() don't need to be
+        executed if the response has "no-cache" or "no-store" directive, but we are
+        checking these conditions in the middle of the method. We can move this to the
+        beginning of the method for efficiency.
+
+        No new tests, no behavior change.
+
+        * platform/network/curl/CurlCacheEntry.cpp:
+        (WebCore::CurlCacheEntry::parseResponseHeaders):
+
+2015-04-13  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed, build fix after r182704.
+
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::resolveContentBasedTrackSizingFunctionsForItems):
+
+2015-04-13  Joonghun Park  <jh718.park@samsung.com>
+
+        Use std::unique_ptr instead of PassOwnPtr|OwnPtr for ResourceResponse
+        https://bugs.webkit.org/show_bug.cgi?id=143056
+
+        Reviewed by Gyuyoung Kim.
+
+        No new tests, no behavior changes.
+
+        * loader/WorkerThreadableLoader.cpp:
+        (WebCore::WorkerThreadableLoader::MainThreadBridge::MainThreadBridge):
+        (WebCore::WorkerThreadableLoader::MainThreadBridge::didReceiveResponse):
+        * platform/CrossThreadCopier.h:
+        * platform/network/ResourceResponseBase.cpp:
+        (WebCore::ResourceResponseBase::adopt):
+        (WebCore::ResourceResponseBase::copyData):
+        * platform/network/ResourceResponseBase.h:
+        * platform/network/cf/ResourceResponse.h:
+        (WebCore::ResourceResponse::doPlatformCopyData):
+        (WebCore::ResourceResponse::doPlatformAdopt):
+        * platform/network/curl/ResourceResponse.h:
+        (WebCore::ResourceResponse::doPlatformCopyData):
+        (WebCore::ResourceResponse::doPlatformAdopt):
+        * platform/network/soup/ResourceResponse.h:
+        (WebCore::ResourceResponse::doPlatformCopyData):
+        (WebCore::ResourceResponse::doPlatformAdopt):
+
+2015-04-10  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Support marking/unmarking tracks as infinitely growable
+        https://bugs.webkit.org/show_bug.cgi?id=141431
+
+        Reviewed by Darin Adler.
+
+        As explained here
+        http://lists.w3.org/Archives/Public/www-style/2014Mar/0512.html we
+        sometimes need to consider that some tracks are infinitely
+        growable even when they are really not, in order to produce more
+        "natural" results.
+
+        For example the following case:
+          grid-template-columns: auto auto;
+          item 1 in column 1 with min-content = max-content = 10px;
+          item 2 in columns 1-2 with min-content = 30, max-content = 100px;
+
+        will produce (45px, 55px) without this patch. But considering the
+        second column as infinitely growable the result is (10px, 90px), a
+        more "natural" result because column 1 just needs to be 10px to
+        accommodate item 1. From now on we can flag GridTracks so that
+        they can infinitely grow even when the growth limit is finite.
+
+        Apart from that distributeSpaceToTracks() is now unconditionally
+        called even though the extra space is 0. That's because it
+        computes the plannedSize value.
+
+        Test: fast/css-grid-layout/mark-as-infinitely-growable.html
+
+        * rendering/RenderGrid.cpp:
+        (WebCore::GridTrack::infiniteGrowthPotential):
+        (WebCore::GridTrack::infinitelyGrowable):
+        (WebCore::GridTrack::setInfinitelyGrowable):
+        (WebCore::RenderGrid::computeUsedBreadthOfGridTracks):
+        (WebCore::RenderGrid::trackSizeForTrackSizeComputationPhase): Updated with new phase.
+        (WebCore::RenderGrid::shouldProcessTrackForTrackSizeComputationPhase): Ditto.
+        (WebCore::RenderGrid::trackShouldGrowBeyondGrowthLimitsForTrackSizeComputationPhase): Ditto.
+        (WebCore::RenderGrid::updateTrackSizeForTrackSizeComputationPhase): Ditto.
+        (WebCore::RenderGrid::currentItemSizeForTrackSizeComputationPhase): Ditto.
+        (WebCore::RenderGrid::markAsInfinitelyGrowableForTrackSizeComputationPhase):
+        New helper method which does the mark/unmark just for growth limits.
+        (WebCore::RenderGrid::resolveContentBasedTrackSizingFunctionsForItems):
+        (WebCore::sortByGridTrackGrowthPotential): Use
+        infiniteGrowthPotential() for sorting.
+        (WebCore::RenderGrid::distributeSpaceToTracks):
+        * rendering/RenderGrid.h:
+
+2015-04-12  Benjamin Poulain  <benjamin@webkit.org>
+
+        Legacy scroll behavior on HTMLBodyElement should only apply to the first body element of a document
+        https://bugs.webkit.org/show_bug.cgi?id=143651
+
+        Reviewed by Sam Weinig.
+
+        WebKit has some very weird behaviors for the scroll methods on body. This patch
+        address the first bug: only the first body element should have the legacy behavior.
+
+        The relevant text in spec:
+        -http://dev.w3.org/csswg/cssom-view/#dom-element-scrollleft
+        -http://dev.w3.org/csswg/cssom-view/#dom-element-scrolltop
+        -http://dev.w3.org/csswg/cssom-view/#dom-element-scrollwidth
+        -http://dev.w3.org/csswg/cssom-view/#dom-element-scrollheight
+
+        Tests: fast/dom/Element/body-scrollHeight-basics-quirks.html
+               fast/dom/Element/body-scrollLeft-basics-quirks.html
+               fast/dom/Element/body-scrollTop-basics-quirks.html
+               fast/dom/Element/body-scrollWidth-basics-quirks.html
+               fast/dom/Element/detached-body-element-does-not-scroll-main-frame-with-scrollLeft.html
+               fast/dom/Element/detached-body-element-does-not-scroll-main-frame-with-scrollTop.html
+
+        * html/HTMLBodyElement.cpp:
+        (WebCore::HTMLBodyElement::isFirstBodyElementOfDocument):
+        (WebCore::HTMLBodyElement::scrollLeft):
+        (WebCore::HTMLBodyElement::setScrollLeft):
+        (WebCore::HTMLBodyElement::scrollTop):
+        (WebCore::HTMLBodyElement::setScrollTop):
+        (WebCore::HTMLBodyElement::scrollHeight):
+        (WebCore::HTMLBodyElement::scrollWidth):
+        * html/HTMLBodyElement.h:
+
+2015-04-12  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Fix trival typos related to the word "coordinate".
+        https://bugs.webkit.org/show_bug.cgi?id=143644
+
+        Reviewed by Alexey Proskuryakov.
+
+        No new tests, no behavior change.
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::layoutOverflowRectForPropagation):
+
+2015-04-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Scrollbars in composited overflow and iframes fail to render on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=143647
+        rdar://problem/20340544
+
+        Reviewed by Darin Adler.
+
+        When adding support for drawing scrollbars on the scrolling thread, we inadvertently
+        disabled scrollbar drawing in other composited, main-thread scrolling configurations.
+        
+        Fix by having Scrollbar::supportsUpdateOnSecondaryThread() only return true if
+        the scrollable area is using async scrolling.
+        
+        Sadly, we can't layout-test this.
+
+        * platform/Scrollbar.cpp:
+        (WebCore::Scrollbar::supportsUpdateOnSecondaryThread):
+
+2015-04-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Selects don't scroll at some aspect ratios
+        https://bugs.webkit.org/show_bug.cgi?id=143649
+        rdar://problem/19365694
+
+        Reviewed by Darin Adler.
+        
+        Fix width/height flip in RenderListBox which caused us to fail to scroll when
+        the list was wider than the scroll height.
+        
+        We're generally confused about RenderListBox scroll offsets (webkit.org/b/143648)
+        but this fixes the immediate problem.
+
+        Test: fast/forms/listbox-visible-size.html
+
+        * rendering/RenderListBox.h:
+
+2015-04-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Too much repainting on scrolling with fixed backgrounds
+        https://bugs.webkit.org/show_bug.cgi?id=143637
+        rdar://problem/20245243
+
+        Reviewed by Darin Adler.
+        
+        FrameView::scrollContentsSlowPath() would repaint the entire viewport if there were
+        any slow-repaint objects (those with background-attachment: fixed) and the contents
+        were using compositing for scrolling.
+        
+        This is wrong; we only need to issue repaint for the slow-repaint renderers,
+        and, if the frame is hosted in a compositing layer and not using compositing for scrolling,
+        repaint that hosting layer.
+
+        Tests: compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint.html
+               compositing/repaint/iframes/compositing-iframe-scroll-repaint.html
+               compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint.html
+               platform/mac-wk2/tiled-drawing/fixed-background-scroll-repaint.html
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollContentsSlowPath):
+
+2015-04-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: create content view and details sidebar for Frames timeline
+        https://bugs.webkit.org/show_bug.cgi?id=143533
+
+        Reviewed by Timothy Hatcher.
+
+        Refactoring: RunLoop prefix changed to RenderingFrame.
+
+        * inspector/InspectorTimelineAgent.cpp:
+        (WebCore::InspectorTimelineAgent::internalStart):
+        (WebCore::toProtocol):
+        * inspector/InspectorTimelineAgent.h:
+
+2015-04-11  Chris Dumez  <cdumez@apple.com>
+
+        Stop referring to outdated RFC2616 in CacheValidation.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=143619
+
+        Reviewed by Darin Adler.
+
+        Stop referring to outdated RFC2616 in CacheValidation.cpp and refer to
+        the newer RFC7230 & RFC7234. Also update some variables to match the
+        naming in the RFC for clarity.
+
+        No behavior change.
+
+        * platform/network/CacheValidation.cpp:
+        (WebCore::updateResponseHeadersAfterRevalidation):
+        (WebCore::computeCurrentAge):
+        (WebCore::computeFreshnessLifetimeForHTTPFamily):
+        (WebCore::isCacheHeaderSeparator):
+        (WebCore::parseCacheControlDirectives):
+
+2015-04-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebKit places caret in front of pasted Numbers cells instead of behind
+        https://bugs.webkit.org/show_bug.cgi?id=143627
+
+        Reviewed by Darin Adler.
+
+        The bug was caused by Position::downstream not respecting modern position types inside a table.
+        Fixed it by using Position::atStartOfNode which respects before/after positions.
+
+        This bug doesn't reproduce when there is no whitespace after td element in the pasted content
+        because positionAtEndOfInsertedContent() will be inside the last pasted cell inside
+        ReplaceSelectionCommand::completeHTMLReplacement in those cases. This related but separate bug
+        is tracked in https://webkit.org/b/143628.
+
+        Tests: editing/pasteboard/paste-table-with-unrendered-text-nodes.html
+
+        * dom/Position.cpp:
+        (WebCore::Position::downstream):
+
+2015-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Enable Symbol in web pages
+        https://bugs.webkit.org/show_bug.cgi?id=143375
+
+        Reviewed by Ryosuke Niwa.
+
+        * inspector/InspectorFrontendClientLocal.cpp:
+        (WebCore::InspectorFrontendClientLocal::InspectorFrontendClientLocal):
+
+2015-04-10  Roger Fong  <roger_fong@apple.com>
+
+        Hide volume controls when playing wirelessly.
+        https://bugs.webkit.org/show_bug.cgi?id=143621.
+        <rdar://problem/20490673>
+
+        Reviewed by Darin Adler.
+
+        * Modules/mediacontrols/mediaControlsApple.js:
+        (Controller.prototype.updateWirelessPlaybackStatus):
+
+2015-04-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        * WebCore.xcodeproj/project.pbxproj: Make LaunchServicesSPI.h a private header
+        instead of project, as it's used in WebKit.
+
+2015-04-08  Sam Weinig  <sam@webkit.org>
+
+        Allow LaunchServices to handle URLs on link navigations
+        <rdar://problem/19446826>
+        https://bugs.webkit.org/show_bug.cgi?id=143544
+
+        Reviewed by Anders Carlsson.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/spi/ios/LaunchServicesSPI.h: Added.
+        Add new SPI header.
+
+2015-04-10  Bem Jones-Bey  <bjonesbe@adobe.com>
+
+        Unreviewed, added CSS Shapes to features.json file.
+
+        * features.json:
+
+2015-04-10  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Support modifying request URLs
+        https://bugs.webkit.org/show_bug.cgi?id=143599
+        rdar://problem/20442560
+
+        Reviewed by Darin Adler.
+
+        Tests: contentfiltering/modify-request-url.html
+               http/tests/contentfiltering/modify-redirect-request-url.html
+
+        Allow NEFilterSource to modifiy request URLs. Also teach MockContentFilter to do the same for testing.
+
+        * platform/cocoa/NetworkExtensionContentFilter.mm:
+        (WebCore::NetworkExtensionContentFilter::willSendRequest): If NEFilterSource provided a string representing a
+        valid URL in decisionInfo[NEFilterSourceOptionsRedirectURL], then used that as the request URL.
+        * platform/spi/cocoa/NEFilterSourceSPI.h: Temporarily defined NEFilterSourceOptionsRedirectURL.
+        * testing/MockContentFilter.cpp:
+        (WebCore::MockContentFilter::willSendRequest): If settings() has a valid modifiedRequestURL, use it as the
+        request URL. Only do so once MockContentFilter has reached its decision point so that both initial requests and
+        redirect requests can be tested.
+        * testing/MockContentFilterSettings.h: Added modifiedRequestURL.
+        (WebCore::MockContentFilterSettings::modifiedRequestURL): Ditto.
+        (WebCore::MockContentFilterSettings::setModifiedRequestURL): Ditto.
+        * testing/MockContentFilterSettings.idl: Ditto.
+
+2015-04-10  Zalan Bujtas  <zalan@apple.com>
+
+        showRenderTree: Include the render object to the inlinebox output.
+        https://bugs.webkit.org/show_bug.cgi?id=143610
+
+        This helps to match the inlinebox and its renderer.
+
+        Reviewed by Antti Koivisto.
+
+        * rendering/InlineBox.cpp:
+        (WebCore::InlineBox::showLineBox):
+
+2015-04-09  Roger Fong  <roger_fong@apple.com>
+
+        Update wireless player placard for OSX.
+        https://bugs.webkit.org/show_bug.cgi?id=143585.
+        <rdar://problem/12067439>
+
+        Reviewed by Eric Carlson.
+
+        * Modules/mediacontrols/mediaControlsApple.css:
+        Adjust button positioning and svg.
+        (audio::-webkit-media-controls-wireless-playback-picker-button):
+        (audio::-webkit-media-controls-wireless-playback-picker-button.playing):
+        Style the wireless playback status placard, small and big versions.
+        (audio::-webkit-media-controls-wireless-playback-status):
+        (audio::-webkit-media-controls-wireless-playback-text):
+        (audio::-webkit-media-controls-wireless-playback-text-top):
+        (audio::-webkit-media-controls-wireless-playback-text-bottom):
+        (audio::-webkit-media-controls-wireless-playback-status.small):
+        (audio::-webkit-media-controls-wireless-playback-text-top.small):
+        (audio::-webkit-media-controls-wireless-playback-text-bottom.small):
+        * Modules/mediacontrols/mediaControlsApple.js:
+        Add new wireless player placard elements.
+        (Controller.prototype.createControls):
+        (Controller.prototype.configureInlineControls):
+        Make sure to switch between small and big placards when switching between fullscreen and small videos.
+        (Controller.prototype.configureFullScreenControls):
+        (Controller.prototype.handleFullscreenChange):
+        (Controller.prototype.updateWirelessPlaybackStatus):
+
+2015-04-10  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Refactor MediaPlaybackTarget
+        https://bugs.webkit.org/show_bug.cgi?id=143571
+
+        Reviewed by Jer Noble.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/Document.cpp:
+        (WebCore::Document::addPlaybackTargetPickerClient): Don't call client if page playback target
+            is NULL.
+        (WebCore::Document::didChoosePlaybackTarget): MediaPlaybackTarget is passed as a Ref<>
+        * dom/Document.h:
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::setWirelessPlaybackTarget): MediaPlaybackTarget is passed as a Ref<>
+        * html/HTMLMediaElement.h:
+
+        * html/HTMLMediaSession.cpp:
+        (WebCore::HTMLMediaSession::HTMLMediaSession): Don't initialize m_playbackTarget.
+        (WebCore::HTMLMediaSession::didChoosePlaybackTarget): MediaPlaybackTarget is passed as a Ref<>
+        * html/HTMLMediaSession.h:
+
+        * page/Page.cpp:
+        (WebCore::Page::Page):
+        (WebCore::Page::playbackTarget): m_playbackTarget is a RefPtr<MediaPlaybackTarget>
+        (WebCore::Page::didChoosePlaybackTarget): Ditto.
+        * page/Page.h:
+
+        * platform/audio/MediaSession.h:
+        (WebCore::MediaSessionClient::setWirelessPlaybackTarget): Take a Ref<MediaPlaybackTarget>&&.
+
+        Make MediaPlaybackTarget RefCounted, and don't require it to be serializable so it can be
+        subclassed to keep port-specific iformation out of the base class.
+        * platform/graphics/MediaPlaybackTarget.h: 
+        (WebCore::MediaPlaybackTarget::targetType):
+        (WebCore::MediaPlaybackTarget::targetContext):
+        (WebCore::MediaPlaybackTarget::hasActiveRoute):
+        (WebCore::MediaPlaybackTarget::MediaPlaybackTarget):
+        (WebCore::MediaPlaybackTarget::setDevicePickerContext): Deleted.
+        (WebCore::MediaPlaybackTarget::devicePickerContext): Deleted.
+
+        MediaPlaybackTargetContext is the struct that is serialized to pass across the process boudary.
+        It has union to hold port-specific data.
+        * platform/graphics/MediaPlaybackTargetContext.h: Added.
+
+        * platform/graphics/MediaPlaybackTargetPicker.h: didChoosePlaybackTarget takes a Ref<MediaPlaybackTarget>&&
+        * platform/graphics/MediaPlaybackTargetPickerClient.h: Ditto.
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::MediaPlayer::setWirelessPlaybackTarget): Ditto.
+        * platform/graphics/MediaPlayer.h:
+
+        * platform/graphics/MediaPlayerPrivate.h:
+        (WebCore::MediaPlayerPrivateInterface::setWirelessPlaybackTarget):
+
+        * platform/graphics/avfoundation/MediaPlaybackTargetMac.h: Added.
+        (WebCore::MediaPlaybackTargetMac::targetType):
+        (WebCore::MediaPlaybackTargetMac::outputContext):
+        * platform/graphics/avfoundation/MediaPlaybackTargetMac.mm:
+        (WebCore::MediaPlaybackTargetMac::create):
+        (WebCore::MediaPlaybackTargetMac::MediaPlaybackTargetMac):
+        (WebCore::MediaPlaybackTargetMac::~MediaPlaybackTargetMac):
+        (WebCore::MediaPlaybackTargetMac::targetContext):
+        (WebCore::MediaPlaybackTargetMac::hasActiveRoute):
+        (WebCore::toMediaPlaybackTargetMac):
+        (WebCore::MediaPlaybackTarget::encode): Deleted.
+        (WebCore::MediaPlaybackTarget::decode): Deleted.
+        (WebCore::MediaPlaybackTarget::hasActiveRoute): Deleted.
+
+        * platform/graphics/avfoundation/objc/MediaPlaybackTargetPickerMac.mm:
+        (WebCore::MediaPlaybackTargetPickerMac::currentDeviceDidChange): Allocate and pass a MediaPlaybackTargetMac
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.h:
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::setWirelessPlaybackTarget): Take a Ref<MediaPlaybackTarget&&
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::setWirelessPlaybackTarget): Ditto.
+
+        * platform/graphics/mac/MediaPlayerPrivateQTKit.h:
+        * platform/graphics/mac/MediaPlayerPrivateQTKit.mm:
+        (WebCore::MediaPlayerPrivateQTKit::setWirelessPlaybackTarget): Ditto.
+
+2015-04-09  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout] Fix raw function pointer usages
+        https://bugs.webkit.org/show_bug.cgi?id=143481
+
+        Reviewed by Antti Koivisto.
+
+        The argument list of
+        resolveContentBasedTrackSizingFunctionsForItems() became too long
+        and rather incomprehensible as it included up to 6 function
+        pointers. This replaces all of them by an enum which describes the
+        phase of the algorithm that is currently running. With that phase
+        we have enough information to select the right function to call.
+
+        In order not to tangle up too much the method, the new explicit
+        switch statements where moved to static helper functions.
+
+        No new tests as this is just a code refactoring.
+
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::computeUsedBreadthOfGridTracks):
+        (WebCore::RenderGrid::resolveContentBasedTrackSizingFunctions):
+        (WebCore::RenderGrid::trackSizeForTrackSizeComputationPhase): New helper function.
+        (WebCore::RenderGrid::shouldProcessTrackForTrackSizeComputationPhase): Ditto.
+        (WebCore::RenderGrid::trackShouldGrowBeyondGrowthLimitsForTrackSizeComputationPhase): Ditto.
+        (WebCore::RenderGrid::updateTrackSizeForTrackSizeComputationPhase): Ditto.
+        (WebCore::RenderGrid::currentItemSizeForTrackSizeComputationPhase): Ditto.
+        (WebCore::RenderGrid::resolveContentBasedTrackSizingFunctionsForItems):
+        (WebCore::RenderGrid::distributeSpaceToTracks):
+        * rendering/RenderGrid.h:
+
+2015-04-10  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Remove AudioStreamTrack and VideoStreamTrack (removed in spec)
+        https://bugs.webkit.org/show_bug.cgi?id=143336
+
+        Reviewed by Philippe Normand.
+
+        The specific MediaStreamTrakc types (AudioStreamTrack and VideoStreamTrack) have been
+        removed from the Media Capture and Streams [1] specification.
+
+        [1] http://w3c.github.io/mediacapture-main/archives/20150324/getusermedia.html
+
+        There are no test for this feature to remove.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * Modules/mediastream/AudioStreamTrack.cpp: Removed.
+        * Modules/mediastream/AudioStreamTrack.h: Removed.
+        * Modules/mediastream/AudioStreamTrack.idl: Removed.
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::MediaStream):
+        (WebCore::MediaStream::addRemoteTrack):
+        (WebCore::MediaStream::active): Deleted.
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::create):
+        (WebCore::MediaStreamTrack::MediaStreamTrack):
+        (WebCore::MediaStreamTrack::kind):
+        (WebCore::MediaStreamTrack::clone):
+        (WebCore::MediaStreamTrack::trackEnded): Deleted.
+        * Modules/mediastream/MediaStreamTrack.h:
+        * Modules/mediastream/VideoStreamTrack.cpp: Removed.
+        * Modules/mediastream/VideoStreamTrack.h: Removed.
+        * Modules/mediastream/VideoStreamTrack.idl: Removed.
+        * WebCore.xcodeproj/project.pbxproj:
+
+2015-04-09  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add a HAVE(AVKIT) and use it
+        https://bugs.webkit.org/show_bug.cgi?id=143593
+
+        Reviewed by David Kilzer.
+
+        * page/Settings.h: Only defined setAVKitEnabled() if HAVE(AVKIT).
+        * platform/ios/WebVideoFullscreenControllerAVKit.mm: Only compiled if HAVE(AVKIT).
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm: Ditto.
+
+2015-04-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Some CSS3 filters tests crash under iOS testing
+        https://bugs.webkit.org/show_bug.cgi?id=143594
+        rdar://problem/20491140
+
+        Reviewed by David Kilzer.
+
+        Some tests disable accelerated compositing via testRunner.overridePreference(). In this case,
+        we'd not create a root scrolling tree node, so null-check it in AsyncScrollingCoordinator::updateNonFastScrollableRegion().
+
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::updateNonFastScrollableRegion):
+
+2015-04-09  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Add <br> support.
+        https://bugs.webkit.org/show_bug.cgi?id=139012
+
+        This patch enables RenderBlockFlows to use simple line layout on text content when <br> is present.
+        Simple text with <br> is a fairly common pattern on discussion(forum)-like web pages. This patch reduces memory usage
+        and speeds up layout for such content.
+
+        PerformanceTest/layout/line-layout-simple.html shows more than 2x speedup, when each paragraph is modified by appending <br> to the end.
+        With <br> support enabled:
+          mean: 70.02391461289068 runs/s
+          median: 70.47986488932318 runs/s
+
+        While with <br> support disabled:
+          mean: 30.417295049468184 runs/s
+          median: 30.36517778760357 runs/s
+
+        Reviewed by Antti Koivisto.
+
+        Test: fast/text/simple-line-with-br.html
+
+        * editing/TextIterator.cpp:
+        (WebCore::TextIterator::handleTextNode):
+        * rendering/RenderBlock.h:
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::setSelectionState):
+        (WebCore::RenderBlockFlow::deleteLineBoxesBeforeSimpleLineLayout):
+        * rendering/RenderBlockFlow.h:
+        * rendering/RenderLineBreak.cpp:
+        (WebCore::simpleLineLayout):
+        (WebCore::ensureLineBoxes):
+        (WebCore::RenderLineBreak::deleteLineBoxesBeforeSimpleLineLayout):
+        (WebCore::RenderLineBreak::positionForPoint):
+        (WebCore::RenderLineBreak::setSelectionState):
+        (WebCore::RenderLineBreak::linesBoundingBox):
+        (WebCore::RenderLineBreak::absoluteRects):
+        (WebCore::RenderLineBreak::absoluteQuads):
+        (WebCore::RenderLineBreak::collectSelectionRects):
+        * rendering/RenderLineBreak.h:
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::absoluteRects):
+        (WebCore::RenderText::absoluteQuadsClippedToEllipsis):
+        (WebCore::RenderText::absoluteQuads):
+        (WebCore::RenderText::linesBoundingBox):
+        (WebCore::RenderText::caretMinOffset):
+        (WebCore::RenderText::caretMaxOffset):
+        (WebCore::RenderText::containsCaretOffset):
+        (WebCore::RenderText::hasRenderedText):
+        * rendering/SimpleLineLayout.cpp:
+        (WebCore::SimpleLineLayout::canUseFor):
+        (WebCore::SimpleLineLayout::LineState::removeTrailingWhitespace):
+        (WebCore::SimpleLineLayout::removeTrailingWhitespace):
+        (WebCore::SimpleLineLayout::consumeLineBreakIfNeeded):
+        (WebCore::SimpleLineLayout::skipWhitespaceIfNeeded):
+        (WebCore::SimpleLineLayout::firstFragment):
+        (WebCore::SimpleLineLayout::forceFragmentToLine):
+        (WebCore::SimpleLineLayout::createLineRuns):
+        (WebCore::SimpleLineLayout::create):
+        * rendering/SimpleLineLayoutFlowContents.cpp:
+        (WebCore::SimpleLineLayout::initializeSegments):
+        (WebCore::SimpleLineLayout::FlowContents::segmentForRenderer): Deleted.
+        * rendering/SimpleLineLayoutFlowContents.h:
+        * rendering/SimpleLineLayoutFunctions.cpp:
+        (WebCore::SimpleLineLayout::paintFlow):
+        (WebCore::SimpleLineLayout::hitTestFlow):
+        (WebCore::SimpleLineLayout::showLineLayoutForFlow):
+        * rendering/SimpleLineLayoutResolver.cpp:
+        (WebCore::SimpleLineLayout::RunResolver::Run::rect):
+        (WebCore::SimpleLineLayout::RunResolver::RunResolver):
+        (WebCore::SimpleLineLayout::RunResolver::rangeForRenderer):
+        * rendering/SimpleLineLayoutResolver.h:
+        (WebCore::SimpleLineLayout::RunResolver::Iterator::inQuirksMode):
+        (WebCore::SimpleLineLayout::RunResolver::Iterator::operator--):
+        * rendering/SimpleLineLayoutTextFragmentIterator.cpp:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::nextTextFragment):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::findNextTextFragment):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::revertToFragment):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::skipToNextPosition):
+        * rendering/SimpleLineLayoutTextFragmentIterator.h:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::isLastInRenderer):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::isLineBreak):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::TextFragment::isEmpty):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::isSoftLineBreak):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::isHardLineBreak):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::isLineBreak): Deleted.
+
+2015-04-09  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r182603): editing/selection/selection-invalid-offset.html is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=143591
+
+        Reviewed by Ryosuke Niwa.
+
+        Add missing null-check for m_frame->editor().client() in
+        FrameSelection::updateAndRevealSelection().
+
+        * editing/FrameSelection.cpp:
+        (WebCore::FrameSelection::updateAndRevealSelection):
+
+2015-04-09  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Minor cleanups to WebCore/plugins
+        https://bugs.webkit.org/show_bug.cgi?id=143509
+
+        Reviewed by Anders Carlsson.
+
+        1. Remove unnecessary #includes.
+        2. Fix some wrong namespace comments for consistency.
+
+        No new tests, no behavior change.
+
+        * plugins/DOMMimeType.cpp:
+        * plugins/DOMMimeType.h:
+        * plugins/DOMMimeTypeArray.h:
+        * plugins/DOMPlugin.h:
+        * plugins/DOMPluginArray.h:
+        * plugins/PluginData.cpp:
+        * plugins/PluginData.h:
+        * plugins/PluginMainThreadScheduler.cpp:
+        * plugins/PluginViewBase.h:
+
+2015-04-09  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Implement justify-self and justify-item css properties.
+        https://bugs.webkit.org/show_bug.cgi?id=133281
+
+        Reviewed by David Hyatt.
+
+        Implement the new property 'justify-items', defined in the CSS Box Alignment
+        specification to describe the container's alignment behavior, in the same way
+        the 'align-items' property does. The 'justify-self' 'auto' value of any relative
+        positioned element will be resolved to its container's 'justify-items' value.
+
+        Test: fast/css/parse-justify-items.html
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::resolveContainerAlignmentAuto): Function to resolve 'auto' values for 'align-items' or 'justify-items'.
+        (WebCore::resolveSelfAlignmentAuto): Function to resolve 'auto' values for 'align-self' or 'justify-self'.
+        (WebCore::valueForItemPositionWithOverflowAlignment): Take into account the 'legacy' keyword.
+        (WebCore::ComputedStyleExtractor::propertyValue):
+        (WebCore::resolveAlignmentAuto): Deleted (renamed to resolveContainerAlignmentAuto).
+        * css/CSSParser.cpp:
+        (WebCore::CSSParser::parseValue): Refactoring to share logic between justify-xxx and align-xxx properties.
+        (WebCore::CSSParser::parseLegacyPosition): Parsing logic of 'legacy' keyword,
+        (WebCore::CSSParser::parseItemPositionOverflowPosition): Take into account the 'legacy' keyword.
+        * css/CSSParser.h:
+        * css/CSSPropertyNames.in:
+        * css/CSSValueKeywords.in:
+        * css/StyleBuilderCustom.h:
+        (WebCore::StyleBuilderCustom::applyInheritJustifyItems): Added.
+        (WebCore::StyleBuilderCustom::applyInitialJustifyItems): Added.
+        (WebCore::StyleBuilderCustom::applyValueJustifyItems): Added.
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustRenderStyle): Resolve 'auto' values for justify-items when parents have the 'legacy' keyword.
+        * rendering/style/RenderStyle.h: Managing the new ItemPositionType fields.
+        * rendering/style/RenderStyleConstants.h: Added the ItemPositionType enumeration for handling the 'legacy' keyword.
+        * rendering/style/StyleRareNonInheritedData.cpp: Managing the new ItemPositionType fields.
+        (WebCore::StyleRareNonInheritedData::StyleRareNonInheritedData):
+        (WebCore::StyleRareNonInheritedData::operator==):
+        * rendering/style/StyleRareNonInheritedData.h:
+
+2015-04-09  Anders Carlsson  <andersca@apple.com>
+
+        Make it possible to create an application cache storage with custom directories
+        https://bugs.webkit.org/show_bug.cgi?id=143588
+
+        Reviewed by Sam Weinig.
+
+        Add cache directory and flat file directory name parameters to ApplicationCacheStorage::create.
+
+        * loader/appcache/ApplicationCacheStorage.cpp:
+        (WebCore::ApplicationCacheStorage::store):
+        (WebCore::ApplicationCacheStorage::loadCache):
+        (WebCore::ApplicationCacheStorage::checkForDeletedResources):
+        (WebCore::ApplicationCacheStorage::flatFileAreaSize):
+        (WebCore::ApplicationCacheStorage::ApplicationCacheStorage):
+        (WebCore::ApplicationCacheStorage::create):
+        (WebCore::ApplicationCacheStorage::singleton):
+        * loader/appcache/ApplicationCacheStorage.h:
+
+2015-04-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Text-combine erroneously draws vertically after non-layout-causing style change
+        https://bugs.webkit.org/show_bug.cgi?id=143461
+        <rdar://problem/19285490>
+
+        Reviewed by Darin Adler.
+
+        RenderCombineText::styleDidChange() unconditionally uncombines its text. Layout then
+        recombines it. However, if there is a style change that does not cause layout, the
+        RenderCombineText will be left uncombined until the next layout.
+
+        Test: fast/text/text-combine-style-change-no-layout.html
+
+        * rendering/RenderCombineText.cpp:
+        (WebCore::RenderCombineText::styleDidChange):
+
+2015-04-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Revert part of 182516: it broke tests
+        https://bugs.webkit.org/show_bug.cgi?id=143568
+        rdar://problem/20484578
+
+        Reviewed by Myles Maxfield.
+
+        Revert the FontCascadeCocoa parts of r182516, since it broke some CSS shapes tests.
+
+        * platform/graphics/cocoa/FontCascadeCocoa.mm:
+        (WebCore::FontCascade::drawGlyphs):
+        (WebCore::dilationSizeForTextColor): Deleted.
+
+2015-04-09  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout(regression): Calling innerText on RenderFlow with multiple children is slow.
+        https://bugs.webkit.org/show_bug.cgi?id=143554
+
+        Reviewed by Antti Koivisto.
+
+        Initialize render flow's segments only when the render flow changes in TextIterator.
+        The included performance test shows 6x speedup. (from ~10 runs/sec to ~60 runs/sec)
+
+        Test: PerformanceTests/Layout/simple-line-layout-innertext.html.
+
+        * editing/TextIterator.cpp:
+        (WebCore::TextIterator::handleTextNode):
+        * editing/TextIterator.h:
+        * rendering/SimpleLineLayoutFlowContents.cpp: Instruments log shows that vector's expandCapacity could be expensive when flow has large amount of children.
+        (WebCore::SimpleLineLayout::initializeSegments):
+
+2015-04-09  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][iOS] editorState() should not cause a synchronous layout
+        https://bugs.webkit.org/show_bug.cgi?id=142536
+        <rdar://problem/20041506>
+
+        Reviewed by Enrica Casucci.
+
+        Add didChangeSelectionAndUpdateLayout() callback to EditorClient
+        that is called at the end of FrameSelection::updateAndRevealSelection().
+
+        * editing/FrameSelection.cpp:
+        (WebCore::FrameSelection::updateAndRevealSelection):
+        * loader/EmptyClients.h:
+        * page/EditorClient.h:
+
+2015-04-08  Anders Carlsson  <andersca@apple.com>
+
+        Give each cache group a storage and use it in place of the singleton
+        https://bugs.webkit.org/show_bug.cgi?id=143540
+
+        Reviewed by Sam Weinig.
+
+        This is another step towards making the cache storage be per page.
+
+        * loader/appcache/ApplicationCacheGroup.cpp:
+        (WebCore::ApplicationCacheGroup::ApplicationCacheGroup):
+        (WebCore::ApplicationCacheGroup::~ApplicationCacheGroup):
+        (WebCore::ApplicationCacheGroup::cacheForMainRequest):
+        (WebCore::ApplicationCacheGroup::fallbackCacheForMainRequest):
+        (WebCore::ApplicationCacheGroup::selectCache):
+        (WebCore::ApplicationCacheGroup::makeObsolete):
+        (WebCore::ApplicationCacheGroup::didReachMaxAppCacheSize):
+        (WebCore::ApplicationCacheGroup::recalculateAvailableSpaceInQuota):
+        (WebCore::ApplicationCacheGroup::checkIfLoadIsComplete):
+        * loader/appcache/ApplicationCacheGroup.h:
+        * loader/appcache/ApplicationCacheStorage.cpp:
+        (WebCore::ApplicationCacheStorage::loadCacheGroup):
+        (WebCore::ApplicationCacheStorage::findOrCreateCacheGroup):
+        (WebCore::ApplicationCacheStorage::cacheGroupForURL):
+        (WebCore::ApplicationCacheStorage::fallbackCacheGroupForURL):
+
+2015-04-09  Andy Estes  <aestes@apple.com>
+
+        Try to fix the Mac build after r182596.
+
+        I was wrong to replace PLATFORM(IOS) with HAVE(PARENTAL_CONTROLS) in ContentFilterUnblockHandler.
+        The conditional should be HAVE(PARENTAL_CONTROLS) && PLATFORM(IOS).
+
+        * platform/ContentFilterUnblockHandler.h:
+        * platform/cocoa/ContentFilterUnblockHandlerCocoa.mm:
+        (WebCore::ContentFilterUnblockHandler::wrapWithDecisionHandler):
+        (WebCore::ContentFilterUnblockHandler::needsUIProcess):
+        (WebCore::ContentFilterUnblockHandler::encode):
+        (WebCore::ContentFilterUnblockHandler::decode):
+        (WebCore::ContentFilterUnblockHandler::canHandleRequest):
+        (WebCore::ContentFilterUnblockHandler::requestUnblockAsync):
+
+2015-04-09  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Add a HAVE(PARENTAL_CONTROLS) and use it
+        https://bugs.webkit.org/show_bug.cgi?id=143559
+
+        Reviewed by David Kilzer.
+
+        * loader/ContentFilter.cpp:
+        (WebCore::ContentFilter::types): Only registered ParentalControlsContentFilter if HAVE(PARENTAL_CONTROLS).
+        * platform/ContentFilterUnblockHandler.h: Changed PLATFORM(IOS) to HAVE(PARENTAL_CONTROLS).
+        * platform/cocoa/ContentFilterUnblockHandlerCocoa.mm:
+        (WebCore::ContentFilterUnblockHandler::wrapWithDecisionHandler): Ditto.
+        (WebCore::ContentFilterUnblockHandler::needsUIProcess): Ditto.
+        (WebCore::ContentFilterUnblockHandler::encode): Ditto.
+        (WebCore::ContentFilterUnblockHandler::decode): Ditto.
+        (WebCore::ContentFilterUnblockHandler::canHandleRequest): Ditto.
+        (WebCore::ContentFilterUnblockHandler::requestUnblockAsync): Ditto.
+        * platform/cocoa/ParentalControlsContentFilter.mm: Wrapped the file with HAVE(PARENTAL_CONTROLS)
+
+2015-04-09  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed, added CSS Grid Layout to features.json file.
+
+        * features.json:
+
+2015-04-08  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Support the start function parameter in ReadableStream constructor
+        https://bugs.webkit.org/show_bug.cgi?id=141160
+
+        Reviewed by Benjamin Poulain.
+
+        Stores the JS source object in ReadableStreamJSSource and calls its "start" function.
+        This function takes a controller object that has three JS functions as members: close, enqueue and error.
+        This controller is stored in ReadableStreamJSSource as it will be reused as "pull" parameter.
+        All three JS functions do not currently do anything.
+
+        Test: streams/readablestream-start.html
+
+        * Modules/streams/ReadableStream.cpp:
+        (WebCore::ReadableStream::start): Place holder for step 11 of https://streams.spec.whatwg.org/#rs-constructor.
+        * Modules/streams/ReadableStream.h:
+        * bindings/js/JSReadableStreamCustom.cpp:
+        (WebCore::constructJSReadableStream):
+        * bindings/js/ReadableStreamJSSource.cpp:
+        (WebCore::getPropertyFromObject): Helper function to get a public property from an object.
+        (WebCore::setPropertyToObject): Helper function to set a public property to an object.
+        (WebCore::callFunction): Helper function to call a JS function from C++.
+        (WebCore::ReadableStreamJSSource::ReadableStreamJSSource):
+        (WebCore::notImplementedFunction):
+        (WebCore::createReadableStreamEnqueueFunction): Creates the JS function for enqueue.
+        (WebCore::createReadableStreamCloseFunction): Creates the JS function for close.
+        (WebCore::createReadableStreamErrorFunction): Creates the JS function for error.
+        (WebCore::startReadableStreamAsync): Equivalent of promise resolution for start.
+        (WebCore::ReadableStreamJSSource::start): Calls the "start" function of the JS source with all three JS functions (enqueue, close, error) as parameters.
+        * bindings/js/ReadableStreamJSSource.h:
+
 2015-04-08  Brent Fulgham  <bfulgham@apple.com>
 
         [Mac] Unreviewed test fix after r182584
@@ -2056,6 +4707,9 @@
         3. Remove a number of unneeded null checks in EventHandler.
         4. ScrollController must always have a client, so hold a reference instead of using a pointer.
 
+        * WebCore.vcxproj/WebCore.vcxproj: Add new WheelEventTestTrigger files.
+        * WebCore.vcxproj/WebCore.vcxproj.filters: Ditto.
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
         * page/EventHandler.cpp:
         (WebCore::EventHandler::platformNotifyIfEndGesture): Renamed from 'platformNotifySnapIfNecessary'.
         (WebCore::EventHandler::handleWheelEvent): Call 'platformNotifySnapIfNecessary' at method exit points.

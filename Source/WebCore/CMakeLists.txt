@@ -221,7 +221,6 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/mediastream/AllAudioCapabilities.idl
     Modules/mediastream/AllVideoCapabilities.idl
-    Modules/mediastream/AudioStreamTrack.idl
     Modules/mediastream/CapabilityRange.idl
     Modules/mediastream/DOMURLMediaStream.idl
     Modules/mediastream/HTMLMediaElementMediaStream.idl
@@ -257,7 +256,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCStatsReport.idl
     Modules/mediastream/RTCStatsResponse.idl
     Modules/mediastream/SourceInfo.idl
-    Modules/mediastream/VideoStreamTrack.idl
 
     Modules/navigatorcontentutils/NavigatorContentUtils.idl
 
@@ -430,7 +428,6 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/TreeWalker.idl
     dom/UIEvent.idl
     dom/WebKitAnimationEvent.idl
-    dom/WebKitMouseForceEvent.idl
     dom/WebKitNamedFlow.idl
     dom/WebKitTransitionEvent.idl
     dom/WheelEvent.idl
@@ -871,7 +868,6 @@ set(WebCore_SOURCES
     Modules/mediasource/SourceBufferList.cpp
     Modules/mediasource/VideoPlaybackQuality.cpp
 
-    Modules/mediastream/AudioStreamTrack.cpp
     Modules/mediastream/CapabilityRange.cpp
     Modules/mediastream/DOMURLMediaStream.cpp
     Modules/mediastream/HTMLMediaElementMediaStream.cpp
@@ -908,7 +904,6 @@ set(WebCore_SOURCES
     Modules/mediastream/SourceInfo.cpp
     Modules/mediastream/UserMediaController.cpp
     Modules/mediastream/UserMediaRequest.cpp
-    Modules/mediastream/VideoStreamTrack.cpp
 
     Modules/navigatorcontentutils/NavigatorContentUtils.cpp
 
@@ -1219,6 +1214,21 @@ set(WebCore_SOURCES
 
     bridge/jsc/BridgeJSC.cpp
 
+    contentextensions/CombinedURLFilters.cpp
+    contentextensions/CompiledContentExtension.cpp
+    contentextensions/ContentExtension.cpp
+    contentextensions/ContentExtensionCompiler.cpp
+    contentextensions/ContentExtensionError.cpp
+    contentextensions/ContentExtensionParser.cpp
+    contentextensions/ContentExtensionRule.cpp
+    contentextensions/ContentExtensionsBackend.cpp
+    contentextensions/DFA.cpp
+    contentextensions/DFABytecodeCompiler.cpp
+    contentextensions/DFABytecodeInterpreter.cpp
+    contentextensions/NFA.cpp
+    contentextensions/NFAToDFA.cpp
+    contentextensions/URLFilterParser.cpp
+
     css/BasicShapeFunctions.cpp
     css/CSSAspectRatioValue.cpp
     css/CSSBasicShapes.cpp
@@ -1460,7 +1470,6 @@ set(WebCore_SOURCES
     dom/ViewportArguments.cpp
     dom/VisitedLinkState.cpp
     dom/WebKitAnimationEvent.cpp
-    dom/WebKitMouseForceEvent.cpp
     dom/WebKitNamedFlow.cpp
     dom/WebKitTransitionEvent.cpp
     dom/WheelEvent.cpp
@@ -1828,6 +1837,7 @@ set(WebCore_SOURCES
     inspector/WorkerRuntimeAgent.cpp
 
     loader/CookieJar.cpp
+    loader/ContentFilter.cpp
     loader/CrossOriginAccessControl.cpp
     loader/CrossOriginPreflightResultCache.cpp
     loader/DocumentLoadTiming.cpp
@@ -1974,6 +1984,7 @@ set(WebCore_SOURCES
     page/UserContentURLPattern.cpp
     page/VisitedLinkStore.cpp
     page/WheelEventDeltaTracker.cpp
+    page/WheelEventTestTrigger.cpp
     page/WindowFeatures.cpp
     page/WindowFocusAllowedIndicator.cpp
     page/WorkerNavigator.cpp
@@ -2040,6 +2051,7 @@ set(WebCore_SOURCES
     platform/ScrollbarThemeComposite.cpp
     platform/SharedBuffer.cpp
     platform/SharedBufferChunkReader.cpp
+    platform/Theme.cpp
     platform/ThreadGlobalData.cpp
     platform/ThreadTimers.cpp
     platform/Timer.cpp
@@ -2937,6 +2949,8 @@ if (ENABLE_VIDEO_TRACK)
         html/track/VideoTrack.cpp
         html/track/VideoTrackList.cpp
         html/track/VTTCue.cpp
+        html/track/VTTRegion.cpp
+        html/track/VTTRegionList.cpp
         html/track/VTTScanner.cpp
         html/track/WebVTTElement.cpp
         html/track/WebVTTParser.cpp
