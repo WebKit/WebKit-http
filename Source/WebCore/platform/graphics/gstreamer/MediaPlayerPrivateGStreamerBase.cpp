@@ -632,6 +632,9 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
         if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps)))
             return;
 
+        if (!m_platformLayerProxy->hasTargetLayer())
+            return;
+
         IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
 
         unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(size);

@@ -65,7 +65,15 @@ void TextureMapperPlatformLayerProxy::setCompositor(Compositor* compositor)
 void TextureMapperPlatformLayerProxy::setTargetLayer(TextureMapperLayer* layer)
 {
     ASSERT(m_compositorThreadID == WTF::currentThread());
+    MutexLocker locker(m_pushMutex);
     m_targetLayer = layer;
+    m_pushCondition.signal();
+}
+
+bool TextureMapperPlatformLayerProxy::hasTargetLayer()
+{
+    MutexLocker locker(m_pushMutex);
+    return !!m_targetLayer;
 }
 
 void TextureMapperPlatformLayerProxy::pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
@@ -131,10 +139,9 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
         }
 
         m_currentBuffer = WTF::move(m_pendingBuffer);
-        m_pushCondition.signal();
-    }
+        m_targetLayer->setContentsLayer(m_currentBuffer.get());
 
-    m_targetLayer->setContentsLayer(m_currentBuffer.get());
+        m_pushCondition.signal();
     }
 }
 

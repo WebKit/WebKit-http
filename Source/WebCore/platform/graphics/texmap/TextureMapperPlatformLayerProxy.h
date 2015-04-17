@@ -63,6 +63,7 @@ public:
 
     void setCompositor(Compositor*);
     void setTargetLayer(TextureMapperLayer*);
+    bool hasTargetLayer();
 
     void swapBuffer();
 
