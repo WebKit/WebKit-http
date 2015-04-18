@@ -303,7 +303,7 @@ void ThreadedCoordinatedLayerTreeHost::paintLayerContents(const GraphicsLayer*, 
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-PassRefPtr<WebCore::DisplayRefreshMonitor> ThreadedCoordinatedLayerTreeHost::createDisplayRefreshMonitor(PlatformDisplayID)
+RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCoordinatedLayerTreeHost::createDisplayRefreshMonitor(PlatformDisplayID)
 {
     return m_displayRefreshMonitor;
 }
