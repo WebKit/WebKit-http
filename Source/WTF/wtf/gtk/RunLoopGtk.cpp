@@ -146,7 +146,7 @@ void RunLoop::TimerBase::stop()
 
 bool RunLoop::TimerBase::isActive() const
 {
-    return m_timerSource.isScheduled();
+    return m_timerSource.isActive();
 }
 
 void RunLoop::TimerBase::timerFired()
