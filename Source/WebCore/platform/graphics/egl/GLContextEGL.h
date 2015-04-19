@@ -34,7 +34,6 @@ public:
     enum EGLSurfaceType { PbufferSurface, WindowSurface, PixmapSurface };
     static std::unique_ptr<GLContextEGL> createContext(EGLNativeWindowType, GLContext* sharingContext = 0);
     static std::unique_ptr<GLContextEGL> createWindowContext(EGLNativeWindowType, GLContext* sharingContext);
-    static std::unique_ptr<GLContextEGL> createPbufferContext(GLContext* sharingContext);
 
     GLContextEGL(EGLContext, EGLSurface, EGLSurfaceType);
     virtual ~GLContextEGL();
@@ -53,6 +52,7 @@ public:
 #endif
 
 private:
+    static std::unique_ptr<GLContextEGL> createPbufferContext(EGLContext sharingContext);
     static std::unique_ptr<GLContextEGL> createPixmapContext(EGLContext sharingContext);
 
     static void addActiveContext(GLContextEGL*);
