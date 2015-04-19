@@ -149,6 +149,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(EGLNativeWindowT
     if (surface == EGL_NO_SURFACE) {
         eglDestroyContext(display, context);
         return nullptr;
+    }
 
     return std::make_unique<GLContextEGL>(context, surface, WindowSurface);
 }
