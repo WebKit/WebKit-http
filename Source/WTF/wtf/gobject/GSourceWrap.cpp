@@ -98,6 +98,9 @@ gboolean GSourceWrap::staticSocketCallback(GSocket*, GIOCondition condition, gpo
 
 gint64 GSourceWrap::targetTimeForDelay(std::chrono::microseconds delay)
 {
+    if (!delay.count())
+        return 0;
+
     gint64 currentTime = g_get_monotonic_time();
     gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, delay.count());
     ASSERT(targetTime >= currentTime);
