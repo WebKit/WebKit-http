@@ -45,7 +45,6 @@
 #endif
 
 #if USE(OPENGL_ES_2)
-#include "GLContextEGL.h"
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #if GST_CHECK_VERSION(1, 3, 0)
@@ -99,7 +98,6 @@ static guint webkitVideoSinkSignals[LAST_SIGNAL] = { 0, };
 struct _WebKitVideoSinkPrivate {
     _WebKitVideoSinkPrivate()
         : timeoutSource("[WebKit] webkitVideoSinkTimeoutCallback")
-        , repaintContext(GLContextEGL::createPbufferContext(GLContext::sharingContext()))
     {
         g_mutex_init(&sampleMutex);
         g_cond_init(&dataCondition);
@@ -149,8 +147,6 @@ struct _WebKitVideoSinkPrivate {
     GstGLContext *context;
     GstGLContext *other_context;
 #endif
-
-    std::unique_ptr<GLContext> repaintContext;
 };
 
 #define webkit_video_sink_parent_class parent_class
@@ -204,8 +200,6 @@ static void webkitVideoSinkTimeoutCallback(WebKitVideoSink* sink)
         g_cond_signal(&priv->dataCondition);
         return;
     }
-
-    priv->repaintContext->makeContextCurrent();
 
     g_signal_emit(sink, webkitVideoSinkSignals[REPAINT_REQUESTED], 0, sample);
     gst_sample_unref(sample);
