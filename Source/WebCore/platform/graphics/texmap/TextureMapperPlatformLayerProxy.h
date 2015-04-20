@@ -67,9 +67,6 @@ public:
 
     void swapBuffer();
 
-    void waitBufferRendering();
-    void bufferSwapped();
-
 private:
     void scheduleReleaseUnusedBuffers();
     void releaseUnusedBuffersTimerFired();
@@ -82,8 +79,6 @@ private:
 
     Mutex m_pushMutex;
     ThreadCondition m_pushCondition;
-    Mutex m_paintMutex;
-    ThreadCondition m_paintCondition;
 
     Vector<std::unique_ptr<TextureMapperPlatformLayerBuffer>> m_usedBuffers;
 
