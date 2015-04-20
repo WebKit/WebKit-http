@@ -326,11 +326,13 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
 
     m_readyTimerHandler.cancel();
 
+#if ENABLE(MEDIA_SOURCE)
     if (m_source && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
         g_signal_handlers_disconnect_by_func(m_source.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoChangedCallback), this);
         g_signal_handlers_disconnect_by_func(m_source.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateAudioChangedCallback), this);
         g_signal_handlers_disconnect_by_func(m_source.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateTextChangedCallback), this);
     }
+#endif
 
     if (m_pipeline) {
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
@@ -2210,9 +2212,11 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::extendedSupportsType(cons
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaEngineSupportParameters& parameters)
 {
+#if ENABLE(MEDIA_SOURCE)
     // Disable VPX/Opus on MSE for now, mp4/avc1 seems way more reliable currently.
     if (parameters.isMediaSource && parameters.type.endsWith("webm"))
         return MediaPlayer::IsNotSupported;
+#endif
 
     if (parameters.type.isNull() || parameters.type.isEmpty())
         return MediaPlayer::IsNotSupported;
