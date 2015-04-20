@@ -154,8 +154,10 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(EGLNativeWindowT
     return std::make_unique<GLContextEGL>(context, surface, WindowSurface);
 }
 
-std::unique_ptr<GLContextEGL> GLContextEGL::createPbufferContext(EGLContext sharingContext)
+std::unique_ptr<GLContextEGL> GLContextEGL::createPbufferContext(GLContext* sharingContext)
 {
+    EGLContext eglSharingContext = sharingContext ? static_cast<GLContextEGL*>(sharingContext)->m_context : 0;
+
     EGLDisplay display = sharedEGLDisplay();
     if (display == EGL_NO_DISPLAY)
         return nullptr;
@@ -164,7 +166,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createPbufferContext(EGLContext shar
     if (!getEGLConfig(&config, PbufferSurface))
         return nullptr;
 
-    EGLContext context = eglCreateContext(display, config, sharingContext, gContextAttributes);
+    EGLContext context = eglCreateContext(display, config, eglSharingContext, gContextAttributes);
     if (context == EGL_NO_CONTEXT)
         return nullptr;
 
@@ -235,7 +237,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createContext(EGLNativeWindowType wi
         context = createPixmapContext(eglSharingContext);
 
     if (!context)
-        context = createPbufferContext(eglSharingContext);
+        context = createPbufferContext(sharingContext);
     
     return WTF::move(context);
 }
