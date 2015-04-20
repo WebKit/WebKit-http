@@ -620,16 +620,23 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
         WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
         m_sample = sample;
 
+        GRefPtr<GstCaps> caps;
         if (!GST_IS_SAMPLE(m_sample.get()))
+#if ENABLE(MEDIA_SOURCE)
+            caps = currentDemuxerCaps();
+#else
             return;
+#endif
 
-        GstCaps* caps = gst_sample_get_caps(m_sample.get());
+        if (!caps)
+            caps = gst_sample_get_caps(m_sample.get());
+
         if (UNLIKELY(!caps))
             return;
 
         GstVideoInfo videoInfo;
         gst_video_info_init(&videoInfo);
-        if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps)))
+        if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps.get())))
             return;
 
         if (!m_platformLayerProxy->hasTargetLayer())
