@@ -649,6 +649,7 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 
         updateTexture(buffer->textureGL(), videoInfo);
         m_platformLayerProxy->pushNextBuffer(WTF::move(buffer));
+        m_platformLayerProxy->waitBufferRendering();
     }
     return;
 #endif

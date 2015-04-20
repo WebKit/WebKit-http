@@ -119,6 +119,9 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
             protector->updateViewport();
         });
     }
+
+    for (PlatformLayerProxyMap::iterator it = m_platformLayerProxies.begin(); it != m_platformLayerProxies.end(); ++it)
+        it->value->bufferSwapped();
 }
 
 void CoordinatedGraphicsScene::paintToGraphicsContext(PlatformGraphicsContext* platformContext, const Color& backgroundColor, bool drawsBackground)

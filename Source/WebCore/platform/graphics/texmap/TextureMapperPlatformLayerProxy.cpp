@@ -145,6 +145,23 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
     }
 }
 
+void TextureMapperPlatformLayerProxy::waitBufferRendering()
+{
+    {
+        MutexLocker locker(m_paintMutex);
+        m_paintCondition.wait(m_paintMutex);
+    }
+
+}
+
+void TextureMapperPlatformLayerProxy::bufferSwapped()
+{
+    {
+        MutexLocker locker(m_paintMutex);
+        m_paintCondition.signal();
+    }
+}
+
 };
 
 #endif // USE(COORDINATED_GRAPHICS_THREADED)
