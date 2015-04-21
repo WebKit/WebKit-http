@@ -175,7 +175,7 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
 
     // prepare temporaryData if necessary
     if ((!driverSupportsExternalTextureBGRA(m_context3D.get()) && updateContentsFlag == UpdateCannotModifyOriginalImageData) || requireSubImageBuffer) {
-        temporaryData.resize(targetRect.width() * targetRect.height() * bytesPerPixel);
+        temporaryData.reserveCapacity(targetRect.width() * targetRect.height() * bytesPerPixel);
         data = temporaryData.data();
         const char* bits = static_cast<const char*>(srcData);
         const char* src = bits + sourceOffset.y() * bytesPerLine + sourceOffset.x() * bytesPerPixel;
