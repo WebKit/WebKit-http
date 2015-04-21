@@ -382,7 +382,7 @@ bool CompositingCoordinator::paintToSurface(const IntSize& size, CoordinatedSurf
         }
     }
 
-    static const int ScratchBufferDimension = 1024; // Should be a power of two.
+    static const int ScratchBufferDimension = 512; // Should be a power of two.
     m_updateAtlases.append(std::make_unique<UpdateAtlas>(this, ScratchBufferDimension, flags));
     scheduleReleaseInactiveAtlases();
     return m_updateAtlases.last()->paintOnAvailableBuffer(size, atlasID, offset, client);
