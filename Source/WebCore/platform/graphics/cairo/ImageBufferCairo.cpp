@@ -99,7 +99,7 @@ void ImageBufferData::createCairoGLSurface()
     glTexImage2D(GL_TEXTURE_2D, 0 /* level */, GL_RGBA, m_size.width(), m_size.height(), 0 /* border */, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_texture, m_size, false, false));
+    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_texture, m_size, true, false));
 #endif
 
     GLContext* context = GLContext::sharingContext();
