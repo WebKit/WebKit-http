@@ -145,9 +145,6 @@ struct _WebKitWebSrcPrivate {
     GMainLoopSource::Simple enoughDataSource;
     GMainLoopSource::Simple seekSource;
 
-    GCond stopCondition;
-    GMutex stopMutex;
-
     GRefPtr<GstBuffer> buffer;
 
     // icecast stuff
@@ -287,9 +284,6 @@ static void webkit_web_src_init(WebKitWebSrc* src)
     src->priv = priv;
     new (priv) WebKitWebSrcPrivate();
 
-    g_cond_init(&priv->stopCondition);
-    g_mutex_init(&priv->stopMutex);
-
     priv->appsrc = GST_APP_SRC(gst_element_factory_make("appsrc", 0));
     if (!priv->appsrc) {
         GST_ERROR_OBJECT(src, "Failed to create appsrc");
@@ -349,8 +343,6 @@ static void webKitWebSrcFinalize(GObject* object)
     WebKitWebSrc* src = WEBKIT_WEB_SRC(object);
     WebKitWebSrcPrivate* priv = src->priv;
 
-    g_cond_clear(&priv->stopCondition);
-    g_mutex_clear(&priv->stopMutex);
     g_free(priv->uri);
     priv->~WebKitWebSrcPrivate();
 
@@ -674,17 +666,10 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
     {
         GST_DEBUG_OBJECT(src, "PAUSED->READY");
         priv->pendingStart = FALSE;
-        locker.unlock();
-        WTF::GMutexLocker<GMutex> lock(priv->stopMutex);
+        // cancel pending sources
+        removeTimeoutSources(src);
         GstObjectRef protector(GST_OBJECT(src));
-        priv->stopSource.schedule(std::chrono::milliseconds(0),
-            [protector] {
-                WebKitWebSrc* src = WEBKIT_WEB_SRC(protector.get());
-                WTF::GMutexLocker<GMutex> lock(src->priv->stopMutex);
-                webKitWebSrcStop(src);
-                g_cond_signal(&src->priv->stopCondition);
-        });
-        g_cond_wait(&priv->stopCondition, &priv->stopMutex);
+        priv->stopSource.schedule(std::chrono::milliseconds(0), [protector] { webKitWebSrcStop(WEBKIT_WEB_SRC(protector.get())); });
         break;
     }
     default:
