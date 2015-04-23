@@ -1,3 +1,21 @@
+<<<<<<< HEAD
+2015-03-31  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [ThreadedCompositor] Add support for PlatformLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=143299
+
+        Reviewed by NOBODY (OOPS!).
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::paintToCurrentGLContext):
+        Swap pending buffers of TextureMapperPlatformLayerProxies before painting contents.
+        (WebKit::CoordinatedGraphicsScene::syncPlatformLayerIfNeeded):
+        In threaded compositor, CoordinatedGraphicsScence only cares about creation and deletion
+        of platform layers.
+        (WebKit::CoordinatedGraphicsScene::onNewBufferAvailable):
+        Whenever new buffer comes via TextureMapperPlatformLayerProxy, CoordinatedGraphicsScene sets a
+        timer to update viewport if it is needed.
+=======
 2015-04-22  Darin Adler  <darin@apple.com>
 
         Remove OwnPtr and PassOwnPtr use from WebKit/cf, WebKit/mac, and WebKit2
@@ -870,6 +888,7 @@
         * Shared/soup/WebCoreArgumentCodersSoup.cpp:
         (IPC::ArgumentCoder<ResourceRequest>::encodePlatformData):
         (IPC::ArgumentCoder<ResourceRequest>::decodePlatformData):
+>>>>>>> 368892e44dbf872536f7db3e6c06acf4259ebfdf
 
 2015-04-16  Sungmann Cho  <sungmann.cho@navercorp.com>
 
