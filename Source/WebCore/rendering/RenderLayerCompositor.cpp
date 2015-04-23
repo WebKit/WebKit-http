@@ -458,10 +458,7 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
 
     if (GraphicsLayer* rootLayer = rootGraphicsLayer()) {
 #if PLATFORM(IOS)
-        double horizontalMargin = defaultTileWidth / pageScaleFactor();
-        double verticalMargin = defaultTileHeight / pageScaleFactor();
-        FloatRect visibleRect = frameView.computeCoverageRect(horizontalMargin, verticalMargin);
-        rootLayer->flushCompositingState(visibleRect);
+        rootLayer->flushCompositingState(frameView.exposedContentRect());
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
         IntRect visibleRect = m_clipLayer ? IntRect(IntPoint(), frameView.unscaledVisibleContentSizeIncludingObscuredArea()) : frameView.visibleContentRect();
@@ -837,17 +834,17 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer& layer, int depth)
         absoluteBounds.x().toFloat(), absoluteBounds.y().toFloat(), absoluteBounds.maxX().toFloat(), absoluteBounds.maxY().toFloat(),
         backing->backingStoreMemoryEstimate() / 1024));
     
-    logString.append(" (");
+    logString.appendLiteral(" (");
     logString.append(logReasonsForCompositing(layer));
-    logString.append(") ");
+    logString.appendLiteral(") ");
 
     if (backing->graphicsLayer()->contentsOpaque() || backing->paintsIntoCompositedAncestor()) {
         logString.append('[');
         if (backing->graphicsLayer()->contentsOpaque())
-            logString.append("opaque");
+            logString.appendLiteral("opaque");
         if (backing->paintsIntoCompositedAncestor())
-            logString.append("paints into ancestor");
-        logString.append("] ");
+            logString.appendLiteral("paints into ancestor");
+        logString.appendLiteral("] ");
     }
 
     logString.append(layer.name());

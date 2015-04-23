@@ -87,6 +87,7 @@
 #include "JSTypedArrayPrototypes.h"
 #include "JSTypedArrays.h"
 #include "JSWeakMap.h"
+#include "JSWeakSet.h"
 #include "JSWithScope.h"
 #include "LegacyProfiler.h"
 #include "Lookup.h"
@@ -127,6 +128,8 @@
 #include "WeakGCMapInlines.h"
 #include "WeakMapConstructor.h"
 #include "WeakMapPrototype.h"
+#include "WeakSetConstructor.h"
+#include "WeakSetPrototype.h"
 
 #if ENABLE(PROMISES)
 #include "JSPromise.h"
@@ -536,9 +539,11 @@ namespace {
 class ObjectsWithBrokenIndexingFinder : public MarkedBlock::VoidFunctor {
 public:
     ObjectsWithBrokenIndexingFinder(MarkedArgumentBuffer&, JSGlobalObject*);
-    void operator()(JSCell*);
+    IterationStatus operator()(JSCell*);
 
 private:
+    void visit(JSCell*);
+
     MarkedArgumentBuffer& m_foundObjects;
     JSGlobalObject* m_globalObject;
 };
@@ -559,7 +564,7 @@ inline bool hasBrokenIndexing(JSObject* object)
     return hasUndecided(type) || hasInt32(type) || hasDouble(type) || hasContiguous(type) || hasArrayStorage(type);
 }
 
-void ObjectsWithBrokenIndexingFinder::operator()(JSCell* cell)
+inline void ObjectsWithBrokenIndexingFinder::visit(JSCell* cell)
 {
     if (!cell->isObject())
         return;
@@ -589,6 +594,12 @@ void ObjectsWithBrokenIndexingFinder::operator()(JSCell* cell)
         return;
     
     m_foundObjects.append(object);
+}
+
+IterationStatus ObjectsWithBrokenIndexingFinder::operator()(JSCell* cell)
+{
+    visit(cell);
+    return IterationStatus::Continue;
 }
 
 } // end private namespace for helpers for JSGlobalObject::haveABadTime()

@@ -162,7 +162,7 @@ public:
             return;
         
         // Check if there is any replacement.
-        Node* replacement = child->replacement;
+        Node* replacement = child->replacement();
         if (!replacement)
             return;
         
@@ -170,7 +170,7 @@ public:
         
         // There is definitely a replacement. Assert that the replacement does not
         // have a replacement.
-        ASSERT(!child->replacement);
+        ASSERT(!child->replacement());
     }
     
     template<typename... Params>
@@ -196,6 +196,9 @@ public:
     
     // CodeBlock is optional, but may allow additional information to be dumped (e.g. Identifier names).
     void dump(PrintStream& = WTF::dataFile(), DumpContext* = 0);
+    
+    bool terminalsAreValid();
+    
     enum PhiNodeDumpMode { DumpLivePhisOnly, DumpAllPhis };
     void dumpBlockHeader(PrintStream&, const char* prefix, BasicBlock*, PhiNodeDumpMode, DumpContext*);
     void dump(PrintStream&, Edge);
@@ -560,6 +563,7 @@ public:
     void clearFlagsOnAllNodes(NodeFlags);
     
     void clearReplacements();
+    void clearEpochs();
     void initializeNodeOwners();
     
     BlockList blocksInPreOrder();

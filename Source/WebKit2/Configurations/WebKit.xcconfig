@@ -26,6 +26,10 @@
 PRODUCT_NAME = WebKit;
 INFOPLIST_FILE = Info.plist;
 
+DEFINES_MODULE=YES;
+MODULEMAP_FILE[sdk=macosx*]=Modules/OSX.modulemap;
+MODULEMAP_FILE[sdk=iphone*]=Modules/iOS.modulemap;
+
 INSTALL_PATH_ACTUAL = $(WEBKIT_FRAMEWORKS_DIR);
 DYLIB_INSTALL_NAME_BASE = $(NORMAL_WEBKIT_FRAMEWORKS_DIR);
 
@@ -44,7 +48,7 @@ SECTORDER_FLAGS = $(SECTORDER_FLAGS_$(CONFIGURATION));
 SECTORDER_FLAGS_Production[sdk=iphoneos*] = -Wl,-order_file,$(SDKROOT)/AppleInternal/OrderFiles/WebKit.order;
 SECTORDER_FLAGS_Production[sdk=macosx*] = -Wl,-order_file,mac/WebKit2.order;
 
-EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*] = *.pdf WKActionMenuController.* com.apple.WebKit.Databases.sb com.apple.WebKit.NetworkProcess.sb com.apple.WebProcess.sb PlugInSandboxProfiles/*.sb;
+EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*] = *.pdf Resources/mac/* WKActionMenuController.* com.apple.WebKit.Databases.sb com.apple.WebKit.NetworkProcess.sb com.apple.WebProcess.sb PlugInSandboxProfiles/*.sb;
 
 INSTALLHDRS_SCRIPT_PHASE = YES;
 

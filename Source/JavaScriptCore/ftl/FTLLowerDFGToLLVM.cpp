@@ -152,7 +152,7 @@ public:
         m_out.appendTo(m_prologue, stackOverflow);
         createPhiVariables();
 
-        Vector<BasicBlock*> preOrder = m_graph.blocksInPreOrder();
+        auto preOrder = m_graph.blocksInPreOrder();
 
         int maxNumberOfArguments = -1;
         for (BasicBlock* block : preOrder) {
@@ -846,7 +846,6 @@ private:
 
         case PhantomLocal:
         case LoopHint:
-        case AllocationProfileWatchpoint:
         case MovHint:
         case ZombieHint:
         case PhantomNewObject:
@@ -860,8 +859,11 @@ private:
             DFG_CRASH(m_graph, m_node, "Unrecognized node in FTL backend");
             break;
         }
-
-        if (!m_state.isValid() && !m_node->isTerminal()) {
+        
+        if (m_node->isTerminal())
+            return false;
+        
+        if (!m_state.isValid()) {
             safelyInvalidateAfterTermination();
             return false;
         }

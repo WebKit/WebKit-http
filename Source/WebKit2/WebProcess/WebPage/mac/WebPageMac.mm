@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,6 +65,7 @@
 #import <WebCore/FrameView.h>
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/HTMLConverter.h>
+#import <WebCore/HTMLPlugInImageElement.h>
 #import <WebCore/HitTestResult.h>
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/MIMETypeRegistry.h>
@@ -283,7 +284,8 @@ void WebPage::setComposition(const String& text, Vector<CompositionUnderline> un
         RefPtr<Range> replacementRange;
         if (replacementEditingRange.location != notFound) {
             replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
-            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+            if (replacementRange)
+                frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
         }
 
         frame.editor().setComposition(text, underlines, selectionRange.location, selectionRange.location + selectionRange.length);
@@ -306,7 +308,7 @@ void WebPage::insertText(const String& text, const EditingRange& replacementEdit
     if (replacementEditingRange.location != notFound) {
         RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
         if (replacementRange)
-            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+            frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
     }
 
     if (!frame.editor().hasComposition()) {
@@ -328,7 +330,7 @@ void WebPage::insertDictatedText(const String& text, const EditingRange& replace
     if (replacementEditingRange.location != notFound) {
         RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
         if (replacementRange)
-            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+            frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
     }
 
     ASSERT(!frame.editor().hasComposition());
@@ -443,7 +445,7 @@ void WebPage::insertDictatedTextAsync(const String& text, const EditingRange& re
     if (replacementEditingRange.location != notFound) {
         RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
         if (replacementRange)
-            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+            frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
     }
 
     if (registerUndoGroup)
@@ -1100,6 +1102,30 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
         }
     }
 
+#if ENABLE(PDFKIT_PLUGIN)
+    // See if we have a PDF
+    if (element && is<HTMLPlugInImageElement>(*element)) {
+        HTMLPlugInImageElement& pluginImageElement = downcast<HTMLPlugInImageElement>(*element);
+        if (PluginView* pluginView = reinterpret_cast<PluginView*>(pluginImageElement.pluginWidget())) {
+            // FIXME: We don't have API to identify images inside PDFs based on position.
+            NSDictionary *options = nil;
+            PDFSelection *selection = nil;
+            String selectedText = pluginView->lookupTextAtLocation(locationInContentCoordinates, actionMenuResult, &selection, &options);
+            if (!selectedText.isEmpty()) {
+                if (element->document().isPluginDocument()) {
+                    // FIXME(144030): Focus does not seem to get set to the PDF when invoking the menu.
+                    PluginDocument& pluginDocument = static_cast<PluginDocument&>(element->document());
+                    pluginDocument.setFocusedElement(element);
+                }
+
+                actionMenuResult.lookupText = selectedText;
+                actionMenuResult.isSelected = true;
+                actionMenuResult.allowsCopy = true;
+            }
+        }
+    }
+#endif
+
     RefPtr<API::Object> userData;
     injectedBundleContextMenuClient().prepareForActionMenu(*this, hitTestResult, userData);
 
@@ -1149,12 +1175,6 @@ void WebPage::immediateActionDidUpdate()
 void WebPage::immediateActionDidCancel()
 {
     m_page->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCancelled);
-
-    Element* element = m_lastActionMenuHitTestResult.innerElement();
-    if (!element)
-        return;
-
-    element->dispatchMouseForceCancelled();
 }
 
 void WebPage::immediateActionDidComplete()
@@ -1209,16 +1229,21 @@ void WebPage::setFont(const String& fontFamily, double fontSize, uint64_t fontTr
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-void WebPage::playbackTargetSelected(const WebCore::MediaPlaybackTargetContext& targetContext) const
+void WebPage::playbackTargetSelected(uint64_t contextId, const WebCore::MediaPlaybackTargetContext& targetContext) const
 {
     ASSERT(targetContext.type == MediaPlaybackTargetContext::AVOutputContextType);
 
-    m_page->didChoosePlaybackTarget(WebCore::MediaPlaybackTargetMac::create(targetContext.context.avOutputContext));
+    m_page->setPlaybackTarget(contextId, WebCore::MediaPlaybackTargetMac::create(targetContext.context.avOutputContext));
 }
 
-void WebPage::playbackTargetAvailabilityDidChange(bool changed)
+void WebPage::playbackTargetAvailabilityDidChange(uint64_t contextId, bool changed)
 {
-    m_page->playbackTargetAvailabilityDidChange(changed);
+    m_page->playbackTargetAvailabilityDidChange(contextId, changed);
+}
+
+void WebPage::setShouldPlayToPlaybackTarget(uint64_t contextId, bool shouldPlay)
+{
+    m_page->setShouldPlayToPlaybackTarget(contextId, shouldPlay);
 }
 #endif
 

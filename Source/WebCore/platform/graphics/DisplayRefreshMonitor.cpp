@@ -48,7 +48,6 @@ RefPtr<DisplayRefreshMonitor> DisplayRefreshMonitor::createDefaultDisplayRefresh
 #endif
 #if PLATFORM(WPE)
     RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
 #endif
     return nullptr;
 }

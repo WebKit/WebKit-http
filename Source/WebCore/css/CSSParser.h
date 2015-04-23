@@ -43,7 +43,7 @@
 #include <wtf/text/TextPosition.h>
 
 #if ENABLE(CSS_GRID_LAYOUT)
-#include "CSSGridTemplateAreasValue.h"
+#include "GridCoordinate.h"
 #endif
 
 namespace WebCore {
@@ -81,6 +81,14 @@ public:
         GeneralSyntaxError
     };
 
+    enum class ParseResult {
+        Changed,
+        Unchanged,
+        Error
+    };
+
+    using ParsedPropertyVector = Vector<CSSProperty, 256>;
+
     class ValueWithCalculation {
     public:
         explicit ValueWithCalculation(CSSParserValue& value)
@@ -103,18 +111,20 @@ public:
     };
 
     WEBCORE_EXPORT CSSParser(const CSSParserContext&);
-
     WEBCORE_EXPORT ~CSSParser();
 
     void parseSheet(StyleSheetContents*, const String&, const TextPosition&, RuleSourceDataList*, bool logErrors);
     PassRefPtr<StyleRuleBase> parseRule(StyleSheetContents*, const String&);
     PassRefPtr<StyleKeyframe> parseKeyframeRule(StyleSheetContents*, const String&);
     bool parseSupportsCondition(const String&);
-    static bool parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, CSSParserMode, StyleSheetContents*);
+
+    static ParseResult parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, CSSParserMode, StyleSheetContents*);
+
     static bool parseColor(RGBA32& color, const String&, bool strict = false);
     static bool parseSystemColor(RGBA32& color, const String&, Document*);
     static PassRefPtr<CSSValueList> parseFontFaceValue(const AtomicString&);
     PassRefPtr<CSSPrimitiveValue> parseValidPrimitive(CSSValueID ident, ValueWithCalculation&);
+
     WEBCORE_EXPORT bool parseDeclaration(MutableStyleProperties*, const String&, PassRefPtr<CSSRuleSourceData>, StyleSheetContents* contextStyleSheet);
     static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
     std::unique_ptr<MediaQuery> parseMediaQuery(const String&);
@@ -389,7 +399,6 @@ public:
     std::unique_ptr<CSSParserValueList> m_valueList;
     bool m_supportsCondition;
 
-    typedef Vector<CSSProperty, 256> ParsedPropertyVector;
     ParsedPropertyVector m_parsedProperties;
     CSSSelectorList* m_selectorListForParseSelector;
 
@@ -549,7 +558,7 @@ private:
     bool isGeneratedImageValue(CSSParserValue&) const;
     bool parseGeneratedImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
-    bool parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, StyleSheetContents* contextStyleSheet);
+    ParseResult parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, StyleSheetContents* contextStyleSheet);
     Ref<ImmutableStyleProperties> parseDeclaration(const String&, StyleSheetContents* contextStyleSheet);
 
     PassRefPtr<CSSBasicShape> parseInsetRoundedCorners(PassRefPtr<CSSBasicShapeInset>, CSSParserValueList&);

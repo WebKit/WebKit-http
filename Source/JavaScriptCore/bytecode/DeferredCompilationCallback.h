@@ -27,7 +27,9 @@
 #define DeferredCompilationCallback_h
 
 #include "CompilationResult.h"
+#include "DeferredSourceDump.h"
 #include <wtf/RefCounted.h>
+#include <wtf/Vector.h>
 
 namespace JSC {
 
@@ -42,6 +44,13 @@ public:
 
     virtual void compilationDidBecomeReadyAsynchronously(CodeBlock*) = 0;
     virtual void compilationDidComplete(CodeBlock*, CompilationResult);
+
+    Vector<DeferredSourceDump>& ensureDeferredSourceDump();
+
+private:
+    void dumpCompiledSourcesIfNeeded();
+
+    std::unique_ptr<Vector<DeferredSourceDump>> m_deferredSourceDump;
 };
 
 } // namespace JSC

@@ -1,3 +1,369 @@
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Clean up JSC JIT options
+        https://bugs.webkit.org/show_bug.cgi?id=143998
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/build-jsc: Do not use -ENABLE_LLINT_C_LOOP on CMake ports.
+        * Scripts/webkitperl/FeatureList.pm: Remove ENABLE_LLINT_C_LOOP.
+
+2015-04-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Extend action menus to support PDF
+        https://bugs.webkit.org/show_bug.cgi?id=143895
+        <rdar://problem/19003333>
+
+        Reviewed by Tim Horton.
+
+        Reactivate the action menu tests, and add a new PDF-based test to make sure that selection
+        of PDF content works.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add new 'test.pdf' resource to bundle.
+        * TestWebKitAPI/Tests/WebKit2/action-menu-targets.html: Update with a new PDF pane.
+        * TestWebKitAPI/Tests/WebKit2/test.pdf: Added.
+        * TestWebKitAPI/Tests/WebKit2ObjC/ActionMenus.mm:
+        (-[ActionMenusTestWKView _actionMenuItemsForHitTestResult:withType:defaultActionMenuItems:userData:]):
+        Update to support PDF tests.
+        (TestWebKitAPI::windowPointForTarget): Add new target for PDF test.
+        (TestWebKitAPI::waitForPDFToLoad): New helper function to avoid starting test before the PDF is available.
+
+2015-04-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Do not run GTK+ user media unit tests when ENABLE_MEDIA_STREAM is disabled.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        (beforeAll):
+        (testWebViewAudioOnlyUserMediaPermissionRequests):
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Add myself to watchlist
+        https://bugs.webkit.org/show_bug.cgi?id=144041
+
+        Reviewed by Alex Christensen.
+
+        Add myself watching CMake, GtkWebKit2PublicAPI, SoupNetwork, and WebKitGTKTranslations.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-04-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] MiniBrowser should use NetworkProcess by default
+        https://bugs.webkit.org/show_bug.cgi?id=143948
+
+        Reviewed by Sergio Villar Senin.
+
+        Use WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES by default
+        unless MINIBROWSER_SINGLEPROCESS environment variable is present.
+
+        * MiniBrowser/gtk/main.c:
+        (main):
+
+2015-04-21  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Use grep instead of any in prepare-ChangeLog, to avoid Windows compatibility issues.
+
+        Unreviewed build fix.
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_cpp):
+        Use grep instead of any to determine if a string is an element of an array.
+
+2015-04-21  Anders Carlsson  <andersca@apple.com>
+
+        Fix block signatures
+        https://bugs.webkit.org/show_bug.cgi?id=144002
+
+        Reviewed by Andreas Kling.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+
+2015-04-21  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] jhbuild should not use a branch for openwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=143981
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/jhbuild.modules:
+
+2015-04-20  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Fix compilation error for prepare-ChangeLog running with Perl version < v5.18.2.
+
+        Unreviewed build fix.
+
+        The any function was added to List::Utils between Perl v5.16.2 and Perl v5.18.2.
+        However, it has been exposed by List::MoreUtils since its inception. This patch uses
+        the any function exposed by List::MoreUtils for greater compatibility.
+
+        * Scripts/prepare-ChangeLog:
+        Use any from List::MoreUtils instead of List::Utils, as List::MoreUtils exposes
+        the any function in all of versions of Perl used by our infrastructure.
+
+2015-04-20  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unnecessary logs when resetting tests.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformResetPreferencesToConsistentValues):
+        In r183020 I added some logs when compiling or removing content extensions fails.
+        We often try to remove a content extension that does not exist, and that is not a problem.
+
+2015-04-17  Matthew Hanson  <matthew_hanson@apple.com>
+
+        prepare-ChangeLog should ignore the preceeding function when processing the removal of a function.
+        https://bugs.webkit.org/show_bug.cgi?id=143897
+
+        Reviewed by David Kilzer.
+
+        This is a speculative fix that addresses two issues:
+
+        1. An off-by-one error which allowed ending lines to be less than starting lines when a hunk was a pure delete.
+        We were determining ending lines from combined diffs using the logic: End = Start + Offset - 1.
+
+        So for a hunk like "@@ -723,10 +721,0 @@ bool foobar", we were generating the following starting/ending line pairs:
+        Before: (723, 729)
+        After: (721, 720)
+
+        Before is correct, but After should be (721, 721), since it represents the beginning and ending lines for the hunk.
+        Whether there are zero lines or one line in the hunk, the starting and ending line are the same.
+
+        This error was causing bad behavior on purely additive and purely subtractive hunks, but since we only refer
+        to After when generating ChangeLog output, the extractLineRangeBeforeChange had no visible effect on program output.
+
+        The fix is to set End to the max of Start + Offset - 1 and Start, rather than always using the former.
+
+        2. Creating git diffs from HEAD and not origin/master by default.
+
+        Hard-coding origin/master into the originalFile command has the disadvantage of causing the diff to fail entirely
+        when origin/master does not exist, and to do the wrong thing when determining deleted functions/methods.
+
+        * Scripts/prepare-ChangeLog:
+        (originalFile):
+        Use HEAD instead of origin/master in default Git case.
+
+        (generateFunctionLists):
+        Ensure that the end line is not less than the start line.
+
+        (extractLineRangeAfterChange):
+        Set the end line to the start line if the end line is less than the start line.
+
+        (extractLineRangeBeforeChange):
+        Ditto.
+
+2015-04-17  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Suppress warning in prepare-ChangeLog.
+        https://bugs.webkit.org/show_bug.cgi?id=143882
+
+        Reviewed by David Kilzer.
+
+        Prune noisy prepare-ChangeLog output by using the List::Util::any function
+        instead of the deprecated smartmatch operator.
+
+        * Scripts/prepare-ChangeLog:
+        Import the List::Util::any function.
+
+        (get_function_line_ranges_for_cpp):
+        Use the any function instead of smartmatch.
+
+2015-04-20  Anders Carlsson  <andersca@apple.com>
+
+        Modify the WKWebsiteDataStore API to take a NSSet of types instead of a bitmask
+        https://bugs.webkit.org/show_bug.cgi?id=143966
+
+        Reviewed by Dan Bernstein.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (dataTypes):
+        (-[WK2BrowserWindowController fetchWebsiteData:]):
+        (-[WK2BrowserWindowController fetchAndClearWebsiteData:]):
+        (-[WK2BrowserWindowController clearWebsiteData:]):
+
+2015-04-20  Alex Christensen  <achristensen@webkit.org>
+
+        Fix content extension test flakiness.
+        https://bugs.webkit.org/show_bug.cgi?id=143950
+
+        Reviewed by Brady Eidson.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformResetPreferencesToConsistentValues):
+        Remove the TestContentExtensions if it exists.
+        (WTR::TestController::platformConfigureViewForTest):
+        Log errors in case there are any.
+
+2015-04-20  Alex Christensen  <achristensen@webkit.org>
+
+        Properly report errors from _WKUserContentExtensionStore.
+        https://bugs.webkit.org/show_bug.cgi?id=143808
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/_WKUserContentExtensionStore.mm:
+        (TEST_F):
+
+2015-04-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add a rule for NetworkCache to watchlist file
+        https://bugs.webkit.org/show_bug.cgi?id=143945
+
+        Reviewed by Sergio Villar Senin.
+
+        And add myself to the list of watchers.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-04-19  Darin Adler  <darin@apple.com>
+
+        Update RefPtr documentation and deprecation
+        https://bugs.webkit.org/show_bug.cgi?id=143936
+
+        Reviewed by Andreas Kling.
+
+        * Scripts/do-webcore-rename: Put in some DeprecatedPassRefPtr renames.
+
+2015-04-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce bytecode intrinsics
+        https://bugs.webkit.org/show_bug.cgi?id=143926
+
+        Reviewed by Filip Pizlo.
+
+        Change cpplint to accept emit_intrinsic_XXX.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_identifier_name_in_declaration):
+
+2015-04-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix lldb_webkit.py to show StringImpls correctly
+        https://bugs.webkit.org/show_bug.cgi?id=143920
+
+        Reviewed by Andreas Kling.
+        
+        Update WTFStringImplProvider's is_8bit to use the correct bitmask.
+
+        * lldb/lldb_webkit.py:
+        (WTFStringImplProvider.is_8bit):
+
+2015-04-17  Daniel Bates  <dabates@apple.com>
+
+        Not able to build WebKit against iOS Simulator 8.3 SDK
+        https://bugs.webkit.org/show_bug.cgi?id=143883
+
+        Reviewed by David Kilzer.
+
+        Copy libraries libWebKitSystemInterfaceIOS{Device, Simulator}8.3.a to the built product directory
+        so that Xcode uses them.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2015-04-17  Beth Dakin  <bdakin@apple.com>
+
+        Force mouse events should go through normal mouse event handling code paths
+        https://bugs.webkit.org/show_bug.cgi?id=143749
+        -and corresponding-
+        rdar://problem/20472895
+
+        Reviewed by Dean Jackson.
+
+        Add mouseForceDown/mouseForceUp/mouseForceChanged support to WebKitTestRunner. 
+        Since there is not a way to create an NSEventTypePressure from scratch, we 
+        subclass NSEvent and override all of the critical methods.
+
+        * WebKitTestRunner/EventSenderProxy.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/EventSendingController.idl:
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::mouseForceDown):
+        (WTR::EventSendingController::mouseForceUp):
+        (WTR::EventSendingController::mouseForceChanged):
+        * WebKitTestRunner/InjectedBundle/EventSendingController.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (-[EventSenderPressureEvent initAtLocation:globalLocation:stage:pressure:phase:time:eventNumber:]):
+        (-[EventSenderPressureEvent timestamp]):
+        (-[EventSenderPressureEvent type]):
+        (-[EventSenderPressureEvent locationInWindow]):
+        (-[EventSenderPressureEvent location]):
+        (-[EventSenderPressureEvent stage]):
+        (-[EventSenderPressureEvent pressure]):
+        (-[EventSenderPressureEvent phase]):
+        (-[EventSenderPressureEvent eventNumber]):
+        (WTR::EventSenderProxy::mouseForceDown):
+        (WTR::EventSenderProxy::mouseForceUp):
+        (WTR::EventSenderProxy::mouseForceChanged):
+
+2015-04-17  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard still shows obsolete results for out of order builds sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=143885
+
+        Reviewed by Tim Horton.
+
+        Fixed a case where we have two builds with the same revision(s). An in order build
+        is one for which the revision is strictly higher.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype._checkForInOrderResult):
+        (BuildbotQueue.prototype.compareIterationsByRevisions):
+
+2015-04-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r182912 and r182920.
+        https://bugs.webkit.org/show_bug.cgi?id=143881
+
+        Build breakage in some configurations (Requested by ap on
+        #webkit).
+
+        Reverted changesets:
+
+        "Force mouse events should go through normal mouse event
+        handling code paths"
+        https://bugs.webkit.org/show_bug.cgi?id=143749
+        http://trac.webkit.org/changeset/182912
+
+        http://trac.webkit.org/changeset/182920
+
+2015-04-17  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] One more unreviewed fix after r182882.
+
+        * TestWebKitAPI/PlatformGTK.cmake: Added back the WebKit2's forwarding header generator dependency.
+
+2015-04-17  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Unreviewed speculative clean build fix after r182882.
+
+        TestWebKitAPI's forwarding header generator depended on WeKit2's
+        which generated SOUP related forwarding headers too.
+
+        This dependency isn't necessary and was removed by r182882 to make
+        forwarding header generators parallelizable. But in this case
+        TestWebKitAPI's and WebKitTestRunner's forwarding header generator
+        should generate SOUP related forwarding headers too similar to EFL.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * WebKitTestRunner/PlatformGTK.cmake:
+
+2015-04-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Redirect to non HTTP destination is broken
+        https://bugs.webkit.org/show_bug.cgi?id=143866
+
+        Reviewed by Sergio Villar Senin.
+
+        Add a unit test to check that redirect to a data URI works.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestLoaderClient.cpp:
+        (testRedirectToDataURI):
+        (serverCallback):
+        (beforeAll):
+
 2015-04-16  Jake Nielsen  <jacob_nielsen@apple.com>
 
         Changes method of quitting iOS Simulator to be more correct.

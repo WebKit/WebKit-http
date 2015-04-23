@@ -63,8 +63,8 @@ namespace JSC { namespace DFG {
     macro(KillStack, NodeMustGenerate) \
     macro(GetStack, NodeResultJS) \
     \
-    macro(MovHint, 0) \
-    macro(ZombieHint, 0) \
+    macro(MovHint, NodeMustGenerate) \
+    macro(ZombieHint, NodeMustGenerate) \
     macro(Phantom, NodeMustGenerate) \
     macro(HardPhantom, NodeMustGenerate) /* Like Phantom, but we never remove any of its children. */ \
     macro(Check, NodeMustGenerate) /* Used if we want just a type check but not liveness. Non-checking uses will be removed. */\
@@ -194,7 +194,6 @@ namespace JSC { namespace DFG {
     macro(CheckCell, NodeMustGenerate) \
     macro(CheckNotEmpty, NodeMustGenerate) \
     macro(CheckBadCell, NodeMustGenerate) \
-    macro(AllocationProfileWatchpoint, NodeMustGenerate) \
     macro(CheckInBounds, NodeMustGenerate) \
     \
     /* Optimizations for array mutation. */\
@@ -238,7 +237,7 @@ namespace JSC { namespace DFG {
     macro(NewRegexp, NodeResultJS) \
     \
     /* Support for allocation sinking. */\
-    macro(PhantomNewObject, NodeResultJS) \
+    macro(PhantomNewObject, NodeResultJS | NodeMustGenerate) \
     macro(PutHint, NodeMustGenerate) \
     macro(CheckStructureImmediate, NodeMustGenerate) \
     macro(MaterializeNewObject, NodeResultJS | NodeHasVarArgs) \

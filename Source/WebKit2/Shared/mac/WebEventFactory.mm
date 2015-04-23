@@ -76,7 +76,7 @@ static WebMouseEvent::Button mouseButtonForEvent(NSEvent *event)
         case NSOtherMouseUp:
         case NSOtherMouseDragged:
             return WebMouseEvent::MiddleButton;
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
         case NSEventTypePressure:
 #endif
         case NSMouseEntered:
@@ -159,7 +159,7 @@ static NSPoint globalPoint(const NSPoint& windowPoint, NSWindow *window)
 static NSPoint globalPointForEvent(NSEvent *event)
 {
     switch ([event type]) {
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
     case NSEventTypePressure:
 #endif
     case NSLeftMouseDown:
@@ -184,7 +184,7 @@ static NSPoint globalPointForEvent(NSEvent *event)
 static NSPoint pointForEvent(NSEvent *event, NSView *windowView)
 {
     switch ([event type]) {
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
     case NSEventTypePressure:
 #endif
     case NSLeftMouseDown:
@@ -373,7 +373,7 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(NSEvent *event, NSEvent *last
     NSPoint globalPosition = globalPointForEvent(event);
 
     WebEvent::Type type = mouseEventTypeForEvent(event);
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
     if ([event type] == NSEventTypePressure) {
         // Since AppKit doesn't send mouse events for force down or force up, we have to use the current pressure
         // event and lastPressureEvent to detect if this is MouseForceDown, MouseForceUp, or just MouseForceChanged.
@@ -397,7 +397,7 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(NSEvent *event, NSEvent *last
     int menuTypeForEvent = typeForEvent(event);
 
     double force = 0;
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
     int stage = [event type] == NSEventTypePressure ? event.stage : lastPressureEvent.stage;
     double pressure = [event type] == NSEventTypePressure ? event.pressure : lastPressureEvent.pressure;
     force = stage < 1 ? pressure : pressure + stage - 1;
