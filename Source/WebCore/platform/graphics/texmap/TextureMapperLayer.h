@@ -159,6 +159,7 @@ private:
     void computeOverlapRegions(Region& overlapRegion, Region& nonOverlapRegion, ResolveSelfOverlapMode);
 
     void paintRecursive(const TextureMapperPaintOptions&);
+    bool shouldPaintUsingOverlapRegions() const;
     void paintUsingOverlapRegions(const TextureMapperPaintOptions&);
     PassRefPtr<BitmapTexture> paintIntoSurface(const TextureMapperPaintOptions&, const IntSize&);
     void paintWithIntermediateSurface(const TextureMapperPaintOptions&, const IntRect&);
@@ -179,8 +180,6 @@ private:
         SingleLayerWithContents,
         MultipleLayersWithContents
     };
-
-    bool shouldBlend() const;
 
     inline FloatRect layerRect() const
     {

@@ -191,13 +191,12 @@ void TextureMapperLayer::paintSelfAndChildren(const TextureMapperPaintOptions& o
         options.textureMapper->endClip();
 }
 
-bool TextureMapperLayer::shouldBlend() const
+bool TextureMapperLayer::shouldPaintUsingOverlapRegions() const
 {
     if (m_state.preserves3D)
         return false;
 
-    return m_currentOpacity < 1
-        || hasFilters()
+    return hasFilters()
         || m_state.maskLayer
         || (m_state.replicaLayer && m_state.replicaLayer->m_state.maskLayer);
 }
@@ -307,7 +306,7 @@ void TextureMapperLayer::computeOverlapRegions(Region& overlapRegion, Region& no
         resolveOverlaps(replicaRegion, newOverlapRegion, newNonOverlapRegion);
     }
 
-    if ((mode != ResolveSelfOverlapAlways) && shouldBlend()) {
+    if (mode != ResolveSelfOverlapAlways) {
         newNonOverlapRegion.unite(newOverlapRegion);
         newOverlapRegion = Region();
     }
@@ -438,12 +437,12 @@ void TextureMapperLayer::paintRecursive(const TextureMapperPaintOptions& options
     TextureMapperPaintOptions paintOptions(options);
     paintOptions.opacity *= m_currentOpacity;
 
-    if (!shouldBlend()) {
-        paintSelfAndChildrenWithReplica(paintOptions);
+    if (shouldPaintUsingOverlapRegions()) {
+        paintUsingOverlapRegions(paintOptions);
         return;
     }
 
-    paintUsingOverlapRegions(paintOptions);
+    paintSelfAndChildrenWithReplica(paintOptions);
 }
 
 TextureMapperLayer::~TextureMapperLayer()
