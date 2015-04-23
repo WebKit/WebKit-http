@@ -4008,6 +4008,12 @@
     <ClCompile Include="..\html\ResetInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
+    <ClCompile Include="..\html\RubyElement.cpp">
+      <Filter>html</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\RubyTextElement.cpp">
+      <Filter>html</Filter>
+    </ClCompile>
     <ClCompile Include="..\html\SearchInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
@@ -4408,6 +4414,9 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSReadableStreamCustom.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bindings\js\JSReadableStreamControllerCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSReadableStreamReaderCustom.cpp">
@@ -5692,6 +5701,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamController.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6614,6 +6626,9 @@
       <Filter>dom</Filter>
     </ClCompile>
     <ClCompile Include="..\style\InlineTextBoxStyle.cpp">
+      <Filter>css</Filter>
+    </ClCompile>
+    <ClCompile Include="..\style\RenderTreePosition.cpp">
       <Filter>css</Filter>
     </ClCompile>
     <ClCompile Include="..\style\StyleFontSizeFunctions.cpp">
@@ -8308,9 +8323,6 @@
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\Timer.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\TreeShared.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\UserActivity.h">
@@ -11169,6 +11181,12 @@
     <ClInclude Include="..\html\ResetInputType.h">
       <Filter>html</Filter>
     </ClInclude>
+    <ClInclude Include="..\html\RubyElement.h">
+      <Filter>html</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\RubyTextElement.h">
+      <Filter>html</Filter>
+    </ClInclude>
     <ClInclude Include="..\html\SearchInputType.h">
       <Filter>html</Filter>
     </ClInclude>
@@ -13628,6 +13646,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamController.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -14019,6 +14040,9 @@
       <Filter>css</Filter>
     </ClInclude>
     <ClInclude Include="..\style\InlineTextBoxStyle.h">
+      <Filter>css</Filter>
+    </ClInclude>
+    <ClInclude Include="..\style\RenderTreePosition.h">
       <Filter>css</Filter>
     </ClInclude>
     <ClInclude Include="..\style\StyleFontSizeFunctions.h">
@@ -15222,6 +15246,9 @@
       <Filter>Modules\streams</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\streams\ReadableStream.h">
+      <Filter>Modules\streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\streams\ReadableStreamController.h">
       <Filter>Modules\streams</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\streams\ReadableStreamReader.h">

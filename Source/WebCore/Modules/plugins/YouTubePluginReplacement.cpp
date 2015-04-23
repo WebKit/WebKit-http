@@ -67,14 +67,14 @@ YouTubePluginReplacement::YouTubePluginReplacement(HTMLPlugInElement& plugin, co
         m_attributes.add(paramNames[i], paramValues[i]);
 }
 
-RenderPtr<RenderElement> YouTubePluginReplacement::createElementRenderer(HTMLPlugInElement& plugin, Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> YouTubePluginReplacement::createElementRenderer(HTMLPlugInElement& plugin, Ref<RenderStyle>&& style, const RenderTreePosition& insertionPosition)
 {
     ASSERT_UNUSED(plugin, m_parentElement == &plugin);
 
     if (!m_embedShadowElement)
         return nullptr;
     
-    return m_embedShadowElement->createElementRenderer(WTF::move(style));
+    return m_embedShadowElement->createElementRenderer(WTF::move(style), insertionPosition);
 }
 
 bool YouTubePluginReplacement::installReplacement(ShadowRoot* root)
@@ -326,13 +326,13 @@ String YouTubePluginReplacement::youTubeURL(const String& srcString)
     // See: <rdar://problem/11535155>
     StringBuilder finalURL;
     if (isYouTubeShortenedURL)
-        finalURL.append("http://www.youtube.com");
+        finalURL.appendLiteral("http://www.youtube.com");
     else
         finalURL.append(srcURLPrefix);
     finalURL.appendLiteral("/embed/");
     finalURL.append(videoID);
     if (!query.isEmpty()) {
-        finalURL.appendLiteral("?");
+        finalURL.append('?');
         finalURL.append(query);
     }
     return finalURL.toString();

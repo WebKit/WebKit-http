@@ -32,6 +32,7 @@
 #include "HTMLMediaElement.h"
 #include "HostWindow.h"
 #include "LayerFlushThrottleState.h"
+#include "MediaProducer.h"
 #include "PageThrottler.h"
 #include "PopupMenu.h"
 #include "PopupMenuClient.h"
@@ -286,7 +287,7 @@ public:
     virtual GraphicsLayerFactory* graphicsLayerFactory() const { return nullptr; }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    virtual Optional<RefPtr<DisplayRefreshMonitor>> createDisplayRefreshMonitor(PlatformDisplayID) const { return Nullopt; }
+    virtual RefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const { return nullptr; }
 #endif
 
     // Pass 0 as the GraphicsLayer to detatch the root layer.
@@ -423,14 +424,7 @@ public:
 
     virtual bool shouldUseTiledBackingForFrameView(const FrameView*) const { return false; }
 
-    enum MediaState {
-        IsNotPlaying = 0,
-        IsPlayingAudio = 1 << 0,
-        IsPlayingVideo = 1 << 1,
-        IsPlayingToExternalDevice = 1 << 2,
-    };
-    typedef unsigned MediaStateFlags;
-    virtual void isPlayingMediaDidChange(MediaStateFlags) { }
+    virtual void isPlayingMediaDidChange(MediaProducer::MediaStateFlags) { }
 
     virtual void setPageActivityState(PageActivityState::Flags) { }
 
@@ -452,9 +446,10 @@ public:
     virtual void handleAutoFillButtonClick(HTMLInputElement&) { }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    virtual void showPlaybackTargetPicker(const WebCore::IntPoint&, bool /* isVideo */) { }
-    virtual void startingMonitoringPlaybackTargets() { }
-    virtual void stopMonitoringPlaybackTargets() { }
+    virtual void addPlaybackTargetPickerClient(uint64_t /*contextId*/) { }
+    virtual void removePlaybackTargetPickerClient(uint64_t /*contextId*/) { }
+    virtual void showPlaybackTargetPicker(uint64_t /*contextId*/, const WebCore::IntPoint&, bool /* isVideo */) { }
+    virtual void playbackTargetPickerClientStateDidChange(uint64_t /*contextId*/, MediaProducer::MediaStateFlags) { }
 #endif
 
 protected:

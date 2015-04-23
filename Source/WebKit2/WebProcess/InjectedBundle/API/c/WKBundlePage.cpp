@@ -526,7 +526,7 @@ void WKBundlePageResetTrackedRepaints(WKBundlePageRef pageRef)
 
 WKArrayRef WKBundlePageCopyTrackedRepaintRects(WKBundlePageRef pageRef)
 {
-    return toAPI(toImpl(pageRef)->trackedRepaintRects().leakRef());
+    return toAPI(&toImpl(pageRef)->trackedRepaintRects().leakRef());
 }
 
 void WKBundlePageSetComposition(WKBundlePageRef pageRef, WKStringRef text, int from, int length)

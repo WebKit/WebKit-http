@@ -28,7 +28,7 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
-#import "MediaPlaybackTargetPicker.h"
+#include "MediaPlaybackTargetPicker.h"
 #include <wtf/RetainPtr.h>
 #include <wtf/RunLoop.h>
 
@@ -62,7 +62,7 @@ private:
     RunLoop::Timer<MediaPlaybackTargetPickerMac> m_deviceChangeTimer;
 };
 
-} // namespace WebKit
+} // namespace WebCore
 
 #endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
 

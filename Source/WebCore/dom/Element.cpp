@@ -1496,7 +1496,7 @@ bool Element::rendererIsNeeded(const RenderStyle& style)
     return style.display() != NONE;
 }
 
-RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return RenderElement::createFor(*this, WTF::move(style));
 }
@@ -2213,14 +2213,14 @@ void Element::blur()
 
 void Element::dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusinEvent || eventType == eventNames().DOMFocusInEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(oldFocusedElement)));
 }
 
 void Element::dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusoutEvent || eventType == eventNames().DOMFocusOutEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(newFocusedElement)));
 }
@@ -2260,52 +2260,10 @@ bool Element::dispatchMouseForceWillBegin()
         return true;
     return false;
 }
-
-void Element::dispatchMouseForceClick()
-{
-    if (!document().hasListenerType(Document::FORCECLICK_LISTENER))
-        return;
-
-    Frame* frame = document().frame();
-    if (!frame)
-        return;
-
-    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), ForceAtForceClick);
-    RefPtr<MouseEvent> mouseForceClickEvent =  MouseEvent::create(eventNames().webkitmouseforceclickEvent, document().defaultView(), platformMouseEvent, 0, nullptr);
-
-    mouseForceClickEvent->setTarget(this);
-    dispatchEvent(mouseForceClickEvent);
-}
-
-void Element::dispatchMouseForceCancelled()
-{
-    if (!document().hasListenerType(Document::FORCECANCELLED_LISTENER))
-        return;
-
-    Frame* frame = document().frame();
-    if (!frame)
-        return;
-
-    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), 0);
-    RefPtr<MouseEvent> mouseForceCancelledEvent =  MouseEvent::create(eventNames().webkitmouseforcecancelledEvent, document().defaultView(), platformMouseEvent, 0, nullptr);
-
-    mouseForceCancelledEvent->setTarget(this);
-    dispatchEvent(mouseForceCancelledEvent);
-}
-
-#else // #if ENABLE(MOUSE_FORCE_EVENTS)
-
+#else
 bool Element::dispatchMouseForceWillBegin()
 {
     return false;
-}
-
-void Element::dispatchMouseForceClick()
-{
-}
-
-void Element::dispatchMouseForceCancelled()
-{
 }
 #endif // #if ENABLE(MOUSE_FORCE_EVENTS)
 
