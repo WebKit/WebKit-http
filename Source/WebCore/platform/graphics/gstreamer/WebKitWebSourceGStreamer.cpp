@@ -110,7 +110,6 @@ struct _WebKitWebSrcPrivate {
     _WebKitWebSrcPrivate()
         : pendingStart(false)
         , startSource("[WebKit] webKitWebSrcStart")
-        , stopSource("[WebKit] webKitWebSrcStop")
         , needDataSource("[WebKit] webKitWebSrcNeedDataMainCb")
         , enoughDataSource("[WebKit] webKitWebSrcEnoughDataMainCb")
         , seekSource("[WebKit] webKitWebSrcSeekMainCb")
@@ -140,7 +139,6 @@ struct _WebKitWebSrcPrivate {
 
     gboolean pendingStart;
     GMainLoopSource::Simple startSource;
-    GMainLoopSource::Simple stopSource;
     GMainLoopSource::Simple needDataSource;
     GMainLoopSource::Simple enoughDataSource;
     GMainLoopSource::Simple seekSource;
@@ -426,8 +424,6 @@ static void webKitWebSrcStop(WebKitWebSrc* src)
 {
     WebKitWebSrcPrivate* priv = src->priv;
 
-    ASSERT(isMainThread());
-
     WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
 
     bool seeking = priv->seekSource.isActive();
@@ -666,10 +662,8 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
     {
         GST_DEBUG_OBJECT(src, "PAUSED->READY");
         priv->pendingStart = FALSE;
-        // cancel pending sources
-        removeTimeoutSources(src);
-        GstObjectRef protector(GST_OBJECT(src));
-        priv->stopSource.schedule(std::chrono::milliseconds(0), [protector] { webKitWebSrcStop(WEBKIT_WEB_SRC(protector.get())); });
+        locker.unlock();
+        webKitWebSrcStop(src);
         break;
     }
     default:
