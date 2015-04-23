@@ -74,11 +74,33 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
     , m_platformLayerProxy(adoptRef(new TextureMapperPlatformLayerProxy))
+    , m_runLoop(RunLoop::current())
+    , m_swapBuffersTimer(m_runLoop, this, &ImageBufferData::swapBuffers)
+
 #endif
     , m_texture(0)
 #endif
 {
 }
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+void ImageBufferData::swapBuffersIfNeeded()
+{
+    if (m_swapBuffersTimer.isActive())
+        return;
+
+    m_swapBuffersTimer.startOneShot(0);
+}
+
+void ImageBufferData::swapBuffers()
+{
+    // FIXME: add double buffering to the canvas.
+
+    GLContext* previousActiveContext = GLContext::getCurrent();
+    cairo_surface_flush(m_surface.get());
+    previousActiveContext->makeContextCurrent();
+}
+#endif
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
 void ImageBufferData::createCairoGLSurface()
@@ -408,6 +430,13 @@ String ImageBuffer::toDataURL(const String& mimeType, const double*, CoordinateS
     base64Encode(encodedImage, base64Data);
 
     return "data:" + mimeType + ";base64," + base64Data;
+}
+#endif
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+void ImageBuffer::swapBuffersIfNeeded()
+{
+    m_data.swapBuffersIfNeeded();
 }
 #endif
 

@@ -1798,6 +1798,11 @@ void CanvasRenderingContext2D::didDraw(const FloatRect& r, unsigned options)
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    canvas()->buffer()->swapBuffersIfNeeded();
+#endif
+
     if (!state().m_hasInvertibleTransform)
         return;
 

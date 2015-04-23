@@ -128,6 +128,10 @@ public:
         m_space = space;
     }
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    void swapBuffersIfNeeded();
+#endif
+
 private:
 #if USE(CG)
     // The returned image might be larger than the internalSize(). If you want the smaller
