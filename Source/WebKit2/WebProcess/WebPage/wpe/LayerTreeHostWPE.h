@@ -72,7 +72,7 @@ private:
     virtual void setNonCompositedContentsNeedDisplayInRect(const WebCore::IntRect&) override;
     virtual void scrollNonCompositedContents(const WebCore::IntRect& scrollRect);
 
-    virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
+    virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
 
     virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override;
 

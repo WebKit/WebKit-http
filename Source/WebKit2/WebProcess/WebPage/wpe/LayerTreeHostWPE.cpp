@@ -347,7 +347,7 @@ void LayerTreeHostWPE::cancelPendingLayerFlush()
     m_layerFlushTimer.cancel();
 }
 
-PassRefPtr<WebCore::DisplayRefreshMonitor> LayerTreeHostWPE::createDisplayRefreshMonitor(PlatformDisplayID)
+RefPtr<WebCore::DisplayRefreshMonitor> LayerTreeHostWPE::createDisplayRefreshMonitor(PlatformDisplayID)
 {
     // FIXME: See LayerTreeHostWPE::DisplayRefreshMonitorWPE implementation.
     return m_displayRefreshMonitor;

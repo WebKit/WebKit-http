@@ -99,7 +99,7 @@ public:
 #endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    virtual PassRefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) { return nullptr; }
+    virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) { return nullptr; }
 #endif
 
     virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) = 0;
