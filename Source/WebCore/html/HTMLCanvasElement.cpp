@@ -106,7 +106,7 @@ void HTMLCanvasElement::parseAttribute(const QualifiedName& name, const AtomicSt
     HTMLElement::parseAttribute(name, value);
 }
 
-RenderPtr<RenderElement> HTMLCanvasElement::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> HTMLCanvasElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition& insertionPosition)
 {
     Frame* frame = document().frame();
     if (frame && frame->script().canExecuteScripts(NotAboutToExecuteScript)) {
@@ -115,7 +115,7 @@ RenderPtr<RenderElement> HTMLCanvasElement::createElementRenderer(Ref<RenderStyl
     }
 
     m_rendererIsCanvas = false;
-    return HTMLElement::createElementRenderer(WTF::move(style));
+    return HTMLElement::createElementRenderer(WTF::move(style), insertionPosition);
 }
 
 bool HTMLCanvasElement::canContainRangeEndPoint() const
@@ -558,9 +558,9 @@ void HTMLCanvasElement::createImageBuffer() const
 
     if (deviceSize.width() * deviceSize.height() > MaxCanvasArea) {
         StringBuilder stringBuilder;
-        stringBuilder.append("Canvas area exceeds the maximum limit (width * height > ");
+        stringBuilder.appendLiteral("Canvas area exceeds the maximum limit (width * height > ");
         stringBuilder.appendNumber(MaxCanvasArea);
-        stringBuilder.append(").");
+        stringBuilder.appendLiteral(").");
         document().addConsoleMessage(MessageSource::JS, MessageLevel::Warning, stringBuilder.toString());
         return;
     }

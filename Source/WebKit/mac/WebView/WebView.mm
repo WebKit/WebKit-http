@@ -293,6 +293,7 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 #import "WebMediaPlaybackTargetPicker.h"
+#import <WebCore/WebMediaSessionManagerMac.h>
 #endif
 
 #if PLATFORM(MAC)
@@ -844,6 +845,12 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
         && !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITHOUT_LEGACY_BACKGROUNDSIZE_SHORTHAND_BEHAVIOR);
 #endif
     return shouldUseLegacyBackgroundSizeShorthandBehavior;
+}
+
+static bool shouldAllowDisplayAndRunningOfInsecureContent()
+{
+    static bool shouldAllowDisplayAndRunningOfInsecureContent = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_INSECURE_CONTENT_BLOCKING);
+    return shouldAllowDisplayAndRunningOfInsecureContent;
 }
 
 #if ENABLE(GAMEPAD)
@@ -2304,6 +2311,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setShouldConvertPositionStyleOnCopy([preferences shouldConvertPositionStyleOnCopy]);
     settings.setEnableInheritURIQueryComponent([preferences isInheritURIQueryComponentEnabled]);
+
+    settings.setAllowDisplayOfInsecureContent(shouldAllowDisplayAndRunningOfInsecureContent());
+    settings.setAllowRunningOfInsecureContent(shouldAllowDisplayAndRunningOfInsecureContent());
 
     switch ([preferences storageBlockingPolicy]) {
     case WebAllowAllStorage:
@@ -8660,30 +8670,28 @@ bool LayerFlushController::flushLayers()
     return _private->m_playbackTargetPicker.get();
 }
 
-- (void)_showPlaybackTargetPicker:(const WebCore::IntPoint&)location hasVideo:(BOOL)hasVideo
+- (void)_addPlaybackTargetPickerClient:(uint64_t)clientId
 {
-    if (!_private->page)
-        return;
-
-    NSRect rectInWindowCoordinates = [self convertRect:[self _convertRectFromRootView:NSMakeRect(location.x(), location.y(), 0, 0)] toView:nil];
-    NSRect rectInScreenCoordinates = [self.window convertRectToScreen:rectInWindowCoordinates];
-    [self _devicePicker]->showPlaybackTargetPicker(rectInScreenCoordinates, hasVideo);
+    [self _devicePicker]->addPlaybackTargetPickerClient(clientId);
 }
 
-- (void)_startingMonitoringPlaybackTargets
+- (void)_removePlaybackTargetPickerClient:(uint64_t)clientId
 {
-    if (!_private->page)
-        return;
-
-    [self _devicePicker]->startingMonitoringPlaybackTargets();
+    [self _devicePicker]->removePlaybackTargetPickerClient(clientId);
 }
 
-- (void)_stopMonitoringPlaybackTargets
+- (void)_showPlaybackTargetPicker:(uint64_t)clientId location:(const WebCore::IntPoint&)location hasVideo:(BOOL)hasVideo
 {
     if (!_private->page)
         return;
 
-    [self _devicePicker]->stopMonitoringPlaybackTargets();
+    NSRect rectInScreenCoordinates = [self.window convertRectToScreen:NSMakeRect(location.x(), location.y(), 0, 0)];
+    [self _devicePicker]->showPlaybackTargetPicker(clientId, rectInScreenCoordinates, hasVideo);
+}
+
+- (void)_playbackTargetPickerClientStateDidChange:(uint64_t)clientId state:(WebCore::MediaProducer::MediaStateFlags)state
+{
+    [self _devicePicker]->playbackTargetPickerClientStateDidChange(clientId, state);
 }
 #endif
 

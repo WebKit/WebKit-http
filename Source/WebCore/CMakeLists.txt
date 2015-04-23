@@ -129,6 +129,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
     "${CMAKE_BINARY_DIR}"
+    ${ICU_INCLUDE_DIRS}
 )
 
 set(WebCore_IDL_INCLUDES
@@ -274,6 +275,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/speech/SpeechSynthesisVoice.idl
 
     Modules/streams/ReadableStream.idl
+    Modules/streams/ReadableStreamController.idl
     Modules/streams/ReadableStreamReader.idl
 
     Modules/vibration/NavigatorVibration.idl
@@ -1154,6 +1156,7 @@ set(WebCore_SOURCES
     bindings/js/JSRTCSessionDescriptionCustom.cpp
     bindings/js/JSRTCStatsResponseCustom.cpp
     bindings/js/JSReadableStreamCustom.cpp
+    bindings/js/JSReadableStreamControllerCustom.cpp
     bindings/js/JSReadableStreamReaderCustom.cpp
     bindings/js/ReadableStreamJSSource.cpp
     bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
@@ -1685,6 +1688,8 @@ set(WebCore_SOURCES
     html/RangeInputType.cpp
     html/RelList.cpp
     html/ResetInputType.cpp
+    html/RubyElement.cpp
+    html/RubyTextElement.cpp
     html/SearchInputType.cpp
     html/StepRange.cpp
     html/SubmitInputType.cpp
@@ -2274,13 +2279,19 @@ set(WebCore_SOURCES
     platform/text/TextBoundaries.cpp
     platform/text/TextBreakIterator.cpp
     platform/text/TextCodec.cpp
+    platform/text/TextCodecICU.cpp
     platform/text/TextCodecLatin1.cpp
     platform/text/TextCodecUTF16.cpp
     platform/text/TextCodecUTF8.cpp
     platform/text/TextCodecUserDefined.cpp
     platform/text/TextEncoding.cpp
+    platform/text/TextEncodingDetectorICU.cpp
     platform/text/TextEncodingRegistry.cpp
     platform/text/TextStream.cpp
+
+    platform/text/icu/UTextProvider.cpp
+    platform/text/icu/UTextProviderLatin1.cpp
+    platform/text/icu/UTextProviderUTF16.cpp
 
     plugins/DOMMimeType.cpp
     plugins/DOMMimeTypeArray.cpp
@@ -2533,6 +2544,7 @@ set(WebCore_SOURCES
     storage/StorageNamespaceProvider.cpp
 
     style/InlineTextBoxStyle.cpp
+    style/RenderTreePosition.cpp
     style/StyleFontSizeFunctions.cpp
     style/StyleResolveForDocument.cpp
     style/StyleResolveTree.cpp
@@ -2778,6 +2790,7 @@ set(WebCore_PLUG_INS_RESOURCES
 )
 
 set(WebCore_LIBRARIES
+    ${ICU_LIBRARIES}
     JavaScriptCore
     WTF
 )
@@ -2983,20 +2996,6 @@ if (ENABLE_QUOTA)
         Modules/quota/WorkerNavigatorStorageQuota.idl
     )
 endif ()
-
-list(APPEND WebCore_SOURCES
-    platform/text/TextCodecICU.cpp
-    platform/text/TextEncodingDetectorICU.cpp
-    platform/text/icu/UTextProvider.cpp
-    platform/text/icu/UTextProviderLatin1.cpp
-    platform/text/icu/UTextProviderUTF16.cpp
-)
-list(APPEND WebCore_INCLUDE_DIRECTORIES
-    ${ICU_INCLUDE_DIRS}
-)
-list(APPEND WebCore_LIBRARIES
-    ${ICU_LIBRARIES}
-)
 
 if (WTF_USE_3D_GRAPHICS)
     # For platforms that want to use system-provided OpenGL (ES) headers,

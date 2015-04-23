@@ -271,8 +271,14 @@ enum ResourceLoadPriority {
     [RaisesException] void startTrackingRepaints();
     [RaisesException] void stopTrackingRepaints();
 
+    [RaisesException] void startTrackingLayerFlushes();
+    [RaisesException] unsigned long layerFlushCount();
+
     // Query if a timer is currently throttled, to debug timer throttling.
     [RaisesException] boolean isTimerThrottled(long timerHandle);
+
+    [RaisesException] void startTrackingStyleRecalcs();
+    [RaisesException] unsigned long styleRecalcCount();
 
     // |node| should be Document, HTMLIFrameElement, or unspecified.
     // If |node| is an HTMLIFrameElement, it assumes node.contentDocument is

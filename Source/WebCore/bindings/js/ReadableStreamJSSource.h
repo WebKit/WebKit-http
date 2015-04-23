@@ -32,6 +32,7 @@
 
 #if ENABLE(STREAMS_API)
 
+#include "JSReadableStreamController.h"
 #include "ReadableStream.h"
 #include "ReadableStreamReader.h"
 #include "ReadableStreamSource.h"
@@ -48,7 +49,7 @@ class JSReadableStream;
 class ReadableStreamJSSource: public ReadableStreamSource {
 public:
     static Ref<ReadableStreamJSSource> create(JSC::ExecState*);
-    ~ReadableStreamJSSource() { }
+    ~ReadableStreamJSSource();
 
     void start(JSC::ExecState*, JSReadableStream*);
 
@@ -58,7 +59,7 @@ private:
     // Object passed to constructor.
     JSC::Strong<JSC::JSObject> m_source;
 
-    JSC::Strong<JSC::JSObject> m_controller;
+    JSC::Strong<JSReadableStreamController> m_controller;
 };
 
 class ReadableJSStream: public ReadableStream {

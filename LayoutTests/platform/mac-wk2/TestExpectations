@@ -76,6 +76,7 @@ fast/events/crash-on-mutate-during-drop.html
 fast/events/drag-and-drop-dataTransfer-types-nocrash.html
 fast/events/drag-and-drop-fire-drag-dragover.html
 fast/events/drag-and-drop.html
+fast/events/drag-and-drop-link.html
 fast/events/drag-in-frames.html
 fast/events/drag-parent-node.html
 fast/events/dropzone-001.html
@@ -250,6 +251,7 @@ webkit.org/b/140217 http/tests/navigation/forward-and-cancel.html [ Pass Failure
 
 # These tests always time out.
 webkit.org/b/127473 editing/selection/context-menu-text-selection.html [ Skip ]
+webkit.org/b/127473 editing/selection/context-menu-text-selection-lookup.html [ Skip ]
 webkit.org/b/143380 fast/events/context-nodrag.html [ Skip ]
 
 ### END OF (1) Classified failures with bug reports
@@ -270,7 +272,7 @@ editing/spelling/spellcheck-async.html [ Skip ]
 editing/spelling/spellcheck-queue.html [ Skip ]
 editing/spelling/spelling-insert-html.html [ Skip ]
 
-# These tests should pass on Yosemite but are failing. 
+# These should work on 10.10.3 and later, but our bots need to get the 10.10.3 SDK first. 
 fast/events/mouse-force-changed.html [ Skip ]
 fast/events/mouse-force-down.html [ Skip ]
 fast/events/mouse-force-up.html [ Skip ]

@@ -1,3 +1,104 @@
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Clean up JSC JIT options
+        https://bugs.webkit.org/show_bug.cgi?id=143998
+
+        Reviewed by Filip Pizlo.
+
+        * Source/cmake/OptionsEfl.cmake: Remove handling of ENABLE_LLINT_C_LOOP and preprocessor
+          define for ENABLE_FTL_NATIVE_CALL_INLINING.
+        * Source/cmake/OptionsMac.cmake: Remove override of ENABLE_LLINT_C_LOOP
+        * Source/cmake/WebKitFeatures.cmake: Remove ENABLE_LLINT_C_LOOP. Add ENABLE_DFG_JIT and
+          ENABLE_FTL_NATIVE_CALL_INLINING. Specify proper dependencies for these features.
+        * Source/cmakeconfig.h.cmake: Remove ENABLE_LLINT_C_LOOP and add ENABLE_DFG_JIT.
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Use lowercase for local variables in macros
+        https://bugs.webkit.org/show_bug.cgi?id=144059
+
+        Reviewed by Martin Robinson.
+
+        Convert some variable names to lowercase.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183116.
+        https://bugs.webkit.org/show_bug.cgi?id=144060
+
+        Inadvertently deleted a file... (Requested by mcatanzaro on
+        #webkit).
+
+        Reverted changeset:
+
+        "[CMake] Use lowercase for local variables in macros"
+        https://bugs.webkit.org/show_bug.cgi?id=144059
+        http://trac.webkit.org/changeset/183116
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Use lowercase for local variables in macros
+        https://bugs.webkit.org/show_bug.cgi?id=144059
+
+        Reviewed by Martin Robinson.
+
+        Convert some variable names to lowercase.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Features list should print dots every other row
+        https://bugs.webkit.org/show_bug.cgi?id=143832
+
+        Reviewed by Martin Robinson.
+
+        Discount private options when determining whether to print dots on a given row of the
+        features list. Also, simplify the logic by using only one for loop, and fix a couple errors
+        (inverted use of SHOULD_PRINT_DOTS, one use of the renamed variable SHOULD_PRINT_POINTS that
+        wasn't noticed because it only affects the first line, and use of the variable name as a
+        string in a conditional.)
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Require specifying visibility of WebKit options
+        https://bugs.webkit.org/show_bug.cgi?id=143831
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsEfl.cmake: Specify all options as PUBLIC
+        * Source/cmake/OptionsGTK.cmake: Specify all options as PUBLIC
+        * Source/cmake/OptionsMac.cmake: Specify all options as PRIVATE
+        * Source/cmake/OptionsWindows.cmake: Specify all options as PUBLIC
+        * Source/cmake/WebKitFeatures.cmake: Require specifying options as PUBLIC or PRIVATE.
+          Remove WEBKIT_OPTION_DEFINE_PUBLIC and WEBKIT_OPTION_PRIVATE_PORT_VALUE. Specify all
+          cross-platform options as PRIVATE.
+
+2015-04-19  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [CMake] Synchronize variables between WebKitFeatures.cmake and cmakedonfig.h.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=143935
+
+        Reviewed by Darin Adler.
+
+        Some variables aren't defined in these files or unused variables aren't removed. This
+        patch cleans up it as well as fix wrong alphabet order.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2015-04-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Restore the WebKit.xcworkspace to the way it was before r182899,
+        which inadvertently added the Source directory and a couple of source
+        files.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+
 2015-04-16  Basile Clement  <basile_clement@apple.com>
 
         Extract the allocation profile from JSFunction into a rare object

@@ -28,7 +28,6 @@
 
 #if ENABLE(NETWORK_CACHE)
 
-#include "NetworkCacheKey.h"
 #include <WebCore/FileSystem.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -62,8 +61,6 @@ inline void traverseCacheFiles(const String& cachePath, const Function& function
     traverseDirectory(cachePath, DT_DIR, [&cachePath, &function](const String& subdirName) {
         String partitionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
         traverseDirectory(partitionPath, DT_REG, [&function, &partitionPath](const String& fileName) {
-            if (fileName.length() != Key::hashStringLength())
-                return;
             function(fileName, partitionPath);
         });
     });
@@ -79,7 +76,12 @@ inline FileTimes fileTimes(const String& path)
     struct stat fileInfo;
     if (stat(WebCore::fileSystemRepresentation(path).data(), &fileInfo))
         return { };
+#if PLATFORM(COCOA)
     return { std::chrono::system_clock::from_time_t(fileInfo.st_birthtime), std::chrono::system_clock::from_time_t(fileInfo.st_mtime) };
+#else
+    // FIXME: we need a way to get the creation time.
+    return { std::chrono::system_clock::from_time_t(fileInfo.st_ctime), std::chrono::system_clock::from_time_t(fileInfo.st_mtime) };
+#endif
 }
 
 inline void updateFileModificationTimeIfNeeded(const String& path)

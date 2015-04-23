@@ -1,3 +1,90 @@
+2015-04-22  Darin Adler  <darin@apple.com>
+
+        Eliminate remaining uses of OwnPtr and PassOwnPtr in WebCore outside the editing and platform directories
+        https://bugs.webkit.org/show_bug.cgi?id=143949
+
+        Reviewed by Andreas Kling.
+
+        * wtf/MathExtras.h:
+        (wtf_ceil): Deleted. This was a workaround for a bug that was introduced in Leopard and
+        fixed in Snow Leopard <rdar://problem/6286405>, so we don't need the workaround any more.
+
+2015-04-22  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] In nightlies and local builds, WebKit services can get terminated under memory pressure
+        https://bugs.webkit.org/show_bug.cgi?id=144052
+        rdar://problem/19754404
+
+        Build fix. Landing a forward declaration that should have been part of the original patch.
+
+        * wtf/spi/darwin/XPCSPI.h:
+
+2015-04-21  Chris Dumez  <cdumez@apple.com>
+
+        Make Vector(const Vector<T, otherCapacity, otherOverflowBehaviour>&) constructor explicit
+        https://bugs.webkit.org/show_bug.cgi?id=143970
+
+        Reviewed by Darin Adler.
+
+        Make Vector(const Vector<T, otherCapacity, otherOverflowBehaviour>&)
+        constructor explicit as it copies the vector and it is easy to call it
+        by mistake.
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        * wtf/Vector.h:
+
+2015-04-21  Darin Adler  <darin@apple.com>
+
+        Remove some stray uses of OwnPtr and PassOwnPtr in WTF (outside of the template definitions and traits)
+        https://bugs.webkit.org/show_bug.cgi?id=143944
+
+        Reviewed by Andreas Kling.
+
+        * wtf/FilePrintStream.h: Removed unneeded include.
+        * wtf/HashTable.h: Fixed class template name in comment.
+        * wtf/HashTraits.h: Removed unneeded forward declaration.
+        * wtf/ListHashSet.h: Removed unneeded includes.
+        * wtf/ThreadingWin.cpp: Removed unneeded includes.
+        (WTF::wtfThreadEntryPoint): Changed code to use unique_ptr.
+        (WTF::createThreadInternal): Changed code to use make_unique and release.
+        * wtf/efl/RunLoopEfl.cpp: Removed unneeded includes.
+
+2015-04-19  Darin Adler  <darin@apple.com>
+
+        Update RefPtr documentation and deprecation
+        https://bugs.webkit.org/show_bug.cgi?id=143936
+
+        Reviewed by Andreas Kling.
+
+        * WTF.vcxproj/WTF.vcxproj: Removed PassRef.h
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+        * WTF.xcodeproj/project.pbxproj: Ditto.
+        * wtf/CMakeLists.txt: Ditto.
+
+2015-04-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Use ASan poisoning to taint moved-out-of Refs
+        https://bugs.webkit.org/show_bug.cgi?id=143894
+        rdar://problem/19443723
+
+        Reviewed by Darin Adler.
+
+        * wtf/Ref.h: (WTF::Ref::~Ref):
+
+2015-04-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove unused BoundsCheckedPointer
+        https://bugs.webkit.org/show_bug.cgi?id=143896
+
+        Reviewed by Geoffrey Garen.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BoundsCheckedPointer.h: Removed.
+        * wtf/CMakeLists.txt:
+
 2015-04-16  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [ES6] Implement Symbol.for and Symbol.keyFor

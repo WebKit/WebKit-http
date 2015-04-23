@@ -58,14 +58,14 @@ static WeakMapData* getWeakMapData(CallFrame* callFrame, JSValue value)
 {
     if (!value.isObject()) {
         throwTypeError(callFrame, WTF::ASCIILiteral("Called WeakMap function on non-object"));
-        return 0;
+        return nullptr;
     }
 
     if (JSWeakMap* weakMap = jsDynamicCast<JSWeakMap*>(value))
         return weakMap->weakMapData();
 
     throwTypeError(callFrame, WTF::ASCIILiteral("Called WeakMap function on a non-WeakMap object"));
-    return 0;
+    return nullptr;
 }
 
 EncodedJSValue JSC_HOST_CALL protoFuncWeakMapClear(CallFrame* callFrame)
@@ -83,9 +83,7 @@ EncodedJSValue JSC_HOST_CALL protoFuncWeakMapDelete(CallFrame* callFrame)
     if (!map)
         return JSValue::encode(jsUndefined());
     JSValue key = callFrame->argument(0);
-    if (!key.isObject())
-        return JSValue::encode(throwTypeError(callFrame, WTF::ASCIILiteral("A WeakMap cannot have a non-object key")));
-    return JSValue::encode(jsBoolean(map->remove(asObject(key))));
+    return JSValue::encode(jsBoolean(key.isObject() && map->remove(asObject(key))));
 }
 
 EncodedJSValue JSC_HOST_CALL protoFuncWeakMapGet(CallFrame* callFrame)
@@ -95,7 +93,7 @@ EncodedJSValue JSC_HOST_CALL protoFuncWeakMapGet(CallFrame* callFrame)
         return JSValue::encode(jsUndefined());
     JSValue key = callFrame->argument(0);
     if (!key.isObject())
-        return JSValue::encode(throwTypeError(callFrame, WTF::ASCIILiteral("A WeakMap cannot have a non-object key")));
+        return JSValue::encode(jsUndefined());
     return JSValue::encode(map->get(asObject(key)));
 }
 
@@ -105,9 +103,7 @@ EncodedJSValue JSC_HOST_CALL protoFuncWeakMapHas(CallFrame* callFrame)
     if (!map)
         return JSValue::encode(jsUndefined());
     JSValue key = callFrame->argument(0);
-    if (!key.isObject())
-        return JSValue::encode(throwTypeError(callFrame, WTF::ASCIILiteral("A WeakMap cannot have a non-object key")));
-    return JSValue::encode(jsBoolean(map->contains(asObject(key))));
+    return JSValue::encode(jsBoolean(key.isObject() && map->contains(asObject(key))));
 }
 
 EncodedJSValue JSC_HOST_CALL protoFuncWeakMapSet(CallFrame* callFrame)

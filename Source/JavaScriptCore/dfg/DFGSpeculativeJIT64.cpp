@@ -799,7 +799,7 @@ void SpeculativeJIT::emitCall(Node* node)
     m_jit.addJSCall(fastCall, slowCall, targetToCheck, callLinkInfo);
     
     // If we were varargs, then after the calls are done, we need to reestablish our stack pointer.
-    if (isVarargs)
+    if (isVarargs || isForwardVarargs)
         m_jit.addPtr(TrustedImm32(m_jit.graph().stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, JITCompiler::stackPointerRegister);
 }
 
@@ -1921,12 +1921,18 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
-    case MovHint:
-    case ZombieHint: {
-        DFG_CRASH(m_jit.graph(), node, "Unexpected node");
+    case MovHint: {
+        compileMovHint(m_currentNode);
+        noResult(node);
         break;
     }
-
+        
+    case ZombieHint: {
+        recordSetLocal(m_currentNode->unlinkedLocal(), VirtualRegister(), DataFormatDead);
+        noResult(node);
+        break;
+    }
+        
     case SetLocal: {
         switch (node->variableAccessData()->flushFormat()) {
         case FlushedDouble: {
@@ -3578,6 +3584,7 @@ void SpeculativeJIT::compile(Node* node)
         slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, rareDataGPR));
         m_jit.loadPtr(JITCompiler::Address(rareDataGPR, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()), allocatorGPR);
         m_jit.loadPtr(JITCompiler::Address(rareDataGPR, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()), structureGPR);
+        slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, allocatorGPR));
         emitAllocateJSObject(resultGPR, allocatorGPR, structureGPR, TrustedImmPtr(0), scratchGPR, slowPath);
 
         addSlowPathGenerator(slowPathCall(slowPath, this, operationCreateThis, resultGPR, calleeGPR, node->inlineCapacity()));
@@ -3586,11 +3593,6 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
-    case AllocationProfileWatchpoint: {
-        noResult(node);
-        break;
-    }
-
     case NewObject: {
         GPRTemporary result(this);
         GPRTemporary allocator(this);
