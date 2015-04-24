@@ -106,8 +106,11 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
 
     if (m_compositorTexture) {
         ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
-        ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
+        ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, pixelDataType, 0);
+        ::glBindFramebuffer(GL_FRAMEBUFFER, m_compositorFBO);
+        ::glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_compositorTexture, 0);
         ::glBindTexture(GL_TEXTURE_2D, 0);
+        ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
     }
 
     Extensions3DOpenGLES* extensions = static_cast<Extensions3DOpenGLES*>(getExtensions());
@@ -156,11 +159,17 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
                     ::glBindRenderbuffer(GL_RENDERBUFFER, m_stencilBuffer);
                     ::glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
                     ::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_stencilBuffer);
+                    ::glBindFramebuffer(GL_FRAMEBUFFER, m_compositorFBO);
+                    ::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_stencilBuffer);
+                    ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
                 }
                 if (m_attrs.depth) {
                     ::glBindRenderbuffer(GL_RENDERBUFFER, m_depthBuffer);
                     ::glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
                     ::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depthBuffer);
+                    ::glBindFramebuffer(GL_FRAMEBUFFER, m_compositorFBO);
+                    ::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depthBuffer);
+                    ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
                 }
             }
             ::glBindRenderbuffer(GL_RENDERBUFFER, 0);

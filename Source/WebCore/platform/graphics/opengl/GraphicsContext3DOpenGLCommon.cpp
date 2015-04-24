@@ -220,6 +220,10 @@ void GraphicsContext3D::prepareTexture()
         resolveMultisamplingIfNecessary();
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(OPENGL_ES_2)
+    // For the RPi we need to flush the changes before swapping the buffers to avoid flickering
+    ::glFlush();
+#endif
     std::swap(m_fbo, m_compositorFBO);
     std::swap(m_texture, m_compositorTexture);
 
