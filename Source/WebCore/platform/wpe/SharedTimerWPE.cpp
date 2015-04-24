@@ -37,7 +37,7 @@ static void sharedTimerFire()
 {
     sharedTimerFiredFunction();
 }
-static GSourceWrap::Static gSharedTimer("[WebKit] sharedTimerTimeoutCallback", std::function<void ()>(sharedTimerFire), G_PRIORITY_HIGH_IDLE + 20);
+static GSourceWrap::Static gSharedTimer("[WebKit] sharedTimerTimeoutCallback", std::function<void ()>(sharedTimerFire), G_PRIORITY_HIGH + 20);
 
 void setSharedTimerFiredFunction(void (*f)())
 {

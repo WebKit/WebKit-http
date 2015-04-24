@@ -124,7 +124,7 @@ WaylandDisplay* WaylandDisplay::instance()
     g_source_add_poll(baseSource, &source->pfd);
 
     g_source_set_name(baseSource, "[WebKit] WaylandDisplay");
-    g_source_set_priority(baseSource, G_PRIORITY_HIGH_IDLE + 20);
+    g_source_set_priority(baseSource, G_PRIORITY_HIGH + 20);
     g_source_set_can_recurse(baseSource, TRUE);
     g_source_attach(baseSource, g_main_context_get_thread_default());
 
