@@ -712,9 +712,6 @@ void CoordinatedGraphicsScene::detach()
 
 void CoordinatedGraphicsScene::appendUpdate(std::function<void()> function)
 {
-    if (!m_isActive)
-        return;
-
     ASSERT(isMainThread());
     MutexLocker locker(m_renderQueueMutex);
     m_renderQueue.append(WTF::move(function));
@@ -725,10 +722,6 @@ void CoordinatedGraphicsScene::setActive(bool active)
     if (m_isActive == active)
         return;
 
-    // Have to clear render queue in both cases.
-    // If there are some updates in queue during activation then those updates are from previous instance of paint node
-    // and cannot be applied to the newly created instance.
-    m_renderQueue.clear();
     m_isActive = active;
     if (m_isActive) {
         RefPtr<CoordinatedGraphicsScene> protector(this);
