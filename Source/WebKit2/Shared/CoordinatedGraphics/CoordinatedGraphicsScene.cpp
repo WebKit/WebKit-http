@@ -60,7 +60,7 @@ CoordinatedGraphicsScene::CoordinatedGraphicsScene(CoordinatedGraphicsSceneClien
     : m_client(client)
     , m_isActive(false)
     , m_rootLayerID(InvalidCoordinatedLayerID)
-    , m_viewBackgroundColor(Color::white)
+    , m_viewBackgroundColor(Color::black)
     , m_clientRunLoop(RunLoop::current())
 {
 }
