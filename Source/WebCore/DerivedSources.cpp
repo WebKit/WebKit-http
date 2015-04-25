@@ -305,6 +305,7 @@
 #include "JSRangeException.cpp"
 #if ENABLE(STREAMS_API)
 #include "JSReadableStream.cpp"
+#include "JSReadableStreamController.cpp"
 #include "JSReadableStreamReader.cpp"
 #endif
 #include "JSRect.cpp"
@@ -510,7 +511,6 @@
 #include "JSWebKitCSSTransformValue.cpp"
 #include "JSWebKitCSSMatrix.cpp"
 #include "JSWebKitCSSRegionRule.cpp"
-#include "JSWebKitMouseForceEvent.cpp"
 #include "JSWebKitNamedFlow.cpp"
 #include "JSWebKitPoint.cpp"
 #include "JSWebKitTransitionEvent.cpp"

@@ -115,7 +115,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         
     case Identity:
     case Phantom:
-    case HardPhantom:
+    case MustGenerate:
     case Check:
     case ExtractOSREntryLocal:
     case CheckStructureImmediate:
@@ -311,10 +311,14 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(SideState);
         return;
 
-    case CreateActivation:
+    case CreateActivation: {
+        SymbolTable* table = graph.symbolTableFor(node->origin.semantic);
+        if (table->singletonScope()->isStillValid())
+            write(Watchpoint_fire);
         read(HeapObjectCount);
         write(HeapObjectCount);
         return;
+    }
         
     case CreateDirectArguments:
     case CreateScopedArguments:
@@ -348,11 +352,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(VarInjectionWatchpointLoc, MiscFields), node);
         return;
 
-    case AllocationProfileWatchpoint:
-        read(MiscFields);
-        def(HeapLocation(AllocationProfileWatchpointLoc, MiscFields), node);
-        return;
-        
     case IsObjectOrNull:
         read(MiscFields);
         def(HeapLocation(IsObjectOrNullLoc, MiscFields, node->child1()), node);
@@ -858,11 +857,18 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case NewStringObject:
     case PhantomNewObject:
     case MaterializeNewObject:
-    case NewFunction:
+    case PhantomNewFunction:
         read(HeapObjectCount);
         write(HeapObjectCount);
         return;
         
+    case NewFunction:
+        if (node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid())
+            write(Watchpoint_fire);
+        read(HeapObjectCount);
+        write(HeapObjectCount);
+        return;
+
     case RegExpExec:
     case RegExpTest:
         read(RegExpState);

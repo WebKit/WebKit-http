@@ -26,6 +26,7 @@
 
 #include "GraphicsContext.h"
 #include "RenderSVGText.h"
+#include "RenderSVGTextPath.h"
 #include "SVGInlineFlowBox.h"
 #include "SVGInlineTextBox.h"
 #include "SVGNames.h"
@@ -104,7 +105,7 @@ void SVGRootInlineBox::layoutCharactersInTextBoxes(InlineFlowBox* start, SVGText
     for (InlineBox* child = start->firstChild(); child; child = child->nextOnLine()) {
         if (is<SVGInlineTextBox>(*child)) {
             ASSERT(is<RenderSVGInlineText>(child->renderer()));
-            characterLayout.layoutInlineTextBox(downcast<SVGInlineTextBox>(child));
+            characterLayout.layoutInlineTextBox(downcast<SVGInlineTextBox>(*child));
         } else {
             // Skip generated content.
             Node* node = child->renderer().node();
@@ -119,7 +120,7 @@ void SVGRootInlineBox::layoutCharactersInTextBoxes(InlineFlowBox* start, SVGText
                 SVGTextLayoutEngine lineLayout(characterLayout.layoutAttributes());
                 layoutCharactersInTextBoxes(&flowBox, lineLayout);
 
-                characterLayout.beginTextPathLayout(&child->renderer(), lineLayout);
+                characterLayout.beginTextPathLayout(downcast<RenderSVGTextPath>(child->renderer()), lineLayout);
             }
 
             layoutCharactersInTextBoxes(&flowBox, characterLayout);

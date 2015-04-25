@@ -55,18 +55,23 @@ namespace JSC { namespace DFG {
     /* Nodes for local variable access. These nodes are linked together using Phi nodes. */\
     /* Any two nodes that are part of the same Phi graph will share the same */\
     /* VariableAccessData, and thus will share predictions. FIXME: We should come up with */\
-    /* better names for a lot of these. https://bugs.webkit.org/show_bug.cgi?id=137307 */\
-    macro(GetLocal, NodeResultJS) \
+    /* better names for a lot of these. https://bugs.webkit.org/show_bug.cgi?id=137307. */\
+    /* Note that GetLocal is MustGenerate because it's our only way of knowing that some other */\
+    /* basic block might have read a local variable in bytecode. We only remove GetLocals if it */\
+    /* is redundant because of an earlier GetLocal or SetLocal in the same block. We could make */\
+    /* these not MustGenerate and use a more sophisticated analysis to insert PhantomLocals in */\
+    /* the same way that we insert Phantoms. https://bugs.webkit.org/show_bug.cgi?id=144086 */\
+    macro(GetLocal, NodeResultJS | NodeMustGenerate) \
     macro(SetLocal, 0) \
     \
     macro(PutStack, NodeMustGenerate) \
     macro(KillStack, NodeMustGenerate) \
     macro(GetStack, NodeResultJS) \
     \
-    macro(MovHint, 0) \
-    macro(ZombieHint, 0) \
+    macro(MovHint, NodeMustGenerate) \
+    macro(ZombieHint, NodeMustGenerate) \
     macro(Phantom, NodeMustGenerate) \
-    macro(HardPhantom, NodeMustGenerate) /* Like Phantom, but we never remove any of its children. */ \
+    macro(MustGenerate, NodeMustGenerate) /* Utility node for making soem not-usually-NodeMustGenerate node become like NodeMustGenerate. */ \
     macro(Check, NodeMustGenerate) /* Used if we want just a type check but not liveness. Non-checking uses will be removed. */\
     macro(Upsilon, NodeRelevantToOSR) \
     macro(Phi, NodeRelevantToOSR) \
@@ -194,7 +199,6 @@ namespace JSC { namespace DFG {
     macro(CheckCell, NodeMustGenerate) \
     macro(CheckNotEmpty, NodeMustGenerate) \
     macro(CheckBadCell, NodeMustGenerate) \
-    macro(AllocationProfileWatchpoint, NodeMustGenerate) \
     macro(CheckInBounds, NodeMustGenerate) \
     \
     /* Optimizations for array mutation. */\
@@ -238,10 +242,11 @@ namespace JSC { namespace DFG {
     macro(NewRegexp, NodeResultJS) \
     \
     /* Support for allocation sinking. */\
-    macro(PhantomNewObject, NodeResultJS) \
+    macro(PhantomNewObject, NodeResultJS | NodeMustGenerate) \
     macro(PutHint, NodeMustGenerate) \
     macro(CheckStructureImmediate, NodeMustGenerate) \
     macro(MaterializeNewObject, NodeResultJS | NodeHasVarArgs) \
+    macro(PhantomNewFunction, NodeResultJS | NodeMustGenerate) \
     \
     /* Nodes for misc operations. */\
     macro(Breakpoint, NodeMustGenerate) \

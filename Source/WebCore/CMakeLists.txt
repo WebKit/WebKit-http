@@ -119,6 +119,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
     "${CMAKE_BINARY_DIR}"
+    ${ICU_INCLUDE_DIRS}
 )
 
 SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
@@ -278,6 +279,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/speech/SpeechSynthesisVoice.idl
 
     Modules/streams/ReadableStream.idl
+    Modules/streams/ReadableStreamController.idl
     Modules/streams/ReadableStreamReader.idl
 
     Modules/vibration/NavigatorVibration.idl
@@ -432,7 +434,6 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/TreeWalker.idl
     dom/UIEvent.idl
     dom/WebKitAnimationEvent.idl
-    dom/WebKitMouseForceEvent.idl
     dom/WebKitNamedFlow.idl
     dom/WebKitTransitionEvent.idl
     dom/WheelEvent.idl
@@ -1159,6 +1160,7 @@ set(WebCore_SOURCES
     bindings/js/JSRTCSessionDescriptionCustom.cpp
     bindings/js/JSRTCStatsResponseCustom.cpp
     bindings/js/JSReadableStreamCustom.cpp
+    bindings/js/JSReadableStreamControllerCustom.cpp
     bindings/js/JSReadableStreamReaderCustom.cpp
     bindings/js/ReadableStreamJSSource.cpp
     bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
@@ -1218,6 +1220,21 @@ set(WebCore_SOURCES
     bridge/c/c_utility.cpp
 
     bridge/jsc/BridgeJSC.cpp
+
+    contentextensions/CombinedURLFilters.cpp
+    contentextensions/CompiledContentExtension.cpp
+    contentextensions/ContentExtension.cpp
+    contentextensions/ContentExtensionCompiler.cpp
+    contentextensions/ContentExtensionError.cpp
+    contentextensions/ContentExtensionParser.cpp
+    contentextensions/ContentExtensionRule.cpp
+    contentextensions/ContentExtensionsBackend.cpp
+    contentextensions/DFA.cpp
+    contentextensions/DFABytecodeCompiler.cpp
+    contentextensions/DFABytecodeInterpreter.cpp
+    contentextensions/NFA.cpp
+    contentextensions/NFAToDFA.cpp
+    contentextensions/URLFilterParser.cpp
 
     css/BasicShapeFunctions.cpp
     css/CSSAspectRatioValue.cpp
@@ -1460,7 +1477,6 @@ set(WebCore_SOURCES
     dom/ViewportArguments.cpp
     dom/VisitedLinkState.cpp
     dom/WebKitAnimationEvent.cpp
-    dom/WebKitMouseForceEvent.cpp
     dom/WebKitNamedFlow.cpp
     dom/WebKitTransitionEvent.cpp
     dom/WheelEvent.cpp
@@ -1676,6 +1692,8 @@ set(WebCore_SOURCES
     html/RangeInputType.cpp
     html/RelList.cpp
     html/ResetInputType.cpp
+    html/RubyElement.cpp
+    html/RubyTextElement.cpp
     html/SearchInputType.cpp
     html/StepRange.cpp
     html/SubmitInputType.cpp
@@ -1828,6 +1846,7 @@ set(WebCore_SOURCES
     inspector/WorkerRuntimeAgent.cpp
 
     loader/CookieJar.cpp
+    loader/ContentFilter.cpp
     loader/CrossOriginAccessControl.cpp
     loader/CrossOriginPreflightResultCache.cpp
     loader/DocumentLoadTiming.cpp
@@ -1974,6 +1993,7 @@ set(WebCore_SOURCES
     page/UserContentURLPattern.cpp
     page/VisitedLinkStore.cpp
     page/WheelEventDeltaTracker.cpp
+    page/WheelEventTestTrigger.cpp
     page/WindowFeatures.cpp
     page/WindowFocusAllowedIndicator.cpp
     page/WorkerNavigator.cpp
@@ -2040,6 +2060,7 @@ set(WebCore_SOURCES
     platform/ScrollbarThemeComposite.cpp
     platform/SharedBuffer.cpp
     platform/SharedBufferChunkReader.cpp
+    platform/Theme.cpp
     platform/ThreadGlobalData.cpp
     platform/ThreadTimers.cpp
     platform/Timer.cpp
@@ -2091,6 +2112,7 @@ set(WebCore_SOURCES
     platform/graphics/BitmapImage.cpp
     platform/graphics/Color.cpp
     platform/graphics/CrossfadeGeneratedImage.cpp
+    platform/graphics/DisplayRefreshMonitorClient.cpp
     platform/graphics/FloatPoint.cpp
     platform/graphics/FloatPoint3D.cpp
     platform/graphics/FloatPolygon.cpp
@@ -2259,13 +2281,19 @@ set(WebCore_SOURCES
     platform/text/TextBoundaries.cpp
     platform/text/TextBreakIterator.cpp
     platform/text/TextCodec.cpp
+    platform/text/TextCodecICU.cpp
     platform/text/TextCodecLatin1.cpp
     platform/text/TextCodecUTF16.cpp
     platform/text/TextCodecUTF8.cpp
     platform/text/TextCodecUserDefined.cpp
     platform/text/TextEncoding.cpp
+    platform/text/TextEncodingDetectorICU.cpp
     platform/text/TextEncodingRegistry.cpp
     platform/text/TextStream.cpp
+
+    platform/text/icu/UTextProvider.cpp
+    platform/text/icu/UTextProviderLatin1.cpp
+    platform/text/icu/UTextProviderUTF16.cpp
 
     plugins/DOMMimeType.cpp
     plugins/DOMMimeTypeArray.cpp
@@ -2518,6 +2546,7 @@ set(WebCore_SOURCES
     storage/StorageNamespaceProvider.cpp
 
     style/InlineTextBoxStyle.cpp
+    style/RenderTreePosition.cpp
     style/StyleFontSizeFunctions.cpp
     style/StyleResolveForDocument.cpp
     style/StyleResolveTree.cpp
@@ -2763,6 +2792,7 @@ set(WebCore_PLUG_INS_RESOURCES
 )
 
 set(WebCore_LIBRARIES
+    ${ICU_LIBRARIES}
     JavaScriptCore
     WTF
 )
@@ -2934,6 +2964,8 @@ if (ENABLE_VIDEO_TRACK)
         html/track/VideoTrack.cpp
         html/track/VideoTrackList.cpp
         html/track/VTTCue.cpp
+        html/track/VTTRegion.cpp
+        html/track/VTTRegionList.cpp
         html/track/VTTScanner.cpp
         html/track/WebVTTElement.cpp
         html/track/WebVTTParser.cpp
@@ -2966,20 +2998,6 @@ if (ENABLE_QUOTA)
         Modules/quota/WorkerNavigatorStorageQuota.idl
     )
 endif ()
-
-list(APPEND WebCore_SOURCES
-    platform/text/TextCodecICU.cpp
-    platform/text/TextEncodingDetectorICU.cpp
-    platform/text/icu/UTextProvider.cpp
-    platform/text/icu/UTextProviderLatin1.cpp
-    platform/text/icu/UTextProviderUTF16.cpp
-)
-list(APPEND WebCore_INCLUDE_DIRECTORIES
-    ${ICU_INCLUDE_DIRS}
-)
-list(APPEND WebCore_LIBRARIES
-    ${ICU_LIBRARIES}
-)
 
 if (WTF_USE_3D_GRAPHICS)
     # For platforms that want to use system-provided OpenGL (ES) headers,

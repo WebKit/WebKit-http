@@ -1,3 +1,102 @@
+2015-04-23  Andy Estes  <aestes@apple.com>
+
+        Try to fix the Windows build after r183234.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::FullscreenVideoController): FullscreenVideoController inherits privately from
+        WebCore::MediaPlayerPrivateFullscreenClient, so make_unique isn't allowed to upcast. Add an explicit upcast.
+
+2015-04-23  Darin Adler  <darin@apple.com>
+
+        Another round of removing use of OwnPtr, PassOwnPtr, and deleteOwnedPtr
+        https://bugs.webkit.org/show_bug.cgi?id=144090
+
+        Reviewed by Anders Carlsson.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::FullscreenVideoController):
+        (FullscreenVideoController::exitFullscreen):
+        * FullscreenVideoController.h:
+        * Plugins/PluginView.h:
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::wndProc):
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::WebChromeClient):
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::WebFrameLoaderClient):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::highlight):
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebElementPropertyBag.cpp:
+        (WebElementPropertyBag::WebElementPropertyBag):
+        * WebElementPropertyBag.h:
+        * WebFrame.h:
+        * WebHistoryItem.cpp:
+        * WebNodeHighlight.cpp:
+        * WebNotificationCenter.cpp:
+        (WebNotificationCenter::WebNotificationCenter):
+        * WebNotificationCenter.h:
+        Use make_unique and unique_ptr instead of adoptPtr and OwnPtr.
+
+2015-04-23  Andreas Kling  <akling@apple.com>
+
+        There should only be one way to get the system memory size.
+        <https://webkit.org/b/144081>
+
+        Reviewed by Antti Koivisto.
+
+        * WebView.cpp:
+        (WebView::setCacheModel):
+
+2015-04-13  Jer Noble  <jer.noble@apple.com>
+
+        [Fullscreen] ChromeClient::exitVideoFullscreen() should take a pointer to a HTMLVideoElement.
+        https://bugs.webkit.org/show_bug.cgi?id=143674
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::enterVideoFullscreenForVideoElement): Takes a reference.
+        (WebChromeClient::exitVideoFullscreenForVideoElement): Renamed from exitVideoFullscreen().
+        (WebChromeClient::exitVideoFullscreen): Deleted.
+        * WebCoreSupport/WebChromeClient.h:
+        * WebView.cpp:
+        (WebView::enterVideoFullscreenForVideoElement): Takes a reference.
+        (WebView::exitVideoFullscreenForVideoElement): Renamed from exitVideoFullscreen().
+        (WebView::exitVideoFullscreen): Deleted.
+        * WebView.h:
+
+2015-04-13  Beth Dakin  <bdakin@apple.com>
+
+        Add force property to MouseEvents
+        https://bugs.webkit.org/show_bug.cgi?id=143569
+        -and corresponding-
+        rdar://problem/20472954
+
+        Reviewed by Darin Adler.
+
+        PlatformMouseEvent takes a force parameter.
+        * WebDropSource.cpp:
+        (generateMouseEvent):
+
+2015-04-13  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Incorrect parameter order in call to WebView::repaint.
+        https://bugs.webkit.org/show_bug.cgi?id=143666
+
+        Reviewed by Brent Fulgham.
+
+        The 'immediate' default parameter has been forgotten.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::invalidateRootView):
+        (WebChromeClient::invalidateContentsAndRootView):
+        (WebChromeClient::invalidateContentsForSlowScroll):
+
 2015-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [ES6] Enable Symbol in web pages

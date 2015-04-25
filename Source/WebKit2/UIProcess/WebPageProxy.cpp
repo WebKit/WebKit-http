@@ -154,6 +154,7 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 #include <WebCore/MediaPlaybackTarget.h>
+#include <WebCore/WebMediaSessionManager.h>
 #endif
 
 // This controls what strategy we use for mouse wheel coalescing.
@@ -408,7 +409,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_configurationPreferenceValues(configuration.preferenceValues)
     , m_potentiallyChangedViewStateFlags(ViewState::NoFlags)
     , m_viewStateChangeWantsSynchronousReply(false)
-    , m_isPlayingAudio(false)
 {
     m_webProcessLifetimeTracker.addObserver(m_visitedLinkProvider);
     m_webProcessLifetimeTracker.addObserver(m_websiteDataStore);
@@ -2216,6 +2216,8 @@ double WebPageProxy::pageScaleFactor() const
 
 void WebPageProxy::scalePage(double scale, const IntPoint& origin)
 {
+    ASSERT(scale > 0);
+
     if (!isValid())
         return;
 
@@ -2225,11 +2227,24 @@ void WebPageProxy::scalePage(double scale, const IntPoint& origin)
 
 void WebPageProxy::scalePageInViewCoordinates(double scale, const IntPoint& centerInViewCoordinates)
 {
+    ASSERT(scale > 0);
+
     if (!isValid())
         return;
 
     m_pageScaleFactor = scale;
     m_process->send(Messages::WebPage::ScalePageInViewCoordinates(scale, centerInViewCoordinates), m_pageID);
+}
+
+void WebPageProxy::scaleView(double scale)
+{
+    ASSERT(scale > 0);
+
+    if (!isValid())
+        return;
+
+    m_viewScaleFactor = scale;
+    m_process->send(Messages::WebPage::ScaleView(scale), m_pageID);
 }
 
 void WebPageProxy::setIntrinsicDeviceScaleFactor(float scaleFactor)
@@ -3055,6 +3070,15 @@ void WebPageProxy::didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, cons
 
     if (frame->isMainFrame())
         m_pageClient.didFirstVisuallyNonEmptyLayoutForMainFrame();
+}
+
+void WebPageProxy::didLayoutForCustomContentProvider()
+{
+    LayoutMilestones milestones = DidFirstLayout | DidFirstVisuallyNonEmptyLayout | DidHitRelevantRepaintedObjectsAreaThreshold;
+    if (m_navigationClient)
+        m_navigationClient->renderingProgressDidChange(*this, milestones, nullptr);
+    else
+        m_loaderClient->didLayout(*this, milestones, nullptr);
 }
 
 void WebPageProxy::didLayout(uint32_t layoutMilestones, const UserData& userData)
@@ -3910,7 +3934,7 @@ void WebPageProxy::didFindStringMatches(const String& string, const Vector<Vecto
         matches.uncheckedAppend(API::Array::create(WTF::move(apiRects)));
     }
 
-    m_findMatchesClient.didFindStringMatches(this, string, API::Array::create(WTF::move(matches)).get(), firstIndexAfterSelection);
+    m_findMatchesClient.didFindStringMatches(this, string, API::Array::create(WTF::move(matches)).ptr(), firstIndexAfterSelection);
 }
 
 void WebPageProxy::didFailToFindString(const String& string)
@@ -4064,8 +4088,10 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
         }
 
         ContextMenuItem coreItem = ContextMenuItem::shareMenuItem(absoluteLinkURL, downloadableMediaURL, image.get(), contextMenuContextData.selectedText());
-        if (!coreItem.isNull())
+        if (!coreItem.isNull()) {
+            platformInitializeShareMenuItem(coreItem);
             proposedAPIItems.append(WebContextMenuItem::create(coreItem));
+        }
     }
 
     Vector<RefPtr<WebContextMenuItem>> clientItems;
@@ -4080,6 +4106,12 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
 
     m_contextMenuClient->contextMenuDismissed(*this);
 }
+
+#if !PLATFORM(MAC)
+void WebPageProxy::platformInitializeShareMenuItem(ContextMenuItem&)
+{
+}
+#endif
 
 void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
 {
@@ -4374,6 +4406,9 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
 
     case WebEvent::MouseDown:
     case WebEvent::MouseUp:
+    case WebEvent::MouseForceChanged:
+    case WebEvent::MouseForceDown:
+    case WebEvent::MouseForceUp:
     case WebEvent::Wheel:
     case WebEvent::KeyDown:
     case WebEvent::KeyUp:
@@ -4403,6 +4438,10 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         break;
     case WebEvent::MouseUp:
         m_currentlyProcessedMouseDownEvent = nullptr;
+        break;
+    case WebEvent::MouseForceChanged:
+    case WebEvent::MouseForceDown:
+    case WebEvent::MouseForceUp:
         break;
 
     case WebEvent::Wheel: {
@@ -4789,6 +4828,10 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_layerTreeTransactionIdAtLastTouchStart = 0;
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    m_pageClient.mediaSessionManager().removeAllPlaybackTargetPickerClients(*this);
+#endif
+
     CallbackBase::Error error;
     switch (resetStateReason) {
     case ResetStateReason::PageInvalidated:
@@ -4810,7 +4853,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
         editCommandVector[i]->invalidate();
 
     m_activePopupMenu = nullptr;
-    m_isPlayingAudio = false;
+    m_mediaState = MediaProducer::IsNotPlaying;
 }
 
 void WebPageProxy::resetStateAfterProcessExited()
@@ -4893,6 +4936,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
     parameters.deviceScaleFactor = deviceScaleFactor();
+    parameters.viewScaleFactor = m_viewScaleFactor;
     parameters.topContentInset = m_topContentInset;
     parameters.mediaVolume = m_mediaVolume;
     parameters.muted = m_muted;
@@ -5594,16 +5638,19 @@ void WebPageProxy::navigationGestureDidBegin()
 {
     m_isShowingNavigationGestureSnapshot = true;
     m_pageClient.navigationGestureDidBegin();
+    m_loaderClient->navigationGestureDidBegin(*this);
 }
 
 void WebPageProxy::navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem& item)
 {
     m_pageClient.navigationGestureWillEnd(willNavigate, item);
+    m_loaderClient->navigationGestureWillEnd(*this, willNavigate, item);
 }
 
 void WebPageProxy::navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem& item)
 {
     m_pageClient.navigationGestureDidEnd(willNavigate, item);
+    m_loaderClient->navigationGestureDidEnd(*this, willNavigate, item);
 }
 
 void WebPageProxy::willRecordNavigationSnapshot(WebBackForwardListItem& item)
@@ -5616,12 +5663,17 @@ void WebPageProxy::navigationGestureSnapshotWasRemoved()
     m_isShowingNavigationGestureSnapshot = false;
 }
 
-void WebPageProxy::isPlayingAudioDidChange(bool newIsPlayingAudio)
+void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state)
 {
-    if (m_isPlayingAudio == newIsPlayingAudio)
+    if (state == m_mediaState)
         return;
 
-    m_isPlayingAudio = newIsPlayingAudio;
+    MediaProducer::MediaStateFlags oldState = m_mediaState;
+    m_mediaState = state;
+
+    if ((oldState & MediaProducer::IsPlayingAudio) == (m_mediaState & MediaProducer::IsPlayingAudio))
+        return;
+
     m_uiClient->isPlayingAudioDidChange(*this);
 }
 
@@ -5644,11 +5696,6 @@ void WebPageProxy::selectLastActionMenuRange()
 void WebPageProxy::focusAndSelectLastActionMenuHitTestResult()
 {
     m_process->send(Messages::WebPage::FocusAndSelectLastActionMenuHitTestResult(), m_pageID);
-}
-
-void WebPageProxy::inputDeviceForceDidChange(float force, int stage)
-{
-    m_process->send(Messages::WebPage::InputDeviceForceDidChange(force, stage), m_pageID);
 }
 
 void WebPageProxy::immediateActionDidUpdate()
@@ -5699,46 +5746,49 @@ void WebPageProxy::handleAutoFillButtonClick(const UserData& userData)
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-
-WebCore::MediaPlaybackTargetPicker& WebPageProxy::devicePickerProxy()
+void WebPageProxy::addPlaybackTargetPickerClient(uint64_t contextId)
 {
-    if (!m_playbackTargetPicker)
-        m_playbackTargetPicker = m_pageClient.createPlaybackTargetPicker(this);
-
-    return *m_playbackTargetPicker.get();
+    m_pageClient.mediaSessionManager().addPlaybackTargetPickerClient(*this, contextId);
 }
 
-void WebPageProxy::showPlaybackTargetPicker(const WebCore::FloatRect& rect, bool hasVideo)
+void WebPageProxy::removePlaybackTargetPickerClient(uint64_t contextId)
 {
-    devicePickerProxy().showPlaybackTargetPicker(m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo);
+    m_pageClient.mediaSessionManager().removePlaybackTargetPickerClient(*this, contextId);
 }
 
-void WebPageProxy::startingMonitoringPlaybackTargets()
+void WebPageProxy::showPlaybackTargetPicker(uint64_t contextId, const WebCore::FloatRect& rect, bool hasVideo)
 {
-    devicePickerProxy().startingMonitoringPlaybackTargets();
+    m_pageClient.mediaSessionManager().showPlaybackTargetPicker(*this, contextId, m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo);
 }
 
-void WebPageProxy::stopMonitoringPlaybackTargets()
+void WebPageProxy::playbackTargetPickerClientStateDidChange(uint64_t contextId, WebCore::MediaProducer::MediaStateFlags state)
 {
-    devicePickerProxy().stopMonitoringPlaybackTargets();
+    m_pageClient.mediaSessionManager().clientStateDidChange(*this, contextId, state);
 }
 
-void WebPageProxy::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& target)
+void WebPageProxy::setPlaybackTarget(uint64_t contextId, Ref<MediaPlaybackTarget>&& target)
 {
     if (!isValid())
         return;
 
-    m_process->send(Messages::WebPage::PlaybackTargetSelected(target->targetContext()), m_pageID);
+    m_process->send(Messages::WebPage::PlaybackTargetSelected(contextId, target->targetContext()), m_pageID);
 }
 
-void WebPageProxy::externalOutputDeviceAvailableDidChange(bool available)
+void WebPageProxy::externalOutputDeviceAvailableDidChange(uint64_t contextId, bool available)
 {
     if (!isValid())
         return;
 
-    m_process->send(Messages::WebPage::PlaybackTargetAvailabilityDidChange(available), m_pageID);
+    m_process->send(Messages::WebPage::PlaybackTargetAvailabilityDidChange(contextId, available), m_pageID);
 }
 
+void WebPageProxy::setShouldPlayToPlaybackTarget(uint64_t contextId, bool shouldPlay)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetShouldPlayToPlaybackTarget(contextId, shouldPlay), m_pageID);
+}
 #endif
 
 void WebPageProxy::didChangeBackgroundColor()

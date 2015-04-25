@@ -55,7 +55,7 @@ bool doesGC(Graph& graph, Node* node)
     case MovHint:
     case ZombieHint:
     case Phantom:
-    case HardPhantom:
+    case MustGenerate:
     case Upsilon:
     case Phi:
     case Flush:
@@ -106,7 +106,6 @@ bool doesGC(Graph& graph, Node* node)
     case VarInjectionWatchpoint:
     case CheckCell:
     case CheckNotEmpty:
-    case AllocationProfileWatchpoint:
     case RegExpExec:
     case RegExpTest:
     case CompareLess:
@@ -198,6 +197,7 @@ bool doesGC(Graph& graph, Node* node)
     case CheckBadCell:
     case BottomValue:
     case PhantomNewObject:
+    case PhantomNewFunction:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:

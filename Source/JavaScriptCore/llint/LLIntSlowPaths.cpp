@@ -1097,6 +1097,10 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
         codePtr = executable->entrypointFor(vm, kind, MustCheckArity, RegisterPreservationNotRequired);
     else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
+
+        if (!isCall(kind) && functionExecutable->isBuiltinFunction())
+            LLINT_CALL_THROW(exec, createNotAConstructorError(exec, callee));
+
         JSObject* error = functionExecutable->prepareForExecution(execCallee, callee, scope, kind);
         if (error)
             LLINT_CALL_THROW(exec, error);
@@ -1402,8 +1406,12 @@ LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)
     if (modeAndType.type() == LocalClosureVar) {
         JSLexicalEnvironment* environment = jsCast<JSLexicalEnvironment*>(scope);
         environment->variableAt(ScopeOffset(pc[6].u.operand)).set(vm, environment, value);
-        if (VariableWatchpointSet* set = pc[5].u.watchpointSet)
-            set->notifyWrite(vm, value, "Executed op_put_scope<LocalClosureVar>");
+        
+        // Have to do this *after* the write, because if this puts the set into IsWatched, then we need
+        // to have already changed the value of the variable. Otherwise we might watch and constant-fold
+        // to the Undefined value from before the assignment.
+        if (WatchpointSet* set = pc[5].u.watchpointSet)
+            set->touch("Executed op_put_scope<LocalClosureVar>");
         LLINT_END();
     }
 

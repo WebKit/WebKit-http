@@ -45,6 +45,7 @@
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/PlatformCookieJar.h>
 #import <WebCore/ResourceHandle.h>
+#import <WebCore/Settings.h>
 #import <WebCore/TextEncodingRegistry.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
@@ -417,6 +418,7 @@ public:
         @"0",                           WebKitMinimumFontSizePreferenceKey,
         @"9",                           WebKitMinimumLogicalFontSizePreferenceKey, 
         @"16",                          WebKitDefaultFontSizePreferenceKey,
+        @(YES),                         WebKitAntialiasedFontDilationEnabledKey,
         @"13",                          WebKitDefaultFixedFontSizePreferenceKey,
         @"ISO-8859-1",                  WebKitDefaultTextEncodingNamePreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitUsesEncodingDetectorPreferenceKey,
@@ -431,6 +433,7 @@ public:
         [NSNumber numberWithBool:YES],  WebKitJavaEnabledPreferenceKey,
 #endif
         [NSNumber numberWithBool:YES],  WebKitJavaScriptEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitJavaScriptMarkupEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitWebSecurityEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAllowUniversalAccessFromFileURLsPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAllowFileAccessFromFileURLsPreferenceKey,
@@ -565,7 +568,7 @@ public:
 #endif
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
-        [NSNumber numberWithBool:YES],  WebKitQTKitEnabledPreferenceKey,
+        [NSNumber numberWithBool:Settings::isQTKitEnabled()], WebKitQTKitEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey,
@@ -2481,6 +2484,26 @@ static NSString *classIBCreatorID = nil;
 - (void)setMediaKeysStorageDirectory:(NSString *)directory
 {
     [self _setStringValue:directory forKey:WebKitMediaKeysStorageDirectoryKey];
+}
+
+- (void)setAntialiasedFontDilationEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitAntialiasedFontDilationEnabledKey];
+}
+
+- (BOOL)antialiasedFontDilationEnabled
+{
+    return [self _boolValueForKey:WebKitAntialiasedFontDilationEnabledKey];
+}
+
+- (BOOL)javaScriptMarkupEnabled
+{
+    return [self _boolValueForKey:WebKitJavaScriptMarkupEnabledPreferenceKey];
+}
+
+- (void)setJavaScriptMarkupEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitJavaScriptMarkupEnabledPreferenceKey];
 }
 
 @end

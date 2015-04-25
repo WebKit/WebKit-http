@@ -42,7 +42,6 @@
 #include "WorkerLoaderProxy.h"
 #include "WorkerThread.h"
 #include <wtf/MainThread.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -91,19 +90,22 @@ WorkerThreadableLoader::MainThreadBridge::MainThreadBridge(PassRefPtr<Threadable
 {
     ASSERT(m_workerClientWrapper.get());
 
-    auto requestData = request.copyData().release();
+    auto* requestData = request.copyData().release();
+    auto* optionsCopy = options.isolatedCopy().release();
     StringCapture capturedOutgoingReferrer(outgoingReferrer);
-    m_loaderProxy.postTaskToLoader([this, requestData, options, capturedOutgoingReferrer](ScriptExecutionContext& context) {
+    m_loaderProxy.postTaskToLoader([this, requestData, optionsCopy, capturedOutgoingReferrer](ScriptExecutionContext& context) {
         ASSERT(isMainThread());
         Document& document = downcast<Document>(context);
 
         auto request = ResourceRequest::adopt(std::unique_ptr<CrossThreadResourceRequestData>(requestData));
         request->setHTTPReferrer(capturedOutgoingReferrer.string());
 
+        auto options = std::unique_ptr<ThreadableLoaderOptions>(optionsCopy);
+
         // FIXME: If the a site requests a local resource, then this will return a non-zero value but the sync path
         // will return a 0 value. Either this should return 0 or the other code path should do a callback with
         // a failure.
-        m_mainThreadLoader = DocumentThreadableLoader::create(document, *this, *request, options);
+        m_mainThreadLoader = DocumentThreadableLoader::create(document, *this, *request, *options);
         ASSERT(m_mainThreadLoader);
     });
 }
@@ -161,10 +163,10 @@ void WorkerThreadableLoader::MainThreadBridge::didSendData(unsigned long long by
 void WorkerThreadableLoader::MainThreadBridge::didReceiveResponse(unsigned long identifier, const ResourceResponse& response)
 {
     RefPtr<ThreadableLoaderClientWrapper> workerClientWrapper = m_workerClientWrapper;
-    CrossThreadResourceResponseData* responseData = response.copyData().leakPtr();
+    auto* responseData = response.copyData().release();
     if (!m_loaderProxy.postTaskForModeToWorkerGlobalScope([workerClientWrapper, identifier, responseData] (ScriptExecutionContext& context) {
         ASSERT_UNUSED(context, context.isWorkerGlobalScope());
-        OwnPtr<ResourceResponse> response(ResourceResponse::adopt(adoptPtr(responseData)));
+        auto response(ResourceResponse::adopt(std::unique_ptr<CrossThreadResourceResponseData>(responseData)));
         workerClientWrapper->didReceiveResponse(identifier, *response);
     }, m_taskMode))
         delete responseData;
@@ -177,8 +179,8 @@ void WorkerThreadableLoader::MainThreadBridge::didReceiveData(const char* data, 
     memcpy(vectorPtr->data(), data, dataLength);
     if (!m_loaderProxy.postTaskForModeToWorkerGlobalScope([workerClientWrapper, vectorPtr] (ScriptExecutionContext& context) {
         ASSERT_UNUSED(context, context.isWorkerGlobalScope());
-        OwnPtr<Vector<char>> vector = adoptPtr(vectorPtr);
-        workerClientWrapper->didReceiveData(vector->data(), vector->size());
+        workerClientWrapper->didReceiveData(vectorPtr->data(), vectorPtr->size());
+        delete vectorPtr;
     }, m_taskMode))
         delete vectorPtr;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -67,8 +67,12 @@ using namespace WebCore;
 - (void)speakString:(NSString *)string;
 @end
 
-WebContextMenuClient::WebContextMenuClient(WebView *webView) 
+WebContextMenuClient::WebContextMenuClient(WebView *webView)
+#if ENABLE(SERVICE_CONTROLS)
+    : WebSharingServicePickerClient(webView)
+#else
     : m_webView(webView)
+#endif
 {
 }
 
@@ -412,16 +416,6 @@ void WebContextMenuClient::sharingServicePickerWillBeDestroyed(WebSharingService
     m_sharingServicePickerController = nil;
 }
 
-WebCore::Page* WebContextMenuClient::pageForSharingServicePicker(WebSharingServicePickerController &)
-{
-    return [m_webView page];
-}
-
-RetainPtr<NSWindow> WebContextMenuClient::windowForSharingServicePicker(WebSharingServicePickerController &)
-{
-    return [m_webView window];
-}
-
 WebCore::FloatRect WebContextMenuClient::screenRectForCurrentSharingServicePickerItem(WebSharingServicePickerController &)
 {
     Page* page = [m_webView page];
@@ -477,7 +471,7 @@ RetainPtr<NSImage> WebContextMenuClient::imageForCurrentSharingServicePickerItem
 
     VisibleSelection oldSelection = frameView->frame().selection().selection();
     RefPtr<Range> range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
-    frameView->frame().selection().setSelection(VisibleSelection(range.get()), FrameSelection::DoNotSetFocus);
+    frameView->frame().selection().setSelection(VisibleSelection(*range), FrameSelection::DoNotSetFocus);
 
     PaintBehavior oldPaintBehavior = frameView->paintBehavior();
     frameView->setPaintBehavior(PaintBehaviorSelectionOnly);

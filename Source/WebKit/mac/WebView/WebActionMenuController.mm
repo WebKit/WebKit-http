@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,11 +30,13 @@
 #import "DOMElementInternal.h"
 #import "DOMNodeInternal.h"
 #import "DOMRangeInternal.h"
+#import "WebDataSource.h"
 #import "WebDocumentInternal.h"
 #import "WebElementDictionary.h"
 #import "WebFrameInternal.h"
 #import "WebHTMLView.h"
 #import "WebHTMLViewInternal.h"
+#import "WebPDFView.h"
 #import "WebSystemInterface.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebViewInternal.h"
@@ -94,12 +96,15 @@ using namespace WebCore;
 
 - (WebElementDictionary *)performHitTestAtPoint:(NSPoint)windowPoint
 {
-    WebHTMLView *documentView = [[[_webView _selectedOrMainFrame] frameView] documentView];
-    NSPoint point = [documentView convertPoint:windowPoint fromView:nil];
-
-    Frame* coreFrame = core([documentView _frame]);
+    NSView<WebDocumentView> *documentView = [[[_webView _selectedOrMainFrame] frameView] documentView];
+    if (![documentView isKindOfClass:[WebHTMLView class]])
+        return nil;
+        
+    Frame* coreFrame = core([(WebHTMLView *)documentView _frame]);
     if (!coreFrame)
         return nil;
+
+    NSPoint point = [documentView convertPoint:windowPoint fromView:nil];
     _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point));
 
     return [[[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult] autorelease];
@@ -686,6 +691,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         selector = @selector(_saveImageToDownloads:);
         title = WEB_UI_STRING_KEY("Save to Downloads", "Save to Downloads (image action menu item)", "image action menu item");
         image = [NSImage imageNamed:@"NSActionMenuSaveToDownloads"];
+        enabled = WebCore::protocolIs(_hitTestResult.absoluteImageURL(), "file");
         break;
 
     case WebActionMenuItemTagCopyVideoURL:
@@ -698,6 +704,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         selector = @selector(_saveVideoToDownloads:);
         title = WEB_UI_STRING_KEY("Save to Downloads", "Save to Downloads (video action menu item)", "video action menu item");
         image = [NSImage imageNamed:@"NSActionMenuSaveToDownloads"];
+        enabled = WebCore::protocolIs(_hitTestResult.absoluteMediaURL(), "file");
         break;
 
     default:

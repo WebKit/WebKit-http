@@ -1,3 +1,257 @@
+2015-04-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Add more public options
+        https://bugs.webkit.org/show_bug.cgi?id=144116
+
+        Reviewed by Martin Robinson.
+
+        Add ENABLE_ICONDATABASE, ENABLE_JIT, and USE_SYSTEM_MALLOC as public options.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-04-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Some internal variables are not marked as advanced
+        https://bugs.webkit.org/show_bug.cgi?id=143595
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/FindFreetype2.cmake: Mark internal options as advanced.
+        * Source/cmake/FindHarfBuzz.cmake: Mark HARFBUZZ_ICU_LIBRARIES as advanced.
+
+2015-04-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Mark as advanced the build options we don't want to expose
+        https://bugs.webkit.org/show_bug.cgi?id=143558
+
+        Reviewed by Martin Robinson.
+
+        Mark various options as private instead of public.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-04-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Should be possible for an option to depend on multiple options
+        https://bugs.webkit.org/show_bug.cgi?id=143839
+
+        Reviewed by Martin Robinson.
+
+        Use a list instead of a single variable to track the dependencies of each option. Iterate
+        over the list as many times as necessary to ensure all options are properly disabled.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] ENABLE_THREADED_COMPOSITOR should not be at the bottom of the options list
+        https://bugs.webkit.org/show_bug.cgi?id=144103
+
+        Reviewed by Martin Robinson.
+
+        Just move ENABLE_THREADED_COMPOSITOR so it's alphabetized properly.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Fixups for ENABLE_CREDENTIAL_STORAGE
+        https://bugs.webkit.org/show_bug.cgi?id=144102
+
+        Reviewed by Martin Robinson.
+
+        Use WEBKIT_OPTION_DEFAULT_PORT_VALUE to set ENABLE_CREDENTIAL_STORAGE instead of doing so
+        manually. Fail the build if libsecret is not found but ENABLE_CREDENTIAL_STORAGE is set.
+        Also, do not set ENABLE_CREDENTIAL_STORAGE redundantly.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Clean up JSC JIT options
+        https://bugs.webkit.org/show_bug.cgi?id=143998
+
+        Reviewed by Filip Pizlo.
+
+        * Source/cmake/OptionsEfl.cmake: Remove handling of ENABLE_LLINT_C_LOOP and preprocessor
+          define for ENABLE_FTL_NATIVE_CALL_INLINING.
+        * Source/cmake/OptionsMac.cmake: Remove override of ENABLE_LLINT_C_LOOP
+        * Source/cmake/WebKitFeatures.cmake: Remove ENABLE_LLINT_C_LOOP. Add ENABLE_DFG_JIT and
+          ENABLE_FTL_NATIVE_CALL_INLINING. Specify proper dependencies for these features.
+        * Source/cmakeconfig.h.cmake: Remove ENABLE_LLINT_C_LOOP and add ENABLE_DFG_JIT.
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Use lowercase for local variables in macros
+        https://bugs.webkit.org/show_bug.cgi?id=144059
+
+        Reviewed by Martin Robinson.
+
+        Convert some variable names to lowercase.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183116.
+        https://bugs.webkit.org/show_bug.cgi?id=144060
+
+        Inadvertently deleted a file... (Requested by mcatanzaro on
+        #webkit).
+
+        Reverted changeset:
+
+        "[CMake] Use lowercase for local variables in macros"
+        https://bugs.webkit.org/show_bug.cgi?id=144059
+        http://trac.webkit.org/changeset/183116
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Use lowercase for local variables in macros
+        https://bugs.webkit.org/show_bug.cgi?id=144059
+
+        Reviewed by Martin Robinson.
+
+        Convert some variable names to lowercase.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Features list should print dots every other row
+        https://bugs.webkit.org/show_bug.cgi?id=143832
+
+        Reviewed by Martin Robinson.
+
+        Discount private options when determining whether to print dots on a given row of the
+        features list. Also, simplify the logic by using only one for loop, and fix a couple errors
+        (inverted use of SHOULD_PRINT_DOTS, one use of the renamed variable SHOULD_PRINT_POINTS that
+        wasn't noticed because it only affects the first line, and use of the variable name as a
+        string in a conditional.)
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Require specifying visibility of WebKit options
+        https://bugs.webkit.org/show_bug.cgi?id=143831
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsEfl.cmake: Specify all options as PUBLIC
+        * Source/cmake/OptionsGTK.cmake: Specify all options as PUBLIC
+        * Source/cmake/OptionsMac.cmake: Specify all options as PRIVATE
+        * Source/cmake/OptionsWindows.cmake: Specify all options as PUBLIC
+        * Source/cmake/WebKitFeatures.cmake: Require specifying options as PUBLIC or PRIVATE.
+          Remove WEBKIT_OPTION_DEFINE_PUBLIC and WEBKIT_OPTION_PRIVATE_PORT_VALUE. Specify all
+          cross-platform options as PRIVATE.
+
+2015-04-19  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [CMake] Synchronize variables between WebKitFeatures.cmake and cmakedonfig.h.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=143935
+
+        Reviewed by Darin Adler.
+
+        Some variables aren't defined in these files or unused variables aren't removed. This
+        patch cleans up it as well as fix wrong alphabet order.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2015-04-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Restore the WebKit.xcworkspace to the way it was before r182899,
+        which inadvertently added the Source directory and a couple of source
+        files.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+
+2015-04-16  Basile Clement  <basile_clement@apple.com>
+
+        Extract the allocation profile from JSFunction into a rare object
+        https://bugs.webkit.org/show_bug.cgi?id=143807
+
+        Reviewed by Filip Pizlo.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+
+2015-04-16  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump LLVM to version 3.6.0 on X86_64
+        https://bugs.webkit.org/show_bug.cgi?id=143604
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/FindLLVM.cmake: Added version handling.
+        * Source/cmake/OptionsEfl.cmake: Require LLVM 3.6.0 on X86_64 and patched LLVM 3.5.0 on AArch64.
+
+2015-04-15  Timothy Horton  <timothy_horton@apple.com>
+
+        Custom CSS cursors do not use -webkit-image-set on retina displays
+        https://bugs.webkit.org/show_bug.cgi?id=120783
+
+        Reviewed by Beth Dakin.
+        Patch by Evan Wallace <evan.exe@gmail.com>.
+
+        Add a manual test for custom CSS cursors on retina displays.
+
+        * ManualTests/retina-cursors.html: Added.
+
+2015-04-15  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards CMake on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=143785
+
+        Reviewed by Csaba Osztrogonác.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFS.cmake:
+
+2015-04-10  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Cannot click "Next" button on Google two-factor auth setup page
+
+        <https://bugs.webkit.org/show_bug.cgi?id=143624>
+        <rdar://problem/19175714>
+
+        Reviewed by Darin Adler.
+
+        * ManualTests/button-that-focuses-itself-on-click.html: Added.
+
+2015-04-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [cmake] REGRESSION(182663): It broke feature dependency handling
+        https://bugs.webkit.org/show_bug.cgi?id=143665
+
+        Reviewed by Csaba Osztrogonác.
+
+        Don't try to check the value of options before defining the options.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-04-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Add ENABLE(ATTACHMENT_ELEMENT) to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=143664
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2015-04-12  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Enable Media Source
+        https://bugs.webkit.org/show_bug.cgi?id=143635
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/OptionsEfl.cmake: Add ENABLE_MEDIA_SOURCE switch.
+
 2015-04-11  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [CMake] Miscellaneous issues in WebKitFeatures.cmake

@@ -33,7 +33,6 @@
 
 #include <wtf/Assertions.h>
 #include <wtf/Forward.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Threading.h>
@@ -92,9 +91,6 @@ namespace WebCore {
 
     // To allow a type to be passed across threads using its copy constructor, add a forward declaration of the type and
     // a CopyThreadCopierBase<false, false, TypeName> : public CrossThreadCopierPassThrough<TypeName> { }; to this file.
-    template<> struct CrossThreadCopierBase<false, false, ThreadableLoaderOptions> : public CrossThreadCopierPassThrough<ThreadableLoaderOptions> {
-    };
-
     template<> struct CrossThreadCopierBase<false, false, IntRect> : public CrossThreadCopierPassThrough<IntRect> {
     };
 
@@ -110,14 +106,6 @@ namespace WebCore {
         WEBCORE_EXPORT static Type copy(const T& refPtr)
         {
             return refPtr;
-        }
-    };
-
-    template<typename T> struct CrossThreadCopierBase<false, false, PassOwnPtr<T>> {
-        typedef PassOwnPtr<T> Type;
-        static Type copy(Type ownPtr)
-        {
-            return ownPtr;
         }
     };
 
@@ -142,7 +130,7 @@ namespace WebCore {
     };
 
     template<> struct CrossThreadCopierBase<false, false, ResourceResponse> {
-        typedef PassOwnPtr<CrossThreadResourceResponseData> Type;
+        typedef std::unique_ptr<CrossThreadResourceResponseData> Type;
         static Type copy(const ResourceResponse&);
     };
 

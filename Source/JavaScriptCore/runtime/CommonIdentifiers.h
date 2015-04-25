@@ -21,13 +21,13 @@
 #ifndef CommonIdentifiers_h
 #define CommonIdentifiers_h
 
+#include "BytecodeIntrinsicRegistry.h"
 #include "Identifier.h"
 #include <wtf/Noncopyable.h>
 
 // MarkedArgumentBuffer of property names, passed to a macro so we can do set them up various
 // ways without repeating the list.
 #define JSC_COMMON_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
-    macro(ArgumentsIterator) \
     macro(Array) \
     macro(ArrayBuffer) \
     macro(ArrayIterator) \
@@ -58,6 +58,7 @@
     macro(URIError) \
     macro(UTC) \
     macro(WeakMap)\
+    macro(WeakSet)\
     macro(__defineGetter__) \
     macro(__defineSetter__) \
     macro(__lookupGetter__) \
@@ -143,6 +144,7 @@
     macro(osrExitSites) \
     macro(osrExits) \
     macro(parse) \
+    macro(parseInt) \
     macro(postMessage) \
     macro(profiledBytecodes) \
     macro(propertyIsEnumerable) \
@@ -238,7 +240,11 @@
     macro(iterator) \
     macro(unscopables)
 
+#define JSC_COMMON_BYTECODE_INTRINSICS_EACH_NAME(macro) \
+    macro(putByValDirect)
+
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
+    JSC_COMMON_BYTECODE_INTRINSICS_EACH_NAME(macro) \
     macro(iteratedObject) \
     macro(arrayIteratorNextIndex) \
     macro(arrayIterationKind) \
@@ -258,6 +264,9 @@
     macro(deferred) \
     macro(countdownHolder) \
     macro(Object) \
+    macro(objectKeys) \
+    macro(objectGetOwnPropertyDescriptor) \
+    macro(objectGetOwnPropertySymbols) \
     macro(Number) \
     macro(Array) \
     macro(abs) \
@@ -312,6 +321,11 @@ namespace JSC {
 
         const Identifier* getPrivateName(const Identifier&) const;
         Identifier getPublicName(const Identifier&) const;
+
+        const BytecodeIntrinsicRegistry& bytecodeIntrinsicRegistry() const { return m_bytecodeIntrinsicRegistry; }
+
+    private:
+        BytecodeIntrinsicRegistry m_bytecodeIntrinsicRegistry;
     };
 
 } // namespace JSC

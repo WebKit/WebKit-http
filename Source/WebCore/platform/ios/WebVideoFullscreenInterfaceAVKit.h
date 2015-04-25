@@ -44,6 +44,7 @@ OBJC_CLASS UIWindow;
 OBJC_CLASS UIView;
 OBJC_CLASS CALayer;
 OBJC_CLASS WebAVVideoLayer;
+OBJC_CLASS WebCALayerHostWrapper;
 
 namespace WTF {
 class String;
@@ -68,7 +69,10 @@ class WEBCORE_EXPORT WebVideoFullscreenInterfaceAVKit
     , public ThreadSafeRefCounted<WebVideoFullscreenInterfaceAVKit> {
 
 public:
-    WEBCORE_EXPORT WebVideoFullscreenInterfaceAVKit();
+    static Ref<WebVideoFullscreenInterfaceAVKit> create()
+    {
+        return adoptRef(*new WebVideoFullscreenInterfaceAVKit());
+    }
     virtual ~WebVideoFullscreenInterfaceAVKit() { }
     WEBCORE_EXPORT void setWebVideoFullscreenModel(WebVideoFullscreenModel*);
     WEBCORE_EXPORT void setWebVideoFullscreenChangeObserver(WebVideoFullscreenChangeObserver*);
@@ -94,11 +98,26 @@ public:
     WEBCORE_EXPORT virtual void preparedToReturnToInline(bool visible, const IntRect& inlineRect);
 
     HTMLMediaElement::VideoFullscreenMode mode() const { return m_mode; }
+    bool allowOptimizedFullscreen() const { return m_allowOptimizedFullscreen; }
     void setIsOptimized(bool);
-    WEBCORE_EXPORT bool mayAutomaticallyShowVideoOptimized();
-    void fullscreenMayReturnToInline();
+    WEBCORE_EXPORT bool mayAutomaticallyShowVideoOptimized() const;
+    void fullscreenMayReturnToInline(std::function<void(bool)> callback);
+
+    void willStartOptimizedFullscreen();
+    void didStartOptimizedFullscreen();
+    void willStopOptimizedFullscreen();
+    void didStopOptimizedFullscreen();
+    void willCancelOptimizedFullscreen();
+    void didCancelOptimizedFullscreen();
+    void prepareForOptimizedFullscreenStopWithCompletionHandler(void (^)(BOOL));
+
+    void setMode(HTMLMediaElement::VideoFullscreenMode);
+    void clearMode(HTMLMediaElement::VideoFullscreenMode);
+    bool hasMode(HTMLMediaElement::VideoFullscreenMode mode) const { return m_mode & mode; }
+    bool isMode(HTMLMediaElement::VideoFullscreenMode mode) const { return m_mode == mode; }
 
 protected:
+    WEBCORE_EXPORT WebVideoFullscreenInterfaceAVKit();
     void beginSession();
     void setupFullscreenInternal(PlatformLayer&, const IntRect& initialRect, UIView *, HTMLMediaElement::VideoFullscreenMode, bool allowOptimizedFullscreen);
     void enterFullscreenOptimized();
@@ -110,18 +129,21 @@ protected:
     RetainPtr<AVPlayerViewController> m_playerViewController;
     RetainPtr<CALayer> m_videoLayer;
     RetainPtr<WebAVVideoLayer> m_videoLayerContainer;
-    WebVideoFullscreenModel* m_videoFullscreenModel;
-    WebVideoFullscreenChangeObserver* m_fullscreenChangeObserver;
+    RetainPtr<WebCALayerHostWrapper> m_layerHostWrapper;
+    WebVideoFullscreenModel* m_videoFullscreenModel { nullptr };
+    WebVideoFullscreenChangeObserver* m_fullscreenChangeObserver { nullptr };
 
     // These are only used when fullscreen is presented in a separate window.
     RetainPtr<UIWindow> m_window;
     RetainPtr<UIViewController> m_viewController;
     RetainPtr<UIView> m_parentView;
     RetainPtr<UIWindow> m_parentWindow;
-    HTMLMediaElement::VideoFullscreenMode m_mode;
-    bool m_exitRequested;
-    bool m_exitCompleted;
-    bool m_enterRequested;
+    HTMLMediaElement::VideoFullscreenMode m_mode { HTMLMediaElement::VideoFullscreenModeNone };
+    std::function<void(bool)> m_prepareToInlineCallback;
+    bool m_allowOptimizedFullscreen { false };
+    bool m_exitRequested { false };
+    bool m_exitCompleted { false };
+    bool m_enterRequested { false };
 
     void doEnterFullscreen();
 };

@@ -56,7 +56,7 @@ WebInspector.FormattedValue.createElementForNode = function(object)
             return;
         }
 
-        var treeOutline = new WebInspector.DOMTreeOutline(false, false, true);
+        var treeOutline = new WebInspector.DOMTreeOutline;
         treeOutline.setVisible(true);
         treeOutline.rootDOMNode = WebInspector.domTreeManager.nodeForId(nodeId);
         if (!treeOutline.children[0].hasChildren)
@@ -97,7 +97,7 @@ WebInspector.FormattedValue.createElementForTypesAndValue = function(type, subty
     span.textContent = displayString;
 
     // If there is a size, include it.
-    if (size !== undefined && (subtype === "array" || subtype === "set" || subtype === "map" || subtype === "weakmap")) {
+    if (size !== undefined && (subtype === "array" || subtype === "set" || subtype === "map" || subtype === "weakmap" || subtype === "weakset")) {
         var sizeElement = span.appendChild(document.createElement("span"));
         sizeElement.className = "size";
         sizeElement.textContent = " (" + size + ")";

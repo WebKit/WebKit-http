@@ -90,6 +90,7 @@
 #include "PseudoElement.h"
 #include "Range.h"
 #include "RenderEmbeddedObject.h"
+#include "RenderLayerCompositor.h"
 #include "RenderMenuList.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
@@ -2066,6 +2067,49 @@ void Internals::stopTrackingRepaints(ExceptionCode& ec)
     frameView->setTracksRepaints(false);
 }
 
+void Internals::startTrackingLayerFlushes(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    document->renderView()->compositor().startTrackingLayerFlushes();
+}
+
+unsigned long Internals::layerFlushCount(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    return document->renderView()->compositor().layerFlushCount();
+}
+
+void Internals::startTrackingStyleRecalcs(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    document->startTrackingStyleRecalcs();
+}
+
+unsigned long Internals::styleRecalcCount(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+    
+    return document->styleRecalcCount();
+}
+
 void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(ExceptionCode& ec)
 {
     updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(nullptr, ec);
@@ -2598,7 +2642,7 @@ bool Internals::isPagePlayingAudio()
     if (!document || !document->page())
         return false;
 
-    return document->page()->isPlayingAudio();
+    return !!(document->page()->mediaState() & MediaProducer::IsPlayingAudio);
 }
 
 RefPtr<File> Internals::createFile(const String& path)

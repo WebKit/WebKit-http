@@ -107,7 +107,7 @@ void Entry::initializeBufferFromStorageRecord() const
     auto* data = m_sourceStorageRecord.body.data();
     size_t size = m_sourceStorageRecord.body.size();
 #if ENABLE(SHAREABLE_RESOURCE)
-    RefPtr<SharedMemory> sharedMemory = m_sourceStorageRecord.body.isMap() ? SharedMemory::createFromVMBuffer(const_cast<uint8_t*>(data), size) : nullptr;
+    RefPtr<SharedMemory> sharedMemory = m_sourceStorageRecord.body.isMap() ? SharedMemory::create(const_cast<uint8_t*>(data), size, SharedMemory::Protection::ReadOnly) : nullptr;
     RefPtr<ShareableResource> shareableResource = sharedMemory ? ShareableResource::create(sharedMemory.release(), 0, m_sourceStorageRecord.body.size()) : nullptr;
 
     if (shareableResource && shareableResource->createHandle(m_shareableResourceHandle))
@@ -125,6 +125,7 @@ WebCore::SharedBuffer* Entry::buffer() const
     return m_buffer.get();
 }
 
+#if ENABLE(SHAREABLE_RESOURCE)
 ShareableResource::Handle& Entry::shareableResourceHandle() const
 {
     if (!m_buffer)
@@ -132,6 +133,7 @@ ShareableResource::Handle& Entry::shareableResourceHandle() const
 
     return m_shareableResourceHandle;
 }
+#endif
 
 bool Entry::needsValidation() const
 {
@@ -164,6 +166,12 @@ void Entry::asJSON(StringBuilder& json, const Storage::RecordInfo& info) const
     json.appendLiteral(",\n");
     json.appendLiteral("\"URL\": ");
     JSC::appendQuotedJSONStringToBuilder(json, m_response.url().string());
+    json.appendLiteral(",\n");
+    json.appendLiteral("\"bodyHash\": ");
+    JSC::appendQuotedJSONStringToBuilder(json, info.bodyHash);
+    json.appendLiteral(",\n");
+    json.appendLiteral("\"bodyShareCount\": ");
+    json.appendNumber(info.bodyShareCount);
     json.appendLiteral(",\n");
     json.appendLiteral("\"headers\": {\n");
     bool firstHeader = true;

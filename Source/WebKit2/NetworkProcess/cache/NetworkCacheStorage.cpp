@@ -43,8 +43,37 @@ namespace NetworkCache {
 
 static const char networkCacheSubdirectory[] = "WebKitCache";
 static const char versionDirectoryPrefix[] = "Version ";
+static const char recordsDirectoryName[] = "Records";
+static const char blobsDirectoryName[] = "Blobs";
+static const char bodyPostfix[] = "-body";
 
 static double computeRecordWorth(FileTimes);
+
+struct Storage::ReadOperation {
+    ReadOperation(const Key& key, const RetrieveCompletionHandler& completionHandler)
+        : key(key)
+        , completionHandler(completionHandler)
+    { }
+
+    const Key key;
+    const RetrieveCompletionHandler completionHandler;
+    
+    std::unique_ptr<Record> resultRecord;
+    SHA1::Digest expectedBodyHash;
+    BlobStorage::Blob resultBodyBlob;
+    std::atomic<unsigned> activeCount { 0 };
+};
+
+struct Storage::WriteOperation {
+    WriteOperation(const Record& record, const MappedBodyHandler& mappedBodyHandler)
+        : record(record)
+        , mappedBodyHandler(mappedBodyHandler)
+    { }
+    
+    Record record;
+    MappedBodyHandler mappedBodyHandler;
+    std::atomic<unsigned> activeCount { 0 };
+};
 
 std::unique_ptr<Storage> Storage::open(const String& cachePath)
 {
@@ -62,15 +91,50 @@ static String makeVersionedDirectoryPath(const String& baseDirectoryPath)
     return WebCore::pathByAppendingComponent(baseDirectoryPath, versionSubdirectory);
 }
 
+static String makeRecordsDirectoryPath(const String& baseDirectoryPath)
+{
+    return WebCore::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), recordsDirectoryName);
+}
+
+static String makeBlobDirectoryPath(const String& baseDirectoryPath)
+{
+    return WebCore::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), blobsDirectoryName);
+}
+
 Storage::Storage(const String& baseDirectoryPath)
-    : m_baseDirectoryPath(baseDirectoryPath)
-    , m_directoryPath(makeVersionedDirectoryPath(baseDirectoryPath))
+    : m_basePath(baseDirectoryPath)
+    , m_recordsPath(makeRecordsDirectoryPath(baseDirectoryPath))
     , m_ioQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage", WorkQueue::Type::Concurrent))
     , m_backgroundIOQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage.background", WorkQueue::Type::Concurrent, WorkQueue::QOS::Background))
     , m_serialBackgroundIOQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage.serialBackground", WorkQueue::Type::Serial, WorkQueue::QOS::Background))
+    , m_blobStorage(makeBlobDirectoryPath(baseDirectoryPath))
 {
     deleteOldVersions();
     synchronize();
+}
+
+Storage::~Storage()
+{
+}
+
+String Storage::basePath() const
+{
+    return m_basePath.isolatedCopy();
+}
+
+String Storage::versionPath() const
+{
+    return makeVersionedDirectoryPath(basePath());
+}
+
+String Storage::recordsPath() const
+{
+    return m_recordsPath.isolatedCopy();
+}
+
+size_t Storage::approximateSize() const
+{
+    return m_approximateRecordsSize + m_blobStorage.approximateSize();
 }
 
 void Storage::synchronize()
@@ -83,66 +147,84 @@ void Storage::synchronize()
 
     LOG(NetworkCacheStorage, "(NetworkProcess) synchronizing cache");
 
-    StringCapture cachePathCapture(m_directoryPath);
-    backgroundIOQueue().dispatch([this, cachePathCapture] {
-        String cachePath = cachePathCapture.string();
-
-        auto filter = std::make_unique<ContentsFilter>();
-        size_t size = 0;
+    backgroundIOQueue().dispatch([this] {
+        auto recordFilter = std::make_unique<ContentsFilter>();
+        auto bodyFilter = std::make_unique<ContentsFilter>();
+        size_t recordsSize = 0;
         unsigned count = 0;
-        traverseCacheFiles(cachePath, [&filter, &size, &count](const String& fileName, const String& partitionPath) {
-            Key::HashType hash;
-            if (!Key::stringToHash(fileName, hash))
-                return;
+        traverseCacheFiles(recordsPath(), [&recordFilter, &bodyFilter, &recordsSize, &count](const String& fileName, const String& partitionPath) {
             auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+
+            bool isBody = fileName.endsWith(bodyPostfix);
+            String hashString = isBody ? fileName.substring(0, Key::hashStringLength()) : fileName;
+            Key::HashType hash;
+            if (!Key::stringToHash(hashString, hash)) {
+                WebCore::deleteFile(filePath);
+                return;
+            }
             long long fileSize = 0;
             WebCore::getFileSize(filePath, fileSize);
-            if (!fileSize)
+            if (!fileSize) {
+                WebCore::deleteFile(filePath);
                 return;
-            filter->add(hash);
-            size += fileSize;
+            }
+            if (isBody) {
+                bodyFilter->add(hash);
+                return;
+            }
+            recordFilter->add(hash);
+            recordsSize += fileSize;
             ++count;
         });
 
-        auto* filterPtr = filter.release();
-        RunLoop::main().dispatch([this, filterPtr, size] {
-            auto filter = std::unique_ptr<ContentsFilter>(filterPtr);
+        auto* recordFilterPtr = recordFilter.release();
+        auto* bodyFilterPtr = bodyFilter.release();
+        RunLoop::main().dispatch([this, recordFilterPtr, bodyFilterPtr, recordsSize] {
+            auto recordFilter = std::unique_ptr<ContentsFilter>(recordFilterPtr);
+            auto bodyFilter = std::unique_ptr<ContentsFilter>(bodyFilterPtr);
 
-            for (auto hash : m_contentsFilterHashesAddedDuringSynchronization)
-                filter->add(hash);
-            m_contentsFilterHashesAddedDuringSynchronization.clear();
+            for (auto hash : m_recordFilterHashesAddedDuringSynchronization)
+                recordFilter->add(hash);
+            m_recordFilterHashesAddedDuringSynchronization.clear();
 
-            m_contentsFilter = WTF::move(filter);
-            m_approximateSize = size;
+            for (auto hash : m_bodyFilterHashesAddedDuringSynchronization)
+                bodyFilter->add(hash);
+            m_bodyFilterHashesAddedDuringSynchronization.clear();
+
+            m_recordFilter = WTF::move(recordFilter);
+            m_bodyFilter = WTF::move(bodyFilter);
+            m_approximateRecordsSize = recordsSize;
             m_synchronizationInProgress = false;
         });
 
-        LOG(NetworkCacheStorage, "(NetworkProcess) cache synchronization completed approximateSize=%zu count=%d", size, count);
+        m_blobStorage.synchronize();
+
+        LOG(NetworkCacheStorage, "(NetworkProcess) cache synchronization completed size=%zu count=%d", recordsSize, count);
     });
 }
 
-void Storage::addToContentsFilter(const Key& key)
+void Storage::addToRecordFilter(const Key& key)
 {
     ASSERT(RunLoop::isMain());
 
-    if (m_contentsFilter)
-        m_contentsFilter->add(key.hash());
+    if (m_recordFilter)
+        m_recordFilter->add(key.hash());
 
     // If we get new entries during filter synchronization take care to add them to the new filter as well.
     if (m_synchronizationInProgress)
-        m_contentsFilterHashesAddedDuringSynchronization.append(key.hash());
+        m_recordFilterHashesAddedDuringSynchronization.append(key.hash());
 }
 
 bool Storage::mayContain(const Key& key) const
 {
     ASSERT(RunLoop::isMain());
-    return !m_contentsFilter || m_contentsFilter->mayContain(key.hash());
+    return !m_recordFilter || m_recordFilter->mayContain(key.hash());
 }
 
-static String directoryPathForKey(const Key& key, const String& cachePath)
+String Storage::partitionPathForKey(const Key& key) const
 {
     ASSERT(!key.partition().isEmpty());
-    return WebCore::pathByAppendingComponent(cachePath, key.partition());
+    return WebCore::pathByAppendingComponent(recordsPath(), key.partition());
 }
 
 static String fileNameForKey(const Key& key)
@@ -150,18 +232,19 @@ static String fileNameForKey(const Key& key)
     return key.hashAsString();
 }
 
-static String filePathForKey(const Key& key, const String& cachePath)
+String Storage::recordPathForKey(const Key& key) const
 {
-    return WebCore::pathByAppendingComponent(directoryPathForKey(key, cachePath), fileNameForKey(key));
+    return WebCore::pathByAppendingComponent(partitionPathForKey(key), fileNameForKey(key));
 }
 
-static Ref<IOChannel> openFileForKey(const Key& key, IOChannel::Type type, const String& cachePath)
+static String bodyPathForRecordPath(const String& recordPath)
 {
-    auto directoryPath = directoryPathForKey(key, cachePath);
-    auto filePath = WebCore::pathByAppendingComponent(directoryPath, fileNameForKey(key));
-    if (type == IOChannel::Type::Create)
-        WebCore::makeAllDirectories(directoryPath);
-    return IOChannel::open(filePath, type);
+    return recordPath + bodyPostfix;
+}
+
+String Storage::bodyPathForKey(const Key& key) const
+{
+    return bodyPathForRecordPath(recordPathForKey(key));
 }
 
 static unsigned hashData(const Data& data)
@@ -188,9 +271,9 @@ struct RecordMetaData {
     unsigned headerChecksum;
     uint64_t headerOffset;
     uint64_t headerSize;
-    unsigned bodyChecksum;
-    uint64_t bodyOffset;
+    SHA1::Digest bodyHash;
     uint64_t bodySize;
+    bool isBodyInline;
 };
 
 static bool decodeRecordMetaData(RecordMetaData& metaData, const Data& fileData)
@@ -208,21 +291,22 @@ static bool decodeRecordMetaData(RecordMetaData& metaData, const Data& fileData)
             return false;
         if (!decoder.decode(metaData.headerSize))
             return false;
-        if (!decoder.decode(metaData.bodyChecksum))
+        if (!decoder.decode(metaData.bodyHash))
             return false;
         if (!decoder.decode(metaData.bodySize))
+            return false;
+        if (!decoder.decode(metaData.isBodyInline))
             return false;
         if (!decoder.verifyChecksum())
             return false;
         metaData.headerOffset = decoder.currentOffset();
-        metaData.bodyOffset = WTF::roundUpToMultipleOf(pageSize(), metaData.headerOffset + metaData.headerSize);
         success = true;
         return false;
     });
     return success;
 }
 
-static bool decodeRecordHeader(const Data& fileData, RecordMetaData& metaData, Data& data)
+static bool decodeRecordHeader(const Data& fileData, RecordMetaData& metaData, Data& headerData)
 {
     if (!decodeRecordMetaData(metaData, fileData)) {
         LOG(NetworkCacheStorage, "(NetworkProcess) meta data decode failure");
@@ -233,53 +317,44 @@ static bool decodeRecordHeader(const Data& fileData, RecordMetaData& metaData, D
         LOG(NetworkCacheStorage, "(NetworkProcess) version mismatch");
         return false;
     }
-    if (metaData.headerOffset + metaData.headerSize > metaData.bodyOffset) {
-        LOG(NetworkCacheStorage, "(NetworkProcess) body offset mismatch");
-        return false;
-    }
 
-    auto headerData = fileData.subrange(metaData.headerOffset, metaData.headerSize);
+    headerData = fileData.subrange(metaData.headerOffset, metaData.headerSize);
     if (metaData.headerChecksum != hashData(headerData)) {
         LOG(NetworkCacheStorage, "(NetworkProcess) header checksum mismatch");
         return false;
     }
-    data = { headerData };
     return true;
 }
 
-static std::unique_ptr<Storage::Record> decodeRecord(const Data& fileData, int fd, const Key& key)
+void Storage::readRecord(ReadOperation& readOperation, const Data& recordData)
 {
+    ASSERT(!RunLoop::isMain());
+
     RecordMetaData metaData;
     Data headerData;
-    if (!decodeRecordHeader(fileData, metaData, headerData))
-        return nullptr;
+    if (!decodeRecordHeader(recordData, metaData, headerData))
+        return;
 
-    if (metaData.key != key)
-        return nullptr;
+    if (metaData.key != readOperation.key)
+        return;
 
     // Sanity check against time stamps in future.
     auto timeStamp = std::chrono::system_clock::time_point(metaData.epochRelativeTimeStamp);
     if (timeStamp > std::chrono::system_clock::now())
-        return nullptr;
+        return;
 
     Data bodyData;
-    if (metaData.bodySize) {
-        if (metaData.bodyOffset + metaData.bodySize != fileData.size())
-            return nullptr;
-
-        bodyData = mapFile(fd, metaData.bodyOffset, metaData.bodySize);
-        if (bodyData.isNull()) {
-            LOG(NetworkCacheStorage, "(NetworkProcess) map failed");
-            return nullptr;
-        }
-
-        if (metaData.bodyChecksum != hashData(bodyData)) {
-            LOG(NetworkCacheStorage, "(NetworkProcess) data checksum mismatch");
-            return nullptr;
-        }
+    if (metaData.isBodyInline) {
+        size_t bodyOffset = metaData.headerOffset + headerData.size();
+        if (bodyOffset + metaData.bodySize != recordData.size())
+            return;
+        bodyData = recordData.subrange(bodyOffset, metaData.bodySize);
+        if (metaData.bodyHash != computeSHA1(bodyData))
+            return;
     }
 
-    return std::make_unique<Storage::Record>(Storage::Record {
+    readOperation.expectedBodyHash = metaData.bodyHash;
+    readOperation.resultRecord = std::make_unique<Storage::Record>(Storage::Record {
         metaData.key,
         timeStamp,
         headerData,
@@ -296,33 +371,59 @@ static Data encodeRecordMetaData(const RecordMetaData& metaData)
     encoder << metaData.epochRelativeTimeStamp;
     encoder << metaData.headerChecksum;
     encoder << metaData.headerSize;
-    encoder << metaData.bodyChecksum;
+    encoder << metaData.bodyHash;
     encoder << metaData.bodySize;
+    encoder << metaData.isBodyInline;
 
     encoder.encodeChecksum();
 
     return Data(encoder.buffer(), encoder.bufferSize());
 }
 
-static Data encodeRecordHeader(const Storage::Record& record)
+Optional<BlobStorage::Blob> Storage::storeBodyAsBlob(WriteOperation& writeOperation)
 {
+    auto bodyPath = bodyPathForKey(writeOperation.record.key);
+
+    // Store the body.
+    auto blob = m_blobStorage.add(bodyPath, writeOperation.record.body);
+    if (blob.data.isNull())
+        return { };
+
+    ++writeOperation.activeCount;
+
+    RunLoop::main().dispatch([this, blob, &writeOperation] {
+        if (m_bodyFilter)
+            m_bodyFilter->add(writeOperation.record.key.hash());
+        if (m_synchronizationInProgress)
+            m_bodyFilterHashesAddedDuringSynchronization.append(writeOperation.record.key.hash());
+
+        if (writeOperation.mappedBodyHandler)
+            writeOperation.mappedBodyHandler(blob.data);
+
+        finishWriteOperation(writeOperation);
+    });
+    return blob;
+}
+
+Data Storage::encodeRecord(const Record& record, Optional<BlobStorage::Blob> blob)
+{
+    ASSERT(!blob || bytesEqual(blob.value().data, record.body));
+
     RecordMetaData metaData(record.key);
     metaData.epochRelativeTimeStamp = std::chrono::duration_cast<std::chrono::milliseconds>(record.timeStamp.time_since_epoch());
     metaData.headerChecksum = hashData(record.header);
     metaData.headerSize = record.header.size();
-    metaData.bodyChecksum = hashData(record.body);
+    metaData.bodyHash = blob ? blob.value().hash : computeSHA1(record.body);
     metaData.bodySize = record.body.size();
+    metaData.isBodyInline = !blob;
 
     auto encodedMetaData = encodeRecordMetaData(metaData);
     auto headerData = concatenate(encodedMetaData, record.header);
-    if (!record.body.size())
-        return { headerData };
 
-    size_t dataOffset = WTF::roundUpToMultipleOf(pageSize(), headerData.size());
-    Vector<uint8_t, 4096> filler(dataOffset - headerData.size(), 0);
-    Data alignmentData(filler.data(), filler.size());
+    if (metaData.isBodyInline)
+        return concatenate(headerData, record.body);
 
-    return concatenate(headerData, alignmentData);
+    return { headerData };
 }
 
 void Storage::remove(const Key& key)
@@ -333,47 +434,76 @@ void Storage::remove(const Key& key)
     // For simplicity we also don't reduce m_approximateSize on removals.
     // The next synchronization will update everything.
 
-    StringCapture filePathCapture(filePathForKey(key, m_directoryPath));
-    serialBackgroundIOQueue().dispatch([this, filePathCapture] {
-        WebCore::deleteFile(filePathCapture.string());
+    serialBackgroundIOQueue().dispatch([this, key] {
+        WebCore::deleteFile(recordPathForKey(key));
+        m_blobStorage.remove(bodyPathForKey(key));
     });
 }
 
-void Storage::updateFileModificationTime(IOChannel& channel)
+void Storage::updateFileModificationTime(const String& path)
 {
-    StringCapture filePathCapture(channel.path());
+    StringCapture filePathCapture(path);
     serialBackgroundIOQueue().dispatch([filePathCapture] {
         updateFileModificationTimeIfNeeded(filePathCapture.string());
     });
 }
 
-void Storage::dispatchReadOperation(const ReadOperation& read)
+void Storage::dispatchReadOperation(ReadOperation& readOperation)
 {
     ASSERT(RunLoop::isMain());
-    ASSERT(m_activeReadOperations.contains(&read));
+    ASSERT(m_activeReadOperations.contains(&readOperation));
 
-    StringCapture cachePathCapture(m_directoryPath);
-    ioQueue().dispatch([this, &read, cachePathCapture] {
-        RefPtr<IOChannel> channel = openFileForKey(read.key, IOChannel::Type::Read, cachePathCapture.string());
-        channel->read(0, std::numeric_limits<size_t>::max(), [this, channel, &read](Data& fileData, int error) {
-            if (error) {
-                remove(read.key);
-                read.completionHandler(nullptr);
-            } else {
-                auto record = decodeRecord(fileData, channel->fileDescriptor(), read.key);
-                bool success = read.completionHandler(WTF::move(record));
-                if (success)
-                    updateFileModificationTime(*channel);
-                else
-                    remove(read.key);
-            }
+    auto recordPath = recordPathForKey(readOperation.key);
 
-            ASSERT(m_activeReadOperations.contains(&read));
-            m_activeReadOperations.remove(&read);
-            dispatchPendingReadOperations();
+    ++readOperation.activeCount;
 
-            LOG(NetworkCacheStorage, "(NetworkProcess) read complete error=%d", error);
-        });
+    bool shouldGetBodyBlob = !m_bodyFilter || m_bodyFilter->mayContain(readOperation.key.hash());
+    if (shouldGetBodyBlob)
+        ++readOperation.activeCount;
+
+    RefPtr<IOChannel> channel = IOChannel::open(recordPath, IOChannel::Type::Read);
+    channel->read(0, std::numeric_limits<size_t>::max(), &ioQueue(), [this, &readOperation](const Data& fileData, int error) {
+        if (!error)
+            readRecord(readOperation, fileData);
+        finishReadOperation(readOperation);
+    });
+
+    if (!shouldGetBodyBlob)
+        return;
+
+    // Read the body blob in parallel with the record read.
+    ioQueue().dispatch([this, &readOperation] {
+        auto bodyPath = bodyPathForKey(readOperation.key);
+        readOperation.resultBodyBlob = m_blobStorage.get(bodyPath);
+        finishReadOperation(readOperation);
+    });
+}
+
+void Storage::finishReadOperation(ReadOperation& readOperation)
+{
+    ASSERT(readOperation.activeCount);
+    // Record and body blob reads must finish.
+    if (--readOperation.activeCount)
+        return;
+
+    RunLoop::main().dispatch([this, &readOperation] {
+        if (readOperation.resultRecord && readOperation.resultRecord->body.isNull()) {
+            if (readOperation.resultBodyBlob.hash == readOperation.expectedBodyHash)
+                readOperation.resultRecord->body = readOperation.resultBodyBlob.data;
+            else
+                readOperation.resultRecord = nullptr;
+        }
+
+        bool success = readOperation.completionHandler(WTF::move(readOperation.resultRecord));
+        if (success)
+            updateFileModificationTime(recordPathForKey(readOperation.key));
+        else
+            remove(readOperation.key);
+        ASSERT(m_activeReadOperations.contains(&readOperation));
+        m_activeReadOperations.remove(&readOperation);
+        dispatchPendingReadOperations();
+
+        LOG(NetworkCacheStorage, "(NetworkProcess) read complete success=%d", success);
     });
 }
 
@@ -413,6 +543,79 @@ template <class T> bool retrieveFromMemory(const T& operations, const Key& key, 
     return false;
 }
 
+void Storage::dispatchPendingWriteOperations()
+{
+    ASSERT(RunLoop::isMain());
+
+    const int maximumActiveWriteOperationCount { 3 };
+
+    while (!m_pendingWriteOperations.isEmpty()) {
+        if (m_activeWriteOperations.size() >= maximumActiveWriteOperationCount) {
+            LOG(NetworkCacheStorage, "(NetworkProcess) limiting parallel writes");
+            return;
+        }
+        auto writeOperation = m_pendingWriteOperations.takeFirst();
+        auto& write = *writeOperation;
+        m_activeWriteOperations.add(WTF::move(writeOperation));
+
+        dispatchWriteOperation(write);
+    }
+}
+
+static bool shouldStoreBodyAsBlob(const Data& bodyData)
+{
+    const size_t maximumInlineBodySize { 16 * 1024 };
+    return bodyData.size() > maximumInlineBodySize;
+}
+
+void Storage::dispatchWriteOperation(WriteOperation& writeOperation)
+{
+    ASSERT(RunLoop::isMain());
+    ASSERT(m_activeWriteOperations.contains(&writeOperation));
+
+    // This was added already when starting the store but filter might have been wiped.
+    addToRecordFilter(writeOperation.record.key);
+
+    backgroundIOQueue().dispatch([this, &writeOperation] {
+        auto partitionPath = partitionPathForKey(writeOperation.record.key);
+        auto recordPath = recordPathForKey(writeOperation.record.key);
+
+        WebCore::makeAllDirectories(partitionPath);
+
+        ++writeOperation.activeCount;
+
+        bool shouldStoreAsBlob = shouldStoreBodyAsBlob(writeOperation.record.body);
+        auto bodyBlob = shouldStoreAsBlob ? storeBodyAsBlob(writeOperation) : Nullopt;
+
+        auto recordData = encodeRecord(writeOperation.record, bodyBlob);
+
+        auto channel = IOChannel::open(recordPath, IOChannel::Type::Create);
+        size_t recordSize = recordData.size();
+        channel->write(0, recordData, nullptr, [this, &writeOperation, recordSize](int error) {
+            // On error the entry still stays in the contents filter until next synchronization.
+            m_approximateRecordsSize += recordSize;
+            finishWriteOperation(writeOperation);
+
+            LOG(NetworkCacheStorage, "(NetworkProcess) write complete error=%d", error);
+        });
+    });
+}
+
+void Storage::finishWriteOperation(WriteOperation& writeOperation)
+{
+    ASSERT(RunLoop::isMain());
+    ASSERT(writeOperation.activeCount);
+    ASSERT(m_activeWriteOperations.contains(&writeOperation));
+
+    if (--writeOperation.activeCount)
+        return;
+
+    m_activeWriteOperations.remove(&writeOperation);
+    dispatchPendingWriteOperations();
+
+    shrinkIfNeeded();
+}
+
 void Storage::retrieve(const Key& key, unsigned priority, RetrieveCompletionHandler&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
@@ -434,172 +637,55 @@ void Storage::retrieve(const Key& key, unsigned priority, RetrieveCompletionHand
     if (retrieveFromMemory(m_activeWriteOperations, key, completionHandler))
         return;
 
-    m_pendingReadOperationsByPriority[priority].append(new ReadOperation { key, WTF::move(completionHandler) });
+    m_pendingReadOperationsByPriority[priority].append(new ReadOperation { key, WTF::move(completionHandler) } );
     dispatchPendingReadOperations();
 }
 
-void Storage::store(const Record& record, StoreCompletionHandler&& completionHandler)
+void Storage::store(const Record& record, MappedBodyHandler&& mappedBodyHandler)
 {
     ASSERT(RunLoop::isMain());
     ASSERT(!record.key.isNull());
 
-    if (!m_capacity) {
-        completionHandler(false, { });
+    if (!m_capacity)
         return;
-    }
 
-    m_pendingWriteOperations.append(new WriteOperation { record, { }, WTF::move(completionHandler) });
+    m_pendingWriteOperations.append(new WriteOperation { record, WTF::move(mappedBodyHandler) });
 
     // Add key to the filter already here as we do lookups from the pending operations too.
-    addToContentsFilter(record.key);
-
-    dispatchPendingWriteOperations();
-}
-
-void Storage::update(const Record& updateRecord, const Record& existingRecord, StoreCompletionHandler&& completionHandler)
-{
-    ASSERT(RunLoop::isMain());
-    ASSERT(!existingRecord.key.isNull());
-    ASSERT(existingRecord.key == updateRecord.key);
-
-    if (!m_capacity) {
-        completionHandler(false, { });
-        return;
-    }
-
-    m_pendingWriteOperations.append(new WriteOperation { updateRecord, existingRecord, WTF::move(completionHandler) });
+    addToRecordFilter(record.key);
 
     dispatchPendingWriteOperations();
 }
 
 void Storage::traverse(TraverseFlags flags, std::function<void (const Record*, const RecordInfo&)>&& traverseHandler)
 {
-    StringCapture cachePathCapture(m_directoryPath);
-    ioQueue().dispatch([this, flags, cachePathCapture, traverseHandler] {
-        String cachePath = cachePathCapture.string();
-        traverseCacheFiles(cachePath, [this, flags, &traverseHandler](const String& fileName, const String& partitionPath) {
-            auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+    ioQueue().dispatch([this, flags, traverseHandler] {
+        traverseCacheFiles(recordsPath(), [this, flags, &traverseHandler](const String& fileName, const String& partitionPath) {
+            if (fileName.length() != Key::hashStringLength())
+                return;
+            auto recordPath = WebCore::pathByAppendingComponent(partitionPath, fileName);
 
             RecordInfo info;
             if (flags & TraverseFlag::ComputeWorth)
-                info.worth = computeRecordWorth(fileTimes(filePath));
+                info.worth = computeRecordWorth(fileTimes(recordPath));
+            if (flags & TraverseFlag::ShareCount)
+                info.bodyShareCount = m_blobStorage.shareCount(bodyPathForRecordPath(recordPath));
 
-            auto channel = IOChannel::open(filePath, IOChannel::Type::Read);
-            const size_t headerReadSize = 16 << 10;
+            auto channel = IOChannel::open(recordPath, IOChannel::Type::Read);
             // FIXME: Traversal is slower than it should be due to lack of parallelism.
-            channel->readSync(0, headerReadSize, [this, &traverseHandler, &info](Data& fileData, int) {
+            channel->readSync(0, std::numeric_limits<size_t>::max(), nullptr, [this, &traverseHandler, &info](Data& fileData, int) {
                 RecordMetaData metaData;
                 Data headerData;
                 if (decodeRecordHeader(fileData, metaData, headerData)) {
                     Record record { metaData.key, std::chrono::system_clock::time_point(metaData.epochRelativeTimeStamp), headerData, { } };
                     info.bodySize = metaData.bodySize;
+                    info.bodyHash = String::fromUTF8(SHA1::hexDigest(metaData.bodyHash));
                     traverseHandler(&record, info);
                 }
             });
         });
         RunLoop::main().dispatch([this, traverseHandler] {
             traverseHandler(nullptr, { });
-        });
-    });
-}
-
-void Storage::dispatchPendingWriteOperations()
-{
-    ASSERT(RunLoop::isMain());
-
-    const int maximumActiveWriteOperationCount { 3 };
-
-    while (!m_pendingWriteOperations.isEmpty()) {
-        if (m_activeWriteOperations.size() >= maximumActiveWriteOperationCount) {
-            LOG(NetworkCacheStorage, "(NetworkProcess) limiting parallel writes");
-            return;
-        }
-        auto writeOperation = m_pendingWriteOperations.takeFirst();
-        auto& write = *writeOperation;
-        m_activeWriteOperations.add(WTF::move(writeOperation));
-
-        if (write.existingRecord && mayContain(write.record.key)) {
-            dispatchHeaderWriteOperation(write);
-            continue;
-        }
-        dispatchFullWriteOperation(write);
-    }
-}
-
-void Storage::dispatchFullWriteOperation(const WriteOperation& write)
-{
-    ASSERT(RunLoop::isMain());
-    ASSERT(m_activeWriteOperations.contains(&write));
-
-    // This was added already when starting the store but filter might have been wiped.
-    addToContentsFilter(write.record.key);
-
-    StringCapture cachePathCapture(m_directoryPath);
-    backgroundIOQueue().dispatch([this, &write, cachePathCapture] {
-        auto encodedHeader = encodeRecordHeader(write.record);
-        auto headerAndBodyData = concatenate(encodedHeader, write.record.body);
-
-        auto channel = openFileForKey(write.record.key, IOChannel::Type::Create, cachePathCapture.string());
-        int fd = channel->fileDescriptor();
-        size_t bodyOffset = encodedHeader.size();
-
-        channel->write(0, headerAndBodyData, [this, &write, bodyOffset, fd](int error) {
-            size_t bodySize = write.record.body.size();
-            size_t totalSize = bodyOffset + bodySize;
-
-            // On error the entry still stays in the contents filter until next synchronization.
-            m_approximateSize += totalSize;
-
-            bool shouldMapBody = !error && bodySize >= pageSize();
-            auto bodyMap = shouldMapBody ? mapFile(fd, bodyOffset, bodySize) : Data();
-
-            write.completionHandler(!error, bodyMap);
-
-            ASSERT(m_activeWriteOperations.contains(&write));
-            m_activeWriteOperations.remove(&write);
-            dispatchPendingWriteOperations();
-
-            LOG(NetworkCacheStorage, "(NetworkProcess) write complete error=%d", error);
-        });
-    });
-
-    shrinkIfNeeded();
-}
-
-void Storage::dispatchHeaderWriteOperation(const WriteOperation& write)
-{
-    ASSERT(RunLoop::isMain());
-    ASSERT(write.existingRecord);
-    ASSERT(m_activeWriteOperations.contains(&write));
-    ASSERT(mayContain(write.record.key));
-
-    // Try to update the header of an existing entry.
-    StringCapture cachePathCapture(m_directoryPath);
-    backgroundIOQueue().dispatch([this, &write, cachePathCapture] {
-        auto headerData = encodeRecordHeader(write.record);
-        auto existingHeaderData = encodeRecordHeader(write.existingRecord.value());
-
-        bool pageRoundedHeaderSizeChanged = headerData.size() != existingHeaderData.size();
-        if (pageRoundedHeaderSizeChanged) {
-            LOG(NetworkCacheStorage, "(NetworkProcess) page-rounded header size changed, storing full entry");
-            RunLoop::main().dispatch([this, &write] {
-                dispatchFullWriteOperation(write);
-            });
-            return;
-        }
-
-        auto channel = openFileForKey(write.record.key, IOChannel::Type::Write, cachePathCapture.string());
-        channel->write(0, headerData, [this, &write](int error) {
-            LOG(NetworkCacheStorage, "(NetworkProcess) update complete error=%d", error);
-
-            if (error)
-                remove(write.record.key);
-
-            write.completionHandler(!error, { });
-
-            ASSERT(m_activeWriteOperations.contains(&write));
-            m_activeWriteOperations.remove(&write);
-            dispatchPendingWriteOperations();
         });
     });
 }
@@ -627,21 +713,24 @@ void Storage::clear()
     ASSERT(RunLoop::isMain());
     LOG(NetworkCacheStorage, "(NetworkProcess) clearing cache");
 
-    if (m_contentsFilter)
-        m_contentsFilter->clear();
-    m_approximateSize = 0;
+    if (m_recordFilter)
+        m_recordFilter->clear();
+    if (m_bodyFilter)
+        m_bodyFilter->clear();
+    m_approximateRecordsSize = 0;
 
-    StringCapture directoryPathCapture(m_directoryPath);
-
-    ioQueue().dispatch([directoryPathCapture] {
-        String directoryPath = directoryPathCapture.string();
-        traverseDirectory(directoryPath, DT_DIR, [&directoryPath](const String& subdirName) {
-            String subdirPath = WebCore::pathByAppendingComponent(directoryPath, subdirName);
+    ioQueue().dispatch([this] {
+        auto recordsPath = this->recordsPath();
+        traverseDirectory(recordsPath, DT_DIR, [&recordsPath](const String& subdirName) {
+            String subdirPath = WebCore::pathByAppendingComponent(recordsPath, subdirName);
             traverseDirectory(subdirPath, DT_REG, [&subdirPath](const String& fileName) {
                 WebCore::deleteFile(WebCore::pathByAppendingComponent(subdirPath, fileName));
             });
             WebCore::deleteEmptyDirectory(subdirPath);
         });
+
+        // This cleans unreferences blobs.
+        m_blobStorage.synchronize();
     });
 }
 
@@ -660,24 +749,30 @@ static double computeRecordWorth(FileTimes times)
     return duration<double>(accessAge) / age;
 }
 
-
-static double deletionProbability(FileTimes times)
+static double deletionProbability(FileTimes times, unsigned bodyShareCount)
 {
     static const double maximumProbability { 0.33 };
+    static const unsigned maximumEffectiveShareCount { 5 };
 
     auto worth = computeRecordWorth(times);
 
     // Adjust a bit so the most valuable entries don't get deleted at all.
     auto effectiveWorth = std::min(1.1 * worth, 1.);
 
-    return (1 - effectiveWorth) * maximumProbability;
+    auto probability =  (1 - effectiveWorth) * maximumProbability;
+
+    // It is less useful to remove an entry that shares its body data.
+    if (bodyShareCount)
+        probability /= std::min(bodyShareCount, maximumEffectiveShareCount);
+
+    return probability;
 }
 
 void Storage::shrinkIfNeeded()
 {
     ASSERT(RunLoop::isMain());
 
-    if (m_approximateSize > m_capacity)
+    if (approximateSize() > m_capacity)
         shrink();
 }
 
@@ -689,27 +784,33 @@ void Storage::shrink()
         return;
     m_shrinkInProgress = true;
 
-    LOG(NetworkCacheStorage, "(NetworkProcess) shrinking cache approximateSize=%zu capacity=%zu", static_cast<size_t>(m_approximateSize), m_capacity);
+    LOG(NetworkCacheStorage, "(NetworkProcess) shrinking cache approximateSize=%zu capacity=%zu", approximateSize(), m_capacity);
 
-    StringCapture cachePathCapture(m_directoryPath);
-    backgroundIOQueue().dispatch([this, cachePathCapture] {
-        String cachePath = cachePathCapture.string();
-        traverseCacheFiles(cachePath, [](const String& fileName, const String& partitionPath) {
-            auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+    backgroundIOQueue().dispatch([this] {
+        auto recordsPath = this->recordsPath();
+        traverseCacheFiles(recordsPath, [this](const String& fileName, const String& partitionPath) {
+            if (fileName.length() != Key::hashStringLength())
+                return;
+            auto recordPath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+            auto bodyPath = bodyPathForRecordPath(recordPath);
 
-            auto times = fileTimes(filePath);
-            auto probability = deletionProbability(times);
+            auto times = fileTimes(recordPath);
+            unsigned bodyShareCount = m_blobStorage.shareCount(bodyPath);
+            auto probability = deletionProbability(times, bodyShareCount);
+
             bool shouldDelete = randomNumber() < probability;
 
-            LOG(NetworkCacheStorage, "Deletion probability=%f shouldDelete=%d", probability, shouldDelete);
+            LOG(NetworkCacheStorage, "Deletion probability=%f bodyLinkCount=%d shouldDelete=%d", probability, bodyShareCount, shouldDelete);
 
-            if (shouldDelete)
-                WebCore::deleteFile(filePath);
+            if (shouldDelete) {
+                WebCore::deleteFile(recordPath);
+                m_blobStorage.remove(bodyPath);
+            }
         });
 
         // Let system figure out if they are really empty.
-        traverseDirectory(cachePath, DT_DIR, [&cachePath](const String& subdirName) {
-            auto partitionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
+        traverseDirectory(recordsPath, DT_DIR, [&recordsPath](const String& subdirName) {
+            auto partitionPath = WebCore::pathByAppendingComponent(recordsPath, subdirName);
             WebCore::deleteEmptyDirectory(partitionPath);
         });
 
@@ -726,9 +827,8 @@ void Storage::shrink()
 void Storage::deleteOldVersions()
 {
     // Delete V1 cache.
-    StringCapture cachePathCapture(m_baseDirectoryPath);
-    backgroundIOQueue().dispatch([cachePathCapture] {
-        String cachePath = cachePathCapture.string();
+    backgroundIOQueue().dispatch([this] {
+        auto cachePath = basePath();
         traverseDirectory(cachePath, DT_DIR, [&cachePath](const String& subdirName) {
             if (subdirName.startsWith(versionDirectoryPrefix))
                 return;
@@ -739,6 +839,7 @@ void Storage::deleteOldVersions()
             WebCore::deleteEmptyDirectory(partitionPath);
         });
     });
+    // FIXME: Delete V2 cache.
 }
 
 }

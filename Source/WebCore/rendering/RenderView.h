@@ -29,7 +29,6 @@
 #include "SelectionSubtreeRoot.h"
 #include <memory>
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
 
 #if ENABLE(SERVICE_CONTROLS)
 #include "SelectionRectGatherer.h"
@@ -224,7 +223,7 @@ public:
     void didCreateRenderer() { ++m_rendererCount; }
     void didDestroyRenderer() { --m_rendererCount; }
 
-    void resumePausedImageAnimationsIfNeeded();
+    void resumePausedImageAnimationsIfNeeded(IntRect visibleRect);
     void addRendererWithPausedImageAnimations(RenderElement&);
     void removeRendererWithPausedImageAnimations(RenderElement&);
 

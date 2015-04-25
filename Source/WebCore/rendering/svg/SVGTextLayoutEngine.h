@@ -30,6 +30,7 @@ namespace WebCore {
 class RenderObject;
 class RenderStyle;
 class RenderSVGInlineText;
+class RenderSVGTextPath;
 class SVGElement;
 class SVGInlineTextBox;
 class SVGRenderStyle;
@@ -50,10 +51,10 @@ public:
     Vector<SVGTextLayoutAttributes*>& layoutAttributes() { return m_layoutAttributes; }
     SVGTextChunkBuilder& chunkLayoutBuilder() { return m_chunkLayoutBuilder; }
 
-    void beginTextPathLayout(RenderObject*, SVGTextLayoutEngine& lineLayout);
+    void beginTextPathLayout(RenderSVGTextPath&, SVGTextLayoutEngine& lineLayout);
     void endTextPathLayout();
 
-    void layoutInlineTextBox(SVGInlineTextBox*);
+    void layoutInlineTextBox(SVGInlineTextBox&);
     void finishLayout();
 
 private:
@@ -61,15 +62,15 @@ private:
     void updateCurrentTextPosition(float x, float y, float glyphAdvance);
     void updateRelativePositionAdjustmentsIfNeeded(float dx, float dy);
 
-    void recordTextFragment(SVGInlineTextBox*, Vector<SVGTextMetrics>&);
+    void recordTextFragment(SVGInlineTextBox&, Vector<SVGTextMetrics>&);
     bool parentDefinesTextLength(RenderObject*) const;
 
-    void layoutTextOnLineOrPath(SVGInlineTextBox*, RenderSVGInlineText*, const RenderStyle*);
+    void layoutTextOnLineOrPath(SVGInlineTextBox&, RenderSVGInlineText&, const RenderStyle&);
     void finalizeTransformMatrices(Vector<SVGInlineTextBox*>&);
 
     bool currentLogicalCharacterAttributes(SVGTextLayoutAttributes*&);
     bool currentLogicalCharacterMetrics(SVGTextLayoutAttributes*&, SVGTextMetrics&);
-    bool currentVisualCharacterMetrics(SVGInlineTextBox*, Vector<SVGTextMetrics>&, SVGTextMetrics&);
+    bool currentVisualCharacterMetrics(const SVGInlineTextBox&, Vector<SVGTextMetrics>&, SVGTextMetrics&);
 
     void advanceToNextLogicalCharacter(const SVGTextMetrics&);
     void advanceToNextVisualCharacter(const SVGTextMetrics&);

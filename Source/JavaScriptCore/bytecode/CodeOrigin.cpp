@@ -141,6 +141,18 @@ void CodeOrigin::dumpInContext(PrintStream& out, DumpContext*) const
     dump(out);
 }
 
+JSFunction* InlineCallFrame::calleeConstant() const
+{
+    if (calleeRecovery.isConstant())
+        return jsCast<JSFunction*>(calleeRecovery.constant());
+    return nullptr;
+}
+
+void InlineCallFrame::visitAggregate(SlotVisitor& visitor)
+{
+    visitor.append(&executable);
+}
+
 JSFunction* InlineCallFrame::calleeForCallFrame(ExecState* exec) const
 {
     return jsCast<JSFunction*>(calleeRecovery.recover(exec));
@@ -184,8 +196,8 @@ void InlineCallFrame::dumpInContext(PrintStream& out, DumpContext* context) cons
     else
         out.print(", known callee: ", inContext(calleeRecovery.constant(), context));
     out.print(", numArgs+this = ", arguments.size());
-    out.print(", stack < loc", VirtualRegister(stackOffset).toLocal());
-    out.print(">");
+    out.print(", stackOffset = ", stackOffset);
+    out.print(" (", virtualRegisterForLocal(0), " maps to ", virtualRegisterForLocal(0) + stackOffset, ")>");
 }
 
 void InlineCallFrame::dump(PrintStream& out) const

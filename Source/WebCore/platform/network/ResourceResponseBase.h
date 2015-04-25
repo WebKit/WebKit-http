@@ -30,11 +30,8 @@
 #include "CacheValidation.h"
 #include "CertificateInfo.h"
 #include "HTTPHeaderMap.h"
-#include "URL.h"
 #include "ResourceLoadTiming.h"
-
-#include <wtf/PassOwnPtr.h>
-#include <wtf/RefPtr.h>
+#include "URL.h"
 
 #if OS(SOLARIS)
 #include <sys/time.h> // For time_t structure.
@@ -49,16 +46,16 @@ struct CrossThreadResourceResponseData;
 class ResourceResponseBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassOwnPtr<ResourceResponse> adopt(PassOwnPtr<CrossThreadResourceResponseData>);
+    static std::unique_ptr<ResourceResponse> adopt(std::unique_ptr<CrossThreadResourceResponseData>);
 
     // Gets a copy of the data suitable for passing to another thread.
-    PassOwnPtr<CrossThreadResourceResponseData> copyData() const;
+    std::unique_ptr<CrossThreadResourceResponseData> copyData() const;
 
     bool isNull() const { return m_isNull; }
     WEBCORE_EXPORT bool isHTTP() const;
 
     WEBCORE_EXPORT const URL& url() const;
-    WEBCORE_EXPORT void setURL(const URL& url);
+    WEBCORE_EXPORT void setURL(const URL&);
 
     WEBCORE_EXPORT const String& mimeType() const;
     WEBCORE_EXPORT void setMimeType(const String& mimeType);

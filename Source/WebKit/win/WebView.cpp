@@ -155,6 +155,7 @@
 #include <WebCore/WindowsTouch.h>
 #include <bindings/ScriptValue.h>
 #include <wtf/MainThread.h>
+#include <wtf/RAMSize.h>
 
 #if USE(CG)
 #include <CoreGraphics/CGContext.h>
@@ -521,9 +522,10 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
     long cacheDiskCapacity = 0;
 #endif
 
+    unsigned long long memSize = ramSize() / 1024 / 1024;
+
     // As a fudge factor, use 1000 instead of 1024, in case the reported byte 
     // count doesn't align exactly to a megabyte boundary.
-    unsigned long long memSize = WebMemorySize() / 1024 / 1000;
     unsigned long long diskFreeSize = WebVolumeFreeSize(cacheDirectory) / 1024 / 1000;
 
     unsigned cacheTotalCapacity = 0;
@@ -6356,14 +6358,14 @@ HRESULT WebView::setCanStartPlugins(BOOL canStartPlugins)
     return S_OK;
 }
 
-void WebView::enterVideoFullscreenForVideoElement(HTMLVideoElement* videoElement)
+void WebView::enterVideoFullscreenForVideoElement(HTMLVideoElement& videoElement)
 {
 #if ENABLE(VIDEO) && !USE(GSTREAMER) && !USE(MEDIA_FOUNDATION)
     if (m_fullScreenVideoController) {
-        if (m_fullScreenVideoController->videoElement() == videoElement) {
+        if (m_fullScreenVideoController->videoElement() == &videoElement) {
             // The backend may just warn us that the underlaying plaftormMovie()
             // has changed. Just force an update.
-            m_fullScreenVideoController->setVideoElement(videoElement);
+            m_fullScreenVideoController->setVideoElement(&videoElement);
             return; // No more to do.
         }
 
@@ -6375,12 +6377,12 @@ void WebView::enterVideoFullscreenForVideoElement(HTMLVideoElement* videoElement
     }
 
     m_fullScreenVideoController = std::make_unique<FullscreenVideoController>();
-    m_fullScreenVideoController->setVideoElement(videoElement);
+    m_fullScreenVideoController->setVideoElement(&videoElement);
     m_fullScreenVideoController->enterFullscreen();
 #endif
 }
 
-void WebView::exitVideoFullscreen()
+void WebView::exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&)
 {
 #if ENABLE(VIDEO) && !USE(GSTREAMER) && !USE(MEDIA_FOUNDATION)
     if (!m_fullScreenVideoController)

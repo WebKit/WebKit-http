@@ -1,3 +1,621 @@
+2015-04-25  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: assertion failure when editing inline styles
+        https://bugs.webkit.org/show_bug.cgi?id=143939
+
+        Reviewed by Timothy Hatcher.
+
+        Prevent "_updateResourceContent" from being called on inline style changes.
+        Introduce a flag that marks a CSSStyleSheet as a representation of an
+        "ElementCSSInlineStyle" (DOM Level 2 spec) and return early.
+
+        * UserInterface/Controllers/CSSStyleManager.js:
+        (WebInspector.CSSStyleManager.prototype.styleSheetChanged):
+        * UserInterface/Models/CSSStyleSheet.js:
+        (WebInspector.CSSStyleSheet):
+        (WebInspector.CSSStyleSheet.isInlineStyle):
+        (WebInspector.CSSStyleSheet.prototype.markAsInlineStyle):
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseStyleDeclarationPayload):
+
+2015-04-24  Timothy Hatcher  <timothy@apple.com>
+
+        REGRESSION: Web Inspector: Start Timeline Recording in Develop menu broken
+        https://bugs.webkit.org/show_bug.cgi?id=144150
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setTimelineProfilingEnabled): Change !== to === when
+        checking enabled to isCapturing().
+
+2015-04-23  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: run a customizable bootstrap function after the UI has fully loaded
+        https://bugs.webkit.org/show_bug.cgi?id=144124
+
+        Reviewed by Joseph Pecoraro.
+
+        It can be really annoying to click through the Inspector UI dozens of times to debug one
+        interaction or iterate on a specific widget.
+
+        This patch adds a blank "bootstrap" function that can be used to hard-wire commands to
+        automate repetitive UI state setup. The function is run immediately after the inspector loads.
+        Setup commands can be shared as bug report reproduction steps.
+
+        * UserInterface/Base/Bootstrap.js: Added.
+        (WebInspector.runBootstrapOperations): Added.
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded): Bootstrap after setting up everything and restoring view state from cookie.
+        * UserInterface/Main.html:
+
+2015-04-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Adopt Object.assign and improve its display in Console
+        https://bugs.webkit.org/show_bug.cgi?id=144135
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2015-04-23  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: DebuggerSidebarPanel's _callStackContentTreeOutline should suppress filtering
+        https://bugs.webkit.org/show_bug.cgi?id=144114
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+
+2015-04-23  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Fix layering issues with ApplicationCacheFrameTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=144113
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ApplicationCacheFrameTreeElement.js:
+        (WebInspector.ApplicationCacheFrameTreeElement.prototype.updateTitles):
+        (WebInspector.ApplicationCacheFrameTreeElement):
+
+2015-04-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: clicking Timelines tree view nodes should not change the current content view
+        https://bugs.webkit.org/show_bug.cgi?id=132202
+
+        Reviewed by Brian Burg.
+
+        TimelineSidebarPanel now prevents timeline views from switching to another content view while the content
+        browser is showing the TimelineRecordingContentView. Code responsible for creating and updating the tree
+        element close button, which was duplicated in multiple derived TimelineView classes, has been moved to the
+        TimelineView base class.
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        Updated name of location column, which was broken in a recent patch.
+        (WebInspector.LayoutTimelineView.prototype.treeElementDeselected):
+        (WebInspector.LayoutTimelineView.prototype.treeElementSelected):
+        Added overrides of new base class methods to handle view-specific highlight logic.
+        (WebInspector.LayoutTimelineView.prototype._treeElementDeselected): Deleted.
+        (WebInspector.LayoutTimelineView.prototype._treeElementSelected): Deleted.
+        (WebInspector.LayoutTimelineView.prototype._updateTreeElementWithCloseButton): Deleted.
+        (WebInspector.LayoutTimelineView.prototype._closeStatusButtonClicked): Deleted.
+        Removed tree element close button logic.
+
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.NetworkTimelineView.prototype.treeElementSelected):
+        Added overrides of new base class methods.
+        (WebInspector.NetworkTimelineView.prototype._treeElementDeselected): Deleted.
+        (WebInspector.NetworkTimelineView.prototype._treeElementSelected): Deleted.
+        Removed tree element close button logic.
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.RenderingFrameTimelineView.prototype.treeElementSelected):
+        Added overrides of new base class methods.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.get data):
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        Removed unused Name column and added "go to" button to the Domain column to show the selected resource.
+
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView):
+        (WebInspector.ScriptTimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.ScriptTimelineView.prototype.treeElementSelected):
+        Added overrides of new base class methods.
+        (WebInspector.ScriptTimelineView.prototype._dataGridNodeSelected):
+        (WebInspector.ScriptTimelineView.prototype._treeElementDeselected): Deleted.
+        (WebInspector.ScriptTimelineView.prototype._treeElementSelected): Deleted.
+        (WebInspector.ScriptTimelineView.prototype._updateTreeElementWithCloseButton): Deleted.
+        (WebInspector.ScriptTimelineView.prototype._closeStatusButtonClicked): Deleted.
+        Removed tree element close button logic.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.showTimelineViewForTimeline.this._timelineTreeElementMap.get select):
+        Prevent navigating to a different content view when showing the TimelineRecordingContentView.
+
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView):
+        (WebInspector.TimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.TimelineView.prototype.treeElementDeselected):
+        (WebInspector.TimelineView.prototype.treeElementSelected):
+        Tree element selection handlers are now protected methods, which derived classes may override as needed.
+        (WebInspector.TimelineView.prototype.needsLayout):
+        (WebInspector.TimelineView.prototype._closeStatusButtonClicked):
+        (WebInspector.TimelineView.prototype._updateTreeElementWithCloseButton):
+        Encapsulated logic related to close button creation and behavior.
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove an unused index argument from Sidebar.removeSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=144054
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/Sidebar.js:
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Fix an exception preventing switching timelines
+        https://bugs.webkit.org/show_bug.cgi?id=144053
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeElement.prototype.select): Store treeOutline in a local so
+        we have a reference to it when we go to reset processingSelectionChange.
+        The calls to onselect was removing the tree element from the outline, causing
+        "delete this.treeOutline.processingSelectionChange" to throw an exception.
+        This patch changes the delete to a set to false for good measure too.
+
+2015-04-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use String.prototype.startsWith in more places
+        https://bugs.webkit.org/show_bug.cgi?id=144025
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Gradient.js:
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._scriptAdded):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasAdded):
+
+2015-04-21  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Make formatted nodes more consistent with formatted objects
+        https://bugs.webkit.org/show_bug.cgi?id=142159
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline ol):
+        Keep indentation exactly two spaces of Menlo.
+
+        (.dom-tree-outline li):
+        (.dom-tree-outline li.parent):
+        (.dom-tree-outline li .html-tag.close):
+        (.dom-tree-outline li.parent::before):
+        (.dom-tree-outline:focus li.parent.selected::before):
+        (.dom-tree-outline li.parent.expanded::before):
+        (.dom-tree-outline:focus li.parent.expanded.selected::before):
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-node > .dom-tree-outline ol):
+        Keep indentation exactly two spaces of Menlo.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property > .disclosure-button):
+        Disclosure triangle is 13 by 13 pixels. Having it in the middle of 16 by 16
+        pixels block makes it look bloory on non-retina screen, because:
+        (16 - 13) / 2 = 1.5px. Replacing 16 with 15 fixes the problem.
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree:not(.lossless-preview) > :matches(.title, .object-preview)):
+
+2015-04-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unify PrettyPrinting Tool and UserInterface resources
+        https://bugs.webkit.org/show_bug.cgi?id=143969
+
+        Reviewed by Timothy Hatcher.
+
+        Have the PrettyPrinting tool just use the CodeMirror and WebInspector
+        resources from the relative UserInterface directory. This avoids
+        having duplicate resources in the tree which offered few advantages.
+
+        * Scripts/update-pretty-printer.rb: Removed.
+        * Tools/PrettyPrinting/CodeMirrorFormatters.js: Removed.
+        * Tools/PrettyPrinting/Formatter.js: Removed.
+        * Tools/PrettyPrinting/FormatterContentBuilder.js: Removed.
+        * Tools/PrettyPrinting/codemirror.css: Removed.
+        * Tools/PrettyPrinting/codemirror.js: Removed.
+        * Tools/PrettyPrinting/css.js: Removed.
+        * Tools/PrettyPrinting/index.html:
+        * Tools/PrettyPrinting/javascript.js: Removed.
+
+        * UserInterface/Views/CodeMirrorFormatters.js:
+        Fix style issues.
+
+2015-04-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Support for WeakSet in Console
+        https://bugs.webkit.org/show_bug.cgi?id=143951
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        WeakSet has the same APIs and parameters as Set for the functions it implements.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.isCollectionType):
+        (WebInspector.RemoteObject.prototype.isWeakCollection):
+        (WebInspector.RemoteObject.prototype.getCollectionEntries):
+        (WebInspector.RemoteObject.prototype._weakCollectionObjectGroup):
+        WeakSet is a weak collection.
+
+        * UserInterface/Models/ObjectPreview.js:
+        (WebInspector.ObjectPreview.prototype.hasSize):
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._formatParameter):
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-object, .formatted-node, .formatted-error, .formatted-map, .formatted-set, .formatted-weakmap, .formatted-weakset):
+        (:matches(.formatted-array, .formatted-map, .formatted-set, .formatted-weakmap, .formatted-weakset) > .size):
+        (.formatted-object, .formatted-node, .formatted-error, .formatted-map, .formatted-set, .formatted-weakmap): Deleted.
+        (:matches(.formatted-array, .formatted-map, .formatted-set, .formatted-weakmap) > .size): Deleted.
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForTypesAndValue):
+        Treat a WeakSet like a set in more places.
+
+2015-04-18  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Pass multiple arguments to classList.add and classList.remove
+        https://bugs.webkit.org/show_bug.cgi?id=143914
+
+        classList.add and classList.remove can accept multiple arguments, use that.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.updateDockedState):
+        * UserInterface/Views/DOMTreeDataGrid.js:
+        (WebInspector.DOMTreeDataGrid):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline):
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGridNode.prototype.set hasChildren):
+        * UserInterface/Views/DatabaseContentView.js:
+        (WebInspector.DatabaseContentView):
+        * UserInterface/Views/DetailsSection.js:
+        (WebInspector.DetailsSection):
+        * UserInterface/Views/DetailsSectionPropertiesRow.js:
+        (WebInspector.DetailsSectionPropertiesRow):
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.set classNames):
+        * UserInterface/Views/NavigationItem.js:
+        (WebInspector.NavigationItem):
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar):
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        * UserInterface/Views/TimelineRuler.js:
+
+2015-04-18  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Make prototype pill’s background semi-transparent
+        https://bugs.webkit.org/show_bug.cgi?id=143928
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property.prototype-property):
+
+        (.object-tree-property.prototype-property:hover, .object-tree-property.prototype-property:focus):
+        Slightly highlight the prototype pill when hovering over.
+
+2015-04-17  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: All sans-serif font family rules should be set the same way.
+        https://bugs.webkit.org/show_bug.cgi?id=143909
+
+        Reviewed by Timothy Hatcher.
+
+        Update styles so that all uses of sans-serif font use -webkit-system-font consistently.
+
+        * UserInterface/Views/DefaultDashboardView.css:
+        (body.mac-platform.legacy .toolbar .dashboard.default > .item):
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property .prototype-name):
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree-outline li .empty-message):
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.css:
+        (.timeline-overview-graph.rendering-frame > .divider > .label):
+
+2015-04-17  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Have better inactive window color for pixel borders
+        https://bugs.webkit.org/show_bug.cgi?id=143888
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/FindBanner.css:
+        (body.window-inactive .find-banner):
+        * UserInterface/Views/Main.css:
+        (body.window-inactive.docked.bottom):
+        (body.window-inactive.docked.right):
+        (body.window-inactive #split-content-browser):
+        * UserInterface/Views/NavigationBar.css:
+        (body.window-inactive .navigation-bar):
+        * UserInterface/Views/QuickConsole.css:
+        (body.window-inactive .quick-console):
+        (.quick-console.showing-log):
+        * UserInterface/Views/Sidebar.css:
+        (body.window-inactive .sidebar.left):
+        (body.window-inactive .sidebar.right):
+
+2015-04-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unexpected background at top of console when rubber-banding with selection
+        https://bugs.webkit.org/show_bug.cgi?id=140710
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-messages):
+        Remove the focus ring on the console's log view, only visible when rubber-banding.
+
+2015-04-16  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Breakpoint icons should not get pushed off of debugger sidebar due to long resource names
+        https://bugs.webkit.org/show_bug.cgi?id=142714
+
+        Reviewed by Timothy Hatcher.
+
+        Modify the styles for content and group containers inside the debugger sidebar panel's detail sections
+        such that the rules "display: table" and "display: table-row-group" no longer apply. This will make
+        the file names which use the rule "text-overflow: ellipsis" truncate as expected.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .details-section > .content):
+        (.sidebar > .panel.navigation.debugger .details-section.collapsed > .content):
+        (.sidebar > .panel.navigation.debugger .details-section > .content > .group):
+        (.sidebar > .panel.navigation.debugger .details-section.scripts):
+        (.sidebar > .panel.navigation.debugger .details-section.scripts .header):
+        (.sidebar > .panel.navigation.debugger .details-section.scripts.collapsed > .content):
+
+2015-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should include "Log Value" context menu item in Preview and Collapsed ObjectTree
+        https://bugs.webkit.org/show_bug.cgi?id=143845
+
+        Reviewed by Timothy Hatcher.
+
+        Give previews the same "Log Value" context menu so that if you just log
+        a bunch of objects to the console you can quickly turn that entire object
+        into a $n reference in the console to interact with.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype.setOriginatingObjectInfo):
+        (WebInspector.ObjectPreviewView.prototype._contextMenuHandler):
+        Provide API to refer to a RemoteObject and optional PropertyPath
+        that can be used to give the preview a "Log Value" context menu.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendFormattedArguments):
+        Include the RemoteObject without a path for a preview context menu.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView):
+        Include the RemoteObject with a path if we knew it for a preview context menu.
+
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.createGetterElement):
+        The context menu can never be empty, since we always added at least one item above.
+
+
+2015-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "Log Value" of a value inside of an array, does not log the innermost value
+        https://bugs.webkit.org/show_bug.cgi?id=143793
+
+        Reviewed by Brian Burg.
+
+        Context menu handlers were being handled in the capturing event phase, so
+        the outer most handler, instead of the inner most handler, was getting
+        first access. Change this so the events happen in the bubbling phase.
+
+        DOM Nodes may appear inside of Object Trees, for instance when shown
+        in a collection like an array or set. In an effort to standardize on
+        "inner most" behavior, change the DOMTreeOutline context handler
+        to also be in bubbling.
+
+        In the rare instances where a node object is in the console but
+        not displayed in an outline (console.dir(node)), then include a
+        Copy as HTML context menu like you would expect in a DOM tree.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline):
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.onattach):
+        (WebInspector.GeneralTreeElement.prototype.ondetach):
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._appendMenusItemsForObject):
+        (WebInspector.ObjectTreeBaseTreeElement):
+
+2015-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Allow toggling the edibility of a DOMTreeOutline
+        https://bugs.webkit.org/show_bug.cgi?id=143814
+
+        Reviewed by Brian Burg.
+
+        By default a DOMTreeOutline will not be editable, but it will
+        provide a setter to enable editability for DOMTreeContentViews.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        Content Views always have editable DOM trees.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.get editable):
+        (WebInspector.DOMTreeElement.prototype.onattach):
+        (WebInspector.DOMTreeElement.prototype.ondelete):
+        (WebInspector.DOMTreeElement.prototype.onenter):
+        (WebInspector.DOMTreeElement.prototype.ondblclick):
+        (WebInspector.DOMTreeElement.prototype._populateTagContextMenu):
+        (WebInspector.DOMTreeElement.prototype._populateTextContextMenu):
+        (WebInspector.DOMTreeElement.prototype._populateNodeContextMenu):
+        (WebInspector.DOMTreeElement.prototype._startEditing):
+        Do not provide editability options for shadow DOM or non-editable DOM tree.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline):
+        (WebInspector.DOMTreeOutline.prototype.get editable):
+        (WebInspector.DOMTreeOutline.prototype.set editable):
+        New state.
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-node > .dom-tree-outline li):
+        Nodes inside object trees were showing text selection when you right
+        clicked them. Normal selection is not possible. So force no selection.
+
+2015-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Give DOM Nodes a Context Menu to Log Element to the console
+        https://bugs.webkit.org/show_bug.cgi?id=143813
+
+        Reviewed by Brian Burg.
+
+        Always give DOM Nodes a "Log Element" context menu to log it to the console.
+        This will give a $n reference, and is a convenient alternative to $0 or
+        the now removed $1-$9.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New "Log Element" and "Selected Element" strings.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline):
+        (WebInspector.DOMTreeOutline.prototype._contextMenuEventFired):
+        (WebInspector.DOMTreeOutline.prototype._updateModifiedNodes):
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu.revealElement):
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu.logElement):
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu):
+        Always include the "Log Element" context menu/
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForNode):
+        This uses all the defaults.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        This enables all the extra behavior.
+
+2015-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unnecessary intermediate object from DOMTreeOutline
+        https://bugs.webkit.org/show_bug.cgi?id=143811
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline):
+        (WebInspector.DOMTreeOutline.prototype._selectedNodeChanged):
+        (WebInspector.DOMTreeOutline.prototype.addEventListener): Deleted.
+        (WebInspector.DOMTreeOutline.prototype.removeEventListener): Deleted.
+        This object used to be used to handle event dispatching, but
+        TreeOutlines themselves are now WebInspector.Objects so we
+        can remove the intermediary.
+
+2015-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: InspectorTest frontend console methods redirected to the frontend are wrong
+        https://bugs.webkit.org/show_bug.cgi?id=143801
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Test.js:
+        (InspectorTest.evaluateInPage):
+        Properly if check for the existence of an agent.
+
+        (global):
+        Properly hook up console redirect handlers so they
+        will output the right type and arguments strings.
+
+2015-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Handle all possible Console message Source types in IssueMessage
+        https://bugs.webkit.org/show_bug.cgi?id=143803
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/IssueMessage.js:
+        (WebInspector.IssueMessage):
+        Update the switch to handle all possible console message sources.
+        "wml" was legacy and no longer supported.
+
+2015-04-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception in JSContext inspector when opening
+        https://bugs.webkit.org/show_bug.cgi?id=143741
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.shouldShowViewForTimeline):
+        (WebInspector.TimelineManager.prototype._loadNewRecording):
+        Before using TimelineAgent, check for its existence first. It may
+        not exist in JSContext inspection.
+
+2015-04-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Align array's indices and set's bullet points under the property icon
+        https://bugs.webkit.org/show_bug.cgi?id=143698
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreeMapEntryTreeElement.css:
+        (.object-tree-array-index.object-tree-map-entry > .titles > .title > .index-name):
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.css:
+        (.object-tree-array-index .index-name):
+        Right align array's and set's indices.
+
+        (.object-tree-map-entry):
+        Overwrite left property from .object-tree-array-index.
+
+        (.object-tree-property + ol .object-tree-map-entry):
+        Overwrite left property from .object-tree-property + ol .object-tree-array-index.
+
+2015-04-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expanding window.navigator.mimeTypes in ObjectTree shows no native properties
+        https://bugs.webkit.org/show_bug.cgi?id=143690
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement):
+        Fix a typo that resulted in hiding properties of native objects
+        in the Properties section of an Object Tree.
+
+2015-04-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unnecessary 3 second delay when archiving page
+        https://bugs.webkit.org/show_bug.cgi?id=143688
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.archiveMainFrame):
+        The delay is unnecessary and was probably just debugging code.
+
 2015-04-11  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Hide Frames Timeline if the backend doesn't support it

@@ -734,6 +734,12 @@ inline char* linkFor(
         codePtr = executable->entrypointFor(*vm, kind, MustCheckArity, registers);
     else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
+
+        if (!isCall(kind) && functionExecutable->isBuiltinFunction()) {
+            exec->vm().throwException(exec, createNotAConstructorError(exec, callee));
+            return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
+        }
+
         JSObject* error = functionExecutable->prepareForExecution(execCallee, callee, scope, kind);
         if (error) {
             throwStackOverflowError(exec);
@@ -793,6 +799,12 @@ inline char* virtualForWithFunction(
     ExecutableBase* executable = function->executable();
     if (UNLIKELY(!executable->hasJITCodeFor(kind))) {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
+
+        if (!isCall(kind) && functionExecutable->isBuiltinFunction()) {
+            exec->vm().throwException(exec, createNotAConstructorError(exec, function));
+            return reinterpret_cast<char*>(vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress());
+        }
+
         JSObject* error = functionExecutable->prepareForExecution(execCallee, function, scope, kind);
         if (error) {
             exec->vm().throwException(exec, error);
@@ -950,6 +962,14 @@ EncodedJSValue JIT_OPERATION operationNewFunction(ExecState* exec, JSScope* scop
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
     return JSValue::encode(JSFunction::create(vm, static_cast<FunctionExecutable*>(functionExecutable), scope));
+}
+
+EncodedJSValue JIT_OPERATION operationNewFunctionWithInvalidatedReallocationWatchpoint(ExecState* exec, JSScope* scope, JSCell* functionExecutable)
+{
+    ASSERT(functionExecutable->inherits(FunctionExecutable::info()));
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    return JSValue::encode(JSFunction::createWithInvalidatedReallocationWatchpoint(vm, static_cast<FunctionExecutable*>(functionExecutable), scope));
 }
 
 JSCell* JIT_OPERATION operationNewObject(ExecState* exec, Structure* structure)
@@ -1722,8 +1742,8 @@ void JIT_OPERATION operationPutToScope(ExecState* exec, Instruction* bytecodePC)
     if (modeAndType.type() == LocalClosureVar) {
         JSLexicalEnvironment* environment = jsCast<JSLexicalEnvironment*>(scope);
         environment->variableAt(ScopeOffset(pc[6].u.operand)).set(vm, environment, value);
-        if (VariableWatchpointSet* set = pc[5].u.watchpointSet)
-            set->notifyWrite(vm, value, "Executed op_put_scope<LocalClosureVar>");
+        if (WatchpointSet* set = pc[5].u.watchpointSet)
+            set->touch("Executed op_put_scope<LocalClosureVar>");
         return;
     }
     if (modeAndType.mode() == ThrowIfNotFound && !scope->hasProperty(exec, ident)) {

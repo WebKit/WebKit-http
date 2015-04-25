@@ -152,7 +152,7 @@ public:
         m_out.appendTo(m_prologue, stackOverflow);
         createPhiVariables();
 
-        Vector<BasicBlock*> preOrder = m_graph.blocksInPreOrder();
+        auto preOrder = m_graph.blocksInPreOrder();
 
         int maxNumberOfArguments = -1;
         for (BasicBlock* block : preOrder) {
@@ -464,7 +464,7 @@ private:
             compilePutStack();
             break;
         case Phantom:
-        case HardPhantom:
+        case MustGenerate:
         case Check:
             compilePhantom();
             break;
@@ -846,10 +846,10 @@ private:
 
         case PhantomLocal:
         case LoopHint:
-        case AllocationProfileWatchpoint:
         case MovHint:
         case ZombieHint:
         case PhantomNewObject:
+        case PhantomNewFunction:
         case PhantomDirectArguments:
         case PhantomClonedArguments:
         case PutHint:
@@ -860,8 +860,11 @@ private:
             DFG_CRASH(m_graph, m_node, "Unrecognized node in FTL backend");
             break;
         }
-
-        if (!m_state.isValid() && !m_node->isTerminal()) {
+        
+        if (m_node->isTerminal())
+            return false;
+        
+        if (!m_state.isValid()) {
             safelyInvalidateAfterTermination();
             return false;
         }
@@ -2877,6 +2880,14 @@ private:
         SymbolTable* table = m_graph.symbolTableFor(m_node->origin.semantic);
         Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->activationStructure();
         
+        if (table->singletonScope()->isStillValid()) {
+            LValue callResult = vmCall(
+                m_out.operation(operationCreateActivationDirect), m_callFrame, weakPointer(structure),
+                scope, weakPointer(table));
+            setJSValue(callResult);
+            return;
+        }
+        
         LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("CreateActivation slow path"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CreateActivation continuation"));
         
@@ -2912,10 +2923,43 @@ private:
     
     void compileNewFunction()
     {
-        LValue result = vmCall(
-            m_out.operation(operationNewFunction), m_callFrame,
-            lowCell(m_node->child1()), weakPointer(m_node->castOperand<FunctionExecutable*>()));
-        setJSValue(result);
+        LValue scope = lowCell(m_node->child1());
+        FunctionExecutable* executable = m_node->castOperand<FunctionExecutable*>();
+        if (executable->singletonFunction()->isStillValid()) {
+            LValue callResult = vmCall(
+                m_out.operation(operationNewFunction), m_callFrame, scope, weakPointer(executable));
+            setJSValue(callResult);
+            return;
+        }
+        
+        Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure();
+        
+        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("NewFunction slow path"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NewFunction continuation"));
+        
+        LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
+        
+        LValue fastObject = allocateObject<JSFunction>(
+            structure, m_out.intPtrZero, slowPath);
+        
+        // We don't need memory barriers since we just fast-created the function, so it
+        // must be young.
+        m_out.storePtr(scope, fastObject, m_heaps.JSFunction_scope);
+        m_out.storePtr(weakPointer(executable), fastObject, m_heaps.JSFunction_executable);
+        m_out.storePtr(m_out.intPtrZero, fastObject, m_heaps.JSFunction_rareData);
+        
+        ValueFromBlock fastResult = m_out.anchor(fastObject);
+        m_out.jump(continuation);
+        
+        m_out.appendTo(slowPath, continuation);
+        LValue callResult = vmCall(
+            m_out.operation(operationNewFunctionWithInvalidatedReallocationWatchpoint),
+            m_callFrame, scope, weakPointer(executable));
+        ValueFromBlock slowResult = m_out.anchor(callResult);
+        m_out.jump(continuation);
+        
+        m_out.appendTo(continuation, lastNext);
+        setJSValue(m_out.phi(m_out.intPtr, fastResult, slowResult));
     }
     
     void compileCreateDirectArguments()
@@ -3419,7 +3463,7 @@ private:
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
         MarkedAllocator& allocator =
-            vm().heap.allocatorForObjectWithImmortalStructureDestructor(sizeof(JSRopeString));
+            vm().heap.allocatorForObjectWithDestructor(sizeof(JSRopeString));
         
         LValue result = allocateCell(
             m_out.constIntPtr(&allocator),
@@ -3783,29 +3827,19 @@ private:
     
     void compileNotifyWrite()
     {
-        VariableWatchpointSet* set = m_node->variableWatchpointSet();
-        
-        LValue value = lowJSValue(m_node->child1());
+        WatchpointSet* set = m_node->watchpointSet();
         
         LBasicBlock isNotInvalidated = FTL_NEW_BLOCK(m_out, ("NotifyWrite not invalidated case"));
-        LBasicBlock notifySlow = FTL_NEW_BLOCK(m_out, ("NotifyWrite notify slow case"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NotifyWrite continuation"));
         
         LValue state = m_out.load8(m_out.absolute(set->addressOfState()));
-        
         m_out.branch(
             m_out.equal(state, m_out.constInt8(IsInvalidated)),
             usually(continuation), rarely(isNotInvalidated));
         
-        LBasicBlock lastNext = m_out.appendTo(isNotInvalidated, notifySlow);
+        LBasicBlock lastNext = m_out.appendTo(isNotInvalidated, continuation);
 
-        m_out.branch(
-            m_out.equal(value, m_out.load64(m_out.absolute(set->addressOfInferredValue()))),
-            unsure(continuation), unsure(notifySlow));
-
-        m_out.appendTo(notifySlow, continuation);
-
-        vmCall(m_out.operation(operationNotifyWrite), m_callFrame, m_out.constIntPtr(set), value);
+        vmCall(m_out.operation(operationNotifyWrite), m_callFrame, m_out.constIntPtr(set));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
@@ -7166,13 +7200,14 @@ private:
             arguments.append(lowValue.value());
         
         AvailabilityMap availabilityMap = this->availabilityMap();
+        availabilityMap.m_locals.fill(Availability());
         
-        for (unsigned i = 0; i < exit.m_values.size(); ++i) {
-            int operand = exit.m_values.operandForIndex(i);
-            bool isLive = m_graph.isLiveInBytecode(VirtualRegister(operand), codeOrigin);
-            if (!isLive)
-                availabilityMap.m_locals[i] = Availability();
-        }
+        m_graph.forAllLiveInBytecode(
+            codeOrigin,
+            [&] (VirtualRegister reg) {
+                availabilityMap.m_locals.operand(reg) =
+                    this->availabilityMap().m_locals.operand(reg);
+            });
         
         availabilityMap.prune();
         

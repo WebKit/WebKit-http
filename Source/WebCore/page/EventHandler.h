@@ -202,6 +202,7 @@ public:
     WEBCORE_EXPORT bool handleMousePressEvent(const PlatformMouseEvent&);
     bool handleMouseMoveEvent(const PlatformMouseEvent&, HitTestResult* hoveredNode = 0, bool onlyUpdateScrollbars = false);
     WEBCORE_EXPORT bool handleMouseReleaseEvent(const PlatformMouseEvent&);
+    bool handleMouseForceEvent(const PlatformMouseEvent&);
     WEBCORE_EXPORT bool handleWheelEvent(const PlatformWheelEvent&);
     void defaultWheelEventHandler(Node*, WheelEvent*);
     bool handlePasteGlobalSelection(const PlatformMouseEvent&);
@@ -312,7 +313,6 @@ public:
     bool isHandlingWheelEvent() const { return m_isHandlingWheelEvent; }
 
     WEBCORE_EXPORT void setImmediateActionStage(ImmediateActionStage stage);
-    WEBCORE_EXPORT const PlatformMouseEvent& lastMouseDownEvent() const;
 
 private:
 #if ENABLE(DRAG_SUPPORT)
@@ -325,8 +325,10 @@ private:
     bool eventActivatedView(const PlatformMouseEvent&) const;
     bool updateSelectionForMouseDownDispatchingSelectStart(Node*, const VisibleSelection&, TextGranularity);
     void selectClosestWordFromHitTestResult(const HitTestResult&, AppendTrailingWhitespace);
+    VisibleSelection selectClosestWordFromHitTestResultBasedOnLookup(const HitTestResult&);
     void selectClosestWordFromMouseEvent(const MouseEventWithHitTestResults&);
-    void selectClosestWordOrLinkFromMouseEvent(const MouseEventWithHitTestResults&);
+    void selectClosestContextualWordFromMouseEvent(const MouseEventWithHitTestResults&);
+    void selectClosestContextualWordOrLinkFromMouseEvent(const MouseEventWithHitTestResults&);
 
     bool handleMouseDoubleClickEvent(const PlatformMouseEvent&);
 

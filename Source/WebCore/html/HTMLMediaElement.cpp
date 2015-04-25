@@ -72,6 +72,7 @@
 #include "RenderLayerCompositor.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
+#include "ResourceLoadInfo.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "SecurityPolicy.h"
@@ -79,6 +80,7 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "TimeRanges.h"
+#include "UserContentController.h"
 #include <limits>
 #include <runtime/Uint8Array.h>
 #include <wtf/CurrentTime.h>
@@ -399,8 +401,10 @@ HTMLMediaElement::~HTMLMediaElement()
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    if (hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent))
+    if (hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent)) {
+        m_hasPlaybackTargetAvailabilityListeners = false;
         m_mediaSession->setHasPlaybackTargetAvailabilityListeners(*this, false);
+    }
 #endif
 
     if (m_mediaController) {
@@ -426,7 +430,7 @@ HTMLMediaElement::~HTMLMediaElement()
 
 void HTMLMediaElement::registerWithDocument(Document& document)
 {
-    m_mediaSession->registerWithDocument(document);
+    m_mediaSession->registerWithDocument(*this);
 
     if (m_isWaitingUntilMediaCanStart)
         document.addMediaCanStartListener(this);
@@ -453,7 +457,7 @@ void HTMLMediaElement::registerWithDocument(Document& document)
 
 void HTMLMediaElement::unregisterWithDocument(Document& document)
 {
-    m_mediaSession->unregisterWithDocument(document);
+    m_mediaSession->unregisterWithDocument(*this);
 
     if (m_isWaitingUntilMediaCanStart)
         document.removeMediaCanStartListener(this);
@@ -572,7 +576,7 @@ bool HTMLMediaElement::rendererIsNeeded(const RenderStyle& style)
     return controls() && HTMLElement::rendererIsNeeded(style);
 }
 
-RenderPtr<RenderElement> HTMLMediaElement::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> HTMLMediaElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderMedia>(*this, WTF::move(style));
 }
@@ -1090,12 +1094,31 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
         return;
     }
 
+    Page* page = frame->page();
+    if (!page) {
+        mediaLoadingFailed(MediaPlayer::FormatError);
+        return;
+    }
+
     URL url = initialURL;
     if (!frame->loader().willLoadMediaElementURL(url)) {
         mediaLoadingFailed(MediaPlayer::FormatError);
         return;
     }
-    
+
+#if ENABLE(CONTENT_EXTENSIONS)
+    ResourceRequest request(url);
+    DocumentLoader* documentLoader = frame->loader().documentLoader();
+
+    if (page->userContentController() && documentLoader)
+        page->userContentController()->processContentExtensionRulesForLoad(request, ResourceType::Media, *documentLoader);
+
+    if (request.isNull()) {
+        mediaLoadingFailed(MediaPlayer::FormatError);
+        return;
+    }
+#endif
+
     // The resource fetch algorithm 
     m_networkState = NETWORK_LOADING;
 
@@ -2995,7 +3018,11 @@ void HTMLMediaElement::setMuted(bool muted)
             }
         }
         scheduleEvent(eventNames().volumechangeEvent);
-        document().updateIsPlayingAudio();
+        document().updateIsPlayingMedia();
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+        m_mediaSession->mediaStateDidChange(*this, mediaState());
+#endif
     }
 #endif
 }
@@ -4271,7 +4298,7 @@ void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
 
     m_havePreparedToPlay = false;
 
-    m_mediaSession->applyMediaPlayerRestrictions(*this);
+    m_mediaSession->mediaEngineUpdated(*this);
 
 #if ENABLE(WEB_AUDIO)
     if (m_audioSourceNode && audioSourceProvider()) {
@@ -4323,7 +4350,7 @@ void HTMLMediaElement::mediaPlayerCharacteristicChanged(MediaPlayer*)
     if (renderer())
         renderer()->updateFromElement();
 
-    document().updateIsPlayingAudio();
+    document().updateIsPlayingMedia();
 
     endProcessingMediaPlayerCallback();
 }
@@ -4576,9 +4603,13 @@ void HTMLMediaElement::setPlaying(bool playing)
 {
     if (m_playing == playing)
         return;
-    
+
     m_playing = playing;
-    document().updateIsPlayingAudio();
+    document().updateIsPlayingMedia();
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    m_mediaSession->mediaStateDidChange(*this, mediaState());
+#endif
 }
 
 void HTMLMediaElement::setPausedInternal(bool b)
@@ -4668,6 +4699,7 @@ void HTMLMediaElement::clearMediaPlayer(int flags)
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     if (hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent)) {
+        m_hasPlaybackTargetAvailabilityListeners = false;
         m_mediaSession->setHasPlaybackTargetAvailabilityListeners(*this, false);
 
         // Send an availability event in case scripts want to hide the picker when the element
@@ -4842,6 +4874,10 @@ void HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPl
 {
     LOG(Media, "HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(%p) - webkitCurrentPlaybackTargetIsWireless = %s", this, boolString(webkitCurrentPlaybackTargetIsWireless()));
     scheduleEvent(eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent);
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    m_mediaSession->mediaStateDidChange(*this, mediaState());
+#endif
 }
 
 bool HTMLMediaElement::addEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
@@ -4853,8 +4889,10 @@ bool HTMLMediaElement::addEventListener(const AtomicString& eventType, PassRefPt
     if (!Node::addEventListener(eventType, listener, useCapture))
         return false;
 
-    if (isFirstAvailabilityChangedListener)
+    if (isFirstAvailabilityChangedListener) {
+        m_hasPlaybackTargetAvailabilityListeners = true;
         m_mediaSession->setHasPlaybackTargetAvailabilityListeners(*this, true);
+    }
 
     LOG(Media, "HTMLMediaElement::addEventListener(%p) - 'webkitplaybacktargetavailabilitychanged'", this);
     
@@ -4872,8 +4910,10 @@ bool HTMLMediaElement::removeEventListener(const AtomicString& eventType, EventL
 
     bool didRemoveLastAvailabilityChangedListener = !hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent);
     LOG(Media, "HTMLMediaElement::removeEventListener(%p) - removed last listener = %s", this, boolString(didRemoveLastAvailabilityChangedListener));
-    if (didRemoveLastAvailabilityChangedListener)
+    if (didRemoveLastAvailabilityChangedListener) {
+        m_hasPlaybackTargetAvailabilityListeners = false;
         m_mediaSession->setHasPlaybackTargetAvailabilityListeners(*this, false);
+    }
 
     return true;
 }
@@ -4911,16 +4951,10 @@ bool HTMLMediaElement::isPlayingToWirelessPlaybackTarget() const
     return isPlaying;
 }
 
-void HTMLMediaElement::startPlayingToPlaybackTarget()
+void HTMLMediaElement::setShouldPlayToPlaybackTarget(bool shouldPlay)
 {
     if (m_player)
-        m_player->startPlayingToPlaybackTarget();
-}
-
-void HTMLMediaElement::stopPlayingToPlaybackTarget()
-{
-    if (m_player)
-        m_player->stopPlayingToPlaybackTarget();
+        m_player->setShouldPlayToPlaybackTarget(shouldPlay);
 }
 #endif
 
@@ -4978,7 +5012,7 @@ void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
     if (document().page() && is<HTMLVideoElement>(*this)) {
         HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
         if (document().page()->chrome().client().supportsVideoFullscreen()) {
-            document().page()->chrome().client().enterVideoFullscreenForVideoElement(&asVideo, m_videoFullscreenMode);
+            document().page()->chrome().client().enterVideoFullscreenForVideoElement(asVideo, m_videoFullscreenMode);
             scheduleEvent(eventNames().webkitbeginfullscreenEvent);
         }
     }
@@ -5009,7 +5043,7 @@ void HTMLMediaElement::exitFullscreen()
             pauseInternal();
 
         if (document().page()->chrome().client().supportsVideoFullscreen()) {
-            document().page()->chrome().client().exitVideoFullscreen();
+            document().page()->chrome().client().exitVideoFullscreenForVideoElement(downcast<HTMLVideoElement>(*this));
             scheduleEvent(eventNames().webkitendfullscreenEvent);
         }
     }
@@ -5302,12 +5336,12 @@ void HTMLMediaElement::configureMediaControls()
         requireControls = true;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (!requireControls || !inDocument())
+    if (!requireControls || !inDocument() || !inActiveDocument())
         return;
 
     ensureUserAgentShadowRoot();
 #else
-    if (!requireControls || !inDocument()) {
+    if (!requireControls || !inDocument() || !inActiveDocument()) {
         if (hasMediaControls())
             mediaControls()->hide();
         return;
@@ -5452,6 +5486,7 @@ void HTMLMediaElement::createMediaPlayer()
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     if (hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent)) {
+        m_hasPlaybackTargetAvailabilityListeners = true;
         m_mediaSession->setHasPlaybackTargetAvailabilityListeners(*this, true);
         enqueuePlaybackTargetAvailabilityChangedEvent(); // Ensure the event listener gets at least one event.
     }
@@ -6150,9 +6185,29 @@ bool HTMLMediaElement::overrideBackgroundPlaybackRestriction() const
     return false;
 }
 
-bool HTMLMediaElement::isPlayingAudio()
+MediaProducer::MediaStateFlags HTMLMediaElement::mediaState() const
 {
-    return isPlaying() && hasAudio() && !muted();
+
+    MediaStateFlags state = IsNotPlaying;
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    if (isPlayingToWirelessPlaybackTarget())
+        state |= IsPlayingToExternalDevice;
+
+    if (m_hasPlaybackTargetAvailabilityListeners)
+        state |= RequiresPlaybackTargetMonitoring;
+#endif
+
+    if (!isPlaying())
+        return state;
+
+    if (hasAudio() && !muted())
+        state |= IsPlayingAudio;
+
+    if (hasVideo())
+        state |= IsPlayingVideo;
+
+    return state;
 }
 
 void HTMLMediaElement::pageMutedStateDidChange()

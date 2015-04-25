@@ -47,62 +47,53 @@
 namespace WebKit {
 
 SharedMemory::Handle::Handle()
-    : m_fileDescriptor(-1)
-    , m_size(0)
 {
 }
 
 SharedMemory::Handle::~Handle()
 {
-    clear();
 }
 
 void SharedMemory::Handle::clear()
 {
-    if (!isNull())
-        closeWithRetry(m_fileDescriptor);
+    m_attachment = IPC::Attachment();
 }
 
 bool SharedMemory::Handle::isNull() const
 {
-    return m_fileDescriptor == -1;
+    return m_attachment.fileDescriptor() == -1;
 }
 
 void SharedMemory::Handle::encode(IPC::ArgumentEncoder& encoder) const
 {
-    encoder << releaseToAttachment();
+    encoder << releaseAttachment();
 }
 
 bool SharedMemory::Handle::decode(IPC::ArgumentDecoder& decoder, Handle& handle)
 {
-    ASSERT_ARG(handle, !handle.m_size);
     ASSERT_ARG(handle, handle.isNull());
 
     IPC::Attachment attachment;
     if (!decoder.decode(attachment))
         return false;
 
-    handle.adoptFromAttachment(attachment.releaseFileDescriptor(), attachment.size());
+    handle.adoptAttachment(WTF::move(attachment));
     return true;
 }
 
-IPC::Attachment SharedMemory::Handle::releaseToAttachment() const
+IPC::Attachment SharedMemory::Handle::releaseAttachment() const
 {
-    int temp = m_fileDescriptor;
-    m_fileDescriptor = -1;
-    return IPC::Attachment(temp, m_size);
+    return WTF::move(m_attachment);
 }
 
-void SharedMemory::Handle::adoptFromAttachment(int fileDescriptor, size_t size)
+void SharedMemory::Handle::adoptAttachment(IPC::Attachment&& attachment)
 {
-    ASSERT(!m_size);
     ASSERT(isNull());
 
-    m_fileDescriptor = fileDescriptor;
-    m_size = size;
+    m_attachment = WTF::move(attachment);
 }
 
-PassRefPtr<SharedMemory> SharedMemory::create(size_t size)
+RefPtr<SharedMemory> SharedMemory::allocate(size_t size)
 {
     CString tempName;
 
@@ -147,9 +138,9 @@ PassRefPtr<SharedMemory> SharedMemory::create(size_t size)
 static inline int accessModeMMap(SharedMemory::Protection protection)
 {
     switch (protection) {
-    case SharedMemory::ReadOnly:
+    case SharedMemory::Protection::ReadOnly:
         return PROT_READ;
-    case SharedMemory::ReadWrite:
+    case SharedMemory::Protection::ReadWrite:
         return PROT_READ | PROT_WRITE;
     }
 
@@ -157,19 +148,18 @@ static inline int accessModeMMap(SharedMemory::Protection protection)
     return PROT_READ | PROT_WRITE;
 }
 
-PassRefPtr<SharedMemory> SharedMemory::create(const Handle& handle, Protection protection)
+RefPtr<SharedMemory> SharedMemory::map(const Handle& handle, Protection protection)
 {
     ASSERT(!handle.isNull());
 
-    void* data = mmap(0, handle.m_size, accessModeMMap(protection), MAP_SHARED, handle.m_fileDescriptor, 0);
+    void* data = mmap(0, handle.m_attachment.size(), accessModeMMap(protection), MAP_SHARED, handle.m_attachment.fileDescriptor(), 0);
     if (data == MAP_FAILED)
-        return 0;
+        return nullptr;
 
     RefPtr<SharedMemory> instance = adoptRef(new SharedMemory());
     instance->m_data = data;
-    instance->m_fileDescriptor = handle.m_fileDescriptor;
-    instance->m_size = handle.m_size;
-    handle.m_fileDescriptor = -1;
+    instance->m_fileDescriptor = handle.m_attachment.releaseFileDescriptor();
+    instance->m_size = handle.m_attachment.size();
     return instance;
 }
 
@@ -181,7 +171,6 @@ SharedMemory::~SharedMemory()
 
 bool SharedMemory::createHandle(Handle& handle, Protection)
 {
-    ASSERT_ARG(handle, !handle.m_size);
     ASSERT_ARG(handle, handle.isNull());
 
     // FIXME: Handle the case where the passed Protection is ReadOnly.
@@ -202,8 +191,7 @@ bool SharedMemory::createHandle(Handle& handle, Protection)
             return false;
         }
     }
-    handle.m_fileDescriptor = duplicatedHandle;
-    handle.m_size = m_size;
+    handle.m_attachment = IPC::Attachment(duplicatedHandle, m_size);
     return true;
 }
 

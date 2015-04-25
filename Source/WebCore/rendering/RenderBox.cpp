@@ -1026,12 +1026,12 @@ LayoutUnit RenderBox::maxPreferredLogicalWidth() const
     return m_maxPreferredLogicalWidth;
 }
 
-bool RenderBox::hasOverrideHeight() const
+bool RenderBox::hasOverrideLogicalContentHeight() const
 {
     return gOverrideHeightMap && gOverrideHeightMap->contains(this);
 }
 
-bool RenderBox::hasOverrideWidth() const
+bool RenderBox::hasOverrideLogicalContentWidth() const
 {
     return gOverrideWidthMap && gOverrideWidthMap->contains(this);
 }
@@ -1070,13 +1070,13 @@ void RenderBox::clearOverrideSize()
 
 LayoutUnit RenderBox::overrideLogicalContentWidth() const
 {
-    ASSERT(hasOverrideWidth());
+    ASSERT(hasOverrideLogicalContentWidth());
     return gOverrideWidthMap->get(this);
 }
 
 LayoutUnit RenderBox::overrideLogicalContentHeight() const
 {
-    ASSERT(hasOverrideHeight());
+    ASSERT(hasOverrideLogicalContentHeight());
     return gOverrideHeightMap->get(this);
 }
 
@@ -1907,7 +1907,7 @@ LayoutUnit RenderBox::perpendicularContainingBlockLogicalHeight() const
 #endif
 
     RenderBlock* cb = containingBlock();
-    if (cb->hasOverrideHeight())
+    if (cb->hasOverrideLogicalContentHeight())
         return cb->overrideLogicalContentHeight();
 
     const RenderStyle& containingBlockStyle = cb->style();
@@ -2312,7 +2312,7 @@ void RenderBox::computeLogicalWidthInRegion(LogicalExtentComputedValues& compute
     // width.  Use the width from the style context.
     // FIXME: Account for block-flow in flexible boxes.
     // https://bugs.webkit.org/show_bug.cgi?id=46418
-    if (hasOverrideWidth() && (isRubyRun() || style().borderFit() == BorderFitLines || parent()->isFlexibleBoxIncludingDeprecated())) {
+    if (hasOverrideLogicalContentWidth() && (isRubyRun() || style().borderFit() == BorderFitLines || parent()->isFlexibleBoxIncludingDeprecated())) {
         computedValues.m_extent = overrideLogicalContentWidth() + borderAndPaddingLogicalWidth();
         return;
     }
@@ -2712,7 +2712,7 @@ void RenderBox::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logica
         // grab our cached flexible height.
         // FIXME: Account for block-flow in flexible boxes.
         // https://bugs.webkit.org/show_bug.cgi?id=46418
-        if (hasOverrideHeight() && parent()->isFlexibleBoxIncludingDeprecated())
+        if (hasOverrideLogicalContentHeight() && parent()->isFlexibleBoxIncludingDeprecated())
             h = Length(overrideLogicalContentHeight(), Fixed);
         else if (treatAsReplaced)
             h = Length(computeReplacedLogicalHeight(), Fixed);
@@ -2848,7 +2848,7 @@ LayoutUnit RenderBox::computePercentageLogicalHeight(const Length& height) const
             // Table cells violate what the CSS spec says to do with heights. Basically we
             // don't care if the cell specified a height or not. We just always make ourselves
             // be a percentage of the cell's current content height.
-            if (!cb->hasOverrideHeight()) {
+            if (!cb->hasOverrideLogicalContentHeight()) {
                 // Normally we would let the cell size intrinsically, but scrolling overflow has to be
                 // treated differently, since WinIE lets scrolled overflow regions shrink as needed.
                 // While we can't get all cases right, we can at least detect when the cell has a specified
@@ -3037,7 +3037,7 @@ LayoutUnit RenderBox::availableLogicalHeightUsing(const Length& h, AvailableLogi
     // artificially.  We're going to rely on this cell getting expanded to some new
     // height, and then when we lay out again we'll use the calculation below.
     if (isTableCell() && (h.isAuto() || h.isPercent())) {
-        if (hasOverrideHeight())
+        if (hasOverrideLogicalContentHeight())
             return overrideLogicalContentHeight();
         return logicalHeight() - borderAndPaddingLogicalHeight();
     }
@@ -4452,6 +4452,39 @@ void RenderBox::clearOverflow()
         flowThread->clearRegionsOverflow(this);
 }
 
+static bool logicalWidthIsResolvable(const RenderBox& renderBox)
+{
+    const RenderBox* box = &renderBox;
+    while (!box->isRenderView() && !box->isOutOfFlowPositioned()
+#if ENABLE(CSS_GRID_LAYOUT)
+        && !box->hasOverrideContainingBlockLogicalWidth()
+#endif
+        && (box->style().logicalWidth().isAuto() || box->isAnonymousBlock()))
+        box = box->containingBlock();
+
+    if (box->style().logicalWidth().isFixed())
+        return true;
+    if (box->isRenderView())
+        return true;
+    // The size of the containing block of an absolutely positioned element is always definite with respect to that
+    // element (http://dev.w3.org/csswg/css-sizing-3/#definite).
+    if (box->isOutOfFlowPositioned())
+        return true;
+#if ENABLE(CSS_GRID_LAYOUT)
+    if (box->hasOverrideContainingBlockLogicalWidth())
+        return box->overrideContainingBlockContentLogicalWidth() != -1;
+#endif
+    if (box->style().logicalWidth().isPercent())
+        return logicalWidthIsResolvable(*box->containingBlock());
+
+    return false;
+}
+
+bool RenderBox::hasDefiniteLogicalWidth() const
+{
+    return logicalWidthIsResolvable(*this);
+}
+
 inline static bool percentageLogicalHeightIsResolvable(const RenderBox* box)
 {
     return RenderBox::percentageLogicalHeightIsResolvableFromBlock(box->containingBlock(), box->isOutOfFlowPositioned());
@@ -4469,6 +4502,11 @@ bool RenderBox::percentageLogicalHeightIsResolvableFromBlock(const RenderBlock* 
     while (!cb->isRenderView() && !cb->isBody() && !cb->isTableCell() && !cb->isOutOfFlowPositioned() && cb->style().logicalHeight().isAuto()) {
         if (!inQuirksMode && !cb->isAnonymousBlock())
             break;
+#if ENABLE(CSS_GRID_LAYOUT)
+        if (cb->hasOverrideContainingBlockLogicalHeight())
+            return cb->overrideContainingBlockContentLogicalHeight() != -1;
+#endif
+
         cb = cb->containingBlock();
     }
 
@@ -4499,6 +4537,25 @@ bool RenderBox::percentageLogicalHeightIsResolvableFromBlock(const RenderBlock* 
     }
 
     return false;
+}
+
+bool RenderBox::hasDefiniteLogicalHeight() const
+{
+    const Length& logicalHeight = style().logicalHeight();
+    if (logicalHeight.isIntrinsicOrAuto())
+        return false;
+    if (logicalHeight.isFixed())
+        return true;
+    // The size of the containing block of an absolutely positioned element is always definite with respect to that
+    // element (http://dev.w3.org/csswg/css-sizing-3/#definite).
+    if (isOutOfFlowPositioned())
+        return true;
+#if ENABLE(CSS_GRID_LAYOUT)
+    if (hasOverrideContainingBlockLogicalHeight())
+        return overrideContainingBlockContentLogicalHeight() != -1;
+#endif
+
+    return percentageLogicalHeightIsResolvable(this);
 }
 
 bool RenderBox::hasUnsplittableScrollingOverflow() const
@@ -4634,7 +4691,7 @@ LayoutRect RenderBox::layoutOverflowRectForPropagation(RenderStyle* parentStyle)
 
 LayoutRect RenderBox::flippedClientBoxRect() const
 {
-    // Because of the special coodinate system used for overflow rectangles (not quite logical, not
+    // Because of the special coordinate system used for overflow rectangles (not quite logical, not
     // quite physical), we need to flip the block progression coordinate in vertical-rl and
     // horizontal-bt writing modes. Apart from that, this method does the same as clientBoxRect().
 
@@ -4779,6 +4836,13 @@ bool RenderBox::hasRelativeLogicalHeight() const
     return style().logicalHeight().isPercent()
             || style().logicalMinHeight().isPercent()
             || style().logicalMaxHeight().isPercent();
+}
+
+bool RenderBox::hasRelativeLogicalWidth() const
+{
+    return style().logicalWidth().isPercent()
+        || style().logicalMinWidth().isPercent()
+        || style().logicalMaxWidth().isPercent();
 }
 
 static void markBoxForRelayoutAfterSplit(RenderBox& box)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 
 #include "Plugin.h"
 #include "WebEvent.h"
+#include "WebHitTestResult.h"
 #include <WebCore/AffineTransform.h>
 #include <WebCore/FindOptions.h>
 #include <WebCore/ScrollableArea.h>
@@ -103,6 +104,11 @@ public:
     
     bool showContextMenuAtPoint(const WebCore::IntPoint&);
 
+    String lookupTextAtLocation(const WebCore::FloatPoint&, WebHitTestResult::Data&, PDFSelection **, NSDictionary **) const;
+    WebCore::FloatRect viewRectForSelection(PDFSelection *) const;
+
+    CGFloat scaleFactor() const;
+
 private:
     explicit PDFPlugin(WebFrame*);
 
@@ -165,8 +171,10 @@ private:
 
     PDFSelection *nextMatchForString(const String& target, BOOL searchForward, BOOL caseSensitive, BOOL wrapSearch, PDFSelection *initialSelection, BOOL startInSelection);
 
-    virtual bool performDictionaryLookupAtLocation(const WebCore::FloatPoint&) override;
-    virtual String getSelectionString() const override;
+    bool performDictionaryLookupAtLocation(const WebCore::FloatPoint&) override;
+    String getSelectionString() const override;
+    String getSelectionForWordAtPoint(const WebCore::FloatPoint&) const override;
+    bool existingSelectionContainsPoint(const WebCore::FloatPoint&) const override;
 
     virtual bool shouldAllowScripting() override { return false; }
     virtual bool shouldAllowNavigationFromDrags() override { return true; }
@@ -303,6 +311,8 @@ private:
 };
 
 } // namespace WebKit
+
+SPECIALIZE_TYPE_TRAITS_PLUGIN(PDFPlugin, PDFPluginType)
 
 #endif // ENABLE(PDFKIT_PLUGIN)
 

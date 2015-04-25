@@ -135,23 +135,23 @@ void WebDragClient::declareAndWriteDragImage(const String& pasteboardName, Eleme
     size_t imageSize = imageBuffer->size();
     SharedMemory::Handle imageHandle;
     
-    RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::create(imageBuffer->size());
+    RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::allocate(imageBuffer->size());
     if (!sharedMemoryBuffer)
         return;
     memcpy(sharedMemoryBuffer->data(), imageBuffer->data(), imageSize);
-    sharedMemoryBuffer->createHandle(imageHandle, SharedMemory::ReadOnly);
+    sharedMemoryBuffer->createHandle(imageHandle, SharedMemory::Protection::ReadOnly);
     
     RetainPtr<CFDataRef> data = archive ? archive->rawDataRepresentation() : 0;
     SharedMemory::Handle archiveHandle;
     size_t archiveSize = 0;
     if (data) {
         RefPtr<SharedBuffer> archiveBuffer = SharedBuffer::wrapNSData((NSData *)data.get());
-        RefPtr<SharedMemory> archiveSharedMemoryBuffer = SharedMemory::create(archiveBuffer->size());
+        RefPtr<SharedMemory> archiveSharedMemoryBuffer = SharedMemory::allocate(archiveBuffer->size());
         if (!archiveSharedMemoryBuffer)
             return;
         archiveSize = archiveBuffer->size();
         memcpy(archiveSharedMemoryBuffer->data(), archiveBuffer->data(), archiveSize);
-        archiveSharedMemoryBuffer->createHandle(archiveHandle, SharedMemory::ReadOnly);
+        archiveSharedMemoryBuffer->createHandle(archiveHandle, SharedMemory::Protection::ReadOnly);
     }
     m_page->send(Messages::WebPageProxy::SetPromisedDataForImage(pasteboardName, imageHandle, imageSize, String([response suggestedFilename]), extension, title, String([[response URL] absoluteString]), userVisibleString((NSURL *)url), archiveHandle, archiveSize));
 }

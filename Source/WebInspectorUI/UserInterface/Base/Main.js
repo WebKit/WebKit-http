@@ -356,6 +356,8 @@ WebInspector.contentLoaded = function()
         this.showSplitConsole();
 
     this._contentLoaded = true;
+
+    this.runBootstrapOperations();
 };
 
 WebInspector.activateExtraDomains = function(domains)
@@ -457,27 +459,19 @@ WebInspector.updateDockedState = function(side)
     this._ignoreToolbarModeDidChangeEvents = true;
 
     if (side === "bottom") {
-        document.body.classList.add("docked");
-        document.body.classList.add("bottom");
-
-        document.body.classList.remove("window-inactive");
-        document.body.classList.remove("right");
+        document.body.classList.add("docked", "bottom");
+        document.body.classList.remove("window-inactive", "right");
 
         this.toolbar.displayMode = this._toolbarDockedBottomDisplayModeSetting.value;
         this.toolbar.sizeMode = this._toolbarDockedBottomSizeModeSetting.value;
     } else if (side === "right") {
-        document.body.classList.add("docked");
-        document.body.classList.add("right");
-
-        document.body.classList.remove("window-inactive");
-        document.body.classList.remove("bottom");
+        document.body.classList.add("docked", "right");
+        document.body.classList.remove("window-inactive", "bottom");
 
         this.toolbar.displayMode = this._toolbarDockedRightDisplayModeSetting.value;
         this.toolbar.sizeMode = this._toolbarDockedRightSizeModeSetting.value;
     } else {
-        document.body.classList.remove("docked");
-        document.body.classList.remove("right");
-        document.body.classList.remove("bottom");
+        document.body.classList.remove("docked", "right", "bottom");
 
         this.toolbar.displayMode = this._toolbarUndockedDisplayModeSetting.value;
         this.toolbar.sizeMode = this._toolbarUndockedSizeModeSetting.value;
@@ -1874,18 +1868,16 @@ WebInspector.archiveMainFrame = function()
 {
     this.notifications.dispatchEventToListeners(WebInspector.Notification.PageArchiveStarted, event);
 
-    setTimeout(function() {
-        PageAgent.archive(function(error, data) {
-            this.notifications.dispatchEventToListeners(WebInspector.Notification.PageArchiveEnded, event);
-            if (error)
-                return;
+    PageAgent.archive(function(error, data) {
+        this.notifications.dispatchEventToListeners(WebInspector.Notification.PageArchiveEnded, event);
+        if (error)
+            return;
 
-            var mainFrame = WebInspector.frameResourceManager.mainFrame;
-            var archiveName = mainFrame.mainResource.urlComponents.host || mainFrame.mainResource.displayName || "Archive";
-            var url = "web-inspector:///" + encodeURI(archiveName) + ".webarchive";
-            InspectorFrontendHost.save(url, data, true, true);
-        }.bind(this));
-    }.bind(this), 3000);
+        var mainFrame = WebInspector.frameResourceManager.mainFrame;
+        var archiveName = mainFrame.mainResource.urlComponents.host || mainFrame.mainResource.displayName || "Archive";
+        var url = "web-inspector:///" + encodeURI(archiveName) + ".webarchive";
+        InspectorFrontendHost.save(url, data, true, true);
+    }.bind(this));
 };
 
 WebInspector.canArchiveMainFrame = function()

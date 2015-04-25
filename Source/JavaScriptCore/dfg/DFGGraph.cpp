@@ -311,8 +311,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, "^", node->phi()->index());
     if (node->hasExecutionCounter())
         out.print(comma, RawPointer(node->executionCounter()));
-    if (node->hasVariableWatchpointSet())
-        out.print(comma, RawPointer(node->variableWatchpointSet()));
+    if (node->hasWatchpointSet())
+        out.print(comma, RawPointer(node->watchpointSet()));
     if (node->hasStoragePointer())
         out.print(comma, RawPointer(node->storagePointer()));
     if (node->hasObjectMaterializationData())
@@ -365,6 +365,15 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
     out.print("\n");
 }
 
+bool Graph::terminalsAreValid()
+{
+    for (BasicBlock* block : blocksInNaturalOrder()) {
+        if (!block->terminal())
+            return false;
+    }
+    return true;
+}
+
 void Graph::dumpBlockHeader(PrintStream& out, const char* prefix, BasicBlock* block, PhiNodeDumpMode phiNodeDumpMode, DumpContext* context)
 {
     out.print(prefix, "Block ", *block, " (", inContext(block->at(0)->origin.semantic, context), "):", block->isReachable ? "" : " (skipped)", block->isOSRTarget ? " (OSR target)" : "", "\n");
@@ -375,13 +384,16 @@ void Graph::dumpBlockHeader(PrintStream& out, const char* prefix, BasicBlock* bl
         out.print(" ", *block->predecessors[i]);
     out.print("\n");
     out.print(prefix, "  Successors:");
-    for (BasicBlock* successor : block->successors()) {
-        out.print(" ", *successor);
-        if (m_prePostNumbering.isValid())
-            out.print(" (", m_prePostNumbering.edgeKind(block, successor), ")");
-    }
+    if (block->terminal()) {
+        for (BasicBlock* successor : block->successors()) {
+            out.print(" ", *successor);
+            if (m_prePostNumbering.isValid())
+                out.print(" (", m_prePostNumbering.edgeKind(block, successor), ")");
+        }
+    } else
+        out.print(" <invalid>");
     out.print("\n");
-    if (m_dominators.isValid()) {
+    if (m_dominators.isValid() && terminalsAreValid()) {
         out.print(prefix, "  Dominated by: ", m_dominators.dominatorsOf(block), "\n");
         out.print(prefix, "  Dominates: ", m_dominators.blocksDominatedBy(block), "\n");
         out.print(prefix, "  Dominance Frontier: ", m_dominators.dominanceFrontierOf(block), "\n");
@@ -820,9 +832,22 @@ void Graph::clearReplacements()
         if (!block)
             continue;
         for (unsigned phiIndex = block->phis.size(); phiIndex--;)
-            block->phis[phiIndex]->replacement = 0;
+            block->phis[phiIndex]->setReplacement(nullptr);
         for (unsigned nodeIndex = block->size(); nodeIndex--;)
-            block->at(nodeIndex)->replacement = 0;
+            block->at(nodeIndex)->setReplacement(nullptr);
+    }
+}
+
+void Graph::clearEpochs()
+{
+    for (BlockIndex blockIndex = numBlocks(); blockIndex--;) {
+        BasicBlock* block = m_blocks[blockIndex].get();
+        if (!block)
+            continue;
+        for (unsigned phiIndex = block->phis.size(); phiIndex--;)
+            block->phis[phiIndex]->setEpoch(Epoch());
+        for (unsigned nodeIndex = block->size(); nodeIndex--;)
+            block->at(nodeIndex)->setEpoch(Epoch());
     }
 }
 
@@ -919,8 +944,6 @@ bool Graph::isLiveInBytecode(VirtualRegister operand, CodeOrigin codeOrigin)
 
         // Arguments are always live. This would be redundant if it wasn't for our
         // op_call_varargs inlining.
-        // FIXME: 'this' might not be live, but we don't have a way of knowing.
-        // https://bugs.webkit.org/show_bug.cgi?id=128519
         if (reg.isArgument()
             && static_cast<size_t>(reg.toArgument()) < inlineCallFrame->arguments.size())
             return true;
@@ -929,6 +952,19 @@ bool Graph::isLiveInBytecode(VirtualRegister operand, CodeOrigin codeOrigin)
     }
     
     return true;
+}
+
+BitVector Graph::localsLiveInBytecode(CodeOrigin codeOrigin)
+{
+    BitVector result;
+    result.ensureSize(block(0)->variablesAtHead.numberOfLocals());
+    forAllLocalsLiveInBytecode(
+        codeOrigin,
+        [&] (VirtualRegister reg) {
+            ASSERT(reg.isLocal());
+            result.quickSet(reg.toLocal());
+        });
+    return result;
 }
 
 unsigned Graph::frameRegisterCount()
@@ -1026,6 +1062,8 @@ JSValue Graph::tryGetConstantProperty(const AbstractValue& base, PropertyOffset 
 
 JSValue Graph::tryGetConstantClosureVar(JSValue base, ScopeOffset offset)
 {
+    // This has an awesome concurrency story. See comment for GetGlobalVar in ByteCodeParser.
+    
     if (!base)
         return JSValue();
     
@@ -1034,24 +1072,28 @@ JSValue Graph::tryGetConstantClosureVar(JSValue base, ScopeOffset offset)
         return JSValue();
     
     SymbolTable* symbolTable = activation->symbolTable();
-    ConcurrentJITLocker locker(symbolTable->m_lock);
+    JSValue value;
+    WatchpointSet* set;
+    {
+        ConcurrentJITLocker locker(symbolTable->m_lock);
+        
+        SymbolTableEntry* entry = symbolTable->entryFor(locker, offset);
+        if (!entry)
+            return JSValue();
+        
+        set = entry->watchpointSet();
+        if (!set)
+            return JSValue();
+        
+        if (set->state() != IsWatched)
+            return JSValue();
+        
+        ASSERT(entry->scopeOffset() == offset);
+        value = activation->variableAt(offset).get();
+        if (!value)
+            return JSValue();
+    }
     
-    if (symbolTable->m_functionEnteredOnce.hasBeenInvalidated())
-        return JSValue();
-    
-    SymbolTableEntry* entry = symbolTable->entryFor(locker, offset);
-    if (!entry)
-        return JSValue();
-    
-    VariableWatchpointSet* set = entry->watchpointSet();
-    if (!set)
-        return JSValue();
-    
-    JSValue value = set->inferredValue();
-    if (!value)
-        return JSValue();
-    
-    watchpoints().addLazily(symbolTable->m_functionEnteredOnce);
     watchpoints().addLazily(set);
     
     return value;
@@ -1120,10 +1162,6 @@ void Graph::registerFrozenValues()
     }
     m_codeBlock->constants().shrinkToFit();
     m_codeBlock->constantsSourceCodeRepresentation().shrinkToFit();
-    
-    // We have no use DFG IR have no need for FunctionExecutable*'s in the CodeBlock, since we
-    // use frozen values to refer to them.
-    m_codeBlock->jettisonFunctionDeclsAndExprs();
 }
 
 void Graph::visitChildren(SlotVisitor& visitor)

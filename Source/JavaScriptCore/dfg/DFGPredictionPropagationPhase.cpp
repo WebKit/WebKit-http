@@ -534,7 +534,7 @@ private:
         case InvalidationPoint:
         case CheckInBounds:
         case ValueToInt32:
-        case HardPhantom:
+        case MustGenerate:
         case DoubleRep:
         case ValueRep:
         case Int52Rep:
@@ -542,6 +542,7 @@ private:
         case Identity:
         case BooleanToNumber:
         case PhantomNewObject:
+        case PhantomNewFunction:
         case PhantomDirectArguments:
         case PhantomClonedArguments:
         case GetMyArgumentByVal:
@@ -637,7 +638,6 @@ private:
         case CheckBadCell:
         case PutStructure:
         case VarInjectionWatchpoint:
-        case AllocationProfileWatchpoint:
         case Phantom:
         case Check:
         case PutGlobalVar:

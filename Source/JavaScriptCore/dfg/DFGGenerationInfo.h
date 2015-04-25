@@ -38,9 +38,9 @@ namespace JSC { namespace DFG {
 
 // === GenerationInfo ===
 //
-// This class is used to track the current status of a live values during code generation.
+// This class is used to track the current status of live values during code generation.
 // Can provide information as to whether a value is in machine registers, and if so which,
-// whether a value has been spilled to the RegsiterFile, and if so may be able to provide
+// whether a value has been spilled to the RegisterFile, and if so may be able to provide
 // details of the format in memory (all values are spilled in a boxed form, but we may be
 // able to track the type of box), and tracks how many outstanding uses of a value remain,
 // so that we know when the value is dead and the machine registers associated with it
@@ -153,8 +153,6 @@ public:
     
     void noticeOSRBirth(VariableEventStream& stream, Node* node, VirtualRegister virtualRegister)
     {
-        if (m_isConstant)
-            return;
         if (m_node != node)
             return;
         if (!alive())
@@ -164,7 +162,9 @@ public:
         
         m_bornForOSR = true;
         
-        if (m_registerFormat != DataFormatNone)
+        if (m_isConstant)
+            appendBirth(stream);
+        else if (m_registerFormat != DataFormatNone)
             appendFill(BirthToFill, stream);
         else if (m_spillFormat != DataFormatNone)
             appendSpill(BirthToSpill, stream, virtualRegister);
@@ -379,6 +379,11 @@ public:
     }
 
 private:
+    void appendBirth(VariableEventStream& stream)
+    {
+        stream.appendAndLog(VariableEvent::birth(MinifiedID(m_node)));
+    }
+    
     void appendFill(VariableEventKind kind, VariableEventStream& stream)
     {
         ASSERT(m_bornForOSR);

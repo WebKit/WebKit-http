@@ -30,7 +30,7 @@
 
 WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutline
 {
-    constructor(omitRootDOMNode, selectEnabled, showInElementsPanelEnabled)
+    constructor(omitRootDOMNode, selectEnabled, excludeRevealElementContextMenu)
     {
         var element = document.createElement("ol");
 
@@ -45,20 +45,19 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
         element.addEventListener("drop", this._ondrop.bind(this), false);
         element.addEventListener("dragend", this._ondragend.bind(this), false);
 
-        element.classList.add("dom-tree-outline");
-        element.classList.add(WebInspector.SyntaxHighlightedStyleClassName);
+        element.classList.add("dom-tree-outline", WebInspector.SyntaxHighlightedStyleClassName);
 
         this._includeRootDOMNode = !omitRootDOMNode;
         this._selectEnabled = selectEnabled;
-        this._showInElementsPanelEnabled = showInElementsPanelEnabled;
+        this._excludeRevealElementContextMenu = excludeRevealElementContextMenu;
         this._rootDOMNode = null;
         this._selectedDOMNode = null;
-        this._eventSupport = new WebInspector.Object();
-        this._editing = false;
 
+        this._editable = false;
+        this._editing = false;
         this._visible = false;
 
-        this.element.addEventListener("contextmenu", this._contextMenuEventFired.bind(this), true);
+        this.element.addEventListener("contextmenu", this._contextMenuEventFired.bind(this));
 
         this._hideElementKeyboardShortcut = new WebInspector.KeyboardShortcut(null, "H", this._hideElement.bind(this), this.element);
         this._hideElementKeyboardShortcut.implicitlyPreventsDefault = false;
@@ -90,16 +89,6 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
         this._updateModifiedNodes();
         if (this._selectedDOMNode)
             this._revealAndSelectNode(this._selectedDOMNode, omitFocus);
-    }
-
-    addEventListener(eventType, listener, thisObject)
-    {
-        this._eventSupport.addEventListener(eventType, listener, thisObject);
-    }
-
-    removeEventListener(eventType, listener, thisObject)
-    {
-        this._eventSupport.removeEventListener(eventType, listener, thisObject);
     }
 
     get rootDOMNode()
@@ -148,6 +137,16 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
             this._selectedNodeChanged();
     }
 
+    get editable()
+    {
+        return this._editable;
+    }
+
+    set editable(x)
+    {
+        this._editable = x;
+    }
+
     get editing()
     {
         return this._editing;
@@ -192,7 +191,7 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     _selectedNodeChanged()
     {
-        this._eventSupport.dispatchEventToListeners(WebInspector.DOMTreeOutline.Event.SelectedNodeChanged);
+        this.dispatchEventToListeners(WebInspector.DOMTreeOutline.Event.SelectedNodeChanged);
     }
 
     findTreeElement(node)
@@ -494,16 +493,27 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     _populateContextMenu(contextMenu, domNode)
     {
-        if (!this._showInElementsPanelEnabled)
-            return;
-
         function revealElement()
         {
             WebInspector.domTreeManager.inspectElement(domNode.id);
         }
 
+        function logElement()
+        {
+            WebInspector.RemoteObject.resolveNode(domNode, "console", function(remoteObject) {
+                if (!remoteObject)
+                    return;
+                var text = WebInspector.UIString("Selected Element");
+                WebInspector.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject);
+            });
+        }
+
         contextMenu.appendSeparator();
-        contextMenu.appendItem(WebInspector.UIString("Reveal in DOM Tree"), revealElement);
+
+        if (!this._excludeRevealElementContextMenu)
+            contextMenu.appendItem(WebInspector.UIString("Reveal in DOM Tree"), revealElement);
+
+        contextMenu.appendItem(WebInspector.UIString("Log Element"), logElement);
     }
 
     _showShadowDOMSettingChanged(event)

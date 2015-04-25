@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,6 +38,7 @@
 #include <memory>
 
 #if PLATFORM(COCOA)
+#include "WebHitTestResult.h"
 #include <wtf/RetainPtr.h>
 OBJC_CLASS CALayer;
 #endif
@@ -141,7 +142,9 @@ private:
     virtual PassRefPtr<WebCore::SharedBuffer> liveResourceData() const override;
     virtual bool performDictionaryLookupAtLocation(const WebCore::FloatPoint&) override { return false; }
 
-    virtual String getSelectionString() const override { return String(); }
+    String getSelectionString() const override { return String(); }
+    String getSelectionForWordAtPoint(const WebCore::FloatPoint&) const override { return String(); }
+    bool existingSelectionContainsPoint(const WebCore::FloatPoint&) const override { return false; }
 
 #if PLATFORM(COCOA)
     virtual WebCore::AudioHardwareActivityType audioHardwareActivity() const override;
@@ -232,6 +235,8 @@ private:
 };
 
 } // namespace WebKit
+
+SPECIALIZE_TYPE_TRAITS_PLUGIN(PluginProxy, PluginProxyType)
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 

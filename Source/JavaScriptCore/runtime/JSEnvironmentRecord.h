@@ -45,6 +45,7 @@ class JSEnvironmentRecord : public JSSymbolTableObject {
 
 public:
     typedef JSSymbolTableObject Base;
+    static const unsigned StructureFlags = Base::StructureFlags;
 
     WriteBarrierBase<Unknown>* variables()
     {
@@ -53,7 +54,7 @@ public:
     
     bool isValid(ScopeOffset offset)
     {
-        return !!offset && offset.offset() < m_symbolTable->scopeSize();
+        return !!offset && offset.offset() < symbolTable()->scopeSize();
     }
     
     WriteBarrierBase<Unknown>& variableAt(ScopeOffset offset)
@@ -85,8 +86,6 @@ public:
     }
     
 protected:
-    static const unsigned StructureFlags = Base::StructureFlags;
-
     JSEnvironmentRecord(
         VM& vm,
         Structure* structure,
@@ -104,7 +103,7 @@ protected:
     void finishCreation(VM& vm)
     {
         finishCreationUninitialized(vm);
-        for (unsigned i = m_symbolTable->scopeSize(); i--;) {
+        for (unsigned i = symbolTable()->scopeSize(); i--;) {
             // Filling this with undefined is useful because that's what variables start out as.
             variableAt(ScopeOffset(i)).setUndefined();
         }

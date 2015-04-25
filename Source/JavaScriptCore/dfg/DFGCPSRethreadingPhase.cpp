@@ -194,12 +194,12 @@ private:
             
             if (otherNode->op() == GetLocal) {
                 // Replace all references to this GetLocal with otherNode.
-                node->replacement = otherNode;
+                node->setReplacement(otherNode);
                 return;
             }
             
             ASSERT(otherNode->op() == SetLocal);
-            node->replacement = otherNode->child1().node();
+            node->setReplacement(otherNode->child1().node());
             return;
         }
         
@@ -361,6 +361,10 @@ private:
                 
             case MovHint:
                 m_availableForOSR.operand(node->unlinkedLocal()) = node->child1();
+                break;
+                
+            case ZombieHint:
+                m_availableForOSR.operand(node->unlinkedLocal()) = Edge();
                 break;
                 
             default:

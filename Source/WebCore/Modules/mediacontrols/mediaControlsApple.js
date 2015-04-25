@@ -12,11 +12,11 @@ function Controller(root, video, host)
     this.listeners = {};
     this.isLive = false;
     this.statusHidden = true;
-    this.hasVisualMedia = false;
     this.hasWirelessPlaybackTargets = false;
     this.isListeningForPlaybackTargetAvailabilityEvent = false;
     this.currentTargetIsWireless = false;
     this.wirelessPlaybackDisabled = false;
+    this.isVolumeSliderActive = false;
 
     this.addVideoListeners();
     this.createBase();
@@ -396,6 +396,7 @@ Controller.prototype = {
 
         var muteBox = this.controls.muteBox = document.createElement('div');
         muteBox.classList.add(this.ClassNames.muteBox);
+        this.listenFor(muteBox, 'mouseover', this.handleMuteBoxOver);
 
         var muteButton = this.controls.muteButton = document.createElement('button');
         muteButton.setAttribute('pseudo', '-webkit-media-controls-mute-button');
@@ -430,6 +431,8 @@ Controller.prototype = {
         volume.max = 1;
         volume.step = .01;
         this.listenFor(volume, 'input', this.handleVolumeSliderInput);
+        this.listenFor(volume, 'mousedown', this.handleVolumeSliderMouseDown);
+        this.listenFor(volume, 'mouseup', this.handleVolumeSliderMouseUp);
 
         this.volumeContextName = "_webkit-media-controls-volume-" + this.host.generateUUID();
         volume.style.backgroundImage = '-webkit-canvas(' + this.volumeContextName + ')';
@@ -643,7 +646,6 @@ Controller.prototype = {
 
     handleReadyStateChange: function(event)
     {
-        this.hasVisualMedia = this.video.videoTracks && this.video.videoTracks.length > 0;
         this.updateReadyState();
         this.updateDuration();
         this.updateCaptionButton();
@@ -736,6 +738,7 @@ Controller.prototype = {
     {
         this.updateBase();
         this.updateControls();
+        this.updateFullscreenButtons();
         this.updateWirelessPlaybackStatus();
 
         if (this.isFullScreen()) {
@@ -800,8 +803,12 @@ Controller.prototype = {
         var opacity = window.getComputedStyle(this.controls.panel).opacity;
         if (parseInt(opacity) > 0) {
             this.controls.panel.classList.remove(this.ClassNames.hidden);
+            if (this.controls.panelBackground)
+                this.controls.panelBackground.classList.remove(this.ClassNames.hidden);
         } else if (!this.controlsAlwaysVisible()) {
             this.controls.panel.classList.add(this.ClassNames.hidden);
+            if (this.controls.panelBackground)
+                this.controls.panelBackground.classList.add(this.ClassNames.hidden);
         }
     },
 
@@ -920,6 +927,11 @@ Controller.prototype = {
         return true;
     },
 
+    handleMuteBoxOver: function(event)
+    {
+        this.drawVolumeBackground();
+    },
+
     handleMinButtonClicked: function(event)
     {
         if (this.video.muted) {
@@ -949,6 +961,18 @@ Controller.prototype = {
         this.drawVolumeBackground();
     },
 
+    handleVolumeSliderMouseDown: function(event)
+    {
+        this.isVolumeSliderActive = true;
+        this.drawVolumeBackground();
+    },
+
+    handleVolumeSliderMouseUp: function(event)
+    {
+        this.isVolumeSliderActive = false;
+        this.drawVolumeBackground();
+    },
+
     handleCaptionButtonClicked: function(event)
     {
         if (this.captionMenu)
@@ -960,7 +984,8 @@ Controller.prototype = {
 
     updateFullscreenButtons: function()
     {
-        var shouldBeHidden = !this.video.webkitSupportsFullscreen || !this.hasVisualMedia;
+        var hasVisualMedia = this.video.videoTracks && this.video.videoTracks.length > 0;
+        var shouldBeHidden = !this.video.webkitSupportsFullscreen || !hasVisualMedia;
         this.controls.fullscreenButton.classList.toggle(this.ClassNames.hidden, shouldBeHidden);
         this.controls.optimizedFullscreenButton.classList.toggle(this.ClassNames.hidden, shouldBeHidden);
     },
@@ -1106,8 +1131,8 @@ Controller.prototype = {
 
     drawTimelineBackground: function() {
         var dpr = window.devicePixelRatio;
-        var width = this.controls.timeline.offsetWidth * dpr;
-        var height = this.controls.timeline.offsetHeight * dpr;
+        var width = this.timelineWidth * dpr;
+        var height = this.timelineHeight * dpr;
         
         if (!width || !height)
             return;
@@ -1137,7 +1162,7 @@ Controller.prototype = {
         
         // Draw buffered section.
         ctx.save();
-        ctx.fillStyle = "rgb(100, 100, 100)";
+        ctx.fillStyle = "rgb(30, 30, 30)";
         ctx.fillRect(1, 8, Math.round(width * buffered) - borderSize, trackHeight);
         ctx.restore();
         
@@ -1148,7 +1173,7 @@ Controller.prototype = {
         this.addRoundedRect(ctx, scrubberPosition + 1, 8, width - scrubberPosition - borderSize , trackHeight, trackHeight / 2.0);
         ctx.closePath();
         ctx.clip("evenodd");
-        ctx.fillStyle = "rgb(100, 100, 100)";
+        ctx.fillStyle = "rgb(30, 30, 30)";
         ctx.fillRect(0, 0, width, height);
         ctx.restore();
         
@@ -1158,7 +1183,7 @@ Controller.prototype = {
         this.addRoundedRect(ctx, 0, 7, width, timelineHeight, timelineHeight / 2.0);
         ctx.closePath();
         ctx.clip();
-        ctx.fillStyle = "rgb(140, 140, 140)";
+        ctx.fillStyle = "rgb(75, 75, 75)";
         ctx.fillRect(0, 0, width * played, height);
         ctx.restore();
         
@@ -1169,7 +1194,7 @@ Controller.prototype = {
         this.addRoundedRect(ctx, scrubberPosition, 1, scrubberWidth, scrubberHeight, 1);
         ctx.closePath();
         ctx.clip();
-        ctx.fillStyle = "rgb(175, 175, 175)";
+        ctx.fillStyle = "rgb(140, 140, 140)";
         ctx.fillRect(0, 0, width, height);
         ctx.restore();
         
@@ -1209,7 +1234,7 @@ Controller.prototype = {
         this.addRoundedRect(ctx, 0, 3, scrubberPosition + 2, timelineHeight, timelineHeight / 2.0);
         ctx.closePath();
         ctx.clip();
-        ctx.fillStyle = "rgb(140, 140, 140)";
+        ctx.fillStyle = "rgb(75, 75, 75)";
         ctx.fillRect(0, 0, width, height);
         ctx.restore();
         
@@ -1220,7 +1245,7 @@ Controller.prototype = {
         this.addRoundedRect(ctx, scrubberPosition + 1, 4, width - borderSize - scrubberPosition - 1, trackHeight, trackHeight / 2.0);
         ctx.closePath();
         ctx.clip("evenodd");
-        ctx.fillStyle = "rgb(100, 100, 100)";
+        ctx.fillStyle = "rgb(30, 30, 30)";
         ctx.fillRect(0, 0, width, height);
         ctx.restore();
         
@@ -1239,12 +1264,14 @@ Controller.prototype = {
         this.addRoundedRect(ctx, scrubberPosition + 1, 1, scrubberDiameter, scrubberDiameter, scrubberRadius);
         ctx.closePath();
         ctx.clip();
-        ctx.fillStyle = "rgb(175, 175, 175)";
+        if (this.isVolumeSliderActive)
+            ctx.fillStyle = "white";
+        else
+            ctx.fillStyle = "rgb(140, 140, 140)";
         ctx.fillRect(0, 0, width, height);
         ctx.restore();
         
         ctx.restore();
-        
     },
     
     formatTime: function(time)
@@ -1276,10 +1303,15 @@ Controller.prototype = {
 
         if (!isPlaying) {
             this.controls.panel.classList.add(this.ClassNames.paused);
+            if (this.controls.panelBackground)
+                this.controls.panelBackground.classList.add(this.ClassNames.paused);
             this.controls.playButton.classList.add(this.ClassNames.paused);
             this.controls.playButton.setAttribute('aria-label', this.UIString('Play'));
+            this.showControls();
         } else {
             this.controls.panel.classList.remove(this.ClassNames.paused);
+            if (this.controls.panelBackground)
+               this.controls.panelBackground.classList.remove(this.ClassNames.paused);
             this.controls.playButton.classList.remove(this.ClassNames.paused);
             this.controls.playButton.setAttribute('aria-label', this.UIString('Pause'));
             this.resetHideControlsTimer();
@@ -1290,12 +1322,18 @@ Controller.prototype = {
     {
         this.setNeedsTimelineMetricsUpdate();
 
-        this.updateTime();
+        this.updateTime(true);
         this.updateProgress(true);
         this.drawVolumeBackground();
+        this.drawTimelineBackground();
 
         this.controls.panel.classList.add(this.ClassNames.show);
         this.controls.panel.classList.remove(this.ClassNames.hidden);
+        
+        if (this.controls.panelBackground) {
+            this.controls.panelBackground.classList.add(this.ClassNames.show);
+            this.controls.panelBackground.classList.remove(this.ClassNames.hidden);
+        }
 
         this.updateShouldListenForPlaybackTargetAvailabilityEvent();
     },
@@ -1307,6 +1345,8 @@ Controller.prototype = {
 
         this.updateShouldListenForPlaybackTargetAvailabilityEvent();
         this.controls.panel.classList.remove(this.ClassNames.show);
+        if (this.controls.panelBackground)
+            this.controls.panelBackground.classList.remove(this.ClassNames.show);
     },
 
     controlsAlwaysVisible: function()
@@ -1752,6 +1792,7 @@ Controller.prototype = {
                 deviceName = this.UIString('##TVOUT_DEVICE_NAME##');
             }
 
+            this.controls.inlinePlaybackPlaceholderTextTop.innerText = deviceType;
             this.controls.inlinePlaybackPlaceholderTextBottom.innerText = deviceName;
             this.controls.inlinePlaybackPlaceholder.setAttribute('aria-label', deviceType + ", " + deviceName);
             this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
@@ -1766,19 +1807,17 @@ Controller.prototype = {
                 this.controls.inlinePlaybackPlaceholderTextBottom.classList.remove(this.ClassNames.small);
             }
             if (this.isFullScreen())
-                this.controls.panel.removeChild(this.controls.volumeBox);
+                this.controls.volumeBox.style.display = "none";
             else
-                this.controls.panel.removeChild(this.controls.muteBox);
+                this.controls.muteBox.style.display = "none";
+            this.showControls();
         } else {
             this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
             this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.playing);
-            if (this.isFullScreen()) {
-                if (!this.controls.volumeBox.parentNode)
-                    this.controls.panel.appendChild(this.controls.volumeBox);
-            } else {
-                if (!this.controls.muteBox.parentNode)
-                    this.controls.panel.appendChild(this.controls.muteBox);
-            }
+            if (this.isFullScreen())
+                this.controls.volumeBox.style.display = "-webkit-flex";
+            else
+                this.controls.muteBox.style.display = "-webkit-flex";
         }
     },
 

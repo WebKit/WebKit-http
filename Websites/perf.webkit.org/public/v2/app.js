@@ -583,19 +583,21 @@ App.Pane = Ember.Object.extend({
     _computeMovingAverageAndOutliers: function (chartData, movingAverageStrategy, envelopingStrategy, testRangeSelectionStrategy, anomalyDetectionStrategies)
     {
         var currentTimeSeriesData = chartData.current.series();
+
+        var rawValues = chartData.current.rawValues();
         var movingAverageIsSetByUser = movingAverageStrategy && movingAverageStrategy.execute;
-        var movingAverageValues = this._executeStrategy(
-            movingAverageIsSetByUser ? movingAverageStrategy : Statistics.MovingAverageStrategies[0], currentTimeSeriesData);
+        var movingAverageValues = Statistics.executeStrategy(
+            movingAverageIsSetByUser ? movingAverageStrategy : Statistics.MovingAverageStrategies[0], rawValues);
         if (!movingAverageValues)
             return null;
 
         var testRangeCandidates = [];
         if (movingAverageStrategy && movingAverageStrategy.isSegmentation && testRangeSelectionStrategy && testRangeSelectionStrategy.execute)
-            testRangeCandidates = this._executeStrategy(testRangeSelectionStrategy, currentTimeSeriesData, [movingAverageValues]);
+            testRangeCandidates = Statistics.executeStrategy(testRangeSelectionStrategy, rawValues, [movingAverageValues]);
 
         var envelopeIsSetByUser = envelopingStrategy && envelopingStrategy.execute;
-        var envelopeDelta = this._executeStrategy(envelopeIsSetByUser ? envelopingStrategy : Statistics.EnvelopingStrategies[0],
-            currentTimeSeriesData, [movingAverageValues]);
+        var envelopeDelta = Statistics.executeStrategy(envelopeIsSetByUser ? envelopingStrategy : Statistics.EnvelopingStrategies[0],
+            rawValues, [movingAverageValues]);
 
         for (var i = 0; i < currentTimeSeriesData.length; i++) {
             var currentValue = currentTimeSeriesData[i].value;
@@ -610,7 +612,7 @@ App.Pane = Ember.Object.extend({
         if (anomalyDetectionStrategies.length) {
             var isAnomalyArray = new Array(currentTimeSeriesData.length);
             for (var strategy of anomalyDetectionStrategies) {
-                var anomalyLengths = this._executeStrategy(strategy, currentTimeSeriesData, [movingAverageValues, envelopeDelta]);
+                var anomalyLengths = Statistics.executeStrategy(strategy, rawValues, [movingAverageValues, envelopeDelta]);
                 for (var i = 0; i < currentTimeSeriesData.length; i++)
                     isAnomalyArray[i] = isAnomalyArray[i] || anomalyLengths[i];
             }
@@ -641,15 +643,6 @@ App.Pane = Ember.Object.extend({
             anomalies: anomalies,
             testRangeCandidates: testRangeCandidates,
         };
-    },
-    _executeStrategy: function (strategy, currentTimeSeriesData, additionalArguments)
-    {
-        var parameters = (strategy.parameterList || []).map(function (param) {
-            var parsed = parseFloat(param.value);
-            return Math.min(param.max || Infinity, Math.max(param.min || -Infinity, isNaN(parsed) ? 0 : parsed));
-        });
-        parameters.push(currentTimeSeriesData.map(function (point) { return point.value }));
-        return strategy.execute.apply(window, parameters.concat(additionalArguments));
     },
     _updateStrategyConfigIfNeeded: function (strategy, configName)
     {
@@ -1146,6 +1139,32 @@ App.AnalysisTaskController = Ember.Controller.extend({
     roots: [],
     bugTrackers: [],
     possibleRepetitionCounts: [1, 2, 3, 4, 5, 6],
+    analysisResultOptions: [
+        {label: 'Still in investigation', result: null},
+        {label: 'Inconclusive', result: 'inconclusive', needed: true},
+        {label: 'Definite progression', result: 'progression', needed: true},
+        {label: 'Definite regression', result: 'regression', needed: true},
+        {label: 'No change', result: 'unchanged', needsFeedback: true},
+    ],
+    shouldNotHaveBeenCreated: false,
+    needsFeedback: function ()
+    {
+        var chosen = this.get('chosenAnalysisResult');
+        return chosen && chosen.needsFeedback;
+    }.property('chosenAnalysisResult'),
+    _updateChosenAnalysisResult: function ()
+    {
+        var analysisTask = this.get('model');
+        if (!analysisTask)
+            return;
+        var currentResult = analysisTask.get('result');
+        for (var option of this.analysisResultOptions) {
+            if (option.result == currentResult) {
+                this.set('chosenAnalysisResult', option);
+                break;                
+            }
+        }
+    }.observes('model'),
     _taskUpdated: function ()
     {
         var model = this.get('model');
@@ -1285,6 +1304,24 @@ App.AnalysisTaskController = Ember.Controller.extend({
                 }, function (error) {
                     alert('Failed to associate the bug: ' + error);
                 });
+        },
+        saveStatus: function ()
+        {
+            var chosenResult = this.get('chosenAnalysisResult');
+            var analysisTask = this.get('model');
+            analysisTask.set('result', chosenResult.result);
+            if (chosenResult.needed)
+                analysisTask.set('needed', true);
+            else if (chosenResult.needsFeedback && this.get('notNeeded'))
+                analysisTask.set('needed', false);
+            else
+                analysisTask.set('needed', null);
+
+            analysisTask.saveStatus().then(function () {
+                alert('Saved the status');
+            }, function (error) {
+                alert('Failed to save the status: ' + error);
+            });
         },
         createTestGroup: function (name, repetitionCount)
         {

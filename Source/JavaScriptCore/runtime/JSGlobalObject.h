@@ -102,12 +102,12 @@ struct HashTable;
     macro(Error, error, error, ErrorInstance, Error) \
     macro(JSArrayBuffer, arrayBuffer, arrayBuffer, JSArrayBuffer, ArrayBuffer) \
     DEFINE_STANDARD_BUILTIN(macro, WeakMap, weakMap) \
+    DEFINE_STANDARD_BUILTIN(macro, WeakSet, weakSet) \
 
 #define FOR_EACH_SIMPLE_BUILTIN_TYPE(macro) \
     FOR_EACH_SIMPLE_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
     FOR_EACH_EXPERIMENTAL_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
     DEFINE_STANDARD_BUILTIN(macro, ArrayIterator, arrayIterator) \
-    DEFINE_STANDARD_BUILTIN(macro, ArgumentsIterator, argumentsIterator) \
     DEFINE_STANDARD_BUILTIN(macro, MapIterator, mapIterator) \
     DEFINE_STANDARD_BUILTIN(macro, SetIterator, setIterator) \
     DEFINE_STANDARD_BUILTIN(macro, StringIterator, stringIterator) \
@@ -186,9 +186,12 @@ protected:
     WriteBarrier<NullGetterFunction> m_nullGetterFunction;
     WriteBarrier<NullSetterFunction> m_nullSetterFunction;
 
+    WriteBarrier<JSFunction> m_parseIntFunction;
+
     WriteBarrier<JSFunction> m_evalFunction;
     WriteBarrier<JSFunction> m_callFunction;
     WriteBarrier<JSFunction> m_applyFunction;
+    WriteBarrier<JSFunction> m_arrayProtoValuesFunction;
     WriteBarrier<GetterSetter> m_throwTypeErrorGetterSetter;
 
     WriteBarrier<ObjectPrototype> m_objectPrototype;
@@ -231,6 +234,7 @@ protected:
     WriteBarrier<Structure> m_regExpMatchesArrayStructure;
     WriteBarrier<Structure> m_regExpStructure;
     WriteBarrier<Structure> m_consoleStructure;
+    WriteBarrier<Structure> m_dollarVMStructure;
     WriteBarrier<Structure> m_internalFunctionStructure;
     
     WriteBarrier<Structure> m_iteratorResultStructure;
@@ -296,6 +300,7 @@ protected:
         
 public:
     typedef JSSegmentedVariableObject Base;
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
 
     static JSGlobalObject* create(VM& vm, Structure* structure, const GlobalObjectMethodTable* globalObjectMethodTable = nullptr)
     {
@@ -334,7 +339,7 @@ protected:
 
     struct NewGlobalVar {
         ScopeOffset offset;
-        VariableWatchpointSet* set;
+        WatchpointSet* set;
     };
     NewGlobalVar addGlobalVar(const Identifier&, ConstantMode);
 
@@ -390,9 +395,12 @@ public:
     NullGetterFunction* nullGetterFunction() const { return m_nullGetterFunction.get(); }
     NullSetterFunction* nullSetterFunction() const { return m_nullSetterFunction.get(); }
 
+    JSFunction* parseIntFunction() const { return m_parseIntFunction.get(); }
+
     JSFunction* evalFunction() const { return m_evalFunction.get(); }
     JSFunction* callFunction() const { return m_callFunction.get(); }
     JSFunction* applyFunction() const { return m_applyFunction.get(); }
+    JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(); }
     GetterSetter* throwTypeErrorGetterSetter(VM& vm)
     {
         if (!m_throwTypeErrorGetterSetter)
@@ -604,9 +612,6 @@ public:
     UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*, ThisTDZMode);
 
 protected:
-
-    static const unsigned StructureFlags = OverridesGetOwnPropertySlot | OverridesGetPropertyNames | Base::StructureFlags;
-
     struct GlobalPropertyInfo {
         GlobalPropertyInfo(const Identifier& i, JSValue v, unsigned a)
             : identifier(i)

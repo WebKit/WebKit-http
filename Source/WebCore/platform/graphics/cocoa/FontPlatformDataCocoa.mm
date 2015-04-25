@@ -42,37 +42,24 @@ namespace WebCore {
 enum TextSpacingCTFeatureSelector { TextSpacingProportional, TextSpacingFullWidth, TextSpacingHalfWidth, TextSpacingThirdWidth, TextSpacingQuarterWidth };
 
 FontPlatformData::FontPlatformData(CTFontRef font, float size, bool syntheticBold, bool syntheticOblique, FontOrientation orientation, FontWidthVariant widthVariant)
-    : m_syntheticBold(syntheticBold)
-    , m_syntheticOblique(syntheticOblique)
-    , m_orientation(orientation)
-    , m_size(size)
-    , m_widthVariant(widthVariant)
-    , m_font(font)
-    , m_cgFont(adoptCF(CTFontCopyGraphicsFont(font, NULL)))
-    , m_isColorBitmapFont(CTFontGetSymbolicTraits(font) & kCTFontTraitColorGlyphs)
-    , m_isCompositeFontReference(CTFontGetSymbolicTraits(font) & kCTFontCompositeTrait)
+    : FontPlatformData(adoptCF(CTFontCopyGraphicsFont(font, NULL)).get(), size, syntheticBold, syntheticOblique, orientation, widthVariant)
 {
     ASSERT_ARG(font, font);
+    m_font = font;
     CFRetain(m_font);
+    m_isColorBitmapFont = CTFontGetSymbolicTraits(font) & kCTFontTraitColorGlyphs;
+    m_isCompositeFontReference = CTFontGetSymbolicTraits(font) & kCTFontCompositeTrait;
 }
-
-#if USE(APPKIT)
-// FIXME: Remove this when all NSFont usage is removed.
-FontPlatformData::FontPlatformData(NSFont *font, float size, bool syntheticBold, bool syntheticOblique, FontOrientation orientation, FontWidthVariant widthVariant)
-    : FontPlatformData((CTFontRef)font, size, syntheticBold, syntheticOblique, orientation, widthVariant)
-{
-}
-#endif
 
 FontPlatformData::~FontPlatformData()
 {
-    if (m_font && m_font != reinterpret_cast<CTFontRef>(-1))
+    if (isValidCTFontRef(m_font))
         CFRelease(m_font);
 }
 
 void FontPlatformData::platformDataInit(const FontPlatformData& f)
 {
-    m_font = f.m_font && f.m_font != reinterpret_cast<CTFontRef>(-1) ? static_cast<CTFontRef>(const_cast<void *>(CFRetain(f.m_font))) : f.m_font;
+    m_font = isValidCTFontRef(f.m_font) ? static_cast<CTFontRef>(const_cast<void *>(CFRetain(f.m_font))) : f.m_font;
 
 #if PLATFORM(IOS)
     m_isEmoji = f.m_isEmoji;
@@ -87,11 +74,11 @@ const FontPlatformData& FontPlatformData::platformDataAssign(const FontPlatformD
 #if PLATFORM(IOS)
     m_isEmoji = f.m_isEmoji;
 #endif
-    if (m_font && m_font != reinterpret_cast<CTFontRef>(-1) && f.m_font && f.m_font != reinterpret_cast<CTFontRef>(-1) && CFEqual(m_font, f.m_font))
+    if (isValidCTFontRef(m_font) && isValidCTFontRef(f.m_font) && CFEqual(m_font, f.m_font))
         return *this;
-    if (f.m_font && f.m_font != reinterpret_cast<CTFontRef>(-1))
+    if (isValidCTFontRef(f.m_font))
         CFRetain(f.m_font);
-    if (m_font && m_font != reinterpret_cast<CTFontRef>(-1))
+    if (isValidCTFontRef(m_font))
         CFRelease(m_font);
     m_font = f.m_font;
     m_ctFont = f.m_ctFont;
@@ -104,7 +91,7 @@ bool FontPlatformData::platformIsEqual(const FontPlatformData& other) const
     bool result = false;
     if (m_font || other.m_font) {
 #if PLATFORM(IOS)
-        result = m_font && m_font != reinterpret_cast<CTFontRef>(-1) && other.m_font && other.m_font != reinterpret_cast<CTFontRef>(-1) && CFEqual(m_font, other.m_font);
+        result = isValidCTFontRef(m_font) && isValidCTFontRef(other.m_font) && CFEqual(m_font, other.m_font);
 #if !ASSERT_DISABLED
         if (result)
             ASSERT(m_isEmoji == other.m_isEmoji);
@@ -114,12 +101,10 @@ bool FontPlatformData::platformIsEqual(const FontPlatformData& other) const
 #endif // PLATFORM(IOS)
         return result;
     }
-#if PLATFORM(IOS)
-#if !ASSERT_DISABLED
+#if PLATFORM(IOS) && !ASSERT_DISABLED
     if (m_cgFont == other.m_cgFont)
         ASSERT(m_isEmoji == other.m_isEmoji);
 #endif
-#endif // PLATFORM(IOS)
     return m_cgFont == other.m_cgFont;
 }
 
@@ -157,15 +142,11 @@ bool FontPlatformData::roundsGlyphAdvances() const
 
 bool FontPlatformData::allowsLigatures() const
 {
-#if USE(APPKIT)
-    return ![[(NSFont *)m_font coveredCharacterSet] characterIsMember:'a'];
-#else
     if (!m_font)
         return false;
 
     RetainPtr<CFCharacterSetRef> characterSet = adoptCF(CTFontCopyCharacterSet(ctFont()));
     return !(characterSet.get() && CFCharacterSetIsCharacterMember(characterSet.get(), 'a'));
-#endif
 }
 
 inline int mapFontWidthVariantToCTFeatureSelector(FontWidthVariant variant)
@@ -240,13 +221,22 @@ static CTFontDescriptorRef cascadeToLastResortAndDisableSwashesFontDescriptor()
     return descriptor;
 }
 
+CGFloat FontPlatformData::ctFontSize() const
+{
+#if PLATFORM(IOS)
+    // Apple Color Emoji size is adjusted (and then re-adjusted by Core Text) and capped.
+    return !m_isEmoji ? m_size : m_size <= 15 ? 4 * (m_size + 2) / static_cast<CGFloat>(5) : 16;
+#else
+    return m_size;
+#endif
+}
+
 CTFontRef FontPlatformData::ctFont() const
 {
     if (m_ctFont)
         return m_ctFont.get();
 
     ASSERT(m_cgFont.get());
-#if !PLATFORM(IOS)
     m_ctFont = m_font;
     if (m_ctFont) {
         CTFontDescriptorRef fontDescriptor;
@@ -256,20 +246,9 @@ CTFontRef FontPlatformData::ctFont() const
             fontDescriptor = cascadeToLastResortAndDisableSwashesFontDescriptor();
         else
             fontDescriptor = cascadeToLastResortFontDescriptor();
-        m_ctFont = adoptCF(CTFontCreateCopyWithAttributes(m_ctFont.get(), m_size, 0, fontDescriptor));
+        m_ctFont = adoptCF(CTFontCreateCopyWithAttributes(m_ctFont.get(), ctFontSize(), 0, fontDescriptor));
     } else
-        m_ctFont = adoptCF(CTFontCreateWithGraphicsFont(m_cgFont.get(), m_size, 0, cascadeToLastResortFontDescriptor()));
-#else
-    // Apple Color Emoji size is adjusted (and then re-adjusted by Core Text) and capped.
-    CGFloat size = !m_isEmoji ? m_size : m_size <= 15 ? 4 * (m_size + 2) / static_cast<CGFloat>(5) : 16;
-    CTFontDescriptorRef fontDescriptor;
-    const char* postScriptName = CGFontGetPostScriptName(m_cgFont.get());
-    if (postScriptName && (!strcmp(postScriptName, "HoeflerText-Italic") || !strcmp(postScriptName, "HoeflerText-BlackItalic")))
-        fontDescriptor = cascadeToLastResortAndDisableSwashesFontDescriptor();
-    else
-        fontDescriptor = cascadeToLastResortFontDescriptor();
-    m_ctFont = adoptCF(CTFontCreateWithGraphicsFont(m_cgFont.get(), size, 0, fontDescriptor));
-#endif // !PLATFORM(IOS)
+        m_ctFont = adoptCF(CTFontCreateWithGraphicsFont(m_cgFont.get(), ctFontSize(), 0, cascadeToLastResortFontDescriptor()));
 
     if (m_widthVariant != RegularWidth) {
         int featureTypeValue = kTextSpacingType;
@@ -289,16 +268,12 @@ CTFontRef FontPlatformData::ctFont() const
 
 RetainPtr<CFTypeRef> FontPlatformData::objectForEqualityCheck(CTFontRef ctFont)
 {
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED <= 80000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000)
     auto fontDescriptor = adoptCF(CTFontCopyFontDescriptor(ctFont));
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=138683 This is a shallow pointer compare for web fonts
     // because the URL contains the address of the font. This means we might erroneously get false negatives.
     RetainPtr<CFURLRef> url = adoptCF(static_cast<CFURLRef>(CTFontDescriptorCopyAttribute(fontDescriptor.get(), kCTFontReferenceURLAttribute)));
     ASSERT(CFGetTypeID(url.get()) == CFURLGetTypeID());
     return url;
-#else
-    return adoptCF(CTFontCopyGraphicsFont(ctFont, 0));
-#endif
 }
 
 RetainPtr<CFTypeRef> FontPlatformData::objectForEqualityCheck() const

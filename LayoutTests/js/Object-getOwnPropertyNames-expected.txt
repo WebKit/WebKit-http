@@ -30,6 +30,7 @@ PASS getSortedOwnPropertyNames(argumentsObject()) is ['callee', 'length']
 PASS getSortedOwnPropertyNames(argumentsObject(1)) is ['0', 'callee', 'length']
 PASS getSortedOwnPropertyNames(argumentsObject(1,2,3)) is ['0', '1', '2', 'callee', 'length']
 PASS getSortedOwnPropertyNames((function(){arguments.__proto__=[1,2,3];return arguments;})()) is ['callee', 'length']
+PASS getSortedOwnPropertyNames(Object(Symbol.iterator)) is []
 PASS getSortedOwnPropertyNames(parseInt) is ['length', 'name']
 PASS getSortedOwnPropertyNames(parseFloat) is ['length', 'name']
 PASS getSortedOwnPropertyNames(isNaN) is ['length', 'name']
@@ -40,14 +41,14 @@ PASS getSortedOwnPropertyNames(decodeURI) is ['length', 'name']
 PASS getSortedOwnPropertyNames(decodeURIComponent) is ['length', 'name']
 PASS getSortedOwnPropertyNames(encodeURI) is ['length', 'name']
 PASS getSortedOwnPropertyNames(encodeURIComponent) is ['length', 'name']
-PASS getSortedOwnPropertyNames(Object) is ['create', 'defineProperties', 'defineProperty', 'freeze', 'getOwnPropertyDescriptor', 'getOwnPropertyNames', 'getOwnPropertySymbols', 'getPrototypeOf', 'isExtensible', 'isFrozen', 'isSealed', 'keys', 'length', 'name', 'preventExtensions', 'prototype', 'seal']
+PASS getSortedOwnPropertyNames(Object) is ['assign', 'create', 'defineProperties', 'defineProperty', 'freeze', 'getOwnPropertyDescriptor', 'getOwnPropertyNames', 'getOwnPropertySymbols', 'getPrototypeOf', 'is', 'isExtensible', 'isFrozen', 'isSealed', 'keys', 'length', 'name', 'preventExtensions', 'prototype', 'seal']
 PASS getSortedOwnPropertyNames(Object.prototype) is ['__defineGetter__', '__defineSetter__', '__lookupGetter__', '__lookupSetter__', '__proto__', 'constructor', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'toLocaleString', 'toString', 'valueOf']
 PASS getSortedOwnPropertyNames(Function) is ['length', 'name', 'prototype']
 PASS getSortedOwnPropertyNames(Function.prototype) is ['apply', 'bind', 'call', 'constructor', 'length', 'name', 'toString']
 PASS getSortedOwnPropertyNames(Array) is ['from', 'isArray', 'length', 'name', 'of', 'prototype']
 PASS getSortedOwnPropertyNames(Array.prototype) is ['concat', 'constructor', 'entries', 'every', 'fill', 'filter', 'find', 'findIndex', 'forEach', 'includes', 'indexOf', 'join', 'keys', 'lastIndexOf', 'length', 'map', 'pop', 'push', 'reduce', 'reduceRight', 'reverse', 'shift', 'slice', 'some', 'sort', 'splice', 'toLocaleString', 'toString', 'unshift', 'values']
 PASS getSortedOwnPropertyNames(String) is ['fromCharCode', 'length', 'name', 'prototype']
-PASS getSortedOwnPropertyNames(String.prototype) is ['anchor', 'big', 'blink', 'bold', 'charAt', 'charCodeAt', 'concat', 'constructor', 'endsWith', 'fixed', 'fontcolor', 'fontsize', 'includes', 'indexOf', 'italics', 'lastIndexOf', 'length', 'link', 'localeCompare', 'match', 'repeat', 'replace', 'search', 'slice', 'small', 'split', 'startsWith', 'strike', 'sub', 'substr', 'substring', 'sup', 'toLocaleLowerCase', 'toLocaleUpperCase', 'toLowerCase', 'toString', 'toUpperCase', 'trim', 'trimLeft', 'trimRight', 'valueOf']
+PASS getSortedOwnPropertyNames(String.prototype) is ['anchor', 'big', 'blink', 'bold', 'charAt', 'charCodeAt', 'codePointAt', 'concat', 'constructor', 'endsWith', 'fixed', 'fontcolor', 'fontsize', 'includes', 'indexOf', 'italics', 'lastIndexOf', 'length', 'link', 'localeCompare', 'match', 'repeat', 'replace', 'search', 'slice', 'small', 'split', 'startsWith', 'strike', 'sub', 'substr', 'substring', 'sup', 'toLocaleLowerCase', 'toLocaleUpperCase', 'toLowerCase', 'toString', 'toUpperCase', 'trim', 'trimLeft', 'trimRight', 'valueOf']
 PASS getSortedOwnPropertyNames(Boolean) is ['length', 'name', 'prototype']
 PASS getSortedOwnPropertyNames(Boolean.prototype) is ['constructor', 'toString', 'valueOf']
 PASS getSortedOwnPropertyNames(Number) is ['EPSILON', 'MAX_SAFE_INTEGER', 'MAX_VALUE', 'MIN_SAFE_INTEGER', 'MIN_VALUE', 'NEGATIVE_INFINITY', 'NaN', 'POSITIVE_INFINITY', 'isFinite', 'isInteger', 'isNaN', 'isSafeInteger', 'length', 'name', 'parseFloat', 'parseInt', 'prototype']
@@ -60,6 +61,8 @@ PASS getSortedOwnPropertyNames(Error) is ['length', 'name', 'prototype']
 PASS getSortedOwnPropertyNames(Error.prototype) is ['constructor', 'message', 'name', 'toString']
 PASS getSortedOwnPropertyNames(Math) is ['E','LN10','LN2','LOG10E','LOG2E','PI','SQRT1_2','SQRT2','abs','acos','acosh','asin','asinh','atan','atan2','atanh','cbrt','ceil','cos','cosh','exp','expm1','floor','fround','hypot','imul','log','log10','log1p','log2','max','min','pow','random','round','sign','sin','sinh','sqrt','tan','tanh','trunc']
 PASS getSortedOwnPropertyNames(JSON) is ['parse', 'stringify']
+PASS getSortedOwnPropertyNames(Symbol) is ['for', 'iterator', 'keyFor', 'length', 'name', 'prototype', 'unscopables']
+PASS getSortedOwnPropertyNames(Symbol.prototype) is ['constructor', 'toString', 'valueOf']
 PASS globalPropertyNames.indexOf('NaN') != -1 is true
 PASS globalPropertyNames.indexOf('Infinity') != -1 is true
 PASS globalPropertyNames.indexOf('undefined') != -1 is true
@@ -77,6 +80,7 @@ PASS globalPropertyNames.indexOf('Object') != -1 is true
 PASS globalPropertyNames.indexOf('Function') != -1 is true
 PASS globalPropertyNames.indexOf('Array') != -1 is true
 PASS globalPropertyNames.indexOf('String') != -1 is true
+PASS globalPropertyNames.indexOf('Symbol') != -1 is true
 PASS globalPropertyNames.indexOf('Boolean') != -1 is true
 PASS globalPropertyNames.indexOf('Number') != -1 is true
 PASS globalPropertyNames.indexOf('Date') != -1 is true

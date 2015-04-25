@@ -37,11 +37,6 @@
 
 namespace WebCore {
 
-PassOwnPtr<MultipartHandle> MultipartHandle::create(ResourceHandle* handle, const String& boundary)
-{
-    return adoptPtr(new MultipartHandle(handle, boundary));
-}
-
 bool MultipartHandle::extractBoundary(const String& contentType, String& boundary)
 {
     static const size_t length = strlen("boundary=");
@@ -342,7 +337,7 @@ void MultipartHandle::didReceiveResponse()
 {
     ResourceHandleInternal* d = m_resourceHandle->getInternal();
     if (d->client()) {
-        OwnPtr<ResourceResponse> response = ResourceResponseBase::adopt(d->m_response.copyData());
+        std::unique_ptr<ResourceResponse> response = ResourceResponseBase::adopt(d->m_response.copyData());
 
         HTTPHeaderMap::const_iterator end = m_headers.end();
         for (HTTPHeaderMap::const_iterator it = m_headers.begin(); it != end; ++it)

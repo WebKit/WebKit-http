@@ -819,6 +819,9 @@
     <ClCompile Include="..\page\WheelEventDeltaTracker.cpp">
       <Filter>page</Filter>
     </ClCompile>
+    <ClCompile Include="..\page\WheelEventTestTrigger.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
     <ClCompile Include="..\page\WindowFeatures.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -1579,9 +1582,6 @@
       <Filter>platform\graphics\cairo</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\cairo\IntRectCairo.cpp">
-      <Filter>platform\graphics\cairo</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\graphics\cairo\OwnPtrCairo.cpp">
       <Filter>platform\graphics\cairo</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\cairo\PathCairo.cpp">
@@ -3378,9 +3378,6 @@
     <ClCompile Include="..\dom\WebKitAnimationEvent.cpp">
       <Filter>dom</Filter>
     </ClCompile>
-    <ClCompile Include="..\dom\WebKitMouseForceEvent.cpp">
-      <Filter>dom</Filter>
-    </ClCompile>
     <ClCompile Include="..\dom\WebKitNamedFlow.cpp">
       <Filter>dom</Filter>
     </ClCompile>
@@ -4008,6 +4005,12 @@
     <ClCompile Include="..\html\ResetInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
+    <ClCompile Include="..\html\RubyElement.cpp">
+      <Filter>html</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\RubyTextElement.cpp">
+      <Filter>html</Filter>
+    </ClCompile>
     <ClCompile Include="..\html\SearchInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
@@ -4408,6 +4411,9 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSReadableStreamCustom.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bindings\js\JSReadableStreamControllerCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSReadableStreamReaderCustom.cpp">
@@ -5692,6 +5698,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamController.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6217,9 +6226,6 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSTransformValue.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitMouseForceEvent.cpp">
-      <Filter>DerivedSources</Filter>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitNamedFlow.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6617,6 +6623,9 @@
       <Filter>dom</Filter>
     </ClCompile>
     <ClCompile Include="..\style\InlineTextBoxStyle.cpp">
+      <Filter>css</Filter>
+    </ClCompile>
+    <ClCompile Include="..\style\RenderTreePosition.cpp">
       <Filter>css</Filter>
     </ClCompile>
     <ClCompile Include="..\style\StyleFontSizeFunctions.cpp">
@@ -7830,6 +7839,9 @@
     <ClInclude Include="..\page\WheelEventDeltaTracker.h">
       <Filter>page</Filter>
     </ClInclude>
+    <ClInclude Include="..\page\WheelEventTestTrigger.h">
+      <Filter>page</Filter>
+    </ClInclude>
     <ClInclude Include="..\page\WindowFeatures.h">
       <Filter>page</Filter>
     </ClInclude>
@@ -8308,9 +8320,6 @@
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\Timer.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\TreeShared.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\UserActivity.h">
@@ -10494,9 +10503,6 @@
     <ClInclude Include="..\dom\WebKitAnimationEvent.h">
       <Filter>dom</Filter>
     </ClInclude>
-    <ClInclude Include="..\dom\WebKitMouseForceEvent.h">
-      <Filter>dom</Filter>
-    </ClInclude>
     <ClInclude Include="..\dom\WebKitNamedFlow.h">
       <Filter>dom</Filter>
     </ClInclude>
@@ -11170,6 +11176,12 @@
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\html\ResetInputType.h">
+      <Filter>html</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\RubyElement.h">
+      <Filter>html</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\RubyTextElement.h">
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\html\SearchInputType.h">
@@ -13601,9 +13613,6 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitCSSTransformValue.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitMouseForceEvent.h">
-      <Filter>DerivedSources</Filter>
-    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWebKitNamedFlow.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -13632,6 +13641,9 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamController.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.h">
@@ -14025,6 +14037,9 @@
       <Filter>css</Filter>
     </ClInclude>
     <ClInclude Include="..\style\InlineTextBoxStyle.h">
+      <Filter>css</Filter>
+    </ClInclude>
+    <ClInclude Include="..\style\RenderTreePosition.h">
       <Filter>css</Filter>
     </ClInclude>
     <ClInclude Include="..\style\StyleFontSizeFunctions.h">
@@ -15230,6 +15245,9 @@
     <ClInclude Include="..\Modules\streams\ReadableStream.h">
       <Filter>Modules\streams</Filter>
     </ClInclude>
+    <ClInclude Include="..\Modules\streams\ReadableStreamController.h">
+      <Filter>Modules\streams</Filter>
+    </ClInclude>
     <ClInclude Include="..\Modules\streams\ReadableStreamReader.h">
       <Filter>Modules\streams</Filter>
     </ClInclude>
@@ -15348,9 +15366,6 @@
       <Filter>platform\graphics\cairo</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\graphics\cairo\GraphicsContextPlatformPrivateCairo.h">
-      <Filter>platform\graphics\cairo</Filter>
-    </CustomBuildStep>
-    <CustomBuildStep Include="..\platform\graphics\cairo\OwnPtrCairo.h">
       <Filter>platform\graphics\cairo</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\graphics\cairo\PlatformPathCairo.h">

@@ -51,14 +51,8 @@ public:
 
     // WebSharingServicePickerClient
     virtual void sharingServicePickerWillBeDestroyed(WebSharingServicePickerController &) override;
-    virtual WebCore::Page* pageForSharingServicePicker(WebSharingServicePickerController &) override;
-    virtual RetainPtr<NSWindow> windowForSharingServicePicker(WebSharingServicePickerController &) override;
-    virtual WebCore::FloatRect screenRectForCurrentSharingServicePickerItem(WebSharingServicePickerController &) override;
-    virtual RetainPtr<NSImage> imageForCurrentSharingServicePickerItem(WebSharingServicePickerController &) override;
 
 private:
-    WebView *m_webView;
-
     RetainPtr<WebSharingServicePickerController> m_sharingServicePickerController;
 };
 

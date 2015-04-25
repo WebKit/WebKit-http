@@ -62,7 +62,9 @@ StyleSheetContents* ContentExtension::globalDisplayNoneStyleSheet()
     StringBuilder css;
     for (auto& selector : selectors) {
         css.append(selector);
+        css.append("{");
         css.append(ContentExtensionsBackend::displayNoneCSSRule());
+        css.append("}");
     }
 
     m_globalDisplayNoneStyleSheet = StyleSheetContents::create();

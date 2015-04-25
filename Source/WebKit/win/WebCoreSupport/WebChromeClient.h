@@ -146,8 +146,8 @@ public:
 
 #if ENABLE(VIDEO)
     virtual bool supportsVideoFullscreen();
-    virtual void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement*);
-    virtual void exitVideoFullscreen();
+    virtual void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&);
+    virtual void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&);
 #endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
@@ -179,6 +179,6 @@ private:
     WebView* m_webView;
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    OwnPtr<WebDesktopNotificationsDelegate> m_notificationsDelegate;
+    std::unique_ptr<WebDesktopNotificationsDelegate> m_notificationsDelegate;
 #endif
 };

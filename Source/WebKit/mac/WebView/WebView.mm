@@ -204,6 +204,7 @@
 #import <wtf/HashTraits.h>
 #import <wtf/MainThread.h>
 #import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/RAMSize.h>
 #import <wtf/RefCountedLeakCounter.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RunLoop.h>
@@ -293,6 +294,7 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 #import "WebMediaPlaybackTargetPicker.h"
+#import <WebCore/WebMediaSessionManagerMac.h>
 #endif
 
 #if PLATFORM(MAC)
@@ -844,6 +846,12 @@ static bool shouldUseLegacyBackgroundSizeShorthandBehavior()
         && !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITHOUT_LEGACY_BACKGROUNDSIZE_SHORTHAND_BEHAVIOR);
 #endif
     return shouldUseLegacyBackgroundSizeShorthandBehavior;
+}
+
+static bool shouldAllowDisplayAndRunningOfInsecureContent()
+{
+    static bool shouldAllowDisplayAndRunningOfInsecureContent = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_INSECURE_CONTENT_BLOCKING);
+    return shouldAllowDisplayAndRunningOfInsecureContent;
 }
 
 #if ENABLE(GAMEPAD)
@@ -2212,11 +2220,13 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setUsesEncodingDetector([preferences usesEncodingDetector]);
     settings.setFantasyFontFamily([preferences fantasyFontFamily]);
     settings.setFixedFontFamily([preferences fixedFontFamily]);
+    settings.setAntialiasedFontDilationEnabled([preferences antialiasedFontDilationEnabled]);
     settings.setForceFTPDirectoryListings([preferences _forceFTPDirectoryListings]);
     settings.setFTPDirectoryTemplatePath([preferences _ftpDirectoryTemplatePath]);
     settings.setLocalStorageDatabasePath([preferences _localStorageDatabasePath]);
     settings.setJavaEnabled([preferences isJavaEnabled]);
     settings.setScriptEnabled([preferences isJavaScriptEnabled]);
+    settings.setScriptMarkupEnabled([preferences javaScriptMarkupEnabled]);
     settings.setWebSecurityEnabled([preferences isWebSecurityEnabled]);
     settings.setAllowUniversalAccessFromFileURLs([preferences allowUniversalAccessFromFileURLs]);
     settings.setAllowFileAccessFromFileURLs([preferences allowFileAccessFromFileURLs]);
@@ -2259,8 +2269,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setXSSAuditorEnabled([preferences isXSSAuditorEnabled]);
     settings.setDNSPrefetchingEnabled([preferences isDNSPrefetchingEnabled]);
     
-    // FIXME: Enabling accelerated compositing when WebGL is enabled causes tests to fail on Leopard which expect HW compositing to be disabled.
-    // Until we fix that, I will comment out the test (CFM)
     settings.setAcceleratedCompositingEnabled([preferences acceleratedCompositingEnabled]);
     settings.setAcceleratedDrawingEnabled([preferences acceleratedDrawingEnabled]);
     settings.setCanvasUsesAcceleratedDrawing([preferences canvasUsesAcceleratedDrawing]);    
@@ -2304,6 +2312,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setShouldConvertPositionStyleOnCopy([preferences shouldConvertPositionStyleOnCopy]);
     settings.setEnableInheritURIQueryComponent([preferences isInheritURIQueryComponentEnabled]);
+
+    settings.setAllowDisplayOfInsecureContent(shouldAllowDisplayAndRunningOfInsecureContent());
+    settings.setAllowRunningOfInsecureContent(shouldAllowDisplayAndRunningOfInsecureContent());
 
     switch ([preferences storageBlockingPolicy]) {
     case WebAllowAllStorage:
@@ -7708,11 +7719,6 @@ static WebFrameView *containingFrameView(NSView *view)
 }
 #endif
 
-static inline uint64_t roundUpToPowerOf2(uint64_t num)
-{
-    return powf(2.0, ceilf(log2f(num)));
-}
-
 + (void)_setCacheModel:(WebCacheModel)cacheModel
 {
     if (s_didSetCacheModel && cacheModel == s_cacheModel)
@@ -7722,7 +7728,7 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
     if (!nsurlCacheDirectory)
         nsurlCacheDirectory = NSHomeDirectory();
 
-    static uint64_t memSize = roundUpToPowerOf2(WebMemorySize() / 1024 / 1024);
+    static uint64_t memSize = ramSize() / 1024 / 1024;
     unsigned long long diskFreeSize = WebVolumeFreeSize(nsurlCacheDirectory) / 1024 / 1000;
     NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
 
@@ -8660,30 +8666,28 @@ bool LayerFlushController::flushLayers()
     return _private->m_playbackTargetPicker.get();
 }
 
-- (void)_showPlaybackTargetPicker:(const WebCore::IntPoint&)location hasVideo:(BOOL)hasVideo
+- (void)_addPlaybackTargetPickerClient:(uint64_t)clientId
 {
-    if (!_private->page)
-        return;
-
-    NSRect rectInWindowCoordinates = [self convertRect:[self _convertRectFromRootView:NSMakeRect(location.x(), location.y(), 0, 0)] toView:nil];
-    NSRect rectInScreenCoordinates = [self.window convertRectToScreen:rectInWindowCoordinates];
-    [self _devicePicker]->showPlaybackTargetPicker(rectInScreenCoordinates, hasVideo);
+    [self _devicePicker]->addPlaybackTargetPickerClient(clientId);
 }
 
-- (void)_startingMonitoringPlaybackTargets
+- (void)_removePlaybackTargetPickerClient:(uint64_t)clientId
 {
-    if (!_private->page)
-        return;
-
-    [self _devicePicker]->startingMonitoringPlaybackTargets();
+    [self _devicePicker]->removePlaybackTargetPickerClient(clientId);
 }
 
-- (void)_stopMonitoringPlaybackTargets
+- (void)_showPlaybackTargetPicker:(uint64_t)clientId location:(const WebCore::IntPoint&)location hasVideo:(BOOL)hasVideo
 {
     if (!_private->page)
         return;
 
-    [self _devicePicker]->stopMonitoringPlaybackTargets();
+    NSRect rectInScreenCoordinates = [self.window convertRectToScreen:NSMakeRect(location.x(), location.y(), 0, 0)];
+    [self _devicePicker]->showPlaybackTargetPicker(clientId, rectInScreenCoordinates, hasVideo);
+}
+
+- (void)_playbackTargetPickerClientStateDidChange:(uint64_t)clientId state:(WebCore::MediaProducer::MediaStateFlags)state
+{
+    [self _devicePicker]->playbackTargetPickerClientStateDidChange(clientId, state);
 }
 #endif
 

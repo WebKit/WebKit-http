@@ -31,9 +31,11 @@
 #import "PoseAsClass.h"
 #import "TestInvocation.h"
 #import "WebKitTestRunnerPasteboard.h"
+#import <WebKit/WKPageGroup.h>
 #import <WebKit/WKStringCF.h>
 #import <WebKit/WKURLCF.h>
-#import <WebKit/WKUserContentFilterRef.h>
+#import <WebKit/_WKUserContentExtensionStore.h>
+#import <WebKit/_WKUserContentExtensionStorePrivate.h>
 #import <mach-o/dyld.h>
 
 @interface NSSound (Details)
@@ -82,6 +84,15 @@ static bool shouldUseThreadedScrolling(const TestInvocation& test)
 
 void TestController::platformResetPreferencesToConsistentValues()
 {
+#if WK_API_ENABLED
+    __block bool doneRemoving = false;
+    [[_WKUserContentExtensionStore defaultStore] removeContentExtensionForIdentifier:@"TestContentExtensions" completionHandler:^(NSError *error)
+    {
+        doneRemoving = true;
+    }];
+    platformRunUntil(doneRemoving, 0);
+    [[_WKUserContentExtensionStore defaultStore] _removeAllContentExtensions];
+#endif
 }
 
 void TestController::platformConfigureViewForTest(const TestInvocation& test)
@@ -107,12 +118,19 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
     NSString *contentExtensionString = [NSString stringWithContentsOfURL:filterURL usedEncoding:&encoding error:NULL];
     if (!contentExtensionString)
         return;
-
-    WKRetainPtr<WKStringRef> name = adoptWK(WKStringCreateWithUTF8CString("TestContentExtensions"));
-    WKRetainPtr<WKStringRef> contentExtensionStringWK = adoptWK(WKStringCreateWithCFString((CFStringRef)contentExtensionString));
-    WKRetainPtr<WKUserContentFilterRef> filter = adoptWK(WKUserContentFilterCreate(name.get(), contentExtensionStringWK.get()));
-
-    WKPageGroupAddUserContentFilter(WKPageGetPageGroup(TestController::singleton().mainWebView()->page()), filter.get());
+    
+#if WK_API_ENABLED
+    __block bool doneCompiling = false;
+    [[_WKUserContentExtensionStore defaultStore] compileContentExtensionForIdentifier:@"TestContentExtensions" encodedContentExtension:contentExtensionString completionHandler:^(_WKUserContentFilter *filter, NSError *error)
+    {
+        if (!error)
+            WKPageGroupAddUserContentFilter(WKPageGetPageGroup(TestController::singleton().mainWebView()->page()), (__bridge WKUserContentFilterRef)filter);
+        else
+            NSLog(@"%@", [error helpAnchor]);
+        doneCompiling = true;
+    }];
+    platformRunUntil(doneCompiling, 0);
+#endif
 }
 
 void TestController::platformRunUntil(bool& done, double timeout)

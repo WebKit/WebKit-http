@@ -146,6 +146,7 @@ private:
     void trackSwipeGesture(NSEvent *, SwipeDirection);
     void beginSwipeGesture(WebBackForwardListItem* targetItem, SwipeDirection);
     void handleSwipeGesture(WebBackForwardListItem* targetItem, double progress, SwipeDirection);
+    void willEndSwipeGesture(WebBackForwardListItem& targetItem, bool cancelled);
     void endSwipeGesture(WebBackForwardListItem* targetItem, bool cancelled);
     bool deltaIsSufficientToBeginSwipe(NSEvent *);
     bool scrollEventCanBecomeSwipe(NSEvent *, SwipeDirection&);
@@ -186,6 +187,8 @@ private:
     RetainPtr<WKSwipeCancellationTracker> m_swipeCancellationTracker;
     RetainPtr<CALayer> m_swipeLayer;
     RetainPtr<CALayer> m_swipeSnapshotLayer;
+    RetainPtr<CALayer> m_swipeShadowLayer;
+    RetainPtr<CALayer> m_swipeDimmingLayer;
     Vector<RetainPtr<CALayer>> m_currentSwipeLiveLayers;
 
     SwipeTransitionStyle m_swipeTransitionStyle { SwipeTransitionStyle::Overlap };

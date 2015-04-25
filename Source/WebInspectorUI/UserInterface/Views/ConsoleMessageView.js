@@ -390,6 +390,10 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
                 var parameter = parameters[0];
                 var preview = WebInspector.FormattedValue.createObjectPreviewOrFormattedValueForRemoteObject(parameter, WebInspector.ObjectPreviewView.Mode.Brief);
                 var isPreviewView = preview instanceof WebInspector.ObjectPreviewView;
+
+                if (isPreviewView)
+                    preview.setOriginatingObjectInfo(parameter, null);
+
                 var previewElement = isPreviewView ? preview.element : preview;
                 previewContainer.appendChild(previewElement);
 
@@ -429,6 +433,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             "map": this._formatParameterAsObject,
             "set": this._formatParameterAsObject,
             "weakmap": this._formatParameterAsObject,
+            "weakset": this._formatParameterAsObject,
             "iterator": this._formatParameterAsObject,
             "class": this._formatParameterAsObject,
             "array": this._formatParameterAsArray,

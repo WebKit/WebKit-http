@@ -65,7 +65,7 @@ public:
         bool isDownloadableMedia;
 
         // FIXME: Added from ActionHitTestResult. All make sense?
-        WebCore::FloatPoint hitTestLocationInViewCooordinates;
+        WebCore::FloatPoint hitTestLocationInViewCoordinates;
         String lookupText;
         RefPtr<SharedMemory> imageSharedMemory;
         uint64_t imageSize;
@@ -104,6 +104,7 @@ public:
 
     String linkLabel() const { return m_data.linkLabel; }
     String linkTitle() const { return m_data.linkTitle; }
+    String lookupText() const { return m_data.lookupText; }
 
     bool isContentEditable() const { return m_data.isContentEditable; }
 

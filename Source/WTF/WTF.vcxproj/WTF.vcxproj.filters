@@ -78,6 +78,9 @@
     <ClCompile Include="..\wtf\text\StringImpl.cpp">
       <Filter>text</Filter>
     </ClCompile>
+    <ClCompile Include="..\wtf\text\SymbolRegistry.cpp">
+      <Filter>text</Filter>
+    </ClCompile>
     <ClCompile Include="..\wtf\text\WTFString.cpp">
       <Filter>text</Filter>
     </ClCompile>
@@ -342,6 +345,9 @@
     <ClInclude Include="..\wtf\text\StringView.h">
       <Filter>wtf</Filter>
     </ClInclude>
+    <ClInclude Include="..\wtf\text\SymbolRegistry.h">
+      <Filter>text</Filter>
+    </ClInclude>
     <ClInclude Include="..\wtf\text\WTFString.h">
       <Filter>text</Filter>
     </ClInclude>
@@ -388,9 +394,6 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\BloomFilter.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\BoundsCheckedPointer.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\BumpPointerAllocator.h">
@@ -525,12 +528,6 @@
     <ClInclude Include="..\wtf\OSRandomSource.h">
       <Filter>wtf</Filter>
     </ClInclude>
-    <ClInclude Include="..\wtf\OwnPtr.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\OwnPtrCommon.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
     <ClInclude Include="..\wtf\PackedIntVector.h">
       <Filter>wtf</Filter>
     </ClInclude>
@@ -553,12 +550,6 @@
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\ParallelJobsOpenMP.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\PassOwnPtr.h">
-      <Filter>wtf</Filter>
-    </ClInclude>
-    <ClInclude Include="..\wtf\PassRef.h">
       <Filter>wtf</Filter>
     </ClInclude>
     <ClInclude Include="..\wtf\PassRefPtr.h">

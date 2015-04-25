@@ -28,6 +28,10 @@
 
 #include "JSDestructibleObject.h"
 
+namespace JSC {
+class WeakMapData;
+}
+
 namespace Inspector {
 
 class InjectedScriptHost;
@@ -35,6 +39,7 @@ class InjectedScriptHost;
 class JSInjectedScriptHost : public JSC::JSDestructibleObject {
 public:
     typedef JSC::JSDestructibleObject Base;
+    static const unsigned StructureFlags = Base::StructureFlags;
 
     DECLARE_INFO;
 
@@ -67,11 +72,11 @@ public:
     JSC::JSValue getInternalProperties(JSC::ExecState*);
     JSC::JSValue weakMapSize(JSC::ExecState*);
     JSC::JSValue weakMapEntries(JSC::ExecState*);
+    JSC::JSValue weakSetSize(JSC::ExecState*);
+    JSC::JSValue weakSetEntries(JSC::ExecState*);
     JSC::JSValue iteratorEntries(JSC::ExecState*);
 
 protected:
-    static const unsigned StructureFlags = Base::StructureFlags;
-
     void finishCreation(JSC::VM&);
 
 private:

@@ -914,14 +914,17 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
 {
     int callee = currentInstruction[2].u.operand;
     RegisterID calleeReg = regT0;
+    RegisterID rareDataReg = regT0;
     RegisterID resultReg = regT0;
     RegisterID allocatorReg = regT1;
     RegisterID structureReg = regT2;
     RegisterID scratchReg = regT3;
 
     emitLoadPayload(callee, calleeReg);
-    loadPtr(Address(calleeReg, JSFunction::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()), allocatorReg);
-    loadPtr(Address(calleeReg, JSFunction::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()), structureReg);
+    loadPtr(Address(calleeReg, JSFunction::offsetOfRareData()), rareDataReg);
+    addSlowCase(branchTestPtr(Zero, rareDataReg));
+    loadPtr(Address(rareDataReg, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()), allocatorReg);
+    loadPtr(Address(rareDataReg, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()), structureReg);
     addSlowCase(branchTestPtr(Zero, allocatorReg));
 
     emitAllocateJSObject(allocatorReg, structureReg, resultReg, scratchReg);
@@ -930,6 +933,7 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
 
 void JIT::emitSlow_op_create_this(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
+    linkSlowCase(iter); // doesn't have rare data
     linkSlowCase(iter); // doesn't have an allocation profile
     linkSlowCase(iter); // allocation failed
 

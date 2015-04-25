@@ -1342,19 +1342,18 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
 
     case CreateThis: {
+        // FIXME: We can fold this to NewObject if the incoming callee is a constant.
         forNode(node).setType(SpecFinalObject);
         break;
     }
         
-    case AllocationProfileWatchpoint:
-        break;
-
     case NewObject:
         ASSERT(node->structure());
         forNode(node).set(m_graph, node->structure());
         break;
         
     case PhantomNewObject:
+    case PhantomNewFunction:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
     case BottomValue:
@@ -1401,6 +1400,15 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case GetCallee:
+        if (FunctionExecutable* executable = jsDynamicCast<FunctionExecutable*>(m_codeBlock->ownerExecutable())) {
+            InferredValue* singleton = executable->singletonFunction();
+            if (JSValue value = singleton->inferredValue()) {
+                m_graph.watchpoints().addLazily(singleton);
+                JSFunction* function = jsCast<JSFunction*>(value);
+                setConstant(node, *m_graph.freeze(function));
+                break;
+            }
+        }
         forNode(node).setType(SpecFunction);
         break;
         
@@ -2061,7 +2069,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ProfileType:
     case ProfileControlFlow:
     case Phantom:
-    case HardPhantom:
+    case MustGenerate:
     case CountExecution:
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:

@@ -34,7 +34,6 @@
 #import <WebCore/LayerFlushSchedulerClient.h>
 #import <WebCore/WebCoreKeyboardUIMode.h>
 #import <wtf/HashMap.h>
-#import <wtf/PassOwnPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/ThreadingPrimitives.h>
 #import <wtf/text/WTFString.h>
@@ -93,7 +92,10 @@ extern int pluginDatabaseClientCount;
 
 class LayerFlushController;
 class WebViewGroup;
+
+#if ENABLE(SERVICE_CONTROLS)
 class WebSelectionServiceController;
+#endif
 
 class WebViewLayerFlushScheduler : public WebCore::LayerFlushScheduler {
 public:
@@ -315,7 +317,7 @@ private:
 #endif
 
 #if USE(DICTATION_ALTERNATIVES)
-    OwnPtr<WebCore::AlternativeTextUIController> m_alternativeTextUIController;
+    std::unique_ptr<WebCore::AlternativeTextUIController> m_alternativeTextUIController;
 #endif
 
     RetainPtr<NSData> sourceApplicationAuditData;

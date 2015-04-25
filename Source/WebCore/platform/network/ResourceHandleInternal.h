@@ -170,7 +170,7 @@ namespace WebCore {
         unsigned m_sslErrors;
         Vector<char> m_postBytes;
 
-        OwnPtr<MultipartHandle> m_multipartHandle;
+        std::unique_ptr<MultipartHandle> m_multipartHandle;
 #endif
 #if USE(HAIKU)
 		BUrlProtocolHandler* m_urlrequest;

@@ -157,7 +157,8 @@ fast/events/drag-display-none-element.html
 fast/events/drag-file-crash.html
 fast/events/drag-image-filename.html
 fast/events/drag-in-frames.html
-fast/events/drag-link.html
+fast/events/drag-and-drop-link.html
+fast/events/drag-and-drop-link-into-focused-contenteditable.html
 fast/events/drag-outside-window.html
 fast/events/drag-parent-node.html
 fast/events/drag-selects-image.html
@@ -203,6 +204,11 @@ editing/pasteboard/drop-text-events.html
 editing/pasteboard/dataTransfer-setData-getData.html
 http/tests/local/fileapi/send-dragged-file.html
 http/tests/local/fileapi/send-sliced-dragged-file.html
+
+# No support for force events
+fast/events/mouse-force-changed.html [ Skip ]
+fast/events/mouse-force-down.html [ Skip ]
+fast/events/mouse-force-up.html [ Skip ]
 
 ###
 # Known failures

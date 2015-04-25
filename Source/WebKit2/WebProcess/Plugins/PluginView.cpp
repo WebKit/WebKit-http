@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2012, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -887,7 +887,7 @@ std::unique_ptr<WebEvent> PluginView::createWebEvent(MouseEvent* event) const
     if (event->metaKey())
         modifiers |= WebEvent::MetaKey;
 
-    return std::make_unique<WebMouseEvent>(type, button, m_plugin->convertToRootView(IntPoint(event->offsetX(), event->offsetY())), event->screenLocation(), 0, 0, 0, clickCount, static_cast<WebEvent::Modifiers>(modifiers), 0);
+    return std::make_unique<WebMouseEvent>(type, button, m_plugin->convertToRootView(IntPoint(event->offsetX(), event->offsetY())), event->screenLocation(), 0, 0, 0, clickCount, static_cast<WebEvent::Modifiers>(modifiers), 0, 0);
 }
 
 void PluginView::handleEvent(Event* event)
@@ -991,6 +991,22 @@ bool PluginView::performDictionaryLookupAtLocation(const WebCore::FloatPoint& po
         return false;
 
     return m_plugin->performDictionaryLookupAtLocation(point);
+}
+
+String PluginView::getSelectionForWordAtPoint(const WebCore::FloatPoint& point) const
+{
+    if (!m_isInitialized || !m_plugin)
+        return String();
+    
+    return m_plugin->getSelectionForWordAtPoint(point);
+}
+
+bool PluginView::existingSelectionContainsPoint(const WebCore::FloatPoint& point) const
+{
+    if (!m_isInitialized || !m_plugin)
+        return false;
+    
+    return m_plugin->existingSelectionContainsPoint(point);
 }
 
 void PluginView::notifyWidget(WidgetNotification notification)
@@ -1340,11 +1356,6 @@ void PluginView::pageMutedStateDidChange()
 #endif
 }
 
-bool PluginView::isPluginVisible()
-{
-    return isVisible();
-}
-
 void PluginView::invalidate(const IntRect& dirtyRect)
 {
     invalidateRect(dirtyRect);
@@ -1456,7 +1467,7 @@ void PluginView::setPluginIsPlayingAudio(bool pluginIsPlayingAudio)
         return;
 
     m_pluginIsPlayingAudio = pluginIsPlayingAudio;
-    m_pluginElement->document().updateIsPlayingAudio();
+    m_pluginElement->document().updateIsPlayingMedia();
 }
 
 bool PluginView::isMuted() const

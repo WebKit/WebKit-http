@@ -65,6 +65,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
     bytecode/BytecodeBasicBlock.cpp
+    bytecode/BytecodeIntrinsicRegistry.cpp
     bytecode/BytecodeLivenessAnalysis.cpp
     bytecode/CallEdge.cpp
     bytecode/CallLinkInfo.cpp
@@ -79,6 +80,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ConstantStructureCheck.cpp
     bytecode/DFGExitProfile.cpp
     bytecode/DeferredCompilationCallback.cpp
+    bytecode/DeferredSourceDump.cpp
     bytecode/ExecutionCounter.cpp
     bytecode/ExitKind.cpp
     bytecode/ExitingJITType.cpp
@@ -105,7 +107,7 @@ set(JavaScriptCore_SOURCES
     bytecode/UnlinkedCodeBlock.cpp
     bytecode/UnlinkedInstructionStream.cpp
     bytecode/ValueRecovery.cpp
-    bytecode/VariableWatchpointSet.cpp
+    bytecode/VariableWriteFireDetail.cpp
     bytecode/VirtualRegister.cpp
     bytecode/Watchpoint.cpp
 
@@ -155,6 +157,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGDominators.cpp
     dfg/DFGDriver.cpp
     dfg/DFGEdge.cpp
+    dfg/DFGEpoch.cpp
     dfg/DFGFailedFinalizer.cpp
     dfg/DFGFinalizer.cpp
     dfg/DFGFixupPhase.cpp
@@ -180,6 +183,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLoopPreHeaderCreationPhase.cpp
     dfg/DFGMayExit.cpp
     dfg/DFGMinifiedNode.cpp
+    dfg/DFGMovHintRemovalPhase.cpp
     dfg/DFGNaiveDominators.cpp
     dfg/DFGNaturalLoops.cpp
     dfg/DFGNode.cpp
@@ -199,6 +203,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGObjectMaterializationData.cpp
     dfg/DFGOperations.cpp
     dfg/DFGPhantomCanonicalizationPhase.cpp
+    dfg/DFGPhantomInsertionPhase.cpp
     dfg/DFGPhantomRemovalPhase.cpp
     dfg/DFGPhase.cpp
     dfg/DFGPhiChildren.cpp
@@ -322,7 +327,6 @@ set(JavaScriptCore_SOURCES
     interpreter/JSStack.cpp
     interpreter/ProtoCallFrame.cpp
     interpreter/StackVisitor.cpp
-    interpreter/VMInspector.cpp
 
     jit/AccessorCallJITStubRoutine.cpp
     jit/AssemblyHelpers.cpp
@@ -389,6 +393,9 @@ set(JavaScriptCore_SOURCES
 
     tools/CodeProfile.cpp
     tools/CodeProfiling.cpp
+    tools/FunctionOverrides.cpp
+    tools/JSDollarVM.cpp
+    tools/JSDollarVMPrototype.cpp
 
     yarr/RegularExpression.cpp
     yarr/YarrCanonicalizeUCS2.cpp
@@ -400,8 +407,6 @@ set(JavaScriptCore_SOURCES
 
 set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ArgList.cpp
-    runtime/ArgumentsIteratorConstructor.cpp
-    runtime/ArgumentsIteratorPrototype.cpp
     runtime/ArrayBuffer.cpp
     runtime/ArrayBufferNeuteringWatchpoint.cpp
     runtime/ArrayBufferView.cpp
@@ -449,16 +454,17 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/FunctionExecutableDump.cpp
     runtime/FunctionHasExecutedCache.cpp
     runtime/FunctionPrototype.cpp
+    runtime/FunctionRareData.cpp
     runtime/GetterSetter.cpp
     runtime/Identifier.cpp
     runtime/IndexingType.cpp
+    runtime/InferredValue.cpp
     runtime/InitializeThreading.cpp
     runtime/IntendedStructureChain.cpp
     runtime/InternalFunction.cpp
     runtime/IteratorOperations.cpp
     runtime/JSAPIValueWrapper.cpp
     runtime/JSLexicalEnvironment.cpp
-    runtime/JSArgumentsIterator.cpp
     runtime/JSArray.cpp
     runtime/JSArrayBuffer.cpp
     runtime/JSArrayBufferConstructor.cpp
@@ -507,6 +513,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSTypedArrayPrototypes.cpp
     runtime/JSTypedArrays.cpp
     runtime/JSWeakMap.cpp
+    runtime/JSWeakSet.cpp
     runtime/JSWithScope.cpp
     runtime/JSWrapperObject.cpp
     runtime/LiteralParser.cpp
@@ -565,9 +572,9 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/StructureIDTable.cpp
     runtime/StructureRareData.cpp
     runtime/Symbol.cpp
+    runtime/SymbolConstructor.cpp
     runtime/SymbolObject.cpp
     runtime/SymbolPrototype.cpp
-    runtime/SymbolConstructor.cpp
     runtime/SymbolTable.cpp
     runtime/TestRunnerUtils.cpp
     runtime/TypeLocationCache.cpp
@@ -584,6 +591,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/WeakMapConstructor.cpp
     runtime/WeakMapData.cpp
     runtime/WeakMapPrototype.cpp
+    runtime/WeakSetConstructor.cpp
+    runtime/WeakSetPrototype.cpp
 )
 
 list(APPEND JavaScriptCore_SOURCES
@@ -611,6 +620,7 @@ set(JavaScriptCore_LUT_FILES
     runtime/RegExpPrototype.cpp
     runtime/StringConstructor.cpp
     runtime/StringIteratorPrototype.cpp
+    runtime/SymbolConstructor.cpp
     runtime/SymbolPrototype.cpp
 )
 
@@ -1220,3 +1230,4 @@ endif ()
 if (ENABLE_FTL_JIT)
     add_dependencies(JavaScriptCore llvmForJSC)
 endif ()
+

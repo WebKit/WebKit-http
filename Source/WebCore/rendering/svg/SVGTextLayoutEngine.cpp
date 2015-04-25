@@ -20,6 +20,7 @@
 #include "config.h"
 #include "SVGTextLayoutEngine.h"
 
+#include "PathTraversalState.h"
 #include "RenderSVGTextPath.h"
 #include "SVGElement.h"
 #include "SVGInlineTextBox.h"
@@ -109,7 +110,7 @@ void SVGTextLayoutEngine::updateRelativePositionAdjustmentsIfNeeded(float dx, fl
     m_dy = dy;
 }
 
-void SVGTextLayoutEngine::recordTextFragment(SVGInlineTextBox* textBox, Vector<SVGTextMetrics>& textMetricsValues)
+void SVGTextLayoutEngine::recordTextFragment(SVGInlineTextBox& textBox, Vector<SVGTextMetrics>& textMetricsValues)
 {
     ASSERT(!m_currentTextFragment.length);
     ASSERT(m_visualMetricsListOffset > 0);
@@ -136,7 +137,7 @@ void SVGTextLayoutEngine::recordTextFragment(SVGInlineTextBox* textBox, Vector<S
         }
     }
 
-    textBox->textFragments().append(m_currentTextFragment);
+    textBox.textFragments().append(m_currentTextFragment);
     m_currentTextFragment = SVGTextFragment();
 }
 
@@ -160,58 +161,39 @@ bool SVGTextLayoutEngine::parentDefinesTextLength(RenderObject* parent) const
     return false;
 }
 
-void SVGTextLayoutEngine::beginTextPathLayout(RenderObject* object, SVGTextLayoutEngine& lineLayout)
+void SVGTextLayoutEngine::beginTextPathLayout(RenderSVGTextPath& textPath, SVGTextLayoutEngine& lineLayout)
 {
-    ASSERT(object);
-
     m_inPathLayout = true;
-    RenderSVGTextPath& textPath = downcast<RenderSVGTextPath>(*object);
 
     m_textPath = textPath.layoutPath();
     if (m_textPath.isEmpty())
         return;
+
     m_textPathStartOffset = textPath.startOffset();
     m_textPathLength = m_textPath.length();
     if (m_textPathStartOffset > 0 && m_textPathStartOffset <= 1)
         m_textPathStartOffset *= m_textPathLength;
 
-    float totalLength = 0;
-    unsigned totalCharacters = 0;
-
     lineLayout.m_chunkLayoutBuilder.buildTextChunks(lineLayout.m_lineLayoutBoxes);
-    const Vector<SVGTextChunk>& textChunks = lineLayout.m_chunkLayoutBuilder.textChunks();
 
-    unsigned size = textChunks.size();
-    for (unsigned i = 0; i < size; ++i) {
-        const SVGTextChunk& chunk = textChunks.at(i);
-
-        float length = 0;
-        unsigned characters = 0;
-        chunk.calculateLength(length, characters);
-
-        // Handle text-anchor as additional start offset for text paths.
-        m_textPathStartOffset += chunk.calculateTextAnchorShift(length);
-
-        totalLength += length;
-        totalCharacters += characters;
-    }
-
+    // Handle text-anchor as additional start offset for text paths.
+    m_textPathStartOffset += lineLayout.m_chunkLayoutBuilder.totalAnchorShift();
     m_textPathCurrentOffset = m_textPathStartOffset;
 
     // Eventually handle textLength adjustments.
-    SVGLengthAdjustType lengthAdjust = SVGLengthAdjustUnknown;
-    float desiredTextLength = 0;
+    auto* textContentElement = SVGTextContentElement::elementFromRenderer(&textPath);
+    if (!textContentElement)
+        return;
 
-    if (SVGTextContentElement* textContentElement = SVGTextContentElement::elementFromRenderer(&textPath)) {
-        SVGLengthContext lengthContext(textContentElement);
-        lengthAdjust = textContentElement->lengthAdjust();
-        desiredTextLength = textContentElement->specifiedTextLength().value(lengthContext);
-    }
-
+    SVGLengthContext lengthContext(textContentElement);
+    float desiredTextLength = textContentElement->specifiedTextLength().value(lengthContext);
     if (!desiredTextLength)
         return;
 
-    if (lengthAdjust == SVGLengthAdjustSpacing)
+    float totalLength = lineLayout.m_chunkLayoutBuilder.totalLength();
+    unsigned totalCharacters = lineLayout.m_chunkLayoutBuilder.totalCharacters();
+
+    if (textContentElement->lengthAdjust() == SVGLengthAdjustSpacing)
         m_textPathSpacing = (desiredTextLength - totalLength) / totalCharacters;
     else
         m_textPathScaling = desiredTextLength / totalLength;
@@ -228,27 +210,25 @@ void SVGTextLayoutEngine::endTextPathLayout()
     m_textPathScaling = 1;
 }
 
-void SVGTextLayoutEngine::layoutInlineTextBox(SVGInlineTextBox* textBox)
+void SVGTextLayoutEngine::layoutInlineTextBox(SVGInlineTextBox& textBox)
 {
-    ASSERT(textBox);
-
-    RenderSVGInlineText& text = textBox->renderer();
+    RenderSVGInlineText& text = textBox.renderer();
     ASSERT(text.parent());
     ASSERT(text.parent()->element());
     ASSERT(text.parent()->element()->isSVGElement());
 
     const RenderStyle& style = text.style();
 
-    textBox->clearTextFragments();
+    textBox.clearTextFragments();
     m_isVerticalText = style.svgStyle().isVerticalWritingMode();
-    layoutTextOnLineOrPath(textBox, &text, &style);
+    layoutTextOnLineOrPath(textBox, text, style);
 
     if (m_inPathLayout) {
-        m_pathLayoutBoxes.append(textBox);
+        m_pathLayoutBoxes.append(&textBox);
         return;
     }
 
-    m_lineLayoutBoxes.append(textBox);
+    m_lineLayoutBoxes.append(&textBox);
 }
 
 #if DUMP_TEXT_FRAGMENTS > 0
@@ -290,7 +270,7 @@ void SVGTextLayoutEngine::finalizeTransformMatrices(Vector<SVGInlineTextBox*>& b
 
         unsigned fragmentCount = fragments.size();
         for (unsigned i = 0; i < fragmentCount; ++i) {
-            m_chunkLayoutBuilder.transformationForTextBox(textBox, textBoxTransformation);
+            textBoxTransformation = m_chunkLayoutBuilder.transformationForTextBox(textBox);
             if (textBoxTransformation.isIdentity())
                 continue;
             ASSERT(fragments[i].lengthAdjustTransform.isIdentity());
@@ -378,12 +358,12 @@ bool SVGTextLayoutEngine::currentLogicalCharacterMetrics(SVGTextLayoutAttributes
     return true;
 }
 
-bool SVGTextLayoutEngine::currentVisualCharacterMetrics(SVGInlineTextBox* textBox, Vector<SVGTextMetrics>& visualMetricsValues, SVGTextMetrics& visualMetrics)
+bool SVGTextLayoutEngine::currentVisualCharacterMetrics(const SVGInlineTextBox& textBox, Vector<SVGTextMetrics>& visualMetricsValues, SVGTextMetrics& visualMetrics)
 {
     ASSERT(!visualMetricsValues.isEmpty());
     unsigned textMetricsSize = visualMetricsValues.size();
-    unsigned boxStart = textBox->start();
-    unsigned boxLength = textBox->len();
+    unsigned boxStart = textBox.start();
+    unsigned boxLength = textBox.len();
 
     if (m_visualMetricsListOffset == textMetricsSize)
         return false;
@@ -418,28 +398,28 @@ void SVGTextLayoutEngine::advanceToNextVisualCharacter(const SVGTextMetrics& vis
     m_visualCharacterOffset += visualMetrics.length();
 }
 
-void SVGTextLayoutEngine::layoutTextOnLineOrPath(SVGInlineTextBox* textBox, RenderSVGInlineText* text, const RenderStyle* style)
+void SVGTextLayoutEngine::layoutTextOnLineOrPath(SVGInlineTextBox& textBox, RenderSVGInlineText& text, const RenderStyle& style)
 {
     if (m_inPathLayout && m_textPath.isEmpty())
         return;
 
-    RenderElement* textParent = text->parent();
+    RenderElement* textParent = text.parent();
     ASSERT(textParent);
     SVGElement* lengthContext = downcast<SVGElement>(textParent->element());
     
     bool definesTextLength = parentDefinesTextLength(textParent);
 
-    const SVGRenderStyle& svgStyle = style->svgStyle();
+    const SVGRenderStyle& svgStyle = style.svgStyle();
 
     m_visualMetricsListOffset = 0;
     m_visualCharacterOffset = 0;
 
-    Vector<SVGTextMetrics>& visualMetricsValues = text->layoutAttributes()->textMetricsValues();
+    Vector<SVGTextMetrics>& visualMetricsValues = text.layoutAttributes()->textMetricsValues();
     ASSERT(!visualMetricsValues.isEmpty());
 
-    auto upconvertedCharacters = StringView(text->text()).upconvertedCharacters();
+    auto upconvertedCharacters = StringView(text.text()).upconvertedCharacters();
     const UChar* characters = upconvertedCharacters;
-    const FontCascade& font = style->fontCascade();
+    const FontCascade& font = style.fontCascade();
 
     SVGTextLayoutEngineSpacing spacingLayout(font);
     SVGTextLayoutEngineBaseline baselineLayout(font);
@@ -448,7 +428,7 @@ void SVGTextLayoutEngine::layoutTextOnLineOrPath(SVGInlineTextBox* textBox, Rend
     bool applySpacingToNextCharacter = false;
 
     float lastAngle = 0;
-    float baselineShift = baselineLayout.calculateBaselineShift(&svgStyle, lengthContext);
+    float baselineShift = baselineLayout.calculateBaselineShift(svgStyle, lengthContext);
     baselineShift -= baselineLayout.calculateAlignmentBaselineShift(m_isVerticalText, text);
 
     // Main layout algorithm.
@@ -481,16 +461,16 @@ void SVGTextLayoutEngine::layoutTextOnLineOrPath(SVGInlineTextBox* textBox, Rend
         float x = data.x;
         float y = data.y;
 
-        // When we've advanced to the box start offset, determine using the original x/y values,
-        // whether this character starts a new text chunk, before doing any further processing.
-        if (m_visualCharacterOffset == textBox->start())
-            textBox->setStartsNewTextChunk(logicalAttributes->context().characterStartsNewTextChunk(m_logicalCharacterOffset));
+        // When we've advanced to the box start offset, determine using the original x/y values
+        // whether this character starts a new text chunk before doing any further processing.
+        if (m_visualCharacterOffset == textBox.start())
+            textBox.setStartsNewTextChunk(logicalAttributes->context().characterStartsNewTextChunk(m_logicalCharacterOffset));
 
         float angle = data.rotate == SVGTextLayoutAttributes::emptyValue() ? 0 : data.rotate;
 
         // Calculate glyph orientation angle.
         const UChar* currentCharacter = characters + m_visualCharacterOffset;
-        float orientationAngle = baselineLayout.calculateGlyphOrientationAngle(m_isVerticalText, &svgStyle, *currentCharacter);
+        float orientationAngle = baselineLayout.calculateGlyphOrientationAngle(m_isVerticalText, svgStyle, *currentCharacter);
 
         // Calculate glyph advance & x/y orientation shifts.
         float xOrientationShift = 0;
@@ -553,14 +533,15 @@ void SVGTextLayoutEngine::layoutTextOnLineOrPath(SVGInlineTextBox* textBox, Rend
             if (textPathOffset > m_textPathLength)
                 break;
 
-            bool ok = false;
-            FloatPoint point = m_textPath.pointAtLength(textPathOffset, ok);
-            ASSERT(ok);
+            bool success = false;
+            auto traversalState(m_textPath.traversalStateAtLength(textPathOffset, success));
+            ASSERT(success);
 
+            FloatPoint point = traversalState.current();
             x = point.x();
             y = point.y();
-            angle = m_textPath.normalAngleAtLength(textPathOffset, ok);
-            ASSERT(ok);
+
+            angle = traversalState.normalAngle();
 
             // For vertical text on path, the actual angle has to be rotated 90 degrees anti-clockwise, not the orientation angle!
             if (m_isVerticalText)

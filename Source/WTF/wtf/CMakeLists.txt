@@ -7,7 +7,6 @@ set(WTF_HEADERS
     BagToHashMap.h
     BitVector.h
     Bitmap.h
-    BoundsCheckedPointer.h
     BumpPointerAllocator.h
     ByteOrder.h
     CompilationThread.h
@@ -56,8 +55,6 @@ set(WTF_HEADERS
     NumberOfCores.h
     OSAllocator.h
     OSRandomSource.h
-    OwnPtr.h
-    OwnPtrCommon.h
     PageAllocation.h
     PageBlock.h
     PageReservation.h
@@ -65,8 +62,6 @@ set(WTF_HEADERS
     ParallelJobsGeneric.h
     ParallelJobsLibdispatch.h
     ParallelJobsOpenMP.h
-    PassOwnPtr.h
-    PassRef.h
     PassRefPtr.h
     Platform.h
     PrintStream.h
@@ -132,6 +127,7 @@ set(WTF_HEADERS
     text/StringHash.h
     text/StringImpl.h
     text/StringView.h
+    text/SymbolRegistry.h
     text/WTFString.h
 
     threads/BinarySemaphore.h
@@ -199,6 +195,7 @@ set(WTF_SOURCES
     text/StringImpl.cpp
     text/StringStatics.cpp
     text/StringView.cpp
+    text/SymbolRegistry.cpp
     text/WTFString.cpp
 
     threads/BinarySemaphore.cpp

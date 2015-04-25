@@ -2,6 +2,7 @@
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2013 Apple Inc. All rights reserved.
  *  Copyright (C) 2009 Torch Mobile, Inc.
+ *  Copyright (C) 2015 Jordan Harband (ljharb@gmail.com)
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -55,6 +56,7 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(StringPrototype);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncToString(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncCharAt(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncCharCodeAt(ExecState*);
+EncodedJSValue JSC_HOST_CALL stringProtoFuncCodePointAt(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncConcat(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncLastIndexOf(ExecState*);
@@ -107,6 +109,7 @@ void StringPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, JSStr
     JSC_NATIVE_INTRINSIC_FUNCTION(vm.propertyNames->valueOf, stringProtoFuncToString, DontEnum, 0, StringPrototypeValueOfIntrinsic);
     JSC_NATIVE_INTRINSIC_FUNCTION("charAt", stringProtoFuncCharAt, DontEnum, 1, CharAtIntrinsic);
     JSC_NATIVE_INTRINSIC_FUNCTION("charCodeAt", stringProtoFuncCharCodeAt, DontEnum, 1, CharCodeAtIntrinsic);
+    JSC_NATIVE_FUNCTION("codePointAt", stringProtoFuncCodePointAt, DontEnum, 1);
     JSC_NATIVE_FUNCTION("concat", stringProtoFuncConcat, DontEnum, 1);
     JSC_NATIVE_FUNCTION("indexOf", stringProtoFuncIndexOf, DontEnum, 1);
     JSC_NATIVE_FUNCTION("lastIndexOf", stringProtoFuncLastIndexOf, DontEnum, 1);
@@ -139,9 +142,9 @@ void StringPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, JSStr
     JSC_NATIVE_FUNCTION("trim", stringProtoFuncTrim, DontEnum, 0);
     JSC_NATIVE_FUNCTION("trimLeft", stringProtoFuncTrimLeft, DontEnum, 0);
     JSC_NATIVE_FUNCTION("trimRight", stringProtoFuncTrimRight, DontEnum, 0);
-    JSC_NATIVE_FUNCTION("startsWith", stringProtoFuncStartsWith, DontEnum, 0);
-    JSC_NATIVE_FUNCTION("endsWith", stringProtoFuncEndsWith, DontEnum, 0);
-    JSC_NATIVE_FUNCTION("includes", stringProtoFuncIncludes, DontEnum, 0);
+    JSC_NATIVE_FUNCTION("startsWith", stringProtoFuncStartsWith, DontEnum, 1);
+    JSC_NATIVE_FUNCTION("endsWith", stringProtoFuncEndsWith, DontEnum, 1);
+    JSC_NATIVE_FUNCTION("includes", stringProtoFuncIncludes, DontEnum, 1);
     JSC_NATIVE_FUNCTION(vm.propertyNames->iteratorSymbol, stringProtoFuncIterator, DontEnum, 0);
 
     JSC_NATIVE_INTRINSIC_FUNCTION(vm.propertyNames->charCodeAtPrivateName, stringProtoFuncCharCodeAt, DontEnum, 1, CharCodeAtIntrinsic);
@@ -808,6 +811,42 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncCharCodeAt(ExecState* exec)
     if (dpos >= 0 && dpos < len)
         return JSValue::encode(jsNumber(s[static_cast<int>(dpos)]));
     return JSValue::encode(jsNaN());
+}
+
+static inline UChar32 codePointAt(const String& string, unsigned position, unsigned length)
+{
+    RELEASE_ASSERT(position < length);
+    if (string.is8Bit())
+        return string.characters8()[position];
+    UChar32 character;
+    U16_NEXT(string.characters16(), position, length, character);
+    return character;
+}
+
+EncodedJSValue JSC_HOST_CALL stringProtoFuncCodePointAt(ExecState* exec)
+{
+    JSValue thisValue = exec->thisValue();
+    if (!checkObjectCoercible(thisValue))
+        return throwVMTypeError(exec);
+
+    String string = thisValue.toWTFString(exec);
+    unsigned length = string.length();
+
+    JSValue argument0 = exec->argument(0);
+    if (argument0.isUInt32()) {
+        unsigned position = argument0.asUInt32();
+        if (position < length)
+            return JSValue::encode(jsNumber(codePointAt(string, position, length)));
+        return JSValue::encode(jsUndefined());
+    }
+
+    if (UNLIKELY(exec->hadException()))
+        return JSValue::encode(jsUndefined());
+
+    double doublePosition = argument0.toInteger(exec);
+    if (doublePosition >= 0 && doublePosition < length)
+        return JSValue::encode(jsNumber(codePointAt(string, static_cast<unsigned>(doublePosition), length)));
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncConcat(ExecState* exec)

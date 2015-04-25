@@ -71,7 +71,7 @@ public:
             cleanVariables(m_graph.m_arguments);
         }
         
-        // Just do a basic HardPhantom/Phantom/Check clean-up.
+        // Just do a basic MustGenerate/Phantom/Check clean-up.
         for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
             BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
@@ -82,7 +82,7 @@ public:
                 Node* node = block->at(sourceIndex++);
                 switch (node->op()) {
                 case Check:
-                case HardPhantom:
+                case MustGenerate:
                 case Phantom:
                     if (node->children.isEmpty())
                         continue;
@@ -143,23 +143,11 @@ private:
                 continue;
                 
             switch (node->op()) {
-            case MovHint: {
-                // Check if the child is dead. MovHint's child would only be a Phantom or
-                // Check if we had just killed it.
-                if (node->child1()->op() == Phantom || node->child1()->op() == Check) {
-                    node->setOpAndDefaultFlags(ZombieHint);
-                    node->child1() = Edge();
-                    break;
-                }
-                break;
-            }
-                
-            case ZombieHint: {
-                // Currently we assume that DCE runs only once.
+            case MovHint:
+            case ZombieHint:
+                // These are not killable. (They once were.)
                 RELEASE_ASSERT_NOT_REACHED();
-                break;
-            }
-            
+                
             default: {
                 if (node->flags() & NodeHasVarArgs) {
                     for (unsigned childIdx = node->firstChild(); childIdx < node->firstChild() + node->numChildren(); childIdx++) {

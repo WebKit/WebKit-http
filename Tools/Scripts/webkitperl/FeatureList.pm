@@ -44,6 +44,7 @@ BEGIN {
 my (
     $threeDRenderingSupport,
     $accelerated2DCanvasSupport,
+    $attachmentElementSupport,
     $batteryStatusSupport,
     $canvasPathSupport,
     $canvasProxySupport,
@@ -76,6 +77,7 @@ my (
     $fullscreenAPISupport,
     $gamepadSupport,
     $geolocationSupport,
+    $hardwareConcurrencySupport,
     $highDPICanvasSupport,
     $icondatabaseSupport,
     $indexedDatabaseSupport,
@@ -101,7 +103,6 @@ my (
     $mhtmlSupport,
     $mouseCursorScaleSupport,
     $netscapePluginAPISupport,
-    $networkInfoSupport,
     $nosniffSupport,
     $notificationsSupport,
     $orientationEventsSupport,
@@ -144,7 +145,6 @@ my (
     $xhrTimeoutSupport,
     $xsltSupport,
     $ftlJITSupport,
-    $forceCLoop,
 );
 
 my @features = (
@@ -153,6 +153,9 @@ my @features = (
 
     { option => "accelerated-2d-canvas", desc => "Toggle Accelerated 2D Canvas support",
       define => "ENABLE_ACCELERATED_2D_CANVAS", default => isGtk(), value => \$accelerated2DCanvasSupport },
+
+    { option => "attachment-element", desc => "Toggle Attachment Element support",
+      define => "ENABLE_ATTACHMENT_ELEMENT", default => 0, value => \$attachmentElementSupport },
 
     { option => "battery-status", desc => "Toggle Battery Status support",
       define => "ENABLE_BATTERY_STATUS", default => isEfl(), value => \$batteryStatusSupport },
@@ -296,7 +299,7 @@ my @features = (
       define => "ENABLE_MEDIA_CAPTURE", default => isEfl(), value => \$mediaCaptureSupport },
 
     { option => "media-source", desc => "Toggle Media Source support",
-      define => "ENABLE_MEDIA_SOURCE", default => isGtk(), value => \$mediaSourceSupport },
+      define => "ENABLE_MEDIA_SOURCE", default => (isGtk() || isEfl()), value => \$mediaSourceSupport },
 
     { option => "media-statistics", desc => "Toggle Media Statistics support",
       define => "ENABLE_MEDIA_STATISTICS", default => 0, value => \$mediaStatisticsSupport },
@@ -317,7 +320,7 @@ my @features = (
       define => "ENABLE_NAVIGATOR_CONTENT_UTILS", default => isEfl(), value => \$registerProtocolHandlerSupport },
 
     { option => "navigator-hardware-concurrency", desc => "Toggle Navigator hardware concurrenct support",
-      define => "ENABLE_NAVIGATOR_HWCONCURRENCY", default => 1, value => \$registerProtocolHandlerSupport },
+      define => "ENABLE_NAVIGATOR_HWCONCURRENCY", default => 1, value => \$hardwareConcurrencySupport },
 
     { option => "netscape-plugin-api", desc => "Toggle Netscape Plugin API support",
       define => "ENABLE_NETSCAPE_PLUGIN_API", default => !(isIOSWebKit() || isHaiku()), value => \$netscapePluginAPISupport },
@@ -429,9 +432,6 @@ my @features = (
 
     { option => "ftl-jit", desc => "Toggle FTLJIT support",
       define => "ENABLE_FTL_JIT", default => 0, value => \$ftlJITSupport },
-
-    { option => "cloop", desc => "Force use of the llint c loop",
-      define => "ENABLE_LLINT_C_LOOP", default => 0, value => \$forceCLoop },
 );
 
 sub getFeatureOptionList()

@@ -66,6 +66,7 @@
 #include <WebCore/Color.h>
 #include <WebCore/DragActions.h>
 #include <WebCore/HitTestResult.h>
+#include <WebCore/MediaProducer.h>
 #include <WebCore/Page.h>
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ScrollTypes.h>
@@ -114,6 +115,7 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 #include <WebCore/MediaPlaybackTargetPicker.h>
+#include <WebCore/WebMediaSessionManagerClient.h>
 #endif
 
 namespace API {
@@ -263,7 +265,7 @@ class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
     , public WebColorPicker::Client
 #endif
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    , public WebCore::MediaPlaybackTargetPicker::Client
+    , public WebCore::WebMediaSessionManagerClient
 #endif
     , public WebPopupMenuProxy::Client
     , public IPC::MessageReceiver
@@ -639,6 +641,8 @@ public:
     void scalePage(double scale, const WebCore::IntPoint& origin);
     void scalePageInViewCoordinates(double scale, const WebCore::IntPoint& centerInViewCoordinates);
     double pageScaleFactor() const;
+    double viewScaleFactor() const { return m_viewScaleFactor; }
+    void scaleView(double scale);
 
     float deviceScaleFactor() const;
     void setIntrinsicDeviceScaleFactor(float);
@@ -980,8 +984,8 @@ public:
 
     bool isShowingNavigationGestureSnapshot() const { return m_isShowingNavigationGestureSnapshot; }
 
-    void isPlayingAudioDidChange(bool);
-    bool isPlayingAudio() const { return m_isPlayingAudio; }
+    bool isPlayingAudio() const { return !!(m_mediaState & WebCore::MediaProducer::IsPlayingAudio); }
+    void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags);
 
 #if PLATFORM(MAC)
     void removeNavigationGestureSnapshot();
@@ -991,7 +995,6 @@ public:
     void selectLastActionMenuRange();
     void focusAndSelectLastActionMenuHitTestResult();
 
-    void inputDeviceForceDidChange(float force, int stage);
     void immediateActionDidUpdate();
     void immediateActionDidCancel();
     void immediateActionDidComplete();
@@ -1018,17 +1021,19 @@ public:
     void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, bool shouldSample);
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    WebCore::MediaPlaybackTargetPicker& devicePickerProxy();
-    void showPlaybackTargetPicker(const WebCore::FloatRect&, bool hasVideo);
-    void startingMonitoringPlaybackTargets();
-    void stopMonitoringPlaybackTargets();
+    void addPlaybackTargetPickerClient(uint64_t);
+    void removePlaybackTargetPickerClient(uint64_t);
+    void showPlaybackTargetPicker(uint64_t, const WebCore::FloatRect&, bool hasVideo);
+    void playbackTargetPickerClientStateDidChange(uint64_t, WebCore::MediaProducer::MediaStateFlags);
 
-    // WebCore::MediaPlaybackTargetPicker::Client
-    virtual void didChoosePlaybackTarget(Ref<WebCore::MediaPlaybackTarget>&&) override;
-    virtual void externalOutputDeviceAvailableDidChange(bool) override;
+    // WebMediaSessionManagerClient
+    virtual void setPlaybackTarget(uint64_t, Ref<WebCore::MediaPlaybackTarget>&&) override;
+    virtual void externalOutputDeviceAvailableDidChange(uint64_t, bool) override;
+    virtual void setShouldPlayToPlaybackTarget(uint64_t, bool) override;
 #endif
 
     void didChangeBackgroundColor();
+    void didLayoutForCustomContentProvider();
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);
@@ -1233,6 +1238,8 @@ private:
     };
     void showContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, const UserData&);
     void internalShowContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, ContextMenuClientEligibility, const UserData&);
+
+    void platformInitializeShareMenuItem(WebCore::ContextMenuItem&);
 #endif
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
@@ -1348,7 +1355,7 @@ private:
     WebCore::FloatSize availableScreenSize();
     float textAutosizingWidth();
 
-    void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition);
+    void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition, uint64_t dynamicViewportSizeUpdateID);
     void restorePageState(const WebCore::FloatRect&, double scale);
     void restorePageCenterAndScale(const WebCore::FloatPoint&, double scale);
 
@@ -1481,6 +1488,7 @@ private:
     bool m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit;
     uint64_t m_dynamicViewportSizeUpdateLayerTreeTransactionID;
     uint64_t m_layerTreeTransactionIdAtLastTouchStart;
+    uint64_t m_currentDynamicViewportSizeUpdateID { 0 };
 #endif
 
 #if ENABLE(VIBRATION)
@@ -1533,6 +1541,7 @@ private:
     double m_pageScaleFactor;
     double m_pluginZoomFactor;
     double m_pluginScaleFactor;
+    double m_viewScaleFactor { 1 };
     float m_intrinsicDeviceScaleFactor;
     float m_customDeviceScaleFactor;
     float m_topContentInset;
@@ -1699,11 +1708,12 @@ private:
     bool m_viewStateChangeWantsSynchronousReply;
     Vector<uint64_t> m_nextViewStateChangeCallbacks;
 
+    WebCore::MediaProducer::MediaStateFlags m_mediaState { WebCore::MediaProducer::IsNotPlaying };
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    std::unique_ptr<WebCore::MediaPlaybackTargetPicker> m_playbackTargetPicker;
+    bool m_requiresTargetMonitoring { false };
 #endif
 
-    bool m_isPlayingAudio;
 };
 
 } // namespace WebKit

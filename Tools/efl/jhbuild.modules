@@ -11,6 +11,7 @@
       <dep package="freetype6"/>
       <dep package="harfbuzz"/>
       <dep package="glib"/>
+      <dep package="gnutls"/>
       <dep package="glib-networking"/>
       <dep package="libsoup"/>
       <dep package="elementary"/>
@@ -56,6 +57,8 @@
       href="http://llvm.org/svn/llvm-project/"/>
   <repository type="tarball" name="llvm-tar"
       href="http://llvm.org"/>
+  <repository type="tarball" name="gnutls"
+      href="ftp://ftp.gnutls.org"/>
 
   <autotools id="cairo" autogen-sh="configure"
              makeargs="CFLAGS='-fno-lto' CXXFLAGS='-fno-lto' LDFLAGS='-fno-lto'">
@@ -116,6 +119,13 @@
             md5sum="9636f60e99b98fd0fdb5239f905ac008"/>
   </autotools>
 
+  <autotools id="gnutls" autogen-sh="configure">
+    <branch module="/gcrypt/gnutls/v3.3/gnutls-3.3.0.tar.xz" version="3.3"
+            repo="gnutls"
+            hash="sha256:7b87a4319f74cae3a5f204b810000f06b8efa1ed0f57c684b9bc454f444fdf13"
+            md5sum="4aeb8014feb4016c73a60f4e1ac73c9f"/>
+  </autotools>
+
   <autotools id="glib-networking">
     <dependencies>
       <dep package="glib"/>
@@ -140,16 +150,24 @@
     </branch>
   </autotools>
 
-  <autotools id="llvm"
+  <autotools id="llvm-3.5-for-AArch64"
              autogen-sh="configure"
              autogenargs="--enable-optimized=yes --enable-backtraces=no --enable-targets=host --enable-zlib=no --enable-terminfo=no --enable-crash-overrides=no --disable-expensive-checks --disable-debug-runtime --disable-assertions">
     <branch repo="llvm-tar"
-            module="/releases/3.5.0/llvm-3.5.0.src.tar.xz" version="3.5.0" checkoutdir="llvm"
+            module="/releases/3.5.0/llvm-3.5.0.src.tar.xz" version="3.5.0" checkoutdir="llvm-3.5.0"
             hash="sha256:28e199f368ef0a4666708f31c7991ad3bcc3a578342b0306526dd35f07595c03">
-      <patch file="llvm-elf-allow-fde-references-outside-the-2gb-range.patch" strip="1"/>
       <patch file="llvm-elf-allow-fde-references-outside-the-2gb-range-arm64.patch" strip="1"/>
-      <patch file="llvm-elf-add-stackmaps.patch" strip="1"/>
       <patch file="llvm-elf-add-stackmaps-arm64.patch" strip="1"/>
+      <patch file="llvm-version-arm64.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="llvm-3.6-for-X86_64"
+             autogen-sh="configure"
+             autogenargs="--enable-optimized=yes --enable-backtraces=no --enable-targets=host --enable-zlib=no --enable-terminfo=no --enable-crash-overrides=no --disable-expensive-checks --disable-debug-runtime --disable-assertions">
+    <branch repo="llvm-tar"
+            module="/releases/3.6.0/llvm-3.6.0.src.tar.xz" version="3.6.0" checkoutdir="llvm-3.6.0"
+            hash="sha256:b39a69e501b49e8f73ff75c9ad72313681ee58d6f430bfad4d81846fe92eb9ce">
     </branch>
   </autotools>
 

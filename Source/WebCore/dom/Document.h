@@ -36,8 +36,10 @@
 #include "DocumentTiming.h"
 #include "FocusDirection.h"
 #include "FontSelector.h"
+#include "MediaProducer.h"
 #include "MutationObserver.h"
 #include "PageVisibilityState.h"
+#include "PlatformEvent.h"
 #include "PlatformScreen.h"
 #include "ReferrerPolicy.h"
 #include "Region.h"
@@ -53,7 +55,6 @@
 #include <memory>
 #include <wtf/Deque.h>
 #include <wtf/HashSet.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/WeakPtr.h>
 
@@ -68,7 +69,6 @@ namespace WebCore {
 
 class AXObjectCache;
 class Attr;
-class AudioProducer;
 class CDATASection;
 class CSSFontSelector;
 class CSSStyleDeclaration;
@@ -125,7 +125,7 @@ class JSNode;
 class Locale;
 class MediaCanStartListener;
 class MediaPlaybackTarget;
-class MediaPlaybackTargetPickerClient;
+class MediaPlaybackTargetClient;
 class MediaQueryList;
 class MediaQueryMatcher;
 class MouseEventWithHitTestResults;
@@ -774,12 +774,11 @@ public:
         FORCEWILLBEGIN_LISTENER              = 1 << 13,
         FORCECHANGED_LISTENER                = 1 << 14,
         FORCEDOWN_LISTENER                   = 1 << 15,
-        FORCEUP_LISTENER                     = 1 << 16,
-        FORCECLICK_LISTENER                  = 1 << 17,
-        FORCECANCELLED_LISTENER              = 1 << 18
+        FORCEUP_LISTENER                     = 1 << 16
     };
 
     bool hasListenerType(ListenerType listenerType) const { return (m_listenerTypes & listenerType); }
+    bool hasListenerTypeForEventType(PlatformEvent::Type) const;
     void addListenerTypeIfNeeded(const AtomicString& eventType);
 
     bool hasMutationObserversOfType(MutationObserver::MutationType type) const
@@ -1139,6 +1138,9 @@ public:
     WEBCORE_EXPORT unsigned wheelEventHandlerCount() const;
     WEBCORE_EXPORT unsigned touchEventHandlerCount() const;
 
+    WEBCORE_EXPORT void startTrackingStyleRecalcs();
+    WEBCORE_EXPORT unsigned styleRecalcCount() const;
+
     void didAddTouchEventHandler(Node&);
     void didRemoveTouchEventHandler(Node&, EventHandlerRemoval = EventHandlerRemoval::One);
 
@@ -1226,21 +1228,22 @@ public:
     bool hasStyleWithViewportUnits() const { return m_hasStyleWithViewportUnits; }
     void updateViewportUnitsOnResize();
 
-    WEBCORE_EXPORT void addAudioProducer(AudioProducer*);
-    WEBCORE_EXPORT void removeAudioProducer(AudioProducer*);
-    bool isPlayingAudio() const { return m_isPlayingAudio; }
-    WEBCORE_EXPORT void updateIsPlayingAudio();
+    WEBCORE_EXPORT void addAudioProducer(MediaProducer*);
+    WEBCORE_EXPORT void removeAudioProducer(MediaProducer*);
+    MediaProducer::MediaStateFlags mediaState() const { return m_mediaState; }
+    WEBCORE_EXPORT void updateIsPlayingMedia();
     void pageMutedStateDidChange();
     WeakPtr<Document> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    void showPlaybackTargetPicker(const HTMLMediaElement&);
-    void didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&&);
-    void addPlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
-    void removePlaybackTargetPickerClient(MediaPlaybackTargetPickerClient&);
-    bool requiresPlaybackTargetRouteMonitoring();
-    void configurePlaybackTargetMonitoring();
-    void playbackTargetAvailabilityDidChange(bool);
+    void addPlaybackTargetPickerClient(MediaPlaybackTargetClient&);
+    void removePlaybackTargetPickerClient(MediaPlaybackTargetClient&);
+    void showPlaybackTargetPicker(MediaPlaybackTargetClient&, bool);
+    void playbackTargetPickerClientStateDidChange(MediaPlaybackTargetClient&, MediaProducer::MediaStateFlags);
+
+    void setPlaybackTarget(uint64_t, Ref<MediaPlaybackTarget>&&);
+    void playbackTargetAvailabilityDidChange(uint64_t, bool);
+    void setShouldPlayToPlaybackTarget(uint64_t, bool);
 #endif
 
 protected:
@@ -1437,6 +1440,8 @@ private:
 
     // http://www.whatwg.org/specs/web-apps/current-work/#ignore-destructive-writes-counter
     unsigned m_ignoreDestructiveWriteCount;
+
+    unsigned m_styleRecalcCount { 0 };
 
     StringWithDirection m_title;
     StringWithDirection m_rawTitle;
@@ -1679,12 +1684,14 @@ private:
 
     bool m_hasStyleWithViewportUnits;
 
-    HashSet<AudioProducer*> m_audioProducers;
-    bool m_isPlayingAudio;
+    HashSet<MediaProducer*> m_audioProducers;
+    MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    HashSet<WebCore::MediaPlaybackTargetPickerClient*> m_playbackTargetClients;
-    bool m_playbackTargetsAvailable { false };
+    typedef HashMap<uint64_t, WebCore::MediaPlaybackTargetClient*> TargetIdToClientMap;
+    TargetIdToClientMap m_idToClientMap;
+    typedef HashMap<WebCore::MediaPlaybackTargetClient*, uint64_t> TargetClientToIdMap;
+    TargetClientToIdMap m_clientToIDMap;
 #endif
 };
 

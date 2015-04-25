@@ -46,8 +46,6 @@
 #include <wtf/HashSet.h>
 #include <wtf/MediaTime.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/text/StringHash.h>
 
 #if ENABLE(AVF_CAPTIONS)
@@ -483,8 +481,7 @@ public:
     bool isPlayingToWirelessPlaybackTarget() const;
     void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&);
 
-    void startPlayingToPlaybackTarget();
-    void stopPlayingToPlaybackTarget();
+    void setShouldPlayToPlaybackTarget(bool);
 #endif
 
     double minFastReverseRate() const;

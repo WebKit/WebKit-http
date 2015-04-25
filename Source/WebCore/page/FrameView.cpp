@@ -107,9 +107,6 @@
 #if PLATFORM(IOS)
 #include "DocumentLoader.h"
 #include "LegacyTileCache.h"
-#include "MemoryCache.h"
-#include "MemoryPressureHandler.h"
-#include "SystemMemory.h"
 #endif
 
 namespace WebCore {
@@ -161,7 +158,7 @@ Pagination::Mode paginationModeForRenderStyle(const RenderStyle& style)
 }
 
 FrameView::FrameView(Frame& frame)
-    : m_frame(&frame)
+    : m_frame(frame)
     , m_canHaveScrollbars(true)
     , m_layoutTimer(*this, &FrameView::layoutTimerFired)
     , m_layoutRoot(nullptr)
@@ -835,7 +832,7 @@ uint64_t FrameView::scrollLayerID() const
     if (!backing)
         return 0;
 
-    return backing->scrollingNodeIDForRole(FrameScrollingNode);
+    return backing->scrollingNodeIDForRole(Scrolling);
 }
 
 ScrollableArea* FrameView::scrollableAreaForScrollLayerID(uint64_t nodeID) const
@@ -909,7 +906,7 @@ bool FrameView::flushCompositingStateForThisFrame(Frame* rootFrameForFlush)
         tileCache->doPendingRepaints();
 #endif
 
-    renderView->compositor().flushPendingLayerChanges(rootFrameForFlush == &frame());
+    renderView->compositor().flushPendingLayerChanges(rootFrameForFlush == m_frame.ptr());
 
     return true;
 }
@@ -1014,7 +1011,7 @@ bool FrameView::hasCompositedContent() const
 
 bool FrameView::hasCompositedContentIncludingDescendants() const
 {
-    for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
+    for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
         RenderView* renderView = frame->contentRenderer();
         if (RenderLayerCompositor* compositor = renderView ? &renderView->compositor() : nullptr) {
             if (compositor->inCompositingMode())
@@ -1063,7 +1060,7 @@ bool FrameView::flushCompositingStateIncludingSubframes()
 {
     bool allFramesFlushed = flushCompositingStateForThisFrame(&frame());
     
-    for (Frame* child = frame().tree().firstChild(); child; child = child->tree().traverseNext(&frame())) {
+    for (Frame* child = frame().tree().firstChild(); child; child = child->tree().traverseNext(m_frame.ptr())) {
         bool flushed = child->view()->flushCompositingStateForThisFrame(&frame());
         allFramesFlushed &= flushed;
     }
@@ -1511,7 +1508,7 @@ bool FrameView::useSlowRepaintsIfNotOverlapped() const
 
 void FrameView::updateCanBlitOnScrollRecursively()
 {
-    for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
+    for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
         if (FrameView* view = frame->view())
             view->setCanBlitOnScroll(!view->useSlowRepaints());
     }
@@ -1915,7 +1912,7 @@ void FrameView::setIsOverlapped(bool isOverlapped)
         if (RenderLayerCompositor::allowsIndependentlyCompositedFrames(this)) {
             // We also need to trigger reevaluation for this and all descendant frames,
             // since a frame uses compositing if any ancestor is compositing.
-            for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
+            for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
                 if (RenderView* view = frame->contentRenderer()) {
                     RenderLayerCompositor& compositor = view->compositor();
                     compositor.setCompositingLayersNeedRebuild();
@@ -2134,10 +2131,23 @@ void FrameView::scrollPositionChanged(const IntPoint& oldPosition, const IntPoin
 
 void FrameView::resumeVisibleImageAnimationsIncludingSubframes()
 {
-    // A change in scroll position may affect image visibility in subframes.
-    for (auto* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
-        if (auto* renderView = frame->contentRenderer())
-            renderView->resumePausedImageAnimationsIfNeeded();
+    auto* renderView = frame().contentRenderer();
+    if (!renderView)
+        return;
+
+    IntRect windowClipRect = this->windowClipRect();
+    auto visibleRect = windowToContents(windowClipRect);
+    if (visibleRect.isEmpty())
+        return;
+
+    // Resume paused image animations in this frame.
+    renderView->resumePausedImageAnimationsIfNeeded(visibleRect);
+
+    // Recursive call for subframes. We cache the current FrameView's windowClipRect to avoid recomputing it for every subframe.
+    TemporaryChange<IntRect*> windowClipRectCache(m_cachedWindowClipRect, &windowClipRect);
+    for (Frame* childFrame = frame().tree().firstChild(); childFrame; childFrame = childFrame->tree().nextSibling()) {
+        if (auto* childView = childFrame->view())
+            childView->resumeVisibleImageAnimationsIncludingSubframes();
     }
 }
 
@@ -2164,7 +2174,7 @@ bool FrameView::shouldUpdateCompositingLayersAfterScrolling() const
     if (!page)
         return true;
 
-    if (&page->mainFrame() != &frame())
+    if (&page->mainFrame() != m_frame.ptr())
         return true;
 
     ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator();
@@ -2281,9 +2291,9 @@ static unsigned countRenderedCharactersInRenderObjectWithThreshold(const RenderE
 
 bool FrameView::renderedCharactersExceed(unsigned threshold)
 {
-    if (!m_frame->contentRenderer())
+    if (!frame().contentRenderer())
         return false;
-    return countRenderedCharactersInRenderObjectWithThreshold(*m_frame->contentRenderer(), threshold) >= threshold;
+    return countRenderedCharactersInRenderObjectWithThreshold(*frame().contentRenderer(), threshold) >= threshold;
 }
 
 void FrameView::availableContentSizeChanged(AvailableSizeChangeReason reason)
@@ -2387,7 +2397,7 @@ void FrameView::updateLayerFlushThrottling()
     if (page->chrome().client().adjustLayerFlushThrottling(flags))
         return;
 
-    for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
+    for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
         if (RenderView* renderView = frame->contentRenderer())
             renderView->compositor().setLayerFlushThrottlingEnabled(flags & LayerFlushThrottleState::Enabled);
     }
@@ -2607,6 +2617,9 @@ void FrameView::setNeedsLayout()
 
 void FrameView::unscheduleRelayout()
 {
+    if (m_postLayoutTasksTimer.isActive())
+        m_postLayoutTasksTimer.stop();
+
     if (!m_layoutTimer.isActive())
         return;
 
@@ -2622,13 +2635,13 @@ void FrameView::unscheduleRelayout()
 #if ENABLE(REQUEST_ANIMATION_FRAME)
 void FrameView::serviceScriptedAnimations(double monotonicAnimationStartTime)
 {
-    for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext()) {
+    for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext()) {
         frame->view()->serviceScrollAnimations();
         frame->animation().serviceAnimations();
     }
 
     Vector<RefPtr<Document>> documents;
-    for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext())
+    for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext())
         documents.append(frame->document());
 
     for (size_t i = 0; i < documents.size(); ++i)
@@ -2686,7 +2699,7 @@ void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
 
 void FrameView::updateBackgroundRecursively(const Color& backgroundColor, bool transparent)
 {
-    for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
+    for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
         if (FrameView* view = frame->view()) {
             view->setTransparent(transparent);
             view->setBaseBackgroundColor(backgroundColor);
@@ -3264,6 +3277,9 @@ IntRect FrameView::windowClipRect() const
 {
     ASSERT(frame().view() == this);
 
+    if (m_cachedWindowClipRect)
+        return *m_cachedWindowClipRect;
+
     if (paintsEntireContents())
         return contentsToWindow(IntRect(IntPoint(), totalContentsSize()));
 
@@ -3340,7 +3356,7 @@ float FrameView::adjustScrollStepForFixedContent(float step, ScrollbarOrientatio
         return step;
 
     TrackedRendererListHashSet* positionedObjects = nullptr;
-    if (RenderView* root = m_frame->contentRenderer()) {
+    if (RenderView* root = frame().contentRenderer()) {
         if (!root->hasPositionedObjects())
             return step;
         positionedObjects = root->positionedObjects();
@@ -3966,7 +3982,7 @@ void FrameView::paintContentsForSnapshot(GraphicsContext* context, const IntRect
     // in the render tree only. This will allow us to restore the selection from the DOM
     // after we paint the snapshot.
     if (shouldPaintSelection == ExcludeSelection) {
-        for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
+        for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
             if (RenderView* root = frame->contentRenderer())
                 root->clearSelection();
         }
@@ -3982,7 +3998,7 @@ void FrameView::paintContentsForSnapshot(GraphicsContext* context, const IntRect
 
     // Restore selection.
     if (shouldPaintSelection == ExcludeSelection) {
-        for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get()))
+        for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr()))
             frame->selection().updateAppearance();
     }
 
@@ -4476,7 +4492,7 @@ bool FrameView::isFlippedDocument() const
 
 void FrameView::notifyWidgetsInAllFrames(WidgetNotification notification)
 {
-    for (Frame* frame = m_frame.get(); frame; frame = frame->tree().traverseNext(m_frame.get())) {
+    for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
         if (FrameView* view = frame->view())
             view->notifyWidgets(notification);
     }
@@ -4526,54 +4542,8 @@ void FrameView::setCustomSizeForResizeEvent(IntSize customSize)
 
 void FrameView::setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, double timestamp)
 {
-    m_horizontalVelocity = horizontalVelocity;
-    m_verticalVelocity = verticalVelocity;
-    m_scaleChangeRate = scaleChangeRate;
-    m_lastVelocityUpdateTime = timestamp;
-}
-
-FloatRect FrameView::computeCoverageRect(double horizontalMargin, double verticalMargin) const
-{
-    FloatRect exposedContentRect = this->exposedContentRect();
-    if (!m_speculativeTilingEnabled || MemoryPressureHandler::singleton().isUnderMemoryPressure())
-        return exposedContentRect;
-
-    double currentTime = monotonicallyIncreasingTime();
-    double timeDelta = currentTime - m_lastVelocityUpdateTime;
-
-    FloatRect futureRect = exposedContentRect;
-    futureRect.setLocation(FloatPoint(futureRect.location().x() + timeDelta * m_horizontalVelocity, futureRect.location().y() + timeDelta * m_verticalVelocity));
-
-    if (m_horizontalVelocity) {
-        futureRect.setWidth(futureRect.width() + horizontalMargin);
-        if (m_horizontalVelocity < 0)
-            futureRect.setX(futureRect.x() - horizontalMargin);
-    }
-
-    if (m_verticalVelocity) {
-        futureRect.setHeight(futureRect.height() + verticalMargin);
-        if (m_verticalVelocity < 0)
-            futureRect.setY(futureRect.y() - verticalMargin);
-    }
-
-    if (m_scaleChangeRate <= 0 && !m_horizontalVelocity && !m_verticalVelocity) {
-        futureRect.setWidth(futureRect.width() + horizontalMargin);
-        futureRect.setHeight(futureRect.height() + verticalMargin);
-        futureRect.setX(futureRect.x() - horizontalMargin / 2);
-        futureRect.setY(futureRect.y() - verticalMargin / 2);
-    }
-
-    IntSize contentSize = contentsSize();
-    if (futureRect.maxX() > contentSize.width())
-        futureRect.setX(contentSize.width() - futureRect.width());
-    if (futureRect.maxY() > contentSize.height())
-        futureRect.setY(contentSize.height() - futureRect.height());
-    if (futureRect.x() < 0)
-        futureRect.setX(0);
-    if (futureRect.y() < 0)
-        futureRect.setY(0);
-
-    return futureRect;
+    if (TiledBacking* tiledBacking = this->tiledBacking())
+        tiledBacking->setVelocity(VelocityData(horizontalVelocity, verticalVelocity, scaleChangeRate, timestamp));
 }
 #endif // PLATFORM(IOS)
 
@@ -4747,7 +4717,7 @@ void FrameView::setExposedRect(FloatRect exposedRect)
     m_exposedRect = exposedRect;
 
     // FIXME: We should support clipping to the exposed rect for subframes as well.
-    if (!m_frame->isMainFrame())
+    if (!frame().isMainFrame())
         return;
     if (TiledBacking* tiledBacking = this->tiledBacking()) {
         adjustTiledBackingCoverage();
@@ -4768,7 +4738,7 @@ void FrameView::setViewportSizeForCSSViewportUnits(IntSize size)
     m_overrideViewportSize = size;
     m_hasOverrideViewportSize = true;
     
-    if (Document* document = m_frame->document()) {
+    if (Document* document = frame().document()) {
         // FIXME: this should probably be updateViewportUnitsOnResize(), but synchronously
         // dirtying style here causes assertions on iOS (rdar://problem/19998166).
         document->styleResolverChanged(DeferRecalcStyle);

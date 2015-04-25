@@ -100,7 +100,7 @@ public:
     // WebSocketChannelClient functions.
     virtual void didConnect() override;
     virtual void didReceiveMessage(const String& message) override;
-    virtual void didReceiveBinaryData(PassOwnPtr<Vector<char>>) override;
+    virtual void didReceiveBinaryData(Vector<char>&&) override;
     virtual void didReceiveMessageError() override;
     virtual void didUpdateBufferedAmount(unsigned long bufferedAmount) override;
     virtual void didStartClosingHandshake() override;
@@ -110,6 +110,7 @@ private:
     explicit WebSocket(ScriptExecutionContext&);
 
     void resumeTimerFired();
+    void dispatchOrQueueEvent(Ref<Event>&&);
 
     // ActiveDOMObject API.
     void contextDestroyed() override;
@@ -140,8 +141,8 @@ private:
     String m_extensions;
 
     Timer m_resumeTimer;
-    bool m_shouldDelayCloseEvent { false };
-    RefPtr<CloseEvent> m_pendingCloseEvent;
+    bool m_shouldDelayEventFiring { false };
+    Deque<Ref<Event>> m_pendingEvents;
 };
 
 } // namespace WebCore

@@ -77,8 +77,7 @@ WebInspector.GeneralTreeElement = class GeneralTreeElement extends WebInspector.
     set classNames(x)
     {
         if (this._listItemNode && this._classNames) {
-            for (var i = 0; i < this._classNames.length; ++i)
-                this._listItemNode.classList.remove(this._classNames[i]);
+            this._listItemNode.classList.remove(...this._classNames);
         }
 
         if (typeof x === "string")
@@ -87,8 +86,7 @@ WebInspector.GeneralTreeElement = class GeneralTreeElement extends WebInspector.
         this._classNames = x || [];
 
         if (this._listItemNode) {
-            for (var i = 0; i < this._classNames.length; ++i)
-                this._listItemNode.classList.add(this._classNames[i]);
+            this._listItemNode.classList.add(...this._classNames);
         }
     }
 
@@ -222,8 +220,7 @@ WebInspector.GeneralTreeElement = class GeneralTreeElement extends WebInspector.
         this._listItemNode.classList.add("item");
 
         if (this._classNames) {
-            for (var i = 0; i < this._classNames.length; ++i)
-                this._listItemNode.classList.add(this._classNames[i]);
+            this._listItemNode.classList.add(...this._classNames);
         }
 
         if (this._small)
@@ -238,12 +235,12 @@ WebInspector.GeneralTreeElement = class GeneralTreeElement extends WebInspector.
 
         if (this.oncontextmenu && typeof this.oncontextmenu === "function") {
             this._boundContextMenuEventHandler = this.oncontextmenu.bind(this);
-            this._listItemNode.addEventListener("contextmenu", this._boundContextMenuEventHandler, true);
+            this._listItemNode.addEventListener("contextmenu", this._boundContextMenuEventHandler);
         }
 
         if (!this._boundContextMenuEventHandler && this.treeOutline.oncontextmenu && typeof this.treeOutline.oncontextmenu === "function") {
             this._boundContextMenuEventHandler = function(event) { this.treeOutline.oncontextmenu(event, this); }.bind(this);
-            this._listItemNode.addEventListener("contextmenu", this._boundContextMenuEventHandler, true);
+            this._listItemNode.addEventListener("contextmenu", this._boundContextMenuEventHandler);
         }
 
         this._updateStatusElement();
@@ -252,7 +249,7 @@ WebInspector.GeneralTreeElement = class GeneralTreeElement extends WebInspector.
     ondetach()
     {
         if (this._boundContextMenuEventHandler) {
-            this._listItemNode.removeEventListener("contextmenu", this._boundContextMenuEventHandler, true);
+            this._listItemNode.removeEventListener("contextmenu", this._boundContextMenuEventHandler);
             delete this._boundContextMenuEventHandler;
         }
     }

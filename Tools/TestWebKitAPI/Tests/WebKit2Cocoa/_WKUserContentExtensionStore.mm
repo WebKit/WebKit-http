@@ -31,7 +31,6 @@
 #import "PlatformUtilities.h"
 #import "Test.h"
 #import <WebKit/_WKUserContentExtensionStorePrivate.h>
-#import <WebKit/_WKUserContentFilter.h>
 #import <wtf/RetainPtr.h>
 
 class _WKUserContentExtensionStoreTest : public testing::Test {
@@ -66,6 +65,7 @@ TEST_F(_WKUserContentExtensionStoreTest, InvalidExtension)
     
         EXPECT_NULL(filter);
         EXPECT_NOT_NULL(error);
+        EXPECT_STREQ("Extension compilation failed: Failed to parse the JSON String.", [[error helpAnchor] UTF8String]);
 
         doneCompiling = true;
     }];
@@ -102,6 +102,7 @@ TEST_F(_WKUserContentExtensionStoreTest, NonExistingIdentifierLookup)
     
         EXPECT_NULL(filter);
         EXPECT_NOT_NULL(error);
+        EXPECT_STREQ("Extension lookup failed: Unspecified error during lookup.", [[error helpAnchor] UTF8String]);
 
         doneLookingUp = true;
     }];
@@ -134,6 +135,7 @@ TEST_F(_WKUserContentExtensionStoreTest, NonExistingIdentifierRemove)
     __block bool doneRemoving = false;
     [[_WKUserContentExtensionStore defaultStore] removeContentExtensionForIdentifier:@"DoesNotExist" completionHandler:^(NSError *error) {
         EXPECT_NOT_NULL(error);
+        EXPECT_STREQ("Extension removal failed: Unspecified error during remove.", [[error helpAnchor] UTF8String]);
 
         doneRemoving = true;
     }];

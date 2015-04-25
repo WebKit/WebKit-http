@@ -370,22 +370,22 @@ void Cache::store(const WebCore::ResourceRequest& originalRequest, const WebCore
 
     auto record = cacheEntry.encodeAsStorageRecord();
 
-    m_storage->store(record, [completionHandler](bool success, const Data& bodyData) {
+    m_storage->store(record, [completionHandler](const Data& bodyData) {
         MappedBody mappedBody;
 #if ENABLE(SHAREABLE_RESOURCE)
         if (bodyData.isMap()) {
-            RefPtr<SharedMemory> sharedMemory = SharedMemory::createFromVMBuffer(const_cast<uint8_t*>(bodyData.data()), bodyData.size());
+            RefPtr<SharedMemory> sharedMemory = SharedMemory::create(const_cast<uint8_t*>(bodyData.data()), bodyData.size(), SharedMemory::Protection::ReadOnly);
             mappedBody.shareableResource = sharedMemory ? ShareableResource::create(WTF::move(sharedMemory), 0, bodyData.size()) : nullptr;
             if (mappedBody.shareableResource)
                 mappedBody.shareableResource->createHandle(mappedBody.shareableResourceHandle);
         }
 #endif
         completionHandler(mappedBody);
-        LOG(NetworkCache, "(NetworkProcess) store success=%d", success);
+        LOG(NetworkCache, "(NetworkProcess) stored");
     });
 }
 
-void Cache::update(const WebCore::ResourceRequest& originalRequest, const Entry& existingEntry, const WebCore::ResourceResponse& validatingResponse)
+void Cache::update(const WebCore::ResourceRequest& originalRequest, uint64_t webPageID, const Entry& existingEntry, const WebCore::ResourceResponse& validatingResponse)
 {
     LOG(NetworkCache, "(NetworkProcess) updating %s", originalRequest.url().string().latin1().data());
 
@@ -396,9 +396,10 @@ void Cache::update(const WebCore::ResourceRequest& originalRequest, const Entry&
 
     auto updateRecord = updateEntry.encodeAsStorageRecord();
 
-    m_storage->update(updateRecord, existingEntry.sourceStorageRecord(), [](bool success, const Data&) {
-        LOG(NetworkCache, "(NetworkProcess) updated, success=%d", success);
-    });
+    m_storage->store(updateRecord, { });
+
+    if (m_statistics)
+        m_statistics->recordRevalidationSuccess(webPageID, existingEntry.key(), originalRequest);
 }
 
 void Cache::remove(const Key& key)
@@ -428,7 +429,7 @@ void Cache::traverse(std::function<void (const Entry*)>&& traverseHandler)
 
 String Cache::dumpFilePath() const
 {
-    return WebCore::pathByAppendingComponent(m_storage->baseDirectoryPath(), "dump.json");
+    return WebCore::pathByAppendingComponent(m_storage->versionPath(), "dump.json");
 }
 
 void Cache::dumpContentsToFile()
@@ -447,7 +448,8 @@ void Cache::dumpContentsToFile()
         size_t bodySize { 0 };
     };
     Totals totals;
-    m_storage->traverse(Storage::TraverseFlag::ComputeWorth, [fd, totals](const Storage::Record* record, const Storage::RecordInfo& info) mutable {
+    auto flags = Storage::TraverseFlag::ComputeWorth | Storage::TraverseFlag::ShareCount;
+    m_storage->traverse(flags, [fd, totals](const Storage::Record* record, const Storage::RecordInfo& info) mutable {
         if (!record) {
             StringBuilder epilogue;
             epilogue.appendLiteral("{}\n],\n");
@@ -498,9 +500,9 @@ void Cache::clear()
         m_statistics->clear();
 }
 
-String Cache::storagePath() const
+String Cache::recordsPath() const
 {
-    return m_storage ? m_storage->directoryPath() : String();
+    return m_storage ? m_storage->recordsPath() : String();
 }
 
 }

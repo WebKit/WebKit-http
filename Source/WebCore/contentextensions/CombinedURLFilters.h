@@ -45,7 +45,10 @@ public:
     void addPattern(uint64_t patternId, const Vector<Term>& pattern);
 
     Vector<NFA> createNFAs() const;
+    void clear();
 
+    size_t memoryUsed() const;
+    
 private:
     std::unique_ptr<PrefixTreeVertex> m_prefixTreeRoot;
 };

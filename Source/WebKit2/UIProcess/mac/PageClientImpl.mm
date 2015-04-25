@@ -71,7 +71,7 @@
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-#include <WebCore/MediaPlaybackTargetPickerMac.h>
+#include <WebCore/WebMediaSessionManagerMac.h>
 #endif
 
 @interface NSApplication (WebNSApplicationDetails)
@@ -403,8 +403,16 @@ void PageClientImpl::setDragImage(const IntPoint& clientPosition, PassRefPtr<Sha
 {
     RetainPtr<CGImageRef> dragCGImage = dragImage->makeCGImage();
     RetainPtr<NSImage> dragNSImage = adoptNS([[NSImage alloc] initWithCGImage:dragCGImage.get() size:dragImage->size()]);
+    IntSize size([dragNSImage size]);
+    size.scale(1.0 / toImpl([m_wkView pageRef])->deviceScaleFactor());
+    [dragNSImage setSize:size];
 
-    [m_wkView _setDragImage:dragNSImage.get() at:clientPosition linkDrag:isLinkDrag];
+#if WK_API_ENABLED
+    if (m_webView)
+        [m_wkView _dragImageForView:m_webView withImage:dragNSImage.get() at:clientPosition linkDrag:isLinkDrag];
+    else
+#endif
+        [m_wkView _dragImageForView:m_wkView withImage:dragNSImage.get() at:clientPosition linkDrag:isLinkDrag];
 }
 
 void PageClientImpl::setPromisedDataForImage(const String& pasteboardName, PassRefPtr<SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title, const String& url, const String& visibleUrl, PassRefPtr<SharedBuffer> archiveBuffer)
@@ -805,9 +813,9 @@ void PageClientImpl::showPlatformContextMenu(NSMenu *menu, IntPoint location)
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-std::unique_ptr<WebCore::MediaPlaybackTargetPicker> PageClientImpl::createPlaybackTargetPicker(WebPageProxy* page)
+WebCore::WebMediaSessionManager& PageClientImpl::mediaSessionManager()
 {
-    return MediaPlaybackTargetPickerMac::create(*page);
+    return WebMediaSessionManagerMac::singleton();
 }
 #endif
 

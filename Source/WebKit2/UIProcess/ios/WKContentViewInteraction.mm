@@ -41,6 +41,7 @@
 #import "WKFormInputControl.h"
 #import "WKFormSelectControl.h"
 #import "WKInspectorNodeSearchGestureRecognizer.h"
+#import "WKUIDelegatePrivate.h"
 #import "WKWebViewConfiguration.h"
 #import "WKWebViewInternal.h"
 #import "WKWebViewPrivate.h"
@@ -180,10 +181,12 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 - (void)scheduleReplacementsForText:(NSString *)text;
 - (void)showTextServiceFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 - (void)scheduleChineseTransliterationForText:(NSString *)text;
+- (void)showShareSheetFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 @end
 
 @interface UIWKSelectionAssistant (StagingToRemove)
 - (void)showTextServiceFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
+- (void)showShareSheetFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 @end
 
 @interface UIKeyboardImpl (StagingToRemove)
@@ -368,6 +371,9 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
     [_twoFingerDoubleTapGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
+
+    [_previewGestureRecognizer setDelegate:nil];
+    [self removeGestureRecognizer:_previewGestureRecognizer.get()];
 
     _inspectorNodeSearchEnabled = NO;
     if (_inspectorNodeSearchGestureRecognizer) {
@@ -817,7 +823,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius)
 {
     // A long-press gesture can not be recognized while panning, but a pan can be recognized
     // during a long-press gesture.
-    BOOL shouldNotPreventScrollViewGestures = preventingGestureRecognizer == _highlightLongPressGestureRecognizer || preventingGestureRecognizer == _longPressGestureRecognizer;
+    BOOL shouldNotPreventScrollViewGestures = preventingGestureRecognizer == _highlightLongPressGestureRecognizer || preventingGestureRecognizer == _longPressGestureRecognizer || preventingGestureRecognizer == _previewGestureRecognizer;
     return !(shouldNotPreventScrollViewGestures
         && ([preventedGestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")] || [preventedGestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPinchGestureRecognizer")]));
 }
@@ -846,6 +852,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         return YES;
 
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _singleTapGestureRecognizer.get(), _textSelectionAssistant.get().singleTapGesture))
+        return YES;
+
+    if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _previewGestureRecognizer.get()))
         return YES;
 
     return NO;
@@ -940,6 +949,16 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
             // Prevent the gesture if there is no action for the node.
             return [self _actionForLongPress] != nil;
         }
+    }
+
+    if (gestureRecognizer == _previewGestureRecognizer) {
+        [self ensurePositionInformationIsUpToDate:point];
+        if (_positionInformation.clickableElementName != "A")
+            return NO;
+
+        String absoluteLinkURL = _positionInformation.url;
+        if (absoluteLinkURL.isEmpty() || !WebCore::protocolIsInHTTPFamily(absoluteLinkURL))
+            return NO;
     }
 
     return YES;
@@ -1276,6 +1295,24 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     return (_page->editorState().isContentRichlyEditable) ? richTypes : plainTextTypes;
 }
 
+- (void)_share:(id)sender
+{
+    RetainPtr<WKContentView> view = self;
+    _page->getSelectionOrContentsAsString([view](const String& string, CallbackBase::Error error) {
+        if (error != CallbackBase::Error::None)
+            return;
+        if (!string)
+            return;
+
+        CGRect presentationRect = view->_page->editorState().postLayoutData().selectionRects[0].rect();
+
+        if (view->_textSelectionAssistant && [view->_textSelectionAssistant respondsToSelector:@selector(showShareSheetFor:fromRect:)])
+            [view->_textSelectionAssistant showShareSheetFor:string fromRect:presentationRect];
+        else if (view->_webSelectionAssistant && [view->_webSelectionAssistant respondsToSelector:@selector(showShareSheetFor:fromRect:)])
+            [view->_webSelectionAssistant showShareSheetFor:string fromRect:presentationRect];
+    });
+}
+
 - (void)_addShortcut:(id)sender
 {
     if (_textSelectionAssistant && [_textSelectionAssistant respondsToSelector:@selector(showTextServiceFor:fromRect:)])
@@ -1403,6 +1440,18 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
             return NO;
             
+        return YES;
+    }
+
+    if (action == @selector(_share:)) {
+        if (_page->editorState().isInPasswordField || !(hasWebSelection || _page->editorState().selectionIsRange))
+            return NO;
+
+        NSUInteger textLength = _page->editorState().postLayoutData().selectedTextLength;
+        // See FIXME above for _define.
+        if (!textLength || textLength > 200)
+            return NO;
+        
         return YES;
     }
 
@@ -1546,23 +1595,25 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
         return;
 
-    _page->getSelectionOrContentsAsString([self](const String& string, CallbackBase::Error error) {
-        if (error != CallbackBase::Error::None)
+    RetainPtr<WKContentView> view = self;
+    _page->getSelectionOrContentsAsString([view](const String& string, WebKit::CallbackBase::Error error) {
+        if (error != WebKit::CallbackBase::Error::None)
             return;
         if (!string)
             return;
 
-        [self _showDictionary:string];
+        [view _showDictionary:string];
     });
 }
 
 - (void)accessibilityRetrieveSpeakSelectionContent
 {
-    _page->getSelectionOrContentsAsString([self](const String& string, CallbackBase::Error error) {
-        if (error != CallbackBase::Error::None)
+    RetainPtr<WKContentView> view = self;
+    _page->getSelectionOrContentsAsString([view](const String& string, WebKit::CallbackBase::Error error) {
+        if (error != WebKit::CallbackBase::Error::None)
             return;
-        if ([self respondsToSelector:@selector(accessibilitySpeakSelectionSetContent:)])
-            [self accessibilitySpeakSelectionSetContent:string];
+        if ([view respondsToSelector:@selector(accessibilitySpeakSelectionSetContent:)])
+            [view accessibilitySpeakSelectionSetContent:string];
     });
 }
 
@@ -1777,9 +1828,9 @@ static inline WebCore::SelectionDirection toWKSelectionDirection(UITextDirection
     }
 }
 
-static void selectionChangedWithGesture(WKContentView *view, const WebCore::IntPoint& point, uint32_t gestureType, uint32_t gestureState, uint32_t flags, CallbackBase::Error error)
+static void selectionChangedWithGesture(WKContentView *view, const WebCore::IntPoint& point, uint32_t gestureType, uint32_t gestureState, uint32_t flags, WebKit::CallbackBase::Error error)
 {
-    if (error != CallbackBase::Error::None) {
+    if (error != WebKit::CallbackBase::Error::None) {
         ASSERT_NOT_REACHED();
         return;
     }
@@ -1789,9 +1840,9 @@ static void selectionChangedWithGesture(WKContentView *view, const WebCore::IntP
         [(UIWKTextInteractionAssistant *)[view interactionAssistant] selectionChangedWithGestureAt:(CGPoint)point withGesture:toUIWKGestureType((GestureType)gestureType) withState:toUIGestureRecognizerState(static_cast<GestureRecognizerState>(gestureState)) withFlags:(toUIWKSelectionFlags((SelectionFlags)flags))];
 }
 
-static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoint& point, uint32_t touch, CallbackBase::Error error)
+static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoint& point, uint32_t touch, WebKit::CallbackBase::Error error)
 {
-    if (error != CallbackBase::Error::None) {
+    if (error != WebKit::CallbackBase::Error::None) {
         ASSERT_NOT_REACHED();
         return;
     }
@@ -1811,7 +1862,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 - (void)changeSelectionWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)state
 {
     _usingGestureForSelection = YES;
-    _page->selectWithGesture(WebCore::IntPoint(point), CharacterGranularity, static_cast<uint32_t>(toGestureType(gestureType)), static_cast<uint32_t>(toGestureRecognizerState(state)), [self, state](const WebCore::IntPoint& point, uint32_t gestureType, uint32_t gestureState, uint32_t flags, CallbackBase::Error error) {
+    _page->selectWithGesture(WebCore::IntPoint(point), CharacterGranularity, static_cast<uint32_t>(toGestureType(gestureType)), static_cast<uint32_t>(toGestureRecognizerState(state)), [self, state](const WebCore::IntPoint& point, uint32_t gestureType, uint32_t gestureState, uint32_t flags, WebKit::CallbackBase::Error error) {
         selectionChangedWithGesture(self, point, gestureType, gestureState, flags, error);
         if (state == UIGestureRecognizerStateEnded || state == UIGestureRecognizerStateCancelled)
             _usingGestureForSelection = NO;
@@ -1821,7 +1872,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 - (void)changeSelectionWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch baseIsStart:(BOOL)baseIsStart
 {
     _usingGestureForSelection = YES;
-    _page->updateSelectionWithTouches(WebCore::IntPoint(point), static_cast<uint32_t>(toSelectionTouch(touch)), baseIsStart, [self, touch](const WebCore::IntPoint& point, uint32_t touch, CallbackBase::Error error) {
+    _page->updateSelectionWithTouches(WebCore::IntPoint(point), static_cast<uint32_t>(toSelectionTouch(touch)), baseIsStart, [self, touch](const WebCore::IntPoint& point, uint32_t touch, WebKit::CallbackBase::Error error) {
         selectionChangedWithTouch(self, point, touch, error);
         if (touch != UIWKSelectionTouchStarted && touch != UIWKSelectionTouchMoved)
             _usingGestureForSelection = NO;
@@ -1831,7 +1882,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 - (void)changeSelectionWithTouchesFrom:(CGPoint)from to:(CGPoint)to withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)gestureState
 {
     _usingGestureForSelection = YES;
-    _page->selectWithTwoTouches(WebCore::IntPoint(from), WebCore::IntPoint(to), static_cast<uint32_t>(toGestureType(gestureType)), static_cast<uint32_t>(toGestureRecognizerState(gestureState)), [self, gestureState](const WebCore::IntPoint& point, uint32_t gestureType, uint32_t gestureState, uint32_t flags, CallbackBase::Error error) {
+    _page->selectWithTwoTouches(WebCore::IntPoint(from), WebCore::IntPoint(to), static_cast<uint32_t>(toGestureType(gestureType)), static_cast<uint32_t>(toGestureRecognizerState(gestureState)), [self, gestureState](const WebCore::IntPoint& point, uint32_t gestureType, uint32_t gestureState, uint32_t flags, WebKit::CallbackBase::Error error) {
         selectionChangedWithGesture(self, point, gestureType, gestureState, flags, error);
         if (gestureState == UIGestureRecognizerStateEnded || gestureState == UIGestureRecognizerStateCancelled)
             _usingGestureForSelection = NO;
@@ -1850,8 +1901,9 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         return;
     
     [self beginSelectionChange];
-    _page->moveSelectionByOffset(offset, [self](CallbackBase::Error) {
-        [self endSelectionChange];
+    RetainPtr<WKContentView> view = self;
+    _page->moveSelectionByOffset(offset, [view](WebKit::CallbackBase::Error) {
+        [view endSelectionChange];
     });
 }
 
@@ -1868,8 +1920,9 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         return;
     }
 
+    RetainPtr<WKContentView> view = self;
     _autocorrectionData.autocorrectionHandler = [completionHandler copy];
-    _page->requestAutocorrectionData(input, [self](const Vector<FloatRect>& rects, const String& fontName, double fontSize, uint64_t traits, CallbackBase::Error) {
+    _page->requestAutocorrectionData(input, [view](const Vector<FloatRect>& rects, const String& fontName, double fontSize, uint64_t traits, WebKit::CallbackBase::Error) {
         CGRect firstRect = CGRectZero;
         CGRect lastRect = CGRectZero;
         if (rects.size()) {
@@ -1877,15 +1930,15 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
             lastRect = rects[rects.size() - 1];
         }
         
-        _autocorrectionData.fontName = fontName;
-        _autocorrectionData.fontSize = fontSize;
-        _autocorrectionData.fontTraits = traits;
-        _autocorrectionData.textFirstRect = firstRect;
-        _autocorrectionData.textLastRect = lastRect;
+        view->_autocorrectionData.fontName = fontName;
+        view->_autocorrectionData.fontSize = fontSize;
+        view->_autocorrectionData.fontTraits = traits;
+        view->_autocorrectionData.textFirstRect = firstRect;
+        view->_autocorrectionData.textLastRect = lastRect;
 
-        _autocorrectionData.autocorrectionHandler(rects.size() ? [WKAutocorrectionRects autocorrectionRectsWithRects:firstRect lastRect:lastRect] : nil);
-        [_autocorrectionData.autocorrectionHandler release];
-        _autocorrectionData.autocorrectionHandler = nil;
+        view->_autocorrectionData.autocorrectionHandler(rects.size() ? [WKAutocorrectionRects autocorrectionRectsWithRects:firstRect lastRect:lastRect] : nil);
+        [view->_autocorrectionData.autocorrectionHandler release];
+        view->_autocorrectionData.autocorrectionHandler = nil;
     });
 }
 
@@ -1893,7 +1946,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     UIWKSelectionCompletionHandler selectionHandler = [completionHandler copy];
     
-    _page->selectPositionAtPoint(WebCore::IntPoint(point), [selectionHandler](CallbackBase::Error error) {
+    _page->selectPositionAtPoint(WebCore::IntPoint(point), [selectionHandler](WebKit::CallbackBase::Error error) {
         selectionHandler();
         [selectionHandler release];
     });
@@ -1903,7 +1956,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     UIWKSelectionCompletionHandler selectionHandler = [completionHandler copy];
     
-    _page->selectPositionAtBoundaryWithDirection(WebCore::IntPoint(point), toWKTextGranularity(granularity), toWKSelectionDirection(direction), [selectionHandler](CallbackBase::Error error) {
+    _page->selectPositionAtBoundaryWithDirection(WebCore::IntPoint(point), toWKTextGranularity(granularity), toWKSelectionDirection(direction), [selectionHandler](WebKit::CallbackBase::Error error) {
         selectionHandler();
         [selectionHandler release];
     });
@@ -1913,7 +1966,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     UIWKSelectionCompletionHandler selectionHandler = [completionHandler copy];
 
-    _page->selectTextWithGranularityAtPoint(WebCore::IntPoint(point), toWKTextGranularity(granularity), [selectionHandler](CallbackBase::Error error) {
+    _page->selectTextWithGranularityAtPoint(WebCore::IntPoint(point), toWKTextGranularity(granularity), [selectionHandler](WebKit::CallbackBase::Error error) {
         selectionHandler();
         [selectionHandler release];
     });
@@ -1923,7 +1976,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     UIWKSelectionWithDirectionCompletionHandler selectionHandler = [completionHandler copy];
 
-    _page->beginSelectionInDirection(toWKSelectionDirection(direction), [selectionHandler](bool endIsMoving, CallbackBase::Error error) {
+    _page->beginSelectionInDirection(toWKSelectionDirection(direction), [selectionHandler](bool endIsMoving, WebKit::CallbackBase::Error error) {
         selectionHandler(endIsMoving);
         [selectionHandler release];
     });
@@ -1933,7 +1986,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     UIWKSelectionWithDirectionCompletionHandler selectionHandler = [completionHandler copy];
     
-    _page->updateSelectionWithExtentPoint(WebCore::IntPoint(point), [selectionHandler](bool endIsMoving, CallbackBase::Error error) {
+    _page->updateSelectionWithExtentPoint(WebCore::IntPoint(point), [selectionHandler](bool endIsMoving, WebKit::CallbackBase::Error error) {
         selectionHandler(endIsMoving);
         [selectionHandler release];
     });
@@ -1982,7 +2035,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     UIWKDictationContextHandler dictationHandler = [completionHandler copy];
 
-    _page->requestDictationContext([dictationHandler](const String& selectedText, const String& beforeText, const String& afterText, CallbackBase::Error) {
+    _page->requestDictationContext([dictationHandler](const String& selectedText, const String& beforeText, const String& afterText, WebKit::CallbackBase::Error) {
         dictationHandler(selectedText, beforeText, afterText);
         [dictationHandler release];
     });
@@ -1999,10 +2052,11 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         return;
     }
     _autocorrectionData.autocorrectionHandler = [completionHandler copy];
-    _page->applyAutocorrection(correction, input, [self](const String& string, CallbackBase::Error error) {
-        _autocorrectionData.autocorrectionHandler(!string.isNull() ? [WKAutocorrectionRects autocorrectionRectsWithRects:_autocorrectionData.textFirstRect lastRect:_autocorrectionData.textLastRect] : nil);
-        [_autocorrectionData.autocorrectionHandler release];
-        _autocorrectionData.autocorrectionHandler = nil;
+    RetainPtr<WKContentView> view = self;
+    _page->applyAutocorrection(correction, input, [view](const String& string, WebKit::CallbackBase::Error error) {
+        view->_autocorrectionData.autocorrectionHandler(!string.isNull() ? [WKAutocorrectionRects autocorrectionRectsWithRects:view->_autocorrectionData.textFirstRect lastRect:view->_autocorrectionData.textLastRect] : nil);
+        [view->_autocorrectionData.autocorrectionHandler release];
+        view->_autocorrectionData.autocorrectionHandler = nil;
     });
 }
 
@@ -2022,8 +2076,9 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         completionHandler([WKAutocorrectionContext autocorrectionContextWithData:beforeText markedText:markedText selectedText:selectedText afterText:afterText selectedRangeInMarkedText:NSMakeRange(location, length)]);
     } else {
         _autocorrectionData.autocorrectionContextHandler = [completionHandler copy];
-        _page->requestAutocorrectionContext([self](const String& beforeText, const String& markedText, const String& selectedText, const String& afterText, uint64_t location, uint64_t length, CallbackBase::Error) {
-            _autocorrectionData.autocorrectionContextHandler([WKAutocorrectionContext autocorrectionContextWithData:beforeText markedText:markedText selectedText:selectedText afterText:afterText selectedRangeInMarkedText:NSMakeRange(location, length)]);
+        RetainPtr<WKContentView> view = self;
+        _page->requestAutocorrectionContext([view](const String& beforeText, const String& markedText, const String& selectedText, const String& afterText, uint64_t location, uint64_t length, WebKit::CallbackBase::Error) {
+            view->_autocorrectionData.autocorrectionContextHandler([WKAutocorrectionContext autocorrectionContextWithData:beforeText markedText:markedText selectedText:selectedText afterText:afterText selectedRangeInMarkedText:NSMakeRange(location, length)]);
         });
     }
 }
@@ -2057,9 +2112,10 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
     _didAccessoryTabInitiateFocus = YES; // Will be cleared in either -_displayFormNodeInputView or -cleanupInteraction.
     [self beginSelectionChange];
-    _page->focusNextAssistedNode(isNext, [self](CallbackBase::Error) {
-        [self endSelectionChange];
-        [self reloadInputViews];
+    RetainPtr<WKContentView> view = self;
+    _page->focusNextAssistedNode(isNext, [view](WebKit::CallbackBase::Error) {
+        [view endSelectionChange];
+        [view reloadInputViews];
     });
 
 }
@@ -2067,8 +2123,9 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 - (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler
 {
     auto completionHandlerCopy = Block_copy(completionHandler);
-    _page->setInitialFocus(selectingForward, false, WebKit::WebKeyboardEvent(), [self, completionHandlerCopy](WebKit::CallbackBase::Error) {
-        BOOL didBecomeFirstResponder = _assistedNodeInformation.elementType != InputType::None && [self becomeFirstResponder];
+    RetainPtr<WKContentView> view = self;
+    _page->setInitialFocus(selectingForward, false, WebKit::WebKeyboardEvent(), [view, completionHandlerCopy](WebKit::CallbackBase::Error) {
+        BOOL didBecomeFirstResponder = view->_assistedNodeInformation.elementType != InputType::None && [view becomeFirstResponder];
         completionHandlerCopy(didBecomeFirstResponder);
         Block_release(completionHandlerCopy);
     });
@@ -2544,8 +2601,9 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 - (void)executeEditCommandWithCallback:(NSString *)commandName
 {
     [self beginSelectionChange];
-    _page->executeEditCommand(commandName, [self](CallbackBase::Error) {
-        [self endSelectionChange];
+    RetainPtr<WKContentView> view = self;
+    _page->executeEditCommand(commandName, [view](WebKit::CallbackBase::Error) {
+        [view endSelectionChange];
     });
 }
 
@@ -2765,6 +2823,36 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     return _formAccessoryView.get();
 }
 
+static bool isAssistableInputType(InputType type)
+{
+    switch (type) {
+    case InputType::ContentEditable:
+    case InputType::Text:
+    case InputType::Password:
+    case InputType::TextArea:
+    case InputType::Search:
+    case InputType::Email:
+    case InputType::URL:
+    case InputType::Phone:
+    case InputType::Number:
+    case InputType::NumberPad:
+    case InputType::Date:
+    case InputType::DateTime:
+    case InputType::DateTimeLocal:
+    case InputType::Month:
+    case InputType::Week:
+    case InputType::Time:
+    case InputType::Select:
+        return true;
+
+    case InputType::None:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
 - (void)_startAssistingNode:(const AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode userObject:(NSObject <NSSecureCoding> *)userObject
 {
     if (!userIsInteracting && !_textSelectionAssistant)
@@ -2772,6 +2860,9 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 
     if (blurPreviousNode)
         [self _stopAssistingNode];
+
+    if (!isAssistableInputType(information.elementType))
+        return;
 
     // FIXME: We should remove this check when we manage to send StartAssistingNode from the WebProcess
     // only when it is truly time to show the keyboard.
@@ -2953,6 +3044,55 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 }
 
 @end
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+
+@implementation WKContentView (WKInteractionPreview)
+
+- (UIViewController *)previewViewControllerForPosition:(CGPoint)position inSourceView:(UIView *)sourceView
+{
+    ASSERT(self == sourceView);
+
+    if (_positionInformation.clickableElementName != "A")
+        return nil;
+
+    String absoluteLinkURL = _positionInformation.url;
+    if (absoluteLinkURL.isEmpty() || !WebCore::protocolIsInHTTPFamily(absoluteLinkURL))
+        return nil;
+
+    _highlightLongPressCanClick = NO;
+
+    NSURL *targetURL = [NSURL URLWithString:_positionInformation.url];
+    id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+    if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:)])
+        return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL];
+
+    return nil;
+}
+
+- (void)commitPreviewViewController:(UIViewController *)viewController
+{
+    id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+    if ([uiDelegate respondsToSelector:@selector(_webView:commitPreviewedViewController:)])
+        [uiDelegate _webView:_webView commitPreviewedViewController:viewController];
+}
+
+- (void)willPresentPreviewViewController:(UIViewController *)viewController forPosition:(CGPoint)position inSourceView:(UIView *)sourceView
+{
+    [self _cancelInteraction];
+    [[viewController presentationController] setSourceRect:_positionInformation.bounds];
+}
+
+- (void)didDismissPreviewViewController:(UIViewController *)viewController committing:(BOOL)committing
+{
+    id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+    if ([uiDelegate respondsToSelector:@selector(_webView:didDismissPreviewViewController:)])
+        [uiDelegate _webView:_webView didDismissPreviewViewController:viewController];
+}
+
+@end
+
+#endif
 
 // UITextRange, UITextPosition and UITextSelectionRect implementations for WK2
 

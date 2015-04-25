@@ -1,3 +1,343 @@
+2015-04-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183288.
+        https://bugs.webkit.org/show_bug.cgi?id=144189
+
+        Made js/sort-with-side-effecting-comparisons.html time out in
+        debug builds (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "It shouldn't take 1846 lines of code and 5 FIXMEs to sort an
+        array."
+        https://bugs.webkit.org/show_bug.cgi?id=144013
+        http://trac.webkit.org/changeset/183288
+
+2015-04-21  Geoffrey Garen  <ggaren@apple.com>
+
+        It shouldn't take 1846 lines of code and 5 FIXMEs to sort an array.
+        https://bugs.webkit.org/show_bug.cgi?id=144013
+
+        Reviewed by Mark Lam.
+
+        Remove this custom tree implementation because it is unused. (It was
+        previously used to achieve a stable array sort in certain cases.)
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AVLTree.h: Removed.
+        * wtf/CMakeLists.txt:
+
+2015-04-24  Darin Adler  <darin@apple.com>
+
+        Convert OwnPtr and PassOwnPtr uses to std::unique_ptr
+        https://bugs.webkit.org/show_bug.cgi?id=128007
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.vcxproj/WTF.vcxproj: Removed OwnPtr source files.
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+        * WTF.xcodeproj/project.pbxproj: Ditto.
+        * wtf/CMakeLists.txt: Ditto.
+
+        * wtf/Forward.h: Removed OwnPtr and PassOwnPtr.
+        * wtf/HashTraits.h: Ditto.
+
+        * wtf/OwnPtr.h: Removed.
+        * wtf/OwnPtrCommon.h: Removed.
+        * wtf/PassOwnPtr.h: Removed.
+
+        * wtf/SizeLimits.cpp: Removed OwnPtr.
+        * wtf/VectorTraits.h: Removed OwnPtr specialization.
+
+2015-04-23  Jer Noble  <jer.noble@apple.com>
+
+        Disable HAVE_AVKIT on AppleTV
+        https://bugs.webkit.org/show_bug.cgi?id=144142
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h:
+
+2015-04-23  Alexey Proskuryakov  <ap@apple.com>
+
+        [iOS] WebKit services should inherit environment variables for home
+        https://bugs.webkit.org/show_bug.cgi?id=144078
+        rdar://problem/20571678
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/spi/darwin/XPCSPI.h: Added xpc_copy_bootstrap and xpc_dictionary_apply.
+
+2015-04-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Undo the WTF part of the previous build fix, we don't use private headers in WTF.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2015-04-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        * WTF.xcodeproj/project.pbxproj: Make RAMSize.h a private header, now that it's used
+        from outside WTF.
+
+2015-04-23  Andreas Kling  <akling@apple.com>
+
+        There should only be one way to get the system memory size.
+        <https://webkit.org/b/144081>
+
+        Reviewed by Antti Koivisto.
+
+        Merge all the logic from other RAM size fetcher helpers into WTF's.
+
+        Darwin ports now use host_info() instead of sysctl(), since that was the more common way
+        of doing this.
+
+        Also bumped the fallback answer from 128 MB to 512 MB to bring it closer to today's hardware.
+
+        Finally, the number is rounded up to the next multiple of 128 MB, to avoid misunderstandings
+        on some systems where the number returned by the kernel is slightly lower than the marketing
+        number. Removed the "fudging" that was used in some places, since this fixes that cleanly.
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+
+2015-04-22  Darin Adler  <darin@apple.com>
+
+        Eliminate remaining uses of OwnPtr and PassOwnPtr in WebCore outside the editing and platform directories
+        https://bugs.webkit.org/show_bug.cgi?id=143949
+
+        Reviewed by Andreas Kling.
+
+        * wtf/MathExtras.h:
+        (wtf_ceil): Deleted. This was a workaround for a bug that was introduced in Leopard and
+        fixed in Snow Leopard <rdar://problem/6286405>, so we don't need the workaround any more.
+
+2015-04-22  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] In nightlies and local builds, WebKit services can get terminated under memory pressure
+        https://bugs.webkit.org/show_bug.cgi?id=144052
+        rdar://problem/19754404
+
+        Build fix. Landing a forward declaration that should have been part of the original patch.
+
+        * wtf/spi/darwin/XPCSPI.h:
+
+2015-04-21  Chris Dumez  <cdumez@apple.com>
+
+        Make Vector(const Vector<T, otherCapacity, otherOverflowBehaviour>&) constructor explicit
+        https://bugs.webkit.org/show_bug.cgi?id=143970
+
+        Reviewed by Darin Adler.
+
+        Make Vector(const Vector<T, otherCapacity, otherOverflowBehaviour>&)
+        constructor explicit as it copies the vector and it is easy to call it
+        by mistake.
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        * wtf/Vector.h:
+
+2015-04-21  Darin Adler  <darin@apple.com>
+
+        Remove some stray uses of OwnPtr and PassOwnPtr in WTF (outside of the template definitions and traits)
+        https://bugs.webkit.org/show_bug.cgi?id=143944
+
+        Reviewed by Andreas Kling.
+
+        * wtf/FilePrintStream.h: Removed unneeded include.
+        * wtf/HashTable.h: Fixed class template name in comment.
+        * wtf/HashTraits.h: Removed unneeded forward declaration.
+        * wtf/ListHashSet.h: Removed unneeded includes.
+        * wtf/ThreadingWin.cpp: Removed unneeded includes.
+        (WTF::wtfThreadEntryPoint): Changed code to use unique_ptr.
+        (WTF::createThreadInternal): Changed code to use make_unique and release.
+        * wtf/efl/RunLoopEfl.cpp: Removed unneeded includes.
+
+2015-04-19  Darin Adler  <darin@apple.com>
+
+        Update RefPtr documentation and deprecation
+        https://bugs.webkit.org/show_bug.cgi?id=143936
+
+        Reviewed by Andreas Kling.
+
+        * WTF.vcxproj/WTF.vcxproj: Removed PassRef.h
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+        * WTF.xcodeproj/project.pbxproj: Ditto.
+        * wtf/CMakeLists.txt: Ditto.
+
+2015-04-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Use ASan poisoning to taint moved-out-of Refs
+        https://bugs.webkit.org/show_bug.cgi?id=143894
+        rdar://problem/19443723
+
+        Reviewed by Darin Adler.
+
+        * wtf/Ref.h: (WTF::Ref::~Ref):
+
+2015-04-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove unused BoundsCheckedPointer
+        https://bugs.webkit.org/show_bug.cgi?id=143896
+
+        Reviewed by Geoffrey Garen.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BoundsCheckedPointer.h: Removed.
+        * wtf/CMakeLists.txt:
+
+2015-04-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement Symbol.for and Symbol.keyFor
+        https://bugs.webkit.org/show_bug.cgi?id=143404
+
+        Reviewed by Geoffrey Garen.
+
+        When we register symbolized StringImpl* into SymbolRegistry, symbolized StringImpl* is aware of that.
+        And when destructing it, it removes its reference from SymbolRegistry as if atomic StringImpl do so with AtomicStringTable.
+        While AtomicStringTable (in WebCore case) exists in thread local storage,
+        SymbolRegistry exists per VM and StringImpl* has a reference to the registered SymbolRegistry.
+
+        Since StringImpl has isSymbol etc. members, it's class is aware of Symbol use cases.
+        So introduce SymbolRegistry in WTF layers as if AtomicStringTable.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::addSlowCase):
+        (WTF::AtomicString::findSlowCase):
+        (WTF::AtomicString::findInternal):
+        (WTF::AtomicString::find): Deleted.
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::find):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        (WTF::StringImpl::createSymbol):
+        (WTF::StringImpl::createSymbolEmpty):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+        (WTF::StringImpl::extractFoldedStringInSymbol):
+        (WTF::StringImpl::symbolRegistry):
+        (WTF::StringImpl::createSymbolEmpty): Deleted.
+        * wtf/text/SymbolRegistry.cpp: Copied from Source/JavaScriptCore/runtime/SymbolConstructor.h.
+        (WTF::SymbolRegistry::~SymbolRegistry):
+        (WTF::SymbolRegistry::symbolForKey):
+        (WTF::SymbolRegistry::keyForSymbol):
+        (WTF::SymbolRegistry::remove):
+        * wtf/text/SymbolRegistry.h: Added.
+        (WTF::SymbolRegistryKey::hash):
+        (WTF::SymbolRegistryKey::impl):
+        (WTF::SymbolRegistryKey::isHashTableDeletedValue):
+        (WTF::SymbolRegistryKey::hashTableDeletedValue):
+        (WTF::DefaultHash<SymbolRegistryKey>::Hash::hash):
+        (WTF::DefaultHash<SymbolRegistryKey>::Hash::equal):
+        (WTF::HashTraits<SymbolRegistryKey>::isEmptyValue):
+        (WTF::SymbolRegistryKey::SymbolRegistryKey):
+
+2015-04-16  Antti Koivisto  <antti@apple.com>
+
+        Use CommonCrypto for SHA1 and MD5
+        https://bugs.webkit.org/show_bug.cgi?id=143826
+
+        Reviewed by Anders Carlsson.
+
+        CommonCrypto SHA1 implementation is ~4x faster than the naive WTF one. Use it when available.
+
+        These are covered by existing API tests.
+
+        * wtf/MD5.cpp:
+        (WTF::MD5::MD5):
+        (WTF::MD5::addBytes):
+        (WTF::MD5::checksum):
+        * wtf/MD5.h:
+        * wtf/SHA1.cpp:
+        (WTF::SHA1::SHA1):
+        (WTF::SHA1::addBytes):
+        (WTF::SHA1::computeHash):
+
+            Remove the side effect where computeHash resets the state. No one relies on it.
+
+        (WTF::SHA1::hexDigest):
+        (WTF::SHA1::computeHexDigest):
+        * wtf/SHA1.h:
+
+2015-04-16  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove the unnecessary WTF_CHANGES define
+        https://bugs.webkit.org/show_bug.cgi?id=143825
+
+        Reviewed by Andreas Kling.
+
+        * config.h:
+
+2015-04-15  Руслан Ижбулатов  <lrn1986@gmail.com>
+
+        Harmonize binary semaphore ifdefs
+
+        They should be either OS(WINDOWS) (in which case we'd need
+        BinarySemaphoreWin.cpp, which is not shipped by WebKitGTK)
+        or PLATFORM(WIN) (in which case Mutex/ThreadCondition-based
+        implementation is used).
+
+        This fixes errors like:
+          CXX      Source/WTF/wtf/threads/libWTF_la-BinarySemaphore.lo
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp: In constructor 'WTF::BinarySemaphore::BinarySemaphore()':
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp:34:7: error: class 'WTF::BinarySemaphore' does not have any field named 'm_isSet'
+             : m_isSet(false)
+               ^
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp: In member function 'void WTF::BinarySemaphore::signal()':
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp:44:24: error: 'm_mutex' was not declared in this scope
+             MutexLocker locker(m_mutex);
+                                ^
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp:46:5: error: 'm_isSet' was not declared in this scope
+             m_isSet = true;
+             ^
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp:47:5: error: 'm_condition' was not declared in this scope
+             m_condition.signal();
+             ^
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp: In member function 'bool WTF::BinarySemaphore::wait(double)':
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp:52:24: error: 'm_mutex' was not declared in this scope
+             MutexLocker locker(m_mutex);
+                                ^
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp:55:13: error: 'm_isSet' was not declared in this scope
+             while (!m_isSet) {
+                     ^
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp:56:21: error: 'm_condition' was not declared in this scope
+                 timedOut = !m_condition.timedWait(m_mutex, absoluteTime);
+                             ^
+        ../webkitgtk-2.4.8/Source/WTF/wtf/threads/BinarySemaphore.cpp:62:5: error: 'm_isSet' was not declared in this scope
+             m_isSet = false;
+             ^
+        GNUmakefile:52762: recipe for target 'Source/WTF/wtf/threads/libWTF_la-BinarySemaphore.lo' failed
+
+        [W32] Inconsistent ifdefs in BinarySemaphore.h and BinarySemaphore.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=143756
+
+        Reviewed by Darin Adler.
+
+        * wtf/threads/BinarySemaphore.h:
+
+2015-04-12  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fix -Wparentheses warning with GCC 5 in SaturatedArithmetic.h
+        https://bugs.webkit.org/show_bug.cgi?id=143457
+
+        Reviewed by Benjamin Poulain.
+
+        Tested by WTF.SaturatedArithmeticAddition and WTF.SaturatedArithmeticSubtraction.
+
+        * wtf/SaturatedArithmetic.h:
+        (signedAddOverflows): Use && instead of & to avoid triggering -Wparentheses in newer
+        versions of GCC and Clang, and to improve the clarity of the function.
+        (signedSubtractOverflows): Changed correspondingly, although there was no warning here.
+
 2015-04-08  Sam Weinig  <sam@webkit.org>
 
         Allow LaunchServices to handle URLs on link navigations

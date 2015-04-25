@@ -227,13 +227,13 @@ public:
                     }
                     
                     Node* node = def->value();
-                    if (node->replacement) {
+                    if (node->replacement()) {
                         // This will occur when a SetLocal had a GetLocal as its source. The
                         // GetLocal would get replaced with an actual SSA value by the time we get
                         // here. Note that the SSA value with which the GetLocal got replaced
                         // would not in turn have a replacement.
-                        node = node->replacement;
-                        ASSERT(!node->replacement);
+                        node = node->replacement();
+                        ASSERT(!node->replacement());
                     }
                     if (verbose)
                         dataLog("Mapping: ", VirtualRegister(valueForOperand.operandForIndex(i)), " -> ", node, "\n");
@@ -303,7 +303,7 @@ public:
                     node->convertToPhantom();
                     if (verbose)
                         dataLog("Replacing node ", node, " with ", valueForOperand.operand(variable->local()), "\n");
-                    node->replacement = valueForOperand.operand(variable->local());
+                    node->setReplacement(valueForOperand.operand(variable->local()));
                     break;
                 }
                     
@@ -335,8 +335,9 @@ public:
             // seems dangerous because the Upsilon will have a checking UseKind. But, we will not
             // actually be performing the check at the point of the Upsilon; the check will
             // already have been performed at the point where the original SetLocal was.
-            size_t upsilonInsertionPoint = block->size() - 1;
-            NodeOrigin upsilonOrigin = block->last()->origin;
+            NodeAndIndex terminal = block->findTerminal();
+            size_t upsilonInsertionPoint = terminal.index;
+            NodeOrigin upsilonOrigin = terminal.node->origin;
             for (unsigned successorIndex = block->numSuccessors(); successorIndex--;) {
                 BasicBlock* successorBlock = block->successor(successorIndex);
                 for (SSACalculator::Def* phiDef : m_calculator.phisForBlock(successorBlock)) {

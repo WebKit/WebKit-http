@@ -224,6 +224,7 @@ struct WKViewInterpretKeyEventsParameters {
     bool _inResignFirstResponder;
     BOOL _willBecomeFirstResponderAgain;
     NSEvent *_mouseDownEvent;
+    NSEvent *_pressureEvent;
     BOOL _ignoringMouseDraggedEvents;
 
     id _flagsChangedEventMonitor;
@@ -267,6 +268,7 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _ignoresNonWheelEvents;
     BOOL _ignoresAllEvents;
     BOOL _allowsBackForwardNavigationGestures;
+    BOOL _automaticallyComputesFixedLayoutSizeFromViewScale;
 
     RetainPtr<CALayer> _rootLayer;
 
@@ -468,7 +470,7 @@ struct WKViewInterpretKeyEventsParameters {
         NSEvent *keyboardEvent = nil;
         if ([event type] == NSKeyDown || [event type] == NSKeyUp)
             keyboardEvent = event;
-        _data->_page->setInitialFocus(direction == NSSelectingNext, keyboardEvent != nil, NativeWebKeyboardEvent(keyboardEvent, false, Vector<KeypressCommand>()), [](CallbackBase::Error) { });
+        _data->_page->setInitialFocus(direction == NSSelectingNext, keyboardEvent != nil, NativeWebKeyboardEvent(keyboardEvent, false, Vector<KeypressCommand>()), [](WebKit::CallbackBase::Error) { });
     }
     return YES;
 }
@@ -556,7 +558,16 @@ struct WKViewInterpretKeyEventsParameters {
         if (_data->_clipsToVisibleRect)
             [self _updateViewExposedRect];
         [self _setDrawingAreaSize:size];
+        if (_data->_automaticallyComputesFixedLayoutSizeFromViewScale)
+            [self _updateAutomaticallyComputedFixedLayoutSize];
     }
+}
+
+- (void)_updateAutomaticallyComputedFixedLayoutSize
+{
+    ASSERT(_data->_automaticallyComputesFixedLayoutSizeFromViewScale);
+    CGFloat inverseScale = 1 / _data->_page->viewScaleFactor();
+    [self _setFixedLayoutSize:CGSizeMake(self.frame.size.width * inverseScale, self.frame.size.height * inverseScale)];
 }
 
 - (void)_updateWindowAndViewFrames
@@ -590,8 +601,8 @@ struct WKViewInterpretKeyEventsParameters {
 
 - (void)renewGState
 {
-    // Hide the find indicator.
-    _data->_textIndicatorWindow = nullptr;
+    if (_data->_textIndicatorWindow)
+        [self _dismissContentRelativeChildWindows];
 
     // Update the view frame.
     if ([self window])
@@ -824,7 +835,7 @@ WEBCORE_COMMAND(yankAndSelect)
     if (editorState.selectionIsNone || !editorState.isContentEditable)
         return;
     if ([NSFontPanel sharedFontPanelExists] && [[NSFontPanel sharedFontPanel] isVisible]) {
-        _data->_page->fontAtSelection([](const String& fontName, double fontSize, bool selectionHasMultipleFonts, CallbackBase::Error error) {
+        _data->_page->fontAtSelection([](const String& fontName, double fontSize, bool selectionHasMultipleFonts, WebKit::CallbackBase::Error error) {
             NSFont *font = [NSFont fontWithName:fontName size:fontSize];
             if (font)
                 [[NSFontManager sharedFontManager] setSelectedFont:font isMultiple:selectionHasMultipleFonts];
@@ -984,9 +995,9 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
         // If we are not already awaiting validation for this command, start the asynchronous validation process.
         // FIXME: Theoretically, there is a race here; when we get the answer it might be old, from a previous time
         // we asked for the same command; there is no guarantee the answer is still valid.
-        _data->_page->validateCommand(commandName, [self](const String& commandName, bool isEnabled, int32_t state, CallbackBase::Error error) {
+        _data->_page->validateCommand(commandName, [self](const String& commandName, bool isEnabled, int32_t state, WebKit::CallbackBase::Error error) {
             // If the process exits before the command can be validated, we'll be called back with an error.
-            if (error != CallbackBase::Error::None)
+            if (error != WebKit::CallbackBase::Error::None)
                 return;
             
             [self _setUserInterfaceItemState:commandName enabled:isEnabled state:state];
@@ -1001,8 +1012,8 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
 
 - (IBAction)startSpeaking:(id)sender
 {
-    _data->_page->getSelectionOrContentsAsString([self](const String& string, CallbackBase::Error error) {
-        if (error != CallbackBase::Error::None)
+    _data->_page->getSelectionOrContentsAsString([self](const String& string, WebKit::CallbackBase::Error error) {
+        if (error != WebKit::CallbackBase::Error::None)
             return;
         if (!string)
             return;
@@ -1249,7 +1260,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
                 if (handled) \
                     LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
                 else { \
-                    NativeWebMouseEvent webEvent(theEvent, self); \
+                    NativeWebMouseEvent webEvent(theEvent, _data->_pressureEvent, self); \
                     _data->_page->handleMouseEvent(webEvent); \
                 } \
             }]; \
@@ -1259,7 +1270,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
             [super Selector:theEvent]; \
             return; \
         } \
-        NativeWebMouseEvent webEvent(theEvent, self); \
+        NativeWebMouseEvent webEvent(theEvent, _data->_pressureEvent, self); \
         _data->_page->handleMouseEvent(webEvent); \
     }
 #define NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(Selector) \
@@ -1272,13 +1283,13 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
                 if (handled) \
                     LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
                 else { \
-                    NativeWebMouseEvent webEvent(theEvent, self); \
+                    NativeWebMouseEvent webEvent(theEvent, _data->_pressureEvent, self); \
                     _data->_page->handleMouseEvent(webEvent); \
                 } \
             }]; \
             return; \
         } \
-        NativeWebMouseEvent webEvent(theEvent, self); \
+        NativeWebMouseEvent webEvent(theEvent, _data->_pressureEvent, self); \
         _data->_page->handleMouseEvent(webEvent); \
     }
 #else
@@ -1295,7 +1306,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
             [super Selector:theEvent]; \
             return; \
         } \
-        NativeWebMouseEvent webEvent(theEvent, self); \
+        NativeWebMouseEvent webEvent(theEvent, _data->_pressureEvent, self); \
         _data->_page->handleMouseEvent(webEvent); \
     }
 #define NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(Selector) \
@@ -1307,7 +1318,7 @@ static NSToolbarItem *toolbarItem(id <NSValidatedUserInterfaceItem> item)
             LOG(TextInput, "%s was handled by text input context", String(#Selector).substring(0, String(#Selector).find("Internal")).ascii().data()); \
             return; \
         } \
-        NativeWebMouseEvent webEvent(theEvent, self); \
+        NativeWebMouseEvent webEvent(theEvent, _data->_pressureEvent, self); \
         _data->_page->handleMouseEvent(webEvent); \
     }
 #endif
@@ -1416,9 +1427,21 @@ NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDraggedInternal)
 
 - (void)pressureChangeWithEvent:(NSEvent *)event
 {
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
-    if (event.phase == NSEventPhaseChanged || event.phase == NSEventPhaseBegan || event.phase == NSEventPhaseEnded)
-        _data->_page->inputDeviceForceDidChange(event.pressure, event.stage);
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+    if (event == _data->_pressureEvent)
+        return;
+
+    if (_data->_ignoresNonWheelEvents)
+        return;
+
+    if (event.phase != NSEventPhaseChanged && event.phase != NSEventPhaseBegan && event.phase != NSEventPhaseEnded)
+        return;
+
+    NativeWebMouseEvent webEvent(event, _data->_pressureEvent, self);
+    _data->_page->handleMouseEvent(webEvent);
+
+    [_data->_pressureEvent release];
+    _data->_pressureEvent = [event retain];
 #endif
 }
 
@@ -1433,7 +1456,7 @@ NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDraggedInternal)
         return NO;
     
     [self _setMouseDownEvent:event];
-    bool result = _data->_page->acceptsFirstMouse([event eventNumber], WebEventFactory::createWebMouseEvent(event, self));
+    bool result = _data->_page->acceptsFirstMouse([event eventNumber], WebEventFactory::createWebMouseEvent(event, _data->_pressureEvent, self));
     [self _setMouseDownEvent:nil];
     return result;
 }
@@ -1454,7 +1477,7 @@ NATIVE_MOUSE_EVENT_HANDLER_INTERNAL(mouseDraggedInternal)
         return NO;
     
     [self _setMouseDownEvent:event];
-    bool result = _data->_page->shouldDelayWindowOrderingForEvent(WebEventFactory::createWebMouseEvent(event, self));
+    bool result = _data->_page->shouldDelayWindowOrderingForEvent(WebEventFactory::createWebMouseEvent(event, _data->_pressureEvent, self));
     [self _setMouseDownEvent:nil];
     return result;
 }
@@ -1657,9 +1680,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     RetainPtr<id> completionHandler = adoptNS([completionHandlerPtr copy]);
 
     LOG(TextInput, "selectedRange");
-    _data->_page->getSelectedRangeAsync([completionHandler](const EditingRange& editingRangeResult, CallbackBase::Error error) {
+    _data->_page->getSelectedRangeAsync([completionHandler](const EditingRange& editingRangeResult, WebKit::CallbackBase::Error error) {
         void (^completionHandlerBlock)(NSRange) = (void (^)(NSRange))completionHandler.get();
-        if (error != CallbackBase::Error::None) {
+        if (error != WebKit::CallbackBase::Error::None) {
             LOG(TextInput, "    ...selectedRange failed.");
             completionHandlerBlock(NSMakeRange(NSNotFound, 0));
             return;
@@ -1678,9 +1701,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     RetainPtr<id> completionHandler = adoptNS([completionHandlerPtr copy]);
 
     LOG(TextInput, "markedRange");
-    _data->_page->getMarkedRangeAsync([completionHandler](const EditingRange& editingRangeResult, CallbackBase::Error error) {
+    _data->_page->getMarkedRangeAsync([completionHandler](const EditingRange& editingRangeResult, WebKit::CallbackBase::Error error) {
         void (^completionHandlerBlock)(NSRange) = (void (^)(NSRange))completionHandler.get();
-        if (error != CallbackBase::Error::None) {
+        if (error != WebKit::CallbackBase::Error::None) {
             LOG(TextInput, "    ...markedRange failed.");
             completionHandlerBlock(NSMakeRange(NSNotFound, 0));
             return;
@@ -1699,9 +1722,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     RetainPtr<id> completionHandler = adoptNS([completionHandlerPtr copy]);
 
     LOG(TextInput, "hasMarkedText");
-    _data->_page->getMarkedRangeAsync([completionHandler](const EditingRange& editingRangeResult, CallbackBase::Error error) {
+    _data->_page->getMarkedRangeAsync([completionHandler](const EditingRange& editingRangeResult, WebKit::CallbackBase::Error error) {
         void (^completionHandlerBlock)(BOOL) = (void (^)(BOOL))completionHandler.get();
-        if (error != CallbackBase::Error::None) {
+        if (error != WebKit::CallbackBase::Error::None) {
             LOG(TextInput, "    ...hasMarkedText failed.");
             completionHandlerBlock(NO);
             return;
@@ -1717,9 +1740,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     RetainPtr<id> completionHandler = adoptNS([completionHandlerPtr copy]);
 
     LOG(TextInput, "attributedSubstringFromRange:(%u, %u)", nsRange.location, nsRange.length);
-    _data->_page->attributedSubstringForCharacterRangeAsync(nsRange, [completionHandler](const AttributedString& string, const EditingRange& actualRange, CallbackBase::Error error) {
+    _data->_page->attributedSubstringForCharacterRangeAsync(nsRange, [completionHandler](const AttributedString& string, const EditingRange& actualRange, WebKit::CallbackBase::Error error) {
         void (^completionHandlerBlock)(NSAttributedString *, NSRange) = (void (^)(NSAttributedString *, NSRange))completionHandler.get();
-        if (error != CallbackBase::Error::None) {
+        if (error != WebKit::CallbackBase::Error::None) {
             LOG(TextInput, "    ...attributedSubstringFromRange failed.");
             completionHandlerBlock(0, NSMakeRange(NSNotFound, 0));
             return;
@@ -1747,9 +1770,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         return;
     }
 
-    _data->_page->firstRectForCharacterRangeAsync(theRange, [self, completionHandler](const IntRect& rect, const EditingRange& actualRange, CallbackBase::Error error) {
+    _data->_page->firstRectForCharacterRangeAsync(theRange, [self, completionHandler](const IntRect& rect, const EditingRange& actualRange, WebKit::CallbackBase::Error error) {
         void (^completionHandlerBlock)(NSRect, NSRange) = (void (^)(NSRect, NSRange))completionHandler.get();
-        if (error != CallbackBase::Error::None) {
+        if (error != WebKit::CallbackBase::Error::None) {
             LOG(TextInput, "    ...firstRectForCharacterRange failed.");
             completionHandlerBlock(NSZeroRect, NSMakeRange(NSNotFound, 0));
             return;
@@ -1778,9 +1801,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 #pragma clang diagnostic pop
     thePoint = [self convertPoint:thePoint fromView:nil];  // the point is relative to the main frame
 
-    _data->_page->characterIndexForPointAsync(IntPoint(thePoint), [completionHandler](uint64_t result, CallbackBase::Error error) {
+    _data->_page->characterIndexForPointAsync(IntPoint(thePoint), [completionHandler](uint64_t result, WebKit::CallbackBase::Error error) {
         void (^completionHandlerBlock)(NSUInteger) = (void (^)(NSUInteger))completionHandler.get();
-        if (error != CallbackBase::Error::None) {
+        if (error != WebKit::CallbackBase::Error::None) {
             LOG(TextInput, "    ...characterIndexForPoint failed.");
             completionHandlerBlock(0);
             return;
@@ -2970,7 +2993,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSMouseMoved location:[[flagsChangedEvent window] mouseLocationOutsideOfEventStream]
         modifierFlags:[flagsChangedEvent modifierFlags] timestamp:[flagsChangedEvent timestamp] windowNumber:[flagsChangedEvent windowNumber]
         context:[flagsChangedEvent context] eventNumber:0 clickCount:0 pressure:0];
-    NativeWebMouseEvent webEvent(fakeEvent, self);
+    NativeWebMouseEvent webEvent(fakeEvent, _data->_pressureEvent, self);
     _data->_page->handleMouseEvent(webEvent);
 }
 
@@ -3347,12 +3370,22 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     if (!windowID || ![window isVisible])
         return nullptr;
 
-    RetainPtr<CGImageRef> windowSnapshotImage = adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, kCGWindowImageBoundsIgnoreFraming | kCGWindowImageShouldBeOpaque));
+    CGSWindowCaptureOptions options = kCGSCaptureIgnoreGlobalClipShape;
+    RetainPtr<CFArrayRef> windowSnapshotImages = adoptCF(CGSHWCaptureWindowList(CGSMainConnectionID(), &windowID, 1, options));
+    if (!CFArrayGetCount(windowSnapshotImages.get()))
+        return nullptr;
+
+    RetainPtr<CGImageRef> windowSnapshotImage = (CGImageRef)CFArrayGetValueAtIndex(windowSnapshotImages.get(), 0);
 
     // Work around <rdar://problem/17084993>; re-request the snapshot at kCGWindowImageNominalResolution if it was captured at the wrong scale.
     CGFloat desiredSnapshotWidth = window.frame.size.width * window.screen.backingScaleFactor;
-    if (CGImageGetWidth(windowSnapshotImage.get()) != desiredSnapshotWidth)
-        windowSnapshotImage = adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, kCGWindowImageBoundsIgnoreFraming | kCGWindowImageShouldBeOpaque | kCGWindowImageNominalResolution));
+    if (CGImageGetWidth(windowSnapshotImage.get()) != desiredSnapshotWidth) {
+        options |= kCGSWindowCaptureNominalResolution;
+        windowSnapshotImages = adoptCF(CGSHWCaptureWindowList(CGSMainConnectionID(), &windowID, 1, options));
+        if (!CFArrayGetCount(windowSnapshotImages.get()))
+            return nullptr;
+        windowSnapshotImage = (CGImageRef)CFArrayGetValueAtIndex(windowSnapshotImages.get(), 0);
+    }
 
     [self _ensureGestureController];
 
@@ -3435,25 +3468,22 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     [self _setPluginComplexTextInputState:pluginComplexTextInputState];
 }
 
-- (void)_setDragImage:(NSImage *)image at:(NSPoint)clientPoint linkDrag:(BOOL)linkDrag
+- (void)_dragImageForView:(NSView *)view withImage:(NSImage *)image at:(NSPoint)clientPoint linkDrag:(BOOL)linkDrag
 {
-    IntSize size([image size]);
-    size.scale(1.0 / _data->_page->deviceScaleFactor());
-    [image setSize:size];
-    
     // The call below could release this WKView.
     RetainPtr<WKView> protector(self);
     
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    [self dragImage:image
+    [view dragImage:image
                  at:clientPoint
              offset:NSZeroSize
-              event:(linkDrag) ? [NSApp currentEvent] :_data->_mouseDownEvent
+              event:(linkDrag) ? [NSApp currentEvent] : _data->_mouseDownEvent
          pasteboard:[NSPasteboard pasteboardWithName:NSDragPboard]
              source:self
           slideBack:YES];
 #pragma clang diagnostic pop
+    
 }
 
 static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension)
@@ -3775,6 +3805,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_page->initializeWebPage();
 
     _data->_mouseDownEvent = nil;
+    _data->_pressureEvent = nil;
     _data->_ignoringMouseDraggedEvents = NO;
     _data->_clipsToVisibleRect = NO;
     _data->_useContentPreparationRectForVisibleRect = NO;
@@ -3963,6 +3994,24 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 }
 
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+- (void)_setAutomaticallyComputesFixedLayoutSizeFromViewScale:(BOOL)automaticallyComputesFixedLayoutSizeFromViewScale
+{
+    if (_data->_automaticallyComputesFixedLayoutSizeFromViewScale == automaticallyComputesFixedLayoutSizeFromViewScale)
+        return;
+
+    _data->_automaticallyComputesFixedLayoutSizeFromViewScale = automaticallyComputesFixedLayoutSizeFromViewScale;
+
+    if (!_data->_automaticallyComputesFixedLayoutSizeFromViewScale)
+        return;
+
+    [self _updateAutomaticallyComputedFixedLayoutSize];
+}
+
+- (BOOL)_automaticallyComputesFixedLayoutSizeFromViewScale
+{
+    return _data->_automaticallyComputesFixedLayoutSizeFromViewScale;
+}
 
 @end
 
@@ -4346,12 +4395,23 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (WKLayoutMode)_layoutMode
 {
-    return _data->_page->useFixedLayout() ? kWKLayoutModeFixedSize : kWKLayoutModeViewSize;
+    if (_data->_page->useFixedLayout()) {
+#if PLATFORM(MAC)
+        if (_data->_automaticallyComputesFixedLayoutSizeFromViewScale)
+            return kWKLayoutModeDynamicSizeComputedFromViewScale;
+#endif
+        return kWKLayoutModeFixedSize;
+    }
+    return kWKLayoutModeViewSize;
 }
 
 - (void)_setLayoutMode:(WKLayoutMode)layoutMode
 {
-    _data->_page->setUseFixedLayout(layoutMode == kWKLayoutModeFixedSize);
+    _data->_page->setUseFixedLayout(layoutMode == kWKLayoutModeFixedSize || layoutMode == kWKLayoutModeDynamicSizeComputedFromViewScale);
+
+#if PLATFORM(MAC)
+    self._automaticallyComputesFixedLayoutSizeFromViewScale = (layoutMode == kWKLayoutModeDynamicSizeComputedFromViewScale);
+#endif
 }
 
 - (CGSize)_fixedLayoutSize
@@ -4362,6 +4422,20 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (void)_setFixedLayoutSize:(CGSize)fixedLayoutSize
 {
     _data->_page->setFixedLayoutSize(expandedIntSize(FloatSize(fixedLayoutSize)));
+}
+
+- (CGFloat)_viewScale
+{
+    return _data->_page->viewScaleFactor();
+}
+
+- (void)_setViewScale:(CGFloat)viewScale
+{
+    if (viewScale <= 0 || isnan(viewScale) || isinf(viewScale))
+        [NSException raise:NSInvalidArgumentException format:@"View scale should be a positive number"];
+
+    _data->_page->scaleView(viewScale);
+    [self _updateAutomaticallyComputedFixedLayoutSize];
 }
 
 - (void)_dispatchSetTopContentInset
@@ -4490,6 +4564,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)setMagnification:(double)magnification centeredAtPoint:(NSPoint)point
 {
+    if (magnification <= 0 || isnan(magnification) || isinf(magnification))
+        [NSException raise:NSInvalidArgumentException format:@"Magnification should be a positive number"];
+
     [self _dismissContentRelativeChildWindows];
 
     _data->_page->scalePageInViewCoordinates(magnification, roundedIntPoint(point));
@@ -4497,6 +4574,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)setMagnification:(double)magnification
 {
+    if (magnification <= 0 || isnan(magnification) || isinf(magnification))
+        [NSException raise:NSInvalidArgumentException format:@"Magnification should be a positive number"];
+
     [self _dismissContentRelativeChildWindows];
 
     FloatPoint viewCenter(NSMidX([self bounds]), NSMidY([self bounds]));

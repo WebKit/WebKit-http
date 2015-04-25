@@ -84,7 +84,7 @@ public:
     virtual bool scheduleAnimation() override;
 #endif
 
-    Frame& frame() const { return *m_frame; }
+    Frame& frame() const { return const_cast<Frame&>(m_frame.get()); }
 
     WEBCORE_EXPORT RenderView* renderView() const;
 
@@ -139,7 +139,6 @@ public:
     WEBCORE_EXPORT void setCustomSizeForResizeEvent(IntSize);
 
     WEBCORE_EXPORT void setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, double timestamp);
-    FloatRect computeCoverageRect(double horizontalMargin, double verticalMargin) const;
 #else
     bool useCustomFixedPositionLayoutRect() const { return false; }
 #endif
@@ -659,7 +658,7 @@ private:
     LayoutSize m_margins;
 
     std::unique_ptr<ListHashSet<RenderEmbeddedObject*>> m_embeddedObjectsToUpdate;
-    const RefPtr<Frame> m_frame;
+    const Ref<Frame> m_frame;
 
     std::unique_ptr<HashSet<RenderElement*>> m_slowRepaintObjects;
 
@@ -785,6 +784,8 @@ private:
     bool m_visualUpdatesAllowedByClient;
     
     ScrollPinningBehavior m_scrollPinningBehavior;
+
+    IntRect* m_cachedWindowClipRect { nullptr };
 };
 
 inline void FrameView::incrementVisuallyNonEmptyCharacterCount(unsigned count)

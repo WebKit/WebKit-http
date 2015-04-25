@@ -71,7 +71,7 @@ static const size_t maxFilePathsListSize = USHRT_MAX;
 WebChromeClient::WebChromeClient(WebView* webView)
     : m_webView(webView)
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    , m_notificationsDelegate(new WebDesktopNotificationsDelegate(webView))
+    , m_notificationsDelegate(std::make_unique<WebDesktopNotificationsDelegate>(webView))
 #endif
 {
 }
@@ -463,19 +463,19 @@ IntRect WebChromeClient::windowResizerRect() const
 void WebChromeClient::invalidateRootView(const IntRect& windowRect)
 {
     ASSERT(core(m_webView->topLevelFrame()));
-    m_webView->repaint(windowRect, false /*contentChanged*/, false /*repaintContentOnly*/);
+    m_webView->repaint(windowRect, false /*contentChanged*/, false /*immediate*/, false /*repaintContentOnly*/);
 }
 
 void WebChromeClient::invalidateContentsAndRootView(const IntRect& windowRect)
 {
     ASSERT(core(m_webView->topLevelFrame()));
-    m_webView->repaint(windowRect, true /*contentChanged*/, false /*repaintContentOnly*/);
+    m_webView->repaint(windowRect, true /*contentChanged*/, false /*immediate*/, false /*repaintContentOnly*/);
 }
 
 void WebChromeClient::invalidateContentsForSlowScroll(const IntRect& windowRect)
 {
     ASSERT(core(m_webView->topLevelFrame()));
-    m_webView->repaint(windowRect, true /*contentChanged*/, true /*repaintContentOnly*/);
+    m_webView->repaint(windowRect, true /*contentChanged*/, false /*immediate*/, true /*repaintContentOnly*/);
 }
 
 void WebChromeClient::scroll(const IntSize& delta, const IntRect& scrollViewRect, const IntRect& clipRect)
@@ -766,14 +766,14 @@ bool WebChromeClient::supportsVideoFullscreen()
     return true;
 }
 
-void WebChromeClient::enterVideoFullscreenForVideoElement(HTMLVideoElement* videoElement)
+void WebChromeClient::enterVideoFullscreenForVideoElement(HTMLVideoElement& videoElement)
 {
     m_webView->enterVideoFullscreenForVideoElement(videoElement);
 }
 
-void WebChromeClient::exitVideoFullscreen()
+void WebChromeClient::exitVideoFullscreenForVideoElement(HTMLVideoElement& videoElement)
 {
-    m_webView->exitVideoFullscreen();
+    m_webView->exitVideoFullscreenForVideoElement(videoElement);
 }
 
 #endif

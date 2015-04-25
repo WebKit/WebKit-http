@@ -204,8 +204,7 @@ WebInspector.ObjectTreeBaseTreeElement = class ObjectTreeBaseTreeElement extends
 
         this._appendMenusItemsForObject(contextMenu, resolvedValue);
 
-        if (!contextMenu.isEmpty())
-            contextMenu.show();
+        contextMenu.show();
     }
 
     _appendMenusItemsForObject(contextMenu, resolvedValue)
@@ -232,6 +231,14 @@ WebInspector.ObjectTreeBaseTreeElement = class ObjectTreeBaseTreeElement extends
         }
 
         if (resolvedValue.subtype === "node") {
+            contextMenu.appendItem(WebInspector.UIString("Copy as HTML"), function() {
+                resolvedValue.pushNodeToFrontend(function(nodeId) {
+                    WebInspector.domTreeManager.nodeForId(nodeId).copyNode();
+                });
+            });
+
+            contextMenu.appendSeparator();
+
             contextMenu.appendItem(WebInspector.UIString("Reveal in DOM Tree"), function() {
                 resolvedValue.pushNodeToFrontend(function(nodeId) {
                     WebInspector.domTreeManager.inspectElement(nodeId);

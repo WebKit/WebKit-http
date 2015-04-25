@@ -49,6 +49,7 @@ class PlatformMouseEvent;
 class PlatformWheelEvent;
 class PseudoElement;
 class RenderNamedFlowFragment;
+class RenderTreePosition;
 class ShadowRoot;
 
 enum SpellcheckAttributeState {
@@ -242,7 +243,7 @@ public:
 
     virtual void copyNonAttributePropertiesFromElement(const Element&) { }
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&);
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&);
     virtual bool rendererIsNeeded(const RenderStyle&);
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
@@ -469,11 +470,6 @@ public:
     virtual void dispatchBlurEvent(RefPtr<Element>&& newFocusedElement);
 
     WEBCORE_EXPORT bool dispatchMouseForceWillBegin();
-    WEBCORE_EXPORT void dispatchMouseForceChanged(float force, const PlatformMouseEvent&);
-    WEBCORE_EXPORT void dispatchMouseForceDown(const PlatformMouseEvent&);
-    WEBCORE_EXPORT void dispatchMouseForceUp(const PlatformMouseEvent&);
-    WEBCORE_EXPORT void dispatchMouseForceClick(const PlatformMouseEvent&);
-    WEBCORE_EXPORT void dispatchMouseForceCancelled(const PlatformMouseEvent&);
 
     virtual bool willRecalcStyle(Style::Change);
     virtual void didRecalcStyle(Style::Change);

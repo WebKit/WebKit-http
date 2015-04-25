@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,23 +27,17 @@
 
 #if WK_API_ENABLED
 
-#import "APIWebsiteDataStore.h"
-#import "WKObject.h"
+#import <wtf/RetainPtr.h>
 
-namespace WebKit {
+@class WKWebsiteDataStore;
 
-inline _WKWebsiteDataStore *wrapper(API::WebsiteDataStore& websiteDataStore)
-{
-    ASSERT([websiteDataStore.wrapper() isKindOfClass:[_WKWebsiteDataStore class]]);
-    return (_WKWebsiteDataStore *)websiteDataStore.wrapper();
-}
-
-}
-
-@interface _WKWebsiteDataStore () <WKObject> {
+@interface _WKWebsiteDataStore () {
 @package
-    API::ObjectStorage<API::WebsiteDataStore> _websiteDataStore;
+    RetainPtr<WKWebsiteDataStore> _dataStore;
 }
+
+- (instancetype)initWithDataStore:(WKWebsiteDataStore *)dataStore;
+
 @end
 
 #endif // WK_API_ENABLED

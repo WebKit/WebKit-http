@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,6 @@
 #include "Error.h"
 #include "InjectedScriptHost.h"
 #include "IteratorOperations.h"
-#include "JSArgumentsIterator.h"
 #include "JSArray.h"
 #include "JSArrayIterator.h"
 #include "JSBoundFunction.h"
@@ -44,6 +43,7 @@
 #include "JSStringIterator.h"
 #include "JSTypedArrays.h"
 #include "JSWeakMap.h"
+#include "JSWeakSet.h"
 #include "ObjectConstructor.h"
 #include "RegExpObject.h"
 #include "SourceCode.h"
@@ -159,12 +159,13 @@ JSValue JSInjectedScriptHost::subtype(ExecState* exec)
         return jsNontrivialString(exec, ASCIILiteral("set"));
     if (value.inherits(JSWeakMap::info()))
         return jsNontrivialString(exec, ASCIILiteral("weakmap"));
+    if (value.inherits(JSWeakSet::info()))
+        return jsNontrivialString(exec, ASCIILiteral("weakset"));
 
     if (value.inherits(JSArrayIterator::info())
         || value.inherits(JSMapIterator::info())
         || value.inherits(JSSetIterator::info())
-        || value.inherits(JSStringIterator::info())
-        || value.inherits(JSArgumentsIterator::info()))
+        || value.inherits(JSStringIterator::info()))
         return jsNontrivialString(exec, ASCIILiteral("iterator"));
 
     if (value.inherits(JSInt8Array::info()) || value.inherits(JSInt16Array::info()) || value.inherits(JSInt32Array::info()))
@@ -337,13 +338,6 @@ JSValue JSInjectedScriptHost::getInternalProperties(ExecState* exec)
         return array;
     }
 
-    if (JSArgumentsIterator* argumentsIterator = jsDynamicCast<JSArgumentsIterator*>(value)) {
-        unsigned index = 0;
-        JSArray* array = constructEmptyArray(exec, nullptr, 1);
-        array->putDirectIndex(exec, index++, constructInternalProperty(exec, "arguments", argumentsIterator->iteratedValue()));
-        return array;
-    }
-
     return jsUndefined();
 }
 
@@ -391,6 +385,49 @@ JSValue JSInjectedScriptHost::weakMapEntries(ExecState* exec)
     return array;
 }
 
+JSValue JSInjectedScriptHost::weakSetSize(ExecState* exec)
+{
+    if (exec->argumentCount() < 1)
+        return jsUndefined();
+
+    JSValue value = exec->uncheckedArgument(0);
+    JSWeakSet* weakSet = jsDynamicCast<JSWeakSet*>(value);
+    if (!weakSet)
+        return jsUndefined();
+
+    return jsNumber(weakSet->weakMapData()->size());
+}
+
+JSValue JSInjectedScriptHost::weakSetEntries(ExecState* exec)
+{
+    if (exec->argumentCount() < 1)
+        return jsUndefined();
+
+    JSValue value = exec->uncheckedArgument(0);
+    JSWeakSet* weakSet = jsDynamicCast<JSWeakSet*>(value);
+    if (!weakSet)
+        return jsUndefined();
+
+    unsigned fetched = 0;
+    unsigned numberToFetch = 100;
+
+    JSValue numberToFetchArg = exec->argument(1);
+    double fetchDouble = numberToFetchArg.toInteger(exec);
+    if (fetchDouble >= 0)
+        numberToFetch = static_cast<unsigned>(fetchDouble);
+
+    JSArray* array = constructEmptyArray(exec, nullptr);
+    for (auto it = weakSet->weakMapData()->begin(); it != weakSet->weakMapData()->end(); ++it) {
+        JSObject* entry = constructEmptyObject(exec);
+        entry->putDirect(exec->vm(), Identifier::fromString(exec, "value"), it->key);
+        array->putDirectIndex(exec, fetched++, entry);
+        if (numberToFetch && fetched >= numberToFetch)
+            break;
+    }
+
+    return array;
+}
+
 JSValue JSInjectedScriptHost::iteratorEntries(ExecState* exec)
 {
     if (exec->argumentCount() < 1)
@@ -406,8 +443,6 @@ JSValue JSInjectedScriptHost::iteratorEntries(ExecState* exec)
         iterator = setIterator->clone(exec);
     else if (JSStringIterator* stringIterator = jsDynamicCast<JSStringIterator*>(value))
         iterator = stringIterator->clone(exec);
-    else if (JSArgumentsIterator* argumentsIterator = jsDynamicCast<JSArgumentsIterator*>(value))
-        iterator = argumentsIterator->clone(exec);
     else
         return jsUndefined();
 

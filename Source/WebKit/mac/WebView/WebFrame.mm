@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -240,37 +240,25 @@ TextDirectionSubmenuInclusionBehavior core(WebTextDirectionSubmenuInclusionBehav
 }
 
 #if PLATFORM(IOS)
-PassOwnPtr<Vector<Vector<String>>> vectorForDictationPhrasesArray(NSArray *dictationPhrases)
+
+Vector<Vector<String>> vectorForDictationPhrasesArray(NSArray *dictationPhrases)
 {
-    NSUInteger dictationPhrasesCount = [dictationPhrases count];
-    if (!dictationPhrasesCount)
-        return PassOwnPtr<Vector<Vector<String> > >();
-    
-    OwnPtr<Vector<Vector<String> > > dictationPhrasesVector = adoptPtr(new Vector<Vector<String> >(dictationPhrasesCount));
-    
-    for (NSUInteger i = 0; i < dictationPhrasesCount; i++) {
-        
-        id dictationPhrase = [dictationPhrases objectAtIndex:i];
+    Vector<Vector<String>> result;
+
+    for (id dictationPhrase in dictationPhrases) {
         if (![dictationPhrase isKindOfClass:[NSArray class]])
             continue;
-        
-        NSArray *interpretationsArray = (NSArray *)dictationPhrase;
-        Vector<String>& interpretationsVector = dictationPhrasesVector->at(i);
-        
-        NSUInteger interpretationsCount = [interpretationsArray count];
-        
-        for (NSUInteger j = 0; j < interpretationsCount; j++) {
-            
-            id interpretation = [interpretationsArray objectAtIndex:j];
+        result.append(Vector<String>());
+        for (id interpretation : (NSArray *)dictationPhrase) {
             if (![interpretation isKindOfClass:[NSString class]])
                 continue;
-            
-            interpretationsVector.append(String((NSString *)interpretation));
+            result.last().append((NSString *)interpretation);
         }
     }
     
-    return dictationPhrasesVector.release();
+    return result;
 }
+
 #endif
 
 @implementation WebFrame (WebInternal)
@@ -966,7 +954,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         return;
     // FIXME: These are fake modifier keys here, but they should be real ones instead.
     PlatformMouseEvent event(IntPoint(windowLoc), globalPoint(windowLoc, [view->platformWidget() window]),
-        LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime());
+        LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), WebCore::ForceAtClick);
     _private->coreFrame->eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
 }
 #endif
@@ -1154,7 +1142,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 {
     RefPtr<Range> domRange = [self _convertToDOMRange:range];
     if (domRange)
-        _private->coreFrame->selection().setSelection(VisibleSelection(domRange.get(), SEL_DEFAULT_AFFINITY));
+        _private->coreFrame->selection().setSelection(VisibleSelection(*domRange, SEL_DEFAULT_AFFINITY));
 }
 
 - (BOOL)_isDisplayingStandaloneImage
@@ -1245,7 +1233,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 {
     RefPtr<Range> domRange = [self _convertToDOMRange:range];
     if (domRange) {
-        const VisibleSelection& newSelection = VisibleSelection(domRange.get(), SEL_DEFAULT_AFFINITY);
+        const VisibleSelection& newSelection = VisibleSelection(*domRange, SEL_DEFAULT_AFFINITY);
         _private->coreFrame->selection().setSelection(newSelection, 0);
         
         _private->coreFrame->editor().ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping();
@@ -1704,11 +1692,11 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     if (!element)
         return;
     
-    WebCore::Frame *frame = core(self);
+    auto* frame = core(self);
     if (!frame)
         return;
     
-    frame->editor().setDictationPhrasesAsChildOfElement(vectorForDictationPhrasesArray(dictationPhrases), metadata, core(element));
+    frame->editor().setDictationPhrasesAsChildOfElement(vectorForDictationPhrasesArray(dictationPhrases), metadata, *core(element));
 }
 
 - (NSArray *)interpretationsForCurrentRoot
@@ -2507,33 +2495,32 @@ static NSURL *createUniqueWebDataURL()
 
 - (void)_loadData:(NSData *)data MIMEType:(NSString *)MIMEType textEncodingName:(NSString *)encodingName baseURL:(NSURL *)baseURL unreachableURL:(NSURL *)unreachableURL
 {
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC)
     if (!pthread_main_np())
         return [[self _webkit_invokeOnMainThread] _loadData:data MIMEType:MIMEType textEncodingName:encodingName baseURL:baseURL unreachableURL:unreachableURL];
 #endif
-    
-    URL responseURL;
-    if (!baseURL) {
+
+    NSURL *responseURL = nil;
+    if (baseURL)
+        baseURL = [baseURL absoluteURL];
+    else {
         baseURL = blankURL();
         responseURL = createUniqueWebDataURL();
     }
     
 #if USE(QUICK_LOOK)
     if (shouldUseQuickLookForMIMEType(MIMEType)) {
-        URL qlURL = responseURL;
-        if (qlURL.isEmpty())
-            qlURL = [baseURL absoluteURL];
-        OwnPtr<ResourceRequest> qlRequest(registerQLPreviewConverterIfNeeded((NSURL *)qlURL, MIMEType, data));
-        if (qlRequest) {
-            _private->coreFrame->loader().load(FrameLoadRequest(_private->coreFrame, *qlRequest));
+        NSURL *quickLookURL = responseURL ? responseURL : baseURL;
+        if (auto request = registerQLPreviewConverterIfNeeded(quickLookURL, MIMEType, data)) {
+            _private->coreFrame->loader().load(FrameLoadRequest(_private->coreFrame, request.get()));
             return;
         }
     }
-#endif // USE(QUICK_LOOK)
+#endif
 
-    ResourceRequest request([baseURL absoluteURL]);
+    ResourceRequest request(baseURL);
 
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC)
     // hack because Mail checks for this property to detect data / archive loads
     [NSURLProtocol setProperty:@"" forKey:@"WebDataRequest" inRequest:(NSMutableURLRequest *)request.nsURLRequest(UpdateHTTPBody)];
 #endif
@@ -2542,7 +2529,6 @@ static NSURL *createUniqueWebDataURL()
 
     _private->coreFrame->loader().load(FrameLoadRequest(_private->coreFrame, request, substituteData));
 }
-
 
 - (void)loadData:(NSData *)data MIMEType:(NSString *)MIMEType textEncodingName:(NSString *)encodingName baseURL:(NSURL *)baseURL
 {

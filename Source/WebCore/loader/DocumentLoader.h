@@ -271,7 +271,7 @@ namespace WebCore {
 
 #if ENABLE(CONTENT_EXTENSIONS)
         void addPendingContentExtensionSheet(const String& identifier, StyleSheetContents&);
-        void addPendingContentExtensionSheet(StyleSheetContents&);
+        void addPendingContentExtensionDisplayNoneSelector(const String& identifier, const String& selector, uint32_t selectorID);
 #endif
 
     protected:
@@ -401,7 +401,7 @@ namespace WebCore {
         SubstituteResourceMap m_pendingSubstituteResources;
         Timer m_substituteResourceDeliveryTimer;
 
-        OwnPtr<ArchiveResourceCollection> m_archiveResourceCollection;
+        std::unique_ptr<ArchiveResourceCollection> m_archiveResourceCollection;
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
         RefPtr<Archive> m_archive;
         RefPtr<SharedBuffer> m_parsedArchiveData;
@@ -428,7 +428,7 @@ namespace WebCore {
         bool m_subresourceLoadersArePageCacheAcceptable;
 
         friend class ApplicationCacheHost;  // for substitute resource delivery
-        OwnPtr<ApplicationCacheHost> m_applicationCacheHost;
+        std::unique_ptr<ApplicationCacheHost> m_applicationCacheHost;
 
 #if ENABLE(CONTENT_FILTERING)
         std::unique_ptr<ContentFilter> m_contentFilter;
@@ -440,7 +440,7 @@ namespace WebCore {
 
 #if ENABLE(CONTENT_EXTENSIONS)
         HashMap<String, RefPtr<StyleSheetContents>> m_pendingNamedContentExtensionStyleSheets;
-        HashSet<RefPtr<StyleSheetContents>> m_pendingUnnamedContentExtensionStyleSheets;
+        HashMap<String, std::pair<String, uint32_t>> m_pendingContentExtensionDisplayNoneSelectors;
 #endif
 
     };

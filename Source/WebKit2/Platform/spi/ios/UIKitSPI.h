@@ -32,6 +32,7 @@
 #import <UIKit/UIBarButtonItem_Private.h>
 #import <UIKit/UIDatePicker_Private.h>
 #import <UIKit/UIDevice_Private.h>
+#import <UIKit/UIDocumentPasswordView.h>
 #import <UIKit/UIFont_Private.h>
 #import <UIKit/UIGeometry_Private.h>
 #import <UIKit/UIGestureRecognizer_Private.h>
@@ -46,6 +47,7 @@
 #import <UIKit/UIPeripheralHost_Private.h>
 #import <UIKit/UIPickerContentView_Private.h>
 #import <UIKit/UIPickerView_Private.h>
+#import <UIKit/UIPresentationController_Private.h>
 #import <UIKit/UIScrollView_Private.h>
 #import <UIKit/UIStringDrawing_Private.h>
 #import <UIKit/UITableViewCell_Private.h>
@@ -193,6 +195,7 @@ typedef enum {
 @interface UIPeripheralHost (Details)
 + (UIPeripheralHost *)sharedInstance;
 + (UIPeripheralHost *)activeInstance;
++ (CGRect)visiblePeripheralFrame;
 - (BOOL)isOnScreen;
 - (UIKeyboardRotationState *)rotationState;
 @end
@@ -675,6 +678,33 @@ typedef enum {
 @property (nonatomic, assign, setter = _setIgnoreApplicationEntitlementForImport:, getter = _ignoreApplicationEntitlementForImport) BOOL _ignoreApplicationEntitlementForImport;
 @end
 
+@protocol UIDocumentPasswordViewDelegate;
+
+@interface UIDocumentPasswordView : UIView <UITextFieldDelegate>
+@end
+
+@interface UIDocumentPasswordView (Details)
+
+- (id)initWithDocumentName:(NSString *)documentName;
+
+@property (nonatomic, assign) NSObject<UIDocumentPasswordViewDelegate> *passwordDelegate;
+@property (nonatomic, readonly) UITextField *passwordField;
+
+@end
+
+@protocol UIDocumentPasswordViewDelegate
+
+@required
+
+- (void)userDidEnterPassword:(NSString *)password forPasswordView:(UIDocumentPasswordView *)passwordView;
+
+@optional
+
+- (void)didBeginEditingPassword:(UITextField *)passwordField inView:(UIDocumentPasswordView *)passwordView;
+- (void)didEndEditingPassword:(UITextField *)passwordField inView:(UIDocumentPasswordView *)passwordView;
+
+@end
+
 #endif // USE(APPLE_INTERNAL_SDK)
 
 @interface UIView (IPI)
@@ -696,6 +726,8 @@ extern NSString * const UIWindowDidMoveToScreenNotification;
 extern NSString * const UIWindowDidRotateNotification;
 extern NSString * const UIWindowNewScreenUserInfoKey;
 extern NSString * const UIWindowWillRotateNotification;
+
+extern NSString * const UIKeyboardIsLocalUserInfoKey;
 
 extern UIApplication *UIApp;
 void _UIApplicationLoadWebKit(void);

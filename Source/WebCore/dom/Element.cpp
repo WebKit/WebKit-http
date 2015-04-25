@@ -79,7 +79,6 @@
 #include "StyleResolver.h"
 #include "TextIterator.h"
 #include "VoidCallback.h"
-#include "WebKitMouseForceEvent.h"
 #include "WheelEvent.h"
 #include "XLinkNames.h"
 #include "XMLNSNames.h"
@@ -245,9 +244,17 @@ bool Element::shouldUseInputMethod()
     return computeEditability(UserSelectAllIsAlwaysNonEditable, ShouldUpdateStyle::Update) != Editability::ReadOnly;
 }
 
+static bool isForceEvent(const PlatformMouseEvent& platformEvent)
+{
+    return platformEvent.type() == PlatformEvent::MouseForceChanged || platformEvent.type() == PlatformEvent::MouseForceDown || platformEvent.type() == PlatformEvent::MouseForceUp;
+}
+
 bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const AtomicString& eventType, int detail, Element* relatedTarget)
 {
     if (isDisabledFormControl())
+        return false;
+
+    if (isForceEvent(platformEvent) && !document().hasListenerTypeForEventType(platformEvent.type()))
         return false;
 
     RefPtr<MouseEvent> mouseEvent = MouseEvent::create(eventType, document().defaultView(), platformEvent, detail, relatedTarget);
@@ -1489,7 +1496,7 @@ bool Element::rendererIsNeeded(const RenderStyle& style)
     return style.display() != NONE;
 }
 
-RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return RenderElement::createFor(*this, WTF::move(style));
 }
@@ -2206,14 +2213,14 @@ void Element::blur()
 
 void Element::dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusinEvent || eventType == eventNames().DOMFocusInEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(oldFocusedElement)));
 }
 
 void Element::dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusoutEvent || eventType == eventNames().DOMFocusOutEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(newFocusedElement)));
 }
@@ -2244,8 +2251,8 @@ bool Element::dispatchMouseForceWillBegin()
     if (!frame)
         return false;
 
-    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime());
-    RefPtr<Event> mouseForceWillBeginEvent =  WebKitMouseForceEvent::create(eventNames().webkitmouseforcewillbeginEvent, 0, platformMouseEvent, document().defaultView());
+    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), ForceAtClick);
+    RefPtr<MouseEvent> mouseForceWillBeginEvent =  MouseEvent::create(eventNames().webkitmouseforcewillbeginEvent, document().defaultView(), platformMouseEvent, 0, nullptr);
     mouseForceWillBeginEvent->setTarget(this);
     dispatchEvent(mouseForceWillBeginEvent);
 
@@ -2253,82 +2260,10 @@ bool Element::dispatchMouseForceWillBegin()
         return true;
     return false;
 }
-
-void Element::dispatchMouseForceChanged(float force, const PlatformMouseEvent& platformMouseEvent)
-{
-    if (!document().hasListenerType(Document::FORCECHANGED_LISTENER))
-        return;
-
-    RefPtr<WebKitMouseForceEvent> mouseForceChangedEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforcechangedEvent, force, platformMouseEvent, document().defaultView());
-    mouseForceChangedEvent->setTarget(this);
-    dispatchEvent(mouseForceChangedEvent);
-}
-
-void Element::dispatchMouseForceDown(const PlatformMouseEvent& platformMouseEvent)
-{
-    if (!document().hasListenerType(Document::FORCEDOWN_LISTENER))
-        return;
-
-    RefPtr<Event> mouseForceDownEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforcedownEvent, 1, platformMouseEvent, document().defaultView());
-    mouseForceDownEvent->setTarget(this);
-    dispatchEvent(mouseForceDownEvent);
-}
-
-void Element::dispatchMouseForceUp(const PlatformMouseEvent& platformMouseEvent)
-{
-    if (!document().hasListenerType(Document::FORCEUP_LISTENER))
-        return;
-
-    RefPtr<Event> mouseForceUpEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforceupEvent, 1, platformMouseEvent, document().defaultView());
-    mouseForceUpEvent->setTarget(this);
-    dispatchEvent(mouseForceUpEvent);
-}
-
-void Element::dispatchMouseForceClick(const PlatformMouseEvent& platformMouseEvent)
-{
-    if (!document().hasListenerType(Document::FORCECLICK_LISTENER))
-        return;
-
-    RefPtr<Event> mouseForceClickEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforceclickEvent, 1, platformMouseEvent, document().defaultView());
-    mouseForceClickEvent->setTarget(this);
-    dispatchEvent(mouseForceClickEvent);
-}
-
-void Element::dispatchMouseForceCancelled(const PlatformMouseEvent& platformMouseEvent)
-{
-    if (!document().hasListenerType(Document::FORCECANCELLED_LISTENER))
-        return;
-
-    RefPtr<Event> mouseForceCancelledEvent = WebKitMouseForceEvent::create(eventNames().webkitmouseforcecancelledEvent, 0, platformMouseEvent, document().defaultView());
-    mouseForceCancelledEvent->setTarget(this);
-    dispatchEvent(mouseForceCancelledEvent);
-}
-
-#else // #if ENABLE(MOUSE_FORCE_EVENTS)
-
+#else
 bool Element::dispatchMouseForceWillBegin()
 {
     return false;
-}
-
-void Element::dispatchMouseForceChanged(float, const PlatformMouseEvent&)
-{
-}
-
-void Element::dispatchMouseForceDown(const PlatformMouseEvent&)
-{
-}
-
-void Element::dispatchMouseForceUp(const PlatformMouseEvent&)
-{
-}
-
-void Element::dispatchMouseForceClick(const PlatformMouseEvent&)
-{
-}
-
-void Element::dispatchMouseForceCancelled(const PlatformMouseEvent&)
-{
 }
 #endif // #if ENABLE(MOUSE_FORCE_EVENTS)
 

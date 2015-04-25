@@ -28,6 +28,7 @@
 #ifndef DocumentStyleSheetCollection_h
 #define DocumentStyleSheetCollection_h
 
+#include "Timer.h"
 #include <memory>
 #include <wtf/FastMalloc.h>
 #include <wtf/HashMap.h>
@@ -35,6 +36,10 @@
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
+
+#if ENABLE(CONTENT_EXTENSIONS)
+#include "ContentExtensionStyleSheet.h"
+#endif
 
 namespace WebCore {
 
@@ -70,7 +75,11 @@ public:
 
     WEBCORE_EXPORT void addAuthorSheet(Ref<StyleSheetContents>&& authorSheet);
     WEBCORE_EXPORT void addUserSheet(Ref<StyleSheetContents>&& userSheet);
+
+#if ENABLE(CONTENT_EXTENSIONS)
+    void addDisplayNoneSelector(const String& identifier, const String& selector, uint32_t selectorID);
     void maybeAddContentExtensionSheet(const String& identifier, StyleSheetContents&);
+#endif
 
     enum UpdateFlag { NoUpdate = 0, OptimizedUpdate, FullUpdate };
 
@@ -126,6 +135,8 @@ private:
     };
     void analyzeStyleSheetChange(UpdateFlag, const Vector<RefPtr<CSSStyleSheet>>& newStylesheets, StyleResolverUpdateType&, bool& requiresFullStyleRecalc);
 
+    void styleResolverChangedTimerFired();
+
     Document& m_document;
 
     Vector<RefPtr<StyleSheet>> m_styleSheetsForStyleSheetList;
@@ -148,7 +159,11 @@ private:
 
     Vector<RefPtr<CSSStyleSheet>> m_userStyleSheets;
     Vector<RefPtr<CSSStyleSheet>> m_authorStyleSheets;
+
+#if ENABLE(CONTENT_EXTENSIONS)
     HashMap<String, RefPtr<CSSStyleSheet>> m_contentExtensionSheets;
+    HashMap<String, RefPtr<ContentExtensions::ContentExtensionStyleSheet>> m_contentExtensionSelectorSheets;
+#endif
 
     bool m_hadActiveLoadingStylesheet;
     UpdateFlag m_pendingUpdateType;
@@ -163,6 +178,8 @@ private:
     bool m_usesFirstLetterRules;
     bool m_usesRemUnits;
     bool m_usesStyleBasedEditability;
+
+    Timer m_styleResolverChangedTimer;
 };
 
 }

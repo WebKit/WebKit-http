@@ -280,7 +280,6 @@ RenderLayerCompositor::RenderLayerCompositor(RenderView& renderView)
     , m_updateCompositingLayersTimer(*this, &RenderLayerCompositor::updateCompositingLayersTimerFired)
     , m_hasAcceleratedCompositing(true)
     , m_compositingTriggers(static_cast<ChromeClient::CompositingTriggerFlags>(ChromeClient::AllTriggers))
-    , m_compositedLayerCount(0)
     , m_showDebugBorders(false)
     , m_showRepaintCounter(false)
     , m_acceleratedDrawingEnabled(false)
@@ -293,20 +292,12 @@ RenderLayerCompositor::RenderLayerCompositor(RenderView& renderView)
     , m_inPostLayoutUpdate(false)
     , m_subframeScrollLayersNeedReattach(false)
     , m_isTrackingRepaints(false)
-    , m_layersWithTiledBackingCount(0)
     , m_rootLayerAttachment(RootLayerUnattached)
     , m_layerFlushTimer(*this, &RenderLayerCompositor::layerFlushTimerFired)
     , m_layerFlushThrottlingEnabled(false)
     , m_layerFlushThrottlingTemporarilyDisabledForInteraction(false)
     , m_hasPendingLayerFlush(false)
     , m_paintRelatedMilestonesTimer(*this, &RenderLayerCompositor::paintRelatedMilestonesTimerFired)
-#if !LOG_DISABLED
-    , m_rootLayerUpdateCount(0)
-    , m_obligateCompositedLayerCount(0)
-    , m_secondaryCompositedLayerCount(0)
-    , m_obligatoryBackingStoreBytes(0)
-    , m_secondaryBackingStoreBytes(0)
-#endif
 {
 }
 
@@ -467,10 +458,7 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
 
     if (GraphicsLayer* rootLayer = rootGraphicsLayer()) {
 #if PLATFORM(IOS)
-        double horizontalMargin = defaultTileWidth / pageScaleFactor();
-        double verticalMargin = defaultTileHeight / pageScaleFactor();
-        FloatRect visibleRect = frameView.computeCoverageRect(horizontalMargin, verticalMargin);
-        rootLayer->flushCompositingState(visibleRect);
+        rootLayer->flushCompositingState(frameView.exposedContentRect());
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
         IntRect visibleRect = m_clipLayer ? IntRect(IntPoint(), frameView.unscaledVisibleContentSizeIncludingObscuredArea()) : frameView.visibleContentRect();
@@ -491,6 +479,7 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
         client->didFlushCompositingLayers();
 #endif
 
+    ++m_layerFlushCount;
     startLayerFlushTimerIfNeeded();
 }
 
@@ -608,13 +597,13 @@ void RenderLayerCompositor::notifyFlushBeforeDisplayRefresh(const GraphicsLayer*
         if (Page* page = this->page())
             displayID = page->chrome().displayID();
 
-        m_layerUpdater = std::make_unique<GraphicsLayerUpdater>(this, displayID);
+        m_layerUpdater = std::make_unique<GraphicsLayerUpdater>(*this, displayID);
     }
     
     m_layerUpdater->scheduleUpdate();
 }
 
-void RenderLayerCompositor::flushLayersSoon(GraphicsLayerUpdater*)
+void RenderLayerCompositor::flushLayersSoon(GraphicsLayerUpdater&)
 {
     scheduleLayerFlush(true);
 }
@@ -845,17 +834,17 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer& layer, int depth)
         absoluteBounds.x().toFloat(), absoluteBounds.y().toFloat(), absoluteBounds.maxX().toFloat(), absoluteBounds.maxY().toFloat(),
         backing->backingStoreMemoryEstimate() / 1024));
     
-    logString.append(" (");
+    logString.appendLiteral(" (");
     logString.append(logReasonsForCompositing(layer));
-    logString.append(") ");
+    logString.appendLiteral(") ");
 
     if (backing->graphicsLayer()->contentsOpaque() || backing->paintsIntoCompositedAncestor()) {
         logString.append('[');
         if (backing->graphicsLayer()->contentsOpaque())
-            logString.append("opaque");
+            logString.appendLiteral("opaque");
         if (backing->paintsIntoCompositedAncestor())
-            logString.append("paints into ancestor");
-        logString.append("] ");
+            logString.appendLiteral("paints into ancestor");
+        logString.appendLiteral("] ");
     }
 
     logString.append(layer.name());
@@ -3643,18 +3632,18 @@ void RenderLayerCompositor::deviceOrPageScaleFactorChanged()
 
 void RenderLayerCompositor::updateScrollCoordinatedStatus(RenderLayer& layer)
 {
-    ScrollCoordinationReasons coordinationReasons = 0;
+    LayerScrollCoordinationRoles coordinationRoles = 0;
     if (isViewportConstrainedFixedOrStickyLayer(layer))
-        coordinationReasons |= FixedOrSticky;
+        coordinationRoles |= ViewportConstrained;
 
     if (useCoordinatedScrollingForLayer(m_renderView, layer))
-        coordinationReasons |= Scrolling;
+        coordinationRoles |= Scrolling;
 
-    if (coordinationReasons) {
+    if (coordinationRoles) {
         if (m_scrollCoordinatedLayers.add(&layer).isNewEntry)
             m_subframeScrollLayersNeedReattach = true;
 
-        updateScrollCoordinatedLayer(layer, coordinationReasons);
+        updateScrollCoordinatedLayer(layer, coordinationRoles);
     } else
         removeFromScrollCoordinatedLayers(layer);
 }
@@ -3669,7 +3658,7 @@ void RenderLayerCompositor::removeFromScrollCoordinatedLayers(RenderLayer& layer
     m_scrollCoordinatedLayers.remove(&layer);
     m_scrollCoordinatedLayersNeedingUpdate.remove(&layer);
 
-    detachScrollCoordinatedLayer(layer);
+    detachScrollCoordinatedLayer(layer, Scrolling | ViewportConstrained);
 }
 
 FixedPositionViewportConstraints RenderLayerCompositor::computeFixedViewportConstraints(RenderLayer& layer) const
@@ -3790,6 +3779,20 @@ void RenderLayerCompositor::reattachSubframeScrollLayers()
     }
 }
 
+static inline LayerScrollCoordinationRole scrollCoordinationRoleForNodeType(ScrollingNodeType nodeType)
+{
+    switch (nodeType) {
+    case FrameScrollingNode:
+    case OverflowScrollingNode:
+        return Scrolling;
+    case FixedNode:
+    case StickyNode:
+        return ViewportConstrained;
+    }
+    ASSERT_NOT_REACHED();
+    return Scrolling;
+}
+
 ScrollingNodeID RenderLayerCompositor::attachScrollingNode(RenderLayer& layer, ScrollingNodeType nodeType, ScrollingNodeID parentNodeID)
 {
     ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator();
@@ -3799,7 +3802,8 @@ ScrollingNodeID RenderLayerCompositor::attachScrollingNode(RenderLayer& layer, S
     if (!backing)
         return 0;
 
-    ScrollingNodeID nodeID = backing->scrollingNodeIDForRole(nodeType);
+    LayerScrollCoordinationRole role = scrollCoordinationRoleForNodeType(nodeType);
+    ScrollingNodeID nodeID = backing->scrollingNodeIDForRole(role);
     if (!nodeID)
         nodeID = scrollingCoordinator->uniqueScrollLayerID();
 
@@ -3807,10 +3811,29 @@ ScrollingNodeID RenderLayerCompositor::attachScrollingNode(RenderLayer& layer, S
     if (!nodeID)
         return 0;
 
-    backing->setScrollingNodeIDForRole(nodeID, nodeType);
+    backing->setScrollingNodeIDForRole(nodeID, role);
     m_scrollingNodeToLayerMap.add(nodeID, &layer);
     
     return nodeID;
+}
+
+void RenderLayerCompositor::detachScrollCoordinatedLayer(RenderLayer& layer, LayerScrollCoordinationRoles roles)
+{
+    RenderLayerBacking* backing = layer.backing();
+    if (!backing)
+        return;
+
+    if (roles & Scrolling) {
+        if (ScrollingNodeID nodeID = backing->scrollingNodeIDForRole(Scrolling))
+            m_scrollingNodeToLayerMap.remove(nodeID);
+    }
+
+    if (roles & ViewportConstrained) {
+        if (ScrollingNodeID nodeID = backing->scrollingNodeIDForRole(ViewportConstrained))
+            m_scrollingNodeToLayerMap.remove(nodeID);
+    }
+
+    backing->detachFromScrollingCoordinator(roles);
 }
 
 void RenderLayerCompositor::updateScrollCoordinationForThisFrame(ScrollingNodeID parentNodeID)
@@ -3822,7 +3845,7 @@ void RenderLayerCompositor::updateScrollCoordinationForThisFrame(ScrollingNodeID
     scrollingCoordinator->updateFrameScrollingNode(nodeID, m_scrollLayer.get(), m_rootContentLayer.get(), fixedRootBackgroundLayer(), clipLayer());
 }
 
-void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, ScrollCoordinationReasons reasons)
+void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, LayerScrollCoordinationRoles reasons)
 {
     ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator();
     if (!scrollingCoordinator || !scrollingCoordinator->coordinatesScrollingForFrameView(m_renderView.frameView()))
@@ -3847,7 +3870,7 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
             return;
 
         updateScrollCoordinationForThisFrame(parentDocumentHostingNodeID);
-        if (!(reasons & FixedOrSticky) && isRootLayer)
+        if (!(reasons & ViewportConstrained) && isRootLayer)
             return;
     }
 
@@ -3857,7 +3880,7 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
     
     // Always call this even if the backing is already attached because the parent may have changed.
     // If a node plays both roles, fixed/sticky is always the ancestor node of scrolling.
-    if (reasons & FixedOrSticky) {
+    if (reasons & ViewportConstrained) {
         ScrollingNodeType nodeType = FrameScrollingNode;
         if (layer.renderer().style().position() == FixedPosition)
             nodeType = FixedNode;
@@ -3883,7 +3906,8 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
         }
         
         parentNodeID = nodeID;
-    }
+    } else
+        detachScrollCoordinatedLayer(layer, ViewportConstrained);
 
     if (reasons & Scrolling) {
         if (isRootLayer)
@@ -3908,22 +3932,8 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Scr
 #endif
             scrollingCoordinator->updateOverflowScrollingNode(nodeID, backing->scrollingLayer(), backing->scrollingContentsLayer(), &scrollingGeometry);
         }
-    }
-}
-
-void RenderLayerCompositor::detachScrollCoordinatedLayer(RenderLayer& layer)
-{
-    RenderLayerBacking* backing = layer.backing();
-    if (!backing)
-        return;
-
-    if (ScrollingNodeID nodeID = backing->scrollingNodeIDForRole(FrameScrollingNode))
-        m_scrollingNodeToLayerMap.remove(nodeID);
-
-    if (ScrollingNodeID nodeID = backing->scrollingNodeIDForRole(FixedNode))
-        m_scrollingNodeToLayerMap.remove(nodeID);
-
-    backing->detachFromScrollingCoordinator();
+    } else
+        detachScrollCoordinatedLayer(layer, Scrolling);
 }
 
 ScrollableArea* RenderLayerCompositor::scrollableAreaForScrollLayerID(ScrollingNodeID nodeID) const
@@ -4016,7 +4026,7 @@ void RenderLayerCompositor::unregisterAllScrollingLayers()
 void RenderLayerCompositor::willRemoveScrollingLayerWithBacking(RenderLayer& layer, RenderLayerBacking& backing)
 {
     if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator()) {
-        backing.detachFromScrollingCoordinator();
+        backing.detachFromScrollingCoordinator(Scrolling);
 
         // For Coordinated Graphics.
         scrollingCoordinator->scrollableAreaScrollLayerDidChange(layer);
@@ -4150,15 +4160,28 @@ void RenderLayerCompositor::paintRelatedMilestonesTimerFired()
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-Optional<RefPtr<DisplayRefreshMonitor>> RenderLayerCompositor::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
+RefPtr<DisplayRefreshMonitor> RenderLayerCompositor::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
 {
     Frame& frame = m_renderView.frameView().frame();
     Page* page = frame.page();
     if (!page)
-        return Optional<RefPtr<DisplayRefreshMonitor>>(nullptr);
+        return nullptr;
 
-    return Optional<RefPtr<DisplayRefreshMonitor>>(page->chrome().client().createDisplayRefreshMonitor(displayID));
+    if (auto monitor = page->chrome().client().createDisplayRefreshMonitor(displayID))
+        return monitor;
+
+    return DisplayRefreshMonitor::createDefaultDisplayRefreshMonitor(displayID);
 }
 #endif
+
+void RenderLayerCompositor::startTrackingLayerFlushes()
+{
+    m_layerFlushCount = 0;
+}
+
+unsigned RenderLayerCompositor::layerFlushCount() const
+{
+    return m_layerFlushCount;
+}
 
 } // namespace WebCore

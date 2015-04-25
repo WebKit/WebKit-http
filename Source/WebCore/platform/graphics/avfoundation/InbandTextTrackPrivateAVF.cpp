@@ -38,7 +38,6 @@
 #include <runtime/Int8Array.h>
 #include <wtf/MediaTime.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
@@ -158,7 +157,7 @@ void InbandTextTrackPrivateAVF::processCueAttributes(CFAttributedStringRef attri
                 if (static_cast<CFBooleanRef>(value) != kCFBooleanTrue)
                     continue;
 
-                tagStart.append("<b>");
+                tagStart.appendLiteral("<b>");
                 tagEnd = "</b>" + tagEnd;
                 continue;
             }
@@ -167,7 +166,7 @@ void InbandTextTrackPrivateAVF::processCueAttributes(CFAttributedStringRef attri
                 if (static_cast<CFBooleanRef>(value) != kCFBooleanTrue)
                     continue;
 
-                tagStart.append("<i>");
+                tagStart.appendLiteral("<i>");
                 tagEnd = "</i>" + tagEnd;
                 continue;
             }
@@ -176,7 +175,7 @@ void InbandTextTrackPrivateAVF::processCueAttributes(CFAttributedStringRef attri
                 if (static_cast<CFBooleanRef>(value) != kCFBooleanTrue)
                     continue;
 
-                tagStart.append("<u>");
+                tagStart.appendLiteral("<u>");
                 tagEnd = "</u>" + tagEnd;
                 continue;
             }

@@ -140,7 +140,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
         if (!cgContext)
             return;
 
-        m_data.context = adoptPtr(new GraphicsContext(cgContext.get()));
+        m_data.context = std::make_unique<GraphicsContext>(cgContext.get());
     }
 
     context()->scale(FloatSize(1, -1));
@@ -177,7 +177,7 @@ static RetainPtr<CGImageRef> createCroppedImageIfNecessary(CGImageRef image, con
     return image;
 }
 
-PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior scaleBehavior) const
+RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior scaleBehavior) const
 {
     RetainPtr<CGImageRef> image;
     if (m_resolutionScale == 1 || scaleBehavior == Unscaled) {
@@ -196,10 +196,10 @@ PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBeh
     if (!image)
         return nullptr;
 
-    RefPtr<BitmapImage> bitmapImage = BitmapImage::create(image.get());
+    auto bitmapImage = BitmapImage::create(image.get());
     bitmapImage->setSpaceSize(spaceSize());
 
-    return bitmapImage.release();
+    return WTF::move(bitmapImage);
 }
 
 BackingStoreCopy ImageBuffer::fastCopyImageMode()

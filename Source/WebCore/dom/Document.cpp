@@ -31,7 +31,6 @@
 #include "AXObjectCache.h"
 #include "AnimationController.h"
 #include "Attr.h"
-#include "AudioProducer.h"
 #include "CDATASection.h"
 #include "CSSFontSelector.h"
 #include "CSSStyleDeclaration.h"
@@ -100,6 +99,7 @@
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MediaCanStartListener.h"
+#include "MediaProducer.h"
 #include "MediaQueryList.h"
 #include "MediaQueryMatcher.h"
 #include "MouseEventWithHitTestResults.h"
@@ -230,7 +230,7 @@
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-#include "HTMLVideoElement.h"
+#include "MediaPlaybackTargetClient.h"
 #endif
 
 using namespace WTF;
@@ -523,7 +523,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_renderTreeBeingDestroyed(false)
     , m_hasPreparedForDestruction(false)
     , m_hasStyleWithViewportUnits(false)
-    , m_isPlayingAudio(false)
 {
     allDocuments().add(this);
 
@@ -1573,8 +1572,8 @@ void Document::unregisterForVisibilityStateChangedCallbacks(Element* element)
 void Document::visibilityStateChanged()
 {
     dispatchEvent(Event::create(eventNames().visibilitychangeEvent, false, false));
-    for (auto it = m_visibilityStateCallbackElements.begin(); it != m_visibilityStateCallbackElements.end(); ++it)
-        (*it)->visibilityStateChanged();
+    for (auto* element : m_visibilityStateCallbackElements)
+        element->visibilityStateChanged();
 }
 
 PageVisibilityState Document::pageVisibilityState() const
@@ -1790,6 +1789,8 @@ void Document::recalcStyle(Style::Change change)
         m_closeAfterStyleRecalc = false;
         implicitClose();
     }
+    
+    ++m_styleRecalcCount;
 
     InspectorInstrumentation::didRecalculateStyle(cookie);
 
@@ -2814,16 +2815,22 @@ void Document::processBaseElement()
     const AtomicString* href = nullptr;
     const AtomicString* target = nullptr;
     auto baseDescendants = descendantsOfType<HTMLBaseElement>(*this);
-    for (auto base = baseDescendants.begin(), end = baseDescendants.end(); base != end && (!href || !target); ++base) {
+    for (auto& base : baseDescendants) {
         if (!href) {
-            const AtomicString& value = base->fastGetAttribute(hrefAttr);
-            if (!value.isNull())
+            const AtomicString& value = base.fastGetAttribute(hrefAttr);
+            if (!value.isNull()) {
                 href = &value;
+                if (target)
+                    break;
+            }
         }
         if (!target) {
-            const AtomicString& value = base->fastGetAttribute(targetAttr);
-            if (!value.isNull())
+            const AtomicString& value = base.fastGetAttribute(targetAttr);
+            if (!value.isNull()) {
                 target = &value;
+                if (href)
+                    break;
+            }
         }
     }
 
@@ -3407,35 +3414,31 @@ void Document::updateViewportUnitsOnResize()
     }
 }
 
-void Document::addAudioProducer(AudioProducer* audioProducer)
+void Document::addAudioProducer(MediaProducer* audioProducer)
 {
     m_audioProducers.add(audioProducer);
-    updateIsPlayingAudio();
+    updateIsPlayingMedia();
 }
 
-void Document::removeAudioProducer(AudioProducer* audioProducer)
+void Document::removeAudioProducer(MediaProducer* audioProducer)
 {
     m_audioProducers.remove(audioProducer);
-    updateIsPlayingAudio();
+    updateIsPlayingMedia();
 }
 
-void Document::updateIsPlayingAudio()
+void Document::updateIsPlayingMedia()
 {
-    bool isPlayingAudio = false;
-    for (auto audioProducer : m_audioProducers) {
-        if (audioProducer->isPlayingAudio()) {
-            isPlayingAudio = true;
-            break;
-        }
-    }
+    MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
+    for (auto audioProducer : m_audioProducers)
+        state |= audioProducer->mediaState();
 
-    if (isPlayingAudio == m_isPlayingAudio)
+    if (state == m_mediaState)
         return;
 
-    m_isPlayingAudio = isPlayingAudio;
+    m_mediaState = state;
 
     if (page())
-        page()->updateIsPlayingAudio();
+        page()->updateIsPlayingMedia();
 }
 
 void Document::pageMutedStateDidChange()
@@ -3768,34 +3771,30 @@ void Document::detachNodeIterator(NodeIterator* ni)
 
 void Document::moveNodeIteratorsToNewDocument(Node* node, Document* newDocument)
 {
-    HashSet<NodeIterator*> nodeIteratorsList = m_nodeIterators;
-    HashSet<NodeIterator*>::const_iterator nodeIteratorsEnd = nodeIteratorsList.end();
-    for (HashSet<NodeIterator*>::const_iterator it = nodeIteratorsList.begin(); it != nodeIteratorsEnd; ++it) {
-        if ((*it)->root() == node) {
-            detachNodeIterator(*it);
-            newDocument->attachNodeIterator(*it);
+    Vector<NodeIterator*> nodeIterators;
+    copyToVector(m_nodeIterators, nodeIterators);
+    for (auto* it : nodeIterators) {
+        if (it->root() == node) {
+            detachNodeIterator(it);
+            newDocument->attachNodeIterator(it);
         }
     }
 }
 
 void Document::updateRangesAfterChildrenChanged(ContainerNode& container)
 {
-    if (!m_ranges.isEmpty()) {
-        for (auto it = m_ranges.begin(), end = m_ranges.end(); it != end; ++it)
-            (*it)->nodeChildrenChanged(container);
-    }
+    for (auto* range : m_ranges)
+        range->nodeChildrenChanged(container);
 }
 
 void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
 {
-    if (!m_ranges.isEmpty()) {
-        for (auto it = m_ranges.begin(), end = m_ranges.end(); it != end; ++it)
-            (*it)->nodeChildrenWillBeRemoved(container);
-    }
+    for (auto* range : m_ranges)
+        range->nodeChildrenWillBeRemoved(container);
 
-    for (auto it = m_nodeIterators.begin(), end = m_nodeIterators.end(); it != end; ++it) {
+    for (auto* it : m_nodeIterators) {
         for (Node* n = container.firstChild(); n; n = n->nextSibling())
-            (*it)->nodeWillBeRemoved(*n);
+            it->nodeWillBeRemoved(*n);
     }
 
     if (Frame* frame = this->frame()) {
@@ -3814,15 +3813,11 @@ void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
 
 void Document::nodeWillBeRemoved(Node& n)
 {
-    HashSet<NodeIterator*>::const_iterator nodeIteratorsEnd = m_nodeIterators.end();
-    for (HashSet<NodeIterator*>::const_iterator it = m_nodeIterators.begin(); it != nodeIteratorsEnd; ++it)
-        (*it)->nodeWillBeRemoved(n);
+    for (auto* it : m_nodeIterators)
+        it->nodeWillBeRemoved(n);
 
-    if (!m_ranges.isEmpty()) {
-        HashSet<Range*>::const_iterator rangesEnd = m_ranges.end();
-        for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != rangesEnd; ++it)
-            (*it)->nodeWillBeRemoved(n);
-    }
+    for (auto* range : m_ranges)
+        range->nodeWillBeRemoved(n);
 
     if (Frame* frame = this->frame()) {
         frame->eventHandler().nodeWillBeRemoved(n);
@@ -3837,7 +3832,7 @@ void Document::nodeWillBeRemoved(Node& n)
 void Document::textInserted(Node* text, unsigned offset, unsigned length)
 {
     if (!m_ranges.isEmpty()) {
-        for (auto& range : m_ranges)
+        for (auto* range : m_ranges)
             range->textInserted(text, offset, length);
     }
 
@@ -3848,7 +3843,7 @@ void Document::textInserted(Node* text, unsigned offset, unsigned length)
 void Document::textRemoved(Node* text, unsigned offset, unsigned length)
 {
     if (!m_ranges.isEmpty()) {
-        for (auto& range : m_ranges)
+        for (auto* range : m_ranges)
             range->textRemoved(text, offset, length);
     }
 
@@ -3861,7 +3856,7 @@ void Document::textNodesMerged(Text* oldNode, unsigned offset)
 {
     if (!m_ranges.isEmpty()) {
         NodeWithIndex oldNodeWithIndex(oldNode);
-        for (auto& range : m_ranges)
+        for (auto* range : m_ranges)
             range->textNodesMerged(oldNodeWithIndex, offset);
     }
 
@@ -3870,11 +3865,8 @@ void Document::textNodesMerged(Text* oldNode, unsigned offset)
 
 void Document::textNodeSplit(Text* oldNode)
 {
-    if (!m_ranges.isEmpty()) {
-        HashSet<Range*>::const_iterator end = m_ranges.end();
-        for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
-            (*it)->textNodeSplit(oldNode);
-    }
+    for (auto* range : m_ranges)
+        range->textNodeSplit(oldNode);
 
     // FIXME: This should update markers for spelling and grammar checking.
 }
@@ -3928,7 +3920,7 @@ EventListener* Document::getWindowAttributeEventListener(const AtomicString& eve
 
 void Document::dispatchWindowEvent(PassRefPtr<Event> event,  PassRefPtr<EventTarget> target)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     if (!m_domWindow)
         return;
     m_domWindow->dispatchEvent(event, target);
@@ -3936,7 +3928,7 @@ void Document::dispatchWindowEvent(PassRefPtr<Event> event,  PassRefPtr<EventTar
 
 void Document::dispatchWindowLoadEvent()
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     if (!m_domWindow)
         return;
     m_domWindow->dispatchLoadEvent();
@@ -3969,6 +3961,22 @@ RefPtr<Event> Document::createEvent(const String& eventType, ExceptionCode& ec)
 
     ec = NOT_SUPPORTED_ERR;
     return nullptr;
+}
+
+bool Document::hasListenerTypeForEventType(PlatformEvent::Type eventType) const
+{
+    switch (eventType) {
+    case PlatformEvent::MouseForceChanged:
+        return m_listenerTypes & Document::FORCECHANGED_LISTENER;
+    case PlatformEvent::MouseForceDown:
+        return m_listenerTypes & Document::FORCEDOWN_LISTENER;
+    case PlatformEvent::MouseForceUp:
+        return m_listenerTypes & Document::FORCEUP_LISTENER;
+    case PlatformEvent::MouseScroll:
+        return m_listenerTypes & Document::SCROLL_LISTENER;
+    default:
+        return false;
+    }
 }
 
 void Document::addListenerTypeIfNeeded(const AtomicString& eventType)
@@ -4007,10 +4015,6 @@ void Document::addListenerTypeIfNeeded(const AtomicString& eventType)
         addListenerType(FORCEDOWN_LISTENER);
     else if (eventType == eventNames().webkitmouseforceupEvent)
         addListenerType(FORCEUP_LISTENER);
-    else if (eventType == eventNames().webkitmouseforceclickEvent)
-        addListenerType(FORCECLICK_LISTENER);
-    else if (eventType == eventNames().webkitmouseforcecancelledEvent)
-        addListenerType(FORCECANCELLED_LISTENER);
 }
 
 CSSStyleDeclaration* Document::getOverrideStyle(Element*, const String&)
@@ -4376,9 +4380,8 @@ void Document::documentWillSuspendForPageCache()
 {
     documentWillBecomeInactive();
 
-    HashSet<Element*>::iterator end = m_documentSuspensionCallbackElements.end();
-    for (HashSet<Element*>::iterator i = m_documentSuspensionCallbackElements.begin(); i != end; ++i)
-        (*i)->documentWillSuspendForPageCache();
+    for (auto* element : m_documentSuspensionCallbackElements)
+        element->documentWillSuspendForPageCache();
 
 #ifndef NDEBUG
     // Clear the update flag to be able to check if the viewport arguments update
@@ -4396,9 +4399,8 @@ void Document::documentDidResumeFromPageCache()
 {
     Vector<Element*> elements;
     copyToVector(m_documentSuspensionCallbackElements, elements);
-    Vector<Element*>::iterator end = elements.end();
-    for (Vector<Element*>::iterator i = elements.begin(); i != end; ++i)
-        (*i)->documentDidResumeFromPageCache();
+    for (auto* element : elements)
+        element->documentDidResumeFromPageCache();
 
     if (renderView())
         renderView()->setIsInWindow(true);
@@ -4422,9 +4424,8 @@ void Document::unregisterForPageCacheSuspensionCallbacks(Element* e)
 
 void Document::mediaVolumeDidChange() 
 {
-    HashSet<Element*>::iterator end = m_mediaVolumeCallbackElements.end();
-    for (HashSet<Element*>::iterator i = m_mediaVolumeCallbackElements.begin(); i != end; ++i)
-        (*i)->mediaVolumeDidChange();
+    for (auto* element : m_mediaVolumeCallbackElements)
+        element->mediaVolumeDidChange();
 }
 
 void Document::registerForMediaVolumeCallbacks(Element* e)
@@ -4445,9 +4446,8 @@ void Document::storageBlockingStateDidChange()
 
 void Document::privateBrowsingStateDidChange() 
 {
-    HashSet<Element*>::iterator end = m_privateBrowsingStateChangedElements.end();
-    for (HashSet<Element*>::iterator it = m_privateBrowsingStateChangedElements.begin(); it != end; ++it)
-        (*it)->privateBrowsingStateDidChange();
+    for (auto* element : m_privateBrowsingStateChangedElements)
+        element->privateBrowsingStateDidChange();
 }
 
 void Document::registerForPrivateBrowsingStateChangedCallbacks(Element* e)
@@ -4476,9 +4476,8 @@ void Document::unregisterForCaptionPreferencesChangedCallbacks(Element* e)
 
 void Document::captionPreferencesChanged()
 {
-    HashSet<Element*>::iterator end = m_captionPreferencesChangedElements.end();
-    for (HashSet<Element*>::iterator it = m_captionPreferencesChangedElements.begin(); it != end; ++it)
-        (*it)->captionPreferencesChanged();
+    for (auto* element : m_captionPreferencesChangedElements)
+        element->captionPreferencesChanged();
 }
 #endif
 
@@ -4580,7 +4579,6 @@ void Document::applyXSLTransform(ProcessingInstruction* pi)
     // FIXME: If the transform failed we should probably report an error (like Mozilla does).
     Frame* ownerFrame = frame();
     processor->createDocumentFromSource(newSource, resultEncoding, resultMIMEType, this, ownerFrame);
-    InspectorInstrumentation::frameDocumentUpdated(ownerFrame);
 }
 
 void Document::setTransformSource(std::unique_ptr<TransformSource> source)
@@ -5024,8 +5022,8 @@ void Document::addAutoSizingNode(Node* node, float candidateSize)
 void Document::validateAutoSizingNodes()
 {
     Vector<TextAutoSizingKey> nodesForRemoval;
-    for (auto it = m_textAutoSizedNodes.begin(), end = m_textAutoSizedNodes.end(); it != end; ++it) {
-        RefPtr<TextAutoSizingValue> value = it->value;
+    for (auto& keyValuePair : m_textAutoSizedNodes) {
+        TextAutoSizingValue* value = keyValuePair.value.get();
         // Update all the nodes in the collection to reflect the new
         // candidate size.
         if (!value)
@@ -5033,17 +5031,15 @@ void Document::validateAutoSizingNodes()
 
         value->adjustNodeSizes();
         if (!value->numNodes())
-            nodesForRemoval.append(it->key);
+            nodesForRemoval.append(keyValuePair.key);
     }
-    unsigned count = nodesForRemoval.size();
-    for (unsigned i = 0; i < count; i++)
-        m_textAutoSizedNodes.remove(nodesForRemoval[i]);
+    for (auto& key : nodesForRemoval)
+        m_textAutoSizedNodes.remove(key);
 }
     
 void Document::resetAutoSizingNodes()
 {
-    for (auto it = m_textAutoSizedNodes.begin(), end = m_textAutoSizedNodes.end(); it != end; ++it) {
-        RefPtr<TextAutoSizingValue> value = it->value;
+    for (auto& value : m_textAutoSizedNodes.values()) {
         if (value)
             value->reset();
     }
@@ -5457,9 +5453,9 @@ void Document::webkitExitFullscreen()
         
     // 4. For each descendant in descendants, empty descendant's fullscreen element stack, and queue a
     // task to fire an event named fullscreenchange with its bubbles attribute set to true on descendant.
-    for (Deque<RefPtr<Document>>::iterator i = descendants.begin(); i != descendants.end(); ++i) {
-        (*i)->clearFullscreenElementStack();
-        addDocumentToFullScreenChangeEventQueue(i->get());
+    for (auto& document : descendants) {
+        document->clearFullscreenElementStack();
+        addDocumentToFullScreenChangeEventQueue(document.get());
     }
 
     // 5. While doc is not null, run these substeps:
@@ -6109,17 +6105,17 @@ Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTar
     Region targetRegion;
     bool insideFixedPosition = false;
 
-    for (auto it : *targets) {
+    for (auto& keyValuePair : *targets) {
         LayoutRect rootRelativeBounds;
 
-        if (is<Document>(it.key)) {
-            Document* document = downcast<Document>(it.key);
+        if (is<Document>(keyValuePair.key)) {
+            Document* document = downcast<Document>(keyValuePair.key);
             if (document == this)
                 rootRelativeBounds = absoluteEventHandlerBounds(insideFixedPosition);
             else if (Element* element = document->ownerElement())
                 rootRelativeBounds = element->absoluteEventHandlerBounds(insideFixedPosition);
-        } else if (is<Element>(it.key)) {
-            Element* element = downcast<Element>(it.key);
+        } else if (is<Element>(keyValuePair.key)) {
+            Element* element = downcast<Element>(keyValuePair.key);
             rootRelativeBounds = element->absoluteEventHandlerBounds(insideFixedPosition);
         }
         
@@ -6133,6 +6129,16 @@ Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTar
 void Document::updateLastHandledUserGestureTimestamp()
 {
     m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
+}
+
+void Document::startTrackingStyleRecalcs()
+{
+    m_styleRecalcCount = 0;
+}
+
+unsigned Document::styleRecalcCount() const
+{
+    return m_styleRecalcCount;
 }
 
 DocumentLoader* Document::loader() const
@@ -6522,72 +6528,96 @@ void Document::setInputCursor(PassRefPtr<InputCursor> cursor)
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-void Document::showPlaybackTargetPicker(const HTMLMediaElement& element)
+static uint64_t nextPlaybackTargetClientContextId()
+{
+    static uint64_t contextId = 0;
+    return ++contextId;
+}
+
+void Document::addPlaybackTargetPickerClient(MediaPlaybackTargetClient& client)
 {
     Page* page = this->page();
     if (!page)
         return;
 
-    page->showPlaybackTargetPicker(view()->lastKnownMousePosition(), is<HTMLVideoElement>(element));
+    ASSERT(!m_clientToIDMap.contains(&client));
+
+    uint64_t contextId = nextPlaybackTargetClientContextId();
+    m_clientToIDMap.add(&client, contextId);
+    m_idToClientMap.add(contextId, &client);
+    page->addPlaybackTargetPickerClient(contextId);
 }
 
-void Document::addPlaybackTargetPickerClient(MediaPlaybackTargetPickerClient& client)
+void Document::removePlaybackTargetPickerClient(MediaPlaybackTargetClient& client)
+{
+    auto it = m_clientToIDMap.find(&client);
+    if (it == m_clientToIDMap.end())
+        return;
+
+    uint64_t clientId = it->value;
+    m_idToClientMap.remove(clientId);
+    m_clientToIDMap.remove(it);
+
+    Page* page = this->page();
+    if (!page)
+        return;
+    page->removePlaybackTargetPickerClient(clientId);
+}
+
+void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool isVideo)
 {
     Page* page = this->page();
     if (!page)
         return;
 
-    m_playbackTargetClients.add(&client);
+    auto it = m_clientToIDMap.find(&client);
+    ASSERT(it != m_clientToIDMap.end());
+    if (it == m_clientToIDMap.end())
+        return;
 
-    RefPtr<MediaPlaybackTarget> target = page->playbackTarget();
-    if (target)
-        client.didChoosePlaybackTarget(*target);
-    client.externalOutputDeviceAvailableDidChange(page->hasWirelessPlaybackTarget());
+    page->showPlaybackTargetPicker(it->value, view()->lastKnownMousePosition(), isVideo);
 }
 
-void Document::removePlaybackTargetPickerClient(MediaPlaybackTargetPickerClient& client)
-{
-    m_playbackTargetClients.remove(&client);
-    configurePlaybackTargetMonitoring();
-}
-
-void Document::configurePlaybackTargetMonitoring()
+void Document::playbackTargetPickerClientStateDidChange(MediaPlaybackTargetClient& client, MediaProducer::MediaStateFlags state)
 {
     Page* page = this->page();
     if (!page)
         return;
 
-    page->configurePlaybackTargetMonitoring();
-}
-
-bool Document::requiresPlaybackTargetRouteMonitoring()
-{
-    for (auto* client : m_playbackTargetClients) {
-        if (client->requiresPlaybackTargetRouteMonitoring()) {
-            return true;
-            break;
-        }
-    }
-
-    return false;
-}
-
-void Document::playbackTargetAvailabilityDidChange(bool available)
-{
-    if (m_playbackTargetsAvailable == available)
+    auto it = m_clientToIDMap.find(&client);
+    ASSERT(it != m_clientToIDMap.end());
+    if (it == m_clientToIDMap.end())
         return;
-    m_playbackTargetsAvailable = available;
 
-    for (auto* client : m_playbackTargetClients)
-        client->externalOutputDeviceAvailableDidChange(available);
+    page->playbackTargetPickerClientStateDidChange(it->value, state);
 }
 
-void Document::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& device)
+void Document::playbackTargetAvailabilityDidChange(uint64_t clientId, bool available)
 {
-    for (auto* client : m_playbackTargetClients)
-        client->didChoosePlaybackTarget(device.copyRef());
+    auto it = m_idToClientMap.find(clientId);
+    if (it == m_idToClientMap.end())
+        return;
+
+    it->value->externalOutputDeviceAvailableDidChange(available);
 }
 
-#endif
+void Document::setPlaybackTarget(uint64_t clientId, Ref<MediaPlaybackTarget>&& target)
+{
+    auto it = m_idToClientMap.find(clientId);
+    if (it == m_idToClientMap.end())
+        return;
+
+    it->value->setPlaybackTarget(target.copyRef());
+}
+
+void Document::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
+{
+    auto it = m_idToClientMap.find(clientId);
+    if (it == m_idToClientMap.end())
+        return;
+
+    it->value->setShouldPlayToPlaybackTarget(shouldPlay);
+}
+#endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 } // namespace WebCore

@@ -73,6 +73,11 @@ public:
         return m_growthLimit == infinity;
     }
 
+    bool infiniteGrowthPotential() const
+    {
+        return growthLimitIsInfinite() || m_infinitelyGrowable;
+    }
+
     const LayoutUnit& growthLimitIfNotInfinite() const
     {
         ASSERT(isGrowthLimitBiggerThanBaseSize());
@@ -88,6 +93,13 @@ public:
 
     LayoutUnit& tempSize() { return m_tempSize; }
 
+    bool infinitelyGrowable() const { return m_infinitelyGrowable; }
+
+    void setInfinitelyGrowable(bool infinitelyGrowable)
+    {
+        m_infinitelyGrowable = infinitelyGrowable;
+    }
+
 private:
     bool isGrowthLimitBiggerThanBaseSize() const { return growthLimitIsInfinite() || m_growthLimit >= m_baseSize; }
 
@@ -101,6 +113,7 @@ private:
     LayoutUnit m_growthLimit { 0 };
     LayoutUnit m_plannedSize { 0 };
     LayoutUnit m_tempSize { 0 };
+    bool m_infinitelyGrowable { false };
 };
 
 struct GridTrackForNormalization {
@@ -140,7 +153,7 @@ public:
         unsigned& varyingTrackIndex = (m_direction == ForColumns) ? m_rowIndex : m_columnIndex;
         const unsigned endOfVaryingTrackIndex = (m_direction == ForColumns) ? m_grid.size() : m_grid[0].size();
         for (; varyingTrackIndex < endOfVaryingTrackIndex; ++varyingTrackIndex) {
-            const Vector<RenderBox*>& children = m_grid[m_rowIndex][m_columnIndex];
+            const auto& children = m_grid[m_rowIndex][m_columnIndex];
             if (m_childIndex < children.size())
                 return children[m_childIndex++];
 
@@ -158,7 +171,7 @@ public:
         // This adds a O(N^2) behavior that shouldn't be a big deal as we expect spanning areas to be small.
         for (unsigned row = m_rowIndex; row < maxRows; ++row) {
             for (unsigned column = m_columnIndex; column < maxColumns; ++column) {
-                const Vector<RenderBox*>& children = m_grid[row][column];
+                auto& children = m_grid[row][column];
                 if (!children.isEmpty())
                     return false;
             }
@@ -342,6 +355,7 @@ void RenderGrid::computeUsedBreadthOfGridTracks(GridTrackSizingDirection directi
 
         track.setBaseSize(computeUsedBreadthOfMinLength(direction, minTrackBreadth));
         track.setGrowthLimit(computeUsedBreadthOfMaxLength(direction, maxTrackBreadth, track.baseSize()));
+        track.setInfinitelyGrowable(false);
 
         if (trackSize.isContentSized())
             sizingData.contentSizedTracksIndex.append(i);
@@ -372,7 +386,7 @@ void RenderGrid::computeUsedBreadthOfGridTracks(GridTrackSizingDirection directi
             tracksForDistribution[i]->setPlannedSize(tracksForDistribution[i]->baseSize());
         }
 
-        distributeSpaceToTracks<DistributeSpaceToBaseSizes>(tracksForDistribution, nullptr, availableLogicalSpace);
+        distributeSpaceToTracks<MaximizeTracks>(tracksForDistribution, nullptr, availableLogicalSpace);
 
         for (auto* track : tracksForDistribution)
             track->setBaseSize(track->plannedSize());
@@ -504,35 +518,44 @@ double RenderGrid::computeNormalizedFractionBreadth(Vector<GridTrack>& tracks, c
     return availableLogicalSpaceIgnoringFractionTracks / accumulatedFractions;
 }
 
+bool RenderGrid::hasDefiniteLogicalSize(GridTrackSizingDirection direction) const
+{
+    return (direction == ForRows) ? hasDefiniteLogicalHeight() : hasDefiniteLogicalWidth();
+}
+
 GridTrackSize RenderGrid::gridTrackSize(GridTrackSizingDirection direction, unsigned i) const
 {
     bool isForColumns = (direction == ForColumns);
     auto& trackStyles =  isForColumns ? style().gridColumns() : style().gridRows();
     auto& trackSize = (i >= trackStyles.size()) ? (isForColumns ? style().gridAutoColumns() : style().gridAutoRows()) : trackStyles[i];
 
-    // If the logical width/height of the grid container is indefinite, percentage values are treated as <auto> (or in
-    // the case of minmax() as min-content for the first position and max-content for the second).
-    Length logicalSize = isForColumns ? style().logicalWidth() : style().logicalHeight();
-    if (logicalSize.isIntrinsicOrAuto()) {
-        const GridLength& oldMinTrackBreadth = trackSize.minTrackBreadth();
-        const GridLength& oldMaxTrackBreadth = trackSize.maxTrackBreadth();
-        return GridTrackSize(oldMinTrackBreadth.isPercentage() ? Length(MinContent) : oldMinTrackBreadth, oldMaxTrackBreadth.isPercentage() ? Length(MaxContent) : oldMaxTrackBreadth);
+    GridLength minTrackBreadth = trackSize.minTrackBreadth();
+    GridLength maxTrackBreadth = trackSize.maxTrackBreadth();
+
+    if (minTrackBreadth.isPercentage() || maxTrackBreadth.isPercentage()) {
+        if (!hasDefiniteLogicalSize(direction)) {
+            if (minTrackBreadth.isPercentage())
+                minTrackBreadth = Length(MinContent);
+            if (maxTrackBreadth.isPercentage())
+                maxTrackBreadth = Length(MaxContent);
+        }
     }
 
-    return trackSize;
+    return GridTrackSize(minTrackBreadth, maxTrackBreadth);
 }
 
 LayoutUnit RenderGrid::logicalContentHeightForChild(RenderBox& child, Vector<GridTrack>& columnTracks)
 {
     LayoutUnit oldOverrideContainingBlockContentLogicalWidth = child.hasOverrideContainingBlockLogicalWidth() ? child.overrideContainingBlockContentLogicalWidth() : LayoutUnit();
     LayoutUnit overrideContainingBlockContentLogicalWidth = gridAreaBreadthForChild(child, ForColumns, columnTracks);
-    if (child.style().logicalHeight().isPercent() || oldOverrideContainingBlockContentLogicalWidth != overrideContainingBlockContentLogicalWidth)
+    if (child.hasRelativeLogicalHeight() || oldOverrideContainingBlockContentLogicalWidth != overrideContainingBlockContentLogicalWidth)
         child.setNeedsLayout(MarkOnlyThis);
 
     child.setOverrideContainingBlockContentLogicalWidth(overrideContainingBlockContentLogicalWidth);
-    // If |child| has a percentage logical height, we shouldn't let it override its intrinsic height, which is
+    // If |child| has a relative logical height, we shouldn't let it override its intrinsic height, which is
     // what we are interested in here. Thus we need to set the override logical height to -1 (no possible resolution).
-    child.setOverrideContainingBlockContentLogicalHeight(-1);
+    if (child.hasRelativeLogicalHeight())
+        child.setOverrideContainingBlockContentLogicalHeight(-1);
     child.layoutIfNeeded();
     return child.logicalHeight() + child.marginLogicalHeight();
 }
@@ -545,6 +568,11 @@ LayoutUnit RenderGrid::minContentForChild(RenderBox& child, GridTrackSizingDirec
         return 0;
 
     if (direction == ForColumns) {
+        // If |child| has a relative logical width, we shouldn't let it override its intrinsic width, which is
+        // what we are interested in here. Thus we need to set the override logical width to -1 (no possible resolution).
+        if (child.hasRelativeLogicalWidth())
+            child.setOverrideContainingBlockContentLogicalWidth(-1);
+
         // FIXME: It's unclear if we should return the intrinsic width or the preferred width.
         // See http://lists.w3.org/Archives/Public/www-style/2013Jan/0245.html
         return child.minPreferredLogicalWidth() + marginIntrinsicLogicalWidthForChild(child);
@@ -561,6 +589,11 @@ LayoutUnit RenderGrid::maxContentForChild(RenderBox& child, GridTrackSizingDirec
         return LayoutUnit();
 
     if (direction == ForColumns) {
+        // If |child| has a relative logical width, we shouldn't let it override its intrinsic width, which is
+        // what we are interested in here. Thus we need to set the override logical width to -1 (no possible resolution).
+        if (child.hasRelativeLogicalWidth())
+            child.setOverrideContainingBlockContentLogicalWidth(-1);
+
         // FIXME: It's unclear if we should return the intrinsic width or the preferred width.
         // See http://lists.w3.org/Archives/Public/www-style/2013Jan/0245.html
         return child.maxPreferredLogicalWidth() + marginIntrinsicLogicalWidthForChild(child);
@@ -677,12 +710,11 @@ const LayoutUnit& RenderGrid::trackSizeForTrackSizeComputationPhase(TrackSizeCom
     switch (phase) {
     case ResolveIntrinsicMinimums:
     case ResolveMaxContentMinimums:
+    case MaximizeTracks:
         return track.baseSize();
-        break;
     case ResolveIntrinsicMaximums:
     case ResolveMaxContentMaximums:
         return restriction == AllowInfinity ? track.growthLimit() : track.growthLimitIfNotInfinite();
-        break;
     }
 
     ASSERT_NOT_REACHED();
@@ -700,6 +732,9 @@ bool RenderGrid::shouldProcessTrackForTrackSizeComputationPhase(TrackSizeComputa
         return trackSize.hasMinOrMaxContentMaxTrackBreadth();
     case ResolveMaxContentMaximums:
         return trackSize.hasMaxContentMaxTrackBreadth();
+    case MaximizeTracks:
+        ASSERT_NOT_REACHED();
+        return false;
     }
 
     ASSERT_NOT_REACHED();
@@ -716,10 +751,35 @@ bool RenderGrid::trackShouldGrowBeyondGrowthLimitsForTrackSizeComputationPhase(T
     case ResolveIntrinsicMaximums:
     case ResolveMaxContentMaximums:
         return true;
+    case MaximizeTracks:
+        ASSERT_NOT_REACHED();
+        return false;
     }
 
     ASSERT_NOT_REACHED();
     return false;
+}
+
+void RenderGrid::markAsInfinitelyGrowableForTrackSizeComputationPhase(TrackSizeComputationPhase phase, GridTrack& track)
+{
+    switch (phase) {
+    case ResolveIntrinsicMinimums:
+    case ResolveMaxContentMinimums:
+        return;
+    case ResolveIntrinsicMaximums:
+        if (trackSizeForTrackSizeComputationPhase(phase, track, AllowInfinity) == infinity  && track.plannedSize() != infinity)
+            track.setInfinitelyGrowable(true);
+        return;
+    case ResolveMaxContentMaximums:
+        if (track.infinitelyGrowable())
+            track.setInfinitelyGrowable(false);
+        return;
+    case MaximizeTracks:
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    ASSERT_NOT_REACHED();
 }
 
 void RenderGrid::updateTrackSizeForTrackSizeComputationPhase(TrackSizeComputationPhase phase, GridTrack& track)
@@ -732,6 +792,9 @@ void RenderGrid::updateTrackSizeForTrackSizeComputationPhase(TrackSizeComputatio
     case ResolveIntrinsicMaximums:
     case ResolveMaxContentMaximums:
         track.setGrowthLimit(track.plannedSize());
+        return;
+    case MaximizeTracks:
+        ASSERT_NOT_REACHED();
         return;
     }
 
@@ -747,6 +810,9 @@ LayoutUnit RenderGrid::currentItemSizeForTrackSizeComputationPhase(TrackSizeComp
     case ResolveMaxContentMinimums:
     case ResolveMaxContentMaximums:
         return maxContentForChild(gridItem, direction, columnTracks);
+    case MaximizeTracks:
+        ASSERT_NOT_REACHED();
+        return 0;
     }
 
     ASSERT_NOT_REACHED();
@@ -788,25 +854,14 @@ void RenderGrid::resolveContentBasedTrackSizingFunctionsForItems(GridTrackSizing
             continue;
 
         LayoutUnit extraSpace = currentItemSizeForTrackSizeComputationPhase(phase, gridItemWithSpan.gridItem(), direction, sizingData.columnTracks) - spanningTracksSize;
-        // Specs mandate to floor extraSpace to 0. Instead we directly avoid the function call in those cases as it will be
-        // a noop in terms of track sizing.
-        if (extraSpace > 0) {
-            auto* tracksToGrowBeyondGrowthLimits = sizingData.growBeyondGrowthLimitsTracks.isEmpty() ? &sizingData.filteredTracks : &sizingData.growBeyondGrowthLimitsTracks;
-            switch (phase) {
-            case ResolveIntrinsicMinimums:
-            case ResolveMaxContentMinimums:
-                distributeSpaceToTracks<DistributeSpaceToBaseSizes>(sizingData.filteredTracks, tracksToGrowBeyondGrowthLimits, extraSpace);
-                break;
-            case ResolveIntrinsicMaximums:
-            case ResolveMaxContentMaximums:
-                distributeSpaceToTracks<DistributeSpaceToGrowthLimits>(sizingData.filteredTracks, tracksToGrowBeyondGrowthLimits, extraSpace);
-                break;
-            }
-        }
+        extraSpace = std::max<LayoutUnit>(extraSpace, 0);
+        auto& tracksToGrowBeyondGrowthLimits = sizingData.growBeyondGrowthLimitsTracks.isEmpty() ? sizingData.filteredTracks : sizingData.growBeyondGrowthLimitsTracks;
+        distributeSpaceToTracks<phase>(sizingData.filteredTracks, &tracksToGrowBeyondGrowthLimits, extraSpace);
     }
 
     for (const auto& trackIndex : sizingData.contentSizedTracksIndex) {
         GridTrack& track = tracks[trackIndex];
+        markAsInfinitelyGrowableForTrackSizeComputationPhase(phase, track);
         updateTrackSizeForTrackSizeComputationPhase(phase, track);
     }
 }
@@ -815,44 +870,40 @@ static bool sortByGridTrackGrowthPotential(const GridTrack* track1, const GridTr
 {
     // This check ensures that we respect the irreflexivity property of the strict weak ordering required by std::sort
     // (forall x: NOT x < x).
-    if (track1->growthLimitIsInfinite() && track2->growthLimitIsInfinite())
+    if (track1->infiniteGrowthPotential() && track2->infiniteGrowthPotential())
         return false;
 
-    if (track1->growthLimitIsInfinite() || track2->growthLimitIsInfinite())
-        return track2->growthLimitIsInfinite();
+    if (track1->infiniteGrowthPotential() || track2->infiniteGrowthPotential())
+        return track2->infiniteGrowthPotential();
 
     return (track1->growthLimit() - track1->baseSize()) < (track2->growthLimit() - track2->baseSize());
 }
 
-template <RenderGrid::DistributeSpacePhase phase>
+template <RenderGrid::TrackSizeComputationPhase phase>
 void RenderGrid::distributeSpaceToTracks(Vector<GridTrack*>& tracks, const Vector<GridTrack*>* growBeyondGrowthLimitsTracks, LayoutUnit& availableLogicalSpace)
 {
-    ASSERT(availableLogicalSpace > 0);
-    std::sort(tracks.begin(), tracks.end(), sortByGridTrackGrowthPotential);
+    ASSERT(availableLogicalSpace >= 0);
 
-    unsigned tracksSize = tracks.size();
+    for (auto* track : tracks)
+        track->tempSize() = trackSizeForTrackSizeComputationPhase(phase, *track, ForbidInfinity);
 
-    for (unsigned i = 0; i < tracksSize; ++i) {
-        GridTrack& track = *tracks[i];
-        LayoutUnit trackBreadth;
-        switch (phase) {
-        case DistributeSpaceToBaseSizes:
-            trackBreadth = track.baseSize();
-            break;
-        case DistributeSpaceToGrowthLimits:
-            trackBreadth = track.growthLimitIfNotInfinite();
-            break;
-        }
-        bool infiniteGrowthPotential = track.growthLimitIsInfinite();
-        LayoutUnit trackGrowthPotential = infiniteGrowthPotential ? track.growthLimit() : track.growthLimit() - trackBreadth;
-        track.tempSize() = trackBreadth;
-        // Let's avoid computing availableLogicalSpaceShare as much as possible as it's a hot spot in performance tests.
-        if (trackGrowthPotential > 0 || infiniteGrowthPotential) {
-            LayoutUnit availableLogicalSpaceShare = availableLogicalSpace / (tracksSize - i);
-            LayoutUnit growthShare = infiniteGrowthPotential ? availableLogicalSpaceShare : std::min(availableLogicalSpaceShare, trackGrowthPotential);
-            ASSERT_WITH_MESSAGE(growthShare >= 0, "We should never shrink any grid track or else we can't guarantee we abide by our min-sizing function. We can still have 0 as growthShare if the amount of tracks greatly exceeds the availableLogicalSpace.");
-            track.tempSize() += growthShare;
-            availableLogicalSpace -= growthShare;
+    if (availableLogicalSpace > 0) {
+        std::sort(tracks.begin(), tracks.end(), sortByGridTrackGrowthPotential);
+
+        unsigned tracksSize = tracks.size();
+        for (unsigned i = 0; i < tracksSize; ++i) {
+            GridTrack& track = *tracks[i];
+            const LayoutUnit& trackBreadth = trackSizeForTrackSizeComputationPhase(phase, track, ForbidInfinity);
+            bool infiniteGrowthPotential = track.infiniteGrowthPotential();
+            LayoutUnit trackGrowthPotential = infiniteGrowthPotential ? track.growthLimit() : track.growthLimit() - trackBreadth;
+            // Let's avoid computing availableLogicalSpaceShare as much as possible as it's a hot spot in performance tests.
+            if (trackGrowthPotential > 0 || infiniteGrowthPotential) {
+                LayoutUnit availableLogicalSpaceShare = availableLogicalSpace / (tracksSize - i);
+                LayoutUnit growthShare = infiniteGrowthPotential ? availableLogicalSpaceShare : std::min(availableLogicalSpaceShare, trackGrowthPotential);
+                ASSERT_WITH_MESSAGE(growthShare >= 0, "We should never shrink any grid track or else we can't guarantee we abide by our min-sizing function. We can still have 0 as growthShare if the amount of tracks greatly exceeds the availableLogicalSpace.");
+                track.tempSize() += growthShare;
+                availableLogicalSpace -= growthShare;
+            }
         }
     }
 
@@ -867,7 +918,7 @@ void RenderGrid::distributeSpaceToTracks(Vector<GridTrack*>& tracks, const Vecto
     }
 
     for (auto* track : tracks)
-        track->setPlannedSize(std::max(track->plannedSize(), track->tempSize()));
+        track->setPlannedSize(track->plannedSize() == infinity ? track->tempSize() : std::max(track->plannedSize(), track->tempSize()));
 }
 
 #ifndef NDEBUG
