@@ -255,9 +255,11 @@ GLContext* ThreadedCompositor::glContext()
         return m_context.get();
 
     RELEASE_ASSERT(WaylandDisplay::instance());
-    m_waylandSurface = WaylandDisplay::instance()->createSurface(IntSize(800, 600));
+
+    m_waylandSurface = WaylandDisplay::instance()->createSurface(IntSize(viewportController()->visibleContentsRect().size()));
     if (!m_waylandSurface)
-        return 0;
+        return nullptr;
+
     WaylandDisplay::instance()->registerSurface(m_waylandSurface->surface());
     setNativeSurfaceHandleForCompositing(0);
 
