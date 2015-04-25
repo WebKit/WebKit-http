@@ -185,11 +185,7 @@ GLContext::GLContext()
 
 std::unique_ptr<GLContext> GLContext::createOffscreenContext(GLContext* sharingContext)
 {
-#if PLATFORM(WAYLAND)
-    return WaylandDisplay::instance()->createOffscreenGLContext(sharingContext);
-#else
     return createContextForWindow(0, sharingContext);
-#endif
 }
 
 GLContext::~GLContext()
