@@ -298,6 +298,7 @@ void DrawingAreaProxyImpl::enterAcceleratedCompositingMode(const LayerTreeContex
     m_backingStore = nullptr;
     m_layerTreeContext = layerTreeContext;
     m_webPageProxy.enterAcceleratedCompositingMode(layerTreeContext);
+    backingStoreStateDidChange(DoNotRespondImmediately);
 }
 
 #if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK)
