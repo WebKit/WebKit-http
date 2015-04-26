@@ -32,8 +32,6 @@
 #include <String.h>
 #include <Referenceable.h>
 
-#include "wtf/PassOwnPtr.h"
-
 class BUrlContext;
 class BUrlRequest;
 

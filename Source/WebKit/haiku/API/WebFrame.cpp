@@ -75,7 +75,7 @@ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame,
         // No parent, we are creating the main BWebFrame.
         // mainframe is already created in WebCore::Page, just use it.
         fData->frame = &webPage->page()->mainFrame();
-        fData->loaderClient = adoptPtr(static_cast<FrameLoaderClientHaiku*>(
+        fData->loaderClient = std::unique_ptr<FrameLoaderClientHaiku>(static_cast<FrameLoaderClientHaiku*>(
             &fData->frame->loader().client()));
         fData->loaderClient->setFrame(this);
 
@@ -94,10 +94,10 @@ BWebFrame::~BWebFrame()
 
 bool
 WebFramePrivate::Init(WebCore::Page* page, BWebFrame* frame,
-    PassOwnPtr<WebCore::FrameLoaderClientHaiku> frameLoaderClient)
+    std::unique_ptr<WebCore::FrameLoaderClientHaiku> frameLoaderClient)
 {
     if(!this->frame) {
-        loaderClient = frameLoaderClient;
+        loaderClient = std::move(frameLoaderClient);
         loaderClient->setFrame(frame);
         this->page = page;
         return true;
@@ -435,7 +435,7 @@ BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
         return nullptr;
 
     if (!data->Init(fData->page, frame,
-            adoptPtr(new WebCore::FrameLoaderClientHaiku(page)))) {
+            std::make_unique<WebCore::FrameLoaderClientHaiku>(page))) {
         delete frame;
         return nullptr;
     }

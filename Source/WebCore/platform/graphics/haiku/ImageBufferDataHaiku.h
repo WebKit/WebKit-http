@@ -33,7 +33,6 @@
 #include <Bitmap.h>
 #include <View.h>
 
-#include <wtf/OwnPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {

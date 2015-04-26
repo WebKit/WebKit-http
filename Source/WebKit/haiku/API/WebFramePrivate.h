@@ -52,7 +52,7 @@ public:
     {}
 
     bool Init(WebCore::Page* page, BWebFrame* frame,
-        PassOwnPtr<WebCore::FrameLoaderClientHaiku> frameLoaderClient);
+        std::unique_ptr<WebCore::FrameLoaderClientHaiku> frameLoaderClient);
 
     
     WTF::String name;
@@ -66,7 +66,7 @@ public:
     // references around. (FrameLoader and Frame used to be one class, they
     // can be considered as one object as far as object life-time goes.)
     WebCore::Frame* frame;
-    OwnPtr<WebCore::FrameLoaderClientHaiku> loaderClient;
+    std::unique_ptr<WebCore::FrameLoaderClientHaiku> loaderClient;
 };
 
 #endif // WebFramePrivate_h

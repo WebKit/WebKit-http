@@ -55,7 +55,6 @@
 #include "WorkQueue.h"
 
 #include <wtf/Assertions.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 

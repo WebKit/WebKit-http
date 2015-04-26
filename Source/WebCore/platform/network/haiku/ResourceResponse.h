@@ -43,13 +43,13 @@ public:
     }
 
     void setSuggestedFilename(String name) { m_resourceName = name;}
-    String platformSuggestedFilename() const { return m_resourceName; }
 
 private:
     friend class ResourceResponseBase;
 
-    PassOwnPtr<CrossThreadResourceResponseData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceResponseData> data) const { return data; }
-    void doPlatformAdopt(PassOwnPtr<CrossThreadResourceResponseData>) { }
+    std::unique_ptr<CrossThreadResourceResponseData> doPlatformCopyData(std::unique_ptr<CrossThreadResourceResponseData> data) const { return data; }
+    void doPlatformAdopt(std::unique_ptr<CrossThreadResourceResponseData>) { }
+    String platformSuggestedFilename() const { return m_resourceName; }
 
     String m_resourceName;
 };

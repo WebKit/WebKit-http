@@ -39,7 +39,6 @@ namespace WebCore {
 class DOMWrapperWorld;
 class Frame;
 class MessagePortChannel;
-typedef Vector<OwnPtr<MessagePortChannel>, 1> MessagePortChannelArray;
 }
 
 class BBitmap;

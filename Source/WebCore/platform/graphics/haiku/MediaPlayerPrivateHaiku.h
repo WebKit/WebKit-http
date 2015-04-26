@@ -94,7 +94,6 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
             const media_raw_audio_format&);
 
         // engine support
-        static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
         static void getSupportedTypes(HashSet<String>& types);
         static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
