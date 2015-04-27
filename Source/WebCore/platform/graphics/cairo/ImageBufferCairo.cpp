@@ -98,7 +98,8 @@ void ImageBufferData::swapBuffers()
 
     GLContext* previousActiveContext = GLContext::getCurrent();
     cairo_surface_flush(m_surface.get());
-    previousActiveContext->makeContextCurrent();
+    if (previousActiveContext)
+        previousActiveContext->makeContextCurrent();
 }
 #endif
 
