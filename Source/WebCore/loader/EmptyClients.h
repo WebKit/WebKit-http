@@ -132,7 +132,7 @@ public:
     virtual void invalidateContentsAndRootView(const IntRect&) override { }
     virtual void invalidateContentsForSlowScroll(const IntRect&) override { }
     virtual void scroll(const IntSize&, const IntRect&, const IntRect&) override { }
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     virtual void delegatedScrollRequested(const IntPoint&) { }
 #endif
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
@@ -634,6 +634,8 @@ class EmptyDiagnosticLoggingClient final : public DiagnosticLoggingClient {
     virtual void logDiagnosticMessage(const String&, const String&, ShouldSample) override { }
     virtual void logDiagnosticMessageWithResult(const String&, const String&, DiagnosticLoggingResultType, ShouldSample) override { }
     virtual void logDiagnosticMessageWithValue(const String&, const String&, const String&, ShouldSample) override { }
+
+    virtual void mainFrameDestroyed() override { }
 };
 
 void fillWithEmptyClients(PageConfiguration&);

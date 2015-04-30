@@ -65,6 +65,8 @@ enum LexerFlags {
     LexexFlagsDontBuildKeywords = 4
 };
 
+struct ParsedUnicodeEscapeValue;
+
 template <typename T>
 class Lexer {
     WTF_MAKE_NONCOPYABLE(Lexer);
@@ -99,6 +101,9 @@ public:
     int lastLineNumber() const { return m_lastLineNumber; }
     bool prevTerminator() const { return m_terminator; }
     bool scanRegExp(const Identifier*& pattern, const Identifier*& flags, UChar patternPrefix = 0);
+#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
+    JSTokenType scanTrailingTemplateString(JSToken*);
+#endif
     bool skipRegExp();
 
     // Functions for use after parsing.
@@ -135,42 +140,15 @@ private:
     void append8(const T*, size_t);
     void record16(int);
     void record16(T);
+    void recordUnicodeCodePoint(UChar32);
     void append16(const LChar*, size_t);
     void append16(const UChar* characters, size_t length) { m_buffer16.append(characters, length); }
 
     ALWAYS_INLINE void shift();
     ALWAYS_INLINE bool atEnd() const;
     ALWAYS_INLINE T peek(int offset) const;
-    struct UnicodeHexValue {
-        
-        enum ValueType { ValidHex, IncompleteHex, InvalidHex };
-        
-        explicit UnicodeHexValue(int value)
-            : m_value(value)
-        {
-        }
-        explicit UnicodeHexValue(ValueType type)
-            : m_value(type == IncompleteHex ? -2 : -1)
-        {
-        }
 
-        ValueType valueType() const
-        {
-            if (m_value >= 0)
-                return ValidHex;
-            return m_value == -2 ? IncompleteHex : InvalidHex;
-        }
-        bool isValid() const { return m_value >= 0; }
-        int value() const
-        {
-            ASSERT(m_value >= 0);
-            return m_value;
-        }
-        
-    private:
-        int m_value;
-    };
-    UnicodeHexValue parseFourDigitUnicodeHex();
+    ParsedUnicodeEscapeValue parseUnicodeEscape();
     void shiftLineTerminator();
 
     ALWAYS_INLINE int offsetFromSourcePtr(const T* ptr) const { return ptr - m_codeStart; }
@@ -202,6 +180,12 @@ private:
     };
     template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseString(JSTokenData*, bool strictMode);
     template <bool shouldBuildStrings> NEVER_INLINE StringParseResult parseStringSlowCase(JSTokenData*, bool strictMode);
+
+    enum class EscapeParseMode { Template, String };
+    template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseComplexEscape(EscapeParseMode, bool strictMode, T stringQuoteCharacter);
+#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
+    template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseTemplateLiteral(JSTokenData*);
+#endif
     ALWAYS_INLINE void parseHex(double& returnValue);
     ALWAYS_INLINE bool parseBinary(double& returnValue);
     ALWAYS_INLINE bool parseOctal(double& returnValue);

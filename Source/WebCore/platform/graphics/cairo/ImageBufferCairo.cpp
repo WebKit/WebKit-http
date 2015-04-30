@@ -124,7 +124,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
 
     RefPtr<cairo_t> cr = adoptRef(cairo_create(m_data.m_surface.get()));
     m_data.m_platformContext.setCr(cr.get());
-    m_data.m_context = adoptPtr(new GraphicsContext(&m_data.m_platformContext));
+    m_data.m_context = std::make_unique<GraphicsContext>(&m_data.m_platformContext);
     success = true;
 }
 

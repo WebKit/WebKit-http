@@ -470,6 +470,7 @@ public:
     void selectTextWithGranularityAtPoint(const WebCore::IntPoint, WebCore::TextGranularity, std::function<void (CallbackBase::Error)>);
     void selectPositionAtPoint(const WebCore::IntPoint, std::function<void (CallbackBase::Error)>);
     void selectPositionAtBoundaryWithDirection(const WebCore::IntPoint, WebCore::TextGranularity, WebCore::SelectionDirection, std::function<void (CallbackBase::Error)>);
+    void moveSelectionAtBoundaryWithDirection(WebCore::TextGranularity, WebCore::SelectionDirection, std::function<void(CallbackBase::Error)>);
     void beginSelectionInDirection(WebCore::SelectionDirection, std::function<void (uint64_t, CallbackBase::Error)>);
     void updateSelectionWithExtentPoint(const WebCore::IntPoint, std::function<void (uint64_t, CallbackBase::Error)>);
     void requestAutocorrectionData(const String& textForAutocorrection, std::function<void (const Vector<WebCore::FloatRect>&, const String&, double, uint64_t, CallbackBase::Error)>);
@@ -501,6 +502,7 @@ public:
     void viewportMetaTagWidthDidChange(float width);
     void didFinishDrawingPagesToPDF(const IPC::DataReference&);
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
+    void getLookupContextAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
 #endif
 
     void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
@@ -727,7 +729,7 @@ public:
     void hideFindUI();
     void countStringMatches(const String&, FindOptions, unsigned maxMatchCount);
     void didCountStringMatches(const String&, uint32_t matchCount);
-    void setTextIndicator(const WebCore::TextIndicatorData&, bool fadeOut);
+    void setTextIndicator(const WebCore::TextIndicatorData&, uint64_t /* WebCore::TextIndicatorLifetime */ lifetime = (uint64_t)WebCore::TextIndicatorLifetime::Permanent);
     void setTextIndicatorAnimationProgress(float);
     void clearTextIndicator();
     void didFindString(const String&, uint32_t matchCount, int32_t matchIndex);
@@ -1034,6 +1036,8 @@ public:
 
     void didChangeBackgroundColor();
     void didLayoutForCustomContentProvider();
+
+    void clearWheelEventTestTrigger();
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, const WebPageConfiguration&);

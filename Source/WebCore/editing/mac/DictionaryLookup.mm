@@ -78,18 +78,6 @@ bool shouldUseSelection(const VisiblePosition& position, const VisibleSelection&
     return isPositionInRange(position, selectedRange.get());
 }
 
-PassRefPtr<Range> rangeExpandedAroundPositionByCharacters(const VisiblePosition& position, int numberOfCharactersToExpand)
-{
-    Position start = position.deepEquivalent();
-    Position end = position.deepEquivalent();
-    for (int i = 0; i < numberOfCharactersToExpand; ++i) {
-        start = start.previous(Character);
-        end = end.next(Character);
-    }
-
-    return makeRange(start, end);
-}
-
 PassRefPtr<Range> rangeForDictionaryLookupForSelection(const VisibleSelection& selection, NSDictionary **options)
 {
     RefPtr<Range> selectedRange = selection.toNormalizedRange();
@@ -203,10 +191,8 @@ NSString *dictionaryLookupForPDFSelection(PDFSelection *selection, NSDictionary 
     if (extractedRange.location == NSNotFound)
         return selection.string;
     
-    NSInteger lookupAddedBefore = (extractedRange.location < rangeToPass.location) ? rangeToPass.location - extractedRange.location : 0;
-    NSInteger lookupAddedAfter = 0;
-    if ((extractedRange.location + extractedRange.length) > (rangeToPass.location + originalLength))
-        lookupAddedAfter = (extractedRange.location + extractedRange.length) - (rangeToPass.location + originalLength);
+    NSInteger lookupAddedBefore = rangeToPass.location - extractedRange.location;
+    NSInteger lookupAddedAfter = (extractedRange.location + extractedRange.length) - (rangeToPass.location + originalLength);
     
     [selection extendSelectionAtStart:lookupAddedBefore];
     [selection extendSelectionAtEnd:lookupAddedAfter];

@@ -89,7 +89,7 @@ CompositeAnimation& AnimationControllerPrivate::ensureCompositeAnimation(RenderE
 {
     auto result = m_compositeAnimations.add(&renderer, nullptr);
     if (result.isNewEntry) {
-        result.iterator->value = CompositeAnimation::create(this);
+        result.iterator->value = CompositeAnimation::create(*this);
         renderer.setIsCSSAnimating(true);
     }
 
@@ -487,7 +487,7 @@ void AnimationControllerPrivate::addToAnimationsWaitingForStartTimeResponse(Anim
     
     if (willGetResponse)
         m_waitingForAsyncStartNotification = true;
-    
+
     m_animationsWaitingForStartTimeResponse.add(animation);
 }
 
@@ -514,15 +514,33 @@ void AnimationControllerPrivate::animationWillBeRemoved(AnimationBase* animation
 {
     removeFromAnimationsWaitingForStyle(animation);
     removeFromAnimationsWaitingForStartTimeResponse(animation);
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    removeFromAnimationsDependentOnScroll(animation);
+#endif
 }
 
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+void AnimationControllerPrivate::addToAnimationsDependentOnScroll(AnimationBase* animation)
+{
+    m_animationsDependentOnScroll.add(animation);
+}
+
+void AnimationControllerPrivate::removeFromAnimationsDependentOnScroll(AnimationBase* animation)
+{
+    m_animationsDependentOnScroll.remove(animation);
+}
+
 void AnimationControllerPrivate::scrollWasUpdated()
 {
     auto* view = m_frame.view();
-    if (!view)
+    if (!view || !wantsScrollUpdates())
         return;
     m_scrollPosition = view->scrollOffsetForFixedPosition().height().toFloat();
+
+    // FIXME: This is updating all the animations, rather than just the ones
+    // that are dependent on scroll. We to go from our AnimationBase to its CompositeAnimation
+    // so we can execute code similar to updateAnimations.
+    // https://bugs.webkit.org/show_bug.cgi?id=144170
     updateAnimations(CallSetChanged);
 }
 #endif
@@ -550,20 +568,18 @@ void AnimationController::cancelAnimations(RenderElement& renderer)
         element->setNeedsStyleRecalc(SyntheticStyleChange);
 }
 
-Ref<RenderStyle> AnimationController::updateAnimations(RenderElement& renderer, Ref<RenderStyle>&& newStyle)
+bool AnimationController::updateAnimations(RenderElement& renderer, RenderStyle& newStyle, Ref<RenderStyle>& animatedStyle)
 {
-    // Don't do anything if we're in the cache
-    if (renderer.document().inPageCache())
-        return WTF::move(newStyle);
-
     RenderStyle* oldStyle = renderer.hasInitializedStyle() ? &renderer.style() : nullptr;
+    if ((!oldStyle || (!oldStyle->animations() && !oldStyle->transitions())) && (!newStyle.animations() && !newStyle.transitions()))
+        return false;
 
-    if ((!oldStyle || (!oldStyle->animations() && !oldStyle->transitions())) && (!newStyle.get().animations() && !newStyle.get().transitions()))
-        return WTF::move(newStyle);
+    if (renderer.document().inPageCache())
+        return false;
 
     // Don't run transitions when printing.
     if (renderer.view().printing())
-        return WTF::move(newStyle);
+        return false;
 
     // Fetch our current set of implicit animations from a hashtable.  We then compare them
     // against the animations in the style and make sure we're in sync.  If destination values
@@ -573,26 +589,24 @@ Ref<RenderStyle> AnimationController::updateAnimations(RenderElement& renderer, 
     // We don't support anonymous pseudo elements like :first-line or :first-letter.
     ASSERT(renderer.element());
 
-    Ref<RenderStyle> newStyleBeforeAnimation(WTF::move(newStyle));
-
     CompositeAnimation& rendererAnimations = m_data->ensureCompositeAnimation(renderer);
-    auto blendedStyle = rendererAnimations.animate(renderer, oldStyle, newStyleBeforeAnimation);
+    bool animationStateChanged = rendererAnimations.animate(renderer, oldStyle, newStyle, animatedStyle);
 
-    if (renderer.parent() || newStyleBeforeAnimation->animations() || (oldStyle && oldStyle->animations())) {
+    if (renderer.parent() || newStyle.animations() || (oldStyle && oldStyle->animations())) {
         m_data->updateAnimationTimerForRenderer(renderer);
 #if ENABLE(REQUEST_ANIMATION_FRAME)
         renderer.view().frameView().scheduleAnimation();
 #endif
     }
 
-    if (blendedStyle.ptr() != newStyleBeforeAnimation.ptr()) {
+    if (animatedStyle.ptr() != &newStyle) {
         // If the animations/transitions change opacity or transform, we need to update
         // the style to impose the stacking rules. Note that this is also
         // done in StyleResolver::adjustRenderStyle().
-        if (blendedStyle.get().hasAutoZIndex() && (blendedStyle.get().opacity() < 1.0f || blendedStyle.get().hasTransform()))
-            blendedStyle.get().setZIndex(0);
+        if (animatedStyle.get().hasAutoZIndex() && (animatedStyle.get().opacity() < 1.0f || animatedStyle.get().hasTransform()))
+            animatedStyle.get().setZIndex(0);
     }
-    return blendedStyle;
+    return animationStateChanged;
 }
 
 PassRefPtr<RenderStyle> AnimationController::getAnimatedStyleForRenderer(RenderElement& renderer)
@@ -714,6 +728,11 @@ bool AnimationController::supportsAcceleratedAnimationOfProperty(CSSPropertyID p
 }
 
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+bool AnimationController::wantsScrollUpdates() const
+{
+    return m_data->wantsScrollUpdates();
+}
+
 void AnimationController::scrollWasUpdated()
 {
     m_data->scrollWasUpdated();

@@ -82,7 +82,7 @@ WebInspector.ContentViewContainer.prototype = {
             currentContentView.updateLayout();
     },
 
-    contentViewForRepresentedObject: function(representedObject, onlyExisting)
+    contentViewForRepresentedObject: function(representedObject, onlyExisting, extraArguments)
     {
         console.assert(representedObject);
         if (!representedObject)
@@ -107,13 +107,12 @@ WebInspector.ContentViewContainer.prototype = {
         if (onlyExisting)
             return null;
 
-        try {
-            // No existing content view found, make a new one.
-            contentView = new WebInspector.ContentView(representedObject);
-        } catch (e) {
-            console.error(e);
+        // No existing content view found, make a new one.
+        contentView = new WebInspector.ContentView(representedObject, extraArguments);
+
+        console.assert(contentView, "Unknown representedObject", representedObject);
+        if (!contentView)
             return null;
-        }
 
         // Remember this content view for future calls.
         if (!representedObject.__contentViews)
@@ -123,9 +122,9 @@ WebInspector.ContentViewContainer.prototype = {
         return contentView;
     },
 
-    showContentViewForRepresentedObject: function(representedObject)
+    showContentViewForRepresentedObject: function(representedObject, extraArguments)
     {
-        var contentView = this.contentViewForRepresentedObject(representedObject);
+        var contentView = this.contentViewForRepresentedObject(representedObject, false, extraArguments);
         if (!contentView)
             return null;
 
@@ -308,6 +307,62 @@ WebInspector.ContentViewContainer.prototype = {
         }
     },
 
+    closeContentView: function(contentViewToClose)
+    {
+        if (!this._backForwardList.length) {
+            console.assert(this._currentIndex === -1);
+            return;
+        }
+
+        // Do a check to see if all the content views are instances of this prototype.
+        // If they all are we can use the quicker closeAllContentViews method.
+        var allSameContentView = true;
+        for (var i = this._backForwardList.length - 1; i >= 0; --i) {
+            if (this._backForwardList[i].contentView !== contentViewToClose) {
+                allSameContentView = false;
+                break;
+            }
+        }
+
+        if (allSameContentView) {
+            this.closeAllContentViews();
+            return;
+        }
+
+        var oldCurrentContentView = this.currentContentView;
+
+        var backForwardListDidChange = false;
+        // Hide and disassociate with all the content views that are the same as contentViewToClose.
+        for (var i = this._backForwardList.length - 1; i >= 0; --i) {
+            var entry = this._backForwardList[i];
+            if (entry.contentView !== contentViewToClose)
+                continue;
+
+            if (entry.contentView === oldCurrentContentView)
+                this._hideEntry(entry);
+
+            if (this._currentIndex >= i) {
+                // Decrement the currentIndex since we will remove an item in the back/forward array
+                // that it the current index or comes before it.
+                --this._currentIndex;
+            }
+
+            this._disassociateFromContentView(entry.contentView);
+
+            // Remove the item from the back/forward list.
+            this._backForwardList.splice(i, 1);
+            backForwardListDidChange = true;
+        }
+
+        var currentEntry = this.currentBackForwardEntry;
+        console.assert(currentEntry || (!currentEntry && this._currentIndex === -1));
+
+        if (currentEntry && currentEntry.contentView !== oldCurrentContentView || backForwardListDidChange) {
+            this._showEntry(currentEntry, true);
+            this.dispatchEventToListeners(WebInspector.ContentViewContainer.Event.CurrentContentViewDidChange);
+        }
+    },
+
     closeAllContentViews: function()
     {
         if (!this._backForwardList.length) {
@@ -392,10 +447,8 @@ WebInspector.ContentViewContainer.prototype = {
         contentView._parentContainer = null;
 
         var representedObject = contentView.representedObject;
-        if (!representedObject || !representedObject.__contentViews)
-            return;
-
-        representedObject.__contentViews.remove(contentView);
+        if (representedObject && representedObject.__contentViews)
+            representedObject.__contentViews.remove(contentView);
 
         contentView.closed();
     },

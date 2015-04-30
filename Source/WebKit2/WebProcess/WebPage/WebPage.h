@@ -146,6 +146,7 @@ namespace WebKit {
 class DrawingArea;
 class InjectedBundleBackForwardList;
 class NotificationPermissionRequestManager;
+class PDFPlugin;
 class PageBanner;
 class PluginView;
 class VisibleContentRectUpdateInfo;
@@ -499,6 +500,7 @@ public:
     void moveSelectionByOffset(int32_t offset, uint64_t callbackID);
     void selectTextWithGranularityAtPoint(const WebCore::IntPoint&, uint32_t granularity, uint64_t callbackID);
     void selectPositionAtBoundaryWithDirection(const WebCore::IntPoint&, uint32_t granularity, uint32_t direction, uint64_t callbackID);
+    void moveSelectionAtBoundaryWithDirection(uint32_t granularity, uint32_t direction, uint64_t callbackID);
     void selectPositionAtPoint(const WebCore::IntPoint&, uint64_t callbackID);
     void beginSelectionInDirection(uint32_t direction, uint64_t callbackID);
     void updateSelectionWithExtentPoint(const WebCore::IntPoint&, uint64_t callbackID);
@@ -525,6 +527,7 @@ public:
     void resetAssistedNodeForFrame(WebFrame*);
     WebCore::IntRect rectForElementAtInteractionLocation();
     void updateSelectionAppearance();
+    void getLookupContextAtPoint(const WebCore::IntPoint, uint64_t callbackID);
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
@@ -548,7 +551,7 @@ public:
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
 
     void pageDidScroll();
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     void pageDidRequestScroll(const WebCore::IntPoint&);
     void setFixedVisibleContentRect(const WebCore::IntRect&);
     void sendViewportAttributesChanged();
@@ -1013,6 +1016,9 @@ private:
     void performDictionaryLookupOfCurrentSelection();
     void performDictionaryLookupForRange(WebCore::Frame*, WebCore::Range&, NSDictionary *options, WebCore::TextIndicatorPresentationTransition);
     DictionaryPopupInfo dictionaryPopupInfoForRange(WebCore::Frame* frame, WebCore::Range& range, NSDictionary **options, WebCore::TextIndicatorPresentationTransition presentationTransition);
+#if ENABLE(PDFKIT_PLUGIN)
+    DictionaryPopupInfo dictionaryPopupInfoForSelectionInPDFPlugin(PDFSelection *, PDFPlugin&, NSDictionary **options, WebCore::TextIndicatorPresentationTransition);
+#endif
 
     void windowAndViewFramesChanged(const WebCore::FloatRect& windowFrameInScreenCoordinates, const WebCore::FloatRect& windowFrameInUnflippedScreenCoordinates, const WebCore::FloatRect& viewFrameInWindowCoordinates, const WebCore::FloatPoint& accessibilityViewCoordinates);
 
@@ -1111,6 +1117,8 @@ private:
     void playbackTargetAvailabilityDidChange(uint64_t, bool);
     void setShouldPlayToPlaybackTarget(uint64_t, bool);
 #endif
+
+    void clearWheelEventTestTrigger();
 
     uint64_t m_pageID;
 

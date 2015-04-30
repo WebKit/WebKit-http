@@ -29,17 +29,17 @@
     background-color: rgb(242, 242, 242);
 }
 
-body.mac-platform.legacy .sidebar {
-    background-color: rgb(227, 231, 235);
-}
-
 .sidebar.collapsed {
     width: 0 !important;
     border: none !important;
 }
 
-body.mac-platform.legacy.window-inactive .sidebar {
-    background-color: rgb(231, 231, 231);
+.sidebar > .navigation-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    align-content: center;
 }
 
 .sidebar > .panel {
@@ -54,6 +54,10 @@ body.mac-platform.legacy.window-inactive .sidebar {
     overflow: hidden;
 
     z-index: 0; /* Workaround so that scroll bars appear above position:sticky section headers. */
+}
+
+.sidebar.has-navigation-bar > .panel {
+    top: 29px;
 }
 
 .sidebar > .panel.selected {
@@ -86,8 +90,4 @@ body.window-inactive .sidebar.left {
 
 body.window-inactive .sidebar.right {
     border-left-color: rgb(219, 219, 219);
-}
-
-body.mac-platform.legacy .sidebar.right {
-    background-color: rgb(231, 231, 231);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -363,14 +363,14 @@ void WKPageTerminate(WKPageRef pageRef)
 
 WKStringRef WKPageGetSessionHistoryURLValueType()
 {
-    static API::String* sessionHistoryURLValueType = API::String::create("SessionHistoryURL").leakRef();
-    return toAPI(sessionHistoryURLValueType);
+    static API::String& sessionHistoryURLValueType = API::String::create("SessionHistoryURL").leakRef();
+    return toAPI(&sessionHistoryURLValueType);
 }
 
 WKStringRef WKPageGetSessionBackForwardListItemValueType()
 {
-    static API::String* sessionBackForwardListValueType = API::String::create("SessionBackForwardListItem").leakRef();
-    return toAPI(sessionBackForwardListValueType);
+    static API::String& sessionBackForwardListValueType = API::String::create("SessionBackForwardListItem").leakRef();
+    return toAPI(&sessionBackForwardListValueType);
 }
 
 WKTypeRef WKPageCopySessionState(WKPageRef pageRef, void* context, WKPageSessionStateFilterCallback filter)
@@ -1257,15 +1257,15 @@ void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClientBase* 
                 return;
             }
 
-            RefPtr<API::URLRequest> originalRequest = API::URLRequest::create(originalResourceRequest);
-            RefPtr<API::URLRequest> request = API::URLRequest::create(resourceRequest);
+            Ref<API::URLRequest> originalRequest = API::URLRequest::create(originalResourceRequest);
+            Ref<API::URLRequest> request = API::URLRequest::create(resourceRequest);
 
             if (m_client.decidePolicyForNavigationAction_deprecatedForUseWithV0)
-                m_client.decidePolicyForNavigationAction_deprecatedForUseWithV0(toAPI(&page), toAPI(frame), toAPI(navigationActionData.navigationType), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), toAPI(request.get()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
+                m_client.decidePolicyForNavigationAction_deprecatedForUseWithV0(toAPI(&page), toAPI(frame), toAPI(navigationActionData.navigationType), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), toAPI(request.ptr()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
             else if (m_client.decidePolicyForNavigationAction_deprecatedForUseWithV1)
-                m_client.decidePolicyForNavigationAction_deprecatedForUseWithV1(toAPI(&page), toAPI(frame), toAPI(navigationActionData.navigationType), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), toAPI(originatingFrame), toAPI(request.get()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
+                m_client.decidePolicyForNavigationAction_deprecatedForUseWithV1(toAPI(&page), toAPI(frame), toAPI(navigationActionData.navigationType), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), toAPI(originatingFrame), toAPI(request.ptr()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
             else
-                m_client.decidePolicyForNavigationAction(toAPI(&page), toAPI(frame), toAPI(navigationActionData.navigationType), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), toAPI(originatingFrame), toAPI(originalRequest.get()), toAPI(request.get()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
+                m_client.decidePolicyForNavigationAction(toAPI(&page), toAPI(frame), toAPI(navigationActionData.navigationType), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), toAPI(originatingFrame), toAPI(originalRequest.ptr()), toAPI(request.ptr()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
         }
 
         virtual void decidePolicyForNewWindowAction(WebPageProxy& page, WebFrameProxy& frame, const NavigationActionData& navigationActionData, const ResourceRequest& resourceRequest, const String& frameName, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userData) override
@@ -1275,9 +1275,9 @@ void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClientBase* 
                 return;
             }
 
-            RefPtr<API::URLRequest> request = API::URLRequest::create(resourceRequest);
+            Ref<API::URLRequest> request = API::URLRequest::create(resourceRequest);
 
-            m_client.decidePolicyForNewWindowAction(toAPI(&page), toAPI(&frame), toAPI(navigationActionData.navigationType), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), toAPI(request.get()), toAPI(frameName.impl()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
+            m_client.decidePolicyForNewWindowAction(toAPI(&page), toAPI(&frame), toAPI(navigationActionData.navigationType), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), toAPI(request.ptr()), toAPI(frameName.impl()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
         }
 
         virtual void decidePolicyForResponse(WebPageProxy& page, WebFrameProxy& frame, const ResourceResponse& resourceResponse, const ResourceRequest& resourceRequest, bool canShowMIMEType, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userData) override
@@ -1287,13 +1287,13 @@ void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClientBase* 
                 return;
             }
 
-            RefPtr<API::URLResponse> response = API::URLResponse::create(resourceResponse);
-            RefPtr<API::URLRequest> request = API::URLRequest::create(resourceRequest);
+            Ref<API::URLResponse> response = API::URLResponse::create(resourceResponse);
+            Ref<API::URLRequest> request = API::URLRequest::create(resourceRequest);
 
             if (m_client.decidePolicyForResponse_deprecatedForUseWithV0)
-                m_client.decidePolicyForResponse_deprecatedForUseWithV0(toAPI(&page), toAPI(&frame), toAPI(response.get()), toAPI(request.get()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
+                m_client.decidePolicyForResponse_deprecatedForUseWithV0(toAPI(&page), toAPI(&frame), toAPI(response.ptr()), toAPI(request.ptr()), toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
             else
-                m_client.decidePolicyForResponse(toAPI(&page), toAPI(&frame), toAPI(response.get()), toAPI(request.get()), canShowMIMEType, toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
+                m_client.decidePolicyForResponse(toAPI(&page), toAPI(&frame), toAPI(response.ptr()), toAPI(request.ptr()), canShowMIMEType, toAPI(listener.ptr()), toAPI(userData), m_client.base.clientInfo);
         }
 
         virtual void unableToImplementPolicy(WebPageProxy& page, WebFrameProxy& frame, const ResourceError& error, API::Object* userData) override
@@ -1343,13 +1343,13 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             map.set("resizable", API::Boolean::create(windowFeatures.resizable));
             map.set("fullscreen", API::Boolean::create(windowFeatures.fullscreen));
             map.set("dialog", API::Boolean::create(windowFeatures.dialog));
-            RefPtr<API::Dictionary> featuresMap = API::Dictionary::create(WTF::move(map));
+            Ref<API::Dictionary> featuresMap = API::Dictionary::create(WTF::move(map));
 
             if (!m_client.base.version)
-                return adoptRef(toImpl(m_client.createNewPage_deprecatedForUseWithV0(toAPI(page), toAPI(featuresMap.get()), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), m_client.base.clientInfo)));
+                return adoptRef(toImpl(m_client.createNewPage_deprecatedForUseWithV0(toAPI(page), toAPI(featuresMap.ptr()), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), m_client.base.clientInfo)));
 
-            RefPtr<API::URLRequest> request = API::URLRequest::create(resourceRequest);
-            return adoptRef(toImpl(m_client.createNewPage(toAPI(page), toAPI(request.get()), toAPI(featuresMap.get()), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), m_client.base.clientInfo)));
+            Ref<API::URLRequest> request = API::URLRequest::create(resourceRequest);
+            return adoptRef(toImpl(m_client.createNewPage(toAPI(page), toAPI(request.ptr()), toAPI(featuresMap.ptr()), toAPI(navigationActionData.modifiers), toAPI(navigationActionData.mouseButton), m_client.base.clientInfo)));
         }
 
         virtual void showPage(WebPageProxy* page) override
@@ -1954,7 +1954,7 @@ void WKPageRunJavaScriptInMainFrame_b(WKPageRef pageRef, WKStringRef scriptRef, 
 static std::function<void (const String&, WebKit::CallbackBase::Error)> toGenericCallbackFunction(void* context, void (*callback)(WKStringRef, WKErrorRef, void*))
 {
     return [context, callback](const String& returnValue, WebKit::CallbackBase::Error error) {
-        callback(toAPI(API::String::create(returnValue).get()), error != WebKit::CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
+        callback(toAPI(API::String::create(returnValue).ptr()), error != WebKit::CallbackBase::Error::None ? toAPI(API::Error::create().ptr()) : 0, context);
     };
 }
 
@@ -1998,7 +1998,7 @@ void WKPageGetContentsAsMHTMLData(WKPageRef pageRef, bool useBinaryEncoding, voi
 void WKPageForceRepaint(WKPageRef pageRef, void* context, WKPageForceRepaintFunction callback)
 {
     toImpl(pageRef)->forceRepaint(VoidCallback::create([context, callback](WebKit::CallbackBase::Error error) {
-        callback(error == WebKit::CallbackBase::Error::None ? nullptr : toAPI(API::Error::create().get()), context);
+        callback(error == WebKit::CallbackBase::Error::None ? nullptr : toAPI(API::Error::create().ptr()), context);
     }));
 }
 
@@ -2035,7 +2035,7 @@ WKStringRef WKPageCopyStandardUserAgentWithApplicationName(WKStringRef applicati
 void WKPageValidateCommand(WKPageRef pageRef, WKStringRef command, void* context, WKPageValidateCommandCallback callback)
 {
     toImpl(pageRef)->validateCommand(toImpl(command)->string(), [context, callback](const String& commandName, bool isEnabled, int32_t state, WebKit::CallbackBase::Error error) {
-        callback(toAPI(API::String::create(commandName).get()), isEnabled, state, error != WebKit::CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
+        callback(toAPI(API::String::create(commandName).ptr()), isEnabled, state, error != WebKit::CallbackBase::Error::None ? toAPI(API::Error::create().ptr()) : 0, context);
     });
 }
 
@@ -2060,7 +2060,7 @@ void WKPageComputePagesForPrinting(WKPageRef page, WKFrameRef frame, WKPrintInfo
         Vector<WKRect> wkRects(rects.size());
         for (size_t i = 0; i < rects.size(); ++i)
             wkRects[i] = toAPI(rects[i]);
-        callback(wkRects.data(), wkRects.size(), scaleFactor, error != WebKit::CallbackBase::Error::None ? toAPI(API::Error::create().get()) : 0, context);
+        callback(wkRects.data(), wkRects.size(), scaleFactor, error != WebKit::CallbackBase::Error::None ? toAPI(API::Error::create().ptr()) : 0, context);
     }));
 }
 
@@ -2200,6 +2200,12 @@ bool WKPageIsPlayingAudio(WKPageRef page)
 {
     return toImpl(page)->isPlayingAudio();
 }
+
+void WKPageClearWheelEventTestTrigger(WKPageRef pageRef)
+{
+    toImpl(pageRef)->clearWheelEventTestTrigger();
+}
+
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 

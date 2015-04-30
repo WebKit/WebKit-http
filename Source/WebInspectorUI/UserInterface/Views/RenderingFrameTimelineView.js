@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.RenderingFrameTimelineView = function(timeline)
+WebInspector.RenderingFrameTimelineView = function(timeline, extraArguments)
 {
-    WebInspector.TimelineView.call(this, timeline);
+    WebInspector.TimelineView.call(this, timeline, extraArguments);
 
     console.assert(WebInspector.TimelineRecord.Type.RenderingFrame);
 
@@ -40,15 +40,15 @@ WebInspector.RenderingFrameTimelineView = function(timeline)
     columns.startTime.aligned = "right";
 
     columns.layoutTime.title = WebInspector.UIString("Layout");
-    columns.layoutTime.width = "10%";
+    columns.layoutTime.width = "15%";
     columns.layoutTime.aligned = "right";
 
     columns.scriptTime.title = WebInspector.UIString("Script");
-    columns.scriptTime.width = "10%";
+    columns.scriptTime.width = "15%";
     columns.scriptTime.aligned = "right";
 
     columns.otherTime.title = WebInspector.UIString("Other");
-    columns.otherTime.width = "10%";
+    columns.otherTime.width = "15%";
     columns.otherTime.aligned = "right";
 
     columns.totalTime.title = WebInspector.UIString("Total Time");
@@ -157,7 +157,7 @@ WebInspector.RenderingFrameTimelineView.prototype = {
     showContentViewForTreeElement: function(treeElement)
     {
         if (treeElement instanceof WebInspector.ProfileNodeTreeElement && treeElement.profileNode.sourceCodeLocation) {
-            WebInspector.resourceSidebarPanel.showOriginalOrFormattedSourceCodeLocation(treeElement.profileNode.sourceCodeLocation);
+            WebInspector.showOriginalOrFormattedSourceCodeLocation(treeElement.profileNode.sourceCodeLocation);
             return true;
         }
 

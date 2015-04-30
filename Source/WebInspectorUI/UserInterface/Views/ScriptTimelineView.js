@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ScriptTimelineView = function(timeline)
+WebInspector.ScriptTimelineView = function(timeline, extraArguments)
 {
-    WebInspector.TimelineView.call(this, timeline);
+    WebInspector.TimelineView.call(this, timeline, extraArguments);
 
     console.assert(timeline.type === WebInspector.TimelineRecord.Type.Script);
 
@@ -166,7 +166,7 @@ WebInspector.ScriptTimelineView.prototype = {
     showContentViewForTreeElement: function(treeElement)
     {
         if (treeElement instanceof WebInspector.ProfileNodeTreeElement && treeElement.profileNode.sourceCodeLocation) {
-            WebInspector.resourceSidebarPanel.showOriginalOrFormattedSourceCodeLocation(treeElement.profileNode.sourceCodeLocation);
+            WebInspector.showOriginalOrFormattedSourceCodeLocation(treeElement.profileNode.sourceCodeLocation);
             return true;
         }
 
@@ -254,7 +254,7 @@ WebInspector.ScriptTimelineView.prototype = {
 
     _dataGridFiltersDidChange: function(event)
     {
-        WebInspector.timelineSidebarPanel.updateFilter();
+        this.timelineSidebarPanel.updateFilter();
     },
 
     _dataGridNodeSelected: function(event)

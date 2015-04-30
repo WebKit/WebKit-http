@@ -331,6 +331,23 @@ public:
         m_constantsSourceCodeRepresentation.append(sourceCodeRepresentation);
         return result;
     }
+    unsigned addConstant(LinkTimeConstant type)
+    {
+        unsigned result = m_constantRegisters.size();
+        ASSERT(result);
+        unsigned index = static_cast<unsigned>(type);
+        ASSERT(index < LinkTimeConstantCount);
+        m_linkTimeConstants[index] = result;
+        m_constantRegisters.append(WriteBarrier<Unknown>());
+        m_constantsSourceCodeRepresentation.append(SourceCodeRepresentation::Other);
+        return result;
+    }
+    unsigned registerIndexForLinkTimeConstant(LinkTimeConstant type)
+    {
+        unsigned index = static_cast<unsigned>(type);
+        ASSERT(index < LinkTimeConstantCount);
+        return m_linkTimeConstants[index];
+    }
     unsigned addOrFindConstant(JSValue);
     const Vector<WriteBarrier<Unknown>>& constantRegisters() { return m_constantRegisters; }
     const WriteBarrier<Unknown>& constantRegister(int index) const { return m_constantRegisters[index - FirstConstantRegisterIndex]; }
@@ -343,9 +360,6 @@ public:
     void addJumpTarget(unsigned jumpTarget) { m_jumpTargets.append(jumpTarget); }
     unsigned jumpTarget(int index) const { return m_jumpTargets[index]; }
     unsigned lastJumpTarget() const { return m_jumpTargets.last(); }
-
-    void setIsNumericCompareFunction(bool isNumericCompareFunction) { m_isNumericCompareFunction = isNumericCompareFunction; }
-    bool isNumericCompareFunction() const { return m_isNumericCompareFunction; }
 
     bool isBuiltinFunction() const { return m_isBuiltinFunction; }
 
@@ -536,7 +550,6 @@ private:
 
     unsigned m_needsFullScopeChain : 1;
     unsigned m_usesEval : 1;
-    unsigned m_isNumericCompareFunction : 1;
     unsigned m_isStrictMode : 1;
     unsigned m_isConstructor : 1;
     unsigned m_hasCapturedVariables : 1;
@@ -556,6 +569,7 @@ private:
     Vector<Identifier> m_identifiers;
     Vector<WriteBarrier<Unknown>> m_constantRegisters;
     Vector<SourceCodeRepresentation> m_constantsSourceCodeRepresentation;
+    std::array<unsigned, LinkTimeConstantCount> m_linkTimeConstants;
     typedef Vector<WriteBarrier<UnlinkedFunctionExecutable>> FunctionExpressionVector;
     FunctionExpressionVector m_functionDecls;
     FunctionExpressionVector m_functionExprs;

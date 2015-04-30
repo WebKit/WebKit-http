@@ -179,9 +179,9 @@
       },
       "Andres Gomez" : {
          "emails" : [
+            "agomez@igalia.com",
             "tanty0@gmail.com",
-            "agomez@gnome.org",
-            "agomez@igalia.com"
+            "agomez@gnome.org"
          ],
          "expertise" : "WebKitGTK+",
          "nicks" : [
@@ -3358,6 +3358,15 @@
          ],
          "nicks" : [
             "rmondello"
+         ]
+      },
+      "Sungmann Cho" : {
+         "emails" : [
+            "sungmann.cho@navercorp.com",
+            "sungmann.cho@gmail.com"
+         ],
+         "nicks" : [
+            "mann"
          ]
       },
       "Tab Atkins" : {

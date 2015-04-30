@@ -44,6 +44,7 @@
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/CFNetworkSPI.h>
 #import <WebCore/FileSystem.h>
+#import <WebCore/FontCache.h>
 #import <WebCore/FontCascade.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/MemoryCache.h>
@@ -53,35 +54,15 @@
 #import <WebKitSystemInterface.h>
 #import <algorithm>
 #import <dispatch/dispatch.h>
-#import <mach/host_info.h>
-#import <mach/mach.h>
-#import <mach/mach_error.h>
 #import <objc/runtime.h>
 #import <stdio.h>
+#import <wtf/RAMSize.h>
 
 #define ENABLE_MANUAL_WEBPROCESS_SANDBOXING !PLATFORM(IOS)
 
 using namespace WebCore;
 
 namespace WebKit {
-
-static uint64_t memorySize()
-{
-    static host_basic_info_data_t hostInfo;
-
-    static dispatch_once_t once;
-    dispatch_once(&once, ^() {
-        mach_port_t host = mach_host_self();
-        mach_msg_type_number_t count = HOST_BASIC_INFO_COUNT;
-        kern_return_t r = host_info(host, HOST_BASIC_INFO, (host_info_t)&hostInfo, &count);
-        mach_port_deallocate(mach_task_self(), host);
-
-        if (r != KERN_SUCCESS)
-            LOG_ERROR("%s : host_info(%d) : %s.\n", __FUNCTION__, r, mach_error_string(r));
-    });
-
-    return hostInfo.max_mem;
-}
 
 static uint64_t volumeFreeSize(NSString *path)
 {
@@ -95,9 +76,10 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
     if (!nsurlCacheDirectory)
         nsurlCacheDirectory = NSHomeDirectory();
 
+    uint64_t memSize = ramSize() / 1024 / 1024;
+
     // As a fudge factor, use 1000 instead of 1024, in case the reported byte 
     // count doesn't align exactly to a megabyte boundary.
-    uint64_t memSize = memorySize() / 1024 / 1000;
     uint64_t diskFreeSize = volumeFreeSize(nsurlCacheDirectory.get()) / 1024 / 1000;
 
     unsigned cacheTotalCapacity = 0;
@@ -188,6 +170,10 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
             diskCapacity:parameters.nsURLCacheDiskCapacity
             diskPath:parameters.diskCacheDirectory]).get()];
     }
+#endif
+
+#if PLATFORM(MAC)
+    WebCore::FontCache::setFontWhitelist(parameters.fontWhitelist);
 #endif
 
     m_compositingRenderServerPort = WTF::move(parameters.acceleratedCompositingPort);

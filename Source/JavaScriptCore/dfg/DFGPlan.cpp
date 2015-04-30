@@ -35,6 +35,7 @@
 #include "DFGCFGSimplificationPhase.h"
 #include "DFGCPSRethreadingPhase.h"
 #include "DFGCSEPhase.h"
+#include "DFGCleanUpPhase.h"
 #include "DFGConstantFoldingPhase.h"
 #include "DFGCriticalEdgeBreakingPhase.h"
 #include "DFGDCEPhase.h"
@@ -51,12 +52,10 @@
 #include "DFGOSRAvailabilityAnalysisPhase.h"
 #include "DFGOSREntrypointCreationPhase.h"
 #include "DFGObjectAllocationSinkingPhase.h"
-#include "DFGPhantomCanonicalizationPhase.h"
-#include "DFGPhantomRemovalPhase.h"
+#include "DFGPhantomInsertionPhase.h"
 #include "DFGPredictionInjectionPhase.h"
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGPutStackSinkingPhase.h"
-#include "DFGResurrectionForValidationPhase.h"
 #include "DFGSSAConversionPhase.h"
 #include "DFGSSALoweringPhase.h"
 #include "DFGStackLayoutPhase.h"
@@ -317,9 +316,10 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         performTierUpCheckInjection(dfg);
 
         performStoreBarrierElision(dfg);
-        performPhantomRemoval(dfg);
+        performCleanUp(dfg);
         performCPSRethreading(dfg);
         performDCE(dfg);
+        performPhantomInsertion(dfg);
         performStackLayout(dfg);
         performVirtualRegisterAllocation(dfg);
         performWatchpointCollection(dfg);
@@ -342,7 +342,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
             return FailPath;
         }
         
-        performPhantomRemoval(dfg); // Reduce the graph size a bit.
+        performCleanUp(dfg); // Reduce the graph size a bit.
         performCriticalEdgeBreaking(dfg);
         performLoopPreHeaderCreation(dfg);
         performCPSRethreading(dfg);
@@ -357,7 +357,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         performLivenessAnalysis(dfg);
         performCFA(dfg);
         performConstantFolding(dfg);
-        performPhantomCanonicalization(dfg); // Reduce the graph size a lot.
+        performCleanUp(dfg); // Reduce the graph size a lot.
         changed = false;
         changed |= performStrengthReduction(dfg);
         if (Options::enableObjectAllocationSinking()) {
@@ -379,7 +379,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         // then we'd need to do some simple SSA fix-up.
         performLICM(dfg);
         
-        performPhantomCanonicalization(dfg);
+        performCleanUp(dfg);
         performIntegerCheckCombining(dfg);
         performGlobalCSE(dfg);
         
@@ -388,13 +388,11 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         dfg.m_fixpointState = FixpointConverged;
         
         performStoreBarrierElision(dfg);
-        performPhantomCanonicalization(dfg);
         performLivenessAnalysis(dfg);
         performCFA(dfg);
-        if (Options::validateFTLOSRExitLiveness())
-            performResurrectionForValidation(dfg);
         if (Options::enableMovHintRemoval())
             performMovHintRemoval(dfg);
+        performCleanUp(dfg);
         performDCE(dfg); // We rely on this to kill dead code that won't be recognized as dead by LLVM.
         performStackLayout(dfg);
         performLivenessAnalysis(dfg);

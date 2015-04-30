@@ -58,7 +58,6 @@ class Frame;
 class HTMLPlugInElement;
 class MachSendRight;
 class MouseEvent;
-class RenderBoxModelObject;
 }
 
 namespace WebKit {
@@ -89,15 +88,12 @@ public:
     bool sendComplexTextInput(uint64_t pluginComplexTextInputIdentifier, const String& textInput);
     RetainPtr<PDFDocument> pdfDocumentForPrinting() const { return m_plugin->pdfDocumentForPrinting(); }
     NSObject *accessibilityObject() const;
-    String lookupTextAtLocation(const WebCore::FloatPoint&, WebHitTestResult::Data&, PDFSelection**, NSDictionary**) const;
 #endif
 
     WebCore::HTMLPlugInElement* pluginElement() const { return m_pluginElement.get(); }
     const Plugin::Parameters& initialParameters() const { return m_parameters; }
+    Plugin* plugin() const { return m_plugin.get(); }
 
-    // FIXME: Remove this; nobody should have to know about the plug-in view's renderer except the plug-in view itself.
-    WebCore::RenderBoxModelObject* renderer() const;
-    
     void setPageScaleFactor(double scaleFactor, WebCore::IntPoint origin);
     double pageScaleFactor() const;
     bool handlesPageScaleFactor() const;

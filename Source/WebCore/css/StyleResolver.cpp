@@ -168,7 +168,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static const CSSPropertyID lastHighPriorityProperty = CSSPropertyZoom;
+static const CSSPropertyID lastHighPriorityProperty = CSSPropertyFontSynthesis;
 static const CSSPropertyID firstLowPriorityProperty = static_cast<CSSPropertyID>(lastHighPriorityProperty + 1);
 
 class StyleResolver::CascadedProperties {
@@ -1437,10 +1437,8 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
 
     // If the inherited value of justify-items includes the legacy keyword, 'auto'
     // computes to the the inherited value.
-    if (parentStyle.justifyItemsPositionType() == LegacyPosition && style.justifyItems() == ItemPositionAuto) {
+    if (parentStyle.justifyItemsPositionType() == LegacyPosition && style.justifyItemsPosition() == ItemPositionAuto)
         style.setJustifyItems(parentStyle.justifyItems());
-        style.setJustifyItemsPositionType(parentStyle.justifyItemsPositionType());
-    }
 }
 
 bool StyleResolver::checkRegionStyle(Element* regionElement)

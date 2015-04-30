@@ -406,6 +406,20 @@ bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent&)
     return false;
 }
 
+void WebPage::getLookupContextAtPoint(const WebCore::IntPoint point, uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    VisiblePosition position = frame.visiblePositionForPoint(point);
+    String resultString;
+    if (!position.isNull()) {
+        // As context, we are going to use 250 characters of text before and after the point.
+        RefPtr<Range> fullCharacterRange = rangeExpandedAroundPositionByCharacters(position, 250);
+        if (fullCharacterRange)
+            resultString = plainText(fullCharacterRange.get());
+    }
+    send(Messages::WebPageProxy::StringCallback(resultString, callbackID));
+}
+
 NSObject *WebPage::accessibilityObjectForMainFramePlugin()
 {
     if (!m_page)
@@ -1681,6 +1695,20 @@ void WebPage::selectPositionAtBoundaryWithDirection(const WebCore::IntPoint& poi
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
+void WebPage::moveSelectionAtBoundaryWithDirection(uint32_t granularity, uint32_t direction, uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    
+    if (!frame.selection().selection().isNone()) {
+        bool isForward = (direction == DirectionForward || direction == DirectionRight);
+        VisiblePosition position = (isForward) ? frame.selection().selection().visibleEnd() : frame.selection().selection().visibleStart();
+        position = positionOfNextBoundaryOfGranularity(position, static_cast<WebCore::TextGranularity>(granularity), static_cast<SelectionDirection>(direction));
+        if (position.isNotNull())
+            frame.selection().setSelectedRange(Range::create(*frame.document(), position, position).ptr(), isForward? UPSTREAM : DOWNSTREAM, true);
+    }
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
 void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, uint32_t granularity, uint64_t callbackID)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -2786,7 +2814,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     frameView.setScrollVelocity(horizontalVelocity, verticalVelocity, scaleChangeRate, visibleContentRectUpdateInfo.timestamp());
 
     if (m_isInStableState)
-        m_page->mainFrame().view()->setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
+        frameView.setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
 
     if (!visibleContentRectUpdateInfo.isChangingObscuredInsetsInteractively())
         frameView.setCustomSizeForResizeEvent(expandedIntSize(visibleContentRectUpdateInfo.unobscuredRectInScrollViewCoordinates().size()));

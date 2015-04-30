@@ -74,7 +74,11 @@ bool Settings::gAVFoundationEnabled = false;
 #endif
 
 #if PLATFORM(COCOA)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
 bool Settings::gQTKitEnabled = true;
+#else
+bool Settings::gQTKitEnabled = false;
+#endif
 #endif
 
 bool Settings::gMockScrollbarsEnabled = false;
@@ -123,6 +127,7 @@ static const bool defaultFixedBackgroundsPaintRelativeToDocument = true;
 static const bool defaultAcceleratedCompositingForFixedPositionEnabled = true;
 static const bool defaultMediaPlaybackAllowsInline = false;
 static const bool defaultMediaPlaybackRequiresUserGesture = true;
+static const bool defaultAudioPlaybackRequiresUserGesture = true;
 static const bool defaultShouldRespectImageOrientation = true;
 static const bool defaultImageSubsamplingEnabled = true;
 static const bool defaultScrollingTreeIncludesFrames = true;
@@ -132,6 +137,7 @@ static const bool defaultFixedBackgroundsPaintRelativeToDocument = false;
 static const bool defaultAcceleratedCompositingForFixedPositionEnabled = false;
 static const bool defaultMediaPlaybackAllowsInline = true;
 static const bool defaultMediaPlaybackRequiresUserGesture = false;
+static const bool defaultAudioPlaybackRequiresUserGesture = false;
 static const bool defaultShouldRespectImageOrientation = false;
 static const bool defaultImageSubsamplingEnabled = false;
 static const bool defaultScrollingTreeIncludesFrames = false;

@@ -27,7 +27,23 @@
     align-items: center;
     justify-content: center;
 
-    padding: 0 6px;
+    border-radius: 4px;
+    background-color: rgb(252, 252, 252);
+
+    border: 1px solid transparent;
+    border-top-color: white;
+
+    box-shadow: rgba(0, 0, 0, 0.15) 0 1px 0;
+
+    margin: 4px;
+
+    padding: 0 10px;
+}
+
+body.window-inactive .toolbar .item.button {
+    border: 1px solid rgb(220, 220, 220);
+    background-color: rgb(246, 246, 246);
+    box-shadow: none;
 }
 
 .toolbar.icon-and-label-vertical .item.button {
@@ -49,8 +65,8 @@
 }
 
 .toolbar.small-size .item.button > .glyph {
-    width: 24px;
-    height: 24px;
+    width: 16px;
+    height: 16px;
 }
 
 .toolbar.label-only .item.button > .glyph {
@@ -60,11 +76,6 @@
 .toolbar .item.button > .label {
     text-align: center;
     color: rgb(80, 80, 80);
-}
-
-body.mac-platform.legacy .toolbar .item.button > .label {
-    text-shadow: rgba(255, 255, 255, 0.5) 0 1px 0;
-    color: rgb(60, 60, 60);
 }
 
 .toolbar.label-only .item.activate.button.activated > .label {

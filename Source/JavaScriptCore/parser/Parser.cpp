@@ -288,20 +288,33 @@ String Parser<LexerType>::parseInner()
         features |= ModifiedArgumentsFeature;
     Vector<RefPtr<StringImpl>> closedVariables;
     if (m_parsingBuiltin) {
-        RELEASE_ASSERT(!capturedVariables.size());
         IdentifierSet usedVariables;
         scope->getUsedVariables(usedVariables);
         for (const auto& variable : usedVariables) {
-            if (scope->hasDeclaredVariable(Identifier::fromUid(m_vm, variable.get())))
+            Identifier identifier = Identifier::fromUid(m_vm, variable.get());
+            if (scope->hasDeclaredVariable(identifier))
                 continue;
             
-            if (scope->hasDeclaredParameter(Identifier::fromUid(m_vm, variable.get())))
+            if (scope->hasDeclaredParameter(identifier))
                 continue;
 
             if (variable == m_vm->propertyNames->arguments.impl())
                 continue;
 
             closedVariables.append(variable);
+        }
+
+        if (!capturedVariables.isEmpty()) {
+            for (const auto& capturedVariable : capturedVariables) {
+                Identifier identifier = Identifier::fromUid(m_vm, capturedVariable.get());
+                if (scope->hasDeclaredVariable(identifier))
+                    continue;
+
+                if (scope->hasDeclaredParameter(identifier))
+                    continue;
+
+                RELEASE_ASSERT_NOT_REACHED();
+            }
         }
     }
     didFinishParsing(sourceElements, context.varDeclarations(), context.funcDeclarations(), features,
@@ -1524,8 +1537,10 @@ template <class TreeBuilder> TreeClassExpression Parser<LexerType>::parseClass(T
     TreePropertyList instanceMethodsTail = 0;
     TreePropertyList staticMethodsTail = 0;
     while (!match(CLOSEBRACE)) {
-        if (match(SEMICOLON))
+        if (match(SEMICOLON)) {
             next();
+            continue;
+        }
 
         JSTokenLocation methodLocation(tokenLocation());
         unsigned methodStart = tokenStart();
@@ -2064,9 +2079,13 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseGetterSetter(T
 {
     const Identifier* stringPropertyName = 0;
     double numericPropertyName = 0;
-    if (m_token.m_type == IDENT || m_token.m_type == STRING)
+    if (m_token.m_type == IDENT || m_token.m_type == STRING) {
         stringPropertyName = m_token.m_data.ident;
-    else if (m_token.m_type == DOUBLE || m_token.m_type == INTEGER)
+        semanticFailIfTrue(superBinding == SuperBinding::Needed && *stringPropertyName == m_vm->propertyNames->prototype,
+            "Cannot declare a static method named 'prototype'");
+        semanticFailIfTrue(superBinding == SuperBinding::Needed && *stringPropertyName == m_vm->propertyNames->constructor,
+            "Cannot declare a getter or setter named 'constructor'");
+    } else if (m_token.m_type == DOUBLE || m_token.m_type == INTEGER)
         numericPropertyName = m_token.m_data.doubleValue;
     else
         failDueToUnexpectedToken();
@@ -2256,6 +2275,66 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseArrayLiteral
     return context.createArray(location, elementList);
 }
 
+#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
+template <typename LexerType>
+template <class TreeBuilder> typename TreeBuilder::TemplateString Parser<LexerType>::parseTemplateString(TreeBuilder& context, bool isTemplateHead, bool& elementIsTail)
+{
+    if (!isTemplateHead) {
+        matchOrFail(CLOSEBRACE, "Expected a closing '}' following an expression in template literal");
+        // Re-scan the token to recognize it as Template Element.
+        m_token.m_type = m_lexer->scanTrailingTemplateString(&m_token);
+    }
+    matchOrFail(TEMPLATE, "Expected an template element");
+    const Identifier* cooked = m_token.m_data.cooked;
+    const Identifier* raw = m_token.m_data.raw;
+    elementIsTail = m_token.m_data.isTail;
+    JSTokenLocation location(tokenLocation());
+    next();
+    return context.createTemplateString(location, *cooked, *raw);
+}
+
+template <typename LexerType>
+template <class TreeBuilder> typename TreeBuilder::TemplateLiteral Parser<LexerType>::parseTemplateLiteral(TreeBuilder& context)
+{
+    JSTokenLocation location(tokenLocation());
+    bool elementIsTail = false;
+
+    auto headTemplateString = parseTemplateString(context, true, elementIsTail);
+    failIfFalse(headTemplateString, "Cannot parse head template element");
+
+    typename TreeBuilder::TemplateStringList templateStringList = context.createTemplateStringList(headTemplateString);
+    typename TreeBuilder::TemplateStringList templateStringTail = templateStringList;
+
+    if (elementIsTail)
+        return context.createTemplateLiteral(location, templateStringList);
+
+    failIfTrue(match(CLOSEBRACE), "Template literal expression cannot be empty");
+    TreeExpression expression = parseExpression(context);
+    failIfFalse(expression, "Cannot parse expression in template literal");
+
+    typename TreeBuilder::TemplateExpressionList templateExpressionList = context.createTemplateExpressionList(expression);
+    typename TreeBuilder::TemplateExpressionList templateExpressionTail = templateExpressionList;
+
+    auto templateString = parseTemplateString(context, false, elementIsTail);
+    failIfFalse(templateString, "Cannot parse template element");
+    templateStringTail = context.createTemplateStringList(templateStringTail, templateString);
+
+    while (!elementIsTail) {
+        failIfTrue(match(CLOSEBRACE), "Template literal expression cannot be empty");
+        TreeExpression expression = parseExpression(context);
+        failIfFalse(expression, "Cannot parse expression in template literal");
+
+        templateExpressionTail = context.createTemplateExpressionList(templateExpressionTail, expression);
+
+        auto templateString = parseTemplateString(context, false, elementIsTail);
+        failIfFalse(templateString, "Cannot parse template element");
+        templateStringTail = context.createTemplateStringList(templateStringTail, templateString);
+    }
+
+    return context.createTemplateLiteral(location, templateStringList, templateExpressionList);
+}
+#endif
+
 template <typename LexerType>
 template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpression(TreeBuilder& context)
 {
@@ -2357,6 +2436,10 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
         }
         return re;
     }
+#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
+    case TEMPLATE:
+        return parseTemplateLiteral(context);
+#endif
     default:
         failDueToUnexpectedToken();
     }

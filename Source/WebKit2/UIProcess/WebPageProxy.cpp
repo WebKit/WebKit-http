@@ -3646,7 +3646,7 @@ void WebPageProxy::pageDidScroll()
 {
     m_uiClient->pageDidScroll(this);
 #if PLATFORM(MAC)
-    m_pageClient.dismissContentRelativeChildWindows();
+    m_pageClient.dismissContentRelativeChildWindows(false);
 #endif
 }
 
@@ -3899,14 +3899,14 @@ void WebPageProxy::didGetImageForFindMatch(const ShareableBitmap::Handle& conten
     m_findMatchesClient.didGetImageForMatchResult(this, WebImage::create(ShareableBitmap::create(contentImageHandle)).get(), matchIndex);
 }
 
-void WebPageProxy::setTextIndicator(const TextIndicatorData& indicatorData, bool fadeOut)
+void WebPageProxy::setTextIndicator(const TextIndicatorData& indicatorData, uint64_t lifetime)
 {
-    m_pageClient.setTextIndicator(TextIndicator::create(indicatorData), fadeOut);
+    m_pageClient.setTextIndicator(*TextIndicator::create(indicatorData), static_cast<TextIndicatorLifetime>(lifetime));
 }
 
 void WebPageProxy::clearTextIndicator()
 {
-    m_pageClient.setTextIndicator(nullptr, false);
+    m_pageClient.clearTextIndicator();
 }
 
 void WebPageProxy::setTextIndicatorAnimationProgress(float progress)
@@ -4540,7 +4540,7 @@ void WebPageProxy::dataCallback(const IPC::DataReference& dataReference, uint64_
         return;
     }
 
-    callback->performCallbackWithReturnValue(API::Data::create(dataReference.data(), dataReference.size()).get());
+    callback->performCallbackWithReturnValue(API::Data::create(dataReference.data(), dataReference.size()).ptr());
 }
 
 void WebPageProxy::imageCallback(const ShareableBitmap::Handle& bitmapHandle, uint64_t callbackID)
@@ -4681,8 +4681,7 @@ void WebPageProxy::printFinishedCallback(const ResourceError& printError, uint64
         return;
     }
 
-    RefPtr<API::Error> error = API::Error::create(printError);
-    callback->performCallbackWithReturnValue(error.get());
+    callback->performCallbackWithReturnValue(API::Error::create(printError).ptr());
 }
 #endif
 
@@ -5202,7 +5201,7 @@ void WebPageProxy::pageExtendedBackgroundColorDidChange(const Color& backgroundC
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void WebPageProxy::didFailToInitializePlugin(const String& mimeType, const String& frameURLString, const String& pageURLString)
 {
-    m_loaderClient->didFailToInitializePlugin(*this, createPluginInformationDictionary(mimeType, frameURLString, pageURLString).get());
+    m_loaderClient->didFailToInitializePlugin(*this, createPluginInformationDictionary(mimeType, frameURLString, pageURLString).ptr());
 }
 
 void WebPageProxy::didBlockInsecurePluginVersion(const String& mimeType, const String& pluginURLString, const String& frameURLString, const String& pageURLString, bool replacementObscured)
@@ -5356,9 +5355,8 @@ void WebPageProxy::savePDFToFileInDownloadsFolder(const String& suggestedFilenam
     if (!suggestedFilename.endsWith(".pdf", false))
         return;
 
-    RefPtr<API::Data> data = API::Data::create(dataReference.data(), dataReference.size());
-
-    saveDataToFileInDownloadsFolder(suggestedFilename, "application/pdf", originatingURLString, data.get());
+    saveDataToFileInDownloadsFolder(suggestedFilename, "application/pdf", originatingURLString,
+        API::Data::create(dataReference.data(), dataReference.size()).ptr());
 }
 
 void WebPageProxy::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
@@ -5663,12 +5661,17 @@ void WebPageProxy::navigationGestureSnapshotWasRemoved()
     m_isShowingNavigationGestureSnapshot = false;
 }
 
-void WebPageProxy::isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags state)
+void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state)
 {
     if (state == m_mediaState)
         return;
 
+    MediaProducer::MediaStateFlags oldState = m_mediaState;
     m_mediaState = state;
+
+    if ((oldState & MediaProducer::IsPlayingAudio) == (m_mediaState & MediaProducer::IsPlayingAudio))
+        return;
+
     m_uiClient->isPlayingAudioDidChange(*this);
 }
 
@@ -5789,6 +5792,14 @@ void WebPageProxy::setShouldPlayToPlaybackTarget(uint64_t contextId, bool should
 void WebPageProxy::didChangeBackgroundColor()
 {
     m_pageClient.didChangeBackgroundColor();
+}
+
+void WebPageProxy::clearWheelEventTestTrigger()
+{
+    if (!isValid())
+        return;
+    
+    m_process->send(Messages::WebPage::ClearWheelEventTestTrigger(), m_pageID);
 }
 
 } // namespace WebKit

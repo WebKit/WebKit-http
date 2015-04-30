@@ -347,7 +347,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setConstant(node, jsDoubleNumber(child.asNumber()));
             break;
         }
-        forNode(node).setType(forNode(node->child1()).m_type);
+        forNode(node).setType(m_graph, forNode(node->child1()).m_type);
         forNode(node).fixTypeForRepresentation(node);
         break;
     }
@@ -370,7 +370,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         }
         
-        forNode(node).setType(forNode(node->child1()).m_type & ~SpecDoubleImpureNaN);
+        forNode(node).setType(m_graph, forNode(node->child1()).m_type & ~SpecDoubleImpureNaN);
         forNode(node).fixTypeForRepresentation(node);
         break;
     }
@@ -378,7 +378,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ValueAdd: {
         ASSERT(node->binaryUseKind() == UntypedUse);
         clobberWorld(node->origin.semantic, clobberLimit);
-        forNode(node).setType(SpecString | SpecBytecodeNumber);
+        forNode(node).setType(m_graph, SpecString | SpecBytecodeNumber);
         break;
     }
         
@@ -425,7 +425,18 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         break;
     }
-        
+
+    case ArithClz32: {
+        JSValue operand = forNode(node->child1()).value();
+        if (operand && operand.isNumber()) {
+            uint32_t value = toUInt32(operand.asNumber());
+            setConstant(node, jsNumber(clz32(value)));
+            break;
+        }
+        forNode(node).setType(SpecInt32);
+        break;
+    }
+
     case MakeRope: {
         forNode(node).set(m_graph, m_graph.m_vm.stringStructure.get());
         break;
@@ -899,7 +910,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         }
 
-        forNode(node).set(m_graph, m_graph.m_vm.stringStructure.get());
+        forNode(node).setType(m_graph, SpecStringIdent);
         break;
     }
             
@@ -998,7 +1009,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case StringFromCharCode:
-        forNode(node).setType(SpecString);
+        forNode(node).setType(m_graph, SpecString);
         break;
 
     case StringCharAt:
@@ -1257,7 +1268,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         clobberWorld(node->origin.semantic, clobberLimit);
         
-        forNode(node).setType((SpecHeapTop & ~SpecCell) | SpecString | SpecCellOther);
+        forNode(node).setType(m_graph, (SpecHeapTop & ~SpecCell) | SpecString | SpecCellOther);
         break;
     }
         
@@ -1304,7 +1315,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case NewArrayWithSize:
-        forNode(node).setType(SpecArray);
+        forNode(node).setType(m_graph, SpecArray);
         break;
         
     case NewTypedArray:
@@ -1343,7 +1354,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
     case CreateThis: {
         // FIXME: We can fold this to NewObject if the incoming callee is a constant.
-        forNode(node).setType(SpecFinalObject);
+        forNode(node).setType(m_graph, SpecFinalObject);
         break;
     }
         
@@ -1353,6 +1364,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case PhantomNewObject:
+    case PhantomNewFunction:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
     case BottomValue:
@@ -1390,7 +1402,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case CreateClonedArguments:
-        forNode(node).setType(SpecObjectOther);
+        forNode(node).setType(m_graph, SpecObjectOther);
         break;
         
     case NewFunction:
@@ -1408,7 +1420,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
         }
-        forNode(node).setType(SpecFunction);
+        forNode(node).setType(m_graph, SpecFunction);
         break;
         
     case GetArgumentCount:
@@ -1425,7 +1437,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
         }
         
-        forNode(node).setType(SpecObject);
+        forNode(node).setType(m_graph, SpecObject);
         break;
     }
         
@@ -1439,7 +1451,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
         }
         
-        forNode(node).setType(SpecObject);
+        forNode(node).setType(m_graph, SpecObject);
         break;
     }
         
@@ -1450,7 +1462,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
         }
-        forNode(node).setType(SpecObjectOther);
+        forNode(node).setType(m_graph, SpecObjectOther);
         break;
 
     case SkipScope: {
@@ -1459,7 +1471,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setConstant(node, *m_graph.freeze(JSValue(jsCast<JSScope*>(child.asCell())->next())));
             break;
         }
-        forNode(node).setType(SpecObjectOther);
+        forNode(node).setType(m_graph, SpecObjectOther);
         break;
     }
 
@@ -1674,8 +1686,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             m_state.setFoundConstants(true);
             break;
         }
-        ASSERT(node->arrayMode().conversion() == Array::Convert
-            || node->arrayMode().conversion() == Array::RageConvert);
+        ASSERT(node->arrayMode().conversion() == Array::Convert);
         clobberStructures(clobberLimit);
         filterArrayModes(node->child1(), node->arrayMode().arrayModesThatPassFiltering());
         break;
@@ -1862,7 +1873,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
         }
-        forNode(node).setType(SpecCellOther);
+        forNode(node).setType(m_graph, SpecCellOther);
         break;
     }
     
@@ -1985,19 +1996,19 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
     case GetPropertyEnumerator: {
-        forNode(node).setType(SpecCell);
+        forNode(node).setType(m_graph, SpecCell);
         break;
     }
     case GetEnumeratorStructurePname: {
-        forNode(node).setType(SpecString | SpecOther);
+        forNode(node).setType(m_graph, SpecString | SpecOther);
         break;
     }
     case GetEnumeratorGenericPname: {
-        forNode(node).setType(SpecString | SpecOther);
+        forNode(node).setType(m_graph, SpecString | SpecOther);
         break;
     }
     case ToIndexString: {
-        forNode(node).setType(SpecString);
+        forNode(node).setType(m_graph, SpecString);
         break;
     }
 
@@ -2068,7 +2079,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ProfileType:
     case ProfileControlFlow:
     case Phantom:
-    case HardPhantom:
     case CountExecution:
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:

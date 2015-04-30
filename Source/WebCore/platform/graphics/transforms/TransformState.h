@@ -74,12 +74,24 @@ public:
     
     void setQuad(const FloatQuad& quad)
     {
-        // FIXME: this assumes that the quad being added is in the coordinate system of the current state.
-        // This breaks if we're simultaneously mapping a point. https://bugs.webkit.org/show_bug.cgi?id=106680
-        ASSERT(!m_mapPoint);
-        m_accumulatedOffset = LayoutSize();
+        // We must be in a flattened state (no accumulated offset) when setting this quad.
+        ASSERT(m_accumulatedOffset == LayoutSize());
         m_lastPlanarQuad = quad;
     }
+
+    // FIXME: webkit.org/b/144226 use Optional<FloatQuad>. 
+    void setSecondaryQuad(const FloatQuad* quad)
+    {
+        // We must be in a flattened state (no accumulated offset) when setting this secondary quad.
+        ASSERT(m_accumulatedOffset == LayoutSize());
+        if (quad)
+            m_lastPlanarSecondaryQuad = std::make_unique<FloatQuad>(*quad);
+        else
+            m_lastPlanarSecondaryQuad = nullptr;
+    }
+
+    // FIXME: webkit.org/b/144226 use Optional<FloatQuad>.
+    void setLastPlanarSecondaryQuad(const FloatQuad*);
 
     void move(LayoutUnit x, LayoutUnit y, TransformAccumulation accumulate = FlattenTransform)
     {
@@ -87,17 +99,20 @@ public:
     }
 
     void move(const LayoutSize&, TransformAccumulation = FlattenTransform);
-    void applyTransform(const AffineTransform& transformFromContainer, TransformAccumulation = FlattenTransform, bool* wasClamped = 0);
-    void applyTransform(const TransformationMatrix& transformFromContainer, TransformAccumulation = FlattenTransform, bool* wasClamped = 0);
-    void flatten(bool* wasClamped = 0);
+    void applyTransform(const AffineTransform& transformFromContainer, TransformAccumulation = FlattenTransform, bool* wasClamped = nullptr);
+    void applyTransform(const TransformationMatrix& transformFromContainer, TransformAccumulation = FlattenTransform, bool* wasClamped = nullptr);
+    void flatten(bool* wasClamped = nullptr);
 
     // Return the coords of the point or quad in the last flattened layer
     FloatPoint lastPlanarPoint() const { return m_lastPlanarPoint; }
     FloatQuad lastPlanarQuad() const { return m_lastPlanarQuad; }
+    FloatQuad* lastPlanarSecondaryQuad() const { return m_lastPlanarSecondaryQuad.get(); }
+    bool isMappingSecondaryQuad() const { return m_lastPlanarSecondaryQuad.get(); }
 
     // Return the point or quad mapped through the current transform
-    FloatPoint mappedPoint(bool* wasClamped = 0) const;
-    FloatQuad mappedQuad(bool* wasClamped = 0) const;
+    FloatPoint mappedPoint(bool* wasClamped = nullptr) const;
+    FloatQuad mappedQuad(bool* wasClamped = nullptr) const;
+    std::unique_ptr<FloatQuad> mappedSecondaryQuad(bool* wasClamped = nullptr) const;
 
 private:
     void translateTransform(const LayoutSize&);
@@ -105,16 +120,28 @@ private:
     void flattenWithTransform(const TransformationMatrix&, bool* wasClamped);
     void applyAccumulatedOffset();
     
+    TransformDirection direction() const { return m_direction; }
+    TransformDirection inverseDirection() const;
+
+    void mapQuad(FloatQuad&, TransformDirection, bool* clamped = nullptr) const;
+    
     FloatPoint m_lastPlanarPoint;
     FloatQuad m_lastPlanarQuad;
+    std::unique_ptr<FloatQuad> m_lastPlanarSecondaryQuad; // Optional second quad to map.
 
     // We only allocate the transform if we need to
     std::unique_ptr<TransformationMatrix> m_accumulatedTransform;
     LayoutSize m_accumulatedOffset;
     bool m_accumulatingTransform;
-    bool m_mapPoint, m_mapQuad;
+    bool m_mapPoint;
+    bool m_mapQuad;
     TransformDirection m_direction;
 };
+
+inline TransformState::TransformDirection TransformState::inverseDirection() const
+{
+    return m_direction == ApplyTransformDirection ? UnapplyInverseTransformDirection : ApplyTransformDirection;
+}
 
 } // namespace WebCore
 

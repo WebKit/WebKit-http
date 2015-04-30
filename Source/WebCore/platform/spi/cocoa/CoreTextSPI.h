@@ -85,6 +85,7 @@ CTFontDescriptorRef CTFontDescriptorCreateWithAttributesAndOptions(CFDictionaryR
 #endif
 
 bool CTFontDescriptorIsSystemUIFont(CTFontDescriptorRef);
+CTFontRef CTFontCreateForCSS(CFStringRef name, uint16_t weight, CTFontSymbolicTraits, CGFloat size);
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 10100
 extern const CFStringRef kCTUIFontTextStyleShortHeadline;
@@ -104,7 +105,7 @@ extern const CFStringRef kCTUIFontTextStyleCaption2;
 extern const CFStringRef kCTFontDescriptorTextStyleEmphasized;
 #endif
 
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED > 80200
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
 extern const CFStringRef kCTUIFontTextStyleTitle1;
 extern const CFStringRef kCTUIFontTextStyleTitle2;
 extern const CFStringRef kCTUIFontTextStyleTitle3;

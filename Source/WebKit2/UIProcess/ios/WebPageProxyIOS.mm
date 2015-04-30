@@ -452,6 +452,17 @@ void WebPageProxy::selectPositionAtBoundaryWithDirection(const WebCore::IntPoint
     m_process->send(Messages::WebPage::SelectPositionAtBoundaryWithDirection(point, static_cast<uint32_t>(granularity), static_cast<uint32_t>(direction), callbackID), m_pageID);
 }
 
+void WebPageProxy::moveSelectionAtBoundaryWithDirection(WebCore::TextGranularity granularity, WebCore::SelectionDirection direction, std::function<void(CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::MoveSelectionAtBoundaryWithDirection(static_cast<uint32_t>(granularity), static_cast<uint32_t>(direction), callbackID), m_pageID);
+}
+    
 void WebPageProxy::selectPositionAtPoint(const WebCore::IntPoint point, std::function<void (CallbackBase::Error)> callbackFunction)
 {
     if (!isValid()) {
@@ -511,6 +522,17 @@ void WebPageProxy::requestAutocorrectionContext(std::function<void (const String
 void WebPageProxy::getAutocorrectionContext(String& beforeContext, String& markedText, String& selectedText, String& afterContext, uint64_t& location, uint64_t& length)
 {
     m_process->sendSync(Messages::WebPage::GetAutocorrectionContext(), Messages::WebPage::GetAutocorrectionContext::Reply(beforeContext, markedText, selectedText, afterContext, location, length), m_pageID);
+}
+
+void WebPageProxy::getLookupContextAtPoint(const WebCore::IntPoint& point, std::function<void(const String&, CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(String(), CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::GetLookupContextAtPoint(point, callbackID), m_pageID);
 }
 
 void WebPageProxy::selectWithTwoTouches(const WebCore::IntPoint from, const WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, std::function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)> callbackFunction)

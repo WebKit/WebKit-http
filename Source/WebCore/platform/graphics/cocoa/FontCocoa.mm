@@ -325,7 +325,7 @@ PassRefPtr<Font> Font::platformCreateScaledFont(const FontDescription&, float sc
 #if USE(APPKIT)
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
-    FontPlatformData scaledFontData([[NSFontManager sharedFontManager] convertFont:m_platformData.nsFont() toSize:size], size, false, false, m_platformData.orientation());
+    FontPlatformData scaledFontData(reinterpret_cast<CTFontRef>([[NSFontManager sharedFontManager] convertFont:m_platformData.nsFont() toSize:size]), size, false, false, m_platformData.orientation());
 
     if (scaledFontData.font()) {
         NSFontManager *fontManager = [NSFontManager sharedFontManager];
@@ -495,12 +495,8 @@ float Font::platformWidthForGlyph(Glyph glyph) const
             LOG_ERROR("Unable to cache glyph widths for %@ %f", fullName.get(), pointSize);
             advance.width = 0;
         }
-    } else if (!populatedAdvance) {
-        // m_platformData.font() returns the original font that was passed into the FontPlatformData constructor. In the case of fonts that have custom tracking,
-        // the custom tracking does not survive the transformation to either m_platformData.cgFont() nor m_platformData.ctFont(), so we must use the original
-        // font() that was passed in. However, for web fonts, m_platformData.font() is null, so we must use m_platformData.ctFont() for those cases.
-        CTFontGetAdvancesForGlyphs(hasCustomTracking() ? m_platformData.font() : m_platformData.ctFont(), horizontal ? kCTFontOrientationHorizontal : kCTFontOrientationVertical, &glyph, &advance, 1);
-    }
+    } else if (!populatedAdvance)
+        CTFontGetAdvancesForGlyphs(m_platformData.ctFont(), horizontal ? kCTFontOrientationHorizontal : kCTFontOrientationVertical, &glyph, &advance, 1);
 
     return advance.width + m_syntheticBoldOffset;
 }
@@ -571,7 +567,7 @@ const Font* Font::compositeFontReferenceFont(NSFont *key) const
         bool syntheticBold = platformData().syntheticBold() && !(traits & kCTFontBoldTrait);
         bool syntheticOblique = platformData().syntheticOblique() && !(traits & kCTFontItalicTrait);
 
-        FontPlatformData substitutePlatform(substituteFont, platformData().size(), syntheticBold, syntheticOblique, platformData().orientation(), platformData().widthVariant());
+        FontPlatformData substitutePlatform(reinterpret_cast<CTFontRef>(substituteFont), platformData().size(), syntheticBold, syntheticOblique, platformData().orientation(), platformData().widthVariant());
         addResult.iterator->value = Font::create(substitutePlatform, isCustomFont());
     }
     return addResult.iterator->value.get();
