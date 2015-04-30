@@ -38,7 +38,7 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(WPE)
 #include "ProxyResolverSoup.h"
 #endif
 
@@ -191,7 +191,7 @@ SoupNetworkSession::SSLPolicy SoupNetworkSession::sslPolicy() const
 
 void SoupNetworkSession::setHTTPProxy(const char* httpProxy, const char* httpProxyExceptions)
 {
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(WPE)
     // Only for EFL because GTK port uses the default resolver, which uses GIO's proxy resolver.
     if (!httpProxy) {
         soup_session_remove_feature_by_type(m_soupSession.get(), SOUP_TYPE_PROXY_URI_RESOLVER);
@@ -208,7 +208,7 @@ void SoupNetworkSession::setHTTPProxy(const char* httpProxy, const char* httpPro
 
 char* SoupNetworkSession::httpProxy() const
 {
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(WPE)
     SoupSessionFeature* soupResolver = soup_session_get_feature(m_soupSession.get(), SOUP_TYPE_PROXY_URI_RESOLVER);
     if (!soupResolver)
         return nullptr;
@@ -224,7 +224,7 @@ char* SoupNetworkSession::httpProxy() const
 
 void SoupNetworkSession::setupHTTPProxyFromEnvironment()
 {
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(WPE)
     const char* httpProxy = getenv("http_proxy");
     if (!httpProxy)
         return;
