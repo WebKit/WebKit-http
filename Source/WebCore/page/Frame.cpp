@@ -284,6 +284,8 @@ void Frame::setDocument(RefPtr<Document>&& newDocument)
     // that the document is not destroyed during this function call.
     if (newDocument)
         newDocument->didBecomeCurrentDocumentInFrame();
+
+    InspectorInstrumentation::frameDocumentUpdated(this);
 }
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -893,7 +895,7 @@ void Frame::createView(const IntSize& viewportSize, const Color& backgroundColor
     if (isMainFrame) {
         frameView = FrameView::create(*this, viewportSize);
         frameView->setFixedLayoutSize(fixedLayoutSize);
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
         frameView->setFixedVisibleContentRect(fixedVisibleContentRect);
 #else
         UNUSED_PARAM(fixedVisibleContentRect);

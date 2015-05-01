@@ -338,14 +338,14 @@ static UIImage* iconForFile(NSURL *file)
     urls.reserveInitialCapacity(count);
     for (NSURL *fileURL in fileURLs)
         urls.uncheckedAppend(adoptRef(toImpl(WKURLCreateWithCFURL((CFURLRef)fileURL))));
-    RefPtr<API::Array> fileURLsRef = API::Array::create(WTF::move(urls));
+    Ref<API::Array> fileURLsRef = API::Array::create(WTF::move(urls));
 
     NSData *jpeg = UIImageJPEGRepresentation(iconImage, 1.0);
     RefPtr<API::Data> iconImageDataRef = adoptRef(toImpl(WKDataCreate(reinterpret_cast<const unsigned char*>([jpeg bytes]), [jpeg length])));
 
     RefPtr<API::String> displayStringRef = adoptRef(toImpl(WKStringCreateWithCFString((CFStringRef)displayString)));
 
-    _listener->chooseFiles(fileURLsRef.get(), displayStringRef.get(), iconImageDataRef.get());
+    _listener->chooseFiles(fileURLsRef.ptr(), displayStringRef.get(), iconImageDataRef.get());
     [self _dispatchDidDismiss];
 }
 
@@ -359,7 +359,7 @@ static UIImage* iconForFile(NSURL *file)
     _allowMultipleFiles = parameters->allowMultipleFiles();
     _interactionPoint = [_view lastInteractionLocation];
 
-    RefPtr<API::Array> acceptMimeTypes = parameters->acceptMIMETypes();
+    Ref<API::Array> acceptMimeTypes = parameters->acceptMIMETypes();
     NSMutableArray *mimeTypes = [NSMutableArray arrayWithCapacity:acceptMimeTypes->size()];
     for (const auto& mimeType : acceptMimeTypes->elementsOfType<API::String>())
         [mimeTypes addObject:mimeType->string()];
@@ -509,7 +509,10 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
     // FIXME: We call -_setIgnoreApplicationEntitlementForImport: before initialization, because the assertion we're trying
     // to suppress is in the initializer. <rdar://problem/20137692> tracks doing this with a private initializer.
     _documentMenuController = adoptNS([UIDocumentMenuViewController alloc]);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [_documentMenuController _setIgnoreApplicationEntitlementForImport:YES];
+#pragma clang diagnostic pop
     [_documentMenuController initWithDocumentTypes:[self _documentPickerMenuMediaTypes] inMode:UIDocumentPickerModeImport];
     [_documentMenuController setDelegate:self];
 
@@ -689,12 +692,12 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 
 #pragma mark - Process UIImagePicker results
 
-- (void)_processMediaInfoDictionaries:(NSArray *)infos successBlock:(void (^)(NSArray *processedResults, NSString *displayString))successBlock failureBlock:(void (^)())failureBlock
+- (void)_processMediaInfoDictionaries:(NSArray *)infos successBlock:(void (^)(NSArray *processedResults, NSString *displayString))successBlock failureBlock:(void (^)(void))failureBlock
 {
     [self _processMediaInfoDictionaries:infos atIndex:0 processedResults:[NSMutableArray array] processedImageCount:0 processedVideoCount:0 successBlock:successBlock failureBlock:failureBlock];
 }
 
-- (void)_processMediaInfoDictionaries:(NSArray *)infos atIndex:(NSUInteger)index processedResults:(NSMutableArray *)processedResults processedImageCount:(NSUInteger)processedImageCount processedVideoCount:(NSUInteger)processedVideoCount successBlock:(void (^)(NSArray *processedResults, NSString *displayString))successBlock failureBlock:(void (^)())failureBlock
+- (void)_processMediaInfoDictionaries:(NSArray *)infos atIndex:(NSUInteger)index processedResults:(NSMutableArray *)processedResults processedImageCount:(NSUInteger)processedImageCount processedVideoCount:(NSUInteger)processedVideoCount successBlock:(void (^)(NSArray *processedResults, NSString *displayString))successBlock failureBlock:(void (^)(void))failureBlock
 {
     NSUInteger count = [infos count];
     if (index == count) {
@@ -717,7 +720,7 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
     [self _uploadItemFromMediaInfo:info successBlock:uploadItemSuccessBlock failureBlock:failureBlock];
 }
 
-- (void)_uploadItemFromMediaInfo:(NSDictionary *)info successBlock:(void (^)(_WKFileUploadItem *))successBlock failureBlock:(void (^)())failureBlock
+- (void)_uploadItemFromMediaInfo:(NSDictionary *)info successBlock:(void (^)(_WKFileUploadItem *))successBlock failureBlock:(void (^)(void))failureBlock
 {
     NSString *mediaType = [info objectForKey:UIImagePickerControllerMediaType];
 

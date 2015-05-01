@@ -106,7 +106,7 @@ static WebFrame* findLargestFrameInFrameSet(WebPage* page)
 
     WebFrame* largestSoFar = 0;
 
-    RefPtr<API::Array> frameChildren = mainFrame->childFrames();
+    Ref<API::Array> frameChildren = mainFrame->childFrames();
     size_t count = frameChildren->size();
     for (size_t i = 0; i < count; ++i) {
         WebFrame* childFrame = frameChildren->at<WebFrame>(i);
@@ -129,7 +129,10 @@ void WebChromeClient::setWindowRect(const FloatRect& windowFrame)
 
 FloatRect WebChromeClient::windowRect()
 {
-#if PLATFORM(COCOA)
+#if PLATFORM(IOS)
+    return FloatRect();
+#else
+#if PLATFORM(MAC)
     if (m_page->hasCachedWindowFrame())
         return m_page->windowFrameInUnflippedScreenCoordinates();
 #endif
@@ -140,6 +143,7 @@ FloatRect WebChromeClient::windowRect()
         return FloatRect();
 
     return newWindowFrame;
+#endif
 }
 
 FloatRect WebChromeClient::pageRect()
@@ -471,7 +475,7 @@ void WebChromeClient::scroll(const IntSize& scrollDelta, const IntRect& scrollRe
     m_page->drawingArea()->scroll(intersection(scrollRect, clipRect), scrollDelta);
 }
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
 void WebChromeClient::delegatedScrollRequested(const IntPoint& scrollOffset)
 {
     m_page->pageDidRequestScroll(scrollOffset);
@@ -850,9 +854,9 @@ GraphicsLayerFactory* WebChromeClient::graphicsLayerFactory() const
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-Optional<RefPtr<WebCore::DisplayRefreshMonitor>> WebChromeClient::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
+RefPtr<WebCore::DisplayRefreshMonitor> WebChromeClient::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
 {
-    return Optional<RefPtr<WebCore::DisplayRefreshMonitor>>(m_page->drawingArea()->createDisplayRefreshMonitor(displayID));
+    return m_page->drawingArea()->createDisplayRefreshMonitor(displayID);
 }
 #endif
 
@@ -958,7 +962,7 @@ void WebChromeClient::dispatchViewportPropertiesDidChange(const ViewportArgument
 #if PLATFORM(IOS)
     m_page->viewportPropertiesDidChange(viewportArguments);
 #endif
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     if (!m_page->useFixedLayout())
         return;
 
@@ -1050,7 +1054,7 @@ bool WebChromeClient::shouldUseTiledBackingForFrameView(const FrameView* frameVi
     return m_page->drawingArea()->shouldUseTiledBackingForFrameView(frameView);
 }
 
-void WebChromeClient::isPlayingMediaDidChange(MediaStateFlags state)
+void WebChromeClient::isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags state)
 {
     m_page->send(Messages::WebPageProxy::IsPlayingMediaDidChange(state));
 }
@@ -1115,21 +1119,27 @@ void WebChromeClient::handleAutoFillButtonClick(HTMLInputElement& inputElement)
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-void WebChromeClient::showPlaybackTargetPicker(const WebCore::IntPoint& position, bool isVideo)
+void WebChromeClient::addPlaybackTargetPickerClient(uint64_t contextId)
+{
+    m_page->send(Messages::WebPageProxy::AddPlaybackTargetPickerClient(contextId));
+}
+
+void WebChromeClient::removePlaybackTargetPickerClient(uint64_t contextId)
+{
+    m_page->send(Messages::WebPageProxy::RemovePlaybackTargetPickerClient(contextId));
+}
+
+
+void WebChromeClient::showPlaybackTargetPicker(uint64_t contextId, const WebCore::IntPoint& position, bool isVideo)
 {
     FrameView* frameView = m_page->mainFrame()->view();
     FloatRect rect(frameView->contentsToRootView(frameView->windowToContents(position)), FloatSize());
-    m_page->send(Messages::WebPageProxy::ShowPlaybackTargetPicker(rect, isVideo));
+    m_page->send(Messages::WebPageProxy::ShowPlaybackTargetPicker(contextId, rect, isVideo));
 }
 
-void WebChromeClient::startingMonitoringPlaybackTargets()
+void WebChromeClient::playbackTargetPickerClientStateDidChange(uint64_t contextId, WebCore::MediaProducer::MediaStateFlags state)
 {
-    m_page->send(Messages::WebPageProxy::StartingMonitoringPlaybackTargets());
-}
-
-void WebChromeClient::stopMonitoringPlaybackTargets()
-{
-    m_page->send(Messages::WebPageProxy::StopMonitoringPlaybackTargets());
+    m_page->send(Messages::WebPageProxy::PlaybackTargetPickerClientStateDidChange(contextId, state));
 }
 #endif
 

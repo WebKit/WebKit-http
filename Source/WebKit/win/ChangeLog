@@ -1,3 +1,97 @@
+2015-04-28  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [CoordinatedGraphics] Merge TILED_BACKING_STORE guard with COORDINATED_GRAPHICS
+        https://bugs.webkit.org/show_bug.cgi?id=143001
+
+        Reviewed by Gyuyoung Kim.
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient::delegatedScrollRequested):
+        Deleted because WIN does not use Coordinated Graphics.
+
+2015-04-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix common typo "targetting" => "targeting"
+        https://bugs.webkit.org/show_bug.cgi?id=144349
+
+        Reviewed by Daniel Bates.
+
+        * Interfaces/IWebPolicyDelegate.idl:
+
+2015-04-28  Brady Eidson  <beidson@apple.com>
+
+        Consolidate most "frame load" arguments into FrameLoadRequest.
+        https://bugs.webkit.org/show_bug.cgi?id=144276
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::start):
+        (WebCore::PluginView::getURLNotify):
+        (WebCore::PluginView::getURL):
+        (WebCore::PluginView::handlePost):
+
+2015-04-27  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed build fix after r183405
+
+        * WebActionPropertyBag.cpp:
+        (WebActionPropertyBag::Read): Cast the enum class to a LONG.
+
+2015-04-23  Andy Estes  <aestes@apple.com>
+
+        Try to fix the Windows build after r183234.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::FullscreenVideoController): FullscreenVideoController inherits privately from
+        WebCore::MediaPlayerPrivateFullscreenClient, so make_unique isn't allowed to upcast. Add an explicit upcast.
+
+2015-04-23  Darin Adler  <darin@apple.com>
+
+        Another round of removing use of OwnPtr, PassOwnPtr, and deleteOwnedPtr
+        https://bugs.webkit.org/show_bug.cgi?id=144090
+
+        Reviewed by Anders Carlsson.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::FullscreenVideoController):
+        (FullscreenVideoController::exitFullscreen):
+        * FullscreenVideoController.h:
+        * Plugins/PluginView.h:
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::wndProc):
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::WebChromeClient):
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::WebFrameLoaderClient):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::highlight):
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebElementPropertyBag.cpp:
+        (WebElementPropertyBag::WebElementPropertyBag):
+        * WebElementPropertyBag.h:
+        * WebFrame.h:
+        * WebHistoryItem.cpp:
+        * WebNodeHighlight.cpp:
+        * WebNotificationCenter.cpp:
+        (WebNotificationCenter::WebNotificationCenter):
+        * WebNotificationCenter.h:
+        Use make_unique and unique_ptr instead of adoptPtr and OwnPtr.
+
+2015-04-23  Andreas Kling  <akling@apple.com>
+
+        There should only be one way to get the system memory size.
+        <https://webkit.org/b/144081>
+
+        Reviewed by Antti Koivisto.
+
+        * WebView.cpp:
+        (WebView::setCacheModel):
+
 2015-04-13  Jer Noble  <jer.noble@apple.com>
 
         [Fullscreen] ChromeClient::exitVideoFullscreen() should take a pointer to a HTMLVideoElement.

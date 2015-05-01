@@ -50,9 +50,20 @@
     [super dealloc];
 }
 
-- (BOOL)isNonPersistent
+- (BOOL)isPersistent
 {
-    return _websiteDataStore->isNonPersistent();
+    return _websiteDataStore->isPersistent();
+}
+
++ (NSSet *)allWebsiteDataTypes
+{
+    static dispatch_once_t onceToken;
+    static NSSet *allWebsiteDataTypes;
+    dispatch_once(&onceToken, ^{
+        allWebsiteDataTypes = [[NSSet alloc] initWithArray:@[ WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache, WKWebsiteDataTypeOfflineWebApplicationCache, WKWebsiteDataTypeCookies, WKWebsiteDataTypeLocalStorage, WKWebsiteDataTypeWebSQLDatabases ]];
+    });
+
+    return allWebsiteDataTypes;
 }
 
 static std::chrono::system_clock::time_point toSystemClockTime(NSDate *date)
@@ -63,27 +74,27 @@ static std::chrono::system_clock::time_point toSystemClockTime(NSDate *date)
     return system_clock::time_point(duration_cast<system_clock::duration>(duration<double>(date.timeIntervalSince1970)));
 }
 
-- (void)fetchDataRecordsOfTypes:(WKWebsiteDataTypes)websiteDataTypes completionHandler:(void (^)(NSArray *))completionHandler
+- (void)fetchDataRecordsOfTypes:(NSSet *)dataTypes completionHandler:(void (^)(NSArray *))completionHandler
 {
     auto completionHandlerCopy = Block_copy(completionHandler);
 
-    _websiteDataStore->websiteDataStore().fetchData(WebKit::toWebsiteDataTypes(websiteDataTypes), [completionHandlerCopy](Vector<WebKit::WebsiteDataRecord> websiteDataRecords) {
+    _websiteDataStore->websiteDataStore().fetchData(WebKit::toWebsiteDataTypes(dataTypes), [completionHandlerCopy](Vector<WebKit::WebsiteDataRecord> websiteDataRecords) {
         Vector<RefPtr<API::Object>> elements;
         elements.reserveInitialCapacity(websiteDataRecords.size());
 
         for (auto& websiteDataRecord : websiteDataRecords)
             elements.uncheckedAppend(API::WebsiteDataRecord::create(WTF::move(websiteDataRecord)));
 
-        completionHandlerCopy(wrapper(*API::Array::create(WTF::move(elements))));
+        completionHandlerCopy(wrapper(API::Array::create(WTF::move(elements))));
 
         Block_release(completionHandlerCopy);
     });
 }
 
-- (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes modifiedSince:(NSDate *)date completionHandler:(void (^)())completionHandler
+- (void)removeDataOfTypes:(NSSet *)dataTypes modifiedSince:(NSDate *)date completionHandler:(void (^)(void))completionHandler
 {
     auto completionHandlerCopy = Block_copy(completionHandler);
-    _websiteDataStore->websiteDataStore().removeData(WebKit::toWebsiteDataTypes(websiteDataTypes), toSystemClockTime(date ? date : [NSDate distantPast]), [completionHandlerCopy] {
+    _websiteDataStore->websiteDataStore().removeData(WebKit::toWebsiteDataTypes(dataTypes), toSystemClockTime(date ? date : [NSDate distantPast]), [completionHandlerCopy] {
         completionHandlerCopy();
         Block_release(completionHandlerCopy);
     });
@@ -99,11 +110,11 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     return result;
 }
 
-- (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes forDataRecords:(NSArray *)dataRecords completionHandler:(void (^)())completionHandler
+- (void)removeDataOfTypes:(NSSet *)dataTypes forDataRecords:(NSArray *)dataRecords completionHandler:(void (^)(void))completionHandler
 {
     auto completionHandlerCopy = Block_copy(completionHandler);
 
-    _websiteDataStore->websiteDataStore().removeData(WebKit::toWebsiteDataTypes(websiteDataTypes), toWebsiteDataRecords(dataRecords), [completionHandlerCopy] {
+    _websiteDataStore->websiteDataStore().removeData(WebKit::toWebsiteDataTypes(dataTypes), toWebsiteDataRecords(dataRecords), [completionHandlerCopy] {
         completionHandlerCopy();
         Block_release(completionHandlerCopy);
     });

@@ -144,6 +144,9 @@
     <ClCompile Include="..\bytecode\BytecodeBasicBlock.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
+    <ClCompile Include="..\bytecode\BytecodeIntrinsicRegistry.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
     <ClCompile Include="..\bytecode\BytecodeLivenessAnalysis.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
@@ -717,6 +720,9 @@
     <ClCompile Include="..\runtime\JSWeakMap.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\JSWeakSet.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\JSWrapperObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -1026,6 +1032,12 @@
     <ClCompile Include="..\runtime\WeakMapPrototype.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\WeakSetConstructor.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\WeakSetPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\heap\CodeBlockSet.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -1033,6 +1045,9 @@
       <Filter>heap</Filter>
     </ClCompile>
     <ClCompile Include="..\bytecode\DeferredCompilationCallback.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bytecode\DeferredSourceDump.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGCompilationKey.cpp">
@@ -1913,6 +1928,9 @@
     <ClInclude Include="..\bytecode\BytecodeBasicBlock.h">
       <Filter>bytecode</Filter>
     </ClInclude>
+    <ClInclude Include="..\bytecode\BytecodeIntrinsicRegistry.h">
+      <Filter>bytecode</Filter>
+    </ClInclude>
     <ClInclude Include="..\bytecode\BytecodeLivenessAnalysis.h">
       <Filter>bytecode</Filter>
     </ClInclude>
@@ -2663,6 +2681,9 @@
     <ClInclude Include="..\runtime\Intrinsic.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\IterationStatus.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\IteratorOperations.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -3300,6 +3321,9 @@
     <ClInclude Include="..\bytecode\DeferredCompilationCallback.h">
       <Filter>bytecode</Filter>
     </ClInclude>
+    <ClInclude Include="..\bytecode\DeferredSourceDump.h">
+      <Filter>bytecode</Filter>
+    </ClInclude>
     <ClInclude Include="..\dfg\DFGCompilationKey.h">
       <Filter>dfg</Filter>
     </ClInclude>
@@ -3753,7 +3777,16 @@
     <ClInclude Include="..\runtime\WeakMapConstructor.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\WeakSetConstructor.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\WeakSetPrototype.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\JSWeakMap.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSWeakSet.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSArrayIterator.h">

@@ -27,7 +27,6 @@
 #include "SVGAnimatedString.h"
 #include "SVGElement.h"
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -40,7 +39,7 @@ class SVGFilterPrimitiveStandardAttributes : public SVGElement {
 public:
     void setStandardAttributes(FilterEffect*) const;
 
-    virtual PassRefPtr<FilterEffect> build(SVGFilterBuilder*, Filter* filter) = 0;
+    virtual RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) = 0;
     // Returns true, if the new value is different from the old one.
     virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&);
 
@@ -57,7 +56,7 @@ protected:
 private:
     virtual bool isFilterEffect() const override { return true; }
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
     virtual bool rendererIsNeeded(const RenderStyle&) override;
     virtual bool childShouldCreateRenderer(const Node&) const override { return false; }
 

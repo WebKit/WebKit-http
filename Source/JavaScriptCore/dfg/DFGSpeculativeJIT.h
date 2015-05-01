@@ -681,7 +681,7 @@ public:
         }
 
         // Check if the lastNode is a branch on this node.
-        Node* lastNode = m_block->last();
+        Node* lastNode = m_block->terminal();
         return lastNode->op() == Branch && lastNode->child1() == m_currentNode ? m_block->size() - 1 : UINT_MAX;
     }
     
@@ -2103,6 +2103,7 @@ public:
     void compileMiscStrictEq(Node*);
 
     void emitObjectOrOtherBranch(Edge value, BasicBlock* taken, BasicBlock* notTaken);
+    void emitStringBranch(Edge value, BasicBlock* taken, BasicBlock* notTaken);
     void emitBranch(Node*);
     
     struct StringSwitchCase {
@@ -2114,7 +2115,10 @@ public:
         {
         }
         
-        bool operator<(const StringSwitchCase& other) const;
+        bool operator<(const StringSwitchCase& other) const
+        {
+            return stringLessThan(*string, *other.string);
+        }
         
         StringImpl* string;
         BasicBlock* target;
@@ -2182,6 +2186,7 @@ public:
     void compileDoubleAsInt32(Node*);
     void compileAdd(Node*);
     void compileMakeRope(Node*);
+    void compileArithClz32(Node*);
     void compileArithSub(Node*);
     void compileArithNegate(Node*);
     void compileArithMul(Node*);

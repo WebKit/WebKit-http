@@ -241,7 +241,6 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_globalObjectRegister(VirtualRegister())
     , m_needsFullScopeChain(info.needsActivation())
     , m_usesEval(info.usesEval())
-    , m_isNumericCompareFunction(false)
     , m_isStrictMode(info.isStrictMode())
     , m_isConstructor(info.isConstructor())
     , m_hasCapturedVariables(false)
@@ -261,6 +260,8 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_bytecodeCommentIterator(0)
 #endif
 {
+    for (auto& constantRegisterIndex : m_linkTimeConstants)
+        constantRegisterIndex = 0;
     ASSERT(m_constructorKind == static_cast<unsigned>(info.constructorKind()));
 }
 

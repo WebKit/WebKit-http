@@ -324,7 +324,7 @@ void DrawingAreaImpl::scheduleCompositingLayerFlushImmediately()
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-PassRefPtr<WebCore::DisplayRefreshMonitor> DrawingAreaImpl::createDisplayRefreshMonitor(PlatformDisplayID displayID)
+RefPtr<WebCore::DisplayRefreshMonitor> DrawingAreaImpl::createDisplayRefreshMonitor(PlatformDisplayID displayID)
 {
     if (!m_layerTreeHost)
         return nullptr;

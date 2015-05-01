@@ -43,7 +43,7 @@ WebDiagnosticLoggingClient::~WebDiagnosticLoggingClient()
 
 void WebDiagnosticLoggingClient::logDiagnosticMessage(const String& message, const String& description, WebCore::ShouldSample shouldSample)
 {
-    if (!m_page.corePage()->settings().diagnosticLoggingEnabled())
+    if (!m_page.corePage() || !m_page.corePage()->settings().diagnosticLoggingEnabled())
         return;
 
     // FIXME: Remove this injected bundle API.
@@ -53,7 +53,7 @@ void WebDiagnosticLoggingClient::logDiagnosticMessage(const String& message, con
 
 void WebDiagnosticLoggingClient::logDiagnosticMessageWithResult(const String& message, const String& description, WebCore::DiagnosticLoggingResultType result, WebCore::ShouldSample shouldSample)
 {
-    if (!m_page.corePage()->settings().diagnosticLoggingEnabled())
+    if (!m_page.corePage() || !m_page.corePage()->settings().diagnosticLoggingEnabled())
         return;
 
     // FIXME: Remove this injected bundle API.
@@ -63,12 +63,17 @@ void WebDiagnosticLoggingClient::logDiagnosticMessageWithResult(const String& me
 
 void WebDiagnosticLoggingClient::logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, WebCore::ShouldSample shouldSample)
 {
-    if (!m_page.corePage()->settings().diagnosticLoggingEnabled())
+    if (!m_page.corePage() || !m_page.corePage()->settings().diagnosticLoggingEnabled())
         return;
 
     // FIXME: Remove this injected bundle API.
     m_page.injectedBundleDiagnosticLoggingClient().logDiagnosticMessageWithValue(&m_page, message, description, value);
     m_page.send(Messages::WebPageProxy::LogDiagnosticMessageWithValue(message, description, value, shouldSample == WebCore::ShouldSample::Yes));
+}
+
+void WebDiagnosticLoggingClient::mainFrameDestroyed()
+{
+    delete this;
 }
 
 } // namespace WebKit

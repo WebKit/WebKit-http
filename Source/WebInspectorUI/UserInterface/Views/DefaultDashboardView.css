@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,11 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-body.web .toolbar.collapsed .dashboard.default > :matches(.time, .resourcesSize, .logs) {
+body.web .toolbar.collapsed .dashboard.default > .item.resourcesCount {
     display: none;
 }
 
-body.javascript .toolbar .dashboard.default > :matches(.time, .resourcesSize, .resourcesCount) {
+body.javascript .toolbar .dashboard.default > .item.resourcesCount {
     display: none;
 }
 
@@ -51,16 +51,6 @@ body.javascript .toolbar .dashboard.default > :matches(.time, .resourcesSize, .r
 
     border-radius: 4px;
     border: 1px solid transparent;
-}
-
-body.mac-platform.legacy .toolbar .dashboard.default > .item {
-    font-family: Helvetica, sans-serif;
-    font-weight: bold;
-}
-
-.toolbar .dashboard.default > .time,
-.toolbar .dashboard.default > .resourcesSize {
-    min-width: 70px;
 }
 
 .toolbar .dashboard.default > .item.enabled:hover {
@@ -111,16 +101,8 @@ body.mac-platform.legacy .toolbar .dashboard.default > .item {
     content: url(../Images/Resources.svg);
 }
 
-.toolbar .dashboard.default > .time > img {
-    content: url(../Images/Time.svg);
-}
-
 .toolbar .dashboard.default > .logs > img {
     content: url(../Images/Logs.svg);
-}
-
-.toolbar .dashboard.default > .resourcesSize > img {
-    content: url(../Images/Weight.svg);
 }
 
 .toolbar .dashboard.default > .errors > img {
@@ -130,30 +112,6 @@ body.mac-platform.legacy .toolbar .dashboard.default > .item {
 .toolbar .dashboard.default > .errors.enabled > img {
     content: url(../Images/ErrorsEnabled.svg);
     opacity: 0.9;
-}
-
-body.mac-platform.legacy .toolbar .dashboard.default > .resourcesCount > img {
-    content: url(../Images/Legacy/Resources.svg);
-}
-
-body.mac-platform.legacy .toolbar .dashboard.default > .time > img {
-    content: url(../Images/Legacy/Time.svg);
-}
-
-body.mac-platform.legacy .toolbar .dashboard.default > .logs > img {
-    content: url(../Images/Legacy/Logs.svg);
-}
-
-body.mac-platform.legacy .toolbar .dashboard.default > .resourcesSize > img {
-    content: url(../Images/Legacy/Weight.svg);
-}
-
-body.mac-platform.legacy .toolbar .dashboard.default > .errors > img {
-    content: url(../Images/Legacy/Errors.svg);
-}
-
-body.mac-platform.legacy .toolbar .dashboard.default > .errors.enabled > img {
-    content: url(../Images/Legacy/ErrorsEnabled.svg);
 }
 
 .toolbar .dashboard.default > .errors.enabled:hover > img {
@@ -175,14 +133,6 @@ body.mac-platform.legacy .toolbar .dashboard.default > .errors.enabled > img {
 .toolbar .dashboard.default > .issues.enabled > img {
     content: url(../Images/IssuesEnabled.svg);
     opacity: 0.9;
-}
-
-body.mac-platform.legacy .toolbar .dashboard.default > .issues > img {
-    content: url(../Images/Legacy/Issues.svg);
-}
-
-body.mac-platform.legacy .toolbar .dashboard.default > .issues.enabled > img {
-    content: url(../Images/Legacy/IssuesEnabled.svg);
 }
 
 .toolbar .dashboard.default > .issues.enabled:hover > img {

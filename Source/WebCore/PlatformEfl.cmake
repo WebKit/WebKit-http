@@ -119,7 +119,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/ImageCairo.cpp
     platform/graphics/cairo/IntRectCairo.cpp
-    platform/graphics/cairo/OwnPtrCairo.cpp
     platform/graphics/cairo/PathCairo.cpp
     platform/graphics/cairo/PatternCairo.cpp
     platform/graphics/cairo/PlatformContextCairo.cpp
@@ -193,6 +192,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
     platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
     platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+    platform/graphics/texmap/coordinated/TiledBackingStore.cpp
     platform/graphics/texmap/coordinated/UpdateAtlas.cpp
 
     platform/image-decoders/ImageDecoder.cpp

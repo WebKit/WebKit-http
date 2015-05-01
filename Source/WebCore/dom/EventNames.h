@@ -233,9 +233,7 @@ namespace WebCore {
     macro(webkitkeyadded) \
     macro(webkitkeyerror) \
     macro(webkitkeymessage) \
-    macro(webkitmouseforcecancelled) \
     macro(webkitmouseforcechanged) \
-    macro(webkitmouseforceclick) \
     macro(webkitmouseforcedown) \
     macro(webkitmouseforcewillbegin) \
     macro(webkitmouseforceup) \
@@ -268,6 +266,20 @@ public:
 #define DOM_EVENT_NAMES_DECLARE(name) const AtomicString name##Event;
     DOM_EVENT_NAMES_FOR_EACH(DOM_EVENT_NAMES_DECLARE)
 #undef DOM_EVENT_NAMES_DECLARE
+
+    // FIXME: The friend declaration to std::make_unique below does not work in windows port.
+    //
+    // template<class T, class... Args>
+    // friend typename std::_Unique_if<T>::_Single_object std::make_unique(Args&&...);
+    //
+    // This create function should be deleted later and is only for keeping EventNames as private.
+    // std::make_unique should be used instead.
+    //
+    template<class... Args>
+    static std::unique_ptr<EventNames> create(Args&&... args)
+    {
+        return std::unique_ptr<EventNames>(new EventNames(std::forward<Args>(args)...));
+    }
 
     // FIXME: Inelegant to call these both event names and event types.
     // We should choose one term and stick to it.

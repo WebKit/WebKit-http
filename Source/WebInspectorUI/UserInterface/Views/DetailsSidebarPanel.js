@@ -25,30 +25,21 @@
 
 WebInspector.DetailsSidebarPanel = class DetailsSidebarPanel extends WebInspector.SidebarPanel
 {
-    constructor(identifier, displayName, singularDisplayName, image, keyboardShortcutKey, element)
+    constructor(identifier, displayName, singularDisplayName, element)
     {
-        var keyboardShortcut = null;
-        if (keyboardShortcutKey)
-            keyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control | WebInspector.KeyboardShortcut.Modifier.Shift, keyboardShortcutKey);
-
-        if (keyboardShortcut) {
-            var showToolTip = WebInspector.UIString("Show the %s details sidebar (%s)").format(singularDisplayName, keyboardShortcut.displayName);
-            var hideToolTip = WebInspector.UIString("Hide the %s details sidebar (%s)").format(singularDisplayName, keyboardShortcut.displayName);
-        } else {
-            var showToolTip = WebInspector.UIString("Show the %s details sidebar").format(singularDisplayName);
-            var hideToolTip = WebInspector.UIString("Hide the %s details sidebar").format(singularDisplayName);
-        }
-
-        super(identifier, displayName, showToolTip, hideToolTip, image, element);
-
-        this._keyboardShortcut = keyboardShortcut;
-        if (this._keyboardShortcut)
-            this._keyboardShortcut.callback = this.toggle.bind(this);
+        super(identifier, displayName, element);
 
         this.element.classList.add("details");
+
+        this._navigationItem = new WebInspector.RadioButtonNavigationItem(identifier, displayName);
     }
 
     // Public
+
+    get navigationItem()
+    {
+        return this._navigationItem;
+    }
 
     inspect(objects)
     {

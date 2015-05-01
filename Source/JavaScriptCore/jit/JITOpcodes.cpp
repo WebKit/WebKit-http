@@ -488,6 +488,17 @@ void JIT::emit_op_to_number(Instruction* currentInstruction)
     emitPutVirtualRegister(currentInstruction[1].u.operand);
 }
 
+void JIT::emit_op_to_string(Instruction* currentInstruction)
+{
+    int srcVReg = currentInstruction[2].u.operand;
+    emitGetVirtualRegister(srcVReg, regT0);
+
+    addSlowCase(emitJumpIfNotJSCell(regT0));
+    addSlowCase(branch8(NotEqual, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+
+    emitPutVirtualRegister(currentInstruction[1].u.operand);
+}
+
 void JIT::emit_op_push_name_scope(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -706,6 +717,7 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
     addSlowCase(branchTestPtr(Zero, rareDataReg));
     loadPtr(Address(rareDataReg, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()), allocatorReg);
     loadPtr(Address(rareDataReg, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()), structureReg);
+    addSlowCase(branchTestPtr(Zero, allocatorReg));
 
     emitAllocateJSObject(allocatorReg, structureReg, resultReg, scratchReg);
     emitPutVirtualRegister(currentInstruction[1].u.operand);
@@ -713,6 +725,7 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
 
 void JIT::emitSlow_op_create_this(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
+    linkSlowCase(iter); // doesn't have rare data
     linkSlowCase(iter); // doesn't have an allocation profile
     linkSlowCase(iter); // allocation failed
 
@@ -876,6 +889,15 @@ void JIT::emitSlow_op_to_number(Instruction* currentInstruction, Vector<SlowCase
     linkSlowCase(iter);
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_to_number);
+    slowPathCall.call();
+}
+
+void JIT::emitSlow_op_to_string(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+{
+    linkSlowCase(iter); // Not JSCell.
+    linkSlowCase(iter); // Not JSString.
+
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_to_string);
     slowPathCall.call();
 }
 

@@ -30,11 +30,13 @@
 #import "DOMElementInternal.h"
 #import "DOMNodeInternal.h"
 #import "DOMRangeInternal.h"
+#import "WebDataSource.h"
 #import "WebDocumentInternal.h"
 #import "WebElementDictionary.h"
 #import "WebFrameInternal.h"
 #import "WebHTMLView.h"
 #import "WebHTMLViewInternal.h"
+#import "WebPDFView.h"
 #import "WebSystemInterface.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebViewInternal.h"
@@ -94,12 +96,15 @@ using namespace WebCore;
 
 - (WebElementDictionary *)performHitTestAtPoint:(NSPoint)windowPoint
 {
-    WebHTMLView *documentView = [[[_webView _selectedOrMainFrame] frameView] documentView];
-    NSPoint point = [documentView convertPoint:windowPoint fromView:nil];
-
-    Frame* coreFrame = core([documentView _frame]);
+    NSView<WebDocumentView> *documentView = [[[_webView _selectedOrMainFrame] frameView] documentView];
+    if (![documentView isKindOfClass:[WebHTMLView class]])
+        return nil;
+        
+    Frame* coreFrame = core([(WebHTMLView *)documentView _frame]);
     if (!coreFrame)
         return nil;
+
+    NSPoint point = [documentView convertPoint:windowPoint fromView:nil];
     _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point));
 
     return [[[WebElementDictionary alloc] initWithHitTestResult:_hitTestResult] autorelease];
@@ -116,6 +121,7 @@ using namespace WebCore;
 - (void)webView:(WebView *)webView didHandleScrollWheel:(NSEvent *)event
 {
     [self _dismissActionMenuPopovers];
+    [self _hideTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::None];
 }
 
 - (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
@@ -128,6 +134,7 @@ using namespace WebCore;
         return;
 
     [self _dismissActionMenuPopovers];
+    [self _hideTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];
     [actionMenu removeAllItems];
 
     WebElementDictionary *hitTestResult = [self performHitTestAtPoint:event.locationInWindow];
@@ -544,7 +551,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     } interactionChangedHandler:^() {
         [self _showTextIndicator];
     } interactionStoppedHandler:^() {
-        [self _hideTextIndicator];
+        [self _hideTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];
     }];
     _currentDetectedDataRange = detectedDataRange;
 
@@ -686,7 +693,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         selector = @selector(_saveImageToDownloads:);
         title = WEB_UI_STRING_KEY("Save to Downloads", "Save to Downloads (image action menu item)", "image action menu item");
         image = [NSImage imageNamed:@"NSActionMenuSaveToDownloads"];
-        enabled = WebCore::protocolIs(_hitTestResult.absoluteImageURL(), "file");
+        enabled = !WebCore::protocolIs(_hitTestResult.absoluteImageURL(), "file");
         break;
 
     case WebActionMenuItemTagCopyVideoURL:
@@ -699,7 +706,7 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         selector = @selector(_saveVideoToDownloads:);
         title = WEB_UI_STRING_KEY("Save to Downloads", "Save to Downloads (video action menu item)", "video action menu item");
         image = [NSImage imageNamed:@"NSActionMenuSaveToDownloads"];
-        enabled = WebCore::protocolIs(_hitTestResult.absoluteMediaURL(), "file");
+        enabled = !WebCore::protocolIs(_hitTestResult.absoluteMediaURL(), "file") && _hitTestResult.isDownloadableMedia();
         break;
 
     default:
@@ -808,17 +815,17 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
         return;
 
     if (_type == WebActionMenuDataDetectedItem && _currentDetectedDataTextIndicator) {
-        [_webView _setTextIndicator:_currentDetectedDataTextIndicator.get() fadeOut:NO];
+        [_webView _setTextIndicator:*_currentDetectedDataTextIndicator withLifetime:TextIndicatorLifetime::Permanent];
         _isShowingTextIndicator = YES;
     }
 }
 
-- (void)_hideTextIndicator
+- (void)_hideTextIndicatorWithAnimation:(TextIndicatorDismissalAnimation)animation
 {
     if (!_isShowingTextIndicator)
         return;
 
-    [_webView _clearTextIndicator];
+    [_webView _clearTextIndicatorWithAnimation:animation];
     _isShowingTextIndicator = NO;
 }
 
@@ -827,8 +834,6 @@ static NSString *pathToPhotoOnDisk(NSString *suggestedFilename)
     DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
     if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
         [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
-
-    [self _hideTextIndicator];
 }
 
 @end

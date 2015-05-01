@@ -44,6 +44,7 @@
 #import "VisibleUnits.h"
 #import "WebCoreSystemInterface.h"
 #import "htmlediting.h"
+#import <PDFKit/PDFKit.h>
 #import <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -75,18 +76,6 @@ bool shouldUseSelection(const VisiblePosition& position, const VisibleSelection&
         return false;
 
     return isPositionInRange(position, selectedRange.get());
-}
-
-PassRefPtr<Range> rangeExpandedAroundPositionByCharacters(const VisiblePosition& position, int numberOfCharactersToExpand)
-{
-    Position start = position.deepEquivalent();
-    Position end = position.deepEquivalent();
-    for (int i = 0; i < numberOfCharactersToExpand; ++i) {
-        start = start.previous(Character);
-        end = end.next(Character);
-    }
-
-    return makeRange(start, end);
 }
 
 PassRefPtr<Range> rangeForDictionaryLookupForSelection(const VisibleSelection& selection, NSDictionary **options)
@@ -142,6 +131,10 @@ PassRefPtr<Range> rangeForDictionaryLookupAtHitTestResult(const HitTestResult& h
     if (shouldUseSelection(position, selection))
         return rangeForDictionaryLookupForSelection(selection, options);
 
+    VisibleSelection selectionAccountingForLineRules = VisibleSelection(position);
+    selectionAccountingForLineRules.expandUsingGranularity(WordGranularity);
+    position = selectionAccountingForLineRules.start();
+
     // As context, we are going to use 250 characters of text before and after the point.
     RefPtr<Range> fullCharacterRange = rangeExpandedAroundPositionByCharacters(position, 250);
     if (!fullCharacterRange)
@@ -160,6 +153,52 @@ PassRefPtr<Range> rangeForDictionaryLookupAtHitTestResult(const HitTestResult& h
         return nullptr;
 
     return TextIterator::subrange(fullCharacterRange.get(), extractedRange.location, extractedRange.length);
+}
+
+static void expandSelectionByCharacters(PDFSelection *selection, NSInteger numberOfCharactersToExpand, NSInteger& charactersAddedBeforeStart, NSInteger& charactersAddedAfterEnd)
+{
+    size_t originalLength = selection.string.length;
+    [selection extendSelectionAtStart:numberOfCharactersToExpand];
+    
+    charactersAddedBeforeStart = selection.string.length - originalLength;
+    
+    [selection extendSelectionAtEnd:numberOfCharactersToExpand];
+    charactersAddedAfterEnd = selection.string.length - originalLength - charactersAddedBeforeStart;
+}
+
+NSString *dictionaryLookupForPDFSelection(PDFSelection *selection, NSDictionary **options)
+{
+    // Don't do anything if there is no character at the point.
+    if (!selection || !selection.string.length)
+        return @"";
+    
+    RetainPtr<PDFSelection> selectionForLookup = adoptNS([selection copy]);
+    
+    // As context, we are going to use 250 characters of text before and after the point.
+    NSInteger originalLength = [selectionForLookup string].length;
+    NSInteger charactersAddedBeforeStart = 0;
+    NSInteger charactersAddedAfterEnd = 0;
+    expandSelectionByCharacters(selectionForLookup.get(), 250, charactersAddedBeforeStart, charactersAddedAfterEnd);
+    
+    NSString *fullPlainTextString = [selectionForLookup string];
+    NSRange rangeToPass = NSMakeRange(charactersAddedBeforeStart, 0);
+    
+    NSRange extractedRange = NSMakeRange(rangeToPass.location, 0);
+    if (Class luLookupDefinitionModule = getLULookupDefinitionModuleClass())
+        extractedRange = [luLookupDefinitionModule tokenRangeForString:fullPlainTextString range:rangeToPass options:options];
+    
+    // This function sometimes returns {NSNotFound, 0} if it was unable to determine a good string.
+    if (extractedRange.location == NSNotFound)
+        return selection.string;
+    
+    NSInteger lookupAddedBefore = rangeToPass.location - extractedRange.location;
+    NSInteger lookupAddedAfter = (extractedRange.location + extractedRange.length) - (rangeToPass.location + originalLength);
+    
+    [selection extendSelectionAtStart:lookupAddedBefore];
+    [selection extendSelectionAtEnd:lookupAddedAfter];
+    
+    ASSERT([selection.string isEqualToString:[fullPlainTextString substringWithRange:extractedRange]]);
+    return selection.string;
 }
 
 } // namespace WebCore

@@ -78,7 +78,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         return nil;
 
     _configuration = [configuration copy];
-    _isPrivateBrowsingWindow = _configuration.websiteDataStore.isNonPersistent;
+    _isPrivateBrowsingWindow = !_configuration.websiteDataStore.isPersistent;
 
     return self;
 }
@@ -362,7 +362,7 @@ static CGFloat viewScaleForMenuItemTag(NSInteger tag)
         [self updateTextFieldFromURL:_webView.URL];
 }
 
-- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)())completionHandler
+- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
 {
     NSAlert* alert = [[NSAlert alloc] init];
 
@@ -440,20 +440,23 @@ static CGFloat viewScaleForMenuItemTag(NSInteger tag)
 {
 }
 
-static const WKWebsiteDataTypes dataTypes = WKWebsiteDataTypeAll;
+static NSSet *dataTypes()
+{
+    return [WKWebsiteDataStore allWebsiteDataTypes];
+}
 
 - (IBAction)fetchWebsiteData:(id)sender
 {
-    [_configuration.websiteDataStore fetchDataRecordsOfTypes:dataTypes completionHandler:^(NSArray *websiteDataRecords) {
+    [_configuration.websiteDataStore fetchDataRecordsOfTypes:dataTypes() completionHandler:^(NSArray *websiteDataRecords) {
         NSLog(@"did fetch website data %@.", websiteDataRecords);
     }];
 }
 
 - (IBAction)fetchAndClearWebsiteData:(id)sender
 {
-    [_configuration.websiteDataStore fetchDataRecordsOfTypes:dataTypes completionHandler:^(NSArray *websiteDataRecords) {
-        [_configuration.websiteDataStore removeDataOfTypes:dataTypes forDataRecords:websiteDataRecords completionHandler:^{
-            [_configuration.websiteDataStore fetchDataRecordsOfTypes:dataTypes completionHandler:^(NSArray *websiteDataRecords) {
+    [_configuration.websiteDataStore fetchDataRecordsOfTypes:dataTypes() completionHandler:^(NSArray *websiteDataRecords) {
+        [_configuration.websiteDataStore removeDataOfTypes:dataTypes() forDataRecords:websiteDataRecords completionHandler:^{
+            [_configuration.websiteDataStore fetchDataRecordsOfTypes:dataTypes() completionHandler:^(NSArray *websiteDataRecords) {
                 NSLog(@"did clear website data, after clearing data is %@.", websiteDataRecords);
             }];
         }];
@@ -462,7 +465,7 @@ static const WKWebsiteDataTypes dataTypes = WKWebsiteDataTypeAll;
 
 - (IBAction)clearWebsiteData:(id)sender
 {
-    [_configuration.websiteDataStore removeDataOfTypes:dataTypes modifiedSince:[NSDate distantPast] completionHandler:^{
+    [_configuration.websiteDataStore removeDataOfTypes:dataTypes() modifiedSince:[NSDate distantPast] completionHandler:^{
         NSLog(@"Did clear website data.");
     }];
 }

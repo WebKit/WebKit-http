@@ -1,3 +1,2210 @@
+2015-04-30  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Remove some unused Images
+        https://bugs.webkit.org/show_bug.cgi?id=144445
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/BottomUpTree.svg: Removed.
+        * UserInterface/Images/gtk/Log.png: Removed.
+        * UserInterface/Images/gtk/Log@2x.png: Removed.
+        * UserInterface/Images/gtk/NavigationItemAngleBrackets.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemBrushAndRuler.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemBug.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemFile.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemLayers.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemLog.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemProbes.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemStopwatch.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemStorage.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemVariable.svg: Removed.
+        * UserInterface/Images/gtk/Percent.svg: Removed.
+        * UserInterface/Images/gtk/Reload.svg: Removed.
+        * UserInterface/Images/gtk/SplitToggleDown.svg: Removed.
+        * UserInterface/Images/gtk/Time.svg: Removed.
+        * UserInterface/Images/gtk/Weight.svg: Removed.
+
+2015-04-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Copy not working in Console
+        https://bugs.webkit.org/show_bug.cgi?id=144354
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._focusedContentView):
+        Select the inner most content view to check if handleCopyEvent exists.
+        Previously we were stopping at the top level TabContentView.
+
+2015-04-29  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove some unused Images
+        https://bugs.webkit.org/show_bug.cgi?id=144412
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/BottomUpTree.svg: Removed.
+        * UserInterface/Images/Log.png: Removed.
+        * UserInterface/Images/Log@2x.png: Removed.
+        * UserInterface/Images/NavigationItemAngleBrackets.svg: Removed.
+        * UserInterface/Images/NavigationItemBrushAndRuler.svg: Removed.
+        * UserInterface/Images/NavigationItemBug.svg: Removed.
+        * UserInterface/Images/NavigationItemDoughnutChart.svg: Removed.
+        * UserInterface/Images/NavigationItemFile.svg: Removed.
+        * UserInterface/Images/NavigationItemLayers.svg: Removed.
+        * UserInterface/Images/NavigationItemLog.svg: Removed.
+        * UserInterface/Images/NavigationItemProbes.svg: Removed.
+        * UserInterface/Images/NavigationItemStopwatch.svg: Removed.
+        * UserInterface/Images/NavigationItemStorage.svg: Removed.
+        * UserInterface/Images/NavigationItemVariable.svg: Removed.
+        * UserInterface/Images/NetworkBarLabelCalloutLeft.svg: Removed.
+        * UserInterface/Images/NetworkBarLabelCalloutRight.svg: Removed.
+        * UserInterface/Images/NetworkBarLabelCalloutWhiteLeft.svg: Removed.
+        * UserInterface/Images/NetworkBarLabelCalloutWhiteRight.svg: Removed.
+        * UserInterface/Images/Percent.svg: Removed.
+        * UserInterface/Images/Reload.svg: Removed.
+        * UserInterface/Images/SplitToggleDown.svg: Removed.
+        * UserInterface/Images/Time.svg: Removed.
+        * UserInterface/Images/Weight.svg: Removed.
+
+2015-04-29  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Split Storage from Resources tab
+        https://bugs.webkit.org/show_bug.cgi?id=144404
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.isTabTypeAllowed):
+        (WebInspector._tabContentViewForType):
+        (WebInspector._updateNewTabButtonState):
+        (WebInspector.showStorageTab):
+        (WebInspector._storageWasInspected):
+        * UserInterface/Controllers/ApplicationCacheManager.js:
+        (WebInspector.ApplicationCacheManager.prototype.initialize):
+        (WebInspector.ApplicationCacheManager.prototype.get applicationCacheObjects):
+        * UserInterface/Controllers/StorageManager.js:
+        (WebInspector.StorageManager.prototype.get domStorageObjects):
+        (WebInspector.StorageManager.prototype.get databases):
+        (WebInspector.StorageManager.prototype.get indexedDatabases):
+        (WebInspector.StorageManager.prototype.get cookieStorageObjects):
+        * UserInterface/Images/Storage.svg: Added.
+        * UserInterface/Main.html:
+        * UserInterface/Views/DatabaseTableContentView.js:
+        (WebInspector.DatabaseTableContentView.prototype._queryFinished): Clear _dataGrid,
+        since it might have been allocated but still be empty. This avoids an exception in
+        updateLayout next time layout is updated.
+        * UserInterface/Views/NewTabContentView.js:
+        (WebInspector.NewTabContentView):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype._treeElementSelected):
+        (WebInspector.ResourceSidebarPanel.prototype._domStorageObjectWasAdded): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._domStorageObjectWasInspected): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._databaseWasAdded): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._databaseWasInspected): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._indexedDatabaseWasAdded): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._cookieStorageObjectWasAdded): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._frameManifestAdded): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._frameManifestRemoved): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._addStorageChild): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._storageCleared): Deleted.
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WebInspector.ResourcesTabContentView):
+        (WebInspector.ResourcesTabContentView.prototype.canShowRepresentedObject):
+        * UserInterface/Views/StorageSidebarPanel.js: Added.
+        (WebInspector.StorageSidebarPanel):
+        (WebInspector.StorageSidebarPanel.prototype.showDefaultContentView):
+        (WebInspector.StorageSidebarPanel.prototype.closed):
+        (WebInspector.StorageSidebarPanel.prototype._treeElementSelected):
+        (WebInspector.StorageSidebarPanel.prototype._domStorageObjectWasAdded):
+        (WebInspector.StorageSidebarPanel.prototype._addDOMStorageObject):
+        (WebInspector.StorageSidebarPanel.prototype._domStorageObjectWasInspected):
+        (WebInspector.StorageSidebarPanel.prototype._databaseWasAdded):
+        (WebInspector.StorageSidebarPanel.prototype._addDatabase):
+        (WebInspector.StorageSidebarPanel.prototype._databaseWasInspected):
+        (WebInspector.StorageSidebarPanel.prototype._indexedDatabaseWasAdded):
+        (WebInspector.StorageSidebarPanel.prototype._addIndexedDatabase):
+        (WebInspector.StorageSidebarPanel.prototype._cookieStorageObjectWasAdded):
+        (WebInspector.StorageSidebarPanel.prototype._addCookieStorageObject):
+        (WebInspector.StorageSidebarPanel.prototype._frameManifestAdded):
+        (WebInspector.StorageSidebarPanel.prototype._addFrameManifest):
+        (WebInspector.StorageSidebarPanel.prototype._frameManifestRemoved):
+        (WebInspector.StorageSidebarPanel.prototype._compareTreeElements):
+        (WebInspector.StorageSidebarPanel.prototype._addStorageChild):
+        (WebInspector.StorageSidebarPanel.prototype._storageCleared):
+        * UserInterface/Views/StorageTabContentView.js: Copied from Source/WebInspectorUI/UserInterface/Views/ResourcesTabContentView.js.
+        (WebInspector.StorageTabContentView):
+        (WebInspector.StorageTabContentView.prototype.get type):
+        (WebInspector.StorageTabContentView.prototype.canShowRepresentedObject):
+
+2015-04-29  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove Legacy images and styles
+        https://bugs.webkit.org/show_bug.cgi?id=144390
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/ImageUtilities.js:
+        (.generateImage):
+        (.generateImage.generateLegacyImage): Deleted.
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._updateToolbarHeight):
+        * UserInterface/Base/Platform.js:
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._loadNewRecording):
+        * UserInterface/Images/Legacy/BackArrow.svg: Removed.
+        * UserInterface/Images/Legacy/Breakpoints.svg: Removed.
+        * UserInterface/Images/Legacy/Close.svg: Removed.
+        * UserInterface/Images/Legacy/CloseLarge.svg: Removed.
+        * UserInterface/Images/Legacy/Colors.png: Removed.
+        * UserInterface/Images/Legacy/Colors@2x.png: Removed.
+        * UserInterface/Images/Legacy/ColorsLarge.png: Removed.
+        * UserInterface/Images/Legacy/ColorsLarge@2x.png: Removed.
+        * UserInterface/Images/Legacy/DockBottom.svg: Removed.
+        * UserInterface/Images/Legacy/DockRight.svg: Removed.
+        * UserInterface/Images/Legacy/DownloadArrow.svg: Removed.
+        * UserInterface/Images/Legacy/Errors.svg: Removed.
+        * UserInterface/Images/Legacy/ErrorsEnabled.svg: Removed.
+        * UserInterface/Images/Legacy/FilterFieldGlyph.svg: Removed.
+        * UserInterface/Images/Legacy/FolderGeneric.png: Removed.
+        * UserInterface/Images/Legacy/FolderGeneric@2x.png: Removed.
+        * UserInterface/Images/Legacy/ForwardArrow.svg: Removed.
+        * UserInterface/Images/Legacy/Issues.svg: Removed.
+        * UserInterface/Images/Legacy/IssuesEnabled.svg: Removed.
+        * UserInterface/Images/Legacy/LayerBorders.svg: Removed.
+        * UserInterface/Images/Legacy/Logs.svg: Removed.
+        * UserInterface/Images/Legacy/NavigationItemCurleyBraces.svg: Removed.
+        * UserInterface/Images/Legacy/NavigationItemTrash.svg: Removed.
+        * UserInterface/Images/Legacy/Network.png: Removed.
+        * UserInterface/Images/Legacy/Network@2x.png: Removed.
+        * UserInterface/Images/Legacy/NetworkLarge.png: Removed.
+        * UserInterface/Images/Legacy/NetworkLarge@2x.png: Removed.
+        * UserInterface/Images/Legacy/Pause.svg: Removed.
+        * UserInterface/Images/Legacy/Plus.svg: Removed.
+        * UserInterface/Images/Legacy/Recording.png: Removed.
+        * UserInterface/Images/Legacy/Recording@2x.png: Removed.
+        * UserInterface/Images/Legacy/RecordingHovered.png: Removed.
+        * UserInterface/Images/Legacy/RecordingHovered@2x.png: Removed.
+        * UserInterface/Images/Legacy/RecordingStopped.png: Removed.
+        * UserInterface/Images/Legacy/RecordingStopped@2x.png: Removed.
+        * UserInterface/Images/Legacy/Reload.svg: Removed.
+        * UserInterface/Images/Legacy/Resources.svg: Removed.
+        * UserInterface/Images/Legacy/Resume.svg: Removed.
+        * UserInterface/Images/Legacy/ShadowDOM.svg: Removed.
+        * UserInterface/Images/Legacy/SortIndicatorDownArrow.svg: Removed.
+        * UserInterface/Images/Legacy/SortIndicatorUpArrow.svg: Removed.
+        * UserInterface/Images/Legacy/SplitToggleDown.svg: Removed.
+        * UserInterface/Images/Legacy/SplitToggleUp.svg: Removed.
+        * UserInterface/Images/Legacy/StepInto.svg: Removed.
+        * UserInterface/Images/Legacy/StepOut.svg: Removed.
+        * UserInterface/Images/Legacy/StepOver.svg: Removed.
+        * UserInterface/Images/Legacy/Time.svg: Removed.
+        * UserInterface/Images/Legacy/Undock.svg: Removed.
+        * UserInterface/Images/Legacy/UpDownArrows.svg: Removed.
+        * UserInterface/Images/Legacy/Weight.svg: Removed.
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (body.mac-platform.legacy .navigation-bar .item.button.text-only): Deleted.
+        * UserInterface/Views/ButtonToolbarItem.css:
+        (body.mac-platform.legacy .toolbar .item.button > .label): Deleted.
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (body.mac-platform.legacy .style-declaration-section): Deleted.
+        (body.mac-platform.legacy .style-declaration-section + .style-declaration-section): Deleted.
+        (body.mac-platform.legacy .style-declaration-section.last-in-group): Deleted.
+        (body.mac-platform.legacy .style-declaration-section.last-in-group + .style-declaration-section): Deleted.
+        (body.mac-platform.legacy .style-declaration-section.last-in-group + .style-declaration-section:matches(.last-in-group, :last-child)): Deleted.
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (body.mac-platform.legacy .sidebar > .panel.details.css-style > .content): Deleted.
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser):
+        * UserInterface/Views/ControlToolbarItem.css:
+        (body.mac-platform.legacy .toolbar .item.control): Deleted.
+        (body.mac-platform.legacy .toolbar .item.control:hover): Deleted.
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        * UserInterface/Views/DOMTreeOutline.css:
+        (body.mac-platform.legacy .dom-tree-outline li.hovered:not(.selected) .selection): Deleted.
+        (body.mac-platform.legacy .dom-tree-outline li.elements-drag-over .selection): Deleted.
+        (body.mac-platform.legacy .dom-tree-outline:focus li.selected .selection): Deleted.
+        * UserInterface/Views/DashboardContainerView.css:
+        (body.mac-platform.legacy .toolbar .dashboard-container): Deleted.
+        (body.mac-platform.legacy.window-inactive .toolbar .dashboard-container): Deleted.
+        (body.mac-platform.legacy.window-inactive .toolbar .dashboard): Deleted.
+        (body.mac-platform.legacy .dashboard-container .advance-arrow): Deleted.
+        * UserInterface/Views/DataGrid.css:
+        (body.mac-platform.legacy .data-grid:focus tr.selected td:not(:last-child)): Deleted.
+        (body.mac-platform.legacy .data-grid:focus tr.selected): Deleted.
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.get _generateSortIndicatorImagesIfNeeded):
+        * UserInterface/Views/DatabaseTableContentView.js:
+        (WebInspector.DatabaseTableContentView):
+        * UserInterface/Views/DebuggerDashboardView.js:
+        (WebInspector.DebuggerDashboardView):
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (body.mac-platform.legacy .sidebar > .panel.navigation.debugger > .content): Deleted.
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        * UserInterface/Views/DefaultDashboardView.css:
+        (body.mac-platform.legacy .toolbar .dashboard.default > .item): Deleted.
+        (body.mac-platform.legacy .toolbar .dashboard.default > .resourcesCount > img): Deleted.
+        (body.mac-platform.legacy .toolbar .dashboard.default > .logs > img): Deleted.
+        (body.mac-platform.legacy .toolbar .dashboard.default > .errors > img): Deleted.
+        (body.mac-platform.legacy .toolbar .dashboard.default > .errors.enabled > img): Deleted.
+        (body.mac-platform.legacy .toolbar .dashboard.default > .issues > img): Deleted.
+        (body.mac-platform.legacy .toolbar .dashboard.default > .issues.enabled > img): Deleted.
+        * UserInterface/Views/DetailsSection.css:
+        (body.mac-platform.legacy .details-section): Deleted.
+        (body.mac-platform.legacy .details-section .details-section): Deleted.
+        (body.mac-platform.legacy .details-section .details-section:first-child): Deleted.
+        (body.mac-platform.legacy .details-section > .header): Deleted.
+        (body.mac-platform.legacy .details-section .details-section > .header): Deleted.
+        (body.mac-platform.legacy .details-section .details-section.collapsed > .header): Deleted.
+        (body.mac-platform.legacy .details-section:not(.collapsed) .data-grid.inline): Deleted.
+        (body.mac-platform.legacy .details-section.computed-style-properties:not(.collapsed) > .header): Deleted.
+        (body.mac-platform.legacy .details-section > .content > .group): Deleted.
+        (body.mac-platform.legacy .details-section > .content > .group:nth-child(even)): Deleted.
+        (body.mac-platform.legacy .details-section > .content > .group:matches(:nth-child(even), :last-child) > .row.simple:last-child > *): Deleted.
+        (body.mac-platform.legacy .details-section > .content > .group > .row:matches(.empty, .text)): Deleted.
+        * UserInterface/Views/DividerNavigationItem.css:
+        (.navigation-bar .item.divider):
+        (body.mac-platform.legacy .navigation-bar .item.divider): Deleted.
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar > input[type="search"]::-webkit-search-decoration):
+        (body.mac-platform.legacy .filter-bar): Deleted.
+        (body.mac-platform.legacy .filter-bar > input[type="search"]): Deleted.
+        (body.mac-platform.legacy .filter-bar > input[type="search"]::-webkit-search-decoration): Deleted.
+        * UserInterface/Views/FindBanner.css:
+        (body.mac-platform.legacy .find-banner > input[type="search"]): Deleted.
+        (body.mac-platform.legacy .find-banner > button > .glyph): Deleted.
+        (body.mac-platform.legacy .find-banner > button.segmented.left > .glyph): Deleted.
+        (body.mac-platform.legacy .find-banner > button.segmented.right > .glyph): Deleted.
+        (body.mac-platform.legacy .find-banner > button.segmented): Deleted.
+        * UserInterface/Views/FindBanner.js:
+        (WebInspector.FindBanner.prototype._generateButtonsGlyphsIfNeeded):
+        (WebInspector.FindBanner):
+        * UserInterface/Views/FolderIcon.css:
+        (.folder-icon .icon):
+        (body.mac-platform.legacy .folder-icon .icon): Deleted.
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        (body.mac-platform.legacy .hierarchical-path-component > .selector-arrows): Deleted.
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.js:
+        (WebInspector.IndexedDatabaseObjectStoreContentView):
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.css:
+        (body.mac-platform.legacy .sidebar > .panel.details.layer-tree > .content): Deleted.
+        (body.mac-platform.legacy .panel.details.layer-tree .bottom-bar): Deleted.
+        (body.mac-platform.legacy .panel.details.layer-tree .bottom-bar > div): Deleted.
+        (body.mac-platform.legacy .layer-tree-popover): Deleted.
+        * UserInterface/Views/LogContentView.css:
+        (body.mac-platform.legacy .search-bar.log-search-bar > input[type="search"]): Deleted.
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        * UserInterface/Views/Main.css:
+        (body.mac-platform.legacy:not(.docked)): Deleted.
+        (body.docked.bottom.mac-platform.legacy): Deleted.
+        (body.docked.right.mac-platform.legacy): Deleted.
+        (body.mac-platform.legacy #split-content-browser > .navigation-bar): Deleted.
+        * UserInterface/Views/NavigationBar.css:
+        (.navigation-bar .item):
+        (body.mac-platform.legacy .navigation-bar): Deleted.
+        (body.mac-platform.legacy .navigation-bar .item): Deleted.
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (body.mac-platform.legacy .sidebar > .panel.navigation > .content): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation > .overflow-shadow): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation > .overflow-shadow.top): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation > .empty-content-placeholder): Deleted.
+        (body.mac-platform.legacy .navigation-sidebar-panel-content-tree-outline .item.selected): Deleted.
+        (body.mac-platform.legacy .navigation-sidebar-panel-content-tree-outline:focus .item.selected): Deleted.
+        (body.mac-platform.legacy.window-inactive .navigation-sidebar-panel-content-tree-outline .item.selected): Deleted.
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._updateContentOverflowShadowVisibility):
+        (WebInspector.NavigationSidebarPanel.prototype._generateDisclosureTrianglesIfNeeded):
+        * UserInterface/Views/Popover.js:
+        * UserInterface/Views/ProbeDetailsSidebarPanel.css:
+        (body.mac-platform.legacy .details-section.probe-set .options > .probe-clear-samples): Deleted.
+        (body.mac-platform.legacy .details-section.probe-set .options > .probe-remove): Deleted.
+        (body.mac-platform.legacy .details-section.probe-set .options > .probe-add): Deleted.
+        * UserInterface/Views/QuickConsole.css:
+        (body.mac-platform.legacy .quick-console): Deleted.
+        * UserInterface/Views/RadioButtonNavigationItem.css:
+        (.navigation-bar .item.radio.button.text-only.selected:active):
+        (body.mac-platform.legacy .navigation-bar .item.radio.button.text-only:hover): Deleted.
+        (body.mac-platform.legacy .navigation-bar .item.radio.button.text-only.selected): Deleted.
+        (body.mac-platform.legacy .navigation-bar .item.radio.button.text-only.selected:active): Deleted.
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (body.mac-platform.legacy .sidebar > .panel.details.css-style .rules .label + .style-declaration-section): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.details.css-style .rules .new-rule): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.details.css-style .rules .new-rule + .style-declaration-section): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.details.css-style .rules .new-rule img): Deleted.
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar > li.selected:active):
+        (body.mac-platform.legacy .scope-bar > li): Deleted.
+        (body.mac-platform.legacy .scope-bar > li:hover): Deleted.
+        (body.mac-platform.legacy .scope-bar > li.selected): Deleted.
+        (body.mac-platform.legacy .scope-bar > li:active): Deleted.
+        (body.mac-platform.legacy .scope-bar > li.selected:active): Deleted.
+        * UserInterface/Views/ScriptContentView.js:
+        (WebInspector.ScriptContentView):
+        * UserInterface/Views/SearchBar.css:
+        (body.mac-platform.legacy .search-bar > input[type="search"]): Deleted.
+        * UserInterface/Views/SearchSidebarPanel.css:
+        (.sidebar > .panel.navigation.search > .search-bar > input[type="search"]):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.search > :matches(.content, .empty-content-placeholder)): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.search > .search-bar): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.search > .search-bar > input[type="search"]): Deleted.
+        * UserInterface/Views/Sidebar.css:
+        (body.window-inactive .sidebar.right):
+        (body.mac-platform.legacy .sidebar): Deleted.
+        (body.mac-platform.legacy.window-inactive .sidebar): Deleted.
+        (body.mac-platform.legacy .sidebar.right): Deleted.
+        * UserInterface/Views/TextContentView.js:
+        (WebInspector.TextContentView):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView):
+        * UserInterface/Views/TimelineDataGrid.css:
+        (body.mac-platform.legacy .data-grid.timeline > .navigation-bar-container > .navigation-bar): Deleted.
+        * UserInterface/Views/TimelineIcons.css:
+        (body.mac-platform.legacy .network-icon .icon): Deleted.
+        (body.mac-platform.legacy .network-icon.large .icon): Deleted.
+        (body.mac-platform.legacy .colors-icon .icon): Deleted.
+        (body.mac-platform.legacy .colors-icon.large .icon): Deleted.
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        * UserInterface/Views/TimelineRuler.css:
+        (body.mac-platform.legacy .timeline-ruler > .header): Deleted.
+        (body.mac-platform.legacy .timeline-ruler > .selection-drag): Deleted.
+        (body.mac-platform.legacy .timeline-ruler > .selection-handle): Deleted.
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing > .content):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .status-bar): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .status-bar > .record-glyph): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .status-bar > .record-glyph.recording): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .status-bar > .record-glyph:hover): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .status-bar > .record-glyph.recording:hover): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .status-bar > .record-glyph.forced): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .status-bar > .record-glyph.recording.forced): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .status-bar > .record-status): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .title-bar): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .title-bar.timelines): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .title-bar.timeline-events): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .timelines-content): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .timelines-content .close-button): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .timelines-content li.item.selected + li.item): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .timelines-content :focus li.item.selected + li.item): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > :matches(.content, .empty-content-placeholder)): Deleted.
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .content .item > .status > .status-button): Deleted.
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        * UserInterface/Views/Toolbar.css:
+        (body.mac-platform:not(.docked) .toolbar):
+        (body.mac-platform:not(.legacy, .docked) .toolbar): Deleted.
+        (body.mac-platform.legacy .toolbar): Deleted.
+        (body.mac-platform.legacy.docked .toolbar): Deleted.
+        (body.mac-platform.legacy:not(.docked) .toolbar .item.button > .label): Deleted.
+        (body.mac-platform.legacy.window-inactive .toolbar): Deleted.
+        * UserInterface/Views/TreeElementStatusButton.css:
+        (body.mac-platform.legacy .item > .status > .status-button > svg .filled): Deleted.
+        (body.mac-platform.legacy .item > .status > .status-button > svg .stroked): Deleted.
+
+2015-04-29  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Optimize SVG images
+        https://bugs.webkit.org/show_bug.cgi?id=143476
+
+        SVG images optimized with a combination of sed replacements and
+        the usage of the scour tool (http://www.codedread.com/scour/).
+
+        Also, modified the spelling of the license word to use the US one
+        in the copyright files.
+
+        Reviewed by Martin Robinson.
+
+        * UserInterface/Images/gtk/BackArrow.svg:
+        * UserInterface/Images/gtk/BottomUpTree.svg:
+        * UserInterface/Images/gtk/BreakpointActionAdd.svg:
+        * UserInterface/Images/gtk/BreakpointActionRemove.svg:
+        * UserInterface/Images/gtk/BreakpointButton.svg:
+        * UserInterface/Images/gtk/BreakpointInactiveButton.svg:
+        * UserInterface/Images/gtk/Breakpoints.svg:
+        * UserInterface/Images/gtk/COPYING:
+        * UserInterface/Images/gtk/COPYING_CCBYSA3:
+        * UserInterface/Images/gtk/Checkers.svg:
+        * UserInterface/Images/gtk/Circle.svg:
+        * UserInterface/Images/gtk/Close.svg:
+        * UserInterface/Images/gtk/CloseLarge.svg:
+        * UserInterface/Images/gtk/CloseWhite.svg:
+        * UserInterface/Images/gtk/ContentFlow.svg:
+        * UserInterface/Images/gtk/Crosshair.svg:
+        * UserInterface/Images/gtk/DOMCharacterData.svg:
+        * UserInterface/Images/gtk/DOMComment.svg:
+        * UserInterface/Images/gtk/DOMDocument.svg:
+        * UserInterface/Images/gtk/DOMDocumentType.svg:
+        * UserInterface/Images/gtk/DOMElement.svg:
+        * UserInterface/Images/gtk/DOMNode.svg:
+        * UserInterface/Images/gtk/DOMTextNode.svg:
+        * UserInterface/Images/gtk/DOMTree.svg:
+        * UserInterface/Images/gtk/DisclosureTriangleSmallClosed.svg:
+        * UserInterface/Images/gtk/DisclosureTriangleSmallOpen.svg:
+        * UserInterface/Images/gtk/DisclosureTriangleTinyClosed.svg:
+        * UserInterface/Images/gtk/DisclosureTriangleTinyOpen.svg:
+        * UserInterface/Images/gtk/DockBottom.svg:
+        * UserInterface/Images/gtk/DockRight.svg:
+        * UserInterface/Images/gtk/DownloadArrow.svg:
+        * UserInterface/Images/gtk/Error.svg:
+        * UserInterface/Images/gtk/Errors.svg:
+        * UserInterface/Images/gtk/ErrorsEnabled.svg:
+        * UserInterface/Images/gtk/EventListener.svg:
+        * UserInterface/Images/gtk/Exception.svg:
+        * UserInterface/Images/gtk/Eye.svg:
+        * UserInterface/Images/gtk/FilterFieldGlyph.svg:
+        * UserInterface/Images/gtk/ForwardArrow.svg:
+        * UserInterface/Images/gtk/Function.svg:
+        * UserInterface/Images/gtk/GoToArrow.svg:
+        * UserInterface/Images/gtk/HierarchicalNavigationItemChevron.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner1.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner10.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner11.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner12.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner2.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner3.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner4.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner5.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner6.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner7.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner8.svg:
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner9.svg:
+        * UserInterface/Images/gtk/Issues.svg:
+        * UserInterface/Images/gtk/IssuesEnabled.svg:
+        * UserInterface/Images/gtk/LayerBorders.svg:
+        * UserInterface/Images/gtk/Locked.svg:
+        * UserInterface/Images/gtk/Logs.svg:
+        * UserInterface/Images/gtk/Native.svg:
+        * UserInterface/Images/gtk/NavigationItemAngleBrackets.svg:
+        * UserInterface/Images/gtk/NavigationItemBrushAndRuler.svg:
+        * UserInterface/Images/gtk/NavigationItemBug.svg:
+        * UserInterface/Images/gtk/NavigationItemCurleyBraces.svg:
+        * UserInterface/Images/gtk/NavigationItemFile.svg:
+        * UserInterface/Images/gtk/NavigationItemLayers.svg:
+        * UserInterface/Images/gtk/NavigationItemLog.svg:
+        * UserInterface/Images/gtk/NavigationItemProbes.svg:
+        * UserInterface/Images/gtk/NavigationItemStopwatch.svg:
+        * UserInterface/Images/gtk/NavigationItemStorage.svg:
+        * UserInterface/Images/gtk/NavigationItemTrash.svg:
+        * UserInterface/Images/gtk/NavigationItemTypes.svg:
+        * UserInterface/Images/gtk/NavigationItemVariable.svg:
+        * UserInterface/Images/gtk/PaintFlashing.svg:
+        * UserInterface/Images/gtk/Pause.svg:
+        * UserInterface/Images/gtk/PausedBreakpoint.svg:
+        * UserInterface/Images/gtk/Percent.svg:
+        * UserInterface/Images/gtk/Plus.svg:
+        * UserInterface/Images/gtk/PseudoElement.svg:
+        * UserInterface/Images/gtk/Record.svg:
+        * UserInterface/Images/gtk/Reflection.svg:
+        * UserInterface/Images/gtk/Reload.svg:
+        * UserInterface/Images/gtk/ReloadFull.svg:
+        * UserInterface/Images/gtk/ReplayPauseButton.svg:
+        * UserInterface/Images/gtk/ReplayPlayButton.svg:
+        * UserInterface/Images/gtk/ReplayRecordingButton.svg:
+        * UserInterface/Images/gtk/Request.svg:
+        * UserInterface/Images/gtk/Resources.svg:
+        * UserInterface/Images/gtk/Response.svg:
+        * UserInterface/Images/gtk/ResultLine.svg:
+        * UserInterface/Images/gtk/Resume.svg:
+        * UserInterface/Images/gtk/ShadowDOM.svg:
+        * UserInterface/Images/gtk/SortIndicatorDownArrow.svg:
+        * UserInterface/Images/gtk/SortIndicatorUpArrow.svg:
+        * UserInterface/Images/gtk/SourceCode.svg:
+        * UserInterface/Images/gtk/SplitToggleDown.svg:
+        * UserInterface/Images/gtk/SplitToggleUp.svg:
+        * UserInterface/Images/gtk/StepInto.svg:
+        * UserInterface/Images/gtk/StepOut.svg:
+        * UserInterface/Images/gtk/StepOver.svg:
+        * UserInterface/Images/gtk/Stop.svg:
+        * UserInterface/Images/gtk/StyleRuleAuthor.svg:
+        * UserInterface/Images/gtk/StyleRuleInherited.svg:
+        * UserInterface/Images/gtk/StyleRuleInheritedElement.svg:
+        * UserInterface/Images/gtk/StyleRuleInspector.svg:
+        * UserInterface/Images/gtk/StyleRuleUser.svg:
+        * UserInterface/Images/gtk/StyleRuleUserAgent.svg:
+        * UserInterface/Images/gtk/Time.svg:
+        * UserInterface/Images/gtk/TimelineRecordAnimation.svg:
+        * UserInterface/Images/gtk/TimelineRecordConsoleProfile.svg:
+        * UserInterface/Images/gtk/TimelineRecordEvent.svg:
+        * UserInterface/Images/gtk/TimelineRecordLayout.svg:
+        * UserInterface/Images/gtk/TimelineRecordPaint.svg:
+        * UserInterface/Images/gtk/TimelineRecordProbeSampled.svg:
+        * UserInterface/Images/gtk/TimelineRecordScriptEvaluated.svg:
+        * UserInterface/Images/gtk/TimelineRecordStyle.svg:
+        * UserInterface/Images/gtk/TimelineRecordTimer.svg:
+        * UserInterface/Images/gtk/TypeBoolean.svg:
+        * UserInterface/Images/gtk/TypeNull.svg:
+        * UserInterface/Images/gtk/TypeNumber.svg:
+        * UserInterface/Images/gtk/TypeObject.svg:
+        * UserInterface/Images/gtk/TypeRegex.svg:
+        * UserInterface/Images/gtk/TypeString.svg:
+        * UserInterface/Images/gtk/TypeSymbol.svg:
+        * UserInterface/Images/gtk/TypeUndefined.svg:
+        * UserInterface/Images/gtk/Undock.svg:
+        * UserInterface/Images/gtk/UpDownArrows.svg:
+        * UserInterface/Images/gtk/UserInputPrompt.svg:
+        * UserInterface/Images/gtk/UserInputPromptPrevious.svg:
+        * UserInterface/Images/gtk/UserInputResult.svg:
+        * UserInterface/Images/gtk/Warning.svg:
+        * UserInterface/Images/gtk/Weight.svg:
+
+2015-04-29  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Navigation bar often looses last button when full
+        https://bugs.webkit.org/show_bug.cgi?id=144385
+
+        Added helpers to get the subpixel width and height of an element.
+        Adopt them in the NavigationBar layout methods to get precise widths
+        that don't accumulate rounding errors which lead to items overflowing.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Utilities.js:
+        (Element.prototype.realOffsetWidth): Added.
+        (Element.prototype.realOffsetHeight): Added.
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WebInspector.HierarchicalPathNavigationItem.prototype.updateLayout):
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar.prototype.updateLayout):
+        (WebInspector.NavigationBar.prototype._calculateMinimumWidth):
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.prototype._handleMouseMoved):
+        * UserInterface/Views/Toolbar.js:
+        (WebInspector.Toolbar.prototype.customUpdateLayout.isOverflowingToolbar):
+        (WebInspector.Toolbar.prototype.customUpdateLayout):
+
+2015-04-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: add a separate overview for the Rendering Frames timeline
+        https://bugs.webkit.org/show_bug.cgi?id=144245
+
+        Reviewed by Timothy Hatcher.
+
+        The Timelines tab now supports two view modes, labeled "Timelines" and "Rendering Frames", with each mode
+        having a seperate timeline overview and selected range. The Timelines mode displays the original time-based
+        graphs (Network, Layout, and Script), and switching to the Rendering Frames mode displays a frames graph
+        with a timeline ruler which shows frame indices.
+
+        If the rendering frames timeline is supported by the backend, a navigation bar is added to the timelines
+        sidebar with controls for switching between view modes. In addition to user-triggered view mode changes, the
+        timelines sidebar will automatically change the current view mode in response to content view changes that
+        are triggered elsewhere in the UI (for example, when a timeline that does not belong to the current view
+        mode is selected via the navigation path).
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.get activeRecording): Deleted.
+        (WebInspector.TimelineManager.prototype.get recordings): Deleted.
+        Removed unused code.
+
+        * UserInterface/Main.html:
+        New files.
+
+        * UserInterface/Models/RenderingFrameTimelineRecord.js:
+        (WebInspector.RenderingFrameTimelineRecord):
+        (WebInspector.RenderingFrameTimelineRecord.resetFrameIndex):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.get frameIndex):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.get frameNumber):
+        * UserInterface/Models/TimelineRecording.js:
+        (WebInspector.TimelineRecording.prototype.reset):
+        Frame number is now derived from frame index.
+
+        * UserInterface/Views/LinearTimelineOverview.js:
+        (WebInspector.LinearTimelineOverview):
+        (WebInspector.LinearTimelineOverview.prototype.canShowTimeline):
+        New overview class for time-based timeline graphs.
+
+        * UserInterface/Views/RenderingFrameDetailsSidebarPanel.js:
+        (WebInspector.RenderingFrameDetailsSidebarPanel):
+        (WebInspector.RenderingFrameDetailsSidebarPanel.prototype.updateRangeSelection):
+        (WebInspector.RenderingFrameDetailsSidebarPanel.prototype._getSelectedRecords):
+        Changed type of selected range from time to frame indices.
+
+        * UserInterface/Views/RenderingFrameTimelineOverview.js:
+        (WebInspector.RenderingFrameTimelineOverview.this.timelineRuler.formatLabelCallback):
+        (WebInspector.RenderingFrameTimelineOverview):
+        (WebInspector.RenderingFrameTimelineOverview.prototype.canShowTimeline):
+        New overview class for frame-based timeline graphs.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.css:
+        (.timeline-overview > .graphs-container > .timeline-overview-graph.rendering-frame):
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        (WebInspector.RenderingFrameTimelineOverviewGraph):
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype._updateDividers.createDividerAtPosition.get if):
+        Updated to use frame index ruler and removed frame combining logic.
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView):
+        Increased column widths.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview > .graphs-container):
+        (body.mac-platform.legacy .timeline-overview > .graphs-container):
+        Updated for new ruler height.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.get secondsPerPixel):
+        (WebInspector.TimelineOverview.prototype.set secondsPerPixel):
+        (WebInspector.TimelineOverview.prototype.get visibleDuration):
+        (WebInspector.TimelineOverview.prototype.set selectionDuration):
+        (WebInspector.TimelineOverview.prototype.updateLayout):
+        (WebInspector.TimelineOverview.prototype.get timelineRuler):
+        (WebInspector.TimelineOverview.prototype.canShowTimeline):
+        (WebInspector.TimelineOverview.prototype._handleScrollEvent):
+        (WebInspector.TimelineOverview.prototype._handleWheelEvent):
+        (WebInspector.TimelineOverview.prototype._timelineRemoved):
+        (WebInspector.TimelineOverview.prototype._timeRangeSelectionChanged):
+        (WebInspector.TimelineOverview.prototype.set currentTime): Deleted.
+        (WebInspector.TimelineOverview.prototype.updateLayoutIfNeeded): Deleted.
+        (WebInspector.TimelineOverview.prototype._needsLayout): Deleted.
+        Converted to base class. Derived classes provide settings and permitted timeline types.
+
+        * UserInterface/Views/TimelineRecordFrame.css:
+        (.timeline-record-frame):
+        (.timeline-record-frame > .frame):
+        (.timeline-record-frame > .frame > .duration):
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-network):
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-layout):
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-script):
+        (.timeline-record-frame > .frame > .duration:last-child): Deleted.
+        New graph frames styles.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        (WebInspector.TimelineRecordFrame):
+        (WebInspector.TimelineRecordFrame.prototype.get record):
+        (WebInspector.TimelineRecordFrame.prototype.set record):
+        (WebInspector.TimelineRecordFrame.prototype._updateChildElements.createDurationElement):
+        (WebInspector.TimelineRecordFrame.prototype.get element): Deleted.
+        Updated to use frame index ruler.
+        Removed dropped frames and frame combining logic.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        (WebInspector.TimelineRecordingContentView.prototype.shown):
+        (WebInspector.TimelineRecordingContentView.prototype.hidden):
+        (WebInspector.TimelineRecordingContentView.prototype.updateLayout):
+        (WebInspector.TimelineRecordingContentView.prototype._currentContentViewDidChange):
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimes):
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimelineOverviewHeight):
+        (WebInspector.TimelineRecordingContentView.prototype._getRenderingFrameTimeline):
+        (WebInspector.TimelineRecordingContentView.prototype._timelineRemoved):
+        (WebInspector.TimelineRecordingContentView.prototype._timelineCountChanged):
+        (WebInspector.TimelineRecordingContentView.prototype._recordingReset):
+        (WebInspector.TimelineRecordingContentView.prototype._timeRangeSelectionChanged):
+        (WebInspector.TimelineRecordingContentView.prototype.get currentTimelineView): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype.goForward): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype.matchTreeElementAgainstCustomFilters): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype._contentViewSupplementalRepresentedObjectsDidChange): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype._update): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype._debuggerPaused): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype._debuggerResumed): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype._recordingTimesUpdated): Deleted.
+        Maintains two timeline overviews, switching between them based on the current content view.
+        Updated tree element filtering to support both overview rulers.
+
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler > .header):
+        (body.mac-platform.legacy .timeline-ruler > .header):
+        (.timeline-ruler > .header > .divider > .label):
+        (.timeline-ruler > .selection-drag):
+        (body.mac-platform.legacy .timeline-ruler > .selection-drag):
+        (.timeline-ruler > .selection-handle):
+        (body.mac-platform.legacy .timeline-ruler > .selection-handle):
+        (.timeline-ruler > .header > .divider): Deleted.
+        (.timeline-ruler > .selection-drag:active): Deleted.
+        Updated for new ruler height.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler):
+        (WebInspector.TimelineRuler.prototype.set formatLabelCallback):
+        (WebInspector.TimelineRuler.prototype.updateLayout):
+        (WebInspector.TimelineRuler.prototype._formatDividerLabelText):
+        (WebInspector.TimelineRuler.prototype.set allowsClippedLabels): Deleted.
+        (WebInspector.TimelineRuler.prototype._updateSelection): Deleted.
+        Added ability to customize label formatting.
+
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.panel.timeline .navigation-bar.timelines-view):
+        (.sidebar > .panel.navigation.timeline > .title-bar):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .title-bar):
+        (.sidebar > .panel.navigation.timeline > .title-bar.timelines):
+        (.sidebar > .panel.navigation.timeline > .navigation-bar-container):
+        (.sidebar > .panel.navigation.timeline > .navigation-bar-container > .navigation-bar):
+        (.sidebar > .panel.navigation.timeline > .title-bar.timeline-events):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > .title-bar.timeline-events):
+        (.sidebar > .panel.navigation.timeline > .timelines-content):
+        (.sidebar > .panel.navigation.timeline > .empty-content-placeholder):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.timeline > :matches(.content, .empty-content-placeholder)):
+        (.sidebar > .panel.navigation.timeline > .timelines-content li.item.selected + li.item): Deleted.
+        (body.window-inactive .sidebar > .panel.navigation.timeline > .timelines-content li.item.selected + li.item): Deleted.
+        Updated for new navigation bar and ruler height.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.prototype.get viewMode):
+        (WebInspector.TimelineSidebarPanel.prototype.canShowTimeline):
+        (WebInspector.TimelineSidebarPanel.showTimelineViewForTimeline.this._timelineTreeElementMap.get select):
+        (WebInspector.TimelineSidebarPanel.get this):
+        (WebInspector.TimelineSidebarPanel._timelineAdded.set this):
+        Added support for two view modes: Timelines and Rendering Frames.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+        New files.
+
+2015-04-27  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add new tab button to make it easy to bring a closed tab back
+        https://bugs.webkit.org/show_bug.cgi?id=144297
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector.isTabTypeAllowed):
+        (WebInspector._tabContentViewForType):
+        (WebInspector._rememberOpenTabs):
+        (WebInspector._updateNewTabButtonState):
+        (WebInspector._newTabItemClicked):
+        (WebInspector.isNewTabWithTypeAllowed):
+        (WebInspector.createNewTab):
+        (WebInspector.activateExtraDomains):
+        (WebInspector._restoreCookieForOpenTabs):
+        (WebInspector._saveCookieForOpenTabs):
+        (WebInspector._isTabTypeAllowed): Deleted.
+        * UserInterface/Images/NewTab.svg: Added.
+        * UserInterface/Images/NewTabPlus.svg:
+        * UserInterface/Main.html:
+        * UserInterface/Views/NewTabContentView.css: Added.
+        (.new-tab.tab.content-view):
+        (.new-tab.tab.content-view > .tab-item):
+        (.new-tab.tab.content-view > .tab-item.disabled):
+        (.new-tab.tab.content-view > .tab-item > .box):
+        (.new-tab.tab.content-view > .tab-item:not(.disabled):active > .box):
+        (.new-tab.tab.content-view > .tab-item > .box > img):
+        (.new-tab.tab.content-view > .tab-item > label):
+        * UserInterface/Views/NewTabContentView.js: Added.
+        (WebInspector.NewTabContentView):
+        (WebInspector.NewTabContentView.prototype.get type):
+        (WebInspector.NewTabContentView.prototype._createNewTab):
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar > .item:not(.disabled).selected):
+        (.tab-bar > .item.new-tab-button:not(.disabled):hover):
+        (.tab-bar:not(.animating) > .item:not(.selected, .disabled):hover + .item):
+        (.tab-bar > .item.disabled > .icon):
+        (.tab-bar > .item.new-tab-button:not(.disabled):hover > .icon):
+        (.tab-bar > .item.selected): Deleted.
+        (.tab-bar > .item.new-tab-button:hover): Deleted.
+        (.tab-bar:not(.animating) > .item:not(.selected):hover + .item): Deleted.
+        (.tab-bar > .item.new-tab-button:hover > .icon): Deleted.
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.prototype.set selectedTabBarItem):
+        (WebInspector.TabBar.prototype._handleMouseDown):
+        * UserInterface/Views/TabBarItem.js:
+        (WebInspector.TabBarItem.prototype.get disabled):
+        (WebInspector.TabBarItem.prototype.set disabled):
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser):
+        (WebInspector.TabBrowser.prototype.addTabForContentView):
+        (WebInspector.TabBrowser.prototype.showTabForContentView):
+        (WebInspector.TabBrowser.prototype.closeTabForContentView):
+
+2015-04-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cannot scroll Timeline Overview horizontally, scrollbar cannot be interacted with
+        https://bugs.webkit.org/show_bug.cgi?id=144302
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview > .scroll-container):
+        Increase the z-index of the scroll container over anything in the
+        overview so that it can be interacted with.
+
+2015-04-27  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Attempt to workaround exception in TimelineRuler
+        https://bugs.webkit.org/show_bug.cgi?id=144228
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.updateLayout):
+        Use firstChild instead of a custom _labelElement property on the dividerElement.
+
+2015-04-27  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Elements tab details sidebar becomes non-expandable after using Console tab
+        https://bugs.webkit.org/show_bug.cgi?id=144212
+
+        Show the DOM tree content view again on main resource change. This better matches what we did
+        in the pre tab user interface with the DOM being off the main resource tree element.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WebInspector.ElementsTabContentView): Listen for main resource change. Call _showDOMTreeContentView.
+        (WebInspector.ElementsTabContentView.prototype.closed): Fix a leak and exception.
+        The removeEventListener was wrong. Add a new removeEventListener for WebInspector.Frame.
+        (WebInspector.ElementsTabContentView.prototype._showDOMTreeContentView): Added.
+        (WebInspector.ElementsTabContentView.prototype._mainFrameDidChange): Call _showDOMTreeContentView.
+        (WebInspector.ElementsTabContentView.prototype._mainResourceDidChange): Added.
+
+2015-04-27  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: TabContentView closed() isn't being called when a tab is closed / removed
+        https://bugs.webkit.org/show_bug.cgi?id=144229
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ContentViewContainer.js:
+        (WebInspector.ContentViewContainer.prototype._disassociateFromContentView):
+        TabContentViews don't have a representedObject, so returning early and not
+        calling closed() was not correct.
+
+2015-04-26  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cannot make Timeline time range selection clicking inside Frames Overview
+        https://bugs.webkit.org/show_bug.cgi?id=143744
+
+        Reviewed by Timothy Hatcher.
+
+        Fixed frame rate divider element style so that it is no longer a mouse event target.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.css:
+        (.timeline-overview-graph.rendering-frame > .divider):
+
+2015-04-26  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Allow Timeline tab to show resource when a go-to arrow is clicked in a recording
+        https://bugs.webkit.org/show_bug.cgi?id=144240
+
+        Only support showing a resource or script if we have that represented object in the Timeline sidebar.
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.prototype.canShowRepresentedObject):
+
+2015-04-26  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Don't use treeElement.revealAndSelect when showing a default content view
+        https://bugs.webkit.org/show_bug.cgi?id=144239
+
+        Using revealAndSelect will end up calling WebInspector.showRepresentedObject. That is not bad
+        is most cases, but if the select tab supports the same represented object, it can end up showing
+        the content view in the wrong tab.
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WebInspector.ContentBrowserTabContentView.prototype._revealAndSelectRepresentedObjectInNavigationSidebar):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.showDefaultContentView):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.showDefaultContentViewForTreeElement):
+        (WebInspector.NavigationSidebarPanel.prototype._checkElementsForPendingViewStateCookie):
+        (WebInspector.NavigationSidebarPanel):
+        (WebInspector.NavigationSidebarPanel.prototype.showContentViewForCurrentSelection): Deleted.
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.showDefaultContentView):
+        (WebInspector.ResourceSidebarPanel.prototype._mainFrameDidChange):
+        (WebInspector.ResourceSidebarPanel.prototype._mainFrameMainResourceDidChange.delayedWork):
+        (WebInspector.ResourceSidebarPanel.prototype._mainFrameMainResourceDidChange):
+
+2015-04-26  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: Vertically misaligned text in Object Trees
+        https://bugs.webkit.org/show_bug.cgi?id=144029
+
+        Reviewed by Timothy Hatcher.
+
+        Remove top offset for object tree property titles to fix alignment issue since applying -webkit-system-font
+        font family to these (http://trac.webkit.org/changeset/182982).
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property > .titles):
+
+2015-04-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception ReferenceError: Can't find variable: message LogContentView.js
+        https://bugs.webkit.org/show_bug.cgi?id=144210
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._reappendProvisionalMessages):
+        With recent refactorings this change was missed.
+
+2015-04-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception using WebInspector.contentBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=144206
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.showTimelineViewForTimeline.this._timelineTreeElementMap.get select):
+        Use the current tab's content browser since a global one no longer exists.
+
+2015-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Update localized strings.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+
+2015-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make JSContext debugging work with Tabs UI
+        https://bugs.webkit.org/show_bug.cgi?id=144203
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._isTabTypeAllowed):
+        (WebInspector.activateExtraDomains):
+        (WebInspector._updateReloadToolbarButton):
+        (WebInspector._updateDownloadToolbarButton):
+
+2015-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Save and restore tab state on reload and between sessions
+        https://bugs.webkit.org/show_bug.cgi?id=144202
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._mainResourceDidChange):
+        (WebInspector._provisionalLoadStarted):
+        (WebInspector._restoreCookieForOpenTabs):
+        (WebInspector._saveCookieForOpenTabs):
+        (WebInspector._pageHidden):
+        * UserInterface/Views/TabContentView.js:
+        (WebInspector.TabContentView):
+        (WebInspector.TabContentView.prototype.restoreStateFromCookie):
+        (WebInspector.TabContentView.prototype.saveStateToCookie):
+
+2015-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Split search from ResourceSidebarPanel into a Search tab and sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=144197
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._tabContentViewForType):
+        (WebInspector._searchTextDidChange):
+        (WebInspector._focusSearchField):
+        (WebInspector._domNodeWasInspected):
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.get knownNonResourceScripts):
+        * UserInterface/Images/SearchResults.svg: Added.
+        * UserInterface/Main.html:
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype.showDefaultContentView):
+        (WebInspector.ResourceSidebarPanel.prototype.treeElementForRepresentedObject):
+        (WebInspector.ResourceSidebarPanel.prototype._mainFrameDidChange):
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasAdded):
+        (WebInspector.ResourceSidebarPanel.prototype._treeElementSelected):
+        (WebInspector.ResourceSidebarPanel.prototype._addStorageChild):
+        (WebInspector.ResourceSidebarPanel.prototype._extraDomainsActivated):
+        (WebInspector.ResourceSidebarPanel.prototype.get contentTreeOutlineToAutoPrune): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.updateEmptyContentPlaceholderSoon): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.updateEmptyContentPlaceholder): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.forEachMatch): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.resourceCallback): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.resourcesCallback): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.searchScripts.scriptCallback): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.searchScripts): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.domSearchResults): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch.domCallback): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype.performSearch): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._showResourcesContentTreeOutline): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._showSearchContentTreeOutline): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._searchFieldChanged): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._searchFieldInput): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._searchTreeElementForResource): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._searchTreeElementForScript): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._focusSearchField): Deleted.
+        (WebInspector.ResourceSidebarPanel.prototype._scriptsToSearch): Deleted.
+        * UserInterface/Views/SearchBar.js:
+        (WebInspector.SearchBar):
+        * UserInterface/Views/SearchSidebarPanel.css: Renamed from Source/WebInspectorUI/UserInterface/Views/ResourceSidebarPanel.css.
+        (.sidebar > .panel.navigation.search > :matches(.content, .empty-content-placeholder)):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.search > :matches(.content, .empty-content-placeholder)):
+        (.sidebar > .panel.navigation.search > .search-bar):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.search > .search-bar):
+        (.sidebar > .panel.navigation.search > .search-bar > input[type="search"]):
+        (body.mac-platform.legacy .sidebar > .panel.navigation.search > .search-bar > input[type="search"]):
+        * UserInterface/Views/SearchSidebarPanel.js: Added.
+        (WebInspector.SearchSidebarPanel):
+        (WebInspector.SearchSidebarPanel.prototype.closed):
+        (WebInspector.SearchSidebarPanel.prototype.focusSearchField):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.updateEmptyContentPlaceholderSoon):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.updateEmptyContentPlaceholder):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.forEachMatch):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.resourceCallback):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.resourcesCallback):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.searchScripts.scriptCallback):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.searchScripts):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.domSearchResults):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.domCallback):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch):
+        (WebInspector.SearchSidebarPanel.prototype._searchFieldChanged):
+        (WebInspector.SearchSidebarPanel.prototype._searchFieldInput):
+        (WebInspector.SearchSidebarPanel.prototype._searchTreeElementForResource):
+        (WebInspector.SearchSidebarPanel.prototype._searchTreeElementForScript):
+        (WebInspector.SearchSidebarPanel.prototype._mainResourceDidChange.delayedWork):
+        (WebInspector.SearchSidebarPanel.prototype._mainResourceDidChange):
+        (WebInspector.SearchSidebarPanel.prototype._treeElementSelected):
+        * UserInterface/Views/SearchTabContentView.js: Added.
+        (WebInspector.SearchTabContentView):
+        (WebInspector.SearchTabContentView.prototype.get type):
+        (WebInspector.SearchTabContentView.prototype.shown):
+        (WebInspector.SearchTabContentView.prototype.closed):
+        (WebInspector.SearchTabContentView.prototype.canShowRepresentedObject):
+        (WebInspector.SearchTabContentView.prototype.focusSearchField):
+        (WebInspector.SearchTabContentView.prototype.performSearch):
+        * UserInterface/Views/Toolbar.css:
+        (.toolbar .item-section.center-right):
+        (.toolbar .item-section.right):
+        (.toolbar .search-bar):
+        (.toolbar .search-bar > input[type="search"]):
+        (.toolbar .search-bar > input[type="search"]::-webkit-textfield-decoration-container):
+        (body.window-inactive .toolbar .search-bar > input[type="search"]):
+        (.toolbar .item): Deleted.
+
+2015-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: New Toolbar UI for tabs
+        https://bugs.webkit.org/show_bug.cgi?id=144185
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/ImageUtilities.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.contentLoaded):
+        (WebInspector.updateDockedState):
+        (WebInspector._captureDidStart):
+        (WebInspector._debuggerDidPause):
+        (WebInspector._debuggerDidResume):
+        (WebInspector._mainFrameDidChange):
+        (WebInspector._mainResourceDidChange):
+        (WebInspector._windowKeyDown):
+        (WebInspector._windowKeyUp):
+        (WebInspector._pageHidden):
+        (WebInspector._undock):
+        (WebInspector._dockBottom):
+        (WebInspector._dockRight):
+        (WebInspector._updateDockNavigationItems):
+        (WebInspector._domNodeWasInspected):
+        (WebInspector._inspectModeStateChanged):
+        (WebInspector._toggleInspectMode):
+        (WebInspector._downloadWebArchive):
+        (WebInspector._reloadPageClicked):
+        (WebInspector._updateDownloadToolbarButton):
+        (WebInspector.archiveMainFrame):
+        (WebInspector.canArchiveMainFrame):
+        * UserInterface/Images/Crosshair.svg:
+        * UserInterface/Images/DockBottom.svg:
+        * UserInterface/Images/DockRight.svg:
+        * UserInterface/Images/DownloadArrow.svg:
+        * UserInterface/Images/ReloadToolbar.svg: Added.
+        * UserInterface/Images/Undock.svg:
+        * UserInterface/Views/ActivateButtonToolbarItem.js:
+        (WebInspector.ActivateButtonToolbarItem):
+        (WebInspector.ActivateButtonToolbarItem.prototype.set label):
+        * UserInterface/Views/ButtonToolbarItem.css:
+        (.toolbar .item.button):
+        (body.window-inactive .toolbar .item.button):
+        (.toolbar.small-size .item.button > .glyph):
+        * UserInterface/Views/ButtonToolbarItem.js:
+        (WebInspector.ButtonToolbarItem):
+        (WebInspector.ButtonToolbarItem.prototype.set label):
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar .dashboard-container):
+        * UserInterface/Views/Main.css:
+        (body.docked.bottom):
+        * UserInterface/Views/Toolbar.css:
+        (.toolbar):
+        (body.mac-platform:not(.legacy, .docked) .toolbar):
+        (.toolbar .control-section):
+        (.toolbar .item-section):
+        (.toolbar .item-section.left):
+        (.toolbar .item-section.center-left):
+        (.toolbar .item-section.center-right):
+        (.toolbar .item-section.right):
+        * UserInterface/Views/Toolbar.js:
+        (WebInspector.Toolbar):
+        (WebInspector.Toolbar.prototype.customUpdateLayout.isOverflowingToolbar):
+        (WebInspector.Toolbar.prototype.customUpdateLayout):
+        (WebInspector.Toolbar.prototype.addToolbarItem):
+
+2015-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add NavigationBar to the details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=144191
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+
+        * UserInterface/Views/DetailsSidebarPanel.js:
+        (WebInspector.DetailsSidebarPanel):
+        (WebInspector.DetailsSidebarPanel.prototype.get navigationItem):
+
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar.prototype.removeNavigationItem):
+        Remove unused index argument.
+
+        * UserInterface/Views/Sidebar.css:
+        (.sidebar > .navigation-bar):
+        (.sidebar.has-navigation-bar > .panel):
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar):
+        (WebInspector.Sidebar.prototype.addSidebarPanel):
+        (WebInspector.Sidebar.prototype.removeSidebarPanel):
+        (WebInspector.Sidebar.prototype.set selectedSidebarPanel):
+        (WebInspector.Sidebar.prototype.get minimumWidth):
+        (WebInspector.Sidebar.prototype.set width):
+        (WebInspector.Sidebar.prototype.set collapsed):
+
+2015-04-24  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Switch over to a tab based UI
+        https://bugs.webkit.org/show_bug.cgi?id=144154
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.contentLoaded):
+        (WebInspector._tabContentViewForType):
+        (WebInspector._rememberOpenTabs):
+        (WebInspector._windowResized):
+        (WebInspector._tabBrowserSizeDidChange):
+        (WebInspector._quickConsoleDidResize):
+        (WebInspector._sidebarWidthDidChange):
+        (WebInspector._tabBrowserSelectedTabContentViewDidChange):
+        (WebInspector._inspectModeStateChanged):
+        (WebInspector._focusedContentView):
+        * UserInterface/Main.html:
+        * UserInterface/Views/Main.css:
+        (#tab-browser):
+
+2015-04-23  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove Main.js code we don't need for Tabs
+        https://bugs.webkit.org/show_bug.cgi?id=144126
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.contentLoaded):
+
+2015-04-23  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Change more places that changed WebInspector.navigationSidebar.selectedSidebarPanel to tabs
+        https://bugs.webkit.org/show_bug.cgi?id=144125
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.toggleDetailsSidebar):
+        (WebInspector.tabContentViewClassForRepresentedObject):
+        (WebInspector._updateModifierKeys):
+        (WebInspector._consoleResizerMouseDown.dockedResizerDragEnd):
+        (WebInspector._consoleResizerMouseDown):
+        (WebInspector.linkifyURLAsNode):
+        (WebInspector.linkifyStringAsFragmentWithCustomLinkifier):
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setTimelineProfilingEnabled):
+        (InspectorFrontendAPI.showConsole):
+        (InspectorFrontendAPI.showResources):
+        * UserInterface/Protocol/InspectorObserver.js:
+        (WebInspector.InspectorObserver.prototype.inspect):
+        * UserInterface/Views/DebuggerTabContentView.js:
+        (WebInspector.DebuggerTabContentView.prototype.canShowRepresentedObject):
+        (WebInspector.DebuggerTabContentView.prototype.revealAndSelectBreakpoint):
+        * UserInterface/Views/DefaultDashboardView.js:
+        (WebInspector.DefaultDashboardView):
+        (WebInspector.DefaultDashboardView.prototype._resourcesWasClicked):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.revealInSidebar):
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser.bestTabContentViewForClass):
+
+2015-04-23  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make Console work in a tab world
+        https://bugs.webkit.org/show_bug.cgi?id=144112
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector.isShowingConsoleTab):
+        (WebInspector.UIString):
+        (WebInspector.toggleNavigationSidebar):
+        (WebInspector.toggleDetailsSidebar):
+        (WebInspector.tabContentViewClassForRepresentedObject):
+        (WebInspector.linkifyStringAsFragment):
+        * UserInterface/Images/Console.svg: Added.
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.showConsole):
+        * UserInterface/Views/ConsoleTabContentView.js: Added.
+        (WebInspector.ConsoleTabContentView):
+        (WebInspector.ConsoleTabContentView.prototype.shown):
+        (WebInspector.ConsoleTabContentView.prototype.showRepresentedObject):
+        (WebInspector.ConsoleTabContentView.prototype.canShowRepresentedObject):
+        (WebInspector.ConsoleTabContentView.prototype.get supportsSplitContentBrowser):
+        * UserInterface/Views/DefaultDashboardView.js:
+        (WebInspector.DefaultDashboardView.prototype._consoleItemWasClicked):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype.get navigationItems):
+        (WebInspector.LogContentView.prototype.shown):
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessageView):
+        (WebInspector.LogContentView.prototype._showConsoleTab):
+        * UserInterface/Views/LogIcon.css:
+        (.log-icon .icon):
+        * UserInterface/Views/Main.css:
+        (#split-content-browser .hierarchical-path-component.log-icon .icon):
+        (#split-content-browser .hierarchical-path-component.log-icon .title):
+        (#split-content-browser .hierarchical-path-component.log-icon select):
+
+2015-04-23  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make showing a content view work in the tab world
+        https://bugs.webkit.org/show_bug.cgi?id=144110
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.hideSplitConsole):
+        (WebInspector.showSourceCodeLocation):
+        (WebInspector.showOriginalUnformattedSourceCodeLocation):
+        (WebInspector.showOriginalOrFormattedSourceCodeLocation):
+        (WebInspector.showOriginalOrFormattedSourceCodeTextRange):
+        (WebInspector.showResourceRequest):
+        (WebInspector.debuggerToggleBreakpoints):
+        (WebInspector.debuggerPauseResumeToggle):
+        (WebInspector.debuggerStepOver):
+        (WebInspector.debuggerStepInto):
+        (WebInspector.debuggerStepOut):
+        (WebInspector._focusChanged):
+        (WebInspector._mouseWasClicked):
+        (WebInspector._dragOver):
+        (WebInspector._captureDidStart):
+        (WebInspector._debuggerDidPause):
+        (WebInspector._debuggerDidResume):
+        (WebInspector._frameWasAdded):
+        (WebInspector._undock):
+        (WebInspector._updateDockNavigationItems):
+        * UserInterface/Models/Breakpoint.js:
+        (WebInspector.Breakpoint.prototype.appendContextMenuItems.revealOriginalSourceCodeLocation):
+        (WebInspector.Breakpoint.prototype.appendContextMenuItems):
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.showMainResourceForFrame):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.tokenTrackingControllerHighlightedRangeWasClicked):
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WebInspector.ComputedStyleDetailsPanel.prototype._goToRegionFlowArrowWasClicked):
+        (WebInspector.ComputedStyleDetailsPanel.prototype._goToContentFlowArrowWasClicked):
+        (WebInspector.ComputedStyleDetailsPanel):
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser.prototype.updateHierarchicalPathForCurrentContentView):
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView.prototype.restoreFromCookie):
+        * UserInterface/Views/DOMTreeDataGridNode.js:
+        (WebInspector.DOMTreeDataGridNode.prototype._goToArrowWasClicked):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.showDefaultContentView):
+        (WebInspector.DebuggerSidebarPanel.prototype._addTreeElementForSourceCodeToContentTreeOutline):
+        (WebInspector.DebuggerSidebarPanel.prototype._treeElementSelected):
+        (WebInspector.DebuggerSidebarPanel.prototype._addIssue):
+        (WebInspector.DebuggerSidebarPanel.prototype._handleIssueAdded):
+        * UserInterface/Views/LayerTreeDataGridNode.js:
+        (WebInspector.LayerTreeDataGridNode.prototype._goToArrowWasClicked):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.prototype._treeElementSelected):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.get contentBrowser):
+        (WebInspector.NavigationSidebarPanel.prototype.set contentBrowser):
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype._treeElementSelected):
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._appendMenusItemsForObject):
+        (WebInspector.ObjectTreeBaseTreeElement):
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype._treeElementSelected):
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._goToRequestDataClicked):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype.showDefaultContentView):
+        (WebInspector.ResourceSidebarPanel.prototype._mainFrameDidChange):
+        (WebInspector.ResourceSidebarPanel.prototype._mainFrameMainResourceDidChange.delayedWork):
+        (WebInspector.ResourceSidebarPanel.prototype._mainFrameMainResourceDidChange):
+        (WebInspector.ResourceSidebarPanel.prototype._treeElementSelected):
+        (WebInspector.ResourceSidebarPanel.prototype._storageCleared):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype._goToResource):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype._treeElementSelected):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.tokenTrackingControllerHighlightedRangeWasClicked):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._popoverCallStackTreeElementSelected):
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.prototype.shown):
+        (WebInspector.TimelineSidebarPanel.showTimelineViewForTimeline):
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make debugger keyboard shortcuts global
+        https://bugs.webkit.org/show_bug.cgi?id=144068
+
+        We wont always have a DebuggerSidebarPanel to listen for the shortcuts.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector.showSourceCodeForFrame):
+        (WebInspector.showSourceCode):
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.pause):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.restoreStateFromCookie):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerDidResume):
+        (WebInspector.DebuggerSidebarPanel.prototype._handleIssueAdded):
+        (WebInspector.DebuggerSidebarPanel.prototype._handleIssuesCleared):
+        (WebInspector.DebuggerSidebarPanel):
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove Reload and Download Web Archive buttons from FrameTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=144064
+
+        The will be global toolbar items soon.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/FrameTreeElement.js:
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype._updateStatus):
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove time and weight from the dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=144063
+
+        These two items were the odd ones out since they are only available
+        when recording a timeline. We will need the toolbar space soon, so make
+        this lets us make the dashboard skinnier.
+
+        This also removes the exception catching in DashboardContainerView. It doesn't really
+        help us and it makes debugging an exception harder.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar .dashboard-container):
+        * UserInterface/Views/DashboardContainerView.js:
+        (WebInspector.DashboardContainerView.prototype._dashboardViewForRepresentedObject):
+        * UserInterface/Views/DefaultDashboardView.css:
+        (body.web .toolbar.collapsed .dashboard.default > .item.resourcesCount):
+        (body.javascript .toolbar .dashboard.default > .item.resourcesCount):
+        * UserInterface/Views/DefaultDashboardView.js:
+        (WebInspector.DefaultDashboardView):
+        (WebInspector.DefaultDashboardView.prototype._updateDisplay):
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove sidebar panel shortcut and image
+        https://bugs.webkit.org/show_bug.cgi?id=144061
+
+        Sidebar panels no longer need a keyboard shortcut or a toolbar image.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ApplicationCacheDetailsSidebarPanel.js:
+        (WebInspector.ApplicationCacheDetailsSidebarPanel):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        * UserInterface/Views/DOMDetailsSidebarPanel.js:
+        (WebInspector.DOMDetailsSidebarPanel):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        * UserInterface/Views/DetailsSidebarPanel.js:
+        (WebInspector.DetailsSidebarPanel):
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WebInspector.LayerTreeDetailsSidebarPanel):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel):
+        (WebInspector.NavigationSidebarPanel.prototype.restoreStateFromCookie):
+        (WebInspector.NavigationSidebarPanel.prototype.showEmptyContentPlaceholder):
+        (WebInspector.NavigationSidebarPanel.prototype.applyFiltersToTreeElement):
+        (WebInspector.NavigationSidebarPanel.prototype.show):
+        (WebInspector.NavigationSidebarPanel.prototype._updateContentOverflowShadowVisibility):
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        (WebInspector.ProbeDetailsSidebarPanel):
+        * UserInterface/Views/RenderingFrameDetailsSidebarPanel.js:
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel):
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel):
+        (WebInspector.SidebarPanel.prototype.added):
+        (WebInspector.SidebarPanel.prototype.removed):
+        (WebInspector.SidebarPanel.prototype.visibilityDidChange):
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.prototype.showTimelineViewForTimeline):
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove allowedNavigationSidebarPanels, it isn't needed
+        https://bugs.webkit.org/show_bug.cgi?id=144056
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        * UserInterface/Views/ContentView.js:
+        * UserInterface/Views/CookieStorageContentView.js:
+        * UserInterface/Views/DOMStorageContentView.js:
+        * UserInterface/Views/DOMTreeContentView.js:
+        * UserInterface/Views/DatabaseContentView.js:
+        * UserInterface/Views/DatabaseTableContentView.js:
+        * UserInterface/Views/FontResourceContentView.js:
+        * UserInterface/Views/FrameDOMTreeContentView.js:
+        * UserInterface/Views/LogContentView.js:
+        * UserInterface/Views/ResourceClusterContentView.js:
+        * UserInterface/Views/TimelineRecordingContentView.js:
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Support passing extra arguments to ContentViews during construction
+        https://bugs.webkit.org/show_bug.cgi?id=144055
+
+        This allows us to pass the TimelineSidebarPanel to Timeline views since in the future
+        there could be multiple timeline sidebars, one per tab. So the global instance will
+        be going away.
+
+        This also removes the exception catching in ContentViewContainer. It doesn't really
+        help us and it makes debugging an exception harder.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser.prototype.showContentViewForRepresentedObject):
+        (WebInspector.ContentBrowser.prototype.contentViewForRepresentedObject):
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView):
+        * UserInterface/Views/ContentViewContainer.js:
+        (WebInspector.ContentViewContainer.prototype.contentViewForRepresentedObject):
+        (WebInspector.ContentViewContainer.prototype.showContentViewForRepresentedObject):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.prototype._dataGridFiltersDidChange):
+        (WebInspector.LayoutTimelineView.prototype._treeElementSelected):
+        (WebInspector.LayoutTimelineView.prototype._closeStatusButtonClicked):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype._dataGridFiltersDidChange):
+        (WebInspector.NetworkTimelineView.prototype._treeElementSelected):
+        (WebInspector.NetworkTimelineView.prototype._closeStatusButtonClicked):
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype._treeElementSelected):
+        (WebInspector.OverviewTimelineView.prototype._closeStatusButtonClicked):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView):
+        (WebInspector.ScriptTimelineView.prototype._dataGridFiltersDidChange):
+        (WebInspector.ScriptTimelineView.prototype._treeElementSelected):
+        (WebInspector.ScriptTimelineView.prototype._closeStatusButtonClicked):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        (WebInspector.TimelineRecordingContentView.prototype._currentContentViewDidChange):
+        (WebInspector.TimelineRecordingContentView.prototype._contentViewSelectionPathComponentDidChange):
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimes):
+        (WebInspector.TimelineRecordingContentView.prototype._timeRangeSelectionChanged):
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView):
+        (WebInspector.TimelineView.prototype.get timelineSidebarPanel):
+
+2015-04-18  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Disable global keyboard shortcuts for background tabs
+        https://bugs.webkit.org/show_bug.cgi?id=143918
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser):
+        (WebInspector.ContentBrowser.prototype.shown): Added.
+        (WebInspector.ContentBrowser.prototype.hidden): Added.
+        Disable shortcuts on the browser and find banner.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WebInspector.ContentBrowserTabContentView.prototype.shown): Added.
+        (WebInspector.ContentBrowserTabContentView.prototype.hidden): Added.
+        Tell the content browser we were shown or hidden.
+
+        * UserInterface/Views/FindBanner.js:
+        (WebInspector.FindBanner):
+        (WebInspector.FindBanner.prototype.show):
+        (WebInspector.FindBanner.prototype.enableKeyboardShortcuts): Added.
+        (WebInspector.FindBanner.prototype.disableKeyboardShortcuts): Added.
+        Support disabling or enabling the keyboard shortcuts.
+
+2015-04-17  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add TabBrowser and TabContentView
+        https://bugs.webkit.org/show_bug.cgi?id=143886
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/Debugger.svg: Added.
+        * UserInterface/Images/Elements.svg: Added.
+        * UserInterface/Images/Gear.svg: Added.
+        * UserInterface/Images/NewTabPlus.svg: Added.
+        * UserInterface/Images/Resources.svg:
+        * UserInterface/Images/Timeline.svg: Added.
+        * UserInterface/Images/ToggleLeftSidebar.svg: Added.
+        * UserInterface/Images/ToggleRightSidebar.svg: Added.
+
+        * UserInterface/Views/ContentBrowserTabContentView.css: Added.
+        (.content-browser.tab.content-view > .content-browser):
+
+        * UserInterface/Views/ContentBrowserTabContentView.js: Added.
+        (WebInspector.ContentBrowserTabContentView):
+        (WebInspector.ContentBrowserTabContentView.prototype.get contentBrowser):
+        (WebInspector.ContentBrowserTabContentView.prototype.shown):
+        (WebInspector.ContentBrowserTabContentView.prototype.hidden):
+        (WebInspector.ContentBrowserTabContentView.prototype.closed):
+        (WebInspector.ContentBrowserTabContentView.prototype.updateLayout):
+        (WebInspector.ContentBrowserTabContentView.prototype.get managesDetailsSidebarPanels):
+        (WebInspector.ContentBrowserTabContentView.prototype.showDetailsSidebarPanels):
+        (WebInspector.ContentBrowserTabContentView.prototype.contentBrowserTreeElementForRepresentedObject):
+        (WebInspector.ContentBrowserTabContentView.prototype._navigationSidebarCollapsedStateDidChange):
+        (WebInspector.ContentBrowserTabContentView.prototype._detailsSidebarCollapsedStateDidChange):
+        (WebInspector.ContentBrowserTabContentView.prototype._detailsSidebarPanelSelected):
+        (WebInspector.ContentBrowserTabContentView.prototype._contentBrowserRepresentedObjectsDidChange):
+        (WebInspector.ContentBrowserTabContentView.prototype._contentBrowserCurrentContentViewDidChange):
+        (WebInspector.ContentBrowserTabContentView.prototype._revealAndSelectRepresentedObjectInNavigationSidebar):
+
+        * UserInterface/Views/DebuggerTabContentView.js: Added.
+        (WebInspector.DebuggerTabContentView):
+
+        * UserInterface/Views/ElementsTabContentView.js: Added.
+        (WebInspector.ElementsTabContentView):
+        (WebInspector.ElementsTabContentView.prototype._mainFrameDidChange):
+
+        * UserInterface/Views/ResourcesTabContentView.js: Added.
+        (WebInspector.ResourcesTabContentView):
+
+        * UserInterface/Views/SettingsTabContentView.js: Added.
+        (WebInspector.SettingsTabContentView):
+
+        * UserInterface/Views/TabBrowser.css: Added.
+        (.tab-browser):
+        (.tab-browser > .tab-bar):
+        (.tab-browser > .content-view-container):
+        (.tab-browser > .tab-bar + .content-view-container):
+
+        * UserInterface/Views/TabBrowser.js: Added.
+        (WebInspector.TabBrowser):
+        (WebInspector.TabBrowser.prototype.get tabBar):
+        (WebInspector.TabBrowser.prototype.get navigationSidebar):
+        (WebInspector.TabBrowser.prototype.get detailsSidebar):
+        (WebInspector.TabBrowser.prototype.get selectedTabContentView):
+        (WebInspector.TabBrowser.prototype.updateLayout):
+        (WebInspector.TabBrowser.prototype.bestTabContentViewForRepresentedObject):
+        (WebInspector.TabBrowser.prototype.addTabForContentView):
+        (WebInspector.TabBrowser.prototype.showTabForContentView):
+        (WebInspector.TabBrowser.prototype.closeTabForContentView):
+        (WebInspector.TabBrowser.prototype._tabBarItemSelected):
+        (WebInspector.TabBrowser.prototype._sidebarPanelSelected):
+        (WebInspector.TabBrowser.prototype._sidebarCollapsedStateDidChange):
+        (WebInspector.TabBrowser.prototype._showNavigationSidebarPanelForTabContentView):
+        (WebInspector.TabBrowser.prototype._showDetailsSidebarPanelsForTabContentView):
+
+        * UserInterface/Views/TabContentView.js: Added.
+        (WebInspector.TabContentView):
+        (WebInspector.TabContentView.prototype.get parentTabBrowser):
+        (WebInspector.TabContentView.prototype.set parentTabBrowser):
+        (WebInspector.TabContentView.prototype.get tabBarItem):
+        (WebInspector.TabContentView.prototype.get managesDetailsSidebarPanels):
+        (WebInspector.TabContentView.prototype.showDetailsSidebarPanels):
+        (WebInspector.TabContentView.prototype.canShowRepresentedObject):
+        (WebInspector.TabContentView.prototype.get navigationSidebarPanel):
+        (WebInspector.TabContentView.prototype.get navigationSidebarCollapsedSetting):
+        (WebInspector.TabContentView.prototype.get detailsSidebarPanels):
+        (WebInspector.TabContentView.prototype.get detailsSidebarCollapsedSetting):
+        (WebInspector.TabContentView.prototype.get detailsSidebarSelectedPanelSetting):
+
+        * UserInterface/Views/TimelineTabContentView.js: Added.
+        (WebInspector.TimelineTabContentView):
+
+2015-04-06  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add a WebInspector.TabBar class
+        https://bugs.webkit.org/show_bug.cgi?id=143442
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.html:
+        Added new files.
+
+        * UserInterface/Protocol/InspectorFrontendHostStub.js:
+        (window.Symbol):
+        (WebInspector.InspectorFrontendHostStub.prototype.showContextMenu):
+        Added some stubs needed to work standalone.
+
+        * UserInterface/Views/TabBar.css: Added.
+        (.tab-bar):
+        (body.window-inactive .tab-bar):
+        (.tab-bar > .top-border):
+        (body.window-inactive .tab-bar > .top-border):
+        (.tab-bar > .item):
+        (.tab-bar > :nth-child(n + 2 of .item)):
+        (.tab-bar > .item.pinned):
+        (.tab-bar > .item.selected):
+        (.tab-bar > .item.new-tab-button:hover):
+        (.tab-bar:not(.animating) > .item:not(.selected):hover + .item):
+        (body.window-inactive .tab-bar > .item):
+        (body.window-inactive .tab-bar > .item.selected):
+        (.tab-bar > .item > .close):
+        (body:not(.window-inactive) .tab-bar:not(.single-tab) > .item:hover > .close):
+        (.tab-bar.single-tab > .item > .close):
+        (.tab-bar > .item > .close:hover):
+        (.tab-bar > .item > .close:active):
+        (.tab-bar > .item > .flex-space):
+        (.tab-bar > .item > .flex-space:last-child):
+        (.tab-bar > .item > .icon):
+        (.tab-bar > .item.selected > .icon):
+        (.tab-bar > .item.new-tab-button:hover > .icon):
+        (.tab-bar > .item > .title):
+        (.tab-bar > .item > .title > .content):
+        (.tab-bar:not(.animating) > .item:not(.selected):hover > .title):
+        (.tab-bar > .item.selected > .title):
+        (.tab-bar.collapsed > .item):
+        (.tab-bar.collapsed > .item > .flex-space):
+        (.tab-bar.collapsed > .item > .close):
+        (.tab-bar.hide-titles > .item > .title):
+        (.tab-bar.hide-titles > .item.selected:hover > .icon):
+        (.tab-bar.hide-titles > .item.selected:hover > .close):
+        (.tab-bar.static-layout):
+        (.tab-bar.static-layout > .item):
+        (.tab-bar.animating.closing-tab > .item):
+        (.tab-bar.animating:matches(.expanding-tabs, .inserting-tab) > .item):
+        (.tab-bar.animating.inserting-tab > .item.being-inserted):
+        (.tab-bar.animating.closing-tab > .item.selected):
+        (body.window-inactive .tab-bar.animating.closing-tab > .item.selected):
+        (.tab-bar.dragging-tab > .item.selected):
+
+        * UserInterface/Views/TabBar.js: Added.
+        (WebInspector.TabBar):
+        (WebInspector.TabBar.prototype.get newTabItem):
+        (WebInspector.TabBar.prototype.set newTabItem):
+        (WebInspector.TabBar.prototype.addTabBarItem):
+        (WebInspector.TabBar.prototype.insertTabBarItem.animateTabs):
+        (WebInspector.TabBar.prototype.insertTabBarItem.removeStyles):
+        (WebInspector.TabBar.prototype.insertTabBarItem):
+        (WebInspector.TabBar.prototype.insertTabBarItem.set else):
+        (WebInspector.TabBar.prototype.insertTabBarItem.set this):
+        (WebInspector.TabBar.animateTabs.get if):
+        (WebInspector.TabBar.animateTabs):
+        (WebInspector.TabBar.removeStyles):
+        (WebInspector.TabBar.prototype.insertTabBarItem):
+        (WebInspector.TabBar.prototype.updateLayoutSoon.update):
+        (WebInspector.TabBar.prototype.updateLayoutSoon):
+        (WebInspector.TabBar.prototype.updateLayout):
+        (WebInspector.TabBar.prototype.get selectedTabBarItem):
+        (WebInspector.TabBar.prototype.set selectedTabBarItem):
+        (WebInspector.TabBar.prototype.get tabBarItems):
+        (WebInspector.TabBar.prototype.get element):
+        (WebInspector.TabBar.prototype._findTabBarItem):
+        (WebInspector.TabBar.prototype._hasMoreThanOneNormalTab):
+        (WebInspector.TabBar.prototype._recordTabBarItemSizesAndPositions):
+        (WebInspector.TabBar.prototype._clearTabBarItemSizesAndPositions):
+        (WebInspector.TabBar.prototype._finishExpandingTabsAfterClose.):
+        (WebInspector.TabBar.prototype._finishExpandingTabsAfterClose):
+        (WebInspector.TabBar.prototype._handleMouseDown):
+        (WebInspector.TabBar.prototype._handleMouseMoved):
+        (WebInspector.TabBar.prototype._handleMouseUp):
+        (WebInspector.TabBar.prototype._handleMouseLeave):
+        (WebInspector.TabBar.prototype._handleNewTabMouseEnter):
+
+        * UserInterface/Views/TabBarItem.js: Added.
+        (WebInspector.TabBarItem):
+        (WebInspector.TabBarItem.prototype.get identifier):
+        (WebInspector.TabBarItem.prototype.get element):
+        (WebInspector.TabBarItem.prototype.get parentTabBar):
+        (WebInspector.TabBarItem.prototype.set parentTabBar):
+        (WebInspector.TabBarItem.prototype.get selected):
+        (WebInspector.TabBarItem.prototype.set selected):
+        (WebInspector.TabBarItem.prototype.get pinned):
+        (WebInspector.TabBarItem.prototype.get image):
+        (WebInspector.TabBarItem.prototype.set image):
+        (WebInspector.TabBarItem.prototype.get title):
+        (WebInspector.TabBarItem.prototype.set title):
+        (WebInspector.TabBarItem.prototype.updateLayout):
+
+2015-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make closing ContentViews more leak proof
+        https://bugs.webkit.org/show_bug.cgi?id=144200
+
+        Remove all listeners on the target objects in close that match the this object.
+        This makes things more foolproof when something changes or a new listener is
+        added to the same object. TimelineRecordingContentView also had a leak where
+        TimelineManager and DebuggerManager listeners were not being removed.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        (WebInspector.ApplicationCacheFrameContentView.prototype.closed):
+        * UserInterface/Views/ClusterContentView.js:
+        (WebInspector.ClusterContentView.prototype.closed):
+        * UserInterface/Views/ContentFlowDOMTreeContentView.js:
+        (WebInspector.ContentFlowDOMTreeContentView.prototype.closed):
+        * UserInterface/Views/FrameDOMTreeContentView.js:
+        (WebInspector.FrameDOMTreeContentView.prototype.closed):
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype.closed):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView.prototype.closed):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype.closed):
+
+2015-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make closing ContentViews more leak proof
+        https://bugs.webkit.org/show_bug.cgi?id=144200
+
+        Remove all listeners on the target objects in close that match the this object.
+        This makes things more foolproof when something changes or a new listener is
+        added to the same object. TimelineRecordingContentView also had a leak where
+        TimelineManager and DebuggerManager listeners were not being removed.
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        (WebInspector.ApplicationCacheFrameContentView.prototype.closed):
+        * UserInterface/Views/ClusterContentView.js:
+        (WebInspector.ClusterContentView.prototype.closed):
+        * UserInterface/Views/ContentFlowDOMTreeContentView.js:
+        (WebInspector.ContentFlowDOMTreeContentView.prototype.closed):
+        * UserInterface/Views/FrameDOMTreeContentView.js:
+        (WebInspector.FrameDOMTreeContentView.prototype.closed):
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype.closed):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView.prototype.closed):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype.closed):
+
+2015-04-25  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: assertion failure when editing inline styles
+        https://bugs.webkit.org/show_bug.cgi?id=143939
+
+        Reviewed by Timothy Hatcher.
+
+        Prevent "_updateResourceContent" from being called on inline style changes.
+        Introduce a flag that marks a CSSStyleSheet as a representation of an
+        "ElementCSSInlineStyle" (DOM Level 2 spec) and return early.
+
+        * UserInterface/Controllers/CSSStyleManager.js:
+        (WebInspector.CSSStyleManager.prototype.styleSheetChanged):
+        * UserInterface/Models/CSSStyleSheet.js:
+        (WebInspector.CSSStyleSheet):
+        (WebInspector.CSSStyleSheet.isInlineStyle):
+        (WebInspector.CSSStyleSheet.prototype.markAsInlineStyle):
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseStyleDeclarationPayload):
+
+2015-04-24  Timothy Hatcher  <timothy@apple.com>
+
+        REGRESSION: Web Inspector: Start Timeline Recording in Develop menu broken
+        https://bugs.webkit.org/show_bug.cgi?id=144150
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setTimelineProfilingEnabled): Change !== to === when
+        checking enabled to isCapturing().
+
+2015-04-23  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: run a customizable bootstrap function after the UI has fully loaded
+        https://bugs.webkit.org/show_bug.cgi?id=144124
+
+        Reviewed by Joseph Pecoraro.
+
+        It can be really annoying to click through the Inspector UI dozens of times to debug one
+        interaction or iterate on a specific widget.
+
+        This patch adds a blank "bootstrap" function that can be used to hard-wire commands to
+        automate repetitive UI state setup. The function is run immediately after the inspector loads.
+        Setup commands can be shared as bug report reproduction steps.
+
+        * UserInterface/Base/Bootstrap.js: Added.
+        (WebInspector.runBootstrapOperations): Added.
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded): Bootstrap after setting up everything and restoring view state from cookie.
+        * UserInterface/Main.html:
+
+2015-04-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Adopt Object.assign and improve its display in Console
+        https://bugs.webkit.org/show_bug.cgi?id=144135
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2015-04-23  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: DebuggerSidebarPanel's _callStackContentTreeOutline should suppress filtering
+        https://bugs.webkit.org/show_bug.cgi?id=144114
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+
+2015-04-23  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Fix layering issues with ApplicationCacheFrameTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=144113
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ApplicationCacheFrameTreeElement.js:
+        (WebInspector.ApplicationCacheFrameTreeElement.prototype.updateTitles):
+        (WebInspector.ApplicationCacheFrameTreeElement):
+
+2015-04-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: clicking Timelines tree view nodes should not change the current content view
+        https://bugs.webkit.org/show_bug.cgi?id=132202
+
+        Reviewed by Brian Burg.
+
+        TimelineSidebarPanel now prevents timeline views from switching to another content view while the content
+        browser is showing the TimelineRecordingContentView. Code responsible for creating and updating the tree
+        element close button, which was duplicated in multiple derived TimelineView classes, has been moved to the
+        TimelineView base class.
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        Updated name of location column, which was broken in a recent patch.
+        (WebInspector.LayoutTimelineView.prototype.treeElementDeselected):
+        (WebInspector.LayoutTimelineView.prototype.treeElementSelected):
+        Added overrides of new base class methods to handle view-specific highlight logic.
+        (WebInspector.LayoutTimelineView.prototype._treeElementDeselected): Deleted.
+        (WebInspector.LayoutTimelineView.prototype._treeElementSelected): Deleted.
+        (WebInspector.LayoutTimelineView.prototype._updateTreeElementWithCloseButton): Deleted.
+        (WebInspector.LayoutTimelineView.prototype._closeStatusButtonClicked): Deleted.
+        Removed tree element close button logic.
+
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.NetworkTimelineView.prototype.treeElementSelected):
+        Added overrides of new base class methods.
+        (WebInspector.NetworkTimelineView.prototype._treeElementDeselected): Deleted.
+        (WebInspector.NetworkTimelineView.prototype._treeElementSelected): Deleted.
+        Removed tree element close button logic.
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.RenderingFrameTimelineView.prototype.treeElementSelected):
+        Added overrides of new base class methods.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.get data):
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        Removed unused Name column and added "go to" button to the Domain column to show the selected resource.
+
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView):
+        (WebInspector.ScriptTimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.ScriptTimelineView.prototype.treeElementSelected):
+        Added overrides of new base class methods.
+        (WebInspector.ScriptTimelineView.prototype._dataGridNodeSelected):
+        (WebInspector.ScriptTimelineView.prototype._treeElementDeselected): Deleted.
+        (WebInspector.ScriptTimelineView.prototype._treeElementSelected): Deleted.
+        (WebInspector.ScriptTimelineView.prototype._updateTreeElementWithCloseButton): Deleted.
+        (WebInspector.ScriptTimelineView.prototype._closeStatusButtonClicked): Deleted.
+        Removed tree element close button logic.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.showTimelineViewForTimeline.this._timelineTreeElementMap.get select):
+        Prevent navigating to a different content view when showing the TimelineRecordingContentView.
+
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView):
+        (WebInspector.TimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.TimelineView.prototype.treeElementDeselected):
+        (WebInspector.TimelineView.prototype.treeElementSelected):
+        Tree element selection handlers are now protected methods, which derived classes may override as needed.
+        (WebInspector.TimelineView.prototype.needsLayout):
+        (WebInspector.TimelineView.prototype._closeStatusButtonClicked):
+        (WebInspector.TimelineView.prototype._updateTreeElementWithCloseButton):
+        Encapsulated logic related to close button creation and behavior.
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove an unused index argument from Sidebar.removeSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=144054
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/Sidebar.js:
+
+2015-04-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Fix an exception preventing switching timelines
+        https://bugs.webkit.org/show_bug.cgi?id=144053
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeElement.prototype.select): Store treeOutline in a local so
+        we have a reference to it when we go to reset processingSelectionChange.
+        The calls to onselect was removing the tree element from the outline, causing
+        "delete this.treeOutline.processingSelectionChange" to throw an exception.
+        This patch changes the delete to a set to false for good measure too.
+
+2015-04-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use String.prototype.startsWith in more places
+        https://bugs.webkit.org/show_bug.cgi?id=144025
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Gradient.js:
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._scriptAdded):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasAdded):
+
+2015-04-21  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Make formatted nodes more consistent with formatted objects
+        https://bugs.webkit.org/show_bug.cgi?id=142159
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline ol):
+        Keep indentation exactly two spaces of Menlo.
+
+        (.dom-tree-outline li):
+        (.dom-tree-outline li.parent):
+        (.dom-tree-outline li .html-tag.close):
+        (.dom-tree-outline li.parent::before):
+        (.dom-tree-outline:focus li.parent.selected::before):
+        (.dom-tree-outline li.parent.expanded::before):
+        (.dom-tree-outline:focus li.parent.expanded.selected::before):
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-node > .dom-tree-outline ol):
+        Keep indentation exactly two spaces of Menlo.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property > .disclosure-button):
+        Disclosure triangle is 13 by 13 pixels. Having it in the middle of 16 by 16
+        pixels block makes it look bloory on non-retina screen, because:
+        (16 - 13) / 2 = 1.5px. Replacing 16 with 15 fixes the problem.
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree:not(.lossless-preview) > :matches(.title, .object-preview)):
+
+2015-04-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unify PrettyPrinting Tool and UserInterface resources
+        https://bugs.webkit.org/show_bug.cgi?id=143969
+
+        Reviewed by Timothy Hatcher.
+
+        Have the PrettyPrinting tool just use the CodeMirror and WebInspector
+        resources from the relative UserInterface directory. This avoids
+        having duplicate resources in the tree which offered few advantages.
+
+        * Scripts/update-pretty-printer.rb: Removed.
+        * Tools/PrettyPrinting/CodeMirrorFormatters.js: Removed.
+        * Tools/PrettyPrinting/Formatter.js: Removed.
+        * Tools/PrettyPrinting/FormatterContentBuilder.js: Removed.
+        * Tools/PrettyPrinting/codemirror.css: Removed.
+        * Tools/PrettyPrinting/codemirror.js: Removed.
+        * Tools/PrettyPrinting/css.js: Removed.
+        * Tools/PrettyPrinting/index.html:
+        * Tools/PrettyPrinting/javascript.js: Removed.
+
+        * UserInterface/Views/CodeMirrorFormatters.js:
+        Fix style issues.
+
+2015-04-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Support for WeakSet in Console
+        https://bugs.webkit.org/show_bug.cgi?id=143951
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        WeakSet has the same APIs and parameters as Set for the functions it implements.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.isCollectionType):
+        (WebInspector.RemoteObject.prototype.isWeakCollection):
+        (WebInspector.RemoteObject.prototype.getCollectionEntries):
+        (WebInspector.RemoteObject.prototype._weakCollectionObjectGroup):
+        WeakSet is a weak collection.
+
+        * UserInterface/Models/ObjectPreview.js:
+        (WebInspector.ObjectPreview.prototype.hasSize):
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._formatParameter):
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-object, .formatted-node, .formatted-error, .formatted-map, .formatted-set, .formatted-weakmap, .formatted-weakset):
+        (:matches(.formatted-array, .formatted-map, .formatted-set, .formatted-weakmap, .formatted-weakset) > .size):
+        (.formatted-object, .formatted-node, .formatted-error, .formatted-map, .formatted-set, .formatted-weakmap): Deleted.
+        (:matches(.formatted-array, .formatted-map, .formatted-set, .formatted-weakmap) > .size): Deleted.
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForTypesAndValue):
+        Treat a WeakSet like a set in more places.
+
+2015-04-18  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Pass multiple arguments to classList.add and classList.remove
+        https://bugs.webkit.org/show_bug.cgi?id=143914
+
+        classList.add and classList.remove can accept multiple arguments, use that.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.updateDockedState):
+        * UserInterface/Views/DOMTreeDataGrid.js:
+        (WebInspector.DOMTreeDataGrid):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline):
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGridNode.prototype.set hasChildren):
+        * UserInterface/Views/DatabaseContentView.js:
+        (WebInspector.DatabaseContentView):
+        * UserInterface/Views/DetailsSection.js:
+        (WebInspector.DetailsSection):
+        * UserInterface/Views/DetailsSectionPropertiesRow.js:
+        (WebInspector.DetailsSectionPropertiesRow):
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.set classNames):
+        * UserInterface/Views/NavigationItem.js:
+        (WebInspector.NavigationItem):
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar):
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        * UserInterface/Views/TimelineRuler.js:
+
+2015-04-18  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Make prototype pill’s background semi-transparent
+        https://bugs.webkit.org/show_bug.cgi?id=143928
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property.prototype-property):
+
+        (.object-tree-property.prototype-property:hover, .object-tree-property.prototype-property:focus):
+        Slightly highlight the prototype pill when hovering over.
+
+2015-04-17  Jono Wells  <jonowells@apple.com>
+
+        Web Inspector: All sans-serif font family rules should be set the same way.
+        https://bugs.webkit.org/show_bug.cgi?id=143909
+
+        Reviewed by Timothy Hatcher.
+
+        Update styles so that all uses of sans-serif font use -webkit-system-font consistently.
+
+        * UserInterface/Views/DefaultDashboardView.css:
+        (body.mac-platform.legacy .toolbar .dashboard.default > .item):
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property .prototype-name):
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree-outline li .empty-message):
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.css:
+        (.timeline-overview-graph.rendering-frame > .divider > .label):
+
+2015-04-17  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Have better inactive window color for pixel borders
+        https://bugs.webkit.org/show_bug.cgi?id=143888
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/FindBanner.css:
+        (body.window-inactive .find-banner):
+        * UserInterface/Views/Main.css:
+        (body.window-inactive.docked.bottom):
+        (body.window-inactive.docked.right):
+        (body.window-inactive #split-content-browser):
+        * UserInterface/Views/NavigationBar.css:
+        (body.window-inactive .navigation-bar):
+        * UserInterface/Views/QuickConsole.css:
+        (body.window-inactive .quick-console):
+        (.quick-console.showing-log):
+        * UserInterface/Views/Sidebar.css:
+        (body.window-inactive .sidebar.left):
+        (body.window-inactive .sidebar.right):
+
+2015-04-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unexpected background at top of console when rubber-banding with selection
+        https://bugs.webkit.org/show_bug.cgi?id=140710
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-messages):
+        Remove the focus ring on the console's log view, only visible when rubber-banding.
+
 2015-04-16  Jono Wells  <jonowells@apple.com>
 
         Web Inspector: Breakpoint icons should not get pushed off of debugger sidebar due to long resource names

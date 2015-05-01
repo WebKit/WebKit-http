@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -128,7 +128,7 @@ public:
                 preHeader = predecessor;
             }
             
-            DFG_ASSERT(m_graph, preHeader->last(), preHeader->last()->op() == Jump);
+            DFG_ASSERT(m_graph, preHeader->terminal(), preHeader->terminal()->op() == Jump);
             
             data.preHeader = preHeader;
         }
@@ -237,10 +237,10 @@ private:
                 "\n");
         }
         
-        data.preHeader->insertBeforeLast(node);
+        data.preHeader->insertBeforeTerminal(node);
         node->owner = data.preHeader;
         NodeOrigin originalOrigin = node->origin;
-        node->origin.forExit = data.preHeader->last()->origin.forExit;
+        node->origin.forExit = data.preHeader->terminal()->origin.forExit;
         
         // Modify the states at the end of the preHeader of the loop we hoisted to,
         // and all pre-headers inside the loop.
@@ -263,7 +263,7 @@ private:
         // code. But for now we just assert that's the case.
         DFG_ASSERT(m_graph, node, !(node->flags() & NodeHasVarArgs));
         
-        nodeRef = m_graph.addNode(SpecNone, Phantom, originalOrigin, node->children);
+        nodeRef = m_graph.addNode(SpecNone, Check, originalOrigin, node->children);
         
         return true;
     }

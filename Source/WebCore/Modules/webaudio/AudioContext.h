@@ -29,10 +29,10 @@
 #include "AsyncAudioDecoder.h"
 #include "AudioBus.h"
 #include "AudioDestinationNode.h"
-#include "AudioProducer.h"
 #include "EventListener.h"
 #include "EventTarget.h"
 #include "MediaCanStartListener.h"
+#include "MediaProducer.h"
 #include "MediaSession.h"
 #include <atomic>
 #include <wtf/HashSet.h>
@@ -76,7 +76,7 @@ class PeriodicWave;
 // AudioContext is the cornerstone of the web audio API and all AudioNodes are created from it.
 // For thread safety between the audio thread and the main thread, it has a rendering graph locking mechanism. 
 
-class AudioContext : public ActiveDOMObject, public ThreadSafeRefCounted<AudioContext>, public EventTargetWithInlineData, public MediaCanStartListener, public AudioProducer, private MediaSessionClient {
+class AudioContext : public ActiveDOMObject, public ThreadSafeRefCounted<AudioContext>, public EventTargetWithInlineData, public MediaCanStartListener, public MediaProducer, private MediaSessionClient {
 public:
     // Create an AudioContext for rendering to the audio hardware.
     static RefPtr<AudioContext> create(Document&, ExceptionCode&);
@@ -251,13 +251,13 @@ public:
     };
     typedef unsigned BehaviorRestrictions;
 
-    bool userGestureRequiredForAudioStart() const { return m_restrictions & RequireUserGestureForAudioStartRestriction; }
-    bool pageConsentRequiredForAudioStart() const { return m_restrictions & RequirePageConsentForAudioStartRestriction; }
-
+    BehaviorRestrictions behaviorRestrictions() const { return m_restrictions; }
     void addBehaviorRestriction(BehaviorRestrictions restriction) { m_restrictions |= restriction; }
     void removeBehaviorRestriction(BehaviorRestrictions restriction) { m_restrictions &= ~restriction; }
 
     void isPlayingAudioDidChange();
+
+    void nodeWillBeginPlayback();
 
 protected:
     explicit AudioContext(Document&);
@@ -271,6 +271,12 @@ private:
     void lazyInitialize();
     void uninitialize();
 
+    bool willBeginPlayback();
+    bool willPausePlayback();
+
+    bool userGestureRequiredForAudioStart() const { return m_restrictions & RequireUserGestureForAudioStartRestriction; }
+    bool pageConsentRequiredForAudioStart() const { return m_restrictions & RequirePageConsentForAudioStartRestriction; }
+
     enum class State { Suspended, Running, Interrupted, Closed };
     void setState(State);
 
@@ -280,8 +286,8 @@ private:
 
     virtual void mediaCanStart() override;
 
-    // AudioProducer
-    virtual bool isPlayingAudio() override;
+    // MediaProducer
+    virtual MediaProducer::MediaStateFlags mediaState() const override;
     virtual void pageMutedStateDidChange() override;
 
     // The context itself keeps a reference to all source nodes.  The source nodes, then reference all nodes they're connected to.

@@ -176,6 +176,7 @@
        (global-name "com.apple.audio.VDCAssistant")
        (global-name "com.apple.audio.audiohald")
        (global-name "com.apple.audio.coreaudiod")
+       (global-name "com.apple.awdd")
        (global-name "com.apple.cookied")
        (global-name "com.apple.dock.server")
        (global-name "com.apple.system.opendirectoryd.api")
@@ -297,14 +298,6 @@
        (home-subpath "/Library/Components")
        (home-subpath "/Library/Keyboard Layouts")
        (home-subpath "/Library/Input Methods"))
-
-;; AirPlay
-;; FIXME: remove this as described in rdar://19869448
-(allow mach-lookup
-    (global-name "com.apple.coremedia.endpoint.airplayuiagent")
-    (global-name "com.apple.coremedia.endpointstream.airplayuiagent")
-    (global-name "com.apple.coremedia.endpointplaybacksession.airplayuiagent")
-    (global-name "com.apple.coremedia.endpointpicker"))
 
 ;; AirPlay
 (allow mach-lookup

@@ -1,5 +1,6 @@
 add_custom_target(forwarding-headersEflForTestWebKitAPI
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT2_DIR} --include-path ${TESTWEBKITAPI_DIR} --output ${DERIVED_SOURCES_WEBKIT2_DIR}/include --platform efl --platform CoordinatedGraphics --platform soup
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${TESTWEBKITAPI_DIR} --output ${DERIVED_SOURCES_WEBKIT2_DIR}/include --platform efl --platform CoordinatedGraphics --platform soup
+    DEPENDS forwarding-headersEflForWebKit2
 )
 set(ForwardingHeadersForTestWebKitAPI_NAME forwarding-headersEflForTestWebKitAPI)
 
@@ -11,10 +12,6 @@ include_directories(
     ${WEBKIT2_DIR}/UIProcess/API/C/efl
     ${WEBKIT2_DIR}/UIProcess/API/efl
     ${ECORE_EVAS_INCLUDE_DIRS}
-    ${ECORE_INCLUDE_DIRS}
-    ${EINA_INCLUDE_DIRS}
-    ${EO_INCLUDE_DIRS}
-    ${EVAS_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
 )

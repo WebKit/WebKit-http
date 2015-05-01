@@ -95,7 +95,7 @@ void Statistics::initialize(const String& databasePath)
     auto startTime = std::chrono::system_clock::now();
 
     StringCapture databasePathCapture(databasePath);
-    StringCapture networkCachePathCapture(singleton().storagePath());
+    StringCapture networkCachePathCapture(singleton().recordsPath());
     serialBackgroundIOQueue().dispatch([this, databasePathCapture, networkCachePathCapture, startTime] {
         WebCore::SQLiteTransactionInProgressAutoCounter transactionCounter;
 
@@ -144,8 +144,12 @@ void Statistics::bootstrapFromNetworkCache(const String& networkCachePath)
     LOG(NetworkCache, "(NetworkProcess) Bootstrapping the network cache statistics database from the network cache...");
 
     Vector<StringCapture> hashes;
-    traverseCacheFiles(networkCachePath, [&hashes](const String& hash, const String&) {
-        hashes.append(hash);
+    traverseCacheFiles(networkCachePath, [&hashes](const String& hashString, const String&) {
+        Key::HashType hash;
+        if (!Key::stringToHash(hashString, hash))
+            return;
+
+        hashes.append(hashString);
     });
 
     WebCore::SQLiteTransactionInProgressAutoCounter transactionCounter;
@@ -169,7 +173,7 @@ void Statistics::shrinkIfNeeded()
 
     clear();
 
-    StringCapture networkCachePathCapture(singleton().storagePath());
+    StringCapture networkCachePathCapture(singleton().recordsPath());
     serialBackgroundIOQueue().dispatch([this, networkCachePathCapture] {
         bootstrapFromNetworkCache(networkCachePathCapture.string());
         LOG(NetworkCache, "(NetworkProcess) statistics cache shrink completed m_approximateEntryCount=%lu", static_cast<size_t>(m_approximateEntryCount));
@@ -240,6 +244,8 @@ static String storeDecisionToDiagnosticKey(StoreDecision storeDecision)
         return WebCore::DiagnosticLoggingKeys::uncacheableStatusCodeKey();
     case StoreDecision::NoDueToUnlikelyToReuse:
         return WebCore::DiagnosticLoggingKeys::unlikelyToReuseKey();
+    case StoreDecision::NoDueToStreamingMedia:
+        return WebCore::DiagnosticLoggingKeys::streamingMedia();
     case StoreDecision::Yes:
         // It was stored but could not be retrieved so it must have been pruned from the cache.
         return WebCore::DiagnosticLoggingKeys::noLongerInCacheKey();
@@ -283,15 +289,29 @@ static String cachedEntryReuseFailureToDiagnosticKey(UseDecision decision)
 void Statistics::recordRetrievedCachedEntry(uint64_t webPageID, const Key& key, const WebCore::ResourceRequest& request, UseDecision decision)
 {
     WebCore::URL requestURL = request.url();
-    if (decision == UseDecision::Use || decision == UseDecision::Validate) {
+    if (decision == UseDecision::Use) {
         LOG(NetworkCache, "(NetworkProcess) webPageID %llu: %s is in the cache and is used", webPageID, requestURL.string().ascii().data());
         NetworkProcess::singleton().logDiagnosticMessageWithResult(webPageID, WebCore::DiagnosticLoggingKeys::networkCacheKey(), WebCore::DiagnosticLoggingKeys::retrievalKey(), WebCore::DiagnosticLoggingResultPass, WebCore::ShouldSample::Yes);
+        return;
+    }
+
+    if (decision == UseDecision::Validate) {
+        LOG(NetworkCache, "(NetworkProcess) webPageID %llu: %s is in the cache but needs revalidation", webPageID, requestURL.string().ascii().data());
+        NetworkProcess::singleton().logDiagnosticMessageWithValue(webPageID, WebCore::DiagnosticLoggingKeys::networkCacheKey(), WebCore::DiagnosticLoggingKeys::retrievalKey(), WebCore::DiagnosticLoggingKeys::needsRevalidationKey(), WebCore::ShouldSample::Yes);
         return;
     }
 
     String diagnosticKey = cachedEntryReuseFailureToDiagnosticKey(decision);
     LOG(NetworkCache, "(NetworkProcess) webPageID %llu: %s is in the cache but wasn't used, reason: %s", webPageID, requestURL.string().ascii().data(), diagnosticKey.utf8().data());
     NetworkProcess::singleton().logDiagnosticMessageWithValue(webPageID, WebCore::DiagnosticLoggingKeys::networkCacheKey(), WebCore::DiagnosticLoggingKeys::unusableCachedEntryKey(), diagnosticKey, WebCore::ShouldSample::Yes);
+}
+
+void Statistics::recordRevalidationSuccess(uint64_t webPageID, const Key& key, const WebCore::ResourceRequest& request)
+{
+    WebCore::URL requestURL = request.url();
+    LOG(NetworkCache, "(NetworkProcess) webPageID %llu: %s was successfully revalidated", webPageID, requestURL.string().ascii().data());
+
+    NetworkProcess::singleton().logDiagnosticMessageWithResult(webPageID, WebCore::DiagnosticLoggingKeys::networkCacheKey(), WebCore::DiagnosticLoggingKeys::revalidatingKey(), WebCore::DiagnosticLoggingResultPass, WebCore::ShouldSample::Yes);
 }
 
 void Statistics::markAsRequested(const String& hash)

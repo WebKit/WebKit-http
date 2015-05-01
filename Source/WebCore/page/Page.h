@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2010, 2013, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  *
  * This library is free software; you can redistribute it and/or
@@ -25,6 +25,7 @@
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "LayoutRect.h"
+#include "MediaProducer.h"
 #include "PageThrottler.h"
 #include "PageVisibilityState.h"
 #include "Pagination.h"
@@ -35,6 +36,7 @@
 #include "Supplementable.h"
 #include "ViewState.h"
 #include "ViewportArguments.h"
+#include "WheelEventTestTrigger.h"
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -194,7 +196,7 @@ public:
 
     WEBCORE_EXPORT String scrollingStateTreeAsText();
     WEBCORE_EXPORT String synchronousScrollingReasonsAsText();
-    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects(const Frame&);
+    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects();
 
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
@@ -422,20 +424,26 @@ public:
     WEBCORE_EXPORT void enableLegacyPrivateBrowsing(bool privateBrowsingEnabled);
     bool usesEphemeralSession() const { return m_sessionID.isEphemeral(); }
 
-    bool isPlayingAudio() const { return m_isPlayingAudio; }
+    MediaProducer::MediaStateFlags mediaState() const { return m_mediaState; }
     void updateIsPlayingMedia();
     bool isMuted() const { return m_muted; }
     WEBCORE_EXPORT void setMuted(bool);
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    void showPlaybackTargetPicker(const WebCore::IntPoint&, bool);
-    bool hasWirelessPlaybackTarget() const { return m_hasWirelessPlaybackTarget; }
-    RefPtr<MediaPlaybackTarget> playbackTarget() const;
-    void configurePlaybackTargetMonitoring();
+    void addPlaybackTargetPickerClient(uint64_t);
+    void removePlaybackTargetPickerClient(uint64_t);
+    void showPlaybackTargetPicker(uint64_t, const WebCore::IntPoint&, bool);
+    void playbackTargetPickerClientStateDidChange(uint64_t, MediaProducer::MediaStateFlags);
 
-    WEBCORE_EXPORT void didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&&);
-    WEBCORE_EXPORT void playbackTargetAvailabilityDidChange(bool);
+    WEBCORE_EXPORT void setPlaybackTarget(uint64_t, Ref<MediaPlaybackTarget>&&);
+    WEBCORE_EXPORT void playbackTargetAvailabilityDidChange(uint64_t, bool);
+    WEBCORE_EXPORT void setShouldPlayToPlaybackTarget(uint64_t, bool);
 #endif
+
+    WEBCORE_EXPORT RefPtr<WheelEventTestTrigger> testTrigger() const;
+    WEBCORE_EXPORT WheelEventTestTrigger& ensureTestTrigger();
+    WEBCORE_EXPORT void clearTrigger();
+    WEBCORE_EXPORT bool expectsWheelEventTriggers() const;
 
 private:
     WEBCORE_EXPORT void initGroup();
@@ -584,19 +592,15 @@ private:
     Ref<StorageNamespaceProvider> m_storageNamespaceProvider;
     RefPtr<UserContentController> m_userContentController;
     Ref<VisitedLinkStore> m_visitedLinkStore;
+    RefPtr<WheelEventTestTrigger> m_testTrigger;
 
     HashSet<ViewStateChangeObserver*> m_viewStateChangeObservers;
 
     SessionID m_sessionID;
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    RefPtr<MediaPlaybackTarget> m_playbackTarget;
-    bool m_hasWirelessPlaybackTarget { false };
-#endif
-
     bool m_isClosing;
 
-    bool m_isPlayingAudio;
+    MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
 };
 
 inline PageGroup& Page::group()

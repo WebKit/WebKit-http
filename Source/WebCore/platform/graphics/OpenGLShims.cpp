@@ -17,7 +17,7 @@
  */
 
 #include "config.h"
-#if USE(3D_GRAPHICS) || defined(QT_OPENGL_SHIMS)
+#if ENABLE(GRAPHICS_CONTEXT_3D)
 
 #define DISABLE_SHIMS
 #include "OpenGLShims.h"
@@ -70,26 +70,19 @@ static void* lookupOpenGLFunctionAddress(const char* functionName, bool* success
     if (target)
         return target;
 
-    String fullFunctionName(functionName);
-    fullFunctionName.append("ARB");
-    target = getProcAddress(fullFunctionName.utf8().data());
+    target = getProcAddress(reinterpret_cast<const char*>(makeString(functionName, "ARB").characters8()));
     if (target)
         return target;
 
-    fullFunctionName = functionName;
-    fullFunctionName.append("EXT");
-    target = getProcAddress(fullFunctionName.utf8().data());
+    // FIXME: <https://webkit.org/b/143964> OpenGLShims appears to have a dead store if GLES2
+    target = getProcAddress(reinterpret_cast<const char*>(makeString(functionName, "EXT").characters8()));
 
 #if defined(GL_ES_VERSION_2_0)
-    fullFunctionName = functionName;
-    fullFunctionName.append("ANGLE");
-    target = getProcAddress(fullFunctionName.utf8().data());
+    target = getProcAddress(reinterpret_cast<const char*>(makeString(functionName, "ANGLE").characters8()));
     if (target)
         return target;
 
-    fullFunctionName = functionName;
-    fullFunctionName.append("APPLE");
-    target = getProcAddress(fullFunctionName.utf8().data());
+    target = getProcAddress(reinterpret_cast<const char*>(makeString(functionName, "APPLE").characters8()));
 #endif
 
     // A null address is still a failure case.
@@ -233,4 +226,4 @@ bool initializeOpenGLShims()
 
 } // namespace WebCore
 
-#endif // USE(3D_GRAPHICS)
+#endif // ENABLE(GRAPHICS_CONTEXT_3D)

@@ -139,7 +139,6 @@ public:
     WEBCORE_EXPORT void setCustomSizeForResizeEvent(IntSize);
 
     WEBCORE_EXPORT void setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, double timestamp);
-    FloatRect computeCoverageRect(double horizontalMargin, double verticalMargin) const;
 #else
     bool useCustomFixedPositionLayoutRect() const { return false; }
 #endif
@@ -234,7 +233,7 @@ public:
 
     virtual float visibleContentScaleFactor() const override;
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     virtual void setFixedVisibleContentRect(const IntRect&) override;
 #endif
     WEBCORE_EXPORT virtual void setScrollPosition(const IntPoint&) override;
@@ -285,6 +284,8 @@ public:
     // on both the main thread and the scrolling thread.
     static float yPositionForInsetClipLayer(const FloatPoint& scrollPosition, float topContentInset);
     WEBCORE_EXPORT static float yPositionForRootContentLayer(const FloatPoint& scrollPosition, float topContentInset, float headerHeight);
+    WEBCORE_EXPORT float yPositionForRootContentLayer() const;
+
     static float yPositionForHeaderLayer(const FloatPoint& scrollPosition, float topContentInset);
     static float yPositionForFooterLayer(const FloatPoint& scrollPosition, float topContentInset, float totalContentsHeight, float footerHeight);
 
@@ -401,6 +402,12 @@ public:
     WEBCORE_EXPORT IntPoint convertFromRendererToContainingView(const RenderElement*, const IntPoint&) const;
     WEBCORE_EXPORT IntPoint convertFromContainingViewToRenderer(const RenderElement*, const IntPoint&) const;
 
+    // Override ScrollView methods to do point conversion via renderers, in order to take transforms into account.
+    virtual IntRect convertToContainingView(const IntRect&) const override;
+    virtual IntRect convertFromContainingView(const IntRect&) const override;
+    virtual IntPoint convertToContainingView(const IntPoint&) const override;
+    virtual IntPoint convertFromContainingView(const IntPoint&) const override;
+
     bool isFrameViewScrollCorner(RenderScrollbarPart* scrollCorner) const { return m_scrollCorner == scrollCorner; }
 
     // isScrollable() takes an optional Scrollability parameter that allows the caller to define what they mean by 'scrollable.'
@@ -507,6 +514,8 @@ public:
     void didAddWidgetToRenderTree(Widget&);
     void willRemoveWidgetFromRenderTree(Widget&);
 
+    const HashSet<Widget*>& widgetsInRenderTree() const { return m_widgetsInRenderTree; }
+
     void addTrackedRepaintRect(const FloatRect&);
 
     // exposedRect represents WebKit's understanding of what part
@@ -586,13 +595,6 @@ private:
     virtual void addedOrRemovedScrollbar() override;
 
     virtual void delegatesScrollingDidChange() override;
-
-    // Override ScrollView methods to do point conversion via renderers, in order to
-    // take transforms into account.
-    virtual IntRect convertToContainingView(const IntRect&) const override;
-    virtual IntRect convertFromContainingView(const IntRect&) const override;
-    virtual IntPoint convertToContainingView(const IntPoint&) const override;
-    virtual IntPoint convertFromContainingView(const IntPoint&) const override;
 
     // ScrollableArea interface
     virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) override;

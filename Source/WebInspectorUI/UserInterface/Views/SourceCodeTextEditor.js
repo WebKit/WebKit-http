@@ -840,8 +840,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             return null;
 
         var widgetElement = widget.widgetElement;
-        widgetElement.classList.add("issue-widget");
-        widgetElement.classList.add("inline");
+        widgetElement.classList.add("issue-widget", "inline");
         widgetElement.addEventListener("click", this._handleWidgetClick.bind(this, widget, lineNumber));
 
         this._widgetMap.set(lineNumber, widget);
@@ -988,10 +987,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
         function revealInSidebar()
         {
-            WebInspector.debuggerSidebarPanel.show();
-            var treeElement = WebInspector.debuggerSidebarPanel.treeElementForRepresentedObject(breakpoint);
-            if (treeElement)
-                treeElement.revealAndSelect();
+            WebInspector.showDebuggerTab(breakpoint);
         }
 
         var contextMenu = new WebInspector.ContextMenu(event);
@@ -1037,7 +1033,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
             breakpoint.appendContextMenuItems(contextMenu, event.target);
             contextMenu.appendSeparator();
-            contextMenu.appendItem(WebInspector.UIString("Reveal in Debugger Navigation Sidebar"), revealInSidebar);
+            contextMenu.appendItem(WebInspector.UIString("Reveal in Debugger Tab"), revealInSidebar);
             contextMenu.show();
             return;
         }
@@ -1325,9 +1321,9 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
         var sourceCodeLocation = this._sourceCodeLocationForEditorPosition(this.tokenTrackingController.candidate.hoveredTokenRange.start);
         if (this.sourceCode instanceof WebInspector.SourceMapResource)
-            WebInspector.resourceSidebarPanel.showOriginalOrFormattedSourceCodeLocation(sourceCodeLocation);
+            WebInspector.showOriginalOrFormattedSourceCodeLocation(sourceCodeLocation);
         else
-            WebInspector.resourceSidebarPanel.showSourceCodeLocation(sourceCodeLocation);
+            WebInspector.showSourceCodeLocation(sourceCodeLocation);
     }
 
     tokenTrackingControllerNewHighlightCandidate(tokenTrackingController, candidate)

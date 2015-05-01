@@ -35,8 +35,13 @@ TransformState& TransformState::operator=(const TransformState& other)
     m_mapQuad = other.m_mapQuad;
     if (m_mapPoint)
         m_lastPlanarPoint = other.m_lastPlanarPoint;
-    if (m_mapQuad)
+    if (m_mapQuad) {
         m_lastPlanarQuad = other.m_lastPlanarQuad;
+        if (other.m_lastPlanarSecondaryQuad)
+            m_lastPlanarSecondaryQuad = std::make_unique<FloatQuad>(*other.m_lastPlanarSecondaryQuad);
+        else
+            m_lastPlanarSecondaryQuad = nullptr;
+    }
     m_accumulatingTransform = other.m_accumulatingTransform;
     m_direction = other.m_direction;
     
@@ -61,8 +66,11 @@ void TransformState::translateMappedCoordinates(const LayoutSize& offset)
     LayoutSize adjustedOffset = (m_direction == ApplyTransformDirection) ? offset : -offset;
     if (m_mapPoint)
         m_lastPlanarPoint.move(adjustedOffset);
-    if (m_mapQuad)
+    if (m_mapQuad) {
         m_lastPlanarQuad.move(adjustedOffset);
+        if (m_lastPlanarSecondaryQuad)
+            m_lastPlanarSecondaryQuad->move(adjustedOffset);
+    }
 }
 
 void TransformState::move(const LayoutSize& offset, TransformAccumulation accumulate)
@@ -171,14 +179,46 @@ FloatQuad TransformState::mappedQuad(bool* wasClamped) const
         *wasClamped = false;
 
     FloatQuad quad = m_lastPlanarQuad;
-    quad.move((m_direction == ApplyTransformDirection) ? m_accumulatedOffset : -m_accumulatedOffset);
+    mapQuad(quad, m_direction, wasClamped);
+    return quad;
+}
+
+std::unique_ptr<FloatQuad> TransformState::mappedSecondaryQuad(bool* wasClamped) const
+{
+    if (wasClamped)
+        *wasClamped = false;
+
+    if (!m_lastPlanarSecondaryQuad)
+        return nullptr;
+
+    FloatQuad quad = *m_lastPlanarSecondaryQuad;
+    mapQuad(quad, m_direction, wasClamped);
+    return std::make_unique<FloatQuad>(quad);
+}
+
+void TransformState::setLastPlanarSecondaryQuad(const FloatQuad* quad)
+{
+    if (!quad) {
+        m_lastPlanarSecondaryQuad = nullptr;
+        return;
+    }
+    
+    // Map the quad back through any transform or offset back into the last flattening coordinate space.
+    FloatQuad backMappedQuad(*quad);
+    mapQuad(backMappedQuad, inverseDirection());
+    m_lastPlanarSecondaryQuad = std::make_unique<FloatQuad>(backMappedQuad);
+}
+
+void TransformState::mapQuad(FloatQuad& quad, TransformDirection direction, bool* wasClamped) const
+{
+    quad.move((direction == ApplyTransformDirection) ? m_accumulatedOffset : -m_accumulatedOffset);
     if (!m_accumulatedTransform)
-        return quad;
+        return;
 
-    if (m_direction == ApplyTransformDirection)
-        return m_accumulatedTransform->mapQuad(quad);
+    if (direction == ApplyTransformDirection)
+        quad = m_accumulatedTransform->mapQuad(quad);
 
-    return m_accumulatedTransform->inverse().projectQuad(quad, wasClamped);
+    quad = m_accumulatedTransform->inverse().projectQuad(quad, wasClamped);
 }
 
 void TransformState::flattenWithTransform(const TransformationMatrix& t, bool* wasClamped)
@@ -186,14 +226,21 @@ void TransformState::flattenWithTransform(const TransformationMatrix& t, bool* w
     if (m_direction == ApplyTransformDirection) {
         if (m_mapPoint)
             m_lastPlanarPoint = t.mapPoint(m_lastPlanarPoint);
-        if (m_mapQuad)
+        if (m_mapQuad) {
             m_lastPlanarQuad = t.mapQuad(m_lastPlanarQuad);
+            if (m_lastPlanarSecondaryQuad)
+                *m_lastPlanarSecondaryQuad = t.mapQuad(*m_lastPlanarSecondaryQuad);
+        }
+
     } else {
         TransformationMatrix inverseTransform = t.inverse();
         if (m_mapPoint)
             m_lastPlanarPoint = inverseTransform.projectPoint(m_lastPlanarPoint);
-        if (m_mapQuad)
+        if (m_mapQuad) {
             m_lastPlanarQuad = inverseTransform.projectQuad(m_lastPlanarQuad, wasClamped);
+            if (m_lastPlanarSecondaryQuad)
+                *m_lastPlanarSecondaryQuad = inverseTransform.projectQuad(*m_lastPlanarSecondaryQuad, wasClamped);
+        }
     }
 
     // We could throw away m_accumulatedTransform if we wanted to here, but that

@@ -588,27 +588,61 @@ void EventHandler::selectClosestWordFromHitTestResult(const HitTestResult& resul
     }
 }
 
-void EventHandler::selectClosestWordFromMouseEvent(const MouseEventWithHitTestResults& result)
+static AppendTrailingWhitespace shouldAppendTrailingWhitespace(const MouseEventWithHitTestResults& result, const Frame& frame)
 {
-    if (m_mouseDownMayStartSelect) {
-        selectClosestWordFromHitTestResult(result.hitTestResult(),
-            (result.event().clickCount() == 2 && m_frame.editor().isSelectTrailingWhitespaceEnabled()) ? ShouldAppendTrailingWhitespace : DontAppendTrailingWhitespace);
-    }
+    return (result.event().clickCount() == 2 && frame.editor().isSelectTrailingWhitespaceEnabled()) ? ShouldAppendTrailingWhitespace : DontAppendTrailingWhitespace;
 }
 
-void EventHandler::selectClosestWordOrLinkFromMouseEvent(const MouseEventWithHitTestResults& result)
+void EventHandler::selectClosestWordFromMouseEvent(const MouseEventWithHitTestResults& result)
 {
-    if (!result.hitTestResult().isLiveLink())
-        return selectClosestWordFromMouseEvent(result);
+    if (m_mouseDownMayStartSelect)
+        selectClosestWordFromHitTestResult(result.hitTestResult(), shouldAppendTrailingWhitespace(result, m_frame));
+}
+
+#if !PLATFORM(MAC)
+VisibleSelection EventHandler::selectClosestWordFromHitTestResultBasedOnLookup(const HitTestResult&)
+{
+    return VisibleSelection();
+}
+#endif
+    
+void EventHandler::selectClosestContextualWordFromMouseEvent(const MouseEventWithHitTestResults& mouseEvent)
+{
+    Node* targetNode = mouseEvent.targetNode();
+    const HitTestResult& result = mouseEvent.hitTestResult();
+    VisibleSelection newSelection;
+    bool appendTrailingWhitespace = shouldAppendTrailingWhitespace(mouseEvent, m_frame);
+    
+    if (targetNode && targetNode->renderer()) {
+        newSelection = selectClosestWordFromHitTestResultBasedOnLookup(result);
+        if (newSelection.isNone()) {
+            VisiblePosition pos(targetNode->renderer()->positionForPoint(result.localPoint(), nullptr));
+            if (pos.isNotNull()) {
+                newSelection = VisibleSelection(pos);
+                newSelection.expandUsingGranularity(WordGranularity);
+            }
+        }
+        
+        if (appendTrailingWhitespace == ShouldAppendTrailingWhitespace && newSelection.isRange())
+            newSelection.appendTrailingWhitespace();
+        
+        updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectSelectOnMouseDown(*targetNode, newSelection), WordGranularity);
+    }
+}
+    
+void EventHandler::selectClosestContextualWordOrLinkFromMouseEvent(const MouseEventWithHitTestResults& result)
+{
+    Element* urlElement = result.hitTestResult().URLElement();
+    if (!urlElement || !isDraggableLink(*urlElement))
+        return selectClosestContextualWordFromMouseEvent(result);
 
     Node* targetNode = result.targetNode();
 
     if (targetNode && targetNode->renderer() && m_mouseDownMayStartSelect) {
         VisibleSelection newSelection;
-        Element* URLElement = result.hitTestResult().URLElement();
         VisiblePosition pos(targetNode->renderer()->positionForPoint(result.localPoint(), nullptr));
-        if (pos.isNotNull() && pos.deepEquivalent().deprecatedNode()->isDescendantOf(URLElement))
-            newSelection = VisibleSelection::selectionFromContentsOfNode(URLElement);
+        if (pos.isNotNull() && pos.deepEquivalent().deprecatedNode()->isDescendantOf(urlElement))
+            newSelection = VisibleSelection::selectionFromContentsOfNode(urlElement);
 
         updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectSelectOnMouseDown(*targetNode, newSelection), WordGranularity);
     }
@@ -2798,7 +2832,7 @@ bool EventHandler::sendContextMenuEvent(const PlatformMouseEvent& event)
         // available for text selections.  But only if we're above text.
         && (m_frame.selection().selection().isContentEditable() || (mouseEvent.targetNode() && mouseEvent.targetNode()->isTextNode()))) {
         m_mouseDownMayStartSelect = true; // context menu events are always allowed to perform a selection
-        selectClosestWordOrLinkFromMouseEvent(mouseEvent);
+        selectClosestContextualWordOrLinkFromMouseEvent(mouseEvent);
     }
 
     swallowEvent = !dispatchMouseEvent(eventNames().contextmenuEvent, mouseEvent.targetNode(), true, 0, event, false);
@@ -2913,14 +2947,9 @@ void EventHandler::dispatchFakeMouseMoveEventSoon()
     // reschedule the timer and use a longer time. This will cause the content
     // to receive these moves only after the user is done scrolling, reducing
     // pauses during the scroll.
-    if (m_maxMouseMovedDuration > fakeMouseMoveDurationThreshold) {
-        if (m_fakeMouseMoveEventTimer.isActive())
-            m_fakeMouseMoveEventTimer.stop();
-        m_fakeMouseMoveEventTimer.startOneShot(fakeMouseMoveLongInterval);
-    } else {
-        if (!m_fakeMouseMoveEventTimer.isActive())
-            m_fakeMouseMoveEventTimer.startOneShot(fakeMouseMoveShortInterval);
-    }
+    if (m_fakeMouseMoveEventTimer.isActive())
+        m_fakeMouseMoveEventTimer.stop();
+    m_fakeMouseMoveEventTimer.startOneShot(m_maxMouseMovedDuration > fakeMouseMoveDurationThreshold ? fakeMouseMoveLongInterval : fakeMouseMoveShortInterval);
 #endif
 }
 
@@ -3210,7 +3239,8 @@ static void setInitialKeyboardSelection(Frame& frame, SelectionDirection directi
         break;
     }
 
-    selection.setSelection(visiblePosition, FrameSelection::defaultSetSelectionOptions(UserTriggered));
+    AXTextStateChangeIntent intent(AXTextStateChangeTypeSelectionMove, AXTextSelection { AXTextSelectionDirectionDiscontiguous, AXTextSelectionGranularityUnknown });
+    selection.setSelection(visiblePosition, FrameSelection::defaultSetSelectionOptions(UserTriggered), intent);
 }
 
 static void handleKeyboardSelectionMovement(Frame& frame, KeyboardEvent* event)

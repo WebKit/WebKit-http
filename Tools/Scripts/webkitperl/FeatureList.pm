@@ -42,7 +42,7 @@ BEGIN {
 }
 
 my (
-    $threeDRenderingSupport,
+    $threeDTransformsSupport,
     $accelerated2DCanvasSupport,
     $attachmentElementSupport,
     $batteryStatusSupport,
@@ -50,6 +50,7 @@ my (
     $canvasProxySupport,
     $channelMessagingSupport,
     $classSyntax,
+    $templateLiteralSyntax,
     $cspNextSupport,
     $css3ConditionalRulesSupport,
     $css3TextSupport,
@@ -89,6 +90,7 @@ my (
     $inputTypeMonthSupport,
     $inputTypeTimeSupport,
     $inputTypeWeekSupport,
+    $jitSupport,
     $legacyNotificationsSupport,
     $legacyVendorPrefixSupport,
     $legacyWebAudioSupport,
@@ -145,12 +147,11 @@ my (
     $xhrTimeoutSupport,
     $xsltSupport,
     $ftlJITSupport,
-    $forceCLoop,
 );
 
 my @features = (
     { option => "3d-rendering", desc => "Toggle 3D Rendering support",
-      define => "ENABLE_3D_RENDERING", default => (isAppleMacWebKit() || isIOSWebKit() || isGtk() || isEfl() || isWPE()), value => \$threeDRenderingSupport },
+      define => "ENABLE_3D_TRANSFORMS", default => (isAppleMacWebKit() || isIOSWebKit() || isGtk() || isEfl() || isWPE()), value => \$threeDTransformsSupport },
 
     { option => "accelerated-2d-canvas", desc => "Toggle Accelerated 2D Canvas support",
       define => "ENABLE_ACCELERATED_2D_CANVAS", default => (isGtk() || isWPE()), value => \$accelerated2DCanvasSupport },
@@ -172,6 +173,9 @@ my @features = (
 
     { option => "class-syntax", desc => "Toggle ES6 class syntax support",
       define => "ENABLE_ES6_CLASS_SYNTAX", default => 1, value => \$classSyntax },
+
+    { option => "template-literal-syntax", desc => "Toggle ES6 template literal syntax support",
+      define => "ENABLE_ES6_TEMPLATE_LITERAL_SYNTAX", default => 1, value => \$templateLiteralSyntax },
 
     { option => "csp-next", desc => "Toggle Content Security Policy 1.1 support",
       define => "ENABLE_CSP_NEXT", default => isGtk(), value => \$cspNextSupport },
@@ -292,6 +296,9 @@ my @features = (
 
     { option => "link-prefetch", desc => "Toggle Link Prefetch support",
       define => "ENABLE_LINK_PREFETCH", default => (isGtk() || isEfl()), value => \$linkPrefetchSupport },
+
+    { option => "jit", desc => "Enable just-in-time JavaScript support",
+      define => "ENABLE_JIT", default => 1, value => \$jitSupport },
 
     { option => "mathml", desc => "Toggle MathML support",
       define => "ENABLE_MATHML", default => 1, value => \$mathmlSupport },
@@ -433,9 +440,6 @@ my @features = (
 
     { option => "ftl-jit", desc => "Toggle FTLJIT support",
       define => "ENABLE_FTL_JIT", default => 0, value => \$ftlJITSupport },
-
-    { option => "cloop", desc => "Force use of the llint c loop",
-      define => "ENABLE_LLINT_C_LOOP", default => 0, value => \$forceCLoop },
 );
 
 sub getFeatureOptionList()

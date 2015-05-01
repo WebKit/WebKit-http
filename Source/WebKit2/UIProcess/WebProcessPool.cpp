@@ -562,10 +562,10 @@ void WebProcessPool::didReceiveInvalidMessage(const IPC::StringReference& messag
 
     StringBuilder messageNameStringBuilder;
     messageNameStringBuilder.append(messageReceiverName.data(), messageReceiverName.size());
-    messageNameStringBuilder.append(".");
+    messageNameStringBuilder.append('.');
     messageNameStringBuilder.append(messageName.data(), messageName.size());
 
-    s_invalidMessageCallback(toAPI(API::String::create(messageNameStringBuilder.toString()).get()));
+    s_invalidMessageCallback(toAPI(API::String::create(messageNameStringBuilder.toString()).ptr()));
 }
 
 void WebProcessPool::processDidCachePage(WebProcessProxy* process)
@@ -1419,7 +1419,7 @@ void WebProcessPool::pluginInfoStoreDidLoadPlugins(PluginInfoStore* store)
         plugins.uncheckedAppend(API::Dictionary::create(WTF::move(map)));
     }
 
-    m_client.plugInInformationBecameAvailable(this, API::Array::create(WTF::move(plugins)).get());
+    m_client.plugInInformationBecameAvailable(this, API::Array::create(WTF::move(plugins)).ptr());
 }
 
 void WebProcessPool::setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy policy, const String& host, const String& bundleIdentifier, const String& versionString)
@@ -1454,6 +1454,17 @@ void WebProcessPool::setMemoryCacheDisabled(bool disabled)
 {
     m_memoryCacheDisabled = disabled;
     sendToAllProcesses(Messages::WebProcess::SetMemoryCacheDisabled(disabled));
+}
+
+void WebProcessPool::setFontWhitelist(API::Array* array)
+{
+    m_fontWhitelist.clear();
+    if (array) {
+        for (size_t i = 0; i < array->size(); ++i) {
+            if (API::String* font = array->at<API::String>(i))
+                m_fontWhitelist.append(font->string());
+        }
+    }
 }
 
 } // namespace WebKit

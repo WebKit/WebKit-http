@@ -113,7 +113,6 @@ char* JIT_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*
 char* JIT_OPERATION operationEnsureInt32(ExecState*, JSCell*);
 char* JIT_OPERATION operationEnsureDouble(ExecState*, JSCell*);
 char* JIT_OPERATION operationEnsureContiguous(ExecState*, JSCell*);
-char* JIT_OPERATION operationRageEnsureContiguous(ExecState*, JSCell*);
 char* JIT_OPERATION operationEnsureArrayStorage(ExecState*, JSCell*);
 StringImpl* JIT_OPERATION operationResolveRope(ExecState*, JSString*);
 JSString* JIT_OPERATION operationSingleCharacterString(ExecState*, int32_t);
@@ -127,6 +126,7 @@ JSCell* JIT_OPERATION operationMakeRope2(ExecState*, JSString*, JSString*);
 JSCell* JIT_OPERATION operationMakeRope3(ExecState*, JSString*, JSString*, JSString*);
 char* JIT_OPERATION operationFindSwitchImmTargetForDouble(ExecState*, EncodedJSValue, size_t tableIndex);
 char* JIT_OPERATION operationSwitchString(ExecState*, size_t tableIndex, JSString*);
+int32_t JIT_OPERATION operationSwitchStringAndGetBranchOffset(ExecState*, size_t tableIndex, JSString*);
 void JIT_OPERATION operationNotifyWrite(ExecState*, WatchpointSet*);
 void JIT_OPERATION operationThrowStackOverflowForVarargs(ExecState*) WTF_INTERNAL;
 int32_t JIT_OPERATION operationSizeOfVarargs(ExecState*, EncodedJSValue arguments, int32_t firstVarArgOffset);

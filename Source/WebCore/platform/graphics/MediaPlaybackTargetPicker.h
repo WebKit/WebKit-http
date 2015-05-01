@@ -42,7 +42,7 @@ public:
         virtual ~Client() { }
 
     public:
-        virtual void didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&&) = 0;
+        virtual void setPlaybackTarget(Ref<MediaPlaybackTarget>&&) = 0;
         virtual void externalOutputDeviceAvailableDidChange(bool) = 0;
 
         void invalidate();
@@ -50,7 +50,7 @@ public:
 
     virtual ~MediaPlaybackTargetPicker();
 
-    virtual void showPlaybackTargetPicker(const FloatRect&, bool);
+    virtual void showPlaybackTargetPicker(const FloatRect&, bool checkActiveRoute);
     virtual void startingMonitoringPlaybackTargets();
     virtual void stopMonitoringPlaybackTargets();
 

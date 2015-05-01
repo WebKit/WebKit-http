@@ -228,7 +228,7 @@ void RenderFlexibleBox::styleDidChange(StyleDifference diff, const RenderStyle* 
 {
     RenderBlock::styleDidChange(diff, oldStyle);
 
-    if (oldStyle && (oldStyle->alignItems() == ItemPositionStretch || oldStyle->alignItems() == ItemPositionAuto) && diff == StyleDifferenceLayout) {
+    if (oldStyle && (oldStyle->alignItemsPosition() == ItemPositionStretch || oldStyle->alignItemsPosition() == ItemPositionAuto) && diff == StyleDifferenceLayout) {
         // Flex items that were previously stretching need to be relayed out so we can compute new available cross axis space.
         // This is only necessary for stretching since other alignment values don't change the size of the box.
         for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
@@ -652,7 +652,7 @@ LayoutUnit RenderFlexibleBox::mainAxisScrollbarExtentForChild(RenderBox& child) 
 
 LayoutUnit RenderFlexibleBox::preferredMainAxisContentExtentForChild(RenderBox& child, bool hasInfiniteLineLength)
 {
-    bool hasOverrideSize = child.hasOverrideWidth() || child.hasOverrideHeight();
+    bool hasOverrideSize = child.hasOverrideLogicalContentWidth() || child.hasOverrideLogicalContentHeight();
     if (hasOverrideSize)
         child.clearOverrideSize();
 

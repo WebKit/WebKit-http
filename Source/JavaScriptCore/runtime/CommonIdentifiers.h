@@ -21,6 +21,7 @@
 #ifndef CommonIdentifiers_h
 #define CommonIdentifiers_h
 
+#include "BytecodeIntrinsicRegistry.h"
 #include "Identifier.h"
 #include <wtf/Noncopyable.h>
 
@@ -57,6 +58,7 @@
     macro(URIError) \
     macro(UTC) \
     macro(WeakMap)\
+    macro(WeakSet)\
     macro(__defineGetter__) \
     macro(__defineSetter__) \
     macro(__lookupGetter__) \
@@ -89,6 +91,7 @@
     macro(constructor) \
     macro(count) \
     macro(counters) \
+    macro(defineProperty) \
     macro(description) \
     macro(descriptions) \
     macro(displayName) \
@@ -238,7 +241,12 @@
     macro(iterator) \
     macro(unscopables)
 
+#define JSC_COMMON_BYTECODE_INTRINSICS_EACH_NAME(macro) \
+    macro(putByValDirect)
+
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
+    JSC_COMMON_BYTECODE_INTRINSICS_EACH_NAME(macro) \
+    macro(symbolIterator) \
     macro(iteratedObject) \
     macro(arrayIteratorNextIndex) \
     macro(arrayIterationKind) \
@@ -258,11 +266,17 @@
     macro(deferred) \
     macro(countdownHolder) \
     macro(Object) \
+    macro(objectKeys) \
+    macro(objectGetOwnPropertyDescriptor) \
+    macro(objectGetOwnPropertySymbols) \
     macro(Number) \
     macro(Array) \
+    macro(String) \
     macro(abs) \
     macro(floor) \
     macro(isFinite) \
+    macro(getPrototypeOf) \
+    macro(getOwnPropertyNames) \
     macro(TypeError) \
     macro(undefined) \
     macro(BuiltinLog) \
@@ -312,6 +326,11 @@ namespace JSC {
 
         const Identifier* getPrivateName(const Identifier&) const;
         Identifier getPublicName(const Identifier&) const;
+
+        const BytecodeIntrinsicRegistry& bytecodeIntrinsicRegistry() const { return m_bytecodeIntrinsicRegistry; }
+
+    private:
+        BytecodeIntrinsicRegistry m_bytecodeIntrinsicRegistry;
     };
 
 } // namespace JSC

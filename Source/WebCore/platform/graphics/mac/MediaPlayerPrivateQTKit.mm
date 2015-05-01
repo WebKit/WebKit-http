@@ -1541,36 +1541,28 @@ bool MediaPlayerPrivateQTKit::canSaveMediaData() const
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-bool MediaPlayerPrivateQTKit::isCurrentPlaybackTargetSupported() const
-{
-    if (!m_playbackTarget)
-        return true;
-
-    return !m_playbackTarget->hasActiveRoute();
-}
-
 void MediaPlayerPrivateQTKit::setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&& target)
 {
     m_playbackTarget = WTF::move(target);
 }
 
-void MediaPlayerPrivateQTKit::togglePlayingToPlaybackTarget()
+void MediaPlayerPrivateQTKit::setShouldPlayToPlaybackTarget(bool shouldPlayToTarget)
 {
-    bool oldSupported = m_currentPlaybackTargetIsSupported;
-    m_currentPlaybackTargetIsSupported = !m_playbackTarget || !m_playbackTarget->hasActiveRoute();
+    if (shouldPlayToTarget == m_shouldPlayToTarget)
+        return;
 
-    if (m_player && oldSupported != m_currentPlaybackTargetIsSupported)
+    m_shouldPlayToTarget = shouldPlayToTarget;
+
+    if (m_player)
         m_player->currentPlaybackTargetIsWirelessChanged();
 }
 
-void MediaPlayerPrivateQTKit::startPlayingToPlaybackTarget()
+bool MediaPlayerPrivateQTKit::isCurrentPlaybackTargetWireless() const
 {
-    togglePlayingToPlaybackTarget();
-}
-
-void MediaPlayerPrivateQTKit::stopPlayingToPlaybackTarget()
-{
-    togglePlayingToPlaybackTarget();
+    if (!m_playbackTarget)
+        return false;
+    
+    return m_shouldPlayToTarget && m_playbackTarget->hasActiveRoute();
 }
 #endif
 

@@ -841,6 +841,9 @@ media/encrypted-media/encrypted-media-events.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-not-loaded.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-syntax.html [ Skip ] # [ WontFix ]
 
+# New page cache test introduced in r182901 that often crashes on Windows only.
+webkit.org/b/144057 http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html [ Crash Pass ]
+
 webkit.org/b/103442 media/W3C/video/networkState/networkState_during_progress.html [ Skip ]
 
 # No CORS support for media elements is implemented yet.
@@ -1882,6 +1885,7 @@ svg/text/lengthAdjust-text-metrics.html [ Failure ]
 ################             WebGL Issues                   ####################
 ################################################################################
 # Skip all webgl tests on Windows for now since they don't seem to work consistently
+webkit.org/b/144292 fast/events/constructors/webgl-context-event-constructor.html [ Skip ]
 webgl/ [ Skip ]
 fast/canvas/webgl/ [ Skip ]
 http/tests/webgl/ [ Skip ]
@@ -2239,6 +2243,7 @@ http/tests/cache/disk-cache
 
 # The following are unreviewed:
 http/tests/cache/content-type-ignored-during-revalidation.html [ Failure ]
+http/tests/cache/main-resource-304-reload.html [ Failure ]
 http/tests/cache/partitioned-cache.html [ Failure ]
 http/tests/cache/partitioned-cache-iframe.html [ Failure ]
 http/tests/cache/post-redirect-get.php [ Failure ] # Easy
@@ -3045,6 +3050,9 @@ webkit.org/b/141977 fast/history/page-cache-createObjectURL.html [ Skip ]
 webkit.org/b/139968 fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines.html [ ImageOnlyFailure ]
 webkit.org/b/139968 fast/inline/hidpi-select-inline-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/139968 fast/regions/overflow/overflow-first-and-last-regions.html [ ImageOnlyFailure ]
+
+# rdar://problem/20656948
+accessibility/treeitem-child-exposed.html [ Failure ]
 
 ################################################################################
 ######################### End list of UNREVIEWED failures ##########################

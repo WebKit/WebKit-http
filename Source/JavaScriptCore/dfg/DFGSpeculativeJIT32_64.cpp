@@ -835,7 +835,7 @@ void SpeculativeJIT::emitCall(Node* node)
     m_jit.addJSCall(fastCall, slowCall, targetToCheck, info);
     
     // If we were varargs, then after the calls are done, we need to reestablish our stack pointer.
-    if (isVarargs)
+    if (isVarargs || isForwardVarargs)
         m_jit.addPtr(TrustedImm32(m_jit.graph().stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, JITCompiler::stackPointerRegister);
 }
 
@@ -1573,7 +1573,12 @@ void SpeculativeJIT::emitBranch(Node* node)
         emitObjectOrOtherBranch(node->child1(), taken, notTaken);
         return;
     }
-    
+
+    case StringUse: {
+        emitStringBranch(node->child1(), taken, notTaken);
+        return;
+    }
+
     case DoubleRepUse:
     case Int32Use: {
         if (node->child1().useKind() == Int32Use) {
@@ -1832,12 +1837,18 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case MovHint:
-    case ZombieHint: {
-        RELEASE_ASSERT_NOT_REACHED();
+    case MovHint: {
+        compileMovHint(m_currentNode);
+        noResult(node);
         break;
     }
-
+        
+    case ZombieHint: {
+        recordSetLocal(m_currentNode->unlinkedLocal(), VirtualRegister(), DataFormatDead);
+        noResult(node);
+        break;
+    }
+        
     case SetLocal: {
         switch (node->variableAccessData()->flushFormat()) {
         case FlushedDouble: {
@@ -2003,6 +2014,10 @@ void SpeculativeJIT::compile(Node* node)
 
     case ArithAdd:
         compileAdd(node);
+        break;
+
+    case ArithClz32:
+        compileArithClz32(node);
         break;
 
     case MakeRope:
@@ -3507,16 +3522,12 @@ void SpeculativeJIT::compile(Node* node)
         slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, rareDataGPR));
         m_jit.loadPtr(JITCompiler::Address(rareDataGPR, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()), allocatorGPR);
         m_jit.loadPtr(JITCompiler::Address(rareDataGPR, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()), structureGPR);
+        slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, allocatorGPR));
         emitAllocateJSObject(resultGPR, allocatorGPR, structureGPR, TrustedImmPtr(0), scratchGPR, slowPath);
 
         addSlowPathGenerator(slowPathCall(slowPath, this, operationCreateThis, resultGPR, calleeGPR, node->inlineCapacity()));
         
         cellResult(resultGPR, node);
-        break;
-    }
-
-    case AllocationProfileWatchpoint: {
-        noResult(node);
         break;
     }
 
@@ -4615,7 +4626,6 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case Phantom:
-    case HardPhantom:
     case Check:
         DFG_NODE_DO_TO_CHILDREN(m_jit.graph(), node, speculate);
         noResult(node);
@@ -4654,6 +4664,7 @@ void SpeculativeJIT::compile(Node* node)
     case CheckBadCell:
     case BottomValue:
     case PhantomNewObject:
+    case PhantomNewFunction:
     case PutHint:
     case CheckStructureImmediate:
     case MaterializeNewObject:

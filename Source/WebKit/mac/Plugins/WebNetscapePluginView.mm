@@ -1187,12 +1187,12 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     // Setting the window type to 0 ensures that NPP_SetWindow will be called if the plug-in is restarted.
     lastSetWindow.type = (NPWindowType)0;
     
-    _pluginLayer = 0;
+    _pluginLayer = nil;
     
     [self _destroyPlugin];
     [_pluginPackage.get() close];
     
-    _eventHandler.clear();
+    _eventHandler = nullptr;
 }
 
 - (NPEventModel)eventModel
@@ -1731,7 +1731,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     }
         
     if (cTarget || JSString) {
-        // Make when targetting a frame or evaluating a JS string, perform the request after a delay because we don't
+        // Make when targeting a frame or evaluating a JS string, perform the request after a delay because we don't
         // want to potentially kill the plug-in inside of its URL request.
         
         if (JSString && target && [frame findFrameNamed:target] != frame) {

@@ -482,7 +482,7 @@ namespace WTF {
     public:
         // All access to m_iterators should be guarded with m_mutex.
         mutable const_iterator* m_iterators;
-        // Use OwnPtr so HashTable can still be memmove'd or memcpy'ed.
+        // Use std::unique_ptr so HashTable can still be memmove'd or memcpy'ed.
         mutable std::unique_ptr<std::mutex> m_mutex;
 #endif
 
@@ -1150,6 +1150,7 @@ namespace WTF {
         m_tableSize = 0;
         m_tableSizeMask = 0;
         m_keyCount = 0;
+        m_deletedCount = 0;
     }
 
     template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>

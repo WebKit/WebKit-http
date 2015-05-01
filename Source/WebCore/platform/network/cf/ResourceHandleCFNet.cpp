@@ -276,9 +276,10 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
     request.removeCredentials();
 
     if (!protocolHostAndPortAreEqual(request.url(), redirectResponse.url())) {
-        // If the network layer carries over authentication headers from the original request
-        // in a cross-origin redirect, we want to clear those headers here.
+        // The network layer might carry over some headers from the original request that
+        // we want to strip here because the redirect is cross-origin.
         request.clearHTTPAuthorization();
+        request.clearHTTPOrigin();
     } else {
         // Only consider applying authentication credentials if this is actually a redirect and the redirect
         // URL didn't include credentials of its own.
@@ -529,10 +530,10 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     ASSERT(response.isNull());
     ASSERT(error.isNull());
 
-    OwnPtr<SynchronousLoaderClient> client = SynchronousLoaderClient::create();
-    client->setAllowStoredCredentials(storedCredentials == AllowStoredCredentials);
+    SynchronousLoaderClient client;
+    client.setAllowStoredCredentials(storedCredentials == AllowStoredCredentials);
 
-    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, client.get(), false /*defersLoading*/, true /*shouldContentSniff*/));
+    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &client, false /*defersLoading*/, true /*shouldContentSniff*/));
 
     handle->d->m_storageSession = context->storageSession().platformSession();
 
@@ -548,17 +549,17 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     CFURLConnectionScheduleDownloadWithRunLoop(handle->connection(), CFRunLoopGetCurrent(), synchronousLoadRunLoopMode());
     CFURLConnectionStart(handle->connection());
 
-    while (!client->isDone())
+    while (!client.isDone())
         CFRunLoopRunInMode(synchronousLoadRunLoopMode(), UINT_MAX, true);
 
-    error = client->error();
+    error = client.error();
 
     CFURLConnectionCancel(handle->connection());
 
     if (error.isNull())
-        response = client->response();
+        response = client.response();
 
-    data.swap(client->mutableData());
+    data.swap(client.mutableData());
 }
 
 void ResourceHandle::setHostAllowsAnyHTTPSCertificate(const String& host)

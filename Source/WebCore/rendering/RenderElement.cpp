@@ -43,6 +43,7 @@
 #include "RenderFlexibleBox.h"
 #include "RenderImage.h"
 #include "RenderImageResourceStyleImage.h"
+#include "RenderInline.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
 #include "RenderLayerCompositor.h"
@@ -50,8 +51,6 @@
 #include "RenderListItem.h"
 #include "RenderNamedFlowThread.h"
 #include "RenderRegion.h"
-#include "RenderRuby.h"
-#include "RenderRubyText.h"
 #include "RenderTableCaption.h"
 #include "RenderTableCell.h"
 #include "RenderTableCol.h"
@@ -158,15 +157,6 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, Ref<RenderSt
         return WTF::move(image);
     }
 
-    if (element.hasTagName(HTMLNames::rubyTag)) {
-        if (style.get().display() == INLINE)
-            return createRenderer<RenderRubyAsInline>(element, WTF::move(style));
-        if (style.get().display() == BLOCK || style.get().display() == INLINE_BLOCK)
-            return createRenderer<RenderRubyAsBlock>(element, WTF::move(style));
-    }
-    // treat <rt> as ruby text ONLY if the parent is ruby.
-    if (element.hasTagName(HTMLNames::rtTag) && element.parentElement() && isRuby(element.parentElement()->renderer()))
-        return createRenderer<RenderRubyText>(element, WTF::move(style));
     switch (style.get().display()) {
     case NONE:
         return nullptr;
@@ -306,7 +296,7 @@ StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsig
     // The answer to requiresLayer() for plugins, iframes, and canvas can change without the actual
     // style changing, since it depends on whether we decide to composite these elements. When the
     // layer status of one of these elements changes, we need to force a layout.
-    if (diff == StyleDifferenceEqual && isRenderLayerModelObject()) {
+    if (diff < StyleDifferenceLayout && isRenderLayerModelObject()) {
         if (hasLayer() != downcast<RenderLayerModelObject>(*this).requiresLayer())
             diff = StyleDifferenceLayout;
     }
@@ -376,7 +366,7 @@ void RenderElement::updateShapeImage(const ShapeValue* oldShapeValue, const Shap
 
 void RenderElement::initializeStyle()
 {
-    styleWillChange(StyleDifferenceEqual, style());
+    styleWillChange(StyleDifferenceNewStyle, style());
 
     m_hasInitializedStyle = true;
 
@@ -395,7 +385,7 @@ void RenderElement::initializeStyle()
     if (m_style->outlineWidth() > 0 && m_style->outlineSize() > maximalOutlineSize(PaintPhaseOutline))
         view().setMaximalOutlineSize(std::max(theme().platformFocusRingMaxWidth(), static_cast<int>(m_style->outlineSize())));
 
-    styleDidChange(StyleDifferenceEqual, nullptr);
+    styleDidChange(StyleDifferenceNewStyle, nullptr);
 
     // We shouldn't have any text children that would need styleDidChange at this point.
     ASSERT(!childrenOfType<RenderText>(*this).first());
@@ -404,14 +394,14 @@ void RenderElement::initializeStyle()
     // have their parent set before getting a call to initializeStyle() :|
 }
 
-void RenderElement::setStyle(Ref<RenderStyle>&& style)
+void RenderElement::setStyle(Ref<RenderStyle>&& style, StyleDifference minimalStyleDifference)
 {
     // FIXME: Should change RenderView so it can use initializeStyle too.
     // If we do that, we can assert m_hasInitializedStyle unconditionally,
     // and remove the check of m_hasInitializedStyle below too.
     ASSERT(m_hasInitializedStyle || isRenderView());
 
-    if (m_style.ptr() == style.ptr()) {
+    if (m_style.ptr() == style.ptr() && minimalStyleDifference != StyleDifferenceEqual) {
         // FIXME: Can we change things so we never hit this code path?
         // We need to run through adjustStyleDifference() for iframes, plugins, and canvas so
         // style sharing is disabled for them. That should ensure that we never hit this code path.
@@ -425,6 +415,8 @@ void RenderElement::setStyle(Ref<RenderStyle>&& style)
     unsigned contextSensitiveProperties = ContextSensitivePropertyNone;
     if (m_hasInitializedStyle)
         diff = m_style->diff(style.get(), contextSensitiveProperties);
+
+    diff = std::max(diff, minimalStyleDifference);
 
     diff = adjustStyleDifference(diff, contextSensitiveProperties);
 

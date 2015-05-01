@@ -41,7 +41,7 @@
 #include <WebCore/IntSize.h>
 #include <WebCore/PageOverlay.h>
 #include <WebCore/Timer.h>
-#include <wtf/OwnPtr.h>
+#include <wtf/RunLoop.h>
 #include <wtf/Threading.h>
 #include <wtf/gobject/GSourceWrap.h>
 

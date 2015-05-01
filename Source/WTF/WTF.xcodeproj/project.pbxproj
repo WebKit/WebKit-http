@@ -88,7 +88,6 @@
 		93934BD318A1E8C300D0D6A1 /* StringViewObjC.mm in Sources */ = {isa = PBXBuildFile; fileRef = 93934BD218A1E8C300D0D6A1 /* StringViewObjC.mm */; };
 		93934BD518A1F16900D0D6A1 /* StringViewCF.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 93934BD418A1F16900D0D6A1 /* StringViewCF.cpp */; };
 		93AC91A818942FC400244939 /* LChar.h in Headers */ = {isa = PBXBuildFile; fileRef = 93AC91A718942FC400244939 /* LChar.h */; };
-		93B1AA80180E5AF3004A2F05 /* PassRef.h in Headers */ = {isa = PBXBuildFile; fileRef = 93B1AA7F180E5AF3004A2F05 /* PassRef.h */; };
 		93F1993E19D7958D00C2390B /* StringView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 93F1993D19D7958D00C2390B /* StringView.cpp */; };
 		974CFC8E16A4F327006D5404 /* WeakPtr.h in Headers */ = {isa = PBXBuildFile; fileRef = 974CFC8D16A4F327006D5404 /* WeakPtr.h */; };
 		9BC70F05176C379D00101DEC /* AtomicStringTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9BC70F04176C379D00101DEC /* AtomicStringTable.cpp */; };
@@ -108,13 +107,11 @@
 		A8A47386151A825B004123FF /* Assertions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A4725B151A825A004123FF /* Assertions.cpp */; };
 		A8A47387151A825B004123FF /* Assertions.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A4725C151A825A004123FF /* Assertions.h */; };
 		A8A47388151A825B004123FF /* Atomics.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A4725D151A825A004123FF /* Atomics.h */; };
-		A8A47389151A825B004123FF /* AVLTree.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A4725E151A825A004123FF /* AVLTree.h */; };
 		A8A4738A151A825B004123FF /* Bitmap.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A4725F151A825A004123FF /* Bitmap.h */; };
 		A8A4738B151A825B004123FF /* BitVector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A47260151A825A004123FF /* BitVector.cpp */; };
 		A8A4738C151A825B004123FF /* BitVector.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A47261151A825A004123FF /* BitVector.h */; };
 		A8A4738E151A825B004123FF /* BlockStack.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A47264151A825A004123FF /* BlockStack.h */; };
 		A8A4738F151A825B004123FF /* BloomFilter.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A47265151A825A004123FF /* BloomFilter.h */; };
-		A8A47390151A825B004123FF /* BoundsCheckedPointer.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A47266151A825A004123FF /* BoundsCheckedPointer.h */; };
 		A8A47391151A825B004123FF /* BumpPointerAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A47267151A825A004123FF /* BumpPointerAllocator.h */; };
 		A8A47394151A825B004123FF /* CheckedArithmetic.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A4726A151A825A004123FF /* CheckedArithmetic.h */; };
 		A8A47395151A825B004123FF /* CheckedBoolean.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A4726B151A825A004123FF /* CheckedBoolean.h */; };
@@ -187,8 +184,6 @@
 		A8A473F7151A825B004123FF /* OSAllocatorPosix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A472D8151A825B004123FF /* OSAllocatorPosix.cpp */; };
 		A8A473F9151A825B004123FF /* OSRandomSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A472DA151A825B004123FF /* OSRandomSource.cpp */; };
 		A8A473FA151A825B004123FF /* OSRandomSource.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472DB151A825B004123FF /* OSRandomSource.h */; };
-		A8A473FC151A825B004123FF /* OwnPtr.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472DD151A825B004123FF /* OwnPtr.h */; };
-		A8A473FD151A825B004123FF /* OwnPtrCommon.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472DE151A825B004123FF /* OwnPtrCommon.h */; };
 		A8A473FE151A825B004123FF /* PackedIntVector.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472DF151A825B004123FF /* PackedIntVector.h */; };
 		A8A473FF151A825B004123FF /* PageAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472E0151A825B004123FF /* PageAllocation.h */; };
 		A8A47402151A825B004123FF /* PageBlock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A472E3151A825B004123FF /* PageBlock.cpp */; };
@@ -196,7 +191,6 @@
 		A8A47404151A825B004123FF /* PageReservation.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472E5151A825B004123FF /* PageReservation.h */; };
 		A8A47405151A825B004123FF /* ParallelJobs.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472E6151A825B004123FF /* ParallelJobs.h */; };
 		A8A47408151A825B004123FF /* ParallelJobsLibdispatch.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472E9151A825B004123FF /* ParallelJobsLibdispatch.h */; };
-		A8A4740B151A825B004123FF /* PassOwnPtr.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472EC151A825B004123FF /* PassOwnPtr.h */; };
 		A8A4740C151A825B004123FF /* PassRefPtr.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472ED151A825B004123FF /* PassRefPtr.h */; };
 		A8A47414151A825B004123FF /* RandomNumber.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A472FB151A825B004123FF /* RandomNumber.cpp */; };
 		A8A47415151A825B004123FF /* RandomNumber.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A472FC151A825B004123FF /* RandomNumber.h */; };
@@ -378,7 +372,6 @@
 		93934BD218A1E8C300D0D6A1 /* StringViewObjC.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = StringViewObjC.mm; path = mac/StringViewObjC.mm; sourceTree = "<group>"; };
 		93934BD418A1F16900D0D6A1 /* StringViewCF.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = StringViewCF.cpp; path = cf/StringViewCF.cpp; sourceTree = "<group>"; };
 		93AC91A718942FC400244939 /* LChar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LChar.h; sourceTree = "<group>"; };
-		93B1AA7F180E5AF3004A2F05 /* PassRef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PassRef.h; sourceTree = "<group>"; };
 		93F1993D19D7958D00C2390B /* StringView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StringView.cpp; sourceTree = "<group>"; };
 		974CFC8D16A4F327006D5404 /* WeakPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeakPtr.h; sourceTree = "<group>"; };
 		9BC70F04176C379D00101DEC /* AtomicStringTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AtomicStringTable.cpp; sourceTree = "<group>"; };
@@ -398,13 +391,11 @@
 		A8A4725B151A825A004123FF /* Assertions.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Assertions.cpp; sourceTree = "<group>"; };
 		A8A4725C151A825A004123FF /* Assertions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Assertions.h; sourceTree = "<group>"; };
 		A8A4725D151A825A004123FF /* Atomics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Atomics.h; sourceTree = "<group>"; };
-		A8A4725E151A825A004123FF /* AVLTree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AVLTree.h; sourceTree = "<group>"; };
 		A8A4725F151A825A004123FF /* Bitmap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Bitmap.h; sourceTree = "<group>"; };
 		A8A47260151A825A004123FF /* BitVector.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BitVector.cpp; sourceTree = "<group>"; };
 		A8A47261151A825A004123FF /* BitVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BitVector.h; sourceTree = "<group>"; };
 		A8A47264151A825A004123FF /* BlockStack.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BlockStack.h; sourceTree = "<group>"; };
 		A8A47265151A825A004123FF /* BloomFilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BloomFilter.h; sourceTree = "<group>"; };
-		A8A47266151A825A004123FF /* BoundsCheckedPointer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BoundsCheckedPointer.h; sourceTree = "<group>"; };
 		A8A47267151A825A004123FF /* BumpPointerAllocator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BumpPointerAllocator.h; sourceTree = "<group>"; };
 		A8A4726A151A825A004123FF /* CheckedArithmetic.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CheckedArithmetic.h; sourceTree = "<group>"; };
 		A8A4726B151A825A004123FF /* CheckedBoolean.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CheckedBoolean.h; sourceTree = "<group>"; };
@@ -480,8 +471,6 @@
 		A8A472D8151A825B004123FF /* OSAllocatorPosix.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OSAllocatorPosix.cpp; sourceTree = "<group>"; };
 		A8A472DA151A825B004123FF /* OSRandomSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OSRandomSource.cpp; sourceTree = "<group>"; };
 		A8A472DB151A825B004123FF /* OSRandomSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OSRandomSource.h; sourceTree = "<group>"; };
-		A8A472DD151A825B004123FF /* OwnPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OwnPtr.h; sourceTree = "<group>"; };
-		A8A472DE151A825B004123FF /* OwnPtrCommon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OwnPtrCommon.h; sourceTree = "<group>"; };
 		A8A472DF151A825B004123FF /* PackedIntVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PackedIntVector.h; sourceTree = "<group>"; };
 		A8A472E0151A825B004123FF /* PageAllocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PageAllocation.h; sourceTree = "<group>"; };
 		A8A472E3151A825B004123FF /* PageBlock.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PageBlock.cpp; sourceTree = "<group>"; };
@@ -489,7 +478,6 @@
 		A8A472E5151A825B004123FF /* PageReservation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PageReservation.h; sourceTree = "<group>"; };
 		A8A472E6151A825B004123FF /* ParallelJobs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ParallelJobs.h; sourceTree = "<group>"; };
 		A8A472E9151A825B004123FF /* ParallelJobsLibdispatch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ParallelJobsLibdispatch.h; sourceTree = "<group>"; };
-		A8A472EC151A825B004123FF /* PassOwnPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PassOwnPtr.h; sourceTree = "<group>"; };
 		A8A472ED151A825B004123FF /* PassRefPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PassRefPtr.h; sourceTree = "<group>"; };
 		A8A472FB151A825B004123FF /* RandomNumber.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RandomNumber.cpp; sourceTree = "<group>"; };
 		A8A472FC151A825B004123FF /* RandomNumber.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RandomNumber.h; sourceTree = "<group>"; };
@@ -706,7 +694,6 @@
 				A8A4725D151A825A004123FF /* Atomics.h */,
 				1469419A16EAB10A0024E146 /* AutodrainedPool.h */,
 				1469419B16EAB10A0024E146 /* AutodrainedPoolMac.mm */,
-				A8A4725E151A825A004123FF /* AVLTree.h */,
 				0FB14E18180FA218009B6B4D /* Bag.h */,
 				0FB14E1A1810E1DA009B6B4D /* BagToHashMap.h */,
 				A8A4725F151A825A004123FF /* Bitmap.h */,
@@ -714,7 +701,6 @@
 				A8A47261151A825A004123FF /* BitVector.h */,
 				A8A47264151A825A004123FF /* BlockStack.h */,
 				A8A47265151A825A004123FF /* BloomFilter.h */,
-				A8A47266151A825A004123FF /* BoundsCheckedPointer.h */,
 				A8A47267151A825A004123FF /* BumpPointerAllocator.h */,
 				EB95E1EF161A72410089A2F5 /* ByteOrder.h */,
 				0FEC3EE4171B834700FDAC8D /* ByteSpinLock.h */,
@@ -800,8 +786,6 @@
 				A8A472DA151A825B004123FF /* OSRandomSource.cpp */,
 				A8A472DB151A825B004123FF /* OSRandomSource.h */,
 				1AFDE6521953B23D00C48FFA /* Optional.h */,
-				A8A472DD151A825B004123FF /* OwnPtr.h */,
-				A8A472DE151A825B004123FF /* OwnPtrCommon.h */,
 				A8A472DF151A825B004123FF /* PackedIntVector.h */,
 				A8A472E0151A825B004123FF /* PageAllocation.h */,
 				A8A472E3151A825B004123FF /* PageBlock.cpp */,
@@ -809,8 +793,6 @@
 				A8A472E5151A825B004123FF /* PageReservation.h */,
 				A8A472E6151A825B004123FF /* ParallelJobs.h */,
 				A8A472E9151A825B004123FF /* ParallelJobsLibdispatch.h */,
-				A8A472EC151A825B004123FF /* PassOwnPtr.h */,
-				93B1AA7F180E5AF3004A2F05 /* PassRef.h */,
 				A8A472ED151A825B004123FF /* PassRefPtr.h */,
 				A876DBD7151816E500DADB95 /* Platform.h */,
 				0F9D335D165DBA73005AD387 /* PrintStream.cpp */,
@@ -1054,7 +1036,6 @@
 				A8A47438151A825B004123FF /* AtomicStringImpl.h in Headers */,
 				9BD8F40B176C2B470002D865 /* AtomicStringTable.h in Headers */,
 				1469419C16EAB10A0024E146 /* AutodrainedPool.h in Headers */,
-				A8A47389151A825B004123FF /* AVLTree.h in Headers */,
 				8134013915B092FD001FF0B8 /* Base64.h in Headers */,
 				A8A473A9151A825B004123FF /* bignum-dtoa.h in Headers */,
 				A8A473AB151A825B004123FF /* bignum.h in Headers */,
@@ -1064,7 +1045,6 @@
 				A8A4738C151A825B004123FF /* BitVector.h in Headers */,
 				A8A4738E151A825B004123FF /* BlockStack.h in Headers */,
 				A8A4738F151A825B004123FF /* BloomFilter.h in Headers */,
-				A8A47390151A825B004123FF /* BoundsCheckedPointer.h in Headers */,
 				A8A47391151A825B004123FF /* BumpPointerAllocator.h in Headers */,
 				EB95E1F0161A72410089A2F5 /* ByteOrder.h in Headers */,
 				A8A473AD151A825B004123FF /* cached-powers.h in Headers */,
@@ -1124,7 +1104,6 @@
 				A8A473E3151A825B004123FF /* Locker.h in Headers */,
 				A8A473E6151A825B004123FF /* MainThread.h in Headers */,
 				A8A473E8151A825B004123FF /* MathExtras.h in Headers */,
-				93B1AA80180E5AF3004A2F05 /* PassRef.h in Headers */,
 				A8A473EA151A825B004123FF /* MD5.h in Headers */,
 				7CBBA07419BB7FDC00BBF025 /* OSObjectPtr.h in Headers */,
 				CD5497AD15857D0300B5BC30 /* MediaTime.h in Headers */,
@@ -1139,8 +1118,6 @@
 				7E29C33E15FFD79B00516D61 /* ObjcRuntimeExtras.h in Headers */,
 				A8A473F6151A825B004123FF /* OSAllocator.h in Headers */,
 				A8A473FA151A825B004123FF /* OSRandomSource.h in Headers */,
-				A8A473FC151A825B004123FF /* OwnPtr.h in Headers */,
-				A8A473FD151A825B004123FF /* OwnPtrCommon.h in Headers */,
 				0FB14E1B1810E1DC009B6B4D /* BagToHashMap.h in Headers */,
 				A8A473FE151A825B004123FF /* PackedIntVector.h in Headers */,
 				A8A473FF151A825B004123FF /* PageAllocation.h in Headers */,
@@ -1148,7 +1125,6 @@
 				A8A47404151A825B004123FF /* PageReservation.h in Headers */,
 				A8A47405151A825B004123FF /* ParallelJobs.h in Headers */,
 				A8A47408151A825B004123FF /* ParallelJobsLibdispatch.h in Headers */,
-				A8A4740B151A825B004123FF /* PassOwnPtr.h in Headers */,
 				A8A4740C151A825B004123FF /* PassRefPtr.h in Headers */,
 				A876DBD8151816E500DADB95 /* Platform.h in Headers */,
 				0FB14E19180FA218009B6B4D /* Bag.h in Headers */,

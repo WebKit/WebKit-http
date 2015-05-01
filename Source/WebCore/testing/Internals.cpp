@@ -90,6 +90,7 @@
 #include "PseudoElement.h"
 #include "Range.h"
 #include "RenderEmbeddedObject.h"
+#include "RenderLayerCompositor.h"
 #include "RenderMenuList.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
@@ -178,6 +179,10 @@
 
 #if ENABLE(CONTENT_FILTERING)
 #include "MockContentFilter.h"
+#endif
+
+#if ENABLE(WEB_AUDIO)
+#include "AudioContext.h"
 #endif
 
 using JSC::CodeBlock;
@@ -456,17 +461,17 @@ void Internals::setOverrideCachePolicy(const String& policy)
 static ResourceLoadPriority stringToResourceLoadPriority(const String& policy)
 {
     if (policy == "ResourceLoadPriorityVeryLow")
-        return ResourceLoadPriorityVeryLow;
+        return ResourceLoadPriority::VeryLow;
     if (policy == "ResourceLoadPriorityLow")
-        return ResourceLoadPriorityLow;
+        return ResourceLoadPriority::Low;
     if (policy == "ResourceLoadPriorityMedium")
-        return ResourceLoadPriorityMedium;
+        return ResourceLoadPriority::Medium;
     if (policy == "ResourceLoadPriorityHigh")
-        return ResourceLoadPriorityHigh;
+        return ResourceLoadPriority::High;
     if (policy == "ResourceLoadPriorityVeryHigh")
-        return ResourceLoadPriorityVeryHigh;
+        return ResourceLoadPriority::VeryHigh;
     ASSERT_NOT_REACHED();
-    return ResourceLoadPriorityLow;
+    return ResourceLoadPriority::Low;
 }
 
 void Internals::setOverrideResourceLoadPriority(const String& priority)
@@ -1792,7 +1797,7 @@ RefPtr<ClientRectList> Internals::nonFastScrollableRects(ExceptionCode& ec) cons
     if (!page)
         return nullptr;
 
-    return page->nonFastScrollableRects(*document->frame());
+    return page->nonFastScrollableRects();
 }
 
 void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
@@ -2064,6 +2069,49 @@ void Internals::stopTrackingRepaints(ExceptionCode& ec)
 
     FrameView* frameView = document->view();
     frameView->setTracksRepaints(false);
+}
+
+void Internals::startTrackingLayerFlushes(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    document->renderView()->compositor().startTrackingLayerFlushes();
+}
+
+unsigned long Internals::layerFlushCount(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    return document->renderView()->compositor().layerFlushCount();
+}
+
+void Internals::startTrackingStyleRecalcs(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    document->startTrackingStyleRecalcs();
+}
+
+unsigned long Internals::styleRecalcCount(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+    
+    return document->styleRecalcCount();
 }
 
 void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(ExceptionCode& ec)
@@ -2488,25 +2536,67 @@ void Internals::setMediaSessionRestrictions(const String& mediaTypeString, const
     MediaSessionManager::sharedManager().removeRestriction(mediaType, restrictions);
 
     restrictions = MediaSessionManager::NoRestrictions;
-    
-    if (equalIgnoringCase(restrictionsString, "ConcurrentPlaybackNotPermitted"))
-        restrictions = MediaSessionManager::ConcurrentPlaybackNotPermitted;
-    if (equalIgnoringCase(restrictionsString, "InlineVideoPlaybackRestricted"))
-        restrictions += MediaSessionManager::InlineVideoPlaybackRestricted;
-    if (equalIgnoringCase(restrictionsString, "MetadataPreloadingNotPermitted"))
-        restrictions += MediaSessionManager::MetadataPreloadingNotPermitted;
-    if (equalIgnoringCase(restrictionsString, "AutoPreloadingNotPermitted"))
-        restrictions += MediaSessionManager::AutoPreloadingNotPermitted;
-    if (equalIgnoringCase(restrictionsString, "BackgroundProcessPlaybackRestricted"))
-        restrictions += MediaSessionManager::BackgroundProcessPlaybackRestricted;
-    if (equalIgnoringCase(restrictionsString, "BackgroundTabPlaybackRestricted"))
-        restrictions += MediaSessionManager::BackgroundTabPlaybackRestricted;
-    if (equalIgnoringCase(restrictionsString, "InterruptedPlaybackNotPermitted"))
-        restrictions += MediaSessionManager::InterruptedPlaybackNotPermitted;
 
+    Vector<String> restrictionsArray;
+    restrictionsString.split(',', false, restrictionsArray);
+    for (auto& restrictionString : restrictionsArray) {
+        if (equalIgnoringCase(restrictionString, "ConcurrentPlaybackNotPermitted"))
+            restrictions |= MediaSessionManager::ConcurrentPlaybackNotPermitted;
+        if (equalIgnoringCase(restrictionString, "InlineVideoPlaybackRestricted"))
+            restrictions |= MediaSessionManager::InlineVideoPlaybackRestricted;
+        if (equalIgnoringCase(restrictionString, "MetadataPreloadingNotPermitted"))
+            restrictions |= MediaSessionManager::MetadataPreloadingNotPermitted;
+        if (equalIgnoringCase(restrictionString, "AutoPreloadingNotPermitted"))
+            restrictions |= MediaSessionManager::AutoPreloadingNotPermitted;
+        if (equalIgnoringCase(restrictionString, "BackgroundProcessPlaybackRestricted"))
+            restrictions |= MediaSessionManager::BackgroundProcessPlaybackRestricted;
+        if (equalIgnoringCase(restrictionString, "BackgroundTabPlaybackRestricted"))
+            restrictions |= MediaSessionManager::BackgroundTabPlaybackRestricted;
+        if (equalIgnoringCase(restrictionString, "InterruptedPlaybackNotPermitted"))
+            restrictions |= MediaSessionManager::InterruptedPlaybackNotPermitted;
+    }
     MediaSessionManager::sharedManager().addRestriction(mediaType, restrictions);
 }
-    
+
+void Internals::setMediaElementRestrictions(HTMLMediaElement* element, const String& restrictionsString, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    HTMLMediaSession::BehaviorRestrictions restrictions = element->mediaSession().behaviorRestrictions();
+    element->mediaSession().removeBehaviorRestriction(restrictions);
+
+    restrictions = HTMLMediaSession::NoRestrictions;
+
+    Vector<String> restrictionsArray;
+    restrictionsString.split(',', false, restrictionsArray);
+    for (auto& restrictionString : restrictionsArray) {
+        if (equalIgnoringCase(restrictionString, "NoRestrictions"))
+            restrictions |= HTMLMediaSession::NoRestrictions;
+        if (equalIgnoringCase(restrictionString, "RequireUserGestureForLoad"))
+            restrictions |= HTMLMediaSession::RequireUserGestureForLoad;
+        if (equalIgnoringCase(restrictionString, "RequireUserGestureForRateChange"))
+            restrictions |= HTMLMediaSession::RequireUserGestureForRateChange;
+        if (equalIgnoringCase(restrictionString, "RequireUserGestureForFullscreen"))
+            restrictions |= HTMLMediaSession::RequireUserGestureForFullscreen;
+        if (equalIgnoringCase(restrictionString, "RequirePageConsentToLoadMedia"))
+            restrictions |= HTMLMediaSession::RequirePageConsentToLoadMedia;
+        if (equalIgnoringCase(restrictionString, "RequirePageConsentToResumeMedia"))
+            restrictions |= HTMLMediaSession::RequirePageConsentToResumeMedia;
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+        if (equalIgnoringCase(restrictionString, "RequireUserGestureToShowPlaybackTargetPicker"))
+            restrictions |= HTMLMediaSession::RequireUserGestureToShowPlaybackTargetPicker;
+        if (equalIgnoringCase(restrictionString, "WirelessVideoPlaybackDisabled"))
+            restrictions |= HTMLMediaSession::WirelessVideoPlaybackDisabled;
+#endif
+        if (equalIgnoringCase(restrictionString, "RequireUserGestureForAudioRateChange"))
+            restrictions |= HTMLMediaSession::RequireUserGestureForAudioRateChange;
+    }
+    element->mediaSession().addBehaviorRestriction(restrictions);
+}
+
 void Internals::postRemoteControlCommand(const String& commandString, ExceptionCode& ec)
 {
     MediaSession::RemoteControlCommandType command;
@@ -2542,6 +2632,33 @@ bool Internals::elementIsBlockingDisplaySleep(Element* element) const
 }
 
 #endif // ENABLE(VIDEO)
+
+#if ENABLE(WEB_AUDIO)
+void Internals::setAudioContextRestrictions(AudioContext* context, const String &restrictionsString, ExceptionCode &ec)
+{
+    if (!context) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    AudioContext::BehaviorRestrictions restrictions = context->behaviorRestrictions();
+    context->removeBehaviorRestriction(restrictions);
+
+    restrictions = HTMLMediaSession::NoRestrictions;
+
+    Vector<String> restrictionsArray;
+    restrictionsString.split(',', false, restrictionsArray);
+    for (auto& restrictionString : restrictionsArray) {
+        if (equalIgnoringCase(restrictionString, "NoRestrictions"))
+            restrictions |= AudioContext::NoRestrictions;
+        if (equalIgnoringCase(restrictionString, "RequireUserGestureForAudioStart"))
+            restrictions |= AudioContext::RequireUserGestureForAudioStartRestriction;
+        if (equalIgnoringCase(restrictionString, "RequirePageConsentForAudioStart"))
+            restrictions |= AudioContext::RequirePageConsentForAudioStartRestriction;
+    }
+    context->addBehaviorRestriction(restrictions);
+}
+#endif
 
 void Internals::simulateSystemSleep() const
 {
@@ -2598,7 +2715,7 @@ bool Internals::isPagePlayingAudio()
     if (!document || !document->page())
         return false;
 
-    return document->page()->isPlayingAudio();
+    return !!(document->page()->mediaState() & MediaProducer::IsPlayingAudio);
 }
 
 RefPtr<File> Internals::createFile(const String& path)

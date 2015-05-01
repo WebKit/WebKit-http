@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "AssemblyHelpers.h"
+#include "BytecodeLivenessAnalysisInlines.h"
 #include "CodeBlock.h"
 #include "DFGArgumentPosition.h"
 #include "DFGBasicBlock.h"
@@ -41,6 +42,7 @@
 #include "DFGPlan.h"
 #include "DFGPrePostNumbering.h"
 #include "DFGScannable.h"
+#include "FullBytecodeLiveness.h"
 #include "JSStack.h"
 #include "MethodOfGettingAValueProfile.h"
 #include <unordered_map>
@@ -162,7 +164,7 @@ public:
             return;
         
         // Check if there is any replacement.
-        Node* replacement = child->replacement;
+        Node* replacement = child->replacement();
         if (!replacement)
             return;
         
@@ -170,7 +172,7 @@ public:
         
         // There is definitely a replacement. Assert that the replacement does not
         // have a replacement.
-        ASSERT(!child->replacement);
+        ASSERT(!child->replacement());
     }
     
     template<typename... Params>
@@ -196,6 +198,9 @@ public:
     
     // CodeBlock is optional, but may allow additional information to be dumped (e.g. Identifier names).
     void dump(PrintStream& = WTF::dataFile(), DumpContext* = 0);
+    
+    bool terminalsAreValid();
+    
     enum PhiNodeDumpMode { DumpLivePhisOnly, DumpAllPhis };
     void dumpBlockHeader(PrintStream&, const char* prefix, BasicBlock*, PhiNodeDumpMode, DumpContext*);
     void dump(PrintStream&, Edge);
@@ -263,12 +268,7 @@ public:
         Node* left = add->child1().node();
         Node* right = add->child2().node();
 
-        bool speculation;
-        if (add->op() == ValueAdd)
-            speculation = Node::shouldSpeculateMachineInt(left, right);
-        else
-            speculation = Node::shouldSpeculateMachineInt(left, right);
-
+        bool speculation = Node::shouldSpeculateMachineInt(left, right);
         return speculation && !hasExitSite(add, Int52Overflow);
     }
     
@@ -452,8 +452,6 @@ public:
     void determineReachability();
     void resetReachability();
     
-    void mergeRelevantToOSR();
-    
     void computeRefCounts();
     
     unsigned varArgNumChildren(Node* node)
@@ -560,6 +558,7 @@ public:
     void clearFlagsOnAllNodes(NodeFlags);
     
     void clearReplacements();
+    void clearEpochs();
     void initializeNodeOwners();
     
     BlockList blocksInPreOrder();
@@ -673,7 +672,83 @@ public:
     
     FullBytecodeLiveness& livenessFor(CodeBlock*);
     FullBytecodeLiveness& livenessFor(InlineCallFrame*);
+    
+    // Quickly query if a single local is live at the given point. This is faster than calling
+    // forAllLiveInBytecode() if you will only query one local. But, if you want to know all of the
+    // locals live, then calling this for each local is much slower than forAllLiveInBytecode().
     bool isLiveInBytecode(VirtualRegister, CodeOrigin);
+    
+    // Quickly get all of the non-argument locals live at the given point. This doesn't give you
+    // any arguments because those are all presumed live. You can call forAllLiveInBytecode() to
+    // also get the arguments. This is much faster than calling isLiveInBytecode() for each local.
+    template<typename Functor>
+    void forAllLocalsLiveInBytecode(CodeOrigin codeOrigin, const Functor& functor)
+    {
+        // Support for not redundantly reporting arguments. Necessary because in case of a varargs
+        // call, only the callee knows that arguments are live while in the case of a non-varargs
+        // call, both callee and caller will see the variables live.
+        VirtualRegister exclusionStart;
+        VirtualRegister exclusionEnd;
+        
+        for (;;) {
+            InlineCallFrame* inlineCallFrame = codeOrigin.inlineCallFrame;
+            VirtualRegister stackOffset(inlineCallFrame ? inlineCallFrame->stackOffset : 0);
+            
+            if (inlineCallFrame) {
+                if (inlineCallFrame->isClosureCall)
+                    functor(stackOffset + JSStack::Callee);
+                if (inlineCallFrame->isVarargs())
+                    functor(stackOffset + JSStack::ArgumentCount);
+            }
+            
+            CodeBlock* codeBlock = baselineCodeBlockFor(inlineCallFrame);
+            FullBytecodeLiveness& fullLiveness = livenessFor(codeBlock);
+            const FastBitVector& liveness = fullLiveness.getLiveness(codeOrigin.bytecodeIndex);
+            for (unsigned relativeLocal = codeBlock->m_numCalleeRegisters; relativeLocal--;) {
+                VirtualRegister reg = stackOffset + virtualRegisterForLocal(relativeLocal);
+                
+                // Don't report if our callee already reported.
+                if (reg >= exclusionStart && reg < exclusionEnd)
+                    continue;
+                
+                if (liveness.get(relativeLocal))
+                    functor(reg);
+            }
+            
+            if (!inlineCallFrame)
+                break;
+
+            // Arguments are always live. This would be redundant if it wasn't for our
+            // op_call_varargs inlining. See the comment above.
+            exclusionStart = stackOffset + CallFrame::argumentOffsetIncludingThis(0);
+            exclusionEnd = stackOffset + CallFrame::argumentOffsetIncludingThis(inlineCallFrame->arguments.size());
+            
+            // We will always have a "this" argument and exclusionStart should be a smaller stack
+            // offset than exclusionEnd.
+            ASSERT(exclusionStart < exclusionEnd);
+
+            for (VirtualRegister reg = exclusionStart; reg < exclusionEnd; reg += 1)
+                functor(reg);
+            
+            codeOrigin = inlineCallFrame->caller;
+        }
+    }
+    
+    // Get a BitVector of all of the non-argument locals live right now. This is mostly useful if
+    // you want to compare two sets of live locals from two different CodeOrigins.
+    BitVector localsLiveInBytecode(CodeOrigin);
+    
+    // Tells you all of the arguments and locals live at the given CodeOrigin. This is a small
+    // extension to forAllLocalsLiveInBytecode(), since all arguments are always presumed live.
+    template<typename Functor>
+    void forAllLiveInBytecode(CodeOrigin codeOrigin, const Functor& functor)
+    {
+        forAllLocalsLiveInBytecode(codeOrigin, functor);
+        
+        // Report all arguments as being live.
+        for (unsigned argument = block(0)->variablesAtHead.numberOfArguments(); argument--;)
+            functor(virtualRegisterForArgument(argument));
+    }
     
     BytecodeKills& killsFor(CodeBlock*);
     BytecodeKills& killsFor(InlineCallFrame*);

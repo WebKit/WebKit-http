@@ -52,7 +52,6 @@ inline CapabilityLevel canCompile(Node* node)
     case MovHint:
     case ZombieHint:
     case Phantom:
-    case HardPhantom:
     case Flush:
     case PhantomLocal:
     case SetArgument:
@@ -79,6 +78,7 @@ inline CapabilityLevel canCompile(Node* node)
     case PutGlobalVar:
     case ValueAdd:
     case ArithAdd:
+    case ArithClz32:
     case ArithSub:
     case ArithMul:
     case ArithDiv:
@@ -141,7 +141,6 @@ inline CapabilityLevel canCompile(Node* node)
     case CountExecution:
     case GetExecutable:
     case GetScope:
-    case AllocationProfileWatchpoint:
     case GetCallee:
     case GetArgumentCount:
     case ToString:
@@ -181,6 +180,7 @@ inline CapabilityLevel canCompile(Node* node)
     case ToIndexString:
     case BottomValue:
     case PhantomNewObject:
+    case PhantomNewFunction:
     case PutHint:
     case CheckStructureImmediate:
     case MaterializeNewObject:
@@ -188,6 +188,7 @@ inline CapabilityLevel canCompile(Node* node)
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case ForwardVarargs:
+    case Switch:
         // These are OK.
         break;
     case Identity:
@@ -350,16 +351,6 @@ inline CapabilityLevel canCompile(Node* node)
         if (node->isBinaryUseKind(UntypedUse))
             break;
         return CannotCompile;
-    case Switch:
-        switch (node->switchData()->kind) {
-        case SwitchImm:
-        case SwitchChar:
-        case SwitchCell:
-            break;
-        default:
-            return CannotCompile;
-        }
-        break;
     default:
         // Don't know how to handle anything else.
         return CannotCompile;

@@ -379,6 +379,8 @@ static ThunkGenerator thunkGeneratorForIntrinsic(Intrinsic intrinsic)
         return charCodeAtThunkGenerator;
     case CharAtIntrinsic:
         return charAtThunkGenerator;
+    case Clz32Intrinsic:
+        return clz32ThunkGenerator;
     case FromCharCodeIntrinsic:
         return fromCharCodeThunkGenerator;
     case SqrtIntrinsic:
@@ -491,7 +493,7 @@ void VM::clearSourceProviderCaches()
 
 struct StackPreservingRecompiler : public MarkedBlock::VoidFunctor {
     HashSet<FunctionExecutable*> currentlyExecutingFunctions;
-    void operator()(JSCell* cell)
+    inline void visit(JSCell* cell)
     {
         if (!cell->inherits(FunctionExecutable::info()))
             return;
@@ -499,6 +501,11 @@ struct StackPreservingRecompiler : public MarkedBlock::VoidFunctor {
         if (currentlyExecutingFunctions.contains(executable))
             return;
         executable->clearCodeIfNotCompiling();
+    }
+    IterationStatus operator()(JSCell* cell)
+    {
+        visit(cell);
+        return IterationStatus::Continue;
     }
 };
 

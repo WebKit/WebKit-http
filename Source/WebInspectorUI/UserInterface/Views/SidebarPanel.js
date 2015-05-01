@@ -25,19 +25,14 @@
 
 WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.Object
 {
-    constructor(identifier, displayName, showToolTip, hideToolTip, image, element, role, label)
+    constructor(identifier, displayName, element, role, label)
     {
         super();
 
         this._identifier = identifier;
 
-        this._toolbarItem = new WebInspector.ActivateButtonToolbarItem(identifier, showToolTip, hideToolTip, displayName, image, null, "tab");
-        this._toolbarItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this.toggle, this);
-        this._toolbarItem.enabled = false;
-
         this._element = element || document.createElement("div");
-        this._element.classList.add("panel");
-        this._element.classList.add(identifier);
+        this._element.classList.add("panel", identifier);
 
         this._element.setAttribute("role", role || "group");
         this._element.setAttribute("aria-label", label || displayName);
@@ -52,11 +47,6 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.Object
     get identifier()
     {
         return this._identifier;
-    }
-
-    get toolbarItem()
-    {
-        return this._toolbarItem;
     }
 
     get element()
@@ -121,15 +111,15 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.Object
     added()
     {
         console.assert(this._parentSidebar);
-        this._toolbarItem.enabled = true;
-        this._toolbarItem.activated = this.visible;
+
+        // Implemented by subclasses.
     }
 
     removed()
     {
         console.assert(!this._parentSidebar);
-        this._toolbarItem.enabled = false;
-        this._toolbarItem.activated = false;
+
+        // Implemented by subclasses.
     }
 
     willRemove()
@@ -154,7 +144,7 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.Object
 
     visibilityDidChange()
     {
-        this._toolbarItem.activated = this.visible;
+        // Implemented by subclasses.
     }
 };
 

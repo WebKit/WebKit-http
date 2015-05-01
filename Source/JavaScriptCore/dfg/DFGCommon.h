@@ -274,6 +274,33 @@ void startCrashing();
 
 JS_EXPORT_PRIVATE bool isCrashing();
 
+struct NodeAndIndex {
+    NodeAndIndex()
+        : node(nullptr)
+        , index(UINT_MAX)
+    {
+    }
+    
+    NodeAndIndex(Node* node, unsigned index)
+        : node(node)
+        , index(index)
+    {
+        ASSERT(!node == (index == UINT_MAX));
+    }
+    
+    bool operator!() const
+    {
+        return !node;
+    }
+    
+    Node* node;
+    unsigned index;
+};
+
+// A less-than operator for strings that is useful for generating string switches. Sorts by <
+// relation on characters. Ensures that if a is a prefix of b, then a < b.
+bool stringLessThan(StringImpl& a, StringImpl& b);
+
 } } // namespace JSC::DFG
 
 namespace WTF {

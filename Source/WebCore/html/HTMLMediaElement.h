@@ -29,12 +29,13 @@
 #if ENABLE(VIDEO)
 #include "HTMLElement.h"
 #include "ActiveDOMObject.h"
-#include "AudioProducer.h"
 #include "GenericEventQueue.h"
+#include "GenericTaskQueue.h"
 #include "HTMLMediaSession.h"
 #include "MediaCanStartListener.h"
 #include "MediaControllerInterface.h"
 #include "MediaPlayer.h"
+#include "MediaProducer.h"
 #include "PageThrottler.h"
 
 #if ENABLE(VIDEO_TRACK)
@@ -95,7 +96,7 @@ class MediaStream;
 
 class HTMLMediaElement
     : public HTMLElement
-    , private MediaPlayerClient, public MediaPlayerSupportsTypeClient, private MediaCanStartListener, public ActiveDOMObject, public MediaControllerInterface , public MediaSessionClient, private AudioProducer
+    , private MediaPlayerClient, public MediaPlayerSupportsTypeClient, private MediaCanStartListener, public ActiveDOMObject, public MediaControllerInterface , public MediaSessionClient, private MediaProducer
 #if ENABLE(VIDEO_TRACK)
     , private AudioTrackClient
     , private TextTrackClient
@@ -139,8 +140,9 @@ public:
         ConfigureTextTracks = 1 << 1,
         TextTrackChangesNotification = 1 << 2,
         ConfigureTextTrackDisplay = 1 << 3,
+        CheckPlaybackTargetCompatablity = 1 << 4,
 
-        EveryDelayedAction = LoadMediaResource | ConfigureTextTracks | TextTrackChangesNotification | ConfigureTextTrackDisplay,
+        EveryDelayedAction = LoadMediaResource | ConfigureTextTracks | TextTrackChangesNotification | ConfigureTextTrackDisplay | CheckPlaybackTargetCompatablity,
     };
     void scheduleDelayedAction(DelayedActionType);
     
@@ -356,7 +358,6 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void webkitShowPlaybackTargetPicker();
     bool webkitCurrentPlaybackTargetIsWireless() const;
-    bool webkitCurrentPlaybackTargetIsSupported() const;
 
     virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
     virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) override;
@@ -365,8 +366,7 @@ public:
     virtual bool canPlayToWirelessPlaybackTarget() const override;
     virtual bool isPlayingToWirelessPlaybackTarget() const override;
     virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
-    virtual void startPlayingToPlaybackTarget() override;
-    virtual void stopPlayingToPlaybackTarget() override;
+    virtual void setShouldPlayToPlaybackTarget(bool) override;
 #endif
 
     // EventTarget function.
@@ -457,6 +457,8 @@ public:
 
     double maxBufferedTime() const;
 
+    virtual MediaProducer::MediaStateFlags mediaState() const override;
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool);
     virtual ~HTMLMediaElement();
@@ -481,7 +483,7 @@ protected:
     void endIgnoringTrackDisplayUpdateRequests();
 #endif
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&) override;
+    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     bool mediaControlsDependOnPageScaleFactor() const { return m_mediaControlsDependOnPageScaleFactor; }
@@ -561,6 +563,9 @@ private:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) override;
     void enqueuePlaybackTargetAvailabilityChangedEvent();
+
+    using EventTarget::dispatchEvent;
+    virtual bool dispatchEvent(PassRefPtr<Event>) override;
 #endif
 
     virtual String mediaPlayerReferrer() const override;
@@ -603,11 +608,11 @@ private:
 
     virtual double mediaPlayerRequestedPlaybackRate() const override final;
 
-    void loadTimerFired();
+    void pendingActionTimerFired();
     void progressEventTimerFired();
     void playbackProgressTimerFired();
     void scanTimerFired();
-    void seekTimerFired();
+    void seekTask();
     void startPlaybackProgressTimer();
     void startProgressEventTimer();
     void stopPeriodicTimers();
@@ -723,8 +728,6 @@ private:
     virtual void didReceiveRemoteControlCommand(MediaSession::RemoteControlCommandType) override;
     virtual bool overrideBackgroundPlaybackRestriction() const override;
 
-    // AudioProducer overrides
-    virtual bool isPlayingAudio() override;
     virtual void pageMutedStateDidChange() override;
 
     bool effectiveMuted() const;
@@ -734,11 +737,11 @@ private:
 
     void updateCaptionContainer();
 
-    Timer m_loadTimer;
+    Timer m_pendingActionTimer;
     Timer m_progressEventTimer;
     Timer m_playbackProgressTimer;
     Timer m_scanTimer;
-    Timer m_seekTimer;
+    GenericTaskQueue<ScriptExecutionContext> m_seekTaskQueue;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
@@ -918,6 +921,10 @@ private:
 
 #if ENABLE(MEDIA_STREAM)
     RefPtr<MediaStream> m_mediaStreamSrcObject;
+#endif
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    bool m_hasPlaybackTargetAvailabilityListeners { false };
 #endif
 };
 

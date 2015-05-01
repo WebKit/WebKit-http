@@ -2005,9 +2005,9 @@ def check_spacing(file_extension, clean_lines, line_number, error):
     # 'delete []' or 'new char * []'. Objective-C can't follow this rule
     # because of method calls.
     if file_extension != 'mm' and file_extension != 'm':
-        if search(r'\w\s+\[', line) and not search(r'delete\s+\[', line):
-            error(line_number, 'whitespace/braces', 5,
-                  'Extra space before [')
+        if search(r'\w\s+\[', line) and not search(r'(delete|return)\s+\[', line):
+            error(line_number, 'whitespace/brackets', 5,
+                  'Extra space before [.')
 
     # There should always be a single space in between braces on the same line.
     if search(r'\{\}', line):
@@ -3385,7 +3385,7 @@ def check_identifier_name_in_declaration(filename, line_number, line, file_state
         modified_identifier = sub(r'(^|(?<=::))[ms]_', '', identifier)
         if not file_state.is_objective_c_or_objective_cpp() and modified_identifier.find('_') >= 0:
             # Various exceptions to the rule: JavaScript op codes functions, const_iterator.
-            if (not (filename.find('JavaScriptCore') >= 0 and modified_identifier.find('op_') >= 0)
+            if (not (filename.find('JavaScriptCore') >= 0 and (modified_identifier.find('op_') >= 0 or modified_identifier.find('intrinsic_') >= 0))
                 and not (filename.find('gtk') >= 0 and modified_identifier.startswith('webkit_') >= 0)
                 and not modified_identifier.startswith('tst_')
                 and not modified_identifier.startswith('webkit_dom_object_')
@@ -3895,6 +3895,7 @@ class CppChecker(object):
         'runtime/wtf_move',
         'whitespace/blank_line',
         'whitespace/braces',
+        'whitespace/brackets',
         'whitespace/colon',
         'whitespace/comma',
         'whitespace/comments',

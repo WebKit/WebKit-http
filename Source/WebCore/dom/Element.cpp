@@ -56,6 +56,7 @@
 #include "HTMLSelectElement.h"
 #include "HTMLTableRowsCollection.h"
 #include "HTMLTemplateElement.h"
+#include "IdTargetObserverRegistry.h"
 #include "InsertionPoint.h"
 #include "KeyboardEvent.h"
 #include "MutationObserverInterestGroup.h"
@@ -1227,6 +1228,11 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
     bool shouldInvalidateStyle = false;
 
     if (name == HTMLNames::idAttr) {
+        if (!oldValue.isEmpty())
+            treeScope().idTargetObserverRegistry().notifyObservers(*oldValue.impl());
+        if (!newValue.isEmpty())
+            treeScope().idTargetObserverRegistry().notifyObservers(*newValue.impl());
+
         AtomicString oldId = elementData()->idForStyleResolution();
         AtomicString newId = makeIdForStyleResolution(newValue, document().inQuirksMode());
         if (newId != oldId) {
@@ -1496,7 +1502,7 @@ bool Element::rendererIsNeeded(const RenderStyle& style)
     return style.display() != NONE;
 }
 
-RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     return RenderElement::createFor(*this, WTF::move(style));
 }
@@ -2213,14 +2219,14 @@ void Element::blur()
 
 void Element::dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusinEvent || eventType == eventNames().DOMFocusInEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(oldFocusedElement)));
 }
 
 void Element::dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     ASSERT(eventType == eventNames().focusoutEvent || eventType == eventNames().DOMFocusOutEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTF::move(newFocusedElement)));
 }
@@ -2260,52 +2266,10 @@ bool Element::dispatchMouseForceWillBegin()
         return true;
     return false;
 }
-
-void Element::dispatchMouseForceClick()
-{
-    if (!document().hasListenerType(Document::FORCECLICK_LISTENER))
-        return;
-
-    Frame* frame = document().frame();
-    if (!frame)
-        return;
-
-    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), ForceAtForceClick);
-    RefPtr<MouseEvent> mouseForceClickEvent =  MouseEvent::create(eventNames().webkitmouseforceclickEvent, document().defaultView(), platformMouseEvent, 0, nullptr);
-
-    mouseForceClickEvent->setTarget(this);
-    dispatchEvent(mouseForceClickEvent);
-}
-
-void Element::dispatchMouseForceCancelled()
-{
-    if (!document().hasListenerType(Document::FORCECANCELLED_LISTENER))
-        return;
-
-    Frame* frame = document().frame();
-    if (!frame)
-        return;
-
-    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), 0);
-    RefPtr<MouseEvent> mouseForceCancelledEvent =  MouseEvent::create(eventNames().webkitmouseforcecancelledEvent, document().defaultView(), platformMouseEvent, 0, nullptr);
-
-    mouseForceCancelledEvent->setTarget(this);
-    dispatchEvent(mouseForceCancelledEvent);
-}
-
-#else // #if ENABLE(MOUSE_FORCE_EVENTS)
-
+#else
 bool Element::dispatchMouseForceWillBegin()
 {
     return false;
-}
-
-void Element::dispatchMouseForceClick()
-{
-}
-
-void Element::dispatchMouseForceCancelled()
-{
 }
 #endif // #if ENABLE(MOUSE_FORCE_EVENTS)
 
@@ -3010,7 +2974,7 @@ void Element::updateNameForDocument(HTMLDocument& document, const AtomicString& 
     }
 }
 
-inline void Element::updateId(const AtomicString& oldId, const AtomicString& newId)
+inline void Element::updateId(const AtomicString& oldId, const AtomicString& newId, NotifyObservers notifyObservers)
 {
     if (!isInTreeScope())
         return;
@@ -3018,7 +2982,7 @@ inline void Element::updateId(const AtomicString& oldId, const AtomicString& new
     if (oldId == newId)
         return;
 
-    updateIdForTreeScope(treeScope(), oldId, newId);
+    updateIdForTreeScope(treeScope(), oldId, newId, notifyObservers);
 
     if (!inDocument())
         return;
@@ -3027,15 +2991,15 @@ inline void Element::updateId(const AtomicString& oldId, const AtomicString& new
     updateIdForDocument(downcast<HTMLDocument>(document()), oldId, newId, UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute);
 }
 
-void Element::updateIdForTreeScope(TreeScope& scope, const AtomicString& oldId, const AtomicString& newId)
+void Element::updateIdForTreeScope(TreeScope& scope, const AtomicString& oldId, const AtomicString& newId, NotifyObservers notifyObservers)
 {
     ASSERT(isInTreeScope());
     ASSERT(oldId != newId);
 
     if (!oldId.isEmpty())
-        scope.removeElementById(*oldId.impl(), *this);
+        scope.removeElementById(*oldId.impl(), *this, notifyObservers == NotifyObservers::Yes);
     if (!newId.isEmpty())
-        scope.addElementById(*newId.impl(), *this);
+        scope.addElementById(*newId.impl(), *this, notifyObservers == NotifyObservers::Yes);
 }
 
 void Element::updateIdForDocument(HTMLDocument& document, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition condition)
@@ -3079,7 +3043,7 @@ void Element::updateLabel(TreeScope& scope, const AtomicString& oldForAttributeV
 void Element::willModifyAttribute(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue)
 {
     if (name == HTMLNames::idAttr)
-        updateId(oldValue, newValue);
+        updateId(oldValue, newValue, NotifyObservers::No); // Will notify observers after the attribute is actually changed.
     else if (name == HTMLNames::nameAttr)
         updateName(oldValue, newValue);
     else if (name == HTMLNames::forAttr && hasTagName(labelTag)) {
@@ -3308,7 +3272,7 @@ void Element::cloneAttributesFromElement(const Element& other)
     const AtomicString& newID = other.getIdAttribute();
 
     if (!oldID.isNull() || !newID.isNull())
-        updateId(oldID, newID);
+        updateId(oldID, newID, NotifyObservers::No); // Will notify observers after the attribute is actually changed.
 
     const AtomicString& oldName = getNameAttribute();
     const AtomicString& newName = other.getNameAttribute();

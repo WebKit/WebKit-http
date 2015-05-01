@@ -39,8 +39,8 @@
     outline: none;
 }
 
-body.mac-platform.legacy .navigation-bar {
-    height: 22px;
+body.window-inactive .navigation-bar {
+    border-bottom-color: rgb(219, 219, 219);
 }
 
 .navigation-bar .item {
@@ -50,8 +50,4 @@ body.mac-platform.legacy .navigation-bar {
 
     height: 28px;
     outline: none;
-}
-
-body.mac-platform.legacy .navigation-bar .item {
-    height: 21px;
 }

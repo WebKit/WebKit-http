@@ -180,11 +180,9 @@ private:
     virtual long platformErrorCode() const;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    virtual bool isCurrentPlaybackTargetSupported() const override;
+    virtual bool isCurrentPlaybackTargetWireless() const override;
     virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&);
-    virtual void startPlayingToPlaybackTarget() override;
-    virtual void stopPlayingToPlaybackTarget() override;
-    void togglePlayingToPlaybackTarget();
+    virtual void setShouldPlayToPlaybackTarget(bool) override;
 #endif
 
     MediaPlayer* m_player;
@@ -216,7 +214,7 @@ private:
     mutable FloatSize m_cachedNaturalSize;
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     RefPtr<MediaPlaybackTarget> m_playbackTarget;
-    bool m_currentPlaybackTargetIsSupported { true };
+    bool m_shouldPlayToTarget { false };
 #endif
 };
 

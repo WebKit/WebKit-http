@@ -31,7 +31,9 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "DataTransfer.h"
+#include "DictionaryLookup.h"
 #include "DragController.h"
+#include "Editor.h"
 #include "EventNames.h"
 #include "FocusController.h"
 #include "Frame.h"
@@ -45,6 +47,7 @@
 #include "Page.h"
 #include "Pasteboard.h"
 #include "PlatformEventFactoryMac.h"
+#include "Range.h"
 #include "RenderLayer.h"
 #include "RenderListBox.h"
 #include "RenderWidget.h"
@@ -56,6 +59,7 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "WebCoreSystemInterface.h"
+#include "WheelEventTestTrigger.h"
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ObjcRuntimeExtras.h>
@@ -879,6 +883,10 @@ void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheel
         }
     }
     
+    Page* page = m_frame.page();
+    if (scrollableArea && page && page->expectsWheelEventTriggers())
+        scrollableArea->scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
+
     ScrollLatchingState* latchingState = m_frame.mainFrame().latchingState();
     if (wheelEvent.shouldConsiderLatching()) {
         if (scrollableContainer && scrollableArea) {
@@ -1005,6 +1013,18 @@ void EventHandler::platformNotifyIfEndGesture(const PlatformWheelEvent& wheelEve
     if (ScrollAnimator* scrollAnimator = scrollableArea->existingScrollAnimator())
         scrollAnimator->processWheelEventForScrollSnap(wheelEvent);
 #endif
+}
+
+VisibleSelection EventHandler::selectClosestWordFromHitTestResultBasedOnLookup(const HitTestResult& result)
+{
+    if (!m_frame.editor().behavior().shouldSelectBasedOnDictionaryLookup())
+        return VisibleSelection();
+
+    NSDictionary *options = nil;
+    if (RefPtr<Range> range = rangeForDictionaryLookupAtHitTestResult(result, &options))
+        return VisibleSelection(*range);
+
+    return VisibleSelection();
 }
 
 }

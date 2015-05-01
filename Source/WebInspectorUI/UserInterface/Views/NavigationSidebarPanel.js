@@ -25,31 +25,11 @@
 
 WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebInspector.SidebarPanel
 {
-    constructor(identifier, displayName, image, keyboardShortcutKey, autoPruneOldTopLevelResourceTreeElements, autoHideToolbarItemWhenEmpty, wantsTopOverflowShadow, element, role, label)
+    constructor(identifier, displayName, autoPruneOldTopLevelResourceTreeElements, wantsTopOverflowShadow, element, role, label)
     {
-        var keyboardShortcut = null;
-        if (keyboardShortcutKey)
-            keyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control, keyboardShortcutKey);
-
-        if (keyboardShortcut) {
-            var showToolTip = WebInspector.UIString("Show the %s navigation sidebar (%s)").format(displayName, keyboardShortcut.displayName);
-            var hideToolTip = WebInspector.UIString("Hide the %s navigation sidebar (%s)").format(displayName, keyboardShortcut.displayName);
-        } else {
-            var showToolTip = WebInspector.UIString("Show the %s navigation sidebar").format(displayName);
-            var hideToolTip = WebInspector.UIString("Hide the %s navigation sidebar").format(displayName);
-        }
-
-        super(identifier, displayName, showToolTip, hideToolTip, image, element, role, label || displayName);
+        super(identifier, displayName, element, role, label || displayName);
 
         this.element.classList.add("navigation");
-
-        this._keyboardShortcut = keyboardShortcut;
-        this._keyboardShortcut.callback = this.toggle.bind(this);
-
-        this._autoHideToolbarItemWhenEmpty = autoHideToolbarItemWhenEmpty || false;
-
-        if (autoHideToolbarItemWhenEmpty)
-            this.toolbarItem.hidden = true;
 
         this._visibleContentTreeOutlines = new Set;
 
@@ -95,6 +75,16 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
     }
 
     // Public
+
+    get contentBrowser()
+    {
+        return this._contentBrowser;
+    }
+
+    set contentBrowser(contentBrowser)
+    {
+        this._contentBrowser = contentBrowser || null;
+    }
 
     get contentTreeOutlineElement()
     {
@@ -183,12 +173,14 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         // Implemneted by subclasses if needed to show a content view when no existing tree element is selected.
     }
 
-    showContentViewForCurrentSelection()
+    showDefaultContentViewForTreeElement(treeElement)
     {
-        // Reselect the selected tree element to cause the content view to be shown as well. <rdar://problem/10854727>
-        var selectedTreeElement = this._contentTreeOutline.selectedTreeElement;
-        if (selectedTreeElement)
-            selectedTreeElement.select();
+        console.assert(treeElement);
+        console.assert(treeElement.representedObject);
+        if (!treeElement || !treeElement.representedObject)
+            return;
+        this.contentBrowser.showContentViewForRepresentedObject(treeElement.representedObject);
+        treeElement.revealAndSelect(true, false, true, true);
     }
 
     saveStateToCookie(cookie)
@@ -244,7 +236,7 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         this._finalAttemptToRestoreViewStateTimeout = setTimeout(finalAttemptToRestoreViewStateFromCookie.bind(this), relaxedMatchDelay);
     }
 
-    showEmptyContentPlaceholder(message, hideToolbarItem)
+    showEmptyContentPlaceholder(message)
     {
         console.assert(message);
 
@@ -254,8 +246,6 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         this._emptyContentPlaceholderMessageElement.textContent = message;
         this.element.appendChild(this._emptyContentPlaceholderElement);
 
-        this._hideToolbarItemWhenEmpty = hideToolbarItem || false;
-        this._updateToolbarItemVisibility();
         this._updateContentOverflowShadowVisibility();
     }
 
@@ -266,15 +256,11 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
 
         this._emptyContentPlaceholderElement.parentNode.removeChild(this._emptyContentPlaceholderElement);
 
-        this._hideToolbarItemWhenEmpty = false;
-        this._updateToolbarItemVisibility();
         this._updateContentOverflowShadowVisibility();
     }
 
     updateEmptyContentPlaceholder(message)
     {
-        this._updateToolbarItemVisibility();
-
         if (!this._contentTreeOutline.children.length) {
             // No tree elements, so no results.
             this.showEmptyContentPlaceholder(message);
@@ -398,27 +384,16 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         if (!this.parentSidebar)
             return;
 
-        WebInspector.SidebarPanel.prototype.show.call(this);
+        super.show();
 
         this.contentTreeOutlineElement.focus();
     }
 
     shown()
     {
-        WebInspector.SidebarPanel.prototype.shown.call(this);
+        super.shown();
 
         this._updateContentOverflowShadowVisibility();
-
-        // Force the navigation item to be visible. This makes sure it is
-        // always visible when the panel is shown.
-        this.toolbarItem.hidden = false;
-    }
-
-    hidden()
-    {
-        WebInspector.SidebarPanel.prototype.hidden.call(this);
-
-        this._updateToolbarItemVisibility();
     }
 
     // Private
@@ -445,11 +420,7 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
             return;
         }
 
-        if (WebInspector.Platform.isLegacyMacOS)
-            var edgeThreshold = 10;
-        else
-            var edgeThreshold = 1;
-
+        var edgeThreshold = 1;
         var scrollTop = this.contentElement.scrollTop;
 
         var topCoverage = Math.min(scrollTop, edgeThreshold);
@@ -458,13 +429,6 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         if (this._topOverflowShadowElement)
             this._topOverflowShadowElement.style.opacity = (topCoverage / edgeThreshold).toFixed(1);
         this._bottomOverflowShadowElement.style.opacity = (1 - (bottomCoverage / edgeThreshold)).toFixed(1);
-    }
-
-    _updateToolbarItemVisibility()
-    {
-        // Hide the navigation item if requested or auto-hiding and we are not visible and we are empty.
-        var shouldHide = ((this._hideToolbarItemWhenEmpty || this._autoHideToolbarItemWhenEmpty) && !this.selected && !this._contentTreeOutline.children.length);
-        this.toolbarItem.hidden = shouldHide;
     }
 
     _checkForEmptyFilterResults()
@@ -521,8 +485,9 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         this._updateContentOverflowShadowVisibility();
 
         // Filter may have hidden the selected resource in the timeline view, which should now notify its listeners.
+        // FIXME: This is a layering violation. This should at least be in TimelineSidebarPanel.
         if (selectedTreeElement && selectedTreeElement.hidden !== selectionWasHidden) {
-            var currentContentView = WebInspector.contentBrowser.currentContentView;
+            var currentContentView = this.contentBrowser.currentContentView;
             if (currentContentView instanceof WebInspector.TimelineRecordingContentView && typeof currentContentView.currentTimelineView.filterUpdated === "function")
                 currentContentView.currentTimelineView.filterUpdated();
         }
@@ -588,32 +553,13 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         WebInspector.NavigationSidebarPanel._generatedDisclosureTriangles = true;
 
         var specifications = {};
+        specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleNormalCanvasIdentifierSuffix] = {
+            fillColor: [140, 140, 140]
+        };
 
-        if (WebInspector.Platform.isLegacyMacOS) {
-            specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleNormalCanvasIdentifierSuffix] = {
-                fillColor: [112, 126, 139],
-                shadowColor: [255, 255, 255, 0.8],
-                shadowOffsetX: 0,
-                shadowOffsetY: 1,
-                shadowBlur: 0
-            };
-
-            specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleSelectedCanvasIdentifierSuffix] = {
-                fillColor: [255, 255, 255],
-                shadowColor: [61, 91, 110, 0.8],
-                shadowOffsetX: 0,
-                shadowOffsetY: 1,
-                shadowBlur: 2
-            };
-        } else {
-            specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleNormalCanvasIdentifierSuffix] = {
-                fillColor: [140, 140, 140]
-            };
-
-            specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleSelectedCanvasIdentifierSuffix] = {
-                fillColor: [255, 255, 255]
-            };
-        }
+        specifications[WebInspector.NavigationSidebarPanel.DisclosureTriangleSelectedCanvasIdentifierSuffix] = {
+            fillColor: [255, 255, 255]
+        };
 
         generateColoredImagesForCSS("Images/DisclosureTriangleSmallOpen.svg", specifications, 13, 13, WebInspector.NavigationSidebarPanel.DisclosureTriangleOpenCanvasIdentifier);
         generateColoredImagesForCSS("Images/DisclosureTriangleSmallClosed.svg", specifications, 13, 13, WebInspector.NavigationSidebarPanel.DisclosureTriangleClosedCanvasIdentifier);
@@ -721,7 +667,7 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         }, this);
 
         if (matchedElement) {
-            matchedElement.revealAndSelect();
+            this.showDefaultContentViewForTreeElement(matchedElement);
 
             delete this._pendingViewStateCookie;
 

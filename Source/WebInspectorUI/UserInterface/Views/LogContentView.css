@@ -38,6 +38,8 @@
     font-size: 12px;
 
     min-height: 100%;
+
+    outline: none;
 }
 
 .console-messages > :first-child {
@@ -150,10 +152,6 @@
     width: 150px;
     border: 1px solid rgba(0, 0, 0, 0.35);
     padding-left: 4px;
-}
-
-body.mac-platform.legacy .search-bar.log-search-bar > input[type="search"] {
-    padding-left: 0;
 }
 
 .search-in-progress .console-item.filtered-out-by-search {

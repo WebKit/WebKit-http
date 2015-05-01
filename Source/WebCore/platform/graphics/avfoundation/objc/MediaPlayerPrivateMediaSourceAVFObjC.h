@@ -172,11 +172,9 @@ private:
     virtual MediaTime totalFrameDelay() override;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    virtual bool isCurrentPlaybackTargetSupported() const override;
+    virtual bool isCurrentPlaybackTargetWireless() const override;
     virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&);
-    virtual void startPlayingToPlaybackTarget() override;
-    virtual void stopPlayingToPlaybackTarget() override;
-    void togglePlayingToPlaybackTarget();
+    virtual void setShouldPlayToPlaybackTarget(bool) override;
 #endif
 
     void ensureLayer();
@@ -222,7 +220,7 @@ private:
     bool m_hasAvailableVideoFrame;
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     RefPtr<MediaPlaybackTarget> m_playbackTarget;
-    bool m_currentPlaybackTargetIsSupported { true };
+    bool m_shouldPlayToTarget { false };
 #endif
 };
 

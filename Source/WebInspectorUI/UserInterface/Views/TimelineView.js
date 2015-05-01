@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2015 University of Washington.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,23 +24,29 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TimelineView = function(representedObject)
+WebInspector.TimelineView = function(representedObject, extraArguments)
 {
     // This class should not be instantiated directly. Create a concrete subclass instead.
     console.assert(this.constructor !== WebInspector.TimelineView && this instanceof WebInspector.TimelineView);
 
+    console.assert(extraArguments);
+    console.assert(extraArguments.timelineSidebarPanel instanceof WebInspector.TimelineSidebarPanel);
+
     WebInspector.ContentView.call(this, representedObject);
 
-    this._contentTreeOutline = WebInspector.timelineSidebarPanel.createContentTreeOutline();
-    this.element.classList.add(WebInspector.TimelineView.StyleClassName);
+    this._timelineSidebarPanel = extraArguments.timelineSidebarPanel;
+
+    this._contentTreeOutline = this._timelineSidebarPanel.createContentTreeOutline();
+    this._contentTreeOutline.onselect = this.treeElementSelected.bind(this);
+    this._contentTreeOutline.ondeselect = this.treeElementDeselected.bind(this);
+
+    this.element.classList.add("timeline-view");
 
     this._zeroTime = 0;
     this._startTime = 0;
     this._endTime = 5;
     this._currentTime = 0;
 };
-
-WebInspector.TimelineView.StyleClassName = "timeline-view";
 
 WebInspector.TimelineView.prototype = {
     constructor: WebInspector.TimelineView,
@@ -57,6 +63,11 @@ WebInspector.TimelineView.prototype = {
     {
         // Implemented by sub-classes if needed.
         return null;
+    },
+
+    get timelineSidebarPanel()
+    {
+        return this._timelineSidebarPanel;
     },
 
     get selectionPathComponents()
@@ -180,9 +191,52 @@ WebInspector.TimelineView.prototype = {
 
     // Protected
 
+    showContentViewForTreeElement: function(treeElement)
+    {
+        // Implemented by sub-classes if needed.
+
+        if (!(treeElement instanceof WebInspector.TimelineRecordTreeElement)) {
+            console.error("Unknown tree element selected.", treeElement);
+            return false;
+        }
+
+        var sourceCodeLocation = treeElement.record.sourceCodeLocation;
+        if (!sourceCodeLocation) {
+            this._timelineSidebarPanel.showTimelineViewForTimeline(this.representedObject);
+            return true;
+        }
+
+        WebInspector.showOriginalOrFormattedSourceCodeLocation(sourceCodeLocation);
+        return true;
+    },
+
     treeElementPathComponentSelected: function(event)
     {
         // Implemented by sub-classes if needed.
+    },
+
+    treeElementDeselected: function(treeElement)
+    {
+        // Implemented by sub-classes if needed.
+
+        if (this._closeStatusButton && treeElement.status === this._closeStatusButton.element)
+            treeElement.status = "";
+    },
+
+    treeElementSelected: function(treeElement, selectedByUser)
+    {
+        // Implemented by sub-classes if needed.
+
+        if (!this._timelineSidebarPanel.canShowDifferentContentView())
+            return;
+
+        if (treeElement instanceof WebInspector.FolderTreeElement)
+            return;
+
+        if (!this.showContentViewForTreeElement(treeElement))
+            return;
+
+        this._updateTreeElementWithCloseButton(treeElement);
     },
 
     needsLayout: function()
@@ -194,5 +248,30 @@ WebInspector.TimelineView.prototype = {
             return;
 
         this._scheduledLayoutUpdateIdentifier = requestAnimationFrame(this.updateLayout.bind(this));
+    },
+
+    // Private
+
+    _closeStatusButtonClicked: function(event)
+    {
+        if (this.navigationSidebarTreeOutline.selectedTreeElement)
+            this.navigationSidebarTreeOutline.selectedTreeElement.deselect();
+
+        this._timelineSidebarPanel.showTimelineViewForTimeline(this.representedObject);
+    },
+
+    _updateTreeElementWithCloseButton: function(treeElement)
+    {
+        if (this._closeStatusButton) {
+            treeElement.status = this._closeStatusButton.element;
+            return;
+        }
+
+        wrappedSVGDocument("Images/Close.svg", null, WebInspector.UIString("Close resource view"), function(element) {
+            this._closeStatusButton = new WebInspector.TreeElementStatusButton(element);
+            this._closeStatusButton.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this._closeStatusButtonClicked, this);
+            if (treeElement === this.navigationSidebarTreeOutline.selectedTreeElement)
+                this._updateTreeElementWithCloseButton(treeElement);
+        }.bind(this));
     }
 };

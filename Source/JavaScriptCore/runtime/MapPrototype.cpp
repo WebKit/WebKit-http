@@ -125,11 +125,12 @@ EncodedJSValue JSC_HOST_CALL mapProtoFuncForEach(CallFrame* callFrame)
     JSValue key, value;
     if (callType == CallTypeJS) {
         JSFunction* function = jsCast<JSFunction*>(callBack);
-        CachedCall cachedCall(callFrame, function, 2);
+        CachedCall cachedCall(callFrame, function, 3);
         while (iterator->nextKeyValue(key, value) && !vm->exception()) {
             cachedCall.setThis(thisValue);
             cachedCall.setArgument(0, value);
             cachedCall.setArgument(1, key);
+            cachedCall.setArgument(2, map);
             cachedCall.call();
         }
         iterator->finish();
@@ -138,6 +139,7 @@ EncodedJSValue JSC_HOST_CALL mapProtoFuncForEach(CallFrame* callFrame)
             MarkedArgumentBuffer args;
             args.append(value);
             args.append(key);
+            args.append(map);
             JSC::call(callFrame, callBack, callType, callData, thisValue, args);
         }
         iterator->finish();
@@ -191,7 +193,7 @@ EncodedJSValue JSC_HOST_CALL mapProtoFuncEntries(CallFrame* callFrame)
 {
     JSMap* thisObj = jsDynamicCast<JSMap*>(callFrame->thisValue());
     if (!thisObj)
-        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Map key iterator for a non-Map object.")));
+        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Map entry iterator for a non-Map object.")));
     return JSValue::encode(JSMapIterator::create(callFrame->vm(), callFrame->callee()->globalObject()->mapIteratorStructure(), thisObj, MapIterateKeyValue));
 }
 
@@ -199,7 +201,7 @@ EncodedJSValue JSC_HOST_CALL mapProtoFuncKeys(CallFrame* callFrame)
 {
     JSMap* thisObj = jsDynamicCast<JSMap*>(callFrame->thisValue());
     if (!thisObj)
-        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Map entry iterator for a non-Map object.")));
+        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Map key iterator for a non-Map object.")));
     return JSValue::encode(JSMapIterator::create(callFrame->vm(), callFrame->callee()->globalObject()->mapIteratorStructure(), thisObj, MapIterateKey));
 }
 

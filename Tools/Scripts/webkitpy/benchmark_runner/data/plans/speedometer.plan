@@ -1,0 +1,10 @@
+{
+    "http_server_driver": "SimpleHTTPServerDriver",
+    "timeout": 300,
+    "count": 5,
+    "benchmark_builder": "GenericBenchmarkBuilder",
+    "original_benchmark": "../../../../PerformanceTests/Speedometer",
+    "benchmark_patch": "data/patches/Speedometer.patch",
+    "entry_point": "Speedometer/Full.html",
+    "output_file": "speedometer.result"
+}

@@ -112,20 +112,21 @@ public:
     FunctionRareData* rareData(ExecState* exec, unsigned inlineCapacity)
     {
         if (UNLIKELY(!m_rareData))
-            return createRareData(exec, inlineCapacity);
+            return allocateAndInitializeRareData(exec, inlineCapacity);
+        if (UNLIKELY(!m_rareData->isInitialized()))
+            return initializeRareData(exec, inlineCapacity);
         return m_rareData.get();
     }
 
-    Structure* allocationStructure()
+    FunctionRareData* rareData()
     {
-        ASSERT(m_rareData);
-        return m_rareData.get()->allocationStructure();
-    }
+        FunctionRareData* rareData = m_rareData.get();
 
-    InlineWatchpointSet& allocationProfileWatchpointSet()
-    {
-        ASSERT(m_rareData);
-        return m_rareData.get()->allocationProfileWatchpointSet();
+        // The JS thread may be concurrently creating the rare data
+        // If we see it, we want to ensure it has been properly created
+        WTF::loadLoadFence();
+
+        return rareData;
     }
 
     bool isHostOrBuiltinFunction() const;
@@ -140,7 +141,8 @@ protected:
     void finishCreation(VM&, NativeExecutable*, int length, const String& name);
     using Base::finishCreation;
 
-    FunctionRareData* createRareData(ExecState*, size_t inlineCapacity);
+    FunctionRareData* allocateAndInitializeRareData(ExecState*, size_t inlineCapacity);
+    FunctionRareData* initializeRareData(ExecState*, size_t inlineCapacity);
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode = EnumerationMode());

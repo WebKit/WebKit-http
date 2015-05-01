@@ -55,6 +55,13 @@ Cache& singleton()
     return instance;
 }
 
+#if PLATFORM(GTK)
+static void dumpFileChanged(Cache* cache)
+{
+    cache->dumpContentsToFile();
+}
+#endif
+
 bool Cache::initialize(const String& cachePath, bool enableEfficacyLogging)
 {
     m_storage = Storage::open(cachePath);
@@ -69,6 +76,15 @@ bool Cache::initialize(const String& cachePath, bool enableEfficacyLogging)
         notify_register_dispatch("com.apple.WebKit.Cache.dump", &token, dispatch_get_main_queue(), ^(int) {
             dumpContentsToFile();
         });
+    }
+#endif
+#if PLATFORM(GTK)
+    // Triggers with "touch $cachePath/dump".
+    if (m_storage) {
+        CString dumpFilePath = WebCore::fileSystemRepresentation(WebCore::pathByAppendingComponent(m_storage->basePath(), "dump"));
+        GRefPtr<GFile> dumpFile = adoptGRef(g_file_new_for_path(dumpFilePath.data()));
+        GFileMonitor* monitor = g_file_monitor_file(dumpFile.get(), G_FILE_MONITOR_NONE, nullptr, nullptr);
+        g_signal_connect_swapped(monitor, "changed", G_CALLBACK(dumpFileChanged), this);
     }
 #endif
 
@@ -251,6 +267,15 @@ static bool isStatusCodePotentiallyCacheable(int statusCode)
     }
 }
 
+static bool isMediaMIMEType(const String& mimeType)
+{
+    if (mimeType.startsWith("video/", /*caseSensitive*/ false))
+        return true;
+    if (mimeType.startsWith("audio/", /*caseSensitive*/ false))
+        return true;
+    return false;
+}
+
 static StoreDecision makeStoreDecision(const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceResponse& response)
 {
     if (!originalRequest.url().protocolIsInHTTPFamily() || !response.isHTTP())
@@ -274,8 +299,8 @@ static StoreDecision makeStoreDecision(const WebCore::ResourceRequest& originalR
             return StoreDecision::NoDueToHTTPStatusCode;
     }
 
-    // Main resource has ResourceLoadPriorityVeryHigh.
-    bool storeUnconditionallyForHistoryNavigation = originalRequest.priority() == WebCore::ResourceLoadPriorityVeryHigh;
+    bool isMainResource = originalRequest.requester() == WebCore::ResourceRequest::Requester::Main;
+    bool storeUnconditionallyForHistoryNavigation = isMainResource || originalRequest.priority() == WebCore::ResourceLoadPriority::VeryHigh;
     if (!storeUnconditionallyForHistoryNavigation) {
         auto now = std::chrono::system_clock::now();
         bool hasNonZeroLifetime = !response.cacheControlContainsNoCache() && WebCore::computeFreshnessLifetimeForHTTPFamily(response, now) > 0_ms;
@@ -284,6 +309,14 @@ static StoreDecision makeStoreDecision(const WebCore::ResourceRequest& originalR
         if (!possiblyReusable)
             return StoreDecision::NoDueToUnlikelyToReuse;
     }
+
+    // Media loaded via XHR is likely being used for MSE streaming (YouTube and Netflix for example).
+    // Streaming media fills the cache quickly and is unlikely to be reused.
+    // FIXME: We should introduce a separate media cache partition that doesn't affect other resources.
+    // FIXME: We should also make sure make the MSE paths are copy-free so we can use mapped buffers from disk effectively.
+    bool isLikelyStreamingMedia = originalRequest.requester() == WebCore::ResourceRequest::Requester::XHR && isMediaMIMEType(response.mimeType());
+    if (isLikelyStreamingMedia)
+        return StoreDecision::NoDueToStreamingMedia;
 
     return StoreDecision::Yes;
 }
@@ -309,7 +342,7 @@ void Cache::retrieve(const WebCore::ResourceRequest& originalRequest, uint64_t w
     }
 
     auto startTime = std::chrono::system_clock::now();
-    unsigned priority = originalRequest.priority();
+    auto priority = static_cast<unsigned>(originalRequest.priority());
 
     m_storage->retrieve(storageKey, priority, [this, originalRequest, completionHandler, startTime, storageKey, webPageID](std::unique_ptr<Storage::Record> record) {
         if (!record) {
@@ -385,7 +418,7 @@ void Cache::store(const WebCore::ResourceRequest& originalRequest, const WebCore
     });
 }
 
-void Cache::update(const WebCore::ResourceRequest& originalRequest, const Entry& existingEntry, const WebCore::ResourceResponse& validatingResponse)
+void Cache::update(const WebCore::ResourceRequest& originalRequest, uint64_t webPageID, const Entry& existingEntry, const WebCore::ResourceResponse& validatingResponse)
 {
     LOG(NetworkCache, "(NetworkProcess) updating %s", originalRequest.url().string().latin1().data());
 
@@ -397,6 +430,9 @@ void Cache::update(const WebCore::ResourceRequest& originalRequest, const Entry&
     auto updateRecord = updateEntry.encodeAsStorageRecord();
 
     m_storage->store(updateRecord, { });
+
+    if (m_statistics)
+        m_statistics->recordRevalidationSuccess(webPageID, existingEntry.key(), originalRequest);
 }
 
 void Cache::remove(const Key& key)
@@ -497,9 +533,9 @@ void Cache::clear()
         m_statistics->clear();
 }
 
-String Cache::storagePath() const
+String Cache::recordsPath() const
 {
-    return m_storage ? m_storage->versionPath() : String();
+    return m_storage ? m_storage->recordsPath() : String();
 }
 
 }

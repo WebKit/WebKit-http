@@ -23,14 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.NetworkTimelineView = function(timeline)
+WebInspector.NetworkTimelineView = function(timeline, extraArguments)
 {
-    WebInspector.TimelineView.call(this, timeline);
+    WebInspector.TimelineView.call(this, timeline, extraArguments);
 
     console.assert(timeline.type === WebInspector.TimelineRecord.Type.Network);
 
-    this.navigationSidebarTreeOutline.onselect = this._treeElementSelected.bind(this);
-    this.navigationSidebarTreeOutline.ondeselect = this._treeElementDeselected.bind(this);    
     this.navigationSidebarTreeOutline.element.classList.add(WebInspector.NavigationSidebarPanel.HideDisclosureButtonsStyleClassName);
     this.navigationSidebarTreeOutline.element.classList.add(WebInspector.NetworkTimelineView.TreeOutlineStyleClassName);
 
@@ -150,12 +148,31 @@ WebInspector.NetworkTimelineView.prototype = {
 
     // Protected
 
+    showContentViewForTreeElement: function(treeElement)
+    {
+        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement) {
+            WebInspector.showSourceCode(treeElement.representedObject);
+            return true;
+        }
+
+        console.error("Unknown tree element selected.", treeElement);
+        return false;
+    },
+
     treeElementPathComponentSelected: function(event)
     {
         var dataGridNode = this._dataGrid.dataGridNodeForTreeElement(event.data.pathComponent.generalTreeElement);
         if (!dataGridNode)
             return;
         dataGridNode.revealAndSelect();
+    },
+
+    treeElementSelected: function(treeElement, selectedByUser)
+    {
+        if (this._dataGrid.shouldIgnoreSelectionEvent())
+            return false;
+
+        WebInspector.TimelineView.prototype.treeElementSelected.call(this, treeElement, selectedByUser);
     },
 
     // Private
@@ -192,38 +209,12 @@ WebInspector.NetworkTimelineView.prototype = {
 
     _dataGridFiltersDidChange: function(event)
     {
-        WebInspector.timelineSidebarPanel.updateFilter();
+        this.timelineSidebarPanel.updateFilter();
     },
 
     _dataGridNodeSelected: function(event)
     {
         this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
-    },
-
-    _treeElementDeselected: function(treeElement)
-    {
-        if (treeElement.status)
-            treeElement.status = "";
-    },
-
-    _treeElementSelected: function(treeElement, selectedByUser)
-    {
-        if (this._dataGrid.shouldIgnoreSelectionEvent())
-            return;
-
-        if (!WebInspector.timelineSidebarPanel.canShowDifferentContentView())
-            return;
-
-        if (treeElement instanceof WebInspector.FolderTreeElement)
-            return;
-
-        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement) {
-            WebInspector.resourceSidebarPanel.showSourceCode(treeElement.representedObject);
-            this._updateTreeElementWithCloseButton(treeElement);
-            return;
-        }
-
-        console.error("Unknown tree element selected.");
     },
 
     _updateTreeElementWithCloseButton: function(treeElement)
@@ -233,7 +224,7 @@ WebInspector.NetworkTimelineView.prototype = {
             return;
         }
 
-        wrappedSVGDocument(platformImagePath("Close.svg"), null, WebInspector.UIString("Close resource view"), function(element) {
+        wrappedSVGDocument("Images/Close.svg", null, WebInspector.UIString("Close resource view"), function(element) {
             this._closeStatusButton = new WebInspector.TreeElementStatusButton(element);
             this._closeStatusButton.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this._closeStatusButtonClicked, this);
             if (treeElement === this.navigationSidebarTreeOutline.selectedTreeElement)
@@ -244,6 +235,6 @@ WebInspector.NetworkTimelineView.prototype = {
     _closeStatusButtonClicked: function(event)
     {
         this.navigationSidebarTreeOutline.selectedTreeElement.deselect();
-        WebInspector.timelineSidebarPanel.showTimelineViewForTimeline(this.representedObject);
+        this.timelineSidebarPanel.showTimelineViewForTimeline(this.representedObject);
     }
 };

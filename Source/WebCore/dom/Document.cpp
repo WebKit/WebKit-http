@@ -31,7 +31,6 @@
 #include "AXObjectCache.h"
 #include "AnimationController.h"
 #include "Attr.h"
-#include "AudioProducer.h"
 #include "CDATASection.h"
 #include "CSSFontSelector.h"
 #include "CSSStyleDeclaration.h"
@@ -100,6 +99,7 @@
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MediaCanStartListener.h"
+#include "MediaProducer.h"
 #include "MediaQueryList.h"
 #include "MediaQueryMatcher.h"
 #include "MouseEventWithHitTestResults.h"
@@ -230,7 +230,7 @@
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-#include "HTMLVideoElement.h"
+#include "MediaPlaybackTargetClient.h"
 #endif
 
 using namespace WTF;
@@ -523,7 +523,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_renderTreeBeingDestroyed(false)
     , m_hasPreparedForDestruction(false)
     , m_hasStyleWithViewportUnits(false)
-    , m_isPlayingAudio(false)
 {
     allDocuments().add(this);
 
@@ -1790,6 +1789,8 @@ void Document::recalcStyle(Style::Change change)
         m_closeAfterStyleRecalc = false;
         implicitClose();
     }
+    
+    ++m_styleRecalcCount;
 
     InspectorInstrumentation::didRecalculateStyle(cookie);
 
@@ -3413,13 +3414,13 @@ void Document::updateViewportUnitsOnResize()
     }
 }
 
-void Document::addAudioProducer(AudioProducer* audioProducer)
+void Document::addAudioProducer(MediaProducer* audioProducer)
 {
     m_audioProducers.add(audioProducer);
     updateIsPlayingMedia();
 }
 
-void Document::removeAudioProducer(AudioProducer* audioProducer)
+void Document::removeAudioProducer(MediaProducer* audioProducer)
 {
     m_audioProducers.remove(audioProducer);
     updateIsPlayingMedia();
@@ -3427,18 +3428,14 @@ void Document::removeAudioProducer(AudioProducer* audioProducer)
 
 void Document::updateIsPlayingMedia()
 {
-    bool isPlayingAudio = false;
-    for (auto audioProducer : m_audioProducers) {
-        if (audioProducer->isPlayingAudio()) {
-            isPlayingAudio = true;
-            break;
-        }
-    }
+    MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
+    for (auto audioProducer : m_audioProducers)
+        state |= audioProducer->mediaState();
 
-    if (isPlayingAudio == m_isPlayingAudio)
+    if (state == m_mediaState)
         return;
 
-    m_isPlayingAudio = isPlayingAudio;
+    m_mediaState = state;
 
     if (page())
         page()->updateIsPlayingMedia();
@@ -3923,7 +3920,7 @@ EventListener* Document::getWindowAttributeEventListener(const AtomicString& eve
 
 void Document::dispatchWindowEvent(PassRefPtr<Event> event,  PassRefPtr<EventTarget> target)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     if (!m_domWindow)
         return;
     m_domWindow->dispatchEvent(event, target);
@@ -3931,7 +3928,7 @@ void Document::dispatchWindowEvent(PassRefPtr<Event> event,  PassRefPtr<EventTar
 
 void Document::dispatchWindowLoadEvent()
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     if (!m_domWindow)
         return;
     m_domWindow->dispatchLoadEvent();
@@ -4018,10 +4015,6 @@ void Document::addListenerTypeIfNeeded(const AtomicString& eventType)
         addListenerType(FORCEDOWN_LISTENER);
     else if (eventType == eventNames().webkitmouseforceupEvent)
         addListenerType(FORCEUP_LISTENER);
-    else if (eventType == eventNames().webkitmouseforceclickEvent)
-        addListenerType(FORCECLICK_LISTENER);
-    else if (eventType == eventNames().webkitmouseforcecancelledEvent)
-        addListenerType(FORCECANCELLED_LISTENER);
 }
 
 CSSStyleDeclaration* Document::getOverrideStyle(Element*, const String&)
@@ -4586,7 +4579,6 @@ void Document::applyXSLTransform(ProcessingInstruction* pi)
     // FIXME: If the transform failed we should probably report an error (like Mozilla does).
     Frame* ownerFrame = frame();
     processor->createDocumentFromSource(newSource, resultEncoding, resultMIMEType, this, ownerFrame);
-    InspectorInstrumentation::frameDocumentUpdated(ownerFrame);
 }
 
 void Document::setTransformSource(std::unique_ptr<TransformSource> source)
@@ -5957,11 +5949,6 @@ void Document::didAddWheelEventHandler(Node& node)
 
     m_wheelEventTargets->add(&node);
 
-    if (Document* parent = parentDocument()) {
-        parent->didAddWheelEventHandler(*this);
-        return;
-    }
-
     wheelEventHandlersChanged();
 
     if (Frame* frame = this->frame())
@@ -5986,11 +5973,6 @@ void Document::didRemoveWheelEventHandler(Node& node, EventHandlerRemoval remova
 
     if (!removeHandlerFromSet(*m_wheelEventTargets, node, removal))
         return;
-
-    if (Document* parent = parentDocument()) {
-        parent->didRemoveWheelEventHandler(*this);
-        return;
-    }
 
     wheelEventHandlersChanged();
 
@@ -6137,6 +6119,16 @@ Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTar
 void Document::updateLastHandledUserGestureTimestamp()
 {
     m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
+}
+
+void Document::startTrackingStyleRecalcs()
+{
+    m_styleRecalcCount = 0;
+}
+
+unsigned Document::styleRecalcCount() const
+{
+    return m_styleRecalcCount;
 }
 
 DocumentLoader* Document::loader() const
@@ -6526,72 +6518,94 @@ void Document::setInputCursor(PassRefPtr<InputCursor> cursor)
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-void Document::showPlaybackTargetPicker(const HTMLMediaElement& element)
+static uint64_t nextPlaybackTargetClientContextId()
+{
+    static uint64_t contextId = 0;
+    return ++contextId;
+}
+
+void Document::addPlaybackTargetPickerClient(MediaPlaybackTargetClient& client)
 {
     Page* page = this->page();
     if (!page)
         return;
 
-    page->showPlaybackTargetPicker(view()->lastKnownMousePosition(), is<HTMLVideoElement>(element));
+    ASSERT(!m_clientToIDMap.contains(&client));
+
+    uint64_t contextId = nextPlaybackTargetClientContextId();
+    m_clientToIDMap.add(&client, contextId);
+    m_idToClientMap.add(contextId, &client);
+    page->addPlaybackTargetPickerClient(contextId);
 }
 
-void Document::addPlaybackTargetPickerClient(MediaPlaybackTargetPickerClient& client)
+void Document::removePlaybackTargetPickerClient(MediaPlaybackTargetClient& client)
+{
+    auto it = m_clientToIDMap.find(&client);
+    if (it == m_clientToIDMap.end())
+        return;
+
+    uint64_t clientId = it->value;
+    m_idToClientMap.remove(clientId);
+    m_clientToIDMap.remove(it);
+
+    Page* page = this->page();
+    if (!page)
+        return;
+    page->removePlaybackTargetPickerClient(clientId);
+}
+
+void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool isVideo)
 {
     Page* page = this->page();
     if (!page)
         return;
 
-    m_playbackTargetClients.add(&client);
+    auto it = m_clientToIDMap.find(&client);
+    if (it == m_clientToIDMap.end())
+        return;
 
-    RefPtr<MediaPlaybackTarget> target = page->playbackTarget();
-    if (target)
-        client.didChoosePlaybackTarget(*target);
-    client.externalOutputDeviceAvailableDidChange(page->hasWirelessPlaybackTarget());
+    page->showPlaybackTargetPicker(it->value, view()->lastKnownMousePosition(), isVideo);
 }
 
-void Document::removePlaybackTargetPickerClient(MediaPlaybackTargetPickerClient& client)
-{
-    m_playbackTargetClients.remove(&client);
-    configurePlaybackTargetMonitoring();
-}
-
-void Document::configurePlaybackTargetMonitoring()
+void Document::playbackTargetPickerClientStateDidChange(MediaPlaybackTargetClient& client, MediaProducer::MediaStateFlags state)
 {
     Page* page = this->page();
     if (!page)
         return;
 
-    page->configurePlaybackTargetMonitoring();
-}
-
-bool Document::requiresPlaybackTargetRouteMonitoring()
-{
-    for (auto* client : m_playbackTargetClients) {
-        if (client->requiresPlaybackTargetRouteMonitoring()) {
-            return true;
-            break;
-        }
-    }
-
-    return false;
-}
-
-void Document::playbackTargetAvailabilityDidChange(bool available)
-{
-    if (m_playbackTargetsAvailable == available)
+    auto it = m_clientToIDMap.find(&client);
+    if (it == m_clientToIDMap.end())
         return;
-    m_playbackTargetsAvailable = available;
 
-    for (auto* client : m_playbackTargetClients)
-        client->externalOutputDeviceAvailableDidChange(available);
+    page->playbackTargetPickerClientStateDidChange(it->value, state);
 }
 
-void Document::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& device)
+void Document::playbackTargetAvailabilityDidChange(uint64_t clientId, bool available)
 {
-    for (auto* client : m_playbackTargetClients)
-        client->didChoosePlaybackTarget(device.copyRef());
+    auto it = m_idToClientMap.find(clientId);
+    if (it == m_idToClientMap.end())
+        return;
+
+    it->value->externalOutputDeviceAvailableDidChange(available);
 }
 
-#endif
+void Document::setPlaybackTarget(uint64_t clientId, Ref<MediaPlaybackTarget>&& target)
+{
+    auto it = m_idToClientMap.find(clientId);
+    if (it == m_idToClientMap.end())
+        return;
+
+    it->value->setPlaybackTarget(target.copyRef());
+}
+
+void Document::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
+{
+    auto it = m_idToClientMap.find(clientId);
+    if (it == m_idToClientMap.end())
+        return;
+
+    it->value->setShouldPlayToPlaybackTarget(shouldPlay);
+}
+#endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 } // namespace WebCore

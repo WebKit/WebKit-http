@@ -87,33 +87,33 @@ public:
     String versionPath() const;
     String recordsPath() const;
 
+    ~Storage();
+
 private:
     Storage(const String& directoryPath);
+
+    String partitionPathForKey(const Key&) const;
+    String recordPathForKey(const Key&) const;
+    String bodyPathForKey(const Key&) const;
 
     void synchronize();
     void deleteOldVersions();
     void shrinkIfNeeded();
     void shrink();
 
-    struct ReadOperation {
-        Key key;
-        RetrieveCompletionHandler completionHandler;
-    };
-    void dispatchReadOperation(const ReadOperation&);
+    struct ReadOperation;
+    void dispatchReadOperation(ReadOperation&);
     void dispatchPendingReadOperations();
-    void finishReadOperation(const ReadOperation&, std::unique_ptr<Record>);
+    void finishReadOperation(ReadOperation&);
 
-    struct WriteOperation {
-        Record record;
-        MappedBodyHandler mappedBodyHandler;
-    };
-    void dispatchWriteOperation(const WriteOperation&);
+    struct WriteOperation;
+    void dispatchWriteOperation(WriteOperation&);
     void dispatchPendingWriteOperations();
-    void finishWriteOperation(const WriteOperation&);
+    void finishWriteOperation(WriteOperation&);
 
-    Optional<BlobStorage::Blob> storeBodyAsBlob(const Record&, const MappedBodyHandler&);
+    Optional<BlobStorage::Blob> storeBodyAsBlob(WriteOperation&);
     Data encodeRecord(const Record&, Optional<BlobStorage::Blob>);
-    std::unique_ptr<Record> decodeRecord(const Data&, const Key&);
+    void readRecord(ReadOperation&, const Data&);
 
     void updateFileModificationTime(const String& path);
 
@@ -123,29 +123,31 @@ private:
 
     bool mayContain(const Key&) const;
 
-    void addToContentsFilter(const Key&);
+    void addToRecordFilter(const Key&);
 
     const String m_basePath;
     const String m_recordsPath;
 
     size_t m_capacity { std::numeric_limits<size_t>::max() };
-    size_t m_approximateSize { 0 };
+    size_t m_approximateRecordsSize { 0 };
 
     // 2^18 bit filter can support up to 26000 entries with false positive rate < 1%.
     using ContentsFilter = BloomFilter<18>;
-    std::unique_ptr<ContentsFilter> m_contentsFilter;
+    std::unique_ptr<ContentsFilter> m_recordFilter;
+    std::unique_ptr<ContentsFilter> m_bodyFilter;
 
     bool m_synchronizationInProgress { false };
     bool m_shrinkInProgress { false };
 
-    Vector<Key::HashType> m_contentsFilterHashesAddedDuringSynchronization;
+    Vector<Key::HashType> m_recordFilterHashesAddedDuringSynchronization;
+    Vector<Key::HashType> m_bodyFilterHashesAddedDuringSynchronization;
 
     static const int maximumRetrievePriority = 4;
-    Deque<std::unique_ptr<const ReadOperation>> m_pendingReadOperationsByPriority[maximumRetrievePriority + 1];
-    HashSet<std::unique_ptr<const ReadOperation>> m_activeReadOperations;
+    Deque<std::unique_ptr<ReadOperation>> m_pendingReadOperationsByPriority[maximumRetrievePriority + 1];
+    HashSet<std::unique_ptr<ReadOperation>> m_activeReadOperations;
 
-    Deque<std::unique_ptr<const WriteOperation>> m_pendingWriteOperations;
-    HashSet<std::unique_ptr<const WriteOperation>> m_activeWriteOperations;
+    Deque<std::unique_ptr<WriteOperation>> m_pendingWriteOperations;
+    HashSet<std::unique_ptr<WriteOperation>> m_activeWriteOperations;
 
     Ref<WorkQueue> m_ioQueue;
     Ref<WorkQueue> m_backgroundIOQueue;

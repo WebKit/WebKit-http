@@ -119,6 +119,7 @@
 #include "TextStream.h"
 #include "TransformationMatrix.h"
 #include "TranslateTransformOperation.h"
+#include "WheelEventTestTrigger.h"
 #include <stdio.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -250,7 +251,7 @@ private:
 
 void makeMatrixRenderable(TransformationMatrix& matrix, bool has3DRendering)
 {
-#if !ENABLE(3D_RENDERING)
+#if !ENABLE(3D_TRANSFORMS)
     UNUSED_PARAM(has3DRendering);
     matrix.makeAffine();
 #else
@@ -3075,6 +3076,10 @@ PassRefPtr<Scrollbar> RenderLayer::createScrollbar(ScrollbarOrientation orientat
     else {
         widget = Scrollbar::createNativeScrollbar(*this, orientation, RegularScrollbar);
         didAddScrollbar(widget.get(), orientation);
+        if (Page* page = renderer().frame().page()) {
+            if (page->expectsWheelEventTriggers())
+                scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
+        }
     }
     renderer().view().frameView().addChild(widget.get());
     return widget.release();
@@ -3750,8 +3755,8 @@ void RenderLayer::paint(GraphicsContext* context, const LayoutRect& damageRect, 
     LayerPaintingInfo paintingInfo(this, enclosingIntRect(damageRect), paintBehavior, subpixelAccumulation, subtreePaintRoot, &overlapTestRequests);
     paintLayer(context, paintingInfo, paintFlags);
 
-    for (auto it : overlapTestRequests)
-        it.key->setOverlapTestResult(false);
+    for (auto& widget : overlapTestRequests.keys())
+        widget->setOverlapTestResult(false);
 }
 
 void RenderLayer::paintOverlayScrollbars(GraphicsContext* context, const LayoutRect& damageRect, PaintBehavior paintBehavior, RenderObject* subtreePaintRoot)
@@ -3820,12 +3825,12 @@ static void performOverlapTests(OverlapTestRequestMap& overlapTestRequests, cons
 {
     Vector<OverlapTestRequestClient*> overlappedRequestClients;
     LayoutRect boundingBox = layer->boundingBox(rootLayer, layer->offsetFromAncestor(rootLayer));
-    for (auto it : overlapTestRequests) {
-        if (!boundingBox.intersects(it.value))
+    for (auto& request : overlapTestRequests) {
+        if (!boundingBox.intersects(request.value))
             continue;
 
-        it.key->setOverlapTestResult(true);
-        overlappedRequestClients.append(it.key);
+        request.key->setOverlapTestResult(true);
+        overlappedRequestClients.append(request.key);
     }
     for (auto client : overlappedRequestClients)
         overlapTestRequests.remove(client);
@@ -6693,7 +6698,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
 
     updateNeedsCompositedScrolling();
 
-    compositor().layerStyleChanged(*this, oldStyle);
+    compositor().layerStyleChanged(diff, *this, oldStyle);
 
     updateOrRemoveFilterEffectRenderer();
 
@@ -6881,7 +6886,7 @@ void RenderLayer::updateOrRemoveFilterEffectRenderer()
         filterRenderer->setFilterScale(renderer().frame().page()->deviceScaleFactor());
         RenderingMode renderingMode = renderer().frame().settings().acceleratedFiltersEnabled() ? Accelerated : Unaccelerated;
         filterRenderer->setRenderingMode(renderingMode);
-        filterInfo.setRenderer(filterRenderer.release());
+        filterInfo.setRenderer(WTF::move(filterRenderer));
         
         // We can optimize away code paths in other places if we know that there are no software filters.
         renderer().view().setHasSoftwareFilters(true);

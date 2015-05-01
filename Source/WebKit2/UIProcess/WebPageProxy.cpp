@@ -154,6 +154,7 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 #include <WebCore/MediaPlaybackTarget.h>
+#include <WebCore/WebMediaSessionManager.h>
 #endif
 
 // This controls what strategy we use for mouse wheel coalescing.
@@ -408,7 +409,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_configurationPreferenceValues(configuration.preferenceValues)
     , m_potentiallyChangedViewStateFlags(ViewState::NoFlags)
     , m_viewStateChangeWantsSynchronousReply(false)
-    , m_isPlayingAudio(false)
 {
     m_webProcessLifetimeTracker.addObserver(m_visitedLinkProvider);
     m_webProcessLifetimeTracker.addObserver(m_websiteDataStore);
@@ -3072,6 +3072,15 @@ void WebPageProxy::didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, cons
         m_pageClient.didFirstVisuallyNonEmptyLayoutForMainFrame();
 }
 
+void WebPageProxy::didLayoutForCustomContentProvider()
+{
+    LayoutMilestones milestones = DidFirstLayout | DidFirstVisuallyNonEmptyLayout | DidHitRelevantRepaintedObjectsAreaThreshold;
+    if (m_navigationClient)
+        m_navigationClient->renderingProgressDidChange(*this, milestones, nullptr);
+    else
+        m_loaderClient->didLayout(*this, milestones, nullptr);
+}
+
 void WebPageProxy::didLayout(uint32_t layoutMilestones, const UserData& userData)
 {
     if (m_navigationClient)
@@ -3637,7 +3646,7 @@ void WebPageProxy::pageDidScroll()
 {
     m_uiClient->pageDidScroll(this);
 #if PLATFORM(MAC)
-    m_pageClient.dismissContentRelativeChildWindows();
+    m_pageClient.dismissContentRelativeChildWindows(false);
 #endif
 }
 
@@ -3890,14 +3899,14 @@ void WebPageProxy::didGetImageForFindMatch(const ShareableBitmap::Handle& conten
     m_findMatchesClient.didGetImageForMatchResult(this, WebImage::create(ShareableBitmap::create(contentImageHandle)).get(), matchIndex);
 }
 
-void WebPageProxy::setTextIndicator(const TextIndicatorData& indicatorData, bool fadeOut)
+void WebPageProxy::setTextIndicator(const TextIndicatorData& indicatorData, uint64_t lifetime)
 {
-    m_pageClient.setTextIndicator(TextIndicator::create(indicatorData), fadeOut);
+    m_pageClient.setTextIndicator(*TextIndicator::create(indicatorData), static_cast<TextIndicatorLifetime>(lifetime));
 }
 
 void WebPageProxy::clearTextIndicator()
 {
-    m_pageClient.setTextIndicator(nullptr, false);
+    m_pageClient.clearTextIndicator();
 }
 
 void WebPageProxy::setTextIndicatorAnimationProgress(float progress)
@@ -3925,7 +3934,7 @@ void WebPageProxy::didFindStringMatches(const String& string, const Vector<Vecto
         matches.uncheckedAppend(API::Array::create(WTF::move(apiRects)));
     }
 
-    m_findMatchesClient.didFindStringMatches(this, string, API::Array::create(WTF::move(matches)).get(), firstIndexAfterSelection);
+    m_findMatchesClient.didFindStringMatches(this, string, API::Array::create(WTF::move(matches)).ptr(), firstIndexAfterSelection);
 }
 
 void WebPageProxy::didFailToFindString(const String& string)
@@ -4531,7 +4540,7 @@ void WebPageProxy::dataCallback(const IPC::DataReference& dataReference, uint64_
         return;
     }
 
-    callback->performCallbackWithReturnValue(API::Data::create(dataReference.data(), dataReference.size()).get());
+    callback->performCallbackWithReturnValue(API::Data::create(dataReference.data(), dataReference.size()).ptr());
 }
 
 void WebPageProxy::imageCallback(const ShareableBitmap::Handle& bitmapHandle, uint64_t callbackID)
@@ -4672,8 +4681,7 @@ void WebPageProxy::printFinishedCallback(const ResourceError& printError, uint64
         return;
     }
 
-    RefPtr<API::Error> error = API::Error::create(printError);
-    callback->performCallbackWithReturnValue(error.get());
+    callback->performCallbackWithReturnValue(API::Error::create(printError).ptr());
 }
 #endif
 
@@ -4819,6 +4827,10 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_layerTreeTransactionIdAtLastTouchStart = 0;
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+    m_pageClient.mediaSessionManager().removeAllPlaybackTargetPickerClients(*this);
+#endif
+
     CallbackBase::Error error;
     switch (resetStateReason) {
     case ResetStateReason::PageInvalidated:
@@ -4840,7 +4852,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
         editCommandVector[i]->invalidate();
 
     m_activePopupMenu = nullptr;
-    m_isPlayingAudio = false;
+    m_mediaState = MediaProducer::IsNotPlaying;
 }
 
 void WebPageProxy::resetStateAfterProcessExited()
@@ -5189,7 +5201,7 @@ void WebPageProxy::pageExtendedBackgroundColorDidChange(const Color& backgroundC
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void WebPageProxy::didFailToInitializePlugin(const String& mimeType, const String& frameURLString, const String& pageURLString)
 {
-    m_loaderClient->didFailToInitializePlugin(*this, createPluginInformationDictionary(mimeType, frameURLString, pageURLString).get());
+    m_loaderClient->didFailToInitializePlugin(*this, createPluginInformationDictionary(mimeType, frameURLString, pageURLString).ptr());
 }
 
 void WebPageProxy::didBlockInsecurePluginVersion(const String& mimeType, const String& pluginURLString, const String& frameURLString, const String& pageURLString, bool replacementObscured)
@@ -5343,9 +5355,8 @@ void WebPageProxy::savePDFToFileInDownloadsFolder(const String& suggestedFilenam
     if (!suggestedFilename.endsWith(".pdf", false))
         return;
 
-    RefPtr<API::Data> data = API::Data::create(dataReference.data(), dataReference.size());
-
-    saveDataToFileInDownloadsFolder(suggestedFilename, "application/pdf", originatingURLString, data.get());
+    saveDataToFileInDownloadsFolder(suggestedFilename, "application/pdf", originatingURLString,
+        API::Data::create(dataReference.data(), dataReference.size()).ptr());
 }
 
 void WebPageProxy::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
@@ -5650,13 +5661,17 @@ void WebPageProxy::navigationGestureSnapshotWasRemoved()
     m_isShowingNavigationGestureSnapshot = false;
 }
 
-void WebPageProxy::isPlayingMediaDidChange(WebCore::ChromeClient::MediaStateFlags state)
+void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state)
 {
-    bool isPlayingAudio = state & WebCore::ChromeClient::IsPlayingAudio;
-    if (m_isPlayingAudio == isPlayingAudio)
+    if (state == m_mediaState)
         return;
 
-    m_isPlayingAudio = isPlayingAudio;
+    MediaProducer::MediaStateFlags oldState = m_mediaState;
+    m_mediaState = state;
+
+    if ((oldState & MediaProducer::IsPlayingAudio) == (m_mediaState & MediaProducer::IsPlayingAudio))
+        return;
+
     m_uiClient->isPlayingAudioDidChange(*this);
 }
 
@@ -5729,51 +5744,62 @@ void WebPageProxy::handleAutoFillButtonClick(const UserData& userData)
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-
-WebCore::MediaPlaybackTargetPicker& WebPageProxy::devicePickerProxy()
+void WebPageProxy::addPlaybackTargetPickerClient(uint64_t contextId)
 {
-    if (!m_playbackTargetPicker)
-        m_playbackTargetPicker = m_pageClient.createPlaybackTargetPicker(this);
-
-    return *m_playbackTargetPicker.get();
+    m_pageClient.mediaSessionManager().addPlaybackTargetPickerClient(*this, contextId);
 }
 
-void WebPageProxy::showPlaybackTargetPicker(const WebCore::FloatRect& rect, bool hasVideo)
+void WebPageProxy::removePlaybackTargetPickerClient(uint64_t contextId)
 {
-    devicePickerProxy().showPlaybackTargetPicker(m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo);
+    m_pageClient.mediaSessionManager().removePlaybackTargetPickerClient(*this, contextId);
 }
 
-void WebPageProxy::startingMonitoringPlaybackTargets()
+void WebPageProxy::showPlaybackTargetPicker(uint64_t contextId, const WebCore::FloatRect& rect, bool hasVideo)
 {
-    devicePickerProxy().startingMonitoringPlaybackTargets();
+    m_pageClient.mediaSessionManager().showPlaybackTargetPicker(*this, contextId, m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo);
 }
 
-void WebPageProxy::stopMonitoringPlaybackTargets()
+void WebPageProxy::playbackTargetPickerClientStateDidChange(uint64_t contextId, WebCore::MediaProducer::MediaStateFlags state)
 {
-    devicePickerProxy().stopMonitoringPlaybackTargets();
+    m_pageClient.mediaSessionManager().clientStateDidChange(*this, contextId, state);
 }
 
-void WebPageProxy::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& target)
+void WebPageProxy::setPlaybackTarget(uint64_t contextId, Ref<MediaPlaybackTarget>&& target)
 {
     if (!isValid())
         return;
 
-    m_process->send(Messages::WebPage::PlaybackTargetSelected(target->targetContext()), m_pageID);
+    m_process->send(Messages::WebPage::PlaybackTargetSelected(contextId, target->targetContext()), m_pageID);
 }
 
-void WebPageProxy::externalOutputDeviceAvailableDidChange(bool available)
+void WebPageProxy::externalOutputDeviceAvailableDidChange(uint64_t contextId, bool available)
 {
     if (!isValid())
         return;
 
-    m_process->send(Messages::WebPage::PlaybackTargetAvailabilityDidChange(available), m_pageID);
+    m_process->send(Messages::WebPage::PlaybackTargetAvailabilityDidChange(contextId, available), m_pageID);
 }
 
+void WebPageProxy::setShouldPlayToPlaybackTarget(uint64_t contextId, bool shouldPlay)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetShouldPlayToPlaybackTarget(contextId, shouldPlay), m_pageID);
+}
 #endif
 
 void WebPageProxy::didChangeBackgroundColor()
 {
     m_pageClient.didChangeBackgroundColor();
+}
+
+void WebPageProxy::clearWheelEventTestTrigger()
+{
+    if (!isValid())
+        return;
+    
+    m_process->send(Messages::WebPage::ClearWheelEventTestTrigger(), m_pageID);
 }
 
 } // namespace WebKit

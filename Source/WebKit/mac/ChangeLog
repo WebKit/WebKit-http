@@ -1,3 +1,445 @@
+2015-04-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Use CTFontCreateForCSS instead of doing font search ourselves
+        https://bugs.webkit.org/show_bug.cgi?id=132159
+
+        Reviewed by Darin Adler.
+
+        Add SPI to set the font whitelist.
+
+        * WebView/WebView.mm:
+        (+[WebView _setFontWhitelist:]):
+        * WebView/WebViewPrivate.h:
+
+2015-04-28  Timothy Horton  <timothy_horton@apple.com>
+
+        [TextIndicator] Yellow highlight takes too long to fade out on scroll
+        https://bugs.webkit.org/show_bug.cgi?id=144358
+        <rdar://problem/19451011>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _showTextIndicator]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView quickLookWithEvent:]):
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _defaultAnimationController]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedText]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedLink]):
+        Pull _clearTextIndicatorWithAnimation out, make it avoid using a dismissal animation
+        if we're called from didHandleScrollWheel.
+
+        * WebView/WebView.mm:
+        (-[WebView _animationControllerForDictionaryLookupPopupInfo:]):
+        (-[WebView _setTextIndicator:]):
+        (-[WebView _setTextIndicator:withLifetime:]):
+        (-[WebView _clearTextIndicator]):
+        (-[WebView _showDictionaryLookupPopup:]):
+        (-[WebView _dictionaryLookupPopoverWillClose:]):
+        (-[WebView _setTextIndicator:fadeOut:]): Deleted.
+        * WebView/WebViewInternal.h:
+        Make _setTextIndicator take a reference.
+        Add a variant of _setTextIndicator that takes a Lifetime.
+        Make _clearTextIndicatorWithAnimation take a DismissalAnimation.
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        Define ENABLE_JIT, enabled by default, instead of ENABLE_LLINT_C_LOOP, disabled by default.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183514.
+        https://bugs.webkit.org/show_bug.cgi?id=144359
+
+        It broke cloop test bots (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT"
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+        http://trac.webkit.org/changeset/183514
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        Define ENABLE_JIT, enabled by default, instead of ENABLE_LLINT_C_LOOP, disabled by default.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-04-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix common typo "targetting" => "targeting"
+        https://bugs.webkit.org/show_bug.cgi?id=144349
+
+        Reviewed by Daniel Bates.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::loadRequest):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView loadRequest:inTarget:withNotifyData:sendNotification:]):
+        * WebView/WebPolicyDelegate.h:
+
+2015-04-28  Brady Eidson  <beidson@apple.com>
+
+        Consolidate most "frame load" arguments into FrameLoadRequest.
+        https://bugs.webkit.org/show_bug.cgi?id=144276
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2015-04-27  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/20721931> REGRESSION (r178753): All legacy framework headers are missing availability annotations
+        https://bugs.webkit.org/show_bug.cgi?id=144311
+
+        Reviewed by Adele Peterson.
+
+        * postprocess-headers.sh: Changed “macsox” to “macosx”.
+
+2015-04-27  Brady Eidson  <beidson@apple.com>
+
+        Make 'enum NavigationType' be an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=144270
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary):
+
+2015-04-27  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION(r182879): Images and video can no longer be downloaded
+        https://bugs.webkit.org/show_bug.cgi?id=144267
+        <rdar://problem/20702844>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _createActionMenuItemForTag:]): Check for
+        "!WebCore::protocolIs(..., "file")" for image and media downloads.
+
+2015-04-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement ES6 template literals
+        https://bugs.webkit.org/show_bug.cgi?id=142691
+
+        Reviewed by Darin Adler.
+
+        Add ENABLE_ES6_TEMPLATE_LITERAL_SYNTAX compile time flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-04-26  Doug Russell  <d_russell@apple.com>
+
+        AX: richer text change notifications (142719)
+        https://bugs.webkit.org/show_bug.cgi?id=142719
+
+        Reviewed by Darin Adler.
+
+        Richer accessibility value change notifications. Introduce AXTextEditType,
+        postTextStateChangeNotification and postTextReplacementNotification to give assistive
+        tech apps more reliable context for responding to changes in web content. Also implement
+        a mechanism to post value changes in password form fields in coalesced ticks to thwart
+        analyzing the cadence of changes.
+
+        Richer accessibility selection change notifications. Introduce AXTextStateChangeIntent,
+        and an overload of postTextReplacementNotification to give assistive tech apps more
+        reliable context for responding to changes in web content selection. Also block posting
+        selection changes on password fields.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2015-04-24  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove native window dock controls
+        https://bugs.webkit.org/show_bug.cgi?id=144184
+
+        Reviewed by Joseph Pecoraro.
+
+        * Resources/Dock.pdf: Removed.
+        * Resources/DockLegacy.pdf: Removed.
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController window]):
+        (-[WebInspectorWindowController setDockingUnavailable:]):
+
+2015-04-25  Martin Robinson  <mrobinson@igalia.com>
+
+        Rename ENABLE_3D_RENDERING to ENABLE_3D_TRANSFORMS
+        https://bugs.webkit.org/show_bug.cgi?id=144182
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+
+2015-04-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183266.
+        https://bugs.webkit.org/show_bug.cgi?id=144164
+
+        Broke 32-bit build and a test. (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "AX: richer text change notifications (142719)"
+        https://bugs.webkit.org/show_bug.cgi?id=142719
+        http://trac.webkit.org/changeset/183266
+
+2015-04-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Start cleaning up FontPlatformData
+        https://bugs.webkit.org/show_bug.cgi?id=144133
+
+        Reviewed by Enrica Casucci.
+
+        Receive casts which have been hoisted from the deleted FontPlatformData constructor.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _web_drawAtPoint:font:textColor:allowingFontSmoothing:]): Receive cast which has
+        been hoisted from the deleted FontPlatformData constructor.
+        (-[NSString _web_widthWithFont:]): Ditto.
+        * Misc/WebStringTruncator.mm:
+        (fontFromNSFont): Ditto.
+
+2015-04-24  Doug Russell  <d_russell@apple.com>
+
+        AX: richer text change notifications (142719)
+        https://bugs.webkit.org/show_bug.cgi?id=142719
+
+        Reviewed by Darin Adler.
+
+        Richer accessibility value change notifications. Introduce AXTextEditType, postTextStateChangeNotification and postTextReplacementNotification to give assistive tech apps more reliable context for responding to changes in web content. Also implement a mechanism to post value changes in password form fields in coalesced ticks to thwart analyzing the cadence of changes.
+
+        Richer accessibility selection change notifications. Introduce AXTextStateChangeIntent, and an overload of postTextReplacementNotification to give assistive tech apps more reliable context for responding to changes in web content selection. Also block posting selection changes on password fields.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2015-04-23  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Disable QTKit by default on future OS X.
+        https://bugs.webkit.org/show_bug.cgi?id=144082
+
+        Reviewed by Darin Adler.
+
+        Default WebKitQTKitEnabledPreferenceKey to NO.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2015-04-23  Andreas Kling  <akling@apple.com>
+
+        There should only be one way to get the system memory size.
+        <https://webkit.org/b/144081>
+
+        Reviewed by Antti Koivisto.
+
+        * Misc/WebKitSystemBits.h:
+        * Misc/WebKitSystemBits.m:
+        (WebMemorySize): Deleted.
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]):
+        (roundUpToPowerOf2): Deleted.
+
+2015-04-22  Darin Adler  <darin@apple.com>
+
+        Remove OwnPtr and PassOwnPtr use from WebKit/cf, WebKit/mac, and WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=143943
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/Hosted/ProxyInstance.h: Removed unneeded include.
+        * Plugins/WebBaseNetscapePluginView.h: Ditto.
+
+        * Plugins/WebNetscapePluginEventHandler.h: Use unique_ptr instead of
+        PassOwnPtr for the create function. Also tweaked formatting and removed
+        unneeded forward declaration of CGRect.
+        * Plugins/WebNetscapePluginEventHandler.mm:
+        (WebNetscapePluginEventHandler::create): Changed to use unique_ptr and
+        make_unique.
+
+        * Plugins/WebNetscapePluginView.h: Use unique_ptr instead of OwnPtr for
+        the _eventHandler field.
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView destroyPlugin]): Changed code to work with unique_ptr.
+
+        * WebCoreSupport/WebUserMediaClient.mm: Removed unneeded include.
+
+        * WebView/WebDeviceOrientationProviderMock.mm: Changed to use make_unique.
+        * WebView/WebDeviceOrientationProviderMockInternal.h: Changed to use unique_ptr.
+
+        * WebView/WebFrame.mm:
+        (vectorForDictationPhrasesArray): Changed to return Vector<Vector<String>> and
+        not a PassOwnPtr. Also rewrote to be much simpler, although there is still a
+        pre-existing problem here where this could put empty vectors into the result,
+        and I'm pretty sure the client never expects any of the Vector<String> to be empty.
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+        Rewrote logic to involve WebCore types a bit less; old code was round tripping
+        things through WebCore::URL for no obvious reason.
+
+        * WebView/WebFrameInternal.h: Changed vectorForDictationPhrasesArray to return
+        a Vector<Vector<String>> and not a PassOwnPtr.
+
+        * WebView/WebFullScreenController.h: Removed unneeded include.
+
+        * WebView/WebViewData.h: Changed m_alternativeTextUIController to be a
+        m_alternativeTextUIController.
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate init]): Use make_unique to initialize m_alternativeTextUIController.
+
+2015-04-22  Brent Fulgham  <bfulgham@apple.com>
+
+        VisibleSelection should only accept Range by reference
+        https://bugs.webkit.org/show_bug.cgi?id=144047
+
+        Reviewed by Tim Horton.
+
+        Update all uses of VisibleSelection to pass a Range reference instead
+        of a Range pointer.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _selectNSRange:]):
+
+2015-04-22  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Device picker menu is positioned incorrectly in WK1
+        https://bugs.webkit.org/show_bug.cgi?id=144049
+        <rdar://problem/20493101>
+
+        Reviewed by Dean Jackson.
+
+        * WebView/WebView.mm:
+        (-[WebView _showPlaybackTargetPicker:location:hasVideo:]): Mouse location is already in
+            window coordinates so don't call convertRect:toView:nil.
+
+2015-04-21  Brent Fulgham  <bfulgham@apple.com>
+
+        Extend action menus to support PDF
+        https://bugs.webkit.org/show_bug.cgi?id=143895
+        <rdar://problem/19003333>
+
+        Reviewed by Tim Horton.
+
+        Prevent a crash when someone attempts to invoke an action menu on a PDF hosted
+        in a WK1 view.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController performHitTestAtPoint:]): Handle WebPDFView as well as
+        the WebHTMLView case.
+        * WebView/WebDocument.h:
+        * WebView/WebHTMLView.h:
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _frame]):
+        * WebView/WebHTMLViewInternal.h:
+        * WebView/WebPDFView.h:
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView _frame]): Added.
+
+2015-04-22  Eric Carlson  <eric.carlson@apple.com>
+
+        Unreviewed post-review clean up after r183096.
+
+        * WebView/WebMediaPlaybackTargetPicker.h:
+
+2015-04-21  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Use one playback target for all web processes
+        https://bugs.webkit.org/show_bug.cgi?id=144009
+
+        Reviewed by Tim Horton.
+
+        Update to use WebMediaSessionManager for playback target management.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::addPlaybackTargetPickerClient):
+        (WebChromeClient::removePlaybackTargetPickerClient):
+        (WebChromeClient::showPlaybackTargetPicker):
+        (WebChromeClient::playbackTargetPickerClientStateDidChange):
+        (WebChromeClient::startingMonitoringPlaybackTargets): Deleted.
+        (WebChromeClient::stopMonitoringPlaybackTargets): Deleted.
+        * WebView/WebMediaPlaybackTargetPicker.h:
+        * WebView/WebMediaPlaybackTargetPicker.mm:
+        (WebMediaPlaybackTargetPicker::addPlaybackTargetPickerClient):
+        (WebMediaPlaybackTargetPicker::removePlaybackTargetPickerClient):
+        (WebMediaPlaybackTargetPicker::showPlaybackTargetPicker):
+        (WebMediaPlaybackTargetPicker::playbackTargetPickerClientStateDidChange):
+        (WebMediaPlaybackTargetPicker::setPlaybackTarget):
+        (WebMediaPlaybackTargetPicker::externalOutputDeviceAvailableDidChange):
+        (WebMediaPlaybackTargetPicker::setShouldPlayToPlaybackTarget):
+        (WebMediaPlaybackTargetPicker::invalidate):
+        (WebMediaPlaybackTargetPicker::startingMonitoringPlaybackTargets): Deleted.
+        (WebMediaPlaybackTargetPicker::stopMonitoringPlaybackTargets): Deleted.
+        (WebMediaPlaybackTargetPicker::didChoosePlaybackTarget): Deleted.
+        (WebMediaPlaybackTargetPicker::targetPicker): Deleted.
+        * WebView/WebView.mm:
+        (-[WebView _addPlaybackTargetPickerClient:]):
+        (-[WebView _removePlaybackTargetPickerClient:]):
+        (-[WebView _showPlaybackTargetPicker:location:hasVideo:]):
+        (-[WebView _playbackTargetPickerClientStateDidChange:state:]):
+        (-[WebView _showPlaybackTargetPicker:hasVideo:]): Deleted.
+        (-[WebView _startingMonitoringPlaybackTargets]): Deleted.
+        (-[WebView _stopMonitoringPlaybackTargets]): Deleted.
+        * WebView/WebViewInternal.h:
+
+2015-04-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Disable mixed content blocking for existing WebKit1 clients
+        https://bugs.webkit.org/show_bug.cgi?id=143955
+        rdar://problem/20177186
+
+        Reviewed by Oliver Hunt.
+
+        * Misc/WebKitVersionChecks.h:
+        * WebView/WebView.mm:
+        (shouldAllowInsecureContent):
+        (-[WebView _preferencesChanged:]):
+
+2015-04-20  Tim Horton  <timothy_horton@apple.com>
+
+        Implement immediate action support for tel: and mailto: URLs
+        https://bugs.webkit.org/show_bug.cgi?id=143916
+        <rdar://problem/19721711>
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _defaultAnimationController]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedText]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedLink]):
+        (-[WebImmediateActionController _menuItemForDataDetectedText]): Deleted.
+        * WebView/WebUIDelegatePrivate.h:
+        Add _animationControllerForDataDetectedLink and use it when
+        building immediate actions for tel: and mailto: links.
+
+2015-04-17  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION: SVG does not support link dragging
+        https://bugs.webkit.org/show_bug.cgi?id=141597
+
+        Reviewed by Darin Adler.
+
+        Write -[WebElementDictionary _isLiveLink] in terms of WebCore::isDraggableLink().
+
+        * Misc/WebElementDictionary.mm:
+        (-[WebElementDictionary _isLiveLink]):
+
 2015-04-16  Sam Weinig  <sam@webkit.org>
 
         Expose JavaScriptMarkupEnabled preference for WebKit1

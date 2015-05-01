@@ -91,6 +91,11 @@
     <branch repo="github.com" module="mrobinson/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.5"/>
   </autotools>
 
+  <autotools id="dicts"
+             skip-autogen="true">
+    <branch repo="github.com" module="mrobinson/webkitgtk-test-dicts.git" checkoutdir="webkitgtk-test-dicts" tag="0.0.1"/>
+  </autotools>
+
   <autotools id="freetype6" autogen-sh="configure">
     <branch module="freetype/freetype-2.4.11.tar.bz2" version="2.4.11"
             repo="savannah.gnu.org"
@@ -292,6 +297,7 @@
             repo="gstreamer"
             hash="sha256:49cd9e8f23c416b1607b43837a09833fa03e0106929d81ead2ddfde6c0ade44b"
             md5sum="0c42eca8f9e4efd56d2ce8e9249ce4a1">
+      <patch file="gst-plugins-base-rtp-rtcpbuffer-fix-typo-in-enum.patch" strip="1"/>
     </branch>
   </autotools>
 
@@ -354,11 +360,10 @@
   <autotools id="mesa" autogenargs="--enable-xlib-glx --disable-dri --with-gallium-drivers=swrast" skip-install="true">
     <!--- WARNING: At jhbuildrc, when we define the path to the Gallium llvmpipe software rasterizer (needed by XvfbDriver),
           we assume that the directory is named "Mesa". So, don't change the checkoutdir name even if you update the version.  -->
-    <branch module="/pub/mesa/10.2.1/MesaLib-10.2.1.tar.bz2" version="10.2.1"
+    <branch module="/pub/mesa/10.5.4/mesa-10.5.4.tar.xz" version="10.5.4"
             checkoutdir="Mesa"
             repo="ftp.freedesktop.org"
-            hash="sha256:461277909207da689d8152cfbf9e182ea6f70e1e672ab64c67df83725c8d2b54">
-      <patch file="mesa-gallivm-Fix-build-after-LLVM-commit-211259.patch" strip="1"/>
+            hash="sha256:b51e723f3a20d842c88a92d809435b229fc4744ca0dbec0317d9d4a3ac4c6803">
     </branch>
   </autotools>
 
@@ -381,12 +386,12 @@
     <branch repo="freedesktop-git" module="libnice/libnice.git" tag="0.1.10" checkoutdir="libnice"/>
   </autotools>
 
-  <autotools id="openwebrtc" autogenargs="--enable-bridge=no">
+  <autotools id="openwebrtc" autogenargs="--enable-bridge=no --enable-owr-gst=yes">
     <dependencies>
       <dep package="gst-plugins-openwebrtc"/>
       <dep package="libnice"/>
      </dependencies>
-    <branch repo="github.com" module="WebRTCinWebKit/openwebrtc.git" checkoutdir="openwebrtc" tag="configurable-sinks"/>
+    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="13516c7f79a0c48bb411464f7613d4b426c70f5b"/>
   </autotools>
 
 </moduleset>

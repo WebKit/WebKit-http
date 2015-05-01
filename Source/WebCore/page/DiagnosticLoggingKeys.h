@@ -66,6 +66,7 @@ public:
     static String mediaLoadingFailedKey();
     WEBCORE_EXPORT static String missingValidatorFieldsKey();
     static String navigationKey();
+    WEBCORE_EXPORT static String needsRevalidationKey();
     WEBCORE_EXPORT static String networkCacheKey();
     static String networkKey();
     WEBCORE_EXPORT static String neverSeenBeforeKey();
@@ -101,10 +102,11 @@ public:
     static String resourceResponseKey();
     WEBCORE_EXPORT static String retrievalKey();
     WEBCORE_EXPORT static String retrievalRequestKey();
-    static String revalidatingKey();
+    WEBCORE_EXPORT static String revalidatingKey();
     static String sameLoadKey();
     static String scriptKey();
     static String sourceKey();
+    WEBCORE_EXPORT static String streamingMedia();
     static String styleSheetKey();
     static String svgDocumentKey();
     WEBCORE_EXPORT static String uncacheableStatusCodeKey();

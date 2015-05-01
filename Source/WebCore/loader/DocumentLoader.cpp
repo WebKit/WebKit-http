@@ -140,7 +140,7 @@ DocumentLoader::DocumentLoader(const ResourceRequest& req, const SubstituteData&
     , m_dataLoadTimer(*this, &DocumentLoader::handleSubstituteDataLoadNow)
     , m_waitingForContentPolicy(false)
     , m_subresourceLoadersArePageCacheAcceptable(false)
-    , m_applicationCacheHost(adoptPtr(new ApplicationCacheHost(*this)))
+    , m_applicationCacheHost(std::make_unique<ApplicationCacheHost>(*this))
 #if ENABLE(CONTENT_FILTERING)
     , m_contentFilter(!substituteData.isValid() ? ContentFilter::createIfNeeded(std::bind(&DocumentLoader::contentFilterDidDecide, this)) : nullptr)
 #endif
@@ -832,11 +832,11 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
 
     for (auto& pendingStyleSheet : m_pendingNamedContentExtensionStyleSheets)
         styleSheetCollection.maybeAddContentExtensionSheet(pendingStyleSheet.key, *pendingStyleSheet.value);
-    for (auto& pendingStyleSheet : m_pendingUnnamedContentExtensionStyleSheets)
-        styleSheetCollection.addUserSheet(*pendingStyleSheet);
+    for (auto& pendingSelector : m_pendingContentExtensionDisplayNoneSelectors)
+        styleSheetCollection.addDisplayNoneSelector(pendingSelector.key, pendingSelector.value.first, pendingSelector.value.second);
 
     m_pendingNamedContentExtensionStyleSheets.clear();
-    m_pendingUnnamedContentExtensionStyleSheets.clear();
+    m_pendingContentExtensionDisplayNoneSelectors.clear();
 #endif
 
     ASSERT(m_frame->document()->parsing());
@@ -934,11 +934,6 @@ void DocumentLoader::clearMainResourceLoader()
 {
     m_loadingMainResource = false;
 
-#if PLATFORM(IOS)
-    // FIXME: Remove PLATFORM(IOS)-guard once we upstream the iOS changes to ResourceRequest.h.
-    m_request.deprecatedSetMainResourceRequest(false);
-#endif
-
     if (this == frameLoader()->activeDocumentLoader())
         checkLoadComplete();
 }
@@ -997,7 +992,7 @@ void DocumentLoader::setArchive(PassRefPtr<Archive> archive)
 void DocumentLoader::addAllArchiveResources(Archive* archive)
 {
     if (!m_archiveResourceCollection)
-        m_archiveResourceCollection = adoptPtr(new ArchiveResourceCollection);
+        m_archiveResourceCollection = std::make_unique<ArchiveResourceCollection>();
         
     ASSERT(archive);
     if (!archive)
@@ -1011,7 +1006,7 @@ void DocumentLoader::addAllArchiveResources(Archive* archive)
 void DocumentLoader::addArchiveResource(PassRefPtr<ArchiveResource> resource)
 {
     if (!m_archiveResourceCollection)
-        m_archiveResourceCollection = adoptPtr(new ArchiveResourceCollection);
+        m_archiveResourceCollection = std::make_unique<ArchiveResourceCollection>();
         
     ASSERT(resource);
     if (!resource)
@@ -1027,7 +1022,7 @@ PassRefPtr<Archive> DocumentLoader::popArchiveForSubframe(const String& frameNam
 
 void DocumentLoader::clearArchiveResources()
 {
-    m_archiveResourceCollection.clear();
+    m_archiveResourceCollection = nullptr;
     m_substituteResourceDeliveryTimer.stop();
 }
 
@@ -1403,12 +1398,11 @@ void DocumentLoader::startLoadingMainResource()
         return;
     }
 
-#if PLATFORM(IOS)
-    // FIXME: Remove PLATFORM(IOS)-guard once we upstream the iOS changes to ResourceRequest.h.
-    m_request.deprecatedSetMainResourceRequest(true);
-#endif
-
     ResourceRequest request(m_request);
+    request.setRequester(ResourceRequest::Requester::Main);
+    // If this is a reload the cache layer might have made the previous request conditional. DocumentLoader can't handle 304 responses itself.
+    request.makeUnconditional();
+
     static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, IncludeCertificateInfo);
     CachedResourceRequest cachedResourceRequest(request, mainResourceLoadOptions);
     cachedResourceRequest.setInitiator(*this);
@@ -1418,7 +1412,7 @@ void DocumentLoader::startLoadingMainResource()
         // If the load was aborted by clearing m_request, it's possible the ApplicationCacheHost
         // is now in a state where starting an empty load will be inconsistent. Replace it with
         // a new ApplicationCacheHost.
-        m_applicationCacheHost = adoptPtr(new ApplicationCacheHost(*this));
+        m_applicationCacheHost = std::make_unique<ApplicationCacheHost>(*this);
         maybeLoadEmpty();
         return;
     }
@@ -1558,10 +1552,10 @@ void DocumentLoader::addPendingContentExtensionSheet(const String& identifier, S
     m_pendingNamedContentExtensionStyleSheets.set(identifier, &sheet);
 }
 
-void DocumentLoader::addPendingContentExtensionSheet(StyleSheetContents& sheet)
+void DocumentLoader::addPendingContentExtensionDisplayNoneSelector(const String& identifier, const String& selector, uint32_t selectorID)
 {
     ASSERT(!m_gotFirstByte);
-    m_pendingUnnamedContentExtensionStyleSheets.add(&sheet);
+    m_pendingContentExtensionDisplayNoneSelectors.set(identifier, std::make_pair(selector, selectorID));
 }
 #endif
 

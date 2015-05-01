@@ -26,8 +26,7 @@
 #ifndef DictationCommandIOS_h
 #define DictationCommandIOS_h
 
-#include "CompositeEditCommand.h"
-
+#import "CompositeEditCommand.h"
 #import <wtf/RetainPtr.h>
 
 typedef struct objc_object *id;
@@ -36,19 +35,17 @@ namespace WebCore {
 
 class DictationCommandIOS : public CompositeEditCommand {
 public:
-    static Ref<DictationCommandIOS> create(Document& document, PassOwnPtr<Vector<Vector<String> > > dictationPhrase, RetainPtr<id> metadata)
+    static Ref<DictationCommandIOS> create(Document& document, Vector<Vector<String>>&& dictationPhrases, RetainPtr<id> metadata)
     {
-        return adoptRef(*new DictationCommandIOS(document, dictationPhrase, metadata));
+        return adoptRef(*new DictationCommandIOS(document, WTF::move(dictationPhrases), WTF::move(metadata)));
     }
-    
-    virtual ~DictationCommandIOS();
+
 private:
-    DictationCommandIOS(Document& document, PassOwnPtr<Vector<Vector<String> > > dictationPhrase, RetainPtr<id> metadata);
-    
-    virtual void doApply();
-    virtual EditAction editingAction() const { return EditActionDictation; }
-    
-    OwnPtr<Vector<Vector<String> > > m_dictationPhrases;
+    DictationCommandIOS(Document&, Vector<Vector<String>>&& dictationPhrases, RetainPtr<id> metadata);
+
+    virtual void doApply() override;
+
+    Vector<Vector<String>> m_dictationPhrases;
     RetainPtr<id> m_metadata;
 };
 

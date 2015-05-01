@@ -249,8 +249,6 @@ public:
         return static_cast<Instruction*>(returnAddress) - instructions().begin();
     }
 
-    bool isNumericCompareFunction() { return m_unlinkedCode->isNumericCompareFunction(); }
-
     unsigned numberOfInstructions() const { return m_instructions.size(); }
     RefCountedArray<Instruction>& instructions() { return m_instructions; }
     const RefCountedArray<Instruction>& instructions() const { return m_instructions; }
@@ -599,8 +597,6 @@ public:
     int numberOfFunctionDecls() { return m_functionDecls.size(); }
     FunctionExecutable* functionExpr(int index) { return m_functionExprs[index].get(); }
     
-    void jettisonFunctionDeclsAndExprs();
-
     RegExp* regexp(int index) const { return m_unlinkedCode->regexp(index); }
 
     unsigned numberOfConstantBuffers() const

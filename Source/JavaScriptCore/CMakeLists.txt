@@ -65,6 +65,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
     bytecode/BytecodeBasicBlock.cpp
+    bytecode/BytecodeIntrinsicRegistry.cpp
     bytecode/BytecodeLivenessAnalysis.cpp
     bytecode/CallEdge.cpp
     bytecode/CallLinkInfo.cpp
@@ -79,6 +80,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ConstantStructureCheck.cpp
     bytecode/DFGExitProfile.cpp
     bytecode/DeferredCompilationCallback.cpp
+    bytecode/DeferredSourceDump.cpp
     bytecode/ExecutionCounter.cpp
     bytecode/ExitKind.cpp
     bytecode/ExitingJITType.cpp
@@ -136,6 +138,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGCPSRethreadingPhase.cpp
     dfg/DFGCSEPhase.cpp
     dfg/DFGCapabilities.cpp
+    dfg/DFGCleanUpPhase.cpp
     dfg/DFGClobberSet.cpp
     dfg/DFGClobberize.cpp
     dfg/DFGCommon.cpp
@@ -155,6 +158,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGDominators.cpp
     dfg/DFGDriver.cpp
     dfg/DFGEdge.cpp
+    dfg/DFGEpoch.cpp
     dfg/DFGFailedFinalizer.cpp
     dfg/DFGFinalizer.cpp
     dfg/DFGFixupPhase.cpp
@@ -180,6 +184,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLoopPreHeaderCreationPhase.cpp
     dfg/DFGMayExit.cpp
     dfg/DFGMinifiedNode.cpp
+    dfg/DFGMovHintRemovalPhase.cpp
     dfg/DFGNaiveDominators.cpp
     dfg/DFGNaturalLoops.cpp
     dfg/DFGNode.cpp
@@ -198,8 +203,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGObjectAllocationSinkingPhase.cpp
     dfg/DFGObjectMaterializationData.cpp
     dfg/DFGOperations.cpp
-    dfg/DFGPhantomCanonicalizationPhase.cpp
-    dfg/DFGPhantomRemovalPhase.cpp
+    dfg/DFGPhantomInsertionPhase.cpp
     dfg/DFGPhase.cpp
     dfg/DFGPhiChildren.cpp
     dfg/DFGPlan.cpp
@@ -209,7 +213,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGPromotedHeapLocation.cpp
     dfg/DFGPureValue.cpp
     dfg/DFGPutStackSinkingPhase.cpp
-    dfg/DFGResurrectionForValidationPhase.cpp
     dfg/DFGSSACalculator.cpp
     dfg/DFGSSAConversionPhase.cpp
     dfg/DFGSSALoweringPhase.cpp
@@ -508,6 +511,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSTypedArrayPrototypes.cpp
     runtime/JSTypedArrays.cpp
     runtime/JSWeakMap.cpp
+    runtime/JSWeakSet.cpp
     runtime/JSWithScope.cpp
     runtime/JSWrapperObject.cpp
     runtime/LiteralParser.cpp
@@ -585,6 +589,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/WeakMapConstructor.cpp
     runtime/WeakMapData.cpp
     runtime/WeakMapPrototype.cpp
+    runtime/WeakSetConstructor.cpp
+    runtime/WeakSetPrototype.cpp
 )
 
 list(APPEND JavaScriptCore_SOURCES
@@ -1153,23 +1159,6 @@ if (WTF_CPU_ARM)
         assembler/ARMv7Assembler.cpp
         assembler/MacroAssemblerARM.cpp
     )
-    if (MSVC AND ENABLE_JIT)
-        add_custom_command(
-            OUTPUT ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.asm
-            MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/create_jit_stubs
-            DEPENDS ${JAVASCRIPTCORE_DIR}/jit/JITStubsARM.h
-            DEPENDS ${JAVASCRIPTCORE_DIR}/jit/JITStubs.cpp
-            COMMAND ${PERL_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/create_jit_stubs --prefix=MSVC --header ${JAVASCRIPTCORE_DIR}/jit/JITStubsARM.h ${JAVASCRIPTCORE_DIR}/jit/JITStubs.cpp > ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.asm
-            VERBATIM)
-
-        add_custom_command(
-            OUTPUT ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.obj
-            MAIN_DEPENDENCY ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.asm
-            COMMAND armasm -nologo ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.asm ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.obj
-            VERBATIM)
-
-        list(APPEND JavaScriptCore_SOURCES ${DERIVED_SOURCES_DIR}/GeneratedJITStubs.obj)
-    endif ()
 elseif (WTF_CPU_ARM64)
 elseif (WTF_CPU_HPPA)
 elseif (WTF_CPU_PPC)
@@ -1222,3 +1211,4 @@ endif ()
 if (ENABLE_FTL_JIT)
     add_dependencies(JavaScriptCore llvmForJSC)
 endif ()
+

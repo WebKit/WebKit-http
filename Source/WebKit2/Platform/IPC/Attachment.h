@@ -53,8 +53,11 @@ public:
 #if OS(DARWIN)
     Attachment(mach_port_name_t port, mach_msg_type_name_t disposition);
 #elif USE(UNIX_DOMAIN_SOCKETS)
+    Attachment(Attachment&&);
+    Attachment& operator=(Attachment&&);
     Attachment(int fileDescriptor, size_t);
     Attachment(int fileDescriptor);
+    ~Attachment();
 #endif
 
     Type type() const { return m_type; }
@@ -71,8 +74,6 @@ public:
 
     int releaseFileDescriptor() { int temp = m_fileDescriptor; m_fileDescriptor = -1; return temp; }
     int fileDescriptor() const { return m_fileDescriptor; }
-
-    void dispose();
 #endif
 
     void encode(ArgumentEncoder&) const;
@@ -85,7 +86,7 @@ private:
     mach_port_name_t m_port;
     mach_msg_type_name_t m_disposition;
 #elif USE(UNIX_DOMAIN_SOCKETS)
-    int m_fileDescriptor;
+    int m_fileDescriptor { -1 };
     size_t m_size;
 #endif
 };

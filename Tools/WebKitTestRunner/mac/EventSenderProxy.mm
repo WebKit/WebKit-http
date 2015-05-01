@@ -39,7 +39,7 @@
 - (void)_setCurrentEvent:(NSEvent *)event;
 @end
 
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
 @interface EventSenderPressureEvent : NSEvent {
 @public
     NSPoint _eventSender_locationInWindow;
@@ -116,7 +116,7 @@
 }
 
 @end
-#endif // __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#endif // defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
 
 namespace WTR {
 
@@ -279,7 +279,7 @@ void EventSenderProxy::mouseUp(unsigned buttonNumber, WKEventModifiers modifiers
     m_clickPosition = m_position;
 }
 
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
 void EventSenderProxy::mouseForceDown()
 {
     EventSenderPressureEvent *firstEvent = [[EventSenderPressureEvent alloc] initAtLocation:NSMakePoint(m_position.x, m_position.y)
@@ -386,7 +386,7 @@ void EventSenderProxy::mouseForceUp()
 void EventSenderProxy::mouseForceChanged(float)
 {
 }
-#endif // __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#endif // defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
 
 void EventSenderProxy::mouseMoveTo(double x, double y)
 {

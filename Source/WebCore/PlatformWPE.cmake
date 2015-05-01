@@ -55,7 +55,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/ImageCairo.cpp
     platform/graphics/cairo/IntRectCairo.cpp
-    platform/graphics/cairo/OwnPtrCairo.cpp
     platform/graphics/cairo/PathCairo.cpp
     platform/graphics/cairo/PatternCairo.cpp
     platform/graphics/cairo/PlatformContextCairo.cpp
@@ -220,7 +219,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${WEBP_INCLUDE_DIRS}
 )
 
-if (ENABLE_TEXTURE_MAPPER)
+if (WTF_USE_TEXTURE_MAPPER)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/texmap"
     )
@@ -248,7 +247,6 @@ if (ENABLE_THREADED_COMPOSITOR)
         page/scrolling/ScrollingThread.cpp
         page/scrolling/ScrollingTreeNode.cpp
         page/scrolling/ScrollingTreeScrollingNode.cpp
-        platform/graphics/TiledBackingStore.cpp
         platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
         platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
         platform/graphics/texmap/coordinated/AreaAllocator.cpp
@@ -257,6 +255,7 @@ if (ENABLE_THREADED_COMPOSITOR)
         platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
         platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
         platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+        platform/graphics/texmap/coordinated/TiledBackingStore.cpp
         platform/graphics/texmap/coordinated/UpdateAtlas.cpp
     )
 endif ()

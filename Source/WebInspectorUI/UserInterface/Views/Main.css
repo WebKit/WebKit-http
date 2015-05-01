@@ -57,24 +57,20 @@ body {
     tab-size: 4; /* FIXME: This should be controlled by a setting. <rdar://problem/10593948> */
 }
 
-body.mac-platform.legacy:not(.docked) {
-    background-color: transparent;
-}
-
 body.docked.bottom {
-    border-top: 1px solid rgb(179, 179, 179);
+    border-top: 1px solid rgb(200, 200, 200);
 }
 
 body.docked.right {
     border-left: 1px solid rgb(179, 179, 179);
 }
 
-body.docked.bottom.mac-platform.legacy {
-    border-top-color: rgb(85, 85, 85);
+body.window-inactive.docked.bottom {
+    border-top-color: rgb(219, 219, 219);
 }
 
-body.docked.right.mac-platform.legacy {
-    border-left-color: rgb(85, 85, 85);
+body.window-inactive.docked.right {
+    border-left-color: rgb(219, 219, 219);
 }
 
 #docked-resizer {
@@ -140,12 +136,16 @@ body.docked.right #navigation-sidebar.collapsed > .resizer {
     flex: 1;
 }
 
-#content-browser {
+#tab-browser {
     flex: 1;
 }
 
 #split-content-browser {
     border-top: 1px solid rgb(179, 179, 179);
+}
+
+body.window-inactive #split-content-browser {
+    border-top-color: rgb(219, 219, 219);
 }
 
 #split-content-browser > .navigation-bar {
@@ -154,12 +154,22 @@ body.docked.right #navigation-sidebar.collapsed > .resizer {
     background-color: rgb(242, 242, 242);
 }
 
-body.mac-platform.legacy #split-content-browser > .navigation-bar {
-    background-image: linear-gradient(to bottom, rgb(248, 248, 248), rgb(226, 226, 226));
-}
-
 #split-content-browser > .navigation-bar .item:not(.flexible-space) {
     cursor: default;
+}
+
+#split-content-browser .hierarchical-path-component.log-icon .icon {
+    margin-left: 6px;
+    margin-right: 6px;
+    opacity: 0.7;
+}
+
+#split-content-browser .hierarchical-path-component.log-icon .title {
+    color: rgba(0, 0, 0, 0.75);
+}
+
+#split-content-browser .hierarchical-path-component.log-icon select {
+    display: none;
 }
 
 #details-sidebar {

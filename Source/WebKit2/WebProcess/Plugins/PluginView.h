@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2012, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,10 +31,10 @@
 #include "Plugin.h"
 #include "PluginController.h"
 #include "WebFrame.h"
-#include <WebCore/AudioProducer.h>
 #include <WebCore/FindOptions.h>
 #include <WebCore/Image.h>
 #include <WebCore/MediaCanStartListener.h>
+#include <WebCore/MediaProducer.h>
 #include <WebCore/PluginViewBase.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceResponse.h>
@@ -46,19 +46,25 @@
 
 // FIXME: Eventually this should move to WebCore.
 
+#if PLATFORM(COCOA)
+#include "WebHitTestResult.h"
+
+OBJC_CLASS NSDictionary;
+OBJC_CLASS PDFSelection;
+#endif
+
 namespace WebCore {
 class Frame;
 class HTMLPlugInElement;
 class MachSendRight;
 class MouseEvent;
-class RenderBoxModelObject;
 }
 
 namespace WebKit {
 
 class WebEvent;
 
-class PluginView : public WebCore::PluginViewBase, public PluginController, private WebCore::MediaCanStartListener, private WebFrame::LoadListener, private WebCore::AudioProducer {
+class PluginView : public WebCore::PluginViewBase, public PluginController, private WebCore::MediaCanStartListener, private WebFrame::LoadListener, private WebCore::MediaProducer {
 public:
     static PassRefPtr<PluginView> create(PassRefPtr<WebCore::HTMLPlugInElement>, PassRefPtr<Plugin>, const Plugin::Parameters&);
 
@@ -86,10 +92,8 @@ public:
 
     WebCore::HTMLPlugInElement* pluginElement() const { return m_pluginElement.get(); }
     const Plugin::Parameters& initialParameters() const { return m_parameters; }
+    Plugin* plugin() const { return m_plugin.get(); }
 
-    // FIXME: Remove this; nobody should have to know about the plug-in view's renderer except the plug-in view itself.
-    WebCore::RenderBoxModelObject* renderer() const;
-    
     void setPageScaleFactor(double scaleFactor, WebCore::IntPoint origin);
     double pageScaleFactor() const;
     bool handlesPageScaleFactor() const;
@@ -111,6 +115,8 @@ public:
 
     PassRefPtr<WebCore::SharedBuffer> liveResourceData() const;
     bool performDictionaryLookupAtLocation(const WebCore::FloatPoint&);
+    String getSelectionForWordAtPoint(const WebCore::FloatPoint&) const;
+    bool existingSelectionContainsPoint(const WebCore::FloatPoint&) const;
     virtual WebCore::AudioHardwareActivityType audioHardwareActivity() const override;
 
 private:
@@ -181,8 +187,8 @@ private:
     // WebCore::MediaCanStartListener
     virtual void mediaCanStart() override;
 
-    // WebCore::AudioProducer
-    virtual bool isPlayingAudio() override { return m_pluginIsPlayingAudio; }
+    // WebCore::MediaProducer
+    virtual MediaProducer::MediaStateFlags mediaState() const override { return m_pluginIsPlayingAudio ? MediaProducer::IsPlayingAudio : MediaProducer::IsNotPlaying; }
     virtual void pageMutedStateDidChange() override;
 
     // PluginController

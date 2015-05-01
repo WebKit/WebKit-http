@@ -810,7 +810,7 @@ void WebPage::resetTrackedRepaints()
         view->resetTrackedRepaints();
 }
 
-PassRefPtr<API::Array> WebPage::trackedRepaintRects()
+Ref<API::Array> WebPage::trackedRepaintRects()
 {
     FrameView* view = mainFrameView();
     if (!view)
@@ -1210,13 +1210,13 @@ void WebPage::setSize(const WebCore::IntSize& viewSize)
     
     m_viewSize = viewSize;
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     if (view->useFixedLayout())
         sendViewportAttributesChanged();
 #endif
 }
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
 void WebPage::setFixedVisibleContentRect(const IntRect& rect)
 {
     ASSERT(m_useFixedLayout);
@@ -1491,7 +1491,7 @@ void WebPage::setUseFixedLayout(bool fixed)
     m_page->settings().setScrollingCoordinatorEnabled(fixed);
 #endif
 
-#if USE(TILED_BACKING_STORE) && ENABLE(SMOOTH_SCROLLING)
+#if USE(COORDINATED_GRAPHICS) && ENABLE(SMOOTH_SCROLLING)
     // Delegated scrolling will be enabled when the FrameView is created if fixed layout is enabled.
     // Ensure we don't do animated scrolling in the WebProcess in that case.
     m_page->settings().setScrollAnimatorEnabled(!fixed);
@@ -1501,7 +1501,7 @@ void WebPage::setUseFixedLayout(bool fixed)
     if (!view)
         return;
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     view->setDelegatesScrolling(fixed);
     view->setPaintsEntireContents(fixed);
 #endif
@@ -1785,7 +1785,7 @@ void WebPage::pageDidScroll()
     send(Messages::WebPageProxy::PageDidScroll());
 }
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
 void WebPage::pageDidRequestScroll(const IntPoint& point)
 {
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
@@ -2292,7 +2292,7 @@ void WebPage::setCanStartMediaTimerFired()
 
 inline bool WebPage::canHandleUserEvents() const
 {
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     // Should apply only if the area was frozen by didStartPageTransition().
     return !m_drawingArea->layerTreeStateIsFrozen();
 #endif
@@ -2398,9 +2398,7 @@ String WebPage::userAgent(const URL& webCoreURL) const
 String WebPage::userAgent(WebFrame* frame, const URL& webcoreURL) const
 {
     if (frame && m_loaderClient.client().userAgentForURL) {
-        RefPtr<API::URL> url = API::URL::create(webcoreURL);
-
-        API::String* apiString = m_loaderClient.userAgentForURL(frame, url.get());
+        API::String* apiString = m_loaderClient.userAgentForURL(frame, API::URL::create(webcoreURL).ptr());
         if (apiString)
             return apiString->string();
     }
@@ -4211,7 +4209,7 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
     if (replacementEditingRange.location != notFound) {
         RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
         if (replacementRange)
-            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+            frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
     }
     
     if (registerUndoGroup)
@@ -4301,7 +4299,8 @@ void WebPage::setCompositionAsync(const String& text, Vector<CompositionUnderlin
         RefPtr<Range> replacementRange;
         if (replacementEditingRange.location != notFound) {
             replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
-            frame.selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+            if (replacementRange)
+                frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
         }
 
         frame.editor().setComposition(text, underlines, selection.location, selection.location + selection.length);
@@ -4359,7 +4358,7 @@ void WebPage::confirmComposition(const String& compositionString, int64_t select
     ASSERT_WITH_MESSAGE(selectionRange, "Invalid selection: [%lld:%lld] in text of length %d", static_cast<long long>(selectionStart), static_cast<long long>(selectionLength), scope->innerText().length());
 
     if (selectionRange) {
-        VisibleSelection selection(selectionRange.get(), SEL_DEFAULT_AFFINITY);
+        VisibleSelection selection(*selectionRange, SEL_DEFAULT_AFFINITY);
         targetFrame->selection().setSelection(selection);
     }
     send(Messages::WebPageProxy::EditorStateChanged(editorState()));
@@ -4380,7 +4379,7 @@ void WebPage::setComposition(const String& text, const Vector<CompositionUnderli
         Element* scope = targetFrame->selection().selection().rootEditableElement();
         RefPtr<Range> replacementRange = TextIterator::rangeFromLocationAndLength(scope, replacementStart, replacementLength);
         targetFrame->editor().setIgnoreCompositionSelectionChange(true);
-        targetFrame->selection().setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+        targetFrame->selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
         targetFrame->editor().setIgnoreCompositionSelectionChange(false);
     }
 
@@ -4902,6 +4901,14 @@ void WebPage::postSynchronousMessage(const String& messageName, API::Object* mes
         returnData = nullptr;
     else
         returnData = webProcess.transformHandlesToObjects(returnUserData.object());
+}
+
+void WebPage::clearWheelEventTestTrigger()
+{
+    if (!m_page)
+        return;
+
+    m_page->clearTrigger();
 }
 
 } // namespace WebKit

@@ -782,6 +782,29 @@ void JIT::emitSlow_op_to_number(Instruction* currentInstruction, Vector<SlowCase
     slowPathCall.call();
 }
 
+void JIT::emit_op_to_string(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    int src = currentInstruction[2].u.operand;
+
+    emitLoad(src, regT1, regT0);
+
+    addSlowCase(branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag)));
+    addSlowCase(branch8(NotEqual, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+
+    if (src != dst)
+        emitStore(dst, regT1, regT0);
+}
+
+void JIT::emitSlow_op_to_string(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+{
+    linkSlowCase(iter); // Not JSCell.
+    linkSlowCase(iter); // Not JSString.
+
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_to_string);
+    slowPathCall.call();
+}
+
 void JIT::emit_op_push_name_scope(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -925,6 +948,7 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
     addSlowCase(branchTestPtr(Zero, rareDataReg));
     loadPtr(Address(rareDataReg, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()), allocatorReg);
     loadPtr(Address(rareDataReg, FunctionRareData::offsetOfAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()), structureReg);
+    addSlowCase(branchTestPtr(Zero, allocatorReg));
 
     emitAllocateJSObject(allocatorReg, structureReg, resultReg, scratchReg);
     emitStoreCell(currentInstruction[1].u.operand, resultReg);
@@ -932,6 +956,7 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
 
 void JIT::emitSlow_op_create_this(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
+    linkSlowCase(iter); // doesn't have rare data
     linkSlowCase(iter); // doesn't have an allocation profile
     linkSlowCase(iter); // allocation failed
 

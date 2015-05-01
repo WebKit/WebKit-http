@@ -1428,55 +1428,29 @@ void SpeculativeJIT::compileCurrentBlock()
         m_codeOriginForExitTarget = m_currentNode->origin.forExit;
         m_codeOriginForExitProfile = m_currentNode->origin.semantic;
         m_lastGeneratedNode = m_currentNode->op();
-        if (!m_currentNode->shouldGenerate()) {
-            switch (m_currentNode->op()) {
-            case JSConstant:
-                m_minifiedGraph->append(MinifiedNode::fromNode(m_currentNode));
-                break;
-                
-            case SetLocal:
-                RELEASE_ASSERT_NOT_REACHED();
-                break;
-                
-            case MovHint:
-                compileMovHint(m_currentNode);
-                break;
-                
-            case ZombieHint: {
-                recordSetLocal(m_currentNode->unlinkedLocal(), VirtualRegister(), DataFormatDead);
-                break;
-            }
-
-            default:
-                if (belongsInMinifiedGraph(m_currentNode->op()))
-                    m_minifiedGraph->append(MinifiedNode::fromNode(m_currentNode));
-                break;
-            }
-        } else {
-            
-            if (verboseCompilationEnabled()) {
-                dataLogF(
-                    "SpeculativeJIT generating Node @%d (bc#%u) at JIT offset 0x%x",
-                    (int)m_currentNode->index(),
-                    m_currentNode->origin.semantic.bytecodeIndex, m_jit.debugOffset());
-                dataLog("\n");
-            }
-            
-            compile(m_currentNode);
-
+        
+        ASSERT(m_currentNode->shouldGenerate());
+        
+        if (verboseCompilationEnabled()) {
+            dataLogF(
+                "SpeculativeJIT generating Node @%d (bc#%u) at JIT offset 0x%x",
+                (int)m_currentNode->index(),
+                m_currentNode->origin.semantic.bytecodeIndex, m_jit.debugOffset());
+            dataLog("\n");
+        }
+        
+        compile(m_currentNode);
+        
+        if (belongsInMinifiedGraph(m_currentNode->op()))
+            m_minifiedGraph->append(MinifiedNode::fromNode(m_currentNode));
+        
 #if ENABLE(DFG_REGISTER_ALLOCATION_VALIDATION)
-            m_jit.clearRegisterAllocationOffsets();
+        m_jit.clearRegisterAllocationOffsets();
 #endif
-
-            if (!m_compileOkay) {
-                bail(DFGBailedAtEndOfNode);
-                return;
-            }
-            
-            if (belongsInMinifiedGraph(m_currentNode->op())) {
-                m_minifiedGraph->append(MinifiedNode::fromNode(m_currentNode));
-                noticeOSRBirth(m_currentNode);
-            }
+        
+        if (!m_compileOkay) {
+            bail(DFGBailedAtEndOfNode);
+            return;
         }
         
         // Make sure that the abstract state is rematerialized for the next node.
@@ -2847,6 +2821,17 @@ void SpeculativeJIT::compileMakeRope(Node* node)
     cellResult(resultGPR, node);
 }
 
+void SpeculativeJIT::compileArithClz32(Node* node)
+{
+    ASSERT_WITH_MESSAGE(node->child1().useKind() == Int32Use || node->child1().useKind() == KnownInt32Use, "The Fixup phase should have enforced a Int32 operand.");
+    SpeculateInt32Operand value(this, node->child1());
+    GPRTemporary result(this, Reuse, value);
+    GPRReg valueReg = value.gpr();
+    GPRReg resultReg = result.gpr();
+    m_jit.countLeadingZeros32(valueReg, resultReg);
+    int32Result(resultReg, node);
+}
+
 void SpeculativeJIT::compileArithSub(Node* node)
 {
     switch (node->binaryUseKind()) {
@@ -4055,6 +4040,15 @@ void SpeculativeJIT::compileStringZeroLength(Node* node)
     unblessedBooleanResult(eqGPR, node);
 }
 
+void SpeculativeJIT::emitStringBranch(Edge nodeUse, BasicBlock* taken, BasicBlock* notTaken)
+{
+    SpeculateCellOperand str(this, nodeUse);
+    speculateString(nodeUse, str.gpr());
+    branchTest32(JITCompiler::NonZero, MacroAssembler::Address(str.gpr(), JSString::offsetOfLength()), taken);
+    jump(notTaken);
+    noResult(m_currentNode);
+}
+
 void SpeculativeJIT::compileConstantStoragePointer(Node* node)
 {
     GPRTemporary storage(this);
@@ -4362,18 +4356,54 @@ void SpeculativeJIT::compileGetArrayLength(Node* node)
 
 void SpeculativeJIT::compileNewFunction(Node* node)
 {
-    GPRFlushedCallResult result(this);
-    GPRReg resultGPR = result.gpr();
     SpeculateCellOperand scope(this, node->child1());
     GPRReg scopeGPR = scope.gpr();
-    flushRegisters();
+
     FunctionExecutable* executable = node->castOperand<FunctionExecutable*>();
-    J_JITOperation_EJscC function;
-    if (executable->singletonFunction()->isStillValid())
-        function = operationNewFunction;
-    else
-        function = operationNewFunctionWithInvalidatedReallocationWatchpoint;
-    callOperation(function, resultGPR, scopeGPR, executable);
+
+    if (executable->singletonFunction()->isStillValid()) {
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+
+        flushRegisters();
+
+        callOperation(operationNewFunction, resultGPR, scopeGPR, executable);
+        cellResult(resultGPR, node);
+        return;
+    }
+
+    Structure* structure = m_jit.graph().globalObjectFor(
+        node->origin.semantic)->functionStructure();
+
+    GPRTemporary result(this);
+    GPRTemporary scratch1(this);
+    GPRTemporary scratch2(this);
+    GPRReg resultGPR = result.gpr();
+    GPRReg scratch1GPR = scratch1.gpr();
+    GPRReg scratch2GPR = scratch2.gpr();
+
+    JITCompiler::JumpList slowPath;
+    emitAllocateJSObjectWithKnownSize<JSFunction>(
+        resultGPR, TrustedImmPtr(structure), TrustedImmPtr(0),
+        scratch1GPR, scratch2GPR, slowPath, JSFunction::allocationSize(0));
+
+    // Don't need a memory barriers since we just fast-created the function, so it
+    // must be young.
+    m_jit.storePtr(
+        scopeGPR,
+        JITCompiler::Address(resultGPR, JSFunction::offsetOfScopeChain()));
+    m_jit.storePtr(
+        TrustedImmPtr(executable),
+        JITCompiler::Address(resultGPR, JSFunction::offsetOfExecutable()));
+    m_jit.storePtr(
+        TrustedImmPtr(0),
+        JITCompiler::Address(resultGPR, JSFunction::offsetOfRareData()));
+
+
+    addSlowPathGenerator(
+        slowPathCall(
+            slowPath, this, operationNewFunctionWithInvalidatedReallocationWatchpoint, resultGPR, scopeGPR, executable));
+
     cellResult(resultGPR, node);
 }
 
@@ -5602,18 +5632,6 @@ void SpeculativeJIT::emitSwitchChar(Node* node, SwitchData* data)
         RELEASE_ASSERT_NOT_REACHED();
         break;
     }
-}
-
-bool SpeculativeJIT::StringSwitchCase::operator<(
-    const SpeculativeJIT::StringSwitchCase& other) const
-{
-    unsigned minLength = std::min(string->length(), other.string->length());
-    for (unsigned i = 0; i < minLength; ++i) {
-        if (string->at(i) == other.string->at(i))
-            continue;
-        return string->at(i) < other.string->at(i);
-    }
-    return string->length() < other.string->length();
 }
 
 namespace {

@@ -44,8 +44,8 @@ public:
     explicit HTMLMediaSession(MediaSessionClient&);
     virtual ~HTMLMediaSession() { }
 
-    void registerWithDocument(Document&);
-    void unregisterWithDocument(Document&);
+    void registerWithDocument(const HTMLMediaElement&);
+    void unregisterWithDocument(const HTMLMediaElement&);
 
     bool playbackPermitted(const HTMLMediaElement&) const;
     bool dataLoadingPermitted(const HTMLMediaElement&) const;
@@ -54,9 +54,8 @@ public:
     bool pageAllowsPlaybackAfterResuming(const HTMLMediaElement&) const;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    bool currentPlaybackTargetIsWireless(const HTMLMediaElement&) const;
-    bool currentPlaybackTargetIsSupported(const HTMLMediaElement&) const;
     void showPlaybackTargetPicker(const HTMLMediaElement&);
+    bool currentPlaybackTargetIsWireless(const HTMLMediaElement&) const;
     bool hasWirelessPlaybackTargets(const HTMLMediaElement&) const;
 
     bool wirelessVideoPlaybackDisabled(const HTMLMediaElement&) const;
@@ -66,15 +65,15 @@ public:
 
     virtual bool canPlayToWirelessPlaybackTarget() const override;
     virtual bool isPlayingToWirelessPlaybackTarget() const override;
-    virtual void startPlayingToPlaybackTarget() override;
-    virtual void stopPlayingToPlaybackTarget() override;
+
+    void mediaStateDidChange(const HTMLMediaElement&, MediaProducer::MediaStateFlags);
 #endif
 
     bool requiresFullscreenForVideoPlayback(const HTMLMediaElement&) const;
     WEBCORE_EXPORT bool allowsAlternateFullscreen(const HTMLMediaElement&) const;
     MediaPlayer::Preload effectivePreloadForElement(const HTMLMediaElement&) const;
 
-    void applyMediaPlayerRestrictions(const HTMLMediaElement&);
+    void mediaEngineUpdated(const HTMLMediaElement&);
 
     // Restrictions to modify default behaviors.
     enum BehaviorRestrictionFlags {
@@ -88,11 +87,13 @@ public:
         RequireUserGestureToShowPlaybackTargetPicker = 1 << 5,
         WirelessVideoPlaybackDisabled =  1 << 6,
 #endif
+        RequireUserGestureForAudioRateChange = 1 << 7,
     };
     typedef unsigned BehaviorRestrictions;
 
-    void addBehaviorRestriction(BehaviorRestrictions);
-    void removeBehaviorRestriction(BehaviorRestrictions);
+    WEBCORE_EXPORT BehaviorRestrictions behaviorRestrictions() const { return m_restrictions; }
+    WEBCORE_EXPORT void addBehaviorRestriction(BehaviorRestrictions);
+    WEBCORE_EXPORT void removeBehaviorRestriction(BehaviorRestrictions);
 
 #if ENABLE(MEDIA_SOURCE)
     size_t maximumMediaSourceBufferSize(const SourceBuffer&) const;
@@ -103,10 +104,13 @@ private:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void targetAvailabilityChangedTimerFired();
 
-    // MediaPlaybackTargetPickerClient
-    virtual void didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
-    virtual void externalOutputDeviceAvailableDidChange(bool) const override;
-    virtual bool requiresPlaybackTargetRouteMonitoring() const override;
+    // MediaPlaybackTargetClient
+    virtual void setPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
+    virtual void externalOutputDeviceAvailableDidChange(bool) override;
+    virtual void setShouldPlayToPlaybackTarget(bool) override;
+#endif
+#if PLATFORM(IOS)
+    bool requiresPlaybackTargetRouteMonitoring() const override { return m_hasPlaybackTargetAvailabilityListeners; }
 #endif
 
     BehaviorRestrictions m_restrictions;
@@ -114,8 +118,11 @@ private:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     mutable Timer m_targetAvailabilityChangedTimer;
     RefPtr<MediaPlaybackTarget> m_playbackTarget;
-    bool m_hasPlaybackTargetAvailabilityListeners { false };
+    bool m_shouldPlayToPlaybackTarget { false };
     mutable bool m_hasPlaybackTargets { false };
+#endif
+#if PLATFORM(IOS)
+    bool m_hasPlaybackTargetAvailabilityListeners { false };
 #endif
 };
 

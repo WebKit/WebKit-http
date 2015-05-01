@@ -49,7 +49,7 @@ public:
     ~AnimationController();
 
     void cancelAnimations(RenderElement&);
-    Ref<RenderStyle> updateAnimations(RenderElement&, Ref<RenderStyle>&& newStyle);
+    bool updateAnimations(RenderElement&, RenderStyle& newStyle, Ref<RenderStyle>& animatedStyle);
     PassRefPtr<RenderStyle> getAnimatedStyleForRenderer(RenderElement&);
 
     // If possible, compute the visual extent of any transform animation on the given renderer
@@ -87,6 +87,7 @@ public:
     static bool supportsAcceleratedAnimationOfProperty(CSSPropertyID);
 
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    bool wantsScrollUpdates() const;
     void scrollWasUpdated();
 #endif
 

@@ -24,7 +24,6 @@
 #include "OpenGLShims.h"
 #include <GL/glx.h>
 #include <cairo.h>
-#include <wtf/OwnPtr.h>
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #include <cairo-gl.h>
@@ -273,7 +272,7 @@ cairo_device_t* GLContextGLX::cairoDevice()
     return m_cairoDevice;
 }
 
-#if USE(3D_GRAPHICS)
+#if ENABLE(GRAPHICS_CONTEXT_3D)
 PlatformGraphicsContext3D GLContextGLX::platformContext()
 {
     return m_context;

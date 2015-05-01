@@ -1,13 +1,11 @@
 set(WTF_HEADERS
     ASCIICType.h
-    AVLTree.h
     Assertions.h
     Atomics.h
     Bag.h
     BagToHashMap.h
     BitVector.h
     Bitmap.h
-    BoundsCheckedPointer.h
     BumpPointerAllocator.h
     ByteOrder.h
     CompilationThread.h
@@ -56,8 +54,6 @@ set(WTF_HEADERS
     NumberOfCores.h
     OSAllocator.h
     OSRandomSource.h
-    OwnPtr.h
-    OwnPtrCommon.h
     PageAllocation.h
     PageBlock.h
     PageReservation.h
@@ -65,8 +61,6 @@ set(WTF_HEADERS
     ParallelJobsGeneric.h
     ParallelJobsLibdispatch.h
     ParallelJobsOpenMP.h
-    PassOwnPtr.h
-    PassRef.h
     PassRefPtr.h
     Platform.h
     PrintStream.h

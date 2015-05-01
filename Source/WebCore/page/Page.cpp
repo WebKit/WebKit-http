@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2006-2015  Apple Inc. All Rights Reserved.
  * Copyright (C) 2008 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  *
  * This library is free software; you can redistribute it and/or
@@ -214,7 +214,6 @@ Page::Page(PageConfiguration& pageConfiguration)
     , m_visitedLinkStore(*WTF::move(pageConfiguration.visitedLinkStore))
     , m_sessionID(SessionID::defaultSessionID())
     , m_isClosing(false)
-    , m_isPlayingAudio(false)
 {
     setTimerThrottlingEnabled(m_viewState & ViewState::IsVisuallyIdle);
 
@@ -370,18 +369,19 @@ String Page::synchronousScrollingReasonsAsText()
     return String();
 }
 
-Ref<ClientRectList> Page::nonFastScrollableRects(const Frame& frame)
+Ref<ClientRectList> Page::nonFastScrollableRects()
 {
     if (Document* document = m_mainFrame->document())
         document->updateLayout();
 
     Vector<IntRect> rects;
     if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-        rects = scrollingCoordinator->computeNonFastScrollableRegion(frame, IntPoint()).rects();
+        rects = scrollingCoordinator->absoluteNonFastScrollableRegion().rects();
 
     Vector<FloatQuad> quads(rects.size());
     for (size_t i = 0; i < rects.size(); ++i)
         quads[i] = FloatRect(rects[i]);
+
     return ClientRectList::create(quads);
 }
 
@@ -779,7 +779,7 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
 
             if (!view->delegatesScrolling())
                 view->setScrollPosition(origin);
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
             else
                 view->requestScrollPositionUpdate(origin);
 #endif
@@ -816,7 +816,7 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
 
         if (!view->delegatesScrolling())
             view->setScrollPosition(origin);
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
         else
             view->requestScrollPositionUpdate(origin);
 #endif
@@ -1199,20 +1199,17 @@ void Page::enableLegacyPrivateBrowsing(bool privateBrowsingEnabled)
 
 void Page::updateIsPlayingMedia()
 {
-    bool isPlayingAudio = false;
+    MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (frame->document()->isPlayingAudio()) {
-            isPlayingAudio = true;
-            break;
-        }
+        state |= frame->document()->mediaState();
     }
 
-    if (isPlayingAudio == m_isPlayingAudio)
+    if (state == m_mediaState)
         return;
 
-    m_isPlayingAudio = isPlayingAudio;
+    m_mediaState = state;
 
-    chrome().client().isPlayingMediaDidChange(m_isPlayingAudio ? ChromeClient::IsPlayingAudio : ChromeClient::IsNotPlaying);
+    chrome().client().isPlayingMediaDidChange(state);
 }
 
 void Page::setMuted(bool muted)
@@ -1682,54 +1679,73 @@ void Page::setSessionID(SessionID sessionID)
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-RefPtr<MediaPlaybackTarget> Page::playbackTarget() const
+void Page::addPlaybackTargetPickerClient(uint64_t contextId)
 {
-    if (!m_playbackTarget)
-        return nullptr;
-
-    return m_playbackTarget.copyRef();
+    chrome().client().addPlaybackTargetPickerClient(contextId);
 }
 
-void Page::showPlaybackTargetPicker(const WebCore::IntPoint& location, bool isVideo)
+void Page::removePlaybackTargetPickerClient(uint64_t contextId)
+{
+    chrome().client().removePlaybackTargetPickerClient(contextId);
+}
+
+void Page::showPlaybackTargetPicker(uint64_t contextId, const WebCore::IntPoint& location, bool isVideo)
 {
 #if PLATFORM(IOS)
     // FIXME: refactor iOS implementation.
+    UNUSED_PARAM(contextId);
     UNUSED_PARAM(location);
     chrome().client().showPlaybackTargetPicker(isVideo);
 #else
-    chrome().client().showPlaybackTargetPicker(location, isVideo);
+    chrome().client().showPlaybackTargetPicker(contextId, location, isVideo);
 #endif
 }
 
-void Page::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& target)
+void Page::playbackTargetPickerClientStateDidChange(uint64_t contextId, MediaProducer::MediaStateFlags state)
 {
-    m_playbackTarget = WTF::move(target);
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
-        frame->document()->didChoosePlaybackTarget(*m_playbackTarget.copyRef());
+    chrome().client().playbackTargetPickerClientStateDidChange(contextId, state);
 }
 
-void Page::playbackTargetAvailabilityDidChange(bool available)
+void Page::setPlaybackTarget(uint64_t contextId, Ref<MediaPlaybackTarget>&& target)
 {
-    m_hasWirelessPlaybackTarget = available;
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
-        frame->document()->playbackTargetAvailabilityDidChange(available);
+        frame->document()->setPlaybackTarget(contextId, target.copyRef());
 }
 
-void Page::configurePlaybackTargetMonitoring()
+void Page::playbackTargetAvailabilityDidChange(uint64_t contextId, bool available)
 {
-    bool monitoringRequired = false;
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (frame->document()->requiresPlaybackTargetRouteMonitoring()) {
-            monitoringRequired = true;
-            break;
-        }
-    }
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
+        frame->document()->playbackTargetAvailabilityDidChange(contextId, available);
+}
 
-    if (monitoringRequired)
-        chrome().client().startingMonitoringPlaybackTargets();
-    else
-        chrome().client().stopMonitoringPlaybackTargets();
+void Page::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
+{
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
+        frame->document()->setShouldPlayToPlaybackTarget(clientId, shouldPlay);
 }
 #endif
+
+RefPtr<WheelEventTestTrigger> Page::testTrigger() const
+{
+    return m_testTrigger;
+}
+
+WheelEventTestTrigger& Page::ensureTestTrigger()
+{
+    if (!m_testTrigger)
+        m_testTrigger = adoptRef(new WheelEventTestTrigger());
+
+    return *m_testTrigger;
+}
+
+void Page::clearTrigger()
+{
+    m_testTrigger = nullptr;
+}
+
+bool Page::expectsWheelEventTriggers() const
+{
+    return !!m_testTrigger;
+}
 
 } // namespace WebCore

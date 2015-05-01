@@ -75,7 +75,6 @@ class Worklist;
 
 static void* const zombifiedBits = reinterpret_cast<void*>(0xdeadbeef);
 
-typedef std::pair<JSValue, WTF::String> ValueStringPair;
 typedef HashCountedSet<JSCell*> ProtectCountSet;
 typedef HashCountedSet<const char*> TypeCountSet;
 
@@ -118,6 +117,7 @@ public:
 
     VM* vm() const { return m_vm; }
     MarkedSpace& objectSpace() { return m_objectSpace; }
+    CopiedSpace& storageSpace() { return m_storageSpace; }
     MachineThreads& machineThreads() { return m_machineThreads; }
 
     const SlotVisitor& slotVisitor() const { return m_slotVisitor; }
@@ -184,9 +184,6 @@ public:
     JS_EXPORT_PRIVATE std::unique_ptr<TypeCountSet> protectedObjectTypeCounts();
     JS_EXPORT_PRIVATE std::unique_ptr<TypeCountSet> objectTypeCounts();
     void showStatistics();
-
-    void pushTempSortVector(Vector<ValueStringPair, 0, UnsafeVectorOverflow>*);
-    void popTempSortVector(Vector<ValueStringPair, 0, UnsafeVectorOverflow>*);
 
     HashSet<MarkedArgumentBuffer*>& markListSet();
     
@@ -299,7 +296,6 @@ private:
     void visitCompilerWorklistWeakReferences();
     void removeDeadCompilerWorklistEntries();
     void visitProtectedObjects(HeapRootVisitor&);
-    void visitTempSortVectors(HeapRootVisitor&);
     void visitArgumentBuffers(HeapRootVisitor&);
     void visitException(HeapRootVisitor&);
     void visitStrongHandles(HeapRootVisitor&);
@@ -370,7 +366,6 @@ private:
     HashSet<const JSCell*> m_copyingRememberedSet;
 
     ProtectCountSet m_protectedValues;
-    Vector<Vector<ValueStringPair, 0, UnsafeVectorOverflow>*> m_tempSortingVectors;
     std::unique_ptr<HashSet<MarkedArgumentBuffer*>> m_markListSet;
 
     MachineThreads m_machineThreads;

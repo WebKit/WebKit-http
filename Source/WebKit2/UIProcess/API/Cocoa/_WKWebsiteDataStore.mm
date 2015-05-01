@@ -24,23 +24,85 @@
  */
 
 #import "config.h"
-#import "_WKWebsiteDataStore.h"
+#import "_WKWebsiteDataStoreInternal.h"
 
 #if WK_API_ENABLED
+
+#import <wtf/RetainPtr.h>
+
+typedef NS_OPTIONS(NSUInteger, _WKWebsiteDataTypes) {
+    _WKWebsiteDataTypeCookies = 1 << 0,
+    _WKWebsiteDataTypeDiskCache = 1 << 1,
+    _WKWebsiteDataTypeMemoryCache = 1 << 2,
+    _WKWebsiteDataTypeOfflineWebApplicationCache = 1 << 3,
+
+    _WKWebsiteDataTypeLocalStorage = 1 << 4,
+    _WKWebsiteDataTypeWebSQLDatabases = 1 << 5,
+};
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 @implementation _WKWebsiteDataStore
 
+- (instancetype)initWithDataStore:(WKWebsiteDataStore *)dataStore
+{
+    if (!(self = [super init]))
+        return nil;
+
+    _dataStore = dataStore;
+
+    return self;
+}
+
+static RetainPtr<NSSet> toWKWebsiteDataTypes(_WKWebsiteDataTypes websiteDataTypes)
+{
+    auto wkWebsiteDataTypes = adoptNS([[NSMutableSet alloc] init]);
+
+    if (websiteDataTypes & _WKWebsiteDataTypeCookies)
+        [wkWebsiteDataTypes addObject:WKWebsiteDataTypeCookies];
+    if (websiteDataTypes & _WKWebsiteDataTypeDiskCache)
+        [wkWebsiteDataTypes addObject:WKWebsiteDataTypeDiskCache];
+    if (websiteDataTypes & _WKWebsiteDataTypeMemoryCache)
+        [wkWebsiteDataTypes addObject:WKWebsiteDataTypeMemoryCache];
+    if (websiteDataTypes & _WKWebsiteDataTypeOfflineWebApplicationCache)
+        [wkWebsiteDataTypes addObject:WKWebsiteDataTypeOfflineWebApplicationCache];
+    if (websiteDataTypes & _WKWebsiteDataTypeLocalStorage)
+        [wkWebsiteDataTypes addObject:WKWebsiteDataTypeLocalStorage];
+    if (websiteDataTypes & _WKWebsiteDataTypeWebSQLDatabases)
+        [wkWebsiteDataTypes addObject:WKWebsiteDataTypeWebSQLDatabases];
+
+    return wkWebsiteDataTypes;
+}
+
 + (_WKWebsiteDataStore *)defaultDataStore
 {
-    return (_WKWebsiteDataStore *)[WKWebsiteDataStore defaultDataStore];
+    return adoptNS([[_WKWebsiteDataStore alloc] initWithDataStore:[WKWebsiteDataStore defaultDataStore]]).autorelease();
 }
 
 + (_WKWebsiteDataStore *)nonPersistentDataStore
 {
-    return (_WKWebsiteDataStore *)[WKWebsiteDataStore nonPersistentDataStore];
+    return adoptNS([[_WKWebsiteDataStore alloc] initWithDataStore:[WKWebsiteDataStore nonPersistentDataStore]]).autorelease();
+}
+
+- (BOOL)isNonPersistent
+{
+    return ![_dataStore isPersistent];
+}
+
+- (void)fetchDataRecordsOfTypes:(WKWebsiteDataTypes)websiteDataTypes completionHandler:(void (^)(NSArray *))completionHandler
+{
+    [_dataStore fetchDataRecordsOfTypes:toWKWebsiteDataTypes(websiteDataTypes).get() completionHandler:completionHandler];
+}
+
+- (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes forDataRecords:(NSArray *)dataRecords completionHandler:(void (^)(void))completionHandler
+{
+    [_dataStore removeDataOfTypes:toWKWebsiteDataTypes(websiteDataTypes).get() forDataRecords:dataRecords completionHandler:completionHandler];
+}
+
+- (void)removeDataOfTypes:(WKWebsiteDataTypes)websiteDataTypes modifiedSince:(NSDate *)date completionHandler:(void (^)(void))completionHandler
+{
+    [_dataStore removeDataOfTypes:toWKWebsiteDataTypes(websiteDataTypes).get() modifiedSince:date completionHandler:completionHandler];
 }
 
 @end

@@ -103,6 +103,11 @@ String DiagnosticLoggingKeys::navigationKey()
     return ASCIILiteral("navigation");
 }
 
+String DiagnosticLoggingKeys::needsRevalidationKey()
+{
+    return ASCIILiteral("needsRevalidation");
+}
+
 String DiagnosticLoggingKeys::networkCacheKey()
 {
     return ASCIILiteral("networkCache");
@@ -366,6 +371,11 @@ String DiagnosticLoggingKeys::scriptKey()
 String DiagnosticLoggingKeys::sourceKey()
 {
     return ASCIILiteral("sourceKey");
+}
+
+String DiagnosticLoggingKeys::streamingMedia()
+{
+    return ASCIILiteral("streamingMedia");
 }
 
 String DiagnosticLoggingKeys::styleSheetKey()

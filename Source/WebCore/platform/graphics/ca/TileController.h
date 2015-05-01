@@ -79,6 +79,7 @@ public:
     WEBCORE_EXPORT void setTileDebugBorderColor(Color);
 
     virtual FloatRect visibleRect() const override { return m_visibleRect; }
+    virtual FloatRect coverageRect() const override { return m_coverageRect; }
 
     unsigned blankPixelCount() const;
     static unsigned blankPixelCountForTiles(const PlatformLayerList&, const FloatRect&, const IntPoint&);
@@ -105,14 +106,12 @@ public:
     virtual int leftMarginWidth() const override;
     virtual int rightMarginWidth() const override;
     virtual TileCoverage tileCoverage() const override { return m_tileCoverage; }
+    virtual FloatRect computeTileCoverageRect(const FloatSize& newSize, const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect) const override;
     virtual bool unparentsOffscreenTiles() const override { return m_unparentsOffscreenTiles; }
     virtual bool scrollingPerformanceLoggingEnabled() const override { return m_scrollingPerformanceLoggingEnabled; }
 
-    FloatRect computeTileCoverageRect(const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect) const;
-
     IntRect boundsAtLastRevalidate() const { return m_boundsAtLastRevalidate; }
     IntRect boundsAtLastRevalidateWithoutMargin() const;
-    FloatRect visibleRectAtLastRevalidate() const { return m_visibleRectAtLastRevalidate; }
     void didRevalidateTiles();
 
     bool shouldAggressivelyRetainTiles() const;
@@ -136,9 +135,11 @@ private:
 
     // TiledBacking member functions.
     virtual void setVisibleRect(const FloatRect&) override;
-    virtual bool tilesWouldChangeForVisibleRect(const FloatRect&) const override;
+    virtual void setCoverageRect(const FloatRect&) override;
+    virtual bool tilesWouldChangeForCoverageRect(const FloatRect&) const override;
     virtual void setTiledScrollingIndicatorPosition(const FloatPoint&) override;
     virtual void setTopContentInset(float) override;
+    virtual void setVelocity(const VelocityData&) override;
     virtual void prepopulateRect(const FloatRect&) override;
     virtual void setIsInWindow(bool) override;
     virtual void setTileCoverage(TileCoverage) override;
@@ -157,10 +158,10 @@ private:
     virtual void setZoomedOutContentsScale(float) override;
     virtual float zoomedOutContentsScale() const override;
 
-
     void tileRevalidationTimerFired();
-
     void setNeedsRevalidateTiles();
+    
+    IntRect boundsForSize(const FloatSize&) const;
 
     PlatformCALayerClient* owningGraphicsLayer() const { return m_tileCacheLayer->owner(); }
 
@@ -172,8 +173,8 @@ private:
     std::unique_ptr<TileGrid> m_zoomedOutTileGrid;
 
     IntSize m_tileSize;
-    FloatRect m_visibleRect;
-    FloatRect m_visibleRectAtLastRevalidate;
+    FloatRect m_visibleRect; // Only used for scroll performance logging.
+    FloatRect m_coverageRect;
     IntRect m_boundsAtLastRevalidate;
 
     Timer m_tileRevalidationTimer;
@@ -182,6 +183,8 @@ private:
     float m_deviceScaleFactor;
 
     TileCoverage m_tileCoverage;
+    
+    VelocityData m_velocity;
 
     // m_marginTop and m_marginBottom are the height in pixels of the top and bottom margin tiles. The width
     // of those tiles will be equivalent to the width of the other tiles in the grid. m_marginRight and

@@ -178,7 +178,8 @@ private:
         case BitRShift:
         case BitLShift:
         case BitURShift:
-        case ArithIMul: {
+        case ArithIMul:
+        case ArithClz32: {
             changed |= setPrediction(SpecInt32);
             break;
         }
@@ -378,7 +379,7 @@ private:
         }
 
         case TypeOf: {
-            changed |= setPrediction(SpecString);
+            changed |= setPrediction(SpecStringIdent);
             break;
         }
 
@@ -390,7 +391,7 @@ private:
                 m_graph, node,
                 node->child1()->prediction(),
                 node->child2()->prediction(),
-                SpecNone, node->flags());
+                SpecNone);
             
             switch (arrayMode.type()) {
             case Array::Double:
@@ -534,7 +535,6 @@ private:
         case InvalidationPoint:
         case CheckInBounds:
         case ValueToInt32:
-        case HardPhantom:
         case DoubleRep:
         case ValueRep:
         case Int52Rep:
@@ -542,6 +542,7 @@ private:
         case Identity:
         case BooleanToNumber:
         case PhantomNewObject:
+        case PhantomNewFunction:
         case PhantomDirectArguments:
         case PhantomClonedArguments:
         case GetMyArgumentByVal:
@@ -637,7 +638,6 @@ private:
         case CheckBadCell:
         case PutStructure:
         case VarInjectionWatchpoint:
-        case AllocationProfileWatchpoint:
         case Phantom:
         case Check:
         case PutGlobalVar:

@@ -36,6 +36,7 @@
 #include "FrameView.h"
 #include "HTMLMediaElement.h"
 #include "HTMLNames.h"
+#include "HTMLVideoElement.h"
 #include "Logging.h"
 #include "MediaSessionManager.h"
 #include "Page.h"
@@ -50,13 +51,20 @@
 namespace WebCore {
 
 #if !LOG_DISABLED
-static const char* restrictionName(HTMLMediaSession::BehaviorRestrictions restriction)
+static String restrictionName(HTMLMediaSession::BehaviorRestrictions restriction)
 {
-#define CASE(restriction) case HTMLMediaSession::restriction: return #restriction
-    switch (restriction) {
+    StringBuilder restrictionBuilder;
+#define CASE(restrictionType) \
+    if (restriction & HTMLMediaSession::restrictionType) { \
+        if (!restrictionBuilder.isEmpty()) \
+            restrictionBuilder.append(", "); \
+        restrictionBuilder.append(#restrictionType); \
+    } \
+
     CASE(NoRestrictions);
     CASE(RequireUserGestureForLoad);
     CASE(RequireUserGestureForRateChange);
+    CASE(RequireUserGestureForAudioRateChange);
     CASE(RequireUserGestureForFullscreen);
     CASE(RequirePageConsentToLoadMedia);
     CASE(RequirePageConsentToResumeMedia);
@@ -64,10 +72,9 @@ static const char* restrictionName(HTMLMediaSession::BehaviorRestrictions restri
     CASE(RequireUserGestureToShowPlaybackTargetPicker);
     CASE(WirelessVideoPlaybackDisabled);
 #endif
-    }
+    CASE(RequireUserGestureForAudioRateChange);
 
-    ASSERT_NOT_REACHED();
-    return "";
+    return restrictionBuilder.toString();
 }
 #endif
 
@@ -80,39 +87,44 @@ HTMLMediaSession::HTMLMediaSession(MediaSessionClient& client)
 {
 }
 
-void HTMLMediaSession::registerWithDocument(Document& document)
+void HTMLMediaSession::registerWithDocument(const HTMLMediaElement& element)
 {
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    document.addPlaybackTargetPickerClient(*this);
+    element.document().addPlaybackTargetPickerClient(*this);
 #else
-    UNUSED_PARAM(document);
+    UNUSED_PARAM(element);
 #endif
 }
 
-void HTMLMediaSession::unregisterWithDocument(Document& document)
+void HTMLMediaSession::unregisterWithDocument(const HTMLMediaElement& element)
 {
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    document.removePlaybackTargetPickerClient(*this);
+    element.document().removePlaybackTargetPickerClient(*this);
 #else
-    UNUSED_PARAM(document);
+    UNUSED_PARAM(element);
 #endif
 }
 
 void HTMLMediaSession::addBehaviorRestriction(BehaviorRestrictions restriction)
 {
-    LOG(Media, "HTMLMediaSession::addBehaviorRestriction - adding %s", restrictionName(restriction));
+    LOG(Media, "HTMLMediaSession::addBehaviorRestriction - adding %s", restrictionName(restriction).utf8().data());
     m_restrictions |= restriction;
 }
 
 void HTMLMediaSession::removeBehaviorRestriction(BehaviorRestrictions restriction)
 {
-    LOG(Media, "HTMLMediaSession::removeBehaviorRestriction - removing %s", restrictionName(restriction));
+    LOG(Media, "HTMLMediaSession::removeBehaviorRestriction - removing %s", restrictionName(restriction).utf8().data());
     m_restrictions &= ~restriction;
 }
 
-bool HTMLMediaSession::playbackPermitted(const HTMLMediaElement&) const
+bool HTMLMediaSession::playbackPermitted(const HTMLMediaElement& element) const
 {
     if (m_restrictions & RequireUserGestureForRateChange && !ScriptController::processingUserGesture()) {
+        LOG(Media, "HTMLMediaSession::playbackPermitted - returning FALSE");
+        return false;
+    }
+
+    if (m_restrictions & RequireUserGestureForAudioRateChange && element.hasAudio() && !ScriptController::processingUserGesture()) {
         LOG(Media, "HTMLMediaSession::playbackPermitted - returning FALSE");
         return false;
     }
@@ -177,20 +189,6 @@ bool HTMLMediaSession::currentPlaybackTargetIsWireless(const HTMLMediaElement& e
     return isWireless;
 }
 
-bool HTMLMediaSession::currentPlaybackTargetIsSupported(const HTMLMediaElement& element) const
-{
-    MediaPlayer* player = element.player();
-    if (!player) {
-        LOG(Media, "HTMLMediaSession::currentPlaybackTargetIsSupported - returning FALSE because player is NULL");
-        return false;
-    }
-
-    bool isSupported = player->isCurrentPlaybackTargetSupported();
-    LOG(Media, "HTMLMediaSession::currentPlaybackTargetIsSupported - returning %s", isSupported ? "TRUE" : "FALSE");
-    
-    return isSupported;
-}
-
 void HTMLMediaSession::showPlaybackTargetPicker(const HTMLMediaElement& element)
 {
     LOG(Media, "HTMLMediaSession::showPlaybackTargetPicker");
@@ -205,8 +203,14 @@ void HTMLMediaSession::showPlaybackTargetPicker(const HTMLMediaElement& element)
         return;
     }
 
-    MediaSessionManager::sharedManager().setCurrentSession(*this);
-    element.document().showPlaybackTargetPicker(element);
+#if !PLATFORM(IOS)
+    if (!element.hasVideo()) {
+        LOG(Media, "HTMLMediaSession::showPlaybackTargetPicker - returning early because element has no video");
+        return;
+    }
+#endif
+
+    element.document().showPlaybackTargetPicker(*this, is<HTMLVideoElement>(element));
 }
 
 bool HTMLMediaSession::hasWirelessPlaybackTargets(const HTMLMediaElement&) const
@@ -274,25 +278,21 @@ void HTMLMediaSession::setWirelessVideoPlaybackDisabled(const HTMLMediaElement& 
 void HTMLMediaSession::setHasPlaybackTargetAvailabilityListeners(const HTMLMediaElement& element, bool hasListeners)
 {
     LOG(Media, "HTMLMediaSession::setHasPlaybackTargetAvailabilityListeners - hasListeners %s", hasListeners ? "TRUE" : "FALSE");
-    UNUSED_PARAM(element);
-
-    m_hasPlaybackTargetAvailabilityListeners = hasListeners;
 
 #if PLATFORM(IOS)
+    UNUSED_PARAM(element);
+    m_hasPlaybackTargetAvailabilityListeners = hasListeners;
     MediaSessionManager::sharedManager().configureWireLessTargetMonitoring();
 #else
-    element.document().configurePlaybackTargetMonitoring();
+    UNUSED_PARAM(hasListeners);
+    element.document().playbackTargetPickerClientStateDidChange(*this, element.mediaState());
 #endif
 }
 
-void HTMLMediaSession::didChoosePlaybackTarget(Ref<MediaPlaybackTarget>&& device)
+void HTMLMediaSession::setPlaybackTarget(Ref<MediaPlaybackTarget>&& device)
 {
     m_playbackTarget = WTF::move(device);
     client().setWirelessPlaybackTarget(*m_playbackTarget.copyRef());
-    if (m_playbackTarget->hasActiveRoute() && MediaSessionManager::sharedManager().currentSession() == this)
-        startPlayingToPlaybackTarget();
-    else
-        stopPlayingToPlaybackTarget();
 }
 
 void HTMLMediaSession::targetAvailabilityChangedTimerFired()
@@ -300,7 +300,7 @@ void HTMLMediaSession::targetAvailabilityChangedTimerFired()
     client().wirelessRoutesAvailableDidChange();
 }
 
-void HTMLMediaSession::externalOutputDeviceAvailableDidChange(bool hasTargets) const
+void HTMLMediaSession::externalOutputDeviceAvailableDidChange(bool hasTargets)
 {
     if (m_hasPlaybackTargets == hasTargets)
         return;
@@ -310,11 +310,6 @@ void HTMLMediaSession::externalOutputDeviceAvailableDidChange(bool hasTargets) c
     m_hasPlaybackTargets = hasTargets;
     if (!m_targetAvailabilityChangedTimer.isActive())
         m_targetAvailabilityChangedTimer.startOneShot(0);
-}
-
-bool HTMLMediaSession::requiresPlaybackTargetRouteMonitoring() const
-{
-    return m_hasPlaybackTargetAvailabilityListeners;
 }
 
 bool HTMLMediaSession::canPlayToWirelessPlaybackTarget() const
@@ -333,21 +328,16 @@ bool HTMLMediaSession::isPlayingToWirelessPlaybackTarget() const
     return client().isPlayingToWirelessPlaybackTarget();
 }
 
-void HTMLMediaSession::startPlayingToPlaybackTarget()
+void HTMLMediaSession::setShouldPlayToPlaybackTarget(bool shouldPlay)
 {
-    if (!m_playbackTarget || !m_playbackTarget->hasActiveRoute())
-        return;
-
-    client().startPlayingToPlaybackTarget();
+    m_shouldPlayToPlaybackTarget = shouldPlay;
+    client().setShouldPlayToPlaybackTarget(shouldPlay);
 }
 
-void HTMLMediaSession::stopPlayingToPlaybackTarget()
+void HTMLMediaSession::mediaStateDidChange(const HTMLMediaElement& element, MediaProducer::MediaStateFlags state)
 {
-    if (!m_playbackTarget || !m_playbackTarget->hasActiveRoute())
-        return;
-
-    client().stopPlayingToPlaybackTarget();
-}    
+    element.document().playbackTargetPickerClientStateDidChange(*this, state);
+}
 #endif
 
 MediaPlayer::Preload HTMLMediaSession::effectivePreloadForElement(const HTMLMediaElement& element) const
@@ -386,12 +376,17 @@ bool HTMLMediaSession::requiresFullscreenForVideoPlayback(const HTMLMediaElement
     return true;
 }
 
-void HTMLMediaSession::applyMediaPlayerRestrictions(const HTMLMediaElement& element)
+void HTMLMediaSession::mediaEngineUpdated(const HTMLMediaElement& element)
 {
-    LOG(Media, "HTMLMediaSession::applyMediaPlayerRestrictions");
+    LOG(Media, "HTMLMediaSession::mediaEngineUpdated");
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    setWirelessVideoPlaybackDisabled(element, m_restrictions & WirelessVideoPlaybackDisabled);
+    if (m_restrictions & WirelessVideoPlaybackDisabled)
+        setWirelessVideoPlaybackDisabled(element, true);
+    if (m_playbackTarget)
+        client().setWirelessPlaybackTarget(*m_playbackTarget.copyRef());
+    if (m_shouldPlayToPlaybackTarget)
+        client().setShouldPlayToPlaybackTarget(m_shouldPlayToPlaybackTarget);
 #else
     UNUSED_PARAM(element);
 #endif

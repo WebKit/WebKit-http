@@ -1584,9 +1584,6 @@
     <ClCompile Include="..\platform\graphics\cairo\IntRectCairo.cpp">
       <Filter>platform\graphics\cairo</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\cairo\OwnPtrCairo.cpp">
-      <Filter>platform\graphics\cairo</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\graphics\cairo\PathCairo.cpp">
       <Filter>platform\graphics\cairo</Filter>
     </ClCompile>
@@ -3528,6 +3525,12 @@
     <ClCompile Include="..\editing\RenderedPosition.cpp">
       <Filter>editing</Filter>
     </ClCompile>
+    <ClCompile Include="..\editing\ReplaceDeleteFromTextNodeCommand.cpp">
+      <Filter>editing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\editing\ReplaceInsertIntoTextNodeCommand.cpp">
+      <Filter>editing</Filter>
+    </ClCompile>
     <ClCompile Include="..\editing\ReplaceNodeWithSpanCommand.cpp">
       <Filter>editing</Filter>
     </ClCompile>
@@ -4008,6 +4011,12 @@
     <ClCompile Include="..\html\ResetInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
+    <ClCompile Include="..\html\RubyElement.cpp">
+      <Filter>html</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\RubyTextElement.cpp">
+      <Filter>html</Filter>
+    </ClCompile>
     <ClCompile Include="..\html\SearchInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
@@ -4408,6 +4417,9 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSReadableStreamCustom.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bindings\js\JSReadableStreamControllerCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSReadableStreamReaderCustom.cpp">
@@ -5692,6 +5704,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamController.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -6616,6 +6631,9 @@
     <ClCompile Include="..\style\InlineTextBoxStyle.cpp">
       <Filter>css</Filter>
     </ClCompile>
+    <ClCompile Include="..\style\RenderTreePosition.cpp">
+      <Filter>css</Filter>
+    </ClCompile>
     <ClCompile Include="..\style\StyleFontSizeFunctions.cpp">
       <Filter>css</Filter>
     </ClCompile>
@@ -6748,8 +6766,8 @@
     <ClCompile Include="..\platform\graphics\GraphicsLayerTransform.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\TiledBackingStore.cpp">
-      <Filter>platform\graphics</Filter>
+    <ClCompile Include="..\platform\graphics\texmap\coordinated\TiledBackingStore.cpp">
+      <Filter>platform\graphics\texmap\coordinated</Filter>
     </ClCompile>
     <ClCompile Include="..\page\scrolling\ScrollingStateFixedNode.cpp">
       <Filter>page\scrolling</Filter>
@@ -7656,6 +7674,9 @@
     <ClInclude Include="..\accessibility\AXObjectCache.h">
       <Filter>accessibility</Filter>
     </ClInclude>
+    <ClInclude Include="..\accessibility\AXTextStateChangeIntent.h">
+        <Filter>accessibility</Filter>
+    </ClInclude>
     <ClInclude Include="..\accessibility\win\AccessibilityObjectWrapperWin.h">
       <Filter>accessibility\win</Filter>
     </ClInclude>
@@ -8157,6 +8178,9 @@
     <ClInclude Include="..\platform\FloatConversion.h">
       <Filter>platform</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\GenericTaskQueue.h">
+      <Filter>platform</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\HostWindow.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -8310,9 +8334,6 @@
     <ClInclude Include="..\platform\Timer.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\TreeShared.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\UserActivity.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -8380,9 +8401,6 @@
       <Filter>platform\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\win\SystemInfo.h">
-      <Filter>platform\win</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\TextRenderingMode.h">
       <Filter>platform\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\win\WCDataObject.h">
@@ -10668,6 +10686,12 @@
     <ClInclude Include="..\editing\RenderedPosition.h">
       <Filter>editing</Filter>
     </ClInclude>
+    <ClInclude Include="..\editing\ReplaceDeleteFromTextNodeCommand.h">
+      <Filter>editing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\editing\ReplaceInsertIntoTextNodeCommand.h">
+      <Filter>editing</Filter>
+    </ClInclude>
     <ClInclude Include="..\editing\ReplaceNodeWithSpanCommand.h">
       <Filter>editing</Filter>
     </ClInclude>
@@ -11167,6 +11191,12 @@
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\html\ResetInputType.h">
+      <Filter>html</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\RubyElement.h">
+      <Filter>html</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\RubyTextElement.h">
       <Filter>html</Filter>
     </ClInclude>
     <ClInclude Include="..\html\SearchInputType.h">
@@ -12256,16 +12286,7 @@
     <ClInclude Include="..\platform\graphics\FontPlatformData.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\FontRenderingMode.h">
-      <Filter>platform\graphics</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\graphics\FontSelector.h">
-      <Filter>platform\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\FontSmoothingMode.h">
-      <Filter>platform\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\FontTraitsMask.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\page\MouseEventWithHitTestResults.h">
@@ -13628,6 +13649,9 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStream.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamController.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
@@ -14021,6 +14045,9 @@
     <ClInclude Include="..\style\InlineTextBoxStyle.h">
       <Filter>css</Filter>
     </ClInclude>
+    <ClInclude Include="..\style\RenderTreePosition.h">
+      <Filter>css</Filter>
+    </ClInclude>
     <ClInclude Include="..\style\StyleFontSizeFunctions.h">
       <Filter>css</Filter>
     </ClInclude>
@@ -14156,14 +14183,14 @@
     <ClInclude Include="..\platform\graphics\TiledBacking.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\TiledBackingStore.h">
-      <Filter>platform\graphics</Filter>
+    <ClInclude Include="..\platform\graphics\texmap\coordinated\TiledBackingStore.h">
+      <Filter>platform\graphics\texmap\coordinated</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\TiledBackingStoreBackend.h">
-      <Filter>platform\graphics</Filter>
+    <ClInclude Include="..\platform\graphics\texmap\coordinated\TiledBackingStoreBackend.h">
+      <Filter>platform\graphics\texmap\coordinated</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\TiledBackingStoreClient.h">
-      <Filter>platform\graphics</Filter>
+    <ClInclude Include="..\platform\graphics\texmap\coordinated\TiledBackingStoreClient.h">
+      <Filter>platform\graphics\texmap\coordinated</Filter>
     </ClInclude>
     <ClInclude Include="..\page\scrolling\ScrollingStateFixedNode.h">
       <Filter>page\scrolling</Filter>
@@ -15224,6 +15251,9 @@
     <ClInclude Include="..\Modules\streams\ReadableStream.h">
       <Filter>Modules\streams</Filter>
     </ClInclude>
+    <ClInclude Include="..\Modules\streams\ReadableStreamController.h">
+      <Filter>Modules\streams</Filter>
+    </ClInclude>
     <ClInclude Include="..\Modules\streams\ReadableStreamReader.h">
       <Filter>Modules\streams</Filter>
     </ClInclude>
@@ -15342,9 +15372,6 @@
       <Filter>platform\graphics\cairo</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\graphics\cairo\GraphicsContextPlatformPrivateCairo.h">
-      <Filter>platform\graphics\cairo</Filter>
-    </CustomBuildStep>
-    <CustomBuildStep Include="..\platform\graphics\cairo\OwnPtrCairo.h">
       <Filter>platform\graphics\cairo</Filter>
     </CustomBuildStep>
     <CustomBuildStep Include="..\platform\graphics\cairo\PlatformPathCairo.h">

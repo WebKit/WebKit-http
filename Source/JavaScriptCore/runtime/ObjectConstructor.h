@@ -27,6 +27,10 @@
 
 namespace JSC {
 
+EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertySymbols(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorKeys(ExecState*);
+
 class ObjectPrototype;
 
 class ObjectConstructor : public InternalFunction {
@@ -49,6 +53,8 @@ public:
     {
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
+
+    JSFunction* addDefineProperty(ExecState*, JSGlobalObject*);
 
 protected:
     void finishCreation(VM&, JSGlobalObject*, ObjectPrototype*);

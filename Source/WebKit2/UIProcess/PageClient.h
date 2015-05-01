@@ -34,10 +34,6 @@
 #include <WebCore/EditorClient.h>
 #include <wtf/Forward.h>
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET)
-#include <WebCore/MediaPlaybackTargetPicker.h>
-#endif
-
 #if PLATFORM(COCOA)
 #include "PluginComplexTextInputState.h"
 
@@ -52,6 +48,7 @@ OBJC_CLASS NSTextAlternatives;
 namespace WebCore {
 class Cursor;
 class TextIndicator;
+class WebMediaSessionManager;
 struct Highlight;
 struct ViewportAttributes;
 }
@@ -223,7 +220,8 @@ public:
     virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) = 0;
 #endif
 
-    virtual void setTextIndicator(PassRefPtr<WebCore::TextIndicator>, bool fadeOut) = 0;
+    virtual void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorLifetime = WebCore::TextIndicatorLifetime::Permanent) = 0;
+    virtual void clearTextIndicator(WebCore::TextIndicatorDismissalAnimation = WebCore::TextIndicatorDismissalAnimation::FadeOut) = 0;
     virtual void setTextIndicatorAnimationProgress(float) = 0;
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) = 0;
@@ -234,7 +232,7 @@ public:
     virtual void pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus) = 0;
     virtual void setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState) = 0;
     virtual void didPerformDictionaryLookup(const DictionaryPopupInfo&) = 0;
-    virtual void dismissContentRelativeChildWindows() = 0;
+    virtual void dismissContentRelativeChildWindows(bool withAnimation = true) = 0;
     virtual void showCorrectionPanel(WebCore::AlternativeTextType, const WebCore::FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings) = 0;
     virtual void dismissCorrectionPanel(WebCore::ReasonForDismissingAlternativeText) = 0;
     virtual String dismissCorrectionPanelSoon(WebCore::ReasonForDismissingAlternativeText) = 0;
@@ -325,7 +323,7 @@ public:
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    virtual std::unique_ptr<WebCore::MediaPlaybackTargetPicker> createPlaybackTargetPicker(WebPageProxy*) = 0;
+    virtual WebCore::WebMediaSessionManager& mediaSessionManager() = 0;
 #endif
 
 };

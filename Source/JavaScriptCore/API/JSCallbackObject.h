@@ -125,7 +125,7 @@ protected:
 
 public:
     typedef Parent Base;
-    static const unsigned StructureFlags = Base::StructureFlags | ProhibitsPropertyCaching | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | ImplementsHasInstance | OverridesHasInstance | OverridesGetPropertyNames;
+    static const unsigned StructureFlags = Base::StructureFlags | ProhibitsPropertyCaching | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | ImplementsHasInstance | OverridesHasInstance | OverridesGetPropertyNames | TypeOfShouldCallGetCallData;
 
     ~JSCallbackObject();
 
@@ -212,7 +212,7 @@ private:
     static EncodedJSValue staticFunctionGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
     static EncodedJSValue callbackGetter(ExecState*, JSObject*, EncodedJSValue, PropertyName);
 
-    OwnPtr<JSCallbackObjectData> m_callbackObjectData;
+    std::unique_ptr<JSCallbackObjectData> m_callbackObjectData;
 };
 
 } // namespace JSC

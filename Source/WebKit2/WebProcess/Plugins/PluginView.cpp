@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2012, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -467,11 +467,6 @@ void PluginView::manualLoadDidFail(const ResourceError& error)
     }
 
     m_plugin->manualStreamDidFail(error.isCancellation());
-}
-
-RenderBoxModelObject* PluginView::renderer() const
-{
-    return downcast<RenderBoxModelObject>(m_pluginElement->renderer());
 }
 
 void PluginView::pageScaleFactorDidChange()
@@ -997,6 +992,22 @@ bool PluginView::performDictionaryLookupAtLocation(const WebCore::FloatPoint& po
     return m_plugin->performDictionaryLookupAtLocation(point);
 }
 
+String PluginView::getSelectionForWordAtPoint(const WebCore::FloatPoint& point) const
+{
+    if (!m_isInitialized || !m_plugin)
+        return String();
+    
+    return m_plugin->getSelectionForWordAtPoint(point);
+}
+
+bool PluginView::existingSelectionContainsPoint(const WebCore::FloatPoint& point) const
+{
+    if (!m_isInitialized || !m_plugin)
+        return false;
+    
+    return m_plugin->existingSelectionContainsPoint(point);
+}
+
 void PluginView::notifyWidget(WidgetNotification notification)
 {
     switch (notification) {
@@ -1360,7 +1371,7 @@ String PluginView::userAgent()
 
 void PluginView::loadURL(uint64_t requestID, const String& method, const String& urlString, const String& target, const HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups)
 {
-    FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin());
+    FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow);
     frameLoadRequest.resourceRequest().setHTTPMethod(method);
     frameLoadRequest.resourceRequest().setURL(m_pluginElement->document().completeURL(urlString));
     frameLoadRequest.resourceRequest().setHTTPHeaderFields(headerFields);

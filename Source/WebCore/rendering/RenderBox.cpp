@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2005 Allan Sandfeld Jensen (kde@carewolf.com)
  *           (C) 2005, 2006 Samuel Weinig (sam.weinig@gmail.com)
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2010, 2015 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -59,6 +59,7 @@
 #include "RenderTableCell.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
+#include "ScrollAnimator.h"
 #include "ScrollbarTheme.h"
 #include "TransformState.h"
 #include "htmlediting.h"
@@ -593,16 +594,32 @@ int RenderBox::scrollTop() const
     return hasOverflowClip() ? layer()->scrollYOffset() : 0;
 }
 
+static void setupWheelEventTestTrigger(RenderLayer& layer, Frame* frame)
+{
+    if (!frame)
+        return;
+
+    Page* page = frame->page();
+    if (!page || !page->expectsWheelEventTriggers())
+        return;
+
+    layer.scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
+}
+
 void RenderBox::setScrollLeft(int newLeft)
 {
-    if (hasOverflowClip())
+    if (hasOverflowClip()) {
+        setupWheelEventTestTrigger(*layer(), document().frame());
         layer()->scrollToXOffset(newLeft, RenderLayer::ScrollOffsetClamped);
+    }
 }
 
 void RenderBox::setScrollTop(int newTop)
 {
-    if (hasOverflowClip())
+    if (hasOverflowClip()) {
+        setupWheelEventTestTrigger(*layer(), document().frame());
         layer()->scrollToYOffset(newTop, RenderLayer::ScrollOffsetClamped);
+    }
 }
 
 void RenderBox::absoluteRects(Vector<IntRect>& rects, const LayoutPoint& accumulatedOffset) const
@@ -1026,12 +1043,12 @@ LayoutUnit RenderBox::maxPreferredLogicalWidth() const
     return m_maxPreferredLogicalWidth;
 }
 
-bool RenderBox::hasOverrideHeight() const
+bool RenderBox::hasOverrideLogicalContentHeight() const
 {
     return gOverrideHeightMap && gOverrideHeightMap->contains(this);
 }
 
-bool RenderBox::hasOverrideWidth() const
+bool RenderBox::hasOverrideLogicalContentWidth() const
 {
     return gOverrideWidthMap && gOverrideWidthMap->contains(this);
 }
@@ -1070,13 +1087,13 @@ void RenderBox::clearOverrideSize()
 
 LayoutUnit RenderBox::overrideLogicalContentWidth() const
 {
-    ASSERT(hasOverrideWidth());
+    ASSERT(hasOverrideLogicalContentWidth());
     return gOverrideWidthMap->get(this);
 }
 
 LayoutUnit RenderBox::overrideLogicalContentHeight() const
 {
-    ASSERT(hasOverrideHeight());
+    ASSERT(hasOverrideLogicalContentHeight());
     return gOverrideHeightMap->get(this);
 }
 
@@ -1907,7 +1924,7 @@ LayoutUnit RenderBox::perpendicularContainingBlockLogicalHeight() const
 #endif
 
     RenderBlock* cb = containingBlock();
-    if (cb->hasOverrideHeight())
+    if (cb->hasOverrideLogicalContentHeight())
         return cb->overrideLogicalContentHeight();
 
     const RenderStyle& containingBlockStyle = cb->style();
@@ -2312,7 +2329,7 @@ void RenderBox::computeLogicalWidthInRegion(LogicalExtentComputedValues& compute
     // width.  Use the width from the style context.
     // FIXME: Account for block-flow in flexible boxes.
     // https://bugs.webkit.org/show_bug.cgi?id=46418
-    if (hasOverrideWidth() && (isRubyRun() || style().borderFit() == BorderFitLines || parent()->isFlexibleBoxIncludingDeprecated())) {
+    if (hasOverrideLogicalContentWidth() && (isRubyRun() || style().borderFit() == BorderFitLines || parent()->isFlexibleBoxIncludingDeprecated())) {
         computedValues.m_extent = overrideLogicalContentWidth() + borderAndPaddingLogicalWidth();
         return;
     }
@@ -2712,7 +2729,11 @@ void RenderBox::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logica
         // grab our cached flexible height.
         // FIXME: Account for block-flow in flexible boxes.
         // https://bugs.webkit.org/show_bug.cgi?id=46418
-        if (hasOverrideHeight() && parent()->isFlexibleBoxIncludingDeprecated())
+        if (hasOverrideLogicalContentHeight() && (parent()->isFlexibleBoxIncludingDeprecated()
+#if ENABLE(CSS_GRID_LAYOUT)
+            || parent()->isRenderGrid()
+#endif
+        ))
             h = Length(overrideLogicalContentHeight(), Fixed);
         else if (treatAsReplaced)
             h = Length(computeReplacedLogicalHeight(), Fixed);
@@ -2848,7 +2869,7 @@ LayoutUnit RenderBox::computePercentageLogicalHeight(const Length& height) const
             // Table cells violate what the CSS spec says to do with heights. Basically we
             // don't care if the cell specified a height or not. We just always make ourselves
             // be a percentage of the cell's current content height.
-            if (!cb->hasOverrideHeight()) {
+            if (!cb->hasOverrideLogicalContentHeight()) {
                 // Normally we would let the cell size intrinsically, but scrolling overflow has to be
                 // treated differently, since WinIE lets scrolled overflow regions shrink as needed.
                 // While we can't get all cases right, we can at least detect when the cell has a specified
@@ -3037,7 +3058,7 @@ LayoutUnit RenderBox::availableLogicalHeightUsing(const Length& h, AvailableLogi
     // artificially.  We're going to rely on this cell getting expanded to some new
     // height, and then when we lay out again we'll use the calculation below.
     if (isTableCell() && (h.isAuto() || h.isPercent())) {
-        if (hasOverrideHeight())
+        if (hasOverrideLogicalContentHeight())
             return overrideLogicalContentHeight();
         return logicalHeight() - borderAndPaddingLogicalHeight();
     }
@@ -4542,8 +4563,6 @@ bool RenderBox::percentageLogicalHeightIsResolvableFromBlock(const RenderBlock* 
 bool RenderBox::hasDefiniteLogicalHeight() const
 {
     const Length& logicalHeight = style().logicalHeight();
-    if (logicalHeight.isIntrinsicOrAuto())
-        return false;
     if (logicalHeight.isFixed())
         return true;
     // The size of the containing block of an absolutely positioned element is always definite with respect to that
@@ -4554,6 +4573,8 @@ bool RenderBox::hasDefiniteLogicalHeight() const
     if (hasOverrideContainingBlockLogicalHeight())
         return overrideContainingBlockContentLogicalHeight() != -1;
 #endif
+    if (logicalHeight.isIntrinsicOrAuto())
+        return false;
 
     return percentageLogicalHeightIsResolvable(this);
 }

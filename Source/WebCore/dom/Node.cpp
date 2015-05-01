@@ -287,12 +287,15 @@ void Node::trackForDebugging()
 }
 
 Node::Node(Document& document, ConstructionType type)
-    : m_nodeFlags(type)
+    : m_refCount(1)
+    , m_nodeFlags(type)
     , m_parentNode(nullptr)
     , m_treeScope(&document)
     , m_previous(nullptr)
     , m_next(nullptr)
 {
+    ASSERT(isMainThread());
+
     document.incrementReferencingNodeCount();
 
 #if !defined(NDEBUG) || (defined(DUMP_NODE_STATISTICS) && DUMP_NODE_STATISTICS)
@@ -302,6 +305,11 @@ Node::Node(Document& document, ConstructionType type)
 
 Node::~Node()
 {
+    ASSERT(isMainThread());
+    ASSERT(!m_refCount);
+    ASSERT(m_deletionHasBegun);
+    ASSERT(!m_adoptionIsRequired);
+
 #ifndef NDEBUG
     if (!ignoreSet().remove(this))
         nodeCounter.decrement();
@@ -1997,7 +2005,7 @@ void Node::dispatchSubtreeModifiedEvent()
     if (isInShadowTree())
         return;
 
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
 
     if (!document().hasListenerType(Document::DOMSUBTREEMODIFIED_LISTENER))
         return;
@@ -2010,7 +2018,7 @@ void Node::dispatchSubtreeModifiedEvent()
 
 bool Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent)
 {
-    ASSERT(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     RefPtr<UIEvent> event = UIEvent::create(eventNames().DOMActivateEvent, true, true, document().defaultView(), detail);
     event->setUnderlyingEvent(underlyingEvent);
     dispatchScopedEvent(event);
