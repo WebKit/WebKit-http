@@ -27,7 +27,6 @@
 #define CDMSessionGStreamer_h
 
 #include "CDMSession.h"
-#include <wtf/PassOwnPtr.h>
 #include <wtf/RetainPtr.h>
 
 #if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER)
