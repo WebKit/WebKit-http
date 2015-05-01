@@ -45,7 +45,21 @@ public:
     
     void operator()(Node*, Edge edge)
     {
-        m_result |= edge.willHaveCheck();
+        if (edge.willHaveCheck()) {
+            m_result = true;
+            return;
+        }
+
+        switch (edge.useKind()) {
+        case ObjectUse:
+        case ObjectOrOtherUse:
+        case StringObjectUse:
+        case StringOrStringObjectUse:
+            m_result = true;
+            break;
+        default:
+            break;
+        }
     }
     
     bool result() const { return m_result; }
@@ -71,7 +85,6 @@ bool mayExit(Graph& graph, Node* node)
     case Flush:
     case Phantom:
     case Check:
-    case HardPhantom:
     case GetLocal:
     case LoopHint:
     case Phi:
@@ -88,6 +101,12 @@ bool mayExit(Graph& graph, Node* node)
     case GetScope:
     case PhantomLocal:
     case CountExecution:
+    case Jump:
+    case Branch:
+    case Unreachable:
+    case DoubleRep:
+    case Int52Rep:
+    case ValueRep:
         break;
         
     default:

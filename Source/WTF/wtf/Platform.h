@@ -490,6 +490,10 @@
 #define WTF_USE_WEBP 1
 #endif
 
+#if PLATFORM(GTK) && !defined(GTK_API_VERSION_2)
+#define GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_6
+#endif
+
 /* On Windows, use QueryPerformanceCounter by default */
 #if OS(WINDOWS)
 #define WTF_USE_QUERY_PERFORMANCE_COUNTER  1
@@ -504,8 +508,11 @@
 #define HAVE_OUT_OF_PROCESS_LAYER_HOSTING 1
 #define HAVE_DTRACE 1
 
-#if !PLATFORM(WATCHOS)
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
 #define HAVE_AVKIT 1
+#endif
+
+#if !PLATFORM(WATCHOS)
 #define HAVE_PARENTAL_CONTROLS 1
 #endif
 
@@ -757,12 +764,6 @@
 #define ENABLE_CONCURRENT_JIT 1
 #endif
 
-/* Disable the JIT if we force the LLInt C Loop */
-#if defined(ENABLE_LLINT_C_LOOP) && ENABLE_LLINT_C_LOOP
-#undef ENABLE_JIT
-#define ENABLE_JIT 0
-#endif
-
 /* If the baseline jit is not available, then disable upper tiers as well: */
 #if !ENABLE(JIT)
 #undef ENABLE_DFG_JIT      /* Undef so that we can redefine it. */
@@ -893,10 +894,6 @@
 #endif
 #endif
 
-#if ENABLE(WEBGL) && !defined(WTF_USE_3D_GRAPHICS)
-#define WTF_USE_3D_GRAPHICS 1
-#endif
-
 #if ENABLE(WEBGL) && PLATFORM(WIN)
 #define WTF_USE_OPENGL 1
 #define WTF_USE_OPENGL_ES_2 1
@@ -917,7 +914,7 @@
 #define WTF_USE_TEXTURE_MAPPER 1
 #endif
 
-#if USE(TEXTURE_MAPPER) && USE(3D_GRAPHICS) && !defined(WTF_USE_TEXTURE_MAPPER_GL)
+#if USE(TEXTURE_MAPPER) && ENABLE(GRAPHICS_CONTEXT_3D) && !defined(WTF_USE_TEXTURE_MAPPER_GL)
 #define WTF_USE_TEXTURE_MAPPER_GL 1
 #endif
 
@@ -1102,6 +1099,10 @@
 
 #if PLATFORM(COCOA)
 #define ENABLE_CSS3_TEXT_DECORATION_SKIP_INK 1
+#endif
+
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000)
+#define ENABLE_PLATFORM_FONT_LOOKUP 1
 #endif
 
 #if COMPILER(MSVC)

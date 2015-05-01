@@ -39,10 +39,7 @@
 namespace JSC {
 
 EncodedJSValue JSC_HOST_CALL objectConstructorGetPrototypeOf(ExecState*);
-EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState*);
 EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyNames(ExecState*);
-EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertySymbols(ExecState*);
-EncodedJSValue JSC_HOST_CALL objectConstructorKeys(ExecState*);
 EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperty(ExecState*);
 EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperties(ExecState*);
 EncodedJSValue JSC_HOST_CALL objectConstructorCreate(ExecState*);
@@ -80,6 +77,7 @@ const ClassInfo ObjectConstructor::s_info = { "Function", &InternalFunction::s_i
   isFrozen                  objectConstructorIsFrozen                   DontEnum|Function 1
   isExtensible              objectConstructorIsExtensible               DontEnum|Function 1
   is                        objectConstructorIs                         DontEnum|Function 2
+  assign                    objectConstructorAssign                     DontEnum|Function 2
 @end
 */
 
@@ -98,6 +96,17 @@ void ObjectConstructor::finishCreation(VM& vm, JSGlobalObject* globalObject, Obj
 
     if (!globalObject->runtimeFlags().isSymbolDisabled())
         JSC_NATIVE_FUNCTION("getOwnPropertySymbols", objectConstructorGetOwnPropertySymbols, DontEnum, 1);
+
+    JSC_NATIVE_FUNCTION(vm.propertyNames->getPrototypeOfPrivateName, objectConstructorGetPrototypeOf, DontEnum, 1);
+    JSC_NATIVE_FUNCTION(vm.propertyNames->getOwnPropertyNamesPrivateName, objectConstructorGetOwnPropertyNames, DontEnum, 1);
+}
+
+JSFunction* ObjectConstructor::addDefineProperty(ExecState* exec, JSGlobalObject* globalObject)
+{
+    VM& vm = exec->vm();
+    JSFunction* definePropertyFunction = JSFunction::create(vm, globalObject, 3, vm.propertyNames->defineProperty.string(), objectConstructorDefineProperty);
+    putDirectWithoutTransition(vm, vm.propertyNames->defineProperty, definePropertyFunction, DontEnum);
+    return definePropertyFunction;
 }
 
 bool ObjectConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot &slot)

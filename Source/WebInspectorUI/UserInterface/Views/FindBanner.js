@@ -86,6 +86,8 @@ WebInspector.FindBanner = class FindBanner extends WebInspector.Object
         this._findNextKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "G", this._nextResultButtonClicked.bind(this));
         this._findPreviousKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Shift | WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "G", this._previousResultButtonClicked.bind(this));
 
+        this.disableKeyboardShortcuts();
+
         this._generateButtonsGlyphsIfNeeded();
     }
 
@@ -205,7 +207,7 @@ WebInspector.FindBanner = class FindBanner extends WebInspector.Object
         }
 
         // Delay adding the classes in case the target element and/or the find banner were just added to
-        // the document. Adding the class right away will prevent the animation from working the firs time.
+        // the document. Adding the class right away will prevent the animation from working the first time.
         setTimeout(delayedWork.bind(this), 0);
 
         this.dispatchEventToListeners(WebInspector.FindBanner.Event.DidShow);
@@ -223,6 +225,20 @@ WebInspector.FindBanner = class FindBanner extends WebInspector.Object
         this._element.classList.remove(WebInspector.FindBanner.ShowingStyleClassName);
 
         this.dispatchEventToListeners(WebInspector.FindBanner.Event.DidHide);
+    }
+
+    enableKeyboardShortcuts()
+    {
+        this._populateFindKeyboardShortcut.disabled = false;
+        this._findNextKeyboardShortcut.disabled = false;
+        this._findPreviousKeyboardShortcut.disabled = false;
+    }
+
+    disableKeyboardShortcuts()
+    {
+        this._populateFindKeyboardShortcut.disabled = true;
+        this._findNextKeyboardShortcut.disabled = true;
+        this._findPreviousKeyboardShortcut.disabled = true;
     }
 
     // Private
@@ -309,17 +325,8 @@ WebInspector.FindBanner = class FindBanner extends WebInspector.Object
         specifications["normal"] = {fillColor: [81, 81, 81]};
         specifications["normal-active"] = {fillColor: [37, 37, 37]};
 
-        var forwardArrow, backArrow;
-        if (WebInspector.Platform.isLegacyMacOS) {
-            forwardArrow = {src: "Images/Legacy/ForwardArrow.svg", width: 7, height: 7};
-            backArrow = {src: "Images/Legacy/BackArrow.svg", width: 7, height: 7};
-        } else {
-            forwardArrow = {src: "Images/ForwardArrow.svg", width: 7, height: 11};
-            backArrow = {src: "Images/BackArrow.svg", width: 7, height: 11};
-        }
-
-        generateColoredImagesForCSS(backArrow.src, specifications, backArrow.width, backArrow.height, "find-banner-previous-arrow-");
-        generateColoredImagesForCSS(forwardArrow.src, specifications, forwardArrow.width, forwardArrow.height, "find-banner-next-arrow-");
+        generateColoredImagesForCSS("Images/BackArrow.svg", specifications, 7, 11, "find-banner-previous-arrow-");
+        generateColoredImagesForCSS("Images/ForwardArrow.svg", specifications, 7, 11, "find-banner-next-arrow-");
     }
 };
 

@@ -867,7 +867,7 @@ static Ref<CSSValue> computedTransform(RenderObject* renderer, const RenderStyle
 
     TransformationMatrix transform;
     style->applyTransform(transform, pixelSnappedRect, RenderStyle::ExcludeTransformOrigin);
-    // Note that this does not flatten to an affine transform if ENABLE(3D_RENDERING) is off, by design.
+    // Note that this does not flatten to an affine transform if ENABLE(3D_TRANSFORMS) is off, by design.
 
     // FIXME: Need to print out individual functions (https://bugs.webkit.org/show_bug.cgi?id=23924)
     auto list = CSSValueList::createSpaceSeparated();
@@ -1611,6 +1611,19 @@ static Ref<CSSPrimitiveValue> fontWeightFromStyle(RenderStyle* style)
     return cssValuePool().createIdentifierValue(CSSValueNormal);
 }
 
+static Ref<CSSValue> fontSynthesisFromStyle(RenderStyle& style)
+{
+    if (style.fontDescription().fontSynthesis() == FontSynthesisNone)
+        return cssValuePool().createIdentifierValue(CSSValueNone);
+
+    auto list = CSSValueList::createSpaceSeparated();
+    if (style.fontDescription().fontSynthesis() & FontSynthesisStyle)
+        list.get().append(cssValuePool().createIdentifierValue(CSSValueStyle));
+    if (style.fontDescription().fontSynthesis() & FontSynthesisWeight)
+        list.get().append(cssValuePool().createIdentifierValue(CSSValueWeight));
+    return Ref<CSSValue>(list.get());
+}
+
 typedef const Length& (RenderStyle::*RenderStyleLengthGetter)() const;
 typedef LayoutUnit (RenderBoxModelObject::*RenderBoxComputedCSSValueGetter)() const;
 
@@ -1715,7 +1728,7 @@ static ItemPosition resolveSelfAlignmentAuto(ItemPosition position, OverflowAlig
         return ItemPositionStart;
 
     overflow = parent->style().alignItemsOverflowAlignment();
-    return resolveContainerAlignmentAuto(parent->style().alignItems(), parent);
+    return resolveContainerAlignmentAuto(parent->style().alignItemsPosition(), parent);
 }
 
 PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropertyID propertyID, EUpdateLayout updateLayout) const
@@ -2173,10 +2186,10 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyAlignContent:
             return cssValuePool().createValue(style->alignContent());
         case CSSPropertyAlignItems:
-            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->alignItems(), renderer), style->alignItemsOverflowAlignment(), NonLegacyPosition);
+            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->alignItemsPosition(), renderer), style->alignItemsOverflowAlignment(), NonLegacyPosition);
         case CSSPropertyAlignSelf: {
             OverflowAlignment overflow = style->alignSelfOverflowAlignment();
-            ItemPosition alignSelf = resolveSelfAlignmentAuto(style->alignSelf(), overflow, renderer);
+            ItemPosition alignSelf = resolveSelfAlignmentAuto(style->alignSelfPosition(), overflow, renderer);
             return valueForItemPositionWithOverflowAlignment(alignSelf, overflow, NonLegacyPosition);
         }
         case CSSPropertyFlex:
@@ -2196,10 +2209,10 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyJustifyContent:
             return cssValuePool().createValue(style->justifyContent());
         case CSSPropertyJustifyItems:
-            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->justifyItems(), renderer), style->justifyItemsOverflowAlignment(), style->justifyItemsPositionType());
+            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->justifyItemsPosition(), renderer), style->justifyItemsOverflowAlignment(), style->justifyItemsPositionType());
         case CSSPropertyJustifySelf: {
             OverflowAlignment overflow = style->justifySelfOverflowAlignment();
-            ItemPosition justifySelf = resolveSelfAlignmentAuto(style->justifySelf(), overflow, renderer);
+            ItemPosition justifySelf = resolveSelfAlignmentAuto(style->justifySelfPosition(), overflow, renderer);
             return valueForItemPositionWithOverflowAlignment(justifySelf, overflow, NonLegacyPosition);
         }
         case CSSPropertyOrder:
@@ -2234,6 +2247,8 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return fontVariantFromStyle(style.get());
         case CSSPropertyFontWeight:
             return fontWeightFromStyle(style.get());
+        case CSSPropertyFontSynthesis:
+            return fontSynthesisFromStyle(*style.get());
         case CSSPropertyWebkitFontFeatureSettings: {
             const FontFeatureSettings* featureSettings = style->fontDescription().featureSettings();
             if (!featureSettings || !featureSettings->size())

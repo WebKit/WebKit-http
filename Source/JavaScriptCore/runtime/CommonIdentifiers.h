@@ -91,6 +91,7 @@
     macro(constructor) \
     macro(count) \
     macro(counters) \
+    macro(defineProperty) \
     macro(description) \
     macro(descriptions) \
     macro(displayName) \
@@ -245,6 +246,7 @@
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
     JSC_COMMON_BYTECODE_INTRINSICS_EACH_NAME(macro) \
+    macro(symbolIterator) \
     macro(iteratedObject) \
     macro(arrayIteratorNextIndex) \
     macro(arrayIterationKind) \
@@ -264,11 +266,17 @@
     macro(deferred) \
     macro(countdownHolder) \
     macro(Object) \
+    macro(objectKeys) \
+    macro(objectGetOwnPropertyDescriptor) \
+    macro(objectGetOwnPropertySymbols) \
     macro(Number) \
     macro(Array) \
+    macro(String) \
     macro(abs) \
     macro(floor) \
     macro(isFinite) \
+    macro(getPrototypeOf) \
+    macro(getOwnPropertyNames) \
     macro(TypeError) \
     macro(undefined) \
     macro(BuiltinLog) \

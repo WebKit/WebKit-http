@@ -121,6 +121,7 @@ public:
     static ParseResult parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, CSSParserMode, StyleSheetContents*);
 
     static bool parseColor(RGBA32& color, const String&, bool strict = false);
+    static bool isValidSystemColorValue(CSSValueID);
     static bool parseSystemColor(RGBA32& color, const String&, Document*);
     static PassRefPtr<CSSValueList> parseFontFaceValue(const AtomicString&);
     PassRefPtr<CSSPrimitiveValue> parseValidPrimitive(CSSValueID ident, ValueWithCalculation&);
@@ -263,6 +264,7 @@ public:
     bool parseFontSize(bool important);
     bool parseFontVariant(bool important);
     bool parseFontWeight(bool important);
+    bool parseFontSynthesis(bool important);
     bool parseFontFaceSrc();
     bool parseFontFaceUnicodeRange();
 

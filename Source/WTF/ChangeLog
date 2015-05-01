@@ -1,3 +1,283 @@
+2015-04-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use the default hash value for Symbolized StringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=144347
+
+        Reviewed by Darin Adler.
+
+        Use a default hash value calculation for symbolized StringImpl.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createSymbol):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+        (WTF::StringImpl::symbolAwareHash):
+        (WTF::StringImpl::existingSymbolAwareHash):
+        (WTF::StringImpl::hashForSymbol):
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::nextHashForSymbol):
+        (WTF::StringImpl::hashAndFlagsForSymbol): Deleted.
+
+2015-04-29  Alexey Proskuryakov  <ap@apple.com>
+
+        LazyNeverDestroyed is not thread safe in debug builds, causing assertions
+        https://bugs.webkit.org/show_bug.cgi?id=144378
+
+        Reviewed by Darin Adler.
+
+        * wtf/NeverDestroyed.h:
+
+2015-04-28  Geoffrey Garen  <ggaren@apple.com>
+
+        It shouldn't take 1846 lines of code and 5 FIXMEs to sort an array.
+        https://bugs.webkit.org/show_bug.cgi?id=144013
+
+        Reviewed by Mark Lam.
+
+        Remove this custom tree implementation because it is unused. (It was
+        previously used to achieve a stable array sort in certain cases.)
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AVLTree.h: Removed.
+        * wtf/CMakeLists.txt:
+
+2015-04-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Use CTFontCreateForCSS instead of doing font search ourselves
+        https://bugs.webkit.org/show_bug.cgi?id=132159
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h:
+
+        Opt-in using ENABLE(PLATFORM_FONT_LOOKUP)
+
+2015-04-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION (r183373): ASSERT failed in wtf/SHA1.h
+        https://bugs.webkit.org/show_bug.cgi?id=144257
+
+        Reviewed by Darin Adler.
+
+        * wtf/SHA1.h:
+        (WTF::SHA1::addBytes):
+
+2015-04-29  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] [GTK] Organize and clean up unused CMake variables
+        https://bugs.webkit.org/show_bug.cgi?id=144364
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/PlatformGTK.cmake: Add variables specific to this project.
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        No longer check ENABLE_LLINT_C_LOOP to determine the value of ENABLE_JIT.
+
+        * wtf/Platform.h:
+
+2015-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183514.
+        https://bugs.webkit.org/show_bug.cgi?id=144359
+
+        It broke cloop test bots (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT"
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+        http://trac.webkit.org/changeset/183514
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        No longer check ENABLE_LLINT_C_LOOP to determine the value of ENABLE_JIT.
+
+        * wtf/Platform.h:
+
+2015-04-28  Alex Christensen  <achristensen@webkit.org>
+
+        Properly reset deleted count when clearing HashTables.
+        https://bugs.webkit.org/show_bug.cgi?id=144343
+
+        Reviewed by Andreas Kling.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::clear):
+        Reset m_deletedCount, which appears to have been forgotten.
+
+2015-04-28  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Use less memory for CombinedURLFilters.
+        https://bugs.webkit.org/show_bug.cgi?id=144290
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Forward.h:
+        * wtf/Vector.h:
+        Added a minCapacity template parameter to allow changing the minimum size of an 
+        allocated buffer. The default minCapacity is kept at 16 unless otherwise specified 
+        to have no change on existing code, but this could be changed later. A smaller 
+        default minCapacity would use less memory with small Vectors but spend more time 
+        copying when expanding to large Vectors.
+
+2015-04-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Deactivate WebGL until Windows tests work properly
+        https://bugs.webkit.org/show_bug.cgi?id=144291
+        <rdar://problem/20707307>
+
+        Reviewed by Zalan Bujtas.
+
+        * wtf/FeatureDefines.h: Force WebGL off for Windows builds.
+
+2015-04-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Rename WTF_USE_3D_GRAPHICS to ENABLE_GRAPHICS_CONTEXT_3D
+        https://bugs.webkit.org/show_bug.cgi?id=144193
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2015-04-22  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] Autogenerate cmakeconfig.h.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=143997
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Platform.h: Move a GTK-specific setting from cmakeconfig.h to here.
+
+2015-04-25  Martin Robinson  <mrobinson@igalia.com>
+
+        Rename ENABLE_3D_RENDERING to ENABLE_3D_TRANSFORMS
+        https://bugs.webkit.org/show_bug.cgi?id=144182
+
+        Reviewed by Simon Fraser.
+
+        * wtf/FeatureDefines.h: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+
+2015-04-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183288.
+        https://bugs.webkit.org/show_bug.cgi?id=144189
+
+        Made js/sort-with-side-effecting-comparisons.html time out in
+        debug builds (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "It shouldn't take 1846 lines of code and 5 FIXMEs to sort an
+        array."
+        https://bugs.webkit.org/show_bug.cgi?id=144013
+        http://trac.webkit.org/changeset/183288
+
+2015-04-21  Geoffrey Garen  <ggaren@apple.com>
+
+        It shouldn't take 1846 lines of code and 5 FIXMEs to sort an array.
+        https://bugs.webkit.org/show_bug.cgi?id=144013
+
+        Reviewed by Mark Lam.
+
+        Remove this custom tree implementation because it is unused. (It was
+        previously used to achieve a stable array sort in certain cases.)
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AVLTree.h: Removed.
+        * wtf/CMakeLists.txt:
+
+2015-04-24  Darin Adler  <darin@apple.com>
+
+        Convert OwnPtr and PassOwnPtr uses to std::unique_ptr
+        https://bugs.webkit.org/show_bug.cgi?id=128007
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.vcxproj/WTF.vcxproj: Removed OwnPtr source files.
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+        * WTF.xcodeproj/project.pbxproj: Ditto.
+        * wtf/CMakeLists.txt: Ditto.
+
+        * wtf/Forward.h: Removed OwnPtr and PassOwnPtr.
+        * wtf/HashTraits.h: Ditto.
+
+        * wtf/OwnPtr.h: Removed.
+        * wtf/OwnPtrCommon.h: Removed.
+        * wtf/PassOwnPtr.h: Removed.
+
+        * wtf/SizeLimits.cpp: Removed OwnPtr.
+        * wtf/VectorTraits.h: Removed OwnPtr specialization.
+
+2015-04-23  Jer Noble  <jer.noble@apple.com>
+
+        Disable HAVE_AVKIT on AppleTV
+        https://bugs.webkit.org/show_bug.cgi?id=144142
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h:
+
+2015-04-23  Alexey Proskuryakov  <ap@apple.com>
+
+        [iOS] WebKit services should inherit environment variables for home
+        https://bugs.webkit.org/show_bug.cgi?id=144078
+        rdar://problem/20571678
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/spi/darwin/XPCSPI.h: Added xpc_copy_bootstrap and xpc_dictionary_apply.
+
+2015-04-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Undo the WTF part of the previous build fix, we don't use private headers in WTF.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2015-04-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        * WTF.xcodeproj/project.pbxproj: Make RAMSize.h a private header, now that it's used
+        from outside WTF.
+
+2015-04-23  Andreas Kling  <akling@apple.com>
+
+        There should only be one way to get the system memory size.
+        <https://webkit.org/b/144081>
+
+        Reviewed by Antti Koivisto.
+
+        Merge all the logic from other RAM size fetcher helpers into WTF's.
+
+        Darwin ports now use host_info() instead of sysctl(), since that was the more common way
+        of doing this.
+
+        Also bumped the fallback answer from 128 MB to 512 MB to bring it closer to today's hardware.
+
+        Finally, the number is rounded up to the next multiple of 128 MB, to avoid misunderstandings
+        on some systems where the number returned by the kernel is slightly lower than the marketing
+        number. Removed the "fudging" that was used in some places, since this fixes that cleanly.
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+
 2015-04-22  Darin Adler  <darin@apple.com>
 
         Eliminate remaining uses of OwnPtr and PassOwnPtr in WebCore outside the editing and platform directories

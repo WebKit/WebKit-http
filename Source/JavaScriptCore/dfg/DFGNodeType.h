@@ -55,8 +55,14 @@ namespace JSC { namespace DFG {
     /* Nodes for local variable access. These nodes are linked together using Phi nodes. */\
     /* Any two nodes that are part of the same Phi graph will share the same */\
     /* VariableAccessData, and thus will share predictions. FIXME: We should come up with */\
-    /* better names for a lot of these. https://bugs.webkit.org/show_bug.cgi?id=137307 */\
-    macro(GetLocal, NodeResultJS) \
+    /* better names for a lot of these. https://bugs.webkit.org/show_bug.cgi?id=137307. */\
+    /* Note that GetLocal is MustGenerate because it's our only way of knowing that some other */\
+    /* basic block might have read a local variable in bytecode. We only remove GetLocals if it */\
+    /* is redundant because of an earlier GetLocal or SetLocal in the same block. We could make */\
+    /* these not MustGenerate and use a more sophisticated analysis to insert PhantomLocals in */\
+    /* the same way that we insert Phantoms. That's hard and probably not profitable. See */\
+    /* https://bugs.webkit.org/show_bug.cgi?id=144086 */\
+    macro(GetLocal, NodeResultJS | NodeMustGenerate) \
     macro(SetLocal, 0) \
     \
     macro(PutStack, NodeMustGenerate) \
@@ -66,10 +72,9 @@ namespace JSC { namespace DFG {
     macro(MovHint, NodeMustGenerate) \
     macro(ZombieHint, NodeMustGenerate) \
     macro(Phantom, NodeMustGenerate) \
-    macro(HardPhantom, NodeMustGenerate) /* Like Phantom, but we never remove any of its children. */ \
     macro(Check, NodeMustGenerate) /* Used if we want just a type check but not liveness. Non-checking uses will be removed. */\
-    macro(Upsilon, NodeRelevantToOSR) \
-    macro(Phi, NodeRelevantToOSR) \
+    macro(Upsilon, 0) \
+    macro(Phi, 0) \
     macro(Flush, NodeMustGenerate) \
     macro(PhantomLocal, NodeMustGenerate) \
     \
@@ -125,15 +130,22 @@ namespace JSC { namespace DFG {
     /* Bogus type asserting node. Useful for testing, disappears during Fixup. */\
     macro(FiatInt52, NodeResultJS) \
     \
-    /* Nodes for arithmetic operations. */\
-    macro(ArithAdd, NodeResultNumber) \
-    macro(ArithSub, NodeResultNumber) \
-    macro(ArithNegate, NodeResultNumber) \
-    macro(ArithMul, NodeResultNumber) \
+    /* Nodes for arithmetic operations. Note that if they do checks other than just type checks, */\
+    /* then they are MustGenerate. This is probably stricter than it needs to be - for example */\
+    /* they won't do checks if they are speculated double. Also, we could kill these if we do it */\
+    /* before AI starts eliminating downstream operations based on proofs, for example in the */\
+    /* case of "var tmp = a + b; return (tmp | 0) == tmp;". If a, b are speculated integer then */\
+    /* this is only true if we do the overflow check - hence the need to keep it alive. More */\
+    /* generally, we need to keep alive any operation whose checks cause filtration in AI. */\
+    macro(ArithAdd, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithClz32, NodeResultInt32) \
+    macro(ArithSub, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithNegate, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithMul, NodeResultNumber | NodeMustGenerate) \
     macro(ArithIMul, NodeResultInt32) \
-    macro(ArithDiv, NodeResultNumber) \
-    macro(ArithMod, NodeResultNumber) \
-    macro(ArithAbs, NodeResultNumber) \
+    macro(ArithDiv, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithMod, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithAbs, NodeResultNumber | NodeMustGenerate) \
     macro(ArithMin, NodeResultNumber) \
     macro(ArithMax, NodeResultNumber) \
     macro(ArithFRound, NodeResultNumber) \
@@ -241,6 +253,7 @@ namespace JSC { namespace DFG {
     macro(PutHint, NodeMustGenerate) \
     macro(CheckStructureImmediate, NodeMustGenerate) \
     macro(MaterializeNewObject, NodeResultJS | NodeHasVarArgs) \
+    macro(PhantomNewFunction, NodeResultJS | NodeMustGenerate) \
     \
     /* Nodes for misc operations. */\
     macro(Breakpoint, NodeMustGenerate) \
@@ -269,10 +282,10 @@ namespace JSC { namespace DFG {
     macro(CreateActivation, NodeResultJS) \
     \
     macro(CreateDirectArguments, NodeResultJS) \
-    macro(PhantomDirectArguments, NodeResultJS) \
+    macro(PhantomDirectArguments, NodeResultJS | NodeMustGenerate) \
     macro(CreateScopedArguments, NodeResultJS) \
     macro(CreateClonedArguments, NodeResultJS) \
-    macro(PhantomClonedArguments, NodeResultJS) \
+    macro(PhantomClonedArguments, NodeResultJS | NodeMustGenerate) \
     macro(GetFromArguments, NodeResultJS) \
     macro(PutToArguments, NodeMustGenerate) \
     \

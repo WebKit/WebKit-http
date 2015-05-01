@@ -87,12 +87,13 @@
 #include "TextResourceDecoder.h"
 #include "TextStream.h"
 #include "TiledBacking.h"
+#include "WheelEventTestTrigger.h"
 
 #include <wtf/CurrentTime.h>
 #include <wtf/Ref.h>
 #include <wtf/TemporaryChange.h>
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
 #include "TiledBackingStore.h"
 #endif
 
@@ -1265,7 +1266,9 @@ void FrameView::layout(bool allowSubtree)
                     // Set the initial hMode to AlwaysOff if we're auto.
                     if (hMode == ScrollbarAuto)
                         setHorizontalScrollbarMode(ScrollbarAlwaysOff); // This causes a horizontal scrollbar to disappear.
-
+                    Page* page = frame().page();
+                    if (page && page->expectsWheelEventTriggers())
+                        scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
                     setScrollbarModes(hMode, vMode);
                     setScrollbarsSuppressed(false, true);
                 } else
@@ -1688,6 +1691,11 @@ float FrameView::yPositionForFooterLayer(const FloatPoint& scrollPosition, float
     return yPositionForHeaderLayer(scrollPosition, topContentInset) + totalContentsHeight - footerHeight;
 }
 
+float FrameView::yPositionForRootContentLayer() const
+{
+    return yPositionForRootContentLayer(scrollPosition(), topContentInset(), headerHeight());
+}
+
 #if PLATFORM(IOS)
 LayoutRect FrameView::rectForViewportConstrainedObjects(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements scrollBehavior)
 {
@@ -2044,6 +2052,9 @@ void FrameView::setScrollPosition(const IntPoint& scrollPoint)
 {
     TemporaryChange<bool> changeInProgrammaticScroll(m_inProgrammaticScroll, true);
     m_maintainScrollPositionAnchor = nullptr;
+    Page* page = frame().page();
+    if (page && page->expectsWheelEventTriggers())
+        scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
     ScrollView::setScrollPosition(scrollPoint);
 }
 
@@ -2054,7 +2065,7 @@ void FrameView::delegatesScrollingDidChange()
         clearBackingStores();
 }
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
 void FrameView::setFixedVisibleContentRect(const IntRect& visibleContentRect)
 {
     bool visibleContentSizeDidChange = false;
@@ -2237,7 +2248,7 @@ bool FrameView::requestScrollPositionUpdate(const IntPoint& position)
         tiledBacking->prepopulateRect(FloatRect(position, visibleContentRect().size()));
 #endif
 
-#if ENABLE(ASYNC_SCROLLING) || USE(TILED_BACKING_STORE)
+#if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
     if (Page* page = frame().page()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
             return scrollingCoordinator->requestScrollPositionUpdate(*this, position);
@@ -4199,9 +4210,8 @@ IntRect FrameView::convertFromRendererToContainingView(const RenderElement* rend
 {
     IntRect rect = snappedIntRect(enclosingLayoutRect(renderer->localToAbsoluteQuad(FloatRect(rendererRect)).boundingBox()));
 
-    // Convert from page ("absolute") to FrameView coordinates.
     if (!delegatesScrolling())
-        rect.moveBy(-scrollPosition() + IntPoint(0, headerHeight() + topContentInset(TopContentInsetType::WebCoreOrPlatformContentInset)));
+        rect = contentsToView(rect);
 
     return rect;
 }
@@ -4212,7 +4222,7 @@ IntRect FrameView::convertFromContainingViewToRenderer(const RenderElement* rend
     
     // Convert from FrameView coords into page ("absolute") coordinates.
     if (!delegatesScrolling())
-        rect.moveBy(documentScrollPositionRelativeToViewOrigin());
+        rect = viewToContents(rect);
 
     // FIXME: we don't have a way to map an absolute rect down to a local quad, so just
     // move the rect for now.
@@ -4226,7 +4236,8 @@ IntPoint FrameView::convertFromRendererToContainingView(const RenderElement* ren
 
     // Convert from page ("absolute") to FrameView coordinates.
     if (!delegatesScrolling())
-        point.moveBy(-scrollPosition() + IntPoint(0, headerHeight() + topContentInset(TopContentInsetType::WebCoreOrPlatformContentInset)));
+        point = contentsToView(point);
+
     return point;
 }
 
@@ -4236,7 +4247,7 @@ IntPoint FrameView::convertFromContainingViewToRenderer(const RenderElement* ren
 
     // Convert from FrameView coords into page ("absolute") coordinates.
     if (!delegatesScrolling())
-        point = point + documentScrollPositionRelativeToViewOrigin();
+        point = viewToContents(point);
 
     return roundedIntPoint(renderer->absoluteToLocal(point, UseTransforms));
 }
@@ -4556,6 +4567,9 @@ void FrameView::setScrollingPerformanceLoggingEnabled(bool flag)
 void FrameView::didAddScrollbar(Scrollbar* scrollbar, ScrollbarOrientation orientation)
 {
     ScrollableArea::didAddScrollbar(scrollbar, orientation);
+    Page* page = frame().page();
+    if (page && page->expectsWheelEventTriggers())
+        scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
     if (AXObjectCache* cache = axObjectCache())
         cache->handleScrollbarUpdate(this);
 }

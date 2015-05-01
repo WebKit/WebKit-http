@@ -25,79 +25,28 @@
 
 WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspector.NavigationSidebarPanel
 {
-    constructor()
+    constructor(contentBrowser)
     {
-        super("resource", WebInspector.UIString("Resources"), "Images/NavigationItemStorage.svg", "1", true, false, true);
+        super("resource", WebInspector.UIString("Resources"), true);
 
-        var searchElement = document.createElement("div");
-        searchElement.classList.add("search-bar");
-        this.element.appendChild(searchElement);
-
-        this._inputElement = document.createElement("input");
-        this._inputElement.type = "search";
-        this._inputElement.spellcheck = false;
-        this._inputElement.addEventListener("search", this._searchFieldChanged.bind(this));
-        this._inputElement.addEventListener("input", this._searchFieldInput.bind(this));
-        this._inputElement.setAttribute("results", 5);
-        this._inputElement.setAttribute("autosave", "inspector-search");
-        this._inputElement.setAttribute("placeholder", WebInspector.UIString("Search Resource Content"));
-        searchElement.appendChild(this._inputElement);
+        this.contentBrowser = contentBrowser;
 
         this.filterBar.placeholder = WebInspector.UIString("Filter Resource List");
 
         this._waitingForInitialMainFrame = true;
-        this._lastSearchedPageSetting = new WebInspector.Setting("last-searched-page", null);
-
-        this._searchQuerySetting = new WebInspector.Setting("search-sidebar-query", "");
-        this._inputElement.value = this._searchQuerySetting.value;
-
-        this._searchKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "F", this._focusSearchField.bind(this));
-
-        this._localStorageRootTreeElement = null;
-        this._sessionStorageRootTreeElement = null;
-
-        this._databaseRootTreeElement = null;
-        this._databaseHostTreeElementMap = {};
-
-        this._indexedDatabaseRootTreeElement = null;
-        this._indexedDatabaseHostTreeElementMap = {};
-
-        this._cookieStorageRootTreeElement = null;
-
-        this._applicationCacheRootTreeElement = null;
-        this._applicationCacheURLTreeElementMap = {};
-
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.CookieStorageObjectWasAdded, this._cookieStorageObjectWasAdded, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.DOMStorageObjectWasAdded, this._domStorageObjectWasAdded, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.DOMStorageObjectWasInspected, this._domStorageObjectWasInspected, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.DatabaseWasAdded, this._databaseWasAdded, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.DatabaseWasInspected, this._databaseWasInspected, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.IndexedDatabaseWasAdded, this._indexedDatabaseWasAdded, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.Cleared, this._storageCleared, this);
-
-        WebInspector.applicationCacheManager.addEventListener(WebInspector.ApplicationCacheManager.Event.FrameManifestAdded, this._frameManifestAdded, this);
-        WebInspector.applicationCacheManager.addEventListener(WebInspector.ApplicationCacheManager.Event.FrameManifestRemoved, this._frameManifestRemoved, this);
 
         WebInspector.frameResourceManager.addEventListener(WebInspector.FrameResourceManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
-        WebInspector.frameResourceManager.addEventListener(WebInspector.FrameResourceManager.Event.FrameWasAdded, this._frameWasAdded, this);
-
-        WebInspector.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.DOMNodeWasInspected, this._domNodeWasInspected, this);
 
         WebInspector.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.ScriptAdded, this._scriptWasAdded, this);
         WebInspector.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.ScriptsCleared, this._scriptsCleared, this);
 
         WebInspector.notifications.addEventListener(WebInspector.Notification.ExtraDomainsActivated, this._extraDomainsActivated, this);
 
-        this._resourcesContentTreeOutline = this.contentTreeOutline;
-        this._searchContentTreeOutline = this.createContentTreeOutline();
-
-        this._resourcesContentTreeOutline.onselect = this._treeElementSelected.bind(this);
-        this._searchContentTreeOutline.onselect = this._treeElementSelected.bind(this);
-
-        this._resourcesContentTreeOutline.includeSourceMapResourceChildren = true;
+        this.contentTreeOutline.onselect = this._treeElementSelected.bind(this);
+        this.contentTreeOutline.includeSourceMapResourceChildren = true;
 
         if (WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript)
-            this._resourcesContentTreeOutline.element.classList.add(WebInspector.NavigationSidebarPanel.HideDisclosureButtonsStyleClassName);
+            this.contentTreeOutline.element.classList.add(WebInspector.NavigationSidebarPanel.HideDisclosureButtonsStyleClassName);
     }
 
     // Public
@@ -105,142 +54,23 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
     showDefaultContentView()
     {
         if (WebInspector.frameResourceManager.mainFrame) {
-            this.showMainFrame();
+            this.contentBrowser.showContentViewForRepresentedObject(WebInspector.frameResourceManager.mainFrame);
             return;
         }
 
-        var firstTreeElement = this._resourcesContentTreeOutline.children[0];
+        var firstTreeElement = this.contentTreeOutline.children[0];
         if (firstTreeElement)
-            firstTreeElement.revealAndSelect();
-    }
-
-    get contentTreeOutlineToAutoPrune()
-    {
-        return this._searchContentTreeOutline;
-    }
-
-    showMainFrame(nodeToSelect, preventFocusChange)
-    {
-        WebInspector.contentBrowser.showContentViewForRepresentedObject(WebInspector.frameResourceManager.mainFrame);
-    }
-
-    showMainFrameDOMTree(nodeToSelect, preventFocusChange)
-    {
-        var contentView = WebInspector.contentBrowser.contentViewForRepresentedObject(WebInspector.frameResourceManager.mainFrame);
-        contentView.showDOMTree(nodeToSelect, preventFocusChange);
-        WebInspector.contentBrowser.showContentView(contentView);
-    }
-
-    showMainFrameSourceCode()
-    {
-        var contentView = WebInspector.contentBrowser.contentViewForRepresentedObject(WebInspector.frameResourceManager.mainFrame);
-        contentView.showSourceCode();
-        WebInspector.contentBrowser.showContentView(contentView);
-    }
-
-    showContentFlowDOMTree(contentFlow, nodeToSelect, preventFocusChange)
-    {
-        var contentView = WebInspector.contentBrowser.contentViewForRepresentedObject(contentFlow);
-        if (nodeToSelect)
-            contentView.selectAndRevealDOMNode(nodeToSelect, preventFocusChange);
-        WebInspector.contentBrowser.showContentView(contentView);
-    }
-
-    showSourceCodeForFrame(frameIdentifier, revealAndSelectTreeElement)
-    {
-        delete this._frameIdentifierToShowSourceCodeWhenAvailable;
-
-        // We can't show anything until we have the main frame in the sidebar.
-        // Otherwise the path components in the navigation bar would be missing.
-        var frame = WebInspector.frameResourceManager.frameForIdentifier(frameIdentifier);
-        if (!frame || !this._mainFrameTreeElement) {
-            this._frameIdentifierToShowSourceCodeWhenAvailable = frameIdentifier;
-            return;
-        }
-
-        var contentView = WebInspector.contentBrowser.contentViewForRepresentedObject(frame);
-        console.assert(contentView);
-        if (!contentView)
-            return;
-
-        contentView.showSourceCode();
-        WebInspector.contentBrowser.showContentView(contentView);
-
-        if (revealAndSelectTreeElement)
-            this.treeElementForRepresentedObject(frame).revealAndSelect(true, true, true, true);
-    }
-
-    showSourceCode(sourceCode, positionToReveal, textRangeToSelect, forceUnformatted)
-    {
-        console.assert(!positionToReveal || positionToReveal instanceof WebInspector.SourceCodePosition, positionToReveal);
-        var representedObject = sourceCode;
-
-        if (representedObject instanceof WebInspector.Script) {
-            // A script represented by a resource should always show the resource.
-            representedObject = representedObject.resource || representedObject;
-        }
-
-        // A main resource is always represented by its parent frame.
-        if (representedObject instanceof WebInspector.Resource && representedObject.isMainResource())
-            representedObject = representedObject.parentFrame;
-
-        var cookie = positionToReveal ? {lineNumber: positionToReveal.lineNumber, columnNumber: positionToReveal.columnNumber} : {};
-        WebInspector.contentBrowser.showContentViewForRepresentedObject(representedObject, cookie);
-    }
-
-    showSourceCodeLocation(sourceCodeLocation)
-    {
-        this.showSourceCode(sourceCodeLocation.displaySourceCode, sourceCodeLocation.displayPosition());
-    }
-
-    showOriginalUnformattedSourceCodeLocation(sourceCodeLocation)
-    {
-        this.showSourceCode(sourceCodeLocation.sourceCode, sourceCodeLocation.position(), undefined, true);
-    }
-
-    showOriginalOrFormattedSourceCodeLocation(sourceCodeLocation)
-    {
-        this.showSourceCode(sourceCodeLocation.sourceCode, sourceCodeLocation.formattedPosition());
-    }
-
-    showSourceCodeTextRange(sourceCodeTextRange)
-    {
-        var textRangeToSelect = sourceCodeTextRange.displayTextRange;
-        this.showSourceCode(sourceCodeTextRange.displaySourceCode, textRangeToSelect.startPosition(), textRangeToSelect);
-    }
-
-    showOriginalOrFormattedSourceCodeTextRange(sourceCodeTextRange)
-    {
-        var textRangeToSelect = sourceCodeTextRange.formattedTextRange;
-        this.showSourceCode(sourceCodeTextRange.sourceCode, textRangeToSelect.startPosition(), textRangeToSelect);
-    }
-
-    showResource(resource)
-    {
-        WebInspector.contentBrowser.showContentViewForRepresentedObject(resource.isMainResource() ? resource.parentFrame : resource);
-    }
-
-    showResourceRequest(resource)
-    {
-        var contentView = WebInspector.contentBrowser.contentViewForRepresentedObject(resource.isMainResource() ? resource.parentFrame : resource);
-
-        if (contentView instanceof WebInspector.FrameContentView)
-            var resourceContentView = contentView.showResource();
-        else if (contentView instanceof WebInspector.ResourceClusterContentView)
-            var resourceContentView = contentView;
-
-        console.assert(resourceContentView instanceof WebInspector.ResourceClusterContentView);
-        if (!(resourceContentView instanceof WebInspector.ResourceClusterContentView))
-            return;
-
-        resourceContentView.showRequest();
-
-        WebInspector.contentBrowser.showContentView(contentView);
+            this.showDefaultContentViewForTreeElement(firstTreeElement);
     }
 
     treeElementForRepresentedObject(representedObject)
     {
         // A custom implementation is needed for this since the frames are populated lazily.
+
+        if (!this._mainFrameTreeElement && (representedObject instanceof WebInspector.Resource || representedObject instanceof WebInspector.Frame)) {
+            // All resources are under the main frame, so we need to return early if we don't have the main frame yet.
+            return null;
+        }
 
         // The Frame is used as the representedObject instead of the main resource in our tree.
         if (representedObject instanceof WebInspector.Resource && representedObject.parentFrame && representedObject.parentFrame.mainResource === representedObject)
@@ -275,7 +105,7 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
             return resourceOrFrame.parentFrame;
         }
 
-        var treeElement = this._resourcesContentTreeOutline.findTreeElement(representedObject, isAncestor, getParent);
+        var treeElement = this.contentTreeOutline.findTreeElement(representedObject, isAncestor, getParent);
         if (treeElement)
             return treeElement;
 
@@ -297,8 +127,8 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
             this._anonymousScriptsFolderTreeElement = new WebInspector.FolderTreeElement(WebInspector.UIString("Anonymous Scripts"));
 
         if (!this._anonymousScriptsFolderTreeElement.parent) {
-            var index = insertionIndexForObjectInListSortedByFunction(this._anonymousScriptsFolderTreeElement, this._resourcesContentTreeOutline.children, this._compareTreeElements);
-            this._resourcesContentTreeOutline.insertChild(this._anonymousScriptsFolderTreeElement, index);
+            var index = insertionIndexForObjectInListSortedByFunction(this._anonymousScriptsFolderTreeElement, this.contentTreeOutline.children, this._compareTreeElements);
+            this.contentTreeOutline.insertChild(this._anonymousScriptsFolderTreeElement, index);
         }
 
         var scriptTreeElement = new WebInspector.ScriptTreeElement(representedObject);
@@ -307,282 +137,13 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         return scriptTreeElement;
     }
 
-    performSearch(searchTerm)
-    {
-        // Before performing a new search, clear the old search.
-        this._searchContentTreeOutline.removeChildren();
-
-        this._inputElement.value = searchTerm;
-        this._searchQuerySetting.value = searchTerm;
-        this._lastSearchedPageSetting.value = searchTerm && WebInspector.frameResourceManager.mainFrame ? WebInspector.frameResourceManager.mainFrame.url.hash : null;
-
-        this.hideEmptyContentPlaceholder();
-
-        searchTerm = searchTerm.trim();
-        if (!searchTerm.length) {
-            this._showResourcesContentTreeOutline();
-            return;
-        }
-
-        this._showSearchContentTreeOutline();
-
-        // FIXME: Provide UI to toggle regex and case sensitive searches.
-        var isCaseSensitive = false;
-        var isRegex = false;
-
-        var updateEmptyContentPlaceholderTimeout = null;
-
-        function updateEmptyContentPlaceholderSoon()
-        {
-            if (updateEmptyContentPlaceholderTimeout)
-                return;
-            updateEmptyContentPlaceholderTimeout = setTimeout(updateEmptyContentPlaceholder.bind(this), 100);
-        }
-
-        function updateEmptyContentPlaceholder()
-        {
-            if (updateEmptyContentPlaceholderTimeout) {
-                clearTimeout(updateEmptyContentPlaceholderTimeout);
-                updateEmptyContentPlaceholderTimeout = null;
-            }
-
-            this.updateEmptyContentPlaceholder(WebInspector.UIString("No Search Results"));
-        }
-
-        function forEachMatch(searchTerm, lineContent, callback)
-        {
-            var lineMatch;
-            var searchRegex = new RegExp(searchTerm.escapeForRegExp(), "gi");
-            while ((searchRegex.lastIndex < lineContent.length) && (lineMatch = searchRegex.exec(lineContent)))
-                callback(lineMatch, searchRegex.lastIndex);
-        }
-
-        function resourcesCallback(error, result)
-        {
-            updateEmptyContentPlaceholderSoon.call(this);
-
-            if (error)
-                return;
-
-            function resourceCallback(url, error, resourceMatches)
-            {
-                updateEmptyContentPlaceholderSoon.call(this);
-
-                if (error || !resourceMatches || !resourceMatches.length)
-                    return;
-
-                var frame = WebInspector.frameResourceManager.frameForIdentifier(searchResult.frameId);
-                if (!frame)
-                    return;
-
-                var resource = frame.url === url ? frame.mainResource : frame.resourceForURL(url);
-                if (!resource)
-                    return;
-
-                var resourceTreeElement = this._searchTreeElementForResource(resource);
-
-                for (var i = 0; i < resourceMatches.length; ++i) {
-                    var match = resourceMatches[i];
-                    forEachMatch(searchTerm, match.lineContent, function(lineMatch, lastIndex) {
-                        var matchObject = new WebInspector.SourceCodeSearchMatchObject(resource, match.lineContent, searchTerm, new WebInspector.TextRange(match.lineNumber, lineMatch.index, match.lineNumber, lastIndex));
-                        var matchTreeElement = new WebInspector.SearchResultTreeElement(matchObject);
-                        resourceTreeElement.appendChild(matchTreeElement);
-                    });
-                }
-
-                updateEmptyContentPlaceholder.call(this);
-            }
-
-            for (var i = 0; i < result.length; ++i) {
-                var searchResult = result[i];
-                if (!searchResult.url || !searchResult.frameId)
-                    continue;
-
-                PageAgent.searchInResource(searchResult.frameId, searchResult.url, searchTerm, isCaseSensitive, isRegex, resourceCallback.bind(this, searchResult.url));
-            }
-        }
-
-        function searchScripts(scriptsToSearch)
-        {
-            updateEmptyContentPlaceholderSoon.call(this);
-
-            if (!scriptsToSearch.length)
-                return;
-
-            function scriptCallback(script, error, scriptMatches)
-            {
-                updateEmptyContentPlaceholderSoon.call(this);
-
-                if (error || !scriptMatches || !scriptMatches.length)
-                    return;
-
-                var scriptTreeElement = this._searchTreeElementForScript(script);
-
-                for (var i = 0; i < scriptMatches.length; ++i) {
-                    var match = scriptMatches[i];
-                    forEachMatch(searchTerm, match.lineContent, function(lineMatch, lastIndex) {
-                        var matchObject = new WebInspector.SourceCodeSearchMatchObject(script, match.lineContent, searchTerm, new WebInspector.TextRange(match.lineNumber, lineMatch.index, match.lineNumber, lastIndex));
-                        var matchTreeElement = new WebInspector.SearchResultTreeElement(matchObject);
-                        scriptTreeElement.appendChild(matchTreeElement);
-                    });
-                }
-
-                updateEmptyContentPlaceholder.call(this);
-            }
-
-            for (var script of scriptsToSearch)
-                DebuggerAgent.searchInContent(script.id, searchTerm, isCaseSensitive, isRegex, scriptCallback.bind(this, script));
-        }
-
-        function domCallback(error, searchId, resultsCount)
-        {
-            updateEmptyContentPlaceholderSoon.call(this);
-
-            if (error || !resultsCount)
-                return;
-
-            this._domSearchIdentifier = searchId;
-
-            function domSearchResults(error, nodeIds)
-            {
-                updateEmptyContentPlaceholderSoon.call(this);
-
-                if (error)
-                    return;
-
-                for (var i = 0; i < nodeIds.length; ++i) {
-                    // If someone started a new search, then return early and stop showing seach results from the old query.
-                    if (this._domSearchIdentifier !== searchId)
-                        return;
-
-                    var domNode = WebInspector.domTreeManager.nodeForId(nodeIds[i]);
-                    if (!domNode || !domNode.ownerDocument)
-                        continue;
-
-                    // We do not display the document node when the search query is "/". We don't have anything to display in the content view for it.
-                    if (domNode.nodeType() === Node.DOCUMENT_NODE)
-                        continue;
-
-                    // FIXME: This should use a frame to do resourceForURL, but DOMAgent does not provide a frameId.
-                    var resource = WebInspector.frameResourceManager.resourceForURL(domNode.ownerDocument.documentURL);
-                    if (!resource)
-                        continue;
-
-                    var resourceTreeElement = this._searchTreeElementForResource(resource);
-                    var domNodeTitle = WebInspector.DOMSearchMatchObject.titleForDOMNode(domNode);
-
-                    // Textual matches.
-                    var didFindTextualMatch = false;
-                    forEachMatch(searchTerm, domNodeTitle, function(lineMatch, lastIndex) {
-                        var matchObject = new WebInspector.DOMSearchMatchObject(resource, domNode, domNodeTitle, searchTerm, new WebInspector.TextRange(0, lineMatch.index, 0, lastIndex));
-                        var matchTreeElement = new WebInspector.SearchResultTreeElement(matchObject);
-                        resourceTreeElement.appendChild(matchTreeElement);
-                        didFindTextualMatch = true;
-                    });
-
-                    // Non-textual matches are CSS Selector or XPath matches. In such cases, display the node entirely highlighted.
-                    if (!didFindTextualMatch) {
-                        var matchObject = new WebInspector.DOMSearchMatchObject(resource, domNode, domNodeTitle, domNodeTitle, new WebInspector.TextRange(0, 0, 0, domNodeTitle.length));
-                        var matchTreeElement = new WebInspector.SearchResultTreeElement(matchObject);
-                        resourceTreeElement.appendChild(matchTreeElement);
-                    }
-
-                    updateEmptyContentPlaceholder.call(this);
-                }
-            }
-
-            DOMAgent.getSearchResults(searchId, 0, resultsCount, domSearchResults.bind(this));
-        }
-
-        if (window.DOMAgent)
-            WebInspector.domTreeManager.requestDocument();
-
-        if (window.PageAgent)
-            PageAgent.searchInResources(searchTerm, isCaseSensitive, isRegex, resourcesCallback.bind(this));
-
-        setTimeout(searchScripts.bind(this, this._scriptsToSearch()), 0);
-
-        if (window.DOMAgent) {
-            if ("_domSearchIdentifier" in this) {
-                DOMAgent.discardSearchResults(this._domSearchIdentifier);
-                delete this._domSearchIdentifier;
-            }
-
-            DOMAgent.performSearch(searchTerm, domCallback.bind(this));
-        }
-
-        // FIXME: Resource search should work in JSContext inspection.
-        // <https://webkit.org/b/131252> Web Inspector: JSContext inspection Resource search does not work
-        if (!window.DOMAgent && !window.PageAgent)
-            updateEmptyContentPlaceholderSoon.call(this);
-    }
-
     // Private
-
-    _showResourcesContentTreeOutline()
-    {
-        this.filterBar.placeholder = WebInspector.UIString("Filter Resource List");
-        this.contentTreeOutline = this._resourcesContentTreeOutline;
-    }
-
-    _showSearchContentTreeOutline()
-    {
-        this.filterBar.placeholder = WebInspector.UIString("Filter Search Results");
-        this.contentTreeOutline = this._searchContentTreeOutline;
-    }
-
-    _searchFieldChanged(event)
-    {
-        this.performSearch(event.target.value);
-    }
-
-    _searchFieldInput(event)
-    {
-        // If the search field is cleared, immediately clear the search results tree outline.
-        if (!event.target.value.length && this.contentTreeOutline === this._searchContentTreeOutline)
-            this.performSearch("");
-    }
-
-    _searchTreeElementForResource(resource)
-    {
-        var resourceTreeElement = this._searchContentTreeOutline.getCachedTreeElement(resource);
-        if (!resourceTreeElement) {
-            resourceTreeElement = new WebInspector.ResourceTreeElement(resource);
-            resourceTreeElement.hasChildren = true;
-            resourceTreeElement.expand();
-
-            this._searchContentTreeOutline.appendChild(resourceTreeElement);
-        }
-
-        return resourceTreeElement;
-    }
-
-    _searchTreeElementForScript(script)
-    {
-        var scriptTreeElement = this._searchContentTreeOutline.getCachedTreeElement(script);
-        if (!scriptTreeElement) {
-            scriptTreeElement = new WebInspector.ScriptTreeElement(script);
-            scriptTreeElement.hasChildren = true;
-            scriptTreeElement.expand();
-
-            this._searchContentTreeOutline.appendChild(scriptTreeElement);
-        }
-
-        return scriptTreeElement;
-    }
-
-    _focusSearchField(keyboardShortcut, event)
-    {
-        this.show();
-
-        this._inputElement.select();
-    }
 
     _mainFrameDidChange(event)
     {
         if (this._mainFrameTreeElement) {
             this._mainFrameTreeElement.frame.removeEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainFrameMainResourceDidChange, this);
-            this._resourcesContentTreeOutline.removeChild(this._mainFrameTreeElement);
+            this.contentTreeOutline.removeChild(this._mainFrameTreeElement);
             this._mainFrameTreeElement = null;
         }
 
@@ -590,15 +151,20 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         if (newFrame) {
             newFrame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainFrameMainResourceDidChange, this);
             this._mainFrameTreeElement = new WebInspector.FrameTreeElement(newFrame);
-            this._resourcesContentTreeOutline.insertChild(this._mainFrameTreeElement, 0);
+            this.contentTreeOutline.insertChild(this._mainFrameTreeElement, 0);
 
-            // Select by default. Allow onselect if we aren't showing a content view.
-            if (!this._resourcesContentTreeOutline.selectedTreeElement)
-                this._mainFrameTreeElement.revealAndSelect(true, false, !!WebInspector.contentBrowser.currentContentView);
-
-            if (this._frameIdentifierToShowSourceCodeWhenAvailable)
-                this.showSourceCodeForFrame(this._frameIdentifierToShowSourceCodeWhenAvailable, true);
+            // Select a tree element by default. Allow onselect if we aren't showing a content view.
+            if (!this.contentTreeOutline.selectedTreeElement) {
+                var currentContentView = this.contentBrowser.currentContentView;
+                var treeElement = currentContentView ? this.treeElementForRepresentedObject(currentContentView.representedObject) : null;
+                if (!treeElement)
+                    treeElement = this._mainFrameTreeElement;
+                this.showDefaultContentViewForTreeElement(treeElement);
+            }
         }
+
+        // The navigation path needs update when the main frame changes, since all resources are under the main frame.
+        this.contentBrowser.updateHierarchicalPathForCurrentContentView();
 
         // We only care about the first time the main frame changes.
         if (!this._waitingForInitialMainFrame)
@@ -608,65 +174,34 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         if (!newFrame)
             return;
 
-        delete this._waitingForInitialMainFrame;
-
-        // Only if the last page searched is the same as the current page.
-        if (this._lastSearchedPageSetting.value !== newFrame.url.hash)
-            return;
-
-        // Search for whatever is in the input field. This was populated with the last used search term.
-        this.performSearch(this._inputElement.value);
+        this._waitingForInitialMainFrame = false;
     }
 
     _mainFrameMainResourceDidChange(event)
     {
         var wasShowingResourceSidebar = this.selected;
-        var currentContentView = WebInspector.contentBrowser.currentContentView;
+        var currentContentView = this.contentBrowser.currentContentView;
         var wasShowingResourceContentView = currentContentView instanceof WebInspector.ResourceContentView
             || currentContentView instanceof WebInspector.ResourceClusterContentView
             || currentContentView instanceof WebInspector.FrameContentView
             || currentContentView instanceof WebInspector.ScriptContentView;
 
-        // Close all resource and frame content views since the main frame has navigated and all resources are cleared.
-        WebInspector.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.ResourceClusterContentView);
-        WebInspector.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.FrameContentView);
-        WebInspector.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.ScriptContentView);
-
-        // Break out of search tree outline if there was an active search.
-        this._showResourcesContentTreeOutline();
+        this.contentBrowser.contentViewContainer.closeAllContentViews();
 
         function delayedWork()
         {
             // Show the main frame since there is no content view showing or we were showing a resource before.
             // Cookie restoration will attempt to re-select the resource we were showing.
-            if (!WebInspector.contentBrowser.currentContentView || wasShowingResourceContentView) {
-                // If we were showing a resource inside of the ResourceSidebar, we should
-                // re-show the resource inside of the resource sidebar. It is possible that
-                // the sidebar panel could have switched to another view in the back-forward list.
-                if (wasShowingResourceSidebar)
-                    WebInspector.navigationSidebar.selectedSidebarPanel = this;
-
+            if (!this.contentBrowser.currentContentView || wasShowingResourceContentView) {
                 // NOTE: This selection, during provisional loading, won't be saved, so it is
                 // safe to do and not-clobber cookie restoration.
-                this._mainFrameTreeElement.revealAndSelect(true, false);
+                this.showDefaultContentViewForTreeElement(this._mainFrameTreeElement);
             }
         }
 
         // Delay this work because other listeners of this event might not have fired yet. So selecting the main frame
         // before those listeners do their work might cause the content of the old page to show instead of the new page.
         setTimeout(delayedWork.bind(this), 0);
-    }
-
-    _frameWasAdded(event)
-    {
-        if (!this._frameIdentifierToShowSourceCodeWhenAvailable)
-            return;
-
-        var frame = event.data.frame;
-        if (frame.id !== this._frameIdentifierToShowSourceCodeWhenAvailable)
-            return;
-
-        this.showSourceCodeForFrame(frame.id, true);
     }
 
     _scriptWasAdded(event)
@@ -705,12 +240,12 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         var scriptTreeElement = new WebInspector.ScriptTreeElement(script);
 
         if (insertIntoTopLevel) {
-            var index = insertionIndexForObjectInListSortedByFunction(scriptTreeElement, this._resourcesContentTreeOutline.children, this._compareTreeElements);
-            this._resourcesContentTreeOutline.insertChild(scriptTreeElement, index);
+            var index = insertionIndexForObjectInListSortedByFunction(scriptTreeElement, this.contentTreeOutline.children, this._compareTreeElements);
+            this.contentTreeOutline.insertChild(scriptTreeElement, index);
         } else {
             if (!parentFolderTreeElement.parent) {
-                var index = insertionIndexForObjectInListSortedByFunction(parentFolderTreeElement, this._resourcesContentTreeOutline.children, this._compareTreeElements);
-                this._resourcesContentTreeOutline.insertChild(parentFolderTreeElement, index);
+                var index = insertionIndexForObjectInListSortedByFunction(parentFolderTreeElement, this.contentTreeOutline.children, this._compareTreeElements);
+                this.contentTreeOutline.insertChild(parentFolderTreeElement, index);
             }
 
             parentFolderTreeElement.appendChild(scriptTreeElement);
@@ -738,145 +273,17 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         }
     }
 
-    _scriptsToSearch(event)
-    {
-        var nonResourceScripts = [];
-
-        function collectFromTreeElement(folderTreeElement)
-        {
-            if (!folderTreeElement)
-                return;
-
-            var children = folderTreeElement.children;
-            for (var treeElement of children) {
-                if (treeElement instanceof WebInspector.ScriptTreeElement)
-                    nonResourceScripts.push(treeElement.script);
-            }
-        }
-
-        if (WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript && !WebInspector.hasExtraDomains)
-            collectFromTreeElement(this._resourcesContentTreeOutline);
-        else {
-            collectFromTreeElement(this._extensionScriptsFolderTreeElement);
-            collectFromTreeElement(this._extraScriptsFolderTreeElement);
-            collectFromTreeElement(this._anonymousScriptsFolderTreeElement);
-        }
-
-        return nonResourceScripts;
-    }
-
     _treeElementSelected(treeElement, selectedByUser)
     {
-        if (treeElement instanceof WebInspector.FolderTreeElement || treeElement instanceof WebInspector.DatabaseHostTreeElement ||
-            treeElement instanceof WebInspector.IndexedDatabaseHostTreeElement || treeElement instanceof WebInspector.IndexedDatabaseTreeElement)
+        if (treeElement instanceof WebInspector.FolderTreeElement)
             return;
 
-        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement ||
-            treeElement instanceof WebInspector.StorageTreeElement || treeElement instanceof WebInspector.DatabaseTableTreeElement ||
-            treeElement instanceof WebInspector.DatabaseTreeElement || treeElement instanceof WebInspector.ApplicationCacheFrameTreeElement ||
-            treeElement instanceof WebInspector.ContentFlowTreeElement || treeElement instanceof WebInspector.IndexedDatabaseObjectStoreTreeElement ||
-            treeElement instanceof WebInspector.IndexedDatabaseObjectStoreIndexTreeElement) {
-            WebInspector.contentBrowser.showContentViewForRepresentedObject(treeElement.representedObject);
+        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement) {
+            WebInspector.showRepresentedObject(treeElement.representedObject);
             return;
         }
 
-        console.assert(treeElement instanceof WebInspector.SearchResultTreeElement);
-        if (!(treeElement instanceof WebInspector.SearchResultTreeElement))
-            return;
-
-        if (treeElement.representedObject instanceof WebInspector.DOMSearchMatchObject)
-            this.showMainFrameDOMTree(treeElement.representedObject.domNode, true);
-        else if (treeElement.representedObject instanceof WebInspector.SourceCodeSearchMatchObject)
-            this.showOriginalOrFormattedSourceCodeTextRange(treeElement.representedObject.sourceCodeTextRange);
-    }
-
-    _domNodeWasInspected(event)
-    {
-        this.showMainFrameDOMTree(event.data.node);
-    }
-
-    _domStorageObjectWasAdded(event)
-    {
-        var domStorage = event.data.domStorage;
-        var storageElement = new WebInspector.DOMStorageTreeElement(domStorage);
-
-        if (domStorage.isLocalStorage())
-            this._localStorageRootTreeElement = this._addStorageChild(storageElement, this._localStorageRootTreeElement, WebInspector.UIString("Local Storage"));
-        else
-            this._sessionStorageRootTreeElement = this._addStorageChild(storageElement, this._sessionStorageRootTreeElement, WebInspector.UIString("Session Storage"));
-    }
-
-    _domStorageObjectWasInspected(event)
-    {
-        var domStorage = event.data.domStorage;
-        var treeElement = this.treeElementForRepresentedObject(domStorage);
-        treeElement.revealAndSelect(true);
-    }
-
-    _databaseWasAdded(event)
-    {
-        var database = event.data.database;
-
-        console.assert(database instanceof WebInspector.DatabaseObject);
-
-        if (!this._databaseHostTreeElementMap[database.host]) {
-            this._databaseHostTreeElementMap[database.host] = new WebInspector.DatabaseHostTreeElement(database.host);
-            this._databaseRootTreeElement = this._addStorageChild(this._databaseHostTreeElementMap[database.host], this._databaseRootTreeElement, WebInspector.UIString("Databases"));
-        }
-
-        var databaseElement = new WebInspector.DatabaseTreeElement(database);
-        this._databaseHostTreeElementMap[database.host].appendChild(databaseElement);
-    }
-
-    _databaseWasInspected(event)
-    {
-        var database = event.data.database;
-        var treeElement = this.treeElementForRepresentedObject(database);
-        treeElement.revealAndSelect(true);
-    }
-
-    _indexedDatabaseWasAdded(event)
-    {
-        var indexedDatabase = event.data.indexedDatabase;
-
-        console.assert(indexedDatabase instanceof WebInspector.IndexedDatabase);
-
-        if (!this._indexedDatabaseHostTreeElementMap[indexedDatabase.host]) {
-            this._indexedDatabaseHostTreeElementMap[indexedDatabase.host] = new WebInspector.IndexedDatabaseHostTreeElement(indexedDatabase.host);
-            this._indexedDatabaseRootTreeElement = this._addStorageChild(this._indexedDatabaseHostTreeElementMap[indexedDatabase.host], this._indexedDatabaseRootTreeElement, WebInspector.UIString("Indexed Databases"));
-        }
-
-        var indexedDatabaseElement = new WebInspector.IndexedDatabaseTreeElement(indexedDatabase);
-        this._indexedDatabaseHostTreeElementMap[indexedDatabase.host].appendChild(indexedDatabaseElement);
-    }
-
-    _cookieStorageObjectWasAdded(event)
-    {
-        console.assert(event.data.cookieStorage instanceof WebInspector.CookieStorageObject);
-
-        var cookieElement = new WebInspector.CookieStorageTreeElement(event.data.cookieStorage);
-        this._cookieStorageRootTreeElement = this._addStorageChild(cookieElement, this._cookieStorageRootTreeElement, WebInspector.UIString("Cookies"));
-    }
-
-    _frameManifestAdded(event)
-    {
-        var frameManifest = event.data.frameManifest;
-        console.assert(frameManifest instanceof WebInspector.ApplicationCacheFrame);
-
-        var manifest = frameManifest.manifest;
-        var manifestURL = manifest.manifestURL;
-        if (!this._applicationCacheURLTreeElementMap[manifestURL]) {
-            this._applicationCacheURLTreeElementMap[manifestURL] = new WebInspector.ApplicationCacheManifestTreeElement(manifest);
-            this._applicationCacheRootTreeElement = this._addStorageChild(this._applicationCacheURLTreeElementMap[manifestURL], this._applicationCacheRootTreeElement, WebInspector.UIString("Application Cache"));
-        }
-
-        var frameCacheElement = new WebInspector.ApplicationCacheFrameTreeElement(frameManifest);
-        this._applicationCacheURLTreeElementMap[manifestURL].appendChild(frameCacheElement);
-    }
-
-    _frameManifestRemoved(event)
-    {
-         // FIXME: Implement this.
+        console.error("Unknown tree element", treeElement);
     }
 
     _compareTreeElements(a, b)
@@ -893,79 +300,9 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         return (a.mainTitle || "").localeCompare(b.mainTitle || "");
     }
 
-    _addStorageChild(childElement, parentElement, folderName)
-    {
-        if (!parentElement) {
-            childElement.flattened = true;
-
-            this._resourcesContentTreeOutline.insertChild(childElement, insertionIndexForObjectInListSortedByFunction(childElement, this._resourcesContentTreeOutline.children, this._compareTreeElements));
-
-            return childElement;
-        }
-
-        if (parentElement instanceof WebInspector.StorageTreeElement) {
-            console.assert(parentElement.flattened);
-
-            var previousOnlyChild = parentElement;
-            previousOnlyChild.flattened = false;
-            this._resourcesContentTreeOutline.removeChild(previousOnlyChild);
-
-            var folderElement = new WebInspector.FolderTreeElement(folderName);
-            this._resourcesContentTreeOutline.insertChild(folderElement, insertionIndexForObjectInListSortedByFunction(folderElement, this._resourcesContentTreeOutline.children, this._compareTreeElements));
-
-            folderElement.appendChild(previousOnlyChild);
-            folderElement.insertChild(childElement, insertionIndexForObjectInListSortedByFunction(childElement, folderElement.children, this._compareTreeElements));
-
-            return folderElement;
-        }
-
-        console.assert(parentElement instanceof WebInspector.FolderTreeElement);
-        parentElement.insertChild(childElement, insertionIndexForObjectInListSortedByFunction(childElement, parentElement.children, this._compareTreeElements));
-
-        return parentElement;
-    }
-
-    _storageCleared(event)
-    {
-        // Close all DOM and cookie storage content views since the main frame has navigated and all storages are cleared.
-        WebInspector.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.CookieStorageContentView);
-        WebInspector.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.DOMStorageContentView);
-        WebInspector.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.DatabaseTableContentView);
-        WebInspector.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.DatabaseContentView);
-        WebInspector.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.ApplicationCacheFrameContentView);
-
-        if (this._localStorageRootTreeElement && this._localStorageRootTreeElement.parent)
-            this._localStorageRootTreeElement.parent.removeChild(this._localStorageRootTreeElement);
-
-        if (this._sessionStorageRootTreeElement && this._sessionStorageRootTreeElement.parent)
-            this._sessionStorageRootTreeElement.parent.removeChild(this._sessionStorageRootTreeElement);
-
-        if (this._databaseRootTreeElement && this._databaseRootTreeElement.parent)
-            this._databaseRootTreeElement.parent.removeChild(this._databaseRootTreeElement);
-
-        if (this._indexedDatabaseRootTreeElement && this._indexedDatabaseRootTreeElement.parent)
-            this._indexedDatabaseRootTreeElement.parent.removeChild(this._indexedDatabaseRootTreeElement);
-
-        if (this._cookieStorageRootTreeElement && this._cookieStorageRootTreeElement.parent)
-            this._cookieStorageRootTreeElement.parent.removeChild(this._cookieStorageRootTreeElement);
-
-        if (this._applicationCacheRootTreeElement && this._applicationCacheRootTreeElement.parent)
-            this._applicationCacheRootTreeElement.parent.removeChild(this._applicationCacheRootTreeElement);
-
-        this._localStorageRootTreeElement = null;
-        this._sessionStorageRootTreeElement = null;
-        this._databaseRootTreeElement = null;
-        this._databaseHostTreeElementMap = {};
-        this._indexedDatabaseRootTreeElement = null;
-        this._indexedDatabaseHostTreeElementMap = {};
-        this._cookieStorageRootTreeElement = null;
-        this._applicationCacheRootTreeElement = null;
-        this._applicationCacheURLTreeElementMap = {};
-    }
-
     _extraDomainsActivated()
     {
         if (WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript)
-            this._resourcesContentTreeOutline.element.classList.remove(WebInspector.NavigationSidebarPanel.HideDisclosureButtonsStyleClassName);
+            this.contentTreeOutline.element.classList.remove(WebInspector.NavigationSidebarPanel.HideDisclosureButtonsStyleClassName);
     }
 };

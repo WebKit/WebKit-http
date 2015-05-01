@@ -75,7 +75,7 @@
 #include "RenderTreeAsText.h"
 #endif
 
-#if ENABLE(3D_RENDERING)
+#if ENABLE(3D_TRANSFORMS)
 // This symbol is used to determine from a script whether 3D rendering is enabled (via 'nm').
 WEBCORE_EXPORT bool WebCoreHas3DRendering = true;
 #endif
@@ -915,8 +915,11 @@ static bool styleChangeRequiresLayerRebuild(const RenderLayer& layer, const Rend
     return false;
 }
 
-void RenderLayerCompositor::layerStyleChanged(RenderLayer& layer, const RenderStyle* oldStyle)
+void RenderLayerCompositor::layerStyleChanged(StyleDifference diff, RenderLayer& layer, const RenderStyle* oldStyle)
 {
+    if (diff == StyleDifferenceEqual)
+        return;
+
     const RenderStyle& newStyle = layer.renderer().style();
     if (updateLayerCompositingState(layer) || (oldStyle && styleChangeRequiresLayerRebuild(layer, *oldStyle, newStyle)))
         setCompositingLayersNeedRebuild();
@@ -2078,8 +2081,7 @@ void RenderLayerCompositor::updateRootLayerPosition()
     if (m_rootContentLayer) {
         const IntRect& documentRect = m_renderView.documentRect();
         m_rootContentLayer->setSize(documentRect.size());        
-        m_rootContentLayer->setPosition(FloatPoint(documentRect.x(), documentRect.y()
-            + FrameView::yPositionForRootContentLayer(m_renderView.frameView().scrollPosition(), m_renderView.frameView().topContentInset(), m_renderView.frameView().headerHeight())));
+        m_rootContentLayer->setPosition(FloatPoint(documentRect.x(), documentRect.y() + m_renderView.frameView().yPositionForRootContentLayer()));
         m_rootContentLayer->setAnchorPoint(FloatPoint3D());
     }
     if (m_clipLayer) {

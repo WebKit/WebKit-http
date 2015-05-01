@@ -276,8 +276,6 @@ namespace JSC {
 
         bool isArgumentNumber(const Identifier&, int);
 
-        void setIsNumericCompareFunction(bool isNumericCompareFunction);
-
         Variable variable(const Identifier&);
         
         // Ignores the possibility of intervening scopes.
@@ -458,10 +456,12 @@ namespace JSC {
         RegisterID* emitNewDefaultConstructor(RegisterID* dst, ConstructorKind, const Identifier& name);
         RegisterID* emitNewRegExp(RegisterID* dst, RegExp*);
 
+        RegisterID* emitMoveLinkTimeConstant(RegisterID* dst, LinkTimeConstant);
         RegisterID* emitMoveEmptyValue(RegisterID* dst);
         RegisterID* emitMove(RegisterID* dst, RegisterID* src);
 
         RegisterID* emitToNumber(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_to_number, dst, src); }
+        RegisterID* emitToString(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_to_string, dst, src); }
         RegisterID* emitInc(RegisterID* srcDst);
         RegisterID* emitDec(RegisterID* srcDst);
 
@@ -488,6 +488,14 @@ namespace JSC {
         RegisterID* emitCall(RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
         RegisterID* emitCallEval(RegisterID* dst, RegisterID* func, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
         RegisterID* emitCallVarargs(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
+
+        enum PropertyDescriptorOption {
+            PropertyConfigurable = 1,
+            PropertyWritable     = 1 << 1,
+            PropertyEnumerable   = 1 << 2,
+        };
+        void emitCallDefineProperty(RegisterID* newObj, RegisterID* propertyNameRegister,
+            RegisterID* valueRegister, RegisterID* getterRegister, RegisterID* setterRegister, unsigned options, const JSTextPosition&);
 
         void emitEnumeration(ThrowableExpressionData* enumerationNode, ExpressionNode* subjectNode, const std::function<void(BytecodeGenerator&, RegisterID*)>& callBack);
         
@@ -720,6 +728,7 @@ namespace JSC {
         RegisterID* m_emptyValueRegister { nullptr };
         RegisterID* m_globalObjectRegister { nullptr };
         RegisterID* m_newTargetRegister { nullptr };
+        RegisterID* m_linkTimeConstantRegisters[LinkTimeConstantCount];
 
         SegmentedVector<RegisterID, 32> m_constantPoolRegisters;
         SegmentedVector<RegisterID, 32> m_calleeRegisters;

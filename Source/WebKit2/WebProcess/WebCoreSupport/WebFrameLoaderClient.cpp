@@ -585,7 +585,7 @@ void WebFrameLoaderClient::dispatchDidLayout(LayoutMilestones milestones)
         }
 #endif
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
         // Make sure viewport properties are dispatched on the main frame by the time the first layout happens.
         ASSERT(!webPage->useFixedLayout() || m_frame != m_frame->page()->mainWebFrame() || m_frame->coreFrame()->document()->didDispatchViewportPropertiesChanged());
 #endif
@@ -642,7 +642,8 @@ Frame* WebFrameLoaderClient::dispatchCreatePage(const NavigationAction& navigati
         return 0;
 
     // Just call through to the chrome client.
-    Page* newPage = webPage->corePage()->chrome().createWindow(m_frame->coreFrame(), FrameLoadRequest(m_frame->coreFrame()->document()->securityOrigin(), navigationAction.resourceRequest()), WindowFeatures(), navigationAction);
+    FrameLoadRequest request(m_frame->coreFrame()->document()->securityOrigin(), navigationAction.resourceRequest(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow);
+    Page* newPage = webPage->corePage()->chrome().createWindow(m_frame->coreFrame(), request, WindowFeatures(), navigationAction);
     if (!newPage)
         return 0;
     
@@ -766,7 +767,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
 
     RefPtr<WebFrame> originatingFrame;
     switch (action->navigationType()) {
-    case NavigationTypeLinkClicked:
+    case NavigationType::LinkClicked:
         if (EventTarget* target = navigationAction.event()->target()) {
             if (Node* node = target->toNode()) {
                 if (Frame* frame = node->document().frame())
@@ -774,14 +775,14 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
             }
         }
         break;
-    case NavigationTypeFormSubmitted:
-    case NavigationTypeFormResubmitted:
+    case NavigationType::FormSubmitted:
+    case NavigationType::FormResubmitted:
         if (formState)
             originatingFrame = WebFrame::fromCoreFrame(*formState->sourceDocument()->frame());
         break;
-    case NavigationTypeBackForward:
-    case NavigationTypeReload:
-    case NavigationTypeOther:
+    case NavigationType::BackForward:
+    case NavigationType::Reload:
+    case NavigationType::Other:
         break;
     }
 
@@ -1262,7 +1263,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     bool shouldHideScrollbars = shouldDisableScrolling;
     IntRect fixedVisibleContentRect;
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     if (m_frame->coreFrame()->view())
         fixedVisibleContentRect = m_frame->coreFrame()->view()->fixedVisibleContentRect();
     if (shouldUseFixedLayout)
@@ -1298,7 +1299,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     if (webPage->scrollPinningBehavior() != DoNotPin)
         m_frame->coreFrame()->view()->setScrollPinningBehavior(webPage->scrollPinningBehavior());
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     if (shouldUseFixedLayout) {
         m_frame->coreFrame()->view()->setDelegatesScrolling(shouldUseFixedLayout);
         m_frame->coreFrame()->view()->setPaintsEntireContents(shouldUseFixedLayout);

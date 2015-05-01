@@ -510,13 +510,18 @@ private:
                 Node* node = block->at(nodeIndex);
                 switch (node->op()) {
                 case PutByOffset: {
-                    if (m_sinkCandidates.contains(node->child2().node()))
+                    Node* target = node->child2().node();
+                    if (m_sinkCandidates.contains(target)) {
+                        ASSERT(target->isPhantomObjectAllocation());
                         node->convertToPutByOffsetHint();
+                    }
                     break;
                 }
                     
                 case PutStructure: {
-                    if (m_sinkCandidates.contains(node->child1().node())) {
+                    Node* target = node->child1().node();
+                    if (m_sinkCandidates.contains(target)) {
+                        ASSERT(target->isPhantomObjectAllocation());
                         Node* structure = m_insertionSet.insertConstant(
                             nodeIndex, node->origin, JSValue(node->transition()->next));
                         node->convertToPutStructureHint(structure);
@@ -557,11 +562,31 @@ private:
                     }
                     break;
                 }
-                    
+
+                case NewFunction: {
+                    if (m_sinkCandidates.contains(node)) {
+                        Node* executable = m_insertionSet.insertConstant(
+                            nodeIndex + 1, node->origin, node->cellOperand());
+                        m_insertionSet.insert(
+                            nodeIndex + 1,
+                            PromotedHeapLocation(FunctionExecutablePLoc, node).createHint(
+                                m_graph, node->origin, executable));
+                        m_insertionSet.insert(
+                            nodeIndex + 1,
+                            PromotedHeapLocation(FunctionActivationPLoc, node).createHint(
+                                m_graph, node->origin, node->child1().node()));
+                        node->convertToPhantomNewFunction();
+                    }
+                    break;
+                }
+
                 case StoreBarrier:
                 case StoreBarrierWithNullCheck: {
-                    if (m_sinkCandidates.contains(node->child1().node()))
-                        node->convertToPhantom();
+                    Node* target = node->child1().node();
+                    if (m_sinkCandidates.contains(target)) {
+                        ASSERT(target->isPhantomObjectAllocation());
+                        node->remove();
+                    }
                     break;
                 }
                     
@@ -616,7 +641,7 @@ private:
         Node* bottom = nullptr;
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
             if (block == m_graph.block(0))
-                bottom = m_insertionSet.insertNode(0, SpecNone, BottomValue, NodeOrigin());
+                bottom = m_insertionSet.insertConstant(0, NodeOrigin(), jsUndefined());
             
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node* node = block->at(nodeIndex);
@@ -759,24 +784,43 @@ private:
                     escape(edge.node());
                 });
             break;
-            
+
+        case NewFunction:
+            sinkCandidate();
+            m_graph.doToChildren(
+                node,
+                [&] (Edge edge) {
+                    escape(edge.node());
+                });
+            break;
+
+        case MovHint:
+        case Check:
+        case PutHint:
+            break;
+
+        case PutStructure:
         case CheckStructure:
         case GetByOffset:
         case MultiGetByOffset:
-        case PutStructure:
         case GetGetterSetterByOffset:
-        case MovHint:
-        case Phantom:
-        case Check:
-        case HardPhantom:
         case StoreBarrier:
-        case StoreBarrierWithNullCheck:
-        case PutHint:
+        case StoreBarrierWithNullCheck: {
+            Node* target = node->child1().node();
+            if (!target->isObjectAllocation())
+                escape(target);
             break;
+        }
             
-        case PutByOffset:
+        case PutByOffset: {
+            Node* target = node->child2().node();
+            if (!target->isObjectAllocation()) {
+                escape(target);
+                escape(node->child1().node());
+            }
             escape(node->child3().node());
             break;
+        }
             
         case MultiPutByOffset:
             // FIXME: In the future we should be able to handle this. It's just a matter of
@@ -815,7 +859,17 @@ private:
                 OpInfo(data), OpInfo(), 0, 0);
             break;
         }
-            
+
+        case NewFunction:
+            result = m_graph.addNode(
+                escapee->prediction(), NewFunction,
+                NodeOrigin(
+                    escapee->origin.semantic,
+                    where->origin.forExit),
+                OpInfo(escapee->cellOperand()),
+                escapee->child1());
+            break;
+
         default:
             DFG_CRASH(m_graph, escapee, "Bad escapee op");
             break;
@@ -874,7 +928,40 @@ private:
                 firstChild, m_graph.m_varArgChildren.size() - firstChild);
             break;
         }
-            
+
+        case NewFunction: {
+            if (!ASSERT_DISABLED) {
+                Vector<PromotedHeapLocation> locations = m_locationsForAllocation.get(escapee);
+
+                ASSERT(locations.size() == 2);
+
+                PromotedHeapLocation executable(FunctionExecutablePLoc, escapee);
+                ASSERT(locations.contains(executable));
+
+                PromotedHeapLocation activation(FunctionActivationPLoc, escapee);
+                ASSERT(locations.contains(activation));
+
+                for (unsigned i = 0; i < locations.size(); ++i) {
+                    switch (locations[i].kind()) {
+                    case FunctionExecutablePLoc: {
+                        ASSERT(locations[i] == executable);
+                        break;
+                    }
+
+                    case FunctionActivationPLoc: {
+                        ASSERT(locations[i] == activation);
+                        break;
+                    }
+
+                    default:
+                        DFG_CRASH(m_graph, node, "Bad location kind");
+                    }
+                }
+            }
+
+            break;
+        }
+
         default:
             DFG_CRASH(m_graph, node, "Bad materialize op");
             break;

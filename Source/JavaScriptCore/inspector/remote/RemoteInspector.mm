@@ -93,8 +93,12 @@ RemoteInspector& RemoteInspector::singleton()
 
             if ([NSThread isMainThread])
                 initialize();
-            else
+            else {
+                // FIXME: This means that we may miss an auto-attach to a JSContext created on a non-main thread.
+                // The main thread initialization is required for certain WTF values that need to be initialized
+                // on the "real" main thread. We should investigate a better way to handle this.
                 dispatch_async(dispatch_get_main_queue(), initialize);
+            }
         }
     });
 
@@ -568,7 +572,13 @@ void RemoteInspector::receivedSetupMessage(NSDictionary *userInfo)
     RemoteInspectorDebuggableInfo debuggableInfo = it->value.second;
     RefPtr<RemoteInspectorDebuggableConnection> connection = adoptRef(new RemoteInspectorDebuggableConnection(debuggable, connectionIdentifier, sender, debuggableInfo.type));
     bool isAutomaticInspection = m_automaticInspectionCandidateIdentifier == debuggable->identifier();
-    if (!connection->setup(isAutomaticInspection)) {
+
+    bool automaticallyPause = false;
+    NSNumber *automaticallyPauseObject = [userInfo objectForKey:WIRAutomaticallyPause];
+    if ([automaticallyPauseObject isKindOfClass:[NSNumber class]])
+        automaticallyPause = [automaticallyPauseObject boolValue];
+
+    if (!connection->setup(isAutomaticInspection, automaticallyPause)) {
         connection->close();
         return;
     }

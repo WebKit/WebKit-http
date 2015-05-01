@@ -145,6 +145,8 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         if (this._paused)
             return Promise.resolve();
 
+        this.dispatchEventToListeners(WebInspector.DebuggerManager.Event.WaitingToPause);
+
         var listener = new WebInspector.EventListener(this, true);
 
         var managerResult = new Promise(function(resolve, reject) {
@@ -306,6 +308,21 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
     continueToLocation(scriptIdentifier, lineNumber, columnNumber)
     {
         DebuggerAgent.continueToLocation({scriptId: scriptIdentifier, lineNumber, columnNumber});
+    }
+
+    get knownNonResourceScripts()
+    {
+        var knownScripts = [];
+        for (var id in this._scriptIdMap) {
+            var script = this._scriptIdMap[id];
+            if (script.resource)
+                continue;
+            if (script.url && script.url.startsWith("__WebInspector"))
+                continue;
+            knownScripts.push(script);
+        }
+
+        return knownScripts;
     }
 
     addBreakpoint(breakpoint, skipEventDispatch, shouldSpeculativelyResolve)
@@ -861,6 +878,7 @@ WebInspector.DebuggerManager.Event = {
     BreakpointAdded: "debugger-manager-breakpoint-added",
     BreakpointRemoved: "debugger-manager-breakpoint-removed",
     BreakpointMoved: "debugger-manager-breakpoint-moved",
+    WaitingToPause: "debugger-manager-waiting-to-pause",
     Paused: "debugger-manager-paused",
     Resumed: "debugger-manager-resumed",
     CallFramesDidChange: "debugger-manager-call-frames-did-change",

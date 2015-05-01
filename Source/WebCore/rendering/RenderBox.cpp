@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2005 Allan Sandfeld Jensen (kde@carewolf.com)
  *           (C) 2005, 2006 Samuel Weinig (sam.weinig@gmail.com)
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2010, 2015 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -59,6 +59,7 @@
 #include "RenderTableCell.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
+#include "ScrollAnimator.h"
 #include "ScrollbarTheme.h"
 #include "TransformState.h"
 #include "htmlediting.h"
@@ -593,16 +594,32 @@ int RenderBox::scrollTop() const
     return hasOverflowClip() ? layer()->scrollYOffset() : 0;
 }
 
+static void setupWheelEventTestTrigger(RenderLayer& layer, Frame* frame)
+{
+    if (!frame)
+        return;
+
+    Page* page = frame->page();
+    if (!page || !page->expectsWheelEventTriggers())
+        return;
+
+    layer.scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
+}
+
 void RenderBox::setScrollLeft(int newLeft)
 {
-    if (hasOverflowClip())
+    if (hasOverflowClip()) {
+        setupWheelEventTestTrigger(*layer(), document().frame());
         layer()->scrollToXOffset(newLeft, RenderLayer::ScrollOffsetClamped);
+    }
 }
 
 void RenderBox::setScrollTop(int newTop)
 {
-    if (hasOverflowClip())
+    if (hasOverflowClip()) {
+        setupWheelEventTestTrigger(*layer(), document().frame());
         layer()->scrollToYOffset(newTop, RenderLayer::ScrollOffsetClamped);
+    }
 }
 
 void RenderBox::absoluteRects(Vector<IntRect>& rects, const LayoutPoint& accumulatedOffset) const
@@ -2712,7 +2729,11 @@ void RenderBox::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logica
         // grab our cached flexible height.
         // FIXME: Account for block-flow in flexible boxes.
         // https://bugs.webkit.org/show_bug.cgi?id=46418
-        if (hasOverrideLogicalContentHeight() && parent()->isFlexibleBoxIncludingDeprecated())
+        if (hasOverrideLogicalContentHeight() && (parent()->isFlexibleBoxIncludingDeprecated()
+#if ENABLE(CSS_GRID_LAYOUT)
+            || parent()->isRenderGrid()
+#endif
+        ))
             h = Length(overrideLogicalContentHeight(), Fixed);
         else if (treatAsReplaced)
             h = Length(computeReplacedLogicalHeight(), Fixed);
@@ -4542,8 +4563,6 @@ bool RenderBox::percentageLogicalHeightIsResolvableFromBlock(const RenderBlock* 
 bool RenderBox::hasDefiniteLogicalHeight() const
 {
     const Length& logicalHeight = style().logicalHeight();
-    if (logicalHeight.isIntrinsicOrAuto())
-        return false;
     if (logicalHeight.isFixed())
         return true;
     // The size of the containing block of an absolutely positioned element is always definite with respect to that
@@ -4554,6 +4573,8 @@ bool RenderBox::hasDefiniteLogicalHeight() const
     if (hasOverrideContainingBlockLogicalHeight())
         return overrideContainingBlockContentLogicalHeight() != -1;
 #endif
+    if (logicalHeight.isIntrinsicOrAuto())
+        return false;
 
     return percentageLogicalHeightIsResolvable(this);
 }

@@ -1,3 +1,260 @@
+2015-04-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Use CTFontCreateForCSS instead of doing font search ourselves
+        https://bugs.webkit.org/show_bug.cgi?id=132159
+
+        Reviewed by Darin Adler.
+
+        Add SPI to set the font whitelist.
+
+        * WebView/WebView.mm:
+        (+[WebView _setFontWhitelist:]):
+        * WebView/WebViewPrivate.h:
+
+2015-04-28  Timothy Horton  <timothy_horton@apple.com>
+
+        [TextIndicator] Yellow highlight takes too long to fade out on scroll
+        https://bugs.webkit.org/show_bug.cgi?id=144358
+        <rdar://problem/19451011>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _showTextIndicator]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView quickLookWithEvent:]):
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _defaultAnimationController]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedText]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedLink]):
+        Pull _clearTextIndicatorWithAnimation out, make it avoid using a dismissal animation
+        if we're called from didHandleScrollWheel.
+
+        * WebView/WebView.mm:
+        (-[WebView _animationControllerForDictionaryLookupPopupInfo:]):
+        (-[WebView _setTextIndicator:]):
+        (-[WebView _setTextIndicator:withLifetime:]):
+        (-[WebView _clearTextIndicator]):
+        (-[WebView _showDictionaryLookupPopup:]):
+        (-[WebView _dictionaryLookupPopoverWillClose:]):
+        (-[WebView _setTextIndicator:fadeOut:]): Deleted.
+        * WebView/WebViewInternal.h:
+        Make _setTextIndicator take a reference.
+        Add a variant of _setTextIndicator that takes a Lifetime.
+        Make _clearTextIndicatorWithAnimation take a DismissalAnimation.
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        Define ENABLE_JIT, enabled by default, instead of ENABLE_LLINT_C_LOOP, disabled by default.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183514.
+        https://bugs.webkit.org/show_bug.cgi?id=144359
+
+        It broke cloop test bots (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT"
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+        http://trac.webkit.org/changeset/183514
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        Define ENABLE_JIT, enabled by default, instead of ENABLE_LLINT_C_LOOP, disabled by default.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-04-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix common typo "targetting" => "targeting"
+        https://bugs.webkit.org/show_bug.cgi?id=144349
+
+        Reviewed by Daniel Bates.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::loadRequest):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView loadRequest:inTarget:withNotifyData:sendNotification:]):
+        * WebView/WebPolicyDelegate.h:
+
+2015-04-28  Brady Eidson  <beidson@apple.com>
+
+        Consolidate most "frame load" arguments into FrameLoadRequest.
+        https://bugs.webkit.org/show_bug.cgi?id=144276
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2015-04-27  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/20721931> REGRESSION (r178753): All legacy framework headers are missing availability annotations
+        https://bugs.webkit.org/show_bug.cgi?id=144311
+
+        Reviewed by Adele Peterson.
+
+        * postprocess-headers.sh: Changed “macsox” to “macosx”.
+
+2015-04-27  Brady Eidson  <beidson@apple.com>
+
+        Make 'enum NavigationType' be an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=144270
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary):
+
+2015-04-27  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION(r182879): Images and video can no longer be downloaded
+        https://bugs.webkit.org/show_bug.cgi?id=144267
+        <rdar://problem/20702844>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebActionMenuController.mm:
+        (-[WebActionMenuController _createActionMenuItemForTag:]): Check for
+        "!WebCore::protocolIs(..., "file")" for image and media downloads.
+
+2015-04-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement ES6 template literals
+        https://bugs.webkit.org/show_bug.cgi?id=142691
+
+        Reviewed by Darin Adler.
+
+        Add ENABLE_ES6_TEMPLATE_LITERAL_SYNTAX compile time flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-04-26  Doug Russell  <d_russell@apple.com>
+
+        AX: richer text change notifications (142719)
+        https://bugs.webkit.org/show_bug.cgi?id=142719
+
+        Reviewed by Darin Adler.
+
+        Richer accessibility value change notifications. Introduce AXTextEditType,
+        postTextStateChangeNotification and postTextReplacementNotification to give assistive
+        tech apps more reliable context for responding to changes in web content. Also implement
+        a mechanism to post value changes in password form fields in coalesced ticks to thwart
+        analyzing the cadence of changes.
+
+        Richer accessibility selection change notifications. Introduce AXTextStateChangeIntent,
+        and an overload of postTextReplacementNotification to give assistive tech apps more
+        reliable context for responding to changes in web content selection. Also block posting
+        selection changes on password fields.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2015-04-24  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Remove native window dock controls
+        https://bugs.webkit.org/show_bug.cgi?id=144184
+
+        Reviewed by Joseph Pecoraro.
+
+        * Resources/Dock.pdf: Removed.
+        * Resources/DockLegacy.pdf: Removed.
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController window]):
+        (-[WebInspectorWindowController setDockingUnavailable:]):
+
+2015-04-25  Martin Robinson  <mrobinson@igalia.com>
+
+        Rename ENABLE_3D_RENDERING to ENABLE_3D_TRANSFORMS
+        https://bugs.webkit.org/show_bug.cgi?id=144182
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+
+2015-04-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183266.
+        https://bugs.webkit.org/show_bug.cgi?id=144164
+
+        Broke 32-bit build and a test. (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "AX: richer text change notifications (142719)"
+        https://bugs.webkit.org/show_bug.cgi?id=142719
+        http://trac.webkit.org/changeset/183266
+
+2015-04-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Start cleaning up FontPlatformData
+        https://bugs.webkit.org/show_bug.cgi?id=144133
+
+        Reviewed by Enrica Casucci.
+
+        Receive casts which have been hoisted from the deleted FontPlatformData constructor.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _web_drawAtPoint:font:textColor:allowingFontSmoothing:]): Receive cast which has
+        been hoisted from the deleted FontPlatformData constructor.
+        (-[NSString _web_widthWithFont:]): Ditto.
+        * Misc/WebStringTruncator.mm:
+        (fontFromNSFont): Ditto.
+
+2015-04-24  Doug Russell  <d_russell@apple.com>
+
+        AX: richer text change notifications (142719)
+        https://bugs.webkit.org/show_bug.cgi?id=142719
+
+        Reviewed by Darin Adler.
+
+        Richer accessibility value change notifications. Introduce AXTextEditType, postTextStateChangeNotification and postTextReplacementNotification to give assistive tech apps more reliable context for responding to changes in web content. Also implement a mechanism to post value changes in password form fields in coalesced ticks to thwart analyzing the cadence of changes.
+
+        Richer accessibility selection change notifications. Introduce AXTextStateChangeIntent, and an overload of postTextReplacementNotification to give assistive tech apps more reliable context for responding to changes in web content selection. Also block posting selection changes on password fields.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2015-04-23  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Disable QTKit by default on future OS X.
+        https://bugs.webkit.org/show_bug.cgi?id=144082
+
+        Reviewed by Darin Adler.
+
+        Default WebKitQTKitEnabledPreferenceKey to NO.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2015-04-23  Andreas Kling  <akling@apple.com>
+
+        There should only be one way to get the system memory size.
+        <https://webkit.org/b/144081>
+
+        Reviewed by Antti Koivisto.
+
+        * Misc/WebKitSystemBits.h:
+        * Misc/WebKitSystemBits.m:
+        (WebMemorySize): Deleted.
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]):
+        (roundUpToPowerOf2): Deleted.
+
 2015-04-22  Darin Adler  <darin@apple.com>
 
         Remove OwnPtr and PassOwnPtr use from WebKit/cf, WebKit/mac, and WebKit2

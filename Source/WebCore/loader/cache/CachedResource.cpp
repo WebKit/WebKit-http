@@ -68,37 +68,37 @@ static ResourceLoadPriority defaultPriorityForResourceType(CachedResource::Type 
 {
     switch (type) {
     case CachedResource::MainResource:
-        return ResourceLoadPriorityVeryHigh;
+        return ResourceLoadPriority::VeryHigh;
     case CachedResource::CSSStyleSheet:
-        return ResourceLoadPriorityHigh;
+        return ResourceLoadPriority::High;
     case CachedResource::Script:
 #if ENABLE(SVG_FONTS)
     case CachedResource::SVGFontResource:
 #endif
     case CachedResource::FontResource:
     case CachedResource::RawResource:
-        return ResourceLoadPriorityMedium;
+        return ResourceLoadPriority::Medium;
     case CachedResource::ImageResource:
-        return ResourceLoadPriorityLow;
+        return ResourceLoadPriority::Low;
 #if ENABLE(XSLT)
     case CachedResource::XSLStyleSheet:
-        return ResourceLoadPriorityHigh;
+        return ResourceLoadPriority::High;
 #endif
     case CachedResource::SVGDocumentResource:
-        return ResourceLoadPriorityLow;
+        return ResourceLoadPriority::Low;
 #if ENABLE(LINK_PREFETCH)
     case CachedResource::LinkPrefetch:
-        return ResourceLoadPriorityVeryLow;
+        return ResourceLoadPriority::VeryLow;
     case CachedResource::LinkSubresource:
-        return ResourceLoadPriorityVeryLow;
+        return ResourceLoadPriority::VeryLow;
 #endif
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
-        return ResourceLoadPriorityLow;
+        return ResourceLoadPriority::Low;
 #endif
     }
     ASSERT_NOT_REACHED();
-    return ResourceLoadPriorityLow;
+    return ResourceLoadPriority::Low;
 }
 
 static std::chrono::milliseconds deadDecodedDataDeletionIntervalForResourceType(CachedResource::Type type)
@@ -460,7 +460,7 @@ void CachedResource::removeClient(CachedResourceClient* client)
             // We allow non-secure content to be reused in history, but we do not allow secure content to be reused.
             memoryCache.remove(*this);
         }
-        memoryCache.prune();
+        memoryCache.pruneSoon();
     }
     // This object may be dead here.
 }
@@ -557,7 +557,7 @@ void CachedResource::didAccessDecodedData(double timeStamp)
             memoryCache.removeFromLiveDecodedResourcesList(*this);
             memoryCache.insertInLiveDecodedResourcesList(*this);
         }
-        memoryCache.prune();
+        memoryCache.pruneSoon();
     }
 }
     

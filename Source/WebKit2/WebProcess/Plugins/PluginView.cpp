@@ -469,11 +469,6 @@ void PluginView::manualLoadDidFail(const ResourceError& error)
     m_plugin->manualStreamDidFail(error.isCancellation());
 }
 
-RenderBoxModelObject* PluginView::renderer() const
-{
-    return downcast<RenderBoxModelObject>(m_pluginElement->renderer());
-}
-
 void PluginView::pageScaleFactorDidChange()
 {
     viewGeometryDidChange();
@@ -1013,16 +1008,6 @@ bool PluginView::existingSelectionContainsPoint(const WebCore::FloatPoint& point
     return m_plugin->existingSelectionContainsPoint(point);
 }
 
-#if PLATFORM(COCOA)
-String PluginView::lookupTextAtLocation(const WebCore::FloatPoint& point, WebHitTestResult::Data& data, PDFSelection **selection, NSDictionary **options) const
-{
-    if (!m_isInitialized || !m_plugin)
-        return String();
-
-    return m_plugin->lookupTextAtLocation(point, data, selection, options);
-}
-#endif
-
 void PluginView::notifyWidget(WidgetNotification notification)
 {
     switch (notification) {
@@ -1386,7 +1371,7 @@ String PluginView::userAgent()
 
 void PluginView::loadURL(uint64_t requestID, const String& method, const String& urlString, const String& target, const HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups)
 {
-    FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin());
+    FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow);
     frameLoadRequest.resourceRequest().setHTTPMethod(method);
     frameLoadRequest.resourceRequest().setURL(m_pluginElement->document().completeURL(urlString));
     frameLoadRequest.resourceRequest().setHTTPHeaderFields(headerFields);

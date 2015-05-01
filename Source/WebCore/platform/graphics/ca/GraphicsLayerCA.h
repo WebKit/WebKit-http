@@ -35,10 +35,6 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/text/StringHash.h>
 
-#if PLATFORM(COCOA)
-#include "TileController.h"
-#endif
-
 // Enable this to add a light red wash over the visible portion of Tiled Layers, as computed
 // by flushCompositingState().
 // #define VISIBLE_TILE_WASH
@@ -250,7 +246,7 @@ private:
         return m_runningAnimations.find(animationName) != m_runningAnimations.end();
     }
 
-    void commitLayerChangesBeforeSublayers(CommitState&, float pageScaleFactor, const FloatPoint& positionRelativeToBase, const FloatRect& oldVisibleRect);
+    void commitLayerChangesBeforeSublayers(CommitState&, float pageScaleFactor, const FloatPoint& positionRelativeToBase);
     void commitLayerChangesAfterSublayers(CommitState&);
 
     FloatPoint computePositionRelativeToBase(float& pageScale) const;
@@ -267,6 +263,8 @@ private:
 
     WEBCORE_EXPORT virtual void setReplicatedByLayer(GraphicsLayer*) override;
 
+    WEBCORE_EXPORT virtual bool canThrottleLayerFlush() const override;
+
     WEBCORE_EXPORT virtual void getDebugBorderInfo(Color&, float& width) const override;
     WEBCORE_EXPORT virtual void dumpAdditionalProperties(TextStream&, int indent, LayerTreeAsTextBehavior) const override;
 
@@ -277,14 +275,31 @@ private:
 
     enum ComputeVisibleRectFlag { RespectAnimatingTransforms = 1 << 0 };
     typedef unsigned ComputeVisibleRectFlags;
-    FloatRect computeVisibleRect(TransformState&, ComputeVisibleRectFlags = RespectAnimatingTransforms) const;
+    
+    struct VisibleAndCoverageRects {
+        FloatRect visibleRect;
+        FloatRect coverageRect;
+        
+        VisibleAndCoverageRects(const FloatRect& visRect, const FloatRect& covRect)
+            : visibleRect(visRect)
+            , coverageRect(covRect)
+        {
+        }
+    };
+    
+    VisibleAndCoverageRects computeVisibleAndCoverageRect(TransformState&, bool accumulateTransform, ComputeVisibleRectFlags = RespectAnimatingTransforms) const;
+    bool adjustCoverageRect(VisibleAndCoverageRects&, const FloatRect& oldVisibleRect) const;
+
     const FloatRect& visibleRect() const { return m_visibleRect; }
+    const FloatRect& coverageRect() const { return m_coverageRect; }
+
+    void setVisibleAndCoverageRects(const VisibleAndCoverageRects&);
     
     static FloatRect adjustTiledLayerVisibleRect(TiledBacking*, const FloatRect& oldVisibleRect, const FloatRect& newVisibleRect, const FloatSize& oldSize, const FloatSize& newSize);
 
     bool recursiveVisibleRectChangeRequiresFlush(const TransformState&) const;
-
-    WEBCORE_EXPORT virtual bool canThrottleLayerFlush() const override;
+    
+    bool isPageTiledBackingLayer() const { return type() == Type::PageTiledBacking; }
 
     // Used to track the path down the tree for replica layers.
     struct ReplicaState {
@@ -350,7 +365,7 @@ private:
     FloatPoint positionForCloneRootLayer() const;
 
     // All these "update" methods will be called inside a BEGIN_BLOCK_OBJC_EXCEPTIONS/END_BLOCK_OBJC_EXCEPTIONS block.
-    void updateLayerNames();
+    void updateNames();
     void updateSublayerList(bool maxLayerDepthReached = false);
     void updateGeometry(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase);
     void updateTransform();
@@ -360,7 +375,8 @@ private:
     void updateContentsOpaque(float pageScaleFactor);
     void updateBackfaceVisibility();
     void updateStructuralLayer();
-    void updateLayerDrawsContent();
+    void updateDrawsContent();
+    void updateCoverage();
     void updateBackgroundColor();
 
     void updateContentsImage();
@@ -375,7 +391,6 @@ private:
     void updateContentsNeedsDisplay();
     void updateAcceleratesDrawing();
     void updateDebugBorder();
-    void updateVisibleRect(const FloatRect& oldVisibleRect);
     void updateTiles();
     void updateContentsScale(float pageScaleFactor);
     void updateCustomAppearance();
@@ -447,7 +462,7 @@ private:
         AcceleratesDrawingChanged =     1LLU << 23,
         ContentsScaleChanged =          1LLU << 24,
         ContentsVisibilityChanged =     1LLU << 25,
-        VisibleRectChanged =            1LLU << 26,
+        CoverageRectChanged =           1LLU << 26,
         FiltersChanged =                1LLU << 27,
         BackdropFiltersChanged =        1LLU << 28,
         TilingAreaChanged =             1LLU << 29,
@@ -488,12 +503,14 @@ private:
     RefPtr<PlatformCALayer> m_visibleTileWashLayer;
 #endif
     FloatRect m_visibleRect;
-    FloatSize m_sizeAtLastVisibleRectUpdate;
+    FloatSize m_sizeAtLastCoverageRectUpdate;
+
+    FloatRect m_coverageRect; // Area for which we should maintain backing store, in the coordinate space of this layer.
     
-    ContentsLayerPurpose m_contentsLayerPurpose;
-    bool m_isPageTiledBackingLayer : 1;
+    ContentsLayerPurpose m_contentsLayerPurpose { NoContentsLayer };
     bool m_needsFullRepaint : 1;
     bool m_usingBackdropLayerType : 1;
+    bool m_intersectsCoverageRect : 1;
 
     Color m_contentsSolidColor;
 
@@ -544,8 +561,8 @@ private:
 
     FloatSize m_pixelAlignmentOffset;
 
-    LayerChangeFlags m_uncommittedChanges;
-    bool m_isCommittingChanges;
+    LayerChangeFlags m_uncommittedChanges { 0 };
+    bool m_isCommittingChanges { false };
 };
 
 } // namespace WebCore

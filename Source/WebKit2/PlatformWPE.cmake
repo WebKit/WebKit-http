@@ -307,5 +307,6 @@ list(APPEND WPEWebInspectorResources_LIBRARIES
 )
 
 add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_SOURCES})
+add_dependencies(WPEWebInspectorResources WebKit2)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
 install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")

@@ -46,7 +46,6 @@ static EncodedJSValue JSC_HOST_CALL setProtoFuncClear(ExecState*);
 static EncodedJSValue JSC_HOST_CALL setProtoFuncDelete(ExecState*);
 static EncodedJSValue JSC_HOST_CALL setProtoFuncForEach(ExecState*);
 static EncodedJSValue JSC_HOST_CALL setProtoFuncHas(ExecState*);
-static EncodedJSValue JSC_HOST_CALL setProtoFuncKeys(ExecState*);
 static EncodedJSValue JSC_HOST_CALL setProtoFuncValues(ExecState*);
 static EncodedJSValue JSC_HOST_CALL setProtoFuncEntries(ExecState*);
 
@@ -64,11 +63,11 @@ void SetPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     JSC_NATIVE_FUNCTION(vm.propertyNames->deleteKeyword, setProtoFuncDelete, DontEnum, 1);
     JSC_NATIVE_FUNCTION(vm.propertyNames->forEach, setProtoFuncForEach, DontEnum, 1);
     JSC_NATIVE_FUNCTION(vm.propertyNames->has, setProtoFuncHas, DontEnum, 1);
-    JSC_NATIVE_FUNCTION(vm.propertyNames->keys, setProtoFuncKeys, DontEnum, 0);
     JSC_NATIVE_FUNCTION(vm.propertyNames->entries, setProtoFuncEntries, DontEnum, 0);
 
     JSFunction* values = JSFunction::create(vm, globalObject, 0, vm.propertyNames->values.string(), setProtoFuncValues);
     putDirectWithoutTransition(vm, vm.propertyNames->values, values, DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->keys, values, DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->iteratorSymbol, values, DontEnum);
 
     GetterSetter* accessor = GetterSetter::create(vm, globalObject);
@@ -134,10 +133,12 @@ EncodedJSValue JSC_HOST_CALL setProtoFuncForEach(CallFrame* callFrame)
     JSValue key;
     if (callType == CallTypeJS) {
         JSFunction* function = jsCast<JSFunction*>(callBack);
-        CachedCall cachedCall(callFrame, function, 1);
+        CachedCall cachedCall(callFrame, function, 3);
         while (iterator->next(callFrame, key) && !vm->exception()) {
             cachedCall.setThis(thisValue);
             cachedCall.setArgument(0, key);
+            cachedCall.setArgument(1, key);
+            cachedCall.setArgument(2, set);
             cachedCall.call();
         }
         iterator->finish();
@@ -145,6 +146,8 @@ EncodedJSValue JSC_HOST_CALL setProtoFuncForEach(CallFrame* callFrame)
         while (iterator->next(callFrame, key) && !vm->exception()) {
             MarkedArgumentBuffer args;
             args.append(key);
+            args.append(key);
+            args.append(set);
             JSC::call(callFrame, callBack, callType, callData, thisValue, args);
         }
         iterator->finish();
@@ -172,7 +175,7 @@ EncodedJSValue JSC_HOST_CALL setProtoFuncValues(CallFrame* callFrame)
 {
     JSSet* thisObj = jsDynamicCast<JSSet*>(callFrame->thisValue());
     if (!thisObj)
-        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Map value iterator for a non-Map object.")));
+        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Set value iterator for a non-Set object.")));
     return JSValue::encode(JSSetIterator::create(callFrame->vm(), callFrame->callee()->globalObject()->setIteratorStructure(), thisObj, SetIterateValue));
 }
 
@@ -180,16 +183,8 @@ EncodedJSValue JSC_HOST_CALL setProtoFuncEntries(CallFrame* callFrame)
 {
     JSSet* thisObj = jsDynamicCast<JSSet*>(callFrame->thisValue());
     if (!thisObj)
-        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Map key iterator for a non-Map object.")));
+        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Set entry iterator for a non-Set object.")));
     return JSValue::encode(JSSetIterator::create(callFrame->vm(), callFrame->callee()->globalObject()->setIteratorStructure(), thisObj, SetIterateKeyValue));
-}
-
-EncodedJSValue JSC_HOST_CALL setProtoFuncKeys(CallFrame* callFrame)
-{
-    JSSet* thisObj = jsDynamicCast<JSSet*>(callFrame->thisValue());
-    if (!thisObj)
-        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Map entry iterator for a non-Map object.")));
-    return JSValue::encode(JSSetIterator::create(callFrame->vm(), callFrame->callee()->globalObject()->setIteratorStructure(), thisObj, SetIterateKey));
 }
 
 }

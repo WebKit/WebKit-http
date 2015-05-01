@@ -50,19 +50,6 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         setTimeout(delayedWork.bind(this), 0);
     }
 
-    // Static
-
-    static shouldShowViewForTimeline(timeline)
-    {
-        // COMPATIBILITY (iOS 8): TimelineAgent.EventType.RenderingFrame did not exist,
-        // fallback to displaying all other timelines.
-        if (window.TimelineAgent && !TimelineAgent.EventType.RenderingFrame)
-            return timeline.type !== WebInspector.TimelineRecord.Type.RenderingFrame;
-
-        // Don't show the Layout timeline view when the RenderingFrame timeline exists.
-        return timeline.type !== WebInspector.TimelineRecord.Type.Layout;
-    }
-
     // Public
 
     // The current recording that new timeline records will be appended to, if any.
@@ -455,7 +442,6 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         if (oldRecording)
             oldRecording.unloaded();
 
-        this._legacyFirstRecordedTimestamp = NaN;
         this._activeRecording = newRecording;
         this.dispatchEventToListeners(WebInspector.TimelineManager.Event.RecordingLoaded, {oldRecording});
     }

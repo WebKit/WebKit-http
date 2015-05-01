@@ -203,7 +203,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             if (!m_client.didReceiveResponse)
                 return;
 
-            m_client.didReceiveResponse(toAPI(processPool), toAPI(downloadProxy), toAPI(API::URLResponse::create(response).get()), m_client.base.clientInfo);
+            m_client.didReceiveResponse(toAPI(processPool), toAPI(downloadProxy), toAPI(API::URLResponse::create(response).ptr()), m_client.base.clientInfo);
         }
 
         virtual void didReceiveData(WebProcessPool* processPool, DownloadProxy* downloadProxy, uint64_t length) override
@@ -603,4 +603,9 @@ void WKContextSetInvalidMessageFunction(WKContextInvalidMessageFunction invalidM
 void WKContextSetMemoryCacheDisabled(WKContextRef contextRef, bool disabled)
 {
     toImpl(contextRef)->setMemoryCacheDisabled(disabled);
+}
+
+void WKContextSetFontWhitelist(WKContextRef contextRef, WKArrayRef arrayRef)
+{
+    toImpl(contextRef)->setFontWhitelist(toImpl(arrayRef));
 }

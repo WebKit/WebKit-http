@@ -133,6 +133,7 @@
 #import <WebCore/EventHandler.h>
 #import <WebCore/ExceptionHandlers.h>
 #import <WebCore/FocusController.h>
+#import <WebCore/FontCache.h>
 #import <WebCore/FrameLoader.h>
 #import <WebCore/FrameSelection.h>
 #import <WebCore/FrameTree.h>
@@ -204,6 +205,7 @@
 #import <wtf/HashTraits.h>
 #import <wtf/MainThread.h>
 #import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/RAMSize.h>
 #import <wtf/RefCountedLeakCounter.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RunLoop.h>
@@ -7718,11 +7720,6 @@ static WebFrameView *containingFrameView(NSView *view)
 }
 #endif
 
-static inline uint64_t roundUpToPowerOf2(uint64_t num)
-{
-    return powf(2.0, ceilf(log2f(num)));
-}
-
 + (void)_setCacheModel:(WebCacheModel)cacheModel
 {
     if (s_didSetCacheModel && cacheModel == s_cacheModel)
@@ -7732,7 +7729,7 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
     if (!nsurlCacheDirectory)
         nsurlCacheDirectory = NSHomeDirectory();
 
-    static uint64_t memSize = roundUpToPowerOf2(WebMemorySize() / 1024 / 1024);
+    static uint64_t memSize = ramSize() / 1024 / 1024;
     unsigned long long diskFreeSize = WebVolumeFreeSize(nsurlCacheDirectory) / 1024 / 1000;
     NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
 
@@ -8595,7 +8592,7 @@ bool LayerFlushController::flushLayers()
         if (!mutableOptions)
             mutableOptions = adoptNS([[NSMutableDictionary alloc] init]);
         [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
-        [self _setTextIndicator:dictionaryPopupInfo.textIndicator.get() fadeOut:NO];
+        [self _setTextIndicator:*dictionaryPopupInfo.textIndicator withLifetime:TextIndicatorLifetime::Permanent];
         return [getLULookupDefinitionModuleClass() lookupAnimationControllerForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
     }
 
@@ -8603,24 +8600,26 @@ bool LayerFlushController::flushLayers()
 }
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
-- (void)_setTextIndicator:(TextIndicator *)textIndicator fadeOut:(BOOL)fadeOut
+- (void)_setTextIndicator:(TextIndicator&)textIndicator
 {
-    if (!textIndicator) {
-        _private->textIndicatorWindow = nullptr;
-        return;
-    }
+    [self _setTextIndicator:textIndicator withLifetime:TextIndicatorLifetime::Permanent];
+}
 
+- (void)_setTextIndicator:(TextIndicator&)textIndicator withLifetime:(TextIndicatorLifetime)lifetime
+{
     if (!_private->textIndicatorWindow)
         _private->textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
 
-    NSRect textBoundingRectInWindowCoordinates = [self convertRect:[self _convertRectFromRootView:textIndicator->textBoundingRectInRootViewCoordinates()] toView:nil];
+    NSRect textBoundingRectInWindowCoordinates = [self convertRect:[self _convertRectFromRootView:textIndicator.textBoundingRectInRootViewCoordinates()] toView:nil];
     NSRect textBoundingRectInScreenCoordinates = [self.window convertRectToScreen:textBoundingRectInWindowCoordinates];
-    _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(textBoundingRectInScreenCoordinates), fadeOut);
+    _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(textBoundingRectInScreenCoordinates), lifetime);
 }
 
-- (void)_clearTextIndicator
+- (void)_clearTextIndicatorWithAnimation:(TextIndicatorDismissalAnimation)animation
 {
-    [self _setTextIndicator:nullptr fadeOut:NO];
+    if (_private->textIndicatorWindow)
+        _private->textIndicatorWindow->clearTextIndicator(TextIndicatorDismissalAnimation::FadeOut);
+    _private->textIndicatorWindow = nullptr;
 }
 
 - (void)_setTextIndicatorAnimationProgress:(float)progress
@@ -8649,7 +8648,7 @@ bool LayerFlushController::flushLayers()
         if (!mutableOptions)
             mutableOptions = adoptNS([[NSMutableDictionary alloc] init]);
         [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
-        [self _setTextIndicator:dictionaryPopupInfo.textIndicator.get() fadeOut:NO];
+        [self _setTextIndicator:*dictionaryPopupInfo.textIndicator withLifetime:TextIndicatorLifetime::Permanent];
         [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
     } else
         [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:dictionaryPopupInfo.options.get()];
@@ -8657,7 +8656,7 @@ bool LayerFlushController::flushLayers()
 
 - (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
 {
-    [self _setTextIndicator:nullptr fadeOut:NO];
+    [self _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];
 }
 #endif // PLATFORM(MAC)
 
@@ -8817,6 +8816,20 @@ bool LayerFlushController::flushLayers()
     return static_cast<WebNotificationClient*>(NotificationController::clientFrom(_private->page))->notificationIDForTesting(notification);
 #else
     return 0;
+#endif
+}
+@end
+
+@implementation WebView (WebViewFontSelection)
++ (void)_setFontWhitelist:(NSArray *)whitelist
+{
+#if !PLATFORM(MAC)
+    UNUSED_PARAM(whitelist);
+#else
+    Vector<String> vector;
+    for (NSString *string in whitelist)
+        vector.append(string);
+    WebCore::FontCache::setFontWhitelist(vector);
 #endif
 }
 @end

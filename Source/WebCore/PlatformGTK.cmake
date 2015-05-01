@@ -1,3 +1,5 @@
+set(WebCore_OUTPUT_NAME WebCoreGTK)
+
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/accessibility/atk"
     "${WEBCORE_DIR}/editing/atk"
@@ -78,7 +80,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/ImageCairo.cpp
     platform/graphics/cairo/IntRectCairo.cpp
-    platform/graphics/cairo/OwnPtrCairo.cpp
     platform/graphics/cairo/PathCairo.cpp
     platform/graphics/cairo/PatternCairo.cpp
     platform/graphics/cairo/PlatformContextCairo.cpp
@@ -160,6 +161,7 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/CookieStorageSoup.cpp
     platform/network/soup/CredentialStorageSoup.cpp
     platform/network/soup/DNSSoup.cpp
+    platform/network/soup/GRefPtrSoup.cpp
     platform/network/soup/NetworkStorageSessionSoup.cpp
     platform/network/soup/ProxyServerSoup.cpp
     platform/network/soup/ResourceErrorSoup.cpp
@@ -177,6 +179,7 @@ list(APPEND WebCore_SOURCES
 
     platform/text/enchant/TextCheckerEnchant.cpp
 
+    platform/text/gtk/HyphenationLibHyphen.cpp
     platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp
 
     platform/network/gtk/CredentialBackingStore.cpp
@@ -267,6 +270,7 @@ list(APPEND WebCore_LIBRARIES
     ${LIBSOUP_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
+    ${HYPHEN_LIBRARIES}
     ${PNG_LIBRARIES}
     ${SQLITE_LIBRARIES}
     ${WEBP_LIBRARIES}
@@ -327,7 +331,7 @@ if (ENABLE_VIDEO)
         ${GSTREAMER_VIDEO_LIBRARIES}
     )
 
-    if (USE_GSTREAMER_MPEGTS)
+    if (WTF_USE_GSTREAMER_MPEGTS)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${GSTREAMER_MPEGTS_INCLUDE_DIRS}
         )
@@ -337,7 +341,7 @@ if (ENABLE_VIDEO)
         )
     endif ()
 
-    if (USE_GSTREAMER_GL)
+    if (WTF_USE_GSTREAMER_GL)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${GSTREAMER_GL_INCLUDE_DIRS}
         )
@@ -368,7 +372,7 @@ if (ENABLE_MEDIA_STREAM)
     )
 endif ()
 
-if (ENABLE_TEXTURE_MAPPER)
+if (WTF_USE_TEXTURE_MAPPER)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/texmap"
     )
@@ -398,7 +402,6 @@ if (ENABLE_THREADED_COMPOSITOR)
         page/scrolling/ScrollingThread.cpp
         page/scrolling/ScrollingTreeNode.cpp
         page/scrolling/ScrollingTreeScrollingNode.cpp
-        platform/graphics/TiledBackingStore.cpp
         platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
         platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
         platform/graphics/texmap/coordinated/AreaAllocator.cpp
@@ -407,6 +410,7 @@ if (ENABLE_THREADED_COMPOSITOR)
         platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
         platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
         platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+        platform/graphics/texmap/coordinated/TiledBackingStore.cpp
         platform/graphics/texmap/coordinated/UpdateAtlas.cpp
     )
 endif ()

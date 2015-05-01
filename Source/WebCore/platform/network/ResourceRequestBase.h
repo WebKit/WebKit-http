@@ -147,6 +147,10 @@ namespace WebCore {
         bool hiddenFromInspector() const { return m_hiddenFromInspector; }
         void setHiddenFromInspector(bool hiddenFromInspector) { m_hiddenFromInspector = hiddenFromInspector; }
 
+        enum class Requester { Unspecified, Main, XHR };
+        Requester requester() const { return m_requester; }
+        void setRequester(Requester requester) { m_requester = requester; }
+
 #if !PLATFORM(COCOA)
         bool encodingRequiresPlatformData() const { return true; }
 #endif
@@ -166,15 +170,8 @@ namespace WebCore {
     protected:
         // Used when ResourceRequest is initialized from a platform representation of the request
         ResourceRequestBase()
-            : m_resourceRequestUpdated(false)
-            , m_platformRequestUpdated(true)
-            , m_resourceRequestBodyUpdated(false)
+            : m_platformRequestUpdated(true)
             , m_platformRequestBodyUpdated(true)
-            , m_reportUploadProgress(false)
-            , m_reportLoadTiming(false)
-            , m_reportRawHeaders(false)
-            , m_hiddenFromInspector(false)
-            , m_priority(ResourceLoadPriorityLow)
         {
         }
 
@@ -189,14 +186,7 @@ namespace WebCore {
             , m_allowCookies(ResourceRequestBase::defaultAllowCookies())
 #endif
             , m_resourceRequestUpdated(true)
-            , m_platformRequestUpdated(false)
             , m_resourceRequestBodyUpdated(true)
-            , m_platformRequestBodyUpdated(false)
-            , m_reportUploadProgress(false)
-            , m_reportLoadTiming(false)
-            , m_reportRawHeaders(false)
-            , m_hiddenFromInspector(false)
-            , m_priority(ResourceLoadPriorityLow)
         {
         }
 
@@ -213,17 +203,18 @@ namespace WebCore {
         HTTPHeaderMap m_httpHeaderFields;
         Vector<String> m_responseContentDispositionEncodingFallbackArray;
         RefPtr<FormData> m_httpBody;
-        unsigned m_cachePolicy : 3;
-        unsigned m_allowCookies : 1;
-        mutable unsigned m_resourceRequestUpdated : 1;
-        mutable unsigned m_platformRequestUpdated : 1;
-        mutable unsigned m_resourceRequestBodyUpdated : 1;
-        mutable unsigned m_platformRequestBodyUpdated : 1;
-        unsigned m_reportUploadProgress : 1;
-        unsigned m_reportLoadTiming : 1;
-        unsigned m_reportRawHeaders : 1;
-        unsigned m_hiddenFromInspector : 1;
-        unsigned m_priority : 4;
+        ResourceRequestCachePolicy m_cachePolicy { UseProtocolCachePolicy };
+        bool m_allowCookies { false };
+        mutable bool m_resourceRequestUpdated { false };
+        mutable bool m_platformRequestUpdated { false };
+        mutable bool m_resourceRequestBodyUpdated { false };
+        mutable bool m_platformRequestBodyUpdated { false };
+        bool m_reportUploadProgress { false };
+        bool m_reportLoadTiming { false };
+        bool m_reportRawHeaders { false };
+        bool m_hiddenFromInspector { false };
+        ResourceLoadPriority m_priority { ResourceLoadPriority::Low };
+        Requester m_requester { Requester::Unspecified };
 
     private:
         const ResourceRequest& asResourceRequest() const;
@@ -240,21 +231,17 @@ namespace WebCore {
     inline bool operator!=(ResourceRequest& a, const ResourceRequest& b) { return !(a == b); }
 
     struct CrossThreadResourceRequestDataBase {
-        WTF_MAKE_NONCOPYABLE(CrossThreadResourceRequestDataBase); WTF_MAKE_FAST_ALLOCATED;
-    public:
-        CrossThreadResourceRequestDataBase() { }
-        URL m_url;
-
-        ResourceRequestCachePolicy m_cachePolicy;
-        double m_timeoutInterval;
-        URL m_firstPartyForCookies;
-
-        String m_httpMethod;
-        std::unique_ptr<CrossThreadHTTPHeaderMapData> m_httpHeaders;
-        Vector<String> m_responseContentDispositionEncodingFallbackArray;
-        RefPtr<FormData> m_httpBody;
-        bool m_allowCookies;
-        ResourceLoadPriority m_priority;
+        URL url;
+        ResourceRequestCachePolicy cachePolicy;
+        double timeoutInterval;
+        URL firstPartyForCookies;
+        String httpMethod;
+        std::unique_ptr<CrossThreadHTTPHeaderMapData> httpHeaders;
+        Vector<String> responseContentDispositionEncodingFallbackArray;
+        RefPtr<FormData> httpBody;
+        bool allowCookies;
+        ResourceLoadPriority priority;
+        ResourceRequestBase::Requester requester;
     };
     
     unsigned initializeMaximumHTTPConnectionCountPerHost();
@@ -276,6 +263,7 @@ void ResourceRequestBase::encodeWithoutPlatformData(Encoder& encoder) const
     encoder.encodeEnum(m_cachePolicy);
     encoder << m_allowCookies;
     encoder.encodeEnum(m_priority);
+    encoder.encodeEnum(m_requester);
 }
 
 template<class Decoder>
@@ -317,6 +305,9 @@ bool ResourceRequestBase::decodeWithoutPlatformData(Decoder& decoder)
     if (!decoder.decodeEnum(priority))
         return false;
     m_priority = priority;
+
+    if (!decoder.decodeEnum(m_requester))
+        return false;
 
     return true;
 }

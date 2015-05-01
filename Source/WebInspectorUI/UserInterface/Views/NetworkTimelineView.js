@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.NetworkTimelineView = function(timeline)
+WebInspector.NetworkTimelineView = function(timeline, extraArguments)
 {
-    WebInspector.TimelineView.call(this, timeline);
+    WebInspector.TimelineView.call(this, timeline, extraArguments);
 
     console.assert(timeline.type === WebInspector.TimelineRecord.Type.Network);
 
@@ -151,7 +151,7 @@ WebInspector.NetworkTimelineView.prototype = {
     showContentViewForTreeElement: function(treeElement)
     {
         if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement) {
-            WebInspector.resourceSidebarPanel.showSourceCode(treeElement.representedObject);
+            WebInspector.showSourceCode(treeElement.representedObject);
             return true;
         }
 
@@ -209,7 +209,7 @@ WebInspector.NetworkTimelineView.prototype = {
 
     _dataGridFiltersDidChange: function(event)
     {
-        WebInspector.timelineSidebarPanel.updateFilter();
+        this.timelineSidebarPanel.updateFilter();
     },
 
     _dataGridNodeSelected: function(event)
@@ -224,7 +224,7 @@ WebInspector.NetworkTimelineView.prototype = {
             return;
         }
 
-        wrappedSVGDocument(platformImagePath("Close.svg"), null, WebInspector.UIString("Close resource view"), function(element) {
+        wrappedSVGDocument("Images/Close.svg", null, WebInspector.UIString("Close resource view"), function(element) {
             this._closeStatusButton = new WebInspector.TreeElementStatusButton(element);
             this._closeStatusButton.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this._closeStatusButtonClicked, this);
             if (treeElement === this.navigationSidebarTreeOutline.selectedTreeElement)
@@ -235,6 +235,6 @@ WebInspector.NetworkTimelineView.prototype = {
     _closeStatusButtonClicked: function(event)
     {
         this.navigationSidebarTreeOutline.selectedTreeElement.deselect();
-        WebInspector.timelineSidebarPanel.showTimelineViewForTimeline(this.representedObject);
+        this.timelineSidebarPanel.showTimelineViewForTimeline(this.representedObject);
     }
 };
