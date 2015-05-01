@@ -514,10 +514,15 @@ static inline bool isColorPropertyID(CSSPropertyID propertyId)
     }
 }
 
+bool CSSParser::isValidSystemColorValue(CSSValueID valueID)
+{
+    return valueID >= CSSValueAqua && valueID <= CSSValueAppleSystemYellow;
+}
+
 static bool validPrimitiveValueColor(CSSValueID valueID, bool strict = false)
 {
     return (valueID == CSSValueWebkitText || valueID == CSSValueCurrentcolor || valueID == CSSValueMenu
-        || (valueID >= CSSValueAlpha && valueID <= CSSValueWindowtext)
+        || CSSParser::isValidSystemColorValue(valueID) || valueID == CSSValueAlpha
         || (valueID >= CSSValueWebkitFocusRingColor && valueID < CSSValueWebkitText && !strict));
 }
 
@@ -1982,6 +1987,10 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
             return false;
         return parseFontWeight(important);
     }
+
+    case CSSPropertyFontSynthesis: // none | [ weight || style ]
+        return parseFontSynthesis(important);
+
     case CSSPropertyBorderSpacing: {
         if (num == 1) {
             ShorthandScope scope(this, CSSPropertyBorderSpacing);
@@ -2034,8 +2043,8 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
                                     // since we use this in our UA sheets.
         else if (id == CSSValueCurrentcolor)
             validPrimitive = true;
-        else if ((id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu ||
-             (id >= CSSValueWebkitFocusRingColor && id < CSSValueWebkitText && inQuirksMode())) {
+        else if (isValidSystemColorValue(id) || id == CSSValueMenu
+            || (id >= CSSValueWebkitFocusRingColor && id < CSSValueWebkitText && inQuirksMode())) {
             validPrimitive = true;
         } else {
             parsedValue = parseColor();
@@ -2875,7 +2884,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 #endif
 #if ENABLE(TOUCH_EVENTS)
     case CSSPropertyWebkitTapHighlightColor:
-        if ((id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu
+        if (isValidSystemColorValue(id) || id == CSSValueMenu
             || (id >= CSSValueWebkitFocusRingColor && id < CSSValueWebkitText && inQuirksMode())) {
             validPrimitive = true;
         } else {
@@ -4126,8 +4135,8 @@ PassRefPtr<CSSValue> CSSParser::parseAttr(CSSParserValueList& args)
 PassRefPtr<CSSValue> CSSParser::parseBackgroundColor()
 {
     CSSValueID id = m_valueList->current()->id;
-    if (id == CSSValueWebkitText || (id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu || id == CSSValueCurrentcolor ||
-        (id >= CSSValueGrey && id < CSSValueWebkitText && inQuirksMode()))
+    if (id == CSSValueWebkitText || isValidSystemColorValue(id) || id == CSSValueMenu || id == CSSValueCurrentcolor
+        || (id >= CSSValueGrey && id < CSSValueWebkitText && inQuirksMode()))
         return cssValuePool().createIdentifierValue(id);
     return parseColor();
 }
@@ -6769,6 +6778,41 @@ bool CSSParser::parseFontWeight(bool important)
     return false;
 }
 
+bool CSSParser::parseFontSynthesis(bool important)
+{
+    // none | [ weight || style ]
+    CSSParserValue* value = m_valueList->current();
+    if (value && value->id == CSSValueNone) {
+        addProperty(CSSPropertyFontSynthesis, cssValuePool().createIdentifierValue(CSSValueNone), important);
+        m_valueList->next();
+        return true;
+    }
+
+    bool encounteredWeight = false;
+    bool encounteredStyle = false;
+    while (value) {
+        switch (value->id) {
+        case CSSValueWeight:
+            encounteredWeight = true;
+            break;
+        case CSSValueStyle:
+            encounteredStyle = true;
+            break;
+        default:
+            return false;
+        }
+        value = m_valueList->next();
+    }
+
+    RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
+    if (encounteredWeight)
+        list->append(cssValuePool().createIdentifierValue(CSSValueWeight));
+    if (encounteredStyle)
+        list->append(cssValuePool().createIdentifierValue(CSSValueStyle));
+    addProperty(CSSPropertyFontSynthesis, list.release(), important);
+    return true;
+}
+
 bool CSSParser::parseFontFaceSrcURI(CSSValueList& valueList)
 {
     RefPtr<CSSFontFaceSrcValue> uriValue(CSSFontFaceSrcValue::create(completeURL(m_valueList->current()->string)));
@@ -7585,7 +7629,7 @@ PassRefPtr<CSSValueList> CSSParser::parseShadow(CSSParserValueList& valueList, C
         } else {
             // The only other type of value that's ok is a color value.
             RefPtr<CSSPrimitiveValue> parsedColor;
-            bool isColor = ((value->id >= CSSValueAqua && value->id <= CSSValueWindowtext) || value->id == CSSValueMenu
+            bool isColor = (isValidSystemColorValue(value->id) || value->id == CSSValueMenu
                 || (value->id >= CSSValueWebkitFocusRingColor && value->id <= CSSValueWebkitText && inQuirksMode())
                 || value->id == CSSValueCurrentcolor);
             if (isColor) {
@@ -8346,7 +8390,7 @@ static bool parseDeprecatedGradientColorStop(CSSParser& parser, CSSParserValue& 
             stop.m_position = cssValuePool().createValue(1, CSSPrimitiveValue::CSS_NUMBER);
 
         CSSValueID id = args->current()->id;
-        if (id == CSSValueWebkitText || (id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu)
+        if (id == CSSValueWebkitText || CSSParser::isValidSystemColorValue(id) || id == CSSValueMenu)
             stop.m_color = cssValuePool().createIdentifierValue(id);
         else
             stop.m_color = parser.parseColor(args->current());
@@ -8373,7 +8417,7 @@ static bool parseDeprecatedGradientColorStop(CSSParser& parser, CSSParserValue& 
 
         stopArg = args->next();
         CSSValueID id = stopArg->id;
-        if (id == CSSValueWebkitText || (id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu)
+        if (id == CSSValueWebkitText || CSSParser::isValidSystemColorValue(id) || id == CSSValueMenu)
             stop.m_color = cssValuePool().createIdentifierValue(id);
         else
             stop.m_color = parser.parseColor(stopArg);
@@ -8544,7 +8588,7 @@ static PassRefPtr<CSSPrimitiveValue> valueFromSideKeyword(CSSParserValue& value,
 static PassRefPtr<CSSPrimitiveValue> parseGradientColorOrKeyword(CSSParser& parser, CSSParserValue& value)
 {
     CSSValueID id = value.id;
-    if (id == CSSValueWebkitText || (id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu || id == CSSValueCurrentcolor)
+    if (id == CSSValueWebkitText || CSSParser::isValidSystemColorValue(id) || id == CSSValueMenu || id == CSSValueCurrentcolor)
         return cssValuePool().createIdentifierValue(id);
 
     return parser.parseColor(&value);
@@ -10723,9 +10767,8 @@ unsigned CSSParser::parseEscape(CharacterType*& src)
             unicode = (unicode << 4) + toASCIIHexValue(*src++);
         } while (--length && isASCIIHexDigit(*src));
 
-        // Characters above 0x10ffff are not handled.
-        if (unicode > 0x10ffff)
-            unicode = 0xfffd;
+        if (unicode > UCHAR_MAX_VALUE)
+            unicode = replacementCharacter;
 
         // Optional space after the escape sequence.
         if (isHTMLSpace(*src))

@@ -66,12 +66,14 @@ public:
 
     bool prepopulateRect(const FloatRect&);
 
-    enum TileValidationPolicyFlag {
+    enum TileValidationPolicyFlags {
         PruneSecondaryTiles = 1 << 0,
-        UnparentAllTiles = 1 << 1
+        UnparentAllTiles    = 1 << 1
     };
-    void revalidateTiles(unsigned validationPolicyFlags);
-    bool tilesWouldChangeForVisibleRect(const FloatRect& newVisibleRect, const FloatRect& oldVisibleRect) const;
+    typedef unsigned TileValidationPolicy;
+    void revalidateTiles(TileValidationPolicy);
+
+    bool tilesWouldChangeForCoverageRect(const FloatRect&) const;
 
     IntRect tileCoverageRect() const;
     IntRect extent() const;

@@ -66,6 +66,7 @@ messages -> WebPage LegacyReceiver {
     MoveSelectionByOffset(int32_t offset, uint64_t callbackID)
     SelectTextWithGranularityAtPoint(WebCore::IntPoint point, uint32_t granularity, uint64_t callbackID)
     SelectPositionAtBoundaryWithDirection(WebCore::IntPoint point, uint32_t granularity, uint32_t direction, uint64_t callbackID)
+    MoveSelectionAtBoundaryWithDirection(uint32_t granularity, uint32_t direction, uint64_t callbackID)
     SelectPositionAtPoint(WebCore::IntPoint point, uint64_t callbackID)
     BeginSelectionInDirection(uint32_t direction, uint64_t callbackID)
     UpdateSelectionWithExtentPoint(WebCore::IntPoint point, uint64_t callbackID)
@@ -91,6 +92,7 @@ messages -> WebPage LegacyReceiver {
     ApplicationDidBecomeActive()
     ContentSizeCategoryDidChange(String contentSizeCategory)
     ExecuteEditCommandWithCallback(String name, uint64_t callbackID)
+    GetLookupContextAtPoint(WebCore::IntPoint point, uint64_t callbackID)
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -423,4 +425,5 @@ messages -> WebPage LegacyReceiver {
     SetShouldPlayToPlaybackTarget(uint64_t contextId, bool shouldPlay)
 #endif
 
+    ClearWheelEventTestTrigger()
 }

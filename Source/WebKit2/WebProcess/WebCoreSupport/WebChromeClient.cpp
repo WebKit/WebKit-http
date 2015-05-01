@@ -129,7 +129,10 @@ void WebChromeClient::setWindowRect(const FloatRect& windowFrame)
 
 FloatRect WebChromeClient::windowRect()
 {
-#if PLATFORM(COCOA)
+#if PLATFORM(IOS)
+    return FloatRect();
+#else
+#if PLATFORM(MAC)
     if (m_page->hasCachedWindowFrame())
         return m_page->windowFrameInUnflippedScreenCoordinates();
 #endif
@@ -140,6 +143,7 @@ FloatRect WebChromeClient::windowRect()
         return FloatRect();
 
     return newWindowFrame;
+#endif
 }
 
 FloatRect WebChromeClient::pageRect()
@@ -471,7 +475,7 @@ void WebChromeClient::scroll(const IntSize& scrollDelta, const IntRect& scrollRe
     m_page->drawingArea()->scroll(intersection(scrollRect, clipRect), scrollDelta);
 }
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
 void WebChromeClient::delegatedScrollRequested(const IntPoint& scrollOffset)
 {
     m_page->pageDidRequestScroll(scrollOffset);
@@ -958,7 +962,7 @@ void WebChromeClient::dispatchViewportPropertiesDidChange(const ViewportArgument
 #if PLATFORM(IOS)
     m_page->viewportPropertiesDidChange(viewportArguments);
 #endif
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     if (!m_page->useFixedLayout())
         return;
 

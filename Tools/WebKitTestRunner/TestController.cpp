@@ -558,6 +558,7 @@ void TestController::resetPreferencesToConsistentValues()
     // Reset preferences
     WKPreferencesRef preferences = WKPageGroupGetPreferences(m_pageGroup.get());
     WKPreferencesResetTestRunnerOverrides(preferences);
+    WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(preferences, false);
     WKPreferencesSetOfflineWebApplicationCacheEnabled(preferences, true);
     WKPreferencesSetFontSmoothingLevel(preferences, kWKFontSmoothingLevelNoSubpixelAntiAliasing);
     WKPreferencesSetAntialiasedFontDilationEnabled(preferences, false);
@@ -659,6 +660,8 @@ bool TestController::resetStateToConsistentValues()
     // Re-set to the default backing scale factor by setting the custom scale factor to 0.
     WKPageSetCustomBackingScaleFactor(m_mainWebView->page(), 0);
 
+    WKPageClearWheelEventTestTrigger(m_mainWebView->page());
+
 #if PLATFORM(EFL)
     // EFL use a real window while other ports such as Qt don't.
     // In EFL, we need to resize the window to the original size after calls to window.resizeTo.
@@ -693,6 +696,8 @@ bool TestController::resetStateToConsistentValues()
     m_shouldLogHistoryClientCallbacks = false;
 
     WKPageGroupRemoveAllUserContentFilters(WKPageGetPageGroup(m_mainWebView->page()));
+
+    setHidden(false);
 
     // Reset main page back to about:blank
     m_doneResetting = false;
@@ -763,7 +768,7 @@ static bool shouldUseFixedLayout(const TestInvocation& test)
         return true;
 #endif
 
-#if USE(TILED_BACKING_STORE) && PLATFORM(EFL)
+#if USE(COORDINATED_GRAPHICS) && PLATFORM(EFL)
     if (test.urlContains("sticky/") || test.urlContains("sticky\\"))
         return true;
 #endif

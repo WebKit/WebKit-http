@@ -2947,14 +2947,9 @@ void EventHandler::dispatchFakeMouseMoveEventSoon()
     // reschedule the timer and use a longer time. This will cause the content
     // to receive these moves only after the user is done scrolling, reducing
     // pauses during the scroll.
-    if (m_maxMouseMovedDuration > fakeMouseMoveDurationThreshold) {
-        if (m_fakeMouseMoveEventTimer.isActive())
-            m_fakeMouseMoveEventTimer.stop();
-        m_fakeMouseMoveEventTimer.startOneShot(fakeMouseMoveLongInterval);
-    } else {
-        if (!m_fakeMouseMoveEventTimer.isActive())
-            m_fakeMouseMoveEventTimer.startOneShot(fakeMouseMoveShortInterval);
-    }
+    if (m_fakeMouseMoveEventTimer.isActive())
+        m_fakeMouseMoveEventTimer.stop();
+    m_fakeMouseMoveEventTimer.startOneShot(m_maxMouseMovedDuration > fakeMouseMoveDurationThreshold ? fakeMouseMoveLongInterval : fakeMouseMoveShortInterval);
 #endif
 }
 
@@ -3244,7 +3239,8 @@ static void setInitialKeyboardSelection(Frame& frame, SelectionDirection directi
         break;
     }
 
-    selection.setSelection(visiblePosition, FrameSelection::defaultSetSelectionOptions(UserTriggered));
+    AXTextStateChangeIntent intent(AXTextStateChangeTypeSelectionMove, AXTextSelection { AXTextSelectionDirectionDiscontiguous, AXTextSelectionGranularityUnknown });
+    selection.setSelection(visiblePosition, FrameSelection::defaultSetSelectionOptions(UserTriggered), intent);
 }
 
 static void handleKeyboardSelectionMovement(Frame& frame, KeyboardEvent* event)

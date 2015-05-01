@@ -87,7 +87,6 @@
 #import <wtf/Assertions.h>
 #import <wtf/FastMalloc.h>
 #import <wtf/ObjcRuntimeExtras.h>
-#import <wtf/OwnPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Threading.h>
 #import <wtf/text/WTFString.h>
@@ -154,6 +153,12 @@ using namespace std;
 @interface WebView (Details)
 - (BOOL)_flushCompositingChanges;
 @end
+
+#if !PLATFORM(IOS)
+@interface WebView (WebViewInternalForTesting)
+- (WebCore::Frame*)_mainCoreFrame;
+@end
+#endif
 
 static void runTest(const string& testURL);
 
@@ -415,6 +420,7 @@ static NSSet *allowedFontFamilySet()
     return fontFamilySet;
 }
 
+#if !ENABLE(PLATFORM_FONT_LOOKUP)
 static IMP appKitAvailableFontFamiliesIMP;
 static IMP appKitAvailableFontsIMP;
 
@@ -473,6 +479,29 @@ static void swizzleNSFontManagerMethods()
     
     appKitAvailableFontsIMP = method_setImplementation(availableFontsMethod, (IMP)drt_NSFontManager_availableFonts);
 }
+
+#else
+
+static NSArray *fontWhitelist()
+{
+    static NSArray *availableFonts;
+    if (availableFonts)
+        return availableFonts;
+
+    NSMutableArray *availableFontList = [[NSMutableArray alloc] init];
+    for (NSString *fontFamily in allowedFontFamilySet()) {
+        NSArray* fontsForFamily = [[NSFontManager sharedFontManager] availableMembersOfFontFamily:fontFamily];
+        [availableFontList addObject:fontFamily];
+        for (NSArray* fontInfo in fontsForFamily) {
+            // Font name is the first entry in the array.
+            [availableFontList addObject:[fontInfo objectAtIndex:0]];
+        }
+    }
+
+    availableFonts = availableFontList;
+    return availableFonts;
+}
+#endif
 
 // Activating system copies of these fonts overrides any others that could be preferred, such as ones
 // in /Library/Fonts/Microsoft, and which don't always have the same metrics.
@@ -550,7 +579,9 @@ static void activateTestingFonts()
 
 static void adjustFonts()
 {
+#if !ENABLE(PLATFORM_FONT_LOOKUP)
     swizzleNSFontManagerMethods();
+#endif
     activateSystemCoreWebFonts();
     activateTestingFonts();
 }
@@ -733,6 +764,10 @@ WebView *createWebViewAndOffscreenWindow()
     [WebView registerURLSchemeAsLocal:@"feeds"];
     [WebView registerURLSchemeAsLocal:@"feedsearch"];
     
+#if PLATFORM(MAC) && ENABLE(PLATFORM_FONT_LOOKUP)
+    [WebView _setFontWhitelist:fontWhitelist()];
+#endif
+
 #if !PLATFORM(IOS)
     [webView setContinuousSpellCheckingEnabled:YES];
     [webView setAutomaticQuoteSubstitutionEnabled:NO];
@@ -1344,8 +1379,21 @@ static const char **_argv;
 @end
 #endif
 
+static bool returningFromMain = false;
+
+void atexitFunction()
+{
+    if (returningFromMain)
+        return;
+
+    NSLog(@"DumpRenderTree is exiting unexpectedly. Generating a crash log.");
+    __builtin_trap();
+}
+
 int DumpRenderTreeMain(int argc, const char *argv[])
 {
+    atexit(atexitFunction);
+
 #if PLATFORM(IOS)
     _UIApplicationLoadWebKit();
 #endif
@@ -1367,6 +1415,7 @@ int DumpRenderTreeMain(int argc, const char *argv[])
     if (JSC::Options::logHeapStatisticsAtExit())
         JSC::HeapStatistics::reportSuccess();
     [pool release];
+    returningFromMain = true;
     return 0;
 }
 
@@ -1779,6 +1828,11 @@ static void resetWebViewToConsistentStateBeforeTesting()
         // in the case that a test using the chrome input field failed, be sure to clean up for the next test
         gTestRunner->removeChromeInputField();
     }
+
+#if !PLATFORM(IOS)
+    if (WebCore::Frame* frame = [webView _mainCoreFrame])
+        WebCoreTestSupport::clearWheelEventTestTrigger(*frame);
+#endif
 
 #if !PLATFORM(IOS)
     [webView setContinuousSpellCheckingEnabled:YES];

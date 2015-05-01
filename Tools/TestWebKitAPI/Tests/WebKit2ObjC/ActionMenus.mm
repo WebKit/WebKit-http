@@ -438,7 +438,7 @@ static NSPoint windowPointForTarget(TargetType target)
         contentPoint = NSMakePoint(200, 350);
         break;
     case TargetType::PDFEmbed:
-        contentPoint = NSMakePoint(410, 420);
+        contentPoint = NSMakePoint(522, 363);
         break;
     case TargetType::PDFDocument:
         contentPoint = NSMakePoint(141, 374);
@@ -665,14 +665,11 @@ TEST(WebKit2, ActionMenusTest)
         EXPECT_EQ(174, image.size.height);
     }];
 
-    // Download an image.
+    // Download a local image (should be disabled)
     activeDownloadContext.shouldCheckForImage = true;
     [wkView runMenuSequenceAtPoint:windowPointForTarget(TargetType::Image) preDidCloseMenuHandler:^() {
         EXPECT_EQ(kWKActionMenuImage, [wkView _actionMenuResult].type);
-
-        didFinishDownload = false;
-        performMenuItemAtIndexOfTypeAsync([wkView _actionMenu], 2, kWKContextActionItemTagSaveImageToDownloads);
-        Util::run(&didFinishDownload);
+        ensureMenuItemAtIndexOfTypeIsDisabled([wkView _actionMenu], 2, kWKContextActionItemTagSaveImageToDownloads);
     }];
     activeDownloadContext.shouldCheckForImage = false;
 
@@ -689,6 +686,9 @@ TEST(WebKit2, ActionMenusTest)
         performMenuItemAtIndexOfTypeAsync([wkView _actionMenu], 0, kWKContextActionItemTagCopyVideoURL);
         NSString *videoURL = watchPasteboardForString();
         EXPECT_WK_STREQ(@"test.mp4", [videoURL lastPathComponent]);
+
+        // Since this video is a local file, it should be disabled.
+        ensureMenuItemAtIndexOfTypeIsDisabled([wkView _actionMenu], 2, kWKContextActionItemTagSaveVideoToDownloads);
     }];
 
     // Copying a video URL for a non-downloadable video should result in copying the page URL instead.
@@ -737,9 +737,9 @@ TEST(WebKit2, ActionMenusTest)
     // PDF text content
     [wkView runMenuSequenceAtPoint:windowPointForTarget(TargetType::PDFEmbed) preDidCloseMenuHandler:^() {
         EXPECT_EQ(kWKActionMenuReadOnlyText, [wkView _actionMenuResult].type);
-        EXPECT_WK_STREQ("Test", WKHitTestResultCopyLookupText([wkView _actionMenuResult].hitTestResult.get()));
-
-        // FIXME(14408): You cannot copy from PDFs hosted in <embed> tags. When this is fixed, we should test it works here.
+        EXPECT_WK_STREQ("separation", WKHitTestResultCopyLookupText([wkView _actionMenuResult].hitTestResult.get()));
+    
+        // FIXME(144008): You cannot copy from PDFs hosted in <embed> tags. When this is fixed, we should test it works here.
     }];
 
     // Clients should be able to customize the menu by overriding WKView's _actionMenuItemsForHitTestResult.
@@ -766,7 +766,7 @@ TEST(WebKit2, ActionMenusTest)
     }];
 }
 
-TEST(WebKit2, ActionMenusPDFTest)
+TEST(WebKit2, DISABLED_ActionMenusPDFTest)
 {
     WKRetainPtr<WKContextRef> context = adoptWK(Util::createContextForInjectedBundleTest("ActionMenusTest"));
     

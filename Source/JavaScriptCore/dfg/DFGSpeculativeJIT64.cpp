@@ -1068,6 +1068,12 @@ FPRReg SpeculativeJIT::fillSpeculateDouble(Edge edge)
         }
         
         DataFormat spillFormat = info.spillFormat();
+        if (spillFormat != DataFormatDouble) {
+            DFG_CRASH(
+                m_jit.graph(), m_currentNode, toCString(
+                    "Expected ", edge, " to have double format but instead it is spilled as ",
+                    dataFormatToString(spillFormat)).data());
+        }
         DFG_ASSERT(m_jit.graph(), m_currentNode, spillFormat == DataFormatDouble);
         FPRReg fpr = fprAllocate();
         m_jit.loadDouble(JITCompiler::addressFor(virtualRegister), fpr);
@@ -1742,6 +1748,11 @@ void SpeculativeJIT::emitBranch(Node* node)
         return;
     }
 
+    case StringUse: {
+        emitStringBranch(node->child1(), taken, notTaken);
+        return;
+    }
+
     case UntypedUse:
     case BooleanUse: {
         JSValueOperand value(this, node->child1(), ManualOperandSpeculation);
@@ -2152,6 +2163,10 @@ void SpeculativeJIT::compile(Node* node)
         
     case ArithAdd:
         compileAdd(node);
+        break;
+
+    case ArithClz32:
+        compileArithClz32(node);
         break;
         
     case MakeRope:
@@ -4334,7 +4349,6 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case Phantom:
-    case HardPhantom:
     case Check:
         DFG_NODE_DO_TO_CHILDREN(m_jit.graph(), node, speculate);
         noResult(node);
@@ -4741,6 +4755,7 @@ void SpeculativeJIT::compile(Node* node)
     case CheckBadCell:
     case BottomValue:
     case PhantomNewObject:
+    case PhantomNewFunction:
     case GetMyArgumentByVal:
     case PutHint:
     case CheckStructureImmediate:

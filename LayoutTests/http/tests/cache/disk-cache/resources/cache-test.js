@@ -46,7 +46,9 @@ function generateTestURL(test, includeBody, expiresInFutureIn304)
     var testURL = "resources/generate-response.cgi?include-body=" + (includeBody ? "1" : "0");
     if (expiresInFutureIn304)
         testURL += "&expires-in-future-in-304=1";
-    testURL += "&uniqueId=" + uniqueTestId++ + "&Content-type=text/plain";
+    testURL += "&uniqueId=" + uniqueTestId++;
+    if (!test.responseHeaders || !test.responseHeaders["Content-Type"])
+        testURL += "&Content-Type=text/plain";
     for (var header in test.responseHeaders)
         testURL += '&' + header + '=' + makeHeaderValue(test.responseHeaders[header]);
     return testURL;
@@ -69,6 +71,9 @@ function loadResource(test, onload)
 
 function loadResources(tests, completetion)
 {
+    // Otherwise we just get responses from the memory cache.
+    internals.clearMemoryCache();
+    
     var pendingCount = tests.length;
     for (var i = 0; i < tests.length; ++i) {
         loadResource(tests[i], function (ev) {
@@ -97,8 +102,6 @@ function printResults(tests)
 function runTests(tests, completionHandler)
 {
     loadResources(tests, function () {
-        // Otherwise we just get responses from the memory cache.
-        internals.clearMemoryCache();
         // Wait a bit so things settle down in the disk cache.
         setTimeout(function () {
             loadResources(tests, function () {

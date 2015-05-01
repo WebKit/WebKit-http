@@ -35,6 +35,7 @@
 #import "EditorState.h"
 #import "InjectedBundleHitTestResult.h"
 #import "PDFKitImports.h"
+#import "PDFPlugin.h"
 #import "PageBanner.h"
 #import "PluginView.h"
 #import "PrintInfo.h"
@@ -586,6 +587,62 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame* frame, Range& ra
     return dictionaryPopupInfo;
 }
 
+#if ENABLE(PDFKIT_PLUGIN)
+DictionaryPopupInfo WebPage::dictionaryPopupInfoForSelectionInPDFPlugin(PDFSelection *selection, PDFPlugin& pdfPlugin, NSDictionary **options, WebCore::TextIndicatorPresentationTransition presentationTransition)
+{
+    DictionaryPopupInfo dictionaryPopupInfo;
+    if (!selection.string.length)
+        return dictionaryPopupInfo;
+
+    NSRect rangeRect = pdfPlugin.viewRectForSelection(selection);
+
+    NSAttributedString *nsAttributedString = selection.attributedString;
+    
+    RetainPtr<NSMutableAttributedString> scaledNSAttributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:[nsAttributedString string]]);
+    
+    NSFontManager *fontManager = [NSFontManager sharedFontManager];
+
+    CGFloat scaleFactor = pdfPlugin.scaleFactor();
+
+    __block CGFloat maxAscender = 0;
+    __block CGFloat maxDescender = 0;
+    [nsAttributedString enumerateAttributesInRange:NSMakeRange(0, [nsAttributedString length]) options:0 usingBlock:^(NSDictionary *attributes, NSRange range, BOOL *stop) {
+        RetainPtr<NSMutableDictionary> scaledAttributes = adoptNS([attributes mutableCopy]);
+        
+        NSFont *font = [scaledAttributes objectForKey:NSFontAttributeName];
+        if (font) {
+            maxAscender = std::max(maxAscender, font.ascender * scaleFactor);
+            maxDescender = std::min(maxDescender, font.descender * scaleFactor);
+            font = [fontManager convertFont:font toSize:[font pointSize] * scaleFactor];
+            [scaledAttributes setObject:font forKey:NSFontAttributeName];
+        }
+        
+        [scaledNSAttributedString addAttributes:scaledAttributes.get() range:range];
+    }];
+
+    // Based on TextIndicator implementation:
+    // TODO(144307): Come up with a better way to share this information than duplicating these values.
+    CGFloat verticalMargin = 2.5;
+    CGFloat horizontalMargin = 0.5;
+
+    rangeRect.origin.y -= CGCeiling(rangeRect.size.height - maxAscender - std::abs(maxDescender) + verticalMargin * scaleFactor);
+    rangeRect.origin.x += CGFloor(horizontalMargin * scaleFactor);
+    
+    TextIndicatorData dataForSelection;
+    dataForSelection.selectionRectInRootViewCoordinates = rangeRect;
+    dataForSelection.textBoundingRectInRootViewCoordinates = rangeRect;
+    dataForSelection.contentImageScaleFactor = scaleFactor;
+    dataForSelection.presentationTransition = presentationTransition;
+    
+    dictionaryPopupInfo.origin = rangeRect.origin;
+    dictionaryPopupInfo.options = (CFDictionaryRef)*options;
+    dictionaryPopupInfo.textIndicator = dataForSelection;
+    dictionaryPopupInfo.attributedString.string = scaledNSAttributedString;
+    
+    return dictionaryPopupInfo;
+}
+#endif
+
 void WebPage::performDictionaryLookupForRange(Frame* frame, Range& range, NSDictionary *options, TextIndicatorPresentationTransition presentationTransition)
 {
     DictionaryPopupInfo dictionaryPopupInfo = dictionaryPopupInfoForRange(frame, range, &options, presentationTransition);
@@ -1013,6 +1070,15 @@ static TextIndicatorPresentationTransition textIndicatorTransitionForActionMenu(
     return forImmediateAction ? TextIndicatorPresentationTransition::FadeIn : TextIndicatorPresentationTransition::Bounce;
 }
 
+#if ENABLE(PDFKIT_PLUGIN)
+static TextIndicatorPresentationTransition textIndicatorTransitionForActionMenu(bool forImmediateAction, bool forDataDetectors)
+{
+    if (forDataDetectors && !forImmediateAction)
+        return forImmediateAction ? TextIndicatorPresentationTransition::Crossfade : TextIndicatorPresentationTransition::BounceAndCrossfade;
+    return forImmediateAction ? TextIndicatorPresentationTransition::FadeIn : TextIndicatorPresentationTransition::Bounce;
+}
+#endif
+
 void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInViewCoordinates, bool forImmediateAction)
 {
     layoutIfNeeded();
@@ -1106,11 +1172,14 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
     // See if we have a PDF
     if (element && is<HTMLPlugInImageElement>(*element)) {
         HTMLPlugInImageElement& pluginImageElement = downcast<HTMLPlugInImageElement>(*element);
-        if (PluginView* pluginView = reinterpret_cast<PluginView*>(pluginImageElement.pluginWidget())) {
+        PluginView* pluginView = reinterpret_cast<PluginView*>(pluginImageElement.pluginWidget());
+        Plugin* plugin = pluginView ? pluginView->plugin() : nullptr;
+        if (is<PDFPlugin>(plugin)) {
+            PDFPlugin* pdfPugin = downcast<PDFPlugin>(plugin);
             // FIXME: We don't have API to identify images inside PDFs based on position.
             NSDictionary *options = nil;
             PDFSelection *selection = nil;
-            String selectedText = pluginView->lookupTextAtLocation(locationInContentCoordinates, actionMenuResult, &selection, &options);
+            String selectedText = pdfPugin->lookupTextAtLocation(locationInViewCoordinates, actionMenuResult, &selection, &options);
             if (!selectedText.isEmpty()) {
                 if (element->document().isPluginDocument()) {
                     // FIXME(144030): Focus does not seem to get set to the PDF when invoking the menu.
@@ -1119,8 +1188,11 @@ void WebPage::performActionMenuHitTestAtLocation(WebCore::FloatPoint locationInV
                 }
 
                 actionMenuResult.lookupText = selectedText;
+                actionMenuResult.isTextNode = true;
                 actionMenuResult.isSelected = true;
                 actionMenuResult.allowsCopy = true;
+
+                actionMenuResult.dictionaryPopupInfo = dictionaryPopupInfoForSelectionInPDFPlugin(selection, *pdfPugin, &options, textIndicatorTransitionForActionMenu(forImmediateAction, false));
             }
         }
     }

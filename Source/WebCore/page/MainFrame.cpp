@@ -33,7 +33,6 @@
 #include "ScrollLatchingState.h"
 #include "Settings.h"
 #include "WheelEventDeltaTracker.h"
-#include "WheelEventTestTrigger.h"
 #include <wtf/NeverDestroyed.h>
 
 #if PLATFORM(MAC)
@@ -58,6 +57,8 @@ inline MainFrame::MainFrame(Page& page, PageConfiguration& configuration)
 
 MainFrame::~MainFrame()
 {
+    if (m_diagnosticLoggingClient)
+        m_diagnosticLoggingClient->mainFrameDestroyed();
 }
 
 RefPtr<MainFrame> MainFrame::create(Page& page, PageConfiguration& configuration)
@@ -124,23 +125,5 @@ void MainFrame::popLatchingState()
     m_latchingState.removeLast();
 }
 #endif
-
-WheelEventTestTrigger* MainFrame::testTrigger() const
-{
-    return m_testTrigger.get();
-}
-
-WheelEventTestTrigger* MainFrame::ensureTestTrigger()
-{
-    if (!m_testTrigger)
-        m_testTrigger = std::make_unique<WheelEventTestTrigger>();
-
-    return m_testTrigger.get();
-}
-
-void MainFrame::clearTrigger()
-{
-    m_testTrigger = nullptr;
-}
 
 }

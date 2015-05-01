@@ -34,14 +34,17 @@ class Text;
 
 class InsertIntoTextNodeCommand : public SimpleEditCommand {
 public:
-    static Ref<InsertIntoTextNodeCommand> create(PassRefPtr<Text> node, unsigned offset, const String& text)
+    static Ref<InsertIntoTextNodeCommand> create(RefPtr<Text>&& node, unsigned offset, const String& text, EditAction editingAction = EditActionInsert)
     {
-        return adoptRef(*new InsertIntoTextNodeCommand(node, offset, text));
+        return adoptRef(*new InsertIntoTextNodeCommand(WTF::move(node), offset, text, editingAction));
     }
 
-private:
-    InsertIntoTextNodeCommand(PassRefPtr<Text> node, unsigned offset, const String& text);
+    const String& insertedText();
 
+protected:
+    InsertIntoTextNodeCommand(RefPtr<Text>&& node, unsigned offset, const String& text, EditAction editingAction);
+
+private:
     virtual void doApply() override;
     virtual void doUnapply() override;
 #if PLATFORM(IOS)
@@ -56,6 +59,11 @@ private:
     unsigned m_offset;
     String m_text;
 };
+
+inline const String& InsertIntoTextNodeCommand::insertedText()
+{
+    return m_text;
+}
 
 } // namespace WebCore
 

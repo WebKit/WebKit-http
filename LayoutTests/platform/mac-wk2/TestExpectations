@@ -394,7 +394,6 @@ storage/indexeddb/cursor-cast.html [ Skip ]
 storage/indexeddb/deleted-objects.html [ Skip ] # Crashes under WebCore::GetOperation::GetOperation
 storage/indexeddb/metadata.html [ Skip ] # Crashes under IDBDatabaseBackend::createIndex
 storage/indexeddb/persistence.html [ Skip ] # Crash under IDBDatabaseBackend::createObjectStore
-storage/indexeddb/transaction-abort.html [ Skip ] # IDBTransactionBackend::start()
 webkit.org/b/137314 storage/indexeddb/database-basics.html [ Pass Crash Timeout ] # IDBDatabaseBackend::createObjectStore()
 
 # Blink tests that crash the WebProcess under IDBDatabase::dispatchEvent or IDBRequest::dispatchEvent (possibly all related).
@@ -505,12 +504,7 @@ webkit.org/b/138736 http/tests/appcache/auth.html [ Skip ]
 ########################################
 ### START OF (7) New WebKit2-only failures in Yosemite
 
-# FIXME: Needs bugzilla (<rdar://problem/16678392>). Perhaps skip these tests?
-[ Yosemite+ ] fast/events/page-visibility-iframe-delete-test.html [ Timeout ]
-[ Yosemite+ ] fast/events/page-visibility-iframe-move-test.html [ Timeout ]
-[ Yosemite+ ] fast/events/page-visibility-iframe-propagation-test.html [ Timeout ]
-[ Yosemite+ ] fast/events/page-visibility-transition-test.html [ Timeout ]
-media/video-background-tab-playback.html [ Failure ]
+media/video-background-tab-playback.html [ Pass Failure ]
 
 webkit.org/b/138097 [ Yosemite ] inspector-protocol/debugger/setPauseOnExceptions-uncaught.html [ Pass Failure Timeout ]
 

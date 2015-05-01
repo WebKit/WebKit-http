@@ -191,6 +191,7 @@ protected:
     WriteBarrier<JSFunction> m_evalFunction;
     WriteBarrier<JSFunction> m_callFunction;
     WriteBarrier<JSFunction> m_applyFunction;
+    WriteBarrier<JSFunction> m_definePropertyFunction;
     WriteBarrier<JSFunction> m_arrayProtoValuesFunction;
     WriteBarrier<GetterSetter> m_throwTypeErrorGetterSetter;
 
@@ -231,7 +232,6 @@ protected:
     WriteBarrier<Structure> m_namedFunctionStructure;
     PropertyOffset m_functionNameOffset;
     WriteBarrier<Structure> m_privateNameStructure;
-    WriteBarrier<Structure> m_regExpMatchesArrayStructure;
     WriteBarrier<Structure> m_regExpStructure;
     WriteBarrier<Structure> m_consoleStructure;
     WriteBarrier<Structure> m_dollarVMStructure;
@@ -257,8 +257,9 @@ protected:
     };
     
     std::array<TypedArrayData, NUMBER_OF_TYPED_ARRAY_TYPES> m_typedArrays;
-        
-    void* m_specialPointers[Special::TableSize]; // Special pointers used by the LLInt and JIT.
+
+    JSCell* m_specialPointers[Special::TableSize]; // Special pointers used by the LLInt and JIT.
+    JSCell* m_linkTimeConstants[LinkTimeConstantCount];
 
     String m_name;
 
@@ -400,6 +401,7 @@ public:
     JSFunction* evalFunction() const { return m_evalFunction.get(); }
     JSFunction* callFunction() const { return m_callFunction.get(); }
     JSFunction* applyFunction() const { return m_applyFunction.get(); }
+    JSFunction* definePropertyFunction() const { return m_definePropertyFunction.get(); }
     JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(); }
     GetterSetter* throwTypeErrorGetterSetter(VM& vm)
     {
@@ -471,7 +473,6 @@ public:
     Structure* privateNameStructure() const { return m_privateNameStructure.get(); }
     Structure* internalFunctionStructure() const { return m_internalFunctionStructure.get(); }
     Structure* mapStructure() const { return m_mapStructure.get(); }
-    Structure* regExpMatchesArrayStructure() const { return m_regExpMatchesArrayStructure.get(); }
     Structure* regExpStructure() const { return m_regExpStructure.get(); }
     Structure* setStructure() const { return m_setStructure.get(); }
     Structure* stringObjectStructure() const { return m_stringObjectStructure.get(); }
@@ -523,10 +524,16 @@ public:
         return typedArrayStructure(type) == structure;
     }
 
-    void* actualPointerFor(Special::Pointer pointer)
+    JSCell* actualPointerFor(Special::Pointer pointer)
     {
         ASSERT(pointer < Special::TableSize);
         return m_specialPointers[pointer];
+    }
+    JSCell* jsCellForLinkTimeConstant(LinkTimeConstant type)
+    {
+        unsigned index = static_cast<unsigned>(type);
+        ASSERT(index < LinkTimeConstantCount);
+        return m_linkTimeConstants[index];
     }
 
     WatchpointSet* masqueradesAsUndefinedWatchpoint() { return m_masqueradesAsUndefinedWatchpoint.get(); }

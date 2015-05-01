@@ -48,6 +48,7 @@
 #import "LocalCurrentGraphicsContext.h"
 #import "LocalizedStrings.h"
 #import "MediaControlElements.h"
+#import "NSColorSPI.h"
 #import "NSSharingServicePickerSPI.h"
 #import "Page.h"
 #import "PaintInfo.h"
@@ -457,7 +458,7 @@ void RenderThemeMac::platformColorsDidChange()
 Color RenderThemeMac::systemColor(CSSValueID cssValueId) const
 {
     {
-        HashMap<int, RGBA32>::iterator it = m_systemColorCache.find(cssValueId);
+        auto it = m_systemColorCache.find(cssValueId);
         if (it != m_systemColorCache.end())
             return it->value;
     }
@@ -466,6 +467,14 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueId) const
     switch (cssValueId) {
     case CSSValueActiveborder:
         color = convertNSColorToColor([NSColor keyboardFocusIndicatorColor]);
+        break;
+    case CSSValueActivebuttontext:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+        // There is no corresponding NSColor for this so we use a hard coded value.
+        color = 0xC0FFFFFF;
+#else
+        color = convertNSColorToColor([NSColor controlTextColor]);
+#endif
         break;
     case CSSValueActivecaption:
         color = convertNSColorToColor([NSColor windowFrameTextColor]);
@@ -489,11 +498,6 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueId) const
         break;
     case CSSValueButtontext:
         color = convertNSColorToColor([NSColor controlTextColor]);
-        break;
-    case CSSValueActivebuttontext:
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-        color = 0xC0FFFFFF;
-#endif
         break;
     case CSSValueCaptiontext:
         color = convertNSColorToColor([NSColor textColor]);
@@ -564,6 +568,35 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueId) const
     case CSSValueWindowtext:
         color = convertNSColorToColor([NSColor windowFrameTextColor]);
         break;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    case CSSValueAppleSystemBlue:
+        color = convertNSColorToColor([NSColor systemBlueColor]);
+        break;
+    case CSSValueAppleSystemBrown:
+        color = convertNSColorToColor([NSColor systemBrownColor]);
+        break;
+    case CSSValueAppleSystemGray:
+        color = convertNSColorToColor([NSColor systemGrayColor]);
+        break;
+    case CSSValueAppleSystemGreen:
+        color = convertNSColorToColor([NSColor systemGreenColor]);
+        break;
+    case CSSValueAppleSystemOrange:
+        color = convertNSColorToColor([NSColor systemOrangeColor]);
+        break;
+    case CSSValueAppleSystemPink:
+        color = convertNSColorToColor([NSColor systemPinkColor]);
+        break;
+    case CSSValueAppleSystemPurple:
+        color = convertNSColorToColor([NSColor systemPurpleColor]);
+        break;
+    case CSSValueAppleSystemRed:
+        color = convertNSColorToColor([NSColor systemRedColor]);
+        break;
+    case CSSValueAppleSystemYellow:
+        color = convertNSColorToColor([NSColor systemYellowColor]);
+        break;
+#endif
     default:
         break;
     }

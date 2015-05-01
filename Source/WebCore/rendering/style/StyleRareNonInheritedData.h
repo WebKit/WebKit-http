@@ -34,6 +34,7 @@
 #include "LineClampValue.h"
 #include "NinePieceImage.h"
 #include "ShapeValue.h"
+#include "StyleSelfAlignmentData.h"
 #include <memory>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
@@ -98,6 +99,8 @@ public:
     bool hasBackdropFilters() const;
 #endif
     bool hasOpacity() const { return opacity < 1; }
+
+    bool hasAnimationsOrTransitions() const { return m_animations || m_transitions; }
 
     float opacity;
 
@@ -173,6 +176,11 @@ public:
     AtomicString m_flowThread;
     AtomicString m_regionThread;
 
+    StyleSelfAlignmentData m_alignItems;
+    StyleSelfAlignmentData m_alignSelf;
+    StyleSelfAlignmentData m_justifyItems;
+    StyleSelfAlignmentData m_justifySelf;
+
 #if ENABLE(CSS_SCROLL_SNAP)
     unsigned m_scrollSnapType : 2; // ScrollSnapType
 #endif
@@ -188,18 +196,7 @@ public:
     unsigned m_backfaceVisibility : 1; // EBackfaceVisibility
 
     unsigned m_alignContent : 3; // EAlignContent
-    unsigned m_alignItems : 4; // ItemPosition
-    unsigned m_alignItemsOverflowAlignment : 2; // OverflowAlignment
-    unsigned m_alignSelf : 4; // ItemPosition
-    unsigned m_alignSelfOverflowAlignment : 2; // OverflowAlignment
     unsigned m_justifyContent : 3; // EJustifyContent
-
-    unsigned m_justifyItems : 4; // ItemPosition
-    unsigned m_justifyItemsOverflowAlignment : 2; // OverflowAlignment
-    unsigned m_justifyItemsPositionType: 1; // Whether or not alignment uses the 'legacy' keyword.
-
-    unsigned m_justifySelf : 4; // ItemPosition
-    unsigned m_justifySelfOverflowAlignment : 2; // OverflowAlignment
 
     unsigned userDrag : 2; // EUserDrag
     unsigned textOverflow : 1; // Whether or not lines that spill out should be truncated with "..."

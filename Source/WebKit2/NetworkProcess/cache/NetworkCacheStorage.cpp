@@ -49,6 +49,32 @@ static const char bodyPostfix[] = "-body";
 
 static double computeRecordWorth(FileTimes);
 
+struct Storage::ReadOperation {
+    ReadOperation(const Key& key, const RetrieveCompletionHandler& completionHandler)
+        : key(key)
+        , completionHandler(completionHandler)
+    { }
+
+    const Key key;
+    const RetrieveCompletionHandler completionHandler;
+    
+    std::unique_ptr<Record> resultRecord;
+    SHA1::Digest expectedBodyHash;
+    BlobStorage::Blob resultBodyBlob;
+    std::atomic<unsigned> activeCount { 0 };
+};
+
+struct Storage::WriteOperation {
+    WriteOperation(const Record& record, const MappedBodyHandler& mappedBodyHandler)
+        : record(record)
+        , mappedBodyHandler(mappedBodyHandler)
+    { }
+    
+    Record record;
+    MappedBodyHandler mappedBodyHandler;
+    std::atomic<unsigned> activeCount { 0 };
+};
+
 std::unique_ptr<Storage> Storage::open(const String& cachePath)
 {
     ASSERT(RunLoop::isMain());
@@ -87,6 +113,9 @@ Storage::Storage(const String& baseDirectoryPath)
     synchronize();
 }
 
+Storage::~Storage()
+{
+}
 
 String Storage::basePath() const
 {
@@ -192,10 +221,10 @@ bool Storage::mayContain(const Key& key) const
     return !m_recordFilter || m_recordFilter->mayContain(key.hash());
 }
 
-static String partitionPathForKey(const Key& key, const String& cachePath)
+String Storage::partitionPathForKey(const Key& key) const
 {
     ASSERT(!key.partition().isEmpty());
-    return WebCore::pathByAppendingComponent(cachePath, key.partition());
+    return WebCore::pathByAppendingComponent(recordsPath(), key.partition());
 }
 
 static String fileNameForKey(const Key& key)
@@ -203,9 +232,9 @@ static String fileNameForKey(const Key& key)
     return key.hashAsString();
 }
 
-static String recordPathForKey(const Key& key, const String& cachePath)
+String Storage::recordPathForKey(const Key& key) const
 {
-    return WebCore::pathByAppendingComponent(partitionPathForKey(key, cachePath), fileNameForKey(key));
+    return WebCore::pathByAppendingComponent(partitionPathForKey(key), fileNameForKey(key));
 }
 
 static String bodyPathForRecordPath(const String& recordPath)
@@ -213,9 +242,9 @@ static String bodyPathForRecordPath(const String& recordPath)
     return recordPath + bodyPostfix;
 }
 
-static String bodyPathForKey(const Key& key, const String& cachePath)
+String Storage::bodyPathForKey(const Key& key) const
 {
-    return bodyPathForRecordPath(recordPathForKey(key, cachePath));
+    return bodyPathForRecordPath(recordPathForKey(key));
 }
 
 static unsigned hashData(const Data& data)
@@ -351,25 +380,27 @@ static Data encodeRecordMetaData(const RecordMetaData& metaData)
     return Data(encoder.buffer(), encoder.bufferSize());
 }
 
-Optional<BlobStorage::Blob> Storage::storeBodyAsBlob(const Record& record, const MappedBodyHandler& mappedBodyHandler)
+Optional<BlobStorage::Blob> Storage::storeBodyAsBlob(WriteOperation& writeOperation)
 {
-    auto bodyPath = bodyPathForKey(record.key, recordsPath());
+    auto bodyPath = bodyPathForKey(writeOperation.record.key);
 
     // Store the body.
-    auto blob = m_blobStorage.add(bodyPath, record.body);
+    auto blob = m_blobStorage.add(bodyPath, writeOperation.record.body);
     if (blob.data.isNull())
         return { };
 
-    auto hash = record.key.hash();
-    RunLoop::main().dispatch([this, blob, hash, mappedBodyHandler] {
+    ++writeOperation.activeCount;
+
+    RunLoop::main().dispatch([this, blob, &writeOperation] {
         if (m_bodyFilter)
-            m_bodyFilter->add(hash);
+            m_bodyFilter->add(writeOperation.record.key.hash());
         if (m_synchronizationInProgress)
-            m_bodyFilterHashesAddedDuringSynchronization.append(hash);
+            m_bodyFilterHashesAddedDuringSynchronization.append(writeOperation.record.key.hash());
 
-        if (mappedBodyHandler)
-            mappedBodyHandler(blob.data);
+        if (writeOperation.mappedBodyHandler)
+            writeOperation.mappedBodyHandler(blob.data);
 
+        finishWriteOperation(writeOperation);
     });
     return blob;
 }
@@ -404,9 +435,8 @@ void Storage::remove(const Key& key)
     // The next synchronization will update everything.
 
     serialBackgroundIOQueue().dispatch([this, key] {
-        auto recordsPath = this->recordsPath();
-        WebCore::deleteFile(recordPathForKey(key, recordsPath));
-        m_blobStorage.remove(bodyPathForKey(key, recordsPath));
+        WebCore::deleteFile(recordPathForKey(key));
+        m_blobStorage.remove(bodyPathForKey(key));
     });
 }
 
@@ -423,7 +453,13 @@ void Storage::dispatchReadOperation(ReadOperation& readOperation)
     ASSERT(RunLoop::isMain());
     ASSERT(m_activeReadOperations.contains(&readOperation));
 
-    auto recordPath = recordPathForKey(readOperation.key, recordsPath());
+    auto recordPath = recordPathForKey(readOperation.key);
+
+    ++readOperation.activeCount;
+
+    bool shouldGetBodyBlob = !m_bodyFilter || m_bodyFilter->mayContain(readOperation.key.hash());
+    if (shouldGetBodyBlob)
+        ++readOperation.activeCount;
 
     RefPtr<IOChannel> channel = IOChannel::open(recordPath, IOChannel::Type::Read);
     channel->read(0, std::numeric_limits<size_t>::max(), &ioQueue(), [this, &readOperation](const Data& fileData, int error) {
@@ -432,15 +468,12 @@ void Storage::dispatchReadOperation(ReadOperation& readOperation)
         finishReadOperation(readOperation);
     });
 
-    bool shouldGetBodyBlob = !m_bodyFilter || m_bodyFilter->mayContain(readOperation.key.hash());
-    if (!shouldGetBodyBlob) {
-        finishReadOperation(readOperation);
+    if (!shouldGetBodyBlob)
         return;
-    }
 
     // Read the body blob in parallel with the record read.
     ioQueue().dispatch([this, &readOperation] {
-        auto bodyPath = bodyPathForKey(readOperation.key, this->recordsPath());
+        auto bodyPath = bodyPathForKey(readOperation.key);
         readOperation.resultBodyBlob = m_blobStorage.get(bodyPath);
         finishReadOperation(readOperation);
     });
@@ -448,9 +481,9 @@ void Storage::dispatchReadOperation(ReadOperation& readOperation)
 
 void Storage::finishReadOperation(ReadOperation& readOperation)
 {
+    ASSERT(readOperation.activeCount);
     // Record and body blob reads must finish.
-    bool isComplete = ++readOperation.finishedCount == 2;
-    if (!isComplete)
+    if (--readOperation.activeCount)
         return;
 
     RunLoop::main().dispatch([this, &readOperation] {
@@ -463,7 +496,7 @@ void Storage::finishReadOperation(ReadOperation& readOperation)
 
         bool success = readOperation.completionHandler(WTF::move(readOperation.resultRecord));
         if (success)
-            updateFileModificationTime(recordPathForKey(readOperation.key, recordsPath()));
+            updateFileModificationTime(recordPathForKey(readOperation.key));
         else
             remove(readOperation.key);
         ASSERT(m_activeReadOperations.contains(&readOperation));
@@ -535,7 +568,7 @@ static bool shouldStoreBodyAsBlob(const Data& bodyData)
     return bodyData.size() > maximumInlineBodySize;
 }
 
-void Storage::dispatchWriteOperation(const WriteOperation& writeOperation)
+void Storage::dispatchWriteOperation(WriteOperation& writeOperation)
 {
     ASSERT(RunLoop::isMain());
     ASSERT(m_activeWriteOperations.contains(&writeOperation));
@@ -544,14 +577,15 @@ void Storage::dispatchWriteOperation(const WriteOperation& writeOperation)
     addToRecordFilter(writeOperation.record.key);
 
     backgroundIOQueue().dispatch([this, &writeOperation] {
-        auto recordsPath = this->recordsPath();
-        auto partitionPath = partitionPathForKey(writeOperation.record.key, recordsPath);
-        auto recordPath = recordPathForKey(writeOperation.record.key, recordsPath);
+        auto partitionPath = partitionPathForKey(writeOperation.record.key);
+        auto recordPath = recordPathForKey(writeOperation.record.key);
 
         WebCore::makeAllDirectories(partitionPath);
 
+        ++writeOperation.activeCount;
+
         bool shouldStoreAsBlob = shouldStoreBodyAsBlob(writeOperation.record.body);
-        auto bodyBlob = shouldStoreAsBlob ? storeBodyAsBlob(writeOperation.record, writeOperation.mappedBodyHandler) : Nullopt;
+        auto bodyBlob = shouldStoreAsBlob ? storeBodyAsBlob(writeOperation) : Nullopt;
 
         auto recordData = encodeRecord(writeOperation.record, bodyBlob);
 
@@ -567,9 +601,15 @@ void Storage::dispatchWriteOperation(const WriteOperation& writeOperation)
     });
 }
 
-void Storage::finishWriteOperation(const WriteOperation& writeOperation)
+void Storage::finishWriteOperation(WriteOperation& writeOperation)
 {
+    ASSERT(RunLoop::isMain());
+    ASSERT(writeOperation.activeCount);
     ASSERT(m_activeWriteOperations.contains(&writeOperation));
+
+    if (--writeOperation.activeCount)
+        return;
+
     m_activeWriteOperations.remove(&writeOperation);
     dispatchPendingWriteOperations();
 

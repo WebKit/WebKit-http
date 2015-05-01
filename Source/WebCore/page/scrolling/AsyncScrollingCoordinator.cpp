@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,12 +34,14 @@
 #include "GraphicsLayer.h"
 #include "MainFrame.h"
 #include "Page.h"
+#include "ScrollAnimator.h"
 #include "ScrollingConstraints.h"
 #include "ScrollingStateFixedNode.h"
 #include "ScrollingStateFrameScrollingNode.h"
 #include "ScrollingStateOverflowScrollingNode.h"
 #include "ScrollingStateStickyNode.h"
 #include "ScrollingStateTree.h"
+#include "WheelEventTestTrigger.h"
 
 namespace WebCore {
 
@@ -93,7 +95,7 @@ void AsyncScrollingCoordinator::updateNonFastScrollableRegion()
     if (!m_scrollingStateTree->rootStateNode())
         return;
 
-    m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(computeNonFastScrollableRegion(m_page->mainFrame(), IntPoint()));
+    m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(absoluteNonFastScrollableRegion());
     m_nonFastScrollableRegionDirty = false;
 }
 
@@ -111,7 +113,7 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView& frameView)
     // frame view whose layout was updated is not the main frame.
     // In the future, we may want to have the ability to set non-fast scrolling regions for more than
     // just the root node. But right now, this concept only applies to the root.
-    m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(computeNonFastScrollableRegion(m_page->mainFrame(), IntPoint()));
+    m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(absoluteNonFastScrollableRegion());
     m_nonFastScrollableRegionDirty = false;
 
     if (!coordinatesScrollingForFrameView(frameView))
@@ -354,6 +356,14 @@ void AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll(ScrollingNo
             }
         }
 
+#if PLATFORM(COCOA)
+        if (m_page->expectsWheelEventTriggers()) {
+            frameView.scrollAnimator().setWheelEventTestTrigger(m_page->testTrigger());
+            if (const auto& trigger = m_page->testTrigger())
+                trigger->removeTestDeferralForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(m_page), WheelEventTestTrigger::ScrollingThreadSyncNeeded);
+        }
+#endif
+        
         return;
     }
 
@@ -364,6 +374,14 @@ void AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll(ScrollingNo
         scrollableArea->setIsUserScroll(false);
         if (scrollingLayerPositionAction == SetScrollingLayerPosition)
             m_page->editorClient().overflowScrollPositionChanged();
+
+#if PLATFORM(COCOA)
+        if (m_page->expectsWheelEventTriggers()) {
+            frameView.scrollAnimator().setWheelEventTestTrigger(m_page->testTrigger());
+            if (const auto& trigger = m_page->testTrigger())
+                trigger->removeTestDeferralForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(m_page), WheelEventTestTrigger::ScrollingThreadSyncNeeded);
+        }
+#endif
     }
 }
 
@@ -526,7 +544,7 @@ String AsyncScrollingCoordinator::scrollingStateTreeAsText() const
 {
     if (m_scrollingStateTree->rootStateNode()) {
         if (m_nonFastScrollableRegionDirty)
-            m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(computeNonFastScrollableRegion(m_page->mainFrame(), IntPoint()));
+            m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(absoluteNonFastScrollableRegion());
         return m_scrollingStateTree->rootStateNode()->scrollingStateTreeAsText();
     }
 

@@ -2000,6 +2000,16 @@ bool ByteCodeParser::handleIntrinsic(int resultOperand, Intrinsic intrinsic, int
         set(VirtualRegister(resultOperand), charCode);
         return true;
     }
+    case Clz32Intrinsic: {
+        insertChecks();
+        if (argumentCountIncludingThis == 1)
+            set(VirtualRegister(resultOperand), addToGraph(JSConstant, OpInfo(m_graph.freeze(jsNumber(32)))));
+        else {
+            Node* operand = get(virtualRegisterForArgument(1, registerOffset));
+            set(VirtualRegister(resultOperand), addToGraph(ArithClz32, operand));
+        }
+        return true;
+    }
     case FromCharCodeIntrinsic: {
         if (argumentCountIncludingThis != 2)
             return false;
@@ -3768,7 +3778,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             set(VirtualRegister(currentInstruction[1].u.operand), node);
             NEXT_OPCODE(op_to_number);
         }
-            
+
+        case op_to_string: {
+            Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(ToString, value));
+            NEXT_OPCODE(op_to_string);
+        }
+
         case op_in: {
             set(VirtualRegister(currentInstruction[1].u.operand),
                 addToGraph(In, get(VirtualRegister(currentInstruction[2].u.operand)), get(VirtualRegister(currentInstruction[3].u.operand))));

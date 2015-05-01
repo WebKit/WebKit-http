@@ -597,6 +597,11 @@ Controller.prototype = {
         this.setNeedsTimelineMetricsUpdate();
     },
 
+    isPlayable: function()
+    {
+        return this.video.readyState > HTMLMediaElement.HAVE_NOTHING && !this.video.error;
+    },
+
     updateStatusDisplay: function(event)
     {
         this.updateShouldListenForPlaybackTargetAvailabilityEvent();
@@ -609,7 +614,7 @@ Controller.prototype = {
         else
             this.controls.statusDisplay.innerText = '';
 
-        this.setStatusHidden(!this.isLive && this.video.readyState > HTMLMediaElement.HAVE_NOTHING && !this.video.error);
+        this.setStatusHidden(!this.isLive && this.isPlayable());
     },
 
     handleLoadStart: function(event)
@@ -1131,8 +1136,8 @@ Controller.prototype = {
 
     drawTimelineBackground: function() {
         var dpr = window.devicePixelRatio;
-        var width = this.controls.timeline.offsetWidth * dpr;
-        var height = this.controls.timeline.offsetHeight * dpr;
+        var width = this.timelineWidth * dpr;
+        var height = this.timelineHeight * dpr;
         
         if (!width || !height)
             return;
@@ -1307,6 +1312,7 @@ Controller.prototype = {
                 this.controls.panelBackground.classList.add(this.ClassNames.paused);
             this.controls.playButton.classList.add(this.ClassNames.paused);
             this.controls.playButton.setAttribute('aria-label', this.UIString('Play'));
+            this.showControls();
         } else {
             this.controls.panel.classList.remove(this.ClassNames.paused);
             if (this.controls.panelBackground)
@@ -1321,9 +1327,10 @@ Controller.prototype = {
     {
         this.setNeedsTimelineMetricsUpdate();
 
-        this.updateTime();
+        this.updateTime(true);
         this.updateProgress(true);
         this.drawVolumeBackground();
+        this.drawTimelineBackground();
 
         this.controls.panel.classList.add(this.ClassNames.show);
         this.controls.panel.classList.remove(this.ClassNames.hidden);
@@ -1409,6 +1416,7 @@ Controller.prototype = {
             this.controls.remainingTime.classList.add(this.ClassNames.hidden);
             this.hideControls();
         }
+        this.updateWirelessTargetAvailable();
     },
 
     trackHasThumbnails: function(track)
@@ -1827,7 +1835,7 @@ Controller.prototype = {
         if (this.wirelessPlaybackDisabled)
             wirelessPlaybackTargetsAvailable = false;
 
-        if (wirelessPlaybackTargetsAvailable)
+        if (wirelessPlaybackTargetsAvailable && this.isPlayable())
             this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.hidden);
         else
             this.controls.wirelessTargetPicker.classList.add(this.ClassNames.hidden);

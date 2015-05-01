@@ -242,9 +242,17 @@ file(GLOB InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.svg
 )
 
+# DerivedSources/JavaScriptCore/inspector/InspectorBackendCommands.js is
+# expected in DerivedSources/WebInspectorUI/UserInterface/Protocol/.
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
+    DEPENDS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js
+    COMMAND cp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
+)
+
 list(APPEND InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js
+    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
 )
 
 add_custom_command(
@@ -280,5 +288,6 @@ list(APPEND WPEWebInspectorResources_LIBRARIES
 )
 
 add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_SOURCES})
+add_dependencies(WPEWebInspectorResources WebKit2)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
 install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")

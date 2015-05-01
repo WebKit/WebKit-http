@@ -28,11 +28,11 @@
 #define Settings_h
 
 #include "EditingBehaviorTypes.h"
-#include "FontRenderingMode.h"
 #include "IntSize.h"
 #include "URL.h"
 #include "SecurityOrigin.h"
 #include "SettingsMacros.h"
+#include "TextFlags.h"
 #include "Timer.h"
 #include <chrono>
 #include <runtime/RuntimeFlags.h>
@@ -205,6 +205,8 @@ public:
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT static void setQTKitEnabled(bool flag);
     static bool isQTKitEnabled() { return gQTKitEnabled; }
+#else
+    static bool isQTKitEnabled() { return false; }
 #endif
 
     static const unsigned defaultMaximumHTMLParserDOMTreeDepth = 512;
