@@ -53,6 +53,7 @@ void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext*
     m_source = adoptGRef(g_source_new(&sourceFunctions, sizeof(Source)));
     source()->delay = std::chrono::microseconds(0);
     source()->dispatching = false;
+    source()->wrap = this;
 
     g_source_set_name(m_source.get(), name);
     if (priority != G_PRIORITY_DEFAULT_IDLE)
@@ -137,6 +138,17 @@ gboolean GSourceWrap::Base::dynamicBoolCallback(gpointer data)
     return G_SOURCE_CONTINUE;
 }
 
+gboolean GSourceWrap::Base::staticOneShotCallback(gpointer data)
+{
+    auto& context = *reinterpret_cast<CallbackContext*>(data);
+    context.source.dispatching = true;
+    g_source_set_ready_time(&context.source.baseSource, -1);
+
+    context.source.dispatching = false;
+    delete context.source.wrap;
+    return G_SOURCE_REMOVE;
+}
+
 GSourceWrap::Static::Static(const char* name, std::function<void ()>&& function, int priority, GMainContext* context)
 {
     initialize(name, WTF::move(function), priority, context);
@@ -186,6 +198,16 @@ void GSourceWrap::Dynamic::cancel()
     Base::cancel();
 
     g_source_set_callback(m_source.get(), nullptr, nullptr, nullptr);
+}
+
+GSourceWrap::OneShot::OneShot(const char* name, std::function<void ()>&& function, std::chrono::microseconds delay, int priority, GMainContext* context)
+{
+    Base::initialize(name, priority, context);
+
+    g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(staticOneShotCallback),
+        new std::function<void ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyVoidCallback));
+
+    Base::schedule(delay);
 }
 
 GSourceQueue::GSourceQueue()

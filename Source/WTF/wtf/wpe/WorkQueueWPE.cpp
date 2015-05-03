@@ -113,9 +113,9 @@ void WorkQueue::dispatch(std::function<void ()> function)
 
 void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<void ()> function)
 {
-    ref();
-    GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy("[WebKit] WorkQueue::dispatchAfter", WTF::move(function),
-        std::chrono::duration_cast<std::chrono::milliseconds>(duration), G_PRIORITY_DEFAULT, [this] { deref(); }, m_eventContext.get());
+    RefPtr<WorkQueue> protector(this);
+    GSourceWrap::OneShot::construct("[WebKit] WorkQueue::dispatchAfter", std::bind([protector](const std::function<void ()>& function) { function(); }, WTF::move(function)),
+        std::chrono::duration_cast<std::chrono::milliseconds>(duration), G_PRIORITY_DEFAULT, m_eventContext.get());
 }
 
 } // namespace WTF

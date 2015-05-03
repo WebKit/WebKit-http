@@ -30,11 +30,13 @@ private:
         static gboolean staticVoidCallback(gpointer);
         static gboolean dynamicVoidCallback(gpointer);
         static gboolean dynamicBoolCallback(gpointer);
+        static gboolean staticOneShotCallback(gpointer);
 
         struct Source {
             GSource baseSource;
             std::chrono::microseconds delay;
             bool dispatching;
+            Base* wrap;
         };
 
         struct CallbackContext {
@@ -64,6 +66,17 @@ public:
         void schedule(std::function<void ()>&&, std::chrono::microseconds = std::chrono::microseconds(0));
         void schedule(std::function<bool ()>&&, std::chrono::microseconds = std::chrono::microseconds(0));
         void cancel();
+    };
+
+    class OneShot : public Base {
+    public:
+        static void construct(const char* name, std::function<void ()>&& function, std::chrono::microseconds delay = std::chrono::microseconds(0), int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* context = nullptr)
+        {
+            new OneShot(name, WTF::move(function), delay, priority, context);
+        }
+
+    private:
+        OneShot(const char* name, std::function<void ()>&&, std::chrono::microseconds, int priority, GMainContext*);
     };
 };
 
