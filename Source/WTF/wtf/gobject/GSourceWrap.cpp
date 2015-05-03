@@ -50,7 +50,7 @@ bool GSourceWrap::Base::isActive() const
 void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext* context)
 {
     ASSERT(!m_source);
-    m_source = g_source_new(&sourceFunctions, sizeof(Source));
+    m_source = adoptGRef(g_source_new(&sourceFunctions, sizeof(Source)));
     source()->delay = std::chrono::microseconds(0);
     source()->dispatching = false;
 
