@@ -233,7 +233,7 @@ void GSourceQueue::initialize(const char* name, int priority, GMainContext* cont
 
 void GSourceQueue::queue(std::function<void ()>&& function)
 {
-    GMutexLocker<GMutex> lock(m_mutex);
+    WTF::GMutexLocker<GMutex> lock(m_mutex);
     m_queue.append(WTF::move(function));
 
     m_sourceWrap.schedule();
@@ -243,7 +243,7 @@ void GSourceQueue::dispatchQueue()
 {
     decltype(m_queue) queue;
     {
-        GMutexLocker<GMutex> lock(m_mutex);
+        WTF::GMutexLocker<GMutex> lock(m_mutex);
         queue = WTF::move(m_queue);
     }
 
