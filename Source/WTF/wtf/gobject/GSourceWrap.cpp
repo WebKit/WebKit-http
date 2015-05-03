@@ -241,14 +241,19 @@ void GSourceQueue::queue(std::function<void ()>&& function)
 
 void GSourceQueue::dispatchQueue()
 {
-    decltype(m_queue) queue;
-    {
-        WTF::GMutexLocker<GMutex> lock(m_mutex);
-        queue = WTF::move(m_queue);
-    }
+    while (1) {
+        decltype(m_queue) queue;
+        {
+            WTF::GMutexLocker<GMutex> lock(m_mutex);
+            queue = WTF::move(m_queue);
+        }
 
-    for (auto& function : queue)
-        function();
+        if (!queue.size())
+            break;
+
+        for (auto& function : queue)
+            function();
+    }
 }
 
 } // namespace WTF
