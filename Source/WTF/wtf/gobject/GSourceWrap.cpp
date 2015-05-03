@@ -1,6 +1,7 @@
 #include "config.h"
 #include "GSourceWrap.h"
 
+#include <gio/gio.h>
 #include <wtf/gobject/GMutexLocker.h>
 #include <cstdio>
 
@@ -16,6 +17,12 @@ static void destroyBoolCallback(gpointer data)
 {
     auto* function = reinterpret_cast<std::function<bool ()>*>(data);
     delete function;
+}
+
+static void destroySocketCallback(gpointer data)
+{
+    auto* pair = reinterpret_cast<std::pair<std::function<bool (GIOCondition)>, void*>*>(data);
+    delete pair;
 }
 
 static gint64 targetTimeForDelay(std::chrono::microseconds delay)
@@ -44,16 +51,19 @@ bool GSourceWrap::Base::isScheduled() const
 
 bool GSourceWrap::Base::isActive() const
 {
-    return isScheduled() || source()->dispatching;
+    return isScheduled() || m_context.dispatching;
 }
 
 void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext* context)
 {
     ASSERT(!m_source);
     m_source = adoptGRef(g_source_new(&sourceFunctions, sizeof(Source)));
-    source()->delay = std::chrono::microseconds(0);
-    source()->dispatching = false;
-    source()->wrap = this;
+    reinterpret_cast<Source*>(m_source.get())->context = &m_context;
+
+    m_context.delay = std::chrono::microseconds(0);
+    m_context.dispatching = false;
+    m_context.wrap = this;
+    m_context.cancellable = nullptr;
 
     g_source_set_name(m_source.get(), name);
     if (priority != G_PRIORITY_DEFAULT_IDLE)
@@ -67,7 +77,7 @@ void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext*
 void GSourceWrap::Base::schedule(std::chrono::microseconds delay)
 {
     ASSERT(m_source);
-    source()->delay = delay;
+    m_context.delay = delay;
 
     g_source_set_ready_time(m_source.get(), targetTimeForDelay(delay));
 }
@@ -98,55 +108,72 @@ GSourceFuncs GSourceWrap::Base::sourceFunctions = {
 gboolean GSourceWrap::Base::staticVoidCallback(gpointer data)
 {
     auto& context = *reinterpret_cast<CallbackContext*>(data);
-    context.source.dispatching = true;
+    context.source.context->dispatching = true;
     g_source_set_ready_time(&context.source.baseSource, -1);
 
     auto& function = *reinterpret_cast<std::function<void ()>*>(context.data);
     function();
 
-    context.source.dispatching = false;
+    context.source.context->dispatching = false;
     return G_SOURCE_CONTINUE;
 }
 
 gboolean GSourceWrap::Base::dynamicVoidCallback(gpointer data)
 {
     auto& context = *reinterpret_cast<CallbackContext*>(data);
-    context.source.dispatching = true;
+    context.source.context->dispatching = true;
     g_source_set_ready_time(&context.source.baseSource, -1);
     g_source_set_callback(&context.source.baseSource, nullptr, nullptr, nullptr);
 
     auto& function = *reinterpret_cast<std::function<void ()>*>(context.data);
     function();
 
-    context.source.dispatching = false;
+    context.source.context->dispatching = false;
     return G_SOURCE_CONTINUE;
 }
 
 gboolean GSourceWrap::Base::dynamicBoolCallback(gpointer data)
 {
     auto& context = *reinterpret_cast<CallbackContext*>(data);
-    context.source.dispatching = true;
+    context.source.context->dispatching = true;
     g_source_set_ready_time(&context.source.baseSource, -1);
 
     auto& function = *reinterpret_cast<std::function<bool ()>*>(context.data);
     if (function())
-        g_source_set_ready_time(&context.source.baseSource, targetTimeForDelay(context.source.delay));
+        g_source_set_ready_time(&context.source.baseSource, targetTimeForDelay(context.source.context->delay));
     else
         g_source_set_callback(&context.source.baseSource, nullptr, nullptr, nullptr);
 
-    context.source.dispatching = false;
+    context.source.context->dispatching = false;
     return G_SOURCE_CONTINUE;
 }
 
 gboolean GSourceWrap::Base::staticOneShotCallback(gpointer data)
 {
     auto& context = *reinterpret_cast<CallbackContext*>(data);
-    context.source.dispatching = true;
+    context.source.context->dispatching = true;
     g_source_set_ready_time(&context.source.baseSource, -1);
 
-    context.source.dispatching = false;
-    delete context.source.wrap;
+    auto& function = *reinterpret_cast<std::function<void ()>*>(context.data);
+    function();
+
+    context.source.context->dispatching = false;
+    delete context.source.context->wrap;
     return G_SOURCE_REMOVE;
+}
+
+gboolean GSourceWrap::Base::staticSocketCallback(GSocket*, GIOCondition condition, gpointer data)
+{
+    auto& pair = *reinterpret_cast<std::pair<std::function<bool (GIOCondition)>, Source::Context&>*>(data);
+    if (g_cancellable_is_cancelled(pair.second.cancellable.get()))
+        return G_SOURCE_REMOVE;
+
+    pair.second.dispatching = true;
+
+    bool retval = pair.first(condition);
+
+    pair.second.dispatching = false;
+    return retval;
 }
 
 GSourceWrap::Static::Static(const char* name, std::function<void ()>&& function, int priority, GMainContext* context)
@@ -208,6 +235,34 @@ GSourceWrap::OneShot::OneShot(const char* name, std::function<void ()>&& functio
         new std::function<void ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyVoidCallback));
 
     Base::schedule(delay);
+}
+
+void GSourceWrap::Socket::initialize(const char* name, std::function<bool (GIOCondition)>&& function, GSocket* socket, GIOCondition condition, int priority, GMainContext* context)
+{
+    ASSERT(!m_source);
+    GCancellable* cancellable = g_cancellable_new();
+    m_source = adoptGRef(g_socket_create_source(socket, condition, cancellable));
+
+    m_context.delay = std::chrono::microseconds(0);
+    m_context.dispatching = false;
+    m_context.wrap = this;
+    m_context.cancellable = adoptGRef(cancellable);
+
+    g_source_set_name(m_source.get(), name);
+    if (priority != G_PRIORITY_DEFAULT_IDLE)
+        g_source_set_priority(m_source.get(), priority);
+
+    g_source_set_callback(m_source.get(), reinterpret_cast<GSourceFunc>(staticSocketCallback),
+        new std::pair<std::function<bool (GIOCondition)>, Base::Source::Context&>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroySocketCallback));
+
+    if (!context)
+        context = g_main_context_get_thread_default();
+    g_source_attach(m_source.get(), context);
+}
+
+void GSourceWrap::Socket::cancel()
+{
+    g_cancellable_cancel(m_context.cancellable.get());
 }
 
 GSourceQueue::GSourceQueue()

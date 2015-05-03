@@ -81,24 +81,23 @@ void WorkQueue::platformInvalidate()
 
 void WorkQueue::registerSocketEventHandler(int fileDescriptor, std::function<void ()> function, std::function<void ()> closeFunction)
 {
-    GRefPtr<GSocket> socket = adoptGRef(g_socket_new_from_fd(fileDescriptor, 0));
-    ref();
-    m_socketEventSource.schedule("[WebKit] WorkQueue::SocketEventHandler", [function, closeFunction](GIOCondition condition) {
+    GRefPtr<GSocket> socket = adoptGRef(g_socket_new_from_fd(fileDescriptor, nullptr));
+    RefPtr<WorkQueue> protector(this);
+    m_socketEventSource.initialize("[WebKit] WorkQueue::SocketEventHandler",
+        [function, closeFunction, protector](GIOCondition condition) {
             if (condition & G_IO_HUP || condition & G_IO_ERR || condition & G_IO_NVAL) {
                 closeFunction();
-                return GMainLoopSource::Stop;
+                return false;
             }
 
             if (condition & G_IO_IN) {
                 function();
-                return GMainLoopSource::Continue;
+                return true;
             }
 
             ASSERT_NOT_REACHED();
-            return GMainLoopSource::Stop;
-        }, socket.get(), G_IO_IN,
-        [this] { deref(); },
-        m_eventContext.get());
+            return false;
+        }, socket.get(), G_IO_IN, G_PRIORITY_DEFAULT_IDLE, m_eventContext.get());
 }
 
 void WorkQueue::unregisterSocketEventHandler(int)

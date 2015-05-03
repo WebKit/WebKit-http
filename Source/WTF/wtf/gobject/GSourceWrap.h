@@ -8,6 +8,8 @@
 #include <wtf/Vector.h>
 #include <wtf/gobject/GRefPtr.h>
 
+typedef struct _GSocket GSocket;
+
 namespace WTF {
 
 class GSourceWrap {
@@ -31,12 +33,18 @@ private:
         static gboolean dynamicVoidCallback(gpointer);
         static gboolean dynamicBoolCallback(gpointer);
         static gboolean staticOneShotCallback(gpointer);
+        static gboolean staticSocketCallback(GSocket*, GIOCondition, gpointer);
 
         struct Source {
+            struct Context {
+                std::chrono::microseconds delay;
+                bool dispatching;
+                Base* wrap;
+                GRefPtr<GCancellable> cancellable;
+            };
+
             GSource baseSource;
-            std::chrono::microseconds delay;
-            bool dispatching;
-            Base* wrap;
+            Context* context;
         };
 
         struct CallbackContext {
@@ -46,6 +54,7 @@ private:
 
         Source* source() const { return reinterpret_cast<Source*>(m_source.get()); }
         GRefPtr<GSource> m_source;
+        Source::Context m_context;
     };
 
 public:
@@ -77,6 +86,14 @@ public:
 
     private:
         OneShot(const char* name, std::function<void ()>&&, std::chrono::microseconds, int priority, GMainContext*);
+    };
+
+    class Socket : public Base {
+    public:
+        Socket() { }
+        void initialize(const char* name, std::function<bool (GIOCondition)>&&, GSocket*, GIOCondition, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
+
+        void cancel();
     };
 };
 
