@@ -4,6 +4,7 @@
 #include <chrono>
 #include <functional>
 #include <glib.h>
+#include <utility>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 #include <wtf/gobject/GRefPtr.h>
@@ -15,6 +16,16 @@ namespace WTF {
 class GSourceWrap {
     WTF_MAKE_NONCOPYABLE(GSourceWrap);
 private:
+    static GSourceFuncs sourceFunctions;
+    static gboolean staticOneShotCallback(gpointer);
+
+    using DispatchContext = std::pair<GSource*, gpointer>;
+    template<typename T1, typename T2>
+    using CallbackContextType = std::pair<std::function<T1>, T2>;
+
+    template<typename T>
+    static void destroyCallbackContext(gpointer);
+
     class Base {
     public:
         Base() = default;
@@ -28,11 +39,9 @@ private:
         void schedule(std::chrono::microseconds);
         void cancel();
 
-        static GSourceFuncs sourceFunctions;
         static gboolean staticVoidCallback(gpointer);
         static gboolean dynamicVoidCallback(gpointer);
         static gboolean dynamicBoolCallback(gpointer);
-        static gboolean staticOneShotCallback(gpointer);
         static gboolean staticSocketCallback(GSocket*, GIOCondition, gpointer);
 
         struct Context {
@@ -42,7 +51,6 @@ private:
             GRefPtr<GCancellable> cancellable;
         };
 
-        using DispatchContext = std::pair<GSource*, gpointer>;
         template<typename T>
         using CallbackContext = std::pair<std::function<T>, Context&>;
         template<typename T>
@@ -72,15 +80,13 @@ public:
         void cancel();
     };
 
-    class OneShot : public Base {
+    class OneShot {
     public:
-        static void construct(const char* name, std::function<void ()>&& function, std::chrono::microseconds delay = std::chrono::microseconds(0), int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* context = nullptr)
-        {
-            new OneShot(name, WTF::move(function), delay, priority, context);
-        }
+        static void construct(const char* name, std::function<void ()>&& function, std::chrono::microseconds delay = std::chrono::microseconds(0), int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* context = nullptr);
 
     private:
-        OneShot(const char* name, std::function<void ()>&&, std::chrono::microseconds, int priority, GMainContext*);
+        friend class GSourceWrap;
+        using CallbackContext = CallbackContextType<void (), void*>;
     };
 
     class Socket : public Base {
