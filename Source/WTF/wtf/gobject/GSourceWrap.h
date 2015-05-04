@@ -18,6 +18,7 @@ class GSourceWrap {
 private:
     static GSourceFuncs sourceFunctions;
     static gboolean staticOneShotCallback(gpointer);
+    static gboolean staticSocketCallback(GSocket*, GIOCondition, gpointer);
 
     using DispatchContext = std::pair<GSource*, gpointer>;
     template<typename T1, typename T2>
@@ -25,6 +26,15 @@ private:
 
     template<typename T>
     static void destroyCallbackContext(gpointer);
+
+    class PBase {
+    public:
+        PBase() = default;
+        ~PBase();
+
+    protected:
+        GRefPtr<GSource> m_source;
+    };
 
     class Base {
     public:
@@ -42,7 +52,6 @@ private:
         static gboolean staticVoidCallback(gpointer);
         static gboolean dynamicVoidCallback(gpointer);
         static gboolean dynamicBoolCallback(gpointer);
-        static gboolean staticSocketCallback(GSocket*, GIOCondition, gpointer);
 
         struct Context {
             std::chrono::microseconds delay;
@@ -89,12 +98,17 @@ public:
         using CallbackContext = CallbackContextType<void (), void*>;
     };
 
-    class Socket : public Base {
+    class Socket : public PBase {
     public:
         Socket() = default;
         void initialize(const char* name, std::function<bool (GIOCondition)>&&, GSocket*, GIOCondition, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
-
         void cancel();
+
+    private:
+        friend class GSourceWrap;
+        using CallbackContext = CallbackContextType<bool (GIOCondition), GRefPtr<GCancellable>>;
+
+        GRefPtr<GCancellable> m_cancellable;
     };
 };
 
