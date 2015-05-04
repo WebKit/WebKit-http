@@ -40,7 +40,7 @@ void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext*
     m_context.delay = std::chrono::microseconds(0);
     m_context.dispatching = false;
     m_context.wrap = this;
-    m_context.cancellable = nullptr;
+    m_context.cancellable = adoptGRef(g_cancellable_new());
 
     g_source_set_name(m_source.get(), name);
     if (priority != G_PRIORITY_DEFAULT_IDLE)
@@ -56,6 +56,9 @@ void GSourceWrap::Base::schedule(std::chrono::microseconds delay)
     ASSERT(m_source);
     m_context.delay = delay;
 
+    if (g_cancellable_is_cancelled(m_context.cancellable.get()))
+        m_context.cancellable = adoptGRef(g_cancellable_new());
+
     g_source_set_ready_time(m_source.get(), targetTimeForDelay(delay));
 }
 
@@ -63,6 +66,7 @@ void GSourceWrap::Base::cancel()
 {
     ASSERT(m_source);
     g_source_set_ready_time(m_source.get(), -1);
+    g_cancellable_cancel(m_context.cancellable.get());
 }
 
 GSourceFuncs GSourceWrap::Base::sourceFunctions = {
@@ -86,6 +90,8 @@ gboolean GSourceWrap::Base::staticVoidCallback(gpointer data)
 {
     auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
     auto& callback = *reinterpret_cast<CallbackContext<void ()>*>(dispatch.second);
+    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
+        return G_SOURCE_CONTINUE;
 
     callback.second.dispatching = true;
     g_source_set_ready_time(dispatch.first, -1);
@@ -100,6 +106,8 @@ gboolean GSourceWrap::Base::dynamicVoidCallback(gpointer data)
 {
     auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
     auto& callback = *reinterpret_cast<CallbackContext<void ()>*>(dispatch.second);
+    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
+        return G_SOURCE_CONTINUE;
 
     callback.second.dispatching = true;
     g_source_set_ready_time(dispatch.first, -1);
@@ -115,6 +123,8 @@ gboolean GSourceWrap::Base::dynamicBoolCallback(gpointer data)
 {
     auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
     auto& callback = *reinterpret_cast<CallbackContext<bool ()>*>(dispatch.second);
+    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
+        return G_SOURCE_CONTINUE;
 
     callback.second.dispatching = true;
     g_source_set_ready_time(dispatch.first, -1);
