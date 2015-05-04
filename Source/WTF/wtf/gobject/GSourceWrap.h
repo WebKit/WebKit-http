@@ -17,7 +17,7 @@ class GSourceWrap {
 private:
     class Base {
     public:
-        Base();
+        Base() = default;
         ~Base();
 
         bool isScheduled() const;
@@ -35,32 +35,27 @@ private:
         static gboolean staticOneShotCallback(gpointer);
         static gboolean staticSocketCallback(GSocket*, GIOCondition, gpointer);
 
-        struct Source {
-            struct Context {
-                std::chrono::microseconds delay;
-                bool dispatching;
-                Base* wrap;
-                GRefPtr<GCancellable> cancellable;
-            };
-
-            GSource baseSource;
-            Context* context;
+        struct Context {
+            std::chrono::microseconds delay;
+            bool dispatching;
+            Base* wrap;
+            GRefPtr<GCancellable> cancellable;
         };
 
-        struct CallbackContext {
-            Source& source;
-            gpointer data;
-        };
+        using DispatchContext = std::pair<GSource*, gpointer>;
+        template<typename T>
+        using CallbackContext = std::pair<std::function<T>, Context&>;
+        template<typename T>
+        static void destroyCallbackContext(gpointer);
 
-        Source* source() const { return reinterpret_cast<Source*>(m_source.get()); }
         GRefPtr<GSource> m_source;
-        Source::Context m_context;
+        Context m_context;
     };
 
 public:
     class Static : public Base {
     public:
-        Static() { }
+        Static() = default;
         Static(const char* name, std::function<void ()>&&, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
         void initialize(const char* name, std::function<void ()>&&, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
 
@@ -90,7 +85,7 @@ public:
 
     class Socket : public Base {
     public:
-        Socket() { }
+        Socket() = default;
         void initialize(const char* name, std::function<bool (GIOCondition)>&&, GSocket*, GIOCondition, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
 
         void cancel();

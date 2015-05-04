@@ -7,24 +7,6 @@
 
 namespace WTF {
 
-static void destroyVoidCallback(gpointer data)
-{
-    auto* function = reinterpret_cast<std::function<void ()>*>(data);
-    delete function;
-}
-
-static void destroyBoolCallback(gpointer data)
-{
-    auto* function = reinterpret_cast<std::function<bool ()>*>(data);
-    delete function;
-}
-
-static void destroySocketCallback(gpointer data)
-{
-    auto* pair = reinterpret_cast<std::pair<std::function<bool (GIOCondition)>, void*>*>(data);
-    delete pair;
-}
-
 static gint64 targetTimeForDelay(std::chrono::microseconds delay)
 {
     gint64 currentTime = g_get_monotonic_time();
@@ -32,10 +14,6 @@ static gint64 targetTimeForDelay(std::chrono::microseconds delay)
     ASSERT(targetTime >= currentTime);
 
     return targetTime;
-}
-
-GSourceWrap::Base::Base()
-{
 }
 
 GSourceWrap::Base::~Base()
@@ -57,8 +35,7 @@ bool GSourceWrap::Base::isActive() const
 void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext* context)
 {
     ASSERT(!m_source);
-    m_source = adoptGRef(g_source_new(&sourceFunctions, sizeof(Source)));
-    reinterpret_cast<Source*>(m_source.get())->context = &m_context;
+    m_source = adoptGRef(g_source_new(&sourceFunctions, sizeof(GSource)));
 
     m_context.delay = std::chrono::microseconds(0);
     m_context.dispatching = false;
@@ -97,7 +74,7 @@ GSourceFuncs GSourceWrap::Base::sourceFunctions = {
         ASSERT(source);
         if (g_source_get_ready_time(source) == -1)
             return G_SOURCE_CONTINUE;
-        CallbackContext context{ *reinterpret_cast<Source*>(source), data };
+        DispatchContext context{ source, data };
         return callback(&context);
     },
     nullptr, // finalize
@@ -107,73 +84,98 @@ GSourceFuncs GSourceWrap::Base::sourceFunctions = {
 
 gboolean GSourceWrap::Base::staticVoidCallback(gpointer data)
 {
-    auto& context = *reinterpret_cast<CallbackContext*>(data);
-    context.source.context->dispatching = true;
-    g_source_set_ready_time(&context.source.baseSource, -1);
+    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
+    auto& callback = *reinterpret_cast<CallbackContext<void ()>*>(dispatch.second);
 
-    auto& function = *reinterpret_cast<std::function<void ()>*>(context.data);
-    function();
+    callback.second.dispatching = true;
+    g_source_set_ready_time(dispatch.first, -1);
 
-    context.source.context->dispatching = false;
+    callback.first();
+
+    callback.second.dispatching = false;
     return G_SOURCE_CONTINUE;
 }
 
 gboolean GSourceWrap::Base::dynamicVoidCallback(gpointer data)
 {
-    auto& context = *reinterpret_cast<CallbackContext*>(data);
-    context.source.context->dispatching = true;
-    g_source_set_ready_time(&context.source.baseSource, -1);
-    g_source_set_callback(&context.source.baseSource, nullptr, nullptr, nullptr);
+    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
+    auto& callback = *reinterpret_cast<CallbackContext<void ()>*>(dispatch.second);
 
-    auto& function = *reinterpret_cast<std::function<void ()>*>(context.data);
-    function();
+    callback.second.dispatching = true;
+    g_source_set_ready_time(dispatch.first, -1);
+    g_source_set_callback(dispatch.first, nullptr, nullptr, nullptr);
 
-    context.source.context->dispatching = false;
+    callback.first();
+
+    callback.second.dispatching = false;
     return G_SOURCE_CONTINUE;
 }
 
 gboolean GSourceWrap::Base::dynamicBoolCallback(gpointer data)
 {
-    auto& context = *reinterpret_cast<CallbackContext*>(data);
-    context.source.context->dispatching = true;
-    g_source_set_ready_time(&context.source.baseSource, -1);
+    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
+    auto& callback = *reinterpret_cast<CallbackContext<bool ()>*>(dispatch.second);
 
-    auto& function = *reinterpret_cast<std::function<bool ()>*>(context.data);
-    if (function())
-        g_source_set_ready_time(&context.source.baseSource, targetTimeForDelay(context.source.context->delay));
+    callback.second.dispatching = true;
+    g_source_set_ready_time(dispatch.first, -1);
+
+    if (callback.first())
+        g_source_set_ready_time(dispatch.first, targetTimeForDelay(callback.second.delay));
     else
-        g_source_set_callback(&context.source.baseSource, nullptr, nullptr, nullptr);
+        g_source_set_callback(dispatch.first, nullptr, nullptr, nullptr);
 
-    context.source.context->dispatching = false;
+    callback.second.dispatching = false;
     return G_SOURCE_CONTINUE;
 }
 
 gboolean GSourceWrap::Base::staticOneShotCallback(gpointer data)
 {
-    auto& context = *reinterpret_cast<CallbackContext*>(data);
-    context.source.context->dispatching = true;
-    g_source_set_ready_time(&context.source.baseSource, -1);
+    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
+    auto& callback = *reinterpret_cast<CallbackContext<void ()>*>(dispatch.second);
 
-    auto& function = *reinterpret_cast<std::function<void ()>*>(context.data);
-    function();
+    callback.second.dispatching = true;
+    g_source_set_ready_time(dispatch.first, -1);
 
-    context.source.context->dispatching = false;
-    delete context.source.context->wrap;
+    callback.first();
+
+    callback.second.dispatching = false;
+    delete callback.second.wrap;
     return G_SOURCE_REMOVE;
 }
 
 gboolean GSourceWrap::Base::staticSocketCallback(GSocket*, GIOCondition condition, gpointer data)
 {
-    auto& pair = *reinterpret_cast<std::pair<std::function<bool (GIOCondition)>, Source::Context&>*>(data);
-    if (g_cancellable_is_cancelled(pair.second.cancellable.get()))
+    auto& callback = *reinterpret_cast<CallbackContext<bool (GIOCondition)>*>(data);
+    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
         return G_SOURCE_REMOVE;
 
-    pair.second.dispatching = true;
+    callback.second.dispatching = true;
 
-    bool retval = pair.first(condition);
+    bool retval = callback.first(condition);
 
-    pair.second.dispatching = false;
+    callback.second.dispatching = false;
     return retval;
+}
+
+template<>
+void GSourceWrap::Base::destroyCallbackContext<void ()>(gpointer data)
+{
+    auto* callback = reinterpret_cast<CallbackContext<void ()>*>(data);
+    delete callback;
+}
+
+template<>
+void GSourceWrap::Base::destroyCallbackContext<bool ()>(gpointer data)
+{
+    auto* callback = reinterpret_cast<CallbackContext<bool ()>*>(data);
+    delete callback;
+}
+
+template<>
+void GSourceWrap::Base::destroyCallbackContext<bool (GIOCondition)>(gpointer data)
+{
+    auto* callback = reinterpret_cast<CallbackContext<bool (GIOCondition)>*>(data);
+    delete callback;
 }
 
 GSourceWrap::Static::Static(const char* name, std::function<void ()>&& function, int priority, GMainContext* context)
@@ -186,7 +188,7 @@ void GSourceWrap::Static::initialize(const char* name, std::function<void ()>&& 
     Base::initialize(name, priority, context);
 
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(staticVoidCallback),
-        new std::function<void ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyVoidCallback));
+        new CallbackContext<void ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<void ()>));
 }
 
 void GSourceWrap::Static::schedule(std::chrono::microseconds delay)
@@ -207,7 +209,7 @@ GSourceWrap::Dynamic::Dynamic(const char* name, int priority, GMainContext* cont
 void GSourceWrap::Dynamic::schedule(std::function<void ()>&& function, std::chrono::microseconds delay)
 {
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicVoidCallback),
-        new std::function<void ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyVoidCallback));
+        new CallbackContext<void ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<void ()>));
 
     Base::schedule(delay);
 }
@@ -215,7 +217,7 @@ void GSourceWrap::Dynamic::schedule(std::function<void ()>&& function, std::chro
 void GSourceWrap::Dynamic::schedule(std::function<bool ()>&& function, std::chrono::microseconds delay)
 {
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicBoolCallback),
-        new std::function<bool ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyBoolCallback));
+        new CallbackContext<bool ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<bool ()>));
 
     Base::schedule(delay);
 }
@@ -232,7 +234,7 @@ GSourceWrap::OneShot::OneShot(const char* name, std::function<void ()>&& functio
     Base::initialize(name, priority, context);
 
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(staticOneShotCallback),
-        new std::function<void ()>(WTF::move(function)), static_cast<GDestroyNotify>(destroyVoidCallback));
+        new CallbackContext<void ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<void ()>));
 
     Base::schedule(delay);
 }
@@ -253,7 +255,7 @@ void GSourceWrap::Socket::initialize(const char* name, std::function<bool (GIOCo
         g_source_set_priority(m_source.get(), priority);
 
     g_source_set_callback(m_source.get(), reinterpret_cast<GSourceFunc>(staticSocketCallback),
-        new std::pair<std::function<bool (GIOCondition)>, Base::Source::Context&>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroySocketCallback));
+        new CallbackContext<bool (GIOCondition)>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<bool (GIOCondition)>));
 
     if (!context)
         context = g_main_context_get_thread_default();
