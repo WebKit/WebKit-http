@@ -43,8 +43,7 @@ void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext*
     m_context.cancellable = adoptGRef(g_cancellable_new());
 
     g_source_set_name(m_source.get(), name);
-    if (priority != G_PRIORITY_DEFAULT_IDLE)
-        g_source_set_priority(m_source.get(), priority);
+    g_source_set_priority(m_source.get(), priority);
 
     if (!context)
         context = g_main_context_get_thread_default();
@@ -261,8 +260,7 @@ void GSourceWrap::Socket::initialize(const char* name, std::function<bool (GIOCo
     m_context.cancellable = adoptGRef(cancellable);
 
     g_source_set_name(m_source.get(), name);
-    if (priority != G_PRIORITY_DEFAULT_IDLE)
-        g_source_set_priority(m_source.get(), priority);
+    g_source_set_priority(m_source.get(), priority);
 
     g_source_set_callback(m_source.get(), reinterpret_cast<GSourceFunc>(staticSocketCallback),
         new CallbackContext<bool (GIOCondition)>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<bool (GIOCondition)>));
