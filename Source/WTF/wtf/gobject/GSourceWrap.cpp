@@ -246,28 +246,22 @@ void GSourceWrap::Socket::cancel()
     g_cancellable_cancel(m_cancellable.get());
 }
 
-GSourceQueue::GSourceQueue()
+GSourceWrap::Queue::Queue()
 {
     g_mutex_init(&m_mutex);
 }
 
-GSourceQueue::GSourceQueue(const char* name, int priority, GMainContext* context)
-    : m_sourceWrap(name, std::bind(&GSourceQueue::dispatchQueue, this), priority, context)
-{
-    g_mutex_init(&m_mutex);
-}
-
-GSourceQueue::~GSourceQueue()
+GSourceWrap::Queue::~Queue()
 {
     g_mutex_clear(&m_mutex);
 }
 
-void GSourceQueue::initialize(const char* name, int priority, GMainContext* context)
+void GSourceWrap::Queue::initialize(const char* name, int priority, GMainContext* context)
 {
-    m_sourceWrap.initialize(name, std::bind(&GSourceQueue::dispatchQueue, this), priority, context);
+    m_sourceWrap.initialize(name, std::bind(&Queue::dispatchQueue, this), priority, context);
 }
 
-void GSourceQueue::queue(std::function<void ()>&& function)
+void GSourceWrap::Queue::queue(std::function<void ()>&& function)
 {
     WTF::GMutexLocker<GMutex> lock(m_mutex);
     m_queue.append(WTF::move(function));
@@ -275,7 +269,7 @@ void GSourceQueue::queue(std::function<void ()>&& function)
     m_sourceWrap.schedule();
 }
 
-void GSourceQueue::dispatchQueue()
+void GSourceWrap::Queue::dispatchQueue()
 {
     while (1) {
         decltype(m_queue) queue;

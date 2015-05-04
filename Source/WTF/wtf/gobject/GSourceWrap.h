@@ -111,30 +111,31 @@ public:
 
         GRefPtr<GCancellable> m_cancellable;
     };
-};
 
-class GSourceQueue {
-    WTF_MAKE_NONCOPYABLE(GSourceQueue);
-public:
-    GSourceQueue();
-    GSourceQueue(const char*, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
-    ~GSourceQueue();
+    class Queue {
+        Queue(const Queue&) = delete;
+        Queue& operator=(const Queue&) = delete;
+        Queue(Queue&&) = delete;
+        Queue& operator=(Queue&&) = delete;
+    public:
+        Queue();
+        ~Queue();
 
-    void initialize(const char*, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
+        void initialize(const char*, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
 
-    void queue(std::function<void ()>&&);
+        void queue(std::function<void ()>&&);
 
-private:
-    void dispatchQueue();
+    private:
+        void dispatchQueue();
 
-    GSourceWrap::Static m_sourceWrap;
-    GMutex m_mutex;
-    Vector<std::function<void ()>, 16> m_queue;
+        Static m_sourceWrap;
+        GMutex m_mutex;
+        Vector<std::function<void ()>, 16> m_queue;
+    };
 };
 
 } // namespace WTF
 
 using WTF::GSourceWrap;
-using WTF::GSourceQueue;
 
 #endif // GSourceWrap_h

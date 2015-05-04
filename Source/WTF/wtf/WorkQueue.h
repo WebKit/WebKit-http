@@ -110,7 +110,7 @@ private:
     Mutex m_eventLoopLock;
     GRefPtr<GMainLoop> m_eventLoop;
     GSourceWrap::Socket m_socketEventSource;
-    GSourceQueue m_dispatchQueue;
+    GSourceWrap::Queue m_dispatchQueue;
 #elif PLATFORM(EFL)
     RefPtr<DispatchQueue> m_dispatchQueue;
 #elif OS(WINDOWS)
