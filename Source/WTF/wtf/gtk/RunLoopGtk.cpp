@@ -53,7 +53,7 @@ RunLoop::RunLoop()
     m_runLoopMainLoops.append(innermostLoop);
 
     m_workSource.initialize("[WebKit] RunLoop work", std::bind(&RunLoop::performWork, this),
-        G_PRIORITY_DEFAULT, m_runLoopContext.get());
+        G_PRIORITY_HIGH + 30, m_runLoopContext.get());
 }
 
 RunLoop::~RunLoop()
@@ -121,7 +121,7 @@ RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
     : m_runLoop(runLoop)
     , m_fireInterval(0)
     , m_repeating(false)
-    , m_timerSource("[WebKit] RunLoop::Timer", std::bind(&RunLoop::TimerBase::timerFired, this), G_PRIORITY_DEFAULT, m_runLoop.m_runLoopContext.get())
+    , m_timerSource("[WebKit] RunLoop::Timer", std::bind(&RunLoop::TimerBase::timerFired, this), G_PRIORITY_HIGH + 30, m_runLoop.m_runLoopContext.get())
 {
 }
 

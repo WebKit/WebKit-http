@@ -60,7 +60,7 @@ public:
     WTF_EXPORT_PRIVATE virtual void scheduleAfterDelay(const char* name, std::function<bool()>, std::chrono::microseconds, int priority = G_PRIORITY_DEFAULT, std::function<void()> destroyFunction = nullptr, GMainContext* = nullptr);
     WTF_EXPORT_PRIVATE virtual void cancel();
 
-    WTF_EXPORT_PRIVATE void schedule(const char* name, std::function<bool(GIOCondition)>, GSocket*, GIOCondition, std::function<void()> destroyFunction = nullptr, GMainContext* = nullptr);
+    WTF_EXPORT_PRIVATE void schedule(const char* name, std::function<bool(GIOCondition)>, GSocket*, GIOCondition, int priority = G_PRIORITY_DEFAULT, std::function<void()> destroyFunction = nullptr, GMainContext* = nullptr);
 
     static void scheduleAndDeleteOnDestroy(const char* name, std::function<void()>, int priority = G_PRIORITY_DEFAULT, std::function<void()> destroyFunction = nullptr, GMainContext* = nullptr);
     static void scheduleAndDeleteOnDestroy(const char* name, std::function<bool()>, int priority = G_PRIORITY_DEFAULT, std::function<void()> destroyFunction = nullptr, GMainContext* = nullptr);

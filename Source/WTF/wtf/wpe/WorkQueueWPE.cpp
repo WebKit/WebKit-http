@@ -43,7 +43,7 @@ void WorkQueue::platformInitialize(const char* name, Type, QOS)
     m_eventLoop = adoptGRef(g_main_loop_new(m_eventContext.get(), FALSE));
     ASSERT(m_eventLoop);
 
-    m_dispatchQueue.initialize("[WebKit] WorkQueue::dispatch", G_PRIORITY_DEFAULT_IDLE, m_eventContext.get());
+    m_dispatchQueue.initialize("[WebKit] WorkQueue::dispatch", G_PRIORITY_HIGH + 30, m_eventContext.get());
 
     // This name can be com.apple.WebKit.ProcessLauncher or com.apple.CoreIPC.ReceiveQueue.
     // We are using those names for the thread name, but both are longer than 31 characters,
@@ -101,7 +101,7 @@ void WorkQueue::registerSocketEventHandler(int fileDescriptor, std::function<voi
 
             ASSERT_NOT_REACHED();
             return false;
-        }, socket.get(), G_IO_IN, G_PRIORITY_DEFAULT_IDLE, m_eventContext.get());
+        }, socket.get(), G_IO_IN, G_PRIORITY_HIGH + 30, m_eventContext.get());
 }
 
 void WorkQueue::unregisterSocketEventHandler(int)
@@ -118,7 +118,7 @@ void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<v
 {
     RefPtr<WorkQueue> protector(this);
     GSourceWrap::OneShot::construct("[WebKit] WorkQueue::dispatchAfter", std::bind([protector](const std::function<void ()>& function) { function(); }, WTF::move(function)),
-        std::chrono::duration_cast<std::chrono::milliseconds>(duration), G_PRIORITY_DEFAULT, m_eventContext.get());
+        std::chrono::duration_cast<std::chrono::milliseconds>(duration), G_PRIORITY_HIGH + 30, m_eventContext.get());
 }
 
 } // namespace WTF

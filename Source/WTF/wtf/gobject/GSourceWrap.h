@@ -74,8 +74,8 @@ public:
     class Static : public DelayBased {
     public:
         Static() = default;
-        Static(const char* name, std::function<void ()>&&, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
-        void initialize(const char* name, std::function<void ()>&&, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
+        Static(const char* name, std::function<void ()>&&, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
+        void initialize(const char* name, std::function<void ()>&&, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
 
         void schedule(std::chrono::microseconds = std::chrono::microseconds(0));
         void cancel();
@@ -83,7 +83,7 @@ public:
 
     class Dynamic : public DelayBased {
     public:
-        Dynamic(const char* name, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
+        Dynamic(const char* name, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
 
         void schedule(std::function<void ()>&&, std::chrono::microseconds = std::chrono::microseconds(0));
         void schedule(std::function<bool ()>&&, std::chrono::microseconds = std::chrono::microseconds(0));
@@ -92,7 +92,7 @@ public:
 
     class OneShot {
     public:
-        static void construct(const char* name, std::function<void ()>&& function, std::chrono::microseconds delay = std::chrono::microseconds(0), int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* context = nullptr);
+        static void construct(const char* name, std::function<void ()>&& function, std::chrono::microseconds delay = std::chrono::microseconds(0), int priority = G_PRIORITY_HIGH + 30, GMainContext* context = nullptr);
 
     private:
         friend class GSourceWrap;
@@ -102,7 +102,7 @@ public:
     class Socket : public Base {
     public:
         Socket() = default;
-        void initialize(const char* name, std::function<bool (GIOCondition)>&&, GSocket*, GIOCondition, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
+        void initialize(const char* name, std::function<bool (GIOCondition)>&&, GSocket*, GIOCondition, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
         void cancel();
 
     private:
@@ -121,7 +121,7 @@ public:
         Queue();
         ~Queue();
 
-        void initialize(const char*, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
+        void initialize(const char*, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
 
         void queue(std::function<void ()>&&);
 
