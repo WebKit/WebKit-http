@@ -7,86 +7,6 @@
 
 namespace WTF {
 
-static gint64 targetTimeForDelay(std::chrono::microseconds delay)
-{
-    gint64 currentTime = g_get_monotonic_time();
-    gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, delay.count());
-    ASSERT(targetTime >= currentTime);
-
-    return targetTime;
-}
-
-GSourceWrap::PBase::~PBase()
-{
-    g_source_destroy(m_source.get());
-}
-
-GSourceWrap::Base::~Base()
-{
-    g_source_destroy(m_source.get());
-}
-
-bool GSourceWrap::Base::isScheduled() const
-{
-    ASSERT(m_source);
-    return g_source_get_ready_time(m_source.get()) != -1;
-}
-
-bool GSourceWrap::Base::isActive() const
-{
-    return isScheduled() || m_context.dispatching;
-}
-
-void GSourceWrap::Base::initialize(const char* name, int priority, GMainContext* context)
-{
-    ASSERT(!m_source);
-    m_source = adoptGRef(g_source_new(&sourceFunctions, sizeof(GSource)));
-
-    m_context.delay = std::chrono::microseconds(0);
-    m_context.dispatching = false;
-    m_context.wrap = this;
-    m_context.cancellable = adoptGRef(g_cancellable_new());
-
-    g_source_set_name(m_source.get(), name);
-    g_source_set_priority(m_source.get(), priority);
-
-    if (!context)
-        context = g_main_context_get_thread_default();
-    g_source_attach(m_source.get(), context);
-}
-
-void GSourceWrap::Base::schedule(std::chrono::microseconds delay)
-{
-    ASSERT(m_source);
-    m_context.delay = delay;
-
-    if (g_cancellable_is_cancelled(m_context.cancellable.get()))
-        m_context.cancellable = adoptGRef(g_cancellable_new());
-
-    g_source_set_ready_time(m_source.get(), targetTimeForDelay(delay));
-}
-
-void GSourceWrap::Base::cancel()
-{
-    ASSERT(m_source);
-    g_source_set_ready_time(m_source.get(), -1);
-    g_cancellable_cancel(m_context.cancellable.get());
-}
-
-template<>
-void GSourceWrap::destroyCallbackContext<GSourceWrap::OneShot::CallbackContext>(gpointer data)
-{
-    auto* context = reinterpret_cast<GSourceWrap::OneShot::CallbackContext*>(data);
-    delete context;
-}
-
-template<>
-void GSourceWrap::destroyCallbackContext<GSourceWrap::Socket::CallbackContext>(gpointer data)
-{
-    auto* context = reinterpret_cast<GSourceWrap::Socket::CallbackContext*>(data);
-    delete context;
-}
-
 GSourceFuncs GSourceWrap::sourceFunctions = {
     nullptr, // prepare
     nullptr, // check
@@ -103,6 +23,58 @@ GSourceFuncs GSourceWrap::sourceFunctions = {
     nullptr, // closure_callback
     nullptr, // closure_marshall
 };
+
+gboolean GSourceWrap::staticDelayBasedVoidCallback(gpointer data)
+{
+    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
+    auto& callback = *reinterpret_cast<DelayBased::CallbackContext<void ()>*>(dispatch.second);
+    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
+        return G_SOURCE_CONTINUE;
+
+    callback.second.dispatching = true;
+    g_source_set_ready_time(dispatch.first, -1);
+
+    callback.first();
+
+    callback.second.dispatching = false;
+    return G_SOURCE_CONTINUE;
+}
+
+gboolean GSourceWrap::dynamicDelayBasedVoidCallback(gpointer data)
+{
+    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
+    auto& callback = *reinterpret_cast<DelayBased::CallbackContext<void ()>*>(dispatch.second);
+    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
+        return G_SOURCE_CONTINUE;
+
+    callback.second.dispatching = true;
+    g_source_set_ready_time(dispatch.first, -1);
+    g_source_set_callback(dispatch.first, nullptr, nullptr, nullptr);
+
+    callback.first();
+
+    callback.second.dispatching = false;
+    return G_SOURCE_CONTINUE;
+}
+
+gboolean GSourceWrap::dynamicDelayBasedBoolCallback(gpointer data)
+{
+    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
+    auto& callback = *reinterpret_cast<DelayBased::CallbackContext<bool ()>*>(dispatch.second);
+    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
+        return G_SOURCE_CONTINUE;
+
+    callback.second.dispatching = true;
+    g_source_set_ready_time(dispatch.first, -1);
+
+    if (callback.first())
+        g_source_set_ready_time(dispatch.first, targetTimeForDelay(callback.second.delay));
+    else
+        g_source_set_callback(dispatch.first, nullptr, nullptr, nullptr);
+
+    callback.second.dispatching = false;
+    return G_SOURCE_CONTINUE;
+}
 
 gboolean GSourceWrap::staticOneShotCallback(gpointer data)
 {
@@ -124,78 +96,64 @@ gboolean GSourceWrap::staticSocketCallback(GSocket*, GIOCondition condition, gpo
     return callback.first(condition);
 }
 
-
-gboolean GSourceWrap::Base::staticVoidCallback(gpointer data)
+gint64 GSourceWrap::targetTimeForDelay(std::chrono::microseconds delay)
 {
-    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
-    auto& callback = *reinterpret_cast<CallbackContext<void ()>*>(dispatch.second);
-    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
-        return G_SOURCE_CONTINUE;
+    gint64 currentTime = g_get_monotonic_time();
+    gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, delay.count());
+    ASSERT(targetTime >= currentTime);
 
-    callback.second.dispatching = true;
-    g_source_set_ready_time(dispatch.first, -1);
-
-    callback.first();
-
-    callback.second.dispatching = false;
-    return G_SOURCE_CONTINUE;
+    return targetTime;
 }
 
-gboolean GSourceWrap::Base::dynamicVoidCallback(gpointer data)
+GSourceWrap::Base::~Base()
 {
-    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
-    auto& callback = *reinterpret_cast<CallbackContext<void ()>*>(dispatch.second);
-    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
-        return G_SOURCE_CONTINUE;
-
-    callback.second.dispatching = true;
-    g_source_set_ready_time(dispatch.first, -1);
-    g_source_set_callback(dispatch.first, nullptr, nullptr, nullptr);
-
-    callback.first();
-
-    callback.second.dispatching = false;
-    return G_SOURCE_CONTINUE;
+    g_source_destroy(m_source.get());
 }
 
-gboolean GSourceWrap::Base::dynamicBoolCallback(gpointer data)
+bool GSourceWrap::DelayBased::isScheduled() const
 {
-    auto& dispatch = *reinterpret_cast<DispatchContext*>(data);
-    auto& callback = *reinterpret_cast<CallbackContext<bool ()>*>(dispatch.second);
-    if (g_cancellable_is_cancelled(callback.second.cancellable.get()))
-        return G_SOURCE_CONTINUE;
-
-    callback.second.dispatching = true;
-    g_source_set_ready_time(dispatch.first, -1);
-
-    if (callback.first())
-        g_source_set_ready_time(dispatch.first, targetTimeForDelay(callback.second.delay));
-    else
-        g_source_set_callback(dispatch.first, nullptr, nullptr, nullptr);
-
-    callback.second.dispatching = false;
-    return G_SOURCE_CONTINUE;
+    ASSERT(m_source);
+    return g_source_get_ready_time(m_source.get()) != -1;
 }
 
-template<>
-void GSourceWrap::Base::destroyCallbackContext<void ()>(gpointer data)
+bool GSourceWrap::DelayBased::isActive() const
 {
-    auto* callback = reinterpret_cast<CallbackContext<void ()>*>(data);
-    delete callback;
+    return isScheduled() || m_context.dispatching;
 }
 
-template<>
-void GSourceWrap::Base::destroyCallbackContext<bool ()>(gpointer data)
+void GSourceWrap::DelayBased::initialize(const char* name, int priority, GMainContext* context)
 {
-    auto* callback = reinterpret_cast<CallbackContext<bool ()>*>(data);
-    delete callback;
+    ASSERT(!m_source);
+    m_source = adoptGRef(g_source_new(&sourceFunctions, sizeof(GSource)));
+
+    m_context.delay = std::chrono::microseconds(0);
+    m_context.cancellable = adoptGRef(g_cancellable_new());
+    m_context.dispatching = false;
+
+    g_source_set_name(m_source.get(), name);
+    g_source_set_priority(m_source.get(), priority);
+
+    if (!context)
+        context = g_main_context_get_thread_default();
+    g_source_attach(m_source.get(), context);
 }
 
-template<>
-void GSourceWrap::Base::destroyCallbackContext<bool (GIOCondition)>(gpointer data)
+void GSourceWrap::DelayBased::schedule(std::chrono::microseconds delay)
 {
-    auto* callback = reinterpret_cast<CallbackContext<bool (GIOCondition)>*>(data);
-    delete callback;
+    ASSERT(m_source);
+    m_context.delay = delay;
+
+    if (g_cancellable_is_cancelled(m_context.cancellable.get()))
+        m_context.cancellable = adoptGRef(g_cancellable_new());
+
+    g_source_set_ready_time(m_source.get(), targetTimeForDelay(delay));
+}
+
+void GSourceWrap::DelayBased::cancel()
+{
+    ASSERT(m_source);
+    g_cancellable_cancel(m_context.cancellable.get());
+    g_source_set_ready_time(m_source.get(), -1);
 }
 
 GSourceWrap::Static::Static(const char* name, std::function<void ()>&& function, int priority, GMainContext* context)
@@ -205,46 +163,46 @@ GSourceWrap::Static::Static(const char* name, std::function<void ()>&& function,
 
 void GSourceWrap::Static::initialize(const char* name, std::function<void ()>&& function, int priority, GMainContext* context)
 {
-    Base::initialize(name, priority, context);
+    DelayBased::initialize(name, priority, context);
 
-    g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(staticVoidCallback),
-        new CallbackContext<void ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<void ()>));
+    g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(staticDelayBasedVoidCallback),
+        new CallbackContext<void ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext<void ()>>));
 }
 
 void GSourceWrap::Static::schedule(std::chrono::microseconds delay)
 {
-    Base::schedule(delay);
+    DelayBased::schedule(delay);
 }
 
 void GSourceWrap::Static::cancel()
 {
-    Base::cancel();
+    DelayBased::cancel();
 }
 
 GSourceWrap::Dynamic::Dynamic(const char* name, int priority, GMainContext* context)
 {
-    Base::initialize(name, priority, context);
+    DelayBased::initialize(name, priority, context);
 }
 
 void GSourceWrap::Dynamic::schedule(std::function<void ()>&& function, std::chrono::microseconds delay)
 {
-    g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicVoidCallback),
-        new CallbackContext<void ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<void ()>));
+    g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicDelayBasedVoidCallback),
+        new CallbackContext<void ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext<void ()>>));
 
-    Base::schedule(delay);
+    DelayBased::schedule(delay);
 }
 
 void GSourceWrap::Dynamic::schedule(std::function<bool ()>&& function, std::chrono::microseconds delay)
 {
-    g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicBoolCallback),
-        new CallbackContext<bool ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<bool ()>));
+    g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicDelayBasedBoolCallback),
+        new CallbackContext<bool ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext<bool ()>>));
 
-    Base::schedule(delay);
+    DelayBased::schedule(delay);
 }
 
 void GSourceWrap::Dynamic::cancel()
 {
-    Base::cancel();
+    DelayBased::cancel();
 
     g_source_set_callback(m_source.get(), nullptr, nullptr, nullptr);
 }

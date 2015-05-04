@@ -5,7 +5,6 @@
 #include <functional>
 #include <glib.h>
 #include <utility>
-#include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 #include <wtf/gobject/GRefPtr.h>
 
@@ -14,9 +13,11 @@ typedef struct _GSocket GSocket;
 namespace WTF {
 
 class GSourceWrap {
-    WTF_MAKE_NONCOPYABLE(GSourceWrap);
 private:
     static GSourceFuncs sourceFunctions;
+    static gboolean staticDelayBasedVoidCallback(gpointer);
+    static gboolean dynamicDelayBasedVoidCallback(gpointer);
+    static gboolean dynamicDelayBasedBoolCallback(gpointer);
     static gboolean staticOneShotCallback(gpointer);
     static gboolean staticSocketCallback(GSocket*, GIOCondition, gpointer);
 
@@ -25,21 +26,30 @@ private:
     using CallbackContextType = std::pair<std::function<T1>, T2>;
 
     template<typename T>
-    static void destroyCallbackContext(gpointer);
+    static void destroyCallbackContext(gpointer data)
+    {
+        auto* context = reinterpret_cast<T*>(data);
+        delete context;
+    }
 
-    class PBase {
+    static gint64 targetTimeForDelay(std::chrono::microseconds);
+
+    class Base {
+        Base(const Base&) = delete;
+        Base& operator=(const Base&) = delete;
+        Base(Base&&) = delete;
+        Base& operator=(Base&&) = delete;
     public:
-        PBase() = default;
-        ~PBase();
+        Base() = default;
+        ~Base();
 
     protected:
         GRefPtr<GSource> m_source;
     };
 
-    class Base {
+    class DelayBased : Base {
     public:
-        Base() = default;
-        ~Base();
+        DelayBased() = default;
 
         bool isScheduled() const;
         bool isActive() const;
@@ -49,28 +59,19 @@ private:
         void schedule(std::chrono::microseconds);
         void cancel();
 
-        static gboolean staticVoidCallback(gpointer);
-        static gboolean dynamicVoidCallback(gpointer);
-        static gboolean dynamicBoolCallback(gpointer);
-
         struct Context {
             std::chrono::microseconds delay;
-            bool dispatching;
-            Base* wrap;
             GRefPtr<GCancellable> cancellable;
-        };
+            bool dispatching;
+        } m_context;
 
+        friend class GSourceWrap;
         template<typename T>
-        using CallbackContext = std::pair<std::function<T>, Context&>;
-        template<typename T>
-        static void destroyCallbackContext(gpointer);
-
-        GRefPtr<GSource> m_source;
-        Context m_context;
+        using CallbackContext = CallbackContextType<T, Context&>;
     };
 
 public:
-    class Static : public Base {
+    class Static : public DelayBased {
     public:
         Static() = default;
         Static(const char* name, std::function<void ()>&&, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
@@ -80,7 +81,7 @@ public:
         void cancel();
     };
 
-    class Dynamic : public Base {
+    class Dynamic : public DelayBased {
     public:
         Dynamic(const char* name, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
 
@@ -98,7 +99,7 @@ public:
         using CallbackContext = CallbackContextType<void (), void*>;
     };
 
-    class Socket : public PBase {
+    class Socket : public Base {
     public:
         Socket() = default;
         void initialize(const char* name, std::function<bool (GIOCondition)>&&, GSocket*, GIOCondition, int priority = G_PRIORITY_DEFAULT_IDLE, GMainContext* = nullptr);
