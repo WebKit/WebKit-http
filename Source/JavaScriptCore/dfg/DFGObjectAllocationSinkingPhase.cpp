@@ -471,19 +471,8 @@ private:
                     SSACalculator::Variable* variable = phiDef->variable();
                     Node* allocation = indexToNode[variable->index()];
                     
-                    Node* originalIncoming = mapping.get(allocation);
-                    Node* incoming;
-                    if (originalIncoming == allocation) {
-                        // If we have a Phi that combines materializations with the original
-                        // phantom object, then the path with the phantom object must materialize.
-                        
-                        incoming = createMaterialize(allocation, upsilonWhere);
-                        m_insertionSet.insert(upsilonInsertionPoint, incoming);
-                        insertOSRHintsForUpdate(
-                            m_insertionSet, upsilonInsertionPoint, upsilonOrigin,
-                            availabilityCalculator.m_availability, originalIncoming, incoming);
-                    } else
-                        incoming = originalIncoming;
+                    Node* incoming = mapping.get(allocation);
+                    DFG_ASSERT(m_graph, incoming, incoming != allocation);
                     
                     m_insertionSet.insertNode(
                         upsilonInsertionPoint, SpecNone, Upsilon, upsilonOrigin,
@@ -728,8 +717,17 @@ private:
                             m_localMapping.set(location, value.node());
                     },
                     [&] (PromotedHeapLocation location) {
-                        if (m_sinkCandidates.contains(location.base()))
-                            node->replaceWith(resolve(block, location));
+                        if (m_sinkCandidates.contains(location.base())) {
+                            switch (node->op()) {
+                            case CheckStructure:
+                                node->convertToCheckStructureImmediate(resolve(block, location));
+                                break;
+
+                            default:
+                                node->replaceWith(resolve(block, location));
+                                break;
+                            }
+                        }
                     });
             }
             
@@ -786,7 +784,8 @@ private:
             break;
 
         case NewFunction:
-            sinkCandidate();
+            if (!node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid())
+                sinkCandidate();
             m_graph.doToChildren(
                 node,
                 [&] (Edge edge) {

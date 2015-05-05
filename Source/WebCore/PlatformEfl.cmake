@@ -17,6 +17,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/surfaces/glx"
     "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
+    "${WEBCORE_DIR}/platform/graphics/x11"
     "${WEBCORE_DIR}/platform/linux"
     "${WEBCORE_DIR}/platform/mediastream/openwebrtc"
     "${WEBCORE_DIR}/platform/mock/mediasource"
@@ -107,6 +108,7 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
     platform/graphics/ImageSource.cpp
+    platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
 
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
@@ -195,6 +197,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/texmap/coordinated/TiledBackingStore.cpp
     platform/graphics/texmap/coordinated/UpdateAtlas.cpp
 
+    platform/graphics/x11/PlatformDisplayX11.cpp
+
     platform/image-decoders/ImageDecoder.cpp
 
     platform/image-decoders/bmp/BMPImageDecoder.cpp
@@ -251,7 +255,7 @@ list(APPEND WebCore_SOURCES
     platform/text/enchant/TextCheckerEnchant.cpp
 )
 
-if (WTF_USE_GEOCLUE2)
+if (USE_GEOCLUE2)
     list(APPEND WebCore_SOURCES
         ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c
     )
@@ -386,14 +390,14 @@ if (ENABLE_VIDEO)
     endif ()
 endif ()
 
-if (WTF_USE_EGL)
+if (USE_EGL)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         ${EGL_INCLUDE_DIR}
         "${WEBCORE_DIR}/platform/graphics/surfaces/egl"
     )
 endif ()
 
-if (WTF_USE_EGL)
+if (USE_EGL)
     list(APPEND WebCore_SOURCES
         platform/graphics/surfaces/egl/EGLConfigSelector.cpp
         platform/graphics/surfaces/egl/EGLContext.cpp
@@ -408,7 +412,7 @@ else ()
     )
 endif ()
 
-if (WTF_USE_OPENGL_ES_2)
+if (USE_OPENGL_ES_2)
     list(APPEND WebCore_SOURCES
         platform/graphics/opengl/Extensions3DOpenGLES.cpp
         platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
@@ -422,7 +426,7 @@ else ()
     )
 endif ()
 
-if (WTF_USE_EGL)
+if (USE_EGL)
     list(APPEND WebCore_LIBRARIES
         ${EGL_LIBRARY}
     )

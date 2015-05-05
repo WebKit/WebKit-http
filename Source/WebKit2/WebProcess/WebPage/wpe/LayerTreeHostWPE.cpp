@@ -38,7 +38,7 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
 #include <WebCore/Settings.h>
-#include <WebCore/WaylandDisplayWPE.h>
+#include <WebCore/PlatformDisplayWayland.h>
 #include <cstdlib>
 #include <wtf/CurrentTime.h>
 
@@ -101,11 +101,11 @@ void LayerTreeHostWPE::initialize()
     m_rootLayer->addChild(m_nonCompositedContentLayer.get());
     m_nonCompositedContentLayer->setNeedsDisplay();
 
-    RELEASE_ASSERT(WaylandDisplay::instance());
-    m_waylandSurface = WaylandDisplay::instance()->createSurface(m_webPage->size());
+    RELEASE_ASSERT(is<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()));
+    m_waylandSurface = downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createSurface(m_webPage->size());
     if (!m_waylandSurface)
         return;
-    WaylandDisplay::instance()->registerSurface(m_waylandSurface->surface());
+    downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).registerSurface(m_waylandSurface->surface());
 
     m_layerTreeContext.contextID = m_webPage->pageID();
 

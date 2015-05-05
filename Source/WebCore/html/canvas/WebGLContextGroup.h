@@ -28,7 +28,6 @@
 
 #include "WebGLRenderingContextBase.h"
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -42,7 +41,7 @@ typedef int ExceptionCode;
 
 class WebGLContextGroup final : public RefCounted<WebGLContextGroup> {
 public:
-    static PassRefPtr<WebGLContextGroup> create();
+    static Ref<WebGLContextGroup> create();
     ~WebGLContextGroup();
 
     void addContext(WebGLRenderingContextBase*);

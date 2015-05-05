@@ -185,23 +185,22 @@ void CaptionUserPreferencesMediaAF::updateTimerFired()
 
 void CaptionUserPreferencesMediaAF::setInterestedInCaptionPreferenceChanges()
 {
+    if (m_listeningForPreferenceChanges)
+        return;
+
     if (!MediaAccessibilityLibrary())
         return;
 
     if (!kMAXCaptionAppearanceSettingsChangedNotification)
         return;
 
-    if (!m_listeningForPreferenceChanges) {
-        m_listeningForPreferenceChanges = true;
-        m_registeringForNotification = true;
-        CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, userCaptionPreferencesChangedNotificationCallback, kMAXCaptionAppearanceSettingsChangedNotification, 0, CFNotificationSuspensionBehaviorCoalesce);
-        m_registeringForNotification = false;
-    }
+    m_listeningForPreferenceChanges = true;
+    m_registeringForNotification = true;
+    CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, userCaptionPreferencesChangedNotificationCallback, kMAXCaptionAppearanceSettingsChangedNotification, 0, CFNotificationSuspensionBehaviorCoalesce);
+    m_registeringForNotification = false;
 
     // Generating and registering the caption stylesheet can be expensive and this method is called indirectly when the parser creates an audio or
     // video element, so do it after a brief pause.
-    if (m_updateStyleSheetTimer.isActive())
-        m_updateStyleSheetTimer.stop();
     m_updateStyleSheetTimer.startOneShot(0);
 }
 
@@ -663,9 +662,10 @@ int CaptionUserPreferencesMediaAF::textTrackSelectionScore(TextTrack* track, HTM
         if (audioTrackLanguage.isEmpty())
             return 0;
 
+        bool exactMatch;
         if (trackHasOnlyForcedSubtitles) {
             languageList.append(audioTrackLanguage);
-            size_t offset = indexOfBestMatchingLanguageInList(textTrackLanguage, languageList);
+            size_t offset = indexOfBestMatchingLanguageInList(textTrackLanguage, languageList, exactMatch);
 
             // Only consider a forced-only track if it IS in the same language as the primary audio track.
             if (offset)
@@ -674,12 +674,12 @@ int CaptionUserPreferencesMediaAF::textTrackSelectionScore(TextTrack* track, HTM
             languageList.append(defaultLanguage());
 
             // Only enable a text track if the current audio track is NOT in the user's preferred language ...
-            size_t offset = indexOfBestMatchingLanguageInList(audioTrackLanguage, languageList);
+            size_t offset = indexOfBestMatchingLanguageInList(audioTrackLanguage, languageList, exactMatch);
             if (!offset)
                 return 0;
 
             // and the text track matches the user's preferred language.
-            offset = indexOfBestMatchingLanguageInList(textTrackLanguage, languageList);
+            offset = indexOfBestMatchingLanguageInList(textTrackLanguage, languageList, exactMatch);
             if (offset)
                 return 0;
         }

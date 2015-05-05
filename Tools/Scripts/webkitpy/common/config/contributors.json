@@ -348,6 +348,14 @@
             "kbalazs"
          ]
       },
+      "Basile Clement" : {
+        "emails" : [
+            "basile_clement@apple.com"
+        ],
+        "nicks" : [
+            "elarnon"
+        ]
+      },
       "Bear Travis" : {
          "emails" : [
             "betravis@adobe.com"
@@ -4372,6 +4380,7 @@
       "Mario Sanchez Prada" : {
          "emails" : [
             "mario@webkit.org",
+            "mario@endlessm.com",
             "mario.prada@samsung.com",
             "msanchez@igalia.com"
          ],

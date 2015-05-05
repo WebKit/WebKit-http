@@ -4061,12 +4061,20 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return YES;
 }
 
+- (CGColorRef)_viewBackgroundColor
+{
+    if (self.drawsBackground && !self.drawsTransparentBackground) {
+        if (NSColor *backgroundColor = self._pageExtendedBackgroundColor)
+            return backgroundColor.CGColor;
+        return CGColorGetConstantColor(kCGColorWhite);
+    }
+
+    return CGColorGetConstantColor(kCGColorClear);
+}
+
 - (void)updateLayer
 {
-    if ([self drawsBackground] && ![self drawsTransparentBackground])
-        self.layer.backgroundColor = CGColorGetConstantColor(kCGColorWhite);
-    else
-        self.layer.backgroundColor = CGColorGetConstantColor(kCGColorClear);
+    self.layer.backgroundColor = self._viewBackgroundColor;
 
     // If asynchronous geometry updates have been sent by forceAsyncDrawingAreaSizeUpdate,
     // then subsequent calls to setFrameSize should not result in us waiting for the did
@@ -4139,40 +4147,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     if (!getLULookupDefinitionModuleClass())
         return;
     [getLULookupDefinitionModuleClass() hideDefinition];
-}
-
-- (CGFloat)minimumLayoutWidth
-{
-    static BOOL loggedDeprecationWarning = NO;
-
-    if (!loggedDeprecationWarning) {
-        NSLog(@"Please use minimumSizeForAutoLayout instead of minimumLayoutWidth.");
-        loggedDeprecationWarning = YES;
-    }
-
-    return self.minimumSizeForAutoLayout.width;
-}
-
-- (void)setMinimumLayoutWidth:(CGFloat)minimumLayoutWidth
-{
-    static BOOL loggedDeprecationWarning = NO;
-
-    if (!loggedDeprecationWarning) {
-        NSLog(@"Please use setMinimumSizeForAutoLayout: instead of setMinimumLayoutWidth:.");
-        loggedDeprecationWarning = YES;
-    }
-
-    [self setMinimumWidthForAutoLayout:minimumLayoutWidth];
-}
-
-- (CGFloat)minimumWidthForAutoLayout
-{
-    return self.minimumSizeForAutoLayout.width;
-}
-
-- (void)setMinimumWidthForAutoLayout:(CGFloat)minimumLayoutWidth
-{
-    self.minimumSizeForAutoLayout = NSMakeSize(minimumLayoutWidth, self.minimumSizeForAutoLayout.height);
 }
 
 - (NSSize)minimumSizeForAutoLayout

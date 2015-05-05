@@ -28,7 +28,6 @@
 
 #include "WebGLSharedObject.h"
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -37,7 +36,7 @@ class WebGLTransformFeedback final : public WebGLSharedObject {
 public:
     virtual ~WebGLTransformFeedback();
 
-    static PassRefPtr<WebGLTransformFeedback> create(WebGLRenderingContextBase*);
+    static Ref<WebGLTransformFeedback> create(WebGLRenderingContextBase*);
 
 protected:
     WebGLTransformFeedback(WebGLRenderingContextBase*);

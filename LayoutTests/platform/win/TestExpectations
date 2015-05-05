@@ -239,7 +239,6 @@ http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
 crypto/subtle/rsa-indexeddb.html [ Skip ]
-inspector-protocol/indexeddb/basics.html [ Skip ]
 fast/history/page-cache-indexed-closed-db.html [ Skip ]
 fast/history/page-cache-indexed-opened-db.html [ Skip ]
 fast/history/page-cache-webdatabase-no-transaction-db.html [ Skip ]
@@ -1843,6 +1842,7 @@ webkit.org/b/140705 imported/mozilla/svg/stroke-width-percentage-02a.svg [ Image
 webkit.org/b/116564 transitions/svg-text-shadow-transition.html [ Failure ]
 webkit.org/b/117322 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure ]
 webkit.org/b/117322 svg/filters/feDisplacementMap-filterUnits.svg [ ImageOnlyFailure ]
+webkit.org/b/144417 svg/filters/sourceAlpha-input-filter-effect.html [ ImageOnlyFailure ]
 
 # Subpixel rendering: borders are reporting float values.
 webkit.org/b/128061 svg/zoom/page/zoom-img-preserveAspectRatio-support-1.html [ Failure ]
@@ -2433,6 +2433,7 @@ webkit.org/b/59062 [ Release ] fast/images/animated-gif-restored-from-bfcache.ht
 webkit.org/b/59062 [ Debug ] fast/images/animated-gif-restored-from-bfcache.html [ Skip ] # Timeout
 [ Debug ] fast/images/animated-gif-iframe-webkit-transform.html [ Skip ] # Timeout
 [ Debug ] fast/images/animated-gif-webkit-transform.html [ Skip ] # Timeout
+fast/images/animated-gif-body-outside-viewport.html [ Skip ] # Timeout
 fast/images/animated-gif-window-resizing.html [ Skip ] # Timeout
 fast/images/animated-gif-zooming.html [ Skip ] # Timeout
 webkit.org/b/140211 fast/xsl/sort-locale.xml [ Failure ]
@@ -3082,6 +3083,9 @@ http/tests/contentfiltering [ Skip ]
 [ Release ] inspector-protocol/layers/layers-compositing-reasons.html [ Skip ] # Timeouts
 [ Release ] inspector-protocol/layers/layers-for-node.html [ Skip ] # Timeouts
 [ Release ] inspector-protocol/layers/layers-generated-content.html  [ Skip ] # Timeouts
+
+# Windows doesn't have API for disabling meta refresh
+loader/meta-refresh-disabled.html [ Skip ]
 
 # Started failing recently.
 webkit.org/b/143275 accessibility/aria-hidden-hides-all-elements.html [ Pass Failure ]

@@ -130,6 +130,8 @@ AVOutputDeviceMenuControllerType *MediaPlaybackTargetPickerMac::devicePicker()
     return m_outputDeviceMenuController.get();
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 void MediaPlaybackTargetPickerMac::showPlaybackTargetPicker(const FloatRect& location, bool checkActiveRoute)
 {
     if (!m_client)
@@ -142,6 +144,7 @@ void MediaPlaybackTargetPickerMac::showPlaybackTargetPicker(const FloatRect& loc
     } else
         [picker showMenuForRect:location appearanceName:NSAppearanceNameVibrantLight];
 }
+#pragma clang diagnostic pop
 
 void MediaPlaybackTargetPickerMac::addPendingAction(PendingActionFlags action)
 {

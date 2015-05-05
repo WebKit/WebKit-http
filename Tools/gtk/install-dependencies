@@ -75,6 +75,7 @@ function installDependenciesWithApt {
         libgtk-3-dev \
         libgudev-1.0-dev \
         libharfbuzz-dev \
+        libhyphen-dev \
         libicu-dev \
         libjpeg-dev \
         libmpg123-dev \
@@ -179,6 +180,7 @@ function installDependenciesWithPacman {
         grep \
         groff \
         gzip \
+        hyphen \
         libtool \
         m4 \
         make \
@@ -209,6 +211,7 @@ function installDependenciesWithPacman {
         mpg123 \
         opus \
         pango \
+        libnotify \
         libpng \
         libpulse \
         librsvg \
@@ -312,12 +315,14 @@ function installFedoraDependencies {
         gtk2-devel \
         gtk3-devel \
         harfbuzz-devel \
+        hyphen-devel \
 	json-glib-devel \
         libXt-devel \
         libXtst-devel \
         libgudev1-devel \
         libicu-devel \
         libjpeg-turbo-devel \
+        libnotify-devel \
         libpng-devel \
         libsecret-devel \
         libsoup-devel \

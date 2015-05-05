@@ -33,7 +33,6 @@ list(APPEND NetworkProcess_SOURCES
 
 list(APPEND WebKit2_SOURCES
     NetworkProcess/soup/NetworkProcessSoup.cpp
-    NetworkProcess/soup/NetworkResourceLoadSchedulerSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
     NetworkProcess/wpe/NetworkProcessMainWPE.cpp
     Platform/IPC/unix/AttachmentUnix.cpp

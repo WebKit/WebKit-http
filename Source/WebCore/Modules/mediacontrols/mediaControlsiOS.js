@@ -252,6 +252,7 @@ ControllerIOS.prototype = {
             buffered = Math.max(bufferedRanges.end(bufferedRanges.length - 1), buffered);
 
         buffered /= this.video.duration;
+        buffered = Math.max(buffered, played);
 
         var ctx = this.video.ownerDocument.getCSSCanvasContext('2d', this.timelineContextName, width, height);
 
@@ -380,6 +381,8 @@ ControllerIOS.prototype = {
             this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideControlsDelay);
         } else if (!this.canPlay())
             this.hideControls();
+
+        return true;
     },
 
     handlePanelTouchStart: function(event) {

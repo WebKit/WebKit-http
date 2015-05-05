@@ -34,15 +34,12 @@
 #include "OpenGLShims.h"
 #endif
 
-#if PLATFORM(GTK)
-#include "GtkUtilities.h"
-#if PLATFORM(WAYLAND) && !defined(GTK_API_VERSION_2)
-#include "WaylandDisplay.h"
-#endif
+#if PLATFORM(X11)
+#include "PlatformDisplayX11.h"
 #endif
 
-#if PLATFORM(WPE)
-#include "WaylandDisplayWPE.h"
+#if PLATFORM(WAYLAND)
+#include "PlatformDisplayWayland.h"
 #endif
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
@@ -68,17 +65,14 @@ static EGLDisplay sharedEGLDisplay()
     static bool initialized = false;
     if (!initialized) {
         initialized = true;
-#if PLATFORM(WPE)
-        if (WaylandDisplay::instance())
-            gSharedEGLDisplay = eglGetDisplay(WaylandDisplay::instance()->nativeDisplay());
-        else
-#elif PLATFORM(GTK) && PLATFORM(WAYLAND) && !defined(GTK_API_VERSION_2)
-        if (getDisplaySystemType() == DisplaySystemType::Wayland && WaylandDisplay::instance())
-            gSharedEGLDisplay = eglGetDisplay(WaylandDisplay::instance()->nativeDisplay());
+
+#if PLATFORM(WAYLAND)
+        if (is<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()))
+            gSharedEGLDisplay = eglGetDisplay(downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).native());
         else // Note that this branch continutes outside this #if-guarded segment.
 #endif
 #if PLATFORM(X11)
-            gSharedEGLDisplay = eglGetDisplay(GLContext::sharedX11Display());
+            gSharedEGLDisplay = eglGetDisplay(downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native());
 #else
             gSharedEGLDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 #endif
@@ -194,7 +188,8 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createPixmapContext(EGLContext shari
     if (!eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE, &depth))
         return nullptr;
 
-    Pixmap pixmap = XCreatePixmap(sharedX11Display(), DefaultRootWindow(sharedX11Display()), 1, 1, depth);
+    Display* x11Display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native();
+    Pixmap pixmap = XCreatePixmap(x11Display, DefaultRootWindow(x11Display), 1, 1, depth);
     if (!pixmap)
         return nullptr;
 
