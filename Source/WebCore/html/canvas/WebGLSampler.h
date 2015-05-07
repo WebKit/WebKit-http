@@ -28,7 +28,6 @@
 
 #include "WebGLSharedObject.h"
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -37,7 +36,7 @@ class WebGLSampler final : public WebGLSharedObject {
 public:
     virtual ~WebGLSampler();
 
-    static PassRefPtr<WebGLSampler> create(WebGLRenderingContextBase*);
+    static Ref<WebGLSampler> create(WebGLRenderingContextBase*);
 
 protected:
     WebGLSampler(WebGLRenderingContextBase*);

@@ -28,6 +28,7 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
+#include "ContentExtensionsDebugging.h"
 #include "NFA.h"
 #include <wtf/Vector.h>
 
@@ -45,10 +46,15 @@ public:
 
     void addPattern(uint64_t patternId, const Vector<Term>& pattern);
 
-    void processNFAs(std::function<void(NFA&&)> handler) const;
-    void clear();
+    void processNFAs(size_t maxNFASize, std::function<void(NFA&&)> handler);
+    bool isEmpty();
 
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
     size_t memoryUsed() const;
+#endif
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+    void print() const;
+#endif
     
 private:
     std::unique_ptr<PrefixTreeVertex> m_prefixTreeRoot;

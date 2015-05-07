@@ -42,71 +42,54 @@ static GMainContext* threadDefaultContext()
 RunLoop::RunLoop()
 {
     if (!isMainThread()) {
-        m_runLoopContext = adoptGRef(g_main_context_new());
-        g_main_context_push_thread_default(m_runLoopContext.get());
+        m_mainContext = adoptGRef(g_main_context_new());
+        g_main_context_push_thread_default(m_mainContext.get());
     } else
-        m_runLoopContext = threadDefaultContext();
+        m_mainContext = threadDefaultContext();
 
-    ASSERT(m_runLoopContext);
-    GRefPtr<GMainLoop> innermostLoop = adoptGRef(g_main_loop_new(m_runLoopContext.get(), FALSE));
+    ASSERT(m_mainContext);
+    GRefPtr<GMainLoop> innermostLoop = adoptGRef(g_main_loop_new(m_mainContext.get(), FALSE));
     ASSERT(innermostLoop);
-    m_runLoopMainLoops.append(innermostLoop);
+    m_mainLoops.append(innermostLoop);
 
     m_workSource.initialize("[WebKit] RunLoop work", std::bind(&RunLoop::performWork, this),
-        G_PRIORITY_HIGH + 30, m_runLoopContext.get());
+        G_PRIORITY_HIGH + 30, m_mainContext.get());
 }
 
 RunLoop::~RunLoop()
 {
-    for (int i = m_runLoopMainLoops.size() - 1; i >= 0; --i) {
-        if (!g_main_loop_is_running(m_runLoopMainLoops[i].get()))
+    for (int i = m_mainLoops.size() - 1; i >= 0; --i) {
+        if (!g_main_loop_is_running(m_mainLoops[i].get()))
             continue;
-        g_main_loop_quit(m_runLoopMainLoops[i].get());
+        g_main_loop_quit(m_mainLoops[i].get());
     }
 }
 
 void RunLoop::run()
 {
-    RunLoop& mainRunLoop = RunLoop::current();
-    GMainLoop* innermostLoop = mainRunLoop.innermostLoop();
+    RunLoop& runLoop = RunLoop::current();
+
+    // The innermost main loop should always be there.
+    ASSERT(!runLoop.m_mainLoops.isEmpty());
+
+    GMainLoop* innermostLoop = runLoop.m_mainLoops[0].get();
     if (!g_main_loop_is_running(innermostLoop)) {
         g_main_loop_run(innermostLoop);
         return;
     }
 
     // Create and run a nested loop if the innermost one was already running.
-    GMainLoop* nestedMainLoop = g_main_loop_new(0, FALSE);
-    mainRunLoop.pushNestedMainLoop(nestedMainLoop);
+    GMainLoop* nestedMainLoop = g_main_loop_new(runLoop.m_mainContext.get(), FALSE);
+    runLoop.m_mainLoops.append(adoptGRef(nestedMainLoop));
     g_main_loop_run(nestedMainLoop);
-    mainRunLoop.popNestedMainLoop();
-}
-
-GMainLoop* RunLoop::innermostLoop()
-{
-    // The innermost main loop should always be there.
-    ASSERT(!m_runLoopMainLoops.isEmpty());
-    return m_runLoopMainLoops[0].get();
-}
-
-void RunLoop::pushNestedMainLoop(GMainLoop* nestedLoop)
-{
-    // The innermost main loop should always be there.
-    ASSERT(!m_runLoopMainLoops.isEmpty());
-    m_runLoopMainLoops.append(adoptGRef(nestedLoop));
-}
-
-void RunLoop::popNestedMainLoop()
-{
-    // The innermost main loop should always be there.
-    ASSERT(!m_runLoopMainLoops.isEmpty());
-    m_runLoopMainLoops.removeLast();
+    runLoop.m_mainLoops.removeLast();
 }
 
 void RunLoop::stop()
 {
     // The innermost main loop should always be there.
-    ASSERT(!m_runLoopMainLoops.isEmpty());
-    GRefPtr<GMainLoop> lastMainLoop = m_runLoopMainLoops.last();
+    ASSERT(!m_mainLoops.isEmpty());
+    GRefPtr<GMainLoop> lastMainLoop = m_mainLoops.last();
     if (g_main_loop_is_running(lastMainLoop.get()))
         g_main_loop_quit(lastMainLoop.get());
 }
@@ -114,14 +97,14 @@ void RunLoop::stop()
 void RunLoop::wakeUp()
 {
     m_workSource.schedule();
-    g_main_context_wakeup(m_runLoopContext.get());
+    g_main_context_wakeup(m_mainContext.get());
 }
 
 RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
     : m_runLoop(runLoop)
     , m_fireInterval(0)
     , m_repeating(false)
-    , m_timerSource("[WebKit] RunLoop::Timer", std::bind(&RunLoop::TimerBase::timerFired, this), G_PRIORITY_HIGH + 30, m_runLoop.m_runLoopContext.get())
+    , m_timerSource("[WebKit] RunLoop::Timer", std::bind(&RunLoop::TimerBase::timerFired, this), G_PRIORITY_HIGH + 30, m_runLoop.m_mainContext.get())
 {
 }
 

@@ -31,7 +31,6 @@
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/FunctionDispatcher.h>
-#include <wtf/Functional.h>
 #include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Threading.h>
@@ -161,12 +160,9 @@ private:
 #elif USE(GLIB)
 public:
     static gboolean queueWork(RunLoop*);
-    GMainLoop* innermostLoop();
-    void pushNestedMainLoop(GMainLoop*);
-    void popNestedMainLoop();
 private:
-    GRefPtr<GMainContext> m_runLoopContext;
-    Vector<GRefPtr<GMainLoop>> m_runLoopMainLoops;
+    GRefPtr<GMainContext> m_mainContext;
+    Vector<GRefPtr<GMainLoop>> m_mainLoops;
     GSourceWrap::Static m_workSource;
 #endif
 };

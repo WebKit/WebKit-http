@@ -65,6 +65,7 @@
 #import "WKStringCF.h"
 #import "WKTextInputWindowController.h"
 #import "WKViewInternal.h"
+#import "WKViewLayoutStrategy.h"
 #import "WKViewPrivate.h"
 #import "WKWebView.h"
 #import "WebBackForwardList.h"
@@ -240,7 +241,6 @@ struct WKViewInterpretKeyEventsParameters {
 
     NSRect _windowBottomCornerIntersectionRect;
     
-    unsigned _frameSizeUpdatesDisabledCount;
     BOOL _shouldDeferViewInWindowChanges;
     NSWindow *_targetWindowForMovePreparation;
 
@@ -268,7 +268,9 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _ignoresNonWheelEvents;
     BOOL _ignoresAllEvents;
     BOOL _allowsBackForwardNavigationGestures;
-    BOOL _automaticallyComputesFixedLayoutSizeFromViewScale;
+
+    RetainPtr<WKViewLayoutStrategy> _layoutStrategy;
+    CGSize _minimumViewSize;
 
     RetainPtr<CALayer> _rootLayer;
 
@@ -386,6 +388,7 @@ struct WKViewInterpretKeyEventsParameters {
     [_data->_actionMenuController willDestroyView:self];
     [_data->_immediateActionController willDestroyView:self];
 #endif
+    [_data->_layoutStrategy willDestroyView:self];
 
     _data->_page->close();
 
@@ -514,11 +517,15 @@ struct WKViewInterpretKeyEventsParameters {
 - (void)viewWillStartLiveResize
 {
     _data->_page->viewWillStartLiveResize();
+
+    [_data->_layoutStrategy willStartLiveResize];
 }
 
 - (void)viewDidEndLiveResize
 {
     _data->_page->viewWillEndLiveResize();
+
+    [_data->_layoutStrategy didEndLiveResize];
 }
 
 - (BOOL)isFlipped
@@ -554,20 +561,7 @@ struct WKViewInterpretKeyEventsParameters {
 {
     [super setFrameSize:size];
 
-    if (![self frameSizeUpdatesDisabled]) {
-        if (_data->_clipsToVisibleRect)
-            [self _updateViewExposedRect];
-        [self _setDrawingAreaSize:size];
-        if (_data->_automaticallyComputesFixedLayoutSizeFromViewScale)
-            [self _updateAutomaticallyComputedFixedLayoutSize];
-    }
-}
-
-- (void)_updateAutomaticallyComputedFixedLayoutSize
-{
-    ASSERT(_data->_automaticallyComputesFixedLayoutSizeFromViewScale);
-    CGFloat inverseScale = 1 / _data->_page->viewScaleFactor();
-    [self _setFixedLayoutSize:CGSizeMake(self.frame.size.width * inverseScale, self.frame.size.height * inverseScale)];
+    [_data->_layoutStrategy didChangeFrameSize];
 }
 
 - (void)_updateWindowAndViewFrames
@@ -3824,6 +3818,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     _data->_needsViewFrameInWindowCoordinates = _data->_page->preferences().pluginsEnabled();
 
+    _data->_layoutStrategy = [WKViewLayoutStrategy layoutStrategyWithPage:*_data->_page view:self mode:kWKLayoutModeViewSize];
+
     [self _registerDraggedTypes];
 
     self.wantsLayer = YES;
@@ -4002,24 +3998,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
-- (void)_setAutomaticallyComputesFixedLayoutSizeFromViewScale:(BOOL)automaticallyComputesFixedLayoutSizeFromViewScale
-{
-    if (_data->_automaticallyComputesFixedLayoutSizeFromViewScale == automaticallyComputesFixedLayoutSizeFromViewScale)
-        return;
-
-    _data->_automaticallyComputesFixedLayoutSizeFromViewScale = automaticallyComputesFixedLayoutSizeFromViewScale;
-
-    if (!_data->_automaticallyComputesFixedLayoutSizeFromViewScale)
-        return;
-
-    [self _updateAutomaticallyComputedFixedLayoutSize];
-}
-
-- (BOOL)_automaticallyComputesFixedLayoutSizeFromViewScale
-{
-    return _data->_automaticallyComputesFixedLayoutSizeFromViewScale;
-}
-
 @end
 
 @implementation WKView (Private)
@@ -4061,12 +4039,20 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return YES;
 }
 
+- (CGColorRef)_viewBackgroundColor
+{
+    if (self.drawsBackground && !self.drawsTransparentBackground) {
+        if (NSColor *backgroundColor = self._pageExtendedBackgroundColor)
+            return backgroundColor.CGColor;
+        return CGColorGetConstantColor(kCGColorWhite);
+    }
+
+    return CGColorGetConstantColor(kCGColorClear);
+}
+
 - (void)updateLayer
 {
-    if ([self drawsBackground] && ![self drawsTransparentBackground])
-        self.layer.backgroundColor = CGColorGetConstantColor(kCGColorWhite);
-    else
-        self.layer.backgroundColor = CGColorGetConstantColor(kCGColorClear);
+    self.layer.backgroundColor = self._viewBackgroundColor;
 
     // If asynchronous geometry updates have been sent by forceAsyncDrawingAreaSizeUpdate,
     // then subsequent calls to setFrameSize should not result in us waiting for the did
@@ -4114,24 +4100,17 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)disableFrameSizeUpdates
 {
-    _data->_frameSizeUpdatesDisabledCount++;
+    [_data->_layoutStrategy disableFrameSizeUpdates];
 }
 
 - (void)enableFrameSizeUpdates
 {
-    if (!_data->_frameSizeUpdatesDisabledCount)
-        return;
-    
-    if (!(--_data->_frameSizeUpdatesDisabledCount)) {
-        if (_data->_clipsToVisibleRect)
-            [self _updateViewExposedRect];
-        [self _setDrawingAreaSize:[self frame].size];
-    }
+    [_data->_layoutStrategy enableFrameSizeUpdates];
 }
 
 - (BOOL)frameSizeUpdatesDisabled
 {
-    return _data->_frameSizeUpdatesDisabledCount > 0;
+    return [_data->_layoutStrategy frameSizeUpdatesDisabled];
 }
 
 + (void)hideWordDefinitionWindow
@@ -4139,40 +4118,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     if (!getLULookupDefinitionModuleClass())
         return;
     [getLULookupDefinitionModuleClass() hideDefinition];
-}
-
-- (CGFloat)minimumLayoutWidth
-{
-    static BOOL loggedDeprecationWarning = NO;
-
-    if (!loggedDeprecationWarning) {
-        NSLog(@"Please use minimumSizeForAutoLayout instead of minimumLayoutWidth.");
-        loggedDeprecationWarning = YES;
-    }
-
-    return self.minimumSizeForAutoLayout.width;
-}
-
-- (void)setMinimumLayoutWidth:(CGFloat)minimumLayoutWidth
-{
-    static BOOL loggedDeprecationWarning = NO;
-
-    if (!loggedDeprecationWarning) {
-        NSLog(@"Please use setMinimumSizeForAutoLayout: instead of setMinimumLayoutWidth:.");
-        loggedDeprecationWarning = YES;
-    }
-
-    [self setMinimumWidthForAutoLayout:minimumLayoutWidth];
-}
-
-- (CGFloat)minimumWidthForAutoLayout
-{
-    return self.minimumSizeForAutoLayout.width;
-}
-
-- (void)setMinimumWidthForAutoLayout:(CGFloat)minimumLayoutWidth
-{
-    self.minimumSizeForAutoLayout = NSMakeSize(minimumLayoutWidth, self.minimumSizeForAutoLayout.height);
 }
 
 - (NSSize)minimumSizeForAutoLayout
@@ -4402,23 +4347,16 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (WKLayoutMode)_layoutMode
 {
-    if (_data->_page->useFixedLayout()) {
-#if PLATFORM(MAC)
-        if (_data->_automaticallyComputesFixedLayoutSizeFromViewScale)
-            return kWKLayoutModeDynamicSizeComputedFromViewScale;
-#endif
-        return kWKLayoutModeFixedSize;
-    }
-    return kWKLayoutModeViewSize;
+    return [_data->_layoutStrategy layoutMode];
 }
 
 - (void)_setLayoutMode:(WKLayoutMode)layoutMode
 {
-    _data->_page->setUseFixedLayout(layoutMode == kWKLayoutModeFixedSize || layoutMode == kWKLayoutModeDynamicSizeComputedFromViewScale);
+    if (layoutMode == [_data->_layoutStrategy layoutMode])
+        return;
 
-#if PLATFORM(MAC)
-    self._automaticallyComputesFixedLayoutSizeFromViewScale = (layoutMode == kWKLayoutModeDynamicSizeComputedFromViewScale);
-#endif
+    [_data->_layoutStrategy willChangeLayoutStrategy];
+    _data->_layoutStrategy = [WKViewLayoutStrategy layoutStrategyWithPage:*_data->_page view:self mode:layoutMode];
 }
 
 - (CGSize)_fixedLayoutSize
@@ -4442,7 +4380,18 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         [NSException raise:NSInvalidArgumentException format:@"View scale should be a positive number"];
 
     _data->_page->scaleView(viewScale);
-    [self _updateAutomaticallyComputedFixedLayoutSize];
+    [_data->_layoutStrategy didChangeViewScale];
+}
+
+- (void)_setMinimumViewSize:(CGSize)minimumViewSize
+{
+    _data->_minimumViewSize = minimumViewSize;
+    [_data->_layoutStrategy didChangeMinimumViewSize];
+}
+
+- (CGSize)_minimumViewSize
+{
+    return _data->_minimumViewSize;
 }
 
 - (void)_dispatchSetTopContentInset

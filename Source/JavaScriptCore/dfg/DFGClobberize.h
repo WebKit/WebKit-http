@@ -159,6 +159,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ValueToInt32:
     case GetExecutable:
     case BottomValue:
+    case TypeOf:
         def(PureValue(node));
         return;
         
@@ -362,11 +363,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(IsFunctionLoc, MiscFields, node->child1()), node);
         return;
         
-    case TypeOf:
-        read(MiscFields);
-        def(HeapLocation(TypeOfLoc, MiscFields, node->child1()), node);
-        return;
-
     case GetById:
     case GetByIdFlush:
     case PutById:
@@ -858,6 +854,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case PhantomNewObject:
     case MaterializeNewObject:
     case PhantomNewFunction:
+    case PhantomCreateActivation:
+    case MaterializeCreateActivation:
         read(HeapObjectCount);
         write(HeapObjectCount);
         return;

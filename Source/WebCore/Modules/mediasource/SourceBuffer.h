@@ -136,17 +136,15 @@ private:
     bool canSuspendForPageCache() const override;
 
     // SourceBufferPrivateClient
-    virtual void sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const WTF::AtomicString&);
-#if ENABLE(VIDEO_TRACK)
-    virtual void sourceBufferPrivateDidReceiveInitializationSegment(SourceBufferPrivate*, const InitializationSegment&);
-    virtual void sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, PassRefPtr<MediaSample>);
-    virtual bool sourceBufferPrivateHasAudio(const SourceBufferPrivate*) const;
-    virtual bool sourceBufferPrivateHasVideo(const SourceBufferPrivate*) const;
-    virtual void sourceBufferPrivateDidBecomeReadyForMoreSamples(SourceBufferPrivate*, AtomicString trackID);
-#endif
-    virtual MediaTime sourceBufferPrivateFastSeekTimeForMediaTime(SourceBufferPrivate*, const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold);
-    virtual void sourceBufferPrivateAppendComplete(SourceBufferPrivate*, AppendResult);
-    virtual void sourceBufferPrivateDidReceiveRenderingError(SourceBufferPrivate*, int errorCode);
+    virtual void sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const WTF::AtomicString&) override;
+    virtual void sourceBufferPrivateDidReceiveInitializationSegment(SourceBufferPrivate*, const InitializationSegment&) override;
+    virtual void sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, PassRefPtr<MediaSample>) override;
+    virtual bool sourceBufferPrivateHasAudio(const SourceBufferPrivate*) const override;
+    virtual bool sourceBufferPrivateHasVideo(const SourceBufferPrivate*) const override;
+    virtual void sourceBufferPrivateDidBecomeReadyForMoreSamples(SourceBufferPrivate*, AtomicString trackID) override;
+    virtual MediaTime sourceBufferPrivateFastSeekTimeForMediaTime(SourceBufferPrivate*, const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold) override;
+    virtual void sourceBufferPrivateAppendComplete(SourceBufferPrivate*, AppendResult) override;
+    virtual void sourceBufferPrivateDidReceiveRenderingError(SourceBufferPrivate*, int errorCode) override;
 
 #if ENABLE(VIDEO_TRACK)
     // AudioTrackClient

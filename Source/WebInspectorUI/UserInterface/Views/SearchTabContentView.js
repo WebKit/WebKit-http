@@ -54,16 +54,9 @@ WebInspector.SearchTabContentView.prototype = {
         setTimeout(this.focusSearchField.bind(this));
     },
 
-    closed: function()
-    {
-        WebInspector.ContentBrowserTabContentView.prototype.closed.call(this);
-
-        this.navigationSidebarPanel.closed();
-    },
-
     canShowRepresentedObject: function(representedObject)
     {
-        return representedObject instanceof WebInspector.Resource || representedObject instanceof WebInspector.DOMTree;
+        return representedObject instanceof WebInspector.Resource || representedObject instanceof WebInspector.Script || representedObject instanceof WebInspector.DOMTree;
     },
 
     focusSearchField: function()

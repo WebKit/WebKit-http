@@ -1,3 +1,1054 @@
+2015-05-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ToT WebKit crashes while loading ES6 compatibility table
+        https://bugs.webkit.org/show_bug.cgi?id=144726
+
+        Reviewed by Filip Pizlo.
+
+        The bug was caused by parseClass superfluously avoiding to build up the string after seeing {.
+
+        Always build the identifier here as it could be a method name.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Sane chain and string watchpoints should be set in FixupPhase or the backend rather than WatchpointCollectionPhase
+        https://bugs.webkit.org/show_bug.cgi?id=144665
+
+        Reviewed by Michael Saboff.
+        
+        This is a step towards getting rid of WatchpointCollectionPhase. It's also a step towards
+        extending SaneChain to all indexing shapes.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode): Set the watchpoints here so that we don't need a case in WatchpointCollectionPhase.
+        (JSC::DFG::FixupPhase::checkArray): Clarify the need for checking the structure. We often forget why we do this instead of always using CheckArray.
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnString): Set the watchpoints here so that we don't need a case in WatchpointCollectionPhase.
+        * dfg/DFGWatchpointCollectionPhase.cpp:
+        (JSC::DFG::WatchpointCollectionPhase::handle): Remove some code.
+        (JSC::DFG::WatchpointCollectionPhase::handleStringGetByVal): Deleted.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileStringCharAt): Set the watchpoints here so that we don't need a case in WatchpointCollectionPhase.
+
+2015-04-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Introducing the Platform Abstraction Layer (PAL)
+        https://bugs.webkit.org/show_bug.cgi?id=143358
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Updated
+
+2015-05-06  Andreas Kling  <akling@apple.com>
+
+        Don't allocate a StringImpl for every Number JSValue in JSON.stringify().
+        <https://webkit.org/b/144676>
+
+        Reviewed by Darin Adler.
+
+        We were creating a new String for every number JSValue passing through the JSON stringifier.
+        These StringImpl allocations were dominating one of the Kraken JSON benchmarks.
+        Optimize this by using StringBuilder::appendECMAScriptNumber() which uses a stack buffer
+        for the conversion instead.
+
+        13% progression on Kraken/json-stringify-tinderbox.
+
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::appendStringifiedValue):
+
+2015-05-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183847.
+        https://bugs.webkit.org/show_bug.cgi?id=144691
+
+        Caused many assertion failures (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "GC has trouble with pathologically large array allocations"
+        https://bugs.webkit.org/show_bug.cgi?id=144609
+        http://trac.webkit.org/changeset/183847
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        PutGlobalVar shouldn't have an unconditional store barrier
+        https://bugs.webkit.org/show_bug.cgi?id=133104
+
+        Reviewed by Benjamin Poulain.
+        
+        We don't need a store barrier on PutGlobalVar if the value being stored can be
+        speculated to not be a cell.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        CopiedBlock::reportLiveBytes() should be totally cool with oversize blocks
+        https://bugs.webkit.org/show_bug.cgi?id=144667
+
+        Reviewed by Andreas Kling.
+        
+        We are now calling this method for oversize blocks. It had an assertion that indirectly
+        implied that the block is not oversize, because it was claiming that the number of live
+        bytes should be smaller than the non-oversize-block size.
+
+        * heap/CopiedBlockInlines.h:
+        (JSC::CopiedBlock::reportLiveBytes):
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        GC has trouble with pathologically large array allocations
+        https://bugs.webkit.org/show_bug.cgi?id=144609
+
+        Reviewed by Mark Lam.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::updateObjectCounts): Make this code less confusing.
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::copyLater): The early return for isOversize() was the bug. We still need to report these bytes as live. Otherwise the GC doesn't know that it owns this memory.
+        * jsc.cpp: Add size measuring hooks to write the largeish test.
+        (GlobalObject::finishCreation):
+        (functionGCAndSweep):
+        (functionFullGC):
+        (functionEdenGC):
+        (functionHeapSize):
+        * tests/stress/new-array-storage-array-with-size.js: Fix this so that it actually allocates ArrayStorage arrays and tests the thing it was supposed to test.
+        * tests/stress/new-largeish-contiguous-array-with-size.js: Added. This tests what the other test accidentally started testing, but does so without running your system out of memory.
+        (foo):
+        (test):
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL SwitchString slow case creates duplicate switch cases
+        https://bugs.webkit.org/show_bug.cgi?id=144634
+
+        Reviewed by Geoffrey Garen.
+        
+        The problem of duplicate switches is sufficiently annoying that I fixed the issue and also
+        added mostly-debug-only asserts to catch such issues earlier.
+
+        * bytecode/CallVariant.cpp:
+        (JSC::variantListWithVariant): Assertion to prevent similar bugs.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::switchStringRecurse): Assertion to prevent similar bugs.
+        (JSC::FTL::LowerDFGToLLVM::switchStringSlow): This is the bug.
+        * jit/BinarySwitch.cpp:
+        (JSC::BinarySwitch::BinarySwitch): Assertion to prevent similar bugs.
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall): Assertion to prevent similar bugs.
+        * tests/stress/ftl-switch-string-slow-duplicate-cases.js: Added. This tests the FTL SwitchString bug. It was previously crashing every time.
+        (foo):
+        (cat):
+
+2015-05-05  Basile Clement  <basile_clement@apple.com>
+
+        Fix debug builds after r183812
+        https://bugs.webkit.org/show_bug.cgi?id=144300
+
+        Rubber stamped by Andreas Kling and Filip Pizlo.
+
+        hasObjectMaterializationData() didn't treat MaterializeCreateActivation
+        as having materialization data, which was causing an assertion failure when
+        sinking CreateActivations on debug builds.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasObjectMaterializationData):
+
+2015-05-04  Basile Clement  <basile_clement@apple.com>
+
+        Allow CreateActivation sinking
+        https://bugs.webkit.org/show_bug.cgi?id=144300
+
+        Reviewed by Filip Pizlo.
+
+        This pursues the work started in
+        https://bugs.webkit.org/show_bug.cgi?id=144016 to expand the set of
+        allocations we are able to sink by allowing sinking of CreateActivation
+        node.
+
+        This is achieved by following closely the way NewObject is currently
+        sunk: we add a new PhantomCreateActivation node to record the initial
+        position of the CreateActivation node, new ClosureVarPLoc promoted heap
+        locations to keep track of the variables put in the activation, and a
+        new MaterializeCreateActivation node to allocate and populate the sunk
+        activation.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::convertToPutClosureVarHint):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToPhantomCreateActivation):
+        (JSC::DFG::Node::isActivationAllocation):
+        (JSC::DFG::Node::isPhantomActivationAllocation):
+        (JSC::DFG::Node::isPhantomAllocation):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::lowerNonReadingOperationsOnPhantomAllocations):
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        (JSC::DFG::ObjectAllocationSinkingPhase::createMaterialize):
+        (JSC::DFG::ObjectAllocationSinkingPhase::populateMaterialize):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGPromotedHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGPromotedHeapLocation.h:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validateCPS):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileMaterializeCreateActivation):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * tests/stress/activation-sink-osrexit.js: Added.
+        (bar):
+        (foo.set result):
+        * tests/stress/activation-sink.js: Added.
+        (bar):
+
+2015-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix stale comment.
+
+        * tests/mozilla/js1_5/Array/regress-101964.js:
+
+2015-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Large array shouldn't be slow
+        https://bugs.webkit.org/show_bug.cgi?id=144617
+
+        Rubber stamped by Mark Lam.
+
+        * tests/mozilla/js1_5/Array/regress-101964.js: 500ms isn't enough in debug mode. We don't care how long this takes so long as we run it to completion. I've raised the limit much higher.
+
+2015-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Large array shouldn't be slow
+        https://bugs.webkit.org/show_bug.cgi?id=144617
+
+        Rubber stamped by Mark Lam.
+
+        * tests/mozilla/js1_5/Array/regress-101964.js: Mozilla may have cared about this being fast a decade ago (or more), but we don't care. We've consistently found that an array implementation that punishes this case to get speed on common-case array accesses is better. This should fix some test failures on the bots.
+
+2015-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183789.
+        https://bugs.webkit.org/show_bug.cgi?id=144620
+
+        Causing flakiness on exceptionFuzz tests locally on 32-bit
+        build (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "Global functions should be initialized as JSFunctions in byte
+        code"
+        https://bugs.webkit.org/show_bug.cgi?id=144178
+        http://trac.webkit.org/changeset/183789
+
+2015-05-04  Saam Barati  <saambarati1@gmail.com>
+
+        Global functions should be initialized as JSFunctions in byte code
+        https://bugs.webkit.org/show_bug.cgi?id=144178
+
+        Reviewed by Geoffrey Garen.
+
+        This patch makes the initialization of global functions more explicit by
+        moving initialization into bytecode. It also prepares JSC for having ES6
+        style lexical scoping because initializing global functions in bytecode
+        easily allows global functions to be initialized with the proper scope that
+        will have access to global lexical variables. Global lexical variables
+        should be visible to global functions but don't live on the global object.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedProgramCodeBlock::visitChildren):
+        * bytecode/UnlinkedCodeBlock.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/BytecodeGenerator.h:
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::addGlobalVar):
+        (JSC::JSGlobalObject::addFunction):
+        * runtime/JSGlobalObject.h:
+
+2015-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Large array shouldn't be slow
+        https://bugs.webkit.org/show_bug.cgi?id=144617
+
+        Reviewed by Geoffrey Garen.
+        
+        Decouple MIN_SPARSE_ARRAY_INDEX, which is the threshold for storing to the sparse map when
+        you're already using ArrayStorage mode, from the minimul array length required to use
+        ArrayStorage in a new Array(length) allocation.
+        
+        Lift the array allocation length threshold to something very high. If this works, we'll
+        probably remove that threshold entirely.
+        
+        This is a 27% speed-up on JetStream/hash-map. Because run-jsc-benchmarks still can't run
+        JetStream as a discrete suite, this adds hash-map to LongSpider so that we run it somewhere
+        for now.
+
+        * dfg/DFGCallArrayAllocatorSlowPathGenerator.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNewArrayWithSize):
+        * runtime/ArrayConventions.h:
+        * runtime/JSArray.h:
+        (JSC::JSArray::create):
+        * runtime/JSGlobalObject.h:
+        (JSC::constructEmptyArray):
+        * tests/stress/new-array-storage-array-with-size.js: Skip this test until we fix https://bugs.webkit.org/show_bug.cgi?id=144609.
+
+2015-05-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add backed intrinsics to private functions exposed with private symbols in global object
+        https://bugs.webkit.org/show_bug.cgi?id=144545
+
+        Reviewed by Darin Adler.
+
+        Math.abs and Math.floor have ASM intrinsics And it is further accelerated in DFG/FTL layers.
+        This patch adds intrinsic to private functions exposed with private symbols in global object,
+        @floor and @abs.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalPrivateFuncAbs): Deleted.
+        (JSC::globalPrivateFuncFloor): Deleted.
+        * runtime/MathObject.cpp:
+        * runtime/MathObject.h:
+        * tests/stress/array-from-abs-and-floor.js: Added.
+        (target1):
+        (target2):
+        (target3):
+
+2015-05-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] ARM related build system cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=144566
+
+        Reviewed by Darin Adler.
+
+        * CMakeLists.txt:
+
+2015-05-04  Andreas Kling  <akling@apple.com>
+
+        Optimize WeakBlock's "reap" and "visit" operations.
+        <https://webkit.org/b/144585>
+
+        Reviewed by Geoffrey Garen.
+
+        WeakBlock was using Heap::isLive(void*) to determine the liveness of weak pointees.
+        That function was really written with conservative roots marking in mind, and will do a bunch
+        of sanity and bounds checks.
+
+        For weaks, we know that the pointer will have been a valid cell pointer into a block
+        of appropriate cell size, so we can skip a lot of the checks.
+
+        We now keep a pointer to the MarkedBlock in each WeakBlock. That way we no longer have to do
+        MarkedBlock::blockFor() for every single cell when iterating.
+
+        Note that a WeakBlock's MarkedBlock pointer becomes null when we detach a logically empty
+        WeakBlock from its WeakSet and transfer ownership to Heap. At that point, the block will never
+        be pointing to any live cells, and the only operation that will run on the block is sweep().
+
+        Finally, MarkedBlock allows liveness queries in three states: Marked, Retired, and Allocated.
+        In Allocated state, all cells are reported as live. This state will reset to Marked on next GC.
+        This patch uses that knowledge to avoid branching on the MarkedBlock's state for every cell.
+
+        This is a ~3x speedup of visit() and a ~2x speedup of reap() on Dromaeo/dom-modify, netting
+        what looks like a 1% speedup locally.
+
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::MarkedBlock): Pass *this to the WeakSet's ctor.
+
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::isMarkedOrNewlyAllocated): Added, stripped-down version of isLive() when the
+        block's state is known to be either Marked or Retired.
+
+        (JSC::MarkedBlock::isAllocated): Added, tells WeakBlock it's okay to skip reap/visit since isLive()
+        would report that all cells are live anyway.
+
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::create):
+        (JSC::WeakBlock::WeakBlock): Stash a MarkedBlock* on each WeakBlock.
+
+        (JSC::WeakBlock::visit):
+        (JSC::WeakBlock::reap): Optimized these two to avoid a bunch of pointer arithmetic and branches.
+
+        * heap/WeakBlock.h:
+        (JSC::WeakBlock::disconnectMarkedBlock): Added.
+        * heap/WeakSet.cpp:
+        (JSC::WeakSet::sweep): Call the above when removing a WeakBlock from WeakSet and transferring
+        ownership to Heap until it can die peacefully.
+
+        (JSC::WeakSet::addAllocator):
+        * heap/WeakSet.h:
+        (JSC::WeakSet::WeakSet): Give WeakSet a MarkedBlock& for passing on to WeakBlocks.
+
+2015-05-04  Basile Clement  <basile_clement@apple.com>
+
+        Allocation sinking is prohibiting the creation of phis between a Phantom object and its materialization
+        https://bugs.webkit.org/show_bug.cgi?id=144587
+
+        Rubber stamped by Filip Pizlo.
+
+        When sinking object allocations, we ensure in
+        determineMaterializationPoints that whenever an allocation is
+        materialized on a path to a block, it is materialized in all such
+        paths. Thus when running the SSA calculator to place Phis in
+        placeMaterializationPoints, we can't encounter a situation where some
+        Upsilons are referring to a materialization while others are referring
+        to the phantom object.
+
+        This replaces the code that was adding a materialization late in
+        placeMaterializationPoints to handle that case by an assertion that it
+        does not happen, which will make
+        https://bugs.webkit.org/show_bug.cgi?id=143073 easier to implement.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::placeMaterializationPoints):
+
+2015-05-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Extending undefined in class syntax should throw a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=144284
+
+        Reviewed by Darin Adler.
+
+        The bug was caused by op_eq_null evaluating to true when compared to undefined.
+        Explicitly check op_eq_undefined first to detect the case where we're extending undefined.
+
+        We also had bogus test cases checked in class-syntax-extends.html. This patch also fixes them.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ClassExprNode::emitBytecode):
+
+2015-05-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        new super should be a syntax error
+        https://bugs.webkit.org/show_bug.cgi?id=144282
+
+        Reviewed by Joseph Pecoraro.
+
+        Disallow "new super" as ES6 spec doesn't allow this.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseMemberExpression):
+
+2015-05-04  Saam Barati  <saambarati1@gmail.com>
+
+        JSCallbackObject does not maintain symmetry between accesses for getOwnPropertySlot and put
+        https://bugs.webkit.org/show_bug.cgi?id=144265
+
+        Reviewed by Geoffrey Garen.
+
+        JSCallbackObject will defer to a parent's implementation of getOwnPropertySlot
+        for a static function if the parent has that property slot. JSCallbackObject::put 
+        did not maintain this symmetry of also calling ::put on the parent if the parent 
+        has the property. We should ensure that this symmetry exists.
+
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::put):
+        * API/tests/testapi.c:
+        * API/tests/testapi.js:
+        (globalStaticFunction2):
+        (this.globalStaticFunction2):
+        (iAmNotAStaticFunction):
+        (this.iAmNotAStaticFunction):
+
+2015-05-04  Andreas Kling  <akling@apple.com>
+
+        Make ExecState::vm() branchless in release builds.
+        <https://webkit.org/b/144586>
+
+        Reviewed by Geoffrey Garen.
+
+        Avoid null checking the ExecState's callee() before getting the
+        VM from it. The code was already dereferencing it anyway, since we
+        know it's not gonna be null.
+
+        * runtime/JSCellInlines.h:
+        (JSC::ExecState::vm):
+
+2015-05-04  Basile Clement  <basile_clement@apple.com>
+
+        Object allocation not sinking properly through CheckStructure
+        https://bugs.webkit.org/show_bug.cgi?id=144465
+
+        Reviewed by Filip Pizlo.
+
+        Currently, sinking an allocation through a CheckStructure will
+        completely ignore all structure checking, which is obviously wrong.
+
+        A CheckStructureImmediate node type was present for that purpose, but
+        the CheckStructures were not properly replaced.  This ensures that
+        CheckStructure nodes are replaced by CheckStructureImmediate nodes when
+        sunk through, and that structure checking happens correctly.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToCheckStructureImmediate): Added.
+        (JSC::DFG::Node::hasStructureSet):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::promoteSunkenFields):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileCheckStructure):
+        (JSC::FTL::LowerDFGToLLVM::compileCheckStructureImmediate):
+        (JSC::FTL::LowerDFGToLLVM::checkStructure):
+        * tests/stress/sink_checkstructure.js: Added.
+        (foo):
+
+2015-05-01  Geoffrey Garen  <ggaren@apple.com>
+
+        REGRESSION(r183570): jslib-traverse-jquery is 22% slower
+        https://bugs.webkit.org/show_bug.cgi?id=144476
+
+        Reviewed by Sam Weinig.
+
+        jslib-traverse-jquery is now 31% faster than its unregressed baseline.
+
+        The jQuery algorithm for sorting DOM nodes is so pathologically slow that,
+        to my knowledge, the topic of how to optimize it is not covered in any
+        literature about sorting.
+
+        On the slowest jQuery sorting test -- prevAll -- our new
+        Array.prototype.sort, compared to its predecessor, performed 12% fewer
+        comparisons and requireed 10X less overhead per comparison. Yet, it was
+        slower.
+
+        It was slower because it inadvertantly increased the average cost of the
+        comparison function by 2X. jQuery uses compareDocumentPosition to compare
+        DOM nodes, and compareDocumentPosition(a, b) is O(N) in the distance
+        required to traverse backwards from b to a. In prevAll, we encounter the
+        worst case for merge sort of compareDocumentPosition: A long list of DOM
+        nodes in mostly reverse order. In this case, merge sort will sequentially
+        compareDocumentPosition(a, b), where a is not reachable backwards from
+        b, and therefore compareDocumentPosition will traverse the whole sibling
+        list.
+
+        The solution is simple enough: Call compareDocumentPosition(b, a) instead.
+
+        This is a pretty silly thing to do, but it is harmless, and jQuery is
+        popular, so let's do it.
+
+        We do not risk suffering the same problem in reverse when sorting a long
+        list of DOM nodes in forward order. (We still have a 37% speedup on the
+        nextAll benchmark.) The reason is that merge sort performs 2X fewer
+        comparisons when the list is already sorted, so we can worry less about
+        the cost of each comparison.
+
+        A fully principled soultion to this problem would probably do something
+        like Python's timsort, which special-cases ordered ranges to perform
+        only O(n) comparisons. But that would contradict our original
+        goal of just having something simple that works.
+
+        Another option is for elements to keep a compareDocumentPosition cache,
+        like a node list cache, which allows you to determine the absolute
+        position of a node using a hash lookup. I will leave this as an exercise
+        for kling.
+
+        * builtins/Array.prototype.js:
+        (sort.merge): Compare in an order that is favorable to a comparator
+        that calls compareDocumentPosition.
+
+2015-05-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Fix generate-js-builtins related incremental build issue
+        https://bugs.webkit.org/show_bug.cgi?id=144094
+
+        Reviewed by Michael Saboff.
+
+        * CMakeLists.txt: Generated JSCBuiltins.<cpp|h> should depend on Source/JavaScriptCore/builtins directory.
+        Pass input directory to generate-js-builtins instead of Source/JavaScriptCore/builtins/*.js.
+        * DerivedSources.make:
+        Pass input directory to generate-js-builtins instead of Source/JavaScriptCore/builtins/*.js.
+        * generate-js-builtins: Accept input files and input directory too.
+
+2015-05-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Make some static data const
+        https://bugs.webkit.org/show_bug.cgi?id=144552
+
+        Reviewed by Andreas Kling.
+        
+        Turn characterSetInfo into const data.
+
+        * yarr/YarrCanonicalizeUCS2.cpp:
+        * yarr/YarrCanonicalizeUCS2.h:
+
+2015-05-01  Filip Pizlo  <fpizlo@apple.com>
+
+        TypeOf should be fast
+        https://bugs.webkit.org/show_bug.cgi?id=144396
+
+        Reviewed by Geoffrey Garen.
+        
+        Adds comprehensive support for fast typeof to the optimizing JITs. Calls into the runtime
+        are only used for very exotic objects - they must have either the MasqueradesAsUndefined or
+        TypeOfShouldCallGetCallData type flags set. All other cases are handled inline.
+        
+        This means optimizing IsObjectOrNull, IsFunction, and TypeOf - all node types that used to
+        rely heavily on C++ calls to fulfill their function.
+        
+        Because TypeOf is now so fast, we no longer need to do any speculations on this node.
+        
+        In the FTL, we take this further by querying AI for each branch in the TypeOf decision tree.
+        This means that if the TypeOf is dominated by any type checks, we will automatically prune
+        out cases that are redundant.
+        
+        This patch anticipates the addition of SwitchTypeOf or something like that. So, the TypeOf
+        code generation is designed to be reusable.
+        
+        This is a speed-up on most typeof benchmarks. But, it is a slow-down on benchmarks that take
+        the exotic call trap hook. That hook is now in a deeper slow path than before.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize): TypeOf was pure all along, but we failed to realize this.
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileIsObjectOrNull):
+        (JSC::DFG::SpeculativeJIT::compileIsFunction):
+        (JSC::DFG::SpeculativeJIT::compileTypeOf):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::blessedBooleanResult):
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileIsObjectOrNull):
+        (JSC::FTL::LowerDFGToLLVM::compileIsFunction):
+        (JSC::FTL::LowerDFGToLLVM::compileTypeOf):
+        (JSC::FTL::LowerDFGToLLVM::buildTypeOf): Reusable TypeOf building for the FTL.
+        (JSC::FTL::LowerDFGToLLVM::isExoticForTypeof):
+        * ftl/FTLSwitchCase.h:
+        (JSC::FTL::SwitchCase::SwitchCase):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::branchIfNotEqual):
+        (JSC::AssemblyHelpers::branchIfEqual):
+        (JSC::AssemblyHelpers::branchIfNumber):
+        (JSC::AssemblyHelpers::branchIfNotNumber):
+        (JSC::AssemblyHelpers::branchIfBoolean):
+        (JSC::AssemblyHelpers::branchIfNotBoolean):
+        (JSC::AssemblyHelpers::boxBooleanPayload):
+        (JSC::AssemblyHelpers::boxBoolean):
+        (JSC::AssemblyHelpers::emitTypeOf): Reusable TypeOf building for assembly JITs.
+        * jit/JITOperations.h:
+        * runtime/SmallStrings.h:
+        (JSC::SmallStrings::typeString):
+        * runtime/TypeofType.cpp: Added.
+        (WTF::printInternal):
+        * runtime/TypeofType.h: Added.
+        * tests/stress/type-of-functions-and-objects.js: Modified this test to give more comprehensive feedback.
+
+2015-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, add a FIXME referencing https://bugs.webkit.org/show_bug.cgi?id=144527.
+
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::attemptHoist):
+
+2015-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, add FIXMEs referencing https://bugs.webkit.org/show_bug.cgi?id=144524 and
+        https://bugs.webkit.org/show_bug.cgi?id=144525.
+
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::attemptHoist):
+        * dfg/DFGPhantomInsertionPhase.cpp:
+
+2015-05-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Static property hashtable should only lookup with non-symbol key
+        https://bugs.webkit.org/show_bug.cgi?id=144438
+
+        Reviewed by Darin Adler.
+
+        Static property hashtable compares the Identifier's uid
+        with the normal C string without interning it.
+        So this comparison is performed in their contents.
+        As the result, in this comparison, symbol-ness is not considered.
+
+        So if accidentally the hash collision occur with the symbol and the string
+        and they have the same contents, the hash table entry is looked up incorrectly.
+
+        * runtime/Lookup.h:
+        (JSC::HashTable::entry):
+
+2015-05-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Class syntax should allow string and numeric identifiers for method names
+        https://bugs.webkit.org/show_bug.cgi?id=144254
+
+        Reviewed by Darin Adler.
+
+        Added the support for string and numeric identifiers in class syntax.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo): Instead of using ConstructorKind to indicate whether we're
+        inside a class or not, use the newly added SuperBinding argument instead. ConstructorKind is now None
+        outside a class constructor as it should be.
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseClass): No longer expects an identifier at the beginning of every class
+        element to allow numeric and string method names. For both of those method names, parse it here instead
+        of parseFunctionInfo since it doesn't support either type. Also pass in SuperBinding::Needed.
+        (JSC::Parser<LexerType>::parsePropertyMethod): Call parseFunctionInfo with SuperBinding::NotNeeded since
+        this function is never used to parse a class method.
+        (JSC::Parser<LexerType>::parseGetterSetter): Pass in superBinding argument to parseFunctionInfo.
+        (JSC::Parser<LexerType>::parsePrimaryExpression): Call parseFunctionInfo with SuperBinding::NotNeeded.
+        * parser/Parser.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createProperty):
+
+2015-05-01  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should use AI more
+        https://bugs.webkit.org/show_bug.cgi?id=144500
+
+        Reviewed by Oliver Hunt.
+        
+        This makes our type check folding even more comprehensive by ensuring that even if the FTL
+        decides to emit some checks, it will still do another query to the abstract interpreter to
+        see if the check is necessary. This helps with cases where we decided early on to speculate
+        one way, but later proved a more specific type of the value in question, and the constant
+        folder didn't catch it.
+        
+        This also makes it more natural to query the abstract interpreter. For example, if you just
+        want the proven type, you can now say provenType(node) or provenType(edge).
+
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::alreadyChecked):
+        * dfg/DFGArrayMode.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileBooleanToNumber):
+        (JSC::FTL::LowerDFGToLLVM::compileToThis):
+        (JSC::FTL::LowerDFGToLLVM::compileValueAdd):
+        (JSC::FTL::LowerDFGToLLVM::compileArithAddOrSub):
+        (JSC::FTL::LowerDFGToLLVM::compileArithPow):
+        (JSC::FTL::LowerDFGToLLVM::compileArithNegate):
+        (JSC::FTL::LowerDFGToLLVM::compileGetById):
+        (JSC::FTL::LowerDFGToLLVM::compileCheckArray):
+        (JSC::FTL::LowerDFGToLLVM::compilePutByVal):
+        (JSC::FTL::LowerDFGToLLVM::compileToStringOrCallStringConstructor):
+        (JSC::FTL::LowerDFGToLLVM::compileToPrimitive):
+        (JSC::FTL::LowerDFGToLLVM::compileStringCharAt):
+        (JSC::FTL::LowerDFGToLLVM::compileStringCharCodeAt):
+        (JSC::FTL::LowerDFGToLLVM::compileCompareStrictEq):
+        (JSC::FTL::LowerDFGToLLVM::compileSwitch):
+        (JSC::FTL::LowerDFGToLLVM::compileIsBoolean):
+        (JSC::FTL::LowerDFGToLLVM::compileIsNumber):
+        (JSC::FTL::LowerDFGToLLVM::compileIsString):
+        (JSC::FTL::LowerDFGToLLVM::compileIsObject):
+        (JSC::FTL::LowerDFGToLLVM::compileInstanceOf):
+        (JSC::FTL::LowerDFGToLLVM::numberOrNotCellToInt32):
+        (JSC::FTL::LowerDFGToLLVM::baseIndex):
+        (JSC::FTL::LowerDFGToLLVM::compareEqObjectOrOtherToObject):
+        (JSC::FTL::LowerDFGToLLVM::typedArrayLength):
+        (JSC::FTL::LowerDFGToLLVM::boolify):
+        (JSC::FTL::LowerDFGToLLVM::equalNullOrUndefined):
+        (JSC::FTL::LowerDFGToLLVM::lowInt32):
+        (JSC::FTL::LowerDFGToLLVM::lowInt52):
+        (JSC::FTL::LowerDFGToLLVM::lowCell):
+        (JSC::FTL::LowerDFGToLLVM::lowBoolean):
+        (JSC::FTL::LowerDFGToLLVM::lowDouble):
+        (JSC::FTL::LowerDFGToLLVM::isCellOrMisc):
+        (JSC::FTL::LowerDFGToLLVM::isNotCellOrMisc):
+        (JSC::FTL::LowerDFGToLLVM::isNumber):
+        (JSC::FTL::LowerDFGToLLVM::isNotNumber):
+        (JSC::FTL::LowerDFGToLLVM::isNotCell):
+        (JSC::FTL::LowerDFGToLLVM::isCell):
+        (JSC::FTL::LowerDFGToLLVM::isNotMisc):
+        (JSC::FTL::LowerDFGToLLVM::isMisc):
+        (JSC::FTL::LowerDFGToLLVM::isNotBoolean):
+        (JSC::FTL::LowerDFGToLLVM::isBoolean):
+        (JSC::FTL::LowerDFGToLLVM::isNotOther):
+        (JSC::FTL::LowerDFGToLLVM::isOther):
+        (JSC::FTL::LowerDFGToLLVM::isProvenValue):
+        (JSC::FTL::LowerDFGToLLVM::isObject):
+        (JSC::FTL::LowerDFGToLLVM::isNotObject):
+        (JSC::FTL::LowerDFGToLLVM::isNotString):
+        (JSC::FTL::LowerDFGToLLVM::isString):
+        (JSC::FTL::LowerDFGToLLVM::isFunction):
+        (JSC::FTL::LowerDFGToLLVM::isNotFunction):
+        (JSC::FTL::LowerDFGToLLVM::speculateObjectOrOther):
+        (JSC::FTL::LowerDFGToLLVM::speculateStringObjectForStructureID):
+        (JSC::FTL::LowerDFGToLLVM::speculateNotStringVar):
+        (JSC::FTL::LowerDFGToLLVM::abstractValue):
+        (JSC::FTL::LowerDFGToLLVM::provenType):
+        (JSC::FTL::LowerDFGToLLVM::provenValue):
+        (JSC::FTL::LowerDFGToLLVM::abstractStructure):
+
+2015-05-01  Martin Robinson  <mrobinson@igalia.com>
+
+        USE(...) macro should expect unprefixed variables
+        https://bugs.webkit.org/show_bug.cgi?id=144454
+
+        Reviewed by Daniel Bates.
+
+        * CMakeLists.txt: Replace all occurrences WTF_USE with USE.
+
+2015-05-01  Jordan Harband  <ljharb@gmail.com>
+
+        String#startsWith/endsWith/includes don't handle Infinity position/endPosition args correctly
+        https://bugs.webkit.org/show_bug.cgi?id=144314
+
+        Reviewed by Darin Adler.
+
+        Fixing handling of Infinity position args, per
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.includes
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.startswith
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.endswith
+
+        * runtime/StringPrototype.cpp:
+        (JSC::clampInt32):
+        (JSC::stringProtoFuncStartsWith):
+        (JSC::stringProtoFuncEndsWith):
+        (JSC::stringProtoFuncIncludes):
+
+2015-05-01  Basile Clement  <basile_clement@apple.com>
+
+        Math.abs() returns negative
+        https://bugs.webkit.org/show_bug.cgi?id=137827
+
+        Reviewed by Michael Saboff.
+
+        Math.abs() on doubles was mistakenly assumed by the DFG AI to be the
+        identity function.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * tests/stress/math-abs-positive.js: Added, was previously failing.
+        (foo):
+
+2015-05-01  Basile Clement  <basile_clement@apple.com>
+
+        Function allocation sinking shouldn't be performed on singleton functions
+        https://bugs.webkit.org/show_bug.cgi?id=144166
+
+        Reviewed by Geoffrey Garen.
+
+        Function allocations usually are free of any other side effects, but
+        this is not the case for allocations performed while the underlying
+        FunctionExecutable is still a singleton (as this allogation will fire
+        watchpoints invalidating code that depends on it being a singleton).
+        As the object allocation sinking phase assumes object allocation is
+        free of side-effects, sinking these allocations is not correct.
+
+        This also means that when materializing a function allocation on OSR
+        exit, that function's executable will never be a singleton, and we don't have
+        to worry about its watchpoint, allowing us to use
+        JSFunction::createWithInvalidatedRellocationWatchpoint instead of
+        JSFunction::create.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+
+2015-04-30  Jon Davis  <jond@apple.com>
+
+        Web Inspector: console should show an icon for console.info() messages
+        https://bugs.webkit.org/show_bug.cgi?id=18530
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::messageLevelValue):
+        * inspector/protocol/Console.json:
+        * runtime/ConsoleClient.cpp:
+        (JSC::appendMessagePrefix):
+        * runtime/ConsolePrototype.cpp:
+        (JSC::ConsolePrototype::finishCreation):
+        (JSC::consoleProtoFuncInfo):
+        * runtime/ConsoleTypes.h:
+
+2015-04-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Move all of the branchIs<type> helpers from SpeculativeJIT into AssemblyHelpers
+        https://bugs.webkit.org/show_bug.cgi?id=144462
+
+        Reviewed by Geoffrey Garen and Mark Lam.
+        
+        At some point we started adding representation-agnostic helpers for doing common type tests.
+        We added some in SpeculativeJIT, and then some in AssemblyHelpers. Prior to this change,
+        they had overlapping powers, though SpeculativeJIT was a bit better.
+        
+        This removes SpeculativeJIT's helpers and strengthens AssemblyHelpers' helpers. This is
+        better because now all of these helpers can be used in all of the assembly-based JITs, not
+        just the DFG. It also settles on what I find to be a slightly better naming convention.
+        For example where we previously would have said branchIsString, now we say
+        branchIfString. Similarly, branchNotString becomes branchIfNotString.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compilePeepHoleObjectEquality):
+        (JSC::DFG::SpeculativeJIT::compileValueToInt32):
+        (JSC::DFG::SpeculativeJIT::compileInstanceOfForObject):
+        (JSC::DFG::SpeculativeJIT::compileInstanceOf):
+        (JSC::DFG::SpeculativeJIT::compileStringToUntypedEquality):
+        (JSC::DFG::SpeculativeJIT::compileStringIdentToNotStringVarEquality):
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnScopedArguments):
+        (JSC::DFG::SpeculativeJIT::compileToStringOrCallStringConstructorOnCell):
+        (JSC::DFG::SpeculativeJIT::speculateObject):
+        (JSC::DFG::SpeculativeJIT::speculateObjectOrOther):
+        (JSC::DFG::SpeculativeJIT::speculateString):
+        (JSC::DFG::SpeculativeJIT::speculateNotStringVar):
+        (JSC::DFG::SpeculativeJIT::speculateNotCell):
+        (JSC::DFG::SpeculativeJIT::speculateOther):
+        (JSC::DFG::SpeculativeJIT::emitSwitchChar):
+        (JSC::DFG::SpeculativeJIT::emitSwitchString):
+        (JSC::DFG::SpeculativeJIT::branchIsObject): Deleted.
+        (JSC::DFG::SpeculativeJIT::branchNotObject): Deleted.
+        (JSC::DFG::SpeculativeJIT::branchIsString): Deleted.
+        (JSC::DFG::SpeculativeJIT::branchNotString): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::nonSpeculativeNonPeepholeCompareNull):
+        (JSC::DFG::SpeculativeJIT::nonSpeculativePeepholeBranchNull):
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateCell):
+        (JSC::DFG::SpeculativeJIT::compileObjectEquality):
+        (JSC::DFG::SpeculativeJIT::compileObjectToObjectOrOtherEquality):
+        (JSC::DFG::SpeculativeJIT::compilePeepHoleObjectToObjectOrOtherEquality):
+        (JSC::DFG::SpeculativeJIT::compileObjectOrOtherLogicalNot):
+        (JSC::DFG::SpeculativeJIT::emitObjectOrOtherBranch):
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::branchIsCell): Deleted.
+        (JSC::DFG::SpeculativeJIT::branchNotCell): Deleted.
+        (JSC::DFG::SpeculativeJIT::branchIsOther): Deleted.
+        (JSC::DFG::SpeculativeJIT::branchNotOther): Deleted.
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::nonSpeculativeNonPeepholeCompareNull):
+        (JSC::DFG::SpeculativeJIT::nonSpeculativePeepholeBranchNull):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateCell):
+        (JSC::DFG::SpeculativeJIT::compileObjectEquality):
+        (JSC::DFG::SpeculativeJIT::compileObjectToObjectOrOtherEquality):
+        (JSC::DFG::SpeculativeJIT::compilePeepHoleObjectToObjectOrOtherEquality):
+        (JSC::DFG::SpeculativeJIT::compileObjectOrOtherLogicalNot):
+        (JSC::DFG::SpeculativeJIT::emitObjectOrOtherBranch):
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::writeBarrier):
+        (JSC::DFG::SpeculativeJIT::branchIsCell): Deleted.
+        (JSC::DFG::SpeculativeJIT::branchNotCell): Deleted.
+        (JSC::DFG::SpeculativeJIT::branchIsOther): Deleted.
+        (JSC::DFG::SpeculativeJIT::branchNotOther): Deleted.
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::branchIfCell):
+        (JSC::AssemblyHelpers::branchIfOther):
+        (JSC::AssemblyHelpers::branchIfNotOther):
+        (JSC::AssemblyHelpers::branchIfObject):
+        (JSC::AssemblyHelpers::branchIfNotObject):
+        (JSC::AssemblyHelpers::branchIfType):
+        (JSC::AssemblyHelpers::branchIfNotType):
+        (JSC::AssemblyHelpers::branchIfString):
+        (JSC::AssemblyHelpers::branchIfNotString):
+        (JSC::AssemblyHelpers::branchIfSymbol):
+        (JSC::AssemblyHelpers::branchIfNotSymbol):
+        (JSC::AssemblyHelpers::branchIfFunction):
+        (JSC::AssemblyHelpers::branchIfNotFunction):
+        (JSC::AssemblyHelpers::branchIfEmpty):
+        (JSC::AssemblyHelpers::branchIsEmpty): Deleted.
+        (JSC::AssemblyHelpers::branchIfCellNotObject): Deleted.
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitScopedArgumentsGetByVal):
+
+2015-04-30  Filip Pizlo  <fpizlo@apple.com>
+
+        js/regress/is-string-fold-tricky.html and js/regress/is-string-fold.html are crashing
+        https://bugs.webkit.org/show_bug.cgi?id=144463
+
+        Reviewed by Benjamin Poulain.
+        
+        Fixup phase was super cleverly folding an IsString(@x) when @x is predicted SpecString
+        into a Check(String:@x) followed by JSConstant(true). Then in these tests the
+        ValueAdd(IsString(@x), @stuff) would try to turn this into an integer add by cleverly
+        converting the boolean into an integer. But as part of doing that, it would try to
+        short-circuit any profiling by leveraging the fact that the IsString is now a constant,
+        and it would try to figure out if the addition might overflow. Part of that logic
+        involved checking if the immediate is either a boolean or a sufficiently small integer.
+        But: it would check if it's a sufficiently small integer before checking if it was a
+        boolean, so it would try to call asNumber() on the boolean.
+        
+        All of this cleverness was very deliberate, but apparently the @stuff + booleanConstant
+        case was previously never hit until I wrote these tests, and so we never knew that
+        calling asNumber() on a boolean was wrong.
+        
+        The fix is super simple: the expression should just check for boolean first.
+        
+        This bug was benign in release builds. JSValue::asNumber() on a boolean would return
+        garbage, and that's OK, since we'd take the boolean case anyway.
+
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::addImmediateShouldSpeculateInt32):
+
+2015-04-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, add a FIXME comment referencing https://bugs.webkit.org/show_bug.cgi?id=144458.
+
+        * jit/JITOperations.cpp:
+
+2015-04-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Add a comment clarifying the behavior and semantics of getCallData/getConstructData, in
+        particular that they cannot change their minds and may be called from compiler threads.
+
+        Rubber stamped by Geoffrey Garen.
+
+        * runtime/JSCell.h:
+
+2015-04-29  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG Is<Blah> versions of TypeOf should fold based on proven input type
+        https://bugs.webkit.org/show_bug.cgi?id=144409
+
+        Reviewed by Geoffrey Garen.
+        
+        We were missing some obvious folding opportunities here. I don't know how this affects real
+        code, but in general, we like to ensure that our constant folding is comprehensive. So this
+        is more about placating my static analysis OCD than anything else.
+        
+        I added a bunch of speed/correctness tests for this in LayoutTests/js/regress.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
 2015-04-30  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Use the default hash value for Symbolized StringImpl

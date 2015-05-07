@@ -203,17 +203,39 @@ static int toAppKitFontWeight(FontWeight fontWeight)
     return appKitFontWeights[fontWeight];
 }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+static CGFloat toNSFontWeight(FontWeight fontWeight)
+{
+    static CGFloat nsFontWeights[] = {
+        NSFontWeightUltraLight, // Values between ultra-light and thin are swapped.
+        NSFontWeightThin,
+        NSFontWeightLight,
+        NSFontWeightRegular,
+        NSFontWeightMedium,
+        NSFontWeightSemibold,
+        NSFontWeightBold,
+        NSFontWeightHeavy,
+        NSFontWeightBlack
+    };
+    return nsFontWeights[fontWeight];
+}
+#endif
+
 // Family name is somewhat of a misnomer here. We first attempt to find an exact match
 // comparing the desiredFamily to the PostScript name of the installed fonts. If that fails
 // we then do a search based on the family names of the installed fonts.
 static NSFont *fontWithFamily(const AtomicString& family, NSFontTraitMask desiredTraits, FontWeight weight, float size)
 {
-    if (equalIgnoringASCIICase(family.string(), String(@"-webkit-system-font")) || equalIgnoringASCIICase(family.string(), String(@"-apple-system-font"))) {
+    if (equalIgnoringASCIICase(family.string(), String(@"-webkit-system-font")) || equalIgnoringASCIICase(family.string(), String(@"-apple-system")) || equalIgnoringASCIICase(family.string(), String(@"-apple-system-font"))) {
         // We ignore italic for system font.
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+        return [NSFont systemFontOfSize:size weight:toNSFontWeight(weight)];
+#else
         return (weight >= FontWeight600) ? [NSFont boldSystemFontOfSize:size] : [NSFont systemFontOfSize:size];
+#endif
     }
 
-    if (equalIgnoringASCIICase(family.string(), String(@"-apple-system-font-monospaced-numbers"))) {
+    if (equalIgnoringASCIICase(family.string(), String(@"-apple-system-monospaced-numbers"))) {
         NSArray *featureArray = @[ @{ NSFontFeatureTypeIdentifierKey : @(kNumberSpacingType),
             NSFontFeatureSelectorIdentifierKey : @(kMonospacedNumbersSelector) } ];
 

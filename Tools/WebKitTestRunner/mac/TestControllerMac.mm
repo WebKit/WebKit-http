@@ -107,8 +107,13 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
     auto useRemoteLayerTreeValue = adoptWK(WKBooleanCreate(shouldUseRemoteLayerTree()));
     WKDictionarySetItem(viewOptions.get(), useRemoteLayerTreeKey.get(), useRemoteLayerTreeValue.get());
 
+    auto shouldShowWebViewKey = adoptWK(WKStringCreateWithUTF8CString("ShouldShowWebView"));
+    auto shouldShowWebViewValue = adoptWK(WKBooleanCreate(shouldShowWebView()));
+    WKDictionarySetItem(viewOptions.get(), shouldShowWebViewKey.get(), shouldShowWebViewValue.get());
+
     ensureViewSupportsOptions(viewOptions.get());
 
+#if WK_API_ENABLED
     if (!test.urlContains("contentextensions/"))
         return;
 
@@ -116,11 +121,10 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
     NSURL *filterURL = [(NSURL *)testURL.get() URLByAppendingPathExtension:@"json"];
 
     NSStringEncoding encoding;
-    NSString *contentExtensionString = [NSString stringWithContentsOfURL:filterURL usedEncoding:&encoding error:NULL];
+    NSString *contentExtensionString = [[NSString alloc] initWithContentsOfURL:filterURL usedEncoding:&encoding error:NULL];
     if (!contentExtensionString)
         return;
     
-#if WK_API_ENABLED
     __block bool doneCompiling = false;
     [[_WKUserContentExtensionStore defaultStore] compileContentExtensionForIdentifier:@"TestContentExtensions" encodedContentExtension:contentExtensionString completionHandler:^(_WKUserContentFilter *filter, NSError *error)
     {

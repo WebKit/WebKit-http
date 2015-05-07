@@ -4425,7 +4425,7 @@
     <ClCompile Include="..\bindings\js\JSReadableStreamReaderCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\ReadableStreamJSSource.cpp">
+    <ClCompile Include="..\bindings\js\ReadableJSStream.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSRequestAnimationFrameCallbackCustom.cpp">
@@ -6715,9 +6715,6 @@
     <ClCompile Include="..\platform\graphics\texmap\TextureMapperGL.cpp">
       <Filter>platform\graphics\texmap</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\texmap\TextureMapperImageBuffer.cpp">
-      <Filter>platform\graphics\texmap</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\graphics\texmap\TextureMapperLayer.cpp">
       <Filter>platform\graphics\texmap</Filter>
     </ClCompile>
@@ -7267,9 +7264,6 @@
     <ClCompile Include="..\platform\graphics\texmap\BitmapTextureGL.cpp">
       <Filter>platform\graphics\texmap</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\texmap\BitmapTextureImageBuffer.cpp">
-      <Filter>platform\graphics\texmap</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\graphics\texmap\BitmapTexturePool.cpp">
       <Filter>platform\graphics\texmap</Filter>
     </ClCompile>
@@ -7278,6 +7272,9 @@
     </ClCompile>
     <ClCompile Include="..\platform\network\CacheValidation.cpp">
       <Filter>platform\network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\PlatformDisplay.cpp">
+      <Filter>platform\graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -15277,6 +15274,12 @@
     </ClInclude>
     <ClInclude Include="..\platform\network\CacheValidation.h">
       <Filter>platform\network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\PlatformDisplay.h">
+      <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\win\PlatformDisplayWin.h">
+      <Filter>platform\graphics\win</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

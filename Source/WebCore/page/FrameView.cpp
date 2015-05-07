@@ -200,6 +200,7 @@ FrameView::FrameView(Frame& frame)
     , m_footerHeight(0)
     , m_milestonesPendingPaint(0)
     , m_visualUpdatesAllowedByClient(true)
+    , m_hasFlippedBlockRenderers(false)
     , m_scrollPinningBehavior(DoNotPin)
 {
     init();
@@ -728,6 +729,15 @@ void FrameView::calculateScrollbarModesForLayout(ScrollbarMode& hMode, Scrollbar
     }    
 }
 
+void FrameView::willRecalcStyle()
+{
+    RenderView* renderView = this->renderView();
+    if (!renderView)
+        return;
+
+    renderView->compositor().willRecalcStyle();
+}
+
 void FrameView::updateCompositingLayersAfterStyleChange()
 {
     RenderView* renderView = this->renderView();
@@ -738,10 +748,7 @@ void FrameView::updateCompositingLayersAfterStyleChange()
     if (inPreLayoutStyleUpdate() || layoutPending() || renderView->needsLayout())
         return;
 
-    RenderLayerCompositor& compositor = renderView->compositor();
-    // This call will make sure the cached hasAcceleratedCompositing is updated from the pref
-    compositor.cacheAcceleratedCompositingFlags();
-    compositor.updateCompositingLayers(CompositingUpdateAfterStyleChange);
+    renderView->compositor().didRecalcStyleWithNoPendingLayout();
 }
 
 void FrameView::updateCompositingLayersAfterLayout()
@@ -1060,8 +1067,10 @@ bool FrameView::isEnclosedInCompositingLayer() const
 bool FrameView::flushCompositingStateIncludingSubframes()
 {
     bool allFramesFlushed = flushCompositingStateForThisFrame(&frame());
-    
-    for (Frame* child = frame().tree().firstChild(); child; child = child->tree().traverseNext(m_frame.ptr())) {
+
+    for (Frame* child = frame().tree().firstRenderedChild(); child; child = child->tree().traverseNextRendered(m_frame.ptr())) {
+        if (!child->view())
+            continue;
         bool flushed = child->view()->flushCompositingStateForThisFrame(&frame());
         allFramesFlushed &= flushed;
     }
@@ -1353,6 +1362,8 @@ void FrameView::layout(bool allowSubtree)
     if (m_needsFullRepaint)
         root->view().repaintRootContents();
 
+    root->view().releaseProtectedRenderWidgets();
+
     ASSERT(!root->needsLayout());
 
     layer->updateLayerPositionsAfterLayout(renderView()->layer(), updateLayerPositionFlags(layer, subtree, m_needsFullRepaint));
@@ -1625,6 +1636,11 @@ LayoutRect FrameView::viewportConstrainedVisibleContentRect() const
     return viewportRect;
 }
 
+float FrameView::frameScaleFactor() const
+{
+    return frame().frameScaleFactor();
+}
+
 LayoutSize FrameView::scrollOffsetForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements behaviorForFixed, int headerHeight, int footerHeight)
 {
     LayoutPoint position;
@@ -1641,17 +1657,6 @@ LayoutSize FrameView::scrollOffsetForFixedPosition(const LayoutRect& visibleCont
     float dragFactorY = (fixedElementsLayoutRelativeToFrame || !maxSize.height()) ? 1 : (totalContentsSize.height() - visibleContentRect.height() * frameScaleFactor) / maxSize.height();
 
     return LayoutSize(position.x() * dragFactorX / frameScaleFactor, position.y() * dragFactorY / frameScaleFactor);
-}
-
-LayoutSize FrameView::scrollOffsetForFixedPosition() const
-{
-    IntRect visibleContentRect = this->visibleContentRect();
-    IntSize totalContentsSize = this->totalContentsSize();
-    IntPoint scrollPosition = this->scrollPosition();
-    IntPoint scrollOrigin = this->scrollOrigin();
-    float frameScaleFactor = frame().frameScaleFactor();
-    ScrollBehaviorForFixedElements behaviorForFixed = scrollBehaviorForFixedElements();
-    return scrollOffsetForFixedPosition(visibleContentRect, totalContentsSize, scrollPosition, scrollOrigin, frameScaleFactor, fixedElementsLayoutRelativeToFrame(), behaviorForFixed, headerHeight(), footerHeight());
 }
 
 float FrameView::yPositionForInsetClipLayer(const FloatPoint& scrollPosition, float topContentInset)
@@ -2587,16 +2592,8 @@ bool FrameView::needsStyleRecalcOrLayout(bool includeSubframes) const
     if (!includeSubframes)
         return false;
 
-    // Find child frames via the Widget tree, as updateLayoutAndStyleIfNeededRecursive() does.
-    Vector<Ref<FrameView>, 16> childViews;
-    childViews.reserveInitialCapacity(children().size());
-    for (auto& widget : children()) {
-        if (is<FrameView>(*widget))
-            childViews.uncheckedAppend(downcast<FrameView>(*widget));
-    }
-
-    for (unsigned i = 0; i < childViews.size(); ++i) {
-        if (childViews[i]->needsStyleRecalcOrLayout())
+    for (auto& frameView : renderedChildFrameViews()) {
+        if (frameView->needsStyleRecalcOrLayout())
             return true;
     }
 
@@ -2672,20 +2669,14 @@ void FrameView::setTransparent(bool isTransparent)
 
     m_isTransparent = isTransparent;
 
-    RenderView* renderView = this->renderView();
-    if (!renderView)
-        return;
-
     // setTransparent can be called in the window between FrameView initialization
     // and switching in the new Document; this means that the RenderView that we
     // retrieve is actually attached to the previous Document, which is going away,
     // and must not update compositing layers.
-    if (&renderView->frameView() != this)
+    if (!isViewForDocumentInFrame())
         return;
 
-    RenderLayerCompositor& compositor = renderView->compositor();
-    compositor.setCompositingLayersNeedRebuild();
-    compositor.scheduleCompositingLayerUpdate();
+    renderView()->compositor().rootBackgroundTransparencyChanged();
 }
 
 bool FrameView::hasOpaqueBackground() const
@@ -2700,12 +2691,20 @@ Color FrameView::baseBackgroundColor() const
 
 void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
 {
+    bool hadAlpha = m_baseBackgroundColor.hasAlpha();
+    
     if (!backgroundColor.isValid())
         m_baseBackgroundColor = Color::white;
     else
         m_baseBackgroundColor = backgroundColor;
 
+    if (!isViewForDocumentInFrame())
+        return;
+
     recalculateScrollbarOverlayStyle();
+
+    if (m_baseBackgroundColor.hasAlpha() != hadAlpha)
+        renderView()->compositor().rootBackgroundTransparencyChanged();
 }
 
 void FrameView::updateBackgroundRecursively(const Color& backgroundColor, bool transparent)
@@ -4028,6 +4027,17 @@ void FrameView::paintOverhangAreas(GraphicsContext* context, const IntRect& hori
     ScrollView::paintOverhangAreas(context, horizontalOverhangArea, verticalOverhangArea, dirtyRect);
 }
 
+FrameView::FrameViewList FrameView::renderedChildFrameViews() const
+{
+    FrameViewList childViews;
+    for (Frame* frame = m_frame->tree().firstRenderedChild(); frame; frame = frame->tree().nextRenderedSibling()) {
+        if (frame->view())
+            childViews.append(*frame->view());
+    }
+    
+    return childViews;
+}
+
 void FrameView::updateLayoutAndStyleIfNeededRecursive()
 {
     // We have to crawl our entire tree looking for any FrameViews that need
@@ -4046,20 +4056,10 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
     if (needsLayout())
         layout();
 
-    // Grab a copy of the children() set, as it may be mutated by the following updateLayoutAndStyleIfNeededRecursive
-    // calls, as they can potentially re-enter a layout of the parent frame view, which may add/remove scrollbars
-    // and thus mutates the children() set.
-    // We use the Widget children because walking the Frame tree would include display:none frames.
-    // FIXME: use FrameTree::traverseNextRendered().
-    Vector<Ref<FrameView>, 16> childViews;
-    childViews.reserveInitialCapacity(children().size());
-    for (auto& widget : children()) {
-        if (is<FrameView>(*widget))
-            childViews.uncheckedAppend(downcast<FrameView>(*widget));
-    }
-
-    for (unsigned i = 0; i < childViews.size(); ++i)
-        childViews[i]->updateLayoutAndStyleIfNeededRecursive();
+    // Grab a copy of the child views, as the list may be mutated by the following updateLayoutAndStyleIfNeededRecursive
+    // calls, as they can potentially re-enter a layout of the parent frame view.
+    for (auto& frameView : renderedChildFrameViews())
+        frameView->updateLayoutAndStyleIfNeededRecursive();
 
     // A child frame may have dirtied us during its layout.
     frame().document()->updateStyleIfNeeded();
@@ -4102,6 +4102,15 @@ void FrameView::updateIsVisuallyNonEmpty()
         return;
     m_isVisuallyNonEmpty = true;
     adjustTiledBackingCoverage();
+}
+
+bool FrameView::isViewForDocumentInFrame() const
+{
+    RenderView* renderView = this->renderView();
+    if (!renderView)
+        return false;
+
+    return &renderView->frameView() == this;
 }
 
 void FrameView::enableAutoSizeMode(bool enable, const IntSize& minSize, const IntSize& maxSize)

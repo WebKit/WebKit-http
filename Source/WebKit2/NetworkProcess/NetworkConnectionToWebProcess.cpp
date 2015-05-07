@@ -53,7 +53,6 @@ PassRefPtr<NetworkConnectionToWebProcess> NetworkConnectionToWebProcess::create(
 }
 
 NetworkConnectionToWebProcess::NetworkConnectionToWebProcess(IPC::Connection::Identifier connectionIdentifier)
-    : m_serialLoadingEnabled(false)
 {
     m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this, RunLoop::main());
     m_connection->open();
@@ -116,16 +115,16 @@ void NetworkConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection&, I
 
 void NetworkConnectionToWebProcess::scheduleResourceLoad(const NetworkResourceLoadParameters& loadParameters)
 {
-    RefPtr<NetworkResourceLoader> loader = NetworkResourceLoader::create(loadParameters, this);
-    m_networkResourceLoaders.add(loadParameters.identifier, loader);
-    NetworkProcess::singleton().networkResourceLoadScheduler().scheduleLoader(loader.get());
+    auto loader = NetworkResourceLoader::create(loadParameters, this);
+    m_networkResourceLoaders.add(loadParameters.identifier, loader.ptr());
+    loader->start();
 }
 
 void NetworkConnectionToWebProcess::performSynchronousLoad(const NetworkResourceLoadParameters& loadParameters, PassRefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply> reply)
 {
-    RefPtr<NetworkResourceLoader> loader = NetworkResourceLoader::create(loadParameters, this, reply);
-    m_networkResourceLoaders.add(loadParameters.identifier, loader);
-    NetworkProcess::singleton().networkResourceLoadScheduler().scheduleLoader(loader.get());
+    auto loader = NetworkResourceLoader::create(loadParameters, this, reply);
+    m_networkResourceLoaders.add(loadParameters.identifier, loader.ptr());
+    loader->start();
 }
 
 void NetworkConnectionToWebProcess::removeLoadIdentifier(ResourceLoadIdentifier identifier)
@@ -149,11 +148,6 @@ void NetworkConnectionToWebProcess::setDefersLoading(ResourceLoadIdentifier iden
         return;
 
     loader->setDefersLoading(defers);
-}
-
-void NetworkConnectionToWebProcess::setSerialLoadingEnabled(bool enabled)
-{
-    m_serialLoadingEnabled = enabled;
 }
 
 static NetworkStorageSession& storageSession(SessionID sessionID)

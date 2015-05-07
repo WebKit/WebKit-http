@@ -37,17 +37,15 @@ PassRefPtr<BitmapTexture> TextureMapper::acquireTextureFromPool(const IntSize& s
     return selectedTexture.release();
 }
 
-std::unique_ptr<TextureMapper> TextureMapper::create(AccelerationMode mode)
+std::unique_ptr<TextureMapper> TextureMapper::create()
 {
-    RELEASE_ASSERT(mode == OpenGLMode);
     return platformCreateAccelerated();
 }
 
-TextureMapper::TextureMapper(AccelerationMode accelerationMode)
+TextureMapper::TextureMapper()
     : m_context(0)
     , m_interpolationQuality(InterpolationDefault)
     , m_textDrawingMode(TextModeFill)
-    , m_accelerationMode(accelerationMode)
     , m_wrapMode(StretchWrap)
     , m_isMaskMode(false)
 { }

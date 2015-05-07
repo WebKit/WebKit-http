@@ -1748,6 +1748,8 @@ void Document::recalcStyle(Style::Change change)
 
     m_styleSheetCollection.flushPendingUpdates();
 
+    frameView.willRecalcStyle();
+
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRecalculateStyle(*this);
 
     // FIXME: We never reset this flags.
@@ -3002,6 +3004,9 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
         break;
 
     case HTTPHeaderName::Refresh: {
+        if (page() && !page()->settings().metaRefreshEnabled())
+            break;
+
         double delay;
         String urlString;
         if (frame && parseHTTPRefresh(content, true, delay, urlString)) {

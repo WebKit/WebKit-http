@@ -1,3 +1,42 @@
+2015-05-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.9.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2015-05-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Introducing the Platform Abstraction Layer (PAL)
+        https://bugs.webkit.org/show_bug.cgi?id=143358
+
+        Reviewed by Simon Fraser.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata: Add it to the workspace.
+
+2015-05-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Disable GNU Gold linker on Cortex A53
+        https://bugs.webkit.org/show_bug.cgi?id=144382
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2015-05-01  Martin Robinson  <mrobinson@igalia.com>
+
+        USE(...) macro should expect unprefixed variables
+        https://bugs.webkit.org/show_bug.cgi?id=144454
+
+        Reviewed by Daniel Bates.
+
+        * Source/cmake/OptionsAppleWin.cmake: Replace all occurrences WTF_USE with USE.
+        * Source/cmake/OptionsEfl.cmake: Ditto.
+        * Source/cmake/OptionsGTK.cmake: Ditto.
+        * Source/cmake/OptionsMac.cmake: Ditto.
+        * Source/cmake/OptionsWinCairo.cmake: Ditto.
+        * Source/cmake/WebKitFeatures.cmake: No longer expose WTF_USE when encountering
+        USE variables.
+
 2015-04-30  Martin Robinson  <mrobinson@igalia.com>
 
         [CMake] Automatically expose WTF_USE_FOO to the build when USE_FOO is exposed

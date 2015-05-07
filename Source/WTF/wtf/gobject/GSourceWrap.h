@@ -4,19 +4,52 @@
 #include <chrono>
 #include <functional>
 #include <glib.h>
-#include <wtf/Noncopyable.h>
+#include <utility>
 #include <wtf/Vector.h>
 #include <wtf/gobject/GRefPtr.h>
+
+typedef struct _GSocket GSocket;
 
 namespace WTF {
 
 class GSourceWrap {
-    WTF_MAKE_NONCOPYABLE(GSourceWrap);
 private:
+    static GSourceFuncs sourceFunctions;
+    static gboolean staticDelayBasedVoidCallback(gpointer);
+    static gboolean dynamicDelayBasedVoidCallback(gpointer);
+    static gboolean dynamicDelayBasedBoolCallback(gpointer);
+    static gboolean staticOneShotCallback(gpointer);
+    static gboolean staticSocketCallback(GSocket*, GIOCondition, gpointer);
+
+    using DispatchContext = std::pair<GSource*, gpointer>;
+    template<typename T1, typename T2>
+    using CallbackContextType = std::pair<std::function<T1>, T2>;
+
+    template<typename T>
+    static void destroyCallbackContext(gpointer data)
+    {
+        auto* context = reinterpret_cast<T*>(data);
+        delete context;
+    }
+
+    static gint64 targetTimeForDelay(std::chrono::microseconds);
+
     class Base {
+        Base(const Base&) = delete;
+        Base& operator=(const Base&) = delete;
+        Base(Base&&) = delete;
+        Base& operator=(Base&&) = delete;
     public:
-        Base();
+        Base() = default;
         ~Base();
+
+    protected:
+        GRefPtr<GSource> m_source;
+    };
+
+    class DelayBased : Base {
+    public:
+        DelayBased() = default;
 
         bool isScheduled() const;
         bool isActive() const;
@@ -26,30 +59,21 @@ private:
         void schedule(std::chrono::microseconds);
         void cancel();
 
-        static GSourceFuncs sourceFunctions;
-        static gboolean staticVoidCallback(gpointer);
-        static gboolean dynamicVoidCallback(gpointer);
-        static gboolean dynamicBoolCallback(gpointer);
-
-        struct Source {
-            GSource baseSource;
+        struct Context {
             std::chrono::microseconds delay;
+            GRefPtr<GCancellable> cancellable;
             bool dispatching;
-        };
+        } m_context;
 
-        struct CallbackContext {
-            Source& source;
-            gpointer data;
-        };
-
-        Source* source() const { return reinterpret_cast<Source*>(m_source.get()); }
-        GRefPtr<GSource> m_source;
+        friend class GSourceWrap;
+        template<typename T>
+        using CallbackContext = CallbackContextType<T, Context&>;
     };
 
 public:
-    class Static : public Base {
+    class Static : public DelayBased {
     public:
-        Static() { }
+        Static() = default;
         Static(const char* name, std::function<void ()>&&, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
         void initialize(const char* name, std::function<void ()>&&, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
 
@@ -57,7 +81,7 @@ public:
         void cancel();
     };
 
-    class Dynamic : public Base {
+    class Dynamic : public DelayBased {
     public:
         Dynamic(const char* name, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
 
@@ -65,30 +89,53 @@ public:
         void schedule(std::function<bool ()>&&, std::chrono::microseconds = std::chrono::microseconds(0));
         void cancel();
     };
-};
 
-class GSourceQueue {
-    WTF_MAKE_NONCOPYABLE(GSourceQueue);
-public:
-    GSourceQueue();
-    GSourceQueue(const char*, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
-    ~GSourceQueue();
+    class OneShot {
+    public:
+        static void construct(const char* name, std::function<void ()>&& function, std::chrono::microseconds delay = std::chrono::microseconds(0), int priority = G_PRIORITY_HIGH + 30, GMainContext* context = nullptr);
 
-    void initialize(const char*, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
+    private:
+        friend class GSourceWrap;
+        using CallbackContext = CallbackContextType<void (), void*>;
+    };
 
-    void queue(std::function<void ()>&&);
+    class Socket : public Base {
+    public:
+        Socket() = default;
+        void initialize(const char* name, std::function<bool (GIOCondition)>&&, GSocket*, GIOCondition, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
+        void cancel();
 
-private:
-    void dispatchQueue();
+    private:
+        friend class GSourceWrap;
+        using CallbackContext = CallbackContextType<bool (GIOCondition), GRefPtr<GCancellable>>;
 
-    GSourceWrap::Static m_sourceWrap;
-    GMutex m_mutex;
-    Vector<std::function<void ()>, 16> m_queue;
+        GRefPtr<GCancellable> m_cancellable;
+    };
+
+    class Queue {
+        Queue(const Queue&) = delete;
+        Queue& operator=(const Queue&) = delete;
+        Queue(Queue&&) = delete;
+        Queue& operator=(Queue&&) = delete;
+    public:
+        Queue();
+        ~Queue();
+
+        void initialize(const char*, int priority = G_PRIORITY_HIGH + 30, GMainContext* = nullptr);
+
+        void queue(std::function<void ()>&&);
+
+    private:
+        void dispatchQueue();
+
+        Static m_sourceWrap;
+        GMutex m_mutex;
+        Vector<std::function<void ()>, 16> m_queue;
+    };
 };
 
 } // namespace WTF
 
 using WTF::GSourceWrap;
-using WTF::GSourceQueue;
 
 #endif // GSourceWrap_h

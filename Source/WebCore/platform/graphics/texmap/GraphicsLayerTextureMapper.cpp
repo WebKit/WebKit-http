@@ -609,8 +609,7 @@ bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
         return true;
 
     TextureMapper* textureMapper = m_layer.textureMapper();
-    // TextureMapperImageBuffer does not support CSS filters.
-    if (!textureMapper || textureMapper->accelerationMode() == TextureMapper::SoftwareMode)
+    if (!textureMapper)
         return false;
     notifyChange(FilterChange);
     return GraphicsLayer::setFilters(filters);

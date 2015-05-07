@@ -136,10 +136,11 @@ static void addUniversalActionsToDFA(DFA& dfa, const UniversalActionLocationsSet
     dfa.nodes[dfa.root].setActions(actionsStart, static_cast<uint16_t>(actionsLength));
 }
 
-std::error_code compileRuleList(ContentExtensionCompilationClient& client, const String& ruleList)
+std::error_code compileRuleList(ContentExtensionCompilationClient& client, String&& ruleList)
 {
     Vector<ContentExtensionRule> parsedRuleList;
     auto parserError = parseRuleList(ruleList, parsedRuleList);
+    ruleList = String();
     if (parserError)
         return parserError;
 
@@ -197,37 +198,25 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, const
     double totalNFAToByteCodeBuildTimeStart = monotonicallyIncreasingTime();
 #endif
 
-    Vector<DFABytecode> bytecode;
+    // FIXME: This can be tuned. More NFAs take longer to interpret, fewer use more memory and time to compile.
+    const unsigned maxNFASize = 50000;
+    
     bool firstNFASeen = false;
-    combinedURLFilters.processNFAs([&](NFA&& nfa) {
+    // FIXME: Combine small NFAs to reduce the number of NFAs.
+    combinedURLFilters.processNFAs(maxNFASize, [&](NFA&& nfa) {
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
         nfa.debugPrintDot();
 #endif
 
         LOG_LARGE_STRUCTURES(nfa, nfa.memoryUsed());
 
-#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
-        double dfaBuildTimeStart = monotonicallyIncreasingTime();
-#endif
         DFA dfa = NFAToDFA::convert(nfa);
         LOG_LARGE_STRUCTURES(dfa, dfa.memoryUsed());
 
-#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
-        double dfaBuildTimeEnd = monotonicallyIncreasingTime();
-        dataLogF("    Time spent building the DFA %zu: %f\n", i, (dfaBuildTimeEnd - dfaBuildTimeStart));
-#endif
-
-#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
-        double dfaMinimizationTimeStart = monotonicallyIncreasingTime();
-#endif
         dfa.minimize();
-#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
-        double dfaMinimizationTimeEnd = monotonicallyIncreasingTime();
-        dataLogF("    Time spent miniminizing the DFA %zu: %f\n", i, (dfaMinimizationTimeEnd - dfaMinimizationTimeStart));
-#endif
 
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
-        WTFLogAlways("DFA %zu", i);
+        WTFLogAlways("DFA");
         dfa.debugPrintDot();
 #endif
         ASSERT_WITH_MESSAGE(!dfa.nodes[dfa.root].hasActions(), "All actions on the DFA root should come from regular expressions that match everything.");
@@ -237,11 +226,15 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, const
             addUniversalActionsToDFA(dfa, universalActionLocations);
         }
 
+        Vector<DFABytecode> bytecode;
         DFABytecodeCompiler compiler(dfa, bytecode);
         compiler.compile();
+        LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
+        client.writeBytecode(WTF::move(bytecode));
 
         firstNFASeen = true;
     });
+    ASSERT(combinedURLFilters.isEmpty());
 
     if (!firstNFASeen) {
         // Our bytecode interpreter expects to have at least one DFA, so if we haven't seen any
@@ -252,12 +245,12 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, const
 
         addUniversalActionsToDFA(dummyDFA, universalActionLocations);
 
+        Vector<DFABytecode> bytecode;
         DFABytecodeCompiler compiler(dummyDFA, bytecode);
         compiler.compile();
+        LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
+        client.writeBytecode(WTF::move(bytecode));
     }
-
-    // FIXME: combinedURLFilters should be cleared incrementally as it is processing NFAs. 
-    combinedURLFilters.clear();
 
     LOG_LARGE_STRUCTURES(universalActionLocations, universalActionLocations.capacity() * sizeof(unsigned));
     universalActionLocations.clear();
@@ -265,13 +258,9 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, const
 #if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
     double totalNFAToByteCodeBuildTimeEnd = monotonicallyIncreasingTime();
     dataLogF("    Time spent building and compiling the DFAs: %f\n", (totalNFAToByteCodeBuildTimeEnd - totalNFAToByteCodeBuildTimeStart));
-    dataLogF("    Bytecode size %zu\n", bytecode.size());
-    dataLogF("    DFA count %zu\n", nfas.size());
 #endif
 
-    LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
-    client.writeBytecode(WTF::move(bytecode));
-    bytecode.clear();
+    client.finalize();
 
     return { };
 }

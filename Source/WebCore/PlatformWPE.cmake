@@ -43,6 +43,7 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue2.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
+    platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
@@ -92,8 +93,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
     platform/graphics/opengl/TemporaryOpenGLSetting.cpp
     platform/graphics/opentype/OpenTypeVerticalData.cpp
+    platform/graphics/wayland/PlatformDisplayWayland.cpp
     platform/graphics/wayland/WaylandSurfaceWPE.cpp
-    platform/graphics/wayland/WaylandDisplayWPE.cpp
     platform/graphics/GLContext.cpp
     platform/image-decoders/ImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageDecoder.cpp
@@ -222,7 +223,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${WEBP_INCLUDE_DIRS}
 )
 
-if (WTF_USE_TEXTURE_MAPPER)
+if (USE_TEXTURE_MAPPER)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/texmap"
     )

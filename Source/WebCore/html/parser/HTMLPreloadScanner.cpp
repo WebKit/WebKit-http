@@ -105,8 +105,8 @@ public:
             processAttribute(attributeName, attributeValue);
         }
 
-        // Resolve between src and srcSet if we have them.
-        if (!m_srcSetAttribute.isEmpty()) {
+        // Resolve between src and srcSet if we have them and the tag is img.
+        if (m_tagId == TagId::Img && !m_srcSetAttribute.isEmpty()) {
             unsigned sourceSize = 0;
 #if ENABLE(PICTURE_SIZES)
             sourceSize = parseSizesAttribute(m_sizesAttribute, document.renderView(), document.frame());
@@ -312,7 +312,7 @@ void TokenPreloadScanner::updatePredictedBaseURL(const HTMLToken& token)
 {
     ASSERT(m_predictedBaseElementURL.isEmpty());
     if (auto* hrefAttribute = findAttribute(token.attributes(), hrefAttr.localName().string()))
-        m_predictedBaseElementURL = URL(m_documentURL, stripLeadingAndTrailingHTMLSpaces(StringImpl::create8BitIfPossible(hrefAttribute->value))).copy();
+        m_predictedBaseElementURL = URL(m_documentURL, stripLeadingAndTrailingHTMLSpaces(StringImpl::create8BitIfPossible(hrefAttribute->value))).isolatedCopy();
 }
 
 HTMLPreloadScanner::HTMLPreloadScanner(const HTMLParserOptions& options, const URL& documentURL, float deviceScaleFactor)

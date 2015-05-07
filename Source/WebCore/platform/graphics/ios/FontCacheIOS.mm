@@ -602,8 +602,9 @@ static CTFontRef createCTFontWithFamilyNameAndWeight(const String& familyName, C
         return nullptr;
 
     static NeverDestroyed<AtomicString> systemUIFontWithWebKitPrefix("-webkit-system-font", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<AtomicString> systemUIFontWithApplePrefix("-apple-system-font", AtomicString::ConstructFromLiteral);
-    if (equalIgnoringCase(familyName, systemUIFontWithWebKitPrefix) || equalIgnoringCase(familyName, systemUIFontWithApplePrefix)) {
+    static NeverDestroyed<AtomicString> systemUIFontWithApplePrefix("-apple-system", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<AtomicString> systemUIFontWithAppleAlternatePrefix("-apple-system-font", AtomicString::ConstructFromLiteral);
+    if (equalIgnoringCase(familyName, systemUIFontWithWebKitPrefix) || equalIgnoringCase(familyName, systemUIFontWithApplePrefix) || equalIgnoringCase(familyName, systemUIFontWithAppleAlternatePrefix)) {
         CTFontUIFontType fontType = kCTFontUIFontSystem;
         if (weight > 300) {
             // The comment below has been copied from CoreText/UIFoundation. However, in WebKit we synthesize the oblique,
@@ -623,13 +624,11 @@ static CTFontRef createCTFontWithFamilyNameAndWeight(const String& familyName, C
         return CTFontCreateWithFontDescriptor(fontDescriptor.get(), size, nullptr);
     }
 
-    static NeverDestroyed<AtomicString> systemUIMonospacedNumbersFontWithApplePrefix("-apple-system-font-monospaced-numbers", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<AtomicString> systemUIMonospacedNumbersFontWithApplePrefix("-apple-system-monospaced-numbers", AtomicString::ConstructFromLiteral);
     if (equalIgnoringCase(familyName, systemUIMonospacedNumbersFontWithApplePrefix)) {
-        NSDictionary *attributes = @{ (NSString *)kCTFontFeatureTypeIdentifierKey : @(kNumberSpacingType),
-            (NSString *)kCTFontFeatureSelectorIdentifierKey : @(kMonospacedNumbersSelector) };
-
-        RetainPtr<CTFontDescriptorRef> fontDescriptor = adoptCF(CTFontDescriptorCreateWithAttributesAndOptions((CFDictionaryRef)attributes, kCTFontDescriptorOptionSystemUIFont | kCTFontDescriptorOptionPreferAppleSystemFont));
-        return CTFontCreateWithFontDescriptor(fontDescriptor.get(), size, nullptr);
+        RetainPtr<CTFontDescriptorRef> systemFontDescriptor = adoptCF(CTFontDescriptorCreateForUIType(kCTFontUIFontSystem, size, nullptr));
+        RetainPtr<CTFontDescriptorRef> monospaceFontDescriptor = adoptCF(CTFontDescriptorCreateCopyWithFeature(systemFontDescriptor.get(), (CFNumberRef)@(kNumberSpacingType), (CFNumberRef)@(kMonospacedNumbersSelector)));
+        return CTFontCreateWithFontDescriptor(monospaceFontDescriptor.get(), size, nullptr);
     }
 
 

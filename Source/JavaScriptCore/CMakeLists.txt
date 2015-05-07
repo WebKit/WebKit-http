@@ -52,8 +52,12 @@ set(JavaScriptCore_SOURCES
     API/JSWeakObjectMapRefPrivate.cpp
     API/OpaqueJSString.cpp
 
+    assembler/ARMAssembler.cpp
+    assembler/ARMv7Assembler.cpp
     assembler/LinkBuffer.cpp
     assembler/MacroAssembler.cpp
+    assembler/MacroAssemblerARM.cpp
+    assembler/MacroAssemblerARMv7.cpp
     assembler/MacroAssemblerX86Common.cpp
 
     bindings/ScriptFunctionCall.cpp
@@ -581,6 +585,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/TypeSet.cpp
     runtime/TypedArrayController.cpp
     runtime/TypedArrayType.cpp
+    runtime/TypeofType.cpp
     runtime/VM.cpp
     runtime/VMEntryScope.cpp
     runtime/VarOffset.cpp
@@ -627,7 +632,7 @@ set(JavaScriptCore_LIBRARIES
     ${ICU_I18N_LIBRARIES}
 )
 
-if (WTF_USE_UDIS86)
+if (USE_UDIS86)
     set(UDIS_GEN_DEP
         disassembler/udis86/ud_opcode.py
         disassembler/udis86/ud_optable.py
@@ -1103,12 +1108,11 @@ add_custom_command(
     VERBATIM)
 
 # JSCBuiltins
-file(GLOB JSCBuiltins_js_files "${CMAKE_CURRENT_SOURCE_DIR}/builtins/*.js")
 add_custom_command(
    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins
-   DEPENDS ${JSCBuiltins_js_files}
-   COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins ${JSCBuiltins_js_files} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
+   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/builtins
+   COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins --input-directory ${CMAKE_CURRENT_SOURCE_DIR}/builtins --output ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
    VERBATIM)
 
 list(APPEND JavaScriptCore_SOURCES
@@ -1154,11 +1158,6 @@ if (ENABLE_WEB_REPLAY)
 endif ()
 
 if (WTF_CPU_ARM)
-    list(APPEND JavaScriptCore_SOURCES
-        assembler/ARMAssembler.cpp
-        assembler/ARMv7Assembler.cpp
-        assembler/MacroAssemblerARM.cpp
-    )
 elseif (WTF_CPU_ARM64)
 elseif (WTF_CPU_HPPA)
 elseif (WTF_CPU_PPC)

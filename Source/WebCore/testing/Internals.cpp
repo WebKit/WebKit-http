@@ -987,6 +987,17 @@ void Internals::setScrollViewPosition(long x, long y, ExceptionCode& ec)
     frameView->setConstrainsScrollingToContentEdge(constrainsScrollingToContentEdgeOldValue);
 }
 
+void Internals::setViewBaseBackgroundColor(const String& colorValue, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->view()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    document->view()->setBaseBackgroundColor(Color(colorValue));
+}
+
 void Internals::setPagination(const String& mode, int gap, int pageLength, ExceptionCode& ec)
 {
     Document* document = contextDocument();
@@ -2114,6 +2125,28 @@ unsigned long Internals::styleRecalcCount(ExceptionCode& ec)
     return document->styleRecalcCount();
 }
 
+void Internals::startTrackingCompositingUpdates(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    document->renderView()->compositor().startTrackingCompositingUpdates();
+}
+
+unsigned long Internals::compositingUpdateCount(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+    
+    return document->renderView()->compositor().compositingUpdateCount();
+}
+
 void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(ExceptionCode& ec)
 {
     updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(nullptr, ec);
@@ -2741,6 +2774,63 @@ void Internals::queueMicroTask(int testNumber)
 MockContentFilterSettings& Internals::mockContentFilterSettings()
 {
     return MockContentFilterSettings::singleton();
+}
+#endif
+
+#if ENABLE(CSS_SCROLL_SNAP)
+static void appendOffsets(StringBuilder& builder, const Vector<LayoutUnit>& snapOffsets)
+{
+    bool justStarting = true;
+
+    builder.append("{ ");
+    for (auto& coordinate : snapOffsets) {
+        if (!justStarting)
+            builder.append(", ");
+        else
+            justStarting = false;
+        
+        builder.append(String::number(coordinate.toUnsigned()));
+    }
+    builder.append(" }");
+}
+    
+String Internals::scrollSnapOffsets(Element* element, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    if (!element->renderBox())
+        return String();
+
+    RenderBox& box = *element->renderBox();
+    if (!box.canBeScrolledAndHasScrollableArea()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    if (!box.layer())
+        return String();
+    
+    ScrollableArea& scrollableArea = *box.layer();
+    
+    StringBuilder result;
+
+    if (scrollableArea.horizontalSnapOffsets()) {
+        result.append("horizontal = ");
+        appendOffsets(result, *scrollableArea.horizontalSnapOffsets());
+    }
+
+    if (scrollableArea.verticalSnapOffsets()) {
+        if (result.length())
+            result.append(", ");
+
+        result.append("vertical = ");
+        appendOffsets(result, *scrollableArea.verticalSnapOffsets());
+    }
+
+    return result.toString();
 }
 #endif
 
