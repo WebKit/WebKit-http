@@ -28,6 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "ArrayPrototype.h"
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
@@ -517,10 +518,17 @@ private:
             switch (arrayMode.type()) {
             case Array::Double:
                 if (arrayMode.arrayClass() == Array::OriginalArray
-                    && arrayMode.speculation() == Array::InBounds
-                    && m_graph.globalObjectFor(node->origin.semantic)->arrayPrototypeChainIsSane()
-                    && !(node->flags() & NodeBytecodeUsesAsOther))
-                    node->setArrayMode(arrayMode.withSpeculation(Array::SaneChain));
+                    && arrayMode.speculation() == Array::InBounds) {
+                    JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+                    if (globalObject->arrayPrototypeChainIsSane()
+                        && !(node->flags() & NodeBytecodeUsesAsOther)) {
+                        m_graph.watchpoints().addLazily(
+                            globalObject->arrayPrototype()->structure()->transitionWatchpointSet());
+                        m_graph.watchpoints().addLazily(
+                            globalObject->objectPrototype()->structure()->transitionWatchpointSet());
+                        node->setArrayMode(arrayMode.withSpeculation(Array::SaneChain));
+                    }
+                }
                 break;
                 
             case Array::String:
@@ -1029,6 +1037,7 @@ private:
         case BooleanToNumber:
         case PhantomNewObject:
         case PhantomNewFunction:
+        case PhantomCreateActivation:
         case PhantomDirectArguments:
         case PhantomClonedArguments:
         case ForwardVarargs:
@@ -1036,6 +1045,7 @@ private:
         case PutHint:
         case CheckStructureImmediate:
         case MaterializeNewObject:
+        case MaterializeCreateActivation:
         case PutStack:
         case KillStack:
         case GetStack:
@@ -1049,12 +1059,8 @@ private:
             Node* globalObjectNode = m_insertionSet.insertNode(
                 m_indexInBlock, SpecNone, JSConstant, node->origin, 
                 OpInfo(m_graph.freeze(m_graph.globalObjectFor(node->origin.semantic))));
-            // FIXME: This probably shouldn't have an unconditional barrier.
-            // https://bugs.webkit.org/show_bug.cgi?id=133104
-            Node* barrierNode = m_graph.addNode(
-                SpecNone, StoreBarrier, m_currentNode->origin, 
-                Edge(globalObjectNode, KnownCellUse));
-            m_insertionSet.insert(m_indexInBlock, barrierNode);
+            insertStoreBarrier(
+                m_indexInBlock, Edge(globalObjectNode, KnownCellUse), node->child1());
             break;
         }
 
@@ -1544,10 +1550,12 @@ private:
             m_insertionSet.insertNode(
                 m_indexInBlock, SpecNone, Check, origin, Edge(array, StringUse));
         } else {
+            // Note that we only need to be using a structure check if we opt for SaneChain, since
+            // that needs to protect against JSArray's __proto__ being changed.
             Structure* structure = arrayMode.originalArrayStructure(m_graph, origin.semantic);
         
             Edge indexEdge = index ? Edge(index, Int32Use) : Edge();
-        
+            
             if (arrayMode.doesConversion()) {
                 if (structure) {
                     m_insertionSet.insertNode(

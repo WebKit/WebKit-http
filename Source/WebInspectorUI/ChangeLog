@@ -1,3 +1,351 @@
+2015-05-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Docking Toolbar Buttons do not respect Docking Availability
+        https://bugs.webkit.org/show_bug.cgi?id=144714
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector.updateDockingAvailability):
+        (WebInspector._updateDockNavigationItems):
+        Update the Toolbar UI based on docking availability.
+        Assume docking is unavailable by default.
+
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setDockingUnavailable):
+        Add back this API as the backend may be calling it when
+        docking availability changes. This just calls out to
+        global WebInspector functions to update the Toolbar UI.
+
+        * UserInterface/Base/Test.js:
+        (WebInspector.updateDockedState):
+        (WebInspector.updateDockingAvailability):
+        Do nothing in tests.
+
+2015-05-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: The text in the left pane overlaps the "Filter Time Events" field in the Timeline after the Web Inspector is resized
+        https://bugs.webkit.org/show_bug.cgi?id=144720
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar):
+        (.filter-bar > .navigation-bar):
+        (.filter-bar > input[type="search"]):
+        (.filter-bar > .navigation-bar > .item): Deleted.
+        Filter bar now has opaque background and height updated to the ubiquitous 29px.
+
+2015-05-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOMStorage exception and issue with sessionStorage
+        https://bugs.webkit.org/show_bug.cgi?id=144646
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView):
+        (WebInspector.DOMStorageContentView.prototype._populate):
+        (WebInspector.DOMStorageContentView.prototype.reset): Deleted.
+        Always have the datagrid be available with a default sort.
+
+        (WebInspector.DOMStorageContentView.prototype._sortDataGrid.comparator):
+        (WebInspector.DOMStorageContentView.prototype._sortDataGrid):
+        Simplify and correct the order.
+
+        (WebInspector.DOMStorageContentView.prototype.cleanup):
+        Cleanup some uses of delete.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.sortNodesImmediately):
+        Provide a way to sort immediately without a visible delay.
+
+        (WebInspector.DataGrid.prototype._sortNodesCallback):
+        Cleanup some dead code to simplify sorting.
+
+        (WebInspector.DataGridNode.prototype._attach):
+        When sorting, the children list does not match the child node list,
+        so ensure that placeholder nodes are added to the end.
+
+        (WebInspector.PlaceholderDataGridNode.prototype.makeNormal):
+        Cleanup some uses of delete.
+
+2015-05-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: SourceCodeTextEditor shows "undefined" instead of resource content when pausing during resource load
+        https://bugs.webkit.org/show_bug.cgi?id=144662
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Command.prototype.promise):
+        Start standardizing on rejecting Promises with Error objects.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView):
+        (WebInspector.ResourceContentView.prototype._protocolError):
+        When there is a protocol error, show a nice UI string for the error.
+
+        (WebInspector.ResourceContentView.prototype._contentAvailable):
+        (WebInspector.ResourceContentView.prototype._contentError):
+        (WebInspector.ResourceContentView.prototype._hasContent):
+        Whenever we hit an error case in ResourceContentView, check to make sure
+        that a subclass hasn't already populated the content view with content.
+        This can happen when a TextResourceContentView populates a Resource with
+        Script content while paused, because the Resource content would be
+        unavailable. We check that content has loaded by checking that the
+        indeterminate spinner is no longer showing.
+
+2015-05-05  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Further optimize SVG images
+        https://bugs.webkit.org/show_bug.cgi?id=144441
+
+        SVG images optimized with a combination of sed replacements, the
+        usage of the scour tool (http://www.codedread.com/scour/) and a
+        forked version of the svgo tool (https://github.com/tanty/svgo).
+
+        Also, added the class attribute to the shape elements following
+        the convention used in Apple's images.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/gtk/BackArrow.svg: Optimized.
+        * UserInterface/Images/gtk/BreakpointActionAdd.svg: Optimized.
+        * UserInterface/Images/gtk/BreakpointActionRemove.svg: Optimized.
+        * UserInterface/Images/gtk/BreakpointButton.svg: Optimized.
+        * UserInterface/Images/gtk/BreakpointInactiveButton.svg: Optimized.
+        * UserInterface/Images/gtk/Breakpoints.svg: Optimized.
+        * UserInterface/Images/gtk/Checkers.svg: Optimized.
+        * UserInterface/Images/gtk/Circle.svg: Optimized.
+        * UserInterface/Images/gtk/Close.svg: Optimized.
+        * UserInterface/Images/gtk/CloseLarge.svg: Optimized.
+        * UserInterface/Images/gtk/CloseWhite.svg: Optimized.
+        * UserInterface/Images/gtk/ContentFlow.svg: Optimized.
+        * UserInterface/Images/gtk/Crosshair.svg: Optimized.
+        * UserInterface/Images/gtk/DOMCharacterData.svg: Optimized.
+        * UserInterface/Images/gtk/DOMComment.svg: Optimized.
+        * UserInterface/Images/gtk/DOMDocument.svg: Optimized.
+        * UserInterface/Images/gtk/DOMDocumentType.svg: Optimized.
+        * UserInterface/Images/gtk/DOMElement.svg: Optimized.
+        * UserInterface/Images/gtk/DOMNode.svg: Optimized.
+        * UserInterface/Images/gtk/DOMTextNode.svg: Optimized.
+        * UserInterface/Images/gtk/DisclosureTriangleSmallClosed.svg: Optimized.
+        * UserInterface/Images/gtk/DisclosureTriangleSmallOpen.svg: Optimized.
+        * UserInterface/Images/gtk/DisclosureTriangleTinyClosed.svg: Optimized.
+        * UserInterface/Images/gtk/DisclosureTriangleTinyOpen.svg: Optimized.
+        * UserInterface/Images/gtk/DockBottom.svg: Optimized.
+        * UserInterface/Images/gtk/DockRight.svg: Optimized.
+        * UserInterface/Images/gtk/DownloadArrow.svg: Optimized.
+        * UserInterface/Images/gtk/Error.svg: Optimized.
+        * UserInterface/Images/gtk/Errors.svg: Optimized.
+        * UserInterface/Images/gtk/ErrorsEnabled.svg: Optimized.
+        * UserInterface/Images/gtk/EventListener.svg: Optimized.
+        * UserInterface/Images/gtk/Exception.svg: Optimized.
+        * UserInterface/Images/gtk/Eye.svg: Optimized.
+        * UserInterface/Images/gtk/FilterFieldGlyph.svg: Optimized.
+        * UserInterface/Images/gtk/ForwardArrow.svg: Optimized.
+        * UserInterface/Images/gtk/Function.svg: Optimized.
+        * UserInterface/Images/gtk/GoToArrow.svg: Optimized.
+        * UserInterface/Images/gtk/HierarchicalNavigationItemChevron.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner1.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner10.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner11.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner12.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner2.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner3.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner4.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner5.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner6.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner7.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner8.svg: Optimized.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner9.svg: Optimized.
+        * UserInterface/Images/gtk/Issues.svg: Optimized.
+        * UserInterface/Images/gtk/IssuesEnabled.svg: Optimized.
+        * UserInterface/Images/gtk/LayerBorders.svg: Optimized.
+        * UserInterface/Images/gtk/Locked.svg: Optimized.
+        * UserInterface/Images/gtk/Logs.svg: Optimized.
+        * UserInterface/Images/gtk/Native.svg: Optimized.
+        * UserInterface/Images/gtk/NavigationItemCurleyBraces.svg: Optimized.
+        * UserInterface/Images/gtk/NavigationItemTrash.svg: Optimized.
+        * UserInterface/Images/gtk/NavigationItemTypes.svg: Optimized.
+        * UserInterface/Images/gtk/PaintFlashing.svg: Optimized.
+        * UserInterface/Images/gtk/Pause.svg: Optimized.
+        * UserInterface/Images/gtk/PausedBreakpoint.svg: Optimized.
+        * UserInterface/Images/gtk/Pencil.svg: Optimized.
+        * UserInterface/Images/gtk/Plus.svg: Optimized. Text element
+        converted into a shape.
+        * UserInterface/Images/gtk/PseudoElement.svg: Optimized.
+        * UserInterface/Images/gtk/Record.svg: Optimized.
+        * UserInterface/Images/gtk/Reflection.svg: Optimized.
+        * UserInterface/Images/gtk/ReloadFull.svg: Optimized.
+        * UserInterface/Images/gtk/ReplayPauseButton.svg: Optimized.
+        * UserInterface/Images/gtk/ReplayPlayButton.svg: Optimized.
+        * UserInterface/Images/gtk/ReplayRecordingButton.svg: Optimized.
+        * UserInterface/Images/gtk/Request.svg: Optimized.
+        * UserInterface/Images/gtk/Resources.svg: Optimized.
+        * UserInterface/Images/gtk/Response.svg: Optimized.
+        * UserInterface/Images/gtk/ResultLine.svg: Optimized.
+        * UserInterface/Images/gtk/Resume.svg: Optimized.
+        * UserInterface/Images/gtk/ShadowDOM.svg: Optimized.
+        * UserInterface/Images/gtk/SortIndicatorDownArrow.svg: Optimized.
+        * UserInterface/Images/gtk/SortIndicatorUpArrow.svg: Optimized.
+        * UserInterface/Images/gtk/SplitToggleUp.svg: Optimized.
+        * UserInterface/Images/gtk/StepInto.svg: Optimized.
+        * UserInterface/Images/gtk/StepOut.svg: Optimized.
+        * UserInterface/Images/gtk/StepOver.svg: Optimized.
+        * UserInterface/Images/gtk/Stop.svg: Optimized.
+        * UserInterface/Images/gtk/StyleRuleAuthor.svg: Optimized.
+        * UserInterface/Images/gtk/StyleRuleInherited.svg: Optimized.
+        * UserInterface/Images/gtk/StyleRuleInheritedElement.svg: Optimized.
+        * UserInterface/Images/gtk/StyleRuleInspector.svg: Optimized.
+        * UserInterface/Images/gtk/StyleRuleUser.svg: Optimized.
+        * UserInterface/Images/gtk/StyleRuleUserAgent.svg: Optimized.
+        * UserInterface/Images/gtk/TimelineRecordAnimation.svg: Optimized.
+        * UserInterface/Images/gtk/TimelineRecordConsoleProfile.svg: Optimized.
+        * UserInterface/Images/gtk/TimelineRecordEvent.svg: Optimized.
+        * UserInterface/Images/gtk/TimelineRecordLayout.svg: Optimized.
+        * UserInterface/Images/gtk/TimelineRecordPaint.svg: Optimized.
+        * UserInterface/Images/gtk/TimelineRecordProbeSampled.svg: Optimized.
+        * UserInterface/Images/gtk/TimelineRecordScriptEvaluated.svg: Optimized.
+        * UserInterface/Images/gtk/TimelineRecordStyle.svg: Optimized.
+        * UserInterface/Images/gtk/TimelineRecordTimer.svg: Optimized.
+        * UserInterface/Images/gtk/TypeBoolean.svg: Optimized.
+        * UserInterface/Images/gtk/TypeNull.svg: Optimized.
+        * UserInterface/Images/gtk/TypeNumber.svg: Optimized.
+        * UserInterface/Images/gtk/TypeObject.svg: Optimized.
+        * UserInterface/Images/gtk/TypeRegex.svg: Optimized. Removed
+        mistaken extra shape.
+        * UserInterface/Images/gtk/TypeString.svg: Optimized.
+        * UserInterface/Images/gtk/TypeSymbol.svg: Optimized. Removed
+        mistaken extra shape.
+        * UserInterface/Images/gtk/TypeUndefined.svg: Optimized.
+        * UserInterface/Images/gtk/Undock.svg: Optimized.
+        * UserInterface/Images/gtk/UpDownArrows.svg: Optimized.
+        * UserInterface/Images/gtk/UserInputPrompt.svg: Optimized.
+        * UserInterface/Images/gtk/UserInputPromptPrevious.svg: Optimized.
+        * UserInterface/Images/gtk/UserInputResult.svg: Optimized.
+        * UserInterface/Images/gtk/Warning.svg: Optimized.
+
+2015-05-05  Timothy Hatcher  <timothy@apple.com>
+
+        REGRESSION: Web Inspector: no way to navigate to a resource/source location from overview timeline view
+        https://bugs.webkit.org/show_bug.cgi?id=144539
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.set status): Call didChange() so the onchange event fires. This allows
+        TimelineSidebarPanel to update the status element when it goes from a spinner to empty for ResourceTreeElements.
+        (WebInspector.GeneralTreeElement.prototype.onattach): Don't call _updateStatusElement, just append it if needed.
+        Calling _updateStatusElement caused DOMNodeFragments as status elements to be appended a second time and fail.
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.treeElementAddedOrChanged):
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementAddedOrChanged):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype.canShowContentViewForTreeElement):
+        (WebInspector.NetworkTimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.NetworkTimelineView.prototype.treeElementSelected):
+        (WebInspector.NetworkTimelineView.prototype._dataGridNodeSelected):
+        (WebInspector.NetworkTimelineView.prototype._updateTreeElementWithCloseButton): Deleted.
+        (WebInspector.NetworkTimelineView.prototype._closeStatusButtonClicked): Deleted.
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.canShowContentViewForTreeElement):
+        (WebInspector.OverviewTimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.OverviewTimelineView.prototype._dataGridNodeSelected):
+        (WebInspector.OverviewTimelineView.prototype._treeElementDeselected): Deleted.
+        (WebInspector.OverviewTimelineView.prototype._treeElementSelected): Deleted.
+        (WebInspector.OverviewTimelineView.prototype._updateTreeElementWithCloseButton): Deleted.
+        (WebInspector.OverviewTimelineView.prototype._closeStatusButtonClicked): Deleted.
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype.canShowContentViewForTreeElement):
+        (WebInspector.RenderingFrameTimelineView.prototype.showContentViewForTreeElement):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent): Don't show a go-to arrow in the Domain column.
+        (WebInspector.ResourceTimelineDataGridNode.prototype._goToResource): Deleted.
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype.canShowContentViewForTreeElement):
+        (WebInspector.ScriptTimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.ScriptTimelineView.prototype.treeElementSelected):
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement.prototype.get sourceCodeLocation):
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline .item:hover:not(.selected) .status .close.status-button):
+        (.sidebar > .panel.navigation.timeline:not(.timeline-recording-content-view-showing) .status .go-to-arrow.status-button):
+        (.sidebar > .panel.navigation.timeline.timeline-recording-content-view-showing .status .close.status-button):
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementAddedOrChanged): Added.
+        (WebInspector.TimelineSidebarPanel.prototype.canShowDifferentContentView):
+        (WebInspector.TimelineSidebarPanel.prototype._treeElementGoToArrowWasClicked): Added.
+        (WebInspector.TimelineSidebarPanel.prototype._treeElementCloseButtonClicked): Added.
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView):
+        (WebInspector.TimelineView.prototype.canShowContentViewForTreeElement):
+        (WebInspector.TimelineView.prototype.showContentViewForTreeElement):
+        (WebInspector.TimelineView.prototype.treeElementDeselected):
+        (WebInspector.TimelineView.prototype.treeElementSelected):
+        (WebInspector.TimelineView.prototype.needsLayout):
+        (WebInspector.TimelineView.prototype._closeStatusButtonClicked): Deleted.
+        (WebInspector.TimelineView.prototype._updateTreeElementWithCloseButton): Deleted.
+        * UserInterface/Views/TreeElementStatusButton.css:
+        (.item > .status > .status-button): Fix an alignment issue with close and go-to arrows being side-by-side.
+        Does not happen in the final patch because they are mutually exclusive, but still good to fix.
+
+2015-05-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Fix some issues with Search tabs
+        https://bugs.webkit.org/show_bug.cgi?id=144531
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView):
+        (WebInspector.ContentView.isViewable):
+        Support DOMSearchMatchObject and SourceCodeSearchMatchObject representedObjects. These are usually
+        handled at a higher level, but cookie restoring requires ContentView to handle them.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        (WebInspector.DOMTreeContentView.prototype.selectAndRevealDOMNode):
+        (WebInspector.DOMTreeContentView.prototype.selectLastSelectedNode):
+        (WebInspector.DOMTreeContentView.prototype._restoreSelectedNodeAfterUpdate):
+        Don't allow restoring the previous selected node when another not has already been selected.
+
+        * UserInterface/Views/SearchTabContentView.js:
+        (WebInspector.SearchTabContentView.prototype.canShowRepresentedObject):
+        Allow Script objects to be shown in the Search tab.
+
+2015-05-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Source/WebInspectorUI/UserInterface/Images/Logs.svg has unknown attribute "fille"
+        https://bugs.webkit.org/show_bug.cgi?id=144627
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Images/Logs.svg: Change "fille" to "fill".
+
+2015-05-05  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: New Images added in r183339, r183338, r183332, r183323, r182660, and r182186
+        https://bugs.webkit.org/show_bug.cgi?id=144329
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/gtk/Console.svg: Added.
+        * UserInterface/Images/gtk/Debugger.svg: Added.
+        * UserInterface/Images/gtk/Elements.svg: Added.
+        * UserInterface/Images/gtk/Gear.svg: Added.
+        * UserInterface/Images/gtk/NewTab.svg: Added.
+        * UserInterface/Images/gtk/NewTabPlus.svg: Added.
+        * UserInterface/Images/gtk/ReloadToolbar.svg: Added.
+        * UserInterface/Images/gtk/SearchResults.svg: Added.
+        * UserInterface/Images/gtk/Storage.svg: Added.
+        * UserInterface/Images/gtk/Timeline.svg: Added.
+        * UserInterface/Images/gtk/TimelineRecordRenderingFrame.svg: Added.
+        * UserInterface/Images/gtk/ToggleLeftSidebar.svg: Added.
+        * UserInterface/Images/gtk/ToggleRightSidebar.svg: Added.
+
 2015-05-05  Andres Gomez  <agomez@igalia.com>
 
         [GTK] Web Inspector: icons for console.info() messages

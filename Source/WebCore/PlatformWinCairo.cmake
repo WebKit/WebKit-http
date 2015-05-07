@@ -37,6 +37,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsLayer.cpp
     platform/graphics/ImageSource.cpp
+    platform/graphics/PlatformDisplay.cpp
     platform/graphics/ShadowBlur.cpp
     platform/graphics/WOFFFileFormat.cpp
 
@@ -59,7 +60,6 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/texmap/BitmapTexture.cpp
     platform/graphics/texmap/BitmapTextureGL.cpp
-    platform/graphics/texmap/BitmapTextureImageBuffer.cpp
     platform/graphics/texmap/BitmapTexturePool.cpp
     platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
     platform/graphics/texmap/TextureMapper.cpp
@@ -67,7 +67,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/texmap/TextureMapperBackingStore.cpp
     platform/graphics/texmap/TextureMapperFPSCounter.cpp
     platform/graphics/texmap/TextureMapperGL.cpp
-    platform/graphics/texmap/TextureMapperImageBuffer.cpp
     platform/graphics/texmap/TextureMapperLayer.cpp
     platform/graphics/texmap/TextureMapperShaderProgram.cpp
     platform/graphics/texmap/TextureMapperSurfaceBackingStore.cpp

@@ -62,9 +62,8 @@ public:
     void setColorSpace(CGColorSpaceRef);
     CGColorSpaceRef colorSpace() const;
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    // This only works on iOS and OS 10.10+
     void setFencePort(mach_port_t);
-#endif
 
 private:
     LayerHostingMode m_layerHostingMode;

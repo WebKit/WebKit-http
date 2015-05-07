@@ -87,9 +87,12 @@ messages -> WebPage LegacyReceiver {
     SetAssistedNodeValue(String value)
     SetAssistedNodeValueAsNumber(double value)
     SetAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection)
+
     ApplicationWillResignActive()
     ApplicationWillEnterForeground()
+    ApplicationDidEnterBackground(uint64_t callbackID)
     ApplicationDidBecomeActive()
+
     ContentSizeCategoryDidChange(String contentSizeCategory)
     ExecuteEditCommandWithCallback(String name, uint64_t callbackID)
     GetLookupContextAtPoint(WebCore::IntPoint point, uint64_t callbackID)
@@ -199,6 +202,9 @@ messages -> WebPage LegacyReceiver {
     ScalePage(double scale, WebCore::IntPoint origin)
     ScalePageInViewCoordinates(double scale, WebCore::IntPoint centerInViewCoordinates)
     ScaleView(double scale)
+#if PLATFORM(COCOA)
+    ScaleViewAndUpdateGeometryFenced(double scale, WebCore::IntSize viewSize, WebCore::MachSendRight fencePort)
+#endif
 
     SetUseFixedLayout(bool fixed)
     SetFixedLayoutSize(WebCore::IntSize size)

@@ -1,3 +1,166 @@
+2015-05-06  Alexey Proskuryakov  <ap@apple.com>
+
+        iOS build fix attempt
+
+        Link WebKitTestRunnerApp to WebKit, now that we don't have WebKit2.
+
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+
+2015-05-06  Matt Baker  <mattbaker@apple.com>
+
+        Unreviewed, updated my list of email addresses.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-05-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Do not link tools to WebKit2.framework
+        https://bugs.webkit.org/show_bug.cgi?id=144699
+
+        Unreviewed build fix.
+
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig:
+        * WebKitTestRunner/Configurations/WebKitTestRunner.xcconfig:
+        These linked to WebKit2 in two ways, eliminating the other one.
+
+2015-05-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Introducing the Platform Abstraction Layer (PAL)
+        https://bugs.webkit.org/show_bug.cgi?id=143358
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/build-webkit: Add it to build-webkit.
+
+2015-05-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix api tests after r183877.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        Generate all DFAs before compiling them.
+
+2015-05-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Do not link tools to WebKit2.framework
+        https://bugs.webkit.org/show_bug.cgi?id=144699
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+
+2015-05-06  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Test splitting NFAs by max NFA size.
+        https://bugs.webkit.org/show_bug.cgi?id=144659
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::createNFAs):
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/DFAMinimizer.cpp:
+        (TestWebKitAPI::createNFAs):
+
+2015-05-05  daegyu lee  <daegyu.lee@navercorp.com>
+
+        Remove the remaining vestiges of SVG feature define
+        https://bugs.webkit.org/show_bug.cgi?id=144655
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-05-05  Timothy Horton  <timothy_horton@apple.com>
+
+        Add a layout mode for computing fixed layout size from a minimum size
+        https://bugs.webkit.org/show_bug.cgi?id=144610
+        <rdar://problem/19790341>
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/BrowserWindow.xib:
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController toggleUseMinimumViewSize:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController toggleUseMinimumViewSize:]):
+        Add a optional toolbar item to toggle a minimum view size of 1024x0.
+
+2015-05-05  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Release input NSString when finished copying it.
+        https://bugs.webkit.org/show_bug.cgi?id=144642
+
+        Reviewed by Brian Weinstein.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformConfigureViewForTest):
+        Use alloc and initWithContentsOfURL to prevent over-releasing an autoreleased object.
+
+2015-05-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix after r183798.
+
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (convertToDRTLabel): Mimic behavior of Mac accessibility output
+        so we can share results.
+
+2015-05-05  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Use less memory to store the json input.
+        https://bugs.webkit.org/show_bug.cgi?id=144604
+
+        Reviewed by Benjamin Poulain.
+
+        * MiniBrowser/mac/ExtensionManagerWindowController.m:
+        (-[ExtensionManagerWindowController add:]):
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::InMemoryCompiledContentExtension::createFromFilter):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformConfigureViewForTest):
+
+2015-05-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed. Make myself a WebKit reviewer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-05-05  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] r183783 breaks build
+        https://bugs.webkit.org/show_bug.cgi?id=144632
+
+        Reviewed by Martin Robinson.
+
+        Return false rather than nullptr for unimplemented AccessibilityUIElement::setSelectedVisibleTextRange
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::setSelectedVisibleTextRange):
+
+2015-05-05  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Combine NFAs properly and free memory as we compile.
+        https://bugs.webkit.org/show_bug.cgi?id=144485
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        Added tests for correctly splitting up NFAs with unquantified terms after quantified terms.
+        Added tests for deep NFAs.
+
+2015-05-04  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Use less memory when writing byte code to file
+        https://bugs.webkit.org/show_bug.cgi?id=144602
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+
 2015-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Async operations running in the WorkQueue thread should schedule their sources to the WorkQueue main lopp

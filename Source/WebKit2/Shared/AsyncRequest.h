@@ -28,6 +28,7 @@
 #define AsyncRequest_h
 
 #include <functional>
+#include <wtf/HashMap.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
@@ -57,14 +58,14 @@ private:
 template <typename... Arguments>
 class AsyncRequestImpl final : public AsyncRequest {
 public:
-    template<typename T> using ArgumentType = std::conditional<std::is_integral<T>::value, T, const T&>;
+    template<typename T> using ArgumentType = typename std::conditional<std::is_integral<T>::value, T, const T&>::type;
 
-    static PassRefPtr<AsyncRequest> create(std::function<void (typename ArgumentType<Arguments>::type...)> completionHandler)
+    static PassRefPtr<AsyncRequest> create(std::function<void (ArgumentType<Arguments>...)> completionHandler)
     {
         return adoptRef(new AsyncRequestImpl<Arguments...>(WTF::move(completionHandler), nullptr));
     }
 
-    static PassRefPtr<AsyncRequest> create(std::function<void (typename ArgumentType<Arguments>::type...)> completionHandler, std::function<void ()> abortHandler)
+    static PassRefPtr<AsyncRequest> create(std::function<void (ArgumentType<Arguments>...)> completionHandler, std::function<void ()> abortHandler)
     {
         return adoptRef(new AsyncRequestImpl<Arguments...>(WTF::move(completionHandler), WTF::move(abortHandler)));
     }
@@ -82,7 +83,7 @@ public:
     }
 
 private:
-    AsyncRequestImpl(std::function<void (typename ArgumentType<Arguments>::type...)> completionHandler, std::function<void ()> abortHandler)
+    AsyncRequestImpl(std::function<void (ArgumentType<Arguments>...)> completionHandler, std::function<void ()> abortHandler)
         : AsyncRequest(WTF::move(abortHandler))
         , m_completionHandler(WTF::move(completionHandler))
     {
@@ -94,7 +95,7 @@ private:
         m_completionHandler = nullptr;
     }
 
-    std::function<void (typename ArgumentType<Arguments>::type...)> m_completionHandler;
+    std::function<void (ArgumentType<Arguments>...)> m_completionHandler;
 };
 
 template<typename... Arguments> void AsyncRequest::completeRequest(Arguments&&... arguments)
@@ -103,6 +104,49 @@ template<typename... Arguments> void AsyncRequest::completeRequest(Arguments&&..
     request->completeRequest(std::forward<Arguments>(arguments)...);
     m_abortHandler = nullptr;
 }
+
+class AsyncRequestMap {
+public:
+    AsyncRequestMap()
+#ifndef NDEBUG
+        : m_lastRequestIDTaken(std::numeric_limits<uint64_t>::max())
+#endif
+    { }
+
+    Ref<AsyncRequest> take(uint64_t requestID)
+    {
+#ifndef NDEBUG
+        ASSERT_WITH_MESSAGE(requestID != m_lastRequestIDTaken, "Attempt to take the same AsyncRequest twice in a row. A background queue might have dispatched both an error callback and a success callback?");
+        m_lastRequestIDTaken = requestID;
+#endif
+
+        RefPtr<AsyncRequest> request = m_requestMap.take(requestID);
+        RELEASE_ASSERT(request);
+
+        return adoptRef(*request.leakRef());
+    }
+
+    void add(uint64_t requestID, PassRefPtr<AsyncRequest> request)
+    {
+        m_requestMap.add(requestID, request);
+    }
+
+    void clear()
+    {
+        m_requestMap.clear();
+    }
+
+    WTF::IteratorRange<HashMap<uint64_t, RefPtr<AsyncRequest>>::iterator::Values> values()
+    {
+        return m_requestMap.values();
+    }
+
+private:
+    HashMap<uint64_t, RefPtr<AsyncRequest>> m_requestMap;
+#ifndef NDEBUG
+    uint64_t m_lastRequestIDTaken;
+#endif
+};
 
 } // namespace WebKit
 

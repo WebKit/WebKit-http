@@ -31,7 +31,11 @@
 #include <WebCore/ContentExtensionCompiler.h>
 #include <WebCore/ContentExtensionError.h>
 #include <WebCore/ContentExtensionsBackend.h>
+#include <WebCore/DFA.h>
+#include <WebCore/DFABytecodeCompiler.h>
+#include <WebCore/DFABytecodeInterpreter.h>
 #include <WebCore/NFA.h>
+#include <WebCore/NFAToDFA.h>
 #include <WebCore/ResourceLoadInfo.h>
 #include <WebCore/URL.h>
 #include <WebCore/URLFilterParser.h>
@@ -81,29 +85,39 @@ public:
     InMemoryContentExtensionCompilationClient(WebCore::ContentExtensions::CompiledContentExtensionData& data)
         : m_data(data)
     {
+        EXPECT_EQ(data.bytecode.size(), 0ull);
+        EXPECT_EQ(data.actions.size(), 0ull);
     }
 
     virtual void writeBytecode(Vector<WebCore::ContentExtensions::DFABytecode>&& bytecode) override
     {
-        m_data.bytecode = WTF::move(bytecode);
+        EXPECT_FALSE(finalized);
+        m_data.bytecode.appendVector(bytecode);
     }
     
     virtual void writeActions(Vector<WebCore::ContentExtensions::SerializedActionByte>&& actions) override
     {
-        m_data.actions = WTF::move(actions);
+        EXPECT_FALSE(finalized);
+        m_data.actions.appendVector(actions);
+    }
+    
+    virtual void finalize() override
+    {
+        finalized = true;
     }
 
 private:
     WebCore::ContentExtensions::CompiledContentExtensionData& m_data;
+    bool finalized { false };
 };
 
 class InMemoryCompiledContentExtension : public ContentExtensions::CompiledContentExtension {
 public:
-    static RefPtr<InMemoryCompiledContentExtension> createFromFilter(const String& filter)
+    static RefPtr<InMemoryCompiledContentExtension> createFromFilter(String&& filter)
     {
         WebCore::ContentExtensions::CompiledContentExtensionData extensionData;
         InMemoryContentExtensionCompilationClient client(extensionData);
-        auto compilerError = ContentExtensions::compileRuleList(client, filter);
+        auto compilerError = ContentExtensions::compileRuleList(client, WTF::move(filter));
         if (compilerError)
             return nullptr;
 
@@ -167,7 +181,7 @@ static Vector<ContentExtensions::NFA> createNFAs(ContentExtensions::CombinedURLF
 {
     Vector<ContentExtensions::NFA> nfas;
 
-    combinedURLFilters.processNFAs([&](ContentExtensions::NFA&& nfa) {
+    combinedURLFilters.processNFAs(std::numeric_limits<size_t>::max(), [&](ContentExtensions::NFA&& nfa) {
         nfas.append(WTF::move(nfa));
     });
 
@@ -495,10 +509,9 @@ TEST_F(ContentExtensionTest, ResourceOrLoadTypeMatchingEverything)
     testRequest(backend, {URL(URL(), "http://webkit.org"), URL(URL(), "http://not_webkit.org"), ResourceType::Image}, { ContentExtensions::ActionType::BlockCookies, ContentExtensions::ActionType::BlockLoad });
 }
     
-TEST_F(ContentExtensionTest, MultiDFA)
+TEST_F(ContentExtensionTest, WideNFA)
 {
     // Make an NFA with about 1400 nodes.
-    // FIXME: This does not make multiple DFAs anymore. Add a test that does.
     StringBuilder ruleList;
     ruleList.append('[');
     for (char c1 = 'A'; c1 <= 'Z'; ++c1) {
@@ -531,6 +544,37 @@ TEST_F(ContentExtensionTest, MultiDFA)
     testRequest(backend, mainDocumentRequest("http://webkit.org/LAA/AAA"), { }, true);
     testRequest(backend, mainDocumentRequest("http://webkit.org/LAA/MAA"), { ContentExtensions::ActionType::BlockLoad }, true);
     testRequest(backend, mainDocumentRequest("http://webkit.org/"), { });
+}
+
+TEST_F(ContentExtensionTest, DeepNFA)
+{
+    const unsigned size = 100000;
+    
+    ContentExtensions::CombinedURLFilters combinedURLFilters;
+    ContentExtensions::URLFilterParser parser(combinedURLFilters);
+    
+    // FIXME: DFAToNFA::convert takes way too long on these deep NFAs. We should optimize for that case.
+    
+    StringBuilder lotsOfAs;
+    for (unsigned i = 0; i < size; ++i)
+        lotsOfAs.append('A');
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern(lotsOfAs.toString().utf8().data(), false, 0));
+    
+    // FIXME: Yarr ought to be able to handle 2MB regular expressions.
+    StringBuilder tooManyAs;
+    for (unsigned i = 0; i < size * 20; ++i)
+        tooManyAs.append('A');
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::YarrError, parser.addPattern(tooManyAs.toString().utf8().data(), false, 0));
+    
+    StringBuilder nestedGroups;
+    for (unsigned i = 0; i < size; ++i)
+        nestedGroups.append('(');
+    for (unsigned i = 0; i < size; ++i)
+        nestedGroups.append("B)");
+    // FIXME: Add nestedGroups. Right now it also takes too long. It should be optimized.
+    
+    // This should not crash and not timeout.
+    EXPECT_EQ(1ul, createNFAs(combinedURLFilters).size());
 }
 
 void checkCompilerError(const char* json, ContentExtensions::ContentExtensionError expectedError)
@@ -616,9 +660,9 @@ TEST_F(ContentExtensionTest, StrictPrefixSeparatedMachines1Partitioning)
 TEST_F(ContentExtensionTest, StrictPrefixSeparatedMachines2)
 {
     auto backend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"^foo\"}},"
-    "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"^.*[a-c]+bar\"}},"
-    "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"^webkit:\"}},"
-    "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"[a-c]+b+oom\"}}]");
+        "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"^.*[a-c]+bar\"}},"
+        "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"^webkit:\"}},"
+        "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"[a-c]+b+oom\"}}]");
 
     testRequest(backend, mainDocumentRequest("http://webkit.org/"), { });
     testRequest(backend, mainDocumentRequest("foo://webkit.org/"), { ContentExtensions::ActionType::BlockLoad });
@@ -644,6 +688,95 @@ TEST_F(ContentExtensionTest, StrictPrefixSeparatedMachines2Partitioning)
 
     // "^foo" and "^webkit:" can be grouped, the other two have a variable prefix.
     EXPECT_EQ(3ul, createNFAs(combinedURLFilters).size());
+}
+
+TEST_F(ContentExtensionTest, StrictPrefixSeparatedMachines3)
+{
+    auto backend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"A*D\"}},"
+        "{\"action\":{\"type\":\"ignore-previous-rules\"},\"trigger\":{\"url-filter\":\"A*BA+\"}},"
+        "{\"action\":{\"type\":\"block-cookies\"},\"trigger\":{\"url-filter\":\"A*BC\"}}]");
+    
+    testRequest(backend, mainDocumentRequest("http://webkit.org/D"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/AAD"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/AB"), { });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABA"), { }, true);
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABAD"), { }, true);
+    testRequest(backend, mainDocumentRequest("http://webkit.org/BC"), { ContentExtensions::ActionType::BlockCookies });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABC"), { ContentExtensions::ActionType::BlockCookies });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABABC"), { ContentExtensions::ActionType::BlockCookies }, true);
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABABCAD"), { ContentExtensions::ActionType::BlockCookies }, true);
+    testRequest(backend, mainDocumentRequest("http://webkit.org/ABCAD"), { ContentExtensions::ActionType::BlockCookies, ContentExtensions::ActionType::BlockLoad });
+}
+    
+TEST_F(ContentExtensionTest, StrictPrefixSeparatedMachines3Partitioning)
+{
+    ContentExtensions::CombinedURLFilters combinedURLFilters;
+    ContentExtensions::URLFilterParser parser(combinedURLFilters);
+    
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("A*D", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("A*BA+", false, 1));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("A*BC", false, 2));
+    
+    // "A*A" and "A*BC" can be grouped, "A*BA+" should not.
+    EXPECT_EQ(2ul, createNFAs(combinedURLFilters).size());
+}
+
+TEST_F(ContentExtensionTest, SplittingLargeNFAs)
+{
+    const size_t expectedNFACounts[16] = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 1, 1, 1};
+    
+    for (size_t i = 0; i < 16; i++) {
+        ContentExtensions::CombinedURLFilters combinedURLFilters;
+        ContentExtensions::URLFilterParser parser(combinedURLFilters);
+        
+        EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("A+BBB", false, 1));
+        EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("A+CCC", false, 2));
+        EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("A+DDD", false, 2));
+        
+        Vector<ContentExtensions::NFA> nfas;
+        combinedURLFilters.processNFAs(i, [&](ContentExtensions::NFA&& nfa) {
+            nfas.append(WTF::move(nfa));
+        });
+        EXPECT_EQ(nfas.size(), expectedNFACounts[i]);
+        
+        Vector<ContentExtensions::DFA> dfas;
+        for (auto& nfa : nfas)
+            dfas.append(ContentExtensions::NFAToDFA::convert(nfa));
+        
+        Vector<ContentExtensions::DFABytecode> combinedBytecode;
+        for (const auto& dfa : dfas) {
+            Vector<ContentExtensions::DFABytecode> bytecode;
+            ContentExtensions::DFABytecodeCompiler compiler(dfa, bytecode);
+            compiler.compile();
+            combinedBytecode.appendVector(bytecode);
+        }
+        
+        Vector<bool> pagesUsed;
+        ContentExtensions::DFABytecodeInterpreter interpreter(&combinedBytecode[0], combinedBytecode.size(), pagesUsed);
+        
+        EXPECT_EQ(interpreter.interpret("ABBBX", 0).size(), 1ull);
+        EXPECT_EQ(interpreter.interpret("ACCCX", 0).size(), 1ull);
+        EXPECT_EQ(interpreter.interpret("ADDDX", 0).size(), 1ull);
+        EXPECT_EQ(interpreter.interpret("XBBBX", 0).size(), 0ull);
+        EXPECT_EQ(interpreter.interpret("ABBX", 0).size(), 0ull);
+        EXPECT_EQ(interpreter.interpret("ACCX", 0).size(), 0ull);
+        EXPECT_EQ(interpreter.interpret("ADDX", 0).size(), 0ull);
+    }
+}
+    
+TEST_F(ContentExtensionTest, QuantifierInGroup)
+{
+    ContentExtensions::CombinedURLFilters combinedURLFilters;
+    ContentExtensions::URLFilterParser parser(combinedURLFilters);
+    
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(((A+)B)C)", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(((A)B+)C)", false, 1));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(((A)B+)C)D", false, 2));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(((A)B)C+)", false, 3));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(((A)B)C)", false, 4));
+    
+    // (((A)B+)C) and (((A)B+)C)D should be in the same NFA.
+    EXPECT_EQ(4ul, createNFAs(combinedURLFilters).size());
 }
 
 static void testPatternStatus(String pattern, ContentExtensions::URLFilterParser::ParseStatus status)

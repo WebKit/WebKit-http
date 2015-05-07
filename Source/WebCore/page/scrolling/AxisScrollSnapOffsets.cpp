@@ -43,25 +43,22 @@ static void appendChildSnapOffsets(HTMLElement& parent, bool shouldAddHorizontal
     // FIXME: Instead of traversing all children, register children with snap coordinates before appending to snapOffsetSubsequence.
     for (auto& child : childrenOfType<Element>(parent)) {
         if (RenderBox* box = child.renderBox()) {
-            LayoutUnit viewWidth = box->width();
-            LayoutUnit viewHeight = box->height();
-#if PLATFORM(IOS)
-            // FIXME: Dangerous to call offsetLeft and offsetTop because they call updateLayoutIgnorePendingStylesheets, which can invalidate the RenderBox pointer we are holding.
-            // FIXME: Investigate why using localToContainerPoint gives the wrong offsets for iOS main frame. Also, these offsets won't take transforms into account (make sure to test this!).
-            float left = child.offsetLeft();
-            float top = child.offsetTop();
-#else
-            // FIXME: Check that localToContainerPoint works with CSS rotations.
+            const auto& scrollSnapCoordinates = box->style().scrollSnapCoordinates();
+            if (scrollSnapCoordinates.isEmpty())
+                continue;
+
+            LayoutRect viewSize = box->contentBoxRect();
+            LayoutUnit viewWidth = viewSize.width();
+            LayoutUnit viewHeight = viewSize.height();
             FloatPoint position = box->localToContainerPoint(FloatPoint(), parent.renderBox());
-            float left = position.x();
-            float top = position.y();
-#endif
-            for (auto& coordinate : box->style().scrollSnapCoordinates()) {
-                LayoutUnit lastPotentialSnapPositionX = LayoutUnit(left) + valueForLength(coordinate.width(), viewWidth);
+            LayoutUnit left = position.x();
+            LayoutUnit top = position.y();
+            for (auto& coordinate : scrollSnapCoordinates) {
+                LayoutUnit lastPotentialSnapPositionX = left + valueForLength(coordinate.width(), viewWidth);
                 if (shouldAddHorizontalChildOffsets && lastPotentialSnapPositionX > 0)
                     horizontalSnapOffsetSubsequence.append(lastPotentialSnapPositionX);
 
-                LayoutUnit lastPotentialSnapPositionY = LayoutUnit(top) + valueForLength(coordinate.height(), viewHeight);
+                LayoutUnit lastPotentialSnapPositionY = top + valueForLength(coordinate.height(), viewHeight);
                 if (shouldAddVerticalChildOffsets && lastPotentialSnapPositionY > 0)
                     verticalSnapOffsetSubsequence.append(lastPotentialSnapPositionY);
             }
@@ -134,8 +131,9 @@ void updateSnapOffsetsForScrollableArea(ScrollableArea& scrollableArea, HTMLElem
         return;
     }
 
-    LayoutUnit viewWidth = scrollingElementBox.width();
-    LayoutUnit viewHeight = scrollingElementBox.height();
+    LayoutRect viewSize = scrollingElementBox.contentBoxRect();
+    LayoutUnit viewWidth = viewSize.width();
+    LayoutUnit viewHeight = viewSize.height();
     LayoutUnit scrollWidth = scrollingElementBox.scrollWidth();
     LayoutUnit scrollHeight = scrollingElementBox.scrollHeight();
     bool canComputeHorizontalOffsets = scrollWidth > 0 && viewWidth > 0 && viewWidth < scrollWidth;
@@ -153,7 +151,7 @@ void updateSnapOffsetsForScrollableArea(ScrollableArea& scrollableArea, HTMLElem
     Vector<LayoutUnit> verticalSnapOffsetSubsequence;
 
     bool scrollSnapPointsXUsesElements = styleUsesElements(ScrollEventAxis::Horizontal, scrollingElementStyle);
-    bool scrollSnapPointsYUsesElements = styleUsesElements(ScrollEventAxis::Vertical , scrollingElementStyle);
+    bool scrollSnapPointsYUsesElements = styleUsesElements(ScrollEventAxis::Vertical, scrollingElementStyle);
 
     if (scrollSnapPointsXUsesElements || scrollSnapPointsYUsesElements) {
         bool shouldAddHorizontalChildOffsets = scrollSnapPointsXUsesElements && canComputeHorizontalOffsets;

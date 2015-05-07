@@ -480,9 +480,6 @@ webkit.org/b/128172 fast/events/touch/touch-target.html [ Timeout ]
 webkit.org/b/128172 fast/events/touch/touch-target-limited.html [ Crash Timeout ]
 webkit.org/b/128172 fast/events/touch/send-oncancel-event.html [ Timeout ]
 
-# The WebKit network disk cache is not enabled on the GTK port.
-webkit.org/b/142821 http/tests/cache/disk-cache [ Skip ]
-
 # HighDPI support is not enabled
 webkit.org/b/131347 fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
 webkit.org/b/131347 fast/backgrounds/hidpi-generated-gradient-background-on-subpixel-position.html [ ImageOnlyFailure Pass ]
@@ -752,8 +749,6 @@ webkit.org/b/80129 fast/frames/flattening/iframe-flattening-out-of-view.html [ F
 webkit.org/b/87363 fast/frames/flattening/iframe-tiny.html [ Failure Pass ]
 
 webkit.org/b/73772 fast/table/multiple-captions-display.xhtml [ Failure Pass ]
-
-webkit.org/b/74493 platform/gtk/accessibility/unknown-roles-not-exposed.html [ Failure Pass ]
 
 webkit.org/b/76385 tables/mozilla_expected_failures/marvin/table_overflow_dirty_reflow_tbody.html [ Failure Pass ]
 
@@ -2368,15 +2363,13 @@ webkit.org/b/144494 printing/quirks-percentage-height-body.html [ ImageOnlyFailu
 webkit.org/b/144494 printing/quirks-percentage-height.html [ ImageOnlyFailure ]
 webkit.org/b/144494 printing/standards-percentage-heights.html [ ImageOnlyFailure ]
 
-webkit.org/b/144572 fast/forms/button-line-height.html [ ImageOnlyFailure ]
-webkit.org/b/144573 fast/text/international/synthesized-italic-vertical.html [ ImageOnlyFailure ]
-
 webkit.org/b/144574 imported/mozilla/svg/objectBoundingBox-and-mask.svg [ ImageOnlyFailure ]
 webkit.org/b/144574 imported/mozilla/svg/text/mask-applied.svg [ ImageOnlyFailure ]
 webkit.org/b/144574 svg/masking/mask-negative-scale.svg [ ImageOnlyFailure ]
 
 webkit.org/b/144575 http/tests/loading/promote-img-preload-priority.html [ Failure ]
-webkit.org/b/144576 editing/execCommand/nsresponder-outdent.html [ Failure ]
+
+webkit.org/b/144673 fast/forms/button-line-height.html [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

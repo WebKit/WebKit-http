@@ -72,6 +72,7 @@ using namespace WebCore;
     RetainPtr<NSArray> _bounceLayers;
     NSSize _margin;
     bool _hasCompletedAnimation;
+    BOOL _fadingOut;
 }
 
 - (instancetype)initWithFrame:(NSRect)frame textIndicator:(PassRefPtr<TextIndicator>)textIndicator margin:(NSSize)margin;
@@ -82,9 +83,13 @@ using namespace WebCore;
 - (void)setAnimationProgress:(float)progress;
 - (BOOL)hasCompletedAnimation;
 
+@property (nonatomic, getter=isFadingOut) BOOL fadingOut;
+
 @end
 
 @implementation WebTextIndicatorView
+
+@synthesize fadingOut = _fadingOut;
 
 - (instancetype)initWithFrame:(NSRect)frame textIndicator:(PassRefPtr<TextIndicator>)textIndicator margin:(NSSize)margin
 {
@@ -369,7 +374,7 @@ void TextIndicatorWindow::clearTextIndicator(TextIndicatorDismissalAnimation ani
 {
     RefPtr<TextIndicator> textIndicator = WTF::move(m_textIndicator);
 
-    if (m_fadingOut)
+    if ([m_textIndicatorView isFadingOut])
         return;
 
     if (textIndicator && textIndicator->wantsManualAnimation() && [m_textIndicatorView hasCompletedAnimation] && animation == TextIndicatorDismissalAnimation::FadeOut) {
@@ -385,9 +390,9 @@ void TextIndicatorWindow::setTextIndicator(Ref<TextIndicator> textIndicator, CGR
     if (m_textIndicator == textIndicator.ptr())
         return;
 
-    m_textIndicator = textIndicator.ptr();
-
     closeWindow();
+
+    m_textIndicator = textIndicator.ptr();
 
     CGFloat horizontalMargin = dropShadowBlurRadius * 2 + horizontalBorder;
     CGFloat verticalMargin = dropShadowBlurRadius * 2 + verticalBorder;
@@ -426,7 +431,7 @@ void TextIndicatorWindow::closeWindow()
     if (!m_textIndicatorWindow)
         return;
 
-    if (m_fadingOut)
+    if ([m_textIndicatorView isFadingOut])
         return;
 
     m_temporaryTextIndicatorTimer.stop();
@@ -438,7 +443,7 @@ void TextIndicatorWindow::closeWindow()
 
 void TextIndicatorWindow::startFadeOut()
 {
-    m_fadingOut = true;
+    [m_textIndicatorView setFadingOut:YES];
     RetainPtr<NSWindow> indicatorWindow = m_textIndicatorWindow;
     [m_textIndicatorView hideWithCompletionHandler:[indicatorWindow] {
         [[indicatorWindow parentWindow] removeChildWindow:indicatorWindow.get()];

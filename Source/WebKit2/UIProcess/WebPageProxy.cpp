@@ -2247,6 +2247,19 @@ void WebPageProxy::scaleView(double scale)
     m_process->send(Messages::WebPage::ScaleView(scale), m_pageID);
 }
 
+#if PLATFORM(COCOA)
+void WebPageProxy::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, const MachSendRight& fencePort)
+{
+    if (!isValid())
+        return;
+
+    m_viewScaleFactor = scale;
+    if (m_drawingArea)
+        m_drawingArea->willSendUpdateGeometry();
+    m_process->send(Messages::WebPage::ScaleViewAndUpdateGeometryFenced(scale, viewSize, fencePort), m_pageID);
+}
+#endif
+
 void WebPageProxy::setIntrinsicDeviceScaleFactor(float scaleFactor)
 {
     if (m_intrinsicDeviceScaleFactor == scaleFactor)
@@ -4230,7 +4243,13 @@ void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
     // is gated on a way of passing SandboxExtension::Handles in a Vector.
     for (size_t i = 0; i < fileURLs.size(); ++i) {
         SandboxExtension::Handle sandboxExtensionHandle;
-        SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandle);
+        bool createdExtension = SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandle);
+        if (!createdExtension) {
+            // This can legitimately fail if a directory containing the file is deleted after the file was chosen.
+            // We also have reports of cases where this likely fails for some unknown reason, <rdar://problem/10156710>.
+            WTFLogAlways("WebPageProxy::didChooseFilesForOpenPanel: could not create a sandbox extension for '%s'\n", fileURLs[i].utf8().data());
+            continue;
+        }
         m_process->send(Messages::WebPage::ExtendSandboxForFileFromOpenPanel(sandboxExtensionHandle), m_pageID);
     }
 #endif
