@@ -8,7 +8,11 @@
 namespace WTF {
 
 GSourceFuncs GSourceWrap::sourceFunctions = {
-    nullptr, // prepare
+    // prepare
+    [](GSource* source, gint*) -> gboolean
+    {
+        return g_source_get_ready_time(source) == 0;
+    },
     nullptr, // check
     // dispatch
     [](GSource* source, GSourceFunc callback, gpointer data) -> gboolean
