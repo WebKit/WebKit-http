@@ -732,7 +732,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         case DoubleRepUse:
             if (child && child.isNumber()) {
-                setConstant(node, jsDoubleNumber(child.asNumber()));
+                setConstant(node, jsDoubleNumber(fabs(child.asNumber())));
                 break;
             }
             forNode(node).setType(typeOfDoubleAbs(forNode(node->child1()).m_type));
@@ -834,34 +834,57 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case IsObject:
     case IsObjectOrNull:
     case IsFunction: {
-        JSValue child = forNode(node->child1()).value();
-        if (child) {
+        AbstractValue child = forNode(node->child1());
+        if (child.value()) {
             bool constantWasSet = true;
             switch (node->op()) {
             case IsUndefined:
                 setConstant(node, jsBoolean(
-                    child.isCell()
-                    ? child.asCell()->structure()->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))
-                    : child.isUndefined()));
+                    child.value().isCell()
+                    ? child.value().asCell()->structure()->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))
+                    : child.value().isUndefined()));
                 break;
             case IsBoolean:
-                setConstant(node, jsBoolean(child.isBoolean()));
+                setConstant(node, jsBoolean(child.value().isBoolean()));
                 break;
             case IsNumber:
-                setConstant(node, jsBoolean(child.isNumber()));
+                setConstant(node, jsBoolean(child.value().isNumber()));
                 break;
             case IsString:
-                setConstant(node, jsBoolean(isJSString(child)));
+                setConstant(node, jsBoolean(isJSString(child.value())));
                 break;
             case IsObject:
-                setConstant(node, jsBoolean(child.isObject()));
+                setConstant(node, jsBoolean(child.value().isObject()));
                 break;
             case IsObjectOrNull:
-                if (child.isNull() || !child.isObject()) {
-                    setConstant(node, jsBoolean(child.isNull()));
-                    break;
-                }
-                constantWasSet = false;
+                if (child.value().isObject()) {
+                    JSObject* object = asObject(child.value());
+                    if (object->type() == JSFunctionType)
+                        setConstant(node, jsBoolean(false));
+                    else if (!(object->inlineTypeFlags() & TypeOfShouldCallGetCallData))
+                        setConstant(node, jsBoolean(!child.value().asCell()->structure()->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))));
+                    else {
+                        // FIXME: This could just call getCallData.
+                        // https://bugs.webkit.org/show_bug.cgi?id=144457
+                        constantWasSet = false;
+                    }
+                } else
+                    setConstant(node, jsBoolean(child.value().isNull()));
+                break;
+            case IsFunction:
+                if (child.value().isObject()) {
+                    JSObject* object = asObject(child.value());
+                    if (object->type() == JSFunctionType)
+                        setConstant(node, jsBoolean(true));
+                    else if (!(object->inlineTypeFlags() & TypeOfShouldCallGetCallData))
+                        setConstant(node, jsBoolean(false));
+                    else {
+                        // FIXME: This could just call getCallData.
+                        // https://bugs.webkit.org/show_bug.cgi?id=144457
+                        constantWasSet = false;
+                    }
+                } else
+                    setConstant(node, jsBoolean(false));
                 break;
             default:
                 constantWasSet = false;
@@ -870,7 +893,112 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             if (constantWasSet)
                 break;
         }
-
+        
+        bool constantWasSet = false;
+        switch (node->op()) {
+        case IsUndefined:
+            // FIXME: Use the masquerades-as-undefined watchpoint thingy.
+            // https://bugs.webkit.org/show_bug.cgi?id=144456
+            
+            if (!(child.m_type & (SpecOther | SpecObjectOther))) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+            
+            break;
+        case IsBoolean:
+            if (!(child.m_type & ~SpecBoolean)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+            
+            if (!(child.m_type & SpecBoolean)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+            
+            break;
+        case IsNumber:
+            if (!(child.m_type & ~SpecFullNumber)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+            
+            if (!(child.m_type & SpecFullNumber)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+            
+            break;
+        case IsString:
+            if (!(child.m_type & ~SpecString)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+            
+            if (!(child.m_type & SpecString)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+            
+            break;
+        case IsObject:
+            if (!(child.m_type & ~SpecObject)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+            
+            if (!(child.m_type & SpecObject)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+            
+            break;
+        case IsObjectOrNull:
+            // FIXME: Use the masquerades-as-undefined watchpoint thingy.
+            // https://bugs.webkit.org/show_bug.cgi?id=144456
+            
+            if (!(child.m_type & ~(SpecObject - SpecObjectOther - SpecFunction))) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+            
+            if (!(child.m_type & (SpecObject - SpecFunction))) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+            
+            break;
+        case IsFunction:
+            if (!(child.m_type & ~SpecFunction)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+            
+            if (!(child.m_type & (SpecFunction | SpecObjectOther))) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+            break;
+        default:
+            break;
+        }
+        if (constantWasSet)
+            break;
+        
         forNode(node).setType(SpecBoolean);
         break;
     }
@@ -894,8 +1022,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setConstant(node, *m_graph.freeze(vm->smallStrings.stringString()));
             break;
         }
-        
-        if (isFinalObjectSpeculation(abstractChild.m_type) || isArraySpeculation(abstractChild.m_type) || isDirectArgumentsSpeculation(abstractChild.m_type) || isScopedArgumentsSpeculation(abstractChild.m_type)) {
+
+        // FIXME: We could use the masquerades-as-undefined watchpoint here.
+        // https://bugs.webkit.org/show_bug.cgi?id=144456
+        if (!(abstractChild.m_type & ~(SpecObject - SpecObjectOther))) {
             setConstant(node, *m_graph.freeze(vm->smallStrings.objectString()));
             break;
         }
@@ -1365,6 +1495,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
     case PhantomNewObject:
     case PhantomNewFunction:
+    case PhantomCreateActivation:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
     case BottomValue:
@@ -1387,8 +1518,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).set(m_graph, set);
         break;
     }
-        
+
     case CreateActivation:
+    case MaterializeCreateActivation:
         forNode(node).set(
             m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->activationStructure());
         break;

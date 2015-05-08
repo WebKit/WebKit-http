@@ -107,6 +107,11 @@ void LayerHostingContext::setFencePort(mach_port_t fencePort)
 {
     [m_context setFencePort:fencePort];
 }
+#else
+NO_RETURN_DUE_TO_ASSERT void LayerHostingContext::setFencePort(mach_port_t fencePort)
+{
+    ASSERT_NOT_REACHED();
+}
 #endif
 
 } // namespace WebKit

@@ -1912,6 +1912,11 @@ PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::endTextMarker()
     return nullptr;
 }
 
+bool AccessibilityUIElement::setSelectedVisibleTextRange(AccessibilityTextMarkerRange*)
+{
+    return false;
+}
+
 void AccessibilityUIElement::scrollToMakeVisible()
 {
     // FIXME: implement

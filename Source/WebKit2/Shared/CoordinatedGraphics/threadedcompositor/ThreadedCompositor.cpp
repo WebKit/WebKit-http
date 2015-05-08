@@ -29,8 +29,8 @@
 #include "ThreadedCompositor.h"
 
 #include <WebCore/GLContextEGL.h>
+#include <WebCore/PlatformDisplayWayland.h>
 #include <WebCore/TransformationMatrix.h>
-#include <WebCore/WaylandDisplayWPE.h>
 #include <cstdio>
 #include <cstdlib>
 #include <wtf/CurrentTime.h>
@@ -254,11 +254,11 @@ GLContext* ThreadedCompositor::glContext()
     if (m_context)
         return m_context.get();
 
-    RELEASE_ASSERT(WaylandDisplay::instance());
-    m_waylandSurface = WaylandDisplay::instance()->createSurface(IntSize(800, 600));
+    RELEASE_ASSERT(is<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()));
+    m_waylandSurface = downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createSurface(IntSize(800, 600));
     if (!m_waylandSurface)
         return 0;
-    WaylandDisplay::instance()->registerSurface(m_waylandSurface->surface());
+    downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).registerSurface(m_waylandSurface->surface());
     setNativeSurfaceHandleForCompositing(0);
 
     m_context = m_waylandSurface->createGLContext();

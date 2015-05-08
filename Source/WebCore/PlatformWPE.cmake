@@ -43,6 +43,7 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue2.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
+    platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
@@ -91,8 +92,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
     platform/graphics/opengl/TemporaryOpenGLSetting.cpp
     platform/graphics/opentype/OpenTypeVerticalData.cpp
+    platform/graphics/wayland/PlatformDisplayWayland.cpp
     platform/graphics/wayland/WaylandSurfaceWPE.cpp
-    platform/graphics/wayland/WaylandDisplayWPE.cpp
     platform/graphics/GLContext.cpp
     platform/image-decoders/ImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageDecoder.cpp
@@ -219,7 +220,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${WEBP_INCLUDE_DIRS}
 )
 
-if (WTF_USE_TEXTURE_MAPPER)
+if (USE_TEXTURE_MAPPER)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/texmap"
     )
@@ -269,3 +270,50 @@ if (ENABLE_WEB_AUDIO)
         ${GSTREAMER_FFT_LIBRARIES}
     )
 endif ()
+
+if (ENABLE_SUBTLE_CRYPTO)
+    list(APPEND WebCore_SOURCES
+        crypto/CryptoAlgorithm.cpp
+        crypto/CryptoAlgorithmDescriptionBuilder.cpp
+        crypto/CryptoAlgorithmRegistry.cpp
+        crypto/CryptoKey.cpp
+        crypto/CryptoKeyPair.cpp
+        crypto/SubtleCrypto.cpp
+        crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
+        crypto/algorithms/CryptoAlgorithmAES_KW.cpp
+        crypto/algorithms/CryptoAlgorithmHMAC.cpp
+        crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
+        crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmSHA1.cpp
+        crypto/algorithms/CryptoAlgorithmSHA224.cpp
+        crypto/algorithms/CryptoAlgorithmSHA256.cpp
+        crypto/algorithms/CryptoAlgorithmSHA384.cpp
+        crypto/algorithms/CryptoAlgorithmSHA512.cpp
+
+        crypto/gnutls/CryptoAlgorithmRegistryGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmHMACGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
+        crypto/gnutls/CryptoDigestGnuTLS.cpp
+        crypto/gnutls/CryptoKeyRSAGnuTLS.cpp
+        crypto/gnutls/SerializedCryptoKeyWrapGnuTLS.cpp
+
+        crypto/keys/CryptoKeyAES.cpp
+        crypto/keys/CryptoKeyDataOctetSequence.cpp
+        crypto/keys/CryptoKeyDataRSAComponents.cpp
+        crypto/keys/CryptoKeyHMAC.cpp
+        crypto/keys/CryptoKeySerializationRaw.cpp
+    )
+
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${GNUTLS_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${GNUTLS_LIBRARIES}
+    )
+endif ()
+

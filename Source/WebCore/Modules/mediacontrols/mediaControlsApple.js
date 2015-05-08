@@ -264,7 +264,7 @@ Controller.prototype = {
 
     shouldHaveAnyUI: function()
     {
-        return this.shouldHaveControls() || (this.video.textTracks && this.video.textTracks.length);
+        return this.shouldHaveControls() || (this.video.textTracks && this.video.textTracks.length) || this.currentPlaybackTargetIsWireless();
     },
 
     shouldHaveControls: function()
@@ -506,8 +506,7 @@ Controller.prototype = {
             this.configureInlineControls();
         else if (this.controlsType == Controller.FullScreenControls)
             this.configureFullScreenControls();
-
-        if (this.shouldHaveControls())
+        if (this.shouldHaveControls() || this.currentPlaybackTargetIsWireless())
             this.addControls();
     },
 
@@ -656,6 +655,7 @@ Controller.prototype = {
         this.updateCaptionButton();
         this.updateCaptionContainer();
         this.updateFullscreenButtons();
+        this.updateWirelessTargetPickerButton();
         this.updateProgress();
     },
 
@@ -987,10 +987,14 @@ Controller.prototype = {
         return true;
     },
 
+    hasVideo: function()
+    {
+        return this.video.videoTracks && this.video.videoTracks.length;
+    },
+
     updateFullscreenButtons: function()
     {
-        var hasVisualMedia = this.video.videoTracks && this.video.videoTracks.length > 0;
-        var shouldBeHidden = !this.video.webkitSupportsFullscreen || !hasVisualMedia;
+        var shouldBeHidden = !this.video.webkitSupportsFullscreen || !this.hasVideo();
         this.controls.fullscreenButton.classList.toggle(this.ClassNames.hidden, shouldBeHidden);
         this.controls.optimizedFullscreenButton.classList.toggle(this.ClassNames.hidden, shouldBeHidden);
     },
@@ -1002,6 +1006,18 @@ Controller.prototype = {
         else
             this.video.webkitEnterFullscreen();
         return true;
+    },
+    
+    updateWirelessTargetPickerButton: function() {
+        var wirelessTargetPickerColor;
+        if (this.controls.wirelessTargetPicker.classList.contains('playing'))
+            wirelessTargetPickerColor = "-apple-system-blue";
+        else
+            wirelessTargetPickerColor = "rgba(255,255,255,0.45)";
+        if (window.devicePixelRatio == 2)
+            this.controls.wirelessTargetPicker.style.backgroundImage = "url(\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 15' stroke='" + wirelessTargetPickerColor + "'><defs> <clipPath fill-rule='evenodd' id='cut-hole'><path d='M 0,0.5 L 16,0.5 L 16,15.5 L 0,15.5 z M 0,14.5 L 16,14.5 L 8,5 z'/></clipPath></defs><rect fill='none' clip-path='url(#cut-hole)' x='0.5' y='2' width='15' height='8'/><path stroke='none' fill='" + wirelessTargetPickerColor +"' d='M 3.5,13.25 L 12.5,13.25 L 8,8 z'/></svg>\")";
+        else
+            this.controls.wirelessTargetPicker.style.backgroundImage = "url(\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 15' stroke='" + wirelessTargetPickerColor + "'><defs> <clipPath fill-rule='evenodd' id='cut-hole'><path d='M 0,1 L 16,1 L 16,16 L 0,16 z M 0,15 L 16,15 L 8,5.5 z'/></clipPath></defs><rect fill='none' clip-path='url(#cut-hole)' x='0.5' y='2.5' width='15' height='8'/><path stroke='none' fill='" + wirelessTargetPickerColor +"' d='M 2.75,14 L 13.25,14 L 8,8.75 z'/></svg>\")";
     },
 
     handleControlsChange: function()
@@ -1302,6 +1318,9 @@ Controller.prototype = {
 
     setPlaying: function(isPlaying)
     {
+        if (this.showInlinePlaybackPlaceholderOnly())
+            return;
+
         if (this.isPlaying === isPlaying)
             return;
         this.isPlaying = isPlaying;
@@ -1325,22 +1344,22 @@ Controller.prototype = {
 
     showControls: function()
     {
-        this.setNeedsTimelineMetricsUpdate();
+        this.updateShouldListenForPlaybackTargetAvailabilityEvent();
+        if (this.showInlinePlaybackPlaceholderOnly())
+            return;
 
+        this.setNeedsTimelineMetricsUpdate();
         this.updateTime(true);
         this.updateProgress(true);
         this.drawVolumeBackground();
         this.drawTimelineBackground();
-
         this.controls.panel.classList.add(this.ClassNames.show);
         this.controls.panel.classList.remove(this.ClassNames.hidden);
-        
+
         if (this.controls.panelBackground) {
             this.controls.panelBackground.classList.add(this.ClassNames.show);
             this.controls.panelBackground.classList.remove(this.ClassNames.hidden);
         }
-
-        this.updateShouldListenForPlaybackTargetAvailabilityEvent();
     },
 
     hideControls: function()
@@ -1723,7 +1742,7 @@ Controller.prototype = {
 
     updateHasVideo: function()
     {
-        if (this.video.videoTracks.length)
+        if (this.hasVideo())
             this.controls.panel.classList.remove(this.ClassNames.noVideo);
         else
             this.controls.panel.classList.add(this.ClassNames.noVideo);
@@ -1816,6 +1835,7 @@ Controller.prototype = {
                 this.controls.volumeBox.style.display = "none";
             else
                 this.controls.muteBox.style.display = "none";
+            this.updateBase();
             this.showControls();
         } else {
             this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
@@ -1825,6 +1845,7 @@ Controller.prototype = {
             else
                 this.controls.muteBox.style.display = "-webkit-flex";
         }
+        this.updateWirelessTargetPickerButton();
     },
 
     updateWirelessTargetAvailable: function() {
@@ -1835,7 +1856,7 @@ Controller.prototype = {
         if (this.wirelessPlaybackDisabled)
             wirelessPlaybackTargetsAvailable = false;
 
-        if (wirelessPlaybackTargetsAvailable && this.isPlayable())
+        if (wirelessPlaybackTargetsAvailable && this.isPlayable() && this.hasVideo())
             this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.hidden);
         else
             this.controls.wirelessTargetPicker.classList.add(this.ClassNames.hidden);
@@ -1851,6 +1872,8 @@ Controller.prototype = {
         this.updateWirelessTargetAvailable();
         this.updateWirelessPlaybackStatus();
         this.setNeedsTimelineMetricsUpdate();
+        if (this.showInlinePlaybackPlaceholderOnly())
+            this.reconnectControls();
     },
 
     handleWirelessTargetAvailableChange: function(event) {
@@ -1876,4 +1899,10 @@ Controller.prototype = {
         else
             this.stopListeningFor(this.video, 'webkitplaybacktargetavailabilitychanged', this.handleWirelessTargetAvailableChange);
     },
+
+    showInlinePlaybackPlaceholderOnly: function(event)
+    {
+        return this.currentPlaybackTargetIsWireless() && !this.video.controls;
+    },
+
 };

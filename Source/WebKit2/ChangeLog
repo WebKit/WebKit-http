@@ -1,21 +1,913 @@
-<<<<<<< HEAD
-2015-03-31  Gwang Yoon Hwang  <yoon@igalia.com>
+2015-05-07  Carlos Garcia Campos  <cgarcia@igalia.com>
 
-        [ThreadedCompositor] Add support for PlatformLayer.
-        https://bugs.webkit.org/show_bug.cgi?id=143299
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.9.1 release.
 
-        Reviewed by NOBODY (OOPS!).
+        * gtk/NEWS: Add release notes for 2.9.1.
+
+2015-05-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove dock button from Web Inspector window
+        https://bugs.webkit.org/show_bug.cgi?id=144728
+
+        Reviewed by Sergio Villar Senin.
+
+        We added the dock buttons to the headerbar, because they were
+        removed from the inspector toolbar, but with the new tabbed
+        design, the dock buttons are back in the toolbar and look redundant.
+
+        * UIProcess/WebInspectorProxy.h:
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::createInspectorWindow):
+        (WebKit::WebInspectorProxy::platformAttachAvailabilityChanged):
+        (WebKit::WebInspectorProxy::dockButtonClicked): Deleted.
+
+2015-05-06  Jer Noble  <jer.noble@apple.com>
+
+        [WK2][Fullscreen] Elements whose children extend beyond their bounds are clipped in fullscreen mode.
+        https://bugs.webkit.org/show_bug.cgi?id=144716
+
+        Reviewed by Darin Adler.
+
+        We create a mask animation for the transition between windowed and fullscreen modes, on the
+        assumption that the element being taken into fullscreen mode does not have visible children
+        who extend beyond that elements bounds. This assumption breaks down in the case where div
+        with absolutely positioned children is taken fullscreen. While we can't necessarily make the
+        transition look correct in this case, we can remove the mask after the transition completes.
+
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController finishedEnterFullScreenAnimation:]):
+        * WebProcess/MediaCache/WebMediaKeyStorageManager.cpp:
+        (WebKit::removeAllMediaKeyStorageForOriginPath):
+
+2015-05-06  Jinwoo Jeong  <jw00.jeong@samsung.com>
+
+        Fix a build break on EFL debug build
+        https://bugs.webkit.org/show_bug.cgi?id=144654
+
+        Reviewed by Gyuyoung Kim.
+
+        No new tests, just build fix.
 
         * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
         (WebKit::CoordinatedGraphicsScene::paintToCurrentGLContext):
-        Swap pending buffers of TextureMapperPlatformLayerProxies before painting contents.
-        (WebKit::CoordinatedGraphicsScene::syncPlatformLayerIfNeeded):
-        In threaded compositor, CoordinatedGraphicsScence only cares about creation and deletion
-        of platform layers.
-        (WebKit::CoordinatedGraphicsScene::onNewBufferAvailable):
-        Whenever new buffer comes via TextureMapperPlatformLayerProxy, CoordinatedGraphicsScene sets a
-        timer to update viewport if it is needed.
-=======
+        (WebKit::CoordinatedGraphicsScene::paintToGraphicsContext):
+
+2015-05-06  Daniel Bates  <dabates@apple.com>
+
+        [iOS][WK2] Pause/resume database thread when UIProcess enters/leaves the background
+        https://bugs.webkit.org/show_bug.cgi?id=144657
+        <rdar://problem/18894598>
+
+        Reviewed by Andy Estes.
+
+        Pause and resume the database thread when the UIProcess enters and leaves the background,
+        respectively, so that we avoid WebProcess termination due to holding a locked SQLite
+        database file when the WebProcess is suspended. This behavior matches the analagous
+        behavior in Legacy WebKit.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _applicationDidEnterBackground:]): Call WebPageProxy::applicationDidEnterBackground()
+        when the UIProcess enters the background.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::applicationDidEnterBackground): Added; notify the WebProcess to pause the database thread.
+        We temporarily take out background assertion on the WebProcess before sending this notification to ensure that the
+        WebProcess is running to receive it. We'll release this assertion when the WebProcess replies that it received the
+        notification.
+        * WebProcess/WebCoreSupport/WebDatabaseManager.cpp:
+        (WebKit::WebDatabaseManager::setPauseAllDatabases): Added; turns around and calls DatabaseManager::setPauseAllDatabases().
+        * WebProcess/WebCoreSupport/WebDatabaseManager.h:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in: Add message ApplicationDidEnterBackground(). Also,
+        add empty lines to help demarcate this message and the other UIKit application lifecycle-related
+        messages from the rest of the list of messages.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::applicationWillEnterForeground): Resume the database thread.
+        (WebKit::WebPage::applicationDidEnterBackground): Pause the database thread.
+
+2015-05-06  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] ewk_view_page_contents_get() API test is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=144683
+
+        Reviewed by Gyuyoung Kim.
+
+        Callback of WKPageGetContentsAsMHTMLData contains WKData which does not contain null terminated character.
+
+        * UIProcess/API/efl/ewk_view.cpp: Pass the data of string instead of WKData directly.
+        (ewkViewPageContentsAsMHTMLCallback):
+
+2015-05-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Docking Toolbar Buttons do not respect Docking Availability
+        https://bugs.webkit.org/show_bug.cgi?id=144714
+
+        Reviewed by Timothy Hatcher.
+
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::WebInspectorProxy::createInspectorPage):
+        (WebKit::WebInspectorProxy::attachAvailabilityChanged):
+        * WebProcess/WebPage/WebInspectorUI.cpp:
+        (WebKit::WebInspectorUI::setDockingUnavailable):
+        * WebProcess/WebPage/WebInspectorUI.h:
+        * WebProcess/WebPage/WebInspectorUI.messages.in:
+        When docking availability changes, inform the inspector page
+        so it can respond by updating its UI.
+
+2015-05-06  Joonghun Park  <jh718.park@samsung.com>
+
+        [WK2] Simplify AsyncRequestImpl::ArgumentType parameters
+        https://bugs.webkit.org/show_bug.cgi?id=144689
+
+        Reviewed by Darin Adler.
+
+        Remove duplicated typename and ::type from AsyncRequestImpl related
+        function parameters.
+
+        * Shared/AsyncRequest.h:
+
+2015-05-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183894.
+        https://bugs.webkit.org/show_bug.cgi?id=144719
+
+        crashes on mavericks (Requested by dino on #webkit).
+
+        Reverted changeset:
+
+        "Handle backdrop views that have to tile"
+        https://bugs.webkit.org/show_bug.cgi?id=142317
+        http://trac.webkit.org/changeset/183894
+
+2015-05-06  Brady Eidson  <beidson@apple.com>
+
+        Addition review followup for:
+        Crash executing null AsyncRequest in IDB code.
+        <rdar://problem/18854856> and https://bugs.webkit.org/show_bug.cgi?id=144715
+
+        Reviewed by Darin Adler.
+
+        This patch adds a layer on top of the UniqueIDBDatabase request map to catch this coding mistake in the future. 
+ 
+         * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::didCompleteBoolRequest): Get rid of the ASSERT and the temporary variable,
+          make it a single line which reads better.
+        (WebKit::UniqueIDBDatabase::didPutRecordInBackingStore): Ditto.
+        (WebKit::UniqueIDBDatabase::didGetRecordFromBackingStore): Ditto.
+        (WebKit::UniqueIDBDatabase::didOpenCursorInBackingStore): Ditto.
+        (WebKit::UniqueIDBDatabase::didAdvanceCursorInBackingStore): Ditto.
+        (WebKit::UniqueIDBDatabase::didIterateCursorInBackingStore): Ditto.
+        (WebKit::UniqueIDBDatabase::didCountInBackingStore): Ditto.
+        (WebKit::UniqueIDBDatabase::didDeleteRangeInBackingStore): Ditto.
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h: Ditto.
+
+        Add the class AsyncRequestMap which shadows a HashMap but does aggressive runtime checks
+        in ::take() to make sure the same request was not dispatched twice in a row, and makes sure we
+        never try to execute a null AsyncRequest by way of a RELEASE_ASSERT.
+        * Shared/AsyncRequest.h:
+        (WebKit::AsyncRequestMap::AsyncRequestMap):
+        (WebKit::AsyncRequestMap::take):
+        (WebKit::AsyncRequestMap::add):
+        (WebKit::AsyncRequestMap::clear):
+        (WebKit::AsyncRequestMap::values):
+
+2015-05-06  Brady Eidson  <beidson@apple.com>
+
+        Crash executing null AsyncRequest in IDB code.
+        <rdar://problem/18854856> and https://bugs.webkit.org/show_bug.cgi?id=144715
+
+        Reviewed by Darin Adler.
+
+        When UniqueIDBDatabase fails to execute an operation on the database work queue it usually
+        dispatches an AsyncRequest ID back to the main thread with an error callback.
+
+        For two of its operations it would then also dispatch the success callback.
+
+        In those cases the main thread would first take the AsyncRequest for the error callback out
+        of a map and then execute it.
+
+        It would then try to take the same AsyncRequest out of the map again, fail to do so, then
+        execute a null AsyncRequest.
+
+        This patch fixes the two functions to not dispatch both an error and success callback.
+
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        (WebKit::UniqueIDBDatabase::countInBackingStore): Return after dispatching the error callback.
+        (WebKit::UniqueIDBDatabase::deleteRangeInBackingStore): Ditto.
+
+2015-05-06  Dean Jackson  <dino@apple.com>
+
+        Handle backdrop views that have to tile
+        https://bugs.webkit.org/show_bug.cgi?id=142317
+        <rdar://problem/20049088>
+
+        Reviewed by Simon Fraser.
+
+        Add some better logging for custom appearance.
+
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTextStream::operator<<):
+
+2015-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Disable network cache efficacy logging
+        https://bugs.webkit.org/show_bug.cgi?id=144703
+        <rdar://problem/20439143>
+
+        Reviewed by Andreas Kling.
+
+        Disable network cache efficacy logging by default as we have sufficient
+        data for now.
+
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+
+2015-05-06  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * UIProcess/mac/WKViewLayoutStrategy.mm:
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy updateLayout]):
+
+2015-05-06  Dan Bernstein  <mitz@apple.com>
+
+        No way to get a WKWebProcessPlugInFrame’s parent frame
+        https://bugs.webkit.org/show_bug.cgi?id=144705
+
+        Reviewed by Sam Weinig.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.mm:
+        (-[WKWebProcessPlugInFrame _parentFrame]): Added this getter.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFramePrivate.h: Declared new
+        _parentFrame property.
+
+2015-05-06  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * UIProcess/mac/WKViewLayoutStrategy.mm:
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy updateLayout]):
+
+2015-04-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Introducing the Platform Abstraction Layer (PAL)
+        https://bugs.webkit.org/show_bug.cgi?id=143358
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Updated
+
+2015-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WK2] The WebKit network disk cache is not enabled
+        https://bugs.webkit.org/show_bug.cgi?id=142821
+
+        Reviewed by Martin Robinson.
+
+        Enable NetworkCache for the GTK+ port.
+
+        * config.h:
+
+2015-05-06  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Remove redudant condition in ViewClientEfl::didChangeViewportAttributes
+        https://bugs.webkit.org/show_bug.cgi?id=144672
+
+        Reviewed by Gyuyoung Kim.
+
+        ViewClientEfl::didChangeViewportAttributes is always called when fixed layout is disabled.
+
+        * UIProcess/efl/ViewClientEfl.cpp:
+        (WebKit::ViewClientEfl::didChangeViewportAttributes):
+        Removes condition that checks whether fixed layout is enabled.
+
+2015-05-05  Alexey Proskuryakov  <ap@apple.com>
+
+        NetworkResourceLoader::cleanup() should clear ResourceHandle client pointer.
+        https://bugs.webkit.org/show_bug.cgi?id=144641
+        rdar://problem/20250960
+
+        Reviewed by David Kilzer.
+
+        * NetworkProcess/NetworkResourceLoader.cpp: (WebKit::NetworkResourceLoader::cleanup):
+        Clear the client pointer.
+
+        * Shared/Authentication/AuthenticationManager.cpp:
+        (WebKit::AuthenticationManager::useCredentialForChallenge):
+        (WebKit::AuthenticationManager::continueWithoutCredentialForChallenge):
+        (WebKit::AuthenticationManager::cancelChallenge):
+        (WebKit::AuthenticationManager::performDefaultHandling):
+        (WebKit::AuthenticationManager::rejectProtectionSpaceAndContinue):
+        Updated comments, which were not accurate, at least on Mac.
+
+2015-05-05  Tim Horton  <timothy_horton@apple.com>
+
+        Views get stuck with viewScale < 1 after switching from DynamicSizeWithMinimumViewSize to ViewSize
+        https://bugs.webkit.org/show_bug.cgi?id=144656
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/mac/WKViewLayoutStrategy.mm:
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy willChangeLayoutStrategy]):
+        Reset the viewScale when we leave the DynamicSizeWithMinimumViewSize strategy.
+
+2015-05-05  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * Platform/mac/LayerHostingContext.mm:
+        (WebKit::LayerHostingContext::setFencePort):
+
+2015-05-05  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * UIProcess/mac/WKViewLayoutStrategy.mm:
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy updateLayout]):
+
+2015-05-05  Timothy Horton  <timothy_horton@apple.com>
+
+        Add a layout mode for computing fixed layout size from a minimum size
+        https://bugs.webkit.org/show_bug.cgi?id=144610
+        <rdar://problem/19790341>
+
+        Reviewed by Simon Fraser.
+
+        Add a layout mode where WebKit determines the layout size with a set of
+        (still in flux) heuristics, trying hard to keep the page usable below a
+        particular client-defined threshold view size.
+
+        This can mean that WebKit will start scaling down the page inside the view
+        to make the whole page fit, using the viewScale mechanism.
+
+        * UIProcess/API/C/WKLayoutMode.h:
+        * UIProcess/API/Cocoa/_WKLayoutMode.h:
+        Add the new layout mode, and documentation for the two complicated ones.
+        
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _layoutMode]):
+        (-[WKWebView _setLayoutMode:]):
+        (-[WKWebView _setViewScale:]):
+        (-[WKWebView _setMinimumViewSize:]):
+        (-[WKWebView _minimumViewSize]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        Forward the layoutMode and viewScale parameters to WKView if we have one.
+
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView dealloc]):
+        (-[WKView viewWillStartLiveResize]):
+        (-[WKView viewDidEndLiveResize]):
+        (-[WKView setFrameSize:]):
+        (-[WKView initWithFrame:processPool:configuration:webView:]):
+        (-[WKView disableFrameSizeUpdates]):
+        (-[WKView enableFrameSizeUpdates]):
+        (-[WKView frameSizeUpdatesDisabled]):
+        (-[WKView _layoutMode]):
+        (-[WKView _setLayoutMode:]):
+        (-[WKView _setViewScale:]):
+        (-[WKView _setMinimumViewSize:]):
+        (-[WKView _minimumViewSize]):
+        Store the minimum view size, and update the fixed layout size if needed.
+
+        (-[WKView _updateAutomaticallyComputedFixedLayoutSize]): Deleted.
+        (-[WKView _setAutomaticallyComputesFixedLayoutSizeFromViewScale:]): Deleted.
+        (-[WKView _automaticallyComputesFixedLayoutSizeFromViewScale]): Deleted.
+        Store the WKLayoutMode on the WKViewLayoutStrategy instead of having a
+        bunch of things like _automaticallyComputesFixedLayoutSizeFromViewScale.
+
+        * UIProcess/API/mac/WKViewInternal.h:
+
+        * UIProcess/mac/WKViewLayoutStrategy.h: Added.
+        * UIProcess/mac/WKViewLayoutStrategy.mm: Added.
+        (+[WKViewLayoutStrategy layoutStrategyWithPage:view:mode:]):
+        (-[WKViewLayoutStrategy initWithPage:view:mode:]):
+        (-[WKViewLayoutStrategy willDestroyView:]):
+        (-[WKViewLayoutStrategy layoutMode]):
+        (-[WKViewLayoutStrategy updateLayout]):
+        (-[WKViewLayoutStrategy disableFrameSizeUpdates]):
+        (-[WKViewLayoutStrategy enableFrameSizeUpdates]):
+        (-[WKViewLayoutStrategy frameSizeUpdatesDisabled]):
+        (-[WKViewLayoutStrategy didChangeViewScale]):
+        (-[WKViewLayoutStrategy didChangeMinimumViewSize]):
+        (-[WKViewLayoutStrategy willStartLiveResize]):
+        (-[WKViewLayoutStrategy didEndLiveResize]):
+        (-[WKViewLayoutStrategy didChangeFrameSize]):
+        (-[WKViewLayoutStrategy willChangeLayoutStrategy]):
+        (-[WKViewViewSizeLayoutStrategy initWithPage:view:mode:]):
+        (-[WKViewViewSizeLayoutStrategy updateLayout]):
+        (-[WKViewFixedSizeLayoutStrategy initWithPage:view:mode:]):
+        (-[WKViewFixedSizeLayoutStrategy updateLayout]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy initWithPage:view:mode:]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy updateLayout]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy didChangeViewScale]):
+        (-[WKViewDynamicSizeComputedFromViewScaleLayoutStrategy didChangeFrameSize]):
+        Move the existing layout strategies from WKView into WKViewLayoutStrategy subclasses.
+
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy initWithPage:view:mode:]):
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy updateLayout]):
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy didChangeMinimumViewSize]):
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy willStartLiveResize]):
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy didEndLiveResize]):
+        While in live resize with the new layout mode, disable frame size updates.
+        The new layout mode will do a live scale during part of the resize, and
+        we don't always want to send the new view size to the Web process.
+
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy didChangeFrameSize]):
+        (-[WKViewDynamicSizeWithMinimumViewSizeLayoutStrategy willChangeLayoutStrategy]):
+        While in the new layout mode, maintain the viewScale as the minimum of the
+        scale required to fit the current view frame size inside the minimumViewSize.
+        If no scaling is required, carry on as usual, pushing the new view frame size
+        to the DrawingArea and on to the Web process.
+        If scaling is required, apply a transform to the view in the UI process,
+        until the live resize completes, in which case we send a fenced viewScale
+        adjustment to the Web process (so that the tiles paint at the new viewScale
+        synchronized with the removal of the transform in the UI process).
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::scaleViewFenced):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::addFence):
+        (WebKit::DrawingArea::acceleratedAnimationDidEnd): Deleted.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::scaleViewAndUpdateGeometryFenced):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.h:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::addFence):
+        Add scaleViewAndUpdateGeometryFenced and the ability to install CoreAnimation fences on
+        TiledCoreAnimationDrawingArea's CAContext.
+
+        Add the ability to send updateGeometry out-of-band, so that
+        we can send it synchronously inside the message along with the CA fence.
+        We have to both change the viewScale and updateGeometry simultaneously
+        in the same CA commit that we install the fence into, in order to ensure
+        that there is no flash.
+
+2015-05-05  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Release input NSString when finished copying it.
+        https://bugs.webkit.org/show_bug.cgi?id=144642
+
+        Reviewed by Brian Weinstein.
+
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStore.h:
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStore.mm:
+        (-[_WKUserContentExtensionStore compileContentExtensionForIdentifier:encodedContentExtension:completionHandler:]):
+
+2015-05-05  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Use less memory to store the json input.
+        https://bugs.webkit.org/show_bug.cgi?id=144604
+
+        Reviewed by Benjamin Poulain.
+
+        * UIProcess/API/APIUserContentExtensionStore.cpp:
+        (API::compiledToFile):
+        (API::UserContentExtensionStore::compileContentExtension):
+        * UIProcess/API/APIUserContentExtensionStore.h:
+        Don't copy strings as much or keep them alive after done using them.
+
+2015-05-04  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Use less memory when writing byte code to file
+        https://bugs.webkit.org/show_bug.cgi?id=144602
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/APIUserContentExtensionStore.cpp:
+        (API::decodeContentExtensionMetaData):
+        (API::writeDataToFile):
+        (API::compiledToFile):
+        (API::createExtension):
+        Compile and write each DFA to file, then come back and write the header when finalizing.
+        Also don't copy the DFA bytecode. This way, we don't need to keep more than one DFA's
+        bytecode in memory at a time.
+
+2015-05-05  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Make all FrameLoadState data members private.
+        https://bugs.webkit.org/show_bug.cgi?id=144562
+
+        Reviewed by Darin Adler.
+
+        Previously, all of the data members in FrameLoadState were public and accessed directly
+        from outside the class. But these should all be private as noted in FrameLoadState.h
+        for better encapsulation.
+
+        No new tests, no behavior change.
+
+        * UIProcess/API/C/WKFrame.cpp:
+        (WKFrameGetFrameLoadState):
+        * UIProcess/FrameLoadState.h:
+        (WebKit::FrameLoadState::state):
+        (WebKit::FrameLoadState::url):
+        (WebKit::FrameLoadState::provisionalURL):
+        (WebKit::FrameLoadState::unreachableURL):
+        * UIProcess/WebFrameProxy.h:
+        (WebKit::WebFrameProxy::url):
+        (WebKit::WebFrameProxy::provisionalURL):
+        (WebKit::WebFrameProxy::unreachableURL):
+
+2015-05-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Crashes in SandboxExtension::consumePermanently when uploading
+        https://bugs.webkit.org/show_bug.cgi?id=144611
+        rdar://problem/10156710
+
+        Reviewed by Darin Adler.
+
+        This only fixes the crashes, uploading still won't work.
+        Added null checks and some logging that may help us get to the root cause eventually.
+
+        * Shared/SandboxExtension.h:
+        (WebKit::SandboxExtension::createHandle):
+        (WebKit::SandboxExtension::createHandleForReadWriteDirectory):
+        * Shared/mac/SandboxExtensionMac.mm:
+        (WebKit::SandboxExtension::createHandle):
+        (WebKit::SandboxExtension::createHandleForReadWriteDirectory):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didChooseFilesForOpenPanel):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::extendSandboxForFileFromOpenPanel):
+
+2015-05-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove TextureMapperImageBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=143561
+
+        Reviewed by Žan Doberšek.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::paintToCurrentGLContext):
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::setNativeSurfaceHandleForCompositing):
+
+2015-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Network Cache: IOChannel operations are not sent to the right thread
+        https://bugs.webkit.org/show_bug.cgi?id=144542
+
+        Reviewed by Darin Adler.
+
+        We are ignoring the given WorkQueue and running the async
+        operations in the current thread. Check the given WorkQueue
+        instead and schedule the operation to the given queue. If the
+        given queue is nullptr, which means the operation should be run in
+        the main context, the operation is run directly if the current
+        context is the main one or sent to the main context using a
+        GMainLoopSource.
+
+        Fixes crashes due to asserts when running disk-cache layout tests
+        in a Debug build.
+
+        * NetworkProcess/cache/NetworkCacheIOChannel.h:
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        (WebKit::NetworkCache::runTaskInQueue):
+        (WebKit::NetworkCache::IOChannel::read):
+        (WebKit::NetworkCache::IOChannel::readSync):
+        (WebKit::NetworkCache::IOChannel::write):
+
+2015-05-04  Dan Bernstein  <mitz@apple.com>
+
+        WebKit always goes through LaunchServices for main frame navigation actions
+        https://bugs.webkit.org/show_bug.cgi?id=144608
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKNavigationDelegatePrivate.h: Defined
+        _WKNavigationActionPolicyAllowWithoutTryingAppLink.
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::decidePolicyForNavigationAction): If the policy
+        is _WKNavigationActionPolicyAllowWithoutTryingAppLink, don’t go through tryAppLink.
+
+2015-05-04  Enrica Casucci  <enrica@apple.com>
+
+        [iOS WK2] editorState should include information about selection clipping rectangle.
+        https://bugs.webkit.org/show_bug.cgi?id=144603
+        rdar://problem/20521252
+
+        Reviewed by Chris Dumez.
+
+        Adding selectionClipRect to the post-layout portion of EditorState.
+        This way we can compute the selection clipping rectangle based on
+        up-to-date information instead of using the rectangle provided when
+        then element was first focused.
+
+        * Shared/EditorState.cpp:
+        (WebKit::EditorState::PostLayoutData::encode):
+        (WebKit::EditorState::PostLayoutData::decode):
+        * Shared/EditorState.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _selectionClipRect]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::platformEditorState):
+
+2015-05-04  Antti Koivisto  <antti@apple.com>
+
+        Network Cache: Support time based cache clearing
+        https://bugs.webkit.org/show_bug.cgi?id=144568
+        <rdar://problem/19769820>
+
+        Reviewed by Andreas Kling.
+
+        Support clearing cache entries newer than given time only.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::deleteDumpFile):
+        (WebKit::NetworkCache::Storage::traverse):
+
+            Also fix thread safety of traverse handler function.
+
+        (WebKit::NetworkCache::Cache::clear):
+
+            Also add completion handler to support the API properly.
+
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::clear):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::clearNSURLCache):
+
+            Factor to a function.
+
+        (WebKit::NetworkProcess::clearDiskCache):
+
+2015-05-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WTF] Remove Functional.h inclusions
+        https://bugs.webkit.org/show_bug.cgi?id=144400
+
+        Reviewed by Darin Adler.
+
+        Remove unnecessary inclusions of the <wtf/Functional.h> header in WebKit2.
+
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+        * WebProcess/Plugins/Netscape/mac/NetscapePluginMac.mm: Import the <objc/runtime.h>
+        header that was previously indirectly included through the Functional.h header.
+        * WebProcess/WebPage/DrawingArea.cpp:
+
+2015-05-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Don't compare unsigned chars to EOF (-1)
+        https://bugs.webkit.org/show_bug.cgi?id=144439
+
+        Reviewed by Geoffrey Garen.
+
+        * Shared/linux/WebMemorySamplerLinux.cpp:
+        (WebKit::nextToken): Don't cast return value of fgetc() to char.
+
+2015-05-04  Antti Koivisto  <antti@apple.com>
+
+        Remove NetworkResourceLoadScheduler
+        https://bugs.webkit.org/show_bug.cgi?id=144550
+
+        Reviewed by Sam Weinig.
+
+        It doesn't really do anything.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::scheduleResourceLoad):
+        (WebKit::NetworkConnectionToWebProcess::performSynchronousLoad):
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::getNetworkProcessStatistics):
+        * NetworkProcess/NetworkProcess.h:
+        (WebKit::NetworkProcess::networkResourceLoadScheduler): Deleted.
+        * NetworkProcess/NetworkResourceLoadScheduler.cpp: Removed.
+        * NetworkProcess/NetworkResourceLoadScheduler.h: Removed.
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::cleanup):
+        * NetworkProcess/NetworkResourceLoader.h:
+        (WebKit::NetworkResourceLoader::create):
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::initializeNetworkSettings):
+
+            Moved from NetworkResourceLoadSchedulerMac.mm.
+
+        (WebKit::NetworkProcess::platformInitializeNetworkProcessCocoa):
+        * NetworkProcess/mac/NetworkResourceLoadSchedulerMac.mm: Removed.
+        * NetworkProcess/soup/NetworkResourceLoadSchedulerSoup.cpp: Removed.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-05-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Crash in SandboxExtension::consume when uploading iWork -tef documents to iCloud
+        https://bugs.webkit.org/show_bug.cgi?id=144509
+        rdar://problem/18731910
+
+        Reviewed by Daniel Bates.
+
+        No test, because testRunner.beginDragWithFiles doesn't work in WKTR, and making
+        it work is hard.
+
+        * Shared/BlobDataFileReferenceWithSandboxExtension.cpp:
+        (WebKit::BlobDataFileReferenceWithSandboxExtension::prepareForFileAccess):
+        (WebKit::BlobDataFileReferenceWithSandboxExtension::revokeFileAccess):
+
+2015-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][EFL] Unify platform display handling
+        https://bugs.webkit.org/show_bug.cgi?id=144517
+
+        Reviewed by Martin Robinson.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseRealize): Use PlatformDisplay::sharedDisplay()
+        to checkt the display type.
+        (webkitWebViewBaseCreateWebPage): Ditto.
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit::BackingStore::createBackend): Pass the native X11 shared
+        display to BackingStoreBackendCairoX11.
+        * WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp:
+        (WebKit::NetscapePlugin::x11HostDisplay): Return the native X11
+        shared display.
+
+2015-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix Debug build with NETWORK_CACHE enabled and CACHE_PARTITIONING disabled.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::store):
+
+2015-05-01  Dan Bernstein  <mitz@apple.com>
+
+        WebKit2 part of <rdar://problem/8636045> Back/forward navigation to an error page in Safari breaks the back-forward list
+        https://bugs.webkit.org/show_bug.cgi?id=144501
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadAlternateHTMLString): If this is called during
+        didFailProvisionalLoadForFrame, send back the provisional URL captured at the time of
+        failure.
+        (WebKit::WebPageProxy::didFailProvisionalLoadForFrame): Get the provisioinal URL and keep
+        it in new member variable m_failingProvisionalLoadURL for the duration of the client’s
+        handling of this message.
+        * UIProcess/WebPageProxy.h:
+
+        * UIProcess/WebPageProxy.messages.in: Added provisionalURL parameter to
+        DidFailProvisionalLoadForFrame.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidFailProvisionalLoad): Send the URL for this error
+        to the UI process.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::loadAlternateHTMLString): Temporarily restore the loader’s state to
+        reflect the provisional load error being handled.
+
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in: Added provisionalLoadErrorURL parameter to
+        LoadAlternateHTMLString.
+
+2015-05-01  Martin Robinson  <mrobinson@igalia.com>
+
+        USE(...) macro should expect unprefixed variables
+        https://bugs.webkit.org/show_bug.cgi?id=144454
+
+        Reviewed by Daniel Bates.
+
+        * Shared/API/c/WKBase.h: Replace all occurrences WTF_USE with USE.
+        * WebKit2.xcodeproj/project.pbxproj: Ditto.
+
+2015-05-01  Brady Eidson  <beidson@apple.com>
+
+        Add API to disable meta refreshes.
+        <rdar://problem/20333198> and https://bugs.webkit.org/show_bug.cgi?id=144269
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a preference to enable/disable meta refreshes, enabled by default.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetMetaRefreshEnabled):
+        (WKPreferencesGetMetaRefreshEnabled):
+        (WKPreferencesGetIgnoreViewportScalingConstraints): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2015-05-01  Antti Koivisto  <antti@apple.com>
+
+        Remove network process load serialization code
+        https://bugs.webkit.org/show_bug.cgi?id=144448
+
+        Reviewed by Alexey Proskuryakov.
+
+        TestRunner.setSerializeHTTPLoads is used by a few tests but it is unnecessary
+        with network process. We don't reorder loads anyway so test results are consistent.
+        There or no other clients for this code.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::NetworkConnectionToWebProcess):
+        (WebKit::NetworkConnectionToWebProcess::setSerialLoadingEnabled): Deleted.
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        (WebKit::NetworkConnectionToWebProcess::isSerialLoadingEnabled): Deleted.
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::getNetworkProcessStatistics):
+        * NetworkProcess/NetworkResourceLoadScheduler.cpp:
+        (WebKit::NetworkResourceLoadScheduler::scheduleLoader):
+        (WebKit::NetworkResourceLoadScheduler::removeLoader):
+        (WebKit::NetworkResourceLoadScheduler::loadsPendingCount): Deleted.
+        * NetworkProcess/NetworkResourceLoadScheduler.h:
+        * WebProcess/InjectedBundle/API/c/WKBundle.cpp:
+        (WKBundleSetTabKeyCyclesThroughElements):
+        (WKBundleSetSerialLoadingEnabled): Deleted.
+        (WKBundleDispatchPendingLoadRequests): Deleted.
+        * WebProcess/InjectedBundle/API/c/WKBundlePrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::setSerialLoadingEnabled): Deleted.
+        (WebKit::InjectedBundle::dispatchPendingLoadRequests): Deleted.
+
+            Remove also this as it does nothing.
+
+        * WebProcess/Network/WebResourceLoadScheduler.cpp:
+        (WebKit::WebResourceLoadScheduler::WebResourceLoadScheduler):
+        (WebKit::WebResourceLoadScheduler::suspendPendingRequests):
+        (WebKit::WebResourceLoadScheduler::resumePendingRequests):
+
+            Remove implementation, it does nothing.
+
+        (WebKit::WebResourceLoadScheduler::setSerialLoadingEnabled):
+        * WebProcess/Network/WebResourceLoadScheduler.h:
+
+2015-04-30  Timothy Horton  <timothy_horton@apple.com>
+
+        Remove long-deprecated unused WKView minimumLayoutWidth properties
+        https://bugs.webkit.org/show_bug.cgi?id=144480
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView minimumLayoutWidth]): Deleted.
+        (-[WKView setMinimumLayoutWidth:]): Deleted.
+        (-[WKView minimumWidthForAutoLayout]): Deleted.
+        (-[WKView setMinimumWidthForAutoLayout:]): Deleted.
+        These were replaced with minimumSizeForAutoLayout long ago.
+
+2015-04-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Fixed elements end up in the middle of the view with pageScale < 1
+        https://bugs.webkit.org/show_bug.cgi?id=144428
+        rdar://problem/20404982
+
+        Reviewed by Tim Horton.
+
+        Encode/decode fixedElementsLayoutRelativeToFrame.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (ArgumentCoder<ScrollingStateFrameScrollingNode>::encode):
+        (ArgumentCoder<ScrollingStateFrameScrollingNode>::decode):
+
+2015-04-30  Tim Horton  <timothy_horton@apple.com>
+
+        Asynchronous (or timed-out synchronous) resize flashes white instead of page background color
+        https://bugs.webkit.org/show_bug.cgi?id=144468
+
+        Reviewed by Simon Fraser and Dan Bernstein.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _viewBackgroundColor]):
+        (-[WKView updateLayer]):
+        Use the pageExtendedBackgroundColor for the background color of the WKView,
+        if we have one (and aren't using a transparent background). This means
+        during asynchronous resize or other cases where the Web process isn't keeping
+        up with the UI process during a resize, we'll see background color instead of white.
+
+2015-04-30  Beth Dakin  <bdakin@apple.com>
+
+        Should choose UIScrollView indicatorStyle based on the document background color
+        https://bugs.webkit.org/show_bug.cgi?id=144473
+        -and corresponding-
+        rdar://problem/19897699
+
+        Reviewed by Simon Fraser.
+
+        Update the indicator style whenever the background color changes.  
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _updateScrollViewBackground]):
+
+2015-04-30  Enrica Casucci  <enrica@apple.com>
+
+        [iOS] tapping in the middle of a word in editable content should not select the word.
+        https://bugs.webkit.org/show_bug.cgi?id=144421
+        rdar://problem/20710948
+
+        Reviewed by Tim Horton.
+
+        Reverting to the original behavior.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::selectWithGesture):
+
 2015-04-29  Hunseop Jeong  <hs85.jeong@samsung.com>
 
         Fix the EFL build after r183595
@@ -2623,7 +3515,6 @@
         * Shared/soup/WebCoreArgumentCodersSoup.cpp:
         (IPC::ArgumentCoder<ResourceRequest>::encodePlatformData):
         (IPC::ArgumentCoder<ResourceRequest>::decodePlatformData):
->>>>>>> 60a4d6a618a340365bef4a060f4d758788d72cb8
 
 2015-04-16  Sungmann Cho  <sungmann.cho@navercorp.com>
 

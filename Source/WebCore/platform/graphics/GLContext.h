@@ -74,10 +74,6 @@ public:
     static void cleanupSharedX11Display();
 #endif
 
-#if PLATFORM(WAYLAND)
-    static struct wl_display* sharedWaylandDisplay();
-#endif
-
     static void addActiveContext(GLContext*);
     static void removeActiveContext(GLContext*);
     static void cleanupActiveContextsAtExit();

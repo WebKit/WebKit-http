@@ -1,3 +1,1057 @@
+2015-05-07  Yoav Weiss  <yoav@yoav.ws>
+
+        Fix <script srcset> being loaded by the preloader.
+        https://bugs.webkit.org/show_bug.cgi?id=144675
+
+        Reviewed by Darin Adler.
+
+        Add preloader tests to make sure that <script src> is preloaded,
+        and <script srcset> is not.
+
+        * http/tests/loading/preload-script-src-expected.txt: Added.
+        * http/tests/loading/preload-script-src.html: Added.
+        * http/tests/loading/preload-script-srcset-ignored-expected.txt: Added.
+        * http/tests/loading/preload-script-srcset-ignored.html: Added.
+
+2015-05-06  Yoav Weiss  <yoav@yoav.ws>
+
+        Add srcset preloader tests
+        https://bugs.webkit.org/show_bug.cgi?id=144674
+
+        Reviewed by Darin Adler.
+
+        Add several preloader tests making sure that the when srcset is being preloaded,
+        the right resource is fetched, and the other resource is not.
+
+        * http/tests/loading/preload-img-src-expected.txt: Added.
+        * http/tests/loading/preload-img-src.html: Added.
+        * http/tests/loading/preload-img-srcset-expected.txt: Added.
+        * http/tests/loading/preload-img-srcset-sizes-expected.txt: Added.
+        * http/tests/loading/preload-img-srcset-sizes.html: Added.
+        * http/tests/loading/preload-img-srcset.html: Added.
+        * http/tests/resources/checkPreload.js: Added.
+        (checkForPreload):
+
+2015-05-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Mark grid shorthands as layout dependent
+        https://bugs.webkit.org/show_bug.cgi?id=144687
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-shorthand-computed-style-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-shorthand-computed-style-crash.html: Added.
+        * fast/css-grid-layout/grid-template-shorthand-computed-style-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-template-shorthand-computed-style-crash.html: Added.
+
+2015-05-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ToT WebKit crashes while loading ES6 compatibility table
+        https://bugs.webkit.org/show_bug.cgi?id=144726
+
+        Reviewed by Filip Pizlo.
+
+        Added new test cases.
+
+        * js/class-syntax-string-and-numeric-names-expected.txt:
+        * js/script-tests/class-syntax-string-and-numeric-names.js:
+
+2015-05-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Scroll-snap points do not handle margins and padding propertly
+        https://bugs.webkit.org/show_bug.cgi?id=144647
+        <rdar://problem/20829473>
+
+        Reviewed by Simon Fraser.
+
+        Add new scroll-snap tests that cover elements with borders, padding, and rotation. Also correct the
+        cause of the 'scroll-snap-mandatory-overflow.html' test flakiness by making sure the mouse is always
+        inside the element when starting new wheel gestures.
+
+        Also add a new 'generic' test that confirms that we have expected results for scroll-snap coordinates
+        and calculated scroll-snap-offset values.
+ 
+        * css3/scroll-snap/scroll-snap-offsets.html: Added.
+        * platform/mac-wk2/TestExpectations: Remove flakiness annotation for scroll-snap-mandatory-overflow.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe.html:
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow.html:
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-rotated-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-rotated.html: Added.
+
+2015-05-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183894.
+        https://bugs.webkit.org/show_bug.cgi?id=144719
+
+        crashes on mavericks (Requested by dino on #webkit).
+
+        Reverted changeset:
+
+        "Handle backdrop views that have to tile"
+        https://bugs.webkit.org/show_bug.cgi?id=142317
+        http://trac.webkit.org/changeset/183894
+
+2015-05-06  Jon Lee  <jonlee@apple.com>
+
+        Expose more font weights for -apple-system
+        https://bugs.webkit.org/show_bug.cgi?id=144707
+
+        Reviewed by Dean Jackson.
+
+        * platform/mac/fast/text/systemFont.html: Update test to include font weights for -apple-system.
+        * platform/mac/fast/text/systemFont-expected.txt: Update expectations.
+
+2015-05-06  Dean Jackson  <dino@apple.com>
+
+        Handle backdrop views that have to tile
+        https://bugs.webkit.org/show_bug.cgi?id=142317
+        <rdar://problem/20049088>
+
+        Reviewed by Simon Fraser.
+
+        A test that creates some backdrop views, then makes them
+        big enough that it would trigger tiling (which we don't want
+        to happen).
+
+        * compositing/media-controls-bar-appearance-big-expected.txt: Added.
+        * compositing/media-controls-bar-appearance-big.html: Added.
+
+2015-05-06  Martin Robinson  <mrobinson@igalia.com>
+
+        [FreeType] Vertical CJK glyphs should not be rendered with synthetic oblique
+        https://bugs.webkit.org/show_bug.cgi?id=144612
+
+        Reviewed by Darin Adler.
+
+        * platform/gtk/TestExpectations: Remove expectation for failing test.
+
+2015-05-06  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed GTK+ gardening
+
+        * platform/gtk/TestExpectations: Remove a couple expectations tests.
+        * platform/gtk/editing/execCommand/nsresponder-outdent-expected.txt:
+
+2015-05-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Update expectations for fast/forms/button-line-height.html
+
+        * TestExpectations:
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WK2] The WebKit network disk cache is not enabled
+        https://bugs.webkit.org/show_bug.cgi?id=142821
+
+        Reviewed by Martin Robinson.
+
+        Unskip http/tests/cache/disk-cache tests.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        LayoutTests/fast/forms/button-line-height.html is broken on non-Mac/non-iOS ports
+        https://bugs.webkit.org/show_bug.cgi?id=144673
+
+        * TestExpectations: Skip broken test.
+
+2015-05-05  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] grid-template-areas should accept none value
+        https://bugs.webkit.org/show_bug.cgi?id=144624
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-template-areas-get-set-expected.txt:
+        * fast/css-grid-layout/grid-template-areas-get-set.html: Add new test
+        case to check "none" support.
+
+2015-05-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix tests after r183770 on non-Mac ports. These tests are expecting Mac editing behavior.
+
+        * editing/execCommand/strikethroughSelection.html:
+        * editing/execCommand/toggle-mixed-text-decorations.html:
+
+2015-05-05  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Some assertion failures in compositing code after r183820.
+        https://bugs.webkit.org/show_bug.cgi?id=144630.
+
+        * platform/mac/TestExpectations:
+
+2015-05-05  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] platform/gtk/accessibility/unknown-roles-not-exposed.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=74493
+
+        Reviewed by Chris Fleizach.
+
+        Make the test more reliable by searching for a child with an unknown role
+        rather than depending on an exact hierarchy. This makes the test applicable
+        to other platforms as at least Efl and Mac also do not expose children with
+        unknown roles, so it's now part of the shared accessibility tests.
+
+        * accessibility/unknown-roles-not-exposed-expected.txt: Added.
+        * accessibility/unknown-roles-not-exposed.html: Added.
+        * platform/gtk/TestExpectations: Removed skipped test.
+        * platform/gtk/accessibility/unknown-roles-not-exposed-expected.txt: Removed.
+        * platform/gtk/accessibility/unknown-roles-not-exposed.html: Removed.
+
+2015-05-05  Zalan Bujtas  <zalan@apple.com>
+
+        Navigating to www.apple.com hits assertion in WebCore::TextIteratorCopyableText::set()
+        https://bugs.webkit.org/show_bug.cgi?id=144629
+        rdar://problem/20689877
+
+        Reviewed by Andreas Kling.
+
+        This patch ensures that we don't emit empty text for the text iterator.
+        In TextIterator::handleTextNode before emitting a string, certain characters (\n \t) need to
+        be replaced with space. When such character is found, we emit the string we've processed so far and
+        handle the replacement during the next callback.
+        When the first character in the string needs replacing, there's nothing to emit. However if we don't
+        handle at least one character, TextIterator::advance believes that processing is done and never calls  
+        TextIterator::handleTextNode back with the rest of the string. 
+
+        * fast/text/simple-line-layout-innerText-with-newline-expected.html: Added.
+        * fast/text/simple-line-layout-innerText-with-newline.html: Added.
+
+2015-05-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Add overflow scroll-snap tests
+        https://bugs.webkit.org/show_bug.cgi?id=144591
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac-wk2/TextExpectations: Mark overflow test as flaky while I investigate.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/resources: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/resources/horizontal-mainframe.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/resources/vertical-mainframe.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-destination-lock-up-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-destination-lock-up.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow.html: Added.
+
+2015-05-05  Roger Fong  <roger_fong@apple.com>
+
+        Media control volume slider is opaque.
+        https://bugs.webkit.org/show_bug.cgi?id=144470.
+        <rdar://problem/20770350>
+
+        * platform/mac/TestExpectations:
+        Some tests generate assertion failures after this change, though the tests pass in release.
+        Marking them as crashing in debug for now. Tracking failures here: https://bugs.webkit.org/show_bug.cgi?id=144630.
+
+2015-05-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed gardening, unskip passing compositing tests since USE_NATIVE_XDISPLAY=1
+        is set on the EFL bots and mark the remaining failing compositing tests properly.
+
+        * platform/efl/TestExpectations:
+
+2015-05-04  Basile Clement  <basile_clement@apple.com>
+
+        Allow CreateActivation sinking
+        https://bugs.webkit.org/show_bug.cgi?id=144300
+
+        Reviewed by Filip Pizlo.
+
+        Add a performance test for activation allocation sinking.
+
+        * js/regress/script-tests/sink-huge-activation.js: Added.
+        (bar):
+        (foo):
+
+2015-05-05  Andreas Kling  <akling@apple.com>
+
+        Fix up fast/performance/performance-now-crash-on-navigated-window.html after r183795.
+
+        Unreviewed fix for the bots. Since performance.now doesn't bail out and return 0 in
+        disconnected frames anymore, we have to adjust the expectations. This test was all
+        about catching a crash anyway.
+
+        * fast/performance/performance-now-crash-on-navigated-window-expected.txt:
+        * fast/performance/performance-now-crash-on-navigated-window.html:
+
+2015-05-05  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Box Alignment] Upgrade align-content parsing to CSS3 Box Alignment spec
+        https://bugs.webkit.org/show_bug.cgi?id=144443
+
+        Reviewed by Darin Adler.
+
+        Tests to verify the align-content parsing logic. The new Box Alignment spec
+        requires some changes in the flexbox tests.
+
+        * css3/flexbox/css-properties-expected.txt:
+        * css3/flexbox/css-properties.html:
+        * css3/parse-align-content-expected.txt: Added.
+        * css3/parse-align-content.html: Added.
+
+2015-05-05  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        streams/readable-stream.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=144455
+
+        Reviewed by Darin Adler.
+
+        Moved flaky test to streams/readable-stream-gc.html.
+        Updated flaky test to check that the controller methods work well even if readable stream reference is lost by script.
+
+        * streams/readable-stream-expected.txt:
+        * streams/readable-stream-gc-expected.txt: Added.
+        * streams/readable-stream-gc.html: Added.
+        * streams/readable-stream.html:
+
+2015-05-05  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        [GTK] Gardening 4th May
+        https://bugs.webkit.org/show_bug.cgi?id=144571
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/forms/color/input-appearance-color-expected.png: Added.
+        * platform/gtk/fast/forms/color/input-appearance-color-expected.txt:
+        * platform/gtk/fast/regions/region-overflow-break-expected.html: Added.
+        * platform/gtk/fast/regions/scrolling/wheel-scroll-abspos-expected.html: Added.
+        * platform/gtk/fast/regions/scrolling/wheel-scroll-expected.html: Added.
+        * platform/gtk/fast/text/font-kerning-expected.html: Added.
+
+2015-05-05  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] AX: figure out platform difference for ATK to make accessibility/table-cell-display-block.html work
+        https://bugs.webkit.org/show_bug.cgi?id=143083
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/roles-computedRoleString-expected.txt: Updated to reflect fixed FIXME.
+        * accessibility/roles-computedRoleString.html: Updated to reflect fixed FIXME.
+        * accessibility/table-cell-display-block-expected.txt: Modified to be more platform agnostic.
+        * accessibility/table-cell-display-block.html: Modified to be more platform agnostic.
+        * platform/efl/accessibility/table-detection-expected.txt: Updated to reflect mapping change.
+        * platform/gtk/TestExpectations: Unskip failing test from opening report.
+        * platform/gtk/accessibility/table-detection-expected.txt: Updated to reflect mapping change.
+        * platform/mac/accessibility/rowheader-outside-table-role-expected.txt: Updated to reflect mapping change.
+        * platform/mac/accessibility/rowheader-outside-table-role.html: Updated to reflect mapping change.
+
+2015-05-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix assertions in WK1 tests after r183777.
+        
+        Behavior difference with the change to RenderLayerCompositor::rootBackgroundTransparencyChanged().
+
+        * platform/mac-wk2/tiled-drawing/background-transparency-toggle-expected.txt:
+
+2015-05-04  Doug Russell  <d_russell@apple.com>
+
+        AX: setting focus via accessibility object needs to set isSynchronizing in resulting selection intent
+        https://bugs.webkit.org/show_bug.cgi?id=144489
+
+        Reviewed by Chris Fleizach.
+
+        Resolves infinite looping when navigating rapidly between controls with the search API and then focusing
+        on the returned control.
+        Remove isSynchronizing flag from AXTextStateChangeIntent and put it on AXObjectCache.
+        Move AXTextStateChangeIntent logic in AccessibilityRenderObject into a helper method.
+        Call new AXTextStateChangeIntent helper from AccessibilityRenderObject::setFocus().
+        Add support for setSelectedVisibleTextRange() in accessibility tests.
+
+        * platform/mac/accessibility/selection-sync-expected.txt: Added.
+        * platform/mac/accessibility/selection-sync.html: Added.
+
+2015-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Crash at com.apple.WebKit.WebContent at com.apple.WebCore: WebCore::createWindow + 185
+        https://bugs.webkit.org/show_bug.cgi?id=144597
+        <rdar://problem/20361579>
+
+        Reviewed by Andreas Kling.
+
+        Add a layout test to cover the case where window.open() is called on a
+        window that is different than the activeDOMWindow and where the
+        activeDOMWindow does not have a frame.
+
+        * fast/dom/Window/resources/test-frame.html: Added.
+        * fast/dom/Window/window-open-activeWindow-null-frame-expected.txt: Added.
+        * fast/dom/Window/window-open-activeWindow-null-frame.html: Added.
+
+2015-05-04  Simon Fraser  <simon.fraser@apple.com>
+
+        display:none iframes cause repeated compositing flushing
+        https://bugs.webkit.org/show_bug.cgi?id=144529
+
+        Reviewed by Darin Adler.
+        
+        Test with a display:none iframe that triggers a single compositing flush,
+        then counts how many occur in 10ms.
+
+        * compositing/iframes/display-none-subframe-expected.txt: Added.
+        * compositing/iframes/display-none-subframe.html: Added.
+
+2015-05-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix updating of tiled backing opaquenss when the page background color changes
+        https://bugs.webkit.org/show_bug.cgi?id=144600
+        rdar://problem/20723035
+
+        Reviewed by Tim Horton.
+
+        Test that dumps layers with various baseBackgroundColor and body background color
+        combinations.
+
+        * platform/mac-wk2/tiled-drawing/background-transparency-toggle-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/background-transparency-toggle.html: Added.
+
+2015-05-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix the test after r183758 since shouldNotBe is not supported in the standalone testing.
+
+        * js/class-syntax-default-constructor-expected.txt:
+        * js/script-tests/class-syntax-default-constructor.js:
+
+2015-05-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Toggling underline or strike through affects each other
+        https://bugs.webkit.org/show_bug.cgi?id=27818
+
+        Reviewed by Darin Adler.
+
+        Added a regression test and rebaselined various tests as explained below.
+
+        * editing/execCommand/script-tests/toggle-style-2.js: The order in which u and strike elements appear have switched.
+        * editing/execCommand/script-tests/toggle-text-decorations.js: Ditto for line-through and overline.
+        * editing/execCommand/toggle-mixed-text-decorations-expected.txt: Added.
+        * editing/execCommand/toggle-mixed-text-decorations.html: Added.
+        * editing/execCommand/toggle-style-2-expected.txt: Rebaselined.
+        * editing/execCommand/toggle-text-decorations-expected.txt: Rebaselined.
+        * editing/undo/remove-css-property-and-remove-style-expected.txt: The order in which color and font-weight properties
+        appear have switched.
+
+2015-05-04  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r178156): CSS Parser incorrectly rejects valid calc() in padding-right property
+        https://bugs.webkit.org/show_bug.cgi?id=144584
+        <rdar://problem/20796829>
+
+        Reviewed by Darin Adler.
+
+        * fast/css/negative-calc-values-expected.txt: Added.
+        * fast/css/negative-calc-values.html: Added.
+        Add a layout test that assigns negative calc() values to properties
+        whose values cannot be negative to verify that values are clamped as
+        per the specification:
+        http://dev.w3.org/csswg/css-values-3/#calc-range
+
+        * fast/css/padding-calc-value-expected.txt: Added.
+        * fast/css/padding-calc-value.html: Added.
+        Add a layout test to test that using calc(.5em - 2px) for padding-right
+        CSS property works as intended. It used to be resolved as 0px instead
+        of "2*font-size - 2px".
+
+        * fast/css/text-shadow-calc-value-expected.txt:
+        * fast/css/text-shadow-calc-value.html:
+        Update test to match what the specification says:
+        http://dev.w3.org/csswg/css-values-3/#calc-range
+        "width: calc(5px - 10px);" is equivalent to "width: 0px;" since widths
+        smaller than 0px are not allowed.
+
+2015-05-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed gardening. Fix lint error on mac-wk1.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-05-04  Alexey Proskuryakov  <ap@apple.com>
+
+        storage/indexeddb/mozilla/cursor-update-updates-indexes.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=144590
+
+        * platform/mac-wk2/TestExpectations: Marking as such.
+
+2015-05-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Extending undefined in class syntax should throw a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=144284
+
+        Reviewed by Darin Adler.
+
+        Fixed the expectation for extending undefined and removed irrelevant test cases for extending undefined
+        since we'll never get to instantiate these classes now.
+
+        * js/class-syntax-extends-expected.txt:
+        * js/script-tests/class-syntax-extends.js:
+
+2015-05-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ES6 classes: Invalid test for constructor property
+        https://bugs.webkit.org/show_bug.cgi?id=144278
+
+        Reviewed by Darin Adler.
+
+        Fixed the test. The constructors of two distinct classes should definitely be distinct.
+
+        * js/class-syntax-default-constructor-expected.txt:
+        * js/script-tests/class-syntax-default-constructor.js:
+
+2015-05-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        new super should be a syntax error
+        https://bugs.webkit.org/show_bug.cgi?id=144282
+
+        Reviewed by Joseph Pecoraro.
+
+        Rebaselined the test.
+
+        * js/class-syntax-super-expected.txt:
+        * js/script-tests/class-syntax-super.js:
+
+2015-05-04  Simon Fraser  <simon.fraser@apple.com>
+
+       Skip fast/images/animated-gif-body-outside-viewport.html on Windows. It
+       started failing after r183732, but like the other fast/images/animated-gif* tests,
+       it's sensitive to window display timing. These tests were already skipped for Mac
+       WK1, probably because we disable window autodisplay on the Mac.
+
+        * platform/win/TestExpectations:
+
+2015-05-04  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Box Alignment] Upgrade justify-content parsing to CSS3 Box Alignment spec.
+        https://bugs.webkit.org/show_bug.cgi?id=144442
+
+        Reviewed by David Hyatt.
+
+        Upgrade the justify-content property to the last CSS3 Box
+        Alignment specification. It defines a different enumeration for
+        Positional and Distribution alignment, which requires changes in
+        the FlexibleBox implementation.
+
+        Some minor changes in some Flexbox related test cases for adapting
+        them to the new parsing logic. New layout tests, not Flexbox
+        specific, to verify the parsing of the new values.
+
+        * css3/flexbox/css-properties.html:
+        * css3/parse-justify-content-expected.txt: Added.
+        * css3/parse-justify-content.html: Added.
+
+2015-05-04  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Wrong computed style for named grid lines in implicit tracks
+        https://bugs.webkit.org/show_bug.cgi?id=144449
+
+        Reviewed by Sergio Villar Senin.
+
+        * fast/css-grid-layout/named-grid-lines-computed-style-implicit-tracks-expected.txt: Added.
+        * fast/css-grid-layout/named-grid-lines-computed-style-implicit-tracks.html: Added.
+
+2015-05-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Assertion failure (!needsLayout()) loading inkedmag.com
+        https://bugs.webkit.org/show_bug.cgi?id=144528
+        rdar://problem/20788681
+
+        Reviewed by Darin Adler.
+        
+        Test that sleeps for a while to force an image into catchup mode.
+
+        * fast/images/resources/spinner.gif: Added.
+        * fast/images/set-needs-layout-in-painting-expected.txt: Added.
+        * fast/images/set-needs-layout-in-painting.html: Added.
+
+2015-05-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip fast/frames/flattening/crash-remove-iframe-during-object-beforeload.html
+        https://bugs.webkit.org/show_bug.cgi?id=144540
+
+        * TestExpectations:
+
+2015-05-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid compositing updates after style recalcs which have no compositing implications
+        https://bugs.webkit.org/show_bug.cgi?id=144502
+
+        Reviewed by Darin Adler.
+        
+        Use internals.compositingUpdateCount() to see if various document mutations
+        cause a compositing update. Doesn't actually detect any behavior change
+        from this patch, but seems useful in general.
+
+        * compositing/updates/no-style-change-updates-expected.txt: Added.
+        * compositing/updates/no-style-change-updates.html: Added.
+
+2015-05-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Class syntax should allow string and numeric identifiers for method names
+        https://bugs.webkit.org/show_bug.cgi?id=144254
+
+        Reviewed by Darin Adler.
+
+        Added a test and rebaselined other tests per syntax error message change.
+
+        * js/class-syntax-declaration-expected.txt:
+        * js/class-syntax-expression-expected.txt:
+        * js/class-syntax-string-and-numeric-names-expected.txt: Added.
+        * js/class-syntax-string-and-numeric-names.html: Added.
+        * js/class-syntax-super-expected.txt:
+        * js/script-tests/class-syntax-declaration.js:
+        * js/script-tests/class-syntax-expression.js:
+        * js/script-tests/class-syntax-string-and-numeric-names.js: Added.
+        * js/script-tests/class-syntax-super.js:
+
+2015-05-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Create a set of initial scroll snap point tests
+        https://bugs.webkit.org/show_bug.cgi?id=142358
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-horizontal-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-horizontal.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-horizontal-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-horizontal.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-vertical-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-vertical.html: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical.html: Added.
+
+2015-05-01  Andreas Kling  <akling@apple.com>
+
+        Reproducible crash removing name attribute from <img> node
+        <https://webkit.org/b/144371>
+        <rdar://problem/17198583>
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/HTMLImageElement/remove-name-id-attribute-from-image-expected.txt: Added.
+        * fast/dom/HTMLImageElement/remove-name-id-attribute-from-image.html: Added.
+
+2015-05-01  Eric Carlson  <eric.carlson@apple.com>
+
+        Postpone caption style sheet creation
+        https://bugs.webkit.org/show_bug.cgi?id=144499
+
+        Reviewed by Simon Fraser.
+
+        * media/track/track-user-stylesheet-expected.txt: Added.
+        * media/track/track-user-stylesheet.html: Added.
+
+2015-05-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Text dilation parameters are not restored after being set
+        https://bugs.webkit.org/show_bug.cgi?id=144507
+        <rdar://problem/19446938>
+
+        Reviewed by Simon Fraser and Ned Holbrook.
+
+        See below.
+
+        * fast/text/dilation-save-restore-expected.html: Added. Never sets dilation parameters, draws two strings.
+        * fast/text/dilation-save-restore.html: Added. Draws one string without dilation, sets the dilation, then draws a
+        second string. If saving and restoring doesn't work correctly, these two lines will appear different.
+
+2015-05-01  Jordan Harband  <ljharb@gmail.com>
+
+        String#startsWith/endsWith/includes don't handle Infinity position/endPosition args correctly
+        https://bugs.webkit.org/show_bug.cgi?id=144314
+
+        Reviewed by Darin Adler.
+
+        * js/script-tests/string-includes.js:
+        * js/string-includes-expected.txt:
+
+2015-05-01  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed gardening for GTK+.
+
+        * platform/gtk/TestExpectations: Remove some inaccurate missing results
+        and unskip a passing test.
+
+2015-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] accessibility/secure-textfield-title-ui.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=98375
+
+        Reviewed by Chris Fleizach.
+
+        Modify the test to check the childrenCount of the titleUIElement in order
+        to determine where the element text is exposed. On the Mac, it's exposed
+        in StaticText children; in ATK, in the element itself. The test was failing
+        because it assumed the text was in the first child of the element.
+
+        * accessibility/secure-textfield-title-ui.html: Modified.
+        * platform/gtk/TestExpectations: Unskipped the failing test.
+
+2015-05-01  Brady Eidson  <beidson@apple.com>
+
+        Add API to disable meta refreshes.
+        <rdar://problem/20333198> and https://bugs.webkit.org/show_bug.cgi?id=144269
+
+        Reviewed by Alexey Proskuryakov.
+
+        * loader/meta-refresh-disabled-expected.txt: Added.
+        * loader/meta-refresh-disabled.html: Added.
+        * loader/resources/notify-done.html: Added.
+        * platform/win/TestExpectations:
+
+2015-05-01  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed gardening for WebKitGTK+
+
+        Unskip some passing tests. Add new baselines. Properly organize some
+        failures in the TestExpectations file.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/editing/execCommand/print-expected.png: Added.
+        * platform/gtk/editing/execCommand/print-expected.txt: Added.
+        * platform/gtk/fast/attachment/attachment-progress-expected.txt: Added.
+        * platform/gtk/fast/attachment/attachment-select-on-click-expected.txt: Added.
+        * platform/gtk/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt: Added.
+        * platform/gtk/fast/attachment/attachment-subtitle-expected.txt: Added.
+        * platform/gtk/fast/attachment/attachment-title-expected.txt: Added.
+        * platform/gtk/fast/box-shadow/hidpi-webkit-box-shadow-subpixel-position-expected.txt: Added.
+        * platform/gtk/fast/css/focus-ring-exists-for-search-field-expected.png: Added.
+        * platform/gtk/fast/css/focus-ring-exists-for-search-field-expected.txt: Added.
+        * platform/gtk/fast/multicol/scrolling-column-rules-expected.png: Added.
+        * platform/gtk/fast/multicol/scrolling-column-rules-expected.txt: Added.
+        * platform/gtk/printing/allowed-page-breaks-expected.txt: Added.
+        * platform/gtk/printing/compositing-layer-printing-expected.png: Added.
+        * platform/gtk/printing/compositing-layer-printing-expected.txt:
+        * platform/gtk/printing/css2.1/page-break-after-000-expected.txt: Added.
+        * platform/gtk/printing/css2.1/page-break-after-001-expected.txt: Added.
+        * platform/gtk/printing/css2.1/page-break-after-002-expected.txt: Added.
+        * platform/gtk/printing/css2.1/page-break-after-003-expected.txt: Added.
+        * platform/gtk/printing/css2.1/page-break-after-004-expected.txt: Added.
+        * platform/gtk/printing/css2.1/page-break-before-000-expected.txt: Added.
+        * platform/gtk/printing/css2.1/page-break-before-001-expected.txt: Added.
+        * platform/gtk/printing/css2.1/page-break-before-002-expected.txt: Added.
+        * platform/gtk/printing/css2.1/page-break-inside-000-expected.txt: Added.
+        * platform/gtk/printing/iframe-print-expected.png: Added.
+        * platform/gtk/printing/iframe-print-expected.txt: Added.
+        * platform/gtk/printing/media-queries-print-expected.png: Added.
+        * platform/gtk/printing/media-queries-print-expected.txt:
+        * platform/gtk/printing/no-content-empty-pages-expected.txt: Added.
+        * platform/gtk/printing/numberOfPages-expected.txt: Added.
+        * platform/gtk/printing/page-break-after-avoid-expected.txt: Added.
+        * platform/gtk/printing/page-break-always-expected.txt: Added.
+        * platform/gtk/printing/page-break-avoid-expected.txt: Added.
+        * platform/gtk/printing/page-break-before-avoid-expected.txt: Added.
+        * platform/gtk/printing/page-break-display-none-expected.txt: Added.
+        * platform/gtk/printing/page-break-inside-avoid-expected.txt: Added.
+        * platform/gtk/printing/page-break-margin-collapsed-expected.txt: Added.
+        * platform/gtk/printing/page-break-orphans-and-widows-expected.txt: Added.
+        * platform/gtk/printing/page-break-orphans-expected.txt: Added.
+        * platform/gtk/printing/page-break-widows-expected.txt: Added.
+        * platform/gtk/printing/page-count-layout-overflow-expected.txt: Added.
+        * platform/gtk/printing/page-count-percentage-height-expected.txt: Added.
+        * platform/gtk/printing/page-count-relayout-shrink-expected.txt: Added.
+        * platform/gtk/printing/page-count-with-one-word-expected.txt: Added.
+        * platform/gtk/printing/page-format-data-display-none-expected.txt: Added.
+        * platform/gtk/printing/page-format-data-expected.txt: Added.
+        * platform/gtk/printing/page-rule-css-text-expected.txt: Added.
+        * platform/gtk/printing/page-rule-in-media-query-expected.png: Added.
+        * platform/gtk/printing/page-rule-in-media-query-expected.txt: Added.
+        * platform/gtk/printing/pageNumerForElementById-expected.txt: Added.
+        * platform/gtk/printing/print-close-crash-expected.txt: Added.
+        * platform/gtk/printing/pseudo-class-outside-page-expected.txt: Added.
+        * platform/gtk/printing/return-from-printing-mode-expected.png: Added.
+        * platform/gtk/printing/return-from-printing-mode-expected.txt:
+        * platform/gtk/printing/setPrinting-expected.png: Added.
+        * platform/gtk/printing/setPrinting-expected.txt: Added.
+        * platform/gtk/printing/simultaneous-position-float-change-expected.png: Added.
+        * platform/gtk/printing/simultaneous-position-float-change-expected.txt: Added.
+        * platform/gtk/printing/single-line-must-not-be-split-into-two-pages-expected.txt: Added.
+        * platform/gtk/printing/stretch-to-view-height-expected.txt: Added.
+        * platform/gtk/printing/width-overflow-expected.png: Added.
+        * platform/gtk/printing/width-overflow-expected.txt: Added.
+        * platform/gtk/printing/zoomed-document-expected.txt: Added.
+
+2015-05-01  Martin Robinson  <mrobinson@igalia.com>
+
+        [Freetype] Properly support synthetic oblique in vertical text
+        https://bugs.webkit.org/show_bug.cgi?id=144492
+
+        Reviewed by Sergio Villar Senin.
+
+        * platform/gtk/TestExpectations: Unskip passing tests.
+        * platform/gtk/fast/text/international/synthesized-italic-vertical-latin-expected.png: Added.
+        * platform/gtk/fast/text/international/synthesized-italic-vertical-latin-expected.txt: Added.
+
+2015-05-01  Eric Carlson  <eric.carlson@apple.com>
+
+        Fix text track language selection logic
+        https://bugs.webkit.org/show_bug.cgi?id=144467
+
+        Reviewed by Brent Fulgham.
+
+        * media/track/track-language-preference-expected.txt:
+        * media/track/track-language-preference.html: Updated, add new tests.
+        * platform/mac/TestExpectations:
+
+2015-05-01  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed gardening. Rebaseline some tests for WebKitGTK+.
+
+        * platform/gtk/editing/execCommand/nsresponder-outdent-expected.txt: Rebaseline.
+        * platform/gtk/inspector-protocol/debugger/regress-133182-expected.txt: Removed. The
+        platform-independent baseline should be good enough.
+
+2015-04-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed gardening. Update results of inspector tests.
+
+        * inspector-protocol/debugger/breakpoint-eval-with-exception-expected.txt:
+        * inspector-protocol/debugger/regress-133182-expected.txt:
+        * inspector-protocol/debugger/regress-133182.html:
+        * inspector-protocol/debugger/setBreakpoint-actions-expected.txt:
+        * inspector-protocol/debugger/terminate-dedicated-worker-while-paused-expected.txt:
+        * inspector-protocol/page/deny-X-FrameOption-expected.txt:
+        * inspector/debugger/search-scripts-expected.txt:
+
+2015-04-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed gardening. Remove skipped and broken inspector test.
+
+        This is the last test relying on the old model interface.
+
+        * TestExpectations:
+        * http/tests/inspector-protocol/resources/InspectorTest.js:
+        (InspectorTest.initializeInspectorModels.console.error.window.onerror): Deleted.
+        (InspectorTest.initializeInspectorModels.console.assert): Deleted.
+        (InspectorTest.initializeInspectorModels): Deleted.
+        * inspector-protocol/indexeddb/basics-expected.txt: Removed.
+        * inspector-protocol/indexeddb/basics.html: Removed.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-04-30  Dean Jackson  <dino@apple.com>
+
+        Expose -apple-system as a font family
+        https://bugs.webkit.org/show_bug.cgi?id=144484
+        <rdar://problem/20767330>
+
+        Reviewed by Tim Horton.
+
+        Change a bunch of tests to use "-apple-system" instead
+        of "-apple-system-font" for font-family.
+
+        Add a test to make sure the old name still works.
+
+        * fast/text/system-font-legacy-name.html
+        * platform/ios-simulator/fast/text/system-monospaced-numbers.html:
+        * platform/ios-simulator/ios/fast/text/apple-logo-expected.txt:
+        * platform/ios-simulator/ios/fast/text/apple-logo.html:
+        * platform/ios-simulator/ios/fast/text/opticalFont-expected.txt:
+        * platform/ios-simulator/ios/fast/text/opticalFont.html:
+        * platform/ios-simulator/ios/fast/text/opticalFontWithWeight-expected.txt:
+        * platform/ios-simulator/ios/fast/text/opticalFontWithWeight.html:
+        * platform/ios-simulator/ios/fast/text/underline-scaling-expected.txt:
+        * platform/ios-simulator/ios/fast/text/underline-scaling.html:
+        * platform/mac/fast/text/systemFont-expected.txt:
+        * platform/mac/fast/text/systemFont.html:
+
+2015-04-30  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] overflow-position keyword for align and justify properties.
+        https://bugs.webkit.org/show_bug.cgi?id=144235
+
+        Reviewed by Sergio Villar Senin.
+
+        Implementation of overflow-keyword handling for Grid Layout on
+        align-self and justify-self properties.
+
+        * fast/css-grid-layout/grid-align-justify-overflow-expected.txt: Added.
+        * fast/css-grid-layout/grid-align-justify-overflow.html: Added.
+
+2015-04-30  Jon Davis  <jond@apple.com>
+
+        Web Inspector: console should show an icon for console.info() messages
+        https://bugs.webkit.org/show_bug.cgi?id=18530
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/console/console-api-expected.txt:
+
+2015-04-30  Dean Jackson  <dino@apple.com>
+
+        -apple-system-font-monospaced-numbers doesn't work on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=144478
+        <rdar://problem/20544940>
+
+        Reviewed by Brent Fulgham.
+
+        A test that draws two lines of different numbers and checks
+        they are the same width.
+
+        * platform/ios-simulator/fast/text/system-monospaced-numbers-expected.txt: Added.
+        * platform/ios-simulator/fast/text/system-monospaced-numbers.html: Added.
+
+2015-04-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed, ios-simulator gardening
+
+        * Address linter warnings.
+        * Unskip some tests that pass.
+        * More generically skip unsupported iOS features.
+        * Address FIXMEs.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2015-04-30  Filip Pizlo  <fpizlo@apple.com>
+
+        js/regress/is-string-fold-tricky.html and js/regress/is-string-fold.html are crashing
+        https://bugs.webkit.org/show_bug.cgi?id=144463
+
+        Reviewed by Benjamin Poulain.
+        
+        Unskip now that the bug is fixed.
+
+        * TestExpectations:
+        * js/regress/script-tests/is-string-fold-tricky.js:
+        * js/regress/script-tests/is-string-fold.js:
+
+2015-04-30  Brady Eidson  <beidson@apple.com>
+
+        Javascript using WebSQL can create their own WebKit info table.
+        <rdar://problem/20688792> and https://bugs.webkit.org/show_bug.cgi?id=144466
+
+        Reviewed by Alex Christensen.
+
+        * storage/websql/alter-to-info-table-expected.txt: Added.
+        * storage/websql/alter-to-info-table.html: Added.
+        * storage/websql/alter-to-info-table.js: Added.
+
+2015-04-30  Martin Robinson  <mrobinson@igalia.com>
+
+        Unskip isolated words tests on WebKitGTK+
+
+        * platform/gtk/TestExpectations: Unskip tests. We've been able to run these
+        since the switch to WebKitTestRunner.
+
+2015-04-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, skip new tests js/regress/is-string-fold.html and js/regress/is-string-fold-tricky.html because they are crashing in RJST as well.
+
+        * js/regress/script-tests/is-string-fold-tricky.js:
+        * js/regress/script-tests/is-string-fold.js:
+
+2015-04-30  Martin Robinson  <mrobinson@igalia.com>
+
+        Rebaseline some editing tests for WebKitGTK+
+
+        Also add some missing baselines.
+
+        * fast/hidpi/broken-image-icon-very-hidpi-expected.png: Added.
+        * fast/hidpi/broken-image-icon-very-hidpi-expected.txt: Added.
+        * platform/gtk/editing/execCommand/5142012-1-expected.png:
+        * platform/gtk/editing/execCommand/5142012-1-expected.txt:
+        * platform/gtk/editing/inserting/insert-at-end-02-expected.txt:
+        * platform/gtk/editing/pasteboard/4989774-expected.txt:
+
+2015-04-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, skip new tests js/regress/is-string-fold.html and js/regress/is-string-fold-tricky.html because they are crashing.
+
+        * TestExpectations:
+
+2015-04-30  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Add image failure expectation for
+        svg/filters/sourceAlpha-input-filter-effect.html on Windows
+
+        Unreviewed.
+
+        * platform/win/TestExpectations:
+
+2015-04-29  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG Is<Blah> versions of TypeOf should fold based on proven input type
+        https://bugs.webkit.org/show_bug.cgi?id=144409
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress/is-boolean-fold-expected.txt: Added.
+        * js/regress/is-boolean-fold-tricky-expected.txt: Added.
+        * js/regress/is-boolean-fold-tricky.html: Added.
+        * js/regress/is-boolean-fold.html: Added.
+        * js/regress/is-function-fold-expected.txt: Added.
+        * js/regress/is-function-fold-tricky-expected.txt: Added.
+        * js/regress/is-function-fold-tricky-internal-function-expected.txt: Added.
+        * js/regress/is-function-fold-tricky-internal-function.html: Added.
+        * js/regress/is-function-fold-tricky.html: Added.
+        * js/regress/is-function-fold.html: Added.
+        * js/regress/is-number-fold-expected.txt: Added.
+        * js/regress/is-number-fold-tricky-expected.txt: Added.
+        * js/regress/is-number-fold-tricky.html: Added.
+        * js/regress/is-number-fold.html: Added.
+        * js/regress/is-object-or-null-fold-expected.txt: Added.
+        * js/regress/is-object-or-null-fold-functions-expected.txt: Added.
+        * js/regress/is-object-or-null-fold-functions.html: Added.
+        * js/regress/is-object-or-null-fold-less-tricky-expected.txt: Added.
+        * js/regress/is-object-or-null-fold-less-tricky.html: Added.
+        * js/regress/is-object-or-null-fold-tricky-expected.txt: Added.
+        * js/regress/is-object-or-null-fold-tricky.html: Added.
+        * js/regress/is-object-or-null-fold.html: Added.
+        * js/regress/is-object-or-null-trickier-function-expected.txt: Added.
+        * js/regress/is-object-or-null-trickier-function.html: Added.
+        * js/regress/is-object-or-null-trickier-internal-function-expected.txt: Added.
+        * js/regress/is-object-or-null-trickier-internal-function.html: Added.
+        * js/regress/is-object-or-null-tricky-function-expected.txt: Added.
+        * js/regress/is-object-or-null-tricky-function.html: Added.
+        * js/regress/is-object-or-null-tricky-internal-function-expected.txt: Added.
+        * js/regress/is-object-or-null-tricky-internal-function.html: Added.
+        * js/regress/is-string-fold-expected.txt: Added.
+        * js/regress/is-string-fold-tricky-expected.txt: Added.
+        * js/regress/is-string-fold-tricky.html: Added.
+        * js/regress/is-string-fold.html: Added.
+        * js/regress/is-undefined-fold-expected.txt: Added.
+        * js/regress/is-undefined-fold-tricky-expected.txt: Added.
+        * js/regress/is-undefined-fold-tricky.html: Added.
+        * js/regress/is-undefined-fold.html: Added.
+        * js/regress/script-tests/is-boolean-fold-tricky.js: Added.
+        * js/regress/script-tests/is-boolean-fold.js: Added.
+        * js/regress/script-tests/is-function-fold-tricky-internal-function.js: Added.
+        * js/regress/script-tests/is-function-fold-tricky.js: Added.
+        (func):
+        (func2):
+        * js/regress/script-tests/is-function-fold.js: Added.
+        (value1):
+        * js/regress/script-tests/is-number-fold-tricky.js: Added.
+        * js/regress/script-tests/is-number-fold.js: Added.
+        * js/regress/script-tests/is-object-or-null-fold-functions.js: Added.
+        (value2):
+        * js/regress/script-tests/is-object-or-null-fold-less-tricky.js: Added.
+        * js/regress/script-tests/is-object-or-null-fold-tricky.js: Added.
+        * js/regress/script-tests/is-object-or-null-fold.js: Added.
+        * js/regress/script-tests/is-object-or-null-trickier-function.js: Added.
+        (func):
+        (func2):
+        * js/regress/script-tests/is-object-or-null-trickier-internal-function.js: Added.
+        * js/regress/script-tests/is-object-or-null-tricky-function.js: Added.
+        (func):
+        * js/regress/script-tests/is-object-or-null-tricky-internal-function.js: Added.
+        * js/regress/script-tests/is-string-fold-tricky.js: Added.
+        * js/regress/script-tests/is-string-fold.js: Added.
+        * js/regress/script-tests/is-undefined-fold-tricky.js: Added.
+        * js/regress/script-tests/is-undefined-fold.js: Added.
+        * js/regress/sink-function-expected.txt: Added.
+        * js/regress/sink-function.html: Added.
+
 2015-04-30  Brent Fulgham  <bfulgham@apple.com>
 
         [Mac] Expand test infrastructure to support scrolling tests (Part 3)

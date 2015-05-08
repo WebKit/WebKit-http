@@ -30,7 +30,6 @@
 
 #include "WebGLShader.h"
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -39,7 +38,7 @@ class WebGLProgram final : public WebGLSharedObject {
 public:
     virtual ~WebGLProgram();
 
-    static PassRefPtr<WebGLProgram> create(WebGLRenderingContextBase*);
+    static Ref<WebGLProgram> create(WebGLRenderingContextBase*);
 
     unsigned numActiveAttribLocations();
     GC3Dint getActiveAttribLocation(GC3Duint index);

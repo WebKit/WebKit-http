@@ -87,9 +87,12 @@ messages -> WebPage LegacyReceiver {
     SetAssistedNodeValue(String value)
     SetAssistedNodeValueAsNumber(double value)
     SetAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection)
+
     ApplicationWillResignActive()
     ApplicationWillEnterForeground()
+    ApplicationDidEnterBackground(uint64_t callbackID)
     ApplicationDidBecomeActive()
+
     ContentSizeCategoryDidChange(String contentSizeCategory)
     ExecuteEditCommandWithCallback(String name, uint64_t callbackID)
     GetLookupContextAtPoint(WebCore::IntPoint point, uint64_t callbackID)
@@ -128,7 +131,7 @@ messages -> WebPage LegacyReceiver {
     LoadRequest(uint64_t navigationID, WebCore::ResourceRequest request, WebKit::SandboxExtension::Handle sandboxExtensionHandle, WebKit::UserData userData)
     LoadData(IPC::DataReference data, String MIMEType, String encoding, String baseURL, WebKit::UserData userData)
     LoadHTMLString(uint64_t navigationID, String htmlString, String baseURL, WebKit::UserData userData)
-    LoadAlternateHTMLString(String htmlString, String baseURL, String unreachableURL, WebKit::UserData userData)
+    LoadAlternateHTMLString(String htmlString, String baseURL, String unreachableURL, String provisionalLoadErrorURL, WebKit::UserData userData)
     LoadPlainTextString(String string, WebKit::UserData userData)
     LoadWebArchiveData(IPC::DataReference webArchiveData, WebKit::UserData userData)
     NavigateToURLWithSimulatedClick(String url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint)
@@ -199,6 +202,9 @@ messages -> WebPage LegacyReceiver {
     ScalePage(double scale, WebCore::IntPoint origin)
     ScalePageInViewCoordinates(double scale, WebCore::IntPoint centerInViewCoordinates)
     ScaleView(double scale)
+#if PLATFORM(COCOA)
+    ScaleViewAndUpdateGeometryFenced(double scale, WebCore::IntSize viewSize, WebCore::MachSendRight fencePort)
+#endif
 
     SetUseFixedLayout(bool fixed)
     SetFixedLayoutSize(WebCore::IntSize size)

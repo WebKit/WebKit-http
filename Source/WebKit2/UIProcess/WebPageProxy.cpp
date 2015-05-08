@@ -958,7 +958,7 @@ void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const Strin
 
     m_process->assumeReadAccessToBaseURL(baseURL);
     m_process->assumeReadAccessToBaseURL(unreachableURL);
-    m_process->send(Messages::WebPage::LoadAlternateHTMLString(htmlString, baseURL, unreachableURL, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    m_process->send(Messages::WebPage::LoadAlternateHTMLString(htmlString, baseURL, unreachableURL, m_failingProvisionalLoadURL, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
     m_process->responsivenessTimer()->start();
 }
 
@@ -2247,6 +2247,19 @@ void WebPageProxy::scaleView(double scale)
     m_process->send(Messages::WebPage::ScaleView(scale), m_pageID);
 }
 
+#if PLATFORM(COCOA)
+void WebPageProxy::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, const MachSendRight& fencePort)
+{
+    if (!isValid())
+        return;
+
+    m_viewScaleFactor = scale;
+    if (m_drawingArea)
+        m_drawingArea->willSendUpdateGeometry();
+    m_process->send(Messages::WebPage::ScaleViewAndUpdateGeometryFenced(scale, viewSize, fencePort), m_pageID);
+}
+#endif
+
 void WebPageProxy::setIntrinsicDeviceScaleFactor(float scaleFactor)
 {
     if (m_intrinsicDeviceScaleFactor == scaleFactor)
@@ -2821,7 +2834,7 @@ void WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t f
         m_loaderClient->didReceiveServerRedirectForProvisionalLoadForFrame(*this, *frame, navigation.get(), m_process->transformHandlesToObjects(userData.object()).get());
 }
 
-void WebPageProxy::didFailProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const ResourceError& error, const UserData& userData)
+void WebPageProxy::didFailProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& provisionalURL, const ResourceError& error, const UserData& userData)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
@@ -2839,6 +2852,10 @@ void WebPageProxy::didFailProvisionalLoadForFrame(uint64_t frameID, uint64_t nav
     frame->didFailProvisionalLoad();
 
     m_pageLoadState.commitChanges();
+
+    ASSERT(!m_failingProvisionalLoadURL);
+    m_failingProvisionalLoadURL = provisionalURL;
+
     if (m_navigationClient) {
         if (frame->isMainFrame())
             m_navigationClient->didFailProvisionalNavigationWithError(*this, *frame, navigation.get(), error, m_process->transformHandlesToObjects(userData.object()).get());
@@ -2848,6 +2865,8 @@ void WebPageProxy::didFailProvisionalLoadForFrame(uint64_t frameID, uint64_t nav
         }
     } else
         m_loaderClient->didFailProvisionalLoadWithErrorForFrame(*this, *frame, navigation.get(), error, m_process->transformHandlesToObjects(userData.object()).get());
+
+    m_failingProvisionalLoadURL = { };
 }
 
 void WebPageProxy::clearLoadDependentCallbacks()
@@ -4224,7 +4243,13 @@ void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
     // is gated on a way of passing SandboxExtension::Handles in a Vector.
     for (size_t i = 0; i < fileURLs.size(); ++i) {
         SandboxExtension::Handle sandboxExtensionHandle;
-        SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandle);
+        bool createdExtension = SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandle);
+        if (!createdExtension) {
+            // This can legitimately fail if a directory containing the file is deleted after the file was chosen.
+            // We also have reports of cases where this likely fails for some unknown reason, <rdar://problem/10156710>.
+            WTFLogAlways("WebPageProxy::didChooseFilesForOpenPanel: could not create a sandbox extension for '%s'\n", fileURLs[i].utf8().data());
+            continue;
+        }
         m_process->send(Messages::WebPage::ExtendSandboxForFileFromOpenPanel(sandboxExtensionHandle), m_pageID);
     }
 #endif

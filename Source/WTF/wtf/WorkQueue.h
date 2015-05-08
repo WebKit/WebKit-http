@@ -31,7 +31,6 @@
 #include <functional>
 #include <wtf/Forward.h>
 #include <wtf/FunctionDispatcher.h>
-#include <wtf/Functional.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Threading.h>
 
@@ -40,7 +39,6 @@
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
-#include <wtf/gobject/GMainLoopSource.h>
 #include <wtf/gobject/GRefPtr.h>
 #include <wtf/gobject/GSourceWrap.h>
 #elif PLATFORM(EFL)
@@ -110,8 +108,8 @@ private:
     GRefPtr<GMainContext> m_eventContext;
     Mutex m_eventLoopLock;
     GRefPtr<GMainLoop> m_eventLoop;
-    GMainLoopSource m_socketEventSource;
-    GSourceQueue m_dispatchQueue;
+    GSourceWrap::Socket m_socketEventSource;
+    GSourceWrap::Queue m_dispatchQueue;
 #elif PLATFORM(EFL)
     RefPtr<DispatchQueue> m_dispatchQueue;
 #elif OS(WINDOWS)

@@ -341,6 +341,9 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 
     m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureForFullscreen);
     m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequirePageConsentToLoadMedia);
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureToAutoplayToExternalDevice);
+#endif
 
     // FIXME: We should clean up and look to better merge the iOS and non-iOS code below.
     Settings* settings = document.settings();
@@ -448,7 +451,8 @@ void HTMLMediaElement::registerWithDocument(Document& document)
     document.registerForVisibilityStateChangedCallbacks(this);
 
 #if ENABLE(VIDEO_TRACK)
-    document.registerForCaptionPreferencesChangedCallbacks(this);
+    if (m_requireCaptionPreferencesChangedCallbacks)
+        document.registerForCaptionPreferencesChangedCallbacks(this);
 #endif
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
@@ -475,7 +479,8 @@ void HTMLMediaElement::unregisterWithDocument(Document& document)
     document.unregisterForVisibilityStateChangedCallbacks(this);
 
 #if ENABLE(VIDEO_TRACK)
-    document.unregisterForCaptionPreferencesChangedCallbacks(this);
+    if (m_requireCaptionPreferencesChangedCallbacks)
+        document.unregisterForCaptionPreferencesChangedCallbacks(this);
 #endif
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
@@ -3363,6 +3368,11 @@ void HTMLMediaElement::addTextTrack(PassRefPtr<TextTrack> track)
     if (!RuntimeEnabledFeatures::sharedFeatures().webkitVideoTrackEnabled())
         return;
 
+    if (!m_requireCaptionPreferencesChangedCallbacks) {
+        m_requireCaptionPreferencesChangedCallbacks = true;
+        document().registerForCaptionPreferencesChangedCallbacks(this);
+    }
+
     textTracks()->append(track);
 
     closeCaptionTracksChanged();
@@ -3563,7 +3573,7 @@ void HTMLMediaElement::configureTextTrackGroup(const TrackGroup& group)
     LOG(Media, "HTMLMediaElement::configureTextTrackGroup(%p)", this);
 
     Page* page = document().page();
-    CaptionUserPreferences* captionPreferences = page? page->group().captionPreferences() : 0;
+    CaptionUserPreferences* captionPreferences = page ? page->group().captionPreferences() : 0;
     CaptionUserPreferences::CaptionDisplayMode displayMode = captionPreferences ? captionPreferences->captionDisplayMode() : CaptionUserPreferences::Automatic;
 
     // First, find the track in the group that should be enabled (if any).
@@ -4862,8 +4872,9 @@ void HTMLMediaElement::wirelessRoutesAvailableDidChange()
 void HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*)
 {
     LOG(Media, "HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(%p) - webkitCurrentPlaybackTargetIsWireless = %s", this, boolString(webkitCurrentPlaybackTargetIsWireless()));
-    scheduleEvent(eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent);
 
+    configureMediaControls();
+    scheduleEvent(eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent);
     m_mediaSession->mediaStateDidChange(*this, mediaState());
 }
 
@@ -5330,6 +5341,11 @@ void HTMLMediaElement::configureMediaControls()
     if (isFullscreen())
         requireControls = true;
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    if (m_player && m_player->isCurrentPlaybackTargetWireless())
+        requireControls = true;
+#endif
+
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (!requireControls || !inDocument() || !inActiveDocument())
         return;
@@ -5356,8 +5372,6 @@ void HTMLMediaElement::configureTextTrackDisplay(TextTrackVisibilityCheckType ch
 
     if (m_processingPreferenceChange)
         return;
-
-    LOG(Media, "HTMLMediaElement::configureTextTrackDisplay(%p)", this);
 
     bool haveVisibleTextTrack = false;
     for (unsigned i = 0; i < m_textTracks->length(); ++i) {
@@ -5806,9 +5820,9 @@ CachedResourceLoader* HTMLMediaElement::mediaPlayerCachedResourceLoader()
     return &document().cachedResourceLoader();
 }
 
-PassRefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient> client)
+RefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient> client)
 {
-    return adoptRef(new MediaResourceLoader(document(), fastGetAttribute(HTMLNames::crossoriginAttr), WTF::move(client)));
+    return adoptRef(*new MediaResourceLoader(document(), fastGetAttribute(HTMLNames::crossoriginAttr), WTF::move(client)));
 }
 
 bool HTMLMediaElement::mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge& challenge)
@@ -5881,6 +5895,7 @@ void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
     HTMLMediaSession::BehaviorRestrictions restrictionsToRemove = HTMLMediaSession::RequireUserGestureForLoad
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
         | HTMLMediaSession::RequireUserGestureToShowPlaybackTargetPicker
+        | HTMLMediaSession::RequireUserGestureToAutoplayToExternalDevice
 #endif
         | HTMLMediaSession::RequireUserGestureForLoad
         | HTMLMediaSession::RequireUserGestureForRateChange
@@ -6199,9 +6214,9 @@ MediaProducer::MediaStateFlags HTMLMediaElement::mediaState() const
             state |= RequiresPlaybackTargetMonitoring;
     }
 
-    if (hasActiveVideo && hasAudio && !loop())
+    bool requireUserGesture = m_mediaSession->hasBehaviorRestriction(HTMLMediaSession::RequireUserGestureToAutoplayToExternalDevice);
+    if (hasActiveVideo && (!requireUserGesture || (hasAudio && !loop())))
         state |= ExternalDeviceAutoPlayCandidate;
-
 #endif
 
     if (!isPlaying())

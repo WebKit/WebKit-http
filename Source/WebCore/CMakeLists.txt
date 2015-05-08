@@ -1158,7 +1158,7 @@ set(WebCore_SOURCES
     bindings/js/JSReadableStreamCustom.cpp
     bindings/js/JSReadableStreamControllerCustom.cpp
     bindings/js/JSReadableStreamReaderCustom.cpp
-    bindings/js/ReadableStreamJSSource.cpp
+    bindings/js/ReadableJSStream.cpp
     bindings/js/JSRequestAnimationFrameCallbackCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
     bindings/js/JSSQLTransactionCustom.cpp
@@ -1241,6 +1241,7 @@ set(WebCore_SOURCES
     css/CSSCanvasValue.cpp
     css/CSSCharsetRule.cpp
     css/CSSComputedStyleDeclaration.cpp
+    css/CSSContentDistributionValue.cpp
     css/CSSCrossfadeValue.cpp
     css/CSSCursorImageValue.cpp
     css/CSSDefaultStyleSheets.cpp
@@ -2195,7 +2196,6 @@ set(WebCore_SOURCES
     platform/graphics/texmap/TextureMapperAnimation.cpp
     platform/graphics/texmap/TextureMapperBackingStore.cpp
     platform/graphics/texmap/TextureMapperFPSCounter.cpp
-    platform/graphics/texmap/TextureMapperImageBuffer.cpp
     platform/graphics/texmap/TextureMapperLayer.cpp
     platform/graphics/texmap/TextureMapperSurfaceBackingStore.cpp
     platform/graphics/texmap/TextureMapperTile.cpp

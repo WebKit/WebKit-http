@@ -91,8 +91,7 @@ void GMainLoopSource::scheduleIdleSource(const char* name, GSourceFunc sourceFun
     m_status = Scheduled;
 
     g_source_set_name(m_context.source.get(), name);
-    if (priority != G_PRIORITY_DEFAULT_IDLE)
-        g_source_set_priority(m_context.source.get(), priority);
+    g_source_set_priority(m_context.source.get(), priority);
     g_source_set_callback(m_context.source.get(), sourceFunction, this, nullptr);
 
     if (!context)
@@ -134,7 +133,7 @@ void GMainLoopSource::schedule(const char* name, std::function<bool ()> function
     scheduleIdleSource(name, reinterpret_cast<GSourceFunc>(boolSourceCallback), priority, context);
 }
 
-void GMainLoopSource::schedule(const char* name, std::function<bool (GIOCondition)> function, GSocket* socket, GIOCondition condition, std::function<void ()> destroyFunction, GMainContext* context)
+void GMainLoopSource::schedule(const char* name, std::function<bool (GIOCondition)> function, GSocket* socket, GIOCondition condition, int priority, std::function<void ()> destroyFunction, GMainContext* context)
 {
     cancel();
 
@@ -153,6 +152,7 @@ void GMainLoopSource::schedule(const char* name, std::function<bool (GIOConditio
     ASSERT(m_status == Ready);
     m_status = Scheduled;
     g_source_set_name(m_context.source.get(), name);
+    g_source_set_priority(m_context.source.get(), priority);
     g_source_set_callback(m_context.source.get(), reinterpret_cast<GSourceFunc>(socketSourceCallback), this, nullptr);
 
     if (!context)
@@ -166,8 +166,7 @@ void GMainLoopSource::scheduleTimeoutSource(const char* name, GSourceFunc source
     m_status = Scheduled;
 
     g_source_set_name(m_context.source.get(), name);
-    if (priority != G_PRIORITY_DEFAULT)
-        g_source_set_priority(m_context.source.get(), priority);
+    g_source_set_priority(m_context.source.get(), priority);
     g_source_set_callback(m_context.source.get(), sourceFunction, this, nullptr);
 
     if (!context)

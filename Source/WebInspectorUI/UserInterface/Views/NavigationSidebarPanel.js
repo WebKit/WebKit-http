@@ -139,6 +139,15 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         return this._restoringState;
     }
 
+    cancelRestoringState()
+    {
+        if (!this._finalAttemptToRestoreViewStateTimeout)
+            return;
+
+        clearTimeout(this._finalAttemptToRestoreViewStateTimeout);
+        this._finalAttemptToRestoreViewStateTimeout = undefined;
+    }
+
     createContentTreeOutline(dontHideByDefault, suppressFiltering)
     {
         var contentTreeOutlineElement = document.createElement("ol");
@@ -379,6 +388,11 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         treeElement.hidden = true;
     }
 
+    treeElementAddedOrChanged(treeElement)
+    {
+        // Implemented by subclasses if needed.
+    }
+
     show()
     {
         if (!this.parentSidebar)
@@ -511,6 +525,8 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
 
         if (this.selected)
             this._checkElementsForPendingViewStateCookie(treeElement);
+
+        this.treeElementAddedOrChanged(treeElement);
     }
 
     _treeElementExpandedOrCollapsed(treeElement)

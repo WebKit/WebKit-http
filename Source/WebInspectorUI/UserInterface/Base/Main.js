@@ -315,7 +315,6 @@ WebInspector.contentLoaded = function()
     this.applicationCacheDetailsSidebarPanel = new WebInspector.ApplicationCacheDetailsSidebarPanel;
     this.scopeChainDetailsSidebarPanel = new WebInspector.ScopeChainDetailsSidebarPanel;
     this.probeDetailsSidebarPanel = new WebInspector.ProbeDetailsSidebarPanel;
-    this.renderingFrameDetailsSidebarPanel = new WebInspector.RenderingFrameDetailsSidebarPanel;
 
     if (window.LayerTreeAgent)
         this.layerTreeDetailsSidebarPanel = new WebInspector.LayerTreeDetailsSidebarPanel;
@@ -324,6 +323,8 @@ WebInspector.contentLoaded = function()
 
     this.toolbar.element.addEventListener("mousedown", this._toolbarMouseDown.bind(this));
     document.getElementById("docked-resizer").addEventListener("mousedown", this._dockedResizerMouseDown.bind(this));
+
+    this._dockingAvailable = false;
 
     this._updateDockNavigationItems();
     this._updateToolbarHeight();
@@ -431,7 +432,8 @@ WebInspector._rememberOpenTabs = function()
 WebInspector._updateNewTabButtonState = function(event)
 {
     var newTabAllowed = this.isNewTabWithTypeAllowed(WebInspector.ConsoleTabContentView.Type) || this.isNewTabWithTypeAllowed(WebInspector.ElementsTabContentView.Type)
-         || this.isNewTabWithTypeAllowed(WebInspector.StorageTabContentView.Type);
+        || this.isNewTabWithTypeAllowed(WebInspector.ResourcesTabContentView.Type) || this.isNewTabWithTypeAllowed(WebInspector.StorageTabContentView.Type)
+        || this.isNewTabWithTypeAllowed(WebInspector.TimelineTabContentView.Type) || this.isNewTabWithTypeAllowed(WebInspector.DebuggerTabContentView.Type);
     this.tabBar.newTabItem.disabled = !newTabAllowed;
 };
 
@@ -547,6 +549,13 @@ WebInspector.updateWindowTitle = function()
     // The name "inspectedURLChanged" sounds like the whole URL is required, however this is only
     // used for updating the window title and it can be any string.
     InspectorFrontendHost.inspectedURLChanged(title);
+};
+
+WebInspector.updateDockingAvailability = function(available)
+{
+    this._dockingAvailable = available;
+
+    this._updateDockNavigationItems();
 };
 
 WebInspector.updateDockedState = function(side)
@@ -738,7 +747,7 @@ WebInspector.showElementsTab = function()
     this.tabBrowser.showTabForContentView(tabContentView);
 };
 
-WebInspector.showDebuggerTab = function(breakpointToSelect)
+WebInspector.showDebuggerTab = function(breakpointToSelect, showScopeChainDetailsSidebarPanel)
 {
     var tabContentView = this.tabBrowser.bestTabContentViewForClass(WebInspector.DebuggerTabContentView);
     if (!tabContentView)
@@ -746,6 +755,9 @@ WebInspector.showDebuggerTab = function(breakpointToSelect)
 
     if (breakpointToSelect instanceof WebInspector.Breakpoint)
         tabContentView.revealAndSelectBreakpoint(breakpointToSelect);
+
+    if (showScopeChainDetailsSidebarPanel)
+        tabContentView.showScopeChainDetailsSidebarPanel();
 
     this.tabBrowser.showTabForContentView(tabContentView);
 };
@@ -1068,7 +1080,7 @@ WebInspector._captureDidStart = function(event)
 
 WebInspector._debuggerDidPause = function(event)
 {
-    this.showDebuggerTab();
+    this.showDebuggerTab(null, true);
 
     this._dashboardContainer.showDashboardViewForRepresentedObject(this.dashboardManager.dashboards.debugger);
 
@@ -1089,7 +1101,14 @@ WebInspector._frameWasAdded = function(event)
     if (frame.id !== this._frameIdentifierToShowSourceCodeWhenAvailable)
         return;
 
-    this.showSourceCodeForFrame(frame.id);
+    function delayedWork()
+    {
+        this.showSourceCodeForFrame(frame.id);
+    }
+
+    // Delay showing the frame since FrameWasAdded is called before MainFrameChanged.
+    // Calling showSourceCodeForFrame before MainFrameChanged will show the frame then close it.
+    setTimeout(delayedWork.bind(this));
 };
 
 WebInspector._mainFrameDidChange = function(event)
@@ -1218,10 +1237,17 @@ WebInspector._dockRight = function(event)
 
 WebInspector._updateDockNavigationItems = function()
 {
-    this._closeToolbarButton.hidden = !this.docked;
-    this._undockToolbarButton.hidden = this._dockSide === "undocked";
-    this._dockBottomToolbarButton.hidden = this._dockSide === "bottom";
-    this._dockRightToolbarButton.hidden = this._dockSide === "right";
+    if (this._dockingAvailable || this.docked) {
+        this._closeToolbarButton.hidden = !this.docked;
+        this._undockToolbarButton.hidden = this._dockSide === "undocked";
+        this._dockBottomToolbarButton.hidden = this._dockSide === "bottom";
+        this._dockRightToolbarButton.hidden = this._dockSide === "right";
+    } else {
+        this._closeToolbarButton.hidden = true;
+        this._undockToolbarButton.hidden = true;
+        this._dockBottomToolbarButton.hidden = true;
+        this._dockRightToolbarButton.hidden = true;
+    }
 };
 
 WebInspector._tabBrowserSizeDidChange = function()

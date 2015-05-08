@@ -122,6 +122,8 @@ enum ResourceLoadPriority {
 
     [RaisesException] void setScrollViewPosition(long x, long y);
 
+    [RaisesException] void setViewBaseBackgroundColor(DOMString colorValue);
+
     [RaisesException] void setPagination(DOMString mode, long gap, optional long pageLength);
 
     [RaisesException] DOMString configurationForViewport(unrestricted float devicePixelRatio,
@@ -280,6 +282,9 @@ enum ResourceLoadPriority {
     [RaisesException] void startTrackingStyleRecalcs();
     [RaisesException] unsigned long styleRecalcCount();
 
+    [RaisesException] void startTrackingCompositingUpdates();
+    [RaisesException] unsigned long compositingUpdateCount();
+
     // |node| should be Document, HTMLIFrameElement, or unspecified.
     // If |node| is an HTMLIFrameElement, it assumes node.contentDocument is
     // specified without security checks. Unspecified means this document.
@@ -354,4 +359,8 @@ enum ResourceLoadPriority {
     void queueMicroTask(long testNumber);
 
     [Conditional=CONTENT_FILTERING] readonly attribute MockContentFilterSettings mockContentFilterSettings;
+
+#if defined(ENABLE_CSS_SCROLL_SNAP) && ENABLE_CSS_SCROLL_SNAP
+    [RaisesException] DOMString scrollSnapOffsets(Element element);
+#endif
 };

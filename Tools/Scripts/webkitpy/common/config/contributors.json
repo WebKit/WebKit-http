@@ -348,6 +348,14 @@
             "kbalazs"
          ]
       },
+      "Basile Clement" : {
+        "emails" : [
+            "basile_clement@apple.com"
+        ],
+        "nicks" : [
+            "elarnon"
+        ]
+      },
       "Bear Travis" : {
          "emails" : [
             "betravis@adobe.com"
@@ -1837,6 +1845,11 @@
             "marywu"
          ]
       },
+      "Matt Baker" : {
+         "emails" : [
+            "mattbaker@apple.com"
+         ]
+      },
       "Matt Delaney" : {
          "emails" : [
             "mdelaney@apple.com"
@@ -2878,15 +2891,6 @@
             "yuqiang.xian@intel.com"
          ],
          "expertise" : "JavaScriptCore"
-      },
-      "Yusuke Suzuki" : {
-         "emails" : [
-            "utatane.tea@gmail.com"
-         ],
-         "expertise" : "JIT Compilers, CSS JIT, JavaScript/ECMAScript",
-         "nicks" : [
-            "yusukesuzuki"
-         ]
       },
       "Yuzo Fujishima" : {
          "emails" : [
@@ -4372,6 +4376,7 @@
       "Mario Sanchez Prada" : {
          "emails" : [
             "mario@webkit.org",
+            "mario@endlessm.com",
             "mario.prada@samsung.com",
             "msanchez@igalia.com"
          ],
@@ -4766,6 +4771,15 @@
          "expertise" : "Developer Tools, Web Inspector",
          "nicks" : [
             "yurys"
+         ]
+      },
+      "Yusuke Suzuki" : {
+         "emails" : [
+            "utatane.tea@gmail.com"
+         ],
+         "expertise" : "JIT Compilers, CSS JIT, JavaScript/ECMAScript",
+         "nicks" : [
+            "yusukesuzuki"
          ]
       },
       "Yuta Kitamura" : {

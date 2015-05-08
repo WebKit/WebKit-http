@@ -71,7 +71,6 @@ video::-webkit-media-controls-panel,
 audio::-webkit-media-controls-panel {
     box-sizing: border-box;
     position: relative;
-    z-index: 0;
     bottom: 0;
     width: 100%;
     min-height: 45px;
@@ -213,16 +212,13 @@ video::-webkit-media-controls-panel .volume-box,
 audio::-webkit-media-controls-panel .volume-box {
     position: absolute;
     box-sizing: border-box;
-    height: 63px;
-    bottom: 0;
-    left: 0;
+    width: 63px;
+    bottom: 5px;
+    left: -25px;
     
-    -webkit-clip-path: inset(20px 20px 20px 20px round 0px 4px 4px 0px);
-    -webkit-transform: rotate(-90deg) translateY(-51.5px) translateX(31.5px);
-
+    -webkit-clip-path: inset(20px 20px 20px 20px round 4px 4px 0px 0px);
     background-color: transparent;
-    border-bottom-right-radius: 4px;
-    border-top-right-radius: 4px;
+    overflow: hidden;
 
     display: -webkit-flex;
     -webkit-flex-direction: row;
@@ -230,8 +226,8 @@ audio::-webkit-media-controls-panel .volume-box {
     -webkit-justify-content: flex-end;
 
     opacity: 0;
-    /* make zero width (rather than display:none) for AX and FKA */
-    width: 0; /* will become 101px when shown */
+    /* make zero height (rather than display:none) for AX and FKA */
+    height: 0px; /* will become 116px when shown */
 
 }
 
@@ -274,7 +270,7 @@ audio::-webkit-media-controls-panel .volume-box:hover,
 audio::-webkit-media-controls-panel .volume-box:active {
     opacity: 1;
     /* resize to usable amount (rather than display:none) for AX and FKA */
-    width: 116px;
+    height: 116px;
 }
 
 audio::-webkit-media-controls-volume-slider,
@@ -282,13 +278,16 @@ video::-webkit-media-controls-volume-slider {
     -webkit-appearance: none !important;
     box-sizing: border-box !important;
     height: 9px !important;
+    min-width: 64px !important;
     width: 64px !important;
     padding: 0 !important;
-    margin-right: 30px !important;
+    margin: 0 !important;
 
     background-color: transparent !important;
     background-size: 100% 100%;
     background-repeat: no-repeat;
+    -webkit-transform-origin: 0 0;
+    -webkit-transform: rotate(-90deg) translateY(28px) translateX(-40px);
     mix-blend-mode: plus-lighter;
 }
 
@@ -308,7 +307,6 @@ video::-webkit-media-controls-volume-min-button {
 
 video::-webkit-media-controls-wireless-playback-picker-button,
 audio::-webkit-media-controls-wireless-playback-picker-button {
-    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" stroke="rgba(255,255,255,0.45)"><defs> <clipPath fill-rule="evenodd" id="cut-hole"><path d="M 0,0.5 L 16,0.5 L 16,15.5 L 0,15.5 z M 0,14.5 L 16,14.5 L 8,5 z"/></clipPath></defs><rect fill="none" clip-path="url(#cut-hole)" x="0.5" y="2" width="15" height="8"/><path stroke="none" fill="rgba(255,255,255,0.45)" d="M 3.5,13.25 L 12.5,13.25 L 8,8 z"/></svg>');
     margin-right: 16px;
     width: 16px;
     min-width: 16px;
@@ -316,7 +314,7 @@ audio::-webkit-media-controls-wireless-playback-picker-button {
 
 video::-webkit-media-controls-wireless-playback-picker-button.playing,
 audio::-webkit-media-controls-wireless-playback-picker-button.playing {
-    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" stroke="rgb(0,172,245)"><defs> <clipPath fill-rule="evenodd" id="cut-hole"><path d="M 0,0.5 L 16,0.5 L 16,15.5 L 0,15.5 z M 0,14.5 L 16,14.5 L 8,5 z"/></clipPath></defs><rect fill="none" clip-path="url(#cut-hole)" x="0.5" y="2" width="15" height="8"/><path stroke="none" fill="rgb(0,172,245)" d="M 3.5,13.25 L 12.5,13.25 L 8,8 z"/></svg>');
+    mix-blend-mode: normal;
 }
 
 video::-webkit-media-controls-toggle-closed-captions-button,
@@ -420,7 +418,7 @@ audio::-webkit-media-controls-closed-captions-container li.selected:hover::befor
 
 video::-webkit-media-controls-fullscreen-button,
 audio::-webkit-media-controls-fullscreen-button {
-    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="rgba(255,255,255,0.45)" stroke-width="1.25" fill="none"><path d="M 7,1.5 L 12.5,1.5 L 12.5,7"/><path d="M 0.5,8 L 0.5,13.5 L 6,13.5"/><path stroke-linecap="round" d="M 12.5,1.5 L 7.5,6.5"/><path stroke-linecap="round" d="M 0.5,13.5 L 5.5,8.5"/></svg>');
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="rgba(255,255,255,0.45)" fill="none"><path d="M 7,1.5 L 12.5,1.5 L 12.5,7"/><path d="M 0.5,8 L 0.5,13.5 L 6,13.5"/><path stroke-linecap="round" d="M 12.5,1.5 L 7.5,6.5"/><path stroke-linecap="round" d="M 0.5,13.5 L 5.5,8.5"/></svg>');
     margin-right: 7px;
     width: 14px;
     min-width: 14px;
@@ -428,7 +426,7 @@ audio::-webkit-media-controls-fullscreen-button {
 
 video::-webkit-media-controls-fullscreen-button.exit,
 audio::-webkit-media-controls-fullscreen-button.exit {
-    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="rgba(255,255,255,0.45)" stroke-width="1.25" fill="none"><path d="M 7.5,0.5 L 7.5,6 L 13,6"/><path d="M 0,8 L 5.5,8 L 5.5,13.5"/><path stroke-linecap="round" d="M 7.5,6 L 12.5,1"/><path stroke-linecap="round" d="M 5.5,8 L 0.5,13"/></svg>');
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="rgba(255,255,255,0.45)" fill="none"><path d="M 7.5,1 L 7.5,6.5 L 13,6.5"/><path d="M 0,8.5 L 5.5,8.5 L 5.5,14"/><path stroke-linecap="round" d="M 7.5,6.5 L 12.5,1.5"/><path stroke-linecap="round" d="M 5.5,8.5 L 0.5,13.5"/></svg>');
     margin-right: 11px;
     margin-top: 6px;
 }
@@ -498,7 +496,7 @@ audio::-webkit-media-controls-time-remaining-display {
     text-decoration: none;
     position: relative;
     bottom: 0.5px;
-    font-family: -apple-system-font-monospaced-numbers;
+    font-family: -apple-system-monospaced-numbers;
     -webkit-text-size-adjust:none;
     mix-blend-mode: plus-lighter;
 }
@@ -669,8 +667,11 @@ video:-webkit-full-screen::-webkit-media-controls-panel .volume-box {
 }
 
 video:-webkit-full-screen::-webkit-media-controls-volume-slider {
+    -webkit-transform: none;
     background-color: transparent;
+    min-width: 60px !important;
     width: 60px !important;
+    height: 9px !important;
     margin: 0 !important;
 }
 
@@ -905,12 +906,12 @@ video:-webkit-full-screen::-webkit-media-controls-seek-forward-button:active {
 
 video::-webkit-media-controls-fullscreen-button:active,
 audio::-webkit-media-controls-fullscreen-button:active {
-    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="white" stroke-width="1.25" fill="none"><path d="M 7,1.5 L 12.5,1.5 L 12.5,7"/><path d="M 0.5,8 L 0.5,13.5 L 6,13.5"/><path stroke-linecap="round" d="M 12.5,1.5 L 7.5,6.5"/><path stroke-linecap="round" d="M 0.5,13.5 L 5.5,8.5"/></svg>');
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="white" fill="none"><path d="M 7,1.5 L 12.5,1.5 L 12.5,7"/><path d="M 0.5,8 L 0.5,13.5 L 6,13.5"/><path stroke-linecap="round" d="M 12.5,1.5 L 7.5,6.5"/><path stroke-linecap="round" d="M 0.5,13.5 L 5.5,8.5"/></svg>');
 }
 
 video::-webkit-media-controls-panel button.exit:active,
 audio::-webkit-media-controls-panel button.exit:active {
-    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="white" stroke-width="1.25" fill="none"><path d="M 7.5,0.5 L 7.5,6 L 13,6"/><path d="M 0,8 L 5.5,8 L 5.5,13.5"/><path stroke-linecap="round" d="M 7.5,6 L 12.5,1"/><path stroke-linecap="round" d="M 5.5,8 L 0.5,13"/></svg>');
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="white" fill="none"><path d="M 7.5,1 L 7.5,6.5 L 13,6.5"/><path d="M 0,8.5 L 5.5,8.5 L 5.5,14"/><path stroke-linecap="round" d="M 7.5,6.5 L 12.5,1.5"/><path stroke-linecap="round" d="M 5.5,8.5 L 0.5,13.5"/></svg>');
 }
 
 video::-webkit-media-controls-wireless-playback-picker-button:active,

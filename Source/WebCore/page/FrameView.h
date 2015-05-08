@@ -147,6 +147,7 @@ public:
     WEBCORE_EXPORT void serviceScriptedAnimations(double monotonicAnimationStartTime);
 #endif
 
+    void willRecalcStyle();
     void updateCompositingLayersAfterStyleChange();
     void updateCompositingLayersAfterLayout();
     bool flushCompositingStateForThisFrame(Frame* rootFrameForFlush);
@@ -273,10 +274,16 @@ public:
     void removeViewportConstrainedObject(RenderElement*);
     const ViewportConstrainedObjectSet* viewportConstrainedObjects() const { return m_viewportConstrainedObjects.get(); }
     bool hasViewportConstrainedObjects() const { return m_viewportConstrainedObjects && m_viewportConstrainedObjects->size() > 0; }
+    
+    float frameScaleFactor() const;
 
     // Functions for querying the current scrolled position, negating the effects of overhang
     // and adjusting for page scale.
-    LayoutSize scrollOffsetForFixedPosition() const;
+    LayoutSize scrollOffsetForFixedPosition() const
+    {
+        return scrollOffsetForFixedPosition(visibleContentRect(), totalContentsSize(), scrollPosition(), scrollOrigin(), frameScaleFactor(), fixedElementsLayoutRelativeToFrame(), scrollBehaviorForFixedElements(), headerHeight(), footerHeight());
+    }
+    
     // Static function can be called from another thread.
     static LayoutSize scrollOffsetForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
 
@@ -510,11 +517,17 @@ public:
 
     ScrollBehaviorForFixedElements scrollBehaviorForFixedElements() const;
 
+    bool hasFlippedBlockRenderers() const { return m_hasFlippedBlockRenderers; }
+    void setHasFlippedBlockRenderers(bool b) { m_hasFlippedBlockRenderers = b; }
+
     void updateWidgetPositions();
     void didAddWidgetToRenderTree(Widget&);
     void willRemoveWidgetFromRenderTree(Widget&);
 
     const HashSet<Widget*>& widgetsInRenderTree() const { return m_widgetsInRenderTree; }
+
+    typedef Vector<Ref<FrameView>, 16> FrameViewList;
+    FrameViewList renderedChildFrameViews() const;
 
     void addTrackedRepaintRect(const FloatRect&);
 
@@ -647,6 +660,7 @@ private:
     bool isFrameFlatteningValidForThisFrame() const;
 
     bool qualifiesAsVisuallyNonEmpty() const;
+    bool isViewForDocumentInFrame() const;
 
     AXObjectCache* axObjectCache() const;
     void notifyWidgetsInAllFrames(WidgetNotification);
@@ -785,7 +799,8 @@ private:
 #endif
 
     bool m_visualUpdatesAllowedByClient;
-    
+    bool m_hasFlippedBlockRenderers;
+
     ScrollPinningBehavior m_scrollPinningBehavior;
 
     IntRect* m_cachedWindowClipRect { nullptr };
