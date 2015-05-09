@@ -33,6 +33,7 @@
 #include <WebCore/PlatformDisplayWayland.h>
 #include <cstdio>
 #include <cstdlib>
+#include <wtf/Atomics.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
 #include <wtf/StdLibExtras.h>
@@ -60,9 +61,9 @@ public:
         : m_runLoop(RunLoop::current())
         , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
         , m_updateFunction(WTF::move(updateFunction))
-        , m_updateState(UpdateState::Completed)
         , m_lastUpdateTime(0)
     {
+        m_updateState.store(UpdateState::Completed);
     }
 
     void callOnCompositingRunLoop(std::function<void()> function)
@@ -77,31 +78,36 @@ public:
 
     void setUpdateTimer(UpdateTiming timing = Immediate)
     {
-        if (!m_updateTimer.isActive())
+        if (m_updateTimer.isActive())
+            return;
+
+        if (m_updateState.load() == UpdateState::Completed) {
             m_updateTimer.startOneShot(0);
+            return;
+        }
+
+        m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::UpdateOnCompletion);
     }
 
     void stopUpdates()
     {
-        m_updateState = UpdateState::Completed;
         m_updateTimer.stop();
+        m_updateState.store(UpdateState::Completed);
     }
 
     void updateCompleted()
     {
         RELEASE_ASSERT(&RunLoop::current() == &m_runLoop);
-        switch (m_updateState) {
-        case UpdateState::Completed:
-            ASSERT_NOT_REACHED();
-            break;
-        case UpdateState::InProgress:
-            m_updateState = UpdateState::Completed;
-            break;
-        case UpdateState::UpdateOnCompletion:
-            m_updateState = UpdateState::Completed;
+
+        if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed))
+            return;
+
+        if (m_updateState.compareExchangeStrong(UpdateState::UpdateOnCompletion, UpdateState::Completed)) {
             updateTimerFired();
-            break;
+            return;
         }
+
+        ASSERT_NOT_REACHED();
     }
 
     RunLoop& runLoop()
@@ -118,20 +124,19 @@ private:
 
     void updateTimerFired()
     {
-        if (m_updateState > UpdateState::Completed) {
-            m_updateState = UpdateState::UpdateOnCompletion;
+        if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress)) {
+            m_updateFunction();
+            m_lastUpdateTime = monotonicallyIncreasingTime();
             return;
         }
 
-        m_updateState = UpdateState::InProgress;
-        m_updateFunction();
-        m_lastUpdateTime = monotonicallyIncreasingTime();
+        ASSERT_NOT_REACHED();
     }
 
     RunLoop& m_runLoop;
     RunLoop::Timer<CompositingRunLoop> m_updateTimer;
     std::function<void()> m_updateFunction;
-    UpdateState m_updateState;
+    Atomic<UpdateState> m_updateState;
 
     double m_lastUpdateTime;
 };
