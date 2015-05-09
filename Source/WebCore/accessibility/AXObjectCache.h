@@ -345,6 +345,8 @@ inline void AXObjectCache::handleScrollbarUpdate(ScrollView*) { }
 inline void AXObjectCache::handleAttributeChanged(const QualifiedName&, Element*) { }
 inline void AXObjectCache::recomputeIsIgnored(RenderObject*) { }
 inline void AXObjectCache::handleScrolledToAnchor(const Node*) { }
+inline void AXObjectCache::setTextSelectionIntent(const AXTextStateChangeIntent&) { }
+inline void AXObjectCache::setIsSynchronizingSelection(bool) { }
 inline void AXObjectCache::postTextStateChangeNotification(Node*, const AXTextStateChangeIntent&, const VisibleSelection&) { }
 inline void AXObjectCache::postTextStateChangeNotification(Node*, AXTextEditType, const String&, const VisiblePosition&) { }
 inline void AXObjectCache::postTextReplacementNotification(Node*, AXTextEditType, const String&, AXTextEditType, const String&, const VisiblePosition&) { }
