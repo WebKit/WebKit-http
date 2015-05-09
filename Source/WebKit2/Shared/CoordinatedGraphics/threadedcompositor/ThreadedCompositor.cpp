@@ -52,16 +52,10 @@ class CompositingRunLoop {
     WTF_MAKE_NONCOPYABLE(CompositingRunLoop);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum UpdateTiming {
-        Immediate,
-        WaitUntilNextFrame,
-    };
-
     CompositingRunLoop(std::function<void()> updateFunction)
         : m_runLoop(RunLoop::current())
         , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
         , m_updateFunction(WTF::move(updateFunction))
-        , m_lastUpdateTime(0)
     {
         m_updateState.store(UpdateState::Completed);
     }
@@ -76,7 +70,7 @@ public:
         m_runLoop.dispatch(WTF::move(function));
     }
 
-    void setUpdateTimer(UpdateTiming timing = Immediate)
+    void scheduleUpdate()
     {
         if (m_updateTimer.isActive())
             return;
@@ -97,7 +91,7 @@ public:
 
     void updateCompleted()
     {
-        RELEASE_ASSERT(&RunLoop::current() == &m_runLoop);
+        ASSERT(&RunLoop::current() == &m_runLoop);
 
         if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed))
             return;
@@ -126,7 +120,6 @@ private:
     {
         if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress)) {
             m_updateFunction();
-            m_lastUpdateTime = monotonicallyIncreasingTime();
             return;
         }
 
@@ -137,8 +130,6 @@ private:
     RunLoop::Timer<CompositingRunLoop> m_updateTimer;
     std::function<void()> m_updateFunction;
     Atomic<UpdateState> m_updateState;
-
-    double m_lastUpdateTime;
 };
 
 PassRefPtr<ThreadedCompositor> ThreadedCompositor::create(Client* client)
@@ -228,7 +219,7 @@ void ThreadedCompositor::renderNextFrame()
 
 void ThreadedCompositor::updateViewport()
 {
-    m_compositingRunLoop->setUpdateTimer(CompositingRunLoop::WaitUntilNextFrame);
+    m_compositingRunLoop->scheduleUpdate();
 }
 
 void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& offset)
@@ -274,7 +265,7 @@ GLContext* ThreadedCompositor::glContext()
 
 void ThreadedCompositor::scheduleDisplayImmediately()
 {
-    m_compositingRunLoop->setUpdateTimer(CompositingRunLoop::Immediate);
+    m_compositingRunLoop->scheduleUpdate();
 }
 
 void ThreadedCompositor::didChangeVisibleRect()
