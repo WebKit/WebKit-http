@@ -37,10 +37,10 @@ namespace WebKit {
 
 void CoordinatedGraphicsScene::dispatchOnMainThread(std::function<void()> function)
 {
-    if (isMainThread())
+    if (RunLoop::isMain())
         function();
     else
-        callOnMainThread(WTF::move(function));
+        RunLoop::main().dispatch(WTF::move(function));
 }
 
 void CoordinatedGraphicsScene::dispatchOnClientRunLoop(std::function<void()> function)
