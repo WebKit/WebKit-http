@@ -276,8 +276,9 @@ void ThreadedCompositor::didChangeVisibleRect()
 {
     FloatRect visibleRect = viewportController()->visibleContentsRect();
     float scale = viewportController()->pageScaleFactor();
-    callOnMainThread([=] {
-        m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
+    RefPtr<ThreadedCompositor> protector(this);
+    RunLoop::main().dispatch([protector, visibleRect, scale] {
+        protector->m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
 
     if (m_waylandSurface)
