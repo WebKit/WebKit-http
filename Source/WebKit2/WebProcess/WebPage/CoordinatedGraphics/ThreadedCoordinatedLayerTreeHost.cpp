@@ -328,6 +328,7 @@ void ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::dispatchDisplayRef
 
 void ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::displayRefreshCallback()
 {
+    setMonotonicAnimationStartTime(monotonicallyIncreasingTime());
     DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
 }
 #endif
