@@ -423,8 +423,10 @@ void LayerTreeHostWPE::DisplayRefreshMonitorWPE::dispatchRefreshCallback()
     // We're currently dispatching this callback on main thread, so let's
     // go straight ahead to handling the refresh notifications.
     ASSERT(isMainThread());
-    if (isScheduled())
+    if (isScheduled()) {
+        setMonotonicAnimationStartTime(monotonicallyIncreasingTime());
         handleDisplayRefreshedNotificationOnMainThread(this);
+    }
 }
 
 } // namespace WebKit
