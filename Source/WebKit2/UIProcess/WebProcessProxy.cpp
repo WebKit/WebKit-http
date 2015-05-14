@@ -106,7 +106,7 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool)
     , m_mayHaveUniversalFileReadSandboxExtension(false)
     , m_customProtocolManagerProxy(this, processPool)
     , m_numberOfTimesSuddenTerminationWasDisabled(0)
-    , m_throttler(std::make_unique<ProcessThrottler>(this))
+    , m_throttler(*this)
 {
     WebPasteboardProxy::singleton().addWebProcessProxy(*this);
 
@@ -588,7 +588,7 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 #if PLATFORM(IOS)
     xpc_connection_t xpcConnection = connection()->xpcConnection();
     ASSERT(xpcConnection);
-    m_throttler->didConnectToProcess(xpc_connection_get_pid(xpcConnection));
+    m_throttler.didConnectToProcess(xpc_connection_get_pid(xpcConnection));
 #endif
 
     initializeNetworkProcessActivityToken();
@@ -831,7 +831,7 @@ RefPtr<API::Object> WebProcessProxy::transformHandlesToObjects(API::Object* obje
 
 #if PLATFORM(COCOA)
             case API::Object::Type::ObjCObjectGraph:
-                return m_webProcessProxy.transformHandlesToObjects(static_cast<ObjCObjectGraph&>(object));;
+                return m_webProcessProxy.transformHandlesToObjects(static_cast<ObjCObjectGraph&>(object));
 #endif
             default:
                 return &object;
@@ -889,16 +889,26 @@ RefPtr<API::Object> WebProcessProxy::transformObjectsToHandles(API::Object* obje
     return UserData::transform(object, Transformer());
 }
 
-void WebProcessProxy::sendProcessWillSuspend()
+void WebProcessProxy::sendProcessWillSuspendImminently()
 {
-    if (canSendMessage())
-        send(Messages::WebProcess::ProcessWillSuspend(), 0);
+    if (!canSendMessage())
+        return;
+
+    bool handled = false;
+    sendSync(Messages::WebProcess::ProcessWillSuspendImminently(), Messages::WebProcess::ProcessWillSuspendImminently::Reply(handled),
+        0, std::chrono::seconds(1), IPC::InterruptWaitingIfSyncMessageArrives);
 }
 
-void WebProcessProxy::sendCancelProcessWillSuspend()
+void WebProcessProxy::sendPrepareToSuspend()
 {
     if (canSendMessage())
-        send(Messages::WebProcess::CancelProcessWillSuspend(), 0);
+        send(Messages::WebProcess::PrepareToSuspend(), 0);
+}
+
+void WebProcessProxy::sendCancelPrepareToSuspend()
+{
+    if (canSendMessage())
+        send(Messages::WebProcess::CancelPrepareToSuspend(), 0);
 }
 
 void WebProcessProxy::initializeNetworkProcessActivityToken()
@@ -919,7 +929,7 @@ void WebProcessProxy::sendProcessDidResume()
     
 void WebProcessProxy::processReadyToSuspend()
 {
-    m_throttler->processReadyToSuspend();
+    m_throttler.processReadyToSuspend();
 #if PLATFORM(IOS) && ENABLE(NETWORK_PROCESS)
     m_tokenForNetworkProcess = nullptr;
 #endif
@@ -927,7 +937,7 @@ void WebProcessProxy::processReadyToSuspend()
 
 void WebProcessProxy::didCancelProcessSuspension()
 {
-    m_throttler->didCancelProcessSuspension();
+    m_throttler.didCancelProcessSuspension();
 }
 
 void WebProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
@@ -937,7 +947,7 @@ void WebProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
         return;
     }
     if (!m_tokenForHoldingLockedFiles)
-        m_tokenForHoldingLockedFiles = m_throttler->backgroundActivityToken();
+        m_tokenForHoldingLockedFiles = m_throttler.backgroundActivityToken();
 }
 
 } // namespace WebKit

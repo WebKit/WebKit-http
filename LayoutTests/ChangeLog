@@ -1,3 +1,798 @@
+2015-05-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6: Allow duplicate property names
+        https://bugs.webkit.org/show_bug.cgi?id=142895
+
+        Reviewed by Geoffrey Garen.
+
+        * js/object-literal-duplicate-properties-expected.txt: Added.
+        * js/object-literal-duplicate-properties.html: Added.
+        * js/script-tests/object-literal-duplicate-properties.js: Added.
+        Include a new test all about testing duplicate property names
+        and their expected cascading results.
+
+        * ietestcenter/Javascript/11.1.5_4-4-b-1-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-b-2-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-c-1-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-c-2-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-d-1-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-d-2-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-d-3-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-d-4-expected.txt:
+        ES5 behavior for duplciate properties has changed.
+
+        * js/mozilla/strict/11.1.5-expected.txt:
+        * js/object-literal-syntax-expected.txt:
+        * js/script-tests/object-literal-syntax.js:
+        Update other tests and values now that duplicate properties
+        are allowed, and their cascade order behaves correctly.
+
+2015-05-13  Antti Koivisto  <antti@apple.com>
+
+        Cached CSS image resources don't show up after reloading <http://nightly.webkit.org/start/>
+        https://bugs.webkit.org/show_bug.cgi?id=144952
+
+        Reviewed by Oliver Hunt.
+
+        * http/tests/cache/resources/non-shareable.css: Added.
+        (#foo):
+        (#bar):
+        (#test1):
+        (#test2):
+        * http/tests/cache/resources/shareable.css: Added.
+        (#foo):
+        (#bar):
+        (#test1):
+        (#test2):
+        * http/tests/cache/resources/stylesheet-html.php: Added.
+        * http/tests/cache/stylesheet-sharing-expected.txt: Added.
+        * http/tests/cache/stylesheet-sharing.html: Added.
+
+2015-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r183770): Crash inside WebEditorClient::shouldApplyStyle when applying underline
+        https://bugs.webkit.org/show_bug.cgi?id=144949
+
+        Reviewed by Darin Adler.
+
+        Added a test that emulates underlining of text by the user. Unlike document.execCommand,
+        testRunner.execCommand simulates a user initiated editing command and therefore invokes
+        shouldApplyStyle.
+
+        * editing/style/underline-by-user-expected.txt: Added.
+        * editing/style/underline-by-user.html: Added.
+
+2015-05-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement String.raw
+        https://bugs.webkit.org/show_bug.cgi?id=144330
+
+        Reviewed by Filip Pizlo.
+
+        Add String.raw.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2015-05-12  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/text/simple-line-layout-text-stroke-width.html fails on Windows
+
+        * platform/win/TestExpectations: Mark it as such. The tets likely needs to be
+        improved to work cross-platform.
+
+2015-05-12  Filip Pizlo  <fpizlo@apple.com>
+
+        js/dom/stack-trace.html fails with eager compilation
+        https://bugs.webkit.org/show_bug.cgi?id=144853
+
+        Reviewed by Benjamin Poulain.
+        
+        Make a copy of the stack-trace test that only runs in run-jsc-stress-tests. Sadly, we don't
+        have a good way of having different expectation files for when a test runs in RJST versus
+        RWT. So, the approach I take is that I make a copy of the test just for RJST and I exclude
+        the .html file, which makes RWT overlook it. The test has different expectations in the
+        two harnesses because it does some small DOM things.
+
+        * js/script-tests/stack-trace.js: Added.
+        * js/stack-trace-expected.txt: Added.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [Win] REGRESSION(r184213) breaks aria-menubar-menuitems.html
+        https://bugs.webkit.org/show_bug.cgi?id=144936
+
+        Unreviewed gardening.
+
+        Adding the platform-specific expectations for Windows now that the
+        accessibility tree is being correctly generated for this test.
+
+        * platform/win/accessibility/aria-menubar-menuitems-expected.txt: Added.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [Win] REGRESSION(r184213) breaks aria-menubar-menuitems.html
+        https://bugs.webkit.org/show_bug.cgi?id=144936
+
+        Reviewed by Chris Fleizach.
+
+        Use focusedElement + childAtIndex rather than accessibleElementById
+        as the latter seems to be failing, and the former worked on Windows
+        to get the menubar in the original version of this test.
+
+        * accessibility/aria-menubar-menuitems.html: Modified.
+
+2015-05-12  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r175617): Some text doesn't render on internationalculinarycenter.com
+        https://bugs.webkit.org/show_bug.cgi?id=144917
+        rdar://problem/20545878
+
+        Reviewed by Andreas Kling.
+
+        This patch ensures that text stroke width value is taken into account while
+        calculating visual overflow for simple line layout.
+        Ceiling the text stroke width value matches the normal text layout behaviour.
+
+        * fast/text/simple-line-layout-text-stroke-width-expected.txt: Added.
+        * fast/text/simple-line-layout-text-stroke-width.html: Added.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] ARIA menu items should not have anonymous block children
+        https://bugs.webkit.org/show_bug.cgi?id=144653
+
+        Reviewed by Chris Fleizach.
+
+        The existing test was not cross-platform friendly and was rewritten as
+        part of the fix for this bug. New expectations were generated for Mac,
+        Efl, and Gtk. The shared expectations and the Windows expectations were
+        removed so as not to break the Win port. The search-predicate test also
+        was updated because it included an ARIA treeitem which had a listmarker
+        child it should not have, and no longer has as a result of the bug fix.
+
+        * accessibility/aria-menubar-menuitems-expected.txt: Removed. Platform hierarchies vary vastly.
+        * accessibility/aria-menubar-menuitems.html: Rewritten to work better as a shared test.
+        * platform/efl/accessibility/aria-menubar-menuitems-expected.txt: Added.
+        * platform/gtk/accessibility/aria-menubar-menuitems-expected.txt: Added.
+        * platform/mac/accessibility/aria-menubar-menuitems-expected.txt: Modified as result of rewrite.
+        * platform/mac/accessibility/search-predicate.html: Modified to reflect correct treeitem children.
+        * platform/mac/accessibility/search-predicate-expected.txt: Modified to reflect correct treeitem children.
+        * platform/win/accessibility/aria-menubar-menuitems-expected.txt: Removed. New file should be generated.
+        * resources/accessibility-helper.js: Added an argument so dumpAccessibilityTree can print title rather than value.
+        (dumpAccessibilityTree):
+
+2015-05-12  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/frames/flattening/iframe-flattening-resize-event-count.html times out on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=144155
+
+        * platform/mac-wk2/TestExpectations: Marking as flaky for now.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [GTK] Defer to WebCore Accessibility for table exposure
+        https://bugs.webkit.org/show_bug.cgi?id=144896
+
+        Reviewed by Chris Fleizach.
+
+        Several platform tests are testing accessibility of tables. In order to ensure
+        that those tables continue to be exposed as tables, a border was added so that
+        they are not judged to be layout tables. For the remainder of the tests, the
+        expectations were updated to reflect the fact that layout tables are no longer
+        exposed as AccessibilityTables in WebKitGtk.
+
+        * platform/gtk/accessibility/caret-offsets.html: Added border to table.
+        * platform/gtk/accessibility/table-detection-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/table-hierarchy-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/table-one-cell-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/table-with-rules-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/text-for-range-table-cells.html: Added border to table.
+        * platform/gtk/accessibility/text-for-table.html: Added border to table.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK][WK2] rowAtIndex is not implemented in DRT/WKTR
+        https://bugs.webkit.org/show_bug.cgi?id=116971
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/TestExpectations: Removed previously-failing test.
+
+2015-05-12  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Rebaseline some editing tests
+
+        Also add some missing baselines.
+
+        * platform/efl/editing/execCommand/5142012-1-expected.png:
+        * platform/efl/editing/execCommand/5142012-1-expected.txt:
+        * platform/efl/editing/inserting/insert-at-end-02-expected.png:
+        * platform/efl/editing/inserting/insert-at-end-02-expected.txt:
+
+2015-05-12  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableStream reader should not be disposable when having pending promises
+        https://bugs.webkit.org/show_bug.cgi?id=144869
+
+        Reviewed by Darin Adler.
+
+        * streams/readable-stream-gc.html:
+        * streams/readable-stream-gc-expected.txt:
+
+2015-05-11  Zalan Bujtas  <zalan@apple.com>
+
+        Text is misplaced when custom font does not have space glyph.
+        https://bugs.webkit.org/show_bug.cgi?id=144879
+
+        Reviewed by Myles C. Maxfield
+
+        This patch ensures that we use fallback font for the missing space glyph only when the rendered text has space in it.
+
+        If a font does not provide all the glyphs required to render the associated text, we initiate fallback fonts. It is done while
+        measuring the text at layout time. However due to the fact that we always pre-measure space, a font with no space glyph in it is never sufficient.
+        (even when the text does not require space at all)
+        Fallback fonts impact line positions through ascent/descent calculation.
+
+        * fast/ruby/ruby-expansion-cjk-2-expected.html: progression
+        * fast/ruby/ruby-expansion-cjk-3-expected.html: progression
+        * fast/ruby/ruby-expansion-cjk-4-expected.html: progression
+        * fast/ruby/ruby-expansion-cjk-5-expected.html: progression
+        * fast/ruby/ruby-expansion-cjk-expected.html: progression
+        * fast/text/font-with-no-space-glyph-expected.html: Added.
+        * fast/text/font-with-no-space-glyph.html: Added.
+        * platform/mac/svg/fonts/svg-font-general-expected.html: progression
+
+2015-05-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Always include rows in the tree of accessible tables
+        https://bugs.webkit.org/show_bug.cgi?id=144885
+
+        Reviewed by Chris Fleizach.
+
+        Update the expectations to reflect the rows which are now included in the tree.
+
+        * platform/efl/accessibility/table-attributes-expected.txt: Updated.
+        * platform/efl/accessibility/table-cell-spans-expected.txt: Updated.
+        * platform/efl/accessibility/table-cells-expected.txt: Updated.
+        * platform/efl/accessibility/table-sections-expected.txt: Updated.
+        * platform/gtk/accessibility/table-attributes-expected.txt: Updated.
+        * platform/gtk/accessibility/table-cell-spans-expected.txt: Updated.
+        * platform/gtk/accessibility/table-cells-expected.txt: Updated.
+        * platform/gtk/accessibility/table-sections-expected.txt: Updated.
+
+2015-05-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Need expectation files for menu-list-crash2.html for Gtk and Efl
+        https://bugs.webkit.org/show_bug.cgi?id=144881
+
+        Unreviewed GTK+ and EFL gardening.
+
+        * platform/efl/accessibility/menu-list-crash2-expected.txt: Added.
+        * platform/gtk/accessibility/menu-list-crash2-expected.txt: Added.
+
+2015-05-11  Andreas Kling  <akling@apple.com>
+
+        Add a Windows-specific result for the new accessibility/menu-list-crash2.html test.
+
+        * platform/win/accessibility/menu-list-crash2-expected.txt: Added.
+
+2015-05-11  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Support domain-specific rules and exceptions.
+        https://bugs.webkit.org/show_bug.cgi?id=144833
+
+        Reviewed by Darin Adler.
+
+        * http/tests/contentextensions/domain-rules-expected.txt: Added.
+        * http/tests/contentextensions/domain-rules.html: Added.
+        * http/tests/contentextensions/domain-rules.html.json: Added.
+
+2015-05-10  Filip Pizlo  <fpizlo@apple.com>
+
+        We shouldn't promote LoadVarargs to a sequence of GetStacks and PutStacks if doing so would exceed the LoadVarargs' limit
+        https://bugs.webkit.org/show_bug.cgi?id=144851
+
+        Reviewed by Michael Saboff.
+
+        * js/regress/load-varargs-elimination-expected.txt: Added.
+        * js/regress/load-varargs-elimination.html: Added.
+        * js/regress/script-tests/load-varargs-elimination.js: Added.
+        (foo):
+        (bar):
+        (baz):
+        * js/regress/sink-huge-activation-expected.txt: Added.
+        * js/regress/sink-huge-activation.html: Added.
+
+2015-05-11  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        [GTK] Gardening 11th May.
+        https://bugs.webkit.org/show_bug.cgi?id=144863 
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-11  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Crash at WebCore::AccessibilityMenuList::addChildren()
+        https://bugs.webkit.org/show_bug.cgi?id=144860
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/menu-list-crash2-expected.txt: Added.
+        * accessibility/menu-list-crash2.html: Added.
+
+2015-05-11  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        [GTK] Gardening 7th May.
+        https://bugs.webkit.org/show_bug.cgi?id=144735
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/media/video-controls-no-scripting-expected.txt: Added.
+
+2015-05-10  Simon Fraser  <simon.fraser@apple.com>
+
+        background-position sometimes doesn't work properly with background-attachment: fixed
+        https://bugs.webkit.org/show_bug.cgi?id=103757
+        rdar://problem/18749925
+
+        Reviewed by Darin Adler.
+        
+        Tests various configurations for painting the fixed backgrounds. The existing test was
+        actually wrong, so fixed to use a gradient (so you can see where the edges of the image are),
+        and be valid. Testing is complicated by the fact that setting top content inset actually
+        causes the snapshot to be inset at the top.
+
+        * platform/mac-wk2/tiled-drawing/resources/bordered-image.png: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-cover-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-cover-local-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-cover-local.html: Copied from LayoutTests/platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment.html.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-cover.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-expected.html:
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-local-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-local.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-positioned-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-positioned.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment.html:
+
+2015-05-10  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] fast/events/page-visibility-transition-test.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=114789
+
+        Reviewed by Darin Adler.
+
+        * platform/gtk/TestExpectations: Unskip failing tests.
+
+2015-05-10  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Don't expose elements as data tables just because they use display: table
+        https://bugs.webkit.org/show_bug.cgi?id=144804
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/css-table-ignored-expected.txt: Added.
+        * accessibility/css-table-ignored.html: Added.
+
+2015-05-09  Chris Dumez  <cdumez@apple.com>
+
+        Introduce ParentNode.idl / NonDocumentTypeChildNode.idl
+        https://bugs.webkit.org/show_bug.cgi?id=144825
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline test as the order of the methods changed when iterating.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2015-05-08  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        streams/reference-implementation/readable-stream-reader.html and streams/reference-implementation/bad-underlying-sources.html are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=144813
+
+        Reviewed by Alexey Proskuryakov.
+
+        Removed small timeouts for tests that went from TIMEOUT to PASS thanks to other patches.
+
+        * streams/reference-implementation/bad-underlying-sources.html:
+        * streams/reference-implementation/readable-stream-reader.html:
+
+2015-05-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Update results after Sam's patch, the order of properties changed.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2015-05-08  Sam Weinig  <sam@webkit.org>
+
+        Element Traversal is not just Elements anymore
+        https://bugs.webkit.org/show_bug.cgi?id=144822
+
+        Reviewed by Simon Fraser.
+
+        Add new tests for element traversal functions on Document, DocumentFragment and CharacterData.
+
+        * fast/dom/element-traversal-on-character-data-expected.txt: Added.
+        * fast/dom/element-traversal-on-character-data.html: Added.
+        * fast/dom/element-traversal-on-document-expected.txt: Added.
+        * fast/dom/element-traversal-on-document-fragment-expected.txt: Added.
+        * fast/dom/element-traversal-on-document-fragment.html: Added.
+        * fast/dom/element-traversal-on-document.html: Added.
+
+2015-05-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed GTK+ gardening
+
+        * platform/gtk/TestExpectations: Unskip a test that was failing only because the shared
+        baseline had a failure in it.
+        * platform/gtk/fast/events/event-attribute-expected.txt: Added.
+
+2015-05-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed GTK+ gardening
+
+        * platform/gtk/TestExpectations: Un-expectation some tests that are now passing.
+
+2015-05-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed GTK+ gardening
+
+        Remove expectations for tests that are also skipped for all WebKit2
+        ports. This will more easily allow us to handle them when they are
+        eventually (if at all) unskipped for WebKit2.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-08  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Some tests fail because they do not assume the popup menu captures click events
+        https://bugs.webkit.org/show_bug.cgi?id=40601
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Unskip tests that are passing now
+        and classify remaining failures.
+        * platform/gtk/editing/selection/5354455-2-expected.txt: Rebaselined.
+        * platform/gtk/editing/selection/doubleclick-crash-expected.png: Rebaseline.
+        * platform/gtk/editing/selection/doubleclick-crash-expected.txt: Rebaseline.
+        * platform/gtk/editing/selection/user-select-all-image-with-single-click-expected.txt: Rebaselined.
+        * platform/gtk/editing/selection/user-select-all-with-single-click-expected.txt: Rebaselined.
+        * platform/gtk/fast/events/mouseup-from-button2-expected.txt: Rebaseline.
+        * platform/gtk/fast/events/shadow-event-path-2-expected.txt: Rebaseline.
+        * platform/gtk/fast/events/shadow-event-path-expected.txt: Rebaseline.
+        * platform/gtk/fast/events/updateLayoutForHitTest-expected.txt: Rebaselined.
+
+
+2015-05-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Scroll-snap tests timeout intermittently for overflow scroll cases
+        https://bugs.webkit.org/show_bug.cgi?id=144811
+
+        * platform/mac-wk2/TestExpectations: Mark tests as flaky.
+
+2015-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Throttle RequestAnimationFrame in subframes that are outside the viewport
+        https://bugs.webkit.org/show_bug.cgi?id=144718
+        <rdar://problem/20688782>
+
+        Reviewed by Simon Fraser.
+
+        * fast/animation/request-animation-frame-throttle-subframe-display-none-expected.txt: Added.
+        * fast/animation/request-animation-frame-throttle-subframe-display-none.html: Added.
+        Add layout test to test that RequestAnimationFrame is properly throttled
+        in "display: none" subframes.
+
+        * fast/animation/request-animation-frame-throttle-subframe-expected.txt: Added.
+        * fast/animation/request-animation-frame-throttle-subframe.html: Added.
+        Add layout test to test that RequestAnimationFrame is properly throttled
+        in frames that are outside the viewport.
+
+        * fast/animation/resources/requestAnimationFrame-frame-2.html: Added.
+        * fast/animation/resources/requestAnimationFrame-frame.html: Added.
+
+        * platform/win/TestExpectations:
+        Skip the 2 new tests on Windows as requestAnimationFrame throttling is
+        only supported on Cocoa.
+
+2015-05-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WTR doesn't correctly handle the Escape key
+        https://bugs.webkit.org/show_bug.cgi?id=144788
+
+        Reviewed by Martin Robinson.
+
+        Unskip editing/selection/5354455-1.html.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-08  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [Win] Unskip passing test case after r183981
+        https://bugs.webkit.org/show_bug.cgi?id=140517
+
+        Reviewed by Brent Fulgham.
+
+        * platform/win/TestExpectations:
+
+2015-05-08  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening on 8th May.
+
+        Mark flaky tests and timeout tests after using xorgdriver on EFL port.
+
+        * platform/efl/TestExpectations:
+
+2015-05-08  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableStream constructor start function should be able to error the stream
+        https://bugs.webkit.org/show_bug.cgi?id=141162
+
+        Reviewed by Darin Adler.
+
+        * streams/readable-stream-controller-error-expected.txt: Added.
+        * streams/readable-stream-controller-error.html: Added.
+        * streams/reference-implementation/bad-underlying-sources-expected.txt:
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+
+2015-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183985.
+        https://bugs.webkit.org/show_bug.cgi?id=144796
+
+        broke loader/go-back-to-different-window-size.html (Requested
+        by kling on #webkit).
+
+        Reverted changeset:
+
+        "Throttle RequestAnimationFrame in subframes that are outside
+        the viewport"
+        https://bugs.webkit.org/show_bug.cgi?id=144718
+        http://trac.webkit.org/changeset/183985
+
+2015-05-08  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r183072): dfg-put-by-id-prototype-check.js.layout-dfg-eager-no-cjit fails on AArch64 Linux
+        https://bugs.webkit.org/show_bug.cgi?id=144256
+
+        Unreviewed gardening, skip the failing test on AArch64 Linux.
+
+        * js/script-tests/dfg-put-by-val-direct-to-generic-array.js:
+
+2015-05-07  Chris Dumez  <cdumez@apple.com>
+
+        Throttle RequestAnimationFrame in subframes that are outside the viewport
+        https://bugs.webkit.org/show_bug.cgi?id=144718
+        <rdar://problem/20688782>
+
+        Reviewed by Simon Fraser.
+
+        * fast/animation/request-animation-frame-throttle-subframe-display-none-expected.txt: Added.
+        * fast/animation/request-animation-frame-throttle-subframe-display-none.html: Added.
+        Add layout test to test that RequestAnimationFrame is properly throttled
+        in "display: none" subframes.
+
+        * fast/animation/request-animation-frame-throttle-subframe-expected.txt: Added.
+        * fast/animation/request-animation-frame-throttle-subframe.html: Added.
+        Add layout test to test that RequestAnimationFrame is properly throttled
+        in frames that are outside the viewport.
+
+        * fast/animation/resources/requestAnimationFrame-frame-2.html: Added.
+        * fast/animation/resources/requestAnimationFrame-frame.html: Added.
+
+2015-05-07  Yoav Weiss  <yoav@yoav.ws>
+
+        Calculate source-size length as a float
+        https://bugs.webkit.org/show_bug.cgi?id=144766
+
+        Reviewed by Dean Jackson.
+
+        Add tests that make sure fractional source-size lengths are supported
+        and are calculated as floats.
+
+        * fast/dom/HTMLImageElement/sizes/image-sizes-1x-expected.txt:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-1x.html:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-2x-expected.txt:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-2x.html:
+
+2015-05-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183895.
+        https://bugs.webkit.org/show_bug.cgi?id=144786
+
+        Many tests became flaky (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Expose more font weights for -apple-system"
+        https://bugs.webkit.org/show_bug.cgi?id=144707
+        http://trac.webkit.org/changeset/183895
+
+2015-05-07  Martin Robinson  <mrobinson@igalia.com>
+
+        Remove touchadjustment tests
+        https://bugs.webkit.org/show_bug.cgi?id=144780
+
+        Reviewed by Daniel Bates.
+
+        These tests test a feature that has been removed from WebKit entirely and all
+        ports skip the tests. This code was removed in http://trac.webkit.org/changeset/162231.
+
+        * platform/efl/TestExpectations: Remove expectations.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/ios-simulator/TestExpectations: Ditto.
+        * platform/mac/TestExpectations: Ditto.
+        * platform/win/TestExpectations: Ditto.
+        * platform/wincairo/TestExpectations:
+        * touchadjustment: Removed all files in this directory.
+
+2015-05-07  Simon Fraser  <simon.fraser@apple.com>
+
+        New results after r183970. Fixed elements are now always considered to intersect
+        the coverage rect.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/four-bars-zoomed-expected.txt:
+
+2015-05-07  Sam Weinig  <sam@webkit.org>
+
+        Consider implementing Document.scrollingElement
+        <rdar://problem/20845213>
+        https://bugs.webkit.org/show_bug.cgi?id=143609
+
+        Reviewed by Simon Fraser.
+
+        * fast/dom/Document/scrollingElement-quirks-mode-expected.txt: Added.
+        * fast/dom/Document/scrollingElement-quirks-mode.html: Added.
+        * fast/dom/Document/scrollingElement-standards-mode-expected.txt: Added.
+        * fast/dom/Document/scrollingElement-standards-mode.html: Added.
+
+2015-05-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Applying a filter on an SVG element, which is larger than 4096 pixels, causes this element to be rendered shifted to the left
+        https://bugs.webkit.org/show_bug.cgi?id=144335
+
+        Reviewed by Darin Adler.
+
+        * svg/filters/big-sized-off-viewport-filter-expected.svg: Added.
+        * svg/filters/big-sized-off-viewport-filter.svg: Added.
+        Ensure when applying a filter on a large SVG element, the viewport of the
+        SVG includes the correct drawing part of this element.
+
+2015-05-07  Yoav Weiss  <yoav@yoav.ws>
+
+        Handle meta viewport in HTMLPreloadScanner
+        https://bugs.webkit.org/show_bug.cgi?id=144640
+
+        Reviewed by Dean Jackson.
+
+        Added a layout test that is simply calling an internals method
+        that tests the HTMLPreloadScanner.
+
+        * fast/dom/HTMLMetaElement/meta-preloader-expected.txt: Added.
+        * fast/dom/HTMLMetaElement/meta-preloader.html: Added.
+
+2015-05-07  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r164449): Subpixel rendering: http://www.apple.com/iphone-6/ "Faster wireless." image displays vertical black line on 1x displays at specific window width.
+        https://bugs.webkit.org/show_bug.cgi?id=144723
+        rdar://problem/18307094
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that the backing store's graphics layer is always positioned on a device pixel boundary.
+
+        While calculating the backing store's graphics layer location, its ancestor layer's compositing bounds is taken into account.
+        However the compositing bounds is an unsnapped value, so in order to place the graphics layer properly,
+        we need to pixel align the ancestor compositing bounds before using it to adjust the child's graphics layer position.
+
+        * compositing/ancestor-compositing-layer-is-on-subpixel-position-expected.html: Added.
+        * compositing/ancestor-compositing-layer-is-on-subpixel-position.html: Added.
+        * platform/mac/compositing/layer-creation/overlap-animation-container-expected.txt: progression.
+
+2015-05-07  Yoav Weiss  <yoav@yoav.ws>
+
+        Fix sizes crash and add invalid value tests.
+        https://bugs.webkit.org/show_bug.cgi?id=144739
+
+        Reviewed by Darin Adler.
+
+        Add tests that make sure that invalid values are properly handled, and a 100vw
+        source-size length is being used for srcset and for intrinsic dimension calculation.
+
+        * fast/dom/HTMLImageElement/sizes/image-sizes-invalids-expected.txt: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-invalids.html: Added.
+
+2015-05-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove the WK1-only code path for independently composited iframes
+        https://bugs.webkit.org/show_bug.cgi?id=144722
+
+        Reviewed by Dean Jackson.
+        
+        Results different from WK2, because WK1 does not make layers for scrollbars.
+
+        * platform/mac-wk1/compositing/visible-rect/iframe-no-layers-expected.txt: Added.
+
+2015-05-06  Dean Jackson  <dino@apple.com>
+
+        Handle backdrop views that have to tile
+        https://bugs.webkit.org/show_bug.cgi?id=142317
+        <rdar://problem/20049088>
+
+        Reviewed by Simon Fraser.
+
+        Take 2 - this was rolled out because Mavericks was crashing.
+
+        A test that creates some backdrop views, then makes them
+        big enough that it would trigger tiling (which we don't want
+        to happen).
+
+        * compositing/media-controls-bar-appearance-big-expected.txt: Added.
+        * compositing/media-controls-bar-appearance-big.html: Added.
+        * platform/mac-mavericks/TestExpectations: Skip tests on Mavericks.
+
+2015-05-07  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] All spell checking layout tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=144648
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Unskip and reclassify previously failing tests.
+        * platform/gtk/editing/spelling/spellcheck-paste-expected.txt: Removed.
+
+2015-05-07  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] The pre element should be mapped to ATK_ROLE_SECTION; not ATK_ROLE_PANEL
+        https://bugs.webkit.org/show_bug.cgi?id=144702
+
+        Reviewed by Chris Fleizach.
+
+        In addition to updating the platform expectations for Efl and Gtk, the computed
+        roles test needed to be updated because there is not a one-to-one mapping between
+        the HTML pre element and any ARIA role type.
+
+        * accessibility/roles-computedRoleString-expected.txt: Updated.
+        * accessibility/roles-computedRoleString.html: Updated.
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated.
+
+2015-05-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Unreviewed gardening.
+
+        Removed stale expected files, because these tests are reftests now. (as RWT suggested)
+        Commented old expectations after r183925 to avoid having ambiguous expectations.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/animations/cross-fade-background-image-expected.png: Removed.
+        * platform/efl/animations/cross-fade-background-image-expected.txt: Removed.
+        * platform/efl/css3/masking/clip-path-circle-relative-overflow-expected.png: Removed.
+        * platform/efl/css3/masking/clip-path-polygon-evenodd-expected.png: Removed.
+        * platform/efl/css3/masking/clip-path-polygon-expected.png: Removed.
+        * platform/efl/css3/masking/clip-path-polygon-nonzero-expected.png: Removed.
+
+2015-05-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Mouseevent/hover tests fail with XorgDriver
+        https://bugs.webkit.org/show_bug.cgi?id=144741
+
+        Unreviewed gardening, mark failing tests, skip timeouting tests.
+
+        * platform/efl/TestExpectations:
+
+2015-05-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] REGRESSION(r183907): It made all inspector-protocol test crash
+        https://bugs.webkit.org/show_bug.cgi?id=144737
+
+        Unreviewed gardening, skip crashing tests.
+
+        * platform/efl/TestExpectations:
+
 2015-05-07  Yoav Weiss  <yoav@yoav.ws>
 
         Fix <script srcset> being loaded by the preloader.

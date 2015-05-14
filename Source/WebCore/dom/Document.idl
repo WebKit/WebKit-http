@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2011, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2006, 2007 Samuel Weinig <sam@webkit.org>
  *
  * This library is free software; you can redistribute it and/or
@@ -218,10 +218,6 @@
 
     readonly attribute DOMString compatMode;
 
-    // NodeSelector - Selector API
-    [RaisesException] Element querySelector(DOMString selectors);
-    [RaisesException] NodeList querySelectorAll(DOMString selectors);
-
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
     // Mozilla version
     readonly attribute boolean webkitIsFullScreen;
@@ -341,5 +337,9 @@
 
     // http://www.w3.org/TR/2014/WD-dom-20140204/#dom-document-origin
     readonly attribute DOMString origin;
+
+    // http://dev.w3.org/csswg/cssom-view/#dom-document-scrollingelement
+    readonly attribute Element scrollingElement;
 };
 
+Document implements ParentNode;

@@ -186,7 +186,7 @@ Settings::Settings(Page* page)
     , m_needsAdobeFrameReloadingQuirk(false)
     , m_usesPageCache(false)
     , m_fontRenderingMode(0)
-    , m_antialiasedFontDilationEnabled(true)
+    , m_antialiasedFontDilationEnabled(false)
     , m_showTiledScrollingIndicator(false)
     , m_backgroundShouldExtendBeyondPage(false)
     , m_dnsPrefetchingEnabled(false)
@@ -213,9 +213,9 @@ Settings::~Settings()
 {
 }
 
-PassRefPtr<Settings> Settings::create(Page* page)
+Ref<Settings> Settings::create(Page* page)
 {
-    return adoptRef(new Settings(page));
+    return adoptRef(*new Settings(page));
 }
 
 SETTINGS_SETTER_BODIES

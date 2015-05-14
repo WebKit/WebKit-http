@@ -379,7 +379,7 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     DOMWrapperWorld& isolatedWorld = plugInImageElementIsolatedWorld();
     document().ensurePlugInsInjectedScript(isolatedWorld);
 
-    ScriptController& scriptController = page->mainFrame().script();
+    ScriptController& scriptController = document().frame()->script();
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(isolatedWorld));
     JSC::ExecState* exec = globalObject->globalExec();
 
@@ -571,7 +571,7 @@ void HTMLPlugInImageElement::checkSizeChangeForSnapshotting()
 
 static inline bool is100Percent(Length length)
 {
-    return length.isPercentNotCalculated() && length.percent() == 100;
+    return length.isPercent() && length.percent() == 100;
 }
     
 static inline bool isSmallerThanTinySizingThreshold(const RenderEmbeddedObject& renderer)

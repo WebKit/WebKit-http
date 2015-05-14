@@ -140,6 +140,7 @@
 #include "RemoteLayerTreeDrawingAreaProxy.h"
 #include "RemoteLayerTreeScrollingPerformanceData.h"
 #include "ViewSnapshotStore.h"
+#include <WebCore/MachSendRight.h>
 #include <WebCore/RunLoopObserver.h>
 #endif
 
@@ -2248,15 +2249,18 @@ void WebPageProxy::scaleView(double scale)
 }
 
 #if PLATFORM(COCOA)
-void WebPageProxy::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, const MachSendRight& fencePort)
+void WebPageProxy::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, std::function<void (const MachSendRight&, CallbackBase::Error)> callback)
 {
-    if (!isValid())
+    if (!isValid()) {
+        callback(MachSendRight(), CallbackBase::Error::OwnerWasInvalidated);
         return;
+    }
 
     m_viewScaleFactor = scale;
     if (m_drawingArea)
         m_drawingArea->willSendUpdateGeometry();
-    m_process->send(Messages::WebPage::ScaleViewAndUpdateGeometryFenced(scale, viewSize, fencePort), m_pageID);
+    uint64_t callbackID = m_callbacks.put(WTF::move(callback), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::ScaleViewAndUpdateGeometryFenced(scale, viewSize, callbackID), m_pageID);
 }
 #endif
 
@@ -2832,6 +2836,23 @@ void WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t f
             m_navigationClient->didReceiveServerRedirectForProvisionalNavigation(*this, navigation.get(), m_process->transformHandlesToObjects(userData.object()).get());
     } else
         m_loaderClient->didReceiveServerRedirectForProvisionalLoadForFrame(*this, *frame, navigation.get(), m_process->transformHandlesToObjects(userData.object()).get());
+}
+
+void WebPageProxy::didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t, const String& url)
+{
+    WebFrameProxy* frame = m_process->webFrame(frameID);
+    MESSAGE_CHECK(frame);
+    MESSAGE_CHECK(frame->frameLoadState().state() == FrameLoadState::State::Provisional);
+    MESSAGE_CHECK_URL(url);
+
+    auto transaction = m_pageLoadState.transaction();
+
+    // Internally, we handle this the same way we handle a server redirect. There are no client callbacks
+    // for this, but if this is the main frame, clients may observe a change to the page's URL.
+    if (frame->isMainFrame())
+        m_pageLoadState.didReceiveServerRedirectForProvisionalLoad(transaction, url);
+
+    frame->didReceiveServerRedirectForProvisionalLoad(url);
 }
 
 void WebPageProxy::didFailProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& provisionalURL, const ResourceError& error, const UserData& userData)
@@ -3920,7 +3941,7 @@ void WebPageProxy::didGetImageForFindMatch(const ShareableBitmap::Handle& conten
 
 void WebPageProxy::setTextIndicator(const TextIndicatorData& indicatorData, uint64_t lifetime)
 {
-    m_pageClient.setTextIndicator(*TextIndicator::create(indicatorData), static_cast<TextIndicatorLifetime>(lifetime));
+    m_pageClient.setTextIndicator(TextIndicator::create(indicatorData), static_cast<TextIndicatorLifetime>(lifetime));
 }
 
 void WebPageProxy::clearTextIndicator()
@@ -4656,6 +4677,17 @@ void WebPageProxy::editingRangeCallback(const EditingRange& range, uint64_t call
     callback->performCallbackWithReturnValue(range);
 }
 
+#if PLATFORM(COCOA)
+void WebPageProxy::machSendRightCallback(const MachSendRight& sendRight, uint64_t callbackID)
+{
+    auto callback = m_callbacks.take<MachSendRightCallback>(callbackID);
+    if (!callback)
+        return;
+
+    callback->performCallbackWithReturnValue(sendRight);
+}
+#endif
+
 static bool shouldLogDiagnosticMessage(bool shouldSample)
 {
     if (!shouldSample)
@@ -4968,6 +5000,10 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.minimumLayoutSize = m_minimumLayoutSize;
     parameters.autoSizingShouldExpandToViewHeight = m_autoSizingShouldExpandToViewHeight;
     parameters.scrollPinningBehavior = m_scrollPinningBehavior;
+    if (m_scrollbarOverlayStyle)
+        parameters.scrollbarOverlayStyle = m_scrollbarOverlayStyle.value();
+    else
+        parameters.scrollbarOverlayStyle = Nullopt;
     parameters.backgroundExtendsBeyondPage = m_backgroundExtendsBeyondPage;
     parameters.layerHostingMode = m_layerHostingMode;
 #if ENABLE(REMOTE_INSPECTOR)
@@ -5516,6 +5552,24 @@ void WebPageProxy::setScrollPinningBehavior(ScrollPinningBehavior pinning)
 
     if (isValid())
         m_process->send(Messages::WebPage::SetScrollPinningBehavior(pinning), m_pageID);
+}
+
+void WebPageProxy::setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle)
+{
+    if (!m_scrollbarOverlayStyle && !scrollbarStyle)
+        return;
+
+    if ((m_scrollbarOverlayStyle && scrollbarStyle) && m_scrollbarOverlayStyle.value() == scrollbarStyle.value())
+        return;
+
+    m_scrollbarOverlayStyle = scrollbarStyle;
+
+    WTF::Optional<uint32_t> scrollbarStyleForMessage;
+    if (scrollbarStyle)
+        scrollbarStyleForMessage = static_cast<ScrollbarOverlayStyle>(scrollbarStyle.value());
+
+    if (isValid())
+        m_process->send(Messages::WebPage::SetScrollbarOverlayStyle(scrollbarStyleForMessage), m_pageID);
 }
 
 #if ENABLE(SUBTLE_CRYPTO)

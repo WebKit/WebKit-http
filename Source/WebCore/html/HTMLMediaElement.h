@@ -737,6 +737,12 @@ private:
 
     void updateCaptionContainer();
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    virtual void documentWillSuspendForPageCache() override final;
+    virtual void documentDidResumeFromPageCache() override final;
+    void updateMediaState();
+#endif
+
     Timer m_pendingActionTimer;
     Timer m_progressEventTimer;
     Timer m_playbackProgressTimer;
@@ -926,6 +932,7 @@ private:
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
     bool m_hasPlaybackTargetAvailabilityListeners { false };
 #endif
 };

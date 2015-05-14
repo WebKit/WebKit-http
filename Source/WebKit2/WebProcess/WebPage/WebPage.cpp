@@ -338,7 +338,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_processSuppressionEnabled(true)
     , m_userActivity("Process suppression disabled for page.")
     , m_pendingNavigationID(0)
-    , m_viewScaleFactor(parameters.viewScaleFactor)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
 #endif
@@ -451,6 +450,11 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     setAutoSizingShouldExpandToViewHeight(parameters.autoSizingShouldExpandToViewHeight);
     
     setScrollPinningBehavior(parameters.scrollPinningBehavior);
+    if (parameters.scrollbarOverlayStyle)
+        m_scrollbarOverlayStyle = static_cast<ScrollbarOverlayStyle>(parameters.scrollbarOverlayStyle.value());
+    else
+        m_scrollbarOverlayStyle = WTF::Optional<ScrollbarOverlayStyle>();
+
     setBackgroundExtendsBeyondPage(parameters.backgroundExtendsBeyondPage);
 
     setTopContentInset(parameters.topContentInset);
@@ -506,8 +510,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
     m_page->settings().setAppleMailPaginationQuirkEnabled(parameters.appleMailPaginationQuirkEnabled);
 
-    if (m_viewScaleFactor != 1)
-        scalePage(1, IntPoint());
+    if (parameters.viewScaleFactor != 1)
+        scaleView(parameters.viewScaleFactor);
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -1374,7 +1378,7 @@ void WebPage::windowScreenDidChange(uint32_t displayID)
 
 void WebPage::scalePage(double scale, const IntPoint& origin)
 {
-    double totalScale = scale * m_viewScaleFactor;
+    double totalScale = scale * viewScaleFactor();
     bool willChangeScaleFactor = totalScale != totalScaleFactor();
 
 #if PLATFORM(IOS)
@@ -1407,7 +1411,7 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
 
 void WebPage::scalePageInViewCoordinates(double scale, IntPoint centerInViewCoordinates)
 {
-    double totalScale = scale * m_viewScaleFactor;
+    double totalScale = scale * viewScaleFactor();
     if (totalScale == totalScaleFactor())
         return;
 
@@ -1428,32 +1432,38 @@ double WebPage::totalScaleFactor() const
 
 double WebPage::pageScaleFactor() const
 {
-    return totalScaleFactor() / m_viewScaleFactor;
+    return totalScaleFactor() / viewScaleFactor();
+}
+
+double WebPage::viewScaleFactor() const
+{
+    return m_page->viewScaleFactor();
 }
 
 void WebPage::scaleView(double scale)
 {
-    float pageScale = pageScaleFactor();
+    if (viewScaleFactor() == scale)
+        return;
 
-    double scaleRatio = scale / m_viewScaleFactor;
+    float pageScale = pageScaleFactor();
 
     IntPoint scrollPositionAtNewScale;
     if (FrameView* mainFrameView = m_page->mainFrame().view()) {
+        double scaleRatio = scale / viewScaleFactor();
         scrollPositionAtNewScale = mainFrameView->scrollPosition();
         scrollPositionAtNewScale.scale(scaleRatio, scaleRatio);
     }
 
-    m_viewScaleFactor = scale;
+    m_page->setViewScaleFactor(scale);
     scalePage(pageScale, scrollPositionAtNewScale);
 }
 
-
 #if PLATFORM(COCOA)
-void WebPage::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, const MachSendRight& fencePort)
+void WebPage::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, uint64_t callbackID)
 {
     scaleView(scale);
     m_drawingArea->updateGeometry(viewSize, IntSize(), false);
-    m_drawingArea->addFence(fencePort);
+    m_drawingArea->replyWithFenceAfterNextFlush(callbackID);
 }
 #endif
 
@@ -4418,14 +4428,17 @@ void WebPage::didChangeSelection()
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     FrameView* view = frame.view();
-    bool needsLayout = view && view->needsLayout();
+#if PLATFORM(COCOA) && !defined(NDEBUG)
+    int layoutCount = view ? view->layoutCount() : 0;
+#endif
 
     // If there is a layout pending, we should avoid populating EditorState that require layout to be done or it will
     // trigger a synchronous layout every time the selection changes. sendPostLayoutEditorStateIfNeeded() will be called
     // to send the full editor state after layout is done if we send a partial editor state here.
-    auto editorState = this->editorState(needsLayout ? IncludePostLayoutDataHint::No : IncludePostLayoutDataHint::Yes);
-#if PLATFORM(COCOA)
-    ASSERT_WITH_MESSAGE(needsLayout == (view && view->needsLayout()), "Calling editorState() should not cause a synchronous layout.");
+    auto editorState = this->editorState(view && view->needsLayout() ? IncludePostLayoutDataHint::No : IncludePostLayoutDataHint::Yes);
+#if PLATFORM(COCOA) && !defined(NDEBUG)
+    if (view)
+        ASSERT_WITH_MESSAGE(layoutCount == view->layoutCount(), "Calling editorState() should not cause a synchronous layout.");
 #endif
     m_isEditorStateMissingPostLayoutData = editorState.isMissingPostLayoutData;
 
@@ -4841,6 +4854,15 @@ void WebPage::setScrollPinningBehavior(uint32_t pinning)
     m_page->mainFrame().view()->setScrollPinningBehavior(m_scrollPinningBehavior);
 }
 
+void WebPage::setScrollbarOverlayStyle(WTF::Optional<uint32_t> scrollbarStyle)
+{
+    if (scrollbarStyle)
+        m_scrollbarOverlayStyle = static_cast<ScrollbarOverlayStyle>(scrollbarStyle.value());
+    else
+        m_scrollbarOverlayStyle = WTF::Optional<ScrollbarOverlayStyle>();
+    m_page->mainFrame().view()->recalculateScrollbarOverlayStyle();
+}
+
 PassRefPtr<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const ResourceRequest& request, const SubstituteData& substituteData)
 {
     RefPtr<WebDocumentLoader> documentLoader = WebDocumentLoader::create(request, substituteData);
@@ -4855,9 +4877,11 @@ PassRefPtr<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const Res
 
 void WebPage::getBytecodeProfile(uint64_t callbackID)
 {
-    ASSERT(JSDOMWindow::commonVM().m_perBytecodeProfiler);
-    if (!JSDOMWindow::commonVM().m_perBytecodeProfiler)
+    if (!JSDOMWindow::commonVM().m_perBytecodeProfiler) {
         send(Messages::WebPageProxy::StringCallback(String(), callbackID));
+        return;
+    }
+
     String result = JSDOMWindow::commonVM().m_perBytecodeProfiler->toJSON();
     ASSERT(result.length());
     send(Messages::WebPageProxy::StringCallback(result, callbackID));

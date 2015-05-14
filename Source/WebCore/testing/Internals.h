@@ -91,6 +91,8 @@ public:
     bool isPreloaded(const String& url);
     bool isLoadingFromMemoryCache(const String& url);
     String xhrResponseSource(XMLHttpRequest*);
+    bool isSharingStyleSheetContents(Element* linkA, Element* linkB);
+    bool isStyleSheetLoadingSubresources(Element* link);
     void setOverrideCachePolicy(const String&);
     void setOverrideResourceLoadPriority(const String&);
 
@@ -113,6 +115,7 @@ public:
 
     // DOMTimers throttling testing.
     bool isTimerThrottled(int timeoutId, ExceptionCode&);
+    bool isRequestAnimationFrameThrottled() const;
 
     // Spatial Navigation testing.
     unsigned lastSpatialNavigationCandidateCount(ExceptionCode&) const;
@@ -395,6 +398,7 @@ public:
 
     RefPtr<File> createFile(const String&);
     void queueMicroTask(int);
+    bool testPreloaderSettingViewport();
 
 #if ENABLE(CONTENT_FILTERING)
     MockContentFilterSettings& mockContentFilterSettings();

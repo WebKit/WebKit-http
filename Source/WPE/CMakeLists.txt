@@ -33,3 +33,4 @@ set(WPE_SOURCES
 include_directories(${WPE_INCLUDE_DIRECTORIES})
 add_library(WPE SHARED ${WPE_SOURCES})
 target_link_libraries(WPE ${WPE_LIBRARIES})
+install(TARGETS WPE DESTINATION "${LIB_INSTALL_DIR}")

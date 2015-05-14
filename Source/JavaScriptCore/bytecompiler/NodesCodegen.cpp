@@ -377,11 +377,15 @@ RegisterID* PropertyListNode::emitBytecode(BytecodeGenerator& generator, Registe
 {
     // Fast case: this loop just handles regular value properties.
     PropertyListNode* p = this;
-    for (; p && p->m_node->m_type == PropertyNode::Constant; p = p->m_next)
+    for (; p && (p->m_node->m_type & PropertyNode::Constant); p = p->m_next)
         emitPutConstantProperty(generator, dst, *p->m_node);
 
     // Were there any get/set properties?
     if (p) {
+        // Build a list of getter/setter pairs to try to put them at the same time. If we encounter
+        // a computed property, just emit everything as that may override previous values.
+        bool hasComputedProperty = false;
+
         typedef std::pair<PropertyNode*, PropertyNode*> GetterSetterPair;
         typedef HashMap<StringImpl*, GetterSetterPair> GetterSetterMap;
         GetterSetterMap map;
@@ -389,13 +393,22 @@ RegisterID* PropertyListNode::emitBytecode(BytecodeGenerator& generator, Registe
         // Build a map, pairing get/set values together.
         for (PropertyListNode* q = p; q; q = q->m_next) {
             PropertyNode* node = q->m_node;
-            if (node->m_type == PropertyNode::Constant)
+            if (node->m_type & PropertyNode::Computed) {
+                hasComputedProperty = true;
+                break;
+            }
+            if (node->m_type & PropertyNode::Constant)
                 continue;
 
-            GetterSetterPair pair(node, static_cast<PropertyNode*>(0));
+            // Duplicates are possible.
+            GetterSetterPair pair(node, static_cast<PropertyNode*>(nullptr));
             GetterSetterMap::AddResult result = map.add(node->name()->impl(), pair);
-            if (!result.isNewEntry)
-                result.iterator->value.second = node;
+            if (!result.isNewEntry) {
+                if (result.iterator->value.first->m_type == node->m_type)
+                    result.iterator->value.first = node;
+                else
+                    result.iterator->value.second = node;
+            }
         }
 
         // Iterate over the remaining properties in the list.
@@ -403,7 +416,7 @@ RegisterID* PropertyListNode::emitBytecode(BytecodeGenerator& generator, Registe
             PropertyNode* node = p->m_node;
 
             // Handle regular values.
-            if (node->m_type == PropertyNode::Constant) {
+            if (node->m_type & PropertyNode::Constant) {
                 emitPutConstantProperty(generator, dst, *node);
                 continue;
             }
@@ -413,8 +426,18 @@ RegisterID* PropertyListNode::emitBytecode(BytecodeGenerator& generator, Registe
             if (isClassProperty)
                 emitPutHomeObject(generator, value, dst);
 
-            // This is a get/set property, find its entry in the map.
-            ASSERT(node->m_type == PropertyNode::Getter || node->m_type == PropertyNode::Setter);
+            ASSERT(node->m_type & (PropertyNode::Getter | PropertyNode::Setter));
+
+            // This is a get/set property which may be overridden by a computed property later.
+            if (hasComputedProperty) {
+                if (node->m_type & PropertyNode::Getter)
+                    generator.emitPutGetterById(dst, *node->name(), value);
+                else
+                    generator.emitPutSetterById(dst, *node->name(), value);
+                continue;
+            }
+
+            // This is a get/set property pair.
             GetterSetterMap::iterator it = map.find(node->name()->impl());
             ASSERT(it != map.end());
             GetterSetterPair& pair = it->value;
@@ -422,16 +445,16 @@ RegisterID* PropertyListNode::emitBytecode(BytecodeGenerator& generator, Registe
             // Was this already generated as a part of its partner?
             if (pair.second == node)
                 continue;
-    
+
             // Generate the paired node now.
             RefPtr<RegisterID> getterReg;
             RefPtr<RegisterID> setterReg;
             RegisterID* secondReg = nullptr;
 
-            if (node->m_type == PropertyNode::Getter) {
+            if (node->m_type & PropertyNode::Getter) {
                 getterReg = value;
                 if (pair.second) {
-                    ASSERT(pair.second->m_type == PropertyNode::Setter);
+                    ASSERT(pair.second->m_type & PropertyNode::Setter);
                     setterReg = generator.emitNode(pair.second->m_assign);
                     secondReg = setterReg.get();
                 } else {
@@ -439,10 +462,10 @@ RegisterID* PropertyListNode::emitBytecode(BytecodeGenerator& generator, Registe
                     generator.emitLoad(setterReg.get(), jsUndefined());
                 }
             } else {
-                ASSERT(node->m_type == PropertyNode::Setter);
+                ASSERT(node->m_type & PropertyNode::Setter);
                 setterReg = value;
                 if (pair.second) {
-                    ASSERT(pair.second->m_type == PropertyNode::Getter);
+                    ASSERT(pair.second->m_type & PropertyNode::Getter);
                     getterReg = generator.emitNode(pair.second->m_assign);
                     secondReg = getterReg.get();
                 } else {
@@ -697,15 +720,42 @@ RegisterID* BytecodeIntrinsicNode::emit_intrinsic_putByValDirect(BytecodeGenerat
     return generator.moveToDestinationIfNeeded(dst, generator.emitDirectPutByVal(base.get(), index.get(), value.get()));
 }
 
+RegisterID* BytecodeIntrinsicNode::emit_intrinsic_toString(BytecodeGenerator& generator, RegisterID* dst)
+{
+    ArgumentListNode* node = m_args->m_listNode;
+    RefPtr<RegisterID> src = generator.emitNode(node);
+    ASSERT(!node->m_next);
+
+    return generator.moveToDestinationIfNeeded(dst, generator.emitToString(generator.tempDestination(dst), src.get()));
+}
+
 // ------------------------------ FunctionCallBracketNode ----------------------------------
 
 RegisterID* FunctionCallBracketNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     bool baseIsSuper = m_base->isSuperNode();
-    RefPtr<RegisterID> base = baseIsSuper ? emitSuperBaseForCallee(generator) : generator.emitNode(m_base);
-    RefPtr<RegisterID> property = generator.emitNode(m_subscript);
-    generator.emitExpressionInfo(subexpressionDivot(), subexpressionStart(), subexpressionEnd());
-    RefPtr<RegisterID> function = generator.emitGetByVal(generator.tempDestination(dst), base.get(), property.get());
+    bool subscriptIsString = m_subscript->isString();
+
+    RefPtr<RegisterID> base;
+    if (baseIsSuper)
+        base = emitSuperBaseForCallee(generator);
+    else {
+        if (subscriptIsString)
+            base = generator.emitNode(m_base);
+        else
+            base = generator.emitNodeForLeftHandSide(m_base, m_subscriptHasAssignments, m_subscript->isPure(generator));
+    }
+
+    RefPtr<RegisterID> function;
+    if (subscriptIsString) {
+        generator.emitExpressionInfo(subexpressionDivot(), subexpressionStart(), subexpressionEnd());
+        function = generator.emitGetById(generator.tempDestination(dst), base.get(), static_cast<StringNode*>(m_subscript)->value());
+    } else {
+        RefPtr<RegisterID> property = generator.emitNode(m_subscript);
+        generator.emitExpressionInfo(subexpressionDivot(), subexpressionStart(), subexpressionEnd());
+        function = generator.emitGetByVal(generator.tempDestination(dst), base.get(), property.get());
+    }
+
     RefPtr<RegisterID> returnValue = generator.finalDestination(dst, function.get());
     CallArguments callArguments(generator, m_args);
     if (baseIsSuper)
@@ -3069,7 +3119,7 @@ void ObjectPatternNode::toString(StringBuilder& builder) const
     builder.append('{');
     for (size_t i = 0; i < m_targetPatterns.size(); i++) {
         if (m_targetPatterns[i].wasString)
-            appendQuotedJSONStringToBuilder(builder, m_targetPatterns[i].propertyName.string());
+            builder.appendQuotedJSONString(m_targetPatterns[i].propertyName.string());
         else
             builder.append(m_targetPatterns[i].propertyName.string());
         builder.append(':');

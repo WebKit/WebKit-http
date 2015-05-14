@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2009, 2012-2015 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -466,6 +466,9 @@ public:
     void putDirectNonIndexAccessor(VM&, PropertyName, JSValue, unsigned attributes);
     void putDirectAccessor(ExecState*, PropertyName, JSValue, unsigned attributes);
     JS_EXPORT_PRIVATE void putDirectCustomAccessor(VM&, PropertyName, JSValue, unsigned attributes);
+
+    void putGetter(ExecState*, PropertyName, JSValue);
+    void putSetter(ExecState*, PropertyName, JSValue);
 
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, PropertyName) const;
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, unsigned propertyName) const;
@@ -1318,8 +1321,12 @@ inline bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName, JSVal
 
             putDirect(vm, offset, value);
             structure->didReplaceProperty(offset);
-            
             slot.setExistingProperty(this, offset);
+
+            if ((attributes & Accessor) != (currentAttributes & Accessor)) {
+                ASSERT(!(attributes & ReadOnly));
+                setStructure(vm, Structure::attributeChangeTransition(vm, structure, propertyName, attributes));
+            }
             return true;
         }
 
@@ -1369,6 +1376,11 @@ inline bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName, JSVal
         structure->didReplaceProperty(offset);
         slot.setExistingProperty(this, offset);
         putDirect(vm, offset, value);
+
+        if ((attributes & Accessor) != (currentAttributes & Accessor)) {
+            ASSERT(!(attributes & ReadOnly));
+            setStructure(vm, Structure::attributeChangeTransition(vm, structure, propertyName, attributes));
+        }
         return true;
     }
 
@@ -1452,18 +1464,15 @@ inline JSValue JSObject::toPrimitive(ExecState* exec, PreferredPrimitiveType pre
     return methodTable()->defaultValue(this, exec, preferredType);
 }
 
-ALWAYS_INLINE JSObject* Register::function() const
+ALWAYS_INLINE JSObject* Register::object() const
 {
-    if (!jsValue())
-        return 0;
     return asObject(jsValue());
 }
 
-ALWAYS_INLINE Register Register::withCallee(JSObject* callee)
+ALWAYS_INLINE Register& Register::operator=(JSObject* object)
 {
-    Register r;
-    r = JSValue(callee);
-    return r;
+    u.value = JSValue::encode(JSValue(object));
+    return *this;
 }
 
 inline size_t offsetInButterfly(PropertyOffset offset)
@@ -1559,6 +1568,12 @@ ALWAYS_INLINE Identifier makeIdentifier(VM&, const Identifier& name)
 // intrinsic.
 #define JSC_NATIVE_FUNCTION(jsName, cppName, attributes, length) \
     JSC_NATIVE_INTRINSIC_FUNCTION(jsName, cppName, (attributes), (length), NoIntrinsic)
+
+// Identical helpers but for builtins. Note that currently, we don't support builtins that are
+// also intrinsics, but we probably will do that eventually.
+#define JSC_BUILTIN_FUNCTION(jsName, generatorName, attributes) \
+    putDirectBuiltinFunction(\
+        vm, globalObject, makeIdentifier(vm, (jsName)), (generatorName)(vm), (attributes))
 
 } // namespace JSC
 

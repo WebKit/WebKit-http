@@ -30,7 +30,7 @@ FRAMEWORK_SEARCH_PATHS[sdk=iphone*] = $(FRAMEWORK_SEARCH_PATHS_ios_$(CONFIGURATI
 FRAMEWORK_SEARCH_PATHS_ios_Debug = $(BUILT_PRODUCTS_DIR) $(PRODUCTION_FRAMEWORKS_DIR);
 FRAMEWORK_SEARCH_PATHS_ios_Release = $(FRAMEWORK_SEARCH_PATHS_ios_Debug);
 FRAMEWORK_SEARCH_PATHS_ios_Production = $(PRODUCTION_FRAMEWORKS_DIR);
-FRAMEWORK_SEARCH_PATHS[sdk=macosx*] = $(STAGED_FRAMEWORKS_SEARCH_PATH) $(FRAMEWORK_SEARCH_PATHS);
+FRAMEWORK_SEARCH_PATHS[sdk=macosx*] = $(STAGED_FRAMEWORKS_SEARCH_PATH) $(FRAMEWORK_SEARCH_PATHS) $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
 
 OTHER_CFLAGS = $(inherited) -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Frameworks -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/ApplicationServices.framework/Frameworks -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/CoreServices.framework/Frameworks -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/Quartz.framework/Frameworks -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
 OTHER_CPLUSPLUSFLAGS = $(OTHER_CFLAGS);
@@ -42,9 +42,9 @@ WEBKITADDITIONS_HEADER_SEARCH_PATHS = $(BUILT_PRODUCTS_DIR)/usr/local/include/We
 
 HEADER_SEARCH_PATHS = ForwardingHeaders icu /usr/include/libxslt /usr/include/libxml2 "$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore" "$(BUILT_PRODUCTS_DIR)/usr/local/include" $(WEBKITADDITIONS_HEADER_SEARCH_PATHS) $(HEADER_SEARCH_PATHS);
 INFOPLIST_FILE = Info.plist;
-INSTALL_PATH[sdk=iphoneos*] = $(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
+INSTALL_PATH_PREFIX[sdk=iphonesimulator8.*] = $(DEVELOPER_INSTALL_DIR)/Platforms/iPhoneSimulator.platform/Developer/SDKs/$(SDK_DIR:file);
+INSTALL_PATH = $(INSTALL_PATH_PREFIX)$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
 INSTALL_PATH[sdk=macosx*] = $(WEBCORE_FRAMEWORKS_DIR);
-INSTALL_PATH_ACTUAL[sdk=iphonesimulator*] = $(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
 DYLIB_INSTALL_NAME_BASE = $(DYLIB_INSTALL_NAME_BASE_PLATFORM);
 DYLIB_INSTALL_NAME_BASE_PLATFORM[sdk=iphone*] = $(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
 DYLIB_INSTALL_NAME_BASE_PLATFORM[sdk=macosx*] = $(NORMAL_WEBCORE_FRAMEWORKS_DIR);
@@ -57,7 +57,7 @@ OTHER_LDFLAGS_BASE = -lsqlite3 -lobjc -lANGLE;
 OTHER_LDFLAGS_BASE_ios = $(OTHER_LDFLAGS_BASE) -framework CFNetwork -framework CoreGraphics -framework CoreText -framework Foundation -framework GraphicsServices -framework ImageIO -framework OpenGLES -lMobileGestalt;
 OTHER_LDFLAGS_PLATFORM[sdk=iphoneos*] = $(OTHER_LDFLAGS_BASE_ios) -framework IOSurface;
 OTHER_LDFLAGS_PLATFORM[sdk=iphonesimulator*] = $(OTHER_LDFLAGS_BASE_ios);
-OTHER_LDFLAGS_PLATFORM[sdk=macosx*] = $(OTHER_LDFLAGS_BASE) -sub_library libobjc -umbrella WebKit -allowable_client WebCoreTestSupport -allowable_client WebKit2 -allowable_client WebKitLegacy -framework ApplicationServices -framework AudioUnit -framework Carbon -framework Cocoa -framework IOSurface -framework OpenGL;
+OTHER_LDFLAGS_PLATFORM[sdk=macosx*] = $(OTHER_LDFLAGS_BASE) -sub_library libobjc -umbrella WebKit -allowable_client WebCoreTestSupport -allowable_client WebKit2 -allowable_client WebKitLegacy -framework ApplicationServices -framework AudioUnit -framework Carbon -framework Cocoa -framework DataDetectorsCore -framework IOSurface -framework OpenGL;
 
 SECTORDER_FLAGS = $(SECTORDER_FLAGS_$(CONFIGURATION));
 SECTORDER_FLAGS_Production[sdk=iphoneos*] = -Wl,-order_file,$(SDKROOT)/AppleInternal/OrderFiles/WebCore.order;

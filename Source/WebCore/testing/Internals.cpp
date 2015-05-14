@@ -56,8 +56,10 @@
 #include "HTMLIFrameElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
+#include "HTMLLinkElement.h"
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
+#include "HTMLPreloadScanner.h"
 #include "HTMLSelectElement.h"
 #include "HTMLTextAreaElement.h"
 #include "HTMLVideoElement.h"
@@ -97,6 +99,7 @@
 #include "RenderedDocumentMarker.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
+#include "ScriptedAnimationController.h"
 #include "ScrollingCoordinator.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
@@ -439,6 +442,25 @@ String Internals::xhrResponseSource(XMLHttpRequest* xhr)
     return "Error";
 }
 
+bool Internals::isSharingStyleSheetContents(Element* a, Element* b)
+{
+    if (!is<HTMLLinkElement>(a) || !is<HTMLLinkElement>(b))
+        return false;
+    auto& aLink = downcast<HTMLLinkElement>(*a);
+    auto& bLink = downcast<HTMLLinkElement>(*b);
+    if (!aLink.sheet() || !bLink.sheet())
+        return false;
+    return &aLink.sheet()->contents() == &bLink.sheet()->contents();
+}
+
+bool Internals::isStyleSheetLoadingSubresources(Element* link)
+{
+    if (!is<HTMLLinkElement>(link))
+        return false;
+    auto& linkElement = downcast<HTMLLinkElement>(*link);
+    return linkElement.sheet() && linkElement.sheet()->contents().isLoadingSubresources();
+}
+
 static ResourceRequestCachePolicy stringToResourceRequestCachePolicy(const String& policy)
 {
     if (policy == "UseProtocolCachePolicy")
@@ -763,6 +785,18 @@ bool Internals::isTimerThrottled(int timeoutId, ExceptionCode& ec)
         return false;
     }
     return timer->m_throttleState == DOMTimer::ShouldThrottle;
+}
+
+bool Internals::isRequestAnimationFrameThrottled() const
+{
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+    auto* scriptedAnimationController = contextDocument()->scriptedAnimationController();
+    if (!scriptedAnimationController)
+        return false;
+    return scriptedAnimationController->isThrottled();
+#else
+    return false;
+#endif
 }
 
 String Internals::visiblePlaceholder(Element* element)
@@ -2833,5 +2867,10 @@ String Internals::scrollSnapOffsets(Element* element, ExceptionCode& ec)
     return result.toString();
 }
 #endif
+
+bool Internals::testPreloaderSettingViewport()
+{
+    return testPreloadScannerViewportSupport(contextDocument());
+}
 
 }

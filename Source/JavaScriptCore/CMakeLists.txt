@@ -145,6 +145,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGCleanUpPhase.cpp
     dfg/DFGClobberSet.cpp
     dfg/DFGClobberize.cpp
+    dfg/DFGCombinedLiveness.cpp
     dfg/DFGCommon.cpp
     dfg/DFGCommonData.cpp
     dfg/DFGCompilationKey.cpp
@@ -539,7 +540,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/Operations.cpp
     runtime/Options.cpp
     runtime/PropertyDescriptor.cpp
-    runtime/PropertyNameArray.cpp
     runtime/PropertySlot.cpp
     runtime/PropertyTable.cpp
     runtime/PrototypeMap.cpp
@@ -605,7 +605,6 @@ list(APPEND JavaScriptCore_SOURCES
 set(JavaScriptCore_LUT_FILES
     runtime/ArrayConstructor.cpp
     runtime/ArrayIteratorPrototype.cpp
-    runtime/ArrayPrototype.cpp
     runtime/BooleanPrototype.cpp
     runtime/DateConstructor.cpp
     runtime/DatePrototype.cpp
@@ -1210,4 +1209,5 @@ endif ()
 if (ENABLE_FTL_JIT)
     add_dependencies(JavaScriptCore llvmForJSC)
 endif ()
+
 

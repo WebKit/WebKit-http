@@ -1959,6 +1959,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { BlockquoteRole, NSAccessibilityGroupRole },
         { SwitchRole, NSAccessibilityCheckBoxRole },
         { SearchFieldRole, NSAccessibilityTextFieldRole },
+        { PreRole, NSAccessibilityGroupRole },
     };
     AccessibilityRoleMap& roleMap = *new AccessibilityRoleMap;
     
@@ -3481,7 +3482,7 @@ static RenderObject* rendererForView(NSView* view)
 - (NSData*)doAXRTFForRange:(NSRange)range
 {
     NSAttributedString* attrString = [self doAXAttributedStringForRange:range];
-    return [attrString RTFFromRange: NSMakeRange(0, [attrString length]) documentAttributes: nil];
+    return [attrString RTFFromRange: NSMakeRange(0, [attrString length]) documentAttributes:@{ }];
 }
 
 - (id)accessibilityAttributeValue:(NSString*)attribute forParameter:(id)parameter
