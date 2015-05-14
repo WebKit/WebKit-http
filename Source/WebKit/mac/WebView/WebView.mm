@@ -907,9 +907,10 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     }
 
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
-        RetainPtr<NSImmediateActionGestureRecognizer> recognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
+        RetainPtr<NSImmediateActionGestureRecognizer> recognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] init]);
         _private->immediateActionController = [[WebImmediateActionController alloc] initWithWebView:self recognizer:recognizer.get()];
         [recognizer setDelegate:_private->immediateActionController];
+        [recognizer setDelaysPrimaryMouseButtonEvents:NO];
     }
 #endif
 
@@ -2007,29 +2008,29 @@ static bool fastDocumentTeardownEnabled()
     // type.  (See behavior matrix at the top of WebFramePrivate.)  So we copy all the items
     // in the back forward list, and go to the current one.
 
-    BackForwardClient* backForwardClient = _private->page->backForward().client();
-    ASSERT(!backForwardClient->currentItem()); // destination list should be empty
+    BackForwardController& backForward = _private->page->backForward();
+    ASSERT(!backForward.currentItem()); // destination list should be empty
 
-    BackForwardClient* otherBackForwardClient = otherView->_private->page->backForward().client();
-    if (!otherBackForwardClient->currentItem())
+    BackForwardController& otherBackForward = otherView->_private->page->backForward();
+    if (!otherBackForward.currentItem())
         return; // empty back forward list, bail
     
     HistoryItem* newItemToGoTo = nullptr;
 
-    int lastItemIndex = otherBackForwardClient->forwardListCount();
-    for (int i = -otherBackForwardClient->backListCount(); i <= lastItemIndex; ++i) {
+    int lastItemIndex = otherBackForward.forwardCount();
+    for (int i = -otherBackForward.backCount(); i <= lastItemIndex; ++i) {
         if (i == 0) {
             // If this item is showing , save away its current scroll and form state,
             // since that might have changed since loading and it is normally not saved
             // until we leave that page.
             otherView->_private->page->mainFrame().loader().history().saveDocumentAndScrollState();
         }
-        Ref<HistoryItem> newItem = otherBackForwardClient->itemAtIndex(i)->copy();
+        Ref<HistoryItem> newItem = otherBackForward.itemAtIndex(i)->copy();
         if (i == 0) 
             newItemToGoTo = newItem.ptr();
-        backForwardClient->addItem(WTF::move(newItem));
+        backForward.client()->addItem(WTF::move(newItem));
     }
-    
+
     ASSERT(newItemToGoTo);
     _private->page->goToItem(*newItemToGoTo, FrameLoadType::IndexedBackForward);
 }
@@ -8600,6 +8601,16 @@ bool LayerFlushController::flushLayers()
     return [getLULookupDefinitionModuleClass() lookupAnimationControllerForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:dictionaryPopupInfo.options.get()];
 }
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+- (NSEvent *)_pressureEvent
+{
+    return _private->pressureEvent.get();
+}
+
+- (void)_setPressureEvent:(NSEvent *)event
+{
+    _private->pressureEvent = event;
+}
 
 - (void)_setTextIndicator:(TextIndicator&)textIndicator
 {

@@ -280,6 +280,8 @@ struct WKViewInterpretKeyEventsParameters {
 
     CGFloat _overrideDeviceScaleFactor;
 
+    BOOL _didRegisterForLookupPopoverCloseNotifications;
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     BOOL _automaticallyAdjustsContentInsets;
     RetainPtr<WKActionMenuController> _actionMenuController;
@@ -2888,6 +2890,17 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     _data->_page->viewStateDidChange(ViewState::IsVisible);
 }
 
+- (void)_prepareForDictionaryLookup
+{
+    if (_data->_didRegisterForLookupPopoverCloseNotifications)
+        return;
+
+    _data->_didRegisterForLookupPopoverCloseNotifications = YES;
+
+    if (canLoadLUNotificationPopoverWillClose())
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
+}
+
 - (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
 {
     [self _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::None];
@@ -3832,9 +3845,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     NSNotificationCenter* workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
     [workspaceNotificationCenter addObserver:self selector:@selector(_activeSpaceDidChange:) name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
 
-    if (canLoadLUNotificationPopoverWillClose())
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
-
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     if ([self respondsToSelector:@selector(_setActionMenu:)]) {
         RetainPtr<NSMenu> menu = adoptNS([[NSMenu alloc] init]);
@@ -3845,7 +3855,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     }
 
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
-        _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
+        _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] init]);
         _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:_data->_immediateActionGestureRecognizer.get()]);
         [_data->_immediateActionGestureRecognizer setDelegate:_data->_immediateActionController.get()];
         [_data->_immediateActionGestureRecognizer setDelaysPrimaryMouseButtonEvents:NO];
@@ -4432,6 +4442,47 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return _data->_totalHeightOfBanners;
 }
 
+- (void)_setOverlayScrollbarStyle:(_WKOverlayScrollbarStyle)scrollbarStyle
+{
+    WTF::Optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle;
+
+    switch (scrollbarStyle) {
+    case _WKOverlayScrollbarStyleDark:
+        coreScrollbarStyle = ScrollbarOverlayStyleDark;
+        break;
+    case _WKOverlayScrollbarStyleLight:
+        coreScrollbarStyle = ScrollbarOverlayStyleLight;
+        break;
+    case _WKOverlayScrollbarStyleDefault:
+        coreScrollbarStyle = ScrollbarOverlayStyleDefault;
+        break;
+    case _WKOverlayScrollbarStyleAutomatic:
+    default:
+        break;
+    }
+
+    _data->_page->setOverlayScrollbarStyle(coreScrollbarStyle);
+}
+
+- (_WKOverlayScrollbarStyle)_overlayScrollbarStyle
+{
+    WTF::Optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle = _data->_page->overlayScrollbarStyle();
+
+    if (!coreScrollbarStyle)
+        return _WKOverlayScrollbarStyleAutomatic;
+
+    switch (coreScrollbarStyle.value()) {
+    case ScrollbarOverlayStyleDark:
+        return _WKOverlayScrollbarStyleDark;
+    case ScrollbarOverlayStyleLight:
+        return _WKOverlayScrollbarStyleLight;
+    case ScrollbarOverlayStyleDefault:
+        return _WKOverlayScrollbarStyleDefault;
+    default:
+        return _WKOverlayScrollbarStyleAutomatic;
+    }
+}
+
 - (NSColor *)_pageExtendedBackgroundColor
 {
     WebCore::Color color = _data->_page->pageExtendedBackgroundColor();
@@ -4593,7 +4644,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_gestureController->setDidMoveSwipeSnapshotCallback(callback);
 }
 
-
 - (NSArray *)_actionMenuItemsForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(_WKActionMenuType)type defaultActionMenuItems:(NSArray *)defaultMenuItems
 {
     return defaultMenuItems;
@@ -4623,7 +4673,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)_didChangeContentSize:(NSSize)newSize
 {
-
 }
 
 - (void)_dismissContentRelativeChildWindows
@@ -4637,9 +4686,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         if (Class lookupDefinitionModuleClass = getLULookupDefinitionModuleClass())
             [lookupDefinitionModuleClass hideDefinition];
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
         if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
             [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
+#endif
     }
 
     [self _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];

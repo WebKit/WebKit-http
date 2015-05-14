@@ -1,3 +1,224 @@
+2015-05-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Turn antialiased font dilation off by default
+        https://bugs.webkit.org/show_bug.cgi?id=144940
+        rdar://problem/20923031
+
+        Reviewed by Sam Weinig.
+        
+        Turn antialised font dilation off by default.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2015-05-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Close all open databases in expiration handler of process assertion
+        https://bugs.webkit.org/show_bug.cgi?id=144661
+        <rdar://problem/20845052>
+
+        Reviewed by Darin Adler.
+
+        For Legacy WebKit, close all open databases when the process assertion expiration
+        handler is called.
+
+        * Storage/WebDatabaseManager.mm:
+        (+[WebDatabaseManager startBackgroundTask]): Call DatabaseTracker::tracker().closeAllDatabases()
+        in the expiration handler to close all open databases. As a side effect of closing
+        a database all in-progress database transactions are interrupted.
+
+2015-05-10  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Get rid of the public item accessors in BackForwardClient
+        https://bugs.webkit.org/show_bug.cgi?id=144827
+
+        Reviewed by Darin Adler.
+
+        Remove backItem(), currentItem(), and forwardItem() from BackForwardClient.
+        We can still use these functionalities through BackForwardController.
+
+        No new tests, no behavior change.
+
+        * WebView/WebView.mm:
+        (-[WebView _loadBackForwardListFromOtherView:]):
+
+2015-05-09  Yoav Weiss  <yoav@yoav.ws>
+
+        Remove the PICTURE_SIZES build flag
+        https://bugs.webkit.org/show_bug.cgi?id=144679
+
+        Reviewed by Benjamin Poulain.
+
+        Removed the PICTURE_SIZES build time flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        These convenience constructors are unnecessary. Moving the code that makes the StringView
+        back to the call site will also help us make things more elegant in future refactoring.
+
+        Reviewed by Darin Adler.
+
+        No new tests because there is no behavior change.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _web_drawAtPoint:font:textColor:allowingFontSmoothing:]):
+        (-[NSString _web_widthWithFont:]):
+
+2015-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183996.
+        https://bugs.webkit.org/show_bug.cgi?id=144806
+
+        ASan detected use-after free (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove convenience constructors for TextRun"
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+        http://trac.webkit.org/changeset/183996
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        These convenience constructors are unnecessary. Moving the code that makes the StringView
+        back to the call site will also help us make things more elegant in future refactoring.
+
+        Reviewed by Darin Adler.
+
+        No new tests because there is no behavior change.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _web_drawAtPoint:font:textColor:allowingFontSmoothing:]):
+        (-[NSString _web_widthWithFont:]):
+
+2015-05-07  Anders Carlsson  <andersca@apple.com>
+
+        Build fixes.
+
+        * Misc/WebNSPasteboardExtras.mm:
+        (-[NSPasteboard _web_writeFileWrapperAsRTFDAttachment:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _writeSelectionWithPasteboardTypes:toPasteboard:cachedAttributedString:]):
+        (-[WebHTMLView _selectionStartFontAttributesAsRTF]):
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView writeSelectionWithPasteboardTypes:toPasteboard:]):
+        Pass empty arrays and dictionaries instead of nil.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        Use the regular init method.
+
+2015-05-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Fix iPhone 6 iOS simulator Build.
+        following http://trac.webkit.org/changeset/183954.
+
+        Reviewed by Daniel Bates.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView pressureChangeWithEvent:]):
+
+2015-05-07  Timothy Horton  <timothy_horton@apple.com>
+
+        Occasional null deref in WebImmediateActionController
+        https://bugs.webkit.org/show_bug.cgi?id=144772
+        <rdar://problem/20811128>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _defaultAnimationController]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedText]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedLink]):
+        Null-check TextIndicators before dereferencing.
+
+2015-05-07  Beth Dakin  <bdakin@apple.com>
+
+        New force-related DOM events should fire in WK1 views
+        https://bugs.webkit.org/show_bug.cgi?id=144663
+        -and corresponding-
+        rdar://problem/20281886
+
+        Reviewed by Sam Weinig.
+
+        Pass the lastPressureEvent to WebCore.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateMouseoverWithEvent:]):
+        (-[WebHTMLView rightMouseUp:]):
+        (-[WebHTMLView menuForEvent:]):
+        (-[WebHTMLView acceptsFirstMouse:]):
+        (-[WebHTMLView shouldDelayWindowOrderingForEvent:]):
+        (-[WebHTMLView mouseDown:mouseDown:]):
+        (-[WebHTMLView mouseDragged:]):
+        (-[WebHTMLView mouseUp:mouseUp:]):
+
+        New NSRespnder method for pressure changes.
+        (-[WebHTMLView pressureChangeWithEvent:]):
+
+        New BOOL _contentPreventsDefault tracks whether the HitTestResult prevented the 
+        default action. Get rid of willHandleMouseDown; now that the gesture recognizer 
+        sets delaysPrimaryMouseButtonEvents to NO, we don’t need this.
+        * WebView/WebImmediateActionController.h:
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _clearImmediateActionState]):
+
+        Set all of the immediateActionStages on EventHandler. This is critical to keep 
+        link navigation happening at the right time now that 
+        delaysPrimaryMouseButtonEvents is set to NO.
+        (-[WebImmediateActionController performHitTestAtPoint:]):
+        (-[WebImmediateActionController immediateActionRecognizerDidUpdateAnimation:]):
+        (-[WebImmediateActionController immediateActionRecognizerDidCancelAnimation:]):
+        (-[WebImmediateActionController immediateActionRecognizerDidCompleteAnimation:]):
+
+        Use a dummy animation controller if the content prevents default.
+        (-[WebImmediateActionController _defaultAnimationController]):
+        (-[WebImmediateActionController _updateImmediateActionItem]):
+        (-[WebImmediateActionController webView:willHandleMouseDown:]): Deleted.
+
+        Set delaysPrimaryMouseButtonEvents to NO so that we get existing mouse events when 
+        we expect to.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+        Cache the most recent pressure event so that we can send it to WebCore for all of 
+        the mouse events.
+        (-[WebView _pressureEvent]):
+        (-[WebView _setPressureEvent:]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]):
+        * WebView/WebViewInternal.h:
+
+2015-05-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Revert "Introducing the Platform Abstraction Layer (PAL)"
+        https://bugs.webkit.org/show_bug.cgi?id=144751
+
+        Unreviewed.
+
+        PAL should be a new target inside WebCore, rather than a top-level folder.
+
+        * Configurations/FeatureDefines.xcconfig: Updated
+
+2015-05-07  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/19317140> [Xcode] Remove usage of AspenFamily.xcconfig in Source/
+        https://bugs.webkit.org/show_bug.cgi?id=144727
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Don’t include AspenFamily.xcconfig.
+        * Configurations/WebKitLegacy.xcconfig: Define INSTALL_PATH in terms of
+        INSTALL_PATH_PREFIX and INSTALL_PATH_ACTUAL, and define INSTALL_PATH_PREFIX for the iOS 8.x
+        Simulator.
+
 2015-04-02  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Introducing the Platform Abstraction Layer (PAL)

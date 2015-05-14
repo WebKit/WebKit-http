@@ -123,10 +123,14 @@ public:
     bool copyToPlatformTexture(GraphicsContext3D&, Platform3DObject, GC3Denum, bool, bool);
 
     FloatSize spaceSize() const { return m_space; }
-    void setSpaceSize(const FloatSize& space)
-    {
-        m_space = space;
-    }
+    void setSpaceSize(const FloatSize& space) { m_space = space; }
+
+    // These functions are used when clamping the ImageBuffer which is created for filter, masker or clipper.
+    static bool sizeNeedsClamping(const FloatSize&);
+    static bool sizeNeedsClamping(const FloatSize&, FloatSize& scale);
+    static FloatSize clampedSize(const FloatSize&);
+    static FloatSize clampedSize(const FloatSize&, FloatSize& scale);
+    static FloatRect clampedRect(const FloatRect&);
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     void swapBuffersIfNeeded();

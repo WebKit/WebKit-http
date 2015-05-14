@@ -564,7 +564,7 @@ namespace JSC {
 
     class PropertyNode : public ParserArenaFreeable {
     public:
-        enum Type { Constant = 1, Getter = 2, Setter = 4 };
+        enum Type { Constant = 1, Getter = 2, Setter = 4, Computed = 8 };
         enum PutType { Unknown, KnownDirect };
 
         PropertyNode(const Identifier&, ExpressionNode*, Type, PutType, SuperBinding);
@@ -582,7 +582,7 @@ namespace JSC {
         const Identifier* m_name;
         ExpressionNode* m_expression;
         ExpressionNode* m_assign;
-        unsigned m_type : 3;
+        unsigned m_type : 4;
         unsigned m_needsSuperBinding : 1;
         unsigned m_putType : 1;
     };
@@ -727,7 +727,7 @@ namespace JSC {
     
     class FunctionCallBracketNode : public ExpressionNode, public ThrowableSubExpressionData {
     public:
-        FunctionCallBracketNode(const JSTokenLocation&, ExpressionNode* base, ExpressionNode* subscript, ArgumentsNode*, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
+        FunctionCallBracketNode(const JSTokenLocation&, ExpressionNode* base, ExpressionNode* subscript, bool subscriptHasAssignments, ArgumentsNode*, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
 
     private:
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
@@ -735,6 +735,7 @@ namespace JSC {
         ExpressionNode* m_base;
         ExpressionNode* m_subscript;
         ArgumentsNode* m_args;
+        bool m_subscriptHasAssignments;
     };
 
     class FunctionCallDotNode : public ExpressionNode, public ThrowableSubExpressionData {

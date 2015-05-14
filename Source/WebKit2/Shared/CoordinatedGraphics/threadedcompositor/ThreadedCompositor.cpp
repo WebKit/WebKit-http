@@ -29,8 +29,8 @@
 #include "ThreadedCompositor.h"
 
 #include <WebCore/GLContextEGL.h>
-#include <WebCore/TransformationMatrix.h>
 #include <WebCore/PlatformDisplayWayland.h>
+#include <WebCore/TransformationMatrix.h>
 #include <cstdio>
 #include <cstdlib>
 #include <wtf/Atomics.h>

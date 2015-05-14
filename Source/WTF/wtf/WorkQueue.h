@@ -106,7 +106,6 @@ private:
 #elif PLATFORM(GTK) || PLATFORM(WPE)
     ThreadIdentifier m_workQueueThread;
     GRefPtr<GMainContext> m_eventContext;
-    Mutex m_eventLoopLock;
     GRefPtr<GMainLoop> m_eventLoop;
     GSourceWrap::Socket m_socketEventSource;
     GSourceWrap::Queue m_dispatchQueue;

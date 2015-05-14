@@ -88,6 +88,13 @@ else ()
     endif ()
 endif ()
 
+if (ENABLE_SUBTLE_CRYPTO)
+    find_package(GnuTLS 3.0.0)
+    if (NOT GNUTLS_FOUND)
+        message(FATAL_ERROR "GnuTLS is needed for ENABLE_SUBTLE_CRYPTO")
+    endif ()
+endif ()
+
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     set(GSTREAMER_COMPONENTS app audio pbutils)
     SET_AND_EXPOSE_TO_BUILD(USE_GSTREAMER TRUE)

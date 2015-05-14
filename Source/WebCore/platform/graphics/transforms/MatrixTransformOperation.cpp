@@ -34,16 +34,16 @@ bool MatrixTransformOperation::operator==(const TransformOperation& other) const
     return m_a == m.m_a && m_b == m.m_b && m_c == m.m_c && m_d == m.m_d && m_e == m.m_e && m_f == m.m_f;
 }
 
-static PassRefPtr<TransformOperation> createOperation(TransformationMatrix& to, TransformationMatrix& from, double progress)
+static Ref<TransformOperation> createOperation(TransformationMatrix& to, TransformationMatrix& from, double progress)
 {
     to.blend(from, progress);
     return MatrixTransformOperation::create(to);
 }
 
-PassRefPtr<TransformOperation> MatrixTransformOperation::blend(const TransformOperation* from, double progress, bool blendToIdentity)
+Ref<TransformOperation> MatrixTransformOperation::blend(const TransformOperation* from, double progress, bool blendToIdentity)
 {
     if (from && !from->isSameType(*this))
-        return this;
+        return *this;
 
     // convert the TransformOperations into matrices
     TransformationMatrix fromT;

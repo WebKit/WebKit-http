@@ -1,3 +1,239 @@
+2015-05-13  Oliver Hunt  <oliver@apple.com>
+       Ensure that all the smart pointer types in WTF clear their pointer before deref
+       https://bugs.webkit.org/show_bug.cgi?id=143789
+
+       Reviewed by Ryosuke Niwa.
+
+       In order to prevent use after free bugs caused by destructors
+       that end up trying to access the smart pointer itself, we should
+       make sure we always clear the m_ptr field before calling deref.
+
+       Essentially the UaF path is:
+       struct Foo : RefCounted<Foo> {
+         Wibble* m_wibble;
+         void doSomething();
+         ~Foo() { m_wibble->doSomethingLikeCleanup(); }
+       };
+
+       struct Wibble {
+         void doSomethingLikeCleanup()
+         {
+           if (m_foo) {
+               /* if this branch is not here we get a null deref */
+               m_foo->doSomething();
+           }
+         }
+         void replaceFoo(Foo* foo) { m_foo = foo; }
+         RefPtr<Foo> m_foo;
+       };
+
+       Wibble* someWibble = /* a Wibble with m_foo->m_refCount == 1 */;
+                            /* and m_foo points to someWibble       */;
+
+       someWibble->replaceFoo(someOtherFoo);
+       + someWibble->m_foo->m_ptr->deref();
+         + someWibble->m_foo->m_ptr->~Foo()
+           + someWibble->m_foo->m_ptr->m_wibble->doSomethingLikeCleanup()
+             + someWibble->m_foo->m_ptr->m_wibble /* someWibble */ ->m_foo->m_ptr /*logically dead*/ ->doSomething()
+
+       By clearing m_ptr first we either force a null pointer deref or
+       we force our code down a path that does not use the dead smart
+       pointer.
+
+       * wtf/PassRefPtr.h:
+       (WTF::PassRefPtr::~PassRefPtr):
+       * wtf/Ref.h:
+       (WTF::Ref::~Ref):
+       (WTF::Ref::operator=):
+       * wtf/RefPtr.h:
+       (WTF::RefPtr::~RefPtr):
+       * wtf/RetainPtr.h:
+       (WTF::RetainPtr::~RetainPtr):
+       (WTF::RetainPtr<T>::clear):
+
+2015-05-12  Michael Saboff  <msaboff@apple.com>
+
+        If JSC cannot get executable memory, it shouldn't call madvise
+        https://bugs.webkit.org/show_bug.cgi?id=144931
+
+        Reviewed by Mark Lam.
+
+        Made calling madvise conditional on really getting mmapped memory.
+
+        * wtf/OSAllocatorPosix.cpp:
+        (WTF::OSAllocator::reserveUncommitted):
+
+2015-05-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Move Windows build target to Windows 7 (or newer)
+        https://bugs.webkit.org/show_bug.cgi?id=144890
+        <rdar://problem/20707307>
+
+        Reviewed by Anders Carlsson.
+
+        Update linked SDK and minimal Windows level to be compatible with
+        Windows 7 or newer.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTFGenerated.vcxproj:
+        * config.h:
+
+2015-05-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WorkQueue objects are not released
+        https://bugs.webkit.org/show_bug.cgi?id=144824
+
+        Reviewed by Žan Doberšek.
+
+        Do not keep a reference of the WorkQueue for the entire life of
+        its worker thread, since every task scheduled on the WorkQueue
+        already takes a reference. Instead, take a reference of the main
+        loop to make sure that when the worker thread starts, the main
+        loop hasn't been released to avoid runtime warnings (see
+        webkit.org/b/140998). Also removed the g_main_context_pop_thread_default()
+        from the thread body, since the thread-specific context queue will
+        be freed anyway when the thread exits.
+        If the WorkQueue is released early, before the thread has started,
+        schedule a main loop quit in the context, to make sure it will
+        be the first thing run by the main loop and the thread will exit.
+
+        * wtf/WorkQueue.h: Remove unused event loop mutex.
+        * wtf/gtk/WorkQueueGtk.cpp:
+        (WTF::WorkQueue::platformInitialize):
+        (WTF::WorkQueue::platformInvalidate):
+
+2015-05-09  Yoav Weiss  <yoav@yoav.ws>
+
+        Remove the PICTURE_SIZES build flag
+        https://bugs.webkit.org/show_bug.cgi?id=144679
+
+        Reviewed by Benjamin Poulain.
+
+        Removed the PICTURE_SIZES build time flag.
+
+        * wtf/FeatureDefines.h:
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        Reviewed by Anders Carlsson.
+
+        No reason why StringView shouldn't have a StringImpl* constructor.
+
+        Test: StringView8Bit in TestWebKitAPI
+
+        * wtf/text/StringView.h: Add the constructor.
+
+2015-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183996.
+        https://bugs.webkit.org/show_bug.cgi?id=144806
+
+        ASan detected use-after free (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove convenience constructors for TextRun"
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+        http://trac.webkit.org/changeset/183996
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        Reviewed by Anders Carlsson.
+
+        No reason why StringView shouldn't have a StringImpl* constructor.
+
+        Test: StringView8Bit in TestWebKitAPI
+
+        * wtf/text/StringView.h: Add the constructor.
+
+2015-05-08  Andreas Kling  <akling@apple.com>
+
+        Optimize serialization of quoted JSON strings.
+        <https://webkit.org/b/144754>
+
+        Reviewed by Darin Adler.
+
+        Add a StringBuilder API for appending a quoted JSON string. This is used by
+        JSON.stringify() to implement efficient appending of strings while escaping
+        quotes, control characters and \uNNNN-style characters.
+
+        The main benefit comes from only doing a single buffer expansion up front,
+        instead of doing it every time we append something. The fudge factor is pretty
+        large, since the maximum number of output characters per input character is 6.
+
+        The first landing of this patch had two bugs in it:
+
+        - Made \uNNNN escapes uppercase hexadecimal instead of lowercase.
+        - Didn't preallocate enough space for 8-bit input strings.
+
+        Both were caught by existing tests on our bots, and both were due to last-minute
+        changes before landing. :/
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::appendQuotedJSONStringInternal):
+        (WTF::StringBuilder::appendQuotedJSONString):
+        * wtf/text/StringBuilder.h:
+
+2015-05-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183961.
+        https://bugs.webkit.org/show_bug.cgi?id=144784
+
+        Broke js/dom/JSON-stringify.html (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "Optimize serialization of quoted JSON strings."
+        https://bugs.webkit.org/show_bug.cgi?id=144754
+        http://trac.webkit.org/changeset/183961
+
+2015-05-07  Andreas Kling  <akling@apple.com>
+
+        Optimize serialization of quoted JSON strings.
+        <https://webkit.org/b/144754>
+
+        Reviewed by Darin Adler.
+
+        Add a StringBuilder API for appending a quoted JSON string. This is used by
+        JSON.stringify() to implement efficient appending of strings while escaping
+        quotes, control characters and \uNNNN-style characters.
+
+        The main benefit comes from only doing a single buffer expansion up front,
+        instead of doing it every time we append something. The fudge factor is pretty
+        large for 16-bit strings, since the maximum number of output characters per
+        input character is 6.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::appendQuotedJSONStringInternal):
+        (WTF::StringBuilder::appendQuotedJSONString):
+        * wtf/text/StringBuilder.h:
+
+2015-05-07  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] All spell checking layout tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=144648
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/Platform.h: Activate UNIFIED_TEXT_CHECKING for GTK+.
+
+2015-05-07  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/19317140> [Xcode] Remove usage of AspenFamily.xcconfig in Source/
+        https://bugs.webkit.org/show_bug.cgi?id=144727
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Don’t include AspenFamily.xcconfig, and define
+        INSTALL_PATH_PREFIX and LD_DYLIB_INSTALL_NAME for the iOS 8.x Simulator.
+
 2015-05-07  Žan Doberšek  <zdobersek@igalia.com>
 
         [GTK] Clean up RunLoop implementation

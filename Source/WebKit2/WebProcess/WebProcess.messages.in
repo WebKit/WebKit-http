@@ -100,7 +100,8 @@ messages -> WebProcess LegacyReceiver {
     SetEnabledServices(bool hasImageServices, bool hasSelectionServices, bool hasRichContentServices)
 #endif
 
-    ProcessWillSuspend()
-    CancelProcessWillSuspend()
+    ProcessWillSuspendImminently() -> (bool handled)
+    PrepareToSuspend()
+    CancelPrepareToSuspend()
     ProcessDidResume()
 }

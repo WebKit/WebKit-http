@@ -73,7 +73,6 @@ void WorkQueue::platformInvalidate()
         m_workQueueThread = 0;
     }
 
-    MutexLocker locker(m_eventLoopLock);
     if (m_eventLoop) {
         if (g_main_loop_is_running(m_eventLoop.get()))
             g_main_loop_quit(m_eventLoop.get());

@@ -76,7 +76,6 @@ ImageBufferData::ImageBufferData(const IntSize& size)
     , m_platformLayerProxy(adoptRef(new TextureMapperPlatformLayerProxy))
     , m_runLoop(RunLoop::current())
     , m_swapBuffersTimer(m_runLoop, this, &ImageBufferData::swapBuffers)
-
 #endif
     , m_texture(0)
 #endif
