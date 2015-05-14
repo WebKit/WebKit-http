@@ -36,6 +36,7 @@
 #include "ReadableStream.h"
 #include "ScriptWrappable.h"
 #include <functional>
+#include <runtime/JSCJSValue.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
@@ -52,6 +53,7 @@ public:
         Errored
     };
 
+    void initialize();
     virtual ~ReadableStreamReader();
 
     ReadableStream* stream() { return m_stream.get(); }
@@ -61,22 +63,25 @@ public:
     void closed(ClosedSuccessCallback, ClosedErrorCallback);
 
     void changeStateToClosed();
+    void changeStateToErrored();
+
+    virtual JSC::JSValue error() = 0;
 
 protected:
     ReadableStreamReader(ReadableStream&);
-
-    void releaseStream();
 
 private:
     // ActiveDOMObject API.
     const char* activeDOMObjectName() const override;
     bool canSuspendForPageCache() const override;
-    void initialize();
+
+    void releaseStreamAndClean();
 
     RefPtr<ReadableStream> m_stream;
     State m_state { State::Readable };
 
     ClosedSuccessCallback m_closedSuccessCallback;
+    ClosedErrorCallback m_closedErrorCallback;
 };
 
 }

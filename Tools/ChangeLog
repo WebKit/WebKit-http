@@ -1,3 +1,664 @@
+2015-05-13  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Test interactions between multiple extensions and multiple domains.
+        https://bugs.webkit.org/show_bug.cgi?id=144967
+
+        Reviewed by Benjamin Poulain.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        Xcode wanted to fix an alphabetization issue.
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        Test interactions that worked but were not explicitly tested before.
+
+2015-05-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix.
+
+        Added the missing metric name and wrapped values in an array as done in SunSpider.patch.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/Kraken.patch:
+
+2015-05-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix the previous commit, which made both bubbles green.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/StatusLineView.css:
+        (.status-line.good .bubble):
+        (.status-line.bad .bubble):
+        (.status-line.good .message):
+
+2015-05-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        People with Deuteranopia can't tell red and green apart on bot watcher's dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=144929
+
+        Reviewed by Eric Carlson.
+
+        Tweaked colors as I see fit.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/StatusLineView.css:
+        (.status-line.good .bubble):
+        (.status-line.bad .bubble):
+
+2015-05-11  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Share cookie storage between UI process and secondary processes
+        https://bugs.webkit.org/show_bug.cgi?id=144820
+        rdar://problem/20572830
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::initialize):
+        Don't set cookie storage directory, as it's a no-op, we use an ephemeral session
+        for testing.
+
+2015-05-12  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Fix internal build configuration issues
+        https://bugs.webkit.org/show_bug.cgi?id=144762
+
+        Reviewed by David Kilzer.
+
+        Modifies DumpRenderTree's xcconfig files to use SDK selectors.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig:
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeApp.xcconfig:
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeLibrary.xcconfig:
+        * DumpRenderTree/mac/Configurations/ImageDiff.xcconfig:
+        * DumpRenderTree/mac/Configurations/LayoutTestHelper.xcconfig:
+        * DumpRenderTree/mac/Configurations/TestNetscapePlugIn.xcconfig:
+
+2015-05-12  David Kilzer  <ddkilzer@apple.com>
+
+        Switch to launching iOS Simulator using bundle ID
+        <rdar://problem/20916096>
+
+        This is required to fix the layout tests on internal bots.
+
+        * Scripts/webkitdirs.pm:
+        (relaunchIOSSimulator): Switch to use bundle ID to launch iOS
+        Simulator.  Add FIXME.
+        (quitIOSSimulator): Add FIXME.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_test_run): Switch to use bundle ID to
+        launch iOS Simulator.  Add FIXME.
+        (IOSSimulatorPort.check_sys_deps): Add FIXME.
+
+2015-05-12  Per Arne Vollan  <peavo@outlook.com>
+
+        Fix run-javascriptcore-tests step on the WinCairo bot
+        https://bugs.webkit.org/show_bug.cgi?id=144866
+
+        Reviewed by Csaba Osztrogonác.
+
+        Catch exception when failing to create soft link, so we can fall back to copy.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK][WK2] rowAtIndex is not implemented in DRT/WKTR
+        https://bugs.webkit.org/show_bug.cgi?id=116971
+
+        Reviewed by Chris Fleizach.
+
+        Implement rowAtIndex for ATK.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::rowAtIndex):
+
+2015-05-11  Dan Bernstein  <mitz@apple.com>
+
+        Test for <rdar://problem/20878075> Trying to navigate to an invalid URL loads about:blank, but -[WKWebView URL] returns the invalid URL
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LoadAlternateHTMLString.mm: Fixed copyright header.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ProvisionalURLChange.mm: Added.
+        (-[ProvisionalURLChangeController webView:didFinishNavigation:]):
+
+2015-05-11  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Fix internal build configuration issues
+        https://bugs.webkit.org/show_bug.cgi?id=144762
+
+        Reviewed by Darin Adler.
+
+        Modifies TestWebKitAPI and WebKitTestRunner's xcconfig files to use SDK selectors.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/InjectedBundle.xcconfig:
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/Configurations/InjectedBundle.xcconfig:
+        * WebKitTestRunner/Configurations/WebKitTestRunner.xcconfig:
+
+2015-05-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Move Windows build target to Windows 7 (or newer)
+        https://bugs.webkit.org/show_bug.cgi?id=144890
+        <rdar://problem/20707307>
+
+        Reviewed by Anders Carlsson.
+
+        Update linked SDK and minimal Windows level to be compatible with
+        Windows 7 or newer.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTree.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeLauncher.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiff.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffLauncher.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.vcxproj:
+        * DumpRenderTree/config.h:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncher.vcxproj:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj:
+        * WinLauncher/stdafx.h:
+
+2015-05-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r184119.
+        https://bugs.webkit.org/show_bug.cgi?id=144888
+
+        broke JSC tests on Apple Windows bots (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "Fix run-javascriptcore-tests step on the WinCairo bot"
+        https://bugs.webkit.org/show_bug.cgi?id=144866
+        http://trac.webkit.org/changeset/184119
+
+2015-05-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-benchmark should support Dromaeo
+        https://bugs.webkit.org/show_bug.cgi?id=144849
+
+        Reviewed by Chris Dumez.
+
+        Added the benchmark plans for Dromaeo DOM tests. We only run these tests once since
+        they can take as much as 15 minutes to run each.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/Dromaeo.patch: Added.
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-cssquery.plan: Added.
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-dom.plan: Added.
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-jslib.plan: Added.
+
+2015-05-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. jetstream has a local copy, not remote archive.
+
+        * Scripts/webkitpy/benchmark_runner/data/plans/jetstream.plan:
+
+2015-05-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-benchmark should support SunSpider, Kraken and Octane
+        https://bugs.webkit.org/show_bug.cgi?id=144840
+
+        Reviewed by Darin Adler.
+
+        Added the support for SunSpider, Kraken, and Octane. Because of the licensing issues, we can't commit the
+        Kraken source code into the WebKit repository as done for other benchmarks. Instead, we'll dynamically
+        download it from the remote server using newly added RemoteZipBenchmarkBuilder. We do the same for Octane
+        for simplicity. Use newly added --local-copy option to specify the location of a local copy if there is any.
+
+        Renamed "original_benchmark in the plan file to "local_copy" and added a new optional "remote_archive" to
+        specify the URL to a remote ZIP file. This optional field is used by Kraken and Octane benchmark plans.
+
+        In addition, generalized the ability to run a "create script" in JetStreamBenchmarkBuilder since it's also
+        needed for SunSpider and Kraken. This feature has now been folded into GenericBenchmarkBuilder.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/benchmark_builders.json: Added
+        RemoteZipBenchmarkBuilder for Kraken and removed JetStreamBenchmarkBuilder since GenericBenchmarkBuilder
+        now has the ability to run an arbitrary "create script".
+
+        * Scripts/run-benchmark:
+        (main): Added an optional argument, --local-copy, to override the location of the benchmark's local copy.
+        This also overrides the remote archive URL specified in the plan.
+
+        * Scripts/webkitpy/benchmark_runner/README.md: Updated the description.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/benchmark_builders.json: Deleted the entry for
+        JetStreamBenchmarkBuilder.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/generic_benchmark_builder.py: 
+        (GenericBenchmarkBuilder.prepare): Call _fetchRemoteArchive if local_copy is not specified in the plan or
+        by --local-copy option but remote_archive is specified. Also call self.clean() here instead of relying on
+        _runCreateScript and _applyPatch to clean after themselves.
+        (GenericBenchmarkBuilder._runCreateScript): Moved from JetStreamBenchmarkBuilder._runCreateScript since
+        JetStream, SunSpider, Kraken all use this feature.
+        (GenericBenchmarkBuilder._copyBenchmarkToTempDir): Use self.name as the destination location instead of
+        the leaf directory name since the latter is not available when a remote ZIP file is used.
+        (GenericBenchmarkBuilder._fetchRemoteArchive): Added.
+        (GenericBenchmarkBuilder._applyPatch): Apply the patch inside destination directory to avoid hard coding
+        the benchmark name in the patches.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/jetstream_benchmark_builder.py: Removed.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__): Set self.planName. Also override 'local_copy' when --local-copy option is used.
+        (BenchmarkRunner.execute): Exit early if neither local_copy nor remote_archive is specified. Prefix the URL
+        the browser opens by planName as the plan file no longer contains that.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/JetStream.patch: Changed the path to be relative against
+        the top directory of JetStream instead of its parent.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Kraken.patch: Added.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Octane.patch: Added.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Speedometer.patch: Changed the path to be relative against
+        the top directory of JetStream instead of its parent.
+        * Scripts/webkitpy/benchmark_runner/data/patches/SunSpider.patch: Added.
+        * Scripts/webkitpy/benchmark_runner/data/plans/jetstream.plan: Uses GenericBenchmarkBuilder and specifies
+        the script to run. The entry point was changed to the relative path from the top directory of JetStream as
+        done in JetStream.patch.
+        * Scripts/webkitpy/benchmark_runner/data/plans/kraken.plan: Added.
+        * Scripts/webkitpy/benchmark_runner/data/plans/octane.plan: Added.
+        * Scripts/webkitpy/benchmark_runner/data/plans/speedometer.plan: The entry point was changed to the relative
+        path from the top directory of JetStream as done in JetStream.patch.
+        * Scripts/webkitpy/benchmark_runner/data/plans/sunspider.plan: Added.
+
+2015-05-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix run-javascriptcore-tests step on the WinCairo bot
+        https://bugs.webkit.org/show_bug.cgi?id=144866
+
+        Reviewed by Darin Adler.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-05-11  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Support domain-specific rules and exceptions.
+        https://bugs.webkit.org/show_bug.cgi?id=144833
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::InMemoryCompiledContentExtension::createFromFilter):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::create):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::InMemoryCompiledContentExtension):
+        Moved CompiledContentExtensionData from ContentExtensionCompiler.h because it is only used for testing.
+        (TestWebKitAPI::mainDocumentRequest):
+        (TestWebKitAPI::subResourceRequest):
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::checkCompilerError):
+        Added tests for parsing and functionality of if-domain and unless-domain.
+
+2015-05-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-benchmark should support Chrome Canary and Firefox Nightly
+        https://bugs.webkit.org/show_bug.cgi?id=144850
+
+        Reviewed by Darin Adler.
+
+        Added the support for Chrome Canary, Firefox (release), and Firefox Nightly.
+
+        This patch also extracts OSXBrowserDriver to launch and terminate processes on OS X.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_drivers.json:
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py: Added.
+        (OSXBrowserDriver):
+        (OSXBrowserDriver.prepareEnv): Extracted from ChromeBrowserDriver.prepareEnv.
+        (OSXBrowserDriver.closeBrowsers): Ditto.
+        (OSXBrowserDriver.launchProcess): Ditto.
+        (OSXBrowserDriver.terminateProcesses): Ditto.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver): Removed the unused self.chromePreferences.
+        (OSXChromeDriver.prepareEnv): Moved to OSXBrowserDriver.
+        (OSXChromeDriver.closeBrowsers): Ditto.
+        (OSXChromeDriver.launchUrl):
+        (OSXChromeCanaryDriver): Added.
+        (OSXChromeCanaryDriver.launchUrl):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py: Added.
+        (OSXFirefoxDriver): Added.
+        (OSXFirefoxDriver.launchUrl):
+        (OSXFirefoxNightlyDriver): Added.
+        (OSXFirefoxNightlyDriver.launchUrl):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver):
+        (OSXSafariDriver.closeBrowsers):
+
+2015-05-11  Tim Horton  <timothy_horton@apple.com>
+
+        Page overlay action context override should indicate the source of the request
+        https://bugs.webkit.org/show_bug.cgi?id=144832
+        <rdar://problem/20562594>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2ObjC/ActionMenusBundle.mm:
+        (TestWebKitAPI::ActionMenuTest::actionContextForResultAtPoint):
+
+2015-05-10  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] fast/events/page-visibility-transition-test.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=114789
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::setHidden): Map and unmap the WebView when the harness
+        requests visibility changes.
+
+2015-05-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Fix install-dependencies on Ubuntu 14.10/15.04
+        https://bugs.webkit.org/show_bug.cgi?id=144798
+
+        Reviewed by Darin Adler.
+
+        * efl/install-dependencies:
+
+2015-05-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make arguments of run-benchmark more user friendly
+        https://bugs.webkit.org/show_bug.cgi?id=144835
+
+        Reviewed by Darin Adler.
+
+        Made --build-directory optional since I don't expect a typical WebKit developer to have a local build
+        of Chrome and Firefox. Also made --plan accept just a filename so that we can just say "speedometer"
+        instead of "Tools/Scripts/webkitpy/benchmark_runner/data/plans/speedometer.plan". Finally, removed
+        default values from --platform and --browser as they are required arguments.
+
+        * Scripts/run-benchmark:
+        (main): Made --build-directory optional, and removed default values from --platform and --browser.
+        Also added help text for --build-directory and --plan. In addition, the list of platforms and browsers
+        are not dynamically obtained via BrowserDriverFactory.
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__): Raise when we can't find the plan file or the plan file is not a valid JSON
+        file instead of suppressing the error here and blowing up later mysteriously since we won't be able to
+        run any benchmark in that case.
+        (BenchmarkRunner._findPlanFile): Added. Look for the plan in webkitpy/benchmark_runner/data/plans if
+        the specified file isn't a valid relative or an absolute path.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver_factory.py:
+        (BrowserDriverFactory.available_platforms): Added. Used in main to provide the list of valid platforms
+        and browsers.
+        (BrowserDriverFactory.available_browsers): Ditto.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver.launchUrl): browserBuildPath is never optional since BenchmarkRunner.execute always
+        calls launchUrl with this argument so removed the default value. Also added a fallback path for when
+        browserBuildPath was None.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.launchUrl): Ditto. We also fallback when the build directory doesn't contain Safari
+        so that we can use locally built WebKit to launch Safari.
+
+2015-05-09  Yoav Weiss  <yoav@yoav.ws>
+
+        Remove the PICTURE_SIZES build flag
+        https://bugs.webkit.org/show_bug.cgi?id=144679
+
+        Reviewed by Benjamin Poulain.
+
+        Removed the PICTURE_SIZES build time flag.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-05-09  David Kilzer  <ddkilzer@apple.com>
+
+        Layout tests broke due to unexpected simctl output
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator._parse_devices): Handle new Device Pairs header.
+        * Scripts/webkitpy/xcode/simulator_unittest.py:
+        (test_device_pairs): Add unit test for Device Pairs header.
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        Reviewed by Anders Carlsson.
+
+        Test the StringView which takes a StringImpl*.
+
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+        (StringView8Bit): Testing is8Bit() on StringView
+
+2015-05-07  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Add simple tester that takes an extension and compiles it
+        https://bugs.webkit.org/show_bug.cgi?id=144781
+
+        Reviewed by Dan Bates.
+
+        * ContentExtensionTester: Added.
+        * ContentExtensionTester/Configurations: Added.
+        * ContentExtensionTester/Configurations/Base.xcconfig: Copied from Source/bmalloc/Configurations/Base.xcconfig.
+        * ContentExtensionTester/Configurations/ContentExtensionTester.xcconfig: Copied from Source/bmalloc/Configurations/bmalloc.xcconfig.
+        * ContentExtensionTester/Configurations/DebugRelease.xcconfig: Copied from Source/bmalloc/Configurations/DebugRelease.xcconfig.
+        * ContentExtensionTester/ContentExtensionTester.xcodeproj: Added.
+        * ContentExtensionTester/ContentExtensionTester.xcodeproj/project.pbxproj: Added.
+        * ContentExtensionTester/Makefile: Copied from Tools/TestWebKitAPI/Makefile.
+        * ContentExtensionTester/main.m: Added.
+        * Scripts/run-content-extension-tester: Copied from Tools/Scripts/run-webkit-tests.
+
+2015-05-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix.
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.h:
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.mm:
+        (-[DumpRenderTreeDraggingInfo springLoadingHighlight]):
+        (-[DumpRenderTreeDraggingInfo resetSpringLoading]):
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.h:
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.mm:
+        (-[WebKitTestRunnerDraggingInfo springLoadingHighlight]):
+        (-[WebKitTestRunnerDraggingInfo resetSpringLoading]):
+
+2015-05-08  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Some tests fail because they do not assume the popup menu captures click events
+        https://bugs.webkit.org/show_bug.cgi?id=40601
+
+        Reviewed by Carlos Garcia Campos.
+
+        Popdown all attached menus when moving between tests and between each new
+        event sent to the WebView. This prevents context and popup menus from eating
+        events.
+
+        * WebKitTestRunner/PlatformWebView.h: Added a helper method to do menu popdown.
+        * WebKitTestRunner/TestController.cpp: Add a specialization of these methods for GTK+.
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+        (WTR::dispatchEvent): Popdown all menus between dispatching events.
+        (WTR::EventSenderProxy::replaySavedEvents): Pass the view when dispatching events.
+        (WTR::EventSenderProxy::sendOrQueueEvent): Pass the view when dispatching events.
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::hideAllPopupMenus): Added this helper.
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::platformConfigureViewForTest): Added this stub, which is no
+        longer in the platform-independent file.
+        (WTR::TestController::platformResetPreferencesToConsistentValues): Popdown menus.
+
+015-05-08  Michael Catanzaro  <mcatanzaro@igalia.com>, Martin Robinson <mrobinson@igalia.com>
+
+        [GTK] Checks for DEVELOPMENT_BUILD are all wrong
+        https://bugs.webkit.org/show_bug.cgi?id=144746
+
+        Reviewed by Carlos Garcia Campos.
+
+        Use ENABLE_DEVELOPER_MODE rather than DEVELOPMENT_BUILD.
+
+        * MiniBrowser/gtk/main.c:
+        (main):
+
+2015-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183996.
+        https://bugs.webkit.org/show_bug.cgi?id=144806
+
+        ASan detected use-after free (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove convenience constructors for TextRun"
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+        http://trac.webkit.org/changeset/183996
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        Reviewed by Anders Carlsson.
+
+        Test the StringView which takes a StringImpl*.
+
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+        (StringView8Bit): Testing is8Bit() on StringView
+
+2015-05-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WTR doesn't correctly handle the Escape key
+        https://bugs.webkit.org/show_bug.cgi?id=144788
+
+        Reviewed by Martin Robinson.
+
+        Correctly handle 0x001B character code in GTK+ event sender to be
+        recognized as Escape key, because gdk_unicode_to_keyval() doesn't
+        handle it. This fixes layout tests using keyDown(String.fromCharCode(0x001B), null);
+        to dismiss popup menus.
+
+        Fixes editing/selection/5354455-1.html.
+
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+        (WTR::getGDKKeySymForKeyRef):
+
+2015-05-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Expose allowFileAccessFromFileURLs setting to WebKit2 GTK+ API
+        https://bugs.webkit.org/show_bug.cgi?id=144748
+
+        Reviewed by Sergio Villar Senin.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitSettings.cpp:
+        (testWebKitSettings): Check the new setting is correctly
+        initialized and updated.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (testWebContextSecurityFileXHR): Check XHR to local files is
+        allowed from file URLs after changing the setting.
+        (beforeAll): Add new test.
+
+2015-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183945.
+        https://bugs.webkit.org/show_bug.cgi?id=144789
+
+        "It broke all the GTK+ tests" (Requested by KaL on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Checks for DEVELOPMENT_BUILD are all wrong"
+        https://bugs.webkit.org/show_bug.cgi?id=144746
+        http://trac.webkit.org/changeset/183945
+
+2015-05-07  Anders Carlsson  <andersca@apple.com>
+
+        Build fixes.
+
+        * TestWebKitAPI/Tests/mac/HTMLCollectionNamedItem.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/mac/HTMLFormCollectionNamedItem.mm:
+        (TestWebKitAPI::TEST):
+        Add casts.
+
+2015-05-07  Filip Pizlo  <fpizlo@apple.com>
+
+        GC has trouble with pathologically large array allocations
+        https://bugs.webkit.org/show_bug.cgi?id=144609
+
+        Reviewed by Geoffrey Garen.
+        
+        Add a --filter option that restricts the set of tests we run. I needed it to fix this bug
+        and it's a frequently requested feature.
+        
+        Also add the ability to run a test pretending that your system has a particular RAM size.
+        This is useful for GC tests, and the new GC test that I added uses this.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+        * Scripts/run-jsc-stress-tests:
+
+2015-05-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump EFL version to 1.14.0
+        https://bugs.webkit.org/show_bug.cgi?id=144743
+
+        Reviewed by Darin Adler.
+
+        Bump EFL and elementary version to 1.14.0 and removed
+        md5sum, because it isn't used at all if hash is present.
+
+        * efl/jhbuild.modules:
+
+2015-05-07  Saam Barati  <saambarati1@gmail.com>
+
+        exceptionFuzz tests should explicitly initialize the exceptionFuzz boolean in JavaScript code through a function in jsc.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=144753
+
+        Reviewed by Mark Lam.
+
+        * Scripts/jsc-stress-test-helpers/js-exception-fuzz:
+
+2015-05-07  Beth Dakin  <bdakin@apple.com>
+
+        New force-related DOM events should fire in WK1 views
+        https://bugs.webkit.org/show_bug.cgi?id=144663
+        -and corresponding-
+        rdar://problem/20281886
+
+        Reviewed by Sam Weinig.
+
+        PlatformEventFactory::createPlatformMouseEvent() takes the last pressure event 
+        now. Just send nil. 
+        * TestWebKitAPI/Tests/mac/MenuTypesForMouseEvents.mm:
+        (TestWebKitAPI::buildAndPerformTest):
+
+2015-05-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Checks for DEVELOPMENT_BUILD are all wrong
+        https://bugs.webkit.org/show_bug.cgi?id=144746
+
+        Reviewed by Martin Robinson.
+
+        Use DEVELOPER_MODE rather than DEVELOPMENT_BUILD.
+
+        * MiniBrowser/gtk/main.c:
+        (main):
+
+2015-05-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Revert "Introducing the Platform Abstraction Layer (PAL)"
+        https://bugs.webkit.org/show_bug.cgi?id=144751
+
+        Unreviewed.
+
+        PAL should be a new target inside WebCore, rather than a top-level folder.
+
+        * Scripts/build-webkit: Add it to build-webkit.
+
+2015-05-07  Ada Chan  <adachan@apple.com>
+
+        Add a test for WKPageCopySessionState() with filtering.
+        https://bugs.webkit.org/show_bug.cgi?id=144666
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/WKPageCopySessionStateWithFiltering.cpp: Added.
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::filterFirstItemCallback):
+        (TestWebKitAPI::filterAllItemsCallback):
+        (TestWebKitAPI::createSessionStates):
+        (TestWebKitAPI::TEST):
+
 2015-05-06  Alexey Proskuryakov  <ap@apple.com>
 
         iOS build fix attempt
@@ -273,6 +934,18 @@
         Reviewed by Csaba Osztrogonác.
 
         * gtk/install-dependencies:
+
+2015-05-01  Dan Bernstein  <mitz@apple.com>
+
+        Test for <rdar://problem/8636045> Back/forward navigation to an error page in Safari breaks the back-forward list
+        https://bugs.webkit.org/show_bug.cgi?id=144501
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LoadAlternateHTMLString.mm: Added.
+        (-[LoadAlternateHTMLStringFromProvisionalLoadErrorController webView:didFailProvisionalNavigation:withError:]):
+        (-[LoadAlternateHTMLStringFromProvisionalLoadErrorController webView:didFinishNavigation:]):
 
 2015-05-01  Mario Sanchez Prada  <mario@endlessm.com>
 

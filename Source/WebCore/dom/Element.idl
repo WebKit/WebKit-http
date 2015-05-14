@@ -119,20 +119,9 @@
     readonly attribute DOMStringMap dataset;
 #endif
 
-    // NodeSelector - Selector API
-    [RaisesException] Element querySelector(DOMString selectors);
-    [RaisesException] NodeList querySelectorAll(DOMString selectors);
-
     [RaisesException] boolean matches(DOMString selectors);
     [RaisesException] Element closest(DOMString selectors);    
     [ImplementedAs=matches, RaisesException] boolean webkitMatchesSelector(DOMString selectors);
-
-    // ElementTraversal API
-    readonly attribute Element firstElementChild;
-    readonly attribute Element lastElementChild;
-    readonly attribute Element previousElementSibling;
-    readonly attribute Element nextElementSibling;
-    readonly attribute unsigned long childElementCount;
 
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     // CSSOM View Module API
@@ -282,4 +271,5 @@
 };
 
 Element implements ChildNode;
-
+Element implements ParentNode;
+Element implements NonDocumentTypeChildNode;

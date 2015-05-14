@@ -255,6 +255,8 @@ private:
     AVMediaSelectionGroup* safeMediaSelectionGroupForVisualMedia();
 #endif
 
+    NSArray* safeAVAssetTracksForAudibleMedia();
+
 #if ENABLE(DATACUE_VALUE)
     void processMetadataTrack();
 #endif
@@ -379,6 +381,7 @@ private:
     bool m_cachedCanPlayFastReverse;
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     mutable bool m_allowsWirelessVideoPlayback;
+    bool m_shouldPlayToPlaybackTarget { false };
 #endif
 };
 

@@ -1,3 +1,225 @@
+2015-05-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Move Windows build target to Windows 7 (or newer)
+        https://bugs.webkit.org/show_bug.cgi?id=144890
+        <rdar://problem/20707307>
+
+        Reviewed by Anders Carlsson.
+
+        Update linked SDK and minimal Windows level to be compatible with
+        Windows 7 or newer.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+
+2015-05-11  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: REGRESSION (Tabs): Issues reloading a resource with breakpoints
+        https://bugs.webkit.org/show_bug.cgi?id=144650
+
+        Fix a number of issues with Debugger tab and navigation/reloading:
+        - Close old content views in the Debugger tab when main frame navigates.
+        - Prune old resource tree elements before attempting to restore a cookie that might match an old resource.
+        - Allow breakpoint selections to be restored from a saved cookie.
+        - Fix an assert when closing a content view that isn't the current index, but is the current view.
+        - Avoid calling closed() multiple times when a ContentView is in the back/forward list more than once.
+        - Make restoreStateFromCookie properly set and use the causedByNavigation argument for a longer restore delay.
+        - Create a new cookie object per tab instead of it being cumulative from the previous cookie.
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._mainResourceDidChange): Delay calling _restoreCookieForOpenTabs to give time for sidebars
+        and tabs to respond to the main resource change.
+        (WebInspector._restoreCookieForOpenTabs): Rename causedByReload to causedByNavigation. Nothing special about
+        reload since we restore on all navigation.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView): Support Breakpoint as a represented object, which happens during a cookie restore.
+        (WebInspector.ContentView.isViewable): Ditto.
+
+        * UserInterface/Views/ContentViewContainer.js:
+        (WebInspector.ContentViewContainer.prototype.closeAllContentViews): Disassociate if the view is current and not just
+        the current entry index. This matches other close functions. This fixes an assert in _disassociateFromContentView.
+        (WebInspector.ContentViewContainer.prototype._disassociateFromContentView): Don't disassociate multiple times. This
+        avoids calling the closed() function on a view more than once.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.saveStateToCookie):
+        (WebInspector.DebuggerSidebarPanel.prototype._mainResourceDidChange): Renamed from _mainResourceChanged.
+        Close all content views if this is the main frame. Also prune all old resources. Doing this now avoids a flash
+        of having old and new resources in the tree caused by the default delay in NavigationSidebarPanel's _checkForOldResources.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel): Set _autoPruneOldTopLevelResourceTreeElements for later.
+        (WebInspector.NavigationSidebarPanel.prototype.get contentTreeOutlineToAutoPrune): Deleted.
+        (WebInspector.NavigationSidebarPanel.prototype.showDefaultContentView): Fix typo.
+        (WebInspector.NavigationSidebarPanel.prototype.showDefaultContentViewForTreeElement): Fix whitespace.
+        (WebInspector.NavigationSidebarPanel.prototype.pruneOldResourceTreeElements): Added. Broken out from
+        _checkForOldResources.delayedWork so it can be called manually. Also check all visible tree outlines.
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementAddedOrChanged): Pass treeElement in an array.
+        (WebInspector.NavigationSidebarPanel.prototype._checkForOldResourcesIfNeeded): Added.
+        (WebInspector.NavigationSidebarPanel.prototype._checkForOldResources): Call pruneOldResourceTreeElements on a delay.
+        (WebInspector.NavigationSidebarPanel.prototype._checkForOldResources.delayedWork): Deleted.
+        (WebInspector.NavigationSidebarPanel.prototype._checkOutlinesForPendingViewStateCookie): Call _checkForOldResourcesIfNeeded.
+        (WebInspector.NavigationSidebarPanel.prototype._checkElementsForPendingViewStateCookie): Remove array folding code.
+
+        * UserInterface/Views/TabContentView.js:
+        (WebInspector.TabContentView.prototype.restoreStateFromCookie): Rename causedByReload to causedByNavigation.
+        (WebInspector.TabContentView.prototype.saveStateToCookie): Don't allow the cookie to build on the old cookie.
+
+2015-05-11  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: NavigationSidebarPanel leaks some event listeners
+        https://bugs.webkit.org/show_bug.cgi?id=144523
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel):
+        (WebInspector.NavigationSidebarPanel.prototype.closed):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype.closed):
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel.prototype.closed):
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel.prototype.closed):
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.closed):
+
+2015-05-10  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: In the console, show function name next to the source link
+        https://bugs.webkit.org/show_bug.cgi?id=144372
+
+        Introduce CallFrameView to display counsole message source links. It looks like this:
+
+            [f] functionName - filename.js:42
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.createSourceCodeLocationLink):
+        (WebInspector.linkifyLocation):
+        (.showSourceCodeLocation):
+        (WebInspector.linkifyElement):
+        Abstract this out as it's used in WebInspector.CallFrameView and WebInspector.createSourceCodeLocationLink.
+
+        (WebInspector.sourceCodeForURL):
+        Move this code from Timeline to Main.js as it's used by Console too.
+
+        (WebInspector.linkifyURLAsNode):
+        Remove tooltipText argument as it is never used.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._callFramesFromPayload):
+        * UserInterface/Main.html:
+        * UserInterface/Models/CallFrame.js:
+        (WebInspector.CallFrame.fromPayload):
+        Abstract this out as it's used in WebInspector.TimelineManager.prototype._callFramesFromPayload and
+        WebInspector.ConsoleMessageView._appendLocationLink.
+
+        (WebInspector.CallFrame):
+        * UserInterface/Views/CallFrameTreeElement.js:
+        (WebInspector.CallFrameTreeElement):
+        Move it to WebInspector.CallFrameView.iconForCallFrame.
+
+        * UserInterface/Views/CallFrameView.css: Added.
+        (.call-frame):
+        (.call-frame .icon):
+        (.call-frame .titles):
+        (.call-frame .title):
+        (.call-frame .source-link):
+        (.call-frame .title + .subtitle > .source-link):
+        (.call-frame .subtitle .source-link):
+        (.call-frame:focus .subtitle .source-link):
+        (.call-frame .subtitle:empty):
+        (.call-frame .subtitle):
+        (.call-frame .colon):
+        (.call-frame .title + .subtitle::before):
+        * UserInterface/Views/CallFrameView.js: Added.
+        (WebInspector.CallFrameView):
+        (WebInspector.CallFrameView.iconClassNameForCallFrame):
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message .console-message-location):
+        (.console-message .call-frame):
+        (.console-message .go-to-link):
+        (.console-message .go-to-link:focus):
+        (.console-message .console-message-url::before):
+        (.console-saved-variable): Deleted.
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendLocationLink):
+        * UserInterface/Views/DebuggerDashboardView.js:
+        * UserInterface/Views/Main.css:
+        (.hidden): Deleted.
+        * UserInterface/Views/ProfileNodeTreeElement.js:
+        (WebInspector.ProfileNodeTreeElement):
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode.prototype.createCellContent):
+
+2015-05-08  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: Styles sidebar editing with incomplete property looks poor in UI
+        https://bugs.webkit.org/show_bug.cgi?id=141692
+
+        Reviewed by Timothy Hatcher.
+
+        Add "css-rule" Formatter that breaks CSS declarations into multiple lines,
+        keeps comments and invalid styles and adds whitespace.
+
+        * Tools/PrettyPrinting/css-rule-tests/*.css: Added.
+        Add test cases.
+
+        * Tools/PrettyPrinting/index.html:
+        Enable Test setup to be able to run "css-rule" Formatter tests.
+
+        * UserInterface/Controllers/Formatter.js:
+        (Formatter.prototype._handleToken):
+        * UserInterface/Controllers/FormatterContentBuilder.js:
+        (FormatterContentBuilder.prototype.removeLastNewline):
+        (FormatterContentBuilder.prototype.removeLastWhitespace):
+        (FormatterContentBuilder.prototype._popFormattedContent):
+        (FormatterContentBuilder.prototype._popNewLine): Deleted.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._formattedContentFromEditor):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update.set this):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update.get this):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update.countNewLineCharacters): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update.else): Deleted.
+        * UserInterface/Views/CodeMirrorFormatters.js:
+
+2015-05-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expanding Object with only __proto__ looks poor should have a label
+        https://bugs.webkit.org/show_bug.cgi?id=144755
+
+        Reviewed by Timothy Hatcher.
+
+        Better handle cases where expanding an object has only a __proto__
+        and no other properties.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.mode.prototype.this.children.length):
+        (WebInspector.ObjectTreePropertyTreeElement):
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree-outline li .empty-message):
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.createEmptyMessageElement):
+        (WebInspector.ObjectTreeView.comparePropertyDescriptors):
+        (WebInspector.ObjectTreeView.prototype._updateProperties):
+
+2015-05-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix querySelector in ResourceContentView.js, caught by assertion
+        https://bugs.webkit.org/show_bug.cgi?id=144756
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype._hasContent):
+        Ensure querySelector call is using the class name correctly.
+
 2015-05-06  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Docking Toolbar Buttons do not respect Docking Availability

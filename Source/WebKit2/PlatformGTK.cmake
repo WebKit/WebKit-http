@@ -214,8 +214,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitSettings.cpp
     UIProcess/API/gtk/WebKitSettings.h
     UIProcess/API/gtk/WebKitSettingsPrivate.h
-    UIProcess/API/gtk/WebKitTextChecker.cpp
-    UIProcess/API/gtk/WebKitTextChecker.h
     UIProcess/API/gtk/WebKitUIClient.cpp
     UIProcess/API/gtk/WebKitUIClient.h
     UIProcess/API/gtk/WebKitURIRequest.cpp
@@ -457,6 +455,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/gtk"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/opentype"
+    "${WEBCORE_DIR}/platform/graphics/x11"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/enchant"
     "${WEBKIT2_DIR}/DatabaseProcess/unix"
@@ -495,7 +494,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${LIBSOUP_INCLUDE_DIRS}
 )
 
-if (LIBNOTIFY_FOUND)
+if (USE_LIBNOTIFY)
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${LIBNOTIFY_INCLUDE_DIRS}
 )

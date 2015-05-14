@@ -447,6 +447,7 @@ static EncodedJSValue JSC_HOST_CALL functionJSCStack(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionGCAndSweep(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionFullGC(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionHeapSize(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDeleteAllCompiledCode(ExecState*);
 #ifndef NDEBUG
 static EncodedJSValue JSC_HOST_CALL functionReleaseExecutableMemory(ExecState*);
@@ -469,6 +470,7 @@ static EncodedJSValue JSC_HOST_CALL functionFalse1(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionFalse2(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionUndefined1(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionUndefined2(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionIsInt32(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionEffectful42(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionIdentity(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionMakeMasquerader(ExecState*);
@@ -478,6 +480,7 @@ static EncodedJSValue JSC_HOST_CALL functionFindTypeForExpression(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionReturnTypeFor(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDumpBasicBlockExecutionRanges(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionHasBasicBlockExecuted(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionEnableExceptionFuzz(ExecState*);
 
 #if ENABLE(SAMPLING_FLAGS)
 static EncodedJSValue JSC_HOST_CALL functionSetSamplingFlags(ExecState*);
@@ -585,6 +588,7 @@ protected:
         addFunction(vm, "gc", functionGCAndSweep, 0);
         addFunction(vm, "fullGC", functionFullGC, 0);
         addFunction(vm, "edenGC", functionEdenGC, 0);
+        addFunction(vm, "gcHeapSize", functionHeapSize, 0);
         addFunction(vm, "deleteAllCompiledCode", functionDeleteAllCompiledCode, 0);
 #ifndef NDEBUG
         addFunction(vm, "dumpCallFrame", functionDumpCallFrame, 0);
@@ -617,6 +621,7 @@ protected:
         putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "OSRExit"), 0, functionUndefined1, OSRExitIntrinsic, DontEnum | JSC::Function);
         putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "isFinalTier"), 0, functionFalse2, IsFinalTierIntrinsic, DontEnum | JSC::Function);
         putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "predictInt32"), 0, functionUndefined2, SetInt32HeapPredictionIntrinsic, DontEnum | JSC::Function);
+        putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "isInt32"), 0, functionIsInt32, CheckInt32Intrinsic, DontEnum | JSC::Function);
         putDirectNativeFunction(vm, this, Identifier::fromString(&vm, "fiatInt52"), 0, functionIdentity, FiatInt52Intrinsic, DontEnum | JSC::Function);
         
         addFunction(vm, "effectful42", functionEffectful42, 0);
@@ -635,6 +640,8 @@ protected:
 
         addFunction(vm, "dumpBasicBlockExecutionRanges", functionDumpBasicBlockExecutionRanges , 0);
         addFunction(vm, "hasBasicBlockExecuted", functionHasBasicBlockExecuted, 2);
+
+        addFunction(vm, "enableExceptionFuzz", functionEnableExceptionFuzz, 0);
         
         JSArray* array = constructEmptyArray(globalExec(), 0);
         for (size_t i = 0; i < arguments.size(); ++i)
@@ -831,21 +838,27 @@ EncodedJSValue JSC_HOST_CALL functionGCAndSweep(ExecState* exec)
 {
     JSLockHolder lock(exec);
     exec->heap()->collectAllGarbage();
-    return JSValue::encode(jsUndefined());
+    return JSValue::encode(jsNumber(exec->heap()->sizeAfterLastFullCollection()));
 }
 
 EncodedJSValue JSC_HOST_CALL functionFullGC(ExecState* exec)
 {
     JSLockHolder lock(exec);
     exec->heap()->collect(FullCollection);
-    return JSValue::encode(jsUndefined());
+    return JSValue::encode(jsNumber(exec->heap()->sizeAfterLastFullCollection()));
 }
 
 EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState* exec)
 {
     JSLockHolder lock(exec);
     exec->heap()->collect(EdenCollection);
-    return JSValue::encode(jsUndefined());
+    return JSValue::encode(jsNumber(exec->heap()->sizeAfterLastEdenCollection()));
+}
+
+EncodedJSValue JSC_HOST_CALL functionHeapSize(ExecState* exec)
+{
+    JSLockHolder lock(exec);
+    return JSValue::encode(jsNumber(exec->heap()->size()));
 }
 
 EncodedJSValue JSC_HOST_CALL functionDeleteAllCompiledCode(ExecState* exec)
@@ -1045,6 +1058,14 @@ EncodedJSValue JSC_HOST_CALL functionFalse2(ExecState*) { return JSValue::encode
 
 EncodedJSValue JSC_HOST_CALL functionUndefined1(ExecState*) { return JSValue::encode(jsUndefined()); }
 EncodedJSValue JSC_HOST_CALL functionUndefined2(ExecState*) { return JSValue::encode(jsUndefined()); }
+EncodedJSValue JSC_HOST_CALL functionIsInt32(ExecState* exec)
+{
+    for (size_t i = 0; i < exec->argumentCount(); ++i) {
+        if (!exec->argument(i).isInt32())
+            return JSValue::encode(jsBoolean(false));
+    }
+    return JSValue::encode(jsBoolean(true));
+}
 
 EncodedJSValue JSC_HOST_CALL functionIdentity(ExecState* exec) { return JSValue::encode(exec->argument(0)); }
 
@@ -1127,6 +1148,12 @@ EncodedJSValue JSC_HOST_CALL functionHasBasicBlockExecuted(ExecState* exec)
     
     bool hasExecuted = exec->vm().controlFlowProfiler()->hasBasicBlockAtTextOffsetBeenExecuted(offset, executable->sourceID(), exec->vm());
     return JSValue::encode(jsBoolean(hasExecuted));
+}
+
+EncodedJSValue JSC_HOST_CALL functionEnableExceptionFuzz(ExecState*)
+{
+    Options::enableExceptionFuzz() = true;
+    return JSValue::encode(jsUndefined());
 }
 
 // Use SEH for Release builds only to get rid of the crash report dialog

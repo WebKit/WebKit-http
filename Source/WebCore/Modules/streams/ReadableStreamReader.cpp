@@ -47,7 +47,6 @@ ReadableStreamReader::ReadableStreamReader(ReadableStream& stream)
     readableStreamReaderCounter.increment();
 #endif
     suspendIfNeeded();
-    initialize();
 }
 
 ReadableStreamReader::~ReadableStreamReader()
@@ -69,22 +68,37 @@ void ReadableStreamReader::initialize()
         changeStateToClosed();
         return;
     }
+    if (m_stream->internalState() == ReadableStream::State::Errored) {
+        changeStateToErrored();
+        return;
+    }
 }
 
-void ReadableStreamReader::releaseStream()
+void ReadableStreamReader::releaseStreamAndClean()
 {
+    // Releasing callbacks may trigger unrefing of the reader.
+    Ref<ReadableStreamReader> protect(*this);
+
     ASSERT(m_stream);
     m_stream->release();
     m_stream = nullptr;
+
+    m_closedSuccessCallback = nullptr;
+    m_closedErrorCallback = nullptr;
 }
 
-void ReadableStreamReader::closed(ClosedSuccessCallback successCallback, ClosedErrorCallback)
+void ReadableStreamReader::closed(ClosedSuccessCallback successCallback, ClosedErrorCallback errorCallback)
 {
     if (m_state == State::Closed) {
         successCallback();
         return;
     }
+    if (m_state == State::Errored) {
+        errorCallback();
+        return;
+    }
     m_closedSuccessCallback = WTF::move(successCallback);
+    m_closedErrorCallback = WTF::move(errorCallback);
 }
 
 void ReadableStreamReader::changeStateToClosed()
@@ -92,13 +106,25 @@ void ReadableStreamReader::changeStateToClosed()
     ASSERT(m_state == State::Readable);
     m_state = State::Closed;
 
-    if (m_closedSuccessCallback) {
-        ClosedSuccessCallback closedSuccessCallback = WTF::move(m_closedSuccessCallback);
-        closedSuccessCallback();
-    }
-    ASSERT(!m_closedSuccessCallback);
-    releaseStream();
+    if (m_closedSuccessCallback)
+        m_closedSuccessCallback();
+
     // FIXME: Implement read promise fulfilling.
+
+    releaseStreamAndClean();
+}
+
+void ReadableStreamReader::changeStateToErrored()
+{
+    ASSERT(m_state == State::Readable);
+    m_state = State::Errored;
+
+    if (m_closedErrorCallback)
+        m_closedErrorCallback();
+
+    // FIXME: Implement read promise rejection.
+
+    releaseStreamAndClean();
 }
 
 const char* ReadableStreamReader::activeDOMObjectName() const

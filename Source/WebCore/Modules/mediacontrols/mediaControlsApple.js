@@ -762,9 +762,6 @@ Controller.prototype = {
         if (this.controlsAreHidden())
             this.showControls();
         this.resetHideControlsTimer();
-        
-        if (this.scrubbing)
-            this.updateTime();
 
         if (!this.isDragging)
             return;
@@ -855,6 +852,7 @@ Controller.prototype = {
     handleTimelineInput: function(event)
     {
         this.video.fastSeek(this.controls.timeline.value);
+        this.updateControlsWhileScrubbing();
     },
 
     handleTimelineChange: function(event)
@@ -1157,8 +1155,8 @@ Controller.prototype = {
         
         if (!width || !height)
             return;
-        
-        var played = this.video.currentTime / this.video.duration;
+
+        var played = this.controls.timeline.value / this.controls.timeline.max;
         var buffered = 0;
         for (var i = 0, end = this.video.buffered.length; i < end; ++i)
             buffered = Math.max(this.video.buffered.end(i), buffered);
@@ -1364,7 +1362,7 @@ Controller.prototype = {
 
     hideControls: function()
     {
-        if (this.controlsAlwaysVisible())
+        if (this.controlsAlwaysVisible() || this._potentiallyScrubbing)
             return;
 
         this.updateShouldListenForPlaybackTargetAvailabilityEvent();
@@ -1407,6 +1405,18 @@ Controller.prototype = {
         this.controls.currentTime.innerText = this.formatTime(currentTime);
         this.controls.timeline.value = this.video.currentTime;
         this.controls.remainingTime.innerText = this.formatTime(timeRemaining);
+    },
+    
+    updateControlsWhileScrubbing: function()
+    {
+        if (!this.scrubbing)
+            return;
+
+        var currentTime = (this.controls.timeline.value / this.controls.timeline.max) * this.video.duration;
+        var timeRemaining = currentTime - this.video.duration;
+        this.controls.currentTime.innerText = this.formatTime(currentTime);
+        this.controls.remainingTime.innerText = this.formatTime(timeRemaining);
+        this.drawTimelineBackground();
     },
 
     updateReadyState: function()
@@ -1746,6 +1756,9 @@ Controller.prototype = {
             this.controls.panel.classList.remove(this.ClassNames.noVideo);
         else
             this.controls.panel.classList.add(this.ClassNames.noVideo);
+
+        // The wireless target picker is only visible for files with video, force an update.
+        this.updateWirelessTargetAvailable();
     },
 
     updateVolume: function()

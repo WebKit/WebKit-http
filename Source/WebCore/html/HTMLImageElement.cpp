@@ -127,9 +127,7 @@ const AtomicString& HTMLImageElement::imageSourceURL() const
 void HTMLImageElement::setBestFitURLAndDPRFromImageCandidate(const ImageCandidate& candidate)
 {
     m_bestFitImageURL = candidate.string.toString();
-#if ENABLE(PICTURE_SIZES)
     m_currentSrc = AtomicString(document().completeURL(imageSourceURL()).string());
-#endif
     if (candidate.density >= 0)
         m_imageDevicePixelRatio = 1 / candidate.density;
     if (is<RenderImage>(renderer()))
@@ -142,7 +140,7 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
         if (is<RenderImage>(renderer()))
             downcast<RenderImage>(*renderer()).updateAltText();
     } else if (name == srcAttr || name == srcsetAttr) {
-        unsigned sourceSize = parseSizesAttribute(fastGetAttribute(sizesAttr).string(), document().renderView(), document().frame());
+        float sourceSize = parseSizesAttribute(fastGetAttribute(sizesAttr).string(), document().renderView(), document().frame());
         ImageCandidate candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), fastGetAttribute(srcAttr), fastGetAttribute(srcsetAttr), sourceSize);
         setBestFitURLAndDPRFromImageCandidate(candidate);
         m_imageLoader.updateFromElementIgnoringPreviousError();

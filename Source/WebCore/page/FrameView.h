@@ -104,6 +104,7 @@ public:
     virtual bool avoidScrollbarCreation() const override;
 
     virtual void setContentsSize(const IntSize&) override;
+    virtual void updateContentsSize() override;
 
     void layout(bool allowSubtree = true);
     WEBCORE_EXPORT bool didFirstLayout() const;
@@ -170,8 +171,6 @@ public:
     ScrollableArea* scrollableAreaForScrollLayerID(uint64_t) const;
 
     bool hasCompositedContent() const;
-    bool hasCompositedContentIncludingDescendants() const;
-    bool hasCompositingAncestor() const;
     WEBCORE_EXPORT void enterCompositingMode();
     WEBCORE_EXPORT bool isEnclosedInCompositingLayer() const;
 
@@ -189,7 +188,7 @@ public:
     void resetScrollbarsAndClearContentsSize();
     void prepareForDetach();
     void detachCustomScrollbars();
-    void recalculateScrollbarOverlayStyle();
+    WEBCORE_EXPORT void recalculateScrollbarOverlayStyle();
 
     void clear();
 
@@ -598,13 +597,16 @@ private:
     void forceLayoutParentViewIfNeeded();
     void performPostLayoutTasks();
     void autoSizeIfEnabled();
-    void updateThrottledDOMTimersState();
+
+    void applyRecursivelyWithVisibleRect(const std::function<void (FrameView& frameView, const IntRect& visibleRect)>&);
+    void updateThrottledDOMTimersState(const IntRect& visibleRect);
+    void resumeVisibleImageAnimations(const IntRect& visibleRect);
+    void updateScriptedAnimationsThrottlingState(const IntRect& visibleRect);
 
     void updateLayerFlushThrottling();
     WEBCORE_EXPORT void adjustTiledBackingCoverage();
 
     virtual void repaintContentRectangle(const IntRect&) override;
-    virtual void updateContentsSize() override;
     virtual void addedOrRemovedScrollbar() override;
 
     virtual void delegatesScrollingDidChange() override;

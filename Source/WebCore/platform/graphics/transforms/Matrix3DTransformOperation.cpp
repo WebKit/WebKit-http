@@ -35,16 +35,16 @@ bool Matrix3DTransformOperation::operator==(const TransformOperation& other) con
     return isSameType(other) && m_matrix == downcast<Matrix3DTransformOperation>(other).m_matrix;
 }
 
-static PassRefPtr<TransformOperation> createOperation(TransformationMatrix& to, TransformationMatrix& from, double progress)
+static Ref<TransformOperation> createOperation(TransformationMatrix& to, TransformationMatrix& from, double progress)
 {
     to.blend(from, progress);
     return Matrix3DTransformOperation::create(to);
 }
 
-PassRefPtr<TransformOperation> Matrix3DTransformOperation::blend(const TransformOperation* from, double progress, bool blendToIdentity)
+Ref<TransformOperation> Matrix3DTransformOperation::blend(const TransformOperation* from, double progress, bool blendToIdentity)
 {
     if (from && !from->isSameType(*this))
-        return this;
+        return *this;
 
     // Convert the TransformOperations into matrices
     FloatSize size;

@@ -1211,6 +1211,7 @@
 		9321D5861A38EE3C008052BE /* WKImmediateActionController.h in Headers */ = {isa = PBXBuildFile; fileRef = 9321D5851A38EE3C008052BE /* WKImmediateActionController.h */; };
 		9321D5881A38EE74008052BE /* WKImmediateActionController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9321D5871A38EE74008052BE /* WKImmediateActionController.mm */; };
 		9321D58A1A38F196008052BE /* WKImmediateActionTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 9321D5891A38F196008052BE /* WKImmediateActionTypes.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		9323611E1B015DA800FA9232 /* _WKOverlayScrollbarStyle.h in Headers */ = {isa = PBXBuildFile; fileRef = 9323611D1B015DA800FA9232 /* _WKOverlayScrollbarStyle.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		934B724419F5B9BE00AE96D6 /* WKActionMenuItemTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 934B724319F5B9BE00AE96D6 /* WKActionMenuItemTypes.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		935EEB9B1277617C003322B8 /* WKBundleBackForwardListItem.h in Headers */ = {isa = PBXBuildFile; fileRef = 935EEB981277616D003322B8 /* WKBundleBackForwardListItem.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		935EEB9E127761AC003322B8 /* WKBundleBackForwardList.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 935EEB951277616D003322B8 /* WKBundleBackForwardList.cpp */; };
@@ -2419,6 +2420,8 @@
 		1A64245D12DE29A100CAAE2C /* UpdateInfo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = UpdateInfo.cpp; sourceTree = "<group>"; };
 		1A6509CD18B4146200614332 /* WKProcessPoolPrivate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKProcessPoolPrivate.h; sourceTree = "<group>"; };
 		1A66BF8E18A052ED002071B4 /* WKWebViewInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKWebViewInternal.h; sourceTree = "<group>"; };
+		1A6D141F1B0167D500785FF0 /* Info-OSX-10.9-10.10.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Info-OSX-10.9-10.10.plist"; sourceTree = "<group>"; };
+		1A6D14211B01681600785FF0 /* PluginService.32-64-10.9-10.10.Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "PluginService.32-64-10.9-10.10.Info.plist"; path = "PluginProcess/EntryPoint/mac/XPCService/PluginService.32-64-10.9-10.10.Info.plist"; sourceTree = SOURCE_ROOT; };
 		1A6F9F8E11E13EFC00DB1371 /* CommandLine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CommandLine.h; sourceTree = "<group>"; };
 		1A6F9FB611E1408500DB1371 /* CommandLinePOSIX.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CommandLinePOSIX.cpp; sourceTree = "<group>"; };
 		1A6FB7AC11E64B6800DB1371 /* PluginView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PluginView.cpp; sourceTree = "<group>"; };
@@ -2436,6 +2439,7 @@
 		1A7865B816CAC71500ACE83A /* PluginProcessConnectionManagerMessages.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PluginProcessConnectionManagerMessages.h; sourceTree = "<group>"; };
 		1A7C6CD81378950800B9C04D /* EnvironmentVariables.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EnvironmentVariables.cpp; sourceTree = "<group>"; };
 		1A7C6CD91378950800B9C04D /* EnvironmentVariables.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EnvironmentVariables.h; sourceTree = "<group>"; };
+		1A7DA54D1AFD8B380018239D /* Info-OSX-10.9-10.10.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Info-OSX-10.9-10.10.plist"; sourceTree = "<group>"; };
 		1A7E377418E4A33A003D0FFF /* WKScriptMessageHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKScriptMessageHandler.h; sourceTree = "<group>"; };
 		1A7E377618E4A4FE003D0FFF /* WKScriptMessage.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKScriptMessage.mm; sourceTree = "<group>"; };
 		1A7E377718E4A4FE003D0FFF /* WKScriptMessage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKScriptMessage.h; sourceTree = "<group>"; };
@@ -3431,6 +3435,7 @@
 		9321D5851A38EE3C008052BE /* WKImmediateActionController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKImmediateActionController.h; sourceTree = "<group>"; };
 		9321D5871A38EE74008052BE /* WKImmediateActionController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKImmediateActionController.mm; sourceTree = "<group>"; };
 		9321D5891A38F196008052BE /* WKImmediateActionTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKImmediateActionTypes.h; sourceTree = "<group>"; };
+		9323611D1B015DA800FA9232 /* _WKOverlayScrollbarStyle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = _WKOverlayScrollbarStyle.h; sourceTree = "<group>"; };
 		934B724319F5B9BE00AE96D6 /* WKActionMenuItemTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKActionMenuItemTypes.h; sourceTree = "<group>"; };
 		935EEB8F1277615D003322B8 /* InjectedBundleBackForwardList.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InjectedBundleBackForwardList.cpp; sourceTree = "<group>"; };
 		935EEB901277615D003322B8 /* InjectedBundleBackForwardList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InjectedBundleBackForwardList.h; sourceTree = "<group>"; };
@@ -5357,6 +5362,7 @@
 				37A64E5418F38E3C00EB30F1 /* _WKFormDelegate.h */,
 				37A64E5618F38F4600EB30F1 /* _WKFormInputSession.h */,
 				2D790A9C1AD7050D00AB90B3 /* _WKLayoutMode.h */,
+				9323611D1B015DA800FA9232 /* _WKOverlayScrollbarStyle.h */,
 				1A43E828188F3CDC009E4D30 /* _WKProcessPoolConfiguration.h */,
 				1A43E827188F3CDC009E4D30 /* _WKProcessPoolConfiguration.mm */,
 				7C89D2D61A6C6BE6003A5FDE /* _WKProcessPoolConfigurationInternal.h */,
@@ -6873,6 +6879,7 @@
 			isa = PBXGroup;
 			children = (
 				26659AA0185FAAED004303DD /* Info-iOS.plist */,
+				1A6D141F1B0167D500785FF0 /* Info-OSX-10.9-10.10.plist */,
 				BC8283A316B4BD9100A278FE /* Info-OSX.plist */,
 			);
 			path = NetworkService;
@@ -6901,6 +6908,7 @@
 		BC8283E916B4F8E200A278FE /* PluginService */ = {
 			isa = PBXGroup;
 			children = (
+				1A6D14211B01681600785FF0 /* PluginService.32-64-10.9-10.10.Info.plist */,
 				BCFCA89516DE96CB00074069 /* PluginService.32-64.Info.plist */,
 			);
 			name = PluginService;
@@ -6995,6 +7003,7 @@
 			isa = PBXGroup;
 			children = (
 				375FB4731883415600BE34D4 /* Info-iOS.plist */,
+				1A7DA54D1AFD8B380018239D /* Info-OSX-10.9-10.10.plist */,
 				BCACC44016B24CAA00B6E092 /* Info-OSX.plist */,
 			);
 			path = WebContentService;
@@ -7873,6 +7882,7 @@
 				7C3F8C91173AF52D007B7F39 /* PluginInformation.h in Headers */,
 				1AEFCC1211D01F96008219D3 /* PluginInfoStore.h in Headers */,
 				1A3D610213A7CC2A00F95D4E /* PluginModuleInfo.h in Headers */,
+				9323611E1B015DA800FA9232 /* _WKOverlayScrollbarStyle.h in Headers */,
 				1A043976124D034800FFBFB5 /* PluginProcess.h in Headers */,
 				1AC5FFC2174BFD1B0001483D /* PluginProcessAttributes.h in Headers */,
 				1A0EC906124C0AB8007EF4A5 /* PluginProcessConnection.h in Headers */,
@@ -9080,7 +9090,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "WKFOUNDATION_H=${TARGET_BUILD_DIR}/${PUBLIC_HEADERS_FOLDER_PATH}/WKFoundation.h\n\nif [[ \"${WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED}\" == \"YES\" ]]; then\n    UNIFDEF_OPTIONS=\"-UWK_FRAMEWORK_HEADER_POSTPROCESSING_ENABLED\";\nelse\n    UNIFDEF_OPTIONS=\"-DWK_FRAMEWORK_HEADER_POSTPROCESSING_ENABLED\";\nfi\n\nunifdef -B ${UNIFDEF_OPTIONS} -o ${WKFOUNDATION_H}.unifdef ${WKFOUNDATION_H}\n\ncase $? in\n0)\n    rm ${WKFOUNDATION_H}.unifdef\n    ;;\n1)\n    mv ${WKFOUNDATION_H}{.unifdef,}\n    ;;\n*)\n    exit 1\nesac\n\nif [[ \"${WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED}\" != \"YES\" ]]; then\n    eval DEPLOYMENT_TARGET=\\$$DEPLOYMENT_TARGET_SETTING_NAME\n\n    sed -e \"/POSTPROCESSING_INSERTS_DEPLOYMENT_TARGET_AVAILABILITY_DEFINITION_HERE/c\\\\\n        #ifndef __NSi_${DEPLOYMENT_TARGET/\\./_}\\\\\n        #define __NSi_${DEPLOYMENT_TARGET/\\./_} introduced=${DEPLOYMENT_TARGET}\\\\\n        #endif\\\\\n        #ifndef __NSd_${DEPLOYMENT_TARGET/\\./_}\\\\\n        #define __NSd_${DEPLOYMENT_TARGET/\\./_} ,deprecated=${DEPLOYMENT_TARGET}\\\\\n        #endif\" ${WKFOUNDATION_H} > ${WKFOUNDATION_H}.sed\n\n    if ( cmp ${WKFOUNDATION_H} ${WKFOUNDATION_H}.sed > /dev/null ); then\n        rm ${WKFOUNDATION_H}.sed\n    else\n        mv ${WKFOUNDATION_H}{.sed,}\n    fi\nfi";
+			shellScript = "WKFOUNDATION_H=${TARGET_BUILD_DIR}/${PUBLIC_HEADERS_FOLDER_PATH}/WKFoundation.h\n\nif [[ \"${WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED}\" == \"YES\" ]]; then\n    UNIFDEF_OPTIONS=\"-UWK_FRAMEWORK_HEADER_POSTPROCESSING_ENABLED\";\nelse\n    UNIFDEF_OPTIONS=\"-DWK_FRAMEWORK_HEADER_POSTPROCESSING_ENABLED\";\nfi\n\nunifdef -B ${UNIFDEF_OPTIONS} -o ${WKFOUNDATION_H}.unifdef ${WKFOUNDATION_H}\n\ncase $? in\n0)\n    rm ${WKFOUNDATION_H}.unifdef\n    ;;\n1)\n    mv ${WKFOUNDATION_H}{.unifdef,}\n    ;;\n*)\n    exit 1\nesac\n";
 		};
 		1ADAE12C1919A43F00F48E21 /* Migrate Headers to WebKit2 */ = {
 			isa = PBXShellScriptBuildPhase;

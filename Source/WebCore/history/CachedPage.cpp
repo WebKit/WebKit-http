@@ -52,12 +52,6 @@ DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, cachedPageCounter, ("Cached
 CachedPage::CachedPage(Page& page)
     : m_expirationTime(monotonicallyIncreasingTime() + page.settings().backForwardCacheExpirationInterval())
     , m_cachedMainFrame(std::make_unique<CachedFrame>(page.mainFrame()))
-    , m_needStyleRecalcForVisitedLinks(false)
-    , m_needsFullStyleRecalc(false)
-#if ENABLE(VIDEO_TRACK)
-    , m_needsCaptionPreferencesChanged(false)
-#endif
-    , m_needsDeviceScaleChanged(false)
 {
 #ifndef NDEBUG
     cachedPageCounter.increment();
@@ -111,7 +105,7 @@ void CachedPage::restore(Page& page)
             frame->document()->visitedLinkState().invalidateStyleForAllLinks();
     }
 
-    if (m_needsDeviceScaleChanged)
+    if (m_needsDeviceOrPageScaleChanged)
         page.mainFrame().deviceOrPageScaleFactorChanged();
 
     if (m_needsFullStyleRecalc)
@@ -121,6 +115,11 @@ void CachedPage::restore(Page& page)
     if (m_needsCaptionPreferencesChanged)
         page.captionPreferencesChanged();
 #endif
+
+    if (m_needsUpdateContentsSize) {
+        if (FrameView* frameView = page.mainFrame().view())
+            frameView->updateContentsSize();
+    }
 
     clear();
 }
@@ -135,7 +134,8 @@ void CachedPage::clear()
 #if ENABLE(VIDEO_TRACK)
     m_needsCaptionPreferencesChanged = false;
 #endif
-    m_needsDeviceScaleChanged = false;
+    m_needsDeviceOrPageScaleChanged = false;
+    m_needsUpdateContentsSize = false;
 }
 
 bool CachedPage::hasExpired() const

@@ -26,35 +26,20 @@
 #import "config.h"
 #import "MenuUtilities.h"
 
+#if PLATFORM(MAC)
+
 #import "StringUtilities.h"
+#import <WebCore/DataDetectorsSPI.h>
 #import <WebCore/LocalizedStrings.h>
-#import <WebCore/SoftLinking.h>
 #import <objc/runtime.h>
 
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 #import <WebCore/TUCallSPI.h>
-
-SOFT_LINK_PRIVATE_FRAMEWORK(DataDetectors)
-SOFT_LINK_CLASS(DataDetectors, DDAction)
-SOFT_LINK_CLASS(DataDetectors, DDActionsManager)
-SOFT_LINK_CONSTANT(DataDetectors, DDBinderPhoneNumberKey, CFStringRef)
-
-@interface DDAction : NSObject
-@property (readonly) NSString *actionUTI;
-@end
-
-typedef void* DDActionContext;
-
-@interface DDActionsManager : NSObject
-+ (DDActionsManager *)sharedManager;
-- (NSArray *)menuItemsForValue:(NSString *)value type:(CFStringRef)type service:(NSString *)service context:(DDActionContext *)context;
-@end
 #endif
 
 namespace WebKit {
 
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
 NSString *menuItemTitleForTelephoneNumberGroup()
 {
@@ -121,6 +106,9 @@ RetainPtr<NSMenu> menuForTelephoneNumber(const String& telephoneNumber)
 
     return menu;
 }
+
 #endif
 
 } // namespace WebKit
+
+#endif

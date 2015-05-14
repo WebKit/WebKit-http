@@ -60,6 +60,10 @@ public:
 #endif
 
 private:
+#if PLATFORM(IOS)
+    Vector<WebPlatformTouchPoint> extractWebTouchPoint(const _UIWebTouchEvent*);
+#endif
+
 #if PLATFORM(GTK)
     GUniquePtr<GdkEvent> m_nativeEvent;
 #elif PLATFORM(EFL)

@@ -482,6 +482,9 @@ namespace JSC {
         RegisterID* emitDirectPutByVal(RegisterID* base, RegisterID* property, RegisterID* value);
         RegisterID* emitDeleteByVal(RegisterID* dst, RegisterID* base, RegisterID* property);
         RegisterID* emitPutByIndex(RegisterID* base, unsigned index, RegisterID* value);
+
+        void emitPutGetterById(RegisterID* base, const Identifier& property, RegisterID* getter);
+        void emitPutSetterById(RegisterID* base, const Identifier& property, RegisterID* setter);
         void emitPutGetterSetter(RegisterID* base, const Identifier& property, RegisterID* getter, RegisterID* setter);
         
         ExpectedFunction expectedFunctionForIdentifier(const Identifier&);
@@ -744,7 +747,8 @@ namespace JSC {
         Vector<std::unique_ptr<ForInContext>> m_forInContextStack;
         Vector<TryContext> m_tryContextStack;
         Vector<std::pair<RefPtr<RegisterID>, const DeconstructionPatternNode*>> m_deconstructedParameters;
-        Vector<FunctionBodyNode*> m_functionsToInitialize;
+        enum FunctionVariableType : uint8_t { NormalFunctionVariable, GlobalFunctionVariable };
+        Vector<std::pair<FunctionBodyNode*, FunctionVariableType>> m_functionsToInitialize;
         bool m_needToInitializeArguments { false };
         
         Vector<TryRange> m_tryRanges;
