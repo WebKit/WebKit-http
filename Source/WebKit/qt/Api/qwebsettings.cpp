@@ -525,6 +525,8 @@ QWebSettings* QWebSettings::globalSettings()
         This is disabled by default.
     \value SiteSpecificQuirksEnabled This setting enables WebKit's workaround for broken sites. It is
         enabled by default.
+    \value CSSRegionsEnabled This setting enables support for the CSS 3 Regions module. This
+        CSS module is currently only a draft and support for it is enabled by default.
     \value ScrollAnimatorEnabled This setting enables animated scrolling. It is disabled by default.
     \value CaretBrowsingEnabled This setting enables caret browsing. It is disabled by default.
     \value NotificationsEnabled Specifies whether support for the HTML 5 web notifications is enabled
@@ -536,6 +538,10 @@ QWebSettings* QWebSettings::globalSettings()
         strongly discouraged as it makes the browser more prone to malicious code. This setting is intended
         primarily for site-specific browsers (i.e. when the user can't navigate to unsecure web page) and for testing
         web applications before deployment.
+    \value WebGLEnabled This setting enables support for WebGL.
+        It is enabled by default.
+    \value HyperlinkAuditingEnabled This setting enables support for hyperlink auditing (<a ping>).
+        It is disabled by default.
 */
 
 /*!
