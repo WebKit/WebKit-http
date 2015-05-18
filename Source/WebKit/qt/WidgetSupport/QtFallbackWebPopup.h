@@ -21,6 +21,7 @@
 #define QtFallbackWebPopup_h
 
 #include "qwebkitplatformplugin.h"
+#include <QtCore/QPointer>
 #include <wtf/Platform.h>
 
 #ifndef QT_NO_COMBOBOX
@@ -56,7 +57,7 @@ private Q_SLOTS:
     void deleteComboBox();
 
 private:
-    QtWebComboBox* m_combo;
+    QPointer<QtWebComboBox> m_combo;
     const QWebPageAdapter* m_page;
     QRect m_geometry;
     QFont m_font;
