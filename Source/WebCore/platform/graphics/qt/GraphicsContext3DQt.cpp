@@ -379,6 +379,8 @@ void GraphicsContext3DPrivate::blitMultisampleFramebufferAndRestoreContext()
 
 bool GraphicsContext3DPrivate::makeCurrentIfNeeded() const
 {
+    if (!m_platformContext)
+        return false;
     const QOpenGLContext* currentContext = QOpenGLContext::currentContext();
     if (currentContext == m_platformContext)
         return true;
@@ -420,6 +422,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
+    , m_functions(0)
     , m_private(adoptPtr(new GraphicsContext3DPrivate(this, hostWindow, renderStyle)))
     , m_compiler(isGLES2Compliant() ? SH_ESSL_OUTPUT : SH_GLSL_OUTPUT)
 {
