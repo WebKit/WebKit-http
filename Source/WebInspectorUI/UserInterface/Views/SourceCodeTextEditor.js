@@ -128,15 +128,8 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
     close()
     {
         if (this._supportsDebugging) {
-            WebInspector.Breakpoint.removeEventListener(WebInspector.Breakpoint.Event.DisabledStateDidChange, this._breakpointStatusDidChange, this);
-            WebInspector.Breakpoint.removeEventListener(WebInspector.Breakpoint.Event.AutoContinueDidChange, this._breakpointStatusDidChange, this);
-            WebInspector.Breakpoint.removeEventListener(WebInspector.Breakpoint.Event.ResolvedStateDidChange, this._breakpointStatusDidChange, this);
-            WebInspector.Breakpoint.removeEventListener(WebInspector.Breakpoint.Event.LocationDidChange, this._updateBreakpointLocation, this);
-
-            WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.BreakpointsEnabledDidChange, this._breakpointsEnabledDidChange, this);
-            WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.BreakpointAdded, this._breakpointAdded, this);
-            WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.BreakpointRemoved, this._breakpointRemoved, this);
-            WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.ActiveCallFrameDidChange, this._activeCallFrameDidChange, this);
+            WebInspector.Breakpoint.removeEventListener(null, null, this);
+            WebInspector.debuggerManager.removeEventListener(null, null, this);
 
             if (this._activeCallFrameSourceCodeLocation) {
                 this._activeCallFrameSourceCodeLocation.removeEventListener(WebInspector.SourceCodeLocation.Event.LocationChanged, this._activeCallFrameSourceCodeLocationChanged, this);
@@ -1655,6 +1648,8 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             return;
 
         if (shouldActivate) {
+            console.assert(this.visible, "Annotators should not be enabled if the TextEditor is not visible");
+
             RuntimeAgent.enableTypeProfiler();
 
             this._typeTokenAnnotator.reset();

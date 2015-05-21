@@ -159,9 +159,9 @@ bool doesGC(Graph& graph, Node* node)
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
+    case CheckTierUpWithNestedTriggerAndOSREnter:
     case LoopHint:
     case StoreBarrier:
-    case StoreBarrierWithNullCheck:
     case InvalidationPoint:
     case NotifyWrite:
     case CheckInBounds:

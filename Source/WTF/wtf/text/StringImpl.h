@@ -131,7 +131,6 @@ class StringImpl {
     friend struct WTF::LCharBufferTranslator;
     friend struct WTF::SubstringTranslator;
     friend struct WTF::UCharBufferTranslator;
-    friend class AtomicStringImpl;
     friend class JSC::LLInt::Data;
     friend class JSC::LLIntOffsetsExtractor;
     
@@ -330,8 +329,6 @@ private:
         STRING_STATS_ADD_16BIT_STRING2(m_length, true);
     }
 
-    ~StringImpl();
-
 public:
     WTF_EXPORT_STRING_API static void destroy(StringImpl*);
 
@@ -515,6 +512,7 @@ public:
     bool isSubString() const { return bufferOwnership() == BufferSubstring; }
 #endif
 
+    static WTF_EXPORT_STRING_API CString utf8ForCharacters(const LChar* characters, unsigned length);
     static WTF_EXPORT_STRING_API CString utf8ForCharacters(const UChar* characters, unsigned length, ConversionMode = LenientConversion);
     WTF_EXPORT_STRING_API CString utf8ForRange(unsigned offset, unsigned length, ConversionMode = LenientConversion) const;
     WTF_EXPORT_STRING_API CString utf8(ConversionMode = LenientConversion) const;
@@ -807,6 +805,9 @@ public:
         return *reinterpret_cast<unsigned*>((tailPointer<SymbolRegistry*>() + 2));
     }
 
+protected:
+    ~StringImpl();
+
 private:
     bool requiresCopy() const
     {
@@ -972,7 +973,14 @@ WTF_EXPORT_STRING_API bool equalIgnoringNullity(const UChar*, size_t length, Str
 
 WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(const StringImpl&, const StringImpl&);
 WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(const StringImpl*, const StringImpl*);
+WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(const StringImpl& a, const char* b, unsigned bLength);
 WTF_EXPORT_STRING_API bool equalIgnoringASCIICaseNonNull(const StringImpl*, const StringImpl*);
+
+template<unsigned charactersCount>
+bool equalIgnoringASCIICase(const StringImpl* a, const char (&b)[charactersCount])
+{
+    return a ? equalIgnoringASCIICase(*a, b, charactersCount - 1) : false;
+}
 
 template<typename CharacterType>
 inline size_t find(const CharacterType* characters, unsigned length, CharacterType matchCharacter, unsigned index = 0)

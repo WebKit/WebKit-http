@@ -925,8 +925,9 @@ void FrameLoader::loadArchive(PassRefPtr<Archive> archive)
     ASSERT(mainResource);
     if (!mainResource)
         return;
-        
-    SubstituteData substituteData(mainResource->data(), mainResource->mimeType(), mainResource->textEncoding(), URL());
+
+    ResourceResponse response(URL(), mainResource->mimeType(), mainResource->data()->size(), mainResource->textEncoding());
+    SubstituteData substituteData(mainResource->data(), URL(), response, SubstituteData::SessionHistoryVisibility::Hidden);
     
     ResourceRequest request(mainResource->url());
 #if PLATFORM(MAC)
@@ -1272,7 +1273,9 @@ SubstituteData FrameLoader::defaultSubstituteDataForURL(const URL& url)
     String srcdoc = m_frame.ownerElement()->fastGetAttribute(srcdocAttr);
     ASSERT(!srcdoc.isNull());
     CString encodedSrcdoc = srcdoc.utf8();
-    return SubstituteData(SharedBuffer::create(encodedSrcdoc.data(), encodedSrcdoc.length()), "text/html", "UTF-8", URL());
+
+    ResourceResponse response(URL(), ASCIILiteral("text/html"), encodedSrcdoc.length(), ASCIILiteral("UTF-8"));
+    return SubstituteData(SharedBuffer::create(encodedSrcdoc.data(), encodedSrcdoc.length()), URL(), response, SubstituteData::SessionHistoryVisibility::Hidden);
 }
 
 void FrameLoader::load(const FrameLoadRequest& passedRequest)
@@ -3415,19 +3418,19 @@ bool FrameLoaderClient::hasHTMLView() const
     return true;
 }
 
-PassRefPtr<Frame> createWindow(Frame& openerFrame, Frame* lookupFrame, const FrameLoadRequest& request, const WindowFeatures& features, bool& created)
+RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLoadRequest& request, const WindowFeatures& features, bool& created)
 {
     ASSERT(!features.dialog || request.frameName().isEmpty());
 
     created = false;
 
     if (!request.frameName().isEmpty() && request.frameName() != "_blank") {
-        if (RefPtr<Frame> frame = lookupFrame->loader().findFrameForNavigation(request.frameName(), openerFrame.document())) {
+        if (RefPtr<Frame> frame = lookupFrame.loader().findFrameForNavigation(request.frameName(), openerFrame.document())) {
             if (request.frameName() != "_self") {
                 if (Page* page = frame->page())
                     page->chrome().focus();
             }
-            return frame.release();
+            return WTF::move(frame);
         }
     }
 
@@ -3518,7 +3521,7 @@ PassRefPtr<Frame> createWindow(Frame& openerFrame, Frame* lookupFrame, const Fra
     page->chrome().show();
 
     created = true;
-    return frame.release();
+    return WTF::move(frame);
 }
 
 } // namespace WebCore

@@ -147,9 +147,9 @@ void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
         page->connectionWillOpen(connection);
 }
 
-void WebProcessProxy::connectionDidClose(IPC::Connection& connection)
+void WebProcessProxy::processWillShutDown(IPC::Connection& connection)
 {
-    ASSERT(this->connection() == &connection);
+    ASSERT_UNUSED(connection, this->connection() == &connection);
 
     for (const auto& callback : m_pendingFetchWebsiteDataCallbacks.values())
         callback(WebsiteData());
@@ -164,14 +164,14 @@ void WebProcessProxy::connectionDidClose(IPC::Connection& connection)
     m_pendingDeleteWebsiteDataForOriginsCallbacks.clear();
 
     for (auto& page : m_pageMap.values())
-        page->connectionDidClose(connection);
+        page->webProcessWillShutDown();
 
     releaseRemainingIconsForPageURLs();
 }
 
-void WebProcessProxy::disconnect()
+void WebProcessProxy::shutDown()
 {
-    clearConnection();
+    shutDownProcess();
 
     if (m_webConnection) {
         m_webConnection->invalidate();
@@ -185,7 +185,7 @@ void WebProcessProxy::disconnect()
     copyValuesToVector(m_frameMap, frames);
 
     for (size_t i = 0, size = frames.size(); i < size; ++i)
-        frames[i]->disconnect();
+        frames[i]->webProcessWillShutDown();
     m_frameMap.clear();
 
     if (m_downloadProxyMap)
@@ -245,17 +245,7 @@ void WebProcessProxy::removeWebPage(uint64_t pageID)
     if (!m_processPool->usesNetworkProcess() || state() == State::Terminated || !canTerminateChildProcess())
         return;
 
-    abortProcessLaunchIfNeeded();
-
-#if PLATFORM(IOS)
-    if (state() == State::Running) {
-        // On iOS deploy a watchdog in the UI process, since the content may be suspended.
-        // 30s should be sufficient for any outstanding activity to complete cleanly.
-        connection()->terminateSoon(30);
-    }
-#endif
-
-    disconnect();
+    shutDown();
 }
 
 void WebProcessProxy::addVisitedLinkProvider(VisitedLinkProvider& provider)
@@ -527,7 +517,7 @@ void WebProcessProxy::didClose(IPC::Connection&)
     Vector<RefPtr<WebPageProxy>> pages;
     copyValuesToVector(m_pageMap, pages);
 
-    disconnect();
+    shutDown();
 
     for (size_t i = 0, size = pages.size(); i < size; ++i)
         pages[i]->processDidCrash();
@@ -628,7 +618,7 @@ void WebProcessProxy::disconnectFramesFromPage(WebPageProxy* page)
     copyValuesToVector(m_frameMap, frames);
     for (size_t i = 0, size = frames.size(); i < size; ++i) {
         if (frames[i]->page() == page)
-            frames[i]->disconnect();
+            frames[i]->webProcessWillShutDown();
     }
 }
 
@@ -663,8 +653,8 @@ void WebProcessProxy::shouldTerminate(bool& shouldTerminate)
 {
     shouldTerminate = canTerminateChildProcess();
     if (shouldTerminate) {
-        // We know that the web process is going to terminate so disconnect it from the process pool.
-        disconnect();
+        // We know that the web process is going to terminate so start shutting it down in the UI process.
+        shutDown();
     }
 }
 
@@ -765,7 +755,7 @@ void WebProcessProxy::requestTermination()
     if (webConnection())
         webConnection()->didClose();
 
-    disconnect();
+    shutDown();
 }
 
 void WebProcessProxy::enableSuddenTermination()

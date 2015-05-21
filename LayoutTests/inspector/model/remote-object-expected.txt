@@ -994,8 +994,8 @@ EXPRESSION: arr = []; arr.length = 100; arr.fill(1)
     "_type": "object",
     "_subtype": "array",
     "_description": "Array",
-    "_lossless": true,
-    "_overflow": false,
+    "_lossless": false,
+    "_overflow": true,
     "_size": 100,
     "_properties": [
       {
@@ -1045,456 +1045,6 @@ EXPRESSION: arr = []; arr.length = 100; arr.fill(1)
       },
       {
         "_name": "9",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "10",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "11",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "12",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "13",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "14",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "15",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "16",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "17",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "18",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "19",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "20",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "21",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "22",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "23",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "24",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "25",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "26",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "27",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "28",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "29",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "30",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "31",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "32",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "33",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "34",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "35",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "36",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "37",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "38",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "39",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "40",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "41",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "42",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "43",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "44",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "45",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "46",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "47",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "48",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "49",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "50",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "51",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "52",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "53",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "54",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "55",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "56",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "57",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "58",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "59",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "60",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "61",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "62",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "63",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "64",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "65",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "66",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "67",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "68",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "69",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "70",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "71",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "72",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "73",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "74",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "75",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "76",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "77",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "78",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "79",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "80",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "81",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "82",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "83",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "84",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "85",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "86",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "87",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "88",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "89",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "90",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "91",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "92",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "93",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "94",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "95",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "96",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "97",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "98",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "99",
         "_type": "number",
         "_value": "1"
       }
@@ -1578,7 +1128,7 @@ EXPRESSION: new Int32Array(new ArrayBuffer(16))
     "_type": "object",
     "_subtype": "array",
     "_description": "Int32Array",
-    "_lossless": false,
+    "_lossless": true,
     "_overflow": false,
     "_size": 4,
     "_properties": [
@@ -1601,21 +1151,6 @@ EXPRESSION: new Int32Array(new ArrayBuffer(16))
         "_name": "3",
         "_type": "number",
         "_value": "0"
-      },
-      {
-        "_name": "byteOffset",
-        "_type": "number",
-        "_value": "0"
-      },
-      {
-        "_name": "byteLength",
-        "_type": "number",
-        "_value": "16"
-      },
-      {
-        "_name": "buffer",
-        "_type": "object",
-        "_value": "ArrayBuffer"
       }
     ],
     "_entries": null
@@ -1634,7 +1169,7 @@ EXPRESSION: var intArray = new Int32Array(new ArrayBuffer(16)); for (var i = 0; 
     "_type": "object",
     "_subtype": "array",
     "_description": "Int32Array",
-    "_lossless": false,
+    "_lossless": true,
     "_overflow": false,
     "_size": 4,
     "_properties": [
@@ -1657,21 +1192,6 @@ EXPRESSION: var intArray = new Int32Array(new ArrayBuffer(16)); for (var i = 0; 
         "_name": "3",
         "_type": "number",
         "_value": "3"
-      },
-      {
-        "_name": "byteOffset",
-        "_type": "number",
-        "_value": "0"
-      },
-      {
-        "_name": "byteLength",
-        "_type": "number",
-        "_value": "16"
-      },
-      {
-        "_name": "buffer",
-        "_type": "object",
-        "_value": "ArrayBuffer"
       }
     ],
     "_entries": null
@@ -2221,7 +1741,51 @@ EXPRESSION: span = document.createElement('span'); span.id = 'foo'; span
 }
 
 -----------------------------------------------------
-EXPRESSION: document.createTextNode('text')
+EXPRESSION: input = document.createElement('input'); input.type = 'password'; input
+{
+  "_type": "object",
+  "_subtype": "node",
+  "_objectId": "<filtered>",
+  "_description": "input",
+  "_preview": {
+    "_type": "object",
+    "_subtype": "node",
+    "_description": "input",
+    "_lossless": false,
+    "_overflow": true,
+    "_properties": [
+      {
+        "_name": "selectionStart",
+        "_type": "number",
+        "_value": "0"
+      },
+      {
+        "_name": "selectionEnd",
+        "_type": "number",
+        "_value": "0"
+      },
+      {
+        "_name": "selectionDirection",
+        "_type": "string",
+        "_value": "none"
+      },
+      {
+        "_name": "accept",
+        "_type": "string",
+        "_value": ""
+      },
+      {
+        "_name": "alt",
+        "_type": "string",
+        "_value": ""
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: text = document.createTextNode('text content'); text
 {
   "_type": "object",
   "_subtype": "node",
@@ -2237,7 +1801,7 @@ EXPRESSION: document.createTextNode('text')
       {
         "_name": "wholeText",
         "_type": "string",
-        "_value": "text"
+        "_value": "text content"
       },
       {
         "_name": "splitText",
@@ -2252,12 +1816,115 @@ EXPRESSION: document.createTextNode('text')
       {
         "_name": "data",
         "_type": "string",
-        "_value": "text"
+        "_value": "text content"
       },
       {
         "_name": "length",
         "_type": "number",
-        "_value": "4"
+        "_value": "12"
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: comment = document.createComment('comment content'); comment
+{
+  "_type": "object",
+  "_subtype": "node",
+  "_objectId": "<filtered>",
+  "_description": "#comment",
+  "_preview": {
+    "_type": "object",
+    "_subtype": "node",
+    "_description": "#comment",
+    "_lossless": false,
+    "_overflow": true,
+    "_properties": [
+      {
+        "_name": "data",
+        "_type": "string",
+        "_value": "comment content"
+      },
+      {
+        "_name": "length",
+        "_type": "number",
+        "_value": "15"
+      },
+      {
+        "_name": "previousElementSibling",
+        "_type": "object",
+        "_subtype": "null",
+        "_value": "null"
+      },
+      {
+        "_name": "nextElementSibling",
+        "_type": "object",
+        "_subtype": "null",
+        "_value": "null"
+      },
+      {
+        "_name": "substringData",
+        "_type": "function",
+        "_value": ""
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: [document.body, div, span, input, text, comment]
+{
+  "_type": "object",
+  "_subtype": "array",
+  "_objectId": "<filtered>",
+  "_description": "Array",
+  "_size": 6,
+  "_preview": {
+    "_type": "object",
+    "_subtype": "array",
+    "_description": "Array",
+    "_lossless": false,
+    "_overflow": false,
+    "_size": 6,
+    "_properties": [
+      {
+        "_name": "0",
+        "_type": "object",
+        "_subtype": "node",
+        "_value": "<body>"
+      },
+      {
+        "_name": "1",
+        "_type": "object",
+        "_subtype": "node",
+        "_value": "<div class=\"foo bar\">"
+      },
+      {
+        "_name": "2",
+        "_type": "object",
+        "_subtype": "node",
+        "_value": "<span id=\"foo\">"
+      },
+      {
+        "_name": "3",
+        "_type": "object",
+        "_subtype": "node",
+        "_value": "<input type=\"password\">"
+      },
+      {
+        "_name": "4",
+        "_type": "object",
+        "_subtype": "node",
+        "_value": "#text \"text content\""
+      },
+      {
+        "_name": "5",
+        "_type": "object",
+        "_subtype": "node",
+        "_value": "<!--comment content-->"
       }
     ],
     "_entries": null
@@ -2284,29 +1951,19 @@ EXPRESSION: document.head.children
         "_name": "0",
         "_type": "object",
         "_subtype": "node",
-        "_value": "meta"
+        "_value": "<meta>"
       },
       {
         "_name": "1",
         "_type": "object",
         "_subtype": "node",
-        "_value": "script"
+        "_value": "<script>"
       },
       {
         "_name": "2",
         "_type": "object",
         "_subtype": "node",
-        "_value": "script"
-      },
-      {
-        "_name": "item",
-        "_type": "function",
-        "_value": ""
-      },
-      {
-        "_name": "namedItem",
-        "_type": "function",
-        "_value": ""
+        "_value": "<script>"
       }
     ],
     "_entries": null
@@ -2333,29 +1990,19 @@ EXPRESSION: document.getElementsByClassName('my-test')
         "_name": "0",
         "_type": "object",
         "_subtype": "node",
-        "_value": "p.my-test"
+        "_value": "<p class=\"my-test\">"
       },
       {
         "_name": "1",
         "_type": "object",
         "_subtype": "node",
-        "_value": "p.my-test"
+        "_value": "<p class=\"my-test\">"
       },
       {
         "_name": "2",
         "_type": "object",
         "_subtype": "node",
-        "_value": "p.my-test"
-      },
-      {
-        "_name": "constructor",
-        "_type": "object",
-        "_value": "NodeListConstructor"
-      },
-      {
-        "_name": "item",
-        "_type": "function",
-        "_value": ""
+        "_value": "<p class=\"my-test\">"
       }
     ],
     "_entries": null
@@ -2382,29 +2029,19 @@ EXPRESSION: document.querySelectorAll('.my-test')
         "_name": "0",
         "_type": "object",
         "_subtype": "node",
-        "_value": "p.my-test"
+        "_value": "<p class=\"my-test\">"
       },
       {
         "_name": "1",
         "_type": "object",
         "_subtype": "node",
-        "_value": "p.my-test"
+        "_value": "<p class=\"my-test\">"
       },
       {
         "_name": "2",
         "_type": "object",
         "_subtype": "node",
-        "_value": "p.my-test"
-      },
-      {
-        "_name": "constructor",
-        "_type": "object",
-        "_value": "NodeListConstructor"
-      },
-      {
-        "_name": "item",
-        "_type": "function",
-        "_value": ""
+        "_value": "<p class=\"my-test\">"
       }
     ],
     "_entries": null

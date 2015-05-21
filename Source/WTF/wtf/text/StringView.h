@@ -30,6 +30,8 @@
 #include <wtf/Forward.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
+#include <wtf/text/ConversionMode.h>
 #include <wtf/text/LChar.h>
 #include <wtf/text/StringCommon.h>
 
@@ -96,6 +98,8 @@ public:
     WTF_EXPORT_STRING_API RetainPtr<NSString> createNSStringWithoutCopying() const;
 #endif
 
+    WTF_EXPORT_STRING_API CString utf8(ConversionMode = LenientConversion) const;
+
     class UpconvertedCharacters;
     UpconvertedCharacters upconvertedCharacters() const;
 
@@ -156,6 +160,12 @@ bool equal(StringView, StringView);
 bool equal(StringView, const LChar*);
 bool equal(StringView, const char*);
 bool equalIgnoringASCIICase(StringView, StringView);
+WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(StringView a, const char* b, unsigned bLength);
+template<unsigned charactersCount>
+bool equalIgnoringASCIICase(StringView a, const char (&b)[charactersCount])
+{
+    return equalIgnoringASCIICase(a, b, charactersCount - 1);
+}
 
 inline bool operator==(StringView a, StringView b) { return equal(a, b); }
 inline bool operator==(StringView a, const LChar* b) { return equal(a, b); }

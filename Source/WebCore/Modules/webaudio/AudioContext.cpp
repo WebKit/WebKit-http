@@ -1101,23 +1101,23 @@ void AudioContext::decrementActiveSourceCount()
     --m_activeSourceCount;
 }
 
-void AudioContext::suspendContext(std::function<void()> successCallback, std::function<void()> failureCallback, ExceptionCode& ec)
+void AudioContext::suspendContext(std::function<void()> successCallback, FailureCallback failureCallback)
 {
     ASSERT(successCallback);
     ASSERT(failureCallback);
 
     if (isOfflineContext()) {
-        ec = INVALID_STATE_ERR;
+        failureCallback(INVALID_STATE_ERR);
         return;
     }
 
     if (m_state == State::Suspended) {
-        scriptExecutionContext()->postTask(successCallback);
+        successCallback();
         return;
     }
 
     if (m_state == State::Closed || m_state == State::Interrupted || !m_destinationNode) {
-        scriptExecutionContext()->postTask(failureCallback);
+        failureCallback(0);
         return;
     }
 
@@ -1134,23 +1134,23 @@ void AudioContext::suspendContext(std::function<void()> successCallback, std::fu
     });
 }
 
-void AudioContext::resumeContext(std::function<void()> successCallback, std::function<void()> failureCallback, ExceptionCode& ec)
+void AudioContext::resumeContext(std::function<void()> successCallback, FailureCallback failureCallback)
 {
     ASSERT(successCallback);
     ASSERT(failureCallback);
 
     if (isOfflineContext()) {
-        ec = INVALID_STATE_ERR;
+        failureCallback(INVALID_STATE_ERR);
         return;
     }
 
     if (m_state == State::Running) {
-        scriptExecutionContext()->postTask(successCallback);
+        successCallback();
         return;
     }
 
     if (m_state == State::Closed || !m_destinationNode) {
-        scriptExecutionContext()->postTask(failureCallback);
+        failureCallback(0);
         return;
     }
 
@@ -1167,17 +1167,18 @@ void AudioContext::resumeContext(std::function<void()> successCallback, std::fun
     });
 }
 
-void AudioContext::closeContext(std::function<void()> successCallback, std::function<void()>, ExceptionCode& ec)
+void AudioContext::closeContext(std::function<void()> successCallback, FailureCallback failureCallback)
 {
     ASSERT(successCallback);
+    ASSERT(failureCallback);
 
     if (isOfflineContext()) {
-        ec = INVALID_STATE_ERR;
+        failureCallback(INVALID_STATE_ERR);
         return;
     }
 
     if (m_state == State::Closed || !m_destinationNode) {
-        scriptExecutionContext()->postTask(successCallback);
+        successCallback();
         return;
     }
 

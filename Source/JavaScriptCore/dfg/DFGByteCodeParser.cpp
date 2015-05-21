@@ -607,6 +607,8 @@ private:
 
     NodeOrigin currentNodeOrigin()
     {
+        // FIXME: We should set the forExit origin only on those nodes that can exit.
+        // https://bugs.webkit.org/show_bug.cgi?id=145204
         if (m_currentSemanticOrigin.isSet())
             return NodeOrigin(m_currentSemanticOrigin, currentCodeOrigin());
         return NodeOrigin(currentCodeOrigin());
@@ -3164,10 +3166,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
         case op_init_global_const: {
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
+            JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
             addToGraph(
                 PutGlobalVar,
-                OpInfo(m_inlineStackTop->m_codeBlock->globalObject()->assertVariableIsInThisObject(currentInstruction[1].u.variablePointer)),
-                value);
+                OpInfo(globalObject->assertVariableIsInThisObject(currentInstruction[1].u.variablePointer)),
+                weakJSConstant(globalObject), value);
             NEXT_OPCODE(op_init_global_const);
         }
 
@@ -3679,7 +3682,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     ASSERT_UNUSED(entry, watchpoints == entry.watchpointSet());
                 }
                 Node* valueNode = get(VirtualRegister(value));
-                addToGraph(PutGlobalVar, OpInfo(operand), valueNode);
+                addToGraph(PutGlobalVar, OpInfo(operand), weakJSConstant(globalObject), valueNode);
                 if (watchpoints && watchpoints->state() != IsInvalidated) {
                     // Must happen after the store. See comment for GetGlobalVar.
                     addToGraph(NotifyWrite, OpInfo(watchpoints));

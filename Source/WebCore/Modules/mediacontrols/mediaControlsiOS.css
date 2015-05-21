@@ -100,6 +100,7 @@ video::-webkit-media-controls-panel-container {
     height: 50px;
     position: absolute;
     bottom: 0;
+    pointer-events: none;
 }
 
 audio::-webkit-media-controls-panel-container {
@@ -118,6 +119,7 @@ video::-webkit-media-controls-panel-background {
     -webkit-appearance: media-controls-light-bar-background;
     transition: opacity 0.25s linear;
     opacity: 0;
+    pointer-events: none;
 }
 
 audio::-webkit-media-controls-panel-background {
@@ -157,6 +159,7 @@ audio::-webkit-media-controls-panel .hidden {
 video::-webkit-media-controls-panel {
     height: 50px;
     opacity: 0;
+    pointer-events: none;
     -webkit-transform: translate3d(0, 0, 0);
 }
 
@@ -167,6 +170,7 @@ audio::-webkit-media-controls-panel {
 
 video::-webkit-media-controls-panel.show,
 video::-webkit-media-controls-panel.paused {
+    pointer-events: auto;
     opacity: 1;
 }
 
@@ -409,14 +413,14 @@ audio::-webkit-media-controls-time-remaining-display {
 audio::-webkit-media-controls-current-time-display,
 video::-webkit-media-controls-current-time-display {
     min-width: 32px;
-    -webkit-justify-content: right;
+    -webkit-justify-content: flex-end;
     padding-right: 6px;
 }
 
 audio::-webkit-media-controls-time-remaining-display,
 video::-webkit-media-controls-time-remaining-display {
     min-width: 38px;
-    -webkit-justify-content: left;
+    -webkit-justify-content: flex-start;
     padding-left: 6px;
     margin-right: 6px;
 }
@@ -571,6 +575,7 @@ audio::-webkit-media-controls-wireless-playback-status {
     background-size: 131px auto;
     color: rgb(145,145,145);
     font: -apple-system;
+    font-weight: 400;
     vertical-align: text-bottom;
 }
 
@@ -595,6 +600,7 @@ audio::-webkit-media-controls-wireless-playback-text-top {
     font-size: 12pt;
     text-align: center;
     margin: 0px;
+    color: rgb(255,255,255);
 }
 
 video::-webkit-media-controls-wireless-playback-text-bottom,
@@ -630,7 +636,26 @@ audio::-webkit-media-controls-wireless-playback-text-bottom.small {
     display: none;
 }
 
+video::-webkit-media-controls-wireless-playback-status.optimized,
+audio::-webkit-media-controls-wireless-playback-status.optimized
+{
+    background-size: 304px auto;
+    background-position: 50% calc(.5 * (100% - 25px));
+}
+
+video::-webkit-media-controls-wireless-playback-text-top.optimized,
+audio::-webkit-media-controls-wireless-playback-text-top.optimized {
+    top: initial;
+    bottom: 0;
+}
+
+video::-webkit-media-controls-wireless-playback-text-bottom.optimized,
+audio::-webkit-media-controls-wireless-playback-text-bottom.optimized {
+    display: none;
+}
+
 video::-webkit-media-controls-wireless-playback-status.hidden,
 audio::-webkit-media-controls-wireless-playback-status.hidden {
     display: none;
 }
+

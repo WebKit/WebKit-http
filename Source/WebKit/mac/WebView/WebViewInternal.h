@@ -37,7 +37,7 @@
 #import <WebCore/AlternativeTextClient.h>
 #import <WebCore/FindOptions.h>
 #import <WebCore/FloatRect.h>
-#import <WebCore/HTMLMediaElement.h>
+#import <WebCore/HTMLMediaElementEnums.h>
 #import <WebCore/LayoutMilestones.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/TextIndicatorWindow.h>
@@ -63,6 +63,11 @@ struct DictationAlternative;
 struct DictionaryPopupInfo;
 class WebMediaPlaybackTargetPicker;
 class WebSelectionServiceController;
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#import <WebCore/MediaProducer.h>
+#endif
+
 #endif
 
 @class WebActionMenuController;
@@ -242,7 +247,7 @@ OBJC_CLASS NSTextAlternatives;
 - (void)_preferencesChanged:(WebPreferences *)preferences;
 
 #if ENABLE(VIDEO) && defined(__cplusplus)
-- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElement::VideoFullscreenMode)mode;
+- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)mode;
 - (void)_exitVideoFullscreen;
 #endif
 

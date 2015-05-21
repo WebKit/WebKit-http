@@ -747,12 +747,57 @@ InjectedScript.prototype = {
         try {
             if (typeof obj.splice === "function" && isFinite(obj.length))
                 return "array";
-            if (Object.prototype.toString.call(obj) === "[object Arguments]" && isFinite(obj.length)) // arguments.
-                return "array";
         } catch (e) {
         }
 
         return null;
+    },
+
+    _nodeDescription: function(node)
+    {
+        var isXMLDocument = node.ownerDocument && !!node.ownerDocument.xmlVersion;
+        var description = isXMLDocument ? node.nodeName : node.nodeName.toLowerCase();
+
+        switch (node.nodeType) {
+        case 1: // Node.ELEMENT_NODE
+            if (node.id)
+                description += "#" + node.id;
+            if (node.className)
+                description += "." + node.className.trim().replace(/\s+/g, ".");
+            return description;
+
+        default:
+            return description;
+        }
+    },
+
+    _nodePreview: function(node)
+    {
+        var isXMLDocument = node.ownerDocument && !!node.ownerDocument.xmlVersion;
+        var nodeName = isXMLDocument ? node.nodeName : node.nodeName.toLowerCase();
+
+        switch (node.nodeType) {
+        case 1: // Node.ELEMENT_NODE
+            if (node.id)
+                return "<" + nodeName + " id=\"" + node.id + "\">";
+            if (node.className)
+                return "<" + nodeName + " class=\"" + node.className + "\">";
+            if (nodeName === "input" && node.type)
+                return "<" + nodeName + " type=\"" + node.type + "\">";
+            return "<" + nodeName + ">";
+
+        case 3: // Node.TEXT_NODE
+            return nodeName + " \"" + node.nodeValue + "\"";
+
+        case 8: // Node.COMMENT_NODE
+            return "<!--" + node.nodeValue + "-->";
+
+        case 10: // Node.DOCUMENT_TYPE_NODE
+            return "<!DOCTYPE " + nodeName + ">";
+
+        default:
+            return nodeName;
+        }
     },
 
     _describe: function(obj)
@@ -774,20 +819,8 @@ InjectedScript.prototype = {
         if (subtype === "error")
             return toString(obj);
 
-        if (subtype === "node") {
-            var description = obj.nodeName.toLowerCase();
-            switch (obj.nodeType) {
-            case 1 /* Node.ELEMENT_NODE */:
-                description += obj.id ? "#" + obj.id : "";
-                var className = obj.className;
-                description += (className && typeof className === "string") ? "." + className.trim().replace(/\s+/g, ".") : "";
-                break;
-            case 10 /*Node.DOCUMENT_TYPE_NODE */:
-                description = "<!DOCTYPE " + description + ">";
-                break;
-            }
-            return description;
-        }
+        if (subtype === "node")
+            return this._nodeDescription(obj);
 
         var className = InjectedScriptHost.internalConstructorName(obj);
         if (subtype === "array")
@@ -1002,7 +1035,7 @@ InjectedScript.RemoteObject.prototype = {
 
         var propertiesThreshold = {
             properties: isTableRowsRequest ? 1000 : Math.max(5, firstLevelKeysCount),
-            indexes: isTableRowsRequest ? 1000 : Math.max(100, firstLevelKeysCount)
+            indexes: isTableRowsRequest ? 1000 : Math.max(10, firstLevelKeysCount)
         };
 
         try {
@@ -1053,12 +1086,12 @@ InjectedScript.RemoteObject.prototype = {
             if (name === "__proto__")
                 continue;
 
-            // Do not show "length" on array like objects in preview.
-            if (this.subtype === "array" && name === "length")
+            // For arrays, only allow indexes.
+            if (this.subtype === "array" && !isUInt32(name))
                 continue;
 
             // Do not show non-enumerable non-own properties. Special case to allow array indexes that may be on the prototype.
-            if (!descriptor.enumerable && !descriptor.isOwn && !(this.subtype === "array" && isUInt32(name)))
+            if (!descriptor.enumerable && !descriptor.isOwn && this.subtype !== "array")
                 continue;
 
             // If we have a filter, only show properties in the filter.
@@ -1133,8 +1166,10 @@ InjectedScript.RemoteObject.prototype = {
                     preview.overflow = true;
             } else {
                 var description = "";
-                if (type !== "function" || subtype === "class")
-                    description = this._abbreviateString(injectedScript._describe(value), maxLength, subtype === "regexp");
+                if (type !== "function" || subtype === "class") {
+                    var fullDescription = subtype === "node" ? injectedScript._nodePreview(value) : injectedScript._describe(value);
+                    description = this._abbreviateString(fullDescription, maxLength, subtype === "regexp");
+                }
                 property.value = description;
                 preview.lossless = false;
             }
