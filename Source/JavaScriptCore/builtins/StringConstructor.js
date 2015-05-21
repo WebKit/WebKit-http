@@ -37,17 +37,7 @@ function raw(template) {
 
     var numberOfSubstitutions = arguments.length - 1;
 
-    var maxSafeInteger = 0x1FFFFFFFFFFFFF;
-    var numberValue = @Number(rawSegments.length);
-    var lengthValue;
-    if (numberValue !== numberValue)  // isNaN(numberValue)
-        lengthValue = 0;
-    else if (numberValue === 0 || !@isFinite(numberValue))
-        lengthValue = numberValue;
-    else
-        lengthValue = (numberValue > 0 ? 1 : -1) * @floor(@abs(numberValue));
-    // originally Math.min(Math.max(length, 0), maxSafeInteger));
-    var segmentCount = lengthValue > 0 ? (lengthValue < maxSafeInteger ? lengthValue : maxSafeInteger) : 0;
+    var segmentCount = @ToLength(rawSegments.length);
 
     if (segmentCount <= 0)
         return '';

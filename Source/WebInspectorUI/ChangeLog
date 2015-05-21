@@ -1,3 +1,277 @@
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix WebInspector.StackTrace style
+        https://bugs.webkit.org/show_bug.cgi?id=145240
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/StackTrace.js:
+        Reorder and add our usual marker comments.
+
+2015-05-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Preview for NodeList / array like collections
+        https://bugs.webkit.org/show_bug.cgi?id=145177
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendPreview):
+        Show the class name for a non-basic-Array, but still hide
+        it for a basic Array.
+
+2015-05-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Convert stackTrace from raw payload data to an array of CallFrames
+        https://bugs.webkit.org/show_bug.cgi?id=144982
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/LogManager.js:
+        * UserInterface/Main.html:
+        * UserInterface/Models/CallFrame.js:
+        (WebInspector.CallFrame.fromPayload):
+        Consider an empty string url as a native code as it was in 
+        WebInspector.ConsoleMessageView.prototype._firstNonNativeCallFrame
+
+        * UserInterface/Models/ConsoleMessage.js:
+        (WebInspector.ConsoleMessage):
+        Convert _stackTrace from an array of payload objects to WebInspector.StackTrace model.
+
+        * UserInterface/Models/StackTrace.js: Added.
+        (WebInspector.StackTrace):
+        (WebInspector.StackTrace.prototype.get callFrames):
+        (WebInspector.StackTrace.prototype.get firstNonNativeCallFrame): Added.
+        (WebInspector.StackTrace.fromPayload):
+        * UserInterface/Test.html:
+        * UserInterface/Views/CallFrameView.js:
+        (WebInspector.CallFrameView):
+        Don't show a URL when sourceCodeLocation is missing, fix webkit.org/b/145071.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView):
+        (WebInspector.ConsoleMessageView.prototype.toClipboardString):
+        (WebInspector.ConsoleMessageView.prototype._appendLocationLink):
+        (WebInspector.ConsoleMessageView.prototype._appendStackTrace):
+        (WebInspector.ConsoleMessageView.prototype._shouldShowStackTrace):
+        (WebInspector.ConsoleMessageView.prototype._linkifyCallFrame):
+        (WebInspector.ConsoleMessageView.prototype._firstNonNativeCallFrame): Deleted.
+
+2015-05-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Reliability of Closing and Reopening Elements Tab
+        https://bugs.webkit.org/show_bug.cgi?id=145139
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.highlightSearchResults):
+        (WebInspector.DOMTreeElement.prototype.hideSearchHighlights):
+        (WebInspector.DOMTreeElement.prototype.emphasizeSearchHighlight.animationEnded):
+        (WebInspector.DOMTreeElement.prototype.emphasizeSearchHighlight):
+        (WebInspector.DOMTreeElement.prototype._updateChildren):
+        (WebInspector.DOMTreeElement.prototype.adjustCollapsedRange):
+        (WebInspector.DOMTreeElement.prototype._startEditingAsHTML.dispose):
+        (WebInspector.DOMTreeElement.prototype._startEditingAsHTML):
+        (WebInspector.DOMTreeElement.prototype.updateTitle):
+        Stop using the `delete` operator.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.setVisible):
+        Trigger an update when the outline is made visible.
+
+        * UserInterface/Views/FrameDOMTreeContentView.js:
+        (WebInspector.FrameDOMTreeContentView.prototype._rootDOMNodeAvailable):
+        Provide a reasonable default selection if there is no body or document element.
+        For example in an augmented DOM tree.
+
+2015-05-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Tab Restoration incorrectly makes ContentViews "shown" in background tabs
+        https://bugs.webkit.org/show_bug.cgi?id=145080
+
+        Reviewed by Timothy Hatcher.
+
+        Many tabs have their own content browser / navigation sidebar. During
+        state restoration, each tab would immediately try to restore an
+        appropriate ContentView after the load / navigation. However, in doing
+        so, we weren't respecting whether or not the Tab the ContentBrowser
+        was in was hidden or not, so ContentViews in background tags were
+        still being treated as shown/visible.
+
+        This patch changes state restoration to only affect the foreground
+        tab, and be delayed on all background tabs until that tab is shown.
+        This reduces the amount of work on load and navigation to just a
+        single tab instead of all tabs. Most importantly, it avoids having
+        performing work on ContentBrowsers that are non-visible, so state
+        restoration only happens for visible ContentBrowsers.
+
+        For simplicity, in the case of a delayed tab restoration triggered
+        by the user switching tabs, we don't try twice (like we occasionally
+        do on load/reload). We could add back some hueristic here if needed.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector.activateExtraDomains):
+        (WebInspector._mainResourceDidChange):
+        (WebInspector._restoreCookieForOpenTabs):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+
+        * UserInterface/Views/TabContentView.js:
+        (WebInspector.TabContentView.prototype.shown):
+        (WebInspector.TabContentView.prototype.restoreStateFromCookie):
+        (WebInspector.TabContentView.prototype.saveStateToCookie):
+        When asked to restore state, save that logic until the next time the tab is shown.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.get visible):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.editingControllerDidStartEditing):
+        (WebInspector.SourceCodeTextEditor.prototype._setTypeTokenAnnotatorEnabledState): Deleted.
+        Although this didn't actually catch the issue, it could potentially
+        catch other issues in the future. We don't want to enable the annotators
+        in a non-visible text editor, as it could be a performance issue.
+
+2015-05-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: empty timeline should not use previous timeline's zoom interval
+        https://bugs.webkit.org/show_bug.cgi?id=132754
+
+        Reviewed by Joseph Pecoraro.
+
+        When a timeline recording is started in response to a provisional load, TimelineManager should check whether
+        the main resource url is changing before loading a new timeline recording. If the main resource is changing,
+        set the selection start, selection duration, and duration-per-pixel settings of the TimelineOverview to their
+        default values.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager):
+        (WebInspector.TimelineManager.prototype.isCapturingPageReload):
+        (WebInspector.TimelineManager.prototype.capturingStopped):
+        (WebInspector.TimelineManager.prototype.pageDidLoad):
+        (WebInspector.TimelineManager.prototype._startAutoCapturing):
+        Added a property for checking whether auto capture was triggered by a page reload.
+
+        * UserInterface/Views/LinearTimelineOverview.js:
+        (WebInspector.LinearTimelineOverview):
+        Increase default selection time to 15 seconds.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        Reset selection and zoom if TimelineManager isn't capturing in response to a page reload.
+
+        (WebInspector.TimelineOverview.prototype.reset):
+        Reset selection and zoom.
+
+        (WebInspector.TimelineOverview.prototype._timeRangeSelectionChanged):
+        (WebInspector.TimelineOverview.prototype._resetSelection):
+        Added a helper function for resetting selection and zoom to their default values.
+
+2015-05-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Timeline data grid displays wrong records after switching between Timelines/Frames mode
+        https://bugs.webkit.org/show_bug.cgi?id=145084
+
+        Reviewed by Timothy Hatcher.
+
+        Update timeline sidebar filter whenever the view mode changes.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject.get if.get if):
+        (WebInspector.TimelineSidebarPanel.get else):
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject.get if):
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject):
+
+2015-05-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Bump image format number to force image regeneration
+        https://bugs.webkit.org/show_bug.cgi?id=145074
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/ImageUtilities.js:
+
+2015-05-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce type annotation update frequency
+        https://bugs.webkit.org/show_bug.cgi?id=145066
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        Reduce the frequency which could commonly be 16-24ms
+        to a minimum of 100ms and maximum of 2000ms.
+
+2015-05-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix some possible event listener leakers in content views
+        https://bugs.webkit.org/show_bug.cgi?id=145068
+
+        Reviewed by Timothy Hatcher.
+
+        Now that some content views can be closed that weren't closable before, ensure
+        we clean up after global event listeners that may strongly reference "this".
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView.prototype.closed):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.close):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.prototype.closed):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype.closed):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype.closed):
+        * UserInterface/Views/ScriptContentView.js:
+        (WebInspector.ScriptContentView.prototype.closed):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype.closed):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.close):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView.prototype.closed):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype.closed):
+        (WebInspector.TimelineDataGrid.prototype.handleEvent):
+
+2015-05-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Initiator Popovers no longer work in Layout Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=145067
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LayoutTimelineDataGrid.js:
+        (WebInspector.LayoutTimelineDataGrid.prototype.callFramePopoverAnchorElement):
+        Update the column name, which changed in r183134.
+
+2015-05-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update the New Tab button disabled state after extra domains are activated
+        https://bugs.webkit.org/show_bug.cgi?id=145028
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.activateExtraDomains):
+
+2015-05-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Current time marker is always at zero in Rendering Frames ruler
+        https://bugs.webkit.org/show_bug.cgi?id=144518
+
+        Reviewed by Timothy Hatcher.
+
+        The current and end time values for the rendering frame timeline overview should always be equal to the frame
+        number of the last record in the rendering frames timeline.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.updateLayout):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimes):
+        (WebInspector.TimelineRecordingContentView.prototype._recordingTimesUpdated):
+
 2015-05-11  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Move Windows build target to Windows 7 (or newer)

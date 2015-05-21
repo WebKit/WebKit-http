@@ -799,10 +799,8 @@ void Heap::clearRememberedSet(Vector<const JSCell*>& rememberedSet)
 {
 #if ENABLE(GGC)
     GCPHASE(ClearRememberedSet);
-    for (auto* cell : rememberedSet) {
-        MarkedBlock::blockFor(cell)->clearRemembered(cell);
+    for (auto* cell : rememberedSet)
         const_cast<JSCell*>(cell)->setRemembered(false);
-    }
 #else
     UNUSED_PARAM(rememberedSet);
 #endif
@@ -976,7 +974,6 @@ void Heap::addToRememberedSet(const JSCell* cell)
     ASSERT(!Options::enableConcurrentJIT() || !isCompilationThread());
     if (isRemembered(cell))
         return;
-    MarkedBlock::blockFor(cell)->setRemembered(cell);
     const_cast<JSCell*>(cell)->setRemembered(true);
     m_slotVisitor.unconditionallyAppend(const_cast<JSCell*>(cell));
 }
@@ -1213,9 +1210,12 @@ void Heap::snapshotMarkedSpace()
 {
     GCPHASE(SnapshotMarkedSpace);
 
-    if (m_operationInProgress == EdenCollection)
-        m_blockSnapshot = m_objectSpace.blocksWithNewObjects();
-    else {
+    if (m_operationInProgress == EdenCollection) {
+        m_blockSnapshot.appendVector(m_objectSpace.blocksWithNewObjects());
+        // Sort and deduplicate the block snapshot since we might be appending to an unfinished work list.
+        std::sort(m_blockSnapshot.begin(), m_blockSnapshot.end());
+        m_blockSnapshot.shrink(std::unique(m_blockSnapshot.begin(), m_blockSnapshot.end()) - m_blockSnapshot.begin());
+    } else {
         m_blockSnapshot.resizeToFit(m_objectSpace.blocks().set().size());
         MarkedBlockSnapshotFunctor functor(m_blockSnapshot);
         m_objectSpace.forEachBlock(functor);
@@ -1231,13 +1231,13 @@ void Heap::deleteSourceProviderCaches()
 void Heap::notifyIncrementalSweeper()
 {
     GCPHASE(NotifyIncrementalSweeper);
-    if (m_operationInProgress == EdenCollection)
-        m_sweeper->addBlocksAndContinueSweeping(WTF::move(m_blockSnapshot));
-    else {
+
+    if (m_operationInProgress == FullCollection) {
         if (!m_logicallyEmptyWeakBlocks.isEmpty())
             m_indexOfNextLogicallyEmptyWeakBlockToSweep = 0;
-        m_sweeper->startSweeping(WTF::move(m_blockSnapshot));
     }
+
+    m_sweeper->startSweeping();
 }
 
 void Heap::rememberCurrentlyExecutingCodeBlocks()

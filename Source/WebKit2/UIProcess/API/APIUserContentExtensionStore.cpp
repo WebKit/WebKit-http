@@ -76,7 +76,7 @@ static String constructedPath(const String& base, const String& identifier)
 
 const size_t ContentExtensionFileHeaderSize = sizeof(uint32_t) + 4 * sizeof(uint64_t);
 struct ContentExtensionMetaData {
-    uint32_t version { 2 };
+    uint32_t version { UserContentExtensionStore::CurrentContentExtensionFileVersion };
     uint64_t actionsSize { 0 };
     uint64_t filtersWithoutDomainsBytecodeSize { 0 };
     uint64_t filtersWithDomainBytecodeSize { 0 };
@@ -134,19 +134,7 @@ static bool decodeContentExtensionMetaData(ContentExtensionMetaData& metaData, c
 
 static bool openAndMapContentExtension(const String& path, ContentExtensionMetaData& metaData, Data& fileData)
 {
-    auto fd = WebCore::openFile(path, WebCore::OpenForRead);
-    if (fd == WebCore::invalidPlatformFileHandle)
-        return false;
-
-    long long fileSize = 0;
-    if (!WebCore::getFileSize(fd, fileSize)) {
-        WebCore::closeFile(fd);
-        return false;
-    }
-
-    fileData = mapFile(fd, 0, static_cast<size_t>(fileSize));
-    WebCore::closeFile(fd);
-
+    fileData = mapFile(WebCore::fileSystemRepresentation(path).data());
     if (fileData.isNull())
         return false;
 
@@ -270,9 +258,7 @@ static std::error_code compiledToFile(String&& json, const String& finalFilePath
     if (compilationClient.hadErrorWhileWritingToFile())
         return UserContentExtensionStore::Error::CompileFailed;
     
-    mappedData = mapFile(temporaryFileHandle, 0, metaData.fileSize());
-    WebCore::closeFile(temporaryFileHandle);
-
+    mappedData = adoptAndMapFile(temporaryFileHandle, 0, metaData.fileSize());
     if (mappedData.isNull())
         return UserContentExtensionStore::Error::CompileFailed;
 
@@ -321,6 +307,13 @@ void UserContentExtensionStore::lookupContentExtension(const WTF::String& identi
         if (!openAndMapContentExtension(path, metaData, fileData)) {
             RunLoop::main().dispatch([self, completionHandler] {
                 completionHandler(nullptr, Error::LookupFailed);
+            });
+            return;
+        }
+        
+        if (metaData.version != UserContentExtensionStore::CurrentContentExtensionFileVersion) {
+            RunLoop::main().dispatch([self, completionHandler] {
+                completionHandler(nullptr, Error::VersionMismatch);
             });
             return;
         }
@@ -400,6 +393,8 @@ const std::error_category& userContentExtensionStoreErrorCategory()
             switch (static_cast<UserContentExtensionStore::Error>(errorCode)) {
             case UserContentExtensionStore::Error::LookupFailed:
                 return "Unspecified error during lookup.";
+            case UserContentExtensionStore::Error::VersionMismatch:
+                return "Version of file does not match version of interpreter.";
             case UserContentExtensionStore::Error::CompileFailed:
                 return "Unspecified error during compile.";
             case UserContentExtensionStore::Error::RemoveFailed:

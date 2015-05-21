@@ -92,7 +92,6 @@ audio::-webkit-media-controls-panel {
 }
 
 video::-webkit-media-controls-panel {
-    cursor: none;
     opacity: 0;
 }
 
@@ -170,13 +169,15 @@ audio::-webkit-media-controls-rewind-button {
     min-width: 16px;
     height: 18px;
     margin-bottom: 1px;
-    margin-left: 16px;
+    margin-left: 8px;
+    margin-right: 8px;
 }
 
 video::-webkit-media-controls-play-button,
 audio::-webkit-media-controls-play-button {
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 15" fill="rgba(255,255,255,0.45)"><rect x="0" y="1" width="4" height="13"/><rect x="8" y="1" width="4" height="13"/></svg>');
-    margin-left: 16px;
+    margin-left: 8px;
+    margin-right: 8px;
     width: 12px;
     min-width: 12px;
 }
@@ -192,7 +193,8 @@ audio::-webkit-media-controls-panel .mute-box {
     width: 14px;
     min-width: 14px;
     height: 25px;
-    margin-right: 16px;
+    margin-right: 8px;
+    margin-left: 8px;
     position: relative;
     display: -webkit-flex;
     -webkit-flex-direction: column;
@@ -307,7 +309,8 @@ video::-webkit-media-controls-volume-min-button {
 
 video::-webkit-media-controls-wireless-playback-picker-button,
 audio::-webkit-media-controls-wireless-playback-picker-button {
-    margin-right: 16px;
+    margin-right: 8px;
+    margin-left: 8px;
     width: 16px;
     min-width: 16px;
 }
@@ -321,7 +324,8 @@ video::-webkit-media-controls-toggle-closed-captions-button,
 audio::-webkit-media-controls-toggle-closed-captions-button {
     width: 16px;
     min-width: 16px;
-    margin-right: 16px;
+    margin-right: 8px;
+    margin-left: 8px;
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" stroke="rgba(255,255,255,0.45)"  fill="none"><defs> <clipPath id="cut-hole"><rect x="0" y="1" width="16" height="10"/><rect x="0" y="11" width="9" height="1"/><rect x="11" y="11" width="5" height="1"/></clipPath></defs> <rect x="0.5" y="1.5" rx="1" ry="1" width="15" height="10" clip-path="url(#cut-hole)"/><path d="M 2,6.5 h 4"/><path d="M 7,6.5 h 7"/><path d="M 3,8.5 h 2"/><path d="M 6,8.5 h 3"/><path d="M 10,8.5 h 3"/><path d="M 8.5,11.5 L 8.5,13.75 L 11,11"/></svg>');
     outline: 0;
 }
@@ -420,6 +424,7 @@ video::-webkit-media-controls-fullscreen-button,
 audio::-webkit-media-controls-fullscreen-button {
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="rgba(255,255,255,0.45)" fill="none"><path d="M 7,1.5 L 12.5,1.5 L 12.5,7"/><path d="M 0.5,8 L 0.5,13.5 L 6,13.5"/><path stroke-linecap="round" d="M 12.5,1.5 L 7.5,6.5"/><path stroke-linecap="round" d="M 0.5,13.5 L 5.5,8.5"/></svg>');
     margin-right: 7px;
+    margin-left: 8px;
     width: 14px;
     min-width: 14px;
 }
@@ -428,6 +433,7 @@ video::-webkit-media-controls-fullscreen-button.exit,
 audio::-webkit-media-controls-fullscreen-button.exit {
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="rgba(255,255,255,0.45)" fill="none"><path d="M 7.5,1 L 7.5,6.5 L 13,6.5"/><path d="M 0,8.5 L 5.5,8.5 L 5.5,14"/><path stroke-linecap="round" d="M 7.5,6.5 L 12.5,1.5"/><path stroke-linecap="round" d="M 5.5,8.5 L 0.5,13.5"/></svg>');
     margin-right: 11px;
+    margin-left: 0px;
     margin-top: 6px;
 }
 
@@ -513,7 +519,7 @@ audio::-webkit-media-controls-current-time-display {
 video::-webkit-media-controls-time-remaining-display,
 audio::-webkit-media-controls-time-remaining-display {
     margin-left: 8px;
-    margin-right: 16px;
+    margin-right: 8px;
     width: 37px;
     min-width: 37px;
     -webkit-justify-content: flex-start;
@@ -592,7 +598,9 @@ audio::-webkit-media-controls-panel.hidden {
 }
 
 video::-webkit-media-controls-panel .hidden,
-audio::-webkit-media-controls-panel .hidden {
+audio::-webkit-media-controls-panel .hidden,
+video::-webkit-media-controls-panel .dropped,
+audio::-webkit-media-controls-panel .dropped {
     display: none;
 }
 
@@ -769,12 +777,14 @@ video:-webkit-full-screen::-webkit-media-controls-toggle-closed-captions-button,
 audio:-webkit-full-screen::-webkit-media-controls-toggle-closed-captions-button {
     margin-top: 6px;
     margin-right:24px;
+    margin-left: 0px;
 }
 
 video:-webkit-full-screen::-webkit-media-controls-wireless-playback-picker-button,
 audio:-webkit-full-screen::-webkit-media-controls-wireless-playback-picker-button {
     margin-top: 6px;
     margin-right:24px;
+    margin-left: 0px;
 }
 
 video:-webkit-full-screen::-webkit-media-controls-closed-captions-container {
@@ -956,10 +966,11 @@ audio::-webkit-media-controls-wireless-playback-text-top {
     top: 15pt;
     width: 100%;
     line-height: 12pt;
-    height: 12pt;
+    height: 13pt;
     font-size: 12pt;
     text-align: center;
     margin: 0px;
+    background-color: black;
 }
 
 video::-webkit-media-controls-wireless-playback-text-bottom,
@@ -969,13 +980,14 @@ audio::-webkit-media-controls-wireless-playback-text-bottom {
     left: 5%;
     width: 90%;
     line-height: 10pt;
-    height: 10pt;
+    height: 11pt;
     font-size: 10pt;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0px;
+    background-color: black;
 }
 
 video::-webkit-media-controls-wireless-playback-status.small,

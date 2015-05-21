@@ -32,110 +32,15 @@
 
 #if ENABLE(STREAMS_API)
 
-#include "NotImplemented.h"
-#include <wtf/RefCountedLeakCounter.h>
-
 namespace WebCore {
 
-DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, readableStreamReaderCounter, ("ReadableStreamReader"));
-
-ReadableStreamReader::ReadableStreamReader(ReadableStream& stream)
-    : ActiveDOMObject(stream.scriptExecutionContext())
-    , m_stream(&stream)
+void ReadableStreamReader::closed(ReadableStream::ClosedSuccessCallback successCallback, ReadableStream::ClosedFailureCallback failureCallback)
 {
-#ifndef NDEBUG
-    readableStreamReaderCounter.increment();
-#endif
-    suspendIfNeeded();
-}
-
-ReadableStreamReader::~ReadableStreamReader()
-{
-#ifndef NDEBUG
-    readableStreamReaderCounter.decrement();
-#endif
-    if (m_stream) {
-        m_stream->releaseButKeepLocked();
-        m_stream = nullptr;
-    }
-}
-
-void ReadableStreamReader::initialize()
-{
-    ASSERT_WITH_MESSAGE(!m_stream->isLocked(), "A ReadableStream cannot be locked by two readers at the same time.");
-    m_stream->lock(*this);
-    if (m_stream->internalState() == ReadableStream::State::Closed) {
-        changeStateToClosed();
-        return;
-    }
-    if (m_stream->internalState() == ReadableStream::State::Errored) {
-        changeStateToErrored();
-        return;
-    }
-}
-
-void ReadableStreamReader::releaseStreamAndClean()
-{
-    // Releasing callbacks may trigger unrefing of the reader.
-    Ref<ReadableStreamReader> protect(*this);
-
-    ASSERT(m_stream);
-    m_stream->release();
-    m_stream = nullptr;
-
-    m_closedSuccessCallback = nullptr;
-    m_closedErrorCallback = nullptr;
-}
-
-void ReadableStreamReader::closed(ClosedSuccessCallback successCallback, ClosedErrorCallback errorCallback)
-{
-    if (m_state == State::Closed) {
+    if (m_stream.isReadable() && m_stream.reader() != this) {
         successCallback();
         return;
     }
-    if (m_state == State::Errored) {
-        errorCallback();
-        return;
-    }
-    m_closedSuccessCallback = WTF::move(successCallback);
-    m_closedErrorCallback = WTF::move(errorCallback);
-}
-
-void ReadableStreamReader::changeStateToClosed()
-{
-    ASSERT(m_state == State::Readable);
-    m_state = State::Closed;
-
-    if (m_closedSuccessCallback)
-        m_closedSuccessCallback();
-
-    // FIXME: Implement read promise fulfilling.
-
-    releaseStreamAndClean();
-}
-
-void ReadableStreamReader::changeStateToErrored()
-{
-    ASSERT(m_state == State::Readable);
-    m_state = State::Errored;
-
-    if (m_closedErrorCallback)
-        m_closedErrorCallback();
-
-    // FIXME: Implement read promise rejection.
-
-    releaseStreamAndClean();
-}
-
-const char* ReadableStreamReader::activeDOMObjectName() const
-{
-    return "ReadableStreamReader";
-}
-
-bool ReadableStreamReader::canSuspendForPageCache() const
-{
-    // FIXME: We should try and do better here.
-    return false;
+    m_stream.closed(WTF::move(successCallback), WTF::move(failureCallback));
 }
 
 }

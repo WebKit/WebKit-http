@@ -1,3 +1,282 @@
+2015-05-19  Andreas Kling  <akling@apple.com>
+
+        Give StringView a utf8() API.
+        <https://webkit.org/b/145201>
+
+        Reviewed by Anders Carlsson
+
+        Added an LChar version of StringImpl::utf8ForCharacters() and use that to give
+        StringView a utf8() API just like String has.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::utf8ForCharacters):
+        * wtf/text/StringImpl.h:
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::utf8):
+        * wtf/text/StringView.h:
+
+2015-05-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Move AtomicStringImpl table related operations from AtomicString to AtomicStringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=145109
+
+        Reviewed by Darin Adler.
+
+        Now AtomicStringImpl table operations are located in AtomicString.
+        But they should be under AtomicStringImpl.
+        This patch simply moves these operations to AtomicStringImpl.
+
+        And this patch renames static AtomicString::find to static AtomicStringImpl::lookUp
+        because it conflicts with AtomicStringImpl's member function name.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.vcxproj/copy-files.cmd:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::lower):
+        (WTF::AtomicString::convertToASCIILowercase):
+        (WTF::AtomicString::fromUTF8Internal):
+        (WTF::AtomicStringTableLocker::AtomicStringTableLocker): Deleted.
+        (WTF::stringTable): Deleted.
+        (WTF::addToStringTable): Deleted.
+        (WTF::CStringTranslator::hash): Deleted.
+        (WTF::CStringTranslator::equal): Deleted.
+        (WTF::CStringTranslator::translate): Deleted.
+        (WTF::AtomicString::add): Deleted.
+        (WTF::UCharBufferTranslator::hash): Deleted.
+        (WTF::UCharBufferTranslator::equal): Deleted.
+        (WTF::UCharBufferTranslator::translate): Deleted.
+        (WTF::HashAndCharactersTranslator::hash): Deleted.
+        (WTF::HashAndCharactersTranslator::equal): Deleted.
+        (WTF::HashAndCharactersTranslator::translate): Deleted.
+        (WTF::HashAndUTF8CharactersTranslator::hash): Deleted.
+        (WTF::HashAndUTF8CharactersTranslator::equal): Deleted.
+        (WTF::HashAndUTF8CharactersTranslator::translate): Deleted.
+        (WTF::SubstringTranslator::translate): Deleted.
+        (WTF::SubstringTranslator8::hash): Deleted.
+        (WTF::SubstringTranslator8::equal): Deleted.
+        (WTF::SubstringTranslator16::hash): Deleted.
+        (WTF::SubstringTranslator16::equal): Deleted.
+        (WTF::LCharBufferTranslator::hash): Deleted.
+        (WTF::LCharBufferTranslator::equal): Deleted.
+        (WTF::LCharBufferTranslator::translate): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::hash): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::equal): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::translate): Deleted.
+        (WTF::AtomicString::addFromLiteralData): Deleted.
+        (WTF::AtomicString::addSlowCase): Deleted.
+        (WTF::AtomicString::remove): Deleted.
+        (WTF::AtomicString::findSlowCase): Deleted.
+        (WTF::AtomicString::findInternal): Deleted.
+        (WTF::AtomicString::isInAtomicStringTable): Deleted.
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+        (WTF::AtomicString::fromUTF8):
+        (WTF::AtomicString::find): Deleted.
+        (WTF::AtomicString::add): Deleted.
+        (WTF::AtomicString::addWithStringTableProvider): Deleted.
+        * wtf/text/AtomicStringImpl.cpp: Copied from Source/WTF/wtf/text/AtomicString.cpp.
+        (WTF::AtomicStringTableLocker::AtomicStringTableLocker):
+        (WTF::stringTable):
+        (WTF::addToStringTable):
+        (WTF::CStringTranslator::hash):
+        (WTF::CStringTranslator::equal):
+        (WTF::CStringTranslator::translate):
+        (WTF::AtomicStringImpl::add):
+        (WTF::UCharBufferTranslator::hash):
+        (WTF::UCharBufferTranslator::equal):
+        (WTF::UCharBufferTranslator::translate):
+        (WTF::HashAndCharactersTranslator::hash):
+        (WTF::HashAndCharactersTranslator::equal):
+        (WTF::HashAndCharactersTranslator::translate):
+        (WTF::HashAndUTF8CharactersTranslator::hash):
+        (WTF::HashAndUTF8CharactersTranslator::equal):
+        (WTF::HashAndUTF8CharactersTranslator::translate):
+        (WTF::SubstringTranslator::translate):
+        (WTF::SubstringTranslator8::hash):
+        (WTF::SubstringTranslator8::equal):
+        (WTF::SubstringTranslator16::hash):
+        (WTF::SubstringTranslator16::equal):
+        (WTF::LCharBufferTranslator::hash):
+        (WTF::LCharBufferTranslator::equal):
+        (WTF::LCharBufferTranslator::translate):
+        (WTF::CharBufferFromLiteralDataTranslator::hash):
+        (WTF::CharBufferFromLiteralDataTranslator::equal):
+        (WTF::CharBufferFromLiteralDataTranslator::translate):
+        (WTF::AtomicStringImpl::addLiteral):
+        (WTF::AtomicStringImpl::addSlowCase):
+        (WTF::AtomicStringImpl::remove):
+        (WTF::AtomicStringImpl::lookUpSlowCase):
+        (WTF::AtomicStringImpl::addUTF8):
+        (WTF::AtomicStringImpl::lookUpInternal):
+        (WTF::AtomicStringImpl::isInAtomicStringTable):
+        * wtf/text/AtomicStringImpl.h:
+        (WTF::AtomicStringImpl::lookUp):
+        (WTF::AtomicStringImpl::add):
+        (WTF::AtomicStringImpl::addWithStringTableProvider):
+        (WTF::AtomicStringImpl::AtomicStringImpl): Deleted.
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::String):
+        * wtf/text/cf/AtomicStringCF.cpp:
+        (WTF::AtomicString::add): Deleted.
+        * wtf/text/cf/AtomicStringImplCF.cpp: Renamed from Source/WTF/wtf/text/cf/AtomicStringCF.cpp.
+        (WTF::AtomicStringImpl::add):
+
+2015-05-19  Ting-Wei Lan  <lantw44@gmail.com>
+
+        [SOUP] Use st_birthtime to get creation time of files on systems support it
+        https://bugs.webkit.org/show_bug.cgi?id=144989
+
+        Reviewed by Carlos Garcia Campos.
+
+        Define HAVE(STAT_BIRTHTIME) as 1 on operating systems supporting
+        getting creation time of files using st_birthtime in stat.
+
+        * wtf/Platform.h:
+
+2015-05-19  Chris Dumez  <cdumez@apple.com>
+
+        Mark static variables as const when possible
+        https://bugs.webkit.org/show_bug.cgi?id=145161
+
+        Reviewed by Andreas Kling.
+
+        * wtf/dtoa.cpp:
+        (WTF::pow5mult):
+
+2015-05-19  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Remove unnecessary PLATFORM(EFL) macro in EFL specific files
+        https://bugs.webkit.org/show_bug.cgi?id=145160
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/efl/EflTypedefs.h: Remove PLATFORM(EFL).
+        * wtf/efl/UniquePtrEfl.h: ditto.
+
+2015-05-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Ignore warnings in system headers
+        https://bugs.webkit.org/show_bug.cgi?id=144747
+
+        Reviewed by Darin Adler.
+
+        Separate include directories into WebKit project includes and system includes. Suppress all
+        warnings from headers in system include directories using the SYSTEM argument to
+        the include_directories command.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+
+2015-05-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Addressing post-review comments on r184353
+        https://bugs.webkit.org/show_bug.cgi?id=145146
+
+        Reviewed by Benjamin Poulain.
+
+        Create an overload for equalIgnoringASCIICase() for AtomicString and string literals.
+
+        * wtf/text/AtomicString.h:
+        (WTF::equalIgnoringASCIICase):
+
+2015-05-18  Skachkov Alexandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Feature flag for arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=145108
+
+        Reviewed by Ryosuke Niwa.
+
+        Added feature flag ENABLE_ES6_ARROWFUNCTION_SYNTAX for arrow function
+
+        * wtf/FeatureDefines.h:
+
+2015-05-17  Benjamin Poulain  <benjamin@webkit.org>
+
+        Do not use fastMallocGoodSize anywhere
+        https://bugs.webkit.org/show_bug.cgi?id=145103
+
+        Reviewed by Michael Saboff.
+
+        It is silly we see fastMallocGoodSize in profiles, it does absolutely nothing.
+
+        This patch keeps fastMallocGoodSize() around for older code linking
+        with newer WebKit, but remove any use of it inside WebKit.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMallocGoodSize):
+        * wtf/FastMalloc.h:
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+
+2015-05-15  Dan Bernstein  <mitz@apple.com>
+
+        Build fix for some versions of clang.
+
+        * wtf/SaturatedArithmetic.h:
+        (signedAddOverflows):
+        (signedSubtractOverflows):
+
+2015-05-14  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r177753, now that <rdar://problem/19347133> is fixed.
+
+        Rubber-stamped by Benjamin Poulain.
+
+        * wtf/SaturatedArithmetic.h:
+        (signedAddOverflows):
+        (signedSubtractOverflows):
+
+2015-05-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add String literal overloads to equalIgnoringASCIICase()
+        https://bugs.webkit.org/show_bug.cgi?id=145008
+
+        Reviewed by Benjamin Poulain.
+
+        Create an overload for equalIgnoringASCIICase for string literals.
+
+        * wtf/text/StringImpl.h:
+        (WTF::equalIgnoringASCIICase): Use a non-templated helper function.
+        * wtf/text/StringImpl.cpp:
+        (WTF::equalIgnoringASCIICase): Implement it.
+        * wtf/text/StringView.h:
+        (WTF::equalIgnoringASCIICase): Use a non-templated helper function.
+        * wtf/text/StringView.cpp:
+        (WTF::equalIgnoringASCIICase): Implement it.
+        * wtf/text/WTFString.h:
+        (WTF::equalIgnoringASCIICase): Delegate to StringImpl's implementation.
+
+2015-05-14  Žan Doberšek  <zdobersek@igalia.com>
+
+        [GTK] RunLoop constructor should properly retrieve or establish the thread-default GMainContext
+        https://bugs.webkit.org/show_bug.cgi?id=144732
+
+        Reviewed by Carlos Garcia Campos.
+
+        RunLoop constructor in the GTK implementation should use the
+        existing thread-default context, create a new one if not on
+        the main thread, or use the global-default one if on the main
+        thread.
+
+        In RunLoop::run(), the GMainContext should then be pushed as
+        the thread-default before calling g_main_loop_run(), and popped
+        off when the main loop stops.
+
+        * wtf/gtk/RunLoopGtk.cpp:
+        (WTF::RunLoop::RunLoop):
+        (WTF::RunLoop::run):
+
 2015-05-13  Oliver Hunt  <oliver@apple.com>
        Ensure that all the smart pointer types in WTF clear their pointer before deref
        https://bugs.webkit.org/show_bug.cgi?id=143789

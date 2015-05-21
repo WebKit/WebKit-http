@@ -103,6 +103,9 @@ bool ViewportConfiguration::shouldIgnoreHorizontalScalingConstraints() const
     if (!m_canIgnoreScalingConstraints)
         return false;
 
+    if (!m_configuration.allowsShrinkToFit)
+        return false;
+
     bool laidOutWiderThanViewport = m_contentSize.width() > layoutWidth();
     if (m_viewportArguments.width == ViewportArguments::ValueDeviceWidth)
         return laidOutWiderThanViewport;
@@ -118,6 +121,9 @@ bool ViewportConfiguration::shouldIgnoreVerticalScalingConstraints() const
     if (!m_canIgnoreScalingConstraints)
         return false;
 
+    if (!m_configuration.allowsShrinkToFit)
+        return false;
+
     bool laidOutTallerThanViewport = m_contentSize.height() > layoutHeight();
     if (m_viewportArguments.height == ViewportArguments::ValueDeviceHeight && m_viewportArguments.width == ViewportArguments::ValueAuto)
         return laidOutTallerThanViewport;
@@ -130,28 +136,36 @@ bool ViewportConfiguration::shouldIgnoreScalingConstraints() const
     return shouldIgnoreHorizontalScalingConstraints() || shouldIgnoreVerticalScalingConstraints();
 }
 
-double ViewportConfiguration::initialScale() const
+double ViewportConfiguration::initialScaleFromSize(double width, double height, bool shouldIgnoreScalingConstraints) const
 {
     ASSERT(!constraintsAreAllRelative(m_configuration));
 
     // If the document has specified its own initial scale, use it regardless.
     // This is guaranteed to be sanity checked already, so no need for MIN/MAX.
-    if (m_configuration.initialScaleIsSet && !shouldIgnoreScalingConstraints())
+    if (m_configuration.initialScaleIsSet && !shouldIgnoreScalingConstraints)
         return m_configuration.initialScale;
 
     // If not, it is up to us to determine the initial scale.
     // We want a scale small enough to fit the document width-wise.
     const FloatSize& minimumLayoutSize = m_minimumLayoutSize;
-    double width = m_contentSize.width() > 0 ? m_contentSize.width() : layoutWidth();
     double initialScale = 0;
     if (width > 0 && !shouldIgnoreVerticalScalingConstraints())
         initialScale = minimumLayoutSize.width() / width;
 
     // Prevent the initial scale from shrinking to a height smaller than our view's minimum height.
-    double height = m_contentSize.height() > 0 ? m_contentSize.height() : layoutHeight();
     if (height > 0 && height * initialScale < minimumLayoutSize.height() && !shouldIgnoreHorizontalScalingConstraints())
         initialScale = minimumLayoutSize.height() / height;
-    return std::min(std::max(initialScale, shouldIgnoreScalingConstraints() ? m_defaultConfiguration.minimumScale : m_configuration.minimumScale), m_configuration.maximumScale);
+    return std::min(std::max(initialScale, shouldIgnoreScalingConstraints ? m_defaultConfiguration.minimumScale : m_configuration.minimumScale), m_configuration.maximumScale);
+}
+
+double ViewportConfiguration::initialScale() const
+{
+    return initialScaleFromSize(m_contentSize.width() > 0 ? m_contentSize.width() : layoutWidth(), m_contentSize.height() > 0 ? m_contentSize.height() : layoutHeight(), shouldIgnoreScalingConstraints());
+}
+
+double ViewportConfiguration::initialScaleIgnoringContentSize() const
+{
+    return initialScaleFromSize(layoutWidth(), layoutHeight(), false);
 }
 
 double ViewportConfiguration::minimumScale() const
@@ -188,6 +202,7 @@ ViewportConfiguration::Parameters ViewportConfiguration::webpageParameters()
     parameters.width = 980;
     parameters.widthIsSet = true;
     parameters.allowsUserScaling = true;
+    parameters.allowsShrinkToFit = true;
     parameters.minimumScale = 0.25;
     parameters.maximumScale = 5;
     return parameters;
@@ -206,6 +221,7 @@ ViewportConfiguration::Parameters ViewportConfiguration::textDocumentParameters(
 
     parameters.widthIsSet = true;
     parameters.allowsUserScaling = true;
+    parameters.allowsShrinkToFit = false;
     parameters.minimumScale = 0.25;
     parameters.maximumScale = 5;
     return parameters;
@@ -217,6 +233,7 @@ ViewportConfiguration::Parameters ViewportConfiguration::imageDocumentParameters
     parameters.width = 980;
     parameters.widthIsSet = true;
     parameters.allowsUserScaling = true;
+    parameters.allowsShrinkToFit = false;
     parameters.minimumScale = 0.01;
     parameters.maximumScale = 5;
     return parameters;
@@ -234,6 +251,7 @@ ViewportConfiguration::Parameters ViewportConfiguration::testingParameters()
     Parameters parameters;
     parameters.initialScale = 1;
     parameters.initialScaleIsSet = true;
+    parameters.allowsShrinkToFit = true;
     parameters.minimumScale = 1;
     parameters.maximumScale = 5;
     return parameters;
@@ -261,7 +279,7 @@ static inline void applyViewportArgument(ValueType& value, bool& valueIsSet, Vie
         valueIsSet = false;
 }
 
-static inline bool viewportArgumentUserZoomIsSet(float value)
+static inline bool booleanViewportArgumentIsSet(float value)
 {
     return !value || value == 1;
 }
@@ -292,8 +310,11 @@ void ViewportConfiguration::updateConfiguration()
         m_configuration.heightIsSet = viewportArgumentsOverridesHeight;
     }
 
-    if (viewportArgumentUserZoomIsSet(m_viewportArguments.userZoom))
+    if (booleanViewportArgumentIsSet(m_viewportArguments.userZoom))
         m_configuration.allowsUserScaling = m_viewportArguments.userZoom != 0.;
+
+    if (booleanViewportArgumentIsSet(m_viewportArguments.shrinkToFit))
+        m_configuration.allowsShrinkToFit = m_viewportArguments.shrinkToFit != 0.;
 }
 
 double ViewportConfiguration::viewportArgumentsLength(double length) const
@@ -437,6 +458,7 @@ ViewportConfigurationTextStream& ViewportConfigurationTextStream::operator<<(con
     dumpProperty(ts, "minimumScale", parameters.minimumScale);
     dumpProperty(ts, "maximumScale", parameters.maximumScale);
     dumpProperty(ts, "allowsUserScaling", parameters.allowsUserScaling);
+    dumpProperty(ts, "allowsShrinkToFit", parameters.allowsShrinkToFit);
 
     return ts;
 }

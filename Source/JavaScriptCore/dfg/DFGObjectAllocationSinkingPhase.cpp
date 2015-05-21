@@ -612,13 +612,8 @@ private:
                     break;
                 }
 
-                case StoreBarrier:
-                case StoreBarrierWithNullCheck: {
-                    Node* target = node->child1().node();
-                    if (m_sinkCandidates.contains(target)) {
-                        ASSERT(target->isPhantomAllocation());
-                        node->remove();
-                    }
+                case StoreBarrier: {
+                    DFG_CRASH(m_graph, node, "Unexpected store barrier during sinking.");
                     break;
                 }
                     
@@ -855,8 +850,6 @@ private:
 
         case MovHint:
         case PutHint:
-        case StoreBarrier:
-        case StoreBarrierWithNullCheck:
             break;
 
         case PutStructure:

@@ -194,7 +194,7 @@ AtomicStringImpl* JSRopeString::resolveRopeToExistingAtomicString(ExecState* exe
 {
     if (m_length > maxLengthForOnStackResolve) {
         resolveRope(exec);
-        if (AtomicStringImpl* existingAtomicString = AtomicString::find(m_value.impl())) {
+        if (AtomicStringImpl* existingAtomicString = AtomicStringImpl::lookUp(m_value.impl())) {
             m_value = *existingAtomicString;
             setIs8Bit(m_value.impl()->is8Bit());
             clearFibers();
@@ -206,7 +206,7 @@ AtomicStringImpl* JSRopeString::resolveRopeToExistingAtomicString(ExecState* exe
     if (is8Bit()) {
         LChar buffer[maxLengthForOnStackResolve];
         resolveRopeInternal8(buffer);
-        if (AtomicStringImpl* existingAtomicString = AtomicString::find(buffer, m_length)) {
+        if (AtomicStringImpl* existingAtomicString = AtomicStringImpl::lookUp(buffer, m_length)) {
             m_value = *existingAtomicString;
             setIs8Bit(m_value.impl()->is8Bit());
             clearFibers();
@@ -215,7 +215,7 @@ AtomicStringImpl* JSRopeString::resolveRopeToExistingAtomicString(ExecState* exe
     } else {
         UChar buffer[maxLengthForOnStackResolve];
         resolveRopeInternal16(buffer);
-        if (AtomicStringImpl* existingAtomicString = AtomicString::find(buffer, m_length)) {
+        if (AtomicStringImpl* existingAtomicString = AtomicStringImpl::lookUp(buffer, m_length)) {
             m_value = *existingAtomicString;
             setIs8Bit(m_value.impl()->is8Bit());
             clearFibers();
@@ -385,7 +385,7 @@ JSValue JSString::toPrimitive(ExecState*, PreferredPrimitiveType) const
 bool JSString::getPrimitiveNumber(ExecState* exec, double& number, JSValue& result) const
 {
     result = this;
-    number = jsToNumber(value(exec));
+    number = jsToNumber(view(exec));
     return false;
 }
 
@@ -396,7 +396,7 @@ bool JSString::toBoolean() const
 
 double JSString::toNumber(ExecState* exec) const
 {
-    return jsToNumber(value(exec));
+    return jsToNumber(view(exec));
 }
 
 inline StringObject* StringObject::create(VM& vm, JSGlobalObject* globalObject, JSString* string)

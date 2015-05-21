@@ -43,6 +43,7 @@
 #import <AppKit/AppKit.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/Optional.h>
 #import <wtf/StdLibExtras.h>
 #import <wtf/Threading.h>
 #import <wtf/text/AtomicStringHash.h>
@@ -128,36 +129,41 @@ static inline FontTraitsMask toTraitsMask(NSFontTraitMask appKitTraits, NSIntege
                 FontWeight900Mask));
 }
 
-// Keep a cache for mapping desired font families to font families actually
-// available on the system for performance.
-static NSMutableDictionary* desiredFamilyToAvailableFamilyDictionary()
+#if !ENABLE(PLATFORM_FONT_LOOKUP)
+// Keep a cache for mapping desired font families to font families actually available on the system for performance.
+using AvailableFamilyMap = HashMap<std::pair<AtomicString, NSFontTraitMask>, AtomicString>;
+static AvailableFamilyMap& desiredFamilyToAvailableFamilyMap()
 {
     ASSERT(isMainThread());
-    static NSMutableDictionary *dictionary = [[NSMutableDictionary alloc] init];
-    return dictionary;
+    static NeverDestroyed<AvailableFamilyMap> map;
+    return map;
 }
 
-#if !ENABLE(PLATFORM_FONT_LOOKUP)
-static inline void rememberDesiredFamilyToAvailableFamilyMapping(NSString* desiredFamily, NSString* availableFamily)
+static bool hasDesiredFamilyToAvailableFamilyMapping(const AtomicString& desiredFamily, NSFontTraitMask desiredTraits, NSString*& availableFamily)
 {
-    static const NSUInteger maxCacheSize = 128;
-    NSMutableDictionary *familyMapping = desiredFamilyToAvailableFamilyDictionary();
-    ASSERT([familyMapping count] <= maxCacheSize);
-    if ([familyMapping count] == maxCacheSize) {
-        for (NSString *key in familyMapping) {
-            [familyMapping removeObjectForKey:key];
-            break;
-        }
-    }
-    id value = availableFamily ? availableFamily : [NSNull null];
-    [familyMapping setObject:value forKey:desiredFamily];
+    AtomicString value = desiredFamilyToAvailableFamilyMap().get(std::make_pair(desiredFamily, desiredTraits));
+    availableFamily = value.isEmpty() ? nil : static_cast<NSString*>(value);
+    return !value.isNull();
+}
+
+static inline void rememberDesiredFamilyToAvailableFamilyMapping(const AtomicString& desiredFamily, NSFontTraitMask desiredTraits, NSString* availableFamily)
+{
+    static const unsigned maxCacheSize = 128;
+    auto& familyMapping = desiredFamilyToAvailableFamilyMap();
+    ASSERT(familyMapping.size() <= maxCacheSize);
+    if (familyMapping.size() >= maxCacheSize)
+        familyMapping.remove(familyMapping.begin());
+
+    // Store nil as an emptyAtom to distinguish from missing values (nullAtom).
+    AtomicString value = availableFamily ? AtomicString(availableFamily) : emptyAtom;
+    familyMapping.add(std::make_pair(desiredFamily, desiredTraits), value);
 }
 
 #else
 
 static uint16_t toCoreTextFontWeight(FontWeight fontWeight)
 {
-    static int coreTextFontWeights[] = {
+    static const int coreTextFontWeights[] = {
         100, // FontWeight100
         200, // FontWeight200
         300, // FontWeight300
@@ -189,7 +195,7 @@ void FontCache::setFontWhitelist(const Vector<String>& inputWhitelist)
 
 static int toAppKitFontWeight(FontWeight fontWeight)
 {
-    static int appKitFontWeights[] = {
+    static const int appKitFontWeights[] = {
         2, // FontWeight100
         3, // FontWeight200
         4, // FontWeight300
@@ -203,17 +209,38 @@ static int toAppKitFontWeight(FontWeight fontWeight)
     return appKitFontWeights[fontWeight];
 }
 
-// Family name is somewhat of a misnomer here. We first attempt to find an exact match
-// comparing the desiredFamily to the PostScript name of the installed fonts. If that fails
-// we then do a search based on the family names of the installed fonts.
-static NSFont *fontWithFamily(const AtomicString& family, NSFontTraitMask desiredTraits, FontWeight weight, float size)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+static CGFloat toNSFontWeight(FontWeight fontWeight)
 {
-    if (equalIgnoringASCIICase(family.string(), String(@"-webkit-system-font")) || equalIgnoringASCIICase(family.string(), String(@"-apple-system")) || equalIgnoringASCIICase(family.string(), String(@"-apple-system-font"))) {
-        // We ignore italic for system font.
+    static const CGFloat nsFontWeights[] = {
+        NSFontWeightUltraLight,
+        NSFontWeightThin,
+        NSFontWeightLight,
+        NSFontWeightRegular,
+        NSFontWeightMedium,
+        NSFontWeightSemibold,
+        NSFontWeightBold,
+        NSFontWeightHeavy,
+        NSFontWeightBlack
+    };
+    ASSERT(fontWeight >= 0 && fontWeight <= 8);
+    return nsFontWeights[fontWeight];
+}
+#endif
+
+static Optional<NSFont*> fontWithFamilySpecialCase(const AtomicString& family, FontWeight weight, float size)
+{
+    if (equalIgnoringASCIICase(family, "-webkit-system-font")
+        || equalIgnoringASCIICase(family, "-apple-system")
+        || equalIgnoringASCIICase(family, "-apple-system-font")) {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+        return [NSFont systemFontOfSize:size weight:toNSFontWeight(weight)];
+#else
         return (weight >= FontWeight600) ? [NSFont boldSystemFontOfSize:size] : [NSFont systemFontOfSize:size];
+#endif
     }
 
-    if (equalIgnoringASCIICase(family.string(), String(@"-apple-system-monospaced-numbers"))) {
+    if (equalIgnoringASCIICase(family, "-apple-system-monospaced-numbers")) {
         NSArray *featureArray = @[ @{ NSFontFeatureTypeIdentifierKey : @(kNumberSpacingType),
             NSFontFeatureSelectorIdentifierKey : @(kMonospacedNumbersSelector) } ];
 
@@ -222,16 +249,30 @@ static NSFont *fontWithFamily(const AtomicString& family, NSFontTraitMask desire
         return [NSFont fontWithDescriptor:desc size:size];
     }
 
+    if (equalIgnoringASCIICase(family, "-apple-menu"))
+        return [NSFont menuFontOfSize:size];
+
+    if (equalIgnoringASCIICase(family, "-apple-status-bar"))
+        return [NSFont labelFontOfSize:size];
+
+    return Optional<NSFont*>(Nullopt);
+}
+
+// Family name is somewhat of a misnomer here. We first attempt to find an exact match
+// comparing the desiredFamily to the PostScript name of the installed fonts. If that fails
+// we then do a search based on the family names of the installed fonts.
+static NSFont *fontWithFamily(const AtomicString& family, NSFontTraitMask desiredTraits, FontWeight weight, float size)
+{
+    if (const auto& specialCase = fontWithFamilySpecialCase(family, weight, size))
+        return specialCase.value();
+
     NSFontManager *fontManager = [NSFontManager sharedFontManager];
-    NSString *desiredFamily = family;
     NSString *availableFamily;
     int chosenWeight;
     NSFont *font;
 
 #if ENABLE(PLATFORM_FONT_LOOKUP)
 
-    if (family.length() > 0 && family.string().at(0) == '.')
-        return [NSFont fontWithName:desiredFamily size:size];
     const auto& whitelist = fontWhitelist();
     if (whitelist.size() && !whitelist.contains(family.lower()))
         return nil;
@@ -240,20 +281,25 @@ static NSFont *fontWithFamily(const AtomicString& family, NSFontTraitMask desire
         requestedTraits |= kCTFontItalicTrait;
     if (weight >= FontWeight600)
         requestedTraits |= kCTFontBoldTrait;
+
+    NSString *desiredFamily = family;
     font = CFBridgingRelease(CTFontCreateForCSS((CFStringRef)desiredFamily, toCoreTextFontWeight(weight), requestedTraits, size));
     availableFamily = [font familyName];
     chosenWeight = [fontManager weightOfFont:font];
 
 #else
 
-    id cachedAvailableFamily = [desiredFamilyToAvailableFamilyDictionary() objectForKey:desiredFamily];
-    if (cachedAvailableFamily == [NSNull null]) {
-        // We already know this font is not available.
-        return nil;
+    NSFontTraitMask desiredTraitsForNameMatch = desiredTraits | (weight >= FontWeight600 ? NSBoldFontMask : 0);
+    if (hasDesiredFamilyToAvailableFamilyMapping(family, desiredTraitsForNameMatch, availableFamily)) {
+        if (!availableFamily) {
+            // We already know the desired font family does not map to any available font family.
+            return nil;
+        }
     }
 
-    availableFamily = cachedAvailableFamily;
     if (!availableFamily) {
+        NSString *desiredFamily = family;
+
         // Do a simple case insensitive search for a matching font family.
         // NSFontManager requires exact name matches.
         // This addresses the problem of matching arial to Arial, etc., but perhaps not all the issues.
@@ -265,7 +311,6 @@ static NSFont *fontWithFamily(const AtomicString& family, NSFontTraitMask desire
         if (!availableFamily) {
             // Match by PostScript name.
             NSFont *nameMatchedFont = nil;
-            NSFontTraitMask desiredTraitsForNameMatch = desiredTraits | (weight >= FontWeight600 ? NSBoldFontMask : 0);
             for (NSString *availableFont in [fontManager availableFonts]) {
                 if ([desiredFamily caseInsensitiveCompare:availableFont] == NSOrderedSame) {
                     nameMatchedFont = [NSFont fontWithName:availableFont size:size];
@@ -285,7 +330,7 @@ static NSFont *fontWithFamily(const AtomicString& family, NSFontTraitMask desire
             }
         }
 
-        rememberDesiredFamilyToAvailableFamilyMapping(desiredFamily, availableFamily);
+        rememberDesiredFamilyToAvailableFamilyMapping(family, desiredTraitsForNameMatch, availableFamily);
         if (!availableFamily)
             return nil;
     }
@@ -369,7 +414,10 @@ static void invalidateFontCache(void*)
         return;
     }
     FontCache::singleton().invalidate();
-    [desiredFamilyToAvailableFamilyDictionary() removeAllObjects];
+
+#if !ENABLE(PLATFORM_FONT_LOOKUP)
+    desiredFamilyToAvailableFamilyMap().clear();
+#endif
 }
 
 static void fontCacheRegisteredFontsChangedNotificationCallback(CFNotificationCenterRef, void* observer, CFStringRef name, const void *, CFDictionaryRef)

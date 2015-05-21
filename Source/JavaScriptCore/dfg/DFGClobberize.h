@@ -134,7 +134,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithPow:
     case ArithSqrt:
     case ArithFRound:
-    case ArithRound:
     case ArithSin:
     case ArithCos:
     case ArithLog:
@@ -255,7 +254,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case UInt32ToNumber:
         def(PureValue(node, node->arithMode()));
         return;
-        
+
+    case ArithRound:
+        def(PureValue(node, static_cast<uintptr_t>(node->arithRoundingMode())));
+        return;
+
     case CheckCell:
         def(PureValue(CheckCell, AdjacencyList(AdjacencyList::Fixed, node->child1()), node->cellOperand()));
         return;
@@ -286,6 +289,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
+    case CheckTierUpWithNestedTriggerAndOSREnter:
     case LoopHint:
     case Breakpoint:
     case ProfileWillCall:
@@ -293,7 +297,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ProfileType:
     case ProfileControlFlow:
     case StoreBarrier:
-    case StoreBarrierWithNullCheck:
     case PutHint:
         write(SideState);
         return;
@@ -834,7 +837,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         
     case PutGlobalVar:
         write(AbstractHeap(Absolute, node->variablePointer()));
-        def(HeapLocation(GlobalVariableLoc, AbstractHeap(Absolute, node->variablePointer())), node->child1().node());
+        def(HeapLocation(GlobalVariableLoc, AbstractHeap(Absolute, node->variablePointer())), node->child2().node());
         return;
 
     case NewArray:

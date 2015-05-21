@@ -284,8 +284,14 @@ String MediaControlsHost::mediaUIImageData(const String& partID) const
     if (partID == "optimized-fullscreen-button")
         return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenButton);
 
+    if (partID == "optimized-fullscreen-return-button")
+        return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenReturnButton);
+
     if (partID == "optimized-fullscreen-placeholder")
         return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenPlaceholder);
+
+    if (partID == "optimized-fullscreen-placeholder-text")
+        return wkGetMediaUIImageData(wkMediaUIPartOptimizedFullscreenPlaceholderText);
 #else
     UNUSED_PARAM(partID);
 #endif

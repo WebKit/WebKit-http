@@ -112,11 +112,14 @@ public:
     WTF_EXPORT_STRING_API String(const char* characters);
 
     // Construct a string referencing an existing StringImpl.
-    String(StringImpl& impl) : m_impl(&impl) { }
-    String(StringImpl* impl) : m_impl(impl) { }
-    String(PassRefPtr<StringImpl> impl) : m_impl(impl) { }
-    String(Ref<StringImpl>&& impl) : m_impl(WTF::move(impl)) { }
-    String(RefPtr<StringImpl>&& impl) : m_impl(impl) { }
+    String(StringImpl&);
+    String(StringImpl*);
+    String(PassRefPtr<StringImpl>);
+    String(Ref<StringImpl>&&);
+    String(RefPtr<StringImpl>&&);
+
+    String(Ref<AtomicStringImpl>&&);
+    String(RefPtr<AtomicStringImpl>&&);
 
     // Construct a string from a constant string literal.
     WTF_EXPORT_STRING_API String(ASCIILiteral characters);
@@ -509,6 +512,8 @@ inline bool equalIgnoringCase(const LChar* a, const String& b) { return equalIgn
 inline bool equalIgnoringCase(const char* a, const String& b) { return equalIgnoringCase(reinterpret_cast<const LChar*>(a), b.impl()); }
 
 inline bool equalIgnoringASCIICase(const String& a, const String& b) { return equalIgnoringASCIICase(a.impl(), b.impl()); }
+template<unsigned charactersCount>
+inline bool equalIgnoringASCIICase(const String& a, const char (&b)[charactersCount]) { return equalIgnoringASCIICase<charactersCount>(a.impl(), b); }
 
 inline bool equalPossiblyIgnoringCase(const String& a, const String& b, bool ignoreCase) 
 {
@@ -525,6 +530,41 @@ inline bool operator!(const String& str) { return str.isNull(); }
 inline void swap(String& a, String& b) { a.swap(b); }
 
 // Definitions of string operations
+
+inline String::String(StringImpl& impl)
+    : m_impl(&impl)
+{
+}
+
+inline String::String(StringImpl* impl)
+    : m_impl(impl)
+{
+}
+
+inline String::String(PassRefPtr<StringImpl> impl)
+    : m_impl(impl)
+{
+}
+
+inline String::String(Ref<StringImpl>&& impl)
+    : m_impl(WTF::move(impl))
+{
+}
+
+inline String::String(RefPtr<StringImpl>&& impl)
+    : m_impl(WTF::move(impl))
+{
+}
+
+inline String::String(Ref<AtomicStringImpl>&& impl)
+    : m_impl(WTF::move(impl))
+{
+}
+
+inline String::String(RefPtr<AtomicStringImpl>&& impl)
+    : m_impl(WTF::move(impl))
+{
+}
 
 template<size_t inlineCapacity, typename OverflowHandler>
 String::String(const Vector<UChar, inlineCapacity, OverflowHandler>& vector)

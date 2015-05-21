@@ -45,19 +45,19 @@ using namespace WebCore;
 static bool supportsUIStateTransitionProgress()
 {
     // FIXME: This is temporary until all platforms that support ScrollbarPainter support this part of the API.
-    static bool globalSupportsUIStateTransitionProgress = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(mouseEnteredScroller)];
+    static const bool globalSupportsUIStateTransitionProgress = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(mouseEnteredScroller)];
     return globalSupportsUIStateTransitionProgress;
 }
 
 static bool supportsExpansionTransitionProgress()
 {
-    static bool globalSupportsExpansionTransitionProgress = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(expansionTransitionProgress)];
+    static const bool globalSupportsExpansionTransitionProgress = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(expansionTransitionProgress)];
     return globalSupportsExpansionTransitionProgress;
 }
 
 static bool supportsContentAreaScrolledInDirection()
 {
-    static bool globalSupportsContentAreaScrolledInDirection = [NSClassFromString(@"NSScrollerImpPair") instancesRespondToSelector:@selector(contentAreaScrolledInDirection:)];
+    static const bool globalSupportsContentAreaScrolledInDirection = [NSClassFromString(@"NSScrollerImpPair") instancesRespondToSelector:@selector(contentAreaScrolledInDirection:)];
     return globalSupportsContentAreaScrolledInDirection;
 }
 
@@ -766,6 +766,15 @@ bool ScrollAnimatorMac::isRubberBandInProgress() const
     return false;
 #else
     return m_scrollController.isRubberBandInProgress();
+#endif
+}
+
+bool ScrollAnimatorMac::isScrollSnapInProgress() const
+{
+#if ENABLE(CSS_SCROLL_SNAP)
+    return m_scrollController.isScrollSnapInProgress();
+#else
+    return false;
 #endif
 }
 
