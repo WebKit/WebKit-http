@@ -40,6 +40,7 @@ namespace WebKit {
 
 class StorageManager;
 class WebPageProxy;
+class WebProcessPool;
 struct WebsiteDataRecord;
 
 class WebsiteDataStore : public RefCounted<WebsiteDataStore>, public WebProcessLifetimeObserver {
@@ -57,8 +58,7 @@ public:
 
     uint64_t identifier() const { return m_identifier; }
 
-    // FIXME: Change this to isPersistent() and update callers.
-    bool isNonPersistent() const { return m_sessionID.isEphemeral(); }
+    bool isPersistent() const { return !m_sessionID.isEphemeral(); }
     WebCore::SessionID sessionID() const { return m_sessionID; }
 
     static void cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage);
@@ -83,6 +83,8 @@ private:
 
     void platformInitialize();
     void platformDestroy();
+
+    HashSet<RefPtr<WebProcessPool>> processPools() const;
 
     const uint64_t m_identifier;
     const WebCore::SessionID m_sessionID;

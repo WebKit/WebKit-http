@@ -187,6 +187,7 @@ set(WTF_SOURCES
     dtoa/strtod.cc
 
     text/AtomicString.cpp
+    text/AtomicStringImpl.cpp
     text/AtomicStringTable.cpp
     text/Base64.cpp
     text/CString.cpp
@@ -227,7 +228,7 @@ endif ()
 list(APPEND WTF_SOURCES
     unicode/icu/CollatorICU.cpp
 )
-list(APPEND WTF_INCLUDE_DIRECTORIES
+set(WTF_SYSTEM_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
 )
 list(APPEND WTF_LIBRARIES
@@ -256,6 +257,7 @@ WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 WEBKIT_WRAP_SOURCELIST(${WTF_SOURCES})
 include_directories(${WTF_INCLUDE_DIRECTORIES})
+include_directories(SYSTEM ${WTF_SYSTEM_INCLUDE_DIRECTORIES})
 add_library(WTF ${WTF_LIBRARY_TYPE} ${WTF_HEADERS} ${WTF_SOURCES})
 target_link_libraries(WTF ${WTF_LIBRARIES})
 set_target_properties(WTF PROPERTIES COMPILE_DEFINITIONS "BUILDING_WTF")

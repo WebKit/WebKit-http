@@ -153,7 +153,14 @@ PlatformDisplayWayland::PlatformDisplayWayland(struct wl_display* wlDisplay)
 
 PlatformDisplayWayland::~PlatformDisplayWayland()
 {
-    // FIXME: Implement.
+    if (m_wpe)
+        wl_wpe_destroy(m_wpe);
+    if (m_compositor)
+        wl_compositor_destroy(m_compositor);
+    if (m_registry)
+        wl_registry_destroy(m_registry);
+    if (m_display)
+        wl_display_disconnect(m_display);
 }
 
 std::unique_ptr<WaylandSurface> PlatformDisplayWayland::createSurface(const IntSize& size)

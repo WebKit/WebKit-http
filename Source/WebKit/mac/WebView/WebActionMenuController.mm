@@ -54,6 +54,7 @@
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/HTMLConverter.h>
+#import <WebCore/LocalizedStrings.h>
 #import <WebCore/NSMenuSPI.h>
 #import <WebCore/NSSharingServicePickerSPI.h>
 #import <WebCore/NSSharingServiceSPI.h>

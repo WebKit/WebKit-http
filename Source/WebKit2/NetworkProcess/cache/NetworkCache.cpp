@@ -109,7 +109,11 @@ static Key makeCacheKey(const WebCore::ResourceRequest& request)
 #endif
     if (partition.isEmpty())
         partition = ASCIILiteral("No partition");
-    return { request.httpMethod(), partition, request.url().string()  };
+
+    // FIXME: This implements minimal Range header disk cache support. We don't parse
+    // ranges so only the same exact range request will be served from the cache.
+    String range = request.httpHeaderField(WebCore::HTTPHeaderName::Range);
+    return { request.httpMethod(), partition, range, request.url().string()  };
 }
 
 static String headerValueForVary(const WebCore::ResourceRequest& request, const String& headerName)
@@ -237,6 +241,7 @@ static bool isStatusCodeCacheableByDefault(int statusCode)
     case 200: // OK
     case 203: // Non-Authoritative Information
     case 204: // No Content
+    case 206: // Partial Content
     case 300: // Multiple Choices
     case 301: // Moved Permanently
     case 404: // Not Found
@@ -414,11 +419,10 @@ void Cache::store(const WebCore::ResourceRequest& originalRequest, const WebCore
     m_storage->store(record, [completionHandler](const Data& bodyData) {
         MappedBody mappedBody;
 #if ENABLE(SHAREABLE_RESOURCE)
-        if (bodyData.isMap()) {
-            RefPtr<SharedMemory> sharedMemory = SharedMemory::create(const_cast<uint8_t*>(bodyData.data()), bodyData.size(), SharedMemory::Protection::ReadOnly);
-            mappedBody.shareableResource = sharedMemory ? ShareableResource::create(WTF::move(sharedMemory), 0, bodyData.size()) : nullptr;
-            if (mappedBody.shareableResource)
-                mappedBody.shareableResource->createHandle(mappedBody.shareableResourceHandle);
+        if (RefPtr<SharedMemory> sharedMemory = bodyData.tryCreateSharedMemory()) {
+            mappedBody.shareableResource = ShareableResource::create(WTF::move(sharedMemory), 0, bodyData.size());
+            ASSERT(mappedBody.shareableResource);
+            mappedBody.shareableResource->createHandle(mappedBody.shareableResourceHandle);
         }
 #endif
         completionHandler(mappedBody);

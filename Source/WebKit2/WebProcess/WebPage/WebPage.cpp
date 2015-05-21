@@ -381,6 +381,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     m_drawingArea = DrawingArea::create(*this, parameters);
     m_drawingArea->setPaintingEnabled(false);
+    m_drawingArea->setShouldScaleViewToFitDocument(parameters.shouldScaleViewToFitDocument);
 
 #if ENABLE(ASYNC_SCROLLING)
     m_useAsyncScrolling = parameters.store.getBoolValueForKey(WebPreferencesKey::threadedScrollingEnabledKey());
@@ -1038,7 +1039,8 @@ void WebPage::loadDataImpl(uint64_t navigationID, PassRefPtr<SharedBuffer> share
     m_pendingNavigationID = navigationID;
 
     ResourceRequest request(baseURL);
-    SubstituteData substituteData(sharedBuffer, MIMEType, encodingName, unreachableURL);
+    ResourceResponse response(URL(), MIMEType, sharedBuffer->size(), encodingName);
+    SubstituteData substituteData(sharedBuffer, unreachableURL, response, SubstituteData::SessionHistoryVisibility::Hidden);
 
     // Let the InjectedBundle know we are about to start the load, passing the user data from the UIProcess
     // to all the client to set up any needed state.
@@ -1093,7 +1095,7 @@ void WebPage::loadWebArchiveData(const IPC::DataReference& webArchiveData, const
     loadDataImpl(0, sharedBuffer, ASCIILiteral("application/x-webarchive"), ASCIILiteral("utf-16"), blankURL(), URL(), userData);
 }
 
-void WebPage::navigateToURLWithSimulatedClick(const String& url, IntPoint documentPoint, IntPoint screenPoint)
+void WebPage::navigateToPDFLinkWithSimulatedClick(const String& url, IntPoint documentPoint, IntPoint screenPoint)
 {
     Frame* mainFrame = m_mainFrame->coreFrame();
     Document* mainFrameDocument = mainFrame->document();
@@ -4632,14 +4634,14 @@ void WebPage::didFinishLoad(WebFrame* frame)
 }
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
-static int primarySnapshottedPlugInSearchLimit = 3000;
-static float primarySnapshottedPlugInSearchBucketSize = 1.1;
-static int primarySnapshottedPlugInMinimumWidth = 400;
-static int primarySnapshottedPlugInMinimumHeight = 300;
-static unsigned maxPrimarySnapshottedPlugInDetectionAttempts = 2;
-static int deferredPrimarySnapshottedPlugInDetectionDelay = 3;
-static float overlappingImageBoundsScale = 1.1;
-static float minimumOverlappingImageToPluginDimensionScale = .9;
+static const int primarySnapshottedPlugInSearchLimit = 3000;
+static const float primarySnapshottedPlugInSearchBucketSize = 1.1;
+static const int primarySnapshottedPlugInMinimumWidth = 400;
+static const int primarySnapshottedPlugInMinimumHeight = 300;
+static const unsigned maxPrimarySnapshottedPlugInDetectionAttempts = 2;
+static const int deferredPrimarySnapshottedPlugInDetectionDelay = 3;
+static const float overlappingImageBoundsScale = 1.1;
+static const float minimumOverlappingImageToPluginDimensionScale = .9;
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
 void WebPage::determinePrimarySnapshottedPlugInTimerFired()
@@ -4952,6 +4954,14 @@ void WebPage::clearWheelEventTestTrigger()
         return;
 
     m_page->clearTrigger();
+}
+
+void WebPage::setShouldScaleViewToFitDocument(bool shouldScaleViewToFitDocument)
+{
+    if (!m_drawingArea)
+        return;
+
+    m_drawingArea->setShouldScaleViewToFitDocument(shouldScaleViewToFitDocument);
 }
 
 } // namespace WebKit

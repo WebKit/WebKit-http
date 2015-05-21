@@ -3150,6 +3150,13 @@ void SpeculativeJIT::compile(Node* node)
             JSValueOperand value(this, node->child1());
             GPRTemporary result(this);
             
+            if (!m_interpreter.needsTypeCheck(node->child1(), SpecBoolInt32 | SpecBoolean)) {
+                m_jit.move(value.gpr(), result.gpr());
+                m_jit.and32(TrustedImm32(1), result.gpr());
+                int32Result(result.gpr(), node);
+                break;
+            }
+            
             m_jit.move(value.gpr(), result.gpr());
             m_jit.xor64(TrustedImm32(static_cast<int32_t>(ValueFalse)), result.gpr());
             JITCompiler::Jump isBoolean = m_jit.branchTest64(
@@ -4019,7 +4026,7 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case PutGlobalVar: {
-        JSValueOperand value(this, node->child1());
+        JSValueOperand value(this, node->child2());
 
         m_jit.store64(value.gpr(), node->variablePointer());
 
@@ -4316,8 +4323,7 @@ void SpeculativeJIT::compile(Node* node)
         DFG_CRASH(m_jit.graph(), node, "Unexpected Unreachable node");
         break;
 
-    case StoreBarrier:
-    case StoreBarrierWithNullCheck: {
+    case StoreBarrier: {
         compileStoreBarrier(node);
         break;
     }
@@ -4636,7 +4642,7 @@ void SpeculativeJIT::compile(Node* node)
         
         silentSpillAllRegisters(InvalidGPRReg);
         m_jit.setupArgumentsExecState();
-        appendCall(triggerTierUpNow);
+        appendCall(triggerTierUpNowInLoop);
         silentFillAllRegisters(InvalidGPRReg);
         
         done.link(&m_jit);
@@ -4658,17 +4664,24 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
-    case CheckTierUpAndOSREnter: {
+    case CheckTierUpAndOSREnter:
+    case CheckTierUpWithNestedTriggerAndOSREnter: {
         ASSERT(!node->origin.semantic.inlineCallFrame);
         
         GPRTemporary temp(this);
         GPRReg tempGPR = temp.gpr();
+
+        MacroAssembler::Jump forceOSREntry;
+        if (op == CheckTierUpWithNestedTriggerAndOSREnter)
+            forceOSREntry = m_jit.branchTest8(MacroAssembler::NonZero, MacroAssembler::AbsoluteAddress(&m_jit.jitCode()->nestedTriggerIsSet));
         
         MacroAssembler::Jump done = m_jit.branchAdd32(
             MacroAssembler::Signed,
             TrustedImm32(Options::ftlTierUpCounterIncrementForLoop()),
             MacroAssembler::AbsoluteAddress(&m_jit.jitCode()->tierUpCounter.m_counter));
-        
+
+        if (forceOSREntry.isSet())
+            forceOSREntry.link(&m_jit);
         silentSpillAllRegisters(tempGPR);
         m_jit.setupArgumentsWithExecState(
             TrustedImm32(node->origin.semantic.bytecodeIndex),
@@ -4686,6 +4699,7 @@ void SpeculativeJIT::compile(Node* node)
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
+    case CheckTierUpWithNestedTriggerAndOSREnter:
         DFG_CRASH(m_jit.graph(), node, "Unexpected tier-up node");
         break;
 #endif // ENABLE(FTL_JIT)
@@ -4734,20 +4748,6 @@ void SpeculativeJIT::writeBarrier(GPRReg ownerGPR, GPRReg valueGPR, Edge valueUs
     
     JITCompiler::Jump ownerIsRememberedOrInEden = m_jit.jumpIfIsRememberedOrInEden(ownerGPR);
     storeToWriteBarrierBuffer(ownerGPR, scratch1, scratch2);
-    ownerIsRememberedOrInEden.link(&m_jit);
-
-    if (!isKnownCell(valueUse.node()))
-        isNotCell.link(&m_jit);
-}
-
-void SpeculativeJIT::writeBarrier(JSCell* owner, GPRReg valueGPR, Edge valueUse, GPRReg scratch1, GPRReg scratch2)
-{
-    JITCompiler::Jump isNotCell;
-    if (!isKnownCell(valueUse.node()))
-        isNotCell = m_jit.branchIfNotCell(JSValueRegs(valueGPR));
-    
-    JITCompiler::Jump ownerIsRememberedOrInEden = m_jit.jumpIfIsRememberedOrInEden(owner);
-    storeToWriteBarrierBuffer(owner, scratch1, scratch2);
     ownerIsRememberedOrInEden.link(&m_jit);
 
     if (!isKnownCell(valueUse.node()))

@@ -462,6 +462,9 @@ void ScrollableArea::updateScrollSnapState()
         scrollAnimator->updateScrollAnimatorsAndTimers();
 #endif
 
+    if (isScrollSnapInProgress())
+        return;
+
     IntPoint currentPosition = scrollPosition();
     IntPoint correctedPosition = nearestActiveSnapPoint(currentPosition);
     

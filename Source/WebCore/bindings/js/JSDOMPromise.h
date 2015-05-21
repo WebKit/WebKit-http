@@ -90,6 +90,14 @@ inline void DeferredWrapper::reject(const JSC::JSValue& value)
 }
 
 template<>
+inline void DeferredWrapper::reject<ExceptionCode>(const ExceptionCode& ec)
+{
+    JSC::ExecState* exec = m_globalObject->globalExec();
+    JSC::JSLockHolder locker(exec);
+    reject(exec, createDOMException(exec, ec));
+}
+
+template<>
 inline void DeferredWrapper::resolve<String>(const String& result)
 {
     JSC::ExecState* exec = m_globalObject->globalExec();
@@ -126,7 +134,7 @@ inline void DeferredWrapper::resolve(const std::nullptr_t&)
 {
     JSC::ExecState* exec = m_globalObject->globalExec();
     JSC::JSLockHolder locker(exec);
-    resolve(exec, JSC::jsNull());
+    resolve(exec, JSC::jsUndefined());
 }
 
 template<>

@@ -91,6 +91,7 @@ namespace JSC { namespace DFG {
     /* Tier-up checks from the DFG to the FTL. */\
     macro(CheckTierUpInLoop, NodeMustGenerate) \
     macro(CheckTierUpAndOSREnter, NodeMustGenerate) \
+    macro(CheckTierUpWithNestedTriggerAndOSREnter, NodeMustGenerate) \
     macro(CheckTierUpAtReturn, NodeMustGenerate) \
     \
     /* Get the value of a local variable, without linking into the VariableAccessData */\
@@ -323,7 +324,6 @@ namespace JSC { namespace DFG {
     macro(CheckWatchdogTimer, NodeMustGenerate) \
     /* Write barriers ! */\
     macro(StoreBarrier, NodeMustGenerate) \
-    macro(StoreBarrierWithNullCheck, NodeMustGenerate) \
     \
     /* For-in enumeration opcodes */\
     macro(GetEnumerableLength, NodeMustGenerate | NodeResultJS) \

@@ -147,34 +147,6 @@ void WebProcessPool::platformInitialize()
 #endif
 }
 
-String WebProcessPool::platformDefaultApplicationCacheDirectory() const
-{
-    NSString *appName = [[NSBundle mainBundle] bundleIdentifier];
-    if (!appName)
-        appName = [[NSProcessInfo processInfo] processName];
-#if PLATFORM(IOS)
-    // This quirk used to make these apps share application cache storage, but doesn't accomplish that any more.
-    // Preserving it avoids the need to migrate data when upgrading.
-    if (applicationIsMobileSafari() || applicationIsWebApp())
-        appName = @"com.apple.WebAppCache";
-#endif
-
-    ASSERT(appName);
-
-#if PLATFORM(IOS)
-    NSString *cacheDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches"];
-#else
-    char cacheDirectory[MAXPATHLEN];
-    size_t cacheDirectoryLen = confstr(_CS_DARWIN_USER_CACHE_DIR, cacheDirectory, MAXPATHLEN);
-    if (!cacheDirectoryLen)
-        return String();
-
-    NSString *cacheDir = [[NSFileManager defaultManager] stringWithFileSystemRepresentation:cacheDirectory length:cacheDirectoryLen - 1];
-#endif
-    NSString* cachePath = [cacheDir stringByAppendingPathComponent:appName];
-    return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
-}
-
 #if PLATFORM(IOS)
 String WebProcessPool::cookieStorageDirectory() const
 {
@@ -392,6 +364,33 @@ String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
     return stringByResolvingSymlinksInPath([mediaKeysStorageDirectory stringByStandardizingPath]);
 }
 
+String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
+{
+    NSString *appName = [[NSBundle mainBundle] bundleIdentifier];
+    if (!appName)
+        appName = [[NSProcessInfo processInfo] processName];
+#if PLATFORM(IOS)
+    // This quirk used to make these apps share application cache storage, but doesn't accomplish that any more.
+    // Preserving it avoids the need to migrate data when upgrading.
+    if (applicationIsMobileSafari() || applicationIsWebApp())
+        appName = @"com.apple.WebAppCache";
+#endif
+
+    ASSERT(appName);
+
+#if PLATFORM(IOS)
+    NSString *cacheDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches"];
+#else
+    char cacheDirectory[MAXPATHLEN];
+    size_t cacheDirectoryLen = confstr(_CS_DARWIN_USER_CACHE_DIR, cacheDirectory, MAXPATHLEN);
+    if (!cacheDirectoryLen)
+        return String();
+
+    NSString *cacheDir = [[NSFileManager defaultManager] stringWithFileSystemRepresentation:cacheDirectory length:cacheDirectoryLen - 1];
+#endif
+    NSString* cachePath = [cacheDir stringByAppendingPathComponent:appName];
+    return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
+}
 
 String WebProcessPool::platformDefaultIconDatabasePath() const
 {
@@ -485,31 +484,33 @@ void WebProcessPool::resetHSTSHostsAddedAfterDate(double startDateIntervalSince1
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000)
     NSDate *startDate = [NSDate dateWithTimeIntervalSince1970:startDateIntervalSince1970];
     _CFNetworkResetHSTSHostsSinceDate(nullptr, (__bridge CFDateRef)startDate);
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     _CFNetworkResetHSTSHostsSinceDate(privateBrowsingSession(), (__bridge CFDateRef)startDate);
+#endif
 #endif
 }
 
 int networkProcessLatencyQOS()
 {
-    static int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitNetworkProcessLatencyQOS"];
+    static const int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitNetworkProcessLatencyQOS"];
     return qos;
 }
 
 int networkProcessThroughputQOS()
 {
-    static int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitNetworkProcessThroughputQOS"];
+    static const int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitNetworkProcessThroughputQOS"];
     return qos;
 }
 
 int webProcessLatencyQOS()
 {
-    static int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitWebProcessLatencyQOS"];
+    static const int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitWebProcessLatencyQOS"];
     return qos;
 }
 
 int webProcessThroughputQOS()
 {
-    static int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitWebProcessThroughputQOS"];
+    static const int qos = [[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitWebProcessThroughputQOS"];
     return qos;
 }
 

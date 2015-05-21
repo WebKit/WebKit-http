@@ -1,3 +1,117 @@
+2015-05-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r184591.
+
+        * public/v2/manifest.js:
+
+2015-05-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. Use POSIX timestamp instead of human readable string for the commit time.
+
+        * public/include/build-requests-fetcher.php:
+
+2015-05-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        UI to associate bugs with an analysis task is crappy
+        https://bugs.webkit.org/show_bug.cgi?id=145198
+
+        Reviewed by Andreas Kling.
+
+        Make the UI less crappy by linkifying bug numbers and adding an explicit button to disassociate
+        a bug and a separate select view with a text field to associate a new bug instead of implicitly
+        updating or deleting the existing record based on what the user had typed.
+
+        * init-database.sql: Removed the constraint that each bug tracker should appear exactly once for
+        a given analysis task since it's perfectly reasonable for a given task to be associated with
+        multiple WebKit bugs.
+
+        * public/privileged-api/associate-bug.php:
+        (main): Only remove the bug specified by newly added bugToDelete instead of implicitly deleting
+        one that matches the analysis task and the bug tracker when the bug number is falsey.
+
+        * public/v2/analysis.js:
+        (App.Bug.url): Added.
+        (App.BugAdapter.deleteRecord): Added. Uses the privileged API to delete the record.
+
+        * public/v2/app.css:
+
+        * public/v2/app.js:
+        (App.AnalysisTaskController.actions.addBug): Added.
+        (App.AnalysisTaskController.actions.deleteBug): Added.
+        (App.AnalysisTaskController.associateBug): Deleted.
+
+        * public/v2/index.html: Updated the templates.
+
+        * public/v2/manifest.js:
+        (App.BugTracker.urlFromBugNumber): Added.
+
+2015-05-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        A/B testing rootSets should provide commit times as well as revisions
+        https://bugs.webkit.org/show_bug.cgi?id=145207
+
+        Reviewed by Andreas Kling.
+
+        Some continuous build systems need the commit time as well as the revision number / hash so provide one
+        in the root sets but maintain the backwards compatibility with buildbots that use revision number directly.
+
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestsFetcher::fetch_roots_for_set): Made the revision info an associative array that contains
+        the revision number as well as the commit time.
+        * tools/sync-with-buildbot.py:
+        (schedule_request): Removed "replacement" which was a superfluous copy of "roots". Use "revision" values
+        when the JSON configuration refers to "root". This is necessary in buildbot instances that require WebKit
+        revision to be specified on its own field instead of it being a JSON that contains "revision" and "time".
+
+2015-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. Don't fall into an infinite loop when value (renamed from bytes) is zero.
+
+        * public/v2/manifest.js:
+        (App.Manifest.Ember.Controller.extend.):
+        (App.Manifest.Ember.Controller.extend):
+
+2015-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Don't show unit (bytes) separaetly from SI suffixes (K, M, etc...)
+        https://bugs.webkit.org/show_bug.cgi?id=145181
+
+        Rubber-stamped by Chris Dumez.
+
+        Show 'MB' in each y-axis label instead of showing 'bytes' separately and suffixing each label with just 'M'
+        for clarity. This change also reduces the code complexity.
+
+        * public/index.html:
+        * public/v2/app.js:
+        (App.AnalysisTaskController._chartDataChanged):
+        (App.TestGroupPane._createConfigurationSummary):
+        * public/v2/data.js:
+        (RunsData.unitFromMetricName): Use 'B' instead of 'bytes' as the unit.
+
+        * public/v2/interactive-chart.js: Removed the support for showing units separately.
+        (App.InteractiveChartComponent._constructGraphIfPossible):
+        (App.InteractiveChartComponent._relayoutDataAndAxes)
+
+        * public/v2/manifest.js:
+        (App.Manifest._makeFormatter): Renamed from _formatBytes. Support more SI suffixes such as micro and mili.
+        Now takes the unit as the first argument. Adjust the base unit if it's 'ms'.
+        (App.Manifest._formatFetchedData): Removed unit and formatWithUnit now that all all formatters would
+        automatically include unit.
+
+2015-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION: v2 UI reports a higher memory usage
+        https://bugs.webkit.org/show_bug.cgi?id=145151
+
+        Reviewed by Chris Dumez.
+
+        The bug was caused by v2 UI using 1000 to divide the number of bytes instead of by 1024 as done in v1.
+        Fixed the bug by manually implementing the formatter as done in v1.
+
+        * public/v2/manifest.js:
+        (App.Manfiest._formatBytes): Added.
+        (App.Manifest._formatFetchedData): Use _formatByte instead of format('s').
+
 2015-05-11  Ryosuke Niwa  <rniwa@webkit.org>
 
         Unreviewed build fix. Add "Duration" as a time metric.

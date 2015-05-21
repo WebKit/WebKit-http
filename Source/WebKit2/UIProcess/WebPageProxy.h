@@ -358,7 +358,7 @@ public:
     void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, API::Object* userData = nullptr);
     void loadPlainTextString(const String&, API::Object* userData = nullptr);
     void loadWebArchiveData(API::Data*, API::Object* userData = nullptr);
-    void navigateToURLWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
+    void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
 
     void stopLoading();
     RefPtr<API::Navigation> reload(bool reloadFromOrigin);
@@ -655,6 +655,7 @@ public:
 #if PLATFORM(COCOA)
     void scaleViewAndUpdateGeometryFenced(double scale, WebCore::IntSize viewSize, std::function<void (const WebCore::MachSendRight&, CallbackBase::Error)>);
 #endif
+    void setShouldScaleViewToFitDocument(bool);
 
     float deviceScaleFactor() const;
     void setIntrinsicDeviceScaleFactor(float);
@@ -963,7 +964,7 @@ public:
     void didCancelCheckingText(uint64_t requestID);
 
     void connectionWillOpen(IPC::Connection&);
-    void connectionDidClose(IPC::Connection&);
+    void webProcessWillShutDown();
 
     void processDidFinishLaunching();
 
@@ -1710,7 +1711,9 @@ private:
     bool m_mayStartMediaWhenInWindow;
 
     bool m_waitingForDidUpdateViewState;
-        
+
+    bool m_shouldScaleViewToFitDocument { false };
+
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;
     std::unique_ptr<WebCore::RunLoopObserver> m_viewStateChangeDispatcher;

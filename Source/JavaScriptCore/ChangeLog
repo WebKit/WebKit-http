@@ -1,3 +1,1320 @@
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: array previews should have a much smaller cap on values
+        https://bugs.webkit.org/show_bug.cgi?id=145195
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.RemoteObject.prototype._generatePreview):
+        Reduce the indexes threshold for previews.
+
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use native Arguments detection instead of using toString
+        https://bugs.webkit.org/show_bug.cgi?id=145235
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.prototype._subtype):
+        Deleted the old string code.
+
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::subtype):
+        Replaced with a stricter, more accurate check.
+
+2015-05-20  Andreas Kling  <akling@apple.com>
+
+        Remove unused MarkedBlock::m_rememberedSet.
+        <https://webkit.org/b/145224>
+
+        Reviewed by Mark Hahnenberg.
+
+        The MarkedBlock had a copy of the remembered bit for each of its cells,
+        and we were maintaining that bitmap despite no one actually ever consulting it.
+
+        This patch removes MarkedBlock::m_rememberedSet, freeing up 128 bytes in each
+        block and making write barriers a little faster.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::clearRememberedSet):
+        (JSC::Heap::addToRememberedSet):
+        * heap/HeapInlines.h:
+        (JSC::Heap::isRemembered):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::clearRememberedSet): Deleted.
+        (JSC::MarkedBlock::clearMarksWithCollectionType):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::setRemembered): Deleted.
+        (JSC::MarkedBlock::clearRemembered): Deleted.
+        (JSC::MarkedBlock::atomicClearRemembered): Deleted.
+        (JSC::MarkedBlock::isRemembered): Deleted.
+        * heap/MarkedSpace.h:
+        (JSC::ClearRememberedSet::operator()): Deleted.
+        (JSC::MarkedSpace::clearRememberedSet): Deleted.
+
+2015-05-20  Andreas Kling  <akling@apple.com>
+
+        Eden collections should extend the IncrementalSweeper work list, not replace it.
+        <https://webkit.org/b/145213>
+        <rdar://problem/21002666>
+
+        Reviewed by Geoffrey Garen.
+
+        After an eden collection, the garbage collector was adding all MarkedBlocks containing
+        new objects to the IncrementalSweeper's work list, to make sure they didn't have to
+        wait until the next full collection before getting swept.
+
+        Or at least, that's what it thought it was doing. It turns out that IncrementalSweeper's
+        internal work list is really just a reference to Heap::m_blockSnapshot. I didn't realize
+        this when writing the post-eden sweep code, and instead made eden collections cancel
+        all pending sweeps and *replace* them with the list of blocks with new objects.
+
+        This made it so that rapidly occurring eden collections could prevent large numbers of
+        heap blocks from ever getting swept. This would manifest as accumulation of MarkedBlocks
+        when a system under heavy load was also allocating short lived objects at a high rate.
+        Things would eventually get cleaned up when there was a lull and a full collection was
+        allowed to run its heap sweep to completion.
+
+        Fix this by moving all management of the block snapshot to Heap. snapshotMarkedSpace()
+        now handles eden collections by merging the list of blocks with new objects into the
+        existing block snapshot.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::snapshotMarkedSpace):
+        (JSC::Heap::notifyIncrementalSweeper):
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::startSweeping):
+        (JSC::IncrementalSweeper::addBlocksAndContinueSweeping): Deleted.
+        * heap/IncrementalSweeper.h:
+
+2015-05-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        AudioContext resume/close/suspend should reject promises with a DOM exception in lieu of throwing exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=145064
+
+        Reviewed by Darin Adler.
+
+        Added default message for TypeError.
+
+        * runtime/Error.cpp:
+        (JSC::throwTypeError):
+        * runtime/Error.h:
+
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        No LLInt Test Failure: jsc-layout-tests.yaml/js/script-tests/object-literal-duplicate-properties.js.layout-no-llint
+        https://bugs.webkit.org/show_bug.cgi?id=145219
+
+        Reviewed by Mark Lam.
+
+        * jit/JITOperations.cpp:
+        Throw the error we just got, instead of a stack overflow exception.
+        This matches other error handling for callers of prepareForExecution.
+
+2015-05-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Add some assertions about the CFG in the loop pre-header creation phase
+        https://bugs.webkit.org/show_bug.cgi?id=145205
+
+        Reviewed by Geoffrey Garen.
+        
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::currentNodeOrigin): Add a FIXME.
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::run): Add a FIXME.
+        * dfg/DFGLoopPreHeaderCreationPhase.cpp:
+        (JSC::DFG::LoopPreHeaderCreationPhase::run): Add the assertions.
+
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6: Implement Object.setPrototypeOf
+        https://bugs.webkit.org/show_bug.cgi?id=145202
+
+        Reviewed by Darin Adler.
+
+        * runtime/JSGlobalObjectFunctions.h:
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncProtoSetter):
+        (JSC::checkProtoSetterAccessAllowed):
+        Extract a helper to share this code between __proto__ setter and setPrototypeOf.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorSetPrototypeOf):
+        Implementation is very similiar to __proto__ setter.
+
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6: Should not allow duplicate basic __proto__ properties in Object Literals
+        https://bugs.webkit.org/show_bug.cgi?id=145138
+
+        Reviewed by Darin Adler.
+
+        Implement ES6 Annex B.3.1, which disallows duplicate basic __proto__
+        properties in object literals. This doesn't affect computed properties,
+        shorthand properties, or getters/setters all of which avoid setting
+        the actual prototype of the object anyway.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::eval):
+        Remove out of date comment. Duplicate property names are allowed
+        now in ES6, they were not in ES5 strict mode.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::getName):
+        (JSC::ASTBuilder::getType):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::getName):
+        Add back getName to get the property name depending on the tree builder.
+        Also tighten up the parameter types.
+
+        * runtime/LiteralParser.cpp:
+        (JSC::LiteralParser<CharType>::parse):
+        In quick JSON literal parsing for eval, we actually need to evaluate
+        the __proto__ property assignment, instead of just building up a list
+        of direct properties. Only do this when not doing a strict JSON parse.
+
+        * parser/Nodes.h:
+        Add "Shorthand" to the list of PropertyNode types to allow it to
+        be distinguished without relying on other information.
+
+        * parser/Parser.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseProperty):
+        Add the Shorthand type when parsing a shorthand property.
+
+        (JSC::Parser<LexerType>::shouldCheckPropertyForUnderscoreProtoDuplicate):
+        (JSC::Parser<LexerType>::parseObjectLiteral):
+        (JSC::Parser<LexerType>::parseStrictObjectLiteral):
+        Check for duplicate __proto__ properties, and throw a SyntaxError
+        if that was the case.
+
+2015-05-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [JSC] Add missing copyrights and licenses for some scripts
+        https://bugs.webkit.org/show_bug.cgi?id=145044
+
+        Reviewed by Darin Adler.
+
+        * build-symbol-table-index.py:
+        * create-llvm-ir-from-source-file.py:
+        * create-symbol-table-index.py:
+
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Slightly better node previews in arrays
+        https://bugs.webkit.org/show_bug.cgi?id=145188
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.prototype._nodeDescription):
+        (InjectedScript.prototype._nodePreview):
+        Different stringified representations for a basic object description or in a preview.
+
+        (InjectedScript.RemoteObject.prototype._appendPropertyPreviews):
+        Use the node preview string representation inside previews.
+
+2015-05-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r184613 and r184614.
+        https://bugs.webkit.org/show_bug.cgi?id=145206
+
+        Broke 10 tests :| (Requested by kling on #webkit).
+
+        Reverted changesets:
+
+        "[JSC] Speed up URL encode/decode by using bitmaps instead of
+        strchr()."
+        https://bugs.webkit.org/show_bug.cgi?id=145115
+        http://trac.webkit.org/changeset/184613
+
+        "[JSC] Speed up URL encode/decode by using bitmaps instead of
+        strchr()."
+        https://bugs.webkit.org/show_bug.cgi?id=145115
+        http://trac.webkit.org/changeset/184614
+
+2015-05-19  Andreas Kling  <akling@apple.com>
+
+        Give StringView a utf8() API.
+        <https://webkit.org/b/145201>
+
+        Reviewed by Anders Carlsson.
+
+        Use JSString::view() in a few places where we couldn't before due to StringView
+        lacking a utf8() API. This is a minor speed-up on Kraken's crypto subtests,
+        which like to call encode() with substring JSStrings.
+
+        * jsc.cpp:
+        (functionPrint):
+        (functionDebug):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::encode):
+
+2015-05-19  Andreas Kling  <akling@apple.com>
+
+        [JSC] Speed up URL encode/decode by using bitmaps instead of strchr().
+        <https://webkit.org/b/145115>
+
+        Incorporate review feedback from Darin, removing some unnecessary zero checks.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::encode):
+        (JSC::decode):
+        (JSC::globalFuncEscape):
+
+2015-05-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Move AtomicStringImpl table related operations from AtomicString to AtomicStringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=145109
+
+        Reviewed by Darin Adler.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::nameForRegister):
+        * runtime/Identifier.cpp:
+        (JSC::Identifier::add):
+        (JSC::Identifier::add8):
+        * runtime/Identifier.h:
+        (JSC::Identifier::add):
+        * runtime/IdentifierInlines.h:
+        (JSC::Identifier::Identifier):
+        (JSC::Identifier::add):
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeToExistingAtomicString):
+        * runtime/JSString.h:
+        (JSC::JSString::toExistingAtomicString):
+        * runtime/SmallStrings.cpp:
+        (JSC::SmallStringsStorage::SmallStringsStorage):
+        * runtime/TypeSet.cpp:
+        (JSC::StructureShape::propertyHash):
+
+2015-05-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Preview for NodeList / array like collections
+        https://bugs.webkit.org/show_bug.cgi?id=145177
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.RemoteObject.prototype._appendPropertyPreviews):
+        For "array" like object previews skip over non-index properties.
+        We are not marking the object as lossless by choice, but we
+        may return to this decision later.
+
+2015-05-19  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(183787): JIT is enabled for all builds
+        https://bugs.webkit.org/show_bug.cgi?id=145179
+
+        Reviewed by Geoffrey Garen.
+
+        Eliminated the setting of ENABLE_JIT, as wtf/Platform.h has appropriate logic to
+        set it depending on OS and CPU type.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-05-19  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Rename createIterResultObject as createIteratorResultObject
+        https://bugs.webkit.org/show_bug.cgi?id=145116
+
+        Reviewed by Darin Adler.
+
+        Renamed createIterResultObject as createIteratorResultObject.
+        Made this function exportable for future use by streams API.
+
+        * runtime/IteratorOperations.cpp:
+        (JSC::createIteratorResultObject):
+        * runtime/IteratorOperations.h:
+        * runtime/MapIteratorPrototype.cpp:
+        (JSC::MapIteratorPrototypeFuncNext):
+        * runtime/SetIteratorPrototype.cpp:
+        (JSC::SetIteratorPrototypeFuncNext):
+
+2015-05-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Array.prototype methods must use ToLength
+        https://bugs.webkit.org/show_bug.cgi?id=144128
+
+        Reviewed by Oliver Hunt.
+
+        Patch by Jordan Harband  <ljharb@gmail.com> and Yusuke Suzuki <utatane.tea@gmail.com>
+
+        Per https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength
+
+        This patch introduces ToLength and ToInteger JS implementation to encourage the DFG/FTL's inlining.
+        These implementations are located in GlobalObject.js.
+        And set to the JSGlobalObject with the private symbols @ToLength and @ToInteger manually.
+
+        * builtins/Array.prototype.js:
+        (every):
+        (forEach):
+        (filter):
+        (map):
+        (some):
+        (fill):
+        (find):
+        (findIndex):
+        (includes):
+        * builtins/ArrayConstructor.js:
+        (from):
+        * builtins/GlobalObject.js: Copied from Source/JavaScriptCore/builtins/StringConstructor.js.
+        (ToInteger):
+        (ToLength):
+        * builtins/StringConstructor.js:
+        (raw):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObjectFunctions.h:
+
+2015-05-19  Mark Lam  <mark.lam@apple.com>
+
+        Fix the build of a universal binary with ARMv7k of JavaScriptCore.
+        https://bugs.webkit.org/show_bug.cgi?id=145143
+
+        Reviewed by Geoffrey Garen.
+
+        The offlineasm works in 3 phases:
+
+        Phase 1:
+           Parse the llint asm files for config options and desired offsets.
+           Let's say the offlineasm discovers C unique options and O unique offsets.
+           The offlineasm will then generate a LLIntDesiredOffsets.h file with
+           C x C build configurations, each with a set of O offsets.
+
+           Each of these build configurations is given a unique configuration index number.
+
+        Phase 2: 
+           Compile the LLIntDesiredOffsets.h file into a JSCLLIntOffsetsExtractor binary.
+
+           If we're building a fat binary with 2 configurations: armv7, and armv7k,
+           then the fat binary will contain 2 blobs of offsets, one for each of these
+           build configurations.
+
+        Phase 3:
+           Parse the llint asm files and emit asm code using the offsets that are
+           extracted from the JSCLLIntOffsetsExtractor binary for the corresponding
+           configuration index number.
+
+        In the pre-existing code, there are no "if ARMv7k" statements in the llint asm
+        source.  As a result, OFFLINE_ASM_ARMv7k is not one of the config options in
+        the set of C unique options.
+
+        For armv7k builds, OFFLINE_ASM_ARMv7 is also true.  As a result, for an armv7k
+        target, we will end up building armv7 source.  In general, this is fine except:
+
+        1. armv7k has different alignment requirements from armv7.  Hence, their offset
+           values (in JSCLLIntOffsetsExtractor) will be different.
+
+        2. The offlineasm was never told that it needed to make a different configuration
+           for armv7k builds.  Hence, the armv7k build of LLIntDesiredOffsets.h will
+           build the armv7 configuration, and consequently, the armv7k blob of offsets in
+           JSCLLIntOffsetsExtractor will have the same configuration index number as
+           the armv7 blob of offsets.
+
+        In phase 3, when the offlineasm parses the JSCLLIntOffsetsExtractor fat binary
+        looking for the armv7 build's configuration index number, it discovers the
+        armv7k blob which has the same configuration number.  As a result, it
+        erroneously thinks the armv7k offsets are appropriate for emitting armv7 code.
+        Needless to say, armv7 code using armv7k offsets will lead to incorrect behavior
+        and all round badness.
+
+        The fix is to add a simple "if ARMv7k" statement to the llint asm files.  While
+        the if statement has no body, it does make the offlineasm aware of the need for
+        ARMv7k as a configuration option.  As a result, it will generate an armv7k
+        variant configuration in the LLIntDesiredOffsets.h file with its own unique
+        configuration index number.  With that, the JSCLLIntOffsetsExtractor fat binary
+        will no longer have duplicate configuration index numbers for the armv7 and
+        armv7k blobs of offsets, and the issue is resolved.
+
+        * llint/LLIntOfflineAsmConfig.h:
+        * llint/LowLevelInterpreter.asm:
+
+2015-05-19  Andreas Kling  <akling@apple.com>
+
+        Give JSString a StringView getter and start using it.
+        <https://webkit.org/b/145131>
+
+        Reviewed by Anders Carlsson.
+
+        When JSString is a substring internally, calling value(ExecState*) on it
+        will reify the baseString/start/length tuple into a new StringImpl.
+
+        For clients that only want to look at the characters of a JSString, but
+        don't actually need a reffable StringImpl, adding a light-weight StringView
+        getter lets them avoid constructing anything.
+
+        This patch adds JSString::view(ExecState*) and uses it in a few places.
+        There are many more opportunities to use this API, but let's do a few things
+        at a time.
+
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::decode):
+        (JSC::parseInt):
+        (JSC::jsToNumber):
+        (JSC::parseFloat):
+        (JSC::globalFuncParseInt):
+        (JSC::globalFuncParseFloat):
+        (JSC::globalFuncEscape):
+        (JSC::globalFuncUnescape):
+        * runtime/JSGlobalObjectFunctions.h:
+        * runtime/JSONObject.cpp:
+        (JSC::JSONProtoFuncParse):
+        * runtime/JSString.cpp:
+        (JSC::JSString::getPrimitiveNumber):
+        (JSC::JSString::toNumber):
+        * runtime/JSString.h:
+        (JSC::JSRopeString::view):
+        (JSC::JSString::view):
+
+2015-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Better optimize 'if' with ternaries conditional tests.
+        https://bugs.webkit.org/show_bug.cgi?id=144136
+
+        Reviewed by Benjamin Poulain.
+        
+        This is the last fix I'll do for this for now. BooleanToNumber(Untyped:) where the input
+        is proved to be either BoolInt32 or Boolean should be optimized to just masking the
+        lowest bit.
+        
+        This is another 37% speed-up on JSRegress/slow-ternaries.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileBooleanToNumber):
+
+2015-05-18  Benjamin Poulain  <bpoulain@apple.com>
+
+        <rdar://problem/21003555> cloberrize() is wrong for ArithRound because it doesn't account for the arith mode
+        https://bugs.webkit.org/show_bug.cgi?id=145147
+
+        Reviewed by Filip Pizlo.
+
+        Really stupid bug: ArithRound nodes with different rounding modes
+        were not distinguished and CSE would happily unify with a node of
+        a different rounding mode.
+
+        DFG::clobberize() already support additional data but I was not using it.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * tests/stress/math-round-arith-rounding-mode.js: Added.
+        (firstCareAboutZeroSecondDoesNot):
+        (firstDoNotCareAboutZeroSecondDoes):
+        (warmup):
+        (verifyNegativeZeroIsPreserved):
+
+2015-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Add SpecBoolInt32 type that means "I'm an int and I'm either 0 or 1"
+        https://bugs.webkit.org/show_bug.cgi?id=145137
+
+        Reviewed by Benjamin Poulain.
+        
+        It's super useful to know if an integer value could be either zero or one. We have an
+        immediate need for this because of Int32|Boolean uses, where knowing that the Int32 is
+        either 0 or 1 means that there is no actual polymorphism if you just look at the low bit
+        (1 behaves like true, 0 behaves like false, and the low bit of 1|true is 1, and the low
+        bit of 0|false is 0).
+        
+        We do this by splitting the SpecInt32 type into SpecBoolInt32 and SpecNonBoolInt32. This
+        change doesn't have any effect on behavior, yet. But it does give us the ability to
+        predict and prove when values are SpecBoolInt32; it's just we don't leverage this yet.
+        
+        This is perf-neutral.
+
+        * bytecode/SpeculatedType.cpp:
+        (JSC::dumpSpeculation):
+        (JSC::speculationToAbbreviatedString):
+        (JSC::speculationFromValue):
+        * bytecode/SpeculatedType.h:
+        (JSC::isStringOrStringObjectSpeculation):
+        (JSC::isBoolInt32Speculation):
+        (JSC::isInt32Speculation):
+        (JSC::isInt32OrBooleanSpeculation):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
+2015-05-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Ignore warnings in system headers
+        https://bugs.webkit.org/show_bug.cgi?id=144747
+
+        Reviewed by Darin Adler.
+
+        Separate include directories into WebKit project includes and system includes. Suppress all
+        warnings from headers in system include directories using the SYSTEM argument to
+        the include_directories command.
+
+        * CMakeLists.txt:
+        * PlatformGTK.cmake:
+
+2015-05-18  Skachkov Alexandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Feature flag for arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=145108
+
+        Reviewed by Ryosuke Niwa.
+
+        Added feature flag ENABLE_ES6_ARROWFUNCTION_SYNTAX for arrow function
+
+        * Configurations/FeatureDefines.xcconfig:
+        
+2015-05-18  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] When entering a CheckTierUp without OSREntry, force the CheckTierUp for the outer loops with OSR Entry
+        https://bugs.webkit.org/show_bug.cgi?id=145092
+
+        Reviewed by Filip Pizlo.
+
+        When we have a hot loop without OSR Entry inside a slower loop that support OSR Entry,
+        we get the inside loop driving the tierUpCounter and we have very little chance of
+        doing a CheckTierUp on the outer loop. In turn, this give almost no opportunity to tier
+        up in the outer loop and OSR Enter there.
+
+        This patches changes CheckTierUp to force its outer loops to do a CheckTierUp themselves.
+
+        To do that, CheckTierUp sets a flag "nestedTriggerIsSet" to force the outer loop to
+        enter their CheckTierUp regardless of the tier-up counter.
+
+        * bytecode/ExecutionCounter.cpp:
+        (JSC::ExecutionCounter<countingVariant>::setThreshold):
+        This is somewhat unrelated. This assertion is incorrect because it relies on
+        m_counter, which changes on an other thread.
+
+        I have hit it a couple of times with this patch because we are a bit more aggressive
+        on CheckTierUp. What happens is:
+        1) ExecutionCounter<countingVariant>::checkIfThresholdCrossedAndSet() first checks
+           hasCrossedThreshold(), and it is false.
+        2) On the main thread, the hot loops keeps running and the counter becomes large
+           enough to cross the threshold.
+        3) ExecutionCounter<countingVariant>::checkIfThresholdCrossedAndSet() runs the next
+           test, setThreshold(), where the assertion is. Since the counter is now large enough,
+           the assertion fails.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
+        * dfg/DFGJITCode.h:
+        I used a uint8_t instead of a boolean to make the code generation clearer
+        in DFGSpeculativeJIT64.
+
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        This is a bit annoying: we have the NaturalLoops analysis that provides us
+        everything we need to know about loops, but the TierUpCheck are conservative
+        and set on LoopHint.
+
+        To make the two work together, we first find all the CheckTierUp that cannot
+        OSR enter and we keep a list of all the natural loops containing them.
+
+        Then we do a second pass over the LoopHints, get their NaturalLoop, and check
+        if it contains a loop that cannot OSR enter.
+
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        (JSC::DFG::TierUpCheckInjectionPhase::canOSREnterAtLoopHint):
+
+2015-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Add a Int-or-Boolean speculation to Branch
+        https://bugs.webkit.org/show_bug.cgi?id=145134
+
+        Reviewed by Benjamin Poulain.
+        
+        After https://bugs.webkit.org/show_bug.cgi?id=126778 we no longer have a reason not to do the
+        int-or-boolean optimization that we already do everywhere else.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
+2015-05-18  Andreas Kling  <akling@apple.com>
+
+        [JSC] Speed up URL encode/decode by using bitmaps instead of strchr().
+        <https://webkit.org/b/145115>
+
+        Reviewed by Anders Carlsson.
+
+        We were calling strchr() for every character when doing URL encoding/decoding and it stood out
+        like a sore O(n) thumb in Instruments. Optimize this by using a Bitmap<256> instead.
+
+        5.5% progression on Kraken/stanford-crypto-sha256-iterative.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::makeCharacterBitmap):
+        (JSC::encode):
+        (JSC::decode):
+        (JSC::globalFuncDecodeURI):
+        (JSC::globalFuncDecodeURIComponent):
+        (JSC::globalFuncEncodeURI):
+        (JSC::globalFuncEncodeURIComponent):
+        (JSC::globalFuncEscape):
+
+2015-05-17  Benjamin Poulain  <benjamin@webkit.org>
+
+        Do not use fastMallocGoodSize anywhere
+        https://bugs.webkit.org/show_bug.cgi?id=145103
+
+        Reviewed by Michael Saboff.
+
+        * assembler/AssemblerBuffer.h:
+        (JSC::AssemblerData::AssemblerData):
+        (JSC::AssemblerData::grow):
+
+2015-05-17  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Make StringRecursionChecker faster in the simple cases without any recursion
+        https://bugs.webkit.org/show_bug.cgi?id=145102
+
+        Reviewed by Darin Adler.
+
+        In general, the array targeted by Array.toString() or Array.join() are pretty
+        simple. In those simple cases, we spend as much time in StringRecursionChecker
+        as we do on the actual operation.
+
+        The reason for this is the HashSet stringRecursionCheckVisitedObjects used
+        to detect recursion. We are constantly adding and removing objects which
+        dirty buckets and force constant rehash.
+
+        This patch adds a simple shortcut for those simple case: in addition to the HashSet,
+        we keep a pointer to the root object of the recursion.
+        In the vast majority of cases, we no longer touch the HashSet at all.
+
+        This patch is a 12% progression on the overall score of ArrayWeighted.
+
+        * runtime/StringRecursionChecker.h:
+        (JSC::StringRecursionChecker::performCheck):
+        (JSC::StringRecursionChecker::~StringRecursionChecker):
+        * runtime/VM.h:
+
+2015-05-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Insert store barriers late so that IR transformations don't have to worry about them
+        https://bugs.webkit.org/show_bug.cgi?id=145015
+
+        Reviewed by Geoffrey Garen.
+        
+        We have had three kinds of bugs with store barriers. For the sake of discussion we say
+        that a store barrier is needed when we have something like:
+        
+            base.field = value
+        
+        - We sometimes fail to realize that we could remove a barrier when value is a non-cell.
+          This might happen if we prove value to be a non-cell even though in the FixupPhase it
+          wasn't predicted non-cell.
+        
+        - We sometimes have a barrier in the wrong place after object allocation sinking. We
+          might sink an allocation to just above the store, but that puts it just after the
+          StoreBarrier that FixupPhase inserted.
+        
+        - We don't remove redundant barriers across basic blocks.
+        
+        This comprehensively fixes these issues by doing store barrier insertion late, and
+        removing the store barrier elision phase. Store barrier insertion uses an epoch-based
+        algorithm to determine when stores need barriers. Briefly, a barrier is not needed if
+        base is in the current GC epoch (i.e. was the last object that we allocated or had a
+        barrier since last GC) or if base has a newer GC epoch than value (i.e. value would have
+        always been allocated before base). We do conservative things when merging epoch state
+        between basic blocks, and we only do such inter-block removal in the FTL. FTL also
+        queries AI to determine what type we've proved about value, and avoids barriers when
+        value is not a cell. FixupPhase still inserts type checks on some stores, to maximize
+        the likelihood that this AI-based removal is effective.
+        
+        Rolling back in after fixing some debug build test failures.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGBlockMap.h:
+        (JSC::DFG::BlockMap::at):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::emitPutByOffset):
+        * dfg/DFGEpoch.h:
+        (JSC::DFG::Epoch::operator<):
+        (JSC::DFG::Epoch::operator>):
+        (JSC::DFG::Epoch::operator<=):
+        (JSC::DFG::Epoch::operator>=):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::speculateForBarrier):
+        (JSC::DFG::FixupPhase::insertStoreBarrier): Deleted.
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGStoreBarrierElisionPhase.cpp: Removed.
+        * dfg/DFGStoreBarrierElisionPhase.h: Removed.
+        * dfg/DFGStoreBarrierInsertionPhase.cpp: Added.
+        (JSC::DFG::performFastStoreBarrierInsertion):
+        (JSC::DFG::performGlobalStoreBarrierInsertion):
+        * dfg/DFGStoreBarrierInsertionPhase.h: Added.
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR): Fix an unrelated debug-only bug.
+        * tests/stress/load-varargs-then-inlined-call-and-exit.js: Test for that debug-only bug.
+        * tests/stress/load-varargs-then-inlined-call-and-exit-strict.js: Strict version of that test.
+
+2015-05-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r184415.
+        https://bugs.webkit.org/show_bug.cgi?id=145096
+
+        Broke several tests (Requested by msaboff on #webkit).
+
+        Reverted changeset:
+
+        "Insert store barriers late so that IR transformations don't
+        have to worry about them"
+        https://bugs.webkit.org/show_bug.cgi?id=145015
+        http://trac.webkit.org/changeset/184415
+
+2015-05-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Insert store barriers late so that IR transformations don't have to worry about them
+        https://bugs.webkit.org/show_bug.cgi?id=145015
+
+        Reviewed by Geoffrey Garen.
+        
+        We have had three kinds of bugs with store barriers. For the sake of discussion we say
+        that a store barrier is needed when we have something like:
+        
+            base.field = value
+        
+        - We sometimes fail to realize that we could remove a barrier when value is a non-cell.
+          This might happen if we prove value to be a non-cell even though in the FixupPhase it
+          wasn't predicted non-cell.
+        
+        - We sometimes have a barrier in the wrong place after object allocation sinking. We
+          might sink an allocation to just above the store, but that puts it just after the
+          StoreBarrier that FixupPhase inserted.
+        
+        - We don't remove redundant barriers across basic blocks.
+        
+        This comprehensively fixes these issues by doing store barrier insertion late, and
+        removing the store barrier elision phase. Store barrier insertion uses an epoch-based
+        algorithm to determine when stores need barriers. Briefly, a barrier is not needed if
+        base is in the current GC epoch (i.e. was the last object that we allocated or had a
+        barrier since last GC) or if base has a newer GC epoch than value (i.e. value would have
+        always been allocated before base). We do conservative things when merging epoch state
+        between basic blocks, and we only do such inter-block removal in the FTL. FTL also
+        queries AI to determine what type we've proved about value, and avoids barriers when
+        value is not a cell. FixupPhase still inserts type checks on some stores, to maximize
+        the likelihood that this AI-based removal is effective.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGBlockMap.h:
+        (JSC::DFG::BlockMap::at):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::emitPutByOffset):
+        * dfg/DFGEpoch.h:
+        (JSC::DFG::Epoch::operator<):
+        (JSC::DFG::Epoch::operator>):
+        (JSC::DFG::Epoch::operator<=):
+        (JSC::DFG::Epoch::operator>=):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::speculateForBarrier):
+        (JSC::DFG::FixupPhase::insertStoreBarrier): Deleted.
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGStoreBarrierElisionPhase.cpp: Removed.
+        * dfg/DFGStoreBarrierElisionPhase.h: Removed.
+        * dfg/DFGStoreBarrierInsertionPhase.cpp: Added.
+        (JSC::DFG::performFastStoreBarrierInsertion):
+        (JSC::DFG::performGlobalStoreBarrierInsertion):
+        * dfg/DFGStoreBarrierInsertionPhase.h: Added.
+
+2015-05-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        [ARM64] Do not fail branchConvertDoubleToInt32 when the result is zero and not negative zero
+        https://bugs.webkit.org/show_bug.cgi?id=144976
+
+        Reviewed by Michael Saboff.
+
+        Failing the conversion on zero is pretty dangerous as we discovered on x86.
+
+        This patch does not really impact performance significantly because
+        r184220 removed the zero checks from Kraken. This patch is just to be
+        on the safe side for cases not covered by existing benchmarks.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::branchConvertDoubleToInt32):
+
+2015-05-15  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Remove unnecessary forward declarations in PropertyNameArray.h.
+        https://bugs.webkit.org/show_bug.cgi?id=145058
+
+        Reviewed by Andreas Kling.
+
+        No new tests, no behavior change.
+
+        * runtime/PropertyNameArray.h:
+
+2015-05-15  Mark Lam  <mark.lam@apple.com>
+
+        JSArray::setLength() should reallocate instead of zero-filling if the reallocation would be small enough.
+        https://bugs.webkit.org/show_bug.cgi?id=144622
+
+        Reviewed by Geoffrey Garen.
+
+        When setting the array to a new length that is shorter, we now check if it is worth
+        just making a new butterfly instead of clearing out the slots in the old butterfly
+        that resides beyond the new length.  If so, we will make a new butterfly instead.
+
+        There is no perf differences in the benchmark results.  However, this does benefit
+        the perf of pathological cases where we need to shorten the length of a very large
+        array, as is the case in tests/mozilla/js1_5/Array/regress-101964.js.  With this
+        patch, we can expect that test to complete in a short time again.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLength):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::reallocateAndShrinkButterfly):
+        - makes a new butterfly with a new shorter length.
+        * runtime/JSObject.h:
+        * tests/mozilla/js1_5/Array/regress-101964.js:
+        - Undo this test change since this patch will prevent us from spending a lot of time
+          clearing a large butterfly.
+
+2015-05-15  Basile Clement  <basile_clement@apple.com>
+
+        DFGLICMPhase shouldn't create NodeOrigins with forExit but without semantic
+        https://bugs.webkit.org/show_bug.cgi?id=145062
+
+        Reviewed by Filip Pizlo.
+
+        We assert in various places (including NodeOrigin::isSet()) that a
+        NodeOrigin's semantic and forExit must be either both set, or both
+        unset.  However, LICM'ing a node with unset NodeOrigin would only set
+        forExit, and leave semantic unset. This can for instance happen when a
+        Phi node is constant-folded into a JSConstant, which in turn gets
+        LICM'd.
+
+        This patch changes DFGLICMPhase to set the NodeOrigin's semantic in
+        addition to its forExit if semantic was previously unset.
+
+        It also adds two validators to DFGValidate.cpp:
+         - In both SSA and CPS form, a NodeOrigin semantic and forExit must be either both set or both unset
+         - In CPS form, all nodes must have a set NodeOrigin forExit (this is
+           the CPS counterpart to the SSA validator that checks that all nodes
+           must have a set NodeOrigin except possibly for a continuous chunk of
+           nodes at the top of a block)
+
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::attemptHoist):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validate):
+        (JSC::DFG::Validate::validateCPS):
+
+2015-05-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, remove an unused declaration.
+
+        * dfg/DFGSpeculativeJIT.h:
+
+2015-05-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove unused constant-base and constant-value store barrier code in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=145039
+
+        Reviewed by Andreas Kling.
+        
+        Just killing dead code.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::storeToWriteBarrierBuffer): Deleted.
+        (JSC::DFG::SpeculativeJIT::writeBarrier): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::writeBarrier):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::writeBarrier):
+
+2015-05-15  Alexandr Skachkov  <gskachkov@gmail.com>
+
+        Fix typo in function name parseFunctionParamters -> parseFunctionParameters
+        https://bugs.webkit.org/show_bug.cgi?id=145040
+
+        Reviewed by Mark Lam.
+
+        * parser/Parser.h:
+        * parser/Parser.cpp:
+
+2015-05-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove StoreBarrierWithNullCheck, nobody ever generates this.
+        
+        Rubber stamped by Benjamin Poulain and Michael Saboff.
+
+        If we did bring something like this back in the future, we would just use UntypedUse instead
+        of CellUse to indicate that this is what we want.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isStoreBarrier):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::lowerNonReadingOperationsOnPhantomAllocations):
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileStoreBarrier):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileStoreBarrierWithNullCheck): Deleted.
+
+2015-05-14  Filip Pizlo  <fpizlo@apple.com>
+
+        PutGlobalVar should reference the global object it's storing into
+        https://bugs.webkit.org/show_bug.cgi?id=145036
+
+        Reviewed by Michael Saboff.
+        
+        This makes it easier to reason about store barrier insertion and elimination. This changes
+        the format of PutGlobalVar so that child1 is the global object and child2 is the value.
+        Previously it just had child1, and that was the value.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compilePutGlobalVar):
+
+2015-05-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Error out when ruby is too old
+        https://bugs.webkit.org/show_bug.cgi?id=145014
+
+        Reviewed by Martin Robinson.
+
+        Don't enforce the check for the Ruby executable here; it's now enforced in the top-level
+        CMakeLists.txt instead.
+
+        * CMakeLists.txt:
+
+2015-05-12  Basile Clement  <basile_clement@apple.com>
+
+        Enforce options coherency
+        https://bugs.webkit.org/show_bug.cgi?id=144921
+
+        Reviewed by Mark Lam.
+
+        JavaScriptCore should be failing early when the options are set in such
+        a way that we don't have a meaningful way to execute JavaScript, rather
+        than failing for obscure reasons at some point during execution.
+
+        This patch adds a new function that checks whether the options are set
+        in a coherent way, and makes JSC::Options::initialize() crash when the
+        environment enforces incoherent options.
+        Client applications able to add or change additional options are
+        responsible to check for coherency again before starting to actually
+        execute JavaScript, if any additional options have been set. This is
+        implemented for the jsc executable in this patch.
+
+        * jsc.cpp:
+        (CommandLine::parseArguments):
+        * runtime/Options.cpp:
+        (JSC::Options::initialize):
+        (JSC::Options::ensureOptionsAreCoherent): Added.
+        * runtime/Options.h:
+        (JSC::Options::ensureOptionsAreCoherent): Added.
+
+2015-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION (r184337): [EFL] unresolved reference errors in ARM builds
+        https://bugs.webkit.org/show_bug.cgi?id=145019
+
+        Reviewed by Ryosuke Niwa.
+
+        Attempt to fix compile errors in EFL ARM buildbots.
+        By executing `nm`, found JSTemplateRegistryKey.cpp.o and TemplateRegistry.cpp.o have
+        unresolved reference to Structure::get. That is inlined function in StructureInlines.h.
+
+        * runtime/JSTemplateRegistryKey.cpp:
+        * runtime/TemplateRegistry.cpp:
+
+2015-05-14  Alexandr Skachkov  <gskachkov@gmail.com>
+
+        Small refactoring before implementation of the ES6 arrow function.
+        https://bugs.webkit.org/show_bug.cgi?id=144954
+
+        Reviewed by Ryosuke Niwa.
+
+        * parser/Parser.h:
+        * parser/Parser.cpp:
+
+2015-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION (r184337): ASSERT failed in debug builds for tagged templates
+        https://bugs.webkit.org/show_bug.cgi?id=145013
+
+        Reviewed by Filip Pizlo.
+
+        Fix the regression introduced by r184337.
+
+        1. JSTemporaryRegistryKey::s_info should inherit the Base::s_info,
+           JSDestructibleObject::s_info.
+
+        2. The first register argument of BytecodeGenerator::emitNode
+           should be a referenced register if it is a temporary register.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TaggedTemplateNode::emitBytecode):
+        * runtime/JSTemplateRegistryKey.cpp:
+
+2015-05-14  Andreas Kling  <akling@apple.com>
+
+        String.prototype.split() should create efficient substrings.
+        <https://webkit.org/b/144985>
+        <rdar://problem/20949344>
+
+        Reviewed by Geoffrey Garen.
+
+        Teach split() how to make substring JSStrings instead of relying on StringImpl's
+        substring sharing mechanism. The optimization works by deferring the construction
+        of a StringImpl until the substring's value is actually needed.
+
+        This knocks ~2MB off of theverge.com by avoiding the extra StringImpl allocations.
+        Out of ~70000 substrings created by split(), only ~2000 of them get reified.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::jsSubstring):
+        (JSC::splitStringByOneCharacterImpl):
+        (JSC::stringProtoFuncSplit):
+
+2015-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Change the status of ES6 tagged templates to Done in features.json
+        https://bugs.webkit.org/show_bug.cgi?id=145003
+
+        Reviewed by Benjamin Poulain.
+
+        Now it's implemented in r184337.
+
+        * features.json:
+
+2015-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce SymbolType into SpeculativeTypes
+        https://bugs.webkit.org/show_bug.cgi?id=142651
+
+        Reviewed by Filip Pizlo.
+
+        Introduce SpecSymbol type into speculative types.
+        Previously symbol type is categorized into SpecCellOther.
+        But SpecCellOther is not intended to be used for such cells.
+
+        This patch just introduces SpecSymbol.
+        It represents the type of target value is definitely the symbol type.
+        It is the part of SpecCell.
+
+        In this patch, we do not introduce SymbolUse tracking.
+        It will be added in the separate patch.
+
+        * bytecode/SpeculatedType.cpp:
+        (JSC::dumpSpeculation):
+        (JSC::speculationFromStructure):
+        * bytecode/SpeculatedType.h:
+        (JSC::isSymbolSpeculation):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::setType):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * tests/stress/typeof-symbol.js: Added.
+
+2015-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement tagged templates
+        https://bugs.webkit.org/show_bug.cgi?id=143183
+
+        Reviewed by Oliver Hunt.
+
+        This patch implements ES6 tagged templates.
+        In tagged templates, the function takes the template object.
+
+        The template object contains the raw and cooked template strings,
+        so when parsing the tagged templates, we need to tokenize the raw and cooked strings.
+        While tagged templates require the both strings, the template literal only requires
+        the cooked strings. So when tokenizing under the template literal context,
+        we only builds the cooked strings.
+
+        As per ES6 spec, the template objects for the same raw strings are shared in the same realm.
+        The template objects is cached. And every time we evaluate the same tagged templates,
+        the same (cached) template objects are used.
+        Since the spec freezes this template objects completely,
+        we cannot attach some properties to it.
+        So we can say that it behaves as if the template objects are the primitive values (like JSString).
+        Since we cannot attach properties, the only way to test the identity of the template object is comparing. (===)
+        As the result, when there is no reference to the template object, we can garbage collect it
+        because the user has no way to test that the newly created template object does not equal
+        to the already collected template object.
+
+        So, to implement tagged templates, we implement the following components.
+
+        1. JSTemplateRegistryKey
+        It holds the template registry key and it does not exposed to users.
+        TemplateRegistryKey holds the vector of raw and cooked strings with the pre-computed hash value.
+        When obtaining the template object for the (statically, a.k.a. at the parsing time) given raw string vectors,
+        we use this JSTemplateRegistryKey as a key to the map and look up the template object from
+        TemplateRegistry.
+        JSTemplateRegistryKey is created at the bytecode compiling time and
+        stored in the CodeBlock as like as JSString content values.
+
+        2. TemplateRegistry
+        This manages the cached template objects.
+        It holds the weak map (JSTemplateRegistryKey -> the template object).
+        The template object is weakly referenced.
+        So if there is no reference to the template object,
+        the template object is automatically GC-ed.
+        When looking up the template object, it searches the cached template object.
+        If it is found, it is returned to the users.
+        If there is no cached template objects, it creates the new template object and
+        stores it with the given template registry key.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::addTemplateRegistryKeyConstant):
+        (JSC::BytecodeGenerator::emitGetTemplateObject):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TaggedTemplateNode::emitBytecode):
+        (JSC::TemplateLiteralNode::emitBytecode): Deleted.
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createTaggedTemplate):
+        (JSC::ASTBuilder::createTemplateLiteral): Deleted.
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::setCode):
+        (JSC::Lexer<T>::parseTemplateLiteral):
+        (JSC::Lexer<T>::lex):
+        (JSC::Lexer<T>::scanTrailingTemplateString):
+        (JSC::Lexer<T>::clear):
+        * parser/Lexer.h:
+        (JSC::Lexer<T>::makeEmptyIdentifier):
+        * parser/NodeConstructors.h:
+        (JSC::TaggedTemplateNode::TaggedTemplateNode):
+        (JSC::TemplateLiteralNode::TemplateLiteralNode): Deleted.
+        * parser/Nodes.h:
+        (JSC::TemplateLiteralNode::templateStrings):
+        (JSC::TemplateLiteralNode::templateExpressions):
+        (JSC::TaggedTemplateNode::templateLiteral):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseTemplateString):
+        (JSC::Parser<LexerType>::parseTemplateLiteral):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/Parser.h:
+        * parser/ParserArena.h:
+        (JSC::IdentifierArena::makeEmptyIdentifier):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createTaggedTemplate):
+        (JSC::SyntaxChecker::createTemplateLiteral): Deleted.
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::getTemplateObject):
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::templateRegistry):
+        * runtime/JSTemplateRegistryKey.cpp: Added.
+        (JSC::JSTemplateRegistryKey::JSTemplateRegistryKey):
+        (JSC::JSTemplateRegistryKey::create):
+        (JSC::JSTemplateRegistryKey::destroy):
+        * runtime/JSTemplateRegistryKey.h: Added.
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorFreeze):
+        * runtime/ObjectConstructor.h:
+        * runtime/TemplateRegistry.cpp: Added.
+        (JSC::TemplateRegistry::TemplateRegistry):
+        (JSC::TemplateRegistry::getTemplateObject):
+        * runtime/TemplateRegistry.h: Added.
+        * runtime/TemplateRegistryKey.h: Added.
+        (JSC::TemplateRegistryKey::isDeletedValue):
+        (JSC::TemplateRegistryKey::isEmptyValue):
+        (JSC::TemplateRegistryKey::hash):
+        (JSC::TemplateRegistryKey::rawStrings):
+        (JSC::TemplateRegistryKey::cookedStrings):
+        (JSC::TemplateRegistryKey::operator==):
+        (JSC::TemplateRegistryKey::operator!=):
+        (JSC::TemplateRegistryKey::Hasher::hash):
+        (JSC::TemplateRegistryKey::Hasher::equal):
+        (JSC::TemplateRegistryKey::TemplateRegistryKey):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * tests/stress/tagged-templates-identity.js: Added.
+        (shouldBe):
+        * tests/stress/tagged-templates-raw-strings.js: Added.
+        (shouldBe):
+        (tag):
+        (testEval):
+        * tests/stress/tagged-templates-syntax.js: Added.
+        (tag):
+        (testSyntax):
+        (testSyntaxError):
+        * tests/stress/tagged-templates-template-object.js: Added.
+        (shouldBe):
+        (tag):
+        * tests/stress/tagged-templates-this.js: Added.
+        (shouldBe):
+        (tag):
+        * tests/stress/tagged-templates.js: Added.
+        (shouldBe):
+        (raw):
+        (cooked):
+        (Counter):
+
 2015-05-13  Ryosuke Niwa  <rniwa@webkit.org>
 
         REGRESSION(r180595): same-callee profiling no longer works

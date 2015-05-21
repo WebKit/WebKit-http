@@ -818,9 +818,6 @@ private:
         case StoreBarrier:
             compileStoreBarrier();
             break;
-        case StoreBarrierWithNullCheck:
-            compileStoreBarrierWithNullCheck();
-            break;
         case HasIndexedProperty:
             compileHasIndexedProperty();
             break;
@@ -1082,6 +1079,11 @@ private:
             
         case UntypedUse: {
             LValue value = lowJSValue(m_node->child1());
+            
+            if (!m_interpreter.needsTypeCheck(m_node->child1(), SpecBoolInt32 | SpecBoolean)) {
+                setInt32(m_out.bitAnd(m_out.castToInt32(value), m_out.int32One));
+                return;
+            }
             
             LBasicBlock booleanCase = FTL_NEW_BLOCK(m_out, ("BooleanToNumber boolean case"));
             LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("BooleanToNumber continuation"));
@@ -3902,7 +3904,7 @@ private:
     void compilePutGlobalVar()
     {
         m_out.store64(
-            lowJSValue(m_node->child1()), m_out.absolute(m_node->variablePointer()));
+            lowJSValue(m_node->child2()), m_out.absolute(m_node->variablePointer()));
     }
     
     void compileNotifyWrite()
@@ -4901,22 +4903,6 @@ private:
         emitStoreBarrier(lowCell(m_node->child1()));
     }
 
-    void compileStoreBarrierWithNullCheck()
-    {
-#if ENABLE(GGC)
-        LBasicBlock isNotNull = FTL_NEW_BLOCK(m_out, ("Store barrier with null check value not null"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Store barrier continuation"));
-
-        LValue base = lowJSValue(m_node->child1());
-        m_out.branch(m_out.isZero64(base), unsure(continuation), unsure(isNotNull));
-        LBasicBlock lastNext = m_out.appendTo(isNotNull, continuation);
-        emitStoreBarrier(base);
-        m_out.appendTo(continuation, lastNext);
-#else
-        speculate(m_node->child1());
-#endif
-    }
-    
     void compileHasIndexedProperty()
     {
         switch (m_node->arrayMode().type()) {

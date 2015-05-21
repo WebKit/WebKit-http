@@ -473,11 +473,27 @@ namespace JSC {
         TemplateLiteralNode(const JSTokenLocation&, TemplateStringListNode*);
         TemplateLiteralNode(const JSTokenLocation&, TemplateStringListNode*, TemplateExpressionListNode*);
 
+        TemplateStringListNode* templateStrings() const { return m_templateStrings; }
+        TemplateExpressionListNode* templateExpressions() const { return m_templateExpressions; }
+
     private:
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
 
         TemplateStringListNode* m_templateStrings;
         TemplateExpressionListNode* m_templateExpressions;
+    };
+
+    class TaggedTemplateNode : public ExpressionNode, public ThrowableExpressionData {
+    public:
+        TaggedTemplateNode(const JSTokenLocation&, ExpressionNode*, TemplateLiteralNode*);
+
+        TemplateLiteralNode* templateLiteral() const { return m_templateLiteral; }
+
+    private:
+        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+
+        ExpressionNode* m_tag;
+        TemplateLiteralNode* m_templateLiteral;
     };
 #endif
 
@@ -564,7 +580,7 @@ namespace JSC {
 
     class PropertyNode : public ParserArenaFreeable {
     public:
-        enum Type { Constant = 1, Getter = 2, Setter = 4, Computed = 8 };
+        enum Type { Constant = 1, Getter = 2, Setter = 4, Computed = 8, Shorthand = 16 };
         enum PutType { Unknown, KnownDirect };
 
         PropertyNode(const Identifier&, ExpressionNode*, Type, PutType, SuperBinding);
@@ -582,7 +598,7 @@ namespace JSC {
         const Identifier* m_name;
         ExpressionNode* m_expression;
         ExpressionNode* m_assign;
-        unsigned m_type : 4;
+        unsigned m_type : 5;
         unsigned m_needsSuperBinding : 1;
         unsigned m_putType : 1;
     };

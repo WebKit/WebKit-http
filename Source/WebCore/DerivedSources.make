@@ -284,6 +284,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/dom/EventListener.idl \
     $(WebCore)/dom/EventTarget.idl \
     $(WebCore)/dom/FocusEvent.idl \
+    $(WebCore)/dom/GlobalEventHandlers.idl \
     $(WebCore)/dom/HashChangeEvent.idl \
     $(WebCore)/dom/KeyboardEvent.idl \
     $(WebCore)/dom/MessageChannel.idl \
@@ -299,6 +300,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/dom/NodeFilter.idl \
     $(WebCore)/dom/NodeIterator.idl \
     $(WebCore)/dom/NodeList.idl \
+    $(WebCore)/dom/NonElementParentNode.idl \
     $(WebCore)/dom/NonDocumentTypeChildNode.idl \
     $(WebCore)/dom/OverflowEvent.idl \
     $(WebCore)/dom/PageTransitionEvent.idl \
@@ -501,6 +503,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/page/UserMessageHandlersNamespace.idl \
     $(WebCore)/page/UserMessageHandler.idl \
     $(WebCore)/page/WindowBase64.idl \
+    $(WebCore)/page/WindowEventHandlers.idl \
     $(WebCore)/page/WindowTimers.idl \
     $(WebCore)/page/WorkerNavigator.idl \
     $(WebCore)/plugins/DOMMimeType.idl \

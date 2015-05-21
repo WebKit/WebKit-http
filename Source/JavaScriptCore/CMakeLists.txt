@@ -33,7 +33,10 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
     "${CMAKE_SOURCE_DIR}/Source"
-    ${ICU_INCLUDE_DIRS}
+)
+
+set(JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
+    "${ICU_INCLUDE_DIRS}"
 )
 
 set(JavaScriptCore_SOURCES
@@ -227,7 +230,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGSpeculativeJIT64.cpp
     dfg/DFGStackLayoutPhase.cpp
     dfg/DFGStaticExecutionCountEstimationPhase.cpp
-    dfg/DFGStoreBarrierElisionPhase.cpp
+    dfg/DFGStoreBarrierInsertionPhase.cpp
     dfg/DFGStrengthReductionPhase.cpp
     dfg/DFGStructureAbstractValue.cpp
     dfg/DFGStructureRegistrationPhase.cpp
@@ -512,6 +515,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSStringIterator.cpp
     runtime/JSStringJoiner.cpp
     runtime/JSSymbolTableObject.cpp
+    runtime/JSTemplateRegistryKey.cpp
     runtime/JSTypedArrayConstructors.cpp
     runtime/JSTypedArrayPrototypes.cpp
     runtime/JSTypedArrays.cpp
@@ -578,6 +582,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/SymbolObject.cpp
     runtime/SymbolPrototype.cpp
     runtime/SymbolTable.cpp
+    runtime/TemplateRegistry.cpp
     runtime/TestRunnerUtils.cpp
     runtime/TypeLocationCache.cpp
     runtime/TypeProfiler.cpp
@@ -660,13 +665,6 @@ if (USE_UDIS86)
         disassembler/udis86/udis86_syn.c
         disassembler/UDis86Disassembler.cpp
     )
-endif ()
-
-# We cannot check for RUBY_FOUND because it is set only when the full package is installed and
-# the only thing we need is the interpreter. Unlike Python, cmake does not provide a macro
-# for finding the only Ruby interpreter.
-if (NOT RUBY_EXECUTABLE)
-    message(FATAL_ERROR "The Ruby interpreter is needed to generate LLInt files.")
 endif ()
 
 set(LLINT_ASM
@@ -841,7 +839,7 @@ if (ENABLE_FTL_JIT)
     target_link_libraries(llvmForJSC ${LLVM_STATIC_LIBRARIES} "pthread" "dl" -Wl,--version-script=${JAVASCRIPTCORE_DIR}/llvm/library/libllvmForJSC.version)
 
     # Added extra items for JavaScriptCore
-    list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
+    list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
         ${LLVM_INCLUDE_DIRS}
     )
 
@@ -1191,6 +1189,7 @@ add_subdirectory(shell)
 
 WEBKIT_WRAP_SOURCELIST(${JavaScriptCore_SOURCES})
 include_directories(${JavaScriptCore_INCLUDE_DIRECTORIES})
+include_directories(SYSTEM ${JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES})
 add_library(JavaScriptCore ${JavaScriptCore_LIBRARY_TYPE} ${JavaScriptCore_HEADERS} ${JavaScriptCore_SOURCES})
 target_link_libraries(JavaScriptCore ${JavaScriptCore_LIBRARIES})
 set_target_properties(JavaScriptCore PROPERTIES COMPILE_DEFINITIONS "BUILDING_JavaScriptCore")

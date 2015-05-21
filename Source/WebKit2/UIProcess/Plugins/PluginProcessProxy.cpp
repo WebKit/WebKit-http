@@ -39,10 +39,6 @@
 #include <WebCore/NotImplemented.h>
 #include <wtf/RunLoop.h>
 
-#if OS(DARWIN)
-#include "MachPort.h"
-#endif
-
 using namespace WebCore;
 
 namespace WebKit {
@@ -80,6 +76,11 @@ void PluginProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launch
 {
     launchOptions.processType = ProcessLauncher::PluginProcess;
     platformGetLaunchOptions(launchOptions, m_pluginProcessAttributes);
+}
+
+void PluginProcessProxy::processWillShutDown(IPC::Connection& connection)
+{
+    ASSERT_UNUSED(connection, this->connection() == &connection);
 }
 
 // Asks the plug-in process to create a new connection to a web process. The connection identifier will be 

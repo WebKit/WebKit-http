@@ -3204,6 +3204,17 @@ void RenderLayer::updateSnapOffsets()
     RenderBox* box = enclosingElement()->renderBox();
     updateSnapOffsetsForScrollableArea(*this, *downcast<HTMLElement>(enclosingElement()), *box, box->style());
 }
+
+bool RenderLayer::isScrollSnapInProgress() const
+{
+    if (!scrollsOverflow())
+        return false;
+    
+    if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
+        return scrollAnimator->isScrollSnapInProgress();
+    
+    return false;
+}
 #endif
 
 int RenderLayer::verticalScrollbarWidth(OverlayScrollbarSizeRelevancy relevancy) const
@@ -3392,9 +3403,9 @@ void RenderLayer::updateScrollbarsAfterLayout()
     bool hasVerticalOverflow = this->hasVerticalOverflow();
 
     // If overflow requires a scrollbar, then we just need to enable or disable.
-    if (styleRequiresScrollbar(renderer().style(), HorizontalScrollbar))
+    if (m_hBar && styleRequiresScrollbar(renderer().style(), HorizontalScrollbar))
         m_hBar->setEnabled(hasHorizontalOverflow);
-    if (styleRequiresScrollbar(renderer().style(), VerticalScrollbar))
+    if (m_vBar && styleRequiresScrollbar(renderer().style(), VerticalScrollbar))
         m_vBar->setEnabled(hasVerticalOverflow);
 
     // Scrollbars with auto behavior may need to lay out again if scrollbars got added or removed.
@@ -5800,7 +5811,7 @@ LayoutRect RenderLayer::localBoundingBox(CalculateLayerBoundsFlags flags) const
         RenderBox* box = renderBox();
         ASSERT(box);
         if (!(flags & DontConstrainForMask) && box->hasMask()) {
-            result = box->maskClipRect();
+            result = box->maskClipRect(LayoutPoint());
             box->flipForWritingMode(result); // The mask clip rect is in physical coordinates, so we have to flip, since localBoundingBox is not.
         } else {
             LayoutRect bbox = box->borderBoxRect();

@@ -52,6 +52,10 @@ App.BugTracker = App.NameLabelModel.extend({
     bugUrl: DS.attr('string'),
     newBugUrl: DS.attr('string'),
     repositories: DS.hasMany('repository'),
+    urlFromBugNumber: function (bugNumber) {
+        var template = this.get('bugUrl');
+        return template && bugNumber ? template.replace(/\$number/g, bugNumber) : null;
+    }
 });
 
 App.DateArrayTransform = DS.Transform.extend({
@@ -315,14 +319,33 @@ App.Manifest = Ember.Controller.extend({
             };
         });
     },
+    _makeFormatter: function (unit, sigFig, alwaysShowSign)
+    {
+        var isMiliseconds = false;
+        if (unit == 'ms') {
+            isMiliseconds = true;
+            unit = 's';
+        }
+        var divisor = unit == 'B' ? 1024 : 1000;
+
+        var suffix = ['\u03BC', 'm', '', 'K', 'M', 'G', 'T', 'P', 'E'];
+        var threshold = sigFig >= 3 ? divisor : (divisor / 10);
+        return function (value) {
+            var i;
+            var sign = value >= 0 ? (alwaysShowSign ? '+' : '') : '-';
+            value = Math.abs(value);
+            for (i = isMiliseconds ? 1 : 2; value < 1 && i > 0; i--)
+                value *= divisor;
+            for (; value >= threshold; i++)
+                value /= divisor;
+            return sign + value.toPrecision(Math.max(2, sigFig)) + ' ' + suffix[i] + (unit || '');
+        }
+    },
     _formatFetchedData: function (metricName, configurations)
     {
         var unit = RunsData.unitFromMetricName(metricName);
         var smallerIsBetter = RunsData.isSmallerBetter(unit);
-
-        var useSI = unit == 'bytes';
-        var unitSuffix = unit ? ' ' + unit : '';
-        var deltaFormatterWithoutSign = useSI ? d3.format('.2s') : d3.format('.2g');
+        var deltaFormatterWithoutSign = this._makeFormatter(unit, 2, false);
 
         var currentTimeSeries = configurations.current.timeSeriesByCommitTime(false);
         var baselineTimeSeries = configurations.baseline ? configurations.baseline.timeSeriesByCommitTime(false) : null;
@@ -333,14 +356,12 @@ App.Manifest = Ember.Controller.extend({
             current: currentTimeSeries,
             baseline: baselineTimeSeries,
             target: targetTimeSeries,
-            unit: unit,
-            formatWithUnit: function (value) { return this.formatter(value) + unitSuffix; },
             formatWithDeltaAndUnit: function (value, delta)
             {
-                return this.formatter(value) + (delta && !isNaN(delta) ? ' \u00b1 ' + deltaFormatterWithoutSign(delta) : '') + unitSuffix;
+                return this.formatter(value) + (delta && !isNaN(delta) ? ' \u00b1 ' + deltaFormatterWithoutSign(delta) : '');
             },
-            formatter: useSI ? d3.format('.4s') : d3.format('.4g'),
-            deltaFormatter: useSI ? d3.format('+.2s') : d3.format('+.2g'),
+            formatter: this._makeFormatter(unit, 4, false),
+            deltaFormatter: this._makeFormatter(unit, 2, true),
             smallerIsBetter: smallerIsBetter,
             showOutlier: function (show)
             {

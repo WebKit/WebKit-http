@@ -404,6 +404,15 @@ bool ScrollController::isRubberBandInProgress() const
     return !m_client.stretchAmount().isZero();
 }
 
+bool ScrollController::isScrollSnapInProgress() const
+{
+#if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
+    if (m_inScrollGesture || m_momentumScrollInProgress || m_horizontalScrollSnapTimer.isActive() || m_verticalScrollSnapTimer.isActive())
+        return true;
+#endif
+    return false;
+}
+
 void ScrollController::startSnapRubberbandTimer()
 {
     m_client.startSnapRubberbandTimer();
@@ -466,6 +475,11 @@ const ScrollSnapAnimatorState& ScrollController::scrollSnapPointState(ScrollEven
     ASSERT(axis != ScrollEventAxis::Vertical || m_verticalScrollSnapState);
     
     return (axis == ScrollEventAxis::Horizontal) ? *m_horizontalScrollSnapState : *m_verticalScrollSnapState;
+}
+
+bool ScrollController::hasActiveScrollSnapTimerForAxis(ScrollEventAxis axis) const
+{
+    return (axis == ScrollEventAxis::Horizontal) ? m_horizontalScrollSnapTimer.isActive() : m_verticalScrollSnapTimer.isActive();
 }
 
 static inline WheelEventStatus toWheelEventStatus(PlatformWheelEventPhase phase, PlatformWheelEventPhase momentumPhase)
@@ -538,7 +552,7 @@ void ScrollController::processWheelEventForScrollSnapOnAxis(ScrollEventAxis axis
             if (snapState.m_numWheelDeltasTracked < snapState.wheelDeltaWindowSize)
                 snapState.pushInitialWheelDelta(wheelDelta);
             
-            if (snapState.m_numWheelDeltasTracked == snapState.wheelDeltaWindowSize)
+            if ((snapState.m_numWheelDeltasTracked == snapState.wheelDeltaWindowSize) && snapState.averageInitialWheelDelta())
                 beginScrollSnapAnimation(axis, ScrollSnapState::Gliding);
         }
         break;

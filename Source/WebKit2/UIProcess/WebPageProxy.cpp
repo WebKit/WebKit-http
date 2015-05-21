@@ -110,6 +110,7 @@
 #include <WebCore/SerializedCryptoKeyWrap.h>
 #include <WebCore/TextCheckerClient.h>
 #include <WebCore/TextIndicator.h>
+#include <WebCore/URL.h>
 #include <WebCore/WindowFeatures.h>
 #include <stdio.h>
 #include <wtf/NeverDestroyed.h>
@@ -987,15 +988,18 @@ void WebPageProxy::loadWebArchiveData(API::Data* webArchiveData, API::Object* us
     m_process->responsivenessTimer()->start();
 }
 
-void WebPageProxy::navigateToURLWithSimulatedClick(const String& url, IntPoint documentPoint, IntPoint screenPoint)
+void WebPageProxy::navigateToPDFLinkWithSimulatedClick(const String& url, IntPoint documentPoint, IntPoint screenPoint)
 {
     if (m_isClosed)
+        return;
+
+    if (WebCore::protocolIsJavaScript(url))
         return;
 
     if (!isValid())
         reattachToWebProcess();
 
-    m_process->send(Messages::WebPage::NavigateToURLWithSimulatedClick(url, documentPoint, screenPoint), m_pageID);
+    m_process->send(Messages::WebPage::NavigateToPDFLinkWithSimulatedClick(url, documentPoint, screenPoint), m_pageID);
     m_process->responsivenessTimer()->start();
 }
 
@@ -1368,6 +1372,10 @@ void WebPageProxy::dispatchViewStateChange()
     if (m_viewWasEverInWindow && (changed & ViewState::IsInWindow) && isInWindow())
         m_viewStateChangeWantsSynchronousReply = true;
 
+    // Don't wait synchronously if the view state is not visible. (This matters in particular on iOS, where a hidden page may be suspended.)
+    if (!(m_viewState & ViewState::IsVisible))
+        m_viewStateChangeWantsSynchronousReply = false;
+
     if (changed || m_viewStateChangeWantsSynchronousReply || !m_nextViewStateChangeCallbacks.isEmpty())
         m_process->send(Messages::WebPage::SetViewState(m_viewState, m_viewStateChangeWantsSynchronousReply, m_nextViewStateChangeCallbacks), m_pageID);
 
@@ -1445,6 +1453,15 @@ void WebPageProxy::waitForDidUpdateViewState()
     // If we have previously timed out with no response from the WebProcess, don't block the UIProcess again until it starts responding.
     if (m_waitingForDidUpdateViewState)
         return;
+
+#if PLATFORM(IOS)
+    // Hail Mary check. Should not be possible (dispatchViewStateChange should force async if not visible,
+    // and if visible we should be holding an assertion) - but we should never block on a suspended process.
+    if (!m_activityToken) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+#endif
 
     m_waitingForDidUpdateViewState = true;
 
@@ -3042,6 +3059,11 @@ void WebPageProxy::didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, 
             m_navigationClient->didFailNavigationWithError(*this, *frame, navigation.get(), error, m_process->transformHandlesToObjects(userData.object()).get());
     } else
         m_loaderClient->didFailLoadWithErrorForFrame(*this, *frame, navigation.get(), error, m_process->transformHandlesToObjects(userData.object()).get());
+
+    // Notify the PageClient that the main frame finished loading. The WebView / GestureController need to know the load has
+    // finished (e.g. to clear the back swipe snapshot).
+    if (frame->isMainFrame())
+        m_pageClient.didFinishLoadForMainFrame();
 }
 
 void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t opaqueSameDocumentNavigationType, const String& url, const UserData& userData)
@@ -3516,11 +3538,9 @@ void WebPageProxy::connectionWillOpen(IPC::Connection& connection)
     m_webProcessLifetimeTracker.connectionWillOpen(connection);
 }
 
-void WebPageProxy::connectionDidClose(IPC::Connection& connection)
+void WebPageProxy::webProcessWillShutDown()
 {
-    ASSERT_UNUSED(connection, &connection == m_process->connection());
-
-    m_webProcessLifetimeTracker.connectionDidClose(connection);
+    m_webProcessLifetimeTracker.webProcessWillShutDown();
 }
 
 void WebPageProxy::processDidFinishLaunching()
@@ -5024,6 +5044,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #else
     parameters.appleMailPaginationQuirkEnabled = false;
 #endif
+    parameters.shouldScaleViewToFitDocument = m_shouldScaleViewToFitDocument;
 
     return parameters;
 }
@@ -5879,6 +5900,19 @@ void WebPageProxy::clearWheelEventTestTrigger()
         return;
     
     m_process->send(Messages::WebPage::ClearWheelEventTestTrigger(), m_pageID);
+}
+
+void WebPageProxy::setShouldScaleViewToFitDocument(bool shouldScaleViewToFitDocument)
+{
+    if (m_shouldScaleViewToFitDocument == shouldScaleViewToFitDocument)
+        return;
+
+    m_shouldScaleViewToFitDocument = shouldScaleViewToFitDocument;
+
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetShouldScaleViewToFitDocument(shouldScaleViewToFitDocument), m_pageID);
 }
 
 } // namespace WebKit
