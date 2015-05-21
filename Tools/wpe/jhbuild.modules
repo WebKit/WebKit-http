@@ -97,25 +97,25 @@
   </autotools>
 
   <autotools id="wayland" autogenargs="--disable-documentation">
-    <branch module="releases/wayland-1.6.0.tar.xz" version="1.6.0"
+    <branch module="releases/wayland-1.7.0.tar.xz" version="1.7.0"
             repo="wayland.freedesktop.org"
-            hash="sha256:a7d5102dcf53d08c059d24bc62de491d7cd482070abeb6737a20d0d86ba6fc7f"/>
+            hash="sha256:bdea47a2db96f7e53f1ce0351559c0af5b7f7aae7e95f0a884a78af9f1057c9c"/>
   </autotools>
 
   <autotools id="libinput" autogenargs="--disable-documentation">
-    <branch module="software/libinput/libinput-0.6.0.tar.xz" version="0.6.0"
+    <branch module="software/libinput/libinput-0.14.1.tar.xz" version="0.14.1"
             repo="freedesktop.org"
-            hash="sha256:30b555771e7cb921ccb9430c4a86940aa3938d05506e81d2417c03e30451bfbc"/>
+            hash="sha256:2bed202ebe2d5026950d6f9d2ac0f0160d12f61c5a0f6d0d6ef671bbb02c1b64"/>
   </autotools>
 
-  <autotools id="weston" autogenargs="--disable-setuid-install --enable-libinput-backend">
+  <autotools id="weston" autogenargs="--disable-setuid-install">
     <dependencies>
       <dep package="wayland"/>
       <dep package="libinput"/>
       <dep package="cairo"/>
     </dependencies>
     <branch repo="github.com" module="WebKitForWayland/weston.git"
-            tag="1368d5c263178fac1a2c36c5f2cca91f648503d5"/>
+            tag="d32748b3d16a7e6dae9743d3becbcbbd0d7eb210"/>
   </autotools>
 
   <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
