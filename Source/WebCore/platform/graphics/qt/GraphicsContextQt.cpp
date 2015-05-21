@@ -55,6 +55,7 @@
 #include "ShadowBlur.h"
 #include "TransformationMatrix.h"
 #include "TransparencyLayer.h"
+#include "URL.h"
 
 #include <QBrush>
 #include <QGradient>
@@ -66,7 +67,9 @@
 #include <QPixmap>
 #include <QPolygonF>
 #include <QStack>
+#include <QUrl>
 #include <QVector>
+#include <private/qpdf_p.h>
 #include <wtf/MathExtras.h>
 
 #if OS(WINDOWS)
@@ -1576,9 +1579,18 @@ void GraphicsContext::set3DTransform(const TransformationMatrix& transform)
 }
 #endif
 
-void GraphicsContext::setURLForRect(const URL&, const IntRect&)
+void GraphicsContext::setURLForRect(const URL& url, const IntRect& rect)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
+    if (paintingDisabled())
+        return;
+
+    QPainter* p = m_data->p();
+    if (p->paintEngine()->type() == QPaintEngine::Pdf)
+        static_cast<QPdfEngine *>(p->paintEngine())->drawHyperlink(p->worldTransform().mapRect(QRectF(rect.x(), rect.y(), rect.width(), rect.height())), QUrl(url.string()));
+#else
     notImplemented();
+#endif
 }
 
 void GraphicsContext::setPlatformStrokeColor(const Color& color)
