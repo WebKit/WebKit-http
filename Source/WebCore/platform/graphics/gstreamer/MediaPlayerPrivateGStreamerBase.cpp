@@ -657,8 +657,10 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
             return;
         }
 
-        if (!m_platformLayerProxy->hasTargetLayer())
+        if (!m_platformLayerProxy->hasTargetLayer()) {
+            g_cond_signal(&m_updateCondition);
             return;
+        }
 
         IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
 
