@@ -45,7 +45,19 @@ public:
 };
 
 GSourceFuncs EventSource::sourceFuncs = {
-    nullptr, // prepare
+    // prepare
+    [](GSource* base, gint* timeout) -> gboolean
+    {
+        auto* source = reinterpret_cast<EventSource*>(base);
+        struct wl_display* display = source->display;
+
+        *timeout = -1;
+
+        wl_display_flush(display);
+        wl_display_dispatch_pending(display);
+
+        return FALSE;
+    },
     // check
     [](GSource* base) -> gboolean
     {
@@ -58,13 +70,13 @@ GSourceFuncs EventSource::sourceFuncs = {
         auto* source = reinterpret_cast<EventSource*>(base);
         struct wl_display* display = source->display;
 
-        gushort revents = source->pfd.revents;
-        if (revents & G_IO_IN)
+        if (source->pfd.revents & G_IO_IN)
             wl_display_dispatch(display);
 
-        if (revents & G_IO_ERR || revents & G_IO_HUP)
+        if (source->pfd.revents & (G_IO_ERR | G_IO_HUP))
             return FALSE;
 
+        source->pfd.revents = 0;
         return TRUE;
     },
     nullptr, // finalize
