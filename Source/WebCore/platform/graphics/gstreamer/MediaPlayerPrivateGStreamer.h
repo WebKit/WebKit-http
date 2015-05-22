@@ -43,7 +43,7 @@
 #include "MediaSourceGStreamer.h"
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA) || (ENCRYPTED_MEDIA_V2)
 #include <wtf/threads/BinarySemaphore.h>
 #endif
 
