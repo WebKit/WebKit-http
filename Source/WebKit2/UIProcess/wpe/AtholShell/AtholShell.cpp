@@ -51,6 +51,7 @@ private:
     virtual void handlePointerAxis(uint32_t, API::InputClient::PointerAxis, double, double) override;
 
     AtholShell& m_shell;
+    std::pair<uint32_t, uint32_t> m_pointer = { 0, 0 };
 };
 
 InputClient::InputClient(AtholShell& shell)
@@ -81,6 +82,28 @@ void InputClient::handlePointerButton(uint32_t time, uint32_t button, uint32_t s
     WPE::Input::Server::singleton().servePointerEvent({
         WPE::Input::PointerEvent::Button,
         time, 0, 0, button, state
+    });
+}
+
+void InputClient::handlePointerAxis(uint32_t time, API::InputClient::PointerAxis axis, double dx, double dy)
+{
+    UNUSED_PARAM(dy);
+
+    int axisStep = 0;
+
+    switch (axis) {
+    case API::InputClient::PointerAxis::Wheel:
+        if (!dx)
+            return;
+        axisStep = -2 * dx;
+        break;
+    default:
+        return;
+    }
+
+    WPE::Input::Server::singleton().serveAxisEvent({
+        WPE::Input::AxisEvent::Motion,
+        time, static_cast<uint32_t>(axis), axisStep
     });
 }
 
