@@ -48,6 +48,7 @@ private:
     virtual void handleKeyboardEvent(uint32_t, uint32_t, uint32_t) override;
     virtual void handlePointerMotion(uint32_t, double, double) override;
     virtual void handlePointerButton(uint32_t, uint32_t, uint32_t) override;
+    virtual void handlePointerAxis(uint32_t, API::InputClient::PointerAxis, double, double) override;
 
     AtholShell& m_shell;
 };
@@ -64,10 +65,23 @@ void InputClient::handleKeyboardEvent(uint32_t time, uint32_t key, uint32_t stat
 
 void InputClient::handlePointerMotion(uint32_t time, double dx, double dy)
 {
+    m_pointer = {
+        std::max<uint32_t>(0, std::min<uint32_t>(m_shell.width() - 1, m_pointer.first + dx)),
+        std::max<uint32_t>(0, std::min<uint32_t>(m_shell.height() - 1, m_pointer.second + dy))
+    };
+
+    WPE::Input::Server::singleton().servePointerEvent({
+        WPE::Input::PointerEvent::Motion,
+        time, static_cast<int>(m_pointer.first), static_cast<int>(m_pointer.second), 0, 0
+    });
 }
 
 void InputClient::handlePointerButton(uint32_t time, uint32_t button, uint32_t state)
 {
+    WPE::Input::Server::singleton().servePointerEvent({
+        WPE::Input::PointerEvent::Button,
+        time, 0, 0, button, state
+    });
 }
 
 AtholShell::AtholShell(API::Compositor* compositor)
