@@ -243,7 +243,7 @@ target_include_directories(WPEAtholShell PUBLIC ${WPEAtholShell_INCLUDE_DIRECTOR
 install(TARGETS WPEAtholShell DESTINATION "${LIB_INSTALL_DIR}")
 endif () # ENABLE_ATHOL_SHELL
 
-file(GLOB InspectorFiles
+set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Base/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Controllers/*.css
@@ -258,6 +258,12 @@ file(GLOB InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.png
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.svg
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
+    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
+)
+
+file(GLOB InspectorFilesDependencies
+    ${InspectorFiles}
 )
 
 # DerivedSources/JavaScriptCore/inspector/InspectorBackendCommands.js is
@@ -268,14 +274,9 @@ add_custom_command(
     COMMAND cp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
 )
 
-list(APPEND InspectorFiles
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
-)
-
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.xml
-    DEPENDS ${InspectorFiles}
+    DEPENDS ${InspectorFilesDependencies}
             ${TOOLS_DIR}/wpe/generate-inspector-gresource-manifest.py
     COMMAND ${TOOLS_DIR}/wpe/generate-inspector-gresource-manifest.py --output=${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.xml ${InspectorFiles}
     VERBATIM
