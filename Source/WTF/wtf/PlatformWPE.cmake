@@ -5,8 +5,8 @@ list(APPEND WTF_SOURCES
     gobject/GThreadSafeMainLoopSource.cpp
     gobject/GlibUtilities.cpp
 
-    gtk/MainThreadGtk.cpp
-    gtk/RunLoopGtk.cpp
+    glib/MainThreadGLib.cpp
+    glib/RunLoopGLib.cpp
     wpe/WorkQueueWPE.cpp
 )
 

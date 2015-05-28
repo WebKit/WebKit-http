@@ -959,16 +959,16 @@ private:
             if (!m_graph.hasExitSite(node->origin.semantic, BadCache)
                 && !m_graph.hasExitSite(node->origin.semantic, BadIndexingType)
                 && !m_graph.hasExitSite(node->origin.semantic, ExoticObjectMode)) {
-                StringImpl* impl = m_graph.identifiers()[node->identifierNumber()];
-                if (impl == vm().propertyNames->length.impl()) {
+                auto uid = m_graph.identifiers()[node->identifierNumber()];
+                if (uid == vm().propertyNames->length.impl()) {
                     attemptToMakeGetArrayLength(node);
                     break;
                 }
-                if (impl == vm().propertyNames->byteLength.impl()) {
+                if (uid == vm().propertyNames->byteLength.impl()) {
                     attemptToMakeGetTypedArrayByteLength(node);
                     break;
                 }
-                if (impl == vm().propertyNames->byteOffset.impl()) {
+                if (uid == vm().propertyNames->byteOffset.impl()) {
                     attemptToMakeGetTypedArrayByteOffset(node);
                     break;
                 }
@@ -1050,15 +1050,19 @@ private:
         }
 
         case Check: {
-            switch (node->child1().useKind()) {
-            case NumberUse:
-                if (node->child1()->shouldSpeculateInt32ForArithmetic())
-                    node->child1().setUseKind(Int32Use);
-                break;
-            default:
-                break;
-            }
-            observeUseKindOnEdge(node->child1());
+            m_graph.doToChildren(
+                node,
+                [&] (Edge& edge) {
+                    switch (edge.useKind()) {
+                    case NumberUse:
+                        if (edge->shouldSpeculateInt32ForArithmetic())
+                            edge.setUseKind(Int32Use);
+                        break;
+                    default:
+                        break;
+                    }
+                    observeUseKindOnEdge(edge);
+                });
             break;
         }
 
@@ -1488,7 +1492,7 @@ private:
     }
     
     bool isStringPrototypeMethodSane(
-        JSObject* stringPrototype, Structure* stringPrototypeStructure, AtomicStringImpl* uid)
+        JSObject* stringPrototype, Structure* stringPrototypeStructure, UniquedStringImpl* uid)
     {
         unsigned attributesUnused;
         PropertyOffset offset =
@@ -2124,9 +2128,13 @@ private:
                     m_indexInBlock, SpecInt52AsDouble, DoubleRep, node->origin,
                     Edge(edge.node(), Int52RepUse));
             } else {
+                UseKind useKind = NotCellUse;
+                if (edge->shouldSpeculateNumber())
+                    useKind = NumberUse;
+
                 result = m_insertionSet.insertNode(
                     m_indexInBlock, SpecBytecodeDouble, DoubleRep, node->origin,
-                    Edge(edge.node(), NumberUse));
+                    Edge(edge.node(), useKind));
             }
 
             edge.setNode(result);

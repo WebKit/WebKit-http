@@ -1,3 +1,274 @@
+2015-05-28  Jon Lee  <jonlee@apple.com>
+
+        Build fix after r184946.
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences allowsAirPlayForMediaPlayback]):
+        (-[WebPreferences setAllowsAirPlayForMediaPlayback:]):
+
+2015-05-19  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        [iOS] When viewing an MJPEG stream as the main resource, only the first
+        frame paints
+
+        <https://bugs.webkit.org/show_bug.cgi?id=145185>
+        <rdar://problem/20124694>
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::didReplaceMultipartContent):
+        Call the FrameView's didReplaceMultipartContent().
+
+2015-05-22  Jon Lee  <jonlee@apple.com>
+
+        Fix macros for wireless playback
+        https://bugs.webkit.org/show_bug.cgi?id=145239
+        rdar://problem/21049541
+
+        Reviewed by Anders Carlsson.
+
+        Encompass the logic within ENABLE(WIRELESS_TARGET_PLAYBACK). Update property name.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Wrap in ENABLE.
+        (-[WebPreferences allowsAirPlayForMediaPlayback]): Ditto.
+        (-[WebPreferences setAllowsAirPlayForMediaPlayback:]): Ditto.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Ditto.
+
+2015-05-27  Dean Jackson  <dino@apple.com>
+
+        img.currentSrc problem in strict mode with old picturefill
+        https://bugs.webkit.org/show_bug.cgi?id=144095
+        <rdar://problem/21087013>
+
+        Reviewed by Simon Fraser.
+
+        Add a PICTURE_SIZES flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-05-26  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/21104551> Update build settings
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2015-05-25  Dan Bernstein  <mitz@apple.com>
+
+        ASSERT_MAIN_THREAD and DOM_ASSERT_MAIN_THREAD are unnecessary no-ops
+        https://bugs.webkit.org/show_bug.cgi?id=145372
+
+        Reviewed by Sam Weinig.
+
+        * Carbon/CarbonWindowAdapter.mm:
+        (-[CarbonWindowAdapter finalize]): Removed use of ASSERT_MAIN_THREAD.
+
+        * Configurations/Base.xcconfig: Removed DISABLE_THREAD_CHECK from DEBUG_DEFINES.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem URLString]): Removed use of ASSERT_MAIN_THREAD.
+        (-[WebHistoryItem originalURLString]): Ditto.
+        (-[WebHistoryItem title]): Ditto.
+        (-[WebHistoryItem lastVisitedTimeInterval]): Ditto.
+        (-[WebHistoryItem isEqual:]): Ditto.
+        (-[WebHistoryItem description]): Ditto.
+        (-[WebHistoryItem initFromDictionaryRepresentation:]): Ditto.
+        (-[WebHistoryItem scrollPoint]): Ditto.
+
+        * Misc/WebElementDictionary.mm:
+        (-[WebElementDictionary finalize]): Ditto.
+
+        * Misc/WebIconDatabase.mm:
+        (-[WebIconDatabase iconForURL:withSize:cache:]): Ditto.
+        (-[WebIconDatabase iconURLForURL:]): Ditto.
+        (-[WebIconDatabase defaultIconWithSize:]): Ditto.
+        (-[WebIconDatabase retainIconForURL:]): Ditto.
+        (-[WebIconDatabase releaseIconForURL:]): Ditto.
+        (+[WebIconDatabase delayDatabaseCleanup]): Ditto.
+        (+[WebIconDatabase allowDatabaseCleanup]): Ditto.
+        (-[WebIconDatabase removeAllIcons]): Ditto.
+        (-[WebIconDatabase _iconForFileURL:withSize:]): Ditto.
+        (webGetNSImage): Ditto.
+
+        * Misc/WebKitLogging.h: Removed definition of ASSERT_MAIN_THREAD.
+
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView finalize]): Removed use of ASSERT_MAIN_THREAD.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage finalize]): Ditto.
+
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView finalize]): Ditto.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (-[WebUndoStep finalize]): Ditto.
+
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource finalize]): Ditto.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLViewPrivate finalize]): Ditto.
+        (-[WebHTMLView finalize]): Ditto.
+        (-[WebHTMLView drawRect:]): Ditto.
+
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate finalize]): Ditto.
+
+2015-05-23  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused definitions of WEBKIT_VERSION_MIN_REQUIRED
+        https://bugs.webkit.org/show_bug.cgi?id=145345
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/WebKitLegacy.xcconfig: Also changed to use $(inherited).
+
+2015-05-24  Jeremy Jones  <jeremyj@apple.com>
+
+        Register media MIME types as supported by HTML view in WebKit1.
+        https://bugs.webkit.org/show_bug.cgi?id=145356
+
+        Reviewed by Eric Carlson.
+
+        WebDataSource and WebFrame view knew about suppotedImageMIMETypes and supportedNonImageMIMETypes,
+        but not a third category supportedMediaMIMETypes. These are now included along-side 
+        supportedNonImageMIMETypes.
+
+        * WebView/WebDataSource.mm:
+        (+[WebDataSource _repTypesAllowImageTypeOmission:]): use supportedMediaMIMETypes.
+        * WebView/WebFrameView.mm:
+        (+[WebFrameView _viewTypesAllowImageTypeOmission:]): use supportedMediaMIMETypes.
+        * WebView/WebHTMLRepresentation.h: declare -supportedMediaMIMETypes
+        * WebView/WebHTMLRepresentation.mm:
+        (+[WebHTMLRepresentation supportedMIMETypes]): include supportedMediaMIMETypes
+        (+[WebHTMLRepresentation supportedMediaMIMETypes]): added
+        * WebView/WebHTMLView.mm:
+        (+[WebHTMLView supportedMediaMIMETypes]): added
+        * WebView/WebHTMLViewPrivate.h: declare -supportedMediaMIMETypes
+
+2015-05-22  Jon Lee  <jonlee@apple.com>
+
+        Rename MediaPlaybackAllowsInline
+        https://bugs.webkit.org/show_bug.cgi?id=145315
+
+        Reviewed by Eric Carlson.
+
+        Our API uses allowsInlineMediaPlayback. Our symbols should reflect the same.
+
+        * WebView/WebPreferenceKeysPrivate.h: Update the name of the key, but not its
+        value, for backwards compatibility.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Update the symbol.
+        (-[WebPreferences mediaPlaybackAllowsInline]): Ditto. This setting will not
+        be renamed in a future patch.
+        (-[WebPreferences setMediaPlaybackAllowsInline:]): Ditto.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Update the call to settings.
+
+2015-05-22  Jon Lee  <jonlee@apple.com>
+
+        Rename MediaPlaybackAllowsAirPlay
+        https://bugs.webkit.org/show_bug.cgi?id=145316
+
+        Reviewed by Eric Carlson.
+
+        In preparation for an API rename, update internal symbols from mediaPlaybackAllowsAirPlay
+        to allowsAirPlayForMediaPlayback.
+
+        * WebView/WebPreferenceKeysPrivate.h: Update the name but keep its value, for backwards
+        compatibility.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Update to reference the new key name.
+        (-[WebPreferences mediaPlaybackAllowsAirPlay]): Ditto. This API will not change in a future
+        patch.
+        (-[WebPreferences setMediaPlaybackAllowsAirPlay:]): Ditto.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Update the call to settings.
+
+2015-05-22  Jon Lee  <jonlee@apple.com>
+
+        Rename MediaPlaybackRequiresUserGesture
+        https://bugs.webkit.org/show_bug.cgi?id=145314
+
+        Reviewed by Anders Carlsson.
+
+        In preparation for an API rename, update internal symbols from mediaPlaybackRequiresUserGesture
+        to requiresUserGestureForMediaPlayback.
+
+        No changes are being made to the API in this patch.
+
+        * WebView/WebPreferenceKeysPrivate.h: Update the name of the key, but not its value, for backwards
+        compatibility.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Update the symbol.
+        (-[WebPreferences mediaPlaybackRequiresUserGesture]): Ditto. This setting will not be renamed
+        in a future patch.
+        (-[WebPreferences setMediaPlaybackRequiresUserGesture:]): Ditto.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Update the call to settings.
+
+2015-05-22  Tim Horton  <timothy_horton@apple.com>
+
+        Remove action menu support
+        https://bugs.webkit.org/show_bug.cgi?id=145305
+        <rdar://problem/21070771>
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        * WebView/WebActionMenuController.h: Removed.
+        * WebView/WebActionMenuController.mm: Removed.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView otherMouseDown:]):
+        (-[WebHTMLView scrollWheel:scrollWheel:]): Deleted.
+        (-[WebHTMLView mouseDown:mouseDown:]): Deleted.
+        * WebView/WebUIDelegatePrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Deleted.
+        (-[WebView _close]): Deleted.
+        (-[WebView prepareForMenu:withEvent:]): Deleted.
+        (-[WebView willOpenMenu:withEvent:]): Deleted.
+        (-[WebView didCloseMenu:withEvent:]): Deleted.
+        (-[WebView _actionMenuController]): Deleted.
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]): Deleted.
+        * WebView/WebViewInternal.h:
+        Remove everything, except some enums that clients still refer to.
+
+2015-05-22  Brady Eidson  <beidson@apple.com>
+
+        Rework how the ResourceRequest user initiated property key is used.
+        Followup to https://bugs.webkit.org/show_bug.cgi?id=145281
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (WKResourceRequestIsUserInitiatedKey): Deleted.
+        (InitWebCoreSystemInterface): Deleted.
+
+2015-05-21  Brady Eidson  <beidson@apple.com>
+
+        Add an "initiated by user gesture" flag to ResourceRequest.
+        https://bugs.webkit.org/show_bug.cgi?id=145281
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (WKResourceRequestIsUserInitiatedKey):
+        (InitWebCoreSystemInterface):
+
 2015-05-20  Anders Carlsson  <andersca@apple.com>
 
         Fix build.

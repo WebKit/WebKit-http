@@ -35,7 +35,6 @@
 #import "DOMNodeInternal.h"
 #import "DOMRangeInternal.h"
 #import "DictionaryPopupInfo.h"
-#import "WebActionMenuController.h"
 #import "WebArchive.h"
 #import "WebClipView.h"
 #import "WebContextMenuClient.h"
@@ -52,6 +51,7 @@
 #import "WebFrameViewInternal.h"
 #import "WebHTMLRepresentationPrivate.h"
 #import "WebHTMLViewInternal.h"
+#import "WebImmediateActionController.h"
 #import "WebKitLogging.h"
 #import "WebKitNSStringExtras.h"
 #import "WebKitVersionChecks.h"
@@ -713,8 +713,6 @@ static NSCellStateValue kit(TriState state)
 
 - (void)finalize
 {
-    ASSERT_MAIN_THREAD();
-
 #if !PLATFORM(IOS)
     if (promisedDragTIFFDataSource)
         promisedDragTIFFDataSource->removeClient(promisedDataClient());
@@ -1260,6 +1258,11 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 + (NSArray *)supportedMIMETypes
 {
     return [WebHTMLRepresentation supportedMIMETypes];
+}
+
++ (NSArray *)supportedMediaMIMETypes
+{
+    return [WebHTMLRepresentation supportedMediaMIMETypes];
 }
 
 + (NSArray *)supportedImageMIMETypes
@@ -2524,7 +2527,6 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
 
 - (void)finalize
 {
-    ASSERT_MAIN_THREAD();
     // We can't assert that close has already been called because
     // this view can be removed from it's superview, even though
     // it could be needed later, so close if needed.
@@ -3533,7 +3535,6 @@ static void setMenuTargets(NSMenu* menu)
 
 - (void)drawRect:(NSRect)rect
 {
-    ASSERT_MAIN_THREAD();
     LOG(View, "%@ drawing", self);
 
 #if !PLATFORM(IOS)
@@ -3728,7 +3729,6 @@ static void setMenuTargets(NSMenu* menu)
 #endif
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    [[[self _webView] _actionMenuController] webView:[self _webView] didHandleScrollWheel:event];
     [[[self _webView] _immediateActionController] webView:[self _webView] didHandleScrollWheel:event];
 #endif
 }
@@ -3838,10 +3838,6 @@ static void setMenuTargets(NSMenu* menu)
 
     // Record the mouse down position so we can determine drag hysteresis.
     [self _setMouseDownEvent:event];
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    [[[self _webView] _actionMenuController] webView:[self _webView] willHandleMouseDown:event];
-#endif
 
 #if PLATFORM(IOS)
     // TEXTINPUT: if there is marked text and the current input
@@ -5434,7 +5430,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
 - (void)otherMouseDown:(NSEvent *)event
 {
     if ([event buttonNumber] != 2 || ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)]
-        && ([NSMenu menuTypeForEvent:event] == NSMenuTypeActionMenu || [NSMenu menuTypeForEvent:event] == NSMenuTypeContextMenu))) {
+        && [NSMenu menuTypeForEvent:event] == NSMenuTypeContextMenu)) {
         [super otherMouseDown:event];
         return;
     }

@@ -24,7 +24,7 @@
 #include "FeatureDefines.xcconfig"
 #include "Version.xcconfig"
 
-EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*] = *.defs *.nib *.pdf *.tiff CarbonUtils.m CarbonWindowAdapter.mm CarbonWindowContentView.m CarbonWindowFrame.m HIViewAdapter.m HIWebView.mm OutlookQuirksUserScript.js PopupMenuMac.mm SearchPopupMenuMac.mm WebActionMenuController.* WebClipView.* WebDashboardRegion.* WebDynamicScrollBarsView.* WebIconDatabase.* WebIconDatabasePrivate.* WebInspectorClient.mm WebJavaScriptTextInputPanel.* WebKeyGenerator.* WebNetscapeContainerCheckContextInfo.* WebNetscapeContainerCheckPrivate.* WebNSEventExtras.* WebNSPasteboardExtras.* WebNSWindowExtras.* WebPanelAuthenticationHandler.* WebPluginsPrivate.* WebStringTruncator.* WebTextCompletionController.*;
+EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*] = *.defs *.nib *.pdf *.tiff CarbonUtils.m CarbonWindowAdapter.mm CarbonWindowContentView.m CarbonWindowFrame.m HIViewAdapter.m HIWebView.mm OutlookQuirksUserScript.js PopupMenuMac.mm SearchPopupMenuMac.mm WebClipView.* WebDashboardRegion.* WebDynamicScrollBarsView.* WebIconDatabase.* WebIconDatabasePrivate.* WebInspectorClient.mm WebJavaScriptTextInputPanel.* WebKeyGenerator.* WebNetscapeContainerCheckContextInfo.* WebNetscapeContainerCheckPrivate.* WebNSEventExtras.* WebNSPasteboardExtras.* WebNSWindowExtras.* WebPanelAuthenticationHandler.* WebPluginsPrivate.* WebStringTruncator.* WebTextCompletionController.*;
 EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*] = *IOS.mm MemoryMeasure.h WebCaretChangeListener.h WebFixedPositionContent.h WebFrameIOS.h WebFrameIPhone.h WebGeolocationCoreLocationProvider.h WebGeolocationPrivate.h WebGeolocationProviderIOS.h WebMIMETypeRegistry.h WebNSStringExtrasIOS.h WebNSStringExtrasIPhone.h WebPDFViewIOS.h WebPDFViewIPhone.h WebPDFViewPlaceholder.h WebSelectionRect.h WebUIKitDelegate.h WebUIKitSupport.h WebVisiblePosition.h;
 
 EXPORTED_SYMBOLS_FILE = $(EXPORTED_SYMBOLS_FILE_$(CURRENT_ARCH));
@@ -53,7 +53,7 @@ WEBKIT_LEGACY_SYSTEM_FRAMEWORK_MISSING = $(WEBKIT_LEGACY_SYSTEM_FRAMEWORK_MISSIN
 WEBKIT_LEGACY_SYSTEM_FRAMEWORK_MISSING_1090 = YES;
 
 GCC_PREFIX_HEADER = mac/WebKitPrefix.h;
-GCC_PREPROCESSOR_DEFINITIONS = $(DEBUG_DEFINES) $(FEATURE_DEFINES) FRAMEWORK_NAME=WebKitLegacy WEBKIT_VERSION_MIN_REQUIRED=WEBKIT_VERSION_LATEST $(GCC_PREPROCESSOR_DEFINITIONS);
+GCC_PREPROCESSOR_DEFINITIONS = $(DEBUG_DEFINES) $(FEATURE_DEFINES) FRAMEWORK_NAME=WebKitLegacy $(inherited);
 HEADER_SEARCH_PATHS = $(WEBKITSYSTEMINTERFACE_STATIC_LIBRARY_HEADERS_FOLDER_PATH) $(WEBCORE_PRIVATE_HEADERS_DIR)/ForwardingHeaders $(WEBCORE_PRIVATE_HEADERS_DIR)/icu "$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKitLegacy" "$(BUILT_PRODUCTS_DIR)/usr/local/include" $(HEADER_SEARCH_PATHS);
 INFOPLIST_FILE = mac/Info.plist;
 INSTALL_PATH_PREFIX[sdk=iphonesimulator8.*] = $(DEVELOPER_INSTALL_DIR)/Platforms/iPhoneSimulator.platform/Developer/SDKs/$(SDK_DIR:file);

@@ -369,13 +369,13 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     // FIXME: We should clean up and look to better merge the iOS and non-iOS code below.
     Settings* settings = document.settings();
 #if !PLATFORM(IOS)
-    if (settings && settings->mediaPlaybackRequiresUserGesture()) {
+    if (settings && settings->requiresUserGestureForMediaPlayback()) {
         m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureForRateChange);
         m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureForLoad);
     }
 #else
     m_sendProgressEvents = false;
-    if (!settings || settings->mediaPlaybackRequiresUserGesture()) {
+    if (!settings || settings->requiresUserGestureForMediaPlayback()) {
         // Allow autoplay in a MediaDocument that is not in an iframe.
         if (document.ownerElement() || !document.isMediaDocument())
             m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureForRateChange);
@@ -383,7 +383,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
         m_mediaSession->addBehaviorRestriction(HTMLMediaSession::RequireUserGestureToShowPlaybackTargetPicker);
 #endif
     } else {
-        // Relax RequireUserGestureForFullscreen when mediaPlaybackRequiresUserGesture is not set:
+        // Relax RequireUserGestureForFullscreen when requiresUserGestureForMediaPlayback is not set:
         m_mediaSession->removeBehaviorRestriction(HTMLMediaSession::RequireUserGestureForFullscreen);
     }
 #endif // !PLATFORM(IOS)
@@ -4918,7 +4918,7 @@ void HTMLMediaElement::webkitShowPlaybackTargetPicker()
 
 bool HTMLMediaElement::webkitCurrentPlaybackTargetIsWireless() const
 {
-    return m_mediaSession->currentPlaybackTargetIsWireless(*this);
+    return m_player && m_player->isCurrentPlaybackTargetWireless();
 }
 
 void HTMLMediaElement::wirelessRoutesAvailableDidChange()
@@ -5010,7 +5010,7 @@ bool HTMLMediaElement::canPlayToWirelessPlaybackTarget() const
 
 bool HTMLMediaElement::isPlayingToWirelessPlaybackTarget() const
 {
-    bool isPlaying = m_player && m_player->isPlayingToWirelessPlaybackTarget();
+    bool isPlaying = m_player && m_player->isCurrentPlaybackTargetWireless();
 
     LOG(Media, "HTMLMediaElement::isPlayingToWirelessPlaybackTarget(%p) - returning %s", this, boolString(isPlaying));
     
@@ -5482,6 +5482,9 @@ void HTMLMediaElement::captionPreferencesChanged()
         m_mediaControlsHost->updateCaptionDisplaySizes();
 #endif
 
+    if (m_player)
+        m_player->tracksChanged();
+
     if (!document().page())
         return;
 
@@ -5914,6 +5917,14 @@ String HTMLMediaElement::mediaPlayerSourceApplicationIdentifier() const
     return emptyString();
 }
 
+Vector<String> HTMLMediaElement::mediaPlayerPreferredAudioCharacteristics() const
+{
+    Page* page = document().page();
+    if (CaptionUserPreferences* captionPreferences = page ? page->group().captionPreferences() : nullptr)
+        return captionPreferences->preferredAudioCharacteristics();
+    return Vector<String>();
+}
+
 #if PLATFORM(IOS)
 String HTMLMediaElement::mediaPlayerNetworkInterfaceName() const
 {
@@ -6278,13 +6289,11 @@ MediaProducer::MediaStateFlags HTMLMediaElement::mediaState() const
     bool hasActiveVideo = isVideo() && hasVideo();
     bool hasAudio = this->hasAudio();
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    if (isPlayingToWirelessPlaybackTarget())
+    if (m_player && m_player->isCurrentPlaybackTargetWireless())
         state |= IsPlayingToExternalDevice;
 
-    if (!m_mediaSession->wirelessVideoPlaybackDisabled(*this)) {
-        if ((m_hasPlaybackTargetAvailabilityListeners || hasActiveVideo) && m_player->canPlayToWirelessPlaybackTarget())
-            state |= RequiresPlaybackTargetMonitoring;
-    }
+    if (!m_mediaSession->wirelessVideoPlaybackDisabled(*this) && m_hasPlaybackTargetAvailabilityListeners && m_player->canPlayToWirelessPlaybackTarget())
+        state |= RequiresPlaybackTargetMonitoring;
 
     bool requireUserGesture = m_mediaSession->hasBehaviorRestriction(HTMLMediaSession::RequireUserGestureToAutoplayToExternalDevice);
     if (hasActiveVideo && (!requireUserGesture || (hasAudio && !loop())))

@@ -175,20 +175,6 @@ bool HTMLMediaSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement& e
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-bool HTMLMediaSession::currentPlaybackTargetIsWireless(const HTMLMediaElement& element) const
-{
-    MediaPlayer* player = element.player();
-    if (!player) {
-        LOG(Media, "HTMLMediaSession::currentPlaybackTargetIsWireless - returning FALSE because player is NULL");
-        return false;
-    }
-
-    bool isWireless = player->isCurrentPlaybackTargetWireless();
-    LOG(Media, "HTMLMediaSession::currentPlaybackTargetIsWireless - returning %s", isWireless ? "TRUE" : "FALSE");
-
-    return isWireless;
-}
-
 void HTMLMediaSession::showPlaybackTargetPicker(const HTMLMediaElement& element)
 {
     LOG(Media, "HTMLMediaSession::showPlaybackTargetPicker");
@@ -228,7 +214,7 @@ bool HTMLMediaSession::hasWirelessPlaybackTargets(const HTMLMediaElement&) const
 bool HTMLMediaSession::wirelessVideoPlaybackDisabled(const HTMLMediaElement& element) const
 {
     Settings* settings = element.document().settings();
-    if (!settings || !settings->mediaPlaybackAllowsAirPlay()) {
+    if (!settings || !settings->allowsAirPlayForMediaPlayback()) {
         LOG(Media, "HTMLMediaSession::wirelessVideoPlaybackDisabled - returning TRUE because of settings");
         return true;
     }
@@ -362,7 +348,7 @@ bool HTMLMediaSession::requiresFullscreenForVideoPlayback(const HTMLMediaElement
         return false;
 
     Settings* settings = element.document().settings();
-    if (!settings || !settings->mediaPlaybackAllowsInline())
+    if (!settings || !settings->allowsInlineMediaPlayback())
         return true;
 
     if (element.fastHasAttribute(HTMLNames::webkit_playsinlineAttr))

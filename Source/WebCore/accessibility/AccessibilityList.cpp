@@ -117,7 +117,14 @@ bool AccessibilityList::childHasPseudoVisibleListItemMarkers(RenderObject* listI
             return true;
     }
     
+    // Platforms which expose rendered text content through the parent element will treat
+    // those renderers as "ignored" objects.
+#if PLATFORM(GTK) || PLATFORM(EFL)
+    String text = axObj->textUnderElement();
+    return !text.isEmpty() && !text.containsOnlyWhitespace();
+#else
     return false;
+#endif
 }
     
 AccessibilityRole AccessibilityList::determineAccessibilityRole()

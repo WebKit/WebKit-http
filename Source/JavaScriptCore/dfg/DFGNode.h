@@ -190,7 +190,7 @@ struct CallVarargsData {
 };
 
 struct LoadVarargsData {
-    VirtualRegister start; // Local for the first element.
+    VirtualRegister start; // Local for the first element. This is the first actual argument, not this.
     VirtualRegister count; // Local for the count.
     VirtualRegister machineStart;
     VirtualRegister machineCount;
@@ -1282,6 +1282,8 @@ struct Node {
         case NativeConstruct:
         case NativeCall:
         case NewFunction:
+        case CreateActivation:
+        case MaterializeCreateActivation:
             return true;
         default:
             return false;
@@ -1291,7 +1293,13 @@ struct Node {
     FrozenValue* cellOperand()
     {
         ASSERT(hasCellOperand());
-        return reinterpret_cast<FrozenValue*>(m_opInfo);
+        switch (op()) {
+        case MaterializeCreateActivation:
+            return reinterpret_cast<FrozenValue*>(m_opInfo2);
+        default:
+            return reinterpret_cast<FrozenValue*>(m_opInfo);
+        }
+        RELEASE_ASSERT_NOT_REACHED();
     }
     
     template<typename T>

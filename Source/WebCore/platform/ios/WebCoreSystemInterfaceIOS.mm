@@ -123,4 +123,3 @@ WEBCORE_EXPORT int (*wkExernalDeviceTypeForPlayer)(AVPlayer *);
 WEBCORE_EXPORT NSString *(*wkExernalDeviceDisplayNameForPlayer)(AVPlayer *);
 
 WEBCORE_EXPORT bool (*wkQueryDecoderAvailability)(void);
-

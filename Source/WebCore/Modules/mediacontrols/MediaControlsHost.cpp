@@ -61,9 +61,9 @@ const AtomicString& MediaControlsHost::alwaysOnKeyword()
     return alwaysOn;
 }
 
-PassRefPtr<MediaControlsHost> MediaControlsHost::create(HTMLMediaElement* mediaElement)
+Ref<MediaControlsHost> MediaControlsHost::create(HTMLMediaElement* mediaElement)
 {
-    return adoptRef(new MediaControlsHost(mediaElement));
+    return adoptRef(*new MediaControlsHost(mediaElement));
 }
 
 MediaControlsHost::MediaControlsHost(HTMLMediaElement* mediaElement)
@@ -202,7 +202,7 @@ void MediaControlsHost::updateCaptionDisplaySizes()
         m_textTrackContainer->updateSizes(true);
 }
     
-bool MediaControlsHost::mediaPlaybackAllowsInline() const
+bool MediaControlsHost::allowsInlineMediaPlayback() const
 {
     return !m_mediaElement->mediaSession().requiresFullscreenForVideoPlayback(*m_mediaElement);
 }
