@@ -1,3 +1,157 @@
+2015-05-27  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] Fix clang static analyzer build
+        https://bugs.webkit.org/show_bug.cgi?id=145426
+        rdar://problem/20947408
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/spi/darwin/XPCSPI.h: Correct declarations of xpc_retain and xpc_release.
+
+2015-05-27  Dean Jackson  <dino@apple.com>
+
+        img.currentSrc problem in strict mode with old picturefill
+        https://bugs.webkit.org/show_bug.cgi?id=144095
+        <rdar://problem/21087013>
+
+        Reviewed by Simon Fraser.
+
+        Add a PICTURE_SIZES flag.
+
+        * wtf/FeatureDefines.h:
+
+2015-05-26  Andreas Kling  <akling@apple.com>
+
+        StringView should have find(StringView, start).
+        <https://webkit.org/b/145351>
+
+        Reviewed by Darin Adler.
+
+        Move the class agnostic guts of StringImpl's find() implementation from StringImpl
+        to StringCommon.h and templatize the code into a findCommon() helper.
+
+        StringImpl::find() and StringView::find() now both call findCommon().
+
+        * wtf/text/StringCommon.h:
+        (WTF::findInner):
+        (WTF::find):
+        (WTF::findCommon):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::find):
+        (WTF::findInner): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::find): Deleted.
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::find):
+        * wtf/text/StringView.h:
+
+
+2015-05-26  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/21104551> Update build settings
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2015-05-23  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused definitions of WEBKIT_VERSION_MIN_REQUIRED
+        https://bugs.webkit.org/show_bug.cgi?id=145345
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Also changed to use $(inherited).
+
+2015-05-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce UniquedStringImpl and SymbolImpl to separate symbolic strings from AtomicStringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=144848
+
+        Reviewed by Darin Adler.
+
+        he current AtomicStringImpl accidentally means the symbol OR atomic StringImpl.
+        t's not correct to its name and it's error prone.
+
+        In this patch, we'll introduce/changes classes into WTF.
+
+        1. UniquedStringImpl
+        It's derived class from StringImpl. And it represents symbol || atomic StringImpl.
+
+        2. SymbolImpl
+        It's derived class from UniquedStringImpl. Only symbol strings can become this.
+        It ensures the given StringImpl is symbol in compile time.
+
+        3. AtomicStringImpl
+        It's derived class from UniquedStringImpl. Only atomic (non-normal && non-symbol) strings can become this.
+        It ensures the given StringImpl is atomic in compile time.
+
+        And, in this time, I just accept UniqueStringImpl in AtomicString. As the result,
+        1. Now AtomicStringImpl issue is fixed. Its SymbolImpl is separated and UniquedStringImpl is introduced.
+        2. But AtomicString still have both symbol and atomic strings.
+        This should be solved in the separated patch.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PrintStream.cpp:
+        * wtf/PrintStream.h:
+        (WTF::printInternal):
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        (WTF::StringImpl::createSymbol):
+        (WTF::StringImpl::createSymbolEmpty):
+        * wtf/text/StringImpl.h:
+        * wtf/text/SymbolImpl.h: Copied from Source/JavaScriptCore/runtime/PrivateName.h.
+        * wtf/text/SymbolRegistry.cpp:
+        (WTF::SymbolRegistry::symbolForKey):
+        (WTF::SymbolRegistry::keyForSymbol):
+        (WTF::SymbolRegistry::remove):
+        * wtf/text/SymbolRegistry.h:
+        * wtf/text/UniquedStringImpl.h: Copied from Source/JavaScriptCore/runtime/PrivateName.h.
+
+2015-05-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Move MainThreadGtk, RunLoopGtk, WorkQueueGtk under Source/WTF/wtf/glib/
+        https://bugs.webkit.org/show_bug.cgi?id=145117
+
+        Reviewed by Csaba Osztrogonác.
+
+        Move the MainThreadGtk, RunLoopGtk and WorkQueueGtk implementation files from
+        Source/WTF/wtf/gtk/ to Source/WTF/wtf/glib/. These implementations are not
+        GTK-specific and only depend on GLib, so they are renamed as well.
+
+        There are other such implementations under Source/WTF/wtf/gobject/ (GObject
+        is just a subset of GLib) that will be moved under the new directory in
+        future patches.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/glib/MainThreadGLib.cpp: Renamed from Source/WTF/wtf/gtk/MainThreadGtk.cpp.
+        (WTF::initializeMainThreadPlatform):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/glib/RunLoopGLib.cpp: Renamed from Source/WTF/wtf/gtk/RunLoopGtk.cpp.
+        (WTF::RunLoop::RunLoop):
+        (WTF::RunLoop::~RunLoop):
+        (WTF::RunLoop::run):
+        (WTF::RunLoop::stop):
+        (WTF::RunLoop::wakeUp):
+        (WTF::RunLoop::TimerBase::TimerBase):
+        (WTF::RunLoop::TimerBase::~TimerBase):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::RunLoop::TimerBase::isActive):
+        * wtf/glib/WorkQueueGLib.cpp: Renamed from Source/WTF/wtf/gtk/WorkQueueGtk.cpp.
+        (WTF::WorkQueue::platformInitialize):
+        (WTF::WorkQueue::platformInvalidate):
+        (WTF::WorkQueue::registerSocketEventHandler):
+        (WTF::WorkQueue::unregisterSocketEventHandler):
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
 2015-05-19  Andreas Kling  <akling@apple.com>
 
         Give StringView a utf8() API.

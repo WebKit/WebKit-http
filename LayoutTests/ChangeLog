@@ -1,3 +1,482 @@
+2015-05-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Delete media/controls-layers.html. It's a bad test that fails and asserts, and there
+        are apparently no plans to fix any of that (see https://bugs.webkit.org/show_bug.cgi?id=145420).
+
+        * media/controls-layers.html: Removed.
+        * platform/mac-mavericks/media/controls-layers-expected.txt: Removed.
+        * platform/mac/media/controls-layers-expected.txt: Removed.
+
+2015-05-27  Jordan Harband  <ljharb@gmail.com>
+
+        Array.of should work with other constructors
+        https://bugs.webkit.org/show_bug.cgi?id=145365
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/array-of-expected.txt:
+        * js/script-tests/array-of.js:
+        (Foo):
+
+2015-05-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add undefined->double conversion to DoubleRep
+        https://bugs.webkit.org/show_bug.cgi?id=145293
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/math-with-out-of-bounds-array-values-expected.txt: Added.
+        * js/regress/math-with-out-of-bounds-array-values.html: Added.
+        * js/regress/script-tests/math-with-out-of-bounds-array-values.js: Added.
+
+2015-05-27  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r183820): webkit.org/blog/ background painting issue on reload, when the page contains videos
+        https://bugs.webkit.org/show_bug.cgi?id=145420
+
+        Reviewed by Dean Jackson.
+        
+        Test that dumps compositing layers in a document with media controls.
+
+        * media/controls-layers.html: Added.
+        * platform/mac/media/controls-layers-expected.txt: Added.
+        * platform/mac-mavericks/media/controls-layers-expected.txt: Added.
+
+2015-05-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Update Mac WebKit1 TestExpectations for platform/mac/fast/ruby/ruby-expansion-cjk-2.html
+
+        * platform/mac-wk1/TestExpectations: It's an image failure, so counter-intuitively,
+        Failure expectation is not the right one.
+
+2015-05-27  Daniel Bates  <dabates@apple.com>
+
+        Update Mac WebKit1 TestExpectations for platform/mac/fast/ruby/ruby-expansion-cjk-2.html
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-05-27  Daniel Bates  <dabates@apple.com>
+
+        Fix Mac Yosemite layout test failure following <http://trac.webkit.org/changeset/184899>
+        (https://bugs.webkit.org/show_bug.cgi?id=145336)
+
+        Mark test platform/mac/fast/ruby/ruby-expansion-cjk-2.html as failing on Yosemite.
+
+        Also remove references to fast/ruby/ruby-expansion-cjk*.html from TestExpectations files
+        of other ports since we consider these tests specific to Mac.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-05-26  Dean Jackson  <dino@apple.com>
+
+        Backdrop filters don't animate
+        https://bugs.webkit.org/show_bug.cgi?id=145386
+        <rdar://problem/21110037>
+
+        Reviewed by Simon Fraser.
+
+        Add a test for animation of backdrop-filter, and do some
+        minor cleanups in related files.
+
+        * animations/resources/animation-test-helpers.js:
+        (parseFilterImage): Fix a typo.
+        (getPropertyValue): Support webkitBackdropFilter.
+        (comparePropertyValue): Ditto.
+        * css3/filters/backdrop/animation-expected.txt: Added.
+        * css3/filters/backdrop/animation.html: Added.
+
+2015-05-27  Matt Baker  <mattbaker@apple.com>
+
+        [iOS] Rebaseline expected results for tests in LayoutTests/compositing
+        https://bugs.webkit.org/show_bug.cgi?id=145401
+
+        Reviewed by Simon Fraser.
+
+        Rebaselined iOS tests failing due to expected differences in converage rect, scrollbar and contentsScale.
+
+        * platform/ios-simulator/compositing/layer-creation/scale-rotation-animation-overlap-expected.txt: Added.
+        * platform/ios-simulator/compositing/masks/compositing-clip-path-change-no-repaint-expected.txt: Added.
+        * platform/ios-simulator/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/ios-simulator/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+        * platform/ios-simulator/compositing/tiling/transform-origin-tiled-expected.txt: Copied from LayoutTests/platform/ios-simulator/compositing/tiling/rotated-tiled-clamped-expected.txt.
+        * platform/ios-simulator/compositing/visible-rect/backing-change-height-from-zero-expected.txt: Added.
+
+2015-05-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Arabic ligatures are broken in Google Maps
+        https://bugs.webkit.org/show_bug.cgi?id=145336
+        <rdar://problem/20689607>
+
+        Reviewed by Darin Adler.
+
+        This patch adds a DRT test to make sure that text gets drawn with the correct font.
+
+        It also updates expected results for 4 tests, which I have verified are still correct. However,
+        because the behavior of Mavericks differs from Yosemite, I copied the old expected results to
+        platform/mac-mavericks before updating the results in platform/mac.
+
+        This patch also moves fast/ruby/ruby-expansion-cjk*.html to platform/mac because they rely on
+        platform-specific screen-space quantization. This patch also skips these tests on Mavericks
+        because I can't add platform-specific expected results for reftests.
+
+        * platform/ios-simulator/fast/text/arabic-with-no-supporting-webfont-expected.txt:
+        * platform/ios-simulator/fast/text/arabic-with-no-supporting-webfont.html:
+
+        * platform/mac-mavericks/fast/css/font-face-opentype-expected.txt: Copied from platform/mac.
+        * platform/mac-mavericks/svg/batik/text/xmlSpace-expected.txt: Ditto.
+        * platform/mac-mavericks/svg/custom/svg-fonts-fallback-expected.txt: Ditto.
+        * platform/mac-mavericks/svg/custom/svg-fonts-without-missing-glyph-expected.txt: Ditto.
+        * platform/mac-mavericks/TestExpectations: Skip fast/ruyb/ruby-expansion-cjk*.html
+        * platform/mac/fast/css/font-face-opentype-expected.txt: Updated.
+        * platform/mac/svg/batik/text/xmlSpace-expected.txt: Ditto.
+        * platform/mac/svg/custom/svg-fonts-fallback-expected.txt: Ditto.
+        * platform/mac/svg/custom/svg-fonts-without-missing-glyph-expected.txt: Ditto.
+        * LayoutTests/platform/mac/fast/ruby/resources/green.png: Moved from fast/ruby/resources/green.png
+        * LayoutTests/platform/mac/fast/ruby/resources/ruby-expansion.svg: Moved from fast/ruby/resources/ruby-expansion.svg
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-2-expected.html: Moved from fast/ruby/ruby-expansion-cjk-2-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-2.html: Moved from fast/ruby/ruby-expansion-cjk-2.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-3-expected.html: Moved from fast/ruby/ruby-expansion-cjk-3-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-3.html: Moved from fast/ruby/ruby-expansion-cjk-3.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-4-expected.html: Moved from fast/ruby/ruby-expansion-cjk-4-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-4.html: Moved from fast/ruby/ruby-expansion-cjk-4.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-5-expected.html: Moved from fast/ruby/ruby-expansion-cjk-5-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-5.html: Moved from fast/ruby/ruby-expansion-cjk-5.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-expected.html: Moved from fast/ruby/ruby-expansion-cjk-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk.html: Moved from fast/ruby/ruby-expansion-cjk.html
+
+2015-05-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        An SVG with no intrinsic size does not draw correct slices when used as a border-image for an HTML element.
+        https://bugs.webkit.org/show_bug.cgi?id=139405
+
+        Reviewed by Darin Adler.
+
+        * fast/borders/border-image-fill-no-intrinsic-size-expected.html: Added.
+        * fast/borders/border-image-fill-no-intrinsic-size.html: Added.
+        * fast/borders/resources/svg-border-100x100-intrinsic.svg: Added.
+        * fast/borders/resources/svg-border-140x140-intrinsic.svg: Added.
+        * fast/borders/resources/svg-border-no-intrinsic.svg: Added.
+        Make sure the slices of the border-image are drawn correctly. When using an
+        image with no intrinsic size, all the slices has to be gotten from (0, 0)
+        of the source image.
+        
+        * TestExpectations: Removed previously-failing test.
+
+2015-05-26  Andreas Kling  <akling@apple.com>
+
+        <font face> doesn't support plus character in font family names.
+        <https://webkit.org/b/145400>
+        <rdar://problem/21097484>
+
+        Reviewed by Darin Adler.
+
+        Add a little test for <font face> attributes to cover this problem
+        and some other interesting cases with spaces and commas.
+
+        * fast/dom/HTMLFontElement/face-attribute-expected.txt: Added.
+        * fast/dom/HTMLFontElement/face-attribute.html: Added.
+
+2015-05-26  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: display:none content exposed to accessibility when aria-hidden is toggled on ancestor element
+        https://bugs.webkit.org/show_bug.cgi?id=139142
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/accessibility/aria-hidden-false-works-in-subtrees-expected.txt:
+
+2015-05-26  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: display:none content exposed to accessibility when aria-hidden is toggled on ancestor element
+        https://bugs.webkit.org/show_bug.cgi?id=139142
+
+        Reviewed by Darin Adler.
+
+        * accessibility/aria-hidden-false-works-in-subtrees.html:
+
+2015-05-26  Zalan Bujtas  <zalan@apple.com>
+
+        Overhanging float sets are not cleaned up properly when floating renderer is destroyed.
+        https://bugs.webkit.org/show_bug.cgi?id=145323
+        rdar://problem/20980628
+
+        Reviewed by Dave Hyatt.
+
+        This patch ensures when an overhanging float renderer is destroyed,
+        all the sibling containers' floating object set(m_floatingObjects) gets properly cleaned up.
+
+        When an overhanging float is present, we cache the renderer on the parent and on the affected
+        sibling containers too. (RenderBlockFlow::m_floatingObjects) These caches(sets) get cleared and repopulated
+        during ::layout(). In order to have a float renderer removed from a set, a layout needs to be initiated on the container.
+        This is normally done through RenderBlockFlow::markSiblingsWithFloatsForLayout() and RenderBlockFlow::markAllDescendantsWithFloatsForLayout().
+        However, when the float container's parent's writing direction changes (and we promote the children containers to new formatting contexts),
+        the layout propagation through siblings does not work anymore.
+
+        The avoidsFloats() check in RenderBlockFlow::markSiblingsWithFloatsForLayout() has very little performance gain, but it prevents us
+        from propagating layout to siblings when certain properties of the parent container changes.
+
+        * fast/block/float/crash-when-floating-object-is-removed-expected.txt: Added.
+        * fast/block/float/crash-when-floating-object-is-removed.xhtml: Added.
+
+2015-05-26  Beth Dakin  <bdakin@apple.com>
+
+        storage/indexeddb/deleteIndex-bug110792.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=145390
+
+        Marking as flaky.
+        * TestExpectations:
+
+2015-05-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVG fragment identifier rendering issue
+        https://bugs.webkit.org/show_bug.cgi?id=137328
+
+        Reviewed by Darin Adler.
+
+        * svg/css/svg-resource-fragment-identifier-order-expected.html: Added.
+        * svg/css/svg-resource-fragment-identifier-order.html: Added.
+        Ensure the SVG fragment is drawn correctly when the same SVG image is
+        referenced multiple times.
+
+2015-05-26  Daniel Bates  <dabates@apple.com>
+
+        Update Autofill button icon
+        https://bugs.webkit.org/show_bug.cgi?id=145191
+        <rdar://problem/20178942>
+
+        Update expected results for Windows.
+
+        * platform/win/fast/forms/input-auto-fill-button-expected.txt:
+
+2015-05-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        CSS properties (font-synthesis, column-fill) are missing in getComputedStyles
+        https://bugs.webkit.org/show_bug.cgi?id=145343
+
+        Reviewed by Timothy Hatcher.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/getComputedStyle/resources/property-names.js:
+
+2015-05-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement Array.prototype.copyWithin
+        https://bugs.webkit.org/show_bug.cgi?id=145107
+
+        Reviewed by Darin Adler.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2015-05-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=98932
+
+        Reviewed by Žan Doberšek.
+
+        * platform/gtk/TestExpectations: Update IndexedDB test expectations.
+
+2015-05-24  Jordan Harband  <ljharb@gmail.com>
+
+        Array#findIndex/find should not skip holes
+        https://bugs.webkit.org/show_bug.cgi?id=145361
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/array-find-expected.txt:
+        * js/array-findIndex-expected.txt:
+        * js/script-tests/array-find.js:
+        * js/script-tests/array-findIndex.js:
+
+2015-05-23  Antti Koivisto  <antti@apple.com>
+
+        Permanent redirects should have long implicit cache lifetime
+        https://bugs.webkit.org/show_bug.cgi?id=145348
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/cache/cache-redirections.html:
+        * http/tests/cache/resources/cache-control-redirect.php:
+
+            Use less confusing name (max_age->expiration vs. max-age) and fix logic.
+
+2015-05-23  Zalan Bujtas  <zalan@apple.com>
+
+        Rebaseline after r184825. Remove artificial extra space between 2 text renderers. 
+
+        Reviewed by Antti Koivisto.
+
+        * animations/lineheight-animation-expected.txt:
+        * animations/simultaneous-start-transform-expected.txt:
+        * animations/width-using-ems-expected.txt:
+        * fast/events/window-events-bubble-expected.txt:
+        * fast/events/window-events-bubble2-expected.txt:
+
+2015-05-23  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Ignore -webkit-flow-*content while collecting text content for innerText.
+        https://bugs.webkit.org/show_bug.cgi?id=145344
+        rdar://problem/20959522
+
+        Reviewed by Antti Koivisto.
+
+        This patch ensures that when a -webkit-flow-into content is present in a simple line layout container,
+        we skip it while collecting the text content for innerText.
+        It's not always guaranteed that a simple line layout container only contains simple text nodes. In such cases,
+        we need to ensure that text offset computing only takes the simple text nodes into account.
+
+        * fast/text/simple-line-layout-inner-text-with-flow-content-expected.txt: Added.
+        * fast/text/simple-line-layout-inner-text-with-flow-content.html: Added.
+
+2015-05-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Update tests broken by MediaPlaybackRequiresUserGesture renaming.
+
+        * media/no-autoplay-with-user-gesture-requirement.html:
+        * media/video-load-require-user-gesture.html:
+        * media/video-play-require-user-gesture.html:
+
+2015-05-22  Alexey Proskuryakov  <ap@apple.com>
+
+        New test media/accessiblity-describes-video.html is flaky.
+
+        * platform/mac/TestExpectations: Marking as such, as suggested by Jer.
+
+2015-05-22  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Audio tracks tagged as 'describes-video' are not automatically selected when that system accessibility option is set.
+        https://bugs.webkit.org/show_bug.cgi?id=145228
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/hls/hls-accessiblity-describes-video-expected.txt: Added.
+        * http/tests/media/hls/hls-accessiblity-describes-video.html: Added.
+        * http/tests/media/resources/hls/audio-describes-video.m3u8: Added.
+        * http/tests/media/resources/hls/english/description.aac: Added.
+        * http/tests/media/resources/hls/english/description.m3u8: Added.
+        * media/accessiblity-describes-video-expected.txt: Added.
+        * media/accessiblity-describes-video.html: Added.
+        * media/content/audio-describes-video.mp4: Added.
+        * platform/mac-mavericks/TestExpectations:
+
+2015-05-22  Basile Clement  <basile_clement@apple.com>
+
+        Allow DFGClobberize to return non-node constants that must be later created
+        https://bugs.webkit.org/show_bug.cgi?id=145272
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/script-tests/cse-new-array-buffer.js: Added.
+        (foo):
+        * js/regress/script-tests/cse-new-array.js: Added.
+        (foo):
+
+2015-05-22  Marcos Chavarría Teijeiro  <mchavarria@igalia.com>
+
+        [GTK] Gardening 21st May.
+        https://bugs.webkit.org/show_bug.cgi?id=145250
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-22  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Figure out why list-detection2.html test fails on GTK
+        https://bugs.webkit.org/show_bug.cgi?id=145273
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/TestExpectations: Removed list-detection2.html from the list of expected failures.
+
+2015-05-21  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [GTK] Implement computedRoleString in AccessibilityUIElement
+        https://bugs.webkit.org/show_bug.cgi?id=128420
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/TestExpectations: Removed roles-computedRoleString from the failing test.
+        * platform/gtk/accessibility/image-link-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/image-map2-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/lists-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/roles-computedRoleString-expected.txt: Added.
+        * platform/gtk/accessibility/table-attributes-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-cell-spans-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-cells-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-detection-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-sections-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-with-rules-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/xml-roles-exposed-expected.txt: Added.
+        * platform/gtk/accessibility/xml-roles-exposed.html: Added.
+
+2015-05-21  Antti Koivisto  <antti@apple.com>
+
+        MaskImageOperation code does not manage CachedImageClients correctly
+        https://bugs.webkit.org/show_bug.cgi?id=145276
+
+        Reviewed by Andreas Kling.
+
+        * css3/masking/mask-image-client-crash-expected.txt: Added.
+        * css3/masking/mask-image-client-crash.html: Added.
+
+2015-05-21  Daniel Bates  <dabates@apple.com>
+
+        Update Autofill button icon
+        https://bugs.webkit.org/show_bug.cgi?id=145191
+        <rdar://problem/20178942>
+
+        Reviewed by Jessie Berlin.
+
+        Update expected results.
+
+        * fast/forms/input-auto-fill-button-expected.txt:
+        * platform/mac-mavericks/fast/forms/input-auto-fill-button-expected.txt:
+
+2015-05-21  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: improve list heuristics (presentational use versus actual lists)
+        https://bugs.webkit.org/show_bug.cgi?id=134187
+
+        Unreviewed layout test fixage.
+
+        Skip the list-detection2.html test on GTK until it can be investigated.
+            https://bugs.webkit.org/show_bug.cgi?id=145273
+        Fix a failing test on GTK that needed an update after the last set of changes.
+        Skip the test on windows until a time someone can decide if we even expose or need lists in Windows AX API.
+            https://bugs.webkit.org/show_bug.cgi?id=145271
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/list-detection-expected.txt:
+        * platform/win/TestExpectations:
+
+2015-05-21  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVG as image uses very tiny default font-size
+        https://bugs.webkit.org/show_bug.cgi?id=68090
+
+        Reviewed by Darin Adler.
+
+        * svg/text/text-default-font-size-expected.html: Added.
+        * svg/text/text-default-font-size.html: Added.
+        Ensure the default font size for non-interactive SVG images is not zero.
+
+2015-05-21  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        streams/reference-implementation/readable-stream.html should now pass
+        https://bugs.webkit.org/show_bug.cgi?id=145266
+
+        Unreviewed.
+
+        * TestExpectations: removing falky expectation of streams/reference-implementation/readable-stream.html.
+
 2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: array previews should have a much smaller cap on values

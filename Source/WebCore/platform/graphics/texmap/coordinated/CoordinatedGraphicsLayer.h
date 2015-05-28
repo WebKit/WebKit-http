@@ -63,7 +63,7 @@ class CoordinatedGraphicsLayer : public GraphicsLayer
 #if USE(COORDINATED_GRAPHICS_THREADED)
     , public TextureMapperPlatformLayer::Client
 #endif
-    , public CoordinatedTileClient {
+    {
 public:
     explicit CoordinatedGraphicsLayer(Type, GraphicsLayerClient&);
     virtual ~CoordinatedGraphicsLayer();
@@ -139,8 +139,6 @@ public:
     virtual IntRect tiledBackingStoreContentsRect() override;
     virtual IntRect tiledBackingStoreVisibleRect() override;
     virtual Color tiledBackingStoreBackgroundColor() const override;
-
-    // CoordinatedTileClient
     virtual void createTile(uint32_t tileID, float) override;
     virtual void updateTile(uint32_t tileID, const SurfaceUpdateInfo&, const IntRect&) override;
     virtual void removeTile(uint32_t tileID) override;

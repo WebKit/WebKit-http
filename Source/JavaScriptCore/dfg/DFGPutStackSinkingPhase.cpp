@@ -64,6 +64,13 @@ public:
         // after SSA conversion, we have almost a guarantee that the Phi graph we produce here would
         // be trivially redundant to the one we already have.
         
+        // FIXME: This phase doesn't adequately use KillStacks. KillStack can be viewed as a def.
+        // This is mostly inconsequential; it would be a bug to have a local live at a KillStack.
+        // More important is that KillStack should swallow any deferral. After a KillStack, the
+        // local should behave like a TOP deferral because it would be invalid for anyone to trust
+        // the stack. It's not clear to me if this is important or not.
+        // https://bugs.webkit.org/show_bug.cgi?id=145296
+        
         if (verbose) {
             dataLog("Graph before PutStack sinking:\n");
             m_graph.dump();
@@ -107,10 +114,16 @@ public:
                         live.operand(operand) = true;
                     };
                     
+                    // FIXME: This might mishandle LoadVarargs and ForwardVarargs. It might make us
+                    // think that the locals being written are stack-live here. They aren't. This
+                    // should be harmless since we overwrite them anyway, but still, it's sloppy.
+                    // https://bugs.webkit.org/show_bug.cgi?id=145295
                     preciseLocalClobberize(
                         m_graph, node, escapeHandler, escapeHandler,
-                        [&] (VirtualRegister operand, Node* source) {
-                            if (source == node) {
+                        [&] (VirtualRegister operand, LazyNode source) {
+                            RELEASE_ASSERT(source.isNode());
+
+                            if (source.asNode() == node) {
                                 // This is a load. Ignore it.
                                 return;
                             }
@@ -231,8 +244,10 @@ public:
                     
                     preciseLocalClobberize(
                         m_graph, node, escapeHandler, escapeHandler,
-                        [&] (VirtualRegister operand, Node* source) {
-                            if (source == node) {
+                        [&] (VirtualRegister operand, LazyNode source) {
+                            RELEASE_ASSERT(source.isNode());
+
+                            if (source.asNode() == node) {
                                 // This is a load. Ignore it.
                                 return;
                             }
@@ -436,7 +451,7 @@ public:
                 
                     preciseLocalClobberize(
                         m_graph, node, escapeHandler, escapeHandler,
-                        [&] (VirtualRegister, Node*) { });
+                        [&] (VirtualRegister, LazyNode) { });
                     break;
                 } }
             }
@@ -483,7 +498,7 @@ public:
             insertionSet.execute(block);
         }
         
-        // Finally eliminate the sunken PutStacks by turning them into Phantoms. This keeps whatever
+        // Finally eliminate the sunken PutStacks by turning them into Checks. This keeps whatever
         // type check they were doing. Also prepend KillStacks to them to ensure that we know that
         // the relevant value was *not* stored to the stack.
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {

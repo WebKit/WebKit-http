@@ -65,7 +65,7 @@ ControllerIOS.prototype = {
     },
 
     shouldHaveStartPlaybackButton: function() {
-        var allowsInline = this.host.mediaPlaybackAllowsInline;
+        var allowsInline = this.host.allowsInlineMediaPlayback;
 
         if (this.isPlaying || (this.hasPlayed && allowsInline))
             return false;
@@ -545,7 +545,7 @@ ControllerIOS.prototype = {
             return;
         
         this.updateForShowingControls();
-        if (this.shouldHaveControls()) {
+        if (this.shouldHaveControls() && !this.controls.panelContainer.parentElement) {
             this.base.appendChild(this.controls.inlinePlaybackPlaceholder);
             this.base.appendChild(this.controls.panelContainer);
         }

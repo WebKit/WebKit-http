@@ -570,6 +570,7 @@ private:
     virtual bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) override;
     virtual void mediaPlayerHandlePlaybackCommand(MediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command); }
     virtual String mediaPlayerSourceApplicationIdentifier() const override;
+    virtual Vector<String> mediaPlayerPreferredAudioCharacteristics() const override;
 
 #if PLATFORM(IOS)
     virtual String mediaPlayerNetworkInterfaceName() const override;
@@ -580,6 +581,7 @@ private:
     virtual void mediaPlayerEngineFailedToLoad() const override final;
 
     virtual double mediaPlayerRequestedPlaybackRate() const override final;
+    virtual VideoFullscreenMode mediaPlayerFullscreenMode() const override final { return fullscreenMode(); }
 
     void pendingActionTimerFired();
     void progressEventTimerFired();

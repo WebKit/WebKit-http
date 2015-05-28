@@ -262,7 +262,7 @@ my @features = (
       define => "ENABLE_ICONDATABASE", default => !isIOSWebKit(), value => \$icondatabaseSupport },
 
     { option => "indexed-database", desc => "Toggle Indexed Database support",
-      define => "ENABLE_INDEXED_DATABASE", default => 0, value => \$indexedDatabaseSupport },
+      define => "ENABLE_INDEXED_DATABASE", default => isGtk(), value => \$indexedDatabaseSupport },
 
     { option => "input-speech", desc => "Toggle Input Speech support",
       define => "ENABLE_INPUT_SPEECH", default => 0, value => \$inputSpeechSupport },
@@ -347,6 +347,9 @@ my @features = (
 
     { option => "performance-timeline", desc => "Toggle Performance Timeline support",
       define => "ENABLE_PERFORMANCE_TIMELINE", default => (isGtk() || isWPE()), value => \$performanceTimelineSupport },
+
+    { option => "picture-sizes", desc => "Toggle sizes attribute support",
+      define => "ENABLE_PICTURE_SIZES", default => 1, value => \$pictureSizesSupport },
 
     { option => "promises", desc => "Toggle Promise support",
       define => "ENABLE_PROMISES", default => 1, value => \$promiseSupport },
