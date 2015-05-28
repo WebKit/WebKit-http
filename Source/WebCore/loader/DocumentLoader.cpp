@@ -762,6 +762,9 @@ void DocumentLoader::commitLoad(const char* data, int length)
         return;
 #endif
     frameLoader->client().committedLoad(this, data, length);
+
+    if (isMultipartReplacingLoad())
+        frameLoader->client().didReplaceMultipartContent();
 }
 
 ResourceError DocumentLoader::interruptedForPolicyChangeError() const
@@ -870,6 +873,8 @@ void DocumentLoader::setupForReplace()
 {
     if (!mainResourceData())
         return;
+
+    frameLoader()->client().willReplaceMultipartContent();
     
     maybeFinishLoadingMultipartContent();
     maybeCreateArchive();
@@ -1297,6 +1302,7 @@ void DocumentLoader::stopLoadingPlugIns()
 void DocumentLoader::stopLoadingSubresources()
 {
     cancelAll(m_subresourceLoaders);
+    ASSERT(m_subresourceLoaders.isEmpty());
 }
 
 void DocumentLoader::addSubresourceLoader(ResourceLoader* loader)
@@ -1311,6 +1317,9 @@ void DocumentLoader::addSubresourceLoader(ResourceLoader* loader)
     ASSERT(loader->identifier());
     ASSERT(!m_subresourceLoaders.contains(loader->identifier()));
     ASSERT(!mainResourceLoader() || mainResourceLoader() != loader);
+
+    // A page in the PageCache should not be able to start loads.
+    ASSERT_WITH_SECURITY_IMPLICATION(!document() || !document()->inPageCache());
 
     m_subresourceLoaders.add(loader->identifier(), loader);
 }
@@ -1547,6 +1556,13 @@ void DocumentLoader::handledOnloadEvents()
 {
     m_wasOnloadHandled = true;
     applicationCacheHost()->stopDeferringEvents();
+}
+
+void DocumentLoader::setTriggeringAction(const NavigationAction& action)
+{
+    m_triggeringAction = action;
+    if (!m_triggeringAction.isEmpty())
+        m_triggeringAction.setShouldOpenExternalURLsPolicy(m_shouldOpenExternalURLsPolicy);
 }
 
 #if ENABLE(CONTENT_EXTENSIONS)

@@ -61,6 +61,7 @@ public:
     virtual void setVideoFullscreenLayer(PlatformLayer*) { }
     virtual void setVideoFullscreenFrame(FloatRect) { }
     virtual void setVideoFullscreenGravity(MediaPlayer::VideoGravity) { }
+    virtual void setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode) { }
 
     virtual NSArray *timedMetadata() const { return 0; }
     virtual String accessLog() const { return emptyString(); }
@@ -160,7 +161,6 @@ public:
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    virtual bool isCurrentPlaybackTargetWireless() const { return false; }
 
     virtual String wirelessPlaybackTargetName() const { return emptyString(); }
     virtual MediaPlayer::WirelessPlaybackTargetType wirelessPlaybackTargetType() const { return MediaPlayer::TargetTypeNone; }
@@ -169,7 +169,7 @@ public:
     virtual void setWirelessVideoPlaybackDisabled(bool) { }
 
     virtual bool canPlayToWirelessPlaybackTarget() const { return false; }
-    virtual bool isPlayingToWirelessPlaybackTarget() { return false; }
+    virtual bool isCurrentPlaybackTargetWireless() const { return false; }
     virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) { }
 
     virtual void setShouldPlayToPlaybackTarget(bool) { }
@@ -237,6 +237,7 @@ public:
     virtual bool requiresTextTrackRepresentation() const { return false; }
     virtual void setTextTrackRepresentation(TextTrackRepresentation*) { }
     virtual void syncTextTrackBounds() { };
+    virtual void tracksChanged() { };
 #endif
 
 #if USE(PLATFORM_TEXT_TRACK_MENU)

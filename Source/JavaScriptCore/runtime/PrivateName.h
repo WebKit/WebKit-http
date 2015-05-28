@@ -26,35 +26,35 @@
 #ifndef PrivateName_h
 #define PrivateName_h
 
-#include <wtf/text/StringImpl.h>
+#include <wtf/text/SymbolImpl.h>
 
 namespace JSC {
 
 class PrivateName {
 public:
     PrivateName()
-        : m_impl(StringImpl::createSymbolEmpty())
+        : m_uid(StringImpl::createSymbolEmpty())
     {
     }
 
-    explicit PrivateName(StringImpl* uid)
-        : m_impl(uid)
-    {
-        ASSERT(m_impl->isSymbol());
-    }
-
-    explicit PrivateName(const String& description)
-        : m_impl(StringImpl::createSymbol(description.impl()))
+    explicit PrivateName(SymbolImpl& uid)
+        : m_uid(&uid)
     {
     }
 
-    AtomicStringImpl* uid() const { return static_cast<AtomicStringImpl*>(m_impl.get()); }
+    enum DescriptionTag { Description };
+    explicit PrivateName(DescriptionTag, const String& description)
+        : m_uid(StringImpl::createSymbol(description.impl()))
+    {
+    }
+
+    SymbolImpl* uid() const { return m_uid.get(); }
 
     bool operator==(const PrivateName& other) const { return uid() == other.uid(); }
     bool operator!=(const PrivateName& other) const { return uid() != other.uid(); }
 
 private:
-    RefPtr<StringImpl> m_impl;
+    RefPtr<SymbolImpl> m_uid;
 };
 
 }

@@ -286,7 +286,7 @@ String Parser<LexerType>::parseInner()
         features |= ModifiedParameterFeature;
     if (modifiedArguments)
         features |= ModifiedArgumentsFeature;
-    Vector<RefPtr<StringImpl>> closedVariables;
+    Vector<RefPtr<UniquedStringImpl>> closedVariables;
     if (m_parsingBuiltin) {
         IdentifierSet usedVariables;
         scope->getUsedVariables(usedVariables);
@@ -325,7 +325,7 @@ String Parser<LexerType>::parseInner()
 
 template <typename LexerType>
 void Parser<LexerType>::didFinishParsing(SourceElements* sourceElements, DeclarationStacks::VarStack& varStack, 
-    DeclarationStacks::FunctionStack& funcStack, CodeFeatures features, int numConstants, IdentifierSet& capturedVars, const Vector<RefPtr<StringImpl>>&& closedVariables)
+    DeclarationStacks::FunctionStack& funcStack, CodeFeatures features, int numConstants, IdentifierSet& capturedVars, const Vector<RefPtr<UniquedStringImpl>>&& closedVariables)
 {
     m_sourceElements = sourceElements;
     m_varDeclarations.swap(varStack);
@@ -534,7 +534,6 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVarDeclarati
 template <typename LexerType>
 template <class TreeBuilder> TreeDeconstructionPattern Parser<LexerType>::createBindingPattern(TreeBuilder& context, DeconstructionKind kind, const Identifier& name, int depth, JSToken token)
 {
-    ASSERT(!name.isEmpty());
     ASSERT(!name.isNull());
     
     ASSERT(name.impl()->isAtomic() || name.impl()->isSymbol());
@@ -915,7 +914,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseContinueState
     const Identifier* ident = m_token.m_data.ident;
     ScopeLabelInfo* label = getLabel(ident);
     semanticFailIfFalse(label, "Cannot use the undeclared label '", ident->impl(), "'");
-    semanticFailIfFalse(label->m_isLoop, "Cannot continue to the label '", ident->impl(), "' as it is not targeting a loop");
+    semanticFailIfFalse(label->isLoop, "Cannot continue to the label '", ident->impl(), "' as it is not targeting a loop");
     end = tokenEndPosition();
     next();
     failIfFalse(autoSemiColon(), "Expected a ';' following a targeted continue statement");
@@ -2611,6 +2610,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
             next();
             break;
         }
+#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
         case TEMPLATE: {
             semanticFailIfTrue(baseIsSuper, "Cannot use super as tag for tagged templates");
             JSTextPosition expressionEnd = lastTokenEndPosition();
@@ -2621,6 +2621,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
             m_nonLHSCount = nonLHSCount;
             break;
         }
+#endif
         default:
             goto endMemberExpression;
         }

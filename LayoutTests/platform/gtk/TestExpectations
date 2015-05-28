@@ -994,7 +994,7 @@ webkit.org/b/132271 media/media-controller-playbackrate.html [ Timeout Pass Cras
 webkit.org/b/132271 media/media-controller-time-clamp.html [ Timeout Pass ]
 webkit.org/b/132271 media/track/add-and-remove-track.html [ Timeout Pass ]
 webkit.org/b/132271 media/controls-without-preload.html [ Failure Timeout Pass ]
-webkit.org/b/132271 media/controls-right-click-on-timebar.html [ Timeout Pass ]
+webkit.org/b/145251 media/controls-right-click-on-timebar.html [ Timeout Pass Failure ]
 
 #JS slow stress
 webkit.org/b/132266 js/slow-stress/Int32Array-alloc-large-long-lived.html [ Timeout Pass ]
@@ -1141,6 +1141,12 @@ webkit.org/b/145167 transforms/2d/perspective-not-fixed-container.html [ ImageOn
 
 webkit.org/b/145170 fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [ Failure Pass ]
 webkit.org/b/145170 fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Failure Pass ]
+
+webkit.org/b/145256 media/video-controller-child-rate.html [ Failure Pass ]
+webkit.org/b/145257 http/tests/media/media-document-referer.html [ Failure Pass ]
+webkit.org/b/145258 media/video-controller-child-rate.html [ Failure Pass ]
+
+webkit.org/b/145261 fast/workers/stress-js-execution.html [ Failure Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -1355,6 +1361,8 @@ webkit.org/b/145053 http/tests/xmlhttprequest/origin-exact-matching.html [ Timeo
 webkit.org/b/145168 media/track/track-cue-inline-assertion-crash.html [ Timeout Pass ]
 webkit.org/b/145169 media/track/track-css-user-override.html [ Timeout Pass ]
 webkit.org/b/145171 fast/events/tabindex-focus-blur-all.html [ Timeout Pass ]
+
+webkit.org/b/145260 media/audio-playback-restriction-play.html  [ Timeout Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -1573,7 +1581,6 @@ Bug(GTK) fast/media/view-mode-media-feature.html [ ImageOnlyFailure ]
 
 # Shared workers disabled with the Network Process
 webkit.org/b/139357 fast/workers/worker-crash-with-invalid-location.html [ Skip ]
-webkit.org/b/139357 http/tests/appcache/different-https-origin-resource-main.html  [ Crash ]
 webkit.org/b/139357 http/tests/media/video-accept-encoding.html [ Failure ]
 
 # PingLoader is still in WebProcess. As a result, this test fails and also fails to delete its cookie, breaking many other cookie tests.
@@ -1587,6 +1594,7 @@ webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-she
 webkit.org/b/123431 http/tests/local/link-stylesheet-load-order-preload.html [ Failure ]
 webkit.org/b/123431 http/tests/local/link-stylesheet-load-order.html [ Failure Pass ]
 
+webkit.org/b/145253 http/tests/appcache/different-https-origin-resource-main.html  [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # Tests failing
@@ -1819,8 +1827,6 @@ webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
 # Leaking state into the next test.
 #webkit.org/b/85522 http/tests/security/sandboxed-iframe-form-top.html [ Skip ]
 
-webkit.org/b/128420 accessibility/roles-computedRoleString.html [ Skip ]
-
 webkit.org/b/103927 http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_cross_origin_resource_request.html [ Failure ]
 webkit.org/b/103927 http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_timing_allow_cross_origin_resource_request.html [ Failure ]
 webkit.org/b/103927 http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_attribute_order.html [ Failure ]
@@ -2027,16 +2033,105 @@ webkit.org/b/107825 media/audio-delete-while-step-button-clicked.html [ Failure 
 webkit.org/b/107825 media/nodesFromRect-shadowContent.html [ Failure ]
 webkit.org/b/107825 media/video-controls-fullscreen-volume.html [ Failure ]
 
-# IndexedDB code is going through refactoring/refreshing, so the tests are quite unstable at this point.
-webkit.org/b/107194 storage/indexeddb [ Skip ]
-webkit.org/b/107194 http/tests/security/cross-origin-indexeddb-allowed.html [ Skip ]
-webkit.org/b/107194 http/tests/security/cross-origin-indexeddb.html [ Skip ]
-webkit.org/b/107194 http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
-webkit.org/b/107194 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
-webkit.org/b/107194 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
+## IndexedDB related failures
+
+# Blink tests with unexplained timeouts
+storage/indexeddb/database-deletepending-flag.html [ Skip ]
+storage/indexeddb/exceptions.html [ Skip ]
+storage/indexeddb/intversion-gated-on-delete.html [ Skip ]
+storage/indexeddb/intversion-long-queue.html [ Skip ]
+storage/indexeddb/open-ordering.html [ Skip ]
+storage/indexeddb/transaction-basics.html [ Skip ]
+storage/indexeddb/transaction-coordination-within-database.html [ Skip ]
+
+# Blink tests with non-trivial text failures.
+storage/indexeddb/createIndex-after-failure.html [ Skip ]
+storage/indexeddb/create-object-store-options.html [ Skip ]
+storage/indexeddb/cursor-advance.html [ Skip ]
+storage/indexeddb/cursor-basics.html [ Skip ]
+storage/indexeddb/cursor-continue.html [ Skip ]
+storage/indexeddb/cursor-continue-validity.html [ Skip ]
+storage/indexeddb/cursor-continueprimarykey.html [ Skip ]
+storage/indexeddb/cursor-index-delete.html [ Skip ]
+storage/indexeddb/cursor-key-order.html [ Skip ]
+storage/indexeddb/cursor-leak.html [ Skip ] # Missing needed WKTR feature?
+storage/indexeddb/cursor-overloads.html [ Skip ]
+storage/indexeddb/cursor-primary-key-order.html [ Skip ]
+storage/indexeddb/cursor-request-cycle.html [ Skip ] # Missing needed WKTR feature?
+storage/indexeddb/cursor-update.html [ Skip ]
+storage/indexeddb/data-corruption.html [ Skip ]
+storage/indexeddb/database-close.html [ Skip ]
+storage/indexeddb/database-closepending-flag.html [ Skip ]
+storage/indexeddb/database-quota.html [ Skip ]
+storage/indexeddb/deleteIndex.html [ Skip ]
+storage/indexeddb/delete-in-upgradeneeded-close-in-open-success.html [ Skip ]
+storage/indexeddb/delete-in-upgradeneeded-close-in-versionchange.html [ Skip ]
+storage/indexeddb/deletedatabase-blocked.html [ Skip ]
+storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange.html [ Skip ]
+storage/indexeddb/deletedatabase-delayed-by-versionchange.html [ Skip ]
+storage/indexeddb/deletedatabase-not-blocked.html [ Skip ]
+storage/indexeddb/deleted-objects.html [ Skip ]
+storage/indexeddb/duplicates.html [ Skip ] # Difference between null + undefined
+storage/indexeddb/events.html [ Skip ]
+storage/indexeddb/factory-basics.html [ Skip ] # indexedDB.webkitGetDatabaseNames is missing)
+storage/indexeddb/factory-cmp.html [ Skip ]
+storage/indexeddb/factory-deletedatabase.html [ Skip ]
+storage/indexeddb/get-keyrange.html [ Skip ]
+storage/indexeddb/index-basics.html [ Skip ] # Difference between null + undefined
+storage/indexeddb/index-duplicate-keypaths.html [ Skip ]
+storage/indexeddb/index-multientry.html [ Skip ]
+storage/indexeddb/index-population.html [ Skip ]
+storage/indexeddb/index-unique.html [ Skip ]
+storage/indexeddb/intversion-blocked.html [ Skip ]
+storage/indexeddb/intversion-close-between-events.html [ Skip ]
+storage/indexeddb/intversion-open-in-upgradeneeded.html [ Skip ]
+storage/indexeddb/intversion-open-with-version.html [ Skip ] # INTMAX exposed to script as database version
+storage/indexeddb/intversion-pending-version-changes-ascending.html [ Skip ]
+storage/indexeddb/intversion-pending-version-changes-descending.html [ Skip ]
+storage/indexeddb/intversion-pending-version-changes-same.html [ Skip ]
+storage/indexeddb/intversion-two-opens-no-versions.html [ Skip ] # INTMAX exposed to script as database version
+storage/indexeddb/intversion-upgrades.html [ Skip ]
+storage/indexeddb/key-generator.html [ Skip ]
+storage/indexeddb/key-type-binary.html [ Skip ]
+storage/indexeddb/lazy-index-population.html [ Skip ]
+storage/indexeddb/metadata.html [ Skip ]
+storage/indexeddb/noblobs.html [ Skip ] # Missing DRT file/blob support
+storage/indexeddb/objectstore-autoincrement.html [ Skip ]
+storage/indexeddb/objectstore-basics.html [ Skip ]
+storage/indexeddb/objectstore-keycursor.html [ Skip ]
+storage/indexeddb/odd-strings.html [ Skip ]
+storage/indexeddb/optional-arguments.html [ Skip ]
+storage/indexeddb/persistence.html [ Skip ]
+storage/indexeddb/request-leak.html [ Skip ] # Missing WKTR support? GC?
+storage/indexeddb/setversion-blocked-by-versionchange-close.html [ Skip ]
+storage/indexeddb/setversion-not-blocked.html [ Skip ]
+storage/indexeddb/structured-clone.html [ Skip ] # Missing DRT file/blob support
+storage/indexeddb/transaction-and-objectstore-calls.html [ Skip ]
+storage/indexeddb/transaction-error.html [ Skip ]
+storage/indexeddb/transaction-scope-sequencing.html [ Skip ]
+
+# Blink tests that crash the WebProcess.
+storage/indexeddb/cursor-cast.html [ Skip ]
+
+# We don't currently support indexeddb in workers
+storage/indexeddb/basics-workers.html [ Skip ]
+storage/indexeddb/cursor-advance-workers.html [ Skip ]
+storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-workers.html [ Skip ]
+storage/indexeddb/dont-commit-on-blocked.html [ Skip ]
+storage/indexeddb/factory-basics-workers.html [ Skip ]
+storage/indexeddb/index-basics-workers.html [ Skip ]
+storage/indexeddb/objectstore-basics-workers.html [ Skip ]
+storage/indexeddb/open-twice-workers.html [ Skip ]
+storage/indexeddb/pending-activity-workers.html [ Skip ]
+storage/indexeddb/pending-version-change-on-exit.html [ Skip ]
+storage/indexeddb/pending-version-change-stuck-works-with-terminate.html [ Skip ]
+storage/indexeddb/pending-version-change-stuck.html [ Skip ]
+storage/indexeddb/transaction-complete-workers.html [ Skip ]
+storage/indexeddb/unprefix-workers.html [ Skip ]
+http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
+http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
+
 webkit.org/b/107194 crypto/subtle/rsa-indexeddb.html [ Skip ]
-webkit.org/b/107194 fast/history/page-cache-indexed-closed-db.html [ Skip ]
-webkit.org/b/107194 fast/history/page-cache-indexed-opened-db.html [ Skip ]
 
 # Test marked in TestExpectations as failing on non-retina displays, passing on GTK port
 webkit.org/b/129113 fast/multicol/newmulticol/clipping.html [ Pass ]
@@ -2255,13 +2350,6 @@ webkit.org/b/143230 imported/mozilla/svg/filters/feImage-1.svg [ ImageOnlyFailur
 webkit.org/b/143468 accessibility/plugin.html [ Failure ]
 
 webkit.org/b/143469 fast/borders/border-image-fill-no-border.html [ ImageOnlyFailure ]
-
-# Broken Ruby tests
-webkit.org/b/143354 fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
-webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
-webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-3.html [ ImageOnlyFailure ]
-webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
-webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
 
 webkit.org/b/85594 fast/dom/navigator-detached-no-crash.html [ Failure ]
 

@@ -1,3 +1,56 @@
+2015-05-27  Dean Jackson  <dino@apple.com>
+
+        img.currentSrc problem in strict mode with old picturefill
+        https://bugs.webkit.org/show_bug.cgi?id=144095
+        <rdar://problem/21087013>
+
+        Reviewed by Simon Fraser.
+
+        Add a PICTURE_SIZES flag.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWindows.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-05-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.9.2 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2015-05-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Export DatabaseProcessMainUnix symbol.
+
+        Add DatabaseProcessMainUnix symbol to gtksymbols.filter so that it
+        is exported in production builds.
+
+        * Source/cmake/gtksymbols.filter:
+
+2015-05-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=98932
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsGTK.cmake: Enable DATABASE_PROCESS and INDEXED_DATABASE.
+        * Source/cmake/WebKitFeatures.cmake: Add ENABLE_DATABASE_PROCESS.
+
+2015-05-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bump GCC requirements to 4.9.0
+        https://bugs.webkit.org/show_bug.cgi?id=145211
+
+        Reviewed by Žan Doberšek.
+
+        It's required to build with IndexedDB support when using GCC,
+        clang works just fine. See https://bugs.webkit.org/show_bug.cgi?id=98932.
+
+        * Source/cmake/OptionsGTK.cmake:
+
 2015-05-18  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [CMake] Ignore warnings in system headers

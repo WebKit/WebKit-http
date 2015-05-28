@@ -1,3 +1,352 @@
+2015-05-27  Dean Jackson  <dino@apple.com>
+
+        img.currentSrc problem in strict mode with old picturefill
+        https://bugs.webkit.org/show_bug.cgi?id=144095
+        <rdar://problem/21087013>
+
+        Reviewed by Simon Fraser.
+
+        Add a PICTURE_SIZES flag.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-05-26  Dana Burkart  <dburkart@apple.com>
+
+        Fixes compatibility issues with recent dashboard cleanup.
+        https://bugs.webkit.org/show_bug.cgi?id=144814
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotStaticAnalyzerQueueView.js:
+        (BuildbotStaticAnalyzerQueueView):
+        (BuildbotStaticAnalyzerQueueView.prototype.update):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (documentReady):
+
+2015-05-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Botwatcher's dashboard doesn't show JSC test regressions on Apple bots
+        https://bugs.webkit.org/show_bug.cgi?id=143091
+        rdar://problem/19330328
+
+        Reviewed by Darin Adler and Timothy Hatcher.
+
+        We have many of these, which are hard to fit on the dashboard. Added a view that
+        collapses to a single green bubble when everything is good, and expands when there
+        are failures (or manually).
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/index.html: Added BuildbotCombinedQueueView.js
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot.prototype.set isAuthenticated):
+        (Buildbot.prototype._normalizeQueueInfo):
+        (Buildbot.prototype._normalizeQueuesInfo):
+        (Buildbot.prototype.updateQueues):
+        Moved queue info normalization here from BuildbitQueue. The latter is a model class
+        that shouldn't have to know about presentation, and this lets us leep the knowledge
+        about combined queues out if it. Later, we can refactor existing code, and move out
+        all knowledge about headings and such.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        Added the new view. It's not quite universal, and doesn't have as helpful popovers
+        as other views, but we can extend it when/if we use it for more than JSC.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue): Now that info is normalized before creating a queue, don't do that here.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (documentReady): Added support for combined queues. These are currently always ending up
+        in Other column, but it's easy to customize in the future if we need to.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot): Added JSC queus.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/QueueView.css:
+        (.combined-queue-popover):
+        (.combined-queue-popover .revision):
+        Added styles for the combined view.
+
+2015-05-26  Dan Bernstein  <mitz@apple.com>
+
+        Changed a file to use Unix line endings.
+
+        * LayoutTestRelay/Configurations/DebugRelease.xcconfig:
+
+2015-05-26  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/21104551> Update build settings
+
+        Reviewed by Anders Carlsson.
+
+        * ContentExtensionTester/Configurations/DebugRelease.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * WebEditingTester/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+        * asan/asan.xcconfig:
+
+2015-05-26  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::mouseForceDown):
+        (WTR::EventSenderProxy::mouseForceUp):
+        (WTR::EventSenderProxy::mouseForceChanged):
+
+2015-05-26  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Don't list test steps in BuildbotIteration twice
+        https://bugs.webkit.org/show_bug.cgi?id=145342
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData):
+
+2015-05-26  Milan Crha  <mcrha@redhat.com>
+
+        [GTK] Expand wildcards inside generate-inspector-gresource-manifest.py
+        https://bugs.webkit.org/show_bug.cgi?id=138134
+
+        Reviewed by Žan Doberšek.
+
+        * gtk/generate-inspector-gresource-manifest.py:
+        (get_filenames): Command line with expanded resources exceeds 32KB, which
+        is a limit on Windows. It's better to expand wildcards inside the python script.
+
+2015-05-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add construct property to WebKitWebContext to set the IndexedDB database directory
+        https://bugs.webkit.org/show_bug.cgi?id=140882
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Make sure unit tests write IndexedDB databases to the temporary
+        directory, and add a test case to check that the directory is
+        correctly created at the expected path.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (testWebContextConfiguration):
+        (serverCallback):
+        * TestWebKitAPI/gtk/WebKit2Gtk/TestMain.h:
+        (Test::Test):
+
+2015-05-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=98932
+
+        Reviewed by Žan Doberšek.
+
+        * Scripts/webkitperl/FeatureList.pm: Enable IndexedDB for the GTK port.
+
+2015-05-24  Sam Weinig  <sam@webkit.org>
+
+        Crash when using a removed ScriptMessageHandler
+        <rdar://problem/20888499>
+        https://bugs.webkit.org/show_bug.cgi?id=145359
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        Add tests for removing script message handlers.
+
+2015-05-23  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused definitions of WEBKIT_VERSION_MIN_REQUIRED
+        https://bugs.webkit.org/show_bug.cgi?id=145345
+
+        Reviewed by Sam Weinig.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * LayoutTestRelay/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
+2015-05-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce UniquedStringImpl and SymbolImpl to separate symbolic strings from AtomicStringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=144848
+
+        Reviewed by Darin Adler.
+
+        Use UniquedStringImpl, SymbolImpl and AtomicStringImpl.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+
+2015-05-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix one more merge error in static analyzer support.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotStaticAnalyzerQueueView.js:
+        (BuildbotStaticAnalyzerQueueView):
+
+2015-05-22  Dana Burkart  <dburkart@apple.com>
+
+        Fix internal dashboard breakage from recent commit.
+        https://bugs.webkit.org/show_bug.cgi?id=144814
+
+        Unreviewed build fix.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotStaticAnalyzerQueueView.js:
+        (BuildbotStaticAnalyzerQueueView.prototype.update.appendStaticAnalyzerQueueStatus):
+        (BuildbotStaticAnalyzerQueueView.prototype.update):
+
+2015-05-22  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (OS X 10.9.2): PageVisibilityStateWithWindowChanges.WebKit2 API test fails
+        https://bugs.webkit.org/show_bug.cgi?id=130463
+        rdar://problem/20461342
+
+        Reviewed by Tim Horton.
+
+        This was more of a timing related flakiness than an actual OS version specific bug,
+        we weren't getting window visibility notifications.
+        
+        I will look into adding this function call to DumpRenderTree separately, layout tests
+        might actually rely on the broken behavior.
+
+        * TestWebKitAPI/Tests/mac/PageVisibilityStateWithWindowChanges.mm:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/mac/mainMac.mm:
+        (main):
+
+2015-05-22  Dana Burkart  <dburkart@apple.com>
+
+        Add missing file from r184804 (mis-applied diff).
+        https://bugs.webkit.org/show_bug.cgi?id=144814
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotStaticAnalyzerQueueView.js: Added.
+        (BuildbotStaticAnalyzerQueueView):
+        (BuildbotStaticAnalyzerQueueView.prototype.update.appendStaticAnalyzerQueueStatus):
+        (BuildbotStaticAnalyzerQueueView.prototype.update):
+
+2015-05-22  Dana Burkart  <dburkart@apple.com>
+
+        Add support to the botwatchers dashboard for a static analyzer bot.
+        https://bugs.webkit.org/show_bug.cgi?id=144814
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        scan-build should be considered a productive step.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue):
+        Adds support for the staticAnalyzer property
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTestResults.js:
+        (BuildbotTestResults.prototype._parseResults):
+        Get bug count from the scan-build step output
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (documentReady):
+        Rename the performance column 'Other', and merge the current 'Other' column with it.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        Now that performance bots are part of the 'Other' column, give them better headings.
+
+2015-05-22  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on autosaving of toolbar configuration in MiniBrowser
+
+        Rubber-stamped by Dan Bernstein.
+
+        * MiniBrowser/mac/BrowserWindow.xib:
+
+2015-05-22  Alexey Proskuryakov  <ap@apple.com>
+
+        build.webkit.org/dashboard: Simplify BuildbotQueueView creation code
+        https://bugs.webkit.org/show_bug.cgi?id=145297
+
+        Reviewed by Tim Horton.
+
+        This is a refactoring to simplify code, and to make it more logical.
+
+        It is up to the view to decide how to present the queues, and whether to split
+        them into debug and release, or in some different way.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotBuilderQueueView.js:
+        (BuildbotBuilderQueueView.filterQueues):
+        (BuildbotBuilderQueueView):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotLeaksQueueView.js:
+        (BuildbotLeaksQueueView):
+        (BuildbotLeaksQueueView.prototype.update):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotPerformanceQueueView.js:
+        (BuildbotPerformanceQueueView):
+        (BuildbotPerformanceQueueView.prototype.update):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView):
+        (BuildbotQueueView.prototype._updateQueues):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (documentReady):
+
+2015-05-22  Tim Horton  <timothy_horton@apple.com>
+
+        Remove action menu support
+        https://bugs.webkit.org/show_bug.cgi?id=145305
+        <rdar://problem/21070771>
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/action-menu-target.pdf: Removed.
+        * TestWebKitAPI/Tests/WebKit2/action-menu-targets.html: Removed.
+        * TestWebKitAPI/Tests/WebKit2ObjC/ActionMenus.mm: Removed.
+        * TestWebKitAPI/Tests/WebKit2ObjC/ActionMenusBundle.mm: Removed.
+        * TestWebKitAPI/Tests/WebKit2ObjC/ActionMenusBundleSPI.h: Removed.
+        Remove the tests.
+
+2015-05-22  Dan Bernstein  <mitz@apple.com>
+
+        Removed the Use Shrink To Fit button from the toolbar’s default set.
+
+        Rubber-stamped by Tim Horton.
+
+        * MiniBrowser/mac/BrowserWindow.xib:
+
+2015-05-21  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [GTK] Implement computedRoleString in AccessibilityUIElement
+        https://bugs.webkit.org/show_bug.cgi?id=128420
+
+        Reviewed by Chris Fleizach.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::computedRoleString): Implemented.
+
+2015-05-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump libsoup version to 2.50.0
+        https://bugs.webkit.org/show_bug.cgi?id=145127
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+        * efl/patches/soup-clang-warning-fix1.patch: Removed.
+        * efl/patches/soup-clang-warning-fix2.patch: Removed.
+
+2015-05-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Move MainThreadGtk, RunLoopGtk, WorkQueueGtk under Source/WTF/wtf/glib/
+        https://bugs.webkit.org/show_bug.cgi?id=145117
+
+        Reviewed by Csaba Osztrogonác.
+
+        Rename the WorkQueueGtk.cpp file to WorkQueueGLib.cpp, and move it under
+        Tools/TestWebKitAPI/Tests/WTF/glib/.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WTF/glib/WorkQueueGLib.cpp: Renamed from Tools/TestWebKitAPI/Tests/WTF/gtk/WorkQueueGtk.cpp.
+        (TestWebKitAPI::TEST):
+
 2015-05-20  KwangHyuk Kim  <hyuki.kim@samsung.com>
 
         [EFL] fix efreet error

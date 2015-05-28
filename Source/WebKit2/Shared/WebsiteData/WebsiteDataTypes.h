@@ -37,6 +37,7 @@ enum WebsiteDataTypes {
     WebsiteDataTypeLocalStorage = 1 << 5,
     WebsiteDataTypeWebSQLDatabases = 1 << 6,
     WebsiteDataTypeIndexedDBDatabases = 1 << 7,
+    WebsiteDataTypeMediaKeys = 1 << 8,
 };
 
 };

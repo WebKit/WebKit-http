@@ -261,7 +261,9 @@ void makeMatrixRenderable(TransformationMatrix& matrix, bool has3DRendering)
 }
 
 RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
-    : m_inResizeMode(false)
+    : m_isRootLayer(rendererLayerModelObject.isRenderView())
+    , m_forcedStackingContext(rendererLayerModelObject.isMedia())
+    , m_inResizeMode(false)
     , m_scrollDimensionsDirty(true)
     , m_normalFlowListDirty(true)
     , m_hasSelfPaintingLayerDescendant(false)
@@ -270,7 +272,6 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
     , m_hasOutOfFlowPositionedDescendantDirty(true)
     , m_needsCompositedScrolling(false)
     , m_descendantsAreContiguousInStackingOrder(false)
-    , m_isRootLayer(rendererLayerModelObject.isRenderView())
     , m_usedTransparency(false)
     , m_paintingInsideReflection(false)
     , m_inOverflowRelayout(false)
@@ -6708,7 +6709,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
     updateBlendMode();
 #endif
     updateOrRemoveFilterClients();
-    updateOrRemoveMaskImageClients(oldStyle);
+    updateOrRemoveMaskImageClients();
 
     updateNeedsCompositedScrolling();
 
@@ -6863,17 +6864,12 @@ void RenderLayer::updateOrRemoveFilterClients()
         filterInfo->removeReferenceFilterClients();
 }
 
-void RenderLayer::updateOrRemoveMaskImageClients(const RenderStyle* oldStyle)
+void RenderLayer::updateOrRemoveMaskImageClients()
 {
-    if (oldStyle && oldStyle->maskImage().get()) {
-        if (MaskImageInfo* maskImageInfo = MaskImageInfo::getIfExists(*this))
-            maskImageInfo->removeMaskImageClients(*oldStyle);
-    }
-
     if (renderer().style().maskImage().get())
         MaskImageInfo::get(*this).updateMaskImageClients();
     else if (MaskImageInfo* maskImageInfo = MaskImageInfo::getIfExists(*this))
-        maskImageInfo->removeMaskImageClients(renderer().style());
+        maskImageInfo->removeMaskImageClients();
 }
 
 void RenderLayer::updateOrRemoveFilterEffectRenderer()

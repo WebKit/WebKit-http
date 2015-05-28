@@ -958,9 +958,12 @@ private:
     void compileDoubleRep()
     {
         switch (m_node->child1().useKind()) {
+        case NotCellUse:
         case NumberUse: {
+            bool shouldConvertNonNumber = m_node->child1().useKind() == NotCellUse;
+
             LValue value = lowJSValue(m_node->child1(), ManualOperandSpeculation);
-            setDouble(jsValueToDouble(m_node->child1(), value));
+            setDouble(jsValueToDouble(m_node->child1(), value, shouldConvertNonNumber));
             return;
         }
             
@@ -2089,7 +2092,7 @@ private:
         
         LValue base = lowCell(m_node->child1());
         LValue value = lowJSValue(m_node->child2());
-        StringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
+        auto uid = m_graph.identifiers()[m_node->identifierNumber()];
 
         // Arguments: id, bytes, target, numArgs, args...
         unsigned stackmapID = m_stackmapIDs++;
@@ -2947,7 +2950,7 @@ private:
     void compileCreateActivation()
     {
         LValue scope = lowCell(m_node->child1());
-        SymbolTable* table = m_graph.symbolTableFor(m_node->origin.semantic);
+        SymbolTable* table = m_node->castOperand<SymbolTable*>();
         Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->activationStructure();
         
         if (table->singletonScope()->isStillValid()) {
@@ -4813,7 +4816,7 @@ private:
         if (JSString* string = m_node->child1()->dynamicCastConstant<JSString*>()) {
             if (string->tryGetValueImpl() && string->tryGetValueImpl()->isAtomic()) {
 
-                const StringImpl* str = string->tryGetValueImpl();
+                const auto str = static_cast<const AtomicStringImpl*>(string->tryGetValueImpl());
                 unsigned stackmapID = m_stackmapIDs++;
             
                 LValue call = m_out.call(
@@ -5264,7 +5267,7 @@ private:
             values.append(lowJSValue(m_graph.varArgChild(m_node, 1 + i)));
 
         LValue scope = lowCell(m_graph.varArgChild(m_node, 0));
-        SymbolTable* table = m_graph.symbolTableFor(m_node->origin.semantic);
+        SymbolTable* table = m_node->castOperand<SymbolTable*>();
         Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->activationStructure();
 
         LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("MaterializeCreateActivation slow path"));
@@ -5278,11 +5281,6 @@ private:
         m_out.storePtr(scope, fastObject, m_heaps.JSScope_next);
         m_out.storePtr(weakPointer(table), fastObject, m_heaps.JSSymbolTableObject_symbolTable);
 
-        for (unsigned i = 0; i < table->scopeSize(); ++i) {
-            m_out.store64(
-                m_out.constInt64(JSValue::encode(jsUndefined())),
-                fastObject, m_heaps.JSEnvironmentRecord_variables[i]);
-        }
 
         ValueFromBlock fastResult = m_out.anchor(fastObject);
         m_out.jump(continuation);
@@ -5296,11 +5294,28 @@ private:
 
         m_out.appendTo(continuation, lastNext);
         LValue activation = m_out.phi(m_out.intPtr, fastResult, slowResult);
+        RELEASE_ASSERT(data.m_properties.size() == table->scopeSize());
         for (unsigned i = 0; i < data.m_properties.size(); ++i) {
             m_out.store64(values[i],
                 activation,
                 m_heaps.JSEnvironmentRecord_variables[data.m_properties[i].m_identifierNumber]);
         }
+
+        if (validationEnabled()) {
+            // Validate to make sure every slot in the scope has one value.
+            ConcurrentJITLocker locker(table->m_lock);
+            for (auto iter = table->begin(locker), end = table->end(locker); iter != end; ++iter) {
+                bool found = false;
+                for (unsigned i = 0; i < data.m_properties.size(); ++i) {
+                    if (iter->value.scopeOffset().offset() == data.m_properties[i].m_identifierNumber) {
+                        found = true;
+                        break;
+                    }
+                }
+                ASSERT_UNUSED(found, found);
+            }
+        }
+
         setJSValue(activation);
     }
 
@@ -5736,7 +5751,7 @@ private:
     
     LValue getById(LValue base)
     {
-        StringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
+        auto uid = m_graph.identifiers()[m_node->identifierNumber()];
 
         // Arguments: id, bytes, target, numArgs, args...
         unsigned stackmapID = m_stackmapIDs++;
@@ -7187,10 +7202,12 @@ private:
     {
         return m_out.sub(m_out.bitCast(doubleValue, m_out.int64), m_tagTypeNumber);
     }
-    LValue jsValueToDouble(Edge edge, LValue boxedValue)
+    LValue jsValueToDouble(Edge edge, LValue boxedValue, bool shouldConvertNonNumber)
     {
         LBasicBlock intCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble unboxing int case"));
+        LBasicBlock doubleTesting = FTL_NEW_BLOCK(m_out, ("jsValueToDouble testing double case"));
         LBasicBlock doubleCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble unboxing double case"));
+        LBasicBlock nonDoubleCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble testing undefined case"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("jsValueToDouble unboxing continuation"));
             
         LValue isNotInt32;
@@ -7200,24 +7217,70 @@ private:
             isNotInt32 = m_out.booleanTrue;
         else
             isNotInt32 = this->isNotInt32(boxedValue);
-        m_out.branch(isNotInt32, unsure(doubleCase), unsure(intCase));
+        m_out.branch(isNotInt32, unsure(doubleTesting), unsure(intCase));
             
-        LBasicBlock lastNext = m_out.appendTo(intCase, doubleCase);
+        LBasicBlock lastNext = m_out.appendTo(intCase, doubleTesting);
             
         ValueFromBlock intToDouble = m_out.anchor(
             m_out.intToDouble(unboxInt32(boxedValue)));
         m_out.jump(continuation);
             
-        m_out.appendTo(doubleCase, continuation);
-            
-        FTL_TYPE_CHECK(
-            jsValueValue(boxedValue), edge, SpecBytecodeNumber, isCellOrMisc(boxedValue));
-            
+        m_out.appendTo(doubleTesting, doubleCase);
+        LValue valueIsNumber = isNumber(boxedValue);
+        m_out.branch(valueIsNumber, usually(doubleCase), rarely(nonDoubleCase));
+
+        m_out.appendTo(doubleCase, nonDoubleCase);
         ValueFromBlock unboxedDouble = m_out.anchor(unboxDouble(boxedValue));
         m_out.jump(continuation);
-            
+
+        if (shouldConvertNonNumber) {
+            LBasicBlock undefinedCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble converting undefined case"));
+            LBasicBlock testNullCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble testing null case"));
+            LBasicBlock nullCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble converting null case"));
+            LBasicBlock testBooleanTrueCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble testing boolean true case"));
+            LBasicBlock convertBooleanTrueCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble convert boolean true case"));
+            LBasicBlock convertBooleanFalseCase = FTL_NEW_BLOCK(m_out, ("jsValueToDouble convert boolean false case"));
+
+            m_out.appendTo(nonDoubleCase, undefinedCase);
+            LValue valueIsUndefined = m_out.equal(boxedValue, m_out.constInt64(ValueUndefined));
+            m_out.branch(valueIsUndefined, unsure(undefinedCase), unsure(testNullCase));
+
+            m_out.appendTo(undefinedCase, testNullCase);
+            ValueFromBlock convertedUndefined = m_out.anchor(m_out.constDouble(PNaN));
+            m_out.jump(continuation);
+
+            m_out.appendTo(testNullCase, nullCase);
+            LValue valueIsNull = m_out.equal(boxedValue, m_out.constInt64(ValueNull));
+            m_out.branch(valueIsNull, unsure(nullCase), unsure(testBooleanTrueCase));
+
+            m_out.appendTo(nullCase, testBooleanTrueCase);
+            ValueFromBlock convertedNull = m_out.anchor(m_out.constDouble(0));
+            m_out.jump(continuation);
+
+            m_out.appendTo(testBooleanTrueCase, convertBooleanTrueCase);
+            LValue valueIsBooleanTrue = m_out.equal(boxedValue, m_out.constInt64(ValueTrue));
+            m_out.branch(valueIsBooleanTrue, unsure(convertBooleanTrueCase), unsure(convertBooleanFalseCase));
+
+            m_out.appendTo(convertBooleanTrueCase, convertBooleanFalseCase);
+            ValueFromBlock convertedTrue = m_out.anchor(m_out.constDouble(1));
+            m_out.jump(continuation);
+
+            m_out.appendTo(convertBooleanFalseCase, continuation);
+
+            LValue valueIsNotBooleanFalse = m_out.notEqual(boxedValue, m_out.constInt64(ValueFalse));
+            FTL_TYPE_CHECK(jsValueValue(boxedValue), edge, ~SpecCell, valueIsNotBooleanFalse);
+            ValueFromBlock convertedFalse = m_out.anchor(m_out.constDouble(0));
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            return m_out.phi(m_out.doubleType, intToDouble, unboxedDouble, convertedUndefined, convertedNull, convertedTrue, convertedFalse);
+        }
+        m_out.appendTo(nonDoubleCase, continuation);
+        FTL_TYPE_CHECK(jsValueValue(boxedValue), edge, SpecBytecodeNumber, m_out.booleanTrue);
+        m_out.unreachable();
+
         m_out.appendTo(continuation, lastNext);
-            
+
         return m_out.phi(m_out.doubleType, intToDouble, unboxedDouble);
     }
     
@@ -7862,17 +7925,17 @@ private:
 
         // Append to the write barrier buffer.
         LBasicBlock lastNext = m_out.appendTo(isMarkedAndNotRemembered, bufferHasSpace);
-        LValue currentBufferIndex = m_out.load32(m_out.absolute(&vm().heap.writeBarrierBuffer().m_currentIndex));
-        LValue bufferCapacity = m_out.load32(m_out.absolute(&vm().heap.writeBarrierBuffer().m_capacity));
+        LValue currentBufferIndex = m_out.load32(m_out.absolute(vm().heap.writeBarrierBuffer().currentIndexAddress()));
+        LValue bufferCapacity = m_out.constInt32(vm().heap.writeBarrierBuffer().capacity());
         m_out.branch(
             m_out.lessThan(currentBufferIndex, bufferCapacity),
             usually(bufferHasSpace), rarely(bufferIsFull));
 
         // Buffer has space, store to it.
         m_out.appendTo(bufferHasSpace, bufferIsFull);
-        LValue writeBarrierBufferBase = m_out.loadPtr(m_out.absolute(&vm().heap.writeBarrierBuffer().m_buffer));
+        LValue writeBarrierBufferBase = m_out.constIntPtr(vm().heap.writeBarrierBuffer().buffer());
         m_out.storePtr(base, m_out.baseIndex(m_heaps.WriteBarrierBuffer_bufferContents, writeBarrierBufferBase, m_out.zeroExtPtr(currentBufferIndex)));
-        m_out.store32(m_out.add(currentBufferIndex, m_out.constInt32(1)), m_out.absolute(&vm().heap.writeBarrierBuffer().m_currentIndex));
+        m_out.store32(m_out.add(currentBufferIndex, m_out.constInt32(1)), m_out.absolute(vm().heap.writeBarrierBuffer().currentIndexAddress()));
         m_out.jump(continuation);
 
         // Buffer is out of space, flush it.

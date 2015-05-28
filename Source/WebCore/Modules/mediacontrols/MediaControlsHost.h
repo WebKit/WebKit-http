@@ -46,7 +46,7 @@ class TextTrackList;
 
 class MediaControlsHost : public RefCounted<MediaControlsHost> {
 public:
-    static PassRefPtr<MediaControlsHost> create(HTMLMediaElement*);
+    static Ref<MediaControlsHost> create(HTMLMediaElement*);
     ~MediaControlsHost();
 
     static const AtomicString& automaticKeyword();
@@ -63,7 +63,7 @@ public:
     void setSelectedTextTrack(TextTrack*);
     Element* textTrackContainer();
     void updateTextTrackContainer();
-    bool mediaPlaybackAllowsInline() const;
+    bool allowsInlineMediaPlayback() const;
     bool supportsFullscreen();
     bool userGestureRequired() const;
 

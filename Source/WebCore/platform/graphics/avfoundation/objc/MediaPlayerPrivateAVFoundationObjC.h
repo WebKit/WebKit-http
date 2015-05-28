@@ -159,6 +159,7 @@ private:
     virtual void setVideoFullscreenLayer(PlatformLayer*);
     virtual void setVideoFullscreenFrame(FloatRect);
     virtual void setVideoFullscreenGravity(MediaPlayer::VideoGravity);
+    virtual void setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode) override;
 
     virtual NSArray *timedMetadata() const override;
     virtual String accessLog() const;
@@ -286,13 +287,14 @@ private:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
     virtual void setShouldPlayToPlaybackTarget(bool) override;
-    virtual bool isPlayingToWirelessPlaybackTarget();
 #endif
 
     virtual double maxFastForwardRate() const override { return m_cachedCanPlayFastForward ? std::numeric_limits<double>::infinity() : 2.0; }
     virtual double minFastReverseRate() const override { return m_cachedCanPlayFastReverse ? -std::numeric_limits<double>::infinity() : 0.0; }
 
     virtual URL resolvedURL() const override;
+
+    Vector<String> preferredAudioCharacteristics() const;
 
     WeakPtrFactory<MediaPlayerPrivateAVFoundationObjC> m_weakPtrFactory;
 
