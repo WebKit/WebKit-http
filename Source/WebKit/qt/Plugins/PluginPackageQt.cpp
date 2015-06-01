@@ -152,7 +152,8 @@ bool PluginPackage::isPluginBlacklisted()
     // subplugins linked against Qt 4 but without using DEEPBIND.
     const QLatin1String pluginBlacklist[] = {
         QLatin1String("skypebuttons"),
-        QLatin1String("libkpartsplugin")
+        QLatin1String("libkpartsplugin"),
+        QLatin1String("libvlcplugin")
     };
 
     QString baseName = QFileInfo(static_cast<QString>(m_path)).baseName();
