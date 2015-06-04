@@ -147,7 +147,7 @@ std::unique_ptr<GLContext> GLContext::createOffscreenContext(GLContext* sharingC
 {
 #if PLATFORM(WAYLAND)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
-        return downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createSharingGLContext();
+        return downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createOffscreenContext(sharingContext);
 #else
     return createContextForWindow(0, sharingContext);
 #endif
