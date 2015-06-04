@@ -6739,7 +6739,7 @@
     <ClCompile Include="..\platform\graphics\texmap\coordinated\CoordinatedSurface.cpp">
       <Filter>platform\graphics\texmap\coordinated</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\texmap\coordinated\CoordinatedTile.cpp">
+    <ClCompile Include="..\platform\graphics\texmap\coordinated\Tile.cpp">
       <Filter>platform\graphics\texmap\coordinated</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\texmap\coordinated\UpdateAtlas.cpp">
@@ -7030,7 +7030,7 @@
     <ClCompile Include="..\Modules\gamepad\GamepadEvent.cpp">
       <Filter>Modules\gamepad</Filter>
     </ClCompile>
-    <ClCompile Include="..\html\HTMLMediaSession.cpp">
+    <ClCompile Include="..\html\MediaElementSession.cpp">
       <Filter>html</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\HTTPHeaderNames.cpp">
@@ -7051,7 +7051,7 @@
     <ClCompile Include="..\rendering\line\LineInfo.cpp">
       <Filter>rendering\line</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\audio\MediaSession.cpp">
+    <ClCompile Include="..\platform\audio\PlatformMediaSession.cpp">
       <Filter>platform\audio</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\audio\MediaSessionManager.cpp">
@@ -14147,10 +14147,10 @@
     <ClInclude Include="..\platform\graphics\texmap\coordinated\CoordinatedSurface.h">
       <Filter>platform\graphics\texmap\coordinated</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\texmap\coordinated\CoordinatedTile.h">
+    <ClInclude Include="..\platform\graphics\texmap\coordinated\SurfaceUpdateInfo.h">
       <Filter>platform\graphics\texmap\coordinated</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\texmap\coordinated\SurfaceUpdateInfo.h">
+    <ClInclude Include="..\platform\graphics\texmap\coordinated\Tile.h">
       <Filter>platform\graphics\texmap\coordinated</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\texmap\coordinated\UpdateAtlas.h">
@@ -14498,7 +14498,7 @@
     <ClInclude Include="..\platform\audio\MediaSessionManager.h">
       <Filter>platform\audio</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\audio\MediaSession.h">
+    <ClInclude Include="..\platform\audio\PlatformMediaSession.h">
       <Filter>platform\audio</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\gamepad\NavigatorGamepad.h">
@@ -15229,9 +15229,6 @@
     </ClInclude>
     <ClInclude Include="..\platform\graphics\FontCascadeFonts.h">
       <Filter>platform\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\streams\ReadableStreamSource.h">
-      <Filter>Modules\streams</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\streams\ReadableStream.h">
       <Filter>Modules\streams</Filter>

@@ -9,6 +9,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/indieui"
     "${WEBCORE_DIR}/Modules/mediacontrols/"
+    "${WEBCORE_DIR}/Modules/mediasession"
     "${WEBCORE_DIR}/Modules/mediasource"
     "${WEBCORE_DIR}/Modules/mediastream"
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
@@ -144,6 +145,7 @@ set(WebCore_IDL_INCLUDES
     Modules/geolocation
     Modules/indexeddb
     Modules/indieui
+    Modules/mediasession
     Modules/mediastream
     Modules/notifications
     Modules/proximity
@@ -216,6 +218,10 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/indieui/UIRequestEvent.idl
 
     Modules/mediacontrols/MediaControlsHost.idl
+
+    Modules/mediasession/HTMLMediaElementMediaSession.idl
+    Modules/mediasession/MediaRemoteControls.idl
+    Modules/mediasession/MediaSession.idl
 
     Modules/mediasource/DOMURLMediaSource.idl
     Modules/mediasource/MediaSource.idl
@@ -869,6 +875,10 @@ set(WebCore_SOURCES
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
 
     Modules/mediacontrols/MediaControlsHost.cpp
+
+    Modules/mediasession/HTMLMediaElementMediaSession.cpp
+    Modules/mediasession/MediaRemoteControls.cpp
+    Modules/mediasession/MediaSession.cpp
 
     Modules/mediasource/DOMURLMediaSource.cpp
     Modules/mediasource/MediaSource.cpp
@@ -1636,7 +1646,6 @@ set(WebCore_SOURCES
     html/HTMLMapElement.cpp
     html/HTMLMarqueeElement.cpp
     html/HTMLMediaElement.cpp
-    html/HTMLMediaSession.cpp
     html/HTMLMenuElement.cpp
     html/HTMLMetaElement.cpp
     html/HTMLMeterElement.cpp
@@ -1688,6 +1697,7 @@ set(WebCore_SOURCES
     html/LinkRelAttribute.cpp
     html/MediaController.cpp
     html/MediaDocument.cpp
+    html/MediaElementSession.cpp
     html/MediaFragmentURIParser.cpp
     html/MonthInputType.cpp
     html/NumberInputType.cpp
@@ -2101,10 +2111,10 @@ set(WebCore_SOURCES
     platform/audio/HRTFElevation.cpp
     platform/audio/HRTFKernel.cpp
     platform/audio/HRTFPanner.cpp
-    platform/audio/MediaSession.cpp
     platform/audio/MediaSessionManager.cpp
     platform/audio/MultiChannelResampler.cpp
     platform/audio/Panner.cpp
+    platform/audio/PlatformMediaSession.cpp
     platform/audio/Reverb.cpp
     platform/audio/ReverbAccumulationBuffer.cpp
     platform/audio/ReverbConvolver.cpp
@@ -3002,22 +3012,35 @@ if (ENABLE_QUOTA)
 endif ()
 
 if (ENABLE_GRAPHICS_CONTEXT_3D)
-    # For platforms that want to use system-provided OpenGL (ES) headers,
-    # these include directories need to be added before the ANGLE directories.
-    if (OPENGL_FOUND)
+    # For platforms that want to use system-provided OpenGL (ES) / EGL headers,
+    # these include directories, libraries or definitions need to be
+    # added before the ANGLE directories.
+    if (USE_OPENGL)
         list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-            ${OPENGL_INCLUDE_DIR}
+            ${OPENGL_INCLUDE_DIRS}
         )
         list(APPEND WebCore_LIBRARIES
-            ${OPENGL_gl_LIBRARY}
+            ${OPENGL_LIBRARIES}
         )
-    elseif (OPENGLES2_FOUND)
+        add_definitions(${OPENGL_DEFINITIONS})
+    elseif (USE_OPENGL_ES_2)
         list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-            ${OPENGLES2_INCLUDE_DIR}
+            ${OPENGLES2_INCLUDE_DIRS}
         )
         list(APPEND WebCore_LIBRARIES
             ${OPENGLES2_LIBRARIES}
         )
+        add_definitions(${OPENGLES2_DEFINITIONS})
+    endif ()
+
+    if (USE_EGL)
+        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+            ${EGL_INCLUDE_DIRS}
+        )
+        list(APPEND WebCore_LIBRARIES
+            ${EGL_LIBRARIES}
+        )
+        add_definitions(${EGL_DEFINITIONS})
     endif ()
 
     list(APPEND WebCore_INCLUDE_DIRECTORIES

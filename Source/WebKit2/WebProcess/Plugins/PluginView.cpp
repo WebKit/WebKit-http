@@ -1180,7 +1180,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
     Frame* targetFrame = frame->loader().findFrameForNavigation(request->target());
     if (!targetFrame) {
         // We did not find a target frame. Ask our frame to load the page. This may or may not create a popup window.
-        FrameLoadRequest frameRequest(frame, request->request());
+        FrameLoadRequest frameRequest(frame, request->request(), ShouldOpenExternalURLsPolicy::ShouldNotAllow);
         frameRequest.setFrameName(request->target());
         frameRequest.setShouldCheckNewWindowPolicy(true);
         frame->loader().load(frameRequest);
@@ -1192,7 +1192,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
     }
 
     // Now ask the frame to load the request.
-    targetFrame->loader().load(FrameLoadRequest(targetFrame, request->request()));
+    targetFrame->loader().load(FrameLoadRequest(targetFrame, request->request(), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
 
     auto* targetWebFrame = WebFrame::fromCoreFrame(*targetFrame);
     ASSERT(targetWebFrame);
@@ -1371,7 +1371,7 @@ String PluginView::userAgent()
 
 void PluginView::loadURL(uint64_t requestID, const String& method, const String& urlString, const String& target, const HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups)
 {
-    FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow);
+    FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
     frameLoadRequest.resourceRequest().setHTTPMethod(method);
     frameLoadRequest.resourceRequest().setURL(m_pluginElement->document().completeURL(urlString));
     frameLoadRequest.resourceRequest().setHTTPHeaderFields(headerFields);
