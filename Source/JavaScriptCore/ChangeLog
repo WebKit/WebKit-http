@@ -1,3 +1,544 @@
+2015-06-01  Filip Pizlo  <fpizlo@apple.com>
+
+        CallLinkStatus should return takesSlowPath if the GC often cleared the IC
+        https://bugs.webkit.org/show_bug.cgi?id=145502
+
+        Reviewed by Geoffrey Garen.
+        
+        CallLinkInfo now remembers when it has been cleared by GC. This has some safeguards for when
+        a call gets cleared by GC only because we hadn't converted it into a closure call; in that
+        case the GC will just tell us that it should be a closure call. The DFG will not optimize
+        a call that was cleared by GC, and the DFG will always prefer a closure call if the GC told
+        us that the specific callee was dead but the executable wasn't.
+        
+        This guards us from some scenarios that came up in Speedometer. It's neutral on the pure JS
+        benchmarks, most likely just because those benchmarks aren't real enough to have interesting
+        GC of code.
+
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::visitWeak):
+        (JSC::CallLinkInfo::dummy):
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::CallLinkInfo):
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFromCallLinkInfo):
+
+2015-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        GetById and PutById profiling should be more precise about it takes slow path
+        https://bugs.webkit.org/show_bug.cgi?id=145590
+
+        Reviewed by Geoffrey Garen.
+        
+        If a ById access ever takes slow path, we want the DFG and FTL to know this. Previously we
+        were relying on slow path counts, which conflate slow paths taken due to a megamorphic
+        access and slow paths taken due to IC building.
+
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFor):
+        (JSC::GetByIdStatus::computeForStubInfo):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFor):
+        (JSC::PutByIdStatus::computeForStubInfo):
+        * bytecode/StructureStubInfo.h:
+        (JSC::StructureStubInfo::StructureStubInfo):
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileGetById):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+
+2015-06-03  Michael Saboff  <msaboff@apple.com>
+
+        Improve test coverage for changes made in 145527
+        https://bugs.webkit.org/show_bug.cgi?id=145578
+
+        Reviewed by Geoffrey Garen.
+
+        Added more complexity to poly-setter-combo.js stress test to create more turmoil in the
+        polymorphic get-by-id / put-by-id with getters and setters to exercise the code change in
+        https://bugs.webkit.org/show_bug.cgi?id=145527.  By changing the objects that the main test
+        function sees, we are able to test those paths.  Verified with temporary logging code.
+
+        * tests/stress/poly-setter-combo.js:
+        (Cons2):
+        (Cons3):
+        (Cons4):
+        (foo):
+        (test):
+        (runTestWithConstructors):
+
+2015-06-02  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fix broken CLoop build.
+
+        Not reviewed.
+
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeExitSiteData):
+
+2015-06-02  Keith Miller  <keith_miller@apple.com>
+
+        JavaScriptCore: JSExport protocol with an NSInteger property converts negative values to 18446744073709552000
+        https://bugs.webkit.org/show_bug.cgi?id=145563
+
+        Reviewed by Darin Adler.
+
+        The Objective-C bindings were improperly converting negative
+        long long/NSIntegers to 18446744073709552000 because they
+        were converted to unsigned numbers.
+
+        * API/ObjcRuntimeExtras.h:
+        (parseObjCType):
+        * API/tests/testapi.mm:
+        (testObjectiveCAPIMain):
+        (checkNegativeNSIntegers):
+        (testObjectiveCAPI):
+
+2015-06-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Heap-use-after-free read of size 4 in JavaScriptCore: WTF::StringImpl::isSymbol() (StringImpl.h:496)
+        https://bugs.webkit.org/show_bug.cgi?id=145532
+
+        Reviewed by Geoffrey Garen.
+
+        AtomicStringImpl::lookUp returns AtomicStringImpl*,
+        it doesn't give any ownership to the caller.
+        Originally, this is ok because the ownership is taken
+        by AtomicStringImpl's table (& the register side).
+
+        But if we would like to use this returned AtomicStringImpl*,
+        we should take its ownership immediately.
+        Because if the register side releases its ownership (ref count),
+        it will be destroyed.
+
+        In JSString::toExistingAtomicString, it returns AtomicStringImpl*.
+        But it's not appropriate.
+        If the owner of AtomicStringImpl* is always JSString*, it is ok.
+        But it looks up the table-registered AtomicStringImpl* from
+        the AtomicStringImpl table. So JSString* may not have the ownership
+        of the returned AtomicStringImpl*.
+
+        The failure situation is the following.
+
+        1. A creates AtomicStringImpl. A has its ownership.
+           And A registers it to AtomicStringImpl table.
+        2. JSString looks up the AtomicStringImpl from the table.
+           It gets AtomicStringImpl*. And JSString doesn't have its ownership.
+           It returns the raw pointer immediately to the users
+        3. A is released. There's no owner for AtomicStringImpl*.
+           So it's also destroyed.
+        4. Use looked up AtomicStringImpl in (2). It becomes use-after-free.
+
+        This patch fixes it by the following changes.
+
+        1. Change the signature of `AtomicStringImpl* AtomicStringImpl::lookUp(...)`
+           to `RefPtr<AtomicStringImpl> AtomicStringImpl::lookUp(..)`.
+           Use `RefPtr` because it may return `nullptr`.
+        2. Change the signature of `AtomicStringImpl* JSString::toExistingAtomicString(...)`
+           to `RefPtr<AtomicStringImpl> JSString::toExistingAtomicString(...)`.
+           Using `RefPtr` is the same reason.
+        3. Receive the result with `RefPtr<AtomicStringImpl>` in the caller side.
+
+        * dfg/DFGOperations.cpp:
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::getByVal):
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeToExistingAtomicString):
+        * runtime/JSString.h:
+        (JSC::JSString::toExistingAtomicString):
+
+2015-05-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Any exit from any JIT due to profiling for an inline cache should force all future compilations to be wary
+        https://bugs.webkit.org/show_bug.cgi?id=145496
+
+        Reviewed by Geoffrey Garen.
+        
+        This pessimizes compilation a bit, but it reduces the likelihood of exiting from FTL. I
+        couldn't find any convincing reason not to do this, and we know from Speedometer that this
+        change is necessary for weirder code.
+
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFor):
+        (JSC::CallLinkStatus::computeExitSiteData):
+        (JSC::CallLinkStatus::computeDFGStatuses):
+        * bytecode/CallLinkStatus.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::appendVariant):
+        (JSC::GetByIdStatus::hasExitSite):
+        (JSC::GetByIdStatus::computeFor):
+        * bytecode/GetByIdStatus.h:
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::appendVariant):
+        (JSC::PutByIdStatus::hasExitSite):
+        (JSC::PutByIdStatus::computeFor):
+        * bytecode/PutByIdStatus.h:
+
+2015-05-31  Filip Pizlo  <fpizlo@apple.com>
+
+        If a call has ever taken the virtual slow path, make sure that the DFG knows this
+        https://bugs.webkit.org/show_bug.cgi?id=145501
+
+        Reviewed by Geoffrey Garen.
+        
+        Now now return higher fidelity information in the case of no polymorphic call stub. If the
+        virtual slow path was ever taken, we note this, and we note either zero or one call variant
+        based on the IC's last callee.
+
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFromCallLinkInfo):
+        (JSC::CallLinkStatus::computeFor):
+
+2015-06-01  Michael Saboff  <msaboff@apple.com>
+
+        Crash in com.apple.WebKit.WebContent at com.apple.JavaScriptCore: JSC::revertCall + 24
+        https://bugs.webkit.org/show_bug.cgi?id=145527
+
+        Reviewed by Filip Pizlo.
+
+        If a CallLinkInfo is GC'ed, we need to notify any PolymorphicCallNode's that reference it.
+        Added plumbling to clear the m_callLinkInfo of a PolymorphicCallNode when that CallLinkInfo
+        is going away.
+
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::~CallLinkInfo):
+        * jit/PolymorphicCallStubRoutine.cpp:
+        (JSC::PolymorphicCallNode::unlink):
+        (JSC::PolymorphicCallNode::clearCallLinkInfo):
+        (JSC::PolymorphicCallCase::dump):
+        (JSC::PolymorphicCallStubRoutine::edges):
+        (JSC::PolymorphicCallStubRoutine::clearCallNodesFor):
+        (JSC::PolymorphicCallStubRoutine::visitWeak):
+        * jit/PolymorphicCallStubRoutine.h:
+        (JSC::PolymorphicCallNode::hasCallLinkInfo):
+
+2015-06-01  Mark Lam  <mark.lam@apple.com>
+
+        Add the ability to tell between Catch and Finally blocks.
+        https://bugs.webkit.org/show_bug.cgi?id=145524 
+
+        Reviewed by Michael Saboff.
+
+        ... and also SynthesizedFinally blocks too.  A SynthesizedFinally block
+        is a finally block that is synthesized by the bytecode generator but
+        does not actually correspond to any exception handling construct at the
+        JS source code level.  An example of this is the "for ... of" statement
+        where it needs to do some "final" clean up before passing on the
+        exception.
+
+        Manually tested by inspecting the bytecode dump of functions with
+        try-catch-finally blocks as well as for of statements which have
+        synthesized finally blocks.  The bytecode dumps contains the exception
+        handlers table which has these blocks labelled with their newly added
+        types.  No automatic test because this type info is not visible to JS
+        code.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecode/HandlerInfo.h:
+        (JSC::HandlerInfoBase::type):
+        (JSC::HandlerInfoBase::setType):
+        (JSC::HandlerInfoBase::typeName):
+        (JSC::HandlerInfoBase::isCatchHandler):
+        (JSC::UnlinkedHandlerInfo::UnlinkedHandlerInfo):
+        (JSC::HandlerInfo::initialize):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::pushTry):
+        (JSC::BytecodeGenerator::popTryAndEmitCatch):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::emitThrow):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TryNode::emitBytecode):
+
+2015-05-29  Geoffrey Garen  <ggaren@apple.com>
+
+        REGRESSION: These sorting idioms used by Peacekeeper and Browsermark are ~20X slower
+        https://bugs.webkit.org/show_bug.cgi?id=145412
+
+        Reviewed by Darin Adler.
+
+        Moar speedup.
+
+        Added a bucket sort for string sorting.
+
+        * builtins/Array.prototype.js:
+        (sort.compactSparse):
+        (sort.compactSlow):
+        (sort.compact): Split out a compaction fast path for dense arrays. Without
+        it, compaction can increase sort time by 2X for simple sorts.
+
+        (sort.bucketSort):
+        (sort.stringSort): Use a bucket sorting algorithm if we know we're sorting
+        strings. This makes average case string sorting O(N) with O(N) additional
+        memory use.
+
+        The worst case bucket sort can require O(M * N) additional
+        space. We avoid this by falling back to merge sort when things are
+        simple or overly duplicative. These are the two cases that accumulate
+        excessive -- and potentially pathological -- bucketing overhead.
+
+2015-06-01  Mark Lam  <mark.lam@apple.com>
+
+        HandlerInfo::initialize() should not assume that CodeLocationLabel is available.
+        https://bugs.webkit.org/show_bug.cgi?id=145515
+
+        Reviewed by Csaba Osztrogonác.
+
+        CodeLocationLabel is only defined for ENABLE(ASSEMBLER) builds.  r185022's
+        attempt at simplifying code to increase readability failed to take this into
+        account.  This patch fixes it.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/HandlerInfo.h:
+        (JSC::HandlerInfo::initialize):
+
+2015-05-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, add a FIXME referencing https://bugs.webkit.org/show_bug.cgi?id=145503.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inliningCost):
+
+2015-05-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Drop WeakMap#clear
+        https://bugs.webkit.org/show_bug.cgi?id=145489
+
+        Reviewed by Mark Lam.
+
+        ES6 spec intentionally drops the WeakMap#clear
+        to allow engine to implement WeakMap as a per-object table.
+
+        This patch drops WeakMap.prototype.clear.
+
+        * runtime/WeakMapPrototype.cpp:
+        (JSC::WeakMapPrototype::finishCreation): Deleted.
+        (JSC::protoFuncWeakMapClear): Deleted.
+
+2015-05-31  Jordan Harband  <ljharb@gmail.com>
+
+        Array#reduce and reduceRight don't follow ToLength
+        https://bugs.webkit.org/show_bug.cgi?id=145364
+        Per https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength
+
+        Reviewed by Yusuke Suzuki.
+
+        * builtins/Array.prototype.js:
+        (reduce):
+        (reduceRight):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        (JSC::arrayProtoFuncReduce): Deleted.
+        (JSC::arrayProtoFuncReduceRight): Deleted.
+
+2015-05-29  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL codegen for MultiGetByOffset and MultiPutByOffset where the structure set is already proved should have an unreachable default case instead of an exit
+        https://bugs.webkit.org/show_bug.cgi?id=145469
+
+        Reviewed by Geoffrey Garen.
+        
+        Omitting the speculation on the fail path when the speculation is guaranteed not to be
+        taken hints to LLVM that the default case is impossible. This enables some useful
+        optimizations.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileMultiGetByOffset):
+        (JSC::FTL::LowerDFGToLLVM::compileMultiPutByOffset):
+
+2015-05-29  Mark Lam  <mark.lam@apple.com>
+
+        Refactoring HandlerInfo and UnlinkedHandlerInfo.
+        https://bugs.webkit.org/show_bug.cgi?id=145480
+
+        Reviewed by Benjamin Poulain.
+
+        HandlerInfo and UnlinkedHandlerInfo have common parts, but are not currently
+        expressed as 2 unrelated structs that happen to have near identical fields.
+        We can refactor them to better express their relationship.  We can also add
+        some convenience functions to make the code that uses them a little more
+        readable.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::handlerForBytecodeOffset):
+        * bytecode/HandlerInfo.h:
+        (JSC::UnlinkedHandlerInfo::UnlinkedHandlerInfo):
+        (JSC::HandlerInfo::initialize):
+        - I chose to include CodeLocationLabel arg even though it is unused by
+          by non-JIT builds.  This makes the call site cleaner to read.
+
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedSimpleJumpTable::add):
+        (JSC::UnlinkedInstruction::UnlinkedInstruction):
+        (JSC::UnlinkedCodeBlock::numberOfExceptionHandlers):
+        (JSC::UnlinkedCodeBlock::addExceptionHandler):
+        (JSC::UnlinkedCodeBlock::exceptionHandler):
+        (JSC::UnlinkedCodeBlock::symbolTable):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+
+2015-05-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Non-speculative Branch should be fast in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=145452
+
+        Reviewed by Andreas Kling.
+        
+        Inlines the code for convertJSValueToBoolean into the FTL. This also includes some other
+        clean-ups that I found along the way.
+        
+        I found this by looking at the hottest functions in DeltaBlue. Despite having so many
+        Branch specializations, apparently there was still a hot one that we missed that was going
+        down the untyped path. It was either Int32 or Other. Maybe we could specialize for that
+        combo, but it makes so much sense to just make all of this nonsense fast.
+
+        * dfg/DFGWatchpointCollectionPhase.cpp:
+        (JSC::DFG::WatchpointCollectionPhase::handle): Need to watch the masquerades watchpoint on UntypedUse: forms of Branch now.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::boolify): The actual fix.
+        (JSC::FTL::LowerDFGToLLVM::int52ToStrictInt52):
+        (JSC::FTL::LowerDFGToLLVM::isInt32):
+        (JSC::FTL::LowerDFGToLLVM::isNotInt32):
+        (JSC::FTL::LowerDFGToLLVM::unboxInt32):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::toBoolean): Symbol is always true.
+        (JSC::JSCell::pureToBoolean): Symbol is always true.
+        * runtime/JSString.cpp:
+        (JSC::JSString::getPrimitiveNumber):
+        (JSC::JSString::toNumber):
+        (JSC::JSString::toBoolean): Deleted. This is a tiny method. It doesn't need to be out-of-line.
+        * runtime/JSString.h:
+        (JSC::JSString::length):
+        (JSC::JSString::toBoolean): This method shouldbe inline.
+        * runtime/Symbol.cpp:
+        (JSC::Symbol::toPrimitive):
+        (JSC::Symbol::getPrimitiveNumber):
+        (JSC::Symbol::toBoolean): Deleted. A Symbol is always true, so we don't need a method for this.
+        * runtime/Symbol.h:
+
+2015-05-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r184860.
+        https://bugs.webkit.org/show_bug.cgi?id=145456
+
+        May have caused ~1% Octane regression (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "Try to use StringView when comparing JSStrings for equality."
+        https://bugs.webkit.org/show_bug.cgi?id=145379
+        http://trac.webkit.org/changeset/184860
+
+2015-05-28  Michael Saboff  <msaboff@apple.com>
+
+        mozilla/js1_5/Array/regress-154338.js test causes ARM 32 bit iOS devices to run out of memory
+        https://bugs.webkit.org/show_bug.cgi?id=145444
+
+        Reviewed by Geoffrey Garen.
+
+        Disabled mozilla/js1_5/Array/regress-154338.js when run on iOS ARM 32 bit devices and
+        the --memory-limited option is passed to run-jsc-stress-tests.
+
+        * tests/mozilla/mozilla-tests.yaml:
+
+2015-05-28  Benjamin Poulain  <benjamin@webkit.org>
+
+        [iOS8][ARMv7(s)] Optimized Object.create in 'use strict' context sometimes breaks.
+        https://bugs.webkit.org/show_bug.cgi?id=138038
+
+        Reviewed by Michael Saboff.
+
+        TL;DR: sometimes the baseline JIT could accidentally nuke the tag before calling
+               to C++, making put_by_id behave erratically.
+
+        The bug was that put_by_id would randomly not work correctly in 32bits. It happened
+        in the baseline JIT if we were unlucky enough:
+        -The code get hot enough and the structure is stable so we get a fast path for
+         put_by_id.
+        -We repatch the fast-path branch with a stub generated by
+         emitPutTransitionStubAndGetOldStructure().
+        -In emitPutTransitionStubAndGetOldStructure(), we only preserve the payload of the base
+         register, the tag register is ignored.
+        -emitPutTransitionStubAndGetOldStructure() allocate 2 to 3 registers. Any of those
+         could be the one used for the base's tag before the fast path and the value is trashed.
+        -If we hit one of the failure case, we fallback to the slow path, but we destroyed
+         the tag pointer.
+        -We now have unrelated bits in the tag, the most likely value type is now "double"
+         and we fail the put_by_id because we try to set a property on a number.
+
+        The most obvious solution would be to change emitPutTransitionStubAndGetOldStructure()
+        to preserve the tag register in addition to the value register.
+        I decided against that option because of the added complexity. The DFG does not need
+        that case, so I would have to add branches everywhere to distinguish the cases
+        were we need to preserve the tag or not.
+
+        Instead, I just load the tag back from memory in the slow path. The function in the slow
+        path is several order of magnitude slower than a load, it is not worth eliminating it,
+        especially in baseline JIT.
+
+        I also discovered 4 useless loads in the fast path, so even with my extra load, this patch
+        makes the baseline faster :)
+
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emitSlow_op_put_by_id):
+        (JSC::JIT::emit_op_put_by_id): Deleted.
+        * tests/stress/put-by-id-on-new-object-after-prototype-transition-non-strict.js: Added.
+        (opaqueNewObject):
+        (putValueOnNewObject):
+        * tests/stress/put-by-id-on-new-object-after-prototype-transition-strict.js: Added.
+        (string_appeared_here.opaqueNewObject):
+        (putValueOnNewObject):
+
+2015-05-28  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] reduction the iteration count of the DoubleRep stress tests
+
+        Once again, I used big numbers for manual testing and I forgot to fix them before landing.
+
+        * tests/stress/double-rep-with-non-cell.js:
+        * tests/stress/double-rep-with-null.js:
+        * tests/stress/double-rep-with-undefined.js:
+
+2015-05-28  Basile Clement  <basile_clement@apple.com>
+
+        Add debug mode assertions for accessors casting JSC::DFG::Node.m_opInfo
+        https://bugs.webkit.org/show_bug.cgi?id=145441
+
+        Reviewed by Filip Pizlo.
+
+        Most accessor functions casting m_opInfo in JSC::DFG::Node are
+        performing debug checks that they are only accessed for node types that
+        should have them. This patch adds similar checks for the accessors that
+        were missing them.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::watchpointSet):
+        (JSC::DFG::Node::storagePointer):
+        (JSC::DFG::Node::multiGetByOffsetData):
+        (JSC::DFG::Node::multiPutByOffsetData):
+        (JSC::DFG::Node::hasTypeLocation):
+        (JSC::DFG::Node::typeLocation):
+        (JSC::DFG::Node::hasBasicBlockLocation):
+        (JSC::DFG::Node::basicBlockLocation):
+
+2015-05-28  Matt Rajca  <mrajca@apple.com>
+
+        Add ENABLE_MEDIA_SESSION feature flag (which is off by default).
+        https://bugs.webkit.org/show_bug.cgi?id=145415
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2015-05-27  Jordan Harband  <ljharb@gmail.com>
 
         Array.of should work with other constructors

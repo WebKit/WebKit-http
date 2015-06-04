@@ -33,12 +33,11 @@
 #if ENABLE(STREAMS_API)
 
 #include "ReadableStream.h"
-#include "ReadableStreamReader.h"
-#include "ReadableStreamSource.h"
 #include <heap/Strong.h>
 #include <heap/StrongInlines.h>
 #include <runtime/JSCJSValue.h>
 #include <runtime/PrivateName.h>
+#include <wtf/Deque.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -47,34 +46,30 @@ class JSDOMGlobalObject;
 class ReadableStreamController;
 
 class ReadableJSStream: public ReadableStream {
-private:
-    class Source: public ReadableStreamSource {
-    public:
-        static Ref<Source> create(JSC::ExecState&);
-
-        JSDOMGlobalObject* globalObject();
-        void start(JSC::ExecState&, ReadableJSStream&);
-
-    private:
-        Source(JSC::ExecState&);
-
-        JSC::Strong<JSC::JSObject> m_source;
-    };
-
 public:
     static Ref<ReadableJSStream> create(JSC::ExecState&, ScriptExecutionContext&);
 
-    ReadableJSStream::Source& jsSource();
     JSC::JSValue jsController(JSC::ExecState&, JSDOMGlobalObject*);
 
     void storeError(JSC::ExecState&);
     JSC::JSValue error() { return m_error.get(); }
 
+    void enqueue(JSC::ExecState&);
+
 private:
-    ReadableJSStream(ScriptExecutionContext&, Ref<ReadableJSStream::Source>&&);
+    ReadableJSStream(ScriptExecutionContext&, JSC::ExecState&, JSC::JSObject*);
+
+    void doStart(JSC::ExecState&);
+
+    virtual bool hasValue() const override;
+    virtual JSC::JSValue read() override;
+
+    JSDOMGlobalObject* globalObject();
 
     std::unique_ptr<ReadableStreamController> m_controller;
     JSC::Strong<JSC::Unknown> m_error;
+    JSC::Strong<JSC::JSObject> m_source;
+    Deque<JSC::Strong<JSC::Unknown>> m_chunkQueue;
 };
 
 } // namespace WebCore

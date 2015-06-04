@@ -1,3 +1,96 @@
+2015-06-02  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Delegate ReadableStreamReader reference counting to ReadableStream
+        https://bugs.webkit.org/show_bug.cgi?id=144907
+
+        Reviewed by Darin Adler.
+
+        * wtf/Vector.h:
+        (WTF::Vector::append): Adding not templated append method, forwarding to ValueType templated append method.
+
+2015-06-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Heap-use-after-free read of size 4 in JavaScriptCore: WTF::StringImpl::isSymbol() (StringImpl.h:496)
+        https://bugs.webkit.org/show_bug.cgi?id=145532
+
+        Reviewed by Geoffrey Garen.
+
+        Return `RefPtr<AtomicStringImpl>` instead of `AtomicStringImpl*`.
+
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::AtomicStringImpl::lookUpSlowCase):
+        (WTF::AtomicStringImpl::lookUpInternal):
+        * wtf/text/AtomicStringImpl.h:
+        (WTF::AtomicStringImpl::lookUp):
+
+2015-06-01  Anders Carlsson  <andersca@apple.com>
+
+        Use xpc_connection_set_oneshot_instance where possible
+        https://bugs.webkit.org/show_bug.cgi?id=145535
+        rdar://problem/21109994
+
+        Reviewed by Sam Weinig.
+
+        Add SPI declaration.
+
+        * wtf/spi/darwin/XPCSPI.h:
+
+2015-05-29  Anders Carlsson  <andersca@apple.com>
+
+        Missing #import of Platform.h in several WTF headers
+        https://bugs.webkit.org/show_bug.cgi?id=145475
+        rdar://problem/21161818
+
+        Reviewed by Darin Adler.
+
+        Add Platform.h #includes.
+
+        * wtf/Assertions.h:
+        * wtf/RetainPtr.h:
+
+2015-05-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r184949.
+        https://bugs.webkit.org/show_bug.cgi?id=145458
+
+        Ends up generating worse code for HashTable move constructors
+        (Requested by zdobersek on #webkit).
+
+        Reverted changeset:
+
+        "Clean up HashTable constructors"
+        https://bugs.webkit.org/show_bug.cgi?id=145369
+        http://trac.webkit.org/changeset/184949
+
+2015-05-28  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Purge PassRefPtr in StringConcatenate.h
+        https://bugs.webkit.org/show_bug.cgi?id=145376
+
+        Reviewed by Darin Adler.
+
+        Replace PassRefPtr with RefPtr. Additionally use nullptr instead of 0.
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::tryMakeString):
+        (WTF::makeString):
+
+2015-05-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        Clean up HashTable constructors
+        https://bugs.webkit.org/show_bug.cgi?id=145369
+
+        Reviewed by Andreas Kling.
+
+        Use nullptr to initialize pointer member variables in the HashTable
+        default constructor. Copy and move constructors can use constructor
+        delegation instead of replicating all member initializations. Move
+        constructor should simply call HashTable::swap() instead of replicating
+        all the swap operations.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::HashTable):
+
 2015-05-27  Alexey Proskuryakov  <ap@apple.com>
 
         [Mac] Fix clang static analyzer build

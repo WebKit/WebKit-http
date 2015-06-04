@@ -1767,6 +1767,7 @@ void Document::recalcStyle(Style::Change change)
     // i.e. updating the flag here would be too late.
 
     m_inStyleRecalc = true;
+    bool updatedCompositingLayers = false;
     {
         Style::PostResolutionCallbackDisabler disabler(*this);
         WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
@@ -1781,7 +1782,7 @@ void Document::recalcStyle(Style::Change change)
 
         Style::resolveTree(*this, change);
 
-        frameView.updateCompositingLayersAfterStyleChange();
+        updatedCompositingLayers = frameView.updateCompositingLayersAfterStyleChange();
 
         clearNeedsStyleRecalc();
         clearChildNeedsStyleRecalc();
@@ -1807,7 +1808,7 @@ void Document::recalcStyle(Style::Change change)
     // Some animated images may now be inside the viewport due to style recalc,
     // resume them if necessary if there is no layout pending. Otherwise, we'll
     // check if they need to be resumed after layout.
-    if (!frameView.needsLayout())
+    if (updatedCompositingLayers && !frameView.needsLayout())
         frameView.viewportContentsChanged();
 
     // As a result of the style recalculation, the currently hovered element might have been
@@ -2750,8 +2751,24 @@ double Document::minimumTimerInterval() const
     return page->settings().minimumDOMTimerInterval();
 }
 
+void Document::setTimerThrottlingEnabled(bool shouldThrottle)
+{
+    if (m_isTimerThrottlingEnabled == shouldThrottle)
+        return;
+
+    double previousInterval = timerAlignmentInterval();
+
+    m_isTimerThrottlingEnabled = shouldThrottle;
+
+    if (previousInterval != timerAlignmentInterval())
+        didChangeTimerAlignmentInterval();
+}
+
 double Document::timerAlignmentInterval() const
 {
+    if (m_isTimerThrottlingEnabled)
+        return DOMTimer::hiddenPageAlignmentInterval();
+
     Page* page = this->page();
     if (!page)
         return ScriptExecutionContext::timerAlignmentInterval();
@@ -3033,7 +3050,7 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
             else
                 completedURL = completeURL(urlString);
             if (!protocolIsJavaScript(completedURL))
-                frame->navigationScheduler().scheduleRedirect(delay, completedURL);
+                frame->navigationScheduler().scheduleRedirect(this, delay, completedURL);
             else {
                 String message = "Refused to refresh " + m_url.stringCenterEllipsizedToLength() + " to a javascript: URL";
                 addConsoleMessage(MessageSource::Security, MessageLevel::Error, message);
@@ -3071,7 +3088,7 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
                 // Stopping the loader isn't enough, as we're already parsing the document; to honor the header's
                 // intent, we must navigate away from the possibly partially-rendered document to a location that
                 // doesn't inherit the parent's SecurityOrigin.
-                frame->navigationScheduler().scheduleLocationChange(securityOrigin(), SecurityOrigin::urlWithUniqueSecurityOrigin(), String());
+                frame->navigationScheduler().scheduleLocationChange(this, securityOrigin(), SecurityOrigin::urlWithUniqueSecurityOrigin(), String());
                 addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, requestIdentifier);
             }
         }
@@ -6631,5 +6648,13 @@ void Document::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
     it->value->setShouldPlayToPlaybackTarget(shouldPlay);
 }
 #endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
+
+ShouldOpenExternalURLsPolicy Document::shouldOpenExternalURLsPolicyToPropagate() const
+{
+    if (DocumentLoader* documentLoader = loader())
+        return documentLoader->shouldOpenExternalURLsPolicyToPropagate();
+
+    return ShouldOpenExternalURLsPolicy::ShouldNotAllow;
+}
 
 } // namespace WebCore

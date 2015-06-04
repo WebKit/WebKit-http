@@ -130,16 +130,6 @@ void FontPlatformData::setFont(CTFontRef font)
     m_ctFont = nullptr;
 }
 
-bool FontPlatformData::roundsGlyphAdvances() const
-{
-#if USE(APPKIT)
-    return [(NSFont *)m_font renderingMode] == NSFontAntialiasedIntegerAdvancementsRenderingMode;
-#else
-    return false;
-#endif
-}
-
-
 bool FontPlatformData::allowsLigatures() const
 {
     if (!m_font)
@@ -268,16 +258,12 @@ CTFontRef FontPlatformData::ctFont() const
 
 RetainPtr<CFTypeRef> FontPlatformData::objectForEqualityCheck(CTFontRef ctFont)
 {
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED <= 80000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000)
     auto fontDescriptor = adoptCF(CTFontCopyFontDescriptor(ctFont));
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=138683 This is a shallow pointer compare for web fonts
     // because the URL contains the address of the font. This means we might erroneously get false negatives.
     RetainPtr<CFURLRef> url = adoptCF(static_cast<CFURLRef>(CTFontDescriptorCopyAttribute(fontDescriptor.get(), kCTFontReferenceURLAttribute)));
     ASSERT(CFGetTypeID(url.get()) == CFURLGetTypeID());
     return url;
-#else
-    return adoptCF(CTFontCopyGraphicsFont(ctFont, 0));
-#endif
 }
 
 RetainPtr<CFTypeRef> FontPlatformData::objectForEqualityCheck() const

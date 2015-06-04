@@ -1,3 +1,371 @@
+2015-06-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Fix options in build-jsc for CMake builds
+        https://bugs.webkit.org/show_bug.cgi?id=145636
+
+        Reviewed by Gyuyoung Kim.
+
+        CMake only accepts -DXXX=YYY style options.
+        And ensured that ENABLE_JIT=OFF when specifying `--cloop`.
+
+        * Scripts/build-jsc:
+
+2015-06-03  Matthew Daiter  <mdaiter@apple.com>
+
+        Added a patch so that the colors displayed on the page could be toggled
+        in case people need accessibility colors displayed in their browser.
+        https://bugs.webkit.org/show_bug.cgi?id=145570
+        <rdar://problem/20994468>
+
+        Added in CSS colors and toggle buttons for checkmarks in the page, so that
+        the page could be rendered in a specific way for accessibility needs if needed.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (updateHiddenPlatforms):
+        (applyAccessibilityColorSetting): Initial loading of accessibility colors if necessary
+        (toggleAccessibilityColors): Toggle colors on and off
+        (documentReady): Needed to make changes to the initialization
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (a:hover):
+        (div.cellButton, div.accessibilityButton): Added in similar properties for cellButton and accessibilityButton
+        (div.cellButton.hide, div.accessibilityButton.hide):
+        (div.cellButton.unhide, div.accessibilityButton.unhide):
+        (.settings-visible div.accessibilityButton.hide, .settings-visible div.accessibilityButton.unhide):
+        (.popover-tracking:hover):
+        (.accessibilityButton):
+        (div.cellButton): Deleted.
+        (div.cellButton.hide): Deleted.
+        (div.cellButton.unhide): Deleted.
+        (.settings-visible div.cellButton.hide, .settings-visible div.cellButton.unhide): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/StatusLineView.css:
+        (.status-line.neutral .bubble):
+        (.status-line.unauthorized .bubble):
+        (.status-line.danger .bubble.pictogram):
+        (.status-line.bad .bubble.pictogram):
+        (.status-line.no-bubble .message):
+        (.status-line.bad .bubble):
+        (.status-line.good .bubble):
+        (.status-line.good .message):
+        (.status-line.bad .message):
+        (body.accessibility-colors .status-line.good .bubble):
+        (body.accessibility-colors .status-line.bad .bubble):
+        (body.accessibility-colors .status-line.good .message):
+        (body.accessibility-colors .status-line.bad .message):
+        (.status-line.danger .message):
+        (.status-line.unauthorized .message):
+
+2015-06-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix for Dromaeo.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_results.py:
+        (BenchmarkResults._aggregate_results_for_test):
+
+2015-06-03  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+
+2015-06-03  Daniel Bates  <dabates@apple.com>
+
+        WebKit2.TextFieldDidBeginAndEndEditing is flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=145616
+
+        Skip the test on Mac for now to avoid having the bots turn red due to the flakiness
+        of the test. Further investigation is needed.
+
+        * TestWebKitAPI/Tests/WebKit2/TextFieldDidBeginAndEndEditing.cpp:
+        * TestWebKitAPI/Tests/WebKit2/TextFieldDidBeginAndEndEditing_Bundle.cpp:
+
+2015-06-03  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r183498): Certain types of frame loads in iframes with <base target="_blank"> can open urls in new window/tabs
+        https://bugs.webkit.org/show_bug.cgi?id=145580
+
+        Reviewed by Mark Lam.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didSameDocumentNavigationForFrame): Implement the dump for "didChangeLocationWithinPageForFrame"
+
+2015-06-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Attempt to fix CSSPropertyParserTest.GridTrackLimits API test after http://trac.webkit.org/r185147
+
+        * TestWebKitAPI/Tests/WebCore/CSSParser.cpp:
+        (TestWebKitAPI::TEST): Update the syntax.
+
+2015-06-02  Mark Lam  <mark.lam@apple.com>
+
+        build-jsc's --cloop option is broken.
+        https://bugs.webkit.org/show_bug.cgi?id=145516
+
+        Reviewed by Darin Adler.
+
+        * Scripts/build-jsc:
+        - Make sure to disable the JIT when --cloop is specified.
+          Did analogous fix for --ftljit.
+
+2015-06-02  Daniel Bates  <dabates@apple.com>
+
+        Update ATS keys used in MiniBrowser and WebKitTestRunnerApp
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * MiniBrowser/mac/Info.plist:
+        * WebKitTestRunner/WebKitTestRunnerApp/WebKitTestRunnerApp-Info.plist:
+
+2015-06-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185066.
+        https://bugs.webkit.org/show_bug.cgi?id=145543
+
+        it breaks the FTL JIT builds with a local checkout of llvm
+        (Requested by pizlo on #webkit).
+
+        Reverted changeset:
+
+        "build-jsc's --cloop option is broken."
+        https://bugs.webkit.org/show_bug.cgi?id=145516
+        http://trac.webkit.org/changeset/185066
+
+2015-06-01  Daniel Bates  <dabates@apple.com>
+
+        Notify client that we began editing when text field is focused
+        https://bugs.webkit.org/show_bug.cgi?id=145439
+        <rdar://problem/21142108>
+
+        Reviewed by Anders Carlsson.
+
+        Add API test to ensure that we dispatch textFieldDid{Begin, End}Editing callbacks when
+        a text field is focused and defocused.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/TextFieldDidBeginAndEndEditing.cpp: Added.
+        (TestWebKitAPI::WebKit2TextFieldBeginAndEditEditingTest::didReceiveMessageFromInjectedBundle):
+        (TestWebKitAPI::WebKit2TextFieldBeginAndEditEditingTest::didFinishLoadForFrame):
+        (TestWebKitAPI::WebKit2TextFieldBeginAndEditEditingTest::setInjectedBundleClient):
+        (TestWebKitAPI::WebKit2TextFieldBeginAndEditEditingTest::setPageLoaderClient):
+        (TestWebKitAPI::WebKit2TextFieldBeginAndEditEditingTest::nullJavaScriptCallback):
+        (TestWebKitAPI::WebKit2TextFieldBeginAndEditEditingTest::executeJavaScriptAndCheckDidReceiveMessage):
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebKit2/TextFieldDidBeginAndEndEditing_Bundle.cpp: Added.
+        (TestWebKitAPI::textFieldDidBeginEditing):
+        (TestWebKitAPI::textFieldDidEndEditing):
+        (TestWebKitAPI::TextFieldDidBeginAndEndEditingEventsTest::TextFieldDidBeginAndEndEditingEventsTest):
+        (TestWebKitAPI::TextFieldDidBeginAndEndEditingEventsTest::didCreatePage):
+        * TestWebKitAPI/Tests/WebKit2/input-focus-blur.html: Added.
+
+2015-06-01  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] resource-type and load-type should be independent.
+        https://bugs.webkit.org/show_bug.cgi?id=145528
+        rdar://problem/21190765
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2015-06-01  Daniel Bates  <dabates@apple.com>
+
+        Add ATS keys to WebKitTestRunnerApp
+        https://bugs.webkit.org/show_bug.cgi?id=145519
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add ATS keys for WebKitTestRunnerApp as we did for MiniBrowser in bug #145141.
+
+        * WebKitTestRunner/WebKitTestRunnerApp/WebKitTestRunnerApp-Info.plist:
+
+2015-06-01  Brady Eidson  <beidson@apple.com>
+
+        Add WKTR support for "should open external URLs".
+        https://bugs.webkit.org/show_bug.cgi?id=145505
+
+        Reviewed by Darin Adler.
+
+        - Add a new option to "queueLoad" to allow javascript to queue a load that has the
+          "should open external URLs" bit set.
+        
+        - Add a new "dumpPolicyDelegateCallbacks" call to dump the NavigationAction in
+          the policy delegate, including whether or not the bit was set.
+        
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::queueLoad):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::dumpPolicyDelegateCallbacks):
+        (WTR::TestRunner::shouldDumpPolicyCallbacks):
+        
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::queueLoad):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::decidePolicyForNavigationAction):
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+        * WebKitTestRunner/WorkQueueManager.cpp:
+        (WTR::WorkQueueManager::queueLoad):
+        * WebKitTestRunner/WorkQueueManager.h:
+
+2015-06-01  Mark Lam  <mark.lam@apple.com>
+
+        build-jsc's --cloop option is broken.
+        https://bugs.webkit.org/show_bug.cgi?id=145516
+
+        Reviewed by Darin Adler.
+
+        * Scripts/build-jsc:
+        - Make sure to disable the JIT when --cloop is specified.
+          Did analogous fix for --ftljit.
+
+2015-06-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [CMake] check-webkit-style provides bogus explanation for alphabetical sorting error
+        https://bugs.webkit.org/show_bug.cgi?id=144959
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checkers/cmake.py:
+        (CMakeChecker.check): Use enumerate instead of xrange.
+        (CMakeChecker._check_list_order): Use enumerate instead of incrementing line_number manually.
+        * Scripts/webkitpy/style/checkers/cmake_unittest.py:
+        (CMakeCheckerTest.test_check): Update the expected results.
+
+2015-06-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the webkitpy scm unittests after r174051
+        https://bugs.webkit.org/show_bug.cgi?id=145511
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (GitTestWithMock.make_scm):
+
+2015-06-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        EWS provides misleading information for not applyable patches
+        https://bugs.webkit.org/show_bug.cgi?id=145307
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/svn-apply: Die if there is no applyable diff in the patch.
+
+2015-06-01  Alexey Proskuryakov  <ap@apple.com>
+
+        Further tweak results of WebKit1.StringTruncator after r184965.
+
+        * TestWebKitAPI/Tests/mac/StringTruncator.mm:
+
+2015-06-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Suppress unused parameter warnings in WebKit2 and TestNetscapePlugIn
+        https://bugs.webkit.org/show_bug.cgi?id=145264
+
+        Reviewed by Carlos Garcia Campos.
+
+        * DumpRenderTree/TestNetscapePlugIn/CMakeLists.txt: Set extra compiler flags and suppress only unused parameter warnings.
+
+2015-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix after r185014. Some tests only have subtests and not metrics.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_results.py:
+        (BenchmarkResults._lint_subtest_results):
+        * Scripts/webkitpy/benchmark_runner/benchmark_results_unittest.py:
+        (test_aggregate_nested_results):
+        (test_lint_results):
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherResource.h:
+
+2015-05-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-benchmark should print out the results
+        https://bugs.webkit.org/show_bug.cgi?id=145398
+
+        Reviewed by Antti Koivisto.
+
+        Added BenchmarkResults to compute and format the aggregated values. It also does the syntax/semantic check
+        of the output to catch early errors.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_results.py: Added.
+        (BenchmarkResults): Added.
+        (BenchmarkResults.__init__): Added.
+        (BenchmarkResults.format): Added.
+        (BenchmarkResults._format_tests): Added. Used by BenchmarkResults.format.
+        (BenchmarkResults._format_values): Formats a list of values measured for a given metric on a given test.
+        Uses the sample standard deviation to compute the significant figures for the value.
+        (BenchmarkResults._unit_from_metric): Added.
+        (BenchmarkResults._aggregate_results): Added.
+        (BenchmarkResults._aggregate_results_for_test): Added.
+        (BenchmarkResults._flatten_list): Added.
+        (BenchmarkResults._subtest_values_by_config_iteration): Added. Organizes values measured for subtests
+        by the iteration number so that i-th array contains values for all subtests at i-th iteration.
+        (BenchmarkResults._aggregate_values): Added.
+        (BenchmarkResults._lint_results): Added.
+        (BenchmarkResults._lint_subtest_results): Added.
+        (BenchmarkResults._lint_aggregator_list): Added.
+        (BenchmarkResults._lint_configuration): Added.
+        (BenchmarkResults._lint_values): Added.
+        (BenchmarkResults._is_numeric): Added.
+        * Scripts/webkitpy/benchmark_runner/benchmark_results_unittest.py: Added.
+        (BenchmarkResultsTest):
+        (BenchmarkResultsTest.test_init):
+        (BenchmarkResultsTest.test_format):
+        (test_format_values_with_large_error):
+        (test_format_values_with_small_error):
+        (test_format_values_with_time):
+        (test_format_values_with_no_error):
+        (test_format_values_with_small_difference):
+        (test_aggregate_results):
+        (test_aggregate_results_with_gropus):
+        (test_aggregate_nested_results):
+        (test_lint_results):
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.execute): Added a call to show_results
+        (BenchmarkRunner.wrap): Only dump the merged JSON when debugging.
+        (BenchmarkRunner.show_results): Added.
+
+2015-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run_benchmark should have an option to specify the number of runs
+        https://bugs.webkit.org/show_bug.cgi?id=145091
+
+        Reviewed by Antti Koivisto.
+
+        Added --count option.
+
+        * Scripts/run-benchmark:
+        (main):
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+
+2015-05-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Update results of WebKit1.StringTruncator after r184965. I missed one letter.
+
+        * TestWebKitAPI/Tests/mac/StringTruncator.mm: (TestWebKitAPI::TEST):
+
+2015-05-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Update results of WebKit1.StringTruncator after r184965.
+
+        * TestWebKitAPI/Tests/mac/StringTruncator.mm: (TestWebKitAPI::TEST):
+
+2015-05-28  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed, updated my list of email addresses.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2015-05-27  Dean Jackson  <dino@apple.com>
 
         img.currentSrc problem in strict mode with old picturefill

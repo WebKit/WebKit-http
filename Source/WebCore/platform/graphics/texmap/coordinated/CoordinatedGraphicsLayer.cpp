@@ -25,7 +25,6 @@
 #if USE(COORDINATED_GRAPHICS)
 #include "CoordinatedGraphicsLayer.h"
 
-#include "CoordinatedTile.h"
 #include "FloatQuad.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -857,10 +856,6 @@ void CoordinatedGraphicsLayer::releaseImageBackingIfNeeded()
     m_layerState.imageChanged = true;
 }
 
-void CoordinatedGraphicsLayer::tiledBackingStorePaintBegin()
-{
-}
-
 CoordinatedGraphicsLayer* CoordinatedGraphicsLayer::findFirstDescendantWithContentsRecursively()
 {
     if (shouldHaveBackingStore())
@@ -925,9 +920,9 @@ void CoordinatedGraphicsLayer::tiledBackingStorePaint(GraphicsContext* context, 
     paintGraphicsLayerContents(*context, rect);
 }
 
-void CoordinatedGraphicsLayer::tiledBackingStorePaintEnd(const Vector<IntRect>& updatedRects)
+void CoordinatedGraphicsLayer::didUpdateTileBuffers()
 {
-    if (!isShowingRepaintCounter() || updatedRects.isEmpty())
+    if (!isShowingRepaintCounter())
         return;
 
     m_layerState.repaintCount = incrementRepaintCount();
@@ -971,11 +966,6 @@ IntRect CoordinatedGraphicsLayer::tiledBackingStoreVisibleRect()
     FloatRect rect = m_cachedInverseTransform.clampedBoundsOfProjectedQuad(FloatQuad(m_coordinator->visibleContentsRect()));
     clampToContentsRectIfRectIsInfinite(rect, tiledBackingStoreContentsRect());
     return enclosingIntRect(rect);
-}
-
-Color CoordinatedGraphicsLayer::tiledBackingStoreBackgroundColor() const
-{
-    return contentsOpaque() ? Color::white : Color::transparent;
 }
 
 bool CoordinatedGraphicsLayer::paintToSurface(const IntSize& size, uint32_t& atlas, IntPoint& offset, CoordinatedSurface::Client* client)

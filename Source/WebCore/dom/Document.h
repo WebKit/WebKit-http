@@ -165,6 +165,8 @@ class XPathExpression;
 class XPathNSResolver;
 class XPathResult;
 
+enum class ShouldOpenExternalURLsPolicy;
+
 #if ENABLE(XSLT)
 class TransformSource;
 #endif
@@ -430,6 +432,9 @@ public:
     void visibilityStateChanged();
     String visibilityState() const;
     bool hidden() const;
+
+    void setTimerThrottlingEnabled(bool);
+    bool isTimerThrottlingEnabled() const { return m_isTimerThrottlingEnabled; }
 
 #if ENABLE(CSP_NEXT)
     DOMSecurityPolicy& securityPolicy();
@@ -1251,6 +1256,8 @@ public:
     void setShouldPlayToPlaybackTarget(uint64_t, bool);
 #endif
 
+    ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicyToPropagate() const;
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1688,6 +1695,7 @@ private:
     bool m_hasPreparedForDestruction;
 
     bool m_hasStyleWithViewportUnits;
+    bool m_isTimerThrottlingEnabled { false };
 
     HashSet<MediaProducer*> m_audioProducers;
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };

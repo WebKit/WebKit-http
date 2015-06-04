@@ -1,3 +1,48 @@
+2015-06-03  Daniel Bates  <dabates@apple.com>
+
+        Caps lock indicator should not be shown in read-only or disabled field
+        https://bugs.webkit.org/show_bug.cgi?id=145612
+        <rdar://problem/21227454>
+
+        Reviewed by Darin Adler.
+
+        * ManualTests/password-caps-lock-should-not-show-in-read-only-field.html: Added.
+        * ManualTests/password-caps-lock-should-not-show-when-field-becomes-disabled.html: Added.
+        * ManualTests/password-caps-lock-should-not-show-when-field-becomes-read-only.html: Added.
+
+2015-06-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Suppress parentheses-equality warnings
+        https://bugs.webkit.org/show_bug.cgi?id=145126
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/WebKitHelpers.cmake:
+
+2015-05-28  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Improve detection and usage of GL/GLES/EGL libraries.
+        https://bugs.webkit.org/show_bug.cgi?id=145408
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/FindEGL.cmake: Improve detection of EGL libraries.
+        * Source/cmake/FindGLES.cmake: Removed. It was used by the EGL port.
+        Remove it and make the EGL port use the improved FindOpenGLES2.cmake
+        instead.
+        * Source/cmake/FindOpenGL.cmake: Added. Add module to detect OpenGL
+        libraries. Detect also GLX libraries.
+        * Source/cmake/FindOpenGLES2.cmake: Improve detection of OpenGLES-v2
+        libraries. Use find_path() to get the include path.
+        * Source/cmake/OptionsEfl.cmake: Use now the improved FindOpenGLES2
+        module.
+        * Source/cmake/OptionsGTK.cmake: Set default value for ENABLE_GLES2
+        depending on the libraries found on the system.
+        Move the detection of GLX (and the include of CMakePushCheckState)
+        to FindOpenGL.cmake.
+        Ensure that we only define USE_GLX when we build with OpenGL
+        (but not with GLESv2).
+
 2015-05-27  Dean Jackson  <dino@apple.com>
 
         img.currentSrc problem in strict mode with old picturefill

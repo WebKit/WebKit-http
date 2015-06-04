@@ -416,17 +416,12 @@ if (ENABLE_THREADED_COMPOSITOR)
         platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
         platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
         platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
-        platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+        platform/graphics/texmap/coordinated/Tile.cpp
         platform/graphics/texmap/coordinated/TiledBackingStore.cpp
         platform/graphics/texmap/coordinated/UpdateAtlas.cpp
     )
 endif ()
 
-if (USE_EGL)
-    list(APPEND WebCore_LIBRARIES
-        ${EGL_LIBRARY}
-    )
-endif ()
 
 if (USE_OPENGL_ES_2)
     list(APPEND WebCore_SOURCES

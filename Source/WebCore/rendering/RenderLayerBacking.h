@@ -288,6 +288,7 @@ private:
     void updateFilters(const RenderStyle&);
 #if ENABLE(FILTERS_LEVEL_2)
     void updateBackdropFilters(const RenderStyle&);
+    void updateBackdropFiltersGeometry();
 #endif
 #if ENABLE(CSS_COMPOSITING)
     void updateBlendMode(const RenderStyle&);
@@ -331,6 +332,8 @@ private:
 
     static CSSPropertyID graphicsLayerToCSSProperty(AnimatedPropertyID);
     static AnimatedPropertyID cssToGraphicsLayerProperty(CSSPropertyID);
+
+    bool canIssueSetNeedsDisplay() const { return !paintsIntoWindow() && !paintsIntoCompositedAncestor(); }
 
     RenderLayer& m_owningLayer;
 

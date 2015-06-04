@@ -43,9 +43,15 @@ public:
     WEBCORE_EXPORT explicit NavigationAction(const ResourceRequest&);
     WEBCORE_EXPORT NavigationAction(const ResourceRequest&, NavigationType);
     WEBCORE_EXPORT NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission);
-    NavigationAction(const ResourceRequest&, NavigationType, PassRefPtr<Event>);
+
+    NavigationAction(const ResourceRequest&, ShouldOpenExternalURLsPolicy);
+    NavigationAction(const ResourceRequest&, NavigationType, Event*);
+    NavigationAction(const ResourceRequest&, NavigationType, Event*, ShouldOpenExternalURLsPolicy);
     NavigationAction(const ResourceRequest&, NavigationType, ShouldOpenExternalURLsPolicy);
-    NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission, PassRefPtr<Event>);
+    NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission, Event*);
+    NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission, Event*, ShouldOpenExternalURLsPolicy);
+
+    NavigationAction copyWithShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy) const;
 
     bool isEmpty() const { return m_resourceRequest.url().isEmpty(); }
 
@@ -58,14 +64,13 @@ public:
     bool processingUserGesture() const { return m_processingUserGesture; }
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy() const { return m_shouldOpenExternalURLsPolicy; }
-    void setShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy policy) { m_shouldOpenExternalURLsPolicy = policy; }
 
 private:
     ResourceRequest m_resourceRequest;
     NavigationType m_type;
     RefPtr<Event> m_event;
     bool m_processingUserGesture;
-    ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy { ShouldOpenExternalURLsPolicy::ShouldNotAllow };
+    ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy;
 };
 
 }

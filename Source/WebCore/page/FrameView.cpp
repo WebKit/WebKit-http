@@ -758,17 +758,17 @@ void FrameView::willRecalcStyle()
     renderView->compositor().willRecalcStyle();
 }
 
-void FrameView::updateCompositingLayersAfterStyleChange()
+bool FrameView::updateCompositingLayersAfterStyleChange()
 {
     RenderView* renderView = this->renderView();
     if (!renderView)
-        return;
+        return false;
 
     // If we expect to update compositing after an incipient layout, don't do so here.
     if (inPreLayoutStyleUpdate() || layoutPending() || renderView->needsLayout())
-        return;
+        return false;
 
-    renderView->compositor().didRecalcStyleWithNoPendingLayout();
+    return renderView->compositor().didRecalcStyleWithNoPendingLayout();
 }
 
 void FrameView::updateCompositingLayersAfterLayout()
@@ -1807,7 +1807,7 @@ void FrameView::viewportContentsChanged()
     applyRecursivelyWithVisibleRect([] (FrameView& frameView, const IntRect& visibleRect) {
         frameView.resumeVisibleImageAnimations(visibleRect);
         frameView.updateThrottledDOMTimersState(visibleRect);
-        frameView.updateScriptedAnimationsThrottlingState(visibleRect);
+        frameView.updateScriptedAnimationsAndTimersThrottlingState(visibleRect);
     });
 }
 
@@ -1878,10 +1878,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
     hostWindow()->scroll(scrollDelta, rectToScroll, clipRect);
 
     // 2) update the area of fixed objects that has been invalidated
-    Vector<IntRect> subRectsToUpdate = regionToUpdate.rects();
-    size_t viewportConstrainedObjectsCount = subRectsToUpdate.size();
-    for (size_t i = 0; i < viewportConstrainedObjectsCount; ++i) {
-        IntRect updateRect = subRectsToUpdate[i];
+    for (auto& updateRect : regionToUpdate.rects()) {
         IntRect scrolledRect = updateRect;
         scrolledRect.move(scrollDelta);
         updateRect.unite(scrolledRect);
@@ -2168,9 +2165,8 @@ void FrameView::resumeVisibleImageAnimations(const IntRect& visibleRect)
         renderView->resumePausedImageAnimationsIfNeeded(visibleRect);
 }
 
-void FrameView::updateScriptedAnimationsThrottlingState(const IntRect& visibleRect)
+void FrameView::updateScriptedAnimationsAndTimersThrottlingState(const IntRect& visibleRect)
 {
-#if ENABLE(REQUEST_ANIMATION_FRAME)
     if (frame().isMainFrame())
         return;
 
@@ -2178,17 +2174,16 @@ void FrameView::updateScriptedAnimationsThrottlingState(const IntRect& visibleRe
     if (!document)
         return;
 
-    auto* scriptedAnimationController = document->scriptedAnimationController();
-    if (!scriptedAnimationController)
-        return;
-
     // FIXME: This doesn't work for subframes of a "display: none" frame because
     // they have a non-null ownerRenderer.
     bool shouldThrottle = !frame().ownerRenderer() || visibleRect.isEmpty();
-    scriptedAnimationController->setThrottled(shouldThrottle);
-#else
-    UNUSED_PARAM(visibleRect);
+
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+    if (auto* scriptedAnimationController = document->scriptedAnimationController())
+        scriptedAnimationController->setThrottled(shouldThrottle);
 #endif
+
+    document->setTimerThrottlingEnabled(shouldThrottle);
 }
 
 
@@ -2684,8 +2679,8 @@ void FrameView::serviceScriptedAnimations(double monotonicAnimationStartTime)
     for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext())
         documents.append(frame->document());
 
-    for (size_t i = 0; i < documents.size(); ++i)
-        documents[i]->serviceScriptedAnimations(monotonicAnimationStartTime);
+    for (auto& document : documents)
+        document->serviceScriptedAnimations(monotonicAnimationStartTime);
 }
 #endif
 
@@ -4418,8 +4413,8 @@ String FrameView::trackedRepaintRectsAsText() const
     TextStream ts;
     if (!m_trackedRepaintRects.isEmpty()) {
         ts << "(repaint rects\n";
-        for (size_t i = 0; i < m_trackedRepaintRects.size(); ++i)
-            ts << "  (rect " << LayoutUnit(m_trackedRepaintRects[i].x()) << " " << LayoutUnit(m_trackedRepaintRects[i].y()) << " " << LayoutUnit(m_trackedRepaintRects[i].width()) << " " << LayoutUnit(m_trackedRepaintRects[i].height()) << ")\n";
+        for (auto& rect : m_trackedRepaintRects)
+            ts << "  (rect " << LayoutUnit(rect.x()) << " " << LayoutUnit(rect.y()) << " " << LayoutUnit(rect.width()) << " " << LayoutUnit(rect.height()) << ")\n";
         ts << ")\n";
     }
     return ts.release();
@@ -4743,20 +4738,16 @@ void FrameView::updateWidgetPositions()
     // updateWidgetPosition() can possibly cause layout to be re-entered (via plug-ins running
     // scripts in response to NPP_SetWindow, for example), so we need to keep the Widgets
     // alive during enumeration.
-    auto protectedWidgets = collectAndProtectWidgets(m_widgetsInRenderTree);
-
-    for (unsigned i = 0, size = protectedWidgets.size(); i < size; ++i) {
-        if (RenderWidget* renderWidget = RenderWidget::find(protectedWidgets[i].get()))
+    for (auto& widget : collectAndProtectWidgets(m_widgetsInRenderTree)) {
+        if (RenderWidget* renderWidget = RenderWidget::find(widget.get()))
             renderWidget->updateWidgetPosition();
     }
 }
 
 void FrameView::notifyWidgets(WidgetNotification notification)
 {
-    auto protectedWidgets = collectAndProtectWidgets(m_widgetsInRenderTree);
-
-    for (unsigned i = 0, size = protectedWidgets.size(); i < size; ++i)
-        protectedWidgets[i]->notifyWidget(notification);
+    for (auto& widget : collectAndProtectWidgets(m_widgetsInRenderTree))
+        widget->notifyWidget(notification);
 }
 
 void FrameView::setExposedRect(FloatRect exposedRect)

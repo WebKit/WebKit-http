@@ -30,6 +30,8 @@
 extern "C" {
 #endif
 
+static Eina_Bool pageLoadStarted = false;
+
 static JSValueRef helloCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     Ewk_Extension* extension = static_cast<Ewk_Extension*>(JSObjectGetPrivate(thisObject));
@@ -42,7 +44,12 @@ static JSValueRef helloCallback(JSContextRef context, JSObjectRef function, JSOb
     return nullptr;
 }
 
-void loadFinished(Ewk_Page* page, void* data)
+void loadStarted(Ewk_Page* page, void* data)
+{
+    pageLoadStarted = true;
+}
+
+void windowObjectCleared(Ewk_Page* page, void* data)
 {
     JSGlobalContextRef jsContext = ewk_page_js_global_context_get(page);
     JSObjectRef windowObject = JSContextGetGlobalObject(jsContext);
@@ -67,12 +74,21 @@ void loadFinished(Ewk_Page* page, void* data)
     JSStringRelease(property);
 }
 
+void loadFinished(Ewk_Page* page, void* data)
+{
+    if (!pageLoadStarted)
+        return;
+    pageLoadStarted = false;
+}
+
 static Ewk_Page_Client pageClient;
 
 static void pageAdded(Ewk_Page* page, void* data)
 {
     pageClient.version = 1;
     pageClient.data = data;
+    pageClient.load_started = loadStarted;
+    pageClient.window_object_cleared = windowObjectCleared;
     pageClient.load_finished = loadFinished;
 
     ewk_page_client_register(page, &pageClient);
