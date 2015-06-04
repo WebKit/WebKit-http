@@ -37,6 +37,7 @@
 
 namespace WebCore {
 
+class GLContext;
 class GLContextEGL;
 class IntSize;
 class WaylandSurface;
@@ -51,7 +52,7 @@ public:
     std::unique_ptr<WaylandSurface> createSurface(const IntSize&);
     void registerSurface(struct wl_surface*) const;
 
-    std::unique_ptr<GLContextEGL> createSharingGLContext();
+    std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
 
 private:
     static const struct wl_registry_listener m_registryListener;
