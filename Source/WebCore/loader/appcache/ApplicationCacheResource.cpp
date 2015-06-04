@@ -38,6 +38,11 @@ ApplicationCacheResource::ApplicationCacheResource(const URL& url, const Resourc
 {
 }
 
+void ApplicationCacheResource::deliver(ResourceLoader& loader)
+{
+    loader.deliverResponseAndData(response(), m_path.isEmpty() ? data()->copy() : SharedBuffer::createWithContentsOfFile(m_path));
+}
+
 void ApplicationCacheResource::addType(unsigned type) 
 {
     // Caller should take care of storing the new type in database.

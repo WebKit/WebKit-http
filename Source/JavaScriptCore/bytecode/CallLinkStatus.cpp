@@ -101,22 +101,20 @@ CallLinkStatus CallLinkStatus::computeFor(
 }
 
 CallLinkStatus::ExitSiteData CallLinkStatus::computeExitSiteData(
-    const ConcurrentJITLocker& locker, CodeBlock* profiledBlock, unsigned bytecodeIndex,
-    ExitingJITType exitingJITType)
+    const ConcurrentJITLocker& locker, CodeBlock* profiledBlock, unsigned bytecodeIndex)
 {
     ExitSiteData exitSiteData;
     
 #if ENABLE(DFG_JIT)
     exitSiteData.m_takesSlowPath =
-        profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadType, exitingJITType))
-        || profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadExecutable, exitingJITType));
+        profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadType))
+        || profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadExecutable));
     exitSiteData.m_badFunction =
-        profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadCell, exitingJITType));
+        profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadCell));
 #else
     UNUSED_PARAM(locker);
     UNUSED_PARAM(profiledBlock);
     UNUSED_PARAM(bytecodeIndex);
-    UNUSED_PARAM(exitingJITType);
 #endif
     
     return exitSiteData;
@@ -137,6 +135,9 @@ CallLinkStatus CallLinkStatus::computeFor(
 CallLinkStatus CallLinkStatus::computeFromCallLinkInfo(
     const ConcurrentJITLocker&, CallLinkInfo& callLinkInfo)
 {
+    if (callLinkInfo.clearedByGC)
+        return takesSlowPath();
+    
     // Note that despite requiring that the locker is held, this code is racy with respect
     // to the CallLinkInfo: it may get cleared while this code runs! This is because
     // CallLinkInfo::unlink() may be called from a different CodeBlock than the one that owns
@@ -209,17 +210,18 @@ CallLinkStatus CallLinkStatus::computeFromCallLinkInfo(
         return result;
     }
     
-    if (callLinkInfo.slowPathCount >= Options::couldTakeSlowCaseMinimumCount())
-        return takesSlowPath();
+    CallLinkStatus result;
     
-    JSFunction* target = callLinkInfo.lastSeenCallee.get();
-    if (!target)
-        return takesSlowPath();
+    if (JSFunction* target = callLinkInfo.lastSeenCallee.get()) {
+        CallVariant variant(target);
+        if (callLinkInfo.hasSeenClosure)
+            variant = variant.despecifiedClosure();
+        result.m_variants.append(variant);
+    }
     
-    if (callLinkInfo.hasSeenClosure)
-        return CallLinkStatus(target->executable());
+    result.m_couldTakeSlowPath = !!callLinkInfo.slowPathCount;
 
-    return CallLinkStatus(target);
+    return result;
 }
 
 CallLinkStatus CallLinkStatus::computeFor(
@@ -259,7 +261,7 @@ void CallLinkStatus::computeDFGStatuses(
         {
             ConcurrentJITLocker locker(currentBaseline->m_lock);
             exitSiteData = computeExitSiteData(
-                locker, currentBaseline, codeOrigin.bytecodeIndex, ExitFromFTL);
+                locker, currentBaseline, codeOrigin.bytecodeIndex);
         }
         
         {

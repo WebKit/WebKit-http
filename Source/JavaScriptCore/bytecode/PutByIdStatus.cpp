@@ -54,10 +54,10 @@ bool PutByIdStatus::appendVariant(const PutByIdVariant& variant)
 }
 
 #if ENABLE(DFG_JIT)
-bool PutByIdStatus::hasExitSite(const ConcurrentJITLocker& locker, CodeBlock* profiledBlock, unsigned bytecodeIndex, ExitingJITType exitType)
+bool PutByIdStatus::hasExitSite(const ConcurrentJITLocker& locker, CodeBlock* profiledBlock, unsigned bytecodeIndex)
 {
-    return profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadCache, exitType))
-        || profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadConstantCache, exitType));
+    return profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadCache))
+        || profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadConstantCache));
     
 }
 #endif
@@ -113,8 +113,7 @@ PutByIdStatus PutByIdStatus::computeFor(CodeBlock* profiledBlock, StubInfoMap& m
     UNUSED_PARAM(bytecodeIndex);
     UNUSED_PARAM(uid);
 #if ENABLE(DFG_JIT)
-    if (profiledBlock->likelyToTakeSlowCase(bytecodeIndex)
-        || hasExitSite(locker, profiledBlock, bytecodeIndex))
+    if (hasExitSite(locker, profiledBlock, bytecodeIndex))
         return PutByIdStatus(TakesSlowPath);
     
     StructureStubInfo* stubInfo = map.get(CodeOrigin(bytecodeIndex));
@@ -136,7 +135,13 @@ PutByIdStatus PutByIdStatus::computeForStubInfo(
     const ConcurrentJITLocker& locker, CodeBlock* profiledBlock, StructureStubInfo* stubInfo,
     UniquedStringImpl* uid, CallLinkStatus::ExitSiteData callExitSiteData)
 {
-    if (!stubInfo || !stubInfo->seen)
+    if (!stubInfo)
+        return PutByIdStatus();
+    
+    if (stubInfo->tookSlowPath)
+        return PutByIdStatus(TakesSlowPath);
+    
+    if (!stubInfo->seen)
         return PutByIdStatus();
     
     switch (stubInfo->accessType) {
@@ -281,10 +286,10 @@ PutByIdStatus PutByIdStatus::computeFor(CodeBlock* baselineBlock, CodeBlock* dfg
         CallLinkStatus::ExitSiteData exitSiteData;
         {
             ConcurrentJITLocker locker(baselineBlock->m_lock);
-            if (hasExitSite(locker, baselineBlock, codeOrigin.bytecodeIndex, ExitFromFTL))
+            if (hasExitSite(locker, baselineBlock, codeOrigin.bytecodeIndex))
                 return PutByIdStatus(TakesSlowPath);
             exitSiteData = CallLinkStatus::computeExitSiteData(
-                locker, baselineBlock, codeOrigin.bytecodeIndex, ExitFromFTL);
+                locker, baselineBlock, codeOrigin.bytecodeIndex);
         }
             
         PutByIdStatus result;

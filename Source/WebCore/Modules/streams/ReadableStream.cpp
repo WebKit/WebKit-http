@@ -34,16 +34,15 @@
 
 #include "NotImplemented.h"
 #include "ReadableStreamReader.h"
-#include <runtime/JSCJSValue.h>
+#include <runtime/JSCJSValueInlines.h>
 #include <wtf/RefCountedLeakCounter.h>
 
 namespace WebCore {
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, readableStreamCounter, ("ReadableStream"));
 
-ReadableStream::ReadableStream(ScriptExecutionContext& scriptExecutionContext, Ref<ReadableStreamSource>&& source)
+ReadableStream::ReadableStream(ScriptExecutionContext& scriptExecutionContext)
     : ActiveDOMObject(&scriptExecutionContext)
-    , m_source(WTF::move(source))
 {
 #ifndef NDEBUG
     readableStreamCounter.increment();
@@ -62,12 +61,24 @@ void ReadableStream::clearCallbacks()
 {
     m_closedSuccessCallback = nullptr;
     m_closedFailureCallback = nullptr;
+
+    m_readRequests.clear();
 }
 
 void ReadableStream::changeStateToClosed()
 {
-    if (m_state != State::Readable)
+    ASSERT(!m_closeRequested);
+    ASSERT(m_state != State::Errored);
+
+    m_closeRequested = true;
+
+    if (m_state != State::Readable || hasValue())
         return;
+    close();
+}
+
+void ReadableStream::close()
+{
     m_state = State::Closed;
 
     if (m_reader)
@@ -75,6 +86,9 @@ void ReadableStream::changeStateToClosed()
 
     if (m_closedSuccessCallback)
         m_closedSuccessCallback();
+
+    for (auto& request : m_readRequests)
+        request.endCallback();
 
     clearCallbacks();
 }
@@ -88,8 +102,12 @@ void ReadableStream::changeStateToErrored()
     if (m_reader)
         m_releasedReaders.append(WTF::move(m_reader));
 
+    JSC::JSValue error = this->error();
     if (m_closedFailureCallback)
-        m_closedFailureCallback(error());
+        m_closedFailureCallback(error);
+
+    for (auto& request : m_readRequests)
+        request.failureCallback(error);
 
     clearCallbacks();
 }
@@ -110,7 +128,7 @@ ReadableStreamReader& ReadableStream::getReader()
     return reader;
 }
 
-void ReadableStream::closed(ClosedSuccessCallback successCallback, ClosedFailureCallback failureCallback)
+void ReadableStream::closed(ClosedSuccessCallback&& successCallback, FailureCallback&& failureCallback)
 {
     if (m_state == State::Closed) {
         successCallback();
@@ -122,6 +140,36 @@ void ReadableStream::closed(ClosedSuccessCallback successCallback, ClosedFailure
     }
     m_closedSuccessCallback = WTF::move(successCallback);
     m_closedFailureCallback = WTF::move(failureCallback);
+}
+
+void ReadableStream::read(ReadSuccessCallback&& successCallback, ReadEndCallback&& endCallback, FailureCallback&& failureCallback)
+{
+    if (m_state == State::Closed) {
+        endCallback();
+        return;
+    }
+    if (m_state == State::Errored) {
+        failureCallback(error());
+        return;
+    }
+    if (hasValue()) {
+        successCallback(read());
+        if (m_closeRequested && !hasValue())
+            close();
+        return;
+    }
+    m_readRequests.append({ WTF::move(successCallback), WTF::move(endCallback), WTF::move(failureCallback) });
+    // FIXME: We should try to pull.
+}
+
+bool ReadableStream::resolveReadCallback(JSC::JSValue value)
+{
+    if (m_readRequests.isEmpty())
+        return false;
+
+    m_readRequests.first().successCallback(value);
+    m_readRequests.remove(0);
+    return true;
 }
 
 void ReadableStream::start()

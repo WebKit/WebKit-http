@@ -799,6 +799,11 @@ bool Internals::isRequestAnimationFrameThrottled() const
 #endif
 }
 
+bool Internals::areTimersThrottled() const
+{
+    return contextDocument()->isTimerThrottlingEnabled();
+}
+
 String Internals::visiblePlaceholder(Element* element)
 {
     if (is<HTMLTextFormControlElement>(element)) {
@@ -1298,7 +1303,11 @@ Vector<String> Internals::userPreferredAudioCharacteristics() const
     Document* document = contextDocument();
     if (!document || !document->page())
         return Vector<String>();
+#if ENABLE(VIDEO_TRACK)
     return document->page()->group().captionPreferences()->preferredAudioCharacteristics();
+#else
+    return Vector<String>();
+#endif
 }
 
 void Internals::setUserPreferredAudioCharacteristic(const String& characteristic)
@@ -1306,7 +1315,11 @@ void Internals::setUserPreferredAudioCharacteristic(const String& characteristic
     Document* document = contextDocument();
     if (!document || !document->page())
         return;
+#if ENABLE(VIDEO_TRACK)
     document->page()->group().captionPreferences()->setPreferredAudioCharacteristic(characteristic);
+#else
+    UNUSED_PARAM(characteristic);
+#endif
 }
 
 unsigned Internals::wheelEventHandlerCount(ExceptionCode& ec)
@@ -1383,8 +1396,8 @@ PassRefPtr<NodeList> Internals::nodesFromRect(Document* document, int centerX, i
         
         const HitTestResult::NodeSet& nodeSet = result.rectBasedTestResult();
         matches.reserveInitialCapacity(nodeSet.size());
-        for (auto it = nodeSet.begin(), end = nodeSet.end(); it != end; ++it)
-            matches.uncheckedAppend(*it->get());
+        for (auto& node : nodeSet)
+            matches.uncheckedAppend(*node);
     }
 
     return StaticNodeList::adopt(matches);
@@ -2578,15 +2591,15 @@ Vector<String> Internals::bufferedSamplesForTrackID(SourceBuffer* buffer, const 
 #if ENABLE(VIDEO)
 void Internals::beginMediaSessionInterruption()
 {
-    MediaSessionManager::sharedManager().beginInterruption(MediaSession::SystemInterruption);
+    MediaSessionManager::sharedManager().beginInterruption(PlatformMediaSession::SystemInterruption);
 }
 
 void Internals::endMediaSessionInterruption(const String& flagsString)
 {
-    MediaSession::EndInterruptionFlags flags = MediaSession::NoFlags;
+    PlatformMediaSession::EndInterruptionFlags flags = PlatformMediaSession::NoFlags;
 
     if (equalIgnoringCase(flagsString, "MayResumePlaying"))
-        flags = MediaSession::MayResumePlaying;
+        flags = PlatformMediaSession::MayResumePlaying;
     
     MediaSessionManager::sharedManager().endInterruption(flags);
 }
@@ -2603,13 +2616,13 @@ void Internals::applicationWillEnterBackground() const
 
 void Internals::setMediaSessionRestrictions(const String& mediaTypeString, const String& restrictionsString, ExceptionCode& ec)
 {
-    MediaSession::MediaType mediaType = MediaSession::None;
+    PlatformMediaSession::MediaType mediaType = PlatformMediaSession::None;
     if (equalIgnoringCase(mediaTypeString, "Video"))
-        mediaType = MediaSession::Video;
+        mediaType = PlatformMediaSession::Video;
     else if (equalIgnoringCase(mediaTypeString, "Audio"))
-        mediaType = MediaSession::Audio;
+        mediaType = PlatformMediaSession::Audio;
     else if (equalIgnoringCase(mediaTypeString, "WebAudio"))
-        mediaType = MediaSession::WebAudio;
+        mediaType = PlatformMediaSession::WebAudio;
     else {
         ec = INVALID_ACCESS_ERR;
         return;
@@ -2648,58 +2661,58 @@ void Internals::setMediaElementRestrictions(HTMLMediaElement* element, const Str
         return;
     }
 
-    HTMLMediaSession::BehaviorRestrictions restrictions = element->mediaSession().behaviorRestrictions();
+    MediaElementSession::BehaviorRestrictions restrictions = element->mediaSession().behaviorRestrictions();
     element->mediaSession().removeBehaviorRestriction(restrictions);
 
-    restrictions = HTMLMediaSession::NoRestrictions;
+    restrictions = MediaElementSession::NoRestrictions;
 
     Vector<String> restrictionsArray;
     restrictionsString.split(',', false, restrictionsArray);
     for (auto& restrictionString : restrictionsArray) {
         if (equalIgnoringCase(restrictionString, "NoRestrictions"))
-            restrictions |= HTMLMediaSession::NoRestrictions;
+            restrictions |= MediaElementSession::NoRestrictions;
         if (equalIgnoringCase(restrictionString, "RequireUserGestureForLoad"))
-            restrictions |= HTMLMediaSession::RequireUserGestureForLoad;
+            restrictions |= MediaElementSession::RequireUserGestureForLoad;
         if (equalIgnoringCase(restrictionString, "RequireUserGestureForRateChange"))
-            restrictions |= HTMLMediaSession::RequireUserGestureForRateChange;
+            restrictions |= MediaElementSession::RequireUserGestureForRateChange;
         if (equalIgnoringCase(restrictionString, "RequireUserGestureForFullscreen"))
-            restrictions |= HTMLMediaSession::RequireUserGestureForFullscreen;
+            restrictions |= MediaElementSession::RequireUserGestureForFullscreen;
         if (equalIgnoringCase(restrictionString, "RequirePageConsentToLoadMedia"))
-            restrictions |= HTMLMediaSession::RequirePageConsentToLoadMedia;
+            restrictions |= MediaElementSession::RequirePageConsentToLoadMedia;
         if (equalIgnoringCase(restrictionString, "RequirePageConsentToResumeMedia"))
-            restrictions |= HTMLMediaSession::RequirePageConsentToResumeMedia;
+            restrictions |= MediaElementSession::RequirePageConsentToResumeMedia;
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
         if (equalIgnoringCase(restrictionString, "RequireUserGestureToShowPlaybackTargetPicker"))
-            restrictions |= HTMLMediaSession::RequireUserGestureToShowPlaybackTargetPicker;
+            restrictions |= MediaElementSession::RequireUserGestureToShowPlaybackTargetPicker;
         if (equalIgnoringCase(restrictionString, "WirelessVideoPlaybackDisabled"))
-            restrictions |= HTMLMediaSession::WirelessVideoPlaybackDisabled;
+            restrictions |= MediaElementSession::WirelessVideoPlaybackDisabled;
 #endif
         if (equalIgnoringCase(restrictionString, "RequireUserGestureForAudioRateChange"))
-            restrictions |= HTMLMediaSession::RequireUserGestureForAudioRateChange;
+            restrictions |= MediaElementSession::RequireUserGestureForAudioRateChange;
     }
     element->mediaSession().addBehaviorRestriction(restrictions);
 }
 
 void Internals::postRemoteControlCommand(const String& commandString, ExceptionCode& ec)
 {
-    MediaSession::RemoteControlCommandType command;
+    PlatformMediaSession::RemoteControlCommandType command;
     
     if (equalIgnoringCase(commandString, "Play"))
-        command = MediaSession::PlayCommand;
+        command = PlatformMediaSession::PlayCommand;
     else if (equalIgnoringCase(commandString, "Pause"))
-        command = MediaSession::PauseCommand;
+        command = PlatformMediaSession::PauseCommand;
     else if (equalIgnoringCase(commandString, "Stop"))
-        command = MediaSession::StopCommand;
+        command = PlatformMediaSession::StopCommand;
     else if (equalIgnoringCase(commandString, "TogglePlayPause"))
-        command = MediaSession::TogglePlayPauseCommand;
+        command = PlatformMediaSession::TogglePlayPauseCommand;
     else if (equalIgnoringCase(commandString, "BeginSeekingBackward"))
-        command = MediaSession::BeginSeekingBackwardCommand;
+        command = PlatformMediaSession::BeginSeekingBackwardCommand;
     else if (equalIgnoringCase(commandString, "EndSeekingBackward"))
-        command = MediaSession::EndSeekingBackwardCommand;
+        command = PlatformMediaSession::EndSeekingBackwardCommand;
     else if (equalIgnoringCase(commandString, "BeginSeekingForward"))
-        command = MediaSession::BeginSeekingForwardCommand;
+        command = PlatformMediaSession::BeginSeekingForwardCommand;
     else if (equalIgnoringCase(commandString, "EndSeekingForward"))
-        command = MediaSession::EndSeekingForwardCommand;
+        command = PlatformMediaSession::EndSeekingForwardCommand;
     else {
         ec = INVALID_ACCESS_ERR;
         return;
@@ -2727,7 +2740,7 @@ void Internals::setAudioContextRestrictions(AudioContext* context, const String 
     AudioContext::BehaviorRestrictions restrictions = context->behaviorRestrictions();
     context->removeBehaviorRestriction(restrictions);
 
-    restrictions = HTMLMediaSession::NoRestrictions;
+    restrictions = MediaElementSession::NoRestrictions;
 
     Vector<String> restrictionsArray;
     restrictionsString.split(',', false, restrictionsArray);

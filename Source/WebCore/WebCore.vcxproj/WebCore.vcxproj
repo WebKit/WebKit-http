@@ -7395,7 +7395,7 @@
     <ClCompile Include="..\platform\graphics\avfoundation\cf\WebCoreAVCFResourceLoader.cpp" />
     <ClCompile Include="..\platform\graphics\ISOVTTCue.cpp" />
     <ClCompile Include="..\platform\audio\AudioSession.cpp" />
-    <ClCompile Include="..\platform\audio\MediaSession.cpp" />
+    <ClCompile Include="..\platform\audio\PlatformMediaSession.cpp" />
     <ClCompile Include="..\platform\audio\MediaSessionManager.cpp" />
     <ClCompile Include="..\platform\graphics\ANGLEWebKitBridge.cpp" />
     <ClCompile Include="..\platform\graphics\avfoundation\cf\InbandTextTrackPrivateAVCF.cpp" />
@@ -7668,7 +7668,7 @@
     <ClCompile Include="..\platform\graphics\texmap\coordinated\CoordinatedGraphicsLayer.cpp" />
     <ClCompile Include="..\platform\graphics\texmap\coordinated\CoordinatedImageBacking.cpp" />
     <ClCompile Include="..\platform\graphics\texmap\coordinated\CoordinatedSurface.cpp" />
-    <ClCompile Include="..\platform\graphics\texmap\coordinated\CoordinatedTile.cpp" />
+    <ClCompile Include="..\platform\graphics\texmap\coordinated\Tile.cpp" />
     <ClCompile Include="..\platform\graphics\texmap\coordinated\UpdateAtlas.cpp" />
     <ClCompile Include="..\platform\graphics\texmap\GraphicsLayerTextureMapper.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -15098,7 +15098,7 @@
     <ClCompile Include="..\html\DOMSettableTokenList.cpp" />
     <ClCompile Include="..\html\DOMTokenList.cpp" />
     <ClCompile Include="..\html\DOMURL.cpp" />
-    <ClCompile Include="..\html\HTMLMediaSession.cpp" />
+    <ClCompile Include="..\html\MediaElementSession.cpp" />
     <ClCompile Include="..\html\EmailInputType.cpp" />
     <ClCompile Include="..\html\PublicURLManager.cpp" />
     <ClCompile Include="..\fileapi\File.cpp" />
@@ -19465,7 +19465,6 @@
     <ClInclude Include="..\Modules\streams\ReadableStream.h" />
     <ClInclude Include="..\Modules\streams\ReadableStreamController.h" />
     <ClInclude Include="..\Modules\streams\ReadableStreamReader.h" />
-    <ClInclude Include="..\Modules\streams\ReadableStreamSource.h" />
     <ClInclude Include="..\Modules\webdatabase\AbstractDatabaseServer.h" />
     <ClInclude Include="..\Modules\webdatabase\ChangeVersionData.h" />
     <ClInclude Include="..\Modules\webdatabase\ChangeVersionWrapper.h" />
@@ -19764,7 +19763,7 @@
     <ClInclude Include="..\platform\FloatConversion.h" />
     <ClInclude Include="..\platform\GenericTaskQueue.h" />
     <ClInclude Include="..\platform\audio\AudioSession.h" />
-    <ClInclude Include="..\platform\audio\MediaSession.h" />
+    <ClInclude Include="..\platform\audio\PlatformMediaSession.h" />
     <ClInclude Include="..\platform\audio\MediaSessionManager.h" />
     <ClInclude Include="..\platform\graphics\ANGLEWebKitBridge.h" />
     <ClInclude Include="..\platform\graphics\AudioTrackPrivate.h" />
@@ -19836,8 +19835,8 @@
     <ClInclude Include="..\platform\graphics\texmap\coordinated\CoordinatedGraphicsState.h" />
     <ClInclude Include="..\platform\graphics\texmap\coordinated\CoordinatedImageBacking.h" />
     <ClInclude Include="..\platform\graphics\texmap\coordinated\CoordinatedSurface.h" />
-    <ClInclude Include="..\platform\graphics\texmap\coordinated\CoordinatedTile.h" />
     <ClInclude Include="..\platform\graphics\texmap\coordinated\SurfaceUpdateInfo.h" />
+    <ClInclude Include="..\platform\graphics\texmap\coordinated\Tile.h" />
     <ClInclude Include="..\platform\graphics\texmap\coordinated\UpdateAtlas.h" />
     <ClInclude Include="..\platform\graphics\texmap\GraphicsLayerTextureMapper.h" />
     <ClInclude Include="..\platform\graphics\texmap\TextureMapper.h" />
