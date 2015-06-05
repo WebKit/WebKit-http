@@ -881,7 +881,7 @@ add_custom_command(
 # Additionally, setting the OBJECT_DEPENDS property will make the .h files a Makefile
 # dependency of both LLIntOffsetsExtractor and LLIntOffsetsExtractor.cpp, so the command will
 # actually be run multiple times!
-add_executable(LLIntOffsetsExtractor
+add_library(LLIntOffsetsExtractor STATIC
     ${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h
 )
@@ -1337,4 +1337,4 @@ endif ()
 add_custom_target(stageSharedScripts DEPENDS ${JavaScriptCore_SCRIPTS})
 add_dependencies(JavaScriptCore stageSharedScripts)
 
-WEBKIT_FRAMEWORK(JavaScriptCore)
+# WEBKIT_FRAMEWORK(JavaScriptCore)

@@ -28,12 +28,13 @@
 
 #include "config.h"
 #include "Collator.h"
+#include <wtf/text/StringView.h>
 
 #if UCONFIG_NO_COLLATION
 
 namespace WTF {
 
-int Collator::collate(StringView a, StringView b) const
+int Collator::collate(StringView a, StringView b)
 {
     unsigned commonLength = std::min(a.length(), b.length());
     for (unsigned i = 0; i < commonLength; ++i) {
@@ -51,7 +52,7 @@ int Collator::collate(StringView a, StringView b) const
     return 0;
 }
 
-int Collator::collateUTF8(const char* a, const char* b) const
+int Collator::collateUTF8(const char* a, const char* b)
 {
     return collate(String::fromUTF8(a), String::fromUTF8(b));
 }

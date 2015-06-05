@@ -415,7 +415,7 @@ void JSGlobalContextSetDebuggerRunLoop(JSGlobalContextRef ctx, CFRunLoopRef runL
 }
 #endif // USE(CF)
 
-#if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
+#if ENABLE(REMOTE_INSPECTOR) && ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
 Inspector::AugmentableInspectorController* JSGlobalContextGetAugmentableInspectorController(JSGlobalContextRef ctx)
 {
     if (!ctx) {

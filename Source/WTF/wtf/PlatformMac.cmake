@@ -1,12 +1,12 @@
 set(WTF_LIBRARY_TYPE SHARED)
 
-find_library(COCOA_LIBRARY Cocoa)
 find_library(COREFOUNDATION_LIBRARY CoreFoundation)
-find_library(READLINE_LIBRARY Readline)
+find_library(FOUNDATION_LIBRARY Foundation)
+find_library(SECURITY_LIBRARY Security)
 list(APPEND WTF_LIBRARIES
     ${COREFOUNDATION_LIBRARY}
-    ${COCOA_LIBRARY}
-    ${READLINE_LIBRARY}
+    ${FOUNDATION_LIBRARY}
+    ${SECURITY_LIBRARY}
     libicucore.dylib
 )
 
@@ -22,6 +22,8 @@ list(APPEND WTF_SOURCES
 
     mac/DeprecatedSymbolsUsedBySafari.mm
     mac/MainThreadMac.mm
+
+    ios/WebCoreThread.cpp
 
     text/cf/AtomicStringImplCF.cpp
     text/cf/StringCF.cpp

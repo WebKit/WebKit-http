@@ -218,6 +218,7 @@ set(WTF_SOURCES
     threads/BinarySemaphore.cpp
 
     unicode/UTF8.cpp
+    unicode/CollatorDefault.cpp
 )
 
 set(WTF_INCLUDE_DIRECTORIES
@@ -302,4 +303,4 @@ if (WTF_OUTPUT_NAME)
     set_target_properties(WTF PROPERTIES OUTPUT_NAME ${WTF_OUTPUT_NAME})
 endif ()
 
-WEBKIT_FRAMEWORK(WTF)
+# WEBKIT_FRAMEWORK(WTF)

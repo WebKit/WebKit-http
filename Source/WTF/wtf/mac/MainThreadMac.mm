@@ -41,23 +41,9 @@
 #include <wtf/ios/WebCoreThread.h>
 #endif
 
-@interface JSWTFMainThreadCaller : NSObject {
-}
-- (void)call;
-@end
-
-@implementation JSWTFMainThreadCaller
-
-- (void)call
-{
-    WTF::dispatchFunctionsFromMainThread();
-}
-
-@end // implementation JSWTFMainThreadCaller
-
 namespace WTF {
 
-static JSWTFMainThreadCaller* staticMainThreadCaller;
+static CFRunLoopRef mainRunLoop;
 static bool isTimerPosted; // This is only accessed on the 'main' thread.
 static bool mainThreadEstablishedAsPthreadMain;
 static pthread_t mainThreadPthread;
@@ -70,8 +56,8 @@ static ThreadIdentifier sWebThreadIdentifier;
 
 void initializeMainThreadPlatform()
 {
-    ASSERT(!staticMainThreadCaller);
-    staticMainThreadCaller = [[JSWTFMainThreadCaller alloc] init];
+    ASSERT(!mainRunLoop);
+    mainRunLoop = CFRunLoopGetMain();
 
 #if !USE(WEB_THREAD)
     mainThreadEstablishedAsPthreadMain = false;
@@ -92,8 +78,8 @@ void initializeMainThreadToProcessMainThreadPlatform()
     if (!pthread_main_np())
         NSLog(@"WebKit Threading Violation - initial use of WebKit from a secondary thread.");
 
-    ASSERT(!staticMainThreadCaller);
-    staticMainThreadCaller = [[JSWTFMainThreadCaller alloc] init];
+    ASSERT(!mainRunLoop);
+    mainRunLoop = CFRunLoopGetMain();
 
     mainThreadEstablishedAsPthreadMain = true;
     mainThreadPthread = 0;
@@ -126,7 +112,7 @@ static void postTimer()
 
 void scheduleDispatchFunctionsOnMainThread()
 {
-    ASSERT(staticMainThreadCaller);
+    ASSERT(mainRunLoop);
 
     if (isWebThread()) {
         postTimer();
@@ -135,12 +121,16 @@ void scheduleDispatchFunctionsOnMainThread()
 
     if (mainThreadEstablishedAsPthreadMain) {
         ASSERT(!mainThreadNSThread);
-        [staticMainThreadCaller performSelectorOnMainThread:@selector(call) withObject:nil waitUntilDone:NO];
+        CFRunLoopPerformBlock(mainRunLoop, kCFRunLoopDefaultMode, ^{
+            WTF::dispatchFunctionsFromMainThread();
+        });
         return;
     }
 
     ASSERT(mainThreadNSThread);
-    [staticMainThreadCaller performSelector:@selector(call) onThread:mainThreadNSThread withObject:nil waitUntilDone:NO];
+    CFRunLoopPerformBlock(mainRunLoop, kCFRunLoopDefaultMode, ^{
+        WTF::dispatchFunctionsFromMainThread();
+    });
 }
 
 void callOnWebThreadOrDispatchAsyncOnMainThread(void (^block)())
