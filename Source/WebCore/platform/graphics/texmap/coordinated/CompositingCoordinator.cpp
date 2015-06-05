@@ -54,7 +54,8 @@ CompositingCoordinator::~CompositingCoordinator()
 CompositingCoordinator::CompositingCoordinator(Page* page, CompositingCoordinator::Client* client)
     : m_page(page)
     , m_client(client)
-    , m_rootCompositingLayer(0)
+    , m_rootCompositingLayer(nullptr)
+    , m_overlayCompositingLayer(nullptr)
     , m_isPurging(false)
     , m_isFlushingLayerChanges(false)
     , m_shouldSyncFrame(false)
@@ -76,8 +77,9 @@ void CompositingCoordinator::setRootCompositingLayer(GraphicsLayer* compositingL
     if (m_rootCompositingLayer)
         m_rootLayer->addChildAtIndex(m_rootCompositingLayer, 0);
 
-    if (overlayLayer)
-        m_rootLayer->addChild(overlayLayer);
+    m_overlayCompositingLayer = overlayLayer;
+    if (m_overlayCompositingLayer)
+        m_rootLayer->addChild(m_overlayCompositingLayer);
 }
 
 void CompositingCoordinator::sizeDidChange(const IntSize& newSize)
@@ -94,6 +96,9 @@ bool CompositingCoordinator::flushPendingLayerChanges()
 
     m_rootLayer->flushCompositingStateForThisLayerOnly();
     m_client->didFlushRootLayer(m_visibleContentsRect);
+
+    if (m_overlayCompositingLayer)
+        m_overlayCompositingLayer->flushCompositingState(FloatRect(FloatPoint(), m_rootLayer->size()));
 
     bool didSync = m_page->mainFrame().view()->flushCompositingStateIncludingSubframes();
 
