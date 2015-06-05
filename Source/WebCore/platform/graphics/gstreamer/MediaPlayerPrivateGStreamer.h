@@ -43,7 +43,7 @@
 #include "MediaSourceGStreamer.h"
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA) || (ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
 #include <wtf/threads/BinarySemaphore.h>
 #endif
 
@@ -148,8 +148,12 @@ public:
     AudioSourceProvider* audioSourceProvider() { return reinterpret_cast<AudioSourceProvider*>(m_audioSourceProvider.get()); }
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-    void needKey(RefPtr<Uint8Array>);
+#if ENABLE(ENCRYPTED_MEDIA)
+    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&);
+    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned);
+    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&);
+    void needKey(const String&, const String&, const unsigned char*, unsigned);
+
     void signalDRM();
 #endif
 
@@ -158,10 +162,6 @@ private:
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
     static bool isAvailable();
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&);
-    static void needKeyEventFromMain(void *invocation);
-#endif
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     GstElement* createAudioSink();
@@ -194,10 +194,6 @@ private:
     virtual bool isLiveStream() const { return m_isStreaming; }
     virtual bool didPassCORSAccessCheck() const;
     virtual bool canSaveMediaData() const override;
-
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-    std::unique_ptr<CDMSession> createSession(const String&);
-#endif
 
 #if ENABLE(MEDIA_SOURCE)
     // TODO: Implement
@@ -278,7 +274,7 @@ private:
     GstGLContext* m_glContext;
     GstGLDisplay* m_glDisplay;
 #endif
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
     BinarySemaphore m_drmKeySemaphore;
 #endif
     Mutex m_pendingAsyncOperationsLock;

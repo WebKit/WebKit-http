@@ -27,7 +27,6 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
-#include "CDMSessionGStreamer.h"
 #include "GStreamerUtilities.h"
 #include "URL.h"
 #include "MIMETypeRegistry.h"
@@ -35,6 +34,7 @@
 #include "NotImplemented.h"
 #include "SecurityOrigin.h"
 #include "TimeRanges.h"
+#include "UUID.h"
 #include "WebKitWebSourceGStreamer.h"
 #include <gst/gst.h>
 #include <gst/pbutils/missing-plugins.h>
@@ -60,6 +60,10 @@
 #undef GST_USE_UNSTABLE_API
 #endif
 #include <gst/audio/streamvolume.h>
+
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "WebKitCommonEncryptionDecryptorGStreamer.h"
+#endif
 
 #if ENABLE(MEDIA_SOURCE)
 #include "MediaSource.h"
@@ -208,13 +212,8 @@ void MediaPlayerPrivateGStreamer::setAudioStreamProperties(GObject* object)
 void MediaPlayerPrivateGStreamer::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-        registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateGStreamer>(player); },
-            getSupportedTypes, extendedSupportsType, 0, 0, 0, supportsKeySystem);
-#else
         registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateGStreamer>(player); },
             getSupportedTypes, supportsType, 0, 0, 0, supportsKeySystem);
-#endif
 }
 
 bool initializeGStreamerAndRegisterWebKitElements()
@@ -227,6 +226,12 @@ bool initializeGStreamerAndRegisterWebKitElements()
         GST_DEBUG_CATEGORY_INIT(webkit_media_player_debug, "webkitmediaplayer", 0, "WebKit media player");
         gst_element_register(0, "webkitwebsrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_WEB_SRC);
     }
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    GRefPtr<GstElementFactory> cencDecryptorFactory = gst_element_factory_find("webkitcencdec");
+    if (!cencDecryptorFactory)
+        gst_element_register(0, "webkitcencdec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CENC_DECRYPT);
+#endif
 
 #if ENABLE(MEDIA_SOURCE)
     GRefPtr<GstElementFactory> WebKitMediaSrcFactory = gst_element_factory_find("webkitmediasrc");
@@ -297,7 +302,7 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
 
 MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
 {
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
     // Potentially unblock GStreamer thread for DRM license acquisition.
     m_drmKeySemaphore.signal();
 #endif
@@ -385,7 +390,7 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
 
     ASSERT(m_pipeline);
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
     // Potentially unblock GStreamer thread for DRM license acquisition.
     m_drmKeySemaphore.signal();
 #endif
@@ -1158,7 +1163,7 @@ void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
 #endif // USE(GSTREAMER_GL)
         case GST_MESSAGE_ELEMENT:
         {
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
             const GstStructure* structure = gst_message_get_structure(message);
             // Here we receive the DRM init data from the pipeline: we will emit
             // the needkey event with that data and the browser might create a
@@ -1168,25 +1173,28 @@ void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
             // contrary no session was created we won't wait and let the pipeline
             // error out by itself.
             if (gst_structure_has_name(structure, "drm-key-needed")) {
-                const guint8* data = nullptr;
-                guint32 data_length = 0;
-                gboolean ret = gst_structure_get(structure, "data", G_TYPE_POINTER, &data, "data-length", G_TYPE_UINT, &data_length, nullptr);
+                GstBuffer* data;
+                const char* keySystemId;
+                gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data,
+                    "key-system-id", G_TYPE_STRING, &keySystemId, nullptr);
+                GstMapInfo mapInfo;
+                if (!valid || !gst_buffer_map(data, &mapInfo, GST_MAP_READ))
+                    break;
 
-                if (ret && data_length) {
-                    GST_DEBUG("queueing keyNeeded event with %u bytes of data", data_length);
-                    RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(data), data_length);
-                    // We need to reset the semaphore first. signal, wait
-                    m_drmKeySemaphore.signal();
-                    m_drmKeySemaphore.wait();
-                    // Fire the need key event from main thread
-                    callOnMainThreadAndWait([&] {
-                        needKey(initData);
-                    });
-                    // Wait for a potential license
-                    GST_DEBUG("waiting for a license");
-                    m_drmKeySemaphore.wait();
-                    GST_DEBUG("finished waiting");
-                }
+                GST_DEBUG("queueing keyNeeded event");
+                // We need to reset the semaphore first. signal, wait
+                m_drmKeySemaphore.signal();
+                m_drmKeySemaphore.wait();
+                // Fire the need key event from main thread
+                callOnMainThreadAndWait([&] {
+                    // FIXME: Provide a somehow valid sessionId.
+                    needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+                });
+                // Wait for a potential license
+                GST_DEBUG("waiting for a license");
+                m_drmKeySemaphore.wait();
+                GST_DEBUG("finished waiting");
+                gst_buffer_unmap(data, &mapInfo);
             }
 #endif
             break;
@@ -1635,7 +1643,7 @@ void MediaPlayerPrivateGStreamer::sourceChanged()
 
 void MediaPlayerPrivateGStreamer::cancelLoad()
 {
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
     // Potentially unblock GStreamer thread for DRM license acquisition.
     m_drmKeySemaphore.signal();
 #endif
@@ -1913,7 +1921,7 @@ bool MediaPlayerPrivateGStreamer::loadNextLocation()
         if (securityOrigin->canRequest(newUrl)) {
             INFO_MEDIA_MESSAGE("New media url: %s", newUrl.string().utf8().data());
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
             // Potentially unblock GStreamer thread for DRM license acquisition.
             m_drmKeySemaphore.signal();
 #endif
@@ -2157,56 +2165,48 @@ bool MediaPlayerPrivateGStreamer::supportsKeySystem(const String& keySystem, con
     GST_DEBUG("Checking for KeySystem support with %s and type %s", keySystem.utf8().data(), mimeType.utf8().data());
 
 #if USE(DXDRM)
-    if (equalIgnoringCase(keySystem, "com.microsoft.playready"))
+    if (equalIgnoringCase(keySystem, "com.microsoft.playready") ||
+        equalIgnoringCase(keySystem, "com.youtube.playready"))
         return true;
 #endif
+
+    if (equalIgnoringCase(keySystem, "org.w3.clearkey"))
+        return true;
 
     return false;
 }
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamer::createSession(const String& keySystem)
+#if ENABLE(ENCRYPTED_MEDIA)
+MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::addKey(const String& keySystem, const unsigned char* keyData, unsigned keyLength, const unsigned char* initData, unsigned initDataLength, const String& sessionID)
 {
-    if (!supportsKeySystem(keySystem, emptyString()))
-        return nullptr;
-
-    return std::make_unique<CDMSessionGStreamer>(this);
+    LOG_MEDIA_MESSAGE("addKey system: %s, length: %u, session: %s", keySystem.utf8().data(), keyLength, sessionID.utf8().data());
+    GstBuffer* buffer = gst_buffer_new_wrapped(g_memdup(keyData, keyLength), keyLength);
+    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+        gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
+    gst_buffer_unref(buffer);
+    m_drmKeySemaphore.signal();
+    return MediaPlayer::NoError;
 }
 
-void MediaPlayerPrivateGStreamer::needKey(RefPtr<Uint8Array> initData)
+MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength)
 {
-    if (!m_player->keyNeeded(initData.get())) {
+    LOG_MEDIA_MESSAGE("generateKeyRequest");
+    m_player->keyMessage(keySystem, createCanonicalUUIDString(), initDataPtr, initDataLength, URL());
+    return MediaPlayer::NoError;
+}
+
+MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::cancelKeyRequest(const String& keySystem, const String& sessionID)
+{
+    LOG_MEDIA_MESSAGE("cancelKeyRequest");
+    return MediaPlayer::KeySystemNotSupported;
+}
+
+void MediaPlayerPrivateGStreamer::needKey(const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
+{
+    if (!m_player->keyNeeded(keySystem, sessionId, initData, initDataLength)) {
         GST_DEBUG("no event handler for key needed, waking up GStreamer thread");
         m_drmKeySemaphore.signal();
     }
-}
-
-void MediaPlayerPrivateGStreamer::signalDRM()
-{
-    GST_DEBUG("key/license was changed or failed, signal semaphore");
-    // Wake up a potential waiter blocked in the GStreamer thread
-    m_drmKeySemaphore.signal();
-}
-
-MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::extendedSupportsType(const MediaEngineSupportParameters& parameters)
-{
-    // From: <http://dvcs.w3.org/hg/html-media/raw-file/eme-v0.1b/encrypted-media/encrypted-media.html#dom-canplaytype>
-    // In addition to the steps in the current specification, this method must run the following steps:
-
-    // 1. Check whether the Key System is supported with the specified container and codec type(s) by following the steps for the first matching condition from the following list:
-    //    If keySystem is null, continue to the next step.
-    if (parameters.keySystem.isNull() || parameters.keySystem.isEmpty())
-        return supportsType(parameters);
-
-    // If keySystem contains an unrecognized or unsupported Key System, return the empty string
-    if (!supportsKeySystem(parameters.keySystem, emptyString()))
-        return MediaPlayer::IsNotSupported;
-
-    // If the Key System specified by keySystem does not support decrypting the container and/or codec specified in the rest of the type string.
-    // (AVFoundation does not provide an API which would allow us to determine this, so this is a no-op)
-
-    // 2. Return "maybe" or "probably" as appropriate per the existing specification of canPlayType().
-    return supportsType(parameters);
 }
 #endif
 
