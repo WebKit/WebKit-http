@@ -443,7 +443,10 @@ void CoordinatedGraphicsScene::createTilesIfNeeded(TextureMapperLayer* layer, co
         return;
 
     RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    ASSERT(backingStore);
+    // FIXME: It would be better to keep an ASSERT here and fix the update producer
+    // to avoid committing tile creation and backing store removal updates together.
+    if (!backingStore)
+        return;
 
     for (auto& tile : state.tilesToCreate)
         backingStore->createTile(tile.tileID, tile.scale);
@@ -470,7 +473,10 @@ void CoordinatedGraphicsScene::updateTilesIfNeeded(TextureMapperLayer* layer, co
         return;
 
     RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    ASSERT(backingStore);
+    // FIXME: It would be better to keep an ASSERT here and fix the update producer
+    // to avoid committing tile creation and backing store removal updates together.
+    if (!backingStore)
+        return;
 
     for (auto& tile : state.tilesToUpdate) {
         const SurfaceUpdateInfo& surfaceUpdateInfo = tile.updateInfo;
