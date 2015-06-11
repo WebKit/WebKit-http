@@ -32,6 +32,7 @@
 
 #include "CCallHelpers.h"
 #include "Debugger.h"
+#include "Exception.h"
 #include "JITInlines.h"
 #include "JSArray.h"
 #include "JSCell.h"
@@ -97,7 +98,7 @@ JIT::CodeRef JIT::privateCompileCTINativeCall(VM* vm, NativeFunction func)
 #endif // CPU(X86)
 
     // Check for an exception
-    Jump sawException = branch32(NotEqual, AbsoluteAddress(reinterpret_cast<char*>(vm->addressOfException()) + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), TrustedImm32(JSValue::EmptyValueTag)); 
+    Jump sawException = branch32(NotEqual, AbsoluteAddress(vm->addressOfException()), TrustedImm32(0));
 
     emitFunctionEpilogue();
     // Return.
@@ -829,13 +830,19 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
     addPtr(TrustedImm32(stackPointerOffsetFor(codeBlock()) * sizeof(Register)), callFrameRegister, stackPointerRegister);
 
     // Now store the exception returned by operationThrow.
-    load32(Address(regT3, VM::exceptionOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), regT0);
-    load32(Address(regT3, VM::exceptionOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), regT1);
-    store32(TrustedImm32(JSValue().payload()), Address(regT3, VM::exceptionOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.payload)));
-    store32(TrustedImm32(JSValue().tag()), Address(regT3, VM::exceptionOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.tag)));
+    load32(Address(regT3, VM::exceptionOffset()), regT2);
+    move(TrustedImm32(JSValue::CellTag), regT1);
+
+    store32(TrustedImm32(0), Address(regT3, VM::exceptionOffset()));
 
     unsigned exception = currentInstruction[1].u.operand;
-    emitStore(exception, regT1, regT0);
+    emitStore(exception, regT1, regT2);
+
+    load32(Address(regT2, Exception::valueOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), regT0);
+    load32(Address(regT2, Exception::valueOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), regT1);
+
+    unsigned thrownValue = currentInstruction[2].u.operand;
+    emitStore(thrownValue, regT1, regT0);
 }
 
 void JIT::emit_op_switch_imm(Instruction* currentInstruction)
@@ -1122,21 +1129,14 @@ void JIT::emitSlow_op_has_indexed_property(Instruction* currentInstruction, Vect
     
     linkSlowCaseIfNotJSCell(iter, base); // base cell check
     linkSlowCase(iter); // base array check
-    
-    Jump skipProfiling = jump();
-    
     linkSlowCase(iter); // vector length check
     linkSlowCase(iter); // empty value
-    
-    emitArrayProfileOutOfBoundsSpecialCase(profile);
-    
-    skipProfiling.link(this);
-    
+
     Label slowPath = label();
     
     emitLoad(base, regT1, regT0);
     emitLoad(property, regT3, regT2);
-    Call call = callOperation(operationHasIndexedPropertyDefault, dst, regT1, regT0, regT3, regT2);
+    Call call = callOperation(operationHasIndexedPropertyDefault, dst, regT1, regT0, regT3, regT2, profile);
 
     m_byValCompilationInfo[m_byValInstructionIndex].slowPathTarget = slowPath;
     m_byValCompilationInfo[m_byValInstructionIndex].returnAddress = call;

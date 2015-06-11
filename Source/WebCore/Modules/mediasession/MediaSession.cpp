@@ -28,6 +28,9 @@
 
 #if ENABLE(MEDIA_SESSION)
 
+#include "HTMLMediaElement.h"
+#include "MediaSessionManager.h"
+
 namespace WebCore {
 
 MediaSession::MediaSession(ScriptExecutionContext& context, const String& kind)
@@ -35,10 +38,13 @@ MediaSession::MediaSession(ScriptExecutionContext& context, const String& kind)
 {
     if (m_kind == "content")
         m_controls = adoptRef(*new MediaRemoteControls(context));
+
+    MediaSessionManager::singleton().addMediaSession(*this);
 }
 
 MediaSession::~MediaSession()
 {
+    MediaSessionManager::singleton().removeMediaSession(*this);
 }
 
 MediaRemoteControls* MediaSession::controls(bool& isNull)
@@ -48,8 +54,35 @@ MediaRemoteControls* MediaSession::controls(bool& isNull)
     return controls;
 }
 
+void MediaSession::addMediaElement(HTMLMediaElement& element)
+{
+    ASSERT(!m_participatingElements.contains(&element));
+    m_participatingElements.append(&element);
+}
+
+void MediaSession::removeMediaElement(HTMLMediaElement& element)
+{
+    ASSERT(m_participatingElements.contains(&element));
+    m_participatingElements.remove(m_participatingElements.find(&element));
+}
+
+void MediaSession::addActiveMediaElement(HTMLMediaElement& element)
+{
+    m_activeParticipatingElements.add(&element);
+}
+
 void MediaSession::releaseSession()
 {
+}
+
+void MediaSession::togglePlayback()
+{
+    for (auto* element : m_activeParticipatingElements) {
+        if (element->paused())
+            element->play();
+        else
+            element->pause();
+    }
 }
 
 }

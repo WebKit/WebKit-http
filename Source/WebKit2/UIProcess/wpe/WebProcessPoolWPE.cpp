@@ -28,6 +28,7 @@
 #include "config.h"
 #include "WebProcessPool.h"
 
+#include "APIProcessPoolConfiguration.h"
 #include "Logging.h"
 #include "WebCookieManagerProxy.h"
 #include "WebInspectorServer.h"
@@ -118,6 +119,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
         parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
 
         parameters.ignoreTLSErrors = m_ignoreTLSErrors;
+        parameters.diskCacheDirectory = m_configuration->diskCacheDirectory();
     }
 }
 
@@ -134,8 +136,8 @@ String WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory()
 
 String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
 {
-    notImplemented();
-    return String();
+    GUniquePtr<gchar> indexedDBDatabaseDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "databases", "indexeddb", nullptr));
+    return WebCore::filenameToString(indexedDBDatabaseDirectory.get());
 }
 
 String WebProcessPool::platformDefaultIconDatabasePath() const
@@ -156,9 +158,9 @@ String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
     return WebCore::filenameToString(mediaKeysStorageDirectory.get());
 }
 
-String WebProcessPool::platformDefaultDiskCacheDirectory() const
+String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
-    GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "diskcache", nullptr));
+    GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "cache", nullptr));
     return WebCore::filenameToString(diskCacheDirectory.get());
 }
 

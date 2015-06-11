@@ -185,7 +185,11 @@ public:
         return index >= m_numVars;
     }
 
-    HandlerInfo* handlerForBytecodeOffset(unsigned bytecodeOffset);
+    enum class RequiredHandler {
+        CatchHandler,
+        AnyHandler
+    };
+    HandlerInfo* handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler = RequiredHandler::AnyHandler);
     unsigned lineNumberForBytecodeOffset(unsigned bytecodeOffset);
     unsigned columnNumberForBytecodeOffset(unsigned bytecodeOffset);
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
@@ -533,6 +537,12 @@ public:
         ConcurrentJITLocker locker(m_lock);
         return hasExitSite(locker, site);
     }
+    
+    size_t numberOfExitSites() const
+    {
+        ConcurrentJITLocker locker(m_lock);
+        return m_exitProfile.size();
+    }
 
     DFG::ExitProfile& exitProfile() { return m_exitProfile; }
 
@@ -568,7 +578,6 @@ public:
 
     Vector<WriteBarrier<Unknown>>& constants() { return m_constantRegisters; }
     Vector<SourceCodeRepresentation>& constantsSourceCodeRepresentation() { return m_constantsSourceCodeRepresentation; }
-    size_t numberOfConstantRegisters() const { return m_constantRegisters.size(); }
     unsigned addConstant(JSValue v)
     {
         unsigned result = m_constantRegisters.size();
@@ -586,8 +595,6 @@ public:
         return result;
     }
 
-    bool findConstant(JSValue, unsigned& result);
-    unsigned addOrFindConstant(JSValue);
     WriteBarrier<Unknown>& constantRegister(int index) { return m_constantRegisters[index - FirstConstantRegisterIndex]; }
     ALWAYS_INLINE bool isConstantRegisterIndex(int index) const { return index >= FirstConstantRegisterIndex; }
     ALWAYS_INLINE JSValue getConstant(int index) const { return m_constantRegisters[index - FirstConstantRegisterIndex].get(); }
@@ -930,7 +937,7 @@ private:
     {
         ASSERT(constants.size() == constantsSourceCodeRepresentation.size());
         size_t count = constants.size();
-        m_constantRegisters.resize(count);
+        m_constantRegisters.resizeToFit(count);
         for (size_t i = 0; i < count; i++)
             m_constantRegisters[i].set(*m_vm, ownerExecutable(), constants[i].get());
         m_constantsSourceCodeRepresentation = constantsSourceCodeRepresentation;

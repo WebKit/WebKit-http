@@ -79,7 +79,6 @@
 #import "WebKitLogging.h"
 #import "WebKitNSStringExtras.h"
 #import "WebKitStatisticsPrivate.h"
-#import "WebKitSystemBits.h"
 #import "WebKitVersionChecks.h"
 #import "WebLocalizableStrings.h"
 #import "WebNSDataExtras.h"
@@ -91,7 +90,6 @@
 #import "WebNodeHighlight.h"
 #import "WebNotificationClient.h"
 #import "WebPDFView.h"
-#import "WebPanelAuthenticationHandler.h"
 #import "WebPlatformStrategies.h"
 #import "WebPluginDatabase.h"
 #import "WebPolicyDelegate.h"
@@ -114,6 +112,7 @@
 #import <CoreFoundation/CFSet.h>
 #import <Foundation/NSURLConnection.h>
 #import <JavaScriptCore/APICast.h>
+#import <JavaScriptCore/Exception.h>
 #import <JavaScriptCore/JSValueRef.h>
 #import <WebCore/AlternativeTextUIController.h>
 #import <WebCore/AnimationController.h>
@@ -123,7 +122,6 @@
 #import <WebCore/CFNetworkSPI.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
-#import <WebCore/Cursor.h>
 #import <WebCore/DatabaseManager.h>
 #import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
@@ -724,7 +722,8 @@ static String webKitBundleVersionString()
     if (!toJSDOMWindow(execState->lexicalGlobalObject()))
         return;
 
-    reportException(execState, toJS(execState, exception));
+    Exception* vmException = Exception::cast(toJS(execState, exception));
+    reportException(execState, vmException);
 }
 
 static void WebKitInitializeApplicationCachePathIfNecessary()
@@ -1235,6 +1234,9 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     // FIXME: this is a workaround for <rdar://problem/11820090> Quoted text changes in size when replying to certain email
     _private->page->settings().setMinimumFontSize([_private->preferences minimumFontSize]);
 
+    // This is a workaround for <rdar://problem/21309911>.
+    _private->page->settings().setMetaRefreshEnabled([_private->preferences metaRefreshEnabled]);
+
     _private->page->setGroupName(groupName);
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -1326,11 +1328,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     });
 }
 
-+ (void)_clearPrivateBrowsingSessionCookieStorage
-{
-    WebFrameNetworkingContext::clearPrivateBrowsingSessionCookieStorage();
-}
-
 - (void)_replaceCurrentHistoryItem:(WebHistoryItem *)item
 {
     Frame* frame = [self _mainCoreFrame];
@@ -1356,7 +1353,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 {
     ASSERT(WebThreadIsCurrent());
     WebKit::MemoryMeasure measurer("Memory warning: Calling JavaScript GC.");
-    gcController().garbageCollectNow();
+    GCController::singleton().garbageCollectNow();
 }
 
 + (void)purgeInactiveFontData
@@ -1377,7 +1374,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 {
     ASSERT(WebThreadIsCurrent());
     WebKit::MemoryMeasure measurer("Memory warning: Discarding JIT'ed code.");
-    gcController().discardAllCompiledCode();
+    GCController::singleton().discardAllCompiledCode();
 }
 
 + (BOOL)isCharacterSmartReplaceExempt:(unichar)character isPreviousCharacter:(BOOL)b
@@ -1808,7 +1805,7 @@ static bool fastDocumentTeardownEnabled()
 #ifndef NDEBUG
     // Need this to make leak messages accurate.
     if (applicationIsTerminating) {
-        gcController().garbageCollectNow();
+        GCController::singleton().garbageCollectNow();
         [WebCache setDisabled:YES];
     }
 #endif
@@ -3787,14 +3784,6 @@ static inline IMP getMethod(id o, SEL s)
     return [[[WebTextIterator alloc] initWithRange:kit(selectionInsideRect.toNormalizedRange().get())] autorelease];
 }
 
-#if ENABLE(DASHBOARD_SUPPORT)
-- (void)handleAuthenticationForResource:(id)identifier challenge:(NSURLAuthenticationChallenge *)challenge fromDataSource:(WebDataSource *)dataSource 
-{
-    NSWindow *window = [self hostWindow] ? [self hostWindow] : [self window]; 
-    [[WebPanelAuthenticationHandler sharedHandler] startAuthentication:challenge window:window]; 
-} 
-#endif
-
 #if !PLATFORM(IOS)
 - (void)_clearUndoRedoOperations
 {
@@ -3839,13 +3828,6 @@ static inline IMP getMethod(id o, SEL s)
 {
     return _private->page->areMemoryCacheClientCallsEnabled();
 }
-
-#if !PLATFORM(IOS)
-+ (NSCursor *)_pointingHandCursor
-{
-    return handCursor().platformCursor();
-}
-#endif
 
 - (BOOL)_postsAcceleratedCompositingNotifications
 {
@@ -7734,7 +7716,10 @@ static WebFrameView *containingFrameView(NSView *view)
         nsurlCacheDirectory = NSHomeDirectory();
 
     static uint64_t memSize = ramSize() / 1024 / 1024;
-    unsigned long long diskFreeSize = WebVolumeFreeSize(nsurlCacheDirectory) / 1024 / 1000;
+
+    NSDictionary *fileSystemAttributesDictionary = [[NSFileManager defaultManager] attributesOfFileSystemForPath:nsurlCacheDirectory error:nullptr];
+    unsigned long long diskFreeSize = [[fileSystemAttributesDictionary objectForKey:NSFileSystemFreeSize] unsignedLongLongValue] / 1024 / 1000;
+
     NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
 
     unsigned cacheTotalCapacity = 0;

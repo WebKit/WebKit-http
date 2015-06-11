@@ -243,10 +243,8 @@ public:
     };
     static Statistics& statistics();    
 
-    void setApplicationCacheDirectory(const String& dir) { m_overrideApplicationCacheDirectory = dir; }
     void setIconDatabasePath(const String&);
     String iconDatabasePath() const;
-    void setDiskCacheDirectory(const String& dir) { m_overrideDiskCacheDirectory = dir; }
     void setCookieStorageDirectory(const String& dir) { m_overrideCookieStorageDirectory = dir; }
 
     void useTestingNetworkSession();
@@ -365,6 +363,8 @@ public:
     static String legacyPlatformDefaultWebSQLDatabaseDirectory();
     static String legacyPlatformDefaultMediaKeysStorageDirectory();
     static String legacyPlatformDefaultApplicationCacheDirectory();
+    static String legacyPlatformDefaultNetworkCacheDirectory();
+    static bool isNetworkCacheEnabled();
 
 private:
     void platformInitialize();
@@ -394,12 +394,7 @@ private:
     static void languageChanged(void* context);
     void languageChanged();
 
-    String applicationCacheDirectory() const;
-
     String platformDefaultIconDatabasePath() const;
-
-    String diskCacheDirectory() const;
-    String platformDefaultDiskCacheDirectory() const;
 
 #if PLATFORM(IOS) || ENABLE(SECCOMP_FILTERS)
     String cookieStorageDirectory() const;
@@ -507,14 +502,13 @@ private:
     RetainPtr<NSObject> m_automaticDashSubstitutionNotificationObserver;
 #endif
 
-    String m_overrideApplicationCacheDirectory;
     String m_overrideIconDatabasePath;
-    String m_overrideDiskCacheDirectory;
     String m_overrideCookieStorageDirectory;
 
-    String m_webSQLDatabaseDirectory;
+    String m_applicationCacheDirectory;
     String m_indexedDBDatabaseDirectory;
     String m_mediaKeysStorageDirectory;
+    String m_webSQLDatabaseDirectory;
 
     bool m_shouldUseTestingNetworkSession;
 

@@ -49,6 +49,13 @@ static const double snapshottingMinimumLifetime = 30;
 static const double shutdownTimeout = 1 * 60;
 static const double snapshottingShutdownTimeout = 15;
 
+static uint64_t generateCallbackID()
+{
+    static uint64_t callbackID;
+
+    return ++callbackID;
+}
+
 PassRefPtr<PluginProcessProxy> PluginProcessProxy::create(PluginProcessManager* PluginProcessManager, const PluginProcessAttributes& pluginProcessAttributes, uint64_t pluginProcessToken)
 {
     return adoptRef(new PluginProcessProxy(PluginProcessManager, pluginProcessAttributes, pluginProcessToken));
@@ -70,6 +77,10 @@ PluginProcessProxy::PluginProcessProxy(PluginProcessManager* PluginProcessManage
 
 PluginProcessProxy::~PluginProcessProxy()
 {
+    ASSERT(m_pendingFetchWebsiteDataRequests.isEmpty());
+    ASSERT(m_pendingFetchWebsiteDataCallbacks.isEmpty());
+    ASSERT(m_pendingDeleteWebsiteDataRequests.isEmpty());
+    ASSERT(m_pendingDeleteWebsiteDataCallbacks.isEmpty());
 }
 
 void PluginProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
@@ -99,18 +110,43 @@ void PluginProcessProxy::getPluginProcessConnection(PassRefPtr<Messages::WebProc
     m_connection->send(Messages::PluginProcess::CreateWebProcessConnection(), 0, IPC::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
-void PluginProcessProxy::getSitesWithData(WebPluginSiteDataManager* webPluginSiteDataManager, uint64_t callbackID)
+void PluginProcessProxy::fetchWebsiteData(std::function<void (Vector<String>)> completionHandler)
 {
-    ASSERT(!m_pendingGetSitesReplies.contains(callbackID));
-    m_pendingGetSitesReplies.set(callbackID, webPluginSiteDataManager);
+    uint64_t callbackID = generateCallbackID();
+    m_pendingFetchWebsiteDataCallbacks.set(callbackID, WTF::move(completionHandler));
 
     if (state() == State::Launching) {
-        m_pendingGetSitesRequests.append(callbackID);
+        m_pendingFetchWebsiteDataRequests.append(callbackID);
         return;
     }
 
-    // Ask the plug-in process for the sites with data.
     m_connection->send(Messages::PluginProcess::GetSitesWithData(callbackID), 0);
+}
+
+void PluginProcessProxy::deleteWebsiteData(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+{
+    uint64_t callbackID = generateCallbackID();
+    m_pendingDeleteWebsiteDataCallbacks.set(callbackID, WTF::move(completionHandler));
+
+    if (state() == State::Launching) {
+        m_pendingDeleteWebsiteDataRequests.append({ modifiedSince, callbackID });
+        return;
+    }
+
+    m_connection->send(Messages::PluginProcess::DeleteWebsiteData(modifiedSince, callbackID), 0);
+}
+
+void PluginProcessProxy::deleteWebsiteDataForHostNames(const Vector<String>& hostNames, std::function<void ()> completionHandler)
+{
+    uint64_t callbackID = generateCallbackID();
+    m_pendingDeleteWebsiteDataForHostNamesCallbacks.set(callbackID, WTF::move(completionHandler));
+
+    if (state() == State::Launching) {
+        m_pendingDeleteWebsiteDataForHostNamesRequests.append({ hostNames, callbackID });
+        return;
+    }
+
+    m_connection->send(Messages::PluginProcess::DeleteWebsiteDataForHostNames(hostNames, callbackID), 0);
 }
 
 void PluginProcessProxy::clearSiteData(WebPluginSiteDataManager* webPluginSiteDataManager, const Vector<String>& sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID)
@@ -147,8 +183,20 @@ void PluginProcessProxy::pluginProcessCrashedOrFailedToLaunch()
 #endif
     }
 
-    while (!m_pendingGetSitesReplies.isEmpty())
-        didGetSitesWithData(Vector<String>(), m_pendingGetSitesReplies.begin()->key);
+    m_pendingFetchWebsiteDataRequests.clear();
+    for (const auto& callback : m_pendingFetchWebsiteDataCallbacks.values())
+        callback({ });
+    m_pendingFetchWebsiteDataCallbacks.clear();
+
+    m_pendingDeleteWebsiteDataRequests.clear();
+    for (const auto& callback : m_pendingDeleteWebsiteDataCallbacks.values())
+        callback();
+    m_pendingDeleteWebsiteDataRequests.clear();
+
+    m_pendingDeleteWebsiteDataForHostNamesRequests.clear();
+    for (const auto& callback : m_pendingDeleteWebsiteDataForHostNamesCallbacks.values())
+        callback();
+    m_pendingDeleteWebsiteDataForHostNamesCallbacks.clear();
 
     while (!m_pendingClearSiteDataReplies.isEmpty())
         didClearSiteData(m_pendingClearSiteDataReplies.begin()->key);
@@ -213,10 +261,17 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::I
     m_connection->send(Messages::PluginProcess::SetQOS(pluginProcessLatencyQOS(), pluginProcessThroughputQOS()), 0);
 #endif
 
-    // Send all our pending requests.
-    for (size_t i = 0; i < m_pendingGetSitesRequests.size(); ++i)
-        m_connection->send(Messages::PluginProcess::GetSitesWithData(m_pendingGetSitesRequests[i]), 0);
-    m_pendingGetSitesRequests.clear();
+    for (auto callbackID : m_pendingFetchWebsiteDataRequests)
+        m_connection->send(Messages::PluginProcess::GetSitesWithData(callbackID), 0);
+    m_pendingFetchWebsiteDataRequests.clear();
+
+    for (auto& request : m_pendingDeleteWebsiteDataRequests)
+        m_connection->send(Messages::PluginProcess::DeleteWebsiteData(request.modifiedSince, request.callbackID), 0);
+    m_pendingDeleteWebsiteDataRequests.clear();
+
+    for (auto& request : m_pendingDeleteWebsiteDataForHostNamesRequests)
+        m_connection->send(Messages::PluginProcess::DeleteWebsiteDataForHostNames(request.hostNames, request.callbackID), 0);
+    m_pendingDeleteWebsiteDataForHostNamesRequests.clear();
 
     for (size_t i = 0; i < m_pendingClearSiteDataRequests.size(); ++i) {
         const ClearSiteDataRequest& request = m_pendingClearSiteDataRequests[i];
@@ -253,10 +308,8 @@ void PluginProcessProxy::didCreateWebProcessConnection(const IPC::Attachment& co
 
 void PluginProcessProxy::didGetSitesWithData(const Vector<String>& sites, uint64_t callbackID)
 {
-    RefPtr<WebPluginSiteDataManager> webPluginSiteDataManager = m_pendingGetSitesReplies.take(callbackID);
-    ASSERT(webPluginSiteDataManager);
-
-    webPluginSiteDataManager->didGetSitesWithDataForSinglePlugin(sites, callbackID);
+    auto callback = m_pendingFetchWebsiteDataCallbacks.take(callbackID);
+    callback(sites);
 }
 
 void PluginProcessProxy::didClearSiteData(uint64_t callbackID)
@@ -265,6 +318,18 @@ void PluginProcessProxy::didClearSiteData(uint64_t callbackID)
     ASSERT(webPluginSiteDataManager);
     
     webPluginSiteDataManager->didClearSiteDataForSinglePlugin(callbackID);
+}
+
+void PluginProcessProxy::didDeleteWebsiteData(uint64_t callbackID)
+{
+    auto callback = m_pendingDeleteWebsiteDataCallbacks.take(callbackID);
+    callback();
+}
+
+void PluginProcessProxy::didDeleteWebsiteDataForHostNames(uint64_t callbackID)
+{
+    auto callback = m_pendingDeleteWebsiteDataForHostNamesCallbacks.take(callbackID);
+    callback();
 }
 
 } // namespace WebKit

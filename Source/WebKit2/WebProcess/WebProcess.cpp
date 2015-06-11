@@ -86,6 +86,7 @@
 #include <WebCore/PageCache.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/ResourceHandle.h>
+#include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/Settings.h>
@@ -157,10 +158,6 @@ WebProcess::WebProcess()
     , m_inDidClose(false)
     , m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
-    , m_diskCacheIsDisabledForTesting(false)
-#if PLATFORM(COCOA)
-    , m_clearResourceCachesDispatchGroup(0)
-#endif
     , m_fullKeyboardAccessEnabled(false)
     , m_textCheckerState()
     , m_iconDatabaseProxy(new WebIconDatabaseProxy(this))
@@ -207,6 +204,10 @@ WebProcess::WebProcess()
     addSupplement<WebMediaKeyStorageManager>();
 #endif
     m_plugInAutoStartOriginHashes.add(SessionID::defaultSessionID(), HashMap<unsigned, double>());
+
+#if ENABLE(INDEXED_DATABASE)
+    RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
+#endif
 }
 
 void WebProcess::initializeProcess(const ChildProcessInitializationParameters& parameters)
@@ -300,7 +301,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     if (!parameters.applicationCacheDirectory.isEmpty())
         ApplicationCacheStorage::singleton().setCacheDirectory(parameters.applicationCacheDirectory);
 
-    m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
     setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
 
     if (!parameters.languages.isEmpty())
@@ -591,7 +591,7 @@ bool WebProcess::shouldTerminate()
 void WebProcess::terminate()
 {
 #ifndef NDEBUG
-    gcController().garbageCollectNow();
+    GCController::singleton().garbageCollectNow();
     FontCache::singleton().invalidate();
     MemoryCache::singleton().setDisabled(true);
 #endif
@@ -655,7 +655,7 @@ void WebProcess::didClose(IPC::Connection&)
         page->close();
     pages.clear();
 
-    gcController().garbageCollectSoon();
+    GCController::singleton().garbageCollectSoon();
     FontCache::singleton().invalidate();
     MemoryCache::singleton().setDisabled(true);
 #endif    
@@ -980,12 +980,12 @@ void WebProcess::getWebCoreStatistics(uint64_t callbackID)
 
 void WebProcess::garbageCollectJavaScriptObjects()
 {
-    gcController().garbageCollectNow();
+    GCController::singleton().garbageCollectNow();
 }
 
 void WebProcess::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
 {
-    gcController().setJavaScriptGarbageCollectorTimerEnabled(flag);
+    GCController::singleton().setJavaScriptGarbageCollectorTimerEnabled(flag);
 }
 
 void WebProcess::handleInjectedBundleMessage(const String& messageName, const UserData& messageBody)
@@ -1226,7 +1226,7 @@ void WebProcess::resetAllGeolocationPermissions()
 
 void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shouldAcknowledgeWhenReadyToSuspend)
 {
-    MemoryPressureHandler::singleton().releaseMemory(true);
+    MemoryPressureHandler::singleton().releaseMemory(Critical::Yes, Synchronous::Yes);
     setAllLayerTreeStatesFrozen(true);
 
     if (markAllLayersVolatileIfPossible()) {

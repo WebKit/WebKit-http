@@ -50,6 +50,7 @@
 #import <WebCore/MemoryCache.h>
 #import <WebCore/MemoryPressureHandler.h>
 #import <WebCore/PageCache.h>
+#import <WebCore/VNodeTracker.h>
 #import <WebCore/WebCoreNSURLExtras.h>
 #import <WebKitSystemInterface.h>
 #import <algorithm>
@@ -57,8 +58,6 @@
 #import <objc/runtime.h>
 #import <stdio.h>
 #import <wtf/RAMSize.h>
-
-#define ENABLE_MANUAL_WEBPROCESS_SANDBOXING !PLATFORM(IOS)
 
 using namespace WebCore;
 
@@ -98,29 +97,11 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
     memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
     memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
     PageCache::singleton().setMaxSize(pageCacheSize);
-
-    NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
-
-    [nsurlCache setMemoryCapacity:urlCacheMemoryCapacity];
-    if (!m_diskCacheIsDisabledForTesting)
-        [nsurlCache setDiskCapacity:std::max<unsigned long>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
 }
 
 void WebProcess::platformClearResourceCaches(ResourceCachesToClear cachesToClear)
 {
-    if (cachesToClear == InMemoryResourceCachesOnly)
-        return;
-
-    // If we're using the network process then it is the only one that needs to clear the disk cache.
-    if (usesNetworkProcess())
-        return;
-
-    if (!m_clearResourceCachesDispatchGroup)
-        m_clearResourceCachesDispatchGroup = dispatch_group_create();
-
-    dispatch_group_async(m_clearResourceCachesDispatchGroup, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        [[NSURLCache sharedURLCache] removeAllCachedResponses];
-    });
+    // FIXME: Remove this.
 }
 
 #if USE(APPKIT)
@@ -140,7 +121,6 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     SandboxExtension::consumePermanently(parameters.uiProcessBundleResourcePathExtensionHandle);
     SandboxExtension::consumePermanently(parameters.webSQLDatabaseDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.mediaKeyStorageDirectoryExtensionHandle);
 #if PLATFORM(IOS)
     SandboxExtension::consumePermanently(parameters.cookieStorageDirectoryExtensionHandle);
@@ -153,28 +133,8 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     setSharedHTTPCookieStorage(parameters.uiProcessCookieStorageIdentifier);
 #endif
 
-    // FIXME: Most of what this function does for cache size gets immediately overridden by setCacheModel().
-    // - memory cache size passed from UI process is always ignored;
-    // - disk cache size passed from UI process is effectively a minimum size.
-    // One non-obvious constraint is that we need to use -setSharedURLCache: even in testing mode, to prevent creating a default one on disk later, when some other code touches the cache.
-
-    ASSERT(!m_diskCacheIsDisabledForTesting || !parameters.nsURLCacheDiskCapacity);
-
-#if PLATFORM(IOS)
-    if (!parameters.uiProcessBundleIdentifier.isNull()) {
-        [NSURLCache setSharedURLCache:adoptNS([[NSURLCache alloc]
-            _initWithMemoryCapacity:parameters.nsURLCacheMemoryCapacity
-            diskCapacity:parameters.nsURLCacheDiskCapacity
-            relativePath:parameters.uiProcessBundleIdentifier]).get()];
-    }
-#else
-    if (!parameters.diskCacheDirectory.isNull()) {
-        [NSURLCache setSharedURLCache:adoptNS([[NSURLCache alloc]
-            initWithMemoryCapacity:parameters.nsURLCacheMemoryCapacity
-            diskCapacity:parameters.nsURLCacheDiskCapacity
-            diskPath:parameters.diskCacheDirectory]).get()];
-    }
-#endif
+    auto urlCache = adoptNS([[NSURLCache alloc] initWithMemoryCapacity:0 diskCapacity:0 diskPath:nil]);
+    [NSURLCache setSharedURLCache:urlCache.get()];
 
 #if PLATFORM(MAC)
     WebCore::FontCache::setFontWhitelist(parameters.fontWhitelist);
@@ -185,6 +145,15 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     FontCascade::setDefaultTypesettingFeatures(parameters.shouldEnableKerningAndLigaturesByDefault ? Kerning | Ligatures : 0);
 
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
+
+#if PLATFORM(IOS)
+    // Track the number of vnodes we are using on iOS and make sure we only use a
+    // reasonable amount because limits are fairly low on iOS devices and we can
+    // get killed when reaching the limit.
+    VNodeTracker::singleton().setPressureHandler([] (Critical critical) {
+        MemoryPressureHandler::singleton().releaseMemory(critical);
+    });
+#endif
 
     setEnhancedAccessibility(parameters.accessibilityEnhancedUserInterfaceEnabled);
 
@@ -231,17 +200,12 @@ void WebProcess::stopRunLoop()
 
 void WebProcess::platformTerminate()
 {
-    if (m_clearResourceCachesDispatchGroup) {
-        dispatch_group_wait(m_clearResourceCachesDispatchGroup, DISPATCH_TIME_FOREVER);
-        dispatch_release(m_clearResourceCachesDispatchGroup);
-        m_clearResourceCachesDispatchGroup = 0;
-    }
 }
 
 void WebProcess::initializeSandbox(const ChildProcessInitializationParameters& parameters, SandboxInitializationParameters& sandboxParameters)
 {
 #if ENABLE(WEB_PROCESS_SANDBOX)
-#if ENABLE_MANUAL_WEBPROCESS_SANDBOXING
+#if ENABLE(MANUAL_SANDBOXING)
     // Need to override the default, because service has a different bundle ID.
     NSBundle *webkit2Bundle = [NSBundle bundleForClass:NSClassFromString(@"WKView")];
 #if PLATFORM(IOS)

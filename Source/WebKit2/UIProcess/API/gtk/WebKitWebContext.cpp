@@ -1030,7 +1030,12 @@ void webkit_web_context_set_disk_cache_directory(WebKitWebContext* context, cons
     g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
     g_return_if_fail(directory);
 
-    context->priv->context->setDiskCacheDirectory(WebCore::filenameToString(directory));
+#if ENABLE(NETWORK_CACHE)
+    static const char networkCacheSubdirectory[] = "WebKitCache";
+#else
+    static const char networkCacheSubdirectory[] = "webkit";
+#endif
+    context->priv->context->configuration().setDiskCacheDirectory(WebCore::pathByAppendingComponent(WebCore::filenameToString(directory), networkCacheSubdirectory));
 }
 
 /**
@@ -1039,7 +1044,9 @@ void webkit_web_context_set_disk_cache_directory(WebKitWebContext* context, cons
  * @hostname: a hostname to be resolved
  *
  * Resolve the domain name of the given @hostname in advance, so that if a URI
- * of @hostname is requested the load will be performed more quickly.
+ * of @hostname is requested the load will be performed more quickly. This
+ * function does nothing if the system has been configured to use a proxy to
+ * resolve @hostname.
  */
 void webkit_web_context_prefetch_dns(WebKitWebContext* context, const char* hostname)
 {

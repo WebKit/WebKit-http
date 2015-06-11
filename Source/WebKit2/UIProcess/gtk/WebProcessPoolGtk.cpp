@@ -28,6 +28,7 @@
 #include "config.h"
 #include "WebProcessPool.h"
 
+#include "APIProcessPoolConfiguration.h"
 #include "Logging.h"
 #include "WebCookieManagerProxy.h"
 #include "WebInspectorServer.h"
@@ -105,6 +106,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
         parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
 
         parameters.ignoreTLSErrors = m_ignoreTLSErrors;
+        parameters.diskCacheDirectory = m_configuration->diskCacheDirectory();
     }
 }
 
@@ -142,9 +144,14 @@ String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
     return WebCore::filenameToString(mediaKeysStorageDirectory.get());
 }
 
-String WebProcessPool::platformDefaultDiskCacheDirectory() const
+String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
-    GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), g_get_prgname(), nullptr));
+#if ENABLE(NETWORK_CACHE)
+    static const char networkCacheSubdirectory[] = "WebKitCache";
+#else
+    static const char networkCacheSubdirectory[] = "webkit";
+#endif
+    GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), g_get_prgname(), networkCacheSubdirectory, nullptr));
     return WebCore::filenameToString(diskCacheDirectory.get());
 }
 

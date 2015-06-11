@@ -29,6 +29,7 @@
 #if ENABLE(PROMISES)
 
 #include "Error.h"
+#include "Exception.h"
 #include "JSCJSValueInlines.h"
 #include "JSCellInlines.h"
 #include "JSGlobalObject.h"
@@ -58,9 +59,9 @@ private:
     Strong<Unknown> m_argument;
 };
 
-PassRefPtr<Microtask> createExecutePromiseReactionMicrotask(VM& vm, JSPromiseReaction* reaction, JSValue argument)
+Ref<Microtask> createExecutePromiseReactionMicrotask(VM& vm, JSPromiseReaction* reaction, JSValue argument)
 {
-    return adoptRef(new ExecutePromiseReactionMicrotask(vm, reaction, argument));
+    return adoptRef(*new ExecutePromiseReactionMicrotask(vm, reaction, argument));
 }
 
 void ExecutePromiseReactionMicrotask::run(ExecState* exec)
@@ -88,7 +89,7 @@ void ExecutePromiseReactionMicrotask::run(ExecState* exec)
     //    [[Call]] internal method of deferred.[[Reject]] passing undefined as thisArgument
     //    and a List containing handlerResult.[[value]] as argumentsList.
     if (exec->hadException()) {
-        JSValue exception = exec->exception();
+        JSValue exception = exec->exception()->value();
         exec->clearException();
 
         performDeferredReject(exec, deferred, exception);
