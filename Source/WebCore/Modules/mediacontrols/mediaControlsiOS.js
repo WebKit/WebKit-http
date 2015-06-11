@@ -25,7 +25,6 @@ function ControllerIOS(root, video, host)
 /* Enums */
 ControllerIOS.StartPlaybackControls = 2;
 
-
 ControllerIOS.prototype = {
     /* Constants */
     MinimumTimelineWidth: 200,
@@ -180,7 +179,7 @@ ControllerIOS.prototype = {
             // Hide the scrubber on audio until the user starts playing.
             this.controls.timelineBox.classList.add(this.ClassNames.hidden);
         } else {
-            if (Controller.gSimulateOptimizedFullscreenAvailable || ('webkitSupportsPresentationMode' in this.video && this.video.webkitSupportsPresentationMode('optimized')))
+            if (Controller.gSimulateOptimizedFullscreenAvailable || ('webkitSupportsPresentationMode' in this.video && this.video.webkitSupportsPresentationMode('picture-in-picture')))
                 this.controls.panel.appendChild(this.controls.optimizedFullscreenButton);
             this.controls.panel.appendChild(this.controls.fullscreenButton);
         }
@@ -354,8 +353,6 @@ ControllerIOS.prototype = {
             this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideControlsDelay);
         } else if (!this.canPlay())
             this.hideControls();
-
-        return true;
     },
 
     handlePanelTouchStart: function(event) {
@@ -395,7 +392,7 @@ ControllerIOS.prototype = {
 
     isFullScreen: function()
     {
-        return this.video.webkitDisplayingFullscreen && this.presentationMode() != 'optimized';
+        return this.video.webkitDisplayingFullscreen && this.presentationMode() != 'picture-in-picture';
     },
 
     handleFullscreenButtonClicked: function(event) {
@@ -435,10 +432,10 @@ ControllerIOS.prototype = {
         if (!('webkitSetPresentationMode' in this.video))
             return;
 
-        if (this.presentationMode() === 'optimized')
+        if (this.presentationMode() === 'picture-in-picture')
             this.video.webkitSetPresentationMode('inline');
         else
-            this.video.webkitSetPresentationMode('optimized');
+            this.video.webkitSetPresentationMode('picture-in-picture');
     },
 
     handleOptimizedFullscreenTouchStart: function() {
@@ -573,7 +570,7 @@ ControllerIOS.prototype = {
 
                 this.controls.optimizedFullscreenButton.classList.remove(this.ClassNames.returnFromOptimized);
                 break;
-            case 'optimized':
+            case 'picture-in-picture':
                 var backgroundImage = "url('" + this.host.mediaUIImageData("optimized-fullscreen-placeholder") + "')";
                 this.controls.inlinePlaybackPlaceholder.style.backgroundImage = backgroundImage;
                 this.controls.inlinePlaybackPlaceholder.setAttribute('aria-label', "video playback placeholder");
@@ -611,12 +608,42 @@ ControllerIOS.prototype = {
 
     controlsAlwaysVisible: function()
     {
-        if (this.presentationMode() === 'optimized')
+        if (this.presentationMode() === 'picture-in-picture')
             return true;
 
         return Controller.prototype.controlsAlwaysVisible.call(this);
     },
 
+    get pageScaleFactor()
+    {
+        return this._pageScaleFactor;
+    },
+
+    set pageScaleFactor(newScaleFactor)
+    {
+        if (!newScaleFactor || this._pageScaleFactor === newScaleFactor)
+            return;
+
+        this._pageScaleFactor = newScaleFactor;
+
+        var scaleValue = 1 / newScaleFactor;
+        var scaleTransform = "scale(" + scaleValue + ")";
+        if (this.controls.startPlaybackButton)
+            this.controls.startPlaybackButton.style.webkitTransform = scaleTransform;
+        if (this.controls.panel) {
+            var bottomAligment = -2 * scaleValue;
+            this.controls.panel.style.bottom = bottomAligment + "px";
+            this.controls.panel.style.paddingBottom = -(newScaleFactor * bottomAligment) + "px";
+            this.controls.panel.style.width = Math.round(newScaleFactor * 100) + "%";
+            this.controls.panel.style.webkitTransform = scaleTransform;
+
+            this.controls.panelBackground.style.height = (50 * scaleValue) + "px";
+
+            this.setNeedsTimelineMetricsUpdate();
+            this.updateProgress();
+            this.scheduleUpdateLayoutForDisplayedWidth();
+        }
+    },
 
 };
 

@@ -72,6 +72,7 @@
 #include "WebVisitedLinkStore.h"
 #include "resource.h"
 #include <JavaScriptCore/APICast.h>
+#include <JavaScriptCore/Exception.h>
 #include <JavaScriptCore/InitializeThreading.h>
 #include <JavaScriptCore/JSCJSValue.h>
 #include <JavaScriptCore/JSLock.h>
@@ -5248,7 +5249,23 @@ HRESULT STDMETHODCALLTYPE WebView::formDelegate(
 HRESULT STDMETHODCALLTYPE WebView::setFrameLoadDelegatePrivate( 
     /* [in] */ IWebFrameLoadDelegatePrivate* d)
 {
+    if (m_frameLoadDelegatePrivate == d)
+        return S_OK;
+
+    static BSTR webViewProgressFinishedNotificationName = SysAllocString(WebViewProgressFinishedNotification);
+
+    IWebNotificationCenter* notifyCenter = WebNotificationCenter::defaultCenterInternal();
+
+    COMPtr<IWebNotificationObserver> wasObserver(Query, m_frameLoadDelegatePrivate);
+    if (wasObserver)
+        notifyCenter->removeObserver(wasObserver.get(), webViewProgressFinishedNotificationName, nullptr);
+
     m_frameLoadDelegatePrivate = d;
+
+    COMPtr<IWebNotificationObserver> isObserver(Query, m_frameLoadDelegatePrivate);
+    if (isObserver)
+        notifyCenter->addObserver(isObserver.get(), webViewProgressFinishedNotificationName, nullptr);
+
     return S_OK;
 }
 
@@ -6029,7 +6046,8 @@ HRESULT STDMETHODCALLTYPE WebView::reportException(
     if (!toJSDOMWindow(execState->lexicalGlobalObject()))
         return E_FAIL;
 
-    WebCore::reportException(execState, toJS(execState, exception));
+    JSC::Exception* vmException = JSC::Exception::cast(toJS(execState, exception));
+    WebCore::reportException(execState, vmException);
     return S_OK;
 }
 

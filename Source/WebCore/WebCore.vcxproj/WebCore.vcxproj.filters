@@ -1185,6 +1185,9 @@
     <ClCompile Include="..\platform\UUID.cpp">
       <Filter>platform</Filter>
     </ClCompile>
+    <ClCompile Include="..\platform\VNodeTracker.cpp">
+      <Filter>platform</Filter>
+    </ClCompile>
     <ClCompile Include="..\platform\Widget.cpp">
       <Filter>platform</Filter>
     </ClCompile>
@@ -7054,7 +7057,7 @@
     <ClCompile Include="..\platform\audio\PlatformMediaSession.cpp">
       <Filter>platform\audio</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\audio\MediaSessionManager.cpp">
+    <ClCompile Include="..\platform\audio\PlatformMediaSessionManager.cpp">
       <Filter>platform\audio</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\gamepad\NavigatorGamepad.cpp">

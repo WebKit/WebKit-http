@@ -1,3 +1,259 @@
+2015-06-10  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Meta refresh preference is not respected on fast path WebView
+        initialization
+
+        <https://bugs.webkit.org/show_bug.cgi?id=145861>
+        <rdar://problem/21309911>
+
+        Reviewed by Brady Eidson.
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        Set the WebCore setting from the WebPreferences preference.
+
+2015-06-09  Anders Carlsson  <andersca@apple.com>
+
+        Remove more unused SPI methods
+        https://bugs.webkit.org/show_bug.cgi?id=145804
+
+        Reviewed by Simon Fraser.
+
+        * Misc/WebNSURLRequestExtras.h:
+        * Misc/WebNSURLRequestExtras.m:
+        (-[NSURLRequest _web_HTTPReferrer]): Deleted.
+        (-[NSURLRequest _web_HTTPContentType]): Deleted.
+        (-[NSURLRequest _web_isConditionalRequest]): Deleted.
+
+2015-06-08  Dan Bernstein  <mitz@apple.com>
+
+        Removed WebDragSourceActionAttachment from the WebDragSourceAction enum.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * WebView/WebUIDelegate.h: Removed the value. It was added in r181760 and never used.
+
+2015-06-08  Chris Dumez  <cdumez@apple.com>
+
+        Access GCController instance via GCController::singleton() instead of a free function
+        https://bugs.webkit.org/show_bug.cgi?id=145776
+
+        Reviewed by Darin Adler.
+
+        Access GCController instance via GCController::singleton() instead of a
+        free function as per coding style and for consistency with other
+        singleton classes in the codebase.
+
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics garbageCollectJavaScriptObjects]):
+        (+[WebCoreStatistics garbageCollectJavaScriptObjectsOnAlternateThreadForDebugging:]):
+        (+[WebCoreStatistics setJavaScriptGarbageCollectorTimerEnabled:]):
+        * WebView/WebView.mm:
+        (+[WebView garbageCollectNow]):
+        (+[WebView discardAllCompiledCode]):
+        (-[WebView _close]):
+
+2015-06-08  Anders Carlsson  <andersca@apple.com>
+
+        Remove more unused Objective-C methods
+        https://bugs.webkit.org/show_bug.cgi?id=145761
+
+        Reviewed by Geoffrey Garen.
+
+        * Misc/WebNSImageExtras.h:
+        * Misc/WebNSImageExtras.m:
+        (-[NSImage _web_saveAndOpen]): Deleted.
+        * Misc/WebNSViewExtras.h:
+        * Misc/WebNSViewExtras.m:
+        (-[NSView _web_DragImageForElement:rect:event:pasteboard:source:offset:]): Deleted.
+        (-[NSView _web_convertRect:toView:]): Deleted.
+
+2015-06-08  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the Mavericks build.
+
+        * WebView/WebPDFView.mm:
+        (removeUselessMenuItemSeparators):
+
+2015-06-07  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebNSArrayExtras
+        https://bugs.webkit.org/show_bug.cgi?id=145747
+
+        Reviewed by Darin Adler.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * Misc/WebNSArrayExtras.h: Removed.
+        * Misc/WebNSArrayExtras.m: Removed.
+        (-[NSArray _webkit_numberAtIndex:]): Deleted.
+        (-[NSArray _webkit_stringAtIndex:]): Deleted.
+        (-[NSMutableArray _webkit_removeUselessMenuItemSeparators]): Deleted.
+        * WebView/WebPDFView.mm:
+        (removeUselessMenuItemSeparators):
+        (-[WebPDFView _menuItemsFromPDFKitForEvent:]):
+
+2015-06-08  Dan Bernstein  <mitz@apple.com>
+
+        Fixed the build.
+
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]):
+
+2015-06-07  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebKitSystemBits
+        https://bugs.webkit.org/show_bug.cgi?id=145746
+
+        Reviewed by Dan Bernstein.
+
+        Fold WebVolumeFreeSize into its only caller and get rid of WebKitSystemBits.
+
+        * Misc/WebKitSystemBits.h: Removed.
+        * Misc/WebKitSystemBits.m: Removed.
+        * WebView/WebPreferences.mm:
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]):
+
+2015-06-07  Anders Carlsson  <andersca@apple.com>
+
+        Remove another SPI method that hasn't been used since Tiger
+        https://bugs.webkit.org/show_bug.cgi?id=145745
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebView.mm:
+        (-[WebView handleAuthenticationForResource:challenge:fromDataSource:]): Deleted.
+        * WebView/WebViewPrivate.h:
+
+2015-06-07  Anders Carlsson  <andersca@apple.com>
+
+        Remove another unused SPI method
+        https://bugs.webkit.org/show_bug.cgi?id=145743
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebView.mm:
+        (+[WebView _pointingHandCursor]): Deleted.
+        * WebView/WebViewPrivate.h:
+
+2015-06-07  Anders Carlsson  <andersca@apple.com>
+
+        Remove unused SPI
+        https://bugs.webkit.org/show_bug.cgi?id=145742
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::clearPrivateBrowsingSessionCookieStorage): Deleted.
+        * WebView/WebView.mm:
+        (+[WebView _clearPrivateBrowsingSessionCookieStorage]): Deleted.
+        * WebView/WebViewPrivate.h:
+
+2015-06-06  Dan Bernstein  <mitz@apple.com>
+
+        Restored binary compatibility with shipping Safari.
+
+        Suggested by Anders Carlsson.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _webkit_fixedCarbonPOSIXPath]): Added an implementation that returns self, so
+        that Safari doesn’t crash when trying to call this method.
+
+2015-06-06  Dan Bernstein  <mitz@apple.com>
+
+        Fixed the build.
+
+        * Plugins/WebBasePluginPackage.mm:
+
+2015-06-06  Anders Carlsson  <andersca@apple.com>
+
+        Remove support from getting plug-in information from Carbon resources
+        https://bugs.webkit.org/show_bug.cgi?id=145730
+
+        Reviewed by Dan Bernstein.
+
+        No current plug-in versions use this feature, and both Chrome and Mozilla for
+        Mac stopped looking at Carbon resources years ago.
+
+        * Misc/WebKitNSStringExtras.h:
+        * Misc/WebKitNSStringExtras.mm:
+        (+[NSString _web_encodingForResource:]): Deleted.
+        * Plugins/WebBasePluginPackage.mm:
+        * Plugins/WebNetscapePluginPackage.mm:
+        (-[WebNetscapePluginPackage _initWithPath:]):
+        (-[WebNetscapePluginPackage stringForStringListID:andIndex:]): Deleted.
+        (-[WebNetscapePluginPackage getPluginInfoFromResources]): Deleted.
+
+2015-06-06  Anders Carlsson  <andersca@apple.com>
+
+        Remove now unused category methods
+        https://bugs.webkit.org/show_bug.cgi?id=145729
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        * Misc/WebKitNSStringExtras.h:
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _webkit_fixedCarbonPOSIXPath]): Deleted.
+        * Misc/WebNSFileManagerExtras.h:
+        * Misc/WebNSFileManagerExtras.mm:
+        (-[NSFileManager _webkit_startupVolumeName]): Deleted.
+
+2015-06-06  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * WebKit.mac.exp:
+
+2015-06-06  Anders Carlsson  <andersca@apple.com>
+
+        Stop using _webkit_fixedCarbonPOSIXPath in plug-in code
+        https://bugs.webkit.org/show_bug.cgi?id=145728
+
+        Reviewed by Dan Bernstein.
+
+        This code was put in place to support old plug-ins that would pass Carbon paths to NPAPI functions.
+        WebKit2 never supported this and we've never had any problems so let's just get rid of it.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::loadURL):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView _postURL:target:len:buf:file:notifyData:sendNotification:allowHeaders:]):
+
+2015-06-06  Anders Carlsson  <andersca@apple.com>
+
+        Remove SPI that's no longer used
+        https://bugs.webkit.org/show_bug.cgi?id=145727
+
+        Reviewed by Dan Bernstein.
+
+        * Plugins/WebPluginsPrivate.h: Removed.
+        * Plugins/WebPluginsPrivate.m: Removed.
+
+2015-06-06  Anders Carlsson  <andersca@apple.com>
+
+        Only allow plug-ins to create custom MIME property lists on older versions of OS X
+        https://bugs.webkit.org/show_bug.cgi?id=145726
+
+        Reviewed by Dan Bernstein.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]):
+
+2015-06-05  Mark Lam  <mark.lam@apple.com>
+
+        finally blocks should not set the exception stack trace when re-throwing the exception.
+        https://bugs.webkit.org/show_bug.cgi?id=145525
+
+        Reviewed by Geoffrey Garen.
+
+        * WebView/WebView.mm:
+        (+[WebView _reportException:inContext:]):
+        (WebKitInitializeApplicationCachePathIfNecessary):
+        - Changed to use the new Exception object.
+
 2015-06-03  Anders Carlsson  <andersca@apple.com>
 
         Define WK_ENABLE_FORMAL_DELEGATE_PROTOCOLS on iOS

@@ -39,6 +39,7 @@
 #include "NotImplemented.h"
 #include "ScriptExecutionContext.h"
 #include <runtime/Error.h>
+#include <runtime/Exception.h>
 #include <runtime/JSCJSValueInlines.h>
 #include <runtime/JSString.h>
 #include <runtime/StructureInlines.h>
@@ -47,16 +48,33 @@ using namespace JSC;
 
 namespace WebCore {
 
-static inline JSValue getPropertyFromObject(ExecState* exec, JSObject* object, const char* identifier)
+static inline JSValue getPropertyFromObject(ExecState& exec, JSObject* object, const char* identifier)
 {
-    return object->get(exec, Identifier::fromString(exec, identifier));
+    return object->get(&exec, Identifier::fromString(&exec, identifier));
 }
 
-static inline JSValue callFunction(ExecState* exec, JSValue jsFunction, JSValue thisValue, const ArgList& arguments, JSValue* exception)
+static inline JSValue callFunction(ExecState& exec, JSValue jsFunction, JSValue thisValue, const ArgList& arguments)
 {
     CallData callData;
     CallType callType = getCallData(jsFunction, callData);
-    return call(exec, jsFunction, callType, callData, thisValue, arguments, exception);
+    return call(&exec, jsFunction, callType, callData, thisValue, arguments);
+}
+
+JSValue ReadableJSStream::invoke(ExecState& exec, const char* propertyName)
+{
+    JSValue function = getPropertyFromObject(exec, m_source.get(), propertyName);
+    if (exec.hadException())
+        return jsUndefined();
+
+    if (!function.isFunction()) {
+        if (!function.isUndefined())
+            throwVMError(&exec, createTypeError(&exec, ASCIILiteral("ReadableStream trying to call a property that is not callable")));
+        return jsUndefined();
+    }
+
+    MarkedArgumentBuffer arguments;
+    arguments.append(jsController(exec, globalObject()));
+    return callFunction(exec, function, m_source.get(), arguments);
 }
 
 JSDOMGlobalObject* ReadableJSStream::globalObject()
@@ -76,37 +94,48 @@ void ReadableJSStream::doStart(ExecState& exec)
 {
     JSLockHolder lock(&exec);
 
-    JSValue startFunction = getPropertyFromObject(&exec, m_source.get(), "start");
-    if (!startFunction.isFunction()) {
-        if (!startFunction.isUndefined())
-            throwVMError(&exec, createTypeError(&exec, ASCIILiteral("ReadableStream constructor object start property should be a function.")));
-        else
-            startReadableStreamAsync(*this);
+    invoke(exec, "start");
+
+    if (exec.hadException())
         return;
-    }
-
-    MarkedArgumentBuffer arguments;
-    arguments.append(jsController(exec, globalObject()));
-
-    JSValue exception;
-    callFunction(&exec, startFunction, m_source.get(), arguments, &exception);
-
-    if (exception) {
-        throwVMError(&exec, exception);
-        return;
-    }
 
     // FIXME: Implement handling promise as result of calling start function.
     startReadableStreamAsync(*this);
 }
 
-Ref<ReadableJSStream> ReadableJSStream::create(ExecState& exec, ScriptExecutionContext& scriptExecutionContext)
+void ReadableJSStream::doPull()
 {
-    ASSERT_WITH_MESSAGE(!exec.argumentCount() || exec.argument(0).isObject(), "Caller of ReadableJSStream constructor should ensure that passed argument if any is an object.");
-    JSObject* source =  exec.argumentCount() ? exec.argument(0).getObject() : JSFinalObject::create(exec.vm(), JSFinalObject::createStructure(exec.vm(), exec.callee()->globalObject(), jsNull(), 1));
+    ExecState& state = *globalObject()->globalExec();
+    JSLockHolder lock(&state);
 
-    Ref<ReadableJSStream> readableStream = adoptRef(*new ReadableJSStream(scriptExecutionContext, exec, source));
+    invoke(state, "pull");
+
+    if (state.hadException()) {
+        storeException(state);
+        ASSERT(!state.hadException());
+        return;
+    }
+    // FIXME: Implement handling promise as result of calling pull function.
+}
+
+RefPtr<ReadableJSStream> ReadableJSStream::create(ExecState& exec, ScriptExecutionContext& scriptExecutionContext)
+{
+    JSObject* jsSource;
+    JSValue value = exec.argument(0);
+    if (value.isObject())
+        jsSource = value.getObject();
+    else if (!value.isUndefined()) {
+        throwVMError(&exec, createTypeError(&exec, ASCIILiteral("ReadableStream constructor first argument, if any, should be an object")));
+        return nullptr;
+    } else
+        jsSource = JSFinalObject::create(exec.vm(), JSFinalObject::createStructure(exec.vm(), exec.callee()->globalObject(), jsNull(), 1));
+
+    RefPtr<ReadableJSStream> readableStream = adoptRef(*new ReadableJSStream(scriptExecutionContext, exec, jsSource));
     readableStream->doStart(exec);
+
+    if (exec.hadException())
+        return nullptr;
+
     return readableStream;
 }
 
@@ -123,11 +152,22 @@ JSValue ReadableJSStream::jsController(ExecState& exec, JSDOMGlobalObject* globa
     return toJS(&exec, globalObject, m_controller.get());
 }
 
+void ReadableJSStream::storeException(JSC::ExecState& state)
+{
+    JSValue exception = state.exception()->value();
+    state.clearException();
+    storeError(state, exception);
+}
+
 void ReadableJSStream::storeError(JSC::ExecState& exec)
+{
+    storeError(exec, exec.argumentCount() ? exec.argument(0) : createError(&exec, ASCIILiteral("Error function called.")));
+}
+
+void ReadableJSStream::storeError(JSC::ExecState& exec, JSValue error)
 {
     if (m_error)
         return;
-    JSValue error = exec.argumentCount() ? exec.argument(0) : createError(&exec, ASCIILiteral("Error function called."));
     m_error.set(exec.vm(), error);
 
     changeStateToErrored();
@@ -153,12 +193,14 @@ void ReadableJSStream::enqueue(ExecState& exec)
         return;
 
     JSValue chunk = exec.argumentCount() ? exec.argument(0) : jsUndefined();
-    if (resolveReadCallback(chunk))
+    if (resolveReadCallback(chunk)) {
+        pull();
         return;
+    }
 
     m_chunkQueue.append(JSC::Strong<JSC::Unknown>(exec.vm(), chunk));
     // FIXME: Compute chunk size.
-    // FIXME: Add pulling of data here and also when data is passed to resolve callback.
+    pull();
 }
 
 } // namespace WebCore

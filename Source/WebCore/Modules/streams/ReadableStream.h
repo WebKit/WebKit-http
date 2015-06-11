@@ -35,9 +35,9 @@
 #include "ActiveDOMObject.h"
 #include "ScriptWrappable.h"
 #include <functional>
+#include <wtf/Deque.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
 
 namespace JSC {
 class JSValue;
@@ -89,6 +89,7 @@ protected:
     explicit ReadableStream(ScriptExecutionContext&);
 
     bool resolveReadCallback(JSC::JSValue);
+    void pull();
 
 private:
     // ActiveDOMObject API.
@@ -100,6 +101,7 @@ private:
 
     virtual bool hasValue() const = 0;
     virtual JSC::JSValue read() = 0;
+    virtual void doPull() = 0;
 
     std::unique_ptr<ReadableStreamReader> m_reader;
     Vector<std::unique_ptr<ReadableStreamReader>> m_releasedReaders;
@@ -112,8 +114,9 @@ private:
         ReadEndCallback endCallback;
         FailureCallback failureCallback;
     };
-    Vector<ReadCallbacks> m_readRequests;
+    Deque<ReadCallbacks> m_readRequests;
 
+    bool m_isStarted { false };
     bool m_closeRequested { false };
     State m_state { State::Readable };
 };

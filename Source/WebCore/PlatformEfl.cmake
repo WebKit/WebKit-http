@@ -134,6 +134,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/efl/GraphicsContext3DEfl.cpp
     platform/graphics/efl/GraphicsContext3DPrivate.cpp
     platform/graphics/efl/IconEfl.cpp
+    platform/graphics/efl/ImageBufferEfl.cpp
     platform/graphics/efl/ImageEfl.cpp
     platform/graphics/efl/IntPointEfl.cpp
     platform/graphics/efl/IntRectEfl.cpp
@@ -198,6 +199,8 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/x11/PlatformDisplayX11.cpp
     platform/graphics/x11/XUniqueResource.cpp
+
+    platform/image-encoders/JPEGImageEncoder.cpp
 
     platform/image-decoders/ImageDecoder.cpp
 
@@ -480,8 +483,8 @@ if (ENABLE_SPEECH_SYNTHESIS)
         ${ESPEAK_LIBRARIES}
     )
     list(APPEND WebCore_SOURCES
-        platform/efl/PlatformSpeechSynthesizerEfl.cpp
         platform/efl/PlatformSpeechSynthesisProviderEfl.cpp
+        platform/efl/PlatformSpeechSynthesizerEfl.cpp
     )
 endif ()
 
@@ -493,25 +496,26 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/CryptoKey.cpp
         crypto/CryptoKeyPair.cpp
         crypto/SubtleCrypto.cpp
+
         crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
         crypto/algorithms/CryptoAlgorithmAES_KW.cpp
         crypto/algorithms/CryptoAlgorithmHMAC.cpp
         crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
-        crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
         crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
+        crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
         crypto/algorithms/CryptoAlgorithmSHA1.cpp
         crypto/algorithms/CryptoAlgorithmSHA224.cpp
         crypto/algorithms/CryptoAlgorithmSHA256.cpp
         crypto/algorithms/CryptoAlgorithmSHA384.cpp
         crypto/algorithms/CryptoAlgorithmSHA512.cpp
 
-        crypto/gnutls/CryptoAlgorithmRegistryGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmHMACGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
+        crypto/gnutls/CryptoAlgorithmRegistryGnuTLS.cpp
         crypto/gnutls/CryptoDigestGnuTLS.cpp
         crypto/gnutls/CryptoKeyRSAGnuTLS.cpp
         crypto/gnutls/SerializedCryptoKeyWrapGnuTLS.cpp

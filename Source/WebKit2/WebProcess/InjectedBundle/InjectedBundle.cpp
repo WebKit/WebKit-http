@@ -50,6 +50,7 @@
 #include "WebProcessCreationParameters.h"
 #include "WebProcessPoolMessages.h"
 #include <JavaScriptCore/APICast.h>
+#include <JavaScriptCore/Exception.h>
 #include <JavaScriptCore/JSLock.h>
 #include <WebCore/ApplicationCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
@@ -496,12 +497,12 @@ void InjectedBundle::removeAllUserContent(WebPageGroupProxy* pageGroup)
 
 void InjectedBundle::garbageCollectJavaScriptObjects()
 {
-    gcController().garbageCollectNow();
+    GCController::singleton().garbageCollectNow();
 }
 
 void InjectedBundle::garbageCollectJavaScriptObjectsOnAlternateThreadForDebugging(bool waitUntilDone)
 {
-    gcController().garbageCollectOnAlternateThreadForDebugging(waitUntilDone);
+    GCController::singleton().garbageCollectOnAlternateThreadForDebugging(waitUntilDone);
 }
 
 size_t InjectedBundle::javaScriptObjectsCount()
@@ -522,7 +523,7 @@ void InjectedBundle::reportException(JSContextRef context, JSValueRef exception)
     if (!toJSDOMWindow(execState->lexicalGlobalObject()))
         return;
 
-    WebCore::reportException(execState, toJS(execState, exception));
+    WebCore::reportException(execState, Exception::cast(toJS(execState, exception)));
 }
 
 void InjectedBundle::didCreatePage(WebPage* page)

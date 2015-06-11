@@ -811,10 +811,10 @@ namespace JSC {
     {
     }
 
-    inline TryNode::TryNode(const JSTokenLocation& location, StatementNode* tryBlock, const Identifier& exceptionIdent, StatementNode* catchBlock, StatementNode* finallyBlock)
+    inline TryNode::TryNode(const JSTokenLocation& location, StatementNode* tryBlock, const Identifier& thrownValueIdent, StatementNode* catchBlock, StatementNode* finallyBlock)
         : StatementNode(location)
         , m_tryBlock(tryBlock)
-        , m_exceptionIdent(exceptionIdent)
+        , m_thrownValueIdent(thrownValueIdent)
         , m_catchBlock(catchBlock)
         , m_finallyBlock(finallyBlock)
     {
@@ -943,9 +943,9 @@ namespace JSC {
     {
     }
     
-    inline PassRefPtr<ArrayPatternNode> ArrayPatternNode::create()
+    inline Ref<ArrayPatternNode> ArrayPatternNode::create()
     {
-        return adoptRef(new ArrayPatternNode);
+        return adoptRef(*new ArrayPatternNode);
     }
     
     inline ObjectPatternNode::ObjectPatternNode()
@@ -953,14 +953,14 @@ namespace JSC {
     {
     }
     
-    inline PassRefPtr<ObjectPatternNode> ObjectPatternNode::create()
+    inline Ref<ObjectPatternNode> ObjectPatternNode::create()
     {
-        return adoptRef(new ObjectPatternNode);
+        return adoptRef(*new ObjectPatternNode);
     }
 
-    inline PassRefPtr<BindingNode> BindingNode::create(const Identifier& boundProperty, const JSTextPosition& start, const JSTextPosition& end)
+    inline Ref<BindingNode> BindingNode::create(const Identifier& boundProperty, const JSTextPosition& start, const JSTextPosition& end)
     {
-        return adoptRef(new BindingNode(boundProperty, start, end));
+        return adoptRef(*new BindingNode(boundProperty, start, end));
     }
     
     inline BindingNode::BindingNode(const Identifier& boundProperty, const JSTextPosition& start, const JSTextPosition& end)
