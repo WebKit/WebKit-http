@@ -156,9 +156,9 @@ String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
     return WebCore::filenameToString(mediaKeysStorageDirectory.get());
 }
 
-String WebProcessPool::platformDefaultDiskCacheDirectory() const
+String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
-    GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "diskcache", nullptr));
+    GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "cache", nullptr));
     return WebCore::filenameToString(diskCacheDirectory.get());
 }
 
