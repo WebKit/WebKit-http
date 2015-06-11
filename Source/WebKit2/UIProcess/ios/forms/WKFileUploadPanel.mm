@@ -42,6 +42,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <CoreMedia/CoreMedia.h>
 #import <MobileCoreServices/MobileCoreServices.h>
+#import <Photos/Photos.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/SoftLinking.h>
 #import <WebKit/WebNSFileManagerExtras.h>
@@ -55,6 +56,14 @@ SOFT_LINK_CLASS(AVFoundation, AVURLAsset);
 
 SOFT_LINK_FRAMEWORK(CoreMedia);
 SOFT_LINK_CONSTANT(CoreMedia, kCMTimeZero, CMTime);
+
+SOFT_LINK_FRAMEWORK(Photos);
+SOFT_LINK_CLASS(Photos, PHAsset);
+SOFT_LINK_CLASS(Photos, PHImageManager);
+SOFT_LINK_CLASS(Photos, PHImageRequestOptions);
+SOFT_LINK_CONSTANT(Photos, PHImageRequestOptionsResizeModeNone, NSString *);
+SOFT_LINK_CONSTANT(Photos, PHImageRequestOptionsVersionCurrent, NSString *);
+
 #define kCMTimeZero getkCMTimeZero()
 
 #pragma mark - Document picker icons
@@ -81,43 +90,42 @@ static inline UIImage *cameraIcon()
 
 #pragma mark - Icon generation
 
+static const CGFloat iconSideLength = 100;
+
 static CGRect squareCropRectForSize(CGSize size)
 {
     CGFloat smallerSide = MIN(size.width, size.height);
     CGRect cropRect = CGRectMake(0, 0, smallerSide, smallerSide);
 
     if (size.width < size.height)
-        cropRect.origin.y = rintf((size.height - smallerSide) / 2);
+        cropRect.origin.y = std::round((size.height - smallerSide) / 2);
     else
-        cropRect.origin.x = rintf((size.width - smallerSide) / 2);
+        cropRect.origin.x = std::round((size.width - smallerSide) / 2);
 
     return cropRect;
 }
 
-static UIImage *squareImage(UIImage *image)
+static UIImage *squareImage(CGImageRef image)
 {
     if (!image)
         return nil;
 
-    CGImageRef imageRef = [image CGImage];
-    CGSize imageSize = CGSizeMake(CGImageGetWidth(imageRef), CGImageGetHeight(imageRef));
+    CGSize imageSize = CGSizeMake(CGImageGetWidth(image), CGImageGetHeight(image));
     if (imageSize.width == imageSize.height)
-        return image;
+        return [UIImage imageWithCGImage:image];
 
     CGRect squareCropRect = squareCropRectForSize(imageSize);
-    CGImageRef squareImageRef = CGImageCreateWithImageInRect(imageRef, squareCropRect);
-    UIImage *squareImage = [[UIImage alloc] initWithCGImage:squareImageRef imageOrientation:[image imageOrientation]];
-    CGImageRelease(squareImageRef);
-    return [squareImage autorelease];
+    RetainPtr<CGImageRef> squareImage = adoptCF(CGImageCreateWithImageInRect(image, squareCropRect));
+    return [UIImage imageWithCGImage:squareImage.get()];
 }
 
-static UIImage *thumbnailSizedImageForImage(UIImage *image)
+static UIImage *thumbnailSizedImageForImage(CGImageRef image)
 {
     UIImage *squaredImage = squareImage(image);
     if (!squaredImage)
         return nil;
 
-    CGRect destRect = CGRectMake(0, 0, 100, 100);
+    CGRect destRect = CGRectMake(0, 0, iconSideLength, iconSideLength);
     UIGraphicsBeginImageContext(destRect.size);
     CGContextSetInterpolationQuality(UIGraphicsGetCurrentContext(), kCGInterpolationHigh);
     [squaredImage drawInRect:destRect];
@@ -131,18 +139,30 @@ static UIImage* fallbackIconForFile(NSURL *file)
     ASSERT_ARG(file, [file isFileURL]);
 
     UIDocumentInteractionController *interactionController = [UIDocumentInteractionController interactionControllerWithURL:file];
-    return thumbnailSizedImageForImage(interactionController.icons[0]);
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 90000
+    return thumbnailSizedImageForImage(((UIImage *)interactionController.icons[0]).CGImage);
+#else
+    return thumbnailSizedImageForImage(interactionController.icons[0].CGImage);
+#endif
 }
 
 static UIImage* iconForImageFile(NSURL *file)
 {
     ASSERT_ARG(file, [file isFileURL]);
 
-    if (UIImage *image = [UIImage imageWithContentsOfFile:file.path])
-        return thumbnailSizedImageForImage(image);
+    NSDictionary *options = @{
+        (id)kCGImageSourceCreateThumbnailFromImageIfAbsent: @YES,
+        (id)kCGImageSourceThumbnailMaxPixelSize: @(iconSideLength),
+        (id)kCGImageSourceCreateThumbnailWithTransform: @YES,
+    };
+    RetainPtr<CGImageSource> imageSource = adoptCF(CGImageSourceCreateWithURL((CFURLRef)file, 0));
+    RetainPtr<CGImageRef> thumbnail = adoptCF(CGImageSourceCreateThumbnailAtIndex(imageSource.get(), 0, (CFDictionaryRef)options));
+    if (!thumbnail) {
+        LOG_ERROR("WKFileUploadPanel: Error creating thumbnail image for image: %@", file);
+        return fallbackIconForFile(file);
+    }
 
-    LOG_ERROR("WKFileUploadPanel: Error creating thumbnail image for image: %@", file);
-    return fallbackIconForFile(file);
+    return thumbnailSizedImageForImage(thumbnail.get());
 }
 
 static UIImage* iconForVideoFile(NSURL *file)
@@ -160,8 +180,7 @@ static UIImage* iconForVideoFile(NSURL *file)
         return fallbackIconForFile(file);
     }
 
-    RetainPtr<UIImage> image = adoptNS([[UIImage alloc] initWithCGImage:imageRef.get()]);
-    return thumbnailSizedImageForImage(image.get());
+    return thumbnailSizedImageForImage(imageRef.get());
 }
 
 static UIImage* iconForFile(NSURL *file)
@@ -229,21 +248,9 @@ static UIImage* iconForFile(NSURL *file)
 
 
 @interface _WKImageFileUploadItem : _WKFileUploadItem
-- (instancetype)initWithFileURL:(NSURL *)fileURL originalImage:(UIImage *)originalImage;
 @end
 
-@implementation _WKImageFileUploadItem {
-    RetainPtr<UIImage> _originalImage;
-}
-
-- (instancetype)initWithFileURL:(NSURL *)fileURL originalImage:(UIImage *)originalImage
-{
-    if (!(self = [super initWithFileURL:fileURL]))
-        return nil;
-
-    _originalImage = originalImage;
-    return self;
-}
+@implementation _WKImageFileUploadItem
 
 - (BOOL)isVideo
 {
@@ -252,7 +259,7 @@ static UIImage* iconForFile(NSURL *file)
 
 - (UIImage *)displayImage
 {
-    return thumbnailSizedImageForImage(_originalImage.get());
+    return iconForImageFile(self.fileURL);
 }
 
 @end
@@ -726,6 +733,92 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
     [self _uploadItemFromMediaInfo:info successBlock:uploadItemSuccessBlock failureBlock:failureBlock];
 }
 
+- (void)_uploadItemForImageData:(NSData *)imageData imageName:(NSString *)imageName successBlock:(void (^)(_WKFileUploadItem *))successBlock failureBlock:(void (^)(void))failureBlock
+{
+    ASSERT_ARG(imageData, imageData);
+    ASSERT(!isMainThread());
+
+    NSString * const kTemporaryDirectoryName = @"WKWebFileUpload";
+
+    // Build temporary file path.
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSString *temporaryDirectory = [fileManager _webkit_createTemporaryDirectoryWithTemplatePrefix:kTemporaryDirectoryName];
+    NSString *filePath = [temporaryDirectory stringByAppendingPathComponent:imageName];
+    if (!filePath) {
+        LOG_ERROR("WKFileUploadPanel: Failed to create temporary directory to save image");
+        failureBlock();
+        return;
+    }
+
+    // Save the image to the temporary file.
+    NSError *error = nil;
+    [imageData writeToFile:filePath options:NSDataWritingAtomic error:&error];
+    if (error) {
+        LOG_ERROR("WKFileUploadPanel: Error writing image data to temporary file: %@", error);
+        failureBlock();
+        return;
+    }
+
+    successBlock(adoptNS([[_WKImageFileUploadItem alloc] initWithFileURL:[NSURL fileURLWithPath:filePath]]).get());
+}
+
+- (void)_uploadItemForJPEGRepresentationOfImage:(UIImage *)image successBlock:(void (^)(_WKFileUploadItem *))successBlock failureBlock:(void (^)(void))failureBlock
+{
+    ASSERT_ARG(image, image);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        // FIXME: Different compression for different devices?
+        // FIXME: Different compression for different UIImage sizes?
+        // FIXME: Should EXIF data be maintained?
+        const CGFloat compression = 0.8;
+        NSData *jpeg = UIImageJPEGRepresentation(image, compression);
+        if (!jpeg) {
+            LOG_ERROR("WKFileUploadPanel: Failed to create JPEG representation for image");
+            failureBlock();
+            return;
+        }
+
+        // FIXME: Should we get the photo asset and get the actual filename for the photo instead of
+        // naming each of the individual uploads image.jpg? This won't work for photos taken with
+        // the camera, but would work for photos picked from the library.
+        NSString * const kUploadImageName = @"image.jpg";
+        [self _uploadItemForImageData:jpeg imageName:kUploadImageName successBlock:successBlock failureBlock:failureBlock];
+    });
+}
+
+- (void)_uploadItemForImage:(UIImage *)image withAssetURL:(NSURL *)assetURL successBlock:(void (^)(_WKFileUploadItem *))successBlock failureBlock:(void (^)(void))failureBlock
+{
+    ASSERT_ARG(image, image);
+    ASSERT_ARG(assetURL, assetURL);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        PHFetchResult *result = [getPHAssetClass() fetchAssetsWithALAssetURLs:@[assetURL] options:nil];
+        if (!result.count) {
+            LOG_ERROR("WKFileUploadPanel: Failed to fetch asset with URL %@", assetURL);
+            [self _uploadItemForJPEGRepresentationOfImage:image successBlock:successBlock failureBlock:failureBlock];
+            return;
+        }
+
+        RetainPtr<PHImageRequestOptions> options = adoptNS([allocPHImageRequestOptionsInstance() init]);
+        [options setVersion:PHImageRequestOptionsVersionCurrent];
+        [options setSynchronous:YES];
+        [options setResizeMode:PHImageRequestOptionsResizeModeNone];
+
+        PHImageManager *manager = (PHImageManager *)[getPHImageManagerClass() defaultManager];
+        [manager requestImageDataForAsset:result[0] options:options.get() resultHandler:^(NSData *imageData, NSString *dataUTI, UIImageOrientation, NSDictionary *info) {
+            if (!imageData) {
+                LOG_ERROR("WKFileUploadPanel: Failed to request image data for asset with URL %@", assetURL);
+                [self _uploadItemForJPEGRepresentationOfImage:image successBlock:successBlock failureBlock:failureBlock];
+                return;
+            }
+
+            RetainPtr<CFStringRef> extension = adoptCF(UTTypeCopyPreferredTagWithClass((CFStringRef)dataUTI, kUTTagClassFilenameExtension));
+            NSString *imageName = [@"image." stringByAppendingString:(extension ? (id)extension.get() : @"jpg")];
+            [self _uploadItemForImageData:imageData imageName:imageName successBlock:successBlock failureBlock:failureBlock];
+        }];
+    });
+}
+
 - (void)_uploadItemFromMediaInfo:(NSDictionary *)info successBlock:(void (^)(_WKFileUploadItem *))successBlock failureBlock:(void (^)(void))failureBlock
 {
     NSString *mediaType = [info objectForKey:UIImagePickerControllerMediaType];
@@ -744,62 +837,30 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
         return;
     }
 
-    // For images, we create a temporary file path and use the original image.
-    if (UTTypeConformsTo((CFStringRef)mediaType, kUTTypeImage)) {
-        UIImage *originalImage = [info objectForKey:UIImagePickerControllerOriginalImage];
-        if (!originalImage) {
-            LOG_ERROR("WKFileUploadPanel: Expected image data but there was none");
-            ASSERT_NOT_REACHED();
-            failureBlock();
-            return;
-        }
-
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            NSString * const kTemporaryDirectoryName = @"WKWebFileUpload";
-            NSString * const kUploadImageName = @"image.jpg";
-
-            // Build temporary file path.
-            // FIXME: Should we get the ALAsset for the mediaURL and get the actual filename for the photo
-            // instead of naming each of the individual uploads image.jpg? This won't work for photos
-            // taken with the camera, but would work for photos picked from the library.
-            NSFileManager *fileManager = [NSFileManager defaultManager];
-            NSString *temporaryDirectory = [fileManager _webkit_createTemporaryDirectoryWithTemplatePrefix:kTemporaryDirectoryName];
-            NSString *filePath = [temporaryDirectory stringByAppendingPathComponent:kUploadImageName];
-            if (!filePath) {
-                LOG_ERROR("WKFileUploadPanel: Failed to create temporary directory to save image");
-                failureBlock();
-                return;
-            }
-
-            // Compress to JPEG format.
-            // FIXME: Different compression for different devices?
-            // FIXME: Different compression for different UIImage sizes?
-            // FIXME: Should EXIF data be maintained?
-            const CGFloat compression = 0.8;
-            NSData *jpeg = UIImageJPEGRepresentation(originalImage, compression);
-            if (!jpeg) {
-                LOG_ERROR("WKFileUploadPanel: Failed to create JPEG representation for image");
-                failureBlock();
-                return;
-            }
-
-            // Save the image to the temporary file.
-            NSError *error = nil;
-            [jpeg writeToFile:filePath options:NSDataWritingAtomic error:&error];
-            if (error) {
-                LOG_ERROR("WKFileUploadPanel: Error writing image data to temporary file: %@", error);
-                failureBlock();
-                return;
-            }
-
-            successBlock(adoptNS([[_WKImageFileUploadItem alloc] initWithFileURL:[NSURL fileURLWithPath:filePath] originalImage:originalImage]).get());
-        });
+    if (!UTTypeConformsTo((CFStringRef)mediaType, kUTTypeImage)) {
+        LOG_ERROR("WKFileUploadPanel: Unexpected media type. Expected image or video, got: %@", mediaType);
+        ASSERT_NOT_REACHED();
+        failureBlock();
         return;
     }
 
-    // Unknown media type.
-    LOG_ERROR("WKFileUploadPanel: Unexpected media type. Expected image or video, got: %@", mediaType);
-    failureBlock();
+    UIImage *originalImage = [info objectForKey:UIImagePickerControllerOriginalImage];
+    if (!originalImage) {
+        LOG_ERROR("WKFileUploadPanel: Expected image data but there was none");
+        ASSERT_NOT_REACHED();
+        failureBlock();
+        return;
+    }
+
+    // If we have an asset URL, try to upload the native image.
+    NSURL *referenceURL = [info objectForKey:UIImagePickerControllerReferenceURL];
+    if (referenceURL) {
+        [self _uploadItemForImage:originalImage withAssetURL:referenceURL successBlock:successBlock failureBlock:failureBlock];
+        return;
+    }
+
+    // Photos taken with the camera will not have an asset URL. Fall back to a JPEG representation.
+    [self _uploadItemForJPEGRepresentationOfImage:originalImage successBlock:successBlock failureBlock:failureBlock];
 }
 
 - (NSString *)_displayStringForPhotos:(NSUInteger)imageCount videos:(NSUInteger)videoCount

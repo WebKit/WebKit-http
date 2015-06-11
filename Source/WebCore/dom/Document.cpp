@@ -1738,6 +1738,7 @@ void Document::recalcStyle(Style::Change change)
         return;
 
     FrameView& frameView = m_renderView->frameView();
+    Ref<FrameView> protect(frameView);
     if (frameView.isPainting())
         return;
     
@@ -1810,6 +1811,9 @@ void Document::recalcStyle(Style::Change change)
     // check if they need to be resumed after layout.
     if (updatedCompositingLayers && !frameView.needsLayout())
         frameView.viewportContentsChanged();
+
+    if (!frameView.needsLayout())
+        frameView.frame().selection().updateAppearanceAfterLayout();
 
     // As a result of the style recalculation, the currently hovered element might have been
     // detached (for example, by setting display:none in the :hover style), schedule another mouseMove event

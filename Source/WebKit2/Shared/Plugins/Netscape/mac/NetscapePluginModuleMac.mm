@@ -30,7 +30,6 @@
 
 #import "PluginProcessProxy.h"
 #import "PluginSandboxProfile.h"
-#import <WebCore/WebCoreNSStringExtras.h>
 #import <wtf/HashSet.h>
 #import <wtf/MainThread.h>
 
@@ -92,6 +91,7 @@ static bool getPluginArchitecture(CFBundleRef bundle, PluginModuleInfo& plugin)
     return false;
 }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
 static RetainPtr<CFDictionaryRef> contentsOfPropertyListAtURL(CFURLRef propertyListURL)
 {
     RetainPtr<NSData> propertyListData = adoptNS([[NSData alloc] initWithContentsOfURL:(NSURL *)propertyListURL]);
@@ -107,9 +107,11 @@ static RetainPtr<CFDictionaryRef> contentsOfPropertyListAtURL(CFURLRef propertyL
 
     return static_cast<CFDictionaryRef>(propertyList.get());
 }
+#endif
 
 static RetainPtr<CFDictionaryRef> getMIMETypesFromPluginBundle(CFBundleRef bundle, const PluginModuleInfo& plugin)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     CFStringRef propertyListFilename = static_cast<CFStringRef>(CFBundleGetValueForInfoDictionaryKey(bundle, CFSTR("WebPluginMIMETypesFilename")));
     if (propertyListFilename) {
         RetainPtr<CFStringRef> propertyListPath = adoptCF(CFStringCreateWithFormat(kCFAllocatorDefault, 0, CFSTR("%@/Library/Preferences/%@"), NSHomeDirectory(), propertyListFilename));
@@ -125,6 +127,7 @@ static RetainPtr<CFDictionaryRef> getMIMETypesFromPluginBundle(CFBundleRef bundl
         
         return static_cast<CFDictionaryRef>(CFDictionaryGetValue(propertyList.get(), CFSTR("WebPluginMIMETypes")));
     }
+#endif
     
     return static_cast<CFDictionaryRef>(CFBundleGetValueForInfoDictionaryKey(bundle, CFSTR("WebPluginMIMETypes")));
 }
@@ -214,139 +217,6 @@ static bool getPluginInfoFromPropertyLists(CFBundleRef bundle, PluginModuleInfo&
     return true;    
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-
-class ResourceMap {
-public:
-    explicit ResourceMap(CFBundleRef bundle)
-        : m_bundle(bundle)
-        , m_currentResourceFile(CurResFile())
-        , m_bundleResourceMap(CFBundleOpenBundleResourceMap(m_bundle))
-    {
-        UseResFile(m_bundleResourceMap);
-    }
-
-    ~ResourceMap()
-    {
-        // Close the resource map.
-        CFBundleCloseBundleResourceMap(m_bundle, m_bundleResourceMap);
-        
-        // And restore the old resource.
-        UseResFile(m_currentResourceFile);
-    }
-
-    bool isValid() const { return m_bundleResourceMap != -1; }
-
-private:
-    CFBundleRef m_bundle;
-    ResFileRefNum m_currentResourceFile;
-    ResFileRefNum m_bundleResourceMap;
-};
-
-static bool getStringListResource(ResID resourceID, Vector<String>& stringList) {
-    Handle stringListHandle = Get1Resource('STR#', resourceID);
-    if (!stringListHandle || !*stringListHandle)
-        return false;
-
-    // Get the string list size.
-    Size stringListSize = GetHandleSize(stringListHandle);
-    if (stringListSize < static_cast<Size>(sizeof(UInt16)))
-        return false;
-
-    CFStringEncoding stringEncoding = stringEncodingForResource(stringListHandle);
-
-    unsigned char* ptr = reinterpret_cast<unsigned char*>(*stringListHandle);
-    unsigned char* end = ptr + stringListSize;
-    
-    // Get the number of strings in the string list.
-    UInt16 numStrings = *reinterpret_cast<UInt16*>(ptr);
-    ptr += sizeof(UInt16);
-
-    for (UInt16 i = 0; i < numStrings; ++i) {
-        // We're past the end of the string, bail.
-        if (ptr >= end)
-            return false;
-
-        // Get the string length.
-        unsigned char stringLength = *ptr++;
-
-        RetainPtr<CFStringRef> cfString = adoptCF(CFStringCreateWithBytesNoCopy(kCFAllocatorDefault, ptr, stringLength, stringEncoding, false, kCFAllocatorNull));
-        if (!cfString.get())
-            return false;
-
-        stringList.append(cfString.get());
-        ptr += stringLength;
-    }
-
-    if (ptr != end)
-        return false;
-
-    return true;
-}
-
-#pragma clang diagnostic pop
-
-static const ResID PluginNameOrDescriptionStringNumber = 126;
-static const ResID MIMEDescriptionStringNumber = 127;
-static const ResID MIMEListStringStringNumber = 128;
-
-static bool getPluginInfoFromCarbonResources(CFBundleRef bundle, PluginModuleInfo& plugin)
-{
-    ASSERT(RunLoop::isMain());
-
-    ResourceMap resourceMap(bundle);
-    if (!resourceMap.isValid())
-        return false;
-
-    // Get the description and name string list.
-    Vector<String> descriptionAndName;
-    if (!getStringListResource(PluginNameOrDescriptionStringNumber, descriptionAndName))
-        return false;
-
-    // Get the MIME types and extensions string list. This list needs to be a multiple of two.
-    Vector<String> mimeTypesAndExtensions;
-    if (!getStringListResource(MIMEListStringStringNumber, mimeTypesAndExtensions))
-        return false;
-
-    if (mimeTypesAndExtensions.size() % 2)
-        return false;
-
-    // Now get the MIME type descriptions string list. This string list needs to be the same length as the number of MIME types.
-    Vector<String> mimeTypeDescriptions;
-    if (!getStringListResource(MIMEDescriptionStringNumber, mimeTypeDescriptions))
-        return false;
-
-    // Add all MIME types.
-    for (size_t i = 0; i < mimeTypesAndExtensions.size() / 2; ++i) {
-        MimeClassInfo mimeClassInfo;
-        
-        const String& mimeType = mimeTypesAndExtensions[i * 2];
-        String description;
-        if (i < mimeTypeDescriptions.size())
-            description = mimeTypeDescriptions[i];
-        
-        mimeClassInfo.type = mimeType.lower();
-        mimeClassInfo.desc = description;
-        
-        Vector<String> extensions;
-        mimeTypesAndExtensions[i * 2 + 1].split(',', extensions);
-        
-        for (size_t i = 0; i < extensions.size(); ++i)
-            mimeClassInfo.extensions.append(extensions[i].lower());
-
-        plugin.info.mimes.append(mimeClassInfo);
-    }
-
-    // Set the description and name if they exist.
-    if (descriptionAndName.size() > 0)
-        plugin.info.desc = descriptionAndName[0];
-    if (descriptionAndName.size() > 1)
-        plugin.info.name = descriptionAndName[1];
-
-    return true;
-}
-
 bool NetscapePluginModule::getPluginInfo(const String& pluginPath, PluginModuleInfo& plugin)
 {
     RetainPtr<CFURLRef> bundleURL = adoptCF(CFURLCreateWithFileSystemPath(kCFAllocatorDefault, pluginPath.createCFString().get(), kCFURLPOSIXPathStyle, false));
@@ -383,9 +253,7 @@ bool NetscapePluginModule::getPluginInfo(const String& pluginPath, PluginModuleI
             plugin.preferencePanePath = static_cast<CFStringRef>(preferencePathTypeRef);
     }
 
-    // Check that there's valid info for this plug-in.
-    if (!getPluginInfoFromPropertyLists(bundle.get(), plugin) &&
-        !getPluginInfoFromCarbonResources(bundle.get(), plugin))
+    if (!getPluginInfoFromPropertyLists(bundle.get(), plugin))
         return false;
 
     plugin.hasSandboxProfile = pluginHasSandboxProfile(plugin.bundleIdentifier);
@@ -408,6 +276,7 @@ bool NetscapePluginModule::getPluginInfo(const String& pluginPath, PluginModuleI
     return true;
 }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
 bool NetscapePluginModule::createPluginMIMETypesPreferences(const String& pluginPath)
 {
     RetainPtr<CFURLRef> bundleURL = adoptCF(CFURLCreateWithFileSystemPath(kCFAllocatorDefault, pluginPath.createCFString().get(), kCFURLPOSIXPathStyle, false));
@@ -426,6 +295,7 @@ bool NetscapePluginModule::createPluginMIMETypesPreferences(const String& plugin
     createPluginMIMETypesPreferences();
     return true;
 }
+#endif
 
 // FIXME: This doesn't need to be platform-specific.
 class PluginVersion {

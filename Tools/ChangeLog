@@ -1,3 +1,325 @@
+2015-06-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185442.
+        https://bugs.webkit.org/show_bug.cgi?id=145871
+
+        seems to have broken WTF.StringOperators test (Requested by
+        alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "[Content Extensions] Limit number of rules."
+        https://bugs.webkit.org/show_bug.cgi?id=145663
+        http://trac.webkit.org/changeset/185442
+
+2015-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Make max NFA size and max rule count user defaults.
+        https://bugs.webkit.org/show_bug.cgi?id=145663
+        rdar://problem/21242407
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2015-06-10  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [EFL] Execute Javascript method in mini browser address bar.
+        https://bugs.webkit.org/show_bug.cgi?id=145725
+
+        Reviewed by Gyuyoung Kim.
+
+        Support 'javascript:' scheme in WebKit EFL Mini Browser.
+
+        * MiniBrowser/efl/main.c:
+        (url_from_user_input):
+        (url_load_from_user_input):
+        (on_url_bar_activated):
+        (elm_main):
+
+2015-06-09  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        Implement dumpProgressFinishedCallback() for Win layoutTestController.
+        https://bugs.webkit.org/show_bug.cgi?id=66773
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        * DumpRenderTree/win/FrameLoadDelegate.h:
+
+2015-06-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-benchmark should either checkout JetStream 1.0.1 or support running the latest version
+        https://bugs.webkit.org/show_bug.cgi?id=145764
+
+        Reviewed by Darin Adler.
+
+        Added the support for checkout a subversion directory in run-benchmark and used in the plans for
+        JetStream and SunSpider.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/generic_benchmark_builder.py:
+        (GenericBenchmarkBuilder):
+        (GenericBenchmarkBuilder.prepare): Instead of taking each argument from benchmark plan, just accept
+        the whole JSON as the input.
+        (GenericBenchmarkBuilder._checkoutWithSubverion): Added.
+        (GenericBenchmarkBuilder._applyPatch): Check the existence of benchmark_patch in prepare() instead.
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.execute): Removed the check for having either 'local_copy' or 'remote_archive' in
+        a benchmark plan now that it's checkedi in GenericBenchmarkBuilder.prepare.
+        * Scripts/webkitpy/benchmark_runner/data/plans/jetstream.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/sunspider.plan:
+
+2015-06-09  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Remove ewstool scripts used by chromium port
+        https://bugs.webkit.org/show_bug.cgi?id=145789
+
+        Reviewed by Csaba Osztrogonác.
+
+        * EWSTools/GoogleComputeEngine/build-chromium-ews.sh: Removed.
+        * EWSTools/GoogleComputeEngine/build-commit-queue.sh: Removed.
+        * EWSTools/GoogleComputeEngine/build-cr-linux-debug-ews.sh: Removed.
+        * EWSTools/GoogleComputeEngine/build-feeder-style-sheriffbot.sh: Removed.
+        * EWSTools/GoogleComputeEngine/findzone.sh: Removed.
+
+2015-06-09  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        Unreviewed, updated my list of email addresses.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-06-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Fix the style issues in cmake project files
+        https://bugs.webkit.org/show_bug.cgi?id=145755
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformEfl.cmake:
+
+2015-06-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix a typo in r185345.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.closeBrowsers):
+
+2015-06-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Yet another unreviewed build fix :(
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver):
+        (OSXSafariDriver.launchUrl):
+        (OSXSafariDriver.closeBrowsers):
+
+2015-06-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix. Initialize result in the case things blow up below.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.execute):
+
+2015-06-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Partially revert and fix after r185243.
+
+        * Scripts/benchmark_runner/benchmark_runner.py:
+        * Scripts/run-benchmark:
+
+2015-06-08  Daniel Bates  <dabates@apple.com>
+
+        Many LayoutTests/http tests time out in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=145770
+        <rdar://problem/19593910>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/ios/Info.plist: Add ATS key.
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        (-[LTRelayController _environmentVariables]): Copy environment variables LOCAL_RESOURCE_ROOT
+        and DUMPRENDERTREE_TEMP to the simulator environment to avoid assertion failures in tests
+        that make use of testRunner.pathToLocalResource().
+
+2015-06-08  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Fix parentheses warning in TestWebKitWebView.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=145759
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewSave):
+
+2015-06-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add editor mode to MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=145595
+
+        Reviewed by Sergio Villar Senin.
+
+        It loads an empty editable web view with an edit toolbar. It makes
+        easier to test the editor, editing commands and input methods.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (editingCommandCallback):
+        (browserWindowSetupEditorToolbar):
+        (browserWindowConstructed):
+        * MiniBrowser/gtk/main.c:
+        (createBrowserWindow):
+
+2015-06-05  Zalan Bujtas  <zalan@apple.com>
+
+        From r185273 on WTF::RefCounter exposes the actual refcount instead of a boolean value.
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WTF/RefCounter.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-06-05  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] API test has been broken since r184357
+        https://bugs.webkit.org/show_bug.cgi?id=145635
+
+        Reviewed by Darin Adler.
+
+        r184357 suppress cmake build warning using TARGET_FILE property. However
+        many EFL API test cases have been broken after applying it.
+
+        * TestWebKitAPI/CMakeLists.txt:
+
+2015-06-05  Anders Carlsson  <andersca@apple.com>
+
+        Make the network cache directory part of WKContextConfigurationRef
+        https://bugs.webkit.org/show_bug.cgi?id=145711
+
+        Reviewed by Antti Koivisto.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+
+2015-06-05  Anders Carlsson  <andersca@apple.com>
+
+        Make the application cache directory part of WKContextConfigurationRef
+        https://bugs.webkit.org/show_bug.cgi?id=145704
+
+        Reviewed by Geoffrey Garen.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+
+2015-06-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        check-webkit-style should recommend using nullptr instead of recommending using 0 for the null pointer in C++ code.
+        https://bugs.webkit.org/show_bug.cgi?id=145680
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_for_null):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_null_false_zero):
+
+2015-06-05  Stephanie Lewis  <slewis@apple.com>
+
+        Make the web server more robust to timing issues..
+
+        Reviewed by Ryosuke Niwa.
+
+        Cleaned up exception handling.
+        Test server is actually serving pages before returning.
+        Clean up some style issues.
+
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server/twisted_http_server.py:
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        (SimpleHTTPServerDriver.__init__):
+        (SimpleHTTPServerDriver.serve): check output, wait for pages to serve
+        (SimpleHTTPServerDriver.baseUrl): 
+        (SimpleHTTPServerDriver.fetchResult):
+        (SimpleHTTPServerDriver.killServer):
+        (SimpleHTTPServerDriver.getReturnCode):
+
+2015-06-05  Stephanie Lewis  <slewis@apple.com>
+
+
+        Add errors to run-benchmark exception handling.
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/run-benchmark:
+        (main):
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/generic_benchmark_builder.py:
+        (GenericBenchmarkBuilder.prepare):
+        (GenericBenchmarkBuilder._runCreateScript):
+        (GenericBenchmarkBuilder._applyPatch):
+        (GenericBenchmarkBuilder.clean):
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner.execute):
+        (BenchmarkRunner):
+        (BenchmarkRunner.cleanup):
+        * Scripts/webkitpy/benchmark_runner/generic_factory.py:
+        (GenericFactory.iterateGetItem):
+        (GenericFactory.create):
+        * Scripts/webkitpy/benchmark_runner/utils.py:
+        (loadModule):
+        (loadJSONFromFile):
+        (forceRemove):
+
+2015-06-05  Stephanie Lewis  <slewis@apple.com>
+
+        Streamline run-benchmark browser
+
+        Reviewed by Ryosuke Niwa.
+
+        Add Caffeinate so computer won't sleep while running.
+        Remove calls to collect output since we were just dumping to stdout anyway.
+        Add xpc dyld_path.
+        Default to system safari.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver.launchProcess):
+        (OSXBrowserDriver.terminateProcesses):
+        (OSXBrowserDriver):
+        (OSXBrowserDriver.launchCaffeinateForProcess):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.launchUrl):
+        (OSXSafariDriver.closeBrowsers):
+
+2015-06-04  Benjamin Poulain  <bpoulain@apple.com>
+
+        Combine tiny DFAs into slightly larger ones
+        https://bugs.webkit.org/show_bug.cgi?id=145572
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/DFACombiner.cpp: Added.
+        (TestWebKitAPI::DFACombinerTest::SetUp):
+        (TestWebKitAPI::combine):
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/DFAHelpers.h: Copied from Source/WebCore/contentextensions/DFA.h.
+        (TestWebKitAPI::countLiveNodes):
+        (TestWebKitAPI::createNFAs):
+        (TestWebKitAPI::buildDFAFromPatterns):
+        * TestWebKitAPI/Tests/WebCore/DFAMinimizer.cpp:
+        (TestWebKitAPI::countLiveNodes): Deleted.
+        (TestWebKitAPI::createNFAs): Deleted.
+        (TestWebKitAPI::buildDFAFromPatterns): Deleted.
+
+2015-06-04  Alexey Proskuryakov  <ap@apple.com>
+
+        WebKitTestRunner leaks strings in generateWhitelist()
+        https://bugs.webkit.org/show_bug.cgi?id=145665
+
+        Reviewed by Myles C. Maxfield.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::generateWhitelist):
+
 2015-06-03  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Fix options in build-jsc for CMake builds

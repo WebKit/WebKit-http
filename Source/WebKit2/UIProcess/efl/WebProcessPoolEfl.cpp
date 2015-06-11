@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebProcessPool.h"
 
+#include "APIProcessPoolConfiguration.h"
 #include "Logging.h"
 #include "WebCookieManagerProxy.h"
 #include "WebInspectorServer.h"
@@ -93,6 +94,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
     parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
     parameters.ignoreTLSErrors = m_ignoreTLSErrors;
+    parameters.diskCacheDirectory = m_configuration->diskCacheDirectory();
 }
 
 void WebProcessPool::platformInvalidateContext()
@@ -126,9 +128,20 @@ String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
     return String::fromUTF8(efreet_data_home_get()) + "/WebKitEfl/MediaKeys";
 }
 
-String WebProcessPool::platformDefaultDiskCacheDirectory() const
+String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
-    return String::fromUTF8(efreet_cache_home_get()) + "/WebKitEfl";
+#if ENABLE(NETWORK_CACHE)
+    static const char networkCacheSubdirectory[] = "WebKitCache";
+#else
+    static const char networkCacheSubdirectory[] = "webkit";
+#endif
+
+    StringBuilder diskCacheDirectory;
+    diskCacheDirectory.append(efreet_cache_home_get());
+    diskCacheDirectory.appendLiteral("/");
+    diskCacheDirectory.append(networkCacheSubdirectory);
+
+    return diskCacheDirectory.toString();
 }
 
 void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)

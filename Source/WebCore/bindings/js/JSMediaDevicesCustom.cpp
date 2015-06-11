@@ -39,6 +39,7 @@
 #include "JSDOMPromise.h"
 #include "JSMediaStream.h"
 #include "JSNavigatorUserMediaError.h"
+#include <runtime/Exception.h>
 
 using namespace JSC;
 
@@ -46,18 +47,21 @@ namespace WebCore {
 
 JSValue JSMediaDevices::getUserMedia(ExecState* exec)
 {
-    DeferredWrapper wrapper(exec, globalObject());
+    JSPromiseDeferred* promiseDeferred = JSPromiseDeferred::create(exec, globalObject());
+    DeferredWrapper wrapper(exec, globalObject(), promiseDeferred);
 
     Dictionary options(exec, exec->argument(0));
     if (exec->hadException()) {
-        wrapper.reject(exec->exception());
-        return wrapper.promise();
+        Exception* exception = exec->exception();
+        exec->clearException();
+        wrapper.reject(exception->value());
+        return promiseDeferred->promise();
     }
 
     if (!options.isObject()) {
         JSValue error = createTypeError(exec, "First argument of getUserMedia must be a valid Dictionary");
         wrapper.reject(error);
-        return wrapper.promise();
+        return promiseDeferred->promise();
     }
 
     auto resolveCallback = [wrapper](MediaStream& stream) mutable {
@@ -72,7 +76,7 @@ JSValue JSMediaDevices::getUserMedia(ExecState* exec)
     if (ec)
         wrapper.reject(ec);
 
-    return wrapper.promise();
+    return promiseDeferred->promise();
 }
 
 } // namespace WebCore

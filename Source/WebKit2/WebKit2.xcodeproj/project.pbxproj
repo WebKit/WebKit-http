@@ -36,15 +36,26 @@
 			name = All;
 			productName = WebKit2;
 		};
-		A7AADA1019395CA9003EA1C7 /* WebKit2SandboxProfiles */ = {
+		377E7CCE1B20FF9E00931AFC /* WebKit2SandboxProfiles */ = {
 			isa = PBXAggregateTarget;
-			buildConfigurationList = A7AADA1419395CA9003EA1C7 /* Build configuration list for PBXAggregateTarget "WebKit2SandboxProfiles" */;
+			buildConfigurationList = 377E7CCF1B20FF9E00931AFC /* Build configuration list for PBXAggregateTarget "WebKit2SandboxProfiles" */;
+			buildPhases = (
+			);
+			dependencies = (
+				377E7CD41B20FFAB00931AFC /* PBXTargetDependency */,
+			);
+			name = WebKit2SandboxProfiles;
+			productName = WebKit2SandboxProfiles;
+		};
+		A7AADA1019395CA9003EA1C7 /* Sandbox Profiles */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = A7AADA1419395CA9003EA1C7 /* Build configuration list for PBXAggregateTarget "Sandbox Profiles" */;
 			buildPhases = (
 				A7AADA1519395CC3003EA1C7 /* CopyFiles */,
 			);
 			dependencies = (
 			);
-			name = WebKit2SandboxProfiles;
+			name = "Sandbox Profiles";
 			productName = WebKit2SandboxProfiles;
 		};
 		A7C0DC2D19804DEE00253CED /* WebKit2SandboxProfiles-IOSOverride */ = {
@@ -63,6 +74,7 @@
 			buildConfigurationList = C0CE72891247E68600BC0EC4 /* Build configuration list for PBXAggregateTarget "Derived Sources" */;
 			buildPhases = (
 				C0CE72841247E66800BC0EC4 /* Generate Derived Sources */,
+				3740E7281B23724A004ADEF1 /* Derive Entitlements for Manual Sandboxing */,
 			);
 			dependencies = (
 			);
@@ -169,7 +181,6 @@
 		1A1D8BA11731A36300141DA4 /* LocalStorageDatabase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1D8B9F1731A36300141DA4 /* LocalStorageDatabase.cpp */; };
 		1A1D8BA21731A36300141DA4 /* LocalStorageDatabase.h in Headers */ = {isa = PBXBuildFile; fileRef = 1A1D8BA01731A36300141DA4 /* LocalStorageDatabase.h */; };
 		1A1DC340196346D700FF7059 /* LegacySessionStateCoding.h in Headers */ = {isa = PBXBuildFile; fileRef = 31607F3819627002009B87DA /* LegacySessionStateCoding.h */; };
-		1A1E01E91B1FBB7900973E1F /* WKBackForwardListItemPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = 1A1E01E81B1FBB7900973E1F /* WKBackForwardListItemPrivate.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		1A1E093318861D3800D2DC49 /* WebProgressTrackerClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1E093118861D3800D2DC49 /* WebProgressTrackerClient.cpp */; };
 		1A1E093418861D3800D2DC49 /* WebProgressTrackerClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 1A1E093218861D3800D2DC49 /* WebProgressTrackerClient.h */; };
 		1A1EC69E1872092100B951F0 /* ImportanceAssertion.h in Headers */ = {isa = PBXBuildFile; fileRef = 1A1EC69D1872092100B951F0 /* ImportanceAssertion.h */; };
@@ -1188,7 +1199,7 @@
 		7CF47FFF17276AE3008ACB91 /* WKBundlePageBannerMac.h in Headers */ = {isa = PBXBuildFile; fileRef = 7CF47FFD17276AE3008ACB91 /* WKBundlePageBannerMac.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		7EC4F0FB18E4ACBB008056AF /* NetworkProcessCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7EC4F0F918E4A945008056AF /* NetworkProcessCocoa.mm */; };
 		83048AE61ACA45DC0082C832 /* ProcessThrottlerClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 83048AE51ACA45DC0082C832 /* ProcessThrottlerClient.h */; };
-		834B250F1A831A8D00CFB150 /* NetworkCacheFileSystemPosix.h in Headers */ = {isa = PBXBuildFile; fileRef = 834B250E1A831A8D00CFB150 /* NetworkCacheFileSystemPosix.h */; };
+		834B250F1A831A8D00CFB150 /* NetworkCacheFileSystem.h in Headers */ = {isa = PBXBuildFile; fileRef = 834B250E1A831A8D00CFB150 /* NetworkCacheFileSystem.h */; };
 		834B25121A842C8700CFB150 /* NetworkCacheStatistics.h in Headers */ = {isa = PBXBuildFile; fileRef = 834B25101A842C8700CFB150 /* NetworkCacheStatistics.h */; };
 		8360349F1ACB34D600626549 /* WebSQLiteDatabaseTracker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8360349D1ACB34D600626549 /* WebSQLiteDatabaseTracker.cpp */; };
 		836034A01ACB34D600626549 /* WebSQLiteDatabaseTracker.h in Headers */ = {isa = PBXBuildFile; fileRef = 8360349E1ACB34D600626549 /* WebSQLiteDatabaseTracker.h */; };
@@ -1794,6 +1805,7 @@
 		E4436ECE1A0D040B00EAD204 /* NetworkCacheKey.h in Headers */ = {isa = PBXBuildFile; fileRef = E4436EC11A0CFDB200EAD204 /* NetworkCacheKey.h */; };
 		E4436ECF1A0D040B00EAD204 /* NetworkCacheStorage.h in Headers */ = {isa = PBXBuildFile; fileRef = E4436EC21A0CFDB200EAD204 /* NetworkCacheStorage.h */; };
 		E4436ED01A0D040B00EAD204 /* NetworkCacheStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4436EC31A0CFDB200EAD204 /* NetworkCacheStorage.cpp */; };
+		E4697CCD1B25EB8F001B0A6C /* NetworkCacheFileSystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4697CCC1B25EB8F001B0A6C /* NetworkCacheFileSystem.cpp */; };
 		E47D1E981B0649FB002676A8 /* NetworkCacheData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E47D1E961B062B66002676A8 /* NetworkCacheData.cpp */; };
 		E489D28A1A0A2DB80078C06A /* NetworkCacheCoder.h in Headers */ = {isa = PBXBuildFile; fileRef = E489D2831A0A2DB80078C06A /* NetworkCacheCoder.h */; };
 		E489D28B1A0A2DB80078C06A /* NetworkCacheCoders.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E489D2841A0A2DB80078C06A /* NetworkCacheCoders.cpp */; };
@@ -1921,6 +1933,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 8DC2EF4F0486A6940098B216;
 			remoteInfo = WebKit;
+		};
+		377E7CD31B20FFAB00931AFC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0867D690FE84028FC02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A7AADA1019395CA9003EA1C7;
+			remoteInfo = "Sandbox Profiles";
 		};
 		37F7407812721F740093869B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -2286,7 +2305,6 @@
 		1A1D2117191D996C0001619F /* MigrateHeadersFromWebKitLegacy.make */ = {isa = PBXFileReference; lastKnownFileType = text; name = MigrateHeadersFromWebKitLegacy.make; path = mac/MigrateHeadersFromWebKitLegacy.make; sourceTree = "<group>"; };
 		1A1D8B9F1731A36300141DA4 /* LocalStorageDatabase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LocalStorageDatabase.cpp; sourceTree = "<group>"; };
 		1A1D8BA01731A36300141DA4 /* LocalStorageDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LocalStorageDatabase.h; sourceTree = "<group>"; };
-		1A1E01E81B1FBB7900973E1F /* WKBackForwardListItemPrivate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKBackForwardListItemPrivate.h; sourceTree = "<group>"; };
 		1A1E093118861D3800D2DC49 /* WebProgressTrackerClient.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WebProgressTrackerClient.cpp; sourceTree = "<group>"; };
 		1A1E093218861D3800D2DC49 /* WebProgressTrackerClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebProgressTrackerClient.h; sourceTree = "<group>"; };
 		1A1EC69D1872092100B951F0 /* ImportanceAssertion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImportanceAssertion.h; sourceTree = "<group>"; };
@@ -3417,7 +3435,7 @@
 		7CF47FFD17276AE3008ACB91 /* WKBundlePageBannerMac.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKBundlePageBannerMac.h; sourceTree = "<group>"; };
 		7EC4F0F918E4A945008056AF /* NetworkProcessCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = NetworkProcessCocoa.mm; path = NetworkProcess/cocoa/NetworkProcessCocoa.mm; sourceTree = "<group>"; };
 		83048AE51ACA45DC0082C832 /* ProcessThrottlerClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProcessThrottlerClient.h; sourceTree = "<group>"; };
-		834B250E1A831A8D00CFB150 /* NetworkCacheFileSystemPosix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NetworkCacheFileSystemPosix.h; sourceTree = "<group>"; };
+		834B250E1A831A8D00CFB150 /* NetworkCacheFileSystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NetworkCacheFileSystem.h; sourceTree = "<group>"; };
 		834B25101A842C8700CFB150 /* NetworkCacheStatistics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NetworkCacheStatistics.h; sourceTree = "<group>"; };
 		8360349D1ACB34D600626549 /* WebSQLiteDatabaseTracker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WebSQLiteDatabaseTracker.cpp; sourceTree = "<group>"; };
 		8360349E1ACB34D600626549 /* WebSQLiteDatabaseTracker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebSQLiteDatabaseTracker.h; sourceTree = "<group>"; };
@@ -4067,6 +4085,7 @@
 		E4436EC11A0CFDB200EAD204 /* NetworkCacheKey.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NetworkCacheKey.h; sourceTree = "<group>"; };
 		E4436EC21A0CFDB200EAD204 /* NetworkCacheStorage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NetworkCacheStorage.h; sourceTree = "<group>"; };
 		E4436EC31A0CFDB200EAD204 /* NetworkCacheStorage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NetworkCacheStorage.cpp; sourceTree = "<group>"; };
+		E4697CCC1B25EB8F001B0A6C /* NetworkCacheFileSystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NetworkCacheFileSystem.cpp; sourceTree = "<group>"; };
 		E47D1E961B062B66002676A8 /* NetworkCacheData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NetworkCacheData.cpp; sourceTree = "<group>"; };
 		E489D2831A0A2DB80078C06A /* NetworkCacheCoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NetworkCacheCoder.h; sourceTree = "<group>"; };
 		E489D2841A0A2DB80078C06A /* NetworkCacheCoders.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NetworkCacheCoders.cpp; sourceTree = "<group>"; };
@@ -5411,7 +5430,6 @@
 				37C4C08518149C5B003688B9 /* WKBackForwardListItem.h */,
 				37C4C08418149C5B003688B9 /* WKBackForwardListItem.mm */,
 				37C4C08818149F23003688B9 /* WKBackForwardListItemInternal.h */,
-				1A1E01E81B1FBB7900973E1F /* WKBackForwardListItemPrivate.h */,
 				1A9F28101958F478008CAC72 /* WKBackForwardListPrivate.h */,
 				1AF4592D19464B2000F9D4A2 /* WKError.h */,
 				1AF4592C19464B2000F9D4A2 /* WKError.mm */,
@@ -7553,7 +7571,8 @@
 				E489D2891A0A2DB80078C06A /* NetworkCacheEncoder.h */,
 				E413F59E1AC1AF9D00345360 /* NetworkCacheEntry.cpp */,
 				E413F59B1AC1ADB600345360 /* NetworkCacheEntry.h */,
-				834B250E1A831A8D00CFB150 /* NetworkCacheFileSystemPosix.h */,
+				834B250E1A831A8D00CFB150 /* NetworkCacheFileSystem.h */,
+				E4697CCC1B25EB8F001B0A6C /* NetworkCacheFileSystem.cpp */,
 				E42E060B1AA7440D00B11699 /* NetworkCacheIOChannel.h */,
 				E42E060D1AA750E500B11699 /* NetworkCacheIOChannelCocoa.mm */,
 				E4436EC01A0CFDB200EAD204 /* NetworkCacheKey.cpp */,
@@ -7848,7 +7867,7 @@
 				E489D28E1A0A2DB80078C06A /* NetworkCacheDecoder.h in Headers */,
 				E489D2901A0A2DB80078C06A /* NetworkCacheEncoder.h in Headers */,
 				E413F59D1AC1ADC400345360 /* NetworkCacheEntry.h in Headers */,
-				834B250F1A831A8D00CFB150 /* NetworkCacheFileSystemPosix.h in Headers */,
+				834B250F1A831A8D00CFB150 /* NetworkCacheFileSystem.h in Headers */,
 				E42E06101AA7523B00B11699 /* NetworkCacheIOChannel.h in Headers */,
 				E4436ECE1A0D040B00EAD204 /* NetworkCacheKey.h in Headers */,
 				834B25121A842C8700CFB150 /* NetworkCacheStatistics.h in Headers */,
@@ -8173,7 +8192,6 @@
 				33367630130C9998006C9DE2 /* WebResourceCacheManager.h in Headers */,
 				33367656130C9ECA006C9DE2 /* WebResourceCacheManagerMessages.h in Headers */,
 				33367636130C99B2006C9DE2 /* WebResourceCacheManagerProxy.h in Headers */,
-				1A1E01E91B1FBB7900973E1F /* WKBackForwardListItemPrivate.h in Headers */,
 				33367658130C9ECB006C9DE2 /* WebResourceCacheManagerProxyMessages.h in Headers */,
 				510AFFBA16542048001BA05E /* WebResourceLoader.h in Headers */,
 				51F060E01654317F00F3281B /* WebResourceLoaderMessages.h in Headers */,
@@ -8672,6 +8690,7 @@
 				1A1D2115191D96380001619F /* Postprocess Framework Headers */,
 				8DC2EF520486A6940098B216 /* Resources */,
 				7CB16FEE1724BA05007A0A95 /* Copy Plug-in Sandbox Profiles */,
+				37E531011B2391090074F0DF /* Copy iOS Sandbox Profiles for Manual Sandboxing */,
 				1A07D2F71919B36500ECDA16 /* Copy Message Generation Scripts */,
 				8DC2EF540486A6940098B216 /* Sources */,
 				8DC2EF560486A6940098B216 /* Frameworks */,
@@ -8882,6 +8901,11 @@
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 0600;
+				TargetAttributes = {
+					377E7CCE1B20FF9E00931AFC = {
+						CreatedOnToolsVersion = 7.0;
+					};
+				};
 			};
 			buildConfigurationList = 1DEB91B108733DA50010E9CD /* Build configuration list for PBXProject "WebKit2" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -8920,8 +8944,9 @@
 				E1B1B18C1A7AC1F5007B0965 /* Plugin.64.Development */,
 				51F7DC3F180CC93600212CA3 /* Databases */,
 				5180C713180CCA3100FDA612 /* Databases.Development */,
-				A7AADA1019395CA9003EA1C7 /* WebKit2SandboxProfiles */,
+				A7AADA1019395CA9003EA1C7 /* Sandbox Profiles */,
 				A7C0DC2D19804DEE00253CED /* WebKit2SandboxProfiles-IOSOverride */,
+				377E7CCE1B20FF9E00931AFC /* WebKit2SandboxProfiles */,
 			);
 		};
 /* End PBXProject section */
@@ -9177,6 +9202,26 @@
 			shellPath = /bin/sh;
 			shellScript = "if [ \"${ACTION}\" = \"installhdrs\" ]; then\n    exit 0;\nfi\n\nif [ -f ../../Tools/Scripts/check-for-inappropriate-objc-class-names ]; then\n    ../../Tools/Scripts/check-for-inappropriate-objc-class-names WK _WK || exit $?\nfi";
 		};
+		3740E7281B23724A004ADEF1 /* Derive Entitlements for Manual Sandboxing */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Configurations/Databases-iOS.entitlements",
+				"$(SRCROOT)/Configurations/Network-iOS.entitlements",
+				"$(SRCROOT)/Configurations/WebContent-iOS.entitlements",
+			);
+			name = "Derive Entitlements for Manual Sandboxing";
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit2/Databases-iOS-no-sandbox.entitlements",
+				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit2/Network-iOS-no-sandbox.entitlements",
+				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit2/WebContent-iOS-no-sandbox.entitlements",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [[ \"${WK_MANUAL_SANDBOXING_ENABLED}\" != \"YES\" || \"${PLATFORM_NAME}\" == \"macosx\" ]]; then\n    exit\nfi\n\nif [[ \"${ACTION}\" == \"build\" || \"${ACTION}\" == \"install\" ]]; then\n    for ((i = 0; i < ${SCRIPT_INPUT_FILE_COUNT}; ++i)); do\n        eval ENTITLEMENTS=\\${SCRIPT_INPUT_FILE_${i}}\n        ENTITLEMENTS_BASE=${ENTITLEMENTS##*/}\n        ENTITLEMENTS_BASE=${ENTITLEMENTS_BASE%.entitlements}\n        plutil -remove seatbelt-profiles -o \"${BUILT_PRODUCTS_DIR}/DerivedSources/WebKit2/${ENTITLEMENTS_BASE}-no-sandbox.entitlements\" \"${ENTITLEMENTS}\"\n    done\nfi";
+		};
 		375A248817E5048E00C9A086 /* Postprocess WKBase.h */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -9191,6 +9236,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "WKBASE_H=${TARGET_BUILD_DIR}/${PRIVATE_HEADERS_FOLDER_PATH}/WKBase.h\n\nunifdef -B -D__APPLE__ -UBUILDING_GTK__ -UUSE_SOUP -UBUILDING_EFL__ -UBUILDING_QT__ -o ${WKBASE_H}.unifdef ${WKBASE_H}\n\ncase $? in\n0)\n    rm ${WKBASE_H}.unifdef\n    ;;\n1)\n    mv ${WKBASE_H}{.unifdef,}\n    ;;\n*)\n    exit 1\nesac\n";
+		};
+		37E531011B2391090074F0DF /* Copy iOS Sandbox Profiles for Manual Sandboxing */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Resources/SandboxProfiles/ios/com.apple.WebKit.Databases.sb",
+				"$(SRCROOT)/Resources/SandboxProfiles/ios/com.apple.WebKit.Networking.sb",
+				"$(SRCROOT)/Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb",
+			);
+			name = "Copy iOS Sandbox Profiles for Manual Sandboxing";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/com.apple.WebKit.Databases.sb",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/com.apple.WebKit.Networking.sb",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/com.apple.WebKit.WebContent.sb",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [[ \"${WK_MANUAL_SANDBOXING_ENABLED}\" != \"YES\" || \"${PLATFORM_NAME}\" == \"macosx\" ]]; then\n    exit\nfi\n\nif [[ \"${ACTION}\" == \"build\" || \"${ACTION}\" == \"install\" ]]; then\n    for ((i = 0; i < ${SCRIPT_INPUT_FILE_COUNT}; ++i)); do\n        eval SANDBOX_PROFILE=\\${SCRIPT_INPUT_FILE_${i}}\n        ditto \"${SANDBOX_PROFILE}\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/${SANDBOX_PROFILE##*/}\"\n    done\nfi";
 		};
 		5DF408C5131DD46700130071 /* Check For Weak VTables and Externals */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -9614,6 +9679,7 @@
 				E42E06141AA75B7000B11699 /* NetworkCacheDataCocoa.mm in Sources */,
 				E489D28D1A0A2DB80078C06A /* NetworkCacheDecoder.cpp in Sources */,
 				E489D28F1A0A2DB80078C06A /* NetworkCacheEncoder.cpp in Sources */,
+				E4697CCD1B25EB8F001B0A6C /* NetworkCacheFileSystem.cpp in Sources */,
 				E413F59F1AC1AF9D00345360 /* NetworkCacheEntry.cpp in Sources */,
 				E42E060F1AA7523400B11699 /* NetworkCacheIOChannelCocoa.mm in Sources */,
 				E4436ECD1A0D040B00EAD204 /* NetworkCacheKey.cpp in Sources */,
@@ -10351,6 +10417,11 @@
 			target = 8DC2EF4F0486A6940098B216 /* WebKit */;
 			targetProxy = 375E063E191EAA33004E3CAF /* PBXContainerItemProxy */;
 		};
+		377E7CD41B20FFAB00931AFC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A7AADA1019395CA9003EA1C7 /* Sandbox Profiles */;
+			targetProxy = 377E7CD31B20FFAB00931AFC /* PBXContainerItemProxy */;
+		};
 		37F7407912721F740093869B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = C0CE72851247E66800BC0EC4 /* Derived Sources */;
@@ -10594,6 +10665,27 @@
 			buildSettings = {
 			};
 			name = Release;
+		};
+		377E7CD01B20FF9E00931AFC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		377E7CD11B20FF9E00931AFC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		377E7CD21B20FF9E00931AFC /* Production */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Production;
 		};
 		510031F31379CACB00C8DFE4 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -11083,6 +11175,16 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Production;
 		};
+		377E7CCF1B20FF9E00931AFC /* Build configuration list for PBXAggregateTarget "WebKit2SandboxProfiles" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				377E7CD01B20FF9E00931AFC /* Debug */,
+				377E7CD11B20FF9E00931AFC /* Release */,
+				377E7CD21B20FF9E00931AFC /* Production */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Production;
+		};
 		510031F21379CACB00C8DFE4 /* Build configuration list for PBXNativeTarget "SecItemShim" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -11133,7 +11235,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Production;
 		};
-		A7AADA1419395CA9003EA1C7 /* Build configuration list for PBXAggregateTarget "WebKit2SandboxProfiles" */ = {
+		A7AADA1419395CA9003EA1C7 /* Build configuration list for PBXAggregateTarget "Sandbox Profiles" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A7AADA1119395CA9003EA1C7 /* Debug */,

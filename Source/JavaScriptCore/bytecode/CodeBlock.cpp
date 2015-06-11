@@ -1484,7 +1484,9 @@ void CodeBlock::dumpBytecode(
         }
         case op_catch: {
             int r0 = (++it)->u.operand;
-            printLocationOpAndRegisterOperand(out, exec, location, it, "catch", r0);
+            int r1 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "catch");
+            out.printf("%s, %s", registerName(r0).data(), registerName(r1).data());
             break;
         }
         case op_throw: {
@@ -2878,7 +2880,7 @@ bool CodeBlock::hasOptimizedReplacement()
 }
 #endif
 
-HandlerInfo* CodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset)
+HandlerInfo* CodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler requiredHandler)
 {
     RELEASE_ASSERT(bytecodeOffset < instructions().size());
 
@@ -2888,6 +2890,9 @@ HandlerInfo* CodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset)
     Vector<HandlerInfo>& exceptionHandlers = m_rareData->m_exceptionHandlers;
     for (size_t i = 0; i < exceptionHandlers.size(); ++i) {
         HandlerInfo& handler = exceptionHandlers[i];
+        if ((requiredHandler == RequiredHandler::CatchHandler) && !handler.isCatchHandler())
+            continue;
+
         // Handlers are ordered innermost first, so the first handler we encounter
         // that contains the source address is the correct handler to use.
         if (handler.start <= bytecodeOffset && handler.end > bytecodeOffset)
@@ -2957,27 +2962,6 @@ void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
             m_rareData->m_stringSwitchJumpTables.shrinkToFit();
         }
     } // else don't shrink these, because we would have already pointed pointers into these tables.
-}
-
-unsigned CodeBlock::addOrFindConstant(JSValue v)
-{
-    unsigned result;
-    if (findConstant(v, result))
-        return result;
-    return addConstant(v);
-}
-
-bool CodeBlock::findConstant(JSValue v, unsigned& index)
-{
-    unsigned numberOfConstants = numberOfConstantRegisters();
-    for (unsigned i = 0; i < numberOfConstants; ++i) {
-        if (getConstant(FirstConstantRegisterIndex + i) == v) {
-            index = i;
-            return true;
-        }
-    }
-    index = numberOfConstants;
-    return false;
 }
 
 #if ENABLE(JIT)

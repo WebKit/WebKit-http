@@ -37,7 +37,7 @@ def main():
     _log.debug('\tbuild directory\t: %s' % args.buildDir)
     _log.debug('\tplan name\t: %s', args.plan)
     runner = BenchmarkRunner(args.plan, args.localCopy, args.countOverride, args.buildDir, args.output, args.platform, args.browser)
-    return runner.execute()
+    runner.execute()
 
 
 if __name__ == '__main__':

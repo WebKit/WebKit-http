@@ -1,3 +1,265 @@
+2015-06-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Clearing active Timeline recording should stop capturing
+        https://bugs.webkit.org/show_bug.cgi?id=145767
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._clearTimeline):
+        Stop capturing if necessary.
+
+2015-06-07  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: Add PrettyPrinter CSSRule tests
+        https://bugs.webkit.org/show_bug.cgi?id=145740
+
+        Reviewed by Brian Burg.
+
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-after-colon-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-after-colon.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-after-comma-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-after-comma.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/do-not-append-semicolon-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/do-not-append-semicolon.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/invalid-property-is-not-removed-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/invalid-property-is-not-removed.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/keep-prefixed-value-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/keep-prefixed-value.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-colon-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-colon.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-comment-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-comment.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-invalid-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-invalid-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-prefixed-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-prefixed-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-semicolon-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-semicolon.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-comment-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-comment.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-invalid-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-invalid-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-prefixed-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-prefixed-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-comment-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-comment.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-invalid-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-invalid-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-prefixed-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-prefixed-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-comment-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-comment.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-invalid-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-invalid-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-prefixed-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-prefixed-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-without-semicolon-followed-by-comment-and-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-without-semicolon-followed-by-comment-and-property.css: Added.
+
+2015-06-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Fixing code style and adding more limitations for bug 141262
+        https://bugs.webkit.org/show_bug.cgi?id=145668
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WebInspector.CSSCompletions.prototype.isValidPropertyName): Loops through the full property list and returns true only if a property exactly matches the given property name.
+        (WebInspector.CSSCompletions): Added isValidPropertyName function.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded): Added logic to limit the invalid class marker to only the property value if the property name is an actual property and to prevent invalid style from being applied incorrectly.
+
+2015-06-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Highlighting a CSS section does not deselect previously highlighted CSS sections
+        https://bugs.webkit.org/show_bug.cgi?id=145399
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection): Added delegate variable to constructor.
+        (WebInspector.CSSStyleDeclarationSection.prototype.clearSelection):
+        (WebInspector.CSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorFocused):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor): Added event listener to codeMirror on "focus".
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.clearSelection): Sets the cursor of the codeMirror to character 0 on line 0.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._editorFocused): Function that calls the delegate function "editorFocused" when the codeMirror is focused
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.appendStyleSection):
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionEditorFocused): Loops through all sections except for the ignoredSection (parameter) and clears the selected text in each of them.
+
+2015-06-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION (r185213): TypeError: undefined is not an object (evaluating 'WebInspector.clearLogOnReload.value')
+        https://bugs.webkit.org/show_bug.cgi?id=145695
+
+        Reviewed by Mark Lam.
+
+        Move and rename the clear log on reload setting property from
+        WebInspector (Main.js) to LogManager (shared with tests).
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded): Deleted.
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager):
+        (WebInspector.LogManager.prototype._delayedMessagesCleared):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._sessionStarted):
+        (WebInspector.LogContentView.prototype._handleContextMenuEvent):
+        (WebInspector.LogContentView.prototype._toggleClearLogOnReloadSetting):
+
+2015-06-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: [REGRESSION] Dashboard's resource count does not reset when main resource navigates
+        https://bugs.webkit.org/show_bug.cgi?id=144553
+
+        Add missing _mainResourceDidChange, which was removed after switching to the tabs UI.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard):
+        _waitingForFirstMainResourceToStartTrackingSize is not used anywhere, remove it.
+
+        (WebInspector.DefaultDashboard.prototype._mainResourceDidChange): Added.
+
+        (WebInspector.DefaultDashboard.prototype._resourceSizeDidChange): Removed.
+        Unused.
+
+2015-06-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Switch to doughnut chart and remove idle time in the Rendering Frames timeline
+        https://bugs.webkit.org/show_bug.cgi?id=145671
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        "Idle" string no longer used.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        Reduced maximum frame width by 2px.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.prototype._refreshFrameSelectionChart):
+        Added inner radius to chart and removed "Idle" value.
+
+2015-06-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Class constructor appearing as Object Tree property does not include parameters
+        https://bugs.webkit.org/show_bug.cgi?id=145661
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.fromPrimitiveValue):
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.prototype.get functionDescription):
+        Include the className as only use it for "class" types to override
+        the normal description string. Stash the actual function description
+        in a property we can access later.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._functionParameterString):
+        Even if this property is a "class" we want to specifically parse it's
+        function description string. So use functionDescription.
+
+2015-06-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Close and open tabs on mouseup, not mousedown
+        https://bugs.webkit.org/show_bug.cgi?id=145656
+
+        Match Safari's behaviour.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar):
+        (WebInspector.TabBar.prototype.set newTabItem):
+        (WebInspector.TabBar.prototype._handleMouseDown):
+        (WebInspector.TabBar.prototype._handleClick): Added.
+        (WebInspector.TabBar.prototype._handleMouseUp):
+        (WebInspector.TabBar.prototype._handleNewTabClick): Added.
+        (WebInspector.TabBar.prototype._handleMouseMoved):
+
+2015-06-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Decrease tabs height to match Safari's tabs height
+        https://bugs.webkit.org/show_bug.cgi?id=145647
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar):
+
+2015-06-04  Tobias Reiss  <tobi+webkit@basecode.de>
+        
+        Web Inspector: Activity Viewer does not update on "Clear Log on reload"
+        https://bugs.webkit.org/show_bug.cgi?id=145466
+        
+        Reviewed by Joseph Pecoraro.
+
+        1. Isolate logic within LogManager and remove hacks/logic from all other files
+        2. Within LogManager: Differentiate "messagesCleared" calls
+         a) that happen as a result of a "requested clear" by Frontend (e.g. Button)
+         b) that happen on page reload and install "clear/keep-on-page-reload" logic
+         c) that happen on frame navigated, console.clear() or clear()
+        3. Unify "ActiveLogCleared" and "Cleared" events to "Cleared"
+        
+        For step 2b and 2c it is important to delay the handling and wait until
+        "_mainResourceDidChange" has determined whether a page reload happened or
+        not.
+        
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        Store "clear-log-on-reload" setting globally.
+        
+        * UserInterface/Controllers/IssueManager.js:
+        (WebInspector.IssueManager):
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard): Deleted.
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.prototype._trackWeakEntries): Deleted.
+        (WebInspector.ObjectTreeView.prototype._untrackWeakEntries): Deleted.
+        (WebInspector.ObjectTreeView): Deleted.
+        Remove deleted events.
+        
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype._handleClearShortcut):
+        (WebInspector.JavaScriptLogViewController.prototype.clear): Deleted.
+        Remove delegate function call and call LogManager directly.
+        
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager):
+        (WebInspector.LogManager.prototype.messagesCleared):
+        (WebInspector.LogManager.prototype._delayedMessagesCleared):
+        (WebInspector.LogManager.prototype.requestClearMessages):
+        (WebInspector.LogManager.prototype._mainResourceDidChange):
+        Isolate "clear log" logic, especially clear/keep-log-on-reload logic.
+        
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype._sessionStarted):
+        (WebInspector.LogContentView.prototype._handleContextMenuEvent):
+        (WebInspector.LogContentView.prototype._logCleared):
+        (WebInspector.LogContentView.prototype._toggleClearLogOnReloadSetting):
+        (WebInspector.LogContentView.prototype._clearLog):
+        (WebInspector.LogContentView.prototype.didClearMessages): Deleted.
+        (WebInspector.LogContentView.prototype._sessionsCleared): Deleted.
+        (WebInspector.LogContentView.prototype._activeLogCleared): Deleted.
+        (WebInspector.LogContentView.prototype._clearLogIgnoringClearMessages): Deleted.
+        Make it a consumer of LogManager and remove special hacks. Simplify code.
+
 2015-06-03  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: if a known CSS property has an unsupported value, only strikethrough the value

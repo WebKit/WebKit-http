@@ -30,7 +30,7 @@
 
 #include "Logging.h"
 #include "NetworkCacheCoders.h"
-#include "NetworkCacheFileSystemPosix.h"
+#include "NetworkCacheFileSystem.h"
 #include "NetworkCacheIOChannel.h"
 #include <wtf/PageBlock.h>
 #include <wtf/RandomNumber.h>
@@ -41,7 +41,6 @@
 namespace WebKit {
 namespace NetworkCache {
 
-static const char networkCacheSubdirectory[] = "WebKitCache";
 static const char versionDirectoryPrefix[] = "Version ";
 static const char recordsDirectoryName[] = "Records";
 static const char blobsDirectoryName[] = "Blobs";
@@ -79,10 +78,9 @@ std::unique_ptr<Storage> Storage::open(const String& cachePath)
 {
     ASSERT(RunLoop::isMain());
 
-    String networkCachePath = WebCore::pathByAppendingComponent(cachePath, networkCacheSubdirectory);
-    if (!WebCore::makeAllDirectories(networkCachePath))
+    if (!WebCore::makeAllDirectories(cachePath))
         return nullptr;
-    return std::unique_ptr<Storage>(new Storage(networkCachePath));
+    return std::unique_ptr<Storage>(new Storage(cachePath));
 }
 
 static String makeVersionedDirectoryPath(const String& baseDirectoryPath)
@@ -99,6 +97,30 @@ static String makeRecordsDirectoryPath(const String& baseDirectoryPath)
 static String makeBlobDirectoryPath(const String& baseDirectoryPath)
 {
     return WebCore::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), blobsDirectoryName);
+}
+
+void traverseRecordsFiles(const String& recordsPath, const std::function<void (const String&, const String&)>& function)
+{
+    traverseDirectory(recordsPath, [&recordsPath, &function](const String& subdirName, DirectoryEntryType type) {
+        if (type != DirectoryEntryType::Directory)
+            return;
+        String partitionPath = WebCore::pathByAppendingComponent(recordsPath, subdirName);
+        traverseDirectory(partitionPath, [&function, &partitionPath](const String& fileName, DirectoryEntryType type) {
+            if (type != DirectoryEntryType::File)
+                return;
+            function(fileName, partitionPath);
+        });
+    });
+}
+
+static void deleteEmptyRecordsDirectories(const String& recordsPath)
+{
+    traverseDirectory(recordsPath, [&recordsPath](const String& subdirName, DirectoryEntryType type) {
+        if (type != DirectoryEntryType::Directory)
+            return;
+        // Let system figure out if it is really empty.
+        WebCore::deleteEmptyDirectory(WebCore::pathByAppendingComponent(recordsPath, subdirName));
+    });
 }
 
 Storage::Storage(const String& baseDirectoryPath)
@@ -152,7 +174,7 @@ void Storage::synchronize()
         auto bodyFilter = std::make_unique<ContentsFilter>();
         size_t recordsSize = 0;
         unsigned count = 0;
-        traverseCacheFiles(recordsPath(), [&recordFilter, &bodyFilter, &recordsSize, &count](const String& fileName, const String& partitionPath) {
+        traverseRecordsFiles(recordsPath(), [&recordFilter, &bodyFilter, &recordsSize, &count](const String& fileName, const String& partitionPath) {
             auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
 
             bool isBody = fileName.endsWith(bodyPostfix);
@@ -666,7 +688,7 @@ void Storage::traverse(TraverseFlags flags, TraverseHandler&& traverseHandler)
     
     ioQueue().dispatch([this, flags, traverseHandlerPtr] {
         auto& traverseHandler = *traverseHandlerPtr;
-        traverseCacheFiles(recordsPath(), [this, flags, &traverseHandler](const String& fileName, const String& partitionPath) {
+        traverseRecordsFiles(recordsPath(), [this, flags, &traverseHandler](const String& fileName, const String& partitionPath) {
             if (fileName.length() != Key::hashStringLength())
                 return;
             auto recordPath = WebCore::pathByAppendingComponent(partitionPath, fileName);
@@ -731,19 +753,17 @@ void Storage::clear(std::chrono::system_clock::time_point modifiedSinceTime, std
 
     ioQueue().dispatch([this, modifiedSinceTime, completionHandlerPtr] {
         auto recordsPath = this->recordsPath();
-        traverseDirectory(recordsPath, DT_DIR, [&recordsPath, modifiedSinceTime](const String& subdirName) {
-            String subdirPath = WebCore::pathByAppendingComponent(recordsPath, subdirName);
-            traverseDirectory(subdirPath, DT_REG, [&subdirPath, modifiedSinceTime](const String& fileName) {
-                auto filePath = WebCore::pathByAppendingComponent(subdirPath, fileName);
-                if (modifiedSinceTime > std::chrono::system_clock::time_point::min()) {
-                    auto times = fileTimes(filePath);
-                    if (times.modification < modifiedSinceTime)
-                        return;
-                }
-                WebCore::deleteFile(filePath);
-            });
-            WebCore::deleteEmptyDirectory(subdirPath);
+        traverseRecordsFiles(recordsPath, [modifiedSinceTime](const String& fileName, const String& partitionPath) {
+            auto filePath = WebCore::pathByAppendingComponent(partitionPath, fileName);
+            if (modifiedSinceTime > std::chrono::system_clock::time_point::min()) {
+                auto times = fileTimes(filePath);
+                if (times.modification < modifiedSinceTime)
+                    return;
+            }
+            WebCore::deleteFile(filePath);
         });
+
+        deleteEmptyRecordsDirectories(recordsPath);
 
         // This cleans unreferences blobs.
         m_blobStorage.synchronize();
@@ -811,7 +831,7 @@ void Storage::shrink()
 
     backgroundIOQueue().dispatch([this] {
         auto recordsPath = this->recordsPath();
-        traverseCacheFiles(recordsPath, [this](const String& fileName, const String& partitionPath) {
+        traverseRecordsFiles(recordsPath, [this](const String& fileName, const String& partitionPath) {
             if (fileName.length() != Key::hashStringLength())
                 return;
             auto recordPath = WebCore::pathByAppendingComponent(partitionPath, fileName);
@@ -831,11 +851,7 @@ void Storage::shrink()
             }
         });
 
-        // Let system figure out if they are really empty.
-        traverseDirectory(recordsPath, DT_DIR, [&recordsPath](const String& subdirName) {
-            auto partitionPath = WebCore::pathByAppendingComponent(recordsPath, subdirName);
-            WebCore::deleteEmptyDirectory(partitionPath);
-        });
+        deleteEmptyRecordsDirectories(recordsPath);
 
         RunLoop::main().dispatch([this] {
             m_shrinkInProgress = false;
@@ -849,20 +865,27 @@ void Storage::shrink()
 
 void Storage::deleteOldVersions()
 {
-    // Delete V1 cache.
     backgroundIOQueue().dispatch([this] {
         auto cachePath = basePath();
-        traverseDirectory(cachePath, DT_DIR, [&cachePath](const String& subdirName) {
-            if (subdirName.startsWith(versionDirectoryPrefix))
+        traverseDirectory(cachePath, [&cachePath](const String& subdirName, DirectoryEntryType type) {
+            if (type != DirectoryEntryType::Directory)
                 return;
-            String partitionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
-            traverseDirectory(partitionPath, DT_REG, [&partitionPath](const String& fileName) {
-                WebCore::deleteFile(WebCore::pathByAppendingComponent(partitionPath, fileName));
-            });
-            WebCore::deleteEmptyDirectory(partitionPath);
+            if (!subdirName.startsWith(versionDirectoryPrefix))
+                return;
+            auto versionString = subdirName.substring(strlen(versionDirectoryPrefix));
+            bool success;
+            unsigned directoryVersion = versionString.toUIntStrict(&success);
+            if (!success)
+                return;
+            if (directoryVersion >= version)
+                return;
+
+            auto oldVersionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
+            LOG(NetworkCacheStorage, "(NetworkProcess) deleting old cache version, path %s", oldVersionPath.utf8().data());
+
+            deleteDirectoryRecursively(oldVersionPath);
         });
     });
-    // FIXME: Delete V2 cache.
 }
 
 }
