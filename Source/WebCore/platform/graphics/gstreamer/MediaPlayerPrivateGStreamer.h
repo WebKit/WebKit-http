@@ -137,6 +137,7 @@ public:
 
     void sourceChanged();
     GstElement* audioSink() const;
+    void configurePlaySink();
 
     void setAudioStreamProperties(GObject*);
 
@@ -155,6 +156,11 @@ public:
     void needKey(const String&, const String&, const unsigned char*, unsigned);
 
     void signalDRM();
+#endif
+
+    virtual bool isLiveStream() const { return m_isStreaming; }
+#if ENABLE(MEDIA_SOURCE)
+    void notifyAppendComplete();
 #endif
 
 private:
@@ -191,7 +197,6 @@ private:
 
 
     virtual String engineDescription() const { return "GStreamer"; }
-    virtual bool isLiveStream() const { return m_isStreaming; }
     virtual bool didPassCORSAccessCheck() const;
     virtual bool canSaveMediaData() const override;
 

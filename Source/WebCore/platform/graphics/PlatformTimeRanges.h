@@ -98,7 +98,7 @@ private:
 
         inline bool isContiguousWithRange(const Range& range) const
         {
-            return range.m_start == m_end || range.m_end == m_start;
+            return range.m_start.compare(m_end, true) == MediaTime::EqualTo || range.m_end.compare(m_start, true) == MediaTime::EqualTo;
         }
         
         inline Range unionWithOverlappingOrContiguousRange(const Range& range) const

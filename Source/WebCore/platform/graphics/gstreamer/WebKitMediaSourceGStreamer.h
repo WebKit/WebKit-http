@@ -27,6 +27,7 @@
 #include "MediaSource.h"
 #include "SourceBufferPrivateClient.h"
 #include "SourceBufferPrivate.h"
+#include "MediaPlayerPrivateGStreamer.h"
 
 #include "GRefPtrGStreamer.h"
 
@@ -39,6 +40,8 @@ G_BEGIN_DECLS
 #define WEBKIT_MEDIA_SRC_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), WEBKIT_TYPE_MEDIA_SRC, WebKitMediaSrcClass))
 #define WEBKIT_IS_MEDIA_SRC(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), WEBKIT_TYPE_MEDIA_SRC))
 #define WEBKIT_IS_MEDIA_SRC_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), WEBKIT_TYPE_MEDIA_SRC))
+
+typedef enum _StreamType {STREAM_TYPE_UNKNOWN, STREAM_TYPE_AUDIO, STREAM_TYPE_VIDEO, STREAM_TYPE_TEXT} StreamType;
 
 typedef struct _WebKitMediaSrc        WebKitMediaSrc;
 typedef struct _WebKitMediaSrcClass   WebKitMediaSrcClass;
@@ -64,8 +67,12 @@ GType webkit_media_src_get_type(void);
 GstPad* webkit_media_src_get_audio_pad(WebKitMediaSrc* src, guint i);
 GstPad* webkit_media_src_get_video_pad(WebKitMediaSrc* src, guint i);
 GstPad* webkit_media_src_get_text_pad(WebKitMediaSrc* src, guint i);
+void webkit_media_src_set_mediaplayerprivate(WebKitMediaSrc* src, WebCore::MediaPlayerPrivateGStreamer* player);
 
 void webkit_media_src_track_added(WebKitMediaSrc*, GstPad* pad, GstEvent* event);
+void webkit_media_src_set_seek_time(WebKitMediaSrc*, const MediaTime&);
+void webkit_media_src_segment_needed(WebKitMediaSrc*, StreamType);
+gboolean webkit_media_src_is_appending(WebKitMediaSrc*);
 
 G_END_DECLS
 
@@ -94,6 +101,8 @@ class MediaSourceClientGStreamer: public RefCounted<MediaSourceClientGStreamer> 
         // From SourceBufferPrivateGStreamer
         bool append(PassRefPtr<SourceBufferPrivateGStreamer>, const unsigned char*, unsigned);
         void removedFromMediaSource(PassRefPtr<SourceBufferPrivateGStreamer>);
+        void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> > samples, AtomicString trackIDString);
+        void enqueueSample(PassRefPtr<MediaSample> sample, AtomicString trackIDString);
 
         // From our WebKitMediaSrc
 #if ENABLE(VIDEO_TRACK)

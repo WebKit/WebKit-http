@@ -89,6 +89,8 @@ public:
     };
     virtual void sourceBufferPrivateAppendComplete(SourceBufferPrivate*, AppendResult) = 0;
     virtual void sourceBufferPrivateDidReceiveRenderingError(SourceBufferPrivate*, int errocCode) = 0;
+
+    virtual double timestampOffset() const = 0;
 };
 
 }
