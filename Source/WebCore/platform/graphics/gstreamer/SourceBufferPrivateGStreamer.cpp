@@ -100,22 +100,21 @@ void SourceBufferPrivateGStreamer::setReadyState(MediaPlayer::ReadyState state)
     m_mediaSource->setReadyState(state);
 }
 
-// TODO: Implement these
-void SourceBufferPrivateGStreamer::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> >, AtomicString)
+void SourceBufferPrivateGStreamer::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> > samples, AtomicString trackIDString)
 {
-    notImplemented();
+    if (m_client)
+        m_client->flushAndEnqueueNonDisplayingSamples(samples, trackIDString);
 }
 
-void SourceBufferPrivateGStreamer::enqueueSample(PassRefPtr<MediaSample>, AtomicString)
+void SourceBufferPrivateGStreamer::enqueueSample(PassRefPtr<MediaSample> sample, AtomicString trackIDString)
 {
-    notImplemented();
+    if (m_client)
+        m_client->enqueueSample(sample, trackIDString);
 }
 
 bool SourceBufferPrivateGStreamer::isReadyForMoreSamples(AtomicString)
 {
-    notImplemented();
-
-    return false;
+    return true;
 }
 
 void SourceBufferPrivateGStreamer::setActive(bool isActive)
@@ -154,6 +153,14 @@ void SourceBufferPrivateGStreamer::didReceiveAllPendingSamples()
     }
 }
 #endif
+
+double SourceBufferPrivateGStreamer::timestampOffset() const
+{
+    if (m_sourceBufferPrivateClient)
+        return m_sourceBufferPrivateClient->timestampOffset();
+    else
+        return 0.0;
+}
 
 }
 #endif

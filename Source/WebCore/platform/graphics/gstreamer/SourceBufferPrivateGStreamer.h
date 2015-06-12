@@ -67,6 +67,7 @@ public:
     virtual void notifyClientWhenReadyForMoreSamples(AtomicString) override;
     virtual bool isAborted() { return m_aborted; }
     virtual void resetAborted() { m_aborted = false; }
+    virtual double timestampOffset() const;
 
 private:
     SourceBufferPrivateGStreamer(MediaSourceGStreamer*, PassRefPtr<MediaSourceClientGStreamer>, const ContentType&);
