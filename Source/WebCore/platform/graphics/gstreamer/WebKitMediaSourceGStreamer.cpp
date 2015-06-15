@@ -27,6 +27,7 @@
 #include "AudioTrackPrivateGStreamer.h"
 #include "GStreamerUtilities.h"
 #include "MediaDescription.h"
+#include "MediaPlayerPrivateGStreamer.h"
 #include "MediaSample.h"
 #include "MediaSourceGStreamer.h"
 #include "NotImplemented.h"

@@ -27,11 +27,16 @@
 #include "MediaSource.h"
 #include "SourceBufferPrivateClient.h"
 #include "SourceBufferPrivate.h"
-#include "MediaPlayerPrivateGStreamer.h"
 
 #include "GRefPtrGStreamer.h"
 
 #include <gst/gst.h>
+
+namespace WebCore {
+
+class MediaPlayerPrivateGStreamer;
+
+}
 
 G_BEGIN_DECLS
 
