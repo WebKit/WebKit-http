@@ -274,6 +274,17 @@ bool GLContextEGL::makeContextCurrent()
     return eglMakeCurrent(sharedEGLDisplay(), m_surface, m_surface, m_context);
 }
 
+bool GLContextEGL::unmakeContextCurrent()
+{
+    ASSERT(m_context);
+
+    if (eglGetCurrentContext() != m_context)
+        return true;
+    GLContext::unmakeContextCurrent();
+
+    return eglMakeCurrent(sharedEGLDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+}
+
 void GLContextEGL::swapBuffers()
 {
     ASSERT(m_surface);

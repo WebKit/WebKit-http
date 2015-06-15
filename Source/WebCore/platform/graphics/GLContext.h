@@ -62,6 +62,7 @@ public:
     GLContext();
     virtual ~GLContext();
     virtual bool makeContextCurrent();
+    virtual bool unmakeContextCurrent();
     virtual void swapBuffers() = 0;
     virtual void waitNative() = 0;
     virtual bool canRenderToDefaultFramebuffer() = 0;

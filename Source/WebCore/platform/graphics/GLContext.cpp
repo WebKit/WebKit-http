@@ -163,6 +163,12 @@ bool GLContext::makeContextCurrent()
     return true;
 }
 
+bool GLContext::unmakeContextCurrent()
+{
+    currentContext()->setContext(nullptr);
+    return true;
+}
+
 GLContext* GLContext::getCurrent()
 {
     return currentContext()->context();
