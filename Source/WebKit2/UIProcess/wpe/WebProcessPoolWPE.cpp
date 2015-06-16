@@ -94,11 +94,10 @@ WTF::String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 
 void WebProcessPool::platformInitialize()
 {
-    static bool useNetworkProcess = !!std::getenv("WPE_NETWORK_PROCESS");
-    if (useNetworkProcess) {
-        setUsesNetworkProcess(true);
-        setProcessModel(ProcessModelMultipleSecondaryProcesses);
-    }
+#if ENABLE(NETWORK_PROCESS)
+    setUsesNetworkProcess(true);
+    setProcessModel(ProcessModelMultipleSecondaryProcesses);
+#endif
 }
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
