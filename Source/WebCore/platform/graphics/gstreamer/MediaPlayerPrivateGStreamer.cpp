@@ -1753,6 +1753,7 @@ void MediaPlayerPrivateGStreamer::asyncStateChangeDone()
         else {
             LOG_MEDIA_MESSAGE("[Seek] seeked to %f", m_seekTime);
             m_seeking = false;
+            m_cachedPosition = -1;
             if (m_timeOfOverlappingSeek != m_seekTime && m_timeOfOverlappingSeek != -1) {
                 seek(m_timeOfOverlappingSeek);
                 m_timeOfOverlappingSeek = -1;
@@ -1922,8 +1923,10 @@ void MediaPlayerPrivateGStreamer::updateStates()
             LOG_MEDIA_MESSAGE("[Seek] committing pending seek to %f", m_seekTime);
             m_seekIsPending = false;
             m_seeking = doSeek(toGstClockTime(m_seekTime), m_player->rate(), static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE));
-            if (!m_seeking)
+            if (!m_seeking) {
+                m_cachedPosition = -1;
                 LOG_MEDIA_MESSAGE("[Seek] seeking to %f failed", m_seekTime);
+            }
         }
     }
 }
@@ -2080,8 +2083,10 @@ void MediaPlayerPrivateGStreamer::notifyAppendComplete()
         LOG_MEDIA_MESSAGE("[Seek] committing pending seek to %f after append completed", m_seekTime);
         m_seekIsPending = false;
         m_seeking = doSeek(toGstClockTime(m_seekTime), m_player->rate(), static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE));
-        if (!m_seeking)
+        if (!m_seeking) {
+            m_cachedPosition = -1;
             LOG_MEDIA_MESSAGE("[Seek] seeking to %f failed", m_seekTime);
+        }
     }
 }
 #endif
