@@ -40,6 +40,7 @@
 #include "Pattern.h"
 #include "PlatformContextCairo.h"
 #include "RefPtrCairo.h"
+#include "image-encoders/JPEGImageEncoder.h"
 #include <cairo.h>
 #include <runtime/JSCInlines.h>
 #include <runtime/TypedArrayInlines.h>
@@ -409,21 +410,31 @@ static cairo_status_t writeFunction(void* output, const unsigned char* data, uns
     return CAIRO_STATUS_SUCCESS;
 }
 
-static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<char>* output)
+static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<char>* output, const double* quality)
 {
-    ASSERT_UNUSED(mimeType, mimeType == "image/png"); // Only PNG output is supported for now.
+    ASSERT_UNUSED(mimeType, mimeType == "image/png" || mimeType == "image/jpeg"); // Only PNG  and JPEG output are supported for now.
 
-    return cairo_surface_write_to_png_stream(image, writeFunction, output) == CAIRO_STATUS_SUCCESS;
+    if (mimeType == "image/png")
+        return cairo_surface_write_to_png_stream(image, writeFunction, output) == CAIRO_STATUS_SUCCESS;
+
+    if (mimeType == "image/jpeg") {
+        unsigned char* imageData = cairo_image_surface_get_data(image);
+        int width = cairo_image_surface_get_width(image);
+        int height = cairo_image_surface_get_height(image);
+        return compressRGBABigEndianToJPEG(imageData, IntSize(width, height), *output, quality);
+    }
+
+    return false;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, const double*, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String& mimeType, const double* quality, CoordinateSystem) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
     cairo_surface_t* image = cairo_get_target(context()->platformContext()->cr());
 
     Vector<char> encodedImage;
-    if (!image || !encodeImage(image, mimeType, &encodedImage))
+    if (!image || !encodeImage(image, mimeType, &encodedImage, quality))
         return "data:,";
 
     Vector<char> base64Data;

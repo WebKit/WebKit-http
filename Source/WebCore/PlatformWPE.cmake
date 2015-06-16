@@ -105,6 +105,7 @@ list(APPEND WebCore_SOURCES
     platform/image-decoders/jpeg/JPEGImageDecoder.cpp
     platform/image-decoders/png/PNGImageDecoder.cpp
     platform/image-decoders/webp/WEBPImageDecoder.cpp
+    platform/image-encoders/JPEGImageEncoder.cpp
     platform/linux/MemoryPressureHandlerLinux.cpp
     platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
     platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
