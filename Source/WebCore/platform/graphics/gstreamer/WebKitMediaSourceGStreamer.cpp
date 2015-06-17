@@ -1079,13 +1079,26 @@ static gboolean freeStreamLater(Stream* stream)
     if (stream->caps)
         gst_caps_unref(stream->caps);
 #if ENABLE(VIDEO_TRACK)
-    if (stream->audioTrack)
+    if (stream->audioTrack) {
         stream->audioTrack->clear();
-    if (stream->videoTrack)
+        delete stream->audioTrack;
+    }
+    if (stream->videoTrack) {
         stream->videoTrack->clear();
+        delete stream->videoTrack;
+    }
 #endif
     if (stream->multiqueuesrcpad)
         g_object_unref(stream->multiqueuesrcpad);
+
+    if (stream->pendingReceiveSample) {
+        for (GList* l = stream->pendingReceiveSample; l; l = l->next) {
+            PendingReceiveSample* receiveSample = static_cast<PendingReceiveSample*>(l->data);
+            gst_buffer_unref(receiveSample->buffer);
+        }
+
+        g_list_free(stream->pendingReceiveSample);
+    }
 
     g_free(stream);
 
@@ -1696,6 +1709,13 @@ void MediaSourceClientGStreamer::removedFromMediaSource(PassRefPtr<SourceBufferP
         if (source->noDataToDecodeTimeoutTag) {
             g_source_remove(source->noDataToDecodeTimeoutTag);
             source->noDataToDecodeTimeoutTag = 0;
+        }
+
+        if (source->streams) {
+            for (l = source->streams; l; l = l->next)
+                g_timeout_add(500, (GSourceFunc)freeStreamLater, l->data);
+
+            g_list_free(source->streams);
         }
 
         g_timeout_add(300, (GSourceFunc)freeSourceLater, source);
