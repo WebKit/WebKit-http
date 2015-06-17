@@ -39,7 +39,7 @@
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SchemeRegistry.h>
 #include <cstdlib>
-#include <wtf/gobject/GUniquePtr.h>
+#include <wtf/glib/GUniquePtr.h>
 
 #if ENABLE(NETWORK_PROCESS)
 #include "NetworkProcessMessages.h"

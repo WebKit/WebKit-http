@@ -6,7 +6,7 @@
 #include <glib.h>
 #include <utility>
 #include <wtf/Vector.h>
-#include <wtf/gobject/GRefPtr.h>
+#include <wtf/glib/GRefPtr.h>
 
 typedef struct _GSocket GSocket;
 

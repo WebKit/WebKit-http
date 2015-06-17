@@ -2,7 +2,7 @@
 #include "GSourceWrap.h"
 
 #include <gio/gio.h>
-#include <wtf/gobject/GMutexLocker.h>
+#include <wtf/glib/GMutexLocker.h>
 #include <cstdio>
 
 namespace WTF {

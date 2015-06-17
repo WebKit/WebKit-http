@@ -1,12 +1,12 @@
 list(APPEND WTF_SOURCES
-    gobject/GMainLoopSource.cpp
-    gobject/GRefPtr.cpp
-    gobject/GSourceWrap.cpp
-    gobject/GThreadSafeMainLoopSource.cpp
-    gobject/GlibUtilities.cpp
-
+    glib/GMainLoopSource.cpp
+    glib/GRefPtr.cpp
+    glib/GSourceWrap.cpp
+    glib/GThreadSafeMainLoopSource.cpp
+    glib/GLibUtilities.cpp
     glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp
+
     wpe/WorkQueueWPE.cpp
 )
 

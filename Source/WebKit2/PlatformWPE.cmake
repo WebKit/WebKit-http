@@ -101,7 +101,6 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebPage/wpe/LayerTreeHostWPE.cpp
     WebProcess/WebPage/wpe/WebInspectorUIWPE.cpp
     WebProcess/WebPage/wpe/WebPageWPE.cpp
-    WebProcess/soup/WebKitSoupRequestGeneric.cpp
     WebProcess/soup/WebKitSoupRequestInputStream.cpp
     WebProcess/soup/WebProcessSoup.cpp
     WebProcess/wpe/WebProcessMainWPE.cpp

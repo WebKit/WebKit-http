@@ -43,7 +43,7 @@ typedef GMainLoopSource PlatformTimerRef;
 #elif PLATFORM(EFL)
 typedef Ecore_Timer* PlatformTimerRef;
 #elif PLATFORM(WPE)
-#include <wtf/gobject/GSourceWrap.h>
+#include <wtf/glib/GSourceWrap.h>
 typedef GSourceWrap::Static PlatformTimerRef;
 #endif
 
